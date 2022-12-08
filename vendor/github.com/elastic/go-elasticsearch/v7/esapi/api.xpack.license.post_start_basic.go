@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,9 +41,11 @@ func newLicensePostStartBasicFunc(t Transport) LicensePostStartBasic {
 // LicensePostStartBasic - Starts an indefinite basic license.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/start-basic.html.
+//
 type LicensePostStartBasic func(o ...func(*LicensePostStartBasicRequest)) (*Response, error)
 
 // LicensePostStartBasicRequest configures the License Post Start Basic API request.
+//
 type LicensePostStartBasicRequest struct {
 	Acknowledge *bool
 
@@ -58,6 +60,7 @@ type LicensePostStartBasicRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r LicensePostStartBasicRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -136,6 +139,7 @@ func (r LicensePostStartBasicRequest) Do(ctx context.Context, transport Transpor
 }
 
 // WithContext sets the request context.
+//
 func (f LicensePostStartBasic) WithContext(v context.Context) func(*LicensePostStartBasicRequest) {
 	return func(r *LicensePostStartBasicRequest) {
 		r.ctx = v
@@ -143,6 +147,7 @@ func (f LicensePostStartBasic) WithContext(v context.Context) func(*LicensePostS
 }
 
 // WithAcknowledge - whether the user has acknowledged acknowledge messages (default: false).
+//
 func (f LicensePostStartBasic) WithAcknowledge(v bool) func(*LicensePostStartBasicRequest) {
 	return func(r *LicensePostStartBasicRequest) {
 		r.Acknowledge = &v
@@ -150,6 +155,7 @@ func (f LicensePostStartBasic) WithAcknowledge(v bool) func(*LicensePostStartBas
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f LicensePostStartBasic) WithPretty() func(*LicensePostStartBasicRequest) {
 	return func(r *LicensePostStartBasicRequest) {
 		r.Pretty = true
@@ -157,6 +163,7 @@ func (f LicensePostStartBasic) WithPretty() func(*LicensePostStartBasicRequest) 
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f LicensePostStartBasic) WithHuman() func(*LicensePostStartBasicRequest) {
 	return func(r *LicensePostStartBasicRequest) {
 		r.Human = true
@@ -164,6 +171,7 @@ func (f LicensePostStartBasic) WithHuman() func(*LicensePostStartBasicRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f LicensePostStartBasic) WithErrorTrace() func(*LicensePostStartBasicRequest) {
 	return func(r *LicensePostStartBasicRequest) {
 		r.ErrorTrace = true
@@ -171,6 +179,7 @@ func (f LicensePostStartBasic) WithErrorTrace() func(*LicensePostStartBasicReque
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f LicensePostStartBasic) WithFilterPath(v ...string) func(*LicensePostStartBasicRequest) {
 	return func(r *LicensePostStartBasicRequest) {
 		r.FilterPath = v
@@ -178,6 +187,7 @@ func (f LicensePostStartBasic) WithFilterPath(v ...string) func(*LicensePostStar
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f LicensePostStartBasic) WithHeader(h map[string]string) func(*LicensePostStartBasicRequest) {
 	return func(r *LicensePostStartBasicRequest) {
 		if r.Header == nil {
@@ -190,6 +200,7 @@ func (f LicensePostStartBasic) WithHeader(h map[string]string) func(*LicensePost
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f LicensePostStartBasic) WithOpaqueID(s string) func(*LicensePostStartBasicRequest) {
 	return func(r *LicensePostStartBasicRequest) {
 		if r.Header == nil {

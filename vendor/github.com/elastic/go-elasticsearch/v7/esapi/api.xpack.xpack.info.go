@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,9 +41,11 @@ func newXPackInfoFunc(t Transport) XPackInfo {
 // XPackInfo - Retrieves information about the installed X-Pack features.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/info-api.html.
+//
 type XPackInfo func(o ...func(*XPackInfoRequest)) (*Response, error)
 
 // XPackInfoRequest configures the X Pack Info API request.
+//
 type XPackInfoRequest struct {
 	AcceptEnterprise *bool
 	Categories       []string
@@ -59,6 +61,7 @@ type XPackInfoRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r XPackInfoRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -141,6 +144,7 @@ func (r XPackInfoRequest) Do(ctx context.Context, transport Transport) (*Respons
 }
 
 // WithContext sets the request context.
+//
 func (f XPackInfo) WithContext(v context.Context) func(*XPackInfoRequest) {
 	return func(r *XPackInfoRequest) {
 		r.ctx = v
@@ -148,6 +152,7 @@ func (f XPackInfo) WithContext(v context.Context) func(*XPackInfoRequest) {
 }
 
 // WithAcceptEnterprise - if an enterprise license is installed, return the type and mode as 'enterprise' (default: false).
+//
 func (f XPackInfo) WithAcceptEnterprise(v bool) func(*XPackInfoRequest) {
 	return func(r *XPackInfoRequest) {
 		r.AcceptEnterprise = &v
@@ -155,6 +160,7 @@ func (f XPackInfo) WithAcceptEnterprise(v bool) func(*XPackInfoRequest) {
 }
 
 // WithCategories - comma-separated list of info categories. can be any of: build, license, features.
+//
 func (f XPackInfo) WithCategories(v ...string) func(*XPackInfoRequest) {
 	return func(r *XPackInfoRequest) {
 		r.Categories = v
@@ -162,6 +168,7 @@ func (f XPackInfo) WithCategories(v ...string) func(*XPackInfoRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f XPackInfo) WithPretty() func(*XPackInfoRequest) {
 	return func(r *XPackInfoRequest) {
 		r.Pretty = true
@@ -169,6 +176,7 @@ func (f XPackInfo) WithPretty() func(*XPackInfoRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f XPackInfo) WithHuman() func(*XPackInfoRequest) {
 	return func(r *XPackInfoRequest) {
 		r.Human = true
@@ -176,6 +184,7 @@ func (f XPackInfo) WithHuman() func(*XPackInfoRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f XPackInfo) WithErrorTrace() func(*XPackInfoRequest) {
 	return func(r *XPackInfoRequest) {
 		r.ErrorTrace = true
@@ -183,6 +192,7 @@ func (f XPackInfo) WithErrorTrace() func(*XPackInfoRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f XPackInfo) WithFilterPath(v ...string) func(*XPackInfoRequest) {
 	return func(r *XPackInfoRequest) {
 		r.FilterPath = v
@@ -190,6 +200,7 @@ func (f XPackInfo) WithFilterPath(v ...string) func(*XPackInfoRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f XPackInfo) WithHeader(h map[string]string) func(*XPackInfoRequest) {
 	return func(r *XPackInfoRequest) {
 		if r.Header == nil {
@@ -202,6 +213,7 @@ func (f XPackInfo) WithHeader(h map[string]string) func(*XPackInfoRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f XPackInfo) WithOpaqueID(s string) func(*XPackInfoRequest) {
 	return func(r *XPackInfoRequest) {
 		if r.Header == nil {

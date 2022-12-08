@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,9 +41,11 @@ func newMLPutDataFrameAnalyticsFunc(t Transport) MLPutDataFrameAnalytics {
 // MLPutDataFrameAnalytics - Instantiates a data frame analytics job.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/put-dfanalytics.html.
+//
 type MLPutDataFrameAnalytics func(id string, body io.Reader, o ...func(*MLPutDataFrameAnalyticsRequest)) (*Response, error)
 
 // MLPutDataFrameAnalyticsRequest configures the ML Put Data Frame Analytics API request.
+//
 type MLPutDataFrameAnalyticsRequest struct {
 	ID string
 
@@ -60,6 +62,7 @@ type MLPutDataFrameAnalyticsRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r MLPutDataFrameAnalyticsRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -110,6 +113,10 @@ func (r MLPutDataFrameAnalyticsRequest) Do(ctx context.Context, transport Transp
 		req.URL.RawQuery = q.Encode()
 	}
 
+	if r.Body != nil {
+		req.Header[headerContentType] = headerContentTypeJSON
+	}
+
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -120,10 +127,6 @@ func (r MLPutDataFrameAnalyticsRequest) Do(ctx context.Context, transport Transp
 				}
 			}
 		}
-	}
-
-	if r.Body != nil && req.Header.Get(headerContentType) == "" {
-		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -145,6 +148,7 @@ func (r MLPutDataFrameAnalyticsRequest) Do(ctx context.Context, transport Transp
 }
 
 // WithContext sets the request context.
+//
 func (f MLPutDataFrameAnalytics) WithContext(v context.Context) func(*MLPutDataFrameAnalyticsRequest) {
 	return func(r *MLPutDataFrameAnalyticsRequest) {
 		r.ctx = v
@@ -152,6 +156,7 @@ func (f MLPutDataFrameAnalytics) WithContext(v context.Context) func(*MLPutDataF
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f MLPutDataFrameAnalytics) WithPretty() func(*MLPutDataFrameAnalyticsRequest) {
 	return func(r *MLPutDataFrameAnalyticsRequest) {
 		r.Pretty = true
@@ -159,6 +164,7 @@ func (f MLPutDataFrameAnalytics) WithPretty() func(*MLPutDataFrameAnalyticsReque
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f MLPutDataFrameAnalytics) WithHuman() func(*MLPutDataFrameAnalyticsRequest) {
 	return func(r *MLPutDataFrameAnalyticsRequest) {
 		r.Human = true
@@ -166,6 +172,7 @@ func (f MLPutDataFrameAnalytics) WithHuman() func(*MLPutDataFrameAnalyticsReques
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f MLPutDataFrameAnalytics) WithErrorTrace() func(*MLPutDataFrameAnalyticsRequest) {
 	return func(r *MLPutDataFrameAnalyticsRequest) {
 		r.ErrorTrace = true
@@ -173,6 +180,7 @@ func (f MLPutDataFrameAnalytics) WithErrorTrace() func(*MLPutDataFrameAnalyticsR
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f MLPutDataFrameAnalytics) WithFilterPath(v ...string) func(*MLPutDataFrameAnalyticsRequest) {
 	return func(r *MLPutDataFrameAnalyticsRequest) {
 		r.FilterPath = v
@@ -180,6 +188,7 @@ func (f MLPutDataFrameAnalytics) WithFilterPath(v ...string) func(*MLPutDataFram
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f MLPutDataFrameAnalytics) WithHeader(h map[string]string) func(*MLPutDataFrameAnalyticsRequest) {
 	return func(r *MLPutDataFrameAnalyticsRequest) {
 		if r.Header == nil {
@@ -192,6 +201,7 @@ func (f MLPutDataFrameAnalytics) WithHeader(h map[string]string) func(*MLPutData
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f MLPutDataFrameAnalytics) WithOpaqueID(s string) func(*MLPutDataFrameAnalyticsRequest) {
 	return func(r *MLPutDataFrameAnalyticsRequest) {
 		if r.Header == nil {

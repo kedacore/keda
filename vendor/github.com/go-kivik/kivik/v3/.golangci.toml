@@ -1,0 +1,12 @@
+[output]
+format = "colored-line-number"
+
+[linters]
+enable = [
+    "interfacer", "gocyclo", "unconvert", "goimports", "unused", "varcheck",
+    "vetshadow", "misspell", "nakedret", "errcheck", "golint", "ineffassign",
+    "deadcode", "goconst", "vet", "unparam", "gofumpt"
+]
+
+[issues]
+exclude-use-default = false

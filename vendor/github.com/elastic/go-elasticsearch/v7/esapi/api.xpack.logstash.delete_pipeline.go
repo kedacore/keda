@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -40,9 +40,11 @@ func newLogstashDeletePipelineFunc(t Transport) LogstashDeletePipeline {
 // LogstashDeletePipeline - Deletes Logstash Pipelines used by Central Management
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/logstash-api-delete-pipeline.html.
+//
 type LogstashDeletePipeline func(id string, o ...func(*LogstashDeletePipelineRequest)) (*Response, error)
 
 // LogstashDeletePipelineRequest configures the Logstash Delete Pipeline API request.
+//
 type LogstashDeletePipelineRequest struct {
 	DocumentID string
 
@@ -57,6 +59,7 @@ type LogstashDeletePipelineRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r LogstashDeletePipelineRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -136,6 +139,7 @@ func (r LogstashDeletePipelineRequest) Do(ctx context.Context, transport Transpo
 }
 
 // WithContext sets the request context.
+//
 func (f LogstashDeletePipeline) WithContext(v context.Context) func(*LogstashDeletePipelineRequest) {
 	return func(r *LogstashDeletePipelineRequest) {
 		r.ctx = v
@@ -143,6 +147,7 @@ func (f LogstashDeletePipeline) WithContext(v context.Context) func(*LogstashDel
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f LogstashDeletePipeline) WithPretty() func(*LogstashDeletePipelineRequest) {
 	return func(r *LogstashDeletePipelineRequest) {
 		r.Pretty = true
@@ -150,6 +155,7 @@ func (f LogstashDeletePipeline) WithPretty() func(*LogstashDeletePipelineRequest
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f LogstashDeletePipeline) WithHuman() func(*LogstashDeletePipelineRequest) {
 	return func(r *LogstashDeletePipelineRequest) {
 		r.Human = true
@@ -157,6 +163,7 @@ func (f LogstashDeletePipeline) WithHuman() func(*LogstashDeletePipelineRequest)
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f LogstashDeletePipeline) WithErrorTrace() func(*LogstashDeletePipelineRequest) {
 	return func(r *LogstashDeletePipelineRequest) {
 		r.ErrorTrace = true
@@ -164,6 +171,7 @@ func (f LogstashDeletePipeline) WithErrorTrace() func(*LogstashDeletePipelineReq
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f LogstashDeletePipeline) WithFilterPath(v ...string) func(*LogstashDeletePipelineRequest) {
 	return func(r *LogstashDeletePipelineRequest) {
 		r.FilterPath = v
@@ -171,6 +179,7 @@ func (f LogstashDeletePipeline) WithFilterPath(v ...string) func(*LogstashDelete
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f LogstashDeletePipeline) WithHeader(h map[string]string) func(*LogstashDeletePipelineRequest) {
 	return func(r *LogstashDeletePipelineRequest) {
 		if r.Header == nil {
@@ -183,6 +192,7 @@ func (f LogstashDeletePipeline) WithHeader(h map[string]string) func(*LogstashDe
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f LogstashDeletePipeline) WithOpaqueID(s string) func(*LogstashDeletePipelineRequest) {
 	return func(r *LogstashDeletePipelineRequest) {
 		if r.Header == nil {

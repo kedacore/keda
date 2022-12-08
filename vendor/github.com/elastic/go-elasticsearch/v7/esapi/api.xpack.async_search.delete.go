@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -40,9 +40,11 @@ func newAsyncSearchDeleteFunc(t Transport) AsyncSearchDelete {
 // AsyncSearchDelete - Deletes an async search by ID. If the search is still running, the search request will be cancelled. Otherwise, the saved search results are deleted.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/async-search.html.
+//
 type AsyncSearchDelete func(id string, o ...func(*AsyncSearchDeleteRequest)) (*Response, error)
 
 // AsyncSearchDeleteRequest configures the Async Search Delete API request.
+//
 type AsyncSearchDeleteRequest struct {
 	DocumentID string
 
@@ -57,6 +59,7 @@ type AsyncSearchDeleteRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r AsyncSearchDeleteRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -134,6 +137,7 @@ func (r AsyncSearchDeleteRequest) Do(ctx context.Context, transport Transport) (
 }
 
 // WithContext sets the request context.
+//
 func (f AsyncSearchDelete) WithContext(v context.Context) func(*AsyncSearchDeleteRequest) {
 	return func(r *AsyncSearchDeleteRequest) {
 		r.ctx = v
@@ -141,6 +145,7 @@ func (f AsyncSearchDelete) WithContext(v context.Context) func(*AsyncSearchDelet
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f AsyncSearchDelete) WithPretty() func(*AsyncSearchDeleteRequest) {
 	return func(r *AsyncSearchDeleteRequest) {
 		r.Pretty = true
@@ -148,6 +153,7 @@ func (f AsyncSearchDelete) WithPretty() func(*AsyncSearchDeleteRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f AsyncSearchDelete) WithHuman() func(*AsyncSearchDeleteRequest) {
 	return func(r *AsyncSearchDeleteRequest) {
 		r.Human = true
@@ -155,6 +161,7 @@ func (f AsyncSearchDelete) WithHuman() func(*AsyncSearchDeleteRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f AsyncSearchDelete) WithErrorTrace() func(*AsyncSearchDeleteRequest) {
 	return func(r *AsyncSearchDeleteRequest) {
 		r.ErrorTrace = true
@@ -162,6 +169,7 @@ func (f AsyncSearchDelete) WithErrorTrace() func(*AsyncSearchDeleteRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f AsyncSearchDelete) WithFilterPath(v ...string) func(*AsyncSearchDeleteRequest) {
 	return func(r *AsyncSearchDeleteRequest) {
 		r.FilterPath = v
@@ -169,6 +177,7 @@ func (f AsyncSearchDelete) WithFilterPath(v ...string) func(*AsyncSearchDeleteRe
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f AsyncSearchDelete) WithHeader(h map[string]string) func(*AsyncSearchDeleteRequest) {
 	return func(r *AsyncSearchDeleteRequest) {
 		if r.Header == nil {
@@ -181,6 +190,7 @@ func (f AsyncSearchDelete) WithHeader(h map[string]string) func(*AsyncSearchDele
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f AsyncSearchDelete) WithOpaqueID(s string) func(*AsyncSearchDeleteRequest) {
 	return func(r *AsyncSearchDeleteRequest) {
 		if r.Header == nil {

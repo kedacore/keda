@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,9 +41,11 @@ func newIndicesDeleteDataStreamFunc(t Transport) IndicesDeleteDataStream {
 // IndicesDeleteDataStream - Deletes a data stream.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/data-streams.html.
+//
 type IndicesDeleteDataStream func(name []string, o ...func(*IndicesDeleteDataStreamRequest)) (*Response, error)
 
 // IndicesDeleteDataStreamRequest configures the Indices Delete Data Stream API request.
+//
 type IndicesDeleteDataStreamRequest struct {
 	Name []string
 
@@ -60,6 +62,7 @@ type IndicesDeleteDataStreamRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r IndicesDeleteDataStreamRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -145,6 +148,7 @@ func (r IndicesDeleteDataStreamRequest) Do(ctx context.Context, transport Transp
 }
 
 // WithContext sets the request context.
+//
 func (f IndicesDeleteDataStream) WithContext(v context.Context) func(*IndicesDeleteDataStreamRequest) {
 	return func(r *IndicesDeleteDataStreamRequest) {
 		r.ctx = v
@@ -152,6 +156,7 @@ func (f IndicesDeleteDataStream) WithContext(v context.Context) func(*IndicesDel
 }
 
 // WithExpandWildcards - whether wildcard expressions should get expanded to open or closed indices (default: open).
+//
 func (f IndicesDeleteDataStream) WithExpandWildcards(v string) func(*IndicesDeleteDataStreamRequest) {
 	return func(r *IndicesDeleteDataStreamRequest) {
 		r.ExpandWildcards = v
@@ -159,6 +164,7 @@ func (f IndicesDeleteDataStream) WithExpandWildcards(v string) func(*IndicesDele
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f IndicesDeleteDataStream) WithPretty() func(*IndicesDeleteDataStreamRequest) {
 	return func(r *IndicesDeleteDataStreamRequest) {
 		r.Pretty = true
@@ -166,6 +172,7 @@ func (f IndicesDeleteDataStream) WithPretty() func(*IndicesDeleteDataStreamReque
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f IndicesDeleteDataStream) WithHuman() func(*IndicesDeleteDataStreamRequest) {
 	return func(r *IndicesDeleteDataStreamRequest) {
 		r.Human = true
@@ -173,6 +180,7 @@ func (f IndicesDeleteDataStream) WithHuman() func(*IndicesDeleteDataStreamReques
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f IndicesDeleteDataStream) WithErrorTrace() func(*IndicesDeleteDataStreamRequest) {
 	return func(r *IndicesDeleteDataStreamRequest) {
 		r.ErrorTrace = true
@@ -180,6 +188,7 @@ func (f IndicesDeleteDataStream) WithErrorTrace() func(*IndicesDeleteDataStreamR
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f IndicesDeleteDataStream) WithFilterPath(v ...string) func(*IndicesDeleteDataStreamRequest) {
 	return func(r *IndicesDeleteDataStreamRequest) {
 		r.FilterPath = v
@@ -187,6 +196,7 @@ func (f IndicesDeleteDataStream) WithFilterPath(v ...string) func(*IndicesDelete
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f IndicesDeleteDataStream) WithHeader(h map[string]string) func(*IndicesDeleteDataStreamRequest) {
 	return func(r *IndicesDeleteDataStreamRequest) {
 		if r.Header == nil {
@@ -199,6 +209,7 @@ func (f IndicesDeleteDataStream) WithHeader(h map[string]string) func(*IndicesDe
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f IndicesDeleteDataStream) WithOpaqueID(s string) func(*IndicesDeleteDataStreamRequest) {
 	return func(r *IndicesDeleteDataStreamRequest) {
 		if r.Header == nil {

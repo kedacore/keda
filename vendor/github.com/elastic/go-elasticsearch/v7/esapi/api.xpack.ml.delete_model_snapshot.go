@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -40,9 +40,11 @@ func newMLDeleteModelSnapshotFunc(t Transport) MLDeleteModelSnapshot {
 // MLDeleteModelSnapshot - Deletes an existing model snapshot.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/ml-delete-snapshot.html.
+//
 type MLDeleteModelSnapshot func(snapshot_id string, job_id string, o ...func(*MLDeleteModelSnapshotRequest)) (*Response, error)
 
 // MLDeleteModelSnapshotRequest configures the ML Delete Model Snapshot API request.
+//
 type MLDeleteModelSnapshotRequest struct {
 	JobID      string
 	SnapshotID string
@@ -58,6 +60,7 @@ type MLDeleteModelSnapshotRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r MLDeleteModelSnapshotRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -141,6 +144,7 @@ func (r MLDeleteModelSnapshotRequest) Do(ctx context.Context, transport Transpor
 }
 
 // WithContext sets the request context.
+//
 func (f MLDeleteModelSnapshot) WithContext(v context.Context) func(*MLDeleteModelSnapshotRequest) {
 	return func(r *MLDeleteModelSnapshotRequest) {
 		r.ctx = v
@@ -148,6 +152,7 @@ func (f MLDeleteModelSnapshot) WithContext(v context.Context) func(*MLDeleteMode
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f MLDeleteModelSnapshot) WithPretty() func(*MLDeleteModelSnapshotRequest) {
 	return func(r *MLDeleteModelSnapshotRequest) {
 		r.Pretty = true
@@ -155,6 +160,7 @@ func (f MLDeleteModelSnapshot) WithPretty() func(*MLDeleteModelSnapshotRequest) 
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f MLDeleteModelSnapshot) WithHuman() func(*MLDeleteModelSnapshotRequest) {
 	return func(r *MLDeleteModelSnapshotRequest) {
 		r.Human = true
@@ -162,6 +168,7 @@ func (f MLDeleteModelSnapshot) WithHuman() func(*MLDeleteModelSnapshotRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f MLDeleteModelSnapshot) WithErrorTrace() func(*MLDeleteModelSnapshotRequest) {
 	return func(r *MLDeleteModelSnapshotRequest) {
 		r.ErrorTrace = true
@@ -169,6 +176,7 @@ func (f MLDeleteModelSnapshot) WithErrorTrace() func(*MLDeleteModelSnapshotReque
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f MLDeleteModelSnapshot) WithFilterPath(v ...string) func(*MLDeleteModelSnapshotRequest) {
 	return func(r *MLDeleteModelSnapshotRequest) {
 		r.FilterPath = v
@@ -176,6 +184,7 @@ func (f MLDeleteModelSnapshot) WithFilterPath(v ...string) func(*MLDeleteModelSn
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f MLDeleteModelSnapshot) WithHeader(h map[string]string) func(*MLDeleteModelSnapshotRequest) {
 	return func(r *MLDeleteModelSnapshotRequest) {
 		if r.Header == nil {
@@ -188,6 +197,7 @@ func (f MLDeleteModelSnapshot) WithHeader(h map[string]string) func(*MLDeleteMod
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f MLDeleteModelSnapshot) WithOpaqueID(s string) func(*MLDeleteModelSnapshotRequest) {
 	return func(r *MLDeleteModelSnapshotRequest) {
 		if r.Header == nil {

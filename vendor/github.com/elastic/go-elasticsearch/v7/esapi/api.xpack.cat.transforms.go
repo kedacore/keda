@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,9 +41,11 @@ func newCatTransformsFunc(t Transport) CatTransforms {
 // CatTransforms - Gets configuration and usage information about transforms.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/cat-transforms.html.
+//
 type CatTransforms func(o ...func(*CatTransformsRequest)) (*Response, error)
 
 // CatTransformsRequest configures the Cat Transforms API request.
+//
 type CatTransformsRequest struct {
 	TransformID string
 
@@ -68,6 +70,7 @@ type CatTransformsRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r CatTransformsRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -185,6 +188,7 @@ func (r CatTransformsRequest) Do(ctx context.Context, transport Transport) (*Res
 }
 
 // WithContext sets the request context.
+//
 func (f CatTransforms) WithContext(v context.Context) func(*CatTransformsRequest) {
 	return func(r *CatTransformsRequest) {
 		r.ctx = v
@@ -192,6 +196,7 @@ func (f CatTransforms) WithContext(v context.Context) func(*CatTransformsRequest
 }
 
 // WithTransformID - the ID of the transform for which to get stats. '_all' or '*' implies all transforms.
+//
 func (f CatTransforms) WithTransformID(v string) func(*CatTransformsRequest) {
 	return func(r *CatTransformsRequest) {
 		r.TransformID = v
@@ -199,6 +204,7 @@ func (f CatTransforms) WithTransformID(v string) func(*CatTransformsRequest) {
 }
 
 // WithAllowNoMatch - whether to ignore if a wildcard expression matches no transforms. (this includes `_all` string or when no transforms have been specified).
+//
 func (f CatTransforms) WithAllowNoMatch(v bool) func(*CatTransformsRequest) {
 	return func(r *CatTransformsRequest) {
 		r.AllowNoMatch = &v
@@ -206,6 +212,7 @@ func (f CatTransforms) WithAllowNoMatch(v bool) func(*CatTransformsRequest) {
 }
 
 // WithFormat - a short version of the accept header, e.g. json, yaml.
+//
 func (f CatTransforms) WithFormat(v string) func(*CatTransformsRequest) {
 	return func(r *CatTransformsRequest) {
 		r.Format = v
@@ -213,6 +220,7 @@ func (f CatTransforms) WithFormat(v string) func(*CatTransformsRequest) {
 }
 
 // WithFrom - skips a number of transform configs, defaults to 0.
+//
 func (f CatTransforms) WithFrom(v int) func(*CatTransformsRequest) {
 	return func(r *CatTransformsRequest) {
 		r.From = &v
@@ -220,6 +228,7 @@ func (f CatTransforms) WithFrom(v int) func(*CatTransformsRequest) {
 }
 
 // WithH - comma-separated list of column names to display.
+//
 func (f CatTransforms) WithH(v ...string) func(*CatTransformsRequest) {
 	return func(r *CatTransformsRequest) {
 		r.H = v
@@ -227,6 +236,7 @@ func (f CatTransforms) WithH(v ...string) func(*CatTransformsRequest) {
 }
 
 // WithHelp - return help information.
+//
 func (f CatTransforms) WithHelp(v bool) func(*CatTransformsRequest) {
 	return func(r *CatTransformsRequest) {
 		r.Help = &v
@@ -234,6 +244,7 @@ func (f CatTransforms) WithHelp(v bool) func(*CatTransformsRequest) {
 }
 
 // WithS - comma-separated list of column names or column aliases to sort by.
+//
 func (f CatTransforms) WithS(v ...string) func(*CatTransformsRequest) {
 	return func(r *CatTransformsRequest) {
 		r.S = v
@@ -241,6 +252,7 @@ func (f CatTransforms) WithS(v ...string) func(*CatTransformsRequest) {
 }
 
 // WithSize - specifies a max number of transforms to get, defaults to 100.
+//
 func (f CatTransforms) WithSize(v int) func(*CatTransformsRequest) {
 	return func(r *CatTransformsRequest) {
 		r.Size = &v
@@ -248,6 +260,7 @@ func (f CatTransforms) WithSize(v int) func(*CatTransformsRequest) {
 }
 
 // WithTime - the unit in which to display time values.
+//
 func (f CatTransforms) WithTime(v string) func(*CatTransformsRequest) {
 	return func(r *CatTransformsRequest) {
 		r.Time = v
@@ -255,6 +268,7 @@ func (f CatTransforms) WithTime(v string) func(*CatTransformsRequest) {
 }
 
 // WithV - verbose mode. display column headers.
+//
 func (f CatTransforms) WithV(v bool) func(*CatTransformsRequest) {
 	return func(r *CatTransformsRequest) {
 		r.V = &v
@@ -262,6 +276,7 @@ func (f CatTransforms) WithV(v bool) func(*CatTransformsRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f CatTransforms) WithPretty() func(*CatTransformsRequest) {
 	return func(r *CatTransformsRequest) {
 		r.Pretty = true
@@ -269,6 +284,7 @@ func (f CatTransforms) WithPretty() func(*CatTransformsRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f CatTransforms) WithHuman() func(*CatTransformsRequest) {
 	return func(r *CatTransformsRequest) {
 		r.Human = true
@@ -276,6 +292,7 @@ func (f CatTransforms) WithHuman() func(*CatTransformsRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f CatTransforms) WithErrorTrace() func(*CatTransformsRequest) {
 	return func(r *CatTransformsRequest) {
 		r.ErrorTrace = true
@@ -283,6 +300,7 @@ func (f CatTransforms) WithErrorTrace() func(*CatTransformsRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f CatTransforms) WithFilterPath(v ...string) func(*CatTransformsRequest) {
 	return func(r *CatTransformsRequest) {
 		r.FilterPath = v
@@ -290,6 +308,7 @@ func (f CatTransforms) WithFilterPath(v ...string) func(*CatTransformsRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f CatTransforms) WithHeader(h map[string]string) func(*CatTransformsRequest) {
 	return func(r *CatTransformsRequest) {
 		if r.Header == nil {
@@ -302,6 +321,7 @@ func (f CatTransforms) WithHeader(h map[string]string) func(*CatTransformsReques
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f CatTransforms) WithOpaqueID(s string) func(*CatTransformsRequest) {
 	return func(r *CatTransformsRequest) {
 		if r.Header == nil {

@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,9 +41,11 @@ func newMLValidateDetectorFunc(t Transport) MLValidateDetector {
 // MLValidateDetector - Validates an anomaly detection detector.
 //
 // See full documentation at https://www.elastic.co/guide/en/machine-learning/current/ml-jobs.html.
+//
 type MLValidateDetector func(body io.Reader, o ...func(*MLValidateDetectorRequest)) (*Response, error)
 
 // MLValidateDetectorRequest configures the ML Validate Detector API request.
+//
 type MLValidateDetectorRequest struct {
 	Body io.Reader
 
@@ -58,6 +60,7 @@ type MLValidateDetectorRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r MLValidateDetectorRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -101,6 +104,10 @@ func (r MLValidateDetectorRequest) Do(ctx context.Context, transport Transport) 
 		req.URL.RawQuery = q.Encode()
 	}
 
+	if r.Body != nil {
+		req.Header[headerContentType] = headerContentTypeJSON
+	}
+
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -111,10 +118,6 @@ func (r MLValidateDetectorRequest) Do(ctx context.Context, transport Transport) 
 				}
 			}
 		}
-	}
-
-	if r.Body != nil && req.Header.Get(headerContentType) == "" {
-		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -136,6 +139,7 @@ func (r MLValidateDetectorRequest) Do(ctx context.Context, transport Transport) 
 }
 
 // WithContext sets the request context.
+//
 func (f MLValidateDetector) WithContext(v context.Context) func(*MLValidateDetectorRequest) {
 	return func(r *MLValidateDetectorRequest) {
 		r.ctx = v
@@ -143,6 +147,7 @@ func (f MLValidateDetector) WithContext(v context.Context) func(*MLValidateDetec
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f MLValidateDetector) WithPretty() func(*MLValidateDetectorRequest) {
 	return func(r *MLValidateDetectorRequest) {
 		r.Pretty = true
@@ -150,6 +155,7 @@ func (f MLValidateDetector) WithPretty() func(*MLValidateDetectorRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f MLValidateDetector) WithHuman() func(*MLValidateDetectorRequest) {
 	return func(r *MLValidateDetectorRequest) {
 		r.Human = true
@@ -157,6 +163,7 @@ func (f MLValidateDetector) WithHuman() func(*MLValidateDetectorRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f MLValidateDetector) WithErrorTrace() func(*MLValidateDetectorRequest) {
 	return func(r *MLValidateDetectorRequest) {
 		r.ErrorTrace = true
@@ -164,6 +171,7 @@ func (f MLValidateDetector) WithErrorTrace() func(*MLValidateDetectorRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f MLValidateDetector) WithFilterPath(v ...string) func(*MLValidateDetectorRequest) {
 	return func(r *MLValidateDetectorRequest) {
 		r.FilterPath = v
@@ -171,6 +179,7 @@ func (f MLValidateDetector) WithFilterPath(v ...string) func(*MLValidateDetector
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f MLValidateDetector) WithHeader(h map[string]string) func(*MLValidateDetectorRequest) {
 	return func(r *MLValidateDetectorRequest) {
 		if r.Header == nil {
@@ -183,6 +192,7 @@ func (f MLValidateDetector) WithHeader(h map[string]string) func(*MLValidateDete
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f MLValidateDetector) WithOpaqueID(s string) func(*MLValidateDetectorRequest) {
 	return func(r *MLValidateDetectorRequest) {
 		if r.Header == nil {

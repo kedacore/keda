@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -42,9 +42,11 @@ func newFleetGlobalCheckpointsFunc(t Transport) FleetGlobalCheckpoints {
 // FleetGlobalCheckpoints returns the current global checkpoints for an index. This API is design for internal use by the fleet server project.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/get-global-checkpoints.html.
+//
 type FleetGlobalCheckpoints func(index string, o ...func(*FleetGlobalCheckpointsRequest)) (*Response, error)
 
 // FleetGlobalCheckpointsRequest configures the Fleet Global Checkpoints API request.
+//
 type FleetGlobalCheckpointsRequest struct {
 	Index string
 
@@ -64,6 +66,7 @@ type FleetGlobalCheckpointsRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r FleetGlobalCheckpointsRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -159,6 +162,7 @@ func (r FleetGlobalCheckpointsRequest) Do(ctx context.Context, transport Transpo
 }
 
 // WithContext sets the request context.
+//
 func (f FleetGlobalCheckpoints) WithContext(v context.Context) func(*FleetGlobalCheckpointsRequest) {
 	return func(r *FleetGlobalCheckpointsRequest) {
 		r.ctx = v
@@ -166,6 +170,7 @@ func (f FleetGlobalCheckpoints) WithContext(v context.Context) func(*FleetGlobal
 }
 
 // WithCheckpoints - comma separated list of checkpoints.
+//
 func (f FleetGlobalCheckpoints) WithCheckpoints(v ...string) func(*FleetGlobalCheckpointsRequest) {
 	return func(r *FleetGlobalCheckpointsRequest) {
 		r.Checkpoints = v
@@ -173,6 +178,7 @@ func (f FleetGlobalCheckpoints) WithCheckpoints(v ...string) func(*FleetGlobalCh
 }
 
 // WithTimeout - timeout to wait for global checkpoint to advance.
+//
 func (f FleetGlobalCheckpoints) WithTimeout(v time.Duration) func(*FleetGlobalCheckpointsRequest) {
 	return func(r *FleetGlobalCheckpointsRequest) {
 		r.Timeout = v
@@ -180,6 +186,7 @@ func (f FleetGlobalCheckpoints) WithTimeout(v time.Duration) func(*FleetGlobalCh
 }
 
 // WithWaitForAdvance - whether to wait for the global checkpoint to advance past the specified current checkpoints.
+//
 func (f FleetGlobalCheckpoints) WithWaitForAdvance(v bool) func(*FleetGlobalCheckpointsRequest) {
 	return func(r *FleetGlobalCheckpointsRequest) {
 		r.WaitForAdvance = &v
@@ -187,6 +194,7 @@ func (f FleetGlobalCheckpoints) WithWaitForAdvance(v bool) func(*FleetGlobalChec
 }
 
 // WithWaitForIndex - whether to wait for the target index to exist and all primary shards be active.
+//
 func (f FleetGlobalCheckpoints) WithWaitForIndex(v bool) func(*FleetGlobalCheckpointsRequest) {
 	return func(r *FleetGlobalCheckpointsRequest) {
 		r.WaitForIndex = &v
@@ -194,6 +202,7 @@ func (f FleetGlobalCheckpoints) WithWaitForIndex(v bool) func(*FleetGlobalCheckp
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f FleetGlobalCheckpoints) WithPretty() func(*FleetGlobalCheckpointsRequest) {
 	return func(r *FleetGlobalCheckpointsRequest) {
 		r.Pretty = true
@@ -201,6 +210,7 @@ func (f FleetGlobalCheckpoints) WithPretty() func(*FleetGlobalCheckpointsRequest
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f FleetGlobalCheckpoints) WithHuman() func(*FleetGlobalCheckpointsRequest) {
 	return func(r *FleetGlobalCheckpointsRequest) {
 		r.Human = true
@@ -208,6 +218,7 @@ func (f FleetGlobalCheckpoints) WithHuman() func(*FleetGlobalCheckpointsRequest)
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f FleetGlobalCheckpoints) WithErrorTrace() func(*FleetGlobalCheckpointsRequest) {
 	return func(r *FleetGlobalCheckpointsRequest) {
 		r.ErrorTrace = true
@@ -215,6 +226,7 @@ func (f FleetGlobalCheckpoints) WithErrorTrace() func(*FleetGlobalCheckpointsReq
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f FleetGlobalCheckpoints) WithFilterPath(v ...string) func(*FleetGlobalCheckpointsRequest) {
 	return func(r *FleetGlobalCheckpointsRequest) {
 		r.FilterPath = v
@@ -222,6 +234,7 @@ func (f FleetGlobalCheckpoints) WithFilterPath(v ...string) func(*FleetGlobalChe
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f FleetGlobalCheckpoints) WithHeader(h map[string]string) func(*FleetGlobalCheckpointsRequest) {
 	return func(r *FleetGlobalCheckpointsRequest) {
 		if r.Header == nil {
@@ -234,6 +247,7 @@ func (f FleetGlobalCheckpoints) WithHeader(h map[string]string) func(*FleetGloba
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f FleetGlobalCheckpoints) WithOpaqueID(s string) func(*FleetGlobalCheckpointsRequest) {
 	return func(r *FleetGlobalCheckpointsRequest) {
 		if r.Header == nil {

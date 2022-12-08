@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -42,9 +42,11 @@ func newCatNodesFunc(t Transport) CatNodes {
 // CatNodes returns basic statistics about performance of cluster nodes.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/cat-nodes.html.
+//
 type CatNodes func(o ...func(*CatNodesRequest)) (*Response, error)
 
 // CatNodesRequest configures the Cat Nodes API request.
+//
 type CatNodesRequest struct {
 	Bytes                   string
 	Format                  string
@@ -69,6 +71,7 @@ type CatNodesRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r CatNodesRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -187,6 +190,7 @@ func (r CatNodesRequest) Do(ctx context.Context, transport Transport) (*Response
 }
 
 // WithContext sets the request context.
+//
 func (f CatNodes) WithContext(v context.Context) func(*CatNodesRequest) {
 	return func(r *CatNodesRequest) {
 		r.ctx = v
@@ -194,6 +198,7 @@ func (f CatNodes) WithContext(v context.Context) func(*CatNodesRequest) {
 }
 
 // WithBytes - the unit in which to display byte values.
+//
 func (f CatNodes) WithBytes(v string) func(*CatNodesRequest) {
 	return func(r *CatNodesRequest) {
 		r.Bytes = v
@@ -201,6 +206,7 @@ func (f CatNodes) WithBytes(v string) func(*CatNodesRequest) {
 }
 
 // WithFormat - a short version of the accept header, e.g. json, yaml.
+//
 func (f CatNodes) WithFormat(v string) func(*CatNodesRequest) {
 	return func(r *CatNodesRequest) {
 		r.Format = v
@@ -208,6 +214,7 @@ func (f CatNodes) WithFormat(v string) func(*CatNodesRequest) {
 }
 
 // WithFullID - return the full node ID instead of the shortened version (default: false).
+//
 func (f CatNodes) WithFullID(v bool) func(*CatNodesRequest) {
 	return func(r *CatNodesRequest) {
 		r.FullID = &v
@@ -215,6 +222,7 @@ func (f CatNodes) WithFullID(v bool) func(*CatNodesRequest) {
 }
 
 // WithH - comma-separated list of column names to display.
+//
 func (f CatNodes) WithH(v ...string) func(*CatNodesRequest) {
 	return func(r *CatNodesRequest) {
 		r.H = v
@@ -222,6 +230,7 @@ func (f CatNodes) WithH(v ...string) func(*CatNodesRequest) {
 }
 
 // WithHelp - return help information.
+//
 func (f CatNodes) WithHelp(v bool) func(*CatNodesRequest) {
 	return func(r *CatNodesRequest) {
 		r.Help = &v
@@ -229,6 +238,7 @@ func (f CatNodes) WithHelp(v bool) func(*CatNodesRequest) {
 }
 
 // WithIncludeUnloadedSegments - if set to true segment stats will include stats for segments that are not currently loaded into memory.
+//
 func (f CatNodes) WithIncludeUnloadedSegments(v bool) func(*CatNodesRequest) {
 	return func(r *CatNodesRequest) {
 		r.IncludeUnloadedSegments = &v
@@ -236,6 +246,7 @@ func (f CatNodes) WithIncludeUnloadedSegments(v bool) func(*CatNodesRequest) {
 }
 
 // WithLocal - calculate the selected nodes using the local cluster state rather than the state from master node (default: false).
+//
 func (f CatNodes) WithLocal(v bool) func(*CatNodesRequest) {
 	return func(r *CatNodesRequest) {
 		r.Local = &v
@@ -243,6 +254,7 @@ func (f CatNodes) WithLocal(v bool) func(*CatNodesRequest) {
 }
 
 // WithMasterTimeout - explicit operation timeout for connection to master node.
+//
 func (f CatNodes) WithMasterTimeout(v time.Duration) func(*CatNodesRequest) {
 	return func(r *CatNodesRequest) {
 		r.MasterTimeout = v
@@ -250,6 +262,7 @@ func (f CatNodes) WithMasterTimeout(v time.Duration) func(*CatNodesRequest) {
 }
 
 // WithS - comma-separated list of column names or column aliases to sort by.
+//
 func (f CatNodes) WithS(v ...string) func(*CatNodesRequest) {
 	return func(r *CatNodesRequest) {
 		r.S = v
@@ -257,6 +270,7 @@ func (f CatNodes) WithS(v ...string) func(*CatNodesRequest) {
 }
 
 // WithTime - the unit in which to display time values.
+//
 func (f CatNodes) WithTime(v string) func(*CatNodesRequest) {
 	return func(r *CatNodesRequest) {
 		r.Time = v
@@ -264,6 +278,7 @@ func (f CatNodes) WithTime(v string) func(*CatNodesRequest) {
 }
 
 // WithV - verbose mode. display column headers.
+//
 func (f CatNodes) WithV(v bool) func(*CatNodesRequest) {
 	return func(r *CatNodesRequest) {
 		r.V = &v
@@ -271,6 +286,7 @@ func (f CatNodes) WithV(v bool) func(*CatNodesRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f CatNodes) WithPretty() func(*CatNodesRequest) {
 	return func(r *CatNodesRequest) {
 		r.Pretty = true
@@ -278,6 +294,7 @@ func (f CatNodes) WithPretty() func(*CatNodesRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f CatNodes) WithHuman() func(*CatNodesRequest) {
 	return func(r *CatNodesRequest) {
 		r.Human = true
@@ -285,6 +302,7 @@ func (f CatNodes) WithHuman() func(*CatNodesRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f CatNodes) WithErrorTrace() func(*CatNodesRequest) {
 	return func(r *CatNodesRequest) {
 		r.ErrorTrace = true
@@ -292,6 +310,7 @@ func (f CatNodes) WithErrorTrace() func(*CatNodesRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f CatNodes) WithFilterPath(v ...string) func(*CatNodesRequest) {
 	return func(r *CatNodesRequest) {
 		r.FilterPath = v
@@ -299,6 +318,7 @@ func (f CatNodes) WithFilterPath(v ...string) func(*CatNodesRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f CatNodes) WithHeader(h map[string]string) func(*CatNodesRequest) {
 	return func(r *CatNodesRequest) {
 		if r.Header == nil {
@@ -311,6 +331,7 @@ func (f CatNodes) WithHeader(h map[string]string) func(*CatNodesRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f CatNodes) WithOpaqueID(s string) func(*CatNodesRequest) {
 	return func(r *CatNodesRequest) {
 		if r.Header == nil {

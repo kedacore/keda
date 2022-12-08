@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,9 +41,11 @@ func newIndicesFlushSyncedFunc(t Transport) IndicesFlushSynced {
 // IndicesFlushSynced performs a synced flush operation on one or more indices. Synced flush is deprecated and will be removed in 8.0. Use flush instead
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-synced-flush-api.html.
+//
 type IndicesFlushSynced func(o ...func(*IndicesFlushSyncedRequest)) (*Response, error)
 
 // IndicesFlushSyncedRequest configures the Indices Flush Synced API request.
+//
 type IndicesFlushSyncedRequest struct {
 	Index []string
 
@@ -62,6 +64,7 @@ type IndicesFlushSyncedRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r IndicesFlushSyncedRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -155,6 +158,7 @@ func (r IndicesFlushSyncedRequest) Do(ctx context.Context, transport Transport) 
 }
 
 // WithContext sets the request context.
+//
 func (f IndicesFlushSynced) WithContext(v context.Context) func(*IndicesFlushSyncedRequest) {
 	return func(r *IndicesFlushSyncedRequest) {
 		r.ctx = v
@@ -162,6 +166,7 @@ func (f IndicesFlushSynced) WithContext(v context.Context) func(*IndicesFlushSyn
 }
 
 // WithIndex - a list of index names; use _all for all indices.
+//
 func (f IndicesFlushSynced) WithIndex(v ...string) func(*IndicesFlushSyncedRequest) {
 	return func(r *IndicesFlushSyncedRequest) {
 		r.Index = v
@@ -169,6 +174,7 @@ func (f IndicesFlushSynced) WithIndex(v ...string) func(*IndicesFlushSyncedReque
 }
 
 // WithAllowNoIndices - whether to ignore if a wildcard indices expression resolves into no concrete indices. (this includes `_all` string or when no indices have been specified).
+//
 func (f IndicesFlushSynced) WithAllowNoIndices(v bool) func(*IndicesFlushSyncedRequest) {
 	return func(r *IndicesFlushSyncedRequest) {
 		r.AllowNoIndices = &v
@@ -176,6 +182,7 @@ func (f IndicesFlushSynced) WithAllowNoIndices(v bool) func(*IndicesFlushSyncedR
 }
 
 // WithExpandWildcards - whether to expand wildcard expression to concrete indices that are open, closed or both..
+//
 func (f IndicesFlushSynced) WithExpandWildcards(v string) func(*IndicesFlushSyncedRequest) {
 	return func(r *IndicesFlushSyncedRequest) {
 		r.ExpandWildcards = v
@@ -183,6 +190,7 @@ func (f IndicesFlushSynced) WithExpandWildcards(v string) func(*IndicesFlushSync
 }
 
 // WithIgnoreUnavailable - whether specified concrete indices should be ignored when unavailable (missing or closed).
+//
 func (f IndicesFlushSynced) WithIgnoreUnavailable(v bool) func(*IndicesFlushSyncedRequest) {
 	return func(r *IndicesFlushSyncedRequest) {
 		r.IgnoreUnavailable = &v
@@ -190,6 +198,7 @@ func (f IndicesFlushSynced) WithIgnoreUnavailable(v bool) func(*IndicesFlushSync
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f IndicesFlushSynced) WithPretty() func(*IndicesFlushSyncedRequest) {
 	return func(r *IndicesFlushSyncedRequest) {
 		r.Pretty = true
@@ -197,6 +206,7 @@ func (f IndicesFlushSynced) WithPretty() func(*IndicesFlushSyncedRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f IndicesFlushSynced) WithHuman() func(*IndicesFlushSyncedRequest) {
 	return func(r *IndicesFlushSyncedRequest) {
 		r.Human = true
@@ -204,6 +214,7 @@ func (f IndicesFlushSynced) WithHuman() func(*IndicesFlushSyncedRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f IndicesFlushSynced) WithErrorTrace() func(*IndicesFlushSyncedRequest) {
 	return func(r *IndicesFlushSyncedRequest) {
 		r.ErrorTrace = true
@@ -211,6 +222,7 @@ func (f IndicesFlushSynced) WithErrorTrace() func(*IndicesFlushSyncedRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f IndicesFlushSynced) WithFilterPath(v ...string) func(*IndicesFlushSyncedRequest) {
 	return func(r *IndicesFlushSyncedRequest) {
 		r.FilterPath = v
@@ -218,6 +230,7 @@ func (f IndicesFlushSynced) WithFilterPath(v ...string) func(*IndicesFlushSynced
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f IndicesFlushSynced) WithHeader(h map[string]string) func(*IndicesFlushSyncedRequest) {
 	return func(r *IndicesFlushSyncedRequest) {
 		if r.Header == nil {
@@ -230,6 +243,7 @@ func (f IndicesFlushSynced) WithHeader(h map[string]string) func(*IndicesFlushSy
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f IndicesFlushSynced) WithOpaqueID(s string) func(*IndicesFlushSyncedRequest) {
 	return func(r *IndicesFlushSyncedRequest) {
 		if r.Header == nil {

@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -42,9 +42,11 @@ func newAsyncSearchGetFunc(t Transport) AsyncSearchGet {
 // AsyncSearchGet - Retrieves the results of a previously submitted async search request given its ID.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/async-search.html.
+//
 type AsyncSearchGet func(id string, o ...func(*AsyncSearchGetRequest)) (*Response, error)
 
 // AsyncSearchGetRequest configures the Async Search Get API request.
+//
 type AsyncSearchGetRequest struct {
 	DocumentID string
 
@@ -63,6 +65,7 @@ type AsyncSearchGetRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r AsyncSearchGetRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -152,6 +155,7 @@ func (r AsyncSearchGetRequest) Do(ctx context.Context, transport Transport) (*Re
 }
 
 // WithContext sets the request context.
+//
 func (f AsyncSearchGet) WithContext(v context.Context) func(*AsyncSearchGetRequest) {
 	return func(r *AsyncSearchGetRequest) {
 		r.ctx = v
@@ -159,6 +163,7 @@ func (f AsyncSearchGet) WithContext(v context.Context) func(*AsyncSearchGetReque
 }
 
 // WithKeepAlive - specify the time interval in which the results (partial or final) for this search will be available.
+//
 func (f AsyncSearchGet) WithKeepAlive(v time.Duration) func(*AsyncSearchGetRequest) {
 	return func(r *AsyncSearchGetRequest) {
 		r.KeepAlive = v
@@ -166,6 +171,7 @@ func (f AsyncSearchGet) WithKeepAlive(v time.Duration) func(*AsyncSearchGetReque
 }
 
 // WithTypedKeys - specify whether aggregation and suggester names should be prefixed by their respective types in the response.
+//
 func (f AsyncSearchGet) WithTypedKeys(v bool) func(*AsyncSearchGetRequest) {
 	return func(r *AsyncSearchGetRequest) {
 		r.TypedKeys = &v
@@ -173,6 +179,7 @@ func (f AsyncSearchGet) WithTypedKeys(v bool) func(*AsyncSearchGetRequest) {
 }
 
 // WithWaitForCompletionTimeout - specify the time that the request should block waiting for the final response.
+//
 func (f AsyncSearchGet) WithWaitForCompletionTimeout(v time.Duration) func(*AsyncSearchGetRequest) {
 	return func(r *AsyncSearchGetRequest) {
 		r.WaitForCompletionTimeout = v
@@ -180,6 +187,7 @@ func (f AsyncSearchGet) WithWaitForCompletionTimeout(v time.Duration) func(*Asyn
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f AsyncSearchGet) WithPretty() func(*AsyncSearchGetRequest) {
 	return func(r *AsyncSearchGetRequest) {
 		r.Pretty = true
@@ -187,6 +195,7 @@ func (f AsyncSearchGet) WithPretty() func(*AsyncSearchGetRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f AsyncSearchGet) WithHuman() func(*AsyncSearchGetRequest) {
 	return func(r *AsyncSearchGetRequest) {
 		r.Human = true
@@ -194,6 +203,7 @@ func (f AsyncSearchGet) WithHuman() func(*AsyncSearchGetRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f AsyncSearchGet) WithErrorTrace() func(*AsyncSearchGetRequest) {
 	return func(r *AsyncSearchGetRequest) {
 		r.ErrorTrace = true
@@ -201,6 +211,7 @@ func (f AsyncSearchGet) WithErrorTrace() func(*AsyncSearchGetRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f AsyncSearchGet) WithFilterPath(v ...string) func(*AsyncSearchGetRequest) {
 	return func(r *AsyncSearchGetRequest) {
 		r.FilterPath = v
@@ -208,6 +219,7 @@ func (f AsyncSearchGet) WithFilterPath(v ...string) func(*AsyncSearchGetRequest)
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f AsyncSearchGet) WithHeader(h map[string]string) func(*AsyncSearchGetRequest) {
 	return func(r *AsyncSearchGetRequest) {
 		if r.Header == nil {
@@ -220,6 +232,7 @@ func (f AsyncSearchGet) WithHeader(h map[string]string) func(*AsyncSearchGetRequ
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f AsyncSearchGet) WithOpaqueID(s string) func(*AsyncSearchGetRequest) {
 	return func(r *AsyncSearchGetRequest) {
 		if r.Header == nil {

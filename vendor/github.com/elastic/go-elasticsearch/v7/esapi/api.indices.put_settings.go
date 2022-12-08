@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -43,9 +43,11 @@ func newIndicesPutSettingsFunc(t Transport) IndicesPutSettings {
 // IndicesPutSettings updates the index settings.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-update-settings.html.
+//
 type IndicesPutSettings func(body io.Reader, o ...func(*IndicesPutSettingsRequest)) (*Response, error)
 
 // IndicesPutSettingsRequest configures the Indices Put Settings API request.
+//
 type IndicesPutSettingsRequest struct {
 	Index []string
 
@@ -70,6 +72,7 @@ type IndicesPutSettingsRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r IndicesPutSettingsRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -146,6 +149,10 @@ func (r IndicesPutSettingsRequest) Do(ctx context.Context, transport Transport) 
 		req.URL.RawQuery = q.Encode()
 	}
 
+	if r.Body != nil {
+		req.Header[headerContentType] = headerContentTypeJSON
+	}
+
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -156,10 +163,6 @@ func (r IndicesPutSettingsRequest) Do(ctx context.Context, transport Transport) 
 				}
 			}
 		}
-	}
-
-	if r.Body != nil && req.Header.Get(headerContentType) == "" {
-		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -181,6 +184,7 @@ func (r IndicesPutSettingsRequest) Do(ctx context.Context, transport Transport) 
 }
 
 // WithContext sets the request context.
+//
 func (f IndicesPutSettings) WithContext(v context.Context) func(*IndicesPutSettingsRequest) {
 	return func(r *IndicesPutSettingsRequest) {
 		r.ctx = v
@@ -188,6 +192,7 @@ func (f IndicesPutSettings) WithContext(v context.Context) func(*IndicesPutSetti
 }
 
 // WithIndex - a list of index names; use _all to perform the operation on all indices.
+//
 func (f IndicesPutSettings) WithIndex(v ...string) func(*IndicesPutSettingsRequest) {
 	return func(r *IndicesPutSettingsRequest) {
 		r.Index = v
@@ -195,6 +200,7 @@ func (f IndicesPutSettings) WithIndex(v ...string) func(*IndicesPutSettingsReque
 }
 
 // WithAllowNoIndices - whether to ignore if a wildcard indices expression resolves into no concrete indices. (this includes `_all` string or when no indices have been specified).
+//
 func (f IndicesPutSettings) WithAllowNoIndices(v bool) func(*IndicesPutSettingsRequest) {
 	return func(r *IndicesPutSettingsRequest) {
 		r.AllowNoIndices = &v
@@ -202,6 +208,7 @@ func (f IndicesPutSettings) WithAllowNoIndices(v bool) func(*IndicesPutSettingsR
 }
 
 // WithExpandWildcards - whether to expand wildcard expression to concrete indices that are open, closed or both..
+//
 func (f IndicesPutSettings) WithExpandWildcards(v string) func(*IndicesPutSettingsRequest) {
 	return func(r *IndicesPutSettingsRequest) {
 		r.ExpandWildcards = v
@@ -209,6 +216,7 @@ func (f IndicesPutSettings) WithExpandWildcards(v string) func(*IndicesPutSettin
 }
 
 // WithFlatSettings - return settings in flat format (default: false).
+//
 func (f IndicesPutSettings) WithFlatSettings(v bool) func(*IndicesPutSettingsRequest) {
 	return func(r *IndicesPutSettingsRequest) {
 		r.FlatSettings = &v
@@ -216,6 +224,7 @@ func (f IndicesPutSettings) WithFlatSettings(v bool) func(*IndicesPutSettingsReq
 }
 
 // WithIgnoreUnavailable - whether specified concrete indices should be ignored when unavailable (missing or closed).
+//
 func (f IndicesPutSettings) WithIgnoreUnavailable(v bool) func(*IndicesPutSettingsRequest) {
 	return func(r *IndicesPutSettingsRequest) {
 		r.IgnoreUnavailable = &v
@@ -223,6 +232,7 @@ func (f IndicesPutSettings) WithIgnoreUnavailable(v bool) func(*IndicesPutSettin
 }
 
 // WithMasterTimeout - specify timeout for connection to master.
+//
 func (f IndicesPutSettings) WithMasterTimeout(v time.Duration) func(*IndicesPutSettingsRequest) {
 	return func(r *IndicesPutSettingsRequest) {
 		r.MasterTimeout = v
@@ -230,6 +240,7 @@ func (f IndicesPutSettings) WithMasterTimeout(v time.Duration) func(*IndicesPutS
 }
 
 // WithPreserveExisting - whether to update existing settings. if set to `true` existing settings on an index remain unchanged, the default is `false`.
+//
 func (f IndicesPutSettings) WithPreserveExisting(v bool) func(*IndicesPutSettingsRequest) {
 	return func(r *IndicesPutSettingsRequest) {
 		r.PreserveExisting = &v
@@ -237,6 +248,7 @@ func (f IndicesPutSettings) WithPreserveExisting(v bool) func(*IndicesPutSetting
 }
 
 // WithTimeout - explicit operation timeout.
+//
 func (f IndicesPutSettings) WithTimeout(v time.Duration) func(*IndicesPutSettingsRequest) {
 	return func(r *IndicesPutSettingsRequest) {
 		r.Timeout = v
@@ -244,6 +256,7 @@ func (f IndicesPutSettings) WithTimeout(v time.Duration) func(*IndicesPutSetting
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f IndicesPutSettings) WithPretty() func(*IndicesPutSettingsRequest) {
 	return func(r *IndicesPutSettingsRequest) {
 		r.Pretty = true
@@ -251,6 +264,7 @@ func (f IndicesPutSettings) WithPretty() func(*IndicesPutSettingsRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f IndicesPutSettings) WithHuman() func(*IndicesPutSettingsRequest) {
 	return func(r *IndicesPutSettingsRequest) {
 		r.Human = true
@@ -258,6 +272,7 @@ func (f IndicesPutSettings) WithHuman() func(*IndicesPutSettingsRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f IndicesPutSettings) WithErrorTrace() func(*IndicesPutSettingsRequest) {
 	return func(r *IndicesPutSettingsRequest) {
 		r.ErrorTrace = true
@@ -265,6 +280,7 @@ func (f IndicesPutSettings) WithErrorTrace() func(*IndicesPutSettingsRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f IndicesPutSettings) WithFilterPath(v ...string) func(*IndicesPutSettingsRequest) {
 	return func(r *IndicesPutSettingsRequest) {
 		r.FilterPath = v
@@ -272,6 +288,7 @@ func (f IndicesPutSettings) WithFilterPath(v ...string) func(*IndicesPutSettings
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f IndicesPutSettings) WithHeader(h map[string]string) func(*IndicesPutSettingsRequest) {
 	return func(r *IndicesPutSettingsRequest) {
 		if r.Header == nil {
@@ -284,6 +301,7 @@ func (f IndicesPutSettings) WithHeader(h map[string]string) func(*IndicesPutSett
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f IndicesPutSettings) WithOpaqueID(s string) func(*IndicesPutSettingsRequest) {
 	return func(r *IndicesPutSettingsRequest) {
 		if r.Header == nil {

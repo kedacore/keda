@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -42,9 +42,11 @@ func newMLPutDatafeedFunc(t Transport) MLPutDatafeed {
 // MLPutDatafeed - Instantiates a datafeed.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/ml-put-datafeed.html.
+//
 type MLPutDatafeed func(body io.Reader, datafeed_id string, o ...func(*MLPutDatafeedRequest)) (*Response, error)
 
 // MLPutDatafeedRequest configures the ML Put Datafeed API request.
+//
 type MLPutDatafeedRequest struct {
 	Body io.Reader
 
@@ -66,6 +68,7 @@ type MLPutDatafeedRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r MLPutDatafeedRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -130,6 +133,10 @@ func (r MLPutDatafeedRequest) Do(ctx context.Context, transport Transport) (*Res
 		req.URL.RawQuery = q.Encode()
 	}
 
+	if r.Body != nil {
+		req.Header[headerContentType] = headerContentTypeJSON
+	}
+
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -140,10 +147,6 @@ func (r MLPutDatafeedRequest) Do(ctx context.Context, transport Transport) (*Res
 				}
 			}
 		}
-	}
-
-	if r.Body != nil && req.Header.Get(headerContentType) == "" {
-		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -165,6 +168,7 @@ func (r MLPutDatafeedRequest) Do(ctx context.Context, transport Transport) (*Res
 }
 
 // WithContext sets the request context.
+//
 func (f MLPutDatafeed) WithContext(v context.Context) func(*MLPutDatafeedRequest) {
 	return func(r *MLPutDatafeedRequest) {
 		r.ctx = v
@@ -172,6 +176,7 @@ func (f MLPutDatafeed) WithContext(v context.Context) func(*MLPutDatafeedRequest
 }
 
 // WithAllowNoIndices - ignore if the source indices expressions resolves to no concrete indices (default: true).
+//
 func (f MLPutDatafeed) WithAllowNoIndices(v bool) func(*MLPutDatafeedRequest) {
 	return func(r *MLPutDatafeedRequest) {
 		r.AllowNoIndices = &v
@@ -179,6 +184,7 @@ func (f MLPutDatafeed) WithAllowNoIndices(v bool) func(*MLPutDatafeedRequest) {
 }
 
 // WithExpandWildcards - whether source index expressions should get expanded to open or closed indices (default: open).
+//
 func (f MLPutDatafeed) WithExpandWildcards(v string) func(*MLPutDatafeedRequest) {
 	return func(r *MLPutDatafeedRequest) {
 		r.ExpandWildcards = v
@@ -186,6 +192,7 @@ func (f MLPutDatafeed) WithExpandWildcards(v string) func(*MLPutDatafeedRequest)
 }
 
 // WithIgnoreThrottled - ignore indices that are marked as throttled (default: true).
+//
 func (f MLPutDatafeed) WithIgnoreThrottled(v bool) func(*MLPutDatafeedRequest) {
 	return func(r *MLPutDatafeedRequest) {
 		r.IgnoreThrottled = &v
@@ -193,6 +200,7 @@ func (f MLPutDatafeed) WithIgnoreThrottled(v bool) func(*MLPutDatafeedRequest) {
 }
 
 // WithIgnoreUnavailable - ignore unavailable indexes (default: false).
+//
 func (f MLPutDatafeed) WithIgnoreUnavailable(v bool) func(*MLPutDatafeedRequest) {
 	return func(r *MLPutDatafeedRequest) {
 		r.IgnoreUnavailable = &v
@@ -200,6 +208,7 @@ func (f MLPutDatafeed) WithIgnoreUnavailable(v bool) func(*MLPutDatafeedRequest)
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f MLPutDatafeed) WithPretty() func(*MLPutDatafeedRequest) {
 	return func(r *MLPutDatafeedRequest) {
 		r.Pretty = true
@@ -207,6 +216,7 @@ func (f MLPutDatafeed) WithPretty() func(*MLPutDatafeedRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f MLPutDatafeed) WithHuman() func(*MLPutDatafeedRequest) {
 	return func(r *MLPutDatafeedRequest) {
 		r.Human = true
@@ -214,6 +224,7 @@ func (f MLPutDatafeed) WithHuman() func(*MLPutDatafeedRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f MLPutDatafeed) WithErrorTrace() func(*MLPutDatafeedRequest) {
 	return func(r *MLPutDatafeedRequest) {
 		r.ErrorTrace = true
@@ -221,6 +232,7 @@ func (f MLPutDatafeed) WithErrorTrace() func(*MLPutDatafeedRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f MLPutDatafeed) WithFilterPath(v ...string) func(*MLPutDatafeedRequest) {
 	return func(r *MLPutDatafeedRequest) {
 		r.FilterPath = v
@@ -228,6 +240,7 @@ func (f MLPutDatafeed) WithFilterPath(v ...string) func(*MLPutDatafeedRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f MLPutDatafeed) WithHeader(h map[string]string) func(*MLPutDatafeedRequest) {
 	return func(r *MLPutDatafeedRequest) {
 		if r.Header == nil {
@@ -240,6 +253,7 @@ func (f MLPutDatafeed) WithHeader(h map[string]string) func(*MLPutDatafeedReques
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f MLPutDatafeed) WithOpaqueID(s string) func(*MLPutDatafeedRequest) {
 	return func(r *MLPutDatafeedRequest) {
 		if r.Header == nil {

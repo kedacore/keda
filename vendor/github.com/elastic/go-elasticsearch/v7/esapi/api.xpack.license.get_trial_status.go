@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -40,9 +40,11 @@ func newLicenseGetTrialStatusFunc(t Transport) LicenseGetTrialStatus {
 // LicenseGetTrialStatus - Retrieves information about the status of the trial license.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/get-trial-status.html.
+//
 type LicenseGetTrialStatus func(o ...func(*LicenseGetTrialStatusRequest)) (*Response, error)
 
 // LicenseGetTrialStatusRequest configures the License Get Trial Status API request.
+//
 type LicenseGetTrialStatusRequest struct {
 	Pretty     bool
 	Human      bool
@@ -55,6 +57,7 @@ type LicenseGetTrialStatusRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r LicenseGetTrialStatusRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -129,6 +132,7 @@ func (r LicenseGetTrialStatusRequest) Do(ctx context.Context, transport Transpor
 }
 
 // WithContext sets the request context.
+//
 func (f LicenseGetTrialStatus) WithContext(v context.Context) func(*LicenseGetTrialStatusRequest) {
 	return func(r *LicenseGetTrialStatusRequest) {
 		r.ctx = v
@@ -136,6 +140,7 @@ func (f LicenseGetTrialStatus) WithContext(v context.Context) func(*LicenseGetTr
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f LicenseGetTrialStatus) WithPretty() func(*LicenseGetTrialStatusRequest) {
 	return func(r *LicenseGetTrialStatusRequest) {
 		r.Pretty = true
@@ -143,6 +148,7 @@ func (f LicenseGetTrialStatus) WithPretty() func(*LicenseGetTrialStatusRequest) 
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f LicenseGetTrialStatus) WithHuman() func(*LicenseGetTrialStatusRequest) {
 	return func(r *LicenseGetTrialStatusRequest) {
 		r.Human = true
@@ -150,6 +156,7 @@ func (f LicenseGetTrialStatus) WithHuman() func(*LicenseGetTrialStatusRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f LicenseGetTrialStatus) WithErrorTrace() func(*LicenseGetTrialStatusRequest) {
 	return func(r *LicenseGetTrialStatusRequest) {
 		r.ErrorTrace = true
@@ -157,6 +164,7 @@ func (f LicenseGetTrialStatus) WithErrorTrace() func(*LicenseGetTrialStatusReque
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f LicenseGetTrialStatus) WithFilterPath(v ...string) func(*LicenseGetTrialStatusRequest) {
 	return func(r *LicenseGetTrialStatusRequest) {
 		r.FilterPath = v
@@ -164,6 +172,7 @@ func (f LicenseGetTrialStatus) WithFilterPath(v ...string) func(*LicenseGetTrial
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f LicenseGetTrialStatus) WithHeader(h map[string]string) func(*LicenseGetTrialStatusRequest) {
 	return func(r *LicenseGetTrialStatusRequest) {
 		if r.Header == nil {
@@ -176,6 +185,7 @@ func (f LicenseGetTrialStatus) WithHeader(h map[string]string) func(*LicenseGetT
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f LicenseGetTrialStatus) WithOpaqueID(s string) func(*LicenseGetTrialStatusRequest) {
 	return func(r *LicenseGetTrialStatusRequest) {
 		if r.Header == nil {

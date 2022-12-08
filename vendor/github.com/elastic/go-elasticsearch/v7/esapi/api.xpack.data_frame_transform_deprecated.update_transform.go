@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -44,9 +44,11 @@ func newDataFrameTransformDeprecatedUpdateTransformFunc(t Transport) DataFrameTr
 // This API is beta.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/update-transform.html.
+//
 type DataFrameTransformDeprecatedUpdateTransform func(body io.Reader, transform_id string, o ...func(*DataFrameTransformDeprecatedUpdateTransformRequest)) (*Response, error)
 
 // DataFrameTransformDeprecatedUpdateTransformRequest configures the Data Frame Transform Deprecated Update Transform API request.
+//
 type DataFrameTransformDeprecatedUpdateTransformRequest struct {
 	Body io.Reader
 
@@ -65,6 +67,7 @@ type DataFrameTransformDeprecatedUpdateTransformRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r DataFrameTransformDeprecatedUpdateTransformRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -119,6 +122,10 @@ func (r DataFrameTransformDeprecatedUpdateTransformRequest) Do(ctx context.Conte
 		req.URL.RawQuery = q.Encode()
 	}
 
+	if r.Body != nil {
+		req.Header[headerContentType] = headerContentTypeJSON
+	}
+
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -129,10 +136,6 @@ func (r DataFrameTransformDeprecatedUpdateTransformRequest) Do(ctx context.Conte
 				}
 			}
 		}
-	}
-
-	if r.Body != nil && req.Header.Get(headerContentType) == "" {
-		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -154,6 +157,7 @@ func (r DataFrameTransformDeprecatedUpdateTransformRequest) Do(ctx context.Conte
 }
 
 // WithContext sets the request context.
+//
 func (f DataFrameTransformDeprecatedUpdateTransform) WithContext(v context.Context) func(*DataFrameTransformDeprecatedUpdateTransformRequest) {
 	return func(r *DataFrameTransformDeprecatedUpdateTransformRequest) {
 		r.ctx = v
@@ -161,6 +165,7 @@ func (f DataFrameTransformDeprecatedUpdateTransform) WithContext(v context.Conte
 }
 
 // WithDeferValidation - if validations should be deferred until transform starts, defaults to false..
+//
 func (f DataFrameTransformDeprecatedUpdateTransform) WithDeferValidation(v bool) func(*DataFrameTransformDeprecatedUpdateTransformRequest) {
 	return func(r *DataFrameTransformDeprecatedUpdateTransformRequest) {
 		r.DeferValidation = &v
@@ -168,6 +173,7 @@ func (f DataFrameTransformDeprecatedUpdateTransform) WithDeferValidation(v bool)
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f DataFrameTransformDeprecatedUpdateTransform) WithPretty() func(*DataFrameTransformDeprecatedUpdateTransformRequest) {
 	return func(r *DataFrameTransformDeprecatedUpdateTransformRequest) {
 		r.Pretty = true
@@ -175,6 +181,7 @@ func (f DataFrameTransformDeprecatedUpdateTransform) WithPretty() func(*DataFram
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f DataFrameTransformDeprecatedUpdateTransform) WithHuman() func(*DataFrameTransformDeprecatedUpdateTransformRequest) {
 	return func(r *DataFrameTransformDeprecatedUpdateTransformRequest) {
 		r.Human = true
@@ -182,6 +189,7 @@ func (f DataFrameTransformDeprecatedUpdateTransform) WithHuman() func(*DataFrame
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f DataFrameTransformDeprecatedUpdateTransform) WithErrorTrace() func(*DataFrameTransformDeprecatedUpdateTransformRequest) {
 	return func(r *DataFrameTransformDeprecatedUpdateTransformRequest) {
 		r.ErrorTrace = true
@@ -189,6 +197,7 @@ func (f DataFrameTransformDeprecatedUpdateTransform) WithErrorTrace() func(*Data
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f DataFrameTransformDeprecatedUpdateTransform) WithFilterPath(v ...string) func(*DataFrameTransformDeprecatedUpdateTransformRequest) {
 	return func(r *DataFrameTransformDeprecatedUpdateTransformRequest) {
 		r.FilterPath = v
@@ -196,6 +205,7 @@ func (f DataFrameTransformDeprecatedUpdateTransform) WithFilterPath(v ...string)
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f DataFrameTransformDeprecatedUpdateTransform) WithHeader(h map[string]string) func(*DataFrameTransformDeprecatedUpdateTransformRequest) {
 	return func(r *DataFrameTransformDeprecatedUpdateTransformRequest) {
 		if r.Header == nil {
@@ -208,6 +218,7 @@ func (f DataFrameTransformDeprecatedUpdateTransform) WithHeader(h map[string]str
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f DataFrameTransformDeprecatedUpdateTransform) WithOpaqueID(s string) func(*DataFrameTransformDeprecatedUpdateTransformRequest) {
 	return func(r *DataFrameTransformDeprecatedUpdateTransformRequest) {
 		if r.Header == nil {

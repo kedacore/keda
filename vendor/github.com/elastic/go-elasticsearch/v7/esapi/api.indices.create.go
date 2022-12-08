@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -43,9 +43,11 @@ func newIndicesCreateFunc(t Transport) IndicesCreate {
 // IndicesCreate creates an index with optional settings and mappings.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-create-index.html.
+//
 type IndicesCreate func(index string, o ...func(*IndicesCreateRequest)) (*Response, error)
 
 // IndicesCreateRequest configures the Indices Create API request.
+//
 type IndicesCreateRequest struct {
 	Index string
 
@@ -67,6 +69,7 @@ type IndicesCreateRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r IndicesCreateRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -127,6 +130,10 @@ func (r IndicesCreateRequest) Do(ctx context.Context, transport Transport) (*Res
 		req.URL.RawQuery = q.Encode()
 	}
 
+	if r.Body != nil {
+		req.Header[headerContentType] = headerContentTypeJSON
+	}
+
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -137,10 +144,6 @@ func (r IndicesCreateRequest) Do(ctx context.Context, transport Transport) (*Res
 				}
 			}
 		}
-	}
-
-	if r.Body != nil && req.Header.Get(headerContentType) == "" {
-		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -162,6 +165,7 @@ func (r IndicesCreateRequest) Do(ctx context.Context, transport Transport) (*Res
 }
 
 // WithContext sets the request context.
+//
 func (f IndicesCreate) WithContext(v context.Context) func(*IndicesCreateRequest) {
 	return func(r *IndicesCreateRequest) {
 		r.ctx = v
@@ -169,6 +173,7 @@ func (f IndicesCreate) WithContext(v context.Context) func(*IndicesCreateRequest
 }
 
 // WithBody - The configuration for the index (`settings` and `mappings`).
+//
 func (f IndicesCreate) WithBody(v io.Reader) func(*IndicesCreateRequest) {
 	return func(r *IndicesCreateRequest) {
 		r.Body = v
@@ -176,6 +181,7 @@ func (f IndicesCreate) WithBody(v io.Reader) func(*IndicesCreateRequest) {
 }
 
 // WithIncludeTypeName - whether a type should be expected in the body of the mappings..
+//
 func (f IndicesCreate) WithIncludeTypeName(v bool) func(*IndicesCreateRequest) {
 	return func(r *IndicesCreateRequest) {
 		r.IncludeTypeName = &v
@@ -183,6 +189,7 @@ func (f IndicesCreate) WithIncludeTypeName(v bool) func(*IndicesCreateRequest) {
 }
 
 // WithMasterTimeout - specify timeout for connection to master.
+//
 func (f IndicesCreate) WithMasterTimeout(v time.Duration) func(*IndicesCreateRequest) {
 	return func(r *IndicesCreateRequest) {
 		r.MasterTimeout = v
@@ -190,6 +197,7 @@ func (f IndicesCreate) WithMasterTimeout(v time.Duration) func(*IndicesCreateReq
 }
 
 // WithTimeout - explicit operation timeout.
+//
 func (f IndicesCreate) WithTimeout(v time.Duration) func(*IndicesCreateRequest) {
 	return func(r *IndicesCreateRequest) {
 		r.Timeout = v
@@ -197,6 +205,7 @@ func (f IndicesCreate) WithTimeout(v time.Duration) func(*IndicesCreateRequest) 
 }
 
 // WithWaitForActiveShards - set the number of active shards to wait for before the operation returns..
+//
 func (f IndicesCreate) WithWaitForActiveShards(v string) func(*IndicesCreateRequest) {
 	return func(r *IndicesCreateRequest) {
 		r.WaitForActiveShards = v
@@ -204,6 +213,7 @@ func (f IndicesCreate) WithWaitForActiveShards(v string) func(*IndicesCreateRequ
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f IndicesCreate) WithPretty() func(*IndicesCreateRequest) {
 	return func(r *IndicesCreateRequest) {
 		r.Pretty = true
@@ -211,6 +221,7 @@ func (f IndicesCreate) WithPretty() func(*IndicesCreateRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f IndicesCreate) WithHuman() func(*IndicesCreateRequest) {
 	return func(r *IndicesCreateRequest) {
 		r.Human = true
@@ -218,6 +229,7 @@ func (f IndicesCreate) WithHuman() func(*IndicesCreateRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f IndicesCreate) WithErrorTrace() func(*IndicesCreateRequest) {
 	return func(r *IndicesCreateRequest) {
 		r.ErrorTrace = true
@@ -225,6 +237,7 @@ func (f IndicesCreate) WithErrorTrace() func(*IndicesCreateRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f IndicesCreate) WithFilterPath(v ...string) func(*IndicesCreateRequest) {
 	return func(r *IndicesCreateRequest) {
 		r.FilterPath = v
@@ -232,6 +245,7 @@ func (f IndicesCreate) WithFilterPath(v ...string) func(*IndicesCreateRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f IndicesCreate) WithHeader(h map[string]string) func(*IndicesCreateRequest) {
 	return func(r *IndicesCreateRequest) {
 		if r.Header == nil {
@@ -244,6 +258,7 @@ func (f IndicesCreate) WithHeader(h map[string]string) func(*IndicesCreateReques
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f IndicesCreate) WithOpaqueID(s string) func(*IndicesCreateRequest) {
 	return func(r *IndicesCreateRequest) {
 		if r.Header == nil {

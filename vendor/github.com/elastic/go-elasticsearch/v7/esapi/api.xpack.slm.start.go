@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -40,9 +40,11 @@ func newSlmStartFunc(t Transport) SlmStart {
 // SlmStart - Turns on snapshot lifecycle management (SLM).
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/slm-api-start.html.
+//
 type SlmStart func(o ...func(*SlmStartRequest)) (*Response, error)
 
 // SlmStartRequest configures the Slm Start API request.
+//
 type SlmStartRequest struct {
 	Pretty     bool
 	Human      bool
@@ -55,6 +57,7 @@ type SlmStartRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r SlmStartRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -129,6 +132,7 @@ func (r SlmStartRequest) Do(ctx context.Context, transport Transport) (*Response
 }
 
 // WithContext sets the request context.
+//
 func (f SlmStart) WithContext(v context.Context) func(*SlmStartRequest) {
 	return func(r *SlmStartRequest) {
 		r.ctx = v
@@ -136,6 +140,7 @@ func (f SlmStart) WithContext(v context.Context) func(*SlmStartRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f SlmStart) WithPretty() func(*SlmStartRequest) {
 	return func(r *SlmStartRequest) {
 		r.Pretty = true
@@ -143,6 +148,7 @@ func (f SlmStart) WithPretty() func(*SlmStartRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f SlmStart) WithHuman() func(*SlmStartRequest) {
 	return func(r *SlmStartRequest) {
 		r.Human = true
@@ -150,6 +156,7 @@ func (f SlmStart) WithHuman() func(*SlmStartRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f SlmStart) WithErrorTrace() func(*SlmStartRequest) {
 	return func(r *SlmStartRequest) {
 		r.ErrorTrace = true
@@ -157,6 +164,7 @@ func (f SlmStart) WithErrorTrace() func(*SlmStartRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f SlmStart) WithFilterPath(v ...string) func(*SlmStartRequest) {
 	return func(r *SlmStartRequest) {
 		r.FilterPath = v
@@ -164,6 +172,7 @@ func (f SlmStart) WithFilterPath(v ...string) func(*SlmStartRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f SlmStart) WithHeader(h map[string]string) func(*SlmStartRequest) {
 	return func(r *SlmStartRequest) {
 		if r.Header == nil {
@@ -176,6 +185,7 @@ func (f SlmStart) WithHeader(h map[string]string) func(*SlmStartRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f SlmStart) WithOpaqueID(s string) func(*SlmStartRequest) {
 	return func(r *SlmStartRequest) {
 		if r.Header == nil {

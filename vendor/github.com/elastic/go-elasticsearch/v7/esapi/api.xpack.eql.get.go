@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,9 +41,11 @@ func newEqlGetFunc(t Transport) EqlGet {
 // EqlGet - Returns async results from previously executed Event Query Language (EQL) search
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/eql-search-api.html.
+//
 type EqlGet func(id string, o ...func(*EqlGetRequest)) (*Response, error)
 
 // EqlGetRequest configures the Eql Get API request.
+//
 type EqlGetRequest struct {
 	DocumentID string
 
@@ -61,6 +63,7 @@ type EqlGetRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r EqlGetRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -148,6 +151,7 @@ func (r EqlGetRequest) Do(ctx context.Context, transport Transport) (*Response, 
 }
 
 // WithContext sets the request context.
+//
 func (f EqlGet) WithContext(v context.Context) func(*EqlGetRequest) {
 	return func(r *EqlGetRequest) {
 		r.ctx = v
@@ -155,6 +159,7 @@ func (f EqlGet) WithContext(v context.Context) func(*EqlGetRequest) {
 }
 
 // WithKeepAlive - update the time interval in which the results (partial or final) for this search will be available.
+//
 func (f EqlGet) WithKeepAlive(v time.Duration) func(*EqlGetRequest) {
 	return func(r *EqlGetRequest) {
 		r.KeepAlive = v
@@ -162,6 +167,7 @@ func (f EqlGet) WithKeepAlive(v time.Duration) func(*EqlGetRequest) {
 }
 
 // WithWaitForCompletionTimeout - specify the time that the request should block waiting for the final response.
+//
 func (f EqlGet) WithWaitForCompletionTimeout(v time.Duration) func(*EqlGetRequest) {
 	return func(r *EqlGetRequest) {
 		r.WaitForCompletionTimeout = v
@@ -169,6 +175,7 @@ func (f EqlGet) WithWaitForCompletionTimeout(v time.Duration) func(*EqlGetReques
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f EqlGet) WithPretty() func(*EqlGetRequest) {
 	return func(r *EqlGetRequest) {
 		r.Pretty = true
@@ -176,6 +183,7 @@ func (f EqlGet) WithPretty() func(*EqlGetRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f EqlGet) WithHuman() func(*EqlGetRequest) {
 	return func(r *EqlGetRequest) {
 		r.Human = true
@@ -183,6 +191,7 @@ func (f EqlGet) WithHuman() func(*EqlGetRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f EqlGet) WithErrorTrace() func(*EqlGetRequest) {
 	return func(r *EqlGetRequest) {
 		r.ErrorTrace = true
@@ -190,6 +199,7 @@ func (f EqlGet) WithErrorTrace() func(*EqlGetRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f EqlGet) WithFilterPath(v ...string) func(*EqlGetRequest) {
 	return func(r *EqlGetRequest) {
 		r.FilterPath = v
@@ -197,6 +207,7 @@ func (f EqlGet) WithFilterPath(v ...string) func(*EqlGetRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f EqlGet) WithHeader(h map[string]string) func(*EqlGetRequest) {
 	return func(r *EqlGetRequest) {
 		if r.Header == nil {
@@ -209,6 +220,7 @@ func (f EqlGet) WithHeader(h map[string]string) func(*EqlGetRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f EqlGet) WithOpaqueID(s string) func(*EqlGetRequest) {
 	return func(r *EqlGetRequest) {
 		if r.Header == nil {

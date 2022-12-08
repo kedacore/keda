@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,9 +41,11 @@ func newDeleteScriptFunc(t Transport) DeleteScript {
 // DeleteScript deletes a script.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/modules-scripting.html.
+//
 type DeleteScript func(id string, o ...func(*DeleteScriptRequest)) (*Response, error)
 
 // DeleteScriptRequest configures the Delete Script API request.
+//
 type DeleteScriptRequest struct {
 	ScriptID string
 
@@ -61,6 +63,7 @@ type DeleteScriptRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r DeleteScriptRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -146,6 +149,7 @@ func (r DeleteScriptRequest) Do(ctx context.Context, transport Transport) (*Resp
 }
 
 // WithContext sets the request context.
+//
 func (f DeleteScript) WithContext(v context.Context) func(*DeleteScriptRequest) {
 	return func(r *DeleteScriptRequest) {
 		r.ctx = v
@@ -153,6 +157,7 @@ func (f DeleteScript) WithContext(v context.Context) func(*DeleteScriptRequest) 
 }
 
 // WithMasterTimeout - specify timeout for connection to master.
+//
 func (f DeleteScript) WithMasterTimeout(v time.Duration) func(*DeleteScriptRequest) {
 	return func(r *DeleteScriptRequest) {
 		r.MasterTimeout = v
@@ -160,6 +165,7 @@ func (f DeleteScript) WithMasterTimeout(v time.Duration) func(*DeleteScriptReque
 }
 
 // WithTimeout - explicit operation timeout.
+//
 func (f DeleteScript) WithTimeout(v time.Duration) func(*DeleteScriptRequest) {
 	return func(r *DeleteScriptRequest) {
 		r.Timeout = v
@@ -167,6 +173,7 @@ func (f DeleteScript) WithTimeout(v time.Duration) func(*DeleteScriptRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f DeleteScript) WithPretty() func(*DeleteScriptRequest) {
 	return func(r *DeleteScriptRequest) {
 		r.Pretty = true
@@ -174,6 +181,7 @@ func (f DeleteScript) WithPretty() func(*DeleteScriptRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f DeleteScript) WithHuman() func(*DeleteScriptRequest) {
 	return func(r *DeleteScriptRequest) {
 		r.Human = true
@@ -181,6 +189,7 @@ func (f DeleteScript) WithHuman() func(*DeleteScriptRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f DeleteScript) WithErrorTrace() func(*DeleteScriptRequest) {
 	return func(r *DeleteScriptRequest) {
 		r.ErrorTrace = true
@@ -188,6 +197,7 @@ func (f DeleteScript) WithErrorTrace() func(*DeleteScriptRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f DeleteScript) WithFilterPath(v ...string) func(*DeleteScriptRequest) {
 	return func(r *DeleteScriptRequest) {
 		r.FilterPath = v
@@ -195,6 +205,7 @@ func (f DeleteScript) WithFilterPath(v ...string) func(*DeleteScriptRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f DeleteScript) WithHeader(h map[string]string) func(*DeleteScriptRequest) {
 	return func(r *DeleteScriptRequest) {
 		if r.Header == nil {
@@ -207,6 +218,7 @@ func (f DeleteScript) WithHeader(h map[string]string) func(*DeleteScriptRequest)
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f DeleteScript) WithOpaqueID(s string) func(*DeleteScriptRequest) {
 	return func(r *DeleteScriptRequest) {
 		if r.Header == nil {
