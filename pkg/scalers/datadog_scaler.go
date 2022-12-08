@@ -107,7 +107,6 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 			return nil, fmt.Errorf("timeWindowOffset should not be smaller than 0 seconds")
 		}
 		meta.timeWindowOffset = timeWindowOffset
-
 	} else {
 		meta.timeWindowOffset = 0 // Default delay 0 seconds
 	}
@@ -121,9 +120,7 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 		if lastAvailablePointOffset < 0 {
 			return nil, fmt.Errorf("lastAvailablePointOffset should not be smaller than 0")
 		}
-
 		meta.lastAvailablePointOffset = lastAvailablePointOffset
-
 	} else {
 		meta.lastAvailablePointOffset = 0 // Default use the last point
 	}
