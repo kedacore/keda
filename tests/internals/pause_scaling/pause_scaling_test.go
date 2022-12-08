@@ -142,9 +142,9 @@ func TestScaler(t *testing.T) {
 
 	// test scaling
 	testPauseAt0(t, kc)
-	testScaleUp(t, kc, data)
+	testScaleOut(t, kc, data)
 	testPauseAtN(t, kc, data, 5)
-	testScaleDown(t, kc, data)
+	testScaleIn(t, kc, data)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -171,8 +171,8 @@ func testPauseAt0(t *testing.T, kc *kubernetes.Clientset) {
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing scale out ---")
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 1),
@@ -190,8 +190,8 @@ func testPauseAtN(t *testing.T, kc *kubernetes.Clientset, data templateData, n i
 		"replica count should be %d after 1 minute", n)
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing scale in ---")
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 2),

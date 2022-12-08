@@ -28,14 +28,14 @@ const (
 )
 
 var (
-	connectionString = os.Getenv("AZURE_SERVICE_BUS_CONNECTION_STRING")
+	connectionString = os.Getenv("TF_AZURE_SERVICE_BUS_CONNECTION_STRING")
 	testNamespace    = fmt.Sprintf("%s-ns", testName)
 	secretName       = fmt.Sprintf("%s-secret", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
 	triggerAuthName  = fmt.Sprintf("%s-ta", testName)
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
-	topicName        = fmt.Sprintf("%s-topic-%d", testName, GetRandomNumber())
-	subscriptionName = fmt.Sprintf("%s-subscription-%d", testName, GetRandomNumber())
+	topicName        = fmt.Sprintf("topic-%d", GetRandomNumber())
+	subscriptionName = fmt.Sprintf("subs-%d", GetRandomNumber())
 )
 
 type templateData struct {
@@ -124,7 +124,7 @@ spec:
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, connectionString, "AZURE_SERVICE_BUS_CONNECTION_STRING env variable is required for service bus tests")
+	require.NotEmpty(t, connectionString, "TF_AZURE_SERVICE_BUS_CONNECTION_STRING env variable is required for service bus tests")
 
 	client, adminClient := setupServiceBusTopicAndSubscription(t)
 
@@ -138,8 +138,8 @@ func TestScaler(t *testing.T) {
 
 	// test scaling
 	testActivation(t, kc, client)
-	testScaleUp(t, kc, client)
-	testScaleDown(t, kc, adminClient)
+	testScaleOut(t, kc, client)
+	testScaleIn(t, kc, adminClient)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -191,16 +191,16 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, client *azservicebus
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.Client) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.Client) {
+	t.Log("--- testing scale out ---")
 	addMessages(t, client, 10)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"replica count should be 1 after 1 minute")
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, adminClient *admin.Client) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, adminClient *admin.Client) {
+	t.Log("--- testing scale in ---")
 
 	_, err := adminClient.DeleteTopic(context.Background(), topicName, nil)
 	assert.NoErrorf(t, err, "cannot delete the topic - %s", err)

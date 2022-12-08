@@ -11,7 +11,6 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -29,6 +28,7 @@ type kafkaMetadata struct {
 	bootstrapServers       []string
 	group                  string
 	topic                  string
+	partitionLimitation    []int32
 	lagThreshold           int64
 	activationLagThreshold int64
 	offsetResetPolicy      offsetResetPolicy
@@ -206,6 +206,21 @@ func parseKafkaMetadata(config *ScalerConfig, logger logr.Logger) (kafkaMetadata
 			"will use all topics subscribed by the consumer group for scaling", meta.group))
 	}
 
+	meta.partitionLimitation = nil
+	if config.TriggerMetadata["partitionLimitation"] != "" {
+		if meta.topic == "" {
+			logger.V(1).Info("no specific topic set, ignoring partitionLimitation setting")
+		} else {
+			pattern := config.TriggerMetadata["partitionLimitation"]
+			parsed, err := kedautil.ParseInt32List(pattern)
+			if err != nil {
+				return meta, fmt.Errorf("error parsing in partitionLimitation '%s': %s", pattern, err)
+			}
+			meta.partitionLimitation = parsed
+			logger.V(0).Info(fmt.Sprintf("partition limit active '%s'", pattern))
+		}
+	}
+
 	meta.offsetResetPolicy = defaultOffsetResetPolicy
 
 	if config.TriggerMetadata["offsetResetPolicy"] != "" {
@@ -379,13 +394,31 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 			s.logger.Error(errMsg, "")
 		}
 		partitionMetadata := topicMetadata.Partitions
-		partitions := make([]int32, len(partitionMetadata))
-		for i, p := range partitionMetadata {
-			partitions[i] = p.ID
+		var partitions []int32
+		for _, p := range partitionMetadata {
+			if s.isActivePartition(p.ID) {
+				partitions = append(partitions, p.ID)
+			}
 		}
+		if len(partitions) == 0 {
+			return nil, fmt.Errorf("expected at least one active partition within the topic '%s'", topicMetadata.Name)
+		}
+
 		topicPartitions[topicMetadata.Name] = partitions
 	}
 	return topicPartitions, nil
+}
+
+func (s *kafkaScaler) isActivePartition(pID int32) bool {
+	if s.metadata.partitionLimitation == nil {
+		return true
+	}
+	for _, _pID := range s.metadata.partitionLimitation {
+		if pID == _pID {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *kafkaScaler) getConsumerOffsets(topicPartitions map[string][]int32) (*sarama.OffsetFetchResponse, error) {
@@ -421,7 +454,7 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 		msg := fmt.Sprintf(
 			"invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet. Returning with lag of %d",
 			topic, s.metadata.group, partitionID, retVal)
-		s.logger.V(0).Info(msg)
+		s.logger.V(1).Info(msg)
 		return retVal, nil
 	}
 
@@ -501,7 +534,7 @@ func (s *kafkaScaler) getConsumerAndProducerOffsets(topicPartitions map[string][
 }
 
 // GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	totalLag, err := s.getTotalLag()
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, err

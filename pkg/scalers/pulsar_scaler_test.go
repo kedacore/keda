@@ -3,40 +3,38 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/go-logr/logr"
 )
 
 type parsePulsarMetadataTestData struct {
-	metadata     map[string]string
-	isError      bool
-	isActive     bool
-	adminURL     string
-	topic        string
-	subscription string
+	metadata           map[string]string
+	isError            bool
+	isActive           bool
+	isPartitionedTopic bool
+	adminURL           string
+	topic              string
+	subscription       string
 }
 
 type parsePulsarAuthParamsTestData struct {
-	authParams map[string]string
-	isError    bool
-	enableTLS  bool
-	cert       string
-	key        string
-	ca         string
+	triggerMetadata map[string]string
+	authParams      map[string]string
+	isError         bool
+	enableTLS       bool
+	cert            string
+	key             string
+	ca              string
+	bearerToken     string
+	username        string
+	password        string
 }
 
 type pulsarMetricIdentifier struct {
 	metadataTestData *parsePulsarMetadataTestData
 	name             string
-}
-
-// A complete valid metadata example for reference
-var validPulsarMetadata = map[string]string{
-	"adminURL":     "http://172.20.0.151:80",
-	"topic":        "persistent://public/default/my-topic",
-	"subscription": "sub1",
-	"tls":          "enable",
 }
 
 // A complete valid authParams example for sasl, with username and passwd
@@ -51,23 +49,36 @@ var validPulsarWithoutAuthParams = map[string]string{}
 
 var parsePulsarMetadataTestDataset = []parsePulsarMetadataTestData{
 	// failure, no adminURL
-	{map[string]string{}, true, false, "", "", ""},
-	{map[string]string{"adminURL": "http://172.20.0.151:80"}, true, false, "http://172.20.0.151:80", "", ""},
-	{map[string]string{"adminURL": "http://172.20.0.151:80"}, true, false, "http://172.20.0.151:80", "", ""},
-	{map[string]string{"adminURL": "http://172.20.0.151:80"}, true, false, "http://172.20.0.151:80", "", ""},
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic"}, true, false, "http://172.20.0.151:80", "persistent://public/default/my-topic", ""},
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, true, "http://172.20.0.151:80", "persistent://public/default/my-topic", "sub1"},
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub2"}, false, true, "http://172.20.0.151:80", "persistent://public/default/my-topic", "sub2"},
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub3"}, false, false, "http://172.20.0.151:80", "persistent://public/default/my-topic", "sub3"},
-	{map[string]string{"adminURL": "http://127.0.0.1:8080", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, false, "http://127.0.0.1:8080", "persistent://public/default/my-topic", "sub1"},
+	{map[string]string{}, true, false, false, "", "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80"}, true, false, false, "http://172.20.0.151:80", "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80"}, true, false, false, "http://172.20.0.151:80", "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80"}, true, false, false, "http://172.20.0.151:80", "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic"}, true, false, false, "http://172.20.0.151:80", "persistent://public/default/my-topic", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, true, false, "http://172.20.0.151:80", "persistent://public/default/my-topic", "sub1"},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub2"}, false, true, false, "http://172.20.0.151:80", "persistent://public/default/my-topic", "sub2"},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub3"}, false, false, false, "http://172.20.0.151:80", "persistent://public/default/my-topic", "sub3"},
+	{map[string]string{"adminURL": "http://127.0.0.1:8080", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, false, false, "http://127.0.0.1:8080", "persistent://public/default/my-topic", "sub1"},
+	{map[string]string{"adminURL": "http://127.0.0.1:8080", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, false, false, "http://127.0.0.1:8080", "persistent://public/default/my-topic", "sub1"},
+	{map[string]string{"adminURL": "http://127.0.0.1:8080", "topic": "persistent://public/default/my-topic", "isPartitionedTopic": "true", "subscription": "sub1"}, false, false, true, "http://127.0.0.1:8080", "persistent://public/default/my-topic", "sub1"},
 
 	// tls
-	{map[string]string{"adminURL": "https://localhost:8443", "tls": "enable", "cert": "certdata", "key": "keydata", "ca": "cadata", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, true, "https://localhost:8443", "persistent://public/default/my-topic", "sub1"},
+	{map[string]string{"adminURL": "https://localhost:8443", "tls": "enable", "cert": "certdata", "key": "keydata", "ca": "cadata", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, true, false, "https://localhost:8443", "persistent://public/default/my-topic", "sub1"},
 }
 
 var parsePulsarMetadataTestAuthTLSDataset = []parsePulsarAuthParamsTestData{
-	// failure, no adminURL
-	{map[string]string{"cert": "certdata", "key": "keydata", "ca": "cadata"}, false, true, "certdata", "keydata", "cadata"},
+	// Passes, mutual TLS, no other auth (legacy "tls: enable")
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "tls": "enable"}, map[string]string{"cert": "certdata", "key": "keydata", "ca": "cadata"}, false, true, "certdata", "keydata", "cadata", "", "", ""},
+	// Passes, mutual TLS, no other auth (uses new way to enable tls)
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "authModes": "tls"}, map[string]string{"cert": "certdata", "key": "keydata", "ca": "cadata"}, false, true, "certdata", "keydata", "cadata", "", "", ""},
+	// Fails, mutual TLS (legacy "tls: enable") without cert
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "tls": "enable"}, map[string]string{"cert": "", "key": "keydata", "ca": "cadata"}, true, true, "certdata", "keydata", "cadata", "", "", ""},
+	// Fails, mutual TLS, (uses new way to enable tls) without cert
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "authModes": "tls"}, map[string]string{"cert": "certdata", "key": "", "ca": "cadata"}, true, true, "certdata", "keydata", "cadata", "", "", ""},
+	// Passes, server side TLS with bearer token. Note that EnableTLS is expected to be false because it is not mTLS.
+	// The legacy behavior required tls: enable in order to configure a custom root ca. Now, all that is required is configuring a root ca.
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "tls": "enable", "authModes": "bearer"}, map[string]string{"ca": "cadata", "bearerToken": "my-special-token"}, false, false, "", "", "cadata", "my-special-token", "", ""},
+	// Passes, server side TLS with basic auth. Note that EnableTLS is expected to be false because it is not mTLS.
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "authModes": "basic"}, map[string]string{"ca": "cadata", "username": "admin", "password": "password123"}, false, false, "", "", "cadata", "", "admin", "password123"},
 }
 
 var pulsarMetricIdentifiers = []pulsarMetricIdentifier{
@@ -87,6 +98,18 @@ func TestParsePulsarMetadata(t *testing.T) {
 
 		if meta.adminURL != testData.adminURL {
 			t.Errorf("Expected adminURL %s but got %s\n", testData.adminURL, meta.adminURL)
+		}
+
+		if !testData.isError {
+			if testData.isPartitionedTopic {
+				if !strings.HasSuffix(meta.statsURL, "/partitioned-stats") {
+					t.Errorf("Expected statsURL to end with /partitioned-stats but got %s\n", meta.statsURL)
+				}
+			} else {
+				if !strings.HasSuffix(meta.statsURL, "/stats") {
+					t.Errorf("Expected statsURL to end with /stats but got %s\n", meta.statsURL)
+				}
+			}
 		}
 
 		if meta.topic != testData.topic {
@@ -127,28 +150,54 @@ func TestParsePulsarMetadata(t *testing.T) {
 
 func TestPulsarAuthParams(t *testing.T) {
 	for _, testData := range parsePulsarMetadataTestAuthTLSDataset {
-		meta, err := parsePulsarMetadata(&ScalerConfig{TriggerMetadata: validPulsarMetadata, AuthParams: testData.authParams})
+		meta, err := parsePulsarMetadata(&ScalerConfig{TriggerMetadata: testData.triggerMetadata, AuthParams: testData.authParams})
 
 		if err != nil && !testData.isError {
-			t.Error("Expected success but got error", err)
+			t.Error("Expected success but got error", testData.authParams, err)
 		}
 		if testData.isError && err == nil {
 			t.Error("Expected error but got success")
 		}
-		if meta.enableTLS != testData.enableTLS {
-			t.Errorf("Expected enableTLS to be set to %v but got %v\n", testData.enableTLS, meta.enableTLS)
+
+		if meta.pulsarAuth == nil {
+			t.Log("meta.pulsarAuth is nil, skipping rest of validation of", testData)
+			continue
 		}
 
-		if meta.ca != testData.ca {
-			t.Errorf("Expected ca to be set to %s but got %s\n", testData.ca, meta.ca)
+		if meta.pulsarAuth.EnableTLS != testData.enableTLS {
+			t.Errorf("Expected enableTLS to be set to %v but got %v\n", testData.enableTLS, meta.pulsarAuth.EnableTLS)
 		}
 
-		if meta.cert != testData.cert {
-			t.Errorf("Expected cert to be set to %s but got %s\n", testData.cert, meta.cert)
+		if meta.pulsarAuth.CA != testData.ca {
+			t.Errorf("Expected ca to be set to %s but got %s\n", testData.ca, meta.pulsarAuth.CA)
 		}
 
-		if meta.key != testData.key {
-			t.Errorf("Expected key to be set to %s but got %s\n", testData.key, meta.key)
+		if meta.pulsarAuth.Cert != testData.cert {
+			t.Errorf("Expected cert to be set to %s but got %s\n", testData.cert, meta.pulsarAuth.Cert)
+		}
+
+		if meta.pulsarAuth.Key != testData.key {
+			t.Errorf("Expected key to be set to %s but got %s\n", testData.key, meta.pulsarAuth.Key)
+		}
+
+		if meta.pulsarAuth.EnableBearerAuth != (testData.bearerToken != "") {
+			t.Errorf("Expected EnableBearerAuth to be true when bearerToken is %s\n", testData.bearerToken)
+		}
+
+		if meta.pulsarAuth.BearerToken != testData.bearerToken {
+			t.Errorf("Expected bearer token to be set to %s but got %s\n", testData.bearerToken, meta.pulsarAuth.BearerToken)
+		}
+
+		if meta.pulsarAuth.EnableBasicAuth != (testData.username != "" || testData.password != "") {
+			t.Errorf("Expected EnableBearerAuth to be true when bearerToken is %s\n", testData.bearerToken)
+		}
+
+		if meta.pulsarAuth.Username != testData.username {
+			t.Errorf("Expected username to be set to %s but got %s\n", testData.username, meta.pulsarAuth.Username)
+		}
+
+		if meta.pulsarAuth.Password != testData.password {
+			t.Errorf("Expected password to be set to %s but got %s\n", testData.password, meta.pulsarAuth.Password)
 		}
 	}
 }
@@ -227,7 +276,7 @@ func TestPulsarGetMetric(t *testing.T) {
 		metricSpec := mockPulsarScaler.GetMetricSpecForScaling(context.TODO())
 		metricName := metricSpec[0].External.Metric.Name
 
-		metric, err := mockPulsarScaler.GetMetrics(context.TODO(), metricName, nil)
+		metric, err := mockPulsarScaler.GetMetrics(context.TODO(), metricName)
 		if err != nil {
 			t.Fatal("Failed:", err)
 		}

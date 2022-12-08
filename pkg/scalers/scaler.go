@@ -27,7 +27,6 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -44,7 +43,7 @@ func init() {
 type Scaler interface {
 
 	// The scaler returns the metric values for a metric Name and criteria matching the selector
-	GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error)
+	GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error)
 
 	// Returns the metrics based on which this scaler determines that the ScaleTarget scales. This is used to construct the HPA spec that is created for
 	// this scaled object. The labels used should match the selectors used in GetMetrics

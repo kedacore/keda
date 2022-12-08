@@ -195,24 +195,24 @@ func TestScaler(t *testing.T) {
 	data, templates := getTemplateData()
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	testScaleUp(t, kc, data)
-	testScaleDown(t, kc)
+	testScaleOut(t, kc, data)
+	testScaleIn(t, kc)
 
 	// cleanup
 	redis.RemoveSentinel(t, kc, testName, redisNamespace)
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing scale out ---")
 	KubectlApplyWithTemplate(t, data, "insertJobTemplate", insertJobTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale in ---")
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)

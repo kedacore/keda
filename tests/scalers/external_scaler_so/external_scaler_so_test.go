@@ -139,8 +139,8 @@ func TestScaler(t *testing.T) {
 		"replica count should be 0 after 1 minute")
 
 	// test scaling
-	testScaleUp(t, kc, data)
-	testScaleDown(t, kc, data)
+	testScaleOut(t, kc, data)
+	testScaleIn(t, kc, data)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -163,8 +163,8 @@ func getTemplateData() (templateData, []Template) {
 		}
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing scale out ---")
 
 	t.Log("scaling to min replicas")
 	data.MetricValue = data.MetricThreshold
@@ -181,8 +181,8 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 		"replica count should be 2 after 1 minute")
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing scale in ---")
 
 	t.Log("scaling to idle replicas")
 	data.MetricValue = 0

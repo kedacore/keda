@@ -10,7 +10,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/robfig/cron/v3"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -171,7 +170,7 @@ func (s *cronScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 }
 
 // GetMetrics finds the current value of the metric
-func (s *cronScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *cronScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	var currentReplicas = int64(defaultDesiredReplicas)
 	isActive, err := s.IsActive(ctx)
 	if err != nil {

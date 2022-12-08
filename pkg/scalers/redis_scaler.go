@@ -4,13 +4,13 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/go-redis/redis/v8"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -251,7 +251,7 @@ func (s *redisScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 }
 
 // GetMetrics connects to Redis and finds the length of the list
-func (s *redisScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *redisScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
 	listLen, err := s.getListLengthFn(ctx)
 
 	if err != nil {
@@ -293,7 +293,7 @@ func parseRedisAddress(metadata, resolvedEnv, authParams map[string]string) (red
 		}
 
 		if len(info.hosts) != 0 && len(info.ports) != 0 {
-			info.addresses = append(info.addresses, fmt.Sprintf("%s:%s", info.hosts[0], info.ports[0]))
+			info.addresses = append(info.addresses, net.JoinHostPort(info.hosts[0], info.ports[0]))
 		}
 	}
 
@@ -361,7 +361,7 @@ func parseRedisMultipleAddress(metadata, resolvedEnv, authParams map[string]stri
 				return info, fmt.Errorf("not enough hosts or ports given. number of hosts should be equal to the number of ports")
 			}
 			for i := range info.hosts {
-				info.addresses = append(info.addresses, fmt.Sprintf("%s:%s", info.hosts[i], info.ports[i]))
+				info.addresses = append(info.addresses, net.JoinHostPort(info.hosts[i], info.ports[i]))
 			}
 		}
 	}

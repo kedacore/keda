@@ -180,14 +180,14 @@ func TestScaler(t *testing.T) {
 
 	// test scaling poolId
 	testActivation(t, kc, connection)
-	testScaleUp(t, kc, connection)
-	testScaleDown(t, kc)
+	testScaleOut(t, kc, connection)
+	testScaleIn(t, kc)
 
 	// test scaling PoolName
 	KubectlApplyWithTemplate(t, data, "poolNamescaledObjectTemplate", poolNamescaledObjectTemplate)
 	testActivation(t, kc, connection)
-	testScaleUp(t, kc, connection)
-	testScaleDown(t, kc)
+	testScaleOut(t, kc, connection)
+	testScaleIn(t, kc)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -294,15 +294,15 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, connection *azuredev
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, connection *azuredevops.Connection) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, connection *azuredevops.Connection) {
+	t.Log("--- testing scale out ---")
 	queueBuild(t, connection)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 1),
 		"replica count should be 2 after 1 minute")
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale in ---")
 	assert.True(t, WaitForPodCountInNamespace(t, kc, testNamespace, minReplicaCount, 60, 5),
 		"pod count should be 0 after 1 minute")
 }

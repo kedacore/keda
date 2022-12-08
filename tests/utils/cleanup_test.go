@@ -41,10 +41,33 @@ func TestRemoveAwsIdentityComponents(t *testing.T) {
 	_, err := ExecuteCommand(fmt.Sprintf("helm uninstall aws-identity-webhook --namespace %s", AwsIdentityNamespace))
 	require.NoErrorf(t, err, "cannot uninstall workload identity webhook - %s", err)
 
-	_, err = ExecuteCommand(fmt.Sprintf("helm uninstall cert-manager --namespace %s", AwsIdentityNamespace))
+	KubeClient = GetKubernetesClient(t)
+
+	DeleteNamespace(t, KubeClient, AwsIdentityNamespace)
+}
+
+func TestRemoveGcpIdentityComponents(t *testing.T) {
+	if GcpIdentityTests == "" || GcpIdentityTests == StringFalse {
+		t.Skip("skipping as workload identity tests are disabled")
+	}
+
+	_, err := ExecuteCommand(fmt.Sprintf("helm uninstall gcp-identity-webhook --namespace %s", GcpIdentityNamespace))
+	require.NoErrorf(t, err, "cannot uninstall workload identity webhook - %s", err)
+
+	KubeClient = GetKubernetesClient(t)
+
+	DeleteNamespace(t, KubeClient, GcpIdentityNamespace)
+}
+
+func TestRemoveCertManager(t *testing.T) {
+	if !InstallCertManager {
+		t.Skip("skipping as cert manager isn't required")
+	}
+
+	_, err := ExecuteCommand(fmt.Sprintf("helm uninstall cert-manager --namespace %s", CertManagerNamespace))
 	require.NoErrorf(t, err, "cannot uninstall cert-manager - %s", err)
 
 	KubeClient = GetKubernetesClient(t)
 
-	DeleteNamespace(t, KubeClient, AwsIdentityNamespace)
+	DeleteNamespace(t, KubeClient, CertManagerNamespace)
 }

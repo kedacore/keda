@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/go-logr/logr"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
@@ -32,8 +31,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/scale"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
@@ -42,7 +39,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -65,16 +61,14 @@ import (
 
 // ScaledObjectReconciler reconciles a ScaledObject object
 type ScaledObjectReconciler struct {
-	Client            client.Client
-	Scheme            *runtime.Scheme
-	GlobalHTTPTimeout time.Duration
-	Recorder          record.EventRecorder
+	Client       client.Client
+	Scheme       *runtime.Scheme
+	Recorder     record.EventRecorder
+	ScaleClient  scale.ScalesGetter
+	ScaleHandler scaling.ScaleHandler
 
-	scaleClient              scale.ScalesGetter
 	restMapper               meta.RESTMapper
 	scaledObjectsGenerations *sync.Map
-	scaleHandler             scaling.ScaleHandler
-	kubeVersion              kedautil.K8sVersion
 }
 
 type scaledObjectMetricsData struct {
@@ -102,33 +96,24 @@ func init() {
 
 // SetupWithManager initializes the ScaledObjectReconciler instance and starts a new controller managed by the passed Manager instance.
 func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
-	setupLog := log.Log.WithName("setup")
-
-	// create Discovery clientset
-	// TODO If we need to increase the QPS of scaling API calls, copy and tweak this RESTConfig.
-	clientset, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
-	if err != nil {
-		setupLog.Error(err, "Not able to create Discovery clientset")
-		return err
-	}
-
-	// Find out Kubernetes version
-	version, err := clientset.ServerVersion()
-	if err == nil {
-		r.kubeVersion = kedautil.NewK8sVersion(version)
-		setupLog.Info("Running on Kubernetes "+r.kubeVersion.PrettyVersion, "version", version)
-	} else {
-		setupLog.Error(err, "Not able to get Kubernetes version")
-	}
-
-	// Create Scale Client
-	scaleClient := initScaleClient(mgr, clientset)
-	r.scaleClient = scaleClient
-
-	// Init the rest of ScaledObjectReconciler
 	r.restMapper = mgr.GetRESTMapper()
 	r.scaledObjectsGenerations = &sync.Map{}
-	r.scaleHandler = scaling.NewScaleHandler(mgr.GetClient(), r.scaleClient, mgr.GetScheme(), r.GlobalHTTPTimeout, r.Recorder)
+
+	if r.ScaleHandler == nil {
+		return fmt.Errorf("ScaledObjectReconciler.ScaleHandler is not initialized")
+	}
+	if r.Client == nil {
+		return fmt.Errorf("ScaledObjectReconciler.Client is not initialized")
+	}
+	if r.ScaleClient == nil {
+		return fmt.Errorf("ScaledObjectReconciler.ScaleClient is not initialized")
+	}
+	if r.Scheme == nil {
+		return fmt.Errorf("ScaledObjectReconciler.Scheme is not initialized")
+	}
+	if r.Recorder == nil {
+		return fmt.Errorf("ScaledObjectReconciler.Recorder is not initialized")
+	}
 
 	// Start controller
 	return ctrl.NewControllerManagedBy(mgr).
@@ -145,15 +130,6 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options cont
 		)).
 		Owns(&autoscalingv2.HorizontalPodAutoscaler{}).
 		Complete(r)
-}
-
-func initScaleClient(mgr manager.Manager, clientset *discovery.DiscoveryClient) scale.ScalesGetter {
-	scaleKindResolver := scale.NewDiscoveryScaleKindResolver(clientset)
-	return scale.New(
-		clientset.RESTClient(), mgr.GetRESTMapper(),
-		dynamic.LegacyAPIPathResolverFunc,
-		scaleKindResolver,
-	)
 }
 
 // Reconcile performs reconciliation on the identified ScaledObject resource based on the request information passed, returns the result and an error (if any).
@@ -319,7 +295,7 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 		// not cached, let's try to detect /scale subresource
 		// also rechecks when we need to update the status.
 		var errScale error
-		scale, errScale = (r.scaleClient).Scales(scaledObject.Namespace).Get(ctx, gr, scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
+		scale, errScale = (r.ScaleClient).Scales(scaledObject.Namespace).Get(ctx, gr, scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
 		if errScale != nil {
 			// not able to get /scale subresource -> let's check if the resource even exist in the cluster
 			unstruct := &unstructured.Unstructured{}
@@ -467,7 +443,7 @@ func (r *ScaledObjectReconciler) requestScaleLoop(ctx context.Context, logger lo
 		return err
 	}
 
-	if err = r.scaleHandler.HandleScalableObject(ctx, scaledObject); err != nil {
+	if err = r.ScaleHandler.HandleScalableObject(ctx, scaledObject); err != nil {
 		return err
 	}
 
@@ -485,7 +461,7 @@ func (r *ScaledObjectReconciler) stopScaleLoop(ctx context.Context, logger logr.
 		return err
 	}
 
-	if err := r.scaleHandler.DeleteScalableObject(ctx, scaledObject); err != nil {
+	if err := r.ScaleHandler.DeleteScalableObject(ctx, scaledObject); err != nil {
 		return err
 	}
 	// delete ScaledObject's current Generation

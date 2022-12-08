@@ -104,15 +104,15 @@ func TestMemoryScaler(t *testing.T) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"Replica count should start out as 1")
 
-	t.Log("--- testing scale up ---")
+	t.Log("--- testing scale out ---")
 	t.Log("--- applying scaled object with scaled up utilization ---")
 
 	KubectlApplyMultipleWithTemplate(t, data, []Template{{Name: "scaledObjectTemplate", Config: scaledObjectTemplate}})
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 180, 1),
-		"Replica count should scale up in next 3 minutes")
+		"Replica count should scale out in next 3 minutes")
 
-	t.Log("--- testing scale down ---")
+	t.Log("--- testing scale in ---")
 	t.Log("--- applying scaled object with scaled down utilization ---")
 
 	data, _ = getTemplateData(testNamespace, deploymentName, scaledObjectName, scaleDownValue)

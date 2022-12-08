@@ -275,7 +275,7 @@ func TestScaler(t *testing.T) {
 }
 
 func testEarliestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing earliest policy: scale up ---")
+	t.Log("--- testing earliest policy: scale out ---")
 	data.Params = fmt.Sprintf("--topic %s --group earliest --from-beginning", topic1)
 	data.Commit = StringFalse
 	data.TopicName = topic1
@@ -309,7 +309,7 @@ func testEarliestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateDat
 }
 
 func testLatestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing latest policy: scale up ---")
+	t.Log("--- testing latest policy: scale out ---")
 	commitPartition(t, topic1, "latest")
 	data.Params = fmt.Sprintf("--topic %s --group latest", topic1)
 	data.Commit = StringFalse
@@ -344,7 +344,7 @@ func testLatestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData)
 }
 
 func testMultiTopic(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing multi topic: scale up ---")
+	t.Log("--- testing multi topic: scale out ---")
 	commitPartition(t, topic1, "multiTopic")
 	commitPartition(t, topic2, "multiTopic")
 	data.Topic1Name = topic1
@@ -375,7 +375,7 @@ func testMultiTopic(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 }
 
 func testZeroOnInvalidOffset(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing zeroInvalidOffsetTopic: scale up ---")
+	t.Log("--- testing zeroInvalidOffsetTopic: scale out ---")
 	data.Params = fmt.Sprintf("--topic %s --group %s", zeroInvalidOffsetTopic, invalidOffsetGroup)
 	data.Commit = StringTrue
 	data.TopicName = zeroInvalidOffsetTopic
@@ -392,7 +392,7 @@ func testZeroOnInvalidOffset(t *testing.T, kc *kubernetes.Clientset, data templa
 }
 
 func testOneOnInvalidOffset(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing oneInvalidOffsetTopic: scale up ---")
+	t.Log("--- testing oneInvalidOffsetTopic: scale out ---")
 	data.Params = fmt.Sprintf("--topic %s --group %s --from-beginning", oneInvalidOffsetTopic, invalidOffsetGroup)
 	data.Commit = StringTrue
 	data.TopicName = oneInvalidOffsetTopic

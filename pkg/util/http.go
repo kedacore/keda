@@ -22,6 +22,16 @@ import (
 	"time"
 )
 
+var disableKeepAlives bool
+
+func init() {
+	var err error
+	disableKeepAlives, err = ResolveOsEnvBool("KEDA_HTTP_DISABLE_KEEP_ALIVE", false)
+	if err != nil {
+		disableKeepAlives = false
+	}
+}
+
 // HTTPDoer is an interface that matches the Do method on
 // (net/http).Client. It should be used in function signatures
 // instead of raw *http.Clients wherever possible
@@ -37,13 +47,18 @@ func CreateHTTPClient(timeout time.Duration, unsafeSsl bool) *http.Client {
 	if timeout <= 0 {
 		timeout = 300 * time.Millisecond
 	}
-	httpClient := &http.Client{
-		Timeout: timeout,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: unsafeSsl},
-			Proxy:           http.ProxyFromEnvironment,
-		},
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: unsafeSsl},
+		Proxy:           http.ProxyFromEnvironment,
 	}
-
+	if disableKeepAlives {
+		// disable keep http connection alive
+		transport.DisableKeepAlives = true
+		transport.IdleConnTimeout = 100 * time.Second
+	}
+	httpClient := &http.Client{
+		Timeout:   timeout,
+		Transport: transport,
+	}
 	return httpClient
 }

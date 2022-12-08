@@ -27,7 +27,7 @@ const (
 )
 
 var (
-	connectionString = os.Getenv("AZURE_SERVICE_BUS_CONNECTION_STRING")
+	connectionString = os.Getenv("TF_AZURE_SERVICE_BUS_CONNECTION_STRING")
 	testNamespace    = fmt.Sprintf("%s-ns", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
 	triggerAuthName  = fmt.Sprintf("%s-ta", testName)
@@ -105,7 +105,7 @@ spec:
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, connectionString, "AZURE_SERVICE_BUS_CONNECTION_STRING env variable is required for service bus tests")
+	require.NotEmpty(t, connectionString, "TF_AZURE_SERVICE_BUS_CONNECTION_STRING env variable is required for service bus tests")
 
 	client, adminClient, namespace := setupServiceBusQueue(t)
 
@@ -119,8 +119,8 @@ func TestScaler(t *testing.T) {
 		"replica count should be 0 after 1 minute")
 
 	// test scaling
-	testScaleUp(t, kc, client)
-	testScaleDown(t, kc, adminClient)
+	testScaleOut(t, kc, client)
+	testScaleIn(t, kc, adminClient)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -160,8 +160,8 @@ func getTemplateData() (templateData, []Template) {
 		}
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.Client) {
-	t.Log("--- testing scale up ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.Client) {
+	t.Log("--- testing scale out ---")
 	sender, err := client.NewSender(queueName, nil)
 	assert.NoErrorf(t, err, "cannot create the sender - %s", err)
 	for i := 0; i < 5; i++ {
@@ -175,8 +175,8 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.Cl
 		"replica count should be 1 after 1 minute")
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset, adminClient *admin.Client) {
-	t.Log("--- testing scale down ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, adminClient *admin.Client) {
+	t.Log("--- testing scale in ---")
 
 	_, err := adminClient.DeleteQueue(context.Background(), queueName, nil)
 	assert.NoErrorf(t, err, "cannot delete the queue - %s", err)

@@ -28,23 +28,20 @@ import (
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	openapinamer "k8s.io/apiserver/pkg/endpoints/openapi"
-	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 	"k8s.io/klog/v2/klogr"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	basecmd "sigs.k8s.io/custom-metrics-apiserver/pkg/cmd"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 
-	generatedopenapi "github.com/kedacore/keda/v2/adapter/generated/openapi"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollers "github.com/kedacore/keda/v2/controllers/keda"
-	"github.com/kedacore/keda/v2/pkg/prommetrics"
+	"github.com/kedacore/keda/v2/pkg/metricsservice"
+	prommetrics "github.com/kedacore/keda/v2/pkg/prommetrics/adapter"
 	kedaprovider "github.com/kedacore/keda/v2/pkg/provider"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -67,21 +64,11 @@ var (
 	adapterClientRequestQPS   float32
 	adapterClientRequestBurst int
 	metricsAPIServerPort      int
+	disableCompression        bool
+	metricsServiceAddr        string
 )
 
 func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Duration, maxConcurrentReconciles int) (provider.MetricsProvider, <-chan struct{}, error) {
-	// Get a config to talk to the apiserver
-	cfg, err := config.GetConfig()
-	if cfg != nil {
-		cfg.QPS = adapterClientRequestQPS
-		cfg.Burst = adapterClientRequestBurst
-	}
-
-	if err != nil {
-		logger.Error(err, "failed to get the config")
-		return nil, nil, fmt.Errorf("failed to get the config (%s)", err)
-	}
-
 	scheme := scheme.Scheme
 	if err := appsv1.SchemeBuilder.AddToScheme(scheme); err != nil {
 		logger.Error(err, "failed to add apps/v1 scheme to runtime scheme")
@@ -116,8 +103,20 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 		return nil, nil, fmt.Errorf("invalid KEDA_METRICS_LEADER_ELECTION_RETRY_PERIOD (%s)", err)
 	}
 
+	useMetricsServiceGrpc, err := kedautil.ResolveOsEnvBool("KEDA_USE_METRICS_SERVICE_GRPC", true)
+	if err != nil {
+		logger.Error(err, "Invalid KEDA_USE_METRICS_SERVICE_GRPC")
+		return nil, nil, fmt.Errorf("invalid KEDA_USE_METRICS_SERVICE_GRPC (%s)", err)
+	}
+
+	// Get a config to talk to the apiserver
+	cfg := ctrl.GetConfigOrDie()
+	cfg.QPS = adapterClientRequestQPS
+	cfg.Burst = adapterClientRequestBurst
+	cfg.DisableCompression = disableCompression
+
 	metricsBindAddress := fmt.Sprintf(":%v", metricsAPIServerPort)
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		MetricsBindAddress: metricsBindAddress,
 		Scheme:             scheme,
 		Namespace:          namespace,
@@ -138,13 +137,19 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 
 	prometheusServer := &prommetrics.PrometheusMetricServer{}
 	go func() { prometheusServer.NewServer(fmt.Sprintf(":%v", prometheusMetricsPort), prometheusMetricsPath) }()
-	stopCh := make(chan struct{})
 
-	if err := runScaledObjectController(ctx, mgr, handler, logger, externalMetricsInfo, externalMetricsInfoLock, maxConcurrentReconciles, stopCh); err != nil {
+	logger.Info("Connecting Metrics Service gRPC client to the server", "address", metricsServiceAddr)
+	grpcClient, err := metricsservice.NewGrpcClient(metricsServiceAddr)
+	if err != nil {
+		logger.Error(err, "error connecting Metrics Service gRPC client to the server", "address", metricsServiceAddr)
 		return nil, nil, err
 	}
 
-	return kedaprovider.NewProvider(ctx, logger, handler, mgr.GetClient(), namespace, externalMetricsInfo, externalMetricsInfoLock), stopCh, nil
+	stopCh := make(chan struct{})
+	if err := runScaledObjectController(ctx, mgr, handler, logger, externalMetricsInfo, externalMetricsInfoLock, maxConcurrentReconciles, stopCh); err != nil {
+		return nil, nil, err
+	}
+	return kedaprovider.NewProvider(ctx, logger, handler, mgr.GetClient(), *grpcClient, useMetricsServiceGrpc, namespace, externalMetricsInfo, externalMetricsInfoLock), stopCh, nil
 }
 
 func runScaledObjectController(ctx context.Context, mgr manager.Manager, scaleHandler scaling.ScaleHandler, logger logr.Logger, externalMetricsInfo *[]provider.ExternalMetricInfo, externalMetricsInfoLock *sync.RWMutex, maxConcurrentReconciles int, stopCh chan<- struct{}) error {
@@ -166,6 +171,19 @@ func runScaledObjectController(ctx context.Context, mgr manager.Manager, scaleHa
 	}()
 
 	return nil
+}
+
+// generateDefaultMetricsServiceAddr generates default Metrics Service gRPC Server address based on the current Namespace.
+// By default the Metrics Service gRPC Server runs in the same namespace on the keda-operator pod.
+func generateDefaultMetricsServiceAddr() string {
+	const defaultNamespace = "keda"
+	podNamespace := os.Getenv("POD_NAMESPACE")
+
+	if podNamespace == "" {
+		podNamespace = defaultNamespace
+	}
+
+	return fmt.Sprintf("keda-operator.%s.svc.cluster.local:9666", podNamespace)
 }
 
 func printVersion() {
@@ -198,17 +216,17 @@ func main() {
 	klog.InitFlags(nil)
 
 	cmd := &Adapter{}
-	cmd.OpenAPIConfig = genericapiserver.DefaultOpenAPIConfig(generatedopenapi.GetOpenAPIDefinitions, openapinamer.NewDefinitionNamer(scheme.Scheme))
-	cmd.OpenAPIConfig.Info.Title = "keda-adapter"
-	cmd.OpenAPIConfig.Info.Version = "1.0.0"
+	cmd.Name = "keda-adapter"
 
 	cmd.Flags().StringVar(&cmd.Message, "msg", "starting adapter...", "startup message")
 	cmd.Flags().AddGoFlagSet(flag.CommandLine) // make sure we get the klog flags
 	cmd.Flags().IntVar(&metricsAPIServerPort, "port", 8080, "Set the port for the metrics API server")
 	cmd.Flags().IntVar(&prometheusMetricsPort, "metrics-port", 9022, "Set the port to expose prometheus metrics")
 	cmd.Flags().StringVar(&prometheusMetricsPath, "metrics-path", "/metrics", "Set the path for the prometheus metrics endpoint")
+	cmd.Flags().StringVar(&metricsServiceAddr, "metrics-service-address", generateDefaultMetricsServiceAddr(), "The address of the gRPRC Metrics Service Server.")
 	cmd.Flags().Float32Var(&adapterClientRequestQPS, "kube-api-qps", 20.0, "Set the QPS rate for throttling requests sent to the apiserver")
 	cmd.Flags().IntVar(&adapterClientRequestBurst, "kube-api-burst", 30, "Set the burst for throttling requests sent to the apiserver")
+	cmd.Flags().BoolVar(&disableCompression, "disable-compression", true, "Disable response compression for k8s restAPI in client-go. ")
 	if err := cmd.Flags().Parse(os.Args); err != nil {
 		return
 	}
