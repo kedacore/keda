@@ -98,25 +98,29 @@ func parseMySQLMetadata(config *ScalerConfig) (*mySQLMetadata, error) {
 	default:
 		meta.connectionString = ""
 		var err error
-		meta.host, err = GetFromAuthOrMeta(config, "host")
+		host, err := GetFromAuthOrMeta(config, "host")
 		if err != nil {
 			return nil, err
 		}
+		meta.host = host
 
-		meta.port, err = GetFromAuthOrMeta(config, "port")
+		port, err := GetFromAuthOrMeta(config, "port")
 		if err != nil {
 			return nil, err
 		}
+		meta.port = port
 
-		meta.username, err = GetFromAuthOrMeta(config, "username")
+		username, err := GetFromAuthOrMeta(config, "username")
 		if err != nil {
 			return nil, err
 		}
+		meta.username = username
 
-		meta.dbName, err = GetFromAuthOrMeta(config, "dbName")
+		dbName, err := GetFromAuthOrMeta(config, "dbName")
 		if err != nil {
 			return nil, err
 		}
+		meta.dbName = dbName
 
 		if config.AuthParams["password"] != "" {
 			meta.password = config.AuthParams["password"]

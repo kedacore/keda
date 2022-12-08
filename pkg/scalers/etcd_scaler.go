@@ -118,25 +118,28 @@ func parseEtcdMetadata(config *ScalerConfig) (*etcdMetadata, error) {
 		return nil, fmt.Errorf("watchKey required")
 	}
 
-	meta.value, err = strconv.ParseFloat(config.TriggerMetadata[value], 64)
+	value, err := strconv.ParseFloat(config.TriggerMetadata[value], 64)
 	if err != nil || meta.value <= 0 {
 		return nil, fmt.Errorf("value must be a float greater than 0")
 	}
+	meta.value = value
 
 	meta.activationValue = 0
 	if val, ok := config.TriggerMetadata[activationValue]; ok {
-		meta.activationValue, err = strconv.ParseFloat(val, 64)
+		activationValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("activationValue must be a float")
 		}
+		meta.activationValue = activationValue
 	}
 
 	meta.watchProgressNotifyInterval = defaultWatchProgressNotifyInterval
 	if val, ok := config.TriggerMetadata[watchProgressNotifyInterval]; ok {
-		meta.watchProgressNotifyInterval, err = strconv.Atoi(val)
+		interval, err := strconv.Atoi(val)
 		if err != nil || meta.watchProgressNotifyInterval <= 0 {
 			return nil, fmt.Errorf("watchProgressNotifyInterval must be a int greater than 0")
 		}
+		meta.watchProgressNotifyInterval = interval
 	}
 
 	if err = parseEtcdAuthParams(config, meta); err != nil {

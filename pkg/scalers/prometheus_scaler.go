@@ -91,13 +91,15 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 
 	if meta.prometheusAuth != nil && (meta.prometheusAuth.CA != "" || meta.prometheusAuth.EnableTLS) {
 		// create http.RoundTripper with auth settings from ScalerConfig
-		if httpClient.Transport, err = authentication.CreateHTTPRoundTripper(
+		transport, err := authentication.CreateHTTPRoundTripper(
 			authentication.NetHTTP,
 			meta.prometheusAuth,
-		); err != nil {
+		)
+		if err != nil {
 			logger.V(1).Error(err, "init Prometheus client http transport")
 			return nil, err
 		}
+		httpClient.Transport = transport
 	}
 
 	return &prometheusScaler{
@@ -181,10 +183,11 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 	meta.scalerIndex = config.ScalerIndex
 
 	// parse auth configs from ScalerConfig
-	meta.prometheusAuth, err = authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
+	auth, err := authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
 	if err != nil {
 		return nil, err
 	}
+	meta.prometheusAuth = auth
 
 	return meta, nil
 }

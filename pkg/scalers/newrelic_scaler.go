@@ -16,13 +16,13 @@ import (
 )
 
 const (
-	account     = "account"
-	queryKey    = "queryKey"
-	region      = "region"
-	nrql        = "nrql"
-	threshold   = "threshold"
-	noDataError = "noDataError"
-	scalerName  = "new-relic"
+	account           = "account"
+	queryKeyParamater = "queryKey"
+	regionParameter   = "region"
+	nrql              = "nrql"
+	threshold         = "threshold"
+	noDataError       = "noDataError"
+	scalerName        = "new-relic"
 )
 
 type newrelicScaler struct {
@@ -96,16 +96,18 @@ func parseNewRelicMetadata(config *ScalerConfig, logger logr.Logger) (*newrelicM
 		return nil, fmt.Errorf("no %s given", nrql)
 	}
 
-	meta.queryKey, err = GetFromAuthOrMeta(config, queryKey)
+	queryKey, err := GetFromAuthOrMeta(config, queryKeyParamater)
 	if err != nil {
-		return nil, fmt.Errorf("no %s given", queryKey)
+		return nil, fmt.Errorf("no %s given", queryKeyParamater)
 	}
+	meta.queryKey = queryKey
 
-	meta.region, err = GetFromAuthOrMeta(config, region)
+	region, err := GetFromAuthOrMeta(config, regionParameter)
 	if err != nil {
-		meta.region = "US"
+		region = "US"
 		logger.Info("Using default 'US' region")
 	}
+	meta.region = region
 
 	if val, ok := config.TriggerMetadata[threshold]; ok && val != "" {
 		t, err := strconv.ParseFloat(val, 64)

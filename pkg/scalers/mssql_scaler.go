@@ -132,10 +132,11 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 		meta.connectionString = ""
 		var err error
 
-		meta.host, err = GetFromAuthOrMeta(config, "host")
+		host, err := GetFromAuthOrMeta(config, "host")
 		if err != nil {
 			return nil, err
 		}
+		meta.host = host
 
 		var paramPort string
 		paramPort, _ = GetFromAuthOrMeta(config, "port")

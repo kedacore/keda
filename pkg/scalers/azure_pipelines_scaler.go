@@ -219,17 +219,19 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 
 	if val, ok := config.TriggerMetadata["poolName"]; ok && val != "" {
 		var err error
-		meta.poolID, err = getPoolIDFromName(ctx, val, &meta, httpClient)
+		poolID, err := getPoolIDFromName(ctx, val, &meta, httpClient)
 		if err != nil {
 			return nil, err
 		}
+		meta.poolID = poolID
 	} else {
 		if val, ok := config.TriggerMetadata["poolID"]; ok && val != "" {
 			var err error
-			meta.poolID, err = validatePoolID(ctx, val, &meta, httpClient)
+			poolID, err := validatePoolID(ctx, val, &meta, httpClient)
 			if err != nil {
 				return nil, err
 			}
+			meta.poolID = poolID
 		} else {
 			return nil, fmt.Errorf("no poolName or poolID given")
 		}

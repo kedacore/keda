@@ -486,11 +486,12 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 				MetricType:              trigger.MetricType,
 			}
 
-			config.AuthParams, config.PodIdentity, err = resolver.ResolveAuthRefAndPodIdentity(ctx, h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace, h.secretsLister)
+			authParams, podIdentity, err := resolver.ResolveAuthRefAndPodIdentity(ctx, h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace, h.secretsLister)
 			if err != nil {
 				return nil, nil, err
 			}
-
+			config.AuthParams = authParams
+			config.PodIdentity = podIdentity
 			scaler, err := buildScaler(ctx, h.client, trigger.Type, config)
 			return scaler, config, err
 		}

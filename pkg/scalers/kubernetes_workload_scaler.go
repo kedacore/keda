@@ -66,14 +66,16 @@ func parseWorkloadMetadata(config *ScalerConfig) (*kubernetesWorkloadMetadata, e
 	meta := &kubernetesWorkloadMetadata{}
 	var err error
 	meta.namespace = config.ScalableObjectNamespace
-	meta.podSelector, err = labels.Parse(config.TriggerMetadata[podSelectorKey])
+	podSelector, err := labels.Parse(config.TriggerMetadata[podSelectorKey])
 	if err != nil || meta.podSelector.String() == "" {
 		return nil, fmt.Errorf("invalid pod selector")
 	}
-	meta.value, err = strconv.ParseFloat(config.TriggerMetadata[valueKey], 64)
+	meta.podSelector = podSelector
+	value, err := strconv.ParseFloat(config.TriggerMetadata[valueKey], 64)
 	if err != nil || meta.value == 0 {
 		return nil, fmt.Errorf("value must be a float greater than 0")
 	}
+	meta.value = value
 
 	meta.activationValue = 0
 	if val, ok := config.TriggerMetadata[activationValueKey]; ok {

@@ -159,10 +159,11 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 	}
 
 	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
-		meta.unsafeSsl, err = strconv.ParseBool(val)
+		unsafeSsl, err := strconv.ParseBool(val)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing unsafeSsl: %s", err)
 		}
+		meta.unsafeSsl = unsafeSsl
 	} else {
 		meta.unsafeSsl = defaultUnsafeSsl
 	}
@@ -173,28 +174,31 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 	}
 	meta.indexes = splitAndTrimBySep(index, ";")
 
-	meta.searchTemplateName, err = GetFromAuthOrMeta(config, "searchTemplateName")
+	searchTemplateName, err := GetFromAuthOrMeta(config, "searchTemplateName")
 	if err != nil {
 		return nil, err
 	}
+	meta.searchTemplateName = searchTemplateName
 
 	if val, ok := config.TriggerMetadata["parameters"]; ok {
 		meta.parameters = splitAndTrimBySep(val, ";")
 	}
 
-	meta.valueLocation, err = GetFromAuthOrMeta(config, "valueLocation")
+	valueLocation, err := GetFromAuthOrMeta(config, "valueLocation")
 	if err != nil {
 		return nil, err
 	}
+	meta.valueLocation = valueLocation
 
-	targetValue, err := GetFromAuthOrMeta(config, "targetValue")
+	targetValueString, err := GetFromAuthOrMeta(config, "targetValue")
 	if err != nil {
 		return nil, err
 	}
-	meta.targetValue, err = strconv.ParseFloat(targetValue, 64)
+	targetValue, err := strconv.ParseFloat(targetValueString, 64)
 	if err != nil {
 		return nil, fmt.Errorf("targetValue parsing error %s", err.Error())
 	}
+	meta.targetValue = targetValue
 
 	meta.activationTargetValue = 0
 	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok {

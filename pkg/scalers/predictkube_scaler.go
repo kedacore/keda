@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math"
 	"net"
-	"net/http"
 	"strconv"
 	"time"
 
@@ -125,10 +124,11 @@ func (s *PredictKubeScaler) setupClientConn() error {
 		return err
 	}
 
-	s.grpcConn, err = grpc.Dial(net.JoinHostPort(mlEngineHost, fmt.Sprintf("%d", mlEnginePort)), clientOpt...)
+	connection, err := grpc.Dial(net.JoinHostPort(mlEngineHost, fmt.Sprintf("%d", mlEnginePort)), clientOpt...)
 	if err != nil {
 		return err
 	}
+	s.grpcConn = connection
 
 	s.grpcClient = pb.NewMlEngineServiceClient(s.grpcConn)
 	s.healthClient = health.NewHealthClient(s.grpcConn)
@@ -396,47 +396,52 @@ func parsePredictKubeMetadata(config *ScalerConfig) (result *predictKubeMetadata
 	}
 
 	if val, ok := config.TriggerMetadata["predictHorizon"]; ok {
-		meta.predictHorizon, err = str2duration.ParseDuration(val)
+		predictHorizon, err := str2duration.ParseDuration(val)
 		if err != nil {
 			return nil, fmt.Errorf("predictHorizon parsing error %s", err.Error())
 		}
+		meta.predictHorizon = predictHorizon
 	} else {
 		return nil, fmt.Errorf("no predictHorizon given")
 	}
 
 	if val, ok := config.TriggerMetadata["queryStep"]; ok {
-		meta.stepDuration, err = str2duration.ParseDuration(val)
+		stepDuration, err := str2duration.ParseDuration(val)
 		if err != nil {
 			return nil, fmt.Errorf("queryStep parsing error %s", err.Error())
 		}
+		meta.stepDuration = stepDuration
 	} else {
 		return nil, fmt.Errorf("no queryStep given")
 	}
 
 	if val, ok := config.TriggerMetadata["historyTimeWindow"]; ok {
-		meta.historyTimeWindow, err = str2duration.ParseDuration(val)
+		historyTimeWindow, err := str2duration.ParseDuration(val)
 		if err != nil {
 			return nil, fmt.Errorf("historyTimeWindow parsing error %s", err.Error())
 		}
+		meta.historyTimeWindow = historyTimeWindow
 	} else {
 		return nil, fmt.Errorf("no historyTimeWindow given")
 	}
 
 	if val, ok := config.TriggerMetadata["threshold"]; ok {
-		meta.threshold, err = strconv.ParseFloat(val, 64)
+		threshold, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("threshold parsing error %s", err.Error())
 		}
+		meta.threshold = threshold
 	} else {
 		return nil, fmt.Errorf("no threshold given")
 	}
 
 	meta.activationThreshold = 0
 	if val, ok := config.TriggerMetadata["activationThreshold"]; ok {
-		meta.activationThreshold, err = strconv.ParseFloat(val, 64)
+		activationThreshold, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("activationThreshold parsing error %s", err.Error())
 		}
+		meta.activationThreshold = activationThreshold
 	}
 
 	meta.scalerIndex = config.ScalerIndex
@@ -453,11 +458,11 @@ func parsePredictKubeMetadata(config *ScalerConfig) (result *predictKubeMetadata
 	}
 
 	// parse auth configs from ScalerConfig
-	meta.prometheusAuth, err = authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
+	auth, err := authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
 	if err != nil {
 		return nil, err
 	}
-
+	meta.prometheusAuth = auth
 	return &meta, nil
 }
 
@@ -468,24 +473,24 @@ func (s *PredictKubeScaler) ping(ctx context.Context) (err error) {
 
 // initPredictKubePrometheusConn init prometheus client and setup connection to API
 func (s *PredictKubeScaler) initPredictKubePrometheusConn(ctx context.Context) (err error) {
-	var roundTripper http.RoundTripper
 	// create http.RoundTripper with auth settings from ScalerConfig
-	if roundTripper, err = authentication.CreateHTTPRoundTripper(
+	roundTripper, err := authentication.CreateHTTPRoundTripper(
 		authentication.FastHTTP,
 		s.metadata.prometheusAuth,
-	); err != nil {
+	)
+	if err != nil {
 		s.logger.V(1).Error(err, "init Prometheus client http transport")
 		return err
 	}
-
-	if s.prometheusClient, err = api.NewClient(api.Config{
+	client, err := api.NewClient(api.Config{
 		Address:      s.metadata.prometheusAddress,
 		RoundTripper: roundTripper,
-	}); err != nil {
+	})
+	if err != nil {
 		s.logger.V(1).Error(err, "init Prometheus client")
 		return err
 	}
-
+	s.prometheusClient = client
 	s.api = v1.NewAPI(s.prometheusClient)
 
 	return s.ping(ctx)
