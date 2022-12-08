@@ -178,8 +178,6 @@ func parseCouchDBMetadata(config *ScalerConfig) (*couchDBMetadata, string, error
 	} else {
 		// Build connection str
 		addr := net.JoinHostPort(meta.host, meta.port)
-		// addr := fmt.Sprintf("%s:%s", meta.host, meta.port)
-		// auth := fmt.Sprintf("%s:%s", meta.username, meta.password)
 		connStr = "http://" + addr
 	}
 	if val, ok := config.TriggerMetadata["metricName"]; ok {

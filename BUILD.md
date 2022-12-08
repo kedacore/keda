@@ -138,7 +138,10 @@ Follow these instructions if you want to debug the KEDA operator using VS Code.
             "request": "launch",
             "mode": "debug",
             "program": "${workspaceFolder}/main.go",
-            "env": {"WATCH_NAMESPACE": ""}
+            "env": {
+                "WATCH_NAMESPACE": "",
+                "KEDA_CLUSTER_OBJECT_NAMESPACE": "keda"
+            }
         }
     ]
    }
@@ -171,7 +174,10 @@ Follow these instructions if you want to debug the KEDA metrics server using VS 
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}/adapter/main.go",
-            "env": {"WATCH_NAMESPACE": ""},
+            "env": {
+                "WATCH_NAMESPACE": "",
+                "KEDA_CLUSTER_OBJECT_NAMESPACE": "keda"
+            },
             "args": [
                 "--authentication-kubeconfig=PATH_TO_YOUR_KUBECONFIG",
                 "--authentication-skip-lookup",

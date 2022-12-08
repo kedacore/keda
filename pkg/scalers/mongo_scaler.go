@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -189,8 +190,7 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 	} else {
 		// Build connection str
 		addr := net.JoinHostPort(meta.host, meta.port)
-		auth := fmt.Sprintf("%s:%s", meta.username, meta.password)
-		connStr = "mongodb://" + auth + "@" + addr + "/" + meta.dbName
+		connStr = fmt.Sprintf("mongodb://%s:%s@%s/%s", url.QueryEscape(meta.username), url.QueryEscape(meta.password), addr, meta.dbName)
 	}
 
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
