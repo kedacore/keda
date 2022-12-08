@@ -120,7 +120,7 @@ func parseCouchDBMetadata(config *ScalerConfig) (*couchDBMetadata, string, error
 	if val, ok := config.TriggerMetadata["queryValue"]; ok {
 		queryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to convert %v to int, because of %v", queryValue, err.Error())
+			return nil, "", fmt.Errorf("failed to convert %v to int, because of %v", val, err.Error())
 		}
 		meta.queryValue = queryValue
 	} else {
@@ -131,15 +131,16 @@ func parseCouchDBMetadata(config *ScalerConfig) (*couchDBMetadata, string, error
 	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
 		activationQueryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to convert %v to int, because of %v", activationQueryValue, err.Error())
+			return nil, "", fmt.Errorf("failed to convert %v to int, because of %v", val, err.Error())
 		}
 		meta.activationQueryValue = activationQueryValue
 	}
 
-	meta.dbName, err = GetFromAuthOrMeta(config, "dbName")
+	dbName, err := GetFromAuthOrMeta(config, "dbName")
 	if err != nil {
 		return nil, "", err
 	}
+	meta.dbName = dbName
 
 	switch {
 	case config.AuthParams["connectionString"] != "":
@@ -148,20 +149,23 @@ func parseCouchDBMetadata(config *ScalerConfig) (*couchDBMetadata, string, error
 		meta.connectionString = config.ResolvedEnv[config.TriggerMetadata["connectionStringFromEnv"]]
 	default:
 		meta.connectionString = ""
-		meta.host, err = GetFromAuthOrMeta(config, "host")
+		host, err := GetFromAuthOrMeta(config, "host")
 		if err != nil {
 			return nil, "", err
 		}
+		meta.host = host
 
-		meta.port, err = GetFromAuthOrMeta(config, "port")
+		port, err := GetFromAuthOrMeta(config, "port")
 		if err != nil {
 			return nil, "", err
 		}
+		meta.port = port
 
-		meta.username, err = GetFromAuthOrMeta(config, "username")
+		username, err := GetFromAuthOrMeta(config, "username")
 		if err != nil {
 			return nil, "", err
 		}
+		meta.username = username
 
 		if config.AuthParams["password"] != "" {
 			meta.password = config.AuthParams["password"]
