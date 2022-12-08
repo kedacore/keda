@@ -38,7 +38,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- **Cron Scaler**: Fix unexpected instance count change. ([#3838](https://github.com/kedacore/keda/pull/3838))
 - **General**: Introduction deprecation & breaking change policy ([Governance #68](https://github.com/kedacore/governance/issues/68))
 - **General**: Consolidate all exposed Prometheus Metrics in KEDA Operator ([#3919](https://github.com/kedacore/keda/issues/3919))
 - **General**: Disable response compression for k8s restAPI in client-go ([#3863](https://github.com/kedacore/keda/issues/3863)). Kubernetes issue for reference (https://github.com/kubernetes/kubernetes/issues/112296)
@@ -53,6 +52,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **AWS Scalers**: Add setting AWS endpoint url. ([#3337](https://github.com/kedacore/keda/issues/3337))
 - **Azure Service Bus Scaler**: Add support for Shared Access Signature (SAS) tokens for authentication. ([#2920](https://github.com/kedacore/keda/issues/2920))
 - **Azure Service Bus Scaler:** Support regex usage in queueName / subscriptionName parameters. ([#1624](https://github.com/kedacore/keda/issues/1624))
+- **Cron Scaler**: Fix unexpected instance count change. ([#3838](https://github.com/kedacore/keda/pull/3838))
 - **ElasticSearch Scaler**: Support for ElasticSearch Service on Elastic Cloud ([#3785]https://github.com/kedacore/keda/issues/3785)
 - **Selenium Grid Scaler:** Allow setting url trigger parameter from TriggerAuthentication/ClusterTriggerAuthentication ([#3752](https://github.com/kedacore/keda/pull/3752))
 
