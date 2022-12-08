@@ -28,7 +28,10 @@ import (
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	kubeinformers "k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 	"k8s.io/klog/v2/klogr"
@@ -131,7 +134,25 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 
 	broadcaster := record.NewBroadcaster()
 	recorder := broadcaster.NewRecorder(scheme, corev1.EventSource{Component: "keda-metrics-adapter"})
-	handler := scaling.NewScaleHandler(mgr.GetClient(), nil, scheme, globalHTTPTimeout, recorder)
+
+	kubeClientset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		logger.Error(err, "Unable to create kube clientset")
+		return nil, nil, err
+	}
+	objectNamespace, err := kedautil.GetClusterObjectNamespace()
+	if err != nil {
+		logger.Error(err, "Unable to get cluster object namespace")
+		return nil, nil, err
+	}
+	// the namespaced kubeInformerFactory is used to restrict secret informer to only list/watch secrets in KEDA cluster object namespace,
+	// refer to https://github.com/kedacore/keda/issues/3668
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeClientset, 1*time.Hour, kubeinformers.WithNamespace(objectNamespace))
+	secretInformer := kubeInformerFactory.Core().V1().Secrets()
+
+	handler := scaling.NewScaleHandler(mgr.GetClient(), nil, scheme, globalHTTPTimeout, recorder, secretInformer.Lister())
+	kubeInformerFactory.Start(ctx.Done())
+
 	externalMetricsInfo := &[]provider.ExternalMetricInfo{}
 	externalMetricsInfoLock := &sync.RWMutex{}
 
@@ -146,13 +167,13 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 	}
 
 	stopCh := make(chan struct{})
-	if err := runScaledObjectController(ctx, mgr, handler, logger, externalMetricsInfo, externalMetricsInfoLock, maxConcurrentReconciles, stopCh); err != nil {
+	if err := runScaledObjectController(ctx, mgr, handler, logger, externalMetricsInfo, externalMetricsInfoLock, maxConcurrentReconciles, stopCh, secretInformer.Informer().HasSynced); err != nil {
 		return nil, nil, err
 	}
 	return kedaprovider.NewProvider(ctx, logger, handler, mgr.GetClient(), *grpcClient, useMetricsServiceGrpc, namespace, externalMetricsInfo, externalMetricsInfoLock), stopCh, nil
 }
 
-func runScaledObjectController(ctx context.Context, mgr manager.Manager, scaleHandler scaling.ScaleHandler, logger logr.Logger, externalMetricsInfo *[]provider.ExternalMetricInfo, externalMetricsInfoLock *sync.RWMutex, maxConcurrentReconciles int, stopCh chan<- struct{}) error {
+func runScaledObjectController(ctx context.Context, mgr manager.Manager, scaleHandler scaling.ScaleHandler, logger logr.Logger, externalMetricsInfo *[]provider.ExternalMetricInfo, externalMetricsInfoLock *sync.RWMutex, maxConcurrentReconciles int, stopCh chan<- struct{}, secretSynced cache.InformerSynced) error {
 	if err := (&kedacontrollers.MetricsScaledObjectReconciler{
 		Client:                  mgr.GetClient(),
 		ScaleHandler:            scaleHandler,
@@ -170,6 +191,9 @@ func runScaledObjectController(ctx context.Context, mgr manager.Manager, scaleHa
 		}
 	}()
 
+	if ok := cache.WaitForCacheSync(ctx.Done(), secretSynced); !ok {
+		return fmt.Errorf("failed to wait Secrets cache synced")
+	}
 	return nil
 }
 

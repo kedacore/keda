@@ -63,6 +63,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General:** Add support to use pod identities for authentication in Azure Key Vault ([#3813](https://github.com/kedacore/keda/issues/3813)
 - **General:** Support disable keep http connection alive([#3874](https://github.com/kedacore/keda/issues/3874)
 - **General:** Improve the function used to normalize metric names ([#3789](https://github.com/kedacore/keda/issues/3789)
+- **General:** Support Restrict Secret Access to mitigate the security risk ([#3668](https://github.com/kedacore/keda/issues/3668)
 - **Apache Kafka Scaler:** SASL/OAuthbearer Implementation ([#3681](https://github.com/kedacore/keda/issues/3681))
 - **Apache Kafka Scaler:** Limit Kafka Partitions KEDA operates on ([#3830](https://github.com/kedacore/keda/issues/3830))
 - **Apache Kafka Scaler:** Implementation for Excluding Persistent Lag ([#3904](https://github.com/kedacore/keda/issues/3904))

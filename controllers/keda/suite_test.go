@@ -91,7 +91,7 @@ var _ = BeforeSuite(func(done Done) {
 		Client:       k8sManager.GetClient(),
 		Scheme:       k8sManager.GetScheme(),
 		Recorder:     k8sManager.GetEventRecorderFor("keda-operator"),
-		ScaleHandler: scaling.NewScaleHandler(k8sManager.GetClient(), scaleClient, k8sManager.GetScheme(), time.Duration(10), k8sManager.GetEventRecorderFor("keda-operator")),
+		ScaleHandler: scaling.NewScaleHandler(k8sManager.GetClient(), scaleClient, k8sManager.GetScheme(), time.Duration(10), k8sManager.GetEventRecorderFor("keda-operator"), nil),
 		ScaleClient:  scaleClient,
 	}).SetupWithManager(k8sManager, controller.Options{})
 	Expect(err).ToNot(HaveOccurred())

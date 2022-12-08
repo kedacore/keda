@@ -18,6 +18,7 @@ package resolver
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -25,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
+	corev1listers "k8s.io/client-go/listers/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -218,9 +220,10 @@ var testMetadatas = []testMetadata{
 }
 
 func TestResolveNonExistingConfigMapsOrSecretsEnv(t *testing.T) {
+	var secretsLister corev1listers.SecretLister
 	for _, testData := range testMetadatas {
 		ctx := context.Background()
-		_, err := resolveEnv(ctx, fake.NewClientBuilder().Build(), logf.Log.WithName("test"), testData.container, namespace)
+		_, err := resolveEnv(ctx, fake.NewClientBuilder().Build(), logf.Log.WithName("test"), testData.container, namespace, secretsLister)
 
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success because %s got error, %s", testData.comment, err)
@@ -399,18 +402,20 @@ func TestResolveAuthRef(t *testing.T) {
 			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		},
 	}
+	var secretsLister corev1listers.SecretLister
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			ctx := context.Background()
-			clusterObjectNamespaceCache = &clusterNamespace // Inject test cluster namespace.
+			os.Setenv("KEDA_CLUSTER_OBJECT_NAMESPACE", clusterNamespace) // Inject test cluster namespace.
 			gotMap, gotPodIdentity := resolveAuthRef(
 				ctx,
 				fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(test.existing...).Build(),
 				logf.Log.WithName("test"),
 				test.soar,
 				test.podSpec,
-				namespace)
+				namespace,
+				secretsLister)
 			if diff := cmp.Diff(gotMap, test.expected); diff != "" {
 				t.Errorf("Returned authParams are different: %s", diff)
 			}
@@ -524,11 +529,12 @@ func TestResolveDependentEnv(t *testing.T) {
 			},
 		},
 	}
+	var secretsLister corev1listers.SecretLister
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			ctx := context.Background()
-			envMap, _ := resolveEnv(ctx, fake.NewClientBuilder().Build(), logf.Log.WithName("test"), test.container, namespace)
+			envMap, _ := resolveEnv(ctx, fake.NewClientBuilder().Build(), logf.Log.WithName("test"), test.container, namespace, secretsLister)
 			if diff := cmp.Diff(envMap, test.expected); diff != "" {
 				t.Errorf("Returned authParams are different: %s", diff)
 			}

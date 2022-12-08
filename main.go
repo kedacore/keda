@@ -26,8 +26,11 @@ import (
 	"github.com/spf13/pflag"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	kubeinformers "k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"k8s.io/client-go/tools/cache"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -158,13 +161,28 @@ func main() {
 	globalHTTPTimeout := time.Duration(globalHTTPTimeoutMS) * time.Millisecond
 	eventRecorder := mgr.GetEventRecorderFor("keda-operator")
 
+	kubeClientset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		setupLog.Error(err, "Unable to create kube clientset")
+		os.Exit(1)
+	}
+	objectNamespace, err := kedautil.GetClusterObjectNamespace()
+	if err != nil {
+		setupLog.Error(err, "Unable to get cluster object namespace")
+		os.Exit(1)
+	}
+	// the namespaced kubeInformerFactory is used to restrict secret informer to only list/watch secrets in KEDA cluster object namespace,
+	// refer to https://github.com/kedacore/keda/issues/3668
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeClientset, 1*time.Hour, kubeinformers.WithNamespace(objectNamespace))
+	secretInformer := kubeInformerFactory.Core().V1().Secrets()
+
 	scaleClient, kubeVersion, err := k8s.InitScaleClient(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to init scale client")
 		os.Exit(1)
 	}
 
-	scaledHandler := scaling.NewScaleHandler(mgr.GetClient(), scaleClient, mgr.GetScheme(), globalHTTPTimeout, eventRecorder)
+	scaledHandler := scaling.NewScaleHandler(mgr.GetClient(), scaleClient, mgr.GetScheme(), globalHTTPTimeout, eventRecorder, secretInformer.Lister())
 
 	if err = (&kedacontrollers.ScaledObjectReconciler{
 		Client:       mgr.GetClient(),
@@ -181,6 +199,8 @@ func main() {
 		Scheme:            mgr.GetScheme(),
 		GlobalHTTPTimeout: globalHTTPTimeout,
 		Recorder:          eventRecorder,
+		SecretsLister:     secretInformer.Lister(),
+		SecretsSynced:     secretInformer.Informer().HasSynced,
 	}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: scaledJobMaxReconciles}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ScaledJob")
 		os.Exit(1)
@@ -223,7 +243,15 @@ func main() {
 	setupLog.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
 	setupLog.Info(fmt.Sprintf("Running on Kubernetes %s", kubeVersion.PrettyVersion), "version", kubeVersion.Version)
 
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	ctx := ctrl.SetupSignalHandler()
+	kubeInformerFactory.Start(ctx.Done())
+
+	if ok := cache.WaitForCacheSync(ctx.Done(), secretInformer.Informer().HasSynced); !ok {
+		setupLog.Error(nil, "failed to wait Secrets cache synced")
+		os.Exit(1)
+	}
+
+	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
