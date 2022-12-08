@@ -161,15 +161,6 @@ func initializeStackdriverClient(ctx context.Context, gcpAuthorization *gcpAutho
 	return client, nil
 }
 
-func (s *stackdriverScaler) IsActive(ctx context.Context) (bool, error) {
-	value, err := s.getMetrics(ctx)
-	if err != nil {
-		s.logger.Error(err, "error getting metric value")
-		return false, err
-	}
-	return value > s.metadata.activationTargetValue, nil
-}
-
 func (s *stackdriverScaler) Close(context.Context) error {
 	if s.client != nil {
 		err := s.client.metricsClient.Close()
@@ -200,17 +191,17 @@ func (s *stackdriverScaler) GetMetricSpecForScaling(context.Context) []v2.Metric
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics connects to Stack Driver and retrieves the metric
-func (s *stackdriverScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity connects to Stack Driver and retrieves the metric
+func (s *stackdriverScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	value, err := s.getMetrics(ctx)
 	if err != nil {
 		s.logger.Error(err, "error getting metric value")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, value)
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, value > s.metadata.activationTargetValue, nil
 }
 
 // getMetrics gets metric type value from stackdriver api

@@ -368,31 +368,21 @@ func parseOpenstackSwiftAuthenticationMetadata(config *ScalerConfig) (*openstack
 	return &authMeta, nil
 }
 
-func (s *openstackSwiftScaler) IsActive(ctx context.Context) (bool, error) {
-	objectCount, err := s.getOpenstackSwiftContainerObjectCount(ctx)
-
-	if err != nil {
-		return false, err
-	}
-
-	return objectCount > s.metadata.activationObjectCount, nil
-}
-
 func (s *openstackSwiftScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *openstackSwiftScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+func (s *openstackSwiftScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	objectCount, err := s.getOpenstackSwiftContainerObjectCount(ctx)
 
 	if err != nil {
 		s.logger.Error(err, "error getting objectCount")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(objectCount))
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, objectCount > s.metadata.activationObjectCount, nil
 }
 
 func (s *openstackSwiftScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {

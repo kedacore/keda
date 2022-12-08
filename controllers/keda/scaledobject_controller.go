@@ -221,7 +221,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 		return "ScaledObject doesn't have correct Idle/Min/Max Replica Counts specification", err
 	}
 
-	err = r.checkTriggerNamesAreUnique(scaledObject)
+	err = r.checkTriggers(scaledObject)
 	if err != nil {
 		return "ScaledObject doesn't have correct triggers specification", err
 	}
@@ -337,14 +337,24 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 	return gvkr, nil
 }
 
-// checkTriggerNamesAreUnique checks that all triggerNames in ScaledObject are unique
-func (r *ScaledObjectReconciler) checkTriggerNamesAreUnique(scaledObject *kedav1alpha1.ScaledObject) error {
+// checkTriggers checks that general trigger metadata are valid, it checks:
+// - triggerNames in ScaledObject are unique
+// - useCachedMetrics is defined only for a supported triggers
+func (r *ScaledObjectReconciler) checkTriggers(scaledObject *kedav1alpha1.ScaledObject) error {
 	triggersCount := len(scaledObject.Spec.Triggers)
 
 	if triggersCount > 1 {
 		triggerNames := make(map[string]bool, triggersCount)
 		for i := 0; i < triggersCount; i++ {
-			name := scaledObject.Spec.Triggers[i].Name
+			trigger := scaledObject.Spec.Triggers[i]
+
+			if trigger.UseCachedMetrics {
+				if trigger.Type == "cpu" || trigger.Type == "memory" || trigger.Type == "cron" {
+					return fmt.Errorf("property \"useCachedMetrics\" is not supported for %q scaler", trigger.Type)
+				}
+			}
+
+			name := trigger.Name
 			if name != "" {
 				if _, found := triggerNames[name]; found {
 					// found duplicate name

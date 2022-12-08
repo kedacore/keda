@@ -158,26 +158,6 @@ func parseAzureQueueMetadata(config *ScalerConfig, logger logr.Logger) (*azureQu
 	return &meta, config.PodIdentity, nil
 }
 
-// IsActive determines whether this scaler is currently active
-func (s *azureQueueScaler) IsActive(ctx context.Context) (bool, error) {
-	length, err := azure.GetAzureQueueLength(
-		ctx,
-		s.httpClient,
-		s.podIdentity,
-		s.metadata.connection,
-		s.metadata.queueName,
-		s.metadata.accountName,
-		s.metadata.endpointSuffix,
-	)
-
-	if err != nil {
-		s.logger.Error(err, "error)")
-		return false, err
-	}
-
-	return length > s.metadata.activationTargetQueueLength, nil
-}
-
 func (s *azureQueueScaler) Close(context.Context) error {
 	return nil
 }
@@ -193,8 +173,8 @@ func (s *azureQueueScaler) GetMetricSpecForScaling(context.Context) []v2.MetricS
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *azureQueueScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
+func (s *azureQueueScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	queuelen, err := azure.GetAzureQueueLength(
 		ctx,
 		s.httpClient,
@@ -207,10 +187,10 @@ func (s *azureQueueScaler) GetMetrics(ctx context.Context, metricName string) ([
 
 	if err != nil {
 		s.logger.Error(err, "error getting queue length")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(queuelen))
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, queuelen > s.metadata.activationTargetQueueLength, nil
 }

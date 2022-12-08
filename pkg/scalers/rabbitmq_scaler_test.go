@@ -263,7 +263,7 @@ func TestGetQueueInfo(t *testing.T) {
 		}
 
 		ctx := context.TODO()
-		active, err := s.IsActive(ctx)
+		_, active, err := s.GetMetricsAndActivity(ctx, "Metric")
 
 		if testData.responseStatus == http.StatusOK {
 			if err != nil {
@@ -400,7 +400,7 @@ func TestGetQueueInfoWithRegex(t *testing.T) {
 		}
 
 		ctx := context.TODO()
-		active, err := s.IsActive(ctx)
+		_, active, err := s.GetMetricsAndActivity(ctx, "Metric")
 
 		if testData.responseStatus == http.StatusOK {
 			if err != nil {
@@ -479,7 +479,7 @@ func TestGetPageSizeWithRegex(t *testing.T) {
 		}
 
 		ctx := context.TODO()
-		active, err := s.IsActive(ctx)
+		_, active, err := s.GetMetricsAndActivity(ctx, "Metric")
 
 		if err != nil {
 			t.Error("Expect success", err)
@@ -600,7 +600,7 @@ func TestRegexQueueMissingError(t *testing.T) {
 		}
 
 		ctx := context.TODO()
-		_, err = s.IsActive(ctx)
+		_, _, err = s.GetMetricsAndActivity(ctx, "Metric")
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}

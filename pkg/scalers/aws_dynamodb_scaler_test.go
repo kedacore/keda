@@ -305,7 +305,7 @@ func TestDynamoGetMetrics(t *testing.T) {
 		t.Run(meta.tableName, func(t *testing.T) {
 			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}, logr.Discard()}
 
-			value, err := scaler.GetMetrics(context.Background(), "aws-dynamodb")
+			value, _, err := scaler.GetMetricsAndActivity(context.Background(), "aws-dynamodb")
 			switch meta.tableName {
 			case testAWSDynamoErrorTable:
 				assert.Error(t, err, "expect error because of dynamodb api error")
@@ -341,7 +341,7 @@ func TestDynamoIsActive(t *testing.T) {
 		t.Run(meta.tableName, func(t *testing.T) {
 			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}, logr.Discard()}
 
-			value, err := scaler.IsActive(context.Background())
+			_, value, err := scaler.GetMetricsAndActivity(context.Background(), "aws-dynamodb")
 			switch meta.tableName {
 			case testAWSDynamoErrorTable:
 				assert.Error(t, err, "expect error because of cloudwatch api error")

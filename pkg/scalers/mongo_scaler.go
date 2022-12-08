@@ -202,15 +202,6 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 	return &meta, connStr, nil
 }
 
-func (s *mongoDBScaler) IsActive(ctx context.Context) (bool, error) {
-	result, err := s.getQueryResult(ctx)
-	if err != nil {
-		s.logger.Error(err, fmt.Sprintf("failed to get query result by mongoDB, because of %v", err))
-		return false, err
-	}
-	return result > s.metadata.activationQueryValue, nil
-}
-
 // Close disposes of mongoDB connections
 func (s *mongoDBScaler) Close(ctx context.Context) error {
 	if s.client != nil {
@@ -244,16 +235,16 @@ func (s *mongoDBScaler) getQueryResult(ctx context.Context) (int64, error) {
 	return docsNum, nil
 }
 
-// GetMetrics query from mongoDB,and return to external metrics
-func (s *mongoDBScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity query from mongoDB,and return to external metrics
+func (s *mongoDBScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	num, err := s.getQueryResult(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("failed to inspect momgoDB, because of %v", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("failed to inspect momgoDB, because of %v", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(num))
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.activationQueryValue, nil
 }
 
 // GetMetricSpecForScaling get the query value for scaling

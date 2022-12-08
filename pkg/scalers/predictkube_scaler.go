@@ -23,10 +23,8 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/xhit/go-str2duration/v2"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	health "google.golang.org/grpc/health/grpc_health_v1"
-	"google.golang.org/grpc/status"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -173,31 +171,6 @@ func NewPredictKubeScaler(ctx context.Context, config *ScalerConfig) (*PredictKu
 	return s, nil
 }
 
-// IsActive returns true if we are able to get metrics from PredictKube
-func (s *PredictKubeScaler) IsActive(ctx context.Context) (bool, error) {
-	results, err := s.doQuery(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	resp, err := s.healthClient.Check(ctx, &health.HealthCheckRequest{})
-
-	if resp == nil {
-		return false, fmt.Errorf("can't connect grpc server: empty server response, code: %v", codes.Unknown)
-	}
-
-	if err != nil {
-		return false, fmt.Errorf("can't connect grpc server: %v, code: %v", err, status.Code(err))
-	}
-
-	var y float64
-	if len(results) > 0 {
-		y = results[len(results)-1].Value
-	}
-
-	return y > s.metadata.activationThreshold, nil
-}
-
 func (s *PredictKubeScaler) Close(_ context.Context) error {
 	if s != nil && s.grpcConn != nil {
 		return s.grpcConn.Close()
@@ -220,30 +193,29 @@ func (s *PredictKubeScaler) GetMetricSpecForScaling(context.Context) []v2.Metric
 	return []v2.MetricSpec{metricSpec}
 }
 
-func (s *PredictKubeScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
-	value, err := s.doPredictRequest(ctx)
+func (s *PredictKubeScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	value, activationValue, err := s.doPredictRequest(ctx)
 	if err != nil {
 		s.logger.Error(err, "error executing query to predict controller service")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	if value == 0 {
-		err = errors.New("empty response after predict request")
-		s.logger.Error(err, "")
-		return nil, err
+		s.logger.V(1).Info("empty response after predict request")
+		return []external_metrics.ExternalMetricValue{}, false, nil
 	}
 
 	s.logger.V(1).Info(fmt.Sprintf("predict value is: %f", value))
 
 	metric := GenerateMetricInMili(metricName, value)
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, activationValue > s.metadata.activationThreshold, nil
 }
 
-func (s *PredictKubeScaler) doPredictRequest(ctx context.Context) (float64, error) {
+func (s *PredictKubeScaler) doPredictRequest(ctx context.Context) (float64, float64, error) {
 	results, err := s.doQuery(ctx)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
 	resp, err := s.grpcClient.GetPredictMetric(ctx, &pb.ReqGetPredictMetric{
@@ -252,7 +224,7 @@ func (s *PredictKubeScaler) doPredictRequest(ctx context.Context) (float64, erro
 	})
 
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
 	var y float64
@@ -267,7 +239,7 @@ func (s *PredictKubeScaler) doPredictRequest(ctx context.Context) (float64, erro
 			return y
 		}
 		return x
-	}(x, y), nil
+	}(x, y), y, nil
 }
 
 func (s *PredictKubeScaler) doQuery(ctx context.Context) ([]*commonproto.Item, error) {

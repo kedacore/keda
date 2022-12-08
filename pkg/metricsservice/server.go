@@ -23,13 +23,13 @@ import (
 
 	"google.golang.org/grpc"
 	"k8s.io/metrics/pkg/apis/external_metrics/v1beta1"
-	ctrl "sigs.k8s.io/controller-runtime"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/kedacore/keda/v2/pkg/metricsservice/api"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 )
 
-var log = ctrl.Log.WithName("grpc_server")
+var log = logf.Log.WithName("grpc_server")
 
 type GrpcServer struct {
 	server        *grpc.Server
@@ -40,20 +40,23 @@ type GrpcServer struct {
 
 // GetMetrics returns metrics values in form of ExternalMetricValueList for specified ScaledObject reference
 func (s *GrpcServer) GetMetrics(ctx context.Context, in *api.ScaledObjectRef) (*api.Response, error) {
+	response := api.Response{}
 	v1beta1ExtMetrics := &v1beta1.ExternalMetricValueList{}
-	extMetrics, exportedMetrics, err := (*s.scalerHandler).GetExternalMetrics(ctx, in.Name, in.Namespace, in.MetricName)
+	extMetrics, exportedMetrics, err := (*s.scalerHandler).GetScaledObjectMetrics(ctx, in.Name, in.Namespace, in.MetricName)
+	response.PromMetrics = exportedMetrics
 	if err != nil {
-		return nil, fmt.Errorf("error when getting metric values %s", err)
+		return &response, fmt.Errorf("error when getting metric values %s", err)
 	}
 
 	err = v1beta1.Convert_external_metrics_ExternalMetricValueList_To_v1beta1_ExternalMetricValueList(extMetrics, v1beta1ExtMetrics, nil)
 	if err != nil {
-		return nil, fmt.Errorf("error when converting metric values %s", err)
+		return &response, fmt.Errorf("error when converting metric values %s", err)
 	}
 
 	log.V(1).WithValues("scaledObjectName", in.Name, "scaledObjectNamespace", in.Namespace, "metrics", v1beta1ExtMetrics).Info("Providing metrics")
+	response.Metrics = v1beta1ExtMetrics
 
-	return &api.Response{Metrics: v1beta1ExtMetrics, PromMetrics: exportedMetrics}, nil
+	return &response, nil
 }
 
 // NewGrpcServer creates a new instance of GrpcServer

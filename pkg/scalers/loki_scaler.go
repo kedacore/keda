@@ -158,17 +158,6 @@ func parseLokiMetadata(config *ScalerConfig) (meta *lokiMetadata, err error) {
 	return meta, nil
 }
 
-// IsActive validates the loki query result against the activation threshold
-func (s *lokiScaler) IsActive(ctx context.Context) (bool, error) {
-	val, err := s.ExecuteLokiQuery(ctx)
-	if err != nil {
-		s.logger.Error(err, "error executing loki query")
-		return false, err
-	}
-
-	return val > s.metadata.activationThreshold, nil
-}
-
 // Close returns a nil error
 func (s *lokiScaler) Close(context.Context) error {
 	return nil
@@ -273,15 +262,15 @@ func (s *lokiScaler) ExecuteLokiQuery(ctx context.Context) (float64, error) {
 	return v, nil
 }
 
-// GetMetrics returns an external metric value for the loki
-func (s *lokiScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity returns an external metric value for the loki
+func (s *lokiScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	val, err := s.ExecuteLokiQuery(ctx)
 	if err != nil {
 		s.logger.Error(err, "error executing loki query")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, val)
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.activationThreshold, nil
 }

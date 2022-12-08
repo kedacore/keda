@@ -273,17 +273,17 @@ func computeQueryWindow(current time.Time, metricPeriodSec, metricEndTimeOffsetS
 	return
 }
 
-func (s *awsCloudwatchScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+func (s *awsCloudwatchScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	metricValue, err := s.GetCloudwatchMetrics()
 
 	if err != nil {
 		s.logger.Error(err, "Error getting metric value")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, metricValue)
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, metricValue > s.metadata.activationTargetMetricValue, nil
 }
 
 func (s *awsCloudwatchScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
@@ -303,16 +303,6 @@ func (s *awsCloudwatchScaler) GetMetricSpecForScaling(context.Context) []v2.Metr
 	}
 	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2.MetricSpec{metricSpec}
-}
-
-func (s *awsCloudwatchScaler) IsActive(ctx context.Context) (bool, error) {
-	val, err := s.GetCloudwatchMetrics()
-
-	if err != nil {
-		return false, err
-	}
-
-	return val > s.metadata.activationTargetMetricValue, nil
 }
 
 func (s *awsCloudwatchScaler) Close(context.Context) error {

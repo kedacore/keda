@@ -87,17 +87,6 @@ func parseWorkloadMetadata(config *ScalerConfig) (*kubernetesWorkloadMetadata, e
 	return meta, nil
 }
 
-// IsActive determines if we need to scale from zero
-func (s *kubernetesWorkloadScaler) IsActive(ctx context.Context) (bool, error) {
-	pods, err := s.getMetricValue(ctx)
-
-	if err != nil {
-		return false, err
-	}
-
-	return float64(pods) > s.metadata.activationValue, nil
-}
-
 // Close no need for kubernetes workload scaler
 func (s *kubernetesWorkloadScaler) Close(context.Context) error {
 	return nil
@@ -115,16 +104,16 @@ func (s *kubernetesWorkloadScaler) GetMetricSpecForScaling(context.Context) []v2
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics returns value for a supported metric
-func (s *kubernetesWorkloadScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity returns value for a supported metric
+func (s *kubernetesWorkloadScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	pods, err := s.getMetricValue(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting kubernetes workload: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting kubernetes workload: %s", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(pods))
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, float64(pods) > s.metadata.activationValue, nil
 }
 
 func (s *kubernetesWorkloadScaler) getMetricValue(ctx context.Context) (int64, error) {

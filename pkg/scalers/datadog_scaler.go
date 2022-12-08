@@ -262,17 +262,6 @@ func (s *datadogScaler) Close(context.Context) error {
 	return nil
 }
 
-// IsActive checks whether the scaler is active
-func (s *datadogScaler) IsActive(ctx context.Context) (bool, error) {
-	num, err := s.getQueryResult(ctx)
-
-	if err != nil {
-		return false, err
-	}
-
-	return num > s.metadata.activationQueryValue, nil
-}
-
 // getQueryResult returns result of the scaler query
 func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 	ctx = context.WithValue(
@@ -383,17 +372,17 @@ func (s *datadogScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *datadogScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
+func (s *datadogScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	num, err := s.getQueryResult(ctx)
 	if err != nil {
 		s.logger.Error(err, "error getting metrics from Datadog")
-		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error getting metrics from Datadog: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting metrics from Datadog: %s", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, num)
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.activationQueryValue, nil
 }
 
 // Find the largest value in a slice of floats

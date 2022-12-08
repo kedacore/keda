@@ -306,17 +306,6 @@ func parseKafkaMetadata(config *ScalerConfig, logger logr.Logger) (kafkaMetadata
 	return meta, nil
 }
 
-// IsActive determines if we need to scale from zero
-// When replicas is zero, all lag will be deemed as persistent, hence use totalLagWithPersistent to determine scaling.
-func (s *kafkaScaler) IsActive(ctx context.Context) (bool, error) {
-	_, totalLagWithPersistent, err := s.getTotalLag()
-	if err != nil {
-		return false, err
-	}
-
-	return totalLagWithPersistent > s.metadata.activationLagThreshold, nil
-}
-
 func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin, error) {
 	config := sarama.NewConfig()
 	config.Version = metadata.version
@@ -574,15 +563,15 @@ func (s *kafkaScaler) getConsumerAndProducerOffsets(topicPartitions map[string][
 	return consumerRes.consumerOffsets, producerRes.producerOffsets, nil
 }
 
-// GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
-	totalLag, _, err := s.getTotalLag()
+// GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
+func (s *kafkaScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	totalLag, totalLagWithPersistent, err := s.getTotalLag()
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 	metric := GenerateMetricInMili(metricName, float64(totalLag))
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, totalLagWithPersistent > s.metadata.activationLagThreshold, nil
 }
 
 // getTotalLag returns totalLag, totalLagWithPersistent, error

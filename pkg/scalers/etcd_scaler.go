@@ -169,16 +169,6 @@ func getEtcdClients(metadata *etcdMetadata) (*clientv3.Client, error) {
 	return cli, nil
 }
 
-// IsActive determines if we need to scale from zero
-func (s *etcdScaler) IsActive(ctx context.Context) (bool, error) {
-	v, err := s.getMetricValue(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	return v > s.metadata.activationValue, nil
-}
-
 // Close closes the etcd client
 func (s *etcdScaler) Close(context.Context) error {
 	if s.client != nil {
@@ -187,15 +177,15 @@ func (s *etcdScaler) Close(context.Context) error {
 	return nil
 }
 
-// GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *etcdScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
+func (s *etcdScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	v, err := s.getMetricValue(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error getting metric value: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting metric value: %s", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, v)
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return append([]external_metrics.ExternalMetricValue{}, metric), v > s.metadata.activationValue, nil
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA.

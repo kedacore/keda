@@ -180,23 +180,6 @@ func parseAzureBlobMetadata(config *ScalerConfig, logger logr.Logger) (*azure.Bl
 	return &meta, config.PodIdentity, nil
 }
 
-// GetScaleDecision is a func
-func (s *azureBlobScaler) IsActive(ctx context.Context) (bool, error) {
-	length, err := azure.GetAzureBlobListLength(
-		ctx,
-		s.httpClient,
-		s.podIdentity,
-		s.metadata,
-	)
-
-	if err != nil {
-		s.logger.Error(err, "error")
-		return false, err
-	}
-
-	return length > s.metadata.ActivationTargetBlobCount, nil
-}
-
 func (s *azureBlobScaler) Close(context.Context) error {
 	return nil
 }
@@ -212,8 +195,8 @@ func (s *azureBlobScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSp
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *azureBlobScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
+func (s *azureBlobScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	bloblen, err := azure.GetAzureBlobListLength(
 		ctx,
 		s.httpClient,
@@ -223,10 +206,10 @@ func (s *azureBlobScaler) GetMetrics(ctx context.Context, metricName string) ([]
 
 	if err != nil {
 		s.logger.Error(err, "error getting blob list length")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(bloblen))
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, bloblen > s.metadata.ActivationTargetBlobCount, nil
 }

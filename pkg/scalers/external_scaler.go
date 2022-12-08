@@ -217,6 +217,23 @@ func (s *externalScaler) GetMetrics(ctx context.Context, metricName string) ([]e
 	return metrics, nil
 }
 
+// TODO merge isActive() and GetMetrics()
+func (s *externalScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	metrics, err := s.GetMetrics(ctx, metricName)
+	if err != nil {
+		s.logger.Error(err, "error getting metrics")
+		return []external_metrics.ExternalMetricValue{}, false, err
+	}
+
+	isActive, err := s.IsActive(ctx)
+	if err != nil {
+		s.logger.Error(err, "error getting activity status")
+		return []external_metrics.ExternalMetricValue{}, false, err
+	}
+
+	return metrics, isActive, nil
+}
+
 // handleIsActiveStream is the only writer to the active channel and will close it on return.
 func (s *externalPushScaler) Run(ctx context.Context, active chan<- bool) {
 	defer close(active)

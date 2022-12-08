@@ -64,34 +64,20 @@ func (mr *MockScalerMockRecorder) GetMetricSpecForScaling(ctx interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetricSpecForScaling", reflect.TypeOf((*MockScaler)(nil).GetMetricSpecForScaling), ctx)
 }
 
-// GetMetrics mocks base method.
-func (m *MockScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity mocks base method.
+func (m *MockScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMetrics", ctx, metricName)
+	ret := m.ctrl.Call(m, "GetMetricsAndActivity", ctx, metricName)
 	ret0, _ := ret[0].([]external_metrics.ExternalMetricValue)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(bool)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
-// GetMetrics indicates an expected call of GetMetrics.
-func (mr *MockScalerMockRecorder) GetMetrics(ctx, metricName interface{}) *gomock.Call {
+// GetMetricsAndActivity indicates an expected call of GetMetricsAndActivity.
+func (mr *MockScalerMockRecorder) GetMetricsAndActivity(ctx, metricName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetrics", reflect.TypeOf((*MockScaler)(nil).GetMetrics), ctx, metricName)
-}
-
-// IsActive mocks base method.
-func (m *MockScaler) IsActive(ctx context.Context) (bool, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsActive", ctx)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// IsActive indicates an expected call of IsActive.
-func (mr *MockScalerMockRecorder) IsActive(ctx interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsActive", reflect.TypeOf((*MockScaler)(nil).IsActive), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetricsAndActivity", reflect.TypeOf((*MockScaler)(nil).GetMetricsAndActivity), ctx, metricName)
 }
 
 // MockPushScaler is a mock of PushScaler interface.
@@ -145,34 +131,20 @@ func (mr *MockPushScalerMockRecorder) GetMetricSpecForScaling(ctx interface{}) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetricSpecForScaling", reflect.TypeOf((*MockPushScaler)(nil).GetMetricSpecForScaling), ctx)
 }
 
-// GetMetrics mocks base method.
-func (m *MockPushScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity mocks base method.
+func (m *MockPushScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMetrics", ctx, metricName)
+	ret := m.ctrl.Call(m, "GetMetricsAndActivity", ctx, metricName)
 	ret0, _ := ret[0].([]external_metrics.ExternalMetricValue)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(bool)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
-// GetMetrics indicates an expected call of GetMetrics.
-func (mr *MockPushScalerMockRecorder) GetMetrics(ctx, metricName interface{}) *gomock.Call {
+// GetMetricsAndActivity indicates an expected call of GetMetricsAndActivity.
+func (mr *MockPushScalerMockRecorder) GetMetricsAndActivity(ctx, metricName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetrics", reflect.TypeOf((*MockPushScaler)(nil).GetMetrics), ctx, metricName)
-}
-
-// IsActive mocks base method.
-func (m *MockPushScaler) IsActive(ctx context.Context) (bool, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsActive", ctx)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// IsActive indicates an expected call of IsActive.
-func (mr *MockPushScalerMockRecorder) IsActive(ctx interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsActive", reflect.TypeOf((*MockPushScaler)(nil).IsActive), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetricsAndActivity", reflect.TypeOf((*MockPushScaler)(nil).GetMetricsAndActivity), ctx, metricName)
 }
 
 // Run mocks base method.

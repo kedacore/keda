@@ -11,8 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodbstreams/dynamodbstreamsiface"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -148,15 +146,6 @@ func getDynamoDBStreamsArn(ctx context.Context, db dynamodbiface.DynamoDBAPI, ta
 	return tableOutput.Table.LatestStreamArn, nil
 }
 
-// IsActive determines if we need to scale from zero
-func (s *awsDynamoDBStreamsScaler) IsActive(ctx context.Context) (bool, error) {
-	count, err := s.GetDynamoDBStreamShardCount(ctx)
-	if err != nil {
-		return false, err
-	}
-	return count > s.metadata.activationTargetShardCount, nil
-}
-
 func (s *awsDynamoDBStreamsScaler) Close(context.Context) error {
 	return nil
 }
@@ -172,22 +161,18 @@ func (s *awsDynamoDBStreamsScaler) GetMetricSpecForScaling(context.Context) []v2
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *awsDynamoDBStreamsScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
+func (s *awsDynamoDBStreamsScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	shardCount, err := s.GetDynamoDBStreamShardCount(ctx)
 
 	if err != nil {
 		s.logger.Error(err, "error getting shard count")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(shardCount, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
+	metric := GenerateMetricInMili(metricName, float64(shardCount))
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, shardCount > s.metadata.activationTargetShardCount, nil
 }
 
 // Get DynamoDB Stream Shard Count

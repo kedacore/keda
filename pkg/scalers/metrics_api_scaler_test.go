@@ -219,7 +219,7 @@ func TestBearerAuth(t *testing.T) {
 		t.Errorf("Error creating the Scaler")
 	}
 
-	_, err = s.GetMetrics(context.TODO(), "test-metric")
+	_, _, err = s.GetMetricsAndActivity(context.TODO(), "test-metric")
 	if err != nil {
 		t.Errorf("Error getting the metric")
 	}

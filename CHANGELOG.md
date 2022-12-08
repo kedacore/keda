@@ -38,7 +38,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-
+- **General**: **EXPERIMENTAL** Adding an option to cache metric values for a scaler during the polling interval ([#2282](https://github.com/kedacore/keda/issues/2282))
 - **General:** Introduce new CouchDB Scaler ([#3746](https://github.com/kedacore/keda/issues/3746))
 - **General**: Introduction deprecation & breaking change policy ([Governance #68](https://github.com/kedacore/governance/issues/68))
 - **General**: Consolidate all exposed Prometheus Metrics in KEDA Operator ([#3919](https://github.com/kedacore/keda/issues/3919))
@@ -47,6 +47,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General:** Introduce new Loki Scaler ([#3699](https://github.com/kedacore/keda/issues/3699))
 - **General:** Introduce new Etcd Scaler ([#3880](https://github.com/kedacore/keda/issues/3880))
 - **General**: Introduce rate-limitting parameters to KEDA manager to allow override of client defaults ([#3730](https://github.com/kedacore/keda/issues/3730))
+- **General**: Introduction deprecation & breaking change policy ([Governance #68](https://github.com/kedacore/governance/issues/68))
 - **General**: Provide off-the-shelf Grafana dashboard for application autoscaling ([Docs](https://keda.sh/docs/2.9/operate/prometheus/) | [#3911](https://github.com/kedacore/keda/issues/3911))
 - **General**: Provide Prometheus metric with indication of total number of custom resources per namespace for each custom resource type (CRD). ([#2637](https://github.com/kedacore/keda/issues/2637)|[#2638](https://github.com/kedacore/keda/issues/2638)|[#2639](https://github.com/kedacore/keda/issues/2639))
 - **General**: Provide Prometheus metric with indication of total number of triggers per trigger type in `ScaledJob`/`ScaledObject`. ([#3663](https://github.com/kedacore/keda/issues/3663))

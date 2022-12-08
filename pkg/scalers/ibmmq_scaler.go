@@ -164,15 +164,6 @@ func parseIBMMQMetadata(config *ScalerConfig) (*IBMMQMetadata, error) {
 	return &meta, nil
 }
 
-// IsActive returns true if there are messages to be processed/if we need to scale from zero
-func (s *IBMMQScaler) IsActive(ctx context.Context) (bool, error) {
-	queueDepth, err := s.getQueueDepthViaHTTP(ctx)
-	if err != nil {
-		return false, fmt.Errorf("error inspecting IBM MQ queue depth: %s", err)
-	}
-	return queueDepth > s.metadata.activationQueueDepth, nil
-}
-
 // getQueueDepthViaHTTP returns the depth of the MQ Queue from the Admin endpoint
 func (s *IBMMQScaler) getQueueDepthViaHTTP(ctx context.Context) (int64, error) {
 	queue := s.metadata.queueName
@@ -228,14 +219,14 @@ func (s *IBMMQScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *IBMMQScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
+func (s *IBMMQScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	queueDepth, err := s.getQueueDepthViaHTTP(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting IBM MQ queue depth: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting IBM MQ queue depth: %s", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(queueDepth))
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, queueDepth > s.metadata.activationQueueDepth, nil
 }

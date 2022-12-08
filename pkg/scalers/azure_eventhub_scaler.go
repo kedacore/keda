@@ -431,3 +431,20 @@ func (s *azureEventHubScaler) Close(ctx context.Context) error {
 
 	return nil
 }
+
+// TODO merge isActive() and GetMetrics()
+func (s *azureEventHubScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	metrics, err := s.GetMetrics(ctx, metricName)
+	if err != nil {
+		s.logger.Error(err, "error getting metrics")
+		return []external_metrics.ExternalMetricValue{}, false, err
+	}
+
+	isActive, err := s.IsActive(ctx)
+	if err != nil {
+		s.logger.Error(err, "error getting activity status")
+		return []external_metrics.ExternalMetricValue{}, false, err
+	}
+
+	return metrics, isActive, nil
+}

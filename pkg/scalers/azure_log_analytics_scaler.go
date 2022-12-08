@@ -50,7 +50,6 @@ const (
 type azureLogAnalyticsScaler struct {
 	metricType v2.MetricTargetType
 	metadata   *azureLogAnalyticsMetadata
-	cache      *sessionCache
 	name       string
 	namespace  string
 	httpClient *http.Client
@@ -70,11 +69,6 @@ type azureLogAnalyticsMetadata struct {
 	scalerIndex             int
 	logAnalyticsResourceURL string
 	activeDirectoryEndpoint string
-}
-
-type sessionCache struct {
-	metricValue     float64
-	metricThreshold float64
 }
 
 type tokenData struct {
@@ -130,7 +124,6 @@ func NewAzureLogAnalyticsScaler(config *ScalerConfig) (Scaler, error) {
 	return &azureLogAnalyticsScaler{
 		metricType: metricType,
 		metadata:   azureLogAnalyticsMetadata,
-		cache:      &sessionCache{metricValue: -1, metricThreshold: -1},
 		name:       config.ScalableObjectName,
 		namespace:  config.ScalableObjectNamespace,
 		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
@@ -252,69 +245,31 @@ func getParameterFromConfig(config *ScalerConfig, parameter string, checkAuthPar
 	return "", fmt.Errorf("error parsing metadata. Details: %s was not found in metadata. Check your ScaledObject configuration", parameter)
 }
 
-// IsActive determines if we need to scale from zero
-func (s *azureLogAnalyticsScaler) IsActive(ctx context.Context) (bool, error) {
-	err := s.updateCache(ctx)
-
-	if err != nil {
-		return false, fmt.Errorf("failed to execute IsActive function. Scaled object: %s. Namespace: %s. Inner Error: %v", s.name, s.namespace, err)
-	}
-
-	return s.cache.metricValue > s.metadata.activationThreshold, nil
-}
-
-func (s *azureLogAnalyticsScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
-	err := s.updateCache(ctx)
-
-	if err != nil {
-		s.logger.V(1).Info("failed to get metric spec.", "Scaled object", s.name, "Namespace", s.namespace, "Inner Error", err)
-		return nil
-	}
-
+func (s *azureLogAnalyticsScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: GetMetricTargetMili(s.metricType, s.cache.metricThreshold),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}
 	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *azureLogAnalyticsScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
+func (s *azureLogAnalyticsScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	receivedMetric, err := s.getMetricData(ctx)
 
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("failed to get metrics. Scaled object: %s. Namespace: %s. Inner Error: %v", s.name, s.namespace, err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("failed to get metrics. Scaled object: %s. Namespace: %s. Inner Error: %v", s.name, s.namespace, err)
 	}
 
 	metric := GenerateMetricInMili(metricName, receivedMetric.value)
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, receivedMetric.value > s.metadata.activationThreshold, nil
 }
 
 func (s *azureLogAnalyticsScaler) Close(context.Context) error {
-	return nil
-}
-
-func (s *azureLogAnalyticsScaler) updateCache(ctx context.Context) error {
-	if s.cache.metricValue < 0 {
-		receivedMetric, err := s.getMetricData(ctx)
-
-		if err != nil {
-			return err
-		}
-
-		s.cache.metricValue = receivedMetric.value
-
-		if receivedMetric.threshold > 0 {
-			s.cache.metricThreshold = receivedMetric.threshold
-		} else {
-			s.cache.metricThreshold = s.metadata.threshold
-		}
-	}
-
 	return nil
 }
 
