@@ -92,6 +92,11 @@ issues:
     - path: stan_scaler.go
       linters:
         - dupl
+  # Exclude for datadog_scaler, reason:
+  # Introduce new parameters to fix DataDog API response issue #3906 (PR #3954)
+    - path: datadog_scaler.go
+      linters:
+        - gocyclo
 
 linters-settings:
   funlen:
