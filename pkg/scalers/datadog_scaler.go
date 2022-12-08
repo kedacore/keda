@@ -305,9 +305,9 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 		points := series[i].GetPointlist()
 		index := len(points) - 1
 		// Find out the last point != nil
-		for i := len(points) - 1; i >= 0; i-- {
-			if len(points[index]) >= 2 && points[i][1] != nil {
-				index = i
+		for j := len(points) - 1; j >= 0; j-- {
+			if len(points[index]) >= 2 && points[j][1] != nil {
+				index = j
 				break
 			}
 		}
