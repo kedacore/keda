@@ -88,6 +88,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General:** Respect optional parameter inside envs for ScaledJobs ([#3568](https://github.com/kedacore/keda/issues/3568))
 - **General:** Close is called twice on PushScaler's deletion ([#3881](https://github.com/kedacore/keda/issues/3881))
 - **Azure Blob Scaler** Store forgotten logger ([#3811](https://github.com/kedacore/keda/issues/3811))
+- **Datadog Scaler** The last data point of some specific query is always null ([#3906](https://github.com/kedacore/keda/issues/3906))
 - **GCP Stackdriver Scalar:** Update Stackdriver client to handle detecting double and int64 value types ([#3777](https://github.com/kedacore/keda/issues/3777))
 - **New Relic Scaler** Store forgotten logger ([#3945](https://github.com/kedacore/keda/issues/3945))
 - **Prometheus Scaler:** Treat Inf the same as Null result ([#3644](https://github.com/kedacore/keda/issues/3644))

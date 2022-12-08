@@ -92,6 +92,11 @@ issues:
     - path: stan_scaler.go
       linters:
         - dupl
+  # Exclude for datadog_scaler, reason:
+  # Introduce new parameters to fix DataDog API response issue #3906 (PR #3954)
+    - path: datadog_scaler.go
+      linters:
+        - gocyclo
   # Exclude for mongo_scaler and couchdb_scaler, reason:
   # pkg/scalers/couchdb_scaler.go:144: 144-174 lines are duplicate of `pkg/scalers/mongo_scaler.go:155-185` (dupl)
     - path: couchdb_scaler.go
@@ -112,5 +117,3 @@ linters-settings:
       - standard
       - default
       - prefix(github.com/kedacore/keda)
-     
-     
