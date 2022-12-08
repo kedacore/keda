@@ -119,7 +119,7 @@ func parseEtcdMetadata(config *ScalerConfig) (*etcdMetadata, error) {
 	}
 
 	value, err := strconv.ParseFloat(config.TriggerMetadata[value], 64)
-	if err != nil || meta.value <= 0 {
+	if err != nil || value <= 0 {
 		return nil, fmt.Errorf("value must be a float greater than 0")
 	}
 	meta.value = value
@@ -136,7 +136,7 @@ func parseEtcdMetadata(config *ScalerConfig) (*etcdMetadata, error) {
 	meta.watchProgressNotifyInterval = defaultWatchProgressNotifyInterval
 	if val, ok := config.TriggerMetadata[watchProgressNotifyInterval]; ok {
 		interval, err := strconv.Atoi(val)
-		if err != nil || meta.watchProgressNotifyInterval <= 0 {
+		if err != nil || interval <= 0 {
 			return nil, fmt.Errorf("watchProgressNotifyInterval must be a int greater than 0")
 		}
 		meta.watchProgressNotifyInterval = interval
