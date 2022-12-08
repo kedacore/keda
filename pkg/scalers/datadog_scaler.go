@@ -33,7 +33,7 @@ type datadogMetadata struct {
 	vType                    v2.MetricTargetType
 	metricName               string
 	age                      int
-	timeWindowOffset         int // Delay in seconds to wait for the metric to be available
+	timeWindowOffset         int
 	lastAvailablePointOffset int
 	useFiller                bool
 	fillValue                float64
