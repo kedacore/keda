@@ -27,6 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/scale"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -64,10 +65,11 @@ type scaleHandler struct {
 	recorder          record.EventRecorder
 	scalerCaches      map[string]*cache.ScalersCache
 	lock              *sync.RWMutex
+	secretsLister     corev1listers.SecretLister
 }
 
 // NewScaleHandler creates a ScaleHandler object
-func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout time.Duration, recorder record.EventRecorder) ScaleHandler {
+func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout time.Duration, recorder record.EventRecorder, secretsLister corev1listers.SecretLister) ScaleHandler {
 	return &scaleHandler{
 		client:            client,
 		logger:            logf.Log.WithName("scalehandler"),
@@ -77,6 +79,7 @@ func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, recon
 		recorder:          recorder,
 		scalerCaches:      map[string]*cache.ScalersCache{},
 		lock:              &sync.RWMutex{},
+		secretsLister:     secretsLister,
 	}
 }
 
@@ -465,7 +468,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 
 		factory := func() (scalers.Scaler, *scalers.ScalerConfig, error) {
 			if podTemplateSpec != nil {
-				resolvedEnv, err = resolver.ResolveContainerEnv(ctx, h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace)
+				resolvedEnv, err = resolver.ResolveContainerEnv(ctx, h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace, h.secretsLister)
 				if err != nil {
 					return nil, nil, fmt.Errorf("error resolving secrets for ScaleTarget: %s", err)
 				}
@@ -483,7 +486,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 				MetricType:              trigger.MetricType,
 			}
 
-			config.AuthParams, config.PodIdentity, err = resolver.ResolveAuthRefAndPodIdentity(ctx, h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace)
+			config.AuthParams, config.PodIdentity, err = resolver.ResolveAuthRefAndPodIdentity(ctx, h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace, h.secretsLister)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -552,6 +555,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewAzureServiceBusScaler(ctx, config)
 	case "cassandra":
 		return scalers.NewCassandraScaler(config)
+	case "couchdb":
+		return scalers.NewCouchDBScaler(ctx, config)
 	case "cpu":
 		return scalers.NewCPUMemoryScaler(corev1.ResourceCPU, config)
 	case "cron":

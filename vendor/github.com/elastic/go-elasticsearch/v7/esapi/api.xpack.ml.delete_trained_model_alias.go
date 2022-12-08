@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -40,9 +40,11 @@ func newMLDeleteTrainedModelAliasFunc(t Transport) MLDeleteTrainedModelAlias {
 // MLDeleteTrainedModelAlias - Deletes a model alias that refers to the trained model
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/delete-trained-models-aliases.html.
+//
 type MLDeleteTrainedModelAlias func(model_alias string, model_id string, o ...func(*MLDeleteTrainedModelAliasRequest)) (*Response, error)
 
 // MLDeleteTrainedModelAliasRequest configures the ML Delete Trained Model Alias API request.
+//
 type MLDeleteTrainedModelAliasRequest struct {
 	ModelAlias string
 	ModelID    string
@@ -58,6 +60,7 @@ type MLDeleteTrainedModelAliasRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r MLDeleteTrainedModelAliasRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -141,6 +144,7 @@ func (r MLDeleteTrainedModelAliasRequest) Do(ctx context.Context, transport Tran
 }
 
 // WithContext sets the request context.
+//
 func (f MLDeleteTrainedModelAlias) WithContext(v context.Context) func(*MLDeleteTrainedModelAliasRequest) {
 	return func(r *MLDeleteTrainedModelAliasRequest) {
 		r.ctx = v
@@ -148,6 +152,7 @@ func (f MLDeleteTrainedModelAlias) WithContext(v context.Context) func(*MLDelete
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f MLDeleteTrainedModelAlias) WithPretty() func(*MLDeleteTrainedModelAliasRequest) {
 	return func(r *MLDeleteTrainedModelAliasRequest) {
 		r.Pretty = true
@@ -155,6 +160,7 @@ func (f MLDeleteTrainedModelAlias) WithPretty() func(*MLDeleteTrainedModelAliasR
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f MLDeleteTrainedModelAlias) WithHuman() func(*MLDeleteTrainedModelAliasRequest) {
 	return func(r *MLDeleteTrainedModelAliasRequest) {
 		r.Human = true
@@ -162,6 +168,7 @@ func (f MLDeleteTrainedModelAlias) WithHuman() func(*MLDeleteTrainedModelAliasRe
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f MLDeleteTrainedModelAlias) WithErrorTrace() func(*MLDeleteTrainedModelAliasRequest) {
 	return func(r *MLDeleteTrainedModelAliasRequest) {
 		r.ErrorTrace = true
@@ -169,6 +176,7 @@ func (f MLDeleteTrainedModelAlias) WithErrorTrace() func(*MLDeleteTrainedModelAl
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f MLDeleteTrainedModelAlias) WithFilterPath(v ...string) func(*MLDeleteTrainedModelAliasRequest) {
 	return func(r *MLDeleteTrainedModelAliasRequest) {
 		r.FilterPath = v
@@ -176,6 +184,7 @@ func (f MLDeleteTrainedModelAlias) WithFilterPath(v ...string) func(*MLDeleteTra
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f MLDeleteTrainedModelAlias) WithHeader(h map[string]string) func(*MLDeleteTrainedModelAliasRequest) {
 	return func(r *MLDeleteTrainedModelAliasRequest) {
 		if r.Header == nil {
@@ -188,6 +197,7 @@ func (f MLDeleteTrainedModelAlias) WithHeader(h map[string]string) func(*MLDelet
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f MLDeleteTrainedModelAlias) WithOpaqueID(s string) func(*MLDeleteTrainedModelAliasRequest) {
 	return func(r *MLDeleteTrainedModelAliasRequest) {
 		if r.Header == nil {

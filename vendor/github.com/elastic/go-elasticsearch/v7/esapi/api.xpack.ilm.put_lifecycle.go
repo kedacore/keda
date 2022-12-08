@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,9 +41,11 @@ func newILMPutLifecycleFunc(t Transport) ILMPutLifecycle {
 // ILMPutLifecycle - Creates a lifecycle policy
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/ilm-put-lifecycle.html.
+//
 type ILMPutLifecycle func(policy string, o ...func(*ILMPutLifecycleRequest)) (*Response, error)
 
 // ILMPutLifecycleRequest configures the ILM Put Lifecycle API request.
+//
 type ILMPutLifecycleRequest struct {
 	Body io.Reader
 
@@ -60,6 +62,7 @@ type ILMPutLifecycleRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r ILMPutLifecycleRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -108,6 +111,10 @@ func (r ILMPutLifecycleRequest) Do(ctx context.Context, transport Transport) (*R
 		req.URL.RawQuery = q.Encode()
 	}
 
+	if r.Body != nil {
+		req.Header[headerContentType] = headerContentTypeJSON
+	}
+
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -118,10 +125,6 @@ func (r ILMPutLifecycleRequest) Do(ctx context.Context, transport Transport) (*R
 				}
 			}
 		}
-	}
-
-	if r.Body != nil && req.Header.Get(headerContentType) == "" {
-		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -143,6 +146,7 @@ func (r ILMPutLifecycleRequest) Do(ctx context.Context, transport Transport) (*R
 }
 
 // WithContext sets the request context.
+//
 func (f ILMPutLifecycle) WithContext(v context.Context) func(*ILMPutLifecycleRequest) {
 	return func(r *ILMPutLifecycleRequest) {
 		r.ctx = v
@@ -150,6 +154,7 @@ func (f ILMPutLifecycle) WithContext(v context.Context) func(*ILMPutLifecycleReq
 }
 
 // WithBody - The lifecycle policy definition to register.
+//
 func (f ILMPutLifecycle) WithBody(v io.Reader) func(*ILMPutLifecycleRequest) {
 	return func(r *ILMPutLifecycleRequest) {
 		r.Body = v
@@ -157,6 +162,7 @@ func (f ILMPutLifecycle) WithBody(v io.Reader) func(*ILMPutLifecycleRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f ILMPutLifecycle) WithPretty() func(*ILMPutLifecycleRequest) {
 	return func(r *ILMPutLifecycleRequest) {
 		r.Pretty = true
@@ -164,6 +170,7 @@ func (f ILMPutLifecycle) WithPretty() func(*ILMPutLifecycleRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f ILMPutLifecycle) WithHuman() func(*ILMPutLifecycleRequest) {
 	return func(r *ILMPutLifecycleRequest) {
 		r.Human = true
@@ -171,6 +178,7 @@ func (f ILMPutLifecycle) WithHuman() func(*ILMPutLifecycleRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f ILMPutLifecycle) WithErrorTrace() func(*ILMPutLifecycleRequest) {
 	return func(r *ILMPutLifecycleRequest) {
 		r.ErrorTrace = true
@@ -178,6 +186,7 @@ func (f ILMPutLifecycle) WithErrorTrace() func(*ILMPutLifecycleRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f ILMPutLifecycle) WithFilterPath(v ...string) func(*ILMPutLifecycleRequest) {
 	return func(r *ILMPutLifecycleRequest) {
 		r.FilterPath = v
@@ -185,6 +194,7 @@ func (f ILMPutLifecycle) WithFilterPath(v ...string) func(*ILMPutLifecycleReques
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f ILMPutLifecycle) WithHeader(h map[string]string) func(*ILMPutLifecycleRequest) {
 	return func(r *ILMPutLifecycleRequest) {
 		if r.Header == nil {
@@ -197,6 +207,7 @@ func (f ILMPutLifecycle) WithHeader(h map[string]string) func(*ILMPutLifecycleRe
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f ILMPutLifecycle) WithOpaqueID(s string) func(*ILMPutLifecycleRequest) {
 	return func(r *ILMPutLifecycleRequest) {
 		if r.Header == nil {

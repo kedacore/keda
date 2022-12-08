@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -40,9 +40,11 @@ func newCCRPauseFollowFunc(t Transport) CCRPauseFollow {
 // CCRPauseFollow - Pauses a follower index. The follower index will not fetch any additional operations from the leader index.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/ccr-post-pause-follow.html.
+//
 type CCRPauseFollow func(index string, o ...func(*CCRPauseFollowRequest)) (*Response, error)
 
 // CCRPauseFollowRequest configures the CCR Pause Follow API request.
+//
 type CCRPauseFollowRequest struct {
 	Index string
 
@@ -57,6 +59,7 @@ type CCRPauseFollowRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r CCRPauseFollowRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -136,6 +139,7 @@ func (r CCRPauseFollowRequest) Do(ctx context.Context, transport Transport) (*Re
 }
 
 // WithContext sets the request context.
+//
 func (f CCRPauseFollow) WithContext(v context.Context) func(*CCRPauseFollowRequest) {
 	return func(r *CCRPauseFollowRequest) {
 		r.ctx = v
@@ -143,6 +147,7 @@ func (f CCRPauseFollow) WithContext(v context.Context) func(*CCRPauseFollowReque
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f CCRPauseFollow) WithPretty() func(*CCRPauseFollowRequest) {
 	return func(r *CCRPauseFollowRequest) {
 		r.Pretty = true
@@ -150,6 +155,7 @@ func (f CCRPauseFollow) WithPretty() func(*CCRPauseFollowRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f CCRPauseFollow) WithHuman() func(*CCRPauseFollowRequest) {
 	return func(r *CCRPauseFollowRequest) {
 		r.Human = true
@@ -157,6 +163,7 @@ func (f CCRPauseFollow) WithHuman() func(*CCRPauseFollowRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f CCRPauseFollow) WithErrorTrace() func(*CCRPauseFollowRequest) {
 	return func(r *CCRPauseFollowRequest) {
 		r.ErrorTrace = true
@@ -164,6 +171,7 @@ func (f CCRPauseFollow) WithErrorTrace() func(*CCRPauseFollowRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f CCRPauseFollow) WithFilterPath(v ...string) func(*CCRPauseFollowRequest) {
 	return func(r *CCRPauseFollowRequest) {
 		r.FilterPath = v
@@ -171,6 +179,7 @@ func (f CCRPauseFollow) WithFilterPath(v ...string) func(*CCRPauseFollowRequest)
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f CCRPauseFollow) WithHeader(h map[string]string) func(*CCRPauseFollowRequest) {
 	return func(r *CCRPauseFollowRequest) {
 		if r.Header == nil {
@@ -183,6 +192,7 @@ func (f CCRPauseFollow) WithHeader(h map[string]string) func(*CCRPauseFollowRequ
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f CCRPauseFollow) WithOpaqueID(s string) func(*CCRPauseFollowRequest) {
 	return func(r *CCRPauseFollowRequest) {
 		if r.Header == nil {

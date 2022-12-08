@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,9 +41,11 @@ func newGetScriptFunc(t Transport) GetScript {
 // GetScript returns a script.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/modules-scripting.html.
+//
 type GetScript func(id string, o ...func(*GetScriptRequest)) (*Response, error)
 
 // GetScriptRequest configures the Get Script API request.
+//
 type GetScriptRequest struct {
 	ScriptID string
 
@@ -60,6 +62,7 @@ type GetScriptRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r GetScriptRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -141,6 +144,7 @@ func (r GetScriptRequest) Do(ctx context.Context, transport Transport) (*Respons
 }
 
 // WithContext sets the request context.
+//
 func (f GetScript) WithContext(v context.Context) func(*GetScriptRequest) {
 	return func(r *GetScriptRequest) {
 		r.ctx = v
@@ -148,6 +152,7 @@ func (f GetScript) WithContext(v context.Context) func(*GetScriptRequest) {
 }
 
 // WithMasterTimeout - specify timeout for connection to master.
+//
 func (f GetScript) WithMasterTimeout(v time.Duration) func(*GetScriptRequest) {
 	return func(r *GetScriptRequest) {
 		r.MasterTimeout = v
@@ -155,6 +160,7 @@ func (f GetScript) WithMasterTimeout(v time.Duration) func(*GetScriptRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f GetScript) WithPretty() func(*GetScriptRequest) {
 	return func(r *GetScriptRequest) {
 		r.Pretty = true
@@ -162,6 +168,7 @@ func (f GetScript) WithPretty() func(*GetScriptRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f GetScript) WithHuman() func(*GetScriptRequest) {
 	return func(r *GetScriptRequest) {
 		r.Human = true
@@ -169,6 +176,7 @@ func (f GetScript) WithHuman() func(*GetScriptRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f GetScript) WithErrorTrace() func(*GetScriptRequest) {
 	return func(r *GetScriptRequest) {
 		r.ErrorTrace = true
@@ -176,6 +184,7 @@ func (f GetScript) WithErrorTrace() func(*GetScriptRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f GetScript) WithFilterPath(v ...string) func(*GetScriptRequest) {
 	return func(r *GetScriptRequest) {
 		r.FilterPath = v
@@ -183,6 +192,7 @@ func (f GetScript) WithFilterPath(v ...string) func(*GetScriptRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f GetScript) WithHeader(h map[string]string) func(*GetScriptRequest) {
 	return func(r *GetScriptRequest) {
 		if r.Header == nil {
@@ -195,6 +205,7 @@ func (f GetScript) WithHeader(h map[string]string) func(*GetScriptRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f GetScript) WithOpaqueID(s string) func(*GetScriptRequest) {
 	return func(r *GetScriptRequest) {
 		if r.Header == nil {

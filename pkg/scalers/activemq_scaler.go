@@ -6,11 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
-	"text/template"
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"

@@ -238,13 +238,12 @@ func (s *artemisScaler) getQueueMessageCount(ctx context.Context) (int64, error)
 	url := s.getMonitoringEndpoint()
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-
-	req.SetBasicAuth(s.metadata.username, s.metadata.password)
-	req.Header.Set("Origin", s.metadata.corsHeader)
-
 	if err != nil {
 		return -1, err
 	}
+	req.SetBasicAuth(s.metadata.username, s.metadata.password)
+	req.Header.Set("Origin", s.metadata.corsHeader)
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return -1, err

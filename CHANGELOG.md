@@ -38,6 +38,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
+
+- **General:** Introduce new CouchDB Scaler ([#3746](https://github.com/kedacore/keda/issues/3746))
 - **General**: Introduction deprecation & breaking change policy ([Governance #68](https://github.com/kedacore/governance/issues/68))
 - **General**: Consolidate all exposed Prometheus Metrics in KEDA Operator ([#3919](https://github.com/kedacore/keda/issues/3919))
 - **General**: Disable response compression for k8s restAPI in client-go ([#3863](https://github.com/kedacore/keda/issues/3863)). Kubernetes issue for reference (https://github.com/kubernetes/kubernetes/issues/112296)
@@ -52,6 +54,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **AWS Scalers**: Add setting AWS endpoint url. ([#3337](https://github.com/kedacore/keda/issues/3337))
 - **Azure Service Bus Scaler**: Add support for Shared Access Signature (SAS) tokens for authentication. ([#2920](https://github.com/kedacore/keda/issues/2920))
 - **Azure Service Bus Scaler:** Support regex usage in queueName / subscriptionName parameters. ([#1624](https://github.com/kedacore/keda/issues/1624))
+- **Cron Scaler**: Fix unexpected instance count change. ([#3838](https://github.com/kedacore/keda/pull/3838))
 - **ElasticSearch Scaler**: Support for ElasticSearch Service on Elastic Cloud ([#3785]https://github.com/kedacore/keda/issues/3785)
 - **Selenium Grid Scaler:** Allow setting url trigger parameter from TriggerAuthentication/ClusterTriggerAuthentication ([#3752](https://github.com/kedacore/keda/pull/3752))
 
@@ -62,8 +65,10 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General:** Add support to use pod identities for authentication in Azure Key Vault ([#3813](https://github.com/kedacore/keda/issues/3813)
 - **General:** Support disable keep http connection alive([#3874](https://github.com/kedacore/keda/issues/3874)
 - **General:** Improve the function used to normalize metric names ([#3789](https://github.com/kedacore/keda/issues/3789)
+- **General:** Support Restrict Secret Access to mitigate the security risk ([#3668](https://github.com/kedacore/keda/issues/3668)
 - **Apache Kafka Scaler:** SASL/OAuthbearer Implementation ([#3681](https://github.com/kedacore/keda/issues/3681))
 - **Apache Kafka Scaler:** Limit Kafka Partitions KEDA operates on ([#3830](https://github.com/kedacore/keda/issues/3830))
+- **Apache Kafka Scaler:** Implementation for Excluding Persistent Lag ([#3904](https://github.com/kedacore/keda/issues/3904))
 - **Azure AD Pod Identity Authentication:** Improve error messages to emphasize problems around the integration with aad-pod-identity itself ([#3610](https://github.com/kedacore/keda/issues/3610))
 - **Azure Event Hub Scaler:** Support Azure Active Direcotry Pod & Workload Identity for Storage Blobs ([#3569](https://github.com/kedacore/keda/issues/3569))
 - **Azure Event Hub Scaler:** Support using connection strings for Event Hub namespace instead of the Event Hub itself. ([#3922](https://github.com/kedacore/keda/issues/3922))

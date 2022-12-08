@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,9 +41,11 @@ func newCatMLDatafeedsFunc(t Transport) CatMLDatafeeds {
 // CatMLDatafeeds - Gets configuration and usage information about datafeeds.
 //
 // See full documentation at http://www.elastic.co/guide/en/elasticsearch/reference/current/cat-datafeeds.html.
+//
 type CatMLDatafeeds func(o ...func(*CatMLDatafeedsRequest)) (*Response, error)
 
 // CatMLDatafeedsRequest configures the CatML Datafeeds API request.
+//
 type CatMLDatafeedsRequest struct {
 	DatafeedID string
 
@@ -67,6 +69,7 @@ type CatMLDatafeedsRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r CatMLDatafeedsRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -182,6 +185,7 @@ func (r CatMLDatafeedsRequest) Do(ctx context.Context, transport Transport) (*Re
 }
 
 // WithContext sets the request context.
+//
 func (f CatMLDatafeeds) WithContext(v context.Context) func(*CatMLDatafeedsRequest) {
 	return func(r *CatMLDatafeedsRequest) {
 		r.ctx = v
@@ -189,6 +193,7 @@ func (f CatMLDatafeeds) WithContext(v context.Context) func(*CatMLDatafeedsReque
 }
 
 // WithDatafeedID - the ID of the datafeeds stats to fetch.
+//
 func (f CatMLDatafeeds) WithDatafeedID(v string) func(*CatMLDatafeedsRequest) {
 	return func(r *CatMLDatafeedsRequest) {
 		r.DatafeedID = v
@@ -196,6 +201,7 @@ func (f CatMLDatafeeds) WithDatafeedID(v string) func(*CatMLDatafeedsRequest) {
 }
 
 // WithAllowNoDatafeeds - whether to ignore if a wildcard expression matches no datafeeds. (this includes `_all` string or when no datafeeds have been specified).
+//
 func (f CatMLDatafeeds) WithAllowNoDatafeeds(v bool) func(*CatMLDatafeedsRequest) {
 	return func(r *CatMLDatafeedsRequest) {
 		r.AllowNoDatafeeds = &v
@@ -203,6 +209,7 @@ func (f CatMLDatafeeds) WithAllowNoDatafeeds(v bool) func(*CatMLDatafeedsRequest
 }
 
 // WithAllowNoMatch - whether to ignore if a wildcard expression matches no datafeeds. (this includes `_all` string or when no datafeeds have been specified).
+//
 func (f CatMLDatafeeds) WithAllowNoMatch(v bool) func(*CatMLDatafeedsRequest) {
 	return func(r *CatMLDatafeedsRequest) {
 		r.AllowNoMatch = &v
@@ -210,6 +217,7 @@ func (f CatMLDatafeeds) WithAllowNoMatch(v bool) func(*CatMLDatafeedsRequest) {
 }
 
 // WithFormat - a short version of the accept header, e.g. json, yaml.
+//
 func (f CatMLDatafeeds) WithFormat(v string) func(*CatMLDatafeedsRequest) {
 	return func(r *CatMLDatafeedsRequest) {
 		r.Format = v
@@ -217,6 +225,7 @@ func (f CatMLDatafeeds) WithFormat(v string) func(*CatMLDatafeedsRequest) {
 }
 
 // WithH - comma-separated list of column names to display.
+//
 func (f CatMLDatafeeds) WithH(v ...string) func(*CatMLDatafeedsRequest) {
 	return func(r *CatMLDatafeedsRequest) {
 		r.H = v
@@ -224,6 +233,7 @@ func (f CatMLDatafeeds) WithH(v ...string) func(*CatMLDatafeedsRequest) {
 }
 
 // WithHelp - return help information.
+//
 func (f CatMLDatafeeds) WithHelp(v bool) func(*CatMLDatafeedsRequest) {
 	return func(r *CatMLDatafeedsRequest) {
 		r.Help = &v
@@ -231,6 +241,7 @@ func (f CatMLDatafeeds) WithHelp(v bool) func(*CatMLDatafeedsRequest) {
 }
 
 // WithS - comma-separated list of column names or column aliases to sort by.
+//
 func (f CatMLDatafeeds) WithS(v ...string) func(*CatMLDatafeedsRequest) {
 	return func(r *CatMLDatafeedsRequest) {
 		r.S = v
@@ -238,6 +249,7 @@ func (f CatMLDatafeeds) WithS(v ...string) func(*CatMLDatafeedsRequest) {
 }
 
 // WithTime - the unit in which to display time values.
+//
 func (f CatMLDatafeeds) WithTime(v string) func(*CatMLDatafeedsRequest) {
 	return func(r *CatMLDatafeedsRequest) {
 		r.Time = v
@@ -245,6 +257,7 @@ func (f CatMLDatafeeds) WithTime(v string) func(*CatMLDatafeedsRequest) {
 }
 
 // WithV - verbose mode. display column headers.
+//
 func (f CatMLDatafeeds) WithV(v bool) func(*CatMLDatafeedsRequest) {
 	return func(r *CatMLDatafeedsRequest) {
 		r.V = &v
@@ -252,6 +265,7 @@ func (f CatMLDatafeeds) WithV(v bool) func(*CatMLDatafeedsRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f CatMLDatafeeds) WithPretty() func(*CatMLDatafeedsRequest) {
 	return func(r *CatMLDatafeedsRequest) {
 		r.Pretty = true
@@ -259,6 +273,7 @@ func (f CatMLDatafeeds) WithPretty() func(*CatMLDatafeedsRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f CatMLDatafeeds) WithHuman() func(*CatMLDatafeedsRequest) {
 	return func(r *CatMLDatafeedsRequest) {
 		r.Human = true
@@ -266,6 +281,7 @@ func (f CatMLDatafeeds) WithHuman() func(*CatMLDatafeedsRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f CatMLDatafeeds) WithErrorTrace() func(*CatMLDatafeedsRequest) {
 	return func(r *CatMLDatafeedsRequest) {
 		r.ErrorTrace = true
@@ -273,6 +289,7 @@ func (f CatMLDatafeeds) WithErrorTrace() func(*CatMLDatafeedsRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f CatMLDatafeeds) WithFilterPath(v ...string) func(*CatMLDatafeedsRequest) {
 	return func(r *CatMLDatafeedsRequest) {
 		r.FilterPath = v
@@ -280,6 +297,7 @@ func (f CatMLDatafeeds) WithFilterPath(v ...string) func(*CatMLDatafeedsRequest)
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f CatMLDatafeeds) WithHeader(h map[string]string) func(*CatMLDatafeedsRequest) {
 	return func(r *CatMLDatafeedsRequest) {
 		if r.Header == nil {
@@ -292,6 +310,7 @@ func (f CatMLDatafeeds) WithHeader(h map[string]string) func(*CatMLDatafeedsRequ
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f CatMLDatafeeds) WithOpaqueID(s string) func(*CatMLDatafeedsRequest) {
 	return func(r *CatMLDatafeedsRequest) {
 		if r.Header == nil {

@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -43,9 +43,11 @@ func newMLStopDatafeedFunc(t Transport) MLStopDatafeed {
 // MLStopDatafeed - Stops one or more datafeeds.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/ml-stop-datafeed.html.
+//
 type MLStopDatafeed func(datafeed_id string, o ...func(*MLStopDatafeedRequest)) (*Response, error)
 
 // MLStopDatafeedRequest configures the ML Stop Datafeed API request.
+//
 type MLStopDatafeedRequest struct {
 	Body io.Reader
 
@@ -67,6 +69,7 @@ type MLStopDatafeedRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r MLStopDatafeedRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -133,6 +136,10 @@ func (r MLStopDatafeedRequest) Do(ctx context.Context, transport Transport) (*Re
 		req.URL.RawQuery = q.Encode()
 	}
 
+	if r.Body != nil {
+		req.Header[headerContentType] = headerContentTypeJSON
+	}
+
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -143,10 +150,6 @@ func (r MLStopDatafeedRequest) Do(ctx context.Context, transport Transport) (*Re
 				}
 			}
 		}
-	}
-
-	if r.Body != nil && req.Header.Get(headerContentType) == "" {
-		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -168,6 +171,7 @@ func (r MLStopDatafeedRequest) Do(ctx context.Context, transport Transport) (*Re
 }
 
 // WithContext sets the request context.
+//
 func (f MLStopDatafeed) WithContext(v context.Context) func(*MLStopDatafeedRequest) {
 	return func(r *MLStopDatafeedRequest) {
 		r.ctx = v
@@ -175,6 +179,7 @@ func (f MLStopDatafeed) WithContext(v context.Context) func(*MLStopDatafeedReque
 }
 
 // WithBody - The URL params optionally sent in the body.
+//
 func (f MLStopDatafeed) WithBody(v io.Reader) func(*MLStopDatafeedRequest) {
 	return func(r *MLStopDatafeedRequest) {
 		r.Body = v
@@ -182,6 +187,7 @@ func (f MLStopDatafeed) WithBody(v io.Reader) func(*MLStopDatafeedRequest) {
 }
 
 // WithAllowNoDatafeeds - whether to ignore if a wildcard expression matches no datafeeds. (this includes `_all` string or when no datafeeds have been specified).
+//
 func (f MLStopDatafeed) WithAllowNoDatafeeds(v bool) func(*MLStopDatafeedRequest) {
 	return func(r *MLStopDatafeedRequest) {
 		r.AllowNoDatafeeds = &v
@@ -189,6 +195,7 @@ func (f MLStopDatafeed) WithAllowNoDatafeeds(v bool) func(*MLStopDatafeedRequest
 }
 
 // WithAllowNoMatch - whether to ignore if a wildcard expression matches no datafeeds. (this includes `_all` string or when no datafeeds have been specified).
+//
 func (f MLStopDatafeed) WithAllowNoMatch(v bool) func(*MLStopDatafeedRequest) {
 	return func(r *MLStopDatafeedRequest) {
 		r.AllowNoMatch = &v
@@ -196,6 +203,7 @@ func (f MLStopDatafeed) WithAllowNoMatch(v bool) func(*MLStopDatafeedRequest) {
 }
 
 // WithForce - true if the datafeed should be forcefully stopped..
+//
 func (f MLStopDatafeed) WithForce(v bool) func(*MLStopDatafeedRequest) {
 	return func(r *MLStopDatafeedRequest) {
 		r.Force = &v
@@ -203,6 +211,7 @@ func (f MLStopDatafeed) WithForce(v bool) func(*MLStopDatafeedRequest) {
 }
 
 // WithTimeout - controls the time to wait until a datafeed has stopped. default to 20 seconds.
+//
 func (f MLStopDatafeed) WithTimeout(v time.Duration) func(*MLStopDatafeedRequest) {
 	return func(r *MLStopDatafeedRequest) {
 		r.Timeout = v
@@ -210,6 +219,7 @@ func (f MLStopDatafeed) WithTimeout(v time.Duration) func(*MLStopDatafeedRequest
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f MLStopDatafeed) WithPretty() func(*MLStopDatafeedRequest) {
 	return func(r *MLStopDatafeedRequest) {
 		r.Pretty = true
@@ -217,6 +227,7 @@ func (f MLStopDatafeed) WithPretty() func(*MLStopDatafeedRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f MLStopDatafeed) WithHuman() func(*MLStopDatafeedRequest) {
 	return func(r *MLStopDatafeedRequest) {
 		r.Human = true
@@ -224,6 +235,7 @@ func (f MLStopDatafeed) WithHuman() func(*MLStopDatafeedRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f MLStopDatafeed) WithErrorTrace() func(*MLStopDatafeedRequest) {
 	return func(r *MLStopDatafeedRequest) {
 		r.ErrorTrace = true
@@ -231,6 +243,7 @@ func (f MLStopDatafeed) WithErrorTrace() func(*MLStopDatafeedRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f MLStopDatafeed) WithFilterPath(v ...string) func(*MLStopDatafeedRequest) {
 	return func(r *MLStopDatafeedRequest) {
 		r.FilterPath = v
@@ -238,6 +251,7 @@ func (f MLStopDatafeed) WithFilterPath(v ...string) func(*MLStopDatafeedRequest)
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f MLStopDatafeed) WithHeader(h map[string]string) func(*MLStopDatafeedRequest) {
 	return func(r *MLStopDatafeedRequest) {
 		if r.Header == nil {
@@ -250,6 +264,7 @@ func (f MLStopDatafeed) WithHeader(h map[string]string) func(*MLStopDatafeedRequ
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f MLStopDatafeed) WithOpaqueID(s string) func(*MLStopDatafeedRequest) {
 	return func(r *MLStopDatafeedRequest) {
 		if r.Header == nil {

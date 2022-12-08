@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -42,9 +42,11 @@ func newWatcherExecuteWatchFunc(t Transport) WatcherExecuteWatch {
 // WatcherExecuteWatch - Forces the execution of a stored watch.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/watcher-api-execute-watch.html.
+//
 type WatcherExecuteWatch func(o ...func(*WatcherExecuteWatchRequest)) (*Response, error)
 
 // WatcherExecuteWatchRequest configures the Watcher Execute Watch API request.
+//
 type WatcherExecuteWatchRequest struct {
 	WatchID string
 
@@ -63,6 +65,7 @@ type WatcherExecuteWatchRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r WatcherExecuteWatchRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -119,6 +122,10 @@ func (r WatcherExecuteWatchRequest) Do(ctx context.Context, transport Transport)
 		req.URL.RawQuery = q.Encode()
 	}
 
+	if r.Body != nil {
+		req.Header[headerContentType] = headerContentTypeJSON
+	}
+
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -129,10 +136,6 @@ func (r WatcherExecuteWatchRequest) Do(ctx context.Context, transport Transport)
 				}
 			}
 		}
-	}
-
-	if r.Body != nil && req.Header.Get(headerContentType) == "" {
-		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -154,6 +157,7 @@ func (r WatcherExecuteWatchRequest) Do(ctx context.Context, transport Transport)
 }
 
 // WithContext sets the request context.
+//
 func (f WatcherExecuteWatch) WithContext(v context.Context) func(*WatcherExecuteWatchRequest) {
 	return func(r *WatcherExecuteWatchRequest) {
 		r.ctx = v
@@ -161,6 +165,7 @@ func (f WatcherExecuteWatch) WithContext(v context.Context) func(*WatcherExecute
 }
 
 // WithBody - Execution control.
+//
 func (f WatcherExecuteWatch) WithBody(v io.Reader) func(*WatcherExecuteWatchRequest) {
 	return func(r *WatcherExecuteWatchRequest) {
 		r.Body = v
@@ -168,6 +173,7 @@ func (f WatcherExecuteWatch) WithBody(v io.Reader) func(*WatcherExecuteWatchRequ
 }
 
 // WithWatchID - watch ID.
+//
 func (f WatcherExecuteWatch) WithWatchID(v string) func(*WatcherExecuteWatchRequest) {
 	return func(r *WatcherExecuteWatchRequest) {
 		r.WatchID = v
@@ -175,6 +181,7 @@ func (f WatcherExecuteWatch) WithWatchID(v string) func(*WatcherExecuteWatchRequ
 }
 
 // WithDebug - indicates whether the watch should execute in debug mode.
+//
 func (f WatcherExecuteWatch) WithDebug(v bool) func(*WatcherExecuteWatchRequest) {
 	return func(r *WatcherExecuteWatchRequest) {
 		r.Debug = &v
@@ -182,6 +189,7 @@ func (f WatcherExecuteWatch) WithDebug(v bool) func(*WatcherExecuteWatchRequest)
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f WatcherExecuteWatch) WithPretty() func(*WatcherExecuteWatchRequest) {
 	return func(r *WatcherExecuteWatchRequest) {
 		r.Pretty = true
@@ -189,6 +197,7 @@ func (f WatcherExecuteWatch) WithPretty() func(*WatcherExecuteWatchRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f WatcherExecuteWatch) WithHuman() func(*WatcherExecuteWatchRequest) {
 	return func(r *WatcherExecuteWatchRequest) {
 		r.Human = true
@@ -196,6 +205,7 @@ func (f WatcherExecuteWatch) WithHuman() func(*WatcherExecuteWatchRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f WatcherExecuteWatch) WithErrorTrace() func(*WatcherExecuteWatchRequest) {
 	return func(r *WatcherExecuteWatchRequest) {
 		r.ErrorTrace = true
@@ -203,6 +213,7 @@ func (f WatcherExecuteWatch) WithErrorTrace() func(*WatcherExecuteWatchRequest) 
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f WatcherExecuteWatch) WithFilterPath(v ...string) func(*WatcherExecuteWatchRequest) {
 	return func(r *WatcherExecuteWatchRequest) {
 		r.FilterPath = v
@@ -210,6 +221,7 @@ func (f WatcherExecuteWatch) WithFilterPath(v ...string) func(*WatcherExecuteWat
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f WatcherExecuteWatch) WithHeader(h map[string]string) func(*WatcherExecuteWatchRequest) {
 	return func(r *WatcherExecuteWatchRequest) {
 		if r.Header == nil {
@@ -222,6 +234,7 @@ func (f WatcherExecuteWatch) WithHeader(h map[string]string) func(*WatcherExecut
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f WatcherExecuteWatch) WithOpaqueID(s string) func(*WatcherExecuteWatchRequest) {
 	return func(r *WatcherExecuteWatchRequest) {
 		if r.Header == nil {

@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -40,9 +40,11 @@ func newEqlDeleteFunc(t Transport) EqlDelete {
 // EqlDelete - Deletes an async EQL search by ID. If the search is still running, the search request will be cancelled. Otherwise, the saved search results are deleted.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/eql-search-api.html.
+//
 type EqlDelete func(id string, o ...func(*EqlDeleteRequest)) (*Response, error)
 
 // EqlDeleteRequest configures the Eql Delete API request.
+//
 type EqlDeleteRequest struct {
 	DocumentID string
 
@@ -57,6 +59,7 @@ type EqlDeleteRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r EqlDeleteRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -136,6 +139,7 @@ func (r EqlDeleteRequest) Do(ctx context.Context, transport Transport) (*Respons
 }
 
 // WithContext sets the request context.
+//
 func (f EqlDelete) WithContext(v context.Context) func(*EqlDeleteRequest) {
 	return func(r *EqlDeleteRequest) {
 		r.ctx = v
@@ -143,6 +147,7 @@ func (f EqlDelete) WithContext(v context.Context) func(*EqlDeleteRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f EqlDelete) WithPretty() func(*EqlDeleteRequest) {
 	return func(r *EqlDeleteRequest) {
 		r.Pretty = true
@@ -150,6 +155,7 @@ func (f EqlDelete) WithPretty() func(*EqlDeleteRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f EqlDelete) WithHuman() func(*EqlDeleteRequest) {
 	return func(r *EqlDeleteRequest) {
 		r.Human = true
@@ -157,6 +163,7 @@ func (f EqlDelete) WithHuman() func(*EqlDeleteRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f EqlDelete) WithErrorTrace() func(*EqlDeleteRequest) {
 	return func(r *EqlDeleteRequest) {
 		r.ErrorTrace = true
@@ -164,6 +171,7 @@ func (f EqlDelete) WithErrorTrace() func(*EqlDeleteRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f EqlDelete) WithFilterPath(v ...string) func(*EqlDeleteRequest) {
 	return func(r *EqlDeleteRequest) {
 		r.FilterPath = v
@@ -171,6 +179,7 @@ func (f EqlDelete) WithFilterPath(v ...string) func(*EqlDeleteRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f EqlDelete) WithHeader(h map[string]string) func(*EqlDeleteRequest) {
 	return func(r *EqlDeleteRequest) {
 		if r.Header == nil {
@@ -183,6 +192,7 @@ func (f EqlDelete) WithHeader(h map[string]string) func(*EqlDeleteRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f EqlDelete) WithOpaqueID(s string) func(*EqlDeleteRequest) {
 	return func(r *EqlDeleteRequest) {
 		if r.Header == nil {

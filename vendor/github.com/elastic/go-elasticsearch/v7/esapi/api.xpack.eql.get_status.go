@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -40,9 +40,11 @@ func newEqlGetStatusFunc(t Transport) EqlGetStatus {
 // EqlGetStatus - Returns the status of a previously submitted async or stored Event Query Language (EQL) search
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/eql-search-api.html.
+//
 type EqlGetStatus func(id string, o ...func(*EqlGetStatusRequest)) (*Response, error)
 
 // EqlGetStatusRequest configures the Eql Get Status API request.
+//
 type EqlGetStatusRequest struct {
 	DocumentID string
 
@@ -57,6 +59,7 @@ type EqlGetStatusRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r EqlGetStatusRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -138,6 +141,7 @@ func (r EqlGetStatusRequest) Do(ctx context.Context, transport Transport) (*Resp
 }
 
 // WithContext sets the request context.
+//
 func (f EqlGetStatus) WithContext(v context.Context) func(*EqlGetStatusRequest) {
 	return func(r *EqlGetStatusRequest) {
 		r.ctx = v
@@ -145,6 +149,7 @@ func (f EqlGetStatus) WithContext(v context.Context) func(*EqlGetStatusRequest) 
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f EqlGetStatus) WithPretty() func(*EqlGetStatusRequest) {
 	return func(r *EqlGetStatusRequest) {
 		r.Pretty = true
@@ -152,6 +157,7 @@ func (f EqlGetStatus) WithPretty() func(*EqlGetStatusRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f EqlGetStatus) WithHuman() func(*EqlGetStatusRequest) {
 	return func(r *EqlGetStatusRequest) {
 		r.Human = true
@@ -159,6 +165,7 @@ func (f EqlGetStatus) WithHuman() func(*EqlGetStatusRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f EqlGetStatus) WithErrorTrace() func(*EqlGetStatusRequest) {
 	return func(r *EqlGetStatusRequest) {
 		r.ErrorTrace = true
@@ -166,6 +173,7 @@ func (f EqlGetStatus) WithErrorTrace() func(*EqlGetStatusRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f EqlGetStatus) WithFilterPath(v ...string) func(*EqlGetStatusRequest) {
 	return func(r *EqlGetStatusRequest) {
 		r.FilterPath = v
@@ -173,6 +181,7 @@ func (f EqlGetStatus) WithFilterPath(v ...string) func(*EqlGetStatusRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f EqlGetStatus) WithHeader(h map[string]string) func(*EqlGetStatusRequest) {
 	return func(r *EqlGetStatusRequest) {
 		if r.Header == nil {
@@ -185,6 +194,7 @@ func (f EqlGetStatus) WithHeader(h map[string]string) func(*EqlGetStatusRequest)
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f EqlGetStatus) WithOpaqueID(s string) func(*EqlGetStatusRequest) {
 	return func(r *EqlGetStatusRequest) {
 		if r.Header == nil {

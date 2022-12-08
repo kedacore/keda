@@ -114,7 +114,6 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options cont
 	if r.Recorder == nil {
 		return fmt.Errorf("ScaledObjectReconciler.Recorder is not initialized")
 	}
-
 	// Start controller
 	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(options).

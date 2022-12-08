@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -42,9 +42,11 @@ func newMLStartDataFrameAnalyticsFunc(t Transport) MLStartDataFrameAnalytics {
 // MLStartDataFrameAnalytics - Starts a data frame analytics job.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/start-dfanalytics.html.
+//
 type MLStartDataFrameAnalytics func(id string, o ...func(*MLStartDataFrameAnalyticsRequest)) (*Response, error)
 
 // MLStartDataFrameAnalyticsRequest configures the ML Start Data Frame Analytics API request.
+//
 type MLStartDataFrameAnalyticsRequest struct {
 	ID string
 
@@ -63,6 +65,7 @@ type MLStartDataFrameAnalyticsRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r MLStartDataFrameAnalyticsRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -119,6 +122,10 @@ func (r MLStartDataFrameAnalyticsRequest) Do(ctx context.Context, transport Tran
 		req.URL.RawQuery = q.Encode()
 	}
 
+	if r.Body != nil {
+		req.Header[headerContentType] = headerContentTypeJSON
+	}
+
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -129,10 +136,6 @@ func (r MLStartDataFrameAnalyticsRequest) Do(ctx context.Context, transport Tran
 				}
 			}
 		}
-	}
-
-	if r.Body != nil && req.Header.Get(headerContentType) == "" {
-		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -154,6 +157,7 @@ func (r MLStartDataFrameAnalyticsRequest) Do(ctx context.Context, transport Tran
 }
 
 // WithContext sets the request context.
+//
 func (f MLStartDataFrameAnalytics) WithContext(v context.Context) func(*MLStartDataFrameAnalyticsRequest) {
 	return func(r *MLStartDataFrameAnalyticsRequest) {
 		r.ctx = v
@@ -161,6 +165,7 @@ func (f MLStartDataFrameAnalytics) WithContext(v context.Context) func(*MLStartD
 }
 
 // WithBody - The start data frame analytics parameters.
+//
 func (f MLStartDataFrameAnalytics) WithBody(v io.Reader) func(*MLStartDataFrameAnalyticsRequest) {
 	return func(r *MLStartDataFrameAnalyticsRequest) {
 		r.Body = v
@@ -168,6 +173,7 @@ func (f MLStartDataFrameAnalytics) WithBody(v io.Reader) func(*MLStartDataFrameA
 }
 
 // WithTimeout - controls the time to wait until the task has started. defaults to 20 seconds.
+//
 func (f MLStartDataFrameAnalytics) WithTimeout(v time.Duration) func(*MLStartDataFrameAnalyticsRequest) {
 	return func(r *MLStartDataFrameAnalyticsRequest) {
 		r.Timeout = v
@@ -175,6 +181,7 @@ func (f MLStartDataFrameAnalytics) WithTimeout(v time.Duration) func(*MLStartDat
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f MLStartDataFrameAnalytics) WithPretty() func(*MLStartDataFrameAnalyticsRequest) {
 	return func(r *MLStartDataFrameAnalyticsRequest) {
 		r.Pretty = true
@@ -182,6 +189,7 @@ func (f MLStartDataFrameAnalytics) WithPretty() func(*MLStartDataFrameAnalyticsR
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f MLStartDataFrameAnalytics) WithHuman() func(*MLStartDataFrameAnalyticsRequest) {
 	return func(r *MLStartDataFrameAnalyticsRequest) {
 		r.Human = true
@@ -189,6 +197,7 @@ func (f MLStartDataFrameAnalytics) WithHuman() func(*MLStartDataFrameAnalyticsRe
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f MLStartDataFrameAnalytics) WithErrorTrace() func(*MLStartDataFrameAnalyticsRequest) {
 	return func(r *MLStartDataFrameAnalyticsRequest) {
 		r.ErrorTrace = true
@@ -196,6 +205,7 @@ func (f MLStartDataFrameAnalytics) WithErrorTrace() func(*MLStartDataFrameAnalyt
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f MLStartDataFrameAnalytics) WithFilterPath(v ...string) func(*MLStartDataFrameAnalyticsRequest) {
 	return func(r *MLStartDataFrameAnalyticsRequest) {
 		r.FilterPath = v
@@ -203,6 +213,7 @@ func (f MLStartDataFrameAnalytics) WithFilterPath(v ...string) func(*MLStartData
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f MLStartDataFrameAnalytics) WithHeader(h map[string]string) func(*MLStartDataFrameAnalyticsRequest) {
 	return func(r *MLStartDataFrameAnalyticsRequest) {
 		if r.Header == nil {
@@ -215,6 +226,7 @@ func (f MLStartDataFrameAnalytics) WithHeader(h map[string]string) func(*MLStart
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f MLStartDataFrameAnalytics) WithOpaqueID(s string) func(*MLStartDataFrameAnalyticsRequest) {
 	return func(r *MLStartDataFrameAnalyticsRequest) {
 		if r.Header == nil {

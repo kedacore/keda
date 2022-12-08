@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,9 +41,11 @@ func newMLPostDataFunc(t Transport) MLPostData {
 // MLPostData - Sends data to an anomaly detection job for analysis.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/ml-post-data.html.
+//
 type MLPostData func(job_id string, body io.Reader, o ...func(*MLPostDataRequest)) (*Response, error)
 
 // MLPostDataRequest configures the ML Post Data API request.
+//
 type MLPostDataRequest struct {
 	Body io.Reader
 
@@ -63,6 +65,7 @@ type MLPostDataRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r MLPostDataRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -121,6 +124,10 @@ func (r MLPostDataRequest) Do(ctx context.Context, transport Transport) (*Respon
 		req.URL.RawQuery = q.Encode()
 	}
 
+	if r.Body != nil {
+		req.Header[headerContentType] = headerContentTypeJSON
+	}
+
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -131,10 +138,6 @@ func (r MLPostDataRequest) Do(ctx context.Context, transport Transport) (*Respon
 				}
 			}
 		}
-	}
-
-	if r.Body != nil && req.Header.Get(headerContentType) == "" {
-		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -156,6 +159,7 @@ func (r MLPostDataRequest) Do(ctx context.Context, transport Transport) (*Respon
 }
 
 // WithContext sets the request context.
+//
 func (f MLPostData) WithContext(v context.Context) func(*MLPostDataRequest) {
 	return func(r *MLPostDataRequest) {
 		r.ctx = v
@@ -163,6 +167,7 @@ func (f MLPostData) WithContext(v context.Context) func(*MLPostDataRequest) {
 }
 
 // WithResetEnd - optional parameter to specify the end of the bucket resetting range.
+//
 func (f MLPostData) WithResetEnd(v string) func(*MLPostDataRequest) {
 	return func(r *MLPostDataRequest) {
 		r.ResetEnd = v
@@ -170,6 +175,7 @@ func (f MLPostData) WithResetEnd(v string) func(*MLPostDataRequest) {
 }
 
 // WithResetStart - optional parameter to specify the start of the bucket resetting range.
+//
 func (f MLPostData) WithResetStart(v string) func(*MLPostDataRequest) {
 	return func(r *MLPostDataRequest) {
 		r.ResetStart = v
@@ -177,6 +183,7 @@ func (f MLPostData) WithResetStart(v string) func(*MLPostDataRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f MLPostData) WithPretty() func(*MLPostDataRequest) {
 	return func(r *MLPostDataRequest) {
 		r.Pretty = true
@@ -184,6 +191,7 @@ func (f MLPostData) WithPretty() func(*MLPostDataRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f MLPostData) WithHuman() func(*MLPostDataRequest) {
 	return func(r *MLPostDataRequest) {
 		r.Human = true
@@ -191,6 +199,7 @@ func (f MLPostData) WithHuman() func(*MLPostDataRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f MLPostData) WithErrorTrace() func(*MLPostDataRequest) {
 	return func(r *MLPostDataRequest) {
 		r.ErrorTrace = true
@@ -198,6 +207,7 @@ func (f MLPostData) WithErrorTrace() func(*MLPostDataRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f MLPostData) WithFilterPath(v ...string) func(*MLPostDataRequest) {
 	return func(r *MLPostDataRequest) {
 		r.FilterPath = v
@@ -205,6 +215,7 @@ func (f MLPostData) WithFilterPath(v ...string) func(*MLPostDataRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f MLPostData) WithHeader(h map[string]string) func(*MLPostDataRequest) {
 	return func(r *MLPostDataRequest) {
 		if r.Header == nil {
@@ -217,6 +228,7 @@ func (f MLPostData) WithHeader(h map[string]string) func(*MLPostDataRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f MLPostData) WithOpaqueID(s string) func(*MLPostDataRequest) {
 	return func(r *MLPostDataRequest) {
 		if r.Header == nil {

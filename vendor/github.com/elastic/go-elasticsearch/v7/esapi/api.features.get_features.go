@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,9 +41,11 @@ func newFeaturesGetFeaturesFunc(t Transport) FeaturesGetFeatures {
 // FeaturesGetFeatures gets a list of features which can be included in snapshots using the feature_states field when creating a snapshot
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/get-features-api.html.
+//
 type FeaturesGetFeatures func(o ...func(*FeaturesGetFeaturesRequest)) (*Response, error)
 
 // FeaturesGetFeaturesRequest configures the Features Get Features API request.
+//
 type FeaturesGetFeaturesRequest struct {
 	MasterTimeout time.Duration
 
@@ -58,6 +60,7 @@ type FeaturesGetFeaturesRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r FeaturesGetFeaturesRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -136,6 +139,7 @@ func (r FeaturesGetFeaturesRequest) Do(ctx context.Context, transport Transport)
 }
 
 // WithContext sets the request context.
+//
 func (f FeaturesGetFeatures) WithContext(v context.Context) func(*FeaturesGetFeaturesRequest) {
 	return func(r *FeaturesGetFeaturesRequest) {
 		r.ctx = v
@@ -143,6 +147,7 @@ func (f FeaturesGetFeatures) WithContext(v context.Context) func(*FeaturesGetFea
 }
 
 // WithMasterTimeout - explicit operation timeout for connection to master node.
+//
 func (f FeaturesGetFeatures) WithMasterTimeout(v time.Duration) func(*FeaturesGetFeaturesRequest) {
 	return func(r *FeaturesGetFeaturesRequest) {
 		r.MasterTimeout = v
@@ -150,6 +155,7 @@ func (f FeaturesGetFeatures) WithMasterTimeout(v time.Duration) func(*FeaturesGe
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f FeaturesGetFeatures) WithPretty() func(*FeaturesGetFeaturesRequest) {
 	return func(r *FeaturesGetFeaturesRequest) {
 		r.Pretty = true
@@ -157,6 +163,7 @@ func (f FeaturesGetFeatures) WithPretty() func(*FeaturesGetFeaturesRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f FeaturesGetFeatures) WithHuman() func(*FeaturesGetFeaturesRequest) {
 	return func(r *FeaturesGetFeaturesRequest) {
 		r.Human = true
@@ -164,6 +171,7 @@ func (f FeaturesGetFeatures) WithHuman() func(*FeaturesGetFeaturesRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f FeaturesGetFeatures) WithErrorTrace() func(*FeaturesGetFeaturesRequest) {
 	return func(r *FeaturesGetFeaturesRequest) {
 		r.ErrorTrace = true
@@ -171,6 +179,7 @@ func (f FeaturesGetFeatures) WithErrorTrace() func(*FeaturesGetFeaturesRequest) 
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f FeaturesGetFeatures) WithFilterPath(v ...string) func(*FeaturesGetFeaturesRequest) {
 	return func(r *FeaturesGetFeaturesRequest) {
 		r.FilterPath = v
@@ -178,6 +187,7 @@ func (f FeaturesGetFeatures) WithFilterPath(v ...string) func(*FeaturesGetFeatur
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f FeaturesGetFeatures) WithHeader(h map[string]string) func(*FeaturesGetFeaturesRequest) {
 	return func(r *FeaturesGetFeaturesRequest) {
 		if r.Header == nil {
@@ -190,6 +200,7 @@ func (f FeaturesGetFeatures) WithHeader(h map[string]string) func(*FeaturesGetFe
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f FeaturesGetFeatures) WithOpaqueID(s string) func(*FeaturesGetFeaturesRequest) {
 	return func(r *FeaturesGetFeaturesRequest) {
 		if r.Header == nil {

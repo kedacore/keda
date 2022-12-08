@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,9 +41,11 @@ func newCatAliasesFunc(t Transport) CatAliases {
 // CatAliases shows information about currently configured aliases to indices including filter and routing infos.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/cat-alias.html.
+//
 type CatAliases func(o ...func(*CatAliasesRequest)) (*Response, error)
 
 // CatAliasesRequest configures the Cat Aliases API request.
+//
 type CatAliasesRequest struct {
 	Name []string
 
@@ -66,6 +68,7 @@ type CatAliasesRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r CatAliasesRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -175,6 +178,7 @@ func (r CatAliasesRequest) Do(ctx context.Context, transport Transport) (*Respon
 }
 
 // WithContext sets the request context.
+//
 func (f CatAliases) WithContext(v context.Context) func(*CatAliasesRequest) {
 	return func(r *CatAliasesRequest) {
 		r.ctx = v
@@ -182,6 +186,7 @@ func (f CatAliases) WithContext(v context.Context) func(*CatAliasesRequest) {
 }
 
 // WithName - a list of alias names to return.
+//
 func (f CatAliases) WithName(v ...string) func(*CatAliasesRequest) {
 	return func(r *CatAliasesRequest) {
 		r.Name = v
@@ -189,6 +194,7 @@ func (f CatAliases) WithName(v ...string) func(*CatAliasesRequest) {
 }
 
 // WithExpandWildcards - whether to expand wildcard expression to concrete indices that are open, closed or both..
+//
 func (f CatAliases) WithExpandWildcards(v string) func(*CatAliasesRequest) {
 	return func(r *CatAliasesRequest) {
 		r.ExpandWildcards = v
@@ -196,6 +202,7 @@ func (f CatAliases) WithExpandWildcards(v string) func(*CatAliasesRequest) {
 }
 
 // WithFormat - a short version of the accept header, e.g. json, yaml.
+//
 func (f CatAliases) WithFormat(v string) func(*CatAliasesRequest) {
 	return func(r *CatAliasesRequest) {
 		r.Format = v
@@ -203,6 +210,7 @@ func (f CatAliases) WithFormat(v string) func(*CatAliasesRequest) {
 }
 
 // WithH - comma-separated list of column names to display.
+//
 func (f CatAliases) WithH(v ...string) func(*CatAliasesRequest) {
 	return func(r *CatAliasesRequest) {
 		r.H = v
@@ -210,6 +218,7 @@ func (f CatAliases) WithH(v ...string) func(*CatAliasesRequest) {
 }
 
 // WithHelp - return help information.
+//
 func (f CatAliases) WithHelp(v bool) func(*CatAliasesRequest) {
 	return func(r *CatAliasesRequest) {
 		r.Help = &v
@@ -217,6 +226,7 @@ func (f CatAliases) WithHelp(v bool) func(*CatAliasesRequest) {
 }
 
 // WithLocal - return local information, do not retrieve the state from master node (default: false).
+//
 func (f CatAliases) WithLocal(v bool) func(*CatAliasesRequest) {
 	return func(r *CatAliasesRequest) {
 		r.Local = &v
@@ -224,6 +234,7 @@ func (f CatAliases) WithLocal(v bool) func(*CatAliasesRequest) {
 }
 
 // WithS - comma-separated list of column names or column aliases to sort by.
+//
 func (f CatAliases) WithS(v ...string) func(*CatAliasesRequest) {
 	return func(r *CatAliasesRequest) {
 		r.S = v
@@ -231,6 +242,7 @@ func (f CatAliases) WithS(v ...string) func(*CatAliasesRequest) {
 }
 
 // WithV - verbose mode. display column headers.
+//
 func (f CatAliases) WithV(v bool) func(*CatAliasesRequest) {
 	return func(r *CatAliasesRequest) {
 		r.V = &v
@@ -238,6 +250,7 @@ func (f CatAliases) WithV(v bool) func(*CatAliasesRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f CatAliases) WithPretty() func(*CatAliasesRequest) {
 	return func(r *CatAliasesRequest) {
 		r.Pretty = true
@@ -245,6 +258,7 @@ func (f CatAliases) WithPretty() func(*CatAliasesRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f CatAliases) WithHuman() func(*CatAliasesRequest) {
 	return func(r *CatAliasesRequest) {
 		r.Human = true
@@ -252,6 +266,7 @@ func (f CatAliases) WithHuman() func(*CatAliasesRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f CatAliases) WithErrorTrace() func(*CatAliasesRequest) {
 	return func(r *CatAliasesRequest) {
 		r.ErrorTrace = true
@@ -259,6 +274,7 @@ func (f CatAliases) WithErrorTrace() func(*CatAliasesRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f CatAliases) WithFilterPath(v ...string) func(*CatAliasesRequest) {
 	return func(r *CatAliasesRequest) {
 		r.FilterPath = v
@@ -266,6 +282,7 @@ func (f CatAliases) WithFilterPath(v ...string) func(*CatAliasesRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f CatAliases) WithHeader(h map[string]string) func(*CatAliasesRequest) {
 	return func(r *CatAliasesRequest) {
 		if r.Header == nil {
@@ -278,6 +295,7 @@ func (f CatAliases) WithHeader(h map[string]string) func(*CatAliasesRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f CatAliases) WithOpaqueID(s string) func(*CatAliasesRequest) {
 	return func(r *CatAliasesRequest) {
 		if r.Header == nil {

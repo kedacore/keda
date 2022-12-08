@@ -22,6 +22,10 @@ import (
 	"time"
 )
 
+const RestrictSecretAccessEnvVar = "KEDA_RESTRICT_SECRET_ACCESS"
+
+var clusterObjectNamespaceCache *string
+
 func ResolveOsEnvBool(envName string, defaultValue bool) (bool, error) {
 	valueStr, found := os.LookupEnv(envName)
 
@@ -51,4 +55,29 @@ func ResolveOsEnvDuration(envName string) (*time.Duration, error) {
 	}
 
 	return nil, nil
+}
+
+// GetClusterObjectNamespace retrieves the cluster object namespace of KEDA, default is the namespace of KEDA Operator & Metrics Server
+func GetClusterObjectNamespace() (string, error) {
+	// Check if a cached value is available.
+	if clusterObjectNamespaceCache != nil {
+		return *clusterObjectNamespaceCache, nil
+	}
+	env := os.Getenv("KEDA_CLUSTER_OBJECT_NAMESPACE")
+	if env != "" {
+		clusterObjectNamespaceCache = &env
+		return env, nil
+	}
+	data, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+	if err != nil {
+		return "", err
+	}
+	strData := string(data)
+	clusterObjectNamespaceCache = &strData
+	return strData, nil
+}
+
+// GetRestrictSecretAccess retrieves the value of the environment variable of KEDA_RESTRICT_SECRET_ACCESS
+func GetRestrictSecretAccess() string {
+	return os.Getenv(RestrictSecretAccessEnvVar)
 }

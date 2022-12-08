@@ -97,6 +97,16 @@ issues:
     - path: datadog_scaler.go
       linters:
         - gocyclo
+  # Exclude for mongo_scaler and couchdb_scaler, reason:
+  # pkg/scalers/couchdb_scaler.go:144: 144-174 lines are duplicate of `pkg/scalers/mongo_scaler.go:155-185` (dupl)
+    - path: couchdb_scaler.go
+      linters:
+        - dupl
+  # Exclude for mongo_scaler and couchdb_scaler, reason:
+  # pkg/scalers/mongo_scaler.go:155: 155-185 lines are duplicate of `pkg/scalers/couchdb_scaler.go:144-174` (dupl)
+    - path: mongo_scaler.go
+      linters:
+        - dupl
 
 linters-settings:
   funlen:

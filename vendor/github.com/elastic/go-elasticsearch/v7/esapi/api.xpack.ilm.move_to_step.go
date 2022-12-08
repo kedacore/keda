@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,9 +41,11 @@ func newILMMoveToStepFunc(t Transport) ILMMoveToStep {
 // ILMMoveToStep - Manually moves an index into the specified step and executes that step.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/ilm-move-to-step.html.
+//
 type ILMMoveToStep func(index string, o ...func(*ILMMoveToStepRequest)) (*Response, error)
 
 // ILMMoveToStepRequest configures the ILM Move To Step API request.
+//
 type ILMMoveToStepRequest struct {
 	Index string
 
@@ -60,6 +62,7 @@ type ILMMoveToStepRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r ILMMoveToStepRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -108,6 +111,10 @@ func (r ILMMoveToStepRequest) Do(ctx context.Context, transport Transport) (*Res
 		req.URL.RawQuery = q.Encode()
 	}
 
+	if r.Body != nil {
+		req.Header[headerContentType] = headerContentTypeJSON
+	}
+
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -118,10 +125,6 @@ func (r ILMMoveToStepRequest) Do(ctx context.Context, transport Transport) (*Res
 				}
 			}
 		}
-	}
-
-	if r.Body != nil && req.Header.Get(headerContentType) == "" {
-		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -143,6 +146,7 @@ func (r ILMMoveToStepRequest) Do(ctx context.Context, transport Transport) (*Res
 }
 
 // WithContext sets the request context.
+//
 func (f ILMMoveToStep) WithContext(v context.Context) func(*ILMMoveToStepRequest) {
 	return func(r *ILMMoveToStepRequest) {
 		r.ctx = v
@@ -150,6 +154,7 @@ func (f ILMMoveToStep) WithContext(v context.Context) func(*ILMMoveToStepRequest
 }
 
 // WithBody - The new lifecycle step to move to.
+//
 func (f ILMMoveToStep) WithBody(v io.Reader) func(*ILMMoveToStepRequest) {
 	return func(r *ILMMoveToStepRequest) {
 		r.Body = v
@@ -157,6 +162,7 @@ func (f ILMMoveToStep) WithBody(v io.Reader) func(*ILMMoveToStepRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f ILMMoveToStep) WithPretty() func(*ILMMoveToStepRequest) {
 	return func(r *ILMMoveToStepRequest) {
 		r.Pretty = true
@@ -164,6 +170,7 @@ func (f ILMMoveToStep) WithPretty() func(*ILMMoveToStepRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f ILMMoveToStep) WithHuman() func(*ILMMoveToStepRequest) {
 	return func(r *ILMMoveToStepRequest) {
 		r.Human = true
@@ -171,6 +178,7 @@ func (f ILMMoveToStep) WithHuman() func(*ILMMoveToStepRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f ILMMoveToStep) WithErrorTrace() func(*ILMMoveToStepRequest) {
 	return func(r *ILMMoveToStepRequest) {
 		r.ErrorTrace = true
@@ -178,6 +186,7 @@ func (f ILMMoveToStep) WithErrorTrace() func(*ILMMoveToStepRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f ILMMoveToStep) WithFilterPath(v ...string) func(*ILMMoveToStepRequest) {
 	return func(r *ILMMoveToStepRequest) {
 		r.FilterPath = v
@@ -185,6 +194,7 @@ func (f ILMMoveToStep) WithFilterPath(v ...string) func(*ILMMoveToStepRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f ILMMoveToStep) WithHeader(h map[string]string) func(*ILMMoveToStepRequest) {
 	return func(r *ILMMoveToStepRequest) {
 		if r.Header == nil {
@@ -197,6 +207,7 @@ func (f ILMMoveToStep) WithHeader(h map[string]string) func(*ILMMoveToStepReques
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f ILMMoveToStep) WithOpaqueID(s string) func(*ILMMoveToStepRequest) {
 	return func(r *ILMMoveToStepRequest) {
 		if r.Header == nil {

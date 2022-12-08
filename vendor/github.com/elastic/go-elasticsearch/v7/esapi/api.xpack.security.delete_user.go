@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -40,9 +40,11 @@ func newSecurityDeleteUserFunc(t Transport) SecurityDeleteUser {
 // SecurityDeleteUser - Deletes users from the native realm.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-delete-user.html.
+//
 type SecurityDeleteUser func(username string, o ...func(*SecurityDeleteUserRequest)) (*Response, error)
 
 // SecurityDeleteUserRequest configures the Security Delete User API request.
+//
 type SecurityDeleteUserRequest struct {
 	Username string
 
@@ -59,6 +61,7 @@ type SecurityDeleteUserRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r SecurityDeleteUserRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -142,6 +145,7 @@ func (r SecurityDeleteUserRequest) Do(ctx context.Context, transport Transport) 
 }
 
 // WithContext sets the request context.
+//
 func (f SecurityDeleteUser) WithContext(v context.Context) func(*SecurityDeleteUserRequest) {
 	return func(r *SecurityDeleteUserRequest) {
 		r.ctx = v
@@ -149,6 +153,7 @@ func (f SecurityDeleteUser) WithContext(v context.Context) func(*SecurityDeleteU
 }
 
 // WithRefresh - if `true` (the default) then refresh the affected shards to make this operation visible to search, if `wait_for` then wait for a refresh to make this operation visible to search, if `false` then do nothing with refreshes..
+//
 func (f SecurityDeleteUser) WithRefresh(v string) func(*SecurityDeleteUserRequest) {
 	return func(r *SecurityDeleteUserRequest) {
 		r.Refresh = v
@@ -156,6 +161,7 @@ func (f SecurityDeleteUser) WithRefresh(v string) func(*SecurityDeleteUserReques
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f SecurityDeleteUser) WithPretty() func(*SecurityDeleteUserRequest) {
 	return func(r *SecurityDeleteUserRequest) {
 		r.Pretty = true
@@ -163,6 +169,7 @@ func (f SecurityDeleteUser) WithPretty() func(*SecurityDeleteUserRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f SecurityDeleteUser) WithHuman() func(*SecurityDeleteUserRequest) {
 	return func(r *SecurityDeleteUserRequest) {
 		r.Human = true
@@ -170,6 +177,7 @@ func (f SecurityDeleteUser) WithHuman() func(*SecurityDeleteUserRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f SecurityDeleteUser) WithErrorTrace() func(*SecurityDeleteUserRequest) {
 	return func(r *SecurityDeleteUserRequest) {
 		r.ErrorTrace = true
@@ -177,6 +185,7 @@ func (f SecurityDeleteUser) WithErrorTrace() func(*SecurityDeleteUserRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f SecurityDeleteUser) WithFilterPath(v ...string) func(*SecurityDeleteUserRequest) {
 	return func(r *SecurityDeleteUserRequest) {
 		r.FilterPath = v
@@ -184,6 +193,7 @@ func (f SecurityDeleteUser) WithFilterPath(v ...string) func(*SecurityDeleteUser
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f SecurityDeleteUser) WithHeader(h map[string]string) func(*SecurityDeleteUserRequest) {
 	return func(r *SecurityDeleteUserRequest) {
 		if r.Header == nil {
@@ -196,6 +206,7 @@ func (f SecurityDeleteUser) WithHeader(h map[string]string) func(*SecurityDelete
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f SecurityDeleteUser) WithOpaqueID(s string) func(*SecurityDeleteUserRequest) {
 	return func(r *SecurityDeleteUserRequest) {
 		if r.Header == nil {

@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -43,9 +43,11 @@ func newIndicesDeleteFunc(t Transport) IndicesDelete {
 // IndicesDelete deletes an index.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-delete-index.html.
+//
 type IndicesDelete func(index []string, o ...func(*IndicesDeleteRequest)) (*Response, error)
 
 // IndicesDeleteRequest configures the Indices Delete API request.
+//
 type IndicesDeleteRequest struct {
 	Index []string
 
@@ -66,6 +68,7 @@ type IndicesDeleteRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r IndicesDeleteRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -165,6 +168,7 @@ func (r IndicesDeleteRequest) Do(ctx context.Context, transport Transport) (*Res
 }
 
 // WithContext sets the request context.
+//
 func (f IndicesDelete) WithContext(v context.Context) func(*IndicesDeleteRequest) {
 	return func(r *IndicesDeleteRequest) {
 		r.ctx = v
@@ -172,6 +176,7 @@ func (f IndicesDelete) WithContext(v context.Context) func(*IndicesDeleteRequest
 }
 
 // WithAllowNoIndices - ignore if a wildcard expression resolves to no concrete indices (default: false).
+//
 func (f IndicesDelete) WithAllowNoIndices(v bool) func(*IndicesDeleteRequest) {
 	return func(r *IndicesDeleteRequest) {
 		r.AllowNoIndices = &v
@@ -179,6 +184,7 @@ func (f IndicesDelete) WithAllowNoIndices(v bool) func(*IndicesDeleteRequest) {
 }
 
 // WithExpandWildcards - whether wildcard expressions should get expanded to open, closed, or hidden indices.
+//
 func (f IndicesDelete) WithExpandWildcards(v string) func(*IndicesDeleteRequest) {
 	return func(r *IndicesDeleteRequest) {
 		r.ExpandWildcards = v
@@ -186,6 +192,7 @@ func (f IndicesDelete) WithExpandWildcards(v string) func(*IndicesDeleteRequest)
 }
 
 // WithIgnoreUnavailable - ignore unavailable indexes (default: false).
+//
 func (f IndicesDelete) WithIgnoreUnavailable(v bool) func(*IndicesDeleteRequest) {
 	return func(r *IndicesDeleteRequest) {
 		r.IgnoreUnavailable = &v
@@ -193,6 +200,7 @@ func (f IndicesDelete) WithIgnoreUnavailable(v bool) func(*IndicesDeleteRequest)
 }
 
 // WithMasterTimeout - specify timeout for connection to master.
+//
 func (f IndicesDelete) WithMasterTimeout(v time.Duration) func(*IndicesDeleteRequest) {
 	return func(r *IndicesDeleteRequest) {
 		r.MasterTimeout = v
@@ -200,6 +208,7 @@ func (f IndicesDelete) WithMasterTimeout(v time.Duration) func(*IndicesDeleteReq
 }
 
 // WithTimeout - explicit operation timeout.
+//
 func (f IndicesDelete) WithTimeout(v time.Duration) func(*IndicesDeleteRequest) {
 	return func(r *IndicesDeleteRequest) {
 		r.Timeout = v
@@ -207,6 +216,7 @@ func (f IndicesDelete) WithTimeout(v time.Duration) func(*IndicesDeleteRequest) 
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f IndicesDelete) WithPretty() func(*IndicesDeleteRequest) {
 	return func(r *IndicesDeleteRequest) {
 		r.Pretty = true
@@ -214,6 +224,7 @@ func (f IndicesDelete) WithPretty() func(*IndicesDeleteRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f IndicesDelete) WithHuman() func(*IndicesDeleteRequest) {
 	return func(r *IndicesDeleteRequest) {
 		r.Human = true
@@ -221,6 +232,7 @@ func (f IndicesDelete) WithHuman() func(*IndicesDeleteRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f IndicesDelete) WithErrorTrace() func(*IndicesDeleteRequest) {
 	return func(r *IndicesDeleteRequest) {
 		r.ErrorTrace = true
@@ -228,6 +240,7 @@ func (f IndicesDelete) WithErrorTrace() func(*IndicesDeleteRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f IndicesDelete) WithFilterPath(v ...string) func(*IndicesDeleteRequest) {
 	return func(r *IndicesDeleteRequest) {
 		r.FilterPath = v
@@ -235,6 +248,7 @@ func (f IndicesDelete) WithFilterPath(v ...string) func(*IndicesDeleteRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f IndicesDelete) WithHeader(h map[string]string) func(*IndicesDeleteRequest) {
 	return func(r *IndicesDeleteRequest) {
 		if r.Header == nil {
@@ -247,6 +261,7 @@ func (f IndicesDelete) WithHeader(h map[string]string) func(*IndicesDeleteReques
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f IndicesDelete) WithOpaqueID(s string) func(*IndicesDeleteRequest) {
 	return func(r *IndicesDeleteRequest) {
 		if r.Header == nil {

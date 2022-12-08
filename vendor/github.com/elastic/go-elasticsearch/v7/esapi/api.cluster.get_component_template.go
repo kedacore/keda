@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -42,9 +42,11 @@ func newClusterGetComponentTemplateFunc(t Transport) ClusterGetComponentTemplate
 // ClusterGetComponentTemplate returns one or more component templates
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-component-template.html.
+//
 type ClusterGetComponentTemplate func(o ...func(*ClusterGetComponentTemplateRequest)) (*Response, error)
 
 // ClusterGetComponentTemplateRequest configures the Cluster Get Component Template API request.
+//
 type ClusterGetComponentTemplateRequest struct {
 	Name []string
 
@@ -62,6 +64,7 @@ type ClusterGetComponentTemplateRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r ClusterGetComponentTemplateRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -149,6 +152,7 @@ func (r ClusterGetComponentTemplateRequest) Do(ctx context.Context, transport Tr
 }
 
 // WithContext sets the request context.
+//
 func (f ClusterGetComponentTemplate) WithContext(v context.Context) func(*ClusterGetComponentTemplateRequest) {
 	return func(r *ClusterGetComponentTemplateRequest) {
 		r.ctx = v
@@ -156,6 +160,7 @@ func (f ClusterGetComponentTemplate) WithContext(v context.Context) func(*Cluste
 }
 
 // WithName - the comma separated names of the component templates.
+//
 func (f ClusterGetComponentTemplate) WithName(v ...string) func(*ClusterGetComponentTemplateRequest) {
 	return func(r *ClusterGetComponentTemplateRequest) {
 		r.Name = v
@@ -163,6 +168,7 @@ func (f ClusterGetComponentTemplate) WithName(v ...string) func(*ClusterGetCompo
 }
 
 // WithLocal - return local information, do not retrieve the state from master node (default: false).
+//
 func (f ClusterGetComponentTemplate) WithLocal(v bool) func(*ClusterGetComponentTemplateRequest) {
 	return func(r *ClusterGetComponentTemplateRequest) {
 		r.Local = &v
@@ -170,6 +176,7 @@ func (f ClusterGetComponentTemplate) WithLocal(v bool) func(*ClusterGetComponent
 }
 
 // WithMasterTimeout - explicit operation timeout for connection to master node.
+//
 func (f ClusterGetComponentTemplate) WithMasterTimeout(v time.Duration) func(*ClusterGetComponentTemplateRequest) {
 	return func(r *ClusterGetComponentTemplateRequest) {
 		r.MasterTimeout = v
@@ -177,6 +184,7 @@ func (f ClusterGetComponentTemplate) WithMasterTimeout(v time.Duration) func(*Cl
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f ClusterGetComponentTemplate) WithPretty() func(*ClusterGetComponentTemplateRequest) {
 	return func(r *ClusterGetComponentTemplateRequest) {
 		r.Pretty = true
@@ -184,6 +192,7 @@ func (f ClusterGetComponentTemplate) WithPretty() func(*ClusterGetComponentTempl
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f ClusterGetComponentTemplate) WithHuman() func(*ClusterGetComponentTemplateRequest) {
 	return func(r *ClusterGetComponentTemplateRequest) {
 		r.Human = true
@@ -191,6 +200,7 @@ func (f ClusterGetComponentTemplate) WithHuman() func(*ClusterGetComponentTempla
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f ClusterGetComponentTemplate) WithErrorTrace() func(*ClusterGetComponentTemplateRequest) {
 	return func(r *ClusterGetComponentTemplateRequest) {
 		r.ErrorTrace = true
@@ -198,6 +208,7 @@ func (f ClusterGetComponentTemplate) WithErrorTrace() func(*ClusterGetComponentT
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f ClusterGetComponentTemplate) WithFilterPath(v ...string) func(*ClusterGetComponentTemplateRequest) {
 	return func(r *ClusterGetComponentTemplateRequest) {
 		r.FilterPath = v
@@ -205,6 +216,7 @@ func (f ClusterGetComponentTemplate) WithFilterPath(v ...string) func(*ClusterGe
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f ClusterGetComponentTemplate) WithHeader(h map[string]string) func(*ClusterGetComponentTemplateRequest) {
 	return func(r *ClusterGetComponentTemplateRequest) {
 		if r.Header == nil {
@@ -217,6 +229,7 @@ func (f ClusterGetComponentTemplate) WithHeader(h map[string]string) func(*Clust
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f ClusterGetComponentTemplate) WithOpaqueID(s string) func(*ClusterGetComponentTemplateRequest) {
 	return func(r *ClusterGetComponentTemplateRequest) {
 		if r.Header == nil {

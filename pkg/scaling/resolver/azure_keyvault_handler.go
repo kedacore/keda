@@ -25,6 +25,7 @@ import (
 	az "github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/go-logr/logr"
+	corev1listers "k8s.io/client-go/listers/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -42,13 +43,13 @@ func NewAzureKeyVaultHandler(v *kedav1alpha1.AzureKeyVault) *AzureKeyVaultHandle
 	}
 }
 
-func (vh *AzureKeyVaultHandler) Initialize(ctx context.Context, client client.Client, logger logr.Logger, triggerNamespace string) error {
+func (vh *AzureKeyVaultHandler) Initialize(ctx context.Context, client client.Client, logger logr.Logger, triggerNamespace string, secretsLister corev1listers.SecretLister) error {
 	keyvaultResourceURL, activeDirectoryEndpoint, err := vh.getPropertiesForCloud()
 	if err != nil {
 		return err
 	}
 
-	authConfig, err := vh.getAuthConfig(ctx, client, logger, triggerNamespace, keyvaultResourceURL, activeDirectoryEndpoint)
+	authConfig, err := vh.getAuthConfig(ctx, client, logger, triggerNamespace, keyvaultResourceURL, activeDirectoryEndpoint, secretsLister)
 	if err != nil {
 		return err
 	}
@@ -101,12 +102,11 @@ func (vh *AzureKeyVaultHandler) getPropertiesForCloud() (string, string, error) 
 }
 
 func (vh *AzureKeyVaultHandler) getAuthConfig(ctx context.Context, client client.Client, logger logr.Logger,
-	triggerNamespace, keyVaultResourceURL, activeDirectoryEndpoint string) (auth.AuthorizerConfig, error) {
+	triggerNamespace, keyVaultResourceURL, activeDirectoryEndpoint string, secretsLister corev1listers.SecretLister) (auth.AuthorizerConfig, error) {
 	podIdentity := vh.vault.PodIdentity
 	if podIdentity == nil {
 		podIdentity = &kedav1alpha1.AuthPodIdentity{}
 	}
-
 	switch podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		clientID := vh.vault.Credentials.ClientID
@@ -114,7 +114,7 @@ func (vh *AzureKeyVaultHandler) getAuthConfig(ctx context.Context, client client
 
 		clientSecretName := vh.vault.Credentials.ClientSecret.ValueFrom.SecretKeyRef.Name
 		clientSecretKey := vh.vault.Credentials.ClientSecret.ValueFrom.SecretKeyRef.Key
-		clientSecret := resolveAuthSecret(ctx, client, logger, clientSecretName, triggerNamespace, clientSecretKey)
+		clientSecret := resolveAuthSecret(ctx, client, logger, clientSecretName, triggerNamespace, clientSecretKey, secretsLister)
 
 		if clientID == "" || tenantID == "" || clientSecret == "" {
 			return nil, fmt.Errorf("clientID, tenantID and clientSecret are expected when not using a pod identity provider")

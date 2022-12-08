@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -44,9 +44,11 @@ func newTasksListFunc(t Transport) TasksList {
 // This API is experimental.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/tasks.html.
+//
 type TasksList func(o ...func(*TasksListRequest)) (*Response, error)
 
 // TasksListRequest configures the Tasks List API request.
+//
 type TasksListRequest struct {
 	Actions           []string
 	Detailed          *bool
@@ -67,6 +69,7 @@ type TasksListRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r TasksListRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -169,6 +172,7 @@ func (r TasksListRequest) Do(ctx context.Context, transport Transport) (*Respons
 }
 
 // WithContext sets the request context.
+//
 func (f TasksList) WithContext(v context.Context) func(*TasksListRequest) {
 	return func(r *TasksListRequest) {
 		r.ctx = v
@@ -176,6 +180,7 @@ func (f TasksList) WithContext(v context.Context) func(*TasksListRequest) {
 }
 
 // WithActions - a list of actions that should be returned. leave empty to return all..
+//
 func (f TasksList) WithActions(v ...string) func(*TasksListRequest) {
 	return func(r *TasksListRequest) {
 		r.Actions = v
@@ -183,6 +188,7 @@ func (f TasksList) WithActions(v ...string) func(*TasksListRequest) {
 }
 
 // WithDetailed - return detailed task information (default: false).
+//
 func (f TasksList) WithDetailed(v bool) func(*TasksListRequest) {
 	return func(r *TasksListRequest) {
 		r.Detailed = &v
@@ -190,6 +196,7 @@ func (f TasksList) WithDetailed(v bool) func(*TasksListRequest) {
 }
 
 // WithGroupBy - group tasks by nodes or parent/child relationships.
+//
 func (f TasksList) WithGroupBy(v string) func(*TasksListRequest) {
 	return func(r *TasksListRequest) {
 		r.GroupBy = v
@@ -197,6 +204,7 @@ func (f TasksList) WithGroupBy(v string) func(*TasksListRequest) {
 }
 
 // WithNodes - a list of node ids or names to limit the returned information; use `_local` to return information from the node you're connecting to, leave empty to get information from all nodes.
+//
 func (f TasksList) WithNodes(v ...string) func(*TasksListRequest) {
 	return func(r *TasksListRequest) {
 		r.Nodes = v
@@ -204,6 +212,7 @@ func (f TasksList) WithNodes(v ...string) func(*TasksListRequest) {
 }
 
 // WithParentTaskID - return tasks with specified parent task ID (node_id:task_number). set to -1 to return all..
+//
 func (f TasksList) WithParentTaskID(v string) func(*TasksListRequest) {
 	return func(r *TasksListRequest) {
 		r.ParentTaskID = v
@@ -211,6 +220,7 @@ func (f TasksList) WithParentTaskID(v string) func(*TasksListRequest) {
 }
 
 // WithTimeout - explicit operation timeout.
+//
 func (f TasksList) WithTimeout(v time.Duration) func(*TasksListRequest) {
 	return func(r *TasksListRequest) {
 		r.Timeout = v
@@ -218,6 +228,7 @@ func (f TasksList) WithTimeout(v time.Duration) func(*TasksListRequest) {
 }
 
 // WithWaitForCompletion - wait for the matching tasks to complete (default: false).
+//
 func (f TasksList) WithWaitForCompletion(v bool) func(*TasksListRequest) {
 	return func(r *TasksListRequest) {
 		r.WaitForCompletion = &v
@@ -225,6 +236,7 @@ func (f TasksList) WithWaitForCompletion(v bool) func(*TasksListRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f TasksList) WithPretty() func(*TasksListRequest) {
 	return func(r *TasksListRequest) {
 		r.Pretty = true
@@ -232,6 +244,7 @@ func (f TasksList) WithPretty() func(*TasksListRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f TasksList) WithHuman() func(*TasksListRequest) {
 	return func(r *TasksListRequest) {
 		r.Human = true
@@ -239,6 +252,7 @@ func (f TasksList) WithHuman() func(*TasksListRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f TasksList) WithErrorTrace() func(*TasksListRequest) {
 	return func(r *TasksListRequest) {
 		r.ErrorTrace = true
@@ -246,6 +260,7 @@ func (f TasksList) WithErrorTrace() func(*TasksListRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f TasksList) WithFilterPath(v ...string) func(*TasksListRequest) {
 	return func(r *TasksListRequest) {
 		r.FilterPath = v
@@ -253,6 +268,7 @@ func (f TasksList) WithFilterPath(v ...string) func(*TasksListRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f TasksList) WithHeader(h map[string]string) func(*TasksListRequest) {
 	return func(r *TasksListRequest) {
 		if r.Header == nil {
@@ -265,6 +281,7 @@ func (f TasksList) WithHeader(h map[string]string) func(*TasksListRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f TasksList) WithOpaqueID(s string) func(*TasksListRequest) {
 	return func(r *TasksListRequest) {
 		if r.Header == nil {

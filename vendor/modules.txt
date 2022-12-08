@@ -346,7 +346,7 @@ github.com/eapache/go-xerial-snappy
 # github.com/eapache/queue v1.1.0
 ## explicit
 github.com/eapache/queue
-# github.com/elastic/go-elasticsearch/v7 v7.17.7
+# github.com/elastic/go-elasticsearch/v7 v7.17.1
 ## explicit; go 1.11
 github.com/elastic/go-elasticsearch/v7
 github.com/elastic/go-elasticsearch/v7/esapi
@@ -374,6 +374,15 @@ github.com/fsnotify/fsnotify
 # github.com/go-errors/errors v1.0.1
 ## explicit
 github.com/go-errors/errors
+# github.com/go-kivik/couchdb/v3 v3.3.0
+## explicit; go 1.13
+github.com/go-kivik/couchdb/v3
+github.com/go-kivik/couchdb/v3/chttp
+# github.com/go-kivik/kivik/v3 v3.2.3
+## explicit; go 1.13
+github.com/go-kivik/kivik/v3
+github.com/go-kivik/kivik/v3/driver
+github.com/go-kivik/kivik/v3/internal/registry
 # github.com/go-logr/logr v1.2.3
 ## explicit; go 1.16
 github.com/go-logr/logr
