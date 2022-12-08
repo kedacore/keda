@@ -112,4 +112,4 @@ linters-settings:
       - standard
       - default
       - prefix(github.com/kedacore/keda)
-      
+     
