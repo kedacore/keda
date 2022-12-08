@@ -23,18 +23,20 @@ type datadogScaler struct {
 }
 
 type datadogMetadata struct {
-	apiKey               string
-	appKey               string
-	datadogSite          string
-	query                string
-	queryValue           float64
-	queryAggegrator      string
-	activationQueryValue float64
-	vType                v2.MetricTargetType
-	metricName           string
-	age                  int
-	useFiller            bool
-	fillValue            float64
+	apiKey                   string
+	appKey                   string
+	datadogSite              string
+	query                    string
+	queryValue               float64
+	queryAggegrator          string
+	activationQueryValue     float64
+	vType                    v2.MetricTargetType
+	metricName               string
+	age                      int
+	timeWindowOffset         int // Delay in seconds to wait for the metric to be available
+	lastAvailablePointOffset int
+	useFiller                bool
+	fillValue                float64
 }
 
 const maxString = "max"
@@ -86,11 +88,44 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 		}
 		meta.age = age
 
+		if age < 0 {
+			return nil, fmt.Errorf("age should not be smaller than 0 seconds")
+		}
 		if age < 60 {
 			logger.Info("selecting a window smaller than 60 seconds can cause Datadog not finding a metric value for the query")
 		}
 	} else {
 		meta.age = 90 // Default window 90 seconds
+	}
+
+	if val, ok := config.TriggerMetadata["timeWindowOffset"]; ok {
+		timeWindowOffset, err := strconv.Atoi(val)
+		if err != nil {
+			return nil, fmt.Errorf("timeWindowOffset parsing error %s", err.Error())
+		}
+		if timeWindowOffset < 0 {
+			return nil, fmt.Errorf("timeWindowOffset should not be smaller than 0 seconds")
+		}
+		meta.timeWindowOffset = timeWindowOffset
+
+	} else {
+		meta.timeWindowOffset = 0 // Default delay 0 seconds
+	}
+
+	if val, ok := config.TriggerMetadata["lastAvailablePointOffset"]; ok {
+		lastAvailablePointOffset, err := strconv.Atoi(val)
+		if err != nil {
+			return nil, fmt.Errorf("lastAvailablePointOffset parsing error %s", err.Error())
+		}
+
+		if lastAvailablePointOffset < 0 {
+			return nil, fmt.Errorf("lastAvailablePointOffset should not be smaller than 0")
+		}
+
+		meta.lastAvailablePointOffset = lastAvailablePointOffset
+
+	} else {
+		meta.lastAvailablePointOffset = 0 // Default use the last point
 	}
 
 	if val, ok := config.TriggerMetadata["query"]; ok {
@@ -262,7 +297,9 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 			"site": s.metadata.datadogSite,
 		})
 
-	resp, r, err := s.apiClient.MetricsApi.QueryMetrics(ctx, time.Now().Unix()-int64(s.metadata.age), time.Now().Unix(), s.metadata.query) //nolint:bodyclose
+	timeWindowTo := time.Now().Unix() - int64(s.metadata.timeWindowOffset)
+	timeWindowFrom := timeWindowTo - int64(s.metadata.age)
+	resp, r, err := s.apiClient.MetricsApi.QueryMetrics(ctx, timeWindowFrom, timeWindowTo, s.metadata.query) //nolint:bodyclose
 	if err != nil {
 		return -1, fmt.Errorf("error when retrieving Datadog metrics: %s", err)
 	}
@@ -305,12 +342,17 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 		points := series[i].GetPointlist()
 		index := len(points) - 1
 		// Find out the last point != nil
-		for j := len(points) - 1; j >= 0; j-- {
-			if len(points[index]) >= 2 && points[j][1] != nil {
+		for j := index; j >= 0; j-- {
+			if len(points[j]) >= 2 && points[j][1] != nil {
 				index = j
 				break
 			}
 		}
+		if index < s.metadata.lastAvailablePointOffset {
+			return 0, fmt.Errorf("The index is smaller than the lastAvailablePointOffset")
+		}
+		index = index - s.metadata.lastAvailablePointOffset
+
 		if len(points) == 0 || len(points[index]) < 2 || points[index][1] == nil {
 			if !s.metadata.useFiller {
 				return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
