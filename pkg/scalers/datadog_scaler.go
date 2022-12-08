@@ -351,7 +351,7 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 		if index < s.metadata.lastAvailablePointOffset {
 			return 0, fmt.Errorf("The index is smaller than the lastAvailablePointOffset")
 		}
-		index = index - s.metadata.lastAvailablePointOffset
+		index -= s.metadata.lastAvailablePointOffset
 
 		if len(points) == 0 || len(points[index]) < 2 || points[index][1] == nil {
 			if !s.metadata.useFiller {
