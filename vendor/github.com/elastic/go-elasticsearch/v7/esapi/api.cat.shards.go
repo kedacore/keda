@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -42,9 +42,11 @@ func newCatShardsFunc(t Transport) CatShards {
 // CatShards provides a detailed view of shard allocation on nodes.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/cat-shards.html.
+//
 type CatShards func(o ...func(*CatShardsRequest)) (*Response, error)
 
 // CatShardsRequest configures the Cat Shards API request.
+//
 type CatShardsRequest struct {
 	Index []string
 
@@ -69,6 +71,7 @@ type CatShardsRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r CatShardsRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -186,6 +189,7 @@ func (r CatShardsRequest) Do(ctx context.Context, transport Transport) (*Respons
 }
 
 // WithContext sets the request context.
+//
 func (f CatShards) WithContext(v context.Context) func(*CatShardsRequest) {
 	return func(r *CatShardsRequest) {
 		r.ctx = v
@@ -193,6 +197,7 @@ func (f CatShards) WithContext(v context.Context) func(*CatShardsRequest) {
 }
 
 // WithIndex - a list of index names to limit the returned information.
+//
 func (f CatShards) WithIndex(v ...string) func(*CatShardsRequest) {
 	return func(r *CatShardsRequest) {
 		r.Index = v
@@ -200,6 +205,7 @@ func (f CatShards) WithIndex(v ...string) func(*CatShardsRequest) {
 }
 
 // WithBytes - the unit in which to display byte values.
+//
 func (f CatShards) WithBytes(v string) func(*CatShardsRequest) {
 	return func(r *CatShardsRequest) {
 		r.Bytes = v
@@ -207,6 +213,7 @@ func (f CatShards) WithBytes(v string) func(*CatShardsRequest) {
 }
 
 // WithFormat - a short version of the accept header, e.g. json, yaml.
+//
 func (f CatShards) WithFormat(v string) func(*CatShardsRequest) {
 	return func(r *CatShardsRequest) {
 		r.Format = v
@@ -214,6 +221,7 @@ func (f CatShards) WithFormat(v string) func(*CatShardsRequest) {
 }
 
 // WithH - comma-separated list of column names to display.
+//
 func (f CatShards) WithH(v ...string) func(*CatShardsRequest) {
 	return func(r *CatShardsRequest) {
 		r.H = v
@@ -221,6 +229,7 @@ func (f CatShards) WithH(v ...string) func(*CatShardsRequest) {
 }
 
 // WithHelp - return help information.
+//
 func (f CatShards) WithHelp(v bool) func(*CatShardsRequest) {
 	return func(r *CatShardsRequest) {
 		r.Help = &v
@@ -228,6 +237,7 @@ func (f CatShards) WithHelp(v bool) func(*CatShardsRequest) {
 }
 
 // WithLocal - return local information, do not retrieve the state from master node (default: false).
+//
 func (f CatShards) WithLocal(v bool) func(*CatShardsRequest) {
 	return func(r *CatShardsRequest) {
 		r.Local = &v
@@ -235,6 +245,7 @@ func (f CatShards) WithLocal(v bool) func(*CatShardsRequest) {
 }
 
 // WithMasterTimeout - explicit operation timeout for connection to master node.
+//
 func (f CatShards) WithMasterTimeout(v time.Duration) func(*CatShardsRequest) {
 	return func(r *CatShardsRequest) {
 		r.MasterTimeout = v
@@ -242,6 +253,7 @@ func (f CatShards) WithMasterTimeout(v time.Duration) func(*CatShardsRequest) {
 }
 
 // WithS - comma-separated list of column names or column aliases to sort by.
+//
 func (f CatShards) WithS(v ...string) func(*CatShardsRequest) {
 	return func(r *CatShardsRequest) {
 		r.S = v
@@ -249,6 +261,7 @@ func (f CatShards) WithS(v ...string) func(*CatShardsRequest) {
 }
 
 // WithTime - the unit in which to display time values.
+//
 func (f CatShards) WithTime(v string) func(*CatShardsRequest) {
 	return func(r *CatShardsRequest) {
 		r.Time = v
@@ -256,6 +269,7 @@ func (f CatShards) WithTime(v string) func(*CatShardsRequest) {
 }
 
 // WithV - verbose mode. display column headers.
+//
 func (f CatShards) WithV(v bool) func(*CatShardsRequest) {
 	return func(r *CatShardsRequest) {
 		r.V = &v
@@ -263,6 +277,7 @@ func (f CatShards) WithV(v bool) func(*CatShardsRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f CatShards) WithPretty() func(*CatShardsRequest) {
 	return func(r *CatShardsRequest) {
 		r.Pretty = true
@@ -270,6 +285,7 @@ func (f CatShards) WithPretty() func(*CatShardsRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f CatShards) WithHuman() func(*CatShardsRequest) {
 	return func(r *CatShardsRequest) {
 		r.Human = true
@@ -277,6 +293,7 @@ func (f CatShards) WithHuman() func(*CatShardsRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f CatShards) WithErrorTrace() func(*CatShardsRequest) {
 	return func(r *CatShardsRequest) {
 		r.ErrorTrace = true
@@ -284,6 +301,7 @@ func (f CatShards) WithErrorTrace() func(*CatShardsRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f CatShards) WithFilterPath(v ...string) func(*CatShardsRequest) {
 	return func(r *CatShardsRequest) {
 		r.FilterPath = v
@@ -291,6 +309,7 @@ func (f CatShards) WithFilterPath(v ...string) func(*CatShardsRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f CatShards) WithHeader(h map[string]string) func(*CatShardsRequest) {
 	return func(r *CatShardsRequest) {
 		if r.Header == nil {
@@ -303,6 +322,7 @@ func (f CatShards) WithHeader(h map[string]string) func(*CatShardsRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f CatShards) WithOpaqueID(s string) func(*CatShardsRequest) {
 	return func(r *CatShardsRequest) {
 		if r.Header == nil {

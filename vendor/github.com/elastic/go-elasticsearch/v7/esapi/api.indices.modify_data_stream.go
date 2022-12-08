@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,9 +41,11 @@ func newIndicesModifyDataStreamFunc(t Transport) IndicesModifyDataStream {
 // IndicesModifyDataStream modifies a data stream
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/data-streams.html.
+//
 type IndicesModifyDataStream func(body io.Reader, o ...func(*IndicesModifyDataStreamRequest)) (*Response, error)
 
 // IndicesModifyDataStreamRequest configures the Indices Modify Data Stream API request.
+//
 type IndicesModifyDataStreamRequest struct {
 	Body io.Reader
 
@@ -58,6 +60,7 @@ type IndicesModifyDataStreamRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r IndicesModifyDataStreamRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -101,6 +104,10 @@ func (r IndicesModifyDataStreamRequest) Do(ctx context.Context, transport Transp
 		req.URL.RawQuery = q.Encode()
 	}
 
+	if r.Body != nil {
+		req.Header[headerContentType] = headerContentTypeJSON
+	}
+
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -111,10 +118,6 @@ func (r IndicesModifyDataStreamRequest) Do(ctx context.Context, transport Transp
 				}
 			}
 		}
-	}
-
-	if r.Body != nil && req.Header.Get(headerContentType) == "" {
-		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -136,6 +139,7 @@ func (r IndicesModifyDataStreamRequest) Do(ctx context.Context, transport Transp
 }
 
 // WithContext sets the request context.
+//
 func (f IndicesModifyDataStream) WithContext(v context.Context) func(*IndicesModifyDataStreamRequest) {
 	return func(r *IndicesModifyDataStreamRequest) {
 		r.ctx = v
@@ -143,6 +147,7 @@ func (f IndicesModifyDataStream) WithContext(v context.Context) func(*IndicesMod
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f IndicesModifyDataStream) WithPretty() func(*IndicesModifyDataStreamRequest) {
 	return func(r *IndicesModifyDataStreamRequest) {
 		r.Pretty = true
@@ -150,6 +155,7 @@ func (f IndicesModifyDataStream) WithPretty() func(*IndicesModifyDataStreamReque
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f IndicesModifyDataStream) WithHuman() func(*IndicesModifyDataStreamRequest) {
 	return func(r *IndicesModifyDataStreamRequest) {
 		r.Human = true
@@ -157,6 +163,7 @@ func (f IndicesModifyDataStream) WithHuman() func(*IndicesModifyDataStreamReques
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f IndicesModifyDataStream) WithErrorTrace() func(*IndicesModifyDataStreamRequest) {
 	return func(r *IndicesModifyDataStreamRequest) {
 		r.ErrorTrace = true
@@ -164,6 +171,7 @@ func (f IndicesModifyDataStream) WithErrorTrace() func(*IndicesModifyDataStreamR
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f IndicesModifyDataStream) WithFilterPath(v ...string) func(*IndicesModifyDataStreamRequest) {
 	return func(r *IndicesModifyDataStreamRequest) {
 		r.FilterPath = v
@@ -171,6 +179,7 @@ func (f IndicesModifyDataStream) WithFilterPath(v ...string) func(*IndicesModify
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f IndicesModifyDataStream) WithHeader(h map[string]string) func(*IndicesModifyDataStreamRequest) {
 	return func(r *IndicesModifyDataStreamRequest) {
 		if r.Header == nil {
@@ -183,6 +192,7 @@ func (f IndicesModifyDataStream) WithHeader(h map[string]string) func(*IndicesMo
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f IndicesModifyDataStream) WithOpaqueID(s string) func(*IndicesModifyDataStreamRequest) {
 	return func(r *IndicesModifyDataStreamRequest) {
 		if r.Header == nil {

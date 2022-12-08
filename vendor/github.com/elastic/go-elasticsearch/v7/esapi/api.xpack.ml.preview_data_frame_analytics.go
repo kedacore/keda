@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,9 +41,11 @@ func newMLPreviewDataFrameAnalyticsFunc(t Transport) MLPreviewDataFrameAnalytics
 // MLPreviewDataFrameAnalytics - Previews that will be analyzed given a data frame analytics config.
 //
 // See full documentation at http://www.elastic.co/guide/en/elasticsearch/reference/current/preview-dfanalytics.html.
+//
 type MLPreviewDataFrameAnalytics func(o ...func(*MLPreviewDataFrameAnalyticsRequest)) (*Response, error)
 
 // MLPreviewDataFrameAnalyticsRequest configures the ML Preview Data Frame Analytics API request.
+//
 type MLPreviewDataFrameAnalyticsRequest struct {
 	DocumentID string
 
@@ -60,6 +62,7 @@ type MLPreviewDataFrameAnalyticsRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r MLPreviewDataFrameAnalyticsRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -114,6 +117,10 @@ func (r MLPreviewDataFrameAnalyticsRequest) Do(ctx context.Context, transport Tr
 		req.URL.RawQuery = q.Encode()
 	}
 
+	if r.Body != nil {
+		req.Header[headerContentType] = headerContentTypeJSON
+	}
+
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -124,10 +131,6 @@ func (r MLPreviewDataFrameAnalyticsRequest) Do(ctx context.Context, transport Tr
 				}
 			}
 		}
-	}
-
-	if r.Body != nil && req.Header.Get(headerContentType) == "" {
-		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -149,6 +152,7 @@ func (r MLPreviewDataFrameAnalyticsRequest) Do(ctx context.Context, transport Tr
 }
 
 // WithContext sets the request context.
+//
 func (f MLPreviewDataFrameAnalytics) WithContext(v context.Context) func(*MLPreviewDataFrameAnalyticsRequest) {
 	return func(r *MLPreviewDataFrameAnalyticsRequest) {
 		r.ctx = v
@@ -156,6 +160,7 @@ func (f MLPreviewDataFrameAnalytics) WithContext(v context.Context) func(*MLPrev
 }
 
 // WithBody - The data frame analytics config to preview.
+//
 func (f MLPreviewDataFrameAnalytics) WithBody(v io.Reader) func(*MLPreviewDataFrameAnalyticsRequest) {
 	return func(r *MLPreviewDataFrameAnalyticsRequest) {
 		r.Body = v
@@ -163,6 +168,7 @@ func (f MLPreviewDataFrameAnalytics) WithBody(v io.Reader) func(*MLPreviewDataFr
 }
 
 // WithDocumentID - the ID of the data frame analytics to preview.
+//
 func (f MLPreviewDataFrameAnalytics) WithDocumentID(v string) func(*MLPreviewDataFrameAnalyticsRequest) {
 	return func(r *MLPreviewDataFrameAnalyticsRequest) {
 		r.DocumentID = v
@@ -170,6 +176,7 @@ func (f MLPreviewDataFrameAnalytics) WithDocumentID(v string) func(*MLPreviewDat
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f MLPreviewDataFrameAnalytics) WithPretty() func(*MLPreviewDataFrameAnalyticsRequest) {
 	return func(r *MLPreviewDataFrameAnalyticsRequest) {
 		r.Pretty = true
@@ -177,6 +184,7 @@ func (f MLPreviewDataFrameAnalytics) WithPretty() func(*MLPreviewDataFrameAnalyt
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f MLPreviewDataFrameAnalytics) WithHuman() func(*MLPreviewDataFrameAnalyticsRequest) {
 	return func(r *MLPreviewDataFrameAnalyticsRequest) {
 		r.Human = true
@@ -184,6 +192,7 @@ func (f MLPreviewDataFrameAnalytics) WithHuman() func(*MLPreviewDataFrameAnalyti
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f MLPreviewDataFrameAnalytics) WithErrorTrace() func(*MLPreviewDataFrameAnalyticsRequest) {
 	return func(r *MLPreviewDataFrameAnalyticsRequest) {
 		r.ErrorTrace = true
@@ -191,6 +200,7 @@ func (f MLPreviewDataFrameAnalytics) WithErrorTrace() func(*MLPreviewDataFrameAn
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f MLPreviewDataFrameAnalytics) WithFilterPath(v ...string) func(*MLPreviewDataFrameAnalyticsRequest) {
 	return func(r *MLPreviewDataFrameAnalyticsRequest) {
 		r.FilterPath = v
@@ -198,6 +208,7 @@ func (f MLPreviewDataFrameAnalytics) WithFilterPath(v ...string) func(*MLPreview
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f MLPreviewDataFrameAnalytics) WithHeader(h map[string]string) func(*MLPreviewDataFrameAnalyticsRequest) {
 	return func(r *MLPreviewDataFrameAnalyticsRequest) {
 		if r.Header == nil {
@@ -210,6 +221,7 @@ func (f MLPreviewDataFrameAnalytics) WithHeader(h map[string]string) func(*MLPre
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f MLPreviewDataFrameAnalytics) WithOpaqueID(s string) func(*MLPreviewDataFrameAnalyticsRequest) {
 	return func(r *MLPreviewDataFrameAnalyticsRequest) {
 		if r.Header == nil {

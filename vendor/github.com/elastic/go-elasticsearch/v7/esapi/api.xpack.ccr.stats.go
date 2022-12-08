@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -40,9 +40,11 @@ func newCCRStatsFunc(t Transport) CCRStats {
 // CCRStats - Gets all stats related to cross-cluster replication.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/ccr-get-stats.html.
+//
 type CCRStats func(o ...func(*CCRStatsRequest)) (*Response, error)
 
 // CCRStatsRequest configures the CCR Stats API request.
+//
 type CCRStatsRequest struct {
 	Pretty     bool
 	Human      bool
@@ -55,6 +57,7 @@ type CCRStatsRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r CCRStatsRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -129,6 +132,7 @@ func (r CCRStatsRequest) Do(ctx context.Context, transport Transport) (*Response
 }
 
 // WithContext sets the request context.
+//
 func (f CCRStats) WithContext(v context.Context) func(*CCRStatsRequest) {
 	return func(r *CCRStatsRequest) {
 		r.ctx = v
@@ -136,6 +140,7 @@ func (f CCRStats) WithContext(v context.Context) func(*CCRStatsRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f CCRStats) WithPretty() func(*CCRStatsRequest) {
 	return func(r *CCRStatsRequest) {
 		r.Pretty = true
@@ -143,6 +148,7 @@ func (f CCRStats) WithPretty() func(*CCRStatsRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f CCRStats) WithHuman() func(*CCRStatsRequest) {
 	return func(r *CCRStatsRequest) {
 		r.Human = true
@@ -150,6 +156,7 @@ func (f CCRStats) WithHuman() func(*CCRStatsRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f CCRStats) WithErrorTrace() func(*CCRStatsRequest) {
 	return func(r *CCRStatsRequest) {
 		r.ErrorTrace = true
@@ -157,6 +164,7 @@ func (f CCRStats) WithErrorTrace() func(*CCRStatsRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f CCRStats) WithFilterPath(v ...string) func(*CCRStatsRequest) {
 	return func(r *CCRStatsRequest) {
 		r.FilterPath = v
@@ -164,6 +172,7 @@ func (f CCRStats) WithFilterPath(v ...string) func(*CCRStatsRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f CCRStats) WithHeader(h map[string]string) func(*CCRStatsRequest) {
 	return func(r *CCRStatsRequest) {
 		if r.Header == nil {
@@ -176,6 +185,7 @@ func (f CCRStats) WithHeader(h map[string]string) func(*CCRStatsRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f CCRStats) WithOpaqueID(s string) func(*CCRStatsRequest) {
 	return func(r *CCRStatsRequest) {
 		if r.Header == nil {

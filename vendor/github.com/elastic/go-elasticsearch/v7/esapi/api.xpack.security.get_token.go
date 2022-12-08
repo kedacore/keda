@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,9 +41,11 @@ func newSecurityGetTokenFunc(t Transport) SecurityGetToken {
 // SecurityGetToken - Creates a bearer token for access without requiring basic authentication.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-get-token.html.
+//
 type SecurityGetToken func(body io.Reader, o ...func(*SecurityGetTokenRequest)) (*Response, error)
 
 // SecurityGetTokenRequest configures the Security Get Token API request.
+//
 type SecurityGetTokenRequest struct {
 	Body io.Reader
 
@@ -58,6 +60,7 @@ type SecurityGetTokenRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r SecurityGetTokenRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -101,6 +104,10 @@ func (r SecurityGetTokenRequest) Do(ctx context.Context, transport Transport) (*
 		req.URL.RawQuery = q.Encode()
 	}
 
+	if r.Body != nil {
+		req.Header[headerContentType] = headerContentTypeJSON
+	}
+
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -111,10 +118,6 @@ func (r SecurityGetTokenRequest) Do(ctx context.Context, transport Transport) (*
 				}
 			}
 		}
-	}
-
-	if r.Body != nil && req.Header.Get(headerContentType) == "" {
-		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -136,6 +139,7 @@ func (r SecurityGetTokenRequest) Do(ctx context.Context, transport Transport) (*
 }
 
 // WithContext sets the request context.
+//
 func (f SecurityGetToken) WithContext(v context.Context) func(*SecurityGetTokenRequest) {
 	return func(r *SecurityGetTokenRequest) {
 		r.ctx = v
@@ -143,6 +147,7 @@ func (f SecurityGetToken) WithContext(v context.Context) func(*SecurityGetTokenR
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f SecurityGetToken) WithPretty() func(*SecurityGetTokenRequest) {
 	return func(r *SecurityGetTokenRequest) {
 		r.Pretty = true
@@ -150,6 +155,7 @@ func (f SecurityGetToken) WithPretty() func(*SecurityGetTokenRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f SecurityGetToken) WithHuman() func(*SecurityGetTokenRequest) {
 	return func(r *SecurityGetTokenRequest) {
 		r.Human = true
@@ -157,6 +163,7 @@ func (f SecurityGetToken) WithHuman() func(*SecurityGetTokenRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f SecurityGetToken) WithErrorTrace() func(*SecurityGetTokenRequest) {
 	return func(r *SecurityGetTokenRequest) {
 		r.ErrorTrace = true
@@ -164,6 +171,7 @@ func (f SecurityGetToken) WithErrorTrace() func(*SecurityGetTokenRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f SecurityGetToken) WithFilterPath(v ...string) func(*SecurityGetTokenRequest) {
 	return func(r *SecurityGetTokenRequest) {
 		r.FilterPath = v
@@ -171,6 +179,7 @@ func (f SecurityGetToken) WithFilterPath(v ...string) func(*SecurityGetTokenRequ
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f SecurityGetToken) WithHeader(h map[string]string) func(*SecurityGetTokenRequest) {
 	return func(r *SecurityGetTokenRequest) {
 		if r.Header == nil {
@@ -183,6 +192,7 @@ func (f SecurityGetToken) WithHeader(h map[string]string) func(*SecurityGetToken
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f SecurityGetToken) WithOpaqueID(s string) func(*SecurityGetTokenRequest) {
 	return func(r *SecurityGetTokenRequest) {
 		if r.Header == nil {

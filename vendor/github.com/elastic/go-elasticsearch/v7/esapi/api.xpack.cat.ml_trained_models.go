@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,9 +41,11 @@ func newCatMLTrainedModelsFunc(t Transport) CatMLTrainedModels {
 // CatMLTrainedModels - Gets configuration and usage information about inference trained models.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/cat-trained-model.html.
+//
 type CatMLTrainedModels func(o ...func(*CatMLTrainedModelsRequest)) (*Response, error)
 
 // CatMLTrainedModelsRequest configures the CatML Trained Models API request.
+//
 type CatMLTrainedModelsRequest struct {
 	ModelID string
 
@@ -69,6 +71,7 @@ type CatMLTrainedModelsRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r CatMLTrainedModelsRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -192,6 +195,7 @@ func (r CatMLTrainedModelsRequest) Do(ctx context.Context, transport Transport) 
 }
 
 // WithContext sets the request context.
+//
 func (f CatMLTrainedModels) WithContext(v context.Context) func(*CatMLTrainedModelsRequest) {
 	return func(r *CatMLTrainedModelsRequest) {
 		r.ctx = v
@@ -199,6 +203,7 @@ func (f CatMLTrainedModels) WithContext(v context.Context) func(*CatMLTrainedMod
 }
 
 // WithModelID - the ID of the trained models stats to fetch.
+//
 func (f CatMLTrainedModels) WithModelID(v string) func(*CatMLTrainedModelsRequest) {
 	return func(r *CatMLTrainedModelsRequest) {
 		r.ModelID = v
@@ -206,6 +211,7 @@ func (f CatMLTrainedModels) WithModelID(v string) func(*CatMLTrainedModelsReques
 }
 
 // WithAllowNoMatch - whether to ignore if a wildcard expression matches no trained models. (this includes `_all` string or when no trained models have been specified).
+//
 func (f CatMLTrainedModels) WithAllowNoMatch(v bool) func(*CatMLTrainedModelsRequest) {
 	return func(r *CatMLTrainedModelsRequest) {
 		r.AllowNoMatch = &v
@@ -213,6 +219,7 @@ func (f CatMLTrainedModels) WithAllowNoMatch(v bool) func(*CatMLTrainedModelsReq
 }
 
 // WithBytes - the unit in which to display byte values.
+//
 func (f CatMLTrainedModels) WithBytes(v string) func(*CatMLTrainedModelsRequest) {
 	return func(r *CatMLTrainedModelsRequest) {
 		r.Bytes = v
@@ -220,6 +227,7 @@ func (f CatMLTrainedModels) WithBytes(v string) func(*CatMLTrainedModelsRequest)
 }
 
 // WithFormat - a short version of the accept header, e.g. json, yaml.
+//
 func (f CatMLTrainedModels) WithFormat(v string) func(*CatMLTrainedModelsRequest) {
 	return func(r *CatMLTrainedModelsRequest) {
 		r.Format = v
@@ -227,6 +235,7 @@ func (f CatMLTrainedModels) WithFormat(v string) func(*CatMLTrainedModelsRequest
 }
 
 // WithFrom - skips a number of trained models.
+//
 func (f CatMLTrainedModels) WithFrom(v int) func(*CatMLTrainedModelsRequest) {
 	return func(r *CatMLTrainedModelsRequest) {
 		r.From = &v
@@ -234,6 +243,7 @@ func (f CatMLTrainedModels) WithFrom(v int) func(*CatMLTrainedModelsRequest) {
 }
 
 // WithH - comma-separated list of column names to display.
+//
 func (f CatMLTrainedModels) WithH(v ...string) func(*CatMLTrainedModelsRequest) {
 	return func(r *CatMLTrainedModelsRequest) {
 		r.H = v
@@ -241,6 +251,7 @@ func (f CatMLTrainedModels) WithH(v ...string) func(*CatMLTrainedModelsRequest) 
 }
 
 // WithHelp - return help information.
+//
 func (f CatMLTrainedModels) WithHelp(v bool) func(*CatMLTrainedModelsRequest) {
 	return func(r *CatMLTrainedModelsRequest) {
 		r.Help = &v
@@ -248,6 +259,7 @@ func (f CatMLTrainedModels) WithHelp(v bool) func(*CatMLTrainedModelsRequest) {
 }
 
 // WithS - comma-separated list of column names or column aliases to sort by.
+//
 func (f CatMLTrainedModels) WithS(v ...string) func(*CatMLTrainedModelsRequest) {
 	return func(r *CatMLTrainedModelsRequest) {
 		r.S = v
@@ -255,6 +267,7 @@ func (f CatMLTrainedModels) WithS(v ...string) func(*CatMLTrainedModelsRequest) 
 }
 
 // WithSize - specifies a max number of trained models to get.
+//
 func (f CatMLTrainedModels) WithSize(v int) func(*CatMLTrainedModelsRequest) {
 	return func(r *CatMLTrainedModelsRequest) {
 		r.Size = &v
@@ -262,6 +275,7 @@ func (f CatMLTrainedModels) WithSize(v int) func(*CatMLTrainedModelsRequest) {
 }
 
 // WithTime - the unit in which to display time values.
+//
 func (f CatMLTrainedModels) WithTime(v string) func(*CatMLTrainedModelsRequest) {
 	return func(r *CatMLTrainedModelsRequest) {
 		r.Time = v
@@ -269,6 +283,7 @@ func (f CatMLTrainedModels) WithTime(v string) func(*CatMLTrainedModelsRequest) 
 }
 
 // WithV - verbose mode. display column headers.
+//
 func (f CatMLTrainedModels) WithV(v bool) func(*CatMLTrainedModelsRequest) {
 	return func(r *CatMLTrainedModelsRequest) {
 		r.V = &v
@@ -276,6 +291,7 @@ func (f CatMLTrainedModels) WithV(v bool) func(*CatMLTrainedModelsRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f CatMLTrainedModels) WithPretty() func(*CatMLTrainedModelsRequest) {
 	return func(r *CatMLTrainedModelsRequest) {
 		r.Pretty = true
@@ -283,6 +299,7 @@ func (f CatMLTrainedModels) WithPretty() func(*CatMLTrainedModelsRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f CatMLTrainedModels) WithHuman() func(*CatMLTrainedModelsRequest) {
 	return func(r *CatMLTrainedModelsRequest) {
 		r.Human = true
@@ -290,6 +307,7 @@ func (f CatMLTrainedModels) WithHuman() func(*CatMLTrainedModelsRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f CatMLTrainedModels) WithErrorTrace() func(*CatMLTrainedModelsRequest) {
 	return func(r *CatMLTrainedModelsRequest) {
 		r.ErrorTrace = true
@@ -297,6 +315,7 @@ func (f CatMLTrainedModels) WithErrorTrace() func(*CatMLTrainedModelsRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f CatMLTrainedModels) WithFilterPath(v ...string) func(*CatMLTrainedModelsRequest) {
 	return func(r *CatMLTrainedModelsRequest) {
 		r.FilterPath = v
@@ -304,6 +323,7 @@ func (f CatMLTrainedModels) WithFilterPath(v ...string) func(*CatMLTrainedModels
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f CatMLTrainedModels) WithHeader(h map[string]string) func(*CatMLTrainedModelsRequest) {
 	return func(r *CatMLTrainedModelsRequest) {
 		if r.Header == nil {
@@ -316,6 +336,7 @@ func (f CatMLTrainedModels) WithHeader(h map[string]string) func(*CatMLTrainedMo
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f CatMLTrainedModels) WithOpaqueID(s string) func(*CatMLTrainedModelsRequest) {
 	return func(r *CatMLTrainedModelsRequest) {
 		if r.Header == nil {

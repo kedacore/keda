@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -42,9 +42,11 @@ func newILMMigrateToDataTiersFunc(t Transport) ILMMigrateToDataTiers {
 // ILMMigrateToDataTiers - Migrates the indices and ILM policies away from custom node attribute allocation routing to data tiers routing
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/ilm-migrate-to-data-tiers.html.
+//
 type ILMMigrateToDataTiers func(o ...func(*ILMMigrateToDataTiersRequest)) (*Response, error)
 
 // ILMMigrateToDataTiersRequest configures the ILM Migrate To Data Tiers API request.
+//
 type ILMMigrateToDataTiersRequest struct {
 	Body io.Reader
 
@@ -61,6 +63,7 @@ type ILMMigrateToDataTiersRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r ILMMigrateToDataTiersRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -108,6 +111,10 @@ func (r ILMMigrateToDataTiersRequest) Do(ctx context.Context, transport Transpor
 		req.URL.RawQuery = q.Encode()
 	}
 
+	if r.Body != nil {
+		req.Header[headerContentType] = headerContentTypeJSON
+	}
+
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -118,10 +125,6 @@ func (r ILMMigrateToDataTiersRequest) Do(ctx context.Context, transport Transpor
 				}
 			}
 		}
-	}
-
-	if r.Body != nil && req.Header.Get(headerContentType) == "" {
-		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -143,6 +146,7 @@ func (r ILMMigrateToDataTiersRequest) Do(ctx context.Context, transport Transpor
 }
 
 // WithContext sets the request context.
+//
 func (f ILMMigrateToDataTiers) WithContext(v context.Context) func(*ILMMigrateToDataTiersRequest) {
 	return func(r *ILMMigrateToDataTiersRequest) {
 		r.ctx = v
@@ -150,6 +154,7 @@ func (f ILMMigrateToDataTiers) WithContext(v context.Context) func(*ILMMigrateTo
 }
 
 // WithBody - Optionally specify a legacy index template name to delete and optionally specify a node attribute name used for index shard routing (defaults to "data").
+//
 func (f ILMMigrateToDataTiers) WithBody(v io.Reader) func(*ILMMigrateToDataTiersRequest) {
 	return func(r *ILMMigrateToDataTiersRequest) {
 		r.Body = v
@@ -157,6 +162,7 @@ func (f ILMMigrateToDataTiers) WithBody(v io.Reader) func(*ILMMigrateToDataTiers
 }
 
 // WithDryRun - if set to true it will simulate the migration, providing a way to retrieve the ilm policies and indices that need to be migrated. the default is false.
+//
 func (f ILMMigrateToDataTiers) WithDryRun(v bool) func(*ILMMigrateToDataTiersRequest) {
 	return func(r *ILMMigrateToDataTiersRequest) {
 		r.DryRun = &v
@@ -164,6 +170,7 @@ func (f ILMMigrateToDataTiers) WithDryRun(v bool) func(*ILMMigrateToDataTiersReq
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f ILMMigrateToDataTiers) WithPretty() func(*ILMMigrateToDataTiersRequest) {
 	return func(r *ILMMigrateToDataTiersRequest) {
 		r.Pretty = true
@@ -171,6 +178,7 @@ func (f ILMMigrateToDataTiers) WithPretty() func(*ILMMigrateToDataTiersRequest) 
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f ILMMigrateToDataTiers) WithHuman() func(*ILMMigrateToDataTiersRequest) {
 	return func(r *ILMMigrateToDataTiersRequest) {
 		r.Human = true
@@ -178,6 +186,7 @@ func (f ILMMigrateToDataTiers) WithHuman() func(*ILMMigrateToDataTiersRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f ILMMigrateToDataTiers) WithErrorTrace() func(*ILMMigrateToDataTiersRequest) {
 	return func(r *ILMMigrateToDataTiersRequest) {
 		r.ErrorTrace = true
@@ -185,6 +194,7 @@ func (f ILMMigrateToDataTiers) WithErrorTrace() func(*ILMMigrateToDataTiersReque
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f ILMMigrateToDataTiers) WithFilterPath(v ...string) func(*ILMMigrateToDataTiersRequest) {
 	return func(r *ILMMigrateToDataTiersRequest) {
 		r.FilterPath = v
@@ -192,6 +202,7 @@ func (f ILMMigrateToDataTiers) WithFilterPath(v ...string) func(*ILMMigrateToDat
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f ILMMigrateToDataTiers) WithHeader(h map[string]string) func(*ILMMigrateToDataTiersRequest) {
 	return func(r *ILMMigrateToDataTiersRequest) {
 		if r.Header == nil {
@@ -204,6 +215,7 @@ func (f ILMMigrateToDataTiers) WithHeader(h map[string]string) func(*ILMMigrateT
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f ILMMigrateToDataTiers) WithOpaqueID(s string) func(*ILMMigrateToDataTiersRequest) {
 	return func(r *ILMMigrateToDataTiersRequest) {
 		if r.Header == nil {

@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,9 +41,11 @@ func newCatRecoveryFunc(t Transport) CatRecovery {
 // CatRecovery returns information about index shard recoveries, both on-going completed.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/cat-recovery.html.
+//
 type CatRecovery func(o ...func(*CatRecoveryRequest)) (*Response, error)
 
 // CatRecoveryRequest configures the Cat Recovery API request.
+//
 type CatRecoveryRequest struct {
 	Index []string
 
@@ -68,6 +70,7 @@ type CatRecoveryRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r CatRecoveryRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -189,6 +192,7 @@ func (r CatRecoveryRequest) Do(ctx context.Context, transport Transport) (*Respo
 }
 
 // WithContext sets the request context.
+//
 func (f CatRecovery) WithContext(v context.Context) func(*CatRecoveryRequest) {
 	return func(r *CatRecoveryRequest) {
 		r.ctx = v
@@ -196,6 +200,7 @@ func (f CatRecovery) WithContext(v context.Context) func(*CatRecoveryRequest) {
 }
 
 // WithIndex - comma-separated list or wildcard expression of index names to limit the returned information.
+//
 func (f CatRecovery) WithIndex(v ...string) func(*CatRecoveryRequest) {
 	return func(r *CatRecoveryRequest) {
 		r.Index = v
@@ -203,6 +208,7 @@ func (f CatRecovery) WithIndex(v ...string) func(*CatRecoveryRequest) {
 }
 
 // WithActiveOnly - if `true`, the response only includes ongoing shard recoveries.
+//
 func (f CatRecovery) WithActiveOnly(v bool) func(*CatRecoveryRequest) {
 	return func(r *CatRecoveryRequest) {
 		r.ActiveOnly = &v
@@ -210,6 +216,7 @@ func (f CatRecovery) WithActiveOnly(v bool) func(*CatRecoveryRequest) {
 }
 
 // WithBytes - the unit in which to display byte values.
+//
 func (f CatRecovery) WithBytes(v string) func(*CatRecoveryRequest) {
 	return func(r *CatRecoveryRequest) {
 		r.Bytes = v
@@ -217,6 +224,7 @@ func (f CatRecovery) WithBytes(v string) func(*CatRecoveryRequest) {
 }
 
 // WithDetailed - if `true`, the response includes detailed information about shard recoveries.
+//
 func (f CatRecovery) WithDetailed(v bool) func(*CatRecoveryRequest) {
 	return func(r *CatRecoveryRequest) {
 		r.Detailed = &v
@@ -224,6 +232,7 @@ func (f CatRecovery) WithDetailed(v bool) func(*CatRecoveryRequest) {
 }
 
 // WithFormat - a short version of the accept header, e.g. json, yaml.
+//
 func (f CatRecovery) WithFormat(v string) func(*CatRecoveryRequest) {
 	return func(r *CatRecoveryRequest) {
 		r.Format = v
@@ -231,6 +240,7 @@ func (f CatRecovery) WithFormat(v string) func(*CatRecoveryRequest) {
 }
 
 // WithH - comma-separated list of column names to display.
+//
 func (f CatRecovery) WithH(v ...string) func(*CatRecoveryRequest) {
 	return func(r *CatRecoveryRequest) {
 		r.H = v
@@ -238,6 +248,7 @@ func (f CatRecovery) WithH(v ...string) func(*CatRecoveryRequest) {
 }
 
 // WithHelp - return help information.
+//
 func (f CatRecovery) WithHelp(v bool) func(*CatRecoveryRequest) {
 	return func(r *CatRecoveryRequest) {
 		r.Help = &v
@@ -245,6 +256,7 @@ func (f CatRecovery) WithHelp(v bool) func(*CatRecoveryRequest) {
 }
 
 // WithS - comma-separated list of column names or column aliases to sort by.
+//
 func (f CatRecovery) WithS(v ...string) func(*CatRecoveryRequest) {
 	return func(r *CatRecoveryRequest) {
 		r.S = v
@@ -252,6 +264,7 @@ func (f CatRecovery) WithS(v ...string) func(*CatRecoveryRequest) {
 }
 
 // WithTime - the unit in which to display time values.
+//
 func (f CatRecovery) WithTime(v string) func(*CatRecoveryRequest) {
 	return func(r *CatRecoveryRequest) {
 		r.Time = v
@@ -259,6 +272,7 @@ func (f CatRecovery) WithTime(v string) func(*CatRecoveryRequest) {
 }
 
 // WithV - verbose mode. display column headers.
+//
 func (f CatRecovery) WithV(v bool) func(*CatRecoveryRequest) {
 	return func(r *CatRecoveryRequest) {
 		r.V = &v
@@ -266,6 +280,7 @@ func (f CatRecovery) WithV(v bool) func(*CatRecoveryRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f CatRecovery) WithPretty() func(*CatRecoveryRequest) {
 	return func(r *CatRecoveryRequest) {
 		r.Pretty = true
@@ -273,6 +288,7 @@ func (f CatRecovery) WithPretty() func(*CatRecoveryRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f CatRecovery) WithHuman() func(*CatRecoveryRequest) {
 	return func(r *CatRecoveryRequest) {
 		r.Human = true
@@ -280,6 +296,7 @@ func (f CatRecovery) WithHuman() func(*CatRecoveryRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f CatRecovery) WithErrorTrace() func(*CatRecoveryRequest) {
 	return func(r *CatRecoveryRequest) {
 		r.ErrorTrace = true
@@ -287,6 +304,7 @@ func (f CatRecovery) WithErrorTrace() func(*CatRecoveryRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f CatRecovery) WithFilterPath(v ...string) func(*CatRecoveryRequest) {
 	return func(r *CatRecoveryRequest) {
 		r.FilterPath = v
@@ -294,6 +312,7 @@ func (f CatRecovery) WithFilterPath(v ...string) func(*CatRecoveryRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f CatRecovery) WithHeader(h map[string]string) func(*CatRecoveryRequest) {
 	return func(r *CatRecoveryRequest) {
 		if r.Header == nil {
@@ -306,6 +325,7 @@ func (f CatRecovery) WithHeader(h map[string]string) func(*CatRecoveryRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f CatRecovery) WithOpaqueID(s string) func(*CatRecoveryRequest) {
 	return func(r *CatRecoveryRequest) {
 		if r.Header == nil {

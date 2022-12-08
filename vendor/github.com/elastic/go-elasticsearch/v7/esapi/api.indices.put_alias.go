@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -43,9 +43,11 @@ func newIndicesPutAliasFunc(t Transport) IndicesPutAlias {
 // IndicesPutAlias creates or updates an alias.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-aliases.html.
+//
 type IndicesPutAlias func(index []string, name string, o ...func(*IndicesPutAliasRequest)) (*Response, error)
 
 // IndicesPutAliasRequest configures the Indices Put Alias API request.
+//
 type IndicesPutAliasRequest struct {
 	Index []string
 
@@ -67,6 +69,7 @@ type IndicesPutAliasRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r IndicesPutAliasRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -127,6 +130,10 @@ func (r IndicesPutAliasRequest) Do(ctx context.Context, transport Transport) (*R
 		req.URL.RawQuery = q.Encode()
 	}
 
+	if r.Body != nil {
+		req.Header[headerContentType] = headerContentTypeJSON
+	}
+
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -137,10 +144,6 @@ func (r IndicesPutAliasRequest) Do(ctx context.Context, transport Transport) (*R
 				}
 			}
 		}
-	}
-
-	if r.Body != nil && req.Header.Get(headerContentType) == "" {
-		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -162,6 +165,7 @@ func (r IndicesPutAliasRequest) Do(ctx context.Context, transport Transport) (*R
 }
 
 // WithContext sets the request context.
+//
 func (f IndicesPutAlias) WithContext(v context.Context) func(*IndicesPutAliasRequest) {
 	return func(r *IndicesPutAliasRequest) {
 		r.ctx = v
@@ -169,6 +173,7 @@ func (f IndicesPutAlias) WithContext(v context.Context) func(*IndicesPutAliasReq
 }
 
 // WithBody - The settings for the alias, such as `routing` or `filter`.
+//
 func (f IndicesPutAlias) WithBody(v io.Reader) func(*IndicesPutAliasRequest) {
 	return func(r *IndicesPutAliasRequest) {
 		r.Body = v
@@ -176,6 +181,7 @@ func (f IndicesPutAlias) WithBody(v io.Reader) func(*IndicesPutAliasRequest) {
 }
 
 // WithMasterTimeout - specify timeout for connection to master.
+//
 func (f IndicesPutAlias) WithMasterTimeout(v time.Duration) func(*IndicesPutAliasRequest) {
 	return func(r *IndicesPutAliasRequest) {
 		r.MasterTimeout = v
@@ -183,6 +189,7 @@ func (f IndicesPutAlias) WithMasterTimeout(v time.Duration) func(*IndicesPutAlia
 }
 
 // WithTimeout - explicit timestamp for the document.
+//
 func (f IndicesPutAlias) WithTimeout(v time.Duration) func(*IndicesPutAliasRequest) {
 	return func(r *IndicesPutAliasRequest) {
 		r.Timeout = v
@@ -190,6 +197,7 @@ func (f IndicesPutAlias) WithTimeout(v time.Duration) func(*IndicesPutAliasReque
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f IndicesPutAlias) WithPretty() func(*IndicesPutAliasRequest) {
 	return func(r *IndicesPutAliasRequest) {
 		r.Pretty = true
@@ -197,6 +205,7 @@ func (f IndicesPutAlias) WithPretty() func(*IndicesPutAliasRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f IndicesPutAlias) WithHuman() func(*IndicesPutAliasRequest) {
 	return func(r *IndicesPutAliasRequest) {
 		r.Human = true
@@ -204,6 +213,7 @@ func (f IndicesPutAlias) WithHuman() func(*IndicesPutAliasRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f IndicesPutAlias) WithErrorTrace() func(*IndicesPutAliasRequest) {
 	return func(r *IndicesPutAliasRequest) {
 		r.ErrorTrace = true
@@ -211,6 +221,7 @@ func (f IndicesPutAlias) WithErrorTrace() func(*IndicesPutAliasRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f IndicesPutAlias) WithFilterPath(v ...string) func(*IndicesPutAliasRequest) {
 	return func(r *IndicesPutAliasRequest) {
 		r.FilterPath = v
@@ -218,6 +229,7 @@ func (f IndicesPutAlias) WithFilterPath(v ...string) func(*IndicesPutAliasReques
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f IndicesPutAlias) WithHeader(h map[string]string) func(*IndicesPutAliasRequest) {
 	return func(r *IndicesPutAliasRequest) {
 		if r.Header == nil {
@@ -230,6 +242,7 @@ func (f IndicesPutAlias) WithHeader(h map[string]string) func(*IndicesPutAliasRe
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f IndicesPutAlias) WithOpaqueID(s string) func(*IndicesPutAliasRequest) {
 	return func(r *IndicesPutAliasRequest) {
 		if r.Header == nil {

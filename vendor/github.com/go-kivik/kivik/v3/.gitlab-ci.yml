@@ -1,0 +1,83 @@
+stages:
+    - test
+
+variables:
+    GO111MODULE: "on"
+    COUCHDB_USER: admin
+    COUCHDB_PASSWORD: abc123
+    KIVIK_TEST_DSN_COUCH23: http://admin:abc123@couch23:5984/
+    KIVIK_TEST_DSN_COUCH30: http://admin:abc123@couch30:5984/
+
+.test: &test_template
+    stage: test
+    services:
+        - name: apache/couchdb:2.3.1
+          alias: couch23
+        - name: apache/couchdb:3.0.0
+          alias: couch30
+    before_script:
+        - ./script/complete_couch2.sh ${KIVIK_TEST_DSN_COUCH23}
+        - ./script/complete_couch2.sh ${KIVIK_TEST_DSN_COUCH30}
+    script:
+        - go mod download
+        - ./script/test_version.sh
+        - go test -race -tags=livetest ./...
+
+linter:
+    stage: test
+    image: golangci/golangci-lint:v1.33
+    script:
+        - go mod download
+        - golangci-lint run ./...
+
+go-1.11:
+    <<: *test_template
+    image: golang:1.11
+
+go-1.12:
+    <<: *test_template
+    image: golang:1.12
+
+go-1.13:
+    <<: *test_template
+    image: golang:1.13
+
+go-1.14:
+    <<: *test_template
+    image: golang:1.14
+
+go-1.15:
+    <<: *test_template
+    image: golang:1.15
+
+gopherjs-1.12:
+    <<: *test_template
+    image: golang:1.14
+    variables:
+      SRCDIR: /go/src/github.com/go-kivik/kivik/v3
+    script:
+        - go get golang.org/dl/go1.12.16
+        - go1.12.16 download
+        - mkdir -p ${SRCDIR}
+        - mv ${CI_PROJECT_DIR}/* ${SRCDIR}
+        - cd ${SRCDIR}
+        - go mod vendor
+        - curl -sL https://deb.nodesource.com/setup_12.x | bash -
+        - apt-get update -qq && apt-get install -y nodejs
+        - npm install
+        - GO111MODULE=off go get -u github.com/gopherjs/gopherjs
+        - npm install source-map-support
+        - |
+            (
+                cd $GOPATH/src/github.com/gopherjs/gopherjs/node-syscall/
+                npm install --global node-gyp
+                node-gyp rebuild
+                mkdir -p ~/.node_libraries/
+                cp build/Release/syscall.node ~/.node_libraries/syscall.node
+            )
+        - GOPHERJS_GOROOT="$(go1.12.16 env GOROOT)" gopherjs test ./...
+
+go-rc:
+    <<: *test_template
+    image: golang:rc
+    allow_failure: true

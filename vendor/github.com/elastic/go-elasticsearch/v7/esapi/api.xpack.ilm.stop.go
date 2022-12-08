@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -40,9 +40,11 @@ func newILMStopFunc(t Transport) ILMStop {
 // ILMStop - Halts all lifecycle management operations and stops the index lifecycle management (ILM) plugin
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/ilm-stop.html.
+//
 type ILMStop func(o ...func(*ILMStopRequest)) (*Response, error)
 
 // ILMStopRequest configures the ILM Stop API request.
+//
 type ILMStopRequest struct {
 	Pretty     bool
 	Human      bool
@@ -55,6 +57,7 @@ type ILMStopRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r ILMStopRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -129,6 +132,7 @@ func (r ILMStopRequest) Do(ctx context.Context, transport Transport) (*Response,
 }
 
 // WithContext sets the request context.
+//
 func (f ILMStop) WithContext(v context.Context) func(*ILMStopRequest) {
 	return func(r *ILMStopRequest) {
 		r.ctx = v
@@ -136,6 +140,7 @@ func (f ILMStop) WithContext(v context.Context) func(*ILMStopRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f ILMStop) WithPretty() func(*ILMStopRequest) {
 	return func(r *ILMStopRequest) {
 		r.Pretty = true
@@ -143,6 +148,7 @@ func (f ILMStop) WithPretty() func(*ILMStopRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f ILMStop) WithHuman() func(*ILMStopRequest) {
 	return func(r *ILMStopRequest) {
 		r.Human = true
@@ -150,6 +156,7 @@ func (f ILMStop) WithHuman() func(*ILMStopRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f ILMStop) WithErrorTrace() func(*ILMStopRequest) {
 	return func(r *ILMStopRequest) {
 		r.ErrorTrace = true
@@ -157,6 +164,7 @@ func (f ILMStop) WithErrorTrace() func(*ILMStopRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f ILMStop) WithFilterPath(v ...string) func(*ILMStopRequest) {
 	return func(r *ILMStopRequest) {
 		r.FilterPath = v
@@ -164,6 +172,7 @@ func (f ILMStop) WithFilterPath(v ...string) func(*ILMStopRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f ILMStop) WithHeader(h map[string]string) func(*ILMStopRequest) {
 	return func(r *ILMStopRequest) {
 		if r.Header == nil {
@@ -176,6 +185,7 @@ func (f ILMStop) WithHeader(h map[string]string) func(*ILMStopRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f ILMStop) WithOpaqueID(s string) func(*ILMStopRequest) {
 	return func(r *ILMStopRequest) {
 		if r.Header == nil {

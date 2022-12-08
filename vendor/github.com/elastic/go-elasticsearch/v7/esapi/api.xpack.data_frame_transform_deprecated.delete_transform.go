@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -43,9 +43,11 @@ func newDataFrameTransformDeprecatedDeleteTransformFunc(t Transport) DataFrameTr
 // This API is beta.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/delete-transform.html.
+//
 type DataFrameTransformDeprecatedDeleteTransform func(transform_id string, o ...func(*DataFrameTransformDeprecatedDeleteTransformRequest)) (*Response, error)
 
 // DataFrameTransformDeprecatedDeleteTransformRequest configures the Data Frame Transform Deprecated Delete Transform API request.
+//
 type DataFrameTransformDeprecatedDeleteTransformRequest struct {
 	TransformID string
 
@@ -62,6 +64,7 @@ type DataFrameTransformDeprecatedDeleteTransformRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r DataFrameTransformDeprecatedDeleteTransformRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -145,6 +148,7 @@ func (r DataFrameTransformDeprecatedDeleteTransformRequest) Do(ctx context.Conte
 }
 
 // WithContext sets the request context.
+//
 func (f DataFrameTransformDeprecatedDeleteTransform) WithContext(v context.Context) func(*DataFrameTransformDeprecatedDeleteTransformRequest) {
 	return func(r *DataFrameTransformDeprecatedDeleteTransformRequest) {
 		r.ctx = v
@@ -152,6 +156,7 @@ func (f DataFrameTransformDeprecatedDeleteTransform) WithContext(v context.Conte
 }
 
 // WithForce - when `true`, the transform is deleted regardless of its current state. the default value is `false`, meaning that the transform must be `stopped` before it can be deleted..
+//
 func (f DataFrameTransformDeprecatedDeleteTransform) WithForce(v bool) func(*DataFrameTransformDeprecatedDeleteTransformRequest) {
 	return func(r *DataFrameTransformDeprecatedDeleteTransformRequest) {
 		r.Force = &v
@@ -159,6 +164,7 @@ func (f DataFrameTransformDeprecatedDeleteTransform) WithForce(v bool) func(*Dat
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f DataFrameTransformDeprecatedDeleteTransform) WithPretty() func(*DataFrameTransformDeprecatedDeleteTransformRequest) {
 	return func(r *DataFrameTransformDeprecatedDeleteTransformRequest) {
 		r.Pretty = true
@@ -166,6 +172,7 @@ func (f DataFrameTransformDeprecatedDeleteTransform) WithPretty() func(*DataFram
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f DataFrameTransformDeprecatedDeleteTransform) WithHuman() func(*DataFrameTransformDeprecatedDeleteTransformRequest) {
 	return func(r *DataFrameTransformDeprecatedDeleteTransformRequest) {
 		r.Human = true
@@ -173,6 +180,7 @@ func (f DataFrameTransformDeprecatedDeleteTransform) WithHuman() func(*DataFrame
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f DataFrameTransformDeprecatedDeleteTransform) WithErrorTrace() func(*DataFrameTransformDeprecatedDeleteTransformRequest) {
 	return func(r *DataFrameTransformDeprecatedDeleteTransformRequest) {
 		r.ErrorTrace = true
@@ -180,6 +188,7 @@ func (f DataFrameTransformDeprecatedDeleteTransform) WithErrorTrace() func(*Data
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f DataFrameTransformDeprecatedDeleteTransform) WithFilterPath(v ...string) func(*DataFrameTransformDeprecatedDeleteTransformRequest) {
 	return func(r *DataFrameTransformDeprecatedDeleteTransformRequest) {
 		r.FilterPath = v
@@ -187,6 +196,7 @@ func (f DataFrameTransformDeprecatedDeleteTransform) WithFilterPath(v ...string)
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f DataFrameTransformDeprecatedDeleteTransform) WithHeader(h map[string]string) func(*DataFrameTransformDeprecatedDeleteTransformRequest) {
 	return func(r *DataFrameTransformDeprecatedDeleteTransformRequest) {
 		if r.Header == nil {
@@ -199,6 +209,7 @@ func (f DataFrameTransformDeprecatedDeleteTransform) WithHeader(h map[string]str
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f DataFrameTransformDeprecatedDeleteTransform) WithOpaqueID(s string) func(*DataFrameTransformDeprecatedDeleteTransformRequest) {
 	return func(r *DataFrameTransformDeprecatedDeleteTransformRequest) {
 		if r.Header == nil {

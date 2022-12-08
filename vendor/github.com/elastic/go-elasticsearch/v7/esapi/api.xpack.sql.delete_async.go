@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -40,9 +40,11 @@ func newSQLDeleteAsyncFunc(t Transport) SQLDeleteAsync {
 // SQLDeleteAsync - Deletes an async SQL search or a stored synchronous SQL search. If the search is still running, the API cancels it.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/delete-async-sql-search-api.html.
+//
 type SQLDeleteAsync func(id string, o ...func(*SQLDeleteAsyncRequest)) (*Response, error)
 
 // SQLDeleteAsyncRequest configures the SQL Delete Async API request.
+//
 type SQLDeleteAsyncRequest struct {
 	DocumentID string
 
@@ -57,6 +59,7 @@ type SQLDeleteAsyncRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r SQLDeleteAsyncRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -138,6 +141,7 @@ func (r SQLDeleteAsyncRequest) Do(ctx context.Context, transport Transport) (*Re
 }
 
 // WithContext sets the request context.
+//
 func (f SQLDeleteAsync) WithContext(v context.Context) func(*SQLDeleteAsyncRequest) {
 	return func(r *SQLDeleteAsyncRequest) {
 		r.ctx = v
@@ -145,6 +149,7 @@ func (f SQLDeleteAsync) WithContext(v context.Context) func(*SQLDeleteAsyncReque
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f SQLDeleteAsync) WithPretty() func(*SQLDeleteAsyncRequest) {
 	return func(r *SQLDeleteAsyncRequest) {
 		r.Pretty = true
@@ -152,6 +157,7 @@ func (f SQLDeleteAsync) WithPretty() func(*SQLDeleteAsyncRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f SQLDeleteAsync) WithHuman() func(*SQLDeleteAsyncRequest) {
 	return func(r *SQLDeleteAsyncRequest) {
 		r.Human = true
@@ -159,6 +165,7 @@ func (f SQLDeleteAsync) WithHuman() func(*SQLDeleteAsyncRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f SQLDeleteAsync) WithErrorTrace() func(*SQLDeleteAsyncRequest) {
 	return func(r *SQLDeleteAsyncRequest) {
 		r.ErrorTrace = true
@@ -166,6 +173,7 @@ func (f SQLDeleteAsync) WithErrorTrace() func(*SQLDeleteAsyncRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f SQLDeleteAsync) WithFilterPath(v ...string) func(*SQLDeleteAsyncRequest) {
 	return func(r *SQLDeleteAsyncRequest) {
 		r.FilterPath = v
@@ -173,6 +181,7 @@ func (f SQLDeleteAsync) WithFilterPath(v ...string) func(*SQLDeleteAsyncRequest)
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f SQLDeleteAsync) WithHeader(h map[string]string) func(*SQLDeleteAsyncRequest) {
 	return func(r *SQLDeleteAsyncRequest) {
 		if r.Header == nil {
@@ -185,6 +194,7 @@ func (f SQLDeleteAsync) WithHeader(h map[string]string) func(*SQLDeleteAsyncRequ
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f SQLDeleteAsync) WithOpaqueID(s string) func(*SQLDeleteAsyncRequest) {
 	return func(r *SQLDeleteAsyncRequest) {
 		if r.Header == nil {

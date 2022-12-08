@@ -239,10 +239,7 @@ func (l *CurlLogger) LogRoundTrip(req *http.Request, res *http.Response, err err
 		}
 	}
 
-	b.WriteString(" '")
-	b.WriteString(req.URL.Scheme)
-	b.WriteString("://")
-	b.WriteString(req.URL.Host)
+	b.WriteString(" 'http://localhost:9200")
 	b.WriteString(req.URL.Path)
 	b.WriteString("?pretty")
 	if query != "" {

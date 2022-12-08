@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -40,9 +40,11 @@ func newSQLGetAsyncStatusFunc(t Transport) SQLGetAsyncStatus {
 // SQLGetAsyncStatus - Returns the current status of an async SQL search or a stored synchronous SQL search
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/get-async-sql-search-status-api.html.
+//
 type SQLGetAsyncStatus func(id string, o ...func(*SQLGetAsyncStatusRequest)) (*Response, error)
 
 // SQLGetAsyncStatusRequest configures the SQL Get Async Status API request.
+//
 type SQLGetAsyncStatusRequest struct {
 	DocumentID string
 
@@ -57,6 +59,7 @@ type SQLGetAsyncStatusRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r SQLGetAsyncStatusRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -138,6 +141,7 @@ func (r SQLGetAsyncStatusRequest) Do(ctx context.Context, transport Transport) (
 }
 
 // WithContext sets the request context.
+//
 func (f SQLGetAsyncStatus) WithContext(v context.Context) func(*SQLGetAsyncStatusRequest) {
 	return func(r *SQLGetAsyncStatusRequest) {
 		r.ctx = v
@@ -145,6 +149,7 @@ func (f SQLGetAsyncStatus) WithContext(v context.Context) func(*SQLGetAsyncStatu
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f SQLGetAsyncStatus) WithPretty() func(*SQLGetAsyncStatusRequest) {
 	return func(r *SQLGetAsyncStatusRequest) {
 		r.Pretty = true
@@ -152,6 +157,7 @@ func (f SQLGetAsyncStatus) WithPretty() func(*SQLGetAsyncStatusRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f SQLGetAsyncStatus) WithHuman() func(*SQLGetAsyncStatusRequest) {
 	return func(r *SQLGetAsyncStatusRequest) {
 		r.Human = true
@@ -159,6 +165,7 @@ func (f SQLGetAsyncStatus) WithHuman() func(*SQLGetAsyncStatusRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f SQLGetAsyncStatus) WithErrorTrace() func(*SQLGetAsyncStatusRequest) {
 	return func(r *SQLGetAsyncStatusRequest) {
 		r.ErrorTrace = true
@@ -166,6 +173,7 @@ func (f SQLGetAsyncStatus) WithErrorTrace() func(*SQLGetAsyncStatusRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f SQLGetAsyncStatus) WithFilterPath(v ...string) func(*SQLGetAsyncStatusRequest) {
 	return func(r *SQLGetAsyncStatusRequest) {
 		r.FilterPath = v
@@ -173,6 +181,7 @@ func (f SQLGetAsyncStatus) WithFilterPath(v ...string) func(*SQLGetAsyncStatusRe
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f SQLGetAsyncStatus) WithHeader(h map[string]string) func(*SQLGetAsyncStatusRequest) {
 	return func(r *SQLGetAsyncStatusRequest) {
 		if r.Header == nil {
@@ -185,6 +194,7 @@ func (f SQLGetAsyncStatus) WithHeader(h map[string]string) func(*SQLGetAsyncStat
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f SQLGetAsyncStatus) WithOpaqueID(s string) func(*SQLGetAsyncStatusRequest) {
 	return func(r *SQLGetAsyncStatusRequest) {
 		if r.Header == nil {
