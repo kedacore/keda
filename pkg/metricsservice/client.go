@@ -61,7 +61,7 @@ func NewGrpcClient(url string) (*GrpcClient, error) {
 func (c *GrpcClient) GetMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, *api.PromMetricsMsg, error) {
 	response, err := c.client.GetMetrics(ctx, &api.ScaledObjectRef{Name: scaledObjectName, Namespace: scaledObjectNamespace, MetricName: metricName})
 	if err != nil {
-		return nil, nil, err
+		return nil, response.GetPromMetrics(), err
 	}
 
 	extMetrics := &external_metrics.ExternalMetricValueList{}
