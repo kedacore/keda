@@ -114,8 +114,10 @@ func (s *liiklusScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec
 func (s *liiklusScaler) Close(context.Context) error {
 	err := s.connection.Close()
 	if err != nil {
+		s.logger.Error(err, "Error closing liiklus connection")
 		return err
 	}
+
 	return nil
 }
 

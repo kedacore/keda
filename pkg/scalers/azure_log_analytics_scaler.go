@@ -19,7 +19,7 @@ package scalers
 import (
 	"bytes"
 	"context"
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -618,12 +618,12 @@ func setTokenInCache(clientID string, clientSecret string, tokenInfo tokenData) 
 }
 
 func getHash(clientID string, clientSecret string) (string, error) {
-	sha1Hash := sha1.New()
-	_, err := sha1Hash.Write([]byte(fmt.Sprintf("%s|%s", clientID, clientSecret)))
+	sha256Hash := sha256.New()
+	_, err := sha256Hash.Write([]byte(fmt.Sprintf("%s|%s", clientID, clientSecret)))
 
 	if err != nil {
 		return "", err
 	}
 
-	return base64.StdEncoding.EncodeToString(sha1Hash.Sum(nil)), nil
+	return base64.StdEncoding.EncodeToString(sha256Hash.Sum(nil)), nil
 }

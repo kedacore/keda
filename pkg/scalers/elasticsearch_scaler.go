@@ -211,10 +211,11 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 
 	meta.activationTargetValue = 0
 	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok {
-		meta.activationTargetValue, err = strconv.ParseFloat(val, 64)
+		activationTargetValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("activationTargetValue parsing error: %w", err)
 		}
+		meta.activationTargetValue = activationTargetValue
 	}
 
 	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("elasticsearch-%s", meta.searchTemplateName)))

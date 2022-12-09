@@ -501,12 +501,10 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 // Close closes the kafka admin and client
 func (s *kafkaScaler) Close(context.Context) error {
 	// underlying client will also be closed on admin's Close() call
-	err := s.admin.Close()
-	if err != nil {
-		return err
+	if s.admin == nil {
+		return nil
 	}
-
-	return nil
+	return s.admin.Close()
 }
 
 func (s *kafkaScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
