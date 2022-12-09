@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -130,7 +132,7 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 	if val, ok := config.TriggerMetadata["queryValue"]; ok {
 		queryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to convert %v to int, because of %v", queryValue, err.Error())
+			return nil, "", fmt.Errorf("failed to convert %v to int, because of %v", val, err.Error())
 		}
 		meta.queryValue = queryValue
 	} else {
@@ -141,15 +143,16 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
 		activationQueryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to convert %v to int, because of %v", activationQueryValue, err.Error())
+			return nil, "", fmt.Errorf("failed to convert %v to int, because of %v", val, err.Error())
 		}
 		meta.activationQueryValue = activationQueryValue
 	}
 
-	meta.dbName, err = GetFromAuthOrMeta(config, "dbName")
+	dbName, err := GetFromAuthOrMeta(config, "dbName")
 	if err != nil {
 		return nil, "", err
 	}
+	meta.dbName = dbName
 
 	// Resolve connectionString
 	switch {
@@ -159,20 +162,23 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 		meta.connectionString = config.ResolvedEnv[config.TriggerMetadata["connectionStringFromEnv"]]
 	default:
 		meta.connectionString = ""
-		meta.host, err = GetFromAuthOrMeta(config, "host")
+		host, err := GetFromAuthOrMeta(config, "host")
 		if err != nil {
 			return nil, "", err
 		}
+		meta.host = host
 
-		meta.port, err = GetFromAuthOrMeta(config, "port")
+		port, err := GetFromAuthOrMeta(config, "port")
 		if err != nil {
 			return nil, "", err
 		}
+		meta.port = port
 
-		meta.username, err = GetFromAuthOrMeta(config, "username")
+		username, err := GetFromAuthOrMeta(config, "username")
 		if err != nil {
 			return nil, "", err
 		}
+		meta.username = username
 
 		if config.AuthParams["password"] != "" {
 			meta.password = config.AuthParams["password"]
@@ -188,9 +194,8 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 		connStr = meta.connectionString
 	} else {
 		// Build connection str
-		addr := fmt.Sprintf("%s:%s", meta.host, meta.port)
-		auth := fmt.Sprintf("%s:%s", meta.username, meta.password)
-		connStr = "mongodb://" + auth + "@" + addr + "/" + meta.dbName
+		addr := net.JoinHostPort(meta.host, meta.port)
+		connStr = fmt.Sprintf("mongodb://%s:%s@%s/%s", url.QueryEscape(meta.username), url.QueryEscape(meta.password), addr, meta.dbName)
 	}
 
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
@@ -245,7 +250,7 @@ func (s *mongoDBScaler) getQueryResult(ctx context.Context) (int64, error) {
 }
 
 // GetMetrics query from mongoDB,and return to external metrics
-func (s *mongoDBScaler) GetMetrics(ctx context.Context, metricName string, metricSelector labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
+func (s *mongoDBScaler) GetMetrics(ctx context.Context, metricName string, _ labels.Selector) ([]external_metrics.ExternalMetricValue, error) {
 	num, err := s.getQueryResult(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("failed to inspect momgoDB, because of %v", err)
