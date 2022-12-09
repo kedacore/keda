@@ -200,7 +200,7 @@ func NewCouchDBScaler(ctx context.Context, config *ScalerConfig) (Scaler, error)
 		return nil, fmt.Errorf("%v", err)
 	}
 
-	err = client.Authenticate(context.TODO(), couchdb.BasicAuth("admin", meta.password))
+	err = client.Authenticate(ctx, couchdb.BasicAuth("admin", meta.password))
 	if err != nil {
 		return nil, err
 	}

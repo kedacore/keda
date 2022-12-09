@@ -343,6 +343,7 @@ func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalSca
 	go func() {
 		// clean up goroutine.
 		// once gRPC client is shutdown, remove the connection from the pool and Close() grpc.ClientConn
+		// nosemgrep: dgryski.semgrep-go.contexttodo.context-todo
 		<-waitForState(context.TODO(), connGroup.grpcConnection, connectivity.Shutdown)
 		connectionPoolMutex.Lock()
 		defer connectionPoolMutex.Unlock()

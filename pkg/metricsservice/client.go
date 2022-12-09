@@ -58,6 +58,7 @@ func NewGrpcClient(url string) (*GrpcClient, error) {
 	return &GrpcClient{client: api.NewMetricsServiceClient(conn), connection: conn}, nil
 }
 
+// nosemgrep: trailofbits.go.invalid-usage-of-modified-variable.invalid-usage-of-modified-variable
 func (c *GrpcClient) GetMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, *api.PromMetricsMsg, error) {
 	response, err := c.client.GetMetrics(ctx, &api.ScaledObjectRef{Name: scaledObjectName, Namespace: scaledObjectNamespace, MetricName: metricName})
 	if err != nil {

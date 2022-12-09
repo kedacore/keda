@@ -619,7 +619,7 @@ func setTokenInCache(clientID string, clientSecret string, tokenInfo tokenData) 
 
 func getHash(clientID string, clientSecret string) (string, error) {
 	sha256Hash := sha256.New()
-	_, err := sha256Hash.Write([]byte(fmt.Sprintf("%s|%s", clientID, clientSecret)))
+	_, err := fmt.Fprintf(sha256Hash, "%s|%s", clientID, clientSecret)
 
 	if err != nil {
 		return "", err

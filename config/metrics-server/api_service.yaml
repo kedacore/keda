@@ -6,6 +6,7 @@ metadata:
     app.kubernetes.io/version: latest
     app.kubernetes.io/part-of: keda-operator
   name: v1beta1.external.metrics.k8s.io
+# nosemgrep: yaml.kubernetes.security.skip-tls-verify-service.skip-tls-verify-service
 spec:
   service:
     name: keda-metrics-apiserver

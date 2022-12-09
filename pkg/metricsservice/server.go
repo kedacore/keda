@@ -61,6 +61,7 @@ func (s *GrpcServer) GetMetrics(ctx context.Context, in *api.ScaledObjectRef) (*
 
 // NewGrpcServer creates a new instance of GrpcServer
 func NewGrpcServer(scaleHandler *scaling.ScaleHandler, address string) GrpcServer {
+	// nosemgrep: go.grpc.security.grpc-server-insecure-connection.grpc-server-insecure-connection
 	gsrv := grpc.NewServer()
 	srv := GrpcServer{
 		server:        gsrv,
