@@ -217,12 +217,16 @@ func (s *etcdScaler) Run(ctx context.Context, active chan<- bool) {
 		progress := make(chan bool)
 		defer close(progress)
 		go func() {
+			delayDuration := time.Duration(s.metadata.watchProgressNotifyInterval) * 2 * time.Second
+			delay := time.NewTimer(delayDuration)
+			defer delay.Stop()
 			for {
+				delay.Reset(delayDuration)
 				select {
 				case <-progress:
 				case <-subCtx.Done():
 					return
-				case <-time.After(time.Duration(s.metadata.watchProgressNotifyInterval) * 2 * time.Second):
+				case <-delay.C:
 					s.logger.Info("no watch progress notification in the interval", "watchKey", s.metadata.watchKey, "endpoints", s.metadata.endpoints)
 					cancel()
 					return
