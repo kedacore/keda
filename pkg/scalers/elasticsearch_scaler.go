@@ -255,16 +255,6 @@ func (s *elasticsearchScaler) Close(ctx context.Context) error {
 	return nil
 }
 
-// IsActive returns true if there are pending messages to be processed
-func (s *elasticsearchScaler) IsActive(ctx context.Context) (bool, error) {
-	messages, err := s.getQueryResult(ctx)
-	if err != nil {
-		s.logger.Error(err, fmt.Sprintf("Error inspecting elasticsearch: %s", err))
-		return false, err
-	}
-	return messages > s.metadata.activationTargetValue, nil
-}
-
 // getQueryResult returns result of the scaler query
 func (s *elasticsearchScaler) getQueryResult(ctx context.Context) (float64, error) {
 	// Build the request body.
@@ -343,16 +333,16 @@ func (s *elasticsearchScaler) GetMetricSpecForScaling(context.Context) []v2.Metr
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *elasticsearchScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
+func (s *elasticsearchScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	num, err := s.getQueryResult(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting elasticsearch: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting elasticsearch: %s", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, num)
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.activationTargetValue, nil
 }
 
 // Splits a string separated by a specified separator and trims space from all the elements.

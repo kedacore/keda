@@ -255,7 +255,7 @@ func TestNATSJetStreamIsActive(t *testing.T) {
 			logger:     InitializeLogger(&ScalerConfig{TriggerMetadata: mockResponse.metadata.metadataTestData.metadata, ScalerIndex: mockResponse.metadata.scalerIndex}, "nats_jetstream_scaler"),
 		}
 
-		isActive, err := mockJetStreamScaler.IsActive(ctx)
+		_, isActive, err := mockJetStreamScaler.GetMetricsAndActivity(ctx, "metric_name")
 		if err != nil && !mockResponse.isError {
 			t.Errorf("Expected success for '%s' but got error %s", mockResponse.name, err)
 		} else if mockResponse.isError && err == nil {
@@ -310,7 +310,7 @@ func TestNATSJetStreamGetMetrics(t *testing.T) {
 			logger:     InitializeLogger(&ScalerConfig{TriggerMetadata: mockResponse.metadata.metadataTestData.metadata, ScalerIndex: mockResponse.metadata.scalerIndex}, "nats_jetstream_scaler"),
 		}
 
-		_, err = mockJetStreamScaler.GetMetrics(ctx, "metric_name")
+		_, _, err = mockJetStreamScaler.GetMetricsAndActivity(ctx, "metric_name")
 
 		if err != nil && !mockResponse.isError {
 			t.Errorf("Expected success for '%s' but got error %s", mockResponse.name, err)

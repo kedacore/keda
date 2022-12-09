@@ -81,11 +81,6 @@ func parseResourceMetadata(config *ScalerConfig, logger logr.Logger) (*cpuMemory
 	return meta, nil
 }
 
-// IsActive always return true for cpu/memory scaler
-func (s *cpuMemoryScaler) IsActive(ctx context.Context) (bool, error) {
-	return true, nil
-}
-
 // Close no need for cpuMemory scaler
 func (s *cpuMemoryScaler) Close(context.Context) error {
 	return nil
@@ -121,7 +116,7 @@ func (s *cpuMemoryScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSp
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics no need for cpu/memory scaler
-func (s *cpuMemoryScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
-	return nil, nil
+// GetMetrics no need for cpu/memory scaler and always active for cpu/memory scaler
+func (s *cpuMemoryScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	return nil, true, nil
 }

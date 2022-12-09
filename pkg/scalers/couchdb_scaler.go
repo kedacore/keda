@@ -97,15 +97,6 @@ func (s *couchDBScaler) getQueryResult(ctx context.Context) (int64, error) {
 	return count, nil
 }
 
-func (s *couchDBScaler) IsActive(ctx context.Context) (bool, error) {
-	result, err := s.getQueryResult(ctx)
-	if err != nil {
-		s.logger.Error(err, fmt.Sprintf("failed to get query result by couchDB, because of %v", err))
-		return false, err
-	}
-	return result > s.metadata.activationQueryValue, nil
-}
-
 func parseCouchDBMetadata(config *ScalerConfig) (*couchDBMetadata, string, error) {
 	var connStr string
 	var err error
@@ -229,14 +220,14 @@ func NewCouchDBScaler(ctx context.Context, config *ScalerConfig) (Scaler, error)
 	}, nil
 }
 
-// GetMetrics query from couchDB,and return to external metrics
-func (s *couchDBScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
-	num, err := s.getQueryResult(ctx)
+// GetMetricsAndActivity query from couchDB,and return to external metrics and activity
+func (s *couchDBScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	result, err := s.getQueryResult(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("failed to inspect couchdb, because of %v", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("failed to inspect couchdb, because of %v", err)
 	}
 
-	metric := GenerateMetricInMili(metricName, float64(num))
+	metric := GenerateMetricInMili(metricName, float64(result))
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return append([]external_metrics.ExternalMetricValue{}, metric), result > s.metadata.activationQueryValue, nil
 }

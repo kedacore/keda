@@ -75,7 +75,7 @@ func TestWorkloadIsActive(t *testing.T) {
 				ScalableObjectNamespace: testData.namespace,
 			},
 		)
-		isActive, _ := s.IsActive(context.TODO())
+		_, isActive, _ := s.GetMetricsAndActivity(context.TODO(), "Metric")
 		if testData.active && !isActive {
 			t.Error("Expected active but got inactive")
 		}
@@ -183,7 +183,7 @@ func TestWorkloadPhase(t *testing.T) {
 		if err != nil {
 			t.Errorf("Failed to create test scaler -- %v", err)
 		}
-		isActive, err := s.IsActive(context.TODO())
+		_, isActive, err := s.GetMetricsAndActivity(context.TODO(), "Metric")
 		if err != nil {
 			t.Errorf("Failed to count active -- %v", err)
 		}

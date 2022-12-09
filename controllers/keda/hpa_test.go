@@ -137,7 +137,6 @@ func setupTest(health map[string]v1alpha1.HealthStatus, scaler *mock_scalers.Moc
 				return scaler, &scalers.ScalerConfig{}, nil
 			},
 		}},
-		Logger:   logr.Discard(),
 		Recorder: nil,
 	}
 	metricSpec := v2.MetricSpec{

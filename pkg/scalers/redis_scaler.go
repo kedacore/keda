@@ -219,18 +219,6 @@ func parseRedisMetadata(config *ScalerConfig, parserFn redisAddressParser) (*red
 	return &meta, nil
 }
 
-// IsActive checks if there is any element in the Redis list
-func (s *redisScaler) IsActive(ctx context.Context) (bool, error) {
-	length, err := s.getListLengthFn(ctx)
-
-	if err != nil {
-		s.logger.Error(err, "error")
-		return false, err
-	}
-
-	return length > s.metadata.activationListLength, nil
-}
-
 func (s *redisScaler) Close(context.Context) error {
 	return s.closeFn()
 }
@@ -250,18 +238,18 @@ func (s *redisScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics connects to Redis and finds the length of the list
-func (s *redisScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity connects to Redis and finds the length of the list
+func (s *redisScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	listLen, err := s.getListLengthFn(ctx)
 
 	if err != nil {
 		s.logger.Error(err, "error getting list length")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(listLen))
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, listLen > s.metadata.activationListLength, nil
 }
 
 func parseRedisAddress(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error) {

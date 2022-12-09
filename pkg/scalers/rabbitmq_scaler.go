@@ -380,19 +380,6 @@ func (s *rabbitMQScaler) Close(context.Context) error {
 	return nil
 }
 
-// IsActive returns true if there are pending messages to be processed
-func (s *rabbitMQScaler) IsActive(ctx context.Context) (bool, error) {
-	messages, publishRate, err := s.getQueueStatus()
-	if err != nil {
-		return false, s.anonimizeRabbitMQError(err)
-	}
-
-	if s.metadata.mode == rabbitModeQueueLength {
-		return float64(messages) > s.metadata.activationValue, nil
-	}
-	return publishRate > s.metadata.activationValue || float64(messages) > s.metadata.activationValue, nil
-}
-
 func (s *rabbitMQScaler) getQueueStatus() (int64, float64, error) {
 	if s.metadata.protocol == httpProtocol {
 		info, err := s.getQueueInfoViaHTTP()
@@ -499,21 +486,24 @@ func (s *rabbitMQScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpe
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *rabbitMQScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
+func (s *rabbitMQScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	messages, publishRate, err := s.getQueueStatus()
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, s.anonimizeRabbitMQError(err)
+		return []external_metrics.ExternalMetricValue{}, false, s.anonimizeRabbitMQError(err)
 	}
 
 	var metric external_metrics.ExternalMetricValue
+	var isActive bool
 	if s.metadata.mode == rabbitModeQueueLength {
 		metric = GenerateMetricInMili(metricName, float64(messages))
+		isActive = float64(messages) > s.metadata.activationValue
 	} else {
 		metric = GenerateMetricInMili(metricName, publishRate)
+		isActive = publishRate > s.metadata.activationValue || float64(messages) > s.metadata.activationValue
 	}
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, isActive, nil
 }
 
 func getComposedQueue(s *rabbitMQScaler, q []queueInfo) (queueInfo, error) {

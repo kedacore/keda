@@ -173,6 +173,9 @@ func (r *ScaledJobReconciler) reconcileScaledJob(ctx context.Context, logger log
 	}
 
 	for _, trigger := range scaledJob.Spec.Triggers {
+		if trigger.UseCachedMetrics {
+			logger.Info("Warning: property useCachedMetrics is not supported for ScaledJobs.")
+		}
 		if trigger.MetricType != "" {
 			err := fmt.Errorf("metricType is set in one of the ScaledJob scaler")
 			logger.Error(err, "metricType cannot be set in ScaledJob triggers")

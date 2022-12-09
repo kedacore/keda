@@ -164,18 +164,6 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	}, nil
 }
 
-// IsActive returns true if queried value is above the minimum value
-func (s *influxDBScaler) IsActive(ctx context.Context) (bool, error) {
-	queryAPI := s.client.QueryAPI(s.metadata.organizationName)
-
-	value, err := queryInfluxDB(ctx, queryAPI, s.metadata.query)
-	if err != nil {
-		return false, err
-	}
-
-	return value > s.metadata.activationThresholdValue, nil
-}
-
 // Close closes the connection of the client to the server
 func (s *influxDBScaler) Close(context.Context) error {
 	s.client.Close()
@@ -206,19 +194,19 @@ func queryInfluxDB(ctx context.Context, queryAPI api.QueryAPI, query string) (fl
 	}
 }
 
-// GetMetrics connects to influxdb via the client and returns a value based on the query
-func (s *influxDBScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity connects to influxdb via the client and returns a value based on the query
+func (s *influxDBScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	// Grab QueryAPI to make queries to influxdb instance
 	queryAPI := s.client.QueryAPI(s.metadata.organizationName)
 
 	value, err := queryInfluxDB(ctx, queryAPI, s.metadata.query)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, value)
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, value > s.metadata.activationThresholdValue, nil
 }
 
 // GetMetricSpecForScaling returns the metric spec for the Horizontal Pod Autoscaler

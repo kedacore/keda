@@ -217,7 +217,7 @@ func TestPredictKubeGetMetrics(t *testing.T) {
 		)
 		assert.NoError(t, err)
 
-		result, err := mockPredictKubeScaler.GetMetrics(context.Background(), predictKubeMetricPrefix)
+		result, _, err := mockPredictKubeScaler.GetMetricsAndActivity(context.Background(), predictKubeMetricPrefix)
 		assert.NoError(t, err)
 		assert.Equal(t, len(result), 1)
 		assert.Equal(t, result[0].Value, *resource.NewMilliQuantity(mockPredictServer.val*1000, resource.DecimalSI))

@@ -7874,6 +7874,8 @@ spec:
                       type: string
                     type:
                       type: string
+                    useCachedMetrics:
+                      type: boolean
                   required:
                   - metadata
                   - type

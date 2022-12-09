@@ -20,19 +20,41 @@ If you want to deploy locally
 
 The scalers in KEDA are implementations of a KEDA `Scaler` Go interface declared in `pkg/scalers/scaler.go`. This documentation describes how scalers work and is targeted towards contributors and maintainers.
 
-### GetMetrics
+### GetMetricsAndActivity
 
-This is the key function of a scaler; it returns a value that represents a current state of an external metric (e.g. length of a queue). The return type is an `ExternalMetricValue` struct which has the following fields:
-- `MetricName`: this is the name of the metric that we are returning. The name should be unique, to allow setting multiple (even the same type) Triggers in one ScaledObject, but each function call should return the same name.
-- `Timestamp`: indicates the time at which the metrics were produced.
-- `WindowSeconds`: //TODO
-- `Value`: A numerical value that represents the state of the metric. It could be the length of a queue, or it can be the amount of lag in a stream, but it can also be a simple representation of the state.
+This is the key function of a scaler; it returns:
 
-Kubernetes HPA (Horizontal Pod Autoscaler) will poll `GetMetrics` regularly through KEDA's metric server (as long as there is at least one pod), and compare the returned value to a configured value in the ScaledObject configuration. Kubernetes will use the following formula to decide whether to scale the pods up and down:
+1. A value that represents a current state of an external metric (e.g. length of a queue). The return type is an `ExternalMetricValue` struct which has the following fields:
+    - `MetricName`: this is the name of the metric that we are returning. The name should be unique, to allow setting multiple (even the same type) Triggers in one ScaledObject, but each function call should return the same name.
+    - `Timestamp`: indicates the time at which the metrics were produced.
+    - `WindowSeconds`: //TODO
+    - `Value`: A numerical value that represents the state of the metric. It could be the length of a queue, or it can be the amount of lag in a stream, but it can also be a simple representation of the state.
+2. A value that represents an activity of the scaler. The return type is `bool`.
+
+    KEDA polls ScaledObject object according to the `pollingInterval` configured in the ScaledObject; it checks the last time it was polled, it checks if the number of replicas is greater than 0, and if the scaler itself is active. So if the scaler returns false for `IsActive`, and if current number of replicas is greater than 0, and there is no configured minimum pods, then KEDA scales down to 0.
+
+Kubernetes HPA (Horizontal Pod Autoscaler) will poll `GetMetricsAndActivity` regularly through KEDA's metric server (as long as there is at least one pod), and compare the returned value to a configured value in the ScaledObject configuration. Kubernetes will use the following formula to decide whether to scale the pods up and down:
 
 `desiredReplicas = ceil[currentReplicas * ( currentMetricValue / desiredMetricValue )]`.
 
 For more details check [Kubernetes HPA documentation](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/).
+
+<br>Next lines are an example about how to use it:
+>```golang
+func (s *artemisScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	messages, err := s.getQueueMessageCount(ctx)
+
+	if err != nil {
+		s.logger.Error(err, "Unable to access the artemis management endpoint", "managementEndpoint", s.metadata.managementEndpoint)
+		return []external_metrics.ExternalMetricValue{}, false, err
+	}
+
+	metric := GenerateMetricInMili(metricName, float64(messages))
+
+	return []external_metrics.ExternalMetricValue{metric}, messages > s.metadata.activationQueueLength, nil
+}
+>```
+
 
 ### GetMetricSpecForScaling
 
@@ -63,12 +85,6 @@ For example:
 >}
 >```
 
-
-### IsActive
-
-For some reason, the scaler might need to declare itself as in-active, and the way it can do this is through implementing the function `IsActive`.
-
-KEDA polls ScaledObject object according to the `pollingInterval` configured in the ScaledObject; it checks the last time it was polled, it checks if the number of replicas is greater than 0, and if the scaler itself is active. So if the scaler returns false for `IsActive`, and if current number of replicas is greater than 0, and there is no configured minimum pods, then KEDA scales down to 0.
 
 ### Close
 

@@ -192,16 +192,6 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 	return meta, nil
 }
 
-func (s *prometheusScaler) IsActive(ctx context.Context) (bool, error) {
-	val, err := s.ExecutePromQuery(ctx)
-	if err != nil {
-		s.logger.Error(err, "error executing prometheus query")
-		return false, err
-	}
-
-	return val > s.metadata.activationThreshold, nil
-}
-
 func (s *prometheusScaler) Close(context.Context) error {
 	return nil
 }
@@ -312,14 +302,14 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	return v, nil
 }
 
-func (s *prometheusScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+func (s *prometheusScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	val, err := s.ExecutePromQuery(ctx)
 	if err != nil {
 		s.logger.Error(err, "error executing prometheus query")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, val)
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.activationThreshold, nil
 }

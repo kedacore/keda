@@ -501,7 +501,7 @@ func TestAWSCloudwatchGetMetricSpecForScaling(t *testing.T) {
 func TestAWSCloudwatchScalerGetMetrics(t *testing.T) {
 	for _, meta := range awsCloudwatchGetMetricTestData {
 		mockAWSCloudwatchScaler := awsCloudwatchScaler{"", &meta, &mockCloudwatch{}, logr.Discard()}
-		value, err := mockAWSCloudwatchScaler.GetMetrics(context.Background(), meta.metricsName)
+		value, _, err := mockAWSCloudwatchScaler.GetMetricsAndActivity(context.Background(), meta.metricsName)
 		switch meta.metricsName {
 		case testAWSCloudwatchErrorMetric:
 			assert.Error(t, err, "expect error because of cloudwatch api error")

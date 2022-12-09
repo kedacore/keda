@@ -345,7 +345,7 @@ func TestAWSSQSGetMetricSpecForScaling(t *testing.T) {
 func TestAWSSQSScalerGetMetrics(t *testing.T) {
 	for _, meta := range awsSQSGetMetricTestData {
 		scaler := awsSqsQueueScaler{"", meta, &mockSqs{}, logr.Discard()}
-		value, err := scaler.GetMetrics(context.Background(), "MetricName")
+		value, _, err := scaler.GetMetricsAndActivity(context.Background(), "MetricName")
 		switch meta.queueURL {
 		case testAWSSQSErrorQueueURL:
 			assert.Error(t, err, "expect error because of sqs api error")

@@ -152,15 +152,15 @@ func (s *seleniumGridScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *seleniumGridScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+func (s *seleniumGridScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	sessions, err := s.getSessionsCount(ctx, s.logger)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error requesting selenium grid endpoint: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error requesting selenium grid endpoint: %s", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(sessions))
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, sessions > s.metadata.activationThreshold, nil
 }
 
 func (s *seleniumGridScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
@@ -175,15 +175,6 @@ func (s *seleniumGridScaler) GetMetricSpecForScaling(context.Context) []v2.Metri
 		External: externalMetric, Type: externalMetricType,
 	}
 	return []v2.MetricSpec{metricSpec}
-}
-
-func (s *seleniumGridScaler) IsActive(ctx context.Context) (bool, error) {
-	v, err := s.getSessionsCount(ctx, s.logger)
-	if err != nil {
-		return false, err
-	}
-
-	return v > s.metadata.activationThreshold, nil
 }
 
 func (s *seleniumGridScaler) getSessionsCount(ctx context.Context, logger logr.Logger) (int64, error) {

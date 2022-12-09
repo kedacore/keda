@@ -118,17 +118,6 @@ func createKinesisClient(metadata *awsKinesisStreamMetadata) *kinesis.Kinesis {
 	return kinesis.New(sess, config)
 }
 
-// IsActive determines if we need to scale from zero
-func (s *awsKinesisStreamScaler) IsActive(ctx context.Context) (bool, error) {
-	count, err := s.GetAwsKinesisOpenShardCount()
-
-	if err != nil {
-		return false, err
-	}
-
-	return count > s.metadata.activationTargetShardCount, nil
-}
-
 func (s *awsKinesisStreamScaler) Close(context.Context) error {
 	return nil
 }
@@ -144,18 +133,18 @@ func (s *awsKinesisStreamScaler) GetMetricSpecForScaling(context.Context) []v2.M
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *awsKinesisStreamScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
+func (s *awsKinesisStreamScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	shardCount, err := s.GetAwsKinesisOpenShardCount()
 
 	if err != nil {
 		s.logger.Error(err, "Error getting shard count")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(shardCount))
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, shardCount > s.metadata.activationTargetShardCount, nil
 }
 
 // Get Kinesis open shard count

@@ -74,19 +74,19 @@ func NewLiiklusScaler(config *ScalerConfig) (Scaler, error) {
 	return &scaler, nil
 }
 
-func (s *liiklusScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+func (s *liiklusScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	totalLag, lags, err := s.getLag(ctx)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	if totalLag/uint64(s.metadata.lagThreshold) > uint64(len(lags)) {
 		totalLag = uint64(s.metadata.lagThreshold) * uint64(len(lags))
 	}
 
-	return []external_metrics.ExternalMetricValue{
-		GenerateMetricInMili(metricName, float64(totalLag)),
-	}, nil
+	metric := GenerateMetricInMili(metricName, float64(totalLag))
+
+	return []external_metrics.ExternalMetricValue{metric}, totalLag > uint64(s.metadata.activationLagThreshold), nil
 }
 
 func (s *liiklusScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
@@ -106,15 +106,6 @@ func (s *liiklusScaler) Close(context.Context) error {
 		return err
 	}
 	return nil
-}
-
-// IsActive returns true if there is any lag on any partition.
-func (s *liiklusScaler) IsActive(ctx context.Context) (bool, error) {
-	lag, _, err := s.getLag(ctx)
-	if err != nil {
-		return false, err
-	}
-	return lag > uint64(s.metadata.activationLagThreshold), nil
 }
 
 // getLag returns the total lag, as well as per-partition lag for this scaler. That is, the difference between the

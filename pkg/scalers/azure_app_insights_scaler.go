@@ -165,17 +165,6 @@ func parseAzureAppInsightsMetadata(config *ScalerConfig, logger logr.Logger) (*a
 	return &meta, nil
 }
 
-// Returns true if the Azure App Insights metric value is greater than the target value
-func (s *azureAppInsightsScaler) IsActive(ctx context.Context) (bool, error) {
-	val, err := azure.GetAzureAppInsightsMetricValue(ctx, s.metadata.azureAppInsightsInfo, s.podIdentity)
-	if err != nil {
-		s.logger.Error(err, "error getting azure app insights metric")
-		return false, err
-	}
-
-	return val > s.metadata.activationTargetValue, nil
-}
-
 func (s *azureAppInsightsScaler) Close(context.Context) error {
 	return nil
 }
@@ -191,15 +180,15 @@ func (s *azureAppInsightsScaler) GetMetricSpecForScaling(context.Context) []v2.M
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *azureAppInsightsScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
+func (s *azureAppInsightsScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	val, err := azure.GetAzureAppInsightsMetricValue(ctx, s.metadata.azureAppInsightsInfo, s.podIdentity)
 	if err != nil {
 		s.logger.Error(err, "error getting azure app insights metric")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, val)
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.activationTargetValue, nil
 }

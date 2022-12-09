@@ -96,7 +96,7 @@ func TestLiiklusScalerActiveBehavior(t *testing.T) {
 		GetEndOffsets(gomock.Any(), gomock.Any()).
 		Return(&liiklus.GetEndOffsetsReply{Offsets: map[uint32]uint64{0: 2}}, nil)
 
-	active, err := scaler.IsActive(context.Background())
+	_, active, err := scaler.GetMetricsAndActivity(context.Background(), "m")
 	if err != nil {
 		t.Errorf("error calling IsActive: %v", err)
 		return
@@ -112,7 +112,7 @@ func TestLiiklusScalerActiveBehavior(t *testing.T) {
 		GetEndOffsets(gomock.Any(), gomock.Any()).
 		Return(&liiklus.GetEndOffsetsReply{Offsets: map[uint32]uint64{0: 2}}, nil)
 
-	active, err = scaler.IsActive(context.Background())
+	_, active, err = scaler.GetMetricsAndActivity(context.Background(), "m")
 	if err != nil {
 		t.Errorf("error calling IsActive: %v", err)
 		return
@@ -140,7 +140,7 @@ func TestLiiklusScalerGetMetricsBehavior(t *testing.T) {
 		GetEndOffsets(gomock.Any(), gomock.Any()).
 		Return(&liiklus.GetEndOffsetsReply{Offsets: map[uint32]uint64{0: 20, 1: 30}}, nil)
 
-	values, err := scaler.GetMetrics(context.Background(), "m")
+	values, _, err := scaler.GetMetricsAndActivity(context.Background(), "m")
 	if err != nil {
 		t.Errorf("error calling IsActive: %v", err)
 		return
@@ -157,7 +157,7 @@ func TestLiiklusScalerGetMetricsBehavior(t *testing.T) {
 	mockClient.EXPECT().
 		GetEndOffsets(gomock.Any(), gomock.Any()).
 		Return(&liiklus.GetEndOffsetsReply{Offsets: map[uint32]uint64{0: 20, 1: 30}}, nil)
-	values, err = scaler.GetMetrics(context.Background(), "m")
+	values, _, err = scaler.GetMetricsAndActivity(context.Background(), "m")
 	if err != nil {
 		t.Errorf("error calling IsActive: %v", err)
 		return

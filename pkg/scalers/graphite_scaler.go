@@ -148,16 +148,6 @@ func parseGraphiteMetadata(config *ScalerConfig) (*graphiteMetadata, error) {
 	return &meta, nil
 }
 
-func (s *graphiteScaler) IsActive(ctx context.Context) (bool, error) {
-	val, err := s.executeGrapQuery(ctx)
-	if err != nil {
-		s.logger.Error(err, "error executing graphite query")
-		return false, err
-	}
-
-	return val > s.metadata.activationThreshold, nil
-}
-
 func (s *graphiteScaler) Close(context.Context) error {
 	return nil
 }
@@ -223,14 +213,14 @@ func (s *graphiteScaler) executeGrapQuery(ctx context.Context) (float64, error) 
 	return -1, fmt.Errorf("no valid non-null response in query %s, try increasing your queryTime or check your query", s.metadata.query)
 }
 
-func (s *graphiteScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+func (s *graphiteScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	val, err := s.executeGrapQuery(ctx)
 	if err != nil {
 		s.logger.Error(err, "error executing graphite query")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, val)
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.activationThreshold, nil
 }

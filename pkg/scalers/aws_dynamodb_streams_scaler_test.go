@@ -421,7 +421,7 @@ func TestAwsDynamoDBStreamsScalerGetMetrics(t *testing.T) {
 		streamArn, err = getDynamoDBStreamsArn(ctx, &mockAwsDynamoDB{}, &meta.tableName)
 		if err == nil {
 			scaler := awsDynamoDBStreamsScaler{"", meta, streamArn, &mockAwsDynamoDBStreams{}, logr.Discard()}
-			value, err = scaler.GetMetrics(context.Background(), "MetricName")
+			value, _, err = scaler.GetMetricsAndActivity(context.Background(), "MetricName")
 		}
 		switch meta.tableName {
 		case testAWSDynamoDBErrorTable:
@@ -445,7 +445,7 @@ func TestAwsDynamoDBStreamsScalerIsActive(t *testing.T) {
 		streamArn, err = getDynamoDBStreamsArn(ctx, &mockAwsDynamoDB{}, &meta.tableName)
 		if err == nil {
 			scaler := awsDynamoDBStreamsScaler{"", meta, streamArn, &mockAwsDynamoDBStreams{}, logr.Discard()}
-			value, err = scaler.IsActive(context.Background())
+			_, value, err = scaler.GetMetricsAndActivity(context.Background(), "MetricName")
 		}
 		switch meta.tableName {
 		case testAWSDynamoDBErrorTable:

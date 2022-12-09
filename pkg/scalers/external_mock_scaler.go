@@ -30,22 +30,13 @@ func NewExternalMockScaler(config *ScalerConfig) (Scaler, error) {
 	return &externalMockScaler{}, nil
 }
 
-// IsActive implements Scaler
-func (*externalMockScaler) IsActive(ctx context.Context) (bool, error) {
-	if atomic.LoadInt32(&MockExternalServerStatus) != MockExternalServerStatusOnline {
-		return false, ErrMock
-	}
-
-	return true, nil
-}
-
 // Close implements Scaler
 func (*externalMockScaler) Close(ctx context.Context) error {
 	return nil
 }
 
 // GetMetricSpecForScaling implements Scaler
-func (*externalMockScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
+func (*externalMockScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	if atomic.LoadInt32(&MockExternalServerStatus) != MockExternalServerStatusOnline {
 		return nil
 	}
@@ -53,13 +44,13 @@ func (*externalMockScaler) GetMetricSpecForScaling(ctx context.Context) []v2.Met
 	return getMockMetricsSpecs()
 }
 
-// GetMetrics implements Scaler
-func (*externalMockScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity implements Scaler
+func (*externalMockScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	if atomic.LoadInt32(&MockExternalServerStatus) != MockExternalServerStatusOnline {
-		return nil, ErrMock
+		return nil, false, ErrMock
 	}
 
-	return getMockExternalMetricsValue(), nil
+	return getMockExternalMetricsValue(), true, nil
 }
 
 func getMockMetricsSpecs() []v2.MetricSpec {

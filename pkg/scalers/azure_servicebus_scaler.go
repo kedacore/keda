@@ -226,17 +226,6 @@ func parseAzureServiceBusMetadata(config *ScalerConfig, logger logr.Logger) (*az
 	return &meta, nil
 }
 
-// Returns true if the scaler's queue has messages in it, false otherwise
-func (s *azureServiceBusScaler) IsActive(ctx context.Context) (bool, error) {
-	length, err := s.getAzureServiceBusLength(ctx)
-	if err != nil {
-		s.logger.Error(err, "error")
-		return false, err
-	}
-
-	return length > s.metadata.activationTargetLength, nil
-}
-
 // Close - nothing to close for SB
 func (s *azureServiceBusScaler) Close(context.Context) error {
 	return nil
@@ -269,18 +258,18 @@ func (s *azureServiceBusScaler) GetMetricSpecForScaling(context.Context) []v2.Me
 	return []v2.MetricSpec{metricSpec}
 }
 
-// Returns the current metrics to be served to the HPA
-func (s *azureServiceBusScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity returns the current metrics to be served to the HPA
+func (s *azureServiceBusScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	queuelen, err := s.getAzureServiceBusLength(ctx)
 
 	if err != nil {
 		s.logger.Error(err, "error getting service bus entity length")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(queuelen))
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, queuelen > s.metadata.activationTargetLength, nil
 }
 
 // Returns the length of the queue or subscription

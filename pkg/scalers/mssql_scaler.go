@@ -245,16 +245,16 @@ func (s *mssqlScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics returns a value for a supported metric or an error if there is a problem getting the metric
-func (s *mssqlScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity returns a value for a supported metric or an error if there is a problem getting the metric
+func (s *mssqlScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	num, err := s.getQueryResult(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting mssql: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting mssql: %s", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, num)
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.activationTargetValue, nil
 }
 
 // getQueryResult returns the result of the scaler query
@@ -270,16 +270,6 @@ func (s *mssqlScaler) getQueryResult(ctx context.Context) (float64, error) {
 	}
 
 	return value, nil
-}
-
-// IsActive returns true if there are pending events to be processed
-func (s *mssqlScaler) IsActive(ctx context.Context) (bool, error) {
-	messages, err := s.getQueryResult(ctx)
-	if err != nil {
-		return false, fmt.Errorf("error inspecting mssql: %s", err)
-	}
-
-	return messages > s.metadata.activationTargetValue, nil
 }
 
 // Close closes the mssql database connections

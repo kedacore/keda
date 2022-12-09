@@ -176,17 +176,6 @@ func parseArtemisMetadata(config *ScalerConfig) (*artemisMetadata, error) {
 	return &meta, nil
 }
 
-// IsActive determines if we need to scale from zero
-func (s *artemisScaler) IsActive(ctx context.Context) (bool, error) {
-	messages, err := s.getQueueMessageCount(ctx)
-	if err != nil {
-		s.logger.Error(err, "Unable to access the artemis management endpoint", "managementEndpoint", s.metadata.managementEndpoint)
-		return false, err
-	}
-
-	return messages > s.metadata.activationQueueLength, nil
-}
-
 // getAPIParameters parse restAPITemplate to provide managementEndpoint , brokerName, brokerAddress, queueName
 func getAPIParameters(meta artemisMetadata) (artemisMetadata, error) {
 	u, err := url.ParseRequestURI(meta.restAPITemplate)
@@ -265,7 +254,7 @@ func (s *artemisScaler) getQueueMessageCount(ctx context.Context) (int64, error)
 	return messageCount, nil
 }
 
-func (s *artemisScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
+func (s *artemisScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("artemis-%s", s.metadata.queueName))),
@@ -276,18 +265,18 @@ func (s *artemisScaler) GetMetricSpecForScaling(ctx context.Context) []v2.Metric
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *artemisScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
+func (s *artemisScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	messages, err := s.getQueueMessageCount(ctx)
 
 	if err != nil {
 		s.logger.Error(err, "Unable to access the artemis management endpoint", "managementEndpoint", s.metadata.managementEndpoint)
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(messages))
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, messages > s.metadata.activationQueueLength, nil
 }
 
 // Nothing to close here.

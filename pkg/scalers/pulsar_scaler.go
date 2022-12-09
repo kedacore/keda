@@ -254,35 +254,20 @@ func (s *pulsarScaler) getMsgBackLog(ctx context.Context) (int64, bool, error) {
 	return v.Msgbacklog, found, nil
 }
 
-// IsActive determines if we need to scale from zero
-func (s *pulsarScaler) IsActive(ctx context.Context) (bool, error) {
-	msgBackLog, found, err := s.getMsgBackLog(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	if !found {
-		s.logger.Info("Pulsar subscription is not active, either no subscription found or no backlog detected")
-		return false, nil
-	}
-
-	return msgBackLog > s.metadata.activationMsgBacklogThreshold, nil
-}
-
-// GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *pulsarScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetGetMetricsAndActivityMetrics returns value for a supported metric and an error if there is a problem getting the metric
+func (s *pulsarScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	msgBacklog, found, err := s.getMsgBackLog(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error requesting stats from url: %s", err)
+		return nil, false, fmt.Errorf("error requesting stats from url: %s", err)
 	}
 
 	if !found {
-		return nil, fmt.Errorf("have not subscription found! %s", s.metadata.subscription)
+		return nil, false, fmt.Errorf("have not subscription found! %s", s.metadata.subscription)
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(msgBacklog))
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, msgBacklog > s.metadata.activationMsgBacklogThreshold, nil
 }
 
 func (s *pulsarScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {

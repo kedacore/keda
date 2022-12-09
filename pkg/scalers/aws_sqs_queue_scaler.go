@@ -166,17 +166,6 @@ func createSqsClient(metadata *awsSqsQueueMetadata) *sqs.SQS {
 	return sqs.New(sess, config)
 }
 
-// IsActive determines if we need to scale from zero
-func (s *awsSqsQueueScaler) IsActive(ctx context.Context) (bool, error) {
-	length, err := s.getAwsSqsQueueLength()
-
-	if err != nil {
-		return false, err
-	}
-
-	return length > s.metadata.activationTargetQueueLength, nil
-}
-
 func (s *awsSqsQueueScaler) Close(context.Context) error {
 	return nil
 }
@@ -192,18 +181,18 @@ func (s *awsSqsQueueScaler) GetMetricSpecForScaling(context.Context) []v2.Metric
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *awsSqsQueueScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
+func (s *awsSqsQueueScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	queuelen, err := s.getAwsSqsQueueLength()
 
 	if err != nil {
 		s.logger.Error(err, "Error getting queue length")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(queuelen))
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, queuelen > s.metadata.activationTargetQueueLength, nil
 }
 
 // Get SQS Queue Length

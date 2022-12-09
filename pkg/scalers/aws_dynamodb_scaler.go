@@ -151,16 +151,16 @@ func createDynamoDBClient(metadata *awsDynamoDBMetadata) *dynamodb.DynamoDB {
 	return dynamodb.New(sess, config)
 }
 
-func (s *awsDynamoDBScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+func (s *awsDynamoDBScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	metricValue, err := s.GetQueryMetrics()
 	if err != nil {
 		s.logger.Error(err, "Error getting metric value")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, metricValue)
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, metricValue > float64(s.metadata.activationTargetValue), nil
 }
 
 func (s *awsDynamoDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
@@ -175,15 +175,6 @@ func (s *awsDynamoDBScaler) GetMetricSpecForScaling(context.Context) []v2.Metric
 	return []v2.MetricSpec{
 		metricSpec,
 	}
-}
-
-func (s *awsDynamoDBScaler) IsActive(ctx context.Context) (bool, error) {
-	messages, err := s.GetQueryMetrics()
-	if err != nil {
-		return false, fmt.Errorf("error inspecting aws-dynamodb: %s", err)
-	}
-
-	return messages > float64(s.metadata.activationTargetValue), nil
 }
 
 func (s *awsDynamoDBScaler) Close(context.Context) error {
