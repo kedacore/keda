@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -43,9 +43,11 @@ func newDataFrameTransformDeprecatedGetTransformStatsFunc(t Transport) DataFrame
 // This API is beta.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/get-transform-stats.html.
+//
 type DataFrameTransformDeprecatedGetTransformStats func(transform_id string, o ...func(*DataFrameTransformDeprecatedGetTransformStatsRequest)) (*Response, error)
 
 // DataFrameTransformDeprecatedGetTransformStatsRequest configures the Data Frame Transform Deprecated Get Transform Stats API request.
+//
 type DataFrameTransformDeprecatedGetTransformStatsRequest struct {
 	TransformID string
 
@@ -64,6 +66,7 @@ type DataFrameTransformDeprecatedGetTransformStatsRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r DataFrameTransformDeprecatedGetTransformStatsRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -157,6 +160,7 @@ func (r DataFrameTransformDeprecatedGetTransformStatsRequest) Do(ctx context.Con
 }
 
 // WithContext sets the request context.
+//
 func (f DataFrameTransformDeprecatedGetTransformStats) WithContext(v context.Context) func(*DataFrameTransformDeprecatedGetTransformStatsRequest) {
 	return func(r *DataFrameTransformDeprecatedGetTransformStatsRequest) {
 		r.ctx = v
@@ -164,6 +168,7 @@ func (f DataFrameTransformDeprecatedGetTransformStats) WithContext(v context.Con
 }
 
 // WithAllowNoMatch - whether to ignore if a wildcard expression matches no transforms. (this includes `_all` string or when no transforms have been specified).
+//
 func (f DataFrameTransformDeprecatedGetTransformStats) WithAllowNoMatch(v bool) func(*DataFrameTransformDeprecatedGetTransformStatsRequest) {
 	return func(r *DataFrameTransformDeprecatedGetTransformStatsRequest) {
 		r.AllowNoMatch = &v
@@ -171,6 +176,7 @@ func (f DataFrameTransformDeprecatedGetTransformStats) WithAllowNoMatch(v bool) 
 }
 
 // WithFrom - skips a number of transform stats, defaults to 0.
+//
 func (f DataFrameTransformDeprecatedGetTransformStats) WithFrom(v int) func(*DataFrameTransformDeprecatedGetTransformStatsRequest) {
 	return func(r *DataFrameTransformDeprecatedGetTransformStatsRequest) {
 		r.From = &v
@@ -178,6 +184,7 @@ func (f DataFrameTransformDeprecatedGetTransformStats) WithFrom(v int) func(*Dat
 }
 
 // WithSize - specifies a max number of transform stats to get, defaults to 100.
+//
 func (f DataFrameTransformDeprecatedGetTransformStats) WithSize(v int) func(*DataFrameTransformDeprecatedGetTransformStatsRequest) {
 	return func(r *DataFrameTransformDeprecatedGetTransformStatsRequest) {
 		r.Size = &v
@@ -185,6 +192,7 @@ func (f DataFrameTransformDeprecatedGetTransformStats) WithSize(v int) func(*Dat
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f DataFrameTransformDeprecatedGetTransformStats) WithPretty() func(*DataFrameTransformDeprecatedGetTransformStatsRequest) {
 	return func(r *DataFrameTransformDeprecatedGetTransformStatsRequest) {
 		r.Pretty = true
@@ -192,6 +200,7 @@ func (f DataFrameTransformDeprecatedGetTransformStats) WithPretty() func(*DataFr
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f DataFrameTransformDeprecatedGetTransformStats) WithHuman() func(*DataFrameTransformDeprecatedGetTransformStatsRequest) {
 	return func(r *DataFrameTransformDeprecatedGetTransformStatsRequest) {
 		r.Human = true
@@ -199,6 +208,7 @@ func (f DataFrameTransformDeprecatedGetTransformStats) WithHuman() func(*DataFra
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f DataFrameTransformDeprecatedGetTransformStats) WithErrorTrace() func(*DataFrameTransformDeprecatedGetTransformStatsRequest) {
 	return func(r *DataFrameTransformDeprecatedGetTransformStatsRequest) {
 		r.ErrorTrace = true
@@ -206,6 +216,7 @@ func (f DataFrameTransformDeprecatedGetTransformStats) WithErrorTrace() func(*Da
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f DataFrameTransformDeprecatedGetTransformStats) WithFilterPath(v ...string) func(*DataFrameTransformDeprecatedGetTransformStatsRequest) {
 	return func(r *DataFrameTransformDeprecatedGetTransformStatsRequest) {
 		r.FilterPath = v
@@ -213,6 +224,7 @@ func (f DataFrameTransformDeprecatedGetTransformStats) WithFilterPath(v ...strin
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f DataFrameTransformDeprecatedGetTransformStats) WithHeader(h map[string]string) func(*DataFrameTransformDeprecatedGetTransformStatsRequest) {
 	return func(r *DataFrameTransformDeprecatedGetTransformStatsRequest) {
 		if r.Header == nil {
@@ -225,6 +237,7 @@ func (f DataFrameTransformDeprecatedGetTransformStats) WithHeader(h map[string]s
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f DataFrameTransformDeprecatedGetTransformStats) WithOpaqueID(s string) func(*DataFrameTransformDeprecatedGetTransformStatsRequest) {
 	return func(r *DataFrameTransformDeprecatedGetTransformStatsRequest) {
 		if r.Header == nil {

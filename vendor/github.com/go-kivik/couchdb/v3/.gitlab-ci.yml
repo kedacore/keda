@@ -1,0 +1,95 @@
+stages:
+    - test
+
+variables:
+    SRCDIR: /go/src/github.com/go-kivik/couchdb
+    GO111MODULE: "on"
+
+.test: &test_template
+    stage: test
+    services:
+        - name: couchdb:1.7.2
+          alias: couch17
+        - name: couchdb:2.2.0
+          alias: couch22
+        - name: apache/couchdb:2.3.1
+          alias: couch23
+        - name: couchdb:3.0.0
+          alias: couch30
+    variables:
+        COUCHDB_USER: admin
+        COUCHDB_PASSWORD: abc123
+        KIVIK_TEST_DSN_COUCH17: http://admin:abc123@couch17:5984/
+        KIVIK_TEST_DSN_COUCH22: http://admin:abc123@couch22:5984/
+        KIVIK_TEST_DSN_COUCH23: http://admin:abc123@couch23:5984/
+        KIVIK_TEST_DSN_COUCH30: http://admin:abc123@couch30:5984/
+    before_script:
+        - ./script/complete_couch1.sh ${KIVIK_TEST_DSN_COUCH17}
+        - ./script/complete_couch2.sh ${KIVIK_TEST_DSN_COUCH22}
+        - ./script/complete_couch2.sh ${KIVIK_TEST_DSN_COUCH23}
+        - ./script/complete_couch2.sh ${KIVIK_TEST_DSN_COUCH30}
+    script:
+        - go mod download
+        - ./script/test_version.sh
+        - go test -race -tags=livetest ./...
+
+.nomod: &nomod_template
+    <<: *test_template
+    script:
+        - mkdir -p /go/src
+        - ln -s /builds /go/src/github.com
+        - cd ${SRCDIR}
+        - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+        - dep ensure && dep status
+        - ./script/test_version.sh
+        - go test -race -tags=livetest ./...
+
+linter:
+    stage: test
+    image: golangci/golangci-lint:v1.43
+    script:
+        - go mod download
+        - golangci-lint run ./...
+
+coverage:
+    stage: test
+    image: golang:1.15
+    services: []
+    before_script:
+        - ''
+    script:
+        - go mod download
+        - ./script/coverage.sh
+
+go-1.11:
+    <<: *test_template
+    image: golang:1.11
+
+go-1.12:
+    <<: *test_template
+    image: golang:1.12
+
+go-1.13:
+    <<: *test_template
+    image: golang:1.13
+
+go-1.14:
+    <<: *test_template
+    image: golang:1.14
+
+go-1.15:
+  <<: *test_template
+  image: golang:1.15
+
+go-1.16:
+  <<: *test_template
+  image: golang:1.16
+
+go-1.17:
+  <<: *test_template
+  image: golang:1.17
+
+go-rc:
+    <<: *test_template
+    image: golang:rc
+    allow_failure: true

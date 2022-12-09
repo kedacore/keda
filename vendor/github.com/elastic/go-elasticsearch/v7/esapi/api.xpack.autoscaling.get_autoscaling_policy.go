@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -40,9 +40,11 @@ func newAutoscalingGetAutoscalingPolicyFunc(t Transport) AutoscalingGetAutoscali
 // AutoscalingGetAutoscalingPolicy - Retrieves an autoscaling policy. Designed for indirect use by ECE/ESS and ECK. Direct use is not supported.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/autoscaling-get-autoscaling-policy.html.
+//
 type AutoscalingGetAutoscalingPolicy func(name string, o ...func(*AutoscalingGetAutoscalingPolicyRequest)) (*Response, error)
 
 // AutoscalingGetAutoscalingPolicyRequest configures the Autoscaling Get Autoscaling Policy API request.
+//
 type AutoscalingGetAutoscalingPolicyRequest struct {
 	Name string
 
@@ -57,6 +59,7 @@ type AutoscalingGetAutoscalingPolicyRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r AutoscalingGetAutoscalingPolicyRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -136,6 +139,7 @@ func (r AutoscalingGetAutoscalingPolicyRequest) Do(ctx context.Context, transpor
 }
 
 // WithContext sets the request context.
+//
 func (f AutoscalingGetAutoscalingPolicy) WithContext(v context.Context) func(*AutoscalingGetAutoscalingPolicyRequest) {
 	return func(r *AutoscalingGetAutoscalingPolicyRequest) {
 		r.ctx = v
@@ -143,6 +147,7 @@ func (f AutoscalingGetAutoscalingPolicy) WithContext(v context.Context) func(*Au
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f AutoscalingGetAutoscalingPolicy) WithPretty() func(*AutoscalingGetAutoscalingPolicyRequest) {
 	return func(r *AutoscalingGetAutoscalingPolicyRequest) {
 		r.Pretty = true
@@ -150,6 +155,7 @@ func (f AutoscalingGetAutoscalingPolicy) WithPretty() func(*AutoscalingGetAutosc
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f AutoscalingGetAutoscalingPolicy) WithHuman() func(*AutoscalingGetAutoscalingPolicyRequest) {
 	return func(r *AutoscalingGetAutoscalingPolicyRequest) {
 		r.Human = true
@@ -157,6 +163,7 @@ func (f AutoscalingGetAutoscalingPolicy) WithHuman() func(*AutoscalingGetAutosca
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f AutoscalingGetAutoscalingPolicy) WithErrorTrace() func(*AutoscalingGetAutoscalingPolicyRequest) {
 	return func(r *AutoscalingGetAutoscalingPolicyRequest) {
 		r.ErrorTrace = true
@@ -164,6 +171,7 @@ func (f AutoscalingGetAutoscalingPolicy) WithErrorTrace() func(*AutoscalingGetAu
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f AutoscalingGetAutoscalingPolicy) WithFilterPath(v ...string) func(*AutoscalingGetAutoscalingPolicyRequest) {
 	return func(r *AutoscalingGetAutoscalingPolicyRequest) {
 		r.FilterPath = v
@@ -171,6 +179,7 @@ func (f AutoscalingGetAutoscalingPolicy) WithFilterPath(v ...string) func(*Autos
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f AutoscalingGetAutoscalingPolicy) WithHeader(h map[string]string) func(*AutoscalingGetAutoscalingPolicyRequest) {
 	return func(r *AutoscalingGetAutoscalingPolicyRequest) {
 		if r.Header == nil {
@@ -183,6 +192,7 @@ func (f AutoscalingGetAutoscalingPolicy) WithHeader(h map[string]string) func(*A
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f AutoscalingGetAutoscalingPolicy) WithOpaqueID(s string) func(*AutoscalingGetAutoscalingPolicyRequest) {
 	return func(r *AutoscalingGetAutoscalingPolicyRequest) {
 		if r.Header == nil {

@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -40,9 +40,11 @@ func newCCRDeleteAutoFollowPatternFunc(t Transport) CCRDeleteAutoFollowPattern {
 // CCRDeleteAutoFollowPattern - Deletes auto-follow patterns.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/ccr-delete-auto-follow-pattern.html.
+//
 type CCRDeleteAutoFollowPattern func(name string, o ...func(*CCRDeleteAutoFollowPatternRequest)) (*Response, error)
 
 // CCRDeleteAutoFollowPatternRequest configures the CCR Delete Auto Follow Pattern API request.
+//
 type CCRDeleteAutoFollowPatternRequest struct {
 	Name string
 
@@ -57,6 +59,7 @@ type CCRDeleteAutoFollowPatternRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r CCRDeleteAutoFollowPatternRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -136,6 +139,7 @@ func (r CCRDeleteAutoFollowPatternRequest) Do(ctx context.Context, transport Tra
 }
 
 // WithContext sets the request context.
+//
 func (f CCRDeleteAutoFollowPattern) WithContext(v context.Context) func(*CCRDeleteAutoFollowPatternRequest) {
 	return func(r *CCRDeleteAutoFollowPatternRequest) {
 		r.ctx = v
@@ -143,6 +147,7 @@ func (f CCRDeleteAutoFollowPattern) WithContext(v context.Context) func(*CCRDele
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f CCRDeleteAutoFollowPattern) WithPretty() func(*CCRDeleteAutoFollowPatternRequest) {
 	return func(r *CCRDeleteAutoFollowPatternRequest) {
 		r.Pretty = true
@@ -150,6 +155,7 @@ func (f CCRDeleteAutoFollowPattern) WithPretty() func(*CCRDeleteAutoFollowPatter
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f CCRDeleteAutoFollowPattern) WithHuman() func(*CCRDeleteAutoFollowPatternRequest) {
 	return func(r *CCRDeleteAutoFollowPatternRequest) {
 		r.Human = true
@@ -157,6 +163,7 @@ func (f CCRDeleteAutoFollowPattern) WithHuman() func(*CCRDeleteAutoFollowPattern
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f CCRDeleteAutoFollowPattern) WithErrorTrace() func(*CCRDeleteAutoFollowPatternRequest) {
 	return func(r *CCRDeleteAutoFollowPatternRequest) {
 		r.ErrorTrace = true
@@ -164,6 +171,7 @@ func (f CCRDeleteAutoFollowPattern) WithErrorTrace() func(*CCRDeleteAutoFollowPa
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f CCRDeleteAutoFollowPattern) WithFilterPath(v ...string) func(*CCRDeleteAutoFollowPatternRequest) {
 	return func(r *CCRDeleteAutoFollowPatternRequest) {
 		r.FilterPath = v
@@ -171,6 +179,7 @@ func (f CCRDeleteAutoFollowPattern) WithFilterPath(v ...string) func(*CCRDeleteA
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f CCRDeleteAutoFollowPattern) WithHeader(h map[string]string) func(*CCRDeleteAutoFollowPatternRequest) {
 	return func(r *CCRDeleteAutoFollowPatternRequest) {
 		if r.Header == nil {
@@ -183,6 +192,7 @@ func (f CCRDeleteAutoFollowPattern) WithHeader(h map[string]string) func(*CCRDel
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f CCRDeleteAutoFollowPattern) WithOpaqueID(s string) func(*CCRDeleteAutoFollowPatternRequest) {
 	return func(r *CCRDeleteAutoFollowPatternRequest) {
 		if r.Header == nil {

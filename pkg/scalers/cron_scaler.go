@@ -121,6 +121,9 @@ func (s *cronScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("unable to load timezone. Error: %s", err)
 	}
 
+	// Since we are considering the timestamp here and not the exact time, timezone does matter.
+	currentTime := time.Now().Unix()
+
 	nextStartTime, startTimecronErr := getCronTime(location, s.metadata.start)
 	if startTimecronErr != nil {
 		return false, fmt.Errorf("error initializing start cron: %s", startTimecronErr)
@@ -131,8 +134,6 @@ func (s *cronScaler) IsActive(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("error intializing end cron: %s", endTimecronErr)
 	}
 
-	// Since we are considering the timestamp here and not the exact time, timezone does matter.
-	currentTime := time.Now().Unix()
 	switch {
 	case nextStartTime < nextEndTime && currentTime < nextStartTime:
 		return false, nil
@@ -183,5 +184,22 @@ func (s *cronScaler) GetMetrics(ctx context.Context, metricName string) ([]exter
 	/*******************************************************************************/
 	metric := GenerateMetricInMili(metricName, float64(currentReplicas))
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, nil
+}
+
+// TODO merge isActive() and GetMetrics()
+func (s *cronScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	metrics, err := s.GetMetrics(ctx, metricName)
+	if err != nil {
+		s.logger.Error(err, "error getting metrics")
+		return []external_metrics.ExternalMetricValue{}, false, err
+	}
+
+	isActive, err := s.IsActive(ctx)
+	if err != nil {
+		s.logger.Error(err, "error getting activity status")
+		return []external_metrics.ExternalMetricValue{}, false, err
+	}
+
+	return metrics, isActive, nil
 }

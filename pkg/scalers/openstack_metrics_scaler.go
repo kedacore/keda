@@ -232,27 +232,17 @@ func (s *openstackMetricScaler) GetMetricSpecForScaling(context.Context) []v2.Me
 	return []v2.MetricSpec{metricSpec}
 }
 
-func (s *openstackMetricScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+func (s *openstackMetricScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	val, err := s.readOpenstackMetrics(ctx)
 
 	if err != nil {
 		s.logger.Error(err, "Error collecting metric value")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, val)
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
-}
-
-func (s *openstackMetricScaler) IsActive(ctx context.Context) (bool, error) {
-	val, err := s.readOpenstackMetrics(ctx)
-
-	if err != nil {
-		return false, err
-	}
-
-	return val > s.metadata.activationThreshold, nil
+	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.activationThreshold, nil
 }
 
 func (s *openstackMetricScaler) Close(context.Context) error {

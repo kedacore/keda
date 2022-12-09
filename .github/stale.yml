@@ -9,6 +9,7 @@ exemptLabels:
   - stale-bot-ignore
   - feature
   - security
+  - breaking-change
   - Epic
   - dependencies
   - enhancement

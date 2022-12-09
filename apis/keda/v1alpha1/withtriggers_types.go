@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,7 +38,8 @@ type WithTriggers struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec WithTriggersSpec `json:"spec"`
+	InternalKind string           `json:"internalKind"`
+	Spec         WithTriggersSpec `json:"spec"`
 }
 
 // WithTriggersSpec is the spec for a an object with triggers resource
@@ -89,5 +91,35 @@ func (t *WithTriggers) GetPollingInterval() time.Duration {
 
 // GenerateIdentifier returns identifier for the object in for "kind.namespace.name"
 func (t *WithTriggers) GenerateIdentifier() string {
-	return GenerateIdentifier(t.Kind, t.Namespace, t.Name)
+	return GenerateIdentifier(t.InternalKind, t.Namespace, t.Name)
+}
+
+// AsDuckWithTriggers tries to generates WithTriggers object for input object
+// returns error if input object is unknown
+func AsDuckWithTriggers(scalableObject interface{}) (*WithTriggers, error) {
+	switch obj := scalableObject.(type) {
+	case *ScaledObject:
+		return &WithTriggers{
+			TypeMeta:     obj.TypeMeta,
+			ObjectMeta:   obj.ObjectMeta,
+			InternalKind: "ScaledObject",
+			Spec: WithTriggersSpec{
+				PollingInterval: obj.Spec.PollingInterval,
+				Triggers:        obj.Spec.Triggers,
+			},
+		}, nil
+	case *ScaledJob:
+		return &WithTriggers{
+			TypeMeta:     obj.TypeMeta,
+			ObjectMeta:   obj.ObjectMeta,
+			InternalKind: "ScaledJob",
+			Spec: WithTriggersSpec{
+				PollingInterval: obj.Spec.PollingInterval,
+				Triggers:        obj.Spec.Triggers,
+			},
+		}, nil
+	default:
+		// here could be the conversion from unknown Duck type potentially in the future
+		return nil, fmt.Errorf("unknown scalable object type %v", scalableObject)
+	}
 }

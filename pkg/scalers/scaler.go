@@ -41,15 +41,12 @@ func init() {
 
 // Scaler interface
 type Scaler interface {
-
-	// The scaler returns the metric values for a metric Name and criteria matching the selector
-	GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error)
+	// The scaler returns the metric values and activity for a metric Name
+	GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error)
 
 	// Returns the metrics based on which this scaler determines that the ScaleTarget scales. This is used to construct the HPA spec that is created for
 	// this scaled object. The labels used should match the selectors used in GetMetrics
 	GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec
-
-	IsActive(ctx context.Context) (bool, error)
 
 	// Close any resources that need disposing when scaler is no longer used or destroyed
 	Close(ctx context.Context) error
@@ -79,6 +76,10 @@ type ScalerConfig struct {
 
 	// Name of the trigger
 	TriggerName string
+
+	// Marks whether we should query metrics only during the polling interval
+	// Any requests for metrics in between are read from the cache
+	TriggerUseCachedMetrics bool
 
 	// TriggerMetadata
 	TriggerMetadata map[string]string

@@ -138,6 +138,9 @@ func TestScaler(t *testing.T) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")
 
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, scalerName, testNamespace, 1, 60, 1),
+		"replica count should be 1 after 1 minute")
+
 	// test scaling
 	testScaleOut(t, kc, data)
 	testScaleIn(t, kc, data)
@@ -177,8 +180,8 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	data.MetricValue = data.MetricThreshold * 2
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
-		"replica count should be 2 after 1 minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 2),
+		"replica count should be 2 after 2 minutes")
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -188,6 +191,6 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	data.MetricValue = 0
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after 1 minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 2),
+		"replica count should be 0 after 2 minutes")
 }

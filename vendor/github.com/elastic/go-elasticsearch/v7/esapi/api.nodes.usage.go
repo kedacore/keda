@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,9 +41,11 @@ func newNodesUsageFunc(t Transport) NodesUsage {
 // NodesUsage returns low-level information about REST actions usage on nodes.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/cluster-nodes-usage.html.
+//
 type NodesUsage func(o ...func(*NodesUsageRequest)) (*Response, error)
 
 // NodesUsageRequest configures the Nodes Usage API request.
+//
 type NodesUsageRequest struct {
 	Metric []string
 	NodeID []string
@@ -61,6 +63,7 @@ type NodesUsageRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r NodesUsageRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -150,6 +153,7 @@ func (r NodesUsageRequest) Do(ctx context.Context, transport Transport) (*Respon
 }
 
 // WithContext sets the request context.
+//
 func (f NodesUsage) WithContext(v context.Context) func(*NodesUsageRequest) {
 	return func(r *NodesUsageRequest) {
 		r.ctx = v
@@ -157,6 +161,7 @@ func (f NodesUsage) WithContext(v context.Context) func(*NodesUsageRequest) {
 }
 
 // WithMetric - limit the information returned to the specified metrics.
+//
 func (f NodesUsage) WithMetric(v ...string) func(*NodesUsageRequest) {
 	return func(r *NodesUsageRequest) {
 		r.Metric = v
@@ -164,6 +169,7 @@ func (f NodesUsage) WithMetric(v ...string) func(*NodesUsageRequest) {
 }
 
 // WithNodeID - a list of node ids or names to limit the returned information; use `_local` to return information from the node you're connecting to, leave empty to get information from all nodes.
+//
 func (f NodesUsage) WithNodeID(v ...string) func(*NodesUsageRequest) {
 	return func(r *NodesUsageRequest) {
 		r.NodeID = v
@@ -171,6 +177,7 @@ func (f NodesUsage) WithNodeID(v ...string) func(*NodesUsageRequest) {
 }
 
 // WithTimeout - explicit operation timeout.
+//
 func (f NodesUsage) WithTimeout(v time.Duration) func(*NodesUsageRequest) {
 	return func(r *NodesUsageRequest) {
 		r.Timeout = v
@@ -178,6 +185,7 @@ func (f NodesUsage) WithTimeout(v time.Duration) func(*NodesUsageRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f NodesUsage) WithPretty() func(*NodesUsageRequest) {
 	return func(r *NodesUsageRequest) {
 		r.Pretty = true
@@ -185,6 +193,7 @@ func (f NodesUsage) WithPretty() func(*NodesUsageRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f NodesUsage) WithHuman() func(*NodesUsageRequest) {
 	return func(r *NodesUsageRequest) {
 		r.Human = true
@@ -192,6 +201,7 @@ func (f NodesUsage) WithHuman() func(*NodesUsageRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f NodesUsage) WithErrorTrace() func(*NodesUsageRequest) {
 	return func(r *NodesUsageRequest) {
 		r.ErrorTrace = true
@@ -199,6 +209,7 @@ func (f NodesUsage) WithErrorTrace() func(*NodesUsageRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f NodesUsage) WithFilterPath(v ...string) func(*NodesUsageRequest) {
 	return func(r *NodesUsageRequest) {
 		r.FilterPath = v
@@ -206,6 +217,7 @@ func (f NodesUsage) WithFilterPath(v ...string) func(*NodesUsageRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f NodesUsage) WithHeader(h map[string]string) func(*NodesUsageRequest) {
 	return func(r *NodesUsageRequest) {
 		if r.Header == nil {
@@ -218,6 +230,7 @@ func (f NodesUsage) WithHeader(h map[string]string) func(*NodesUsageRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f NodesUsage) WithOpaqueID(s string) func(*NodesUsageRequest) {
 	return func(r *NodesUsageRequest) {
 		if r.Header == nil {

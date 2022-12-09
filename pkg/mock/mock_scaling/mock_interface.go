@@ -65,20 +65,20 @@ func (mr *MockScaleHandlerMockRecorder) DeleteScalableObject(ctx, scalableObject
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteScalableObject", reflect.TypeOf((*MockScaleHandler)(nil).DeleteScalableObject), ctx, scalableObject)
 }
 
-// GetExternalMetrics mocks base method.
-func (m *MockScaleHandler) GetExternalMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, *api.PromMetricsMsg, error) {
+// GetScaledObjectMetrics mocks base method.
+func (m *MockScaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, *api.PromMetricsMsg, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetExternalMetrics", ctx, scaledObjectName, scaledObjectNamespace, metricName)
+	ret := m.ctrl.Call(m, "GetScaledObjectMetrics", ctx, scaledObjectName, scaledObjectNamespace, metricName)
 	ret0, _ := ret[0].(*external_metrics.ExternalMetricValueList)
 	ret1, _ := ret[1].(*api.PromMetricsMsg)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
 
-// GetExternalMetrics indicates an expected call of GetExternalMetrics.
-func (mr *MockScaleHandlerMockRecorder) GetExternalMetrics(ctx, scaledObjectName, scaledObjectNamespace, metricName interface{}) *gomock.Call {
+// GetScaledObjectMetrics indicates an expected call of GetScaledObjectMetrics.
+func (mr *MockScaleHandlerMockRecorder) GetScaledObjectMetrics(ctx, scaledObjectName, scaledObjectNamespace, metricName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetExternalMetrics", reflect.TypeOf((*MockScaleHandler)(nil).GetExternalMetrics), ctx, scaledObjectName, scaledObjectNamespace, metricName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScaledObjectMetrics", reflect.TypeOf((*MockScaleHandler)(nil).GetScaledObjectMetrics), ctx, scaledObjectName, scaledObjectNamespace, metricName)
 }
 
 // GetScalersCache mocks base method.

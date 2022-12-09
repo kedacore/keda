@@ -550,3 +550,21 @@ func DeletePodsInNamespaceBySelector(t *testing.T, kc *kubernetes.Clientset, sel
 	})
 	assert.NoErrorf(t, err, "cannot delete pods - %s", err)
 }
+
+// Wait for Pods identified by selector to complete termination
+func WaitForPodsTerminated(t *testing.T, kc *kubernetes.Clientset, selector, namespace string,
+	iterations, intervalSeconds int) bool {
+	for i := 0; i < iterations; i++ {
+		pods, err := kc.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{LabelSelector: selector})
+		if (err != nil && errors.IsNotFound(err)) || len(pods.Items) == 0 {
+			t.Logf("No pods with label %s", selector)
+			return true
+		}
+
+		t.Logf("Waiting for pods with label %s to terminate", selector)
+
+		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+	}
+
+	return false
+}

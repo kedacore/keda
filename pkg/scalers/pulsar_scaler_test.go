@@ -231,7 +231,10 @@ func TestPulsarIsActive(t *testing.T) {
 			t.Fatal("Failed:", err)
 		}
 
-		active, err := mockPulsarScaler.IsActive(context.TODO())
+		metricSpec := mockPulsarScaler.GetMetricSpecForScaling(context.TODO())
+		metricName := metricSpec[0].External.Metric.Name
+
+		_, active, err := mockPulsarScaler.GetMetricsAndActivity(context.TODO(), metricName)
 		if err != nil {
 			t.Fatal("Failed:", err)
 		}
@@ -252,7 +255,10 @@ func TestPulsarIsActiveWithAuthParams(t *testing.T) {
 			t.Fatal("Failed:", err)
 		}
 
-		active, err := mockPulsarScaler.IsActive(context.TODO())
+		metricSpec := mockPulsarScaler.GetMetricSpecForScaling(context.TODO())
+		metricName := metricSpec[0].External.Metric.Name
+
+		_, active, err := mockPulsarScaler.GetMetricsAndActivity(context.TODO(), metricName)
 		if err != nil && !testData.metadataTestData.isError {
 			t.Fatal("Failed:", err)
 		}
@@ -276,7 +282,7 @@ func TestPulsarGetMetric(t *testing.T) {
 		metricSpec := mockPulsarScaler.GetMetricSpecForScaling(context.TODO())
 		metricName := metricSpec[0].External.Metric.Name
 
-		metric, err := mockPulsarScaler.GetMetrics(context.TODO(), metricName)
+		metric, _, err := mockPulsarScaler.GetMetricsAndActivity(context.TODO(), metricName)
 		if err != nil {
 			t.Fatal("Failed:", err)
 		}

@@ -169,14 +169,15 @@ func parseAzureDataExplorerAuthParams(config *ScalerConfig, logger logr.Logger) 
 	return &metadata, nil
 }
 
-func (s azureDataExplorerScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+func (s azureDataExplorerScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	metricValue, err := azure.GetAzureDataExplorerMetricValue(ctx, s.client, s.metadata.DatabaseName, s.metadata.Query)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("failed to get metrics for scaled object %s in namespace %s: %v", s.name, s.namespace, err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("failed to get metrics for scaled object %s in namespace %s: %v", s.name, s.namespace, err)
 	}
 
 	metric := GenerateMetricInMili(metricName, metricValue)
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+
+	return []external_metrics.ExternalMetricValue{metric}, metricValue > s.metadata.ActivationThreshold, nil
 }
 
 func (s azureDataExplorerScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
@@ -188,15 +189,6 @@ func (s azureDataExplorerScaler) GetMetricSpecForScaling(context.Context) []v2.M
 	}
 	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2.MetricSpec{metricSpec}
-}
-
-func (s azureDataExplorerScaler) IsActive(ctx context.Context) (bool, error) {
-	metricValue, err := azure.GetAzureDataExplorerMetricValue(ctx, s.client, s.metadata.DatabaseName, s.metadata.Query)
-	if err != nil {
-		return false, fmt.Errorf("failed to get azure data explorer metric value: %s", err)
-	}
-
-	return metricValue > s.metadata.ActivationThreshold, nil
 }
 
 func (s azureDataExplorerScaler) Close(context.Context) error {

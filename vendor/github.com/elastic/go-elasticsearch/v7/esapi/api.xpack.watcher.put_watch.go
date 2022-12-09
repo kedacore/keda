@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -42,9 +42,11 @@ func newWatcherPutWatchFunc(t Transport) WatcherPutWatch {
 // WatcherPutWatch - Creates a new watch, or updates an existing one.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/watcher-api-put-watch.html.
+//
 type WatcherPutWatch func(id string, o ...func(*WatcherPutWatchRequest)) (*Response, error)
 
 // WatcherPutWatchRequest configures the Watcher Put Watch API request.
+//
 type WatcherPutWatchRequest struct {
 	WatchID string
 
@@ -66,6 +68,7 @@ type WatcherPutWatchRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r WatcherPutWatchRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -130,6 +133,10 @@ func (r WatcherPutWatchRequest) Do(ctx context.Context, transport Transport) (*R
 		req.URL.RawQuery = q.Encode()
 	}
 
+	if r.Body != nil {
+		req.Header[headerContentType] = headerContentTypeJSON
+	}
+
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -140,10 +147,6 @@ func (r WatcherPutWatchRequest) Do(ctx context.Context, transport Transport) (*R
 				}
 			}
 		}
-	}
-
-	if r.Body != nil && req.Header.Get(headerContentType) == "" {
-		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -165,6 +168,7 @@ func (r WatcherPutWatchRequest) Do(ctx context.Context, transport Transport) (*R
 }
 
 // WithContext sets the request context.
+//
 func (f WatcherPutWatch) WithContext(v context.Context) func(*WatcherPutWatchRequest) {
 	return func(r *WatcherPutWatchRequest) {
 		r.ctx = v
@@ -172,6 +176,7 @@ func (f WatcherPutWatch) WithContext(v context.Context) func(*WatcherPutWatchReq
 }
 
 // WithBody - The watch.
+//
 func (f WatcherPutWatch) WithBody(v io.Reader) func(*WatcherPutWatchRequest) {
 	return func(r *WatcherPutWatchRequest) {
 		r.Body = v
@@ -179,6 +184,7 @@ func (f WatcherPutWatch) WithBody(v io.Reader) func(*WatcherPutWatchRequest) {
 }
 
 // WithActive - specify whether the watch is in/active by default.
+//
 func (f WatcherPutWatch) WithActive(v bool) func(*WatcherPutWatchRequest) {
 	return func(r *WatcherPutWatchRequest) {
 		r.Active = &v
@@ -186,6 +192,7 @@ func (f WatcherPutWatch) WithActive(v bool) func(*WatcherPutWatchRequest) {
 }
 
 // WithIfPrimaryTerm - only update the watch if the last operation that has changed the watch has the specified primary term.
+//
 func (f WatcherPutWatch) WithIfPrimaryTerm(v int) func(*WatcherPutWatchRequest) {
 	return func(r *WatcherPutWatchRequest) {
 		r.IfPrimaryTerm = &v
@@ -193,6 +200,7 @@ func (f WatcherPutWatch) WithIfPrimaryTerm(v int) func(*WatcherPutWatchRequest) 
 }
 
 // WithIfSeqNo - only update the watch if the last operation that has changed the watch has the specified sequence number.
+//
 func (f WatcherPutWatch) WithIfSeqNo(v int) func(*WatcherPutWatchRequest) {
 	return func(r *WatcherPutWatchRequest) {
 		r.IfSeqNo = &v
@@ -200,6 +208,7 @@ func (f WatcherPutWatch) WithIfSeqNo(v int) func(*WatcherPutWatchRequest) {
 }
 
 // WithVersion - explicit version number for concurrency control.
+//
 func (f WatcherPutWatch) WithVersion(v int) func(*WatcherPutWatchRequest) {
 	return func(r *WatcherPutWatchRequest) {
 		r.Version = &v
@@ -207,6 +216,7 @@ func (f WatcherPutWatch) WithVersion(v int) func(*WatcherPutWatchRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f WatcherPutWatch) WithPretty() func(*WatcherPutWatchRequest) {
 	return func(r *WatcherPutWatchRequest) {
 		r.Pretty = true
@@ -214,6 +224,7 @@ func (f WatcherPutWatch) WithPretty() func(*WatcherPutWatchRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f WatcherPutWatch) WithHuman() func(*WatcherPutWatchRequest) {
 	return func(r *WatcherPutWatchRequest) {
 		r.Human = true
@@ -221,6 +232,7 @@ func (f WatcherPutWatch) WithHuman() func(*WatcherPutWatchRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f WatcherPutWatch) WithErrorTrace() func(*WatcherPutWatchRequest) {
 	return func(r *WatcherPutWatchRequest) {
 		r.ErrorTrace = true
@@ -228,6 +240,7 @@ func (f WatcherPutWatch) WithErrorTrace() func(*WatcherPutWatchRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f WatcherPutWatch) WithFilterPath(v ...string) func(*WatcherPutWatchRequest) {
 	return func(r *WatcherPutWatchRequest) {
 		r.FilterPath = v
@@ -235,6 +248,7 @@ func (f WatcherPutWatch) WithFilterPath(v ...string) func(*WatcherPutWatchReques
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f WatcherPutWatch) WithHeader(h map[string]string) func(*WatcherPutWatchRequest) {
 	return func(r *WatcherPutWatchRequest) {
 		if r.Header == nil {
@@ -247,6 +261,7 @@ func (f WatcherPutWatch) WithHeader(h map[string]string) func(*WatcherPutWatchRe
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f WatcherPutWatch) WithOpaqueID(s string) func(*WatcherPutWatchRequest) {
 	return func(r *WatcherPutWatchRequest) {
 		if r.Header == nil {

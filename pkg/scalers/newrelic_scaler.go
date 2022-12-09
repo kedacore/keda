@@ -16,13 +16,13 @@ import (
 )
 
 const (
-	account     = "account"
-	queryKey    = "queryKey"
-	region      = "region"
-	nrql        = "nrql"
-	threshold   = "threshold"
-	noDataError = "noDataError"
-	scalerName  = "new-relic"
+	account           = "account"
+	queryKeyParamater = "queryKey"
+	regionParameter   = "region"
+	nrql              = "nrql"
+	threshold         = "threshold"
+	noDataError       = "noDataError"
+	scalerName        = "new-relic"
 )
 
 type newrelicScaler struct {
@@ -96,16 +96,18 @@ func parseNewRelicMetadata(config *ScalerConfig, logger logr.Logger) (*newrelicM
 		return nil, fmt.Errorf("no %s given", nrql)
 	}
 
-	meta.queryKey, err = GetFromAuthOrMeta(config, queryKey)
+	queryKey, err := GetFromAuthOrMeta(config, queryKeyParamater)
 	if err != nil {
-		return nil, fmt.Errorf("no %s given", queryKey)
+		return nil, fmt.Errorf("no %s given", queryKeyParamater)
 	}
+	meta.queryKey = queryKey
 
-	meta.region, err = GetFromAuthOrMeta(config, region)
+	region, err := GetFromAuthOrMeta(config, regionParameter)
 	if err != nil {
-		meta.region = "US"
+		region = "US"
 		logger.Info("Using default 'US' region")
 	}
+	meta.region = region
 
 	if val, ok := config.TriggerMetadata[threshold]; ok && val != "" {
 		t, err := strconv.ParseFloat(val, 64)
@@ -141,15 +143,6 @@ func parseNewRelicMetadata(config *ScalerConfig, logger logr.Logger) (*newrelicM
 	return &meta, nil
 }
 
-func (s *newrelicScaler) IsActive(ctx context.Context) (bool, error) {
-	val, err := s.executeNewRelicQuery(ctx)
-	if err != nil {
-		s.logger.Error(err, "error executing NRQL")
-		return false, err
-	}
-	return val > s.metadata.activationThreshold, nil
-}
-
 func (s *newrelicScaler) Close(context.Context) error {
 	return nil
 }
@@ -173,16 +166,16 @@ func (s *newrelicScaler) executeNewRelicQuery(ctx context.Context) (float64, err
 	return 0, nil
 }
 
-func (s *newrelicScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+func (s *newrelicScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	val, err := s.executeNewRelicQuery(ctx)
 	if err != nil {
 		s.logger.Error(err, "error executing NRQL query")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, val)
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.activationThreshold, nil
 }
 
 func (s *newrelicScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {

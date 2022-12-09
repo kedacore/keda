@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -43,9 +43,11 @@ func newMLGetModelSnapshotsFunc(t Transport) MLGetModelSnapshots {
 // MLGetModelSnapshots - Retrieves information about model snapshots.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/ml-get-snapshot.html.
+//
 type MLGetModelSnapshots func(job_id string, o ...func(*MLGetModelSnapshotsRequest)) (*Response, error)
 
 // MLGetModelSnapshotsRequest configures the ML Get Model Snapshots API request.
+//
 type MLGetModelSnapshotsRequest struct {
 	Body io.Reader
 
@@ -70,6 +72,7 @@ type MLGetModelSnapshotsRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r MLGetModelSnapshotsRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -148,6 +151,10 @@ func (r MLGetModelSnapshotsRequest) Do(ctx context.Context, transport Transport)
 		req.URL.RawQuery = q.Encode()
 	}
 
+	if r.Body != nil {
+		req.Header[headerContentType] = headerContentTypeJSON
+	}
+
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -158,10 +165,6 @@ func (r MLGetModelSnapshotsRequest) Do(ctx context.Context, transport Transport)
 				}
 			}
 		}
-	}
-
-	if r.Body != nil && req.Header.Get(headerContentType) == "" {
-		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -183,6 +186,7 @@ func (r MLGetModelSnapshotsRequest) Do(ctx context.Context, transport Transport)
 }
 
 // WithContext sets the request context.
+//
 func (f MLGetModelSnapshots) WithContext(v context.Context) func(*MLGetModelSnapshotsRequest) {
 	return func(r *MLGetModelSnapshotsRequest) {
 		r.ctx = v
@@ -190,6 +194,7 @@ func (f MLGetModelSnapshots) WithContext(v context.Context) func(*MLGetModelSnap
 }
 
 // WithBody - Model snapshot selection criteria.
+//
 func (f MLGetModelSnapshots) WithBody(v io.Reader) func(*MLGetModelSnapshotsRequest) {
 	return func(r *MLGetModelSnapshotsRequest) {
 		r.Body = v
@@ -197,6 +202,7 @@ func (f MLGetModelSnapshots) WithBody(v io.Reader) func(*MLGetModelSnapshotsRequ
 }
 
 // WithSnapshotID - the ID of the snapshot to fetch.
+//
 func (f MLGetModelSnapshots) WithSnapshotID(v string) func(*MLGetModelSnapshotsRequest) {
 	return func(r *MLGetModelSnapshotsRequest) {
 		r.SnapshotID = v
@@ -204,6 +210,7 @@ func (f MLGetModelSnapshots) WithSnapshotID(v string) func(*MLGetModelSnapshotsR
 }
 
 // WithDesc - true if the results should be sorted in descending order.
+//
 func (f MLGetModelSnapshots) WithDesc(v bool) func(*MLGetModelSnapshotsRequest) {
 	return func(r *MLGetModelSnapshotsRequest) {
 		r.Desc = &v
@@ -211,6 +218,7 @@ func (f MLGetModelSnapshots) WithDesc(v bool) func(*MLGetModelSnapshotsRequest) 
 }
 
 // WithEnd - the filter 'end' query parameter.
+//
 func (f MLGetModelSnapshots) WithEnd(v interface{}) func(*MLGetModelSnapshotsRequest) {
 	return func(r *MLGetModelSnapshotsRequest) {
 		r.End = v
@@ -218,6 +226,7 @@ func (f MLGetModelSnapshots) WithEnd(v interface{}) func(*MLGetModelSnapshotsReq
 }
 
 // WithFrom - skips a number of documents.
+//
 func (f MLGetModelSnapshots) WithFrom(v int) func(*MLGetModelSnapshotsRequest) {
 	return func(r *MLGetModelSnapshotsRequest) {
 		r.From = &v
@@ -225,6 +234,7 @@ func (f MLGetModelSnapshots) WithFrom(v int) func(*MLGetModelSnapshotsRequest) {
 }
 
 // WithSize - the default number of documents returned in queries as a string..
+//
 func (f MLGetModelSnapshots) WithSize(v int) func(*MLGetModelSnapshotsRequest) {
 	return func(r *MLGetModelSnapshotsRequest) {
 		r.Size = &v
@@ -232,6 +242,7 @@ func (f MLGetModelSnapshots) WithSize(v int) func(*MLGetModelSnapshotsRequest) {
 }
 
 // WithSort - name of the field to sort on.
+//
 func (f MLGetModelSnapshots) WithSort(v string) func(*MLGetModelSnapshotsRequest) {
 	return func(r *MLGetModelSnapshotsRequest) {
 		r.Sort = v
@@ -239,6 +250,7 @@ func (f MLGetModelSnapshots) WithSort(v string) func(*MLGetModelSnapshotsRequest
 }
 
 // WithStart - the filter 'start' query parameter.
+//
 func (f MLGetModelSnapshots) WithStart(v interface{}) func(*MLGetModelSnapshotsRequest) {
 	return func(r *MLGetModelSnapshotsRequest) {
 		r.Start = v
@@ -246,6 +258,7 @@ func (f MLGetModelSnapshots) WithStart(v interface{}) func(*MLGetModelSnapshotsR
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f MLGetModelSnapshots) WithPretty() func(*MLGetModelSnapshotsRequest) {
 	return func(r *MLGetModelSnapshotsRequest) {
 		r.Pretty = true
@@ -253,6 +266,7 @@ func (f MLGetModelSnapshots) WithPretty() func(*MLGetModelSnapshotsRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f MLGetModelSnapshots) WithHuman() func(*MLGetModelSnapshotsRequest) {
 	return func(r *MLGetModelSnapshotsRequest) {
 		r.Human = true
@@ -260,6 +274,7 @@ func (f MLGetModelSnapshots) WithHuman() func(*MLGetModelSnapshotsRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f MLGetModelSnapshots) WithErrorTrace() func(*MLGetModelSnapshotsRequest) {
 	return func(r *MLGetModelSnapshotsRequest) {
 		r.ErrorTrace = true
@@ -267,6 +282,7 @@ func (f MLGetModelSnapshots) WithErrorTrace() func(*MLGetModelSnapshotsRequest) 
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f MLGetModelSnapshots) WithFilterPath(v ...string) func(*MLGetModelSnapshotsRequest) {
 	return func(r *MLGetModelSnapshotsRequest) {
 		r.FilterPath = v
@@ -274,6 +290,7 @@ func (f MLGetModelSnapshots) WithFilterPath(v ...string) func(*MLGetModelSnapsho
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f MLGetModelSnapshots) WithHeader(h map[string]string) func(*MLGetModelSnapshotsRequest) {
 	return func(r *MLGetModelSnapshotsRequest) {
 		if r.Header == nil {
@@ -286,6 +303,7 @@ func (f MLGetModelSnapshots) WithHeader(h map[string]string) func(*MLGetModelSna
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f MLGetModelSnapshots) WithOpaqueID(s string) func(*MLGetModelSnapshotsRequest) {
 	return func(r *MLGetModelSnapshotsRequest) {
 		if r.Header == nil {

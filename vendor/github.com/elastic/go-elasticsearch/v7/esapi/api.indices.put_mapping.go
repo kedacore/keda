@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -43,9 +43,11 @@ func newIndicesPutMappingFunc(t Transport) IndicesPutMapping {
 // IndicesPutMapping updates the index mappings.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-put-mapping.html.
+//
 type IndicesPutMapping func(body io.Reader, o ...func(*IndicesPutMappingRequest)) (*Response, error)
 
 // IndicesPutMappingRequest configures the Indices Put Mapping API request.
+//
 type IndicesPutMappingRequest struct {
 	Index        []string
 	DocumentType string
@@ -71,6 +73,7 @@ type IndicesPutMappingRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r IndicesPutMappingRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -151,6 +154,10 @@ func (r IndicesPutMappingRequest) Do(ctx context.Context, transport Transport) (
 		req.URL.RawQuery = q.Encode()
 	}
 
+	if r.Body != nil {
+		req.Header[headerContentType] = headerContentTypeJSON
+	}
+
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -161,10 +168,6 @@ func (r IndicesPutMappingRequest) Do(ctx context.Context, transport Transport) (
 				}
 			}
 		}
-	}
-
-	if r.Body != nil && req.Header.Get(headerContentType) == "" {
-		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -186,6 +189,7 @@ func (r IndicesPutMappingRequest) Do(ctx context.Context, transport Transport) (
 }
 
 // WithContext sets the request context.
+//
 func (f IndicesPutMapping) WithContext(v context.Context) func(*IndicesPutMappingRequest) {
 	return func(r *IndicesPutMappingRequest) {
 		r.ctx = v
@@ -193,6 +197,7 @@ func (f IndicesPutMapping) WithContext(v context.Context) func(*IndicesPutMappin
 }
 
 // WithIndex - a list of index names the mapping should be added to (supports wildcards); use `_all` or omit to add the mapping on all indices..
+//
 func (f IndicesPutMapping) WithIndex(v ...string) func(*IndicesPutMappingRequest) {
 	return func(r *IndicesPutMappingRequest) {
 		r.Index = v
@@ -200,6 +205,7 @@ func (f IndicesPutMapping) WithIndex(v ...string) func(*IndicesPutMappingRequest
 }
 
 // WithDocumentType - the name of the document type.
+//
 func (f IndicesPutMapping) WithDocumentType(v string) func(*IndicesPutMappingRequest) {
 	return func(r *IndicesPutMappingRequest) {
 		r.DocumentType = v
@@ -207,6 +213,7 @@ func (f IndicesPutMapping) WithDocumentType(v string) func(*IndicesPutMappingReq
 }
 
 // WithAllowNoIndices - whether to ignore if a wildcard indices expression resolves into no concrete indices. (this includes `_all` string or when no indices have been specified).
+//
 func (f IndicesPutMapping) WithAllowNoIndices(v bool) func(*IndicesPutMappingRequest) {
 	return func(r *IndicesPutMappingRequest) {
 		r.AllowNoIndices = &v
@@ -214,6 +221,7 @@ func (f IndicesPutMapping) WithAllowNoIndices(v bool) func(*IndicesPutMappingReq
 }
 
 // WithExpandWildcards - whether to expand wildcard expression to concrete indices that are open, closed or both..
+//
 func (f IndicesPutMapping) WithExpandWildcards(v string) func(*IndicesPutMappingRequest) {
 	return func(r *IndicesPutMappingRequest) {
 		r.ExpandWildcards = v
@@ -221,6 +229,7 @@ func (f IndicesPutMapping) WithExpandWildcards(v string) func(*IndicesPutMapping
 }
 
 // WithIgnoreUnavailable - whether specified concrete indices should be ignored when unavailable (missing or closed).
+//
 func (f IndicesPutMapping) WithIgnoreUnavailable(v bool) func(*IndicesPutMappingRequest) {
 	return func(r *IndicesPutMappingRequest) {
 		r.IgnoreUnavailable = &v
@@ -228,6 +237,7 @@ func (f IndicesPutMapping) WithIgnoreUnavailable(v bool) func(*IndicesPutMapping
 }
 
 // WithIncludeTypeName - whether a type should be expected in the body of the mappings..
+//
 func (f IndicesPutMapping) WithIncludeTypeName(v bool) func(*IndicesPutMappingRequest) {
 	return func(r *IndicesPutMappingRequest) {
 		r.IncludeTypeName = &v
@@ -235,6 +245,7 @@ func (f IndicesPutMapping) WithIncludeTypeName(v bool) func(*IndicesPutMappingRe
 }
 
 // WithMasterTimeout - specify timeout for connection to master.
+//
 func (f IndicesPutMapping) WithMasterTimeout(v time.Duration) func(*IndicesPutMappingRequest) {
 	return func(r *IndicesPutMappingRequest) {
 		r.MasterTimeout = v
@@ -242,6 +253,7 @@ func (f IndicesPutMapping) WithMasterTimeout(v time.Duration) func(*IndicesPutMa
 }
 
 // WithTimeout - explicit operation timeout.
+//
 func (f IndicesPutMapping) WithTimeout(v time.Duration) func(*IndicesPutMappingRequest) {
 	return func(r *IndicesPutMappingRequest) {
 		r.Timeout = v
@@ -249,6 +261,7 @@ func (f IndicesPutMapping) WithTimeout(v time.Duration) func(*IndicesPutMappingR
 }
 
 // WithWriteIndexOnly - when true, applies mappings only to the write index of an alias or data stream.
+//
 func (f IndicesPutMapping) WithWriteIndexOnly(v bool) func(*IndicesPutMappingRequest) {
 	return func(r *IndicesPutMappingRequest) {
 		r.WriteIndexOnly = &v
@@ -256,6 +269,7 @@ func (f IndicesPutMapping) WithWriteIndexOnly(v bool) func(*IndicesPutMappingReq
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f IndicesPutMapping) WithPretty() func(*IndicesPutMappingRequest) {
 	return func(r *IndicesPutMappingRequest) {
 		r.Pretty = true
@@ -263,6 +277,7 @@ func (f IndicesPutMapping) WithPretty() func(*IndicesPutMappingRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f IndicesPutMapping) WithHuman() func(*IndicesPutMappingRequest) {
 	return func(r *IndicesPutMappingRequest) {
 		r.Human = true
@@ -270,6 +285,7 @@ func (f IndicesPutMapping) WithHuman() func(*IndicesPutMappingRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f IndicesPutMapping) WithErrorTrace() func(*IndicesPutMappingRequest) {
 	return func(r *IndicesPutMappingRequest) {
 		r.ErrorTrace = true
@@ -277,6 +293,7 @@ func (f IndicesPutMapping) WithErrorTrace() func(*IndicesPutMappingRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f IndicesPutMapping) WithFilterPath(v ...string) func(*IndicesPutMappingRequest) {
 	return func(r *IndicesPutMappingRequest) {
 		r.FilterPath = v
@@ -284,6 +301,7 @@ func (f IndicesPutMapping) WithFilterPath(v ...string) func(*IndicesPutMappingRe
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f IndicesPutMapping) WithHeader(h map[string]string) func(*IndicesPutMappingRequest) {
 	return func(r *IndicesPutMappingRequest) {
 		if r.Header == nil {
@@ -296,6 +314,7 @@ func (f IndicesPutMapping) WithHeader(h map[string]string) func(*IndicesPutMappi
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f IndicesPutMapping) WithOpaqueID(s string) func(*IndicesPutMappingRequest) {
 	return func(r *IndicesPutMappingRequest) {
 		if r.Header == nil {

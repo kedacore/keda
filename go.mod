@@ -25,7 +25,9 @@ require (
 	github.com/denisenkom/go-mssqldb v0.12.3
 	github.com/dysnix/predictkube-libs v0.0.4-0.20220717101015-44c816c4fb9c
 	github.com/dysnix/predictkube-proto v0.0.0-20220713123213-7135dce1e9c9
-	github.com/elastic/go-elasticsearch/v7 v7.17.7
+	github.com/elastic/go-elasticsearch/v7 v7.17.1
+	github.com/go-kivik/couchdb/v3 v3.3.0
+	github.com/go-kivik/kivik/v3 v3.2.3
 	github.com/go-logr/logr v1.2.3
 	github.com/go-playground/validator/v10 v10.11.1
 	github.com/go-redis/redis/v8 v8.11.5
@@ -33,8 +35,8 @@ require (
 	github.com/gobwas/glob v0.2.3
 	github.com/gocql/gocql v1.3.0
 	github.com/golang/mock v1.6.0
-	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.9
+	github.com/google/uuid v1.3.0
 	github.com/gophercloud/gophercloud v1.1.0
 	github.com/hashicorp/vault/api v1.8.2
 	github.com/imdario/mergo v0.3.13
@@ -61,6 +63,7 @@ require (
 	github.com/xdg/scram v1.0.5
 	github.com/xhit/go-str2duration/v2 v2.0.0
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a
+	go.etcd.io/etcd/client/v3 v3.5.4
 	go.mongodb.org/mongo-driver v1.11.0
 	golang.org/x/oauth2 v0.2.0
 	google.golang.org/api v0.103.0
@@ -158,12 +161,12 @@ require (
 	github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9 // indirect
 	github.com/golang-sql/sqlexp v0.1.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
+	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/gnostic v0.6.9 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.0 // indirect
 	github.com/googleapis/gax-go/v2 v2.7.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
@@ -249,7 +252,6 @@ require (
 	github.com/xlab/treeprint v1.1.0 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.4 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.4 // indirect
-	go.etcd.io/etcd/client/v3 v3.5.4 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib v0.20.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.20.0 // indirect

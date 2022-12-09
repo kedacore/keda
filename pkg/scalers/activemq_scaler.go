@@ -6,11 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
-	"text/template"
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -166,16 +166,6 @@ func parseActiveMQMetadata(config *ScalerConfig) (*activeMQMetadata, error) {
 	return &meta, nil
 }
 
-func (s *activeMQScaler) IsActive(ctx context.Context) (bool, error) {
-	queueSize, err := s.getQueueMessageCount(ctx)
-	if err != nil {
-		s.logger.Error(err, "Unable to access activeMQ management endpoint", "managementEndpoint", s.metadata.managementEndpoint)
-		return false, err
-	}
-
-	return queueSize > s.metadata.activationTargetQueueSize, nil
-}
-
 // getRestAPIParameters parse restAPITemplate to provide managementEndpoint, brokerName, destinationName
 func getRestAPIParameters(meta activeMQMetadata) (activeMQMetadata, error) {
 	u, err := url.ParseRequestURI(meta.restAPITemplate)
@@ -278,15 +268,15 @@ func (s *activeMQScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpe
 	return []v2.MetricSpec{metricSpec}
 }
 
-func (s *activeMQScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+func (s *activeMQScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	queueSize, err := s.getQueueMessageCount(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error inspecting ActiveMQ queue size: %s", err)
+		return nil, false, fmt.Errorf("error inspecting ActiveMQ queue size: %s", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(queueSize))
 
-	return []external_metrics.ExternalMetricValue{metric}, nil
+	return []external_metrics.ExternalMetricValue{metric}, queueSize > s.metadata.activationTargetQueueSize, nil
 }
 
 func (s *activeMQScaler) Close(context.Context) error {

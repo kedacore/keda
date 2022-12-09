@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -31,7 +31,7 @@ import (
 
 func newSearchMvtFunc(t Transport) SearchMvt {
 	return func(index []string, field string, zoom *int, x *int, y *int, o ...func(*SearchMvtRequest)) (*Response, error) {
-		var r = SearchMvtRequest{Index: index, Field: field, Zoom: zoom, X: x, Y: y}
+		var r = SearchMvtRequest{Index: index, X: x, Y: y, Field: field, Zoom: zoom}
 		for _, f := range o {
 			f(&r)
 		}
@@ -46,9 +46,11 @@ func newSearchMvtFunc(t Transport) SearchMvt {
 // This API is experimental.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/search-vector-tile-api.html.
+//
 type SearchMvt func(index []string, field string, zoom *int, x *int, y *int, o ...func(*SearchMvtRequest)) (*Response, error)
 
 // SearchMvtRequest configures the Search Mvt API request.
+//
 type SearchMvtRequest struct {
 	Index []string
 
@@ -77,6 +79,7 @@ type SearchMvtRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r SearchMvtRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -168,6 +171,10 @@ func (r SearchMvtRequest) Do(ctx context.Context, transport Transport) (*Respons
 		req.URL.RawQuery = q.Encode()
 	}
 
+	if r.Body != nil {
+		req.Header[headerContentType] = headerContentTypeJSON
+	}
+
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -178,10 +185,6 @@ func (r SearchMvtRequest) Do(ctx context.Context, transport Transport) (*Respons
 				}
 			}
 		}
-	}
-
-	if r.Body != nil && req.Header.Get(headerContentType) == "" {
-		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -203,6 +206,7 @@ func (r SearchMvtRequest) Do(ctx context.Context, transport Transport) (*Respons
 }
 
 // WithContext sets the request context.
+//
 func (f SearchMvt) WithContext(v context.Context) func(*SearchMvtRequest) {
 	return func(r *SearchMvtRequest) {
 		r.ctx = v
@@ -210,6 +214,7 @@ func (f SearchMvt) WithContext(v context.Context) func(*SearchMvtRequest) {
 }
 
 // WithBody - Search request body..
+//
 func (f SearchMvt) WithBody(v io.Reader) func(*SearchMvtRequest) {
 	return func(r *SearchMvtRequest) {
 		r.Body = v
@@ -217,6 +222,7 @@ func (f SearchMvt) WithBody(v io.Reader) func(*SearchMvtRequest) {
 }
 
 // WithExactBounds - if false, the meta layer's feature is the bounding box of the tile. if true, the meta layer's feature is a bounding box resulting from a `geo_bounds` aggregation..
+//
 func (f SearchMvt) WithExactBounds(v bool) func(*SearchMvtRequest) {
 	return func(r *SearchMvtRequest) {
 		r.ExactBounds = &v
@@ -224,6 +230,7 @@ func (f SearchMvt) WithExactBounds(v bool) func(*SearchMvtRequest) {
 }
 
 // WithExtent - size, in pixels, of a side of the vector tile..
+//
 func (f SearchMvt) WithExtent(v int) func(*SearchMvtRequest) {
 	return func(r *SearchMvtRequest) {
 		r.Extent = &v
@@ -231,6 +238,7 @@ func (f SearchMvt) WithExtent(v int) func(*SearchMvtRequest) {
 }
 
 // WithGridPrecision - additional zoom levels available through the aggs layer. accepts 0-8..
+//
 func (f SearchMvt) WithGridPrecision(v int) func(*SearchMvtRequest) {
 	return func(r *SearchMvtRequest) {
 		r.GridPrecision = &v
@@ -238,6 +246,7 @@ func (f SearchMvt) WithGridPrecision(v int) func(*SearchMvtRequest) {
 }
 
 // WithGridType - determines the geometry type for features in the aggs layer..
+//
 func (f SearchMvt) WithGridType(v string) func(*SearchMvtRequest) {
 	return func(r *SearchMvtRequest) {
 		r.GridType = v
@@ -245,6 +254,7 @@ func (f SearchMvt) WithGridType(v string) func(*SearchMvtRequest) {
 }
 
 // WithSize - maximum number of features to return in the hits layer. accepts 0-10000..
+//
 func (f SearchMvt) WithSize(v int) func(*SearchMvtRequest) {
 	return func(r *SearchMvtRequest) {
 		r.Size = &v
@@ -252,6 +262,7 @@ func (f SearchMvt) WithSize(v int) func(*SearchMvtRequest) {
 }
 
 // WithTrackTotalHits - indicate if the number of documents that match the query should be tracked. a number can also be specified, to accurately track the total hit count up to the number..
+//
 func (f SearchMvt) WithTrackTotalHits(v interface{}) func(*SearchMvtRequest) {
 	return func(r *SearchMvtRequest) {
 		r.TrackTotalHits = v
@@ -259,6 +270,7 @@ func (f SearchMvt) WithTrackTotalHits(v interface{}) func(*SearchMvtRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f SearchMvt) WithPretty() func(*SearchMvtRequest) {
 	return func(r *SearchMvtRequest) {
 		r.Pretty = true
@@ -266,6 +278,7 @@ func (f SearchMvt) WithPretty() func(*SearchMvtRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f SearchMvt) WithHuman() func(*SearchMvtRequest) {
 	return func(r *SearchMvtRequest) {
 		r.Human = true
@@ -273,6 +286,7 @@ func (f SearchMvt) WithHuman() func(*SearchMvtRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f SearchMvt) WithErrorTrace() func(*SearchMvtRequest) {
 	return func(r *SearchMvtRequest) {
 		r.ErrorTrace = true
@@ -280,6 +294,7 @@ func (f SearchMvt) WithErrorTrace() func(*SearchMvtRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f SearchMvt) WithFilterPath(v ...string) func(*SearchMvtRequest) {
 	return func(r *SearchMvtRequest) {
 		r.FilterPath = v
@@ -287,6 +302,7 @@ func (f SearchMvt) WithFilterPath(v ...string) func(*SearchMvtRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f SearchMvt) WithHeader(h map[string]string) func(*SearchMvtRequest) {
 	return func(r *SearchMvtRequest) {
 		if r.Header == nil {
@@ -299,6 +315,7 @@ func (f SearchMvt) WithHeader(h map[string]string) func(*SearchMvtRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f SearchMvt) WithOpaqueID(s string) func(*SearchMvtRequest) {
 	return func(r *SearchMvtRequest) {
 		if r.Header == nil {

@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -42,9 +42,11 @@ func newPutScriptFunc(t Transport) PutScript {
 // PutScript creates or updates a script.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/modules-scripting.html.
+//
 type PutScript func(id string, body io.Reader, o ...func(*PutScriptRequest)) (*Response, error)
 
 // PutScriptRequest configures the Put Script API request.
+//
 type PutScriptRequest struct {
 	ScriptID string
 
@@ -66,6 +68,7 @@ type PutScriptRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r PutScriptRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -128,6 +131,10 @@ func (r PutScriptRequest) Do(ctx context.Context, transport Transport) (*Respons
 		req.URL.RawQuery = q.Encode()
 	}
 
+	if r.Body != nil {
+		req.Header[headerContentType] = headerContentTypeJSON
+	}
+
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -138,10 +145,6 @@ func (r PutScriptRequest) Do(ctx context.Context, transport Transport) (*Respons
 				}
 			}
 		}
-	}
-
-	if r.Body != nil && req.Header.Get(headerContentType) == "" {
-		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -163,6 +166,7 @@ func (r PutScriptRequest) Do(ctx context.Context, transport Transport) (*Respons
 }
 
 // WithContext sets the request context.
+//
 func (f PutScript) WithContext(v context.Context) func(*PutScriptRequest) {
 	return func(r *PutScriptRequest) {
 		r.ctx = v
@@ -170,6 +174,7 @@ func (f PutScript) WithContext(v context.Context) func(*PutScriptRequest) {
 }
 
 // WithScriptContext - script context.
+//
 func (f PutScript) WithScriptContext(v string) func(*PutScriptRequest) {
 	return func(r *PutScriptRequest) {
 		r.ScriptContext = v
@@ -177,6 +182,7 @@ func (f PutScript) WithScriptContext(v string) func(*PutScriptRequest) {
 }
 
 // WithMasterTimeout - specify timeout for connection to master.
+//
 func (f PutScript) WithMasterTimeout(v time.Duration) func(*PutScriptRequest) {
 	return func(r *PutScriptRequest) {
 		r.MasterTimeout = v
@@ -184,6 +190,7 @@ func (f PutScript) WithMasterTimeout(v time.Duration) func(*PutScriptRequest) {
 }
 
 // WithTimeout - explicit operation timeout.
+//
 func (f PutScript) WithTimeout(v time.Duration) func(*PutScriptRequest) {
 	return func(r *PutScriptRequest) {
 		r.Timeout = v
@@ -191,6 +198,7 @@ func (f PutScript) WithTimeout(v time.Duration) func(*PutScriptRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f PutScript) WithPretty() func(*PutScriptRequest) {
 	return func(r *PutScriptRequest) {
 		r.Pretty = true
@@ -198,6 +206,7 @@ func (f PutScript) WithPretty() func(*PutScriptRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f PutScript) WithHuman() func(*PutScriptRequest) {
 	return func(r *PutScriptRequest) {
 		r.Human = true
@@ -205,6 +214,7 @@ func (f PutScript) WithHuman() func(*PutScriptRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f PutScript) WithErrorTrace() func(*PutScriptRequest) {
 	return func(r *PutScriptRequest) {
 		r.ErrorTrace = true
@@ -212,6 +222,7 @@ func (f PutScript) WithErrorTrace() func(*PutScriptRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f PutScript) WithFilterPath(v ...string) func(*PutScriptRequest) {
 	return func(r *PutScriptRequest) {
 		r.FilterPath = v
@@ -219,6 +230,7 @@ func (f PutScript) WithFilterPath(v ...string) func(*PutScriptRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f PutScript) WithHeader(h map[string]string) func(*PutScriptRequest) {
 	return func(r *PutScriptRequest) {
 		if r.Header == nil {
@@ -231,6 +243,7 @@ func (f PutScript) WithHeader(h map[string]string) func(*PutScriptRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f PutScript) WithOpaqueID(s string) func(*PutScriptRequest) {
 	return func(r *PutScriptRequest) {
 		if r.Header == nil {

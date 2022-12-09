@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,9 +41,11 @@ func newFleetMsearchFunc(t Transport) FleetMsearch {
 // FleetMsearch multi Search API where the search will only be executed after specified checkpoints are available due to a refresh. This API is designed for internal use by the fleet server project.
 //
 // This API is experimental.
+//
 type FleetMsearch func(body io.Reader, o ...func(*FleetMsearchRequest)) (*Response, error)
 
 // FleetMsearchRequest configures the Fleet Msearch API request.
+//
 type FleetMsearchRequest struct {
 	Index string
 
@@ -60,6 +62,7 @@ type FleetMsearchRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r FleetMsearchRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -110,6 +113,10 @@ func (r FleetMsearchRequest) Do(ctx context.Context, transport Transport) (*Resp
 		req.URL.RawQuery = q.Encode()
 	}
 
+	if r.Body != nil {
+		req.Header[headerContentType] = headerContentTypeJSON
+	}
+
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -120,10 +127,6 @@ func (r FleetMsearchRequest) Do(ctx context.Context, transport Transport) (*Resp
 				}
 			}
 		}
-	}
-
-	if r.Body != nil && req.Header.Get(headerContentType) == "" {
-		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -145,6 +148,7 @@ func (r FleetMsearchRequest) Do(ctx context.Context, transport Transport) (*Resp
 }
 
 // WithContext sets the request context.
+//
 func (f FleetMsearch) WithContext(v context.Context) func(*FleetMsearchRequest) {
 	return func(r *FleetMsearchRequest) {
 		r.ctx = v
@@ -152,6 +156,7 @@ func (f FleetMsearch) WithContext(v context.Context) func(*FleetMsearchRequest) 
 }
 
 // WithIndex - the index name to use as the default.
+//
 func (f FleetMsearch) WithIndex(v string) func(*FleetMsearchRequest) {
 	return func(r *FleetMsearchRequest) {
 		r.Index = v
@@ -159,6 +164,7 @@ func (f FleetMsearch) WithIndex(v string) func(*FleetMsearchRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f FleetMsearch) WithPretty() func(*FleetMsearchRequest) {
 	return func(r *FleetMsearchRequest) {
 		r.Pretty = true
@@ -166,6 +172,7 @@ func (f FleetMsearch) WithPretty() func(*FleetMsearchRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f FleetMsearch) WithHuman() func(*FleetMsearchRequest) {
 	return func(r *FleetMsearchRequest) {
 		r.Human = true
@@ -173,6 +180,7 @@ func (f FleetMsearch) WithHuman() func(*FleetMsearchRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f FleetMsearch) WithErrorTrace() func(*FleetMsearchRequest) {
 	return func(r *FleetMsearchRequest) {
 		r.ErrorTrace = true
@@ -180,6 +188,7 @@ func (f FleetMsearch) WithErrorTrace() func(*FleetMsearchRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f FleetMsearch) WithFilterPath(v ...string) func(*FleetMsearchRequest) {
 	return func(r *FleetMsearchRequest) {
 		r.FilterPath = v
@@ -187,6 +196,7 @@ func (f FleetMsearch) WithFilterPath(v ...string) func(*FleetMsearchRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f FleetMsearch) WithHeader(h map[string]string) func(*FleetMsearchRequest) {
 	return func(r *FleetMsearchRequest) {
 		if r.Header == nil {
@@ -199,6 +209,7 @@ func (f FleetMsearch) WithHeader(h map[string]string) func(*FleetMsearchRequest)
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f FleetMsearch) WithOpaqueID(s string) func(*FleetMsearchRequest) {
 	return func(r *FleetMsearchRequest) {
 		if r.Header == nil {

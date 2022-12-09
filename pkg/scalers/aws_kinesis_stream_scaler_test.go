@@ -351,7 +351,7 @@ func TestAWSKinesisGetMetricSpecForScaling(t *testing.T) {
 func TestAWSKinesisStreamScalerGetMetrics(t *testing.T) {
 	for _, meta := range awsKinesisGetMetricTestData {
 		scaler := awsKinesisStreamScaler{"", meta, &mockKinesis{}, logr.Discard()}
-		value, err := scaler.GetMetrics(context.Background(), "MetricName")
+		value, _, err := scaler.GetMetricsAndActivity(context.Background(), "MetricName")
 		switch meta.streamName {
 		case testAWSKinesisErrorStream:
 			assert.Error(t, err, "expect error because of kinesis api error")

@@ -123,7 +123,10 @@ type ScaleTarget struct {
 type ScaleTriggers struct {
 	Type string `json:"type"`
 	// +optional
-	Name     string            `json:"name,omitempty"`
+	Name string `json:"name,omitempty"`
+
+	UseCachedMetrics bool `json:"useCachedMetrics,omitempty"`
+
 	Metadata map[string]string `json:"metadata"`
 	// +optional
 	AuthenticationRef *ScaledObjectAuthRef `json:"authenticationRef,omitempty"`
@@ -178,4 +181,9 @@ type ScaledObjectAuthRef struct {
 
 func init() {
 	SchemeBuilder.Register(&ScaledObject{}, &ScaledObjectList{})
+}
+
+// GenerateIdentifier returns identifier for the object in for "kind.namespace.name"
+func (s *ScaledObject) GenerateIdentifier() string {
+	return GenerateIdentifier("ScaledObject", s.Namespace, s.Name)
 }

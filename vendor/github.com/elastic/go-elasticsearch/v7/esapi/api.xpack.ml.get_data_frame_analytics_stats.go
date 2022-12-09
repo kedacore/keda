@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,9 +41,11 @@ func newMLGetDataFrameAnalyticsStatsFunc(t Transport) MLGetDataFrameAnalyticsSta
 // MLGetDataFrameAnalyticsStats - Retrieves usage information for data frame analytics jobs.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/get-dfanalytics-stats.html.
+//
 type MLGetDataFrameAnalyticsStats func(o ...func(*MLGetDataFrameAnalyticsStatsRequest)) (*Response, error)
 
 // MLGetDataFrameAnalyticsStatsRequest configures the ML Get Data Frame Analytics Stats API request.
+//
 type MLGetDataFrameAnalyticsStatsRequest struct {
 	ID string
 
@@ -63,6 +65,7 @@ type MLGetDataFrameAnalyticsStatsRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r MLGetDataFrameAnalyticsStatsRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -164,6 +167,7 @@ func (r MLGetDataFrameAnalyticsStatsRequest) Do(ctx context.Context, transport T
 }
 
 // WithContext sets the request context.
+//
 func (f MLGetDataFrameAnalyticsStats) WithContext(v context.Context) func(*MLGetDataFrameAnalyticsStatsRequest) {
 	return func(r *MLGetDataFrameAnalyticsStatsRequest) {
 		r.ctx = v
@@ -171,6 +175,7 @@ func (f MLGetDataFrameAnalyticsStats) WithContext(v context.Context) func(*MLGet
 }
 
 // WithID - the ID of the data frame analytics stats to fetch.
+//
 func (f MLGetDataFrameAnalyticsStats) WithID(v string) func(*MLGetDataFrameAnalyticsStatsRequest) {
 	return func(r *MLGetDataFrameAnalyticsStatsRequest) {
 		r.ID = v
@@ -178,6 +183,7 @@ func (f MLGetDataFrameAnalyticsStats) WithID(v string) func(*MLGetDataFrameAnaly
 }
 
 // WithAllowNoMatch - whether to ignore if a wildcard expression matches no data frame analytics. (this includes `_all` string or when no data frame analytics have been specified).
+//
 func (f MLGetDataFrameAnalyticsStats) WithAllowNoMatch(v bool) func(*MLGetDataFrameAnalyticsStatsRequest) {
 	return func(r *MLGetDataFrameAnalyticsStatsRequest) {
 		r.AllowNoMatch = &v
@@ -185,6 +191,7 @@ func (f MLGetDataFrameAnalyticsStats) WithAllowNoMatch(v bool) func(*MLGetDataFr
 }
 
 // WithFrom - skips a number of analytics.
+//
 func (f MLGetDataFrameAnalyticsStats) WithFrom(v int) func(*MLGetDataFrameAnalyticsStatsRequest) {
 	return func(r *MLGetDataFrameAnalyticsStatsRequest) {
 		r.From = &v
@@ -192,6 +199,7 @@ func (f MLGetDataFrameAnalyticsStats) WithFrom(v int) func(*MLGetDataFrameAnalyt
 }
 
 // WithSize - specifies a max number of analytics to get.
+//
 func (f MLGetDataFrameAnalyticsStats) WithSize(v int) func(*MLGetDataFrameAnalyticsStatsRequest) {
 	return func(r *MLGetDataFrameAnalyticsStatsRequest) {
 		r.Size = &v
@@ -199,6 +207,7 @@ func (f MLGetDataFrameAnalyticsStats) WithSize(v int) func(*MLGetDataFrameAnalyt
 }
 
 // WithVerbose - whether the stats response should be verbose.
+//
 func (f MLGetDataFrameAnalyticsStats) WithVerbose(v bool) func(*MLGetDataFrameAnalyticsStatsRequest) {
 	return func(r *MLGetDataFrameAnalyticsStatsRequest) {
 		r.Verbose = &v
@@ -206,6 +215,7 @@ func (f MLGetDataFrameAnalyticsStats) WithVerbose(v bool) func(*MLGetDataFrameAn
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f MLGetDataFrameAnalyticsStats) WithPretty() func(*MLGetDataFrameAnalyticsStatsRequest) {
 	return func(r *MLGetDataFrameAnalyticsStatsRequest) {
 		r.Pretty = true
@@ -213,6 +223,7 @@ func (f MLGetDataFrameAnalyticsStats) WithPretty() func(*MLGetDataFrameAnalytics
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f MLGetDataFrameAnalyticsStats) WithHuman() func(*MLGetDataFrameAnalyticsStatsRequest) {
 	return func(r *MLGetDataFrameAnalyticsStatsRequest) {
 		r.Human = true
@@ -220,6 +231,7 @@ func (f MLGetDataFrameAnalyticsStats) WithHuman() func(*MLGetDataFrameAnalyticsS
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f MLGetDataFrameAnalyticsStats) WithErrorTrace() func(*MLGetDataFrameAnalyticsStatsRequest) {
 	return func(r *MLGetDataFrameAnalyticsStatsRequest) {
 		r.ErrorTrace = true
@@ -227,6 +239,7 @@ func (f MLGetDataFrameAnalyticsStats) WithErrorTrace() func(*MLGetDataFrameAnaly
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f MLGetDataFrameAnalyticsStats) WithFilterPath(v ...string) func(*MLGetDataFrameAnalyticsStatsRequest) {
 	return func(r *MLGetDataFrameAnalyticsStatsRequest) {
 		r.FilterPath = v
@@ -234,6 +247,7 @@ func (f MLGetDataFrameAnalyticsStats) WithFilterPath(v ...string) func(*MLGetDat
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f MLGetDataFrameAnalyticsStats) WithHeader(h map[string]string) func(*MLGetDataFrameAnalyticsStatsRequest) {
 	return func(r *MLGetDataFrameAnalyticsStatsRequest) {
 		if r.Header == nil {
@@ -246,6 +260,7 @@ func (f MLGetDataFrameAnalyticsStats) WithHeader(h map[string]string) func(*MLGe
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f MLGetDataFrameAnalyticsStats) WithOpaqueID(s string) func(*MLGetDataFrameAnalyticsStatsRequest) {
 	return func(r *MLGetDataFrameAnalyticsStatsRequest) {
 		if r.Header == nil {

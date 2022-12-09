@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -40,9 +40,11 @@ func newEnrichGetPolicyFunc(t Transport) EnrichGetPolicy {
 // EnrichGetPolicy - Gets information about an enrich policy.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/get-enrich-policy-api.html.
+//
 type EnrichGetPolicy func(o ...func(*EnrichGetPolicyRequest)) (*Response, error)
 
 // EnrichGetPolicyRequest configures the Enrich Get Policy API request.
+//
 type EnrichGetPolicyRequest struct {
 	Name []string
 
@@ -57,6 +59,7 @@ type EnrichGetPolicyRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r EnrichGetPolicyRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -138,6 +141,7 @@ func (r EnrichGetPolicyRequest) Do(ctx context.Context, transport Transport) (*R
 }
 
 // WithContext sets the request context.
+//
 func (f EnrichGetPolicy) WithContext(v context.Context) func(*EnrichGetPolicyRequest) {
 	return func(r *EnrichGetPolicyRequest) {
 		r.ctx = v
@@ -145,6 +149,7 @@ func (f EnrichGetPolicy) WithContext(v context.Context) func(*EnrichGetPolicyReq
 }
 
 // WithName - a list of enrich policy names.
+//
 func (f EnrichGetPolicy) WithName(v ...string) func(*EnrichGetPolicyRequest) {
 	return func(r *EnrichGetPolicyRequest) {
 		r.Name = v
@@ -152,6 +157,7 @@ func (f EnrichGetPolicy) WithName(v ...string) func(*EnrichGetPolicyRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f EnrichGetPolicy) WithPretty() func(*EnrichGetPolicyRequest) {
 	return func(r *EnrichGetPolicyRequest) {
 		r.Pretty = true
@@ -159,6 +165,7 @@ func (f EnrichGetPolicy) WithPretty() func(*EnrichGetPolicyRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f EnrichGetPolicy) WithHuman() func(*EnrichGetPolicyRequest) {
 	return func(r *EnrichGetPolicyRequest) {
 		r.Human = true
@@ -166,6 +173,7 @@ func (f EnrichGetPolicy) WithHuman() func(*EnrichGetPolicyRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f EnrichGetPolicy) WithErrorTrace() func(*EnrichGetPolicyRequest) {
 	return func(r *EnrichGetPolicyRequest) {
 		r.ErrorTrace = true
@@ -173,6 +181,7 @@ func (f EnrichGetPolicy) WithErrorTrace() func(*EnrichGetPolicyRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f EnrichGetPolicy) WithFilterPath(v ...string) func(*EnrichGetPolicyRequest) {
 	return func(r *EnrichGetPolicyRequest) {
 		r.FilterPath = v
@@ -180,6 +189,7 @@ func (f EnrichGetPolicy) WithFilterPath(v ...string) func(*EnrichGetPolicyReques
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f EnrichGetPolicy) WithHeader(h map[string]string) func(*EnrichGetPolicyRequest) {
 	return func(r *EnrichGetPolicyRequest) {
 		if r.Header == nil {
@@ -192,6 +202,7 @@ func (f EnrichGetPolicy) WithHeader(h map[string]string) func(*EnrichGetPolicyRe
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f EnrichGetPolicy) WithOpaqueID(s string) func(*EnrichGetPolicyRequest) {
 	return func(r *EnrichGetPolicyRequest) {
 		if r.Header == nil {

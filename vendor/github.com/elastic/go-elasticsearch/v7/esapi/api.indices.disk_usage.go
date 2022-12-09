@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -43,9 +43,11 @@ func newIndicesDiskUsageFunc(t Transport) IndicesDiskUsage {
 // This API is experimental.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-disk-usage.html.
+//
 type IndicesDiskUsage func(index string, o ...func(*IndicesDiskUsageRequest)) (*Response, error)
 
 // IndicesDiskUsageRequest configures the Indices Disk Usage API request.
+//
 type IndicesDiskUsageRequest struct {
 	Index string
 
@@ -66,6 +68,7 @@ type IndicesDiskUsageRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r IndicesDiskUsageRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -163,6 +166,7 @@ func (r IndicesDiskUsageRequest) Do(ctx context.Context, transport Transport) (*
 }
 
 // WithContext sets the request context.
+//
 func (f IndicesDiskUsage) WithContext(v context.Context) func(*IndicesDiskUsageRequest) {
 	return func(r *IndicesDiskUsageRequest) {
 		r.ctx = v
@@ -170,6 +174,7 @@ func (f IndicesDiskUsage) WithContext(v context.Context) func(*IndicesDiskUsageR
 }
 
 // WithAllowNoIndices - whether to ignore if a wildcard indices expression resolves into no concrete indices. (this includes `_all` string or when no indices have been specified).
+//
 func (f IndicesDiskUsage) WithAllowNoIndices(v bool) func(*IndicesDiskUsageRequest) {
 	return func(r *IndicesDiskUsageRequest) {
 		r.AllowNoIndices = &v
@@ -177,6 +182,7 @@ func (f IndicesDiskUsage) WithAllowNoIndices(v bool) func(*IndicesDiskUsageReque
 }
 
 // WithExpandWildcards - whether to expand wildcard expression to concrete indices that are open, closed or both..
+//
 func (f IndicesDiskUsage) WithExpandWildcards(v string) func(*IndicesDiskUsageRequest) {
 	return func(r *IndicesDiskUsageRequest) {
 		r.ExpandWildcards = v
@@ -184,6 +190,7 @@ func (f IndicesDiskUsage) WithExpandWildcards(v string) func(*IndicesDiskUsageRe
 }
 
 // WithFlush - whether flush or not before analyzing the index disk usage. defaults to true.
+//
 func (f IndicesDiskUsage) WithFlush(v bool) func(*IndicesDiskUsageRequest) {
 	return func(r *IndicesDiskUsageRequest) {
 		r.Flush = &v
@@ -191,6 +198,7 @@ func (f IndicesDiskUsage) WithFlush(v bool) func(*IndicesDiskUsageRequest) {
 }
 
 // WithIgnoreUnavailable - whether specified concrete indices should be ignored when unavailable (missing or closed).
+//
 func (f IndicesDiskUsage) WithIgnoreUnavailable(v bool) func(*IndicesDiskUsageRequest) {
 	return func(r *IndicesDiskUsageRequest) {
 		r.IgnoreUnavailable = &v
@@ -198,6 +206,7 @@ func (f IndicesDiskUsage) WithIgnoreUnavailable(v bool) func(*IndicesDiskUsageRe
 }
 
 // WithRunExpensiveTasks - must be set to [true] in order for the task to be performed. defaults to false..
+//
 func (f IndicesDiskUsage) WithRunExpensiveTasks(v bool) func(*IndicesDiskUsageRequest) {
 	return func(r *IndicesDiskUsageRequest) {
 		r.RunExpensiveTasks = &v
@@ -205,6 +214,7 @@ func (f IndicesDiskUsage) WithRunExpensiveTasks(v bool) func(*IndicesDiskUsageRe
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f IndicesDiskUsage) WithPretty() func(*IndicesDiskUsageRequest) {
 	return func(r *IndicesDiskUsageRequest) {
 		r.Pretty = true
@@ -212,6 +222,7 @@ func (f IndicesDiskUsage) WithPretty() func(*IndicesDiskUsageRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f IndicesDiskUsage) WithHuman() func(*IndicesDiskUsageRequest) {
 	return func(r *IndicesDiskUsageRequest) {
 		r.Human = true
@@ -219,6 +230,7 @@ func (f IndicesDiskUsage) WithHuman() func(*IndicesDiskUsageRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f IndicesDiskUsage) WithErrorTrace() func(*IndicesDiskUsageRequest) {
 	return func(r *IndicesDiskUsageRequest) {
 		r.ErrorTrace = true
@@ -226,6 +238,7 @@ func (f IndicesDiskUsage) WithErrorTrace() func(*IndicesDiskUsageRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f IndicesDiskUsage) WithFilterPath(v ...string) func(*IndicesDiskUsageRequest) {
 	return func(r *IndicesDiskUsageRequest) {
 		r.FilterPath = v
@@ -233,6 +246,7 @@ func (f IndicesDiskUsage) WithFilterPath(v ...string) func(*IndicesDiskUsageRequ
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f IndicesDiskUsage) WithHeader(h map[string]string) func(*IndicesDiskUsageRequest) {
 	return func(r *IndicesDiskUsageRequest) {
 		if r.Header == nil {
@@ -245,6 +259,7 @@ func (f IndicesDiskUsage) WithHeader(h map[string]string) func(*IndicesDiskUsage
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f IndicesDiskUsage) WithOpaqueID(s string) func(*IndicesDiskUsageRequest) {
 	return func(r *IndicesDiskUsageRequest) {
 		if r.Header == nil {

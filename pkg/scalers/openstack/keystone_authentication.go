@@ -116,12 +116,11 @@ func (client *Client) IsTokenValid(ctx context.Context) (bool, error) {
 	tokenURL.Path = path.Join(tokenURL.Path, tokensEndpoint)
 
 	checkTokenRequest, err := http.NewRequestWithContext(ctx, "HEAD", tokenURL.String(), nil)
-	checkTokenRequest.Header.Set("X-Subject-Token", token)
-	checkTokenRequest.Header.Set("X-Auth-Token", token)
-
 	if err != nil {
 		return false, err
 	}
+	checkTokenRequest.Header.Set("X-Subject-Token", token)
+	checkTokenRequest.Header.Set("X-Auth-Token", token)
 
 	response, err := client.HTTPClient.Do(checkTokenRequest)
 

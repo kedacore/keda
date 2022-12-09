@@ -180,18 +180,8 @@ func newCassandraSession(meta *CassandraMetadata, logger logr.Logger) (*gocql.Se
 	return session, nil
 }
 
-// IsActive returns true if there are pending events to be processed.
-func (s *cassandraScaler) IsActive(ctx context.Context) (bool, error) {
-	messages, err := s.GetQueryResult(ctx)
-	if err != nil {
-		return false, fmt.Errorf("error inspecting cassandra: %s", err)
-	}
-
-	return messages > s.metadata.activationTargetQueryValue, nil
-}
-
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler.
-func (s *cassandraScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
+func (s *cassandraScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
@@ -205,16 +195,16 @@ func (s *cassandraScaler) GetMetricSpecForScaling(ctx context.Context) []v2.Metr
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics returns a value for a supported metric or an error if there is a problem getting the metric.
-func (s *cassandraScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity returns a value for a supported metric or an error if there is a problem getting the metric.
+func (s *cassandraScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	num, err := s.GetQueryResult(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting cassandra: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting cassandra: %s", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(num))
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.activationTargetQueryValue, nil
 }
 
 // GetQueryResult returns the result of the scaler query.

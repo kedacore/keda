@@ -347,12 +347,13 @@ func (s *SolaceScaler) getSolaceQueueMetricsFromSEMP(ctx context.Context) (Solac
 // INTERFACE METHOD
 // Call SEMP API to retrieve metrics
 // returns value for named metric
-func (s *SolaceScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// returns true if queue messageCount > 0 || msgSpoolUsage > 0
+func (s *SolaceScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	var metricValues, mv SolaceMetricValues
 	var mve error
 	if mv, mve = s.getSolaceQueueMetricsFromSEMP(ctx); mve != nil {
 		s.logger.Error(mve, "call to semp endpoint failed")
-		return []external_metrics.ExternalMetricValue{}, mve
+		return []external_metrics.ExternalMetricValue{}, false, mve
 	}
 	metricValues = mv
 
@@ -366,21 +367,9 @@ func (s *SolaceScaler) GetMetrics(ctx context.Context, metricName string) ([]ext
 		// Should never end up here
 		err := fmt.Errorf("unidentified metric: %s", metricName)
 		s.logger.Error(err, "returning error to calling app")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
-}
-
-// INTERFACE METHOD
-// Call SEMP API to retrieve metrics
-// IsActive returns true if queue messageCount > 0 || msgSpoolUsage > 0
-func (s *SolaceScaler) IsActive(ctx context.Context) (bool, error) {
-	metricValues, err := s.getSolaceQueueMetricsFromSEMP(ctx)
-	if err != nil {
-		s.logger.Error(err, "call to semp endpoint failed")
-		return false, err
-	}
-	return (metricValues.msgCount > s.metadata.activationMsgCountTarget || metricValues.msgSpoolUsage > s.metadata.activationMsgSpoolUsageTarget), nil
+	return []external_metrics.ExternalMetricValue{metric}, (metricValues.msgCount > s.metadata.activationMsgCountTarget || metricValues.msgSpoolUsage > s.metadata.activationMsgSpoolUsageTarget), nil
 }
 
 // Do Nothing - Satisfies Interface

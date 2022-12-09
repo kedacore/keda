@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -40,9 +40,11 @@ func newWatcherActivateWatchFunc(t Transport) WatcherActivateWatch {
 // WatcherActivateWatch - Activates a currently inactive watch.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/watcher-api-activate-watch.html.
+//
 type WatcherActivateWatch func(watch_id string, o ...func(*WatcherActivateWatchRequest)) (*Response, error)
 
 // WatcherActivateWatchRequest configures the Watcher Activate Watch API request.
+//
 type WatcherActivateWatchRequest struct {
 	WatchID string
 
@@ -57,6 +59,7 @@ type WatcherActivateWatchRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r WatcherActivateWatchRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -138,6 +141,7 @@ func (r WatcherActivateWatchRequest) Do(ctx context.Context, transport Transport
 }
 
 // WithContext sets the request context.
+//
 func (f WatcherActivateWatch) WithContext(v context.Context) func(*WatcherActivateWatchRequest) {
 	return func(r *WatcherActivateWatchRequest) {
 		r.ctx = v
@@ -145,6 +149,7 @@ func (f WatcherActivateWatch) WithContext(v context.Context) func(*WatcherActiva
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f WatcherActivateWatch) WithPretty() func(*WatcherActivateWatchRequest) {
 	return func(r *WatcherActivateWatchRequest) {
 		r.Pretty = true
@@ -152,6 +157,7 @@ func (f WatcherActivateWatch) WithPretty() func(*WatcherActivateWatchRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f WatcherActivateWatch) WithHuman() func(*WatcherActivateWatchRequest) {
 	return func(r *WatcherActivateWatchRequest) {
 		r.Human = true
@@ -159,6 +165,7 @@ func (f WatcherActivateWatch) WithHuman() func(*WatcherActivateWatchRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f WatcherActivateWatch) WithErrorTrace() func(*WatcherActivateWatchRequest) {
 	return func(r *WatcherActivateWatchRequest) {
 		r.ErrorTrace = true
@@ -166,6 +173,7 @@ func (f WatcherActivateWatch) WithErrorTrace() func(*WatcherActivateWatchRequest
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f WatcherActivateWatch) WithFilterPath(v ...string) func(*WatcherActivateWatchRequest) {
 	return func(r *WatcherActivateWatchRequest) {
 		r.FilterPath = v
@@ -173,6 +181,7 @@ func (f WatcherActivateWatch) WithFilterPath(v ...string) func(*WatcherActivateW
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f WatcherActivateWatch) WithHeader(h map[string]string) func(*WatcherActivateWatchRequest) {
 	return func(r *WatcherActivateWatchRequest) {
 		if r.Header == nil {
@@ -185,6 +194,7 @@ func (f WatcherActivateWatch) WithHeader(h map[string]string) func(*WatcherActiv
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f WatcherActivateWatch) WithOpaqueID(s string) func(*WatcherActivateWatchRequest) {
 	return func(r *WatcherActivateWatchRequest) {
 		if r.Header == nil {

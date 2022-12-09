@@ -17,21 +17,24 @@ import (
 )
 
 type kafkaScaler struct {
-	metricType v2.MetricTargetType
-	metadata   kafkaMetadata
-	client     sarama.Client
-	admin      sarama.ClusterAdmin
-	logger     logr.Logger
+	metricType      v2.MetricTargetType
+	metadata        kafkaMetadata
+	client          sarama.Client
+	admin           sarama.ClusterAdmin
+	logger          logr.Logger
+	previousOffsets map[string]map[int32]int64
 }
 
 type kafkaMetadata struct {
 	bootstrapServers       []string
 	group                  string
 	topic                  string
+	partitionLimitation    []int32
 	lagThreshold           int64
 	activationLagThreshold int64
 	offsetResetPolicy      offsetResetPolicy
 	allowIdleConsumers     bool
+	excludePersistentLag   bool
 	version                sarama.KafkaVersion
 
 	// If an invalid offset is found, whether to scale to 1 (false - the default) so consumption can
@@ -104,12 +107,15 @@ func NewKafkaScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, err
 	}
 
+	previousOffsets := make(map[string]map[int32]int64)
+
 	return &kafkaScaler{
-		client:     client,
-		admin:      admin,
-		metricType: metricType,
-		metadata:   kafkaMetadata,
-		logger:     logger,
+		client:          client,
+		admin:           admin,
+		metricType:      metricType,
+		metadata:        kafkaMetadata,
+		logger:          logger,
+		previousOffsets: previousOffsets,
 	}, nil
 }
 
@@ -205,6 +211,21 @@ func parseKafkaMetadata(config *ScalerConfig, logger logr.Logger) (kafkaMetadata
 			"will use all topics subscribed by the consumer group for scaling", meta.group))
 	}
 
+	meta.partitionLimitation = nil
+	if config.TriggerMetadata["partitionLimitation"] != "" {
+		if meta.topic == "" {
+			logger.V(1).Info("no specific topic set, ignoring partitionLimitation setting")
+		} else {
+			pattern := config.TriggerMetadata["partitionLimitation"]
+			parsed, err := kedautil.ParseInt32List(pattern)
+			if err != nil {
+				return meta, fmt.Errorf("error parsing in partitionLimitation '%s': %s", pattern, err)
+			}
+			meta.partitionLimitation = parsed
+			logger.V(0).Info(fmt.Sprintf("partition limit active '%s'", pattern))
+		}
+	}
+
 	meta.offsetResetPolicy = defaultOffsetResetPolicy
 
 	if config.TriggerMetadata["offsetResetPolicy"] != "" {
@@ -254,6 +275,15 @@ func parseKafkaMetadata(config *ScalerConfig, logger logr.Logger) (kafkaMetadata
 		meta.allowIdleConsumers = t
 	}
 
+	meta.excludePersistentLag = false
+	if val, ok := config.TriggerMetadata["excludePersistentLag"]; ok {
+		t, err := strconv.ParseBool(val)
+		if err != nil {
+			return meta, fmt.Errorf("error parsing excludePersistentLag: %s", err)
+		}
+		meta.excludePersistentLag = t
+	}
+
 	meta.scaleToZeroOnInvalidOffset = false
 	if val, ok := config.TriggerMetadata["scaleToZeroOnInvalidOffset"]; ok {
 		t, err := strconv.ParseBool(val)
@@ -274,16 +304,6 @@ func parseKafkaMetadata(config *ScalerConfig, logger logr.Logger) (kafkaMetadata
 	}
 	meta.scalerIndex = config.ScalerIndex
 	return meta, nil
-}
-
-// IsActive determines if we need to scale from zero
-func (s *kafkaScaler) IsActive(ctx context.Context) (bool, error) {
-	totalLag, err := s.getTotalLag()
-	if err != nil {
-		return false, err
-	}
-
-	return totalLag > s.metadata.activationLagThreshold, nil
 }
 
 func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin, error) {
@@ -378,13 +398,31 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 			s.logger.Error(errMsg, "")
 		}
 		partitionMetadata := topicMetadata.Partitions
-		partitions := make([]int32, len(partitionMetadata))
-		for i, p := range partitionMetadata {
-			partitions[i] = p.ID
+		var partitions []int32
+		for _, p := range partitionMetadata {
+			if s.isActivePartition(p.ID) {
+				partitions = append(partitions, p.ID)
+			}
 		}
+		if len(partitions) == 0 {
+			return nil, fmt.Errorf("expected at least one active partition within the topic '%s'", topicMetadata.Name)
+		}
+
 		topicPartitions[topicMetadata.Name] = partitions
 	}
 	return topicPartitions, nil
+}
+
+func (s *kafkaScaler) isActivePartition(pID int32) bool {
+	if s.metadata.partitionLimitation == nil {
+		return true
+	}
+	for _, _pID := range s.metadata.partitionLimitation {
+		if pID == _pID {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *kafkaScaler) getConsumerOffsets(topicPartitions map[string][]int32) (*sarama.OffsetFetchResponse, error) {
@@ -399,12 +437,16 @@ func (s *kafkaScaler) getConsumerOffsets(topicPartitions map[string][]int32) (*s
 	return offsets, nil
 }
 
-func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offsets *sarama.OffsetFetchResponse, topicPartitionOffsets map[string]map[int32]int64) (int64, error) {
+// getLagForPartition returns (lag, lagWithPersistent, error)
+// When excludePersistentLag is set to `false` (default), lag will always be equal to lagWithPersistent
+// When excludePersistentLag is set to `true`, if partition is deemed to have persistent lag, lag will be set to 0 and lagWithPersistent will be latestOffset - consumerOffset
+// These return values will allow proper scaling from 0 -> 1 replicas by the IsActive func.
+func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offsets *sarama.OffsetFetchResponse, topicPartitionOffsets map[string]map[int32]int64) (int64, int64, error) {
 	block := offsets.GetBlock(topic, partitionID)
 	if block == nil {
 		errMsg := fmt.Errorf("error finding offset block for topic %s and partition %d", topic, partitionID)
 		s.logger.Error(errMsg, "")
-		return 0, errMsg
+		return 0, 0, errMsg
 	}
 	if block.Err > 0 {
 		errMsg := fmt.Errorf("error finding offset block for topic %s and partition %d: %s", topic, partitionID, offsets.Err.Error())
@@ -421,17 +463,39 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 			"invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet. Returning with lag of %d",
 			topic, s.metadata.group, partitionID, retVal)
 		s.logger.V(1).Info(msg)
-		return retVal, nil
+		return retVal, retVal, nil
 	}
 
 	if _, found := topicPartitionOffsets[topic]; !found {
-		return 0, fmt.Errorf("error finding partition offset for topic %s", topic)
+		return 0, 0, fmt.Errorf("error finding partition offset for topic %s", topic)
 	}
 	latestOffset := topicPartitionOffsets[topic][partitionID]
 	if consumerOffset == invalidOffset && s.metadata.offsetResetPolicy == earliest {
-		return latestOffset, nil
+		return latestOffset, latestOffset, nil
 	}
-	return latestOffset - consumerOffset, nil
+
+	// This code block tries to prevent KEDA Kafka trigger from scaling the scale target based on erroneous events
+	if s.metadata.excludePersistentLag {
+		switch previousOffset, found := s.previousOffsets[topic][partitionID]; {
+		case !found:
+			// No record of previous offset, so store current consumer offset
+			// Allow this consumer lag to be considered in scaling
+			if _, topicFound := s.previousOffsets[topic]; !topicFound {
+				s.previousOffsets[topic] = map[int32]int64{partitionID: consumerOffset}
+			} else {
+				s.previousOffsets[topic][partitionID] = consumerOffset
+			}
+		case previousOffset == consumerOffset:
+			// Indicates consumer is still on the same offset as the previous polling cycle, there may be some issue with consuming this offset.
+			// return 0, so this consumer lag is not considered for scaling
+			return 0, latestOffset - consumerOffset, nil
+		default:
+			// Successfully Consumed some messages, proceed to change the previous offset
+			s.previousOffsets[topic][partitionID] = consumerOffset
+		}
+	}
+
+	return latestOffset - consumerOffset, latestOffset - consumerOffset, nil
 }
 
 // Close closes the kafka admin and client
@@ -499,35 +563,40 @@ func (s *kafkaScaler) getConsumerAndProducerOffsets(topicPartitions map[string][
 	return consumerRes.consumerOffsets, producerRes.producerOffsets, nil
 }
 
-// GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *kafkaScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
-	totalLag, err := s.getTotalLag()
+// GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
+func (s *kafkaScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	totalLag, totalLagWithPersistent, err := s.getTotalLag()
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 	metric := GenerateMetricInMili(metricName, float64(totalLag))
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, totalLagWithPersistent > s.metadata.activationLagThreshold, nil
 }
 
-func (s *kafkaScaler) getTotalLag() (int64, error) {
+// getTotalLag returns totalLag, totalLagWithPersistent, error
+// totalLag and totalLagWithPersistent are the summations of lag and lagWithPersistent returned by getLagForPartition function respectively.
+// totalLag maybe less than totalLagWithPersistent when excludePersistentLag is set to `true` due to some partitions deemed as having persistent lag
+func (s *kafkaScaler) getTotalLag() (int64, int64, error) {
 	topicPartitions, err := s.getTopicPartitions()
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
 	consumerOffsets, producerOffsets, err := s.getConsumerAndProducerOffsets(topicPartitions)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
 	totalLag := int64(0)
+	totalLagWithPersistent := int64(0)
 	totalTopicPartitions := int64(0)
 
 	for topic, partitionsOffsets := range producerOffsets {
 		for partition := range partitionsOffsets {
-			lag, _ := s.getLagForPartition(topic, partition, consumerOffsets, producerOffsets)
+			lag, lagWithPersistent, _ := s.getLagForPartition(topic, partition, consumerOffsets, producerOffsets)
 			totalLag += lag
+			totalLagWithPersistent += lagWithPersistent
 		}
 		totalTopicPartitions += (int64)(len(partitionsOffsets))
 	}
@@ -539,7 +608,7 @@ func (s *kafkaScaler) getTotalLag() (int64, error) {
 			totalLag = totalTopicPartitions * s.metadata.lagThreshold
 		}
 	}
-	return totalLag, nil
+	return totalLag, totalLagWithPersistent, nil
 }
 
 type brokerOffsetResult struct {

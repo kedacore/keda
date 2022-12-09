@@ -157,16 +157,6 @@ func parseGcsMetadata(config *ScalerConfig, logger logr.Logger) (*gcsMetadata, e
 	return &meta, nil
 }
 
-// IsActive checks if there are any messages in the subscription
-func (s *gcsScaler) IsActive(ctx context.Context) (bool, error) {
-	items, err := s.getItemCount(ctx, s.metadata.activationTargetObjectCount+1)
-	if err != nil {
-		return false, err
-	}
-
-	return items > s.metadata.activationTargetObjectCount, nil
-}
-
 func (s *gcsScaler) Close(context.Context) error {
 	if s.client != nil {
 		return s.client.Close()
@@ -186,16 +176,16 @@ func (s *gcsScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics returns the number of items in the bucket (up to s.metadata.maxBucketItemsToScan)
-func (s *gcsScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity returns the number of items in the bucket (up to s.metadata.maxBucketItemsToScan)
+func (s *gcsScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	items, err := s.getItemCount(ctx, s.metadata.maxBucketItemsToScan)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(items))
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, items > s.metadata.activationTargetObjectCount, nil
 }
 
 // getItemCount gets the number of items in the bucket, up to maxCount

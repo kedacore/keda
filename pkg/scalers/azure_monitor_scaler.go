@@ -213,17 +213,6 @@ func parseAzurePodIdentityParams(config *ScalerConfig) (clientID string, clientP
 	return clientID, clientPassword, nil
 }
 
-// Returns true if the Azure Monitor metric value is greater than zero
-func (s *azureMonitorScaler) IsActive(ctx context.Context) (bool, error) {
-	val, err := azure.GetAzureMetricValue(ctx, s.metadata.azureMonitorInfo, s.podIdentity)
-	if err != nil {
-		s.logger.Error(err, "error getting azure monitor metric")
-		return false, err
-	}
-
-	return val > s.metadata.activationTargetValue, nil
-}
-
 func (s *azureMonitorScaler) Close(context.Context) error {
 	return nil
 }
@@ -239,15 +228,15 @@ func (s *azureMonitorScaler) GetMetricSpecForScaling(context.Context) []v2.Metri
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *azureMonitorScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
+func (s *azureMonitorScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	val, err := azure.GetAzureMetricValue(ctx, s.metadata.azureMonitorInfo, s.podIdentity)
 	if err != nil {
 		s.logger.Error(err, "error getting azure monitor metric")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, val)
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.activationTargetValue, nil
 }

@@ -219,17 +219,19 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 
 	if val, ok := config.TriggerMetadata["poolName"]; ok && val != "" {
 		var err error
-		meta.poolID, err = getPoolIDFromName(ctx, val, &meta, httpClient)
+		poolID, err := getPoolIDFromName(ctx, val, &meta, httpClient)
 		if err != nil {
 			return nil, err
 		}
+		meta.poolID = poolID
 	} else {
 		if val, ok := config.TriggerMetadata["poolID"]; ok && val != "" {
 			var err error
-			meta.poolID, err = validatePoolID(ctx, val, &meta, httpClient)
+			poolID, err := validatePoolID(ctx, val, &meta, httpClient)
 			if err != nil {
 				return nil, err
 			}
+			meta.poolID = poolID
 		} else {
 			return nil, fmt.Errorf("no poolName or poolID given")
 		}
@@ -307,19 +309,6 @@ func getAzurePipelineRequest(ctx context.Context, url string, metadata *azurePip
 	}
 
 	return b, nil
-}
-
-func (s *azurePipelinesScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
-	queuelen, err := s.GetAzurePipelinesQueueLength(ctx)
-
-	if err != nil {
-		s.logger.Error(err, "error getting pipelines queue length")
-		return []external_metrics.ExternalMetricValue{}, err
-	}
-
-	metric := GenerateMetricInMili(metricName, float64(queuelen))
-
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
 func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context) (int64, error) {
@@ -416,15 +405,17 @@ func (s *azurePipelinesScaler) GetMetricSpecForScaling(context.Context) []v2.Met
 	return []v2.MetricSpec{metricSpec}
 }
 
-func (s *azurePipelinesScaler) IsActive(ctx context.Context) (bool, error) {
+func (s *azurePipelinesScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	queuelen, err := s.GetAzurePipelinesQueueLength(ctx)
 
 	if err != nil {
-		s.logger.Error(err, "error)")
-		return false, err
+		s.logger.Error(err, "error getting pipelines queue length")
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
-	return queuelen > s.metadata.activationTargetPipelinesQueueLength, nil
+	metric := GenerateMetricInMili(metricName, float64(queuelen))
+
+	return []external_metrics.ExternalMetricValue{metric}, queuelen > s.metadata.activationTargetPipelinesQueueLength, nil
 }
 
 func (s *azurePipelinesScaler) Close(context.Context) error {

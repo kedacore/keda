@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -43,9 +43,11 @@ func newIndicesGetFunc(t Transport) IndicesGet {
 // IndicesGet returns information about one or more indices.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-get-index.html.
+//
 type IndicesGet func(index []string, o ...func(*IndicesGetRequest)) (*Response, error)
 
 // IndicesGetRequest configures the Indices Get API request.
+//
 type IndicesGetRequest struct {
 	Index []string
 
@@ -69,6 +71,7 @@ type IndicesGetRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r IndicesGetRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -180,6 +183,7 @@ func (r IndicesGetRequest) Do(ctx context.Context, transport Transport) (*Respon
 }
 
 // WithContext sets the request context.
+//
 func (f IndicesGet) WithContext(v context.Context) func(*IndicesGetRequest) {
 	return func(r *IndicesGetRequest) {
 		r.ctx = v
@@ -187,6 +191,7 @@ func (f IndicesGet) WithContext(v context.Context) func(*IndicesGetRequest) {
 }
 
 // WithAllowNoIndices - ignore if a wildcard expression resolves to no concrete indices (default: false).
+//
 func (f IndicesGet) WithAllowNoIndices(v bool) func(*IndicesGetRequest) {
 	return func(r *IndicesGetRequest) {
 		r.AllowNoIndices = &v
@@ -194,6 +199,7 @@ func (f IndicesGet) WithAllowNoIndices(v bool) func(*IndicesGetRequest) {
 }
 
 // WithExpandWildcards - whether wildcard expressions should get expanded to open or closed indices (default: open).
+//
 func (f IndicesGet) WithExpandWildcards(v string) func(*IndicesGetRequest) {
 	return func(r *IndicesGetRequest) {
 		r.ExpandWildcards = v
@@ -201,6 +207,7 @@ func (f IndicesGet) WithExpandWildcards(v string) func(*IndicesGetRequest) {
 }
 
 // WithFlatSettings - return settings in flat format (default: false).
+//
 func (f IndicesGet) WithFlatSettings(v bool) func(*IndicesGetRequest) {
 	return func(r *IndicesGetRequest) {
 		r.FlatSettings = &v
@@ -208,6 +215,7 @@ func (f IndicesGet) WithFlatSettings(v bool) func(*IndicesGetRequest) {
 }
 
 // WithIgnoreUnavailable - ignore unavailable indexes (default: false).
+//
 func (f IndicesGet) WithIgnoreUnavailable(v bool) func(*IndicesGetRequest) {
 	return func(r *IndicesGetRequest) {
 		r.IgnoreUnavailable = &v
@@ -215,6 +223,7 @@ func (f IndicesGet) WithIgnoreUnavailable(v bool) func(*IndicesGetRequest) {
 }
 
 // WithIncludeDefaults - whether to return all default setting for each of the indices..
+//
 func (f IndicesGet) WithIncludeDefaults(v bool) func(*IndicesGetRequest) {
 	return func(r *IndicesGetRequest) {
 		r.IncludeDefaults = &v
@@ -222,6 +231,7 @@ func (f IndicesGet) WithIncludeDefaults(v bool) func(*IndicesGetRequest) {
 }
 
 // WithIncludeTypeName - whether to add the type name to the response (default: false).
+//
 func (f IndicesGet) WithIncludeTypeName(v bool) func(*IndicesGetRequest) {
 	return func(r *IndicesGetRequest) {
 		r.IncludeTypeName = &v
@@ -229,6 +239,7 @@ func (f IndicesGet) WithIncludeTypeName(v bool) func(*IndicesGetRequest) {
 }
 
 // WithLocal - return local information, do not retrieve the state from master node (default: false).
+//
 func (f IndicesGet) WithLocal(v bool) func(*IndicesGetRequest) {
 	return func(r *IndicesGetRequest) {
 		r.Local = &v
@@ -236,6 +247,7 @@ func (f IndicesGet) WithLocal(v bool) func(*IndicesGetRequest) {
 }
 
 // WithMasterTimeout - specify timeout for connection to master.
+//
 func (f IndicesGet) WithMasterTimeout(v time.Duration) func(*IndicesGetRequest) {
 	return func(r *IndicesGetRequest) {
 		r.MasterTimeout = v
@@ -243,6 +255,7 @@ func (f IndicesGet) WithMasterTimeout(v time.Duration) func(*IndicesGetRequest) 
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f IndicesGet) WithPretty() func(*IndicesGetRequest) {
 	return func(r *IndicesGetRequest) {
 		r.Pretty = true
@@ -250,6 +263,7 @@ func (f IndicesGet) WithPretty() func(*IndicesGetRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f IndicesGet) WithHuman() func(*IndicesGetRequest) {
 	return func(r *IndicesGetRequest) {
 		r.Human = true
@@ -257,6 +271,7 @@ func (f IndicesGet) WithHuman() func(*IndicesGetRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f IndicesGet) WithErrorTrace() func(*IndicesGetRequest) {
 	return func(r *IndicesGetRequest) {
 		r.ErrorTrace = true
@@ -264,6 +279,7 @@ func (f IndicesGet) WithErrorTrace() func(*IndicesGetRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f IndicesGet) WithFilterPath(v ...string) func(*IndicesGetRequest) {
 	return func(r *IndicesGetRequest) {
 		r.FilterPath = v
@@ -271,6 +287,7 @@ func (f IndicesGet) WithFilterPath(v ...string) func(*IndicesGetRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f IndicesGet) WithHeader(h map[string]string) func(*IndicesGetRequest) {
 	return func(r *IndicesGetRequest) {
 		if r.Header == nil {
@@ -283,6 +300,7 @@ func (f IndicesGet) WithHeader(h map[string]string) func(*IndicesGetRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f IndicesGet) WithOpaqueID(s string) func(*IndicesGetRequest) {
 	return func(r *IndicesGetRequest) {
 		if r.Header == nil {

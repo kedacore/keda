@@ -73,7 +73,7 @@ func TestCronParseMetadata(t *testing.T) {
 
 func TestIsActive(t *testing.T) {
 	scaler, _ := NewCronScaler(&ScalerConfig{TriggerMetadata: validCronMetadata})
-	isActive, _ := scaler.IsActive(context.TODO())
+	_, isActive, _ := scaler.GetMetricsAndActivity(context.TODO(), "ReplicaCount")
 	if currentDay == "Thursday" {
 		assert.Equal(t, isActive, true)
 	} else {
@@ -83,7 +83,7 @@ func TestIsActive(t *testing.T) {
 
 func TestIsActiveRange(t *testing.T) {
 	scaler, _ := NewCronScaler(&ScalerConfig{TriggerMetadata: validCronMetadata2})
-	isActive, _ := scaler.IsActive(context.TODO())
+	_, isActive, _ := scaler.GetMetricsAndActivity(context.TODO(), "ReplicaCount")
 	if currentHour%2 == 0 {
 		assert.Equal(t, isActive, true)
 	} else {
@@ -93,7 +93,7 @@ func TestIsActiveRange(t *testing.T) {
 
 func TestGetMetrics(t *testing.T) {
 	scaler, _ := NewCronScaler(&ScalerConfig{TriggerMetadata: validCronMetadata})
-	metrics, _ := scaler.GetMetrics(context.TODO(), "ReplicaCount")
+	metrics, _, _ := scaler.GetMetricsAndActivity(context.TODO(), "ReplicaCount")
 	assert.Equal(t, metrics[0].MetricName, "ReplicaCount")
 	if currentDay == "Thursday" {
 		assert.Equal(t, metrics[0].Value.Value(), int64(10))
@@ -104,7 +104,7 @@ func TestGetMetrics(t *testing.T) {
 
 func TestGetMetricsRange(t *testing.T) {
 	scaler, _ := NewCronScaler(&ScalerConfig{TriggerMetadata: validCronMetadata2})
-	metrics, _ := scaler.GetMetrics(context.TODO(), "ReplicaCount")
+	metrics, _, _ := scaler.GetMetricsAndActivity(context.TODO(), "ReplicaCount")
 	assert.Equal(t, metrics[0].MetricName, "ReplicaCount")
 	if currentHour%2 == 0 {
 		assert.Equal(t, metrics[0].Value.Value(), int64(10))

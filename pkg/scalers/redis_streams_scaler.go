@@ -193,18 +193,6 @@ func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser)
 	return &meta, nil
 }
 
-// IsActive checks if there are pending entries in the 'Pending Entries List' for consumer group of a stream
-func (s *redisStreamsScaler) IsActive(ctx context.Context) (bool, error) {
-	count, err := s.getPendingEntriesCountFn(ctx)
-
-	if err != nil {
-		s.logger.Error(err, "error")
-		return false, err
-	}
-
-	return count > 0, nil
-}
-
 func (s *redisStreamsScaler) Close(context.Context) error {
 	return s.closeFn()
 }
@@ -221,15 +209,16 @@ func (s *redisStreamsScaler) GetMetricSpecForScaling(context.Context) []v2.Metri
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics fetches the number of pending entries for a consumer group in a stream
-func (s *redisStreamsScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity fetches the number of pending entries for a consumer group in a stream
+func (s *redisStreamsScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	pendingEntriesCount, err := s.getPendingEntriesCountFn(ctx)
 
 	if err != nil {
 		s.logger.Error(err, "error fetching pending entries count")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(pendingEntriesCount))
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+
+	return []external_metrics.ExternalMetricValue{metric}, pendingEntriesCount > 0, nil
 }

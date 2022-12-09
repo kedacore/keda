@@ -12,8 +12,6 @@ import (
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -369,19 +367,6 @@ func (s *natsJetStreamScaler) getNATSJetStreamMonitoringNodeURL(node string) (st
 	return fmt.Sprintf("%s://%s.%s%s?%s", jsURL.Scheme, node, jsURL.Host, jsURL.Path, jsURL.RawQuery), nil
 }
 
-func (s *natsJetStreamScaler) IsActive(ctx context.Context) (bool, error) {
-	err := s.getNATSJetstreamMonitoringData(ctx, s.metadata.monitoringURL)
-	if err != nil {
-		return false, err
-	}
-
-	if s.stream == nil {
-		return false, errors.New("stream not found")
-	}
-
-	return s.getMaxMsgLag() > s.metadata.activationLagThreshold, nil
-}
-
 func (s *natsJetStreamScaler) getMaxMsgLag() int64 {
 	consumerName := s.metadata.consumer
 
@@ -408,25 +393,22 @@ func (s *natsJetStreamScaler) GetMetricSpecForScaling(context.Context) []v2.Metr
 	return []v2.MetricSpec{metricSpec}
 }
 
-func (s *natsJetStreamScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+func (s *natsJetStreamScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	err := s.getNATSJetstreamMonitoringData(ctx, s.metadata.monitoringURL)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	if s.stream == nil {
-		return []external_metrics.ExternalMetricValue{}, errors.New("stream not found")
+		return []external_metrics.ExternalMetricValue{}, false, errors.New("stream not found")
 	}
 
 	totalLag := s.getMaxMsgLag()
 	s.logger.V(1).Info("NATS JetStream Scaler: Providing metrics based on totalLag, threshold", "totalLag", totalLag, "lagThreshold", s.metadata.lagThreshold)
 
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewQuantity(totalLag, resource.DecimalSI),
-		Timestamp:  metav1.Now(),
-	}
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	metric := GenerateMetricInMili(metricName, float64(totalLag))
+
+	return []external_metrics.ExternalMetricValue{metric}, totalLag > s.metadata.activationLagThreshold, nil
 }
 
 func (s *natsJetStreamScaler) Close(context.Context) error {

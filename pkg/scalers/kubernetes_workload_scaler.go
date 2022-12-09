@@ -66,36 +66,28 @@ func parseWorkloadMetadata(config *ScalerConfig) (*kubernetesWorkloadMetadata, e
 	meta := &kubernetesWorkloadMetadata{}
 	var err error
 	meta.namespace = config.ScalableObjectNamespace
-	meta.podSelector, err = labels.Parse(config.TriggerMetadata[podSelectorKey])
-	if err != nil || meta.podSelector.String() == "" {
+	podSelector, err := labels.Parse(config.TriggerMetadata[podSelectorKey])
+	if err != nil || podSelector.String() == "" {
 		return nil, fmt.Errorf("invalid pod selector")
 	}
-	meta.value, err = strconv.ParseFloat(config.TriggerMetadata[valueKey], 64)
-	if err != nil || meta.value == 0 {
+	meta.podSelector = podSelector
+	value, err := strconv.ParseFloat(config.TriggerMetadata[valueKey], 64)
+	if err != nil || value == 0 {
 		return nil, fmt.Errorf("value must be a float greater than 0")
 	}
+	meta.value = value
 
 	meta.activationValue = 0
 	if val, ok := config.TriggerMetadata[activationValueKey]; ok {
-		meta.activationValue, err = strconv.ParseFloat(val, 64)
+		activationValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("value must be a float")
 		}
+		meta.activationValue = activationValue
 	}
 
 	meta.scalerIndex = config.ScalerIndex
 	return meta, nil
-}
-
-// IsActive determines if we need to scale from zero
-func (s *kubernetesWorkloadScaler) IsActive(ctx context.Context) (bool, error) {
-	pods, err := s.getMetricValue(ctx)
-
-	if err != nil {
-		return false, err
-	}
-
-	return float64(pods) > s.metadata.activationValue, nil
 }
 
 // Close no need for kubernetes workload scaler
@@ -115,16 +107,16 @@ func (s *kubernetesWorkloadScaler) GetMetricSpecForScaling(context.Context) []v2
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics returns value for a supported metric
-func (s *kubernetesWorkloadScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity returns value for a supported metric
+func (s *kubernetesWorkloadScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	pods, err := s.getMetricValue(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting kubernetes workload: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting kubernetes workload: %s", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(pods))
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, float64(pods) > s.metadata.activationValue, nil
 }
 
 func (s *kubernetesWorkloadScaler) getMetricValue(ctx context.Context) (int64, error) {

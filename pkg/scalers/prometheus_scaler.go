@@ -91,13 +91,15 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 
 	if meta.prometheusAuth != nil && (meta.prometheusAuth.CA != "" || meta.prometheusAuth.EnableTLS) {
 		// create http.RoundTripper with auth settings from ScalerConfig
-		if httpClient.Transport, err = authentication.CreateHTTPRoundTripper(
+		transport, err := authentication.CreateHTTPRoundTripper(
 			authentication.NetHTTP,
 			meta.prometheusAuth,
-		); err != nil {
+		)
+		if err != nil {
 			logger.V(1).Error(err, "init Prometheus client http transport")
 			return nil, err
 		}
+		httpClient.Transport = transport
 	}
 
 	return &prometheusScaler{
@@ -181,22 +183,13 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 	meta.scalerIndex = config.ScalerIndex
 
 	// parse auth configs from ScalerConfig
-	meta.prometheusAuth, err = authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
+	auth, err := authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
 	if err != nil {
 		return nil, err
 	}
+	meta.prometheusAuth = auth
 
 	return meta, nil
-}
-
-func (s *prometheusScaler) IsActive(ctx context.Context) (bool, error) {
-	val, err := s.ExecutePromQuery(ctx)
-	if err != nil {
-		s.logger.Error(err, "error executing prometheus query")
-		return false, err
-	}
-
-	return val > s.metadata.activationThreshold, nil
 }
 
 func (s *prometheusScaler) Close(context.Context) error {
@@ -309,14 +302,14 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	return v, nil
 }
 
-func (s *prometheusScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+func (s *prometheusScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	val, err := s.ExecutePromQuery(ctx)
 	if err != nil {
 		s.logger.Error(err, "error executing prometheus query")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, val)
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.activationThreshold, nil
 }

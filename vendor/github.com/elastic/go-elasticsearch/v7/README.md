@@ -187,7 +187,6 @@ import (
   "strconv"
   "strings"
   "sync"
-  "bytes"
 
   "github.com/elastic/go-elasticsearch/v7"
   "github.com/elastic/go-elasticsearch/v7/esapi"
@@ -238,17 +237,17 @@ func main() {
     go func(i int, title string) {
       defer wg.Done()
 
-      // Build the request body.      
-      data, err := json.Marshal(struct{ Title string }{Title: title})
-      if err != nil {
-        log.Fatalf("Error marshaling document: %s", err)
-      }
+      // Build the request body.
+      var b strings.Builder
+      b.WriteString(`{"title" : "`)
+      b.WriteString(title)
+      b.WriteString(`"}`)
 
       // Set up the request object.
       req := esapi.IndexRequest{
         Index:      "test",
         DocumentID: strconv.Itoa(i + 1),
-        Body:       bytes.NewReader(data),
+        Body:       strings.NewReader(b.String()),
         Refresh:    "true",
       }
 

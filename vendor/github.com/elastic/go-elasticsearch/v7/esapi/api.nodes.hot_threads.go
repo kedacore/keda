@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -42,9 +42,11 @@ func newNodesHotThreadsFunc(t Transport) NodesHotThreads {
 // NodesHotThreads returns information about hot threads on each node in the cluster.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/cluster-nodes-hot-threads.html.
+//
 type NodesHotThreads func(o ...func(*NodesHotThreadsRequest)) (*Response, error)
 
 // NodesHotThreadsRequest configures the Nodes Hot Threads API request.
+//
 type NodesHotThreadsRequest struct {
 	NodeID []string
 
@@ -67,6 +69,7 @@ type NodesHotThreadsRequest struct {
 }
 
 // Do executes the request and returns response or error.
+//
 func (r NodesHotThreadsRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -178,6 +181,7 @@ func (r NodesHotThreadsRequest) Do(ctx context.Context, transport Transport) (*R
 }
 
 // WithContext sets the request context.
+//
 func (f NodesHotThreads) WithContext(v context.Context) func(*NodesHotThreadsRequest) {
 	return func(r *NodesHotThreadsRequest) {
 		r.ctx = v
@@ -185,6 +189,7 @@ func (f NodesHotThreads) WithContext(v context.Context) func(*NodesHotThreadsReq
 }
 
 // WithNodeID - a list of node ids or names to limit the returned information; use `_local` to return information from the node you're connecting to, leave empty to get information from all nodes.
+//
 func (f NodesHotThreads) WithNodeID(v ...string) func(*NodesHotThreadsRequest) {
 	return func(r *NodesHotThreadsRequest) {
 		r.NodeID = v
@@ -192,6 +197,7 @@ func (f NodesHotThreads) WithNodeID(v ...string) func(*NodesHotThreadsRequest) {
 }
 
 // WithIgnoreIdleThreads - don't show threads that are in known-idle places, such as waiting on a socket select or pulling from an empty task queue (default: true).
+//
 func (f NodesHotThreads) WithIgnoreIdleThreads(v bool) func(*NodesHotThreadsRequest) {
 	return func(r *NodesHotThreadsRequest) {
 		r.IgnoreIdleThreads = &v
@@ -199,6 +205,7 @@ func (f NodesHotThreads) WithIgnoreIdleThreads(v bool) func(*NodesHotThreadsRequ
 }
 
 // WithInterval - the interval for the second sampling of threads.
+//
 func (f NodesHotThreads) WithInterval(v time.Duration) func(*NodesHotThreadsRequest) {
 	return func(r *NodesHotThreadsRequest) {
 		r.Interval = v
@@ -206,6 +213,7 @@ func (f NodesHotThreads) WithInterval(v time.Duration) func(*NodesHotThreadsRequ
 }
 
 // WithSnapshots - number of samples of thread stacktrace (default: 10).
+//
 func (f NodesHotThreads) WithSnapshots(v int) func(*NodesHotThreadsRequest) {
 	return func(r *NodesHotThreadsRequest) {
 		r.Snapshots = &v
@@ -213,6 +221,7 @@ func (f NodesHotThreads) WithSnapshots(v int) func(*NodesHotThreadsRequest) {
 }
 
 // WithSort - the sort order for 'cpu' type (default: total).
+//
 func (f NodesHotThreads) WithSort(v string) func(*NodesHotThreadsRequest) {
 	return func(r *NodesHotThreadsRequest) {
 		r.Sort = v
@@ -220,6 +229,7 @@ func (f NodesHotThreads) WithSort(v string) func(*NodesHotThreadsRequest) {
 }
 
 // WithThreads - specify the number of threads to provide information for (default: 3).
+//
 func (f NodesHotThreads) WithThreads(v int) func(*NodesHotThreadsRequest) {
 	return func(r *NodesHotThreadsRequest) {
 		r.Threads = &v
@@ -227,6 +237,7 @@ func (f NodesHotThreads) WithThreads(v int) func(*NodesHotThreadsRequest) {
 }
 
 // WithTimeout - explicit operation timeout.
+//
 func (f NodesHotThreads) WithTimeout(v time.Duration) func(*NodesHotThreadsRequest) {
 	return func(r *NodesHotThreadsRequest) {
 		r.Timeout = v
@@ -234,6 +245,7 @@ func (f NodesHotThreads) WithTimeout(v time.Duration) func(*NodesHotThreadsReque
 }
 
 // WithDocumentType - the type to sample (default: cpu).
+//
 func (f NodesHotThreads) WithDocumentType(v string) func(*NodesHotThreadsRequest) {
 	return func(r *NodesHotThreadsRequest) {
 		r.DocumentType = v
@@ -241,6 +253,7 @@ func (f NodesHotThreads) WithDocumentType(v string) func(*NodesHotThreadsRequest
 }
 
 // WithPretty makes the response body pretty-printed.
+//
 func (f NodesHotThreads) WithPretty() func(*NodesHotThreadsRequest) {
 	return func(r *NodesHotThreadsRequest) {
 		r.Pretty = true
@@ -248,6 +261,7 @@ func (f NodesHotThreads) WithPretty() func(*NodesHotThreadsRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
+//
 func (f NodesHotThreads) WithHuman() func(*NodesHotThreadsRequest) {
 	return func(r *NodesHotThreadsRequest) {
 		r.Human = true
@@ -255,6 +269,7 @@ func (f NodesHotThreads) WithHuman() func(*NodesHotThreadsRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
+//
 func (f NodesHotThreads) WithErrorTrace() func(*NodesHotThreadsRequest) {
 	return func(r *NodesHotThreadsRequest) {
 		r.ErrorTrace = true
@@ -262,6 +277,7 @@ func (f NodesHotThreads) WithErrorTrace() func(*NodesHotThreadsRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
+//
 func (f NodesHotThreads) WithFilterPath(v ...string) func(*NodesHotThreadsRequest) {
 	return func(r *NodesHotThreadsRequest) {
 		r.FilterPath = v
@@ -269,6 +285,7 @@ func (f NodesHotThreads) WithFilterPath(v ...string) func(*NodesHotThreadsReques
 }
 
 // WithHeader adds the headers to the HTTP request.
+//
 func (f NodesHotThreads) WithHeader(h map[string]string) func(*NodesHotThreadsRequest) {
 	return func(r *NodesHotThreadsRequest) {
 		if r.Header == nil {
@@ -281,6 +298,7 @@ func (f NodesHotThreads) WithHeader(h map[string]string) func(*NodesHotThreadsRe
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
+//
 func (f NodesHotThreads) WithOpaqueID(s string) func(*NodesHotThreadsRequest) {
 	return func(r *NodesHotThreadsRequest) {
 		if r.Header == nil {

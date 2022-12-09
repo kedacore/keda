@@ -98,25 +98,29 @@ func parseMySQLMetadata(config *ScalerConfig) (*mySQLMetadata, error) {
 	default:
 		meta.connectionString = ""
 		var err error
-		meta.host, err = GetFromAuthOrMeta(config, "host")
+		host, err := GetFromAuthOrMeta(config, "host")
 		if err != nil {
 			return nil, err
 		}
+		meta.host = host
 
-		meta.port, err = GetFromAuthOrMeta(config, "port")
+		port, err := GetFromAuthOrMeta(config, "port")
 		if err != nil {
 			return nil, err
 		}
+		meta.port = port
 
-		meta.username, err = GetFromAuthOrMeta(config, "username")
+		username, err := GetFromAuthOrMeta(config, "username")
 		if err != nil {
 			return nil, err
 		}
+		meta.username = username
 
-		meta.dbName, err = GetFromAuthOrMeta(config, "dbName")
+		dbName, err := GetFromAuthOrMeta(config, "dbName")
 		if err != nil {
 			return nil, err
 		}
+		meta.dbName = dbName
 
 		if config.AuthParams["password"] != "" {
 			meta.password = config.AuthParams["password"]
@@ -193,16 +197,6 @@ func (s *mySQLScaler) Close(context.Context) error {
 	return nil
 }
 
-// IsActive returns true if there are pending messages to be processed
-func (s *mySQLScaler) IsActive(ctx context.Context) (bool, error) {
-	messages, err := s.getQueryResult(ctx)
-	if err != nil {
-		s.logger.Error(err, fmt.Sprintf("Error inspecting MySQL: %s", err))
-		return false, err
-	}
-	return messages > s.metadata.activationQueryValue, nil
-}
-
 // getQueryResult returns result of the scaler query
 func (s *mySQLScaler) getQueryResult(ctx context.Context) (float64, error) {
 	var value float64
@@ -228,14 +222,14 @@ func (s *mySQLScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics returns value for a supported metric and an error if there is a problem getting the metric
-func (s *mySQLScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
+func (s *mySQLScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	num, err := s.getQueryResult(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("error inspecting MySQL: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting MySQL: %s", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, num)
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.activationQueryValue, nil
 }

@@ -20,11 +20,11 @@ import (
 	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
-	ctrl "sigs.k8s.io/controller-runtime"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
-var log = ctrl.Log.WithName("prometheus_server")
+var log = logf.Log.WithName("prometheus_server")
 
 const (
 	ClusterTriggerAuthenticationResource = "cluster_trigger_authentication"

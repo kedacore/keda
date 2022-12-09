@@ -161,20 +161,23 @@ func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, e
 		}
 	}
 
-	meta.targetMetricValue, err = getFloatMetadataValue(config.TriggerMetadata, "targetMetricValue", true, 0)
+	targetMetricValue, err := getFloatMetadataValue(config.TriggerMetadata, "targetMetricValue", true, 0)
 	if err != nil {
 		return nil, err
 	}
+	meta.targetMetricValue = targetMetricValue
 
-	meta.activationTargetMetricValue, err = getFloatMetadataValue(config.TriggerMetadata, "activationTargetMetricValue", false, 0)
+	activationTargetMetricValue, err := getFloatMetadataValue(config.TriggerMetadata, "activationTargetMetricValue", false, 0)
 	if err != nil {
 		return nil, err
 	}
+	meta.activationTargetMetricValue = activationTargetMetricValue
 
-	meta.minMetricValue, err = getFloatMetadataValue(config.TriggerMetadata, "minMetricValue", true, 0)
+	minMetricValue, err := getFloatMetadataValue(config.TriggerMetadata, "minMetricValue", true, 0)
 	if err != nil {
 		return nil, err
 	}
+	meta.minMetricValue = minMetricValue
 
 	meta.metricStat = defaultMetricStat
 	if val, ok := config.TriggerMetadata["metricStat"]; ok && val != "" {
@@ -184,28 +187,31 @@ func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, e
 		return nil, err
 	}
 
-	meta.metricStatPeriod, err = getIntMetadataValue(config.TriggerMetadata, "metricStatPeriod", false, defaultMetricStatPeriod)
+	metricStatPeriod, err := getIntMetadataValue(config.TriggerMetadata, "metricStatPeriod", false, defaultMetricStatPeriod)
 	if err != nil {
 		return nil, err
 	}
+	meta.metricStatPeriod = metricStatPeriod
 
 	if err = checkMetricStatPeriod(meta.metricStatPeriod); err != nil {
 		return nil, err
 	}
 
-	meta.metricCollectionTime, err = getIntMetadataValue(config.TriggerMetadata, "metricCollectionTime", false, defaultMetricCollectionTime)
+	metricCollectionTime, err := getIntMetadataValue(config.TriggerMetadata, "metricCollectionTime", false, defaultMetricCollectionTime)
 	if err != nil {
 		return nil, err
 	}
+	meta.metricCollectionTime = metricCollectionTime
 
 	if meta.metricCollectionTime < 0 || meta.metricCollectionTime%meta.metricStatPeriod != 0 {
 		return nil, fmt.Errorf("metricCollectionTime must be greater than 0 and a multiple of metricStatPeriod(%d), %d is given", meta.metricStatPeriod, meta.metricCollectionTime)
 	}
 
-	meta.metricEndTimeOffset, err = getIntMetadataValue(config.TriggerMetadata, "metricEndTimeOffset", false, defaultMetricEndTimeOffset)
+	metricEndTimeOffset, err := getIntMetadataValue(config.TriggerMetadata, "metricEndTimeOffset", false, defaultMetricEndTimeOffset)
 	if err != nil {
 		return nil, err
 	}
+	meta.metricEndTimeOffset = metricEndTimeOffset
 
 	if val, ok := config.TriggerMetadata["awsRegion"]; ok && val != "" {
 		meta.awsRegion = val
@@ -217,10 +223,11 @@ func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, e
 		meta.awsEndpoint = val
 	}
 
-	meta.awsAuthorization, err = getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
+	awsAuthorization, err := getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
 	}
+	meta.awsAuthorization = awsAuthorization
 
 	meta.scalerIndex = config.ScalerIndex
 
@@ -273,17 +280,17 @@ func computeQueryWindow(current time.Time, metricPeriodSec, metricEndTimeOffsetS
 	return
 }
 
-func (s *awsCloudwatchScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+func (s *awsCloudwatchScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	metricValue, err := s.GetCloudwatchMetrics()
 
 	if err != nil {
 		s.logger.Error(err, "Error getting metric value")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, metricValue)
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, metricValue > s.metadata.activationTargetMetricValue, nil
 }
 
 func (s *awsCloudwatchScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
@@ -303,16 +310,6 @@ func (s *awsCloudwatchScaler) GetMetricSpecForScaling(context.Context) []v2.Metr
 	}
 	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2.MetricSpec{metricSpec}
-}
-
-func (s *awsCloudwatchScaler) IsActive(ctx context.Context) (bool, error) {
-	val, err := s.GetCloudwatchMetrics()
-
-	if err != nil {
-		return false, err
-	}
-
-	return val > s.metadata.activationTargetMetricValue, nil
 }
 
 func (s *awsCloudwatchScaler) Close(context.Context) error {

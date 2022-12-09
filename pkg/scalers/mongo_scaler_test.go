@@ -5,12 +5,13 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
+	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var testMongoDBResolvedEnv = map[string]string{
-	"MongoDB_CONN_STR": "test_conn_str",
-	"MongoDB_PASSWORD": "test",
+	"MongoDB_CONN_STR": "mongodb://mongodb0.example.com:27017",
+	"MongoDB_PASSWORD": "test@password",
 }
 
 type parseMongoDBMetadataTestData struct {
@@ -18,6 +19,11 @@ type parseMongoDBMetadataTestData struct {
 	authParams  map[string]string
 	resolvedEnv map[string]string
 	raisesError bool
+}
+
+type mongoDBConnectionStringTestData struct {
+	metadataTestData *parseMongoDBMetadataTestData
+	connectionString string
 }
 
 type mongoDBMetricIdentifier struct {
@@ -36,22 +42,29 @@ var testMONGODBMetadata = []parseMongoDBMetadataTestData{
 	},
 	// connectionStringFromEnv
 	{
-		metadata:    map[string]string{"query": `{"name":"John"}`, "collection": "demo", "queryValue": "12", "connectionStringFromEnv": "Mongo_CONN_STR", "dbName": "test"},
+		metadata:    map[string]string{"query": `{"name":"John"}`, "collection": "demo", "queryValue": "12", "connectionStringFromEnv": "MongoDB_CONN_STR", "dbName": "test"},
 		authParams:  map[string]string{},
 		resolvedEnv: testMongoDBResolvedEnv,
 		raisesError: false,
 	},
 	// with metric name
 	{
-		metadata:    map[string]string{"query": `{"name":"John"}`, "metricName": "hpa", "collection": "demo", "queryValue": "12", "connectionStringFromEnv": "Mongo_CONN_STR", "dbName": "test"},
+		metadata:    map[string]string{"query": `{"name":"John"}`, "metricName": "hpa", "collection": "demo", "queryValue": "12", "connectionStringFromEnv": "MongoDB_CONN_STR", "dbName": "test"},
 		authParams:  map[string]string{},
+		resolvedEnv: testMongoDBResolvedEnv,
+		raisesError: false,
+	},
+	// from passwordFromEnv
+	{
+		metadata:    map[string]string{"query": `{"name":"John"}`, "metricName": "hpa", "collection": "demo", "queryValue": "12", "passwordFromEnv": "MongoDB_PASSWORD"},
+		authParams:  map[string]string{"dbName": "test", "host": "localshot", "port": "1234", "username": "sample"},
 		resolvedEnv: testMongoDBResolvedEnv,
 		raisesError: false,
 	},
 	// from trigger auth
 	{
 		metadata:    map[string]string{"query": `{"name":"John"}`, "metricName": "hpa", "collection": "demo", "queryValue": "12"},
-		authParams:  map[string]string{"dbName": "test", "host": "localshot", "port": "1234", "username": "sample", "password": "secure"},
+		authParams:  map[string]string{"dbName": "test", "host": "localshot", "port": "1234", "username": "sample", "password": "sec@ure"},
 		resolvedEnv: testMongoDBResolvedEnv,
 		raisesError: false,
 	},
@@ -64,6 +77,12 @@ var testMONGODBMetadata = []parseMongoDBMetadataTestData{
 	},
 }
 
+var mongoDBConnectionStringTestDatas = []mongoDBConnectionStringTestData{
+	{metadataTestData: &testMONGODBMetadata[2], connectionString: "mongodb://mongodb0.example.com:27017"},
+	{metadataTestData: &testMONGODBMetadata[3], connectionString: "mongodb://sample:test%40password@localshot:1234/test"},
+	{metadataTestData: &testMONGODBMetadata[4], connectionString: "mongodb://sample:sec%40ure@localshot:1234/test"},
+}
+
 var mongoDBMetricIdentifiers = []mongoDBMetricIdentifier{
 	{metadataTestData: &testMONGODBMetadata[2], scalerIndex: 0, name: "s0-mongodb-hpa"},
 	{metadataTestData: &testMONGODBMetadata[2], scalerIndex: 1, name: "s1-mongodb-hpa"},
@@ -71,13 +90,23 @@ var mongoDBMetricIdentifiers = []mongoDBMetricIdentifier{
 
 func TestParseMongoDBMetadata(t *testing.T) {
 	for _, testData := range testMONGODBMetadata {
-		_, _, err := parseMongoDBMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		_, _, err := parseMongoDBMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.raisesError {
 			t.Error("Expected success but got error:", err)
 		}
 		if err == nil && testData.raisesError {
 			t.Error("Expected error but got success")
 		}
+	}
+}
+
+func TestParseMongoDBConnectionString(t *testing.T) {
+	for _, testData := range mongoDBConnectionStringTestDatas {
+		_, connStr, err := parseMongoDBMetadata(&ScalerConfig{ResolvedEnv: testData.metadataTestData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams})
+		if err != nil {
+			t.Error("Expected success but got error:", err)
+		}
+		assert.Equal(t, testData.connectionString, connStr)
 	}
 }
 

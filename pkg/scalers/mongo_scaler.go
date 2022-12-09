@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -130,7 +131,7 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 	if val, ok := config.TriggerMetadata["queryValue"]; ok {
 		queryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to convert %v to int, because of %v", queryValue, err.Error())
+			return nil, "", fmt.Errorf("failed to convert %v to int, because of %v", val, err.Error())
 		}
 		meta.queryValue = queryValue
 	} else {
@@ -141,15 +142,16 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
 		activationQueryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to convert %v to int, because of %v", activationQueryValue, err.Error())
+			return nil, "", fmt.Errorf("failed to convert %v to int, because of %v", val, err.Error())
 		}
 		meta.activationQueryValue = activationQueryValue
 	}
 
-	meta.dbName, err = GetFromAuthOrMeta(config, "dbName")
+	dbName, err := GetFromAuthOrMeta(config, "dbName")
 	if err != nil {
 		return nil, "", err
 	}
+	meta.dbName = dbName
 
 	// Resolve connectionString
 	switch {
@@ -159,20 +161,23 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 		meta.connectionString = config.ResolvedEnv[config.TriggerMetadata["connectionStringFromEnv"]]
 	default:
 		meta.connectionString = ""
-		meta.host, err = GetFromAuthOrMeta(config, "host")
+		host, err := GetFromAuthOrMeta(config, "host")
 		if err != nil {
 			return nil, "", err
 		}
+		meta.host = host
 
-		meta.port, err = GetFromAuthOrMeta(config, "port")
+		port, err := GetFromAuthOrMeta(config, "port")
 		if err != nil {
 			return nil, "", err
 		}
+		meta.port = port
 
-		meta.username, err = GetFromAuthOrMeta(config, "username")
+		username, err := GetFromAuthOrMeta(config, "username")
 		if err != nil {
 			return nil, "", err
 		}
+		meta.username = username
 
 		if config.AuthParams["password"] != "" {
 			meta.password = config.AuthParams["password"]
@@ -189,8 +194,7 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 	} else {
 		// Build connection str
 		addr := net.JoinHostPort(meta.host, meta.port)
-		auth := fmt.Sprintf("%s:%s", meta.username, meta.password)
-		connStr = "mongodb://" + auth + "@" + addr + "/" + meta.dbName
+		connStr = fmt.Sprintf("mongodb://%s:%s@%s/%s", url.QueryEscape(meta.username), url.QueryEscape(meta.password), addr, meta.dbName)
 	}
 
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
@@ -200,15 +204,6 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 	}
 	meta.scalerIndex = config.ScalerIndex
 	return &meta, connStr, nil
-}
-
-func (s *mongoDBScaler) IsActive(ctx context.Context) (bool, error) {
-	result, err := s.getQueryResult(ctx)
-	if err != nil {
-		s.logger.Error(err, fmt.Sprintf("failed to get query result by mongoDB, because of %v", err))
-		return false, err
-	}
-	return result > s.metadata.activationQueryValue, nil
 }
 
 // Close disposes of mongoDB connections
@@ -244,16 +239,16 @@ func (s *mongoDBScaler) getQueryResult(ctx context.Context) (int64, error) {
 	return docsNum, nil
 }
 
-// GetMetrics query from mongoDB,and return to external metrics
-func (s *mongoDBScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity query from mongoDB,and return to external metrics
+func (s *mongoDBScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	num, err := s.getQueryResult(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("failed to inspect momgoDB, because of %v", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("failed to inspect momgoDB, because of %v", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(num))
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
+	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.activationQueryValue, nil
 }
 
 // GetMetricSpecForScaling get the query value for scaling
