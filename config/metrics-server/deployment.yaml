@@ -69,17 +69,21 @@ spec:
           volumeMounts:
           - mountPath: /tmp
             name: temp-vol
+          - mountPath: /apiserver.local.config/certificates
+            name: certs
           securityContext:
             capabilities:
               drop:
               - ALL
             allowPrivilegeEscalation: false
-            ## Metrics server needs to write the self-signed cert. See FAQ for discussion of options.
-            # readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
             seccompProfile:
               type: RuntimeDefault
       nodeSelector:
         kubernetes.io/os: linux
       volumes:
       - name: temp-vol
+        emptyDir: {}
+      - name: certs
         emptyDir: {}
