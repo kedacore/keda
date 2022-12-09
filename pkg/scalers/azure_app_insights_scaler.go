@@ -71,20 +71,22 @@ func parseAzureAppInsightsMetadata(config *ScalerConfig, logger logr.Logger) (*a
 	if err != nil {
 		return nil, err
 	}
-	meta.targetValue, err = strconv.ParseFloat(val, 64)
+	targetValue, err := strconv.ParseFloat(val, 64)
 	if err != nil {
 		logger.Error(err, "Error parsing azure app insights metadata", azureAppInsightsTargetValueName, azureAppInsightsTargetValueName)
 		return nil, fmt.Errorf("error parsing azure app insights metadata %s: %s", azureAppInsightsTargetValueName, err.Error())
 	}
+	meta.targetValue = targetValue
 
 	meta.activationTargetValue = 0
 	val, err = getParameterFromConfig(config, azureAppInsightsActivationTargetValueName, false)
 	if err == nil {
-		meta.activationTargetValue, err = strconv.ParseFloat(val, 64)
+		activationTargetValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			logger.Error(err, "Error parsing azure app insights metadata", azureAppInsightsActivationTargetValueName, azureAppInsightsActivationTargetValueName)
 			return nil, fmt.Errorf("error parsing azure app insights metadata %s: %s", azureAppInsightsActivationTargetValueName, err.Error())
 		}
+		meta.activationTargetValue = activationTargetValue
 	}
 
 	val, err = getParameterFromConfig(config, azureAppInsightsMetricID, false)

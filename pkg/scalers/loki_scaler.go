@@ -150,10 +150,11 @@ func parseLokiMetadata(config *ScalerConfig) (meta *lokiMetadata, err error) {
 	meta.scalerIndex = config.ScalerIndex
 
 	// parse auth configs from ScalerConfig
-	meta.lokiAuth, err = authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
+	auth, err := authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
 	if err != nil {
 		return nil, err
 	}
+	meta.lokiAuth = auth
 
 	return meta, nil
 }

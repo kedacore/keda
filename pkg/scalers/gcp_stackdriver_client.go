@@ -79,15 +79,17 @@ func NewStackdriverAggregator(period int64, aligner string, reducer string) (*mo
 	}
 
 	var err error
-	sdAggregation.PerSeriesAligner, err = alignerFromString(aligner)
+	perSeriesAligner, err := alignerFromString(aligner)
 	if err != nil {
 		return nil, err
 	}
+	sdAggregation.PerSeriesAligner = perSeriesAligner
 
-	sdAggregation.CrossSeriesReducer, err = reducerFromString(reducer)
+	crossSeriesReducer, err := reducerFromString(reducer)
 	if err != nil {
 		return nil, err
 	}
+	sdAggregation.CrossSeriesReducer = crossSeriesReducer
 
 	return &sdAggregation, nil
 }

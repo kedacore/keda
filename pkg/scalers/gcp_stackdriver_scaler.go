@@ -115,10 +115,11 @@ func parseStackdriverMetadata(config *ScalerConfig, logger logr.Logger) (*stackd
 	}
 	meta.gcpAuthorization = auth
 
-	meta.aggregation, err = parseAggregation(config, logger)
+	aggregation, err := parseAggregation(config, logger)
 	if err != nil {
 		return nil, err
 	}
+	meta.aggregation = aggregation
 
 	return &meta, nil
 }
