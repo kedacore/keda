@@ -140,6 +140,7 @@ func parseCouchDBMetadata(config *ScalerConfig) (*couchDBMetadata, string, error
 		meta.connectionString = config.ResolvedEnv[config.TriggerMetadata["connectionStringFromEnv"]]
 	default:
 		meta.connectionString = ""
+
 		host, err := GetFromAuthOrMeta(config, "host")
 		if err != nil {
 			return nil, "", err
@@ -173,6 +174,7 @@ func parseCouchDBMetadata(config *ScalerConfig) (*couchDBMetadata, string, error
 	} else {
 		// Build connection str
 		addr := net.JoinHostPort(meta.host, meta.port)
+		// nosemgrep: db-connection-string
 		connStr = "http://" + addr
 	}
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
