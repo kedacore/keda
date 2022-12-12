@@ -1,0 +1,95 @@
+package scalers
+
+import (
+	"strings"
+	"testing"
+)
+
+type parseArangoDBMetadataTestData struct {
+	metadata    map[string]string
+	authParams  map[string]string
+	raisesError bool
+}
+
+var testArangoDBMetadata = []parseArangoDBMetadataTestData{
+	// No metadata
+	{
+		metadata:    map[string]string{},
+		authParams:  map[string]string{},
+		raisesError: true,
+	},
+	// missing query
+	{
+		metadata:    map[string]string{"endpoints": "https://localhost:8529", "collection": "demo", "queryValue": "12", "dbName": "test"},
+		authParams:  map[string]string{},
+		raisesError: true,
+	},
+	// with metric name
+	{
+		metadata:    map[string]string{"endpoints": "https://localhost:8529", "query": `FOR t IN testCollection FILTER t.cook_time == '3 hours' RETURN t`, "collection": "demo", "queryValue": "12", "dbName": "test"},
+		authParams:  map[string]string{},
+		raisesError: false,
+	},
+	// from trigger auth
+	{
+		metadata:    map[string]string{"endpoints": "https://localhost:8529", "query": `FOR t IN testCollection FILTER t.cook_time == '3 hours' RETURN t`, "collection": "demo", "queryValue": "12"},
+		authParams:  map[string]string{"dbName": "test", "username": "sample", "password": "secure"},
+		raisesError: false,
+	},
+	// wrong activationQueryValue
+	{
+		metadata:    map[string]string{"endpoints": "https://localhost:8529", "query": `FOR t IN testCollection FILTER t.cook_time == '3 hours' RETURN t`, "collection": "demo", "queryValue": "12", "activationQueryValue": "aa", "dbName": "test"},
+		authParams:  map[string]string{},
+		raisesError: true,
+	},
+}
+
+type arangoDBAuthMetadataTestData struct {
+	metadata    map[string]string
+	authParams  map[string]string
+	raisesError bool
+}
+
+var testArangoDBAuthMetadata = []arangoDBAuthMetadataTestData{
+	// success bearer default
+	{map[string]string{"endpoints": "https://http://34.162.13.192:8529,https://34.162.13.193:8529", "collection": "demo", "query": "FOR d IN myCollection RETURN d", "queryValue": "1", "dbName": "testdb", "authModes": "bearer"}, map[string]string{"bearerToken": "dummy-token"}, false},
+	// fail bearerAuth with no token
+	{map[string]string{"endpoints": "https://http://34.162.13.192:8529,https://34.162.13.193:8529", "collection": "demo", "query": "FOR d IN myCollection RETURN d", "queryValue": "1", "dbName": "testdb", "authModes": "bearer"}, map[string]string{}, true},
+	// success basicAuth
+	{map[string]string{"endpoints": "https://http://34.162.13.192:8529,https://34.162.13.193:8529", "collection": "demo", "query": "FOR d IN myCollection RETURN d", "queryValue": "1", "dbName": "testdb", "authModes": "basic"}, map[string]string{"username": "user", "password": "pass"}, false},
+	// fail basicAuth with no username
+	{map[string]string{"endpoints": "https://http://34.162.13.192:8529,https://34.162.13.193:8529", "collection": "demo", "query": "FOR d IN myCollection RETURN d", "queryValue": "1", "dbName": "testdb", "authModes": "basic"}, map[string]string{}, true},
+	// success basicAuth with no password
+	{map[string]string{"endpoints": "https://http://34.162.13.192:8529,https://34.162.13.193:8529", "collection": "demo", "query": "FOR d IN myCollection RETURN d", "queryValue": "1", "dbName": "testdb", "authModes": "basic"}, map[string]string{"username": "user"}, false},
+}
+
+func TestParseArangoDBMetadata(t *testing.T) {
+	for _, testData := range testArangoDBMetadata {
+		_, err := parseArangoDBMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		if err != nil && !testData.raisesError {
+			t.Error("Expected success but got error:", err)
+		}
+		if err == nil && testData.raisesError {
+			t.Error("Expected error but got success")
+		}
+	}
+}
+
+func TestArangoDBScalerAuthParams(t *testing.T) {
+	for _, testData := range testArangoDBAuthMetadata {
+		meta, err := parseArangoDBMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+
+		if err != nil && !testData.raisesError {
+			t.Error("Expected success but got error", err)
+		}
+		if testData.raisesError && err == nil {
+			t.Error("Expected error but got success")
+		}
+
+		if err == nil {
+			if meta.arangoDBAuth.EnableBasicAuth && !strings.Contains(testData.metadata["authModes"], "basic") {
+				t.Error("wrong auth mode detected")
+			}
+		}
+	}
+}

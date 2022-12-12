@@ -561,6 +561,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	switch triggerType {
 	case "activemq":
 		return scalers.NewActiveMQScaler(config)
+	case "arangodb":
+		return scalers.NewArangoDBScaler(config)
 	case "artemis-queue":
 		return scalers.NewArtemisQueueScaler(config)
 	case "aws-cloudwatch":
