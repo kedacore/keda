@@ -92,21 +92,21 @@ var testInputs = []mssqlTestData{
 		metadata:      map[string]string{"targetValue": "1"},
 		resolvedEnv:   map[string]string{},
 		authParams:    map[string]string{"connectionString": "sqlserver://localhost"},
-		expectedError: errors.New("no query given"),
+		expectedError: ErrMsSQLNoQuery,
 	},
 	// Error: missing targetValue
 	{
 		metadata:      map[string]string{"query": "SELECT 1"},
 		resolvedEnv:   map[string]string{},
 		authParams:    map[string]string{"connectionString": "sqlserver://localhost"},
-		expectedError: errors.New("no targetValue given"),
+		expectedError: ErrMsSQLNoTargetValue,
 	},
 	// Error: missing host
 	{
 		metadata:      map[string]string{"query": "SELECT 1", "targetValue": "1"},
 		resolvedEnv:   map[string]string{},
 		authParams:    map[string]string{},
-		expectedError: errors.New("no host given"),
+		expectedError: ErrScalerConfigMissingField,
 	},
 }
 
@@ -122,7 +122,7 @@ func TestMSSQLMetadataParsing(t *testing.T) {
 		if err != nil {
 			if testData.expectedError == nil {
 				t.Errorf("Unexpected error parsing input metadata: %v", err)
-			} else if testData.expectedError.Error() != err.Error() {
+			} else if !errors.Is(err, testData.expectedError) {
 				t.Errorf("Expected error '%v' but got '%v'", testData.expectedError, err)
 			}
 

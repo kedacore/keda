@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -15,6 +16,14 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
+)
+
+var (
+	// ErrMsSQLNoQuery is returned when "query" is missing from the config.
+	ErrMsSQLNoQuery = errors.New("no query given")
+
+	// ErrMsSQLNoTargetValue is returned when "targetValue" is missing from the config.
+	ErrMsSQLNoTargetValue = errors.New("no targetValue given")
 )
 
 // mssqlScaler exposes a data pointer to mssqlMetadata and sql.DB connection
@@ -98,7 +107,7 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 	if val, ok := config.TriggerMetadata["query"]; ok {
 		meta.query = val
 	} else {
-		return nil, fmt.Errorf("no query given")
+		return nil, ErrMsSQLNoQuery
 	}
 
 	// Target query value
@@ -109,7 +118,7 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 		}
 		meta.targetValue = targetValue
 	} else {
-		return nil, fmt.Errorf("no targetValue given")
+		return nil, ErrMsSQLNoTargetValue
 	}
 
 	// Activation target value
