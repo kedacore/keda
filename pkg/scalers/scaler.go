@@ -18,6 +18,7 @@ package scalers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -100,6 +101,10 @@ type ScalerConfig struct {
 	MetricType v2.MetricTargetType
 }
 
+// ErrScalerUnsupportedUtilizationMetricType is returned when v2.UtilizationMetricType
+// is provided as the metric target type for scaler.
+var ErrScalerUnsupportedUtilizationMetricType = errors.New("'Utilization' metric type is unsupported for external metrics, allowed values are 'Value' or 'AverageValue'")
+
 // GetFromAuthOrMeta helps getting a field from Auth or Meta sections
 func GetFromAuthOrMeta(config *ScalerConfig, field string) (string, error) {
 	var result string
@@ -143,7 +148,7 @@ func InitializeLogger(config *ScalerConfig, scalerName string) logr.Logger {
 func GetMetricTargetType(config *ScalerConfig) (v2.MetricTargetType, error) {
 	switch config.MetricType {
 	case v2.UtilizationMetricType:
-		return "", fmt.Errorf("'Utilization' metric type is unsupported for external metrics, allowed values are 'Value' or 'AverageValue'")
+		return "", ErrScalerUnsupportedUtilizationMetricType
 	case "":
 		// Use AverageValue if no metric type was provided
 		return v2.AverageValueMetricType, nil
