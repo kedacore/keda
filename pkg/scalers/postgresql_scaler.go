@@ -126,12 +126,12 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 
 		// Build connection str
 		var params []string
-		params = append(params, "dbname="+escapePostgreConnectionParameter(dbName))
-		params = append(params, "user="+escapePostgreConnectionParameter(userName))
-		params = append(params, "password="+escapePostgreConnectionParameter(password))
 		params = append(params, "host="+escapePostgreConnectionParameter(host))
 		params = append(params, "port="+escapePostgreConnectionParameter(port))
+		params = append(params, "user="+escapePostgreConnectionParameter(userName))
+		params = append(params, "dbname="+escapePostgreConnectionParameter(dbName))
 		params = append(params, "sslmode="+escapePostgreConnectionParameter(sslmode))
+		params = append(params, "password="+escapePostgreConnectionParameter(password))
 		meta.connection = strings.Join(params, " ")
 	}
 
