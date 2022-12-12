@@ -59,7 +59,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
-- **General**: TODO ([#TODO](https://github.com/kedacore/keda/issues/TODO))
+- **Redis Scalers**: Support `unsafeSsl` and enable ssl verification as default ([#4005](https://github.com/kedacore/keda/issues/4005))
 
 ### Deprecations
 
