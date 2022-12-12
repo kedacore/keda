@@ -818,6 +818,23 @@ github.com/munnerz/goautoneg
 # github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f
 ## explicit
 github.com/mwitkow/go-conntrack
+# github.com/neo4j/neo4j-go-driver/v5 v5.3.0
+## explicit; go 1.18
+github.com/neo4j/neo4j-go-driver/v5/neo4j
+github.com/neo4j/neo4j-go-driver/v5/neo4j/db
+github.com/neo4j/neo4j-go-driver/v5/neo4j/dbtype
+github.com/neo4j/neo4j-go-driver/v5/neo4j/internal/bolt
+github.com/neo4j/neo4j-go-driver/v5/neo4j/internal/collection
+github.com/neo4j/neo4j-go-driver/v5/neo4j/internal/connector
+github.com/neo4j/neo4j-go-driver/v5/neo4j/internal/db
+github.com/neo4j/neo4j-go-driver/v5/neo4j/internal/errorutil
+github.com/neo4j/neo4j-go-driver/v5/neo4j/internal/packstream
+github.com/neo4j/neo4j-go-driver/v5/neo4j/internal/pool
+github.com/neo4j/neo4j-go-driver/v5/neo4j/internal/racing
+github.com/neo4j/neo4j-go-driver/v5/neo4j/internal/retry
+github.com/neo4j/neo4j-go-driver/v5/neo4j/internal/router
+github.com/neo4j/neo4j-go-driver/v5/neo4j/internal/slices
+github.com/neo4j/neo4j-go-driver/v5/neo4j/log
 # github.com/newrelic/newrelic-client-go v1.1.0
 ## explicit; go 1.18
 github.com/newrelic/newrelic-client-go/internal/http
