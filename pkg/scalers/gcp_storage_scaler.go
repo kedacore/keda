@@ -2,9 +2,9 @@ package scalers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"cloud.google.com/go/storage"
 	"github.com/go-logr/logr"
@@ -206,7 +206,7 @@ func (s *gcsScaler) getItemCount(ctx context.Context, maxCount int64) (int64, er
 			break
 		}
 		if err != nil {
-			if strings.Contains(err.Error(), "bucket doesn't exist") {
+			if errors.Is(err, storage.ErrBucketNotExist) {
 				s.logger.Info("Bucket " + s.metadata.bucketName + " doesn't exist")
 				return 0, nil
 			}
