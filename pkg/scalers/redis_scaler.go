@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -21,6 +22,17 @@ const (
 	defaultActivationListLength = 0
 	defaultDBIdx                = 0
 	defaultEnableTLS            = false
+)
+
+var (
+	// ErrRedisNoListName is returned when "listName" is missing from the config.
+	ErrRedisNoListName = errors.New("no list name given")
+
+	// ErrRedisNoAddresses is returned when the "addresses" in the connection info is empty.
+	ErrRedisNoAddresses = errors.New("no addresses or hosts given. address should be a comma separated list of host:port or set the host/port values")
+
+	// ErrRedisUnequalHostsAndPorts is returned when the number of hosts and ports are unequal.
+	ErrRedisUnequalHostsAndPorts = errors.New("not enough hosts or ports given. number of hosts should be equal to the number of ports")
 )
 
 type redisAddressParser func(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error)
@@ -207,7 +219,7 @@ func parseRedisMetadata(config *ScalerConfig, parserFn redisAddressParser) (*red
 	if val, ok := config.TriggerMetadata["listLength"]; ok {
 		listLength, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("list length parsing error %s", err.Error())
+			return nil, fmt.Errorf("list length parsing error: %w", err)
 		}
 		meta.listLength = listLength
 	}
@@ -224,7 +236,7 @@ func parseRedisMetadata(config *ScalerConfig, parserFn redisAddressParser) (*red
 	if val, ok := config.TriggerMetadata["listName"]; ok {
 		meta.listName = val
 	} else {
-		return nil, fmt.Errorf("no list name given")
+		return nil, ErrRedisNoListName
 	}
 
 	meta.databaseIndex = defaultDBIdx
@@ -357,7 +369,7 @@ func parseRedisMultipleAddress(metadata, resolvedEnv, authParams map[string]stri
 
 		if len(info.hosts) != 0 && len(info.ports) != 0 {
 			if len(info.hosts) != len(info.ports) {
-				return info, fmt.Errorf("not enough hosts or ports given. number of hosts should be equal to the number of ports")
+				return info, ErrRedisUnequalHostsAndPorts
 			}
 			for i := range info.hosts {
 				info.addresses = append(info.addresses, net.JoinHostPort(info.hosts[i], info.ports[i]))
@@ -366,7 +378,7 @@ func parseRedisMultipleAddress(metadata, resolvedEnv, authParams map[string]stri
 	}
 
 	if len(info.addresses) == 0 {
-		return info, fmt.Errorf("no addresses or hosts given. address should be a comma separated list of host:port or set the host/port values")
+		return info, ErrRedisNoAddresses
 	}
 
 	return info, nil
