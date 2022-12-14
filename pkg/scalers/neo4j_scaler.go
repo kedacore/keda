@@ -70,7 +70,7 @@ func (n *neo4jScaler) getQueryResult(ctx context.Context) (int64, error) {
 		return 0, err
 	}
 	fmt.Println("Result of query: ", result)
-	res, err := strconv.ParseInt((fmt.Sprintf("%s", result)), 10, 64)
+	res, err := strconv.ParseInt((fmt.Sprintf("%v", result)), 10, 64)
 	if err != nil {
 		n.logger.Error(err, fmt.Sprintf("Couldn't parse to int because of %v", err))
 		return 0, err
