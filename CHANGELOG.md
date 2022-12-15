@@ -60,7 +60,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
-- **General**: TODO ([#TODO](https://github.com/kedacore/keda/issues/TODO))
+- **General**: Properly retrieve and close scalers cache ([#4011](https://github.com/kedacore/keda/issues/4011))
 
 ### Deprecations
 
