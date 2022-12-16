@@ -60,6 +60,7 @@ Here is an overview of all new **experimental** features:
 ### Fixes
 
 - **General**: Properly retrieve and close scalers cache ([#4011](https://github.com/kedacore/keda/issues/4011))
+- **Azure Key Vault:** Raise an error if authentication mechanism not provided ([#4010](https://github.com/kedacore/keda/issues/4010))
 - **Redis Scalers**: Support `unsafeSsl` and enable ssl verification as default ([#4005](https://github.com/kedacore/keda/issues/4005))
 
 ### Deprecations
