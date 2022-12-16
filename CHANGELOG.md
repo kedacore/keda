@@ -40,7 +40,7 @@ To learn more about our roadmap, we recommend reading [this document](ROADMAP.md
 
 ### Fixes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- **Redis Scalers**: Support `unsafeSsl` and enable ssl verification as default ([#4005](https://github.com/kedacore/keda/issues/4005))
 
 ### Deprecations
 
