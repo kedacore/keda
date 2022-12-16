@@ -16,6 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.9.1](#v291)
 - [v2.9.0](#v290)
 - [v2.8.1](#v281)
 - [v2.8.0](#v280)
@@ -59,9 +60,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
-- **General**: Properly retrieve and close scalers cache ([#4011](https://github.com/kedacore/keda/issues/4011))
-- **Azure Key Vault:** Raise an error if authentication mechanism not provided ([#4010](https://github.com/kedacore/keda/issues/4010))
-- **Redis Scalers**: Support `unsafeSsl` and enable ssl verification as default ([#4005](https://github.com/kedacore/keda/issues/4005))
+- **General**: TODO ([#TODO](https://github.com/kedacore/keda/issues/TODO))
 
 ### Deprecations
 
@@ -71,16 +70,17 @@ New deprecation(s):
 
 - TODO
 
-Previously announced deprecation(s):
-
-- Default checkpointing strategy for Azure Event Hubs scaler `azureFunctions` is deprecated in favor of `blobMetadata` ([#XXX](https://github.com/kedacore/keda/issues/3596) | [Discussion](https://github.com/kedacore/keda/discussions/3552))
-- `metadata.type` is deprecated in favor of the global `metricType` for CPU, Memory, Datadog scalers ([#2844](https://github.com/kedacore/keda/issues/2844) | [Discussion](https://github.com/kedacore/keda/discussions/3002))
-- `rolloutStrategy` is deprecated in favor of `rollout.strategy` in ScaledJobs ([#3596](https://github.com/kedacore/keda/issues/3596) | [Discussion](https://github.com/kedacore/keda/discussions/3552))
-- Prometheus metrics on KEDA Metric Server are deprecated in favor of Prometheus metrics on KEDA Operator ([#3972](https://github.com/kedacore/keda/issues/3972) | [Discussion](https://github.com/kedacore/keda/discussions/3973))
-
 ### Other
 
 - TODO
+
+## v2.9.1
+
+### Fixes
+
+- **General**: Properly retrieve and close scalers cache ([#4011](https://github.com/kedacore/keda/issues/4011))
+- **Azure Key Vault:** Raise an error if authentication mechanism not provided ([#4010](https://github.com/kedacore/keda/issues/4010))
+- **Redis Scalers**: Support `unsafeSsl` and enable ssl verification as default ([#4005](https://github.com/kedacore/keda/issues/4005))
 
 ## v2.9.0
 
