@@ -376,6 +376,63 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			},
 			wantErr: nil,
 		},
+		{
+			name: "tls enabled without setting unsafeSsl",
+			metadata: map[string]string{
+				"hosts":               "a, b, c",
+				"ports":               "1, 2, 3",
+				"stream":              "my-stream",
+				"pendingEntriesCount": "10",
+				"consumerGroup":       "consumer1",
+				"enableTLS":           "true",
+			},
+			authParams: map[string]string{
+				"password": "password",
+			},
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{"a:1", "b:2", "c:3"},
+					hosts:     []string{"a", "b", "c"},
+					ports:     []string{"1", "2", "3"},
+					password:  "password",
+					enableTLS: true,
+					unsafeSsl: false,
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "tls enabled with unsafeSsl true",
+			metadata: map[string]string{
+				"hosts":               "a, b, c",
+				"ports":               "1, 2, 3",
+				"stream":              "my-stream",
+				"pendingEntriesCount": "10",
+				"consumerGroup":       "consumer1",
+				"enableTLS":           "true",
+				"unsafeSsl":           "true",
+			},
+			authParams: map[string]string{
+				"password": "password",
+			},
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{"a:1", "b:2", "c:3"},
+					hosts:     []string{"a", "b", "c"},
+					ports:     []string{"1", "2", "3"},
+					password:  "password",
+					enableTLS: true,
+					unsafeSsl: true,
+				},
+			},
+			wantErr: nil,
+		},
 	}
 
 	for _, testCase := range cases {
@@ -811,6 +868,63 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 					hosts:          []string{"a", "b", "c"},
 					ports:          []string{"1", "2", "3"},
 					sentinelMaster: "none",
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "tls enabled without setting unsafeSsl",
+			metadata: map[string]string{
+				"hosts":               "a, b, c",
+				"ports":               "1, 2, 3",
+				"stream":              "my-stream",
+				"pendingEntriesCount": "10",
+				"consumerGroup":       "consumer1",
+				"enableTLS":           "true",
+			},
+			authParams: map[string]string{
+				"password": "password",
+			},
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{"a:1", "b:2", "c:3"},
+					hosts:     []string{"a", "b", "c"},
+					ports:     []string{"1", "2", "3"},
+					password:  "password",
+					enableTLS: true,
+					unsafeSsl: false,
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "tls enabled with unsafeSsl true",
+			metadata: map[string]string{
+				"hosts":               "a, b, c",
+				"ports":               "1, 2, 3",
+				"stream":              "my-stream",
+				"pendingEntriesCount": "10",
+				"consumerGroup":       "consumer1",
+				"enableTLS":           "true",
+				"unsafeSsl":           "true",
+			},
+			authParams: map[string]string{
+				"password": "password",
+			},
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 10,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{"a:1", "b:2", "c:3"},
+					hosts:     []string{"a", "b", "c"},
+					ports:     []string{"1", "2", "3"},
+					password:  "password",
+					enableTLS: true,
+					unsafeSsl: true,
 				},
 			},
 			wantErr: nil,

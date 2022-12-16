@@ -292,6 +292,47 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 			},
 			wantErr: nil,
 		},
+		{
+			name: "tls enabled without setting unsafeSsl",
+			metadata: map[string]string{
+				"listName":  "mylist",
+				"enableTLS": "true",
+			},
+			authParams: map[string]string{
+				"addresses": ":7001, :7002",
+			},
+			wantMeta: &redisMetadata{
+				listLength: 5,
+				listName:   "mylist",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{":7001", ":7002"},
+					enableTLS: true,
+					unsafeSsl: false,
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "tls enabled with unsafeSsl true",
+			metadata: map[string]string{
+				"listName":  "mylist",
+				"enableTLS": "true",
+				"unsafeSsl": "true",
+			},
+			authParams: map[string]string{
+				"addresses": ":7001, :7002",
+			},
+			wantMeta: &redisMetadata{
+				listLength: 5,
+				listName:   "mylist",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{":7001", ":7002"},
+					enableTLS: true,
+					unsafeSsl: true,
+				},
+			},
+			wantErr: nil,
+		},
 	}
 
 	for _, testCase := range cases {
@@ -693,6 +734,47 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 					hosts:          []string{"a", "b", "c"},
 					ports:          []string{"1", "2", "3"},
 					sentinelMaster: "none",
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "tls enabled without setting unsafeSsl",
+			metadata: map[string]string{
+				"listName":  "mylist",
+				"enableTLS": "true",
+			},
+			authParams: map[string]string{
+				"addresses": ":7001, :7002",
+			},
+			wantMeta: &redisMetadata{
+				listLength: 5,
+				listName:   "mylist",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{":7001", ":7002"},
+					enableTLS: true,
+					unsafeSsl: false,
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "tls enabled with unsafeSsl true",
+			metadata: map[string]string{
+				"listName":  "mylist",
+				"enableTLS": "true",
+				"unsafeSsl": "true",
+			},
+			authParams: map[string]string{
+				"addresses": ":7001, :7002",
+			},
+			wantMeta: &redisMetadata{
+				listLength: 5,
+				listName:   "mylist",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{":7001", ":7002"},
+					enableTLS: true,
+					unsafeSsl: true,
 				},
 			},
 			wantErr: nil,

@@ -43,6 +43,7 @@ type redisConnectionInfo struct {
 	hosts            []string
 	ports            []string
 	enableTLS        bool
+	unsafeSsl        bool
 }
 
 type redisMetadata struct {
@@ -95,6 +96,7 @@ func NewRedisScaler(ctx context.Context, isClustered, isSentinel bool, config *S
 	if err != nil {
 		return nil, fmt.Errorf("error parsing redis metadata: %s", err)
 	}
+
 	return createRedisScaler(ctx, meta, luaScript, metricType, logger)
 }
 
@@ -181,6 +183,24 @@ func parseRedisMetadata(config *ScalerConfig, parserFn redisAddressParser) (*red
 	}
 	meta := redisMetadata{
 		connectionInfo: connInfo,
+	}
+
+	meta.connectionInfo.enableTLS = defaultEnableTLS
+	if val, ok := config.TriggerMetadata["enableTLS"]; ok {
+		tls, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("enableTLS parsing error %s", err.Error())
+		}
+		meta.connectionInfo.enableTLS = tls
+	}
+
+	meta.connectionInfo.unsafeSsl = false
+	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
+		parsedVal, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing unsafeSsl: %s", err)
+		}
+		meta.connectionInfo.unsafeSsl = parsedVal
 	}
 
 	meta.listLength = defaultListLength
@@ -304,15 +324,6 @@ func parseRedisAddress(metadata, resolvedEnv, authParams map[string]string) (red
 		info.password = resolvedEnv[metadata["passwordFromEnv"]]
 	}
 
-	info.enableTLS = defaultEnableTLS
-	if val, ok := metadata["enableTLS"]; ok {
-		tls, err := strconv.ParseBool(val)
-		if err != nil {
-			return info, fmt.Errorf("enableTLS parsing error %s", err.Error())
-		}
-		info.enableTLS = tls
-	}
-
 	return info, nil
 }
 
@@ -382,15 +393,6 @@ func parseRedisClusterAddress(metadata, resolvedEnv, authParams map[string]strin
 		info.password = resolvedEnv[metadata["passwordFromEnv"]]
 	}
 
-	info.enableTLS = defaultEnableTLS
-	if val, ok := metadata["enableTLS"]; ok {
-		tls, err := strconv.ParseBool(val)
-		if err != nil {
-			return info, fmt.Errorf("enableTLS parsing error %s", err.Error())
-		}
-		info.enableTLS = tls
-	}
-
 	return info, nil
 }
 
@@ -439,15 +441,6 @@ func parseRedisSentinelAddress(metadata, resolvedEnv, authParams map[string]stri
 		info.sentinelMaster = resolvedEnv[metadata["sentinelMasterFromEnv"]]
 	}
 
-	info.enableTLS = defaultEnableTLS
-	if val, ok := metadata["enableTLS"]; ok {
-		tls, err := strconv.ParseBool(val)
-		if err != nil {
-			return info, fmt.Errorf("enableTLS parsing error %s", err.Error())
-		}
-		info.enableTLS = tls
-	}
-
 	return info, nil
 }
 
@@ -459,7 +452,7 @@ func getRedisClusterClient(ctx context.Context, info redisConnectionInfo) (*redi
 	}
 	if info.enableTLS {
 		options.TLSConfig = &tls.Config{
-			InsecureSkipVerify: info.enableTLS,
+			InsecureSkipVerify: info.unsafeSsl,
 		}
 	}
 
@@ -483,7 +476,7 @@ func getRedisSentinelClient(ctx context.Context, info redisConnectionInfo, dbInd
 	}
 	if info.enableTLS {
 		options.TLSConfig = &tls.Config{
-			InsecureSkipVerify: info.enableTLS,
+			InsecureSkipVerify: info.unsafeSsl,
 		}
 	}
 
@@ -504,7 +497,7 @@ func getRedisClient(ctx context.Context, info redisConnectionInfo, dbIndex int) 
 	}
 	if info.enableTLS {
 		options.TLSConfig = &tls.Config{
-			InsecureSkipVerify: info.enableTLS,
+			InsecureSkipVerify: info.unsafeSsl,
 		}
 	}
 
