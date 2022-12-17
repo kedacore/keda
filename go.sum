@@ -48,6 +48,8 @@ code.cloudfoundry.org/clock v0.0.0-20180518195852-02e53af36e6c/go.mod h1:QD9Lzhd
 code.cloudfoundry.org/clock v1.0.0 h1:kFXWQM4bxYvdBw2X8BbBeXwQNgfoWv1vqAk2ZZyBN2o=
 code.cloudfoundry.org/clock v1.0.0/go.mod h1:QD9Lzhd/ux6eNQVUDVRJX/RKTigpewimNYBi7ivZKY8=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
+github.com/766b/go-outliner v0.0.0-20180511142203-fc6edecdadd7 h1:cJXisB2yAM61AzMutv7X+KM8F3xVLxGH99S8VmaSlps=
+github.com/766b/go-outliner v0.0.0-20180511142203-fc6edecdadd7/go.mod h1:1SzhThoS5lcKfE4IFOLQJ04WCmFpaAiPe8H9yqXyYSU=
 github.com/Azure/azure-amqp-common-go/v3 v3.2.3 h1:uDF62mbd9bypXWi19V1bN5NZEO84JqgmI5G73ibAmrk=
 github.com/Azure/azure-amqp-common-go/v3 v3.2.3/go.mod h1:7rPmbSfszeovxGfc5fSAXE4ehlXQZHpMja2OtxC2Tas=
 github.com/Azure/azure-event-hubs-go/v3 v3.3.20 h1:LRAy00JlV5aDqd0LFXwfwFReYzl03CtH/kD91OHrT94=

@@ -27,6 +27,8 @@ cloud.google.com/go/storage/internal/apiv2/stubs
 # code.cloudfoundry.org/clock v1.0.0
 ## explicit
 code.cloudfoundry.org/clock
+# github.com/766b/go-outliner v0.0.0-20180511142203-fc6edecdadd7
+## explicit
 # github.com/Azure/azure-amqp-common-go/v3 v3.2.3
 ## explicit; go 1.12
 github.com/Azure/azure-amqp-common-go/v3

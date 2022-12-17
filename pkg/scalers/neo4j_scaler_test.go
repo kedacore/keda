@@ -37,40 +37,32 @@ var testNEO4JMetadata = []parseNeo4jMetadataTestData{
 	},
 	// connectionStringFromEnv
 	{
-		metadata: map[string]string{"query": `CREATE (ac1:Person { name: "Danish", from: "Colombo", popularfor: "singer" }),
-												(ac2:Person { name: "Saanvi", from: "Delhi", popularfor: "actress" }),
-												(ac1)-[:FOLLOWS]->(ac2),(ac2)<-[:FOLLOWS]-(ac1);MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1`,
-			"queryValue": "10", "connectionStringFromEnv": "Neo4j_CONN_STR", "username": "Neo4j_USERNAME", "password": "Neo4j_PASSWORD"},
+		metadata: map[string]string{"query": `MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1`,
+			"queryValue": "9", "connectionStringFromEnv": "Neo4j_CONN_STR", "username": "Neo4j_USERNAME", "password": "Neo4j_PASSWORD"},
 		authParams:  map[string]string{},
 		resolvedEnv: testNeo4jResolvedEnv,
 		raisesError: false,
 	},
 	// with metric name
 	{
-		metadata: map[string]string{"query": `CREATE (ac1:Person { name: "Danish", from: "Colombo", popularfor: "singer" }),
-												(ac2:Person { name: "Saanvi", from: "Delhi", popularfor: "actress" }),
-												(ac1)-[:FOLLOWS]->(ac2),(ac2)<-[:FOLLOWS]-(ac1);MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1`,
-			"queryValue": "10", "connectionStringFromEnv": "Neo4j_CONN_STR", "username": "Neo4j_USERNAME", "password": "Neo4j_PASSWORD"},
+		metadata: map[string]string{"query": `MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1`,
+			"queryValue": "9", "connectionStringFromEnv": "Neo4j_CONN_STR", "username": "Neo4j_USERNAME", "password": "Neo4j_PASSWORD"},
 		authParams:  map[string]string{},
 		resolvedEnv: testNeo4jResolvedEnv,
 		raisesError: false,
 	},
 	// from trigger auth
 	{
-		metadata: map[string]string{"query": `CREATE (ac1:Person { name: "Danish", from: "Colombo", popularfor: "singer" }),
-												(ac2:Person { name: "Saanvi", from: "Delhi", popularfor: "actress" }),
-												(ac1)-[:FOLLOWS]->(ac2),(ac2)<-[:FOLLOWS]-(ac1);MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1`,
-			"queryValue": "10"},
+		metadata: map[string]string{"query": `MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1`,
+			"queryValue": "9"},
 		authParams:  map[string]string{"host": "localhost", "port": "7687", "username": "neo4j", "password": "password"},
 		resolvedEnv: testNeo4jResolvedEnv,
 		raisesError: false,
 	},
 	// wrong activationQueryValue
 	{
-		metadata: map[string]string{"query": `CREATE (ac1:Person { name: "Danish", from: "Colombo", popularfor: "singer" }),
-												(ac2:Person { name: "Saanvi", from: "Delhi", popularfor: "actress" }),
-												(ac1)-[:FOLLOWS]->(ac2),(ac2)<-[:FOLLOWS]-(ac1);MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1`,
-			"queryValue": "10", "activationQueryValue": "10", "connectionStringFromEnv": "Neo4j_CONN_STR",
+		metadata: map[string]string{"query": `MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1`,
+			"queryValue": "9", "activationQueryValue": "9", "connectionStringFromEnv": "Neo4j_CONN_STR",
 			"username": "Neo4j_USERNAME", "password": "Neo4j_PASSWORD"},
 		authParams:  map[string]string{},
 		resolvedEnv: testNeo4jResolvedEnv,
