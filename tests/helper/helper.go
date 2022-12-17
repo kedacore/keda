@@ -318,6 +318,33 @@ func WaitForPodCountInNamespace(t *testing.T, kc *kubernetes.Clientset, namespac
 	return false
 }
 
+// Waits until all the pods in the namespace have a running status.
+func WaitForAllPodRunningInNamespace(t *testing.T, kc *kubernetes.Clientset, namespace string, iterations, intervalSeconds int) bool {
+
+	for i := 0; i < iterations; i++ {
+		runningCount := 0
+		pods, _ := kc.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
+
+		for _, pod := range pods.Items {
+			if pod.Status.Phase != corev1.PodRunning {
+				break
+			}
+			runningCount++
+		}
+
+		if runningCount == len(pods.Items) {
+			return true
+		}
+
+		t.Logf("Waiting for pods in namespace to be in 'Running' status. Namespace - %s, Current - %d, Target - %d",
+			namespace, runningCount, len(pods.Items))
+
+		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+	}
+
+	return false
+}
+
 // Waits until deployment ready replica count hits target or number of iterations are done.
 func WaitForDeploymentReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
 	target, iterations, intervalSeconds int) bool {

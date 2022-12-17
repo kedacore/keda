@@ -45,7 +45,8 @@ func InstallArangoDB(t *testing.T, kc *kubernetes.Clientset, testNamespace strin
 
 	t.Log("creating arangodeployment resource")
 	helper.KubectlApplyWithTemplate(t, templateData{Namespace: testNamespace}, "arangoDeploymentTemplate", arangoDeploymentTemplate)
-	assert.True(t, helper.WaitForPodCountInNamespace(t, kc, testNamespace, 11, 5, 60), "pod count should be 11")
+	assert.True(t, helper.WaitForPodCountInNamespace(t, kc, testNamespace, 11, 5, 30), "pod count should be 11")
+	assert.True(t, helper.WaitForAllPodRunningInNamespace(t, kc, testNamespace, 5, 30), "all pods should be running")
 }
 
 func SetupArangoDB(t *testing.T, kc *kubernetes.Clientset, testNamespace, arangoDBName, arangoDBCollection string) {
@@ -77,7 +78,7 @@ spec:
 
 	helper.KubectlApplyWithTemplate(t, templateData{Namespace: testNamespace, Database: arangoDBName}, "createDatabaseTemplate", createDatabaseTemplate)
 
-	assert.True(t, helper.WaitForJobSuccess(t, kc, "create-arangodb", testNamespace, 5, 60), "create database job failed")
+	assert.True(t, helper.WaitForJobSuccess(t, kc, "create-arangodb", testNamespace, 5, 30), "create database job failed")
 
 	const createCollectionTemplate = `apiVersion: batch/v1
 kind: Job
@@ -106,7 +107,7 @@ spec:
 
 	helper.KubectlApplyWithTemplate(t, templateData{Namespace: testNamespace, Database: arangoDBName, Collection: arangoDBCollection}, "createCollectionTemplate", createCollectionTemplate)
 
-	assert.True(t, helper.WaitForJobSuccess(t, kc, "create-arangodb-collection", testNamespace, 5, 60), "create collection job failed")
+	assert.True(t, helper.WaitForJobSuccess(t, kc, "create-arangodb-collection", testNamespace, 5, 30), "create collection job failed")
 }
 
 func UninstallArangoDB(t *testing.T, kc *kubernetes.Clientset, namespace string) {

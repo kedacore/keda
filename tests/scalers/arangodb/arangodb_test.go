@@ -30,7 +30,6 @@ var (
 	triggerAuthName  = fmt.Sprintf("%s-ta", testName)
 
 	arangoDBUsername   = "root"
-	arangoDBPassword   = ""
 	arangoDBName       = "test"
 	arangoDBCollection = "test"
 
@@ -86,7 +85,6 @@ metadata:
   namespace: {{.TestNamespace}}
 data:
   username: {{.Username}}
-  password: {{.Password}}
 `
 
 	triggerAuthTemplate = `apiVersion: keda.sh/v1alpha1
@@ -96,9 +94,6 @@ metadata:
   namespace: {{.TestNamespace}}
 spec:
   secretTargetRef:
-  - parameter: password
-    name: {{.SecretName}}
-    key: password
   - parameter: username
     name: {{.SecretName}}
     key: username
@@ -119,13 +114,14 @@ spec:
   triggers:
   - type: arangodb
     metadata:
-      endpoints: https://example-arangodb-cluster-ea.{{.TestNamespace}}.svc.cluster.local:8529
+      endpoints: https://example-arangodb-cluster-int.{{.TestNamespace}}.svc.cluster.local:8529
       queryValue: '3'
       activationQueryValue: '3'
       dbName: {{.Database}}
       collection: {{.Collection}}
-      unsafeSsl: true
+      unsafeSsl: "true"
       query: FOR doc IN {{.Collection}} RETURN doc
+      authModes: "basic"
     authenticationRef:
       name: {{.TriggerAuthName}}
 `
@@ -167,6 +163,7 @@ func getTemplateData() (templateData, []Template) {
 			Collection:       arangoDBCollection,
 			TriggerAuthName:  triggerAuthName,
 			SecretName:       secretName,
+			Username:         arangoDBUsername,
 		}, []Template{
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "secretTemplate", Config: secretTemplate},
