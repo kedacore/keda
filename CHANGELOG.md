@@ -60,7 +60,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
-- **General**: TODO ([#TODO](https://github.com/kedacore/keda/issues/TODO))
+- **CPU Memory Scaler** Store forgotten logger ([#4022](https://github.com/kedacore/keda/issues/4022))
 
 ### Deprecations
 
