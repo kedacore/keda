@@ -23,11 +23,13 @@ Add the new released version to the list in `KEDA Version` dropdown in [3_bug_re
 
 ## 3. Create KEDA release on GitHub
 
-Creating a new release in the releases page (https://github.com/kedacore/keda/releases) will trigger a GitHub workflow which will create a new image with the latest code and tagged with the next version (in this example 2.4.0).
+Creating a new release in the releases page (https://github.com/kedacore/keda/releases) will trigger a GitHub workflow which will create a new image with the latest code (read note 2 below) and tagged with the next version (in this example 2.4.0).
 
 KEDA Deployment YAML file (eg. keda-2.4.0.yaml) is also automatically created and attached to the Release as part of the workflow.
 
 > Note: The container registry repo with all the different images can be seen [here](https://github.com/orgs/kedacore/packages?repo_name=keda)
+
+> Note 2: Depending on the release type (minor version or hotfix), the tag should be created from main (for minor version releases) or from version branch (for hotfix releases)
 
 ### Release template
 
@@ -92,6 +94,8 @@ In order to generate a list of new contributors, use the `Auto-generate release 
 Publish documentation for new version on https://keda.sh.
 For details, see [Publishing a new version](https://github.com/kedacore/keda-docs#publishing-a-new-version).
 
+> Note: During hotfix releases, this step isn't required as we don't introduce new features
+
 ## 5. Setup continous container scanning with Snyk
 
 In order to continuously scan our new container image, they must be imported in our [Snyk project](https://app.snyk.io/org/keda/projects) for all newly introduced tags.
@@ -118,6 +122,8 @@ As per our [release governance](https://github.com/kedacore/governance/blob/main
 We need to make sure that the current sprint's items are changed from status `Ready to ship` to `Done`.
 
 Lastly, the `Upcoming Release Cycles` overview in `ROADMAP.md` should be updated with the new cycle.
+
+In case of minor releases, we need to create the version branch (`release/v2.x`) from the release tag which will be used to include any required hotfix in the future.
 
 ## 9. Tweet! 🐦
 
