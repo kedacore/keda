@@ -24,9 +24,10 @@ type parseKafkaMetadataTestData struct {
 }
 
 type parseKafkaAuthParamsTestData struct {
-	authParams map[string]string
-	isError    bool
-	enableTLS  bool
+	authParams  map[string]string
+	kafkaMedata map[string]string
+	isError     bool
+	enableTLS   bool
 }
 
 type kafkaMetricIdentifier struct {
@@ -101,69 +102,69 @@ var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
 }
 
 var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
-	// success, SASL only
-	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin"}, false, false},
-	// success, SASL only
-	{map[string]string{"sasl": "scram_sha256", "username": "admin", "password": "admin"}, false, false},
-	// success, SASL only
-	{map[string]string{"sasl": "scram_sha512", "username": "admin", "password": "admin"}, false, false},
+	// success, SASL plaintext only
+	{map[string]string{"username": "admin", "password": "admin"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "sasl": "plaintext"}, false, false},
+	// success, SASL scram_sha256 only
+	{map[string]string{"username": "admin", "password": "admin"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "sasl": "scram_sha256"}, false, false},
+	// success, SASL scram_sha512 only
+	{map[string]string{"username": "admin", "password": "admin"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "sasl": "scram_sha512"}, false, false},
 	// success, TLS only
-	{map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, true},
+	{map[string]string{"ca": "caaa", "cert": "ceert", "key": "keey"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "enable"}, false, true},
 	// success, TLS cert/key and assumed public CA
-	{map[string]string{"tls": "enable", "cert": "ceert", "key": "keey"}, false, true},
+	{map[string]string{"cert": "ceert", "key": "keey"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "enable"}, false, true},
 	// success, TLS cert/key + key password and assumed public CA
-	{map[string]string{"tls": "enable", "cert": "ceert", "key": "keey", "keyPassword": "keeyPassword"}, false, true},
+	{map[string]string{"cert": "ceert", "key": "keey", "keyPassword": "keeyPassword"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "enable"}, false, true},
 	// success, TLS CA only
-	{map[string]string{"tls": "enable", "ca": "caaa"}, false, true},
-	// success, SASL + TLS
-	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, true},
+	{map[string]string{"ca": "caaa"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "enable"}, false, true},
+	//// success, SASL + TLS
+	{map[string]string{"username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "sasl": "plaintext", "tls": "enable"}, false, true},
 	// success, SASL + TLS explicitly disabled
-	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "disable"}, false, false},
+	{map[string]string{"username": "admin", "password": "admin"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "disable", "sasl": "plaintext"}, false, false},
 	// success, SASL OAUTHBEARER + TLS
-	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, false, false},
+	{map[string]string{"username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "disable", "sasl": "oauthbearer"}, false, false},
 	// failure, SASL OAUTHBEARER + TLS bad sasl type
-	{map[string]string{"sasl": "foo", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, true, false},
+	{map[string]string{"username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "disable", "sasl": "foo"}, true, false},
 	// success, SASL OAUTHBEARER + TLS missing scope
-	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, false, false},
+	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "oauthTokenEndpointUri": "https://website.com"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "disable", "sasl": "oauthbearer"}, false, false},
 	// failure, SASL OAUTHBEARER + TLS missing oauthTokenEndpointUri
-	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "", "tls": "disable"}, true, false},
+	{map[string]string{"username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": ""}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "disable", "sasl": "oauthbearer"}, true, false},
 	// failure, SASL incorrect type
-	{map[string]string{"sasl": "foo", "username": "admin", "password": "admin"}, true, false},
+	{map[string]string{"username": "admin", "password": "admin"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "sasl": "foo"}, true, false},
 	// failure, SASL missing username
-	{map[string]string{"sasl": "plaintext", "password": "admin"}, true, false},
+	{map[string]string{"password": "admin"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "sasl": "plaintext"}, true, false},
 	// failure, SASL missing password
-	{map[string]string{"sasl": "plaintext", "username": "admin"}, true, false},
+	{map[string]string{"username": "admin"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "sasl": "plaintext"}, true, false},
 	// failure, TLS missing cert
-	{map[string]string{"tls": "enable", "ca": "caaa", "key": "keey"}, true, false},
+	{map[string]string{"ca": "caaa", "key": "keey"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "enable"}, true, false},
 	// failure, TLS missing key
-	{map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert"}, true, false},
+	{map[string]string{"ca": "caaa", "cert": "ceert"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "enable"}, true, false},
 	// failure, TLS invalid
-	{map[string]string{"tls": "yes", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
+	{map[string]string{"ca": "caaa", "cert": "ceert", "key": "keey"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "yes"}, true, false},
 	// failure, SASL + TLS, incorrect sasl
-	{map[string]string{"sasl": "foo", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
+	{map[string]string{"username": "admin", "password": "admin", "ca": "caaa", "cert": "ceert", "key": "keey"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "enable", "sasl": "foo"}, true, false},
 	// failure, SASL + TLS, incorrect tls
-	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "foo", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
+	{map[string]string{"username": "admin", "password": "admin", "ca": "caaa", "cert": "ceert", "key": "keey"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "foo", "sasl": "plaintext"}, true, false},
 	// failure, SASL + TLS, missing username
-	{map[string]string{"sasl": "plaintext", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
+	{map[string]string{"password": "admin", "ca": "caaa", "cert": "ceert", "key": "keey"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "enable", "sasl": "plaintext"}, true, false},
 	// failure, SASL + TLS, missing password
-	{map[string]string{"sasl": "plaintext", "username": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
+	{map[string]string{"username": "admin", "ca": "caaa", "cert": "ceert", "key": "keey"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "enable", "sasl": "plaintext"}, true, false},
 	// failure, SASL + TLS, missing cert
-	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "key": "keey"}, true, false},
+	{map[string]string{"username": "admin", "password": "admin", "ca": "caaa", "key": "keey"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "enable", "sasl": "plaintext"}, true, false},
 	// failure, SASL + TLS, missing key
-	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert"}, true, false},
+	{map[string]string{"username": "admin", "password": "admin", "ca": "caaa", "cert": "ceert"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "enable", "sasl": "plaintext"}, true, false},
 }
 
 var parseKafkaOAuthbreakerAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	// success, SASL OAUTHBEARER + TLS
-	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, false, false},
+	{map[string]string{"username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "disable", "sasl": "oauthbearer"}, false, false},
 	// success, SASL OAUTHBEARER + TLS multiple scopes
-	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope1, scope2", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, false, false},
+	{map[string]string{"username": "admin", "password": "admin", "scopes": "scope1, scope2", "oauthTokenEndpointUri": "https://website.com"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "disable", "sasl": "oauthbearer"}, false, false},
 	// success, SASL OAUTHBEARER + TLS missing scope
-	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, false, false},
+	{map[string]string{"username": "admin", "password": "admin", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "disable", "sasl": "oauthbearer"}, false, false},
 	// failure, SASL OAUTHBEARER + TLS bad sasl type
-	{map[string]string{"sasl": "foo", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, true, false},
+	{map[string]string{"username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "disable", "sasl": "foo"}, true, false},
 	// failure, SASL OAUTHBEARER + TLS missing oauthTokenEndpointUri
-	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "", "tls": "disable"}, true, false},
+	{map[string]string{"username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": ""}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "disable", "sasl": "oauthbearer"}, true, false},
 }
 
 var kafkaMetricIdentifiers = []kafkaMetricIdentifier{
@@ -238,7 +239,7 @@ func TestGetBrokers(t *testing.T) {
 
 func TestKafkaAuthParams(t *testing.T) {
 	for _, testData := range parseKafkaAuthParamsTestDataset {
-		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: validKafkaMetadata, AuthParams: testData.authParams}, logr.Discard())
+		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.kafkaMedata, AuthParams: testData.authParams}, logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -268,7 +269,7 @@ func TestKafkaAuthParams(t *testing.T) {
 
 func TestKafkaOAuthbreakerAuthParams(t *testing.T) {
 	for _, testData := range parseKafkaOAuthbreakerAuthParamsTestDataset {
-		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: validKafkaMetadata, AuthParams: testData.authParams}, logr.Discard())
+		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.kafkaMedata, AuthParams: testData.authParams}, logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)

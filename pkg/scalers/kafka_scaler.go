@@ -121,7 +121,7 @@ func NewKafkaScaler(config *ScalerConfig) (Scaler, error) {
 
 func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	meta.saslType = KafkaSASLTypeNone
-	if val, ok := config.AuthParams["sasl"]; ok {
+	if val, ok := config.TriggerMetadata["sasl"]; ok {
 		val = strings.TrimSpace(val)
 		mode := kafkaSaslType(val)
 
@@ -151,7 +151,7 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	}
 
 	meta.enableTLS = false
-	if val, ok := config.AuthParams["tls"]; ok {
+	if val, ok := config.TriggerMetadata["tls"]; ok {
 		val = strings.TrimSpace(val)
 
 		if val == "enable" {
