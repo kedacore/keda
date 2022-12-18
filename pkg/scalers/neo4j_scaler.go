@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"strconv"
-	// "strings"
 
 	"github.com/go-logr/logr"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
@@ -66,14 +65,11 @@ func (n *neo4jScaler) getQueryResult(ctx context.Context) (int64, error) {
 	defer session.Close(ctx)
 	result, err := session.ExecuteWrite(ctx, matchItemFn(n.metadata.query, ctx))
 	if err != nil {
-		fmt.Println("error in executing query: ", err)
 		n.logger.Error(err, fmt.Sprintf("Couldn't execute query string because of %v", err))
 		return 0, err
 	}
-	fmt.Println("Result of query: ", result)
 	res, err := strconv.ParseInt((fmt.Sprintf("%v", result)), 10, 64)
 	if err != nil {
-		fmt.Println("error in parsing int: ", err)
 		n.logger.Error(err, fmt.Sprintf("Couldn't parse to int because of %v", err))
 		return 0, err
 	}
@@ -82,30 +78,18 @@ func (n *neo4jScaler) getQueryResult(ctx context.Context) (int64, error) {
 
 func matchItemFn(query string, ctx context.Context) neo4j.ManagedTransactionWork {
 	return func(tx neo4j.ManagedTransaction) (any, error) {
-		// query := strings.Split(queries, ";")
-		// _, err := tx.Run(ctx, query[0], nil)
-		// if err != nil {
-		// 	return nil, err
-		// }
-		fmt.Println("Query passed: ", query)
 		records, err := tx.Run(ctx, query, nil)
-		fmt.Println("Result records: ", records)
 		if err != nil {
-			fmt.Println("error in running query: ", err)
 			return nil, err
 		}
-		if records.Peek(ctx){
-			fmt.Println("result record values: ", nil)
+		if records.Peek(ctx) {
 			record := records.Record()
-			fmt.Println("Result single record: ", records)
 			if err != nil {
-				fmt.Println("error in getting records: ", err)
 				return nil, err
 			}
-			fmt.Println("record value: ", record.Values[1])
 			return record.Values[1], nil
 		}
-		
+
 		return 0, nil
 	}
 }
@@ -197,17 +181,12 @@ func NewNeo4jScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 
 	meta, connStr, err := parseNeo4jMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parsing neo4j metadata, because of %v", err)
+		return nil, fmt.Errorf("failed to parse neo4j metadata, because of %v", err)
 	}
-	fmt.Println("Connection string: ", connStr)
-	fmt.Printf("Username: %s , Password: %s\n", meta.username, meta.password)
 	driver, err := neo4j.NewDriverWithContext(connStr, neo4j.BasicAuth(meta.username, meta.password, ""))
 	if err != nil {
 		return nil, fmt.Errorf("%v", err)
 	}
-
-	fmt.Println("Connected to neo4j scaler")
-
 	return &neo4jScaler{
 		metricType: metricType,
 		metadata:   meta,

@@ -9,8 +9,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	// "io"
-	// "strings"
 	"testing"
 	"time"
 
@@ -36,9 +34,9 @@ var (
 	secretName       = fmt.Sprintf("%s-secret", testName)
 	triggerAuthName  = fmt.Sprintf("%s-ta", testName)
 	scaledObjectName = fmt.Sprintf("%s-sobj", testName)
-	neo4jNamespace = "neo4j-ns"
-	neo4jUser      = "neo4j"
-	neo4jHelmRepo  = "https://helm.neo4j.com/neo4j"
+	neo4jNamespace   = "neo4j-ns"
+	neo4jUser        = "neo4j"
+	neo4jHelmRepo    = "https://helm.neo4j.com/neo4j"
 	minReplicaCount  = 1
 	maxReplicaCount  = 2
 )
@@ -175,25 +173,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset) {
 	assert.NoErrorf(t, err, "cannot get cypher-shell version - %s", err)
 }
 
-func getPodLogs(kc *kubernetes.Clientset, podName string) (string, error) {
-	podLogOpts := corev1.PodLogOptions{}
-	req := kc.CoreV1().Pods(testNamespace).GetLogs(podName, &podLogOpts)
-	podLogs, err := req.Stream(context.Background())
-	if err != nil {
-		return "", err
-	}
-	defer podLogs.Close()
-
-	buf := new(bytes.Buffer)
-	_, err = io.Copy(buf, podLogs)
-	if err != nil {
-		return "", err
-	}
-	str := buf.String()
-	return str, nil
-}
-
-func deployPodUp(kc *kubernetes.Clientset) {
+func deployPodUp(t *testing.T, kc *kubernetes.Clientset) {
 	query := `CREATE (ac1:Person { name: "Danish", from: "Colombo", popularfor: "singer" }),
 	(ac2:Person { name: "Saanvi", from: "Delhi", popularfor: "actress" }),
 	(ac3:Person { name: "Saurav", from: "Mumbai", popularfor: "Badminton" }),
@@ -222,19 +202,19 @@ func deployPodUp(kc *kubernetes.Clientset) {
 	(ac3)<-[:FOLLOWS]-(ac7),(ac3)<-[:FOLLOWS]-(ac4),(ac3)<-[:FOLLOWS]-(ac1),
 	(ac10)<-[:FOLLOWS]-(ac3),(ac10)<-[:FOLLOWS]-(ac2),(ac10)<-[:FOLLOWS]-(ac1)
 	return ac1,ac2,ac3,ac4,ac5,ac6,ac7,ac8,ac9,ac10,ac11`
-	
+
 	podSpec := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "neo4j-demo-up",
+			Name:      "neo4j-demo-up",
 			Namespace: testNamespace,
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy: "OnFailure",
 			Containers: []corev1.Container{
 				{
-					Name:    "neo4j-demo-up",
-					Image:   "tanishabanik/neo4j-demo:0.0.6",
-					Args:    []string{fmt.Sprintf("neo4j://test-release.%s.svc.cluster.local:7687", testNamespace), query},
+					Name:  "neo4j-demo-up",
+					Image: "tanishabanik/neo4j-demo:0.0.6",
+					Args:  []string{fmt.Sprintf("neo4j://test-release.%s.svc.cluster.local:7687", testNamespace), query},
 				},
 			},
 		},
@@ -242,35 +222,35 @@ func deployPodUp(kc *kubernetes.Clientset) {
 
 	_, err := kc.CoreV1().Pods(testNamespace).Create(context.Background(), podSpec, metav1.CreateOptions{})
 	if err != nil {
-		fmt.Println("error in creating neo4j scale up pod: ", err)
-	} 
+		assert.NoErrorf(t, err, "error in creating neo4j scale up pod: %s", err)
+	}
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale up ---")
 	if WaitForStatefulsetReplicaReadyCount(t, kc, "test-release", testNamespace, 1, 60, 2) {
-		deployPodUp(kc)
-		// time.Sleep(time.Second * 120)
+		deployPodUp(t, kc)
+		time.Sleep(time.Second * 60)
 		assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 1),
 			"replica count should be %d after 1 minute", maxReplicaCount)
 	}
 }
 
-func deployPodDown(kc *kubernetes.Clientset) {
+func deployPodDown(t *testing.T, kc *kubernetes.Clientset) {
 	query := `match(n:Person) detach delete n`
-	
+
 	podSpec := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "neo4j-demo-down",
+			Name:      "neo4j-demo-down",
 			Namespace: testNamespace,
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy: "OnFailure",
 			Containers: []corev1.Container{
 				{
-					Name:    "neo4j-demo-down",
-					Image:   "tanishabanik/neo4j-demo:0.0.6",
-					Args:    []string{fmt.Sprintf("neo4j://test-release.%s.svc.cluster.local:7687", testNamespace), query},
+					Name:  "neo4j-demo-down",
+					Image: "tanishabanik/neo4j-demo:0.0.6",
+					Args:  []string{fmt.Sprintf("neo4j://test-release.%s.svc.cluster.local:7687", testNamespace), query},
 				},
 			},
 		},
@@ -278,14 +258,14 @@ func deployPodDown(kc *kubernetes.Clientset) {
 
 	_, err := kc.CoreV1().Pods(testNamespace).Create(context.Background(), podSpec, metav1.CreateOptions{})
 	if err != nil {
-		fmt.Println("error in creating neo4j scale down pod: ", err)
-	} 
+		assert.NoErrorf(t, err, "error in creating neo4j scale down pod: %s", err)
+	}
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale down ---")
 	if WaitForStatefulsetReplicaReadyCount(t, kc, "test-release", testNamespace, 1, 60, 2) {
-		deployPodDown(kc)
+		deployPodDown(t, kc)
 		time.Sleep(time.Second * 60)
 		assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 4),
 			"replica count should be %d after 1 minute", minReplicaCount)
