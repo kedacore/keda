@@ -15,6 +15,7 @@ import (
 type cpuMemoryScaler struct {
 	metadata     *cpuMemoryMetadata
 	resourceName v1.ResourceName
+	logger       logr.Logger
 }
 
 type cpuMemoryMetadata struct {
@@ -36,6 +37,7 @@ func NewCPUMemoryScaler(resourceName v1.ResourceName, config *ScalerConfig) (Sca
 	return &cpuMemoryScaler{
 		metadata:     meta,
 		resourceName: resourceName,
+		logger:       logger,
 	}, nil
 }
 
