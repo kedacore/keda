@@ -332,12 +332,12 @@ func WaitForAllPodRunningInNamespace(t *testing.T, kc *kubernetes.Clientset, nam
 			runningCount++
 		}
 
+		t.Logf("Waiting for pods in namespace to be in 'Running' status. Namespace - %s, Current - %d, Target - %d",
+			namespace, runningCount, len(pods.Items))
+
 		if runningCount == len(pods.Items) {
 			return true
 		}
-
-		t.Logf("Waiting for pods in namespace to be in 'Running' status. Namespace - %s, Current - %d, Target - %d",
-			namespace, runningCount, len(pods.Items))
 
 		time.Sleep(time.Duration(intervalSeconds) * time.Second)
 	}

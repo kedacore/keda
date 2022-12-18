@@ -29,7 +29,7 @@ var (
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
 	triggerAuthName  = fmt.Sprintf("%s-ta", testName)
 
-	arangoDBUsername   = "root"
+	arangoDBUsername   = "cm9vdA=="
 	arangoDBName       = "test"
 	arangoDBCollection = "test"
 
@@ -45,7 +45,6 @@ type templateData struct {
 	Collection       string
 	TriggerAuthName  string
 	Username         string
-	Password         string
 	SecretName       string
 	MinReplicaCount  int
 	MaxReplicaCount  int
@@ -133,7 +132,7 @@ func TestArangoDBScaler(t *testing.T) {
 
 	CreateNamespace(t, kc, testNamespace)
 	arangodb.InstallArangoDB(t, kc, testNamespace)
-	arangodb.SetupArangoDB(t, kc, testNamespace, arangoDBName, arangoDBCollection)
+	arangodb.SetupArangoDB(t, kc, testNamespace, arangoDBName, arangoDBCollection, arangoDBUsername)
 
 	data, templates := getTemplateData()
 	KubectlApplyMultipleWithTemplate(t, data, templates)
@@ -143,13 +142,11 @@ func TestArangoDBScaler(t *testing.T) {
 
 	testActivation(t, kc, data)
 	testScaleOut(t, kc, data)
-	testScaleOut(t, kc, data)
+	testScaleIn(t, kc, data)
 
 	// cleanup
 	KubectlDeleteMultipleWithTemplate(t, data, templates)
 	arangodb.UninstallArangoDB(t, kc, testNamespace)
-	DeleteNamespace(t, kc, testNamespace)
-	WaitForNamespaceDeletion(t, kc, testNamespace)
 }
 
 func getTemplateData() (templateData, []Template) {

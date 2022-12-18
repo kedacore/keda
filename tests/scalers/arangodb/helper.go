@@ -32,9 +32,6 @@ spec:
 `
 
 func InstallArangoDB(t *testing.T, kc *kubernetes.Clientset, testNamespace string) {
-
-	helper.CreateNamespace(t, kc, testNamespace)
-
 	t.Log("installing arangodb crds")
 	_, err := helper.ExecuteCommand(fmt.Sprintf("helm install arangodb-crds https://github.com/arangodb/kube-arangodb/releases/download/1.2.20/kube-arangodb-crd-1.2.20.tgz --namespace=%s --wait", testNamespace))
 	assert.NoErrorf(t, err, "cannot install crds - %s", err)
@@ -45,16 +42,16 @@ func InstallArangoDB(t *testing.T, kc *kubernetes.Clientset, testNamespace strin
 
 	t.Log("creating arangodeployment resource")
 	helper.KubectlApplyWithTemplate(t, templateData{Namespace: testNamespace}, "arangoDeploymentTemplate", arangoDeploymentTemplate)
-	assert.True(t, helper.WaitForPodCountInNamespace(t, kc, testNamespace, 11, 5, 30), "pod count should be 11")
-	assert.True(t, helper.WaitForAllPodRunningInNamespace(t, kc, testNamespace, 5, 30), "all pods should be running")
+	assert.True(t, helper.WaitForPodCountInNamespace(t, kc, testNamespace, 11, 5, 20), "pod count should be 11")
+	assert.True(t, helper.WaitForAllPodRunningInNamespace(t, kc, testNamespace, 5, 20), "all pods should be running")
 }
 
-func SetupArangoDB(t *testing.T, kc *kubernetes.Clientset, testNamespace, arangoDBName, arangoDBCollection string) {
+func SetupArangoDB(t *testing.T, kc *kubernetes.Clientset, testNamespace, arangoDBName, arangoDBCollection, arangoDBUsername string) {
 
 	const createDatabaseTemplate = `apiVersion: batch/v1
 kind: Job
 metadata:
-  name: create-arangodb
+  name: create-db
   namespace: {{.Namespace}}
 spec:
   template:
@@ -77,8 +74,7 @@ spec:
 `
 
 	helper.KubectlApplyWithTemplate(t, templateData{Namespace: testNamespace, Database: arangoDBName}, "createDatabaseTemplate", createDatabaseTemplate)
-
-	assert.True(t, helper.WaitForJobSuccess(t, kc, "create-arangodb", testNamespace, 5, 30), "create database job failed")
+	assert.True(t, helper.WaitForJobSuccess(t, kc, "create-db", testNamespace, 5, 3), "create database job failed")
 
 	const createCollectionTemplate = `apiVersion: batch/v1
 kind: Job
@@ -106,8 +102,7 @@ spec:
 `
 
 	helper.KubectlApplyWithTemplate(t, templateData{Namespace: testNamespace, Database: arangoDBName, Collection: arangoDBCollection}, "createCollectionTemplate", createCollectionTemplate)
-
-	assert.True(t, helper.WaitForJobSuccess(t, kc, "create-arangodb-collection", testNamespace, 5, 30), "create collection job failed")
+	assert.True(t, helper.WaitForJobSuccess(t, kc, "create-arangodb-collection", testNamespace, 5, 3), "create collection job failed")
 }
 
 func UninstallArangoDB(t *testing.T, kc *kubernetes.Clientset, namespace string) {
@@ -119,4 +114,7 @@ func UninstallArangoDB(t *testing.T, kc *kubernetes.Clientset, namespace string)
 
 	_, err = helper.ExecuteCommand(fmt.Sprintf("helm uninstall arangodb-crds --namespace=%s --wait", namespace))
 	assert.NoErrorf(t, err, "cannot uninstall arangodb crds - %s", err)
+
+	helper.DeleteNamespace(t, kc, namespace)
+	helper.WaitForNamespaceDeletion(t, kc, namespace)
 }
