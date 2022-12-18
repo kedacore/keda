@@ -286,7 +286,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale down ---")
 	if WaitForStatefulsetReplicaReadyCount(t, kc, "test-release", testNamespace, 1, 60, 2) {
 		deployPodDown(kc)
-		// time.Sleep(time.Second * 120)
+		time.Sleep(time.Second * 60)
 		assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 4),
 			"replica count should be %d after 1 minute", minReplicaCount)
 	}
