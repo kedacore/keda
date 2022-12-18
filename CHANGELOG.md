@@ -42,7 +42,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Breaking Changes
 
-- TODO
+- Kafka: Move `sasl` and `tls` config to `TriggerAuthentication` metadata ([#4024](https://github.com/kedacore/keda/pull/4024))
 
 ### New
 
