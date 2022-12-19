@@ -8,11 +8,11 @@ import (
 	"testing"
 
 	"github.com/joho/godotenv"
-	"github.com/kedacore/keda/v2/tests/helper"
-	. "github.com/kedacore/keda/v2/tests/helper"
-	"github.com/kedacore/keda/v2/tests/scalers/arangodb"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
+
+	. "github.com/kedacore/keda/v2/tests/helper"
+	"github.com/kedacore/keda/v2/tests/scalers/arangodb"
 )
 
 // Load environment variables from .env file
@@ -148,8 +148,8 @@ func TestArangoDBScaler(t *testing.T) {
 	KubectlDeleteMultipleWithTemplate(t, data, templates)
 	arangodb.UninstallArangoDB(t, kc, testNamespace)
 
-	helper.DeleteNamespace(t, kc, testNamespace)
-	helper.WaitForNamespaceDeletion(t, kc, testNamespace)
+	DeleteNamespace(t, kc, testNamespace)
+	WaitForNamespaceDeletion(t, kc, testNamespace)
 }
 
 func getTemplateData() (templateData, []Template) {
@@ -199,8 +199,8 @@ spec:
   activeDeadlineSeconds: 100
   backoffLimit: 2
 `
-	helper.KubectlApplyWithTemplate(t, data, "generateLowLevelDataJobTemplate", generateLowLevelDataJobTemplate)
-	assert.True(t, helper.WaitForJobSuccess(t, kc, "generate-low-level-data-job", testNamespace, 5, 60), "test activation job failed")
+	KubectlApplyWithTemplate(t, data, "generateLowLevelDataJobTemplate", generateLowLevelDataJobTemplate)
+	assert.True(t, WaitForJobSuccess(t, kc, "generate-low-level-data-job", testNamespace, 5, 60), "test activation job failed")
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
@@ -232,8 +232,8 @@ spec:
   activeDeadlineSeconds: 100
   backoffLimit: 2
 `
-	helper.KubectlApplyWithTemplate(t, data, "generateDataJobTemplate", generateDataJobTemplate)
-	assert.True(t, helper.WaitForJobSuccess(t, kc, "generate-data-job", testNamespace, 5, 60), "test scale-out job failed")
+	KubectlApplyWithTemplate(t, data, "generateDataJobTemplate", generateDataJobTemplate)
+	assert.True(t, WaitForJobSuccess(t, kc, "generate-data-job", testNamespace, 5, 60), "test scale-out job failed")
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
@@ -266,8 +266,8 @@ spec:
   activeDeadlineSeconds: 100
   backoffLimit: 2
 `
-	helper.KubectlApplyWithTemplate(t, data, "deleteDataJobTemplate", deleteDataJobTemplate)
-	assert.True(t, helper.WaitForJobSuccess(t, kc, "delete-data-job", testNamespace, 5, 60), "test scale-in job failed")
+	KubectlApplyWithTemplate(t, data, "deleteDataJobTemplate", deleteDataJobTemplate)
+	assert.True(t, WaitForJobSuccess(t, kc, "delete-data-job", testNamespace, 5, 60), "test scale-in job failed")
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 5),
 		"replica count should be %d after 5 minutes", minReplicaCount)
