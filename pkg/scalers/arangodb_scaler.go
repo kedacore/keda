@@ -11,9 +11,10 @@ import (
 	"github.com/arangodb/go-driver/http"
 	"github.com/arangodb/go-driver/jwt"
 	"github.com/go-logr/logr"
-	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 )
 
 type arangoDBScaler struct {
