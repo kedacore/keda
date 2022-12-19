@@ -74,7 +74,7 @@ spec:
 `
 
 	helper.KubectlApplyWithTemplate(t, templateData{Namespace: testNamespace, Database: arangoDBName}, "createDatabaseTemplate", createDatabaseTemplate)
-	assert.True(t, helper.WaitForJobSuccess(t, kc, "create-db", testNamespace, 5, 3), "create database job failed")
+	assert.True(t, helper.WaitForJobSuccess(t, kc, "create-db", testNamespace, 5, 10), "create database job failed")
 
 	const createCollectionTemplate = `apiVersion: batch/v1
 kind: Job
@@ -102,19 +102,16 @@ spec:
 `
 
 	helper.KubectlApplyWithTemplate(t, templateData{Namespace: testNamespace, Database: arangoDBName, Collection: arangoDBCollection}, "createCollectionTemplate", createCollectionTemplate)
-	assert.True(t, helper.WaitForJobSuccess(t, kc, "create-arangodb-collection", testNamespace, 5, 3), "create collection job failed")
+	assert.True(t, helper.WaitForJobSuccess(t, kc, "create-arangodb-collection", testNamespace, 5, 10), "create collection job failed")
 }
 
 func UninstallArangoDB(t *testing.T, kc *kubernetes.Clientset, namespace string) {
 
-	helper.DeleteKubernetesResources(t, kc, namespace, templateData{Namespace: namespace}, []helper.Template{{Name: "arangoDeploymentTemplate", Config: arangoDeploymentTemplate}})
+	helper.KubectlDeleteMultipleWithTemplate(t, templateData{Namespace: namespace}, []helper.Template{{Name: "arangoDeploymentTemplate", Config: arangoDeploymentTemplate}})
 
 	_, err := helper.ExecuteCommand(fmt.Sprintf("helm uninstall arangodb --namespace=%s --wait", namespace))
 	assert.NoErrorf(t, err, "cannot uninstall arangodb operator - %s", err)
 
 	_, err = helper.ExecuteCommand(fmt.Sprintf("helm uninstall arangodb-crds --namespace=%s --wait", namespace))
 	assert.NoErrorf(t, err, "cannot uninstall arangodb crds - %s", err)
-
-	helper.DeleteNamespace(t, kc, namespace)
-	helper.WaitForNamespaceDeletion(t, kc, namespace)
 }
