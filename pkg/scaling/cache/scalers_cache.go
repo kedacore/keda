@@ -36,9 +36,10 @@ import (
 var log = logf.Log.WithName("scalers_cache")
 
 type ScalersCache struct {
-	ScaledObject *kedav1alpha1.ScaledObject
-	Scalers      []ScalerBuilder
-	Recorder     record.EventRecorder
+	ScaledObject             *kedav1alpha1.ScaledObject
+	Scalers                  []ScalerBuilder
+	ScalableObjectGeneration int64
+	Recorder                 record.EventRecorder
 }
 
 type ScalerBuilder struct {
