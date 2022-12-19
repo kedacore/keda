@@ -49,6 +49,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 Here is an overview of all **stable** additions:
 
 - **General**: TODO ([#TODO](https://github.com/kedacore/keda/issues/TODO))
+- **General:** Introduce new Neo4j Scaler ([#3999](https://github.com/kedacore/keda/issues/3999))
 
 Here is an overview of all new **experimental** features:
 
@@ -97,7 +98,6 @@ Here is an overview of all **stable** additions:
 - **General:** Introduce new CouchDB Scaler ([#3746](https://github.com/kedacore/keda/issues/3746))
 - **General:** Introduce new Etcd Scaler ([#3880](https://github.com/kedacore/keda/issues/3880))
 - **General:** Introduce new Loki Scaler ([#3699](https://github.com/kedacore/keda/issues/3699))
-- **General:** Introduce new Neo4j Scaler ([#3999](https://github.com/kedacore/keda/issues/3999))
 - **General**: Introduce rate-limitting parameters to KEDA manager to allow override of client defaults ([#3730](https://github.com/kedacore/keda/issues/3730))
 - **General**: Introduction deprecation & breaking change policy ([Governance #68](https://github.com/kedacore/governance/issues/68))
 - **General**: Provide off-the-shelf Grafana dashboard for application autoscaling ([Docs](https://keda.sh/docs/2.9/operate/prometheus/) | [#3911](https://github.com/kedacore/keda/issues/3911))
