@@ -163,6 +163,7 @@ func parseNeo4jMetadata(config *ScalerConfig) (*neo4jMetadata, string, error) {
 	} else {
 		// Build connection str
 		addr := net.JoinHostPort(meta.host, meta.port)
+		// nosemgrep: db-connection-string
 		connStr = "neo4j://" + addr
 	}
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
