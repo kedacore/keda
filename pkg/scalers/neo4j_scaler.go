@@ -196,7 +196,7 @@ func NewNeo4jScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-// GetMetricsAndActivity query from neo4j,and return to external metrics and activity
+// GetMetricsAndActivity query from neo4j, and return to external metrics and activity
 func (n *neo4jScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	result, err := n.getQueryResult(ctx)
 	if err != nil {
