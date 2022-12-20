@@ -48,7 +48,6 @@ func InstallArangoDB(t *testing.T, kc *kubernetes.Clientset, testNamespace strin
 }
 
 func SetupArangoDB(t *testing.T, kc *kubernetes.Clientset, testNamespace, arangoDBName, arangoDBCollection, arangoDBUsername string) {
-
 	const createDatabaseTemplate = `apiVersion: batch/v1
 kind: Job
 metadata:
@@ -107,7 +106,6 @@ spec:
 }
 
 func UninstallArangoDB(t *testing.T, kc *kubernetes.Clientset, namespace string) {
-
 	helper.KubectlDeleteMultipleWithTemplate(t, templateData{Namespace: namespace}, []helper.Template{{Name: "arangoDeploymentTemplate", Config: arangoDeploymentTemplate}})
 
 	_, err := helper.ExecuteCommand(fmt.Sprintf("helm uninstall arangodb --namespace=%s --wait", namespace))

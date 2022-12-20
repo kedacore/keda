@@ -214,7 +214,6 @@ func (s *arangoDBScaler) Close(ctx context.Context) error {
 }
 
 func (s *arangoDBScaler) getQueryResult(ctx context.Context) (int64, error) {
-
 	dbExists, err := s.client.DatabaseExists(ctx, s.metadata.dbName)
 	if err != nil {
 		return -1, fmt.Errorf("failed to check if %s database exists, %v", s.metadata.dbName, err)
@@ -250,7 +249,7 @@ func (s *arangoDBScaler) getQueryResult(ctx context.Context) (int64, error) {
 	return cursor.Count(), nil
 }
 
-// GetMetricsAndActivity query from arangoDB,and return to external metrics and activity
+// GetMetricsAndActivity query from arangoDB, and return to external metrics and activity
 func (s *arangoDBScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	num, err := s.getQueryResult(ctx)
 	if err != nil {
