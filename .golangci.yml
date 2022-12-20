@@ -117,6 +117,7 @@ issues:
     - path: neo4j_scaler.go
       linters:
         - dupl
+        - revive
 
 linters-settings:
   funlen:
