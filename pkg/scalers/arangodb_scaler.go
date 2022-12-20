@@ -63,6 +63,7 @@ type arangoDBMetadata struct {
 	scalerIndex int
 }
 
+// NewArangoDBScaler creates a new arangodbScaler
 func NewArangoDBScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
