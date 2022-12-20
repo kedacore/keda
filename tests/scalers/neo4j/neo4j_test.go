@@ -137,15 +137,14 @@ func TestNeo4jScaler(t *testing.T) {
 	CreateNamespace(t, kc, testNamespace)
 	installNeo4j(t)
 
-	data, templates := getTemplateData(kc)
+	data, templates := getTemplateData()
 	CreateKubernetesResourcesNeo4j(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 2),
 		"replica count should be %d after 3 minutes", minReplicaCount)
-	time.Sleep(120)
 
 	// test scaling
-	testActivation(t, kc)
+	testActivation(t)
 	testScaleUp(t, kc)
 	testScaleDown(t, kc)
 
@@ -164,7 +163,7 @@ func installNeo4j(t *testing.T) {
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
-func testActivation(t *testing.T, kc *kubernetes.Clientset) {
+func testActivation(t *testing.T) {
 	t.Log("--- testing activation ---")
 
 	_, err := ExecuteCommand(fmt.Sprintf("kubectl -n %s exec -it test-release-0 -- bash -c 'cypher-shell -v'", testNamespace))
@@ -270,7 +269,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	}
 }
 
-func getTemplateData(kc *kubernetes.Clientset) (templateData, []Template) {
+func getTemplateData() (templateData, []Template) {
 	passwordEncoded := base64.StdEncoding.EncodeToString([]byte("password"))
 	connectionString := fmt.Sprintf("neo4j://test-release.%s.svc.cluster.local:7687", testNamespace)
 	hostName := fmt.Sprintf("test-release.%s.svc.cluster.local", testNamespace)
