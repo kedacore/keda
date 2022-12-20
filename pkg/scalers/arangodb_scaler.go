@@ -88,12 +88,12 @@ func NewArangoDBScaler(config *ScalerConfig) (Scaler, error) {
 }
 
 func getNewArangoDBClient(meta *arangoDBMetadata) (driver.Client, error) {
-
 	var auth driver.Authentication
 
 	conn, err := http.NewConnection(http.ConnectionConfig{
 		Endpoints: strings.Split(meta.endpoints, ","),
 		TLSConfig: &tls.Config{
+			MinVersion:         tls.VersionTLS13,
 			InsecureSkipVerify: meta.unsafeSsl,
 		},
 	})
@@ -124,7 +124,6 @@ func getNewArangoDBClient(meta *arangoDBMetadata) (driver.Client, error) {
 }
 
 func parseArangoDBMetadata(config *ScalerConfig) (*arangoDBMetadata, error) {
-
 	var err error
 
 	// setting default metadata
@@ -151,7 +150,7 @@ func parseArangoDBMetadata(config *ScalerConfig) (*arangoDBMetadata, error) {
 	if val, ok := config.TriggerMetadata["queryValue"]; ok {
 		queryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("failed to convert %v to int, because of %v", queryValue, err.Error())
+			return nil, fmt.Errorf("failed to convert queryValue to int, %v", err)
 		}
 		meta.queryValue = queryValue
 	} else {
@@ -162,7 +161,7 @@ func parseArangoDBMetadata(config *ScalerConfig) (*arangoDBMetadata, error) {
 	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
 		activationQueryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("failed to convert %v to int, because of %v", activationQueryValue, err.Error())
+			return nil, fmt.Errorf("failed to convert activationQueryValue to int, %v", err)
 		}
 		meta.activationQueryValue = activationQueryValue
 	}
@@ -176,7 +175,7 @@ func parseArangoDBMetadata(config *ScalerConfig) (*arangoDBMetadata, error) {
 	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok && val != "" {
 		unsafeSslValue, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse %s: %s", unsafeSsl, err)
+			return nil, fmt.Errorf("failed to parse unsafeSsl, %v", err)
 		}
 		meta.unsafeSsl = unsafeSslValue
 	}
@@ -184,7 +183,7 @@ func parseArangoDBMetadata(config *ScalerConfig) (*arangoDBMetadata, error) {
 	if val, ok := config.TriggerMetadata["connectionLimit"]; ok {
 		connectionLimit, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("failed to convert %v to int, because of %v", connectionLimit, err.Error())
+			return nil, fmt.Errorf("failed to convert connectionLimit to int, %v", err)
 		}
 		meta.connectionLimit = connectionLimit
 	}
@@ -215,12 +214,12 @@ func (s *arangoDBScaler) Close(ctx context.Context) error {
 
 func (s *arangoDBScaler) getQueryResult(ctx context.Context) (int64, error) {
 
-	db_exists, err := s.client.DatabaseExists(ctx, s.metadata.dbName)
+	dbExists, err := s.client.DatabaseExists(ctx, s.metadata.dbName)
 	if err != nil {
 		return -1, fmt.Errorf("failed to check if %s database exists, %v", s.metadata.dbName, err)
 	}
 
-	if !db_exists {
+	if !dbExists {
 		return -1, fmt.Errorf("%s database not found", s.metadata.dbName)
 	}
 
@@ -229,12 +228,12 @@ func (s *arangoDBScaler) getQueryResult(ctx context.Context) (int64, error) {
 		return -1, fmt.Errorf("failed to connect to %s db, %v", s.metadata.dbName, err)
 	}
 
-	coll_exists, err := db.CollectionExists(ctx, s.metadata.collection)
+	collectionExists, err := db.CollectionExists(ctx, s.metadata.collection)
 	if err != nil {
 		return -1, fmt.Errorf("failed to check if %s collection exists, %v", s.metadata.collection, err)
 	}
 
-	if !coll_exists {
+	if !collectionExists {
 		return -1, fmt.Errorf("%s collection not found in %s database", s.metadata.collection, s.metadata.dbName)
 	}
 
