@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -121,9 +122,29 @@ func NewKafkaScaler(config *ScalerConfig) (Scaler, error) {
 
 func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	meta.saslType = KafkaSASLTypeNone
-	if val, ok := config.TriggerMetadata["sasl"]; ok {
-		val = strings.TrimSpace(val)
-		mode := kafkaSaslType(val)
+	saslMetadata := config.TriggerMetadata["sasl"]
+	saslAuthParam := config.AuthParams["sasl"]
+	tlsMetadata := config.TriggerMetadata["tls"]
+	tlsAuthParam := config.AuthParams["tls"]
+
+	if (!reflect.ValueOf(saslMetadata).IsZero() && !reflect.ValueOf(saslAuthParam).IsZero()) || (!reflect.ValueOf(tlsMetadata).IsZero() && !reflect.ValueOf(tlsAuthParam).IsZero()) {
+		return errors.New("cannot set `sasl` or `tls` values in both metadata and spec.secretTargetRef")
+	}
+
+	if (!reflect.ValueOf(saslMetadata).IsZero() && !reflect.ValueOf(tlsAuthParam).IsZero()) || (!reflect.ValueOf(saslAuthParam).IsZero() && !reflect.ValueOf(tlsMetadata).IsZero()) {
+		return errors.New("both`sasl` and `tls` must be in either metadata or spec.secretTargetRef")
+	}
+
+	var sasl string
+	if !reflect.ValueOf(saslMetadata).IsZero() {
+		sasl = saslMetadata
+	} else if !reflect.ValueOf(saslAuthParam).IsZero() {
+		sasl = saslAuthParam
+	}
+
+	if !reflect.ValueOf(sasl).IsZero() {
+		sasl = strings.TrimSpace(sasl)
+		mode := kafkaSaslType(sasl)
 
 		if mode == KafkaSASLTypePlaintext || mode == KafkaSASLTypeSCRAMSHA256 || mode == KafkaSASLTypeSCRAMSHA512 || mode == KafkaSASLTypeOAuthbearer {
 			if config.AuthParams["username"] == "" {
@@ -151,10 +172,16 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	}
 
 	meta.enableTLS = false
-	if val, ok := config.TriggerMetadata["tls"]; ok {
-		val = strings.TrimSpace(val)
+	var tls string
+	if !reflect.ValueOf(tlsMetadata).IsZero() {
+		tls = tlsMetadata
+	} else if !reflect.ValueOf(tlsAuthParam).IsZero() {
+		tls = tlsAuthParam
+	}
+	if !reflect.ValueOf(tls).IsZero() {
+		tls = strings.TrimSpace(tls)
 
-		if val == "enable" {
+		if tls == "enable" {
 			certGiven := config.AuthParams["cert"] != ""
 			keyGiven := config.AuthParams["key"] != ""
 			if certGiven && !keyGiven {
@@ -172,8 +199,8 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 				meta.keyPassword = ""
 			}
 			meta.enableTLS = true
-		} else if val != "disable" {
-			return fmt.Errorf("err incorrect value for TLS given: %s", val)
+		} else if tls != "disable" {
+			return fmt.Errorf("err incorrect value for TLS given: %s", tls)
 		}
 	}
 
