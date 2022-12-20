@@ -186,7 +186,7 @@ func NewNeo4jScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	}
 	driver, err := neo4j.NewDriverWithContext(connStr, neo4j.BasicAuth(meta.username, meta.password, ""))
 	if err != nil {
-		return nil, fmt.Errorf("%v", err)
+		return nil, err
 	}
 	return &neo4jScaler{
 		metricType: metricType,
