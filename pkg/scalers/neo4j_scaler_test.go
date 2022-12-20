@@ -77,8 +77,7 @@ var neo4jMetricIdentifiers = []neo4jMetricIdentifier{
 
 func TestParseNeo4jMetadata(t *testing.T) {
 	for _, testData := range testNEO4JMetadata {
-		_, _, err := parseNeo4jMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
-		if err != nil && !testData.raisesError {
+		if _, _, err := parseNeo4jMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}); err != nil && !testData.raisesError {
 			t.Error("Expected success but got error:", err)
 		}
 	}
