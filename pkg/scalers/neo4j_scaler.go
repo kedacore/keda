@@ -34,12 +34,12 @@ type neo4jMetadata struct {
 	scalerIndex          int
 }
 
-func (n *neo4jScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+func (s *neo4jScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(n.metadata.scalerIndex, n.metadata.metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
 		},
-		Target: GetMetricTarget(n.metricType, n.metadata.queryValue),
+		Target: GetMetricTarget(s.metricType, s.metadata.queryValue),
 	}
 	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
@@ -47,30 +47,30 @@ func (n *neo4jScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	return []v2.MetricSpec{metricSpec}
 }
 
-func (n *neo4jScaler) Close(ctx context.Context) error {
-	if n.driver != nil {
-		err := n.driver.Close(ctx)
+func (s *neo4jScaler) Close(ctx context.Context) error {
+	if s.driver != nil {
+		err := s.driver.Close(ctx)
 		if err != nil {
-			n.logger.Error(err, fmt.Sprintf("failed to close neo4j connection, because of %v", err))
+			s.logger.Error(err, fmt.Sprintf("failed to close neo4j connection, because of %v", err))
 			return err
 		}
 	}
 	return nil
 }
 
-func (n *neo4jScaler) getQueryResult(ctx context.Context) (int64, error) {
-	session := n.driver.NewSession(ctx, neo4j.SessionConfig{
+func (s *neo4jScaler) getQueryResult(ctx context.Context) (int64, error) {
+	session := s.driver.NewSession(ctx, neo4j.SessionConfig{
 		AccessMode: neo4j.AccessModeWrite,
 	})
 	defer session.Close(ctx)
-	result, err := session.ExecuteWrite(ctx, matchItemFn(n.metadata.query, ctx))
+	result, err := session.ExecuteWrite(ctx, matchItemFn(s.metadata.query, ctx))
 	if err != nil {
-		n.logger.Error(err, fmt.Sprintf("Couldn't execute query string because of %v", err))
+		s.logger.Error(err, fmt.Sprintf("Couldn't execute query string because of %v", err))
 		return 0, err
 	}
 	res, err := strconv.ParseInt((fmt.Sprintf("%v", result)), 10, 64)
 	if err != nil {
-		n.logger.Error(err, fmt.Sprintf("Couldn't parse to int because of %v", err))
+		s.logger.Error(err, fmt.Sprintf("Couldn't parse to int because of %v", err))
 		return 0, err
 	}
 	return res, nil
@@ -174,6 +174,7 @@ func parseNeo4jMetadata(config *ScalerConfig) (*neo4jMetadata, string, error) {
 	return &meta, connStr, nil
 }
 
+// NewNeo4jScaler creates a new neo4j scaler instance
 func NewNeo4jScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
@@ -196,14 +197,14 @@ func NewNeo4jScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-// GetMetricsAndActivity query from neo4j, and return to external metrics and activity
-func (n *neo4jScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	result, err := n.getQueryResult(ctx)
+// GetMetricsAndActivity query from neo4j,and return to external metrics and activity
+func (s *neo4jScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	result, err := s.getQueryResult(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("failed to inspect neo4j, because of %v", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(result))
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), result > n.metadata.activationQueryValue, nil
+	return append([]external_metrics.ExternalMetricValue{}, metric), result > s.metadata.activationQueryValue, nil
 }

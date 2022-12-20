@@ -4,11 +4,9 @@
 package neo4j_test
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
-	"io"
 	"testing"
 	"time"
 

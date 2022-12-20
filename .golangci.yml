@@ -107,6 +107,16 @@ issues:
     - path: mongo_scaler.go
       linters:
         - dupl
+  # Exclude for neo4j_scaler and couchdb_scaler, reason:
+  # pkg/scalers/couchdb_scaler.go:136: 136-169 lines are duplicate of `pkg/scalers/neo4j_scaler.go:126-159` (dupl)
+    - path: couchdb_scaler.go
+      linters:
+        - dupl
+  # Exclude for neo4j_scaler and couchdb_scaler, reason:
+  # pkg/scalers/neo4j_scaler.go:126: 126-159 lines are duplicate of `pkg/scalers/couchdb_scaler.go:136-169` (dupl)
+    - path: neo4j_scaler.go
+      linters:
+        - dupl
 
 linters-settings:
   funlen:
