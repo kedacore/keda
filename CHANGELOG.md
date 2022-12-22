@@ -40,6 +40,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
+- **Kafka Scaler:** Don't error when activationLagThreshold is default
+
 ### Breaking Changes
 
 - TODO
