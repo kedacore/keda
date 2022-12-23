@@ -48,7 +48,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 Here is an overview of all **stable** additions:
 
-- **General**: TODO ([#TODO](https://github.com/kedacore/keda/issues/TODO))
 - **General:** Introduce new Neo4j Scaler ([#3999](https://github.com/kedacore/keda/issues/3999))
 
 Here is an overview of all new **experimental** features:

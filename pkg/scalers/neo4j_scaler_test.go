@@ -71,8 +71,8 @@ var testNEO4JMetadata = []parseNeo4jMetadataTestData{
 }
 
 var neo4jMetricIdentifiers = []neo4jMetricIdentifier{
-	{metadataTestData: &testNEO4JMetadata[2], scalerIndex: 0, name: "s0-s0-neo4j"},
-	{metadataTestData: &testNEO4JMetadata[2], scalerIndex: 1, name: "s1-s1-neo4j"},
+	{metadataTestData: &testNEO4JMetadata[2], scalerIndex: 0, name: "s0-neo4j"},
+	{metadataTestData: &testNEO4JMetadata[2], scalerIndex: 1, name: "s1-neo4j"},
 }
 
 func TestParseNeo4jMetadata(t *testing.T) {

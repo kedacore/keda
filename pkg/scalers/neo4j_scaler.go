@@ -10,8 +10,6 @@ import (
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type neo4jScaler struct {
@@ -30,14 +28,13 @@ type neo4jMetadata struct {
 	query                string
 	queryValue           int64
 	activationQueryValue int64
-	metricName           string
 	scalerIndex          int
 }
 
 func (s *neo4jScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, "neo4j"),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.queryValue),
 	}
@@ -166,10 +163,6 @@ func parseNeo4jMetadata(config *ScalerConfig) (*neo4jMetadata, string, error) {
 		// nosemgrep: db-connection-string
 		connStr = "neo4j://" + addr
 	}
-	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("neo4j-%s", val))
-	}
-	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString("neo4j"))
 	meta.scalerIndex = config.ScalerIndex
 	return &meta, connStr, nil
 }
@@ -183,7 +176,7 @@ func NewNeo4jScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 
 	meta, connStr, err := parseNeo4jMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse neo4j metadata, because of %v", err)
+		return nil, fmt.Errorf("failed to parse neo4j metadata, because of %w", err)
 	}
 	driver, err := neo4j.NewDriverWithContext(connStr, neo4j.BasicAuth(meta.username, meta.password, ""))
 	if err != nil {
@@ -201,7 +194,7 @@ func NewNeo4jScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 func (s *neo4jScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	result, err := s.getQueryResult(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("failed to inspect neo4j, because of %v", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("failed to inspect neo4j, because of %w", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(result))
