@@ -71,12 +71,12 @@ type arangoDBMetadata struct {
 func NewArangoDBScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	meta, err := parseArangoDBMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing arangoDB metadata: %s", err)
+		return nil, fmt.Errorf("error parsing arangoDB metadata: %w", err)
 	}
 
 	client, err := getNewArangoDBClient(meta)
@@ -103,7 +103,7 @@ func getNewArangoDBClient(meta *arangoDBMetadata) (driver.Client, error) {
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create a new http connection, %v", err)
+		return nil, fmt.Errorf("failed to create a new http connection, %w", err)
 	}
 
 	if meta.arangoDBAuth.EnableBasicAuth {
@@ -111,7 +111,7 @@ func getNewArangoDBClient(meta *arangoDBMetadata) (driver.Client, error) {
 	} else if meta.arangoDBAuth.EnableBearerAuth {
 		hdr, err := jwt.CreateArangodJwtAuthorizationHeader(meta.arangoDBAuth.BearerToken, meta.serverID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create bearer token authorization header, %v", err)
+			return nil, fmt.Errorf("failed to create bearer token authorization header, %w", err)
 		}
 		auth = driver.RawAuthentication(hdr)
 	}
@@ -122,14 +122,13 @@ func getNewArangoDBClient(meta *arangoDBMetadata) (driver.Client, error) {
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize a new client, %v", err)
+		return nil, fmt.Errorf("failed to initialize a new client, %w", err)
 	}
 
 	return client, nil
 }
 
 func parseArangoDBMetadata(config *ScalerConfig) (*arangoDBMetadata, error) {
-
 	// setting default metadata
 	meta := arangoDBMetadata{}
 
@@ -155,7 +154,7 @@ func parseArangoDBMetadata(config *ScalerConfig) (*arangoDBMetadata, error) {
 	if val, ok := config.TriggerMetadata["queryValue"]; ok {
 		queryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("failed to convert queryValue to int, %v", err)
+			return nil, fmt.Errorf("failed to convert queryValue to int, %w", err)
 		}
 		meta.queryValue = queryValue
 	} else {
@@ -166,7 +165,7 @@ func parseArangoDBMetadata(config *ScalerConfig) (*arangoDBMetadata, error) {
 	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
 		activationQueryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("failed to convert activationQueryValue to int, %v", err)
+			return nil, fmt.Errorf("failed to convert activationQueryValue to int, %w", err)
 		}
 		meta.activationQueryValue = activationQueryValue
 	}
@@ -181,7 +180,7 @@ func parseArangoDBMetadata(config *ScalerConfig) (*arangoDBMetadata, error) {
 	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok && val != "" {
 		unsafeSslValue, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse unsafeSsl, %v", err)
+			return nil, fmt.Errorf("failed to parse unsafeSsl, %w", err)
 		}
 		meta.unsafeSsl = unsafeSslValue
 	}
@@ -189,7 +188,7 @@ func parseArangoDBMetadata(config *ScalerConfig) (*arangoDBMetadata, error) {
 	if val, ok := config.TriggerMetadata["connectionLimit"]; ok {
 		connectionLimit, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("failed to convert connectionLimit to int, %v", err)
+			return nil, fmt.Errorf("failed to convert connectionLimit to int, %w", err)
 		}
 		meta.connectionLimit = connectionLimit
 	}
@@ -213,7 +212,7 @@ func (s *arangoDBScaler) Close(ctx context.Context) error {
 func (s *arangoDBScaler) getQueryResult(ctx context.Context) (float64, error) {
 	dbExists, err := s.client.DatabaseExists(ctx, s.metadata.dbName)
 	if err != nil {
-		return -1, fmt.Errorf("failed to check if %s database exists, %v", s.metadata.dbName, err)
+		return -1, fmt.Errorf("failed to check if %s database exists, %w", s.metadata.dbName, err)
 	}
 
 	if !dbExists {
@@ -222,12 +221,12 @@ func (s *arangoDBScaler) getQueryResult(ctx context.Context) (float64, error) {
 
 	db, err := s.client.Database(ctx, s.metadata.dbName)
 	if err != nil {
-		return -1, fmt.Errorf("failed to connect to %s db, %v", s.metadata.dbName, err)
+		return -1, fmt.Errorf("failed to connect to %s db, %w", s.metadata.dbName, err)
 	}
 
 	collectionExists, err := db.CollectionExists(ctx, s.metadata.collection)
 	if err != nil {
-		return -1, fmt.Errorf("failed to check if %s collection exists, %v", s.metadata.collection, err)
+		return -1, fmt.Errorf("failed to check if %s collection exists, %w", s.metadata.collection, err)
 	}
 
 	if !collectionExists {
@@ -238,18 +237,18 @@ func (s *arangoDBScaler) getQueryResult(ctx context.Context) (float64, error) {
 
 	cursor, err := db.Query(ctx, s.metadata.query, nil)
 	if err != nil {
-		return -1, fmt.Errorf("failed to execute the query, %v", err)
+		return -1, fmt.Errorf("failed to execute the query, %w", err)
 	}
 
 	defer cursor.Close()
 
 	if cursor.Count() != 1 {
-		return -1, fmt.Errorf("more than one values received, please check the query, %v", err)
+		return -1, fmt.Errorf("more than one values received, please check the query, %w", err)
 	}
 
 	var result dbResult
 	if _, err = cursor.ReadDocument(ctx, &result); err != nil {
-		return -1, fmt.Errorf("query result is not in the specified format, pleast check the query, %v", err)
+		return -1, fmt.Errorf("query result is not in the specified format, pleast check the query, %w", err)
 	}
 
 	return result.Value, nil
@@ -259,7 +258,7 @@ func (s *arangoDBScaler) getQueryResult(ctx context.Context) (float64, error) {
 func (s *arangoDBScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	num, err := s.getQueryResult(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("failed to inspect arangoDB, %v", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("failed to inspect arangoDB, %w", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, num)

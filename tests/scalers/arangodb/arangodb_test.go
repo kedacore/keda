@@ -118,10 +118,85 @@ spec:
       dbName: {{.Database}}
       collection: {{.Collection}}
       unsafeSsl: "true"
-      query: FOR doc IN {{.Collection}} COLLECT WITH COUNT INTO length RETURN { "value": length }
+      query: FOR doc IN {{.Collection}} COLLECT WITH COUNT INTO length RETURN {"value":length}
       authModes: "basic"
     authenticationRef:
       name: {{.TriggerAuthName}}
+`
+
+	generateLowLevelDataJobTemplate = `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: generate-low-level-data-job
+  namespace: {{.TestNamespace}}
+spec:
+  template:
+    spec:
+      containers:
+      - image: nginx:stable
+        name: test
+        command: ["/bin/sh"]
+        args: ["-c", "curl --location --request POST 'https://example-arangodb-cluster-ea.{{.TestNamespace}}.svc.cluster.local:8529/_db/{{.Database}}/_api/document/{{.Collection}}' --header 'Authorization: Basic cm9vdDo=' --data-raw '[{\"Hi\": \"Nathan\"}, {\"Hi\": \"Laura\"}]' -k"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          seccompProfile:
+            type: RuntimeDefault
+      restartPolicy: Never
+  activeDeadlineSeconds: 100
+  backoffLimit: 2
+`
+
+	generateDataJobTemplate = `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: generate-data-job
+  namespace: {{.TestNamespace}}
+spec:
+  template:
+    spec:
+      containers:
+      - image: nginx:stable
+        name: test
+        command: ["/bin/sh"]
+        args: ["-c", "curl --location --request POST 'https://example-arangodb-cluster-ea.{{.TestNamespace}}.svc.cluster.local:8529/_db/{{.Database}}/_api/document/{{.Collection}}' --header 'Authorization: Basic cm9vdDo=' --data-raw '[{\"Hi\": \"Harry\"}, {\"Hi\": \"Neha\"}]' -k"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          seccompProfile:
+            type: RuntimeDefault
+      restartPolicy: Never
+  activeDeadlineSeconds: 100
+  backoffLimit: 2
+`
+
+	deleteDataJobTemplate = `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: delete-data-job
+  namespace: {{.TestNamespace}}
+spec:
+  template:
+    spec:
+      containers:
+      - image: nginx:stable
+        name: test
+        command: ["/bin/sh"]
+        args: ["-c", "curl --location --request POST 'https://example-arangodb-cluster-ea.{{.TestNamespace}}.svc.cluster.local:8529/_db/{{.Database}}/_api/cursor' --header 'Authorization: Basic cm9vdDo=' --data-raw '{\"query\": \"FOR doc in {{.Collection}} REMOVE doc in {{.Collection}}\"}' -k"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          seccompProfile:
+            type: RuntimeDefault
+      restartPolicy: Never
+  activeDeadlineSeconds: 100
+  backoffLimit: 2
 `
 )
 
@@ -174,30 +249,6 @@ func getTemplateData() (templateData, []Template) {
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
 
-	const generateLowLevelDataJobTemplate = `apiVersion: batch/v1
-kind: Job
-metadata:
-  name: generate-low-level-data-job
-  namespace: {{.TestNamespace}}
-spec:
-  template:
-    spec:
-      containers:
-      - image: nginx:stable
-        name: test
-        command: ["/bin/sh"]
-        args: ["-c", "curl --location --request POST 'https://example-arangodb-cluster-ea.{{.TestNamespace}}.svc.cluster.local:8529/_db/{{.Database}}/_api/document/{{.Collection}}' --header 'Authorization: Basic cm9vdDo=' --data-raw '[{\"Hi\": \"Nathan\"}, {\"Hi\": \"Laura\"}]' -k"]
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
-          seccompProfile:
-            type: RuntimeDefault
-      restartPolicy: Never
-  activeDeadlineSeconds: 100
-  backoffLimit: 2
-`
 	KubectlApplyWithTemplate(t, data, "generateLowLevelDataJobTemplate", generateLowLevelDataJobTemplate)
 	assert.True(t, WaitForJobSuccess(t, kc, "generate-low-level-data-job", testNamespace, 5, 60), "test activation job failed")
 
@@ -207,30 +258,6 @@ spec:
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
 
-	const generateDataJobTemplate = `apiVersion: batch/v1
-kind: Job
-metadata:
-  name: generate-data-job
-  namespace: {{.TestNamespace}}
-spec:
-  template:
-    spec:
-      containers:
-      - image: nginx:stable
-        name: test
-        command: ["/bin/sh"]
-        args: ["-c", "curl --location --request POST 'https://example-arangodb-cluster-ea.{{.TestNamespace}}.svc.cluster.local:8529/_db/{{.Database}}/_api/document/{{.Collection}}' --header 'Authorization: Basic cm9vdDo=' --data-raw '[{\"Hi\": \"Harry\"}, {\"Hi\": \"Neha\"}]' -k"]
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
-          seccompProfile:
-            type: RuntimeDefault
-      restartPolicy: Never
-  activeDeadlineSeconds: 100
-  backoffLimit: 2
-`
 	KubectlApplyWithTemplate(t, data, "generateDataJobTemplate", generateDataJobTemplate)
 	assert.True(t, WaitForJobSuccess(t, kc, "generate-data-job", testNamespace, 5, 60), "test scale-out job failed")
 
@@ -241,30 +268,6 @@ spec:
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale in ---")
 
-	const deleteDataJobTemplate = `apiVersion: batch/v1
-kind: Job
-metadata:
-  name: delete-data-job
-  namespace: {{.TestNamespace}}
-spec:
-  template:
-    spec:
-      containers:
-      - image: nginx:stable
-        name: test
-        command: ["/bin/sh"]
-        args: ["-c", "curl --location --request POST 'https://example-arangodb-cluster-ea.{{.TestNamespace}}.svc.cluster.local:8529/_db/{{.Database}}/_api/cursor' --header 'Authorization: Basic cm9vdDo=' --data-raw '{\"query\": \"FOR doc in {{.Collection}} REMOVE doc in {{.Collection}}\"}' -k"]
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
-          seccompProfile:
-            type: RuntimeDefault
-      restartPolicy: Never
-  activeDeadlineSeconds: 100
-  backoffLimit: 2
-`
 	KubectlApplyWithTemplate(t, data, "deleteDataJobTemplate", deleteDataJobTemplate)
 	assert.True(t, WaitForJobSuccess(t, kc, "delete-data-job", testNamespace, 5, 60), "test scale-in job failed")
 
