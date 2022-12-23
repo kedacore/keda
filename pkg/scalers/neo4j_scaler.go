@@ -20,14 +20,15 @@ type neo4jScaler struct {
 }
 
 type neo4jMetadata struct {
-	connectionString     string
+	// connectionString     string
 	host                 string
 	port                 string
 	username             string
 	password             string
+	protocol             string
 	query                string
-	queryValue           int64
-	activationQueryValue int64
+	queryValue           float64
+	activationQueryValue float64
 	scalerIndex          int
 }
 
@@ -36,7 +37,7 @@ func (s *neo4jScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, "neo4j"),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.queryValue),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.queryValue),
 	}
 	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
@@ -55,7 +56,7 @@ func (s *neo4jScaler) Close(ctx context.Context) error {
 	return nil
 }
 
-func (s *neo4jScaler) getQueryResult(ctx context.Context) (int64, error) {
+func (s *neo4jScaler) getQueryResult(ctx context.Context) (float64, error) {
 	session := s.driver.NewSession(ctx, neo4j.SessionConfig{
 		AccessMode: neo4j.AccessModeWrite,
 	})
@@ -65,7 +66,7 @@ func (s *neo4jScaler) getQueryResult(ctx context.Context) (int64, error) {
 		s.logger.Error(err, fmt.Sprintf("Couldn't execute query string because of %v", err))
 		return 0, err
 	}
-	res, err := strconv.ParseInt((fmt.Sprintf("%v", result)), 10, 64)
+	res, err := strconv.ParseFloat((fmt.Sprintf("%v", result)), 64)
 	if err != nil {
 		s.logger.Error(err, fmt.Sprintf("Couldn't parse to int because of %v", err))
 		return 0, err
@@ -102,7 +103,7 @@ func parseNeo4jMetadata(config *ScalerConfig) (*neo4jMetadata, string, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["queryValue"]; ok {
-		queryValue, err := strconv.ParseInt(val, 10, 64)
+		queryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, "", fmt.Errorf("failed to convert %v to int, because of %v", val, err.Error())
 		}
@@ -113,62 +114,62 @@ func parseNeo4jMetadata(config *ScalerConfig) (*neo4jMetadata, string, error) {
 
 	meta.activationQueryValue = 0
 	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
-		activationQueryValue, err := strconv.ParseInt(val, 10, 64)
+		activationQueryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, "", fmt.Errorf("failed to convert %v to int, because of %v", val, err.Error())
 		}
 		meta.activationQueryValue = activationQueryValue
 	}
 
-	switch {
-	case config.AuthParams["connectionString"] != "":
-		meta.connectionString = config.AuthParams["connectionString"]
-	case config.TriggerMetadata["connectionStringFromEnv"] != "":
-		meta.connectionString = config.ResolvedEnv[config.TriggerMetadata["connectionStringFromEnv"]]
-	default:
-		meta.connectionString = ""
-		host, err := GetFromAuthOrMeta(config, "host")
-		if err != nil {
-			return nil, "", err
-		}
-		meta.host = host
+	// switch {
+	// case config.AuthParams["connectionString"] != "":
+	// 	meta.connectionString = config.AuthParams["connectionString"]
+	// case config.TriggerMetadata["connectionStringFromEnv"] != "":
+	// 	meta.connectionString = config.ResolvedEnv[config.TriggerMetadata["connectionStringFromEnv"]]
+	// default:
+	// 	meta.connectionString = ""
+	// 	host, err := GetFromAuthOrMeta(config, "host")
+	// 	if err != nil {
+	// 		return nil, "", err
+	// 	}
+	// 	meta.host = host
 
-		port, err := GetFromAuthOrMeta(config, "port")
-		if err != nil {
-			return nil, "", err
-		}
-		meta.port = port
+	// 	port, err := GetFromAuthOrMeta(config, "port")
+	// 	if err != nil {
+	// 		return nil, "", err
+	// 	}
+	// 	meta.port = port
 
-		username, err := GetFromAuthOrMeta(config, "username")
-		if err != nil {
-			return nil, "", err
-		}
-		meta.username = username
+	// 	username, err := GetFromAuthOrMeta(config, "username")
+	// 	if err != nil {
+	// 		return nil, "", err
+	// 	}
+	// 	meta.username = username
 
-		if config.AuthParams["password"] != "" {
-			meta.password = config.AuthParams["password"]
-		} else if config.TriggerMetadata["passwordFromEnv"] != "" {
-			meta.password = config.ResolvedEnv[config.TriggerMetadata["passwordFromEnv"]]
-		}
-		if len(meta.password) == 0 {
-			return nil, "", fmt.Errorf("no password given")
-		}
-	}
+	// 	if config.AuthParams["password"] != "" {
+	// 		meta.password = config.AuthParams["password"]
+	// 	} else if config.TriggerMetadata["passwordFromEnv"] != "" {
+	// 		meta.password = config.ResolvedEnv[config.TriggerMetadata["passwordFromEnv"]]
+	// 	}
+	// 	if len(meta.password) == 0 {
+	// 		return nil, "", fmt.Errorf("no password given")
+	// 	}
+	// }
 
-	if meta.connectionString != "" {
-		connStr = meta.connectionString
-	} else {
-		// Build connection str
-		addr := net.JoinHostPort(meta.host, meta.port)
-		// nosemgrep: db-connection-string
-		connStr = "neo4j://" + addr
-	}
+	// if meta.connectionString != "" {
+	// 	connStr = meta.connectionString
+	// } else {
+	// Build connection str
+	addr := net.JoinHostPort(meta.host, meta.port)
+	// nosemgrep: db-connection-string
+	connStr = meta.protocol + "://" + addr
+	// }
 	meta.scalerIndex = config.ScalerIndex
 	return &meta, connStr, nil
 }
 
 // NewNeo4jScaler creates a new neo4j scaler instance
-func NewNeo4jScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+func NewNeo4jScaler(_ context.Context, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
@@ -178,6 +179,9 @@ func NewNeo4jScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse neo4j metadata, because of %w", err)
 	}
+	fmt.Println("Metadata: ", meta)
+	fmt.Println("Neo4j protocol: ", meta.protocol)
+	fmt.Println("Neo4j connection string: ", connStr)
 	driver, err := neo4j.NewDriverWithContext(connStr, neo4j.BasicAuth(meta.username, meta.password, ""))
 	if err != nil {
 		return nil, err
@@ -197,7 +201,7 @@ func (s *neo4jScaler) GetMetricsAndActivity(ctx context.Context, metricName stri
 		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("failed to inspect neo4j, because of %w", err)
 	}
 
-	metric := GenerateMetricInMili(metricName, float64(result))
+	metric := GenerateMetricInMili(metricName, result)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), result > s.metadata.activationQueryValue, nil
 }

@@ -27,7 +27,9 @@ const (
 )
 
 var (
+	scalerName       = "test-release"
 	testNamespace    = fmt.Sprintf("%s-ns", testName)
+	protocol         = "neo4j"
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
 	secretName       = fmt.Sprintf("%s-secret", testName)
 	triggerAuthName  = fmt.Sprintf("%s-ta", testName)
@@ -35,12 +37,13 @@ var (
 	neo4jNamespace   = "neo4j-ns"
 	neo4jUser        = "neo4j"
 	neo4jHelmRepo    = "https://helm.neo4j.com/neo4j"
-	minReplicaCount  = 1
+	minReplicaCount  = 0
 	maxReplicaCount  = 2
 )
 
 type templateData struct {
 	TestNamespace                string
+	Protocol                     string
 	DeploymentName               string
 	HostName                     string
 	Port                         string
@@ -50,7 +53,9 @@ type templateData struct {
 	SecretName                   string
 	TriggerAuthName              string
 	ScaledObjectName             string
-	Connection, Base64Connection string
+	// Connection, Base64Connection string
+	MinReplicaCount				 int
+	MaxReplicaCount              int
 }
 
 const (
@@ -63,7 +68,7 @@ metadata:
   labels:
     app: {{.DeploymentName}}
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: {{.DeploymentName}}
@@ -110,17 +115,17 @@ metadata:
 spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
-  minReplicaCount: 1
-  maxReplicaCount: 2
+  minReplicaCount: {{.MinReplicaCount}}
+  maxReplicaCount: {{.MaxReplicaCount}}
   triggers:
   - type: neo4j
     metadata:
       host: {{.HostName}}
+      protocol: {{.Protocol}}
       port: "7687"
       queryValue: "9"
       query: 'MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1'
       activationQueryValue: "9"
-      metricName: "global-metric"
     authenticationRef:
       name: {{.TriggerAuthName}}
 `
@@ -144,9 +149,9 @@ func TestNeo4jScaler(t *testing.T) {
 		"replica count should be %d after 3 minutes", minReplicaCount)
 
 	// test scaling
-	testActivation(t)
-	testScaleUp(t, kc)
-	testScaleDown(t, kc)
+	testActivation(t, kc)
+	testScaleOut(t, kc)
+	testScaleIn(t, kc)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -157,20 +162,12 @@ func installNeo4j(t *testing.T) {
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("helm repo update")
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	_, err = ExecuteCommand(fmt.Sprintf("helm install test-release neo4j/neo4j --namespace %s -f https://raw.githubusercontent.com/26tanishabanik/manifests/main/values.yaml", testNamespace))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	_, err = ExecuteCommand(fmt.Sprintf("kubectl --namespace %s rollout status --watch --timeout=600s statefulset/test-release", testNamespace))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	_, err = ExecuteCommand(fmt.Sprintf("helm install --wait %s neo4j/neo4j --namespace %s -f https://raw.githubusercontent.com/26tanishabanik/manifests/main/values.yaml", scalerName, testNamespace))
+	// _, err = ExecuteCommand(fmt.Sprintf("kubectl --namespace %s rollout status --watch --timeout=600s statefulset/%s", testNamespace, scalerName))
+	// assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
-func testActivation(t *testing.T) {
-	t.Log("--- testing activation ---")
-
-	_, err := ExecuteCommand(fmt.Sprintf("kubectl -n %s exec -it test-release-0 -- bash -c 'cypher-shell -v'", testNamespace))
-	assert.NoErrorf(t, err, "cannot get cypher-shell version - %s", err)
-}
-
-func deployPodUp(t *testing.T, kc *kubernetes.Clientset) {
+func deployPodActivation(t *testing.T, kc *kubernetes.Clientset) {
 	query := `CREATE (ac1:Person { name: "Danish", from: "Colombo", popularfor: "singer" }),
 	(ac2:Person { name: "Saanvi", from: "Delhi", popularfor: "actress" }),
 	(ac3:Person { name: "Saurav", from: "Mumbai", popularfor: "Badminton" }),
@@ -196,9 +193,46 @@ func deployPodUp(t *testing.T, kc *kubernetes.Clientset) {
 	(ac8)<-[:FOLLOWS]-(ac11),(ac8)<-[:FOLLOWS]-(ac9),(ac9)<-[:FOLLOWS]-(ac5),
 	(ac10)<-[:FOLLOWS]-(ac7),(ac4)<-[:FOLLOWS]-(ac7),(ac3)<-[:FOLLOWS]-(ac7),
 	(ac3)<-[:FOLLOWS]-(ac10),(ac1)<-[:FOLLOWS]-(ac7),(ac2)<-[:FOLLOWS]-(ac7),
-	(ac3)<-[:FOLLOWS]-(ac7),(ac3)<-[:FOLLOWS]-(ac4),(ac3)<-[:FOLLOWS]-(ac1),
+	(ac3)<-[:FOLLOWS]-(ac7),(ac3)<-[:FOLLOWS]-(ac1),
 	(ac10)<-[:FOLLOWS]-(ac3),(ac10)<-[:FOLLOWS]-(ac2),(ac10)<-[:FOLLOWS]-(ac1)
 	return ac1,ac2,ac3,ac4,ac5,ac6,ac7,ac8,ac9,ac10,ac11`
+
+	podSpec := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "neo4j-demo-activation",
+			Namespace: testNamespace,
+		},
+		Spec: corev1.PodSpec{
+			RestartPolicy: "OnFailure",
+			Containers: []corev1.Container{
+				{
+					Name:  "neo4j-demo-activation",
+					Image: "tanishabanik/neo4j-demo:0.0.6",
+					Args:  []string{fmt.Sprintf("neo4j://%s.%s.svc.cluster.local:7687", scalerName, testNamespace), query},
+				},
+			},
+		},
+	}
+
+	_, err := kc.CoreV1().Pods(testNamespace).Create(context.Background(), podSpec, metav1.CreateOptions{})
+	if err != nil {
+		assert.NoErrorf(t, err, "error in creating neo4j scale up pod: %s", err)
+	}
+}
+
+func testActivation(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing activation ---")
+
+	// _, err := ExecuteCommand(fmt.Sprintf("kubectl -n %s exec -it %s-0 -- bash -c 'cypher-shell -v'", testNamespace, scalerName))
+	// assert.NoErrorf(t, err, "cannot get cypher-shell version - %s", err)
+	deployPodActivation(t, kc)
+	time.Sleep(time.Second * 60)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
+		"replica count should be %d after 1 minute", minReplicaCount)
+}
+
+func deployPodUp(t *testing.T, kc *kubernetes.Clientset) {
+	query := `match(e:Person{name:'Robert'}),(d:Person{name:'Saurav'}) create (e)-[m:FOLLOWS]->(d) return e,m,d`
 
 	podSpec := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -211,7 +245,7 @@ func deployPodUp(t *testing.T, kc *kubernetes.Clientset) {
 				{
 					Name:  "neo4j-demo-up",
 					Image: "tanishabanik/neo4j-demo:0.0.6",
-					Args:  []string{fmt.Sprintf("neo4j://test-release.%s.svc.cluster.local:7687", testNamespace), query},
+					Args:  []string{fmt.Sprintf("neo4j://%s.%s.svc.cluster.local:7687", scalerName, testNamespace), query},
 				},
 			},
 		},
@@ -223,14 +257,14 @@ func deployPodUp(t *testing.T, kc *kubernetes.Clientset) {
 	}
 }
 
-func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale up ---")
-	if WaitForStatefulsetReplicaReadyCount(t, kc, "test-release", testNamespace, 1, 60, 2) {
-		deployPodUp(t, kc)
-		time.Sleep(time.Second * 60)
-		assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 1),
-			"replica count should be %d after 1 minute", maxReplicaCount)
-	}
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale out ---")
+	// if WaitForStatefulsetReplicaReadyCount(t, kc, scalerName, testNamespace, 1, 60, 2) {
+	deployPodUp(t, kc)
+	time.Sleep(time.Second * 60)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 1),
+		"replica count should be %d after 1 minute", maxReplicaCount)
+	// }
 }
 
 func deployPodDown(t *testing.T, kc *kubernetes.Clientset) {
@@ -247,7 +281,7 @@ func deployPodDown(t *testing.T, kc *kubernetes.Clientset) {
 				{
 					Name:  "neo4j-demo-down",
 					Image: "tanishabanik/neo4j-demo:0.0.6",
-					Args:  []string{fmt.Sprintf("neo4j://test-release.%s.svc.cluster.local:7687", testNamespace), query},
+					Args:  []string{fmt.Sprintf("neo4j://%s.%s.svc.cluster.local:7687", scalerName, testNamespace), query},
 				},
 			},
 		},
@@ -259,23 +293,24 @@ func deployPodDown(t *testing.T, kc *kubernetes.Clientset) {
 	}
 }
 
-func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale down ---")
-	if WaitForStatefulsetReplicaReadyCount(t, kc, "test-release", testNamespace, 1, 60, 2) {
-		deployPodDown(t, kc)
-		time.Sleep(time.Second * 60)
-		assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 4),
-			"replica count should be %d after 1 minute", minReplicaCount)
-	}
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale in ---")
+	// if WaitForStatefulsetReplicaReadyCount(t, kc, scalerName, testNamespace, 1, 60, 2) {
+	deployPodDown(t, kc)
+	time.Sleep(time.Second * 60)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 4),
+		"replica count should be %d after 1 minute", minReplicaCount)
+	// }
 }
 
 func getTemplateData() (templateData, []Template) {
 	passwordEncoded := base64.StdEncoding.EncodeToString([]byte("password"))
-	connectionString := fmt.Sprintf("neo4j://test-release.%s.svc.cluster.local:7687", testNamespace)
-	hostName := fmt.Sprintf("test-release.%s.svc.cluster.local", testNamespace)
-	base64ConnectionString := base64.StdEncoding.EncodeToString([]byte(connectionString))
+	// connectionString := fmt.Sprintf("neo4j://%s.%s.svc.cluster.local:7687", scalerName, testNamespace)
+	hostName := fmt.Sprintf("%s.%s.svc.cluster.local", scalerName, testNamespace)
+	// base64ConnectionString := base64.StdEncoding.EncodeToString([]byte(connectionString))
 	return templateData{
 			TestNamespace:    testNamespace,
+			Protocol:         protocol,
 			DeploymentName:   deploymentName,
 			HostName:         hostName,
 			Port:             "7687",
@@ -285,8 +320,10 @@ func getTemplateData() (templateData, []Template) {
 			SecretName:       secretName,
 			ScaledObjectName: scaledObjectName,
 			Neo4jNamespace:   neo4jNamespace,
-			Connection:       connectionString,
-			Base64Connection: base64ConnectionString,
+			// Connection:       connectionString,
+			// Base64Connection: base64ConnectionString,
+			MinReplicaCount:  minReplicaCount,
+			MaxReplicaCount:  maxReplicaCount,
 		}, []Template{
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "secretTemplate", Config: secretTemplate},
