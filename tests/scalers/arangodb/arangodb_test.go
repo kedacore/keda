@@ -76,8 +76,7 @@ spec:
         - containerPort: 80
 `
 
-	secretTemplate = `
-apiVersion: v1
+	secretTemplate = `apiVersion: v1
 kind: Secret
 metadata:
   name: {{.SecretName}}
@@ -119,7 +118,7 @@ spec:
       dbName: {{.Database}}
       collection: {{.Collection}}
       unsafeSsl: "true"
-      query: FOR doc IN {{.Collection}} RETURN doc
+      query: FOR doc IN {{.Collection}} COLLECT WITH COUNT INTO length RETURN { "value": length }
       authModes: "basic"
     authenticationRef:
       name: {{.TriggerAuthName}}

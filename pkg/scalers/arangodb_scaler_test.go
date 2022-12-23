@@ -1,8 +1,11 @@
 package scalers
 
 import (
+	"context"
 	"strings"
 	"testing"
+
+	"github.com/go-logr/logr"
 )
 
 type parseArangoDBMetadataTestData struct {
@@ -63,6 +66,17 @@ var testArangoDBAuthMetadata = []arangoDBAuthMetadataTestData{
 	{map[string]string{"endpoints": "https://http://34.162.13.192:8529,https://34.162.13.193:8529", "collection": "demo", "query": "FOR d IN myCollection RETURN d", "queryValue": "1", "dbName": "testdb", "authModes": "basic"}, map[string]string{"username": "user"}, false},
 }
 
+type arangoDBMetricIdentifier struct {
+	metadataTestData *parseArangoDBMetadataTestData
+	scalerIndex      int
+	name             string
+}
+
+var arangoDBMetricIdentifiers = []arangoDBMetricIdentifier{
+	{metadataTestData: &testArangoDBMetadata[2], scalerIndex: 0, name: "s0-arangodb"},
+	{metadataTestData: &testArangoDBMetadata[2], scalerIndex: 1, name: "s1-arangodb"},
+}
+
 func TestParseArangoDBMetadata(t *testing.T) {
 	for _, testData := range testArangoDBMetadata {
 		_, err := parseArangoDBMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
@@ -90,6 +104,26 @@ func TestArangoDBScalerAuthParams(t *testing.T) {
 			if meta.arangoDBAuth.EnableBasicAuth && !strings.Contains(testData.metadata["authModes"], "basic") {
 				t.Error("wrong auth mode detected")
 			}
+		}
+	}
+}
+
+func TestArangoDBGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range arangoDBMetricIdentifiers {
+		meta, err := parseArangoDBMetadata(&ScalerConfig{
+			AuthParams:      testData.metadataTestData.authParams,
+			TriggerMetadata: testData.metadataTestData.metadata,
+			ScalerIndex:     testData.scalerIndex,
+		})
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockArangoDBScaler := arangoDBScaler{"", meta, nil, logr.Discard()}
+
+		metricSpec := mockArangoDBScaler.GetMetricSpecForScaling(context.Background())
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName)
 		}
 	}
 }

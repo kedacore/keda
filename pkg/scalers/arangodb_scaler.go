@@ -24,6 +24,10 @@ type arangoDBScaler struct {
 	logger     logr.Logger
 }
 
+type dbResult struct {
+	Value float64 `json:"value"`
+}
+
 // arangoDBMetadata specify arangoDB scaler params.
 type arangoDBMetadata struct {
 	// Specify arangoDB server endpoint URL or comma separated URL endpoints of all the coordinators.
@@ -47,10 +51,10 @@ type arangoDBMetadata struct {
 	query string
 	// A threshold that is used as targetAverageValue in HPA.
 	// +required
-	queryValue int64
+	queryValue float64
 	// A threshold that is used to check if scaler is active.
 	// +optional
-	activationQueryValue int64
+	activationQueryValue float64
 	// Specify whether to verify the server's certificate chain and host name.
 	// +optional
 	unsafeSsl bool
@@ -125,16 +129,16 @@ func getNewArangoDBClient(meta *arangoDBMetadata) (driver.Client, error) {
 }
 
 func parseArangoDBMetadata(config *ScalerConfig) (*arangoDBMetadata, error) {
-	var err error
 
 	// setting default metadata
 	meta := arangoDBMetadata{}
 
 	// parse metaData from ScaledJob config
-	meta.endpoints, err = GetFromAuthOrMeta(config, "endpoints")
+	endpoints, err := GetFromAuthOrMeta(config, "endpoints")
 	if err != nil {
 		return nil, err
 	}
+	meta.endpoints = endpoints
 
 	if val, ok := config.TriggerMetadata["collection"]; ok {
 		meta.collection = val
@@ -149,7 +153,7 @@ func parseArangoDBMetadata(config *ScalerConfig) (*arangoDBMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["queryValue"]; ok {
-		queryValue, err := strconv.ParseInt(val, 10, 64)
+		queryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert queryValue to int, %v", err)
 		}
@@ -160,17 +164,18 @@ func parseArangoDBMetadata(config *ScalerConfig) (*arangoDBMetadata, error) {
 
 	meta.activationQueryValue = 0
 	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
-		activationQueryValue, err := strconv.ParseInt(val, 10, 64)
+		activationQueryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert activationQueryValue to int, %v", err)
 		}
 		meta.activationQueryValue = activationQueryValue
 	}
 
-	meta.dbName, err = GetFromAuthOrMeta(config, "dbName")
+	dbName, err := GetFromAuthOrMeta(config, "dbName")
 	if err != nil {
 		return nil, err
 	}
+	meta.dbName = dbName
 
 	meta.unsafeSsl = false
 	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok && val != "" {
@@ -190,22 +195,14 @@ func parseArangoDBMetadata(config *ScalerConfig) (*arangoDBMetadata, error) {
 	}
 
 	// parse auth configs from ScalerConfig
-	meta.arangoDBAuth, err = authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
+	arangoDBAuth, err := authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
 	if err != nil {
 		return nil, err
 	}
+	meta.arangoDBAuth = arangoDBAuth
 
 	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil
-}
-
-func (s *arangoDBScaler) IsActive(ctx context.Context) (bool, error) {
-	result, err := s.getQueryResult(ctx)
-	if err != nil {
-		s.logger.Error(err, fmt.Sprintf("failed to get query result by arangoDB, %v", err))
-		return false, err
-	}
-	return result > s.metadata.activationQueryValue, nil
 }
 
 // Close disposes of arangoDB connections
@@ -213,7 +210,7 @@ func (s *arangoDBScaler) Close(ctx context.Context) error {
 	return nil
 }
 
-func (s *arangoDBScaler) getQueryResult(ctx context.Context) (int64, error) {
+func (s *arangoDBScaler) getQueryResult(ctx context.Context) (float64, error) {
 	dbExists, err := s.client.DatabaseExists(ctx, s.metadata.dbName)
 	if err != nil {
 		return -1, fmt.Errorf("failed to check if %s database exists, %v", s.metadata.dbName, err)
@@ -246,7 +243,16 @@ func (s *arangoDBScaler) getQueryResult(ctx context.Context) (int64, error) {
 
 	defer cursor.Close()
 
-	return cursor.Count(), nil
+	if cursor.Count() != 1 {
+		return -1, fmt.Errorf("more than one values received, please check the query, %v", err)
+	}
+
+	var result dbResult
+	if _, err = cursor.ReadDocument(ctx, &result); err != nil {
+		return -1, fmt.Errorf("query result is not in the specified format, pleast check the query, %v", err)
+	}
+
+	return result.Value, nil
 }
 
 // GetMetricsAndActivity query from arangoDB, and return to external metrics and activity
@@ -256,7 +262,7 @@ func (s *arangoDBScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("failed to inspect arangoDB, %v", err)
 	}
 
-	metric := GenerateMetricInMili(metricName, float64(num))
+	metric := GenerateMetricInMili(metricName, num)
 
 	return append([]external_metrics.ExternalMetricValue{}, metric), num > s.metadata.activationQueryValue, nil
 }
@@ -267,7 +273,7 @@ func (s *arangoDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpe
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, "arangodb"),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.queryValue),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.queryValue),
 	}
 	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
