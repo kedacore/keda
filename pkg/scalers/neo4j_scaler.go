@@ -20,7 +20,6 @@ type neo4jScaler struct {
 }
 
 type neo4jMetadata struct {
-	// connectionString     string
 	host                 string
 	port                 string
 	username             string
@@ -58,10 +57,10 @@ func (s *neo4jScaler) Close(ctx context.Context) error {
 
 func (s *neo4jScaler) getQueryResult(ctx context.Context) (float64, error) {
 	session := s.driver.NewSession(ctx, neo4j.SessionConfig{
-		AccessMode: neo4j.AccessModeWrite,
+		AccessMode: neo4j.AccessModeRead,
 	})
 	defer session.Close(ctx)
-	result, err := session.ExecuteWrite(ctx, matchItemFn(s.metadata.query, ctx))
+	result, err := session.ExecuteRead(ctx, matchItemFn(s.metadata.query, ctx))
 	if err != nil {
 		s.logger.Error(err, fmt.Sprintf("Couldn't execute query string because of %v", err))
 		return 0, err
@@ -105,7 +104,7 @@ func parseNeo4jMetadata(config *ScalerConfig) (*neo4jMetadata, string, error) {
 	if val, ok := config.TriggerMetadata["queryValue"]; ok {
 		queryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to convert %v to int, because of %v", val, err.Error())
+			return nil, "", fmt.Errorf("failed to convert %v to int, because of %w", val, err)
 		}
 		meta.queryValue = queryValue
 	} else {
@@ -116,54 +115,50 @@ func parseNeo4jMetadata(config *ScalerConfig) (*neo4jMetadata, string, error) {
 	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
 		activationQueryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to convert %v to int, because of %v", val, err.Error())
+			return nil, "", fmt.Errorf("failed to convert %v to int, because of %w", val, err)
 		}
 		meta.activationQueryValue = activationQueryValue
 	}
 
-	// switch {
-	// case config.AuthParams["connectionString"] != "":
-	// 	meta.connectionString = config.AuthParams["connectionString"]
-	// case config.TriggerMetadata["connectionStringFromEnv"] != "":
-	// 	meta.connectionString = config.ResolvedEnv[config.TriggerMetadata["connectionStringFromEnv"]]
-	// default:
-	// 	meta.connectionString = ""
-	// 	host, err := GetFromAuthOrMeta(config, "host")
-	// 	if err != nil {
-	// 		return nil, "", err
-	// 	}
-	// 	meta.host = host
-
-	// 	port, err := GetFromAuthOrMeta(config, "port")
-	// 	if err != nil {
-	// 		return nil, "", err
-	// 	}
-	// 	meta.port = port
-
-	// 	username, err := GetFromAuthOrMeta(config, "username")
-	// 	if err != nil {
-	// 		return nil, "", err
-	// 	}
-	// 	meta.username = username
-
-	// 	if config.AuthParams["password"] != "" {
-	// 		meta.password = config.AuthParams["password"]
-	// 	} else if config.TriggerMetadata["passwordFromEnv"] != "" {
-	// 		meta.password = config.ResolvedEnv[config.TriggerMetadata["passwordFromEnv"]]
-	// 	}
-	// 	if len(meta.password) == 0 {
-	// 		return nil, "", fmt.Errorf("no password given")
-	// 	}
-	// }
-
-	// if meta.connectionString != "" {
-	// 	connStr = meta.connectionString
-	// } else {
 	// Build connection str
+	host, err := GetFromAuthOrMeta(config, "host")
+	if err != nil {
+		return nil, "", err
+	}
+	meta.host = host
+
+	port, err := GetFromAuthOrMeta(config, "port")
+	if err != nil {
+		return nil, "", err
+	}
+	meta.port = port
+
+	username, err := GetFromAuthOrMeta(config, "username")
+	if err != nil {
+		return nil, "", err
+	}
+	meta.username = username
+
+	protocol, err := GetFromAuthOrMeta(config, "protocol")
+	if err != nil {
+		return nil, "", err
+	}
+	meta.protocol = protocol
+
+	if config.AuthParams["password"] != "" {
+		meta.password = config.AuthParams["password"]
+	} else if config.TriggerMetadata["passwordFromEnv"] != "" {
+		meta.password = config.ResolvedEnv[config.TriggerMetadata["passwordFromEnv"]]
+	}
+	if len(meta.password) == 0 {
+		return nil, "", fmt.Errorf("no password given")
+	}
+	
+
 	addr := net.JoinHostPort(meta.host, meta.port)
 	// nosemgrep: db-connection-string
 	connStr = meta.protocol + "://" + addr
-	// }
+	fmt.Println("Parse metadata: ", connStr)
 	meta.scalerIndex = config.ScalerIndex
 	return &meta, connStr, nil
 }
@@ -179,9 +174,6 @@ func NewNeo4jScaler(_ context.Context, config *ScalerConfig) (Scaler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse neo4j metadata, because of %w", err)
 	}
-	fmt.Println("Metadata: ", meta)
-	fmt.Println("Neo4j protocol: ", meta.protocol)
-	fmt.Println("Neo4j connection string: ", connStr)
 	driver, err := neo4j.NewDriverWithContext(connStr, neo4j.BasicAuth(meta.username, meta.password, ""))
 	if err != nil {
 		return nil, err
