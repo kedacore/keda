@@ -1,0 +1,52 @@
+---
+
+run:
+  issues-exit-code: 3
+  timeout: 30m
+  skip-dirs:
+    - vendor
+
+linters:
+  fast: false
+  enable-all: false
+  disable-all: false
+  presets:
+    - performance
+    - format
+    - complexity
+    - bugs
+    - unused
+  disable:
+    - staticcheck
+    - errcheck
+    - govet
+    - gosec
+    - ineffassign
+    - noctx
+    - contextcheck
+    - unparam
+    - scopelint
+    - exhaustive
+    - cyclop
+    - errorlint
+    - errchkjson
+    - nestif
+    - prealloc
+    - maligned
+    - funlen
+    - typecheck
+    - deadcode
+    - unused
+    - maintidx
+    - varcheck
+    - gocognit
+    - gofumpt
+    - gocyclo
+
+linters-settings:
+  gci:
+    sections:
+      - standard
+      - default
+      - prefix(github.com/arangodb)
+      - prefix(github.com/arangodb/go-driver)

@@ -214,6 +214,16 @@ github.com/Shopify/sarama
 # github.com/andybalholm/brotli v1.0.4
 ## explicit; go 1.12
 github.com/andybalholm/brotli
+# github.com/arangodb/go-driver v1.4.0
+## explicit; go 1.16
+github.com/arangodb/go-driver
+github.com/arangodb/go-driver/cluster
+github.com/arangodb/go-driver/http
+github.com/arangodb/go-driver/jwt
+github.com/arangodb/go-driver/util
+# github.com/arangodb/go-velocypack v0.0.0-20200318135517-5af53c29c67e
+## explicit; go 1.12
+github.com/arangodb/go-velocypack
 # github.com/armon/go-metrics v0.4.1
 ## explicit; go 1.12
 github.com/armon/go-metrics
@@ -450,6 +460,9 @@ github.com/gogo/protobuf/gogoproto
 github.com/gogo/protobuf/proto
 github.com/gogo/protobuf/protoc-gen-gogo/descriptor
 github.com/gogo/protobuf/sortkeys
+# github.com/golang-jwt/jwt v3.2.2+incompatible
+## explicit
+github.com/golang-jwt/jwt
 # github.com/golang-jwt/jwt/v4 v4.4.2
 ## explicit; go 1.16
 github.com/golang-jwt/jwt/v4
@@ -746,7 +759,7 @@ github.com/mailru/easyjson/jwriter
 # github.com/mattn/go-colorable v0.1.13
 ## explicit; go 1.15
 github.com/mattn/go-colorable
-# github.com/mattn/go-ieproxy v0.0.7
+# github.com/mattn/go-ieproxy v0.0.1
 ## explicit; go 1.14
 github.com/mattn/go-ieproxy
 # github.com/mattn/go-isatty v0.0.16

@@ -1,0 +1,45 @@
+sudo: required
+
+before_install:
+  - |
+    mkdir -p $HOME/resources
+    for i in {0..3}
+    do
+
+    if ! [ -f "$HOME/resources/itzpapalotl-v1.2.0.zip" ]; then
+      curl -L0 -o $HOME/resources/itzpapalotl-v1.2.0.zip "https://github.com/arangodb-foxx/demo-itzpapalotl/archive/v1.2.0.zip"
+    fi
+
+    SHA=$(sha256sum $HOME/resources/itzpapalotl-v1.2.0.zip | cut -f 1 -d " ")
+    if [ "${SHA}" = "86117db897efe86cbbd20236abba127a08c2bdabbcd63683567ee5e84115d83a" ]; then
+      break
+    fi
+
+    $HOME/resources/itzpapalotl-v1.2.0.zip
+    done
+  - |
+    if ! [ -f "$HOME/resources/itzpapalotl-v1.2.0.zip" ]; then
+      travis_terminate 1
+    fi
+
+services:
+  - docker
+
+language: go
+
+env:
+  - TEST_SUITE=run-unit-tests GOIMAGE=gcr.io/gcr-for-testing/golang:1.17.6 ALWAYS=1
+  - TEST_SUITE=run-tests-single GOIMAGE=gcr.io/gcr-for-testing/golang:1.17.6 STARTER=gcr.io/gcr-for-testing/arangodb/arangodb-starter:latest ALPINE_IMAGE=gcr.io/gcr-for-testing/alpine:3.4 ARANGODB=eu.gcr.io/arangodb-ci/official/arangodb/arangodb:3.8.5.1
+  - TEST_SUITE=run-tests-single GOIMAGE=gcr.io/gcr-for-testing/golang:1.17.6 STARTER=gcr.io/gcr-for-testing/arangodb/arangodb-starter:latest ALPINE_IMAGE=gcr.io/gcr-for-testing/alpine:3.4 ARANGODB=eu.gcr.io/arangodb-ci/official/arangodb/arangodb:3.9.0
+  - TEST_SUITE=run-tests-cluster GOIMAGE=gcr.io/gcr-for-testing/golang:1.17.6 STARTER=gcr.io/gcr-for-testing/arangodb/arangodb-starter:latest ALPINE_IMAGE=gcr.io/gcr-for-testing/alpine:3.4 ARANGODB=gcr.io/gcr-for-testing/arangodb/arangodb-preview:3.10.0-rc.1
+  - TEST_SUITE=run-tests-single GOIMAGE=gcr.io/gcr-for-testing/golang:1.17.6 STARTER=gcr.io/gcr-for-testing/arangodb/arangodb-starter:latest ALPINE_IMAGE=gcr.io/gcr-for-testing/alpine:3.4 ARANGODB=gcr.io/gcr-for-testing/arangodb/arangodb-preview:3.10.0-rc.1 TEST_DISALLOW_UNKNOWN_FIELDS=false ALWAYS=1
+  - TEST_SUITE=run-v2-tests-single GOIMAGE=gcr.io/gcr-for-testing/golang:1.17.6 STARTER=gcr.io/gcr-for-testing/arangodb/arangodb-starter:latest ALPINE_IMAGE=gcr.io/gcr-for-testing/alpine:3.4 ARANGODB=eu.gcr.io/arangodb-ci/official/arangodb/arangodb:3.8.5.1
+  - TEST_SUITE=run-v2-tests-single GOIMAGE=gcr.io/gcr-for-testing/golang:1.17.6 STARTER=gcr.io/gcr-for-testing/arangodb/arangodb-starter:latest ALPINE_IMAGE=gcr.io/gcr-for-testing/alpine:3.4 ARANGODB=eu.gcr.io/arangodb-ci/official/arangodb/arangodb:3.9.0
+  - TEST_SUITE=run-v2-tests-single GOIMAGE=gcr.io/gcr-for-testing/golang:1.17.6 STARTER=gcr.io/gcr-for-testing/arangodb/arangodb-starter:latest ALPINE_IMAGE=gcr.io/gcr-for-testing/alpine:3.4 ARANGODB=gcr.io/gcr-for-testing/arangodb/arangodb-preview:3.10.0-rc.1 ALWAYS=1
+
+script:
+  - |
+    if [ "$TRAVIS_PULL_REQUEST" != "false" ] || [ ! -z "$ALWAYS" ]; then
+      make linter
+      make $TEST_SUITE TEST_RESOURCES="$HOME/resources/" VERBOSE=1;
+    fi

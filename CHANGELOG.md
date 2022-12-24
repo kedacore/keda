@@ -48,7 +48,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 Here is an overview of all **stable** additions:
 
-- **General**: TODO ([#TODO](https://github.com/kedacore/keda/issues/TODO))
+- **General**: Introduce new ArangoDB Scaler ([#4000](https://github.com/kedacore/keda/issues/4000))
 
 Here is an overview of all new **experimental** features:
 
