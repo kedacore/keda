@@ -167,7 +167,7 @@ func parseNeo4jMetadata(config *ScalerConfig) (*neo4jMetadata, string, error) {
 func NewNeo4jScaler(_ context.Context, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	meta, connStr, err := parseNeo4jMetadata(config)
