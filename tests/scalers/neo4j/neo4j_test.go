@@ -40,22 +40,22 @@ var (
 )
 
 type templateData struct {
-	TestNamespace                string
-	PasswordArg                  string
-	UsernameArg                  string
-	ScalerName                   string
-	Protocol                     string
-	DeploymentName               string
-	HostName                     string
-	Port                         string
-	Username                     string
-	Password                     string
-	Neo4jNamespace               string
-	SecretName                   string
-	TriggerAuthName              string
-	ScaledObjectName             string
-	MinReplicaCount				 int
-	MaxReplicaCount              int
+	TestNamespace    string
+	PasswordArg      string
+	UsernameArg      string
+	ScalerName       string
+	Protocol         string
+	DeploymentName   string
+	HostName         string
+	Port             string
+	Username         string
+	Password         string
+	Neo4jNamespace   string
+	SecretName       string
+	TriggerAuthName  string
+	ScaledObjectName string
+	MinReplicaCount  int
+	MaxReplicaCount  int
 }
 
 const (
@@ -149,9 +149,9 @@ func TestNeo4jScaler(t *testing.T) {
 		"replica count should be %d after 3 minutes", minReplicaCount)
 
 	// test scaling
-	testActivation(t, kc, data)
-	testScaleOut(t, kc, data)
-	testScaleIn(t, kc, data)
+	testActivation(t, data)
+	testScaleOut(t, data)
+	testScaleIn(t, data)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -165,7 +165,7 @@ func installNeo4j(t *testing.T) {
 	_, err = ExecuteCommand(fmt.Sprintf("helm install --wait %s neo4j/neo4j --namespace %s --set neo4j.name=%s --set neo4j.password=%s --set volumes.data.mode=defaultStorageClass", scalerName, testNamespace, neo4jUser, neo4jPassword))
 }
 
-func deployPodActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func deployPodActivation(t *testing.T, data templateData) {
 	const activationPodTemplate = `apiVersion: v1
 kind: Pod
 metadata:
@@ -209,7 +209,7 @@ spec:
 	KubectlApplyWithTemplate(t, data, "activationPodTemplate", activationPodTemplate)
 }
 
-func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testActivation(t *testing.T, data templateData) {
 	t.Log("--- testing activation ---")
 	deployPodActivation(t, kc, data)
 	time.Sleep(time.Second * 60)
@@ -217,7 +217,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 		"replica count should be %d after 1 minute", minReplicaCount)
 }
 
-func deployPodUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func deployPodUp(t *testing.T, data templateData) {
 	const scaleUpPodTemplate = `apiVersion: v1
 kind: Pod
 metadata:
@@ -234,15 +234,15 @@ spec:
 	KubectlApplyWithTemplate(t, data, "scaleUpPodTemplate", scaleUpPodTemplate)
 }
 
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testScaleOut(t *testing.T, data templateData) {
 	t.Log("--- testing scale out ---")
-	deployPodUp(t, kc, data)
+	deployPodUp(t, data)
 	time.Sleep(time.Second * 60)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 1),
 		"replica count should be %d after 1 minute", maxReplicaCount)
 }
 
-func deployPodDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func deployPodDown(t *testing.T, data templateData) {
 	const scaleDownPodTemplate = `apiVersion: v1
 kind: Pod
 metadata:
@@ -259,9 +259,9 @@ spec:
 	KubectlApplyWithTemplate(t, data, "scaleDownPodTemplate", scaleDownPodTemplate)
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testScaleIn(t *testing.T, data templateData) {
 	t.Log("--- testing scale in ---")
-	deployPodDown(t, kc, data)
+	deployPodDown(t, data)
 	time.Sleep(time.Second * 900)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 4),
 		"replica count should be %d after 1 minute", minReplicaCount)
