@@ -149,9 +149,9 @@ func TestNeo4jScaler(t *testing.T) {
 		"replica count should be %d after 3 minutes", minReplicaCount)
 
 	// test scaling
-	testActivation(t, data)
-	testScaleOut(t, data)
-	testScaleIn(t, data)
+	testActivation(t, kc, data)
+	testScaleOut(t, kc, data)
+	testScaleIn(t, kc, data)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -209,7 +209,7 @@ spec:
 	KubectlApplyWithTemplate(t, data, "activationPodTemplate", activationPodTemplate)
 }
 
-func testActivation(t *testing.T, data templateData) {
+func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
 	deployPodActivation(t, kc, data)
 	time.Sleep(time.Second * 60)
@@ -234,7 +234,7 @@ spec:
 	KubectlApplyWithTemplate(t, data, "scaleUpPodTemplate", scaleUpPodTemplate)
 }
 
-func testScaleOut(t *testing.T, data templateData) {
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
 	deployPodUp(t, data)
 	time.Sleep(time.Second * 60)
@@ -259,7 +259,7 @@ spec:
 	KubectlApplyWithTemplate(t, data, "scaleDownPodTemplate", scaleDownPodTemplate)
 }
 
-func testScaleIn(t *testing.T, data templateData) {
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale in ---")
 	deployPodDown(t, data)
 	time.Sleep(time.Second * 900)
