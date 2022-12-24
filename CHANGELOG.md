@@ -49,6 +49,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 Here is an overview of all **stable** additions:
 
 - **General:** Introduce new Neo4j Scaler ([#3999](https://github.com/kedacore/keda/issues/3999))
+- **General**: Introduce new ArangoDB Scaler ([#4000](https://github.com/kedacore/keda/issues/4000))
 
 Here is an overview of all new **experimental** features:
 
@@ -72,7 +73,7 @@ New deprecation(s):
 
 ### Other
 
-- TODO
+- **RabbitMQ Scaler:** Move from `streadway/amqp` to `rabbitmq/amqp091-go` ([#4004](https://github.com/kedacore/keda/pull/4039))
 
 ## v2.9.1
 

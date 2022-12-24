@@ -1,0 +1,3 @@
+run:
+  build-tags:
+    - integration
