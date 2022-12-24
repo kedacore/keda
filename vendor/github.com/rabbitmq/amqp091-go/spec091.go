@@ -1,12 +1,12 @@
-// Copyright (c) 2012, Sean Treadway, SoundCloud Ltd.
+// Copyright (c) 2021 VMware, Inc. or its affiliates. All Rights Reserved.
+// Copyright (c) 2012-2021, Sean Treadway, SoundCloud Ltd.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
-// Source code and contact info at http://github.com/streadway/amqp
 
 /* GENERATED FILE - DO NOT EDIT */
 /* Rebuild from the spec/gen.go tool */
 
-package amqp
+package amqp091
 
 import (
 	"encoding/binary"
@@ -548,6 +548,66 @@ func (msg *connectionUnblocked) write(w io.Writer) (err error) {
 }
 
 func (msg *connectionUnblocked) read(r io.Reader) (err error) {
+
+	return
+}
+
+type connectionUpdateSecret struct {
+	NewSecret string
+	Reason    string
+}
+
+func (msg *connectionUpdateSecret) id() (uint16, uint16) {
+	return 10, 70
+}
+
+func (msg *connectionUpdateSecret) wait() bool {
+	return true
+}
+
+func (msg *connectionUpdateSecret) write(w io.Writer) (err error) {
+
+	if err = writeLongstr(w, msg.NewSecret); err != nil {
+		return
+	}
+
+	if err = writeShortstr(w, msg.Reason); err != nil {
+		return
+	}
+
+	return
+}
+
+func (msg *connectionUpdateSecret) read(r io.Reader) (err error) {
+
+	if msg.NewSecret, err = readLongstr(r); err != nil {
+		return
+	}
+
+	if msg.Reason, err = readShortstr(r); err != nil {
+		return
+	}
+
+	return
+}
+
+type connectionUpdateSecretOk struct {
+}
+
+func (msg *connectionUpdateSecretOk) id() (uint16, uint16) {
+	return 10, 71
+}
+
+func (msg *connectionUpdateSecretOk) wait() bool {
+	return true
+}
+
+func (msg *connectionUpdateSecretOk) write(w io.Writer) (err error) {
+
+	return
+}
+
+func (msg *connectionUpdateSecretOk) read(r io.Reader) (err error) {
 
 	return
 }
@@ -2847,6 +2907,22 @@ func (r *reader) parseMethodFrame(channel uint16, size uint32) (f frame, err err
 		case 61: // connection unblocked
 			//fmt.Println("NextMethod: class:10 method:61")
 			method := &connectionUnblocked{}
+			if err = method.read(r.r); err != nil {
+				return
+			}
+			mf.Method = method
+
+		case 70: // connection update-secret
+			//fmt.Println("NextMethod: class:10 method:70")
+			method := &connectionUpdateSecret{}
+			if err = method.read(r.r); err != nil {
+				return
+			}
+			mf.Method = method
+
+		case 71: // connection update-secret-ok
+			//fmt.Println("NextMethod: class:10 method:71")
+			method := &connectionUpdateSecretOk{}
 			if err = method.read(r.r); err != nil {
 				return
 			}

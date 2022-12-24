@@ -1,13 +1,15 @@
-// Copyright (c) 2012, Sean Treadway, SoundCloud Ltd.
+// Copyright (c) 2021 VMware, Inc. or its affiliates. All Rights Reserved.
+// Copyright (c) 2012-2021, Sean Treadway, SoundCloud Ltd.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
-// Source code and contact info at http://github.com/streadway/amqp
 
-package amqp
+package amqp091
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 )
 
@@ -29,7 +31,7 @@ var (
 	ErrChannelMax = &Error{Code: ChannelError, Reason: "channel id space exhausted"}
 
 	// ErrSASL is returned from Dial when the authentication mechanism could not
-	// be negoated.
+	// be negotiated.
 	ErrSASL = &Error{Code: AccessRefused, Reason: "SASL could not negotiate a shared mechanism"}
 
 	// ErrCredentials is returned when the authenticated client is not authorized
@@ -179,6 +181,17 @@ type Blocking struct {
 	Reason string // Server reason for activation
 }
 
+// DeferredConfirmation represents a future publisher confirm for a message. It
+// allows users to directly correlate a publishing to a confirmation. These are
+// returned from PublishWithDeferredConfirm on Channels.
+type DeferredConfirmation struct {
+	m            sync.Mutex
+	ctx          context.Context
+	cancel       context.CancelFunc
+	DeliveryTag  uint64
+	confirmation Confirmation
+}
+
 // Confirmation notifies the acknowledgment or negative acknowledgement of a
 // publishing identified by its delivery tag.  Use NotifyPublish on the Channel
 // to consume these events.
@@ -198,6 +211,7 @@ type Decimal struct {
 //
 //   bool
 //   byte
+//   int8
 //   float32
 //   float64
 //   int
@@ -226,7 +240,7 @@ type Table map[string]interface{}
 
 func validateField(f interface{}) error {
 	switch fv := f.(type) {
-	case nil, bool, byte, int, int16, int32, int64, float32, float64, string, []byte, Decimal, time.Time:
+	case nil, bool, byte, int8, int, int16, int32, int64, float32, float64, string, []byte, Decimal, time.Time:
 		return nil
 
 	case []interface{}:
@@ -254,17 +268,12 @@ func (t Table) Validate() error {
 	return validateField(t)
 }
 
-// Heap interface for maintaining delivery tags
-type tagSet []uint64
-
-func (set tagSet) Len() int              { return len(set) }
-func (set tagSet) Less(i, j int) bool    { return (set)[i] < (set)[j] }
-func (set tagSet) Swap(i, j int)         { (set)[i], (set)[j] = (set)[j], (set)[i] }
-func (set *tagSet) Push(tag interface{}) { *set = append(*set, tag.(uint64)) }
-func (set *tagSet) Pop() interface{} {
-	val := (*set)[len(*set)-1]
-	*set = (*set)[:len(*set)-1]
-	return val
+// Sets the connection name property. This property can be used in
+// amqp.Config to set a custom connection name during amqp.DialConfig(). This
+// can be helpful to identify specific connections in RabbitMQ, for debugging or
+// tracing purposes.
+func (t Table) SetClientConnectionName(connName string) {
+	t["connection_name"] = connName
 }
 
 type message interface {
@@ -308,6 +317,18 @@ system calls to read a frame.
 type frame interface {
 	write(io.Writer) error
 	channel() uint16
+}
+
+/*
+Perform any updates on the channel immediately after the frame is decoded while the
+connection mutex is held.
+*/
+func updateChannel(f frame, channel *Channel) {
+	if mf, isMethodFrame := f.(*methodFrame); isMethodFrame {
+		if _, isChannelClose := mf.Method.(*channelClose); isChannelClose {
+			channel.setClosed()
+		}
+	}
 }
 
 type reader struct {

@@ -72,7 +72,7 @@ New deprecation(s):
 
 ### Other
 
-- TODO
+- **RabbitMQ Scaler:** Move from `streadway/amqp` to `rabbitmq/amqp091-go` ([#4004](https://github.com/kedacore/keda/pull/4039))
 
 ## v2.9.1
 

@@ -1,9 +1,9 @@
-// Copyright (c) 2012, Sean Treadway, SoundCloud Ltd.
+// Copyright (c) 2021 VMware, Inc. or its affiliates. All Rights Reserved.
+// Copyright (c) 2012-2021, Sean Treadway, SoundCloud Ltd.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
-// Source code and contact info at http://github.com/streadway/amqp
 
-package amqp
+package amqp091
 
 import (
 	"errors"
@@ -32,12 +32,16 @@ var defaultURI = URI{
 
 // URI represents a parsed AMQP URI string.
 type URI struct {
-	Scheme   string
-	Host     string
-	Port     int
-	Username string
-	Password string
-	Vhost    string
+	Scheme     string
+	Host       string
+	Port       int
+	Username   string
+	Password   string
+	Vhost      string
+	CertFile   string // client TLS auth - path to certificate (PEM)
+	CACertFile string // client TLS auth - path to CA certificate (PEM)
+	KeyFile    string // client TLS auth - path to private key (PEM)
+	ServerName string // client TLS auth - server name
 }
 
 // ParseURI attempts to parse the given AMQP URI according to the spec.
@@ -52,10 +56,21 @@ type URI struct {
 //   Password: guest
 //   Vhost: /
 //
+// Supports TLS query parameters. See https://www.rabbitmq.com/uri-query-parameters.html
+//
+//   certfile: <path/to/client_cert.pem>
+//   keyfile: <path/to/client_key.pem>
+//   cacertfile: <path/to/ca.pem>
+//   server_name_indication: <server name>
+//
+// If cacertfile is not provided, system CA certificates will be used.
+// Mutual TLS (client auth) will be enabled only in case keyfile AND certfile provided.
+//
+// If Config.TLSClientConfig is set, TLS parameters from URI will be ignored.
 func ParseURI(uri string) (URI, error) {
 	builder := defaultURI
 
-	if strings.Contains(uri, " ") == true {
+	if strings.Contains(uri, " ") {
 		return builder, errURIWhitespace
 	}
 
@@ -112,6 +127,13 @@ func ParseURI(uri string) (URI, error) {
 			builder.Vhost = u.Path
 		}
 	}
+
+	// see https://www.rabbitmq.com/uri-query-parameters.html
+	params := u.Query()
+	builder.CertFile = params.Get("certfile")
+	builder.KeyFile = params.Get("keyfile")
+	builder.CACertFile = params.Get("cacertfile")
+	builder.ServerName = params.Get("server_name_indication")
 
 	return builder, nil
 }

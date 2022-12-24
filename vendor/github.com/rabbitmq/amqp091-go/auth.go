@@ -1,11 +1,12 @@
-// Copyright (c) 2012, Sean Treadway, SoundCloud Ltd.
+// Copyright (c) 2021 VMware, Inc. or its affiliates. All Rights Reserved.
+// Copyright (c) 2012-2021, Sean Treadway, SoundCloud Ltd.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
-// Source code and contact info at http://github.com/streadway/amqp
 
-package amqp
+package amqp091
 
 import (
+	"bytes"
 	"fmt"
 )
 
@@ -43,13 +44,33 @@ func (auth *AMQPlainAuth) Mechanism() string {
 	return "AMQPLAIN"
 }
 
-// Response returns the null character delimited encoding for the SASL PLAIN Mechanism.
+// Response returns an AMQP encoded credentials table, without the field table size.
 func (auth *AMQPlainAuth) Response() string {
-	return fmt.Sprintf("LOGIN:%sPASSWORD:%s", auth.Username, auth.Password)
+	var buf bytes.Buffer
+	table := Table{"LOGIN": auth.Username, "PASSWORD": auth.Password}
+	if err := writeTable(&buf, table); err != nil {
+		return ""
+	}
+	return buf.String()[4:]
+}
+
+// ExternalAuth for RabbitMQ-auth-mechanism-ssl.
+type ExternalAuth struct {
+}
+
+// Mechanism returns "EXTERNAL"
+func (*ExternalAuth) Mechanism() string {
+	return "EXTERNAL"
+}
+
+// Response returns an AMQP encoded credentials table, without the field table size.
+func (*ExternalAuth) Response() string {
+	return "\000*\000*"
 }
 
 // Finds the first mechanism preferred by the client that the server supports.
 func pickSASLMechanism(client []Authentication, serverMechanisms []string) (auth Authentication, ok bool) {
+
 	for _, auth = range client {
 		for _, mech := range serverMechanisms {
 			if auth.Mechanism() == mech {
