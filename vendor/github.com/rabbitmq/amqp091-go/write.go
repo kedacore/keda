@@ -1,9 +1,9 @@
-// Copyright (c) 2012, Sean Treadway, SoundCloud Ltd.
+// Copyright (c) 2021 VMware, Inc. or its affiliates. All Rights Reserved.
+// Copyright (c) 2012-2021, Sean Treadway, SoundCloud Ltd.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
-// Source code and contact info at http://github.com/streadway/amqp
 
-package amqp
+package amqp091
 
 import (
 	"bufio"
@@ -212,7 +212,7 @@ func writeFrame(w io.Writer, typ uint8, channel uint16, payload []byte) (err err
 	size := uint(len(payload))
 
 	_, err = w.Write([]byte{
-		byte(typ),
+		typ,
 		byte((channel & 0xff00) >> 8),
 		byte((channel & 0x00ff) >> 0),
 		byte((size & 0xff000000) >> 24),
@@ -276,7 +276,8 @@ func writeLongstr(w io.Writer, s string) (err error) {
 'S': string
 'T': time.Time
 'V': nil
-'b': byte
+'b': int8
+'B': byte
 'd': float64
 'f': float32
 'l': int64
@@ -299,8 +300,13 @@ func writeField(w io.Writer, value interface{}) (err error) {
 		enc = buf[:2]
 
 	case byte:
+		buf[0] = 'B'
+		buf[1] = v
+		enc = buf[:2]
+
+	case int8:
 		buf[0] = 'b'
-		buf[1] = byte(v)
+		buf[1] = uint8(v)
 		enc = buf[:2]
 
 	case int16:
@@ -335,7 +341,7 @@ func writeField(w io.Writer, value interface{}) (err error) {
 
 	case Decimal:
 		buf[0] = 'D'
-		buf[1] = byte(v.Scale)
+		buf[1] = v.Scale
 		binary.BigEndian.PutUint32(buf[2:6], uint32(v.Value))
 		enc = buf[:6]
 
@@ -412,5 +418,5 @@ func writeTable(w io.Writer, table Table) (err error) {
 		}
 	}
 
-	return writeLongstr(w, string(buf.Bytes()))
+	return writeLongstr(w, buf.String())
 }

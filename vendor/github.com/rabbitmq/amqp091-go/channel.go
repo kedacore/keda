@@ -1,11 +1,13 @@
-// Copyright (c) 2012, Sean Treadway, SoundCloud Ltd.
+// Copyright (c) 2021 VMware, Inc. or its affiliates. All Rights Reserved.
+// Copyright (c) 2012-2021, Sean Treadway, SoundCloud Ltd.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
-// Source code and contact info at http://github.com/streadway/amqp
 
-package amqp
+package amqp091
 
 import (
+	"context"
+	"errors"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -66,7 +68,7 @@ type Channel struct {
 	errors chan *Error
 
 	// State machine that manages frame order, must only be mutated by the connection
-	recv func(*Channel, frame) error
+	recv func(*Channel, frame)
 
 	// Current state for frame re-assembly, only mutated from recv
 	message messageWithContent
@@ -87,9 +89,16 @@ func newChannel(c *Connection, id uint16) *Channel {
 	}
 }
 
+// Signal that from now on, Channel.send() should call Channel.sendClosed()
+func (ch *Channel) setClosed() {
+	atomic.StoreInt32(&ch.closed, 1)
+}
+
 // shutdown is called by Connection after the channel has been removed from the
 // connection registry.
 func (ch *Channel) shutdown(e *Error) {
+	ch.setClosed()
+
 	ch.destructor.Do(func() {
 		ch.m.Lock()
 		defer ch.m.Unlock()
@@ -104,10 +113,6 @@ func (ch *Channel) shutdown(e *Error) {
 				c <- e
 			}
 		}
-
-		// Signal that from now on, Channel.send() should call
-		// Channel.sendClosed()
-		atomic.StoreInt32(&ch.closed, 1)
 
 		// Notify RPC if we're selecting
 		if e != nil {
@@ -154,7 +159,7 @@ func (ch *Channel) shutdown(e *Error) {
 // only 'channel.close' is sent to the server.
 func (ch *Channel) send(msg message) (err error) {
 	// If the channel is closed, use Channel.sendClosed()
-	if atomic.LoadInt32(&ch.closed) == 1 {
+	if ch.IsClosed() {
 		return ch.sendClosed(msg)
 	}
 
@@ -230,6 +235,11 @@ func (ch *Channel) sendOpen(msg message) (err error) {
 			size = len(body)
 		}
 
+		// If the channel is closed, use Channel.sendClosed()
+		if ch.IsClosed() {
+			return ch.sendClosed(msg)
+		}
+
 		if err = ch.connection.send(&methodFrame{
 			ChannelId: ch.id,
 			Method:    content,
@@ -260,6 +270,11 @@ func (ch *Channel) sendOpen(msg message) (err error) {
 			}
 		}
 	} else {
+		// If the channel is closed, use Channel.sendClosed()
+		if ch.IsClosed() {
+			return ch.sendClosed(msg)
+		}
+
 		err = ch.connection.send(&methodFrame{
 			ChannelId: ch.id,
 			Method:    msg,
@@ -274,11 +289,16 @@ func (ch *Channel) sendOpen(msg message) (err error) {
 func (ch *Channel) dispatch(msg message) {
 	switch m := msg.(type) {
 	case *channelClose:
+		// Note: channel state is set to closed immedately after the message is
+		// decoded by the Connection
+
 		// lock before sending connection.close-ok
 		// to avoid unexpected interleaving with basic.publish frames if
 		// publishing is happening concurrently
 		ch.m.Lock()
-		ch.send(&channelCloseOk{})
+		if err := ch.send(&channelCloseOk{}); err != nil {
+			Logger.Printf("error sending channelCloseOk, channel id: %d error: %+v", ch.id, err)
+		}
 		ch.m.Unlock()
 		ch.connection.closeChannel(ch, newError(m.ReplyCode, m.ReplyText))
 
@@ -288,7 +308,9 @@ func (ch *Channel) dispatch(msg message) {
 			c <- m.Active
 		}
 		ch.notifyM.RUnlock()
-		ch.send(&channelFlowOk{Active: m.Active})
+		if err := ch.send(&channelFlowOk{Active: m.Active}); err != nil {
+			Logger.Printf("error sending channelFlowOk, channel id: %d error: %+v", ch.id, err)
+		}
 
 	case *basicCancel:
 		ch.notifyM.RLock()
@@ -334,40 +356,41 @@ func (ch *Channel) dispatch(msg message) {
 	}
 }
 
-func (ch *Channel) transition(f func(*Channel, frame) error) error {
+func (ch *Channel) transition(f func(*Channel, frame)) {
 	ch.recv = f
-	return nil
 }
 
-func (ch *Channel) recvMethod(f frame) error {
+func (ch *Channel) recvMethod(f frame) {
 	switch frame := f.(type) {
 	case *methodFrame:
 		if msg, ok := frame.Method.(messageWithContent); ok {
 			ch.body = make([]byte, 0)
 			ch.message = msg
-			return ch.transition((*Channel).recvHeader)
+			ch.transition((*Channel).recvHeader)
+			return
 		}
 
 		ch.dispatch(frame.Method) // termination state
-		return ch.transition((*Channel).recvMethod)
+		ch.transition((*Channel).recvMethod)
 
 	case *headerFrame:
 		// drop
-		return ch.transition((*Channel).recvMethod)
+		ch.transition((*Channel).recvMethod)
 
 	case *bodyFrame:
 		// drop
-		return ch.transition((*Channel).recvMethod)
-	}
+		ch.transition((*Channel).recvMethod)
 
-	panic("unexpected frame type")
+	default:
+		panic("unexpected frame type")
+	}
 }
 
-func (ch *Channel) recvHeader(f frame) error {
+func (ch *Channel) recvHeader(f frame) {
 	switch frame := f.(type) {
 	case *methodFrame:
 		// interrupt content and handle method
-		return ch.recvMethod(f)
+		ch.recvMethod(f)
 
 	case *headerFrame:
 		// start collecting if we expect body frames
@@ -376,29 +399,31 @@ func (ch *Channel) recvHeader(f frame) error {
 		if frame.Size == 0 {
 			ch.message.setContent(ch.header.Properties, ch.body)
 			ch.dispatch(ch.message) // termination state
-			return ch.transition((*Channel).recvMethod)
+			ch.transition((*Channel).recvMethod)
+			return
 		}
-		return ch.transition((*Channel).recvContent)
+		ch.transition((*Channel).recvContent)
 
 	case *bodyFrame:
 		// drop and reset
-		return ch.transition((*Channel).recvMethod)
-	}
+		ch.transition((*Channel).recvMethod)
 
-	panic("unexpected frame type")
+	default:
+		panic("unexpected frame type")
+	}
 }
 
 // state after method + header and before the length
 // defined by the header has been reached
-func (ch *Channel) recvContent(f frame) error {
+func (ch *Channel) recvContent(f frame) {
 	switch frame := f.(type) {
 	case *methodFrame:
 		// interrupt content and handle method
-		return ch.recvMethod(f)
+		ch.recvMethod(f)
 
 	case *headerFrame:
 		// drop and reset
-		return ch.transition((*Channel).recvMethod)
+		ch.transition((*Channel).recvMethod)
 
 	case *bodyFrame:
 		if cap(ch.body) == 0 {
@@ -409,13 +434,15 @@ func (ch *Channel) recvContent(f frame) error {
 		if uint64(len(ch.body)) >= ch.header.Size {
 			ch.message.setContent(ch.header.Properties, ch.body)
 			ch.dispatch(ch.message) // termination state
-			return ch.transition((*Channel).recvMethod)
+			ch.transition((*Channel).recvMethod)
+			return
 		}
 
-		return ch.transition((*Channel).recvContent)
-	}
+		ch.transition((*Channel).recvContent)
 
-	panic("unexpected frame type")
+	default:
+		panic("unexpected frame type")
+	}
 }
 
 /*
@@ -433,6 +460,12 @@ func (ch *Channel) Close() error {
 	)
 }
 
+// IsClosed returns true if the channel is marked as closed, otherwise false
+// is returned.
+func (ch *Channel) IsClosed() bool {
+	return atomic.LoadInt32(&ch.closed) == 1
+}
+
 /*
 NotifyClose registers a listener for when the server sends a channel or
 connection exception in the form of a Connection.Close or Channel.Close method.
@@ -442,6 +475,9 @@ this channel.
 
 The chan provided will be closed when the Channel is closed and on a
 graceful close, no error will be sent.
+
+In case of a non graceful close the error will be notified synchronously by the library
+so that it will be necessary to consume the Channel from the caller in order to avoid deadlocks
 
 */
 func (ch *Channel) NotifyClose(c chan *Error) chan *Error {
@@ -593,6 +629,9 @@ or Channel while confirms are in-flight.
 
 It's advisable to wait for all Confirmations to arrive before calling
 Channel.Close() or Connection.Close().
+
+It is also advisable for the caller to consume from the channel returned till it is closed
+to avoid possible deadlocks
 
 */
 func (ch *Channel) NotifyPublish(confirm chan Confirmation) chan Confirmation {
@@ -1082,7 +1121,7 @@ func (ch *Channel) Consume(queue, consumer string, autoAck, exclusive, noLocal, 
 		return nil, err
 	}
 
-	return (<-chan Delivery)(deliveries), nil
+	return deliveries, nil
 }
 
 /*
@@ -1322,10 +1361,75 @@ confirmations start at 1.  Exit when all publishings are confirmed.
 When Publish does not return an error and the channel is in confirm mode, the
 internal counter for DeliveryTags with the first confirmation starts at 1.
 
+Deprecated: Use PublishWithContext instead.
 */
 func (ch *Channel) Publish(exchange, key string, mandatory, immediate bool, msg Publishing) error {
+	_, err := ch.PublishWithDeferredConfirmWithContext(context.Background(), exchange, key, mandatory, immediate, msg)
+	return err
+}
+
+/*
+PublishWithContext sends a Publishing from the client to an exchange on the server.
+
+When you want a single message to be delivered to a single queue, you can
+publish to the default exchange with the routingKey of the queue name.  This is
+because every declared queue gets an implicit route to the default exchange.
+
+Since publishings are asynchronous, any undeliverable message will get returned
+by the server.  Add a listener with Channel.NotifyReturn to handle any
+undeliverable message when calling publish with either the mandatory or
+immediate parameters as true.
+
+Publishings can be undeliverable when the mandatory flag is true and no queue is
+bound that matches the routing key, or when the immediate flag is true and no
+consumer on the matched queue is ready to accept the delivery.
+
+This can return an error when the channel, connection or socket is closed.  The
+error or lack of an error does not indicate whether the server has received this
+publishing.
+
+It is possible for publishing to not reach the broker if the underlying socket
+is shut down without pending publishing packets being flushed from the kernel
+buffers.  The easy way of making it probable that all publishings reach the
+server is to always call Connection.Close before terminating your publishing
+application.  The way to ensure that all publishings reach the server is to add
+a listener to Channel.NotifyPublish and put the channel in confirm mode with
+Channel.Confirm.  Publishing delivery tags and their corresponding
+confirmations start at 1.  Exit when all publishings are confirmed.
+
+When Publish does not return an error and the channel is in confirm mode, the
+internal counter for DeliveryTags with the first confirmation starts at 1.
+*/
+func (ch *Channel) PublishWithContext(ctx context.Context, exchange, key string, mandatory, immediate bool, msg Publishing) error {
+	_, err := ch.PublishWithDeferredConfirmWithContext(ctx, exchange, key, mandatory, immediate, msg)
+	return err
+}
+
+/*
+PublishWithDeferredConfirm behaves identically to Publish but additionally returns a
+DeferredConfirmation, allowing the caller to wait on the publisher confirmation
+for this message. If the channel has not been put into confirm mode,
+the DeferredConfirmation will be nil.
+
+Deprecated: Use PublishWithDeferredConfirmWithContext instead.
+*/
+func (ch *Channel) PublishWithDeferredConfirm(exchange, key string, mandatory, immediate bool, msg Publishing) (*DeferredConfirmation, error) {
+	return ch.PublishWithDeferredConfirmWithContext(context.Background(), exchange, key, mandatory, immediate, msg)
+}
+
+/*
+PublishWithDeferredConfirmWithContext behaves identically to Publish but additionally returns a
+DeferredConfirmation, allowing the caller to wait on the publisher confirmation
+for this message. If the channel has not been put into confirm mode,
+the DeferredConfirmation will be nil.
+*/
+func (ch *Channel) PublishWithDeferredConfirmWithContext(ctx context.Context, exchange, key string, mandatory, immediate bool, msg Publishing) (*DeferredConfirmation, error) {
+	if ctx == nil {
+		return nil, errors.New("amqp091-go: nil Context")
+	}
+
 	if err := msg.Headers.Validate(); err != nil {
-		return err
+		return nil, err
 	}
 
 	ch.m.Lock()
@@ -1353,14 +1457,14 @@ func (ch *Channel) Publish(exchange, key string, mandatory, immediate bool, msg 
 			AppId:           msg.AppId,
 		},
 	}); err != nil {
-		return err
+		return nil, err
 	}
 
 	if ch.confirming {
-		ch.confirms.Publish()
+		return ch.confirms.Publish(ctx), nil
 	}
 
-	return nil
+	return nil, nil
 }
 
 /*
@@ -1530,6 +1634,11 @@ If the deliveries cannot be recovered, an error will be returned and the channel
 will be closed.
 
 Note: this method is not implemented on RabbitMQ, use Delivery.Nack instead
+
+Deprecated: This method is deprecated in RabbitMQ. RabbitMQ used Recover(true)
+as a mechanism for consumers to tell the broker that they were ready for more
+deliveries, back in 2008-2009. Support for this will be removed from RabbitMQ in
+a future release. Use Nack() with requeue=true instead.
 */
 func (ch *Channel) Recover(requeue bool) error {
 	return ch.call(
@@ -1590,4 +1699,13 @@ func (ch *Channel) Reject(tag uint64, requeue bool) error {
 		DeliveryTag: tag,
 		Requeue:     requeue,
 	})
+}
+
+// GetNextPublishSeqNo returns the sequence number of the next message to be
+// published, when in confirm mode.
+func (ch *Channel) GetNextPublishSeqNo() uint64 {
+	ch.confirms.m.Lock()
+	defer ch.confirms.m.Unlock()
+
+	return ch.confirms.published + 1
 }

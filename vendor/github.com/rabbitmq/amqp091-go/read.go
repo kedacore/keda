@@ -1,9 +1,9 @@
-// Copyright (c) 2012, Sean Treadway, SoundCloud Ltd.
+// Copyright (c) 2021 VMware, Inc. or its affiliates. All Rights Reserved.
+// Copyright (c) 2012-2021, Sean Treadway, SoundCloud Ltd.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
-// Source code and contact info at http://github.com/streadway/amqp
 
-package amqp
+package amqp091
 
 import (
 	"bytes"
@@ -14,7 +14,7 @@ import (
 )
 
 /*
-Reads a frame from an input stream and returns an interface that can be cast into
+ReadFrame reads a frame from an input stream and returns an interface that can be cast into
 one of the following:
 
    methodFrame
@@ -50,7 +50,7 @@ func (r *reader) ReadFrame() (frame frame, err error) {
 		return
 	}
 
-	typ := uint8(scratch[0])
+	typ := scratch[0]
 	channel := binary.BigEndian.Uint16(scratch[1:3])
 	size := binary.BigEndian.Uint32(scratch[3:7])
 
@@ -131,20 +131,6 @@ func readDecimal(r io.Reader) (v Decimal, err error) {
 	return
 }
 
-func readFloat32(r io.Reader) (v float32, err error) {
-	if err = binary.Read(r, binary.BigEndian, &v); err != nil {
-		return
-	}
-	return
-}
-
-func readFloat64(r io.Reader) (v float64, err error) {
-	if err = binary.Read(r, binary.BigEndian, &v); err != nil {
-		return
-	}
-	return
-}
-
 func readTimestamp(r io.Reader) (v time.Time, err error) {
 	var sec int64
 	if err = binary.Read(r, binary.BigEndian, &sec); err != nil {
@@ -161,7 +147,8 @@ func readTimestamp(r io.Reader) (v time.Time, err error) {
 'S': string
 'T': time.Time
 'V': nil
-'b': byte
+'b': int8
+'B': byte
 'd': float64
 'f': float32
 'l': int64
@@ -183,12 +170,19 @@ func readField(r io.Reader) (v interface{}, err error) {
 		}
 		return (value != 0), nil
 
-	case 'b':
+	case 'B':
 		var value [1]byte
 		if _, err = io.ReadFull(r, value[0:1]); err != nil {
 			return
 		}
 		return value[0], nil
+
+	case 'b':
+		var value int8
+		if err = binary.Read(r, binary.BigEndian, &value); err != nil {
+			return
+		}
+		return value, nil
 
 	case 's':
 		var value int16
@@ -309,7 +303,7 @@ func readArray(r io.Reader) ([]interface{}, error) {
 
 	var (
 		lim   = &io.LimitedReader{R: r, N: int64(size)}
-		arr   = []interface{}{}
+		arr   []interface{}
 		field interface{}
 	)
 
