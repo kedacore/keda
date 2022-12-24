@@ -211,7 +211,7 @@ spec:
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
-	deployPodActivation(t, kc, data)
+	deployPodActivation(t, data)
 	time.Sleep(time.Second * 60)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
 		"replica count should be %d after 1 minute", minReplicaCount)
