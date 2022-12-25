@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/go-logr/logr"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -166,7 +167,10 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 			}
 			// Filter only the desired metric
 			if strings.EqualFold(metricSpec.External.Metric.Name, info.Metric) {
+				startTime := time.Now()
 				metrics, err := cache.GetMetricsForScaler(ctx, scalerIndex, info.Metric)
+				scalerLatency := time.Since(startTime).Milliseconds()
+				promMetricsServer.RecordHPAScalerLatency(namespace, scaledObject.Name, scalerName, scalerIndex, info.Metric, float64(scalerLatency))
 				metrics, err = fallback.GetMetricsWithFallback(ctx, p.client, logger, metrics, err, info.Metric, scaledObject, metricSpec)
 				if err != nil {
 					scalerError = true
