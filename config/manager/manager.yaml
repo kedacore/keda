@@ -63,6 +63,7 @@ spec:
             - name: KEDA_HTTP_DEFAULT_TIMEOUT
               value: ""
           securityContext:
+            runAsNonRoot: true
             capabilities:
               drop:
               - ALL

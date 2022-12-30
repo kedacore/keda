@@ -12,8 +12,7 @@ COPY Makefile Makefile
 # Copy the go source
 COPY hack/ hack/
 COPY version/ version/
-COPY main.go main.go
-COPY adapter/ adapter/
+COPY cmd/ cmd/
 COPY apis/ apis/
 COPY controllers/ controllers/
 COPY pkg/ pkg/

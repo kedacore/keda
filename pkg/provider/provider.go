@@ -1,5 +1,5 @@
 /*
-Copyright 2021 The KEDA Authors
+Copyright 2023 The KEDA Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/fallback"
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
 	prommetrics "github.com/kedacore/keda/v2/pkg/prommetrics/adapter"
@@ -98,7 +98,7 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 		}
 
 		// selector is in form: `scaledobject.keda.sh/name: scaledobject-name`
-		scaledObjectName := selector.Get("scaledobject.keda.sh/name")
+		scaledObjectName := selector.Get(v1alpha1.ScaledObjectOwnerAnnotation)
 
 		metrics, promMetrics, err := p.grpcClient.GetMetrics(ctx, scaledObjectName, namespace, info.Metric)
 		logger.V(1).WithValues("scaledObjectName", scaledObjectName, "scaledObjectNamespace", namespace, "metrics", metrics).Info("Receiving metrics")
@@ -128,7 +128,7 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 	// ------ Deprecated way of getting metric directly from MS ------ //
 	// --------------------------------------------------------------- //
 	// Get Metrics by querying directly the external service
-	scaledObjects := &kedav1alpha1.ScaledObjectList{}
+	scaledObjects := &v1alpha1.ScaledObjectList{}
 	opts := []client.ListOption{
 		client.InNamespace(namespace),
 		client.MatchingLabels(selector),

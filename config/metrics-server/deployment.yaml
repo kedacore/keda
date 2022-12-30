@@ -72,6 +72,7 @@ spec:
           - mountPath: /apiserver.local.config/certificates
             name: certs
           securityContext:
+            runAsNonRoot: true
             capabilities:
               drop:
               - ALL

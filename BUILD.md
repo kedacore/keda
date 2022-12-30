@@ -137,7 +137,7 @@ Follow these instructions if you want to debug the KEDA operator using VS Code.
             "type": "go",
             "request": "launch",
             "mode": "debug",
-            "program": "${workspaceFolder}/main.go",
+            "program": "${workspaceFolder}/cmd/operator/main.go",
             "env": {
                 "WATCH_NAMESPACE": "",
                 "KEDA_CLUSTER_OBJECT_NAMESPACE": "keda"
@@ -173,7 +173,7 @@ Follow these instructions if you want to debug the KEDA metrics server using VS 
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/adapter/main.go",
+            "program": "${workspaceFolder}/cmd/adapter/main.go",
             "env": {
                 "WATCH_NAMESPACE": "",
                 "KEDA_CLUSTER_OBJECT_NAMESPACE": "keda"
@@ -223,6 +223,64 @@ You can query list metrics executing `curl --insecure https://localhost:6443/api
 
 If you prefer to use an authenticated user, you can use a user or service account with access over external metrics API adding their token as authorization header in `curl`, ie: `curl -H "Authorization:Bearer TOKEN" --insecure https://localhost:6443/apis/external.metrics.k8s.io/v1beta1/`
 
+### Webhooks
+
+Follow these instructions if you want to debug the KEDA webhook using VS Code.
+
+1. Create a `launch.json` file inside the `.vscode/` folder in the repo with the following configuration:
+   ```json
+   {
+    "configurations": [
+         {
+            "name": "Launch webhooks",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/webhooks/main.go",
+            "env": {
+                "WATCH_NAMESPACE": "",
+                "KEDA_CLUSTER_OBJECT_NAMESPACE": "keda"
+            },
+            "args": [
+                "--zap-log-level=debug",
+                "--zap-encoder=console",
+                "--zap-time-encoding=rfc3339"
+            ]
+         },
+    ]
+   }
+   ```
+   Refer to [this](https://code.visualstudio.com/docs/editor/debugging) for more information about debugging with VS Code.
+2. Expose your local instance to internet. If you can't expose it directly, you can use something like [localtunnel](https://theboroer.github.io/localtunnel-www/) using the command `lt --port 9443 --local-https --allow-invalid-cert` after installing the tool.
+
+3. Update the `validation_webhooks.yaml` in `config/webhooks`, replacing the section (but not commiting this change)
+   ```yaml
+   webhooks:
+   - admissionReviewVersions:
+     - v1
+     clientConfig:
+       service:
+         name: keda-webhook-service
+         namespace: keda
+         path: /validate-keda-sh-v1alpha1-scaledobject
+   ```
+   with the section:
+   ```yaml
+   webhooks:
+   - admissionReviewVersions:
+     - v1
+     clientConfig:
+       url: "https://${YOUR_URL}/validate-keda-sh-v1alpha1-scaledobject"
+   ```
+   **Note:** You could need to define also the key `caBundle` with the CA bundle encoded in base64 if the cluster can get it during the manifest apply (this happens with localtunnel for instance)
+
+4. Deploy CRDs and KEDA into `keda` namespace
+   ```bash
+   make deploy
+   ```
+5. Set breakpoints in the code as required.
+6. Select `Run > Start Debugging` or press `F5` to start debugging.
+
 ## Miscellaneous
 
 ### How to use devcontainers and a local Kubernetes cluster
@@ -236,24 +294,21 @@ To solve this and be able to work with devcontainers and a local cluster, you sh
 You can change default log levels for both KEDA Operator and Metrics Server. KEDA Operator uses
  [Operator SDK logging](https://sdk.operatorframework.io/docs/building-operators/golang/references/logging/) mechanism.
 
-### KEDA Operator logging
+### KEDA Operator and webhooks logging
 
-To change the logging level, find `--zap-log-level=` argument in Operator Deployment section in `config/manager/manager.yaml` file,
- modify its value and redeploy.
+To change the logging level, find `--zap-log-level=` argument in Operator Deployment section in `config/manager/manager.yaml` file or in Webhooks Deployment section in `config/webhooks/webhooks.yaml` file, modify its value and redeploy.
 
 Allowed values are `debug`, `info`, `error`, or an integer value greater than `0`, specified as string
 
 Default value: `info`
 
-To change the logging format, find `--zap-encoder=` argument in Operator Deployment section in `config/manager/manager.yaml` file,
- modify its value and redeploy.
+To change the logging format, find `--zap-encoder=` argument in Operator Deployment section in `config/manager/manager.yaml` file or in Webhooks Deployment section in `config/webhooks/webhooks.yaml` file, modify its value and redeploy.
 
 Allowed values are `json` and `console`
 
 Default value: `console`
 
-To change the logging time encoding, find `--zap-time-encoding=` argument in Operator Deployment section in `config/manager/manager.yaml` file,
- modify its value and redeploy.
+To change the logging time encoding, find `--zap-time-encoding=` argument in Operator Deployment section in `config/manager/manager.yaml` file or in Webhooks Deployment section in `config/webhooks/webhooks.yaml` file, modify its value and redeploy.
 
 Allowed values are `epoch`, `millis`, `nano`, `iso8601`, `rfc3339` or `rfc3339nano`
 

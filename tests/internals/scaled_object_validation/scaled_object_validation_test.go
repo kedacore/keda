@@ -1,0 +1,187 @@
+//go:build e2e
+// +build e2e
+
+package cache_metrics_test
+
+import (
+	"fmt"
+	"os"
+	"testing"
+	"text/template"
+
+	"github.com/stretchr/testify/assert"
+
+	. "github.com/kedacore/keda/v2/tests/helper"
+)
+
+const (
+	testName = "scaled-object-validation-test"
+)
+
+var (
+	testNamespace     = fmt.Sprintf("%s-ns", testName)
+	deploymentName    = fmt.Sprintf("%s-deployment", testName)
+	scaledObject1Name = fmt.Sprintf("%s-so1", testName)
+	scaledObject2Name = fmt.Sprintf("%s-so2", testName)
+	hpaName           = fmt.Sprintf("%s-hpa", testName)
+)
+
+type templateData struct {
+	TestNamespace    string
+	DeploymentName   string
+	ScaledObjectName string
+	HpaName          string
+}
+
+const (
+	deploymentTemplate = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.DeploymentName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.DeploymentName}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{.DeploymentName}}
+  template:
+    metadata:
+      labels:
+        app: {{.DeploymentName}}
+    spec:
+      containers:
+        - name: {{.DeploymentName}}
+          image: nginx
+          resources:
+            requests:
+              cpu: 10m
+`
+
+	scaledObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectName}}
+  namespace: {{.TestNamespace}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  triggers:
+    - type: cpu
+      metadata:
+        type: Utilization
+        value: "50"
+`
+	hpaTemplate = `
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{.HpaName}}
+  namespace: {{.TestNamespace}}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{.DeploymentName}}
+  minReplicas: 1
+  maxReplicas: 1
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
+`
+)
+
+func TestScaledObjectValidations(t *testing.T) {
+	// setup
+	t.Log("--- setting up ---")
+	// Create kubernetes resources
+	kc := GetKubernetesClient(t)
+	data, templates := getTemplateData()
+
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
+
+	testWithNotScaledWorkload(t, data)
+
+	testScaledWorkloadByOtherScaledObject(t, data)
+
+	testScaledWorkloadByOtherHpa(t, data)
+
+	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+}
+
+func testWithNotScaledWorkload(t *testing.T, data templateData) {
+	t.Log("--- unscaled workload ---")
+
+	data.ScaledObjectName = scaledObject1Name
+	err := kubectlApplyWithErrors(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	assert.NoErrorf(t, err, "cannot deploy the scaledObject - %s", err)
+
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+}
+
+func testScaledWorkloadByOtherScaledObject(t *testing.T, data templateData) {
+	t.Log("--- already scaled workload by other scaledobject---")
+
+	data.ScaledObjectName = scaledObject1Name
+	err := kubectlApplyWithErrors(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	assert.NoErrorf(t, err, "cannot deploy the scaledObject - %s", err)
+
+	data.ScaledObjectName = scaledObject2Name
+	err = kubectlApplyWithErrors(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	assert.Errorf(t, err, "can deploy the scaledObject - %s", err)
+	assert.Contains(t, err.Error(), fmt.Sprintf("the workload '%s' of type 'apps/v1/Deployment' is already managed by the ScaledObject '%s", deploymentName, scaledObject1Name))
+
+	data.ScaledObjectName = scaledObject1Name
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+}
+
+func testScaledWorkloadByOtherHpa(t *testing.T, data templateData) {
+	t.Log("--- already scaled workload by other hpa---")
+
+	data.HpaName = hpaName
+	err := kubectlApplyWithErrors(t, data, "hpaTemplate", hpaTemplate)
+	assert.NoErrorf(t, err, "cannot deploy the hpa - %s", err)
+
+	data.ScaledObjectName = scaledObject1Name
+	err = kubectlApplyWithErrors(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	assert.Errorf(t, err, "can deploy the scaledObject - %s", err)
+	assert.Contains(t, err.Error(), fmt.Sprintf("the workload '%s' of type 'apps/v1/Deployment' is already managed by the hpa '%s", deploymentName, hpaName))
+
+	KubectlDeleteWithTemplate(t, data, "hpaTemplate", hpaTemplate)
+}
+
+func kubectlApplyWithErrors(t *testing.T, data interface{}, templateName string, config string) error {
+	t.Logf("Applying template: %s", templateName)
+
+	tmpl, err := template.New("kubernetes resource template").Parse(config)
+	assert.NoErrorf(t, err, "cannot parse template - %s", err)
+
+	tempFile, err := os.CreateTemp("", templateName)
+	assert.NoErrorf(t, err, "cannot create temp file - %s", err)
+	if err != nil {
+		defer tempFile.Close()
+		defer os.Remove(tempFile.Name())
+	}
+
+	err = tmpl.Execute(tempFile, data)
+	assert.NoErrorf(t, err, "cannot insert data into template - %s", err)
+
+	_, err = ExecuteCommand(fmt.Sprintf("kubectl apply -f %s", tempFile.Name()))
+	return err
+}
+
+func getTemplateData() (templateData, []Template) {
+	return templateData{
+			TestNamespace:  testNamespace,
+			DeploymentName: deploymentName,
+		}, []Template{
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+		}
+}
