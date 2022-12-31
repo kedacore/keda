@@ -56,6 +56,9 @@ spec:
           - containerPort: 9443
             name: http
             protocol: TCP
+          - containerPort: 8080
+            name: metrics
+            protocol: TCP
           env:
             - name: POD_NAMESPACE
               valueFrom:
@@ -85,4 +88,4 @@ spec:
       - name: cert
         secret:
           defaultMode: 420
-          secretName: kedaorg-webhook-secret
+          secretName: kedaorg-webhooks-secret

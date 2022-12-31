@@ -14,7 +14,7 @@ webhooks:
   - v1
   clientConfig:
     service:
-      name: keda-webhook-service
+      name: keda-webhooks
       namespace: keda
       path: /validate-keda-sh-v1alpha1-scaledobject
   failurePolicy: Ignore

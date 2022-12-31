@@ -9,12 +9,17 @@ metadata:
     app.kubernetes.io/created-by: keda
     app.kubernetes.io/part-of: keda
     app.kubernetes.io/managed-by: kustomize
-  name: keda-webhook-service
+  name: keda-webhooks
   namespace: keda
 spec:
   ports:
-    - port: 443
+    - name: http
+      port: 443
       protocol: TCP
       targetPort: 9443
+    - name: metrics
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
   selector:
     app: keda-webhooks

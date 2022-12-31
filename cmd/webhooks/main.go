@@ -51,8 +51,8 @@ var webhooks = []rotator.WebhookInfo{
 var (
 	scheme         = apimachineryruntime.NewScheme()
 	setupLog       = ctrl.Log.WithName("setup")
-	secretName     = "kedaorg-webhook-secret" // #nosec
-	serviceName    = "keda-webhook-service"
+	secretName     = "kedaorg-webhooks-secret" // #nosec
+	serviceName    = "keda-webhooks"
 	caName         = "kedaorg-ca"
 	caOrganization = "kedaorg"
 	// DNSName is <service name>.<namespace>.svc

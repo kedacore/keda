@@ -5,9 +5,7 @@ package cache_metrics_test
 
 import (
 	"fmt"
-	"os"
 	"testing"
-	"text/template"
 
 	"github.com/stretchr/testify/assert"
 
@@ -120,7 +118,7 @@ func testWithNotScaledWorkload(t *testing.T, data templateData) {
 	t.Log("--- unscaled workload ---")
 
 	data.ScaledObjectName = scaledObject1Name
-	err := kubectlApplyWithErrors(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	err := KubectlApplyWithErrors(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	assert.NoErrorf(t, err, "cannot deploy the scaledObject - %s", err)
 
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
@@ -130,11 +128,11 @@ func testScaledWorkloadByOtherScaledObject(t *testing.T, data templateData) {
 	t.Log("--- already scaled workload by other scaledobject---")
 
 	data.ScaledObjectName = scaledObject1Name
-	err := kubectlApplyWithErrors(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	err := KubectlApplyWithErrors(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	assert.NoErrorf(t, err, "cannot deploy the scaledObject - %s", err)
 
 	data.ScaledObjectName = scaledObject2Name
-	err = kubectlApplyWithErrors(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	err = KubectlApplyWithErrors(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	assert.Errorf(t, err, "can deploy the scaledObject - %s", err)
 	assert.Contains(t, err.Error(), fmt.Sprintf("the workload '%s' of type 'apps/v1/Deployment' is already managed by the ScaledObject '%s", deploymentName, scaledObject1Name))
 
@@ -146,35 +144,15 @@ func testScaledWorkloadByOtherHpa(t *testing.T, data templateData) {
 	t.Log("--- already scaled workload by other hpa---")
 
 	data.HpaName = hpaName
-	err := kubectlApplyWithErrors(t, data, "hpaTemplate", hpaTemplate)
+	err := KubectlApplyWithErrors(t, data, "hpaTemplate", hpaTemplate)
 	assert.NoErrorf(t, err, "cannot deploy the hpa - %s", err)
 
 	data.ScaledObjectName = scaledObject1Name
-	err = kubectlApplyWithErrors(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	err = KubectlApplyWithErrors(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	assert.Errorf(t, err, "can deploy the scaledObject - %s", err)
 	assert.Contains(t, err.Error(), fmt.Sprintf("the workload '%s' of type 'apps/v1/Deployment' is already managed by the hpa '%s", deploymentName, hpaName))
 
 	KubectlDeleteWithTemplate(t, data, "hpaTemplate", hpaTemplate)
-}
-
-func kubectlApplyWithErrors(t *testing.T, data interface{}, templateName string, config string) error {
-	t.Logf("Applying template: %s", templateName)
-
-	tmpl, err := template.New("kubernetes resource template").Parse(config)
-	assert.NoErrorf(t, err, "cannot parse template - %s", err)
-
-	tempFile, err := os.CreateTemp("", templateName)
-	assert.NoErrorf(t, err, "cannot create temp file - %s", err)
-	if err != nil {
-		defer tempFile.Close()
-		defer os.Remove(tempFile.Name())
-	}
-
-	err = tmpl.Execute(tempFile, data)
-	assert.NoErrorf(t, err, "cannot insert data into template - %s", err)
-
-	_, err = ExecuteCommand(fmt.Sprintf("kubectl apply -f %s", tempFile.Name()))
-	return err
 }
 
 func getTemplateData() (templateData, []Template) {

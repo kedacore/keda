@@ -27,6 +27,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+
+	prommetrics "github.com/kedacore/keda/v2/pkg/prommetrics/webhook"
 )
 
 var scaledobjectlog = logf.Log.WithName("scaledobject-validation-webhook")
@@ -55,24 +57,25 @@ var _ webhook.Validator = &ScaledObject{}
 func (so *ScaledObject) ValidateCreate() error {
 	val, _ := json.MarshalIndent(so, "", "  ")
 	scaledobjectlog.V(1).Info(fmt.Sprintf("validating scaledobject creation for %s", string(val)))
-	return validateWorkload(so)
+	return validateWorkload(so, "create")
 }
 
 func (so *ScaledObject) ValidateUpdate(old runtime.Object) error {
 	val, _ := json.MarshalIndent(so, "", "  ")
 	scaledobjectlog.V(1).Info(fmt.Sprintf("validating scaledobject update for %s", string(val)))
-	return validateWorkload(so)
+	return validateWorkload(so, "update")
 }
 
-func validateWorkload(so *ScaledObject) error {
-	err := verifyScaledObjects(so)
+func validateWorkload(so *ScaledObject, action string) error {
+	prommetrics.RecordScaledObjectValidatingTotal(so.Namespace, action)
+	err := verifyScaledObjects(so, action)
 	if err != nil {
 		return err
 	}
-	return verifyHpas(so)
+	return verifyHpas(so, action)
 }
 
-func verifyHpas(incomingSo *ScaledObject) error {
+func verifyHpas(incomingSo *ScaledObject, action string) error {
 	hpaList := &autoscalingv2.HorizontalPodAutoscalerList{}
 	opt := &client.ListOptions{
 		Namespace: incomingSo.Namespace,
@@ -129,6 +132,7 @@ func verifyHpas(incomingSo *ScaledObject) error {
 				}
 
 				scaledobjectlog.Error(err, "validation error")
+				prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "hpa")
 				return err
 			}
 		}
@@ -137,7 +141,7 @@ func verifyHpas(incomingSo *ScaledObject) error {
 	return nil
 }
 
-func verifyScaledObjects(incomingSo *ScaledObject) error {
+func verifyScaledObjects(incomingSo *ScaledObject, action string) error {
 	soList := &ScaledObjectList{}
 	opt := &client.ListOptions{
 		Namespace: incomingSo.Namespace,
@@ -179,6 +183,7 @@ func verifyScaledObjects(incomingSo *ScaledObject) error {
 			soTarget.Name == incomingTarget.Name {
 			err = fmt.Errorf("the workload '%s' of type '%s/%s' is already managed by the ScaledObject '%s'", soTarget.Name, sotargetAPI, soTargetKind, so.Name)
 			scaledobjectlog.Error(err, "validation error")
+			prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "scaled_object")
 			return err
 		}
 	}

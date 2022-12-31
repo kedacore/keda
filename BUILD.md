@@ -260,7 +260,7 @@ Follow these instructions if you want to debug the KEDA webhook using VS Code.
      - v1
      clientConfig:
        service:
-         name: keda-webhook-service
+         name: keda-webhooks
          namespace: keda
          path: /validate-keda-sh-v1alpha1-scaledobject
    ```
