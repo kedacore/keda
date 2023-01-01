@@ -1,5 +1,9 @@
 # Change Log
 
+## `v3.4.0`
+
+-Updated to latest `azure-amqp-common-go` and `go-amqp` modules.
+
 ## `v3.3.20`
 
 - Fixed issue with a lease existing on start [#277](https://github.com/Azure/azure-event-hubs-go/pull/277)

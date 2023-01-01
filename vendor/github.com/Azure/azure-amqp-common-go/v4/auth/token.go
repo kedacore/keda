@@ -1,4 +1,5 @@
-package eventhub
+// Package auth provides an abstraction over claims-based security for Azure Event Hub and Service Bus.
+package auth
 
 //	MIT License
 //
@@ -22,32 +23,36 @@ package eventhub
 //	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //	SOFTWARE
 
-import (
-	"github.com/Azure/azure-amqp-common-go/v4/uuid"
-	"github.com/Azure/go-amqp"
+const (
+	// CBSTokenTypeJWT is the type of token to be used for JWTs. For example Azure Active Directory tokens.
+	CBSTokenTypeJWT TokenType = "jwt"
+	// CBSTokenTypeSAS is the type of token to be used for SAS tokens.
+	CBSTokenTypeSAS TokenType = "servicebus.windows.net:sastoken"
 )
 
 type (
-	// session is a wrapper for the AMQP session with some added information to help with Service Bus messaging
-	session struct {
-		*amqp.Session
-		SessionID string
+	// TokenType represents types of tokens known for claims-based auth
+	TokenType string
+
+	// Token contains all of the information to negotiate authentication
+	Token struct {
+		// TokenType is the type of CBS token
+		TokenType TokenType
+		Token     string
+		Expiry    string
+	}
+
+	// TokenProvider abstracts the fetching of authentication tokens
+	TokenProvider interface {
+		GetToken(uri string) (*Token, error)
 	}
 )
 
-// newSession is a constructor for a Service Bus session which will pre-populate the SessionID with a new UUID
-func newSession(amqpSession *amqp.Session) (*session, error) {
-	sessionID, err := uuid.NewV4()
-	if err != nil {
-		return nil, err
+// NewToken constructs a new auth token
+func NewToken(tokenType TokenType, token, expiry string) *Token {
+	return &Token{
+		TokenType: tokenType,
+		Token:     token,
+		Expiry:    expiry,
 	}
-
-	return &session{
-		Session:   amqpSession,
-		SessionID: sessionID.String(),
-	}, nil
-}
-
-func (s *session) String() string {
-	return s.SessionID
 }

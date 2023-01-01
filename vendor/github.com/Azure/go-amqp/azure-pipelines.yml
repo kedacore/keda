@@ -8,12 +8,12 @@ jobs:
 
     strategy:
       matrix:
-        Linux_Go116:
-          vm.image: 'ubuntu-18.04'
-          go.version: '1.16.11'
-        Linux_Go117:
-          vm.image: 'ubuntu-18.04'
-          go.version: '1.17.4'
+        Linux_Go118:
+          vm.image: 'ubuntu-20.04'
+          go.version: '1.18.8'
+        Linux_Go119:
+          vm.image: 'ubuntu-20.04'
+          go.version: '1.19.3'
 
     pool:
       vmImage: '$(vm.image)'
@@ -28,14 +28,14 @@ jobs:
           set -e
           export gopathbin=$(go env GOPATH)/bin
           echo "##vso[task.prependpath]$gopathbin"
-          go get github.com/jstemmer/go-junit-report
-          go get github.com/axw/gocov/gocov
-          go get github.com/AlekSi/gocov-xml
-          go get github.com/matm/gocov-html
+          go install github.com/jstemmer/go-junit-report@v0.9.1
+          go install github.com/axw/gocov/gocov@v1.1.0
+          go install github.com/AlekSi/gocov-xml@v1.0.0
+          go install github.com/matm/gocov-html@v0.0.0-20200509184451-71874e2e203b
         displayName: 'Install Dependencies'
 
       - script: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.42.0
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.50.1
           golangci-lint --version
           golangci-lint run
         displayName: 'Install and Run GoLintCLI.'
@@ -65,6 +65,7 @@ jobs:
 
       - script: |
           set -e
+          export TEST_CORPUS=1
           echo '##[command]Starting broker at $(AMQP_BROKER_ADDR)'
           $(Pipeline.Workspace)/azure-amqp/bin/Debug/TestAmqpBroker/net461/TestAmqpBroker.exe $AMQP_BROKER_ADDR /headless &
           brokerPID=$!

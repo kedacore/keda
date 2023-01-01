@@ -36,8 +36,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-amqp-common-go/v3/auth"
-	"github.com/Azure/azure-amqp-common-go/v3/conn"
+	"github.com/Azure/azure-amqp-common-go/v4/auth"
+	"github.com/Azure/azure-amqp-common-go/v4/conn"
 )
 
 type (
@@ -58,7 +58,7 @@ type (
 
 // TokenProviderWithEnvironmentVars creates a new SAS TokenProvider from environment variables
 //
-// There are two sets of environment variables which can produce a SAS TokenProvider
+// # There are two sets of environment variables which can produce a SAS TokenProvider
 //
 // 1) Expected Environment Variables:
 //   - "EVENTHUB_KEY_NAME" the name of the Event Hub key

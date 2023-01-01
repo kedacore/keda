@@ -31,9 +31,9 @@ import (
 
 	"github.com/devigned/tab"
 
-	"github.com/Azure/azure-amqp-common-go/v3/auth"
-	"github.com/Azure/azure-amqp-common-go/v3/internal/tracing"
-	"github.com/Azure/azure-amqp-common-go/v3/rpc"
+	"github.com/Azure/azure-amqp-common-go/v4/auth"
+	"github.com/Azure/azure-amqp-common-go/v4/internal/tracing"
+	"github.com/Azure/azure-amqp-common-go/v4/rpc"
 	"github.com/Azure/go-amqp"
 )
 
@@ -47,11 +47,11 @@ const (
 )
 
 // NegotiateClaim attempts to put a token to the $cbs management endpoint to negotiate auth for the given audience
-func NegotiateClaim(ctx context.Context, audience string, conn *amqp.Client, provider auth.TokenProvider) error {
+func NegotiateClaim(ctx context.Context, audience string, conn *amqp.Conn, provider auth.TokenProvider) error {
 	ctx, span := tracing.StartSpanFromContext(ctx, "az-amqp-common.cbs.NegotiateClaim")
 	defer span.End()
 
-	link, err := rpc.NewLink(conn, cbsAddress)
+	link, err := rpc.NewLink(ctx, conn, cbsAddress)
 	if err != nil {
 		tab.For(ctx).Error(err)
 		return err
