@@ -22,7 +22,6 @@ import (
 	"github.com/Azure/azure-kusto-go/kusto/internal/response"
 	"github.com/Azure/azure-kusto-go/kusto/internal/version"
 
-	"github.com/Azure/go-autorest/autorest"
 	"github.com/google/uuid"
 )
 
@@ -36,7 +35,8 @@ var bufferPool = sync.Pool{
 
 // conn provides connectivity to a Kusto instance.
 type conn struct {
-	auth                           autorest.Authorizer
+	endpoint                       string
+	auth                           Authorization
 	endMgmt, endQuery, streamQuery *url.URL
 	client                         *http.Client
 }
@@ -53,7 +53,7 @@ func newConn(endpoint string, auth Authorization, client *http.Client) (*conn, e
 	}
 
 	c := &conn{
-		auth:        auth.Authorizer,
+		auth:        auth,
 		endMgmt:     &url.URL{Scheme: "https", Host: u.Host, Path: "/v1/rest/mgmt"},
 		endQuery:    &url.URL{Scheme: "https", Host: u.Host, Path: "/v2/rest/query"},
 		streamQuery: &url.URL{Scheme: "https", Host: u.Host, Path: "/v1/rest/ingest/"},
@@ -95,6 +95,7 @@ func (c *conn) queryToJson(ctx context.Context, db string, query Stmt, options *
 		return "", e
 	}
 
+	defer body.Close()
 	all, e := io.ReadAll(body)
 	return string(all), e
 }
@@ -111,7 +112,7 @@ type execResp struct {
 }
 
 func (c *conn) execute(ctx context.Context, execType int, db string, query Stmt, properties requestProperties) (execResp, error) {
-	op, header, resp, body, e := c.doRequest(ctx, execType, db, query, properties)
+	op, reqHeader, respHeader, body, e := c.doRequest(ctx, execType, db, query, properties)
 	if e != nil {
 		return execResp{}, e
 	}
@@ -128,10 +129,11 @@ func (c *conn) execute(ctx context.Context, execType int, db string, query Stmt,
 
 	frameCh := dec.Decode(ctx, body, op)
 
-	return execResp{reqHeader: header, respHeader: resp.Header, frameCh: frameCh}, nil
+	return execResp{reqHeader: reqHeader, respHeader: respHeader, frameCh: frameCh}, nil
 }
 
-func (c *conn) doRequest(ctx context.Context, execType int, db string, query Stmt, properties requestProperties) (errors.Op, http.Header, *http.Response, io.ReadCloser, error) {
+func (c *conn) doRequest(ctx context.Context, execType int, db string, query Stmt, properties requestProperties) (errors.Op, http.Header, http.Header,
+	io.ReadCloser, error) {
 	var op errors.Op
 	if execType == execQuery {
 		op = errors.OpQuery
@@ -181,6 +183,15 @@ func (c *conn) doRequest(ctx context.Context, execType int, db string, query Stm
 		return 0, nil, nil, nil, errors.ES(op, errors.KInternal, "internal error: did not understand the type of execType: %d", execType)
 	}
 
+	if c.auth.TokenProvider != nil && c.auth.TokenProvider.AuthorizationRequired() {
+		c.auth.TokenProvider.SetHttp(c.client)
+		token, tokenType, tkerr := c.auth.TokenProvider.AcquireToken(ctx)
+		if tkerr != nil {
+			return 0, nil, nil, nil, errors.ES(op, errors.KInternal, "Error while getting token : %s", tkerr)
+		}
+		header.Add("Authorization", fmt.Sprintf("%s %s", tokenType, token))
+	}
+
 	req := &http.Request{
 		Method: http.MethodPost,
 		URL:    endpoint,
@@ -189,11 +200,6 @@ func (c *conn) doRequest(ctx context.Context, execType int, db string, query Stm
 	}
 
 	var err error
-	prep := c.auth.WithAuthorization()
-	req, err = prep(autorest.CreatePreparer()).Prepare(req)
-	if err != nil {
-		return 0, nil, nil, nil, errors.E(op, errors.KInternal, err)
-	}
 
 	resp, err := c.client.Do(req.WithContext(ctx))
 	if err != nil {
@@ -209,17 +215,10 @@ func (c *conn) doRequest(ctx context.Context, execType int, db string, query Stm
 	if resp.StatusCode != http.StatusOK {
 		return 0, nil, nil, nil, errors.HTTP(op, resp.Status, resp.StatusCode, body, fmt.Sprintf("error from Kusto endpoint for query %q: ", query.String()))
 	}
-	return op, header, resp, body, nil
+	return op, header, resp.Header, body, nil
 }
 
 func (c *conn) Close() error {
-	if c.auth == nil {
-		return nil
-	}
-
-	if closer, ok := c.auth.(io.Closer); ok {
-		return closer.Close()
-	}
-
+	c.client.CloseIdleConnections()
 	return nil
 }
