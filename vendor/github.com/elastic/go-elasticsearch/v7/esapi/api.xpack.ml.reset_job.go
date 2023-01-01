@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -41,11 +41,9 @@ func newMLResetJobFunc(t Transport) MLResetJob {
 // MLResetJob - Resets an existing anomaly detection job.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/ml-reset-job.html.
-//
 type MLResetJob func(job_id string, o ...func(*MLResetJobRequest)) (*Response, error)
 
 // MLResetJobRequest configures the ML Reset Job API request.
-//
 type MLResetJobRequest struct {
 	JobID string
 
@@ -62,7 +60,6 @@ type MLResetJobRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r MLResetJobRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -148,7 +145,6 @@ func (r MLResetJobRequest) Do(ctx context.Context, transport Transport) (*Respon
 }
 
 // WithContext sets the request context.
-//
 func (f MLResetJob) WithContext(v context.Context) func(*MLResetJobRequest) {
 	return func(r *MLResetJobRequest) {
 		r.ctx = v
@@ -156,7 +152,6 @@ func (f MLResetJob) WithContext(v context.Context) func(*MLResetJobRequest) {
 }
 
 // WithWaitForCompletion - should this request wait until the operation has completed before returning.
-//
 func (f MLResetJob) WithWaitForCompletion(v bool) func(*MLResetJobRequest) {
 	return func(r *MLResetJobRequest) {
 		r.WaitForCompletion = &v
@@ -164,7 +159,6 @@ func (f MLResetJob) WithWaitForCompletion(v bool) func(*MLResetJobRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f MLResetJob) WithPretty() func(*MLResetJobRequest) {
 	return func(r *MLResetJobRequest) {
 		r.Pretty = true
@@ -172,7 +166,6 @@ func (f MLResetJob) WithPretty() func(*MLResetJobRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f MLResetJob) WithHuman() func(*MLResetJobRequest) {
 	return func(r *MLResetJobRequest) {
 		r.Human = true
@@ -180,7 +173,6 @@ func (f MLResetJob) WithHuman() func(*MLResetJobRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f MLResetJob) WithErrorTrace() func(*MLResetJobRequest) {
 	return func(r *MLResetJobRequest) {
 		r.ErrorTrace = true
@@ -188,7 +180,6 @@ func (f MLResetJob) WithErrorTrace() func(*MLResetJobRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f MLResetJob) WithFilterPath(v ...string) func(*MLResetJobRequest) {
 	return func(r *MLResetJobRequest) {
 		r.FilterPath = v
@@ -196,7 +187,6 @@ func (f MLResetJob) WithFilterPath(v ...string) func(*MLResetJobRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f MLResetJob) WithHeader(h map[string]string) func(*MLResetJobRequest) {
 	return func(r *MLResetJobRequest) {
 		if r.Header == nil {
@@ -209,7 +199,6 @@ func (f MLResetJob) WithHeader(h map[string]string) func(*MLResetJobRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f MLResetJob) WithOpaqueID(s string) func(*MLResetJobRequest) {
 	return func(r *MLResetJobRequest) {
 		if r.Header == nil {

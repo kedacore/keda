@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -40,11 +40,9 @@ func newMigrationGetFeatureUpgradeStatusFunc(t Transport) MigrationGetFeatureUpg
 // MigrationGetFeatureUpgradeStatus - Find out whether system features need to be upgraded or not
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/migration-api-feature-upgrade.html.
-//
 type MigrationGetFeatureUpgradeStatus func(o ...func(*MigrationGetFeatureUpgradeStatusRequest)) (*Response, error)
 
 // MigrationGetFeatureUpgradeStatusRequest configures the Migration Get Feature Upgrade Status API request.
-//
 type MigrationGetFeatureUpgradeStatusRequest struct {
 	Pretty     bool
 	Human      bool
@@ -57,7 +55,6 @@ type MigrationGetFeatureUpgradeStatusRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r MigrationGetFeatureUpgradeStatusRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -132,7 +129,6 @@ func (r MigrationGetFeatureUpgradeStatusRequest) Do(ctx context.Context, transpo
 }
 
 // WithContext sets the request context.
-//
 func (f MigrationGetFeatureUpgradeStatus) WithContext(v context.Context) func(*MigrationGetFeatureUpgradeStatusRequest) {
 	return func(r *MigrationGetFeatureUpgradeStatusRequest) {
 		r.ctx = v
@@ -140,7 +136,6 @@ func (f MigrationGetFeatureUpgradeStatus) WithContext(v context.Context) func(*M
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f MigrationGetFeatureUpgradeStatus) WithPretty() func(*MigrationGetFeatureUpgradeStatusRequest) {
 	return func(r *MigrationGetFeatureUpgradeStatusRequest) {
 		r.Pretty = true
@@ -148,7 +143,6 @@ func (f MigrationGetFeatureUpgradeStatus) WithPretty() func(*MigrationGetFeature
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f MigrationGetFeatureUpgradeStatus) WithHuman() func(*MigrationGetFeatureUpgradeStatusRequest) {
 	return func(r *MigrationGetFeatureUpgradeStatusRequest) {
 		r.Human = true
@@ -156,7 +150,6 @@ func (f MigrationGetFeatureUpgradeStatus) WithHuman() func(*MigrationGetFeatureU
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f MigrationGetFeatureUpgradeStatus) WithErrorTrace() func(*MigrationGetFeatureUpgradeStatusRequest) {
 	return func(r *MigrationGetFeatureUpgradeStatusRequest) {
 		r.ErrorTrace = true
@@ -164,7 +157,6 @@ func (f MigrationGetFeatureUpgradeStatus) WithErrorTrace() func(*MigrationGetFea
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f MigrationGetFeatureUpgradeStatus) WithFilterPath(v ...string) func(*MigrationGetFeatureUpgradeStatusRequest) {
 	return func(r *MigrationGetFeatureUpgradeStatusRequest) {
 		r.FilterPath = v
@@ -172,7 +164,6 @@ func (f MigrationGetFeatureUpgradeStatus) WithFilterPath(v ...string) func(*Migr
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f MigrationGetFeatureUpgradeStatus) WithHeader(h map[string]string) func(*MigrationGetFeatureUpgradeStatusRequest) {
 	return func(r *MigrationGetFeatureUpgradeStatusRequest) {
 		if r.Header == nil {
@@ -185,7 +176,6 @@ func (f MigrationGetFeatureUpgradeStatus) WithHeader(h map[string]string) func(*
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f MigrationGetFeatureUpgradeStatus) WithOpaqueID(s string) func(*MigrationGetFeatureUpgradeStatusRequest) {
 	return func(r *MigrationGetFeatureUpgradeStatusRequest) {
 		if r.Header == nil {

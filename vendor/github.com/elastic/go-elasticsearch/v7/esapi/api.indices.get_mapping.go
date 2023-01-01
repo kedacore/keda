@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -42,11 +42,9 @@ func newIndicesGetMappingFunc(t Transport) IndicesGetMapping {
 // IndicesGetMapping returns mappings for one or more indices.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-get-mapping.html.
-//
 type IndicesGetMapping func(o ...func(*IndicesGetMappingRequest)) (*Response, error)
 
 // IndicesGetMappingRequest configures the Indices Get Mapping API request.
-//
 type IndicesGetMappingRequest struct {
 	Index        []string
 	DocumentType []string
@@ -69,7 +67,6 @@ type IndicesGetMappingRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r IndicesGetMappingRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -177,7 +174,6 @@ func (r IndicesGetMappingRequest) Do(ctx context.Context, transport Transport) (
 }
 
 // WithContext sets the request context.
-//
 func (f IndicesGetMapping) WithContext(v context.Context) func(*IndicesGetMappingRequest) {
 	return func(r *IndicesGetMappingRequest) {
 		r.ctx = v
@@ -185,7 +181,6 @@ func (f IndicesGetMapping) WithContext(v context.Context) func(*IndicesGetMappin
 }
 
 // WithIndex - a list of index names.
-//
 func (f IndicesGetMapping) WithIndex(v ...string) func(*IndicesGetMappingRequest) {
 	return func(r *IndicesGetMappingRequest) {
 		r.Index = v
@@ -193,7 +188,6 @@ func (f IndicesGetMapping) WithIndex(v ...string) func(*IndicesGetMappingRequest
 }
 
 // WithDocumentType - a list of document types.
-//
 func (f IndicesGetMapping) WithDocumentType(v ...string) func(*IndicesGetMappingRequest) {
 	return func(r *IndicesGetMappingRequest) {
 		r.DocumentType = v
@@ -201,7 +195,6 @@ func (f IndicesGetMapping) WithDocumentType(v ...string) func(*IndicesGetMapping
 }
 
 // WithAllowNoIndices - whether to ignore if a wildcard indices expression resolves into no concrete indices. (this includes `_all` string or when no indices have been specified).
-//
 func (f IndicesGetMapping) WithAllowNoIndices(v bool) func(*IndicesGetMappingRequest) {
 	return func(r *IndicesGetMappingRequest) {
 		r.AllowNoIndices = &v
@@ -209,7 +202,6 @@ func (f IndicesGetMapping) WithAllowNoIndices(v bool) func(*IndicesGetMappingReq
 }
 
 // WithExpandWildcards - whether to expand wildcard expression to concrete indices that are open, closed or both..
-//
 func (f IndicesGetMapping) WithExpandWildcards(v string) func(*IndicesGetMappingRequest) {
 	return func(r *IndicesGetMappingRequest) {
 		r.ExpandWildcards = v
@@ -217,7 +209,6 @@ func (f IndicesGetMapping) WithExpandWildcards(v string) func(*IndicesGetMapping
 }
 
 // WithIgnoreUnavailable - whether specified concrete indices should be ignored when unavailable (missing or closed).
-//
 func (f IndicesGetMapping) WithIgnoreUnavailable(v bool) func(*IndicesGetMappingRequest) {
 	return func(r *IndicesGetMappingRequest) {
 		r.IgnoreUnavailable = &v
@@ -225,7 +216,6 @@ func (f IndicesGetMapping) WithIgnoreUnavailable(v bool) func(*IndicesGetMapping
 }
 
 // WithIncludeTypeName - whether to add the type name to the response (default: false).
-//
 func (f IndicesGetMapping) WithIncludeTypeName(v bool) func(*IndicesGetMappingRequest) {
 	return func(r *IndicesGetMappingRequest) {
 		r.IncludeTypeName = &v
@@ -233,7 +223,6 @@ func (f IndicesGetMapping) WithIncludeTypeName(v bool) func(*IndicesGetMappingRe
 }
 
 // WithLocal - return local information, do not retrieve the state from master node (default: false).
-//
 func (f IndicesGetMapping) WithLocal(v bool) func(*IndicesGetMappingRequest) {
 	return func(r *IndicesGetMappingRequest) {
 		r.Local = &v
@@ -241,7 +230,6 @@ func (f IndicesGetMapping) WithLocal(v bool) func(*IndicesGetMappingRequest) {
 }
 
 // WithMasterTimeout - specify timeout for connection to master.
-//
 func (f IndicesGetMapping) WithMasterTimeout(v time.Duration) func(*IndicesGetMappingRequest) {
 	return func(r *IndicesGetMappingRequest) {
 		r.MasterTimeout = v
@@ -249,7 +237,6 @@ func (f IndicesGetMapping) WithMasterTimeout(v time.Duration) func(*IndicesGetMa
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f IndicesGetMapping) WithPretty() func(*IndicesGetMappingRequest) {
 	return func(r *IndicesGetMappingRequest) {
 		r.Pretty = true
@@ -257,7 +244,6 @@ func (f IndicesGetMapping) WithPretty() func(*IndicesGetMappingRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f IndicesGetMapping) WithHuman() func(*IndicesGetMappingRequest) {
 	return func(r *IndicesGetMappingRequest) {
 		r.Human = true
@@ -265,7 +251,6 @@ func (f IndicesGetMapping) WithHuman() func(*IndicesGetMappingRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f IndicesGetMapping) WithErrorTrace() func(*IndicesGetMappingRequest) {
 	return func(r *IndicesGetMappingRequest) {
 		r.ErrorTrace = true
@@ -273,7 +258,6 @@ func (f IndicesGetMapping) WithErrorTrace() func(*IndicesGetMappingRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f IndicesGetMapping) WithFilterPath(v ...string) func(*IndicesGetMappingRequest) {
 	return func(r *IndicesGetMappingRequest) {
 		r.FilterPath = v
@@ -281,7 +265,6 @@ func (f IndicesGetMapping) WithFilterPath(v ...string) func(*IndicesGetMappingRe
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f IndicesGetMapping) WithHeader(h map[string]string) func(*IndicesGetMappingRequest) {
 	return func(r *IndicesGetMappingRequest) {
 		if r.Header == nil {
@@ -294,7 +277,6 @@ func (f IndicesGetMapping) WithHeader(h map[string]string) func(*IndicesGetMappi
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f IndicesGetMapping) WithOpaqueID(s string) func(*IndicesGetMappingRequest) {
 	return func(r *IndicesGetMappingRequest) {
 		if r.Header == nil {

@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -44,11 +44,9 @@ func newDataFrameTransformDeprecatedPutTransformFunc(t Transport) DataFrameTrans
 // This API is beta.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/put-transform.html.
-//
 type DataFrameTransformDeprecatedPutTransform func(body io.Reader, transform_id string, o ...func(*DataFrameTransformDeprecatedPutTransformRequest)) (*Response, error)
 
 // DataFrameTransformDeprecatedPutTransformRequest configures the Data Frame Transform Deprecated Put Transform API request.
-//
 type DataFrameTransformDeprecatedPutTransformRequest struct {
 	Body io.Reader
 
@@ -67,7 +65,6 @@ type DataFrameTransformDeprecatedPutTransformRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r DataFrameTransformDeprecatedPutTransformRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -120,10 +117,6 @@ func (r DataFrameTransformDeprecatedPutTransformRequest) Do(ctx context.Context,
 		req.URL.RawQuery = q.Encode()
 	}
 
-	if r.Body != nil {
-		req.Header[headerContentType] = headerContentTypeJSON
-	}
-
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -134,6 +127,10 @@ func (r DataFrameTransformDeprecatedPutTransformRequest) Do(ctx context.Context,
 				}
 			}
 		}
+	}
+
+	if r.Body != nil && req.Header.Get(headerContentType) == "" {
+		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -155,7 +152,6 @@ func (r DataFrameTransformDeprecatedPutTransformRequest) Do(ctx context.Context,
 }
 
 // WithContext sets the request context.
-//
 func (f DataFrameTransformDeprecatedPutTransform) WithContext(v context.Context) func(*DataFrameTransformDeprecatedPutTransformRequest) {
 	return func(r *DataFrameTransformDeprecatedPutTransformRequest) {
 		r.ctx = v
@@ -163,7 +159,6 @@ func (f DataFrameTransformDeprecatedPutTransform) WithContext(v context.Context)
 }
 
 // WithDeferValidation - if validations should be deferred until transform starts, defaults to false..
-//
 func (f DataFrameTransformDeprecatedPutTransform) WithDeferValidation(v bool) func(*DataFrameTransformDeprecatedPutTransformRequest) {
 	return func(r *DataFrameTransformDeprecatedPutTransformRequest) {
 		r.DeferValidation = &v
@@ -171,7 +166,6 @@ func (f DataFrameTransformDeprecatedPutTransform) WithDeferValidation(v bool) fu
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f DataFrameTransformDeprecatedPutTransform) WithPretty() func(*DataFrameTransformDeprecatedPutTransformRequest) {
 	return func(r *DataFrameTransformDeprecatedPutTransformRequest) {
 		r.Pretty = true
@@ -179,7 +173,6 @@ func (f DataFrameTransformDeprecatedPutTransform) WithPretty() func(*DataFrameTr
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f DataFrameTransformDeprecatedPutTransform) WithHuman() func(*DataFrameTransformDeprecatedPutTransformRequest) {
 	return func(r *DataFrameTransformDeprecatedPutTransformRequest) {
 		r.Human = true
@@ -187,7 +180,6 @@ func (f DataFrameTransformDeprecatedPutTransform) WithHuman() func(*DataFrameTra
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f DataFrameTransformDeprecatedPutTransform) WithErrorTrace() func(*DataFrameTransformDeprecatedPutTransformRequest) {
 	return func(r *DataFrameTransformDeprecatedPutTransformRequest) {
 		r.ErrorTrace = true
@@ -195,7 +187,6 @@ func (f DataFrameTransformDeprecatedPutTransform) WithErrorTrace() func(*DataFra
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f DataFrameTransformDeprecatedPutTransform) WithFilterPath(v ...string) func(*DataFrameTransformDeprecatedPutTransformRequest) {
 	return func(r *DataFrameTransformDeprecatedPutTransformRequest) {
 		r.FilterPath = v
@@ -203,7 +194,6 @@ func (f DataFrameTransformDeprecatedPutTransform) WithFilterPath(v ...string) fu
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f DataFrameTransformDeprecatedPutTransform) WithHeader(h map[string]string) func(*DataFrameTransformDeprecatedPutTransformRequest) {
 	return func(r *DataFrameTransformDeprecatedPutTransformRequest) {
 		if r.Header == nil {
@@ -216,7 +206,6 @@ func (f DataFrameTransformDeprecatedPutTransform) WithHeader(h map[string]string
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f DataFrameTransformDeprecatedPutTransform) WithOpaqueID(s string) func(*DataFrameTransformDeprecatedPutTransformRequest) {
 	return func(r *DataFrameTransformDeprecatedPutTransformRequest) {
 		if r.Header == nil {

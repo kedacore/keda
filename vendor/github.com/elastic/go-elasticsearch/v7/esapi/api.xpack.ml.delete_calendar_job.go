@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -40,11 +40,9 @@ func newMLDeleteCalendarJobFunc(t Transport) MLDeleteCalendarJob {
 // MLDeleteCalendarJob - Deletes anomaly detection jobs from a calendar.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/ml-delete-calendar-job.html.
-//
 type MLDeleteCalendarJob func(calendar_id string, job_id string, o ...func(*MLDeleteCalendarJobRequest)) (*Response, error)
 
 // MLDeleteCalendarJobRequest configures the ML Delete Calendar Job API request.
-//
 type MLDeleteCalendarJobRequest struct {
 	CalendarID string
 	JobID      string
@@ -60,7 +58,6 @@ type MLDeleteCalendarJobRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r MLDeleteCalendarJobRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -144,7 +141,6 @@ func (r MLDeleteCalendarJobRequest) Do(ctx context.Context, transport Transport)
 }
 
 // WithContext sets the request context.
-//
 func (f MLDeleteCalendarJob) WithContext(v context.Context) func(*MLDeleteCalendarJobRequest) {
 	return func(r *MLDeleteCalendarJobRequest) {
 		r.ctx = v
@@ -152,7 +148,6 @@ func (f MLDeleteCalendarJob) WithContext(v context.Context) func(*MLDeleteCalend
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f MLDeleteCalendarJob) WithPretty() func(*MLDeleteCalendarJobRequest) {
 	return func(r *MLDeleteCalendarJobRequest) {
 		r.Pretty = true
@@ -160,7 +155,6 @@ func (f MLDeleteCalendarJob) WithPretty() func(*MLDeleteCalendarJobRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f MLDeleteCalendarJob) WithHuman() func(*MLDeleteCalendarJobRequest) {
 	return func(r *MLDeleteCalendarJobRequest) {
 		r.Human = true
@@ -168,7 +162,6 @@ func (f MLDeleteCalendarJob) WithHuman() func(*MLDeleteCalendarJobRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f MLDeleteCalendarJob) WithErrorTrace() func(*MLDeleteCalendarJobRequest) {
 	return func(r *MLDeleteCalendarJobRequest) {
 		r.ErrorTrace = true
@@ -176,7 +169,6 @@ func (f MLDeleteCalendarJob) WithErrorTrace() func(*MLDeleteCalendarJobRequest) 
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f MLDeleteCalendarJob) WithFilterPath(v ...string) func(*MLDeleteCalendarJobRequest) {
 	return func(r *MLDeleteCalendarJobRequest) {
 		r.FilterPath = v
@@ -184,7 +176,6 @@ func (f MLDeleteCalendarJob) WithFilterPath(v ...string) func(*MLDeleteCalendarJ
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f MLDeleteCalendarJob) WithHeader(h map[string]string) func(*MLDeleteCalendarJobRequest) {
 	return func(r *MLDeleteCalendarJobRequest) {
 		if r.Header == nil {
@@ -197,7 +188,6 @@ func (f MLDeleteCalendarJob) WithHeader(h map[string]string) func(*MLDeleteCalen
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f MLDeleteCalendarJob) WithOpaqueID(s string) func(*MLDeleteCalendarJobRequest) {
 	return func(r *MLDeleteCalendarJobRequest) {
 		if r.Header == nil {

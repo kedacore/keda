@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -45,11 +45,9 @@ func newCreateFunc(t Transport) Create {
 // Returns a 409 response when a document with a same ID already exists in the index.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/docs-index_.html.
-//
 type Create func(index string, id string, body io.Reader, o ...func(*CreateRequest)) (*Response, error)
 
 // CreateRequest configures the Create API request.
-//
 type CreateRequest struct {
 	Index        string
 	DocumentType string
@@ -76,7 +74,6 @@ type CreateRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r CreateRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -161,10 +158,6 @@ func (r CreateRequest) Do(ctx context.Context, transport Transport) (*Response, 
 		req.URL.RawQuery = q.Encode()
 	}
 
-	if r.Body != nil {
-		req.Header[headerContentType] = headerContentTypeJSON
-	}
-
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -175,6 +168,10 @@ func (r CreateRequest) Do(ctx context.Context, transport Transport) (*Response, 
 				}
 			}
 		}
+	}
+
+	if r.Body != nil && req.Header.Get(headerContentType) == "" {
+		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -196,7 +193,6 @@ func (r CreateRequest) Do(ctx context.Context, transport Transport) (*Response, 
 }
 
 // WithContext sets the request context.
-//
 func (f Create) WithContext(v context.Context) func(*CreateRequest) {
 	return func(r *CreateRequest) {
 		r.ctx = v
@@ -204,7 +200,6 @@ func (f Create) WithContext(v context.Context) func(*CreateRequest) {
 }
 
 // WithDocumentType - the type of the document.
-//
 func (f Create) WithDocumentType(v string) func(*CreateRequest) {
 	return func(r *CreateRequest) {
 		r.DocumentType = v
@@ -212,7 +207,6 @@ func (f Create) WithDocumentType(v string) func(*CreateRequest) {
 }
 
 // WithPipeline - the pipeline ID to preprocess incoming documents with.
-//
 func (f Create) WithPipeline(v string) func(*CreateRequest) {
 	return func(r *CreateRequest) {
 		r.Pipeline = v
@@ -220,7 +214,6 @@ func (f Create) WithPipeline(v string) func(*CreateRequest) {
 }
 
 // WithRefresh - if `true` then refresh the affected shards to make this operation visible to search, if `wait_for` then wait for a refresh to make this operation visible to search, if `false` (the default) then do nothing with refreshes..
-//
 func (f Create) WithRefresh(v string) func(*CreateRequest) {
 	return func(r *CreateRequest) {
 		r.Refresh = v
@@ -228,7 +221,6 @@ func (f Create) WithRefresh(v string) func(*CreateRequest) {
 }
 
 // WithRouting - specific routing value.
-//
 func (f Create) WithRouting(v string) func(*CreateRequest) {
 	return func(r *CreateRequest) {
 		r.Routing = v
@@ -236,7 +228,6 @@ func (f Create) WithRouting(v string) func(*CreateRequest) {
 }
 
 // WithTimeout - explicit operation timeout.
-//
 func (f Create) WithTimeout(v time.Duration) func(*CreateRequest) {
 	return func(r *CreateRequest) {
 		r.Timeout = v
@@ -244,7 +235,6 @@ func (f Create) WithTimeout(v time.Duration) func(*CreateRequest) {
 }
 
 // WithVersion - explicit version number for concurrency control.
-//
 func (f Create) WithVersion(v int) func(*CreateRequest) {
 	return func(r *CreateRequest) {
 		r.Version = &v
@@ -252,7 +242,6 @@ func (f Create) WithVersion(v int) func(*CreateRequest) {
 }
 
 // WithVersionType - specific version type.
-//
 func (f Create) WithVersionType(v string) func(*CreateRequest) {
 	return func(r *CreateRequest) {
 		r.VersionType = v
@@ -260,7 +249,6 @@ func (f Create) WithVersionType(v string) func(*CreateRequest) {
 }
 
 // WithWaitForActiveShards - sets the number of shard copies that must be active before proceeding with the index operation. defaults to 1, meaning the primary shard only. set to `all` for all shard copies, otherwise set to any non-negative value less than or equal to the total number of copies for the shard (number of replicas + 1).
-//
 func (f Create) WithWaitForActiveShards(v string) func(*CreateRequest) {
 	return func(r *CreateRequest) {
 		r.WaitForActiveShards = v
@@ -268,7 +256,6 @@ func (f Create) WithWaitForActiveShards(v string) func(*CreateRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f Create) WithPretty() func(*CreateRequest) {
 	return func(r *CreateRequest) {
 		r.Pretty = true
@@ -276,7 +263,6 @@ func (f Create) WithPretty() func(*CreateRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f Create) WithHuman() func(*CreateRequest) {
 	return func(r *CreateRequest) {
 		r.Human = true
@@ -284,7 +270,6 @@ func (f Create) WithHuman() func(*CreateRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f Create) WithErrorTrace() func(*CreateRequest) {
 	return func(r *CreateRequest) {
 		r.ErrorTrace = true
@@ -292,7 +277,6 @@ func (f Create) WithErrorTrace() func(*CreateRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f Create) WithFilterPath(v ...string) func(*CreateRequest) {
 	return func(r *CreateRequest) {
 		r.FilterPath = v
@@ -300,7 +284,6 @@ func (f Create) WithFilterPath(v ...string) func(*CreateRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f Create) WithHeader(h map[string]string) func(*CreateRequest) {
 	return func(r *CreateRequest) {
 		if r.Header == nil {
@@ -313,7 +296,6 @@ func (f Create) WithHeader(h map[string]string) func(*CreateRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f Create) WithOpaqueID(s string) func(*CreateRequest) {
 	return func(r *CreateRequest) {
 		if r.Header == nil {

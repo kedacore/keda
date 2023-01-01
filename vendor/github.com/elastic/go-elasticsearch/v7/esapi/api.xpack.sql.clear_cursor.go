@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -41,11 +41,9 @@ func newSQLClearCursorFunc(t Transport) SQLClearCursor {
 // SQLClearCursor - Clears the SQL cursor
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/clear-sql-cursor-api.html.
-//
 type SQLClearCursor func(body io.Reader, o ...func(*SQLClearCursorRequest)) (*Response, error)
 
 // SQLClearCursorRequest configures the SQL Clear Cursor API request.
-//
 type SQLClearCursorRequest struct {
 	Body io.Reader
 
@@ -60,7 +58,6 @@ type SQLClearCursorRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r SQLClearCursorRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -104,10 +101,6 @@ func (r SQLClearCursorRequest) Do(ctx context.Context, transport Transport) (*Re
 		req.URL.RawQuery = q.Encode()
 	}
 
-	if r.Body != nil {
-		req.Header[headerContentType] = headerContentTypeJSON
-	}
-
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -118,6 +111,10 @@ func (r SQLClearCursorRequest) Do(ctx context.Context, transport Transport) (*Re
 				}
 			}
 		}
+	}
+
+	if r.Body != nil && req.Header.Get(headerContentType) == "" {
+		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -139,7 +136,6 @@ func (r SQLClearCursorRequest) Do(ctx context.Context, transport Transport) (*Re
 }
 
 // WithContext sets the request context.
-//
 func (f SQLClearCursor) WithContext(v context.Context) func(*SQLClearCursorRequest) {
 	return func(r *SQLClearCursorRequest) {
 		r.ctx = v
@@ -147,7 +143,6 @@ func (f SQLClearCursor) WithContext(v context.Context) func(*SQLClearCursorReque
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f SQLClearCursor) WithPretty() func(*SQLClearCursorRequest) {
 	return func(r *SQLClearCursorRequest) {
 		r.Pretty = true
@@ -155,7 +150,6 @@ func (f SQLClearCursor) WithPretty() func(*SQLClearCursorRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f SQLClearCursor) WithHuman() func(*SQLClearCursorRequest) {
 	return func(r *SQLClearCursorRequest) {
 		r.Human = true
@@ -163,7 +157,6 @@ func (f SQLClearCursor) WithHuman() func(*SQLClearCursorRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f SQLClearCursor) WithErrorTrace() func(*SQLClearCursorRequest) {
 	return func(r *SQLClearCursorRequest) {
 		r.ErrorTrace = true
@@ -171,7 +164,6 @@ func (f SQLClearCursor) WithErrorTrace() func(*SQLClearCursorRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f SQLClearCursor) WithFilterPath(v ...string) func(*SQLClearCursorRequest) {
 	return func(r *SQLClearCursorRequest) {
 		r.FilterPath = v
@@ -179,7 +171,6 @@ func (f SQLClearCursor) WithFilterPath(v ...string) func(*SQLClearCursorRequest)
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f SQLClearCursor) WithHeader(h map[string]string) func(*SQLClearCursorRequest) {
 	return func(r *SQLClearCursorRequest) {
 		if r.Header == nil {
@@ -192,7 +183,6 @@ func (f SQLClearCursor) WithHeader(h map[string]string) func(*SQLClearCursorRequ
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f SQLClearCursor) WithOpaqueID(s string) func(*SQLClearCursorRequest) {
 	return func(r *SQLClearCursorRequest) {
 		if r.Header == nil {

@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -43,11 +43,9 @@ func newMLCloseJobFunc(t Transport) MLCloseJob {
 // MLCloseJob - Closes one or more anomaly detection jobs. A job can be opened and closed multiple times throughout its lifecycle.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/ml-close-job.html.
-//
 type MLCloseJob func(job_id string, o ...func(*MLCloseJobRequest)) (*Response, error)
 
 // MLCloseJobRequest configures the ML Close Job API request.
-//
 type MLCloseJobRequest struct {
 	Body io.Reader
 
@@ -69,7 +67,6 @@ type MLCloseJobRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r MLCloseJobRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -136,10 +133,6 @@ func (r MLCloseJobRequest) Do(ctx context.Context, transport Transport) (*Respon
 		req.URL.RawQuery = q.Encode()
 	}
 
-	if r.Body != nil {
-		req.Header[headerContentType] = headerContentTypeJSON
-	}
-
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -150,6 +143,10 @@ func (r MLCloseJobRequest) Do(ctx context.Context, transport Transport) (*Respon
 				}
 			}
 		}
+	}
+
+	if r.Body != nil && req.Header.Get(headerContentType) == "" {
+		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -171,7 +168,6 @@ func (r MLCloseJobRequest) Do(ctx context.Context, transport Transport) (*Respon
 }
 
 // WithContext sets the request context.
-//
 func (f MLCloseJob) WithContext(v context.Context) func(*MLCloseJobRequest) {
 	return func(r *MLCloseJobRequest) {
 		r.ctx = v
@@ -179,7 +175,6 @@ func (f MLCloseJob) WithContext(v context.Context) func(*MLCloseJobRequest) {
 }
 
 // WithBody - The URL params optionally sent in the body.
-//
 func (f MLCloseJob) WithBody(v io.Reader) func(*MLCloseJobRequest) {
 	return func(r *MLCloseJobRequest) {
 		r.Body = v
@@ -187,7 +182,6 @@ func (f MLCloseJob) WithBody(v io.Reader) func(*MLCloseJobRequest) {
 }
 
 // WithAllowNoJobs - whether to ignore if a wildcard expression matches no jobs. (this includes `_all` string or when no jobs have been specified).
-//
 func (f MLCloseJob) WithAllowNoJobs(v bool) func(*MLCloseJobRequest) {
 	return func(r *MLCloseJobRequest) {
 		r.AllowNoJobs = &v
@@ -195,7 +189,6 @@ func (f MLCloseJob) WithAllowNoJobs(v bool) func(*MLCloseJobRequest) {
 }
 
 // WithAllowNoMatch - whether to ignore if a wildcard expression matches no jobs. (this includes `_all` string or when no jobs have been specified).
-//
 func (f MLCloseJob) WithAllowNoMatch(v bool) func(*MLCloseJobRequest) {
 	return func(r *MLCloseJobRequest) {
 		r.AllowNoMatch = &v
@@ -203,7 +196,6 @@ func (f MLCloseJob) WithAllowNoMatch(v bool) func(*MLCloseJobRequest) {
 }
 
 // WithForce - true if the job should be forcefully closed.
-//
 func (f MLCloseJob) WithForce(v bool) func(*MLCloseJobRequest) {
 	return func(r *MLCloseJobRequest) {
 		r.Force = &v
@@ -211,7 +203,6 @@ func (f MLCloseJob) WithForce(v bool) func(*MLCloseJobRequest) {
 }
 
 // WithTimeout - controls the time to wait until a job has closed. default to 30 minutes.
-//
 func (f MLCloseJob) WithTimeout(v time.Duration) func(*MLCloseJobRequest) {
 	return func(r *MLCloseJobRequest) {
 		r.Timeout = v
@@ -219,7 +210,6 @@ func (f MLCloseJob) WithTimeout(v time.Duration) func(*MLCloseJobRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f MLCloseJob) WithPretty() func(*MLCloseJobRequest) {
 	return func(r *MLCloseJobRequest) {
 		r.Pretty = true
@@ -227,7 +217,6 @@ func (f MLCloseJob) WithPretty() func(*MLCloseJobRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f MLCloseJob) WithHuman() func(*MLCloseJobRequest) {
 	return func(r *MLCloseJobRequest) {
 		r.Human = true
@@ -235,7 +224,6 @@ func (f MLCloseJob) WithHuman() func(*MLCloseJobRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f MLCloseJob) WithErrorTrace() func(*MLCloseJobRequest) {
 	return func(r *MLCloseJobRequest) {
 		r.ErrorTrace = true
@@ -243,7 +231,6 @@ func (f MLCloseJob) WithErrorTrace() func(*MLCloseJobRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f MLCloseJob) WithFilterPath(v ...string) func(*MLCloseJobRequest) {
 	return func(r *MLCloseJobRequest) {
 		r.FilterPath = v
@@ -251,7 +238,6 @@ func (f MLCloseJob) WithFilterPath(v ...string) func(*MLCloseJobRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f MLCloseJob) WithHeader(h map[string]string) func(*MLCloseJobRequest) {
 	return func(r *MLCloseJobRequest) {
 		if r.Header == nil {
@@ -264,7 +250,6 @@ func (f MLCloseJob) WithHeader(h map[string]string) func(*MLCloseJobRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f MLCloseJob) WithOpaqueID(s string) func(*MLCloseJobRequest) {
 	return func(r *MLCloseJobRequest) {
 		if r.Header == nil {

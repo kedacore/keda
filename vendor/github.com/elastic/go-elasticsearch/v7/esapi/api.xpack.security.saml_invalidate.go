@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -41,11 +41,9 @@ func newSecuritySamlInvalidateFunc(t Transport) SecuritySamlInvalidate {
 // SecuritySamlInvalidate - Consumes a SAML LogoutRequest
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-saml-invalidate.html.
-//
 type SecuritySamlInvalidate func(body io.Reader, o ...func(*SecuritySamlInvalidateRequest)) (*Response, error)
 
 // SecuritySamlInvalidateRequest configures the Security Saml Invalidate API request.
-//
 type SecuritySamlInvalidateRequest struct {
 	Body io.Reader
 
@@ -60,7 +58,6 @@ type SecuritySamlInvalidateRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r SecuritySamlInvalidateRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -104,10 +101,6 @@ func (r SecuritySamlInvalidateRequest) Do(ctx context.Context, transport Transpo
 		req.URL.RawQuery = q.Encode()
 	}
 
-	if r.Body != nil {
-		req.Header[headerContentType] = headerContentTypeJSON
-	}
-
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -118,6 +111,10 @@ func (r SecuritySamlInvalidateRequest) Do(ctx context.Context, transport Transpo
 				}
 			}
 		}
+	}
+
+	if r.Body != nil && req.Header.Get(headerContentType) == "" {
+		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -139,7 +136,6 @@ func (r SecuritySamlInvalidateRequest) Do(ctx context.Context, transport Transpo
 }
 
 // WithContext sets the request context.
-//
 func (f SecuritySamlInvalidate) WithContext(v context.Context) func(*SecuritySamlInvalidateRequest) {
 	return func(r *SecuritySamlInvalidateRequest) {
 		r.ctx = v
@@ -147,7 +143,6 @@ func (f SecuritySamlInvalidate) WithContext(v context.Context) func(*SecuritySam
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f SecuritySamlInvalidate) WithPretty() func(*SecuritySamlInvalidateRequest) {
 	return func(r *SecuritySamlInvalidateRequest) {
 		r.Pretty = true
@@ -155,7 +150,6 @@ func (f SecuritySamlInvalidate) WithPretty() func(*SecuritySamlInvalidateRequest
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f SecuritySamlInvalidate) WithHuman() func(*SecuritySamlInvalidateRequest) {
 	return func(r *SecuritySamlInvalidateRequest) {
 		r.Human = true
@@ -163,7 +157,6 @@ func (f SecuritySamlInvalidate) WithHuman() func(*SecuritySamlInvalidateRequest)
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f SecuritySamlInvalidate) WithErrorTrace() func(*SecuritySamlInvalidateRequest) {
 	return func(r *SecuritySamlInvalidateRequest) {
 		r.ErrorTrace = true
@@ -171,7 +164,6 @@ func (f SecuritySamlInvalidate) WithErrorTrace() func(*SecuritySamlInvalidateReq
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f SecuritySamlInvalidate) WithFilterPath(v ...string) func(*SecuritySamlInvalidateRequest) {
 	return func(r *SecuritySamlInvalidateRequest) {
 		r.FilterPath = v
@@ -179,7 +171,6 @@ func (f SecuritySamlInvalidate) WithFilterPath(v ...string) func(*SecuritySamlIn
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f SecuritySamlInvalidate) WithHeader(h map[string]string) func(*SecuritySamlInvalidateRequest) {
 	return func(r *SecuritySamlInvalidateRequest) {
 		if r.Header == nil {
@@ -192,7 +183,6 @@ func (f SecuritySamlInvalidate) WithHeader(h map[string]string) func(*SecuritySa
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f SecuritySamlInvalidate) WithOpaqueID(s string) func(*SecuritySamlInvalidateRequest) {
 	return func(r *SecuritySamlInvalidateRequest) {
 		if r.Header == nil {

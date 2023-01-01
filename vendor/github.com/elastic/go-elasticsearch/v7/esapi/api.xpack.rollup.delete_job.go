@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -42,11 +42,9 @@ func newRollupDeleteJobFunc(t Transport) RollupDeleteJob {
 // This API is experimental.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/rollup-delete-job.html.
-//
 type RollupDeleteJob func(id string, o ...func(*RollupDeleteJobRequest)) (*Response, error)
 
 // RollupDeleteJobRequest configures the Rollup Delete Job API request.
-//
 type RollupDeleteJobRequest struct {
 	JobID string
 
@@ -61,7 +59,6 @@ type RollupDeleteJobRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r RollupDeleteJobRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -141,7 +138,6 @@ func (r RollupDeleteJobRequest) Do(ctx context.Context, transport Transport) (*R
 }
 
 // WithContext sets the request context.
-//
 func (f RollupDeleteJob) WithContext(v context.Context) func(*RollupDeleteJobRequest) {
 	return func(r *RollupDeleteJobRequest) {
 		r.ctx = v
@@ -149,7 +145,6 @@ func (f RollupDeleteJob) WithContext(v context.Context) func(*RollupDeleteJobReq
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f RollupDeleteJob) WithPretty() func(*RollupDeleteJobRequest) {
 	return func(r *RollupDeleteJobRequest) {
 		r.Pretty = true
@@ -157,7 +152,6 @@ func (f RollupDeleteJob) WithPretty() func(*RollupDeleteJobRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f RollupDeleteJob) WithHuman() func(*RollupDeleteJobRequest) {
 	return func(r *RollupDeleteJobRequest) {
 		r.Human = true
@@ -165,7 +159,6 @@ func (f RollupDeleteJob) WithHuman() func(*RollupDeleteJobRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f RollupDeleteJob) WithErrorTrace() func(*RollupDeleteJobRequest) {
 	return func(r *RollupDeleteJobRequest) {
 		r.ErrorTrace = true
@@ -173,7 +166,6 @@ func (f RollupDeleteJob) WithErrorTrace() func(*RollupDeleteJobRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f RollupDeleteJob) WithFilterPath(v ...string) func(*RollupDeleteJobRequest) {
 	return func(r *RollupDeleteJobRequest) {
 		r.FilterPath = v
@@ -181,7 +173,6 @@ func (f RollupDeleteJob) WithFilterPath(v ...string) func(*RollupDeleteJobReques
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f RollupDeleteJob) WithHeader(h map[string]string) func(*RollupDeleteJobRequest) {
 	return func(r *RollupDeleteJobRequest) {
 		if r.Header == nil {
@@ -194,7 +185,6 @@ func (f RollupDeleteJob) WithHeader(h map[string]string) func(*RollupDeleteJobRe
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f RollupDeleteJob) WithOpaqueID(s string) func(*RollupDeleteJobRequest) {
 	return func(r *RollupDeleteJobRequest) {
 		if r.Header == nil {

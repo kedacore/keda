@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -42,11 +42,9 @@ func newMLPutTrainedModelFunc(t Transport) MLPutTrainedModel {
 // MLPutTrainedModel - Creates an inference trained model.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/put-trained-models.html.
-//
 type MLPutTrainedModel func(body io.Reader, model_id string, o ...func(*MLPutTrainedModelRequest)) (*Response, error)
 
 // MLPutTrainedModelRequest configures the ML Put Trained Model API request.
-//
 type MLPutTrainedModelRequest struct {
 	Body io.Reader
 
@@ -65,7 +63,6 @@ type MLPutTrainedModelRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r MLPutTrainedModelRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -118,10 +115,6 @@ func (r MLPutTrainedModelRequest) Do(ctx context.Context, transport Transport) (
 		req.URL.RawQuery = q.Encode()
 	}
 
-	if r.Body != nil {
-		req.Header[headerContentType] = headerContentTypeJSON
-	}
-
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -132,6 +125,10 @@ func (r MLPutTrainedModelRequest) Do(ctx context.Context, transport Transport) (
 				}
 			}
 		}
+	}
+
+	if r.Body != nil && req.Header.Get(headerContentType) == "" {
+		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -153,7 +150,6 @@ func (r MLPutTrainedModelRequest) Do(ctx context.Context, transport Transport) (
 }
 
 // WithContext sets the request context.
-//
 func (f MLPutTrainedModel) WithContext(v context.Context) func(*MLPutTrainedModelRequest) {
 	return func(r *MLPutTrainedModelRequest) {
 		r.ctx = v
@@ -161,7 +157,6 @@ func (f MLPutTrainedModel) WithContext(v context.Context) func(*MLPutTrainedMode
 }
 
 // WithDeferDefinitionDecompression - if set to `true` and a `compressed_definition` is provided, the request defers definition decompression and skips relevant validations..
-//
 func (f MLPutTrainedModel) WithDeferDefinitionDecompression(v bool) func(*MLPutTrainedModelRequest) {
 	return func(r *MLPutTrainedModelRequest) {
 		r.DeferDefinitionDecompression = &v
@@ -169,7 +164,6 @@ func (f MLPutTrainedModel) WithDeferDefinitionDecompression(v bool) func(*MLPutT
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f MLPutTrainedModel) WithPretty() func(*MLPutTrainedModelRequest) {
 	return func(r *MLPutTrainedModelRequest) {
 		r.Pretty = true
@@ -177,7 +171,6 @@ func (f MLPutTrainedModel) WithPretty() func(*MLPutTrainedModelRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f MLPutTrainedModel) WithHuman() func(*MLPutTrainedModelRequest) {
 	return func(r *MLPutTrainedModelRequest) {
 		r.Human = true
@@ -185,7 +178,6 @@ func (f MLPutTrainedModel) WithHuman() func(*MLPutTrainedModelRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f MLPutTrainedModel) WithErrorTrace() func(*MLPutTrainedModelRequest) {
 	return func(r *MLPutTrainedModelRequest) {
 		r.ErrorTrace = true
@@ -193,7 +185,6 @@ func (f MLPutTrainedModel) WithErrorTrace() func(*MLPutTrainedModelRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f MLPutTrainedModel) WithFilterPath(v ...string) func(*MLPutTrainedModelRequest) {
 	return func(r *MLPutTrainedModelRequest) {
 		r.FilterPath = v
@@ -201,7 +192,6 @@ func (f MLPutTrainedModel) WithFilterPath(v ...string) func(*MLPutTrainedModelRe
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f MLPutTrainedModel) WithHeader(h map[string]string) func(*MLPutTrainedModelRequest) {
 	return func(r *MLPutTrainedModelRequest) {
 		if r.Header == nil {
@@ -214,7 +204,6 @@ func (f MLPutTrainedModel) WithHeader(h map[string]string) func(*MLPutTrainedMod
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f MLPutTrainedModel) WithOpaqueID(s string) func(*MLPutTrainedModelRequest) {
 	return func(r *MLPutTrainedModelRequest) {
 		if r.Header == nil {

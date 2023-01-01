@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -42,11 +42,9 @@ func newIndicesDeleteAliasFunc(t Transport) IndicesDeleteAlias {
 // IndicesDeleteAlias deletes an alias.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-aliases.html.
-//
 type IndicesDeleteAlias func(index []string, name []string, o ...func(*IndicesDeleteAliasRequest)) (*Response, error)
 
 // IndicesDeleteAliasRequest configures the Indices Delete Alias API request.
-//
 type IndicesDeleteAliasRequest struct {
 	Index []string
 
@@ -66,7 +64,6 @@ type IndicesDeleteAliasRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r IndicesDeleteAliasRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -161,7 +158,6 @@ func (r IndicesDeleteAliasRequest) Do(ctx context.Context, transport Transport) 
 }
 
 // WithContext sets the request context.
-//
 func (f IndicesDeleteAlias) WithContext(v context.Context) func(*IndicesDeleteAliasRequest) {
 	return func(r *IndicesDeleteAliasRequest) {
 		r.ctx = v
@@ -169,7 +165,6 @@ func (f IndicesDeleteAlias) WithContext(v context.Context) func(*IndicesDeleteAl
 }
 
 // WithMasterTimeout - specify timeout for connection to master.
-//
 func (f IndicesDeleteAlias) WithMasterTimeout(v time.Duration) func(*IndicesDeleteAliasRequest) {
 	return func(r *IndicesDeleteAliasRequest) {
 		r.MasterTimeout = v
@@ -177,7 +172,6 @@ func (f IndicesDeleteAlias) WithMasterTimeout(v time.Duration) func(*IndicesDele
 }
 
 // WithTimeout - explicit timestamp for the document.
-//
 func (f IndicesDeleteAlias) WithTimeout(v time.Duration) func(*IndicesDeleteAliasRequest) {
 	return func(r *IndicesDeleteAliasRequest) {
 		r.Timeout = v
@@ -185,7 +179,6 @@ func (f IndicesDeleteAlias) WithTimeout(v time.Duration) func(*IndicesDeleteAlia
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f IndicesDeleteAlias) WithPretty() func(*IndicesDeleteAliasRequest) {
 	return func(r *IndicesDeleteAliasRequest) {
 		r.Pretty = true
@@ -193,7 +186,6 @@ func (f IndicesDeleteAlias) WithPretty() func(*IndicesDeleteAliasRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f IndicesDeleteAlias) WithHuman() func(*IndicesDeleteAliasRequest) {
 	return func(r *IndicesDeleteAliasRequest) {
 		r.Human = true
@@ -201,7 +193,6 @@ func (f IndicesDeleteAlias) WithHuman() func(*IndicesDeleteAliasRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f IndicesDeleteAlias) WithErrorTrace() func(*IndicesDeleteAliasRequest) {
 	return func(r *IndicesDeleteAliasRequest) {
 		r.ErrorTrace = true
@@ -209,7 +200,6 @@ func (f IndicesDeleteAlias) WithErrorTrace() func(*IndicesDeleteAliasRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f IndicesDeleteAlias) WithFilterPath(v ...string) func(*IndicesDeleteAliasRequest) {
 	return func(r *IndicesDeleteAliasRequest) {
 		r.FilterPath = v
@@ -217,7 +207,6 @@ func (f IndicesDeleteAlias) WithFilterPath(v ...string) func(*IndicesDeleteAlias
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f IndicesDeleteAlias) WithHeader(h map[string]string) func(*IndicesDeleteAliasRequest) {
 	return func(r *IndicesDeleteAliasRequest) {
 		if r.Header == nil {
@@ -230,7 +219,6 @@ func (f IndicesDeleteAlias) WithHeader(h map[string]string) func(*IndicesDeleteA
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f IndicesDeleteAlias) WithOpaqueID(s string) func(*IndicesDeleteAliasRequest) {
 	return func(r *IndicesDeleteAliasRequest) {
 		if r.Header == nil {

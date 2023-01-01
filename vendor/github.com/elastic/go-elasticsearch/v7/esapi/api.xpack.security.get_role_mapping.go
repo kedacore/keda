@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -40,11 +40,9 @@ func newSecurityGetRoleMappingFunc(t Transport) SecurityGetRoleMapping {
 // SecurityGetRoleMapping - Retrieves role mappings.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-get-role-mapping.html.
-//
 type SecurityGetRoleMapping func(o ...func(*SecurityGetRoleMappingRequest)) (*Response, error)
 
 // SecurityGetRoleMappingRequest configures the Security Get Role Mapping API request.
-//
 type SecurityGetRoleMappingRequest struct {
 	Name []string
 
@@ -59,7 +57,6 @@ type SecurityGetRoleMappingRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r SecurityGetRoleMappingRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -141,7 +138,6 @@ func (r SecurityGetRoleMappingRequest) Do(ctx context.Context, transport Transpo
 }
 
 // WithContext sets the request context.
-//
 func (f SecurityGetRoleMapping) WithContext(v context.Context) func(*SecurityGetRoleMappingRequest) {
 	return func(r *SecurityGetRoleMappingRequest) {
 		r.ctx = v
@@ -149,7 +145,6 @@ func (f SecurityGetRoleMapping) WithContext(v context.Context) func(*SecurityGet
 }
 
 // WithName - a list of role-mapping names.
-//
 func (f SecurityGetRoleMapping) WithName(v ...string) func(*SecurityGetRoleMappingRequest) {
 	return func(r *SecurityGetRoleMappingRequest) {
 		r.Name = v
@@ -157,7 +152,6 @@ func (f SecurityGetRoleMapping) WithName(v ...string) func(*SecurityGetRoleMappi
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f SecurityGetRoleMapping) WithPretty() func(*SecurityGetRoleMappingRequest) {
 	return func(r *SecurityGetRoleMappingRequest) {
 		r.Pretty = true
@@ -165,7 +159,6 @@ func (f SecurityGetRoleMapping) WithPretty() func(*SecurityGetRoleMappingRequest
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f SecurityGetRoleMapping) WithHuman() func(*SecurityGetRoleMappingRequest) {
 	return func(r *SecurityGetRoleMappingRequest) {
 		r.Human = true
@@ -173,7 +166,6 @@ func (f SecurityGetRoleMapping) WithHuman() func(*SecurityGetRoleMappingRequest)
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f SecurityGetRoleMapping) WithErrorTrace() func(*SecurityGetRoleMappingRequest) {
 	return func(r *SecurityGetRoleMappingRequest) {
 		r.ErrorTrace = true
@@ -181,7 +173,6 @@ func (f SecurityGetRoleMapping) WithErrorTrace() func(*SecurityGetRoleMappingReq
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f SecurityGetRoleMapping) WithFilterPath(v ...string) func(*SecurityGetRoleMappingRequest) {
 	return func(r *SecurityGetRoleMappingRequest) {
 		r.FilterPath = v
@@ -189,7 +180,6 @@ func (f SecurityGetRoleMapping) WithFilterPath(v ...string) func(*SecurityGetRol
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f SecurityGetRoleMapping) WithHeader(h map[string]string) func(*SecurityGetRoleMappingRequest) {
 	return func(r *SecurityGetRoleMappingRequest) {
 		if r.Header == nil {
@@ -202,7 +192,6 @@ func (f SecurityGetRoleMapping) WithHeader(h map[string]string) func(*SecurityGe
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f SecurityGetRoleMapping) WithOpaqueID(s string) func(*SecurityGetRoleMappingRequest) {
 	return func(r *SecurityGetRoleMappingRequest) {
 		if r.Header == nil {

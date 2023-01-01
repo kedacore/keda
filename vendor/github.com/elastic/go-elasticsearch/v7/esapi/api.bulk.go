@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -43,11 +43,9 @@ func newBulkFunc(t Transport) Bulk {
 // Bulk allows to perform multiple index/update/delete operations in a single request.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/docs-bulk.html.
-//
 type Bulk func(body io.Reader, o ...func(*BulkRequest)) (*Response, error)
 
 // BulkRequest configures the Bulk API request.
-//
 type BulkRequest struct {
 	Index        string
 	DocumentType string
@@ -75,7 +73,6 @@ type BulkRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r BulkRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -168,10 +165,6 @@ func (r BulkRequest) Do(ctx context.Context, transport Transport) (*Response, er
 		req.URL.RawQuery = q.Encode()
 	}
 
-	if r.Body != nil {
-		req.Header[headerContentType] = headerContentTypeJSON
-	}
-
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -182,6 +175,10 @@ func (r BulkRequest) Do(ctx context.Context, transport Transport) (*Response, er
 				}
 			}
 		}
+	}
+
+	if r.Body != nil && req.Header.Get(headerContentType) == "" {
+		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -203,7 +200,6 @@ func (r BulkRequest) Do(ctx context.Context, transport Transport) (*Response, er
 }
 
 // WithContext sets the request context.
-//
 func (f Bulk) WithContext(v context.Context) func(*BulkRequest) {
 	return func(r *BulkRequest) {
 		r.ctx = v
@@ -211,7 +207,6 @@ func (f Bulk) WithContext(v context.Context) func(*BulkRequest) {
 }
 
 // WithIndex - default index for items which don't provide one.
-//
 func (f Bulk) WithIndex(v string) func(*BulkRequest) {
 	return func(r *BulkRequest) {
 		r.Index = v
@@ -219,7 +214,6 @@ func (f Bulk) WithIndex(v string) func(*BulkRequest) {
 }
 
 // WithDocumentType - default document type for items which don't provide one.
-//
 func (f Bulk) WithDocumentType(v string) func(*BulkRequest) {
 	return func(r *BulkRequest) {
 		r.DocumentType = v
@@ -227,7 +221,6 @@ func (f Bulk) WithDocumentType(v string) func(*BulkRequest) {
 }
 
 // WithPipeline - the pipeline ID to preprocess incoming documents with.
-//
 func (f Bulk) WithPipeline(v string) func(*BulkRequest) {
 	return func(r *BulkRequest) {
 		r.Pipeline = v
@@ -235,7 +228,6 @@ func (f Bulk) WithPipeline(v string) func(*BulkRequest) {
 }
 
 // WithRefresh - if `true` then refresh the affected shards to make this operation visible to search, if `wait_for` then wait for a refresh to make this operation visible to search, if `false` (the default) then do nothing with refreshes..
-//
 func (f Bulk) WithRefresh(v string) func(*BulkRequest) {
 	return func(r *BulkRequest) {
 		r.Refresh = v
@@ -243,7 +235,6 @@ func (f Bulk) WithRefresh(v string) func(*BulkRequest) {
 }
 
 // WithRequireAlias - sets require_alias for all incoming documents. defaults to unset (false).
-//
 func (f Bulk) WithRequireAlias(v bool) func(*BulkRequest) {
 	return func(r *BulkRequest) {
 		r.RequireAlias = &v
@@ -251,7 +242,6 @@ func (f Bulk) WithRequireAlias(v bool) func(*BulkRequest) {
 }
 
 // WithRouting - specific routing value.
-//
 func (f Bulk) WithRouting(v string) func(*BulkRequest) {
 	return func(r *BulkRequest) {
 		r.Routing = v
@@ -259,7 +249,6 @@ func (f Bulk) WithRouting(v string) func(*BulkRequest) {
 }
 
 // WithSource - true or false to return the _source field or not, or default list of fields to return, can be overridden on each sub-request.
-//
 func (f Bulk) WithSource(v ...string) func(*BulkRequest) {
 	return func(r *BulkRequest) {
 		r.Source = v
@@ -267,7 +256,6 @@ func (f Bulk) WithSource(v ...string) func(*BulkRequest) {
 }
 
 // WithSourceExcludes - default list of fields to exclude from the returned _source field, can be overridden on each sub-request.
-//
 func (f Bulk) WithSourceExcludes(v ...string) func(*BulkRequest) {
 	return func(r *BulkRequest) {
 		r.SourceExcludes = v
@@ -275,7 +263,6 @@ func (f Bulk) WithSourceExcludes(v ...string) func(*BulkRequest) {
 }
 
 // WithSourceIncludes - default list of fields to extract and return from the _source field, can be overridden on each sub-request.
-//
 func (f Bulk) WithSourceIncludes(v ...string) func(*BulkRequest) {
 	return func(r *BulkRequest) {
 		r.SourceIncludes = v
@@ -283,7 +270,6 @@ func (f Bulk) WithSourceIncludes(v ...string) func(*BulkRequest) {
 }
 
 // WithTimeout - explicit operation timeout.
-//
 func (f Bulk) WithTimeout(v time.Duration) func(*BulkRequest) {
 	return func(r *BulkRequest) {
 		r.Timeout = v
@@ -291,7 +277,6 @@ func (f Bulk) WithTimeout(v time.Duration) func(*BulkRequest) {
 }
 
 // WithWaitForActiveShards - sets the number of shard copies that must be active before proceeding with the bulk operation. defaults to 1, meaning the primary shard only. set to `all` for all shard copies, otherwise set to any non-negative value less than or equal to the total number of copies for the shard (number of replicas + 1).
-//
 func (f Bulk) WithWaitForActiveShards(v string) func(*BulkRequest) {
 	return func(r *BulkRequest) {
 		r.WaitForActiveShards = v
@@ -299,7 +284,6 @@ func (f Bulk) WithWaitForActiveShards(v string) func(*BulkRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f Bulk) WithPretty() func(*BulkRequest) {
 	return func(r *BulkRequest) {
 		r.Pretty = true
@@ -307,7 +291,6 @@ func (f Bulk) WithPretty() func(*BulkRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f Bulk) WithHuman() func(*BulkRequest) {
 	return func(r *BulkRequest) {
 		r.Human = true
@@ -315,7 +298,6 @@ func (f Bulk) WithHuman() func(*BulkRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f Bulk) WithErrorTrace() func(*BulkRequest) {
 	return func(r *BulkRequest) {
 		r.ErrorTrace = true
@@ -323,7 +305,6 @@ func (f Bulk) WithErrorTrace() func(*BulkRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f Bulk) WithFilterPath(v ...string) func(*BulkRequest) {
 	return func(r *BulkRequest) {
 		r.FilterPath = v
@@ -331,7 +312,6 @@ func (f Bulk) WithFilterPath(v ...string) func(*BulkRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f Bulk) WithHeader(h map[string]string) func(*BulkRequest) {
 	return func(r *BulkRequest) {
 		if r.Header == nil {
@@ -344,7 +324,6 @@ func (f Bulk) WithHeader(h map[string]string) func(*BulkRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f Bulk) WithOpaqueID(s string) func(*BulkRequest) {
 	return func(r *BulkRequest) {
 		if r.Header == nil {
