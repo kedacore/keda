@@ -3,7 +3,7 @@ module github.com/kedacore/keda/v2
 go 1.18
 
 require (
-	cloud.google.com/go/compute/metadata v0.2.1
+	cloud.google.com/go/compute/metadata v0.2.2
 	cloud.google.com/go/monitoring v1.9.0
 	cloud.google.com/go/storage v1.28.0
 	github.com/Azure/azure-amqp-common-go/v3 v3.2.3
@@ -67,7 +67,7 @@ require (
 	go.etcd.io/etcd/client/v3 v3.5.4
 	go.mongodb.org/mongo-driver v1.11.0
 	golang.org/x/oauth2 v0.2.0
-	google.golang.org/api v0.103.0
+	google.golang.org/api v0.105.0
 	google.golang.org/grpc v1.51.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.2.0
 	google.golang.org/protobuf v1.28.1
@@ -108,8 +108,8 @@ replace (
 
 require (
 	cloud.google.com/go v0.105.0 // indirect
-	cloud.google.com/go/compute v1.12.1 // indirect
-	cloud.google.com/go/iam v0.7.0 // indirect
+	cloud.google.com/go/compute v1.13.0 // indirect
+	cloud.google.com/go/iam v0.8.0 // indirect
 	code.cloudfoundry.org/clock v1.0.0 // indirect
 	github.com/Azure/azure-pipeline-go v0.2.3 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.0.1 // indirect
@@ -277,13 +277,13 @@ require (
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.2.0 // indirect
 	golang.org/x/term v0.2.0 // indirect
-	golang.org/x/text v0.4.0 // indirect
+	golang.org/x/text v0.5.0 // indirect
 	golang.org/x/time v0.0.0-20220722155302-e5dcc9cfc0b9 // indirect
 	golang.org/x/tools v0.1.12 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20221109142239-94d6d90a7d66 // indirect
+	google.golang.org/genproto v0.0.0-20221206210731-b1a01be3a5f6 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
