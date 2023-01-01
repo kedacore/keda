@@ -229,7 +229,7 @@ func TestPrometheusMetrics(t *testing.T) {
 	testScalerMetricValue(t)
 	testMetricsServerScalerMetricValue(t)
 	testOperatorMetrics(t, kc, data)
-	testWebhookMetrics(t, kc, data)
+	testWebhookMetrics(t, data)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -324,7 +324,7 @@ func testOperatorMetrics(t *testing.T, kc *kubernetes.Clientset, data templateDa
 	testOperatorMetricValues(t, kc)
 }
 
-func testWebhookMetrics(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testWebhookMetrics(t *testing.T, data templateData) {
 	t.Log("--- testing webhook metrics ---")
 
 	data.ScaledObjectName = "other-so"
