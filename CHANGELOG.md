@@ -56,7 +56,7 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 
-- **General**: TODO ([#TODO](https://github.com/kedacore/keda/issues/TODO))
+- **Redis**: Add support to Redis 7 ([#4052](https://github.com/kedacore/keda/issues/4052))
 
 ### Fixes
 
