@@ -23,14 +23,14 @@ require (
 	github.com/Shopify/sarama v1.37.2
 	github.com/aws/aws-sdk-go v1.44.150
 	github.com/denisenkom/go-mssqldb v0.12.3
-	github.com/dysnix/predictkube-libs v0.0.4-0.20220717101015-44c816c4fb9c
+	github.com/dysnix/predictkube-libs v0.0.3
 	github.com/dysnix/predictkube-proto v0.0.0-20220713123213-7135dce1e9c9
 	github.com/elastic/go-elasticsearch/v7 v7.17.1
 	github.com/go-kivik/couchdb/v3 v3.3.0
 	github.com/go-kivik/kivik/v3 v3.2.3
 	github.com/go-logr/logr v1.2.3
 	github.com/go-playground/validator/v10 v10.11.1
-	github.com/go-redis/redis/v8 v8.11.5
+	github.com/go-redis/redis/v9 v9.0.0-rc.2
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gobwas/glob v0.2.3
 	github.com/gocql/gocql v1.3.0

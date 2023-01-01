@@ -72,7 +72,7 @@ spec:
     spec:
       containers:
       - name: redis-worker
-        image: abhirockzz/redis-streams-consumer
+        image: ghcr.io/kedacore/tests-redis-streams-consumer:latest
         imagePullPolicy: IfNotPresent
         env:
         - name: REDIS_HOST
@@ -146,7 +146,7 @@ spec:
     spec:
       containers:
       - name: redis
-        image: abhirockzz/redis-streams-producer
+        image: ghcr.io/kedacore/tests-redis-streams-producer:latest
         imagePullPolicy: IfNotPresent
         env:
         - name: REDIS_HOST

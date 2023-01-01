@@ -72,7 +72,7 @@ spec:
     spec:
       containers:
       - name: redis-worker
-        image: ghcr.io/kedacore/tests-redis-lists
+        image: ghcr.io/kedacore/tests-redis-lists:latest
         imagePullPolicy: IfNotPresent
         args: ["read"]
         env:
@@ -145,7 +145,7 @@ spec:
     spec:
       containers:
       - name: redis
-        image: ghcr.io/kedacore/tests-redis-lists
+        image: ghcr.io/kedacore/tests-redis-lists:latest
         imagePullPolicy: IfNotPresent
         env:
         - name: REDIS_ADDRESS
