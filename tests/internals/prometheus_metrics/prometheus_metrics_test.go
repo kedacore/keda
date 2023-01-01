@@ -32,6 +32,7 @@ var (
 	clientName                = fmt.Sprintf("%s-client", testName)
 	kedaOperatorPrometheusURL = "http://keda-operator.keda.svc.cluster.local:8080/metrics"
 	kedaWebhookPrometheusURL  = "http://keda-webhooks.keda.svc.cluster.local:8080/metrics"
+	namespaceString           = "namespace"
 )
 
 type templateData struct {
@@ -211,7 +212,7 @@ spec:
 `
 )
 
-func TestScaler(t *testing.T) {
+func TestPrometheusMetrics(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
 
@@ -329,7 +330,7 @@ func testWebhookMetrics(t *testing.T, kc *kubernetes.Clientset, data templateDat
 	data.ScaledObjectName = "other-so"
 	err := KubectlApplyWithErrors(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	assert.Errorf(t, err, "can deploy the scaledObject - %s", err)
-	testWebhookMetricValues(t, kc)
+	testWebhookMetricValues(t)
 	data.ScaledObjectName = scaledObjectName
 }
 
@@ -393,7 +394,7 @@ func getOperatorMetricsManually(t *testing.T, kc *kubernetes.Clientset) (map[str
 	return triggerTotals, crTotals
 }
 
-func testWebhookMetricValues(t *testing.T, kc *kubernetes.Clientset) {
+func testWebhookMetricValues(t *testing.T) {
 	families := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaWebhookPrometheusURL))
 	checkWebhookValues(t, families)
 }
@@ -451,7 +452,7 @@ func checkCRTotalValues(t *testing.T, families map[string]*promModel.MetricFamil
 		for _, label := range labels {
 			if *label.Name == "type" {
 				crType = *label.Value
-			} else if *label.Name == "namespace" {
+			} else if *label.Name == namespaceString {
 				namespace = *label.Value
 			}
 		}
@@ -478,7 +479,7 @@ func checkWebhookValues(t *testing.T, families map[string]*promModel.MetricFamil
 	for _, metric := range metrics {
 		labels := metric.GetLabel()
 		for _, label := range labels {
-			if *label.Name == "namespace" && *label.Value != testNamespace {
+			if *label.Name == namespaceString && *label.Value != testNamespace {
 				continue
 			}
 		}
@@ -497,7 +498,7 @@ func checkWebhookValues(t *testing.T, families map[string]*promModel.MetricFamil
 	for _, metric := range metrics {
 		labels := metric.GetLabel()
 		for _, label := range labels {
-			if *label.Name == "namespace" && *label.Value != testNamespace {
+			if *label.Name == namespaceString && *label.Value != testNamespace {
 				continue
 			}
 		}
