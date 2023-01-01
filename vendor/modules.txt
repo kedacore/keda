@@ -63,7 +63,7 @@ github.com/Azure/azure-kusto-go/kusto/unsafe
 # github.com/Azure/azure-pipeline-go v0.2.3
 ## explicit; go 1.14
 github.com/Azure/azure-pipeline-go/pipeline
-# github.com/Azure/azure-sdk-for-go v67.1.0+incompatible
+# github.com/Azure/azure-sdk-for-go v67.2.0+incompatible
 ## explicit
 github.com/Azure/azure-sdk-for-go/services/eventhub/mgmt/2017-04-01/eventhub
 github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault
