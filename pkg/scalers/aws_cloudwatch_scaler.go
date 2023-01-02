@@ -80,7 +80,7 @@ func getIntMetadataValue(metadata map[string]string, key string, required bool, 
 	if val, ok := metadata[key]; ok && val != "" {
 		value, err := strconv.Atoi(val)
 		if err != nil {
-			return 0, fmt.Errorf("error parsing %s metadata: %v", key, err)
+			return 0, fmt.Errorf("error parsing %s metadata: %w", key, err)
 		}
 		return int64(value), nil
 	}
@@ -96,7 +96,7 @@ func getFloatMetadataValue(metadata map[string]string, key string, required bool
 	if val, ok := metadata[key]; ok && val != "" {
 		value, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return 0, fmt.Errorf("error parsing %s metadata: %v", key, err)
+			return 0, fmt.Errorf("error parsing %s metadata: %w", key, err)
 		}
 		return value, nil
 	}

@@ -84,7 +84,7 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 	if val, ok := config.TriggerMetadata["age"]; ok {
 		age, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("age parsing error %s", err.Error())
+			return nil, fmt.Errorf("age parsing error %w", err)
 		}
 		meta.age = age
 
@@ -101,7 +101,7 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 	if val, ok := config.TriggerMetadata["timeWindowOffset"]; ok {
 		timeWindowOffset, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("timeWindowOffset parsing error %s", err.Error())
+			return nil, fmt.Errorf("timeWindowOffset parsing error %w", err)
 		}
 		if timeWindowOffset < 0 {
 			return nil, fmt.Errorf("timeWindowOffset should not be smaller than 0 seconds")
@@ -114,7 +114,7 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 	if val, ok := config.TriggerMetadata["lastAvailablePointOffset"]; ok {
 		lastAvailablePointOffset, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("lastAvailablePointOffset parsing error %s", err.Error())
+			return nil, fmt.Errorf("lastAvailablePointOffset parsing error %w", err)
 		}
 
 		if lastAvailablePointOffset < 0 {
@@ -129,7 +129,7 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 		_, err := parseDatadogQuery(val)
 
 		if err != nil {
-			return nil, fmt.Errorf("error in query: %s", err.Error())
+			return nil, fmt.Errorf("error in query: %w", err)
 		}
 		meta.query = val
 	} else {
@@ -139,7 +139,7 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 	if val, ok := config.TriggerMetadata["queryValue"]; ok {
 		queryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("queryValue parsing error %w", err)
 		}
 		meta.queryValue = queryValue
 	} else {
@@ -162,7 +162,7 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
 		activationQueryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("queryValue parsing error %w", err)
 		}
 		meta.activationQueryValue = activationQueryValue
 	}
@@ -170,7 +170,7 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 	if val, ok := config.TriggerMetadata["metricUnavailableValue"]; ok {
 		fillValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("metricUnavailableValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("metricUnavailableValue parsing error %w", err)
 		}
 		meta.fillValue = fillValue
 		meta.useFiller = true
@@ -251,7 +251,7 @@ func newDatadogConnection(ctx context.Context, meta *datadogMetadata, config *Sc
 
 	_, _, err := apiClient.AuthenticationApi.Validate(ctx) //nolint:bodyclose
 	if err != nil {
-		return nil, fmt.Errorf("error connecting to Datadog API endpoint: %v", err)
+		return nil, fmt.Errorf("error connecting to Datadog API endpoint: %w", err)
 	}
 
 	return apiClient, nil

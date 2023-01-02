@@ -171,7 +171,7 @@ func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser)
 	if val, ok := config.TriggerMetadata["enableTLS"]; ok {
 		tls, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("enableTLS parsing error %s", err.Error())
+			return nil, fmt.Errorf("enableTLS parsing error %w", err)
 		}
 		meta.connectionInfo.enableTLS = tls
 	}
@@ -213,7 +213,7 @@ func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser)
 	if val, ok := config.TriggerMetadata[databaseIndexMetadata]; ok {
 		dbIndex, err := strconv.ParseInt(val, 10, 32)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing redis database index %v", err)
+			return nil, fmt.Errorf("error parsing redis database index %w", err)
 		}
 		meta.databaseIndex = int(dbIndex)
 	}

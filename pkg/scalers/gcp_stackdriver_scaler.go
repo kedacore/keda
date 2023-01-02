@@ -94,7 +94,7 @@ func parseStackdriverMetadata(config *ScalerConfig, logger logr.Logger) (*stackd
 		targetValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			logger.Error(err, "Error parsing targetValue")
-			return nil, fmt.Errorf("error parsing targetValue: %s", err.Error())
+			return nil, fmt.Errorf("error parsing targetValue: %w", err)
 		}
 
 		meta.targetValue = targetValue
@@ -104,7 +104,7 @@ func parseStackdriverMetadata(config *ScalerConfig, logger logr.Logger) (*stackd
 	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok {
 		activationTargetValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("activationTargetValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("activationTargetValue parsing error %w", err)
 		}
 		meta.activationTargetValue = activationTargetValue
 	}
@@ -137,7 +137,7 @@ func parseAggregation(config *ScalerConfig, logger logr.Logger) (*monitoringpb.A
 		}
 		if err != nil {
 			logger.Error(err, "Error parsing alignmentPeriodSeconds")
-			return nil, fmt.Errorf("error parsing alignmentPeriodSeconds: %s", err.Error())
+			return nil, fmt.Errorf("error parsing alignmentPeriodSeconds: %w", err)
 		}
 
 		return NewStackdriverAggregator(val, config.TriggerMetadata["alignmentAligner"], config.TriggerMetadata["alignmentReducer"])

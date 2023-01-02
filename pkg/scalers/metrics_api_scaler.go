@@ -110,7 +110,7 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 	if val, ok := config.TriggerMetadata["targetValue"]; ok {
 		targetValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("targetValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("targetValue parsing error %w", err)
 		}
 		meta.targetValue = targetValue
 	} else {
@@ -121,7 +121,7 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok {
 		activationTargetValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("targetValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("targetValue parsing error %w", err)
 		}
 		meta.activationTargetValue = activationTargetValue
 	}

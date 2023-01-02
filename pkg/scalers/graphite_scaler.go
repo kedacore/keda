@@ -108,7 +108,7 @@ func parseGraphiteMetadata(config *ScalerConfig) (*graphiteMetadata, error) {
 	if val, ok := config.TriggerMetadata[graphiteThreshold]; ok && val != "" {
 		t, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing %s: %s", graphiteThreshold, err)
+			return nil, fmt.Errorf("error parsing %s: %w", graphiteThreshold, err)
 		}
 
 		meta.threshold = t
@@ -118,7 +118,7 @@ func parseGraphiteMetadata(config *ScalerConfig) (*graphiteMetadata, error) {
 	if val, ok := config.TriggerMetadata[graphiteActivationThreshold]; ok {
 		t, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("activationTargetValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("activationTargetValue parsing error %w", err)
 		}
 
 		meta.activationThreshold = t

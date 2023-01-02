@@ -51,7 +51,7 @@ func NewKubernetesWorkloadScaler(kubeClient client.Client, config *ScalerConfig)
 
 	meta, parseErr := parseWorkloadMetadata(config)
 	if parseErr != nil {
-		return nil, fmt.Errorf("error parsing kubernetes workload metadata: %s", parseErr)
+		return nil, fmt.Errorf("error parsing kubernetes workload metadata: %w", parseErr)
 	}
 
 	return &kubernetesWorkloadScaler{

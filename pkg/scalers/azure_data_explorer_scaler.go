@@ -101,7 +101,7 @@ func parseAzureDataExplorerMetadata(config *ScalerConfig, logger logr.Logger) (*
 	if val, ok := config.TriggerMetadata["threshold"]; ok {
 		threshold, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing metadata. Details: can't parse threshold. Inner Error: %v", err)
+			return nil, fmt.Errorf("error parsing metadata. Details: can't parse threshold. Inner Error: %w", err)
 		}
 		metadata.Threshold = threshold
 	}
@@ -111,7 +111,7 @@ func parseAzureDataExplorerMetadata(config *ScalerConfig, logger logr.Logger) (*
 	if val, ok := config.TriggerMetadata["activationThreshold"]; ok {
 		activationThreshold, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing metadata. Details: can't parse activationThreshold. Inner Error: %v", err)
+			return nil, fmt.Errorf("error parsing metadata. Details: can't parse activationThreshold. Inner Error: %w", err)
 		}
 		metadata.ActivationThreshold = activationThreshold
 	}
@@ -172,7 +172,7 @@ func parseAzureDataExplorerAuthParams(config *ScalerConfig, logger logr.Logger) 
 func (s azureDataExplorerScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	metricValue, err := azure.GetAzureDataExplorerMetricValue(ctx, s.client, s.metadata.DatabaseName, s.metadata.Query)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("failed to get metrics for scaled object %s in namespace %s: %v", s.name, s.namespace, err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("failed to get metrics for scaled object %s in namespace %s: %w", s.name, s.namespace, err)
 	}
 
 	metric := GenerateMetricInMili(metricName, metricValue)

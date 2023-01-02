@@ -88,7 +88,7 @@ func parseAzureQueueMetadata(config *ScalerConfig, logger logr.Logger) (*azureQu
 		if err != nil {
 			logger.Error(err, "Error parsing azure queue metadata", "queueLengthMetricName", queueLengthMetricName)
 			return nil, kedav1alpha1.AuthPodIdentity{},
-				fmt.Errorf("error parsing azure queue metadata %s: %s", queueLengthMetricName, err.Error())
+				fmt.Errorf("error parsing azure queue metadata %s: %w", queueLengthMetricName, err)
 		}
 
 		meta.targetQueueLength = queueLength
@@ -100,7 +100,7 @@ func parseAzureQueueMetadata(config *ScalerConfig, logger logr.Logger) (*azureQu
 		if err != nil {
 			logger.Error(err, "Error parsing azure queue metadata", activationQueueLengthMetricName, activationQueueLengthMetricName)
 			return nil, kedav1alpha1.AuthPodIdentity{},
-				fmt.Errorf("error parsing azure queue metadata %s: %s", activationQueueLengthMetricName, err.Error())
+				fmt.Errorf("error parsing azure queue metadata %s: %w", activationQueueLengthMetricName, err)
 		}
 
 		meta.activationTargetQueueLength = activationQueueLength

@@ -88,17 +88,17 @@ func NewMongoDBScaler(ctx context.Context, config *ScalerConfig) (Scaler, error)
 
 	meta, connStr, err := parseMongoDBMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parsing mongoDB metadata, because of %v", err)
+		return nil, fmt.Errorf("failed to parsing mongoDB metadata, because of %w", err)
 	}
 
 	opt := options.Client().ApplyURI(connStr)
 	client, err := mongo.Connect(ctx, opt)
 	if err != nil {
-		return nil, fmt.Errorf("failed to establish connection with mongoDB, because of %v", err)
+		return nil, fmt.Errorf("failed to establish connection with mongoDB, because of %w", err)
 	}
 
 	if err = client.Ping(ctx, readpref.Primary()); err != nil {
-		return nil, fmt.Errorf("failed to ping mongoDB, because of %v", err)
+		return nil, fmt.Errorf("failed to ping mongoDB, because of %w", err)
 	}
 
 	return &mongoDBScaler{
@@ -131,7 +131,7 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 	if val, ok := config.TriggerMetadata["queryValue"]; ok {
 		queryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to convert %v to int, because of %v", val, err.Error())
+			return nil, "", fmt.Errorf("failed to convert %v to int, because of %w", val, err)
 		}
 		meta.queryValue = queryValue
 	} else {
@@ -142,7 +142,7 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
 		activationQueryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to convert %v to int, because of %v", val, err.Error())
+			return nil, "", fmt.Errorf("failed to convert %v to int, because of %w", val, err)
 		}
 		meta.activationQueryValue = activationQueryValue
 	}
@@ -244,7 +244,7 @@ func (s *mongoDBScaler) getQueryResult(ctx context.Context) (int64, error) {
 func (s *mongoDBScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	num, err := s.getQueryResult(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("failed to inspect momgoDB, because of %v", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("failed to inspect momgoDB, because of %w", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(num))

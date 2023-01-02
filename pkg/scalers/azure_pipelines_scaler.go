@@ -165,7 +165,7 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 	if val, ok := config.TriggerMetadata["targetPipelinesQueueLength"]; ok {
 		queueLength, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing azure pipelines metadata targetPipelinesQueueLength: %s", err.Error())
+			return nil, fmt.Errorf("error parsing azure pipelines metadata targetPipelinesQueueLength: %w", err)
 		}
 
 		meta.targetPipelinesQueueLength = queueLength
@@ -175,7 +175,7 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 	if val, ok := config.TriggerMetadata["activationTargetPipelinesQueueLength"]; ok {
 		activationQueueLength, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing azure pipelines metadata activationTargetPipelinesQueueLength: %s", err.Error())
+			return nil, fmt.Errorf("error parsing azure pipelines metadata activationTargetPipelinesQueueLength: %w", err)
 		}
 
 		meta.activationTargetPipelinesQueueLength = activationQueueLength

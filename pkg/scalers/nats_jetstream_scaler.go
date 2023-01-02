@@ -153,7 +153,7 @@ func parseNATSJetStreamMetadata(config *ScalerConfig) (natsJetStreamMetadata, er
 	if val, ok := config.TriggerMetadata[jetStreamLagThresholdMetricName]; ok {
 		t, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return meta, fmt.Errorf("error parsing %s: %s", jetStreamLagThresholdMetricName, err)
+			return meta, fmt.Errorf("error parsing %s: %w", jetStreamLagThresholdMetricName, err)
 		}
 
 		meta.lagThreshold = t
@@ -163,7 +163,7 @@ func parseNATSJetStreamMetadata(config *ScalerConfig) (natsJetStreamMetadata, er
 	if val, ok := config.TriggerMetadata["activationLagThreshold"]; ok {
 		activationTargetQueryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return meta, fmt.Errorf("activationLagThreshold parsing error %s", err.Error())
+			return meta, fmt.Errorf("activationLagThreshold parsing error %w", err)
 		}
 		meta.activationLagThreshold = activationTargetQueryValue
 	}
@@ -178,7 +178,7 @@ func parseNATSJetStreamMetadata(config *ScalerConfig) (natsJetStreamMetadata, er
 	if val, ok := config.TriggerMetadata["useHttps"]; ok {
 		useHTTPS, err = strconv.ParseBool(val)
 		if err != nil {
-			return meta, fmt.Errorf("useHTTPS parsing error %s", err.Error())
+			return meta, fmt.Errorf("useHTTPS parsing error %w", err)
 		}
 	}
 	meta.monitoringURL = getNATSJetStreamMonitoringURL(useHTTPS, natsServerEndpoint, meta.account)

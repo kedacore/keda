@@ -81,7 +81,7 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 		meta.mode = pubsubModeSubscriptionSize
 		subSizeValue, err := strconv.ParseFloat(subSize, 64)
 		if err != nil {
-			return nil, fmt.Errorf("value parsing error %s", err.Error())
+			return nil, fmt.Errorf("value parsing error %w", err)
 		}
 		meta.value = subSizeValue
 	} else {
@@ -101,7 +101,7 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 		if valuePresent {
 			triggerValue, err := strconv.ParseFloat(value, 64)
 			if err != nil {
-				return nil, fmt.Errorf("value parsing error %s", err.Error())
+				return nil, fmt.Errorf("value parsing error %w", err)
 			}
 			meta.value = triggerValue
 		}
@@ -121,7 +121,7 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 	if val, ok := config.TriggerMetadata["activationValue"]; ok {
 		activationValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("activationValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("activationValue parsing error %w", err)
 		}
 		meta.activationValue = activationValue
 	}

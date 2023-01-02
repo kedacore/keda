@@ -81,7 +81,7 @@ func parseAzureBlobMetadata(config *ScalerConfig, logger logr.Logger) (*azure.Bl
 		blobCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			logger.Error(err, "Error parsing azure blob metadata", "blobCountMetricName", blobCountMetricName)
-			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("error parsing azure blob metadata %s: %s", blobCountMetricName, err.Error())
+			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("error parsing azure blob metadata %s: %w", blobCountMetricName, err)
 		}
 
 		meta.TargetBlobCount = blobCount
@@ -92,7 +92,7 @@ func parseAzureBlobMetadata(config *ScalerConfig, logger logr.Logger) (*azure.Bl
 		activationBlobCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			logger.Error(err, "Error parsing azure blob metadata", activationBlobCountMetricName, activationBlobCountMetricName)
-			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("error parsing azure blob metadata %s: %s", activationBlobCountMetricName, err.Error())
+			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("error parsing azure blob metadata %s: %w", activationBlobCountMetricName, err)
 		}
 
 		meta.ActivationTargetBlobCount = activationBlobCount
@@ -122,7 +122,7 @@ func parseAzureBlobMetadata(config *ScalerConfig, logger logr.Logger) (*azure.Bl
 	if val, ok := config.TriggerMetadata["globPattern"]; ok && val != "" {
 		glob, err := glob.Compile(val)
 		if err != nil {
-			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("invalid glob pattern - %s", err.Error())
+			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("invalid glob pattern - %w", err)
 		}
 		meta.GlobPattern = &glob
 	}

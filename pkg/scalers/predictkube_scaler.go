@@ -370,7 +370,7 @@ func parsePredictKubeMetadata(config *ScalerConfig) (result *predictKubeMetadata
 	if val, ok := config.TriggerMetadata["predictHorizon"]; ok {
 		predictHorizon, err := str2duration.ParseDuration(val)
 		if err != nil {
-			return nil, fmt.Errorf("predictHorizon parsing error %s", err.Error())
+			return nil, fmt.Errorf("predictHorizon parsing error %w", err)
 		}
 		meta.predictHorizon = predictHorizon
 	} else {
@@ -380,7 +380,7 @@ func parsePredictKubeMetadata(config *ScalerConfig) (result *predictKubeMetadata
 	if val, ok := config.TriggerMetadata["queryStep"]; ok {
 		stepDuration, err := str2duration.ParseDuration(val)
 		if err != nil {
-			return nil, fmt.Errorf("queryStep parsing error %s", err.Error())
+			return nil, fmt.Errorf("queryStep parsing error %w", err)
 		}
 		meta.stepDuration = stepDuration
 	} else {
@@ -390,7 +390,7 @@ func parsePredictKubeMetadata(config *ScalerConfig) (result *predictKubeMetadata
 	if val, ok := config.TriggerMetadata["historyTimeWindow"]; ok {
 		historyTimeWindow, err := str2duration.ParseDuration(val)
 		if err != nil {
-			return nil, fmt.Errorf("historyTimeWindow parsing error %s", err.Error())
+			return nil, fmt.Errorf("historyTimeWindow parsing error %w", err)
 		}
 		meta.historyTimeWindow = historyTimeWindow
 	} else {
@@ -400,7 +400,7 @@ func parsePredictKubeMetadata(config *ScalerConfig) (result *predictKubeMetadata
 	if val, ok := config.TriggerMetadata["threshold"]; ok {
 		threshold, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("threshold parsing error %s", err.Error())
+			return nil, fmt.Errorf("threshold parsing error %w", err)
 		}
 		meta.threshold = threshold
 	} else {
@@ -411,7 +411,7 @@ func parsePredictKubeMetadata(config *ScalerConfig) (result *predictKubeMetadata
 	if val, ok := config.TriggerMetadata["activationThreshold"]; ok {
 		activationThreshold, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("activationThreshold parsing error %s", err.Error())
+			return nil, fmt.Errorf("activationThreshold parsing error %w", err)
 		}
 		meta.activationThreshold = activationThreshold
 	}

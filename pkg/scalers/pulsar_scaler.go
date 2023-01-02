@@ -171,7 +171,7 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 	if val, ok := config.TriggerMetadata["activationMsgBacklogThreshold"]; ok {
 		activationMsgBacklogThreshold, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return meta, fmt.Errorf("activationMsgBacklogThreshold parsing error %s", err.Error())
+			return meta, fmt.Errorf("activationMsgBacklogThreshold parsing error %w", err)
 		}
 		meta.activationMsgBacklogThreshold = activationMsgBacklogThreshold
 	}
@@ -181,7 +181,7 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 	if val, ok := config.TriggerMetadata[msgBacklogMetricName]; ok {
 		t, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return meta, fmt.Errorf("error parsing %s: %s", msgBacklogMetricName, err)
+			return meta, fmt.Errorf("error parsing %s: %w", msgBacklogMetricName, err)
 		}
 		meta.msgBacklogThreshold = t
 	}
@@ -197,7 +197,7 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 	}
 	auth, err := authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
 	if err != nil {
-		return meta, fmt.Errorf("error parsing %s: %s", msgBacklogMetricName, err)
+		return meta, fmt.Errorf("error parsing %s: %w", msgBacklogMetricName, err)
 	}
 	meta.pulsarAuth = auth
 	meta.scalerIndex = config.ScalerIndex

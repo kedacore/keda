@@ -166,7 +166,7 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 		if msgCount, err := strconv.ParseInt(val, 10, 64); err == nil {
 			meta.msgCountTarget = msgCount
 		} else {
-			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %s", solaceMetaMsgCountTarget, err)
+			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %w", solaceMetaMsgCountTarget, err)
 		}
 	}
 	//	GET msgSpoolUsageTarget
@@ -174,7 +174,7 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 		if msgSpoolUsage, err := strconv.ParseInt(val, 10, 64); err == nil {
 			meta.msgSpoolUsageTarget = msgSpoolUsage * 1024 * 1024
 		} else {
-			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %s", solaceMetaMsgSpoolUsageTarget, err)
+			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %w", solaceMetaMsgSpoolUsageTarget, err)
 		}
 	}
 
@@ -190,7 +190,7 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 		if activationMsgCountTarget, err := strconv.Atoi(val); err == nil {
 			meta.activationMsgCountTarget = activationMsgCountTarget
 		} else {
-			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %s", solaceMetaActivationMsgCountTarget, err)
+			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %w", solaceMetaActivationMsgCountTarget, err)
 		}
 	}
 	//	GET activationMsgSpoolUsageTarget
@@ -199,7 +199,7 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 		if activationMsgSpoolUsageTarget, err := strconv.Atoi(val); err == nil {
 			meta.activationMsgSpoolUsageTarget = activationMsgSpoolUsageTarget * 1024 * 1024
 		} else {
-			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %s", solaceMetaActivationMsgSpoolUsageTarget, err)
+			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %w", solaceMetaActivationMsgSpoolUsageTarget, err)
 		}
 	}
 

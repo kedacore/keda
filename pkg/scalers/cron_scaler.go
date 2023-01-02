@@ -43,7 +43,7 @@ func NewCronScaler(config *ScalerConfig) (Scaler, error) {
 
 	meta, parseErr := parseCronMetadata(config)
 	if parseErr != nil {
-		return nil, fmt.Errorf("error parsing cron metadata: %s", parseErr)
+		return nil, fmt.Errorf("error parsing cron metadata: %w", parseErr)
 	}
 
 	return &cronScaler{
@@ -126,12 +126,12 @@ func (s *cronScaler) IsActive(ctx context.Context) (bool, error) {
 
 	nextStartTime, startTimecronErr := getCronTime(location, s.metadata.start)
 	if startTimecronErr != nil {
-		return false, fmt.Errorf("error initializing start cron: %s", startTimecronErr)
+		return false, fmt.Errorf("error initializing start cron: %w", startTimecronErr)
 	}
 
 	nextEndTime, endTimecronErr := getCronTime(location, s.metadata.end)
 	if endTimecronErr != nil {
-		return false, fmt.Errorf("error intializing end cron: %s", endTimecronErr)
+		return false, fmt.Errorf("error intializing end cron: %w", endTimecronErr)
 	}
 
 	switch {

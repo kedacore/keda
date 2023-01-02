@@ -134,7 +134,7 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 	if val, ok := config.TriggerMetadata[promThreshold]; ok && val != "" {
 		t, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing %s: %s", promThreshold, err)
+			return nil, fmt.Errorf("error parsing %s: %w", promThreshold, err)
 		}
 
 		meta.threshold = t
@@ -146,7 +146,7 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 	if val, ok := config.TriggerMetadata[promActivationThreshold]; ok {
 		t, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("activationThreshold parsing error %s", err.Error())
+			return nil, fmt.Errorf("activationThreshold parsing error %w", err)
 		}
 
 		meta.activationThreshold = t
@@ -174,7 +174,7 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 	if val, ok := config.TriggerMetadata[unsafeSsl]; ok && val != "" {
 		unsafeSslValue, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing %s: %s", unsafeSsl, err)
+			return nil, fmt.Errorf("error parsing %s: %w", unsafeSsl, err)
 		}
 
 		meta.unsafeSsl = unsafeSslValue

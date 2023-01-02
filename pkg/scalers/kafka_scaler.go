@@ -219,7 +219,7 @@ func parseKafkaMetadata(config *ScalerConfig, logger logr.Logger) (kafkaMetadata
 			pattern := config.TriggerMetadata["partitionLimitation"]
 			parsed, err := kedautil.ParseInt32List(pattern)
 			if err != nil {
-				return meta, fmt.Errorf("error parsing in partitionLimitation '%s': %s", pattern, err)
+				return meta, fmt.Errorf("error parsing in partitionLimitation '%s': %w", pattern, err)
 			}
 			meta.partitionLimitation = parsed
 			logger.V(0).Info(fmt.Sprintf("partition limit active '%s'", pattern))
@@ -241,7 +241,7 @@ func parseKafkaMetadata(config *ScalerConfig, logger logr.Logger) (kafkaMetadata
 	if val, ok := config.TriggerMetadata[lagThresholdMetricName]; ok {
 		t, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return meta, fmt.Errorf("error parsing %q: %s", lagThresholdMetricName, err)
+			return meta, fmt.Errorf("error parsing %q: %w", lagThresholdMetricName, err)
 		}
 		if t <= 0 {
 			return meta, fmt.Errorf("%q must be positive number", lagThresholdMetricName)
@@ -254,7 +254,7 @@ func parseKafkaMetadata(config *ScalerConfig, logger logr.Logger) (kafkaMetadata
 	if val, ok := config.TriggerMetadata[activationLagThresholdMetricName]; ok {
 		t, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return meta, fmt.Errorf("error parsing %q: %s", activationLagThresholdMetricName, err)
+			return meta, fmt.Errorf("error parsing %q: %w", activationLagThresholdMetricName, err)
 		}
 		if t <= 0 {
 			return meta, fmt.Errorf("%q must be positive number", activationLagThresholdMetricName)
@@ -371,7 +371,7 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 		}
 
 		if listCGOffsetResponse.Err > 0 {
-			errMsg := fmt.Errorf("error listing cg offset: %s", listCGOffsetResponse.Err.Error())
+			errMsg := fmt.Errorf("error listing cg offset: %w", listCGOffsetResponse.Err)
 			s.logger.Error(errMsg, "")
 		}
 
@@ -394,7 +394,7 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 	topicPartitions := make(map[string][]int32, len(topicsMetadata))
 	for _, topicMetadata := range topicsMetadata {
 		if topicMetadata.Err > 0 {
-			errMsg := fmt.Errorf("error describing topics: %s", topicMetadata.Err.Error())
+			errMsg := fmt.Errorf("error describing topics: %w", topicMetadata.Err)
 			s.logger.Error(errMsg, "")
 		}
 		partitionMetadata := topicMetadata.Partitions
@@ -431,7 +431,7 @@ func (s *kafkaScaler) getConsumerOffsets(topicPartitions map[string][]int32) (*s
 		return nil, fmt.Errorf("error listing consumer group offsets: %w", err)
 	}
 	if offsets.Err > 0 {
-		errMsg := fmt.Errorf("error listing consumer group offsets: %s", offsets.Err.Error())
+		errMsg := fmt.Errorf("error listing consumer group offsets: %w", offsets.Err)
 		s.logger.Error(errMsg, "")
 	}
 	return offsets, nil
@@ -449,7 +449,7 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 		return 0, 0, errMsg
 	}
 	if block.Err > 0 {
-		errMsg := fmt.Errorf("error finding offset block for topic %s and partition %d: %s", topic, partitionID, offsets.Err.Error())
+		errMsg := fmt.Errorf("error finding offset block for topic %s and partition %d: %w", topic, partitionID, offsets.Err)
 		s.logger.Error(errMsg, "")
 	}
 

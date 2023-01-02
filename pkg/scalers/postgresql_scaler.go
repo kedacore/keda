@@ -70,7 +70,7 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 	if val, ok := config.TriggerMetadata["targetQueryValue"]; ok {
 		targetQueryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("queryValue parsing error %w", err)
 		}
 		meta.targetQueryValue = targetQueryValue
 	} else {
@@ -81,7 +81,7 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 	if val, ok := config.TriggerMetadata["activationTargetQueryValue"]; ok {
 		activationTargetQueryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("activationTargetQueryValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("activationTargetQueryValue parsing error %w", err)
 		}
 		meta.activationTargetQueryValue = activationTargetQueryValue
 	}

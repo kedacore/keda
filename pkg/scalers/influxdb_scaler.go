@@ -128,7 +128,7 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	if val, ok := config.TriggerMetadata["activationThresholdValue"]; ok {
 		value, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("activationThresholdValue: failed to parse activationThresholdValue %s", err.Error())
+			return nil, fmt.Errorf("activationThresholdValue: failed to parse activationThresholdValue %w", err)
 		}
 		activationThresholdValue = value
 	}
@@ -136,7 +136,7 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	if val, ok := config.TriggerMetadata["thresholdValue"]; ok {
 		value, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("thresholdValue: failed to parse thresholdValue length %s", err.Error())
+			return nil, fmt.Errorf("thresholdValue: failed to parse thresholdValue length %w", err)
 		}
 		thresholdValue = value
 	} else {

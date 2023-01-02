@@ -114,7 +114,7 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 	if val, ok := config.TriggerMetadata["targetValue"]; ok {
 		targetValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("targetValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("targetValue parsing error %w", err)
 		}
 		meta.targetValue = targetValue
 	} else {
@@ -126,7 +126,7 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok {
 		activationTargetValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("activationTargetValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("activationTargetValue parsing error %w", err)
 		}
 		meta.activationTargetValue = activationTargetValue
 	}
@@ -152,7 +152,7 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 		if paramPort != "" {
 			port, err := strconv.Atoi(paramPort)
 			if err != nil {
-				return nil, fmt.Errorf("port parsing error %s", err.Error())
+				return nil, fmt.Errorf("port parsing error %w", err)
 			}
 			meta.port = port
 		}

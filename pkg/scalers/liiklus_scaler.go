@@ -162,7 +162,7 @@ func parseLiiklusMetadata(config *ScalerConfig) (*liiklusMetadata, error) {
 	if val, ok := config.TriggerMetadata[liiklusLagThresholdMetricName]; ok {
 		t, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing %s: %s", liiklusLagThresholdMetricName, err)
+			return nil, fmt.Errorf("error parsing %s: %w", liiklusLagThresholdMetricName, err)
 		}
 		lagThreshold = t
 	}

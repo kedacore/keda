@@ -308,7 +308,7 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 	if activationValuePresent {
 		activation, err := strconv.ParseFloat(activationValue, 64)
 		if err != nil {
-			return nil, fmt.Errorf("can't parse %s: %s", rabbitActivationValueTriggerConfigName, err)
+			return nil, fmt.Errorf("can't parse %s: %w", rabbitActivationValueTriggerConfigName, err)
 		}
 		meta.activationValue = activation
 	}
@@ -317,7 +317,7 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 	if deprecatedQueueLengthPresent {
 		queueLength, err := strconv.ParseFloat(deprecatedQueueLengthValue, 64)
 		if err != nil {
-			return nil, fmt.Errorf("can't parse %s: %s", rabbitQueueLengthMetricName, err)
+			return nil, fmt.Errorf("can't parse %s: %w", rabbitQueueLengthMetricName, err)
 		}
 		meta.mode = rabbitModeQueueLength
 		meta.value = queueLength
@@ -343,7 +343,7 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 	}
 	triggerValue, err := strconv.ParseFloat(value, 64)
 	if err != nil {
-		return nil, fmt.Errorf("can't parse %s: %s", rabbitValueTriggerConfigName, err)
+		return nil, fmt.Errorf("can't parse %s: %w", rabbitValueTriggerConfigName, err)
 	}
 	meta.value = triggerValue
 

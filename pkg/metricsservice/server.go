@@ -76,11 +76,11 @@ func NewGrpcServer(scaleHandler *scaling.ScaleHandler, address string) GrpcServe
 func (s *GrpcServer) startServer() error {
 	lis, err := net.Listen("tcp", s.address)
 	if err != nil {
-		return fmt.Errorf("failed to listen: %v", err)
+		return fmt.Errorf("failed to listen: %w", err)
 	}
 
 	if err := s.server.Serve(lis); err != nil {
-		return fmt.Errorf("failed to serve: %v", err)
+		return fmt.Errorf("failed to serve: %w", err)
 	}
 
 	return nil

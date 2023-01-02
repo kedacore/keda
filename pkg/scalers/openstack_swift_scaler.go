@@ -84,7 +84,7 @@ func (s *openstackSwiftScaler) getOpenstackSwiftContainerObjectCount(ctx context
 
 	if err != nil {
 		s.logger.Error(err, fmt.Sprintf("the swiftURL is invalid: %s. You might have forgotten to provide the either 'http' or 'https' in the URL. Check our documentation to see if you missed something", swiftURL))
-		return 0, fmt.Errorf("the swiftURL is invalid: %s", err.Error())
+		return 0, fmt.Errorf("the swiftURL is invalid: %w", err)
 	}
 
 	swiftContainerURL.Path = path.Join(swiftContainerURL.Path, containerName)
@@ -223,7 +223,7 @@ func NewOpenstackSwiftScaler(ctx context.Context, config *ScalerConfig) (Scaler,
 		swiftClient, err = authRequest.RequestClient(ctx, "swift", authMetadata.regionName)
 
 		if err != nil {
-			return nil, fmt.Errorf("swiftURL was not provided and the scaler could not retrieve it dinamically using the OpenStack catalog: %s", err.Error())
+			return nil, fmt.Errorf("swiftURL was not provided and the scaler could not retrieve it dinamically using the OpenStack catalog: %w", err)
 		}
 
 		openstackSwiftMetadata.swiftURL = swiftClient.URL
@@ -264,7 +264,7 @@ func parseOpenstackSwiftMetadata(config *ScalerConfig) (*openstackSwiftMetadata,
 	if val, ok := config.TriggerMetadata["objectCount"]; ok {
 		objectCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("objectCount parsing error: %s", err.Error())
+			return nil, fmt.Errorf("objectCount parsing error: %w", err)
 		}
 		meta.objectCount = objectCount
 	} else {
@@ -274,7 +274,7 @@ func parseOpenstackSwiftMetadata(config *ScalerConfig) (*openstackSwiftMetadata,
 	if val, ok := config.TriggerMetadata["activationObjectCount"]; ok {
 		activationObjectCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("activationObjectCount parsing error: %s", err.Error())
+			return nil, fmt.Errorf("activationObjectCount parsing error: %w", err)
 		}
 		meta.activationObjectCount = activationObjectCount
 	} else {
@@ -296,7 +296,7 @@ func parseOpenstackSwiftMetadata(config *ScalerConfig) (*openstackSwiftMetadata,
 	if val, ok := config.TriggerMetadata["timeout"]; ok {
 		httpClientTimeout, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("httpClientTimeout parsing error: %s", err.Error())
+			return nil, fmt.Errorf("httpClientTimeout parsing error: %w", err)
 		}
 		meta.httpClientTimeout = httpClientTimeout
 	} else {

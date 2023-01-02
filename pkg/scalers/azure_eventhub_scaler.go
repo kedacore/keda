@@ -115,7 +115,7 @@ func parseCommonAzureEventHubMetadata(config *ScalerConfig, meta *eventHubMetada
 	if val, ok := config.TriggerMetadata[thresholdMetricName]; ok {
 		threshold, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return fmt.Errorf("error parsing azure eventhub metadata %s: %s", thresholdMetricName, err)
+			return fmt.Errorf("error parsing azure eventhub metadata %s: %w", thresholdMetricName, err)
 		}
 
 		meta.threshold = threshold
@@ -125,7 +125,7 @@ func parseCommonAzureEventHubMetadata(config *ScalerConfig, meta *eventHubMetada
 	if val, ok := config.TriggerMetadata[activationThresholdMetricName]; ok {
 		activationThreshold, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return fmt.Errorf("error parsing azure eventhub metadata %s: %s", activationThresholdMetricName, err)
+			return fmt.Errorf("error parsing azure eventhub metadata %s: %w", activationThresholdMetricName, err)
 		}
 
 		meta.activationThreshold = activationThreshold

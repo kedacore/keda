@@ -53,7 +53,7 @@ func NewNewRelicScaler(config *ScalerConfig) (Scaler, error) {
 
 	meta, err := parseNewRelicMetadata(config, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing %s metadata: %s", scalerName, err)
+		return nil, fmt.Errorf("error parsing %s metadata: %w", scalerName, err)
 	}
 
 	nrClient, err := newrelic.New(
@@ -86,7 +86,7 @@ func parseNewRelicMetadata(config *ScalerConfig, logger logr.Logger) (*newrelicM
 
 	t, err := strconv.Atoi(val)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing %s: %s", account, err)
+		return nil, fmt.Errorf("error parsing %s: %w", account, err)
 	}
 	meta.account = t
 
@@ -123,7 +123,7 @@ func parseNewRelicMetadata(config *ScalerConfig, logger logr.Logger) (*newrelicM
 	if val, ok := config.TriggerMetadata["activationThreshold"]; ok {
 		activationThreshold, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("queryValue parsing error %w", err)
 		}
 		meta.activationThreshold = activationThreshold
 	}

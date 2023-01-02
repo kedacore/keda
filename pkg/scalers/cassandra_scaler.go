@@ -79,7 +79,7 @@ func parseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 	if val, ok := config.TriggerMetadata["targetQueryValue"]; ok {
 		targetQueryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("targetQueryValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("targetQueryValue parsing error %w", err)
 		}
 		meta.targetQueryValue = targetQueryValue
 	} else {
@@ -90,7 +90,7 @@ func parseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 	if val, ok := config.TriggerMetadata["activationTargetQueryValue"]; ok {
 		activationTargetQueryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("activationTargetQueryValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("activationTargetQueryValue parsing error %w", err)
 		}
 		meta.activationTargetQueryValue = activationTargetQueryValue
 	}
@@ -104,7 +104,7 @@ func parseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 	if val, ok := config.TriggerMetadata["port"]; ok {
 		port, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("port parsing error %s", err.Error())
+			return nil, fmt.Errorf("port parsing error %w", err)
 		}
 		meta.port = port
 	}
@@ -125,7 +125,7 @@ func parseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 	if val, ok := config.TriggerMetadata["protocolVersion"]; ok {
 		protocolVersion, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("protocolVersion parsing error %s", err.Error())
+			return nil, fmt.Errorf("protocolVersion parsing error %w", err)
 		}
 		meta.protocolVersion = protocolVersion
 	} else {

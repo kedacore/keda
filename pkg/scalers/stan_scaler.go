@@ -105,7 +105,7 @@ func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
 	if val, ok := config.TriggerMetadata[lagThresholdMetricName]; ok {
 		t, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return meta, fmt.Errorf("error parsing %s: %s", lagThresholdMetricName, err)
+			return meta, fmt.Errorf("error parsing %s: %w", lagThresholdMetricName, err)
 		}
 		meta.lagThreshold = t
 	}
@@ -114,7 +114,7 @@ func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
 	if val, ok := config.TriggerMetadata["activationLagThreshold"]; ok {
 		activationTargetQueryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return meta, fmt.Errorf("activationLagThreshold parsing error %s", err.Error())
+			return meta, fmt.Errorf("activationLagThreshold parsing error %w", err)
 		}
 		meta.activationLagThreshold = activationTargetQueryValue
 	}
@@ -126,7 +126,7 @@ func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
 	if val, ok := config.TriggerMetadata["useHttps"]; ok {
 		useHTTPS, err = strconv.ParseBool(val)
 		if err != nil {
-			return meta, fmt.Errorf("useHTTPS parsing error %s", err.Error())
+			return meta, fmt.Errorf("useHTTPS parsing error %w", err)
 		}
 	}
 	natsServerEndpoint, err := GetFromAuthOrMeta(config, "natsServerMonitoringEndpoint")

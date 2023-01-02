@@ -83,7 +83,7 @@ func parseAzureMonitorMetadata(config *ScalerConfig, logger logr.Logger) (*azure
 		targetValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			logger.Error(err, "Error parsing azure monitor metadata", "targetValue", targetValueName)
-			return nil, fmt.Errorf("error parsing azure monitor metadata %s: %s", targetValueName, err.Error())
+			return nil, fmt.Errorf("error parsing azure monitor metadata %s: %w", targetValueName, err)
 		}
 		meta.targetValue = targetValue
 	} else {
@@ -94,7 +94,7 @@ func parseAzureMonitorMetadata(config *ScalerConfig, logger logr.Logger) (*azure
 		activationTargetValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			logger.Error(err, "Error parsing azure monitor metadata", "targetValue", activationTargetValueName)
-			return nil, fmt.Errorf("error parsing azure monitor metadata %s: %s", activationTargetValueName, err.Error())
+			return nil, fmt.Errorf("error parsing azure monitor metadata %s: %w", activationTargetValueName, err)
 		}
 		meta.activationTargetValue = activationTargetValue
 	} else {

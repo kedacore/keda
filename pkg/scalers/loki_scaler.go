@@ -105,7 +105,7 @@ func parseLokiMetadata(config *ScalerConfig) (meta *lokiMetadata, err error) {
 	if val, ok := config.TriggerMetadata[lokiThreshold]; ok && val != "" {
 		t, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing %s: %s", lokiThreshold, err)
+			return nil, fmt.Errorf("error parsing %s: %w", lokiThreshold, err)
 		}
 
 		meta.threshold = t
@@ -117,7 +117,7 @@ func parseLokiMetadata(config *ScalerConfig) (meta *lokiMetadata, err error) {
 	if val, ok := config.TriggerMetadata[lokiActivationThreshold]; ok {
 		t, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("activationThreshold parsing error %s", err.Error())
+			return nil, fmt.Errorf("activationThreshold parsing error %w", err)
 		}
 
 		meta.activationThreshold = t
@@ -141,7 +141,7 @@ func parseLokiMetadata(config *ScalerConfig) (meta *lokiMetadata, err error) {
 	if val, ok := config.TriggerMetadata[unsafeSsl]; ok && val != "" {
 		unsafeSslValue, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing %s: %s", unsafeSsl, err)
+			return nil, fmt.Errorf("error parsing %s: %w", unsafeSsl, err)
 		}
 
 		meta.unsafeSsl = unsafeSslValue

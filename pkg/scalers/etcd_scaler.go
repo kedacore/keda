@@ -60,7 +60,7 @@ func NewEtcdScaler(config *ScalerConfig) (Scaler, error) {
 
 	meta, parseErr := parseEtcdMetadata(config)
 	if parseErr != nil {
-		return nil, fmt.Errorf("error parsing kubernetes workload metadata: %s", parseErr)
+		return nil, fmt.Errorf("error parsing kubernetes workload metadata: %w", parseErr)
 	}
 
 	cli, err := getEtcdClients(meta)

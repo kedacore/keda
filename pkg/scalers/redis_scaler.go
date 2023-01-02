@@ -201,7 +201,7 @@ func parseRedisMetadata(config *ScalerConfig, parserFn redisAddressParser) (*red
 	if val, ok := config.TriggerMetadata["enableTLS"]; ok {
 		tls, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("enableTLS parsing error %s", err.Error())
+			return nil, fmt.Errorf("enableTLS parsing error %w", err)
 		}
 		meta.connectionInfo.enableTLS = tls
 	}
@@ -228,7 +228,7 @@ func parseRedisMetadata(config *ScalerConfig, parserFn redisAddressParser) (*red
 	if val, ok := config.TriggerMetadata["activationListLength"]; ok {
 		activationListLength, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("activationListLength parsing error %s", err.Error())
+			return nil, fmt.Errorf("activationListLength parsing error %w", err)
 		}
 		meta.activationListLength = activationListLength
 	}
@@ -243,7 +243,7 @@ func parseRedisMetadata(config *ScalerConfig, parserFn redisAddressParser) (*red
 	if val, ok := config.TriggerMetadata["databaseIndex"]; ok {
 		dbIndex, err := strconv.ParseInt(val, 10, 32)
 		if err != nil {
-			return nil, fmt.Errorf("databaseIndex: parsing error %s", err.Error())
+			return nil, fmt.Errorf("databaseIndex: parsing error %w", err)
 		}
 		meta.databaseIndex = int(dbIndex)
 	}
