@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
-	"github.com/go-redis/redis/v8"
+	"github.com/go-redis/redis/v9"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
