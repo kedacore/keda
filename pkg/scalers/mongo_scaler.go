@@ -194,6 +194,7 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 	} else {
 		// Build connection str
 		addr := net.JoinHostPort(meta.host, meta.port)
+		// nosemgrep: db-connection-string
 		connStr = fmt.Sprintf("mongodb://%s:%s@%s/%s", url.QueryEscape(meta.username), url.QueryEscape(meta.password), addr, meta.dbName)
 	}
 

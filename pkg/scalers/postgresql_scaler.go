@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/go-logr/logr"
 	// PostreSQL drive required for this scaler
@@ -123,15 +124,15 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 			password = config.ResolvedEnv[config.TriggerMetadata["passwordFromEnv"]]
 		}
 
-		meta.connection = fmt.Sprintf(
-			"host=%s port=%s user=%s dbname=%s sslmode=%s password=%s",
-			host,
-			port,
-			userName,
-			dbName,
-			sslmode,
-			password,
-		)
+		// Build connection str
+		var params []string
+		params = append(params, "host="+escapePostgreConnectionParameter(host))
+		params = append(params, "port="+escapePostgreConnectionParameter(port))
+		params = append(params, "user="+escapePostgreConnectionParameter(userName))
+		params = append(params, "dbname="+escapePostgreConnectionParameter(dbName))
+		params = append(params, "sslmode="+escapePostgreConnectionParameter(sslmode))
+		params = append(params, "password="+escapePostgreConnectionParameter(password))
+		meta.connection = strings.Join(params, " ")
 	}
 
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
@@ -201,4 +202,13 @@ func (s *postgreSQLScaler) GetMetricsAndActivity(ctx context.Context, metricName
 	metric := GenerateMetricInMili(metricName, num)
 
 	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.activationTargetQueryValue, nil
+}
+
+func escapePostgreConnectionParameter(str string) string {
+	if !strings.Contains(str, " ") {
+		return str
+	}
+
+	str = strings.ReplaceAll(str, "'", "\\'")
+	return fmt.Sprintf("'%s'", str)
 }
