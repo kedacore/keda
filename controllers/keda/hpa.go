@@ -29,7 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
 	"github.com/kedacore/keda/v2/pkg/scaling/executor"
 	version "github.com/kedacore/keda/v2/version"
@@ -41,7 +41,7 @@ const (
 )
 
 // createAndDeployNewHPA creates and deploy HPA in the cluster for specified ScaledObject
-func (r *ScaledObjectReconciler) createAndDeployNewHPA(ctx context.Context, logger logr.Logger, scaledObject *v1alpha1.ScaledObject, gvkr *v1alpha1.GroupVersionKindResource) error {
+func (r *ScaledObjectReconciler) createAndDeployNewHPA(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedav1alpha1.GroupVersionKindResource) error {
 	hpaName := getHPAName(scaledObject)
 	logger.Info("Creating a new HPA", "HPA.Namespace", scaledObject.Namespace, "HPA.Name", hpaName)
 	hpa, err := r.newHPAForScaledObject(ctx, logger, scaledObject, gvkr)
@@ -70,7 +70,7 @@ func (r *ScaledObjectReconciler) createAndDeployNewHPA(ctx context.Context, logg
 }
 
 // newHPAForScaledObject returns HPA as it is specified in ScaledObject
-func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logger logr.Logger, scaledObject *v1alpha1.ScaledObject, gvkr *v1alpha1.GroupVersionKindResource) (*autoscalingv2.HorizontalPodAutoscaler, error) {
+func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedav1alpha1.GroupVersionKindResource) (*autoscalingv2.HorizontalPodAutoscaler, error) {
 	scaledObjectMetricSpecs, err := r.getScaledObjectMetricSpecs(ctx, logger, scaledObject)
 	if err != nil {
 		return nil, err
@@ -148,7 +148,7 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 }
 
 // updateHPAIfNeeded checks whether update of HPA is needed
-func (r *ScaledObjectReconciler) updateHPAIfNeeded(ctx context.Context, logger logr.Logger, scaledObject *v1alpha1.ScaledObject, foundHpa *autoscalingv2.HorizontalPodAutoscaler, gvkr *v1alpha1.GroupVersionKindResource) error {
+func (r *ScaledObjectReconciler) updateHPAIfNeeded(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, foundHpa *autoscalingv2.HorizontalPodAutoscaler, gvkr *kedav1alpha1.GroupVersionKindResource) error {
 	hpa, err := r.newHPAForScaledObject(ctx, logger, scaledObject, gvkr)
 	if err != nil {
 		logger.Error(err, "Failed to create new HPA resource", "HPA.Namespace", scaledObject.Namespace, "HPA.Name", getHPAName(scaledObject))
@@ -181,7 +181,7 @@ func (r *ScaledObjectReconciler) updateHPAIfNeeded(ctx context.Context, logger l
 }
 
 // deleteAndCreateHpa delete old HPA and create new one
-func (r *ScaledObjectReconciler) renameHPA(ctx context.Context, logger logr.Logger, scaledObject *v1alpha1.ScaledObject, foundHpa *autoscalingv2.HorizontalPodAutoscaler, gvkr *v1alpha1.GroupVersionKindResource) error {
+func (r *ScaledObjectReconciler) renameHPA(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, foundHpa *autoscalingv2.HorizontalPodAutoscaler, gvkr *kedav1alpha1.GroupVersionKindResource) error {
 	logger.Info("Deleting old HPA", "HPA.Namespace", scaledObject.Namespace, "HPA.Name", foundHpa.Name)
 	if err := r.Client.Delete(ctx, foundHpa); err != nil {
 		logger.Error(err, "Failed to delete old HPA", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
@@ -192,7 +192,7 @@ func (r *ScaledObjectReconciler) renameHPA(ctx context.Context, logger logr.Logg
 }
 
 // getScaledObjectMetricSpecs returns MetricSpec for HPA, generater from Triggers defitinion in ScaledObject
-func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context, logger logr.Logger, scaledObject *v1alpha1.ScaledObject) ([]autoscalingv2.MetricSpec, error) {
+func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) ([]autoscalingv2.MetricSpec, error) {
 	var scaledObjectMetricSpecs []autoscalingv2.MetricSpec
 	var externalMetricNames []string
 	var resourceMetricNames []string
@@ -218,7 +218,7 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 
 			// add the scaledobject.keda.sh/name label. This is how the MetricsAdapter will know which scaledobject a metric is for when the HPA queries it.
 			metricSpec.External.Metric.Selector = &metav1.LabelSelector{MatchLabels: make(map[string]string)}
-			metricSpec.External.Metric.Selector.MatchLabels[v1alpha1.ScaledObjectOwnerAnnotation] = scaledObject.Name
+			metricSpec.External.Metric.Selector.MatchLabels[kedav1alpha1.ScaledObjectOwnerAnnotation] = scaledObject.Name
 			externalMetricNames = append(externalMetricNames, externalMetricName)
 		}
 	}
@@ -246,9 +246,9 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 	return scaledObjectMetricSpecs, nil
 }
 
-func updateHealthStatus(scaledObject *v1alpha1.ScaledObject, externalMetricNames []string, status *v1alpha1.ScaledObjectStatus) {
+func updateHealthStatus(scaledObject *kedav1alpha1.ScaledObject, externalMetricNames []string, status *kedav1alpha1.ScaledObjectStatus) {
 	health := scaledObject.Status.Health
-	newHealth := make(map[string]v1alpha1.HealthStatus)
+	newHealth := make(map[string]kedav1alpha1.HealthStatus)
 	for _, metricName := range externalMetricNames {
 		entry, exists := health[metricName]
 		if exists {
@@ -259,19 +259,19 @@ func updateHealthStatus(scaledObject *v1alpha1.ScaledObject, externalMetricNames
 }
 
 // getHPAName returns generated HPA name for ScaledObject specified in the parameter
-func getHPAName(scaledObject *v1alpha1.ScaledObject) string {
+func getHPAName(scaledObject *kedav1alpha1.ScaledObject) string {
 	if scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Name != "" {
 		return scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Name
 	}
 	return getDefaultHpaName(scaledObject)
 }
 
-func getDefaultHpaName(scaledObject *v1alpha1.ScaledObject) string {
+func getDefaultHpaName(scaledObject *kedav1alpha1.ScaledObject) string {
 	return fmt.Sprintf("keda-hpa-%s", scaledObject.Name)
 }
 
 // getHPAMinReplicas returns MinReplicas based on definition in ScaledObject or default value if not defined
-func getHPAMinReplicas(scaledObject *v1alpha1.ScaledObject) *int32 {
+func getHPAMinReplicas(scaledObject *kedav1alpha1.ScaledObject) *int32 {
 	if scaledObject.Spec.MinReplicaCount != nil && *scaledObject.Spec.MinReplicaCount > 0 {
 		return scaledObject.Spec.MinReplicaCount
 	}
@@ -280,7 +280,7 @@ func getHPAMinReplicas(scaledObject *v1alpha1.ScaledObject) *int32 {
 }
 
 // getHPAMaxReplicas returns MaxReplicas based on definition in ScaledObject or default value if not defined
-func getHPAMaxReplicas(scaledObject *v1alpha1.ScaledObject) int32 {
+func getHPAMaxReplicas(scaledObject *kedav1alpha1.ScaledObject) int32 {
 	if scaledObject.Spec.MaxReplicaCount != nil {
 		return *scaledObject.Spec.MaxReplicaCount
 	}

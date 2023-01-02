@@ -113,24 +113,17 @@ func verifyHpas(incomingSo *ScaledObject, action string) error {
 			hpaTargetKind == incomingSoTargetKind &&
 			hpaTarget.Name == incomingSoTarget.Name {
 			owned := false
-			ownerName := ""
 			for _, owner := range hpa.OwnerReferences {
 				if owner.Kind == incomingSo.Kind {
-					ownerName = owner.Name
 					if owner.Name == incomingSo.Name {
 						owned = true
+						break
 					}
 				}
 			}
 
 			if !owned {
-				var err error
-				if len(hpa.OwnerReferences) == 0 {
-					err = fmt.Errorf("the workload '%s' of type '%s/%s' is already managed by the hpa '%s'", incomingSoTarget.Name, incomingSotargetAPI, incomingSoTargetKind, hpa.Name)
-				} else {
-					err = fmt.Errorf("the workload '%s' of type '%s/%s' is already managed by the ScaledObject '%s'", incomingSoTarget.Name, incomingSotargetAPI, incomingSoTargetKind, ownerName)
-				}
-
+				err = fmt.Errorf("the workload '%s' of type '%s/%s' is already managed by the hpa '%s'", incomingSoTarget.Name, incomingSotargetAPI, incomingSoTargetKind, hpa.Name)
 				scaledobjectlog.Error(err, "validation error")
 				prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "hpa")
 				return err
