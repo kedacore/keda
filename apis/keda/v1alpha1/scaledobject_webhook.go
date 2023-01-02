@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -34,14 +35,11 @@ import (
 var scaledobjectlog = logf.Log.WithName("scaledobject-validation-webhook")
 
 var kc client.Client
-
-const (
-	defaultAPI  = "apps/v1"
-	defaultKind = "Deployment"
-)
+var restMapper meta.RESTMapper
 
 func (so *ScaledObject) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	kc = mgr.GetClient()
+	restMapper = mgr.GetRESTMapper()
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(so).
 		Complete()
@@ -85,33 +83,24 @@ func verifyHpas(incomingSo *ScaledObject, action string) error {
 		return err
 	}
 
+	var incomingSoGckr GroupVersionKindResource
+	incomingSoGckr, err = ParseGVKR(restMapper, incomingSo.Spec.ScaleTargetRef.APIVersion, incomingSo.Spec.ScaleTargetRef.Kind)
+	if err != nil {
+		scaledobjectlog.Error(err, "Failed to parse Group, Version, Kind, Resource from incoming ScaledObject", "apiVersion", incomingSo.Spec.ScaleTargetRef.APIVersion, "kind", incomingSo.Spec.ScaleTargetRef.Kind)
+		return err
+	}
+
 	for _, hpa := range hpaList.Items {
 		val, _ := json.MarshalIndent(hpa, "", "  ")
 		scaledobjectlog.V(1).Info(fmt.Sprintf("checking hpa %s: %v", hpa.Name, string(val)))
-		hpaTarget := hpa.Spec.ScaleTargetRef
-		incomingSoTarget := incomingSo.Spec.ScaleTargetRef
 
-		// prepare default values
-		hpatargetAPI := defaultAPI
-		if hpaTarget.APIVersion != "" {
-			hpatargetAPI = hpaTarget.APIVersion
-		}
-		hpaTargetKind := defaultKind
-		if hpaTarget.Kind != "" {
-			hpaTargetKind = hpaTarget.Kind
-		}
-		incomingSotargetAPI := defaultAPI
-		if incomingSoTarget.APIVersion != "" {
-			incomingSotargetAPI = incomingSoTarget.APIVersion
-		}
-		incomingSoTargetKind := defaultKind
-		if incomingSoTarget.Kind != "" {
-			incomingSoTargetKind = incomingSoTarget.Kind
+		hpaGckr, err := ParseGVKR(restMapper, hpa.Spec.ScaleTargetRef.APIVersion, hpa.Spec.ScaleTargetRef.Kind)
+		if err != nil {
+			scaledobjectlog.Error(err, "Failed to parse Group, Version, Kind, Resource from HPA", "hpaName", hpa.Name, "apiVersion", hpa.Spec.ScaleTargetRef.APIVersion, "kind", hpa.Spec.ScaleTargetRef.Kind)
+			return err
 		}
 
-		if hpatargetAPI == incomingSotargetAPI &&
-			hpaTargetKind == incomingSoTargetKind &&
-			hpaTarget.Name == incomingSoTarget.Name {
+		if hpaGckr.GVKString() == incomingSoGckr.GVKString() {
 			owned := false
 			for _, owner := range hpa.OwnerReferences {
 				if owner.Kind == incomingSo.Kind {
@@ -123,7 +112,7 @@ func verifyHpas(incomingSo *ScaledObject, action string) error {
 			}
 
 			if !owned {
-				err = fmt.Errorf("the workload '%s' of type '%s/%s' is already managed by the hpa '%s'", incomingSoTarget.Name, incomingSotargetAPI, incomingSoTargetKind, hpa.Name)
+				err = fmt.Errorf("the workload '%s' of type '%s/%s' is already managed by the hpa '%s'", incomingSo.Spec.ScaleTargetRef.Name, incomingSo.Spec.ScaleTargetRef.APIVersion, incomingSo.Spec.ScaleTargetRef.Kind, hpa.Name)
 				scaledobjectlog.Error(err, "validation error")
 				prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "hpa")
 				return err
@@ -144,37 +133,27 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string) error {
 		return err
 	}
 
+	incomingSoGckr, err := ParseGVKR(restMapper, incomingSo.Spec.ScaleTargetRef.APIVersion, incomingSo.Spec.ScaleTargetRef.Kind)
+	if err != nil {
+		scaledobjectlog.Error(err, "Failed to parse Group, Version, Kind, Resource from incoming ScaledObject", "apiVersion", incomingSo.Spec.ScaleTargetRef.APIVersion, "kind", incomingSo.Spec.ScaleTargetRef.Kind)
+		return err
+	}
+
 	for _, so := range soList.Items {
 		if so.Name == incomingSo.Name {
 			continue
 		}
 		val, _ := json.MarshalIndent(so, "", "  ")
 		scaledobjectlog.V(1).Info(fmt.Sprintf("checking scaledobject %s: %v", so.Name, string(val)))
-		soTarget := so.Spec.ScaleTargetRef
-		incomingTarget := incomingSo.Spec.ScaleTargetRef
 
-		// prepare default values
-		sotargetAPI := defaultAPI
-		if soTarget.APIVersion != "" {
-			sotargetAPI = soTarget.APIVersion
-		}
-		soTargetKind := defaultKind
-		if soTarget.Kind != "" {
-			soTargetKind = soTarget.Kind
-		}
-		incomingSotargetAPI := defaultAPI
-		if incomingTarget.APIVersion != "" {
-			incomingSotargetAPI = incomingTarget.APIVersion
-		}
-		incomingSoTargetKind := defaultKind
-		if incomingTarget.Kind != "" {
-			incomingSoTargetKind = incomingTarget.Kind
+		soGckr, err := ParseGVKR(restMapper, so.Spec.ScaleTargetRef.APIVersion, so.Spec.ScaleTargetRef.Kind)
+		if err != nil {
+			scaledobjectlog.Error(err, "Failed to parse Group, Version, Kind, Resource from ScaledObject", "soName", so.Name, "apiVersion", so.Spec.ScaleTargetRef.APIVersion, "kind", so.Spec.ScaleTargetRef.Kind)
+			return err
 		}
 
-		if sotargetAPI == incomingSotargetAPI &&
-			soTargetKind == incomingSoTargetKind &&
-			soTarget.Name == incomingTarget.Name {
-			err = fmt.Errorf("the workload '%s' of type '%s/%s' is already managed by the ScaledObject '%s'", soTarget.Name, sotargetAPI, soTargetKind, so.Name)
+		if soGckr.GVKString() == incomingSoGckr.GVKString() {
+			err = fmt.Errorf("the workload '%s' of type '%s/%s' is already managed by the ScaledObject '%s'", so.Spec.ScaleTargetRef.Name, so.Spec.ScaleTargetRef.APIVersion, so.Spec.ScaleTargetRef.Kind, so.Name)
 			scaledobjectlog.Error(err, "validation error")
 			prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "scaled_object")
 			return err
