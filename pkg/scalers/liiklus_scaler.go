@@ -177,7 +177,7 @@ func parseLiiklusMetadata(config *ScalerConfig) (*liiklusMetadata, error) {
 
 	groupVersion := uint32(0)
 	if val, ok := config.TriggerMetadata["groupVersion"]; ok {
-		t, err := strconv.ParseInt(val, 10, 32)
+		t, err := strconv.ParseUint(val, 10, 32)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing groupVersion: %w", err)
 		}
