@@ -74,14 +74,14 @@ type huaweiAuthorizationMetadata struct {
 func NewHuaweiCloudeyeScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "huawei_cloudeye_scaler")
 
 	meta, err := parseHuaweiCloudeyeMetadata(config, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing Cloudeye metadata: %s", err)
+		return nil, fmt.Errorf("error parsing Cloudeye metadata: %w", err)
 	}
 
 	return &huaweiCloudeyeScaler{

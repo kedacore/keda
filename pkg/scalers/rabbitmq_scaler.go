@@ -104,7 +104,7 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 	s.metricType = metricType
 
@@ -112,7 +112,7 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 
 	meta, err := parseRabbitMQMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing rabbitmq metadata: %s", err)
+		return nil, fmt.Errorf("error parsing rabbitmq metadata: %w", err)
 	}
 	s.metadata = meta
 	s.httpClient = kedautil.CreateHTTPClient(meta.timeout, false)
@@ -123,7 +123,7 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 		if meta.vhostName != "" {
 			hostURI, err := amqp.ParseURI(host)
 			if err != nil {
-				return nil, fmt.Errorf("error parsing rabbitmq connection string: %s", err)
+				return nil, fmt.Errorf("error parsing rabbitmq connection string: %w", err)
 			}
 			hostURI.Vhost = meta.vhostName
 			host = hostURI.String()
@@ -131,7 +131,7 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 
 		conn, ch, err := getConnectionAndChannel(host)
 		if err != nil {
-			return nil, fmt.Errorf("error establishing rabbitmq connection: %s", err)
+			return nil, fmt.Errorf("error establishing rabbitmq connection: %w", err)
 		}
 		s.connection = conn
 		s.channel = ch
@@ -171,7 +171,7 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	if meta.protocol == autoProtocol {
 		parsedURL, err := url.Parse(meta.host)
 		if err != nil {
-			return nil, fmt.Errorf("can't parse host to find protocol: %s", err)
+			return nil, fmt.Errorf("can't parse host to find protocol: %w", err)
 		}
 		switch parsedURL.Scheme {
 		case "amqp", "amqps":
@@ -210,7 +210,7 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 
 	_, err = parseTrigger(&meta, config)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse trigger: %s", err)
+		return nil, fmt.Errorf("unable to parse trigger: %w", err)
 	}
 
 	// Resolve metricName
@@ -224,13 +224,13 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	if val, ok := config.TriggerMetadata["timeout"]; ok {
 		timeoutMS, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("unable to parse timeout: %s", err)
+			return nil, fmt.Errorf("unable to parse timeout: %w", err)
 		}
 		if meta.protocol == amqpProtocol {
-			return nil, fmt.Errorf("amqp protocol doesn't support custom timeouts: %s", err)
+			return nil, fmt.Errorf("amqp protocol doesn't support custom timeouts: %w", err)
 		}
 		if timeoutMS <= 0 {
-			return nil, fmt.Errorf("timeout must be greater than 0: %s", err)
+			return nil, fmt.Errorf("timeout must be greater than 0: %w", err)
 		}
 		meta.timeout = time.Duration(timeoutMS) * time.Millisecond
 	} else {
@@ -308,7 +308,7 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 	if activationValuePresent {
 		activation, err := strconv.ParseFloat(activationValue, 64)
 		if err != nil {
-			return nil, fmt.Errorf("can't parse %s: %s", rabbitActivationValueTriggerConfigName, err)
+			return nil, fmt.Errorf("can't parse %s: %w", rabbitActivationValueTriggerConfigName, err)
 		}
 		meta.activationValue = activation
 	}
@@ -317,7 +317,7 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 	if deprecatedQueueLengthPresent {
 		queueLength, err := strconv.ParseFloat(deprecatedQueueLengthValue, 64)
 		if err != nil {
-			return nil, fmt.Errorf("can't parse %s: %s", rabbitQueueLengthMetricName, err)
+			return nil, fmt.Errorf("can't parse %s: %w", rabbitQueueLengthMetricName, err)
 		}
 		meta.mode = rabbitModeQueueLength
 		meta.value = queueLength
@@ -343,7 +343,7 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 	}
 	triggerValue, err := strconv.ParseFloat(value, 64)
 	if err != nil {
-		return nil, fmt.Errorf("can't parse %s: %s", rabbitValueTriggerConfigName, err)
+		return nil, fmt.Errorf("can't parse %s: %w", rabbitValueTriggerConfigName, err)
 	}
 	meta.value = triggerValue
 

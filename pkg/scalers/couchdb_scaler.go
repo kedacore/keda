@@ -111,7 +111,7 @@ func parseCouchDBMetadata(config *ScalerConfig) (*couchDBMetadata, string, error
 	if val, ok := config.TriggerMetadata["queryValue"]; ok {
 		queryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to convert %v to int, because of %v", val, err.Error())
+			return nil, "", fmt.Errorf("failed to convert %v to int, because of %w", val, err)
 		}
 		meta.queryValue = queryValue
 	} else {
@@ -122,7 +122,7 @@ func parseCouchDBMetadata(config *ScalerConfig) (*couchDBMetadata, string, error
 	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
 		activationQueryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to convert %v to int, because of %v", val, err.Error())
+			return nil, "", fmt.Errorf("failed to convert %v to int, because of %w", val, err)
 		}
 		meta.activationQueryValue = activationQueryValue
 	}
@@ -187,30 +187,30 @@ func parseCouchDBMetadata(config *ScalerConfig) (*couchDBMetadata, string, error
 func NewCouchDBScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	meta, connStr, err := parseCouchDBMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parsing couchDB metadata, because of %v", err)
+		return nil, fmt.Errorf("failed to parsing couchDB metadata, because of %w", err)
 	}
 
 	client, err := kivik.New("couch", connStr)
 	if err != nil {
-		return nil, fmt.Errorf("%v", err)
+		return nil, fmt.Errorf("%w", err)
 	}
 
-	err = client.Authenticate(context.TODO(), couchdb.BasicAuth("admin", meta.password))
+	err = client.Authenticate(ctx, couchdb.BasicAuth("admin", meta.password))
 	if err != nil {
 		return nil, err
 	}
 
 	isconnected, err := client.Ping(ctx)
 	if !isconnected {
-		return nil, fmt.Errorf("%v", err)
+		return nil, fmt.Errorf("%w", err)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to ping couchDB, because of %v", err)
+		return nil, fmt.Errorf("failed to ping couchDB, because of %w", err)
 	}
 
 	return &couchDBScaler{
@@ -225,7 +225,7 @@ func NewCouchDBScaler(ctx context.Context, config *ScalerConfig) (Scaler, error)
 func (s *couchDBScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	result, err := s.getQueryResult(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("failed to inspect couchdb, because of %v", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("failed to inspect couchdb, because of %w", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(result))

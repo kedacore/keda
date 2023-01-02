@@ -61,7 +61,7 @@ var (
 func NewLiiklusScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	lm, err := parseLiiklusMetadata(config)
@@ -114,8 +114,10 @@ func (s *liiklusScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec
 func (s *liiklusScaler) Close(context.Context) error {
 	err := s.connection.Close()
 	if err != nil {
+		s.logger.Error(err, "Error closing liiklus connection")
 		return err
 	}
+
 	return nil
 }
 
@@ -160,7 +162,7 @@ func parseLiiklusMetadata(config *ScalerConfig) (*liiklusMetadata, error) {
 	if val, ok := config.TriggerMetadata[liiklusLagThresholdMetricName]; ok {
 		t, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing %s: %s", liiklusLagThresholdMetricName, err)
+			return nil, fmt.Errorf("error parsing %s: %w", liiklusLagThresholdMetricName, err)
 		}
 		lagThreshold = t
 	}
@@ -175,9 +177,9 @@ func parseLiiklusMetadata(config *ScalerConfig) (*liiklusMetadata, error) {
 
 	groupVersion := uint32(0)
 	if val, ok := config.TriggerMetadata["groupVersion"]; ok {
-		t, err := strconv.ParseInt(val, 10, 32)
+		t, err := strconv.ParseUint(val, 10, 32)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing groupVersion: %s", err)
+			return nil, fmt.Errorf("error parsing groupVersion: %w", err)
 		}
 		groupVersion = uint32(t)
 	}

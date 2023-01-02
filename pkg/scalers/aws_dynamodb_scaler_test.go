@@ -238,7 +238,7 @@ func TestParseDynamoMetadata(t *testing.T) {
 				ScalerIndex:     1,
 			})
 			if tc.expectedError != nil {
-				assert.ErrorIs(t, err, tc.expectedError)
+				assert.ErrorContains(t, err, tc.expectedError.Error())
 			} else {
 				assert.NoError(t, err)
 				fmt.Println(tc.name)

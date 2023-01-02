@@ -41,7 +41,7 @@ func GetEventHubClient(ctx context.Context, info EventHubInfo) (*eventhub.Hub, e
 		// The user wants to use a connectionstring, not a pod identity
 		hub, err := eventhub.NewHubFromConnectionString(info.EventHubConnection)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create hub client: %s", err)
+			return nil, fmt.Errorf("failed to create hub client: %w", err)
 		}
 		return hub, nil
 	case kedav1alpha1.PodIdentityProviderAzure:

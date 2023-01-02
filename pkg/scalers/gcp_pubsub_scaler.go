@@ -49,14 +49,14 @@ type pubsubMetadata struct {
 func NewPubSubScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "gcp_pub_sub_scaler")
 
 	meta, err := parsePubSubMetadata(config, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing PubSub metadata: %s", err)
+		return nil, fmt.Errorf("error parsing PubSub metadata: %w", err)
 	}
 
 	return &pubsubScaler{
@@ -81,7 +81,7 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 		meta.mode = pubsubModeSubscriptionSize
 		subSizeValue, err := strconv.ParseFloat(subSize, 64)
 		if err != nil {
-			return nil, fmt.Errorf("value parsing error %s", err.Error())
+			return nil, fmt.Errorf("value parsing error %w", err)
 		}
 		meta.value = subSizeValue
 	} else {
@@ -101,7 +101,7 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 		if valuePresent {
 			triggerValue, err := strconv.ParseFloat(value, 64)
 			if err != nil {
-				return nil, fmt.Errorf("value parsing error %s", err.Error())
+				return nil, fmt.Errorf("value parsing error %w", err)
 			}
 			meta.value = triggerValue
 		}
@@ -121,7 +121,7 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 	if val, ok := config.TriggerMetadata["activationValue"]; ok {
 		activationValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("activationValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("activationValue parsing error %w", err)
 		}
 		meta.activationValue = activationValue
 	}

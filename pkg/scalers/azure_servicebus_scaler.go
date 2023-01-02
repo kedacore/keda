@@ -76,14 +76,14 @@ type azureServiceBusMetadata struct {
 func NewAzureServiceBusScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "azure_servicebus_scaler")
 
 	meta, err := parseAzureServiceBusMetadata(config, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing azure service bus metadata: %s", err)
+		return nil, fmt.Errorf("error parsing azure service bus metadata: %w", err)
 	}
 
 	return &azureServiceBusScaler{

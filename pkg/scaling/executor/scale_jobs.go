@@ -321,11 +321,7 @@ func (e *scaleExecutor) cleanUp(ctx context.Context, scaledJob *kedav1alpha1.Sca
 	if err != nil {
 		return err
 	}
-	err = e.deleteJobsWithHistoryLimit(ctx, logger, failedJobs, failedJobsHistoryLimit)
-	if err != nil {
-		return err
-	}
-	return nil
+	return e.deleteJobsWithHistoryLimit(ctx, logger, failedJobs, failedJobsHistoryLimit)
 }
 
 func (e *scaleExecutor) deleteJobsWithHistoryLimit(ctx context.Context, logger logr.Logger, jobs []batchv1.Job, historyLimit int32) error {

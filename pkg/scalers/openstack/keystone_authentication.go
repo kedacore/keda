@@ -110,7 +110,7 @@ func (client *Client) IsTokenValid(ctx context.Context) (bool, error) {
 	tokenURL, err := url.Parse(client.authMetadata.AuthURL)
 
 	if err != nil {
-		return false, fmt.Errorf("the authURL is invalid: %s", err.Error())
+		return false, fmt.Errorf("the authURL is invalid: %w", err)
 	}
 
 	tokenURL.Path = path.Join(tokenURL.Path, tokensEndpoint)
@@ -166,7 +166,7 @@ func NewPasswordAuth(authURL string, userID string, userPassword string, project
 	url, err := url.Parse(authURL)
 
 	if err != nil {
-		return nil, fmt.Errorf("authURL is invalid: %s", err.Error())
+		return nil, fmt.Errorf("authURL is invalid: %w", err)
 	}
 
 	url.Path = path.Join(url.Path, "")
@@ -196,7 +196,7 @@ func NewAppCredentialsAuth(authURL string, id string, secret string, httpTimeout
 	url, err := url.Parse(authURL)
 
 	if err != nil {
-		return nil, fmt.Errorf("authURL is invalid: %s", err.Error())
+		return nil, fmt.Errorf("authURL is invalid: %w", err)
 	}
 
 	url.Path = path.Join(url.Path, "")
@@ -243,7 +243,7 @@ func (keystone *KeystoneAuthRequest) RequestClient(ctx context.Context, projectP
 	}
 
 	if err != nil {
-		return client, fmt.Errorf("scaler could not find the service URL dinamically. Either provide it in the scaler parameters or check your OpenStack configuration: %s", err.Error())
+		return client, fmt.Errorf("scaler could not find the service URL dinamically. Either provide it in the scaler parameters or check your OpenStack configuration: %w", err)
 	}
 
 	client.URL = serviceURL
@@ -265,7 +265,7 @@ func (keystone *KeystoneAuthRequest) getToken(ctx context.Context) (string, erro
 	tokenURL, err := url.Parse(keystone.AuthURL)
 
 	if err != nil {
-		return "", fmt.Errorf("the authURL is invalid: %s", err.Error())
+		return "", fmt.Errorf("the authURL is invalid: %w", err)
 	}
 
 	tokenURL.Path = path.Join(tokenURL.Path, tokensEndpoint)
@@ -304,7 +304,7 @@ func (keystone *KeystoneAuthRequest) getCatalog(ctx context.Context, token strin
 	catalogURL, err := url.Parse(keystone.AuthURL)
 
 	if err != nil {
-		return nil, fmt.Errorf("the authURL is invalid: %s", err.Error())
+		return nil, fmt.Errorf("the authURL is invalid: %w", err)
 	}
 
 	catalogURL.Path = path.Join(catalogURL.Path, catalogEndpoint)
@@ -331,7 +331,7 @@ func (keystone *KeystoneAuthRequest) getCatalog(ctx context.Context, token strin
 		err := json.NewDecoder(resp.Body).Decode(&keystoneCatalog)
 
 		if err != nil {
-			return nil, fmt.Errorf("error parsing the catalog resquest response body: %s", err.Error())
+			return nil, fmt.Errorf("error parsing the catalog resquest response body: %w", err)
 		}
 
 		return keystoneCatalog.Catalog, nil

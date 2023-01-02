@@ -46,14 +46,14 @@ type gcsMetadata struct {
 func NewGcsScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "gcp_storage_scaler")
 
 	meta, err := parseGcsMetadata(config, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing GCP storage metadata: %s", err)
+		return nil, fmt.Errorf("error parsing GCP storage metadata: %w", err)
 	}
 
 	ctx := context.Background()
@@ -72,7 +72,7 @@ func NewGcsScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("storage.NewClient: %v", err)
+		return nil, fmt.Errorf("storage.NewClient: %w", err)
 	}
 
 	bucket := client.Bucket(meta.bucketName)
@@ -112,7 +112,7 @@ func parseGcsMetadata(config *ScalerConfig, logger logr.Logger) (*gcsMetadata, e
 		targetObjectCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			logger.Error(err, "Error parsing targetObjectCount")
-			return nil, fmt.Errorf("error parsing targetObjectCount: %s", err.Error())
+			return nil, fmt.Errorf("error parsing targetObjectCount: %w", err)
 		}
 
 		meta.targetObjectCount = targetObjectCount
@@ -122,7 +122,7 @@ func parseGcsMetadata(config *ScalerConfig, logger logr.Logger) (*gcsMetadata, e
 	if val, ok := config.TriggerMetadata["activationTargetObjectCount"]; ok {
 		activationTargetObjectCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("activationTargetObjectCount parsing error %s", err.Error())
+			return nil, fmt.Errorf("activationTargetObjectCount parsing error %w", err)
 		}
 		meta.activationTargetObjectCount = activationTargetObjectCount
 	}
@@ -131,7 +131,7 @@ func parseGcsMetadata(config *ScalerConfig, logger logr.Logger) (*gcsMetadata, e
 		maxBucketItemsToScan, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			logger.Error(err, "Error parsing maxBucketItemsToScan")
-			return nil, fmt.Errorf("error parsing maxBucketItemsToScan: %s", err.Error())
+			return nil, fmt.Errorf("error parsing maxBucketItemsToScan: %w", err)
 		}
 
 		meta.maxBucketItemsToScan = maxBucketItemsToScan

@@ -38,12 +38,12 @@ type cronMetadata struct {
 func NewCronScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	meta, parseErr := parseCronMetadata(config)
 	if parseErr != nil {
-		return nil, fmt.Errorf("error parsing cron metadata: %s", parseErr)
+		return nil, fmt.Errorf("error parsing cron metadata: %w", parseErr)
 	}
 
 	return &cronScaler{
@@ -82,7 +82,7 @@ func parseCronMetadata(config *ScalerConfig) (*cronMetadata, error) {
 	if val, ok := config.TriggerMetadata["start"]; ok && val != "" {
 		_, err := parser.Parse(val)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing start schedule: %s", err)
+			return nil, fmt.Errorf("error parsing start schedule: %w", err)
 		}
 		meta.start = val
 	} else {
@@ -91,7 +91,7 @@ func parseCronMetadata(config *ScalerConfig) (*cronMetadata, error) {
 	if val, ok := config.TriggerMetadata["end"]; ok && val != "" {
 		_, err := parser.Parse(val)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing end schedule: %s", err)
+			return nil, fmt.Errorf("error parsing end schedule: %w", err)
 		}
 		meta.end = val
 	} else {
@@ -118,7 +118,7 @@ func parseCronMetadata(config *ScalerConfig) (*cronMetadata, error) {
 func (s *cronScaler) IsActive(ctx context.Context) (bool, error) {
 	location, err := time.LoadLocation(s.metadata.timezone)
 	if err != nil {
-		return false, fmt.Errorf("unable to load timezone. Error: %s", err)
+		return false, fmt.Errorf("unable to load timezone. Error: %w", err)
 	}
 
 	// Since we are considering the timestamp here and not the exact time, timezone does matter.
@@ -126,12 +126,12 @@ func (s *cronScaler) IsActive(ctx context.Context) (bool, error) {
 
 	nextStartTime, startTimecronErr := getCronTime(location, s.metadata.start)
 	if startTimecronErr != nil {
-		return false, fmt.Errorf("error initializing start cron: %s", startTimecronErr)
+		return false, fmt.Errorf("error initializing start cron: %w", startTimecronErr)
 	}
 
 	nextEndTime, endTimecronErr := getCronTime(location, s.metadata.end)
 	if endTimecronErr != nil {
-		return false, fmt.Errorf("error intializing end cron: %s", endTimecronErr)
+		return false, fmt.Errorf("error intializing end cron: %w", endTimecronErr)
 	}
 
 	switch {

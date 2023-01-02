@@ -68,6 +68,7 @@ spec:
               - ALL
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
+            runAsNonRoot: true
             seccompProfile:
               type: RuntimeDefault
       terminationGracePeriodSeconds: 10
