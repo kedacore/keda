@@ -231,7 +231,7 @@ func (s *awsDynamoDBScaler) GetQueryMetrics() (float64, error) {
 func json2Map(js string) (m map[string]*string, err error) {
 	err = bson.UnmarshalExtJSON([]byte(js), true, &m)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", ErrAwsDynamoInvalidExpressionAttributeNames.Error(), err)
+		return nil, fmt.Errorf("%v: %w", ErrAwsDynamoInvalidExpressionAttributeNames, err)
 	}
 
 	if len(m) == 0 {
@@ -245,7 +245,7 @@ func json2DynamoMap(js string) (m map[string]*dynamodb.AttributeValue, err error
 	err = json.Unmarshal([]byte(js), &m)
 
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", ErrAwsDynamoInvalidExpressionAttributeValues.Error(), err)
+		return nil, fmt.Errorf("%v: %w", ErrAwsDynamoInvalidExpressionAttributeValues, err)
 	}
 	return m, err
 }
