@@ -122,27 +122,12 @@ func NewKafkaScaler(config *ScalerConfig) (Scaler, error) {
 
 func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	meta.saslType = KafkaSASLTypeNone
-	saslMetadata := config.TriggerMetadata["sasl"]
-	saslAuthParam := config.AuthParams["sasl"]
-	tlsMetadata := config.TriggerMetadata["tls"]
-	tlsAuthParam := config.AuthParams["tls"]
-
-	if (!reflect.ValueOf(saslMetadata).IsZero() && !reflect.ValueOf(saslAuthParam).IsZero()) || (!reflect.ValueOf(tlsMetadata).IsZero() && !reflect.ValueOf(tlsAuthParam).IsZero()) {
-		return errors.New("cannot set `sasl` or `tls` values in both metadata and spec.secretTargetRef")
+	err := tlsSASLCheck(config)
+	if err != nil {
+		return err
 	}
-
-	if (!reflect.ValueOf(saslMetadata).IsZero() && !reflect.ValueOf(tlsAuthParam).IsZero()) || (!reflect.ValueOf(saslAuthParam).IsZero() && !reflect.ValueOf(tlsMetadata).IsZero()) {
-		return errors.New("both`sasl` and `tls` must be in either metadata or spec.secretTargetRef")
-	}
-
-	var sasl string
-	if !reflect.ValueOf(saslMetadata).IsZero() {
-		sasl = saslMetadata
-	} else if !reflect.ValueOf(saslAuthParam).IsZero() {
-		sasl = saslAuthParam
-	}
-
-	if !reflect.ValueOf(sasl).IsZero() {
+	sasl, err := GetFromAuthOrMeta(config, "sasl")
+	if err == nil {
 		sasl = strings.TrimSpace(sasl)
 		mode := kafkaSaslType(sasl)
 
@@ -172,13 +157,8 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	}
 
 	meta.enableTLS = false
-	var tls string
-	if !reflect.ValueOf(tlsMetadata).IsZero() {
-		tls = tlsMetadata
-	} else if !reflect.ValueOf(tlsAuthParam).IsZero() {
-		tls = tlsAuthParam
-	}
-	if !reflect.ValueOf(tls).IsZero() {
+	tls, err := GetFromAuthOrMeta(config, "tls")
+	if err == nil {
 		tls = strings.TrimSpace(tls)
 
 		if tls == "enable" {
@@ -204,6 +184,22 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 		}
 	}
 
+	return nil
+}
+
+func tlsSASLCheck(config *ScalerConfig) error {
+	saslMetadata := config.TriggerMetadata["sasl"]
+	saslAuthParam := config.AuthParams["sasl"]
+	tlsMetadata := config.TriggerMetadata["tls"]
+	tlsAuthParam := config.AuthParams["tls"]
+
+	if (!reflect.ValueOf(saslMetadata).IsZero() && !reflect.ValueOf(saslAuthParam).IsZero()) || (!reflect.ValueOf(tlsMetadata).IsZero() && !reflect.ValueOf(tlsAuthParam).IsZero()) {
+		return errors.New("cannot set `sasl` or `tls` values in both metadata and spec.secretTargetRef")
+	}
+
+	if (!reflect.ValueOf(saslMetadata).IsZero() && !reflect.ValueOf(tlsAuthParam).IsZero()) || (!reflect.ValueOf(saslAuthParam).IsZero() && !reflect.ValueOf(tlsMetadata).IsZero()) {
+		return errors.New("both`sasl` and `tls` must be in either metadata or spec.secretTargetRef")
+	}
 	return nil
 }
 

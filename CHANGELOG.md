@@ -42,8 +42,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Breaking Changes
 
-- Kafka: Move `sasl` and `tls` config to `TriggerAuthentication` metadata ([#4024](https://github.com/kedacore/keda/pull/4024))
-
 ### New
 
 Here is an overview of all **stable** additions:
@@ -55,6 +53,7 @@ Here is an overview of all new **experimental** features:
 - **General**: TODO ([#TODO](https://github.com/kedacore/keda/issues/TODO))
 
 ### Improvements
+- Kafka: Support setting `sasl` and `tls` in `TriggerAuthentication` metadata ([#4024](https://github.com/kedacore/keda/pull/4024))
 
 - **Redis**: Add support to Redis 7 ([#4052](https://github.com/kedacore/keda/issues/4052))
 
