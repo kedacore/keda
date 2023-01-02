@@ -2,7 +2,6 @@ package scalers
 
 import (
 	"context"
-	"errors"
 	"strconv"
 	"testing"
 
@@ -168,7 +167,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 		{
 			name:     "empty metadata",
 			wantMeta: nil,
-			wantErr:  errors.New("no addresses or hosts given. address should be a comma separated list of host:port or set the host/port values"),
+			wantErr:  ErrRedisNoAddresses,
 		},
 		{
 			name: "unequal number of hosts/ports",
@@ -177,7 +176,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 				"ports": "1, 2",
 			},
 			wantMeta: nil,
-			wantErr:  errors.New("not enough hosts or ports given. number of hosts should be equal to the number of ports"),
+			wantErr:  ErrRedisUnequalHostsAndPorts,
 		},
 		{
 			name: "no stream name",
@@ -187,7 +186,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 				"pendingEntriesCount": "5",
 			},
 			wantMeta: nil,
-			wantErr:  errors.New("missing redis stream name"),
+			wantErr:  ErrRedisMissingStreamName,
 		},
 		{
 			name: "missing pending entries count",
@@ -197,7 +196,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 				"stream": "my-stream",
 			},
 			wantMeta: nil,
-			wantErr:  errors.New("missing pending entries count"),
+			wantErr:  ErrRedisMissingPendingEntriesCount,
 		},
 		{
 			name: "invalid pending entries count",
@@ -207,7 +206,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 				"pendingEntriesCount": "invalid",
 			},
 			wantMeta: nil,
-			wantErr:  errors.New("error parsing pending entries count"),
+			wantErr:  strconv.ErrSyntax,
 		},
 		{
 			name: "address is defined in auth params",
@@ -445,7 +444,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			}
 			meta, err := parseRedisStreamsMetadata(config, parseRedisClusterAddress)
 			if c.wantErr != nil {
-				assert.Contains(t, err.Error(), c.wantErr.Error())
+				assert.ErrorIs(t, err, c.wantErr)
 			} else {
 				assert.NoError(t, err)
 			}
@@ -466,7 +465,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 		{
 			name:     "empty metadata",
 			wantMeta: nil,
-			wantErr:  errors.New("no addresses or hosts given. address should be a comma separated list of host:port or set the host/port values"),
+			wantErr:  ErrRedisNoAddresses,
 		},
 		{
 			name: "unequal number of hosts/ports",
@@ -475,7 +474,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				"ports": "1, 2",
 			},
 			wantMeta: nil,
-			wantErr:  errors.New("not enough hosts or ports given. number of hosts should be equal to the number of ports"),
+			wantErr:  ErrRedisUnequalHostsAndPorts,
 		},
 		{
 			name: "no stream name",
@@ -485,7 +484,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				"pendingEntriesCount": "5",
 			},
 			wantMeta: nil,
-			wantErr:  errors.New("missing redis stream name"),
+			wantErr:  ErrRedisMissingStreamName,
 		},
 		{
 			name: "missing pending entries count",
@@ -495,7 +494,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				"stream": "my-stream",
 			},
 			wantMeta: nil,
-			wantErr:  errors.New("missing pending entries count"),
+			wantErr:  ErrRedisMissingPendingEntriesCount,
 		},
 		{
 			name: "invalid pending entries count",
@@ -505,7 +504,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				"pendingEntriesCount": "invalid",
 			},
 			wantMeta: nil,
-			wantErr:  errors.New("error parsing pending entries count"),
+			wantErr:  strconv.ErrSyntax,
 		},
 		{
 			name: "address is defined in auth params",
@@ -941,7 +940,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			}
 			meta, err := parseRedisStreamsMetadata(config, parseRedisSentinelAddress)
 			if c.wantErr != nil {
-				assert.Contains(t, err.Error(), c.wantErr.Error())
+				assert.ErrorIs(t, err, c.wantErr)
 			} else {
 				assert.NoError(t, err)
 			}

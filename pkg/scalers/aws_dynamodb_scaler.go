@@ -58,19 +58,48 @@ func NewAwsDynamoDBScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
+var (
+	// ErrAwsDynamoNoTableName is returned when "tableName" is missing from the config.
+	ErrAwsDynamoNoTableName = errors.New("no tableName given")
+
+	// ErrAwsDynamoNoAwsRegion is returned when "awsRegion" is missing from the config.
+	ErrAwsDynamoNoAwsRegion = errors.New("no awsRegion given")
+
+	// ErrAwsDynamoNoKeyConditionExpression is returned when "keyConditionExpression" is missing from the config.
+	ErrAwsDynamoNoKeyConditionExpression = errors.New("no keyConditionExpression given")
+
+	// ErrAwsDynamoEmptyExpressionAttributeNames is returned when "expressionAttributeNames" is empty.
+	ErrAwsDynamoEmptyExpressionAttributeNames = errors.New("empty map")
+
+	// ErrAwsDynamoInvalidExpressionAttributeNames is returned when "expressionAttributeNames" is an invalid JSON.
+	ErrAwsDynamoInvalidExpressionAttributeNames = errors.New("invalid expressionAttributeNames")
+
+	// ErrAwsDynamoNoExpressionAttributeNames is returned when "expressionAttributeNames" is missing from the config.
+	ErrAwsDynamoNoExpressionAttributeNames = errors.New("no expressionAttributeNames given")
+
+	// ErrAwsDynamoInvalidExpressionAttributeValues is returned when "expressionAttributeNames" is missing an invalid JSON.
+	ErrAwsDynamoInvalidExpressionAttributeValues = errors.New("invalid expressionAttributeValues")
+
+	// ErrAwsDynamoNoExpressionAttributeValues is returned when "expressionAttributeValues" is missing from the config.
+	ErrAwsDynamoNoExpressionAttributeValues = errors.New("no expressionAttributeValues given")
+
+	// ErrAwsDynamoNoTargetValue is returned when "targetValue" is missing from the config.
+	ErrAwsDynamoNoTargetValue = errors.New("no targetValue given")
+)
+
 func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error) {
 	meta := awsDynamoDBMetadata{}
 
 	if val, ok := config.TriggerMetadata["tableName"]; ok && val != "" {
 		meta.tableName = val
 	} else {
-		return nil, fmt.Errorf("no tableName given")
+		return nil, ErrAwsDynamoNoTableName
 	}
 
 	if val, ok := config.TriggerMetadata["awsRegion"]; ok && val != "" {
 		meta.awsRegion = val
 	} else {
-		return nil, fmt.Errorf("no awsRegion given")
+		return nil, ErrAwsDynamoNoAwsRegion
 	}
 
 	if val, ok := config.TriggerMetadata["awsEndpoint"]; ok {
@@ -80,48 +109,48 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 	if val, ok := config.TriggerMetadata["keyConditionExpression"]; ok && val != "" {
 		meta.keyConditionExpression = val
 	} else {
-		return nil, fmt.Errorf("no keyConditionExpression given")
+		return nil, ErrAwsDynamoNoKeyConditionExpression
 	}
 
 	if val, ok := config.TriggerMetadata["expressionAttributeNames"]; ok && val != "" {
 		names, err := json2Map(val)
 
 		if err != nil {
-			return nil, fmt.Errorf("error parsing expressionAttributeNames: %s", err)
+			return nil, fmt.Errorf("error parsing expressionAttributeNames: %w", err)
 		}
 
 		meta.expressionAttributeNames = names
 	} else {
-		return nil, fmt.Errorf("no expressionAttributeNames given")
+		return nil, ErrAwsDynamoNoExpressionAttributeNames
 	}
 
 	if val, ok := config.TriggerMetadata["expressionAttributeValues"]; ok && val != "" {
 		values, err := json2DynamoMap(val)
 
 		if err != nil {
-			return nil, fmt.Errorf("error parsing expressionAttributeValues: %s", err)
+			return nil, fmt.Errorf("error parsing expressionAttributeValues: %w", err)
 		}
 
 		meta.expressionAttributeValues = values
 	} else {
-		return nil, fmt.Errorf("no expressionAttributeValues given")
+		return nil, ErrAwsDynamoNoExpressionAttributeValues
 	}
 
 	if val, ok := config.TriggerMetadata["targetValue"]; ok && val != "" {
 		n, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing metadata targetValue")
+			return nil, fmt.Errorf("error parsing metadata targetValue: %w", err)
 		}
 
 		meta.targetValue = n
 	} else {
-		return nil, fmt.Errorf("no targetValue given")
+		return nil, ErrAwsDynamoNoTargetValue
 	}
 
 	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok && val != "" {
 		n, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing metadata targetValue")
+			return nil, fmt.Errorf("error parsing metadata activationTargetValue: %w", err)
 		}
 
 		meta.activationTargetValue = n
@@ -202,11 +231,11 @@ func (s *awsDynamoDBScaler) GetQueryMetrics() (float64, error) {
 func json2Map(js string) (m map[string]*string, err error) {
 	err = bson.UnmarshalExtJSON([]byte(js), true, &m)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", ErrAwsDynamoInvalidExpressionAttributeNames, err)
 	}
 
 	if len(m) == 0 {
-		return nil, errors.New("empty map")
+		return nil, ErrAwsDynamoEmptyExpressionAttributeNames
 	}
 	return m, err
 }
@@ -216,7 +245,7 @@ func json2DynamoMap(js string) (m map[string]*dynamodb.AttributeValue, err error
 	err = json.Unmarshal([]byte(js), &m)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", ErrAwsDynamoInvalidExpressionAttributeValues, err)
 	}
 	return m, err
 }

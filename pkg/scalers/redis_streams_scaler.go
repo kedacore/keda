@@ -2,6 +2,7 @@ package scalers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -149,6 +150,14 @@ func createScaler(client *redis.Client, meta *redisStreamsMetadata, metricType v
 	}, nil
 }
 
+var (
+	// ErrRedisMissingPendingEntriesCount is returned when "pendingEntriesCount" is missing.
+	ErrRedisMissingPendingEntriesCount = errors.New("missing pending entries count")
+
+	// ErrRedisMissingStreamName is returned when "stream" is missing.
+	ErrRedisMissingStreamName = errors.New("missing redis stream name")
+)
+
 func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser) (*redisStreamsMetadata, error) {
 	connInfo, err := parseFn(config.TriggerMetadata, config.ResolvedEnv, config.AuthParams)
 	if err != nil {
@@ -181,17 +190,17 @@ func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser)
 	if val, ok := config.TriggerMetadata[pendingEntriesCountMetadata]; ok {
 		pendingEntriesCount, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing pending entries count %v", err)
+			return nil, fmt.Errorf("error parsing pending entries count: %w", err)
 		}
 		meta.targetPendingEntriesCount = pendingEntriesCount
 	} else {
-		return nil, fmt.Errorf("missing pending entries count")
+		return nil, ErrRedisMissingPendingEntriesCount
 	}
 
 	if val, ok := config.TriggerMetadata[streamNameMetadata]; ok {
 		meta.streamName = val
 	} else {
-		return nil, fmt.Errorf("missing redis stream name")
+		return nil, ErrRedisMissingStreamName
 	}
 
 	if val, ok := config.TriggerMetadata[consumerGroupNameMetadata]; ok {

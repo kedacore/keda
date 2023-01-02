@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -131,6 +132,14 @@ func extractCloudConfig(config *ScalerConfig, meta *elasticsearchMetadata) error
 	return nil
 }
 
+var (
+	// ErrElasticsearchMissingAddressesOrCloudConfig is returned when endpoint addresses or cloud config is missing.
+	ErrElasticsearchMissingAddressesOrCloudConfig = errors.New("must provide either endpoint addresses or cloud config")
+
+	// ErrElasticsearchConfigConflict is returned when both endpoint addresses and cloud config are provided.
+	ErrElasticsearchConfigConflict = errors.New("can't provide endpoint addresses and cloud config at the same time")
+)
+
 func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, error) {
 	meta := elasticsearchMetadata{}
 
@@ -138,7 +147,7 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 	addresses, err := GetFromAuthOrMeta(config, "addresses")
 	cloudID, errCloudConfig := GetFromAuthOrMeta(config, "cloudID")
 	if err != nil && errCloudConfig != nil {
-		return nil, fmt.Errorf("must provide either endpoint addresses or cloud config")
+		return nil, ErrElasticsearchMissingAddressesOrCloudConfig
 	}
 
 	if err == nil && addresses != "" {
@@ -155,7 +164,7 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 	}
 
 	if hasEndpointsConfig(&meta) && hasCloudConfig(&meta) {
-		return nil, fmt.Errorf("can't provide endpoint addresses and cloud config at the same time")
+		return nil, ErrElasticsearchConfigConflict
 	}
 
 	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
@@ -196,7 +205,7 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 	}
 	targetValue, err := strconv.ParseFloat(targetValueString, 64)
 	if err != nil {
-		return nil, fmt.Errorf("targetValue parsing error %s", err.Error())
+		return nil, fmt.Errorf("targetValue parsing error: %w", err)
 	}
 	meta.targetValue = targetValue
 
@@ -204,7 +213,7 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok {
 		meta.activationTargetValue, err = strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("activationTargetValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("activationTargetValue parsing error: %w", err)
 		}
 	}
 

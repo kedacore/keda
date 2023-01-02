@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -38,13 +39,13 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 		name:          "no tableName given",
 		metadata:      map[string]string{},
 		authParams:    map[string]string{},
-		expectedError: errors.New("no tableName given"),
+		expectedError: ErrAwsDynamoNoTableName,
 	},
 	{
 		name:          "no awsRegion given",
 		metadata:      map[string]string{"tableName": "test"},
 		authParams:    map[string]string{},
-		expectedError: errors.New("no awsRegion given"),
+		expectedError: ErrAwsDynamoNoAwsRegion,
 	},
 	{
 		name: "no keyConditionExpression given",
@@ -53,7 +54,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			"awsRegion": "eu-west-1",
 		},
 		authParams:    map[string]string{},
-		expectedError: errors.New("no keyConditionExpression given"),
+		expectedError: ErrAwsDynamoNoKeyConditionExpression,
 	},
 	{
 		name: "no expressionAttributeNames given",
@@ -63,7 +64,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			"keyConditionExpression": "#yr = :yyyy",
 		},
 		authParams:    map[string]string{},
-		expectedError: errors.New("no expressionAttributeNames given"),
+		expectedError: ErrAwsDynamoNoExpressionAttributeNames,
 	},
 	{
 		name: "no expressionAttributeValues given",
@@ -74,7 +75,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			"expressionAttributeNames": "{ \"#yr\" : \"year\" }",
 		},
 		authParams:    map[string]string{},
-		expectedError: errors.New("no expressionAttributeValues given"),
+		expectedError: ErrAwsDynamoNoExpressionAttributeValues,
 	},
 	{
 		name: "no targetValue given",
@@ -86,7 +87,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			"expressionAttributeValues": "{\":yyyy\": {\"N\": \"1994\"}}",
 		},
 		authParams:    map[string]string{},
-		expectedError: errors.New("no targetValue given"),
+		expectedError: ErrAwsDynamoNoTargetValue,
 	},
 	{
 		name: "invalid targetValue given",
@@ -99,7 +100,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			"targetValue":               "no-valid",
 		},
 		authParams:    map[string]string{},
-		expectedError: errors.New("error parsing metadata targetValue"),
+		expectedError: strconv.ErrSyntax,
 	},
 	{
 		name: "invalid activationTargetValue given",
@@ -113,7 +114,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			"activationTargetValue":     "no-valid",
 		},
 		authParams:    map[string]string{},
-		expectedError: errors.New("error parsing metadata targetValue"),
+		expectedError: strconv.ErrSyntax,
 	},
 	{
 		name: "malformed expressionAttributeNames",
@@ -126,7 +127,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			"targetValue":               "3",
 		},
 		authParams:    map[string]string{},
-		expectedError: errors.New("error parsing expressionAttributeNames: invalid JSON input: missing colon after key \"malformed\""),
+		expectedError: ErrAwsDynamoInvalidExpressionAttributeNames,
 	},
 	{
 		name: "empty expressionAttributeNames",
@@ -139,7 +140,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			"targetValue":               "3",
 		},
 		authParams:    map[string]string{},
-		expectedError: errors.New("error parsing expressionAttributeNames: empty map"),
+		expectedError: ErrAwsDynamoEmptyExpressionAttributeNames,
 	},
 	{
 		name: "malformed expressionAttributeValues",
@@ -152,7 +153,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			"targetValue":               "3",
 		},
 		authParams:    map[string]string{},
-		expectedError: errors.New("error parsing expressionAttributeValues: json: cannot unmarshal number into Go struct field AttributeValue.N of type string"),
+		expectedError: ErrAwsDynamoInvalidExpressionAttributeValues,
 	},
 	{
 		name: "no aws given",
@@ -165,7 +166,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			"targetValue":               "3",
 		},
 		authParams:    map[string]string{},
-		expectedError: errors.New("awsAccessKeyID not found"),
+		expectedError: ErrAwsNoAccessKey,
 	},
 	{
 		name: "authentication provided",
@@ -237,7 +238,7 @@ func TestParseDynamoMetadata(t *testing.T) {
 				ScalerIndex:     1,
 			})
 			if tc.expectedError != nil {
-				assert.Contains(t, err.Error(), tc.expectedError.Error())
+				assert.ErrorIs(t, err, tc.expectedError)
 			} else {
 				assert.NoError(t, err)
 				fmt.Println(tc.name)

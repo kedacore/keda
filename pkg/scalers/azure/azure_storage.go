@@ -55,6 +55,14 @@ const (
 	storageResource = "https://storage.azure.com/"
 )
 
+var (
+	// ErrAzureConnectionStringKeyName indicates an error in the connection string AccountKey or AccountName.
+	ErrAzureConnectionStringKeyName = errors.New("can't parse storage connection string. Missing key or name")
+
+	// ErrAzureConnectionStringEndpoint indicates an error in the connection string DefaultEndpointsProtocol or EndpointSuffix.
+	ErrAzureConnectionStringEndpoint = errors.New("can't parse storage connection string. Missing DefaultEndpointsProtocol or EndpointSuffix")
+)
+
 // Prefix returns prefix for a StorageEndpointType
 func (e StorageEndpointType) Prefix() string {
 	return [...]string{"BlobEndpoint", "QueueEndpoint", "TableEndpoint", "FileEndpoint"}[e]
@@ -169,7 +177,7 @@ func parseAzureStorageConnectionString(connectionString string, endpointType Sto
 	}
 
 	if name == "" || key == "" {
-		return nil, "", "", errors.New("can't parse storage connection string. Missing key or name")
+		return nil, "", "", ErrAzureConnectionStringKeyName
 	}
 
 	if endpoint != "" {
@@ -181,7 +189,7 @@ func parseAzureStorageConnectionString(connectionString string, endpointType Sto
 	}
 
 	if endpointProtocol == "" || endpointSuffix == "" {
-		return nil, "", "", errors.New("can't parse storage connection string. Missing DefaultEndpointsProtocol or EndpointSuffix")
+		return nil, "", "", ErrAzureConnectionStringEndpoint
 	}
 
 	u, err := url.Parse(fmt.Sprintf("%s://%s.%s.%s", endpointProtocol, name, endpointType.Name(), endpointSuffix))
