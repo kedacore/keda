@@ -97,7 +97,7 @@ type pulsarStats struct {
 func NewPulsarScaler(config *ScalerConfig) (Scaler, error) {
 	pulsarMetadata, err := parsePulsarMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing pulsar metadata: %s", err)
+		return nil, fmt.Errorf("error parsing pulsar metadata: %w", err)
 	}
 
 	client := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
@@ -209,14 +209,14 @@ func (s *pulsarScaler) GetStats(ctx context.Context) (*pulsarStats, error) {
 
 	req, err := http.NewRequestWithContext(ctx, "GET", s.metadata.statsURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("error requesting stats from url: %s", err)
+		return nil, fmt.Errorf("error requesting stats from url: %w", err)
 	}
 
 	addAuthHeaders(req, &s.metadata)
 
 	res, err := s.client.Do(req)
 	if res == nil || err != nil {
-		return nil, fmt.Errorf("error requesting stats from url: %s", err)
+		return nil, fmt.Errorf("error requesting stats from url: %w", err)
 	}
 
 	defer res.Body.Close()
@@ -225,17 +225,17 @@ func (s *pulsarScaler) GetStats(ctx context.Context) (*pulsarStats, error) {
 	case 200:
 		body, err := io.ReadAll(res.Body)
 		if err != nil {
-			return nil, fmt.Errorf("error requesting stats from url: %s", err)
+			return nil, fmt.Errorf("error requesting stats from url: %w", err)
 		}
 		err = json.Unmarshal(body, stats)
 		if err != nil {
-			return nil, fmt.Errorf("error unmarshalling response: %s", err)
+			return nil, fmt.Errorf("error unmarshalling response: %w", err)
 		}
 		return stats, nil
 	case 404:
-		return nil, fmt.Errorf("error requesting stats from url: %s", err)
+		return nil, fmt.Errorf("error requesting stats from url: %w", err)
 	default:
-		return nil, fmt.Errorf("error requesting stats from url: %s", err)
+		return nil, fmt.Errorf("error requesting stats from url: %w", err)
 	}
 }
 
@@ -258,7 +258,7 @@ func (s *pulsarScaler) getMsgBackLog(ctx context.Context) (int64, bool, error) {
 func (s *pulsarScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	msgBacklog, found, err := s.getMsgBackLog(ctx)
 	if err != nil {
-		return nil, false, fmt.Errorf("error requesting stats from url: %s", err)
+		return nil, false, fmt.Errorf("error requesting stats from url: %w", err)
 	}
 
 	if !found {

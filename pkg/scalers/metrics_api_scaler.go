@@ -68,12 +68,12 @@ const (
 func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	meta, err := parseMetricsAPIMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing metric API metadata: %s", err)
+		return nil, fmt.Errorf("error parsing metric API metadata: %w", err)
 	}
 
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsl)
@@ -102,7 +102,7 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
 		unsafeSsl, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing unsafeSsl: %s", err)
+			return nil, fmt.Errorf("error parsing unsafeSsl: %w", err)
 		}
 		meta.unsafeSsl = unsafeSsl
 	}
@@ -274,7 +274,7 @@ func (s *metricsAPIScaler) GetMetricSpecForScaling(context.Context) []v2.MetricS
 func (s *metricsAPIScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	val, err := s.getMetricValue(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error requesting metrics endpoint: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error requesting metrics endpoint: %w", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, val)

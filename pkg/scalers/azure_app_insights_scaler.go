@@ -44,14 +44,14 @@ type azureAppInsightsScaler struct {
 func NewAzureAppInsightsScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "azure_app_insights_scaler")
 
 	meta, err := parseAzureAppInsightsMetadata(config, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing azure app insights metadata: %s", err)
+		return nil, fmt.Errorf("error parsing azure app insights metadata: %w", err)
 	}
 
 	return &azureAppInsightsScaler{

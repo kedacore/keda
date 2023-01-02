@@ -43,19 +43,19 @@ type CassandraMetadata struct {
 func NewCassandraScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "cassandra_scaler")
 
 	meta, err := parseCassandraMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing cassandra metadata: %s", err)
+		return nil, fmt.Errorf("error parsing cassandra metadata: %w", err)
 	}
 
 	session, err := newCassandraSession(meta, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error establishing cassandra session: %s", err)
+		return nil, fmt.Errorf("error establishing cassandra session: %w", err)
 	}
 
 	return &cassandraScaler{
@@ -199,7 +199,7 @@ func (s *cassandraScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSp
 func (s *cassandraScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	num, err := s.GetQueryResult(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting cassandra: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting cassandra: %w", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(num))

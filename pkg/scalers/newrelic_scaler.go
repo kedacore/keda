@@ -46,7 +46,7 @@ type newrelicMetadata struct {
 func NewNewRelicScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, fmt.Sprintf("%s_scaler", scalerName))

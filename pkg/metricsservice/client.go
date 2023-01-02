@@ -72,7 +72,7 @@ func (c *GrpcClient) GetMetrics(ctx context.Context, scaledObjectName, scaledObj
 	if err != nil {
 		// in certain cases we would like to get Prometheus metrics even if there's an error
 		// so we can expose information about the error in the client
-		return nil, response.GetPromMetrics(), fmt.Errorf("error when converting metric values %s", err)
+		return nil, response.GetPromMetrics(), fmt.Errorf("error when converting metric values %w", err)
 	}
 
 	return extMetrics, response.GetPromMetrics(), nil

@@ -54,12 +54,12 @@ func NewDatadogScaler(ctx context.Context, config *ScalerConfig) (Scaler, error)
 
 	meta, err := parseDatadogMetadata(config, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing Datadog metadata: %s", err)
+		return nil, fmt.Errorf("error parsing Datadog metadata: %w", err)
 	}
 
 	apiClient, err := newDatadogConnection(ctx, meta, config)
 	if err != nil {
-		return nil, fmt.Errorf("error establishing Datadog connection: %s", err)
+		return nil, fmt.Errorf("error establishing Datadog connection: %w", err)
 	}
 	return &datadogScaler{
 		metadata:  meta,
@@ -193,7 +193,7 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 	} else {
 		metricType, err := GetMetricTargetType(config)
 		if err != nil {
-			return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+			return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 		}
 		meta.vType = metricType
 	}
@@ -287,7 +287,7 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 	timeWindowFrom := timeWindowTo - int64(s.metadata.age)
 	resp, r, err := s.apiClient.MetricsApi.QueryMetrics(ctx, timeWindowFrom, timeWindowTo, s.metadata.query) //nolint:bodyclose
 	if err != nil {
-		return -1, fmt.Errorf("error when retrieving Datadog metrics: %s", err)
+		return -1, fmt.Errorf("error when retrieving Datadog metrics: %w", err)
 	}
 
 	if r.StatusCode == 429 {
@@ -377,7 +377,7 @@ func (s *datadogScaler) GetMetricsAndActivity(ctx context.Context, metricName st
 	num, err := s.getQueryResult(ctx)
 	if err != nil {
 		s.logger.Error(err, "error getting metrics from Datadog")
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting metrics from Datadog: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting metrics from Datadog: %w", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, num)

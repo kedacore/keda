@@ -61,7 +61,7 @@ var (
 func NewLiiklusScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	lm, err := parseLiiklusMetadata(config)
@@ -179,7 +179,7 @@ func parseLiiklusMetadata(config *ScalerConfig) (*liiklusMetadata, error) {
 	if val, ok := config.TriggerMetadata["groupVersion"]; ok {
 		t, err := strconv.ParseInt(val, 10, 32)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing groupVersion: %s", err)
+			return nil, fmt.Errorf("error parsing groupVersion: %w", err)
 		}
 		groupVersion = uint32(t)
 	}

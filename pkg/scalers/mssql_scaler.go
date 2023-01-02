@@ -76,19 +76,19 @@ type mssqlMetadata struct {
 func NewMSSQLScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "mssql_scaler")
 
 	meta, err := parseMSSQLMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing mssql metadata: %s", err)
+		return nil, fmt.Errorf("error parsing mssql metadata: %w", err)
 	}
 
 	conn, err := newMSSQLConnection(meta, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error establishing mssql connection: %s", err)
+		return nil, fmt.Errorf("error establishing mssql connection: %w", err)
 	}
 
 	return &mssqlScaler{
@@ -258,7 +258,7 @@ func (s *mssqlScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 func (s *mssqlScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	num, err := s.getQueryResult(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting mssql: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting mssql: %w", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, num)

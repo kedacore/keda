@@ -39,14 +39,14 @@ type stackdriverMetadata struct {
 func NewStackdriverScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "gcp_stackdriver_scaler")
 
 	meta, err := parseStackdriverMetadata(config, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing Stackdriver metadata: %s", err)
+		return nil, fmt.Errorf("error parsing Stackdriver metadata: %w", err)
 	}
 
 	client, err := initializeStackdriverClient(ctx, meta.gcpAuthorization, logger)

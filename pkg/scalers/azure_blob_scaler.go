@@ -52,14 +52,14 @@ type azureBlobScaler struct {
 func NewAzureBlobScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "azure_blob_scaler")
 
 	meta, podIdentity, err := parseAzureBlobMetadata(config, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing azure blob metadata: %s", err)
+		return nil, fmt.Errorf("error parsing azure blob metadata: %w", err)
 	}
 
 	return &azureBlobScaler{

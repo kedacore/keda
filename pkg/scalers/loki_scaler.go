@@ -67,14 +67,14 @@ type lokiQueryResult struct {
 func NewLokiScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "loki_scaler")
 
 	meta, err := parseLokiMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing loki metadata: %s", err)
+		return nil, fmt.Errorf("error parsing loki metadata: %w", err)
 	}
 
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsl)

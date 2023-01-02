@@ -113,7 +113,7 @@ var logAnalyticsResourceURLInCloud = map[string]string{
 func NewAzureLogAnalyticsScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	azureLogAnalyticsMetadata, err := parseAzureLogAnalyticsMetadata(config)

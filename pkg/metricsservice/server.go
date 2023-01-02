@@ -45,12 +45,12 @@ func (s *GrpcServer) GetMetrics(ctx context.Context, in *api.ScaledObjectRef) (*
 	extMetrics, exportedMetrics, err := (*s.scalerHandler).GetScaledObjectMetrics(ctx, in.Name, in.Namespace, in.MetricName)
 	response.PromMetrics = exportedMetrics
 	if err != nil {
-		return &response, fmt.Errorf("error when getting metric values %s", err)
+		return &response, fmt.Errorf("error when getting metric values %w", err)
 	}
 
 	err = v1beta1.Convert_external_metrics_ExternalMetricValueList_To_v1beta1_ExternalMetricValueList(extMetrics, v1beta1ExtMetrics, nil)
 	if err != nil {
-		return &response, fmt.Errorf("error when converting metric values %s", err)
+		return &response, fmt.Errorf("error when converting metric values %w", err)
 	}
 
 	log.V(1).WithValues("scaledObjectName", in.Name, "scaledObjectNamespace", in.Namespace, "metrics", v1beta1ExtMetrics).Info("Providing metrics")

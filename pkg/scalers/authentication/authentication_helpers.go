@@ -98,7 +98,7 @@ func CreateHTTPRoundTripper(roundTripperType TransportType, auth *AuthMeta, conf
 	if auth != nil && (auth.CA != "" || auth.EnableTLS) {
 		tlsConfig, err = NewTLSConfig(auth)
 		if err != nil || tlsConfig == nil {
-			return nil, fmt.Errorf("error creating the TLS config: %s", err)
+			return nil, fmt.Errorf("error creating the TLS config: %w", err)
 		}
 	}
 
@@ -135,7 +135,7 @@ func CreateHTTPRoundTripper(roundTripperType TransportType, auth *AuthMeta, conf
 			libs.SetTransportConfigs(httpConf),
 			libs.SetTLS(tlsConfig),
 		); err != nil {
-			return nil, fmt.Errorf("error creating fast http round tripper: %s", err)
+			return nil, fmt.Errorf("error creating fast http round tripper: %w", err)
 		}
 
 		if auth != nil {

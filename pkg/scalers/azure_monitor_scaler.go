@@ -56,14 +56,14 @@ type azureMonitorMetadata struct {
 func NewAzureMonitorScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "azure_monitor_scaler")
 
 	meta, err := parseAzureMonitorMetadata(config, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing azure monitor metadata: %s", err)
+		return nil, fmt.Errorf("error parsing azure monitor metadata: %w", err)
 	}
 
 	return &azureMonitorScaler{

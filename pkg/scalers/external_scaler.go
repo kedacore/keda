@@ -49,12 +49,12 @@ var connectionPool sync.Map
 func NewExternalScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting external scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting external scaler metric type: %w", err)
 	}
 
 	meta, err := parseExternalScalerMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing external scaler metadata: %s", err)
+		return nil, fmt.Errorf("error parsing external scaler metadata: %w", err)
 	}
 
 	return &externalScaler{
@@ -73,12 +73,12 @@ func NewExternalScaler(config *ScalerConfig) (Scaler, error) {
 func NewExternalPushScaler(config *ScalerConfig) (PushScaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting external scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting external scaler metric type: %w", err)
 	}
 
 	meta, err := parseExternalScalerMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing external scaler metadata: %s", err)
+		return nil, fmt.Errorf("error parsing external scaler metadata: %w", err)
 	}
 
 	return &externalPushScaler{

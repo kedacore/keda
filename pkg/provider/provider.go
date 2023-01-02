@@ -146,7 +146,7 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 	cache, err := p.scaleHandler.GetScalersCache(ctx, scaledObject)
 	promMetricsServer.RecordScaledObjectError(scaledObject.Namespace, scaledObject.Name, err)
 	if err != nil {
-		return nil, fmt.Errorf("error when getting scalers %s", err)
+		return nil, fmt.Errorf("error when getting scalers %w", err)
 	}
 
 	// let's check metrics for all scalers in a ScaledObject

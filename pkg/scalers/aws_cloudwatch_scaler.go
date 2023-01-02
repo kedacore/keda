@@ -60,12 +60,12 @@ type awsCloudwatchMetadata struct {
 func NewAwsCloudwatchScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	meta, err := parseAwsCloudwatchMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing cloudwatch metadata: %s", err)
+		return nil, fmt.Errorf("error parsing cloudwatch metadata: %w", err)
 	}
 
 	return &awsCloudwatchScaler{

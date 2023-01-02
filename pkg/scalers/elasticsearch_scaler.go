@@ -48,19 +48,19 @@ type elasticsearchMetadata struct {
 func NewElasticsearchScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "elasticsearch_scaler")
 
 	meta, err := parseElasticsearchMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing elasticsearch metadata: %s", err)
+		return nil, fmt.Errorf("error parsing elasticsearch metadata: %w", err)
 	}
 
 	esClient, err := newElasticsearchClient(meta, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error getting elasticsearch client: %s", err)
+		return nil, fmt.Errorf("error getting elasticsearch client: %w", err)
 	}
 	return &elasticsearchScaler{
 		metricType: metricType,
@@ -170,7 +170,7 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
 		unsafeSsl, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing unsafeSsl: %s", err)
+			return nil, fmt.Errorf("error parsing unsafeSsl: %w", err)
 		}
 		meta.unsafeSsl = unsafeSsl
 	} else {
@@ -347,7 +347,7 @@ func (s *elasticsearchScaler) GetMetricSpecForScaling(context.Context) []v2.Metr
 func (s *elasticsearchScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	num, err := s.getQueryResult(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting elasticsearch: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting elasticsearch: %w", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, num)

@@ -47,13 +47,13 @@ func ParseInt32List(pattern string) ([]int32, error) {
 		case len(literals) == 1:
 			i, err := strconv.ParseInt(literals[0], 10, 32)
 			if err != nil {
-				return nil, fmt.Errorf("parse error: %s", err)
+				return nil, fmt.Errorf("parse error: %w", err)
 			}
 			parsed = append(parsed, int32(i))
 		case len(literals) == 2:
 			r, err := ParseRange(literals[0], literals[1])
 			if err != nil {
-				return nil, fmt.Errorf("error in range: %s", err)
+				return nil, fmt.Errorf("error in range: %w", err)
 			}
 			parsed = append(parsed, r...)
 

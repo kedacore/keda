@@ -43,21 +43,21 @@ type awsDynamoDBStreamsMetadata struct {
 func NewAwsDynamoDBStreamsScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "aws_dynamodb_streams_scaler")
 
 	meta, err := parseAwsDynamoDBStreamsMetadata(config, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing dynamodb stream metadata: %s", err)
+		return nil, fmt.Errorf("error parsing dynamodb stream metadata: %w", err)
 	}
 
 	dbClient, dbStreamClient := createClientsForDynamoDBStreamsScaler(meta)
 
 	streamArn, err := getDynamoDBStreamsArn(ctx, dbClient, &meta.tableName)
 	if err != nil {
-		return nil, fmt.Errorf("error dynamodb stream arn: %s", err)
+		return nil, fmt.Errorf("error dynamodb stream arn: %w", err)
 	}
 
 	return &awsDynamoDBStreamsScaler{

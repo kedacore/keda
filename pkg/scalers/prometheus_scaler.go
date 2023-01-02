@@ -77,14 +77,14 @@ type promQueryResult struct {
 func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "prometheus_scaler")
 
 	meta, err := parsePrometheusMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing prometheus metadata: %s", err)
+		return nil, fmt.Errorf("error parsing prometheus metadata: %w", err)
 	}
 
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsl)

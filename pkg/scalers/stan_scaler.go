@@ -65,12 +65,12 @@ const (
 func NewStanScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	stanMetadata, err := parseStanMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing stan metadata: %s", err)
+		return nil, fmt.Errorf("error parsing stan metadata: %w", err)
 	}
 
 	return &stanScaler{

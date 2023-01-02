@@ -59,12 +59,12 @@ type grapQueryResult []struct {
 func NewGraphiteScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	meta, err := parseGraphiteMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing graphite metadata: %s", err)
+		return nil, fmt.Errorf("error parsing graphite metadata: %w", err)
 	}
 
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)

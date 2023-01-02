@@ -118,7 +118,7 @@ func NewSolaceScaler(config *ScalerConfig) (Scaler, error) {
 
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, solaceScalerID+"_scaler")
@@ -310,7 +310,7 @@ func (s *SolaceScaler) getSolaceQueueMetricsFromSEMP(ctx context.Context) (Solac
 	//	Define HTTP Request
 	request, err := http.NewRequestWithContext(ctx, "GET", scaledMetricEndpointURL, nil)
 	if err != nil {
-		return SolaceMetricValues{}, fmt.Errorf("failed attempting request to solace semp api: %s", err)
+		return SolaceMetricValues{}, fmt.Errorf("failed attempting request to solace semp api: %w", err)
 	}
 
 	//	Add HTTP Auth and Headers
@@ -320,7 +320,7 @@ func (s *SolaceScaler) getSolaceQueueMetricsFromSEMP(ctx context.Context) (Solac
 	//	Call Solace SEMP API
 	response, err := httpClient.Do(request)
 	if err != nil {
-		return SolaceMetricValues{}, fmt.Errorf("call to solace semp api failed: %s", err)
+		return SolaceMetricValues{}, fmt.Errorf("call to solace semp api failed: %w", err)
 	}
 	defer response.Body.Close()
 
@@ -332,7 +332,7 @@ func (s *SolaceScaler) getSolaceQueueMetricsFromSEMP(ctx context.Context) (Solac
 
 	// Decode SEMP Response and Test
 	if err := json.NewDecoder(response.Body).Decode(&sempResponse); err != nil {
-		return SolaceMetricValues{}, fmt.Errorf("failed to read semp response body: %s", err)
+		return SolaceMetricValues{}, fmt.Errorf("failed to read semp response body: %w", err)
 	}
 	if sempResponse.Meta.ResponseCode < 200 || sempResponse.Meta.ResponseCode > 299 {
 		return SolaceMetricValues{}, fmt.Errorf("solace semp api returned error status: %d", sempResponse.Meta.ResponseCode)

@@ -45,19 +45,19 @@ const adxName = "azure-data-explorer"
 func NewAzureDataExplorerScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "azure_data_explorer_scaler")
 
 	metadata, err := parseAzureDataExplorerMetadata(config, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse azure data explorer metadata: %s", err)
+		return nil, fmt.Errorf("failed to parse azure data explorer metadata: %w", err)
 	}
 
 	client, err := azure.CreateAzureDataExplorerClient(ctx, metadata)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create azure data explorer client: %s", err)
+		return nil, fmt.Errorf("failed to create azure data explorer client: %w", err)
 	}
 
 	return &azureDataExplorerScaler{

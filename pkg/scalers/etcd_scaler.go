@@ -55,7 +55,7 @@ type etcdMetadata struct {
 func NewEtcdScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	meta, parseErr := parseEtcdMetadata(config)
@@ -166,7 +166,7 @@ func getEtcdClients(metadata *etcdMetadata) (*clientv3.Client, error) {
 		TLS:         tlsConfig,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error connecting to etcd server: %s", err)
+		return nil, fmt.Errorf("error connecting to etcd server: %w", err)
 	}
 
 	return cli, nil
@@ -184,7 +184,7 @@ func (s *etcdScaler) Close(context.Context) error {
 func (s *etcdScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	v, err := s.getMetricValue(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting metric value: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting metric value: %w", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, v)

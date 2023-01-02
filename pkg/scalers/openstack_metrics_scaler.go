@@ -65,7 +65,7 @@ func NewOpenstackMetricScaler(ctx context.Context, config *ScalerConfig) (Scaler
 
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "openstack_metric_scaler")
@@ -73,13 +73,13 @@ func NewOpenstackMetricScaler(ctx context.Context, config *ScalerConfig) (Scaler
 	openstackMetricMetadata, err := parseOpenstackMetricMetadata(config, logger)
 
 	if err != nil {
-		return nil, fmt.Errorf("error parsing openstack Metric metadata: %s", err)
+		return nil, fmt.Errorf("error parsing openstack Metric metadata: %w", err)
 	}
 
 	authMetadata, err := parseOpenstackMetricAuthenticationMetadata(config)
 
 	if err != nil {
-		return nil, fmt.Errorf("error parsing openstack metric authentication metadata: %s", err)
+		return nil, fmt.Errorf("error parsing openstack metric authentication metadata: %w", err)
 	}
 
 	// User choose the "application_credentials" authentication method
@@ -87,7 +87,7 @@ func NewOpenstackMetricScaler(ctx context.Context, config *ScalerConfig) (Scaler
 		keystoneAuth, err = openstack.NewAppCredentialsAuth(authMetadata.authURL, authMetadata.appCredentialSecretID, authMetadata.appCredentialSecret, openstackMetricMetadata.timeout)
 
 		if err != nil {
-			return nil, fmt.Errorf("error getting openstack credentials for application credentials method: %s", err)
+			return nil, fmt.Errorf("error getting openstack credentials for application credentials method: %w", err)
 		}
 	} else {
 		// User choose the "password" authentication method
@@ -95,7 +95,7 @@ func NewOpenstackMetricScaler(ctx context.Context, config *ScalerConfig) (Scaler
 			keystoneAuth, err = openstack.NewPasswordAuth(authMetadata.authURL, authMetadata.userID, authMetadata.password, "", openstackMetricMetadata.timeout)
 
 			if err != nil {
-				return nil, fmt.Errorf("error getting openstack credentials for password method: %s", err)
+				return nil, fmt.Errorf("error getting openstack credentials for password method: %w", err)
 			}
 		} else {
 			return nil, fmt.Errorf("no authentication method was provided for OpenStack")

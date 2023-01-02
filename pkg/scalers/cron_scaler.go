@@ -38,7 +38,7 @@ type cronMetadata struct {
 func NewCronScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	meta, parseErr := parseCronMetadata(config)
@@ -82,7 +82,7 @@ func parseCronMetadata(config *ScalerConfig) (*cronMetadata, error) {
 	if val, ok := config.TriggerMetadata["start"]; ok && val != "" {
 		_, err := parser.Parse(val)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing start schedule: %s", err)
+			return nil, fmt.Errorf("error parsing start schedule: %w", err)
 		}
 		meta.start = val
 	} else {
@@ -91,7 +91,7 @@ func parseCronMetadata(config *ScalerConfig) (*cronMetadata, error) {
 	if val, ok := config.TriggerMetadata["end"]; ok && val != "" {
 		_, err := parser.Parse(val)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing end schedule: %s", err)
+			return nil, fmt.Errorf("error parsing end schedule: %w", err)
 		}
 		meta.end = val
 	} else {
@@ -118,7 +118,7 @@ func parseCronMetadata(config *ScalerConfig) (*cronMetadata, error) {
 func (s *cronScaler) IsActive(ctx context.Context) (bool, error) {
 	location, err := time.LoadLocation(s.metadata.timezone)
 	if err != nil {
-		return false, fmt.Errorf("unable to load timezone. Error: %s", err)
+		return false, fmt.Errorf("unable to load timezone. Error: %w", err)
 	}
 
 	// Since we are considering the timestamp here and not the exact time, timezone does matter.

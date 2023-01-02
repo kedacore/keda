@@ -113,12 +113,12 @@ type consumerDeliveryStatus struct {
 func NewNATSJetStreamScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	jsMetadata, err := parseNATSJetStreamMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing NATS JetStream metadata: %s", err)
+		return nil, fmt.Errorf("error parsing NATS JetStream metadata: %w", err)
 	}
 
 	return &natsJetStreamScaler{

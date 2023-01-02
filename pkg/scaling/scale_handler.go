@@ -393,7 +393,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	exportedPromMetrics.ScaledObjectErr = (err != nil)
 
 	if err != nil {
-		return nil, &exportedPromMetrics, fmt.Errorf("error when getting scalers %s", err)
+		return nil, &exportedPromMetrics, fmt.Errorf("error when getting scalers %w", err)
 	}
 
 	var scaledObject *kedav1alpha1.ScaledObject
@@ -510,7 +510,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 			if podTemplateSpec != nil {
 				resolvedEnv, err = resolver.ResolveContainerEnv(ctx, h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace, h.secretsLister)
 				if err != nil {
-					return nil, nil, fmt.Errorf("error resolving secrets for ScaleTarget: %s", err)
+					return nil, nil, fmt.Errorf("error resolving secrets for ScaleTarget: %w", err)
 				}
 			}
 			config := &scalers.ScalerConfig{

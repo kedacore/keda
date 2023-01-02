@@ -144,7 +144,7 @@ func NewPredictKubeScaler(ctx context.Context, config *ScalerConfig) (*PredictKu
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		logger.Error(err, "error getting scaler metric type")
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 	s.metricType = metricType
 

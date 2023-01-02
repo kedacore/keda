@@ -46,14 +46,14 @@ type gcsMetadata struct {
 func NewGcsScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "gcp_storage_scaler")
 
 	meta, err := parseGcsMetadata(config, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing GCP storage metadata: %s", err)
+		return nil, fmt.Errorf("error parsing GCP storage metadata: %w", err)
 	}
 
 	ctx := context.Background()

@@ -49,14 +49,14 @@ type pubsubMetadata struct {
 func NewPubSubScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "gcp_pub_sub_scaler")
 
 	meta, err := parsePubSubMetadata(config, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing PubSub metadata: %s", err)
+		return nil, fmt.Errorf("error parsing PubSub metadata: %w", err)
 	}
 
 	return &pubsubScaler{

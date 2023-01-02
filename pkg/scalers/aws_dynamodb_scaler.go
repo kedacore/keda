@@ -42,12 +42,12 @@ type awsDynamoDBMetadata struct {
 func NewAwsDynamoDBScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	meta, err := parseAwsDynamoDBMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing DynamoDb metadata: %s", err)
+		return nil, fmt.Errorf("error parsing DynamoDb metadata: %w", err)
 	}
 
 	return &awsDynamoDBScaler{

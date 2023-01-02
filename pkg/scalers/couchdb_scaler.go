@@ -187,7 +187,7 @@ func parseCouchDBMetadata(config *ScalerConfig) (*couchDBMetadata, string, error
 func NewCouchDBScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	meta, connStr, err := parseCouchDBMetadata(config)

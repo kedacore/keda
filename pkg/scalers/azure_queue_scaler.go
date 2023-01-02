@@ -60,14 +60,14 @@ type azureQueueMetadata struct {
 func NewAzureQueueScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "azure_queue_scaler")
 
 	meta, podIdentity, err := parseAzureQueueMetadata(config, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing azure queue metadata: %s", err)
+		return nil, fmt.Errorf("error parsing azure queue metadata: %w", err)
 	}
 
 	return &azureQueueScaler{

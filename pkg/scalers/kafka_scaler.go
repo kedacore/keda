@@ -92,14 +92,14 @@ const (
 func NewKafkaScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "kafka_scaler")
 
 	kafkaMetadata, err := parseKafkaMetadata(config, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing kafka metadata: %s", err)
+		return nil, fmt.Errorf("error parsing kafka metadata: %w", err)
 	}
 
 	client, admin, err := getKafkaClients(kafkaMetadata)
@@ -270,7 +270,7 @@ func parseKafkaMetadata(config *ScalerConfig, logger logr.Logger) (kafkaMetadata
 	if val, ok := config.TriggerMetadata["allowIdleConsumers"]; ok {
 		t, err := strconv.ParseBool(val)
 		if err != nil {
-			return meta, fmt.Errorf("error parsing allowIdleConsumers: %s", err)
+			return meta, fmt.Errorf("error parsing allowIdleConsumers: %w", err)
 		}
 		meta.allowIdleConsumers = t
 	}
@@ -279,7 +279,7 @@ func parseKafkaMetadata(config *ScalerConfig, logger logr.Logger) (kafkaMetadata
 	if val, ok := config.TriggerMetadata["excludePersistentLag"]; ok {
 		t, err := strconv.ParseBool(val)
 		if err != nil {
-			return meta, fmt.Errorf("error parsing excludePersistentLag: %s", err)
+			return meta, fmt.Errorf("error parsing excludePersistentLag: %w", err)
 		}
 		meta.excludePersistentLag = t
 	}
@@ -288,7 +288,7 @@ func parseKafkaMetadata(config *ScalerConfig, logger logr.Logger) (kafkaMetadata
 	if val, ok := config.TriggerMetadata["scaleToZeroOnInvalidOffset"]; ok {
 		t, err := strconv.ParseBool(val)
 		if err != nil {
-			return meta, fmt.Errorf("error parsing scaleToZeroOnInvalidOffset: %s", err)
+			return meta, fmt.Errorf("error parsing scaleToZeroOnInvalidOffset: %w", err)
 		}
 		meta.scaleToZeroOnInvalidOffset = t
 	}
@@ -298,7 +298,7 @@ func parseKafkaMetadata(config *ScalerConfig, logger logr.Logger) (kafkaMetadata
 		val = strings.TrimSpace(val)
 		version, err := sarama.ParseKafkaVersion(val)
 		if err != nil {
-			return meta, fmt.Errorf("error parsing kafka version: %s", err)
+			return meta, fmt.Errorf("error parsing kafka version: %w", err)
 		}
 		meta.version = version
 	}
@@ -346,7 +346,7 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 
 	client, err := sarama.NewClient(metadata.bootstrapServers, config)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating kafka client: %s", err)
+		return nil, nil, fmt.Errorf("error creating kafka client: %w", err)
 	}
 
 	admin, err := sarama.NewClusterAdminFromClient(client)
@@ -354,7 +354,7 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 		if !client.Closed() {
 			client.Close()
 		}
-		return nil, nil, fmt.Errorf("error creating kafka admin: %s", err)
+		return nil, nil, fmt.Errorf("error creating kafka admin: %w", err)
 	}
 
 	return client, admin, nil
@@ -367,7 +367,7 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 	if s.metadata.topic == "" {
 		listCGOffsetResponse, err := s.admin.ListConsumerGroupOffsets(s.metadata.group, nil)
 		if err != nil {
-			return nil, fmt.Errorf("error listing cg offset: %s", err)
+			return nil, fmt.Errorf("error listing cg offset: %w", err)
 		}
 
 		if listCGOffsetResponse.Err > 0 {
@@ -384,7 +384,7 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 
 	topicsMetadata, err := s.admin.DescribeTopics(topicsToDescribe)
 	if err != nil {
-		return nil, fmt.Errorf("error describing topics: %s", err)
+		return nil, fmt.Errorf("error describing topics: %w", err)
 	}
 
 	if s.metadata.topic != "" && len(topicsMetadata) != 1 {
@@ -428,7 +428,7 @@ func (s *kafkaScaler) isActivePartition(pID int32) bool {
 func (s *kafkaScaler) getConsumerOffsets(topicPartitions map[string][]int32) (*sarama.OffsetFetchResponse, error) {
 	offsets, err := s.admin.ListConsumerGroupOffsets(s.metadata.group, topicPartitions)
 	if err != nil {
-		return nil, fmt.Errorf("error listing consumer group offsets: %s", err)
+		return nil, fmt.Errorf("error listing consumer group offsets: %w", err)
 	}
 	if offsets.Err > 0 {
 		errMsg := fmt.Errorf("error listing consumer group offsets: %s", offsets.Err.Error())

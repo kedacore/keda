@@ -183,7 +183,7 @@ func NewOpenstackSwiftScaler(ctx context.Context, config *ScalerConfig) (Scaler,
 
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "openstack_swift_scaler")
@@ -191,27 +191,27 @@ func NewOpenstackSwiftScaler(ctx context.Context, config *ScalerConfig) (Scaler,
 	openstackSwiftMetadata, err := parseOpenstackSwiftMetadata(config)
 
 	if err != nil {
-		return nil, fmt.Errorf("error parsing swift metadata: %s", err)
+		return nil, fmt.Errorf("error parsing swift metadata: %w", err)
 	}
 
 	authMetadata, err := parseOpenstackSwiftAuthenticationMetadata(config)
 
 	if err != nil {
-		return nil, fmt.Errorf("error parsing swift authentication metadata: %s", err)
+		return nil, fmt.Errorf("error parsing swift authentication metadata: %w", err)
 	}
 
 	// User chose the "application_credentials" authentication method
 	if authMetadata.appCredentialID != "" {
 		authRequest, err = openstack.NewAppCredentialsAuth(authMetadata.authURL, authMetadata.appCredentialID, authMetadata.appCredentialSecret, openstackSwiftMetadata.httpClientTimeout)
 		if err != nil {
-			return nil, fmt.Errorf("error getting openstack credentials for application credentials method: %s", err)
+			return nil, fmt.Errorf("error getting openstack credentials for application credentials method: %w", err)
 		}
 	} else {
 		// User chose the "password" authentication method
 		if authMetadata.userID != "" {
 			authRequest, err = openstack.NewPasswordAuth(authMetadata.authURL, authMetadata.userID, authMetadata.password, authMetadata.projectID, openstackSwiftMetadata.httpClientTimeout)
 			if err != nil {
-				return nil, fmt.Errorf("error getting openstack credentials for password method: %s", err)
+				return nil, fmt.Errorf("error getting openstack credentials for password method: %w", err)
 			}
 		} else {
 			return nil, fmt.Errorf("no authentication method was provided for OpenStack")

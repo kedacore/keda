@@ -85,7 +85,7 @@ func NewRedisScaler(ctx context.Context, isClustered, isSentinel bool, config *S
 
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "redis_scaler")
@@ -93,20 +93,20 @@ func NewRedisScaler(ctx context.Context, isClustered, isSentinel bool, config *S
 	if isClustered {
 		meta, err := parseRedisMetadata(config, parseRedisClusterAddress)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing redis metadata: %s", err)
+			return nil, fmt.Errorf("error parsing redis metadata: %w", err)
 		}
 		return createClusteredRedisScaler(ctx, meta, luaScript, metricType, logger)
 	} else if isSentinel {
 		meta, err := parseRedisMetadata(config, parseRedisSentinelAddress)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing redis metadata: %s", err)
+			return nil, fmt.Errorf("error parsing redis metadata: %w", err)
 		}
 		return createSentinelRedisScaler(ctx, meta, luaScript, metricType, logger)
 	}
 
 	meta, err := parseRedisMetadata(config, parseRedisAddress)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing redis metadata: %s", err)
+		return nil, fmt.Errorf("error parsing redis metadata: %w", err)
 	}
 
 	return createRedisScaler(ctx, meta, luaScript, metricType, logger)
@@ -115,7 +115,7 @@ func NewRedisScaler(ctx context.Context, isClustered, isSentinel bool, config *S
 func createClusteredRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2.MetricTargetType, logger logr.Logger) (Scaler, error) {
 	client, err := getRedisClusterClient(ctx, meta.connectionInfo)
 	if err != nil {
-		return nil, fmt.Errorf("connection to redis cluster failed: %s", err)
+		return nil, fmt.Errorf("connection to redis cluster failed: %w", err)
 	}
 
 	closeFn := func() error {
@@ -147,7 +147,7 @@ func createClusteredRedisScaler(ctx context.Context, meta *redisMetadata, script
 func createSentinelRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2.MetricTargetType, logger logr.Logger) (Scaler, error) {
 	client, err := getRedisSentinelClient(ctx, meta.connectionInfo, meta.databaseIndex)
 	if err != nil {
-		return nil, fmt.Errorf("connection to redis sentinel failed: %s", err)
+		return nil, fmt.Errorf("connection to redis sentinel failed: %w", err)
 	}
 
 	return createRedisScalerWithClient(client, meta, script, metricType, logger), nil
@@ -156,7 +156,7 @@ func createSentinelRedisScaler(ctx context.Context, meta *redisMetadata, script 
 func createRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2.MetricTargetType, logger logr.Logger) (Scaler, error) {
 	client, err := getRedisClient(ctx, meta.connectionInfo, meta.databaseIndex)
 	if err != nil {
-		return nil, fmt.Errorf("connection to redis failed: %s", err)
+		return nil, fmt.Errorf("connection to redis failed: %w", err)
 	}
 
 	return createRedisScalerWithClient(client, meta, script, metricType, logger), nil
@@ -210,7 +210,7 @@ func parseRedisMetadata(config *ScalerConfig, parserFn redisAddressParser) (*red
 	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
 		parsedVal, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing unsafeSsl: %s", err)
+			return nil, fmt.Errorf("error parsing unsafeSsl: %w", err)
 		}
 		meta.connectionInfo.unsafeSsl = parsedVal
 	}
