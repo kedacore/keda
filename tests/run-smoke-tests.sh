@@ -131,6 +131,11 @@ function print_logs {
     kubectl get pods --no-headers -n keda | awk '{print $1}' | grep keda-metrics-apiserver | xargs kubectl -n keda logs
     printf "\n\n##############################################\n"
     printf "##############################################\n\n"
+
+    echo ">>> KEDA Webhooks log <<<"
+    kubectl get pods --no-headers -n keda | awk '{print $1}' | grep keda-webhooks| xargs kubectl -n keda logs
+    printf "##############################################\n"
+    printf "##############################################\n"
 }
 
 function run_cleanup {
