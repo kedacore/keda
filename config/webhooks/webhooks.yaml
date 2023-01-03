@@ -79,13 +79,14 @@ spec:
               type: RuntimeDefault
           volumeMounts:
           - mountPath: /certs
-            name: cert
+            name: cert-controller
             readOnly: true
       terminationGracePeriodSeconds: 10
       nodeSelector:
         kubernetes.io/os: linux
       volumes:
-      - name: cert
+      - name: cert-controller
         secret:
           defaultMode: 420
-          secretName: kedaorg-webhooks-secret
+          secretName: kedaorg-webhooks-certificates
+          optional: true

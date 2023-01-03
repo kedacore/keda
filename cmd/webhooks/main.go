@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -24,12 +25,15 @@ import (
 
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
 	"github.com/spf13/pflag"
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -51,7 +55,7 @@ var webhooks = []rotator.WebhookInfo{
 var (
 	scheme         = apimachineryruntime.NewScheme()
 	setupLog       = ctrl.Log.WithName("setup")
-	secretName     = "kedaorg-webhooks-secret" // #nosec
+	secretName     = "kedaorg-webhooks-certificates" // This should be the same for the secret volume
 	serviceName    = "keda-webhooks"
 	caName         = "kedaorg-ca"
 	caOrganization = "kedaorg"
@@ -69,15 +73,15 @@ func init() {
 func main() {
 	var metricsAddr string
 	var probeAddr string
-	var adapterClientRequestQPS float32
-	var adapterClientRequestBurst int
+	var webhooksClientRequestQPS float32
+	var webhooksClientRequestBurst int
 	var webhookCertDir string
 	var disableCertRotation bool
 	var tlsMinVersion string
 	pflag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	pflag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
-	pflag.Float32Var(&adapterClientRequestQPS, "kube-api-qps", 20.0, "Set the QPS rate for throttling requests sent to the apiserver")
-	pflag.IntVar(&adapterClientRequestBurst, "kube-api-burst", 30, "Set the burst for throttling requests sent to the apiserver")
+	pflag.Float32Var(&webhooksClientRequestQPS, "kube-api-qps", 20.0, "Set the QPS rate for throttling requests sent to the apiserver")
+	pflag.IntVar(&webhooksClientRequestBurst, "kube-api-burst", 30, "Set the burst for throttling requests sent to the apiserver")
 	pflag.StringVar(&webhookCertDir, "webhook-cert-dir", "/certs", "Webhook certificates dir to use. Defaults to /certs")
 	pflag.BoolVar(&disableCertRotation, "disable-cert-rotation", false, "disable automatic generation and rotation of webhook TLS certificates/keys")
 	pflag.StringVar(&tlsMinVersion, "tls-min-version", "1.3", "Minimum TLS version")
@@ -89,9 +93,11 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	ctx := ctrl.SetupSignalHandler()
+
 	cfg := ctrl.GetConfigOrDie()
-	cfg.QPS = adapterClientRequestQPS
-	cfg.Burst = adapterClientRequestBurst
+	cfg.QPS = webhooksClientRequestQPS
+	cfg.Burst = webhooksClientRequestBurst
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:                 scheme,
@@ -109,6 +115,7 @@ func main() {
 	// Make sure certs are generated and valid if cert rotation is enabled.
 	setupFinished := make(chan struct{})
 	if !disableCertRotation {
+		ensureSecret(ctx, mgr)
 		setupLog.V(1).Info("setting up cert rotation")
 		if err := rotator.AddRotator(mgr, &rotator.CertRotator{
 			SecretKey: types.NamespacedName{
@@ -156,11 +163,47 @@ func main() {
 		os.Exit(1)
 	}
 
-	ctx := ctrl.SetupSignalHandler()
-
 	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running webhooks")
 		os.Exit(1)
+	}
+}
+
+func ensureSecret(ctx context.Context, mgr manager.Manager) {
+	secrets := &corev1.SecretList{}
+	kedaNamespace := kedautil.GetPodNamespace()
+	opt := &client.ListOptions{
+		Namespace: kedaNamespace,
+	}
+
+	err := mgr.GetAPIReader().List(ctx, secrets, opt)
+	if err != nil {
+		setupLog.Error(err, "unable to check secret")
+		os.Exit(1)
+	}
+
+	exists := false
+	for _, secret := range secrets.Items {
+		if secret.Name == secretName {
+			exists = true
+			break
+		}
+	}
+	if !exists {
+		secret := &corev1.Secret{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      secretName,
+				Namespace: kedaNamespace,
+				Labels: map[string]string{
+					"app":                         "keda-webhooks",
+					"app.kubernetes.io/name":      "keda-webhooks",
+					"app.kubernetes.io/component": "webhooks",
+					"app.kubernetes.io/part-of":   "keda-operator",
+				},
+			},
+		}
+		mgr.GetClient().Create(ctx, secret)
+		setupLog.V(1).Info(fmt.Sprintf("created the secret %s to store cert-controller certificates", secretName))
 	}
 }
 
