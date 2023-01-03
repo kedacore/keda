@@ -92,27 +92,27 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 	case config.TriggerMetadata["connectionFromEnv"] != "":
 		meta.connection = config.ResolvedEnv[config.TriggerMetadata["connectionFromEnv"]]
 	default:
-		host, err := GetFromAuthOrMeta(config, "host")
+		host, err := GetFromAuthOrMeta(config, "host", false)
 		if err != nil {
 			return nil, err
 		}
 
-		port, err := GetFromAuthOrMeta(config, "port")
+		port, err := GetFromAuthOrMeta(config, "port", false)
 		if err != nil {
 			return nil, err
 		}
 
-		userName, err := GetFromAuthOrMeta(config, "userName")
+		userName, err := GetFromAuthOrMeta(config, "userName", false)
 		if err != nil {
 			return nil, err
 		}
 
-		dbName, err := GetFromAuthOrMeta(config, "dbName")
+		dbName, err := GetFromAuthOrMeta(config, "dbName", false)
 		if err != nil {
 			return nil, err
 		}
 
-		sslmode, err := GetFromAuthOrMeta(config, "sslmode")
+		sslmode, err := GetFromAuthOrMeta(config, "sslmode", false)
 		if err != nil {
 			return nil, err
 		}

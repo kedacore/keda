@@ -129,7 +129,7 @@ func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
 			return meta, fmt.Errorf("useHTTPS parsing error %w", err)
 		}
 	}
-	natsServerEndpoint, err := GetFromAuthOrMeta(config, "natsServerMonitoringEndpoint")
+	natsServerEndpoint, err := GetFromAuthOrMeta(config, "natsServerMonitoringEndpoint", false)
 	if err != nil {
 		return meta, err
 	}

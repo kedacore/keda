@@ -205,15 +205,6 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	{map[string]string{"username": "admin", "password": "admin", "ca": "caaa", "key": "keey"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "enable", "sasl": "plaintext"}, true, false},
 	// failure, SASL + TLS, missing key
 	{map[string]string{"username": "admin", "password": "admin", "ca": "caaa", "cert": "ceert"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "enable", "sasl": "plaintext"}, true, false},
-
-	// failure, sasl set in both metadata and spec.secretTargetRef
-	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "sasl": "plaintext"}, true, false},
-	// failure, tls set in both metadata and spec.secretTargetRef
-	{map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "enable"}, true, true},
-	// failure, tls set in metadata and sasl in spec.secretTargetRef
-	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "ca": "caaa", "cert": "ceert", "key": "keey"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "tls": "enable"}, true, true},
-	// failure, sasl set in metadata and tls in spec.secretTargetRef
-	{map[string]string{"tls": "enable", "username": "admin", "password": "admin", "ca": "caaa", "cert": "ceert", "key": "keey"}, map[string]string{"bootstrapServers": "broker1:9092,broker2:9092", "consumerGroup": "my-group", "sasl": "plaintext"}, true, true},
 }
 
 var parseKafkaOAuthbreakerAuthParamsTestDataset = []parseKafkaAuthParamsTestData{

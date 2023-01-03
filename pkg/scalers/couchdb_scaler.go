@@ -127,7 +127,7 @@ func parseCouchDBMetadata(config *ScalerConfig) (*couchDBMetadata, string, error
 		meta.activationQueryValue = activationQueryValue
 	}
 
-	dbName, err := GetFromAuthOrMeta(config, "dbName")
+	dbName, err := GetFromAuthOrMeta(config, "dbName", false)
 	if err != nil {
 		return nil, "", err
 	}
@@ -140,19 +140,19 @@ func parseCouchDBMetadata(config *ScalerConfig) (*couchDBMetadata, string, error
 		meta.connectionString = config.ResolvedEnv[config.TriggerMetadata["connectionStringFromEnv"]]
 	default:
 		meta.connectionString = ""
-		host, err := GetFromAuthOrMeta(config, "host")
+		host, err := GetFromAuthOrMeta(config, "host", false)
 		if err != nil {
 			return nil, "", err
 		}
 		meta.host = host
 
-		port, err := GetFromAuthOrMeta(config, "port")
+		port, err := GetFromAuthOrMeta(config, "port", false)
 		if err != nil {
 			return nil, "", err
 		}
 		meta.port = port
 
-		username, err := GetFromAuthOrMeta(config, "username")
+		username, err := GetFromAuthOrMeta(config, "username", false)
 		if err != nil {
 			return nil, "", err
 		}

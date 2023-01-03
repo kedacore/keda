@@ -111,7 +111,7 @@ var (
 )
 
 // GetFromAuthOrMeta helps getting a field from Auth or Meta sections
-func GetFromAuthOrMeta(config *ScalerConfig, field string) (string, error) {
+func GetFromAuthOrMeta(config *ScalerConfig, field string, allowEmpty bool) (string, error) {
 	var result string
 	var err error
 	if config.AuthParams[field] != "" {
@@ -119,7 +119,7 @@ func GetFromAuthOrMeta(config *ScalerConfig, field string) (string, error) {
 	} else if config.TriggerMetadata[field] != "" {
 		result = config.TriggerMetadata[field]
 	}
-	if result == "" {
+	if !allowEmpty && result == "" {
 		err = fmt.Errorf("%w: no %s given", ErrScalerConfigMissingField, field)
 	}
 	return result, err

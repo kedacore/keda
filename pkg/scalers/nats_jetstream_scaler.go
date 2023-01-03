@@ -170,7 +170,7 @@ func parseNATSJetStreamMetadata(config *ScalerConfig) (natsJetStreamMetadata, er
 
 	meta.scalerIndex = config.ScalerIndex
 
-	natsServerEndpoint, err := GetFromAuthOrMeta(config, "natsServerMonitoringEndpoint")
+	natsServerEndpoint, err := GetFromAuthOrMeta(config, "natsServerMonitoringEndpoint", false)
 	if err != nil {
 		return meta, err
 	}

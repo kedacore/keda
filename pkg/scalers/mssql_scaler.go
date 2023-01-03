@@ -141,14 +141,14 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 		meta.connectionString = ""
 		var err error
 
-		host, err := GetFromAuthOrMeta(config, "host")
+		host, err := GetFromAuthOrMeta(config, "host", false)
 		if err != nil {
 			return nil, err
 		}
 		meta.host = host
 
 		var paramPort string
-		paramPort, _ = GetFromAuthOrMeta(config, "port")
+		paramPort, _ = GetFromAuthOrMeta(config, "port", false)
 		if paramPort != "" {
 			port, err := strconv.Atoi(paramPort)
 			if err != nil {
@@ -157,10 +157,10 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 			meta.port = port
 		}
 
-		meta.username, _ = GetFromAuthOrMeta(config, "username")
+		meta.username, _ = GetFromAuthOrMeta(config, "username", false)
 
 		// database is optional in SQL s
-		meta.database, _ = GetFromAuthOrMeta(config, "database")
+		meta.database, _ = GetFromAuthOrMeta(config, "database", false)
 
 		if config.AuthParams["password"] != "" {
 			meta.password = config.AuthParams["password"]

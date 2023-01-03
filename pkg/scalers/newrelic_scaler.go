@@ -79,7 +79,7 @@ func parseNewRelicMetadata(config *ScalerConfig, logger logr.Logger) (*newrelicM
 	meta := newrelicMetadata{}
 	var err error
 
-	val, err := GetFromAuthOrMeta(config, account)
+	val, err := GetFromAuthOrMeta(config, account, false)
 	if err != nil {
 		return nil, fmt.Errorf("no %s given", account)
 	}
@@ -96,13 +96,13 @@ func parseNewRelicMetadata(config *ScalerConfig, logger logr.Logger) (*newrelicM
 		return nil, fmt.Errorf("no %s given", nrql)
 	}
 
-	queryKey, err := GetFromAuthOrMeta(config, queryKeyParamater)
+	queryKey, err := GetFromAuthOrMeta(config, queryKeyParamater, false)
 	if err != nil {
 		return nil, fmt.Errorf("no %s given", queryKeyParamater)
 	}
 	meta.queryKey = queryKey
 
-	region, err := GetFromAuthOrMeta(config, regionParameter)
+	region, err := GetFromAuthOrMeta(config, regionParameter, false)
 	if err != nil {
 		region = "US"
 		logger.Info("Using default 'US' region")

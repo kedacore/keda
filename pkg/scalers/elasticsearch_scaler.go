@@ -96,7 +96,7 @@ func hasEndpointsConfig(meta *elasticsearchMetadata) bool {
 }
 
 func extractEndpointsConfig(config *ScalerConfig, meta *elasticsearchMetadata) error {
-	addresses, err := GetFromAuthOrMeta(config, "addresses")
+	addresses, err := GetFromAuthOrMeta(config, "addresses", false)
 	if err != nil {
 		return err
 	}
@@ -118,13 +118,13 @@ func extractEndpointsConfig(config *ScalerConfig, meta *elasticsearchMetadata) e
 }
 
 func extractCloudConfig(config *ScalerConfig, meta *elasticsearchMetadata) error {
-	cloudID, err := GetFromAuthOrMeta(config, "cloudID")
+	cloudID, err := GetFromAuthOrMeta(config, "cloudID", false)
 	if err != nil {
 		return err
 	}
 	meta.cloudID = cloudID
 
-	apiKey, err := GetFromAuthOrMeta(config, "apiKey")
+	apiKey, err := GetFromAuthOrMeta(config, "apiKey", false)
 	if err != nil {
 		return err
 	}
@@ -144,8 +144,8 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 	meta := elasticsearchMetadata{}
 
 	var err error
-	addresses, err := GetFromAuthOrMeta(config, "addresses")
-	cloudID, errCloudConfig := GetFromAuthOrMeta(config, "cloudID")
+	addresses, err := GetFromAuthOrMeta(config, "addresses", false)
+	cloudID, errCloudConfig := GetFromAuthOrMeta(config, "cloudID", false)
 	if err != nil && errCloudConfig != nil {
 		return nil, ErrElasticsearchMissingAddressesOrCloudConfig
 	}
@@ -177,13 +177,13 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 		meta.unsafeSsl = defaultUnsafeSsl
 	}
 
-	index, err := GetFromAuthOrMeta(config, "index")
+	index, err := GetFromAuthOrMeta(config, "index", false)
 	if err != nil {
 		return nil, err
 	}
 	meta.indexes = splitAndTrimBySep(index, ";")
 
-	searchTemplateName, err := GetFromAuthOrMeta(config, "searchTemplateName")
+	searchTemplateName, err := GetFromAuthOrMeta(config, "searchTemplateName", false)
 	if err != nil {
 		return nil, err
 	}
@@ -193,13 +193,13 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 		meta.parameters = splitAndTrimBySep(val, ";")
 	}
 
-	valueLocation, err := GetFromAuthOrMeta(config, "valueLocation")
+	valueLocation, err := GetFromAuthOrMeta(config, "valueLocation", false)
 	if err != nil {
 		return nil, err
 	}
 	meta.valueLocation = valueLocation
 
-	targetValueString, err := GetFromAuthOrMeta(config, "targetValue")
+	targetValueString, err := GetFromAuthOrMeta(config, "targetValue", false)
 	if err != nil {
 		return nil, err
 	}

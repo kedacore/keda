@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -122,12 +121,11 @@ func NewKafkaScaler(config *ScalerConfig) (Scaler, error) {
 
 func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	meta.saslType = KafkaSASLTypeNone
-	err := tlsSASLCheck(config)
+	sasl, err := GetFromAuthOrMeta(config, "sasl", true)
 	if err != nil {
 		return err
 	}
-	sasl, err := GetFromAuthOrMeta(config, "sasl")
-	if err == nil {
+	if sasl != "" {
 		sasl = strings.TrimSpace(sasl)
 		mode := kafkaSaslType(sasl)
 
@@ -157,8 +155,11 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	}
 
 	meta.enableTLS = false
-	tls, err := GetFromAuthOrMeta(config, "tls")
-	if err == nil {
+	tls, err := GetFromAuthOrMeta(config, "tls", true)
+	if err != nil {
+		return err
+	}
+	if tls != "" {
 		tls = strings.TrimSpace(tls)
 
 		if tls == "enable" {
@@ -184,22 +185,6 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 		}
 	}
 
-	return nil
-}
-
-func tlsSASLCheck(config *ScalerConfig) error {
-	saslMetadata := config.TriggerMetadata["sasl"]
-	saslAuthParam := config.AuthParams["sasl"]
-	tlsMetadata := config.TriggerMetadata["tls"]
-	tlsAuthParam := config.AuthParams["tls"]
-
-	if (!reflect.ValueOf(saslMetadata).IsZero() && !reflect.ValueOf(saslAuthParam).IsZero()) || (!reflect.ValueOf(tlsMetadata).IsZero() && !reflect.ValueOf(tlsAuthParam).IsZero()) {
-		return errors.New("cannot set `sasl` or `tls` values in both metadata and spec.secretTargetRef")
-	}
-
-	if (!reflect.ValueOf(saslMetadata).IsZero() && !reflect.ValueOf(tlsAuthParam).IsZero()) || (!reflect.ValueOf(saslAuthParam).IsZero() && !reflect.ValueOf(tlsMetadata).IsZero()) {
-		return errors.New("both`sasl` and `tls` must be in either metadata or spec.secretTargetRef")
-	}
 	return nil
 }
 
