@@ -90,4 +90,3 @@ spec:
           defaultMode: 420
           secretName: kedaorg-admission-webhooks-certs
           optional: true
-          readOnly: true
