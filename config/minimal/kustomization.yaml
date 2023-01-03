@@ -1,0 +1,31 @@
+# Adds namespace to all resources.
+#namespace: keda
+
+# Value of this field is prepended to the
+# names of all resources, e.g. a deployment named
+# "wordpress" becomes "alices-wordpress".
+# Note that it should also match with the prefix (text before '-') of the namespace
+# field above.
+#namePrefix: keda-
+
+# Labels to add to all resources and selectors.
+#commonLabels:
+#  someName: someValue
+
+# [PROMETHEUS] To enable prometheus monitor, uncomment all sections with 'PROMETHEUS'.
+#- ../prometheus
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Need this transformer to mitigate a problem with inserting labels into selectors,
+# until this issue is solved: https://github.com/kubernetes-sigs/kustomize/issues/1009
+transformers:
+- kustomize-config/metadataLabelTransformer.yaml
+
+resources:
+- ../crd
+- ../general
+- ../rbac
+- ../manager
+- ../metrics-server
+- ../service_account

@@ -30,7 +30,7 @@ var (
 		prometheus.CounterOpts{
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "webhook",
-			Name:      "scaled_object_validating_total",
+			Name:      "scaled_object_validation_total",
 			Help:      "Total number of scaled object validations",
 		},
 		[]string{"namespace", "action"},
@@ -39,7 +39,7 @@ var (
 		prometheus.CounterOpts{
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "webhook",
-			Name:      "scaled_object_validating_errors",
+			Name:      "scaled_object_validation_errors",
 			Help:      "Total number of scaled object validating errors",
 		},
 		[]string{"namespace", "action", "reason"},

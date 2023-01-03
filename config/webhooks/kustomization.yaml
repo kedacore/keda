@@ -1,6 +1,5 @@
 resources:
 - webhooks.yaml
-- secret.yaml
 - service.yaml
 - validation_webhooks.yaml
 

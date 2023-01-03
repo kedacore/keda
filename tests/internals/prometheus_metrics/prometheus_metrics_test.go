@@ -468,9 +468,9 @@ func checkCRTotalValues(t *testing.T, families map[string]*promModel.MetricFamil
 func checkWebhookValues(t *testing.T, families map[string]*promModel.MetricFamily) {
 	t.Log("--- testing webhook metrics ---")
 
-	family, ok := families["keda_webhook_scaled_object_validating_errors"]
+	family, ok := families["keda_webhook_scaled_object_validation_errors"]
 	if !ok {
-		t.Errorf("metric keda_webhook_scaled_object_validating_errors not available")
+		t.Errorf("metric keda_webhook_scaled_object_validation_errors not available")
 		return
 	}
 
@@ -485,11 +485,11 @@ func checkWebhookValues(t *testing.T, families map[string]*promModel.MetricFamil
 		}
 		metricValue = *metric.Counter.Value
 	}
-	assert.GreaterOrEqual(t, metricValue, 1.0, "keda_webhook_scaled_object_validating_errors has to be greater than 0")
+	assert.GreaterOrEqual(t, metricValue, 1.0, "keda_webhook_scaled_object_validation_errors has to be greater than 0")
 
-	family, ok = families["keda_webhook_scaled_object_validating_total"]
+	family, ok = families["keda_webhook_scaled_object_validation_total"]
 	if !ok {
-		t.Errorf("metric keda_webhook_scaled_object_validating_total not available")
+		t.Errorf("metric keda_webhook_scaled_object_validation_total not available")
 		return
 	}
 
@@ -504,5 +504,5 @@ func checkWebhookValues(t *testing.T, families map[string]*promModel.MetricFamil
 		}
 		metricValue = *metric.Counter.Value
 	}
-	assert.GreaterOrEqual(t, metricValue, 1.0, "keda_webhook_scaled_object_validating_total has to be greater than 0")
+	assert.GreaterOrEqual(t, metricValue, 1.0, "keda_webhook_scaled_object_validation_total has to be greater than 0")
 }
