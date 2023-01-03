@@ -117,12 +117,20 @@ smoke-test: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/co
 
 ##@ Development
 
-manifests: controller-gen ## Generate ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) crd:crdVersions=v1 rbac:roleName=keda-operator paths="./..." output:crd:artifacts:config=config/crd/bases
+manifests: controller-gen core-crd-manifests core-rbac-manifests webhook-rbac-manifests
+
+core-crd-manifests: ## Generate CustomResourceDefinition objects for core componenets.
+	$(CONTROLLER_GEN) crd:crdVersions=v1 paths="./..." output:crd:artifacts:config=config/crd/bases
 	# withTriggers is only used for duck typing so we only need the deepcopy methods
 	# However operator-sdk generate doesn't appear to have an option for that
 	# until this issue is fixed: https://github.com/kubernetes-sigs/controller-tools/issues/398
 	rm config/crd/bases/keda.sh_withtriggers.yaml
+
+core-rbac-manifests: ## Generate ClusterRole objects for core componenets.
+	$(CONTROLLER_GEN) rbac:roleName=keda-operator paths="./controllers/..."
+
+webhook-rbac-manifests: ## Generate Role for webhooks.
+	$(CONTROLLER_GEN) rbac:roleName=keda-admission-webhooks paths="./apis/keda/v1alpha1/..." output:dir=config/webhooks
 
 generate: controller-gen mockgen-gen proto-gen ## Generate code containing DeepCopy, DeepCopyInto, DeepCopyObject method implementations (API), mocks and proto.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."

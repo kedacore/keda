@@ -1,11 +1,12 @@
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: RoleBinding
 metadata:
-  name: keda-operator
+  name: keda-admission-webhooks
+  namespace: keda
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: keda-operator
+  kind: Role
+  name: keda-admission-webhooks
 subjects:
 - kind: ServiceAccount
   name: keda-operator
