@@ -82,7 +82,7 @@ func main() {
 	pflag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	pflag.Float32Var(&webhooksClientRequestQPS, "kube-api-qps", 20.0, "Set the QPS rate for throttling requests sent to the apiserver")
 	pflag.IntVar(&webhooksClientRequestBurst, "kube-api-burst", 30, "Set the burst for throttling requests sent to the apiserver")
-	pflag.StringVar(&webhookCertDir, "webhook-cert-dir", "/certs", "Webhook certificates dir to use. Defaults to /certs")
+	pflag.StringVar(&webhookCertDir, "webhooks-cert-dir", "/certs", "Webhook certificates dir to use. Defaults to /certs")
 	pflag.BoolVar(&disableCertRotation, "disable-cert-rotation", false, "disable automatic generation and rotation of webhook TLS certificates/keys")
 	pflag.StringVar(&tlsMinVersion, "tls-min-version", "1.3", "Minimum TLS version")
 
@@ -178,7 +178,7 @@ func ensureSecret(ctx context.Context, mgr manager.Manager) {
 
 	err := mgr.GetAPIReader().List(ctx, secrets, opt)
 	if err != nil {
-		setupLog.Error(err, "unable to check secret")
+		setupLog.Error(err, "unable to check secrets")
 		os.Exit(1)
 	}
 
@@ -202,7 +202,11 @@ func ensureSecret(ctx context.Context, mgr manager.Manager) {
 				},
 			},
 		}
-		mgr.GetClient().Create(ctx, secret)
+		err = mgr.GetClient().Create(ctx, secret)
+		if err != nil {
+			setupLog.Error(err, "unable to create certificates secret")
+			os.Exit(1)
+		}
 		setupLog.V(1).Info(fmt.Sprintf("created the secret %s to store cert-controller certificates", secretName))
 	}
 }
