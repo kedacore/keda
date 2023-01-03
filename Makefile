@@ -180,7 +180,7 @@ adapter: generate
 	${GO_BUILD_VARS} go build -ldflags $(GO_LDFLAGS) -mod=vendor -o bin/keda-adapter cmd/adapter/main.go
 
 webhooks: generate
-	${GO_BUILD_VARS} go build -ldflags $(GO_LDFLAGS) -mod=vendor -o bin/keda-webhooks cmd/webhooks/main.go
+	${GO_BUILD_VARS} go build -ldflags $(GO_LDFLAGS) -mod=vendor -o bin/keda-admission-webhooks cmd/webhooks/main.go
 
 run: manifests generate ## Run a controller from your host.
 	WATCH_NAMESPACE="" go run -ldflags $(GO_LDFLAGS) ./main.go $(ARGS)
