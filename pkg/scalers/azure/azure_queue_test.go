@@ -2,8 +2,9 @@ package azure
 
 import (
 	"context"
+	"encoding/base64"
+	"errors"
 	"net/http"
-	"strings"
 	"testing"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -19,7 +20,7 @@ func TestGetQueueLength(t *testing.T) {
 		t.Error("Expected error for empty connection string, but got nil")
 	}
 
-	if !strings.Contains(err.Error(), "parse storage connection string") {
+	if !errors.Is(err, ErrAzureConnectionStringKeyName) {
 		t.Error("Expected error to contain parsing error message, but got", err.Error())
 	}
 
@@ -33,7 +34,8 @@ func TestGetQueueLength(t *testing.T) {
 		t.Error("Expected error for empty connection string, but got nil")
 	}
 
-	if !strings.Contains(err.Error(), "illegal base64") {
+	var base64Error base64.CorruptInputError
+	if !errors.As(err, &base64Error) {
 		t.Error("Expected error to contain base64 error message, but got", err.Error())
 	}
 }

@@ -160,7 +160,7 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 			err := client.Get(ctx, types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, serviceAccount)
 			if err != nil {
 				return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
-					fmt.Errorf("error getting service account: '%s', error: %s", serviceAccountName, err)
+					fmt.Errorf("error getting service account: '%s', error: %w", serviceAccountName, err)
 			}
 			authParams["awsRoleArn"] = serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS]
 		} else if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAwsKiam {
@@ -295,7 +295,7 @@ func resolveEnv(ctx context.Context, client client.Client, logger logr.Logger, c
 					// ignore error when ConfigMap is marked as optional
 					continue
 				default:
-					return nil, fmt.Errorf("error reading config ref %s on namespace %s/: %s", source.ConfigMapRef, namespace, err)
+					return nil, fmt.Errorf("error reading config ref %s on namespace %s/: %w", source.ConfigMapRef, namespace, err)
 				}
 			} else if source.SecretRef != nil {
 				secretsMap, err := resolveSecretMap(ctx, client, logger, source.SecretRef, namespace, secretsLister)
@@ -308,7 +308,7 @@ func resolveEnv(ctx context.Context, client client.Client, logger logr.Logger, c
 					// ignore error when Secret is marked as optional
 					continue
 				default:
-					return nil, fmt.Errorf("error reading secret ref %s on namespace %s: %s", source.SecretRef, namespace, err)
+					return nil, fmt.Errorf("error reading secret ref %s on namespace %s: %w", source.SecretRef, namespace, err)
 				}
 			}
 		}

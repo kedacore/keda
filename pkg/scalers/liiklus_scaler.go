@@ -46,11 +46,22 @@ const (
 	liiklusMetricType                       = "External"
 )
 
+var (
+	// ErrLiiklusNoTopic is returned when "topic" in the config is empty.
+	ErrLiiklusNoTopic = errors.New("no topic provided")
+
+	// ErrLiiklusNoAddress is returned when "address" in the config is empty.
+	ErrLiiklusNoAddress = errors.New("no liiklus API address provided")
+
+	// ErrLiiklusNoGroup is returned when "group" in the config is empty.
+	ErrLiiklusNoGroup = errors.New("no consumer group provided")
+)
+
 // NewLiiklusScaler creates a new liiklusScaler scaler
 func NewLiiklusScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	lm, err := parseLiiklusMetadata(config)
@@ -103,8 +114,10 @@ func (s *liiklusScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec
 func (s *liiklusScaler) Close(context.Context) error {
 	err := s.connection.Close()
 	if err != nil {
+		s.logger.Error(err, "Error closing liiklus connection")
 		return err
 	}
+
 	return nil
 }
 
@@ -149,7 +162,7 @@ func parseLiiklusMetadata(config *ScalerConfig) (*liiklusMetadata, error) {
 	if val, ok := config.TriggerMetadata[liiklusLagThresholdMetricName]; ok {
 		t, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing %s: %s", liiklusLagThresholdMetricName, err)
+			return nil, fmt.Errorf("error parsing %s: %w", liiklusLagThresholdMetricName, err)
 		}
 		lagThreshold = t
 	}
@@ -157,27 +170,27 @@ func parseLiiklusMetadata(config *ScalerConfig) (*liiklusMetadata, error) {
 	if val, ok := config.TriggerMetadata[liiklusActivationLagThresholdMetricName]; ok {
 		t, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing %s: %s", liiklusActivationLagThresholdMetricName, err)
+			return nil, fmt.Errorf("error parsing %s: %w", liiklusActivationLagThresholdMetricName, err)
 		}
 		activationLagThreshold = t
 	}
 
 	groupVersion := uint32(0)
 	if val, ok := config.TriggerMetadata["groupVersion"]; ok {
-		t, err := strconv.ParseInt(val, 10, 32)
+		t, err := strconv.ParseUint(val, 10, 32)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing groupVersion: %s", err)
+			return nil, fmt.Errorf("error parsing groupVersion: %w", err)
 		}
 		groupVersion = uint32(t)
 	}
 
 	switch {
 	case config.TriggerMetadata["topic"] == "":
-		return nil, errors.New("no topic provided")
+		return nil, ErrLiiklusNoTopic
 	case config.TriggerMetadata["address"] == "":
-		return nil, errors.New("no liiklus API address provided")
+		return nil, ErrLiiklusNoAddress
 	case config.TriggerMetadata["group"] == "":
-		return nil, errors.New("no consumer group provided")
+		return nil, ErrLiiklusNoGroup
 	}
 
 	return &liiklusMetadata{

@@ -66,19 +66,19 @@ type eventHubMetadata struct {
 func NewAzureEventHubScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "azure_eventhub_scaler")
 
 	parsedMetadata, err := parseAzureEventHubMetadata(logger, config)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get eventhub metadata: %s", err)
+		return nil, fmt.Errorf("unable to get eventhub metadata: %w", err)
 	}
 
 	hub, err := azure.GetEventHubClient(ctx, parsedMetadata.eventHubInfo)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get eventhub client: %s", err)
+		return nil, fmt.Errorf("unable to get eventhub client: %w", err)
 	}
 
 	return &azureEventHubScaler{
@@ -115,7 +115,7 @@ func parseCommonAzureEventHubMetadata(config *ScalerConfig, meta *eventHubMetada
 	if val, ok := config.TriggerMetadata[thresholdMetricName]; ok {
 		threshold, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return fmt.Errorf("error parsing azure eventhub metadata %s: %s", thresholdMetricName, err)
+			return fmt.Errorf("error parsing azure eventhub metadata %s: %w", thresholdMetricName, err)
 		}
 
 		meta.threshold = threshold
@@ -125,7 +125,7 @@ func parseCommonAzureEventHubMetadata(config *ScalerConfig, meta *eventHubMetada
 	if val, ok := config.TriggerMetadata[activationThresholdMetricName]; ok {
 		activationThreshold, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return fmt.Errorf("error parsing azure eventhub metadata %s: %s", activationThresholdMetricName, err)
+			return fmt.Errorf("error parsing azure eventhub metadata %s: %w", activationThresholdMetricName, err)
 		}
 
 		meta.activationThreshold = activationThreshold
@@ -283,7 +283,7 @@ func (s *azureEventHubScaler) GetUnprocessedEventCountInPartition(ctx context.Co
 				return GetUnprocessedEventCountWithoutCheckpoint(partitionInfo), azure.Checkpoint{}, nil
 			}
 		}
-		return -1, azure.Checkpoint{}, fmt.Errorf("unable to get checkpoint from storage: %s", err)
+		return -1, azure.Checkpoint{}, fmt.Errorf("unable to get checkpoint from storage: %w", err)
 	}
 
 	unprocessedEventCountInPartition := int64(0)
@@ -332,7 +332,7 @@ func (s *azureEventHubScaler) IsActive(ctx context.Context) (bool, error) {
 	runtimeInfo, err := s.client.GetRuntimeInformation(ctx)
 	if err != nil {
 		s.logger.Error(err, "unable to get runtimeInfo for isActive")
-		return false, fmt.Errorf("unable to get runtimeInfo for isActive: %s", err)
+		return false, fmt.Errorf("unable to get runtimeInfo for isActive: %w", err)
 	}
 
 	partitionIDs := runtimeInfo.PartitionIDs
@@ -342,13 +342,13 @@ func (s *azureEventHubScaler) IsActive(ctx context.Context) (bool, error) {
 
 		partitionRuntimeInfo, err := s.client.GetPartitionInformation(ctx, partitionID)
 		if err != nil {
-			return false, fmt.Errorf("unable to get partitionRuntimeInfo for metrics: %s", err)
+			return false, fmt.Errorf("unable to get partitionRuntimeInfo for metrics: %w", err)
 		}
 
 		unprocessedEventCount, _, err := s.GetUnprocessedEventCountInPartition(ctx, partitionRuntimeInfo)
 
 		if err != nil {
-			return false, fmt.Errorf("unable to get unprocessedEventCount for isActive: %s", err)
+			return false, fmt.Errorf("unable to get unprocessedEventCount for isActive: %w", err)
 		}
 
 		if unprocessedEventCount > s.metadata.activationThreshold {
@@ -376,7 +376,7 @@ func (s *azureEventHubScaler) GetMetrics(ctx context.Context, metricName string)
 	totalUnprocessedEventCount := int64(0)
 	runtimeInfo, err := s.client.GetRuntimeInformation(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("unable to get runtimeInfo for metrics: %s", err)
+		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("unable to get runtimeInfo for metrics: %w", err)
 	}
 
 	partitionIDs := runtimeInfo.PartitionIDs
@@ -385,14 +385,14 @@ func (s *azureEventHubScaler) GetMetrics(ctx context.Context, metricName string)
 		partitionID := partitionIDs[i]
 		partitionRuntimeInfo, err := s.client.GetPartitionInformation(ctx, partitionID)
 		if err != nil {
-			return []external_metrics.ExternalMetricValue{}, fmt.Errorf("unable to get partitionRuntimeInfo for metrics: %s", err)
+			return []external_metrics.ExternalMetricValue{}, fmt.Errorf("unable to get partitionRuntimeInfo for metrics: %w", err)
 		}
 
 		unprocessedEventCount := int64(0)
 
 		unprocessedEventCount, checkpoint, err := s.GetUnprocessedEventCountInPartition(ctx, partitionRuntimeInfo)
 		if err != nil {
-			return []external_metrics.ExternalMetricValue{}, fmt.Errorf("unable to get unprocessedEventCount for metrics: %s", err)
+			return []external_metrics.ExternalMetricValue{}, fmt.Errorf("unable to get unprocessedEventCount for metrics: %w", err)
 		}
 
 		totalUnprocessedEventCount += unprocessedEventCount

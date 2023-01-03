@@ -25,11 +25,11 @@ import (
 func ParseRange(from, to string) ([]int32, error) {
 	f, err := strconv.ParseInt(from, 10, 32)
 	if err != nil {
-		return nil, fmt.Errorf("parse error for '%s': %s", from, err)
+		return nil, fmt.Errorf("parse error for '%s': %w", from, err)
 	}
 	t, err := strconv.ParseInt(to, 10, 32)
 	if err != nil {
-		return nil, fmt.Errorf("parse error for '%s': %s", to, err)
+		return nil, fmt.Errorf("parse error for '%s': %w", to, err)
 	}
 	var parsed []int32
 	for i := int32(f); i <= int32(t); i++ {
@@ -47,13 +47,13 @@ func ParseInt32List(pattern string) ([]int32, error) {
 		case len(literals) == 1:
 			i, err := strconv.ParseInt(literals[0], 10, 32)
 			if err != nil {
-				return nil, fmt.Errorf("parse error: %s", err)
+				return nil, fmt.Errorf("parse error: %w", err)
 			}
 			parsed = append(parsed, int32(i))
 		case len(literals) == 2:
 			r, err := ParseRange(literals[0], literals[1])
 			if err != nil {
-				return nil, fmt.Errorf("error in range: %s", err)
+				return nil, fmt.Errorf("error in range: %w", err)
 			}
 			parsed = append(parsed, r...)
 

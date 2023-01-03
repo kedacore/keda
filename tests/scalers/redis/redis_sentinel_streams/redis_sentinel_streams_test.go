@@ -71,7 +71,7 @@ spec:
     spec:
       containers:
       - name: redis-worker
-        image: ghcr.io/kedacore/tests-redis-sentinel-streams
+        image: ghcr.io/kedacore/tests-redis-sentinel-streams:latest
         imagePullPolicy: IfNotPresent
         command: ["./main"]
         args: ["consumer"]
@@ -158,7 +158,7 @@ spec:
     spec:
       containers:
       - name: redis
-        image: ghcr.io/kedacore/tests-redis-sentinel-streams
+        image: ghcr.io/kedacore/tests-redis-sentinel-streams:latest
         imagePullPolicy: IfNotPresent
         command: ["./main"]
         args: ["producer"]

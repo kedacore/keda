@@ -109,6 +109,11 @@ func (vh *AzureKeyVaultHandler) getAuthConfig(ctx context.Context, client client
 	}
 	switch podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
+		missingErr := fmt.Errorf("clientID, tenantID and clientSecret are expected when not using a pod identity provider")
+		if vh.vault.Credentials == nil {
+			return nil, missingErr
+		}
+
 		clientID := vh.vault.Credentials.ClientID
 		tenantID := vh.vault.Credentials.TenantID
 
@@ -117,7 +122,7 @@ func (vh *AzureKeyVaultHandler) getAuthConfig(ctx context.Context, client client
 		clientSecret := resolveAuthSecret(ctx, client, logger, clientSecretName, triggerNamespace, clientSecretKey, secretsLister)
 
 		if clientID == "" || tenantID == "" || clientSecret == "" {
-			return nil, fmt.Errorf("clientID, tenantID and clientSecret are expected when not using a pod identity provider")
+			return nil, missingErr
 		}
 
 		config := auth.NewClientCredentialsConfig(clientID, clientSecret, tenantID)

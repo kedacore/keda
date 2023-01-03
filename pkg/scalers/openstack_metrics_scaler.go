@@ -65,7 +65,7 @@ func NewOpenstackMetricScaler(ctx context.Context, config *ScalerConfig) (Scaler
 
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "openstack_metric_scaler")
@@ -73,13 +73,13 @@ func NewOpenstackMetricScaler(ctx context.Context, config *ScalerConfig) (Scaler
 	openstackMetricMetadata, err := parseOpenstackMetricMetadata(config, logger)
 
 	if err != nil {
-		return nil, fmt.Errorf("error parsing openstack Metric metadata: %s", err)
+		return nil, fmt.Errorf("error parsing openstack Metric metadata: %w", err)
 	}
 
 	authMetadata, err := parseOpenstackMetricAuthenticationMetadata(config)
 
 	if err != nil {
-		return nil, fmt.Errorf("error parsing openstack metric authentication metadata: %s", err)
+		return nil, fmt.Errorf("error parsing openstack metric authentication metadata: %w", err)
 	}
 
 	// User choose the "application_credentials" authentication method
@@ -87,7 +87,7 @@ func NewOpenstackMetricScaler(ctx context.Context, config *ScalerConfig) (Scaler
 		keystoneAuth, err = openstack.NewAppCredentialsAuth(authMetadata.authURL, authMetadata.appCredentialSecretID, authMetadata.appCredentialSecret, openstackMetricMetadata.timeout)
 
 		if err != nil {
-			return nil, fmt.Errorf("error getting openstack credentials for application credentials method: %s", err)
+			return nil, fmt.Errorf("error getting openstack credentials for application credentials method: %w", err)
 		}
 	} else {
 		// User choose the "password" authentication method
@@ -95,7 +95,7 @@ func NewOpenstackMetricScaler(ctx context.Context, config *ScalerConfig) (Scaler
 			keystoneAuth, err = openstack.NewPasswordAuth(authMetadata.authURL, authMetadata.userID, authMetadata.password, "", openstackMetricMetadata.timeout)
 
 			if err != nil {
-				return nil, fmt.Errorf("error getting openstack credentials for password method: %s", err)
+				return nil, fmt.Errorf("error getting openstack credentials for password method: %w", err)
 			}
 		} else {
 			return nil, fmt.Errorf("no authentication method was provided for OpenStack")
@@ -157,7 +157,7 @@ func parseOpenstackMetricMetadata(config *ScalerConfig, logger logr.Logger) (*op
 		_threshold, err := strconv.ParseFloat(val, 32)
 		if err != nil {
 			logger.Error(err, "error parsing openstack metric metadata", "threshold", "threshold")
-			return nil, fmt.Errorf("error parsing openstack metric metadata : %s", err.Error())
+			return nil, fmt.Errorf("error parsing openstack metric metadata : %w", err)
 		}
 
 		meta.threshold = _threshold
@@ -168,7 +168,7 @@ func parseOpenstackMetricMetadata(config *ScalerConfig, logger logr.Logger) (*op
 		activationThreshold, err := strconv.ParseFloat(val, 32)
 		if err != nil {
 			logger.Error(err, "error parsing openstack metric metadata", "activationThreshold", "activationThreshold")
-			return nil, fmt.Errorf("error parsing openstack metric metadata : %s", err.Error())
+			return nil, fmt.Errorf("error parsing openstack metric metadata : %w", err)
 		}
 
 		meta.activationThreshold = activationThreshold
@@ -177,7 +177,7 @@ func parseOpenstackMetricMetadata(config *ScalerConfig, logger logr.Logger) (*op
 	if val, ok := triggerMetadata["timeout"]; ok && val != "" {
 		httpClientTimeout, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("httpClientTimeout parsing error: %s", err.Error())
+			return nil, fmt.Errorf("httpClientTimeout parsing error: %w", err)
 		}
 		meta.timeout = httpClientTimeout
 	} else {
@@ -274,7 +274,7 @@ func (s *openstackMetricScaler) readOpenstackMetrics(ctx context.Context) (float
 
 	if err != nil {
 		s.logger.Error(err, "metric url provided is invalid")
-		return defaultValueWhenError, fmt.Errorf("metric url is invalid: %s", err.Error())
+		return defaultValueWhenError, fmt.Errorf("metric url is invalid: %w", err)
 	}
 
 	openstackMetricsURL.Path = path.Join(openstackMetricsURL.Path, s.metadata.metricID+"/measures")

@@ -51,14 +51,14 @@ type awsSqsQueueMetadata struct {
 func NewAwsSqsQueueScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "aws_sqs_queue_scaler")
 
 	meta, err := parseAwsSqsQueueMetadata(config, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing SQS queue metadata: %s", err)
+		return nil, fmt.Errorf("error parsing SQS queue metadata: %w", err)
 	}
 
 	return &awsSqsQueueScaler{

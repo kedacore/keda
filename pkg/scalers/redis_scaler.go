@@ -3,13 +3,14 @@ package scalers
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
 	"strings"
 
 	"github.com/go-logr/logr"
-	"github.com/go-redis/redis/v8"
+	"github.com/go-redis/redis/v9"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -21,6 +22,17 @@ const (
 	defaultActivationListLength = 0
 	defaultDBIdx                = 0
 	defaultEnableTLS            = false
+)
+
+var (
+	// ErrRedisNoListName is returned when "listName" is missing from the config.
+	ErrRedisNoListName = errors.New("no list name given")
+
+	// ErrRedisNoAddresses is returned when the "addresses" in the connection info is empty.
+	ErrRedisNoAddresses = errors.New("no addresses or hosts given. address should be a comma separated list of host:port or set the host/port values")
+
+	// ErrRedisUnequalHostsAndPorts is returned when the number of hosts and ports are unequal.
+	ErrRedisUnequalHostsAndPorts = errors.New("not enough hosts or ports given. number of hosts should be equal to the number of ports")
 )
 
 type redisAddressParser func(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error)
@@ -43,6 +55,7 @@ type redisConnectionInfo struct {
 	hosts            []string
 	ports            []string
 	enableTLS        bool
+	unsafeSsl        bool
 }
 
 type redisMetadata struct {
@@ -72,7 +85,7 @@ func NewRedisScaler(ctx context.Context, isClustered, isSentinel bool, config *S
 
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "redis_scaler")
@@ -80,28 +93,29 @@ func NewRedisScaler(ctx context.Context, isClustered, isSentinel bool, config *S
 	if isClustered {
 		meta, err := parseRedisMetadata(config, parseRedisClusterAddress)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing redis metadata: %s", err)
+			return nil, fmt.Errorf("error parsing redis metadata: %w", err)
 		}
 		return createClusteredRedisScaler(ctx, meta, luaScript, metricType, logger)
 	} else if isSentinel {
 		meta, err := parseRedisMetadata(config, parseRedisSentinelAddress)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing redis metadata: %s", err)
+			return nil, fmt.Errorf("error parsing redis metadata: %w", err)
 		}
 		return createSentinelRedisScaler(ctx, meta, luaScript, metricType, logger)
 	}
 
 	meta, err := parseRedisMetadata(config, parseRedisAddress)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing redis metadata: %s", err)
+		return nil, fmt.Errorf("error parsing redis metadata: %w", err)
 	}
+
 	return createRedisScaler(ctx, meta, luaScript, metricType, logger)
 }
 
 func createClusteredRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2.MetricTargetType, logger logr.Logger) (Scaler, error) {
 	client, err := getRedisClusterClient(ctx, meta.connectionInfo)
 	if err != nil {
-		return nil, fmt.Errorf("connection to redis cluster failed: %s", err)
+		return nil, fmt.Errorf("connection to redis cluster failed: %w", err)
 	}
 
 	closeFn := func() error {
@@ -133,7 +147,7 @@ func createClusteredRedisScaler(ctx context.Context, meta *redisMetadata, script
 func createSentinelRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2.MetricTargetType, logger logr.Logger) (Scaler, error) {
 	client, err := getRedisSentinelClient(ctx, meta.connectionInfo, meta.databaseIndex)
 	if err != nil {
-		return nil, fmt.Errorf("connection to redis sentinel failed: %s", err)
+		return nil, fmt.Errorf("connection to redis sentinel failed: %w", err)
 	}
 
 	return createRedisScalerWithClient(client, meta, script, metricType, logger), nil
@@ -142,7 +156,7 @@ func createSentinelRedisScaler(ctx context.Context, meta *redisMetadata, script 
 func createRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2.MetricTargetType, logger logr.Logger) (Scaler, error) {
 	client, err := getRedisClient(ctx, meta.connectionInfo, meta.databaseIndex)
 	if err != nil {
-		return nil, fmt.Errorf("connection to redis failed: %s", err)
+		return nil, fmt.Errorf("connection to redis failed: %w", err)
 	}
 
 	return createRedisScalerWithClient(client, meta, script, metricType, logger), nil
@@ -183,11 +197,29 @@ func parseRedisMetadata(config *ScalerConfig, parserFn redisAddressParser) (*red
 		connectionInfo: connInfo,
 	}
 
+	meta.connectionInfo.enableTLS = defaultEnableTLS
+	if val, ok := config.TriggerMetadata["enableTLS"]; ok {
+		tls, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("enableTLS parsing error %w", err)
+		}
+		meta.connectionInfo.enableTLS = tls
+	}
+
+	meta.connectionInfo.unsafeSsl = false
+	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
+		parsedVal, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing unsafeSsl: %w", err)
+		}
+		meta.connectionInfo.unsafeSsl = parsedVal
+	}
+
 	meta.listLength = defaultListLength
 	if val, ok := config.TriggerMetadata["listLength"]; ok {
 		listLength, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("list length parsing error %s", err.Error())
+			return nil, fmt.Errorf("list length parsing error: %w", err)
 		}
 		meta.listLength = listLength
 	}
@@ -196,7 +228,7 @@ func parseRedisMetadata(config *ScalerConfig, parserFn redisAddressParser) (*red
 	if val, ok := config.TriggerMetadata["activationListLength"]; ok {
 		activationListLength, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("activationListLength parsing error %s", err.Error())
+			return nil, fmt.Errorf("activationListLength parsing error %w", err)
 		}
 		meta.activationListLength = activationListLength
 	}
@@ -204,14 +236,14 @@ func parseRedisMetadata(config *ScalerConfig, parserFn redisAddressParser) (*red
 	if val, ok := config.TriggerMetadata["listName"]; ok {
 		meta.listName = val
 	} else {
-		return nil, fmt.Errorf("no list name given")
+		return nil, ErrRedisNoListName
 	}
 
 	meta.databaseIndex = defaultDBIdx
 	if val, ok := config.TriggerMetadata["databaseIndex"]; ok {
 		dbIndex, err := strconv.ParseInt(val, 10, 32)
 		if err != nil {
-			return nil, fmt.Errorf("databaseIndex: parsing error %s", err.Error())
+			return nil, fmt.Errorf("databaseIndex: parsing error %w", err)
 		}
 		meta.databaseIndex = int(dbIndex)
 	}
@@ -304,15 +336,6 @@ func parseRedisAddress(metadata, resolvedEnv, authParams map[string]string) (red
 		info.password = resolvedEnv[metadata["passwordFromEnv"]]
 	}
 
-	info.enableTLS = defaultEnableTLS
-	if val, ok := metadata["enableTLS"]; ok {
-		tls, err := strconv.ParseBool(val)
-		if err != nil {
-			return info, fmt.Errorf("enableTLS parsing error %s", err.Error())
-		}
-		info.enableTLS = tls
-	}
-
 	return info, nil
 }
 
@@ -346,7 +369,7 @@ func parseRedisMultipleAddress(metadata, resolvedEnv, authParams map[string]stri
 
 		if len(info.hosts) != 0 && len(info.ports) != 0 {
 			if len(info.hosts) != len(info.ports) {
-				return info, fmt.Errorf("not enough hosts or ports given. number of hosts should be equal to the number of ports")
+				return info, ErrRedisUnequalHostsAndPorts
 			}
 			for i := range info.hosts {
 				info.addresses = append(info.addresses, net.JoinHostPort(info.hosts[i], info.ports[i]))
@@ -355,7 +378,7 @@ func parseRedisMultipleAddress(metadata, resolvedEnv, authParams map[string]stri
 	}
 
 	if len(info.addresses) == 0 {
-		return info, fmt.Errorf("no addresses or hosts given. address should be a comma separated list of host:port or set the host/port values")
+		return info, ErrRedisNoAddresses
 	}
 
 	return info, nil
@@ -380,15 +403,6 @@ func parseRedisClusterAddress(metadata, resolvedEnv, authParams map[string]strin
 		info.password = authParams["password"]
 	} else if metadata["passwordFromEnv"] != "" {
 		info.password = resolvedEnv[metadata["passwordFromEnv"]]
-	}
-
-	info.enableTLS = defaultEnableTLS
-	if val, ok := metadata["enableTLS"]; ok {
-		tls, err := strconv.ParseBool(val)
-		if err != nil {
-			return info, fmt.Errorf("enableTLS parsing error %s", err.Error())
-		}
-		info.enableTLS = tls
 	}
 
 	return info, nil
@@ -439,15 +453,6 @@ func parseRedisSentinelAddress(metadata, resolvedEnv, authParams map[string]stri
 		info.sentinelMaster = resolvedEnv[metadata["sentinelMasterFromEnv"]]
 	}
 
-	info.enableTLS = defaultEnableTLS
-	if val, ok := metadata["enableTLS"]; ok {
-		tls, err := strconv.ParseBool(val)
-		if err != nil {
-			return info, fmt.Errorf("enableTLS parsing error %s", err.Error())
-		}
-		info.enableTLS = tls
-	}
-
 	return info, nil
 }
 
@@ -459,7 +464,7 @@ func getRedisClusterClient(ctx context.Context, info redisConnectionInfo) (*redi
 	}
 	if info.enableTLS {
 		options.TLSConfig = &tls.Config{
-			InsecureSkipVerify: info.enableTLS,
+			InsecureSkipVerify: info.unsafeSsl,
 		}
 	}
 
@@ -483,7 +488,7 @@ func getRedisSentinelClient(ctx context.Context, info redisConnectionInfo, dbInd
 	}
 	if info.enableTLS {
 		options.TLSConfig = &tls.Config{
-			InsecureSkipVerify: info.enableTLS,
+			InsecureSkipVerify: info.unsafeSsl,
 		}
 	}
 
@@ -504,7 +509,7 @@ func getRedisClient(ctx context.Context, info redisConnectionInfo, dbIndex int) 
 	}
 	if info.enableTLS {
 		options.TLSConfig = &tls.Config{
-			InsecureSkipVerify: info.enableTLS,
+			InsecureSkipVerify: info.unsafeSsl,
 		}
 	}
 

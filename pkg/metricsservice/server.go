@@ -45,12 +45,12 @@ func (s *GrpcServer) GetMetrics(ctx context.Context, in *api.ScaledObjectRef) (*
 	extMetrics, exportedMetrics, err := (*s.scalerHandler).GetScaledObjectMetrics(ctx, in.Name, in.Namespace, in.MetricName)
 	response.PromMetrics = exportedMetrics
 	if err != nil {
-		return &response, fmt.Errorf("error when getting metric values %s", err)
+		return &response, fmt.Errorf("error when getting metric values %w", err)
 	}
 
 	err = v1beta1.Convert_external_metrics_ExternalMetricValueList_To_v1beta1_ExternalMetricValueList(extMetrics, v1beta1ExtMetrics, nil)
 	if err != nil {
-		return &response, fmt.Errorf("error when converting metric values %s", err)
+		return &response, fmt.Errorf("error when converting metric values %w", err)
 	}
 
 	log.V(1).WithValues("scaledObjectName", in.Name, "scaledObjectNamespace", in.Namespace, "metrics", v1beta1ExtMetrics).Info("Providing metrics")
@@ -61,6 +61,7 @@ func (s *GrpcServer) GetMetrics(ctx context.Context, in *api.ScaledObjectRef) (*
 
 // NewGrpcServer creates a new instance of GrpcServer
 func NewGrpcServer(scaleHandler *scaling.ScaleHandler, address string) GrpcServer {
+	// nosemgrep: go.grpc.security.grpc-server-insecure-connection.grpc-server-insecure-connection
 	gsrv := grpc.NewServer()
 	srv := GrpcServer{
 		server:        gsrv,
@@ -75,11 +76,11 @@ func NewGrpcServer(scaleHandler *scaling.ScaleHandler, address string) GrpcServe
 func (s *GrpcServer) startServer() error {
 	lis, err := net.Listen("tcp", s.address)
 	if err != nil {
-		return fmt.Errorf("failed to listen: %v", err)
+		return fmt.Errorf("failed to listen: %w", err)
 	}
 
 	if err := s.server.Serve(lis); err != nil {
-		return fmt.Errorf("failed to serve: %v", err)
+		return fmt.Errorf("failed to serve: %w", err)
 	}
 
 	return nil

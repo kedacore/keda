@@ -62,13 +62,13 @@ func NewTLSConfigWithPassword(clientCert, clientKey, clientKeyPassword, caCert s
 			var err error
 			key, err = decryptClientKey(clientKey, clientKeyPassword)
 			if err != nil {
-				return nil, fmt.Errorf("error decrypt X509Key: %s", err)
+				return nil, fmt.Errorf("error decrypt X509Key: %w", err)
 			}
 		}
 
 		cert, err := tls.X509KeyPair([]byte(clientCert), key)
 		if err != nil {
-			return nil, fmt.Errorf("error parse X509KeyPair: %s", err)
+			return nil, fmt.Errorf("error parse X509KeyPair: %w", err)
 		}
 		config.Certificates = []tls.Certificate{cert}
 		valid = true

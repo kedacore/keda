@@ -46,12 +46,12 @@ type kubernetesWorkloadMetadata struct {
 func NewKubernetesWorkloadScaler(kubeClient client.Client, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	meta, parseErr := parseWorkloadMetadata(config)
 	if parseErr != nil {
-		return nil, fmt.Errorf("error parsing kubernetes workload metadata: %s", parseErr)
+		return nil, fmt.Errorf("error parsing kubernetes workload metadata: %w", parseErr)
 	}
 
 	return &kubernetesWorkloadScaler{
@@ -111,7 +111,7 @@ func (s *kubernetesWorkloadScaler) GetMetricSpecForScaling(context.Context) []v2
 func (s *kubernetesWorkloadScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	pods, err := s.getMetricValue(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting kubernetes workload: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting kubernetes workload: %w", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(pods))

@@ -45,19 +45,19 @@ const adxName = "azure-data-explorer"
 func NewAzureDataExplorerScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "azure_data_explorer_scaler")
 
 	metadata, err := parseAzureDataExplorerMetadata(config, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse azure data explorer metadata: %s", err)
+		return nil, fmt.Errorf("failed to parse azure data explorer metadata: %w", err)
 	}
 
 	client, err := azure.CreateAzureDataExplorerClient(ctx, metadata)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create azure data explorer client: %s", err)
+		return nil, fmt.Errorf("failed to create azure data explorer client: %w", err)
 	}
 
 	return &azureDataExplorerScaler{
@@ -101,7 +101,7 @@ func parseAzureDataExplorerMetadata(config *ScalerConfig, logger logr.Logger) (*
 	if val, ok := config.TriggerMetadata["threshold"]; ok {
 		threshold, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing metadata. Details: can't parse threshold. Inner Error: %v", err)
+			return nil, fmt.Errorf("error parsing metadata. Details: can't parse threshold. Inner Error: %w", err)
 		}
 		metadata.Threshold = threshold
 	}
@@ -111,7 +111,7 @@ func parseAzureDataExplorerMetadata(config *ScalerConfig, logger logr.Logger) (*
 	if val, ok := config.TriggerMetadata["activationThreshold"]; ok {
 		activationThreshold, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing metadata. Details: can't parse activationThreshold. Inner Error: %v", err)
+			return nil, fmt.Errorf("error parsing metadata. Details: can't parse activationThreshold. Inner Error: %w", err)
 		}
 		metadata.ActivationThreshold = activationThreshold
 	}
@@ -172,7 +172,7 @@ func parseAzureDataExplorerAuthParams(config *ScalerConfig, logger logr.Logger) 
 func (s azureDataExplorerScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	metricValue, err := azure.GetAzureDataExplorerMetricValue(ctx, s.client, s.metadata.DatabaseName, s.metadata.Query)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("failed to get metrics for scaled object %s in namespace %s: %v", s.name, s.namespace, err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("failed to get metrics for scaled object %s in namespace %s: %w", s.name, s.namespace, err)
 	}
 
 	metric := GenerateMetricInMili(metricName, metricValue)

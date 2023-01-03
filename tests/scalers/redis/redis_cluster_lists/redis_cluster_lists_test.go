@@ -73,7 +73,7 @@ spec:
     spec:
       containers:
       - name: redis-worker
-        image: goku321/redis-cluster-list:v1.7
+        image: ghcr.io/kedacore/tests-redis-cluster-lists:latest
         imagePullPolicy: IfNotPresent
         command: ["./main"]
         args: ["read"]
@@ -148,7 +148,7 @@ spec:
     spec:
       containers:
       - name: redis
-        image: goku321/redis-cluster-list:v1.7
+        image: ghcr.io/kedacore/tests-redis-cluster-lists:latest
         imagePullPolicy: IfNotPresent
         command: ["./main"]
         args: ["write"]

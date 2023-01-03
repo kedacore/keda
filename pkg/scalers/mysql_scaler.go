@@ -40,19 +40,19 @@ type mySQLMetadata struct {
 func NewMySQLScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "mysql_scaler")
 
 	meta, err := parseMySQLMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing MySQL metadata: %s", err)
+		return nil, fmt.Errorf("error parsing MySQL metadata: %w", err)
 	}
 
 	conn, err := newMySQLConnection(meta, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error establishing MySQL connection: %s", err)
+		return nil, fmt.Errorf("error establishing MySQL connection: %w", err)
 	}
 	return &mySQLScaler{
 		metricType: metricType,
@@ -74,7 +74,7 @@ func parseMySQLMetadata(config *ScalerConfig) (*mySQLMetadata, error) {
 	if val, ok := config.TriggerMetadata["queryValue"]; ok {
 		queryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("queryValue parsing error %w", err)
 		}
 		meta.queryValue = queryValue
 	} else {
@@ -85,7 +85,7 @@ func parseMySQLMetadata(config *ScalerConfig) (*mySQLMetadata, error) {
 	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
 		activationQueryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("activationQueryValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("activationQueryValue parsing error %w", err)
 		}
 		meta.activationQueryValue = activationQueryValue
 	}
@@ -226,7 +226,7 @@ func (s *mySQLScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 func (s *mySQLScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	num, err := s.getQueryResult(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting MySQL: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting MySQL: %w", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, num)

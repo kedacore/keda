@@ -74,7 +74,7 @@ const (
 func NewSeleniumGridScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "selenium_grid_scaler")
@@ -82,7 +82,7 @@ func NewSeleniumGridScaler(config *ScalerConfig) (Scaler, error) {
 	meta, err := parseSeleniumGridScalerMetadata(config)
 
 	if err != nil {
-		return nil, fmt.Errorf("error parsing selenium grid metadata: %s", err)
+		return nil, fmt.Errorf("error parsing selenium grid metadata: %w", err)
 	}
 
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsl)
@@ -124,7 +124,7 @@ func parseSeleniumGridScalerMetadata(config *ScalerConfig) (*seleniumGridScalerM
 	if val, ok := config.TriggerMetadata["activationThreshold"]; ok {
 		activationThreshold, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing unsafeSsl: %s", err)
+			return nil, fmt.Errorf("error parsing unsafeSsl: %w", err)
 		}
 		meta.activationThreshold = activationThreshold
 	}
@@ -138,7 +138,7 @@ func parseSeleniumGridScalerMetadata(config *ScalerConfig) (*seleniumGridScalerM
 	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
 		parsedVal, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing unsafeSsl: %s", err)
+			return nil, fmt.Errorf("error parsing unsafeSsl: %w", err)
 		}
 		meta.unsafeSsl = parsedVal
 	}
@@ -155,7 +155,7 @@ func (s *seleniumGridScaler) Close(context.Context) error {
 func (s *seleniumGridScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	sessions, err := s.getSessionsCount(ctx, s.logger)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error requesting selenium grid endpoint: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error requesting selenium grid endpoint: %w", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(sessions))

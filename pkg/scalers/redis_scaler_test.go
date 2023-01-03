@@ -2,7 +2,7 @@ package scalers
 
 import (
 	"context"
-	"errors"
+	"strconv"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -114,7 +114,7 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 		{
 			name:     "empty metadata",
 			wantMeta: nil,
-			wantErr:  errors.New("no addresses or hosts given. address should be a comma separated list of host:port or set the host/port values"),
+			wantErr:  ErrRedisNoAddresses,
 		},
 		{
 			name: "unequal number of hosts/ports",
@@ -123,7 +123,7 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 				"ports": "1, 2",
 			},
 			wantMeta: nil,
-			wantErr:  errors.New("not enough hosts or ports given. number of hosts should be equal to the number of ports"),
+			wantErr:  ErrRedisUnequalHostsAndPorts,
 		},
 		{
 			name: "no list name",
@@ -133,7 +133,7 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 				"listLength": "5",
 			},
 			wantMeta: nil,
-			wantErr:  errors.New("no list name given"),
+			wantErr:  ErrRedisNoListName,
 		},
 		{
 			name: "invalid list length",
@@ -144,7 +144,7 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 				"listLength": "invalid",
 			},
 			wantMeta: nil,
-			wantErr:  errors.New("list length parsing error"),
+			wantErr:  strconv.ErrSyntax,
 		},
 		{
 			name: "address is defined in auth params",
@@ -292,6 +292,47 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 			},
 			wantErr: nil,
 		},
+		{
+			name: "tls enabled without setting unsafeSsl",
+			metadata: map[string]string{
+				"listName":  "mylist",
+				"enableTLS": "true",
+			},
+			authParams: map[string]string{
+				"addresses": ":7001, :7002",
+			},
+			wantMeta: &redisMetadata{
+				listLength: 5,
+				listName:   "mylist",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{":7001", ":7002"},
+					enableTLS: true,
+					unsafeSsl: false,
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "tls enabled with unsafeSsl true",
+			metadata: map[string]string{
+				"listName":  "mylist",
+				"enableTLS": "true",
+				"unsafeSsl": "true",
+			},
+			authParams: map[string]string{
+				"addresses": ":7001, :7002",
+			},
+			wantMeta: &redisMetadata{
+				listLength: 5,
+				listName:   "mylist",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{":7001", ":7002"},
+					enableTLS: true,
+					unsafeSsl: true,
+				},
+			},
+			wantErr: nil,
+		},
 	}
 
 	for _, testCase := range cases {
@@ -304,7 +345,7 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 			}
 			meta, err := parseRedisMetadata(config, parseRedisClusterAddress)
 			if c.wantErr != nil {
-				assert.Contains(t, err.Error(), c.wantErr.Error())
+				assert.ErrorIs(t, err, c.wantErr)
 			} else {
 				assert.NoError(t, err)
 			}
@@ -325,7 +366,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 		{
 			name:     "empty metadata",
 			wantMeta: nil,
-			wantErr:  errors.New("no addresses or hosts given. address should be a comma separated list of host:port or set the host/port values"),
+			wantErr:  ErrRedisNoAddresses,
 		},
 		{
 			name: "unequal number of hosts/ports",
@@ -334,7 +375,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 				"ports": "1, 2",
 			},
 			wantMeta: nil,
-			wantErr:  errors.New("not enough hosts or ports given. number of hosts should be equal to the number of ports"),
+			wantErr:  ErrRedisUnequalHostsAndPorts,
 		},
 		{
 			name: "no list name",
@@ -344,7 +385,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 				"listLength": "5",
 			},
 			wantMeta: nil,
-			wantErr:  errors.New("no list name given"),
+			wantErr:  ErrRedisNoListName,
 		},
 		{
 			name: "invalid list length",
@@ -355,7 +396,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 				"listLength": "invalid",
 			},
 			wantMeta: nil,
-			wantErr:  errors.New("list length parsing error"),
+			wantErr:  strconv.ErrSyntax,
 		},
 		{
 			name: "address is defined in auth params",
@@ -697,6 +738,47 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			},
 			wantErr: nil,
 		},
+		{
+			name: "tls enabled without setting unsafeSsl",
+			metadata: map[string]string{
+				"listName":  "mylist",
+				"enableTLS": "true",
+			},
+			authParams: map[string]string{
+				"addresses": ":7001, :7002",
+			},
+			wantMeta: &redisMetadata{
+				listLength: 5,
+				listName:   "mylist",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{":7001", ":7002"},
+					enableTLS: true,
+					unsafeSsl: false,
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "tls enabled with unsafeSsl true",
+			metadata: map[string]string{
+				"listName":  "mylist",
+				"enableTLS": "true",
+				"unsafeSsl": "true",
+			},
+			authParams: map[string]string{
+				"addresses": ":7001, :7002",
+			},
+			wantMeta: &redisMetadata{
+				listLength: 5,
+				listName:   "mylist",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{":7001", ":7002"},
+					enableTLS: true,
+					unsafeSsl: true,
+				},
+			},
+			wantErr: nil,
+		},
 	}
 
 	for _, testCase := range cases {
@@ -709,7 +791,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			}
 			meta, err := parseRedisMetadata(config, parseRedisSentinelAddress)
 			if c.wantErr != nil {
-				assert.Contains(t, err.Error(), c.wantErr.Error())
+				assert.ErrorIs(t, err, c.wantErr)
 			} else {
 				assert.NoError(t, err)
 			}

@@ -54,12 +54,12 @@ func NewDatadogScaler(ctx context.Context, config *ScalerConfig) (Scaler, error)
 
 	meta, err := parseDatadogMetadata(config, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing Datadog metadata: %s", err)
+		return nil, fmt.Errorf("error parsing Datadog metadata: %w", err)
 	}
 
 	apiClient, err := newDatadogConnection(ctx, meta, config)
 	if err != nil {
-		return nil, fmt.Errorf("error establishing Datadog connection: %s", err)
+		return nil, fmt.Errorf("error establishing Datadog connection: %w", err)
 	}
 	return &datadogScaler{
 		metadata:  meta,
@@ -84,7 +84,7 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 	if val, ok := config.TriggerMetadata["age"]; ok {
 		age, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("age parsing error %s", err.Error())
+			return nil, fmt.Errorf("age parsing error %w", err)
 		}
 		meta.age = age
 
@@ -101,7 +101,7 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 	if val, ok := config.TriggerMetadata["timeWindowOffset"]; ok {
 		timeWindowOffset, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("timeWindowOffset parsing error %s", err.Error())
+			return nil, fmt.Errorf("timeWindowOffset parsing error %w", err)
 		}
 		if timeWindowOffset < 0 {
 			return nil, fmt.Errorf("timeWindowOffset should not be smaller than 0 seconds")
@@ -114,7 +114,7 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 	if val, ok := config.TriggerMetadata["lastAvailablePointOffset"]; ok {
 		lastAvailablePointOffset, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("lastAvailablePointOffset parsing error %s", err.Error())
+			return nil, fmt.Errorf("lastAvailablePointOffset parsing error %w", err)
 		}
 
 		if lastAvailablePointOffset < 0 {
@@ -129,7 +129,7 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 		_, err := parseDatadogQuery(val)
 
 		if err != nil {
-			return nil, fmt.Errorf("error in query: %s", err.Error())
+			return nil, fmt.Errorf("error in query: %w", err)
 		}
 		meta.query = val
 	} else {
@@ -139,7 +139,7 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 	if val, ok := config.TriggerMetadata["queryValue"]; ok {
 		queryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("queryValue parsing error %w", err)
 		}
 		meta.queryValue = queryValue
 	} else {
@@ -162,7 +162,7 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
 		activationQueryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("queryValue parsing error %w", err)
 		}
 		meta.activationQueryValue = activationQueryValue
 	}
@@ -170,7 +170,7 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 	if val, ok := config.TriggerMetadata["metricUnavailableValue"]; ok {
 		fillValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("metricUnavailableValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("metricUnavailableValue parsing error %w", err)
 		}
 		meta.fillValue = fillValue
 		meta.useFiller = true
@@ -193,7 +193,7 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 	} else {
 		metricType, err := GetMetricTargetType(config)
 		if err != nil {
-			return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+			return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 		}
 		meta.vType = metricType
 	}
@@ -251,7 +251,7 @@ func newDatadogConnection(ctx context.Context, meta *datadogMetadata, config *Sc
 
 	_, _, err := apiClient.AuthenticationApi.Validate(ctx) //nolint:bodyclose
 	if err != nil {
-		return nil, fmt.Errorf("error connecting to Datadog API endpoint: %v", err)
+		return nil, fmt.Errorf("error connecting to Datadog API endpoint: %w", err)
 	}
 
 	return apiClient, nil
@@ -287,7 +287,7 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 	timeWindowFrom := timeWindowTo - int64(s.metadata.age)
 	resp, r, err := s.apiClient.MetricsApi.QueryMetrics(ctx, timeWindowFrom, timeWindowTo, s.metadata.query) //nolint:bodyclose
 	if err != nil {
-		return -1, fmt.Errorf("error when retrieving Datadog metrics: %s", err)
+		return -1, fmt.Errorf("error when retrieving Datadog metrics: %w", err)
 	}
 
 	if r.StatusCode == 429 {
@@ -377,7 +377,7 @@ func (s *datadogScaler) GetMetricsAndActivity(ctx context.Context, metricName st
 	num, err := s.getQueryResult(ctx)
 	if err != nil {
 		s.logger.Error(err, "error getting metrics from Datadog")
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting metrics from Datadog: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting metrics from Datadog: %w", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, num)

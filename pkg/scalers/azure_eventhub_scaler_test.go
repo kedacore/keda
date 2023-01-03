@@ -481,19 +481,19 @@ func CreateNewCheckpointInStorage(endpoint *url.URL, credential azblob.Credentia
 	containerURL := azblob.NewContainerURL(*url, azblob.NewPipeline(credential, azblob.PipelineOptions{}))
 	_, err := containerURL.Create(ctx, azblob.Metadata{}, azblob.PublicAccessNone)
 	if err != nil {
-		return ctx, fmt.Errorf("failed to create container: %s", err)
+		return ctx, fmt.Errorf("failed to create container: %w", err)
 	}
 
 	// Create directory checkpoints will be in
 	err = os.MkdirAll(urlPath, 0777)
 	if err != nil {
-		return ctx, fmt.Errorf("Unable to create directory: %s", err)
+		return ctx, fmt.Errorf("Unable to create directory: %w", err)
 	}
 	defer os.RemoveAll(urlPath)
 
 	file, err := os.Create(fmt.Sprintf("%s/file", urlPath))
 	if err != nil {
-		return ctx, fmt.Errorf("Unable to create folder: %s", err)
+		return ctx, fmt.Errorf("Unable to create folder: %w", err)
 	}
 	defer file.Close()
 
@@ -504,15 +504,15 @@ func CreateNewCheckpointInStorage(endpoint *url.URL, credential azblob.Credentia
 		BlockSize:   4 * 1024 * 1024,
 		Parallelism: 16})
 	if err != nil {
-		return ctx, fmt.Errorf("Err uploading file to blob: %s", err)
+		return ctx, fmt.Errorf("Err uploading file to blob: %w", err)
 	}
 
 	// Make checkpoint blob files
 	if err := CreatePartitionFile(ctx, urlPath, "0", containerURL, client); err != nil {
-		return ctx, fmt.Errorf("failed to create partitionID 0 file: %s", err)
+		return ctx, fmt.Errorf("failed to create partitionID 0 file: %w", err)
 	}
 	if err := CreatePartitionFile(ctx, urlPath, "1", containerURL, client); err != nil {
-		return ctx, fmt.Errorf("failed to create partitionID 1 file: %s", err)
+		return ctx, fmt.Errorf("failed to create partitionID 1 file: %w", err)
 	}
 
 	return ctx, nil
@@ -524,30 +524,30 @@ func CreatePartitionFile(ctx context.Context, urlPathToPartition string, partiti
 
 	partitionInfo, err := client.GetPartitionInformation(ctx, partitionID)
 	if err != nil {
-		return fmt.Errorf("unable to get partition info: %s", err)
+		return fmt.Errorf("unable to get partition info: %w", err)
 	}
 
 	f, err := os.Create(partitionID)
 	if err != nil {
-		return fmt.Errorf("unable to create file: %s", err)
+		return fmt.Errorf("unable to create file: %w", err)
 	}
 
 	if partitionID == "0" {
 		_, err = f.WriteString(fmt.Sprintf(checkpointFormat, partitionInfo.LastSequenceNumber-1, partitionID))
 		if err != nil {
-			return fmt.Errorf("unable to write to file: %s", err)
+			return fmt.Errorf("unable to write to file: %w", err)
 		}
 	} else {
 		_, err = f.WriteString(fmt.Sprintf(checkpointFormat, partitionInfo.LastSequenceNumber, partitionID))
 		if err != nil {
-			return fmt.Errorf("unable to write to file: %s", err)
+			return fmt.Errorf("unable to write to file: %w", err)
 		}
 	}
 
 	// Write checkpoints to file
 	file, err := os.Open(partitionID)
 	if err != nil {
-		return fmt.Errorf("Unable to create file: %s", err)
+		return fmt.Errorf("Unable to create file: %w", err)
 	}
 	defer file.Close()
 
@@ -558,7 +558,7 @@ func CreatePartitionFile(ctx context.Context, urlPathToPartition string, partiti
 		BlockSize:   4 * 1024 * 1024,
 		Parallelism: 16})
 	if err != nil {
-		return fmt.Errorf("Err uploading file to blob: %s", err)
+		return fmt.Errorf("Err uploading file to blob: %w", err)
 	}
 	return nil
 }
@@ -568,7 +568,7 @@ func SendMessageToEventHub(client *eventhub.Hub) error {
 
 	err := client.Send(ctx, eventhub.NewEventFromString("1"))
 	if err != nil {
-		return fmt.Errorf("Error sending msg: %s", err)
+		return fmt.Errorf("Error sending msg: %w", err)
 	}
 	return nil
 }
@@ -582,7 +582,7 @@ func DeleteContainerInStorage(ctx context.Context, endpoint *url.URL, credential
 		ModifiedAccessConditions: azblob.ModifiedAccessConditions{},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to delete container in blob storage: %s", err)
+		return fmt.Errorf("failed to delete container in blob storage: %w", err)
 	}
 	return nil
 }

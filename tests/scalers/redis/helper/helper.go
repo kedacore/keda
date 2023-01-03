@@ -54,7 +54,7 @@ spec:
     spec:
       containers:
       - name: master
-        image: redis:6.0.6
+        image: redis:7.0
         command: ["redis-server", "--requirepass", {{.RedisPassword}}]
         ports:
         - containerPort: 6379`
@@ -321,7 +321,7 @@ spec:
         nodeAffinity:
       containers:
         - name: redis-cluster
-          image: docker.io/bitnami/redis-cluster:6.2.7-debian-10-r0
+          image: docker.io/bitnami/redis-cluster:7.0
           imagePullPolicy: "IfNotPresent"
           securityContext:
             runAsNonRoot: true

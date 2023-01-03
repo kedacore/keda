@@ -2,8 +2,8 @@ package scalers
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -36,25 +36,25 @@ var testCases = []parseElasticsearchMetadataTestData{
 		name:          "must provide either endpoint addresses or cloud config",
 		metadata:      map[string]string{},
 		authParams:    map[string]string{},
-		expectedError: errors.New("must provide either endpoint addresses or cloud config"),
+		expectedError: ErrElasticsearchMissingAddressesOrCloudConfig,
 	},
 	{
 		name:          "no apiKey given",
 		metadata:      map[string]string{"cloudID": "my-cluster:xxxxxxxxxxx"},
 		authParams:    map[string]string{},
-		expectedError: errors.New("no apiKey given"),
+		expectedError: ErrScalerConfigMissingField,
 	},
 	{
 		name:          "can't provide endpoint addresses and cloud config at the same time",
 		metadata:      map[string]string{"addresses": "http://localhost:9200", "cloudID": "my-cluster:xxxxxxxxxxx"},
 		authParams:    map[string]string{"username": "admin", "apiKey": "xxxxxxxxx"},
-		expectedError: errors.New("can't provide endpoint addresses and cloud config at the same time"),
+		expectedError: ErrElasticsearchConfigConflict,
 	},
 	{
 		name:          "no index given",
 		metadata:      map[string]string{"addresses": "http://localhost:9200"},
 		authParams:    map[string]string{"username": "admin"},
-		expectedError: errors.New("no index given"),
+		expectedError: ErrScalerConfigMissingField,
 	},
 	{
 		name: "no searchTemplateName given",
@@ -63,7 +63,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"index":     "index1",
 		},
 		authParams:    map[string]string{"username": "admin"},
-		expectedError: errors.New("no searchTemplateName given"),
+		expectedError: ErrScalerConfigMissingField,
 	},
 	{
 		name: "no valueLocation given",
@@ -73,7 +73,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"searchTemplateName": "searchTemplateName",
 		},
 		authParams:    map[string]string{"username": "admin"},
-		expectedError: errors.New("no valueLocation given"),
+		expectedError: ErrScalerConfigMissingField,
 	},
 	{
 		name: "no targetValue given",
@@ -84,7 +84,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"valueLocation":      "toto",
 		},
 		authParams:    map[string]string{"username": "admin"},
-		expectedError: errors.New("no targetValue given"),
+		expectedError: ErrScalerConfigMissingField,
 	},
 	{
 		name: "invalid targetValue",
@@ -96,7 +96,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"targetValue":        "AA",
 		},
 		authParams:    map[string]string{"username": "admin"},
-		expectedError: errors.New("targetValue parsing error strconv.ParseFloat: parsing \"AA\": invalid syntax"),
+		expectedError: strconv.ErrSyntax,
 	},
 	{
 		name: "invalid activationTargetValue",
@@ -109,7 +109,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"activationTargetValue": "AA",
 		},
 		authParams:    map[string]string{"username": "admin"},
-		expectedError: errors.New("activationTargetValue parsing error strconv.ParseFloat: parsing \"AA\": invalid syntax"),
+		expectedError: strconv.ErrSyntax,
 	},
 	{
 		name: "all fields ok",
@@ -301,7 +301,7 @@ func TestParseElasticsearchMetadata(t *testing.T) {
 				ResolvedEnv:     tc.resolvedEnv,
 			})
 			if tc.expectedError != nil {
-				assert.Contains(t, err.Error(), tc.expectedError.Error())
+				assert.ErrorIs(t, err, tc.expectedError)
 			} else {
 				assert.NoError(t, err)
 				fmt.Println(tc.name)
@@ -460,7 +460,7 @@ func TestElasticsearchGetMetricSpecForScaling(t *testing.T) {
 			ScalerIndex:     testData.scalerIndex,
 		})
 		if testData.metadataTestData.expectedError != nil {
-			assert.Equal(t, err, testData.metadataTestData.expectedError)
+			assert.ErrorIs(t, err, testData.metadataTestData.expectedError)
 			continue
 		}
 		if err != nil {

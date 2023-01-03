@@ -187,7 +187,7 @@ func (h *scaleHandler) GetScalersCache(ctx context.Context, scalableObject inter
 	key := withTriggers.GenerateIdentifier()
 	generation := withTriggers.Generation
 
-	return h.performGetScalersCache(ctx, key, scalableObject, generation, "", "", "")
+	return h.performGetScalersCache(ctx, key, scalableObject, &generation, "", "", "")
 }
 
 // getScalersCacheForScaledObject returns cache for input ScaledObject, referenced by name and namespace
@@ -195,16 +195,16 @@ func (h *scaleHandler) GetScalersCache(ctx context.Context, scalableObject inter
 func (h *scaleHandler) getScalersCacheForScaledObject(ctx context.Context, scaledObjectName, scaledObjectNamespace string) (*cache.ScalersCache, error) {
 	key := kedav1alpha1.GenerateIdentifier("ScaledObject", scaledObjectNamespace, scaledObjectName)
 
-	return h.performGetScalersCache(ctx, key, nil, -1, "ScaledObject", scaledObjectNamespace, scaledObjectName)
+	return h.performGetScalersCache(ctx, key, nil, nil, "ScaledObject", scaledObjectNamespace, scaledObjectName)
 }
 
 // performGetScalersCache returns cache for input scalableObject, it is common code used by GetScalersCache() and getScalersCacheForScaledObject() methods
-func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, scalableObject interface{}, scalableObjectGeneration int64, scalableObjectKind, scalableObjectNamespace, scalableObjectName string) (*cache.ScalersCache, error) {
+func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, scalableObject interface{}, scalableObjectGeneration *int64, scalableObjectKind, scalableObjectNamespace, scalableObjectName string) (*cache.ScalersCache, error) {
 	h.scalerCachesLock.RLock()
 	if cache, ok := h.scalerCaches[key]; ok {
 		// generation was specified -> let's include it in the check as well
-		if scalableObjectGeneration != -1 {
-			if scalableObject != nil && cache.ScaledObject != nil && cache.ScaledObject.Generation == scalableObjectGeneration {
+		if scalableObjectGeneration != nil {
+			if cache.ScalableObjectGeneration == *scalableObjectGeneration {
 				h.scalerCachesLock.RUnlock()
 				return cache, nil
 			}
@@ -219,10 +219,13 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 	defer h.scalerCachesLock.Unlock()
 	if cache, ok := h.scalerCaches[key]; ok {
 		// generation was specified -> let's include it in the check as well
-		if scalableObjectGeneration != -1 {
-			if scalableObject != nil && cache.ScaledObject != nil && cache.ScaledObject.Generation == scalableObjectGeneration {
+		if scalableObjectGeneration != nil {
+			if cache.ScalableObjectGeneration == *scalableObjectGeneration {
 				return cache, nil
 			}
+			// object was found in cache, but the generation is not correct,
+			// let's close scalers in the cache and proceed further to recreate the cache
+			cache.Close(ctx)
 		} else {
 			return cache, nil
 		}
@@ -269,8 +272,9 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 	}
 
 	newCache := &cache.ScalersCache{
-		Scalers:  scalers,
-		Recorder: h.recorder,
+		Scalers:                  scalers,
+		ScalableObjectGeneration: withTriggers.Generation,
+		Recorder:                 h.recorder,
 	}
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
@@ -389,7 +393,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	exportedPromMetrics.ScaledObjectErr = (err != nil)
 
 	if err != nil {
-		return nil, &exportedPromMetrics, fmt.Errorf("error when getting scalers %s", err)
+		return nil, &exportedPromMetrics, fmt.Errorf("error when getting scalers %w", err)
 	}
 
 	var scaledObject *kedav1alpha1.ScaledObject
@@ -506,7 +510,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 			if podTemplateSpec != nil {
 				resolvedEnv, err = resolver.ResolveContainerEnv(ctx, h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace, h.secretsLister)
 				if err != nil {
-					return nil, nil, fmt.Errorf("error resolving secrets for ScaleTarget: %s", err)
+					return nil, nil, fmt.Errorf("error resolving secrets for ScaleTarget: %w", err)
 				}
 			}
 			config := &scalers.ScalerConfig{
@@ -561,6 +565,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	switch triggerType {
 	case "activemq":
 		return scalers.NewActiveMQScaler(config)
+	case "arangodb":
+		return scalers.NewArangoDBScaler(config)
 	case "artemis-queue":
 		return scalers.NewArtemisQueueScaler(config)
 	case "aws-cloudwatch":
