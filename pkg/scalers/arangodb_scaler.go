@@ -133,7 +133,7 @@ func parseArangoDBMetadata(config *ScalerConfig) (*arangoDBMetadata, error) {
 	meta := arangoDBMetadata{}
 
 	// parse metaData from ScaledJob config
-	endpoints, err := GetFromAuthOrMeta(config, "endpoints")
+	endpoints, err := GetFromAuthOrMeta(config, "endpoints", false)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +170,7 @@ func parseArangoDBMetadata(config *ScalerConfig) (*arangoDBMetadata, error) {
 		meta.activationQueryValue = activationQueryValue
 	}
 
-	dbName, err := GetFromAuthOrMeta(config, "dbName")
+	dbName, err := GetFromAuthOrMeta(config, "dbName", false)
 	if err != nil {
 		return nil, err
 	}
