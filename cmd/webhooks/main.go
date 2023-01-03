@@ -55,8 +55,8 @@ var webhooks = []rotator.WebhookInfo{
 var (
 	scheme         = apimachineryruntime.NewScheme()
 	setupLog       = ctrl.Log.WithName("setup")
-	secretName     = "kedaorg-webhooks-certificates" // This should be the same for the secret volume
-	serviceName    = "keda-webhooks"
+	secretName     = "kedaorg-admission-webhooks-certs" // This should be the same for the secret volume
+	serviceName    = "keda-admission-webhooks"
 	caName         = "kedaorg-ca"
 	caOrganization = "kedaorg"
 	// DNSName is <service name>.<namespace>.svc
@@ -108,7 +108,7 @@ func main() {
 		CertDir:                webhookCertDir,
 	})
 	if err != nil {
-		setupLog.Error(err, "unable to start webhooks")
+		setupLog.Error(err, "unable to start admission webhooks")
 		os.Exit(1)
 	}
 
@@ -145,7 +145,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	setupLog.Info("Starting webhooks")
+	setupLog.Info("Starting admission webhooks")
 	setupLog.Info(fmt.Sprintf("KEDA Version: %s", version.Version))
 	setupLog.Info(fmt.Sprintf("Git Commit: %s", version.GitCommit))
 	setupLog.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
@@ -164,7 +164,7 @@ func main() {
 	}
 
 	if err := mgr.Start(ctx); err != nil {
-		setupLog.Error(err, "problem running webhooks")
+		setupLog.Error(err, "problem running admission webhooks")
 		os.Exit(1)
 	}
 }
@@ -195,10 +195,11 @@ func ensureSecret(ctx context.Context, mgr manager.Manager) {
 				Name:      secretName,
 				Namespace: kedaNamespace,
 				Labels: map[string]string{
-					"app":                         "keda-webhooks",
-					"app.kubernetes.io/name":      "keda-webhooks",
-					"app.kubernetes.io/component": "webhooks",
-					"app.kubernetes.io/part-of":   "keda-operator",
+					"app":                         "keda-admission-webhooks",
+					"app.kubernetes.io/name":      "keda-admission-webhooks",
+					"app.kubernetes.io/component": "admission-webhooks",
+					"app.kubernetes.io/part-of":   "keda",
+					"TODO":                        "keda",
 				},
 			},
 		}

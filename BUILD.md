@@ -223,7 +223,7 @@ You can query list metrics executing `curl --insecure https://localhost:6443/api
 
 If you prefer to use an authenticated user, you can use a user or service account with access over external metrics API adding their token as authorization header in `curl`, ie: `curl -H "Authorization:Bearer TOKEN" --insecure https://localhost:6443/apis/external.metrics.k8s.io/v1beta1/`
 
-### Webhooks
+### Admission Webhooks
 
 Follow these instructions if you want to debug the KEDA webhook using VS Code.
 
@@ -253,14 +253,14 @@ Follow these instructions if you want to debug the KEDA webhook using VS Code.
    Refer to [this](https://code.visualstudio.com/docs/editor/debugging) for more information about debugging with VS Code.
 2. Expose your local instance to internet. If you can't expose it directly, you can use something like [localtunnel](https://theboroer.github.io/localtunnel-www/) using the command `lt --port 9443 --local-https --allow-invalid-cert` after installing the tool.
 
-3. Update the `validation_webhooks.yaml` in `config/webhooks`, replacing the section (but not commiting this change)
+3. Update the `admissing_webhooks.yaml` in `config/webhooks`, replacing the section (but not commiting this change)
    ```yaml
    webhooks:
    - admissionReviewVersions:
      - v1
      clientConfig:
        service:
-         name: keda-webhooks
+         name: keda-admission-webhooks
          namespace: keda
          path: /validate-keda-sh-v1alpha1-scaledobject
    ```
@@ -294,7 +294,7 @@ To solve this and be able to work with devcontainers and a local cluster, you sh
 You can change default log levels for both KEDA Operator and Metrics Server. KEDA Operator uses
  [Operator SDK logging](https://sdk.operatorframework.io/docs/building-operators/golang/references/logging/) mechanism.
 
-### KEDA Operator and webhooks logging
+### KEDA Operator and Admission webhooks logging
 
 To change the logging level, find `--zap-log-level=` argument in Operator Deployment section in `config/manager/manager.yaml` file or in Webhooks Deployment section in `config/webhooks/webhooks.yaml` file, modify its value and redeploy.
 

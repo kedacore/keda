@@ -31,7 +31,7 @@ var (
 	cronScaledJobName         = fmt.Sprintf("%s-cron-sj", testName)
 	clientName                = fmt.Sprintf("%s-client", testName)
 	kedaOperatorPrometheusURL = "http://keda-operator.keda.svc.cluster.local:8080/metrics"
-	kedaWebhookPrometheusURL  = "http://keda-webhooks.keda.svc.cluster.local:8080/metrics"
+	kedaWebhookPrometheusURL  = "http://keda-admission-webhooks.keda.svc.cluster.local:8080/metrics"
 	namespaceString           = "namespace"
 )
 

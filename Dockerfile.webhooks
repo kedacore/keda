@@ -30,8 +30,8 @@ RUN VERSION=${BUILD_VERSION} GIT_COMMIT=${GIT_COMMIT} GIT_VERSION=${GIT_VERSION}
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /
-COPY --from=builder /workspace/bin/keda-webhooks .
+COPY --from=builder /workspace/bin/keda-admission-webhooks .
 # 65532 is numeric for nonroot
 USER 65532:65532
 
-ENTRYPOINT ["/keda-webhooks", "--zap-log-level=info", "--zap-encoder=console"]
+ENTRYPOINT ["/keda-admission-webhooks", "--zap-log-level=info", "--zap-encoder=console"]

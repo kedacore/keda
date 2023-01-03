@@ -2,34 +2,34 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: keda-webhooks
+  name: keda-admission
   namespace: keda
   labels:
-    app: keda-webhooks
-    app.kubernetes.io/name: keda-webhooks
+    app: keda-admission-webhooks
+    app.kubernetes.io/name: admission-webhooks
     app.kubernetes.io/version: latest
-    app.kubernetes.io/component: webhooks
-    app.kubernetes.io/part-of: keda-operator
+    app.kubernetes.io/component: admission-webhooks
+    app.kubernetes.io/part-of: keda
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: keda-webhooks
+      app: keda-admission-webhooks
   template:
     metadata:
       labels:
-        app: keda-webhooks
-        name: keda-webhooks
-      name: keda-webhooks
+        app: keda-admission-webhooks
+        name: keda-admission-webhooks
+      name: keda-admission-webhooks
     spec:
       securityContext:
         runAsNonRoot: true
       serviceAccountName: keda-operator
       containers:
-        - name: keda-webhooks
-          image: ghcr.io/kedacore/keda-webhooks:latest
+        - name: keda-admission-webhooks
+          image: ghcr.io/kedacore/keda-admission-webhooks:latest
           command:
-            - /keda-webhooks
+            - /keda-admission-webhooks
           args:
             - --zap-log-level=info
             - --zap-encoder=console
@@ -79,14 +79,15 @@ spec:
               type: RuntimeDefault
           volumeMounts:
           - mountPath: /certs
-            name: cert-controller
+            name: certificates
             readOnly: true
       terminationGracePeriodSeconds: 10
       nodeSelector:
         kubernetes.io/os: linux
       volumes:
-      - name: cert-controller
+      - name: certificates
         secret:
           defaultMode: 420
-          secretName: kedaorg-webhooks-certificates
+          secretName: kedaorg-admission-webhooks-certs
           optional: true
+          readOnly: true

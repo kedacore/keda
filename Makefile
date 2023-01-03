@@ -20,7 +20,7 @@ IMAGE_REPO     ?= kedacore
 
 IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda$(SUFFIX):$(VERSION)
 IMAGE_ADAPTER    = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-metrics-apiserver$(SUFFIX):$(VERSION)
-IMAGE_WEBHOOKS   = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-webhooks$(SUFFIX):$(VERSION)
+IMAGE_WEBHOOKS   = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-admission-webhooks$(SUFFIX):$(VERSION)
 
 BUILD_TOOLS_GO_VERSION = 1.18.8
 IMAGE_BUILD_TOOLS = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/build-tools:$(BUILD_TOOLS_GO_VERSION)
@@ -212,7 +212,7 @@ release: manifests kustomize set-version ## Produce new KEDA release in keda-$(V
 	cd config/metrics-server && \
     $(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-metrics-apiserver=${IMAGE_ADAPTER}
 	cd config/webhooks && \
-    $(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-webhooks=${IMAGE_WEBHOOKS}
+    $(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-admission-webhooks=${IMAGE_WEBHOOKS}
 	# Need this workaround to mitigate a problem with inserting labels into selectors,
 	# until this issue is solved: https://github.com/kubernetes-sigs/kustomize/issues/1009
 	@sed -i".out" -e 's@version:[ ].*@version: $(VERSION)@g' config/default/kustomize-config/metadataLabelTransformer.yaml
@@ -261,7 +261,7 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 	fi
 
 	cd config/webhooks && \
-	$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-webhooks=${IMAGE_WEBHOOKS}
+	$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-admission-webhooks=${IMAGE_WEBHOOKS}
 
 	# Need this workaround to mitigate a problem with inserting labels into selectors,
 	# until this issue is solved: https://github.com/kubernetes-sigs/kustomize/issues/1009
