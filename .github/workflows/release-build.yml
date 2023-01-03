@@ -102,7 +102,7 @@ jobs:
           asset_path: keda-${{ steps.get_version.outputs.VERSION }}.yaml
           asset_name: keda-${{ steps.get_version.outputs.VERSION }}.yaml
           asset_content_type: application/x-yaml
-      
+
       # Upload core deployment YAML file to GitHub release
       - name: Upload Deployment YAML file
         id: upload-deployment-yaml
