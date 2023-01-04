@@ -61,6 +61,7 @@ Here is an overview of all new **experimental** features:
 ### Fixes
 
 - **CPU Memory Scaler** Store forgotten logger ([#4022](https://github.com/kedacore/keda/issues/4022))
+- **Azure Queue Scaler** Fix azure queue length ([#4002](https://github.com/kedacore/keda/issues/4002))
 
 ### Deprecations
 
