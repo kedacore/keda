@@ -40,7 +40,7 @@ const (
 	KEDANamespace                  = "keda"
 	KEDAOperator                   = "keda-operator"
 	KEDAMetricsAPIServer           = "keda-metrics-apiserver"
-	KEDAAdmissionWebhooks          = "keda-admission-webhooks"
+	KEDAAdmissionWebhooks          = "keda-admission"
 
 	DefaultHTTPTimeOut = 3000
 

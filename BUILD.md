@@ -4,17 +4,22 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [Build & Deploy KEDA](#build--deploy-keda)
-  - [Building](#building)
-    - [Quick start with Visual Studio Code Remote - Containers](#quick-start-with-visual-studio-code-remote---containers)
-    - [Locally directly](#locally-directly)
-  - [Deploying](#deploying)
-    - [Custom KEDA locally outside cluster](#custom-keda-locally-outside-cluster)
-    - [Custom KEDA as an image](#custom-keda-as-an-image)
-  - [Miscellaneous](#miscellaneous)
-    - [Setting log levels](#setting-log-levels)
-    - [KEDA Operator logging](#keda-operator-logging)
-    - [Metrics Server logging](#metrics-server-logging)
+- [Building](#building)
+  - [Quick start with Visual Studio Code Remote - Containers](#quick-start-with-visual-studio-code-remote---containers)
+  - [Locally directly](#locally-directly)
+- [Deploying](#deploying)
+  - [Custom KEDA locally outside cluster](#custom-keda-locally-outside-cluster)
+  - [Custom KEDA as an image](#custom-keda-as-an-image)
+- [Debugging with VS Code](#debugging-with-vs-code)
+  - [Operator](#operator)
+  - [Metrics server](#metrics-server)
+  - [Admission Webhooks](#admission-webhooks)
+- [Miscellaneous](#miscellaneous)
+  - [How to use devcontainers and a local Kubernetes cluster](#how-to-use-devcontainers-and-a-local-kubernetes-cluster)
+  - [Setting log levels](#setting-log-levels)
+  - [KEDA Operator and Admission webhooks logging](#keda-operator-and-admission-webhooks-logging)
+  - [Metrics Server logging](#metrics-server-logging)
+  - [CPU/Memory Profiling](#cpumemory-profiling)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 

@@ -114,7 +114,7 @@ func verifyHpas(incomingSo *ScaledObject, action string) error {
 			if !owned {
 				err = fmt.Errorf("the workload '%s' of type '%s/%s' is already managed by the hpa '%s'", incomingSo.Spec.ScaleTargetRef.Name, incomingSo.Spec.ScaleTargetRef.APIVersion, incomingSo.Spec.ScaleTargetRef.Kind, hpa.Name)
 				scaledobjectlog.Error(err, "validation error")
-				prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "hpa")
+				prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-hpa")
 				return err
 			}
 		}
@@ -155,7 +155,7 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string) error {
 		if soGckr.GVKString() == incomingSoGckr.GVKString() {
 			err = fmt.Errorf("the workload '%s' of type '%s/%s' is already managed by the ScaledObject '%s'", so.Spec.ScaleTargetRef.Name, so.Spec.ScaleTargetRef.APIVersion, so.Spec.ScaleTargetRef.Kind, so.Name)
 			scaledobjectlog.Error(err, "validation error")
-			prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "scaled_object")
+			prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-scaled-object")
 			return err
 		}
 	}

@@ -51,6 +51,10 @@ It is mandatory to provide end-to-end (e2e) tests for new scaler. For more infor
 check the [test documentation](./tests/README.md). Those tests are run nightly on our
 [CI system](https://github.com/kedacore/keda/actions?query=workflow%3A%22nightly+e2e+test%22).
 
+## Contributing webhooks
+
+Another easy way to contribute is improving the validations to avoid misconfigurations. New rules can be added in the proper type's webhooks file (`apis/keda/v1alpha1/*_webhook.go`).
+
 ## Changelog
 
 Every change should be added to our changelog under `Unreleased` which is located in `CHANGELOG.md`. This helps us keep track of all changes in a given release.
