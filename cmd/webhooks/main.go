@@ -55,7 +55,6 @@ var webhooks = []rotator.WebhookInfo{
 var (
 	scheme         = apimachineryruntime.NewScheme()
 	setupLog       = ctrl.Log.WithName("setup")
-	secretName     = "kedaorg-admission-webhooks-certs" // This should be the same for the secret volume
 	serviceName    = "keda-admission-webhooks"
 	caName         = "kedaorg-ca"
 	caOrganization = "kedaorg"
@@ -76,14 +75,16 @@ func main() {
 	var webhooksClientRequestQPS float32
 	var webhooksClientRequestBurst int
 	var webhookCertDir string
-	var disableCertRotation bool
+	var webhookSecretName string
+	var enableCertRotation bool
 	var tlsMinVersion string
 	pflag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	pflag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	pflag.Float32Var(&webhooksClientRequestQPS, "kube-api-qps", 20.0, "Set the QPS rate for throttling requests sent to the apiserver")
 	pflag.IntVar(&webhooksClientRequestBurst, "kube-api-burst", 30, "Set the burst for throttling requests sent to the apiserver")
 	pflag.StringVar(&webhookCertDir, "webhooks-cert-dir", "/certs", "Webhook certificates dir to use. Defaults to /certs")
-	pflag.BoolVar(&disableCertRotation, "disable-cert-rotation", false, "disable automatic generation and rotation of webhook TLS certificates/keys")
+	pflag.StringVar(&webhookSecretName, "webhooks-cert-secret-name", "kedaorg-admission-webhooks-certs", "Webhook certificates secret name. Defaults to kedaorg-admission-webhooks-certs")
+	pflag.BoolVar(&enableCertRotation, "enable-cert-rotation", false, "enable automatic generation and rotation of webhook TLS certificates/keys")
 	pflag.StringVar(&tlsMinVersion, "tls-min-version", "1.3", "Minimum TLS version")
 
 	opts := zap.Options{}
@@ -114,13 +115,13 @@ func main() {
 
 	// Make sure certs are generated and valid if cert rotation is enabled.
 	setupFinished := make(chan struct{})
-	if !disableCertRotation {
-		ensureSecret(ctx, mgr)
+	if enableCertRotation {
+		ensureSecret(ctx, mgr, webhookSecretName)
 		setupLog.V(1).Info("setting up cert rotation")
 		if err := rotator.AddRotator(mgr, &rotator.CertRotator{
 			SecretKey: types.NamespacedName{
 				Namespace: kedautil.GetPodNamespace(),
-				Name:      secretName,
+				Name:      webhookSecretName,
 			},
 			CertDir:                webhookCertDir,
 			CAName:                 caName,
@@ -169,7 +170,7 @@ func main() {
 	}
 }
 
-func ensureSecret(ctx context.Context, mgr manager.Manager) {
+func ensureSecret(ctx context.Context, mgr manager.Manager, secretName string) {
 	secrets := &corev1.SecretList{}
 	kedaNamespace := kedautil.GetPodNamespace()
 	opt := &client.ListOptions{
@@ -199,7 +200,6 @@ func ensureSecret(ctx context.Context, mgr manager.Manager) {
 					"app.kubernetes.io/name":      "keda-admission-webhooks",
 					"app.kubernetes.io/component": "admission-webhooks",
 					"app.kubernetes.io/part-of":   "keda",
-					"TODO":                        "keda",
 				},
 			},
 		}
