@@ -13,6 +13,7 @@ There are many areas we can use contributions - ranging from code, documentation
 - [Making Breaking Changes](#making-breaking-changes)
 - [Contributing Scalers](#contributing-scalers)
   - [Testing](#testing)
+- [Contributing webhooks](#contributing-webhooks)
 - [Changelog](#changelog)
 - [Including Documentation Changes](#including-documentation-changes)
 - [Creating and building a local environment](#creating-and-building-a-local-environment)
