@@ -374,7 +374,7 @@ func createNamespace(name string) *v1.Namespace {
 	}
 }
 
-func createScaledObject(name, namespace, targetAPI, targetKind string, hasCpuAndMemory bool) *ScaledObject {
+func createScaledObject(name, namespace, targetAPI, targetKind string, hasCPUAndMemory bool) *ScaledObject {
 	triggers := []ScaleTriggers{
 		{
 			Type: "cron",
@@ -387,7 +387,7 @@ func createScaledObject(name, namespace, targetAPI, targetKind string, hasCpuAnd
 		},
 	}
 
-	if hasCpuAndMemory {
+	if hasCPUAndMemory {
 		cpuTrigger := ScaleTriggers{
 			Type: "cpu",
 			Metadata: map[string]string{
@@ -426,7 +426,6 @@ func createScaledObject(name, namespace, targetAPI, targetKind string, hasCpuAnd
 			Triggers:         triggers,
 		},
 	}
-
 }
 
 func createHpa(name, namespace, targetAPI, targetKind string, owner *ScaledObject) *v2.HorizontalPodAutoscaler {
@@ -467,9 +466,9 @@ func createHpa(name, namespace, targetAPI, targetKind string, owner *ScaledObjec
 	return hpa
 }
 
-func createDeployment(namespace string, hasCpu, hasMemory bool) *appsv1.Deployment {
+func createDeployment(namespace string, hasCPU, hasMemory bool) *appsv1.Deployment {
 	cpu := 0
-	if hasCpu {
+	if hasCPU {
 		cpu = 100
 	}
 	memory := 0
@@ -512,9 +511,9 @@ func createDeployment(namespace string, hasCpu, hasMemory bool) *appsv1.Deployme
 	}
 }
 
-func createStatefulSet(namespace string, hasCpu, hasMemory bool) *appsv1.StatefulSet {
+func createStatefulSet(namespace string, hasCPU, hasMemory bool) *appsv1.StatefulSet {
 	cpu := 0
-	if hasCpu {
+	if hasCPU {
 		cpu = 100
 	}
 	memory := 0

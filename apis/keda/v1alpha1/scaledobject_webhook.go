@@ -188,23 +188,27 @@ func verifyCpuMemoryScalers(incomingSo *ScaledObject, action string) error {
 					Namespace: incomingSo.Namespace,
 					Name:      incomingSo.Spec.ScaleTargetRef.Name,
 				}
-				if incomingSo.Spec.ScaleTargetRef.APIVersion == "apps/v1" &&
-					incomingSo.Spec.ScaleTargetRef.Kind == "Deployment" {
+
+				if incomingSo.Spec.ScaleTargetRef.APIVersion != "apps/v1" {
+					return nil
+				}
+
+				switch incomingSo.Spec.ScaleTargetRef.APIVersion {
+				case "Deployment":
 					deployment := &appsv1.Deployment{}
 					err := kc.Get(context.Background(), key, deployment, &client.GetOptions{})
 					if err != nil {
 						return err
 					}
 					podSpec = &deployment.Spec.Template.Spec
-				} else if incomingSo.Spec.ScaleTargetRef.APIVersion == "apps/v1" &&
-					incomingSo.Spec.ScaleTargetRef.Kind == "StatefulSet" {
+				case "StatefulSet":
 					statefulset := &appsv1.StatefulSet{}
 					err := kc.Get(context.Background(), key, statefulset, &client.GetOptions{})
 					if err != nil {
 						return err
 					}
 					podSpec = &statefulset.Spec.Template.Spec
-				} else {
+				default:
 					return nil
 				}
 			}
