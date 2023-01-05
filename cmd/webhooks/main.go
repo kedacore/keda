@@ -47,7 +47,7 @@ import (
 
 var webhooks = []rotator.WebhookInfo{
 	{
-		Name: "keda-validating-webhooks",
+		Name: "keda-admission",
 		Type: rotator.Validating,
 	},
 }

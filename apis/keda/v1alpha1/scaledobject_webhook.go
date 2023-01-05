@@ -21,9 +21,12 @@ import (
 	"encoding/json"
 	"fmt"
 
+	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -64,13 +67,27 @@ func (so *ScaledObject) ValidateUpdate(old runtime.Object) error {
 	return validateWorkload(so, "update")
 }
 
+func (so *ScaledObject) ValidateDelete() error {
+	return nil
+}
+
 func validateWorkload(so *ScaledObject, action string) error {
 	prommetrics.RecordScaledObjectValidatingTotal(so.Namespace, action)
-	err := verifyScaledObjects(so, action)
+	err := verifyCpuMemoryScalers(so, action)
 	if err != nil {
 		return err
 	}
-	return verifyHpas(so, action)
+	err = verifyScaledObjects(so, action)
+	if err != nil {
+		return err
+	}
+	err = verifyHpas(so, action)
+	if err != nil {
+		return err
+	}
+
+	scaledobjectlog.V(1).Info(fmt.Sprintf("scaledobject %s is valid", so.Name))
+	return nil
 }
 
 func verifyHpas(incomingSo *ScaledObject, action string) error {
@@ -112,14 +129,13 @@ func verifyHpas(incomingSo *ScaledObject, action string) error {
 			}
 
 			if !owned {
-				err = fmt.Errorf("the workload '%s' of type '%s/%s' is already managed by the hpa '%s'", incomingSo.Spec.ScaleTargetRef.Name, incomingSo.Spec.ScaleTargetRef.APIVersion, incomingSo.Spec.ScaleTargetRef.Kind, hpa.Name)
+				err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the hpa '%s'", incomingSo.Spec.ScaleTargetRef.Name, incomingSoGckr.GVKString(), hpa.Name)
 				scaledobjectlog.Error(err, "validation error")
 				prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-hpa")
 				return err
 			}
 		}
 	}
-	scaledobjectlog.V(1).Info(fmt.Sprintf("scaledobject %s is valid", incomingSo.Name))
 	return nil
 }
 
@@ -153,17 +169,71 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string) error {
 		}
 
 		if soGckr.GVKString() == incomingSoGckr.GVKString() {
-			err = fmt.Errorf("the workload '%s' of type '%s/%s' is already managed by the ScaledObject '%s'", so.Spec.ScaleTargetRef.Name, so.Spec.ScaleTargetRef.APIVersion, so.Spec.ScaleTargetRef.Kind, so.Name)
+			err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the ScaledObject '%s'", so.Spec.ScaleTargetRef.Name, incomingSoGckr.GVKString(), so.Name)
 			scaledobjectlog.Error(err, "validation error")
 			prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-scaled-object")
 			return err
 		}
 	}
 
-	scaledobjectlog.V(1).Info(fmt.Sprintf("scaledobject %s is valid", incomingSo.Name))
 	return nil
 }
 
-func (so *ScaledObject) ValidateDelete() error {
+func verifyCpuMemoryScalers(incomingSo *ScaledObject, action string) error {
+	var podSpec *corev1.PodSpec
+	for _, trigger := range incomingSo.Spec.Triggers {
+		if trigger.Type == "cpu" || trigger.Type == "memory" {
+			if podSpec == nil {
+				key := types.NamespacedName{
+					Namespace: incomingSo.Namespace,
+					Name:      incomingSo.Spec.ScaleTargetRef.Name,
+				}
+				if incomingSo.Spec.ScaleTargetRef.APIVersion == "apps/v1" &&
+					incomingSo.Spec.ScaleTargetRef.Kind == "Deployment" {
+					deployment := &appsv1.Deployment{}
+					err := kc.Get(context.Background(), key, deployment, &client.GetOptions{})
+					if err != nil {
+						return err
+					}
+					podSpec = &deployment.Spec.Template.Spec
+				} else if incomingSo.Spec.ScaleTargetRef.APIVersion == "apps/v1" &&
+					incomingSo.Spec.ScaleTargetRef.Kind == "StatefulSet" {
+					statefulset := &appsv1.StatefulSet{}
+					err := kc.Get(context.Background(), key, statefulset, &client.GetOptions{})
+					if err != nil {
+						return err
+					}
+					podSpec = &statefulset.Spec.Template.Spec
+				} else {
+					return nil
+				}
+			}
+			conainerName := trigger.Metadata["containerName"]
+			for _, container := range podSpec.Containers {
+				if conainerName != "" && container.Name != conainerName {
+					continue
+				}
+				if trigger.Type == "cpu" {
+					if container.Resources.Requests == nil ||
+						container.Resources.Requests.Cpu() == nil ||
+						container.Resources.Requests.Cpu().AsApproximateFloat64() == 0 {
+						err := fmt.Errorf("the scaledobject has a cpu trigger but the container %s doesn't have the cpu request defined", container.Name)
+						scaledobjectlog.Error(err, "validation error")
+						prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
+						return err
+					}
+				} else if trigger.Type == "memory" {
+					if container.Resources.Requests == nil ||
+						container.Resources.Requests.Memory() == nil ||
+						container.Resources.Requests.Memory().AsApproximateFloat64() == 0 {
+						err := fmt.Errorf("the scaledobject has a memory trigger but the container %s doesn't have the memory request defined", container.Name)
+						scaledobjectlog.Error(err, "validation error")
+						prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
+						return err
+					}
+				}
+			}
+		}
+	}
 	return nil
 }

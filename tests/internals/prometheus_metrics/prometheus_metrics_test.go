@@ -483,7 +483,7 @@ func checkWebhookValues(t *testing.T, families map[string]*promModel.MetricFamil
 				continue
 			}
 		}
-		metricValue = *metric.Counter.Value
+		metricValue += *metric.Counter.Value
 	}
 	assert.GreaterOrEqual(t, metricValue, 1.0, "keda_webhook_scaled_object_validation_errors has to be greater than 0")
 
@@ -502,7 +502,7 @@ func checkWebhookValues(t *testing.T, families map[string]*promModel.MetricFamil
 				continue
 			}
 		}
-		metricValue = *metric.Counter.Value
+		metricValue += *metric.Counter.Value
 	}
 	assert.GreaterOrEqual(t, metricValue, 1.0, "keda_webhook_scaled_object_validation_total has to be greater than 0")
 }
