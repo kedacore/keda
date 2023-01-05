@@ -73,7 +73,7 @@ func (so *ScaledObject) ValidateDelete() error {
 
 func validateWorkload(so *ScaledObject, action string) error {
 	prommetrics.RecordScaledObjectValidatingTotal(so.Namespace, action)
-	err := verifyCpuMemoryScalers(so, action)
+	err := verifyCPUMemoryScalers(so, action)
 	if err != nil {
 		return err
 	}
@@ -179,7 +179,7 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string) error {
 	return nil
 }
 
-func verifyCpuMemoryScalers(incomingSo *ScaledObject, action string) error {
+func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
 	var podSpec *corev1.PodSpec
 	for _, trigger := range incomingSo.Spec.Triggers {
 		if trigger.Type == "cpu" || trigger.Type == "memory" {
@@ -188,20 +188,21 @@ func verifyCpuMemoryScalers(incomingSo *ScaledObject, action string) error {
 					Namespace: incomingSo.Namespace,
 					Name:      incomingSo.Spec.ScaleTargetRef.Name,
 				}
-
-				if incomingSo.Spec.ScaleTargetRef.APIVersion != "apps/v1" {
-					return nil
+				incomingSoGckr, err := ParseGVKR(restMapper, incomingSo.Spec.ScaleTargetRef.APIVersion, incomingSo.Spec.ScaleTargetRef.Kind)
+				if err != nil {
+					scaledobjectlog.Error(err, "Failed to parse Group, Version, Kind, Resource from incoming ScaledObject", "apiVersion", incomingSo.Spec.ScaleTargetRef.APIVersion, "kind", incomingSo.Spec.ScaleTargetRef.Kind)
+					return err
 				}
 
-				switch incomingSo.Spec.ScaleTargetRef.APIVersion {
-				case "Deployment":
+				switch incomingSoGckr.GVKString() {
+				case "apps/v1.Deployment":
 					deployment := &appsv1.Deployment{}
 					err := kc.Get(context.Background(), key, deployment, &client.GetOptions{})
 					if err != nil {
 						return err
 					}
 					podSpec = &deployment.Spec.Template.Spec
-				case "StatefulSet":
+				case "apps/v1.StatefulSet":
 					statefulset := &appsv1.StatefulSet{}
 					err := kc.Get(context.Background(), key, statefulset, &client.GetOptions{})
 					if err != nil {

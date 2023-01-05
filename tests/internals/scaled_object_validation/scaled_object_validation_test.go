@@ -53,9 +53,6 @@ spec:
       containers:
         - name: {{.DeploymentName}}
           image: nginx
-          resources:
-            requests:
-              cpu: 10m
 `
 
 	scaledObjectTemplate = `
@@ -68,7 +65,40 @@ spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
   triggers:
+  - type: cron
+    metadata:
+      timezone: Etc/UTC
+      start: 0 * * * *
+      end: 1 * * * *
+      desiredReplicas: '1'
+`
+
+	cpuScaledObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectName}}
+  namespace: {{.TestNamespace}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  triggers:
     - type: cpu
+      metadata:
+        type: Utilization
+        value: "50"
+`
+	memoryScaledObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectName}}
+  namespace: {{.TestNamespace}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  triggers:
+    - type: memory
       metadata:
         type: Utilization
         value: "50"
@@ -111,6 +141,10 @@ func TestScaledObjectValidations(t *testing.T) {
 
 	testScaledWorkloadByOtherHpa(t, data)
 
+	testMissingCPU(t, data)
+
+	testMissingMemory(t, data)
+
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 
@@ -134,7 +168,7 @@ func testScaledWorkloadByOtherScaledObject(t *testing.T, data templateData) {
 	data.ScaledObjectName = scaledObject2Name
 	err = KubectlApplyWithErrors(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	assert.Errorf(t, err, "can deploy the scaledObject - %s", err)
-	assert.Contains(t, err.Error(), fmt.Sprintf("the workload '%s' of type 'apps/v1/Deployment' is already managed by the ScaledObject '%s", deploymentName, scaledObject1Name))
+	assert.Contains(t, err.Error(), fmt.Sprintf("the workload '%s' of type 'apps/v1.Deployment' is already managed by the ScaledObject '%s", deploymentName, scaledObject1Name))
 
 	data.ScaledObjectName = scaledObject1Name
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
@@ -150,9 +184,27 @@ func testScaledWorkloadByOtherHpa(t *testing.T, data templateData) {
 	data.ScaledObjectName = scaledObject1Name
 	err = KubectlApplyWithErrors(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	assert.Errorf(t, err, "can deploy the scaledObject - %s", err)
-	assert.Contains(t, err.Error(), fmt.Sprintf("the workload '%s' of type 'apps/v1/Deployment' is already managed by the hpa '%s", deploymentName, hpaName))
+	assert.Contains(t, err.Error(), fmt.Sprintf("the workload '%s' of type 'apps/v1.Deployment' is already managed by the hpa '%s", deploymentName, hpaName))
 
 	KubectlDeleteWithTemplate(t, data, "hpaTemplate", hpaTemplate)
+}
+
+func testMissingCPU(t *testing.T, data templateData) {
+	t.Log("--- missing cpu resource ---")
+
+	data.ScaledObjectName = scaledObject1Name
+	err := KubectlApplyWithErrors(t, data, "scaledObjectTemplate", cpuScaledObjectTemplate)
+	assert.Errorf(t, err, "can deploy the scaledObject - %s", err)
+	assert.Contains(t, err.Error(), fmt.Sprintf("the scaledobject has a cpu trigger but the container %s doesn't have the cpu request defined", deploymentName))
+}
+
+func testMissingMemory(t *testing.T, data templateData) {
+	t.Log("--- missing memory resource ---")
+
+	data.ScaledObjectName = scaledObject1Name
+	err := KubectlApplyWithErrors(t, data, "scaledObjectTemplate", memoryScaledObjectTemplate)
+	assert.Errorf(t, err, "can deploy the scaledObject - %s", err)
+	assert.Contains(t, err.Error(), fmt.Sprintf("the scaledobject has a memory trigger but the container %s doesn't have the memory request defined", deploymentName))
 }
 
 func getTemplateData() (templateData, []Template) {
