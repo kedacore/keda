@@ -45,15 +45,6 @@ var (
 		},
 		metricLabels,
 	)
-	scalerMetricsLatency = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: "keda_metrics_adapter",
-			Subsystem: "scaler",
-			Name:      "metrics_latency",
-			Help:      "Scaler Metrics Latency",
-		},
-		metricLabels,
-	)
 	scalerErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "keda_metrics_adapter",
@@ -83,7 +74,6 @@ func init() {
 	registry = prometheus.NewRegistry()
 	registry.MustRegister(scalerErrorsTotal)
 	registry.MustRegister(scalerMetricsValue)
-	registry.MustRegister(scalerMetricsLatency)
 	registry.MustRegister(scalerErrors)
 	registry.MustRegister(scaledObjectErrors)
 }
@@ -112,11 +102,6 @@ func (metricsServer PrometheusMetricServer) NewServer(address string, pattern st
 // RecordHPAScalerMetric create a measurement of the external metric used by the HPA
 func (metricsServer PrometheusMetricServer) RecordHPAScalerMetric(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64) {
 	scalerMetricsValue.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Set(value)
-}
-
-// RecordHPAScalerLatency create a measurement of the latency to external metric
-func (metricsServer PrometheusMetricServer) RecordHPAScalerLatency(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64) {
-	scalerMetricsLatency.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Set(value)
 }
 
 // RecordHPAScalerError counts the number of errors occurred in trying get an external metric used by the HPA

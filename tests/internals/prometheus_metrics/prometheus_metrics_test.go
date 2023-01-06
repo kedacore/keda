@@ -225,6 +225,7 @@ func TestScaler(t *testing.T) {
 		"replica count should be 2 after 2 minute")
 
 	testScalerMetricValue(t)
+	testScalerMetricLatency(t)
 	testMetricsServerScalerMetricValue(t)
 	testOperatorMetrics(t, kc, data)
 
@@ -276,6 +277,29 @@ func testScalerMetricValue(t *testing.T) {
 			for _, label := range labels {
 				if *label.Name == "scaledObject" && *label.Value == scaledObjectName {
 					assert.Equal(t, float64(4), *metric.Gauge.Value)
+					found = true
+				}
+			}
+		}
+		assert.Equal(t, true, found)
+	} else {
+		t.Errorf("metric not available")
+	}
+}
+
+func testScalerMetricLatency(t *testing.T) {
+	t.Log("--- testing scaler metric latency ---")
+
+	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+
+	if val, ok := family["keda_scaler_metrics_latency"]; ok {
+		var found bool
+		metrics := val.GetMetric()
+		for _, metric := range metrics {
+			labels := metric.GetLabel()
+			for _, label := range labels {
+				if *label.Name == "scaledObject" && *label.Value == scaledObjectName {
+					assert.Equal(t, float64(0), *metric.Gauge.Value)
 					found = true
 				}
 			}
