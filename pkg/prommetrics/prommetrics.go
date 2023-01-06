@@ -76,7 +76,7 @@ var (
 	scaledObjectErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: DefaultPromMetricsNamespace,
-			Subsystem: "scaled",
+			Subsystem: "scaled_object",
 			Name:      "errors",
 			Help:      "Number of scaled object errors",
 		},

@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	testName = "prometheus-metrics-test"
+	testName          = "prometheus-metrics-test"
 	labelScaledObject = "scaledObject"
 )
 
