@@ -21,6 +21,7 @@ import (
 
 const (
 	testName = "prometheus-metrics-test"
+	labelScaledObject = "scaledObject"
 )
 
 var (
@@ -275,7 +276,7 @@ func testScalerMetricValue(t *testing.T) {
 		for _, metric := range metrics {
 			labels := metric.GetLabel()
 			for _, label := range labels {
-				if *label.Name == "scaledObject" && *label.Value == scaledObjectName {
+				if *label.Name == labelScaledObject && *label.Value == scaledObjectName {
 					assert.Equal(t, float64(4), *metric.Gauge.Value)
 					found = true
 				}
@@ -298,7 +299,7 @@ func testScalerMetricLatency(t *testing.T) {
 		for _, metric := range metrics {
 			labels := metric.GetLabel()
 			for _, label := range labels {
-				if *label.Name == "scaledObject" && *label.Value == scaledObjectName {
+				if *label.Name == labelScaledObject && *label.Value == scaledObjectName {
 					assert.Equal(t, float64(0), *metric.Gauge.Value)
 					found = true
 				}
@@ -322,7 +323,7 @@ func testMetricsServerScalerMetricValue(t *testing.T) {
 		for _, metric := range metrics {
 			labels := metric.GetLabel()
 			for _, label := range labels {
-				if *label.Name == "scaledObject" && *label.Value == scaledObjectName {
+				if *label.Name == labelScaledObject && *label.Value == scaledObjectName {
 					assert.Equal(t, float64(4), *metric.Gauge.Value)
 					found = true
 				}
