@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"time"
 
 	v2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -69,24 +70,25 @@ func (c *ScalersCache) GetPushScalers() []scalers.PushScaler {
 	return result
 }
 
-// GetMetricsForScaler returns metric value for a scaler identified by the metric name
+// GetMetricsForScaler returns metric value and latency for a scaler identified by the metric name
 // and by the input index (from the list of scalers in this ScaledObject)
-func (c *ScalersCache) GetMetricsForScaler(ctx context.Context, index int, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+func (c *ScalersCache) GetMetricsForScaler(ctx context.Context, index int, metricName string) ([]external_metrics.ExternalMetricValue, int64, error) {
 	if index < 0 || index >= len(c.Scalers) {
-		return nil, fmt.Errorf("scaler with id %d not found. Len = %d", index, len(c.Scalers))
+		return nil, -1, fmt.Errorf("scaler with id %d not found. Len = %d", index, len(c.Scalers))
 	}
+	startTime := time.Now()
 	m, _, err := c.Scalers[index].Scaler.GetMetricsAndActivity(ctx, metricName)
 	if err == nil {
-		return m, nil
+		return m, time.Since(startTime).Milliseconds(), nil
 	}
 
 	ns, err := c.refreshScaler(ctx, index)
 	if err != nil {
-		return nil, err
+		return nil, -1, err
 	}
-
+	startTime = time.Now()
 	m, _, err = ns.GetMetricsAndActivity(ctx, metricName)
-	return m, err
+	return m, time.Since(startTime).Milliseconds(), err
 }
 
 // GetScaledObjectState returns whether the input ScaledObject is active as a first parameters,
