@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"strconv"
-	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/gocql/gocql"
@@ -107,17 +106,12 @@ func parseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 			return nil, fmt.Errorf("port parsing error %w", err)
 		}
 		meta.port = port
+	} else {
+		return nil, fmt.Errorf("no port given")
 	}
 
 	if val, ok := config.TriggerMetadata["clusterIPAddress"]; ok {
-		switch p := meta.port; {
-		case p > 0:
-			meta.clusterIPAddress = net.JoinHostPort(val, fmt.Sprintf("%d", meta.port))
-		case strings.Contains(val, ":"):
-			meta.clusterIPAddress = val
-		default:
-			return nil, fmt.Errorf("no port given")
-		}
+		meta.clusterIPAddress = net.JoinHostPort(val, fmt.Sprintf("%d", meta.port))
 	} else {
 		return nil, fmt.Errorf("no cluster IP address given")
 	}
