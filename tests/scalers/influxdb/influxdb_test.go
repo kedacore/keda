@@ -161,7 +161,7 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{.DeploymentFloatName}}
+  name: {{.DeploymentName}}
   namespace: {{.TestNamespace}}
   labels:
     app: nginx-deployment
@@ -183,7 +183,7 @@ spec:
 `
 )
 
-func TestScaler(t *testing.T) {
+func TestInfluxScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
 

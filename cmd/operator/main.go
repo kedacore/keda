@@ -300,9 +300,9 @@ func addCertificateRotation(ctx context.Context, mgr manager.Manager, secretName
 	setupFinished := make(chan struct{})
 	ensureSecret(ctx, mgr, secretName)
 	extraDNSNames := []string{}
-	extraDNSNames = append(extraDNSNames, getDnsNames(operatorServiceName)...)
-	extraDNSNames = append(extraDNSNames, getDnsNames(webhooksServiceName)...)
-	extraDNSNames = append(extraDNSNames, getDnsNames(metricsServerServiceName)...)
+	extraDNSNames = append(extraDNSNames, getDNSNames(operatorServiceName)...)
+	extraDNSNames = append(extraDNSNames, getDNSNames(webhooksServiceName)...)
+	extraDNSNames = append(extraDNSNames, getDNSNames(metricsServerServiceName)...)
 
 	setupLog.V(1).Info("setting up cert rotation")
 	if err := rotator.AddRotator(mgr, &rotator.CertRotator{
@@ -325,8 +325,8 @@ func addCertificateRotation(ctx context.Context, mgr manager.Manager, secretName
 	}
 }
 
-// getDnsNames creates all the possible DNS names for a given service
-func getDnsNames(service string) []string {
+// getDNSNames  creates all the possible DNS names for a given service
+func getDNSNames(service string) []string {
 	namespace := kedautil.GetPodNamespace()
 	return []string{
 		service,
