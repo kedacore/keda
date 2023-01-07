@@ -284,6 +284,7 @@ func main() {
 // +kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=validatingwebhookconfigurations,verbs=get;list;watch;update;patch
 // +kubebuilder:rbac:groups="",namespace=keda,resources=secrets,verbs=get;list;watch;create;update;patch;delete
 
+// addCertificateRotation registers all needed services to generate the certificates and patches needed resources with the caBundle
 func addCertificateRotation(ctx context.Context, mgr manager.Manager, secretName, certDir, operatorServiceName, metricsServerServiceName, webhooksServiceName string) {
 	caName := "kedaorg-ca"
 	caOrganization := "kedaorg"
@@ -324,6 +325,7 @@ func addCertificateRotation(ctx context.Context, mgr manager.Manager, secretName
 	}
 }
 
+// getDnsNames creates all the possible DNS names for a given service
 func getDnsNames(service string) []string {
 	namespace := kedautil.GetPodNamespace()
 	return []string{
@@ -334,6 +336,7 @@ func getDnsNames(service string) []string {
 	}
 }
 
+// ensureSecret ensures that the secret used for storing TLS certificates exists
 func ensureSecret(ctx context.Context, mgr manager.Manager, secretName string) {
 	secrets := &corev1.SecretList{}
 	kedaNamespace := kedautil.GetPodNamespace()
