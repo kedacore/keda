@@ -143,9 +143,43 @@ var _ = It("should validate the so creation when there isn't any hpa", func() {
 
 	namespaceName := "valid"
 	namespace := createNamespace(namespaceName)
-	so := createScaledObject(soName, namespaceName, "apps/v1", "Deployment", false)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false)
 
 	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), so)
+	Expect(err).ToNot(HaveOccurred())
+})
+
+var _ = It("should validate the so creation when there are other SO for other workloads", func() {
+
+	namespaceName := "valid-multiple-so"
+	namespace := createNamespace(namespaceName)
+	so1 := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false)
+	so2 := createScaledObject("other-so-name", namespaceName, "other-workload", "apps/v1", "Deployment", false)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), so1)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), so2)
+	Expect(err).ToNot(HaveOccurred())
+})
+
+var _ = It("should validate the so creation when there are other HPA for other workloads", func() {
+
+	namespaceName := "valid-other-hpa"
+	namespace := createNamespace(namespaceName)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false)
+	hpa := createHpa("other-hpa-name", namespaceName, "other-workload", "apps/v1", "Deployment", nil)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), hpa)
 	Expect(err).ToNot(HaveOccurred())
 
 	err = k8sClient.Create(context.Background(), so)
@@ -157,8 +191,8 @@ var _ = It("should validate the so creation when it's own hpa is already generat
 	hpaName := "test-so-hpa"
 	namespaceName := "own-hpa"
 	namespace := createNamespace(namespaceName)
-	so := createScaledObject(soName, namespaceName, "apps/v1", "Deployment", false)
-	hpa := createHpa(hpaName, namespaceName, "apps/v1", "Deployment", so)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false)
+	hpa := createHpa(hpaName, namespaceName, workloadName, "apps/v1", "Deployment", so)
 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
@@ -175,8 +209,8 @@ var _ = It("should validate the so update when it's own hpa is already generated
 	hpaName := "test-so-hpa"
 	namespaceName := "update-so"
 	namespace := createNamespace(namespaceName)
-	so := createScaledObject(soName, namespaceName, "apps/v1", "Deployment", false)
-	hpa := createHpa(hpaName, namespaceName, "apps/v1", "Deployment", so)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false)
+	hpa := createHpa(hpaName, namespaceName, workloadName, "apps/v1", "Deployment", so)
 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
@@ -197,8 +231,8 @@ var _ = It("shouldn't validate the so creation when there is another unmanaged h
 	hpaName := "test-unmanaged-hpa"
 	namespaceName := "unmanaged-hpa"
 	namespace := createNamespace(namespaceName)
-	hpa := createHpa(hpaName, namespaceName, "apps/v1", "Deployment", nil)
-	so := createScaledObject(soName, namespaceName, "apps/v1", "Deployment", false)
+	hpa := createHpa(hpaName, namespaceName, workloadName, "apps/v1", "Deployment", nil)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false)
 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
@@ -215,8 +249,8 @@ var _ = It("shouldn't validate the so creation when there is another so", func()
 	so2Name := "test-so2"
 	namespaceName := "managed-hpa"
 	namespace := createNamespace(namespaceName)
-	so := createScaledObject(soName, namespaceName, "apps/v1", "Deployment", false)
-	so2 := createScaledObject(so2Name, namespaceName, "apps/v1", "Deployment", false)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false)
+	so2 := createScaledObject(so2Name, namespaceName, workloadName, "apps/v1", "Deployment", false)
 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
@@ -233,8 +267,8 @@ var _ = It("shouldn't validate the so creation when there is another hpa with cu
 	hpaName := "test-custom-hpa"
 	namespaceName := "custom-apis"
 	namespace := createNamespace(namespaceName)
-	so := createScaledObject(soName, namespaceName, "custom-api", "custom-kind", false)
-	hpa := createHpa(hpaName, namespaceName, "custom-api", "custom-kind", nil)
+	so := createScaledObject(soName, namespaceName, workloadName, "custom-api", "custom-kind", false)
+	hpa := createHpa(hpaName, namespaceName, workloadName, "custom-api", "custom-kind", nil)
 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
@@ -251,7 +285,7 @@ var _ = It("should validate the so creation with cpu and memory when deployment 
 	namespaceName := "deployment-has-requests"
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, true, true)
-	so := createScaledObject(soName, namespaceName, "apps/v1", "Deployment", true)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true)
 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
@@ -268,7 +302,7 @@ var _ = It("shouldn't validate the so creation with cpu and memory when deployme
 	namespaceName := "deployment-no-memory-request"
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, true, false)
-	so := createScaledObject(soName, namespaceName, "apps/v1", "Deployment", true)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true)
 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
@@ -285,7 +319,7 @@ var _ = It("shouldn't validate the so creation with cpu and memory when deployme
 	namespaceName := "deployment-no-cpu-request"
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, false, true)
-	so := createScaledObject(soName, namespaceName, "apps/v1", "Deployment", true)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true)
 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
@@ -302,7 +336,7 @@ var _ = It("should validate the so creation with cpu and memory when statefulset
 	namespaceName := "statefulset-has-requests"
 	namespace := createNamespace(namespaceName)
 	workload := createStatefulSet(namespaceName, true, true)
-	so := createScaledObject(soName, namespaceName, "apps/v1", "StatefulSet", true)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "StatefulSet", true)
 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
@@ -319,7 +353,7 @@ var _ = It("shouldn't validate the so creation with cpu and memory when stateful
 	namespaceName := "statefulset-no-memory-request"
 	namespace := createNamespace(namespaceName)
 	workload := createStatefulSet(namespaceName, true, false)
-	so := createScaledObject(soName, namespaceName, "apps/v1", "StatefulSet", true)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "StatefulSet", true)
 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
@@ -336,7 +370,7 @@ var _ = It("shouldn't validate the so creation with cpu and memory when stateful
 	namespaceName := "statefulset-no-cpu-request"
 	namespace := createNamespace(namespaceName)
 	workload := createStatefulSet(namespaceName, false, true)
-	so := createScaledObject(soName, namespaceName, "apps/v1", "StatefulSet", true)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "StatefulSet", true)
 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
@@ -352,7 +386,7 @@ var _ = It("should validate the so creation without cpu and memory when custom r
 
 	namespaceName := "crd-not-resources"
 	namespace := createNamespace(namespaceName)
-	so := createScaledObject(soName, namespaceName, "custom-api", "StatefulSet", true)
+	so := createScaledObject(soName, namespaceName, workloadName, "custom-api", "StatefulSet", true)
 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
@@ -374,7 +408,7 @@ func createNamespace(name string) *v1.Namespace {
 	}
 }
 
-func createScaledObject(name, namespace, targetAPI, targetKind string, hasCPUAndMemory bool) *ScaledObject {
+func createScaledObject(name, namespace, targetName, targetAPI, targetKind string, hasCPUAndMemory bool) *ScaledObject {
 	triggers := []ScaleTriggers{
 		{
 			Type: "cron",
@@ -416,7 +450,7 @@ func createScaledObject(name, namespace, targetAPI, targetKind string, hasCPUAnd
 		},
 		Spec: ScaledObjectSpec{
 			ScaleTargetRef: &ScaleTarget{
-				Name:       workloadName,
+				Name:       targetName,
 				APIVersion: targetAPI,
 				Kind:       targetKind,
 			},
@@ -428,12 +462,12 @@ func createScaledObject(name, namespace, targetAPI, targetKind string, hasCPUAnd
 	}
 }
 
-func createHpa(name, namespace, targetAPI, targetKind string, owner *ScaledObject) *v2.HorizontalPodAutoscaler {
+func createHpa(name, namespace, targetName, targetAPI, targetKind string, owner *ScaledObject) *v2.HorizontalPodAutoscaler {
 	hpa := &v2.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
 		Spec: v2.HorizontalPodAutoscalerSpec{
 			ScaleTargetRef: v2.CrossVersionObjectReference{
-				Name:       workloadName,
+				Name:       targetName,
 				APIVersion: targetAPI,
 				Kind:       targetKind,
 			},

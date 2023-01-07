@@ -115,7 +115,8 @@ func verifyHpas(incomingSo *ScaledObject, action string) error {
 			return err
 		}
 
-		if hpaGckr.GVKString() == incomingSoGckr.GVKString() {
+		if hpaGckr.GVKString() == incomingSoGckr.GVKString() &&
+			hpa.Spec.ScaleTargetRef.Name == incomingSo.Spec.ScaleTargetRef.Name {
 			owned := false
 			for _, owner := range hpa.OwnerReferences {
 				if owner.Kind == incomingSo.Kind {
@@ -166,7 +167,8 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string) error {
 			return err
 		}
 
-		if soGckr.GVKString() == incomingSoGckr.GVKString() {
+		if soGckr.GVKString() == incomingSoGckr.GVKString() &&
+			so.Spec.ScaleTargetRef.Name == incomingSo.Spec.ScaleTargetRef.Name {
 			err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the ScaledObject '%s'", so.Spec.ScaleTargetRef.Name, incomingSoGckr.GVKString(), so.Name)
 			scaledobjectlog.Error(err, "validation error")
 			prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-scaled-object")
