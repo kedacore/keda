@@ -35,6 +35,7 @@ spec:
             - --zap-log-level=info
             - --zap-encoder=console
             - --zap-time-encoding=rfc3339
+            - --enable-cert-rotation=true
           imagePullPolicy: Always
           resources:
             requests:
@@ -71,6 +72,16 @@ spec:
             readOnlyRootFilesystem: true
             seccompProfile:
               type: RuntimeDefault
+          volumeMounts:
+          - mountPath: /certs
+            name: certificates
+            readOnly: true
       terminationGracePeriodSeconds: 10
       nodeSelector:
         kubernetes.io/os: linux
+      volumes:
+      - name: certificates
+        secret:
+          defaultMode: 420
+          secretName: kedaorg-certs
+          optional: true

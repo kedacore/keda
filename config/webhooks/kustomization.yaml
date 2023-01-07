@@ -1,6 +1,4 @@
 resources:
-- role.yaml
-- role_binding.yaml
 - webhooks.yaml
 - service.yaml
 - validation_webhooks.yaml

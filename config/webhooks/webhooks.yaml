@@ -34,7 +34,6 @@ spec:
             - --zap-log-level=info
             - --zap-encoder=console
             - --zap-time-encoding=rfc3339
-            - --enable-cert-rotation=true
           imagePullPolicy: Always
           resources:
             requests:
@@ -89,5 +88,4 @@ spec:
       - name: certificates
         secret:
           defaultMode: 420
-          secretName: kedaorg-admission-webhooks-certs
-          optional: true
+          secretName: kedaorg-certs

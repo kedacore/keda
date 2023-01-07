@@ -10,3 +10,17 @@ subjects:
 - kind: ServiceAccount
   name: keda-operator
   namespace: keda
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: keda-operator
+  namespace: keda
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: keda-operator
+subjects:
+- kind: ServiceAccount
+  name: keda-operator
+  namespace: keda
