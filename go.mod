@@ -99,6 +99,9 @@ replace (
 	// https://nvd.nist.gov/vuln/detail/CVE-2022-1996
 	github.com/emicklei/go-restful => github.com/emicklei/go-restful v2.16.0+incompatible
 
+	// Needed for certificate generation till the PR is merged: https://github.com/open-policy-agent/cert-controller/pull/52
+	github.com/open-policy-agent/cert-controller => github.com/jorturfer/cert-controller v0.5.0
+
 	// https://avd.aquasec.com/nvd/2022/cve-2022-27191/
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
 

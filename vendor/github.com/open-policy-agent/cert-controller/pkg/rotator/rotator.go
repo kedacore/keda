@@ -168,6 +168,7 @@ type CertRotator struct {
 	CAName                 string
 	CAOrganization         string
 	DNSName                string
+	ExtraDNSNames          []string
 	IsReady                chan struct{}
 	Webhooks               []WebhookInfo
 	RestartOnSecretRefresh bool
@@ -475,14 +476,14 @@ func (cr *CertRotator) CreateCACert(begin, end time.Time) (*KeyPairArtifacts, er
 // CreateCertPEM takes the results of CreateCACert and uses it to create the
 // PEM-encoded public certificate and private key, respectively
 func (cr *CertRotator) CreateCertPEM(ca *KeyPairArtifacts, begin, end time.Time) ([]byte, []byte, error) {
+	dnsNames := cr.ExtraDNSNames
+	dnsNames = append(dnsNames, cr.DNSName)
 	templ := &x509.Certificate{
 		SerialNumber: big.NewInt(1),
 		Subject: pkix.Name{
 			CommonName: cr.DNSName,
 		},
-		DNSNames: []string{
-			cr.DNSName,
-		},
+		DNSNames:              dnsNames,
 		NotBefore:             begin,
 		NotAfter:              end,
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
