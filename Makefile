@@ -117,7 +117,7 @@ smoke-test: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/co
 
 ##@ Development
 
-manifests: ## Generate CustomResourceDefinition objects for core componenets.
+manifests:  controller-gen ## Generate ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) crd:crdVersions=v1 rbac:roleName=keda-operator paths="./..." output:crd:artifacts:config=config/crd/bases
 	# withTriggers is only used for duck typing so we only need the deepcopy methods
 	# However operator-sdk generate doesn't appear to have an option for that
