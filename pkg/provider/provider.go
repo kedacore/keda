@@ -166,7 +166,7 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 			}
 			// Filter only the desired metric
 			if strings.EqualFold(metricSpec.External.Metric.Name, info.Metric) {
-				metrics, err := cache.GetMetricsForScaler(ctx, scalerIndex, info.Metric)
+				metrics, _, err := cache.GetMetricsForScaler(ctx, scalerIndex, info.Metric)
 				metrics, err = fallback.GetMetricsWithFallback(ctx, p.client, logger, metrics, err, info.Metric, scaledObject, metricSpec)
 				if err != nil {
 					scalerError = true
