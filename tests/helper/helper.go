@@ -40,6 +40,7 @@ const (
 	KEDANamespace                  = "keda"
 	KEDAOperator                   = "keda-operator"
 	KEDAMetricsAPIServer           = "keda-metrics-apiserver"
+	KEDAAdmissionWebhooks          = "keda-admission"
 
 	DefaultHTTPTimeOut = 3000
 
@@ -475,6 +476,26 @@ func KubectlApplyWithTemplate(t *testing.T, data interface{}, templateName strin
 
 	err = tempFile.Close()
 	assert.NoErrorf(t, err, "cannot close temp file - %s", err)
+}
+
+func KubectlApplyWithErrors(t *testing.T, data interface{}, templateName string, config string) error {
+	t.Logf("Applying template: %s", templateName)
+
+	tmpl, err := template.New("kubernetes resource template").Parse(config)
+	assert.NoErrorf(t, err, "cannot parse template - %s", err)
+
+	tempFile, err := os.CreateTemp("", templateName)
+	assert.NoErrorf(t, err, "cannot create temp file - %s", err)
+	if err != nil {
+		defer tempFile.Close()
+		defer os.Remove(tempFile.Name())
+	}
+
+	err = tmpl.Execute(tempFile, data)
+	assert.NoErrorf(t, err, "cannot insert data into template - %s", err)
+
+	_, err = ExecuteCommand(fmt.Sprintf("kubectl apply -f %s", tempFile.Name()))
+	return err
 }
 
 // Apply templates in order of slice

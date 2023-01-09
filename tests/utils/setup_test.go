@@ -182,19 +182,22 @@ func TestVerifyKEDA(t *testing.T) {
 		metricsServerDeployment, err := KubeClient.AppsV1().Deployments(KEDANamespace).Get(context.Background(), KEDAMetricsAPIServer, v1.GetOptions{})
 		require.NoErrorf(t, err, "unable to get %s deployment - %s", KEDAMetricsAPIServer, err)
 
+		webhooksDeployment, err := KubeClient.AppsV1().Deployments(KEDANamespace).Get(context.Background(), KEDAAdmissionWebhooks, v1.GetOptions{})
+		require.NoErrorf(t, err, "unable to get %s deployment - %s", KEDAAdmissionWebhooks, err)
+
 		operatorReadyReplicas := operatorDeployment.Status.ReadyReplicas
 		metricsServerReadyReplicas := metricsServerDeployment.Status.ReadyReplicas
+		webhooksReadyReplicas := webhooksDeployment.Status.ReadyReplicas
 
-		if operatorReadyReplicas != 1 || metricsServerReadyReplicas != 1 {
+		if operatorReadyReplicas != 1 || metricsServerReadyReplicas != 1 || webhooksReadyReplicas != 1 {
 			t.Log("KEDA is not ready. sleeping")
 			time.Sleep(10 * time.Second)
 		} else {
-			t.Logf("KEDA is running 1 pod for %s and 1 pod for %s", KEDAOperator, KEDAMetricsAPIServer)
+			t.Logf("KEDA is running 1 pod for %s, 1 pod for %s and 1 pod for %s", KEDAOperator, KEDAMetricsAPIServer, KEDAAdmissionWebhooks)
 			success = true
-
 			break
 		}
 	}
 
-	require.True(t, success, "expected KEDA deployments to start 2 pods successfully")
+	require.True(t, success, "expected KEDA deployments to start 3 pods successfully")
 }

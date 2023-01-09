@@ -32,6 +32,8 @@ var (
 	cronScaledJobName         = fmt.Sprintf("%s-cron-sj", testName)
 	clientName                = fmt.Sprintf("%s-client", testName)
 	kedaOperatorPrometheusURL = "http://keda-operator.keda.svc.cluster.local:8080/metrics"
+	kedaWebhookPrometheusURL  = "http://keda-admission-webhooks.keda.svc.cluster.local:8080/metrics"
+	namespaceString           = "namespace"
 )
 
 type templateData struct {
@@ -211,7 +213,7 @@ spec:
 `
 )
 
-func TestScaler(t *testing.T) {
+func TestPrometheusMetrics(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
 
@@ -229,6 +231,7 @@ func TestScaler(t *testing.T) {
 	testScalerMetricLatency(t)
 	testMetricsServerScalerMetricValue(t)
 	testOperatorMetrics(t, kc, data)
+	testWebhookMetrics(t, data)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -346,6 +349,16 @@ func testOperatorMetrics(t *testing.T, kc *kubernetes.Clientset, data templateDa
 	testOperatorMetricValues(t, kc)
 }
 
+func testWebhookMetrics(t *testing.T, data templateData) {
+	t.Log("--- testing webhook metrics ---")
+
+	data.ScaledObjectName = "other-so"
+	err := KubectlApplyWithErrors(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	assert.Errorf(t, err, "can deploy the scaledObject - %s", err)
+	testWebhookMetricValues(t)
+	data.ScaledObjectName = scaledObjectName
+}
+
 func getOperatorMetricsManually(t *testing.T, kc *kubernetes.Clientset) (map[string]int, map[string]map[string]int) {
 	kedaKc := GetKedaKubernetesClient(t)
 
@@ -406,6 +419,11 @@ func getOperatorMetricsManually(t *testing.T, kc *kubernetes.Clientset) (map[str
 	return triggerTotals, crTotals
 }
 
+func testWebhookMetricValues(t *testing.T) {
+	families := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaWebhookPrometheusURL))
+	checkWebhookValues(t, families)
+}
+
 func testOperatorMetricValues(t *testing.T, kc *kubernetes.Clientset) {
 	families := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 	expectedTriggerTotals, expectedCrTotals := getOperatorMetricsManually(t, kc)
@@ -459,7 +477,7 @@ func checkCRTotalValues(t *testing.T, families map[string]*promModel.MetricFamil
 		for _, label := range labels {
 			if *label.Name == "type" {
 				crType = *label.Value
-			} else if *label.Name == "namespace" {
+			} else if *label.Name == namespaceString {
 				namespace = *label.Value
 			}
 		}
@@ -470,4 +488,46 @@ func checkCRTotalValues(t *testing.T, families map[string]*promModel.MetricFamil
 		assert.Equalf(t, expectedMetricValue, metricValue, "expected %f got %f for cr type %s & namespace %s",
 			expectedMetricValue, metricValue, crType, namespace)
 	}
+}
+
+func checkWebhookValues(t *testing.T, families map[string]*promModel.MetricFamily) {
+	t.Log("--- testing webhook metrics ---")
+
+	family, ok := families["keda_webhook_scaled_object_validation_errors"]
+	if !ok {
+		t.Errorf("metric keda_webhook_scaled_object_validation_errors not available")
+		return
+	}
+
+	metricValue := 0.0
+	metrics := family.GetMetric()
+	for _, metric := range metrics {
+		labels := metric.GetLabel()
+		for _, label := range labels {
+			if *label.Name == namespaceString && *label.Value != testNamespace {
+				continue
+			}
+		}
+		metricValue += *metric.Counter.Value
+	}
+	assert.GreaterOrEqual(t, metricValue, 1.0, "keda_webhook_scaled_object_validation_errors has to be greater than 0")
+
+	family, ok = families["keda_webhook_scaled_object_validation_total"]
+	if !ok {
+		t.Errorf("metric keda_webhook_scaled_object_validation_total not available")
+		return
+	}
+
+	metricValue = 0.0
+	metrics = family.GetMetric()
+	for _, metric := range metrics {
+		labels := metric.GetLabel()
+		for _, label := range labels {
+			if *label.Name == namespaceString && *label.Value != testNamespace {
+				continue
+			}
+		}
+		metricValue += *metric.Counter.Value
+	}
+	assert.GreaterOrEqual(t, metricValue, 1.0, "keda_webhook_scaled_object_validation_total has to be greater than 0")
 }
