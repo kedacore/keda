@@ -252,7 +252,10 @@ func main() {
 	}
 
 	if enableCertRotation {
-		addCertificateRotation(ctx, mgr, certSecretName, certDir, operatorServiceName, metricsServerServiceName, webhooksServiceName)
+		if err := addCertificateRotation(ctx, mgr, certSecretName, certDir, operatorServiceName, metricsServerServiceName, webhooksServiceName); err != nil {
+			setupLog.Error(err, "unable to set up cert rotation")
+			os.Exit(1)
+		}
 	}
 
 	grpcServer := metricsservice.NewGrpcServer(&scaledHandler, metricsServiceAddr)
@@ -285,7 +288,7 @@ func main() {
 // +kubebuilder:rbac:groups="",namespace=keda,resources=secrets,verbs=get;list;watch;create;update;patch;delete
 
 // addCertificateRotation registers all needed services to generate the certificates and patches needed resources with the caBundle
-func addCertificateRotation(ctx context.Context, mgr manager.Manager, secretName, certDir, operatorServiceName, metricsServerServiceName, webhooksServiceName string) {
+func addCertificateRotation(ctx context.Context, mgr manager.Manager, secretName, certDir, operatorServiceName, metricsServerServiceName, webhooksServiceName string) error {
 	caName := "kedaorg-ca"
 	caOrganization := "kedaorg"
 
@@ -320,9 +323,9 @@ func addCertificateRotation(ctx context.Context, mgr manager.Manager, secretName
 		RestartOnSecretRefresh: true,
 		RequireLeaderElection:  true,
 	}); err != nil {
-		setupLog.Error(err, "unable to set up cert rotation")
-		os.Exit(1)
+		return err
 	}
+	return nil
 }
 
 // getDNSNames  creates all the possible DNS names for a given service
