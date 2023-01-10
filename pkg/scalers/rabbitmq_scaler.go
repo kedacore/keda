@@ -38,7 +38,7 @@ const (
 	defaultRabbitMQQueueLength             = 20
 	rabbitMetricType                       = "External"
 	rabbitRootVhostPath                    = "/%2F"
-	rmqTlsEnable                           = "enable"
+	rmqTLSEnable                           = "enable"
 )
 
 const (
@@ -180,15 +180,7 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	meta.enableTLS = false
 	if val, ok := config.AuthParams["tls"]; ok {
 		val = strings.TrimSpace(val)
-		if val == rmqTlsEnable {
-			certGiven := config.AuthParams["cert"] != ""
-			keyGiven := config.AuthParams["key"] != ""
-			if certGiven && !keyGiven {
-				return nil, fmt.Errorf("key must be provided with cert")
-			}
-			if keyGiven && !certGiven {
-				return nil, fmt.Errorf("cert must be provided with key")
-			}
+		if val == rmqTLSEnable {
 			meta.ca = config.AuthParams["ca"]
 			meta.cert = config.AuthParams["cert"]
 			meta.key = config.AuthParams["key"]
@@ -196,6 +188,15 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		} else if val != "disable" {
 			return nil, fmt.Errorf("err incorrect value for TLS given: %s", val)
 		}
+	}
+	certGiven := meta.cert != ""
+	keyGiven := meta.key != ""
+
+	if certGiven && !keyGiven == "" {
+		return nil, fmt.Errorf("key must be provided with cert")
+	}
+	if keyGiven && !certGiven {
+		return nil, fmt.Errorf("cert must be provided with key")
 	}
 
 	// If the protocol is auto, check the host scheme.
