@@ -192,7 +192,7 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	certGiven := meta.cert != ""
 	keyGiven := meta.key != ""
 
-	if certGiven && !keyGiven == "" {
+	if certGiven && !keyGiven {
 		return nil, fmt.Errorf("key must be provided with cert")
 	}
 	if keyGiven && !certGiven {
