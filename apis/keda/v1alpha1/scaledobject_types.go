@@ -46,6 +46,8 @@ type ScaledObject struct {
 	Status ScaledObjectStatus `json:"status,omitempty"`
 }
 
+const ScaledObjectOwnerAnnotation = "scaledobject.keda.sh/name"
+
 // HealthStatus is the status for a ScaledObject's health
 type HealthStatus struct {
 	// +optional
@@ -184,6 +186,6 @@ func init() {
 }
 
 // GenerateIdentifier returns identifier for the object in for "kind.namespace.name"
-func (s *ScaledObject) GenerateIdentifier() string {
-	return GenerateIdentifier("ScaledObject", s.Namespace, s.Name)
+func (so *ScaledObject) GenerateIdentifier() string {
+	return GenerateIdentifier("ScaledObject", so.Namespace, so.Name)
 }

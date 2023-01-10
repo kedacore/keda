@@ -39,8 +39,9 @@ apiserver.local.config/
 
 cover.out
 
-# GO debug binary
+# GO debug binaries
 cmd/manager/debug.test
+__debug_bin
 
 # GO Test result
 report.xml

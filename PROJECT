@@ -12,8 +12,11 @@ resources:
   domain: keda.sh
   group: keda
   kind: ScaledObject
-  path: github.com/kedacore/keda/v2/apis/keda/v1alpha1
+  path: github.com/kedacore/keda/apis/keda/v1alpha1
   version: v1alpha1
+  webhooks:
+    validation: true
+    webhookVersion: v1
 - api:
     crdVersion: v1
     namespaced: true
@@ -21,7 +24,7 @@ resources:
   domain: keda.sh
   group: keda
   kind: ScaledJob
-  path: github.com/kedacore/keda/v2/apis/keda/v1alpha1
+  path: github.com/kedacore/keda/apis/keda/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
@@ -30,7 +33,7 @@ resources:
   domain: keda.sh
   group: keda
   kind: TriggerAuthentication
-  path: github.com/kedacore/keda/v2/apis/keda/v1alpha1
+  path: github.com/kedacore/keda/apis/keda/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
@@ -39,6 +42,6 @@ resources:
   domain: keda.sh
   group: keda
   kind: ClusterTriggerAuthentication
-  path: github.com/kedacore/keda/v2/apis/keda/v1alpha1
+  path: github.com/kedacore/keda/apis/keda/v1alpha1
   version: v1alpha1
 version: "3"

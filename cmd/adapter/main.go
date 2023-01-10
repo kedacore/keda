@@ -200,14 +200,7 @@ func runScaledObjectController(ctx context.Context, mgr manager.Manager, scaleHa
 // generateDefaultMetricsServiceAddr generates default Metrics Service gRPC Server address based on the current Namespace.
 // By default the Metrics Service gRPC Server runs in the same namespace on the keda-operator pod.
 func generateDefaultMetricsServiceAddr() string {
-	const defaultNamespace = "keda"
-	podNamespace := os.Getenv("POD_NAMESPACE")
-
-	if podNamespace == "" {
-		podNamespace = defaultNamespace
-	}
-
-	return fmt.Sprintf("keda-operator.%s.svc.cluster.local:9666", podNamespace)
+	return fmt.Sprintf("keda-operator.%s.svc.cluster.local:9666", kedautil.GetPodNamespace())
 }
 
 func printVersion() {

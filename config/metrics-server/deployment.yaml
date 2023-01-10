@@ -71,12 +71,15 @@ spec:
             name: temp-vol
           - mountPath: /apiserver.local.config/certificates
             name: certs
+          - mountPath: /certs
+            name: certificates
+            readOnly: true
           securityContext:
+            runAsNonRoot: true
             capabilities:
               drop:
               - ALL
             allowPrivilegeEscalation: false
-            runAsNonRoot: true
             readOnlyRootFilesystem: true
             seccompProfile:
               type: RuntimeDefault
@@ -87,3 +90,7 @@ spec:
         emptyDir: {}
       - name: certs
         emptyDir: {}
+      - name: certificates
+        secret:
+          defaultMode: 420
+          secretName: kedaorg-certs

@@ -440,7 +440,11 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 				}
 
 				if !metricsFoundInCache {
-					metrics, err = cache.GetMetricsForScaler(ctx, scalerIndex, metricName)
+					var latency int64
+					metrics, latency, err = cache.GetMetricsForScaler(ctx, scalerIndex, metricName)
+					if latency != -1 {
+						prommetrics.RecordScalerLatency(scaledObjectNamespace, scaledObject.Name, scalerName, scalerIndex, metricName, float64(latency))
+					}
 					h.logger.V(1).Info("Getting metrics from scaler", "scaledObject.Namespace", scaledObjectNamespace, "scaledObject.Name", scaledObjectName, "scaler", scalerName, "metricName", metricSpec.External.Metric.Name, "metrics", metrics, "scalerError", err)
 				}
 				metrics, err = fallback.GetMetricsWithFallback(ctx, h.client, h.logger, metrics, err, metricName, scaledObject, metricSpec)

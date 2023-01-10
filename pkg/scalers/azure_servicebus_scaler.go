@@ -22,8 +22,6 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/admin"
 	az "github.com/Azure/go-autorest/autorest/azure"
 	"github.com/go-logr/logr"
@@ -306,37 +304,20 @@ func (s *azureServiceBusScaler) getServiceBusAdminClient(ctx context.Context) (*
 			return nil, err
 		}
 
-	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
-		var creds []azcore.TokenCredential
-		options := &azidentity.DefaultAzureCredentialOptions{}
-
-		// Used for local debug based on az-cli user
-		cliCred, err := azidentity.NewAzureCLICredential(&azidentity.AzureCLICredentialOptions{TenantID: options.TenantID})
-		if err == nil {
-			creds = append(creds, cliCred)
-		}
-
-		// Once azure-sdk-for-go supports Workload Identity we can remove this and use default implementation
-		// https://github.com/Azure/azure-sdk-for-go/issues/15615
-		wiCred := azure.NewADWorkloadIdentityCredential(ctx, s.podIdentity.IdentityID, serviceBusResource)
-		creds = append(creds, wiCred)
-
+	case kedav1alpha1.PodIdentityProviderAzure:
 		// Used for aad-pod-identity
-		o := &azidentity.ManagedIdentityCredentialOptions{ClientOptions: options.ClientOptions}
-		if s.podIdentity.IdentityID != "" {
-			o.ID = azidentity.ClientID(s.podIdentity.IdentityID)
-		}
-		msiCred, err := azidentity.NewManagedIdentityCredential(o)
-		if err == nil {
-			creds = append(creds, msiCred)
-		}
+		creds := azure.NewADPodIdentityCredential(s.podIdentity.IdentityID, serviceBusResource)
 
-		// Create the chained credential based on the previous 3
-		chain, err := azidentity.NewChainedTokenCredential(creds, nil)
+		adminClient, err = admin.NewClient(s.metadata.fullyQualifiedNamespace, creds, nil)
 		if err != nil {
 			return nil, err
 		}
-		adminClient, err = admin.NewClient(s.metadata.fullyQualifiedNamespace, chain, nil)
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		// // Once azure-sdk-for-go supports Workload Identity we can remove this and use default implementation
+		// // https://github.com/Azure/azure-sdk-for-go/issues/15615
+		creds := azure.NewADWorkloadIdentityCredential(ctx, s.podIdentity.IdentityID, serviceBusResource)
+
+		adminClient, err = admin.NewClient(s.metadata.fullyQualifiedNamespace, creds, nil)
 		if err != nil {
 			return nil, err
 		}

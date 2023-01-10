@@ -98,7 +98,7 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 		}
 
 		// selector is in form: `scaledobject.keda.sh/name: scaledobject-name`
-		scaledObjectName := selector.Get("scaledobject.keda.sh/name")
+		scaledObjectName := selector.Get(kedav1alpha1.ScaledObjectOwnerAnnotation)
 
 		metrics, promMetrics, err := p.grpcClient.GetMetrics(ctx, scaledObjectName, namespace, info.Metric)
 		logger.V(1).WithValues("scaledObjectName", scaledObjectName, "scaledObjectNamespace", namespace, "metrics", metrics).Info("Receiving metrics")
@@ -166,7 +166,7 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 			}
 			// Filter only the desired metric
 			if strings.EqualFold(metricSpec.External.Metric.Name, info.Metric) {
-				metrics, err := cache.GetMetricsForScaler(ctx, scalerIndex, info.Metric)
+				metrics, _, err := cache.GetMetricsForScaler(ctx, scalerIndex, info.Metric)
 				metrics, err = fallback.GetMetricsWithFallback(ctx, p.client, logger, metrics, err, info.Metric, scaledObject, metricSpec)
 				if err != nil {
 					scalerError = true

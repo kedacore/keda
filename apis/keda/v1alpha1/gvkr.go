@@ -14,13 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package v1alpha1
 
 import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 const (
@@ -31,7 +29,7 @@ const (
 )
 
 // ParseGVKR returns GroupVersionKindResource for specified apiVersion (groupVersion) and Kind
-func ParseGVKR(restMapper meta.RESTMapper, apiVersion string, kind string) (kedav1alpha1.GroupVersionKindResource, error) {
+func ParseGVKR(restMapper meta.RESTMapper, apiVersion string, kind string) (GroupVersionKindResource, error) {
 	var group, version, resource string
 
 	// if apiVersion is not specified, we suppose the default one should be used
@@ -41,7 +39,7 @@ func ParseGVKR(restMapper meta.RESTMapper, apiVersion string, kind string) (keda
 	} else {
 		groupVersion, err := schema.ParseGroupVersion(apiVersion)
 		if err != nil {
-			return kedav1alpha1.GroupVersionKindResource{}, err
+			return GroupVersionKindResource{}, err
 		}
 
 		group = groupVersion.Group
@@ -56,10 +54,10 @@ func ParseGVKR(restMapper meta.RESTMapper, apiVersion string, kind string) (keda
 	// get resource
 	resource, err := getResource(restMapper, group, version, kind)
 	if err != nil {
-		return kedav1alpha1.GroupVersionKindResource{}, err
+		return GroupVersionKindResource{}, err
 	}
 
-	return kedav1alpha1.GroupVersionKindResource{
+	return GroupVersionKindResource{
 		Group:    group,
 		Version:  version,
 		Kind:     kind,

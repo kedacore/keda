@@ -48,7 +48,9 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 Here is an overview of all **stable** additions:
 
+- **General**: Introduce admission webhooks to automatically validate resource changes to prevent misconfiguration and enforce best practices. ([#3755](https://github.com/kedacore/keda/issues/3755))
 - **General**: Introduce new ArangoDB Scaler ([#4000](https://github.com/kedacore/keda/issues/4000))
+- **Prometheus Metrics**: Introduce scaler latency in Prometheus metrics. ([#4037](https://github.com/kedacore/keda/issues/4037))
 
 Here is an overview of all new **experimental** features:
 
@@ -60,7 +62,8 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
-- **CPU Memory Scaler** Store forgotten logger ([#4022](https://github.com/kedacore/keda/issues/4022))
+- **Azure Service Bus Scaler:** Use correct auth flows with pod identity ([#4026](https://github.com/kedacore/keda/issues/4026))
+- **CPU Memory Scaler:** Store forgotten logger ([#4022](https://github.com/kedacore/keda/issues/4022))
 
 ### Deprecations
 

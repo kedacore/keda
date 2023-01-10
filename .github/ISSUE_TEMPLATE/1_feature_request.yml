@@ -16,6 +16,16 @@ body:
     placeholder: "Tell us more what you'd like to achieve."
   validations:
     required: false
+- type: dropdown
+  id: interested-in-implementing-the-feature
+  attributes:
+    label: Is this a feature you are interested in implementing yourself?
+    options:
+      - 'No'
+      - 'Maybe'
+      - 'Yes'
+  validations:
+    required: true
 - type: textarea
   id: anything-else
   attributes:
