@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/go-logr/logr"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/youmark/pkcs8"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -81,10 +83,11 @@ type rabbitMQMetadata struct {
 	scalerIndex           int           // scaler index
 
 	// TLS
-	ca        string // Certificate authority file for TLS client authentication. Optional. If authmode is sasl_ssl, this is required.
-	cert      string // Certificate for client authentication. Optional. If authmode is sasl_ssl, this is required.
-	key       string // Key for client authentication. Optional. If authmode is sasl_ssl, this is required.
-	enableTLS bool
+	ca          string
+	cert        string
+	key         string
+	keyPassword string
+	enableTLS   bool
 }
 
 type queueInfo struct {
@@ -139,7 +142,7 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 			host = hostURI.String()
 		}
 
-		conn, ch, err := getConnectionAndChannel(host, meta.ca, meta.cert, meta.key, meta.enableTLS)
+		conn, ch, err := getConnectionAndChannel(host, meta.ca, meta.cert, meta.key, meta.keyPassword, meta.enableTLS)
 		if err != nil {
 			return nil, fmt.Errorf("error establishing rabbitmq connection: %w", err)
 		}
@@ -177,6 +180,7 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		return nil, fmt.Errorf("no host setting given")
 	}
 
+	// Resolve TLS authentication parameters
 	meta.enableTLS = false
 	if val, ok := config.AuthParams["tls"]; ok {
 		val = strings.TrimSpace(val)
@@ -189,6 +193,9 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 			return nil, fmt.Errorf("err incorrect value for TLS given: %s", val)
 		}
 	}
+
+	meta.keyPassword = config.AuthParams["keyPassword"]
+
 	certGiven := meta.cert != ""
 	keyGiven := meta.key != ""
 	if certGiven != keyGiven {
@@ -382,7 +389,35 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 	return meta, nil
 }
 
-func getConnectionAndChannel(host string, caFile string, certFile string, keyFile string, enableTLS bool) (*amqp.Connection, *amqp.Channel, error) {
+func decryptClientKey(clientKey, clientKeyPassword string) ([]byte, error) {
+	block, _ := pem.Decode([]byte(clientKey))
+
+	key, err := pkcs8.ParsePKCS8PrivateKey(block.Bytes, []byte(clientKeyPassword))
+	if err != nil {
+		return nil, err
+	}
+
+	pemData, err := x509.MarshalPKCS8PrivateKey(key)
+	if err != nil {
+		return nil, err
+	}
+
+	var pemPrivateBlock = &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: pemData,
+	}
+
+	encodedData := pem.EncodeToMemory(pemPrivateBlock)
+
+	return encodedData, nil
+}
+
+// getConnectionAndChannel returns an amqp connection. If enableTLS is true tls connection is made using
+//
+//	the given ceClient cert, ceClient key,and CA certificate. If clientKeyPassword is not empty the provided password will be used to
+//
+// decrypt the given key. If enableTLS is disabled then amqp connection will be created without tls.
+func getConnectionAndChannel(host string, caFile string, clientCert string, clientKey string, clientKeyPassword string, enableTLS bool) (*amqp.Connection, *amqp.Channel, error) {
 	var conn *amqp.Connection
 	var err error
 
@@ -396,8 +431,17 @@ func getConnectionAndChannel(host string, caFile string, certFile string, keyFil
 			config.RootCAs.AppendCertsFromPEM([]byte(caFile))
 		}
 
-		if certFile != "" && keyFile != "" {
-			if cert, err := tls.LoadX509KeyPair(certFile, keyFile); err == nil {
+		if clientCert != "" && clientKey != "" {
+			key := []byte(clientKey)
+			if clientKeyPassword != "" {
+				var err error
+				key, err = decryptClientKey(clientKey, clientKeyPassword)
+				if err != nil {
+					return nil, nil, fmt.Errorf("error decrypt X509Key: %w", err)
+				}
+			}
+
+			if cert, err := tls.X509KeyPair([]byte(clientCert), key); err == nil {
 				config.Certificates = append(config.Certificates, cert)
 			}
 		}
