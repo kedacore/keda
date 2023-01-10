@@ -192,11 +192,8 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	certGiven := meta.cert != ""
 	keyGiven := meta.key != ""
 
-	if certGiven && !keyGiven {
-		return nil, fmt.Errorf("key must be provided with cert")
-	}
-	if keyGiven && !certGiven {
-		return nil, fmt.Errorf("cert must be provided with key")
+	if certGiven != keyGiven {
+		return nil, fmt.Errorf("both key and cert must be provided")
 	}
 
 	// If the protocol is auto, check the host scheme.
