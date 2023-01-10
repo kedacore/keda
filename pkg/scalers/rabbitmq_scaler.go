@@ -81,10 +81,10 @@ type rabbitMQMetadata struct {
 	scalerIndex           int           // scaler index
 
 	// TLS
-	ca                    string        // Certificate authority file for TLS client authentication. Optional. If authmode is sasl_ssl, this is required.
-	cert                  string        // Certificate for client authentication. Optional. If authmode is sasl_ssl, this is required.
-	key                   string        // Key for client authentication. Optional. If authmode is sasl_ssl, this is required.
-	enableTLS             bool
+	ca        string // Certificate authority file for TLS client authentication. Optional. If authmode is sasl_ssl, this is required.
+	cert      string // Certificate for client authentication. Optional. If authmode is sasl_ssl, this is required.
+	key       string // Key for client authentication. Optional. If authmode is sasl_ssl, this is required.
+	enableTLS bool
 }
 
 type queueInfo struct {
@@ -191,7 +191,6 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	}
 	certGiven := meta.cert != ""
 	keyGiven := meta.key != ""
-
 	if certGiven != keyGiven {
 		return nil, fmt.Errorf("both key and cert must be provided")
 	}
