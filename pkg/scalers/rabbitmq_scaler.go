@@ -7,11 +7,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strings"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -80,9 +80,9 @@ type rabbitMQMetadata struct {
 	scalerIndex           int           // scaler index
 
 	// TLS
-	ca                    string        //Certificate authority file for TLS client authentication. Optional. If authmode is sasl_ssl, this is required.
-	cert                  string        //Certificate for client authentication. Optional. If authmode is sasl_ssl, this is required.
-	key                   string        //Key for client authentication. Optional. If authmode is sasl_ssl, this is required.
+	ca                    string        // Certificate authority file for TLS client authentication. Optional. If authmode is sasl_ssl, this is required.
+	cert                  string        // Certificate for client authentication. Optional. If authmode is sasl_ssl, this is required.
+	key                   string        // Key for client authentication. Optional. If authmode is sasl_ssl, this is required.
 	enableTLS             bool
 }
 
@@ -183,10 +183,10 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 			certGiven := config.AuthParams["cert"] != ""
 			keyGiven := config.AuthParams["key"] != ""
 			if certGiven && !keyGiven {
-				return  nil, fmt.Errorf("key must be provided with cert")
+				return nil, fmt.Errorf("key must be provided with cert")
 			}
 			if keyGiven && !certGiven {
-				return  nil, fmt.Errorf("cert must be provided with key")
+				return nil, fmt.Errorf("cert must be provided with key")
 			}
 			meta.ca = config.AuthParams["ca"]
 			meta.cert = config.AuthParams["cert"]
