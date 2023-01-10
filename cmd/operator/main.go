@@ -17,19 +17,14 @@ limitations under the License.
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"os"
 	"runtime"
 	"time"
 
-	"github.com/open-policy-agent/cert-controller/pkg/rotator"
 	"github.com/spf13/pflag"
-	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -37,14 +32,13 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/tools/cache"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollers "github.com/kedacore/keda/v2/controllers/keda"
+	"github.com/kedacore/keda/v2/pkg/certificates"
 	"github.com/kedacore/keda/v2/pkg/k8s"
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
 	"github.com/kedacore/keda/v2/pkg/scaling"
@@ -88,8 +82,8 @@ func main() {
 	var operatorServiceName string
 	var metricsServerServiceName string
 	var webhooksServiceName string
-
 	var enableCertRotation bool
+	var validatingWebhookName string
 	pflag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	pflag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	pflag.StringVar(&metricsServiceAddr, "metrics-service-bind-address", ":9666", "The address the gRPRC Metrics Service endpoint binds to.")
@@ -104,9 +98,8 @@ func main() {
 	pflag.StringVar(&operatorServiceName, "operator-service-name", "keda-operator", "Operator service name. Defaults to keda-operator")
 	pflag.StringVar(&metricsServerServiceName, "metrics-server-service-name", "keda-metrics-apiserver", "Metrics server service name. Defaults to keda-metrics-apiserver")
 	pflag.StringVar(&webhooksServiceName, "webhooks-service-name", "keda-admission-webhooks", "Webhook service name. Defaults to keda-admission-webhooks")
-
 	pflag.BoolVar(&enableCertRotation, "enable-cert-rotation", false, "enable automatic generation and rotation of TLS certificates/keys")
-
+	pflag.StringVar(&validatingWebhookName, "validating-webhook-name", "keda-admission", "ValidatingWebhookConfiguration name. Defaults to keda-admission")
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
@@ -252,7 +245,19 @@ func main() {
 	}
 
 	if enableCertRotation {
-		if err := addCertificateRotation(ctx, mgr, certSecretName, certDir, operatorServiceName, metricsServerServiceName, webhooksServiceName); err != nil {
+		certManager := certificates.CertManager{
+			SecretName:            certSecretName,
+			CertDir:               certDir,
+			OperatorService:       operatorServiceName,
+			MetricsServerService:  metricsServerServiceName,
+			WebhookService:        webhooksServiceName,
+			CAName:                "KEDA",
+			CAOrganization:        "KEDAORG",
+			ValidatingWebhookName: validatingWebhookName,
+			ApiServiceName:        "v1beta1.external.metrics.k8s.io",
+			Logger:                setupLog,
+		}
+		if err := certManager.AddCertificateRotation(ctx, mgr); err != nil {
 			setupLog.Error(err, "unable to set up cert rotation")
 			os.Exit(1)
 		}
@@ -281,103 +286,5 @@ func main() {
 	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
-	}
-}
-
-// +kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=validatingwebhookconfigurations,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups="",namespace=keda,resources=secrets,verbs=get;list;watch;create;update;patch;delete
-
-// addCertificateRotation registers all needed services to generate the certificates and patches needed resources with the caBundle
-func addCertificateRotation(ctx context.Context, mgr manager.Manager, secretName, certDir, operatorServiceName, metricsServerServiceName, webhooksServiceName string) error {
-	caName := "kedaorg-ca"
-	caOrganization := "kedaorg"
-
-	var rotatorHooks = []rotator.WebhookInfo{
-		{
-			Name: "keda-admission",
-			Type: rotator.Validating,
-		},
-	}
-
-	// Make sure certs are generated and valid if cert rotation is enabled.
-	setupFinished := make(chan struct{})
-	ensureSecret(ctx, mgr, secretName)
-	extraDNSNames := []string{}
-	extraDNSNames = append(extraDNSNames, getDNSNames(operatorServiceName)...)
-	extraDNSNames = append(extraDNSNames, getDNSNames(webhooksServiceName)...)
-	extraDNSNames = append(extraDNSNames, getDNSNames(metricsServerServiceName)...)
-
-	setupLog.V(1).Info("setting up cert rotation")
-	if err := rotator.AddRotator(mgr, &rotator.CertRotator{
-		SecretKey: types.NamespacedName{
-			Namespace: kedautil.GetPodNamespace(),
-			Name:      secretName,
-		},
-		CertDir:                certDir,
-		CAName:                 caName,
-		CAOrganization:         caOrganization,
-		DNSName:                extraDNSNames[0],
-		ExtraDNSNames:          extraDNSNames,
-		IsReady:                setupFinished,
-		Webhooks:               rotatorHooks,
-		RestartOnSecretRefresh: true,
-		RequireLeaderElection:  true,
-	}); err != nil {
-		return err
-	}
-	return nil
-}
-
-// getDNSNames  creates all the possible DNS names for a given service
-func getDNSNames(service string) []string {
-	namespace := kedautil.GetPodNamespace()
-	return []string{
-		service,
-		fmt.Sprintf("%s.%s", service, namespace),
-		fmt.Sprintf("%s.%s.svc", service, namespace),
-		fmt.Sprintf("%s.%s.svc.local", service, namespace),
-	}
-}
-
-// ensureSecret ensures that the secret used for storing TLS certificates exists
-func ensureSecret(ctx context.Context, mgr manager.Manager, secretName string) {
-	secrets := &corev1.SecretList{}
-	kedaNamespace := kedautil.GetPodNamespace()
-	opt := &client.ListOptions{
-		Namespace: kedaNamespace,
-	}
-
-	err := mgr.GetAPIReader().List(ctx, secrets, opt)
-	if err != nil {
-		setupLog.Error(err, "unable to check secrets")
-		os.Exit(1)
-	}
-
-	exists := false
-	for _, secret := range secrets.Items {
-		if secret.Name == secretName {
-			exists = true
-			break
-		}
-	}
-	if !exists {
-		secret := &corev1.Secret{
-			ObjectMeta: v1.ObjectMeta{
-				Name:      secretName,
-				Namespace: kedaNamespace,
-				Labels: map[string]string{
-					"app":                         "keda-operator",
-					"app.kubernetes.io/name":      "keda-operator",
-					"app.kubernetes.io/component": "keda-operator",
-					"app.kubernetes.io/part-of":   "keda",
-				},
-			},
-		}
-		err = mgr.GetClient().Create(ctx, secret)
-		if err != nil {
-			setupLog.Error(err, "unable to create certificates secret")
-			os.Exit(1)
-		}
-		setupLog.V(1).Info(fmt.Sprintf("created the secret %s to store cert-controller certificates", secretName))
 	}
 }
