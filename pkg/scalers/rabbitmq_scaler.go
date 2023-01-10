@@ -38,6 +38,7 @@ const (
 	defaultRabbitMQQueueLength             = 20
 	rabbitMetricType                       = "External"
 	rabbitRootVhostPath                    = "/%2F"
+	enable                                 = "enable"
 )
 
 const (
@@ -179,7 +180,7 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	meta.enableTLS = false
 	if val, ok := config.AuthParams["tls"]; ok {
 		val = strings.TrimSpace(val)
-		if val == "enable" {
+		if val == enable {
 			certGiven := config.AuthParams["cert"] != ""
 			keyGiven := config.AuthParams["key"] != ""
 			if certGiven && !keyGiven {
