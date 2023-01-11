@@ -59,6 +59,9 @@ spec:
           - --secure-port=6443
           - --logtostderr=true
           - --v=0
+          - --client-ca-file=/certs/ca.crt
+          - --tls-cert-file=/certs/tls.crt
+          - --tls-private-key-file=/certs/tls.key
           ports:
           - containerPort: 6443
             name: https
@@ -69,8 +72,6 @@ spec:
           volumeMounts:
           - mountPath: /tmp
             name: temp-vol
-          - mountPath: /apiserver.local.config/certificates
-            name: certs
           - mountPath: /certs
             name: certificates
             readOnly: true
@@ -87,8 +88,6 @@ spec:
         kubernetes.io/os: linux
       volumes:
       - name: temp-vol
-        emptyDir: {}
-      - name: certs
         emptyDir: {}
       - name: certificates
         secret:

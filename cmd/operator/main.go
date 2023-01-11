@@ -244,6 +244,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	certReady := make(chan struct{})
 	if enableCertRotation {
 		certManager := certificates.CertManager{
 			SecretName:            certSecretName,
@@ -256,14 +257,17 @@ func main() {
 			ValidatingWebhookName: validatingWebhookName,
 			ApiServiceName:        "v1beta1.external.metrics.k8s.io",
 			Logger:                setupLog,
+			Ready:                 certReady,
 		}
 		if err := certManager.AddCertificateRotation(ctx, mgr); err != nil {
 			setupLog.Error(err, "unable to set up cert rotation")
 			os.Exit(1)
 		}
+	} else {
+		close(certReady)
 	}
 
-	grpcServer := metricsservice.NewGrpcServer(&scaledHandler, metricsServiceAddr)
+	grpcServer := metricsservice.NewGrpcServer(&scaledHandler, metricsServiceAddr, certDir, certReady)
 	if err := mgr.Add(&grpcServer); err != nil {
 		setupLog.Error(err, "unable to set up Metrics Service gRPC server")
 		os.Exit(1)
