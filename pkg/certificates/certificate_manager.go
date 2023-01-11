@@ -22,16 +22,15 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/go-logr/logr"
+	"github.com/open-policy-agent/cert-controller/pkg/rotator"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"github.com/go-logr/logr"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
-	"github.com/open-policy-agent/cert-controller/pkg/rotator"
 )
 
 // +kubebuilder:rbac:groups=apiregistration.k8s.io,resources=apiservices,verbs=get;list;watch;update;patch
@@ -47,21 +46,20 @@ type CertManager struct {
 	CAName                string
 	CAOrganization        string
 	ValidatingWebhookName string
-	ApiServiceName        string
+	APIServiceName        string
 	Logger                logr.Logger
 	Ready                 chan struct{}
 }
 
 // AddCertificateRotation registers all needed services to generate the certificates and patches needed resources with the caBundle
 func (cm CertManager) AddCertificateRotation(ctx context.Context, mgr manager.Manager) error {
-
 	var rotatorHooks = []rotator.WebhookInfo{
 		{
 			Name: cm.ValidatingWebhookName,
 			Type: rotator.Validating,
 		},
 		{
-			Name: cm.ApiServiceName,
+			Name: cm.APIServiceName,
 			Type: rotator.APIService,
 		},
 	}

@@ -255,7 +255,7 @@ func main() {
 			CAName:                "KEDA",
 			CAOrganization:        "KEDAORG",
 			ValidatingWebhookName: validatingWebhookName,
-			ApiServiceName:        "v1beta1.external.metrics.k8s.io",
+			APIServiceName:        "v1beta1.external.metrics.k8s.io",
 			Logger:                setupLog,
 			Ready:                 certReady,
 		}
