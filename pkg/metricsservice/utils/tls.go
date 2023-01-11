@@ -50,18 +50,15 @@ func LoadGrpcTLSCredentials(certDir string, server bool) (credentials.TransportC
 	}
 
 	// Create the credentials and return it
-	var config *tls.Config
+	config := &tls.Config{
+		MinVersion:   tls.VersionTLS13,
+		Certificates: []tls.Certificate{cert},
+	}
 	if server {
-		config = &tls.Config{
-			Certificates: []tls.Certificate{cert},
-			ClientAuth:   tls.RequireAndVerifyClientCert,
-			ClientCAs:    certPool,
-		}
+		config.ClientAuth = tls.RequireAndVerifyClientCert
+		config.ClientCAs = certPool
 	} else {
-		config = &tls.Config{
-			Certificates: []tls.Certificate{cert},
-			RootCAs:      certPool,
-		}
+		config.RootCAs = certPool
 	}
 
 	return credentials.NewTLS(config), nil
