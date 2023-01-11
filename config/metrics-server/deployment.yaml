@@ -62,6 +62,7 @@ spec:
           - --client-ca-file=/certs/ca.crt
           - --tls-cert-file=/certs/tls.crt
           - --tls-private-key-file=/certs/tls.key
+          - --cert-dir=/certs
           ports:
           - containerPort: 6443
             name: https
