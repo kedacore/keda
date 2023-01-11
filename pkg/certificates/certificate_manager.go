@@ -18,6 +18,7 @@ package certificates
 
 import (
 	"context"
+	"crypto/x509"
 	"fmt"
 	"os"
 
@@ -89,6 +90,10 @@ func (cm CertManager) AddCertificateRotation(ctx context.Context, mgr manager.Ma
 		Webhooks:               rotatorHooks,
 		RestartOnSecretRefresh: true,
 		RequireLeaderElection:  true,
+		ExtKeyUsages: &[]x509.ExtKeyUsage{
+			x509.ExtKeyUsageServerAuth,
+			x509.ExtKeyUsageClientAuth,
+		},
 	}); err != nil {
 		return err
 	}

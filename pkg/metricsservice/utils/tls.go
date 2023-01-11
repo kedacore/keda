@@ -26,15 +26,19 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-// LoadTLSCredentials reads the certificate from the given path and returns TLS transport credentials
-func LoadTLSCredentials(certDir string) (credentials.TransportCredentials, error) {
+// LoadGrpcTLSCredentials reads the certificate from the given path and returns TLS transport credentials
+func LoadGrpcTLSCredentials(certDir string, server bool) (credentials.TransportCredentials, error) {
 	// Load certificate of the CA who signed client's certificate
 	pemClientCA, err := ioutil.ReadFile(path.Join(certDir, "ca.crt"))
 	if err != nil {
 		return nil, err
 	}
 
-	certPool := x509.NewCertPool()
+	// Get the SystemCertPool, continue with an empty pool on error
+	certPool, _ := x509.SystemCertPool()
+	if certPool == nil {
+		certPool = x509.NewCertPool()
+	}
 	if !certPool.AppendCertsFromPEM(pemClientCA) {
 		return nil, fmt.Errorf("failed to add client CA's certificate")
 	}
@@ -46,10 +50,18 @@ func LoadTLSCredentials(certDir string) (credentials.TransportCredentials, error
 	}
 
 	// Create the credentials and return it
-	config := &tls.Config{
-		Certificates: []tls.Certificate{cert},
-		ClientAuth:   tls.RequireAndVerifyClientCert,
-		ClientCAs:    certPool,
+	var config *tls.Config
+	if server {
+		config = &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			ClientAuth:   tls.RequireAndVerifyClientCert,
+			ClientCAs:    certPool,
+		}
+	} else {
+		config = &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			RootCAs:      certPool,
+		}
 	}
 
 	return credentials.NewTLS(config), nil

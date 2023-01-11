@@ -49,7 +49,7 @@ func NewGrpcClient(url, certDir string) (*GrpcClient, error) {
 		  }
 		}]}`
 
-	creds, err := utils.LoadTLSCredentials(certDir)
+	creds, err := utils.LoadGrpcTLSCredentials(certDir, false)
 	if err != nil {
 		return nil, err
 	}
