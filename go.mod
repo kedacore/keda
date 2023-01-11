@@ -51,7 +51,7 @@ require (
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/ginkgo/v2 v2.5.0
 	github.com/onsi/gomega v1.24.1
-	github.com/open-policy-agent/cert-controller v0.5.0
+	github.com/open-policy-agent/cert-controller v0.6.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.14.0
@@ -98,9 +98,6 @@ replace (
 
 	// https://nvd.nist.gov/vuln/detail/CVE-2022-1996
 	github.com/emicklei/go-restful => github.com/emicklei/go-restful v2.16.0+incompatible
-
-	// Needed for certificate generation till the PR is merged: https://github.com/open-policy-agent/cert-controller/pull/52
-	github.com/open-policy-agent/cert-controller => github.com/jorturfer/cert-controller v0.5.0
 
 	// https://avd.aquasec.com/nvd/2022/cve-2022-27191/
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
