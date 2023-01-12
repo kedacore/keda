@@ -2,10 +2,7 @@ package scalers
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,7 +14,6 @@ import (
 
 	"github.com/go-logr/logr"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"github.com/youmark/pkcs8"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -142,7 +138,7 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 			host = hostURI.String()
 		}
 
-		conn, ch, err := getConnectionAndChannel(host, meta.ca, meta.cert, meta.key, meta.keyPassword, meta.enableTLS)
+		conn, ch, err := getConnectionAndChannel(host, meta)
 		if err != nil {
 			return nil, fmt.Errorf("error establishing rabbitmq connection: %w", err)
 		}
@@ -389,63 +385,20 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 	return meta, nil
 }
 
-func decryptClientKey(clientKey, clientKeyPassword string) ([]byte, error) {
-	block, _ := pem.Decode([]byte(clientKey))
-
-	key, err := pkcs8.ParsePKCS8PrivateKey(block.Bytes, []byte(clientKeyPassword))
-	if err != nil {
-		return nil, err
-	}
-
-	pemData, err := x509.MarshalPKCS8PrivateKey(key)
-	if err != nil {
-		return nil, err
-	}
-
-	var pemPrivateBlock = &pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: pemData,
-	}
-
-	encodedData := pem.EncodeToMemory(pemPrivateBlock)
-
-	return encodedData, nil
-}
-
 // getConnectionAndChannel returns an amqp connection. If enableTLS is true tls connection is made using
 //
 //	the given ceClient cert, ceClient key,and CA certificate. If clientKeyPassword is not empty the provided password will be used to
 //
 // decrypt the given key. If enableTLS is disabled then amqp connection will be created without tls.
-func getConnectionAndChannel(host string, caFile string, clientCert string, clientKey string, clientKeyPassword string, enableTLS bool) (*amqp.Connection, *amqp.Channel, error) {
+func getConnectionAndChannel(host string, meta *rabbitMQMetadata) (*amqp.Connection, *amqp.Channel, error) {
 	var conn *amqp.Connection
 	var err error
 
-	if enableTLS {
-		config := &tls.Config{}
-
-		config.RootCAs = x509.NewCertPool()
-
-		if caFile != "" {
-			config.RootCAs = x509.NewCertPool()
-			config.RootCAs.AppendCertsFromPEM([]byte(caFile))
+	if meta.enableTLS {
+		tlsConfig, err := kedautil.NewTLSConfigWithPassword(meta.cert, meta.key, meta.keyPassword, meta.ca)
+		if err == nil {
+			conn, err = amqp.DialTLS(host, tlsConfig)
 		}
-
-		if clientCert != "" && clientKey != "" {
-			key := []byte(clientKey)
-			if clientKeyPassword != "" {
-				var err error
-				key, err = decryptClientKey(clientKey, clientKeyPassword)
-				if err != nil {
-					return nil, nil, fmt.Errorf("error decrypt X509Key: %w", err)
-				}
-			}
-
-			if cert, err := tls.X509KeyPair([]byte(clientCert), key); err == nil {
-				config.Certificates = append(config.Certificates, cert)
-			}
-		}
-		conn, err = amqp.DialTLS(host, config)
 	} else {
 		conn, err = amqp.Dial(host)
 	}
