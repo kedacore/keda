@@ -14,6 +14,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 
 	"github.com/kedacore/keda/v2/pkg/util"
 )
@@ -111,4 +112,34 @@ func (msiCredential *ADPodIdentityCredential) GetToken(ctx context.Context, opts
 	accessToken.ExpiresOn = msiCredential.aadToken.ExpiresOnTimeObject
 
 	return accessToken, nil
+}
+
+type ManagedIdentityWrapper struct {
+	cred *azidentity.ManagedIdentityCredential
+}
+
+func ManagedIdentityWrapperCredential(clientID string) (*ManagedIdentityWrapper, error) {
+	opts := &azidentity.ManagedIdentityCredentialOptions{}
+	if clientID != "" {
+		opts.ID = azidentity.ClientID(clientID)
+	}
+
+	msiCred, err := azidentity.NewManagedIdentityCredential(opts)
+	if err != nil {
+		return nil, err
+	}
+	return &ManagedIdentityWrapper{
+		cred: msiCred,
+	}, nil
+}
+
+func (w *ManagedIdentityWrapper) GetToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
+	c, cancel := context.WithTimeout(ctx, globalHTTPTimeout)
+	defer cancel()
+	tk, err := w.cred.GetToken(c, opts)
+	if ctxErr := c.Err(); errors.Is(ctxErr, context.DeadlineExceeded) {
+		// timeout: signal the chain to try its next credential, if any
+		err = azidentity.NewCredentialUnavailableError("managed identity timed out")
+	}
+	return tk, err
 }

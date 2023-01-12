@@ -294,36 +294,17 @@ func (s *azureServiceBusScaler) getServiceBusAdminClient(ctx context.Context) (*
 		return s.client, nil
 	}
 
-	var adminClient *admin.Client
-	var err error
-
 	switch s.podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		adminClient, err = admin.NewClientFromConnectionString(s.metadata.connection, nil)
+		return admin.NewClientFromConnectionString(s.metadata.connection, nil)
+	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+		creds, err := azure.NewChainedCredential(s.podIdentity.IdentityID)
 		if err != nil {
 			return nil, err
 		}
-
-	case kedav1alpha1.PodIdentityProviderAzure:
-		// Used for aad-pod-identity
-		creds := azure.NewADPodIdentityCredential(s.podIdentity.IdentityID, serviceBusResource)
-
-		adminClient, err = admin.NewClient(s.metadata.fullyQualifiedNamespace, creds, nil)
-		if err != nil {
-			return nil, err
-		}
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		// // Once azure-sdk-for-go supports Workload Identity we can remove this and use default implementation
-		// // https://github.com/Azure/azure-sdk-for-go/issues/15615
-		creds := azure.NewADWorkloadIdentityCredential(ctx, s.podIdentity.IdentityID, serviceBusResource)
-
-		adminClient, err = admin.NewClient(s.metadata.fullyQualifiedNamespace, creds, nil)
-		if err != nil {
-			return nil, err
-		}
+		return admin.NewClient(s.metadata.fullyQualifiedNamespace, creds, nil)
 	}
-
-	return adminClient, nil
+	return nil, fmt.Errorf("incorrect podIdentity type")
 }
 
 func getQueueLength(ctx context.Context, adminClient *admin.Client, meta *azureServiceBusMetadata) (int64, error) {

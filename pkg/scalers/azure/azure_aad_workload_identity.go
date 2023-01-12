@@ -25,8 +25,7 @@ import (
 	"time"
 
 	amqpAuth "github.com/Azure/azure-amqp-common-go/v3/auth"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/confidential"
@@ -45,18 +44,26 @@ const (
 	azureAuthrityHostEnv       = "AZURE_AUTHORITY_HOST"
 )
 
+var DefaultClientID string
+var TenantID string
+var TokenFilePath string
+var AuthorityHost string
+
+func init() {
+	DefaultClientID = os.Getenv(azureClientIDEnv)
+	TenantID = os.Getenv(azureTenantIDEnv)
+	TokenFilePath = os.Getenv(azureFederatedTokenFileEnv)
+	AuthorityHost = os.Getenv(azureAuthrityHostEnv)
+}
+
 // GetAzureADWorkloadIdentityToken returns the AADToken for resource
 func GetAzureADWorkloadIdentityToken(ctx context.Context, identityID, resource string) (AADToken, error) {
-	clientID := os.Getenv(azureClientIDEnv)
-	tenantID := os.Getenv(azureTenantIDEnv)
-	tokenFilePath := os.Getenv(azureFederatedTokenFileEnv)
-	authorityHost := os.Getenv(azureAuthrityHostEnv)
-
+	clientID := DefaultClientID
 	if identityID != "" {
 		clientID = identityID
 	}
 
-	signedAssertion, err := readJWTFromFileSystem(tokenFilePath)
+	signedAssertion, err := readJWTFromFileSystem(TokenFilePath)
 	if err != nil {
 		return AADToken{}, fmt.Errorf("error reading service account token - %w", err)
 	}
@@ -69,7 +76,7 @@ func GetAzureADWorkloadIdentityToken(ctx context.Context, identityID, resource s
 		return signedAssertion, nil
 	})
 
-	authorityOption := confidential.WithAuthority(fmt.Sprintf("%s%s/oauth2/token", authorityHost, tenantID))
+	authorityOption := confidential.WithAuthority(fmt.Sprintf("%s%s/oauth2/token", AuthorityHost, TenantID))
 	confidentialClient, err := confidential.New(
 		clientID,
 		cred,
@@ -126,46 +133,12 @@ func (aadWiConfig ADWorkloadIdentityConfig) Authorizer() (autorest.Authorizer, e
 		aadWiConfig.ctx, aadWiConfig.IdentityID, aadWiConfig.Resource)), nil
 }
 
-// ADWorkloadIdentityCredential is a type that implements the TokenCredential interface.
-// Once azure-sdk-for-go supports Workload Identity we can remove this and use default implementation
-// https://github.com/Azure/azure-sdk-for-go/issues/15615
-type ADWorkloadIdentityCredential struct {
-	ctx        context.Context
-	IdentityID string
-	Resource   string
-	aadToken   AADToken
-}
-
-func NewADWorkloadIdentityCredential(ctx context.Context, identityID, resource string) *ADWorkloadIdentityCredential {
-	return &ADWorkloadIdentityCredential{ctx: ctx, IdentityID: identityID, Resource: resource}
-}
-
-func (wiCredential *ADWorkloadIdentityCredential) refresh() error {
-	if time.Now().Before(wiCredential.aadToken.ExpiresOnTimeObject) {
-		return nil
+func NewADWorkloadIdentityCredential(identityID string) (*azidentity.WorkloadIdentityCredential, error) {
+	clientID := DefaultClientID
+	if identityID != "" {
+		clientID = identityID
 	}
-
-	aadToken, err := GetAzureADWorkloadIdentityToken(wiCredential.ctx, wiCredential.IdentityID, wiCredential.Resource)
-	if err != nil {
-		return err
-	}
-
-	wiCredential.aadToken = aadToken
-	return nil
-}
-
-// GetToken is for implementing the TokenCredential interface
-func (wiCredential *ADWorkloadIdentityCredential) GetToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
-	accessToken := azcore.AccessToken{}
-	err := wiCredential.refresh()
-	if err != nil {
-		return accessToken, err
-	}
-
-	accessToken.Token = wiCredential.aadToken.AccessToken
-	accessToken.ExpiresOn = wiCredential.aadToken.ExpiresOnTimeObject
-
-	return accessToken, nil
+	return azidentity.NewWorkloadIdentityCredential(TenantID, clientID, TokenFilePath, &azidentity.WorkloadIdentityCredentialOptions{})
 }
 
 // ADWorkloadIdentityTokenProvider is a type that implements the adal.OAuthTokenProvider and adal.Refresher interfaces.
