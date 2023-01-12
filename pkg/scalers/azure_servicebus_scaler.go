@@ -42,8 +42,6 @@ const (
 	messageCountMetricName                      = "messageCount"
 	activationMessageCountMetricName            = "activationMessageCount"
 	defaultTargetMessageCount                   = 5
-	// Service bus resource id is "https://servicebus.azure.net/" in all cloud environments
-	serviceBusResource = "https://servicebus.azure.net/"
 )
 
 type azureServiceBusScaler struct {
@@ -273,7 +271,7 @@ func (s *azureServiceBusScaler) GetMetricsAndActivity(ctx context.Context, metri
 // Returns the length of the queue or subscription
 func (s *azureServiceBusScaler) getAzureServiceBusLength(ctx context.Context) (int64, error) {
 	// get adminClient
-	adminClient, err := s.getServiceBusAdminClient(ctx)
+	adminClient, err := s.getServiceBusAdminClient()
 	if err != nil {
 		return -1, err
 	}
@@ -289,7 +287,7 @@ func (s *azureServiceBusScaler) getAzureServiceBusLength(ctx context.Context) (i
 }
 
 // Returns service bus namespace object
-func (s *azureServiceBusScaler) getServiceBusAdminClient(ctx context.Context) (*admin.Client, error) {
+func (s *azureServiceBusScaler) getServiceBusAdminClient() (*admin.Client, error) {
 	if s.client != nil {
 		return s.client, nil
 	}
