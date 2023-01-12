@@ -26,24 +26,27 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apiserver/pkg/endpoints/request"
-	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/metrics/pkg/apis/custom_metrics"
 
+	"sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver/metrics"
 	cm_rest "sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver/registry/rest"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 )
 
 type REST struct {
-	cmProvider provider.CustomMetricsProvider
+	cmProvider        provider.CustomMetricsProvider
+	freshnessObserver metrics.FreshnessObserver
 }
 
 var _ rest.Storage = &REST{}
 var _ cm_rest.ListerWithOptions = &REST{}
 
 func NewREST(cmProvider provider.CustomMetricsProvider) *REST {
+	freshnessObserver := metrics.NewFreshnessObserver(custom_metrics.GroupName)
 	return &REST{
-		cmProvider: cmProvider,
+		cmProvider:        cmProvider,
+		freshnessObserver: freshnessObserver,
 	}
 }
 
@@ -97,7 +100,7 @@ func (r *REST) List(ctx context.Context, options *metainternalversion.ListOption
 		}
 	}
 
-	namespace := genericapirequest.NamespaceValue(ctx)
+	namespace := request.NamespaceValue(ctx)
 
 	requestInfo, ok := request.RequestInfoFrom(ctx)
 	if !ok {
@@ -118,11 +121,25 @@ func (r *REST) List(ctx context.Context, options *metainternalversion.ListOption
 		namespace = ""
 	}
 
+	var res *custom_metrics.MetricValueList
+	var err error
+
 	// handle namespaced and root metrics
 	if name == "*" {
-		return r.handleWildcardOp(ctx, namespace, groupResource, selector, metricName, metricLabelSelector)
+		res, err = r.handleWildcardOp(ctx, namespace, groupResource, selector, metricName, metricLabelSelector)
+	} else {
+		res, err = r.handleIndividualOp(ctx, namespace, groupResource, name, metricName, metricLabelSelector)
 	}
-	return r.handleIndividualOp(ctx, namespace, groupResource, name, metricName, metricLabelSelector)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for _, m := range res.Items {
+		r.freshnessObserver.Observe(m.Timestamp)
+	}
+
+	return res, nil
 }
 
 func (r *REST) handleIndividualOp(ctx context.Context, namespace string, groupResource schema.GroupResource, name string, metricName string, metricLabelSelector labels.Selector) (*custom_metrics.MetricValueList, error) {
