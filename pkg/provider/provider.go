@@ -99,6 +99,12 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 
 		// selector is in form: `scaledobject.keda.sh/name: scaledobject-name`
 		scaledObjectName := selector.Get(kedav1alpha1.ScaledObjectOwnerAnnotation)
+		if scaledObjectName == "" {
+			err := fmt.Errorf("scaledObject name is not specified")
+			logger.Error(err, fmt.Sprintf("please specify scaledObject name, it needs to be set as value of label selector %q on the query", kedav1alpha1.ScaledObjectOwnerAnnotation))
+
+			return &external_metrics.ExternalMetricValueList{}, err
+		}
 
 		metrics, promMetrics, err := p.grpcClient.GetMetrics(ctx, scaledObjectName, namespace, info.Metric)
 		logger.V(1).WithValues("scaledObjectName", scaledObjectName, "scaledObjectNamespace", namespace, "metrics", metrics).Info("Receiving metrics")
