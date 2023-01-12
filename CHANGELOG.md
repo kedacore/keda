@@ -58,7 +58,8 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 
-- **Redis**: Add support to Redis 7 ([#4052](https://github.com/kedacore/keda/issues/4052))
+- **General**: Use (self-signed) certificates for all the communications (internals and externals) ([#3931](https://github.com/kedacore/keda/issues/3931))
+- **Redis Scalers**: Add support to Redis 7 ([#4052](https://github.com/kedacore/keda/issues/4052))
 
 ### Fixes
 

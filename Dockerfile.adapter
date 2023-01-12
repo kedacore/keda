@@ -20,8 +20,6 @@ COPY vendor/ vendor/
 COPY go.mod go.mod
 COPY go.sum go.sum
 
-RUN mkdir -p /apiserver.local.config/certificates && chmod -R 777 /apiserver.local.config
-
 # Build
 # https://www.docker.com/blog/faster-multi-platform-builds-dockerfile-cross-compilation-guide/
 ARG TARGETOS
@@ -32,7 +30,6 @@ RUN VERSION=${BUILD_VERSION} GIT_COMMIT=${GIT_COMMIT} GIT_VERSION=${GIT_VERSION}
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /
-COPY --from=builder --chown=nonroot:nonroot /apiserver.local.config  /apiserver.local.config
 COPY --from=builder /workspace/bin/keda-adapter .
 # 65532 is numeric for nonroot
 USER 65532:65532

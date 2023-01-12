@@ -26,6 +26,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/kedacore/keda/v2/pkg/metricsservice/api"
+	"github.com/kedacore/keda/v2/pkg/metricsservice/utils"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 )
 
@@ -34,6 +35,8 @@ var log = logf.Log.WithName("grpc_server")
 type GrpcServer struct {
 	server        *grpc.Server
 	address       string
+	certDir       string
+	certsReady    chan struct{}
 	scalerHandler *scaling.ScaleHandler
 	api.UnimplementedMetricsServiceServer
 }
@@ -60,17 +63,13 @@ func (s *GrpcServer) GetMetrics(ctx context.Context, in *api.ScaledObjectRef) (*
 }
 
 // NewGrpcServer creates a new instance of GrpcServer
-func NewGrpcServer(scaleHandler *scaling.ScaleHandler, address string) GrpcServer {
-	// nosemgrep: go.grpc.security.grpc-server-insecure-connection.grpc-server-insecure-connection
-	gsrv := grpc.NewServer()
-	srv := GrpcServer{
-		server:        gsrv,
+func NewGrpcServer(scaleHandler *scaling.ScaleHandler, address, certDir string, certsReady chan struct{}) GrpcServer {
+	return GrpcServer{
 		address:       address,
 		scalerHandler: scaleHandler,
+		certDir:       certDir,
+		certsReady:    certsReady,
 	}
-
-	api.RegisterMetricsServiceServer(gsrv, &srv)
-	return srv
 }
 
 func (s *GrpcServer) startServer() error {
@@ -89,6 +88,16 @@ func (s *GrpcServer) startServer() error {
 // Start starts a new gRPC Metrics Service, this implements Runnable interface
 // of controller-runtime Manager, so we can use mgr.Add() to start this component.
 func (s *GrpcServer) Start(ctx context.Context) error {
+	<-s.certsReady
+	if s.server == nil {
+		creds, err := utils.LoadGrpcTLSCredentials(s.certDir, true)
+		if err != nil {
+			return err
+		}
+		s.server = grpc.NewServer(grpc.Creds(creds))
+		api.RegisterMetricsServiceServer(s.server, s)
+	}
+
 	errChan := make(chan error)
 
 	go func() {

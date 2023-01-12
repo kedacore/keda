@@ -476,8 +476,8 @@ func (cr *CertRotator) CreateCACert(begin, end time.Time) (*KeyPairArtifacts, er
 // CreateCertPEM takes the results of CreateCACert and uses it to create the
 // PEM-encoded public certificate and private key, respectively
 func (cr *CertRotator) CreateCertPEM(ca *KeyPairArtifacts, begin, end time.Time) ([]byte, []byte, error) {
-	dnsNames := cr.ExtraDNSNames
-	dnsNames = append(dnsNames, cr.DNSName)
+	dnsNames := []string{cr.DNSName}
+	dnsNames = append(dnsNames, cr.ExtraDNSNames...)
 	templ := &x509.Certificate{
 		SerialNumber: big.NewInt(1),
 		Subject: pkix.Name{
