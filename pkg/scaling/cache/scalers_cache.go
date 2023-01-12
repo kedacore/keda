@@ -235,17 +235,20 @@ func (c *ScalersCache) refreshScaler(ctx context.Context, id int) (scalers.Scale
 	}
 
 	sb := c.Scalers[id]
+	defer sb.Scaler.Close(ctx)
 	ns, sConfig, err := sb.Factory()
 	if err != nil {
 		return nil, err
 	}
 
+	if id < 0 || id >= len(c.Scalers) {
+		return nil, fmt.Errorf("scaler with id %d not found. Len = %d", id, len(c.Scalers))
+	}
 	c.Scalers[id] = ScalerBuilder{
 		Scaler:       ns,
 		ScalerConfig: *sConfig,
 		Factory:      sb.Factory,
 	}
-	sb.Scaler.Close(ctx)
 
 	return ns, nil
 }
