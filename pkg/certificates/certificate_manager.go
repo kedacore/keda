@@ -20,7 +20,6 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
-	"os"
 
 	"github.com/go-logr/logr"
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
@@ -120,7 +119,7 @@ func (cm CertManager) ensureSecret(ctx context.Context, mgr manager.Manager, sec
 	err := mgr.GetAPIReader().List(ctx, secrets, opt)
 	if err != nil {
 		cm.Logger.Error(err, "unable to check secrets")
-		os.Exit(1)
+		return err
 	}
 
 	exists := false
