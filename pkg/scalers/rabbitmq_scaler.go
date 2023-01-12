@@ -393,16 +393,14 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 func getConnectionAndChannel(host string, meta *rabbitMQMetadata) (*amqp.Connection, *amqp.Channel, error) {
 	var conn *amqp.Connection
 	var err error
-
 	if meta.enableTLS {
-		tlsConfig, err := kedautil.NewTLSConfigWithPassword(meta.cert, meta.key, meta.keyPassword, meta.ca)
-		if err == nil {
+		tlsConfig, configErr := kedautil.NewTLSConfigWithPassword(meta.cert, meta.key, meta.keyPassword, meta.ca)
+		if configErr == nil {
 			conn, err = amqp.DialTLS(host, tlsConfig)
 		}
 	} else {
 		conn, err = amqp.Dial(host)
 	}
-
 	if err != nil {
 		return nil, nil, err
 	}
