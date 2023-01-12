@@ -58,12 +58,14 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 
-- **Redis**: Add support to Redis 7 ([#4052](https://github.com/kedacore/keda/issues/4052))
+- **General**: Use (self-signed) certificates for all the communications (internals and externals) ([#3931](https://github.com/kedacore/keda/issues/3931))
+- **Redis Scalers**: Add support to Redis 7 ([#4052](https://github.com/kedacore/keda/issues/4052))
 
 ### Fixes
 
+- **General**: Prevent a panic that might occur while refreshing a scaler cache ([#4092](https://github.com/kedacore/keda/issues/4092))
 - **Azure Service Bus Scaler:** Use correct auth flows with pod identity ([#4026](https://github.com/kedacore/keda/issues/4026))
-- **CPU Memory Scaler:** Store forgotten logger ([#4022](https://github.com/kedacore/keda/issues/4022))
+- **CPU Memory Scaler** Store forgotten logger ([#4022](https://github.com/kedacore/keda/issues/4022))
 
 ### Deprecations
 
@@ -76,7 +78,9 @@ New deprecation(s):
 ### Other
 
 - **RabbitMQ Scaler:** Move from `streadway/amqp` to `rabbitmq/amqp091-go` ([#4004](https://github.com/kedacore/keda/pull/4039))
+- **General**: Bump Golang to 1.19 ([#4094](https://github.com/kedacore/keda/issues/4094))
 - **General:** Compare error with `errors.Is` ([#4004](https://github.com/kedacore/keda/pull/4004))
+- **General:** Check that ScaledObject name is specified as part of a query for getting metrics ([#4088](https://github.com/kedacore/keda/pull/4088))
 
 ## v2.9.1
 

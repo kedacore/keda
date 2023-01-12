@@ -9,7 +9,7 @@ jobs:
   codeQl:
     name: Analyze CodeQL ${{ matrix.language }}
     runs-on: ubuntu-latest
-    container: ghcr.io/kedacore/build-tools:1.18.8
+    container: ghcr.io/kedacore/build-tools:1.19.5
     strategy:
       fail-fast: false
       matrix:
