@@ -105,6 +105,7 @@ func getDNSNames(service string) []string {
 		fmt.Sprintf("%s.%s", service, namespace),
 		fmt.Sprintf("%s.%s.svc", service, namespace),
 		fmt.Sprintf("%s.%s.svc.local", service, namespace),
+		fmt.Sprintf("%s.%s.svc.cluster.local", service, namespace),
 	}
 }
 
