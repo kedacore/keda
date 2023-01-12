@@ -75,6 +75,7 @@ New deprecation(s):
 ### Other
 
 - **RabbitMQ Scaler:** Move from `streadway/amqp` to `rabbitmq/amqp091-go` ([#4004](https://github.com/kedacore/keda/pull/4039))
+- **General**: Bump Golang to 1.19 ([#4094](https://github.com/kedacore/keda/issues/4094))
 - **General:** Compare error with `errors.Is` ([#4004](https://github.com/kedacore/keda/pull/4004))
 
 ## v2.9.1
