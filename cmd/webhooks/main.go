@@ -18,9 +18,7 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
-	"runtime"
 
 	"github.com/spf13/pflag"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
@@ -34,7 +32,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/k8s"
-	"github.com/kedacore/keda/v2/version"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -98,12 +96,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	setupLog.Info("Starting admission webhooks")
-	setupLog.Info(fmt.Sprintf("KEDA Version: %s", version.Version))
-	setupLog.Info(fmt.Sprintf("Git Commit: %s", version.GitCommit))
-	setupLog.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
-	setupLog.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
-	setupLog.Info(fmt.Sprintf("Running on Kubernetes %s", kubeVersion.PrettyVersion), "version", kubeVersion.Version)
+	kedautil.PrintMotd(setupLog, kubeVersion, "admission webhooks")
 
 	setupWebhook(mgr, tlsMinVersion)
 
