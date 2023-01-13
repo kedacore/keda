@@ -22,8 +22,6 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/admin"
 	az "github.com/Azure/go-autorest/autorest/azure"
 	"github.com/go-logr/logr"
@@ -44,8 +42,6 @@ const (
 	messageCountMetricName                      = "messageCount"
 	activationMessageCountMetricName            = "activationMessageCount"
 	defaultTargetMessageCount                   = 5
-	// Service bus resource id is "https://servicebus.azure.net/" in all cloud environments
-	serviceBusResource = "https://servicebus.azure.net/"
 )
 
 type azureServiceBusScaler struct {
@@ -275,7 +271,7 @@ func (s *azureServiceBusScaler) GetMetricsAndActivity(ctx context.Context, metri
 // Returns the length of the queue or subscription
 func (s *azureServiceBusScaler) getAzureServiceBusLength(ctx context.Context) (int64, error) {
 	// get adminClient
-	adminClient, err := s.getServiceBusAdminClient(ctx)
+	adminClient, err := s.getServiceBusAdminClient()
 	if err != nil {
 		return -1, err
 	}
@@ -291,58 +287,22 @@ func (s *azureServiceBusScaler) getAzureServiceBusLength(ctx context.Context) (i
 }
 
 // Returns service bus namespace object
-func (s *azureServiceBusScaler) getServiceBusAdminClient(ctx context.Context) (*admin.Client, error) {
+func (s *azureServiceBusScaler) getServiceBusAdminClient() (*admin.Client, error) {
 	if s.client != nil {
 		return s.client, nil
 	}
 
-	var adminClient *admin.Client
-	var err error
-
 	switch s.podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		adminClient, err = admin.NewClientFromConnectionString(s.metadata.connection, nil)
-		if err != nil {
-			return nil, err
-		}
-
+		return admin.NewClientFromConnectionString(s.metadata.connection, nil)
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
-		var creds []azcore.TokenCredential
-		options := &azidentity.DefaultAzureCredentialOptions{}
-
-		// Used for local debug based on az-cli user
-		cliCred, err := azidentity.NewAzureCLICredential(&azidentity.AzureCLICredentialOptions{TenantID: options.TenantID})
-		if err == nil {
-			creds = append(creds, cliCred)
-		}
-
-		// Once azure-sdk-for-go supports Workload Identity we can remove this and use default implementation
-		// https://github.com/Azure/azure-sdk-for-go/issues/15615
-		wiCred := azure.NewADWorkloadIdentityCredential(ctx, s.podIdentity.IdentityID, serviceBusResource)
-		creds = append(creds, wiCred)
-
-		// Used for aad-pod-identity
-		o := &azidentity.ManagedIdentityCredentialOptions{ClientOptions: options.ClientOptions}
-		if s.podIdentity.IdentityID != "" {
-			o.ID = azidentity.ClientID(s.podIdentity.IdentityID)
-		}
-		msiCred, err := azidentity.NewManagedIdentityCredential(o)
-		if err == nil {
-			creds = append(creds, msiCred)
-		}
-
-		// Create the chained credential based on the previous 3
-		chain, err := azidentity.NewChainedTokenCredential(creds, nil)
+		creds, err := azure.NewChainedCredential(s.podIdentity.IdentityID)
 		if err != nil {
 			return nil, err
 		}
-		adminClient, err = admin.NewClient(s.metadata.fullyQualifiedNamespace, chain, nil)
-		if err != nil {
-			return nil, err
-		}
+		return admin.NewClient(s.metadata.fullyQualifiedNamespace, creds, nil)
 	}
-
-	return adminClient, nil
+	return nil, fmt.Errorf("incorrect podIdentity type")
 }
 
 func getQueueLength(ctx context.Context, adminClient *admin.Client, meta *azureServiceBusMetadata) (int64, error) {

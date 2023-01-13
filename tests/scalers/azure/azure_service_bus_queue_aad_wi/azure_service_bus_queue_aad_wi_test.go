@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package azure_workload_identity_test
+package azure_service_bus_queue_aad_pod_identity_test
 
 import (
 	"context"
@@ -20,10 +20,10 @@ import (
 )
 
 // Load environment variables from .env file
-var _ = godotenv.Load("../../.env")
+var _ = godotenv.Load("../../../.env")
 
 const (
-	testName = "azure-workload-identity-test"
+	testName = "azure-service-bus-queue-aad-wi-test"
 )
 
 var (

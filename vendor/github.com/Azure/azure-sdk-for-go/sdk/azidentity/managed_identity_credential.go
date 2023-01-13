@@ -85,9 +85,7 @@ func NewManagedIdentityCredential(options *ManagedIdentityCredentialOptions) (*M
 		return nil, err
 	}
 	cred := confidential.NewCredFromTokenProvider(mic.provideToken)
-	if err != nil {
-		return nil, err
-	}
+
 	// It's okay to give MSAL an invalid client ID because MSAL will use it only as part of a cache key.
 	// ManagedIdentityClient handles all the details of authentication and won't receive this value from MSAL.
 	clientID := "SYSTEM-ASSIGNED-MANAGED-IDENTITY"
