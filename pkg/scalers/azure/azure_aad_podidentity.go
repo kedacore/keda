@@ -76,44 +76,6 @@ func GetAzureADPodIdentityToken(ctx context.Context, httpClient util.HTTPDoer, i
 	return token, nil
 }
 
-type ADPodIdentityCredential struct {
-	IdentityID string
-	Resource   string
-	aadToken   AADToken
-}
-
-func NewADPodIdentityCredential(identityID, resource string) *ADPodIdentityCredential {
-	return &ADPodIdentityCredential{IdentityID: identityID, Resource: resource}
-}
-
-func (msiCredential *ADPodIdentityCredential) refresh(ctx context.Context) error {
-	if time.Now().Before(msiCredential.aadToken.ExpiresOnTimeObject) {
-		return nil
-	}
-
-	aadToken, err := GetAzureADPodIdentityToken(ctx, util.CreateHTTPClient(globalHTTPTimeout, false), msiCredential.IdentityID, msiCredential.Resource)
-	if err != nil {
-		return err
-	}
-
-	msiCredential.aadToken = aadToken
-	return nil
-}
-
-// GetToken is for implementing the TokenCredential interface
-func (msiCredential *ADPodIdentityCredential) GetToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
-	accessToken := azcore.AccessToken{}
-	err := msiCredential.refresh(ctx)
-	if err != nil {
-		return accessToken, err
-	}
-
-	accessToken.Token = msiCredential.aadToken.AccessToken
-	accessToken.ExpiresOn = msiCredential.aadToken.ExpiresOnTimeObject
-
-	return accessToken, nil
-}
-
 type ManagedIdentityWrapper struct {
 	cred *azidentity.ManagedIdentityCredential
 }
