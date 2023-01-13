@@ -11,6 +11,7 @@ func NewChainedCredential(identityID string) (*azidentity.ChainedTokenCredential
 	var creds []azcore.TokenCredential
 
 	// Used for local debug based on az-cli user
+	// As production images don't have shell, we can't register this provider always
 	if _, err := os.Stat("/bin/sh"); err == nil {
 		cliCred, err := azidentity.NewAzureCLICredential(&azidentity.AzureCLICredentialOptions{})
 		if err == nil {
