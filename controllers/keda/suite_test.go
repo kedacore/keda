@@ -22,6 +22,9 @@ import (
 	"testing"
 	"time"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/k8s"
+	"github.com/kedacore/keda/v2/pkg/scaling"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -30,12 +33,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/k8s"
-	"github.com/kedacore/keda/v2/pkg/scaling"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -55,10 +52,10 @@ func TestAPIs(t *testing.T) {
 	RunSpecs(t, "Controller Suite")
 }
 
-var _ = BeforeSuite(func(done Done) {
-	logf.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(GinkgoWriter)))
+var _ = BeforeSuite(func(ctx SpecContext) {
+	//logf.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(GinkgoWriter)))
 
-	By("bootstrapping test environment")
+	//By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "config", "crd", "bases")},
 		ErrorIfCRDPathMissing: true,
@@ -74,7 +71,7 @@ var _ = BeforeSuite(func(done Done) {
 
 	// +kubebuilder:scaffold:scheme
 
-	ctx, cancel = context.WithCancel(context.Background())
+	//ctx, cancel = context.WithCancel(context.Background())
 
 	k8sManager, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
@@ -102,11 +99,10 @@ var _ = BeforeSuite(func(done Done) {
 		Expect(err).ToNot(HaveOccurred())
 	}()
 
-	close(done)
-})
+}, NodeTimeout(60))
 
 var _ = AfterSuite(func() {
-	By("tearing down the test environment")
+	//By("tearing down the test environment")
 
 	// stop k8sManager
 	cancel()
