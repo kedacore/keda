@@ -60,7 +60,8 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
-- **General**: TODO ([#TODO](https://github.com/kedacore/keda/issues/TODO))
+- **General**: Prevent a panic that might occur while refreshing a scaler cache ([#4092](https://github.com/kedacore/keda/issues/4092))
+- **Azure Service Bus Scaler:** Use correct auth flows with pod identity ([#4026](https://github.com/kedacore/keda/issues/4026))
 
 ### Deprecations
 
