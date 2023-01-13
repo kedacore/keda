@@ -40,7 +40,7 @@ func PrintMotd(logger logr.Logger, kubeVersion K8sVersion, component string) {
 
 	if kubeVersion.MinorVersion < minSupportedVersion ||
 		kubeVersion.MinorVersion > maxSupportedVersion {
-		logger.Info(fmt.Sprintf("WARNING: KEDA %s doesn't officially support Kubernetes %s", version.Version, kubeVersion.Version))
+		logger.Info(fmt.Sprintf("WARNING: KEDA %s does not provide support for Kubernetes %s", version.Version, kubeVersion.Version))
 		logger.Info("Check officially supported versions in https://keda.sh")
 	}
 }
