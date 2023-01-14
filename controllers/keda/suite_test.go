@@ -19,6 +19,8 @@ package keda
 import (
 	"context"
 	"path/filepath"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"testing"
 	"time"
 
@@ -52,17 +54,23 @@ func TestAPIs(t *testing.T) {
 	RunSpecs(t, "Controller Suite")
 }
 
-var _ = BeforeSuite(func(ctx SpecContext) {
-	//logf.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(GinkgoWriter)))
+var _ = BeforeSuite(func() {
+	logf.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(GinkgoWriter)))
 
-	//By("bootstrapping test environment")
+	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "config", "crd", "bases")},
 		ErrorIfCRDPathMissing: true,
 	}
 
 	var err error
-	cfg, err = testEnv.Start()
+	done := make(chan interface{}, 0)
+	go func() {
+		defer GinkgoRecover()
+		cfg, err = testEnv.Start()
+		close(done)
+	}()
+	Eventually(done).WithTimeout(time.Minute).Should(BeClosed())
 	Expect(err).ToNot(HaveOccurred())
 	Expect(cfg).ToNot(BeNil())
 
@@ -71,7 +79,7 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 
 	// +kubebuilder:scaffold:scheme
 
-	//ctx, cancel = context.WithCancel(context.Background())
+	ctx, cancel = context.WithCancel(context.Background())
 
 	k8sManager, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
@@ -98,11 +106,10 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 		err = k8sManager.Start(ctx)
 		Expect(err).ToNot(HaveOccurred())
 	}()
-
-}, NodeTimeout(60))
+})
 
 var _ = AfterSuite(func() {
-	//By("tearing down the test environment")
+	By("tearing down the test environment")
 
 	// stop k8sManager
 	cancel()
