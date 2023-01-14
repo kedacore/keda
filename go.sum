@@ -1304,8 +1304,8 @@ sigs.k8s.io/controller-runtime v0.14.1 h1:vThDes9pzg0Y+UbCPY3Wj34CGIYPgdmspPm2GI
 sigs.k8s.io/controller-runtime v0.14.1/go.mod h1:GaRkrY8a7UZF0kqFFbUKG7n9ICiTY5T55P1RiE3UZlU=
 sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20221201045826-d9912251cd81 h1:pL+hPQJQnRweJxIa5wT0EVbUwBN/g0Z28WgNLorN6vE=
 sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20221201045826-d9912251cd81/go.mod h1:oiCXd8V7ZaS/wwvXKZ9pYkoU0BYM86CyEa0RvivM0nw=
-sigs.k8s.io/controller-tools v0.11.0 h1:YXX32GEP8l3ESvb6y/LwJp5J01eP6vN9w/cxVeg5yxU=
-sigs.k8s.io/controller-tools v0.11.0/go.mod h1:dm4bN3Yp1ZP+hbbeSLF8zOEHsI1/bf15u3JNcgRv2TM=
+sigs.k8s.io/controller-tools v0.11.1 h1:blfU7DbmXuACWHfpZR645KCq8cLOc6nfkipGSGnH+Wk=
+sigs.k8s.io/controller-tools v0.11.1/go.mod h1:dm4bN3Yp1ZP+hbbeSLF8zOEHsI1/bf15u3JNcgRv2TM=
 sigs.k8s.io/custom-metrics-apiserver v1.25.1-0.20230111165344-67079ba4ba67 h1:ZuBEMLc26v4uNUomTADOcZoUBTt4159JLBQ7v2FLRAk=
 sigs.k8s.io/custom-metrics-apiserver v1.25.1-0.20230111165344-67079ba4ba67/go.mod h1:D1ZXB9iOdI97WAE3G1kjlwUhwEnGfpq4af3drpEYVlI=
 sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 h1:iXTIw73aPyC+oRdyqqvVJuloN1p0AC/kzH07hu3NE+k=

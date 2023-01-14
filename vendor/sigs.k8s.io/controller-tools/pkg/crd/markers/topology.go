@@ -114,13 +114,6 @@ func (l ListType) ApplyToSchema(schema *apiext.JSONSchemaProps) error {
 	if l != "map" && l != "atomic" && l != "set" {
 		return fmt.Errorf(`ListType must be either "map", "set" or "atomic"`)
 	}
-
-	if l == "set" {
-		if itemSchema := schema.Items.Schema; itemSchema != nil {
-			v := "atomic"
-			itemSchema.XMapType = &v
-		}
-	}
 	p := string(l)
 	schema.XListType = &p
 	return nil

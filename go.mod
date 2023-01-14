@@ -84,7 +84,7 @@ require (
 	knative.dev/pkg v0.0.0-20221123154742-05b694ec4d3a
 	sigs.k8s.io/controller-runtime v0.14.1
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20221201045826-d9912251cd81
-	sigs.k8s.io/controller-tools v0.11.0
+	sigs.k8s.io/controller-tools v0.11.1
 	sigs.k8s.io/custom-metrics-apiserver v1.25.1-0.20230111165344-67079ba4ba67
 	sigs.k8s.io/kustomize/kustomize/v4 v4.5.7
 )

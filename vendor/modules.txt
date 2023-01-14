@@ -579,8 +579,6 @@ github.com/grpc-ecosystem/go-grpc-middleware
 # github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 ## explicit
 github.com/grpc-ecosystem/go-grpc-prometheus
-# github.com/grpc-ecosystem/grpc-gateway v1.16.0
-## explicit; go 1.14
 # github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0
 ## explicit; go 1.14
 github.com/grpc-ecosystem/grpc-gateway/v2/internal/httprule
@@ -899,16 +897,12 @@ github.com/newrelic/newrelic-client-go/pkg/testhelpers
 github.com/newrelic/newrelic-client-go/pkg/users
 github.com/newrelic/newrelic-client-go/pkg/workflows
 github.com/newrelic/newrelic-client-go/pkg/workloads
-# github.com/nxadm/tail v1.4.8
-## explicit; go 1.13
 # github.com/oklog/run v1.1.0
 ## explicit; go 1.13
 github.com/oklog/run
 # github.com/olekukonko/tablewriter v0.0.5
 ## explicit; go 1.12
 github.com/olekukonko/tablewriter
-# github.com/onsi/ginkgo v1.16.5
-## explicit; go 1.16
 # github.com/onsi/ginkgo/v2 v2.6.1
 ## explicit; go 1.18
 github.com/onsi/ginkgo/v2
@@ -1154,8 +1148,6 @@ go.opencensus.io/trace
 go.opencensus.io/trace/internal
 go.opencensus.io/trace/propagation
 go.opencensus.io/trace/tracestate
-# go.opentelemetry.io/contrib v0.20.0
-## explicit; go 1.14
 # go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.35.0
 ## explicit; go 1.17
 go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc
@@ -1177,8 +1169,6 @@ go.opentelemetry.io/otel/internal/global
 go.opentelemetry.io/otel/propagation
 go.opentelemetry.io/otel/semconv/internal
 go.opentelemetry.io/otel/semconv/v1.12.0
-# go.opentelemetry.io/otel/exporters/otlp v0.20.0
-## explicit; go 1.14
 # go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.10.0
 ## explicit; go 1.17
 go.opentelemetry.io/otel/exporters/otlp/internal/retry
@@ -1208,10 +1198,6 @@ go.opentelemetry.io/otel/sdk/internal
 go.opentelemetry.io/otel/sdk/internal/env
 go.opentelemetry.io/otel/sdk/resource
 go.opentelemetry.io/otel/sdk/trace
-# go.opentelemetry.io/otel/sdk/export/metric v0.20.0
-## explicit; go 1.14
-# go.opentelemetry.io/otel/sdk/metric v0.20.0
-## explicit; go 1.14
 # go.opentelemetry.io/otel/trace v1.10.0
 ## explicit; go 1.17
 go.opentelemetry.io/otel/trace
@@ -1544,8 +1530,6 @@ gopkg.in/square/go-jose.v2
 gopkg.in/square/go-jose.v2/cipher
 gopkg.in/square/go-jose.v2/json
 gopkg.in/square/go-jose.v2/jwt
-# gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
-## explicit
 # gopkg.in/yaml.v2 v2.4.0
 ## explicit; go 1.15
 gopkg.in/yaml.v2
@@ -2286,7 +2270,7 @@ sigs.k8s.io/controller-runtime/tools/setup-envtest/remote
 sigs.k8s.io/controller-runtime/tools/setup-envtest/store
 sigs.k8s.io/controller-runtime/tools/setup-envtest/versions
 sigs.k8s.io/controller-runtime/tools/setup-envtest/workflows
-# sigs.k8s.io/controller-tools v0.11.0
+# sigs.k8s.io/controller-tools v0.11.1
 ## explicit; go 1.19
 sigs.k8s.io/controller-tools/cmd/controller-gen
 sigs.k8s.io/controller-tools/pkg/crd
