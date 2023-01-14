@@ -370,6 +370,12 @@ func AbortSuite(message string, callerSkip ...int) {
 }
 
 /*
+ignorablePanic is used by Gomega to signal to GinkgoRecover that Goemga is handling
+the error associated with this panic.  It i used when Eventually/Consistently are passed a func(g Gomega) and the resulting function launches a goroutines that makes a failed assertion.  That failed assertion is registered by Gomega and then panics.  Ordinarily the panic is captured by Gomega.  In the case of a goroutine Gomega can't capture the panic - so we piggy back on GinkgoRecover so users have a single defer GinkgoRecover() pattern to follow.  To do that we need to tell Ginkgo to ignore this panic and not register it as a panic on the global Failer.
+*/
+type ignorablePanic interface{ GinkgoRecoverShouldIgnoreThisPanic() }
+
+/*
 GinkgoRecover should be deferred at the top of any spawned goroutine that (may) call `Fail`
 Since Gomega assertions call fail, you should throw a `defer GinkgoRecover()` at the top of any goroutine that
 calls out to Gomega
@@ -384,6 +390,9 @@ You can learn more about how Ginkgo manages failures here: https://onsi.github.i
 func GinkgoRecover() {
 	e := recover()
 	if e != nil {
+		if _, ok := e.(ignorablePanic); ok {
+			return
+		}
 		global.Failer.Panic(types.NewCodeLocationWithStackTrace(1), e)
 	}
 }

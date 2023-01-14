@@ -1,3 +1,16 @@
+## 2.6.1
+
+### Features
+- Override formatter colors from envvars - this is a new feature but an alternative approach involving config files might be taken in the future (#1095) [60240d1]
+
+### Fixes
+- GinkgoRecover now supports ignoring panics that match a specific, hidden, interface [301f3e2]
+
+### Maintenance
+- Bump github.com/onsi/gomega from 1.24.0 to 1.24.1 (#1077) [3643823]
+- Bump golang.org/x/tools from 0.2.0 to 0.4.0 (#1090) [f9f856e]
+- Bump nokogiri from 1.13.9 to 1.13.10 in /docs (#1091) [0d7087e]
+
 ## 2.6.0
 
 ### Features
