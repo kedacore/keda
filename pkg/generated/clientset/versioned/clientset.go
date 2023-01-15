@@ -33,8 +33,7 @@ type Interface interface {
 	KedaV1alpha1() kedav1alpha1.KedaV1alpha1Interface
 }
 
-// Clientset contains the clients for groups. Each group has exactly one
-// version included in a Clientset.
+// Clientset contains the clients for groups.
 type Clientset struct {
 	*discovery.DiscoveryClient
 	kedaV1alpha1 *kedav1alpha1.KedaV1alpha1Client
