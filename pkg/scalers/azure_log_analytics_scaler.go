@@ -69,6 +69,7 @@ type azureLogAnalyticsMetadata struct {
 	scalerIndex             int
 	logAnalyticsResourceURL string
 	activeDirectoryEndpoint string
+	unsafeSsl               bool
 }
 
 type tokenData struct {
@@ -121,12 +122,14 @@ func NewAzureLogAnalyticsScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("failed to initialize Log Analytics scaler. Scaled object: %s. Namespace: %s. Inner Error: %v", config.ScalableObjectName, config.ScalableObjectNamespace, err)
 	}
 
+	useSsl := azureLogAnalyticsMetadata.unsafeSsl
+
 	return &azureLogAnalyticsScaler{
 		metricType: metricType,
 		metadata:   azureLogAnalyticsMetadata,
 		name:       config.ScalableObjectName,
 		namespace:  config.ScalableObjectNamespace,
-		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
+		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, useSsl),
 		logger:     InitializeLogger(config, "azure_log_analytics_scaler"),
 	}, nil
 }
@@ -228,6 +231,17 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 		return nil, err
 	}
 	meta.activeDirectoryEndpoint = activeDirectoryEndpoint
+
+	// Getting unsafeSsl, observe that we dont check AuthParams for unsafeSsl
+	meta.unsafeSsl = false
+	unsafeSslVal, err := getParameterFromConfig(config, "unsafeSsl", false)
+	if err == nil {
+		unsafeSsl, err := strconv.ParseBool(unsafeSslVal)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing metadata. Details: can't parse unsafeSsl. Inner Error: %w", err)
+		}
+		meta.unsafeSsl = unsafeSsl
+	}
 
 	return &meta, nil
 }
