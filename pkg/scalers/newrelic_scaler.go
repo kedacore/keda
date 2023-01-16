@@ -81,7 +81,7 @@ func parseNewRelicMetadata(config *ScalerConfig, logger logr.Logger) (*newrelicM
 
 	val, err := GetFromAuthOrMeta(config, account)
 	if err != nil {
-		return nil, fmt.Errorf("no %s given", account)
+		return nil, err
 	}
 
 	t, err := strconv.Atoi(val)
@@ -98,7 +98,7 @@ func parseNewRelicMetadata(config *ScalerConfig, logger logr.Logger) (*newrelicM
 
 	queryKey, err := GetFromAuthOrMeta(config, queryKeyParamater)
 	if err != nil {
-		return nil, fmt.Errorf("no %s given", queryKeyParamater)
+		return nil, err
 	}
 	meta.queryKey = queryKey
 
