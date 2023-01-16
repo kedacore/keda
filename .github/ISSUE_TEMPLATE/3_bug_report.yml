@@ -57,6 +57,7 @@ body:
     label: KEDA Version
     description: What version of KEDA that are you running?
     options:
+    - "2.9.2"
     - "2.9.1"
     - "2.9.0"
     - "2.8.1"
