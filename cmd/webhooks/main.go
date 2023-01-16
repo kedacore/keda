@@ -96,7 +96,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	kedautil.PrintMotd(setupLog, kubeVersion, "admission webhooks")
+	kedautil.PrintWelcome(setupLog, kubeVersion, "admission webhooks")
 
 	setupWebhook(mgr, tlsMinVersion)
 

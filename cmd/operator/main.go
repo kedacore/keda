@@ -271,7 +271,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	kedautil.PrintMotd(setupLog, kubeVersion, "manager")
+	kedautil.PrintWelcome(setupLog, kubeVersion, "manager")
 
 	kubeInformerFactory.Start(ctx.Done())
 

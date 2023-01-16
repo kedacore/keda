@@ -273,7 +273,7 @@ func main() {
 	}
 	kubeVersion := kedautil.NewK8sVersion(version)
 
-	kedautil.PrintMotd(logger, kubeVersion, "metrics server")
+	kedautil.PrintWelcome(logger, kubeVersion, "metrics server")
 
 	logger.Info(cmd.Message)
 	if err = cmd.Run(stopCh); err != nil {

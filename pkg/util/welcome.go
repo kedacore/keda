@@ -30,7 +30,7 @@ const (
 	maxSupportedVersion = 26
 )
 
-func PrintMotd(logger logr.Logger, kubeVersion K8sVersion, component string) {
+func PrintWelcome(logger logr.Logger, kubeVersion K8sVersion, component string) {
 	logger.Info(fmt.Sprintf("Starting %s", component))
 	logger.Info(fmt.Sprintf("KEDA Version: %s", version.Version))
 	logger.Info(fmt.Sprintf("Git Commit: %s", version.GitCommit))
@@ -40,7 +40,7 @@ func PrintMotd(logger logr.Logger, kubeVersion K8sVersion, component string) {
 
 	if kubeVersion.MinorVersion < minSupportedVersion ||
 		kubeVersion.MinorVersion > maxSupportedVersion {
-		logger.Info(fmt.Sprintf("WARNING: KEDA %s does not provide support for Kubernetes %s", version.Version, kubeVersion.Version))
-		logger.Info("Check officially supported versions in https://keda.sh")
+		logger.Info(fmt.Sprintf("WARNING: KEDA %s hasn't been tested on Kubernetes %s", version.Version, kubeVersion.Version))
+		logger.Info("You can check tested versions in https://keda.sh")
 	}
 }
