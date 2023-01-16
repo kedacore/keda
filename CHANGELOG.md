@@ -16,6 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.9.2](#v292)
 - [v2.9.1](#v291)
 - [v2.9.0](#v290)
 - [v2.8.1](#v281)
@@ -82,6 +83,14 @@ New deprecation(s):
 - **General**: Bump Golang to 1.19 ([#4094](https://github.com/kedacore/keda/issues/4094))
 - **General:** Compare error with `errors.Is` ([#4004](https://github.com/kedacore/keda/pull/4004))
 - **General:** Check that ScaledObject name is specified as part of a query for getting metrics ([#4088](https://github.com/kedacore/keda/pull/4088))
+
+## v2.9.2
+
+### Fixes
+
+- **General**: Prevent a panic that might occur while refreshing a scaler cache ([#4092](https://github.com/kedacore/keda/issues/4092))
+- **Prometheus Metrics**: Fix exposed metric from `keda_scaled_errors` to `keda_scaled_object_errors` ([#4037](https://github.com/kedacore/keda/issues/4037))
+- **Azure Service Bus Scaler:** Use correct auth flows with pod identity ([#4026](https://github.com/kedacore/keda/issues/4026))
 
 ## v2.9.1
 
