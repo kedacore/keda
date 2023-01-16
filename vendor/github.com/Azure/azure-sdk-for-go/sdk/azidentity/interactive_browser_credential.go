@@ -27,8 +27,9 @@ type InteractiveBrowserCredentialOptions struct {
 	// ClientID is the ID of the application users will authenticate to.
 	// Defaults to the ID of an Azure development application.
 	ClientID string
-	// RedirectURL will be supported in a future version but presently doesn't work: https://github.com/Azure/azure-sdk-for-go/issues/15632.
-	// Applications which have "http://localhost" registered as a redirect URL need not set this option.
+	// RedirectURL is the URL Azure Active Directory will redirect to with the access token. This is required
+	// only when setting ClientID, and must match a redirect URI in the application's registration.
+	// Applications which have registered "http://localhost" as a redirect URI need not set this option.
 	RedirectURL string
 }
 

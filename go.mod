@@ -11,7 +11,7 @@ require (
 	github.com/Azure/azure-kusto-go v0.9.2
 	github.com/Azure/azure-sdk-for-go v67.1.0+incompatible
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.2.0
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.2.0
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.3.0-beta.2
 	github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.1.3
 	github.com/Azure/azure-storage-blob-go v0.15.0
 	github.com/Azure/azure-storage-queue-go v0.0.0-20191125232315-636801874cdd
