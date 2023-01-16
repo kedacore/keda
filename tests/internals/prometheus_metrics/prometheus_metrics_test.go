@@ -229,6 +229,7 @@ func TestPrometheusMetrics(t *testing.T) {
 
 	testScalerMetricValue(t)
 	testScalerMetricLatency(t)
+	testScalerActiveMetric(t)
 	testMetricsServerScalerMetricValue(t)
 	testOperatorMetrics(t, kc, data)
 	testWebhookMetrics(t, data)
@@ -304,6 +305,29 @@ func testScalerMetricLatency(t *testing.T) {
 			for _, label := range labels {
 				if *label.Name == labelScaledObject && *label.Value == scaledObjectName {
 					assert.Equal(t, float64(0), *metric.Gauge.Value)
+					found = true
+				}
+			}
+		}
+		assert.Equal(t, true, found)
+	} else {
+		t.Errorf("metric not available")
+	}
+}
+
+func testScalerActiveMetric(t *testing.T) {
+	t.Log("--- testing scaler active metric ---")
+
+	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+
+	if val, ok := family["keda_scaler_active"]; ok {
+		var found bool
+		metrics := val.GetMetric()
+		for _, metric := range metrics {
+			labels := metric.GetLabel()
+			for _, label := range labels {
+				if *label.Name == labelScaledObject && *label.Value == scaledObjectName {
+					assert.Equal(t, float64(1), *metric.Gauge.Value)
 					found = true
 				}
 			}

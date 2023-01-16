@@ -579,6 +579,7 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 				}
 			}
 			prommetrics.RecordScalerError(scaledObject.Namespace, scaledObject.Name, scalerName, scalerIndex, metricName, err)
+			prommetrics.RecordScalerActive(scaledObject.Namespace, scaledObject.Name, scalerName, scalerIndex, metricName, isMetricActive)
 		}
 	}
 
