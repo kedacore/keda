@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package new_relic_test
+package newrelic_test
 
 import (
 	"encoding/base64"
