@@ -41,6 +41,6 @@ func PrintWelcome(logger logr.Logger, kubeVersion K8sVersion, component string) 
 	if kubeVersion.MinorVersion < minSupportedVersion ||
 		kubeVersion.MinorVersion > maxSupportedVersion {
 		logger.Info(fmt.Sprintf("WARNING: KEDA %s hasn't been tested on Kubernetes %s", version.Version, kubeVersion.Version))
-		logger.Info("You can check tested versions in https://keda.sh")
+		logger.Info("You can check recommended versions on https://keda.sh")
 	}
 }
