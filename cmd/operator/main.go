@@ -20,7 +20,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"runtime"
 	"time"
 
 	"github.com/spf13/pflag"
@@ -43,7 +42,6 @@ import (
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
-	"github.com/kedacore/keda/v2/version"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -273,12 +271,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	setupLog.Info("Starting manager")
-	setupLog.Info(fmt.Sprintf("KEDA Version: %s", version.Version))
-	setupLog.Info(fmt.Sprintf("Git Commit: %s", version.GitCommit))
-	setupLog.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
-	setupLog.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
-	setupLog.Info(fmt.Sprintf("Running on Kubernetes %s", kubeVersion.PrettyVersion), "version", kubeVersion.Version)
+	kedautil.PrintWelcome(setupLog, kubeVersion, "manager")
 
 	kubeInformerFactory.Start(ctx.Done())
 

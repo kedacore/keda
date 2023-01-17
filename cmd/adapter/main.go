@@ -21,7 +21,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"runtime"
 	"sync"
 	"time"
 
@@ -48,7 +47,6 @@ import (
 	kedaprovider "github.com/kedacore/keda/v2/pkg/provider"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
-	"github.com/kedacore/keda/v2/version"
 )
 
 // Adapter creates External Metrics Provider
@@ -202,13 +200,6 @@ func generateDefaultMetricsServiceAddr() string {
 	return fmt.Sprintf("keda-operator.%s.svc.cluster.local:9666", kedautil.GetPodNamespace())
 }
 
-func printVersion() {
-	logger.Info(fmt.Sprintf("KEDA Version: %s", version.Version))
-	logger.Info(fmt.Sprintf("KEDA Commit: %s", version.GitCommit))
-	logger.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
-	logger.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
-}
-
 // getWatchNamespace returns the namespace the operator should be watching for changes
 func getWatchNamespace() (string, error) {
 	const WatchNamespaceEnvVar = "WATCH_NAMESPACE"
@@ -248,8 +239,6 @@ func main() {
 		return
 	}
 
-	printVersion()
-
 	ctrl.SetLogger(logger)
 
 	// default to 3 seconds if they don't pass the env var
@@ -271,6 +260,20 @@ func main() {
 		return
 	}
 	cmd.WithExternalMetrics(kedaProvider)
+
+	clientset, err := cmd.DiscoveryClient()
+	if err != nil {
+		logger.Error(err, "not able to get Kubernetes version")
+		return
+	}
+	version, err := clientset.ServerVersion()
+	if err != nil {
+		logger.Error(err, "not able to get Kubernetes version")
+		return
+	}
+	kubeVersion := kedautil.NewK8sVersion(version)
+
+	kedautil.PrintWelcome(logger, kubeVersion, "metrics server")
 
 	logger.Info(cmd.Message)
 	if err = cmd.Run(stopCh); err != nil {
