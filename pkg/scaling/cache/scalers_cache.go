@@ -48,6 +48,7 @@ type ScalerBuilder struct {
 	Factory      func() (scalers.Scaler, *scalers.ScalerConfig, error)
 }
 
+// GetScalers returns array of scalers and scaler config stored in the cache
 func (c *ScalersCache) GetScalers() ([]scalers.Scaler, []scalers.ScalerConfig) {
 	scalersList := make([]scalers.Scaler, 0, len(c.Scalers))
 	configsList := make([]scalers.ScalerConfig, 0, len(c.Scalers))
@@ -59,6 +60,7 @@ func (c *ScalersCache) GetScalers() ([]scalers.Scaler, []scalers.ScalerConfig) {
 	return scalersList, configsList
 }
 
+// GetPushScaler returns array of push scalers stored in the cache
 func (c *ScalersCache) GetPushScalers() []scalers.PushScaler {
 	var result []scalers.PushScaler
 	for _, s := range c.Scalers {
@@ -67,6 +69,27 @@ func (c *ScalersCache) GetPushScalers() []scalers.PushScaler {
 		}
 	}
 	return result
+}
+
+// Close closes all scalers in the cache
+func (c *ScalersCache) Close(ctx context.Context) {
+	scalers := c.Scalers
+	c.Scalers = nil
+	for _, s := range scalers {
+		err := s.Scaler.Close(ctx)
+		if err != nil {
+			log.Error(err, "error closing scaler", "scaler", s)
+		}
+	}
+}
+
+// GetMetricSpecForScaling returns metrics specs for all scalers in the cache
+func (c *ScalersCache) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
+	var spec []v2.MetricSpec
+	for _, s := range c.Scalers {
+		spec = append(spec, s.Scaler.GetMetricSpecForScaling(ctx)...)
+	}
+	return spec
 }
 
 // GetMetricSpecForScalingForScaler returns metrics spec for a scaler identified by the metric name
@@ -118,6 +141,8 @@ func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index
 	return metric, activity, time.Since(startTime).Milliseconds(), err
 }
 
+// TODO needs refactor - move ScaledJob related methods to scale_handler, the similar way ScaledObject methods are
+// refactor logic
 func (c *ScalersCache) IsScaledJobActive(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob) (bool, int64, int64) {
 	var queueLength float64
 	var maxValue float64
@@ -202,32 +227,12 @@ func (c *ScalersCache) refreshScaler(ctx context.Context, id int) (scalers.Scale
 	return ns, nil
 }
 
-func (c *ScalersCache) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
-	var spec []v2.MetricSpec
-	for _, s := range c.Scalers {
-		spec = append(spec, s.Scaler.GetMetricSpecForScaling(ctx)...)
-	}
-	return spec
-}
-
-func (c *ScalersCache) Close(ctx context.Context) {
-	scalers := c.Scalers
-	c.Scalers = nil
-	for _, s := range scalers {
-		err := s.Scaler.Close(ctx)
-		if err != nil {
-			log.Error(err, "error closing scaler", "scaler", s)
-		}
-	}
-}
-
 type scalerMetrics struct {
 	queueLength float64
 	maxValue    float64
 	isActive    bool
 }
 
-// TODO needs refactor
 func (c *ScalersCache) getScaledJobMetrics(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob) []scalerMetrics {
 	// TODO this loop should be probably done similar way the ScaledObject loop is done
 	var scalersMetrics []scalerMetrics

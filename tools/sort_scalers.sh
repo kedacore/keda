@@ -4,7 +4,7 @@ set -euo pipefail
 LEAD='TRIGGERS-START'
 TAIL='TRIGGERS-END'
 
-SCALERS_FILE="pkg/scaling/scale_handler.go"
+SCALERS_FILE="pkg/scaling/scalers_builder.go"
 CURRENT=$(cat "${SCALERS_FILE}" | awk "/${LEAD}/,/${TAIL}/" | grep "case")
 SORTED=$(cat "${SCALERS_FILE}" | awk "/${LEAD}/,/${TAIL}/" | grep "case" | sort)
 

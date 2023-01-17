@@ -277,7 +277,7 @@ func TestCheckScaledObjectScalersWithError(t *testing.T) {
 		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
 	}
 
-	isActive, isError, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
+	isActive, isError, _, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
 	scalerCache.Close(context.Background())
 
 	assert.Equal(t, false, isActive)
@@ -352,7 +352,7 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
 	}
 
-	isActive, isError, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
+	isActive, isError, _, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
 	scalerCache.Close(context.Background())
 
 	assert.Equal(t, true, isActive)
