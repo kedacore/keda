@@ -64,6 +64,15 @@ var (
 		},
 		metricLabels,
 	)
+	scalerActive = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "scaler",
+			Name:      "active",
+			Help:      "Activity of a Scaler Metric",
+		},
+		metricLabels,
+	)
 	scalerErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: DefaultPromMetricsNamespace,
@@ -106,6 +115,7 @@ func init() {
 	metrics.Registry.MustRegister(scalerErrorsTotal)
 	metrics.Registry.MustRegister(scalerMetricsValue)
 	metrics.Registry.MustRegister(scalerMetricsLatency)
+	metrics.Registry.MustRegister(scalerActive)
 	metrics.Registry.MustRegister(scalerErrors)
 	metrics.Registry.MustRegister(scaledObjectErrors)
 
@@ -121,6 +131,16 @@ func RecordScalerMetric(namespace string, scaledObject string, scaler string, sc
 // RecordScalerLatency create a measurement of the latency to external metric
 func RecordScalerLatency(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64) {
 	scalerMetricsLatency.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Set(value)
+}
+
+// RecordScalerActive create a measurement of the activity of the scaler
+func RecordScalerActive(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, active bool) {
+	activeVal := 0
+	if active {
+		activeVal = 1
+	}
+
+	scalerActive.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Set(float64(activeVal))
 }
 
 // RecordScalerError counts the number of errors occurred in trying get an external metric used by the HPA
