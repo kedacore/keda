@@ -82,7 +82,7 @@ var _ = BeforeSuite(func() {
 
 	var err error
 	// cfg is defined in this file globally.
-	done := make(chan interface{}, 0)
+	done := make(chan interface{})
 	go func() {
 		defer GinkgoRecover()
 		cfg, err = testEnv.Start()

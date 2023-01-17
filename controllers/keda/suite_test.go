@@ -65,7 +65,7 @@ var _ = BeforeSuite(func() {
 	}
 
 	var err error
-	done := make(chan interface{}, 0)
+	done := make(chan interface{})
 	go func() {
 		defer GinkgoRecover()
 		cfg, err = testEnv.Start()
