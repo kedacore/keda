@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -53,15 +52,12 @@ var _ = Describe("fallback", func() {
 		client *mock_client.MockClient
 		scaler *mock_scalers.MockScaler
 		ctrl   *gomock.Controller
-		logger logr.Logger
 	)
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 		client = mock_client.NewMockClient(ctrl)
 		scaler = mock_scalers.NewMockScaler(ctrl)
-
-		logger = logr.Discard()
 	})
 
 	AfterEach(func() {
@@ -77,7 +73,7 @@ var _ = Describe("fallback", func() {
 		expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		metrics, err = GetMetricsWithFallback(context.Background(), client, logger, metrics, err, metricName, so, metricSpec)
+		metrics, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
 
 		Expect(err).ToNot(HaveOccurred())
 		value, _ := metrics[0].Value.AsInt64()
@@ -108,7 +104,7 @@ var _ = Describe("fallback", func() {
 		expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		metrics, err = GetMetricsWithFallback(context.Background(), client, logger, metrics, err, metricName, so, metricSpec)
+		metrics, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
 
 		Expect(err).ToNot(HaveOccurred())
 		value, _ := metrics[0].Value.AsInt64()
@@ -124,7 +120,7 @@ var _ = Describe("fallback", func() {
 		expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		_, err = GetMetricsWithFallback(context.Background(), client, logger, metrics, err, metricName, so, metricSpec)
+		_, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
 
 		Expect(err).ShouldNot(BeNil())
 		Expect(err.Error()).Should(Equal("Some error"))
@@ -153,7 +149,7 @@ var _ = Describe("fallback", func() {
 		expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		_, err = GetMetricsWithFallback(context.Background(), client, logger, metrics, err, metricName, so, metricSpec)
+		_, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
 
 		Expect(err).ShouldNot(BeNil())
 		Expect(err.Error()).Should(Equal("Some error"))
@@ -183,7 +179,7 @@ var _ = Describe("fallback", func() {
 		expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		metrics, err = GetMetricsWithFallback(context.Background(), client, logger, metrics, err, metricName, so, metricSpec)
+		metrics, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
 
 		Expect(err).ToNot(HaveOccurred())
 		value, _ := metrics[0].Value.AsInt64()
@@ -209,7 +205,7 @@ var _ = Describe("fallback", func() {
 			},
 		}
 
-		isEnabled := isFallbackEnabled(logger, so, metricsSpec)
+		isEnabled := isFallbackEnabled(so, metricsSpec)
 		Expect(isEnabled).Should(BeFalse())
 	})
 
@@ -239,7 +235,7 @@ var _ = Describe("fallback", func() {
 		client.EXPECT().Status().Return(statusWriter)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		metrics, err = GetMetricsWithFallback(context.Background(), client, logger, metrics, err, metricName, so, metricSpec)
+		metrics, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
 
 		Expect(err).ToNot(HaveOccurred())
 		value, _ := metrics[0].Value.AsInt64()
@@ -269,7 +265,7 @@ var _ = Describe("fallback", func() {
 		expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		_, err = GetMetricsWithFallback(context.Background(), client, logger, metrics, err, metricName, so, metricSpec)
+		_, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
 
 		Expect(err).ShouldNot(BeNil())
 		Expect(err.Error()).Should(Equal("Some error"))
@@ -303,7 +299,7 @@ var _ = Describe("fallback", func() {
 		expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		_, err = GetMetricsWithFallback(context.Background(), client, logger, metrics, err, metricName, so, metricSpec)
+		_, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
 		Expect(err).ToNot(HaveOccurred())
 		condition := so.Status.Conditions.GetFallbackCondition()
 		Expect(condition.IsTrue()).Should(BeTrue())
@@ -337,7 +333,7 @@ var _ = Describe("fallback", func() {
 		expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		_, err = GetMetricsWithFallback(context.Background(), client, logger, metrics, err, metricName, so, metricSpec)
+		_, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
 		Expect(err).ShouldNot(BeNil())
 		Expect(err.Error()).Should(Equal("Some error"))
 		condition := so.Status.Conditions.GetFallbackCondition()

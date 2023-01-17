@@ -23,7 +23,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -104,7 +103,6 @@ func TestGetScaledObjectMetrics_DirectCall(t *testing.T) {
 
 	sh := scaleHandler{
 		client:                   mockClient,
-		logger:                   logr.Discard(),
 		scaleLoopContexts:        &sync.Map{},
 		scaleExecutor:            mockExecutor,
 		globalHTTPTimeout:        time.Duration(1000),
@@ -197,7 +195,6 @@ func TestGetScaledObjectMetrics_FromCache(t *testing.T) {
 
 	sh := scaleHandler{
 		client:                   mockClient,
-		logger:                   logr.Discard(),
 		scaleLoopContexts:        &sync.Map{},
 		scaleExecutor:            mockExecutor,
 		globalHTTPTimeout:        time.Duration(1000),
@@ -271,7 +268,6 @@ func TestCheckScaledObjectScalersWithError(t *testing.T) {
 
 	sh := scaleHandler{
 		client:                   mockClient,
-		logger:                   logr.Discard(),
 		scaleLoopContexts:        &sync.Map{},
 		scaleExecutor:            mockExecutor,
 		globalHTTPTimeout:        time.Duration(1000),
@@ -347,7 +343,6 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 
 	sh := scaleHandler{
 		client:                   mockClient,
-		logger:                   logr.Discard(),
 		scaleLoopContexts:        &sync.Map{},
 		scaleExecutor:            mockExecutor,
 		globalHTTPTimeout:        time.Duration(1000),

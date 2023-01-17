@@ -31,6 +31,7 @@ import (
 	"knative.dev/pkg/apis/duck"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/util"
@@ -45,6 +46,7 @@ const (
 var (
 	kedaNamespace, _     = util.GetClusterObjectNamespace()
 	restrictSecretAccess = util.GetRestrictSecretAccess()
+	log                  = logf.Log.WithName("scale_resolvers")
 )
 
 // isSecretAccessRestricted returns whether secret access need to be restricted in KEDA namespace
@@ -63,20 +65,23 @@ func isSecretAccessRestricted(logger logr.Logger) bool {
 // which could be almost any k8s resource (Deployment, StatefulSet, CustomResource...)
 // and for the given resource returns *corev1.PodTemplateSpec and a name of the container
 // which is being used for referencing environment variables
-func ResolveScaleTargetPodSpec(ctx context.Context, kubeClient client.Client, logger logr.Logger, scalableObject interface{}) (*corev1.PodTemplateSpec, string, error) {
+func ResolveScaleTargetPodSpec(ctx context.Context, kubeClient client.Client, scalableObject interface{}) (*corev1.PodTemplateSpec, string, error) {
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
 		// Try to get a real object instance for better cache usage, but fall back to an Unstructured if needed.
 		podTemplateSpec := corev1.PodTemplateSpec{}
 		gvk := obj.Status.ScaleTargetGVKR.GroupVersionKind()
 		objKey := client.ObjectKey{Namespace: obj.Namespace, Name: obj.Spec.ScaleTargetRef.Name}
+
+		logger := log.WithValues("scaledObject.Namespace", obj.Namespace, "scaledObject.Name", obj.Name, "resource", gvk.String(), "name", objKey.Name)
+
 		switch {
 		// For core types, use a typed client so we get an informer-cache-backed Get to reduce API load.
 		case gvk.Group == "apps" && gvk.Kind == "Deployment":
 			deployment := &appsv1.Deployment{}
 			if err := kubeClient.Get(ctx, objKey, deployment); err != nil {
 				// resource doesn't exist
-				logger.Error(err, "Target deployment doesn't exist", "resource", gvk.String(), "name", objKey.Name)
+				logger.Error(err, "target deployment doesn't exist")
 				return nil, "", err
 			}
 			podTemplateSpec.ObjectMeta = deployment.ObjectMeta
@@ -85,7 +90,7 @@ func ResolveScaleTargetPodSpec(ctx context.Context, kubeClient client.Client, lo
 			statefulSet := &appsv1.StatefulSet{}
 			if err := kubeClient.Get(ctx, objKey, statefulSet); err != nil {
 				// resource doesn't exist
-				logger.Error(err, "Target deployment doesn't exist", "resource", gvk.String(), "name", objKey.Name)
+				logger.Error(err, "target deployment doesn't exist")
 				return nil, "", err
 			}
 			podTemplateSpec.ObjectMeta = statefulSet.ObjectMeta
@@ -95,19 +100,19 @@ func ResolveScaleTargetPodSpec(ctx context.Context, kubeClient client.Client, lo
 			unstruct.SetGroupVersionKind(gvk)
 			if err := kubeClient.Get(ctx, objKey, unstruct); err != nil {
 				// resource doesn't exist
-				logger.Error(err, "Target resource doesn't exist", "resource", gvk.String(), "name", objKey.Name)
+				logger.Error(err, "target resource doesn't exist")
 				return nil, "", err
 			}
 			withPods := &duckv1.WithPod{}
 			if err := duck.FromUnstructured(unstruct, withPods); err != nil {
-				logger.Error(err, "Cannot convert Unstructured into PodSpecable Duck-type", "object", unstruct)
+				logger.Error(err, "cannot convert Unstructured into PodSpecable Duck-type", "object", unstruct)
 			}
 			podTemplateSpec.ObjectMeta = withPods.ObjectMeta
 			podTemplateSpec.Spec = withPods.Spec.Template.Spec
 		}
 
 		if podTemplateSpec.Spec.Containers == nil || len(podTemplateSpec.Spec.Containers) == 0 {
-			logger.V(1).Info("There aren't any containers found in the ScaleTarget, therefore it is no possible to inject environment properties", "resource", gvk.String(), "name", obj.Spec.ScaleTargetRef.Name)
+			logger.V(1).Info("There aren't any containers found in the ScaleTarget, therefore it is no possible to inject environment properties", "scaleTargetRef.Name", obj.Spec.ScaleTargetRef.Name)
 			return nil, "", nil
 		}
 
@@ -184,7 +189,7 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 	if namespace != "" && triggerAuthRef != nil && triggerAuthRef.Name != "" {
 		triggerAuthSpec, triggerNamespace, err := getTriggerAuthSpec(ctx, client, triggerAuthRef, namespace)
 		if err != nil {
-			logger.Error(err, "Error getting triggerAuth", "triggerAuthRef.Name", triggerAuthRef.Name)
+			logger.Error(err, "error getting triggerAuth", "triggerAuthRef.Name", triggerAuthRef.Name)
 		} else {
 			if triggerAuthSpec.PodIdentity != nil {
 				podIdentity = *triggerAuthSpec.PodIdentity
@@ -212,12 +217,12 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 				vault := NewHashicorpVaultHandler(triggerAuthSpec.HashiCorpVault)
 				err := vault.Initialize(logger)
 				if err != nil {
-					logger.Error(err, "Error authenticate to Vault", "triggerAuthRef.Name", triggerAuthRef.Name)
+					logger.Error(err, "error authenticate to Vault", "triggerAuthRef.Name", triggerAuthRef.Name)
 				} else {
 					for _, e := range triggerAuthSpec.HashiCorpVault.Secrets {
 						secret, err := vault.Read(e.Path)
 						if err != nil {
-							logger.Error(err, "Error trying to read secret from Vault", "triggerAuthRef.Name", triggerAuthRef.Name,
+							logger.Error(err, "error trying to read secret from Vault", "triggerAuthRef.Name", triggerAuthRef.Name,
 								"secret.path", e.Path)
 						} else {
 							if secret == nil {
@@ -237,12 +242,12 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 				vaultHandler := NewAzureKeyVaultHandler(triggerAuthSpec.AzureKeyVault)
 				err := vaultHandler.Initialize(ctx, client, logger, triggerNamespace, secretsLister)
 				if err != nil {
-					logger.Error(err, "Error authenticating to Azure Key Vault", "triggerAuthRef.Name", triggerAuthRef.Name)
+					logger.Error(err, "error authenticating to Azure Key Vault", "triggerAuthRef.Name", triggerAuthRef.Name)
 				} else {
 					for _, secret := range triggerAuthSpec.AzureKeyVault.Secrets {
 						res, err := vaultHandler.Read(ctx, secret.Name, secret.Version)
 						if err != nil {
-							logger.Error(err, "Error trying to read secret from Azure Key Vault", "triggerAuthRef.Name", triggerAuthRef.Name,
+							logger.Error(err, "error trying to read secret from Azure Key Vault", "triggerAuthRef.Name", triggerAuthRef.Name,
 								"secret.Name", secret.Name, "secret.Version", secret.Version)
 						} else {
 							result[secret.Parameter] = res
@@ -474,7 +479,7 @@ func resolveAuthSecret(ctx context.Context, client client.Client, logger logr.Lo
 		err = client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, secret)
 	}
 	if err != nil {
-		logger.Error(err, "Error trying to get secret from namespace", "Secret.Namespace", namespace, "Secret.Name", name)
+		logger.Error(err, "error trying to get secret from namespace", "Secret.Namespace", namespace, "Secret.Name", name)
 		return ""
 	}
 	result := secret.Data[key]
@@ -493,11 +498,11 @@ func resolveVaultSecret(logger logr.Logger, data map[string]interface{}, key str
 				return s
 			}
 		} else {
-			logger.Error(fmt.Errorf("key '%s' not found", key), "Error trying to get key from Vault secret")
+			logger.Error(fmt.Errorf("key '%s' not found", key), "error trying to get key from Vault secret")
 			return ""
 		}
 	}
 
-	logger.Error(fmt.Errorf("unable to convert Vault Data value"), "Error trying to convert Data secret vaule")
+	logger.Error(fmt.Errorf("unable to convert Vault Data value"), "error trying to convert Data secret vaule")
 	return ""
 }
