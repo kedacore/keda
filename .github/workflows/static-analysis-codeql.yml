@@ -1,4 +1,4 @@
-name: "Static Analysers"
+name: "CodeQL"
 
 on:
   push:
@@ -31,21 +31,3 @@ jobs:
       uses: github/codeql-action/analyze@v2
       with:
         category: "/language:go"
-
-  semgrep:
-    name: Analyze Semgrep
-    runs-on: ubuntu-latest
-    container: returntocorp/semgrep
-    if: (github.actor != 'dependabot[bot]')
-    steps:
-      - uses: actions/checkout@v3
-
-      - run: semgrep ci --sarif --output=semgrep.sarif
-        env:
-          SEMGREP_APP_TOKEN: ${{ vars.SEMGREP_APP_TOKEN }}
-
-      - name: Upload SARIF file for GitHub Advanced Security Dashboard
-        uses: github/codeql-action/upload-sarif@v2
-        with:
-          sarif_file: semgrep.sarif
-        if: ${{ github.event.number == '' && !cancelled() }}
