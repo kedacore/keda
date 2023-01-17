@@ -5,6 +5,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
