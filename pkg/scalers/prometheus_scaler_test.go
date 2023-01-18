@@ -223,7 +223,6 @@ var testPromQueryResult = []prometheusQromQueryResultTestData{
 		expectedValue:    0,
 		isError:          false,
 		ignoreNullValues: true,
-		unsafeSsl:        true,
 	},
 	{
 		name:             "+Inf but shouldn't ignore ",
@@ -232,7 +231,6 @@ var testPromQueryResult = []prometheusQromQueryResultTestData{
 		expectedValue:    -1,
 		isError:          true,
 		ignoreNullValues: false,
-		unsafeSsl:        true,
 	},
 	{
 		name:             "-Inf",
@@ -241,7 +239,6 @@ var testPromQueryResult = []prometheusQromQueryResultTestData{
 		expectedValue:    0,
 		isError:          false,
 		ignoreNullValues: true,
-		unsafeSsl:        true,
 	},
 	{
 		name:             "-Inf but shouldn't ignore ",
@@ -250,7 +247,6 @@ var testPromQueryResult = []prometheusQromQueryResultTestData{
 		expectedValue:    -1,
 		isError:          true,
 		ignoreNullValues: false,
-		unsafeSsl:        true,
 	},
 }
 
