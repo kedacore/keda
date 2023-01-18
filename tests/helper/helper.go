@@ -45,7 +45,7 @@ var random = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 // Env variables required for setup and cleanup.
 var (
-	AzureADTenantID               = os.Getenv("AZURE_SP_TENANT")
+	AzureADTenantID               = os.Getenv("TF_AZURE_SP_TENANT")
 	AzureRunWorkloadIdentityTests = os.Getenv("AZURE_RUN_WORKLOAD_IDENTITY_TESTS")
 )
 

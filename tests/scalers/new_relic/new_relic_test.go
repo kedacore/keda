@@ -28,7 +28,7 @@ var (
 	testNamespace           = fmt.Sprintf("%s-ns", testName)
 	deploymentName          = fmt.Sprintf("%s-deployment", testName)
 	monitoredDeploymentName = fmt.Sprintf("%s-monitored-deployment", testName)
-	serviceName             = fmt.Sprintf("%s-service-%v", testName, GetRandomNumber())
+	serviceName             = fmt.Sprintf("%s-service-%d", testName, GetRandomNumber())
 	scaledObjectName        = fmt.Sprintf("%s-so", testName)
 	secretName              = fmt.Sprintf("%s-secret", testName)
 	triggerAuthName         = fmt.Sprintf("%s-ta", testName)
