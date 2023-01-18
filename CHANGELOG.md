@@ -79,10 +79,13 @@ New deprecation(s):
 
 ### Other
 
-- **RabbitMQ Scaler:** Move from `streadway/amqp` to `rabbitmq/amqp091-go` ([#4004](https://github.com/kedacore/keda/pull/4039))
 - **General**: Bump Golang to 1.19 ([#4094](https://github.com/kedacore/keda/issues/4094))
-- **General:** Compare error with `errors.Is` ([#4004](https://github.com/kedacore/keda/pull/4004))
 - **General:** Check that ScaledObject name is specified as part of a query for getting metrics ([#4088](https://github.com/kedacore/keda/pull/4088))
+- **General:** Compare error with `errors.Is` ([#4004](https://github.com/kedacore/keda/pull/4004))
+- **General:** Review CodeQL rules and enable it on PRs ([#4032](https://github.com/kedacore/keda/pull/4032))
+- **RabbitMQ Scaler:** Move from `streadway/amqp` to `rabbitmq/amqp091-go` ([#4004](https://github.com/kedacore/keda/pull/4039))
+
+
 
 ## v2.9.2
 
