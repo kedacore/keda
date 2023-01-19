@@ -332,6 +332,9 @@ func resolveEnv(ctx context.Context, client client.Client, logger logr.Logger, c
 					// env is a secret selector
 					value, err = resolveSecretValue(ctx, client, envVar.ValueFrom.SecretKeyRef, envVar.ValueFrom.SecretKeyRef.Key, namespace)
 					if err != nil {
+						if envVar.ValueFrom.SecretKeyRef.Optional != nil && *envVar.ValueFrom.SecretKeyRef.Optional {
+							continue
+						}
 						return nil, fmt.Errorf("error resolving secret name %s for env %s in namespace %s",
 							envVar.ValueFrom.SecretKeyRef,
 							envVar.Name,
@@ -341,6 +344,9 @@ func resolveEnv(ctx context.Context, client client.Client, logger logr.Logger, c
 					// env is a configMap selector
 					value, err = resolveConfigValue(ctx, client, envVar.ValueFrom.ConfigMapKeyRef, envVar.ValueFrom.ConfigMapKeyRef.Key, namespace)
 					if err != nil {
+						if envVar.ValueFrom.ConfigMapKeyRef.Optional != nil && *envVar.ValueFrom.ConfigMapKeyRef.Optional {
+							continue
+						}
 						return nil, fmt.Errorf("error resolving config %s for env %s in namespace %s",
 							envVar.ValueFrom.ConfigMapKeyRef,
 							envVar.Name,

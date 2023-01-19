@@ -17,7 +17,7 @@ linters:
     - goprintffuncname
     - govet
     - nolintlint
-    - rowserrcheck
+    #- rowserrcheck
     - gofmt
     - revive
     - goimports
@@ -27,8 +27,6 @@ linters:
     - ineffassign
     - staticcheck
     - exportloopref
-    - structcheck
-    - deadcode
     - depguard
     - dogsled
     - errcheck
@@ -40,7 +38,6 @@ linters:
     - gosimple
     - stylecheck
     - unused
-    - varcheck
     - unparam
     - unconvert
     - whitespace
@@ -91,7 +88,11 @@ issues:
     - path: stan_scaler.go
       linters:
         - dupl
-
+    # Exclude for datadog_scaler, reason:
+    # Introduce new parameters to fix DataDog API response issue #3906 (PR #3954)
+    - path: datadog_scaler.go
+      linters:
+        - gocyclo
 linters-settings:
   funlen:
     lines: 80

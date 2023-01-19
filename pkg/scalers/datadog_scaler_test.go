@@ -27,6 +27,31 @@ type datadogAuthMetadataTestData struct {
 	isError    bool
 }
 
+func assertEqual(t *testing.T, a interface{}, b interface{}) {
+	if a == b {
+		return
+	}
+	t.Errorf("%v != %v", a, b)
+}
+
+func TestMaxFloatFromSlice(t *testing.T) {
+	input := []float64{1.0, 2.0, 3.0, 4.0}
+	expectedOutput := float64(4.0)
+
+	output := MaxFloatFromSlice(input)
+
+	assertEqual(t, output, expectedOutput)
+}
+
+func TestAvgFloatFromSlice(t *testing.T) {
+	input := []float64{1.0, 2.0, 3.0, 4.0}
+	expectedOutput := float64(2.5)
+
+	output := AvgFloatFromSlice(input)
+
+	assertEqual(t, output, expectedOutput)
+}
+
 var testParseQueries = []datadogQueries{
 	{"", false, true},
 	// All properly formed
@@ -36,9 +61,14 @@ var testParseQueries = []datadogQueries{
 	{"top(per_second(abs(sum:http.requests{service:myapp,dc:us-west-2}.rollup(max, 2))), 5, 'mean', 'desc')", true, false},
 	{"system.cpu.user{*}.rollup(sum, 30)", true, false},
 	{"min:system.cpu.user{*}", true, false},
+	// Multi-query
+	{"avg:system.cpu.user{*}.rollup(sum, 30),sum:system.cpu.user{*}.rollup(30)", true, false},
 
 	// Missing filter
 	{"min:system.cpu.user", false, true},
+
+	// Find out last point with value
+	{"sum:trace.express.request.hits{*}.as_rate()/avg:kubernetes.cpu.requests{*}.rollup(10)", true, false},
 }
 
 func TestDatadogScalerParseQueries(t *testing.T) {
@@ -62,9 +92,15 @@ var testDatadogMetadata = []datadogAuthMetadataTestData{
 	{"", map[string]string{}, map[string]string{}, true},
 
 	// all properly formed
-	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "metricUnavailableValue": "1.5", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
+	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "metricUnavailableValue": "1.5", "type": "average", "age": "60", "timeWindowOffset": "30", "lastAvailablePointOffset": "1"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
+	// Multi-query all properly formed
+	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count(),sum:trace.redis.command.hits{env:none,service:redis}.as_count()/2", "queryValue": "7", "queryAggregator": "average", "metricUnavailableValue": "1.5", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
 	// default age
 	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "type": "average"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
+	// default timeWindowOffset
+	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "metricUnavailableValue": "1.5", "type": "average", "age": "60", "lastAvailablePointOffset": "1"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
+	// default lastAvailablePointOffset
+	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "metricUnavailableValue": "1.5", "type": "average", "age": "60", "timeWindowOffset": "30"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
 	// default type
 	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
 	// wrong type
@@ -77,6 +113,8 @@ var testDatadogMetadata = []datadogAuthMetadataTestData{
 	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
 	// wrong query value type
 	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "notanint", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
+	// wrong queryAggregator value
+	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "notanint", "queryAggegrator": "1.0", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
 	// wrong activation query value type
 	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "1", "activationQueryValue": "notanint", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
 	// malformed query

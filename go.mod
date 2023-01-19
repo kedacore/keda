@@ -19,7 +19,7 @@ require (
 	github.com/DataDog/datadog-api-client-go v1.16.0
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.36.0
-	github.com/aws/aws-sdk-go v1.44.88
+	github.com/aws/aws-sdk-go v1.44.150
 	github.com/denisenkom/go-mssqldb v0.12.2
 	github.com/dysnix/predictkube-libs v0.0.4-0.20220717101015-44c816c4fb9c
 	github.com/dysnix/predictkube-proto v0.0.0-20220713123213-7135dce1e9c9
@@ -61,15 +61,15 @@ require (
 	google.golang.org/genproto v0.0.0-20220829175752-36a9c930ecbf
 	google.golang.org/grpc v1.49.0
 	google.golang.org/protobuf v1.28.1
-	k8s.io/api v0.24.3
-	k8s.io/apimachinery v0.24.3
-	k8s.io/apiserver v0.24.3
-	k8s.io/client-go v0.24.3
-	k8s.io/code-generator v0.24.3
+	k8s.io/api v0.24.5
+	k8s.io/apimachinery v0.24.5
+	k8s.io/apiserver v0.24.4
+	k8s.io/client-go v0.24.5
+	k8s.io/code-generator v0.24.4
 	k8s.io/klog/v2 v2.70.2-0.20220707122935-0990e81f1a8f
 	k8s.io/kube-openapi v0.0.0-20220328201542-3ee0da9b0b42
 	k8s.io/metrics v0.24.3
-	knative.dev/pkg v0.0.0-20220826162920-93b66e6a8700
+	knative.dev/pkg v0.0.0-20220909150730-20aabd56be23
 	sigs.k8s.io/controller-runtime v0.12.3
 	sigs.k8s.io/custom-metrics-apiserver v1.24.0
 )
@@ -92,10 +92,13 @@ replace (
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220314234659-1baeb1ce4c0b
 
 	// https://www.whitesourcesoftware.com/vulnerability-database/CVE-2021-42836
-	golang.org/x/text => golang.org/x/text v0.3.7
+	golang.org/x/text => golang.org/x/text v0.3.8
 
 	// Needed for CVE-2022-28948 https://www.cve.org/CVERecord?id=CVE-2022-28948
 	gopkg.in/yaml.v3 => gopkg.in/yaml.v3 v3.0.1
+
+	// Needed for CVE-2022-3172 https://bugzilla.redhat.com/show_bug.cgi?id=2127804
+	k8s.io/apimachinery => k8s.io/apimachinery v0.24.5
 )
 
 require (
@@ -258,15 +261,15 @@ require (
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.19.1 // indirect
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa // indirect
-	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
-	golang.org/x/net v0.0.0-20220809184613-07c6da5e1ced // indirect
+	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
+	golang.org/x/net v0.5.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20220822191816-0ebed06d0094 // indirect
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
-	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
-	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
-	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/sys v0.4.0 // indirect
+	golang.org/x/term v0.4.0 // indirect
+	golang.org/x/text v0.6.0 // indirect
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
-	golang.org/x/tools v0.1.10 // indirect
+	golang.org/x/tools v0.1.12 // indirect
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
@@ -276,8 +279,8 @@ require (
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.24.2 // indirect
-	k8s.io/component-base v0.24.3 // indirect
+	k8s.io/apiextensions-apiserver v0.24.4 // indirect
+	k8s.io/component-base v0.24.5 // indirect
 	k8s.io/gengo v0.0.0-20220613173612-397b4ae3bce7 // indirect
 	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
