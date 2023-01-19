@@ -256,7 +256,7 @@ func parseKafkaMetadata(config *ScalerConfig, logger logr.Logger) (kafkaMetadata
 		if err != nil {
 			return meta, fmt.Errorf("error parsing %q: %w", activationLagThresholdMetricName, err)
 		}
-		if t <= 0 {
+		if t < 0 {
 			return meta, fmt.Errorf("%q must be positive number", activationLagThresholdMetricName)
 		}
 		meta.activationLagThreshold = t
