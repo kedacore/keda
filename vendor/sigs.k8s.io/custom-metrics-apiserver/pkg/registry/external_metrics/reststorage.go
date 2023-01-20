@@ -24,17 +24,18 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apiserver/pkg/endpoints/request"
-	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver/metrics"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 )
 
 // REST is a wrapper for CustomMetricsProvider that provides implementation for Storage and Lister
 // interfaces.
 type REST struct {
-	emProvider provider.ExternalMetricsProvider
+	emProvider        provider.ExternalMetricsProvider
+	freshnessObserver metrics.FreshnessObserver
 	rest.TableConvertor
 }
 
@@ -43,8 +44,10 @@ var _ rest.Lister = &REST{}
 
 // NewREST returns new REST object for provided CustomMetricsProvider.
 func NewREST(emProvider provider.ExternalMetricsProvider) *REST {
+	freshnessObserver := metrics.NewFreshnessObserver(external_metrics.GroupName)
 	return &REST{
-		emProvider: emProvider,
+		emProvider:        emProvider,
+		freshnessObserver: freshnessObserver,
 	}
 }
 
@@ -73,7 +76,7 @@ func (r *REST) List(ctx context.Context, options *metainternalversion.ListOption
 		metricSelector = options.LabelSelector
 	}
 
-	namespace := genericapirequest.NamespaceValue(ctx)
+	namespace := request.NamespaceValue(ctx)
 
 	requestInfo, ok := request.RequestInfoFrom(ctx)
 	if !ok {
@@ -81,5 +84,14 @@ func (r *REST) List(ctx context.Context, options *metainternalversion.ListOption
 	}
 	metricName := requestInfo.Resource
 
-	return r.emProvider.GetExternalMetric(ctx, namespace, metricSelector, provider.ExternalMetricInfo{Metric: metricName})
+	res, err := r.emProvider.GetExternalMetric(ctx, namespace, metricSelector, provider.ExternalMetricInfo{Metric: metricName})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, m := range res.Items {
+		r.freshnessObserver.Observe(m.Timestamp)
+	}
+
+	return res, nil
 }

@@ -44,8 +44,8 @@ type Node struct {
 	SynchronizedAfterSuiteProc1Body              func(SpecContext)
 	SynchronizedAfterSuiteProc1BodyHasContext    bool
 
-	ReportEachBody       func(types.SpecReport)
-	ReportAfterSuiteBody func(types.Report)
+	ReportEachBody  func(types.SpecReport)
+	ReportSuiteBody func(types.Report)
 
 	MarkedFocus          bool
 	MarkedPending        bool
@@ -317,9 +317,9 @@ func NewNode(deprecationTracker *types.DeprecationTracker, nodeType types.NodeTy
 					trackedFunctionError = true
 					break
 				}
-			} else if nodeType.Is(types.NodeTypeReportAfterSuite) {
-				if node.ReportAfterSuiteBody == nil {
-					node.ReportAfterSuiteBody = arg.(func(types.Report))
+			} else if nodeType.Is(types.NodeTypeReportBeforeSuite | types.NodeTypeReportAfterSuite) {
+				if node.ReportSuiteBody == nil {
+					node.ReportSuiteBody = arg.(func(types.Report))
 				} else {
 					appendError(types.GinkgoErrors.MultipleBodyFunctions(node.CodeLocation, nodeType))
 					trackedFunctionError = true
@@ -392,7 +392,7 @@ func NewNode(deprecationTracker *types.DeprecationTracker, nodeType types.NodeTy
 		appendError(types.GinkgoErrors.InvalidTimeoutOrGracePeriodForNonContextNode(node.CodeLocation, nodeType))
 	}
 
-	if !node.NodeType.Is(types.NodeTypeReportBeforeEach|types.NodeTypeReportAfterEach|types.NodeTypeSynchronizedBeforeSuite|types.NodeTypeSynchronizedAfterSuite|types.NodeTypeReportAfterSuite) && node.Body == nil && !node.MarkedPending && !trackedFunctionError {
+	if !node.NodeType.Is(types.NodeTypeReportBeforeEach|types.NodeTypeReportAfterEach|types.NodeTypeSynchronizedBeforeSuite|types.NodeTypeSynchronizedAfterSuite|types.NodeTypeReportBeforeSuite|types.NodeTypeReportAfterSuite) && node.Body == nil && !node.MarkedPending && !trackedFunctionError {
 		appendError(types.GinkgoErrors.MissingBodyFunction(node.CodeLocation, nodeType))
 	}
 

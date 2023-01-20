@@ -1,3 +1,39 @@
+## 2.6.1
+
+### Features
+- Override formatter colors from envvars - this is a new feature but an alternative approach involving config files might be taken in the future (#1095) [60240d1]
+
+### Fixes
+- GinkgoRecover now supports ignoring panics that match a specific, hidden, interface [301f3e2]
+
+### Maintenance
+- Bump github.com/onsi/gomega from 1.24.0 to 1.24.1 (#1077) [3643823]
+- Bump golang.org/x/tools from 0.2.0 to 0.4.0 (#1090) [f9f856e]
+- Bump nokogiri from 1.13.9 to 1.13.10 in /docs (#1091) [0d7087e]
+
+## 2.6.0
+
+### Features
+- `ReportBeforeSuite` provides access to the suite report before the suite begins.
+- Add junit config option for omitting leafnodetype (#1088) [956e6d2]
+- Add support to customize junit report config to omit spec labels (#1087) [de44005]
+
+### Fixes
+- Fix stack trace pruning so that it has a chance of working on windows [2165648]
+
+## 2.5.1
+
+### Fixes
+- skipped tests only show as 'S' when running with -v [3ab38ae]
+- Fix typo in docs/index.md (#1082) [55fc58d]
+- Fix typo in docs/index.md (#1081) [8a14f1f]
+- Fix link notation in docs/index.md (#1080) [2669612]
+- Fix typo in `--progress` deprecation message (#1076) [b4b7edc]
+
+### Maintenance
+- chore: Included githubactions in the dependabot config (#976) [baea341]
+- Bump golang.org/x/sys from 0.1.0 to 0.2.0 (#1075) [9646297]
+
 ## 2.5.0
 
 ### Ginkgo output now includes a timeline-view of the spec

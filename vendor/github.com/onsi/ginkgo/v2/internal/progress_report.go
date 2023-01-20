@@ -183,7 +183,6 @@ func extractRunningGoroutines() ([]types.Goroutine, error) {
 			break
 		}
 	}
-
 	r := bufio.NewReader(bytes.NewReader(stack))
 	out := []types.Goroutine{}
 	idx := -1
@@ -231,12 +230,12 @@ func extractRunningGoroutines() ([]types.Goroutine, error) {
 			return nil, types.GinkgoErrors.FailedToParseStackTrace(fmt.Sprintf("Invalid function call: %s -- missing file name and line number", functionCall.Function))
 		}
 		line = strings.TrimLeft(line, " \t")
-		fields := strings.SplitN(line, ":", 2)
-		if len(fields) != 2 {
-			return nil, types.GinkgoErrors.FailedToParseStackTrace(fmt.Sprintf("Invalid filename nad line number: %s", line))
+		delimiterIdx := strings.LastIndex(line, ":")
+		if delimiterIdx == -1 {
+			return nil, types.GinkgoErrors.FailedToParseStackTrace(fmt.Sprintf("Invalid filename and line number: %s", line))
 		}
-		functionCall.Filename = fields[0]
-		line = strings.Split(fields[1], " ")[0]
+		functionCall.Filename = line[:delimiterIdx]
+		line = strings.Split(line[delimiterIdx+1:], " ")[0]
 		lineNumber, err := strconv.ParseInt(line, 10, 64)
 		functionCall.Line = int(lineNumber)
 		if err != nil {

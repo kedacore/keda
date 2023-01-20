@@ -150,7 +150,7 @@ func ExecCommandOnSpecificPod(t *testing.T, podName string, namespace string, co
 	if err != nil {
 		return "", "", err
 	}
-	err = exec.Stream(remotecommand.StreamOptions{
+	err = exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
 		Stdout: buf,
 		Stderr: errBuf,
 	})

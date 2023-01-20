@@ -118,7 +118,7 @@ func ListResourceWithOptions(r cm_rest.ListerWithOptions, scope handlers.Request
 		}
 		trace.Step("Listing from storage done")
 
-		responsewriters.WriteObjectNegotiated(scope.Serializer, negotiation.DefaultEndpointRestrictions, scope.Kind.GroupVersion(), w, req, http.StatusOK, result)
+		responsewriters.WriteObjectNegotiated(scope.Serializer, negotiation.DefaultEndpointRestrictions, scope.Kind.GroupVersion(), w, req, http.StatusOK, result, false)
 		trace.Step("Writing http response done")
 	}
 }

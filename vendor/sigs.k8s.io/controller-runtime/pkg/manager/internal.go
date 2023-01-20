@@ -144,6 +144,9 @@ type controllerManager struct {
 	// webhookServer if unset, and Add() it to controllerManager.
 	webhookServerOnce sync.Once
 
+	// leaderElectionID is the name of the resource that leader election
+	// will use for holding the leader lock.
+	leaderElectionID string
 	// leaseDuration is the duration that non-leader candidates will
 	// wait to force acquire leadership.
 	leaseDuration time.Duration
@@ -406,6 +409,8 @@ func (cm *controllerManager) Start(ctx context.Context) (err error) {
 		cm.Unlock()
 		return errors.New("manager already started")
 	}
+	cm.started = true
+
 	var ready bool
 	defer func() {
 		// Only unlock the manager if we haven't reached
@@ -637,6 +642,7 @@ func (cm *controllerManager) startLeaderElection(ctx context.Context) (err error
 			},
 		},
 		ReleaseOnCancel: cm.leaderElectionReleaseOnCancel,
+		Name:            cm.leaderElectionID,
 	})
 	if err != nil {
 		return err

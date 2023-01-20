@@ -178,6 +178,26 @@ func (Maximum) Help() *markers.DefinitionHelp {
 	}
 }
 
+func (Metadata) Help() *markers.DefinitionHelp {
+	return &markers.DefinitionHelp{
+		Category: "CRD",
+		DetailedHelp: markers.DetailedHelp{
+			Summary: "configures the additional annotations or labels for this CRD. For example adding annotation \"api-approved.kubernetes.io\" for a CRD with Kubernetes groups, or annotation \"cert-manager.io/inject-ca-from-secret\" for a CRD that needs CA injection.",
+			Details: "",
+		},
+		FieldHelp: map[string]markers.DetailedHelp{
+			"Annotations": {
+				Summary: "will be added into the annotations of this CRD.",
+				Details: "",
+			},
+			"Labels": {
+				Summary: "will be added into the labels of this CRD.",
+				Details: "",
+			},
+		},
+	}
+}
+
 func (MinItems) Help() *markers.DefinitionHelp {
 	return &markers.DefinitionHelp{
 		Category: "CRD validation",
