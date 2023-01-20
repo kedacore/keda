@@ -49,9 +49,9 @@ var testPubSubMetadata = []parsePubSubMetadataTestData{
 	// malformed activationTargetValue
 	{nil, map[string]string{"subscriptionName": "mysubscription", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS", "activationValue": "AA"}, true},
 	// Credentials from AuthParams
-	{map[string]string{"GoogleApplicationCredentials": "Creds", "podIdentityOwner": ""}, map[string]string{"subscriptionName": "mysubscription", "value": "7"}, false},
+	{map[string]string{"GoogleApplicationCredentials": "Creds"}, map[string]string{"subscriptionName": "mysubscription", "value": "7"}, false},
 	// Credentials from AuthParams with empty creds
-	{map[string]string{"GoogleApplicationCredentials": "", "podIdentityOwner": ""}, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7"}, true},
+	{map[string]string{"GoogleApplicationCredentials": ""}, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7"}, true},
 	// with full link to subscription
 	{nil, map[string]string{"subscriptionName": "projects/myproject/subscriptions/mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// with full (bad) link to subscription
