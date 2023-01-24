@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/go-logr/logr"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -42,12 +41,10 @@ import (
 
 // KedaProvider implements External Metrics Provider
 type KedaProvider struct {
-	client                  client.Client
-	scaleHandler            scaling.ScaleHandler
-	watchedNamespace        string
-	ctx                     context.Context
-	externalMetricsInfo     *[]provider.ExternalMetricInfo
-	externalMetricsInfoLock *sync.RWMutex
+	client           client.Client
+	scaleHandler     scaling.ScaleHandler
+	watchedNamespace string
+	ctx              context.Context
 
 	grpcClient            metricsservice.GrpcClient
 	useMetricsServiceGrpc bool
@@ -59,16 +56,14 @@ var (
 )
 
 // NewProvider returns an instance of KedaProvider
-func NewProvider(ctx context.Context, adapterLogger logr.Logger, scaleHandler scaling.ScaleHandler, client client.Client, grpcClient metricsservice.GrpcClient, useMetricsServiceGrpc bool, watchedNamespace string, externalMetricsInfo *[]provider.ExternalMetricInfo, externalMetricsInfoLock *sync.RWMutex) provider.MetricsProvider {
+func NewProvider(ctx context.Context, adapterLogger logr.Logger, scaleHandler scaling.ScaleHandler, client client.Client, grpcClient metricsservice.GrpcClient, useMetricsServiceGrpc bool, watchedNamespace string) provider.MetricsProvider {
 	provider := &KedaProvider{
-		client:                  client,
-		scaleHandler:            scaleHandler,
-		watchedNamespace:        watchedNamespace,
-		ctx:                     ctx,
-		externalMetricsInfo:     externalMetricsInfo,
-		externalMetricsInfoLock: externalMetricsInfoLock,
-		grpcClient:              grpcClient,
-		useMetricsServiceGrpc:   useMetricsServiceGrpc,
+		client:                client,
+		scaleHandler:          scaleHandler,
+		watchedNamespace:      watchedNamespace,
+		ctx:                   ctx,
+		grpcClient:            grpcClient,
+		useMetricsServiceGrpc: useMetricsServiceGrpc,
 	}
 	logger = adapterLogger.WithName("provider")
 	logger.Info("starting")
@@ -212,9 +207,11 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 func (p *KedaProvider) ListAllExternalMetrics() []provider.ExternalMetricInfo {
 	logger.V(1).Info("KEDA Metrics Server received request for list of all provided external metrics names")
 
-	p.externalMetricsInfoLock.RLock()
-	defer p.externalMetricsInfoLock.RUnlock()
-	externalMetricsInfo := *p.externalMetricsInfo
+	externalMetricsInfo := make([]provider.ExternalMetricInfo, 0, 1)
+	info := provider.ExternalMetricInfo{
+		Metric: "scaledobjects",
+	}
+	externalMetricsInfo = append(externalMetricsInfo, info)
 
 	return externalMetricsInfo
 }
