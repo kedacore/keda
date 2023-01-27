@@ -114,11 +114,12 @@ func parseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 		port := splitval[len(splitval)-1]
 
 		_, err := strconv.Atoi(port)
-		if err == nil {
+		switch {
+		case err == nil:
 			meta.clusterIPAddress = val
-		} else if meta.port > 0 {
+		case meta.port > 0:
 			meta.clusterIPAddress = net.JoinHostPort(val, fmt.Sprintf("%d", meta.port))
-		} else {
+		default:
 			return nil, fmt.Errorf("no port given")
 		}
 	} else {
