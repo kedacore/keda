@@ -112,8 +112,8 @@ func parseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 	if val, ok := config.TriggerMetadata["clusterIPAddress"]; ok {
 		splitval := strings.Split(val, ":")
 		port := splitval[len(splitval)-1]
-
 		_, err := strconv.Atoi(port)
+		
 		switch {
 		case err == nil:
 			meta.clusterIPAddress = val
