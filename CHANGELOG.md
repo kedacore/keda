@@ -60,6 +60,42 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
+- **Azure Service Bus Scaler:** Use correct auth flows with pod identity ([#4026](https://github.com/kedacore/keda/issues/4026)|[#4123](https://github.com/kedacore/keda/issues/4123))
+
+### Deprecations
+
+You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
+
+New deprecation(s):
+
+- TODO
+
+### Other
+
+- TODO
+
+## v2.9.2
+
+### Breaking Changes
+
+- TODO
+
+### New
+
+Here is an overview of all **stable** additions:
+
+- **General**: TODO ([#TODO](https://github.com/kedacore/keda/issues/TODO))
+
+Here is an overview of all new **experimental** features:
+
+- **General**: TODO ([#TODO](https://github.com/kedacore/keda/issues/TODO))
+
+### Improvements
+
+- **General**: TODO ([#TODO](https://github.com/kedacore/keda/issues/TODO))
+
+### Fixes
+
 - **General**: Prevent a panic that might occur while refreshing a scaler cache ([#4092](https://github.com/kedacore/keda/issues/4092))
 - **Azure Service Bus Scaler:** Use correct auth flows with pod identity ([#4026](https://github.com/kedacore/keda/issues/4026))
 - **Prometheus Metrics**: Fix exposed metric from `keda_scaled_errors` to `keda_scaled_object_errors` ([#4037](https://github.com/kedacore/keda/issues/4037))
