@@ -16,6 +16,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.9.3](#v293)
+- [v2.9.2](#v292)
 - [v2.9.1](#v291)
 - [v2.9.0](#v290)
 - [v2.8.1](#v281)
@@ -39,6 +41,41 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - [v1.0.0](#v100)
 
 ## Unreleased
+
+### Breaking Changes
+
+- TODO
+
+### New
+
+Here is an overview of all **stable** additions:
+
+- **General**: TODO ([#TODO](https://github.com/kedacore/keda/issues/TODO))
+
+Here is an overview of all new **experimental** features:
+
+- **General**: TODO ([#TODO](https://github.com/kedacore/keda/issues/TODO))
+
+### Improvements
+
+- **General**: TODO ([#TODO](https://github.com/kedacore/keda/issues/TODO))
+
+### Fixes
+
+- **General**: TODO ([#TODO](https://github.com/kedacore/keda/issues/TODO))
+### Deprecations
+
+You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
+
+New deprecation(s):
+
+- TODO
+
+### Other
+
+- TODO
+
+## v2.9.3
 
 ### Breaking Changes
 
