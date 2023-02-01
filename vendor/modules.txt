@@ -217,8 +217,8 @@ github.com/andybalholm/brotli
 # github.com/antlr/antlr4/runtime/Go/antlr v1.4.10
 ## explicit; go 1.16
 github.com/antlr/antlr4/runtime/Go/antlr
-# github.com/arangodb/go-driver v1.4.0
-## explicit; go 1.16
+# github.com/arangodb/go-driver v1.4.1
+## explicit; go 1.17
 github.com/arangodb/go-driver
 github.com/arangodb/go-driver/cluster
 github.com/arangodb/go-driver/http

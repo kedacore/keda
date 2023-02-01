@@ -345,6 +345,16 @@ type ArangoSearchViewProperties struct {
 	// ArangoDB v3.5 and v3.6 always compress the index using LZ4. This option is immutable.
 	PrimarySortCompression PrimarySortCompression `json:"primarySortCompression,omitempty"`
 
+	// PrimarySortCache If you enable this option, then the primary sort columns are always cached in memory.
+	// Can't be changed after creating View.
+	// Introduced in v3.9.5, Enterprise Edition only
+	PrimarySortCache *bool `json:"primarySortCache,omitempty"`
+
+	// PrimaryKeyCache If you enable this option, then the primary key columns are always cached in memory.
+	// Introduced in v3.9.6, Enterprise Edition only
+	// Can't be changed after creating View.
+	PrimaryKeyCache *bool `json:"primaryKeyCache,omitempty"`
+
 	// StoredValues An array of objects to describe which document attributes to store in the View index (introduced in v3.7.1).
 	// It can then cover search queries, which means the data can be taken from the index directly and accessing the storage engine can be avoided.
 	// This option is immutable.
@@ -366,6 +376,9 @@ const (
 type StoredValue struct {
 	Fields      []string               `json:"fields,omitempty"`
 	Compression PrimarySortCompression `json:"compression,omitempty"`
+	// Cache attribute allows you to always cache stored values in memory
+	// Introduced in v3.9.5, Enterprise Edition only
+	Cache *bool `json:"cache,omitempty"`
 }
 
 // ArangoSearchSortDirection describes the sorting direction
@@ -479,6 +492,9 @@ type ArangoSearchElementProperties struct {
 	// so that it remains basically available. inBackground is an option that can be set when adding links.
 	// It does not get persisted as it is not a View property, but only a one-off option
 	InBackground *bool `json:"inBackground,omitempty"`
+	// Cache If you enable this option, then field normalization values are always cached in memory.
+	// Introduced in v3.9.5, Enterprise Edition only
+	Cache *bool `json:"cache,omitempty"`
 }
 
 // ArangoSearchStoreValues is the type of the StoreValues option of an ArangoSearch element.

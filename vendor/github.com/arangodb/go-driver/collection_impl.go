@@ -150,6 +150,37 @@ func (c *collection) Revision(ctx context.Context) (string, error) {
 	return data.Revision, nil
 }
 
+// Checksum returns a checksum for the specified collection
+// withRevisions - Whether to include document revision ids in the checksum calculation.
+// withData - Whether to include document body data in the checksum calculation.
+func (c *collection) Checksum(ctx context.Context, withRevisions bool, withData bool) (CollectionChecksum, error) {
+	var data CollectionChecksum
+
+	req, err := c.conn.NewRequest("GET", path.Join(c.relPath("collection"), "checksum"))
+	if err != nil {
+		return data, WithStack(err)
+	}
+	if withRevisions {
+		req.SetQuery("withRevisions", "true")
+	}
+	if withData {
+		req.SetQuery("withData", "true")
+	}
+
+	resp, err := c.conn.Do(ctx, req)
+	if err != nil {
+		return data, WithStack(err)
+	}
+	if err := resp.CheckStatus(200); err != nil {
+		return data, WithStack(err)
+	}
+
+	if err := resp.ParseBody("", &data); err != nil {
+		return data, WithStack(err)
+	}
+	return data, nil
+}
+
 // Properties fetches extended information about the collection.
 func (c *collection) Properties(ctx context.Context) (CollectionProperties, error) {
 	req, err := c.conn.NewRequest("GET", path.Join(c.relPath("collection"), "properties"))

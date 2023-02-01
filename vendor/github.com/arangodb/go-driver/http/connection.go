@@ -389,7 +389,7 @@ func (c *httpConnection) UpdateEndpoints(endpoints []string) error {
 	return nil
 }
 
-// Configure the authentication used for this connection.
+// SetAuthentication creates a copy of connection wrapper for given auth parameters.
 func (c *httpConnection) SetAuthentication(auth driver.Authentication) (driver.Connection, error) {
 	var httpAuth httpAuthentication
 	switch auth.Type() {
@@ -471,8 +471,8 @@ func (h *RepeatConnection) UpdateEndpoints(endpoints []string) error {
 	return h.conn.UpdateEndpoints(endpoints)
 }
 
-// Configure the authentication used for this connection.
-// Returns ErrAuthenticationNotChanged in when the authentication is not changed.
+// SetAuthentication configure the authentication used for this connection.
+// Returns ErrAuthenticationNotChanged when the authentication is not changed.
 func (h *RepeatConnection) SetAuthentication(authentication driver.Authentication) (driver.Connection, error) {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
@@ -481,16 +481,17 @@ func (h *RepeatConnection) SetAuthentication(authentication driver.Authenticatio
 		return h, ErrAuthenticationNotChanged
 	}
 
-	_, err := h.conn.SetAuthentication(authentication)
+	newConn, err := h.conn.SetAuthentication(authentication)
 	if err != nil {
 		return nil, driver.WithStack(err)
 	}
+	h.conn = newConn
 	h.auth = authentication
 
 	return h, nil
 }
 
 // Protocols returns all protocols used by this connection.
-func (h RepeatConnection) Protocols() driver.ProtocolSet {
+func (h *RepeatConnection) Protocols() driver.ProtocolSet {
 	return h.conn.Protocols()
 }

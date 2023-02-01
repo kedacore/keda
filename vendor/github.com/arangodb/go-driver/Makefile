@@ -140,7 +140,7 @@ endif
 
 all: build
 
-build: $(SOURCES)
+build: __dir_setup $(SOURCES)
 	go build -v $(REPOPATH) $(REPOPATH)/http $(REPOPATH)/vst $(REPOPATH)/agency $(REPOPATH)/jwt
 
 clean: 
@@ -429,7 +429,11 @@ ifeq ("$(DEBUG)", "true")
 	@docker build -f Dockerfile.debug --build-arg "TESTS_DIRECTORY=./tests" --build-arg "TESTS_ROOT_PATH=v2" -t $(GOIMAGE) .
 endif
 
-__test_prepare:
+__dir_setup:
+	@mkdir -p "${TMPDIR}"
+	@echo "${TMPDIR}"
+
+__test_prepare: __dir_setup
 ifdef TEST_ENDPOINTS_OVERRIDE
 	@-docker rm -f -v $(TESTCONTAINER) &> /dev/null
 	@sleep 3
@@ -438,8 +442,6 @@ ifdef JWTSECRET
 	echo "$JWTSECRET" > "${JWTSECRETFILE}"
 endif
 	@-docker rm -f -v $(TESTCONTAINER) &> /dev/null
-	@mkdir -p "${TMPDIR}"
-	@echo "${TMPDIR}"
 	@TESTCONTAINER=$(TESTCONTAINER) ARANGODB=$(ARANGODB) ALPINE_IMAGE=$(ALPINE_IMAGE) ENABLE_BACKUP=$(ENABLE_BACKUP) ARANGO_LICENSE_KEY=$(ARANGO_LICENSE_KEY) STARTER=$(STARTER) STARTERMODE=$(TEST_MODE) TMPDIR="${TMPDIR}" DEBUG_PORT=$(DEBUG_PORT) $(CLUSTERENV) "${ROOTDIR}/test/cluster.sh" start
 endif
 
@@ -491,37 +493,37 @@ run-benchmarks-single-vpack-no-auth:
 ## Lint
 
 .PHONY: tools
-tools:
+tools: __dir_setup
 	@echo ">> Fetching golangci-lint linter"
 	@GOBIN=$(TMPDIR)/bin go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.46.2
 	@echo ">> Fetching goimports"
-	@go get -mod 'readonly' golang.org/x/tools/cmd/goimports
+	@GOBIN=$(TMPDIR)/bin go install golang.org/x/tools/cmd/goimports@v0.1.12
 	@echo ">> Fetching license check"
-	@go get -mod 'readonly' github.com/google/addlicense
+	@GOBIN=$(TMPDIR)/bin go install github.com/google/addlicense@v1.0.0
 
 .PHONY: license
 license:
 	@echo ">> Ensuring license of files"
-	@go run -mod 'readonly' github.com/google/addlicense -f "$(ROOTDIR)/HEADER" $(SOURCES)
+	@$(TMPDIR)/bin/addlicense -f "$(ROOTDIR)/HEADER" $(SOURCES)
 
 .PHONY: license-verify
 license-verify:
 	@echo ">> Verify license of files"
-	@go run -mod 'readonly' github.com/google/addlicense -f "$(ROOTDIR)/HEADER" -check $(SOURCES)
+	@$(TMPDIR)/bin/addlicense -f "$(ROOTDIR)/HEADER" -check $(SOURCES)
 
 .PHONY: fmt
 fmt:
 	@echo ">> Ensuring style of files"
-	@go run -mod 'readonly' golang.org/x/tools/cmd/goimports -w $(SOURCES)
+	@$(TMPDIR)/bin/goimports -w $(SOURCES)
 
 .PHONY: fmt-verify
 fmt-verify: license-verify
 	@echo ">> Verify files style"
-	@if [ X"$$(go run -mod 'readonly' golang.org/x/tools/cmd/goimports -l $(SOURCES) | wc -l)" != X"0" ]; then echo ">> Style errors"; go run -mod 'readonly' golang.org/x/tools/cmd/goimports -l $(SOURCES); exit 1; fi
+	@if [ X"$$($(TMPDIR)/bin/goimports -l $(SOURCES) | wc -l)" != X"0" ]; then echo ">> Style errors"; $(TMPDIR)/bin/goimports -l $(SOURCES); exit 1; fi
 
 .PHONY: linter
-linter: fmt
-	$(TMPDIR)/bin/golangci-lint run ./...
+linter: fmt-verify
+	@$(TMPDIR)/bin/golangci-lint run ./...
 
 # V2
 

@@ -26,6 +26,8 @@ services:
   - docker
 
 language: go
+go:
+  - 1.17.6
 
 env:
   - TEST_SUITE=run-unit-tests GOIMAGE=gcr.io/gcr-for-testing/golang:1.17.6 ALWAYS=1
@@ -37,9 +39,15 @@ env:
   - TEST_SUITE=run-v2-tests-single GOIMAGE=gcr.io/gcr-for-testing/golang:1.17.6 STARTER=gcr.io/gcr-for-testing/arangodb/arangodb-starter:latest ALPINE_IMAGE=gcr.io/gcr-for-testing/alpine:3.4 ARANGODB=eu.gcr.io/arangodb-ci/official/arangodb/arangodb:3.9.0
   - TEST_SUITE=run-v2-tests-single GOIMAGE=gcr.io/gcr-for-testing/golang:1.17.6 STARTER=gcr.io/gcr-for-testing/arangodb/arangodb-starter:latest ALPINE_IMAGE=gcr.io/gcr-for-testing/alpine:3.4 ARANGODB=gcr.io/gcr-for-testing/arangodb/arangodb-preview:3.10.0-rc.1 ALWAYS=1
 
+before_script:
+  - |
+    if [ "$TRAVIS_PULL_REQUEST" != "false" ] || [ ! -z "$ALWAYS" ]; then
+      make tools
+      make linter
+    fi
+
 script:
   - |
     if [ "$TRAVIS_PULL_REQUEST" != "false" ] || [ ! -z "$ALWAYS" ]; then
-      make linter
       make $TEST_SUITE TEST_RESOURCES="$HOME/resources/" VERBOSE=1;
     fi
