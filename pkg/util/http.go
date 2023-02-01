@@ -18,6 +18,7 @@ package util
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net/http"
 	"os"
@@ -64,6 +65,22 @@ func initMinTLSVersion(logger logr.Logger) uint16 {
 	return uint16(minVersion)
 }
 
+var rootCAs *x509.CertPool
+
+func init() {
+	setupLog := ctrl.Log.WithName("http_setup")
+	disableKeepAlives = getKeepAliveValue()
+	rootCAs = getRootCAs()
+	minTLSVersion = initMinTLSVersion(setupLog)
+}
+
+func getKeepAliveValue() bool {
+	if val, err := ResolveOsEnvBool("KEDA_HTTP_DISABLE_KEEP_ALIVE", false); err == nil {
+		return val
+	}
+	return false
+}
+
 // HTTPDoer is an interface that matches the Do method on
 // (net/http).Client. It should be used in function signatures
 // instead of raw *http.Clients wherever possible
@@ -83,6 +100,7 @@ func CreateHTTPClient(timeout time.Duration, unsafeSsl bool) *http.Client {
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: unsafeSsl,
 			MinVersion:         GetMinTLSVersion(),
+			RootCAs:            rootCAs,
 		},
 		Proxy: http.ProxyFromEnvironment,
 	}
