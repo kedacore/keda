@@ -439,8 +439,8 @@ github.com/go-redis/redis/v9/internal/pool
 github.com/go-redis/redis/v9/internal/proto
 github.com/go-redis/redis/v9/internal/rand
 github.com/go-redis/redis/v9/internal/util
-# github.com/go-sql-driver/mysql v1.6.0
-## explicit; go 1.10
+# github.com/go-sql-driver/mysql v1.7.0
+## explicit; go 1.13
 github.com/go-sql-driver/mysql
 # github.com/gobuffalo/flect v0.3.0
 ## explicit; go 1.16
