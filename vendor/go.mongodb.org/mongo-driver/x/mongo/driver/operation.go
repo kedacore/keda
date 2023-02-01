@@ -59,8 +59,9 @@ type RetryablePoolError interface {
 	Retryable() bool
 }
 
-// LabeledError is an error that can have error labels added to it.
-type LabeledError interface {
+// labeledError is an error that can have error labels added to it.
+type labeledError interface {
+	error
 	HasErrorLabel(string) bool
 }
 
@@ -398,9 +399,19 @@ func (op Operation) Execute(ctx context.Context) error {
 		// Set the previous indefinite error to be returned in any case where a retryable write error does not have a
 		// NoWritesPerfomed label (the definite case).
 		switch err := err.(type) {
-		case LabeledError:
+		case labeledError:
+			// If the "prevIndefiniteErr" is nil, then the current error is the first error encountered
+			// during the retry attempt cycle. We must persist the first error in the case where all
+			// following errors are labeled "NoWritesPerformed", which would otherwise raise nil as the
+			// error.
+			if prevIndefiniteErr == nil {
+				prevIndefiniteErr = err
+			}
+
+			// If the error is not labeled NoWritesPerformed and is retryable, then set the previous
+			// indefinite error to be the current error.
 			if !err.HasErrorLabel(NoWritesPerformed) && err.HasErrorLabel(RetryableWriteError) {
-				prevIndefiniteErr = err.(error)
+				prevIndefiniteErr = err
 			}
 		}
 
@@ -595,6 +606,13 @@ func (op Operation) Execute(ctx context.Context) error {
 		finishedInfo.cmdErr = err
 		op.publishFinishedEvent(ctx, finishedInfo)
 
+		// prevIndefiniteErrorIsSet is "true" if the "err" variable has been set to the "prevIndefiniteErr" in
+		// a case in the switch statement below.
+		var prevIndefiniteErrIsSet bool
+
+		// TODO(GODRIVER-2579): When refactoring the "Execute" method, consider creating a separate method for the
+		// error handling logic below. This will remove the necessity of the "checkError" goto label.
+	checkError:
 		var perr error
 		switch tt := err.(type) {
 		case WriteCommandError:
@@ -627,9 +645,13 @@ func (op Operation) Execute(ctx context.Context) error {
 			}
 
 			// If the error is no longer retryable and has the NoWritesPerformed label, then we should
-			// return the previous indefinite error.
-			if tt.HasErrorLabel(NoWritesPerformed) {
-				return prevIndefiniteErr
+			// set the error to the "previous indefinite error" unless the current error is already the
+			// "previous indefinite error". After reseting, repeat the error check.
+			if tt.HasErrorLabel(NoWritesPerformed) && !prevIndefiniteErrIsSet {
+				err = prevIndefiniteErr
+				prevIndefiniteErrIsSet = true
+
+				goto checkError
 			}
 
 			// If the operation isn't being retried, process the response
@@ -720,9 +742,13 @@ func (op Operation) Execute(ctx context.Context) error {
 			}
 
 			// If the error is no longer retryable and has the NoWritesPerformed label, then we should
-			// return the previous indefinite error.
-			if tt.HasErrorLabel(NoWritesPerformed) {
-				return prevIndefiniteErr
+			// set the error to the "previous indefinite error" unless the current error is already the
+			// "previous indefinite error". After reseting, repeat the error check.
+			if tt.HasErrorLabel(NoWritesPerformed) && !prevIndefiniteErrIsSet {
+				err = prevIndefiniteErr
+				prevIndefiniteErrIsSet = true
+
+				goto checkError
 			}
 
 			// If the operation isn't being retried, process the response
