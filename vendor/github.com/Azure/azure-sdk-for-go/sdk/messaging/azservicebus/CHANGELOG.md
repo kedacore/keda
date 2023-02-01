@@ -1,5 +1,11 @@
 # Release History
 
+## 1.1.4 (2023-01-10)
+
+### Bugs Fixed
+
+- User-Agent was incorrectly formatted in our AMQP-based clients. (PR#19712)
+
 ## 1.1.3 (2022-11-16)
 
 ### Bugs Fixed

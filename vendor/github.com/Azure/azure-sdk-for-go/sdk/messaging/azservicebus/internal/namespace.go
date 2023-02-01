@@ -14,6 +14,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/internal/log"
+	"github.com/Azure/azure-sdk-for-go/sdk/internal/telemetry"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/amqpwrap"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/auth"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/conn"
@@ -23,9 +24,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/utils"
 )
 
-const (
-	rootUserAgent = "/azsdk-go-azservicebus/" + Version
-)
+var rootUserAgent = telemetry.Format("azservicebus", Version)
 
 type (
 	// Namespace is an abstraction over an amqp.Client, allowing us to hold onto a single
@@ -488,7 +487,7 @@ func (ns *Namespace) GetEntityAudience(entityPath string) string {
 func (ns *Namespace) getUserAgent() string {
 	userAgent := rootUserAgent
 	if ns.userAgent != "" {
-		userAgent = fmt.Sprintf("%s/%s", userAgent, ns.userAgent)
+		userAgent = fmt.Sprintf("%s %s", ns.userAgent, userAgent)
 	}
 	return userAgent
 }
