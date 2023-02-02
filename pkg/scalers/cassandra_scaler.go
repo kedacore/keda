@@ -43,19 +43,19 @@ type CassandraMetadata struct {
 func NewCassandraScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "cassandra_scaler")
 
 	meta, err := parseCassandraMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing cassandra metadata: %s", err)
+		return nil, fmt.Errorf("error parsing cassandra metadata: %w", err)
 	}
 
 	session, err := newCassandraSession(meta, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error establishing cassandra session: %s", err)
+		return nil, fmt.Errorf("error establishing cassandra session: %w", err)
 	}
 
 	return &cassandraScaler{
@@ -79,7 +79,7 @@ func parseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 	if val, ok := config.TriggerMetadata["targetQueryValue"]; ok {
 		targetQueryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("targetQueryValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("targetQueryValue parsing error %w", err)
 		}
 		meta.targetQueryValue = targetQueryValue
 	} else {
@@ -90,7 +90,7 @@ func parseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 	if val, ok := config.TriggerMetadata["activationTargetQueryValue"]; ok {
 		activationTargetQueryValue, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("activationTargetQueryValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("activationTargetQueryValue parsing error %w", err)
 		}
 		meta.activationTargetQueryValue = activationTargetQueryValue
 	}
@@ -104,7 +104,7 @@ func parseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 	if val, ok := config.TriggerMetadata["port"]; ok {
 		port, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("port parsing error %s", err.Error())
+			return nil, fmt.Errorf("port parsing error %w", err)
 		}
 		meta.port = port
 	}
@@ -125,7 +125,7 @@ func parseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 	if val, ok := config.TriggerMetadata["protocolVersion"]; ok {
 		protocolVersion, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("protocolVersion parsing error %s", err.Error())
+			return nil, fmt.Errorf("protocolVersion parsing error %w", err)
 		}
 		meta.protocolVersion = protocolVersion
 	} else {
@@ -199,7 +199,7 @@ func (s *cassandraScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSp
 func (s *cassandraScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	num, err := s.GetQueryResult(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting cassandra: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting cassandra: %w", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(num))

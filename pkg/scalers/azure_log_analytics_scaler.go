@@ -19,7 +19,7 @@ package scalers
 import (
 	"bytes"
 	"context"
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -69,6 +69,7 @@ type azureLogAnalyticsMetadata struct {
 	scalerIndex             int
 	logAnalyticsResourceURL string
 	activeDirectoryEndpoint string
+	unsafeSsl               bool
 }
 
 type tokenData struct {
@@ -113,20 +114,22 @@ var logAnalyticsResourceURLInCloud = map[string]string{
 func NewAzureLogAnalyticsScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	azureLogAnalyticsMetadata, err := parseAzureLogAnalyticsMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize Log Analytics scaler. Scaled object: %s. Namespace: %s. Inner Error: %v", config.ScalableObjectName, config.ScalableObjectNamespace, err)
+		return nil, fmt.Errorf("failed to initialize Log Analytics scaler. Scaled object: %s. Namespace: %s. Inner Error: %w", config.ScalableObjectName, config.ScalableObjectNamespace, err)
 	}
+
+	useSsl := azureLogAnalyticsMetadata.unsafeSsl
 
 	return &azureLogAnalyticsScaler{
 		metricType: metricType,
 		metadata:   azureLogAnalyticsMetadata,
 		name:       config.ScalableObjectName,
 		namespace:  config.ScalableObjectNamespace,
-		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
+		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, useSsl),
 		logger:     InitializeLogger(config, "azure_log_analytics_scaler"),
 	}, nil
 }
@@ -184,7 +187,7 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 	}
 	threshold, err := strconv.ParseFloat(val, 64)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing metadata. Details: can't parse threshold. Inner Error: %v", err)
+		return nil, fmt.Errorf("error parsing metadata. Details: can't parse threshold. Inner Error: %w", err)
 	}
 	meta.threshold = threshold
 
@@ -194,7 +197,7 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 	if err == nil {
 		activationThreshold, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing metadata. Details: can't parse threshold. Inner Error: %v", err)
+			return nil, fmt.Errorf("error parsing metadata. Details: can't parse threshold. Inner Error: %w", err)
 		}
 		meta.activationThreshold = activationThreshold
 	}
@@ -229,6 +232,17 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 	}
 	meta.activeDirectoryEndpoint = activeDirectoryEndpoint
 
+	// Getting unsafeSsl, observe that we dont check AuthParams for unsafeSsl
+	meta.unsafeSsl = false
+	unsafeSslVal, err := getParameterFromConfig(config, "unsafeSsl", false)
+	if err == nil {
+		unsafeSsl, err := strconv.ParseBool(unsafeSslVal)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing metadata. Details: can't parse unsafeSsl. Inner Error: %w", err)
+		}
+		meta.unsafeSsl = unsafeSsl
+	}
+
 	return &meta, nil
 }
 
@@ -261,7 +275,7 @@ func (s *azureLogAnalyticsScaler) GetMetricsAndActivity(ctx context.Context, met
 	receivedMetric, err := s.getMetricData(ctx)
 
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("failed to get metrics. Scaled object: %s. Namespace: %s. Inner Error: %v", s.name, s.namespace, err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("failed to get metrics. Scaled object: %s. Namespace: %s. Inner Error: %w", s.name, s.namespace, err)
 	}
 
 	metric := GenerateMetricInMili(metricName, receivedMetric.value)
@@ -512,12 +526,12 @@ func (s *azureLogAnalyticsScaler) executeLogAnalyticsREST(ctx context.Context, q
 
 	jsonBytes, err := json.Marshal(m)
 	if err != nil {
-		return nil, 0, fmt.Errorf("can't construct JSON for request to Log Analytics API. Inner Error: %v", err)
+		return nil, 0, fmt.Errorf("can't construct JSON for request to Log Analytics API. Inner Error: %w", err)
 	}
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf(laQueryEndpoint, s.metadata.logAnalyticsResourceURL, s.metadata.workspaceID), bytes.NewBuffer(jsonBytes)) // URL-encoded payload
 	if err != nil {
-		return nil, 0, fmt.Errorf("can't construct HTTP request to Log Analytics API. Inner Error: %v", err)
+		return nil, 0, fmt.Errorf("can't construct HTTP request to Log Analytics API. Inner Error: %w", err)
 	}
 
 	request.Header.Add("Content-Type", "application/json")
@@ -538,7 +552,7 @@ func (s *azureLogAnalyticsScaler) executeAADApicall(ctx context.Context) ([]byte
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf(aadTokenEndpoint, s.metadata.activeDirectoryEndpoint, s.metadata.tenantID), strings.NewReader(data.Encode())) // URL-encoded payload
 	if err != nil {
-		return nil, 0, fmt.Errorf("can't construct HTTP request to Azure Active Directory. Inner Error: %v", err)
+		return nil, 0, fmt.Errorf("can't construct HTTP request to Azure Active Directory. Inner Error: %w", err)
 	}
 
 	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -557,7 +571,7 @@ func (s *azureLogAnalyticsScaler) executeIMDSApicall(ctx context.Context) ([]byt
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, urlStr, nil)
 	if err != nil {
-		return nil, 0, fmt.Errorf("can't construct HTTP request to Azure Instance Metadata service. Inner Error: %v", err)
+		return nil, 0, fmt.Errorf("can't construct HTTP request to Azure Instance Metadata service. Inner Error: %w", err)
 	}
 
 	request.Header.Add("Metadata", "true")
@@ -571,9 +585,9 @@ func (s *azureLogAnalyticsScaler) runHTTP(request *http.Request, caller string) 
 
 	resp, err := s.httpClient.Do(request)
 	if err != nil && resp != nil {
-		return nil, resp.StatusCode, fmt.Errorf("error calling %s. Inner Error: %v", caller, err)
+		return nil, resp.StatusCode, fmt.Errorf("error calling %s. Inner Error: %w", caller, err)
 	} else if err != nil {
-		return nil, 0, fmt.Errorf("error calling %s. Inner Error: %v", caller, err)
+		return nil, 0, fmt.Errorf("error calling %s. Inner Error: %w", caller, err)
 	}
 
 	defer resp.Body.Close()
@@ -581,7 +595,7 @@ func (s *azureLogAnalyticsScaler) runHTTP(request *http.Request, caller string) 
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, resp.StatusCode, fmt.Errorf("error reading %s response body: Inner Error: %v", caller, err)
+		return nil, resp.StatusCode, fmt.Errorf("error reading %s response body: Inner Error: %w", caller, err)
 	}
 
 	return body, resp.StatusCode, nil
@@ -590,7 +604,7 @@ func (s *azureLogAnalyticsScaler) runHTTP(request *http.Request, caller string) 
 func getTokenFromCache(clientID string, clientSecret string) (tokenData, error) {
 	key, err := getHash(clientID, clientSecret)
 	if err != nil {
-		return tokenData{}, fmt.Errorf("error calculating sha1 hash. Inner Error: %v", err)
+		return tokenData{}, fmt.Errorf("error calculating sha1 hash. Inner Error: %w", err)
 	}
 
 	tokenCache.RLock()
@@ -618,12 +632,12 @@ func setTokenInCache(clientID string, clientSecret string, tokenInfo tokenData) 
 }
 
 func getHash(clientID string, clientSecret string) (string, error) {
-	sha1Hash := sha1.New()
-	_, err := sha1Hash.Write([]byte(fmt.Sprintf("%s|%s", clientID, clientSecret)))
+	sha256Hash := sha256.New()
+	_, err := fmt.Fprintf(sha256Hash, "%s|%s", clientID, clientSecret)
 
 	if err != nil {
 		return "", err
 	}
 
-	return base64.StdEncoding.EncodeToString(sha1Hash.Sum(nil)), nil
+	return base64.StdEncoding.EncodeToString(sha256Hash.Sum(nil)), nil
 }

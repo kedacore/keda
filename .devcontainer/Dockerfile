@@ -3,7 +3,7 @@
 # Licensed under the MIT License. See https://go.microsoft.com/fwlink/?linkid=2090316 for license information.
 #-------------------------------------------------------------------------------------------------------------
 
-FROM golang:1.18.8
+FROM golang:1.19.5
 
 # Avoid warnings by switching to noninteractive
 ENV DEBIAN_FRONTEND=noninteractive
@@ -91,9 +91,12 @@ RUN apt-get update \
 # Enable go modules
 ENV GO111MODULE=on
 
-ENV OPERATOR_RELEASE_VERSION=v1.0.1
-RUN curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_RELEASE_VERSION}/operator-sdk-${OPERATOR_RELEASE_VERSION}-x86_64-linux-gnu \
-    && chmod +x operator-sdk-${OPERATOR_RELEASE_VERSION}-x86_64-linux-gnu \
+ENV OPERATOR_RELEASE_VERSION=v1.26.0
+RUN ARCH=$(case $(uname -m) in x86_64) echo -n amd64 ;; aarch64) echo -n arm64 ;; *) echo -n $(uname -m) ;; esac) \
+    && OS=$(uname | awk '{print tolower($0)}') \
+    && OPERATOR_SDK_DL_URL=https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_RELEASE_VERSION} \
+    && curl -LO ${OPERATOR_SDK_DL_URL}/operator-sdk_${OS}_${ARCH} \
+    && chmod +x operator-sdk_${OS}_${ARCH} \
     && mkdir -p /usr/local/bin/ \
-    && cp operator-sdk-${OPERATOR_RELEASE_VERSION}-x86_64-linux-gnu /usr/local/bin/operator-sdk \
-    && rm operator-sdk-${OPERATOR_RELEASE_VERSION}-x86_64-linux-gnu
+    && cp operator-sdk_${OS}_${ARCH} /usr/local/bin/operator-sdk \
+    && rm operator-sdk_${OS}_${ARCH}

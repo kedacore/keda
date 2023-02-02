@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/pflag"
 
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	openapinamer "k8s.io/apiserver/pkg/endpoints/openapi"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/client-go/discovery"
@@ -35,7 +36,7 @@ import (
 	openapicommon "k8s.io/kube-openapi/pkg/common"
 
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver"
-	"sigs.k8s.io/custom-metrics-apiserver/pkg/cmd/server"
+	"sigs.k8s.io/custom-metrics-apiserver/pkg/cmd/options"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/dynamicmapper"
 	generatedcore "sigs.k8s.io/custom-metrics-apiserver/pkg/generated/openapi/core"
 	generatedcustommetrics "sigs.k8s.io/custom-metrics-apiserver/pkg/generated/openapi/custommetrics"
@@ -56,7 +57,7 @@ import (
 // Methods on this struct are not safe to call from multiple goroutines without
 // external synchronization.
 type AdapterBase struct {
-	*server.CustomMetricsAdapterServerOptions
+	*options.CustomMetricsAdapterServerOptions
 
 	// Name is the name of the API server.  It defaults to custom-metrics-adapter
 	Name string
@@ -67,6 +68,10 @@ type AdapterBase struct {
 	// DiscoveryInterval specifies the interval at which to recheck discovery
 	// information for the discovery RESTMapper.  It's set from a flag.
 	DiscoveryInterval time.Duration
+	// ClientQPS specifies the maximum QPS for the client-side throttle. It's set from a flag.
+	ClientQPS float32
+	// ClientBurst specifies the maximum QPS burst for client-side throttle. It's set from a flag.
+	ClientBurst int
 
 	// FlagSet is the flagset to add flags to.
 	// It defaults to the normal CommandLine flags
@@ -97,20 +102,18 @@ func (b *AdapterBase) InstallFlags() {
 	b.initFlagSet()
 	b.flagOnce.Do(func() {
 		if b.CustomMetricsAdapterServerOptions == nil {
-			b.CustomMetricsAdapterServerOptions = server.NewCustomMetricsAdapterServerOptions()
+			b.CustomMetricsAdapterServerOptions = options.NewCustomMetricsAdapterServerOptions()
 		}
 
-		b.SecureServing.AddFlags(b.FlagSet)
-		b.Authentication.AddFlags(b.FlagSet)
-		b.Authorization.AddFlags(b.FlagSet)
-		b.Audit.AddFlags(b.FlagSet)
-		b.Features.AddFlags(b.FlagSet)
+		b.CustomMetricsAdapterServerOptions.AddFlags(b.FlagSet)
 
 		b.FlagSet.StringVar(&b.RemoteKubeConfigFile, "lister-kubeconfig", b.RemoteKubeConfigFile,
 			"kubeconfig file pointing at the 'core' kubernetes server with enough rights to list "+
 				"any described objects")
 		b.FlagSet.DurationVar(&b.DiscoveryInterval, "discovery-interval", b.DiscoveryInterval,
-			"interval at which to refresh API discovery information")
+			"Interval at which to refresh API discovery information")
+		b.FlagSet.Float32Var(&b.ClientQPS, "client-qps", rest.DefaultQPS, "Maximum QPS for client-side throttle")
+		b.FlagSet.IntVar(&b.ClientBurst, "client-burst", rest.DefaultBurst, "Maximum QPS burst for client-side throttle")
 	})
 }
 
@@ -152,6 +155,13 @@ func (b *AdapterBase) ClientConfig() (*rest.Config, error) {
 			return nil, fmt.Errorf("unable to construct lister client config to initialize provider: %v", err)
 		}
 		b.clientConfig = clientConfig
+	}
+
+	if b.ClientQPS > 0 {
+		b.clientConfig.QPS = b.ClientQPS
+	}
+	if b.ClientBurst > 0 {
+		b.clientConfig.Burst = b.ClientBurst
 	}
 	return b.clientConfig, nil
 }
@@ -265,11 +275,18 @@ func (b *AdapterBase) Config() (*apiserver.Config, error) {
 		}
 		b.CustomMetricsAdapterServerOptions.OpenAPIConfig = b.OpenAPIConfig
 
-		config, err := b.CustomMetricsAdapterServerOptions.Config()
+		if errList := b.CustomMetricsAdapterServerOptions.Validate(); len(errList) > 0 {
+			return nil, utilerrors.NewAggregate(errList)
+		}
+
+		serverConfig := genericapiserver.NewConfig(apiserver.Codecs)
+		err := b.CustomMetricsAdapterServerOptions.ApplyTo(serverConfig)
 		if err != nil {
 			return nil, err
 		}
-		b.config = config
+		b.config = &apiserver.Config{
+			GenericConfig: serverConfig,
+		}
 	}
 
 	return b.config, nil

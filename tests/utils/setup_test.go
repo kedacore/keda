@@ -182,19 +182,52 @@ func TestVerifyKEDA(t *testing.T) {
 		metricsServerDeployment, err := KubeClient.AppsV1().Deployments(KEDANamespace).Get(context.Background(), KEDAMetricsAPIServer, v1.GetOptions{})
 		require.NoErrorf(t, err, "unable to get %s deployment - %s", KEDAMetricsAPIServer, err)
 
+		webhooksDeployment, err := KubeClient.AppsV1().Deployments(KEDANamespace).Get(context.Background(), KEDAAdmissionWebhooks, v1.GetOptions{})
+		require.NoErrorf(t, err, "unable to get %s deployment - %s", KEDAAdmissionWebhooks, err)
+
 		operatorReadyReplicas := operatorDeployment.Status.ReadyReplicas
 		metricsServerReadyReplicas := metricsServerDeployment.Status.ReadyReplicas
+		webhooksReadyReplicas := webhooksDeployment.Status.ReadyReplicas
 
-		if operatorReadyReplicas != 1 || metricsServerReadyReplicas != 1 {
+		if operatorReadyReplicas != 1 || metricsServerReadyReplicas != 1 || webhooksReadyReplicas != 1 {
 			t.Log("KEDA is not ready. sleeping")
 			time.Sleep(10 * time.Second)
 		} else {
-			t.Logf("KEDA is running 1 pod for %s and 1 pod for %s", KEDAOperator, KEDAMetricsAPIServer)
+			t.Logf("KEDA is running 1 pod for %s, 1 pod for %s and 1 pod for %s", KEDAOperator, KEDAMetricsAPIServer, KEDAAdmissionWebhooks)
 			success = true
-
 			break
 		}
 	}
 
-	require.True(t, success, "expected KEDA deployments to start 2 pods successfully")
+	require.True(t, success, "expected KEDA deployments to start 3 pods successfully")
+}
+
+func TestSetupAadPodIdentityComponents(t *testing.T) {
+	if AzureRunAadPodIdentityTests == "" || AzureRunAadPodIdentityTests == StringFalse {
+		t.Skip("skipping as aad pod identity tests are disabled")
+	}
+
+	_, err := ExecuteCommand("helm version")
+	require.NoErrorf(t, err, "helm is not installed - %s", err)
+
+	_, err = ExecuteCommand("helm repo add aad-pod-identity https://raw.githubusercontent.com/Azure/aad-pod-identity/master/charts")
+	require.NoErrorf(t, err, "cannot add pod identity helm repo - %s", err)
+
+	_, err = ExecuteCommand("helm repo update aad-pod-identity")
+	require.NoErrorf(t, err, "cannot update aad pod identity helm repo - %s", err)
+
+	KubeClient = GetKubernetesClient(t)
+	CreateNamespace(t, KubeClient, AzureAdPodIdentityNamespace)
+
+	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install "+
+		"aad-pod-identity aad-pod-identity/aad-pod-identity "+
+		"--namespace %s --wait "+
+		"--set azureIdentities.keda.type=0 "+
+		"--set azureIdentities.keda.namespace=keda "+
+		"--set azureIdentities.keda.clientID=%s "+
+		"--set azureIdentities.keda.resourceID=%s "+
+		"--set azureIdentities.keda.binding.selector=keda "+
+		"--set azureIdentities.keda.binding.name=keda",
+		AzureAdPodIdentityNamespace, AzureADMsiClientID, AzureADMsiID))
+	require.NoErrorf(t, err, "cannot install aad pod identity webhook - %s", err)
 }

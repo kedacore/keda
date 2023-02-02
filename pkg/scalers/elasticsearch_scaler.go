@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -47,19 +48,19 @@ type elasticsearchMetadata struct {
 func NewElasticsearchScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "elasticsearch_scaler")
 
 	meta, err := parseElasticsearchMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing elasticsearch metadata: %s", err)
+		return nil, fmt.Errorf("error parsing elasticsearch metadata: %w", err)
 	}
 
 	esClient, err := newElasticsearchClient(meta, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error getting elasticsearch client: %s", err)
+		return nil, fmt.Errorf("error getting elasticsearch client: %w", err)
 	}
 	return &elasticsearchScaler{
 		metricType: metricType,
@@ -131,6 +132,14 @@ func extractCloudConfig(config *ScalerConfig, meta *elasticsearchMetadata) error
 	return nil
 }
 
+var (
+	// ErrElasticsearchMissingAddressesOrCloudConfig is returned when endpoint addresses or cloud config is missing.
+	ErrElasticsearchMissingAddressesOrCloudConfig = errors.New("must provide either endpoint addresses or cloud config")
+
+	// ErrElasticsearchConfigConflict is returned when both endpoint addresses and cloud config are provided.
+	ErrElasticsearchConfigConflict = errors.New("can't provide endpoint addresses and cloud config at the same time")
+)
+
 func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, error) {
 	meta := elasticsearchMetadata{}
 
@@ -138,7 +147,7 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 	addresses, err := GetFromAuthOrMeta(config, "addresses")
 	cloudID, errCloudConfig := GetFromAuthOrMeta(config, "cloudID")
 	if err != nil && errCloudConfig != nil {
-		return nil, fmt.Errorf("must provide either endpoint addresses or cloud config")
+		return nil, ErrElasticsearchMissingAddressesOrCloudConfig
 	}
 
 	if err == nil && addresses != "" {
@@ -155,13 +164,13 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 	}
 
 	if hasEndpointsConfig(&meta) && hasCloudConfig(&meta) {
-		return nil, fmt.Errorf("can't provide endpoint addresses and cloud config at the same time")
+		return nil, ErrElasticsearchConfigConflict
 	}
 
 	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
 		unsafeSsl, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing unsafeSsl: %s", err)
+			return nil, fmt.Errorf("error parsing unsafeSsl: %w", err)
 		}
 		meta.unsafeSsl = unsafeSsl
 	} else {
@@ -196,16 +205,17 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 	}
 	targetValue, err := strconv.ParseFloat(targetValueString, 64)
 	if err != nil {
-		return nil, fmt.Errorf("targetValue parsing error %s", err.Error())
+		return nil, fmt.Errorf("targetValue parsing error: %w", err)
 	}
 	meta.targetValue = targetValue
 
 	meta.activationTargetValue = 0
 	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok {
-		meta.activationTargetValue, err = strconv.ParseFloat(val, 64)
+		activationTargetValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("activationTargetValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("activationTargetValue parsing error: %w", err)
 		}
+		meta.activationTargetValue = activationTargetValue
 	}
 
 	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("elasticsearch-%s", meta.searchTemplateName)))
@@ -337,7 +347,7 @@ func (s *elasticsearchScaler) GetMetricSpecForScaling(context.Context) []v2.Metr
 func (s *elasticsearchScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	num, err := s.getQueryResult(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting elasticsearch: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting elasticsearch: %w", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, num)

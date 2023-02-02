@@ -1,0 +1,91 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keda-admission
+  namespace: keda
+  labels:
+    app: keda-admission-webhooks
+    app.kubernetes.io/name: admission-webhooks
+    app.kubernetes.io/version: latest
+    app.kubernetes.io/component: admission-webhooks
+    app.kubernetes.io/part-of: keda
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keda-admission-webhooks
+  template:
+    metadata:
+      labels:
+        app: keda-admission-webhooks
+        name: keda-admission-webhooks
+      name: keda-admission-webhooks
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      serviceAccountName: keda-operator
+      containers:
+        - name: keda-admission-webhooks
+          image: ghcr.io/kedacore/keda-admission-webhooks:latest
+          command:
+            - /keda-admission-webhooks
+          args:
+            - --zap-log-level=info
+            - --zap-encoder=console
+            - --zap-time-encoding=rfc3339
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 1000m
+              memory: 1000Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 25
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+            initialDelaySeconds: 20
+          ports:
+          - containerPort: 9443
+            name: http
+            protocol: TCP
+          - containerPort: 8080
+            name: metrics
+            protocol: TCP
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: WATCH_NAMESPACE
+              value: ""
+            - name: KEDA_HTTP_DEFAULT_TIMEOUT
+              value: ""
+          securityContext:
+            runAsNonRoot: true
+            capabilities:
+              drop:
+              - ALL
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+          - mountPath: /certs
+            name: certificates
+            readOnly: true
+      terminationGracePeriodSeconds: 10
+      nodeSelector:
+        kubernetes.io/os: linux
+      volumes:
+      - name: certificates
+        secret:
+          defaultMode: 420
+          secretName: kedaorg-certs

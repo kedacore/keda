@@ -62,8 +62,8 @@ func (s *transport) SetTLS(conf *tls.Config) {
 func NewTransport(opts *configs.HTTPTransport, tlsConf ...tr.TLSConfig) *transport {
 	var tlsC *tls.Config
 	if len(tlsConf) > 0 {
-		if tlsConf[0].GetCert != nil {
-			if certs, err := tlsConf[0].GetCert(); err == nil && certs != nil {
+		if tlsConf[0].GetCertHolder.GetCert != nil {
+			if certs, err := tlsConf[0].GetCertHolder.GetCert(); err == nil && certs != nil {
 				tlsC = &tls.Config{
 					Certificates: []tls.Certificate{*certs},
 				}

@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM --platform=$BUILDPLATFORM ghcr.io/kedacore/build-tools:1.18.8 AS builder
+FROM --platform=$BUILDPLATFORM ghcr.io/kedacore/build-tools:1.19.5 AS builder
 
 ARG BUILD_VERSION=main
 ARG GIT_COMMIT=HEAD
@@ -12,8 +12,7 @@ COPY Makefile Makefile
 # Copy the go source
 COPY hack/ hack/
 COPY version/ version/
-COPY main.go main.go
-COPY adapter/ adapter/
+COPY cmd/ cmd/
 COPY apis/ apis/
 COPY controllers/ controllers/
 COPY pkg/ pkg/

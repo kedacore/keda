@@ -38,14 +38,14 @@ type influxDBMetadata struct {
 func NewInfluxDBScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "influxdb_scaler")
 
 	meta, err := parseInfluxDBMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing influxdb metadata: %s", err)
+		return nil, fmt.Errorf("error parsing influxdb metadata: %w", err)
 	}
 
 	logger.Info("starting up influxdb client")
@@ -128,7 +128,7 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	if val, ok := config.TriggerMetadata["activationThresholdValue"]; ok {
 		value, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("activationThresholdValue: failed to parse activationThresholdValue %s", err.Error())
+			return nil, fmt.Errorf("activationThresholdValue: failed to parse activationThresholdValue %w", err)
 		}
 		activationThresholdValue = value
 	}
@@ -136,7 +136,7 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	if val, ok := config.TriggerMetadata["thresholdValue"]; ok {
 		value, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("thresholdValue: failed to parse thresholdValue length %s", err.Error())
+			return nil, fmt.Errorf("thresholdValue: failed to parse thresholdValue length %w", err)
 		}
 		thresholdValue = value
 	} else {
@@ -146,7 +146,7 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
 		parsedVal, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing unsafeSsl: %s", err)
+			return nil, fmt.Errorf("error parsing unsafeSsl: %w", err)
 		}
 		unsafeSsl = parsedVal
 	}

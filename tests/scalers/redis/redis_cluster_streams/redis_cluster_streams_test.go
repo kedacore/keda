@@ -71,7 +71,7 @@ spec:
     spec:
       containers:
       - name: redis-worker
-        image: goku321/redis-cluster-streams:v2.5
+        image: ghcr.io/kedacore/tests-redis-cluster-streams:latest
         imagePullPolicy: IfNotPresent
         command: ["./main"]
         args: ["consumer"]
@@ -150,7 +150,7 @@ spec:
     spec:
       containers:
       - name: redis
-        image: goku321/redis-cluster-streams:v2.5
+        image: ghcr.io/kedacore/tests-redis-cluster-streams:latest
         imagePullPolicy: IfNotPresent
         command: ["./main"]
         args: ["producer"]

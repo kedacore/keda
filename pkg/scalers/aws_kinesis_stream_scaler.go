@@ -40,14 +40,14 @@ type awsKinesisStreamMetadata struct {
 func NewAwsKinesisStreamScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "aws_kinesis_stream_scaler")
 
 	meta, err := parseAwsKinesisStreamMetadata(config, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing Kinesis stream metadata: %s", err)
+		return nil, fmt.Errorf("error parsing Kinesis stream metadata: %w", err)
 	}
 
 	return &awsKinesisStreamScaler{

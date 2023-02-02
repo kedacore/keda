@@ -50,17 +50,17 @@ var azureDataExplorerLogger = logf.Log.WithName("azure_data_explorer_scaler")
 func CreateAzureDataExplorerClient(ctx context.Context, metadata *DataExplorerMetadata) (*kusto.Client, error) {
 	authConfig, err := getDataExplorerAuthConfig(ctx, metadata)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get data explorer auth config: %v", err)
+		return nil, fmt.Errorf("failed to get data explorer auth config: %w", err)
 	}
 
 	authorizer, err := authConfig.Authorizer()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get authorizer: %v", err)
+		return nil, fmt.Errorf("failed to get authorizer: %w", err)
 	}
 
 	client, err := kusto.New(metadata.Endpoint, kusto.Authorization{Authorizer: authorizer})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create kusto client: %v", err)
+		return nil, fmt.Errorf("failed to create kusto client: %w", err)
 	}
 
 	return client, nil
@@ -102,7 +102,7 @@ func GetAzureDataExplorerMetricValue(ctx context.Context, client *kusto.Client, 
 
 	iter, err := client.Query(ctx, db, kusto.NewStmt("", kusto.UnsafeStmt(unsafe.Stmt{Add: true, SuppressWarning: false})).UnsafeAdd(query))
 	if err != nil {
-		return -1, fmt.Errorf("failed to get azure data explorer metric result from query %s: %v", query, err)
+		return -1, fmt.Errorf("failed to get azure data explorer metric result from query %s: %w", query, err)
 	}
 	defer iter.Stop()
 
@@ -111,7 +111,7 @@ func GetAzureDataExplorerMetricValue(ctx context.Context, client *kusto.Client, 
 		return -1, fmt.Errorf("failed to get query %s result: %v", query, inlineError)
 	}
 	if err != nil {
-		return -1, fmt.Errorf("failed to get query %s result: %v", query, err)
+		return -1, fmt.Errorf("failed to get query %s result: %w", query, err)
 	}
 
 	if !row.ColumnTypes[0].Type.Valid() {
@@ -126,7 +126,7 @@ func GetAzureDataExplorerMetricValue(ctx context.Context, client *kusto.Client, 
 
 	metricValue, err := extractDataExplorerMetricValue(row)
 	if err != nil {
-		return -1, fmt.Errorf("failed to extract value from query %s: %v", query, err)
+		return -1, fmt.Errorf("failed to extract value from query %s: %w", query, err)
 	}
 
 	return metricValue, nil

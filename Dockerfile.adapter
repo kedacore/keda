@@ -1,5 +1,5 @@
 # Build the adapter binary
-FROM --platform=$BUILDPLATFORM ghcr.io/kedacore/build-tools:1.18.8 as builder
+FROM --platform=$BUILDPLATFORM ghcr.io/kedacore/build-tools:1.19.5 as builder
 
 ARG BUILD_VERSION=main
 ARG GIT_COMMIT=HEAD
@@ -12,16 +12,13 @@ COPY Makefile Makefile
 # Copy the go source
 COPY hack/ hack/
 COPY version/ version/
-COPY main.go main.go
-COPY adapter/ adapter/
+COPY cmd/ cmd/
 COPY apis/ apis/
 COPY controllers/ controllers/
 COPY pkg/ pkg/
 COPY vendor/ vendor/
 COPY go.mod go.mod
 COPY go.sum go.sum
-
-RUN mkdir -p /apiserver.local.config/certificates && chmod -R 777 /apiserver.local.config
 
 # Build
 # https://www.docker.com/blog/faster-multi-platform-builds-dockerfile-cross-compilation-guide/
@@ -33,7 +30,6 @@ RUN VERSION=${BUILD_VERSION} GIT_COMMIT=${GIT_COMMIT} GIT_VERSION=${GIT_VERSION}
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /
-COPY --from=builder --chown=nonroot:nonroot /apiserver.local.config  /apiserver.local.config
 COPY --from=builder /workspace/bin/keda-adapter .
 # 65532 is numeric for nonroot
 USER 65532:65532

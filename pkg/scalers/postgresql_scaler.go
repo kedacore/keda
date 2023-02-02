@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/go-logr/logr"
 	// PostreSQL drive required for this scaler
@@ -35,19 +36,19 @@ type postgreSQLMetadata struct {
 func NewPostgreSQLScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "postgresql_scaler")
 
 	meta, err := parsePostgreSQLMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing postgreSQL metadata: %s", err)
+		return nil, fmt.Errorf("error parsing postgreSQL metadata: %w", err)
 	}
 
 	conn, err := getConnection(meta, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error establishing postgreSQL connection: %s", err)
+		return nil, fmt.Errorf("error establishing postgreSQL connection: %w", err)
 	}
 	return &postgreSQLScaler{
 		metricType: metricType,
@@ -69,7 +70,7 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 	if val, ok := config.TriggerMetadata["targetQueryValue"]; ok {
 		targetQueryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("queryValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("queryValue parsing error %w", err)
 		}
 		meta.targetQueryValue = targetQueryValue
 	} else {
@@ -80,7 +81,7 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 	if val, ok := config.TriggerMetadata["activationTargetQueryValue"]; ok {
 		activationTargetQueryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("activationTargetQueryValue parsing error %s", err.Error())
+			return nil, fmt.Errorf("activationTargetQueryValue parsing error %w", err)
 		}
 		meta.activationTargetQueryValue = activationTargetQueryValue
 	}
@@ -123,15 +124,15 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 			password = config.ResolvedEnv[config.TriggerMetadata["passwordFromEnv"]]
 		}
 
-		meta.connection = fmt.Sprintf(
-			"host=%s port=%s user=%s dbname=%s sslmode=%s password=%s",
-			host,
-			port,
-			userName,
-			dbName,
-			sslmode,
-			password,
-		)
+		// Build connection str
+		var params []string
+		params = append(params, "host="+escapePostgreConnectionParameter(host))
+		params = append(params, "port="+escapePostgreConnectionParameter(port))
+		params = append(params, "user="+escapePostgreConnectionParameter(userName))
+		params = append(params, "dbname="+escapePostgreConnectionParameter(dbName))
+		params = append(params, "sslmode="+escapePostgreConnectionParameter(sslmode))
+		params = append(params, "password="+escapePostgreConnectionParameter(password))
+		meta.connection = strings.Join(params, " ")
 	}
 
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
@@ -172,7 +173,7 @@ func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (float64, error)
 	err := s.connection.QueryRowContext(ctx, s.metadata.query).Scan(&id)
 	if err != nil {
 		s.logger.Error(err, fmt.Sprintf("could not query postgreSQL: %s", err))
-		return 0, fmt.Errorf("could not query postgreSQL: %s", err)
+		return 0, fmt.Errorf("could not query postgreSQL: %w", err)
 	}
 	return id, nil
 }
@@ -195,10 +196,19 @@ func (s *postgreSQLScaler) GetMetricSpecForScaling(context.Context) []v2.MetricS
 func (s *postgreSQLScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	num, err := s.getActiveNumber(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting postgreSQL: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting postgreSQL: %w", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, num)
 
 	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.activationTargetQueryValue, nil
+}
+
+func escapePostgreConnectionParameter(str string) string {
+	if !strings.Contains(str, " ") {
+		return str
+	}
+
+	str = strings.ReplaceAll(str, "'", "\\'")
+	return fmt.Sprintf("'%s'", str)
 }

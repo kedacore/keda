@@ -65,12 +65,12 @@ type Parameters struct {
 func NewIBMMQScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	meta, err := parseIBMMQMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing IBM MQ metadata: %s", err)
+		return nil, fmt.Errorf("error parsing IBM MQ metadata: %w", err)
 	}
 
 	return &IBMMQScaler{
@@ -93,7 +93,7 @@ func parseIBMMQMetadata(config *ScalerConfig) (*IBMMQMetadata, error) {
 	if val, ok := config.TriggerMetadata["host"]; ok {
 		_, err := url.ParseRequestURI(val)
 		if err != nil {
-			return nil, fmt.Errorf("invalid URL: %s", err)
+			return nil, fmt.Errorf("invalid URL: %w", err)
 		}
 		meta.host = val
 	} else {
@@ -135,7 +135,7 @@ func parseIBMMQMetadata(config *ScalerConfig) (*IBMMQMetadata, error) {
 	if val, ok := config.TriggerMetadata["tls"]; ok {
 		tlsDisabled, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("invalid tls setting: %s", err)
+			return nil, fmt.Errorf("invalid tls setting: %w", err)
 		}
 		meta.tlsDisabled = tlsDisabled
 	} else {
@@ -172,7 +172,7 @@ func (s *IBMMQScaler) getQueueDepthViaHTTP(ctx context.Context) (int64, error) {
 	var requestJSON = []byte(`{"type": "runCommandJSON", "command": "display", "qualifier": "qlocal", "name": "` + queue + `", "responseParameters" : ["CURDEPTH"]}`)
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(requestJSON))
 	if err != nil {
-		return 0, fmt.Errorf("failed to request queue depth: %s", err)
+		return 0, fmt.Errorf("failed to request queue depth: %w", err)
 	}
 	req.Header.Set("ibm-mq-rest-csrf-token", "value")
 	req.Header.Set("Content-Type", "application/json")
@@ -186,23 +186,23 @@ func (s *IBMMQScaler) getQueueDepthViaHTTP(ctx context.Context) (int64, error) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return 0, fmt.Errorf("failed to contact MQ via REST: %s", err)
+		return 0, fmt.Errorf("failed to contact MQ via REST: %w", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return 0, fmt.Errorf("failed to ready body of request: %s", err)
+		return 0, fmt.Errorf("failed to ready body of request: %w", err)
 	}
 
 	var response CommandResponse
 	err = json.Unmarshal(body, &response)
 	if err != nil {
-		return 0, fmt.Errorf("failed to parse JSON: %s", err)
+		return 0, fmt.Errorf("failed to parse JSON: %w", err)
 	}
 
 	if response.CommandResponse == nil || len(response.CommandResponse) == 0 {
-		return 0, fmt.Errorf("failed to parse response from REST call: %s", err)
+		return 0, fmt.Errorf("failed to parse response from REST call: %w", err)
 	}
 	return int64(response.CommandResponse[0].Parameters.Curdepth), nil
 }
@@ -223,7 +223,7 @@ func (s *IBMMQScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 func (s *IBMMQScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	queueDepth, err := s.getQueueDepthViaHTTP(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting IBM MQ queue depth: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error inspecting IBM MQ queue depth: %w", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(queueDepth))

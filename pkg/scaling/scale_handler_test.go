@@ -23,7 +23,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -104,7 +103,6 @@ func TestGetScaledObjectMetrics_DirectCall(t *testing.T) {
 
 	sh := scaleHandler{
 		client:                   mockClient,
-		logger:                   logr.Discard(),
 		scaleLoopContexts:        &sync.Map{},
 		scaleExecutor:            mockExecutor,
 		globalHTTPTimeout:        time.Duration(1000),
@@ -197,7 +195,6 @@ func TestGetScaledObjectMetrics_FromCache(t *testing.T) {
 
 	sh := scaleHandler{
 		client:                   mockClient,
-		logger:                   logr.Discard(),
 		scaleLoopContexts:        &sync.Map{},
 		scaleExecutor:            mockExecutor,
 		globalHTTPTimeout:        time.Duration(1000),
@@ -228,6 +225,8 @@ func TestGetScaledObjectMetrics_FromCache(t *testing.T) {
 
 func TestCheckScaledObjectScalersWithError(t *testing.T) {
 	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
 	recorder := record.NewFakeRecorder(1)
 
 	metricsSpecs := []v2.MetricSpec{createMetricSpec(1, "metric-name")}
@@ -256,7 +255,7 @@ func TestCheckScaledObjectScalersWithError(t *testing.T) {
 		},
 	}
 
-	cache := cache.ScalersCache{
+	scalerCache := cache.ScalersCache{
 		Scalers: []cache.ScalerBuilder{{
 			Scaler:  scaler,
 			Factory: factory,
@@ -264,8 +263,22 @@ func TestCheckScaledObjectScalersWithError(t *testing.T) {
 		Recorder: recorder,
 	}
 
-	isActive, isError, _ := cache.GetScaledObjectState(context.TODO(), &scaledObject)
-	cache.Close(context.Background())
+	caches := map[string]*cache.ScalersCache{}
+	caches[scaledObject.GenerateIdentifier()] = &scalerCache
+
+	sh := scaleHandler{
+		client:                   mockClient,
+		scaleLoopContexts:        &sync.Map{},
+		scaleExecutor:            mockExecutor,
+		globalHTTPTimeout:        time.Duration(1000),
+		recorder:                 recorder,
+		scalerCaches:             caches,
+		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+	}
+
+	isActive, isError, _, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
+	scalerCache.Close(context.Background())
 
 	assert.Equal(t, false, isActive)
 	assert.Equal(t, true, isError)
@@ -273,6 +286,8 @@ func TestCheckScaledObjectScalersWithError(t *testing.T) {
 
 func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
 	recorder := record.NewFakeRecorder(1)
 
 	metricsSpecs := []v2.MetricSpec{createMetricSpec(1, "metric-name")}
@@ -298,7 +313,7 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 	failingScaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{}, false, errors.New("some error"))
 	failingScaler.EXPECT().Close(gomock.Any())
 
-	scaledObject := &kedav1alpha1.ScaledObject{
+	scaledObject := kedav1alpha1.ScaledObject{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test",
 			Namespace: "test",
@@ -318,13 +333,27 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 		Factory: failingFactory,
 	}}
 
-	scalersCache := cache.ScalersCache{
+	scalerCache := cache.ScalersCache{
 		Scalers:  scalers,
 		Recorder: recorder,
 	}
 
-	isActive, isError, _ := scalersCache.GetScaledObjectState(context.TODO(), scaledObject)
-	scalersCache.Close(context.Background())
+	caches := map[string]*cache.ScalersCache{}
+	caches[scaledObject.GenerateIdentifier()] = &scalerCache
+
+	sh := scaleHandler{
+		client:                   mockClient,
+		scaleLoopContexts:        &sync.Map{},
+		scaleExecutor:            mockExecutor,
+		globalHTTPTimeout:        time.Duration(1000),
+		recorder:                 recorder,
+		scalerCaches:             caches,
+		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+	}
+
+	isActive, isError, _, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
+	scalerCache.Close(context.Background())
 
 	assert.Equal(t, true, isActive)
 	assert.Equal(t, true, isError)

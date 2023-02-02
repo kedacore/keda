@@ -22,6 +22,13 @@ type parseRabbitMQMetadataTestData struct {
 	authParams map[string]string
 }
 
+type parseRabbitMQAuthParamTestData struct {
+	metadata   map[string]string
+	authParams map[string]string
+	isError    bool
+	enableTLS  bool
+}
+
 type rabbitMQMetricIdentifier struct {
 	metadataTestData *parseRabbitMQMetadataTestData
 	index            int
@@ -121,6 +128,21 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	{map[string]string{"mode": "QueueLength", "value": "1000", "queueName": "sample", "host": "amqp://", "useRegex": "true", "excludeUnacknowledged": "true"}, true, map[string]string{}},
 }
 
+var testRabbitMQAuthParamData = []parseRabbitMQAuthParamTestData{
+	{map[string]string{"queueName": "sample", "hostFromEnv": host}, map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, true},
+	// success, TLS cert/key and assumed public CA
+	{map[string]string{"queueName": "sample", "hostFromEnv": host}, map[string]string{"tls": "enable", "cert": "ceert", "key": "keey"}, false, true},
+	// success, TLS cert/key + key password and assumed public CA
+	{map[string]string{"queueName": "sample", "hostFromEnv": host}, map[string]string{"tls": "enable", "cert": "ceert", "key": "keey", "keyPassword": "keeyPassword"}, false, true},
+	// success, TLS CA only
+	{map[string]string{"queueName": "sample", "hostFromEnv": host}, map[string]string{"tls": "enable", "ca": "caaa"}, false, true},
+	// failure, TLS missing cert
+	{map[string]string{"queueName": "sample", "hostFromEnv": host}, map[string]string{"tls": "enable", "ca": "caaa", "key": "kee"}, true, true},
+	// failure, TLS missing key
+	{map[string]string{"queueName": "sample", "hostFromEnv": host}, map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert"}, true, true},
+	// failure, TLS invalid
+	{map[string]string{"queueName": "sample", "hostFromEnv": host}, map[string]string{"tls": "yes", "ca": "caaa", "cert": "ceert", "key": "kee"}, true, true},
+}
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
 	{&testRabbitMQMetadata[1], 0, "s0-rabbitmq-sample"},
 	{&testRabbitMQMetadata[7], 1, "s1-rabbitmq-namespace-2Fname"},
@@ -135,6 +157,35 @@ func TestRabbitMQParseMetadata(t *testing.T) {
 		}
 		if testData.isError && err == nil {
 			t.Error("Expected error but got success")
+		}
+	}
+}
+
+func TestRabbitMQParseAuthParamdata(t *testing.T) {
+	for _, testData := range testRabbitMQAuthParamData {
+		metadata, err := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		if err != nil && !testData.isError {
+			t.Error("Expected success but got error", err)
+		}
+		if testData.isError && err == nil {
+			t.Error("Expected error but got success")
+		}
+		if metadata != nil && metadata.enableTLS != testData.enableTLS {
+			t.Errorf("Expected enableTLS to be set to %v but got %v\n", testData.enableTLS, metadata.enableTLS)
+		}
+		if metadata != nil && metadata.enableTLS {
+			if metadata.ca != testData.authParams["ca"] {
+				t.Errorf("Expected ca to be set to %v but got %v\n", testData.authParams["ca"], metadata.enableTLS)
+			}
+			if metadata.cert != testData.authParams["cert"] {
+				t.Errorf("Expected cert to be set to %v but got %v\n", testData.authParams["cert"], metadata.cert)
+			}
+			if metadata.key != testData.authParams["key"] {
+				t.Errorf("Expected key to be set to %v but got %v\n", testData.authParams["key"], metadata.key)
+			}
+			if metadata.keyPassword != testData.authParams["keyPassword"] {
+				t.Errorf("Expected key to be set to %v but got %v\n", testData.authParams["keyPassword"], metadata.key)
+			}
 		}
 	}
 }

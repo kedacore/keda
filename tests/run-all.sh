@@ -150,6 +150,11 @@ function print_logs {
     kubectl get pods --no-headers -n keda | awk '{print $1}' | grep keda-metrics-apiserver | xargs kubectl -n keda logs
     printf "##############################################\n"
     printf "##############################################\n"
+
+    echo ">>> KEDA Admission Webhooks log <<<"
+    kubectl get pods --no-headers -n keda | awk '{print $1}' | grep keda-admission| xargs kubectl -n keda logs
+    printf "##############################################\n"
+    printf "##############################################\n"
 }
 
 function print_chaos_logs {

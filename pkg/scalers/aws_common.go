@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -8,6 +9,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 )
+
+// ErrAwsNoAccessKey is returned when awsAccessKeyID is missing.
+var ErrAwsNoAccessKey = errors.New("awsAccessKeyID not found")
 
 type awsAuthorizationMetadata struct {
 	awsRoleArn string
@@ -81,7 +85,7 @@ func getAwsAuthorization(authParams, metadata, resolvedEnv map[string]string) (a
 			}
 
 			if len(meta.awsAccessKeyID) == 0 {
-				return meta, fmt.Errorf("awsAccessKeyID not found")
+				return meta, ErrAwsNoAccessKey
 			}
 
 			if metadata["awsSecretAccessKeyFromEnv"] != "" {

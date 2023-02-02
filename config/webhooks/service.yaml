@@ -1,0 +1,24 @@
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: admission-webhooks
+    app.kubernetes.io/component: admission-webhooks
+    app.kubernetes.io/created-by: keda
+    app.kubernetes.io/part-of: keda
+    app.kubernetes.io/managed-by: kustomize
+  name: keda-admission-webhooks
+  namespace: keda
+spec:
+  ports:
+    - name: http
+      port: 443
+      protocol: TCP
+      targetPort: 9443
+    - name: metrics
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: keda-admission-webhooks

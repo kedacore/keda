@@ -64,12 +64,12 @@ func NewArtemisQueueScaler(config *ScalerConfig) (Scaler, error) {
 
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	artemisMetadata, err := parseArtemisMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing artemis metadata: %s", err)
+		return nil, fmt.Errorf("error parsing artemis metadata: %w", err)
 	}
 
 	return &artemisScaler{
@@ -124,7 +124,7 @@ func parseArtemisMetadata(config *ScalerConfig) (*artemisMetadata, error) {
 	if val, ok := config.TriggerMetadata["queueLength"]; ok {
 		queueLength, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("can't parse queueLength: %s", err)
+			return nil, fmt.Errorf("can't parse queueLength: %w", err)
 		}
 
 		meta.queueLength = queueLength
@@ -133,7 +133,7 @@ func parseArtemisMetadata(config *ScalerConfig) (*artemisMetadata, error) {
 	if val, ok := config.TriggerMetadata["activationQueueLength"]; ok {
 		activationQueueLength, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("can't parse activationQueueLength: %s", err)
+			return nil, fmt.Errorf("can't parse activationQueueLength: %w", err)
 		}
 
 		meta.activationQueueLength = activationQueueLength
@@ -180,14 +180,14 @@ func parseArtemisMetadata(config *ScalerConfig) (*artemisMetadata, error) {
 func getAPIParameters(meta artemisMetadata) (artemisMetadata, error) {
 	u, err := url.ParseRequestURI(meta.restAPITemplate)
 	if err != nil {
-		return meta, fmt.Errorf("unable to parse the artemis restAPITemplate: %s", err)
+		return meta, fmt.Errorf("unable to parse the artemis restAPITemplate: %w", err)
 	}
 	meta.managementEndpoint = u.Host
 	splitURL := strings.Split(strings.Split(u.RawPath, ":")[1], "/")[0] // This returns : broker="<<brokerName>>",component=addresses,address="<<brokerAddress>>",subcomponent=queues,routing-type="anycast",queue="<<queueName>>"
 	replacer := strings.NewReplacer(",", "&", "\"\"", "")
 	v, err := url.ParseQuery(replacer.Replace(splitURL)) // This returns a map with key: string types and element type [] string. : map[address:["<<brokerAddress>>"] broker:["<<brokerName>>"] component:[addresses] queue:["<<queueName>>"] routing-type:["anycast"] subcomponent:[queues]]
 	if err != nil {
-		return meta, fmt.Errorf("unable to parse the artemis restAPITemplate: %s", err)
+		return meta, fmt.Errorf("unable to parse the artemis restAPITemplate: %w", err)
 	}
 
 	if len(v["address"][0]) == 0 {

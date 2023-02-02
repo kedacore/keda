@@ -697,6 +697,9 @@ func candidateImportName(pkg *pkg) string {
 
 // GetAllCandidates calls wrapped for each package whose name starts with
 // searchPrefix, and can be imported from filename with the package name filePkg.
+//
+// Beware that the wrapped function may be called multiple times concurrently.
+// TODO(adonovan): encapsulate the concurrency.
 func GetAllCandidates(ctx context.Context, wrapped func(ImportFix), searchPrefix, filename, filePkg string, env *ProcessEnv) error {
 	callback := &scanCallback{
 		rootFound: func(gopathwalk.Root) bool {
@@ -806,6 +809,11 @@ type ProcessEnv struct {
 	BuildFlags []string
 	ModFlag    string
 	ModFile    string
+
+	// SkipPathInScan returns true if the path should be skipped from scans of
+	// the RootCurrentModule root type. The function argument is a clean,
+	// absolute path.
+	SkipPathInScan func(string) bool
 
 	// Env overrides the OS environment, and can be used to specify
 	// GOPROXY, GO111MODULE, etc. PATH cannot be set here, because
@@ -1367,9 +1375,9 @@ func (r *gopathResolver) scan(ctx context.Context, callback *scanCallback) error
 		return err
 	}
 	var roots []gopathwalk.Root
-	roots = append(roots, gopathwalk.Root{filepath.Join(goenv["GOROOT"], "src"), gopathwalk.RootGOROOT})
+	roots = append(roots, gopathwalk.Root{Path: filepath.Join(goenv["GOROOT"], "src"), Type: gopathwalk.RootGOROOT})
 	for _, p := range filepath.SplitList(goenv["GOPATH"]) {
-		roots = append(roots, gopathwalk.Root{filepath.Join(p, "src"), gopathwalk.RootGOPATH})
+		roots = append(roots, gopathwalk.Root{Path: filepath.Join(p, "src"), Type: gopathwalk.RootGOPATH})
 	}
 	// The callback is not necessarily safe to use in the goroutine below. Process roots eagerly.
 	roots = filterRoots(roots, callback.rootFound)

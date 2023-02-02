@@ -35,6 +35,7 @@ type seleniumGridScalerMetadata struct {
 	browserVersion      string
 	unsafeSsl           bool
 	scalerIndex         int
+	platformName        string
 }
 
 type seleniumResponse struct {
@@ -65,16 +66,18 @@ type seleniumSession struct {
 type capability struct {
 	BrowserName    string `json:"browserName"`
 	BrowserVersion string `json:"browserVersion"`
+	PlatformName   string `json:"platformName"`
 }
 
 const (
 	DefaultBrowserVersion string = "latest"
+	DefaultPlatformName   string = "linux"
 )
 
 func NewSeleniumGridScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	logger := InitializeLogger(config, "selenium_grid_scaler")
@@ -82,7 +85,7 @@ func NewSeleniumGridScaler(config *ScalerConfig) (Scaler, error) {
 	meta, err := parseSeleniumGridScalerMetadata(config)
 
 	if err != nil {
-		return nil, fmt.Errorf("error parsing selenium grid metadata: %s", err)
+		return nil, fmt.Errorf("error parsing selenium grid metadata: %w", err)
 	}
 
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsl)
@@ -124,7 +127,7 @@ func parseSeleniumGridScalerMetadata(config *ScalerConfig) (*seleniumGridScalerM
 	if val, ok := config.TriggerMetadata["activationThreshold"]; ok {
 		activationThreshold, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing unsafeSsl: %s", err)
+			return nil, fmt.Errorf("error parsing unsafeSsl: %w", err)
 		}
 		meta.activationThreshold = activationThreshold
 	}
@@ -138,9 +141,15 @@ func parseSeleniumGridScalerMetadata(config *ScalerConfig) (*seleniumGridScalerM
 	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
 		parsedVal, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing unsafeSsl: %s", err)
+			return nil, fmt.Errorf("error parsing unsafeSsl: %w", err)
 		}
 		meta.unsafeSsl = parsedVal
+	}
+
+	if val, ok := config.TriggerMetadata["platformName"]; ok && val != "" {
+		meta.platformName = val
+	} else {
+		meta.platformName = DefaultPlatformName
 	}
 
 	meta.scalerIndex = config.ScalerIndex
@@ -155,7 +164,7 @@ func (s *seleniumGridScaler) Close(context.Context) error {
 func (s *seleniumGridScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	sessions, err := s.getSessionsCount(ctx, s.logger)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error requesting selenium grid endpoint: %s", err)
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error requesting selenium grid endpoint: %w", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(sessions))
@@ -206,14 +215,14 @@ func (s *seleniumGridScaler) getSessionsCount(ctx context.Context, logger logr.L
 	if err != nil {
 		return -1, err
 	}
-	v, err := getCountFromSeleniumResponse(b, s.metadata.browserName, s.metadata.browserVersion, s.metadata.sessionBrowserName, logger)
+	v, err := getCountFromSeleniumResponse(b, s.metadata.browserName, s.metadata.browserVersion, s.metadata.sessionBrowserName, s.metadata.platformName, logger)
 	if err != nil {
 		return -1, err
 	}
 	return v, nil
 }
 
-func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion string, sessionBrowserName string, logger logr.Logger) (int64, error) {
+func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion string, sessionBrowserName string, platformName string, logger logr.Logger) (int64, error) {
 	var count int64
 	var seleniumResponse = seleniumResponse{}
 
@@ -226,9 +235,10 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 		var capability = capability{}
 		if err := json.Unmarshal([]byte(sessionQueueRequest), &capability); err == nil {
 			if capability.BrowserName == browserName {
-				if strings.HasPrefix(capability.BrowserVersion, browserVersion) {
+				var platformNameMatches = capability.PlatformName == "" || strings.EqualFold(capability.PlatformName, platformName)
+				if strings.HasPrefix(capability.BrowserVersion, browserVersion) && platformNameMatches {
 					count++
-				} else if browserVersion == DefaultBrowserVersion {
+				} else if browserVersion == DefaultBrowserVersion && platformNameMatches {
 					count++
 				}
 			}
@@ -241,10 +251,11 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 	for _, session := range sessions {
 		var capability = capability{}
 		if err := json.Unmarshal([]byte(session.Capabilities), &capability); err == nil {
+			var platformNameMatches = capability.PlatformName == "" || strings.EqualFold(capability.PlatformName, platformName)
 			if capability.BrowserName == sessionBrowserName {
-				if strings.HasPrefix(capability.BrowserVersion, browserVersion) {
+				if strings.HasPrefix(capability.BrowserVersion, browserVersion) && platformNameMatches {
 					count++
-				} else if browserVersion == DefaultBrowserVersion {
+				} else if browserVersion == DefaultBrowserVersion && platformNameMatches {
 					count++
 				}
 			}

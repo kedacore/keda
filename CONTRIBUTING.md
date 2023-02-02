@@ -13,6 +13,7 @@ There are many areas we can use contributions - ranging from code, documentation
 - [Making Breaking Changes](#making-breaking-changes)
 - [Contributing Scalers](#contributing-scalers)
   - [Testing](#testing)
+- [Contributing webhooks](#contributing-webhooks)
 - [Changelog](#changelog)
 - [Including Documentation Changes](#including-documentation-changes)
 - [Creating and building a local environment](#creating-and-building-a-local-environment)
@@ -50,6 +51,10 @@ Information on how scalers work can be found in [`CREATE-NEW-SCALER`](CREATE-NEW
 It is mandatory to provide end-to-end (e2e) tests for new scaler. For more information on e2e testing in KEDA
 check the [test documentation](./tests/README.md). Those tests are run nightly on our
 [CI system](https://github.com/kedacore/keda/actions?query=workflow%3A%22nightly+e2e+test%22).
+
+## Contributing webhooks
+
+Another easy way to contribute is improving the validations to avoid misconfigurations. New rules can be added in the proper type's webhooks file (`apis/keda/v1alpha1/*_webhook.go`).
 
 ## Changelog
 

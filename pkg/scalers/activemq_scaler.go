@@ -56,12 +56,12 @@ const (
 func NewActiveMQScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
 	meta, err := parseActiveMQMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing ActiveMQ metadata: %s", err)
+		return nil, fmt.Errorf("error parsing ActiveMQ metadata: %w", err)
 	}
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
@@ -170,7 +170,7 @@ func parseActiveMQMetadata(config *ScalerConfig) (*activeMQMetadata, error) {
 func getRestAPIParameters(meta activeMQMetadata) (activeMQMetadata, error) {
 	u, err := url.ParseRequestURI(meta.restAPITemplate)
 	if err != nil {
-		return meta, fmt.Errorf("unable to parse ActiveMQ restAPITemplate: %s", err)
+		return meta, fmt.Errorf("unable to parse ActiveMQ restAPITemplate: %w", err)
 	}
 
 	meta.managementEndpoint = u.Host
@@ -178,7 +178,7 @@ func getRestAPIParameters(meta activeMQMetadata) (activeMQMetadata, error) {
 	replacer := strings.NewReplacer(",", "&")
 	v, err := url.ParseQuery(replacer.Replace(splitURL)) // This returns a map with key: string types and element type [] string. : map[brokerName:[<<brokerName>>] destinationName:[<<destinationName>>] destinationType:[Queue] type:[Broker]]
 	if err != nil {
-		return meta, fmt.Errorf("unable to parse ActiveMQ restAPITemplate: %s", err)
+		return meta, fmt.Errorf("unable to parse ActiveMQ restAPITemplate: %w", err)
 	}
 
 	if len(v["destinationName"][0]) == 0 {
@@ -203,11 +203,11 @@ func (s *activeMQScaler) getMonitoringEndpoint() (string, error) {
 	}
 	template, err := template.New("monitoring_endpoint").Parse(s.metadata.restAPITemplate)
 	if err != nil {
-		return "", fmt.Errorf("error parsing template: %s", err)
+		return "", fmt.Errorf("error parsing template: %w", err)
 	}
 	err = template.Execute(&buf, endpoint)
 	if err != nil {
-		return "", fmt.Errorf("error executing template: %s", err)
+		return "", fmt.Errorf("error executing template: %w", err)
 	}
 	monitoringEndpoint := buf.String()
 	return monitoringEndpoint, nil
@@ -271,7 +271,7 @@ func (s *activeMQScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpe
 func (s *activeMQScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	queueSize, err := s.getQueueMessageCount(ctx)
 	if err != nil {
-		return nil, false, fmt.Errorf("error inspecting ActiveMQ queue size: %s", err)
+		return nil, false, fmt.Errorf("error inspecting ActiveMQ queue size: %w", err)
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(queueSize))

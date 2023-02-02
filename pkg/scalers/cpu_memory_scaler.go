@@ -31,7 +31,7 @@ func NewCPUMemoryScaler(resourceName v1.ResourceName, config *ScalerConfig) (Sca
 
 	meta, parseErr := parseResourceMetadata(config, logger)
 	if parseErr != nil {
-		return nil, fmt.Errorf("error parsing %s metadata: %s", resourceName, parseErr)
+		return nil, fmt.Errorf("error parsing %s metadata: %w", resourceName, parseErr)
 	}
 
 	return &cpuMemoryScaler{

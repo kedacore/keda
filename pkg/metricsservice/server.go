@@ -26,6 +26,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/kedacore/keda/v2/pkg/metricsservice/api"
+	"github.com/kedacore/keda/v2/pkg/metricsservice/utils"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 )
 
@@ -34,6 +35,8 @@ var log = logf.Log.WithName("grpc_server")
 type GrpcServer struct {
 	server        *grpc.Server
 	address       string
+	certDir       string
+	certsReady    chan struct{}
 	scalerHandler *scaling.ScaleHandler
 	api.UnimplementedMetricsServiceServer
 }
@@ -45,12 +48,12 @@ func (s *GrpcServer) GetMetrics(ctx context.Context, in *api.ScaledObjectRef) (*
 	extMetrics, exportedMetrics, err := (*s.scalerHandler).GetScaledObjectMetrics(ctx, in.Name, in.Namespace, in.MetricName)
 	response.PromMetrics = exportedMetrics
 	if err != nil {
-		return &response, fmt.Errorf("error when getting metric values %s", err)
+		return &response, fmt.Errorf("error when getting metric values %w", err)
 	}
 
 	err = v1beta1.Convert_external_metrics_ExternalMetricValueList_To_v1beta1_ExternalMetricValueList(extMetrics, v1beta1ExtMetrics, nil)
 	if err != nil {
-		return &response, fmt.Errorf("error when converting metric values %s", err)
+		return &response, fmt.Errorf("error when converting metric values %w", err)
 	}
 
 	log.V(1).WithValues("scaledObjectName", in.Name, "scaledObjectNamespace", in.Namespace, "metrics", v1beta1ExtMetrics).Info("Providing metrics")
@@ -60,26 +63,23 @@ func (s *GrpcServer) GetMetrics(ctx context.Context, in *api.ScaledObjectRef) (*
 }
 
 // NewGrpcServer creates a new instance of GrpcServer
-func NewGrpcServer(scaleHandler *scaling.ScaleHandler, address string) GrpcServer {
-	gsrv := grpc.NewServer()
-	srv := GrpcServer{
-		server:        gsrv,
+func NewGrpcServer(scaleHandler *scaling.ScaleHandler, address, certDir string, certsReady chan struct{}) GrpcServer {
+	return GrpcServer{
 		address:       address,
 		scalerHandler: scaleHandler,
+		certDir:       certDir,
+		certsReady:    certsReady,
 	}
-
-	api.RegisterMetricsServiceServer(gsrv, &srv)
-	return srv
 }
 
 func (s *GrpcServer) startServer() error {
 	lis, err := net.Listen("tcp", s.address)
 	if err != nil {
-		return fmt.Errorf("failed to listen: %v", err)
+		return fmt.Errorf("failed to listen: %w", err)
 	}
 
 	if err := s.server.Serve(lis); err != nil {
-		return fmt.Errorf("failed to serve: %v", err)
+		return fmt.Errorf("failed to serve: %w", err)
 	}
 
 	return nil
@@ -88,6 +88,16 @@ func (s *GrpcServer) startServer() error {
 // Start starts a new gRPC Metrics Service, this implements Runnable interface
 // of controller-runtime Manager, so we can use mgr.Add() to start this component.
 func (s *GrpcServer) Start(ctx context.Context) error {
+	<-s.certsReady
+	if s.server == nil {
+		creds, err := utils.LoadGrpcTLSCredentials(s.certDir, true)
+		if err != nil {
+			return err
+		}
+		s.server = grpc.NewServer(grpc.Creds(creds))
+		api.RegisterMetricsServiceServer(s.server, s)
+	}
+
 	errChan := make(chan error)
 
 	go func() {

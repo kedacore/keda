@@ -222,7 +222,7 @@ func formatTimeSpan(timeSpan string) (string, error) {
 		seconds, serr := strconv.Atoi(aggregationInterval[2])
 
 		if herr != nil || merr != nil || serr != nil {
-			return "", fmt.Errorf("errors parsing metricAggregationInterval: %v, %v, %v", herr, merr, serr)
+			return "", fmt.Errorf("errors parsing metricAggregationInterval: %v, %v, %w", herr, merr, serr)
 		}
 
 		starttime = time.Now().Add(-(time.Duration(hours)*time.Hour + time.Duration(minutes)*time.Minute + time.Duration(seconds)*time.Second)).UTC().Format(time.RFC3339)

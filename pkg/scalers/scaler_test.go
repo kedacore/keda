@@ -1,7 +1,6 @@
 package scalers
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,7 +19,7 @@ func TestGetMetricTargetType(t *testing.T) {
 			name:           "utilization metric type",
 			config:         &ScalerConfig{MetricType: v2.UtilizationMetricType},
 			wantmetricType: "",
-			wantErr:        fmt.Errorf("'Utilization' metric type is unsupported for external metrics, allowed values are 'Value' or 'AverageValue'"),
+			wantErr:        ErrScalerUnsupportedUtilizationMetricType,
 		},
 		{
 			name:           "average value metric type",
@@ -47,7 +46,7 @@ func TestGetMetricTargetType(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			metricType, err := GetMetricTargetType(c.config)
 			if c.wantErr != nil {
-				assert.Contains(t, err.Error(), c.wantErr.Error())
+				assert.ErrorIs(t, err, c.wantErr)
 			} else {
 				assert.NoError(t, err)
 			}

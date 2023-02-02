@@ -457,7 +457,7 @@ func createNewCheckpointInStorage(urlPath string, containerName string, partitio
 	if err != nil {
 		if stErr, ok := err.(azblob.StorageError); ok {
 			if stErr.ServiceCode() == azblob.ServiceCodeContainerAlreadyExists {
-				return ctx, fmt.Errorf("failed to create container: %s", err)
+				return ctx, fmt.Errorf("failed to create container: %w", err)
 			}
 		}
 	}
@@ -473,7 +473,7 @@ func createNewCheckpointInStorage(urlPath string, containerName string, partitio
 		Metadata:    metadata,
 		Parallelism: 16})
 	if err != nil {
-		return ctx, fmt.Errorf("Err uploading file to blob: %s", err)
+		return ctx, fmt.Errorf("Err uploading file to blob: %w", err)
 	}
 	return ctx, nil
 }

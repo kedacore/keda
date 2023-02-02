@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -35,6 +36,7 @@ const (
 	defaultRabbitMQQueueLength             = 20
 	rabbitMetricType                       = "External"
 	rabbitRootVhostPath                    = "/%2F"
+	rmqTLSEnable                           = "enable"
 )
 
 const (
@@ -75,6 +77,13 @@ type rabbitMQMetadata struct {
 	metricName            string        // custom metric name for trigger
 	timeout               time.Duration // custom http timeout for a specific trigger
 	scalerIndex           int           // scaler index
+
+	// TLS
+	ca          string
+	cert        string
+	key         string
+	keyPassword string
+	enableTLS   bool
 }
 
 type queueInfo struct {
@@ -104,7 +113,7 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
-		return nil, fmt.Errorf("error getting scaler metric type: %s", err)
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 	s.metricType = metricType
 
@@ -112,7 +121,7 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 
 	meta, err := parseRabbitMQMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing rabbitmq metadata: %s", err)
+		return nil, fmt.Errorf("error parsing rabbitmq metadata: %w", err)
 	}
 	s.metadata = meta
 	s.httpClient = kedautil.CreateHTTPClient(meta.timeout, false)
@@ -123,15 +132,15 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 		if meta.vhostName != "" {
 			hostURI, err := amqp.ParseURI(host)
 			if err != nil {
-				return nil, fmt.Errorf("error parsing rabbitmq connection string: %s", err)
+				return nil, fmt.Errorf("error parsing rabbitmq connection string: %w", err)
 			}
 			hostURI.Vhost = meta.vhostName
 			host = hostURI.String()
 		}
 
-		conn, ch, err := getConnectionAndChannel(host)
+		conn, ch, err := getConnectionAndChannel(host, meta)
 		if err != nil {
-			return nil, fmt.Errorf("error establishing rabbitmq connection: %s", err)
+			return nil, fmt.Errorf("error establishing rabbitmq connection: %w", err)
 		}
 		s.connection = conn
 		s.channel = ch
@@ -167,11 +176,33 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		return nil, fmt.Errorf("no host setting given")
 	}
 
+	// Resolve TLS authentication parameters
+	meta.enableTLS = false
+	if val, ok := config.AuthParams["tls"]; ok {
+		val = strings.TrimSpace(val)
+		if val == rmqTLSEnable {
+			meta.ca = config.AuthParams["ca"]
+			meta.cert = config.AuthParams["cert"]
+			meta.key = config.AuthParams["key"]
+			meta.enableTLS = true
+		} else if val != "disable" {
+			return nil, fmt.Errorf("err incorrect value for TLS given: %s", val)
+		}
+	}
+
+	meta.keyPassword = config.AuthParams["keyPassword"]
+
+	certGiven := meta.cert != ""
+	keyGiven := meta.key != ""
+	if certGiven != keyGiven {
+		return nil, fmt.Errorf("both key and cert must be provided")
+	}
+
 	// If the protocol is auto, check the host scheme.
 	if meta.protocol == autoProtocol {
 		parsedURL, err := url.Parse(meta.host)
 		if err != nil {
-			return nil, fmt.Errorf("can't parse host to find protocol: %s", err)
+			return nil, fmt.Errorf("can't parse host to find protocol: %w", err)
 		}
 		switch parsedURL.Scheme {
 		case "amqp", "amqps":
@@ -210,7 +241,7 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 
 	_, err = parseTrigger(&meta, config)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse trigger: %s", err)
+		return nil, fmt.Errorf("unable to parse trigger: %w", err)
 	}
 
 	// Resolve metricName
@@ -224,13 +255,13 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	if val, ok := config.TriggerMetadata["timeout"]; ok {
 		timeoutMS, err := strconv.Atoi(val)
 		if err != nil {
-			return nil, fmt.Errorf("unable to parse timeout: %s", err)
+			return nil, fmt.Errorf("unable to parse timeout: %w", err)
 		}
 		if meta.protocol == amqpProtocol {
-			return nil, fmt.Errorf("amqp protocol doesn't support custom timeouts: %s", err)
+			return nil, fmt.Errorf("amqp protocol doesn't support custom timeouts: %w", err)
 		}
 		if timeoutMS <= 0 {
-			return nil, fmt.Errorf("timeout must be greater than 0: %s", err)
+			return nil, fmt.Errorf("timeout must be greater than 0: %w", err)
 		}
 		meta.timeout = time.Duration(timeoutMS) * time.Millisecond
 	} else {
@@ -308,7 +339,7 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 	if activationValuePresent {
 		activation, err := strconv.ParseFloat(activationValue, 64)
 		if err != nil {
-			return nil, fmt.Errorf("can't parse %s: %s", rabbitActivationValueTriggerConfigName, err)
+			return nil, fmt.Errorf("can't parse %s: %w", rabbitActivationValueTriggerConfigName, err)
 		}
 		meta.activationValue = activation
 	}
@@ -317,7 +348,7 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 	if deprecatedQueueLengthPresent {
 		queueLength, err := strconv.ParseFloat(deprecatedQueueLengthValue, 64)
 		if err != nil {
-			return nil, fmt.Errorf("can't parse %s: %s", rabbitQueueLengthMetricName, err)
+			return nil, fmt.Errorf("can't parse %s: %w", rabbitQueueLengthMetricName, err)
 		}
 		meta.mode = rabbitModeQueueLength
 		meta.value = queueLength
@@ -343,7 +374,7 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 	}
 	triggerValue, err := strconv.ParseFloat(value, 64)
 	if err != nil {
-		return nil, fmt.Errorf("can't parse %s: %s", rabbitValueTriggerConfigName, err)
+		return nil, fmt.Errorf("can't parse %s: %w", rabbitValueTriggerConfigName, err)
 	}
 	meta.value = triggerValue
 
@@ -354,8 +385,22 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 	return meta, nil
 }
 
-func getConnectionAndChannel(host string) (*amqp.Connection, *amqp.Channel, error) {
-	conn, err := amqp.Dial(host)
+// getConnectionAndChannel returns an amqp connection. If enableTLS is true tls connection is made using
+//
+//	the given ceClient cert, ceClient key,and CA certificate. If clientKeyPassword is not empty the provided password will be used to
+//
+// decrypt the given key. If enableTLS is disabled then amqp connection will be created without tls.
+func getConnectionAndChannel(host string, meta *rabbitMQMetadata) (*amqp.Connection, *amqp.Channel, error) {
+	var conn *amqp.Connection
+	var err error
+	if meta.enableTLS {
+		tlsConfig, configErr := kedautil.NewTLSConfigWithPassword(meta.cert, meta.key, meta.keyPassword, meta.ca)
+		if configErr == nil {
+			conn, err = amqp.DialTLS(host, tlsConfig)
+		}
+	} else {
+		conn, err = amqp.Dial(host)
+	}
 	if err != nil {
 		return nil, nil, err
 	}

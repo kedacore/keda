@@ -33,6 +33,7 @@ import (
 )
 
 const (
+	AzureAdPodIdentityNamespace    = "azure-ad-identity-system"
 	AzureWorkloadIdentityNamespace = "azure-workload-identity-system"
 	AwsIdentityNamespace           = "aws-identity-system"
 	GcpIdentityNamespace           = "gcp-identity-system"
@@ -40,6 +41,7 @@ const (
 	KEDANamespace                  = "keda"
 	KEDAOperator                   = "keda-operator"
 	KEDAMetricsAPIServer           = "keda-metrics-apiserver"
+	KEDAAdmissionWebhooks          = "keda-admission"
 
 	DefaultHTTPTimeOut = 3000
 
@@ -53,7 +55,10 @@ var random = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 // Env variables required for setup and cleanup.
 var (
+	AzureADMsiID                  = os.Getenv("TF_AZURE_IDENTITY_1_APP_FULL_ID")
+	AzureADMsiClientID            = os.Getenv("TF_AZURE_IDENTITY_1_APP_ID")
 	AzureADTenantID               = os.Getenv("TF_AZURE_SP_TENANT")
+	AzureRunAadPodIdentityTests   = os.Getenv("AZURE_RUN_AAD_POD_IDENTITY_TESTS")
 	AzureRunWorkloadIdentityTests = os.Getenv("AZURE_RUN_WORKLOAD_IDENTITY_TESTS")
 	AwsIdentityTests              = os.Getenv("AWS_RUN_IDENTITY_TESTS")
 	GcpIdentityTests              = os.Getenv("GCP_RUN_IDENTITY_TESTS")
@@ -145,7 +150,7 @@ func ExecCommandOnSpecificPod(t *testing.T, podName string, namespace string, co
 	if err != nil {
 		return "", "", err
 	}
-	err = exec.Stream(remotecommand.StreamOptions{
+	err = exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
 		Stdout: buf,
 		Stderr: errBuf,
 	})
@@ -475,6 +480,26 @@ func KubectlApplyWithTemplate(t *testing.T, data interface{}, templateName strin
 
 	err = tempFile.Close()
 	assert.NoErrorf(t, err, "cannot close temp file - %s", err)
+}
+
+func KubectlApplyWithErrors(t *testing.T, data interface{}, templateName string, config string) error {
+	t.Logf("Applying template: %s", templateName)
+
+	tmpl, err := template.New("kubernetes resource template").Parse(config)
+	assert.NoErrorf(t, err, "cannot parse template - %s", err)
+
+	tempFile, err := os.CreateTemp("", templateName)
+	assert.NoErrorf(t, err, "cannot create temp file - %s", err)
+	if err != nil {
+		defer tempFile.Close()
+		defer os.Remove(tempFile.Name())
+	}
+
+	err = tmpl.Execute(tempFile, data)
+	assert.NoErrorf(t, err, "cannot insert data into template - %s", err)
+
+	_, err = ExecuteCommand(fmt.Sprintf("kubectl apply -f %s", tempFile.Name()))
+	return err
 }
 
 // Apply templates in order of slice

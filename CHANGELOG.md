@@ -16,6 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.9.2](#v292)
 - [v2.9.1](#v291)
 - [v2.9.0](#v290)
 - [v2.8.1](#v281)
@@ -48,8 +49,12 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 Here is an overview of all **stable** additions:
 
+
 - **General:** Introduce new Neo4j Scaler ([#3999](https://github.com/kedacore/keda/issues/3999))
+- **General**: Introduce admission webhooks to automatically validate resource changes to prevent misconfiguration and enforce best practices ([#3755](https://github.com/kedacore/keda/issues/3755))
 - **General**: Introduce new ArangoDB Scaler ([#4000](https://github.com/kedacore/keda/issues/4000))
+- **Prometheus Metrics**: Introduce scaler activity in Prometheus metrics ([#4114](https://github.com/kedacore/keda/issues/4114))
+- **Prometheus Metrics**: Introduce scaler latency in Prometheus metrics ([#4037](https://github.com/kedacore/keda/issues/4037))
 
 Here is an overview of all new **experimental** features:
 
@@ -57,11 +62,20 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 
-- **General**: TODO ([#TODO](https://github.com/kedacore/keda/issues/TODO))
+- **General**: Add a warning when KEDA run outside supported k8s versions ([#4130](https://github.com/kedacore/keda/issues/4130))
+- **General**: Use (self-signed) certificates for all the communications (internals and externals) ([#3931](https://github.com/kedacore/keda/issues/3931))
+- **Hashicorp Vault**: Add support to secrets backend version 1 ([#2645](https://github.com/kedacore/keda/issues/2645))
+- **RabbitMQ Scaler**:  Add TLS support ([#967](https://github.com/kedacore/keda/issues/967))
+- **Redis Scalers**: Add support to Redis 7 ([#4052](https://github.com/kedacore/keda/issues/4052))
+- **Selenium Grid Scaler**: Add 'platformName' to selenium-grid scaler metadata structure ([#4038](https://github.com/kedacore/keda/issues/4038))
 
 ### Fixes
 
+- **General**: Prevent a panic that might occur while refreshing a scaler cache ([#4092](https://github.com/kedacore/keda/issues/4092))
 - **CPU Memory Scaler** Store forgotten logger ([#4022](https://github.com/kedacore/keda/issues/4022))
+  **Kafka Scaler**: Support 0 in activationLagThreshold configuration ([#4137](https://github.com/kedacore/keda/issues/4137))
+- **Prometheus Metrics**: Expose Prometheus Metrics also when getting ScaledObject state ([#4075](https://github.com/kedacore/keda/issues/4075))
+
 
 ### Deprecations
 
@@ -73,7 +87,25 @@ New deprecation(s):
 
 ### Other
 
+- **General**: Bump Golang to 1.19 ([#4094](https://github.com/kedacore/keda/issues/4094))
+- **General:** Check that ScaledObject name is specified as part of a query for getting metrics ([#4088](https://github.com/kedacore/keda/pull/4088))
+- **General:** Compare error with `errors.Is` ([#4004](https://github.com/kedacore/keda/pull/4004))
+- **General:** Review CodeQL rules and enable it on PRs ([#4032](https://github.com/kedacore/keda/pull/4032))
 - **RabbitMQ Scaler:** Move from `streadway/amqp` to `rabbitmq/amqp091-go` ([#4004](https://github.com/kedacore/keda/pull/4039))
+
+## v2.9.3
+
+### Fixes
+
+- **Azure Service Bus Scaler:** Use correct auth flows with pod identity ([#4026](https://github.com/kedacore/keda/issues/4026)|[#4123](https://github.com/kedacore/keda/issues/4123))
+
+## v2.9.2
+
+### Fixes
+
+- **General**: Prevent a panic that might occur while refreshing a scaler cache ([#4092](https://github.com/kedacore/keda/issues/4092))
+- **Prometheus Metrics**: Fix exposed metric from `keda_scaled_errors` to `keda_scaled_object_errors` ([#4037](https://github.com/kedacore/keda/issues/4037))
+- **Azure Service Bus Scaler:** Use correct auth flows with pod identity ([#4026](https://github.com/kedacore/keda/issues/4026))
 
 ## v2.9.1
 

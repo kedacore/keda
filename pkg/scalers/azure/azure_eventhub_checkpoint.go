@@ -240,16 +240,16 @@ func (checkpointer *defaultCheckpointer) extractCheckpoint(get *azblob.DownloadR
 
 	reader := get.Body(azblob.RetryReaderOptions{})
 	if _, err := blobData.ReadFrom(reader); err != nil {
-		return Checkpoint{}, fmt.Errorf("failed to read blob data: %s", err)
+		return Checkpoint{}, fmt.Errorf("failed to read blob data: %w", err)
 	}
 	defer reader.Close() // The client must close the response body when finished with it
 
 	if err := json.Unmarshal(blobData.Bytes(), &checkpoint); err != nil {
-		return Checkpoint{}, fmt.Errorf("failed to decode blob data: %s", err)
+		return Checkpoint{}, fmt.Errorf("failed to decode blob data: %w", err)
 	}
 
 	if err := json.Unmarshal(blobData.Bytes(), &pyCheckpoint); err != nil {
-		return Checkpoint{}, fmt.Errorf("failed to decode blob data: %s", err)
+		return Checkpoint{}, fmt.Errorf("failed to decode blob data: %w", err)
 	}
 
 	err := mergo.Merge(&checkpoint, Checkpoint(pyCheckpoint))
@@ -331,12 +331,12 @@ func readToCheckpointFromBody(get *azblob.DownloadResponse, checkpoint interface
 
 	reader := get.Body(azblob.RetryReaderOptions{})
 	if _, err := blobData.ReadFrom(reader); err != nil {
-		return fmt.Errorf("failed to read blob data: %s", err)
+		return fmt.Errorf("failed to read blob data: %w", err)
 	}
 	defer reader.Close() // The client must close the response body when finished with it
 
 	if err := json.Unmarshal(blobData.Bytes(), &checkpoint); err != nil {
-		return fmt.Errorf("failed to decode blob data: %s", err)
+		return fmt.Errorf("failed to decode blob data: %w", err)
 	}
 
 	return nil
