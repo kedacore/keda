@@ -18,15 +18,19 @@ package util
 
 import (
 	"crypto/tls"
+	"fmt"
 	"net/http"
 	"os"
 	"time"
+
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 var disableKeepAlives bool
 var minTLSVersion uint16
 
 func init() {
+	setupLog := ctrl.Log.WithName("http_setup")
 	var err error
 	disableKeepAlives, err = ResolveOsEnvBool("KEDA_HTTP_DISABLE_KEEP_ALIVE", false)
 	if err != nil {
@@ -43,8 +47,11 @@ func init() {
 			minTLSVersion = tls.VersionTLS12
 		case "TLS11":
 			minTLSVersion = tls.VersionTLS11
-		default:
+		case "TLS10":
 			minTLSVersion = tls.VersionTLS10
+		default:
+			setupLog.Info(fmt.Sprintf("%s is not a valid value, using `TLS12`. Allowed values are: `TLS13`,`TLS12`,`TLS11`,`TLS10`", version))
+			minTLSVersion = tls.VersionTLS12
 		}
 	}
 }
