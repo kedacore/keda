@@ -464,6 +464,7 @@ func getRedisClusterClient(ctx context.Context, info redisConnectionInfo) (*redi
 	}
 	if info.enableTLS {
 		options.TLSConfig = &tls.Config{
+			MinVersion:         kedautil.GetMinTlsVersion(),
 			InsecureSkipVerify: info.unsafeSsl,
 		}
 	}
@@ -488,6 +489,7 @@ func getRedisSentinelClient(ctx context.Context, info redisConnectionInfo, dbInd
 	}
 	if info.enableTLS {
 		options.TLSConfig = &tls.Config{
+			MinVersion:         kedautil.GetMinTlsVersion(),
 			InsecureSkipVerify: info.unsafeSsl,
 		}
 	}
@@ -509,6 +511,7 @@ func getRedisClient(ctx context.Context, info redisConnectionInfo, dbIndex int) 
 	}
 	if info.enableTLS {
 		options.TLSConfig = &tls.Config{
+			MinVersion:         kedautil.GetMinTlsVersion(),
 			InsecureSkipVerify: info.unsafeSsl,
 		}
 	}

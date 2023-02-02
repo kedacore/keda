@@ -19,10 +19,12 @@ package util
 import (
 	"crypto/tls"
 	"net/http"
+	"os"
 	"time"
 )
 
 var disableKeepAlives bool
+var minTLSVersion uint16
 
 func init() {
 	var err error
@@ -30,6 +32,22 @@ func init() {
 	if err != nil {
 		disableKeepAlives = false
 	}
+
+	minTLSVersion = tls.VersionTLS12
+	version, found := os.LookupEnv("KEDA_HTTP_MIN_TLS_VERSION")
+	if found {
+		switch version {
+		case "TLS13":
+			minTLSVersion = tls.VersionTLS13
+		case "TLS12":
+			minTLSVersion = tls.VersionTLS12
+		case "TLS11":
+			minTLSVersion = tls.VersionTLS11
+		default:
+			minTLSVersion = tls.VersionTLS10
+		}
+	}
+
 }
 
 // HTTPDoer is an interface that matches the Do method on
@@ -48,8 +66,11 @@ func CreateHTTPClient(timeout time.Duration, unsafeSsl bool) *http.Client {
 		timeout = 300 * time.Millisecond
 	}
 	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: unsafeSsl},
-		Proxy:           http.ProxyFromEnvironment,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: unsafeSsl,
+			MinVersion:         GetMinTlsVersion(),
+		},
+		Proxy: http.ProxyFromEnvironment,
 	}
 	if disableKeepAlives {
 		// disable keep http connection alive
@@ -61,4 +82,8 @@ func CreateHTTPClient(timeout time.Duration, unsafeSsl bool) *http.Client {
 		Transport: transport,
 	}
 	return httpClient
+}
+
+func GetMinTlsVersion() uint16 {
+	return minTLSVersion
 }
