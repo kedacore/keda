@@ -245,7 +245,7 @@ func newElasticsearchClient(meta *elasticsearchMetadata, logger logr.Logger) (*e
 
 	transport := http.DefaultTransport.(*http.Transport)
 	transport.TLSClientConfig = &tls.Config{
-		MinVersion:         kedautil.GetMinTlsVersion(),
+		MinVersion:         kedautil.GetMinTLSVersion(),
 		InsecureSkipVerify: meta.unsafeSsl,
 	}
 	config.Transport = transport

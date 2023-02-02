@@ -47,7 +47,6 @@ func init() {
 			minTLSVersion = tls.VersionTLS10
 		}
 	}
-
 }
 
 // HTTPDoer is an interface that matches the Do method on
@@ -68,7 +67,7 @@ func CreateHTTPClient(timeout time.Duration, unsafeSsl bool) *http.Client {
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: unsafeSsl,
-			MinVersion:         GetMinTlsVersion(),
+			MinVersion:         GetMinTLSVersion(),
 		},
 		Proxy: http.ProxyFromEnvironment,
 	}
@@ -84,6 +83,6 @@ func CreateHTTPClient(timeout time.Duration, unsafeSsl bool) *http.Client {
 	return httpClient
 }
 
-func GetMinTlsVersion() uint16 {
+func GetMinTLSVersion() uint16 {
 	return minTLSVersion
 }

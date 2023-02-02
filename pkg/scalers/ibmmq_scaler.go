@@ -180,7 +180,7 @@ func (s *IBMMQScaler) getQueueDepthViaHTTP(ctx context.Context) (int64, error) {
 
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{
-			MinVersion:         kedautil.GetMinTlsVersion(),
+			MinVersion:         kedautil.GetMinTLSVersion(),
 			InsecureSkipVerify: s.metadata.tlsDisabled,
 		},
 	}

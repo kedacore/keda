@@ -95,7 +95,7 @@ func NewTLSConfig(auth *AuthMeta) (*tls.Config, error) {
 
 func CreateHTTPRoundTripper(roundTripperType TransportType, auth *AuthMeta, conf ...*HTTPTransport) (rt http.RoundTripper, err error) {
 	tlsConfig := &tls.Config{
-		MinVersion:         kedautil.GetMinTlsVersion(),
+		MinVersion:         kedautil.GetMinTLSVersion(),
 		InsecureSkipVerify: false,
 	}
 	if auth != nil && (auth.CA != "" || auth.EnableTLS) {

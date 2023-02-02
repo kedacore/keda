@@ -53,7 +53,7 @@ func NewInfluxDBScaler(config *ScalerConfig) (Scaler, error) {
 		meta.serverURL,
 		meta.authToken,
 		influxdb2.DefaultOptions().SetTLSConfig(&tls.Config{
-			MinVersion:         kedautil.GetMinTlsVersion(),
+			MinVersion:         kedautil.GetMinTLSVersion(),
 			InsecureSkipVerify: meta.unsafeSsl,
 		}))
 

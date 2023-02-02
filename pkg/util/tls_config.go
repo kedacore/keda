@@ -55,7 +55,7 @@ func NewTLSConfigWithPassword(clientCert, clientKey, clientKeyPassword, caCert s
 	valid := false
 
 	config := &tls.Config{
-		MinVersion: GetMinTlsVersion(),
+		MinVersion: GetMinTLSVersion(),
 	}
 
 	if clientCert != "" && clientKey != "" {

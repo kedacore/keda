@@ -113,7 +113,7 @@ func (s *PredictKubeScaler) setupClientConn() error {
 	if !grpcConf.Conn.Insecure {
 		clientOpt = append(clientOpt, grpc.WithTransportCredentials(
 			credentials.NewTLS(&tls.Config{
-				MinVersion: kedautil.GetMinTlsVersion(),
+				MinVersion: kedautil.GetMinTLSVersion(),
 				ServerName: mlEngineHost,
 			}),
 		))
