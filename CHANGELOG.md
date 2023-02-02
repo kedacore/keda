@@ -62,6 +62,7 @@ Here is an overview of all new **experimental** features:
 
 - **General**: Add a warning when KEDA run outside supported k8s versions ([#4130](https://github.com/kedacore/keda/issues/4130))
 - **General**: Use (self-signed) certificates for all the communications (internals and externals) ([#3931](https://github.com/kedacore/keda/issues/3931))
+- **General**: Use TLS1.2 as minimum TLS version ([#4193](https://github.com/kedacore/keda/issues/4193))
 - **Hashicorp Vault**: Add support to secrets backend version 1 ([#2645](https://github.com/kedacore/keda/issues/2645))
 - **RabbitMQ Scaler**:  Add TLS support ([#967](https://github.com/kedacore/keda/issues/967))
 - **Redis Scalers**: Add support to Redis 7 ([#4052](https://github.com/kedacore/keda/issues/4052))
