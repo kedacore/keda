@@ -50,7 +50,7 @@ type templateData struct {
 	TriggerAuthName               string
 	ScaledObjectName              string
 	AzureResourceGroup            string
-	AzureSubscriptionId           string
+	AzureSubscriptionID           string
 	AzureADTenantID               string
 	ApplicationInsightsID         string
 	ApplicationInsightsMetricName string
@@ -110,7 +110,7 @@ spec:
     - type: azure-monitor
       metadata:
         resourceURI: microsoft.insights/components/{{.ApplicationInsightsName}}
-        subscriptionId: {{.AzureSubscriptionId}}
+        subscriptionId: {{.AzureSubscriptionID}}
         tenantId: {{.AzureADTenantID}}
         resourceGroupName: {{.AzureResourceGroup}}
         metricName: "exceptions/count"
@@ -146,7 +146,7 @@ func TestScaler(t *testing.T) {
 	// test scaling
 	testActivation(t, kc, client)
 	testScaleOut(t, kc, client)
-	testScaleIn(t, kc, client)
+	testScaleIn(t, kc)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -169,7 +169,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, client appinsights.Tel
 	close(stopCh)
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset, client appinsights.TelemetryClient) {
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 5),
@@ -198,7 +198,7 @@ func getTemplateData() (templateData, []Template) {
 			TriggerAuthName:               triggerAuthName,
 			ScaledObjectName:              scaledObjectName,
 			AzureADTenantID:               azureADTenantID,
-			AzureSubscriptionId:           azureADSubscriptionID,
+			AzureSubscriptionID:           azureADSubscriptionID,
 			AzureResourceGroup:            azureResourceGroup,
 			ApplicationInsightsName:       appInsightsName,
 			ApplicationInsightsMetricName: appInsightsMetricName,
