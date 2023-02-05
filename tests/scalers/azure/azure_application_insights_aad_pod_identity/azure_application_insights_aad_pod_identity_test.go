@@ -29,7 +29,6 @@ const (
 var (
 	appInsightsAppID              = os.Getenv("TF_AZURE_APP_INSIGHTS_APP_ID")
 	appInsightsInstrumentationKey = os.Getenv("TF_AZURE_APP_INSIGHTS_INSTRUMENTATION_KEY")
-	appInsightsConnectionstring   = os.Getenv("TF_AZURE_APP_INSIGHTS_CONNECTION_STRING")
 	appInsightsMetricName         = fmt.Sprintf("metric-%d", GetRandomNumber())
 	appInsightsRole               = fmt.Sprintf("%s-role", testName)
 	azureADTenantID               = os.Getenv("TF_AZURE_SP_TENANT")
@@ -140,7 +139,6 @@ func TestScaler(t *testing.T) {
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, appInsightsAppID, "TF_AZURE_APP_INSIGHTS_APP_ID env variable is required for application insights tests")
 	require.NotEmpty(t, appInsightsInstrumentationKey, "TF_AZURE_APP_INSIGHTS_INSTRUMENTATION_KEY env variable is required for application insights tests")
-	require.NotEmpty(t, appInsightsConnectionstring, "TF_AZURE_APP_INSIGHTS_CONNECTION_STRING env variable is required for application insights tests")
 	require.NotEmpty(t, azureADTenantID, "TF_AZURE_SP_TENANT env variable is required for application insights tests")
 	client := appinsights.NewTelemetryClient(appInsightsInstrumentationKey)
 
