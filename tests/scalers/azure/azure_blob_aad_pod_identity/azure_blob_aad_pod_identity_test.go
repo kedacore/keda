@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package azure_blob_test_aad_pod_identity
+package azure_blob_aad_pod_identity_test
 
 import (
 	"context"

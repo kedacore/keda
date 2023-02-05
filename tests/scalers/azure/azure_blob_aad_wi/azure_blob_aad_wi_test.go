@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package azure_blob_test_aad_wi
+package azure_blob_aad_wi_test
 
 import (
 	"context"
