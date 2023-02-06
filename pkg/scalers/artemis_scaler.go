@@ -14,6 +14,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -30,13 +31,13 @@ type artemisMetadata struct {
 	queueName             string
 	brokerName            string
 	brokerAddress         string
-	username              string
-	password              string
+	artemisAuth           *authentication.AuthMeta
 	restAPITemplate       string
 	queueLength           int64
 	activationQueueLength int64
 	corsHeader            string
 	scalerIndex           int
+	unsafeSsl             bool
 }
 
 //revive:enable:var-naming
@@ -57,11 +58,6 @@ const (
 
 // NewArtemisQueueScaler creates a new artemis queue Scaler
 func NewArtemisQueueScaler(config *ScalerConfig) (Scaler, error) {
-	// do we need to guarantee this timeout for a specific
-	// reason? if not, we can have buildScaler pass in
-	// the global client
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
-
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -71,6 +67,10 @@ func NewArtemisQueueScaler(config *ScalerConfig) (Scaler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error parsing artemis metadata: %w", err)
 	}
+	// do we need to guarantee this timeout for a specific
+	// reason? if not, we can have buildScaler pass in
+	// the global client
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, artemisMetadata.unsafeSsl)
 
 	return &artemisScaler{
 		metricType: metricType,
@@ -83,6 +83,7 @@ func NewArtemisQueueScaler(config *ScalerConfig) (Scaler, error) {
 func parseArtemisMetadata(config *ScalerConfig) (*artemisMetadata, error) {
 	meta := artemisMetadata{}
 
+	meta.unsafeSsl = false
 	meta.queueLength = defaultArtemisQueueLength
 	meta.activationQueueLength = defaultArtemisActivationQueueLength
 
@@ -139,39 +140,23 @@ func parseArtemisMetadata(config *ScalerConfig) (*artemisMetadata, error) {
 		meta.activationQueueLength = activationQueueLength
 	}
 
-	if val, ok := config.AuthParams["username"]; ok && val != "" {
-		meta.username = val
-	} else if val, ok := config.TriggerMetadata["username"]; ok && val != "" {
-		username := val
-
-		if val, ok := config.ResolvedEnv[username]; ok && val != "" {
-			meta.username = val
-		} else {
-			meta.username = username
-		}
-	}
-
-	if meta.username == "" {
-		return nil, fmt.Errorf("username cannot be empty")
-	}
-
-	if val, ok := config.AuthParams["password"]; ok && val != "" {
-		meta.password = val
-	} else if val, ok := config.TriggerMetadata["password"]; ok && val != "" {
-		password := val
-
-		if val, ok := config.ResolvedEnv[password]; ok && val != "" {
-			meta.password = val
-		} else {
-			meta.password = password
-		}
-	}
-
-	if meta.password == "" {
-		return nil, fmt.Errorf("password cannot be empty")
-	}
-
 	meta.scalerIndex = config.ScalerIndex
+
+	// parse auth configs from ScalerConfig
+	auth, err := parseArtemisAuth(config)
+	if err != nil {
+		return nil, err
+	}
+	meta.artemisAuth = auth
+
+	if val, ok := config.TriggerMetadata[unsafeSsl]; ok && val != "" {
+		unsafeSslValue, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing %s: %w", unsafeSsl, err)
+		}
+
+		meta.unsafeSsl = unsafeSslValue
+	}
 
 	return &meta, nil
 }
@@ -208,6 +193,51 @@ func getAPIParameters(meta artemisMetadata) (artemisMetadata, error) {
 	return meta, nil
 }
 
+func parseArtemisAuth(config *ScalerConfig) (*authentication.AuthMeta, error) {
+	if val, ok := config.AuthParams[authentication.AuthModesKey]; ok && val != string(authentication.BasicAuthType) {
+		return nil, fmt.Errorf("only basic authMode is allowed")
+	}
+
+	auth, err := authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
+	if err != nil {
+		return nil, err
+	}
+	if auth == nil {
+		auth = &authentication.AuthMeta{}
+	}
+
+	// Preserve backward compatibility
+	if val, ok := config.TriggerMetadata["username"]; ok && val != "" {
+		username := val
+
+		if val, ok := config.ResolvedEnv[username]; ok && val != "" {
+			auth.Username = val
+		} else {
+			auth.Username = username
+		}
+	}
+
+	if auth.Username == "" {
+		return nil, fmt.Errorf("username cannot be empty")
+	}
+
+	if val, ok := config.TriggerMetadata["password"]; ok && val != "" {
+		password := val
+
+		if val, ok := config.ResolvedEnv[password]; ok && val != "" {
+			auth.Password = val
+		} else {
+			auth.Password = password
+		}
+	}
+
+	if auth.Password == "" {
+		return nil, fmt.Errorf("password cannot be empty")
+	}
+
+	return auth, nil
+}
+
 func (s *artemisScaler) getMonitoringEndpoint() string {
 	replacer := strings.NewReplacer("<<managementEndpoint>>", s.metadata.managementEndpoint,
 		"<<queueName>>", s.metadata.queueName,
@@ -230,7 +260,7 @@ func (s *artemisScaler) getQueueMessageCount(ctx context.Context) (int64, error)
 	if err != nil {
 		return -1, err
 	}
-	req.SetBasicAuth(s.metadata.username, s.metadata.password)
+	req.SetBasicAuth(s.metadata.artemisAuth.Username, s.metadata.artemisAuth.Password)
 	req.Header.Set("Origin", s.metadata.corsHeader)
 
 	resp, err := client.Do(req)
