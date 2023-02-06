@@ -73,7 +73,8 @@ Here is an overview of all new **experimental** features:
 - **Azure Service Bus Scaler:** Use correct auth flows with pod identity ([#4026](https://github.com/kedacore/keda/issues/4026)|[#4123](https://github.com/kedacore/keda/issues/4123))
 - **Cassandra Scaler**: Checking whether the port information is entered in the ClusterIPAddres is done correctly. ([#4110](https://github.com/kedacore/keda/issues/4110))
 - **CPU Memory Scaler** Store forgotten logger ([#4022](https://github.com/kedacore/keda/issues/4022))
-  **Kafka Scaler**: Support 0 in activationLagThreshold configuration ([#4137](https://github.com/kedacore/keda/issues/4137))
+- **Kafka Scaler**: Return error if the processing of the partition lag fails ([#4098](https://github.com/kedacore/keda/issues/4098))
+- **Kafka Scaler**: Support 0 in activationLagThreshold configuration ([#4137](https://github.com/kedacore/keda/issues/4137))
 - **Prometheus Metrics**: Expose Prometheus Metrics also when getting ScaledObject state ([#4075](https://github.com/kedacore/keda/issues/4075))
 - **Redis Scalers**: Fix panic produced by incorrect logger initialization ([#4197](https://github.com/kedacore/keda/issues/4197))
 
