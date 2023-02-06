@@ -41,6 +41,8 @@ var testCassandraMetadata = []parseCassandraMetadataTestData{
 	{map[string]string{"query": "SELECT COUNT(*) FROM test_keyspace.test_table;", "targetQueryValue": "1", "username": "cassandra", "clusterIPAddress": "cassandra.test:9042", "ScalerIndex": "0", "metricName": "myMetric"}, true, map[string]string{"password": "Y2Fzc2FuZHJhCg=="}},
 	// no password passed
 	{map[string]string{"query": "SELECT COUNT(*) FROM test_keyspace.test_table;", "targetQueryValue": "1", "username": "cassandra", "clusterIPAddress": "cassandra.test:9042", "keyspace": "test_keyspace", "ScalerIndex": "0", "metricName": "myMetric"}, true, map[string]string{}},
+	// fix issue[4110] passed
+	{map[string]string{"query": "SELECT COUNT(*) FROM test_keyspace.test_table;", "targetQueryValue": "1", "username": "cassandra", "port": "9042", "clusterIPAddress": "https://cassandra.test", "keyspace": "test_keyspace", "ScalerIndex": "0", "metricName": "myMetric"}, false, map[string]string{"password": "Y2Fzc2FuZHJhCg=="}},
 }
 
 var cassandraMetricIdentifiers = []cassandraMetricIdentifier{
