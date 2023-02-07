@@ -28,7 +28,7 @@ const (
 	promNamespace           = "namespace"
 	promCortexScopeOrgID    = "cortexOrgID"
 	promCortexHeaderKey     = "X-Scope-OrgID"
-	promHeaders             = "headers"
+	promCustomHeaders       = "customHeaders"
 	ignoreNullValues        = "ignoreNullValues"
 	unsafeSsl               = "unsafeSsl"
 )
@@ -54,7 +54,7 @@ type prometheusMetadata struct {
 	namespace           string
 	scalerIndex         int
 	cortexOrgID         string
-	headers             map[string]string
+	customHeaders       map[string]string
 	// sometimes should consider there is an error we can accept
 	// default value is true/t, to ignore the null value return from prometheus
 	// change to false/f if can not accept prometheus return null values
@@ -162,10 +162,10 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 		meta.cortexOrgID = val
 	}
 
-	if val, ok := config.TriggerMetadata[promHeaders]; ok && val != "" {
-		meta.headers, err = kedautil.ParseStringList(val)
+	if val, ok := config.TriggerMetadata[promCustomHeaders]; ok && val != "" {
+		meta.customHeaders, err = kedautil.ParseStringList(val)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing %s: %w", promHeaders, err)
+			return nil, fmt.Errorf("error parsing %s: %w", promCustomHeaders, err)
 		}
 	}
 
@@ -244,7 +244,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		req.Header.Add(promCortexHeaderKey, s.metadata.cortexOrgID)
 	}
 
-	for headerName, headerValue := range s.metadata.headers {
+	for headerName, headerValue := range s.metadata.customHeaders {
 		req.Header.Add(headerName, headerValue)
 	}
 
