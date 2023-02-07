@@ -85,3 +85,45 @@ func TestParseint32List(t *testing.T) {
 		})
 	}
 }
+
+func TestParseStringList(t *testing.T) {
+	testData := []struct {
+		name    string
+		pattern string
+		exp     map[string]string
+		isError bool
+	}{
+		{"success, no key-value", "", map[string]string{}, false},
+		{"success, one key, no value", "key1=", map[string]string{"key1": ""}, false},
+		{"success, one key, no value, with spaces", "key1 = ", map[string]string{"key1": ""}, false},
+		{"success, one pair", "key1=value1", map[string]string{"key1": "value1"}, false},
+		{"success, one pair with spaces", "key1 = value1", map[string]string{"key1": "value1"}, false},
+		{"success, one pair with spaces and no value", "key1 = ", map[string]string{"key1": ""}, false},
+		{"success, two keys, no value", "key1=,key2=", map[string]string{"key1": "", "key2": ""}, false},
+		{"success, two keys, no value, with spaces", "key1 = , key2 = ", map[string]string{"key1": "", "key2": ""}, false},
+		{"success, two pairs", "key1=value1,key2=value2", map[string]string{"key1": "value1", "key2": "value2"}, false},
+		{"success, two pairs with spaces", "key1 = value1, key2 = value2", map[string]string{"key1": "value1", "key2": "value2"}, false},
+		{"failure, one key", "key1", nil, true},
+		{"failure, one key ending with two successive equals to", "key1==", nil, true},
+		{"failure, one valid pair and invalid one key", "key1=value1,key2", nil, true},
+		{"failure, two valid pairs and invalid two keys", "key1=value1,key2=value2,key3,key4", nil, true},
+	}
+
+	for _, tt := range testData {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ParseStringList(tt.pattern)
+
+			if err != nil && !tt.isError {
+				t.Errorf("Expected no error but got %s\n", err)
+			}
+
+			if err == nil && tt.isError {
+				t.Errorf("Expected error but got %s\n", err)
+			}
+
+			if !reflect.DeepEqual(tt.exp, got) {
+				t.Errorf("Expected %v but got %v\n", tt.exp, got)
+			}
+		})
+	}
+}
