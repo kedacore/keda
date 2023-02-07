@@ -195,9 +195,9 @@ func createEventHub(t *testing.T) (*eventhub.HubManager, *eventhub.Hub) {
 	eventhubManager, err := eventhub.NewHubManagerFromConnectionString(namespaceConnectionString)
 	assert.NoErrorf(t, err, "cannot create eventhubManager client - %s", err)
 
-	eventHubNamespaceUrl, err := url.Parse(eventhubManager.Host)
+	eventHubNamespaceURL, err := url.Parse(eventhubManager.Host)
 	assert.NoErrorf(t, err, "cannot parse event hub namespace url - %s", err)
-	domains := strings.Split(eventHubNamespaceUrl.Hostname(), ".")
+	domains := strings.Split(eventHubNamespaceURL.Hostname(), ".")
 	eventHubNamespaceName = domains[0]
 
 	opts := []eventhub.HubManagementOption{
