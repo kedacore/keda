@@ -62,5 +62,5 @@ func init() {
 }
 
 func getRootCAs() *x509.CertPool {
-	return rootCAs
+	return rootCAs.Clone()
 }
