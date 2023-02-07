@@ -82,6 +82,12 @@ var testPrometheusAuthMetadata = []prometheusAuthMetadataTestData{
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "authModes": "tls, basic"}, map[string]string{"ca": "caaa", "cert": "ceert", "key": "keey", "username": "user", "password": "pass"}, false},
 
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "authModes": "tls,basic"}, map[string]string{"username": "user", "password": "pass"}, true},
+	// success customAuth
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "authModes": "customAuth"}, map[string]string{"customAuthHeader": "header", "customAuthValue": "value"}, false},
+	// fail customAuth with no customAuthHeader
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "authModes": "customAuth"}, map[string]string{"customAuthHeader": ""}, true},
+	// fail customAuth with no customAuthValue
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "authModes": "customAuth"}, map[string]string{"customAuthValue": ""}, true},
 }
 
 func TestPrometheusParseMetadata(t *testing.T) {
@@ -129,7 +135,8 @@ func TestPrometheusScalerAuthParams(t *testing.T) {
 		if err == nil {
 			if (meta.prometheusAuth.EnableBearerAuth && !strings.Contains(testData.metadata["authModes"], "bearer")) ||
 				(meta.prometheusAuth.EnableBasicAuth && !strings.Contains(testData.metadata["authModes"], "basic")) ||
-				(meta.prometheusAuth.EnableTLS && !strings.Contains(testData.metadata["authModes"], "tls")) {
+				(meta.prometheusAuth.EnableTLS && !strings.Contains(testData.metadata["authModes"], "tls")) ||
+				(meta.prometheusAuth.EnableCustomAuth && !strings.Contains(testData.metadata["authModes"], "customAuth")) {
 				t.Error("wrong auth mode detected")
 			}
 		}
@@ -343,9 +350,9 @@ func TestPrometheusScalerCustomHeaders(t *testing.T) {
 		ignoreNullValues: true,
 	}
 	customHeadersValue := map[string]string{
-		"X-Client-Id":  "cid",
-		"X-Tenant-Id":  "tid",
-		"X-Auth-Token": "authtoken",
+		"X-Client-Id":          "cid",
+		"X-Tenant-Id":          "tid",
+		"X-Organization-Token": "oid",
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		for headerName, headerValue := range customHeadersValue {
