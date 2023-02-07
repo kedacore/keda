@@ -332,3 +332,43 @@ func TestPrometheusScalerCortexHeader(t *testing.T) {
 
 	assert.NoError(t, err)
 }
+
+func TestPrometheusScalerCustomHeaders(t *testing.T) {
+	testData := prometheusQromQueryResultTestData{
+		name:             "no values",
+		bodyStr:          `{"data":{"result":[]}}`,
+		responseStatus:   http.StatusOK,
+		expectedValue:    0,
+		isError:          false,
+		ignoreNullValues: true,
+	}
+	customHeadersValue := map[string]string{
+		"X-Client-Id":  "cid",
+		"X-Tenant-Id":  "tid",
+		"X-Auth-Token": "authtoken",
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		for headerName, headerValue := range customHeadersValue {
+			reqHeader := request.Header.Get(headerName)
+			assert.Equal(t, reqHeader, headerValue)
+		}
+
+		writer.WriteHeader(testData.responseStatus)
+		if _, err := writer.Write([]byte(testData.bodyStr)); err != nil {
+			t.Fatal(err)
+		}
+	}))
+
+	scaler := prometheusScaler{
+		metadata: &prometheusMetadata{
+			serverAddress:    server.URL,
+			customHeaders:    customHeadersValue,
+			ignoreNullValues: testData.ignoreNullValues,
+		},
+		httpClient: http.DefaultClient,
+	}
+
+	_, err := scaler.ExecutePromQuery(context.TODO())
+
+	assert.NoError(t, err)
+}
