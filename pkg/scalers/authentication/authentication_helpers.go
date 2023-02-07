@@ -69,6 +69,17 @@ func GetAuthConfigs(triggerMetadata, authParams map[string]string) (out *AuthMet
 
 			out.Key = authParams["key"]
 			out.EnableTLS = true
+		case CustomAuthType:
+			if len(authParams["customAuthHeader"]) == 0 {
+				return nil, errors.New("no custom auth header given")
+			}
+			out.CustomAuthHeader = authParams["customAuthHeader"]
+
+			if len(authParams["customAuthValue"]) == 0 {
+				return nil, errors.New("no custom auth value given")
+			}
+			out.CustomAuthValue = authParams["customAuthValue"]
+			out.EnableCustomAuth = true
 		default:
 			return nil, fmt.Errorf("incorrect value for authMode is given: %s", t)
 		}

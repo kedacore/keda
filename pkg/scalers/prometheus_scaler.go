@@ -240,6 +240,8 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		req.Header.Add("Authorization", authentication.GetBearerToken(s.metadata.prometheusAuth))
 	} else if s.metadata.prometheusAuth != nil && s.metadata.prometheusAuth.EnableBasicAuth {
 		req.SetBasicAuth(s.metadata.prometheusAuth.Username, s.metadata.prometheusAuth.Password)
+	} else if s.metadata.prometheusAuth != nil && s.metadata.prometheusAuth.EnableCustomAuth {
+		req.Header.Add(s.metadata.prometheusAuth.CustomAuthHeader, s.metadata.prometheusAuth.CustomAuthValue)
 	}
 
 	if s.metadata.cortexOrgID != "" {
