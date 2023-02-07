@@ -51,12 +51,8 @@ func decryptClientKey(clientKey, clientKeyPassword string) ([]byte, error) {
 // NewTLSConfigWithPassword returns a *tls.Config using the given ceClient cert, ceClient key,
 // and CA certificate. If clientKeyPassword is not empty the provided password will be used to
 // decrypt the given key. If none are appropriate, a nil *tls.Config is returned.
-func NewTLSConfigWithPassword(clientCert, clientKey, clientKeyPassword, caCert string) (*tls.Config, error) {
-	valid := false
-
-	config := &tls.Config{
-		MinVersion: GetMinTLSVersion(),
-	}
+func NewTLSConfigWithPassword(clientCert, clientKey, clientKeyPassword, caCert string, unsafeSsl bool) (*tls.Config, error) {
+	config := CreateTLSClientConfig(unsafeSsl)
 
 	if clientCert != "" && clientKey != "" {
 		key := []byte(clientKey)
@@ -73,18 +69,10 @@ func NewTLSConfigWithPassword(clientCert, clientKey, clientKeyPassword, caCert s
 			return nil, fmt.Errorf("error parse X509KeyPair: %w", err)
 		}
 		config.Certificates = []tls.Certificate{cert}
-		valid = true
 	}
 
 	if caCert != "" {
-		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM([]byte(caCert))
-		config.RootCAs = caCertPool
-		valid = true
-	}
-
-	if !valid {
-		config = nil
+		config.RootCAs.AppendCertsFromPEM([]byte(caCert))
 	}
 
 	return config, nil
@@ -92,6 +80,15 @@ func NewTLSConfigWithPassword(clientCert, clientKey, clientKeyPassword, caCert s
 
 // NewTLSConfig returns a *tls.Config using the given ceClient cert, ceClient key,
 // and CA certificate. If none are appropriate, a nil *tls.Config is returned.
-func NewTLSConfig(clientCert, clientKey, caCert string) (*tls.Config, error) {
-	return NewTLSConfigWithPassword(clientCert, clientKey, "", caCert)
+func NewTLSConfig(clientCert, clientKey, caCert string, unsafeSsl bool) (*tls.Config, error) {
+	return NewTLSConfigWithPassword(clientCert, clientKey, "", caCert, unsafeSsl)
+}
+
+// createTLSClientConfig returns a new TLS Config
+// unsafeSsl parameter allows to avoid tls cert validation if it's required
+func CreateTLSClientConfig(unsafeSsl bool) *tls.Config {
+	return &tls.Config{
+		InsecureSkipVerify: unsafeSsl,
+		RootCAs:            getRootCAs(),
+	}
 }

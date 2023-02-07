@@ -29,7 +29,9 @@ const customCAPath = "/custom-cas"
 
 var logger = logf.Log.WithName("certificates")
 
-func getRootCAs() *x509.CertPool {
+var rootCAs *x509.CertPool
+
+func init() {
 	certPool, _ := x509.SystemCertPool()
 	if certPool == nil {
 		certPool = x509.NewCertPool()
@@ -56,5 +58,9 @@ func getRootCAs() *x509.CertPool {
 		logger.V(1).Info(fmt.Sprintf("the certificate %s has been added to the pool", file.Name()))
 	}
 
-	return certPool
+	rootCAs = certPool
+}
+
+func getRootCAs() *x509.CertPool {
+	return rootCAs
 }

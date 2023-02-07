@@ -18,7 +18,6 @@ package util
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"net/http"
 	"os"
@@ -65,8 +64,6 @@ func initMinTLSVersion(logger logr.Logger) uint16 {
 	return uint16(minVersion)
 }
 
-var rootCAs *x509.CertPool
-
 func init() {
 	setupLog := ctrl.Log.WithName("http_setup")
 	disableKeepAlives = getKeepAliveValue()
@@ -96,24 +93,33 @@ func CreateHTTPClient(timeout time.Duration, unsafeSsl bool) *http.Client {
 	if timeout <= 0 {
 		timeout = 300 * time.Millisecond
 	}
+	transport := CreateHTTPTransport(unsafeSsl)
+	httpClient := &http.Client{
+		Timeout:   timeout,
+		Transport: transport,
+	}
+	return httpClient
+}
+
+// CreateHTTPTransport returns a new HTTP Transport with Proxy, Keep alives
+// unsafeSsl parameter allows to avoid tls cert validation if it's required
+func CreateHTTPTransport(unsafeSsl bool) *http.Transport {
+	return CreateHTTPTransportWithTLSConfig(CreateTLSClientConfig(unsafeSsl))
+}
+
+// CreateHTTPTransportWithTLSConfig returns a new HTTP Transport with Proxy, Keep alives
+// using given tls.Config
+func CreateHTTPTransportWithTLSConfig(config *tls.Config) *http.Transport {
 	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: unsafeSsl,
-			MinVersion:         GetMinTLSVersion(),
-			RootCAs:            rootCAs,
-		},
-		Proxy: http.ProxyFromEnvironment,
+		TLSClientConfig: config,
+		Proxy:           http.ProxyFromEnvironment,
 	}
 	if disableKeepAlives {
 		// disable keep http connection alive
 		transport.DisableKeepAlives = true
 		transport.IdleConnTimeout = 100 * time.Second
 	}
-	httpClient := &http.Client{
-		Timeout:   timeout,
-		Transport: transport,
-	}
-	return httpClient
+	return transport
 }
 
 func GetMinTLSVersion() uint16 {
