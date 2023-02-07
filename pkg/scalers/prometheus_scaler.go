@@ -163,10 +163,12 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 	}
 
 	if val, ok := config.TriggerMetadata[promCustomHeaders]; ok && val != "" {
-		meta.customHeaders, err = kedautil.ParseStringList(val)
+		customHeaders, err := kedautil.ParseStringList(val)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing %s: %w", promCustomHeaders, err)
 		}
+
+		meta.customHeaders = customHeaders
 	}
 
 	meta.ignoreNullValues = defaultIgnoreNullValues
