@@ -236,11 +236,14 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		return -1, err
 	}
 
-	if s.metadata.prometheusAuth != nil && s.metadata.prometheusAuth.EnableBearerAuth {
+	switch {
+	case s.metadata.prometheusAuth == nil:
+		break
+	case s.metadata.prometheusAuth.EnableBearerAuth:
 		req.Header.Add("Authorization", authentication.GetBearerToken(s.metadata.prometheusAuth))
-	} else if s.metadata.prometheusAuth != nil && s.metadata.prometheusAuth.EnableBasicAuth {
+	case s.metadata.prometheusAuth.EnableBasicAuth:
 		req.SetBasicAuth(s.metadata.prometheusAuth.Username, s.metadata.prometheusAuth.Password)
-	} else if s.metadata.prometheusAuth != nil && s.metadata.prometheusAuth.EnableCustomAuth {
+	case s.metadata.prometheusAuth.EnableCustomAuth:
 		req.Header.Add(s.metadata.prometheusAuth.CustomAuthHeader, s.metadata.prometheusAuth.CustomAuthValue)
 	}
 
