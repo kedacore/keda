@@ -15,7 +15,7 @@ const (
 	// BearerAuthType is a auth type using a bearer token
 	BearerAuthType Type = "bearer"
 	// CustomAuthType is a auth type using a custom header
-	CustomAuthType Type = "customAuth"
+	CustomAuthType Type = "custom"
 )
 
 // TransportType is type of http transport
