@@ -218,15 +218,14 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 		meta.demands = ""
 	}
 
+	meta.requireAllDemands = false
 	if val, ok := config.TriggerMetadata["requireAllDemands"]; ok && val != "" {
 		requireAllDemands, err := strconv.ParseBool(val)
 		if err != nil {
 			return nil, err
 		}
 		meta.requireAllDemands = requireAllDemands
-	} else {
-		meta.requireAllDemands = false
-	}
+	} 
 
 	if val, ok := config.TriggerMetadata["poolName"]; ok && val != "" {
 		var err error
