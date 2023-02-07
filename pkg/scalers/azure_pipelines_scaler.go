@@ -384,10 +384,11 @@ func getCanAgentDemandFulfilJob(jr JobRequest, metadata *azurePipelinesMetadata)
 			}
 		}
 	}
+	matchDemands := countDemands == len(demandsReq)-1
 	if metadata.requireAllDemands {
-		return countDemands == len(demandsAvail) && len(demandsAvail) == len(demandsReq)-1
+		return matchDemands && countDemands == len(demandsAvail)
 	}
-	return countDemands == len(demandsReq)-1
+	return matchDemands
 }
 
 // Determine if the Job and Parent Agent Template have matching capabilities
