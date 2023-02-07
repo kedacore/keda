@@ -63,3 +63,22 @@ func ParseInt32List(pattern string) ([]int32, error) {
 	}
 	return parsed, nil
 }
+
+func ParseStringList(pattern string) (map[string]string, error) {
+	parsed := make(map[string]string)
+	pattern = strings.TrimSpace(pattern)
+	if pattern == "" {
+		return parsed, nil
+	}
+	pairs := strings.Split(pattern, ",")
+	for _, pair := range pairs {
+		keyvalue := strings.Split(pair, "=")
+		if len(keyvalue) != 2 {
+			return nil, fmt.Errorf("error in key-value syntax, got '%s'", pair)
+		}
+		keyvalue[0] = strings.TrimSpace(keyvalue[0])
+		keyvalue[1] = strings.TrimSpace(keyvalue[1])
+		parsed[keyvalue[0]] = keyvalue[1]
+	}
+	return parsed, nil
+}
