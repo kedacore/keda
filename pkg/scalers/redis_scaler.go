@@ -185,6 +185,7 @@ func createRedisScalerWithClient(client *redis.Client, meta *redisMetadata, scri
 		metadata:        meta,
 		closeFn:         closeFn,
 		getListLengthFn: listLengthFn,
+		logger:          logger,
 	}
 }
 

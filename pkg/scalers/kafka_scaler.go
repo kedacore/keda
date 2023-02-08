@@ -592,7 +592,10 @@ func (s *kafkaScaler) getTotalLag() (int64, int64, error) {
 
 	for topic, partitionsOffsets := range producerOffsets {
 		for partition := range partitionsOffsets {
-			lag, lagWithPersistent, _ := s.getLagForPartition(topic, partition, consumerOffsets, producerOffsets)
+			lag, lagWithPersistent, err := s.getLagForPartition(topic, partition, consumerOffsets, producerOffsets)
+			if err != nil {
+				return 0, 0, err
+			}
 			totalLag += lag
 			totalLagWithPersistent += lagWithPersistent
 		}
