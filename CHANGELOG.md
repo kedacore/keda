@@ -62,6 +62,7 @@ Here is an overview of all new **experimental** features:
 
 - **General**: Add a warning when KEDA run outside supported k8s versions ([#4130](https://github.com/kedacore/keda/issues/4130))
 - **General**: Use (self-signed) certificates for all the communications (internals and externals) ([#3931](https://github.com/kedacore/keda/issues/3931))
+- **Azure Pipelines Scaler**: Improve error logging for `validatePoolID` ([#3996](https://github.com/kedacore/keda/issues/3996))
 - **Hashicorp Vault**: Add support to secrets backend version 1 ([#2645](https://github.com/kedacore/keda/issues/2645))
 - **Prometheus Scaler**: Add custom headers and custom auth support ([#4208](https://github.com/kedacore/keda/issues/4208))
 - **RabbitMQ Scaler**:  Add TLS support ([#967](https://github.com/kedacore/keda/issues/967))
@@ -92,6 +93,7 @@ New deprecation(s):
 - **General**: Bump Golang to 1.19 ([#4094](https://github.com/kedacore/keda/issues/4094))
 - **General:** Check that ScaledObject name is specified as part of a query for getting metrics ([#4088](https://github.com/kedacore/keda/pull/4088))
 - **General:** Compare error with `errors.Is` ([#4004](https://github.com/kedacore/keda/pull/4004))
+- **General:** Pass deep copy object to scalers cache from the ScaledObject controller ([#4207](https://github.com/kedacore/keda/issues/4207))
 - **General:** Review CodeQL rules and enable it on PRs ([#4032](https://github.com/kedacore/keda/pull/4032))
 - **RabbitMQ Scaler:** Move from `streadway/amqp` to `rabbitmq/amqp091-go` ([#4004](https://github.com/kedacore/keda/pull/4039))
 
