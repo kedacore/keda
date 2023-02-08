@@ -273,7 +273,7 @@ func validatePoolID(ctx context.Context, poolID string, metadata *azurePipelines
 	url := fmt.Sprintf("%s/_apis/distributedtask/pools?poolID=%s", metadata.organizationURL, poolID)
 	body, err := getAzurePipelineRequest(ctx, url, metadata, httpClient)
 	if err != nil {
-		return -1, fmt.Errorf("agent pool with id `%s` not found: %s", poolID, err)
+		return -1, fmt.Errorf("agent pool with id `%s` not found: %w", poolID, err)
 	}
 
 	var result azurePipelinesPoolIDResponse
