@@ -6,7 +6,28 @@ import (
 	"testing"
 )
 
-func testingKey(s string) string { return strings.ReplaceAll(s, "TESTING KEY", "PRIVATE KEY") }
+var randomCACert = `-----BEGIN CERTIFICATE-----
+MIIDYzCCAkugAwIBAgIUHq1Lf66TAFwFxelktPk6jv3TOlkwDQYJKoZIhvcNAQEL
+BQAwQTEaMBgGA1UEAwwRdW5pdHRlc3Qua2VkYS5jb20xCzAJBgNVBAYTAlVTMRYw
+FAYDVQQHDA1TYW4gRnJhbnNpc2NvMB4XDTIzMDIwODE0MTgwMFoXDTI0MDEzMDE0
+MTgwMFowQTEaMBgGA1UEAwwRdW5pdHRlc3Qua2VkYS5jb20xCzAJBgNVBAYTAlVT
+MRYwFAYDVQQHDA1TYW4gRnJhbnNpc2NvMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A
+MIIBCgKCAQEAvWZ1I7NQOlbiz0GR2XeO3qHehpVJeycRcbErUQmeNp3HeQRVvx2j
+ZaNV2sIKn2l3BKW9jVymk3uR1lZ7fXOLD5h5EvrBb7RGxSbKMbK4jCqFHbN4p3Gv
+1rz73DiCKXgisFY2lLykGFLgaXB5pALtVnrxKILS4OwndrjEudS80RGh1jP9w+Pt
+7q98yM3r5qshZ56E4Qn7hq+Lsd7l6Os+eVVtBDAHbDNEiLnQfjCBBfg/3qhvqqd8
+ALm+ZNEULMMc8kI165jassJMRsVvkIKOjMiTjsGSsZS6RovLf8FIEAxCtSJvbU9g
+qY+WO5/C9xRlFYXUQsx7OGd2iLnNtZ+JiwIDAQABo1MwUTAdBgNVHQ4EFgQUaxIS
+bJyuR5YQhO4Rh8JDkdEmlvAwHwYDVR0jBBgwFoAUaxISbJyuR5YQhO4Rh8JDkdEm
+lvAwDwYDVR0TAQH/BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAFiixbxuMqjIK
+fRR9cxFV+LvFr6BL7zJViVK5opr+wSLKpsF7hsZV5KvdNxFslby3tVWsm0aiuhTv
+BmmdGIF2cNhq+7egihRddCCTOfqek4980O1TnVstqI/clYMxkftrEO5T85k+LNts
+cQbH1lUEipv8/TuwY/bdhuV/EjuQHiBBh9XyegZU3RgTORnDbfkGRnrMWbHcschP
+PFwwb1T9BmyQShLXzSpJdgx+NuR+CXSu8OXMgs0P99Vle3piABDr0Qd5WPCZJHcH
+syU5YTDyvkFUjf7yV0KYgsoZgTCHAuP1oiaFY6xwnQ1stpPz1/LcySMEnsXoJNVt
+MdpMcBrdUw==
+-----END CERTIFICATE-----
+`
 
 var rsaCertPEM = `-----BEGIN CERTIFICATE-----
 MIIB0zCCAX2gAwIBAgIJAI/M7BYjwB+uMA0GCSqGSIb3DQEBBQUAMEUxCzAJBgNV
@@ -74,6 +95,8 @@ JR68ifUcDhEs2/af5oAaJsw=
 -----END TESTING KEY-----
 `)
 
+func testingKey(s string) string { return strings.ReplaceAll(s, "TESTING KEY", "PRIVATE KEY") }
+
 func TestNewTLSConfig_WithoutPassword(t *testing.T) {
 
 	testCases := []struct {
@@ -81,24 +104,41 @@ func TestNewTLSConfig_WithoutPassword(t *testing.T) {
 		cert   string
 		key    string
 		issuer string
+		CACert string
 	}{
 		{
-			name:   "rsaCert",
+			name:   "rsaCert_WithCACert",
 			cert:   rsaCertPEM,
 			key:    rsaKeyPEM,
 			issuer: "O=Internet Widgits Pty Ltd,ST=Some-State,C=AU",
+			CACert: randomCACert,
 		},
 		{
-			name:   "Cert",
+			name:   "Cert_WithCACert",
 			cert:   rsaCertPEM,
 			key:    keyPEM,
 			issuer: "O=Internet Widgits Pty Ltd,ST=Some-State,C=AU",
+			CACert: randomCACert,
+		},
+		{
+			name:   "rsaCert_WithoutCACert",
+			cert:   rsaCertPEM,
+			key:    rsaKeyPEM,
+			issuer: "O=Internet Widgits Pty Ltd,ST=Some-State,C=AU",
+			CACert: "",
+		},
+		{
+			name:   "Cert_WithoutCACert",
+			cert:   rsaCertPEM,
+			key:    keyPEM,
+			issuer: "O=Internet Widgits Pty Ltd,ST=Some-State,C=AU",
+			CACert: "",
 		},
 	}
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
 
-			config, err := NewTLSConfig(test.cert, test.key, "")
+			config, err := NewTLSConfig(test.cert, test.key, test.CACert)
 			if err != nil {
 				t.Errorf("Should have no error %s", err)
 			}
@@ -108,6 +148,14 @@ func TestNewTLSConfig_WithoutPassword(t *testing.T) {
 			cert, err := x509.ParseCertificate(config.Certificates[0].Certificate[0])
 			if err != nil {
 				t.Errorf("Bad certificate")
+			}
+
+			if test.CACert != "" {
+				caCertPool := x509.NewCertPool()
+				caCertPool.AppendCertsFromPEM([]byte(randomCACert))
+				if !config.RootCAs.Equal(caCertPool) {
+					t.Errorf("TLS config return different CA cert")
+				}
 			}
 
 			if cert.Issuer.String() != test.issuer {
@@ -124,26 +172,45 @@ func TestNewTLSConfig_WithPassword(t *testing.T) {
 		key      string
 		password string
 		issuer   string
+		CACert   string
 	}{
 		{
-			name:     "rsaCert",
+			name:     "rsaCert_WithCACert",
 			cert:     rsaCertPEM,
 			key:      encryptedRsaKeyPEM,
 			password: "keypass",
 			issuer:   "O=Internet Widgits Pty Ltd,ST=Some-State,C=AU",
+			CACert:   randomCACert,
 		},
 		{
-			name:     "Cert",
+			name:     "Cert_WithCACert",
 			cert:     rsaCertPEM,
 			key:      encryptedKeyPEM,
 			password: "keypass",
 			issuer:   "O=Internet Widgits Pty Ltd,ST=Some-State,C=AU",
+			CACert:   randomCACert,
+		},
+		{
+			name:     "rsaCert_WithoutCACert",
+			cert:     rsaCertPEM,
+			key:      encryptedRsaKeyPEM,
+			password: "keypass",
+			issuer:   "O=Internet Widgits Pty Ltd,ST=Some-State,C=AU",
+			CACert:   "",
+		},
+		{
+			name:     "Cert_WithoutCACert",
+			cert:     rsaCertPEM,
+			key:      encryptedKeyPEM,
+			password: "keypass",
+			issuer:   "O=Internet Widgits Pty Ltd,ST=Some-State,C=AU",
+			CACert:   "",
 		},
 	}
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
 
-			config, err := NewTLSConfigWithPassword(test.cert, test.key, test.password, "")
+			config, err := NewTLSConfigWithPassword(test.cert, test.key, test.password, test.CACert)
 			if err != nil {
 				t.Errorf("Should have no error: %s", err)
 			}
@@ -155,6 +222,13 @@ func TestNewTLSConfig_WithPassword(t *testing.T) {
 				t.Errorf("Bad certificate")
 			}
 
+			if test.CACert != "" {
+				caCertPool := x509.NewCertPool()
+				caCertPool.AppendCertsFromPEM([]byte(randomCACert))
+				if !config.RootCAs.Equal(caCertPool) {
+					t.Errorf("TLS config return different CA cert")
+				}
+			}
 			if cert.Issuer.String() != test.issuer {
 				t.Errorf("Expected Issuer %s but got %s\n", test.issuer, cert.Issuer.String())
 			}
