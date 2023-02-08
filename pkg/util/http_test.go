@@ -58,6 +58,7 @@ var minTLSVersionTestDatas = []minTLSVersionTestData{
 }
 
 func TestResolveMinTLSVersion(t *testing.T) {
+     defer os.Unsetenv("KEDA_HTTP_MIN_TLS_VERSION")
 	for _, testData := range minTLSVersionTestDatas {
 		os.Unsetenv("KEDA_HTTP_MIN_TLS_VERSION")
 		if testData.envSet {
