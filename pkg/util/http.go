@@ -23,6 +23,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/go-logr/logr"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -37,23 +38,28 @@ func init() {
 		disableKeepAlives = false
 	}
 
-	minTLSVersion = tls.VersionTLS12
+	minTLSVersion = initMinTLSVersion(setupLog)
+}
+
+func initMinTLSVersion(logger logr.Logger) uint16 {
 	version, found := os.LookupEnv("KEDA_HTTP_MIN_TLS_VERSION")
+	minVersion := tls.VersionTLS12
 	if found {
 		switch version {
 		case "TLS13":
-			minTLSVersion = tls.VersionTLS13
+			minVersion = tls.VersionTLS13
 		case "TLS12":
-			minTLSVersion = tls.VersionTLS12
+			minVersion = tls.VersionTLS12
 		case "TLS11":
-			minTLSVersion = tls.VersionTLS11
+			minVersion = tls.VersionTLS11
 		case "TLS10":
-			minTLSVersion = tls.VersionTLS10
+			minVersion = tls.VersionTLS10
 		default:
-			setupLog.Info(fmt.Sprintf("%s is not a valid value, using `TLS12`. Allowed values are: `TLS13`,`TLS12`,`TLS11`,`TLS10`", version))
-			minTLSVersion = tls.VersionTLS12
+			logger.Info(fmt.Sprintf("%s is not a valid value, using `TLS12`. Allowed values are: `TLS13`,`TLS12`,`TLS11`,`TLS10`", version))
+			minVersion = tls.VersionTLS12
 		}
 	}
+	return uint16(minVersion)
 }
 
 // HTTPDoer is an interface that matches the Do method on
