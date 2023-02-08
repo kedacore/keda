@@ -283,7 +283,7 @@ func validatePoolID(ctx context.Context, poolID string, metadata *azurePipelines
 	url := fmt.Sprintf("%s/_apis/distributedtask/pools?poolID=%s", metadata.organizationURL, poolID)
 	body, err := getAzurePipelineRequest(ctx, url, metadata, httpClient)
 	if err != nil {
-		return -1, fmt.Errorf("agent pool with id `%s` not found", poolID)
+		return -1, fmt.Errorf("agent pool with id `%s` not found: %w", poolID, err)
 	}
 
 	var result azurePipelinesPoolIDResponse
@@ -335,7 +335,7 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 		return -1, err
 	}
 
-	// for each job check if it parent fulfilled, then demand fulfilled, then finally pool fulfilled
+	// for each job check if its parent fulfilled, then demand fulfilled, then finally pool fulfilled
 	var count int64
 	for _, job := range stripDeadJobs(jrs.Value) {
 		if s.metadata.parent == "" && s.metadata.demands == "" {
@@ -419,16 +419,16 @@ func (s *azurePipelinesScaler) GetMetricSpecForScaling(context.Context) []v2.Met
 }
 
 func (s *azurePipelinesScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	queuelen, err := s.GetAzurePipelinesQueueLength(ctx)
+	queueLen, err := s.GetAzurePipelinesQueueLength(ctx)
 
 	if err != nil {
 		s.logger.Error(err, "error getting pipelines queue length")
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
-	metric := GenerateMetricInMili(metricName, float64(queuelen))
+	metric := GenerateMetricInMili(metricName, float64(queueLen))
 
-	return []external_metrics.ExternalMetricValue{metric}, queuelen > s.metadata.activationTargetPipelinesQueueLength, nil
+	return []external_metrics.ExternalMetricValue{metric}, queueLen > s.metadata.activationTargetPipelinesQueueLength, nil
 }
 
 func (s *azurePipelinesScaler) Close(context.Context) error {
