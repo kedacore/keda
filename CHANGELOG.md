@@ -66,6 +66,7 @@ Here is an overview of all new **experimental** features:
 - **RabbitMQ Scaler**:  Add TLS support ([#967](https://github.com/kedacore/keda/issues/967))
 - **Redis Scalers**: Add support to Redis 7 ([#4052](https://github.com/kedacore/keda/issues/4052))
 - **Selenium Grid Scaler**: Add 'platformName' to selenium-grid scaler metadata structure ([#4038](https://github.com/kedacore/keda/issues/4038))
+- **Azure Pipelines Scaler**: Improve error logging for `validatePoolID` ([#3996](https://github.com/kedacore/keda/issues/3996))
 
 ### Fixes
 
