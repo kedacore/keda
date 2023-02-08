@@ -134,6 +134,7 @@ type azurePipelinesMetadata struct {
 	targetPipelinesQueueLength           int64
 	activationTargetPipelinesQueueLength int64
 	scalerIndex                          int
+	requireAllDemands                    bool
 }
 
 // NewAzurePipelinesScaler creates a new AzurePipelinesScaler
@@ -215,6 +216,15 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 		meta.demands = config.TriggerMetadata["demands"]
 	} else {
 		meta.demands = ""
+	}
+
+	meta.requireAllDemands = false
+	if val, ok := config.TriggerMetadata["requireAllDemands"]; ok && val != "" {
+		requireAllDemands, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, err
+		}
+		meta.requireAllDemands = requireAllDemands
 	}
 
 	if val, ok := config.TriggerMetadata["poolName"]; ok && val != "" {
@@ -374,8 +384,11 @@ func getCanAgentDemandFulfilJob(jr JobRequest, metadata *azurePipelinesMetadata)
 			}
 		}
 	}
-
-	return countDemands == len(demandsReq)-1
+	matchDemands := countDemands == len(demandsReq)-1
+	if metadata.requireAllDemands {
+		return matchDemands && countDemands == len(demandsAvail)
+	}
+	return matchDemands
 }
 
 // Determine if the Job and Parent Agent Template have matching capabilities
