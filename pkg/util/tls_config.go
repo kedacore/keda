@@ -54,7 +54,9 @@ func decryptClientKey(clientKey, clientKeyPassword string) ([]byte, error) {
 func NewTLSConfigWithPassword(clientCert, clientKey, clientKeyPassword, caCert string) (*tls.Config, error) {
 	valid := false
 
-	config := &tls.Config{}
+	config := &tls.Config{
+		MinVersion: GetMinTLSVersion(),
+	}
 
 	if clientCert != "" && clientKey != "" {
 		key := []byte(clientKey)

@@ -18,18 +18,48 @@ package util
 
 import (
 	"crypto/tls"
+	"fmt"
 	"net/http"
+	"os"
 	"time"
+
+	"github.com/go-logr/logr"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 var disableKeepAlives bool
+var minTLSVersion uint16
 
 func init() {
+	setupLog := ctrl.Log.WithName("http_setup")
 	var err error
 	disableKeepAlives, err = ResolveOsEnvBool("KEDA_HTTP_DISABLE_KEEP_ALIVE", false)
 	if err != nil {
 		disableKeepAlives = false
 	}
+
+	minTLSVersion = initMinTLSVersion(setupLog)
+}
+
+func initMinTLSVersion(logger logr.Logger) uint16 {
+	version, found := os.LookupEnv("KEDA_HTTP_MIN_TLS_VERSION")
+	minVersion := tls.VersionTLS12
+	if found {
+		switch version {
+		case "TLS13":
+			minVersion = tls.VersionTLS13
+		case "TLS12":
+			minVersion = tls.VersionTLS12
+		case "TLS11":
+			minVersion = tls.VersionTLS11
+		case "TLS10":
+			minVersion = tls.VersionTLS10
+		default:
+			logger.Info(fmt.Sprintf("%s is not a valid value, using `TLS12`. Allowed values are: `TLS13`,`TLS12`,`TLS11`,`TLS10`", version))
+			minVersion = tls.VersionTLS12
+		}
+	}
+	return uint16(minVersion)
 }
 
 // HTTPDoer is an interface that matches the Do method on
@@ -48,8 +78,11 @@ func CreateHTTPClient(timeout time.Duration, unsafeSsl bool) *http.Client {
 		timeout = 300 * time.Millisecond
 	}
 	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: unsafeSsl},
-		Proxy:           http.ProxyFromEnvironment,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: unsafeSsl,
+			MinVersion:         GetMinTLSVersion(),
+		},
+		Proxy: http.ProxyFromEnvironment,
 	}
 	if disableKeepAlives {
 		// disable keep http connection alive
@@ -61,4 +94,8 @@ func CreateHTTPClient(timeout time.Duration, unsafeSsl bool) *http.Client {
 		Transport: transport,
 	}
 	return httpClient
+}
+
+func GetMinTLSVersion() uint16 {
+	return minTLSVersion
 }
