@@ -2,7 +2,7 @@
   path: /spec/template/spec/containers/0/volumeMounts/1
   value:
     name: custom-cas
-    mountPath: /custom-cas
+    mountPath: /custom/ca
     readOnly: true
 
 - op: add

@@ -14,7 +14,6 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/util"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
@@ -258,7 +257,7 @@ func (s *redisScaler) Close(context.Context) error {
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *redisScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
-	metricName := kedautil.NormalizeString(fmt.Sprintf("redis-%s", s.metadata.listName))
+	metricName := util.NormalizeString(fmt.Sprintf("redis-%s", s.metadata.listName))
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),

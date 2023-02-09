@@ -17,7 +17,6 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/util"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type elasticsearchScaler struct {
@@ -217,7 +216,7 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 		meta.activationTargetValue = activationTargetValue
 	}
 
-	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("elasticsearch-%s", meta.searchTemplateName)))
+	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, util.NormalizeString(fmt.Sprintf("elasticsearch-%s", meta.searchTemplateName)))
 	return &meta, nil
 }
 

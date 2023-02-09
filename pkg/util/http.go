@@ -36,7 +36,6 @@ func init() {
 
 func init() {
 	disableKeepAlives = getKeepAliveValue()
-	rootCAs = getRootCAs()
 }
 
 func getKeepAliveValue() bool {

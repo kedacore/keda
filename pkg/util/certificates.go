@@ -25,21 +25,31 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-const customCAPath = "/custom-cas"
+const customCAPath = "/custom/ca"
 
 var logger = logf.Log.WithName("certificates")
 
 var rootCAs *x509.CertPool
 
-func init() {
-	certPool, _ := x509.SystemCertPool()
-	if certPool == nil {
-		certPool = x509.NewCertPool()
+func getRootCAs() *x509.CertPool {
+	if rootCAs != nil {
+		return rootCAs.Clone()
+	}
+
+	rootCAs, _ = x509.SystemCertPool()
+	if rootCAs == nil {
+		rootCAs = x509.NewCertPool()
+	}
+
+	if _, err := os.Stat(customCAPath); os.IsNotExist(err) {
+		logger.V(1).Info(fmt.Sprintf("the path %s doesn't exist, skipping custom CA registrations", customCAPath))
+		return rootCAs.Clone()
 	}
 
 	files, err := os.ReadDir(customCAPath)
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("unable to read %s", customCAPath))
+		return rootCAs.Clone()
 	}
 
 	for _, file := range files {
@@ -52,15 +62,11 @@ func init() {
 			logger.Error(err, fmt.Sprintf("Failed to append %q to certPool", file.Name()))
 		}
 
-		if ok := certPool.AppendCertsFromPEM(certs); !ok {
+		if ok := rootCAs.AppendCertsFromPEM(certs); !ok {
 			logger.Error(fmt.Errorf("no certs appended"), fmt.Sprintf("the certificate %s hasn't been added to the pool", file.Name()))
 		}
 		logger.V(1).Info(fmt.Sprintf("the certificate %s has been added to the pool", file.Name()))
 	}
 
-	rootCAs = certPool
-}
-
-func getRootCAs() *x509.CertPool {
 	return rootCAs.Clone()
 }

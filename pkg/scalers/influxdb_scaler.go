@@ -12,7 +12,6 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/util"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type influxDBScaler struct {
@@ -120,9 +119,9 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		metricName = kedautil.NormalizeString(fmt.Sprintf("influxdb-%s", val))
+		metricName = util.NormalizeString(fmt.Sprintf("influxdb-%s", val))
 	} else {
-		metricName = kedautil.NormalizeString(fmt.Sprintf("influxdb-%s", organizationName))
+		metricName = util.NormalizeString(fmt.Sprintf("influxdb-%s", organizationName))
 	}
 
 	if val, ok := config.TriggerMetadata["activationThresholdValue"]; ok {
