@@ -95,6 +95,7 @@ New deprecation(s):
 - **General:** Compare error with `errors.Is` ([#4004](https://github.com/kedacore/keda/pull/4004))
 - **General:** Pass deep copy object to scalers cache from the ScaledObject controller ([#4207](https://github.com/kedacore/keda/issues/4207))
 - **General:** Review CodeQL rules and enable it on PRs ([#4032](https://github.com/kedacore/keda/pull/4032))
+- **Azure Scalers:** Add Azure Pod Identity && Workload Identity e2e tests ([#3896](https://github.com/kedacore/keda/pull/3896))
 - **RabbitMQ Scaler:** Move from `streadway/amqp` to `rabbitmq/amqp091-go` ([#4004](https://github.com/kedacore/keda/pull/4039))
 
 ## v2.9.3
