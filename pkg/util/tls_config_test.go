@@ -98,7 +98,6 @@ JR68ifUcDhEs2/af5oAaJsw=
 func testingKey(s string) string { return strings.ReplaceAll(s, "TESTING KEY", "PRIVATE KEY") }
 
 func TestNewTLSConfig_WithoutPassword(t *testing.T) {
-
 	testCases := []struct {
 		name   string
 		cert   string
@@ -137,13 +136,9 @@ func TestNewTLSConfig_WithoutPassword(t *testing.T) {
 	}
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-
 			config, err := NewTLSConfig(test.cert, test.key, test.CACert)
 			if err != nil {
 				t.Errorf("Should have no error %s", err)
-			}
-			if config == nil {
-				t.Errorf("Config should not be nil")
 			}
 			cert, err := x509.ParseCertificate(config.Certificates[0].Certificate[0])
 			if err != nil {
@@ -165,7 +160,6 @@ func TestNewTLSConfig_WithoutPassword(t *testing.T) {
 	}
 }
 func TestNewTLSConfig_WithPassword(t *testing.T) {
-
 	testCases := []struct {
 		name     string
 		cert     string
@@ -209,7 +203,6 @@ func TestNewTLSConfig_WithPassword(t *testing.T) {
 	}
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-
 			config, err := NewTLSConfigWithPassword(test.cert, test.key, test.password, test.CACert)
 			if err != nil {
 				t.Errorf("Should have no error: %s", err)

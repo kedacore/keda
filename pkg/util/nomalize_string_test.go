@@ -5,7 +5,6 @@ import (
 )
 
 func TestNormalizeString(t *testing.T) {
-
 	testCases := []struct {
 		name     string
 		input    string
@@ -53,7 +52,6 @@ func TestNormalizeString(t *testing.T) {
 			if outputString != test.expected {
 				t.Errorf("Expected %s but got %s", test.expected, outputString)
 			}
-
 		})
 	}
 }
