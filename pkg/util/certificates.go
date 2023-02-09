@@ -18,7 +18,9 @@ package util
 
 import (
 	"crypto/x509"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
 
@@ -41,7 +43,7 @@ func getRootCAs() *x509.CertPool {
 		rootCAs = x509.NewCertPool()
 	}
 
-	if _, err := os.Stat(customCAPath); os.IsNotExist(err) {
+	if _, err := os.Stat(customCAPath); errors.Is(err, fs.ErrNotExist) {
 		logger.V(1).Info(fmt.Sprintf("the path %s doesn't exist, skipping custom CA registrations", customCAPath))
 		return rootCAs.Clone()
 	}
