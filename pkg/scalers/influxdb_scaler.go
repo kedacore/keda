@@ -2,7 +2,6 @@ package scalers
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"strconv"
 
@@ -12,6 +11,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/util"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -52,10 +52,7 @@ func NewInfluxDBScaler(config *ScalerConfig) (Scaler, error) {
 	client := influxdb2.NewClientWithOptions(
 		meta.serverURL,
 		meta.authToken,
-		influxdb2.DefaultOptions().SetTLSConfig(&tls.Config{
-			MinVersion:         kedautil.GetMinTLSVersion(),
-			InsecureSkipVerify: meta.unsafeSsl,
-		}))
+		influxdb2.DefaultOptions().SetTLSConfig(util.CreateTLSClientConfig(meta.unsafeSsl)))
 
 	return &influxDBScaler{
 		client:     client,

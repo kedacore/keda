@@ -2,7 +2,6 @@ package scalers
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -14,6 +13,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/util"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -464,10 +464,7 @@ func getRedisClusterClient(ctx context.Context, info redisConnectionInfo) (*redi
 		Password: info.password,
 	}
 	if info.enableTLS {
-		options.TLSConfig = &tls.Config{
-			MinVersion:         kedautil.GetMinTLSVersion(),
-			InsecureSkipVerify: info.unsafeSsl,
-		}
+		options.TLSConfig = util.CreateTLSClientConfig(info.unsafeSsl)
 	}
 
 	// confirm if connected
@@ -489,10 +486,7 @@ func getRedisSentinelClient(ctx context.Context, info redisConnectionInfo, dbInd
 		MasterName:       info.sentinelMaster,
 	}
 	if info.enableTLS {
-		options.TLSConfig = &tls.Config{
-			MinVersion:         kedautil.GetMinTLSVersion(),
-			InsecureSkipVerify: info.unsafeSsl,
-		}
+		options.TLSConfig = util.CreateTLSClientConfig(info.unsafeSsl)
 	}
 
 	// confirm if connected
@@ -511,10 +505,7 @@ func getRedisClient(ctx context.Context, info redisConnectionInfo, dbIndex int) 
 		DB:       dbIndex,
 	}
 	if info.enableTLS {
-		options.TLSConfig = &tls.Config{
-			MinVersion:         kedautil.GetMinTLSVersion(),
-			InsecureSkipVerify: info.unsafeSsl,
-		}
+		options.TLSConfig = util.CreateTLSClientConfig(info.unsafeSsl)
 	}
 
 	// confirm if connected
