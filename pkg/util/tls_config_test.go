@@ -207,9 +207,6 @@ func TestNewTLSConfig_WithPassword(t *testing.T) {
 			if err != nil {
 				t.Errorf("Should have no error: %s", err)
 			}
-			if config == nil {
-				t.Errorf("Config should not be nil")
-			}
 			cert, err := x509.ParseCertificate(config.Certificates[0].Certificate[0])
 			if err != nil {
 				t.Errorf("Bad certificate")
