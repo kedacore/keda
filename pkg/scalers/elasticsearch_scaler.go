@@ -244,7 +244,10 @@ func newElasticsearchClient(meta *elasticsearchMetadata, logger logr.Logger) (*e
 	}
 
 	transport := http.DefaultTransport.(*http.Transport)
-	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: meta.unsafeSsl}
+	transport.TLSClientConfig = &tls.Config{
+		MinVersion:         kedautil.GetMinTLSVersion(),
+		InsecureSkipVerify: meta.unsafeSsl,
+	}
 	config.Transport = transport
 
 	esClient, err := elasticsearch.NewClient(config)

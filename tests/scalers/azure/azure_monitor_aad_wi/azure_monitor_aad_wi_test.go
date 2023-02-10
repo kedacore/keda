@@ -1,10 +1,10 @@
 //go:build e2e
 // +build e2e
 
-package azure_application_insights_test
+package azure_monitor_aad_wi_test
 
 import (
-	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -23,17 +23,17 @@ import (
 var _ = godotenv.Load("../../../.env")
 
 const (
-	testName = "azure-app-insights-test"
+	testName = "azure-monitor-aad-wi-test"
 )
 
 var (
-	appInsightsAppID              = os.Getenv("TF_AZURE_APP_INSIGHTS_APP_ID")
 	appInsightsInstrumentationKey = os.Getenv("TF_AZURE_APP_INSIGHTS_INSTRUMENTATION_KEY")
+	appInsightsName               = os.Getenv("TF_AZURE_APP_INSIGHTS_NAME")
 	appInsightsMetricName         = fmt.Sprintf("metric-%d", GetRandomNumber())
 	appInsightsRole               = fmt.Sprintf("%s-role", testName)
-	azureADClientID               = os.Getenv("TF_AZURE_SP_APP_ID")
-	azureADSecret                 = os.Getenv("AZURE_SP_KEY")
 	azureADTenantID               = os.Getenv("TF_AZURE_SP_TENANT")
+	azureADSubscriptionID         = os.Getenv("TF_AZURE_SUBSCRIPTION")
+	azureResourceGroup            = os.Getenv("TF_AZURE_RESOURCE_GROUP")
 	testNamespace                 = fmt.Sprintf("%s-ns", testName)
 	secretName                    = fmt.Sprintf("%s-secret", testName)
 	deploymentName                = fmt.Sprintf("%s-deployment", testName)
@@ -49,31 +49,18 @@ type templateData struct {
 	DeploymentName                string
 	TriggerAuthName               string
 	ScaledObjectName              string
-	AzureADClientID               string
-	AzureADSecret                 string
+	AzureResourceGroup            string
+	AzureSubscriptionID           string
 	AzureADTenantID               string
 	ApplicationInsightsID         string
 	ApplicationInsightsMetricName string
+	ApplicationInsightsName       string
 	ApplicationInsightsRole       string
 	MinReplicaCount               string
 	MaxReplicaCount               string
 }
 
 const (
-	secretTemplate = `
-apiVersion: v1
-kind: Secret
-metadata:
-  name: {{.SecretName}}
-  namespace: {{.TestNamespace}}
-type: Opaque
-data:
-  applicationInsightsId: {{.ApplicationInsightsID}}
-  clientId: {{.AzureADClientID}}
-  clientSecret: {{.AzureADSecret}}
-  tenantId: {{.AzureADTenantID}}
-`
-
 	deploymentTemplate = `
 apiVersion: apps/v1
 kind: Deployment
@@ -102,19 +89,8 @@ metadata:
   name: {{.TriggerAuthName}}
   namespace: {{.TestNamespace}}
 spec:
-  secretTargetRef:
-    - parameter: applicationInsightsId
-      name: {{.SecretName}}
-      key: applicationInsightsId
-    - parameter: activeDirectoryClientId
-      name: {{.SecretName}}
-      key: clientId
-    - parameter: activeDirectoryClientPassword
-      name: {{.SecretName}}
-      key: clientSecret
-    - parameter: tenantId
-      name: {{.SecretName}}
-      key: tenantId
+  podIdentity:
+    provider: azure-workload
 `
 
 	scaledObjectTemplate = `
@@ -131,14 +107,18 @@ spec:
   minReplicaCount: {{.MinReplicaCount}}
   maxReplicaCount: {{.MaxReplicaCount}}
   triggers:
-    - type: azure-app-insights
+    - type: azure-monitor
       metadata:
-        metricId: "customMetrics/{{.ApplicationInsightsMetricName}}"
-        metricAggregationTimespan: "0:3"
-        metricAggregationType: max
+        resourceURI: microsoft.insights/components/{{.ApplicationInsightsName}}
+        subscriptionId: {{.AzureSubscriptionID}}
+        tenantId: {{.AzureADTenantID}}
+        resourceGroupName: {{.AzureResourceGroup}}
+        metricName: "exceptions/count"
+        metricAggregationInterval: "0:3:0"
+        metricAggregationType: Count
         metricFilter: cloud/roleName eq '{{.ApplicationInsightsRole}}'
-        targetValue: "10"
-        activationTargetValue: "20"
+        targetValue: "5"
+        activationTargetValue: "10"
       authenticationRef:
         name: {{.TriggerAuthName}}
 `
@@ -147,11 +127,11 @@ spec:
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, appInsightsAppID, "TF_AZURE_APP_INSIGHTS_APP_ID env variable is required for application insights tests")
 	require.NotEmpty(t, appInsightsInstrumentationKey, "TF_AZURE_APP_INSIGHTS_INSTRUMENTATION_KEY env variable is required for application insights tests")
-	require.NotEmpty(t, azureADClientID, "TF_AZURE_SP_APP_ID env variable is required for application insights tests")
-	require.NotEmpty(t, azureADSecret, "AZURE_SP_KEY env variable is required for application insights tests")
+	require.NotEmpty(t, appInsightsName, "TF_AZURE_APP_INSIGHTS_NAME env variable is required for application insights tests")
+	require.NotEmpty(t, azureADSubscriptionID, "TF_AZURE_SUBSCRIPTION env variable is required for application insights tests")
 	require.NotEmpty(t, azureADTenantID, "TF_AZURE_SP_TENANT env variable is required for application insights tests")
+	require.NotEmpty(t, azureResourceGroup, "TF_AZURE_RESOURCE_GROUP env variable is required for application insights tests")
 	client := appinsights.NewTelemetryClient(appInsightsInstrumentationKey)
 
 	// Create kubernetes resources
@@ -166,7 +146,7 @@ func TestScaler(t *testing.T) {
 	// test scaling
 	testActivation(t, kc, client)
 	testScaleOut(t, kc, client)
-	testScaleIn(t, kc, client)
+	testScaleIn(t, kc)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -175,7 +155,7 @@ func TestScaler(t *testing.T) {
 func testActivation(t *testing.T, kc *kubernetes.Clientset, client appinsights.TelemetryClient) {
 	t.Log("--- testing activation ---")
 	stopCh := make(chan struct{})
-	go setMetricValue(client, 10, stopCh)
+	go setMetricValue(client, 15, stopCh)
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 300)
 	close(stopCh)
 }
@@ -183,57 +163,49 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, client appinsights.T
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, client appinsights.TelemetryClient) {
 	t.Log("--- testing scale out ---")
 	stopCh := make(chan struct{})
-	go setMetricValue(client, 100, stopCh)
+	go setMetricValue(client, 1, stopCh)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 5),
 		"replica count should be 2 after 5 minutes")
 	close(stopCh)
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset, client appinsights.TelemetryClient) {
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
-	stopCh := make(chan struct{})
-	go setMetricValue(client, 0, stopCh)
+
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 5),
 		"replica count should be 0 after 5 minutes")
-	close(stopCh)
 }
 
-func setMetricValue(client appinsights.TelemetryClient, value float64, stopCh <-chan struct{}) {
+func setMetricValue(client appinsights.TelemetryClient, delay int64, stopCh <-chan struct{}) {
 	for {
 		select {
 		case <-stopCh:
 			return
 		default:
 			client.Context().Tags.Cloud().SetRole(appInsightsRole)
-			client.TrackMetric(appInsightsMetricName, value)
+			client.TrackException(errors.New("sample-error"))
 			client.Channel().Flush()
-			time.Sleep(time.Second * 15)
+			time.Sleep(time.Duration(delay) * time.Second)
 		}
 	}
 }
 
 func getTemplateData() (templateData, []Template) {
-	base64ClientSecret := base64.StdEncoding.EncodeToString([]byte(azureADSecret))
-	base64ClientID := base64.StdEncoding.EncodeToString([]byte(azureADClientID))
-	base64TenantID := base64.StdEncoding.EncodeToString([]byte(azureADTenantID))
-	base64ApplicationInsightsID := base64.StdEncoding.EncodeToString([]byte(appInsightsAppID))
-
 	return templateData{
 			TestNamespace:                 testNamespace,
 			SecretName:                    secretName,
 			DeploymentName:                deploymentName,
 			TriggerAuthName:               triggerAuthName,
 			ScaledObjectName:              scaledObjectName,
-			AzureADClientID:               base64ClientID,
-			AzureADSecret:                 base64ClientSecret,
-			AzureADTenantID:               base64TenantID,
-			ApplicationInsightsID:         base64ApplicationInsightsID,
+			AzureADTenantID:               azureADTenantID,
+			AzureSubscriptionID:           azureADSubscriptionID,
+			AzureResourceGroup:            azureResourceGroup,
+			ApplicationInsightsName:       appInsightsName,
 			ApplicationInsightsMetricName: appInsightsMetricName,
 			ApplicationInsightsRole:       appInsightsRole,
 			MinReplicaCount:               fmt.Sprintf("%v", minReplicaCount),
 			MaxReplicaCount:               fmt.Sprintf("%v", maxReplicaCount),
 		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},

@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package azure_application_insights_test
+package azure_application_insights_aad_wi_test
 
 import (
 	"encoding/base64"
@@ -23,7 +23,7 @@ import (
 var _ = godotenv.Load("../../../.env")
 
 const (
-	testName = "azure-app-insights-test"
+	testName = "azure-app-insights-aad-wi-test"
 )
 
 var (
@@ -31,8 +31,6 @@ var (
 	appInsightsInstrumentationKey = os.Getenv("TF_AZURE_APP_INSIGHTS_INSTRUMENTATION_KEY")
 	appInsightsMetricName         = fmt.Sprintf("metric-%d", GetRandomNumber())
 	appInsightsRole               = fmt.Sprintf("%s-role", testName)
-	azureADClientID               = os.Getenv("TF_AZURE_SP_APP_ID")
-	azureADSecret                 = os.Getenv("AZURE_SP_KEY")
 	azureADTenantID               = os.Getenv("TF_AZURE_SP_TENANT")
 	testNamespace                 = fmt.Sprintf("%s-ns", testName)
 	secretName                    = fmt.Sprintf("%s-secret", testName)
@@ -49,8 +47,6 @@ type templateData struct {
 	DeploymentName                string
 	TriggerAuthName               string
 	ScaledObjectName              string
-	AzureADClientID               string
-	AzureADSecret                 string
 	AzureADTenantID               string
 	ApplicationInsightsID         string
 	ApplicationInsightsMetricName string
@@ -69,8 +65,6 @@ metadata:
 type: Opaque
 data:
   applicationInsightsId: {{.ApplicationInsightsID}}
-  clientId: {{.AzureADClientID}}
-  clientSecret: {{.AzureADSecret}}
   tenantId: {{.AzureADTenantID}}
 `
 
@@ -102,16 +96,12 @@ metadata:
   name: {{.TriggerAuthName}}
   namespace: {{.TestNamespace}}
 spec:
+  podIdentity:
+    provider: azure-workload
   secretTargetRef:
     - parameter: applicationInsightsId
       name: {{.SecretName}}
       key: applicationInsightsId
-    - parameter: activeDirectoryClientId
-      name: {{.SecretName}}
-      key: clientId
-    - parameter: activeDirectoryClientPassword
-      name: {{.SecretName}}
-      key: clientSecret
     - parameter: tenantId
       name: {{.SecretName}}
       key: tenantId
@@ -149,8 +139,6 @@ func TestScaler(t *testing.T) {
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, appInsightsAppID, "TF_AZURE_APP_INSIGHTS_APP_ID env variable is required for application insights tests")
 	require.NotEmpty(t, appInsightsInstrumentationKey, "TF_AZURE_APP_INSIGHTS_INSTRUMENTATION_KEY env variable is required for application insights tests")
-	require.NotEmpty(t, azureADClientID, "TF_AZURE_SP_APP_ID env variable is required for application insights tests")
-	require.NotEmpty(t, azureADSecret, "AZURE_SP_KEY env variable is required for application insights tests")
 	require.NotEmpty(t, azureADTenantID, "TF_AZURE_SP_TENANT env variable is required for application insights tests")
 	client := appinsights.NewTelemetryClient(appInsightsInstrumentationKey)
 
@@ -213,8 +201,6 @@ func setMetricValue(client appinsights.TelemetryClient, value float64, stopCh <-
 }
 
 func getTemplateData() (templateData, []Template) {
-	base64ClientSecret := base64.StdEncoding.EncodeToString([]byte(azureADSecret))
-	base64ClientID := base64.StdEncoding.EncodeToString([]byte(azureADClientID))
 	base64TenantID := base64.StdEncoding.EncodeToString([]byte(azureADTenantID))
 	base64ApplicationInsightsID := base64.StdEncoding.EncodeToString([]byte(appInsightsAppID))
 
@@ -224,8 +210,6 @@ func getTemplateData() (templateData, []Template) {
 			DeploymentName:                deploymentName,
 			TriggerAuthName:               triggerAuthName,
 			ScaledObjectName:              scaledObjectName,
-			AzureADClientID:               base64ClientID,
-			AzureADSecret:                 base64ClientSecret,
 			AzureADTenantID:               base64TenantID,
 			ApplicationInsightsID:         base64ApplicationInsightsID,
 			ApplicationInsightsMetricName: appInsightsMetricName,

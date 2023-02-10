@@ -179,7 +179,10 @@ func (s *IBMMQScaler) getQueueDepthViaHTTP(ctx context.Context) (int64, error) {
 	req.SetBasicAuth(s.metadata.username, s.metadata.password)
 
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: s.metadata.tlsDisabled},
+		TLSClientConfig: &tls.Config{
+			MinVersion:         kedautil.GetMinTLSVersion(),
+			InsecureSkipVerify: s.metadata.tlsDisabled,
+		},
 	}
 	client := kedautil.CreateHTTPClient(s.defaultHTTPTimeout, false)
 	client.Transport = tr

@@ -224,7 +224,7 @@ func (s StackDriverClient) GetMetrics(
 		value, err = extractValueFromPoint(point)
 
 		if err != nil {
-			return value, err
+			return -1, err
 		}
 	}
 
