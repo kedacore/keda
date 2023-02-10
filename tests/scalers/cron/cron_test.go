@@ -58,7 +58,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: 'nginx'
+          image: 'nginxinc/nginx-unprivileged'
 `
 
 	scaledObjectTemplate = `

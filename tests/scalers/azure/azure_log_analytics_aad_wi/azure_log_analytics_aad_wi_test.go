@@ -61,7 +61,7 @@ spec:
     spec:
       containers:
         - name: {{.DeploymentName}}
-          image: nginx
+          image: nginxinc/nginx-unprivileged
 `
 
 	triggerAuthTemplate = `
