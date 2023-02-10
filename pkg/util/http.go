@@ -33,6 +33,8 @@ var minTLSVersion uint16
 func init() {
 	setupLog := ctrl.Log.WithName("http_setup")
 	var err error
+	// This code will be removed in https://github.com/kedacore/keda/pull/4191
+	// nosemgrep: trailofbits.go.invalid-usage-of-modified-variable.invalid-usage-of-modified-variable
 	disableKeepAlives, err = ResolveOsEnvBool("KEDA_HTTP_DISABLE_KEEP_ALIVE", false)
 	if err != nil {
 		disableKeepAlives = false
