@@ -51,7 +51,7 @@ spec:
     spec:
       containers:
       - name: my-app
-        image: nginx
+        image: nginxinc/nginx-unprivileged
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80

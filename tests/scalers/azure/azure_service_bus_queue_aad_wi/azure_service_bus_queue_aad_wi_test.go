@@ -63,7 +63,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: nginx:1.16.1
+          image: nginxinc/nginx-unprivileged
 `
 
 	triggerAuthTemplate = `

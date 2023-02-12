@@ -42,7 +42,7 @@ spec:
   template:
     spec:
       containers:
-        - image: nginx:stable
+        - image: nginxinc/nginx-unprivileged
           name: alpine
           command: ["/bin/sh"]
           args: ["-c", "curl -H 'Authorization: Basic cm9vdDo=' --location --request POST 'https://example-arangodb-cluster-ea.{{.Namespace}}.svc.cluster.local:8529/_api/database' --data-raw '{\"name\": \"{{.Database}}\"}' -k"]
@@ -67,7 +67,7 @@ spec:
   template:
     spec:
       containers:
-        - image: nginx:stable
+        - image: nginxinc/nginx-unprivileged
           name: alpine
           command: ["/bin/sh"]
           args: ["-c", "curl -H 'Authorization: Basic cm9vdDo=' --location --request POST 'https://example-arangodb-cluster-ea.{{.Namespace}}.svc.cluster.local:8529/_db/{{.Database}}/_api/collection' --data-raw '{\"name\": \"{{.Collection}}\"}' -k"]
