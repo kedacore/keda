@@ -166,7 +166,7 @@ func TestNewTLSConfig_WithoutPassword(t *testing.T) {
 			}
 
 			if test.CACert != "" {
-				caCertPool := x509.NewCertPool()
+				caCertPool := getRootCAs()
 				caCertPool.AppendCertsFromPEM([]byte(randomCACert))
 				if !config.RootCAs.Equal(caCertPool) {
 					t.Errorf("TLS config return different CA cert")
@@ -233,7 +233,7 @@ func TestNewTLSConfig_WithPassword(t *testing.T) {
 			}
 
 			if test.CACert != "" {
-				caCertPool := x509.NewCertPool()
+				caCertPool := getRootCAs()
 				caCertPool.AppendCertsFromPEM([]byte(randomCACert))
 				if !config.RootCAs.Equal(caCertPool) {
 					t.Errorf("TLS config return different CA cert")
