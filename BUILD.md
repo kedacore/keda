@@ -129,6 +129,16 @@ to deploy it as part of KEDA. Do the following:
 
 ## Debugging with VS Code
 
+KEDA uses certificates to encrypt any HTTP communication. Inside the cluster, certificates are mounted from a secret but locally debugging that isn't possible, so the generation of those certificates is required (or KEDA won't start).
+
+All components inspect the folder `/certs` for any certificates inside it. Argument `--cert-dir` can be used to specify another folder to be used as a source for certificates. You can generate the certificates (assuming the default path) using `openssl`:
+
+```bash
+mkdir -p /certs
+openssl req -newkey rsa:2048 -subj '/CN=localhost' -nodes -keyout /certs/tls.key -x509 -days 3650 -out /certs/tls.crt
+cp /certs/tls.crt /certs/ca.crt
+```
+
 ### Operator
 
 Follow these instructions if you want to debug the KEDA operator using VS Code.
