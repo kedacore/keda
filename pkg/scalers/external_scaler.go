@@ -197,7 +197,7 @@ func (s *externalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 		metric := GenerateMetricInMili(metricName, float64(metricResult.MetricValue))
 		metrics = append(metrics, metric)
 	}
-	
+
 	isActiveResponse, err := grpcClient.IsActive(ctx, &s.scaledObjectRef)
 	if err != nil {
 		s.logger.Error(err, "error calling IsActive on external scaler")

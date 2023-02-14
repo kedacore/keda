@@ -369,7 +369,7 @@ func (s *azureEventHubScaler) GetMetricsAndActivity(ctx context.Context, metricN
 	}
 
 	partitionIDs := runtimeInfo.PartitionIDs
-	
+
 	for i := 0; i < len(partitionIDs); i++ {
 		partitionID := partitionIDs[i]
 		partitionRuntimeInfo, err := s.client.GetPartitionInformation(ctx, partitionID)
