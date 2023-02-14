@@ -130,7 +130,7 @@ spec:
         imagePullPolicy: Always
 `
 
-	updatedMetricsServerDeploymentTemplate = `
+	fallbackMSDeploymentTemplate = `
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -231,11 +231,13 @@ func TestFallback(t *testing.T) {
 
 	testScaleOut(t, kc, data)
 	testFallback(t, kc, data)
+	testRestoreAfterFallback(t, kc, data)
 
 	DeleteKubernetesResources(t, kc, namespace, data, templates)
 
 }
 
+// scale out to max replicas first
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
 	data.MetricValue = 50
@@ -245,11 +247,20 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 		"replica count should be %d after 3 minutes", maxReplicas)
 }
 
+// MS replicas set to 0 to envoke fallback
 func testFallback(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing fallback ---")
-	KubectlApplyWithTemplate(t, data, "updatedMetricsServerDeploymentTemplate", updatedMetricsServerDeploymentTemplate)
+	KubectlApplyWithTemplate(t, data, "fallbackMSDeploymentTemplate", fallbackMSDeploymentTemplate)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, defaultFallback, 60, 3),
 		"replica count should be %d after 3 minutes", defaultFallback)
+}
+
+// restore MS to scale back from fallback replicas
+func testRestoreAfterFallback(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing after fallback ---")
+	KubectlApplyWithTemplate(t, data, "metricsServerDeploymentTemplate", metricsServerDeploymentTemplate)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, maxReplicas, 60, 3),
+		"replica count should be %d after 3 minutes", maxReplicas)
 }
 
 func getTemplateData() (templateData, []Template) {
