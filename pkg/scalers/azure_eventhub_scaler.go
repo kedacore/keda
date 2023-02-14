@@ -327,38 +327,6 @@ func GetUnprocessedEventCountWithoutCheckpoint(partitionInfo *eventhub.HubPartit
 	return 0
 }
 
-// IsActive determines if eventhub is active based on number of unprocessed events
-func (s *azureEventHubScaler) IsActive(ctx context.Context) (bool, error) {
-	runtimeInfo, err := s.client.GetRuntimeInformation(ctx)
-	if err != nil {
-		s.logger.Error(err, "unable to get runtimeInfo for isActive")
-		return false, fmt.Errorf("unable to get runtimeInfo for isActive: %w", err)
-	}
-
-	partitionIDs := runtimeInfo.PartitionIDs
-
-	for i := 0; i < len(partitionIDs); i++ {
-		partitionID := partitionIDs[i]
-
-		partitionRuntimeInfo, err := s.client.GetPartitionInformation(ctx, partitionID)
-		if err != nil {
-			return false, fmt.Errorf("unable to get partitionRuntimeInfo for metrics: %w", err)
-		}
-
-		unprocessedEventCount, _, err := s.GetUnprocessedEventCountInPartition(ctx, partitionRuntimeInfo)
-
-		if err != nil {
-			return false, fmt.Errorf("unable to get unprocessedEventCount for isActive: %w", err)
-		}
-
-		if unprocessedEventCount > s.metadata.activationThreshold {
-			return true, nil
-		}
-	}
-
-	return false, nil
-}
-
 // GetMetricSpecForScaling returns metric spec
 func (s *azureEventHubScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
@@ -369,46 +337,6 @@ func (s *azureEventHubScaler) GetMetricSpecForScaling(context.Context) []v2.Metr
 	}
 	metricSpec := v2.MetricSpec{External: externalMetric, Type: eventHubMetricType}
 	return []v2.MetricSpec{metricSpec}
-}
-
-// GetMetrics returns metric using total number of unprocessed events in event hub
-func (s *azureEventHubScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
-	totalUnprocessedEventCount := int64(0)
-	runtimeInfo, err := s.client.GetRuntimeInformation(ctx)
-	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, fmt.Errorf("unable to get runtimeInfo for metrics: %w", err)
-	}
-
-	partitionIDs := runtimeInfo.PartitionIDs
-
-	for i := 0; i < len(partitionIDs); i++ {
-		partitionID := partitionIDs[i]
-		partitionRuntimeInfo, err := s.client.GetPartitionInformation(ctx, partitionID)
-		if err != nil {
-			return []external_metrics.ExternalMetricValue{}, fmt.Errorf("unable to get partitionRuntimeInfo for metrics: %w", err)
-		}
-
-		unprocessedEventCount := int64(0)
-
-		unprocessedEventCount, checkpoint, err := s.GetUnprocessedEventCountInPartition(ctx, partitionRuntimeInfo)
-		if err != nil {
-			return []external_metrics.ExternalMetricValue{}, fmt.Errorf("unable to get unprocessedEventCount for metrics: %w", err)
-		}
-
-		totalUnprocessedEventCount += unprocessedEventCount
-
-		s.logger.V(1).Info(fmt.Sprintf("Partition ID: %s, Last Enqueued Offset: %s, Checkpoint Offset: %s, Total new events in partition: %d",
-			partitionRuntimeInfo.PartitionID, partitionRuntimeInfo.LastEnqueuedOffset, checkpoint.Offset, unprocessedEventCount))
-	}
-
-	// don't scale out beyond the number of partitions
-	lagRelatedToPartitionCount := getTotalLagRelatedToPartitionAmount(totalUnprocessedEventCount, int64(len(partitionIDs)), s.metadata.threshold)
-
-	s.logger.V(1).Info(fmt.Sprintf("Unprocessed events in event hub total: %d, scaling for a lag of %d related to %d partitions", totalUnprocessedEventCount, lagRelatedToPartitionCount, len(partitionIDs)))
-
-	metric := GenerateMetricInMili(metricName, float64(lagRelatedToPartitionCount))
-
-	return append([]external_metrics.ExternalMetricValue{}, metric), nil
 }
 
 func getTotalLagRelatedToPartitionAmount(unprocessedEventsCount int64, partitionCount int64, threshold int64) int64 {
@@ -432,19 +360,42 @@ func (s *azureEventHubScaler) Close(ctx context.Context) error {
 	return nil
 }
 
-// TODO merge isActive() and GetMetrics()
+// GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *azureEventHubScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	metrics, err := s.GetMetrics(ctx, metricName)
+	totalUnprocessedEventCount := int64(0)
+	runtimeInfo, err := s.client.GetRuntimeInformation(ctx)
 	if err != nil {
-		s.logger.Error(err, "error getting metrics")
-		return []external_metrics.ExternalMetricValue{}, false, err
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("unable to get runtimeInfo for metrics: %w", err)
 	}
 
-	isActive, err := s.IsActive(ctx)
-	if err != nil {
-		s.logger.Error(err, "error getting activity status")
-		return []external_metrics.ExternalMetricValue{}, false, err
+	partitionIDs := runtimeInfo.PartitionIDs
+	
+	for i := 0; i < len(partitionIDs); i++ {
+		partitionID := partitionIDs[i]
+		partitionRuntimeInfo, err := s.client.GetPartitionInformation(ctx, partitionID)
+		if err != nil {
+			return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("unable to get partitionRuntimeInfo for metrics: %w", err)
+		}
+
+		unprocessedEventCount := int64(0)
+
+		unprocessedEventCount, checkpoint, err := s.GetUnprocessedEventCountInPartition(ctx, partitionRuntimeInfo)
+		if err != nil {
+			return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("unable to get unprocessedEventCount for metrics: %w", err)
+		}
+
+		totalUnprocessedEventCount += unprocessedEventCount
+
+		s.logger.V(1).Info(fmt.Sprintf("Partition ID: %s, Last Enqueued Offset: %s, Checkpoint Offset: %s, Total new events in partition: %d",
+			partitionRuntimeInfo.PartitionID, partitionRuntimeInfo.LastEnqueuedOffset, checkpoint.Offset, unprocessedEventCount))
 	}
 
-	return metrics, isActive, nil
+	// don't scale out beyond the number of partitions
+	lagRelatedToPartitionCount := getTotalLagRelatedToPartitionAmount(totalUnprocessedEventCount, int64(len(partitionIDs)), s.metadata.threshold)
+
+	s.logger.V(1).Info(fmt.Sprintf("Unprocessed events in event hub total: %d, scaling for a lag of %d related to %d partitions", totalUnprocessedEventCount, lagRelatedToPartitionCount, len(partitionIDs)))
+
+	metric := GenerateMetricInMili(metricName, float64(lagRelatedToPartitionCount))
+
+	return []external_metrics.ExternalMetricValue{metric}, totalUnprocessedEventCount > s.metadata.activationThreshold, nil
 }
