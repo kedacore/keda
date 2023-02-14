@@ -15,20 +15,20 @@ import (
 )
 
 const (
-	testMetricsName = "some-metric-name"
+	testName = "fallback-test"
 )
 
 // Load environment variables from .env file
 var _ = godotenv.Load("../../.env")
 
 var (
-	namespace                   = fmt.Sprintf("%s-ns", testMetricsName)
-	deploymentName              = fmt.Sprintf("%s-deployment", testMetricsName)
-	metricsServerDeploymentName = fmt.Sprintf("%s-metrics-server", testMetricsName)
-	serviceName                 = fmt.Sprintf("%s-service", testMetricsName)
-	triggerAuthName             = fmt.Sprintf("%s-ta", testMetricsName)
-	scaledObjectName            = fmt.Sprintf("%s-so", testMetricsName)
-	secretName                  = fmt.Sprintf("%s-secret", testMetricsName)
+	namespace                   = fmt.Sprintf("%s-ns", testName)
+	deploymentName              = fmt.Sprintf("%s-deployment", testName)
+	metricsServerDeploymentName = fmt.Sprintf("%s-metrics-server", testName)
+	serviceName                 = fmt.Sprintf("%s-service", testName)
+	triggerAuthName             = fmt.Sprintf("%s-ta", testName)
+	scaledObjectName            = fmt.Sprintf("%s-so", testName)
+	secretName                  = fmt.Sprintf("%s-secret", testName)
 	metricsServerEndpoint       = fmt.Sprintf("http://%s.%s.svc.cluster.local:8080/api/value", serviceName, namespace)
 	minReplicas                 = 0
 	maxReplicas                 = 5
