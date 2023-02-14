@@ -234,7 +234,6 @@ func TestFallback(t *testing.T) {
 	testRestoreAfterFallback(t, kc, data)
 
 	DeleteKubernetesResources(t, kc, namespace, data, templates)
-
 }
 
 // scale out to max replicas first
