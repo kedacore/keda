@@ -351,6 +351,11 @@ func (r *ScaledObjectReconciler) checkTriggers(scaledObject *kedav1alpha1.Scaled
 				}
 			}
 
+			// FIXME: DEPRECATED to be removed in v2.12
+			if _, ok := trigger.Metadata["metricName"]; ok {
+				log.Log.Info("metricName is deprecated and will be removed in v2.12, please do not set it anymore (used in %q)", trigger.Type)
+			}
+
 			name := trigger.Name
 			if name != "" {
 				if _, found := triggerNames[name]; found {

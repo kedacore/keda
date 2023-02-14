@@ -88,7 +88,7 @@ You can find all deprecations in [this overview](https://github.com/kedacore/ked
 
 New deprecation(s):
 
-- TODO
+- **General**: Deprecate explicitly setting `metricName` field from `ScaledObject.triggers[*].metadata` ([#4220])(https://github.com/kedacore/keda/issues/4220)
 
 ### Other
 
