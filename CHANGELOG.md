@@ -70,6 +70,7 @@ Here is an overview of all new **experimental** features:
 - **RabbitMQ Scaler**:  Add TLS support ([#967](https://github.com/kedacore/keda/issues/967))
 - **Redis Scalers**: Add support to Redis 7 ([#4052](https://github.com/kedacore/keda/issues/4052))
 - **Selenium Grid Scaler**: Add 'platformName' to selenium-grid scaler metadata structure ([#4038](https://github.com/kedacore/keda/issues/4038))
+- **GCP PubSub Scalers**: Add support to `PullAckRequestCount` ([#4239](https://github.com/kedacore/keda/pull/4239))
 
 ### Fixes
 
