@@ -16,14 +16,19 @@ import (
 )
 
 const (
-	compositeSubscriptionIDPrefix                      = "projects/[a-z][a-zA-Z0-9-]*[a-zA-Z0-9]/subscriptions/[a-zA-Z][a-zA-Z0-9-_~%\\+\\.]*"
-	defaultTargetSubscriptionSize                      = 5
-	defaultTargetOldestUnackedMessageAge               = 10
+	compositeSubscriptionIDPrefix = "projects/[a-z][a-zA-Z0-9-]*[a-zA-Z0-9]/subscriptions/[a-zA-Z][a-zA-Z0-9-_~%\\+\\.]*"
+
+	defaultTargetSubscriptionSize        = 5
+	defaultTargetOldestUnackedMessageAge = 10
+	defaultTargetPullAckRequestCount     = 10
+
 	pubSubStackDriverSubscriptionSizeMetricName        = "pubsub.googleapis.com/subscription/num_undelivered_messages"
 	pubSubStackDriverOldestUnackedMessageAgeMetricName = "pubsub.googleapis.com/subscription/oldest_unacked_message_age"
+	pubSubStackDriverPullAckRequestCountMetricName     = "pubsub.googleapis.com/subscription/pull_ack_request_count"
 
 	pubsubModeSubscriptionSize        = "SubscriptionSize"
 	pubsubModeOldestUnackedMessageAge = "OldestUnackedMessageAge"
+	pubsubModePullAckRequestCount     = "PullAckRequestCount"
 )
 
 var regexpCompositeSubscriptionIDPrefix = regexp.MustCompile(compositeSubscriptionIDPrefix)
@@ -94,8 +99,10 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 			meta.value = defaultTargetSubscriptionSize
 		case pubsubModeOldestUnackedMessageAge:
 			meta.value = defaultTargetOldestUnackedMessageAge
+		case pubsubModePullAckRequestCount:
+			meta.value = defaultTargetPullAckRequestCount
 		default:
-			return nil, fmt.Errorf("trigger mode %s must be one of %s, %s", meta.mode, pubsubModeSubscriptionSize, pubsubModeOldestUnackedMessageAge)
+			return nil, fmt.Errorf("trigger mode %s must be one of %s, %s, %s", meta.mode, pubsubModeSubscriptionSize, pubsubModeOldestUnackedMessageAge, pubsubModePullAckRequestCount)
 		}
 
 		if valuePresent {
@@ -181,6 +188,12 @@ func (s *pubsubScaler) GetMetricsAndActivity(ctx context.Context, metricName str
 		value, err = s.getMetrics(ctx, pubSubStackDriverOldestUnackedMessageAgeMetricName)
 		if err != nil {
 			s.logger.Error(err, "error getting oldest unacked message age")
+			return []external_metrics.ExternalMetricValue{}, false, err
+		}
+	case pubsubModePullAckRequestCount:
+		value, err = s.getMetrics(ctx, pubSubStackDriverPullAckRequestCountMetricName)
+		if err != nil {
+			s.logger.Error(err, "error getting pull ack request count")
 			return []external_metrics.ExternalMetricValue{}, false, err
 		}
 	}
