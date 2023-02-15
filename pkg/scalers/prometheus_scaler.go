@@ -82,7 +82,7 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 
 	logger := InitializeLogger(config, "prometheus_scaler")
 
-	meta, err := parsePrometheusMetadata(config)
+	meta, err := parsePrometheusMetadata(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing prometheus metadata: %w", err)
 	}
@@ -110,7 +110,7 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, err error) {
+func parsePrometheusMetadata(config *ScalerConfig, logger logr.Logger) (meta *prometheusMetadata, err error) {
 	meta = &prometheusMetadata{}
 
 	if val, ok := config.TriggerMetadata[promServerAddress]; ok && val != "" {
@@ -123,12 +123,6 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 		meta.query = val
 	} else {
 		return nil, fmt.Errorf("no %s given", promQuery)
-	}
-
-	if val, ok := config.TriggerMetadata[promMetricName]; ok && val != "" {
-		meta.metricName = val
-	} else {
-		return nil, fmt.Errorf("no %s given", promMetricName)
 	}
 
 	if val, ok := config.TriggerMetadata[promThreshold]; ok && val != "" {
@@ -150,6 +144,11 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 		}
 
 		meta.activationThreshold = t
+	}
+
+	if val, ok := config.TriggerMetadata[promMetricName]; ok && val != "" {
+		meta.metricName = val
+		logger.Info("WARNING: the field 'metricName' has been deprecated and will be removed in v2.12")
 	}
 
 	if val, ok := config.TriggerMetadata[promNamespace]; ok && val != "" {
