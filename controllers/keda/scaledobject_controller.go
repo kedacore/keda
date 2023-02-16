@@ -352,7 +352,9 @@ func (r *ScaledObjectReconciler) checkTriggers(scaledObject *kedav1alpha1.Scaled
 			}
 
 			// FIXME: DEPRECATED to be removed in v2.12
-			if _, ok := trigger.Metadata["metricName"]; ok {
+			_, hasMetricName := trigger.Metadata["metricName"]
+			// aws-cloudwatch and huawei-cloudeye have a meaningful use of metricName
+			if hasMetricName && trigger.Type != "aws-cloudwatch" && trigger.Type != "huawei-cloudeye" {
 				log.Log.Info("metricName is deprecated and will be removed in v2.12, please do not set it anymore (used in %q)", trigger.Type)
 			}
 
