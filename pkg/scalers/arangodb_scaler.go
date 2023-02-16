@@ -2,7 +2,6 @@ package scalers
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"strconv"
 	"strings"
@@ -15,6 +14,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
+	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 type arangoDBScaler struct {
@@ -97,10 +97,7 @@ func getNewArangoDBClient(meta *arangoDBMetadata) (driver.Client, error) {
 
 	conn, err := http.NewConnection(http.ConnectionConfig{
 		Endpoints: strings.Split(meta.endpoints, ","),
-		TLSConfig: &tls.Config{
-			MinVersion:         tls.VersionTLS13,
-			InsecureSkipVerify: meta.unsafeSsl,
-		},
+		TLSConfig: util.CreateTLSClientConfig(meta.unsafeSsl),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a new http connection, %w", err)

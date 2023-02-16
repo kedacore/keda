@@ -49,6 +49,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 Here is an overview of all **stable** additions:
 
+- **General**: Add support to register custom CAs globally in KEDA operator ([#4168](https://github.com/kedacore/keda/issues/4168))
 - **General**: Introduce admission webhooks to automatically validate resource changes to prevent misconfiguration and enforce best practices ([#3755](https://github.com/kedacore/keda/issues/3755))
 - **General**: Introduce new ArangoDB Scaler ([#4000](https://github.com/kedacore/keda/issues/4000))
 - **Prometheus Metrics**: Introduce scaler activity in Prometheus metrics ([#4114](https://github.com/kedacore/keda/issues/4114))
@@ -95,6 +96,7 @@ New deprecation(s):
 - **General**: Bump Golang to 1.19 ([#4094](https://github.com/kedacore/keda/issues/4094))
 - **General**: Check that ScaledObject name is specified as part of a query for getting metrics ([#4088](https://github.com/kedacore/keda/pull/4088))
 - **General**: Compare error with `errors.Is` ([#4004](https://github.com/kedacore/keda/pull/4004))
+- **General**: Consolidate `GetMetrics` and `IsActive` to `GetMetricsAndActivity` for Azure Event Hub, Cron and External scalers ([#4015](https://github.com/kedacore/keda/issues/4015))
 - **General**: Improve test coverage in `pkg/util` ([#3871](https://github.com/kedacore/keda/issues/3871))
 - **General**: Pass deep copy object to scalers cache from the ScaledObject controller ([#4207](https://github.com/kedacore/keda/issues/4207))
 - **General**: Review CodeQL rules and enable it on PRs ([#4032](https://github.com/kedacore/keda/pull/4032))

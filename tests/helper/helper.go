@@ -6,9 +6,16 @@ package helper
 import (
 	"bytes"
 	"context"
+	cryptoRand "crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
 	"io"
+	"math/big"
 	"math/rand"
+	"net"
 	"os"
 	"os/exec"
 	"regexp"
@@ -19,6 +26,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -47,6 +55,11 @@ const (
 
 	StringFalse = "false"
 	StringTrue  = "true"
+)
+
+const (
+	caCrtPath = "/tmp/keda-e2e-ca.crt"
+	caKeyPath = "/tmp/keda-e2e-ca.key"
 )
 
 var _ = godotenv.Load()
@@ -618,4 +631,133 @@ func WaitForPodsTerminated(t *testing.T, kc *kubernetes.Clientset, selector, nam
 	}
 
 	return false
+}
+
+func GetTestCA(t *testing.T) ([]byte, []byte) {
+	generateCA(t)
+	caCrt, err := os.ReadFile(caCrtPath)
+	require.NoErrorf(t, err, "error reading custom CA crt - %s", err)
+	caKey, err := os.ReadFile(caKeyPath)
+	require.NoErrorf(t, err, "error reading custom CA key - %s", err)
+	return caCrt, caKey
+}
+
+func GenerateServerCert(t *testing.T, domain string) (string, string) {
+	cert := &x509.Certificate{
+		SerialNumber: big.NewInt(2019),
+		Subject: pkix.Name{
+			Organization:  []string{"Company, INC."},
+			Country:       []string{"US"},
+			Province:      []string{""},
+			Locality:      []string{"San Francisco"},
+			StreetAddress: []string{"Golden Gate Bridge"},
+			PostalCode:    []string{"94016"},
+		},
+		DNSNames: []string{
+			domain,
+		},
+		IPAddresses:  []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().AddDate(10, 0, 0),
+		SubjectKeyId: []byte{1, 2, 3, 4, 6},
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+	}
+
+	certPrivKey, err := rsa.GenerateKey(cryptoRand.Reader, 4096)
+	require.NoErrorf(t, err, "error generating tls key - %s", err)
+
+	caCrtBytes, caKeyBytes := GetTestCA(t)
+	block, _ := pem.Decode(caCrtBytes)
+	if block == nil {
+		t.Fail()
+		return "", ""
+	}
+	ca, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		t.Fail()
+		return "", ""
+	}
+	blockKey, _ := pem.Decode(caKeyBytes)
+	if blockKey == nil {
+		t.Fail()
+		return "", ""
+	}
+	caKey, err := x509.ParsePKCS1PrivateKey(blockKey.Bytes)
+	require.NoErrorf(t, err, "error reading custom CA key - %s", err)
+	certBytes, err := x509.CreateCertificate(cryptoRand.Reader, cert, ca, &certPrivKey.PublicKey, caKey)
+	require.NoErrorf(t, err, "error creating tls cert - %s", err)
+
+	certPEM := new(bytes.Buffer)
+	err = pem.Encode(certPEM, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: certBytes,
+	})
+	require.NoErrorf(t, err, "error encoding cert - %s", err)
+
+	certPrivKeyPEM := new(bytes.Buffer)
+	err = pem.Encode(certPrivKeyPEM, &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(certPrivKey),
+	})
+	require.NoErrorf(t, err, "error encoding key - %s", err)
+
+	return certPEM.String(), certPrivKeyPEM.String()
+}
+
+func generateCA(t *testing.T) {
+	_, err := os.Stat(caCrtPath)
+	if err == nil {
+		return
+	}
+	ca := &x509.Certificate{
+		SerialNumber: big.NewInt(2019),
+		Subject: pkix.Name{
+			Organization:  []string{"Company, INC."},
+			Country:       []string{"US"},
+			Province:      []string{""},
+			Locality:      []string{"San Francisco"},
+			StreetAddress: []string{"Golden Gate Bridge"},
+			PostalCode:    []string{"94016"},
+		},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().AddDate(10, 0, 0),
+		IsCA:                  true,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		BasicConstraintsValid: true,
+	}
+
+	// create our private and public key
+	caPrivKey, err := rsa.GenerateKey(cryptoRand.Reader, 4096)
+	require.NoErrorf(t, err, "error generating custom CA key - %s", err)
+
+	// create the CA
+	caBytes, err := x509.CreateCertificate(cryptoRand.Reader, ca, ca, &caPrivKey.PublicKey, caPrivKey)
+	require.NoErrorf(t, err, "error generating custom CA - %s", err)
+
+	// pem encode
+	crtFile, err := os.OpenFile(caCrtPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	require.NoErrorf(t, err, "error opening custom CA file - %s", err)
+	err = pem.Encode(crtFile, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: caBytes,
+	})
+	require.NoErrorf(t, err, "error encoding ca - %s", err)
+	if err := crtFile.Close(); err != nil {
+		require.NoErrorf(t, err, "error closing custom CA file - %s", err)
+	}
+
+	keyFile, err := os.OpenFile(caKeyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		require.NoErrorf(t, err, "error opening custom CA key file- %s", err)
+	}
+	err = pem.Encode(keyFile, &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(caPrivKey),
+	})
+	require.NoErrorf(t, err, "error encoding CA key - %s", err)
+	if err := keyFile.Close(); err != nil {
+		require.NoErrorf(t, err, "error closing custom CA key file- %s", err)
+	}
 }
