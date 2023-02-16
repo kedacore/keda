@@ -104,11 +104,11 @@ func NewPulsarScaler(config *ScalerConfig) (Scaler, error) {
 
 	if pulsarMetadata.pulsarAuth != nil {
 		if pulsarMetadata.pulsarAuth.CA != "" || pulsarMetadata.pulsarAuth.EnableTLS {
-			config, err := authentication.NewTLSConfig(pulsarMetadata.pulsarAuth)
+			config, err := authentication.NewTLSConfig(pulsarMetadata.pulsarAuth, false)
 			if err != nil {
 				return nil, err
 			}
-			client.Transport = &http.Transport{TLSClientConfig: config}
+			client.Transport = kedautil.CreateHTTPTransportWithTLSConfig(config)
 		}
 
 		if pulsarMetadata.pulsarAuth.EnableBearerAuth || pulsarMetadata.pulsarAuth.EnableBasicAuth {
