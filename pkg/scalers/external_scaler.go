@@ -128,22 +128,6 @@ func parseExternalScalerMetadata(config *ScalerConfig) (externalScalerMetadata, 
 	return meta, nil
 }
 
-// IsActive checks if there are any messages in the subscription
-func (s *externalScaler) IsActive(ctx context.Context) (bool, error) {
-	grpcClient, err := getClientForConnectionPool(s.metadata)
-	if err != nil {
-		return false, err
-	}
-
-	response, err := grpcClient.IsActive(ctx, &s.scaledObjectRef)
-	if err != nil {
-		s.logger.Error(err, "error calling IsActive on external scaler")
-		return false, err
-	}
-
-	return response.Result, nil
-}
-
 func (s *externalScaler) Close(context.Context) error {
 	return nil
 }
@@ -184,18 +168,18 @@ func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2.Metri
 	return result
 }
 
-// GetMetrics connects calls the gRPC interface to get the metrics with a specific name
-func (s *externalScaler) GetMetrics(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, error) {
+// GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
+func (s *externalScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	var metrics []external_metrics.ExternalMetricValue
 	grpcClient, err := getClientForConnectionPool(s.metadata)
 	if err != nil {
-		return metrics, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	// Remove the sX- prefix as the external scaler shouldn't have to know about it
 	metricNameWithoutIndex, err := RemoveIndexFromMetricName(s.metadata.scalerIndex, metricName)
 	if err != nil {
-		return metrics, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	request := &pb.GetMetricsRequest{
@@ -203,35 +187,24 @@ func (s *externalScaler) GetMetrics(ctx context.Context, metricName string) ([]e
 		ScaledObjectRef: &s.scaledObjectRef,
 	}
 
-	response, err := grpcClient.GetMetrics(ctx, request)
+	metricsResponse, err := grpcClient.GetMetrics(ctx, request)
 	if err != nil {
 		s.logger.Error(err, "error")
-		return []external_metrics.ExternalMetricValue{}, err
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
-	for _, metricResult := range response.MetricValues {
+	for _, metricResult := range metricsResponse.MetricValues {
 		metric := GenerateMetricInMili(metricName, float64(metricResult.MetricValue))
 		metrics = append(metrics, metric)
 	}
 
-	return metrics, nil
-}
-
-// TODO merge isActive() and GetMetrics()
-func (s *externalScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	metrics, err := s.GetMetrics(ctx, metricName)
+	isActiveResponse, err := grpcClient.IsActive(ctx, &s.scaledObjectRef)
 	if err != nil {
-		s.logger.Error(err, "error getting metrics")
+		s.logger.Error(err, "error calling IsActive on external scaler")
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
-	isActive, err := s.IsActive(ctx)
-	if err != nil {
-		s.logger.Error(err, "error getting activity status")
-		return []external_metrics.ExternalMetricValue{}, false, err
-	}
-
-	return metrics, isActive, nil
+	return metrics, isActiveResponse.Result, nil
 }
 
 // handleIsActiveStream is the only writer to the active channel and will close it on return.
