@@ -3,12 +3,10 @@ package scalers
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"strconv"
 	"strings"
 
@@ -18,7 +16,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
+	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 type elasticsearchScaler struct {
@@ -218,7 +216,7 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 		meta.activationTargetValue = activationTargetValue
 	}
 
-	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("elasticsearch-%s", meta.searchTemplateName)))
+	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, util.NormalizeString(fmt.Sprintf("elasticsearch-%s", meta.searchTemplateName)))
 	return &meta, nil
 }
 
@@ -243,13 +241,7 @@ func newElasticsearchClient(meta *elasticsearchMetadata, logger logr.Logger) (*e
 		}
 	}
 
-	transport := http.DefaultTransport.(*http.Transport)
-	transport.TLSClientConfig = &tls.Config{
-		MinVersion:         kedautil.GetMinTLSVersion(),
-		InsecureSkipVerify: meta.unsafeSsl,
-	}
-	config.Transport = transport
-
+	config.Transport = util.CreateHTTPTransport(meta.unsafeSsl)
 	esClient, err := elasticsearch.NewClient(config)
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Found error when creating client: %s", err))

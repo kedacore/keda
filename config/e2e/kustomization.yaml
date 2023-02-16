@@ -1,0 +1,10 @@
+patchesJson6902:
+- target:
+    group: apps
+    version: v1
+    kind: Deployment
+    name: keda-operator
+  path: create_cas_volume.yml
+
+bases:
+- ../default
