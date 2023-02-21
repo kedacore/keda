@@ -306,10 +306,10 @@ func TestScaledObjectGeneral(t *testing.T) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
 		"replica count should be %d after 3 minutes", minReplicas)
 
-	testTargetValue(t, kc, data)          //one trigger target changes
-	testTwoTriggers(t, kc, data)          //add trigger during active scaling
-	testRemoveTrigger(t, kc, data)        //remove trigger during active scaling
-	testThreeTriggersWithCPU(t, kc, data) //three triggers
+	testTargetValue(t, kc, data)          // one trigger target changes
+	testTwoTriggers(t, kc, data)          // add trigger during active scaling
+	testRemoveTrigger(t, kc, data)        // remove trigger during active scaling
+	testThreeTriggersWithCPU(t, kc, data) // three triggers
 
 	DeleteKubernetesResources(t, kc, namespace, data, templates)
 }

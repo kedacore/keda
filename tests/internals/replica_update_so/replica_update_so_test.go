@@ -32,7 +32,6 @@ var (
 	metricsServerDeploymentName = fmt.Sprintf("%s-metrics-server", testName)
 	metricsServerEndpoint       = fmt.Sprintf("http://%s.%s.svc.cluster.local:8080/api/value", serviceName, namespace)
 	minReplicas                 = 0
-	midReplicas                 = 3
 	maxReplicas                 = 5
 )
 
@@ -229,7 +228,7 @@ func scaleMaxReplicasUp(t *testing.T, kc *kubernetes.Clientset, data templateDat
 		"replica count should be %d after 3 minutes", maxReplicas)
 
 	updatedMaxReplicas := maxReplicas + 10
-	data.MaxReplicas = fmt.Sprintf("%s", strconv.Itoa(updatedMaxReplicas))
+	data.MaxReplicas = strconv.Itoa(updatedMaxReplicas)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTriggerTemplate", scaledObjectTriggerTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, updatedMaxReplicas, 180, 3),
@@ -243,13 +242,13 @@ func scaleMaxReplicasDown(t *testing.T, kc *kubernetes.Clientset, data templateD
 	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	updatedMaxReplicas := maxReplicas + 10
-	data.MaxReplicas = fmt.Sprintf("%s", strconv.Itoa(updatedMaxReplicas))
+	data.MaxReplicas = strconv.Itoa(updatedMaxReplicas)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTriggerTemplate", scaledObjectTriggerTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, updatedMaxReplicas, 180, 3),
 		"replica count should be %d after 3 minutes", updatedMaxReplicas)
 
-	data.MaxReplicas = fmt.Sprintf("%s", strconv.Itoa(maxReplicas))
+	data.MaxReplicas = strconv.Itoa(maxReplicas)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTriggerTemplate", scaledObjectTriggerTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, maxReplicas, 180, 3),
@@ -268,7 +267,7 @@ func scaleMinReplicasUpFromZero(t *testing.T, kc *kubernetes.Clientset, data tem
 		"replica count should be %d after 3 minutes", minReplicas)
 
 	updatedMinReplicas := minReplicas + 5
-	data.MinReplicas = fmt.Sprintf("%s", strconv.Itoa(updatedMinReplicas))
+	data.MinReplicas = strconv.Itoa(updatedMinReplicas)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTriggerTemplate", scaledObjectTriggerTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, updatedMinReplicas, 180, 3),
@@ -283,20 +282,19 @@ func scaleMinReplicasDownToZero(t *testing.T, kc *kubernetes.Clientset, data tem
 
 	// set minReplicas to higher number at first
 	updatedMinReplicas := minReplicas + 5
-	data.MinReplicas = fmt.Sprintf("%s", strconv.Itoa(updatedMinReplicas))
+	data.MinReplicas = strconv.Itoa(updatedMinReplicas)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTriggerTemplate", scaledObjectTriggerTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, updatedMinReplicas, 180, 3),
 		"replica count should be %d after 3 minutes", updatedMinReplicas)
 
 	// change minReplicas to default (0)
-	data.MinReplicas = fmt.Sprintf("%s", strconv.Itoa(minReplicas))
+	data.MinReplicas = strconv.Itoa(minReplicas)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTriggerTemplate", scaledObjectTriggerTemplate)
 
 	// check it scales down to 0
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
 		"replica count should be %d after 3 minutes", minReplicas)
-
 }
 
 // help function to load template data
