@@ -16,6 +16,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -89,17 +90,32 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsl)
 
-	if meta.prometheusAuth != nil && (meta.prometheusAuth.CA != "" || meta.prometheusAuth.EnableTLS) {
-		// create http.RoundTripper with auth settings from ScalerConfig
-		transport, err := authentication.CreateHTTPRoundTripper(
-			authentication.NetHTTP,
-			meta.prometheusAuth,
-		)
+	if meta.prometheusAuth != nil {
+		if meta.prometheusAuth.CA != "" || meta.prometheusAuth.EnableTLS {
+			// create http.RoundTripper with auth settings from ScalerConfig
+			transport, err := authentication.CreateHTTPRoundTripper(
+				authentication.NetHTTP,
+				meta.prometheusAuth,
+			)
+			if err != nil {
+				logger.V(1).Error(err, "init Prometheus client http transport")
+				return nil, err
+			}
+			httpClient.Transport = transport
+		}
+	} else {
+		// could be the case of azure managed prometheus. Try and get the roundtripper.
+		transport, err := azure.TryAndGetAzureManagedPrometheusHttpRoundTripper(config.PodIdentity, config.TriggerMetadata)
+
 		if err != nil {
-			logger.V(1).Error(err, "init Prometheus client http transport")
+			logger.V(1).Error(err, "error while init Azure Managed Prometheus client http transport")
 			return nil, err
 		}
-		httpClient.Transport = transport
+
+		// transport should not be nil if its a case of azure managed prometheus
+		if transport != nil {
+			httpClient.Transport = transport
+		}
 	}
 
 	return &prometheusScaler{
@@ -182,14 +198,27 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 
 	meta.scalerIndex = config.ScalerIndex
 
-	// parse auth configs from ScalerConfig
-	auth, err := authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
+	err = parseAuthConfig(config, meta)
 	if err != nil {
 		return nil, err
 	}
-	meta.prometheusAuth = auth
 
 	return meta, nil
+}
+
+func parseAuthConfig(config *ScalerConfig, meta *prometheusMetadata) error {
+	// parse auth configs from ScalerConfig
+	auth, err := authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
+	if err != nil {
+		return err
+	}
+
+	if auth != nil && config.PodIdentity.Provider != "" {
+		return fmt.Errorf("pod identity cannot be enabled with other auth types")
+	}
+	meta.prometheusAuth = auth
+
+	return nil
 }
 
 func (s *prometheusScaler) Close(context.Context) error {
