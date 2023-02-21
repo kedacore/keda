@@ -149,6 +149,13 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, err
 	}
 
+	// if the ScaledObject is paused, skip processing the request
+	_, paused := scaledObject.GetAnnotations()[kedacontrollerutil.PausedReplicasAnnotation]
+	if paused {
+		reqLogger.Info("ScaledObject is paused, so skipping the request.")
+		return ctrl.Result{}, nil
+	}
+
 	reqLogger.Info("Reconciling ScaledObject")
 
 	// Check if the ScaledObject instance is marked to be deleted, which is

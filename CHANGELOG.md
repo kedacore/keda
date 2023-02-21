@@ -41,14 +41,17 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
+- **General** 
+
 ### Breaking Changes
 
-- TODO
+- TODO 
 
 ### New
 
 Here is an overview of all **stable** additions:
 
+- **General**: Improve error logging by skipping reconciliation and therefore logging of errors related to paused ScaledObject ([#4254](https://github.com/kedacore/keda/issues/4254))
 - **General**: Add support to register custom CAs globally in KEDA operator ([#4168](https://github.com/kedacore/keda/issues/4168))
 - **General**: Introduce admission webhooks to automatically validate resource changes to prevent misconfiguration and enforce best practices ([#3755](https://github.com/kedacore/keda/issues/3755))
 - **General**: Introduce new ArangoDB Scaler ([#4000](https://github.com/kedacore/keda/issues/4000))
