@@ -19,7 +19,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "replica-update-test"
+	testName = "replica-update-so-test"
 )
 
 var (
