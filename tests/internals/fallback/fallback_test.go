@@ -176,6 +176,7 @@ spec:
     failureThreshold: 3
     replicas: {{.DefaultFallback}}
   cooldownPeriod: 1
+  pollingInterval: 5
   triggers:
   - type: metrics-api
     metadata:
@@ -252,6 +253,9 @@ func testFallback(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	KubectlApplyWithTemplate(t, data, "fallbackMSDeploymentTemplate", fallbackMSDeploymentTemplate)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, defaultFallback, 60, 3),
 		"replica count should be %d after 3 minutes", defaultFallback)
+	// We need to ensure that the fallback value is stable to cover this regression
+	// https://github.com/kedacore/keda/issues/4249
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, defaultFallback, 180)
 }
 
 // restore MS to scale back from fallback replicas
