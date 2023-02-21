@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package replica_update_test
+package replica_update_so
 
 import (
 	"fmt"
