@@ -4,16 +4,11 @@
 package so_trigger_updates
 
 import (
-	// "context"
 	"fmt"
-	// "regexp"
-	// "strconv"
 	"testing"
-	// "time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
-	// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -29,7 +24,7 @@ var _ = godotenv.Load("../../.env")
 var (
 	namespace                   = fmt.Sprintf("%s-ns", testName)
 	deploymentName              = fmt.Sprintf("%s-deployment", testName)
-	workloadDeploymentName      = "workload-deployment"
+	workloadDeploymentName      = fmt.Sprintf("%s-workload-deployment", testName)
 	scaledObjectName            = fmt.Sprintf("%s-so", testName)
 	secretName                  = fmt.Sprintf("%s-secret", testName)
 	triggerAuthName             = fmt.Sprintf("%s-ta", testName)
@@ -311,9 +306,6 @@ func TestScaledObjectGeneral(t *testing.T) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
 		"replica count should be %d after 3 minutes", minReplicas)
 
-	KubectlApplyWithTemplate(t, data, "scaledObjectTriggerTemplate", scaledObjectTriggerTemplate)
-
-	// single trigger
 	testTargetValue(t, kc, data)          //one trigger target changes
 	testTwoTriggers(t, kc, data)          //add trigger during active scaling
 	testRemoveTrigger(t, kc, data)        //remove trigger during active scaling
@@ -348,6 +340,7 @@ func testTargetValue(t *testing.T, kc *kubernetes.Clientset, data templateData) 
 		"replica count should be %d after 3 minutes", minReplicas)
 }
 
+// test adding second trigger during scaling
 func testTwoTriggers(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- test two triggers ---")
 	KubectlApplyWithTemplate(t, data, "scaledObjectTriggerTemplate", scaledObjectTriggerTemplate)
@@ -366,8 +359,8 @@ func testTwoTriggers(t *testing.T, kc *kubernetes.Clientset, data templateData) 
 		"replica count should be %d after 3 minutes", maxReplicas)
 }
 
-// testRemoveTrigger scales to max with kubernetes worload(second trigger),
-// removes it, scales to 3 replicas based on metric value (first trigger)
+// scales to max with kubernetes worload(second trigger), removes it and
+// scales to 3 replicas based on metric value (first trigger)
 func testRemoveTrigger(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- test remove trigger 2 -> 1 ---")
 	KubectlApplyWithTemplate(t, data, "scaledObjectTwoTriggerTemplate", scaledObjectTwoTriggerTemplate)
@@ -431,78 +424,3 @@ func getTemplateData() (templateData, []Template) {
 			{Name: "scaledObjectTriggerTemplate", Config: scaledObjectTriggerTemplate},
 		}
 }
-
-// // Waits until pod (that is matched via name_regex) count hits target or number of iterations are done.
-// func waitForPodCountByNameRegex(t *testing.T, kc *kubernetes.Clientset, name_regex string, namespace string, targetCount int, iterations, intervalSeconds int) bool {
-// 	for i := 0; i < iterations; i++ {
-// 		count := 0
-// 		pods, _ := kc.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
-
-// 		for _, pod := range pods.Items {
-// 			if m, _ := regexp.MatchString(name_regex, pod.Name); m {
-// 				count++
-// 			}
-// 		}
-// 		t.Logf("Waiting for pods %s in namespace to exist. TestNamespace - %s, Current - %d, Target - %d",
-// 			name_regex, namespace, count, targetCount)
-// 		if count == targetCount {
-// 			return true
-// 		}
-// 		time.Sleep(time.Duration(intervalSeconds) * time.Second)
-// 	}
-// 	return false
-// }
-
-///////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////
-
-// // scales deployment up, then creates kafka and updates SO with kafka trigger to
-// // test for 2 triggers
-// func testAddKafkaScaler(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-// 	t.Log("--- test - add kafka scaler ---")
-
-// 	data.MetricValue = 5
-// 	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
-
-// 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, midReplicas, 180, 3),
-// 		"replica count should be %d after 3 minutes", midReplicas)
-
-// 	// create kafka related stuff
-// 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, "strimzi-cluster-operator", namespace, 1, 180, 3),
-// 		"replica count should be %d after 3 minutes", 1)
-
-// 	t.Log("--- create kafka cluster ---")
-// 	KubectlApplyWithTemplate(t, data, "kafkaClusterTemplate", kafkaClusterTemplate)
-// 	_, err := ExecuteCommand(fmt.Sprintf("kubectl wait kafka/%s --for=condition=Ready --timeout=300s --namespace %s", kafkaName, namespace))
-// 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-// 	assert.True(t, waitForPodCountByNameRegex(t, kc, fmt.Sprintf("^%s-kafka", kafkaName), namespace, 3, 180, 3))
-// 	assert.True(t, waitForPodCountByNameRegex(t, kc, fmt.Sprintf("^%s-zookeeper", kafkaName), namespace, 3, 180, 3))
-
-// 	KubectlApplyWithTemplate(t, data, "kafkaTopicTemplate", kafkaTopicTemplate)
-
-// 	// deploy consumer for kafka messages
-// 	KubectlApplyWithTemplate(t, data, "kafkaDeploymentTemplate", kafkaDeploymentTemplate)
-// 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, "kafka-amqstreams-consumer", namespace, 1, 180, 3),
-// 		"replica count should be %d after 3 minutes", 1)
-
-// 	t.Log("--- add kafka trigger, send messages ---")
-
-// 	// update ScaledObject to include kafka trigger
-// 	KubectlApplyWithTemplate(t, data, "scaledObjectTwoTriggerTemplate", scaledObjectTwoTriggerTemplate)
-
-// 	// send message load to kafka and expect deployment to go up to max
-// 	KubectlApplyWithTemplate(t, data, "kafkaLoad", kafkaLoad)
-
-// 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, maxReplicas, 180, 3),
-// 		"replica count should be %d after 3 minutes", maxReplicas)
-
-// 	t.Log("--- remove all loads ---")
-
-// 	// kafka load will finish and metric set to 0 -> expect 0 replicas
-// 	data.MetricValue = 0
-// 	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
-
-// 	// wait for load to finish and count go down to 0 replicas
-// 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
-// 		"replica count should be %d after 3 minutes", minReplicas)
-// }
