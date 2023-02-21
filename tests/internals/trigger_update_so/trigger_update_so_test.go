@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package so_trigger_updates
+package trigger_update_so
 
 import (
 	"fmt"
