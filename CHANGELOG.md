@@ -41,8 +41,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
-- **General** 
-
 ### Breaking Changes
 
 - TODO 
