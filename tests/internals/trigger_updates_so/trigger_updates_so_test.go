@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	testName = "so-trigger-update-test"
+	testName = "trigger-update-so-test"
 )
 
 // Load environment variables from .env file
