@@ -175,7 +175,13 @@ spec:
   fallback:
     failureThreshold: 3
     replicas: {{.DefaultFallback}}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 1
   cooldownPeriod: 1
+  pollingInterval: 5
   triggers:
   - type: metrics-api
     metadata:
@@ -194,6 +200,7 @@ metadata:
   name: update-ms-value
   namespace: {{.Namespace}}
 spec:
+  ttlSecondsAfterFinished: 30
   template:
     spec:
       containers:
@@ -252,12 +259,18 @@ func testFallback(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	KubectlApplyWithTemplate(t, data, "fallbackMSDeploymentTemplate", fallbackMSDeploymentTemplate)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, defaultFallback, 60, 3),
 		"replica count should be %d after 3 minutes", defaultFallback)
+	// We need to ensure that the fallback value is stable to cover this regression
+	// https://github.com/kedacore/keda/issues/4249
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, defaultFallback, 180)
 }
 
 // restore MS to scale back from fallback replicas
 func testRestoreAfterFallback(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing after fallback ---")
 	KubectlApplyWithTemplate(t, data, "metricsServerDeploymentTemplate", metricsServerDeploymentTemplate)
+	data.MetricValue = 50
+	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, maxReplicas, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicas)
 }
