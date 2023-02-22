@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package polling_interval_so_test
+package polling_int_cd_period_so_test
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	testName = "polling-interval-so-test"
+	testName = "polling-int-cd-period-so-test"
 )
 
 // Load environment variables from .env file
@@ -32,7 +32,8 @@ var (
 	metricsServerEndpoint       = fmt.Sprintf("http://%s.%s.svc.cluster.local:8080/api/value", serviceName, namespace)
 	minReplicas                 = 0
 	maxReplicas                 = 5
-	pollingInterval             = 1
+	pollingInterval             = 0
+	cooldownPeriod              = 0
 )
 
 type templateData struct {
@@ -48,6 +49,7 @@ type templateData struct {
 	MaxReplicas                 string
 	MetricValue                 int
 	PollingInterval             string
+	CooldownPeriod              string
 }
 
 const (
@@ -142,13 +144,13 @@ spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
   pollingInterval: {{.PollingInterval}}
-  cooldownPeriod: 1
+  cooldownPeriod: {{.CooldownPeriod}}
   minReplicaCount: {{.MinReplicas}}
   maxReplicaCount: {{.MaxReplicas}}
   triggers:
   - type: metrics-api
     metadata:
-      targetValue: "2"
+      targetValue: "1"
       url: "{{.MetricsServerEndpoint}}"
       valueLocation: 'value'
       method: "query"
@@ -160,7 +162,7 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: update-ms-value
+  generateName: update-ms-value-
   namespace: {{.TestNamespace}}
 spec:
   ttlSecondsAfterFinished: 0
@@ -189,6 +191,11 @@ spec:
 `
 )
 
+// use KubectlCreateWithTemplate() function because applying yaml template
+// for update-metrics relies on the previous job to be deleted
+// (job is immutable), but in this case the test runs too fast at some
+// points that job is not finished & deleted in time
+
 func TestPollingInterval(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
@@ -199,31 +206,81 @@ func TestPollingInterval(t *testing.T) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
 		"replica count should be %d after 3 minutes", minReplicas)
 
-	testWaitForScaling(t, kc, data)
+	testPollingIntervalUp(t, kc, data)
+	testPollingIntervalDown(t, kc, data)
+	testCooldownPeriod(t, kc, data)
 
 	DeleteKubernetesResources(t, kc, namespace, data, templates)
 }
 
-func testWaitForScaling(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	data.PollingInterval = fmt.Sprintf("%v", 1)
+func testPollingIntervalUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- test Polling Interval up ---")
+
+	data.MetricValue = 0
+	KubectlCreateWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 0, 180, 3),
+		"replica count should be %d after 3 minutes", 0)
+
+	// wait for atleast 60+2 seconds before getting new metric
+	data.PollingInterval = fmt.Sprintf("%v", 60+2) // 2 seconds as a reserve
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	data.MetricValue = 10
-	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, maxReplicas, 180, 3),
-		"replica count should be %d after 3 minutes", maxReplicas)
+	data.MetricValue = 1
+	KubectlCreateWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
-	// wait for atleast 60 seconds before getting new metric
-	data.PollingInterval = fmt.Sprintf("%v", 60)
-	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-
-	data.MetricValue = 1 // go to 1 replica
-	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
-
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, maxReplicas, 60)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 0, 60)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 1, 180, 3),
 		"replica count should be %d after 3 minutes", 1)
+}
+
+func testPollingIntervalDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- test Polling Interval down ---")
+
+	data.CooldownPeriod = fmt.Sprintf("%v", 0) //remove cooldownPeriod to test PI
+	data.PollingInterval = fmt.Sprintf("%v", 1)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+
+	data.MetricValue = 1
+	KubectlCreateWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 1, 180, 3),
+		"replica count should be %d after 3 minutes", 1)
+
+	// wait for atleast 60+2 seconds before getting new metric
+	data.PollingInterval = fmt.Sprintf("%v", 60+2) // 2 seconds as a reserve
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+
+	data.MetricValue = 0 // go to minReplicas
+	KubectlCreateWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 1, 60)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 0, 180, 3),
+		"replica count should be %d after 3 minutes", 0)
+}
+
+func testCooldownPeriod(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- test Cooldown Period ---")
+
+	data.PollingInterval = fmt.Sprintf("%v", 0)   //remove polling interval to test CP
+	data.CooldownPeriod = fmt.Sprintf("%v", 60+2) // 2 seconds as a reserve
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+
+	data.MetricValue = 1
+	KubectlCreateWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 1, 180, 3),
+		"replica count should be %d after 3 minutes", 1)
+
+	data.MetricValue = 0
+	KubectlCreateWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 1, 60)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 0, 180, 3),
+		"replica count should be %d after 3 minutes", 0)
 }
 
 func getTemplateData() (templateData, []Template) {
@@ -240,6 +297,7 @@ func getTemplateData() (templateData, []Template) {
 			MaxReplicas:                 fmt.Sprintf("%v", maxReplicas),
 			MetricValue:                 0,
 			PollingInterval:             fmt.Sprintf("%v", pollingInterval),
+			CooldownPeriod:              fmt.Sprintf("%v", cooldownPeriod),
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "metricsServerDeploymentTemplate", Config: metricsServerDeploymentTemplate},
