@@ -391,7 +391,6 @@ func testThreeTriggersWithCPU(t *testing.T, kc *kubernetes.Clientset, data templ
 	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, maxReplicas, 180, 3),
 		"replica count should be %d after 3 minutes", maxReplicas)
-
 }
 
 // help function to load template data
