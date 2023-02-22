@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package polling_int_cd_period_so_test
+package polling_cooldown_so_test
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	testName = "polling-int-cd-period-so-test"
+	testName = "polling_cooldown_so_test"
 )
 
 // Load environment variables from .env file
