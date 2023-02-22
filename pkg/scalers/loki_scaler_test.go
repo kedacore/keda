@@ -216,7 +216,7 @@ func TestLokiScalerExecuteLogQLQuery(t *testing.T) {
 	}
 }
 
-func TestLokiScalerCortexHeader(t *testing.T) {
+func TestLokiScalerTenantHeader(t *testing.T) {
 	testData := lokiQromQueryResultTestData{
 		name:             "no values",
 		bodyStr:          `{"data":{"result":[]}}`,
@@ -227,7 +227,7 @@ func TestLokiScalerCortexHeader(t *testing.T) {
 	}
 	tenantName := "Tenant1"
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		reqHeader := request.Header.Get(promCortexHeaderKey)
+		reqHeader := request.Header.Get(tenantNameHeaderKey)
 		assert.Equal(t, reqHeader, tenantName)
 		writer.WriteHeader(testData.responseStatus)
 		if _, err := writer.Write([]byte(testData.bodyStr)); err != nil {

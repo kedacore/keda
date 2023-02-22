@@ -27,7 +27,6 @@ const (
 	promActivationThreshold = "activationThreshold"
 	promNamespace           = "namespace"
 	promCortexScopeOrgID    = "cortexOrgID"
-	promCortexHeaderKey     = "X-Scope-OrgID"
 	promCustomHeaders       = "customHeaders"
 	ignoreNullValues        = "ignoreNullValues"
 	unsafeSsl               = "unsafeSsl"
@@ -53,7 +52,6 @@ type prometheusMetadata struct {
 	prometheusAuth      *authentication.AuthMeta
 	namespace           string
 	scalerIndex         int
-	cortexOrgID         string
 	customHeaders       map[string]string
 	// sometimes should consider there is an error we can accept
 	// default value is true/t, to ignore the null value return from prometheus
@@ -159,7 +157,7 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 	}
 
 	if val, ok := config.TriggerMetadata[promCortexScopeOrgID]; ok && val != "" {
-		meta.cortexOrgID = val
+		return nil, fmt.Errorf("cortexOrgID is deprecated, please use customHeaders instead")
 	}
 
 	if val, ok := config.TriggerMetadata[promCustomHeaders]; ok && val != "" {
@@ -245,10 +243,6 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		req.SetBasicAuth(s.metadata.prometheusAuth.Username, s.metadata.prometheusAuth.Password)
 	case s.metadata.prometheusAuth.EnableCustomAuth:
 		req.Header.Add(s.metadata.prometheusAuth.CustomAuthHeader, s.metadata.prometheusAuth.CustomAuthValue)
-	}
-
-	if s.metadata.cortexOrgID != "" {
-		req.Header.Add(promCortexHeaderKey, s.metadata.cortexOrgID)
 	}
 
 	for headerName, headerValue := range s.metadata.customHeaders {
