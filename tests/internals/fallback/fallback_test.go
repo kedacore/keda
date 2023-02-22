@@ -200,6 +200,7 @@ metadata:
   name: update-ms-value
   namespace: {{.Namespace}}
 spec:
+  ttlSecondsAfterFinished: 30
   template:
     spec:
       containers:
@@ -267,6 +268,8 @@ func testFallback(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 func testRestoreAfterFallback(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing after fallback ---")
 	KubectlApplyWithTemplate(t, data, "metricsServerDeploymentTemplate", metricsServerDeploymentTemplate)
+	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, maxReplicas, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicas)
 }
