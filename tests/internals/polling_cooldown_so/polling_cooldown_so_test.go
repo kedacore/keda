@@ -238,7 +238,7 @@ func testPollingIntervalUp(t *testing.T, kc *kubernetes.Clientset, data template
 func testPollingIntervalDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- test Polling Interval down ---")
 
-	data.CooldownPeriod = fmt.Sprintf("%v", 0) //remove cooldownPeriod to test PI
+	data.CooldownPeriod = fmt.Sprintf("%v", 0) // remove cooldownPeriod to test PI
 	data.PollingInterval = fmt.Sprintf("%v", 1)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
@@ -264,7 +264,7 @@ func testPollingIntervalDown(t *testing.T, kc *kubernetes.Clientset, data templa
 func testCooldownPeriod(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- test Cooldown Period ---")
 
-	data.PollingInterval = fmt.Sprintf("%v", 0)   //remove polling interval to test CP
+	data.PollingInterval = fmt.Sprintf("%v", 0)   // remove polling interval to test CP
 	data.CooldownPeriod = fmt.Sprintf("%v", 60+2) // 2 seconds as a reserve
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
