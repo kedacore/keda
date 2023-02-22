@@ -2,10 +2,12 @@ package scalers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 const ghLoadCount = 2 // the size of the pretend pool completed of job requests
@@ -22,24 +24,29 @@ type parseGitHubRunnerMetadataTestData struct {
 }
 
 var testGitHubRunnerResolvedEnv = map[string]string{
-	"GITAPI_URL": "https://api.github.com",
-	"GIT_TOKEN":  "sample",
-	"OWNER":      "ownername",
+	"GITHUB_API_URL": "https://api.github.com",
+	"ACCESS_TOKEN":   "sample",
+	"RUNNER_SCOPE":   "org",
+	"ORG_NAME":       "ownername",
+	"OWNER":          "ownername",
+	"LABELS":         "foo,bar",
 }
 
 var testGitHubRunnerMetadata = []parseGitHubRunnerMetadataTestData{
 	// nothing passed
-	{"empty", map[string]string{}, true},
+	{"empty", map[string]string{}, false},
 	// properly formed
-	{"properly formed", map[string]string{"githubApiURL": "https://api.github.com", "organization": "false", "owner": "ownername", "personalAccessToken": "myToken", "repo": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false},
+	{"properly formed", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "personalAccessToken": "myToken", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false},
+	// properly formed with no labels and no repos
+	{"properly formed", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "owner": "ownername", "personalAccessToken": "myToken", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false},
 	// formed from env
-	{"formed from env", map[string]string{"githubApiURLFromEnv": "GITAPI_URL", "organization": "false", "ownerFromEnv": "OWNER", "personalAccessTokenFromEnv": "GIT_TOKEN", "repo": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false},
-	// missing api url
-	{"missing api url", map[string]string{"githubApiURL": "", "organization": "false", "ownerFromEnv": "OWNER", "personalAccessTokenFomEnv": "GIT_TOKEN", "repo": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, true},
+	{"formed from env", map[string]string{"githubApiURLFromEnv": "GITHUB_API_URL", "ownerFromEnv": "OWNER", "personalAccessTokenFromEnv": "ACCESS_TOKEN", "repos": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false},
+	// formed from default env
+	{"formed from default env", map[string]string{"owner": "ownername", "repos": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false},
 	// missing owner
-	{"missing owner", map[string]string{"githubApiURL": "https://api.github.com", "organization": "false", "owner": "", "personalAccessTokenFomEnv": "GIT_TOKEN", "repo": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, true},
+	{"missing owner", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "owner": "", "personalAccessTokenFomEnv": "ACCESS_TOKEN", "repos": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, true},
 	// missing token
-	{"missing token", map[string]string{"githubApiURL": "https://api.github.com", "organization": "false", "owner": "ownername", "personalAccessToken": "", "repo": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, true},
+	{"missing token", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "owner": "ownername", "personalAccessToken": "", "repos": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, true},
 }
 
 func TestGitHubRunnerParseMetadata(t *testing.T) {
@@ -79,9 +86,18 @@ func buildQueueJSON() []byte {
 	return []byte(output)
 }
 
-func apiStubHandler() *httptest.Server {
+func apiStubHandler(hasRateLeft bool) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if hasRateLeft {
+			w.Header().Set("X-RateLimit-Remaining", "50")
+		} else {
+			w.Header().Set("X-RateLimit-Remaining", "0")
+		}
+		futureReset := time.Now()
+		futureReset = futureReset.Add(time.Minute * 30)
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(futureReset.Unix()))
 		w.WriteHeader(http.StatusOK)
+		fmt.Println(r.URL.String())
 		if strings.HasSuffix(r.URL.String(), "jobs") {
 			_, _ = w.Write([]byte(testGhWFJobResponse))
 		}
@@ -94,8 +110,8 @@ func apiStubHandler() *httptest.Server {
 	}))
 }
 
-func TestNewGitHubRunnerScaler_QueueLength_SingleRepo(t *testing.T) {
-	var apiStub = apiStubHandler()
+func TestNewGitHubRunnerScaler_QueueLength_NoRateLeft(t *testing.T) {
+	var apiStub = apiStubHandler(false)
 
 	meta := getGitHubTestMetaData(apiStub.URL)
 
@@ -104,8 +120,33 @@ func TestNewGitHubRunnerScaler_QueueLength_SingleRepo(t *testing.T) {
 		httpClient: http.DefaultClient,
 	}
 
-	tRepo := "test"
-	mockGitHubRunnerScaler.metadata.repo = &tRepo
+	tRepo := []string{"test"}
+	mockGitHubRunnerScaler.metadata.repos = tRepo
+
+	_, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.TODO())
+
+	if err == nil {
+		t.Fail()
+	}
+
+	if !strings.HasPrefix(err.Error(), "GitHub API rate limit exceeded") {
+		fmt.Println(err.Error())
+		t.Fail()
+	}
+}
+
+func TestNewGitHubRunnerScaler_QueueLength_SingleRepo(t *testing.T) {
+	var apiStub = apiStubHandler(true)
+
+	meta := getGitHubTestMetaData(apiStub.URL)
+
+	mockGitHubRunnerScaler := githubRunnerScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	mockGitHubRunnerScaler.metadata.repos = []string{"test"}
+	mockGitHubRunnerScaler.metadata.labels = []string{"foo", "bar"}
 
 	queueLen, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.TODO())
 
@@ -118,10 +159,58 @@ func TestNewGitHubRunnerScaler_QueueLength_SingleRepo(t *testing.T) {
 	}
 }
 
-func TestNewGitHubRunnerScaler_QueueLength_MultiRepo(t *testing.T) {
-	var apiStub = apiStubHandler()
+func TestNewGitHubRunnerScaler_QueueLength_NoLabels(t *testing.T) {
+	var apiStub = apiStubHandler(true)
 
 	meta := getGitHubTestMetaData(apiStub.URL)
+
+	mockGitHubRunnerScaler := githubRunnerScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	mockGitHubRunnerScaler.metadata.repos = []string{"test"}
+
+	queueLen, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.TODO())
+
+	if err != nil {
+		t.Fail()
+	}
+
+	if queueLen != 1 {
+		t.Fail()
+	}
+}
+
+func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_Assigned(t *testing.T) {
+	var apiStub = apiStubHandler(true)
+
+	meta := getGitHubTestMetaData(apiStub.URL)
+
+	mockGitHubRunnerScaler := githubRunnerScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	tRepo := []string{"test", "test2"}
+	mockGitHubRunnerScaler.metadata.repos = tRepo
+
+	queueLen, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.TODO())
+
+	if err != nil {
+		t.Fail()
+	}
+
+	if queueLen != 2 {
+		t.Fail()
+	}
+}
+
+func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_Pulled(t *testing.T) {
+	var apiStub = apiStubHandler(true)
+
+	meta := getGitHubTestMetaData(apiStub.URL)
+	fmt.Println(apiStub.URL)
 
 	mockGitHubRunnerScaler := githubRunnerScaler{
 		metadata:   meta,

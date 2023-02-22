@@ -7,22 +7,20 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
-	defaultTargetWorkflowQueueLength = 1
-)
-
-var (
-	// githubAPIResetTime is the time when the GitHub API rate limit resets
-	githubAPIResetTime time.Time
-	githubAPIRemaining int
+	defaultTargetWorkflowQueueLength           = 1
+	defaultActivationTargetWorkflowQueueLength = 0
+	defaultGithubAPIURL                        = "https://api.github.com"
 )
 
 type githubRunnerScaler struct {
@@ -35,9 +33,10 @@ type githubRunnerScaler struct {
 type githubRunnerMetadata struct {
 	githubAPIURL                        string
 	owner                               string
-	organization                        bool
+	runnerScope                         string
 	personalAccessToken                 string
-	repo                                *string
+	repos                               []string
+	labels                              []string
 	targetWorkflowQueueLength           int64
 	activationTargetWorkflowQueueLength int64
 	scalerIndex                         int
@@ -294,7 +293,7 @@ type Job struct {
 	NodeID      string    `json:"node_id"`
 	HeadSha     string    `json:"head_sha"`
 	URL         string    `json:"url"`
-	HtmlURL     string    `json:"html_url"`
+	HTMLURL     string    `json:"html_url"`
 	Status      string    `json:"status"`
 	Conclusion  string    `json:"conclusion"`
 	StartedAt   time.Time `json:"started_at"`
@@ -340,78 +339,91 @@ func NewGitHubRunnerScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
+// getValueFromMetaOrEnv returns the value of the given key from the metadata or the environment variables
+func getValueFromMetaOrEnv(key string, metadata map[string]string, env map[string]string, defEnv string) string {
+	if val, ok := metadata[key]; ok {
+		return val
+	} else if val, ok := metadata[key+"FromEnv"]; ok && val != "" {
+		return env[val]
+	} else if val, ok := env[defEnv]; ok && val != "" {
+		return val
+	}
+	return ""
+}
+
 func parseGitHubRunnerMetadata(config *ScalerConfig) (*githubRunnerMetadata, error) {
 	meta := githubRunnerMetadata{}
 	meta.targetWorkflowQueueLength = defaultTargetWorkflowQueueLength
-	meta.organization = false
 
-	if val, ok := config.TriggerMetadata["targetWorkflowQueueLength"]; ok {
-		queueLength, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing azure pipelines metadata targetPipelinesQueueLength: %w", err)
-		}
-		meta.targetWorkflowQueueLength = queueLength
+	meta.runnerScope = getValueFromMetaOrEnv("runnerScope", config.TriggerMetadata, config.ResolvedEnv, "RUNNER_SCOPE")
+	if meta.runnerScope == "" {
+		return nil, fmt.Errorf("no runnerScope given")
 	}
 
-	if val, ok := config.TriggerMetadata["organization"]; ok {
-		organization, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing azure pipelines metadata organization: %w", err)
-		}
-		meta.organization = organization
+	switch meta.runnerScope {
+	case "org":
+		meta.owner = getValueFromMetaOrEnv("owner", config.TriggerMetadata, config.ResolvedEnv, "ORG_NAME")
+	case "ent":
+		meta.owner = getValueFromMetaOrEnv("owner", config.TriggerMetadata, config.ResolvedEnv, "ENTERPRISE_NAME")
+	default:
+		meta.owner = getValueFromMetaOrEnv("owner", config.TriggerMetadata, config.ResolvedEnv, "")
 	}
-
-	meta.activationTargetWorkflowQueueLength = 0
-	if val, ok := config.TriggerMetadata["activationTargetWorkflowQueueLength"]; ok {
-		activationQueueLength, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing azure pipelines metadata activationTargetPipelinesQueueLength: %w", err)
-		}
-		meta.activationTargetWorkflowQueueLength = activationQueueLength
-	}
-
-	if val, ok := config.AuthParams["owner"]; ok && val != "" {
-		// Found the owner in a parameter from TriggerAuthentication
-		meta.owner = val
-	} else if val, ok := config.TriggerMetadata["ownerFromEnv"]; ok && val != "" {
-		meta.owner = config.ResolvedEnv[val]
-	} else if val, ok := config.TriggerMetadata["owner"]; ok && val != "" {
-		meta.owner = val
-	} else {
+	if meta.owner == "" {
 		return nil, fmt.Errorf("no owner given")
 	}
 
-	if val, ok := config.TriggerMetadata["repo"]; ok {
-		meta.repo = &val
+	sTargetWorkflowQueueLength := getValueFromMetaOrEnv("targetWorkflowQueueLength", config.TriggerMetadata, config.ResolvedEnv, "TARGET_WORKFLOW_QUEUE_LENGTH")
+	if sTargetWorkflowQueueLength == "" {
+		meta.targetWorkflowQueueLength = defaultTargetWorkflowQueueLength
+	} else {
+		targetQueueLength, err := strconv.ParseInt(sTargetWorkflowQueueLength, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing targetWorkflowQueueLength: %w", err)
+		}
+		meta.targetWorkflowQueueLength = targetQueueLength
 	}
 
-	if val, ok := config.AuthParams["githubApiURL"]; ok && val != "" {
-		// Found the githubApiURL in a parameter from TriggerAuthentication
-		meta.githubAPIURL = val
-	} else if val, ok := config.TriggerMetadata["githubApiURL"]; ok && val != "" {
-		meta.githubAPIURL = val
-	} else if val, ok := config.TriggerMetadata["githubApiURLFromEnv"]; ok && val != "" {
-		meta.githubAPIURL = config.ResolvedEnv[val]
+	sActivationTargetWorkflowQueueLength := getValueFromMetaOrEnv("activationTargetWorkflowQueueLength", config.TriggerMetadata, config.ResolvedEnv, "ACTIVATION_TARGET_WORKFLOW_QUEUE_LENGTH")
+	if sActivationTargetWorkflowQueueLength == "" {
+		meta.activationTargetWorkflowQueueLength = defaultActivationTargetWorkflowQueueLength
 	} else {
-		return nil, fmt.Errorf("no githubApiURL given")
+		activationTargetWorkflowQueueLength, err := strconv.ParseInt(sActivationTargetWorkflowQueueLength, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing activationTargetWorkflowQueueLength: %w", err)
+		}
+		meta.activationTargetWorkflowQueueLength = activationTargetWorkflowQueueLength
+	}
+
+	labels := getValueFromMetaOrEnv("labels", config.TriggerMetadata, config.ResolvedEnv, "LABELS")
+	if labels != "" {
+		meta.labels = strings.Split(labels, ",")
+	}
+
+	repos := getValueFromMetaOrEnv("repos", config.TriggerMetadata, config.ResolvedEnv, "")
+	if repos != "" {
+		meta.repos = strings.Split(repos, ",")
+	}
+
+	meta.githubAPIURL = getValueFromMetaOrEnv("githubApiURL", config.TriggerMetadata, config.ResolvedEnv, "GITHUB_API_URL")
+	if meta.githubAPIURL == "" {
+		meta.githubAPIURL = defaultGithubAPIURL
 	}
 
 	if val, ok := config.AuthParams["personalAccessToken"]; ok && val != "" {
 		// Found the personalAccessToken in a parameter from TriggerAuthentication
 		meta.personalAccessToken = val
-	} else if val, ok := config.TriggerMetadata["personalAccessToken"]; ok && val != "" {
-		meta.personalAccessToken = val
-	} else if val, ok := config.TriggerMetadata["personalAccessTokenFromEnv"]; ok && val != "" {
-		meta.personalAccessToken = config.ResolvedEnv[val]
 	} else {
-		return nil, fmt.Errorf("no personalAccessToken given")
+		meta.personalAccessToken = getValueFromMetaOrEnv("personalAccessToken", config.TriggerMetadata, config.ResolvedEnv, "ACCESS_TOKEN")
+		if meta.personalAccessToken == "" {
+			return nil, fmt.Errorf("no personalAccessToken given")
+		}
 	}
 
 	return &meta, nil
 }
 
 // getUserRepositories returns a list of repositories for a given organization
-func (s *githubRunnerScaler) getUserRepositories(ctx context.Context) (*[]string, error) {
+func (s *githubRunnerScaler) getUserRepositories(ctx context.Context) ([]string, error) {
 	url := fmt.Sprintf("%s/users/%s/repos", s.metadata.githubAPIURL, s.metadata.owner)
 	body, err := getGithubRequest(ctx, url, s.metadata, s.httpClient)
 	if err != nil {
@@ -430,11 +442,11 @@ func (s *githubRunnerScaler) getUserRepositories(ctx context.Context) (*[]string
 		repoList = append(repoList, repo.Name)
 	}
 
-	return &repoList, nil
+	return repoList, nil
 }
 
 // getOrganizationRepositories returns a list of repositories for a given organization
-func (s *githubRunnerScaler) getOrganizationRepositories(ctx context.Context) (*[]string, error) {
+func (s *githubRunnerScaler) getOrganizationRepositories(ctx context.Context) ([]string, error) {
 	url := fmt.Sprintf("%s/orgs/%s/repos", s.metadata.githubAPIURL, s.metadata.owner)
 	body, err := getGithubRequest(ctx, url, s.metadata, s.httpClient)
 	if err != nil {
@@ -453,14 +465,10 @@ func (s *githubRunnerScaler) getOrganizationRepositories(ctx context.Context) (*
 		repoList = append(repoList, repo.Name)
 	}
 
-	return &repoList, nil
+	return repoList, nil
 }
 
 func getGithubRequest(ctx context.Context, url string, metadata *githubRunnerMetadata, httpClient *http.Client) ([]byte, error) {
-	if githubAPIResetTime.Before(time.Now()) && githubAPIRemaining == 0 {
-		return []byte{}, fmt.Errorf("GitHub API rate limit exceeded resets at %s", githubAPIResetTime)
-	}
-
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return []byte{}, err
@@ -482,8 +490,7 @@ func getGithubRequest(ctx context.Context, url string, metadata *githubRunnerMet
 
 	if githubAPIRemaining == 0 {
 		resetTime, _ := strconv.ParseInt(r.Header.Get("X-RateLimit-Reset"), 10, 64)
-		githubAPIResetTime = time.Unix(resetTime, 0)
-		return []byte{}, fmt.Errorf("github rate limit exceeded, resets at %s", githubAPIResetTime)
+		return []byte{}, fmt.Errorf("GitHub API rate limit exceeded, resets at %s", time.Unix(resetTime, 0))
 	}
 
 	b, err := io.ReadAll(r.Body)
@@ -529,30 +536,55 @@ func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRun
 	return jobs.Jobs, nil
 }
 
+var reservedLabels = []string{"self-hosted", "linux", "x64"}
+
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if strings.EqualFold(a, e) {
+			return true
+		}
+	}
+	return false
+}
+
+// canRunnerMatchLabels check Agent Label array will match runner label array
+func canRunnerMatchLabels(jobLabels []string, runnerLabels []string) bool {
+	for _, jobLabel := range jobLabels {
+		if !contains(runnerLabels, jobLabel) && !contains(reservedLabels, jobLabel) {
+			return false
+		}
+	}
+	return true
+}
+
 // GetWorkflowQueueLength returns the number of workflows in the queue
 func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64, error) {
-	var repos *[]string
+	var repos []string
 	var err error
 
-	if s.metadata.repo == nil {
-		if s.metadata.organization {
+	if s.metadata.repos == nil {
+		switch s.metadata.runnerScope {
+		case "org":
 			repos, err = s.getOrganizationRepositories(ctx)
 			if err != nil {
 				return -1, err
 			}
-		} else {
+		case "ent":
+			// TODO: Implement Enterprise Scoping
+			return -1, fmt.Errorf("enterprise scoping is not yet implemented")
+		default:
 			repos, err = s.getUserRepositories(ctx)
 			if err != nil {
 				return -1, err
 			}
 		}
 	} else {
-		repos = &[]string{*s.metadata.repo}
+		repos = s.metadata.repos
 	}
 
 	var allWfrs []WorkflowRuns
 
-	for _, repo := range *repos {
+	for _, repo := range repos {
 		url := fmt.Sprintf("%s/repos/%s/%s/actions/runs", s.metadata.githubAPIURL, s.metadata.owner, repo)
 		body, err := getGithubRequest(ctx, url, s.metadata, s.httpClient)
 
@@ -578,7 +610,7 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 			return -1, err
 		}
 		for _, job := range jobs {
-			if job.Status == "queued" {
+			if job.Status == "queued" && (canRunnerMatchLabels(job.Labels, s.metadata.labels) || s.metadata.labels == nil) {
 				queueCount++
 			}
 		}
