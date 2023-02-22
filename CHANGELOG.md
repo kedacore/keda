@@ -91,7 +91,7 @@ You can find all deprecations in [this overview](https://github.com/kedacore/ked
 
 New deprecation(s):
 
-- TODO
+- **Prometheus Scaler**: `cortexOrgId` metadata deprecated in favor of custom headers ([#4208](https://github.com/kedacore/keda/issues/4208))
 
 ### Other
 
