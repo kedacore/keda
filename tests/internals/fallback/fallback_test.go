@@ -268,6 +268,7 @@ func testFallback(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 func testRestoreAfterFallback(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing after fallback ---")
 	KubectlApplyWithTemplate(t, data, "metricsServerDeploymentTemplate", metricsServerDeploymentTemplate)
+	data.MetricValue = 50
 	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, maxReplicas, 60, 3),
