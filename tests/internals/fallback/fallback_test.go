@@ -175,6 +175,11 @@ spec:
   fallback:
     failureThreshold: 3
     replicas: {{.DefaultFallback}}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 1
   cooldownPeriod: 1
   pollingInterval: 5
   triggers:
