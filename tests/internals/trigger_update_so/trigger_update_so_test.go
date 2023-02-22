@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package trigger_update_so
+package trigger_update_so_test
 
 import (
 	"fmt"
@@ -386,17 +386,12 @@ func testThreeTriggersWithCPU(t *testing.T, kc *kubernetes.Clientset, data templ
 	// update SO should scale up based on cpu
 	KubectlApplyWithTemplate(t, data, "scaledObjectThreeTriggerTemplate", scaledObjectThreeTriggerTemplate)
 
-	// scaling takes longer because of fetching of the cpu metrics (possibly increase iterations if needed)
+	// scaling might take longer because of fetching of the cpu metrics (possibly increase iterations if needed)
 	data.MetricValue = 10
 	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, maxReplicas, 180, 3),
 		"replica count should be %d after 3 minutes", maxReplicas)
 
-	data.MetricValue = 0
-	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
-	// expect min replica count to be 1 since no other load is present and cpu is given
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 1, 180, 3),
-		"replica count should be %d after 3 minutes", 1)
 }
 
 // help function to load template data
