@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	testName = "polling_cooldown_so_test"
+	testName = "polling-cooldown-so-test"
 )
 
 // Load environment variables from .env file
