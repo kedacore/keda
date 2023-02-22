@@ -286,19 +286,26 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 	timeWindowTo := time.Now().Unix() - int64(s.metadata.timeWindowOffset)
 	timeWindowFrom := timeWindowTo - int64(s.metadata.age)
 	resp, r, err := s.apiClient.MetricsApi.QueryMetrics(ctx, timeWindowFrom, timeWindowTo, s.metadata.query) //nolint:bodyclose
+
+	if r != nil {
+		if r.StatusCode == 429 {
+			rateLimit := r.Header.Get("X-Ratelimit-Limit")
+			rateLimitReset := r.Header.Get("X-Ratelimit-Reset")
+			rateLimitPeriod := r.Header.Get("X-Ratelimit-Period")
+
+			return -1, fmt.Errorf("your Datadog account reached the %s queries per %s seconds rate limit, next limit reset will happen in %s seconds", rateLimit, rateLimitPeriod, rateLimitReset)
+		}
+
+		if r.StatusCode != 200 {
+			if err != nil {
+				return -1, fmt.Errorf("error when retrieving Datadog metrics: %w", err)
+			}
+			return -1, fmt.Errorf("error when retrieving Datadog metrics")
+		}
+	}
+
 	if err != nil {
 		return -1, fmt.Errorf("error when retrieving Datadog metrics: %w", err)
-	}
-
-	if r.StatusCode == 429 {
-		rateLimit := r.Header.Get("X-Ratelimit-Limit")
-		rateLimitReset := r.Header.Get("X-Ratelimit-Reset")
-
-		return -1, fmt.Errorf("your Datadog account reached the %s queries per hour rate limit, next limit reset will happen in %s seconds", rateLimit, rateLimitReset)
-	}
-
-	if r.StatusCode != 200 {
-		return -1, fmt.Errorf("error when retrieving Datadog metrics")
 	}
 
 	if resp.GetStatus() == "error" {
