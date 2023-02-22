@@ -2,7 +2,6 @@ package scalers
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -14,7 +13,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
+	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
@@ -185,6 +184,7 @@ func createRedisScalerWithClient(client *redis.Client, meta *redisMetadata, scri
 		metadata:        meta,
 		closeFn:         closeFn,
 		getListLengthFn: listLengthFn,
+		logger:          logger,
 	}
 }
 
@@ -257,7 +257,7 @@ func (s *redisScaler) Close(context.Context) error {
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *redisScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
-	metricName := kedautil.NormalizeString(fmt.Sprintf("redis-%s", s.metadata.listName))
+	metricName := util.NormalizeString(fmt.Sprintf("redis-%s", s.metadata.listName))
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
@@ -387,7 +387,7 @@ func parseRedisMultipleAddress(metadata, resolvedEnv, authParams map[string]stri
 func parseRedisClusterAddress(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error) {
 	info, err := parseRedisMultipleAddress(metadata, resolvedEnv, authParams)
 	if err != nil {
-		return info, err
+		return redisConnectionInfo{}, err
 	}
 
 	switch {
@@ -411,7 +411,7 @@ func parseRedisClusterAddress(metadata, resolvedEnv, authParams map[string]strin
 func parseRedisSentinelAddress(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error) {
 	info, err := parseRedisMultipleAddress(metadata, resolvedEnv, authParams)
 	if err != nil {
-		return info, err
+		return redisConnectionInfo{}, err
 	}
 
 	switch {
@@ -463,9 +463,7 @@ func getRedisClusterClient(ctx context.Context, info redisConnectionInfo) (*redi
 		Password: info.password,
 	}
 	if info.enableTLS {
-		options.TLSConfig = &tls.Config{
-			InsecureSkipVerify: info.unsafeSsl,
-		}
+		options.TLSConfig = util.CreateTLSClientConfig(info.unsafeSsl)
 	}
 
 	// confirm if connected
@@ -487,9 +485,7 @@ func getRedisSentinelClient(ctx context.Context, info redisConnectionInfo, dbInd
 		MasterName:       info.sentinelMaster,
 	}
 	if info.enableTLS {
-		options.TLSConfig = &tls.Config{
-			InsecureSkipVerify: info.unsafeSsl,
-		}
+		options.TLSConfig = util.CreateTLSClientConfig(info.unsafeSsl)
 	}
 
 	// confirm if connected
@@ -508,9 +504,7 @@ func getRedisClient(ctx context.Context, info redisConnectionInfo, dbIndex int) 
 		DB:       dbIndex,
 	}
 	if info.enableTLS {
-		options.TLSConfig = &tls.Config{
-			InsecureSkipVerify: info.unsafeSsl,
-		}
+		options.TLSConfig = util.CreateTLSClientConfig(info.unsafeSsl)
 	}
 
 	// confirm if connected

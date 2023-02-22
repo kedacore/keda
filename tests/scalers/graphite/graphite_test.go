@@ -56,7 +56,7 @@ spec:
     spec:
       containers:
       - name: php-apache-graphite
-        image: k8s.gcr.io/hpa-example
+        image: registry.k8s.io/hpa-example
         ports:
         - containerPort: 80
 `

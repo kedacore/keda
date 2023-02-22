@@ -80,7 +80,7 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: nginx:alpine
+        image: nginxinc/nginx-unprivileged
 `
 
 	secretTemplate = `
@@ -215,7 +215,7 @@ func deployPod(t *testing.T, kc *kubernetes.Clientset, podName, args string) {
 			Containers: []corev1.Container{
 				{
 					Name:    "test-couchdb-container",
-					Image:   "nginx:alpine",
+					Image:   "nginxinc/nginx-unprivileged",
 					Command: []string{"curl"},
 					Args:    strings.Split(args, " "),
 				},
@@ -257,7 +257,7 @@ func deployPodDelete(t *testing.T, kc *kubernetes.Clientset, podName, args strin
 			Containers: []corev1.Container{
 				{
 					Name:    "test-couchdb-container",
-					Image:   "nginx:alpine",
+					Image:   "nginxinc/nginx-unprivileged",
 					Command: []string{"curl"},
 					Args:    strings.Split(args, " "),
 				},
