@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -150,16 +151,16 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 }
 
 // resolveHostFromConfig calculate the host value base in scaler config
-func resolveHostFromConfig(config *ScalerConfig, protocol string) (*string, error) {
+func resolveHostFromConfig(config *ScalerConfig, protocol string) (string, error) {
 	host := ""
 	domain := ""
 	if val, ok := config.TriggerMetadata["domain"]; ok {
 		domain = val
 	} else {
-		return nil, fmt.Errorf("not given domain")
+		return "", fmt.Errorf("not given domain")
 	}
 	if protocol != httpProtocol && protocol != amqpProtocol {
-		return nil, fmt.Errorf("the protocol has to be either `%s` or `%s` but is `%s`", amqpProtocol, httpProtocol, protocol)
+		return "", fmt.Errorf("the protocol has to be either `%s` or `%s` but is `%s`", amqpProtocol, httpProtocol, protocol)
 	}
 	username, err := GetFromAuthOrEnv(config, "username")
 	if err != nil {
@@ -177,13 +178,13 @@ func resolveHostFromConfig(config *ScalerConfig, protocol string) (*string, erro
 		// host: <protocol>://<domain>
 		host = fmt.Sprintf("%s://%s", protocol, domain)
 	default:
-		return nil, fmt.Errorf("no all data for access host given")
+		return "", fmt.Errorf("no all data for access host given")
 	}
-	if val, ok := config.TriggerMetadata["port"]; ok {
+	if port, ok := config.TriggerMetadata["port"]; ok {
 		// host: <meta.host>:<port>
-		host = fmt.Sprintf("%s:%s", host, val)
+		host = net.JoinHostPort(host, port)
 	}
-	return &host, nil
+	return host, nil
 }
 
 func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
@@ -214,7 +215,7 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		if err != nil {
 			return nil, err
 		}
-		meta.host = *host
+		meta.host = host
 	}
 
 	// Resolve TLS authentication parameters
