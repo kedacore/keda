@@ -187,9 +187,31 @@ func resolveHostFromConfig(config *ScalerConfig, protocol string) (string, error
 	return host, nil
 }
 
+// getRabbitMQHostValueFromConfig gets the RabbitMQ host from scaler config and protocol
+func getRabbitMQHostValueFromConfig(config *ScalerConfig, protocol string) (string, error) {
+	// Resolve host value
+	var err error
+	var host string
+	switch {
+	case config.AuthParams["host"] != "":
+		host = config.AuthParams["host"]
+	case config.TriggerMetadata["host"] != "":
+		host = config.TriggerMetadata["host"]
+	case config.TriggerMetadata["hostFromEnv"] != "":
+		host = config.ResolvedEnv[config.TriggerMetadata["hostFromEnv"]]
+	default:
+		host, err = resolveHostFromConfig(config, protocol)
+		if err != nil {
+			return "", err
+		}
+	}
+	return host, nil
+}
+
 // parseRabbitMQMetadata gets the metadata information of RabbitMQ from scaler config
 func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	meta := rabbitMQMetadata{}
+	var err error
 
 	// Resolve protocol type
 	meta.protocol = defaultProtocol
@@ -204,19 +226,9 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	}
 
 	// Resolve host value
-	switch {
-	case config.AuthParams["host"] != "":
-		meta.host = config.AuthParams["host"]
-	case config.TriggerMetadata["host"] != "":
-		meta.host = config.TriggerMetadata["host"]
-	case config.TriggerMetadata["hostFromEnv"] != "":
-		meta.host = config.ResolvedEnv[config.TriggerMetadata["hostFromEnv"]]
-	default:
-		host, err := resolveHostFromConfig(config, meta.protocol)
-		if err != nil {
-			return nil, err
-		}
-		meta.host = host
+	meta.host, err = getRabbitMQHostValueFromConfig(config, meta.protocol)
+	if err != nil {
+		return nil, err
 	}
 
 	// Resolve TLS authentication parameters
@@ -269,7 +281,7 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		meta.vhostName = val
 	}
 
-	err := parseRabbitMQHttpProtocolMetadata(config, &meta)
+	err = parseRabbitMQHttpProtocolMetadata(config, &meta)
 	if err != nil {
 		return nil, err
 	}
