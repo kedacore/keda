@@ -104,6 +104,7 @@ func TestParseStringList(t *testing.T) {
 		{"success, two pairs", "key1=value1,key2=value2", map[string]string{"key1": "value1", "key2": "value2"}, false},
 		{"success, two pairs with spaces", "key1 = value1, key2 = value2", map[string]string{"key1": "value1", "key2": "value2"}, false},
 		{"failure, one key", "key1", nil, true},
+		{"failure, duplicate keys", "key1=value1,key1=value2", nil, true},
 		{"failure, one key ending with two successive equals to", "key1==", nil, true},
 		{"failure, one valid pair and invalid one key", "key1=value1,key2", nil, true},
 		{"failure, two valid pairs and invalid two keys", "key1=value1,key2=value2,key3,key4", nil, true},
