@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
+	"github.com/stretchr/testify/assert"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
@@ -187,6 +188,24 @@ func TestParseServiceBusMetadata(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestGetServiceBusAdminClientIsCached(t *testing.T) {
+	testData := azServiceBusMetricIdentifiers[0]
+	meta, err := parseAzureServiceBusMetadata(&ScalerConfig{ResolvedEnv: connectionResolvedEnv,
+		TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams,
+		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.metadataTestData.podIdentity}, ScalerIndex: testData.scalerIndex},
+		logr.Discard())
+	if err != nil {
+		t.Fatal("Could not parse metadata:", err)
+	}
+	mockAzServiceBusScalerScaler := azureServiceBusScaler{
+		metadata:    meta,
+		podIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.metadataTestData.podIdentity},
+	}
+
+	_, _ = mockAzServiceBusScalerScaler.getServiceBusAdminClient()
+	assert.NotNil(t, mockAzServiceBusScalerScaler.client)
 }
 
 func TestGetServiceBusLength(t *testing.T) {
