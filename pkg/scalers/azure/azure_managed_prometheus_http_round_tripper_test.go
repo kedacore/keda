@@ -19,15 +19,14 @@ var testTryAndGetAzureManagedPrometheusHTTPRoundTripperTestData = []testTryAndGe
 }
 
 func TestTryAndGetAzureManagedPrometheusHTTPRoundTripper(t *testing.T) {
-	TryAndGetAzureManagedPrometheusHTTPRoundTripper(kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload}, map[string]string{"cloud": "AZUREGERMANCLOUD", "azureManagedPrometheusResourceURL": "asas"})
-	// for _, testData := range testTryAndGetAzureManagedPrometheusHTTPRoundTripperTestData {
-	// 	_, err := TryAndGetAzureManagedPrometheusHTTPRoundTripper(kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentityProvider}, nil)
-	// 	if testData.isError {
-	// 		if err == nil {
-	// 			t.Errorf("Test: %v; Expected error but got success. testData: %v", testData.testName, testData)
-	// 		}
-	// 	} else if err != nil {
-	// 		t.Errorf("Test: %v; Expected success but got error: %v", testData.testName, err)
-	// 	}
-	// }
+	for _, testData := range testTryAndGetAzureManagedPrometheusHTTPRoundTripperTestData {
+		_, err := TryAndGetAzureManagedPrometheusHTTPRoundTripper(kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentityProvider}, nil)
+		if testData.isError {
+			if err == nil {
+				t.Errorf("Test: %v; Expected error but got success. testData: %v", testData.testName, testData)
+			}
+		} else if err != nil {
+			t.Errorf("Test: %v; Expected success but got error: %v", testData.testName, err)
+		}
+	}
 }
