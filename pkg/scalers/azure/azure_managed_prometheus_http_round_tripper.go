@@ -1,28 +1,16 @@
 package azure
 
 import (
-	"crypto/tls"
 	"fmt"
-	"net"
 	"net/http"
-	"strings"
-	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	az "github.com/Azure/go-autorest/autorest/azure"
+
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
+	"github.com/kedacore/keda/v2/pkg/util"
 )
-
-const (
-	defaultAzureManagedPrometheusResourceURL = "https://prometheus.monitor.azure.com/.default"
-)
-
-var azureManagedPrometheusResourceURLInCloud = map[string]string{
-	"AZUREPUBLICCLOUD":       "https://prometheus.monitor.azure.com/.default",
-	"AZUREUSGOVERNMENTCLOUD": "https://prometheus.monitor.usgovcloudapi.net/.default",
-	"AZURECHINACLOUD":        "https://prometheus.monitor.chinacloudapp.cn/.default",
-}
 
 type azureManagedPrometheusHttpRoundTripper struct {
 	chainedCredential *azidentity.ChainedTokenCredential
@@ -30,7 +18,10 @@ type azureManagedPrometheusHttpRoundTripper struct {
 	resourceURL       string
 }
 
-func TryAndGetAzureManagedPrometheusHttpRoundTripper(podIdentity kedav1alpha1.AuthPodIdentity, triggerMetadata map[string]string) (http.RoundTripper, error) {
+// Tries to get a round tripper.
+// If the pod identity represents azure auth, it creates a round tripper and returns that. Returns error if fails to create one.
+// If its not azure auth, then this becomes a no-op. Neither returns round tripper nor error.
+func TryAndGetAzureManagedPrometheusHTTPRoundTripper(podIdentity kedav1alpha1.AuthPodIdentity, triggerMetadata map[string]string) (http.RoundTripper, error) {
 
 	switch podIdentity.Provider {
 	case kedav1alpha1.PodIdentityProviderAzureWorkload, kedav1alpha1.PodIdentityProviderAzure:
@@ -39,61 +30,34 @@ func TryAndGetAzureManagedPrometheusHttpRoundTripper(podIdentity kedav1alpha1.Au
 			return nil, fmt.Errorf("trigger metadata cannot be nil")
 		}
 
-		tlsConfig := &tls.Config{
-			MinVersion:         kedautil.GetMinTLSVersion(),
-			InsecureSkipVerify: false,
-		}
-
-		transport := &http.Transport{
-			Proxy: http.ProxyFromEnvironment,
-			DialContext: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).DialContext,
-			TLSHandshakeTimeout: 10 * time.Second,
-			TLSClientConfig:     tlsConfig,
-		}
-
 		chainedCred, err := NewChainedCredential(podIdentity.IdentityID, podIdentity.Provider)
 		if err != nil {
 			return nil, err
 		}
 
-		resourceUrlBasedOnCloud, err := getResourceUrlBasedOnCloud(triggerMetadata)
+		azureManagedPrometheusResourceURLProvider := func(env az.Environment) (string, error) {
+			if env.ResourceIdentifiers.AzureManagedPrometheus == az.NotAvailable {
+				return "", fmt.Errorf("Azure Managed Prometheus is not avaiable in cloud %s", env.Name)
+			}
+			return env.ResourceIdentifiers.AzureManagedPrometheus, nil
+		}
+
+		resourceURLBasedOnCloud, err := ParseEnvironmentProperty(triggerMetadata, "azureManagedPrometheusResourceURL", azureManagedPrometheusResourceURLProvider)
 		if err != nil {
 			return nil, err
 		}
 
+		transport := util.CreateHTTPTransport(false)
 		rt := &azureManagedPrometheusHttpRoundTripper{
 			next:              transport,
 			chainedCredential: chainedCred,
-			resourceURL:       resourceUrlBasedOnCloud,
+			resourceURL:       resourceURLBasedOnCloud,
 		}
 		return rt, nil
 	}
 
-	// Not azure managed prometheus. Don't do anything.
+	// Not azure managed prometheus. Don't create a round tripper and don't return error.
 	return nil, nil
-}
-
-func getResourceUrlBasedOnCloud(triggerMetadata map[string]string) (string, error) {
-	if cloud, ok := triggerMetadata["cloud"]; ok {
-		if strings.EqualFold(cloud, PrivateCloud) {
-			if resource, ok := triggerMetadata["azureManagedPrometheusResourceURL"]; ok && resource != "" {
-				return resource, nil
-			}
-
-			return "", fmt.Errorf("azureManagedPrometheusResourceURL must be provided for %s cloud type", PrivateCloud)
-		}
-
-		if resource, ok := azureManagedPrometheusResourceURLInCloud[strings.ToUpper(cloud)]; ok {
-			return resource, nil
-		}
-		return "", fmt.Errorf("there is no cloud environment matching the name %s", cloud)
-	}
-
-	// return default resourceURL for public cloud
-	return defaultAzureManagedPrometheusResourceURL, nil
 }
 
 // Sets Auhtorization header for requests

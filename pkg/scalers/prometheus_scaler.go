@@ -105,7 +105,7 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 		}
 	} else {
 		// could be the case of azure managed prometheus. Try and get the roundtripper.
-		transport, err := azure.TryAndGetAzureManagedPrometheusHttpRoundTripper(config.PodIdentity, config.TriggerMetadata)
+		transport, err := azure.TryAndGetAzureManagedPrometheusHTTPRoundTripper(config.PodIdentity, config.TriggerMetadata)
 
 		if err != nil {
 			logger.V(1).Error(err, "error while init Azure Managed Prometheus client http transport")
