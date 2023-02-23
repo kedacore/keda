@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	host = "myHostSecret"
+	host   = "myHostSecret"
+	domain = "myDomainSecret"
 )
 
 type parseRabbitMQMetadataTestData struct {
@@ -37,6 +38,11 @@ type rabbitMQMetricIdentifier struct {
 
 var sampleRabbitMqResolvedEnv = map[string]string{
 	host: "amqp://user:sercet@somehost.com:5236/vhost",
+}
+
+var sampleRabbitMqResolvedEnvSeparatedConnectionArgs = map[string]string{
+	username: username,
+	password: password,
 }
 
 var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
@@ -128,6 +134,17 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	{map[string]string{"mode": "QueueLength", "value": "1000", "queueName": "sample", "host": "amqp://", "useRegex": "true", "excludeUnacknowledged": "true"}, true, map[string]string{}},
 }
 
+var testRabbitMQMetadataSeparatedConnectionString = []parseRabbitMQMetadataTestData{
+	// properly formed metadata with http protocol and separated connection string with user, password and domain
+	{map[string]string{"queueLength": "10", "queueName": "sample", "domain": domain, "protocol": "http", "usernameFromEnv": username, "passwordFromEnv": password}, false, map[string]string{}},
+	// properly formed metadata with http protocol and separated connection string only with domain
+	{map[string]string{"queueLength": "10", "queueName": "sample", "domain": domain, "protocol": "http"}, false, map[string]string{}},
+	// missing password
+	{map[string]string{"queueLength": "10", "queueName": "sample", "domain": domain, "protocol": "http", "usernameFromEnv": username}, true, map[string]string{}},
+	// missing username
+	{map[string]string{"queueLength": "10", "queueName": "sample", "domain": domain, "protocol": "http", "passwordFromEnv": password}, true, map[string]string{}},
+}
+
 var testRabbitMQAuthParamData = []parseRabbitMQAuthParamTestData{
 	{map[string]string{"queueName": "sample", "hostFromEnv": host}, map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, true},
 	// success, TLS cert/key and assumed public CA
@@ -152,6 +169,18 @@ var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
 func TestRabbitMQParseMetadata(t *testing.T) {
 	for _, testData := range testRabbitMQMetadata {
 		_, err := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		if err != nil && !testData.isError {
+			t.Error("Expected success but got error", err)
+		}
+		if testData.isError && err == nil {
+			t.Error("Expected error but got success")
+		}
+	}
+}
+
+func TestRabbitMQParseMetadataSeparatedConnectionString(t *testing.T) {
+	for _, testData := range testRabbitMQMetadataSeparatedConnectionString {
+		_, err := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnvSeparatedConnectionArgs, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
