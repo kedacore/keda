@@ -76,9 +76,12 @@ func ParseStringList(pattern string) (map[string]string, error) {
 		if len(keyvalue) != 2 {
 			return nil, fmt.Errorf("error in key-value syntax, got '%s'", pair)
 		}
-		keyvalue[0] = strings.TrimSpace(keyvalue[0])
-		keyvalue[1] = strings.TrimSpace(keyvalue[1])
-		parsed[keyvalue[0]] = keyvalue[1]
+		key := strings.TrimSpace(keyvalue[0])
+		value := strings.TrimSpace(keyvalue[1])
+		if _, ok := parsed[key]; ok {
+			return nil, fmt.Errorf("duplicate key found: %s", key)
+		}
+		parsed[key] = value
 	}
 	return parsed, nil
 }
