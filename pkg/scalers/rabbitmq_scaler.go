@@ -187,6 +187,7 @@ func resolveHostFromConfig(config *ScalerConfig, protocol string) (string, error
 	return host, nil
 }
 
+// parseRabbitMQMetadata gets the metadata information of RabbitMQ from scaler config
 func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	meta := rabbitMQMetadata{}
 
