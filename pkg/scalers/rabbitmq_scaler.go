@@ -226,10 +226,11 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	}
 
 	// Resolve host value
-	meta.host, err = getRabbitMQHostValueFromConfig(config, meta.protocol)
+	rabbitMQHost, err := getRabbitMQHostValueFromConfig(config, meta.protocol)
 	if err != nil {
 		return nil, err
 	}
+	meta.host = rabbitMQHost
 
 	// Resolve TLS authentication parameters
 	meta.enableTLS = false
