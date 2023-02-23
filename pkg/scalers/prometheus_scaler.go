@@ -234,19 +234,19 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		return -1, err
 	}
 
+	for headerName, headerValue := range s.metadata.customHeaders {
+		req.Header.Add(headerName, headerValue)
+	}
+
 	switch {
 	case s.metadata.prometheusAuth == nil:
 		break
 	case s.metadata.prometheusAuth.EnableBearerAuth:
-		req.Header.Add("Authorization", authentication.GetBearerToken(s.metadata.prometheusAuth))
+		req.Header.Set("Authorization", authentication.GetBearerToken(s.metadata.prometheusAuth))
 	case s.metadata.prometheusAuth.EnableBasicAuth:
 		req.SetBasicAuth(s.metadata.prometheusAuth.Username, s.metadata.prometheusAuth.Password)
 	case s.metadata.prometheusAuth.EnableCustomAuth:
-		req.Header.Add(s.metadata.prometheusAuth.CustomAuthHeader, s.metadata.prometheusAuth.CustomAuthValue)
-	}
-
-	for headerName, headerValue := range s.metadata.customHeaders {
-		req.Header.Add(headerName, headerValue)
+		req.Header.Set(s.metadata.prometheusAuth.CustomAuthHeader, s.metadata.prometheusAuth.CustomAuthValue)
 	}
 
 	r, err := s.httpClient.Do(req)
