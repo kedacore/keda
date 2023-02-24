@@ -18,10 +18,11 @@ var testGhUserReposResponse = `[{"id":1296269,"node_id":"MDEwOlJlcG9zaXRvcnkxMjk
 var testGhWFJobResponse = `{"total_count":1,"jobs":[{"id":399444496,"run_id":29679449,"run_url":"https://api.github.com/repos/octo-org/octo-repo/actions/runs/29679449","node_id":"MDEyOldvcmtmbG93IEpvYjM5OTQ0NDQ5Ng==","head_sha":"f83a356604ae3c5d03e1b46ef4d1ca77d64a90b0","url":"https://api.github.com/repos/octo-org/octo-repo/actions/jobs/399444496","html_url":"https://github.com/octo-org/octo-repo/runs/399444496","status":"queued","conclusion":"success","started_at":"2020-01-20T17:42:40Z","completed_at":"2020-01-20T17:44:39Z","name":"build","steps":[{"name":"Set up job","status":"completed","conclusion":"success","number":1,"started_at":"2020-01-20T09:42:40.000-08:00","completed_at":"2020-01-20T09:42:41.000-08:00"},{"name":"Run actions/checkout@v2","status":"queued","conclusion":"success","number":2,"started_at":"2020-01-20T09:42:41.000-08:00","completed_at":"2020-01-20T09:42:45.000-08:00"},{"name":"Set up Ruby","status":"completed","conclusion":"success","number":3,"started_at":"2020-01-20T09:42:45.000-08:00","completed_at":"2020-01-20T09:42:45.000-08:00"},{"name":"Run actions/cache@v3","status":"completed","conclusion":"success","number":4,"started_at":"2020-01-20T09:42:45.000-08:00","completed_at":"2020-01-20T09:42:48.000-08:00"},{"name":"Install Bundler","status":"completed","conclusion":"success","number":5,"started_at":"2020-01-20T09:42:48.000-08:00","completed_at":"2020-01-20T09:42:52.000-08:00"},{"name":"Install Gems","status":"completed","conclusion":"success","number":6,"started_at":"2020-01-20T09:42:52.000-08:00","completed_at":"2020-01-20T09:42:53.000-08:00"},{"name":"Run Tests","status":"completed","conclusion":"success","number":7,"started_at":"2020-01-20T09:42:53.000-08:00","completed_at":"2020-01-20T09:42:59.000-08:00"},{"name":"Deploy to Heroku","status":"completed","conclusion":"success","number":8,"started_at":"2020-01-20T09:42:59.000-08:00","completed_at":"2020-01-20T09:44:39.000-08:00"},{"name":"Post actions/cache@v3","status":"completed","conclusion":"success","number":16,"started_at":"2020-01-20T09:44:39.000-08:00","completed_at":"2020-01-20T09:44:39.000-08:00"},{"name":"Complete job","status":"completed","conclusion":"success","number":17,"started_at":"2020-01-20T09:44:39.000-08:00","completed_at":"2020-01-20T09:44:39.000-08:00"}],"check_run_url":"https://api.github.com/repos/octo-org/octo-repo/check-runs/399444496","labels":["self-hosted","foo","bar"],"runner_id":1,"runner_name":"my runner","runner_group_id":2,"runner_group_name":"my runner group","workflow_name":"CI","head_branch":"main"}]}`
 
 type parseGitHubRunnerMetadataTestData struct {
-	testName string
-	metadata map[string]string
-	hasEnvs bool
-	isError bool
+	testName      string
+	metadata      map[string]string
+	hasEnvs       bool
+	isError       bool
+	expectedError string
 }
 
 var testGitHubRunnerResolvedEnv = map[string]string{
@@ -34,55 +35,61 @@ var testGitHubRunnerResolvedEnv = map[string]string{
 }
 
 var testGitHubRunnerMetadata = []parseGitHubRunnerMetadataTestData{
-	// TODO: Add tests for no environment variables set
+	// TODO: add correct error checks, not just false
 	// nothing passed
-	{"empty", map[string]string{}, true, false},
+	{"empty", map[string]string{}, true, false, ""},
 	// properly formed
-	{"properly formed", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "personalAccessToken": "myToken", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, true, false},
+	{"properly formed", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "personalAccessToken": "myToken", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, true, false, ""},
 	// properly formed with no labels and no repos
-	{"properly formed", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "owner": "ownername", "personalAccessToken": "myToken", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, true, false},
+	{"properly formed", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "owner": "ownername", "personalAccessToken": "myToken", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, true, false, ""},
+	// string for int64
+	{"string for int64-1", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "owner": "ownername", "personalAccessToken": "myToken", "targetWorkflowQueueLength": "a", "activationTargetWorkflowQueueLength": "1"}, true, true, "error parsing targetWorkflowQueueLength: strconv.ParseInt: parsing \"a\": invalid syntax"},
+	// string for int64
+	{"string for int64-2", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "owner": "ownername", "personalAccessToken": "myToken", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "a"}, true, true, "error parsing activationTargetWorkflowQueueLength: strconv.ParseInt: parsing \"a\": invalid syntax"},
 	// formed from env
-	{"formed from env", map[string]string{"githubApiURLFromEnv": "GITHUB_API_URL", "ownerFromEnv": "OWNER", "personalAccessTokenFromEnv": "ACCESS_TOKEN", "repos": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, true, false},
+	{"formed from env", map[string]string{"githubApiURLFromEnv": "GITHUB_API_URL", "ownerFromEnv": "OWNER", "personalAccessTokenFromEnv": "ACCESS_TOKEN", "repos": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, true, false, ""},
 	// formed from default env
-	{"formed from default env", map[string]string{"owner": "ownername", "repos": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, true, false},
+	{"formed from default env", map[string]string{"owner": "ownername", "repos": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, true, false, ""},
 	// missing runnerScope
-	{"missing runnerScope", map[string]string{"githubApiURL": "https://api.github.com", "owner": "ownername", "personalAccessToken": "myToken", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, true, false},
+	{"missing runnerScope", map[string]string{"githubApiURL": "https://api.github.com", "owner": "ownername", "personalAccessToken": "myToken", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, true, false, ""},
 	// empty runnerScope
-	{"empty runnerScope", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "", "owner": "ownername", "personalAccessToken": "myToken", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, true, true},
+	{"empty runnerScope", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "", "owner": "ownername", "personalAccessToken": "myToken", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, true, false, ""},
 	// missing owner
-	{"missing owner", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "personalAccessTokenFomEnv": "ACCESS_TOKEN", "repos": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, true, true},
+	{"missing owner", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "personalAccessTokenFomEnv": "ACCESS_TOKEN", "repos": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, true, true, "no owner given"},
 	// empty owner
-	{"empty owner", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "owner": "", "personalAccessTokenFomEnv": "ACCESS_TOKEN", "repos": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, true, true},
-	// missing token
-	{"missing token", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "owner": "ownername", "personalAccessToken": "", "repos": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, true, true},
+	{"empty owner", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "owner": "", "personalAccessTokenFomEnv": "ACCESS_TOKEN", "repos": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, true, true, "no owner given"},
+	// empty token
+	{"empty token", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "owner": "ownername", "personalAccessToken": "", "repos": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, true, false, ""},
 	// nothing passed
-	{"empty, no envs", map[string]string{}, false, true},
+	{"empty, no envs", map[string]string{}, false, true, "no runnerScope given"},
+	//  empty githubApiURL
+	{"empty githubApiURL, no envs", map[string]string{"githubApiURL": "", "runnerScope": "org", "owner": "ownername", "personalAccessToken": "myToken", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, false, ""},
 	// properly formed
-	{"properly formed, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "personalAccessToken": "myToken", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, false},
+	{"properly formed, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "personalAccessToken": "myToken", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, false, ""},
 	// properly formed with no labels and no repos
-	{"properly formed, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "owner": "ownername", "personalAccessToken": "myToken", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, false},
+	{"properly formed, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "ent", "owner": "ownername", "personalAccessToken": "myToken", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, false, ""},
 	// formed from env
-	{"formed from env, no envs", map[string]string{"githubApiURLFromEnv": "GITHUB_API_URL", "ownerFromEnv": "OWNER", "personalAccessTokenFromEnv": "ACCESS_TOKEN", "repos": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, true},
+	{"formed from env, no envs", map[string]string{"githubApiURLFromEnv": "GITHUB_API_URL", "ownerFromEnv": "OWNER", "personalAccessTokenFromEnv": "ACCESS_TOKEN", "repos": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "1"}, false, true, "no runnerScope given"},
 	// formed from default env
-	{"formed from default env, no envs", map[string]string{"owner": "ownername", "repos": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, true},
+	{"formed from default env, no envs", map[string]string{"owner": "ownername", "repos": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, true, "no runnerScope given"},
 	// missing runnerScope
-	{"missing runnerScope, no envs", map[string]string{"githubApiURL": "https://api.github.com", "owner": "ownername", "personalAccessToken": "myToken", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, true},
+	{"missing runnerScope, no envs", map[string]string{"githubApiURL": "https://api.github.com", "owner": "ownername", "personalAccessToken": "myToken", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, true, "no runnerScope given"},
 	// empty runnerScope
-	{"empty runnerScope, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "", "owner": "ownername", "personalAccessToken": "myToken", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, true},
+	{"empty runnerScope, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "", "owner": "ownername", "personalAccessToken": "myToken", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, true, "no runnerScope given"},
 	// empty owner
-	{"empty owner, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "owner": "", "personalAccessTokenFomEnv": "ACCESS_TOKEN", "repos": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, true},
+	{"empty owner, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "owner": "", "personalAccessTokenFomEnv": "ACCESS_TOKEN", "repos": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, true, "no owner given"},
 	// missing owner
-	{"missing owner, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "personalAccessTokenFomEnv": "ACCESS_TOKEN", "repos": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, true},
+	{"missing owner, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "personalAccessTokenFomEnv": "ACCESS_TOKEN", "repos": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, true, "no owner given"},
 	// missing labels, no envs
-	{"missing labels, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "personalAccessToken": "myToken", "repos": "reponame,otherrepo", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, false},
+	{"missing labels, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "personalAccessToken": "myToken", "repos": "reponame,otherrepo", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, false, ""},
 	// empty labels, no envs
-	{"empty labels, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "personalAccessToken": "myToken", "labels": "", "repos": "reponame,otherrepo", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, false},
+	{"empty labels, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "personalAccessToken": "myToken", "labels": "", "repos": "reponame,otherrepo", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, false, ""},
 	// missing repos, no envs
-	{"missing repos, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "personalAccessToken": "myToken", "labels": "golang", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, false},
+	{"missing repos, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "personalAccessToken": "myToken", "labels": "golang", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, false, ""},
 	// empty repos, no envs
-	{"empty repos, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "personalAccessToken": "myToken", "labels": "golang", "repos": "", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, false},
+	{"empty repos, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "personalAccessToken": "myToken", "labels": "golang", "repos": "", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, false, ""},
 	// missing token
-	{"missing token, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "owner": "ownername", "personalAccessToken": "", "repos": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, true},
+	{"missing token, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "owner": "ownername", "personalAccessToken": "", "repos": "reponame", "targetWorkflowQueueLength": "1", "activationTargetWorkflowQueueLength": "0"}, false, true, "no personalAccessToken given"},
 }
 
 func TestGitHubRunnerParseMetadata(t *testing.T) {
@@ -97,7 +104,10 @@ func TestGitHubRunnerParseMetadata(t *testing.T) {
 			if testData.isError && err == nil {
 				t.Fatal("expected error but got none")
 			}
-			if !testData.isError && err != nil {
+			if testData.isError && err != nil && err.Error() != testData.expectedError {
+				t.Fatal("expected error " + testData.expectedError + " but got error " + err.Error())
+			}
+			if !testData.isError && err != nil && err.Error() != testData.expectedError {
 				t.Fatalf("expected no error but got %s", err)
 			}
 		})
@@ -139,7 +149,6 @@ func apiStubHandler(hasRateLeft bool) *httptest.Server {
 		futureReset = futureReset.Add(time.Minute * 30)
 		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(futureReset.Unix()))
 		w.WriteHeader(http.StatusOK)
-		fmt.Println(r.URL.String())
 		if strings.HasSuffix(r.URL.String(), "jobs") {
 			_, _ = w.Write([]byte(testGhWFJobResponse))
 		}
@@ -149,6 +158,13 @@ func apiStubHandler(hasRateLeft bool) *httptest.Server {
 		if strings.HasSuffix(r.URL.String(), "repos") {
 			_, _ = w.Write([]byte(testGhUserReposResponse))
 		}
+	}))
+}
+
+func apiStubHandler404() *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte("not found"))
 	}))
 }
 
@@ -172,7 +188,6 @@ func TestNewGitHubRunnerScaler_QueueLength_NoRateLeft(t *testing.T) {
 	}
 
 	if !strings.HasPrefix(err.Error(), "GitHub API rate limit exceeded") {
-		fmt.Println(err.Error())
 		t.Fail()
 	}
 }
@@ -193,11 +208,80 @@ func TestNewGitHubRunnerScaler_QueueLength_SingleRepo(t *testing.T) {
 	queueLen, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.TODO())
 
 	if err != nil {
-		fmt.Println(err)
 		t.Fail()
 	}
 
 	if queueLen != 1 {
+		t.Fail()
+	}
+}
+
+func TestNewGitHubRunnerScaler_404(t *testing.T) {
+	var apiStub = apiStubHandler404()
+
+	meta := getGitHubTestMetaData(apiStub.URL)
+
+	mockGitHubRunnerScaler := githubRunnerScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	mockGitHubRunnerScaler.metadata.repos = []string{"test"}
+	mockGitHubRunnerScaler.metadata.labels = []string{"foo", "bar"}
+
+	_, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.TODO())
+
+	if err == nil {
+		t.Fail()
+	}
+
+	if !strings.HasSuffix(err.Error(), "404 response: not found") {
+		t.Fail()
+	}
+}
+
+func TestNewGitHubRunnerScaler_BadConnection(t *testing.T) {
+	meta := getGitHubTestMetaData("http://127.0.0.1:9999")
+
+	mockGitHubRunnerScaler := githubRunnerScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	mockGitHubRunnerScaler.metadata.repos = []string{"test"}
+	mockGitHubRunnerScaler.metadata.labels = []string{"foo", "bar"}
+
+	_, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.TODO())
+
+	if err == nil {
+		t.Fail()
+	}
+
+	if !strings.HasSuffix(err.Error(), "connect: connection refused") {
+		fmt.Println(err.Error())
+		t.Fail()
+	}
+}
+
+func TestNewGitHubRunnerScaler_BadURL(t *testing.T) {
+	meta := getGitHubTestMetaData(string([]byte{199, 199, 199, 199, 199, 199, 199, 199})) // invalid URL
+
+	mockGitHubRunnerScaler := githubRunnerScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	mockGitHubRunnerScaler.metadata.repos = []string{"test"}
+	mockGitHubRunnerScaler.metadata.labels = []string{"foo", "bar"}
+
+	_, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.TODO())
+
+	if err == nil {
+		t.Fail()
+	}
+
+	if !strings.HasSuffix(err.Error(), "unsupported protocol scheme \"\"") {
+		fmt.Println(err.Error())
 		t.Fail()
 	}
 }
@@ -251,7 +335,7 @@ func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_Assigned(t *testing.T) {
 	}
 }
 
-func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_Pulled(t *testing.T) {
+func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_PulledUserRepos(t *testing.T) {
 	var apiStub = apiStubHandler(true)
 
 	meta := getGitHubTestMetaData(apiStub.URL)
@@ -269,6 +353,98 @@ func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_Pulled(t *testing.T) {
 	}
 
 	if queueLen != 2 {
+		t.Fail()
+	}
+}
+
+func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_PulledOrgRepos(t *testing.T) {
+	var apiStub = apiStubHandler(true)
+
+	meta := getGitHubTestMetaData(apiStub.URL)
+
+	mockGitHubRunnerScaler := githubRunnerScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	mockGitHubRunnerScaler.metadata.runnerScope = "org"
+
+	queueLen, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.TODO())
+
+	if err != nil {
+		fmt.Println(err)
+		t.Fail()
+	}
+
+	if queueLen != 2 {
+		t.Fail()
+	}
+}
+
+func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_PulledEntRepos(t *testing.T) {
+	var apiStub = apiStubHandler(true)
+
+	meta := getGitHubTestMetaData(apiStub.URL)
+
+	mockGitHubRunnerScaler := githubRunnerScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	mockGitHubRunnerScaler.metadata.runnerScope = "ent"
+
+	queueLen, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.TODO())
+
+	if err != nil {
+		fmt.Println(err)
+		t.Fail()
+	}
+
+	if queueLen != 2 {
+		t.Fail()
+	}
+}
+
+func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_PulledBadRepos(t *testing.T) {
+	var apiStub = apiStubHandler(true)
+
+	meta := getGitHubTestMetaData(apiStub.URL)
+
+	mockGitHubRunnerScaler := githubRunnerScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	mockGitHubRunnerScaler.metadata.runnerScope = "bad"
+
+	_, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.TODO())
+
+	if err == nil {
+		t.Fail()
+	}
+
+	if !strings.HasPrefix(err.Error(), "runnerScope bad not supported") {
+		t.Fail()
+	}
+}
+
+func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_PulledRepos_NoRate(t *testing.T) {
+	var apiStub = apiStubHandler(false)
+
+	meta := getGitHubTestMetaData(apiStub.URL)
+
+	mockGitHubRunnerScaler := githubRunnerScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	_, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.TODO())
+
+	if err == nil {
+		t.Fail()
+	}
+
+	if !strings.HasPrefix(err.Error(), "GitHub API rate limit exceeded") {
 		t.Fail()
 	}
 }

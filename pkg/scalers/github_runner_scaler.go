@@ -21,6 +21,9 @@ const (
 	defaultTargetWorkflowQueueLength           = 1
 	defaultActivationTargetWorkflowQueueLength = 0
 	defaultGithubAPIURL                        = "https://api.github.com"
+	ORG                                        = "org"
+	ENT                                        = "ent"
+	REPO                                       = "repo"
 )
 
 type githubRunnerScaler struct {
@@ -341,10 +344,7 @@ func NewGitHubRunnerScaler(config *ScalerConfig) (Scaler, error) {
 
 // getValueFromMetaOrEnv returns the value of the given key from the metadata or the environment variables
 func getValueFromMetaOrEnv(key string, metadata map[string]string, env map[string]string, defEnv string) (string, error) {
-	if val, ok := metadata[key]; ok {
-		if val == "" {
-			return "", fmt.Errorf("no %s given", key)
-		}
+	if val, ok := metadata[key]; ok && val != "" {
 		return val, nil
 	} else if val, ok := metadata[key+"FromEnv"]; ok && val != "" {
 		return env[val], nil
@@ -352,6 +352,37 @@ func getValueFromMetaOrEnv(key string, metadata map[string]string, env map[strin
 		return val, nil
 	}
 	return "", fmt.Errorf("no %s given", key)
+}
+
+func getOwner(runnerScope string, config *ScalerConfig) (string, error) {
+	var err error
+	var owner string
+	switch runnerScope {
+	case ORG:
+		owner, err = getValueFromMetaOrEnv("owner", config.TriggerMetadata, config.ResolvedEnv, "ORG_NAME")
+	case ENT:
+		owner, err = getValueFromMetaOrEnv("owner", config.TriggerMetadata, config.ResolvedEnv, "ENTERPRISE_NAME")
+	default:
+		owner, err = getValueFromMetaOrEnv("owner", config.TriggerMetadata, config.ResolvedEnv, "")
+	}
+	if err != nil {
+		return "", err
+	}
+	return owner, nil
+}
+
+// getInt64ValueFromMetaOrEnv returns the value of the given key from the metadata or the environment variables
+func getInt64ValueFromMetaOrEnv(key string, config *ScalerConfig, defVal int64) (int64, error) {
+	sInt, err := getValueFromMetaOrEnv(key, config.TriggerMetadata, config.ResolvedEnv, "")
+	if err != nil {
+		return defVal, nil
+	}
+	
+	goodInt, err := strconv.ParseInt(sInt, 10, 64)
+	if err != nil {
+		return -1, fmt.Errorf("error parsing %s: %w", key, err)
+	}
+	return goodInt, nil
 }
 
 func parseGitHubRunnerMetadata(config *ScalerConfig) (*githubRunnerMetadata, error) {
@@ -365,38 +396,19 @@ func parseGitHubRunnerMetadata(config *ScalerConfig) (*githubRunnerMetadata, err
 		return nil, err
 	}
 
-	switch meta.runnerScope {
-	case "org":
-		meta.owner, err = getValueFromMetaOrEnv("owner", config.TriggerMetadata, config.ResolvedEnv, "ORG_NAME")
-	case "ent":
-		meta.owner, err = getValueFromMetaOrEnv("owner", config.TriggerMetadata, config.ResolvedEnv, "ENTERPRISE_NAME")
-	default:
-		meta.owner, err = getValueFromMetaOrEnv("owner", config.TriggerMetadata, config.ResolvedEnv, "")
-	}
+	meta.owner, err = getOwner(meta.runnerScope, config)
 	if err != nil {
 		return nil, err
 	}
 
-	sTargetWorkflowQueueLength, err := getValueFromMetaOrEnv("targetWorkflowQueueLength", config.TriggerMetadata, config.ResolvedEnv, "TARGET_WORKFLOW_QUEUE_LENGTH")
+	meta.targetWorkflowQueueLength, err = getInt64ValueFromMetaOrEnv("targetWorkflowQueueLength", config, defaultTargetWorkflowQueueLength)
 	if err != nil {
-		meta.targetWorkflowQueueLength = defaultTargetWorkflowQueueLength
-	} else {
-		targetQueueLength, err := strconv.ParseInt(sTargetWorkflowQueueLength, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing targetWorkflowQueueLength: %w", err)
-		}
-		meta.targetWorkflowQueueLength = targetQueueLength
+		return nil, err
 	}
 
-	sActivationTargetWorkflowQueueLength, _ := getValueFromMetaOrEnv("activationTargetWorkflowQueueLength", config.TriggerMetadata, config.ResolvedEnv, "ACTIVATION_TARGET_WORKFLOW_QUEUE_LENGTH")
+	meta.activationTargetWorkflowQueueLength, err = getInt64ValueFromMetaOrEnv("activationTargetWorkflowQueueLength", config, defaultActivationTargetWorkflowQueueLength)
 	if err != nil {
-		meta.activationTargetWorkflowQueueLength = defaultActivationTargetWorkflowQueueLength
-	} else {
-		activationTargetWorkflowQueueLength, err := strconv.ParseInt(sActivationTargetWorkflowQueueLength, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing activationTargetWorkflowQueueLength: %w", err)
-		}
-		meta.activationTargetWorkflowQueueLength = activationTargetWorkflowQueueLength
+		return nil, err
 	}
 
 	labels, _ := getValueFromMetaOrEnv("labels", config.TriggerMetadata, config.ResolvedEnv, "LABELS")
@@ -409,8 +421,8 @@ func parseGitHubRunnerMetadata(config *ScalerConfig) (*githubRunnerMetadata, err
 		meta.repos = strings.Split(repos, ",")
 	}
 
-	meta.githubAPIURL, _ = getValueFromMetaOrEnv("githubApiURL", config.TriggerMetadata, config.ResolvedEnv, "GITHUB_API_URL")
-	if meta.githubAPIURL == "" {
+	meta.githubAPIURL, err = getValueFromMetaOrEnv("githubApiURL", config.TriggerMetadata, config.ResolvedEnv, "GITHUB_API_URL")
+	if err != nil {
 		meta.githubAPIURL = defaultGithubAPIURL
 	}
 
@@ -435,12 +447,12 @@ func (s *githubRunnerScaler) getRepositories(ctx context.Context) ([]string, err
 
 	var url string
 	switch s.metadata.runnerScope {
-	case "org":
+	case ORG:
 		url = fmt.Sprintf("%s/orgs/%s/repos", s.metadata.githubAPIURL, s.metadata.owner)
-	case "repo":
+	case REPO:
 		url = fmt.Sprintf("%s/users/%s/repos", s.metadata.githubAPIURL, s.metadata.owner)
-	case "ent":
-		// not implemented yet
+	case ENT:
+		url = fmt.Sprintf("%s/orgs/%s/repos", s.metadata.githubAPIURL, s.metadata.owner)
 	default:
 		return nil, fmt.Errorf("runnerScope %s not supported", s.metadata.runnerScope)
 	}
@@ -452,7 +464,6 @@ func (s *githubRunnerScaler) getRepositories(ctx context.Context) ([]string, err
 	var repos []Repo
 	err = json.Unmarshal(body, &repos)
 	if err != nil {
-		s.logger.Error(err, "Cannot unmarshal GitHub Workflow Repos API response")
 		return nil, err
 	}
 
@@ -479,24 +490,21 @@ func getGithubRequest(ctx context.Context, url string, metadata *githubRunnerMet
 		return []byte{}, err
 	}
 
-	githubAPIRemaining, err := strconv.Atoi(r.Header.Get("X-RateLimit-Remaining"))
-	if err != nil {
-		return []byte{}, fmt.Errorf("cannot get the rate limit remaining from API Call")
-	}
-
-	if githubAPIRemaining == 0 {
-		resetTime, _ := strconv.ParseInt(r.Header.Get("X-RateLimit-Reset"), 10, 64)
-		return []byte{}, fmt.Errorf("GitHub API rate limit exceeded, resets at %s", time.Unix(resetTime, 0))
-	}
-
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		return []byte{}, err
 	}
-	r.Body.Close()
+	_ = r.Body.Close()
 
-	if r.StatusCode != 200 {
+	if r.StatusCode != 200 || r.Header.Get("X-RateLimit-Remaining") == "" {
 		return []byte{}, fmt.Errorf("the GitHub REST API returned error. url: %s status: %d response: %s", url, r.StatusCode, string(b))
+	}
+
+	githubAPIRemaining, _ := strconv.Atoi(r.Header.Get("X-RateLimit-Remaining"))
+
+	if githubAPIRemaining == 0 {
+		resetTime, _ := strconv.ParseInt(r.Header.Get("X-RateLimit-Reset"), 10, 64)
+		return []byte{}, fmt.Errorf("GitHub API rate limit exceeded, resets at %s", time.Unix(resetTime, 0))
 	}
 
 	return b, nil
@@ -525,7 +533,6 @@ func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRun
 	var jobs Jobs
 	err = json.Unmarshal(body, &jobs)
 	if err != nil {
-		s.logger.Error(err, "Cannot unmarshal GitHub Workflow Jobs API response")
 		return nil, err
 	}
 
@@ -543,7 +550,6 @@ func (s *githubRunnerScaler) getWorkflowRuns(ctx context.Context, repoName strin
 	var wfrs WorkflowRuns
 	err = json.Unmarshal(body, &wfrs)
 	if err != nil {
-		s.logger.Error(err, "Cannot unmarshal GitHub Workflow Runs API response")
 		return nil, err
 	}
 
@@ -586,7 +592,6 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 	for _, repo := range repos {
 		wfrs, err := s.getWorkflowRuns(ctx, repo)
 		if err != nil {
-			s.logger.Error(err, "Cannot unmarshal GitHub Workflow Runs API response")
 			return -1, err
 		}
 		allWfrs = append(allWfrs, *wfrs)
