@@ -30,7 +30,7 @@ const (
 	promActivationThreshold = "activationThreshold"
 	promNamespace           = "namespace"
 	promCortexScopeOrgID    = "cortexOrgID"
-	promCortexHeaderKey     = "X-Scope-OrgID"
+	promCustomHeaders       = "customHeaders"
 	ignoreNullValues        = "ignoreNullValues"
 	unsafeSsl               = "unsafeSsl"
 )
@@ -55,7 +55,7 @@ type prometheusMetadata struct {
 	prometheusAuth      *authentication.AuthMeta
 	namespace           string
 	scalerIndex         int
-	cortexOrgID         string
+	customHeaders       map[string]string
 	// sometimes should consider there is an error we can accept
 	// default value is true/t, to ignore the null value return from prometheus
 	// change to false/f if can not accept prometheus return null values
@@ -161,7 +161,16 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 	}
 
 	if val, ok := config.TriggerMetadata[promCortexScopeOrgID]; ok && val != "" {
-		meta.cortexOrgID = val
+		return nil, fmt.Errorf("cortexOrgID is deprecated, please use customHeaders instead")
+	}
+
+	if val, ok := config.TriggerMetadata[promCustomHeaders]; ok && val != "" {
+		customHeaders, err := kedautil.ParseStringList(val)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing %s: %w", promCustomHeaders, err)
+		}
+
+		meta.customHeaders = customHeaders
 	}
 
 	meta.ignoreNullValues = defaultIgnoreNullValues
@@ -229,14 +238,19 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		return -1, err
 	}
 
-	if s.metadata.prometheusAuth != nil && s.metadata.prometheusAuth.EnableBearerAuth {
-		req.Header.Add("Authorization", authentication.GetBearerToken(s.metadata.prometheusAuth))
-	} else if s.metadata.prometheusAuth != nil && s.metadata.prometheusAuth.EnableBasicAuth {
-		req.SetBasicAuth(s.metadata.prometheusAuth.Username, s.metadata.prometheusAuth.Password)
+	for headerName, headerValue := range s.metadata.customHeaders {
+		req.Header.Add(headerName, headerValue)
 	}
 
-	if s.metadata.cortexOrgID != "" {
-		req.Header.Add(promCortexHeaderKey, s.metadata.cortexOrgID)
+	switch {
+	case s.metadata.prometheusAuth == nil:
+		break
+	case s.metadata.prometheusAuth.EnableBearerAuth:
+		req.Header.Set("Authorization", authentication.GetBearerToken(s.metadata.prometheusAuth))
+	case s.metadata.prometheusAuth.EnableBasicAuth:
+		req.SetBasicAuth(s.metadata.prometheusAuth.Username, s.metadata.prometheusAuth.Password)
+	case s.metadata.prometheusAuth.EnableCustomAuth:
+		req.Header.Set(s.metadata.prometheusAuth.CustomAuthHeader, s.metadata.prometheusAuth.CustomAuthValue)
 	}
 
 	r, err := s.httpClient.Do(req)
