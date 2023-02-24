@@ -46,8 +46,14 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": ""}, true},
 	// ignoreNullValues with wrong value
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "ignoreNullValues": "xxxx"}, true},
-
+	// unsafeSsl
 	{map[string]string{"serverAddress": "https://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "unsafeSsl": "true"}, false},
+	// customHeaders
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "customHeaders": "key1=value1,key2=value2"}, false},
+	// customHeaders with wrong format
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "customHeaders": "key1=value1,key2"}, true},
+	// deprecated cortexOrgID
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "cortexOrgID": "my-org"}, true},
 }
 
 var prometheusMetricIdentifiers = []prometheusMetricIdentifier{
@@ -82,6 +88,12 @@ var testPrometheusAuthMetadata = []prometheusAuthMetadataTestData{
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "authModes": "tls, basic"}, map[string]string{"ca": "caaa", "cert": "ceert", "key": "keey", "username": "user", "password": "pass"}, false},
 
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "authModes": "tls,basic"}, map[string]string{"username": "user", "password": "pass"}, true},
+	// success custom auth
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "authModes": "custom"}, map[string]string{"customAuthHeader": "header", "customAuthValue": "value"}, false},
+	// fail custom auth with no customAuthHeader
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "authModes": "custom"}, map[string]string{"customAuthHeader": ""}, true},
+	// fail custom auth with no customAuthValue
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "authModes": "custom"}, map[string]string{"customAuthValue": ""}, true},
 }
 
 func TestPrometheusParseMetadata(t *testing.T) {
@@ -129,7 +141,8 @@ func TestPrometheusScalerAuthParams(t *testing.T) {
 		if err == nil {
 			if (meta.prometheusAuth.EnableBearerAuth && !strings.Contains(testData.metadata["authModes"], "bearer")) ||
 				(meta.prometheusAuth.EnableBasicAuth && !strings.Contains(testData.metadata["authModes"], "basic")) ||
-				(meta.prometheusAuth.EnableTLS && !strings.Contains(testData.metadata["authModes"], "tls")) {
+				(meta.prometheusAuth.EnableTLS && !strings.Contains(testData.metadata["authModes"], "tls")) ||
+				(meta.prometheusAuth.EnableCustomAuth && !strings.Contains(testData.metadata["authModes"], "custom")) {
 				t.Error("wrong auth mode detected")
 			}
 		}
@@ -300,7 +313,7 @@ func TestPrometheusScalerExecutePromQuery(t *testing.T) {
 	}
 }
 
-func TestPrometheusScalerCortexHeader(t *testing.T) {
+func TestPrometheusScalerCustomHeaders(t *testing.T) {
 	testData := prometheusQromQueryResultTestData{
 		name:             "no values",
 		bodyStr:          `{"data":{"result":[]}}`,
@@ -309,10 +322,17 @@ func TestPrometheusScalerCortexHeader(t *testing.T) {
 		isError:          false,
 		ignoreNullValues: true,
 	}
-	cortexOrgValue := "my-org"
+	customHeadersValue := map[string]string{
+		"X-Client-Id":          "cid",
+		"X-Tenant-Id":          "tid",
+		"X-Organization-Token": "oid",
+	}
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		reqHeader := request.Header.Get(promCortexHeaderKey)
-		assert.Equal(t, reqHeader, cortexOrgValue)
+		for headerName, headerValue := range customHeadersValue {
+			reqHeader := request.Header.Get(headerName)
+			assert.Equal(t, reqHeader, headerValue)
+		}
+
 		writer.WriteHeader(testData.responseStatus)
 		if _, err := writer.Write([]byte(testData.bodyStr)); err != nil {
 			t.Fatal(err)
@@ -322,7 +342,7 @@ func TestPrometheusScalerCortexHeader(t *testing.T) {
 	scaler := prometheusScaler{
 		metadata: &prometheusMetadata{
 			serverAddress:    server.URL,
-			cortexOrgID:      cortexOrgValue,
+			customHeaders:    customHeadersValue,
 			ignoreNullValues: testData.ignoreNullValues,
 		},
 		httpClient: http.DefaultClient,
