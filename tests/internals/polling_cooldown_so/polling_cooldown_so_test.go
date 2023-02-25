@@ -48,8 +48,8 @@ type templateData struct {
 	MinReplicas                 string
 	MaxReplicas                 string
 	MetricValue                 int
-	PollingInterval             string
-	CooldownPeriod              string
+	PollingInterval             int
+	CooldownPeriod              int
 }
 
 const (
@@ -165,7 +165,6 @@ metadata:
   generateName: update-ms-value-
   namespace: {{.TestNamespace}}
 spec:
-  ttlSecondsAfterFinished: 0
   template:
     spec:
       containers:
@@ -222,8 +221,8 @@ func testPollingIntervalUp(t *testing.T, kc *kubernetes.Clientset, data template
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 0, 180, 3),
 		"replica count should be %d after 3 minutes", 0)
 
-	// wait for atleast 60+2 seconds before getting new metric
-	data.PollingInterval = fmt.Sprintf("%v", 60+2) // 2 seconds as a reserve
+	// wait for atleast 60+5 seconds before getting new metric
+	data.PollingInterval = 60 + 5 // 5 seconds as a reserve
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
 	data.MetricValue = 1
@@ -238,8 +237,8 @@ func testPollingIntervalUp(t *testing.T, kc *kubernetes.Clientset, data template
 func testPollingIntervalDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- test Polling Interval down ---")
 
-	data.CooldownPeriod = fmt.Sprintf("%v", 0) // remove cooldownPeriod to test PI
-	data.PollingInterval = fmt.Sprintf("%v", 1)
+	data.CooldownPeriod = 0 // remove cooldownPeriod to test PI
+	data.PollingInterval = 1
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
 	data.MetricValue = 1
@@ -248,8 +247,9 @@ func testPollingIntervalDown(t *testing.T, kc *kubernetes.Clientset, data templa
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 1, 180, 3),
 		"replica count should be %d after 3 minutes", 1)
 
-	// wait for atleast 60+2 seconds before getting new metric
-	data.PollingInterval = fmt.Sprintf("%v", 60+2) // 2 seconds as a reserve
+	// wait for atleast 60+5 seconds before getting new metric
+	data.PollingInterval = 60 + 5 // 5 seconds as a reserve
+
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
 	data.MetricValue = 0 // go to minReplicas
@@ -264,8 +264,8 @@ func testPollingIntervalDown(t *testing.T, kc *kubernetes.Clientset, data templa
 func testCooldownPeriod(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- test Cooldown Period ---")
 
-	data.PollingInterval = fmt.Sprintf("%v", 0)   // remove polling interval to test CP
-	data.CooldownPeriod = fmt.Sprintf("%v", 60+2) // 2 seconds as a reserve
+	data.PollingInterval = 0     // remove polling interval to test CP
+	data.CooldownPeriod = 60 + 5 // 5 seconds as a reserve
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
 	data.MetricValue = 1
@@ -296,8 +296,8 @@ func getTemplateData() (templateData, []Template) {
 			MinReplicas:                 fmt.Sprintf("%v", minReplicas),
 			MaxReplicas:                 fmt.Sprintf("%v", maxReplicas),
 			MetricValue:                 0,
-			PollingInterval:             fmt.Sprintf("%v", pollingInterval),
-			CooldownPeriod:              fmt.Sprintf("%v", cooldownPeriod),
+			PollingInterval:             pollingInterval,
+			CooldownPeriod:              cooldownPeriod,
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "metricsServerDeploymentTemplate", Config: metricsServerDeploymentTemplate},
