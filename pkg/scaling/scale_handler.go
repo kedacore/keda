@@ -624,7 +624,5 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 		logger.V(1).Info("scaler error encountered, clearing scaler cache")
 	}
 
-	return result, nil
+	return isScaledObjectActive, isScalerError, metricsRecord, nil
 }
-
-
