@@ -26,6 +26,8 @@ const (
 	REPO                                       = "repo"
 )
 
+var reservedLabels = []string{"self-hosted", "linux", "x64"}
+
 type githubRunnerScaler struct {
 	metricType v2.MetricTargetType
 	metadata   *githubRunnerMetadata
@@ -377,7 +379,7 @@ func getInt64ValueFromMetaOrEnv(key string, config *ScalerConfig, defVal int64) 
 	if err != nil {
 		return defVal, nil
 	}
-	
+
 	goodInt, err := strconv.ParseInt(sInt, 10, 64)
 	if err != nil {
 		return -1, fmt.Errorf("error parsing %s: %w", key, err)
@@ -556,8 +558,6 @@ func (s *githubRunnerScaler) getWorkflowRuns(ctx context.Context, repoName strin
 	return &wfrs, nil
 }
 
-var reservedLabels = []string{"self-hosted", "linux", "x64"}
-
 func contains(s []string, e string) bool {
 	for _, a := range s {
 		if strings.EqualFold(a, e) {
@@ -606,7 +606,7 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 			return -1, err
 		}
 		for _, job := range jobs {
-			if job.Status == "queued" && (canRunnerMatchLabels(job.Labels, s.metadata.labels) || s.metadata.labels == nil) {
+			if job.Status == "queued" && canRunnerMatchLabels(job.Labels, s.metadata.labels) {
 				queueCount++
 			}
 		}

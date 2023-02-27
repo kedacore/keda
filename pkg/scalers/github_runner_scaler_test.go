@@ -216,6 +216,54 @@ func TestNewGitHubRunnerScaler_QueueLength_SingleRepo(t *testing.T) {
 	}
 }
 
+func TestNewGitHubRunnerScaler_QueueLength_SingleRepo_ExtraRunnerLabels(t *testing.T) {
+	var apiStub = apiStubHandler(true)
+
+	meta := getGitHubTestMetaData(apiStub.URL)
+
+	mockGitHubRunnerScaler := githubRunnerScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	mockGitHubRunnerScaler.metadata.repos = []string{"test"}
+	mockGitHubRunnerScaler.metadata.labels = []string{"foo", "bar", "other", "more"}
+
+	queueLen, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.TODO())
+
+	if err != nil {
+		t.Fail()
+	}
+
+	if queueLen != 1 {
+		t.Fail()
+	}
+}
+
+func TestNewGitHubRunnerScaler_QueueLength_SingleRepo_LessRunnerLabels(t *testing.T) {
+	var apiStub = apiStubHandler(true)
+
+	meta := getGitHubTestMetaData(apiStub.URL)
+
+	mockGitHubRunnerScaler := githubRunnerScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	mockGitHubRunnerScaler.metadata.repos = []string{"test"}
+	mockGitHubRunnerScaler.metadata.labels = []string{"foo"}
+
+	queueLen, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.TODO())
+
+	if err != nil {
+		t.Fail()
+	}
+
+	if queueLen != 0 {
+		t.Fail()
+	}
+}
+
 func TestNewGitHubRunnerScaler_404(t *testing.T) {
 	var apiStub = apiStubHandler404()
 
@@ -286,7 +334,7 @@ func TestNewGitHubRunnerScaler_BadURL(t *testing.T) {
 	}
 }
 
-func TestNewGitHubRunnerScaler_QueueLength_NoLabels(t *testing.T) {
+func TestNewGitHubRunnerScaler_QueueLength_NoRunnerLabels(t *testing.T) {
 	var apiStub = apiStubHandler(true)
 
 	meta := getGitHubTestMetaData(apiStub.URL)
@@ -305,7 +353,7 @@ func TestNewGitHubRunnerScaler_QueueLength_NoLabels(t *testing.T) {
 		t.Fail()
 	}
 
-	if queueLen != 1 {
+	if queueLen != 0 {
 		t.Fail()
 	}
 }
