@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package fallback_test
+package polling_cooldown_so_test
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	testName = "fallback-test"
+	testName = "polling-cooldown-so-test"
 )
 
 // Load environment variables from .env file
@@ -32,22 +32,24 @@ var (
 	metricsServerEndpoint       = fmt.Sprintf("http://%s.%s.svc.cluster.local:8080/api/value", serviceName, namespace)
 	minReplicas                 = 0
 	maxReplicas                 = 5
-	defaultFallback             = 3
+	pollingInterval             = 0
+	cooldownPeriod              = 0
 )
 
 type templateData struct {
-	Namespace                   string
+	TestNamespace               string
 	DeploymentName              string
 	ScaledObject                string
 	TriggerAuthName             string
+	SecretName                  string
 	ServiceName                 string
 	MetricsServerDeploymentName string
 	MetricsServerEndpoint       string
 	MinReplicas                 string
 	MaxReplicas                 string
-	DefaultFallback             int
 	MetricValue                 int
-	SecretName                  string
+	PollingInterval             int
+	CooldownPeriod              int
 }
 
 const (
@@ -55,7 +57,7 @@ const (
 kind: Secret
 metadata:
   name: {{.SecretName}}
-  namespace: {{.Namespace}}
+  namespace: {{.TestNamespace}}
 data:
   AUTH_PASSWORD: U0VDUkVUCg==
   AUTH_USERNAME: VVNFUgo=
@@ -65,7 +67,7 @@ data:
 kind: TriggerAuthentication
 metadata:
   name: {{.TriggerAuthName}}
-  namespace: {{.Namespace}}
+  namespace: {{.TestNamespace}}
 spec:
   secretTargetRef:
     - parameter: username
@@ -83,7 +85,7 @@ metadata:
   labels:
     app: {{.DeploymentName}}
   name: {{.DeploymentName}}
-  namespace: {{.Namespace}}
+  namespace: {{.TestNamespace}}
 spec:
   selector:
     matchLabels:
@@ -106,40 +108,11 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{.MetricsServerDeploymentName}}
-  namespace: {{.Namespace}}
+  namespace: {{.TestNamespace}}
   labels:
     app: {{.MetricsServerDeploymentName}}
 spec:
   replicas: 1
-  selector:
-    matchLabels:
-      app: {{.MetricsServerDeploymentName}}
-  template:
-    metadata:
-      labels:
-        app: {{.MetricsServerDeploymentName}}
-    spec:
-      containers:
-      - name: metrics
-        image: ghcr.io/kedacore/tests-metrics-api
-        ports:
-        - containerPort: 8080
-        envFrom:
-        - secretRef:
-            name: {{.SecretName}}
-        imagePullPolicy: Always
-`
-
-	fallbackMSDeploymentTemplate = `
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{.MetricsServerDeploymentName}}
-  namespace: {{.Namespace}}
-  labels:
-    app: {{.MetricsServerDeploymentName}}
-spec:
-  replicas: 0
   selector:
     matchLabels:
       app: {{.MetricsServerDeploymentName}}
@@ -164,28 +137,20 @@ apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: {{.ScaledObject}}
-  namespace: {{.Namespace}}
+  namespace: {{.TestNamespace}}
   labels:
     app: {{.DeploymentName}}
 spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
+  pollingInterval: {{.PollingInterval}}
+  cooldownPeriod: {{.CooldownPeriod}}
   minReplicaCount: {{.MinReplicas}}
   maxReplicaCount: {{.MaxReplicas}}
-  fallback:
-    failureThreshold: 3
-    replicas: {{.DefaultFallback}}
-  advanced:
-    horizontalPodAutoscalerConfig:
-      behavior:
-        scaleDown:
-          stabilizationWindowSeconds: 1
-  cooldownPeriod: 1
-  pollingInterval: 5
   triggers:
   - type: metrics-api
     metadata:
-      targetValue: "5"
+      targetValue: "1"
       url: "{{.MetricsServerEndpoint}}"
       valueLocation: 'value'
       method: "query"
@@ -197,10 +162,9 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: update-ms-value
-  namespace: {{.Namespace}}
+  generateName: update-ms-value-
+  namespace: {{.TestNamespace}}
 spec:
-  ttlSecondsAfterFinished: 30
   template:
     spec:
       containers:
@@ -216,7 +180,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{.ServiceName}}
-  namespace: {{.Namespace}}
+  namespace: {{.TestNamespace}}
 spec:
   selector:
     app: {{.MetricsServerDeploymentName}}
@@ -226,7 +190,12 @@ spec:
 `
 )
 
-func TestFallback(t *testing.T) {
+// use KubectlCreateWithTemplate() function because applying yaml template
+// for update-metrics relies on the previous job to be deleted
+// (job is immutable), but in this case the test runs too fast at some
+// points that job is not finished & deleted in time
+
+func TestPollingInterval(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
 	kc := GetKubernetesClient(t)
@@ -236,48 +205,87 @@ func TestFallback(t *testing.T) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
 		"replica count should be %d after 3 minutes", minReplicas)
 
-	testScaleOut(t, kc, data)
-	testFallback(t, kc, data)
-	testRestoreAfterFallback(t, kc, data)
+	testPollingIntervalUp(t, kc, data)
+	testPollingIntervalDown(t, kc, data)
+	testCooldownPeriod(t, kc, data)
 
 	DeleteKubernetesResources(t, kc, namespace, data, templates)
 }
 
-// scale out to max replicas first
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing scale out ---")
-	data.MetricValue = 50
-	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+func testPollingIntervalUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- test Polling Interval up ---")
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, maxReplicas, 60, 3),
-		"replica count should be %d after 3 minutes", maxReplicas)
+	data.MetricValue = 0
+	KubectlCreateWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 0, 180, 3),
+		"replica count should be %d after 3 minutes", 0)
+
+	// wait for atleast 60+5 seconds before getting new metric
+	data.PollingInterval = 60 + 5 // 5 seconds as a reserve
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+
+	data.MetricValue = 1
+	KubectlCreateWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 0, 60)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 1, 180, 3),
+		"replica count should be %d after 3 minutes", 1)
 }
 
-// MS replicas set to 0 to envoke fallback
-func testFallback(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing fallback ---")
-	KubectlApplyWithTemplate(t, data, "fallbackMSDeploymentTemplate", fallbackMSDeploymentTemplate)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, defaultFallback, 60, 3),
-		"replica count should be %d after 3 minutes", defaultFallback)
-	// We need to ensure that the fallback value is stable to cover this regression
-	// https://github.com/kedacore/keda/issues/4249
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, defaultFallback, 180)
+func testPollingIntervalDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- test Polling Interval down ---")
+
+	data.CooldownPeriod = 0 // remove cooldownPeriod to test PI
+	data.PollingInterval = 1
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+
+	data.MetricValue = 1
+	KubectlCreateWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 1, 180, 3),
+		"replica count should be %d after 3 minutes", 1)
+
+	// wait for atleast 60+5 seconds before getting new metric
+	data.PollingInterval = 60 + 5 // 5 seconds as a reserve
+
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+
+	data.MetricValue = 0 // go to minReplicas
+	KubectlCreateWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 1, 60)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 0, 180, 3),
+		"replica count should be %d after 3 minutes", 0)
 }
 
-// restore MS to scale back from fallback replicas
-func testRestoreAfterFallback(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing after fallback ---")
-	KubectlApplyWithTemplate(t, data, "metricsServerDeploymentTemplate", metricsServerDeploymentTemplate)
-	data.MetricValue = 50
-	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+func testCooldownPeriod(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- test Cooldown Period ---")
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, maxReplicas, 60, 3),
-		"replica count should be %d after 3 minutes", maxReplicas)
+	data.PollingInterval = 0     // remove polling interval to test CP
+	data.CooldownPeriod = 60 + 5 // 5 seconds as a reserve
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+
+	data.MetricValue = 1
+	KubectlCreateWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 1, 180, 3),
+		"replica count should be %d after 3 minutes", 1)
+
+	data.MetricValue = 0
+	KubectlCreateWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 1, 60)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 0, 180, 3),
+		"replica count should be %d after 3 minutes", 0)
 }
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			Namespace:                   namespace,
+			TestNamespace:               namespace,
 			DeploymentName:              deploymentName,
 			MetricsServerDeploymentName: metricsServerDeploymentName,
 			ServiceName:                 serviceName,
@@ -288,7 +296,8 @@ func getTemplateData() (templateData, []Template) {
 			MinReplicas:                 fmt.Sprintf("%v", minReplicas),
 			MaxReplicas:                 fmt.Sprintf("%v", maxReplicas),
 			MetricValue:                 0,
-			DefaultFallback:             defaultFallback,
+			PollingInterval:             pollingInterval,
+			CooldownPeriod:              cooldownPeriod,
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "metricsServerDeploymentTemplate", Config: metricsServerDeploymentTemplate},
