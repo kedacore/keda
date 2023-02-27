@@ -44,9 +44,9 @@ func TryAndGetAzureManagedPrometheusHTTPRoundTripper(podIdentity kedav1alpha1.Au
 		azureManagedPrometheusResourceURLProvider := func(env az.Environment) (string, error) {
 			if resource, ok := azureManagedPrometheusResourceURLInCloud[strings.ToUpper(env.Name)]; ok {
 				return resource, nil
-			} else {
-				return "", fmt.Errorf("azure managed prometheus is not available in cloud %s", env.Name)
 			}
+
+			return "", fmt.Errorf("azure managed prometheus is not available in cloud %s", env.Name)
 		}
 
 		resourceURLBasedOnCloud, err := ParseEnvironmentProperty(triggerMetadata, "azureManagedPrometheusResourceURL", azureManagedPrometheusResourceURLProvider)

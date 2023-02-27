@@ -10,6 +10,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -269,6 +270,8 @@ spec:
 // is directly tied to the KEDA HPA while the other is isolated that can be used for metrics
 // even when the KEDA deployment is at zero - the service points to both deployments
 func TestAzureManagedPrometheusScaler(t *testing.T) {
+	require.NotEmpty(t, prometheusQueryEndpoint, "TF_AZURE_MANAGED_PROMETHEUS_QUERY_ENDPOINT env variable is required for azure managed prometheus tests")
+
 	kc := GetKubernetesClient(t)
 
 	// Create kubernetes resources for testing
