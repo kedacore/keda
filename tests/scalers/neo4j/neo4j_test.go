@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -140,7 +139,7 @@ func TestNeo4jScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	// setup neo4j
 	CreateNamespace(t, kc, testNamespace)
-	installNeo4j(t)
+	installNeo4j(t, kc)
 
 	data, templates := getTemplateData()
 	CreateKubernetesResourcesNeo4j(t, kc, testNamespace, data, templates)
@@ -157,7 +156,7 @@ func TestNeo4jScaler(t *testing.T) {
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 
-func installNeo4j(t *testing.T) {
+func installNeo4j(t *testing.T, kc *kubernetes.Clientset) {
 	_, err := ExecuteCommand(fmt.Sprintf("helm repo add neo4j %s", neo4jHelmRepo))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("helm repo update")

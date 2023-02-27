@@ -3,7 +3,6 @@ package scalers
 import (
 	"context"
 	"testing"
-	"fmt"
 
 	"github.com/go-logr/logr"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
@@ -77,9 +76,8 @@ var neo4jMetricIdentifiers = []neo4jMetricIdentifier{
 }
 
 func TestParseNeo4jMetadata(t *testing.T) {
-	for i, testData := range testNEO4JMetadata {
+	for _, testData := range testNEO4JMetadata {
 		if _, _, err := parseNeo4jMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}); err != nil && !testData.raisesError {
-			fmt.Println("Test data: ", i, " - ",testData)
 			t.Error("Expected success but got error:", err)
 		}
 	}
