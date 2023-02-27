@@ -176,9 +176,8 @@ func parseCouchDBMetadata(config *ScalerConfig) (*couchDBMetadata, string, error
 		// nosemgrep: db-connection-string
 		connStr = "http://" + addr
 	}
-	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("couchdb-%s", val))
-	}
+
+	// FIXME: DEPRECATED to be removed in v2.12
 	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("coucdb-%s", meta.dbName)))
 	meta.scalerIndex = config.ScalerIndex
 	return &meta, connStr, nil

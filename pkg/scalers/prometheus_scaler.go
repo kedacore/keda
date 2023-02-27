@@ -20,8 +20,11 @@ import (
 )
 
 const (
-	promServerAddress       = "serverAddress"
-	promMetricName          = "metricName"
+	promServerAddress = "serverAddress"
+
+	// FIXME: DEPRECATED to be removed in v2.12
+	promMetricName = "metricName"
+
 	promQuery               = "query"
 	promThreshold           = "threshold"
 	promActivationThreshold = "activationThreshold"
@@ -125,10 +128,11 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 		return nil, fmt.Errorf("no %s given", promQuery)
 	}
 
+	// FIXME: DEPRECATED to be removed in v2.12
 	if val, ok := config.TriggerMetadata[promMetricName]; ok && val != "" {
 		meta.metricName = val
 	} else {
-		return nil, fmt.Errorf("no %s given", promMetricName)
+		meta.metricName = "prometheus"
 	}
 
 	if val, ok := config.TriggerMetadata[promThreshold]; ok && val != "" {

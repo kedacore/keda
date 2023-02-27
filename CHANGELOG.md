@@ -94,6 +94,7 @@ You can find all deprecations in [this overview](https://github.com/kedacore/ked
 
 New deprecation(s):
 
+- **General**: Deprecate explicitly setting `metricName` field from `ScaledObject.triggers[*].metadata` ([#4220])(https://github.com/kedacore/keda/issues/4220)
 - **Prometheus Scaler**: `cortexOrgId` metadata deprecated in favor of custom headers ([#4208](https://github.com/kedacore/keda/issues/4208))
 
 ### Other
