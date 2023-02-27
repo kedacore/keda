@@ -55,6 +55,7 @@ Here is an overview of all **stable** additions:
 - **General**: Introduce new ArangoDB Scaler ([#4000](https://github.com/kedacore/keda/issues/4000))
 - **Prometheus Metrics**: Introduce scaler activity in Prometheus metrics ([#4114](https://github.com/kedacore/keda/issues/4114))
 - **Prometheus Metrics**: Introduce scaler latency in Prometheus metrics ([#4037](https://github.com/kedacore/keda/issues/4037))
+- **Prometheus Scaler**: Extend Prometheus Scaler to support Azure managed service for Prometheus ([#4153](https://github.com/kedacore/keda/issues/4153))
 
 Here is an overview of all new **experimental** features:
 
