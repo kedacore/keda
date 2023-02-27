@@ -191,6 +191,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewMySQLScaler(config)
 	case "nats-jetstream":
 		return scalers.NewNATSJetStreamScaler(config)
+	case "neo4j":
+		return scalers.NewNeo4jScaler(ctx, config)
 	case "new-relic":
 		return scalers.NewNewRelicScaler(config)
 	case "openstack-metric":

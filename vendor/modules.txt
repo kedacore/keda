@@ -916,6 +916,8 @@ github.com/newrelic/newrelic-client-go/pkg/testhelpers
 github.com/newrelic/newrelic-client-go/pkg/users
 github.com/newrelic/newrelic-client-go/pkg/workflows
 github.com/newrelic/newrelic-client-go/pkg/workloads
+# github.com/nxadm/tail v1.4.8
+## explicit
 # github.com/oklog/run v1.1.0
 ## explicit; go 1.13
 github.com/oklog/run

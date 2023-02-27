@@ -163,6 +163,9 @@ func installNeo4j(t *testing.T) {
 	_, err = ExecuteCommand("helm repo update")
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand(fmt.Sprintf("helm install --wait %s neo4j/neo4j --namespace %s --set neo4j.name=%s --set neo4j.password=%s --set volumes.data.mode=defaultStorageClass", scalerName, testNamespace, neo4jUser, neo4jPassword))
+	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, scalerName, testNamespace, 1, 60, 2),
+		"replica count should be %d after 2 minutes", 1)
+
 }
 
 func deployPodActivation(t *testing.T, data templateData) {
@@ -212,9 +215,7 @@ spec:
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
 	deployPodActivation(t, data)
-	time.Sleep(time.Second * 60)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
-		"replica count should be %d after 1 minute", minReplicaCount)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func deployPodUp(t *testing.T, data templateData) {
@@ -237,7 +238,6 @@ spec:
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
 	deployPodUp(t, data)
-	time.Sleep(time.Second * 60)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 1),
 		"replica count should be %d after 1 minute", maxReplicaCount)
 }
@@ -262,9 +262,8 @@ spec:
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale in ---")
 	deployPodDown(t, data)
-	time.Sleep(time.Second * 900)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 4),
-		"replica count should be %d after 1 minute", minReplicaCount)
+		"replica count should be %d after 4 minutes", minReplicaCount)
 }
 
 func getTemplateData() (templateData, []Template) {

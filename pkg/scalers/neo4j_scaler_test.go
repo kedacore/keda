@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"testing"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
@@ -37,23 +38,23 @@ var testNEO4JMetadata = []parseNeo4jMetadataTestData{
 	},
 	// connectionStringFromEnv
 	{
-		metadata: map[string]string{"query": `MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1`,
+		metadata: map[string]string{"protocol": "neo4j", "host": "neo4j.test.svc.cluster.local", "port":"7687", "query": `MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1`,
 			"queryValue": "9", "connectionStringFromEnv": "Neo4j_CONN_STR", "username": "Neo4j_USERNAME", "password": "Neo4j_PASSWORD"},
-		authParams:  map[string]string{},
+		authParams:  map[string]string{"password": "password"},
 		resolvedEnv: testNeo4jResolvedEnv,
 		raisesError: false,
 	},
 	// with metric name
 	{
-		metadata: map[string]string{"query": `MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1`,
+		metadata: map[string]string{"protocol": "neo4j", "host": "neo4j.test.svc.cluster.local", "port":"7687", "query": `MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1`,
 			"queryValue": "9", "connectionStringFromEnv": "Neo4j_CONN_STR", "username": "Neo4j_USERNAME", "password": "Neo4j_PASSWORD"},
-		authParams:  map[string]string{},
+		authParams:  map[string]string{"password": "password"},
 		resolvedEnv: testNeo4jResolvedEnv,
 		raisesError: false,
 	},
 	// from trigger auth
 	{
-		metadata: map[string]string{"query": `MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1`,
+		metadata: map[string]string{"protocol": "neo4j", "port":"7687", "query": `MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1`,
 			"queryValue": "9"},
 		authParams:  map[string]string{"host": "localhost", "port": "7687", "username": "neo4j", "password": "password"},
 		resolvedEnv: testNeo4jResolvedEnv,
@@ -61,7 +62,7 @@ var testNEO4JMetadata = []parseNeo4jMetadataTestData{
 	},
 	// wrong activationQueryValue
 	{
-		metadata: map[string]string{"query": `MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1`,
+		metadata: map[string]string{"protocol": "neo4j", "host": "neo4j.test.svc.cluster.local", "port":"7687", "query": `MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1`,
 			"queryValue": "9", "activationQueryValue": "9", "connectionStringFromEnv": "Neo4j_CONN_STR",
 			"username": "Neo4j_USERNAME", "password": "Neo4j_PASSWORD"},
 		authParams:  map[string]string{},
@@ -76,8 +77,9 @@ var neo4jMetricIdentifiers = []neo4jMetricIdentifier{
 }
 
 func TestParseNeo4jMetadata(t *testing.T) {
-	for _, testData := range testNEO4JMetadata {
+	for i, testData := range testNEO4JMetadata {
 		if _, _, err := parseNeo4jMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}); err != nil && !testData.raisesError {
+			fmt.Println("Test data: ", i, " - ",testData)
 			t.Error("Expected success but got error:", err)
 		}
 	}
