@@ -37,7 +37,7 @@ var testNEO4JMetadata = []parseNeo4jMetadataTestData{
 	},
 	// connectionStringFromEnv
 	{
-		metadata: map[string]string{"protocol": "neo4j", "host": "neo4j.test.svc.cluster.local", "port":"7687", "query": `MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1`,
+		metadata: map[string]string{"protocol": "neo4j", "host": "neo4j.test.svc.cluster.local", "port": "7687", "query": `MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1`,
 			"queryValue": "9", "connectionStringFromEnv": "Neo4j_CONN_STR", "username": "Neo4j_USERNAME", "password": "Neo4j_PASSWORD"},
 		authParams:  map[string]string{"password": "password"},
 		resolvedEnv: testNeo4jResolvedEnv,
@@ -45,7 +45,7 @@ var testNEO4JMetadata = []parseNeo4jMetadataTestData{
 	},
 	// with metric name
 	{
-		metadata: map[string]string{"protocol": "neo4j", "host": "neo4j.test.svc.cluster.local", "port":"7687", "query": `MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1`,
+		metadata: map[string]string{"protocol": "neo4j", "host": "neo4j.test.svc.cluster.local", "port": "7687", "query": `MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1`,
 			"queryValue": "9", "connectionStringFromEnv": "Neo4j_CONN_STR", "username": "Neo4j_USERNAME", "password": "Neo4j_PASSWORD"},
 		authParams:  map[string]string{"password": "password"},
 		resolvedEnv: testNeo4jResolvedEnv,
@@ -53,7 +53,7 @@ var testNEO4JMetadata = []parseNeo4jMetadataTestData{
 	},
 	// from trigger auth
 	{
-		metadata: map[string]string{"protocol": "neo4j", "port":"7687", "query": `MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1`,
+		metadata: map[string]string{"protocol": "neo4j", "port": "7687", "query": `MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1`,
 			"queryValue": "9"},
 		authParams:  map[string]string{"host": "localhost", "port": "7687", "username": "neo4j", "password": "password"},
 		resolvedEnv: testNeo4jResolvedEnv,
@@ -61,7 +61,7 @@ var testNEO4JMetadata = []parseNeo4jMetadataTestData{
 	},
 	// wrong activationQueryValue
 	{
-		metadata: map[string]string{"protocol": "neo4j", "host": "neo4j.test.svc.cluster.local", "port":"7687", "query": `MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1`,
+		metadata: map[string]string{"protocol": "neo4j", "host": "neo4j.test.svc.cluster.local", "port": "7687", "query": `MATCH (n:Person)<-[r:FOLLOWS]-() WHERE n.popularfor IS NOT NULL RETURN n,COUNT(r) order by COUNT(r) desc LIMIT 1`,
 			"queryValue": "9", "activationQueryValue": "9", "connectionStringFromEnv": "Neo4j_CONN_STR",
 			"username": "Neo4j_USERNAME", "password": "Neo4j_PASSWORD"},
 		authParams:  map[string]string{},
