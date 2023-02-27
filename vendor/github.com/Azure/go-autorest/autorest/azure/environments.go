@@ -42,20 +42,19 @@ var environments = map[string]Environment{
 
 // ResourceIdentifier contains a set of Azure resource IDs.
 type ResourceIdentifier struct {
-	Graph                  string `json:"graph"`
-	KeyVault               string `json:"keyVault"`
-	Datalake               string `json:"datalake"`
-	Batch                  string `json:"batch"`
-	OperationalInsights    string `json:"operationalInsights"`
-	OSSRDBMS               string `json:"ossRDBMS"`
-	Storage                string `json:"storage"`
-	Synapse                string `json:"synapse"`
-	ServiceBus             string `json:"serviceBus"`
-	SQLDatabase            string `json:"sqlDatabase"`
-	CosmosDB               string `json:"cosmosDB"`
-	ManagedHSM             string `json:"managedHSM"`
-	MicrosoftGraph         string `json:"microsoftGraph"`
-	AzureManagedPrometheus string `json:"azureManagedPrometheus"`
+	Graph               string `json:"graph"`
+	KeyVault            string `json:"keyVault"`
+	Datalake            string `json:"datalake"`
+	Batch               string `json:"batch"`
+	OperationalInsights string `json:"operationalInsights"`
+	OSSRDBMS            string `json:"ossRDBMS"`
+	Storage             string `json:"storage"`
+	Synapse             string `json:"synapse"`
+	ServiceBus          string `json:"serviceBus"`
+	SQLDatabase         string `json:"sqlDatabase"`
+	CosmosDB            string `json:"cosmosDB"`
+	ManagedHSM          string `json:"managedHSM"`
+	MicrosoftGraph      string `json:"microsoftGraph"`
 }
 
 // Environment represents a set of endpoints for each of Azure's Clouds.
@@ -127,20 +126,19 @@ var (
 		SynapseEndpointSuffix:        "dev.azuresynapse.net",
 		DatalakeSuffix:               "azuredatalakestore.net",
 		ResourceIdentifiers: ResourceIdentifier{
-			Graph:                  "https://graph.windows.net/",
-			KeyVault:               "https://vault.azure.net",
-			Datalake:               "https://datalake.azure.net/",
-			Batch:                  "https://batch.core.windows.net/",
-			OperationalInsights:    "https://api.loganalytics.io",
-			OSSRDBMS:               "https://ossrdbms-aad.database.windows.net",
-			Storage:                "https://storage.azure.com/",
-			Synapse:                "https://dev.azuresynapse.net",
-			ServiceBus:             "https://servicebus.azure.net/",
-			SQLDatabase:            "https://database.windows.net/",
-			CosmosDB:               "https://cosmos.azure.com",
-			ManagedHSM:             "https://managedhsm.azure.net",
-			MicrosoftGraph:         "https://graph.microsoft.com/",
-			AzureManagedPrometheus: "https://prometheus.monitor.azure.com/.default",
+			Graph:               "https://graph.windows.net/",
+			KeyVault:            "https://vault.azure.net",
+			Datalake:            "https://datalake.azure.net/",
+			Batch:               "https://batch.core.windows.net/",
+			OperationalInsights: "https://api.loganalytics.io",
+			OSSRDBMS:            "https://ossrdbms-aad.database.windows.net",
+			Storage:             "https://storage.azure.com/",
+			Synapse:             "https://dev.azuresynapse.net",
+			ServiceBus:          "https://servicebus.azure.net/",
+			SQLDatabase:         "https://database.windows.net/",
+			CosmosDB:            "https://cosmos.azure.com",
+			ManagedHSM:          "https://managedhsm.azure.net",
+			MicrosoftGraph:      "https://graph.microsoft.com/",
 		},
 	}
 
@@ -177,20 +175,19 @@ var (
 		SynapseEndpointSuffix:        "dev.azuresynapse.usgovcloudapi.net",
 		DatalakeSuffix:               NotAvailable,
 		ResourceIdentifiers: ResourceIdentifier{
-			Graph:                  "https://graph.windows.net/",
-			KeyVault:               "https://vault.usgovcloudapi.net",
-			Datalake:               NotAvailable,
-			Batch:                  "https://batch.core.usgovcloudapi.net/",
-			OperationalInsights:    "https://api.loganalytics.us",
-			OSSRDBMS:               "https://ossrdbms-aad.database.usgovcloudapi.net",
-			Storage:                "https://storage.azure.com/",
-			Synapse:                "https://dev.azuresynapse.usgovcloudapi.net",
-			ServiceBus:             "https://servicebus.azure.net/",
-			SQLDatabase:            "https://database.usgovcloudapi.net/",
-			CosmosDB:               "https://cosmos.azure.com",
-			ManagedHSM:             NotAvailable,
-			MicrosoftGraph:         "https://graph.microsoft.us/",
-			AzureManagedPrometheus: "https://prometheus.monitor.usgovcloudapi.net/.default",
+			Graph:               "https://graph.windows.net/",
+			KeyVault:            "https://vault.usgovcloudapi.net",
+			Datalake:            NotAvailable,
+			Batch:               "https://batch.core.usgovcloudapi.net/",
+			OperationalInsights: "https://api.loganalytics.us",
+			OSSRDBMS:            "https://ossrdbms-aad.database.usgovcloudapi.net",
+			Storage:             "https://storage.azure.com/",
+			Synapse:             "https://dev.azuresynapse.usgovcloudapi.net",
+			ServiceBus:          "https://servicebus.azure.net/",
+			SQLDatabase:         "https://database.usgovcloudapi.net/",
+			CosmosDB:            "https://cosmos.azure.com",
+			ManagedHSM:          NotAvailable,
+			MicrosoftGraph:      "https://graph.microsoft.us/",
 		},
 	}
 
@@ -227,20 +224,19 @@ var (
 		SynapseEndpointSuffix:        "dev.azuresynapse.azure.cn",
 		DatalakeSuffix:               NotAvailable,
 		ResourceIdentifiers: ResourceIdentifier{
-			Graph:                  "https://graph.chinacloudapi.cn/",
-			KeyVault:               "https://vault.azure.cn",
-			Datalake:               NotAvailable,
-			Batch:                  "https://batch.chinacloudapi.cn/",
-			OperationalInsights:    NotAvailable,
-			OSSRDBMS:               "https://ossrdbms-aad.database.chinacloudapi.cn",
-			Storage:                "https://storage.azure.com/",
-			Synapse:                "https://dev.azuresynapse.net",
-			ServiceBus:             "https://servicebus.azure.net/",
-			SQLDatabase:            "https://database.chinacloudapi.cn/",
-			CosmosDB:               "https://cosmos.azure.com",
-			ManagedHSM:             NotAvailable,
-			MicrosoftGraph:         "https://microsoftgraph.chinacloudapi.cn",
-			AzureManagedPrometheus: "https://prometheus.monitor.chinacloudapp.cn/.default",
+			Graph:               "https://graph.chinacloudapi.cn/",
+			KeyVault:            "https://vault.azure.cn",
+			Datalake:            NotAvailable,
+			Batch:               "https://batch.chinacloudapi.cn/",
+			OperationalInsights: NotAvailable,
+			OSSRDBMS:            "https://ossrdbms-aad.database.chinacloudapi.cn",
+			Storage:             "https://storage.azure.com/",
+			Synapse:             "https://dev.azuresynapse.net",
+			ServiceBus:          "https://servicebus.azure.net/",
+			SQLDatabase:         "https://database.chinacloudapi.cn/",
+			CosmosDB:            "https://cosmos.azure.com",
+			ManagedHSM:          NotAvailable,
+			MicrosoftGraph:      "https://microsoftgraph.chinacloudapi.cn",
 		},
 	}
 
@@ -277,20 +273,19 @@ var (
 		SynapseEndpointSuffix:        NotAvailable,
 		DatalakeSuffix:               NotAvailable,
 		ResourceIdentifiers: ResourceIdentifier{
-			Graph:                  "https://graph.cloudapi.de/",
-			KeyVault:               "https://vault.microsoftazure.de",
-			Datalake:               NotAvailable,
-			Batch:                  "https://batch.cloudapi.de/",
-			OperationalInsights:    NotAvailable,
-			OSSRDBMS:               "https://ossrdbms-aad.database.cloudapi.de",
-			Storage:                "https://storage.azure.com/",
-			Synapse:                NotAvailable,
-			ServiceBus:             "https://servicebus.azure.net/",
-			SQLDatabase:            "https://database.cloudapi.de/",
-			CosmosDB:               "https://cosmos.azure.com",
-			ManagedHSM:             NotAvailable,
-			MicrosoftGraph:         NotAvailable,
-			AzureManagedPrometheus: NotAvailable,
+			Graph:               "https://graph.cloudapi.de/",
+			KeyVault:            "https://vault.microsoftazure.de",
+			Datalake:            NotAvailable,
+			Batch:               "https://batch.cloudapi.de/",
+			OperationalInsights: NotAvailable,
+			OSSRDBMS:            "https://ossrdbms-aad.database.cloudapi.de",
+			Storage:             "https://storage.azure.com/",
+			Synapse:             NotAvailable,
+			ServiceBus:          "https://servicebus.azure.net/",
+			SQLDatabase:         "https://database.cloudapi.de/",
+			CosmosDB:            "https://cosmos.azure.com",
+			ManagedHSM:          NotAvailable,
+			MicrosoftGraph:      NotAvailable,
 		},
 	}
 )

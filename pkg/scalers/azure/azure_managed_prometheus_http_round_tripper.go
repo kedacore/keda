@@ -3,6 +3,7 @@ package azure
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -11,6 +12,12 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/util"
 )
+
+var azureManagedPrometheusResourceURLInCloud = map[string]string{
+	"AZUREPUBLICCLOUD":       "https://prometheus.monitor.azure.com/.default",
+	"AZUREUSGOVERNMENTCLOUD": "https://prometheus.monitor.usgovcloudapi.net/.default",
+	"AZURECHINACLOUD":        "https://prometheus.monitor.chinacloudapp.cn/.default",
+}
 
 type azureManagedPrometheusHTTPRoundTripper struct {
 	chainedCredential *azidentity.ChainedTokenCredential
@@ -35,10 +42,11 @@ func TryAndGetAzureManagedPrometheusHTTPRoundTripper(podIdentity kedav1alpha1.Au
 		}
 
 		azureManagedPrometheusResourceURLProvider := func(env az.Environment) (string, error) {
-			if env.ResourceIdentifiers.AzureManagedPrometheus == az.NotAvailable {
+			if resource, ok := azureManagedPrometheusResourceURLInCloud[strings.ToUpper(env.Name)]; ok {
+				return resource, nil
+			} else {
 				return "", fmt.Errorf("azure managed prometheus is not available in cloud %s", env.Name)
 			}
-			return env.ResourceIdentifiers.AzureManagedPrometheus, nil
 		}
 
 		resourceURLBasedOnCloud, err := ParseEnvironmentProperty(triggerMetadata, "azureManagedPrometheusResourceURL", azureManagedPrometheusResourceURLProvider)
@@ -62,6 +70,7 @@ func TryAndGetAzureManagedPrometheusHTTPRoundTripper(podIdentity kedav1alpha1.Au
 // Sets Auhtorization header for requests
 func (rt *azureManagedPrometheusHTTPRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	token, err := rt.chainedCredential.GetToken(req.Context(), policy.TokenRequestOptions{Scopes: []string{rt.resourceURL}})
+
 	if err != nil {
 		return nil, err
 	}

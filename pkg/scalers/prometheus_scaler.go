@@ -105,6 +105,7 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 		}
 	} else {
 		// could be the case of azure managed prometheus. Try and get the roundtripper.
+		// If its not the case of azure managed prometheus, we will get both transport and err as nil and proceed assuming no auth.
 		transport, err := azure.TryAndGetAzureManagedPrometheusHTTPRoundTripper(config.PodIdentity, config.TriggerMetadata)
 
 		if err != nil {
