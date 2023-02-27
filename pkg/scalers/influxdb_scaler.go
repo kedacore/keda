@@ -118,6 +118,7 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 		return nil, fmt.Errorf("no server url given")
 	}
 
+	// FIXME: DEPRECATED to be removed in v2.12
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
 		metricName = util.NormalizeString(fmt.Sprintf("influxdb-%s", val))
 	} else {

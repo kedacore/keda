@@ -291,18 +291,23 @@ func (s *azureServiceBusScaler) getServiceBusAdminClient() (*admin.Client, error
 	if s.client != nil {
 		return s.client, nil
 	}
-
+	var err error
+	var client *admin.Client
 	switch s.podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		return admin.NewClientFromConnectionString(s.metadata.connection, nil)
+		client, err = admin.NewClientFromConnectionString(s.metadata.connection, nil)
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
-		creds, err := azure.NewChainedCredential(s.podIdentity.IdentityID, s.podIdentity.Provider)
-		if err != nil {
-			return nil, err
+		creds, chainedErr := azure.NewChainedCredential(s.podIdentity.IdentityID, s.podIdentity.Provider)
+		if chainedErr != nil {
+			return nil, chainedErr
 		}
-		return admin.NewClient(s.metadata.fullyQualifiedNamespace, creds, nil)
+		client, err = admin.NewClient(s.metadata.fullyQualifiedNamespace, creds, nil)
+	default:
+		err = fmt.Errorf("incorrect podIdentity type")
 	}
-	return nil, fmt.Errorf("incorrect podIdentity type")
+
+	s.client = client
+	return client, err
 }
 
 func getQueueLength(ctx context.Context, adminClient *admin.Client, meta *azureServiceBusMetadata) (int64, error) {
