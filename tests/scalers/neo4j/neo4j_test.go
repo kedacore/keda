@@ -162,9 +162,9 @@ func installNeo4j(t *testing.T, kc *kubernetes.Clientset) {
 	_, err = ExecuteCommand("helm repo update")
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand(fmt.Sprintf("helm install --wait %s neo4j/neo4j --namespace %s --set neo4j.name=%s --set neo4j.password=%s --set volumes.data.mode=defaultStorageClass", scalerName, testNamespace, neo4jUser, neo4jPassword))
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, scalerName, testNamespace, 1, 60, 2),
 		"replica count should be %d after 2 minutes", 1)
-
 }
 
 func deployPodActivation(t *testing.T, data templateData) {

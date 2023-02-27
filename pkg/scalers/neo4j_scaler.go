@@ -153,7 +153,7 @@ func parseNeo4jMetadata(config *ScalerConfig) (*neo4jMetadata, string, error) {
 	if len(meta.password) == 0 {
 		return nil, "", fmt.Errorf("no password given")
 	}
-	
+
 	addr := net.JoinHostPort(meta.host, meta.port)
 	// nosemgrep: db-connection-string
 	connStr = meta.protocol + "://" + addr
