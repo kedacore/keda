@@ -197,7 +197,7 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 	var externalMetricNames []string
 	var resourceMetricNames []string
 
-	cache, err := r.ScaleHandler.GetScalersCache(ctx, scaledObject)
+	cache, err := r.ScaleHandler.GetScalersCache(ctx, scaledObject.DeepCopy())
 	if err != nil {
 		logger.Error(err, "Error getting scalers")
 		return nil, err

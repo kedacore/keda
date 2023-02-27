@@ -79,11 +79,11 @@ func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsl)
 
 	if meta.enableTLS || len(meta.ca) > 0 {
-		config, err := kedautil.NewTLSConfig(meta.cert, meta.key, meta.ca)
+		config, err := kedautil.NewTLSConfig(meta.cert, meta.key, meta.ca, meta.unsafeSsl)
 		if err != nil {
 			return nil, err
 		}
-		httpClient.Transport = &http.Transport{TLSClientConfig: config}
+		httpClient.Transport = kedautil.CreateHTTPTransportWithTLSConfig(config)
 	}
 
 	return &metricsAPIScaler{

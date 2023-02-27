@@ -154,7 +154,7 @@ func getEtcdClients(metadata *etcdMetadata) (*clientv3.Client, error) {
 	var tlsConfig *tls.Config
 	var err error
 	if metadata.enableTLS {
-		tlsConfig, err = kedautil.NewTLSConfigWithPassword(metadata.cert, metadata.key, metadata.keyPassword, metadata.ca)
+		tlsConfig, err = kedautil.NewTLSConfigWithPassword(metadata.cert, metadata.key, metadata.keyPassword, metadata.ca, false)
 		if err != nil {
 			return nil, err
 		}

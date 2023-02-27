@@ -318,7 +318,7 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 
 	if metadata.enableTLS {
 		config.Net.TLS.Enable = true
-		tlsConfig, err := kedautil.NewTLSConfigWithPassword(metadata.cert, metadata.key, metadata.keyPassword, metadata.ca)
+		tlsConfig, err := kedautil.NewTLSConfigWithPassword(metadata.cert, metadata.key, metadata.keyPassword, metadata.ca, false)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -444,7 +444,7 @@ func (s *kafkaScaler) getConsumerOffsets(topicPartitions map[string][]int32) (*s
 func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offsets *sarama.OffsetFetchResponse, topicPartitionOffsets map[string]map[int32]int64) (int64, int64, error) {
 	block := offsets.GetBlock(topic, partitionID)
 	if block == nil {
-		errMsg := fmt.Errorf("error finding offset block for topic %s and partition %d", topic, partitionID)
+		errMsg := fmt.Errorf("error finding offset block for topic %s and partition %d from offset block: %v", topic, partitionID, offsets.Blocks)
 		s.logger.Error(errMsg, "")
 		return 0, 0, errMsg
 	}
@@ -592,7 +592,10 @@ func (s *kafkaScaler) getTotalLag() (int64, int64, error) {
 
 	for topic, partitionsOffsets := range producerOffsets {
 		for partition := range partitionsOffsets {
-			lag, lagWithPersistent, _ := s.getLagForPartition(topic, partition, consumerOffsets, producerOffsets)
+			lag, lagWithPersistent, err := s.getLagForPartition(topic, partition, consumerOffsets, producerOffsets)
+			if err != nil {
+				return 0, 0, err
+			}
 			totalLag += lag
 			totalLagWithPersistent += lagWithPersistent
 		}

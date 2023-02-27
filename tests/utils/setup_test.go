@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -166,6 +167,23 @@ func TestSetupGcpIdentityComponents(t *testing.T) {
 }
 
 func TestDeployKEDA(t *testing.T) {
+	KubeClient = GetKubernetesClient(t)
+	CreateNamespace(t, KubeClient, KEDANamespace)
+
+	caCtr, _ := GetTestCA(t)
+	secret := &corev1.Secret{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "custom-cas",
+			Namespace: KEDANamespace,
+		},
+		StringData: map[string]string{
+			"test-ca.crt": string(caCtr),
+		},
+	}
+
+	_, err := KubeClient.CoreV1().Secrets(KEDANamespace).Create(context.Background(), secret, v1.CreateOptions{})
+	require.NoErrorf(t, err, "error deploying custom CA - %s", err)
+
 	out, err := ExecuteCommandWithDir("make deploy", "../..")
 	require.NoErrorf(t, err, "error deploying KEDA - %s", err)
 

@@ -3,7 +3,6 @@ package scalers
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -178,11 +177,7 @@ func (s *IBMMQScaler) getQueueDepthViaHTTP(ctx context.Context) (int64, error) {
 	req.Header.Set("Content-Type", "application/json")
 	req.SetBasicAuth(s.metadata.username, s.metadata.password)
 
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: s.metadata.tlsDisabled},
-	}
-	client := kedautil.CreateHTTPClient(s.defaultHTTPTimeout, false)
-	client.Transport = tr
+	client := kedautil.CreateHTTPClient(s.defaultHTTPTimeout, s.metadata.tlsDisabled)
 
 	resp, err := client.Do(req)
 	if err != nil {

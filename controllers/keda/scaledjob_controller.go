@@ -160,6 +160,7 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 // reconcileScaledJob implements reconciler logic for K8s Jobs based ScaledJob
 func (r *ScaledJobReconciler) reconcileScaledJob(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
+	// nosemgrep: trailofbits.go.invalid-usage-of-modified-variable.invalid-usage-of-modified-variable
 	msg, err := r.deletePreviousVersionScaleJobs(ctx, logger, scaledJob)
 	if err != nil {
 		return msg, err
