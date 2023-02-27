@@ -14,6 +14,8 @@ const (
 	TLSAuthType Type = "tls"
 	// BearerAuthType is a auth type using a bearer token
 	BearerAuthType Type = "bearer"
+	// CustomAuthType is a auth type using a custom header
+	CustomAuthType Type = "custom"
 )
 
 // TransportType is type of http transport
@@ -39,6 +41,11 @@ type AuthMeta struct {
 	Cert      string
 	Key       string
 	CA        string
+
+	// custom auth header
+	EnableCustomAuth bool
+	CustomAuthHeader string
+	CustomAuthValue  string
 }
 
 type HTTPTransport struct {

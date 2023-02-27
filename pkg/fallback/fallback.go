@@ -100,10 +100,10 @@ func validateFallback(scaledObject *kedav1alpha1.ScaledObject) bool {
 
 func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, metricName string, suppressedError error) []external_metrics.ExternalMetricValue {
 	replicas := int64(scaledObject.Spec.Fallback.Replicas)
-	normalisationValue, _ := metricSpec.External.Target.AverageValue.AsInt64()
+	normalisationValue := metricSpec.External.Target.AverageValue.AsApproximateFloat64()
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(normalisationValue*replicas, resource.DecimalSI),
+		Value:      *resource.NewMilliQuantity(int64(normalisationValue*1000)*replicas, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 	fallbackMetrics := []external_metrics.ExternalMetricValue{metric}
