@@ -5,6 +5,7 @@ package azure_managed_prometheus_test
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/joho/godotenv"
@@ -45,7 +46,7 @@ var (
 
 // Common for pod and workload identity tests
 var (
-	prometheusQueryEndpoint = "https://raggupta-amw-eus-corp-2-1l1j.eastus.prometheus.monitor.azure.com"
+	prometheusQueryEndpoint = os.Getenv("TF_AZURE_MANAGED_PROMETHEUS_QUERY_ENDPOINT")
 	minReplicaCount         = 0
 	maxReplicaCount         = 2
 )
