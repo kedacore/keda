@@ -55,7 +55,7 @@ issues:
       linters:
         - gomnd
         - dupl
-    - path: scale_handler.go
+    - path: scalers_builder.go
       linters:
         - gocyclo
     - path: scale_scaledobjects.go

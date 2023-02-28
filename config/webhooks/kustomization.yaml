@@ -1,0 +1,11 @@
+resources:
+- webhooks.yaml
+- service.yaml
+- validation_webhooks.yaml
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+images:
+- name: ghcr.io/kedacore/keda-admission-webhooks
+  newName: ghcr.io/kedacore/keda-admission-webhooks
+  newTag: main

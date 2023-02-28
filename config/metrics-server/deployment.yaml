@@ -59,6 +59,10 @@ spec:
           - --secure-port=6443
           - --logtostderr=true
           - --v=0
+          - --client-ca-file=/certs/ca.crt
+          - --tls-cert-file=/certs/tls.crt
+          - --tls-private-key-file=/certs/tls.key
+          - --cert-dir=/certs
           ports:
           - containerPort: 6443
             name: https
@@ -69,14 +73,15 @@ spec:
           volumeMounts:
           - mountPath: /tmp
             name: temp-vol
-          - mountPath: /apiserver.local.config/certificates
-            name: certs
+          - mountPath: /certs
+            name: certificates
+            readOnly: true
           securityContext:
+            runAsNonRoot: true
             capabilities:
               drop:
               - ALL
             allowPrivilegeEscalation: false
-            runAsNonRoot: true
             readOnlyRootFilesystem: true
             seccompProfile:
               type: RuntimeDefault
@@ -85,5 +90,7 @@ spec:
       volumes:
       - name: temp-vol
         emptyDir: {}
-      - name: certs
-        emptyDir: {}
+      - name: certificates
+        secret:
+          defaultMode: 420
+          secretName: kedaorg-certs

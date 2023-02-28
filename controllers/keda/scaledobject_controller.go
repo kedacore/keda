@@ -1,5 +1,5 @@
 /*
-Copyright 2021 The KEDA Authors
+Copyright 2023 The KEDA Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -46,7 +46,6 @@ import (
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	"github.com/kedacore/keda/v2/pkg/scaling"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 // +kubebuilder:rbac:groups=keda.sh,resources=scaledobjects;scaledobjects/finalizers;scaledobjects/status,verbs="*"
@@ -255,16 +254,14 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 // ensureScaledObjectLabel ensures that scaledobject.keda.sh/name=<scaledObject.Name> label exist in the ScaledObject
 // This is how the MetricsAdapter will know which ScaledObject a metric is for when the HPA queries it.
 func (r *ScaledObjectReconciler) ensureScaledObjectLabel(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
-	const labelScaledObjectName = "scaledobject.keda.sh/name"
-
 	if scaledObject.Labels == nil {
-		scaledObject.Labels = map[string]string{labelScaledObjectName: scaledObject.Name}
+		scaledObject.Labels = map[string]string{kedav1alpha1.ScaledObjectOwnerAnnotation: scaledObject.Name}
 	} else {
-		value, found := scaledObject.Labels[labelScaledObjectName]
+		value, found := scaledObject.Labels[kedav1alpha1.ScaledObjectOwnerAnnotation]
 		if found && value == scaledObject.Name {
 			return nil
 		}
-		scaledObject.Labels[labelScaledObjectName] = scaledObject.Name
+		scaledObject.Labels[kedav1alpha1.ScaledObjectOwnerAnnotation] = scaledObject.Name
 	}
 
 	logger.V(1).Info("Adding \"scaledobject.keda.sh/name\" label on ScaledObject", "value", scaledObject.Name)
@@ -273,7 +270,7 @@ func (r *ScaledObjectReconciler) ensureScaledObjectLabel(ctx context.Context, lo
 
 // checkTargetResourceIsScalable checks if resource targeted for scaling exists and exposes /scale subresource
 func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (kedav1alpha1.GroupVersionKindResource, error) {
-	gvkr, err := kedautil.ParseGVKR(r.restMapper, scaledObject.Spec.ScaleTargetRef.APIVersion, scaledObject.Spec.ScaleTargetRef.Kind)
+	gvkr, err := kedav1alpha1.ParseGVKR(r.restMapper, scaledObject.Spec.ScaleTargetRef.APIVersion, scaledObject.Spec.ScaleTargetRef.Kind)
 	if err != nil {
 		logger.Error(err, "Failed to parse Group, Version, Kind, Resource", "apiVersion", scaledObject.Spec.ScaleTargetRef.APIVersion, "kind", scaledObject.Spec.ScaleTargetRef.Kind)
 		return gvkr, err
@@ -352,6 +349,13 @@ func (r *ScaledObjectReconciler) checkTriggers(scaledObject *kedav1alpha1.Scaled
 				if trigger.Type == "cpu" || trigger.Type == "memory" || trigger.Type == "cron" {
 					return fmt.Errorf("property \"useCachedMetrics\" is not supported for %q scaler", trigger.Type)
 				}
+			}
+
+			// FIXME: DEPRECATED to be removed in v2.12
+			_, hasMetricName := trigger.Metadata["metricName"]
+			// aws-cloudwatch and huawei-cloudeye have a meaningful use of metricName
+			if hasMetricName && trigger.Type != "aws-cloudwatch" && trigger.Type != "huawei-cloudeye" {
+				log.Log.Info("metricName is deprecated and will be removed in v2.12, please do not set it anymore (used in %q)", trigger.Type)
 			}
 
 			name := trigger.Name

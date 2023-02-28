@@ -1,5 +1,5 @@
 /*
-Copyright 2021 The KEDA Authors
+Copyright 2023 The KEDA Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -197,7 +197,7 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 	var externalMetricNames []string
 	var resourceMetricNames []string
 
-	cache, err := r.ScaleHandler.GetScalersCache(ctx, scaledObject)
+	cache, err := r.ScaleHandler.GetScalersCache(ctx, scaledObject.DeepCopy())
 	if err != nil {
 		logger.Error(err, "Error getting scalers")
 		return nil, err
@@ -218,7 +218,7 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 
 			// add the scaledobject.keda.sh/name label. This is how the MetricsAdapter will know which scaledobject a metric is for when the HPA queries it.
 			metricSpec.External.Metric.Selector = &metav1.LabelSelector{MatchLabels: make(map[string]string)}
-			metricSpec.External.Metric.Selector.MatchLabels["scaledobject.keda.sh/name"] = scaledObject.Name
+			metricSpec.External.Metric.Selector.MatchLabels[kedav1alpha1.ScaledObjectOwnerAnnotation] = scaledObject.Name
 			externalMetricNames = append(externalMetricNames, externalMetricName)
 		}
 	}

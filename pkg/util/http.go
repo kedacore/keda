@@ -25,11 +25,14 @@ import (
 var disableKeepAlives bool
 
 func init() {
-	var err error
-	disableKeepAlives, err = ResolveOsEnvBool("KEDA_HTTP_DISABLE_KEEP_ALIVE", false)
-	if err != nil {
-		disableKeepAlives = false
+	disableKeepAlives = getKeepAliveValue()
+}
+
+func getKeepAliveValue() bool {
+	if val, err := ResolveOsEnvBool("KEDA_HTTP_DISABLE_KEEP_ALIVE", false); err == nil {
+		return val
 	}
+	return false
 }
 
 // HTTPDoer is an interface that matches the Do method on
@@ -47,8 +50,25 @@ func CreateHTTPClient(timeout time.Duration, unsafeSsl bool) *http.Client {
 	if timeout <= 0 {
 		timeout = 300 * time.Millisecond
 	}
+	transport := CreateHTTPTransport(unsafeSsl)
+	httpClient := &http.Client{
+		Timeout:   timeout,
+		Transport: transport,
+	}
+	return httpClient
+}
+
+// CreateHTTPTransport returns a new HTTP Transport with Proxy, Keep alives
+// unsafeSsl parameter allows to avoid tls cert validation if it's required
+func CreateHTTPTransport(unsafeSsl bool) *http.Transport {
+	return CreateHTTPTransportWithTLSConfig(CreateTLSClientConfig(unsafeSsl))
+}
+
+// CreateHTTPTransportWithTLSConfig returns a new HTTP Transport with Proxy, Keep alives
+// using given tls.Config
+func CreateHTTPTransportWithTLSConfig(config *tls.Config) *http.Transport {
 	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: unsafeSsl},
+		TLSClientConfig: config,
 		Proxy:           http.ProxyFromEnvironment,
 	}
 	if disableKeepAlives {
@@ -56,9 +76,5 @@ func CreateHTTPClient(timeout time.Duration, unsafeSsl bool) *http.Client {
 		transport.DisableKeepAlives = true
 		transport.IdleConnTimeout = 100 * time.Second
 	}
-	httpClient := &http.Client{
-		Timeout:   timeout,
-		Transport: transport,
-	}
-	return httpClient
+	return transport
 }

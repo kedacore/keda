@@ -6,6 +6,7 @@ package hashicorp_vault_test
 import (
 	"encoding/base64"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/joho/godotenv"
@@ -46,6 +47,7 @@ type templateData struct {
 	VaultNamespace                   string
 	ScaledObjectName                 string
 	TriggerAuthenticationName        string
+	VaultSecretPath                  string
 	SecretName                       string
 	HashiCorpToken                   string
 	PostgreSQLStatefulSetName        string
@@ -119,7 +121,7 @@ spec:
     secrets:
     - parameter: connection
       key: connectionString
-      path: secret/data/keda
+      path: {{.VaultSecretPath}}
 `
 
 	scaledObjectTemplate = `
@@ -266,39 +268,63 @@ spec:
 )
 
 func TestPostreSQLScaler(t *testing.T) {
-	// Create kubernetes resources for PostgreSQL server
-	kc := GetKubernetesClient(t)
-	data, postgreSQLtemplates := getPostgreSQLTemplateData()
+	tests := []struct {
+		name               string
+		vaultEngineVersion uint
+		vaultSecretPath    string
+	}{
+		{
+			name:               "vault kv engine v1",
+			vaultEngineVersion: 1,
+			vaultSecretPath:    "secret/keda",
+		},
+		{
+			name:               "vault kv engine v2",
+			vaultEngineVersion: 2,
+			vaultSecretPath:    "secret/data/keda",
+		},
+	}
 
-	CreateKubernetesResources(t, kc, testNamespace, data, postgreSQLtemplates)
-	hashiCorpToken := setupHashiCorpVault(t, kc)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Create kubernetes resources for PostgreSQL server
+			kc := GetKubernetesClient(t)
+			data, postgreSQLtemplates := getPostgreSQLTemplateData()
 
-	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, postgreSQLStatefulSetName, testNamespace, 1, 60, 3),
-		"replica count should be %d after 3 minutes", 1)
+			CreateKubernetesResources(t, kc, testNamespace, data, postgreSQLtemplates)
+			hashiCorpToken := setupHashiCorpVault(t, kc, test.vaultEngineVersion)
 
-	createTableSQL := "CREATE TABLE task_instance (id serial PRIMARY KEY,state VARCHAR(10));"
-	ok, out, errOut, err := WaitForSuccessfulExecCommandOnSpecificPod(t, postgresqlPodName, testNamespace,
-		fmt.Sprintf("psql -U %s -d %s -c \"%s\"", postgreSQLUsername, postgreSQLDatabase, createTableSQL), 60, 3)
-	assert.True(t, ok, "executing a command on PostreSQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", out, errOut, err)
+			assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, postgreSQLStatefulSetName, testNamespace, 1, 60, 3),
+				"replica count should be %d after 3 minutes", 1)
 
-	// Create kubernetes resources for testing
-	data, templates := getTemplateData()
-	data.HashiCorpToken = RemoveANSI(hashiCorpToken)
-	KubectlApplyMultipleWithTemplate(t, data, templates)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %d after 3 minutes", minReplicaCount)
+			createTableSQL := "CREATE TABLE task_instance (id serial PRIMARY KEY,state VARCHAR(10));"
+			psqlCreateTableCmd := fmt.Sprintf("psql -U %s -d %s -c \"%s\"", postgreSQLUsername, postgreSQLDatabase, createTableSQL)
 
-	testActivation(t, kc, data)
-	testScaleOut(t, kc, data)
-	testScaleIn(t, kc)
+			ok, out, errOut, err := WaitForSuccessfulExecCommandOnSpecificPod(t, postgresqlPodName, testNamespace, psqlCreateTableCmd, 60, 3)
+			assert.True(t, ok, "executing a command on PostreSQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", out, errOut, err)
 
-	// cleanup
-	KubectlDeleteMultipleWithTemplate(t, data, templates)
-	cleanupHashiCorpVault(t, kc)
-	DeleteKubernetesResources(t, kc, testNamespace, data, postgreSQLtemplates)
+			// Create kubernetes resources for testing
+			data, templates := getTemplateData()
+			data.HashiCorpToken = RemoveANSI(hashiCorpToken)
+			data.VaultSecretPath = test.vaultSecretPath
+
+			KubectlApplyMultipleWithTemplate(t, data, templates)
+			assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
+				"replica count should be %d after 3 minutes", minReplicaCount)
+
+			testActivation(t, kc, data)
+			testScaleOut(t, kc, data)
+			testScaleIn(t, kc)
+
+			// cleanup
+			KubectlDeleteMultipleWithTemplate(t, data, templates)
+			cleanupHashiCorpVault(t, kc)
+			DeleteKubernetesResources(t, kc, testNamespace, data, postgreSQLtemplates)
+		})
+	}
 }
 
-func setupHashiCorpVault(t *testing.T, kc *kubernetes.Clientset) string {
+func setupHashiCorpVault(t *testing.T, kc *kubernetes.Clientset, kvVersion uint) string {
 	CreateNamespace(t, kc, vaultNamespace)
 
 	_, err := ExecuteCommand("helm repo add hashicorp https://helm.releases.hashicorp.com")
@@ -307,7 +333,14 @@ func setupHashiCorpVault(t *testing.T, kc *kubernetes.Clientset) string {
 	_, err = ExecuteCommand("helm repo update")
 	assert.NoErrorf(t, err, "cannot update repos - %s", err)
 
-	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --set server.dev.enabled=true --namespace %s --wait vault hashicorp/vault`, vaultNamespace))
+	var helmValues strings.Builder
+	helmValues.WriteString("--set server.dev.enabled=true")
+
+	if kvVersion == 1 {
+		helmValues.WriteString(" --set server.extraArgs=-dev-kv-v1")
+	}
+
+	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install %s --namespace %s --wait vault hashicorp/vault`, helmValues.String(), vaultNamespace))
 	assert.NoErrorf(t, err, "cannot install hashicorp vault - %s", err)
 
 	podName := "vault-0"

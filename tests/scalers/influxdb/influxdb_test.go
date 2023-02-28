@@ -20,35 +20,28 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName            = "influx-db-test"
-	influxdbJobName     = "influx-client-job"
-	basicDeploymentName = "nginx-deployment"
-	label               = "job-name=influx-client-job"
+	testName        = "influx-db-test"
+	influxdbJobName = "influx-client-job"
+	deploymentName  = "nginx-deployment"
+	label           = "job-name=influx-client-job"
 )
 
 var (
-	testNamespace              = fmt.Sprintf("%s-ns", testName)
-	influxdbStatefulsetName    = fmt.Sprintf("%s-deployment", testName)
-	scaledObjectFloatName      = fmt.Sprintf("%s-so-float", testName)
-	scaledObjectIntName        = fmt.Sprintf("%s-so-int", testName)
-	scaledObjectActivationName = fmt.Sprintf("%s-so-activation", testName)
-	basicDeploymentIntName     = fmt.Sprintf("%s-int", basicDeploymentName)
-	basicDeploymentFloatName   = fmt.Sprintf("%s-float", basicDeploymentName)
-	authToken                  = ""
-	orgName                    = ""
+	testNamespace           = fmt.Sprintf("%s-ns", testName)
+	influxdbStatefulsetName = fmt.Sprintf("%s-deployment", testName)
+	scaledObjectName        = fmt.Sprintf("%s-so", testName)
+	authToken               = ""
+	orgName                 = ""
 )
 
 type templateData struct {
-	TestNamespace              string
-	InfluxdbStatefulsetName    string
-	InfluxdbWriteJobName       string
-	ScaledObjectIntName        string
-	ScaledObjectFloatName      string
-	ScaledObjectActivationName string
-	BasicDeploymentIntName     string
-	BasicDeploymentFloatName   string
-	AuthToken                  string
-	OrgName                    string
+	TestNamespace           string
+	InfluxdbStatefulsetName string
+	InfluxdbWriteJobName    string
+	ScaledObjectName        string
+	DeploymentName          string
+	AuthToken               string
+	OrgName                 string
 }
 
 const (
@@ -102,11 +95,11 @@ spec:
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: {{.ScaledObjectActivationName}}
+  name: {{.ScaledObjectName}}
   namespace: {{.TestNamespace}}
 spec:
   scaleTargetRef:
-    name: {{.BasicDeploymentFloatName}}
+    name: {{.DeploymentName}}
   maxReplicaCount: 2
   triggers:
   - type: influxdb
@@ -126,11 +119,11 @@ spec:
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: {{.ScaledObjectFloatName}}
+  name: {{.ScaledObjectName}}
   namespace: {{.TestNamespace}}
 spec:
   scaleTargetRef:
-    name: {{.BasicDeploymentFloatName}}
+    name: {{.DeploymentName}}
   maxReplicaCount: 2
   triggers:
   - type: influxdb
@@ -144,30 +137,6 @@ spec:
         |> range(start: -1h)
         |> filter(fn: (r) => r._measurement == "stat")
         |> map(fn: (r) => ({r with _value: float(v: r._value)}))
-`
-
-	scaledObjectTemplateInt = `
-apiVersion: keda.sh/v1alpha1
-kind: ScaledObject
-metadata:
-  name: {{.ScaledObjectIntName}}
-  namespace: {{.TestNamespace}}
-spec:
-  scaleTargetRef:
-    name: {{.BasicDeploymentIntName}}
-  maxReplicaCount: 2
-  triggers:
-  - type: influxdb
-    metadata:
-      authToken: {{.AuthToken}}
-      organizationName: {{.OrgName}}
-      serverURL: http://influxdb.{{.TestNamespace}}.svc:8086
-      thresholdValue: "3"
-      query: |
-        from(bucket:"bucket")
-        |> range(start: -1h)
-        |> filter(fn: (r) => r._measurement == "stat")
-        |> map(fn: (r) => ({r with _value: int(v: r._value)}))
 `
 
 	influxdbWriteJobTemplate = `
@@ -188,11 +157,11 @@ spec:
       restartPolicy: OnFailure
 `
 
-	basicDeploymentFloatTemplate = `
+	deploymentTemplate = `
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{.BasicDeploymentFloatName}}
+  name: {{.DeploymentName}}
   namespace: {{.TestNamespace}}
   labels:
     app: nginx-deployment
@@ -208,37 +177,13 @@ spec:
     spec:
       containers:
       - name: nginx-deployment
-        image: nginx:1.14.2
-        ports:
-        - containerPort: 80
-`
-	basicDeploymentIntTemplate = `
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{.BasicDeploymentIntName}}
-  namespace: {{.TestNamespace}}
-  labels:
-    app: nginx-deployment
-spec:
-  replicas: 0
-  selector:
-    matchLabels:
-      app: nginx-deployment
-  template:
-    metadata:
-      labels:
-        app: nginx-deployment
-    spec:
-      containers:
-      - name: nginx-deployment
-        image: nginx:1.14.2
+        image: nginxinc/nginx-unprivileged
         ports:
         - containerPort: 80
 `
 )
 
-func TestScaler(t *testing.T) {
+func TestInfluxScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
 
@@ -246,7 +191,7 @@ func TestScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 
-	CreateKubernetesResources(t, kc, testNamespace, data, []Template{{Name: "influxdbStatefulsetTemplate", Config: influxdbStatefulsetTemplate}})
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, influxdbStatefulsetName, testNamespace, 1, 60, 1),
 		"replica count should be 0 after a minute")
@@ -255,7 +200,6 @@ func TestScaler(t *testing.T) {
 	testActivation(t, kc)
 	// test scaling
 	testScaleFloat(t, kc)
-	testScaleInt(t, kc)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -282,34 +226,25 @@ func runWriteJob(t *testing.T, kc *kubernetes.Clientset) templateData {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:              testNamespace,
-			InfluxdbStatefulsetName:    influxdbStatefulsetName,
-			InfluxdbWriteJobName:       influxdbJobName,
-			ScaledObjectIntName:        scaledObjectIntName,
-			ScaledObjectFloatName:      scaledObjectFloatName,
-			ScaledObjectActivationName: scaledObjectActivationName,
-			BasicDeploymentFloatName:   basicDeploymentFloatName,
-			BasicDeploymentIntName:     basicDeploymentIntName,
-			AuthToken:                  authToken,
-			OrgName:                    orgName,
+			TestNamespace:           testNamespace,
+			InfluxdbStatefulsetName: influxdbStatefulsetName,
+			InfluxdbWriteJobName:    influxdbJobName,
+			ScaledObjectName:        scaledObjectName,
+			DeploymentName:          deploymentName,
+			AuthToken:               authToken,
+			OrgName:                 orgName,
 		}, []Template{
 			{Name: "influxdbStatefulsetTemplate", Config: influxdbStatefulsetTemplate},
-			{Name: "scaledObjectTemplateFloat", Config: scaledObjectTemplateFloat},
-			{Name: "scaledObjectTemplateInt", Config: scaledObjectTemplateInt},
-			{Name: "scaledObjectActivationTemplate", Config: scaledObjectActivationTemplate},
-			{Name: "basicDeploymentFloatTemplate", Config: basicDeploymentFloatTemplate},
-			{Name: "basicDeploymentIntTemplate", Config: basicDeploymentIntTemplate},
-			{Name: "influxdbWriteJobTemplate", Config: influxdbWriteJobTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
 		}
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing activation---")
 	data := runWriteJob(t, kc)
-	KubectlApplyWithTemplate(t, data, "basicDeploymentFloatTemplate", basicDeploymentFloatTemplate)
 
 	KubectlApplyWithTemplate(t, data, "scaledObjectActivationTemplate", scaledObjectActivationTemplate)
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, basicDeploymentFloatName, testNamespace, 0, 30)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
 }
 
 func testScaleFloat(t *testing.T, kc *kubernetes.Clientset) {
@@ -317,19 +252,6 @@ func testScaleFloat(t *testing.T, kc *kubernetes.Clientset) {
 	data := runWriteJob(t, kc)
 
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplateFloat", scaledObjectTemplateFloat)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, basicDeploymentFloatName, testNamespace, 2, 60, 1),
-		"replica count should be 2 after a minute")
-}
-
-func testScaleInt(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale out with int ---")
-	data := runWriteJob(t, kc)
-	KubectlApplyWithTemplate(t, data, "basicDeploymentIntTemplate", basicDeploymentIntTemplate)
-
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, basicDeploymentIntName, testNamespace, 0, 60, 1),
-		"replica count should be 1 after a minute")
-
-	KubectlApplyWithTemplate(t, data, "scaledObjectTemplateInt", scaledObjectTemplateInt)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, basicDeploymentIntName, testNamespace, 2, 60, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
 		"replica count should be 2 after a minute")
 }

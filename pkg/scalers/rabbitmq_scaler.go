@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -35,6 +36,7 @@ const (
 	defaultRabbitMQQueueLength             = 20
 	rabbitMetricType                       = "External"
 	rabbitRootVhostPath                    = "/%2F"
+	rmqTLSEnable                           = "enable"
 )
 
 const (
@@ -75,6 +77,13 @@ type rabbitMQMetadata struct {
 	metricName            string        // custom metric name for trigger
 	timeout               time.Duration // custom http timeout for a specific trigger
 	scalerIndex           int           // scaler index
+
+	// TLS
+	ca          string
+	cert        string
+	key         string
+	keyPassword string
+	enableTLS   bool
 }
 
 type queueInfo struct {
@@ -129,7 +138,7 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 			host = hostURI.String()
 		}
 
-		conn, ch, err := getConnectionAndChannel(host)
+		conn, ch, err := getConnectionAndChannel(host, meta)
 		if err != nil {
 			return nil, fmt.Errorf("error establishing rabbitmq connection: %w", err)
 		}
@@ -165,6 +174,28 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		meta.host = config.ResolvedEnv[config.TriggerMetadata["hostFromEnv"]]
 	default:
 		return nil, fmt.Errorf("no host setting given")
+	}
+
+	// Resolve TLS authentication parameters
+	meta.enableTLS = false
+	if val, ok := config.AuthParams["tls"]; ok {
+		val = strings.TrimSpace(val)
+		if val == rmqTLSEnable {
+			meta.ca = config.AuthParams["ca"]
+			meta.cert = config.AuthParams["cert"]
+			meta.key = config.AuthParams["key"]
+			meta.enableTLS = true
+		} else if val != "disable" {
+			return nil, fmt.Errorf("err incorrect value for TLS given: %s", val)
+		}
+	}
+
+	meta.keyPassword = config.AuthParams["keyPassword"]
+
+	certGiven := meta.cert != ""
+	keyGiven := meta.key != ""
+	if certGiven != keyGiven {
+		return nil, fmt.Errorf("both key and cert must be provided")
 	}
 
 	// If the protocol is auto, check the host scheme.
@@ -214,6 +245,8 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	}
 
 	// Resolve metricName
+
+	// FIXME: DEPRECATED to be removed in v2.12
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
 		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("rabbitmq-%s", url.QueryEscape(val)))
 	} else {
@@ -354,8 +387,22 @@ func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetada
 	return meta, nil
 }
 
-func getConnectionAndChannel(host string) (*amqp.Connection, *amqp.Channel, error) {
-	conn, err := amqp.Dial(host)
+// getConnectionAndChannel returns an amqp connection. If enableTLS is true tls connection is made using
+//
+//	the given ceClient cert, ceClient key,and CA certificate. If clientKeyPassword is not empty the provided password will be used to
+//
+// decrypt the given key. If enableTLS is disabled then amqp connection will be created without tls.
+func getConnectionAndChannel(host string, meta *rabbitMQMetadata) (*amqp.Connection, *amqp.Channel, error) {
+	var conn *amqp.Connection
+	var err error
+	if meta.enableTLS {
+		tlsConfig, configErr := kedautil.NewTLSConfigWithPassword(meta.cert, meta.key, meta.keyPassword, meta.ca, false)
+		if configErr == nil {
+			conn, err = amqp.DialTLS(host, tlsConfig)
+		}
+	} else {
+		conn, err = amqp.Dial(host)
+	}
 	if err != nil {
 		return nil, nil, err
 	}

@@ -110,11 +110,15 @@ func parseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 	}
 
 	if val, ok := config.TriggerMetadata["clusterIPAddress"]; ok {
-		switch p := meta.port; {
-		case p > 0:
-			meta.clusterIPAddress = net.JoinHostPort(val, fmt.Sprintf("%d", meta.port))
-		case strings.Contains(val, ":"):
+		splitval := strings.Split(val, ":")
+		port := splitval[len(splitval)-1]
+
+		_, err := strconv.Atoi(port)
+		switch {
+		case err == nil:
 			meta.clusterIPAddress = val
+		case meta.port > 0:
+			meta.clusterIPAddress = net.JoinHostPort(val, fmt.Sprintf("%d", meta.port))
 		default:
 			return nil, fmt.Errorf("no port given")
 		}
@@ -144,6 +148,7 @@ func parseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 		return nil, fmt.Errorf("no keyspace given")
 	}
 
+	// FIXME: DEPRECATED to be removed in v2.12
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
 		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("cassandra-%s", val))
 	} else {

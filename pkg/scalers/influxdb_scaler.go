@@ -2,7 +2,6 @@ package scalers
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"strconv"
 
@@ -12,7 +11,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
+	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 type influxDBScaler struct {
@@ -52,7 +51,7 @@ func NewInfluxDBScaler(config *ScalerConfig) (Scaler, error) {
 	client := influxdb2.NewClientWithOptions(
 		meta.serverURL,
 		meta.authToken,
-		influxdb2.DefaultOptions().SetTLSConfig(&tls.Config{InsecureSkipVerify: meta.unsafeSsl}))
+		influxdb2.DefaultOptions().SetTLSConfig(util.CreateTLSClientConfig(meta.unsafeSsl)))
 
 	return &influxDBScaler{
 		client:     client,
@@ -119,10 +118,11 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 		return nil, fmt.Errorf("no server url given")
 	}
 
+	// FIXME: DEPRECATED to be removed in v2.12
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		metricName = kedautil.NormalizeString(fmt.Sprintf("influxdb-%s", val))
+		metricName = util.NormalizeString(fmt.Sprintf("influxdb-%s", val))
 	} else {
-		metricName = kedautil.NormalizeString(fmt.Sprintf("influxdb-%s", organizationName))
+		metricName = util.NormalizeString(fmt.Sprintf("influxdb-%s", organizationName))
 	}
 
 	if val, ok := config.TriggerMetadata["activationThresholdValue"]; ok {

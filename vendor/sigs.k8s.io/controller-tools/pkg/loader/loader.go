@@ -404,7 +404,11 @@ func LoadRootsWithConfig(cfg *packages.Config, roots ...string) ([]*Package, err
 	loadPackages := func(roots ...string) ([]*Package, error) {
 		rawPkgs, err := packages.Load(l.cfg, roots...)
 		if err != nil {
-			return nil, err
+			loadRoot := l.cfg.Dir
+			if l.cfg.Dir == "" {
+				loadRoot, _ = os.Getwd()
+			}
+			return nil, fmt.Errorf("load packages in root %q: %w", loadRoot, err)
 		}
 		var pkgs []*Package
 		for _, rp := range rawPkgs {

@@ -170,6 +170,8 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 	}
 
 	// get the metricName, which can be explicit or from the (masked) connection string
+
+	// FIXME: DEPRECATED to be removed in v2.12
 	if val, ok := config.TriggerMetadata["metricName"]; ok {
 		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mssql-%s", val))
 	} else {

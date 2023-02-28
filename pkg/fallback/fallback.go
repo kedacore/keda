@@ -18,32 +18,33 @@ package fallback
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
-func isFallbackEnabled(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec) bool {
+var log = logf.Log.WithName("fallback")
+
+func isFallbackEnabled(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec) bool {
 	if scaledObject.Spec.Fallback == nil {
 		return false
 	}
 
 	if metricSpec.External.Target.Type != v2.AverageValueMetricType {
-		logger.V(0).Info("Fallback can only be enabled for triggers with metric of type AverageValue")
+		log.V(0).Info("Fallback can only be enabled for triggers with metric of type AverageValue", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
 		return false
 	}
 
 	return true
 }
 
-func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, logger logr.Logger, metrics []external_metrics.ExternalMetricValue, suppressedError error, metricName string, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec) ([]external_metrics.ExternalMetricValue, error) {
+func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, metrics []external_metrics.ExternalMetricValue, suppressedError error, metricName string, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec) ([]external_metrics.ExternalMetricValue, error) {
 	status := scaledObject.Status.DeepCopy()
 
 	initHealthStatus(status)
@@ -55,7 +56,7 @@ func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, lo
 		healthStatus.Status = kedav1alpha1.HealthStatusHappy
 		status.Health[metricName] = *healthStatus
 
-		updateStatus(ctx, client, logger, scaledObject, status, metricSpec)
+		updateStatus(ctx, client, scaledObject, status, metricSpec)
 		return metrics, nil
 	}
 
@@ -63,23 +64,23 @@ func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, lo
 	*healthStatus.NumberOfFailures++
 	status.Health[metricName] = *healthStatus
 
-	updateStatus(ctx, client, logger, scaledObject, status, metricSpec)
+	updateStatus(ctx, client, scaledObject, status, metricSpec)
 
 	switch {
-	case !isFallbackEnabled(logger, scaledObject, metricSpec):
+	case !isFallbackEnabled(scaledObject, metricSpec):
 		return nil, suppressedError
 	case !validateFallback(scaledObject):
-		logger.Info("Failed to validate ScaledObject Spec. Please check that parameters are positive integers")
+		log.Info("Failed to validate ScaledObject Spec. Please check that parameters are positive integers", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
 		return nil, suppressedError
 	case *healthStatus.NumberOfFailures > scaledObject.Spec.Fallback.FailureThreshold:
-		return doFallback(logger, scaledObject, metricSpec, metricName, suppressedError), nil
+		return doFallback(scaledObject, metricSpec, metricName, suppressedError), nil
 	default:
 		return nil, suppressedError
 	}
 }
 
-func fallbackExistsInScaledObject(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec) bool {
-	if !isFallbackEnabled(logger, scaledObject, metricSpec) || !validateFallback(scaledObject) {
+func fallbackExistsInScaledObject(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec) bool {
+	if !isFallbackEnabled(scaledObject, metricSpec) || !validateFallback(scaledObject) {
 		return false
 	}
 
@@ -97,24 +98,24 @@ func validateFallback(scaledObject *kedav1alpha1.ScaledObject) bool {
 		scaledObject.Spec.Fallback.Replicas >= 0
 }
 
-func doFallback(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, metricName string, suppressedError error) []external_metrics.ExternalMetricValue {
+func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, metricName string, suppressedError error) []external_metrics.ExternalMetricValue {
 	replicas := int64(scaledObject.Spec.Fallback.Replicas)
-	normalisationValue, _ := metricSpec.External.Target.AverageValue.AsInt64()
+	normalisationValue := metricSpec.External.Target.AverageValue.AsApproximateFloat64()
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewQuantity(normalisationValue*replicas, resource.DecimalSI),
+		Value:      *resource.NewMilliQuantity(int64(normalisationValue*1000)*replicas, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 	fallbackMetrics := []external_metrics.ExternalMetricValue{metric}
 
-	logger.Info(fmt.Sprintf("Suppressing error %s, falling back to %d replicas", suppressedError, replicas))
+	log.Info("Suppressing error, falling back to fallback.replicas", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "suppressedError", suppressedError, "fallback.replicas", replicas)
 	return fallbackMetrics
 }
 
-func updateStatus(ctx context.Context, client runtimeclient.Client, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, status *kedav1alpha1.ScaledObjectStatus, metricSpec v2.MetricSpec) {
+func updateStatus(ctx context.Context, client runtimeclient.Client, scaledObject *kedav1alpha1.ScaledObject, status *kedav1alpha1.ScaledObjectStatus, metricSpec v2.MetricSpec) {
 	patch := runtimeclient.MergeFrom(scaledObject.DeepCopy())
 
-	if fallbackExistsInScaledObject(logger, scaledObject, metricSpec) {
+	if fallbackExistsInScaledObject(scaledObject, metricSpec) {
 		status.Conditions.SetFallbackCondition(metav1.ConditionTrue, "FallbackExists", "At least one trigger is falling back on this scaled object")
 	} else {
 		status.Conditions.SetFallbackCondition(metav1.ConditionFalse, "NoFallbackFound", "No fallbacks are active on this scaled object")
@@ -123,7 +124,7 @@ func updateStatus(ctx context.Context, client runtimeclient.Client, logger logr.
 	scaledObject.Status = *status
 	err := client.Status().Patch(ctx, scaledObject, patch)
 	if err != nil {
-		logger.Error(err, "Failed to patch ScaledObjects Status")
+		log.Error(err, "failed to patch ScaledObjects Status", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
 	}
 }
 

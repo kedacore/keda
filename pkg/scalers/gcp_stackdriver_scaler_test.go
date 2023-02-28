@@ -42,9 +42,9 @@ var testStackdriverMetadata = []parseStackdriverMetadataTestData{
 	// malformed activationTargetValue
 	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "credentialsFromEnv": "SAMPLE_CREDS", "activationTargetValue": "a"}, true},
 	// Credentials from AuthParams
-	{map[string]string{"GoogleApplicationCredentials": "Creds", "podIdentityOwner": ""}, map[string]string{"projectId": "myProject", "filter": sdFilter}, false},
+	{map[string]string{"GoogleApplicationCredentials": "Creds"}, map[string]string{"projectId": "myProject", "filter": sdFilter}, false},
 	// Credentials from AuthParams with empty creds
-	{map[string]string{"GoogleApplicationCredentials": "", "podIdentityOwner": ""}, map[string]string{"projectId": "myProject", "filter": sdFilter}, true},
+	{map[string]string{"GoogleApplicationCredentials": ""}, map[string]string{"projectId": "myProject", "filter": sdFilter}, true},
 	// With aggregation info
 	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "credentialsFromEnv": "SAMPLE_CREDS", "alignmentPeriodSeconds": "120", "alignmentAligner": "sum", "alignmentReducer": "percentile_99"}, false},
 	// With minimal aggregation info

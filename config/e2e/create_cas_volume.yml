@@ -1,0 +1,15 @@
+- op: add
+  path: /spec/template/spec/containers/0/volumeMounts/1
+  value:
+    name: custom-cas
+    mountPath: /custom/ca
+    readOnly: true
+
+- op: add
+  path: /spec/template/spec/volumes/1
+  value:
+    name: custom-cas
+    secret:
+      defaultMode: 420
+      secretName: custom-cas
+      optional: true

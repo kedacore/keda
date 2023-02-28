@@ -199,13 +199,13 @@ func TestAzurePipelinesMatchedAgent(t *testing.T) {
 		httpClient: http.DefaultClient,
 	}
 
-	queuelen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.TODO())
+	queueLen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.TODO())
 
 	if err != nil {
 		t.Fail()
 	}
 
-	if queuelen < 1 {
+	if queueLen < 1 {
 		t.Fail()
 	}
 }
@@ -239,13 +239,13 @@ func TestAzurePipelinesMatchedDemandAgent(t *testing.T) {
 		httpClient: http.DefaultClient,
 	}
 
-	queuelen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.TODO())
+	queueLen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.TODO())
 
 	if err != nil {
 		t.Fail()
 	}
 
-	if queuelen < 1 {
+	if queueLen < 1 {
 		t.Fail()
 	}
 }
@@ -257,6 +257,57 @@ func TestAzurePipelinesNonMatchedDemandAgent(t *testing.T) {
 	}))
 
 	meta := getMismatchDemandJobMetaData(apiStub.URL)
+
+	mockAzurePipelinesScaler := azurePipelinesScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	queueLen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.TODO())
+
+	if err != nil {
+		t.Fail()
+	}
+
+	if queueLen > 0 {
+		t.Fail()
+	}
+}
+
+func TestAzurePipelinesMatchedDemandAgentWithRequireAllDemands(t *testing.T) {
+	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(buildLoadJSON())
+	}))
+
+	meta := getDemandJobMetaData(apiStub.URL)
+	meta.requireAllDemands = true
+
+	mockAzurePipelinesScaler := azurePipelinesScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	queuelen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.TODO())
+
+	if err != nil {
+		t.Fail()
+	}
+
+	if queuelen < 1 {
+		t.Fail()
+	}
+}
+
+func TestAzurePipelinesNotMatchedPartialRequiredTriggerDemands(t *testing.T) {
+	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(buildLoadJSON())
+	}))
+
+	meta := getDemandJobMetaData(apiStub.URL)
+	meta.requireAllDemands = true
+	meta.demands = "kubectl,someOtherDemand" // the build demands only kubectl
 
 	mockAzurePipelinesScaler := azurePipelinesScaler{
 		metadata:   meta,

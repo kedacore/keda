@@ -78,9 +78,12 @@ func (et *enumType) ValueStrings() []string {
 // DescriptionLines returns a description of the enum in this format:
 //
 // Possible enum values:
-//  - `"value1"` description 1
-//  - `"value2"` description 2
+//   - `"value1"` description 1
+//   - `"value2"` description 2
 func (et *enumType) DescriptionLines() []string {
+	if len(et.Values) == 0 {
+		return nil
+	}
 	var lines []string
 	for _, value := range et.Values {
 		lines = append(lines, value.Description())
@@ -132,7 +135,7 @@ func (et *enumType) appendValue(value *enumValue) {
 
 // Description returns the description line for the enumValue
 // with the format:
-//  - `"FooValue"` is the Foo value
+//   - `"FooValue"` is the Foo value
 func (ev *enumValue) Description() string {
 	comment := strings.TrimSpace(ev.Comment)
 	// The comment should starts with the type name, trim it first.

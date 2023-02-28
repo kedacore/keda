@@ -1,5 +1,5 @@
 /*
-Copyright 2022 The KEDA Authors
+Copyright 2023 The KEDA Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -75,6 +75,15 @@ func GetClusterObjectNamespace() (string, error) {
 	strData := string(data)
 	clusterObjectNamespaceCache = &strData
 	return strData, nil
+}
+
+// GetPodNamespace returns the namespace for the pod
+func GetPodNamespace() string {
+	ns, found := os.LookupEnv("POD_NAMESPACE")
+	if !found {
+		return "keda"
+	}
+	return ns
 }
 
 // GetRestrictSecretAccess retrieves the value of the environment variable of KEDA_RESTRICT_SECRET_ACCESS

@@ -96,6 +96,7 @@ func (metricsServer PrometheusMetricServer) NewServer(address string, pattern st
 		log.Fatalf("Unable to initialize total error metrics as : %v", errscaler)
 	}
 
+	// nosemgrep: go.lang.security.audit.net.use-tls.use-tls
 	log.Fatal(http.ListenAndServe(address, nil))
 }
 

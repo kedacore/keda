@@ -24,11 +24,11 @@ import (
 	"github.com/go-logr/logr"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
-	"google.golang.org/grpc/credentials/insecure"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	"k8s.io/metrics/pkg/apis/external_metrics/v1beta1"
 
 	"github.com/kedacore/keda/v2/pkg/metricsservice/api"
+	"github.com/kedacore/keda/v2/pkg/metricsservice/utils"
 )
 
 type GrpcClient struct {
@@ -36,7 +36,7 @@ type GrpcClient struct {
 	connection *grpc.ClientConn
 }
 
-func NewGrpcClient(url string) (*GrpcClient, error) {
+func NewGrpcClient(url, certDir string) (*GrpcClient, error) {
 	retryPolicy := `{
 		"methodConfig": [{
 		  "timeout": "3s",
@@ -49,8 +49,15 @@ func NewGrpcClient(url string) (*GrpcClient, error) {
 		  }
 		}]}`
 
-	// TODO fix Transport layer - use TLS
-	conn, err := grpc.Dial(url, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithDefaultServiceConfig(retryPolicy))
+	creds, err := utils.LoadGrpcTLSCredentials(certDir, false)
+	if err != nil {
+		return nil, err
+	}
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(creds),
+		grpc.WithDefaultServiceConfig(retryPolicy),
+	}
+	conn, err := grpc.Dial(url, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -58,8 +65,8 @@ func NewGrpcClient(url string) (*GrpcClient, error) {
 	return &GrpcClient{client: api.NewMetricsServiceClient(conn), connection: conn}, nil
 }
 
-// nosemgrep: trailofbits.go.invalid-usage-of-modified-variable.invalid-usage-of-modified-variable
 func (c *GrpcClient) GetMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, *api.PromMetricsMsg, error) {
+	// nosemgrep: trailofbits.go.invalid-usage-of-modified-variable.invalid-usage-of-modified-variable
 	response, err := c.client.GetMetrics(ctx, &api.ScaledObjectRef{Name: scaledObjectName, Namespace: scaledObjectNamespace, MetricName: metricName})
 	if err != nil {
 		// in certain cases we would like to get Prometheus metrics even if there's an error

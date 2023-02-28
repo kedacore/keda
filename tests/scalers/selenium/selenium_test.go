@@ -457,7 +457,7 @@ spec:
 `
 )
 
-func TestScaler(t *testing.T) {
+func TestSeleniumScaler(t *testing.T) {
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
