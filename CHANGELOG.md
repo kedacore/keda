@@ -59,6 +59,7 @@ Here is an overview of all **stable** additions:
 Here is an overview of all new **experimental** features:
 
 - **General**: TODO ([#TODO](https://github.com/kedacore/keda/issues/TODO))
+- **GitHub Scaler**: Introduced new GitHub Scaler (#1732)
 
 ### Improvements
 
