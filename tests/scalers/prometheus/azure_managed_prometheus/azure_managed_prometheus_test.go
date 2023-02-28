@@ -5,7 +5,6 @@ package azure_managed_prometheus_test
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/joho/godotenv"
@@ -20,16 +19,33 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "azure-managed-prometheus-test"
+	testNameWorkloadIdentity = "azure-managed-prometheus-workload-identity-test"
+	testNamePodIdentity      = "azure-managed-prometheus-pod-identity-test"
 )
 
+// Workload Identity test vars
 var (
-	testNamespace           = fmt.Sprintf("%s-ns", testName)
-	deploymentName          = fmt.Sprintf("%s-deployment", testName)
-	monitoredAppName        = fmt.Sprintf("%s-monitored-app", testName)
-	publishDeploymentName   = fmt.Sprintf("%s-publish", testName)
-	scaledObjectName        = fmt.Sprintf("%s-so", testName)
-	prometheusQueryEndpoint = os.Getenv("TF_AZURE_MANAGED_PROMETHEUS_QUERY_ENDPOINT")
+	testNamespaceWI          = fmt.Sprintf("%s-ns", testNameWorkloadIdentity)
+	deploymentNameWI         = fmt.Sprintf("%s-deployment", testNameWorkloadIdentity)
+	monitoredAppNameWI       = fmt.Sprintf("%s-monitored-app", testNameWorkloadIdentity)
+	publishDeploymentNameWI  = fmt.Sprintf("%s-publish", testNameWorkloadIdentity)
+	scaledObjectNameWI       = fmt.Sprintf("%s-so", testNameWorkloadIdentity)
+	workloadIdentityProvider = "azure-workload"
+)
+
+// Pod Identity test vars
+var (
+	testNamespacePod         = fmt.Sprintf("%s-ns", testNamePodIdentity)
+	deploymentNamePod        = fmt.Sprintf("%s-deployment", testNamePodIdentity)
+	monitoredAppNamePod      = fmt.Sprintf("%s-monitored-app", testNamePodIdentity)
+	publishDeploymentNamePod = fmt.Sprintf("%s-publish", testNamePodIdentity)
+	scaledObjectNamePod      = fmt.Sprintf("%s-so", testNamePodIdentity)
+	podIdentityProvider      = "azure"
+)
+
+// Common for pod and workload identity tests
+var (
+	prometheusQueryEndpoint = "https://raggupta-amw-eus-corp-2-1l1j.eastus.prometheus.monitor.azure.com"
 	minReplicaCount         = 0
 	maxReplicaCount         = 2
 )
@@ -40,6 +56,7 @@ type templateData struct {
 	MonitoredAppName        string
 	PublishDeploymentName   string
 	ScaledObjectName        string
+	PodIdentityProvider     string
 	PrometheusQueryEndpoint string
 	MinReplicaCount         int
 	MaxReplicaCount         int
@@ -179,14 +196,14 @@ spec:
     type: {{.MonitoredAppName}}
 `
 
-	azureManagedPrometheusWorkloadIdentityAuthTemplate = `apiVersion: keda.sh/v1alpha1
+	azureManagedPrometheusAuthTemplate = `apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
-  name: azure-managed-prometheus-trigger-auth-wi
+  name: azure-managed-prometheus-trigger-auth
   namespace: {{.TestNamespace}}
 spec:
   podIdentity:
-      provider: azure-workload
+      provider: {{.PodIdentityProvider}}
 `
 
 	scaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
@@ -210,7 +227,7 @@ spec:
       activationThreshold: '20'
       query: sum(rate(http_requests_total{app="{{.MonitoredAppName}}"}[2m]))
     authenticationRef:
-      name: azure-managed-prometheus-trigger-auth-wi
+      name: azure-managed-prometheus-trigger-auth
 `
 
 	generateLowLevelLoadJobTemplate = `apiVersion: batch/v1
@@ -266,69 +283,99 @@ spec:
 `
 )
 
-// TestPrometheusScaler creates deployments - there are two deployments - both using the same image but one deployment
+// TestAzureManagedPrometheusScalerWithWorkloadIdentity creates deployments - there are two deployments - both using the same image but one deployment
 // is directly tied to the KEDA HPA while the other is isolated that can be used for metrics
 // even when the KEDA deployment is at zero - the service points to both deployments
-func TestAzureManagedPrometheusScaler(t *testing.T) {
+func TestAzureManagedPrometheusScalerWithWorkloadIdentity(t *testing.T) {
+	testAzureManagedPrometheusScaler(t, getTemplateDataForWorkloadIdentityTest(), getTemplates())
+}
+
+// TestAzureManagedPrometheusScalerWithWorkloadIdentity creates deployments - there are two deployments - both using the same image but one deployment
+// is directly tied to the KEDA HPA while the other is isolated that can be used for metrics
+// even when the KEDA deployment is at zero - the service points to both deployments
+func TestAzureManagedPrometheusScalerWithPodIdentity(t *testing.T) {
+	testAzureManagedPrometheusScaler(t, getTemplateDataForPodIdentityTest(), getTemplates())
+}
+
+func testAzureManagedPrometheusScaler(t *testing.T, data templateData, templates []Template) {
 	require.NotEmpty(t, prometheusQueryEndpoint, "TF_AZURE_MANAGED_PROMETHEUS_QUERY_ENDPOINT env variable is required for azure managed prometheus tests")
 
 	kc := GetKubernetesClient(t)
 
 	// Create kubernetes resources for testing
-	CreateNamespace(t, kc, testNamespace)
-	data, templates := getTemplateData()
+	CreateNamespace(t, kc, data.TestNamespace)
+
 	KubectlApplyMultipleWithTemplate(t, data, templates)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, monitoredAppName, testNamespace, 1, 60, 3),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, data.MonitoredAppName, data.TestNamespace, 1, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName, data.TestNamespace, minReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
 
 	testActivation(t, kc, data)
 	testScaleOut(t, kc, data)
-	testScaleIn(t, kc)
+	testScaleIn(t, kc, data)
 
 	// cleanup
 	KubectlDeleteMultipleWithTemplate(t, data, templates)
-	DeleteNamespace(t, kc, testNamespace)
+	DeleteNamespace(t, kc, data.TestNamespace)
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
 	KubectlApplyWithTemplate(t, data, "generateLowLevelLoadJobTemplate", generateLowLevelLoadJobTemplate)
 
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, data.DeploymentName, data.TestNamespace, minReplicaCount, 60)
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
 	KubectlApplyWithTemplate(t, data, "generateLoadJobTemplate", generateLoadJobTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 120, 5),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName, data.TestNamespace, maxReplicaCount, 120, 5),
 		"replica count should be %d after 5 minutes", maxReplicaCount)
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale in ---")
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 120, 5),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName, data.TestNamespace, minReplicaCount, 120, 5),
 		"replica count should be %d after 5 minutes", minReplicaCount)
 }
 
-func getTemplateData() (templateData, []Template) {
+func getTemplates() []Template {
+	return []Template{
+		{Name: "azureManagedPrometheusConfigMapTemplate", Config: azureManagedPrometheusConfigMapTemplate},
+		{Name: "monitoredAppDeploymentTemplate", Config: monitoredAppDeploymentTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "monitoredAppServiceTemplate", Config: monitoredAppServiceTemplate},
+		{Name: "azureManagedPrometheusAuthTemplate", Config: azureManagedPrometheusAuthTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
+}
+
+func getTemplateDataForPodIdentityTest() templateData {
 	return templateData{
-			TestNamespace:           testNamespace,
-			DeploymentName:          deploymentName,
-			PublishDeploymentName:   publishDeploymentName,
-			ScaledObjectName:        scaledObjectName,
-			MonitoredAppName:        monitoredAppName,
-			PrometheusQueryEndpoint: prometheusQueryEndpoint,
-			MinReplicaCount:         minReplicaCount,
-			MaxReplicaCount:         maxReplicaCount,
-		}, []Template{
-			{Name: "azureManagedPrometheusConfigMapTemplate", Config: azureManagedPrometheusConfigMapTemplate},
-			{Name: "monitoredAppDeploymentTemplate", Config: monitoredAppDeploymentTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "monitoredAppServiceTemplate", Config: monitoredAppServiceTemplate},
-			{Name: "azureManagedPrometheusWorkloadIdentityAuthTemplate", Config: azureManagedPrometheusWorkloadIdentityAuthTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+		TestNamespace:           testNamespacePod,
+		DeploymentName:          deploymentNamePod,
+		PublishDeploymentName:   publishDeploymentNamePod,
+		ScaledObjectName:        scaledObjectNamePod,
+		MonitoredAppName:        monitoredAppNamePod,
+		PodIdentityProvider:     podIdentityProvider,
+		PrometheusQueryEndpoint: prometheusQueryEndpoint,
+		MinReplicaCount:         minReplicaCount,
+		MaxReplicaCount:         maxReplicaCount,
+	}
+}
+
+func getTemplateDataForWorkloadIdentityTest() templateData {
+	return templateData{
+		TestNamespace:           testNamespaceWI,
+		DeploymentName:          deploymentNameWI,
+		PublishDeploymentName:   publishDeploymentNameWI,
+		ScaledObjectName:        scaledObjectNameWI,
+		MonitoredAppName:        monitoredAppNameWI,
+		PodIdentityProvider:     workloadIdentityProvider,
+		PrometheusQueryEndpoint: prometheusQueryEndpoint,
+		MinReplicaCount:         minReplicaCount,
+		MaxReplicaCount:         maxReplicaCount,
+	}
 }
