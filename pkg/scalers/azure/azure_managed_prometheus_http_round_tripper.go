@@ -15,8 +15,8 @@ import (
 
 var azureManagedPrometheusResourceURLInCloud = map[string]string{
 	"AZUREPUBLICCLOUD":       "https://prometheus.monitor.azure.com/.default",
-	"AZUREUSGOVERNMENTCLOUD": "https://prometheus.monitor.usgovcloudapi.net/.default",
-	"AZURECHINACLOUD":        "https://prometheus.monitor.chinacloudapp.cn/.default",
+	"AZUREUSGOVERNMENTCLOUD": "https://prometheus.monitor.azure.us/.default",
+	"AZURECHINACLOUD":        "https://prometheus.monitor.azure.cn/.default",
 }
 
 type azureManagedPrometheusHTTPRoundTripper struct {
