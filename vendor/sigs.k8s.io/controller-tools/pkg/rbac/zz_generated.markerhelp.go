@@ -37,6 +37,14 @@ func (Generator) Help() *markers.DefinitionHelp {
 				Summary: "sets the name of the generated ClusterRole.",
 				Details: "",
 			},
+			"HeaderFile": {
+				Summary: "specifies the header text (e.g. license) to prepend to generated files.",
+				Details: "",
+			},
+			"Year": {
+				Summary: "specifies the year to substitute for \" YEAR\" in the header file.",
+				Details: "",
+			},
 		},
 	}
 }
