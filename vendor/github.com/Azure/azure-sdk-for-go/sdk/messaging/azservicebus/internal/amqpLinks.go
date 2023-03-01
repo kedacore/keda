@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/internal/log"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/amqpwrap"
@@ -17,13 +18,19 @@ import (
 )
 
 type LinksWithID struct {
-	Sender   AMQPSender
-	Receiver AMQPReceiver
-	RPC      RPCLink
+	Sender   amqpwrap.AMQPSender
+	Receiver amqpwrap.AMQPReceiver
+	RPC      amqpwrap.RPCLink
 	ID       LinkID
 }
 
 type RetryWithLinksFn func(ctx context.Context, lwid *LinksWithID, args *utils.RetryFnArgs) error
+
+// contextWithTimeoutFn matches the signature for `context.WithTimeout` and is used when we want to
+// stub things out for tests.
+type contextWithTimeoutFn func(parent context.Context, timeout time.Duration) (context.Context, context.CancelFunc)
+
+const defaultCloseTimeout = time.Minute
 
 type AMQPLinks interface {
 	EntityPath() string
@@ -82,15 +89,15 @@ type AMQPLinksImpl struct {
 	mu sync.RWMutex
 
 	// RPCLink lets you interact with the $management link for your entity.
-	RPCLink RPCLink
+	RPCLink amqpwrap.RPCLink
 
 	// the AMQP session for either the 'sender' or 'receiver' link
 	session amqpwrap.AMQPSession
 
 	// these are populated by your `createLinkFunc` when you construct
 	// the amqpLinks
-	Sender   AMQPSenderCloser
-	Receiver AMQPReceiverCloser
+	Sender   amqpwrap.AMQPSenderCloser
+	Receiver amqpwrap.AMQPReceiverCloser
 
 	// whether this links set has been closed permanently (via Close)
 	// Recover() does not affect this value.
@@ -100,11 +107,13 @@ type AMQPLinksImpl struct {
 	cancelAuthRefreshMgmtLink func()
 
 	ns NamespaceForAMQPLinks
+
+	contextWithTimeoutFn contextWithTimeoutFn
 }
 
 // CreateLinkFunc creates the links, using the given session. Typically you'll only create either an
 // *amqp.Sender or a *amqp.Receiver. AMQPLinks handles it either way.
-type CreateLinkFunc func(ctx context.Context, session amqpwrap.AMQPSession) (AMQPSenderCloser, AMQPReceiverCloser, error)
+type CreateLinkFunc func(ctx context.Context, session amqpwrap.AMQPSession) (amqpwrap.AMQPSenderCloser, amqpwrap.AMQPReceiverCloser, error)
 
 type NewAMQPLinksArgs struct {
 	NS                  NamespaceForAMQPLinks
@@ -117,13 +126,14 @@ type NewAMQPLinksArgs struct {
 // management link for a specific entity path.
 func NewAMQPLinks(args NewAMQPLinksArgs) AMQPLinks {
 	l := &AMQPLinksImpl{
-		entityPath:          args.EntityPath,
-		managementPath:      fmt.Sprintf("%s/$management", args.EntityPath),
-		audience:            args.NS.GetEntityAudience(args.EntityPath),
-		createLink:          args.CreateLinkFunc,
-		closedPermanently:   false,
-		getRecoveryKindFunc: args.GetRecoveryKindFunc,
-		ns:                  args.NS,
+		entityPath:           args.EntityPath,
+		managementPath:       fmt.Sprintf("%s/$management", args.EntityPath),
+		audience:             args.NS.GetEntityAudience(args.EntityPath),
+		createLink:           args.CreateLinkFunc,
+		closedPermanently:    false,
+		getRecoveryKindFunc:  args.GetRecoveryKindFunc,
+		ns:                   args.NS,
+		contextWithTimeoutFn: context.WithTimeout,
 	}
 
 	return l
@@ -192,8 +202,17 @@ func (links *AMQPLinksImpl) RecoverIfNeeded(ctx context.Context, theirID LinkID,
 
 	if rk == RecoveryKindLink {
 		if err := links.recoverLink(ctx, theirID); err != nil {
-			log.Writef(exported.EventConn, "failed to recreate link: %s", err.Error())
-			return err
+			if errors.Is(err, errConnResetNeeded) {
+				log.Writef(exported.EventConn, "Connection reset for recovery instead of link. Link closing has timed out.")
+
+				if err := links.recoverConnection(ctx, theirID); err != nil {
+					log.Writef(exported.EventConn, "failed to recreate connection: %s", err.Error())
+				}
+				return err
+			} else {
+				log.Writef(exported.EventConn, "failed to recreate link: %s", err.Error())
+				return err
+			}
 		}
 
 		log.Writef(exported.EventConn, "Recovered links")
@@ -385,15 +404,41 @@ func (l *AMQPLinksImpl) CloseIfNeeded(ctx context.Context, err error) RecoveryKi
 	switch rk {
 	case RecoveryKindLink:
 		log.Writef(exported.EventConn, "Closing links for error %s", err.Error())
-		_ = l.closeWithoutLocking(ctx, false)
+
+		ctx, cancel := l.contextWithTimeoutFn(ctx, defaultCloseTimeout)
+		defer cancel()
+
+		if err := l.closeWithoutLocking(ctx, false); err != nil {
+			// Two cases:
+			//
+			// 1. Context is cancelled by the user. This interrupted some recovery logic so our best bet is just to close
+			//    the connection, which will cause it to get recovered on the next call, or the user will need to recover
+			//    it. The important bit is that cancelling does the best job it can of leaving things in a clean state.
+			//
+			// 2. We time out - now that we have an internal timeout here we can ensure that we don't just hang forever
+			//    internally and force or notify that a reset is needed. This will get passed into the next recovery call
+			//    and we'll do the normal recovery logic from there.
+
+			if errors.Is(err, errConnResetNeeded) {
+				log.Writef(exported.EventConn, "Connection closed instead. Link closing has timed out.")
+
+				// if closing leaves us in an indeterminate state we'll go ahead
+				// and close the old connection, forcing recovery.
+				_ = l.ns.Close(false)
+
+				// upgrade to connection level closing instead.
+				rk = RecoveryKindConn
+			}
+		}
+
 		return rk
 	case RecoveryKindFatal:
 		log.Writef(exported.EventConn, "Fatal error cleanup")
 		fallthrough
 	case RecoveryKindConn:
 		log.Writef(exported.EventConn, "Closing connection AND links for error %s", err.Error())
-		_ = l.ns.Close(ctx, false)
 		_ = l.closeWithoutLocking(ctx, false)
+		_ = l.ns.Close(false)
 		return rk
 	case RecoveryKindNone:
 		return rk
@@ -405,7 +450,13 @@ func (l *AMQPLinksImpl) CloseIfNeeded(ctx context.Context, err error) RecoveryKi
 // initWithoutLocking will create a new link, unconditionally.
 func (l *AMQPLinksImpl) initWithoutLocking(ctx context.Context) error {
 	// shut down any links we have
-	_ = l.closeWithoutLocking(ctx, false)
+	if err := l.closeWithoutLocking(ctx, false); err != nil {
+		// connection is destabilized since we can't close the link.
+		if errors.Is(err, errConnResetNeeded) {
+			return err
+		}
+		// any other error won't affect future links so we can ignore it.
+	}
 
 	tmpCancelAuthRefreshLink, _, err := l.ns.NegotiateClaim(ctx, l.entityPath)
 
@@ -466,7 +517,15 @@ func (l *AMQPLinksImpl) initWithoutLocking(ctx context.Context) error {
 	return nil
 }
 
-// close closes the link.
+// closeWithoutLocking closes the links ($management and normal entity links) and cancels the
+// background authentication goroutines.
+//
+// If the context argument is cancelled we return errConnResetNeeded, rather than
+// context.Err(), as failing to close can leave our connection in an indeterminate
+// state.
+//
+// Regardless of cancellation or Close() call failures, all local state will be cleaned up.
+//
 // NOTE: No locking is done in this function, call `Close` if you require locking.
 func (l *AMQPLinksImpl) closeWithoutLocking(ctx context.Context, permanent bool) error {
 	if l.closedPermanently {
@@ -491,32 +550,41 @@ func (l *AMQPLinksImpl) closeWithoutLocking(ctx context.Context, permanent bool)
 		l.cancelAuthRefreshMgmtLink = nil
 	}
 
-	if l.Sender != nil {
-		if err := l.Sender.Close(ctx); err != nil {
-			messages = append(messages, fmt.Sprintf("amqp sender close error: %s", err.Error()))
-		}
-		l.Sender = nil
+	closeables := []struct {
+		name     string
+		instance amqpwrap.Closeable
+	}{
+		{"Sender", l.Sender},
+		{"Receiver", l.Receiver},
+		{"Session", l.session},
+		{"RPC", l.RPCLink},
 	}
 
-	if l.Receiver != nil {
-		if err := l.Receiver.Close(ctx); err != nil {
-			messages = append(messages, fmt.Sprintf("amqp receiver close error: %s", err.Error()))
+	wasCancelled := false
+
+	// only allow a max of defaultCloseTimeout - it's possible for Close() to hang
+	// indefinitely if there's some sync issue between the service and us.
+	ctx, cancel := l.contextWithTimeoutFn(ctx, defaultCloseTimeout)
+	defer cancel()
+
+	for _, c := range closeables {
+		if c.instance == nil {
+			continue
 		}
-		l.Receiver = nil
+
+		if err := c.instance.Close(ctx); err != nil {
+			if IsCancelError(err) {
+				wasCancelled = true
+			}
+
+			messages = append(messages, fmt.Sprintf("%s close error: %s", c.name, err.Error()))
+		}
 	}
 
-	if l.session != nil {
-		if err := l.session.Close(ctx); err != nil {
-			messages = append(messages, fmt.Sprintf("amqp session close error: %s", err.Error()))
-		}
-		l.session = nil
-	}
+	l.Sender, l.Receiver, l.session, l.RPCLink = nil, nil, nil, nil
 
-	if l.RPCLink != nil {
-		if err := l.RPCLink.Close(ctx); err != nil {
-			messages = append(messages, fmt.Sprintf("$management link close error: %s", err.Error()))
-		}
-		l.RPCLink = nil
+	if wasCancelled {
+		return errConnResetNeeded
 	}
 
 	if len(messages) > 0 {

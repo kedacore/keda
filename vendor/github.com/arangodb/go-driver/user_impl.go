@@ -65,7 +65,7 @@ func (u *user) Name() string {
 	return u.data.Name
 }
 
-//  Is this an active user?
+// Is this an active user?
 func (u *user) IsActive() bool {
 	return u.data.Active
 }

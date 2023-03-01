@@ -17,14 +17,14 @@ import (
 // +------+---------+-------------+  +------------+  +-----------+
 // | type | channel |     size    |  |  payload   |  | frame-end |
 // +------+---------+-------------+  +------------+  +-----------+
-//  octet   short         long         size octets       octet
+//
+//	octet   short         long         size octets       octet
 const frameHeaderSize = 1 + 2 + 4 + 1
 
 /*
 Channel represents an AMQP channel. Used as a context for valid message
 exchange.  Errors on methods with this Channel as a receiver means this channel
 should be discarded and a new channel established.
-
 */
 type Channel struct {
 	destructor sync.Once
@@ -112,10 +112,7 @@ func (ch *Channel) shutdown(e *Error) {
 			for _, c := range ch.closes {
 				c <- e
 			}
-		}
-
-		// Notify RPC if we're selecting
-		if e != nil {
+			// Notify RPC if we're selecting
 			ch.errors <- e
 		}
 
@@ -240,14 +237,33 @@ func (ch *Channel) sendOpen(msg message) (err error) {
 			return ch.sendClosed(msg)
 		}
 
-		if err = ch.connection.send(&methodFrame{
+		// Flush the buffer only after all the Frames that comprise the Message
+		// have been written to maximise benefits of using a buffered writer.
+		defer func() {
+			if endError := ch.connection.endSendUnflushed(); endError != nil {
+				if err == nil {
+					err = endError
+				}
+			}
+		}()
+
+		// We use sendUnflushed() in this method as sending the message requires
+		// sending multiple Frames (methodFrame, headerFrame, N x bodyFrame).
+		// Flushing after each Frame is inefficient, as it negates much of the
+		// benefit of using a buffered writer and results in more syscalls than
+		// necessary. Flushing buffers after every frame can have a significant
+		// performance impact when sending (e.g. basicPublish) small messages,
+		// so sendUnflushed() performs an *Unflushed* write, but is otherwise
+		// equivalent to the send() method. We later use the separate flush
+		// method to explicitly flush the buffer after all Frames are written.
+		if err = ch.connection.sendUnflushed(&methodFrame{
 			ChannelId: ch.id,
 			Method:    content,
 		}); err != nil {
 			return
 		}
 
-		if err = ch.connection.send(&headerFrame{
+		if err = ch.connection.sendUnflushed(&headerFrame{
 			ChannelId:  ch.id,
 			ClassId:    class,
 			Size:       uint64(len(body)),
@@ -262,7 +278,7 @@ func (ch *Channel) sendOpen(msg message) (err error) {
 				j = len(body)
 			}
 
-			if err = ch.connection.send(&bodyFrame{
+			if err = ch.connection.sendUnflushed(&bodyFrame{
 				ChannelId: ch.id,
 				Body:      body[i:j],
 			}); err != nil {
@@ -450,7 +466,6 @@ Close initiate a clean channel closure by sending a close message with the error
 code set to '200'.
 
 It is safe to call this method multiple times.
-
 */
 func (ch *Channel) Close() error {
 	defer ch.connection.closeChannel(ch, nil)
@@ -478,7 +493,6 @@ graceful close, no error will be sent.
 
 In case of a non graceful close the error will be notified synchronously by the library
 so that it will be necessary to consume the Channel from the caller in order to avoid deadlocks
-
 */
 func (ch *Channel) NotifyClose(c chan *Error) chan *Error {
 	ch.notifyM.Lock()
@@ -524,7 +538,6 @@ much on the same connection, all channels using that connection will suffer,
 including acknowledgments from deliveries.  Use different Connections if you
 desire to interleave consumers and producers in the same process to avoid your
 basic.ack messages from getting rate limited with your basic.publish messages.
-
 */
 func (ch *Channel) NotifyFlow(c chan bool) chan bool {
 	ch.notifyM.Lock()
@@ -546,7 +559,6 @@ immediate flags.
 
 A return struct has a copy of the Publishing along with some error
 information about why the publishing failed.
-
 */
 func (ch *Channel) NotifyReturn(c chan Return) chan Return {
 	ch.notifyM.Lock()
@@ -567,7 +579,6 @@ from the server when a queue is deleted or when consuming from a mirrored queue
 where the master has just failed (and was moved to another node).
 
 The subscription tag is returned to the listener.
-
 */
 func (ch *Channel) NotifyCancel(c chan string) chan string {
 	ch.notifyM.Lock()
@@ -632,7 +643,6 @@ Channel.Close() or Connection.Close().
 
 It is also advisable for the caller to consume from the channel returned till it is closed
 to avoid possible deadlocks
-
 */
 func (ch *Channel) NotifyPublish(confirm chan Confirmation) chan Confirmation {
 	ch.notifyM.Lock()
@@ -645,7 +655,6 @@ func (ch *Channel) NotifyPublish(confirm chan Confirmation) chan Confirmation {
 	}
 
 	return confirm
-
 }
 
 /*
@@ -711,7 +720,6 @@ When noWait is true, do not wait for the server to acknowledge the cancel.
 Only use this when you are certain there are no deliveries in flight that
 require an acknowledgment, otherwise they will arrive and be dropped in the
 client without an ack, and will not be redelivered to other consumers.
-
 */
 func (ch *Channel) Cancel(consumer string, noWait bool) error {
 	req := &basicCancel{
@@ -744,12 +752,12 @@ the type "direct" with the routing key matching the queue's name.  With this
 default binding, it is possible to publish messages that route directly to
 this queue by publishing to "" with the routing key of the queue name.
 
-  QueueDeclare("alerts", true, false, false, false, nil)
-  Publish("", "alerts", false, false, Publishing{Body: []byte("...")})
+	QueueDeclare("alerts", true, false, false, false, nil)
+	Publish("", "alerts", false, false, Publishing{Body: []byte("...")})
 
-  Delivery       Exchange  Key       Queue
-  -----------------------------------------------
-  key: alerts -> ""     -> alerts -> alerts
+	Delivery       Exchange  Key       Queue
+	-----------------------------------------------
+	key: alerts -> ""     -> alerts -> alerts
 
 The queue name may be empty, in which case the server will generate a unique name
 which will be returned in the Name field of Queue struct.
@@ -785,7 +793,6 @@ or attempting to modify an existing queue from a different connection.
 
 When the error return value is not nil, you can assume the queue could not be
 declared with these parameters, and the channel will be closed.
-
 */
 func (ch *Channel) QueueDeclare(name string, durable, autoDelete, exclusive, noWait bool, args Table) (Queue, error) {
 	if err := args.Validate(); err != nil {
@@ -819,13 +826,11 @@ func (ch *Channel) QueueDeclare(name string, durable, autoDelete, exclusive, noW
 }
 
 /*
-
 QueueDeclarePassive is functionally and parametrically equivalent to
 QueueDeclare, except that it sets the "passive" attribute to true. A passive
 queue is assumed by RabbitMQ to already exist, and attempting to connect to a
 non-existent queue will cause RabbitMQ to throw an exception. This function
 can be used to test for the existence of a queue.
-
 */
 func (ch *Channel) QueueDeclarePassive(name string, durable, autoDelete, exclusive, noWait bool, args Table) (Queue, error) {
 	if err := args.Validate(); err != nil {
@@ -871,7 +876,6 @@ declared with specific parameters.
 
 If a queue by this name does not exist, an error will be returned and the
 channel will be closed.
-
 */
 func (ch *Channel) QueueInspect(name string) (Queue, error) {
 	req := &queueDeclare{
@@ -896,14 +900,14 @@ QueueBind binds an exchange to a queue so that publishings to the exchange will
 be routed to the queue when the publishing routing key matches the binding
 routing key.
 
-  QueueBind("pagers", "alert", "log", false, nil)
-  QueueBind("emails", "info", "log", false, nil)
+	QueueBind("pagers", "alert", "log", false, nil)
+	QueueBind("emails", "info", "log", false, nil)
 
-  Delivery       Exchange  Key       Queue
-  -----------------------------------------------
-  key: alert --> log ----> alert --> pagers
-  key: info ---> log ----> info ---> emails
-  key: debug --> log       (none)    (dropped)
+	Delivery       Exchange  Key       Queue
+	-----------------------------------------------
+	key: alert --> log ----> alert --> pagers
+	key: info ---> log ----> info ---> emails
+	key: debug --> log       (none)    (dropped)
 
 If a binding with the same key and arguments already exists between the
 exchange and queue, the attempt to rebind will be ignored and the existing
@@ -913,16 +917,16 @@ In the case that multiple bindings may cause the message to be routed to the
 same queue, the server will only route the publishing once.  This is possible
 with topic exchanges.
 
-  QueueBind("pagers", "alert", "amq.topic", false, nil)
-  QueueBind("emails", "info", "amq.topic", false, nil)
-  QueueBind("emails", "#", "amq.topic", false, nil) // match everything
+	QueueBind("pagers", "alert", "amq.topic", false, nil)
+	QueueBind("emails", "info", "amq.topic", false, nil)
+	QueueBind("emails", "#", "amq.topic", false, nil) // match everything
 
-  Delivery       Exchange        Key       Queue
-  -----------------------------------------------
-  key: alert --> amq.topic ----> alert --> pagers
-  key: info ---> amq.topic ----> # ------> emails
-                           \---> info ---/
-  key: debug --> amq.topic ----> # ------> emails
+	Delivery       Exchange        Key       Queue
+	-----------------------------------------------
+	key: alert --> amq.topic ----> alert --> pagers
+	key: info ---> amq.topic ----> # ------> emails
+	                         \---> info ---/
+	key: debug --> amq.topic ----> # ------> emails
 
 It is only possible to bind a durable queue to a durable exchange regardless of
 whether the queue or exchange is auto-deleted.  Bindings between durable queues
@@ -933,7 +937,6 @@ will be closed.
 
 When noWait is false and the queue could not be bound, the channel will be
 closed with an error.
-
 */
 func (ch *Channel) QueueBind(name, key, exchange string, noWait bool, args Table) error {
 	if err := args.Validate(); err != nil {
@@ -958,7 +961,6 @@ arguments.
 
 It is possible to send and empty string for the exchange name which means to
 unbind the queue from the default exchange.
-
 */
 func (ch *Channel) QueueUnbind(name, key, exchange string, args Table) error {
 	if err := args.Validate(); err != nil {
@@ -1015,7 +1017,6 @@ When noWait is true, the queue will be deleted without waiting for a response
 from the server.  The purged message count will not be meaningful. If the queue
 could not be deleted, a channel exception will be raised and the channel will
 be closed.
-
 */
 func (ch *Channel) QueueDelete(name string, ifUnused, ifEmpty, noWait bool) (int, error) {
 	req := &queueDelete{
@@ -1086,7 +1087,6 @@ be dropped.
 
 When the consumer tag is cancelled, all inflight messages will be delivered until
 the returned chan is closed.
-
 */
 func (ch *Channel) Consume(queue, consumer string, autoAck, exclusive, noLocal, noWait bool, args Table) (<-chan Delivery, error) {
 	// When we return from ch.call, there may be a delivery already for the
@@ -1197,13 +1197,11 @@ func (ch *Channel) ExchangeDeclare(name, kind string, durable, autoDelete, inter
 }
 
 /*
-
 ExchangeDeclarePassive is functionally and parametrically equivalent to
 ExchangeDeclare, except that it sets the "passive" attribute to true. A passive
 exchange is assumed by RabbitMQ to already exist, and attempting to connect to a
 non-existent exchange will cause RabbitMQ to throw an exception. This function
 can be used to detect the existence of an exchange.
-
 */
 func (ch *Channel) ExchangeDeclarePassive(name, kind string, durable, autoDelete, internal, noWait bool, args Table) error {
 	if err := args.Validate(); err != nil {
@@ -1266,14 +1264,14 @@ exchange even though multiple bindings will match.
 Given a message delivered to the source exchange, the message will be forwarded
 to the destination exchange when the routing key is matched.
 
-  ExchangeBind("sell", "MSFT", "trade", false, nil)
-  ExchangeBind("buy", "AAPL", "trade", false, nil)
+	ExchangeBind("sell", "MSFT", "trade", false, nil)
+	ExchangeBind("buy", "AAPL", "trade", false, nil)
 
-  Delivery       Source      Key      Destination
-  example        exchange             exchange
-  -----------------------------------------------
-  key: AAPL  --> trade ----> MSFT     sell
-                       \---> AAPL --> buy
+	Delivery       Source      Key      Destination
+	example        exchange             exchange
+	-----------------------------------------------
+	key: AAPL  --> trade ----> MSFT     sell
+	                     \---> AAPL --> buy
 
 When noWait is true, do not wait for the server to confirm the binding.  If any
 error occurs the channel will be closed.  Add a listener to NotifyClose to
@@ -1461,7 +1459,7 @@ func (ch *Channel) PublishWithDeferredConfirmWithContext(ctx context.Context, ex
 	}
 
 	if ch.confirming {
-		return ch.confirms.Publish(ctx), nil
+		return ch.confirms.Publish(), nil
 	}
 
 	return nil, nil
@@ -1483,7 +1481,6 @@ delivery.
 When autoAck is true, the server will automatically acknowledge this message so
 you don't have to.  But if you are unable to fully process this message before
 the channel or connection is closed, the message will not get requeued.
-
 */
 func (ch *Channel) Get(queue string, autoAck bool) (msg Delivery, ok bool, err error) {
 	req := &basicGet{Queue: queue, NoAck: autoAck}
@@ -1515,7 +1512,6 @@ the channel is in a transaction is not defined.
 
 Once a channel has been put into transaction mode, it cannot be taken out of
 transaction mode.  Use a different channel for non-transactional semantics.
-
 */
 func (ch *Channel) Tx() error {
 	return ch.call(
@@ -1529,7 +1525,6 @@ TxCommit atomically commits all publishings and acknowledgments for a single
 queue and immediately start a new transaction.
 
 Calling this method without having called Channel.Tx is an error.
-
 */
 func (ch *Channel) TxCommit() error {
 	return ch.call(
@@ -1543,7 +1538,6 @@ TxRollback atomically rolls back all publishings and acknowledgments for a
 single queue and immediately start a new transaction.
 
 Calling this method without having called Channel.Tx is an error.
-
 */
 func (ch *Channel) TxRollback() error {
 	return ch.call(
@@ -1573,7 +1567,6 @@ pause its publishings when `false` is sent on that channel.
 Note: RabbitMQ prefers to use TCP push back to control flow for all channels on
 a connection, so under high volume scenarios, it's wise to open separate
 Connections for publishings and deliveries.
-
 */
 func (ch *Channel) Flow(active bool) error {
 	return ch.call(
@@ -1605,7 +1598,6 @@ persisting the message if necessary.
 
 When noWait is true, the client will not wait for a response.  A channel
 exception could occur if the server does not support this method.
-
 */
 func (ch *Channel) Confirm(noWait bool) error {
 	if err := ch.call(

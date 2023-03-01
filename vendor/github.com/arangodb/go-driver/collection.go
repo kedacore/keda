@@ -50,6 +50,11 @@ type Collection interface {
 	// in a collection has changed since the last revision check.
 	Revision(ctx context.Context) (string, error)
 
+	// Checksum returns a checksum for the specified collection
+	// withRevisions - Whether to include document revision ids in the checksum calculation.
+	// withData - Whether to include document body data in the checksum calculation.
+	Checksum(ctx context.Context, withRevisions bool, withData bool) (CollectionChecksum, error)
+
 	// Properties fetches extended information about the collection.
 	Properties(ctx context.Context) (CollectionProperties, error)
 
@@ -79,6 +84,14 @@ type Collection interface {
 	CollectionDocuments
 }
 
+// CollectionChecksum contains information about a collection checksum response
+type CollectionChecksum struct {
+	ArangoError
+	CollectionInfo
+	// The collection revision id as a string.
+	Revision string `json:"revision,omitempty"`
+}
+
 // CollectionInfo contains information about a collection
 type CollectionInfo struct {
 	// The identifier of the collection.
@@ -95,6 +108,8 @@ type CollectionInfo struct {
 	IsSystem bool `json:"isSystem,omitempty"`
 	// Global unique name for the collection
 	GloballyUniqueId string `json:"globallyUniqueId,omitempty"`
+	// The calculated checksum as a number.
+	Checksum string `json:"checksum,omitempty"`
 }
 
 // CollectionProperties contains extended information about a collection.
@@ -154,10 +169,10 @@ type CollectionProperties struct {
 	// The following attribute specifies if the new MerkleTree based sync protocol
 	// can be used on the collection.
 	SyncByRevision bool `json:"syncByRevision,omitempty"`
+	// The collection revision id as a string.
+	Revision string `json:"revision,omitempty"`
 	// Schema for collection validation
 	Schema *CollectionSchemaOptions `json:"schema,omitempty"`
-
-	Revision string `json:"revision,omitempty"`
 
 	// IsDisjoint set isDisjoint flag for Graph. Required ArangoDB 3.7+
 	IsDisjoint bool `json:"isDisjoint,omitempty"`

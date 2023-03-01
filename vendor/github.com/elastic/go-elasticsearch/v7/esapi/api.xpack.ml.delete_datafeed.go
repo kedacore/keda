@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -41,11 +41,9 @@ func newMLDeleteDatafeedFunc(t Transport) MLDeleteDatafeed {
 // MLDeleteDatafeed - Deletes an existing datafeed.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/ml-delete-datafeed.html.
-//
 type MLDeleteDatafeed func(datafeed_id string, o ...func(*MLDeleteDatafeedRequest)) (*Response, error)
 
 // MLDeleteDatafeedRequest configures the ML Delete Datafeed API request.
-//
 type MLDeleteDatafeedRequest struct {
 	DatafeedID string
 
@@ -62,7 +60,6 @@ type MLDeleteDatafeedRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r MLDeleteDatafeedRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -146,7 +143,6 @@ func (r MLDeleteDatafeedRequest) Do(ctx context.Context, transport Transport) (*
 }
 
 // WithContext sets the request context.
-//
 func (f MLDeleteDatafeed) WithContext(v context.Context) func(*MLDeleteDatafeedRequest) {
 	return func(r *MLDeleteDatafeedRequest) {
 		r.ctx = v
@@ -154,7 +150,6 @@ func (f MLDeleteDatafeed) WithContext(v context.Context) func(*MLDeleteDatafeedR
 }
 
 // WithForce - true if the datafeed should be forcefully deleted.
-//
 func (f MLDeleteDatafeed) WithForce(v bool) func(*MLDeleteDatafeedRequest) {
 	return func(r *MLDeleteDatafeedRequest) {
 		r.Force = &v
@@ -162,7 +157,6 @@ func (f MLDeleteDatafeed) WithForce(v bool) func(*MLDeleteDatafeedRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f MLDeleteDatafeed) WithPretty() func(*MLDeleteDatafeedRequest) {
 	return func(r *MLDeleteDatafeedRequest) {
 		r.Pretty = true
@@ -170,7 +164,6 @@ func (f MLDeleteDatafeed) WithPretty() func(*MLDeleteDatafeedRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f MLDeleteDatafeed) WithHuman() func(*MLDeleteDatafeedRequest) {
 	return func(r *MLDeleteDatafeedRequest) {
 		r.Human = true
@@ -178,7 +171,6 @@ func (f MLDeleteDatafeed) WithHuman() func(*MLDeleteDatafeedRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f MLDeleteDatafeed) WithErrorTrace() func(*MLDeleteDatafeedRequest) {
 	return func(r *MLDeleteDatafeedRequest) {
 		r.ErrorTrace = true
@@ -186,7 +178,6 @@ func (f MLDeleteDatafeed) WithErrorTrace() func(*MLDeleteDatafeedRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f MLDeleteDatafeed) WithFilterPath(v ...string) func(*MLDeleteDatafeedRequest) {
 	return func(r *MLDeleteDatafeedRequest) {
 		r.FilterPath = v
@@ -194,7 +185,6 @@ func (f MLDeleteDatafeed) WithFilterPath(v ...string) func(*MLDeleteDatafeedRequ
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f MLDeleteDatafeed) WithHeader(h map[string]string) func(*MLDeleteDatafeedRequest) {
 	return func(r *MLDeleteDatafeedRequest) {
 		if r.Header == nil {
@@ -207,7 +197,6 @@ func (f MLDeleteDatafeed) WithHeader(h map[string]string) func(*MLDeleteDatafeed
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f MLDeleteDatafeed) WithOpaqueID(s string) func(*MLDeleteDatafeedRequest) {
 	return func(r *MLDeleteDatafeedRequest) {
 		if r.Header == nil {

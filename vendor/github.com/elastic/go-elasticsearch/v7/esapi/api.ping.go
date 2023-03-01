@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -40,11 +40,9 @@ func newPingFunc(t Transport) Ping {
 // Ping returns whether the cluster is running.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html.
-//
 type Ping func(o ...func(*PingRequest)) (*Response, error)
 
 // PingRequest configures the Ping API request.
-//
 type PingRequest struct {
 	Pretty     bool
 	Human      bool
@@ -57,7 +55,6 @@ type PingRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r PingRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -132,7 +129,6 @@ func (r PingRequest) Do(ctx context.Context, transport Transport) (*Response, er
 }
 
 // WithContext sets the request context.
-//
 func (f Ping) WithContext(v context.Context) func(*PingRequest) {
 	return func(r *PingRequest) {
 		r.ctx = v
@@ -140,7 +136,6 @@ func (f Ping) WithContext(v context.Context) func(*PingRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f Ping) WithPretty() func(*PingRequest) {
 	return func(r *PingRequest) {
 		r.Pretty = true
@@ -148,7 +143,6 @@ func (f Ping) WithPretty() func(*PingRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f Ping) WithHuman() func(*PingRequest) {
 	return func(r *PingRequest) {
 		r.Human = true
@@ -156,7 +150,6 @@ func (f Ping) WithHuman() func(*PingRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f Ping) WithErrorTrace() func(*PingRequest) {
 	return func(r *PingRequest) {
 		r.ErrorTrace = true
@@ -164,7 +157,6 @@ func (f Ping) WithErrorTrace() func(*PingRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f Ping) WithFilterPath(v ...string) func(*PingRequest) {
 	return func(r *PingRequest) {
 		r.FilterPath = v
@@ -172,7 +164,6 @@ func (f Ping) WithFilterPath(v ...string) func(*PingRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f Ping) WithHeader(h map[string]string) func(*PingRequest) {
 	return func(r *PingRequest) {
 		if r.Header == nil {
@@ -185,7 +176,6 @@ func (f Ping) WithHeader(h map[string]string) func(*PingRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f Ping) WithOpaqueID(s string) func(*PingRequest) {
 	return func(r *PingRequest) {
 		if r.Header == nil {

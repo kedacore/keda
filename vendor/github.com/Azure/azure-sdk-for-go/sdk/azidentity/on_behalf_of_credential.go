@@ -26,14 +26,21 @@ const credNameOBO = "OnBehalfOfCredential"
 //
 // [Azure Active Directory documentation]: https://docs.microsoft.com/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow
 type OnBehalfOfCredential struct {
-	assertion string
-	client    confidentialClient
+	additionallyAllowedTenants []string
+	assertion, tenant          string
+	client                     confidentialClient
 }
 
 // OnBehalfOfCredentialOptions contains optional parameters for OnBehalfOfCredential
 type OnBehalfOfCredentialOptions struct {
 	azcore.ClientOptions
 
+	// AdditionallyAllowedTenants specifies additional tenants for which the credential may acquire tokens.
+	// Add the wildcard value "*" to allow the credential to acquire tokens for any tenant in which the
+	// application is registered.
+	AdditionallyAllowedTenants []string
+	// DisableInstanceDiscovery allows disconnected cloud solutions to skip instance discovery for unknown authority hosts.
+	DisableInstanceDiscovery bool
 	// SendCertificateChain applies only when the credential is configured to authenticate with a certificate.
 	// This setting controls whether the credential sends the public certificate chain in the x5c header of each
 	// token request's JWT. This is required for, and only used in, Subject Name/Issuer (SNI) authentication.
@@ -67,11 +74,17 @@ func newOnBehalfOfCredential(tenantID, clientID, userAssertion string, cred conf
 	if options.SendCertificateChain {
 		opts = append(opts, confidential.WithX5C())
 	}
+	opts = append(opts, confidential.WithInstanceDiscovery(!options.DisableInstanceDiscovery))
 	c, err := getConfidentialClient(clientID, tenantID, cred, &options.ClientOptions, opts...)
 	if err != nil {
 		return nil, err
 	}
-	return &OnBehalfOfCredential{assertion: userAssertion, client: c}, nil
+	return &OnBehalfOfCredential{
+		additionallyAllowedTenants: resolveAdditionallyAllowedTenants(options.AdditionallyAllowedTenants),
+		assertion:                  userAssertion,
+		client:                     c,
+		tenant:                     tenantID,
+	}, nil
 }
 
 // GetToken requests an access token from Azure Active Directory. This method is called automatically by Azure SDK clients.
@@ -79,7 +92,14 @@ func (o *OnBehalfOfCredential) GetToken(ctx context.Context, opts policy.TokenRe
 	if len(opts.Scopes) == 0 {
 		return azcore.AccessToken{}, errors.New(credNameSecret + ": GetToken() requires at least one scope")
 	}
-	ar, err := o.client.AcquireTokenOnBehalfOf(ctx, o.assertion, opts.Scopes)
+	tenant, err := resolveTenant(o.tenant, opts.TenantID, o.additionallyAllowedTenants)
+	if err != nil {
+		return azcore.AccessToken{}, err
+	}
+	ar, err := o.client.AcquireTokenOnBehalfOf(ctx, o.assertion, opts.Scopes,
+		confidential.WithClaims(opts.Claims),
+		confidential.WithTenantID(tenant),
+	)
 	if err != nil {
 		return azcore.AccessToken{}, newAuthenticationFailedErrorFromMSALError(credNameOBO, err)
 	}

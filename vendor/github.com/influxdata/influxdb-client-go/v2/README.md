@@ -13,10 +13,11 @@ This repository contains the reference Go client for InfluxDB 2.
 - [Documentation](#documentation)
     - [Examples](#examples)
 - [How To Use](#how-to-use)
+    - [Installation](#installation)
     - [Basic Example](#basic-example)
     - [Writes in Detail](#writes)
     - [Queries in Detail](#queries)
-    - [Parametrized Queries](#parametrized-queries) 
+    - [Parametrized Queries](#parametrized-queries)
     - [Concurrency](#concurrency)
     - [Proxy and redirects](#proxy-and-redirects)
     - [Checking Server State](#checking-server-state)
@@ -26,8 +27,8 @@ This repository contains the reference Go client for InfluxDB 2.
 
 ## Features
 
-- InfluxDB 2 client 
-    - Querying data 
+- InfluxDB 2 client
+    - Querying data
         - using the Flux language
         - into raw data, flux table representation
         - [How to queries](#queries)
@@ -35,13 +36,13 @@ This repository contains the reference Go client for InfluxDB 2.
         - [Line Protocol](https://docs.influxdata.com/influxdb/v2.0/reference/syntax/line-protocol/)
         - [Data Point](https://pkg.go.dev/github.com/influxdata/influxdb-client-go/v2/api/write#Point)
         - Both [asynchronous](https://pkg.go.dev/github.com/influxdata/influxdb-client-go/v2/api#WriteAPI) or [synchronous](https://pkg.go.dev/github.com/influxdata/influxdb-client-go/v2/api#WriteAPIBlocking) ways
-        - [How to writes](#writes)  
+        - [How to writes](#writes)
     - InfluxDB 2 API
         - setup, ready, health
         - authotizations, users, organizations
         - buckets, delete
         - ...
-     
+
 ## Documentation
 
 This section contains links to the client library documentation.
@@ -53,22 +54,28 @@ This section contains links to the client library documentation.
 
 ### Examples
 
-Examples for basic writing and querying data are shown below in this document 
+Examples for basic writing and querying data are shown below in this document
 
 There are also other examples in the API docs:
- - [Client usage](https://pkg.go.dev/github.com/influxdata/influxdb-client-go/v2?tab=doc#pkg-examples) 
- - [Management APIs](https://pkg.go.dev/github.com/influxdata/influxdb-client-go/v2/api?tab=doc#pkg-examples) 
+ - [Client usage](https://pkg.go.dev/github.com/influxdata/influxdb-client-go/v2?tab=doc#pkg-examples)
+ - [Management APIs](https://pkg.go.dev/github.com/influxdata/influxdb-client-go/v2/api?tab=doc#pkg-examples)
 
 ## How To Use
 
 ### Installation
 **Go 1.17** or later is required.
 
-1.  Add the client package your to your project dependencies (go.mod).
+#### Go mod project
+1.  Add the latest version of the client package to your project dependencies (go.mod).
     ```sh
     go get github.com/influxdata/influxdb-client-go/v2
     ```
 1. Add import `github.com/influxdata/influxdb-client-go/v2` to your source code.
+#### GOPATH project
+    ```sh
+    go get github.com/influxdata/influxdb-client-go
+    ```
+Note: To have _go get_ in the GOPATH mode, the environment variable `GO111MODULE` must have the `off` value.
 
 ### Basic Example
 The following example demonstrates how to write data to InfluxDB 2 and read them back using the Flux language:
@@ -88,12 +95,12 @@ func main() {
     client := influxdb2.NewClient("http://localhost:8086", "my-token")
     // Use blocking write client for writes to desired bucket
     writeAPI := client.WriteAPIBlocking("my-org", "my-bucket")
-    // Create point using full params constructor 
+    // Create point using full params constructor
     p := influxdb2.NewPoint("stat",
         map[string]string{"unit": "temperature"},
         map[string]interface{}{"avg": 24.5, "max": 45.0},
         time.Now())
-    // write point immediately 
+    // write point immediately
     writeAPI.WritePoint(context.Background(), p)
     // Create point using fluent style
     p = influxdb2.NewPointWithMeasurement("stat").
@@ -101,11 +108,16 @@ func main() {
         AddField("avg", 23.2).
         AddField("max", 45.0).
         SetTime(time.Now())
-    writeAPI.WritePoint(context.Background(), p)
-    
+    err := writeAPI.WritePoint(context.Background(), p)
+	if err != nil {
+		panic(err)
+	}
     // Or write directly line protocol
     line := fmt.Sprintf("stat,unit=temperature avg=%f,max=%f", 23.5, 45.0)
-    writeAPI.WriteRecord(context.Background(), line)
+    err = writeAPI.WriteRecord(context.Background(), line)
+	if err != nil {
+		panic(err)
+	}
 
     // Get query client
     queryAPI := client.QueryAPI("my-org")
@@ -124,6 +136,8 @@ func main() {
         if result.Err() != nil {
             fmt.Printf("Query error: %s\n", result.Err().Error())
         }
+    } else {
+		panic(err)
     }
     // Ensures background processes finishes
     client.Close()
@@ -137,10 +151,10 @@ client := influxdb2.NewClient("http://localhost:8086", "my-token")
 ```
 will use the default options.
 
-To set different configuration values, e.g. to set gzip compression and trust all server certificates, get default options 
-and change what is needed: 
+To set different configuration values, e.g. to set gzip compression and trust all server certificates, get default options
+and change what is needed:
 ```go
-client := influxdb2.NewClientWithOptions("http://localhost:8086", "my-token", 
+client := influxdb2.NewClientWithOptions("http://localhost:8086", "my-token",
     influxdb2.DefaultOptions().
         SetUseGZip(true).
         SetTLSConfig(&tls.Config{
@@ -149,17 +163,17 @@ client := influxdb2.NewClientWithOptions("http://localhost:8086", "my-token",
 ```
 ### Writes
 
-Client offers two ways of writing, non-blocking and blocking. 
+Client offers two ways of writing, non-blocking and blocking.
 
-### Non-blocking write client 
+### Non-blocking write client
 Non-blocking write client uses implicit batching. Data are asynchronously
 written to the underlying buffer and they are automatically sent to a server when the size of the write buffer reaches the batch size, default 5000, or the flush interval, default 1s, times out.
 Writes are automatically retried on server back pressure.
 
-This write client also offers synchronous blocking method to ensure that write buffer is flushed and all pending writes are finished, 
+This write client also offers synchronous blocking method to ensure that write buffer is flushed and all pending writes are finished,
 see [Flush()](https://pkg.go.dev/github.com/influxdata/influxdb-client-go/v2/api#WriteAPI.Flush) method.
 Always use [Close()](https://pkg.go.dev/github.com/influxdata/influxdb-client-go/v2#Client.Close) method of the client to stop all background processes.
- 
+
 Asynchronous write client is recommended for frequent periodic writes.
 
 ```go
@@ -169,13 +183,13 @@ import (
     "fmt"
     "math/rand"
     "time"
-    
+
     "github.com/influxdata/influxdb-client-go/v2"
 )
 
 func main() {
     // Create a new client using an InfluxDB server base URL and an authentication token
-    // and set batch size to 20 
+    // and set batch size to 20
     client := influxdb2.NewClientWithOptions("http://localhost:8086", "my-token",
         influxdb2.DefaultOptions().SetBatchSize(20))
     // Get non-blocking write client
@@ -208,12 +222,12 @@ func main() {
 }
 ```
 ### Handling of failed async writes
-WriteAPI by default continues with retrying of failed writes. 
+WriteAPI by default continues with retrying of failed writes.
 Retried are automatically writes that fail on a connection failure or when server returns response HTTP status code >= 429.
 
 Retrying algorithm uses random exponential strategy to set retry time.
 The delay for the next retry attempt is a random value in the interval _retryInterval * exponentialBase^(attempts)_ and _retryInterval * exponentialBase^(attempts+1)_.
-If writes of batch repeatedly fails, WriteAPI continues with retrying until _maxRetries_ is reached or the overall retry time of batch exceeds _maxRetryTime_. 
+If writes of batch repeatedly fails, WriteAPI continues with retrying until _maxRetries_ is reached or the overall retry time of batch exceeds _maxRetryTime_.
 
 The defaults parameters (part of the WriteOptions) are:
  - _retryInterval_=5,000ms
@@ -221,19 +235,19 @@ The defaults parameters (part of the WriteOptions) are:
  - _maxRetryDelay_=125,000ms
  - _maxRetries_=5
  - _maxRetryTime_=180,000ms
- 
+
 Retry delays are by default randomly distributed within the ranges:
  1. 5,000-10,000
  1. 10,000-20,000
  1. 20,000-40,000
  1. 40,000-80,000
  1. 80,000-125,000
- 
-Setting _retryInterval_ to 0 disables retry strategy and any failed write will discard the batch. 
 
-[WriteFailedCallback](https://pkg.go.dev/github.com/influxdata/influxdb-client-go/v2/api#WriteFailedCallback) allows advanced controlling of retrying. 
+Setting _retryInterval_ to 0 disables retry strategy and any failed write will discard the batch.
+
+[WriteFailedCallback](https://pkg.go.dev/github.com/influxdata/influxdb-client-go/v2/api#WriteFailedCallback) allows advanced controlling of retrying.
 It is synchronously notified in case async write fails.
-It controls further batch handling by its return value. If it returns `true`, WriteAPI continues with retrying of writes of this batch. Returned `false` means the batch should be discarded. 
+It controls further batch handling by its return value. If it returns `true`, WriteAPI continues with retrying of writes of this batch. Returned `false` means the batch should be discarded.
 
 ### Reading async errors
 WriteAPI automatically logs write errors. Use [Errors()](https://pkg.go.dev/github.com/influxdata/influxdb-client-go/v2/api#WriteAPI.Errors) method, which returns the channel for reading errors occuring during async writes, for writing write error to a custom target:
@@ -285,7 +299,7 @@ func main() {
 }
 ```
 
-### Blocking write client 
+### Blocking write client
 Blocking write client writes given point(s) synchronously. It doesn't do implicit batching. Batch is created from given set of points.
 Implicit batching can be enabled with `WriteAPIBlocking.EnableBatching()`.
 
@@ -336,9 +350,9 @@ func main() {
 ```
 
 ### Queries
-Query client offers retrieving of query results to a parsed representation in a [QueryTableResult](https://pkg.go.dev/github.com/influxdata/influxdb-client-go/v2/api#QueryTableResult) or to a raw string. 
+Query client offers retrieving of query results to a parsed representation in a [QueryTableResult](https://pkg.go.dev/github.com/influxdata/influxdb-client-go/v2/api#QueryTableResult) or to a raw string.
 
-### QueryTableResult 
+### QueryTableResult
 QueryTableResult offers comfortable way how to deal with flux query CSV response. It parses CSV stream into FluxTableMetaData, FluxColumn and FluxRecord objects
 for easy reading the result.
 
@@ -382,8 +396,8 @@ func main() {
 ```
 
 ### Raw
-[QueryRaw()](https://pkg.go.dev/github.com/influxdata/influxdb-client-go/v2/api#QueryAPI.QueryRaw) returns raw, unparsed, query result string and process it on your own. Returned csv format  
-can be controlled by the third parameter, query dialect.   
+[QueryRaw()](https://pkg.go.dev/github.com/influxdata/influxdb-client-go/v2/api#QueryAPI.QueryRaw) returns raw, unparsed, query result string and process it on your own. Returned csv format
+can be controlled by the third parameter, query dialect.
 
 ```go
 package main
@@ -411,7 +425,7 @@ func main() {
     }
     // Ensures background processes finishes
     client.Close()
-}    
+}
 ```
 ### Parametrized Queries
 InfluxDB Cloud supports [Parameterized Queries](https://docs.influxdata.com/influxdb/cloud/query-data/parameterized-queries/)
@@ -455,7 +469,7 @@ func main() {
 	}
 	// Query with parameters
 	query := `from(bucket:"my-bucket")
-				|> range(start: duration(params.start)) 
+				|> range(start: duration(params.start))
 				|> filter(fn: (r) => r._measurement == "stat")
 				|> filter(fn: (r) => r._field == params.field)
 				|> filter(fn: (r) => r._value > params.value)`
@@ -487,8 +501,8 @@ func main() {
 ### Concurrency
 InfluxDB Go Client can be used in a concurrent environment. All its functions are thread-safe.
 
-The best practise is to use a single `Client` instance per server URL. This ensures optimized resources usage, 
-most importantly reusing HTTP connections. 
+The best practise is to use a single `Client` instance per server URL. This ensures optimized resources usage,
+most importantly reusing HTTP connections.
 
 For efficient reuse of HTTP resources among multiple clients, create an HTTP client and use `Options.SetHTTPClient()` for setting it to all clients:
 ```go
@@ -514,7 +528,7 @@ For efficient reuse of HTTP resources among multiple clients, create an HTTP cli
     client2 := influxdb2.NewClientWithOptions("https://server:9999", "my-token2", influxdb2.DefaultOptions().SetHTTPClient(httpClient))
 ```
 
-Client ensures that there is a single instance of each server API sub-client for the specific area. E.g. a single `WriteAPI` instance for each org/bucket pair, 
+Client ensures that there is a single instance of each server API sub-client for the specific area. E.g. a single `WriteAPI` instance for each org/bucket pair,
 a single `QueryAPI` for each org.
 
 Such a single API sub-client instance can be used concurrently:
@@ -573,10 +587,10 @@ func main() {
 
 ### Proxy and redirects
 You can configure InfluxDB Go client behind a proxy in two ways:
- 1. Using environment variable  
-     Set environment variable `HTTP_PROXY` (or `HTTPS_PROXY` based on the scheme of your server url).  
+ 1. Using environment variable
+     Set environment variable `HTTP_PROXY` (or `HTTPS_PROXY` based on the scheme of your server url).
      e.g. (linux) `export HTTP_PROXY=http://my-proxy:8080` or in Go code `os.Setenv("HTTP_PROXY","http://my-proxy:8080")`
-     
+
  1. Configure `http.Client` to use proxy<br>
      Create a custom `http.Client` with a proxy configuration:
     ```go
@@ -588,7 +602,7 @@ You can configure InfluxDB Go client behind a proxy in two ways:
     }
     client := influxdb2.NewClientWithOptions("http://localhost:8086", token, influxdb2.DefaultOptions().SetHTTPClient(httpClient))
     ```
- 
+
  Client automatically follows HTTP redirects. The default redirect policy is to follow up to 10 consecutive requests.
  Due to a security reason _Authorization_ header is not forwarded when redirect leads to a different domain.
  To overcome this limitation you have to set a custom redirect handler:
@@ -602,7 +616,7 @@ httpClient := &http.Client{
     },
 }
 client := influxdb2.NewClientWithOptions("http://localhost:8086", token, influxdb2.DefaultOptions().SetHTTPClient(httpClient))
-``` 
+```
 
 ### Checking Server State
 There are three functions for checking whether a server is up and ready for communication:
@@ -616,23 +630,23 @@ There are three functions for checking whether a server is up and ready for comm
 Only the [Ping()](https://pkg.go.dev/github.com/influxdata/influxdb-client-go/v2#Client.Ping) function works in InfluxDB Cloud server.
 
 ## InfluxDB 1.8 API compatibility
-  
+
   [InfluxDB 1.8.0 introduced forward compatibility APIs](https://docs.influxdata.com/influxdb/latest/tools/api/#influxdb-2-0-api-compatibility-endpoints) for InfluxDB 2.0. This allow you to easily move from InfluxDB 1.x to InfluxDB 2.0 Cloud or open source.
-  
+
   Client API usage differences summary:
  1. Use the form `username:password` for an **authentication token**. Example: `my-user:my-password`. Use an empty string (`""`) if the server doesn't require authentication.
  1. The organization parameter is not used. Use an empty string (`""`) where necessary.
  1. Use the form `database/retention-policy` where a **bucket** is required. Skip retention policy if the default retention policy should be used. Examples: `telegraf/autogen`, `telegraf`.  
-  
+
   The following forward compatible APIs are available:
-  
+
   | API | Endpoint | Description |
   |:----------|:----------|:----------|
   | [WriteAPI](https://pkg.go.dev/github.com/influxdata/influxdb-client-go/v2/api#WriteAPI) (also [WriteAPIBlocking](https://pkg.go.dev/github.com/influxdata/influxdb-client-go/v2/api#WriteAPIBlocking))| [/api/v2/write](https://docs.influxdata.com/influxdb/v2.0/write-data/developer-tools/api/) | Write data to InfluxDB 1.8.0+ using the InfluxDB 2.0 API |
   | [QueryAPI](https://pkg.go.dev/github.com/influxdata/influxdb-client-go/v2/api#QueryAPI) | [/api/v2/query](https://docs.influxdata.com/influxdb/v2.0/query-data/execute-queries/influx-api/) | Query data in InfluxDB 1.8.0+ using the InfluxDB 2.0 API and [Flux](https://docs.influxdata.com/flux/latest/) endpoint should be enabled by the [`flux-enabled` option](https://docs.influxdata.com/influxdb/v1.8/administration/config/#flux-enabled-false)
-  | [Health()](https://pkg.go.dev/github.com/influxdata/influxdb-client-go/v2#Client.Health) | [/health](https://docs.influxdata.com/influxdb/v2.0/api/#tag/Health) | Check the health of your InfluxDB instance |    
+  | [Health()](https://pkg.go.dev/github.com/influxdata/influxdb-client-go/v2#Client.Health) | [/health](https://docs.influxdata.com/influxdb/v2.0/api/#tag/Health) | Check the health of your InfluxDB instance |
 
-  
+
 ### Example
 ```go
 package main

@@ -42,6 +42,7 @@ type ResponseHeader struct {
 	contentType     []byte
 	contentEncoding []byte
 	server          []byte
+	mulHeader       [][]byte
 
 	h       []argsKV
 	trailer []argsKV
@@ -79,6 +80,7 @@ type RequestHeader struct {
 	host        []byte
 	contentType []byte
 	userAgent   []byte
+	mulHeader   [][]byte
 
 	h       []argsKV
 	trailer []argsKV
@@ -107,7 +109,7 @@ func (h *ResponseHeader) SetContentRange(startPos, endPos, contentLength int) {
 	h.setNonSpecial(strContentRange, h.bufKV.value)
 }
 
-// SetByteRange sets 'Range: bytes=startPos-endPos' header.
+// SetByteRanges sets 'Range: bytes=startPos-endPos' header.
 //
 //   - If startPos is negative, then 'bytes=-startPos' value is set.
 //   - If endPos is negative, then 'bytes=startPos-' value is set.
@@ -974,6 +976,7 @@ func (h *ResponseHeader) resetSkipNormalize() {
 	h.h = h.h[:0]
 	h.cookies = h.cookies[:0]
 	h.trailer = h.trailer[:0]
+	h.mulHeader = h.mulHeader[:0]
 }
 
 // SetNoDefaultContentType allows you to control if a default Content-Type header will be set (false) or not (true).
@@ -1002,6 +1005,7 @@ func (h *RequestHeader) resetSkipNormalize() {
 	h.contentType = h.contentType[:0]
 	h.userAgent = h.userAgent[:0]
 	h.trailer = h.trailer[:0]
+	h.mulHeader = h.mulHeader[:0]
 
 	h.h = h.h[:0]
 	h.cookies = h.cookies[:0]
@@ -1793,6 +1797,146 @@ func (h *RequestHeader) peek(key []byte) []byte {
 	}
 }
 
+// PeekAll returns all header value for the given key.
+//
+// The returned value is valid until the request is released,
+// either though ReleaseRequest or your request handler returning.
+// Any future calls to the Peek* will modify the returned value.
+// Do not store references to returned value. Make copies instead.
+func (h *RequestHeader) PeekAll(key string) [][]byte {
+	k := getHeaderKeyBytes(&h.bufKV, key, h.disableNormalizing)
+	return h.peekAll(k)
+}
+
+func (h *RequestHeader) peekAll(key []byte) [][]byte {
+	h.mulHeader = h.mulHeader[:0]
+	switch string(key) {
+	case HeaderHost:
+		if host := h.Host(); len(host) > 0 {
+			h.mulHeader = append(h.mulHeader, host)
+		}
+	case HeaderContentType:
+		if contentType := h.ContentType(); len(contentType) > 0 {
+			h.mulHeader = append(h.mulHeader, contentType)
+		}
+	case HeaderUserAgent:
+		if ua := h.UserAgent(); len(ua) > 0 {
+			h.mulHeader = append(h.mulHeader, ua)
+		}
+	case HeaderConnection:
+		if h.ConnectionClose() {
+			h.mulHeader = append(h.mulHeader, strClose)
+		} else {
+			h.mulHeader = peekAllArgBytesToDst(h.mulHeader, h.h, key)
+		}
+	case HeaderContentLength:
+		h.mulHeader = append(h.mulHeader, h.contentLengthBytes)
+	case HeaderCookie:
+		if h.cookiesCollected {
+			h.mulHeader = append(h.mulHeader, appendRequestCookieBytes(nil, h.cookies))
+		} else {
+			h.mulHeader = peekAllArgBytesToDst(h.mulHeader, h.h, key)
+		}
+	case HeaderTrailer:
+		h.mulHeader = append(h.mulHeader, appendArgsKeyBytes(nil, h.trailer, strCommaSpace))
+	default:
+		h.mulHeader = peekAllArgBytesToDst(h.mulHeader, h.h, key)
+	}
+	return h.mulHeader
+}
+
+// PeekAll returns all header value for the given key.
+//
+// The returned value is valid until the request is released,
+// either though ReleaseResponse or your request handler returning.
+// Any future calls to the Peek* will modify the returned value.
+// Do not store references to returned value. Make copies instead.
+func (h *ResponseHeader) PeekAll(key string) [][]byte {
+	k := getHeaderKeyBytes(&h.bufKV, key, h.disableNormalizing)
+	return h.peekAll(k)
+}
+
+func (h *ResponseHeader) peekAll(key []byte) [][]byte {
+	h.mulHeader = h.mulHeader[:0]
+	switch string(key) {
+	case HeaderContentType:
+		if contentType := h.ContentType(); len(contentType) > 0 {
+			h.mulHeader = append(h.mulHeader, contentType)
+		}
+	case HeaderContentEncoding:
+		if contentEncoding := h.ContentEncoding(); len(contentEncoding) > 0 {
+			h.mulHeader = append(h.mulHeader, contentEncoding)
+		}
+	case HeaderServer:
+		if server := h.Server(); len(server) > 0 {
+			h.mulHeader = append(h.mulHeader, server)
+		}
+	case HeaderConnection:
+		if h.ConnectionClose() {
+			h.mulHeader = append(h.mulHeader, strClose)
+		} else {
+			h.mulHeader = peekAllArgBytesToDst(h.mulHeader, h.h, key)
+		}
+	case HeaderContentLength:
+		h.mulHeader = append(h.mulHeader, h.contentLengthBytes)
+	case HeaderSetCookie:
+		h.mulHeader = append(h.mulHeader, appendResponseCookieBytes(nil, h.cookies))
+	case HeaderTrailer:
+		h.mulHeader = append(h.mulHeader, appendArgsKeyBytes(nil, h.trailer, strCommaSpace))
+	default:
+		h.mulHeader = peekAllArgBytesToDst(h.mulHeader, h.h, key)
+	}
+	return h.mulHeader
+}
+
+// PeekKeys return all header keys.
+//
+// The returned value is valid until the request is released,
+// either though ReleaseRequest or your request handler returning.
+// Any future calls to the Peek* will modify the returned value.
+// Do not store references to returned value. Make copies instead.
+func (h *RequestHeader) PeekKeys() [][]byte {
+	h.mulHeader = h.mulHeader[:0]
+	h.mulHeader = peekArgsKeys(h.mulHeader, h.h)
+	return h.mulHeader
+}
+
+// PeekTrailerKeys return all trailer keys.
+//
+// The returned value is valid until the request is released,
+// either though ReleaseRequest or your request handler returning.
+// Any future calls to the Peek* will modify the returned value.
+// Do not store references to returned value. Make copies instead.
+func (h *RequestHeader) PeekTrailerKeys() [][]byte {
+	h.mulHeader = h.mulHeader[:0]
+	h.mulHeader = peekArgsKeys(h.mulHeader, h.trailer)
+	return h.mulHeader
+}
+
+// PeekKeys return all header keys.
+//
+// The returned value is valid until the request is released,
+// either though ReleaseResponse or your request handler returning.
+// Any future calls to the Peek* will modify the returned value.
+// Do not store references to returned value. Make copies instead.
+func (h *ResponseHeader) PeekKeys() [][]byte {
+	h.mulHeader = h.mulHeader[:0]
+	h.mulHeader = peekArgsKeys(h.mulHeader, h.h)
+	return h.mulHeader
+}
+
+// PeekTrailerKeys return all trailer keys.
+//
+// The returned value is valid until the request is released,
+// either though ReleaseResponse or your request handler returning.
+// Any future calls to the Peek* will modify the returned value.
+// Do not store references to returned value. Make copies instead.
+func (h *ResponseHeader) PeekTrailerKeys() [][]byte {
+	h.mulHeader = h.mulHeader[:0]
+	h.mulHeader = peekArgsKeys(h.mulHeader, h.trailer)
+	return h.mulHeader
+}
+
 // Cookie returns cookie for the given key.
 func (h *RequestHeader) Cookie(key string) []byte {
 	h.collectCookies()
@@ -2426,8 +2570,8 @@ func (h *ResponseHeader) parseTrailer(buf []byte) (int, error) {
 				err = fmt.Errorf("forbidden trailer key %q", s.key)
 				continue
 			}
+			h.h = appendArgBytes(h.h, s.key, s.value, argsHasValue)
 		}
-		h.h = appendArgBytes(h.h, s.key, s.value, argsHasValue)
 	}
 	if s.err != nil {
 		return 0, s.err

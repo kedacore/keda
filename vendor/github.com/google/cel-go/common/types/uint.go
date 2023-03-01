@@ -82,7 +82,7 @@ func (i Uint) Compare(other ref.Val) ref.Val {
 }
 
 // ConvertToNative implements ref.Val.ConvertToNative.
-func (i Uint) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
+func (i Uint) ConvertToNative(typeDesc reflect.Type) (any, error) {
 	switch typeDesc.Kind() {
 	case reflect.Uint, reflect.Uint32:
 		v, err := uint64ToUint32Checked(uint64(i))
@@ -194,6 +194,11 @@ func (i Uint) Equal(other ref.Val) ref.Val {
 	}
 }
 
+// IsZeroValue returns true if the uint is zero.
+func (i Uint) IsZeroValue() bool {
+	return i == 0
+}
+
 // Modulo implements traits.Modder.Modulo.
 func (i Uint) Modulo(other ref.Val) ref.Val {
 	otherUint, ok := other.(Uint)
@@ -239,7 +244,7 @@ func (i Uint) Type() ref.Type {
 }
 
 // Value implements ref.Val.Value.
-func (i Uint) Value() interface{} {
+func (i Uint) Value() any {
 	return uint64(i)
 }
 

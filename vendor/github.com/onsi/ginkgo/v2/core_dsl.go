@@ -92,11 +92,11 @@ type GinkgoWriterInterface interface {
 }
 
 /*
-SpecContext is the context object passed into nodes that are subject to a timeout or need to be notified of an interrupt.  It implements the standard context.Context interface but also contains additional helpers to provide an extensibility point for Ginkgo.  (As an example, Gomega's Eventually can use the methods defined on SpecContext to provide deeper integratoin with Ginkgo).
+SpecContext is the context object passed into nodes that are subject to a timeout or need to be notified of an interrupt.  It implements the standard context.Context interface but also contains additional helpers to provide an extensibility point for Ginkgo.  (As an example, Gomega's Eventually can use the methods defined on SpecContext to provide deeper integration with Ginkgo).
 
 You can do anything with SpecContext that you do with a typical context.Context including wrapping it with any of the context.With* methods.
 
-Ginkgo will cancel the SpecContext when a node is interrupted (e.g. by the user sending an interupt signal) or when a node has exceeded it's allowed run-time.  Note, however, that even in cases where a node has a deadline, SpecContext will not return a deadline via .Deadline().  This is because Ginkgo does not use a WithDeadline() context to model node deadlines as Ginkgo needs control over the precise timing of the context cancellation to ensure it can provide an accurate progress report at the moment of cancellation.
+Ginkgo will cancel the SpecContext when a node is interrupted (e.g. by the user sending an interrupt signal) or when a node has exceeded its allowed run-time.  Note, however, that even in cases where a node has a deadline, SpecContext will not return a deadline via .Deadline().  This is because Ginkgo does not use a WithDeadline() context to model node deadlines as Ginkgo needs control over the precise timing of the context cancellation to ensure it can provide an accurate progress report at the moment of cancellation.
 */
 type SpecContext = internal.SpecContext
 
@@ -161,6 +161,29 @@ For more on how specs are parallelized in Ginkgo, see http://onsi.github.io/gink
 */
 func GinkgoParallelProcess() int {
 	return suiteConfig.ParallelProcess
+}
+
+/*
+GinkgoHelper marks the function it's called in as a test helper.  When a failure occurs inside a helper function, Ginkgo will skip the helper when analyzing the stack trace to identify where the failure occurred.
+
+This is an alternative, simpler, mechanism to passing in a skip offset when calling Fail or using Gomega.
+*/
+func GinkgoHelper() {
+	types.MarkAsHelper(1)
+}
+
+/*
+GinkgoLabelFilter() returns the label filter configured for this suite via `--label-filter`.
+
+You can use this to manually check if a set of labels would satisfy the filter via:
+
+	if (Label("cat", "dog").MatchesLabelFilter(GinkgoLabelFilter())) {
+		//...
+	}
+*/
+func GinkgoLabelFilter() string {
+	suiteConfig, _ := GinkgoConfiguration()
+	return suiteConfig.LabelFilter
 }
 
 /*
@@ -720,7 +743,7 @@ For example:
 	    os.SetEnv("FOO", "BAR")
 	})
 
-will register a cleanup handler that will set the environment variable "FOO" to it's current value (obtained by os.GetEnv("FOO")) after the spec runs and then sets the environment variable "FOO" to "BAR" for the current spec.
+will register a cleanup handler that will set the environment variable "FOO" to its current value (obtained by os.GetEnv("FOO")) after the spec runs and then sets the environment variable "FOO" to "BAR" for the current spec.
 
 Similarly:
 

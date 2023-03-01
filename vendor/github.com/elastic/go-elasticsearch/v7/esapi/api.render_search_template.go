@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -41,11 +41,9 @@ func newRenderSearchTemplateFunc(t Transport) RenderSearchTemplate {
 // RenderSearchTemplate allows to use the Mustache language to pre-render a search definition.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/render-search-template-api.html.
-//
 type RenderSearchTemplate func(o ...func(*RenderSearchTemplateRequest)) (*Response, error)
 
 // RenderSearchTemplateRequest configures the Render Search Template API request.
-//
 type RenderSearchTemplateRequest struct {
 	TemplateID string
 
@@ -62,7 +60,6 @@ type RenderSearchTemplateRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r RenderSearchTemplateRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -113,10 +110,6 @@ func (r RenderSearchTemplateRequest) Do(ctx context.Context, transport Transport
 		req.URL.RawQuery = q.Encode()
 	}
 
-	if r.Body != nil {
-		req.Header[headerContentType] = headerContentTypeJSON
-	}
-
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -127,6 +120,10 @@ func (r RenderSearchTemplateRequest) Do(ctx context.Context, transport Transport
 				}
 			}
 		}
+	}
+
+	if r.Body != nil && req.Header.Get(headerContentType) == "" {
+		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -148,7 +145,6 @@ func (r RenderSearchTemplateRequest) Do(ctx context.Context, transport Transport
 }
 
 // WithContext sets the request context.
-//
 func (f RenderSearchTemplate) WithContext(v context.Context) func(*RenderSearchTemplateRequest) {
 	return func(r *RenderSearchTemplateRequest) {
 		r.ctx = v
@@ -156,7 +152,6 @@ func (f RenderSearchTemplate) WithContext(v context.Context) func(*RenderSearchT
 }
 
 // WithBody - The search definition template and its params.
-//
 func (f RenderSearchTemplate) WithBody(v io.Reader) func(*RenderSearchTemplateRequest) {
 	return func(r *RenderSearchTemplateRequest) {
 		r.Body = v
@@ -164,7 +159,6 @@ func (f RenderSearchTemplate) WithBody(v io.Reader) func(*RenderSearchTemplateRe
 }
 
 // WithTemplateID - the ID of the stored search template.
-//
 func (f RenderSearchTemplate) WithTemplateID(v string) func(*RenderSearchTemplateRequest) {
 	return func(r *RenderSearchTemplateRequest) {
 		r.TemplateID = v
@@ -172,7 +166,6 @@ func (f RenderSearchTemplate) WithTemplateID(v string) func(*RenderSearchTemplat
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f RenderSearchTemplate) WithPretty() func(*RenderSearchTemplateRequest) {
 	return func(r *RenderSearchTemplateRequest) {
 		r.Pretty = true
@@ -180,7 +173,6 @@ func (f RenderSearchTemplate) WithPretty() func(*RenderSearchTemplateRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f RenderSearchTemplate) WithHuman() func(*RenderSearchTemplateRequest) {
 	return func(r *RenderSearchTemplateRequest) {
 		r.Human = true
@@ -188,7 +180,6 @@ func (f RenderSearchTemplate) WithHuman() func(*RenderSearchTemplateRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f RenderSearchTemplate) WithErrorTrace() func(*RenderSearchTemplateRequest) {
 	return func(r *RenderSearchTemplateRequest) {
 		r.ErrorTrace = true
@@ -196,7 +187,6 @@ func (f RenderSearchTemplate) WithErrorTrace() func(*RenderSearchTemplateRequest
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f RenderSearchTemplate) WithFilterPath(v ...string) func(*RenderSearchTemplateRequest) {
 	return func(r *RenderSearchTemplateRequest) {
 		r.FilterPath = v
@@ -204,7 +194,6 @@ func (f RenderSearchTemplate) WithFilterPath(v ...string) func(*RenderSearchTemp
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f RenderSearchTemplate) WithHeader(h map[string]string) func(*RenderSearchTemplateRequest) {
 	return func(r *RenderSearchTemplateRequest) {
 		if r.Header == nil {
@@ -217,7 +206,6 @@ func (f RenderSearchTemplate) WithHeader(h map[string]string) func(*RenderSearch
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f RenderSearchTemplate) WithOpaqueID(s string) func(*RenderSearchTemplateRequest) {
 	return func(r *RenderSearchTemplateRequest) {
 		if r.Header == nil {

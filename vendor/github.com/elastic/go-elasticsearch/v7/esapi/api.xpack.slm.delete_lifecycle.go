@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -40,11 +40,9 @@ func newSlmDeleteLifecycleFunc(t Transport) SlmDeleteLifecycle {
 // SlmDeleteLifecycle - Deletes an existing snapshot lifecycle policy.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/slm-api-delete-policy.html.
-//
 type SlmDeleteLifecycle func(policy_id string, o ...func(*SlmDeleteLifecycleRequest)) (*Response, error)
 
 // SlmDeleteLifecycleRequest configures the Slm Delete Lifecycle API request.
-//
 type SlmDeleteLifecycleRequest struct {
 	PolicyID string
 
@@ -59,7 +57,6 @@ type SlmDeleteLifecycleRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r SlmDeleteLifecycleRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -139,7 +136,6 @@ func (r SlmDeleteLifecycleRequest) Do(ctx context.Context, transport Transport) 
 }
 
 // WithContext sets the request context.
-//
 func (f SlmDeleteLifecycle) WithContext(v context.Context) func(*SlmDeleteLifecycleRequest) {
 	return func(r *SlmDeleteLifecycleRequest) {
 		r.ctx = v
@@ -147,7 +143,6 @@ func (f SlmDeleteLifecycle) WithContext(v context.Context) func(*SlmDeleteLifecy
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f SlmDeleteLifecycle) WithPretty() func(*SlmDeleteLifecycleRequest) {
 	return func(r *SlmDeleteLifecycleRequest) {
 		r.Pretty = true
@@ -155,7 +150,6 @@ func (f SlmDeleteLifecycle) WithPretty() func(*SlmDeleteLifecycleRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f SlmDeleteLifecycle) WithHuman() func(*SlmDeleteLifecycleRequest) {
 	return func(r *SlmDeleteLifecycleRequest) {
 		r.Human = true
@@ -163,7 +157,6 @@ func (f SlmDeleteLifecycle) WithHuman() func(*SlmDeleteLifecycleRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f SlmDeleteLifecycle) WithErrorTrace() func(*SlmDeleteLifecycleRequest) {
 	return func(r *SlmDeleteLifecycleRequest) {
 		r.ErrorTrace = true
@@ -171,7 +164,6 @@ func (f SlmDeleteLifecycle) WithErrorTrace() func(*SlmDeleteLifecycleRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f SlmDeleteLifecycle) WithFilterPath(v ...string) func(*SlmDeleteLifecycleRequest) {
 	return func(r *SlmDeleteLifecycleRequest) {
 		r.FilterPath = v
@@ -179,7 +171,6 @@ func (f SlmDeleteLifecycle) WithFilterPath(v ...string) func(*SlmDeleteLifecycle
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f SlmDeleteLifecycle) WithHeader(h map[string]string) func(*SlmDeleteLifecycleRequest) {
 	return func(r *SlmDeleteLifecycleRequest) {
 		if r.Header == nil {
@@ -192,7 +183,6 @@ func (f SlmDeleteLifecycle) WithHeader(h map[string]string) func(*SlmDeleteLifec
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f SlmDeleteLifecycle) WithOpaqueID(s string) func(*SlmDeleteLifecycleRequest) {
 	return func(r *SlmDeleteLifecycleRequest) {
 		if r.Header == nil {

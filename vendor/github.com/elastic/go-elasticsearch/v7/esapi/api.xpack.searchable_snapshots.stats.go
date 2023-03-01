@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -40,11 +40,9 @@ func newSearchableSnapshotsStatsFunc(t Transport) SearchableSnapshotsStats {
 // SearchableSnapshotsStats - Retrieve shard-level statistics about searchable snapshots.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/searchable-snapshots-apis.html.
-//
 type SearchableSnapshotsStats func(o ...func(*SearchableSnapshotsStatsRequest)) (*Response, error)
 
 // SearchableSnapshotsStatsRequest configures the Searchable Snapshots Stats API request.
-//
 type SearchableSnapshotsStatsRequest struct {
 	Index []string
 
@@ -61,7 +59,6 @@ type SearchableSnapshotsStatsRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r SearchableSnapshotsStatsRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -147,7 +144,6 @@ func (r SearchableSnapshotsStatsRequest) Do(ctx context.Context, transport Trans
 }
 
 // WithContext sets the request context.
-//
 func (f SearchableSnapshotsStats) WithContext(v context.Context) func(*SearchableSnapshotsStatsRequest) {
 	return func(r *SearchableSnapshotsStatsRequest) {
 		r.ctx = v
@@ -155,7 +151,6 @@ func (f SearchableSnapshotsStats) WithContext(v context.Context) func(*Searchabl
 }
 
 // WithIndex - a list of index names.
-//
 func (f SearchableSnapshotsStats) WithIndex(v ...string) func(*SearchableSnapshotsStatsRequest) {
 	return func(r *SearchableSnapshotsStatsRequest) {
 		r.Index = v
@@ -163,7 +158,6 @@ func (f SearchableSnapshotsStats) WithIndex(v ...string) func(*SearchableSnapsho
 }
 
 // WithLevel - return stats aggregated at cluster, index or shard level.
-//
 func (f SearchableSnapshotsStats) WithLevel(v string) func(*SearchableSnapshotsStatsRequest) {
 	return func(r *SearchableSnapshotsStatsRequest) {
 		r.Level = v
@@ -171,7 +165,6 @@ func (f SearchableSnapshotsStats) WithLevel(v string) func(*SearchableSnapshotsS
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f SearchableSnapshotsStats) WithPretty() func(*SearchableSnapshotsStatsRequest) {
 	return func(r *SearchableSnapshotsStatsRequest) {
 		r.Pretty = true
@@ -179,7 +172,6 @@ func (f SearchableSnapshotsStats) WithPretty() func(*SearchableSnapshotsStatsReq
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f SearchableSnapshotsStats) WithHuman() func(*SearchableSnapshotsStatsRequest) {
 	return func(r *SearchableSnapshotsStatsRequest) {
 		r.Human = true
@@ -187,7 +179,6 @@ func (f SearchableSnapshotsStats) WithHuman() func(*SearchableSnapshotsStatsRequ
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f SearchableSnapshotsStats) WithErrorTrace() func(*SearchableSnapshotsStatsRequest) {
 	return func(r *SearchableSnapshotsStatsRequest) {
 		r.ErrorTrace = true
@@ -195,7 +186,6 @@ func (f SearchableSnapshotsStats) WithErrorTrace() func(*SearchableSnapshotsStat
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f SearchableSnapshotsStats) WithFilterPath(v ...string) func(*SearchableSnapshotsStatsRequest) {
 	return func(r *SearchableSnapshotsStatsRequest) {
 		r.FilterPath = v
@@ -203,7 +193,6 @@ func (f SearchableSnapshotsStats) WithFilterPath(v ...string) func(*SearchableSn
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f SearchableSnapshotsStats) WithHeader(h map[string]string) func(*SearchableSnapshotsStatsRequest) {
 	return func(r *SearchableSnapshotsStatsRequest) {
 		if r.Header == nil {
@@ -216,7 +205,6 @@ func (f SearchableSnapshotsStats) WithHeader(h map[string]string) func(*Searchab
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f SearchableSnapshotsStats) WithOpaqueID(s string) func(*SearchableSnapshotsStatsRequest) {
 	return func(r *SearchableSnapshotsStatsRequest) {
 		if r.Header == nil {

@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -42,11 +42,9 @@ func newDeleteFunc(t Transport) Delete {
 // Delete removes a document from the index.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/docs-delete.html.
-//
 type Delete func(index string, id string, o ...func(*DeleteRequest)) (*Response, error)
 
 // DeleteRequest configures the Delete API request.
-//
 type DeleteRequest struct {
 	Index        string
 	DocumentType string
@@ -72,7 +70,6 @@ type DeleteRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r DeleteRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -190,7 +187,6 @@ func (r DeleteRequest) Do(ctx context.Context, transport Transport) (*Response, 
 }
 
 // WithContext sets the request context.
-//
 func (f Delete) WithContext(v context.Context) func(*DeleteRequest) {
 	return func(r *DeleteRequest) {
 		r.ctx = v
@@ -198,7 +194,6 @@ func (f Delete) WithContext(v context.Context) func(*DeleteRequest) {
 }
 
 // WithDocumentType - the type of the document.
-//
 func (f Delete) WithDocumentType(v string) func(*DeleteRequest) {
 	return func(r *DeleteRequest) {
 		r.DocumentType = v
@@ -206,7 +201,6 @@ func (f Delete) WithDocumentType(v string) func(*DeleteRequest) {
 }
 
 // WithIfPrimaryTerm - only perform the delete operation if the last operation that has changed the document has the specified primary term.
-//
 func (f Delete) WithIfPrimaryTerm(v int) func(*DeleteRequest) {
 	return func(r *DeleteRequest) {
 		r.IfPrimaryTerm = &v
@@ -214,7 +208,6 @@ func (f Delete) WithIfPrimaryTerm(v int) func(*DeleteRequest) {
 }
 
 // WithIfSeqNo - only perform the delete operation if the last operation that has changed the document has the specified sequence number.
-//
 func (f Delete) WithIfSeqNo(v int) func(*DeleteRequest) {
 	return func(r *DeleteRequest) {
 		r.IfSeqNo = &v
@@ -222,7 +215,6 @@ func (f Delete) WithIfSeqNo(v int) func(*DeleteRequest) {
 }
 
 // WithRefresh - if `true` then refresh the affected shards to make this operation visible to search, if `wait_for` then wait for a refresh to make this operation visible to search, if `false` (the default) then do nothing with refreshes..
-//
 func (f Delete) WithRefresh(v string) func(*DeleteRequest) {
 	return func(r *DeleteRequest) {
 		r.Refresh = v
@@ -230,7 +222,6 @@ func (f Delete) WithRefresh(v string) func(*DeleteRequest) {
 }
 
 // WithRouting - specific routing value.
-//
 func (f Delete) WithRouting(v string) func(*DeleteRequest) {
 	return func(r *DeleteRequest) {
 		r.Routing = v
@@ -238,7 +229,6 @@ func (f Delete) WithRouting(v string) func(*DeleteRequest) {
 }
 
 // WithTimeout - explicit operation timeout.
-//
 func (f Delete) WithTimeout(v time.Duration) func(*DeleteRequest) {
 	return func(r *DeleteRequest) {
 		r.Timeout = v
@@ -246,7 +236,6 @@ func (f Delete) WithTimeout(v time.Duration) func(*DeleteRequest) {
 }
 
 // WithVersion - explicit version number for concurrency control.
-//
 func (f Delete) WithVersion(v int) func(*DeleteRequest) {
 	return func(r *DeleteRequest) {
 		r.Version = &v
@@ -254,7 +243,6 @@ func (f Delete) WithVersion(v int) func(*DeleteRequest) {
 }
 
 // WithVersionType - specific version type.
-//
 func (f Delete) WithVersionType(v string) func(*DeleteRequest) {
 	return func(r *DeleteRequest) {
 		r.VersionType = v
@@ -262,7 +250,6 @@ func (f Delete) WithVersionType(v string) func(*DeleteRequest) {
 }
 
 // WithWaitForActiveShards - sets the number of shard copies that must be active before proceeding with the delete operation. defaults to 1, meaning the primary shard only. set to `all` for all shard copies, otherwise set to any non-negative value less than or equal to the total number of copies for the shard (number of replicas + 1).
-//
 func (f Delete) WithWaitForActiveShards(v string) func(*DeleteRequest) {
 	return func(r *DeleteRequest) {
 		r.WaitForActiveShards = v
@@ -270,7 +257,6 @@ func (f Delete) WithWaitForActiveShards(v string) func(*DeleteRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f Delete) WithPretty() func(*DeleteRequest) {
 	return func(r *DeleteRequest) {
 		r.Pretty = true
@@ -278,7 +264,6 @@ func (f Delete) WithPretty() func(*DeleteRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f Delete) WithHuman() func(*DeleteRequest) {
 	return func(r *DeleteRequest) {
 		r.Human = true
@@ -286,7 +271,6 @@ func (f Delete) WithHuman() func(*DeleteRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f Delete) WithErrorTrace() func(*DeleteRequest) {
 	return func(r *DeleteRequest) {
 		r.ErrorTrace = true
@@ -294,7 +278,6 @@ func (f Delete) WithErrorTrace() func(*DeleteRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f Delete) WithFilterPath(v ...string) func(*DeleteRequest) {
 	return func(r *DeleteRequest) {
 		r.FilterPath = v
@@ -302,7 +285,6 @@ func (f Delete) WithFilterPath(v ...string) func(*DeleteRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f Delete) WithHeader(h map[string]string) func(*DeleteRequest) {
 	return func(r *DeleteRequest) {
 		if r.Header == nil {
@@ -315,7 +297,6 @@ func (f Delete) WithHeader(h map[string]string) func(*DeleteRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f Delete) WithOpaqueID(s string) func(*DeleteRequest) {
 	return func(r *DeleteRequest) {
 		if r.Header == nil {

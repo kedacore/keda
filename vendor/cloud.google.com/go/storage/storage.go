@@ -1315,6 +1315,11 @@ type ObjectAttrs struct {
 	// later value but not to an earlier one. For more information see
 	// https://cloud.google.com/storage/docs/metadata#custom-time .
 	CustomTime time.Time
+
+	// ComponentCount is the number of objects contained within a composite object.
+	// For non-composite objects, the value will be zero.
+	// This field is read-only.
+	ComponentCount int64
 }
 
 // convertTime converts a time in RFC3339 format to time.Time.
@@ -1385,6 +1390,7 @@ func newObject(o *raw.Object) *ObjectAttrs {
 		Updated:                 convertTime(o.Updated),
 		Etag:                    o.Etag,
 		CustomTime:              convertTime(o.CustomTime),
+		ComponentCount:          o.ComponentCount,
 	}
 }
 
@@ -1412,12 +1418,14 @@ func newObjectFromProto(o *storagepb.Object) *ObjectAttrs {
 		Generation:              o.Generation,
 		Metageneration:          o.Metageneration,
 		StorageClass:            o.StorageClass,
-		CustomerKeySHA256:       string(o.GetCustomerEncryption().GetKeySha256Bytes()),
-		KMSKeyName:              o.GetKmsKey(),
-		Created:                 convertProtoTime(o.GetCreateTime()),
-		Deleted:                 convertProtoTime(o.GetDeleteTime()),
-		Updated:                 convertProtoTime(o.GetUpdateTime()),
-		CustomTime:              convertProtoTime(o.GetCustomTime()),
+		// CustomerKeySHA256 needs to be presented as base64 encoded, but the response from gRPC is not.
+		CustomerKeySHA256: base64.StdEncoding.EncodeToString(o.GetCustomerEncryption().GetKeySha256Bytes()),
+		KMSKeyName:        o.GetKmsKey(),
+		Created:           convertProtoTime(o.GetCreateTime()),
+		Deleted:           convertProtoTime(o.GetDeleteTime()),
+		Updated:           convertProtoTime(o.GetUpdateTime()),
+		CustomTime:        convertProtoTime(o.GetCustomTime()),
+		ComponentCount:    int64(o.ComponentCount),
 	}
 }
 
@@ -1546,6 +1554,7 @@ var attrToFieldMap = map[string]string{
 	"Updated":                 "updated",
 	"Etag":                    "etag",
 	"CustomTime":              "customTime",
+	"ComponentCount":          "componentCount",
 }
 
 // attrToProtoFieldMap maps the field names of ObjectAttrs to the underlying field
@@ -1577,6 +1586,7 @@ var attrToProtoFieldMap = map[string]string{
 	"Owner":                   "owner",
 	"CustomerKeySHA256":       "customer_encryption",
 	"CustomTime":              "custom_time",
+	"ComponentCount":          "component_count",
 	// MediaLink was explicitly excluded from the proto as it is an HTTP-ism.
 	// "MediaLink":               "mediaLink",
 }
@@ -2076,6 +2086,25 @@ func toProtoCommonObjectRequestParams(key []byte) *storagepb.CommonObjectRequest
 		EncryptionKeyBytes:       key,
 		EncryptionKeySha256Bytes: keyHash[:],
 	}
+}
+
+func toProtoChecksums(sendCRC32C bool, attrs *ObjectAttrs) *storagepb.ObjectChecksums {
+	var checksums *storagepb.ObjectChecksums
+	if sendCRC32C {
+		checksums = &storagepb.ObjectChecksums{
+			Crc32C: proto.Uint32(attrs.CRC32C),
+		}
+	}
+	if len(attrs.MD5) != 0 {
+		if checksums == nil {
+			checksums = &storagepb.ObjectChecksums{
+				Md5Hash: attrs.MD5,
+			}
+		} else {
+			checksums.Md5Hash = attrs.MD5
+		}
+	}
+	return checksums
 }
 
 // ServiceAccount fetches the email address of the given project's Google Cloud Storage service account.

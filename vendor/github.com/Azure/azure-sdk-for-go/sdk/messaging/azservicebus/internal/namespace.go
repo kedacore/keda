@@ -14,6 +14,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/internal/log"
+	"github.com/Azure/azure-sdk-for-go/sdk/internal/telemetry"
+	"github.com/Azure/azure-sdk-for-go/sdk/internal/uuid"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/amqpwrap"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/auth"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/conn"
@@ -23,9 +25,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/utils"
 )
 
-const (
-	rootUserAgent = "/azsdk-go-azservicebus/" + Version
-)
+var rootUserAgent = telemetry.Format("azservicebus", Version)
 
 type (
 	// Namespace is an abstraction over an amqp.Client, allowing us to hold onto a single
@@ -63,20 +63,15 @@ type (
 	NamespaceOption func(h *Namespace) error
 )
 
-// NamespaceWithNewAMQPLinks is the Namespace surface for consumers of AMQPLinks.
-type NamespaceWithNewAMQPLinks interface {
-	NewAMQPLinks(entityPath string, createLinkFunc CreateLinkFunc, getRecoveryKindFunc func(err error) RecoveryKind) AMQPLinks
-	Check() error
-}
-
 // NamespaceForAMQPLinks is the Namespace surface needed for the internals of AMQPLinks.
 type NamespaceForAMQPLinks interface {
+	Check() error
 	NegotiateClaim(ctx context.Context, entityPath string) (context.CancelFunc, <-chan struct{}, error)
 	NewAMQPSession(ctx context.Context) (amqpwrap.AMQPSession, uint64, error)
-	NewRPCLink(ctx context.Context, managementPath string) (RPCLink, error)
+	NewRPCLink(ctx context.Context, managementPath string) (amqpwrap.RPCLink, error)
 	GetEntityAudience(entityPath string) string
 	Recover(ctx context.Context, clientRevision uint64) (bool, error)
-	Close(ctx context.Context, permanently bool) error
+	Close(permanently bool) error
 }
 
 // NamespaceWithConnectionString configures a namespace with the information provided in a Service Bus connection string
@@ -142,10 +137,17 @@ func NamespaceWithRetryOptions(retryOptions exported.RetryOptions) NamespaceOpti
 	}
 }
 
+// NamespaceWithNewClientFn lets you inject a construction function to create new AMQP clients. Useful for tests.
+func NamespaceWithNewClientFn(fn func(ctx context.Context) (amqpwrap.AMQPClient, error)) NamespaceOption {
+	return func(ns *Namespace) error {
+		ns.newClientFn = fn
+		return nil
+	}
+}
+
 // NewNamespace creates a new namespace configured through NamespaceOption(s)
 func NewNamespace(opts ...NamespaceOption) (*Namespace, error) {
 	ns := &Namespace{}
-
 	ns.newClientFn = ns.newClientImpl
 
 	for _, opt := range opts {
@@ -175,6 +177,12 @@ func (ns *Namespace) newClientImpl(ctx context.Context) (amqpwrap.AMQPClient, er
 		connOptions.TLSConfig = ns.tlsConfig
 	}
 
+	id, err := uuid.New()
+
+	if err != nil {
+		return nil, err
+	}
+
 	if ns.newWebSocketConn != nil {
 		nConn, err := ns.newWebSocketConn(ctx, exported.NewWebSocketConnArgs{
 			Host: ns.getWSSHostURI() + "$servicebus/websocket",
@@ -186,11 +194,12 @@ func (ns *Namespace) newClientImpl(ctx context.Context) (amqpwrap.AMQPClient, er
 
 		connOptions.HostName = ns.FQDN
 		client, err := amqp.New(nConn, &connOptions)
-		return &amqpwrap.AMQPClientWrapper{Inner: client}, err
+
+		return &amqpwrap.AMQPClientWrapper{Inner: client, ID: id.String()}, err
 	}
 
 	client, err := amqp.Dial(ns.getAMQPHostURI(), &connOptions)
-	return &amqpwrap.AMQPClientWrapper{Inner: client}, err
+	return &amqpwrap.AMQPClientWrapper{Inner: client, ID: id.String()}, err
 }
 
 // NewAMQPSession creates a new AMQP session with the internally cached *amqp.Client.
@@ -212,7 +221,7 @@ func (ns *Namespace) NewAMQPSession(ctx context.Context) (amqpwrap.AMQPSession, 
 }
 
 // NewRPCLink creates a new amqp-common *rpc.Link with the internally cached *amqp.Client.
-func (ns *Namespace) NewRPCLink(ctx context.Context, managementPath string) (RPCLink, error) {
+func (ns *Namespace) NewRPCLink(ctx context.Context, managementPath string) (amqpwrap.RPCLink, error) {
 	client, _, err := ns.GetAMQPClientImpl(ctx)
 
 	if err != nil {
@@ -226,19 +235,8 @@ func (ns *Namespace) NewRPCLink(ctx context.Context, managementPath string) (RPC
 	})
 }
 
-// NewAMQPLinks creates an AMQPLinks struct, which groups together the commonly needed links for
-// working with Service Bus.
-func (ns *Namespace) NewAMQPLinks(entityPath string, createLinkFunc CreateLinkFunc, getRecoveryKindFunc func(err error) RecoveryKind) AMQPLinks {
-	return NewAMQPLinks(NewAMQPLinksArgs{
-		NS:                  ns,
-		EntityPath:          entityPath,
-		CreateLinkFunc:      createLinkFunc,
-		GetRecoveryKindFunc: getRecoveryKindFunc,
-	})
-}
-
 // Close closes the current cached client.
-func (ns *Namespace) Close(ctx context.Context, permanently bool) error {
+func (ns *Namespace) Close(permanently bool) error {
 	ns.clientMu.Lock()
 	defer ns.clientMu.Unlock()
 
@@ -488,7 +486,7 @@ func (ns *Namespace) GetEntityAudience(entityPath string) string {
 func (ns *Namespace) getUserAgent() string {
 	userAgent := rootUserAgent
 	if ns.userAgent != "" {
-		userAgent = fmt.Sprintf("%s/%s", userAgent, ns.userAgent)
+		userAgent = fmt.Sprintf("%s %s", ns.userAgent, userAgent)
 	}
 	return userAgent
 }

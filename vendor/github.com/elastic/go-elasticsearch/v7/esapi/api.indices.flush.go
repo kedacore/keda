@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -41,11 +41,9 @@ func newIndicesFlushFunc(t Transport) IndicesFlush {
 // IndicesFlush performs the flush operation on one or more indices.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-flush.html.
-//
 type IndicesFlush func(o ...func(*IndicesFlushRequest)) (*Response, error)
 
 // IndicesFlushRequest configures the Indices Flush API request.
-//
 type IndicesFlushRequest struct {
 	Index []string
 
@@ -66,7 +64,6 @@ type IndicesFlushRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r IndicesFlushRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -166,7 +163,6 @@ func (r IndicesFlushRequest) Do(ctx context.Context, transport Transport) (*Resp
 }
 
 // WithContext sets the request context.
-//
 func (f IndicesFlush) WithContext(v context.Context) func(*IndicesFlushRequest) {
 	return func(r *IndicesFlushRequest) {
 		r.ctx = v
@@ -174,7 +170,6 @@ func (f IndicesFlush) WithContext(v context.Context) func(*IndicesFlushRequest) 
 }
 
 // WithIndex - a list of index names; use _all for all indices.
-//
 func (f IndicesFlush) WithIndex(v ...string) func(*IndicesFlushRequest) {
 	return func(r *IndicesFlushRequest) {
 		r.Index = v
@@ -182,7 +177,6 @@ func (f IndicesFlush) WithIndex(v ...string) func(*IndicesFlushRequest) {
 }
 
 // WithAllowNoIndices - whether to ignore if a wildcard indices expression resolves into no concrete indices. (this includes `_all` string or when no indices have been specified).
-//
 func (f IndicesFlush) WithAllowNoIndices(v bool) func(*IndicesFlushRequest) {
 	return func(r *IndicesFlushRequest) {
 		r.AllowNoIndices = &v
@@ -190,7 +184,6 @@ func (f IndicesFlush) WithAllowNoIndices(v bool) func(*IndicesFlushRequest) {
 }
 
 // WithExpandWildcards - whether to expand wildcard expression to concrete indices that are open, closed or both..
-//
 func (f IndicesFlush) WithExpandWildcards(v string) func(*IndicesFlushRequest) {
 	return func(r *IndicesFlushRequest) {
 		r.ExpandWildcards = v
@@ -198,7 +191,6 @@ func (f IndicesFlush) WithExpandWildcards(v string) func(*IndicesFlushRequest) {
 }
 
 // WithForce - whether a flush should be forced even if it is not necessarily needed ie. if no changes will be committed to the index. this is useful if transaction log ids should be incremented even if no uncommitted changes are present. (this setting can be considered as internal).
-//
 func (f IndicesFlush) WithForce(v bool) func(*IndicesFlushRequest) {
 	return func(r *IndicesFlushRequest) {
 		r.Force = &v
@@ -206,7 +198,6 @@ func (f IndicesFlush) WithForce(v bool) func(*IndicesFlushRequest) {
 }
 
 // WithIgnoreUnavailable - whether specified concrete indices should be ignored when unavailable (missing or closed).
-//
 func (f IndicesFlush) WithIgnoreUnavailable(v bool) func(*IndicesFlushRequest) {
 	return func(r *IndicesFlushRequest) {
 		r.IgnoreUnavailable = &v
@@ -214,7 +205,6 @@ func (f IndicesFlush) WithIgnoreUnavailable(v bool) func(*IndicesFlushRequest) {
 }
 
 // WithWaitIfOngoing - if set to true the flush operation will block until the flush can be executed if another flush operation is already executing. the default is true. if set to false the flush will be skipped iff if another flush operation is already running..
-//
 func (f IndicesFlush) WithWaitIfOngoing(v bool) func(*IndicesFlushRequest) {
 	return func(r *IndicesFlushRequest) {
 		r.WaitIfOngoing = &v
@@ -222,7 +212,6 @@ func (f IndicesFlush) WithWaitIfOngoing(v bool) func(*IndicesFlushRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f IndicesFlush) WithPretty() func(*IndicesFlushRequest) {
 	return func(r *IndicesFlushRequest) {
 		r.Pretty = true
@@ -230,7 +219,6 @@ func (f IndicesFlush) WithPretty() func(*IndicesFlushRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f IndicesFlush) WithHuman() func(*IndicesFlushRequest) {
 	return func(r *IndicesFlushRequest) {
 		r.Human = true
@@ -238,7 +226,6 @@ func (f IndicesFlush) WithHuman() func(*IndicesFlushRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f IndicesFlush) WithErrorTrace() func(*IndicesFlushRequest) {
 	return func(r *IndicesFlushRequest) {
 		r.ErrorTrace = true
@@ -246,7 +233,6 @@ func (f IndicesFlush) WithErrorTrace() func(*IndicesFlushRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f IndicesFlush) WithFilterPath(v ...string) func(*IndicesFlushRequest) {
 	return func(r *IndicesFlushRequest) {
 		r.FilterPath = v
@@ -254,7 +240,6 @@ func (f IndicesFlush) WithFilterPath(v ...string) func(*IndicesFlushRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f IndicesFlush) WithHeader(h map[string]string) func(*IndicesFlushRequest) {
 	return func(r *IndicesFlushRequest) {
 		if r.Header == nil {
@@ -267,7 +252,6 @@ func (f IndicesFlush) WithHeader(h map[string]string) func(*IndicesFlushRequest)
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f IndicesFlush) WithOpaqueID(s string) func(*IndicesFlushRequest) {
 	return func(r *IndicesFlushRequest) {
 		if r.Header == nil {

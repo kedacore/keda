@@ -387,7 +387,7 @@ func (c *Client) StartSession(opts ...*options.SessionOptions) (Session, error) 
 		coreOpts.Snapshot = sopts.Snapshot
 	}
 
-	sess, err := session.NewClientSession(c.sessionPool, c.id, session.Explicit, coreOpts)
+	sess, err := session.NewClientSession(c.sessionPool, c.id, coreOpts)
 	if err != nil {
 		return nil, replaceErrors(err)
 	}
@@ -648,10 +648,7 @@ func (c *Client) ListDatabases(ctx context.Context, filter interface{}, opts ...
 		return ListDatabasesResult{}, err
 	}
 	if sess == nil && c.sessionPool != nil {
-		sess, err = session.NewClientSession(c.sessionPool, c.id, session.Implicit)
-		if err != nil {
-			return ListDatabasesResult{}, err
-		}
+		sess = session.NewImplicitClientSession(c.sessionPool, c.id)
 		defer sess.EndSession()
 	}
 

@@ -520,6 +520,7 @@ func (s *Server) update() {
 		}
 	}
 
+	timeoutCnt := 0
 	for {
 		// Check if the server is disconnecting. Even if waitForNextCheck has already read from the done channel, we
 		// can safely read from it again because Disconnect closes the channel.
@@ -545,18 +546,42 @@ func (s *Server) update() {
 			continue
 		}
 
-		// Must hold the processErrorLock while updating the server description and clearing the
-		// pool. Not holding the lock leads to possible out-of-order processing of pool.clear() and
-		// pool.ready() calls from concurrent server description updates.
-		s.processErrorLock.Lock()
-		s.updateDescription(desc)
-		if err := desc.LastError; err != nil {
-			// Clear the pool once the description has been updated to Unknown. Pass in a nil service ID to clear
-			// because the monitoring routine only runs for non-load balanced deployments in which servers don't return
-			// IDs.
-			s.pool.clear(err, nil)
+		if isShortcut := func() bool {
+			// Must hold the processErrorLock while updating the server description and clearing the
+			// pool. Not holding the lock leads to possible out-of-order processing of pool.clear() and
+			// pool.ready() calls from concurrent server description updates.
+			s.processErrorLock.Lock()
+			defer s.processErrorLock.Unlock()
+
+			s.updateDescription(desc)
+			// Retry after the first timeout before clearing the pool in case of a FAAS pause as
+			// described in GODRIVER-2577.
+			if err := unwrapConnectionError(desc.LastError); err != nil && timeoutCnt < 1 {
+				if err == context.Canceled || err == context.DeadlineExceeded {
+					timeoutCnt++
+					// We want to immediately retry on timeout error. Continue to next loop.
+					return true
+				}
+				if err, ok := err.(net.Error); ok && err.Timeout() {
+					timeoutCnt++
+					// We want to immediately retry on timeout error. Continue to next loop.
+					return true
+				}
+			}
+			if err := desc.LastError; err != nil {
+				// Clear the pool once the description has been updated to Unknown. Pass in a nil service ID to clear
+				// because the monitoring routine only runs for non-load balanced deployments in which servers don't return
+				// IDs.
+				s.pool.clear(err, nil)
+			}
+			// We're either not handling a timeout error, or we just handled the 2nd consecutive
+			// timeout error. In either case, reset the timeout count to 0 and return false to
+			// continue the normal check process.
+			timeoutCnt = 0
+			return false
+		}(); isShortcut {
+			continue
 		}
-		s.processErrorLock.Unlock()
 
 		// If the server supports streaming or we're already streaming, we want to move to streaming the next response
 		// without waiting. If the server has transitioned to Unknown from a network error, we want to do another
@@ -707,19 +732,31 @@ func (s *Server) check() (description.Server, error) {
 	var err error
 	var durationNanos int64
 
-	// Create a new connection if this is the first check, the connection was closed after an error during the previous
-	// check, or the previous check was cancelled.
+	start := time.Now()
 	if s.conn == nil || s.conn.closed() || s.checkWasCancelled() {
+		// Create a new connection if this is the first check, the connection was closed after an error during the previous
+		// check, or the previous check was cancelled.
+		isNilConn := s.conn == nil
+		if !isNilConn {
+			s.publishServerHeartbeatStartedEvent(s.conn.ID(), false)
+		}
 		// Create a new connection and add it's handshake RTT as a sample.
 		err = s.setupHeartbeatConnection()
+		durationNanos = time.Since(start).Nanoseconds()
 		if err == nil {
 			// Use the description from the connection handshake as the value for this check.
 			s.rttMonitor.addSample(s.conn.helloRTT)
 			descPtr = &s.conn.desc
+			if !isNilConn {
+				s.publishServerHeartbeatSucceededEvent(s.conn.ID(), durationNanos, s.conn.desc, false)
+			}
+		} else {
+			err = unwrapConnectionError(err)
+			if !isNilConn {
+				s.publishServerHeartbeatFailedEvent(s.conn.ID(), durationNanos, err, false)
+			}
 		}
-	}
-
-	if descPtr == nil && err == nil {
+	} else {
 		// An existing connection is being used. Use the server description properties to execute the right heartbeat.
 
 		// Wrap conn in a type that implements driver.StreamerConnection.
@@ -729,7 +766,6 @@ func (s *Server) check() (description.Server, error) {
 		streamable := previousDescription.TopologyVersion != nil
 
 		s.publishServerHeartbeatStartedEvent(s.conn.ID(), s.conn.getCurrentlyStreaming() || streamable)
-		start := time.Now()
 		switch {
 		case s.conn.getCurrentlyStreaming():
 			// The connection is already in a streaming state, so we stream the next response.

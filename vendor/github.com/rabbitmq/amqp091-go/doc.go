@@ -9,13 +9,13 @@ Package amqp091 is an AMQP 0.9.1 client with RabbitMQ extensions
 Understand the AMQP 0.9.1 messaging model by reviewing these links first. Much
 of the terminology in this library directly relates to AMQP concepts.
 
-  Resources
+	Resources
 
-  http://www.rabbitmq.com/tutorials/amqp-concepts.html
-  http://www.rabbitmq.com/getstarted.html
-  http://www.rabbitmq.com/amqp-0-9-1-reference.html
+	http://www.rabbitmq.com/tutorials/amqp-concepts.html
+	http://www.rabbitmq.com/getstarted.html
+	http://www.rabbitmq.com/amqp-0-9-1-reference.html
 
-Design
+# Design
 
 Most other broker clients publish to queues, but in AMQP, clients publish
 Exchanges instead.  AMQP is programmable, meaning that both the producers and
@@ -47,7 +47,7 @@ asynchronous like Channel.Publish.  The error values should still be checked for
 these methods as they will indicate IO failures like when the underlying
 connection closes.
 
-Asynchronous Events
+# Asynchronous Events
 
 Clients of this library may be interested in receiving some of the protocol
 messages other than Deliveries like basic.ack methods while a channel is in
@@ -61,36 +61,36 @@ Any asynchronous events, including Deliveries and Publishings must always have
 a receiver until the corresponding chans are closed.  Without asynchronous
 receivers, the synchronous methods will block.
 
-Use Case
+# Use Case
 
 It's important as a client to an AMQP topology to ensure the state of the
 broker matches your expectations.  For both publish and consume use cases,
 make sure you declare the queues, exchanges and bindings you expect to exist
-prior to calling Channel.Publish or Channel.Consume.
+prior to calling [Channel.PublishWithContext] or [Channel.Consume].
 
-  // Connections start with amqp.Dial() typically from a command line argument
-  // or environment variable.
-  connection, err := amqp.Dial(os.Getenv("AMQP_URL"))
+	// Connections start with amqp.Dial() typically from a command line argument
+	// or environment variable.
+	connection, err := amqp.Dial(os.Getenv("AMQP_URL"))
 
-  // To cleanly shutdown by flushing kernel buffers, make sure to close and
-  // wait for the response.
-  defer connection.Close()
+	// To cleanly shutdown by flushing kernel buffers, make sure to close and
+	// wait for the response.
+	defer connection.Close()
 
-  // Most operations happen on a channel.  If any error is returned on a
-  // channel, the channel will no longer be valid, throw it away and try with
-  // a different channel.  If you use many channels, it's useful for the
-  // server to
-  channel, err := connection.Channel()
+	// Most operations happen on a channel.  If any error is returned on a
+	// channel, the channel will no longer be valid, throw it away and try with
+	// a different channel.  If you use many channels, it's useful for the
+	// server to
+	channel, err := connection.Channel()
 
-  // Declare your topology here, if it doesn't exist, it will be created, if
-  // it existed already and is not what you expect, then that's considered an
-  // error.
+	// Declare your topology here, if it doesn't exist, it will be created, if
+	// it existed already and is not what you expect, then that's considered an
+	// error.
 
-  // Use your connection on this topology with either Publish or Consume, or
-  // inspect your queues with QueueInspect.  It's unwise to mix Publish and
-  // Consume to let TCP do its job well.
+	// Use your connection on this topology with either Publish or Consume, or
+	// inspect your queues with QueueInspect.  It's unwise to mix Publish and
+	// Consume to let TCP do its job well.
 
-SSL/TLS - Secure connections
+# SSL/TLS - Secure connections
 
 When Dial encounters an amqps:// scheme, it will use the zero value of a
 tls.Config.  This will only perform server certificate and host verification.
@@ -104,65 +104,62 @@ encounters an amqp:// scheme.
 
 SSL/TLS in RabbitMQ is documented here: http://www.rabbitmq.com/ssl.html
 
-Best practises to handle library notifications.
+# Best practises for Connection and Channel notifications:
 
-Best practises for Connections and Channels notifications:
+In order to be notified when a connection or channel gets closed, both
+structures offer the possibility to register channels using
+[Channel.NotifyClose] and [Connection.NotifyClose] functions:
 
-In order to be notified when a connection or channel gets closed both the structures offer the possibility to register channels using the `notifyClose` function like:
-notifyConnClose := make(chan *amqp.Error)
-conn.NotifyClose(notifyConnClose)
-No errors will be sent in case of a graceful connection close.
-In case of a non-graceful close, because of a network issue of forced disconnection from the UI, the error will be notified synchronously by the library.
-You can see that in the shutdown function of connection and channel (see connection.go and channel.go)
+	notifyConnCloseCh := conn.NotifyClose(make(chan *amqp.Error))
 
- if err != nil {
-      for _, c := range c.closes {
-        c <- err
-      }
-    }
+No errors will be sent in case of a graceful connection close. In case of a
+non-graceful closure due to e.g. network issue, or forced connection closure
+from the Management UI, the error will be notified synchronously by the library.
 
-The error is sent synchronously to the channel so that the flow will wait until the channel will be consumed by the caller.
-To avoid deadlocks it is necessary to consume the messages from the channels.
-This could be done inside a different goroutine with a select listening on the two channels inside a for loop like:
+The error is sent synchronously to the channel, so that the flow will wait until
+the receiver consumes from the channel. To avoid deadlocks in the library, it is
+necessary to consume from the channels. This could be done inside a
+different goroutine with a select listening on the two channels inside a for
+loop like:
 
-  go func() {
-    for notifyConnClose != nil || notifyChanClose != nil {
-      select {
-        case err, ok := <-notifyConnClose:
-          if !(ok) {
-            notifyConnClose = nil
-          } else {
-            fmt.Printf("connection closed, error %s", err)
-          }
-        case err, ok := <-notifyChanClose:
-          if !(ok) {
-            notifyChanClose = nil
-          } else {
-            fmt.Printf("channel closed, error %s", err)
-          }
-        }
-    }
-  }()
-
-Best practises for NotifyPublish notifications:
-
-Similary to the previous sceneario using the NotifyPublish method allows the caller of the library to be notified through a go channel when a message has been received
-from the broker after Channel.Confirm has been set.
-It's advisable to wait for all Confirmations to arrive before calling Channel.Close() or Connection.Close().
-It is also necessary for the caller to always consume from this channel till it get closed from the library to avoid possible deadlocks.
-Confirmations go channel are indeed notified inside the confirm function of the Confirm struct synchronously:
-
-  // confirm confirms one publishing, increments the expecting delivery tag, and
-  // removes bookkeeping for that delivery tag.
-  func (c *confirms) confirm(confirmation Confirmation) {
-	  delete(c.sequencer, c.expecting)
-	  c.expecting++
-	  for _, l := range c.listeners {
-		  l <- confirmation
+	go func() {
+	  for notifyConnClose != nil || notifyChanClose != nil {
+	    select {
+	      case err, ok := <-notifyConnClose:
+	        if !ok {
+	          notifyConnClose = nil
+	        } else {
+	          fmt.Printf("connection closed, error %s", err)
+	        }
+	      case err, ok := <-notifyChanClose:
+	        if !ok {
+	          notifyChanClose = nil
+	        } else {
+	          fmt.Printf("channel closed, error %s", err)
+	        }
+	      }
 	  }
-  }
+	}()
 
-It is so necessary to have a goroutine consuming from this channel till it get closed.
+Another approach is to use buffered channels:
 
+	notifyConnCloseCh := conn.NotifyClose(make(chan *amqp.Error, 1))
+
+The library sends to notification channels just once. After sending a notification
+to all channels, the library closes all registered notification channels. After
+receiving a notification, the application should create and register a new channel.
+
+# Best practises for NotifyPublish notifications:
+
+Using [Channel.NotifyPublish] allows the caller of the library to be notified,
+through a go channel, when a message has been received and confirmed by the
+broker. It's advisable to wait for all Confirmations to arrive before calling
+[Channel.Close] or [Connection.Close]. It is also necessary to consume from this
+channel until it gets closed. The library sends synchronously to the registered channel.
+It is advisable to use a buffered channel, with capacity set to the maximum acceptable
+number of unconfirmed messages.
+
+It is important to consume from the confirmation channel at all times, in order to avoid
+deadlocks in the library.
 */
 package amqp091

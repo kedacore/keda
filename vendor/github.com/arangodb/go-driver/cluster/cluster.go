@@ -52,7 +52,7 @@ type ServerConnectionBuilder func(endpoint string) (driver.Connection, error)
 // The given connections are existing connections to each of the servers.
 func NewConnection(config ConnectionConfig, connectionBuilder ServerConnectionBuilder, endpoints []string) (driver.Connection, error) {
 	if connectionBuilder == nil {
-		return nil, driver.WithStack(driver.InvalidArgumentError{Message: "Must a connection builder"})
+		return nil, driver.WithStack(driver.InvalidArgumentError{Message: "Must provide a connection builder"})
 	}
 	if len(endpoints) == 0 {
 		return nil, driver.WithStack(driver.InvalidArgumentError{Message: "Must provide at least 1 endpoint"})
@@ -285,7 +285,7 @@ func (c *clusterConnection) UpdateEndpoints(endpoints []string) error {
 	return nil
 }
 
-// Configure the authentication used for this connection.
+// SetAuthentication creates a copy of connection wrapper for given auth parameters.
 func (c *clusterConnection) SetAuthentication(auth driver.Authentication) (driver.Connection, error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -300,11 +300,20 @@ func (c *clusterConnection) SetAuthentication(auth driver.Authentication) (drive
 		newServerConnections[i] = authConn
 	}
 
-	// Save authentication
+	// These two lines are not required for normal work but left for backward compatibility
+	// of SetAuthentication method - it was returning self object
 	c.auth = auth
 	c.servers = newServerConnections
 
-	return c, nil
+	return &clusterConnection{
+		connectionBuilder: c.connectionBuilder,
+		servers:           c.servers,
+		endpoints:         c.endpoints,
+		current:           c.current,
+		mutex:             sync.RWMutex{},
+		defaultTimeout:    c.defaultTimeout,
+		auth:              c.auth,
+	}, nil
 }
 
 // Protocols returns all protocols used by this connection.

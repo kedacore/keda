@@ -55,11 +55,10 @@ const (
 // managedIdentityClient provides the base for authenticating in managed identity environments
 // This type includes an runtime.Pipeline and TokenCredentialOptions.
 type managedIdentityClient struct {
-	pipeline    runtime.Pipeline
-	msiType     msiType
-	endpoint    string
-	id          ManagedIDKind
-	imdsTimeout time.Duration
+	pipeline runtime.Pipeline
+	msiType  msiType
+	endpoint string
+	id       ManagedIDKind
 }
 
 type wrappedNumber json.Number
@@ -162,12 +161,6 @@ func (c *managedIdentityClient) provideToken(ctx context.Context, params confide
 
 // authenticate acquires an access token
 func (c *managedIdentityClient) authenticate(ctx context.Context, id ManagedIDKind, scopes []string) (azcore.AccessToken, error) {
-	var cancel context.CancelFunc
-	if c.imdsTimeout > 0 && c.msiType == msiTypeIMDS {
-		ctx, cancel = context.WithTimeout(ctx, c.imdsTimeout)
-		defer cancel()
-	}
-
 	msg, err := c.createAuthRequest(ctx, id, scopes)
 	if err != nil {
 		return azcore.AccessToken{}, err
@@ -175,14 +168,8 @@ func (c *managedIdentityClient) authenticate(ctx context.Context, id ManagedIDKi
 
 	resp, err := c.pipeline.Do(msg)
 	if err != nil {
-		if cancel != nil && errors.Is(err, context.DeadlineExceeded) {
-			return azcore.AccessToken{}, newCredentialUnavailableError(credNameManagedIdentity, "IMDS token request timed out")
-		}
 		return azcore.AccessToken{}, newAuthenticationFailedError(credNameManagedIdentity, err.Error(), nil)
 	}
-
-	// got a response, remove the IMDS timeout so future requests use the transport's configuration
-	c.imdsTimeout = 0
 
 	if runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated) {
 		return c.createAccessToken(resp)

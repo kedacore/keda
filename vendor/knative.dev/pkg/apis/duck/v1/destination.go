@@ -73,6 +73,10 @@ func (d *Destination) GetRef() *KReference {
 }
 
 func (d *Destination) SetDefaults(ctx context.Context) {
+	if d == nil {
+		return
+	}
+
 	if d.Ref != nil && d.Ref.Namespace == "" {
 		d.Ref.Namespace = apis.ParentMeta(ctx).Namespace
 	}
