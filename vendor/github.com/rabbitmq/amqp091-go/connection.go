@@ -28,7 +28,7 @@ const (
 	defaultHeartbeat         = 10 * time.Second
 	defaultConnectionTimeout = 30 * time.Second
 	defaultProduct           = "AMQP 0.9.1 Client"
-	buildVersion             = "1.5.0"
+	buildVersion             = "1.6.0"
 	platform                 = "golang"
 	// Safer default that makes channel leaks a lot easier to spot
 	// before they create operational headaches. See https://github.com/rabbitmq/rabbitmq-server/issues/1593.
@@ -76,11 +76,15 @@ type Config struct {
 	Dial func(network, addr string) (net.Conn, error)
 }
 
-// NewConnectionProperties initialises an amqp.Table struct to empty value. This
-// amqp.Table can be used as Properties in amqp.Config to set the connection
-// name, using amqp.DialConfig()
+// NewConnectionProperties creates an amqp.Table to be used as amqp.Config.Properties.
+//
+// Defaults to library-defined values. For empty properties, use make(amqp.Table) instead.
 func NewConnectionProperties() Table {
-	return make(Table)
+	return Table{
+		"product":  defaultProduct,
+		"version":  buildVersion,
+		"platform": platform,
+	}
 }
 
 // Connection manages the serialization and deserialization of frames from IO
@@ -250,7 +254,6 @@ func DialConfig(url string, config Config) (*Connection, error) {
 Open accepts an already established connection, or other io.ReadWriteCloser as
 a transport.  Use this method if you have established a TLS connection or wish
 to use your own custom transport.
-
 */
 func Open(conn io.ReadWriteCloser, config Config) (*Connection, error) {
 	c := &Connection{
@@ -331,7 +334,6 @@ so that it will be necessary to consume the Channel from the caller in order to 
 
 To reconnect after a transport or protocol error, register a listener here and
 re-run your setup process.
-
 */
 func (c *Connection) NotifyClose(receiver chan *Error) chan *Error {
 	c.m.Lock()
@@ -355,7 +357,6 @@ become free again.
 
 This optional extension is supported by the server when the
 "connection.blocked" server capability key is true.
-
 */
 func (c *Connection) NotifyBlocked(receiver chan Blocking) chan Blocking {
 	c.m.Lock()
@@ -416,7 +417,7 @@ func (c *Connection) closeWith(err *Error) error {
 // IsClosed returns true if the connection is marked as closed, otherwise false
 // is returned.
 func (c *Connection) IsClosed() bool {
-	return (atomic.LoadInt32(&c.closed) == 1)
+	return atomic.LoadInt32(&c.closed) == 1
 }
 
 func (c *Connection) send(f frame) error {
@@ -447,6 +448,74 @@ func (c *Connection) send(f frame) error {
 	return err
 }
 
+// This method is intended to be used with sendUnflushed() to end a sequence
+// of sendUnflushed() calls and flush the connection
+func (c *Connection) endSendUnflushed() error {
+	c.sendM.Lock()
+	defer c.sendM.Unlock()
+	return c.flush()
+}
+
+// sendUnflushed performs an *Unflushed* write. It is otherwise equivalent to
+// send(), and we provide a separate flush() function to explicitly flush the
+// buffer after all Frames are written.
+//
+// Why is this a thing?
+//
+// send() method uses writer.WriteFrame(), which will write the Frame then
+// flush the buffer. For cases like the sendOpen() method on Channel, which
+// sends multiple Frames (methodFrame, headerFrame, N x bodyFrame), flushing
+// after each Frame is inefficient as it negates much of the benefit of using a
+// buffered writer, and results in more syscalls than necessary. Flushing buffers
+// after every frame can have a significant performance impact when sending
+// (basicPublish) small messages, so this method performs an *Unflushed* write
+// but is otherwise equivalent to send() method, and we provide a separate
+// flush method to explicitly flush the buffer after all Frames are written.
+func (c *Connection) sendUnflushed(f frame) error {
+	if c.IsClosed() {
+		return ErrClosed
+	}
+
+	c.sendM.Lock()
+	err := c.writer.WriteFrameNoFlush(f)
+	c.sendM.Unlock()
+
+	if err != nil {
+		// shutdown could be re-entrant from signaling notify chans
+		go c.shutdown(&Error{
+			Code:   FrameError,
+			Reason: err.Error(),
+		})
+	}
+
+	return err
+}
+
+// This method is intended to be used with sendUnflushed() to explicitly flush
+// the buffer after all required Frames have been written to the buffer.
+func (c *Connection) flush() (err error) {
+	if buf, ok := c.writer.w.(*bufio.Writer); ok {
+		err = buf.Flush()
+
+		// Moving send notifier to flush increases basicPublish for the small message
+		// case. As sendUnflushed + flush is used for the case of sending semantically
+		// related Frames (e.g. a Message like basicPublish) there is no real advantage
+		// to sending per Frame vice per "group of related Frames" and for the case of
+		// small messages time.Now() is (relatively) expensive.
+		if err == nil {
+			// Broadcast we sent a frame, reducing heartbeats, only
+			// if there is something that can receive - like a non-reentrant
+			// call or if the heartbeater isn't running
+			select {
+			case c.sends <- time.Now():
+			default:
+			}
+		}
+	}
+
+	return
+}
+
 func (c *Connection) shutdown(err *Error) {
 	atomic.StoreInt32(&c.closed, 1)
 
@@ -458,9 +527,6 @@ func (c *Connection) shutdown(err *Error) {
 			for _, c := range c.closes {
 				c <- err
 			}
-		}
-
-		if err != nil {
 			c.errors <- err
 		}
 		// Shutdown handler goroutine can still receive the result.
@@ -485,8 +551,8 @@ func (c *Connection) shutdown(err *Error) {
 
 		c.conn.Close()
 
-		c.channels = map[uint16]*Channel{}
-		c.allocator = newAllocator(1, c.Config.ChannelMax)
+		c.channels = nil
+		c.allocator = nil
 		c.noNotify = true
 	})
 }
@@ -535,13 +601,17 @@ func (c *Connection) dispatch0(f frame) {
 
 func (c *Connection) dispatchN(f frame) {
 	c.m.Lock()
-	channel := c.channels[f.channel()]
-	updateChannel(f, channel)
+	channel, ok := c.channels[f.channel()]
+	if ok {
+		updateChannel(f, channel)
+	} else {
+		Logger.Printf("[debug] dropping frame, channel %d does not exist", f.channel())
+	}
 	c.m.Unlock()
 
 	// Note: this could result in concurrent dispatch depending on
 	// how channels are managed in an application
-	if channel != nil {
+	if ok {
 		channel.recv(channel, f)
 	} else {
 		c.dispatchClosed(f)
@@ -700,8 +770,10 @@ func (c *Connection) releaseChannel(id uint16) {
 	c.m.Lock()
 	defer c.m.Unlock()
 
-	delete(c.channels, id)
-	c.allocator.release(int(id))
+	if !c.IsClosed() {
+		delete(c.channels, id)
+		c.allocator.release(int(id))
+	}
 }
 
 // openChannel allocates and opens a channel, must be paired with closeChannel
@@ -730,7 +802,6 @@ func (c *Connection) closeChannel(ch *Channel, e *Error) {
 Channel opens a unique, concurrent server channel to process the bulk of AMQP
 messages.  Any error from methods on this receiver will render the receiver
 invalid and a new Channel should be opened.
-
 */
 func (c *Connection) Channel() (*Channel, error) {
 	return c.openChannel()
@@ -767,16 +838,23 @@ func (c *Connection) call(req message, res ...message) error {
 	return ErrCommandInvalid
 }
 
-//    Connection          = open-Connection *use-Connection close-Connection
-//    open-Connection     = C:protocol-header
-//                          S:START C:START-OK
-//                          *challenge
-//                          S:TUNE C:TUNE-OK
-//                          C:OPEN S:OPEN-OK
-//    challenge           = S:SECURE C:SECURE-OK
-//    use-Connection      = *channel
-//    close-Connection    = C:CLOSE S:CLOSE-OK
-//                        / S:CLOSE C:CLOSE-OK
+// Communication flow to open, use and close a connection. 'C:' are
+// frames sent by the Client. 'S:' are frames sent by the Server.
+//
+//	Connection          = open-Connection *use-Connection close-Connection
+//
+//	open-Connection     = C:protocol-header
+//	                      S:START C:START-OK
+//	                      *challenge
+//	                      S:TUNE C:TUNE-OK
+//	                      C:OPEN S:OPEN-OK
+//
+//	challenge           = S:SECURE C:SECURE-OK
+//
+//	use-Connection      = *channel
+//
+//	close-Connection    = C:CLOSE S:CLOSE-OK
+//	                      S:CLOSE C:CLOSE-OK
 func (c *Connection) open(config Config) error {
 	if err := c.send(&protocolHeader{}); err != nil {
 		return err
@@ -815,18 +893,14 @@ func (c *Connection) openStart(config Config) error {
 
 func (c *Connection) openTune(config Config, auth Authentication) error {
 	if len(config.Properties) == 0 {
-		config.Properties = Table{
-			"product":  defaultProduct,
-			"version":  buildVersion,
-			"platform": platform,
-		}
+		config.Properties = NewConnectionProperties()
 	}
 
 	config.Properties["capabilities"] = Table{
 		"connection.blocked":     true,
 		"consumer_cancel_notify": true,
-		"basic.nack": true,
-		"publisher_confirms": true,
+		"basic.nack":             true,
+		"publisher_confirms":     true,
 	}
 
 	ok := &connectionStartOk{
@@ -844,6 +918,10 @@ func (c *Connection) openTune(config Config, auth Authentication) error {
 		return ErrCredentials
 	}
 
+	// Edge case that may race with c.shutdown()
+	// https://github.com/rabbitmq/amqp091-go/issues/170
+	c.m.Lock()
+
 	// When the server and client both use default 0, then the max channel is
 	// only limited by uint16.
 	c.Config.ChannelMax = pick(config.ChannelMax, int(tune.ChannelMax))
@@ -851,6 +929,10 @@ func (c *Connection) openTune(config Config, auth Authentication) error {
 		c.Config.ChannelMax = defaultChannelMax
 	}
 	c.Config.ChannelMax = min(c.Config.ChannelMax, maxChannelMax)
+
+	c.allocator = newAllocator(1, c.Config.ChannelMax)
+
+	c.m.Unlock()
 
 	// Frame size includes headers and end byte (len(payload)+8), even if
 	// this is less than FrameMinSize, use what the server sends because the
@@ -906,7 +988,6 @@ func (c *Connection) openComplete() error {
 		_ = deadliner.SetDeadline(time.Time{})
 	}
 
-	c.allocator = newAllocator(1, c.Config.ChannelMax)
 	return nil
 }
 

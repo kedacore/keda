@@ -56,7 +56,7 @@ require (
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/client_model v0.3.0
 	github.com/prometheus/common v0.37.0
-	github.com/rabbitmq/amqp091-go v1.5.0
+	github.com/rabbitmq/amqp091-go v1.7.0
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/pflag v1.0.5
