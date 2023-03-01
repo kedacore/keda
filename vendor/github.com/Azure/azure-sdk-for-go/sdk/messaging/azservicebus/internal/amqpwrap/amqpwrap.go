@@ -7,6 +7,7 @@ package amqpwrap
 
 import (
 	"context"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/go-amqp"
 )
@@ -60,6 +61,7 @@ type AMQPSession interface {
 }
 
 type AMQPClient interface {
+	Name() string
 	Close() error
 	NewSession(ctx context.Context, opts *amqp.SessionOptions) (AMQPSession, error)
 }
@@ -69,6 +71,11 @@ type AMQPClient interface {
 // return interfaces for AMQPSender and AMQPReceiver from AMQPSession.
 type AMQPClientWrapper struct {
 	Inner *amqp.Client
+	ID    string
+}
+
+func (w *AMQPClientWrapper) Name() string {
+	return w.ID
 }
 
 func (w *AMQPClientWrapper) Close() error {
@@ -182,5 +189,8 @@ func (rw *AMQPReceiverWrapper) LinkSourceFilterValue(name string) interface{} {
 }
 
 func (rw *AMQPReceiverWrapper) Close(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+
 	return rw.inner.Close(ctx)
 }

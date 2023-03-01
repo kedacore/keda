@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/amqpwrap"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/go-amqp"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/utils"
 )
@@ -33,13 +34,13 @@ func newMessageSettler(links internal.AMQPLinks, retryOptions RetryOptions) sett
 	}
 }
 
-func (s *messageSettler) useManagementLink(m *ReceivedMessage, receiver internal.AMQPReceiver) bool {
+func (s *messageSettler) useManagementLink(m *ReceivedMessage, receiver amqpwrap.AMQPReceiver) bool {
 	return s.onlyDoBackupSettlement ||
 		m.deferred ||
 		m.RawAMQPMessage.linkName != receiver.LinkName()
 }
 
-func (s *messageSettler) settleWithRetries(ctx context.Context, message *ReceivedMessage, settleFn func(receiver internal.AMQPReceiver, rpcLink internal.RPCLink) error) error {
+func (s *messageSettler) settleWithRetries(ctx context.Context, message *ReceivedMessage, settleFn func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error) error {
 	if s == nil {
 		return internal.NewErrNonRetriable("messages that are received in `ReceiveModeReceiveAndDelete` mode are not settleable")
 	}
@@ -62,7 +63,7 @@ type CompleteMessageOptions struct {
 
 // CompleteMessage completes a message, deleting it from the queue or subscription.
 func (s *messageSettler) CompleteMessage(ctx context.Context, message *ReceivedMessage, options *CompleteMessageOptions) error {
-	return s.settleWithRetries(ctx, message, func(receiver internal.AMQPReceiver, rpcLink internal.RPCLink) error {
+	return s.settleWithRetries(ctx, message, func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error {
 		if s.useManagementLink(message, receiver) {
 			return internal.SendDisposition(ctx, rpcLink, receiver.LinkName(), bytesToAMQPUUID(message.LockToken), internal.Disposition{Status: internal.CompletedDisposition}, nil)
 		} else {
@@ -81,7 +82,7 @@ type AbandonMessageOptions struct {
 // This will increment its delivery count, and potentially cause it to be dead lettered
 // depending on your queue or subscription's configuration.
 func (s *messageSettler) AbandonMessage(ctx context.Context, message *ReceivedMessage, options *AbandonMessageOptions) error {
-	return s.settleWithRetries(ctx, message, func(receiver internal.AMQPReceiver, rpcLink internal.RPCLink) error {
+	return s.settleWithRetries(ctx, message, func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error {
 		if s.useManagementLink(message, receiver) {
 			d := internal.Disposition{
 				Status: internal.AbandonedDisposition,
@@ -119,7 +120,7 @@ type DeferMessageOptions struct {
 // DeferMessage will cause a message to be deferred. Deferred messages
 // can be received using `Receiver.ReceiveDeferredMessages`.
 func (s *messageSettler) DeferMessage(ctx context.Context, message *ReceivedMessage, options *DeferMessageOptions) error {
-	return s.settleWithRetries(ctx, message, func(receiver internal.AMQPReceiver, rpcLink internal.RPCLink) error {
+	return s.settleWithRetries(ctx, message, func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error {
 		if s.useManagementLink(message, receiver) {
 			d := internal.Disposition{
 				Status: internal.DeferredDisposition,
@@ -166,7 +167,7 @@ type DeadLetterOptions struct {
 // queue or subscription. To receive these messages create a receiver with `Client.NewReceiver()`
 // using the `SubQueue` option.
 func (s *messageSettler) DeadLetterMessage(ctx context.Context, message *ReceivedMessage, options *DeadLetterOptions) error {
-	return s.settleWithRetries(ctx, message, func(receiver internal.AMQPReceiver, rpcLink internal.RPCLink) error {
+	return s.settleWithRetries(ctx, message, func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error {
 		reason := ""
 		description := ""
 

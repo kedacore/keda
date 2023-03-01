@@ -48,15 +48,6 @@ type (
 		uuidNewV4 func() (uuid.UUID, error)
 	}
 
-	// RPCResponse is the simplified response structure from an RPC like call
-	RPCResponse struct {
-		// Code is the response code - these originate from Service Bus. Some
-		// common values are called out below, with the RPCResponseCode* constants.
-		Code        int
-		Description string
-		Message     *amqp.Message
-	}
-
 	// RPCLinkOption provides a way to customize the construction of a Link
 	RPCLinkOption func(link *rpcLink) error
 
@@ -77,7 +68,7 @@ const (
 // RPCError is an error from an RPCLink.
 // RPCLinks are used for communication with the $management and $cbs links.
 type RPCError struct {
-	Resp    *RPCResponse
+	Resp    *amqpwrap.RPCResponse
 	Message string
 }
 
@@ -99,7 +90,7 @@ type RPCLinkArgs struct {
 }
 
 // NewRPCLink will build a new request response link
-func NewRPCLink(ctx context.Context, args RPCLinkArgs) (*rpcLink, error) {
+func NewRPCLink(ctx context.Context, args RPCLinkArgs) (amqpwrap.RPCLink, error) {
 	session, err := args.Client.NewSession(ctx, nil)
 
 	if err != nil {
@@ -217,7 +208,7 @@ func (l *rpcLink) startResponseRouter() {
 }
 
 // RPC sends a request and waits on a response for that request
-func (l *rpcLink) RPC(ctx context.Context, msg *amqp.Message) (*RPCResponse, error) {
+func (l *rpcLink) RPC(ctx context.Context, msg *amqp.Message) (*amqpwrap.RPCResponse, error) {
 	l.startResponseRouterOnce.Do(func() {
 		go l.startResponseRouter()
 	})
@@ -302,7 +293,7 @@ func (l *rpcLink) RPC(ctx context.Context, msg *amqp.Message) (*RPCResponse, err
 		}
 	}
 
-	response := &RPCResponse{
+	response := &amqpwrap.RPCResponse{
 		Code:        int(statusCode),
 		Description: description,
 		Message:     res,
@@ -447,7 +438,7 @@ func addMessageID(message *amqp.Message, uuidNewV4 func() (uuid.UUID, error)) (*
 // asRPCError checks to see if the res is actually a failed request
 // (where failed means the status code was non-2xx). If so,
 // it returns true and updates the struct pointed to by err.
-func asRPCError(res *RPCResponse, err *RPCError) bool {
+func asRPCError(res *amqpwrap.RPCResponse, err *RPCError) bool {
 	if res == nil {
 		return false
 	}

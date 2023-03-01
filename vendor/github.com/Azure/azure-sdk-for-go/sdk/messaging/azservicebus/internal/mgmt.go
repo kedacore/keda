@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/internal/uuid"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/amqpwrap"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/exported"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/go-amqp"
 )
@@ -30,7 +31,7 @@ const (
 	DeferredDisposition  DispositionStatus = "defered"
 )
 
-func ReceiveDeferred(ctx context.Context, rpcLink RPCLink, linkName string, mode exported.ReceiveMode, sequenceNumbers []int64) ([]*amqp.Message, error) {
+func ReceiveDeferred(ctx context.Context, rpcLink amqpwrap.RPCLink, linkName string, mode exported.ReceiveMode, sequenceNumbers []int64) ([]*amqp.Message, error) {
 	const messagesField, messageField = "messages", "message"
 
 	backwardsMode := uint32(0)
@@ -110,7 +111,7 @@ func ReceiveDeferred(ctx context.Context, rpcLink RPCLink, linkName string, mode
 	return transformedMessages, nil
 }
 
-func PeekMessages(ctx context.Context, rpcLink RPCLink, linkName string, fromSequenceNumber int64, messageCount int32) ([]*amqp.Message, error) {
+func PeekMessages(ctx context.Context, rpcLink amqpwrap.RPCLink, linkName string, fromSequenceNumber int64, messageCount int32) ([]*amqp.Message, error) {
 	const messagesField, messageField = "messages", "message"
 
 	msg := &amqp.Message{
@@ -212,7 +213,7 @@ func PeekMessages(ctx context.Context, rpcLink RPCLink, linkName string, fromSeq
 
 // RenewLocks renews the locks in a single 'com.microsoft:renew-lock' operation.
 // NOTE: this function assumes all the messages received on the same link.
-func RenewLocks(ctx context.Context, rpcLink RPCLink, linkName string, lockTokens []amqp.UUID) ([]time.Time, error) {
+func RenewLocks(ctx context.Context, rpcLink amqpwrap.RPCLink, linkName string, lockTokens []amqp.UUID) ([]time.Time, error) {
 	renewRequestMsg := &amqp.Message{
 		ApplicationProperties: map[string]interface{}{
 			"operation": "com.microsoft:renew-lock",
@@ -259,7 +260,7 @@ func RenewLocks(ctx context.Context, rpcLink RPCLink, linkName string, lockToken
 }
 
 // RenewSessionLocks renews a session lock.
-func RenewSessionLock(ctx context.Context, rpcLink RPCLink, linkName string, sessionID string) (time.Time, error) {
+func RenewSessionLock(ctx context.Context, rpcLink amqpwrap.RPCLink, linkName string, sessionID string) (time.Time, error) {
 	body := map[string]interface{}{
 		"session-id": sessionID,
 	}
@@ -295,7 +296,7 @@ func RenewSessionLock(ctx context.Context, rpcLink RPCLink, linkName string, ses
 }
 
 // GetSessionState retrieves state associated with the session.
-func GetSessionState(ctx context.Context, rpcLink RPCLink, linkName string, sessionID string) ([]byte, error) {
+func GetSessionState(ctx context.Context, rpcLink amqpwrap.RPCLink, linkName string, sessionID string) ([]byte, error) {
 	amqpMsg := &amqp.Message{
 		Value: map[string]interface{}{
 			"session-id": sessionID,
@@ -340,7 +341,7 @@ func GetSessionState(ctx context.Context, rpcLink RPCLink, linkName string, sess
 }
 
 // SetSessionState sets the state associated with the session.
-func SetSessionState(ctx context.Context, rpcLink RPCLink, linkName string, sessionID string, state []byte) error {
+func SetSessionState(ctx context.Context, rpcLink amqpwrap.RPCLink, linkName string, sessionID string, state []byte) error {
 	uuid, err := uuid.New()
 
 	if err != nil {
@@ -376,7 +377,7 @@ func SetSessionState(ctx context.Context, rpcLink RPCLink, linkName string, sess
 // SendDisposition allows you settle a message using the management link, rather than via your
 // *amqp.Receiver. Use this if the receiver has been closed/lost or if the message isn't associated
 // with a link (ex: deferred messages).
-func SendDisposition(ctx context.Context, rpcLink RPCLink, linkName string, lockToken *amqp.UUID, state Disposition, propertiesToModify map[string]interface{}) error {
+func SendDisposition(ctx context.Context, rpcLink amqpwrap.RPCLink, linkName string, lockToken *amqp.UUID, state Disposition, propertiesToModify map[string]interface{}) error {
 	if lockToken == nil {
 		err := errors.New("lock token on the message is not set, thus cannot send disposition")
 		return err
@@ -419,7 +420,7 @@ func SendDisposition(ctx context.Context, rpcLink RPCLink, linkName string, lock
 
 // ScheduleMessages will send a batch of messages to a Queue, schedule them to be enqueued, and return the sequence numbers
 // that can be used to cancel each message.
-func ScheduleMessages(ctx context.Context, rpcLink RPCLink, linkName string, enqueueTime time.Time, messages []*amqp.Message) ([]int64, error) {
+func ScheduleMessages(ctx context.Context, rpcLink amqpwrap.RPCLink, linkName string, enqueueTime time.Time, messages []*amqp.Message) ([]int64, error) {
 	if len(messages) <= 0 {
 		return nil, errors.New("expected one or more messages")
 	}
@@ -517,7 +518,7 @@ func ScheduleMessages(ctx context.Context, rpcLink RPCLink, linkName string, enq
 
 // CancelScheduledMessages allows for removal of messages that have been handed to the Service Bus broker for later delivery,
 // but have not yet ben enqueued.
-func CancelScheduledMessages(ctx context.Context, rpcLink RPCLink, linkName string, seq []int64) error {
+func CancelScheduledMessages(ctx context.Context, rpcLink amqpwrap.RPCLink, linkName string, seq []int64) error {
 	msg := &amqp.Message{
 		ApplicationProperties: map[string]interface{}{
 			"operation": "com.microsoft:cancel-scheduled-message",
