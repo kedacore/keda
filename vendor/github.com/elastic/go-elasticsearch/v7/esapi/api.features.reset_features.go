@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -42,11 +42,9 @@ func newFeaturesResetFeaturesFunc(t Transport) FeaturesResetFeatures {
 // This API is experimental.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/modules-snapshots.html.
-//
 type FeaturesResetFeatures func(o ...func(*FeaturesResetFeaturesRequest)) (*Response, error)
 
 // FeaturesResetFeaturesRequest configures the Features Reset Features API request.
-//
 type FeaturesResetFeaturesRequest struct {
 	Pretty     bool
 	Human      bool
@@ -59,7 +57,6 @@ type FeaturesResetFeaturesRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r FeaturesResetFeaturesRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -134,7 +131,6 @@ func (r FeaturesResetFeaturesRequest) Do(ctx context.Context, transport Transpor
 }
 
 // WithContext sets the request context.
-//
 func (f FeaturesResetFeatures) WithContext(v context.Context) func(*FeaturesResetFeaturesRequest) {
 	return func(r *FeaturesResetFeaturesRequest) {
 		r.ctx = v
@@ -142,7 +138,6 @@ func (f FeaturesResetFeatures) WithContext(v context.Context) func(*FeaturesRese
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f FeaturesResetFeatures) WithPretty() func(*FeaturesResetFeaturesRequest) {
 	return func(r *FeaturesResetFeaturesRequest) {
 		r.Pretty = true
@@ -150,7 +145,6 @@ func (f FeaturesResetFeatures) WithPretty() func(*FeaturesResetFeaturesRequest) 
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f FeaturesResetFeatures) WithHuman() func(*FeaturesResetFeaturesRequest) {
 	return func(r *FeaturesResetFeaturesRequest) {
 		r.Human = true
@@ -158,7 +152,6 @@ func (f FeaturesResetFeatures) WithHuman() func(*FeaturesResetFeaturesRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f FeaturesResetFeatures) WithErrorTrace() func(*FeaturesResetFeaturesRequest) {
 	return func(r *FeaturesResetFeaturesRequest) {
 		r.ErrorTrace = true
@@ -166,7 +159,6 @@ func (f FeaturesResetFeatures) WithErrorTrace() func(*FeaturesResetFeaturesReque
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f FeaturesResetFeatures) WithFilterPath(v ...string) func(*FeaturesResetFeaturesRequest) {
 	return func(r *FeaturesResetFeaturesRequest) {
 		r.FilterPath = v
@@ -174,7 +166,6 @@ func (f FeaturesResetFeatures) WithFilterPath(v ...string) func(*FeaturesResetFe
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f FeaturesResetFeatures) WithHeader(h map[string]string) func(*FeaturesResetFeaturesRequest) {
 	return func(r *FeaturesResetFeaturesRequest) {
 		if r.Header == nil {
@@ -187,7 +178,6 @@ func (f FeaturesResetFeatures) WithHeader(h map[string]string) func(*FeaturesRes
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f FeaturesResetFeatures) WithOpaqueID(s string) func(*FeaturesResetFeaturesRequest) {
 	return func(r *FeaturesResetFeaturesRequest) {
 		if r.Header == nil {

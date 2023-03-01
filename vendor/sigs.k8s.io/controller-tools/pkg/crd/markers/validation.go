@@ -86,6 +86,9 @@ var FieldOnlyMarkers = []*definitionWithHelp{
 	must(markers.MakeAnyTypeDefinition("kubebuilder:default", markers.DescribesField, Default{})).
 		WithHelp(Default{}.Help()),
 
+	must(markers.MakeAnyTypeDefinition("kubebuilder:example", markers.DescribesField, Example{})).
+		WithHelp(Example{}.Help()),
+
 	must(markers.MakeDefinition("kubebuilder:validation:EmbeddedResource", markers.DescribesField, XEmbeddedResource{})).
 		WithHelp(XEmbeddedResource{}.Help()),
 
@@ -219,6 +222,19 @@ type Nullable struct{}
 // validation will be performed. Full validation of a default requires
 // submission of the containing CRD to an apiserver.
 type Default struct {
+	Value interface{}
+}
+
+// +controllertools:marker:generateHelp:category="CRD validation"
+// Example sets the example value for this field.
+//
+// An example value will be accepted as any value valid for the
+// field. Formatting for common types include: boolean: `true`, string:
+// `Cluster`, numerical: `1.24`, array: `{1,2}`, object: `{policy:
+// "delete"}`). Examples should be defined in pruned form, and only best-effort
+// validation will be performed. Full validation of an example requires
+// submission of the containing CRD to an apiserver.
+type Example struct {
 	Value interface{}
 }
 
@@ -462,6 +478,15 @@ func (m Default) ApplyToSchema(schema *apiext.JSONSchemaProps) error {
 		return err
 	}
 	schema.Default = &apiext.JSON{Raw: marshalledDefault}
+	return nil
+}
+
+func (m Example) ApplyToSchema(schema *apiext.JSONSchemaProps) error {
+	marshalledExample, err := json.Marshal(m.Value)
+	if err != nil {
+		return err
+	}
+	schema.Example = &apiext.JSON{Raw: marshalledExample}
 	return nil
 }
 

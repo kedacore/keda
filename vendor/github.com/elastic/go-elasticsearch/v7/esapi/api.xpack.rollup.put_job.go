@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -43,11 +43,9 @@ func newRollupPutJobFunc(t Transport) RollupPutJob {
 // This API is experimental.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/rollup-put-job.html.
-//
 type RollupPutJob func(id string, body io.Reader, o ...func(*RollupPutJobRequest)) (*Response, error)
 
 // RollupPutJobRequest configures the Rollup Put Job API request.
-//
 type RollupPutJobRequest struct {
 	JobID string
 
@@ -64,7 +62,6 @@ type RollupPutJobRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r RollupPutJobRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -113,10 +110,6 @@ func (r RollupPutJobRequest) Do(ctx context.Context, transport Transport) (*Resp
 		req.URL.RawQuery = q.Encode()
 	}
 
-	if r.Body != nil {
-		req.Header[headerContentType] = headerContentTypeJSON
-	}
-
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -127,6 +120,10 @@ func (r RollupPutJobRequest) Do(ctx context.Context, transport Transport) (*Resp
 				}
 			}
 		}
+	}
+
+	if r.Body != nil && req.Header.Get(headerContentType) == "" {
+		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -148,7 +145,6 @@ func (r RollupPutJobRequest) Do(ctx context.Context, transport Transport) (*Resp
 }
 
 // WithContext sets the request context.
-//
 func (f RollupPutJob) WithContext(v context.Context) func(*RollupPutJobRequest) {
 	return func(r *RollupPutJobRequest) {
 		r.ctx = v
@@ -156,7 +152,6 @@ func (f RollupPutJob) WithContext(v context.Context) func(*RollupPutJobRequest) 
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f RollupPutJob) WithPretty() func(*RollupPutJobRequest) {
 	return func(r *RollupPutJobRequest) {
 		r.Pretty = true
@@ -164,7 +159,6 @@ func (f RollupPutJob) WithPretty() func(*RollupPutJobRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f RollupPutJob) WithHuman() func(*RollupPutJobRequest) {
 	return func(r *RollupPutJobRequest) {
 		r.Human = true
@@ -172,7 +166,6 @@ func (f RollupPutJob) WithHuman() func(*RollupPutJobRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f RollupPutJob) WithErrorTrace() func(*RollupPutJobRequest) {
 	return func(r *RollupPutJobRequest) {
 		r.ErrorTrace = true
@@ -180,7 +173,6 @@ func (f RollupPutJob) WithErrorTrace() func(*RollupPutJobRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f RollupPutJob) WithFilterPath(v ...string) func(*RollupPutJobRequest) {
 	return func(r *RollupPutJobRequest) {
 		r.FilterPath = v
@@ -188,7 +180,6 @@ func (f RollupPutJob) WithFilterPath(v ...string) func(*RollupPutJobRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f RollupPutJob) WithHeader(h map[string]string) func(*RollupPutJobRequest) {
 	return func(r *RollupPutJobRequest) {
 		if r.Header == nil {
@@ -201,7 +192,6 @@ func (f RollupPutJob) WithHeader(h map[string]string) func(*RollupPutJobRequest)
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f RollupPutJob) WithOpaqueID(s string) func(*RollupPutJobRequest) {
 	return func(r *RollupPutJobRequest) {
 		if r.Header == nil {

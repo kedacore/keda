@@ -27,7 +27,7 @@ This connection uses HTTP or HTTPS to connect to the ArangoDB database and
 encodes its content as JSON or Velocypack, depending on the value
 of the `ContentType` fields in the `http.ConnectionConfig`.
 
-Creating an Insecure Connection
+# Creating an Insecure Connection
 
 To create an HTTP connection, use code like this.
 
@@ -50,7 +50,7 @@ for normal database requests.
 		// Handle error
 	}
 
-Creating a Secure Connection
+# Creating a Secure Connection
 
 To create a secure HTTPS connection, use code like this.
 
@@ -64,6 +64,5 @@ To create a secure HTTPS connection, use code like this.
 	if err != nil {
 		// Handle error
 	}
-
 */
 package http

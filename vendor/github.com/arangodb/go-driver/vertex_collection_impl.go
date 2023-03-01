@@ -81,6 +81,15 @@ func (c *vertexCollection) Status(ctx context.Context) (CollectionStatus, error)
 	return result, nil
 }
 
+// Checksum returns a checksum for the specified collection
+func (c *vertexCollection) Checksum(ctx context.Context, withRevisions bool, withData bool) (CollectionChecksum, error) {
+	result, err := c.rawCollection().Checksum(ctx, withRevisions, withData)
+	if err != nil {
+		return CollectionChecksum{}, WithStack(err)
+	}
+	return result, nil
+}
+
 // Count fetches the number of document in the collection.
 func (c *vertexCollection) Count(ctx context.Context) (int64, error) {
 	result, err := c.rawCollection().Count(ctx)

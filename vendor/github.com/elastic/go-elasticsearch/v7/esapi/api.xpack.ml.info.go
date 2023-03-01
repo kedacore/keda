@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -40,11 +40,9 @@ func newMLInfoFunc(t Transport) MLInfo {
 // MLInfo - Returns defaults and limits used by machine learning.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/get-ml-info.html.
-//
 type MLInfo func(o ...func(*MLInfoRequest)) (*Response, error)
 
 // MLInfoRequest configures the ML Info API request.
-//
 type MLInfoRequest struct {
 	Pretty     bool
 	Human      bool
@@ -57,7 +55,6 @@ type MLInfoRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r MLInfoRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -132,7 +129,6 @@ func (r MLInfoRequest) Do(ctx context.Context, transport Transport) (*Response, 
 }
 
 // WithContext sets the request context.
-//
 func (f MLInfo) WithContext(v context.Context) func(*MLInfoRequest) {
 	return func(r *MLInfoRequest) {
 		r.ctx = v
@@ -140,7 +136,6 @@ func (f MLInfo) WithContext(v context.Context) func(*MLInfoRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f MLInfo) WithPretty() func(*MLInfoRequest) {
 	return func(r *MLInfoRequest) {
 		r.Pretty = true
@@ -148,7 +143,6 @@ func (f MLInfo) WithPretty() func(*MLInfoRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f MLInfo) WithHuman() func(*MLInfoRequest) {
 	return func(r *MLInfoRequest) {
 		r.Human = true
@@ -156,7 +150,6 @@ func (f MLInfo) WithHuman() func(*MLInfoRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f MLInfo) WithErrorTrace() func(*MLInfoRequest) {
 	return func(r *MLInfoRequest) {
 		r.ErrorTrace = true
@@ -164,7 +157,6 @@ func (f MLInfo) WithErrorTrace() func(*MLInfoRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f MLInfo) WithFilterPath(v ...string) func(*MLInfoRequest) {
 	return func(r *MLInfoRequest) {
 		r.FilterPath = v
@@ -172,7 +164,6 @@ func (f MLInfo) WithFilterPath(v ...string) func(*MLInfoRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f MLInfo) WithHeader(h map[string]string) func(*MLInfoRequest) {
 	return func(r *MLInfoRequest) {
 		if r.Header == nil {
@@ -185,7 +176,6 @@ func (f MLInfo) WithHeader(h map[string]string) func(*MLInfoRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f MLInfo) WithOpaqueID(s string) func(*MLInfoRequest) {
 	return func(r *MLInfoRequest) {
 		if r.Header == nil {

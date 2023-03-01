@@ -81,16 +81,23 @@ func isJSON(rsp *http.Response) bool {
 
 func decodeError(body []byte, rsp *http.Response) error {
 	if isJSON(rsp) {
-		var serverError Error
+		var serverError struct {
+			Error
+			V1Error *string `json:"error,omitempty"`
+		}
 		err := json.Unmarshal(body, &serverError)
 		if err != nil {
 			message := fmt.Sprintf("cannot decode error response: %v", err)
 			serverError.Message = &message
 		}
+		if serverError.V1Error != nil {
+			serverError.Message = serverError.V1Error
+			serverError.Code = ErrorCodeInvalid
+		}
 		if serverError.Message == nil && serverError.Code == "" {
 			serverError.Message = &rsp.Status
 		}
-		return serverError.Error()
+		return serverError.Error.Error()
 	} else {
 		message := rsp.Status
 		if len(body) > 0 {

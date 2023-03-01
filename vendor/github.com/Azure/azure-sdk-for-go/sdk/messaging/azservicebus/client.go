@@ -15,6 +15,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/internal/log"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/amqpwrap"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/exported"
 )
 
@@ -28,15 +29,10 @@ type Client struct {
 	//   PR: https://github.com/Azure/azure-sdk-for-go/pull/16847
 	linkCounter uint64
 
-	linksMu   *sync.Mutex
-	links     map[uint64]internal.Closeable
-	creds     clientCreds
-	namespace interface {
-		// used internally by `Client`
-		internal.NamespaceWithNewAMQPLinks
-		// for child clients
-		internal.NamespaceForAMQPLinks
-	}
+	linksMu      *sync.Mutex
+	links        map[uint64]amqpwrap.Closeable
+	creds        clientCreds
+	namespace    internal.NamespaceForAMQPLinks
 	retryOptions RetryOptions
 
 	// acceptNextTimeout controls how long the session accept can take before
@@ -85,7 +81,9 @@ func NewClient(fullyQualifiedNamespace string, credential azcore.TokenCredential
 	return newClientImpl(clientCreds{
 		credential:              credential,
 		fullyQualifiedNamespace: fullyQualifiedNamespace,
-	}, options)
+	}, clientImplArgs{
+		ClientOptions: options,
+	})
 }
 
 // NewClientFromConnectionString creates a new Client for a Service Bus namespace using a connection string.
@@ -105,7 +103,9 @@ func NewClientFromConnectionString(connectionString string, options *ClientOptio
 
 	return newClientImpl(clientCreds{
 		connectionString: connectionString,
-	}, options)
+	}, clientImplArgs{
+		ClientOptions: options,
+	})
 }
 
 // Next overloads (ie, credential sticks with the client)
@@ -120,11 +120,16 @@ type clientCreds struct {
 	credential              azcore.TokenCredential
 }
 
-func newClientImpl(creds clientCreds, options *ClientOptions) (*Client, error) {
+type clientImplArgs struct {
+	ClientOptions *ClientOptions
+	NSOptions     []internal.NamespaceOption
+}
+
+func newClientImpl(creds clientCreds, args clientImplArgs) (*Client, error) {
 	client := &Client{
 		linksMu: &sync.Mutex{},
 		creds:   creds,
-		links:   map[uint64]internal.Closeable{},
+		links:   map[uint64]amqpwrap.Closeable{},
 	}
 
 	var err error
@@ -140,23 +145,25 @@ func newClientImpl(creds clientCreds, options *ClientOptions) (*Client, error) {
 		nsOptions = append(nsOptions, option)
 	}
 
-	if options != nil {
-		client.retryOptions = options.RetryOptions
+	if args.ClientOptions != nil {
+		client.retryOptions = args.ClientOptions.RetryOptions
 
-		if options.TLSConfig != nil {
-			nsOptions = append(nsOptions, internal.NamespaceWithTLSConfig(options.TLSConfig))
+		if args.ClientOptions.TLSConfig != nil {
+			nsOptions = append(nsOptions, internal.NamespaceWithTLSConfig(args.ClientOptions.TLSConfig))
 		}
 
-		if options.NewWebSocketConn != nil {
-			nsOptions = append(nsOptions, internal.NamespaceWithWebSocket(options.NewWebSocketConn))
+		if args.ClientOptions.NewWebSocketConn != nil {
+			nsOptions = append(nsOptions, internal.NamespaceWithWebSocket(args.ClientOptions.NewWebSocketConn))
 		}
 
-		if options.ApplicationID != "" {
-			nsOptions = append(nsOptions, internal.NamespaceWithUserAgent(options.ApplicationID))
+		if args.ClientOptions.ApplicationID != "" {
+			nsOptions = append(nsOptions, internal.NamespaceWithUserAgent(args.ClientOptions.ApplicationID))
 		}
 
-		nsOptions = append(nsOptions, internal.NamespaceWithRetryOptions(options.RetryOptions))
+		nsOptions = append(nsOptions, internal.NamespaceWithRetryOptions(args.ClientOptions.RetryOptions))
 	}
+
+	nsOptions = append(nsOptions, args.NSOptions...)
 
 	client.namespace, err = internal.NewNamespace(nsOptions...)
 	return client, err
@@ -303,7 +310,7 @@ func (client *Client) AcceptNextSessionForSubscription(ctx context.Context, topi
 // Close closes the current connection Service Bus as well as any Senders or Receivers created
 // using this client.
 func (client *Client) Close(ctx context.Context) error {
-	var links []internal.Closeable
+	var links []amqpwrap.Closeable
 
 	client.linksMu.Lock()
 
@@ -319,7 +326,7 @@ func (client *Client) Close(ctx context.Context) error {
 		}
 	}
 
-	return client.namespace.Close(ctx, true)
+	return client.namespace.Close(true)
 }
 
 func (client *Client) acceptNextSessionForEntity(ctx context.Context, entity entity, options *SessionReceiverOptions) (*SessionReceiver, error) {
@@ -347,7 +354,7 @@ func (client *Client) acceptNextSessionForEntity(ctx context.Context, entity ent
 	return sessionReceiver, nil
 }
 
-func (client *Client) addCloseable(id uint64, closeable internal.Closeable) {
+func (client *Client) addCloseable(id uint64, closeable amqpwrap.Closeable) {
 	client.linksMu.Lock()
 	client.links[id] = closeable
 	client.linksMu.Unlock()

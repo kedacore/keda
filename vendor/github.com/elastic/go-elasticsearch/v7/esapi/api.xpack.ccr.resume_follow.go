@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -41,11 +41,9 @@ func newCCRResumeFollowFunc(t Transport) CCRResumeFollow {
 // CCRResumeFollow - Resumes a follower index that has been paused
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/ccr-post-resume-follow.html.
-//
 type CCRResumeFollow func(index string, o ...func(*CCRResumeFollowRequest)) (*Response, error)
 
 // CCRResumeFollowRequest configures the CCR Resume Follow API request.
-//
 type CCRResumeFollowRequest struct {
 	Index string
 
@@ -62,7 +60,6 @@ type CCRResumeFollowRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r CCRResumeFollowRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -111,10 +108,6 @@ func (r CCRResumeFollowRequest) Do(ctx context.Context, transport Transport) (*R
 		req.URL.RawQuery = q.Encode()
 	}
 
-	if r.Body != nil {
-		req.Header[headerContentType] = headerContentTypeJSON
-	}
-
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -125,6 +118,10 @@ func (r CCRResumeFollowRequest) Do(ctx context.Context, transport Transport) (*R
 				}
 			}
 		}
+	}
+
+	if r.Body != nil && req.Header.Get(headerContentType) == "" {
+		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -146,7 +143,6 @@ func (r CCRResumeFollowRequest) Do(ctx context.Context, transport Transport) (*R
 }
 
 // WithContext sets the request context.
-//
 func (f CCRResumeFollow) WithContext(v context.Context) func(*CCRResumeFollowRequest) {
 	return func(r *CCRResumeFollowRequest) {
 		r.ctx = v
@@ -154,7 +150,6 @@ func (f CCRResumeFollow) WithContext(v context.Context) func(*CCRResumeFollowReq
 }
 
 // WithBody - The name of the leader index and other optional ccr related parameters.
-//
 func (f CCRResumeFollow) WithBody(v io.Reader) func(*CCRResumeFollowRequest) {
 	return func(r *CCRResumeFollowRequest) {
 		r.Body = v
@@ -162,7 +157,6 @@ func (f CCRResumeFollow) WithBody(v io.Reader) func(*CCRResumeFollowRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f CCRResumeFollow) WithPretty() func(*CCRResumeFollowRequest) {
 	return func(r *CCRResumeFollowRequest) {
 		r.Pretty = true
@@ -170,7 +164,6 @@ func (f CCRResumeFollow) WithPretty() func(*CCRResumeFollowRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f CCRResumeFollow) WithHuman() func(*CCRResumeFollowRequest) {
 	return func(r *CCRResumeFollowRequest) {
 		r.Human = true
@@ -178,7 +171,6 @@ func (f CCRResumeFollow) WithHuman() func(*CCRResumeFollowRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f CCRResumeFollow) WithErrorTrace() func(*CCRResumeFollowRequest) {
 	return func(r *CCRResumeFollowRequest) {
 		r.ErrorTrace = true
@@ -186,7 +178,6 @@ func (f CCRResumeFollow) WithErrorTrace() func(*CCRResumeFollowRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f CCRResumeFollow) WithFilterPath(v ...string) func(*CCRResumeFollowRequest) {
 	return func(r *CCRResumeFollowRequest) {
 		r.FilterPath = v
@@ -194,7 +185,6 @@ func (f CCRResumeFollow) WithFilterPath(v ...string) func(*CCRResumeFollowReques
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f CCRResumeFollow) WithHeader(h map[string]string) func(*CCRResumeFollowRequest) {
 	return func(r *CCRResumeFollowRequest) {
 		if r.Header == nil {
@@ -207,7 +197,6 @@ func (f CCRResumeFollow) WithHeader(h map[string]string) func(*CCRResumeFollowRe
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f CCRResumeFollow) WithOpaqueID(s string) func(*CCRResumeFollowRequest) {
 	return func(r *CCRResumeFollowRequest) {
 		if r.Header == nil {

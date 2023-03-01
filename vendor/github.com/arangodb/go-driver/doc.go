@@ -39,6 +39,5 @@ To get started, create a connection to the database and wrap a client around it.
 	if err != nil {
 		// Handle error
 	}
-
 */
 package driver

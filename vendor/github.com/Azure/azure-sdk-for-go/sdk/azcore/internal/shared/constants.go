@@ -21,6 +21,7 @@ const (
 	HeaderOperationLocation      = "Operation-Location"
 	HeaderRetryAfter             = "Retry-After"
 	HeaderUserAgent              = "User-Agent"
+	HeaderWWWAuthenticate        = "WWW-Authenticate"
 )
 
 const BearerTokenPrefix = "Bearer "
@@ -30,5 +31,5 @@ const (
 	Module = "azcore"
 
 	// Version is the semantic version (see http://semver.org) of this module.
-	Version = "v1.2.0"
+	Version = "v1.4.0-beta.1"
 )

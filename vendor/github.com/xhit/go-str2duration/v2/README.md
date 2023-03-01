@@ -84,3 +84,5 @@ func main() {
         }
 }
 ```
+
+Also, you can convert to string the duration using `String(t time.Duration)` function. This support weeks and days and not return the ugly decimals from golang standard `t.String()` function. Units with 0 values aren't returned. For example: `1d1ms` means 1 day 1 millisecond.

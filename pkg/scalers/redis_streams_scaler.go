@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/go-logr/logr"
-	"github.com/go-redis/redis/v9"
+	"github.com/redis/go-redis/v9"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 

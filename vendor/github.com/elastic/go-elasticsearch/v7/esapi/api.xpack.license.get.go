@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -41,11 +41,9 @@ func newLicenseGetFunc(t Transport) LicenseGet {
 // LicenseGet - Retrieves licensing information for the cluster
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/get-license.html.
-//
 type LicenseGet func(o ...func(*LicenseGetRequest)) (*Response, error)
 
 // LicenseGetRequest configures the License Get API request.
-//
 type LicenseGetRequest struct {
 	AcceptEnterprise *bool
 	Local            *bool
@@ -61,7 +59,6 @@ type LicenseGetRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r LicenseGetRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -144,7 +141,6 @@ func (r LicenseGetRequest) Do(ctx context.Context, transport Transport) (*Respon
 }
 
 // WithContext sets the request context.
-//
 func (f LicenseGet) WithContext(v context.Context) func(*LicenseGetRequest) {
 	return func(r *LicenseGetRequest) {
 		r.ctx = v
@@ -152,7 +148,6 @@ func (f LicenseGet) WithContext(v context.Context) func(*LicenseGetRequest) {
 }
 
 // WithAcceptEnterprise - if the active license is an enterprise license, return type as 'enterprise' (default: false).
-//
 func (f LicenseGet) WithAcceptEnterprise(v bool) func(*LicenseGetRequest) {
 	return func(r *LicenseGetRequest) {
 		r.AcceptEnterprise = &v
@@ -160,7 +155,6 @@ func (f LicenseGet) WithAcceptEnterprise(v bool) func(*LicenseGetRequest) {
 }
 
 // WithLocal - return local information, do not retrieve the state from master node (default: false).
-//
 func (f LicenseGet) WithLocal(v bool) func(*LicenseGetRequest) {
 	return func(r *LicenseGetRequest) {
 		r.Local = &v
@@ -168,7 +162,6 @@ func (f LicenseGet) WithLocal(v bool) func(*LicenseGetRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f LicenseGet) WithPretty() func(*LicenseGetRequest) {
 	return func(r *LicenseGetRequest) {
 		r.Pretty = true
@@ -176,7 +169,6 @@ func (f LicenseGet) WithPretty() func(*LicenseGetRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f LicenseGet) WithHuman() func(*LicenseGetRequest) {
 	return func(r *LicenseGetRequest) {
 		r.Human = true
@@ -184,7 +176,6 @@ func (f LicenseGet) WithHuman() func(*LicenseGetRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f LicenseGet) WithErrorTrace() func(*LicenseGetRequest) {
 	return func(r *LicenseGetRequest) {
 		r.ErrorTrace = true
@@ -192,7 +183,6 @@ func (f LicenseGet) WithErrorTrace() func(*LicenseGetRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f LicenseGet) WithFilterPath(v ...string) func(*LicenseGetRequest) {
 	return func(r *LicenseGetRequest) {
 		r.FilterPath = v
@@ -200,7 +190,6 @@ func (f LicenseGet) WithFilterPath(v ...string) func(*LicenseGetRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f LicenseGet) WithHeader(h map[string]string) func(*LicenseGetRequest) {
 	return func(r *LicenseGetRequest) {
 		if r.Header == nil {
@@ -213,7 +202,6 @@ func (f LicenseGet) WithHeader(h map[string]string) func(*LicenseGetRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f LicenseGet) WithOpaqueID(s string) func(*LicenseGetRequest) {
 	return func(r *LicenseGetRequest) {
 		if r.Header == nil {

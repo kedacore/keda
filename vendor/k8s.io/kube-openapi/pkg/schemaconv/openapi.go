@@ -48,12 +48,15 @@ func ToSchemaFromOpenAPI(models map[string]*spec.Schema, preserveUnknownFields b
 		}
 
 		var a schema.Atom
-		if name == quantityResource || name == rawExtensionResource {
-			//!TODO: add support to the openapi schema to properly support these
-			// Hardcode both quantity and raw extension to use untyped schemas
+
+		// Hard-coded schemas for now as proto_models implementation functions.
+		// https://github.com/kubernetes/kube-openapi/issues/364
+		if name == quantityResource {
 			a = schema.Atom{
-				Scalar: ptr(schema.Scalar("untyped")),
+				Scalar: untypedDef.Atom.Scalar,
 			}
+		} else if name == rawExtensionResource {
+			a = untypedDef.Atom
 		} else {
 			c2 := c.push(name, &a)
 			c2.visitSpec(spec)

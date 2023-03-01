@@ -52,6 +52,5 @@ To use a JWT secret to access your database, use code like this:
 	if err != nil {
 		// Handle error
 	}
-
 */
 package jwt

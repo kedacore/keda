@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -40,11 +40,9 @@ func newCCRPauseAutoFollowPatternFunc(t Transport) CCRPauseAutoFollowPattern {
 // CCRPauseAutoFollowPattern - Pauses an auto-follow pattern
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/ccr-pause-auto-follow-pattern.html.
-//
 type CCRPauseAutoFollowPattern func(name string, o ...func(*CCRPauseAutoFollowPatternRequest)) (*Response, error)
 
 // CCRPauseAutoFollowPatternRequest configures the CCR Pause Auto Follow Pattern API request.
-//
 type CCRPauseAutoFollowPatternRequest struct {
 	Name string
 
@@ -59,7 +57,6 @@ type CCRPauseAutoFollowPatternRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r CCRPauseAutoFollowPatternRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -141,7 +138,6 @@ func (r CCRPauseAutoFollowPatternRequest) Do(ctx context.Context, transport Tran
 }
 
 // WithContext sets the request context.
-//
 func (f CCRPauseAutoFollowPattern) WithContext(v context.Context) func(*CCRPauseAutoFollowPatternRequest) {
 	return func(r *CCRPauseAutoFollowPatternRequest) {
 		r.ctx = v
@@ -149,7 +145,6 @@ func (f CCRPauseAutoFollowPattern) WithContext(v context.Context) func(*CCRPause
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f CCRPauseAutoFollowPattern) WithPretty() func(*CCRPauseAutoFollowPatternRequest) {
 	return func(r *CCRPauseAutoFollowPatternRequest) {
 		r.Pretty = true
@@ -157,7 +152,6 @@ func (f CCRPauseAutoFollowPattern) WithPretty() func(*CCRPauseAutoFollowPatternR
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f CCRPauseAutoFollowPattern) WithHuman() func(*CCRPauseAutoFollowPatternRequest) {
 	return func(r *CCRPauseAutoFollowPatternRequest) {
 		r.Human = true
@@ -165,7 +159,6 @@ func (f CCRPauseAutoFollowPattern) WithHuman() func(*CCRPauseAutoFollowPatternRe
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f CCRPauseAutoFollowPattern) WithErrorTrace() func(*CCRPauseAutoFollowPatternRequest) {
 	return func(r *CCRPauseAutoFollowPatternRequest) {
 		r.ErrorTrace = true
@@ -173,7 +166,6 @@ func (f CCRPauseAutoFollowPattern) WithErrorTrace() func(*CCRPauseAutoFollowPatt
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f CCRPauseAutoFollowPattern) WithFilterPath(v ...string) func(*CCRPauseAutoFollowPatternRequest) {
 	return func(r *CCRPauseAutoFollowPatternRequest) {
 		r.FilterPath = v
@@ -181,7 +173,6 @@ func (f CCRPauseAutoFollowPattern) WithFilterPath(v ...string) func(*CCRPauseAut
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f CCRPauseAutoFollowPattern) WithHeader(h map[string]string) func(*CCRPauseAutoFollowPatternRequest) {
 	return func(r *CCRPauseAutoFollowPatternRequest) {
 		if r.Header == nil {
@@ -194,7 +185,6 @@ func (f CCRPauseAutoFollowPattern) WithHeader(h map[string]string) func(*CCRPaus
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f CCRPauseAutoFollowPattern) WithOpaqueID(s string) func(*CCRPauseAutoFollowPatternRequest) {
 	return func(r *CCRPauseAutoFollowPatternRequest) {
 		if r.Header == nil {
