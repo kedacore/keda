@@ -1,10 +1,9 @@
 //go:build e2e
 // +build e2e
 
-package azure_managed_prometheus_test
+package azure_managed_prometheus
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -18,31 +17,6 @@ import (
 
 // Load environment variables from .env file
 var _ = godotenv.Load("../../.env")
-
-const (
-	testNameWorkloadIdentity = "azure-managed-prometheus-workload-identity-test"
-	testNamePodIdentity      = "azure-managed-prometheus-pod-identity-test"
-)
-
-// Workload Identity test vars
-var (
-	testNamespaceWI          = fmt.Sprintf("%s-ns", testNameWorkloadIdentity)
-	deploymentNameWI         = fmt.Sprintf("%s-deployment", testNameWorkloadIdentity)
-	monitoredAppNameWI       = fmt.Sprintf("%s-monitored-app", testNameWorkloadIdentity)
-	publishDeploymentNameWI  = fmt.Sprintf("%s-publish", testNameWorkloadIdentity)
-	scaledObjectNameWI       = fmt.Sprintf("%s-so", testNameWorkloadIdentity)
-	workloadIdentityProvider = "azure-workload"
-)
-
-// Pod Identity test vars
-var (
-	testNamespacePod         = fmt.Sprintf("%s-ns", testNamePodIdentity)
-	deploymentNamePod        = fmt.Sprintf("%s-deployment", testNamePodIdentity)
-	monitoredAppNamePod      = fmt.Sprintf("%s-monitored-app", testNamePodIdentity)
-	publishDeploymentNamePod = fmt.Sprintf("%s-publish", testNamePodIdentity)
-	scaledObjectNamePod      = fmt.Sprintf("%s-so", testNamePodIdentity)
-	podIdentityProvider      = "azure"
-)
 
 // Common for pod and workload identity tests
 var (
@@ -284,21 +258,7 @@ spec:
 `
 )
 
-// TestAzureManagedPrometheusScalerWithWorkloadIdentity creates deployments - there are two deployments - both using the same image but one deployment
-// is directly tied to the KEDA HPA while the other is isolated that can be used for metrics
-// even when the KEDA deployment is at zero - the service points to both deployments
-func TestAzureManagedPrometheusScalerWithWorkloadIdentity(t *testing.T) {
-	testAzureManagedPrometheusScaler(t, getTemplateDataForWorkloadIdentityTest(), getTemplates())
-}
-
-// TestAzureManagedPrometheusScalerWithWorkloadIdentity creates deployments - there are two deployments - both using the same image but one deployment
-// is directly tied to the KEDA HPA while the other is isolated that can be used for metrics
-// even when the KEDA deployment is at zero - the service points to both deployments
-func TestAzureManagedPrometheusScalerWithPodIdentity(t *testing.T) {
-	testAzureManagedPrometheusScaler(t, getTemplateDataForPodIdentityTest(), getTemplates())
-}
-
-func testAzureManagedPrometheusScaler(t *testing.T, data templateData, templates []Template) {
+func testAzureManagedPrometheusScaler(t *testing.T, data templateData) {
 	require.NotEmpty(t, prometheusQueryEndpoint, "TF_AZURE_MANAGED_PROMETHEUS_QUERY_ENDPOINT env variable is required for azure managed prometheus tests")
 
 	kc := GetKubernetesClient(t)
@@ -306,6 +266,7 @@ func testAzureManagedPrometheusScaler(t *testing.T, data templateData, templates
 	// Create kubernetes resources for testing
 	CreateNamespace(t, kc, data.TestNamespace)
 
+	templates := getTemplates()
 	KubectlApplyMultipleWithTemplate(t, data, templates)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, data.MonitoredAppName, data.TestNamespace, 1, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
@@ -350,33 +311,5 @@ func getTemplates() []Template {
 		{Name: "monitoredAppServiceTemplate", Config: monitoredAppServiceTemplate},
 		{Name: "azureManagedPrometheusAuthTemplate", Config: azureManagedPrometheusAuthTemplate},
 		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-	}
-}
-
-func getTemplateDataForPodIdentityTest() templateData {
-	return templateData{
-		TestNamespace:           testNamespacePod,
-		DeploymentName:          deploymentNamePod,
-		PublishDeploymentName:   publishDeploymentNamePod,
-		ScaledObjectName:        scaledObjectNamePod,
-		MonitoredAppName:        monitoredAppNamePod,
-		PodIdentityProvider:     podIdentityProvider,
-		PrometheusQueryEndpoint: prometheusQueryEndpoint,
-		MinReplicaCount:         minReplicaCount,
-		MaxReplicaCount:         maxReplicaCount,
-	}
-}
-
-func getTemplateDataForWorkloadIdentityTest() templateData {
-	return templateData{
-		TestNamespace:           testNamespaceWI,
-		DeploymentName:          deploymentNameWI,
-		PublishDeploymentName:   publishDeploymentNameWI,
-		ScaledObjectName:        scaledObjectNameWI,
-		MonitoredAppName:        monitoredAppNameWI,
-		PodIdentityProvider:     workloadIdentityProvider,
-		PrometheusQueryEndpoint: prometheusQueryEndpoint,
-		MinReplicaCount:         minReplicaCount,
-		MaxReplicaCount:         maxReplicaCount,
 	}
 }
