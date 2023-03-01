@@ -41,7 +41,7 @@ require (
 	github.com/gophercloud/gophercloud v1.1.0
 	github.com/hashicorp/vault/api v1.8.2
 	github.com/imdario/mergo v0.3.13
-	github.com/influxdata/influxdb-client-go/v2 v2.12.0
+	github.com/influxdata/influxdb-client-go/v2 v2.12.2
 	github.com/joho/godotenv v1.4.0
 	github.com/lib/pq v1.10.7
 	github.com/microsoft/ApplicationInsights-Go v0.4.4
