@@ -81,13 +81,13 @@ func TestTryAndGetAzureManagedPrometheusHTTPRoundTripperWithTriggerForResourceUR
 		} else {
 			if err != nil {
 				t.Errorf("Test: %v; Expected success but got error: %v", testData.testName, err)
-			}
-
-			azureRT := rt.(*azureManagedPrometheusHTTPRoundTripper)
-			if azureRT == nil {
-				t.Errorf("Test: %v; Expected azure round tripper but got nil", testData.testName)
-			} else if azureRT.resourceURL != testData.resourceURL {
-				t.Errorf("Test: %v; Expected resourceURL %v but got %v", testData.testName, testData.resourceURL, azureRT.resourceURL)
+			} else {
+				azureRT := rt.(*azureManagedPrometheusHTTPRoundTripper)
+				if azureRT == nil {
+					t.Errorf("Test: %v; Expected azure round tripper but got nil", testData.testName)
+				} else if azureRT.resourceURL != testData.resourceURL {
+					t.Errorf("Test: %v; Expected resourceURL %v but got %v", testData.testName, testData.resourceURL, azureRT.resourceURL)
+				}
 			}
 		}
 	}
