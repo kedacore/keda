@@ -30,6 +30,7 @@ type SuiteConfig struct {
 	PollProgressAfter     time.Duration
 	PollProgressInterval  time.Duration
 	Timeout               time.Duration
+	EmitSpecProgress      bool // this is deprecated but its removal is causing compile issue for some users that were setting it manually
 	OutputInterceptorMode string
 	SourceRoots           []string
 	GracePeriod           time.Duration
