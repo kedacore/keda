@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package azure_managed_prometheus
+package azure_managed_prometheus_test
 
 import (
 	"fmt"
