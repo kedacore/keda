@@ -38,7 +38,7 @@ var testAzureManagedPrometheusResourceURLTestData = []testAzureManagedPrometheus
 	// with US GOV cloud
 	{"test azure US GOV cloud with WI", kedav1alpha1.PodIdentityProviderAzureWorkload, map[string]string{"serverAddress": "http://dummy-azure-monitor-workspace", "metricName": "http_requests_total", "threshold": "100", "query": "up", "cloud": "AZUREUSGOVERNMENTCLOUD"}, "https://prometheus.monitor.azure.us/.default", false},
 	// with private cloud success
-	{"test azure private cloud with WI", kedav1alpha1.PodIdentityProviderAzureWorkload, map[string]string{"serverAddress": "http://dummy-azure-monitor-workspace", "metricName": "http_requests_total", "threshold": "100", "query": "up", "cloud": "PRIVATE", "azureManagedPrometheusResourceURL": "blah-blah-resourceURL"}, "https://prometheus.monitor.azure.com/.default", false},
+	{"test azure private cloud with WI", kedav1alpha1.PodIdentityProviderAzureWorkload, map[string]string{"serverAddress": "http://dummy-azure-monitor-workspace", "metricName": "http_requests_total", "threshold": "100", "query": "up", "cloud": "PRIVATE", "azureManagedPrometheusResourceURL": "blah-blah-resourceURL"}, "blah-blah-resourceURL", false},
 	// with private cloud failure
 	{"test default azure cloud with WI", kedav1alpha1.PodIdentityProviderAzureWorkload, map[string]string{"serverAddress": "http://dummy-azure-monitor-workspace", "metricName": "http_requests_total", "threshold": "100", "query": "up", "cloud": "PRIVATE"}, "", true},
 
@@ -53,7 +53,7 @@ var testAzureManagedPrometheusResourceURLTestData = []testAzureManagedPrometheus
 	// with US GOV cloud
 	{"test azure US GOV cloud with WI", kedav1alpha1.PodIdentityProviderAzure, map[string]string{"serverAddress": "http://dummy-azure-monitor-workspace", "metricName": "http_requests_total", "threshold": "100", "query": "up", "cloud": "AZUREUSGOVERNMENTCLOUD"}, "https://prometheus.monitor.azure.us/.default", false},
 	// with private cloud success
-	{"test azure private cloud with WI", kedav1alpha1.PodIdentityProviderAzure, map[string]string{"serverAddress": "http://dummy-azure-monitor-workspace", "metricName": "http_requests_total", "threshold": "100", "query": "up", "cloud": "PRIVATE", "azureManagedPrometheusResourceURL": "blah-blah-resourceURL"}, "https://prometheus.monitor.azure.com/.default", false},
+	{"test azure private cloud with WI", kedav1alpha1.PodIdentityProviderAzure, map[string]string{"serverAddress": "http://dummy-azure-monitor-workspace", "metricName": "http_requests_total", "threshold": "100", "query": "up", "cloud": "PRIVATE", "azureManagedPrometheusResourceURL": "blah-blah-resourceURL"}, "blah-blah-resourceURL", false},
 	// with private cloud failure
 	{"test default azure cloud with WI", kedav1alpha1.PodIdentityProviderAzure, map[string]string{"serverAddress": "http://dummy-azure-monitor-workspace", "metricName": "http_requests_total", "threshold": "100", "query": "up", "cloud": "PRIVATE"}, "", true},
 }
@@ -81,13 +81,13 @@ func TestTryAndGetAzureManagedPrometheusHTTPRoundTripperWithTriggerForResourceUR
 		} else {
 			if err != nil {
 				t.Errorf("Test: %v; Expected success but got error: %v", testData.testName, err)
+			}
 
-				azureRT := rt.(*azureManagedPrometheusHTTPRoundTripper)
-				if azureRT == nil {
-					t.Errorf("Test: %v; Expected azure round tripper but got nil", testData.testName)
-				} else if azureRT.resourceURL != testData.resourceURL {
-					t.Errorf("Test: %v; Expected resourceURL %v but got %v", testData.testName, testData.resourceURL, azureRT.resourceURL)
-				}
+			azureRT := rt.(*azureManagedPrometheusHTTPRoundTripper)
+			if azureRT == nil {
+				t.Errorf("Test: %v; Expected azure round tripper but got nil", testData.testName)
+			} else if azureRT.resourceURL != testData.resourceURL {
+				t.Errorf("Test: %v; Expected resourceURL %v but got %v", testData.testName, testData.resourceURL, azureRT.resourceURL)
 			}
 		}
 	}
