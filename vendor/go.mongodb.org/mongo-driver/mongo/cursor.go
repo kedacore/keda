@@ -309,7 +309,7 @@ func (c *Cursor) addFromBatch(sliceVal reflect.Value, elemType reflect.Type, bat
 }
 
 func (c *Cursor) closeImplicitSession() {
-	if c.clientSession != nil && c.clientSession.SessionType == session.Implicit {
+	if c.clientSession != nil && c.clientSession.IsImplicit {
 		c.clientSession.EndSession()
 	}
 }

@@ -43,7 +43,11 @@ func (v *BaseCELVisitor) VisitNegate(ctx *NegateContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseCELVisitor) VisitSelectOrCall(ctx *SelectOrCallContext) interface{} {
+func (v *BaseCELVisitor) VisitMemberCall(ctx *MemberCallContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseCELVisitor) VisitSelect(ctx *SelectContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -52,10 +56,6 @@ func (v *BaseCELVisitor) VisitPrimaryExpr(ctx *PrimaryExprContext) interface{} {
 }
 
 func (v *BaseCELVisitor) VisitIndex(ctx *IndexContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseCELVisitor) VisitCreateMessage(ctx *CreateMessageContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -75,6 +75,10 @@ func (v *BaseCELVisitor) VisitCreateStruct(ctx *CreateStructContext) interface{}
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseCELVisitor) VisitCreateMessage(ctx *CreateMessageContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseCELVisitor) VisitConstantLiteral(ctx *ConstantLiteralContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -87,7 +91,15 @@ func (v *BaseCELVisitor) VisitFieldInitializerList(ctx *FieldInitializerListCont
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseCELVisitor) VisitOptField(ctx *OptFieldContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseCELVisitor) VisitMapInitializerList(ctx *MapInitializerListContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseCELVisitor) VisitOptKey(ctx *OptKeyContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

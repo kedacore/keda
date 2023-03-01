@@ -34,7 +34,7 @@ type Batch struct {
 	RetryAttempts uint
 	// true if it was removed from queue
 	Evicted bool
-	// time where this batch expires
+	// time when this batch expires
 	Expires time.Time
 }
 
@@ -105,10 +105,10 @@ func (w *Service) SetBatchErrorCallback(cb BatchErrorCallback) {
 
 // HandleWrite handles writes of batches and handles retrying.
 // Retrying is triggered by new writes, there is no scheduler.
-// It first checks retry queue, cause it has highest priority.
+// It first checks retry queue, because it has the highest priority.
 // If there are some batches in retry queue, those are written and incoming batch is added to end of retry queue.
 // Immediate write is allowed only in case there was success or not retryable error.
-// Otherwise delay is checked based on recent batch.
+// Otherwise, delay is checked based on recent batch.
 // If write of batch fails with retryable error (connection errors and HTTP code >= 429),
 // Batch retry time is calculated based on #of attempts.
 // If writes continues failing and # of attempts reaches maximum or total retry time reaches maxRetryTime,
@@ -249,13 +249,17 @@ func isIgnorableError(error *http2.Error) bool {
 	return false
 }
 
-// computeRetryDelay calculates retry delay
+// computeRetryDelay calculates retry delay.
 // Retry delay is calculated as random value within the interval
 // [retry_interval * exponential_base^(attempts) and retry_interval * exponential_base^(attempts+1)]
 func (w *Service) computeRetryDelay(attempts uint) uint {
 	minDelay := int(w.writeOptions.RetryInterval() * pow(w.writeOptions.ExponentialBase(), attempts))
 	maxDelay := int(w.writeOptions.RetryInterval() * pow(w.writeOptions.ExponentialBase(), attempts+1))
-	retryDelay := uint(rand.Intn(maxDelay-minDelay) + minDelay)
+	diff := maxDelay - minDelay
+	if diff <= 0 { //check overflows
+		return w.writeOptions.MaxRetryInterval()
+	}
+	retryDelay := uint(rand.Intn(diff) + minDelay)
 	if retryDelay > w.writeOptions.MaxRetryInterval() {
 		retryDelay = w.writeOptions.MaxRetryInterval()
 	}

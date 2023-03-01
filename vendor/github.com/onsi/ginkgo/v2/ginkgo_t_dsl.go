@@ -7,7 +7,7 @@ GinkgoT() implements an interface analogous to *testing.T and can be used with
 third-party libraries that accept *testing.T through an interface.
 
 GinkgoT() takes an optional offset argument that can be used to get the
-correct line number associated with the failure.
+correct line number associated with the failure - though you do not need to use this if you call GinkgoHelper() or GinkgoT().Helper() appropriately
 
 You can learn more here: https://onsi.github.io/ginkgo/#using-third-party-libraries
 */

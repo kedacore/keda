@@ -18,7 +18,7 @@ type FakeNS struct {
 	claimNegotiated int
 	recovered       uint64
 	clientRevisions []uint64
-	RPCLink         RPCLink
+	RPCLink         amqpwrap.RPCLink
 	Session         amqpwrap.AMQPSession
 	AMQPLinks       *FakeAMQPLinks
 
@@ -27,13 +27,13 @@ type FakeNS struct {
 
 type FakeAMQPSender struct {
 	Closed int
-	AMQPSender
+	amqpwrap.AMQPSender
 }
 
 type FakeAMQPSession struct {
 	amqpwrap.AMQPSession
 
-	NewReceiverFn func(ctx context.Context, source string, opts *amqp.ReceiverOptions) (AMQPReceiverCloser, error)
+	NewReceiverFn func(ctx context.Context, source string, opts *amqp.ReceiverOptions) (amqpwrap.AMQPReceiverCloser, error)
 
 	closed int
 }
@@ -46,9 +46,9 @@ type FakeAMQPLinks struct {
 
 	// values to be returned for each `Get` call
 	Revision LinkID
-	Receiver AMQPReceiver
-	Sender   AMQPSender
-	RPC      RPCLink
+	Receiver amqpwrap.AMQPReceiver
+	Sender   amqpwrap.AMQPSender
+	RPC      amqpwrap.RPCLink
 
 	// Err is the error returned as part of Get()
 	Err error
@@ -57,7 +57,7 @@ type FakeAMQPLinks struct {
 }
 
 type FakeAMQPReceiver struct {
-	AMQPReceiver
+	amqpwrap.AMQPReceiver
 	Closed  int
 	CloseFn func(ctx context.Context) error
 
@@ -84,7 +84,7 @@ type FakeAMQPReceiver struct {
 }
 
 type FakeRPCLink struct {
-	Resp  *RPCResponse
+	Resp  *amqpwrap.RPCResponse
 	Error error
 }
 
@@ -92,7 +92,7 @@ func (r *FakeRPCLink) Close(ctx context.Context) error {
 	return nil
 }
 
-func (r *FakeRPCLink) RPC(ctx context.Context, msg *amqp.Message) (*RPCResponse, error) {
+func (r *FakeRPCLink) RPC(ctx context.Context, msg *amqp.Message) (*amqpwrap.RPCResponse, error) {
 	return r.Resp, r.Error
 }
 
@@ -230,7 +230,7 @@ func (s *FakeAMQPSender) Close(ctx context.Context) error {
 	return nil
 }
 
-func (s *FakeAMQPSession) NewReceiver(ctx context.Context, source string, opts *amqp.ReceiverOptions) (AMQPReceiverCloser, error) {
+func (s *FakeAMQPSession) NewReceiver(ctx context.Context, source string, opts *amqp.ReceiverOptions) (amqpwrap.AMQPReceiverCloser, error) {
 	return s.NewReceiverFn(ctx, source, opts)
 }
 
@@ -256,7 +256,7 @@ func (ns *FakeNS) NewAMQPSession(ctx context.Context) (amqpwrap.AMQPSession, uin
 	return ns.Session, ns.recovered + 100, nil
 }
 
-func (ns *FakeNS) NewRPCLink(ctx context.Context, managementPath string) (RPCLink, error) {
+func (ns *FakeNS) NewRPCLink(ctx context.Context, managementPath string) (amqpwrap.RPCLink, error) {
 	return ns.RPCLink, nil
 }
 
@@ -266,7 +266,7 @@ func (ns *FakeNS) Recover(ctx context.Context, clientRevision uint64) (bool, err
 	return true, nil
 }
 
-func (ns *FakeNS) Close(ctx context.Context, permanently bool) error {
+func (ns *FakeNS) Close(permanently bool) error {
 	ns.CloseCalled++
 	return nil
 }

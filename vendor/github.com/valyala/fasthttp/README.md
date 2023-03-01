@@ -5,7 +5,7 @@
 Fast HTTP implementation for Go.
 
 # fasthttp might not be for you!
-fasthttp was design for some high performance edge cases. **Unless** your server/client needs to handle **thousands of small to medium requests per seconds** and needs a consistent low millisecond response time fasthttp might not be for you. **For most cases `net/http` is much better** as it's easier to use and can handle more cases. For most cases you won't even notice the performance difference.
+fasthttp was designed for some high performance edge cases. **Unless** your server/client needs to handle **thousands of small to medium requests per second** and needs a consistent low millisecond response time fasthttp might not be for you. **For most cases `net/http` is much better** as it's easier to use and can handle more cases. For most cases you won't even notice the performance difference.
 
 
 ## General info and links
@@ -318,6 +318,23 @@ with fasthttp support:
   }
 
   fasthttp.ListenAndServe(":80", m)
+  ```
+
+* Because creating a new channel for every request is just too expensive, so the channel returned by RequestCtx.Done() is only closed when the server is shutting down.
+
+  ```go
+  func main() {
+	fasthttp.ListenAndServe(":8080", fasthttp.TimeoutHandler(func(ctx *fasthttp.RequestCtx) {
+		select {
+		case <-ctx.Done():
+			// ctx.Done() is only closed when the server is shutting down.
+			log.Println("context cancelled")
+			return
+		case <-time.After(10 * time.Second):
+			log.Println("process finished ok")
+		}
+	}, time.Second*2, "timeout"))
+  }
   ```
 
 * net/http -> fasthttp conversion table:

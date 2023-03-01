@@ -1,11 +1,11 @@
-FROM golang:1.17.6 as builder
+FROM golang:1.19.4 as builder
 
 ARG TESTS_DIRECTORY
 ARG TESTS_ROOT_PATH="."
 
 RUN go install github.com/go-delve/delve/cmd/dlv@latest
 
-WORKDIR /app/
-ADD . /app/
+WORKDIR /go/src/github.com/arangodb/go-driver
+ADD . /go/src/github.com/arangodb/go-driver/
 
 RUN cd $TESTS_ROOT_PATH && go test -gcflags "all=-N -l" -c -o /test_debug.test $TESTS_DIRECTORY

@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -41,11 +41,9 @@ func newIndicesGetUpgradeFunc(t Transport) IndicesGetUpgrade {
 // IndicesGetUpgrade deprecated Returns a progress status of current upgrade.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-upgrade.html.
-//
 type IndicesGetUpgrade func(o ...func(*IndicesGetUpgradeRequest)) (*Response, error)
 
 // IndicesGetUpgradeRequest configures the Indices Get Upgrade API request.
-//
 type IndicesGetUpgradeRequest struct {
 	Index []string
 
@@ -64,7 +62,6 @@ type IndicesGetUpgradeRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r IndicesGetUpgradeRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -156,7 +153,6 @@ func (r IndicesGetUpgradeRequest) Do(ctx context.Context, transport Transport) (
 }
 
 // WithContext sets the request context.
-//
 func (f IndicesGetUpgrade) WithContext(v context.Context) func(*IndicesGetUpgradeRequest) {
 	return func(r *IndicesGetUpgradeRequest) {
 		r.ctx = v
@@ -164,7 +160,6 @@ func (f IndicesGetUpgrade) WithContext(v context.Context) func(*IndicesGetUpgrad
 }
 
 // WithIndex - a list of index names; use _all to perform the operation on all indices.
-//
 func (f IndicesGetUpgrade) WithIndex(v ...string) func(*IndicesGetUpgradeRequest) {
 	return func(r *IndicesGetUpgradeRequest) {
 		r.Index = v
@@ -172,7 +167,6 @@ func (f IndicesGetUpgrade) WithIndex(v ...string) func(*IndicesGetUpgradeRequest
 }
 
 // WithAllowNoIndices - whether to ignore if a wildcard indices expression resolves into no concrete indices. (this includes `_all` string or when no indices have been specified).
-//
 func (f IndicesGetUpgrade) WithAllowNoIndices(v bool) func(*IndicesGetUpgradeRequest) {
 	return func(r *IndicesGetUpgradeRequest) {
 		r.AllowNoIndices = &v
@@ -180,7 +174,6 @@ func (f IndicesGetUpgrade) WithAllowNoIndices(v bool) func(*IndicesGetUpgradeReq
 }
 
 // WithExpandWildcards - whether to expand wildcard expression to concrete indices that are open, closed or both..
-//
 func (f IndicesGetUpgrade) WithExpandWildcards(v string) func(*IndicesGetUpgradeRequest) {
 	return func(r *IndicesGetUpgradeRequest) {
 		r.ExpandWildcards = v
@@ -188,7 +181,6 @@ func (f IndicesGetUpgrade) WithExpandWildcards(v string) func(*IndicesGetUpgrade
 }
 
 // WithIgnoreUnavailable - whether specified concrete indices should be ignored when unavailable (missing or closed).
-//
 func (f IndicesGetUpgrade) WithIgnoreUnavailable(v bool) func(*IndicesGetUpgradeRequest) {
 	return func(r *IndicesGetUpgradeRequest) {
 		r.IgnoreUnavailable = &v
@@ -196,7 +188,6 @@ func (f IndicesGetUpgrade) WithIgnoreUnavailable(v bool) func(*IndicesGetUpgrade
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f IndicesGetUpgrade) WithPretty() func(*IndicesGetUpgradeRequest) {
 	return func(r *IndicesGetUpgradeRequest) {
 		r.Pretty = true
@@ -204,7 +195,6 @@ func (f IndicesGetUpgrade) WithPretty() func(*IndicesGetUpgradeRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f IndicesGetUpgrade) WithHuman() func(*IndicesGetUpgradeRequest) {
 	return func(r *IndicesGetUpgradeRequest) {
 		r.Human = true
@@ -212,7 +202,6 @@ func (f IndicesGetUpgrade) WithHuman() func(*IndicesGetUpgradeRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f IndicesGetUpgrade) WithErrorTrace() func(*IndicesGetUpgradeRequest) {
 	return func(r *IndicesGetUpgradeRequest) {
 		r.ErrorTrace = true
@@ -220,7 +209,6 @@ func (f IndicesGetUpgrade) WithErrorTrace() func(*IndicesGetUpgradeRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f IndicesGetUpgrade) WithFilterPath(v ...string) func(*IndicesGetUpgradeRequest) {
 	return func(r *IndicesGetUpgradeRequest) {
 		r.FilterPath = v
@@ -228,7 +216,6 @@ func (f IndicesGetUpgrade) WithFilterPath(v ...string) func(*IndicesGetUpgradeRe
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f IndicesGetUpgrade) WithHeader(h map[string]string) func(*IndicesGetUpgradeRequest) {
 	return func(r *IndicesGetUpgradeRequest) {
 		if r.Header == nil {
@@ -241,7 +228,6 @@ func (f IndicesGetUpgrade) WithHeader(h map[string]string) func(*IndicesGetUpgra
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f IndicesGetUpgrade) WithOpaqueID(s string) func(*IndicesGetUpgradeRequest) {
 	return func(r *IndicesGetUpgradeRequest) {
 		if r.Header == nil {

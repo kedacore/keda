@@ -30,7 +30,7 @@ import (
 	velocypack "github.com/arangodb/go-velocypack"
 )
 
-// Connection is a connenction to a database server using a specific protocol.
+// Connection is a connection to a database server using a specific protocol.
 type Connection interface {
 	// NewRequest creates a new request with given method and path.
 	NewRequest(method, path string) (Request, error)
@@ -47,7 +47,7 @@ type Connection interface {
 	// UpdateEndpoints reconfigures the connection to use the given endpoints.
 	UpdateEndpoints(endpoints []string) error
 
-	// Configure the authentication used for this connection.
+	// SetAuthentication creates a copy of connection wrapper for given auth parameters.
 	SetAuthentication(Authentication) (Connection, error)
 
 	// Protocols returns all protocols used by this connection.

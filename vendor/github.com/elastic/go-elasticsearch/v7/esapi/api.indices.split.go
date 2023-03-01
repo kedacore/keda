@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -43,11 +43,9 @@ func newIndicesSplitFunc(t Transport) IndicesSplit {
 // IndicesSplit allows you to split an existing index into a new index with more primary shards.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-split-index.html.
-//
 type IndicesSplit func(index string, target string, o ...func(*IndicesSplitRequest)) (*Response, error)
 
 // IndicesSplitRequest configures the Indices Split API request.
-//
 type IndicesSplitRequest struct {
 	Index string
 
@@ -71,7 +69,6 @@ type IndicesSplitRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r IndicesSplitRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -136,10 +133,6 @@ func (r IndicesSplitRequest) Do(ctx context.Context, transport Transport) (*Resp
 		req.URL.RawQuery = q.Encode()
 	}
 
-	if r.Body != nil {
-		req.Header[headerContentType] = headerContentTypeJSON
-	}
-
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -150,6 +143,10 @@ func (r IndicesSplitRequest) Do(ctx context.Context, transport Transport) (*Resp
 				}
 			}
 		}
+	}
+
+	if r.Body != nil && req.Header.Get(headerContentType) == "" {
+		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -171,7 +168,6 @@ func (r IndicesSplitRequest) Do(ctx context.Context, transport Transport) (*Resp
 }
 
 // WithContext sets the request context.
-//
 func (f IndicesSplit) WithContext(v context.Context) func(*IndicesSplitRequest) {
 	return func(r *IndicesSplitRequest) {
 		r.ctx = v
@@ -179,7 +175,6 @@ func (f IndicesSplit) WithContext(v context.Context) func(*IndicesSplitRequest) 
 }
 
 // WithBody - The configuration for the target index (`settings` and `aliases`).
-//
 func (f IndicesSplit) WithBody(v io.Reader) func(*IndicesSplitRequest) {
 	return func(r *IndicesSplitRequest) {
 		r.Body = v
@@ -187,7 +182,6 @@ func (f IndicesSplit) WithBody(v io.Reader) func(*IndicesSplitRequest) {
 }
 
 // WithCopySettings - whether or not to copy settings from the source index (defaults to false).
-//
 func (f IndicesSplit) WithCopySettings(v bool) func(*IndicesSplitRequest) {
 	return func(r *IndicesSplitRequest) {
 		r.CopySettings = &v
@@ -195,7 +189,6 @@ func (f IndicesSplit) WithCopySettings(v bool) func(*IndicesSplitRequest) {
 }
 
 // WithMasterTimeout - specify timeout for connection to master.
-//
 func (f IndicesSplit) WithMasterTimeout(v time.Duration) func(*IndicesSplitRequest) {
 	return func(r *IndicesSplitRequest) {
 		r.MasterTimeout = v
@@ -203,7 +196,6 @@ func (f IndicesSplit) WithMasterTimeout(v time.Duration) func(*IndicesSplitReque
 }
 
 // WithTimeout - explicit operation timeout.
-//
 func (f IndicesSplit) WithTimeout(v time.Duration) func(*IndicesSplitRequest) {
 	return func(r *IndicesSplitRequest) {
 		r.Timeout = v
@@ -211,7 +203,6 @@ func (f IndicesSplit) WithTimeout(v time.Duration) func(*IndicesSplitRequest) {
 }
 
 // WithWaitForActiveShards - set the number of active shards to wait for on the shrunken index before the operation returns..
-//
 func (f IndicesSplit) WithWaitForActiveShards(v string) func(*IndicesSplitRequest) {
 	return func(r *IndicesSplitRequest) {
 		r.WaitForActiveShards = v
@@ -219,7 +210,6 @@ func (f IndicesSplit) WithWaitForActiveShards(v string) func(*IndicesSplitReques
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f IndicesSplit) WithPretty() func(*IndicesSplitRequest) {
 	return func(r *IndicesSplitRequest) {
 		r.Pretty = true
@@ -227,7 +217,6 @@ func (f IndicesSplit) WithPretty() func(*IndicesSplitRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f IndicesSplit) WithHuman() func(*IndicesSplitRequest) {
 	return func(r *IndicesSplitRequest) {
 		r.Human = true
@@ -235,7 +224,6 @@ func (f IndicesSplit) WithHuman() func(*IndicesSplitRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f IndicesSplit) WithErrorTrace() func(*IndicesSplitRequest) {
 	return func(r *IndicesSplitRequest) {
 		r.ErrorTrace = true
@@ -243,7 +231,6 @@ func (f IndicesSplit) WithErrorTrace() func(*IndicesSplitRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f IndicesSplit) WithFilterPath(v ...string) func(*IndicesSplitRequest) {
 	return func(r *IndicesSplitRequest) {
 		r.FilterPath = v
@@ -251,7 +238,6 @@ func (f IndicesSplit) WithFilterPath(v ...string) func(*IndicesSplitRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f IndicesSplit) WithHeader(h map[string]string) func(*IndicesSplitRequest) {
 	return func(r *IndicesSplitRequest) {
 		if r.Header == nil {
@@ -264,7 +250,6 @@ func (f IndicesSplit) WithHeader(h map[string]string) func(*IndicesSplitRequest)
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f IndicesSplit) WithOpaqueID(s string) func(*IndicesSplitRequest) {
 	return func(r *IndicesSplitRequest) {
 		if r.Header == nil {

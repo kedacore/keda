@@ -44,6 +44,13 @@ const (
 	// Internal ArangoDB storage errors
 	ErrArangoReadOnly = 1004
 
+	// External ArangoDB storage errors
+	ErrArangoCorruptedDatafile    = 1100
+	ErrArangoIllegalParameterFile = 1101
+	ErrArangoCorruptedCollection  = 1102
+	ErrArangoFileSystemFull       = 1104
+	ErrArangoDataDirLocked        = 1107
+
 	// General ArangoDB storage errors
 	ErrArangoConflict                 = 1200
 	ErrArangoDocumentNotFound         = 1202
@@ -165,6 +172,18 @@ func IsNotFoundGeneral(err error) bool {
 func IsDataSourceOrDocumentNotFound(err error) bool {
 	return IsArangoErrorWithCode(err, http.StatusNotFound) &&
 		IsArangoErrorWithErrorNum(err, ErrArangoDocumentNotFound, ErrArangoDataSourceNotFound)
+}
+
+// IsExternalStorageError returns true if ArangoDB is having an error with accessing or writing to storage.
+func IsExternalStorageError(err error) bool {
+	return IsArangoErrorWithErrorNum(
+		err,
+		ErrArangoCorruptedDatafile,
+		ErrArangoIllegalParameterFile,
+		ErrArangoCorruptedCollection,
+		ErrArangoFileSystemFull,
+		ErrArangoDataDirLocked,
+	)
 }
 
 // IsConflict returns true if the given error is an ArangoError with code 409, indicating a conflict.

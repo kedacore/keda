@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -43,11 +43,9 @@ func newRollupRollupFunc(t Transport) RollupRollup {
 // This API is experimental.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/xpack-rollup.html.
-//
 type RollupRollup func(index string, body io.Reader, rollup_index string, o ...func(*RollupRollupRequest)) (*Response, error)
 
 // RollupRollupRequest configures the Rollup Rollup API request.
-//
 type RollupRollupRequest struct {
 	Index string
 
@@ -66,7 +64,6 @@ type RollupRollupRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r RollupRollupRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -115,10 +112,6 @@ func (r RollupRollupRequest) Do(ctx context.Context, transport Transport) (*Resp
 		req.URL.RawQuery = q.Encode()
 	}
 
-	if r.Body != nil {
-		req.Header[headerContentType] = headerContentTypeJSON
-	}
-
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -129,6 +122,10 @@ func (r RollupRollupRequest) Do(ctx context.Context, transport Transport) (*Resp
 				}
 			}
 		}
+	}
+
+	if r.Body != nil && req.Header.Get(headerContentType) == "" {
+		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -150,7 +147,6 @@ func (r RollupRollupRequest) Do(ctx context.Context, transport Transport) (*Resp
 }
 
 // WithContext sets the request context.
-//
 func (f RollupRollup) WithContext(v context.Context) func(*RollupRollupRequest) {
 	return func(r *RollupRollupRequest) {
 		r.ctx = v
@@ -158,7 +154,6 @@ func (f RollupRollup) WithContext(v context.Context) func(*RollupRollupRequest) 
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f RollupRollup) WithPretty() func(*RollupRollupRequest) {
 	return func(r *RollupRollupRequest) {
 		r.Pretty = true
@@ -166,7 +161,6 @@ func (f RollupRollup) WithPretty() func(*RollupRollupRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f RollupRollup) WithHuman() func(*RollupRollupRequest) {
 	return func(r *RollupRollupRequest) {
 		r.Human = true
@@ -174,7 +168,6 @@ func (f RollupRollup) WithHuman() func(*RollupRollupRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f RollupRollup) WithErrorTrace() func(*RollupRollupRequest) {
 	return func(r *RollupRollupRequest) {
 		r.ErrorTrace = true
@@ -182,7 +175,6 @@ func (f RollupRollup) WithErrorTrace() func(*RollupRollupRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f RollupRollup) WithFilterPath(v ...string) func(*RollupRollupRequest) {
 	return func(r *RollupRollupRequest) {
 		r.FilterPath = v
@@ -190,7 +182,6 @@ func (f RollupRollup) WithFilterPath(v ...string) func(*RollupRollupRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f RollupRollup) WithHeader(h map[string]string) func(*RollupRollupRequest) {
 	return func(r *RollupRollupRequest) {
 		if r.Header == nil {
@@ -203,7 +194,6 @@ func (f RollupRollup) WithHeader(h map[string]string) func(*RollupRollupRequest)
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f RollupRollup) WithOpaqueID(s string) func(*RollupRollupRequest) {
 	return func(r *RollupRollupRequest) {
 		if r.Header == nil {

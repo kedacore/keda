@@ -49,19 +49,19 @@ type URI struct {
 //
 // Default values for the fields are:
 //
-//   Scheme: amqp
-//   Host: localhost
-//   Port: 5672
-//   Username: guest
-//   Password: guest
-//   Vhost: /
+//	Scheme: amqp
+//	Host: localhost
+//	Port: 5672
+//	Username: guest
+//	Password: guest
+//	Vhost: /
 //
 // Supports TLS query parameters. See https://www.rabbitmq.com/uri-query-parameters.html
 //
-//   certfile: <path/to/client_cert.pem>
-//   keyfile: <path/to/client_key.pem>
-//   cacertfile: <path/to/ca.pem>
-//   server_name_indication: <server name>
+//	certfile: <path/to/client_cert.pem>
+//	keyfile: <path/to/client_key.pem>
+//	cacertfile: <path/to/ca.pem>
+//	server_name_indication: <server name>
 //
 // If cacertfile is not provided, system CA certificates will be used.
 // Mutual TLS (client auth) will be enabled only in case keyfile AND certfile provided.
@@ -171,8 +171,6 @@ func (uri URI) String() string {
 			authority.User = url.UserPassword(uri.Username, uri.Password)
 		}
 	}
-
-	authority.Host = net.JoinHostPort(uri.Host, strconv.Itoa(uri.Port))
 
 	if defaultPort, found := schemePorts[uri.Scheme]; !found || defaultPort != uri.Port {
 		authority.Host = net.JoinHostPort(uri.Host, strconv.Itoa(uri.Port))

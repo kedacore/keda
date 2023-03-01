@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -40,11 +40,9 @@ func newSecurityDeleteRoleMappingFunc(t Transport) SecurityDeleteRoleMapping {
 // SecurityDeleteRoleMapping - Removes role mappings.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-delete-role-mapping.html.
-//
 type SecurityDeleteRoleMapping func(name string, o ...func(*SecurityDeleteRoleMappingRequest)) (*Response, error)
 
 // SecurityDeleteRoleMappingRequest configures the Security Delete Role Mapping API request.
-//
 type SecurityDeleteRoleMappingRequest struct {
 	Name string
 
@@ -61,7 +59,6 @@ type SecurityDeleteRoleMappingRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r SecurityDeleteRoleMappingRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -145,7 +142,6 @@ func (r SecurityDeleteRoleMappingRequest) Do(ctx context.Context, transport Tran
 }
 
 // WithContext sets the request context.
-//
 func (f SecurityDeleteRoleMapping) WithContext(v context.Context) func(*SecurityDeleteRoleMappingRequest) {
 	return func(r *SecurityDeleteRoleMappingRequest) {
 		r.ctx = v
@@ -153,7 +149,6 @@ func (f SecurityDeleteRoleMapping) WithContext(v context.Context) func(*Security
 }
 
 // WithRefresh - if `true` (the default) then refresh the affected shards to make this operation visible to search, if `wait_for` then wait for a refresh to make this operation visible to search, if `false` then do nothing with refreshes..
-//
 func (f SecurityDeleteRoleMapping) WithRefresh(v string) func(*SecurityDeleteRoleMappingRequest) {
 	return func(r *SecurityDeleteRoleMappingRequest) {
 		r.Refresh = v
@@ -161,7 +156,6 @@ func (f SecurityDeleteRoleMapping) WithRefresh(v string) func(*SecurityDeleteRol
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f SecurityDeleteRoleMapping) WithPretty() func(*SecurityDeleteRoleMappingRequest) {
 	return func(r *SecurityDeleteRoleMappingRequest) {
 		r.Pretty = true
@@ -169,7 +163,6 @@ func (f SecurityDeleteRoleMapping) WithPretty() func(*SecurityDeleteRoleMappingR
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f SecurityDeleteRoleMapping) WithHuman() func(*SecurityDeleteRoleMappingRequest) {
 	return func(r *SecurityDeleteRoleMappingRequest) {
 		r.Human = true
@@ -177,7 +170,6 @@ func (f SecurityDeleteRoleMapping) WithHuman() func(*SecurityDeleteRoleMappingRe
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f SecurityDeleteRoleMapping) WithErrorTrace() func(*SecurityDeleteRoleMappingRequest) {
 	return func(r *SecurityDeleteRoleMappingRequest) {
 		r.ErrorTrace = true
@@ -185,7 +177,6 @@ func (f SecurityDeleteRoleMapping) WithErrorTrace() func(*SecurityDeleteRoleMapp
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f SecurityDeleteRoleMapping) WithFilterPath(v ...string) func(*SecurityDeleteRoleMappingRequest) {
 	return func(r *SecurityDeleteRoleMappingRequest) {
 		r.FilterPath = v
@@ -193,7 +184,6 @@ func (f SecurityDeleteRoleMapping) WithFilterPath(v ...string) func(*SecurityDel
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f SecurityDeleteRoleMapping) WithHeader(h map[string]string) func(*SecurityDeleteRoleMappingRequest) {
 	return func(r *SecurityDeleteRoleMappingRequest) {
 		if r.Header == nil {
@@ -206,7 +196,6 @@ func (f SecurityDeleteRoleMapping) WithHeader(h map[string]string) func(*Securit
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f SecurityDeleteRoleMapping) WithOpaqueID(s string) func(*SecurityDeleteRoleMappingRequest) {
 	return func(r *SecurityDeleteRoleMappingRequest) {
 		if r.Header == nil {

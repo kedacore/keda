@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -41,11 +41,9 @@ func newMLPutTrainedModelAliasFunc(t Transport) MLPutTrainedModelAlias {
 // MLPutTrainedModelAlias - Creates a new model alias (or reassigns an existing one) to refer to the trained model
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/put-trained-models-aliases.html.
-//
 type MLPutTrainedModelAlias func(model_alias string, model_id string, o ...func(*MLPutTrainedModelAliasRequest)) (*Response, error)
 
 // MLPutTrainedModelAliasRequest configures the ML Put Trained Model Alias API request.
-//
 type MLPutTrainedModelAliasRequest struct {
 	ModelAlias string
 	ModelID    string
@@ -63,7 +61,6 @@ type MLPutTrainedModelAliasRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r MLPutTrainedModelAliasRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -151,7 +148,6 @@ func (r MLPutTrainedModelAliasRequest) Do(ctx context.Context, transport Transpo
 }
 
 // WithContext sets the request context.
-//
 func (f MLPutTrainedModelAlias) WithContext(v context.Context) func(*MLPutTrainedModelAliasRequest) {
 	return func(r *MLPutTrainedModelAliasRequest) {
 		r.ctx = v
@@ -159,7 +155,6 @@ func (f MLPutTrainedModelAlias) WithContext(v context.Context) func(*MLPutTraine
 }
 
 // WithReassign - if the model_alias already exists and points to a separate model_id, this parameter must be true. defaults to false..
-//
 func (f MLPutTrainedModelAlias) WithReassign(v bool) func(*MLPutTrainedModelAliasRequest) {
 	return func(r *MLPutTrainedModelAliasRequest) {
 		r.Reassign = &v
@@ -167,7 +162,6 @@ func (f MLPutTrainedModelAlias) WithReassign(v bool) func(*MLPutTrainedModelAlia
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f MLPutTrainedModelAlias) WithPretty() func(*MLPutTrainedModelAliasRequest) {
 	return func(r *MLPutTrainedModelAliasRequest) {
 		r.Pretty = true
@@ -175,7 +169,6 @@ func (f MLPutTrainedModelAlias) WithPretty() func(*MLPutTrainedModelAliasRequest
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f MLPutTrainedModelAlias) WithHuman() func(*MLPutTrainedModelAliasRequest) {
 	return func(r *MLPutTrainedModelAliasRequest) {
 		r.Human = true
@@ -183,7 +176,6 @@ func (f MLPutTrainedModelAlias) WithHuman() func(*MLPutTrainedModelAliasRequest)
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f MLPutTrainedModelAlias) WithErrorTrace() func(*MLPutTrainedModelAliasRequest) {
 	return func(r *MLPutTrainedModelAliasRequest) {
 		r.ErrorTrace = true
@@ -191,7 +183,6 @@ func (f MLPutTrainedModelAlias) WithErrorTrace() func(*MLPutTrainedModelAliasReq
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f MLPutTrainedModelAlias) WithFilterPath(v ...string) func(*MLPutTrainedModelAliasRequest) {
 	return func(r *MLPutTrainedModelAliasRequest) {
 		r.FilterPath = v
@@ -199,7 +190,6 @@ func (f MLPutTrainedModelAlias) WithFilterPath(v ...string) func(*MLPutTrainedMo
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f MLPutTrainedModelAlias) WithHeader(h map[string]string) func(*MLPutTrainedModelAliasRequest) {
 	return func(r *MLPutTrainedModelAliasRequest) {
 		if r.Header == nil {
@@ -212,7 +202,6 @@ func (f MLPutTrainedModelAlias) WithHeader(h map[string]string) func(*MLPutTrain
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f MLPutTrainedModelAlias) WithOpaqueID(s string) func(*MLPutTrainedModelAliasRequest) {
 	return func(r *MLPutTrainedModelAliasRequest) {
 		if r.Header == nil {

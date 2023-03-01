@@ -6,12 +6,12 @@
 package amqp091
 
 import (
-	"context"
 	"fmt"
 	"io"
-	"sync"
 	"time"
 )
+
+const DefaultExchange = ""
 
 // Constants for standard AMQP 0-9-1 exchange types.
 const (
@@ -185,11 +185,10 @@ type Blocking struct {
 // allows users to directly correlate a publishing to a confirmation. These are
 // returned from PublishWithDeferredConfirm on Channels.
 type DeferredConfirmation struct {
-	m            sync.Mutex
-	ctx          context.Context
-	cancel       context.CancelFunc
-	DeliveryTag  uint64
-	confirmation Confirmation
+	DeliveryTag uint64
+
+	done chan struct{}
+	ack  bool
 }
 
 // Confirmation notifies the acknowledgment or negative acknowledgement of a
@@ -207,24 +206,87 @@ type Decimal struct {
 	Value int32
 }
 
+// Most common queue argument keys in queue declaration. For a comprehensive list
+// of queue arguments, visit [RabbitMQ Queue docs].
+//
+// QueueTypeArg queue argument is used to declare quorum and stream queues.
+// Accepted values are QueueTypeClassic (default), QueueTypeQuorum and
+// QueueTypeStream. [Quorum Queues] accept (almost) all queue arguments as their
+// Classic Queues counterparts. Check [feature comparison] docs for more
+// information.
+//
+// Queues can define their [max length] using QueueMaxLenArg and
+// QueueMaxLenBytesArg queue arguments. Overflow behaviour is set using
+// QueueOverflowArg. Accepted values are QueueOverflowDropHead (default),
+// QueueOverflowRejectPublish and QueueOverflowRejectPublishDLX.
+//
+// [Queue TTL] can be defined using QueueTTLArg. That is, the time-to-live for an
+// unused queue. [Queue Message TTL] can be defined using QueueMessageTTLArg.
+// This will set a time-to-live for **messages** in the queue.
+//
+// [Stream retention] can be configured using StreamMaxLenBytesArg, to set the
+// maximum size of the stream. Please note that stream queues always keep, at
+// least, one segment. [Stream retention] can also be set using StreamMaxAgeArg,
+// to set time-based retention. Values are string with unit suffix. Valid
+// suffixes are Y, M, D, h, m, s. E.g. "7D" for one week. The maximum segment
+// size can be set using StreamMaxSegmentSizeBytesArg. The default value is
+// 500_000_000 bytes ~= 500 megabytes
+//
+// [RabbitMQ Queue docs]: https://rabbitmq.com/queues.html
+// [Stream retention]: https://rabbitmq.com/streams.html#retention
+// [max length]: https://rabbitmq.com/maxlength.html
+// [Queue TTL]: https://rabbitmq.com/ttl.html#queue-ttl
+// [Queue Message TTL]: https://rabbitmq.com/ttl.html#per-queue-message-ttl
+// [Quorum Queues]: https://rabbitmq.com/quorum-queues.html
+// [feature comparison]: https://rabbitmq.com/quorum-queues.html#feature-comparison
+const (
+	QueueTypeArg                 = "x-queue-type"
+	QueueMaxLenArg               = "x-max-length"
+	QueueMaxLenBytesArg          = "x-max-length-bytes"
+	StreamMaxLenBytesArg         = "x-max-length-bytes"
+	QueueOverflowArg             = "x-overflow"
+	QueueMessageTTLArg           = "x-message-ttl"
+	QueueTTLArg                  = "x-expires"
+	StreamMaxAgeArg              = "x-max-age"
+	StreamMaxSegmentSizeBytesArg = "x-stream-max-segment-size-bytes"
+)
+
+// Values for queue arguments. Use as values for queue arguments during queue declaration.
+// The following argument table will create a classic queue, with max length set to 100 messages,
+// and a queue TTL of 30 minutes.
+//
+//	args := amqp.Table{
+//		amqp.QueueTypeArg: QueueTypeClassic,
+//		amqp.QueueMaxLenArg: 100,
+//		amqp.QueueTTLArg: 1800000,
+//	}
+const (
+	QueueTypeClassic              = "classic"
+	QueueTypeQuorum               = "quorum"
+	QueueTypeStream               = "stream"
+	QueueOverflowDropHead         = "drop-head"
+	QueueOverflowRejectPublish    = "reject-publish"
+	QueueOverflowRejectPublishDLX = "reject-publish-dlx"
+)
+
 // Table stores user supplied fields of the following types:
 //
-//   bool
-//   byte
-//   int8
-//   float32
-//   float64
-//   int
-//   int16
-//   int32
-//   int64
-//   nil
-//   string
-//   time.Time
-//   amqp.Decimal
-//   amqp.Table
-//   []byte
-//   []interface{} - containing above types
+//	bool
+//	byte
+//	int8
+//	float32
+//	float64
+//	int
+//	int16
+//	int32
+//	int64
+//	nil
+//	string
+//	time.Time
+//	amqp.Decimal
+//	amqp.Table
+//	[]byte
+//	[]interface{} - containing above types
 //
 // Functions taking a table will immediately fail when the table contains a
 // value of an unsupported type.
@@ -235,7 +297,6 @@ type Decimal struct {
 // Use a type assertion when reading values from a table for type conversion.
 //
 // RabbitMQ expects int32 for integer values.
-//
 type Table map[string]interface{}
 
 func validateField(f interface{}) error {
@@ -297,11 +358,11 @@ The base interface implemented as:
 All frames consist of a header (7 octets), a payload of arbitrary size, and a 'frame-end' octet that detects
 malformed frames:
 
-  0      1         3             7                  size+7 size+8
-  +------+---------+-------------+  +------------+  +-----------+
-  | type | channel |     size    |  |  payload   |  | frame-end |
-  +------+---------+-------------+  +------------+  +-----------+
-   octet   short         long         size octets       octet
+	0      1         3             7                  size+7 size+8
+	+------+---------+-------------+  +------------+  +-----------+
+	| type | channel |     size    |  |  payload   |  | frame-end |
+	+------+---------+-------------+  +------------+  +-----------+
+	 octet   short         long         size octets       octet
 
 To read a frame, we:
 
@@ -312,7 +373,6 @@ To read a frame, we:
 In realistic implementations where performance is a concern, we would use
 “read-ahead buffering” or “gathering reads” to avoid doing three separate
 system calls to read a frame.
-
 */
 type frame interface {
 	write(io.Writer) error
@@ -355,17 +415,17 @@ func (protocolHeader) channel() uint16 {
 Method frames carry the high-level protocol commands (which we call "methods").
 One method frame carries one command.  The method frame payload has this format:
 
-  0          2           4
-  +----------+-----------+-------------- - -
-  | class-id | method-id | arguments...
-  +----------+-----------+-------------- - -
-     short      short    ...
+	0          2           4
+	+----------+-----------+-------------- - -
+	| class-id | method-id | arguments...
+	+----------+-----------+-------------- - -
+	   short      short    ...
 
 To process a method frame, we:
  1. Read the method frame payload.
  2. Unpack it into a structure.  A given method always has the same structure,
- so we can unpack the method rapidly.  3. Check that the method is allowed in
- the current context.
+    so we can unpack the method rapidly.  3. Check that the method is allowed in
+    the current context.
  4. Check that the method arguments are valid.
  5. Execute the method.
 
@@ -404,11 +464,11 @@ follows it with a content header and zero or more content body frames.
 
 A content header frame has this format:
 
-    0          2        4           12               14
-    +----------+--------+-----------+----------------+------------- - -
-    | class-id | weight | body size | property flags | property list...
-    +----------+--------+-----------+----------------+------------- - -
-      short     short    long long       short        remainder...
+	0          2        4           12               14
+	+----------+--------+-----------+----------------+------------- - -
+	| class-id | weight | body size | property flags | property list...
+	+----------+--------+-----------+----------------+------------- - -
+	  short     short    long long       short        remainder...
 
 We place content body in distinct frames (rather than including it in the
 method) so that AMQP may support "zero copy" techniques in which content is
@@ -436,10 +496,10 @@ into several (or many) chunks, each forming a "content body frame".
 Looking at the frames for a specific channel, as they pass on the wire, we
 might see something like this:
 
-		[method]
-		[method] [header] [body] [body]
-		[method]
-		...
+	[method]
+	[method] [header] [body] [body]
+	[method]
+	...
 */
 type bodyFrame struct {
 	ChannelId uint16

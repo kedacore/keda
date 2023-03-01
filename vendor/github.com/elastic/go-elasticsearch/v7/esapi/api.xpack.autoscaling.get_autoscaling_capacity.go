@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -40,11 +40,9 @@ func newAutoscalingGetAutoscalingCapacityFunc(t Transport) AutoscalingGetAutosca
 // AutoscalingGetAutoscalingCapacity - Gets the current autoscaling capacity based on the configured autoscaling policy. Designed for indirect use by ECE/ESS and ECK. Direct use is not supported.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/autoscaling-get-autoscaling-capacity.html.
-//
 type AutoscalingGetAutoscalingCapacity func(o ...func(*AutoscalingGetAutoscalingCapacityRequest)) (*Response, error)
 
 // AutoscalingGetAutoscalingCapacityRequest configures the Autoscaling Get Autoscaling Capacity API request.
-//
 type AutoscalingGetAutoscalingCapacityRequest struct {
 	Pretty     bool
 	Human      bool
@@ -57,7 +55,6 @@ type AutoscalingGetAutoscalingCapacityRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r AutoscalingGetAutoscalingCapacityRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -132,7 +129,6 @@ func (r AutoscalingGetAutoscalingCapacityRequest) Do(ctx context.Context, transp
 }
 
 // WithContext sets the request context.
-//
 func (f AutoscalingGetAutoscalingCapacity) WithContext(v context.Context) func(*AutoscalingGetAutoscalingCapacityRequest) {
 	return func(r *AutoscalingGetAutoscalingCapacityRequest) {
 		r.ctx = v
@@ -140,7 +136,6 @@ func (f AutoscalingGetAutoscalingCapacity) WithContext(v context.Context) func(*
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f AutoscalingGetAutoscalingCapacity) WithPretty() func(*AutoscalingGetAutoscalingCapacityRequest) {
 	return func(r *AutoscalingGetAutoscalingCapacityRequest) {
 		r.Pretty = true
@@ -148,7 +143,6 @@ func (f AutoscalingGetAutoscalingCapacity) WithPretty() func(*AutoscalingGetAuto
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f AutoscalingGetAutoscalingCapacity) WithHuman() func(*AutoscalingGetAutoscalingCapacityRequest) {
 	return func(r *AutoscalingGetAutoscalingCapacityRequest) {
 		r.Human = true
@@ -156,7 +150,6 @@ func (f AutoscalingGetAutoscalingCapacity) WithHuman() func(*AutoscalingGetAutos
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f AutoscalingGetAutoscalingCapacity) WithErrorTrace() func(*AutoscalingGetAutoscalingCapacityRequest) {
 	return func(r *AutoscalingGetAutoscalingCapacityRequest) {
 		r.ErrorTrace = true
@@ -164,7 +157,6 @@ func (f AutoscalingGetAutoscalingCapacity) WithErrorTrace() func(*AutoscalingGet
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f AutoscalingGetAutoscalingCapacity) WithFilterPath(v ...string) func(*AutoscalingGetAutoscalingCapacityRequest) {
 	return func(r *AutoscalingGetAutoscalingCapacityRequest) {
 		r.FilterPath = v
@@ -172,7 +164,6 @@ func (f AutoscalingGetAutoscalingCapacity) WithFilterPath(v ...string) func(*Aut
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f AutoscalingGetAutoscalingCapacity) WithHeader(h map[string]string) func(*AutoscalingGetAutoscalingCapacityRequest) {
 	return func(r *AutoscalingGetAutoscalingCapacityRequest) {
 		if r.Header == nil {
@@ -185,7 +176,6 @@ func (f AutoscalingGetAutoscalingCapacity) WithHeader(h map[string]string) func(
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f AutoscalingGetAutoscalingCapacity) WithOpaqueID(s string) func(*AutoscalingGetAutoscalingCapacityRequest) {
 	return func(r *AutoscalingGetAutoscalingCapacityRequest) {
 		if r.Header == nil {

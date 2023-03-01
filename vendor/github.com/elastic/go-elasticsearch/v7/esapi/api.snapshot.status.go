@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -42,11 +42,9 @@ func newSnapshotStatusFunc(t Transport) SnapshotStatus {
 // SnapshotStatus returns information about the status of a snapshot.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/modules-snapshots.html.
-//
 type SnapshotStatus func(o ...func(*SnapshotStatusRequest)) (*Response, error)
 
 // SnapshotStatusRequest configures the Snapshot Status API request.
-//
 type SnapshotStatusRequest struct {
 	Repository string
 	Snapshot   []string
@@ -65,7 +63,6 @@ type SnapshotStatusRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r SnapshotStatusRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -159,7 +156,6 @@ func (r SnapshotStatusRequest) Do(ctx context.Context, transport Transport) (*Re
 }
 
 // WithContext sets the request context.
-//
 func (f SnapshotStatus) WithContext(v context.Context) func(*SnapshotStatusRequest) {
 	return func(r *SnapshotStatusRequest) {
 		r.ctx = v
@@ -167,7 +163,6 @@ func (f SnapshotStatus) WithContext(v context.Context) func(*SnapshotStatusReque
 }
 
 // WithRepository - a repository name.
-//
 func (f SnapshotStatus) WithRepository(v string) func(*SnapshotStatusRequest) {
 	return func(r *SnapshotStatusRequest) {
 		r.Repository = v
@@ -175,7 +170,6 @@ func (f SnapshotStatus) WithRepository(v string) func(*SnapshotStatusRequest) {
 }
 
 // WithSnapshot - a list of snapshot names.
-//
 func (f SnapshotStatus) WithSnapshot(v ...string) func(*SnapshotStatusRequest) {
 	return func(r *SnapshotStatusRequest) {
 		r.Snapshot = v
@@ -183,7 +177,6 @@ func (f SnapshotStatus) WithSnapshot(v ...string) func(*SnapshotStatusRequest) {
 }
 
 // WithIgnoreUnavailable - whether to ignore unavailable snapshots, defaults to false which means a snapshotmissingexception is thrown.
-//
 func (f SnapshotStatus) WithIgnoreUnavailable(v bool) func(*SnapshotStatusRequest) {
 	return func(r *SnapshotStatusRequest) {
 		r.IgnoreUnavailable = &v
@@ -191,7 +184,6 @@ func (f SnapshotStatus) WithIgnoreUnavailable(v bool) func(*SnapshotStatusReques
 }
 
 // WithMasterTimeout - explicit operation timeout for connection to master node.
-//
 func (f SnapshotStatus) WithMasterTimeout(v time.Duration) func(*SnapshotStatusRequest) {
 	return func(r *SnapshotStatusRequest) {
 		r.MasterTimeout = v
@@ -199,7 +191,6 @@ func (f SnapshotStatus) WithMasterTimeout(v time.Duration) func(*SnapshotStatusR
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f SnapshotStatus) WithPretty() func(*SnapshotStatusRequest) {
 	return func(r *SnapshotStatusRequest) {
 		r.Pretty = true
@@ -207,7 +198,6 @@ func (f SnapshotStatus) WithPretty() func(*SnapshotStatusRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f SnapshotStatus) WithHuman() func(*SnapshotStatusRequest) {
 	return func(r *SnapshotStatusRequest) {
 		r.Human = true
@@ -215,7 +205,6 @@ func (f SnapshotStatus) WithHuman() func(*SnapshotStatusRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f SnapshotStatus) WithErrorTrace() func(*SnapshotStatusRequest) {
 	return func(r *SnapshotStatusRequest) {
 		r.ErrorTrace = true
@@ -223,7 +212,6 @@ func (f SnapshotStatus) WithErrorTrace() func(*SnapshotStatusRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f SnapshotStatus) WithFilterPath(v ...string) func(*SnapshotStatusRequest) {
 	return func(r *SnapshotStatusRequest) {
 		r.FilterPath = v
@@ -231,7 +219,6 @@ func (f SnapshotStatus) WithFilterPath(v ...string) func(*SnapshotStatusRequest)
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f SnapshotStatus) WithHeader(h map[string]string) func(*SnapshotStatusRequest) {
 	return func(r *SnapshotStatusRequest) {
 		if r.Header == nil {
@@ -244,7 +231,6 @@ func (f SnapshotStatus) WithHeader(h map[string]string) func(*SnapshotStatusRequ
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f SnapshotStatus) WithOpaqueID(s string) func(*SnapshotStatusRequest) {
 	return func(r *SnapshotStatusRequest) {
 		if r.Header == nil {

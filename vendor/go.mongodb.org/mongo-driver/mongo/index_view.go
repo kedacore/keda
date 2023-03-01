@@ -72,11 +72,7 @@ func (iv IndexView) List(ctx context.Context, opts ...*options.ListIndexesOption
 
 	sess := sessionFromContext(ctx)
 	if sess == nil && iv.coll.client.sessionPool != nil {
-		var err error
-		sess, err = session.NewClientSession(iv.coll.client.sessionPool, iv.coll.client.id, session.Implicit)
-		if err != nil {
-			return nil, err
-		}
+		sess = session.NewImplicitClientSession(iv.coll.client.sessionPool, iv.coll.client.id)
 	}
 
 	err := iv.coll.client.validSession(sess)
@@ -227,10 +223,7 @@ func (iv IndexView) CreateMany(ctx context.Context, models []IndexModel, opts ..
 	sess := sessionFromContext(ctx)
 
 	if sess == nil && iv.coll.client.sessionPool != nil {
-		sess, err = session.NewClientSession(iv.coll.client.sessionPool, iv.coll.client.id, session.Implicit)
-		if err != nil {
-			return nil, err
-		}
+		sess = session.NewImplicitClientSession(iv.coll.client.sessionPool, iv.coll.client.id)
 		defer sess.EndSession()
 	}
 
@@ -367,11 +360,7 @@ func (iv IndexView) drop(ctx context.Context, name string, opts ...*options.Drop
 
 	sess := sessionFromContext(ctx)
 	if sess == nil && iv.coll.client.sessionPool != nil {
-		var err error
-		sess, err = session.NewClientSession(iv.coll.client.sessionPool, iv.coll.client.id, session.Implicit)
-		if err != nil {
-			return nil, err
-		}
+		sess = session.NewImplicitClientSession(iv.coll.client.sessionPool, iv.coll.client.id)
 		defer sess.EndSession()
 	}
 
