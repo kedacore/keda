@@ -904,10 +904,14 @@ func (d *dcAwareRR) Pick(q ExecutableQuery) NextHost {
 // a different rack, before hosts in all other datercentres
 
 type rackAwareRR struct {
+	// lastUsedHostIdx keeps the index of the last used host.
+	// It is accessed atomically and needs to be aligned to 64 bits, so we
+	// keep it first in the struct. Do not move it or add new struct members
+	// before it.
+	lastUsedHostIdx uint64
 	localDC         string
 	localRack       string
 	hosts           []cowHostList
-	lastUsedHostIdx uint64
 }
 
 func RackAwareRoundRobinPolicy(localDC string, localRack string) HostSelectionPolicy {
