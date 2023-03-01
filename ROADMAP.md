@@ -14,9 +14,9 @@ Here is an overview of our current release estimations:
 
 | Version | Estimated Release Date |
 |:--------|:-----------------------|
-| v2.10   | March 2nd, 2023        |
-| v2.11   | June 6th, 2023         |
-| v2.12   | September 5th, 2023    |
+| v2.10   | March 9th, 2023        |
+| v2.11   | June 13th, 2023         |
+| v2.12   | September 12th, 2023    |
 
 Here is an overview of our previous releases:
 
