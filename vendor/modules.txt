@@ -227,12 +227,6 @@ github.com/arangodb/go-driver/util
 # github.com/arangodb/go-velocypack v0.0.0-20200318135517-5af53c29c67e
 ## explicit; go 1.12
 github.com/arangodb/go-velocypack
-# github.com/armon/go-metrics v0.4.1
-## explicit; go 1.12
-github.com/armon/go-metrics
-# github.com/armon/go-radix v1.0.0
-## explicit
-github.com/armon/go-radix
 # github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a
 ## explicit
 github.com/asaskevich/govalidator
@@ -595,26 +589,15 @@ github.com/hashicorp/errwrap
 github.com/hashicorp/go-cleanhttp
 # github.com/hashicorp/go-hclog v1.3.0
 ## explicit; go 1.13
-github.com/hashicorp/go-hclog
-# github.com/hashicorp/go-immutable-radix v1.3.1
-## explicit
-github.com/hashicorp/go-immutable-radix
 # github.com/hashicorp/go-multierror v1.1.1
 ## explicit; go 1.13
 github.com/hashicorp/go-multierror
-# github.com/hashicorp/go-plugin v1.4.5
-## explicit; go 1.17
-github.com/hashicorp/go-plugin
-github.com/hashicorp/go-plugin/internal/plugin
 # github.com/hashicorp/go-retryablehttp v0.7.1
 ## explicit; go 1.13
 github.com/hashicorp/go-retryablehttp
 # github.com/hashicorp/go-rootcerts v1.0.2
 ## explicit; go 1.12
 github.com/hashicorp/go-rootcerts
-# github.com/hashicorp/go-secure-stdlib/mlock v0.1.2
-## explicit; go 1.16
-github.com/hashicorp/go-secure-stdlib/mlock
 # github.com/hashicorp/go-secure-stdlib/parseutil v0.1.7
 ## explicit; go 1.16
 github.com/hashicorp/go-secure-stdlib/parseutil
@@ -627,13 +610,6 @@ github.com/hashicorp/go-sockaddr
 # github.com/hashicorp/go-uuid v1.0.3
 ## explicit
 github.com/hashicorp/go-uuid
-# github.com/hashicorp/go-version v1.6.0
-## explicit
-github.com/hashicorp/go-version
-# github.com/hashicorp/golang-lru v0.5.4
-## explicit; go 1.12
-github.com/hashicorp/golang-lru
-github.com/hashicorp/golang-lru/simplelru
 # github.com/hashicorp/hcl v1.0.0
 ## explicit
 github.com/hashicorp/hcl
@@ -645,32 +621,9 @@ github.com/hashicorp/hcl/hcl/token
 github.com/hashicorp/hcl/json/parser
 github.com/hashicorp/hcl/json/scanner
 github.com/hashicorp/hcl/json/token
-# github.com/hashicorp/vault/api v1.8.2
+# github.com/hashicorp/vault/api v1.9.0
 ## explicit; go 1.19
 github.com/hashicorp/vault/api
-# github.com/hashicorp/vault/sdk v0.6.0
-## explicit; go 1.19
-github.com/hashicorp/vault/sdk/helper/certutil
-github.com/hashicorp/vault/sdk/helper/compressutil
-github.com/hashicorp/vault/sdk/helper/consts
-github.com/hashicorp/vault/sdk/helper/cryptoutil
-github.com/hashicorp/vault/sdk/helper/errutil
-github.com/hashicorp/vault/sdk/helper/hclutil
-github.com/hashicorp/vault/sdk/helper/jsonutil
-github.com/hashicorp/vault/sdk/helper/license
-github.com/hashicorp/vault/sdk/helper/locksutil
-github.com/hashicorp/vault/sdk/helper/logging
-github.com/hashicorp/vault/sdk/helper/pathmanager
-github.com/hashicorp/vault/sdk/helper/pluginutil
-github.com/hashicorp/vault/sdk/helper/strutil
-github.com/hashicorp/vault/sdk/helper/wrapping
-github.com/hashicorp/vault/sdk/logical
-github.com/hashicorp/vault/sdk/physical
-github.com/hashicorp/vault/sdk/physical/inmem
-github.com/hashicorp/vault/sdk/version
-# github.com/hashicorp/yamux v0.1.1
-## explicit; go 1.15
-github.com/hashicorp/yamux
 # github.com/imdario/mergo v0.3.13
 ## explicit; go 1.13
 github.com/imdario/mergo
@@ -818,24 +771,15 @@ github.com/microsoft/azure-devops-go-api/azuredevops/system
 github.com/microsoft/azure-devops-go-api/azuredevops/taskagent
 github.com/microsoft/azure-devops-go-api/azuredevops/test
 github.com/microsoft/azure-devops-go-api/azuredevops/webapi
-# github.com/mitchellh/copystructure v1.2.0
-## explicit; go 1.15
-github.com/mitchellh/copystructure
 # github.com/mitchellh/go-homedir v1.1.0
 ## explicit
 github.com/mitchellh/go-homedir
-# github.com/mitchellh/go-testing-interface v1.14.1
-## explicit; go 1.14
-github.com/mitchellh/go-testing-interface
 # github.com/mitchellh/hashstructure v1.1.0
 ## explicit; go 1.14
 github.com/mitchellh/hashstructure
 # github.com/mitchellh/mapstructure v1.5.0
 ## explicit; go 1.14
 github.com/mitchellh/mapstructure
-# github.com/mitchellh/reflectwalk v1.0.2
-## explicit
-github.com/mitchellh/reflectwalk
 # github.com/moby/spdystream v0.2.0
 ## explicit; go 1.13
 github.com/moby/spdystream
@@ -897,9 +841,6 @@ github.com/newrelic/newrelic-client-go/pkg/testhelpers
 github.com/newrelic/newrelic-client-go/pkg/users
 github.com/newrelic/newrelic-client-go/pkg/workflows
 github.com/newrelic/newrelic-client-go/pkg/workloads
-# github.com/oklog/run v1.1.0
-## explicit; go 1.13
-github.com/oklog/run
 # github.com/olekukonko/tablewriter v0.0.5
 ## explicit; go 1.12
 github.com/olekukonko/tablewriter
@@ -933,10 +874,6 @@ github.com/open-policy-agent/cert-controller/pkg/rotator
 # github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 ## explicit
 github.com/phayes/freeport
-# github.com/pierrec/lz4 v2.6.1+incompatible
-## explicit
-github.com/pierrec/lz4
-github.com/pierrec/lz4/internal/xxh32
 # github.com/pierrec/lz4/v4 v4.1.17
 ## explicit; go 1.14
 github.com/pierrec/lz4/v4
@@ -1231,9 +1168,8 @@ go.uber.org/zap/internal/color
 go.uber.org/zap/internal/exit
 go.uber.org/zap/zapcore
 go.uber.org/zap/zapgrpc
-# golang.org/x/crypto v0.1.0 => golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
+# golang.org/x/crypto v0.5.0 => golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
 ## explicit; go 1.17
-golang.org/x/crypto/blake2b
 golang.org/x/crypto/cryptobyte
 golang.org/x/crypto/cryptobyte/asn1
 golang.org/x/crypto/ed25519
@@ -1434,7 +1370,6 @@ google.golang.org/grpc/encoding
 google.golang.org/grpc/encoding/gzip
 google.golang.org/grpc/encoding/proto
 google.golang.org/grpc/grpclog
-google.golang.org/grpc/health
 google.golang.org/grpc/health/grpc_health_v1
 google.golang.org/grpc/internal
 google.golang.org/grpc/internal/backoff
@@ -1464,8 +1399,6 @@ google.golang.org/grpc/internal/transport/networktype
 google.golang.org/grpc/keepalive
 google.golang.org/grpc/metadata
 google.golang.org/grpc/peer
-google.golang.org/grpc/reflection
-google.golang.org/grpc/reflection/grpc_reflection_v1alpha
 google.golang.org/grpc/resolver
 google.golang.org/grpc/resolver/manual
 google.golang.org/grpc/serviceconfig
