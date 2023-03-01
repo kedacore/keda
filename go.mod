@@ -31,7 +31,6 @@ require (
 	github.com/go-kivik/kivik/v3 v3.2.3
 	github.com/go-logr/logr v1.2.3
 	github.com/go-playground/validator/v10 v10.11.2
-	github.com/go-redis/redis/v9 v9.0.0-rc.2
 	github.com/go-sql-driver/mysql v1.7.0
 	github.com/gobwas/glob v0.2.3
 	github.com/gocql/gocql v1.3.1
@@ -58,6 +57,7 @@ require (
 	github.com/prometheus/common v0.40.0
 	github.com/rabbitmq/amqp091-go v1.6.1
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
+	github.com/redis/go-redis/v9 v9.0.2
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.2
