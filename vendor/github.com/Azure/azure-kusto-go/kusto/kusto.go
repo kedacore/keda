@@ -2,8 +2,6 @@ package kusto
 
 import (
 	"context"
-	"io"
-	"net/http"
 	"net/url"
 	"reflect"
 	"strings"
@@ -20,10 +18,8 @@ import (
 
 // queryer provides for getting a stream of Kusto frames. Exists to allow fake Kusto streams in tests.
 type queryer interface {
-	io.Closer
 	query(ctx context.Context, db string, query Stmt, options *queryOptions) (execResp, error)
 	mgmt(ctx context.Context, db string, query Stmt, options *mgmtOptions) (execResp, error)
-	queryToJson(ctx context.Context, db string, query Stmt, options *queryOptions) (string, error)
 }
 
 // Authorization provides the ADAL authorizer needed to access the resource. You can set Authorizer or
@@ -112,8 +108,7 @@ type Client struct {
 	conn, ingestConn queryer
 	endpoint         string
 	auth             Authorization
-	mgmtConnMu       sync.Mutex
-	http             *http.Client
+	mu               sync.Mutex
 }
 
 // Option is an optional argument type for New().
@@ -143,23 +138,13 @@ func New(endpoint string, auth Authorization, options ...Option) (*Client, error
 		return nil, err
 	}
 
-	if client.http == nil {
-		client.http = &http.Client{}
-	}
-
-	conn, err := newConn(endpoint, auth, client.http)
+	conn, err := newConn(endpoint, auth)
 	if err != nil {
 		return nil, err
 	}
 	client.conn = conn
 
 	return client, nil
-}
-
-func WithHttpClient(client *http.Client) Option {
-	return func(c *Client) {
-		c.http = client
-	}
 }
 
 // QueryOption is an option type for a call to Query().
@@ -195,12 +180,15 @@ const (
 // Note that the server has a timeout of 4 minutes for a query by default unless the context deadline is set. Queries can
 // take a maximum of 1 hour.
 func (c *Client) Query(ctx context.Context, db string, query Stmt, options ...QueryOption) (*RowIterator, error) {
-	ctx, cancel, err := contextSetup(ctx, false) // Note: cancel is called when *RowIterator has Stop() called.
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	ctx, cancel, err := c.contextSetup(ctx, false) // Note: cancel is called when *RowIterator has Stop() called.
 	if err != nil {
 		return nil, err
 	}
 
-	opts, err := setQueryOptions(ctx, errors.OpQuery, query, options...)
+	opts, err := c.setQueryOptions(ctx, errors.OpQuery, query, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -254,47 +242,25 @@ func (c *Client) Query(ctx context.Context, db string, query Stmt, options ...Qu
 	return iter, nil
 }
 
-func (c *Client) QueryToJson(ctx context.Context, db string, query Stmt, options ...QueryOption) (string, error) {
-	ctx, cancel, err := contextSetup(ctx, false) // Note: cancel is called when *RowIterator has Stop() called.
-	if err != nil {
-		return "", err
-	}
-
-	opts, err := setQueryOptions(ctx, errors.OpQuery, query, options...)
-	if err != nil {
-		return "", err
-	}
-
-	conn, err := c.getConn(queryCall, connOptions{queryOptions: opts})
-	if err != nil {
-		return "", err
-	}
-
-	json, err := conn.queryToJson(ctx, db, query, opts)
-	if err != nil {
-		cancel()
-		return "", err
-	}
-
-	return json, nil
-}
-
 // Mgmt is used to do management queries to Kusto.
 // Details can be found at: https://docs.microsoft.com/en-us/azure/kusto/management/
 // Mgmt accepts a Stmt, but that Stmt cannot have any query parameters attached at this time.
 // Note that the server has a timeout of 10 minutes for a management call by default unless the context deadline is set.
 // There is a maximum of 1 hour.
 func (c *Client) Mgmt(ctx context.Context, db string, query Stmt, options ...MgmtOption) (*RowIterator, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if !query.params.IsZero() || !query.defs.IsZero() {
 		return nil, errors.ES(errors.OpMgmt, errors.KClientArgs, "a Mgmt() call cannot accept a Stmt object that has Definitions or Parameters attached")
 	}
 
-	ctx, cancel, err := contextSetup(ctx, true) // Note: cancel is called when *RowIterator has Stop() called.
+	ctx, cancel, err := c.contextSetup(ctx, true) // Note: cancel is called when *RowIterator has Stop() called.
 	if err != nil {
 		return nil, err
 	}
 
-	opts, err := setMgmtOptions(ctx, errors.OpMgmt, query, options...)
+	opts, err := c.setMgmtOptions(ctx, errors.OpMgmt, query, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -326,7 +292,7 @@ func (c *Client) Mgmt(ctx context.Context, db string, query Stmt, options ...Mgm
 	return iter, nil
 }
 
-func setQueryOptions(ctx context.Context, op errors.Op, query Stmt, options ...QueryOption) (*queryOptions, error) {
+func (c *Client) setQueryOptions(ctx context.Context, op errors.Op, query Stmt, options ...QueryOption) (*queryOptions, error) {
 	params, err := query.params.toParameters(query.defs)
 	if err != nil {
 		return nil, errors.ES(op, errors.KClientArgs, "QueryValues in the the Stmt were incorrect: %s", err).SetNoRetry()
@@ -343,16 +309,19 @@ func setQueryOptions(ctx context.Context, op errors.Op, query Stmt, options ...Q
 
 	opt := &queryOptions{
 		requestProperties: &requestProperties{
-			Options:    map[string]interface{}{},
+			Options: map[string]interface{}{
+				"request_readonly":                 true,
+				"request_remote_entities_disabled": false,
+				"results_progressive_enabled":      false,
+			},
 			Parameters: params,
 		},
 	}
-	/*if op == errors.OpQuery {
+	if op == errors.OpQuery {
 		// We want progressive frames by default for Query(), but not Mgmt() because it uses v1 framing and ingestion endpoints
 		// do not support it.
-		opt.requestProperties.Options["results_progressive_enabled"] = true
-	}*/
-	opt.requestProperties.Options["results_progressive_enabled"] = true
+		opt.requestProperties.Options["results_progressive_enabled"] = false
+	}
 
 	for _, o := range options {
 		if err := o(opt); err != nil {
@@ -362,7 +331,7 @@ func setQueryOptions(ctx context.Context, op errors.Op, query Stmt, options ...Q
 	return opt, nil
 }
 
-func setMgmtOptions(ctx context.Context, op errors.Op, query Stmt, options ...MgmtOption) (*mgmtOptions, error) {
+func (c *Client) setMgmtOptions(ctx context.Context, op errors.Op, query Stmt, options ...MgmtOption) (*mgmtOptions, error) {
 	params, err := query.params.toParameters(query.defs)
 	if err != nil {
 		return nil, errors.ES(op, errors.KClientArgs, "QueryValues in the the Stmt were incorrect: %s", err).SetNoRetry()
@@ -404,9 +373,6 @@ func (c *Client) getConn(callType callType, options connOptions) (queryer, error
 	case mgmtCall:
 		delete(options.mgmtOptions.requestProperties.Options, "results_progressive_enabled")
 		if options.mgmtOptions.queryIngestion {
-			c.mgmtConnMu.Lock()
-			defer c.mgmtConnMu.Unlock()
-
 			if c.ingestConn != nil {
 				return c.ingestConn, nil
 			}
@@ -417,7 +383,7 @@ func (c *Client) getConn(callType callType, options connOptions) (queryer, error
 			if err := auth.Validate(u.String()); err != nil {
 				return nil, err
 			}
-			iconn, err := newConn(u.String(), auth, c.http)
+			iconn, err := newConn(u.String(), auth)
 			if err != nil {
 				return nil, err
 			}
@@ -433,7 +399,7 @@ func (c *Client) getConn(callType callType, options connOptions) (queryer, error
 
 var nower = time.Now
 
-func contextSetup(ctx context.Context, mgmtCall bool) (context.Context, context.CancelFunc, error) {
+func (*Client) contextSetup(ctx context.Context, mgmtCall bool) (context.Context, context.CancelFunc, error) {
 	t, ok := ctx.Deadline()
 	if ok {
 		d := t.Sub(nower())
@@ -452,24 +418,4 @@ func contextSetup(ctx context.Context, mgmtCall bool) (context.Context, context.
 	}
 	ctx, cancel := context.WithTimeout(ctx, 4*time.Minute)
 	return ctx, cancel, nil
-}
-
-func (c *Client) HttpClient() *http.Client {
-	return c.http
-}
-
-func (c *Client) Close() error {
-	var err error
-	if c.conn != nil {
-		err = c.conn.Close()
-	}
-	if c.ingestConn != nil {
-		err2 := c.ingestConn.Close()
-		if err == nil {
-			err = err2
-		} else {
-			err = errors.GetCombinedError(err, err2)
-		}
-	}
-	return err
 }

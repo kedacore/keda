@@ -9,12 +9,14 @@ import (
 
 type mgmtOptions struct {
 	requestProperties *requestProperties
+	canWrite          bool
 	queryIngestion    bool
 }
 
-// Deprecated: Writing mode is now the default. Use the `RequestReadonly` option to make a read-only request.
+// AllowWrite allows a query that attempts to modify data in a table.
 func AllowWrite() MgmtOption {
 	return func(m *mgmtOptions) error {
+		m.canWrite = true
 		return nil
 	}
 }

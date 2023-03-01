@@ -32,7 +32,7 @@ func (d *Decimal) ParseFloat(base int, prec uint, mode big.RoundingMode) (f *big
 	return big.ParseFloat(d.Value, base, prec, mode)
 }
 
-var DecRE = regexp.MustCompile(`^((\d+\.?\d*)|(\d*\.?\d+))$`) // Matches decimal numbers, with or without decimal dot, with optional parts missing.
+var decRE = regexp.MustCompile(`^\d*\.\d+$`)
 
 // Unmarshal unmarshals i into Decimal. i must be a string representing a decimal type or nil.
 func (d *Decimal) Unmarshal(i interface{}) error {
@@ -47,7 +47,7 @@ func (d *Decimal) Unmarshal(i interface{}) error {
 		return fmt.Errorf("Column with type 'decimal' had type %T", i)
 	}
 
-	if !DecRE.MatchString(v) {
+	if !decRE.MatchString(v) {
 		return fmt.Errorf("column with type 'decimal' does not appear to be a decimal number, was %v", v)
 	}
 

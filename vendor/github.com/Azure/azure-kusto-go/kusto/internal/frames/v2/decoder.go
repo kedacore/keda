@@ -49,7 +49,7 @@ func (d *Decoder) Decode(ctx context.Context, r io.ReadCloser, op errors.Op) cha
 		}
 
 		// Extract the initial Frame, a dataSetHeader.
-		dsh, err := d.dataSetHeader()
+		dsh, err := d.dataSetHeader(ctx)
 		if err != nil {
 			frames.Errorf(ctx, ch, "first frame had error: %s", err)
 			return
@@ -65,18 +65,13 @@ func (d *Decoder) Decode(ctx context.Context, r io.ReadCloser, op errors.Op) cha
 			frames.Errorf(ctx, ch, err.Error())
 			return
 		}
-
-		if t != json.Delim(']') {
-			frames.Errorf(ctx, ch, "Expected ']' delimiter")
-			return
-		}
 	}()
 
 	return ch
 }
 
 // dataSetHeader decodes the byte stream into a DataSetHeader.
-func (d *Decoder) dataSetHeader() (DataSetHeader, error) {
+func (d *Decoder) dataSetHeader(ctx context.Context) (DataSetHeader, error) {
 	dsh := DataSetHeader{Op: d.op}
 	err := d.dec.Decode(&dsh)
 	return dsh, err

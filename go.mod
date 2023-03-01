@@ -8,7 +8,7 @@ require (
 	cloud.google.com/go/storage v1.28.0
 	github.com/Azure/azure-amqp-common-go/v3 v3.2.3
 	github.com/Azure/azure-event-hubs-go/v3 v3.3.20
-	github.com/Azure/azure-kusto-go v0.9.2
+	github.com/Azure/azure-kusto-go v0.99.9
 	github.com/Azure/azure-sdk-for-go v67.1.0+incompatible
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.2.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.3.0-beta.2

@@ -24,9 +24,8 @@ const (
 // 4) simpleLetterEqualFold, no specials, no non-letters.
 //
 // The letters S and K are special because they map to 3 runes, not just 2:
-//   - S maps to s and to U+017F 'ſ' Latin small letter long s
-//   - k maps to K and to U+212A 'K' Kelvin sign
-//
+//  * S maps to s and to U+017F 'ſ' Latin small letter long s
+//  * k maps to K and to U+212A 'K' Kelvin sign
 // See https://play.golang.org/p/tTxjOc0OGo
 //
 // The returned function is specialized for matching against s and
@@ -97,8 +96,10 @@ func equalFoldRight(s, t []byte) bool {
 		t = t[size:]
 
 	}
-
-	return len(t) <= 0
+	if len(t) > 0 {
+		return false
+	}
+	return true
 }
 
 // asciiEqualFold is a specialization of bytes.EqualFold for use when

@@ -3,6 +3,7 @@ package v2
 
 import (
 	"fmt"
+
 	"github.com/Azure/azure-kusto-go/kusto/data/errors"
 	"github.com/Azure/azure-kusto-go/kusto/data/table"
 	"github.com/Azure/azure-kusto-go/kusto/data/value"
@@ -43,10 +44,9 @@ type DataTable struct {
 	TableName frames.TableKind
 	// Columns is a list of column names and their Kusto storage types.
 	Columns table.Columns
-	// Rows contains the table data that was fetched, along with errors.
-	Rows      []interface{}
+	// Rows contains the the table data that was fetched.
+	Rows      [][]interface{}
 	KustoRows []value.Values
-	RowErrors []errors.Error
 
 	Op errors.Op `json:"-"`
 }
@@ -60,23 +60,26 @@ func (d *DataTable) UnmarshalRaw(raw json.RawMessage) error {
 	}()
 
 	if err := json.Unmarshal(raw, d); err != nil {
-		if oe := RawToOneAPIErr(raw, d.Op); oe != nil {
+		if oe := rawToOneAPIErr(raw, d.Op); oe != nil {
 			return oe
 		}
 		return err
 	}
 
-	v, rowErrors, err := unmarshal.Rows(d.Columns, d.Rows, d.Op)
+	v, err := unmarshal.Rows(d.Columns, d.Rows)
 	if err != nil {
 		return err
 	}
 	d.KustoRows = v
-	d.RowErrors = rowErrors
 	return nil
 }
 
 // IsFrame implements frame.Frame.
 func (DataTable) IsFrame() {}
+
+type OneAPIError struct {
+	Error map[string]interface{} `json:"error"`
+}
 
 // DataSetCompletion indicates the stream id done. It implements Frame.
 type DataSetCompletion struct {
@@ -86,7 +89,7 @@ type DataSetCompletion struct {
 	// Cancelled indicates that the request was cancelled.
 	Cancelled bool
 	// OneAPIErrors is a list of errors encountered.
-	OneAPIErrors []string `json:"OneApiErrors"`
+	OneAPIErrors []OneAPIError `json:"OneApiErrors"`
 
 	Op errors.Op `json:"-"`
 }
@@ -96,11 +99,7 @@ func (DataSetCompletion) IsFrame() {}
 
 // UnmarshalRaw unmarshals the raw JSON representing a DataSetCompletion.
 func (d *DataSetCompletion) UnmarshalRaw(raw json.RawMessage) error {
-	err := json.Unmarshal(raw, &d)
-	if err != nil {
-		err = errors.GetCombinedError(fmt.Errorf("json parsing failed: %v", raw), err)
-	}
-	return err
+	return json.Unmarshal(raw, &d)
 }
 
 // TableHeader indicates that instead of receiving a dataTable, we will receive a
@@ -138,9 +137,8 @@ type TableFragment struct {
 	// TableFragment type is the type of TFDataAppend or TFDataReplace.
 	TableFragmentType string
 	// Rows contains the the table data th[at was fetched.
-	Rows      []interface{}
+	Rows      [][]interface{}
 	KustoRows []value.Values
-	RowErrors []errors.Error
 
 	Columns table.Columns `json:"-"` // Needed for decoding values.
 
@@ -159,18 +157,17 @@ func (t *TableFragment) UnmarshalRaw(raw json.RawMessage) error {
 	}()
 
 	if err := json.Unmarshal(raw, t); err != nil {
-		if oe := RawToOneAPIErr(raw, t.Op); oe != nil {
+		if oe := rawToOneAPIErr(raw, t.Op); oe != nil {
 			return oe
 		}
 		return err
 	}
 
-	v, rowErrors, err := unmarshal.Rows(t.Columns, t.Rows, t.Op)
+	v, err := unmarshal.Rows(t.Columns, t.Rows)
 	if err != nil {
 		return err
 	}
 	t.KustoRows = v
-	t.RowErrors = rowErrors
 
 	return nil
 }
@@ -214,8 +211,8 @@ func (t *TableCompletion) UnmarshalRaw(raw json.RawMessage) error {
 	return json.Unmarshal(raw, &t)
 }
 
-// RawToOneAPIErr returns a OneAPI error if it is buried where the "Row" should be. Otherwise it returns nil.
-func RawToOneAPIErr(raw json.RawMessage, op errors.Op) error {
+// rawToOneAPIErr returns a OneAPI error if it is buried where the "Row" should be. Otherwise it returns nil.
+func rawToOneAPIErr(raw json.RawMessage, op errors.Op) error {
 	m := map[string]interface{}{}
 
 	if err := json.Unmarshal(raw, &m); err != nil {
@@ -223,9 +220,12 @@ func RawToOneAPIErr(raw json.RawMessage, op errors.Op) error {
 	}
 
 	if oe, ok := m[frames.FieldRows]; ok {
-		entireErr, ok := oe.(map[string]interface{})
-		if ok {
-			return errors.OneToErr(entireErr, op)
+		if oe_conv, ok := oe.(map[string]interface{}); ok {
+			if err := errors.OneToErr(oe_conv, op); err != nil {
+				return err
+			}
+		} else {
+			fmt.Printf("unrecognized error: %v\n", oe)
 		}
 	}
 	return nil

@@ -106,7 +106,7 @@ func (r *Row) Columns(ptrs ...interface{}) error {
 }
 
 // ExtractValues fetches all values in the row at once.
-// The value of the kth column will be decoded into the kth argument to ExtractValues.
+// The value of the kth column will be decoded into the kth argument to Columns.
 // The number of arguments must be equal to the number of columns.
 // Pass nil to specify that a column should be ignored.
 // ptrs should be compatible with column types. An error in decoding may leave
@@ -131,12 +131,12 @@ func (r *Row) ExtractValues(ptrs ...interface{}) error {
 // ToStruct fetches the columns in a row into the fields of a struct. p must be a pointer to struct.
 // The rules for mapping a row's columns into a struct's exported fields are:
 //
-//  1. If a field has a `kusto: "column_name"` tag, then decode column
-//     'column_name' into the field. A special case is the `column_name: "-"`
-//     tag, which instructs ToStruct to ignore the field during decoding.
+//   1. If a field has a `kusto: "column_name"` tag, then decode column
+//      'column_name' into the field. A special case is the `column_name: "-"`
+//      tag, which instructs ToStruct to ignore the field during decoding.
 //
-//  2. Otherwise, if the name of a field matches the name of a column (ignoring case),
-//     decode the column into the field.
+//   2. Otherwise, if the name of a field matches the name of a column (ignoring case),
+//      decode the column into the field.
 //
 // Slice and pointer fields will be set to nil if the source column is a null value, and a
 // non-nil value if the column is not NULL. To decode NULL values of other types, use
@@ -162,10 +162,7 @@ func (r *Row) String() string {
 	}
 	b := &strings.Builder{}
 	w := csv.NewWriter(b)
-	err := w.Write(line)
-	if err != nil {
-		return ""
-	}
+	w.Write(line)
 	w.Flush()
 	return b.String()
 }

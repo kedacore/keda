@@ -58,32 +58,39 @@ func (d *Dynamic) Unmarshal(i interface{}) error {
 // Convert Dynamic into reflect value.
 func (d Dynamic) Convert(v reflect.Value) error {
 	t := v.Type()
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-
-	var valueToSet reflect.Value
 	switch {
 	case t.ConvertibleTo(reflect.TypeOf(Dynamic{})):
-		valueToSet = reflect.ValueOf(d)
+		v.Set(reflect.ValueOf(d))
+		return nil
+	case t.ConvertibleTo(reflect.TypeOf(&Dynamic{})):
+		v.Set(reflect.ValueOf(&d))
+		return nil
 	case t.ConvertibleTo(reflect.TypeOf([]byte{})):
 		if t.Kind() == reflect.String {
 			s := string(d.Value)
-			valueToSet = reflect.ValueOf(s)
-		} else {
-			valueToSet = reflect.ValueOf(d.Value)
+			v.Set(reflect.ValueOf(s))
+			return nil
 		}
-	case t.Kind() == reflect.Slice || t.Kind() == reflect.Map:
+		v.Set(reflect.ValueOf(d.Value))
+		return nil
+	case t.Kind() == reflect.Map:
 		if !d.Valid {
 			return nil
 		}
-
-		ptr := reflect.New(t)
-		if err := json.Unmarshal([]byte(d.Value), ptr.Interface()); err != nil {
-			return fmt.Errorf("Error occurred while trying to unmarshal Dynamic into a %s: %s", t.Kind(), err)
+		if t.Key().Kind() != reflect.String {
+			return fmt.Errorf("Type dymanic and can only be stored in a string, *string, map[string]interface{}, *map[string]interface{}, struct or *struct")
+		}
+		if t.Elem().Kind() != reflect.Interface {
+			return fmt.Errorf("Type dymanic and can only be stored in a string, *string, map[string]interface{}, *map[string]interface{}, struct or *struct")
 		}
 
-		valueToSet = ptr.Elem()
+		m := map[string]interface{}{}
+		if err := json.Unmarshal([]byte(d.Value), &m); err != nil {
+			return fmt.Errorf("Error occurred while trying to marshal type dynamic into a map[string]interface{}: %s", err)
+		}
+
+		v.Set(reflect.ValueOf(m))
+		return nil
 	case t.Kind() == reflect.Struct:
 		structPtr := reflect.New(t)
 
@@ -91,18 +98,41 @@ func (d Dynamic) Convert(v reflect.Value) error {
 			return fmt.Errorf("Could not unmarshal type dynamic into receiver: %s", err)
 		}
 
-		valueToSet = structPtr.Elem()
-	default:
-		return fmt.Errorf("Column was type Kusto.Dynamic, receiver had base Kind %s ", t.Kind())
-	}
-
-	if v.Type().Kind() != reflect.Ptr {
-		v.Set(valueToSet)
-	} else {
-		if v.IsZero() {
-			v.Set(reflect.New(valueToSet.Type()))
+		v.Set(structPtr.Elem())
+		return nil
+	case t.Kind() == reflect.Ptr:
+		if !d.Valid {
+			return nil
 		}
-		v.Elem().Set(valueToSet)
+
+		switch {
+		case t.Elem().Kind() == reflect.String:
+			str := string(d.Value)
+			v.Set(reflect.ValueOf(&str))
+			return nil
+		case t.Elem().Kind() == reflect.Struct:
+			store := reflect.New(t.Elem())
+
+			if err := json.Unmarshal([]byte(d.Value), store.Interface()); err != nil {
+				return fmt.Errorf("Could not unmarshal type dynamic into receiver: %s", err)
+			}
+			v.Set(store)
+			return nil
+		case t.Elem().Kind() == reflect.Map:
+			if t.Elem().Key().Kind() != reflect.String {
+				return fmt.Errorf("Type dymanic can only be stored in a map of type map[string]interface{}")
+			}
+			if t.Elem().Elem().Kind() != reflect.Interface {
+				return fmt.Errorf("Type dymanic and can only be stored in a of type map[string]interface{}")
+			}
+
+			m := map[string]interface{}{}
+			if err := json.Unmarshal([]byte(d.Value), &m); err != nil {
+				return fmt.Errorf("Error occurred while trying to marshal type dynamic into a map[string]interface{}: %s", err)
+			}
+			v.Set(reflect.ValueOf(&m))
+			return nil
+		}
 	}
-	return nil
+	return fmt.Errorf("Column was type Kusto.Dynamic, receiver had base Kind %s ", t.Kind())
 }

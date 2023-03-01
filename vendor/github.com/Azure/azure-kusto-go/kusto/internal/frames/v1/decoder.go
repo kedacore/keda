@@ -97,6 +97,7 @@ func (d *Decoder) findStringToken(s string) error {
 			}
 		}
 	}
+	panic("unreachable")
 }
 
 func (d *Decoder) processTables(ctx context.Context, ch chan frames.Frame) error {
@@ -120,7 +121,7 @@ func (d *Decoder) processTables(ctx context.Context, ch chan frames.Frame) error
 			return err
 		}
 
-		dt.KustoRows, dt.RowErrors, err = unmarshal.Rows(columns, dt.Rows, d.op)
+		dt.KustoRows, err = unmarshal.Rows(columns, dt.Rows)
 		if err != nil {
 			return err
 		}
