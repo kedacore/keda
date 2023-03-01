@@ -14,37 +14,31 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package options provides configuration options for the metrics API server.
-package options
+package server
 
 import (
 	"fmt"
 	"net"
 
-	"github.com/spf13/pflag"
-
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	genericoptions "k8s.io/apiserver/pkg/server/options"
 	openapicommon "k8s.io/kube-openapi/pkg/common"
+
+	"sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver"
 )
 
-// CustomMetricsAdapterServerOptions contains the of options used to configure
-// the metrics API server.
-//
-// It is based on a subset of [genericoptions.RecommendedOptions].
 type CustomMetricsAdapterServerOptions struct {
+	// genericoptions.ReccomendedOptions - EtcdOptions
 	SecureServing  *genericoptions.SecureServingOptionsWithLoopback
 	Authentication *genericoptions.DelegatingAuthenticationOptions
 	Authorization  *genericoptions.DelegatingAuthorizationOptions
 	Audit          *genericoptions.AuditOptions
 	Features       *genericoptions.FeatureOptions
 
+	// OpenAPIConfig
 	OpenAPIConfig *openapicommon.Config
-	EnableMetrics bool
 }
 
-// NewCustomMetricsAdapterServerOptions creates a new instance of
-// CustomMetricsAdapterServerOptions with its default values.
 func NewCustomMetricsAdapterServerOptions() *CustomMetricsAdapterServerOptions {
 	o := &CustomMetricsAdapterServerOptions{
 		SecureServing:  genericoptions.NewSecureServingOptions().WithLoopback(),
@@ -52,54 +46,39 @@ func NewCustomMetricsAdapterServerOptions() *CustomMetricsAdapterServerOptions {
 		Authorization:  genericoptions.NewDelegatingAuthorizationOptions(),
 		Audit:          genericoptions.NewAuditOptions(),
 		Features:       genericoptions.NewFeatureOptions(),
-
-		EnableMetrics: true,
 	}
 
 	return o
 }
 
-// Validate validates CustomMetricsAdapterServerOptions
-func (o CustomMetricsAdapterServerOptions) Validate() []error {
-	errors := []error{}
-	errors = append(errors, o.SecureServing.Validate()...)
-	errors = append(errors, o.Authentication.Validate()...)
-	errors = append(errors, o.Authorization.Validate()...)
-	errors = append(errors, o.Audit.Validate()...)
-	errors = append(errors, o.Features.Validate()...)
-	return errors
+func (o CustomMetricsAdapterServerOptions) Validate(args []string) error {
+	return nil
 }
 
-// AddFlags adds the flags defined for the options, to the given flagset.
-func (o *CustomMetricsAdapterServerOptions) AddFlags(fs *pflag.FlagSet) {
-	o.SecureServing.AddFlags(fs)
-	o.Authentication.AddFlags(fs)
-	o.Authorization.AddFlags(fs)
-	o.Audit.AddFlags(fs)
-	o.Features.AddFlags(fs)
+func (o *CustomMetricsAdapterServerOptions) Complete() error {
+	return nil
 }
 
-// ApplyTo applies CustomMetricsAdapterServerOptions to the server configuration.
-func (o *CustomMetricsAdapterServerOptions) ApplyTo(serverConfig *genericapiserver.Config) error {
+func (o CustomMetricsAdapterServerOptions) Config() (*apiserver.Config, error) {
 	// TODO have a "real" external address (have an AdvertiseAddress?)
 	if err := o.SecureServing.MaybeDefaultWithSelfSignedCerts("localhost", nil, []net.IP{net.ParseIP("127.0.0.1")}); err != nil {
-		return fmt.Errorf("error creating self-signed certificates: %v", err)
+		return nil, fmt.Errorf("error creating self-signed certificates: %v", err)
 	}
 
+	serverConfig := genericapiserver.NewConfig(apiserver.Codecs)
 	if err := o.SecureServing.ApplyTo(&serverConfig.SecureServing, &serverConfig.LoopbackClientConfig); err != nil {
-		return err
+		return nil, err
 	}
+
 	if err := o.Authentication.ApplyTo(&serverConfig.Authentication, serverConfig.SecureServing, nil); err != nil {
-		return err
+		return nil, err
 	}
 	if err := o.Authorization.ApplyTo(&serverConfig.Authorization); err != nil {
-		return err
+		return nil, err
 	}
+
 	if err := o.Audit.ApplyTo(serverConfig); err != nil {
-		return err
-	}
-	if err := o.Features.ApplyTo(serverConfig); err != nil {
-		return err
+		return nil, err
 	}
 
 	// enable OpenAPI schemas
@@ -107,7 +86,8 @@ func (o *CustomMetricsAdapterServerOptions) ApplyTo(serverConfig *genericapiserv
 		serverConfig.OpenAPIConfig = o.OpenAPIConfig
 	}
 
-	serverConfig.EnableMetrics = o.EnableMetrics
-
-	return nil
+	config := &apiserver.Config{
+		GenericConfig: serverConfig,
+	}
+	return config, nil
 }

@@ -2286,15 +2286,14 @@ sigs.k8s.io/controller-tools/pkg/schemapatcher
 sigs.k8s.io/controller-tools/pkg/schemapatcher/internal/yaml
 sigs.k8s.io/controller-tools/pkg/version
 sigs.k8s.io/controller-tools/pkg/webhook
-# sigs.k8s.io/custom-metrics-apiserver v1.25.1-0.20230111165344-67079ba4ba67
+# sigs.k8s.io/custom-metrics-apiserver v1.25.1
 ## explicit; go 1.19
 sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver
 sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver/endpoints/handlers
 sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver/installer
-sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver/metrics
 sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver/registry/rest
 sigs.k8s.io/custom-metrics-apiserver/pkg/cmd
-sigs.k8s.io/custom-metrics-apiserver/pkg/cmd/options
+sigs.k8s.io/custom-metrics-apiserver/pkg/cmd/server
 sigs.k8s.io/custom-metrics-apiserver/pkg/dynamicmapper
 sigs.k8s.io/custom-metrics-apiserver/pkg/generated/openapi/core
 sigs.k8s.io/custom-metrics-apiserver/pkg/generated/openapi/custommetrics
