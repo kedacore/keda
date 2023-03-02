@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package azure_managed_prometheus_test
+package helper
 
 import (
 	"os"
@@ -20,12 +20,12 @@ var _ = godotenv.Load("../../.env")
 
 // Common for pod and workload identity tests
 var (
-	prometheusQueryEndpoint = os.Getenv("TF_AZURE_MANAGED_PROMETHEUS_QUERY_ENDPOINT")
-	minReplicaCount         = 0
-	maxReplicaCount         = 2
+	PrometheusQueryEndpoint = os.Getenv("TF_AZURE_MANAGED_PROMETHEUS_QUERY_ENDPOINT")
+	MinReplicaCount         = 0
+	MaxReplicaCount         = 2
 )
 
-type templateData struct {
+type TemplateData struct {
 	TestNamespace           string
 	DeploymentName          string
 	MonitoredAppName        string
@@ -189,8 +189,8 @@ metadata:
 spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
-  minReplicaCount: {{.MinReplicaCount}}
-  maxReplicaCount: {{.MaxReplicaCount}}
+  MinReplicaCount: {{.MinReplicaCount}}
+  MaxReplicaCount: {{.MaxReplicaCount}}
   pollingInterval: 3
   cooldownPeriod:  1
   triggers:
@@ -258,8 +258,8 @@ spec:
 `
 )
 
-func testAzureManagedPrometheusScaler(t *testing.T, data templateData) {
-	require.NotEmpty(t, prometheusQueryEndpoint, "TF_AZURE_MANAGED_PROMETHEUS_QUERY_ENDPOINT env variable is required for azure managed prometheus tests")
+func TestAzureManagedPrometheusScaler(t *testing.T, data TemplateData) {
+	require.NotEmpty(t, PrometheusQueryEndpoint, "TF_AZURE_MANAGED_PROMETHEUS_QUERY_ENDPOINT env variable is required for azure managed prometheus tests")
 
 	kc := helper.GetKubernetesClient(t)
 
@@ -269,9 +269,9 @@ func testAzureManagedPrometheusScaler(t *testing.T, data templateData) {
 	templates := getTemplates()
 	helper.KubectlApplyMultipleWithTemplate(t, data, templates)
 	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, data.MonitoredAppName, data.TestNamespace, 1, 60, 3),
-		"replica count should be %d after 3 minutes", minReplicaCount)
-	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName, data.TestNamespace, minReplicaCount, 60, 3),
-		"replica count should be %d after 3 minutes", minReplicaCount)
+		"replica count should be %d after 3 minutes", MinReplicaCount)
+	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName, data.TestNamespace, MinReplicaCount, 60, 3),
+		"replica count should be %d after 3 minutes", MinReplicaCount)
 
 	testActivation(t, kc, data)
 	testScaleOut(t, kc, data)
@@ -282,25 +282,25 @@ func testAzureManagedPrometheusScaler(t *testing.T, data templateData) {
 	helper.DeleteNamespace(t, kc, data.TestNamespace)
 }
 
-func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testActivation(t *testing.T, kc *kubernetes.Clientset, data TemplateData) {
 	t.Log("--- testing activation ---")
 	helper.KubectlApplyWithTemplate(t, data, "generateLowLevelLoadJobTemplate", generateLowLevelLoadJobTemplate)
 
-	helper.AssertReplicaCountNotChangeDuringTimePeriod(t, kc, data.DeploymentName, data.TestNamespace, minReplicaCount, 60)
+	helper.AssertReplicaCountNotChangeDuringTimePeriod(t, kc, data.DeploymentName, data.TestNamespace, MinReplicaCount, 60)
 }
 
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data TemplateData) {
 	t.Log("--- testing scale out ---")
 	helper.KubectlApplyWithTemplate(t, data, "generateLoadJobTemplate", generateLoadJobTemplate)
 
-	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName, data.TestNamespace, maxReplicaCount, 120, 5),
-		"replica count should be %d after 5 minutes", maxReplicaCount)
+	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName, data.TestNamespace, MaxReplicaCount, 120, 5),
+		"replica count should be %d after 5 minutes", MaxReplicaCount)
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data TemplateData) {
 	t.Log("--- testing scale in ---")
-	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName, data.TestNamespace, minReplicaCount, 120, 5),
-		"replica count should be %d after 5 minutes", minReplicaCount)
+	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName, data.TestNamespace, MinReplicaCount, 120, 5),
+		"replica count should be %d after 5 minutes", MinReplicaCount)
 }
 
 func getTemplates() []helper.Template {

@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package azure_managed_prometheus_test
+package azure_managed_prometheus_aad_pod_identity_test
 
 import (
 	"fmt"
@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/joho/godotenv"
+
+	. "github.com/kedacore/keda/v2/tests/scalers/azure/azure_managed_prometheus/helper"
 )
 
 // Load environment variables from .env file
@@ -33,19 +35,19 @@ var (
 // is directly tied to the KEDA HPA while the other is isolated that can be used for metrics
 // even when the KEDA deployment is at zero - the service points to both deployments
 func TestAzureManagedPrometheusScalerWithPodIdentity(t *testing.T) {
-	testAzureManagedPrometheusScaler(t, getTemplateDataForPodIdentityTest())
+	TestAzureManagedPrometheusScaler(t, getTemplateDataForPodIdentityTest())
 }
 
-func getTemplateDataForPodIdentityTest() templateData {
-	return templateData{
+func getTemplateDataForPodIdentityTest() TemplateData {
+	return TemplateData{
 		TestNamespace:           testNamespacePod,
 		DeploymentName:          deploymentNamePod,
 		PublishDeploymentName:   publishDeploymentNamePod,
 		ScaledObjectName:        scaledObjectNamePod,
 		MonitoredAppName:        monitoredAppNamePod,
 		PodIdentityProvider:     podIdentityProvider,
-		PrometheusQueryEndpoint: prometheusQueryEndpoint,
-		MinReplicaCount:         minReplicaCount,
-		MaxReplicaCount:         maxReplicaCount,
+		PrometheusQueryEndpoint: PrometheusQueryEndpoint,
+		MinReplicaCount:         MinReplicaCount,
+		MaxReplicaCount:         MaxReplicaCount,
 	}
 }
