@@ -85,6 +85,7 @@ Here is an overview of all new **experimental** features:
 - **Datadog Scaler**: Return correct error when getting a 429 error ([#4187](https://github.com/kedacore/keda/issues/4187))
 - **Kafka Scaler**: Return error if the processing of the partition lag fails ([#4098](https://github.com/kedacore/keda/issues/4098))
 - **Kafka Scaler**: Support 0 in activationLagThreshold configuration ([#4137](https://github.com/kedacore/keda/issues/4137))
+- **NATS Jetstream Scaler:** Fix compatibility when cluster not on kubernetes ([#4101](https://github.com/kedacore/keda/issues/4101))
 - **Prometheus Metrics**: Expose Prometheus Metrics also when getting ScaledObject state ([#4075](https://github.com/kedacore/keda/issues/4075))
 - **Redis Scalers**: Fix panic produced by incorrect logger initialization ([#4197](https://github.com/kedacore/keda/issues/4197))
 
