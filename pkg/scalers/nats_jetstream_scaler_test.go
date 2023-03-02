@@ -203,21 +203,6 @@ var testNATSJetStreamMockResponses = []parseNATSJetStreamMockResponsesTestData{
 			}},
 		}, true, false},
 	{
-		"Fail - Bad leader name (clustered)",
-		&natsJetStreamMetricIdentifier{
-			&parseNATSJetStreamMetadataTestData{
-				testNATSJetStreamGoodMetadata, map[string]string{}, false},
-			0, "s0-nats-jetstream-mystream",
-		},
-		&jetStreamEndpointResponse{
-			MetaCluster: metaCluster{ClusterSize: 3},
-			Accounts: []accountDetail{{Name: "$G",
-				Streams: []*streamDetail{{Name: "mystream",
-					Consumers: []consumerDetail{{Name: "pull_consumer", NumPending: 100, Cluster: consumerCluster{Leader: "leaderBad!!!!"}}},
-				}},
-			}},
-		}, false, true},
-	{
 		"Not Active - consumer missing - connected to node without consumer info (clustered)",
 		&natsJetStreamMetricIdentifier{
 			&parseNATSJetStreamMetadataTestData{
@@ -431,7 +416,7 @@ func TestNATSJetStreamGetNATSJetstreamServerURL(t *testing.T) {
 
 	mockJetStreamScaler.metadata.monitoringURL = "234234:::::34234234;;;;really_bad_URL;;/"
 
-	_, err = mockJetStreamScaler.getNATSJetStreamMonitoringServerURL()
+	_, err = mockJetStreamScaler.getNATSJetStreamMonitoringServerURL("")
 	if err == nil {
 		t.Error("Expected error for parsing monitoring server URL but got success")
 	}
