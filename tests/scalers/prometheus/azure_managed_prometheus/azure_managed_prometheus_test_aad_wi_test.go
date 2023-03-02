@@ -15,7 +15,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testNameWorkloadIdentity = "azure-managed-prometheus-workload-identity-test"
+	testNameWorkloadIdentity = "azure-managed-prom-wi-test"
 )
 
 // Workload Identity test vars

@@ -15,7 +15,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testNamePodIdentity = "azure-managed-prometheus-pod-identity-test"
+	testNamePodIdentity = "azure-managed-prome-pi-test"
 )
 
 // Pod Identity test vars
