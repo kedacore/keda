@@ -333,7 +333,7 @@ func NewGitHubRunnerScaler(config *ScalerConfig) (Scaler, error) {
 
 	meta, err := parseGitHubRunnerMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing GitHub Runner metadata: %s", err)
+		return nil, fmt.Errorf("error parsing GitHub Runner metadata: %w", err)
 	}
 
 	return &githubRunnerScaler{
@@ -391,40 +391,41 @@ func parseGitHubRunnerMetadata(config *ScalerConfig) (*githubRunnerMetadata, err
 	meta := githubRunnerMetadata{}
 	meta.targetWorkflowQueueLength = defaultTargetWorkflowQueueLength
 
-	var err error
-
-	meta.runnerScope, err = getValueFromMetaOrEnv("runnerScope", config.TriggerMetadata, config.ResolvedEnv, "RUNNER_SCOPE")
-	if err != nil {
+	if val, err := getValueFromMetaOrEnv("runnerScope", config.TriggerMetadata, config.ResolvedEnv, "RUNNER_SCOPE"); err == nil && val != "" {
+		meta.runnerScope = val
+	} else {
 		return nil, err
 	}
 
-	meta.owner, err = getOwner(meta.runnerScope, config)
-	if err != nil {
+	if val, err := getOwner(meta.runnerScope, config); err == nil && val != "" {
+		meta.owner = val
+	} else {
 		return nil, err
 	}
 
-	meta.targetWorkflowQueueLength, err = getInt64ValueFromMetaOrEnv("targetWorkflowQueueLength", config, defaultTargetWorkflowQueueLength)
-	if err != nil {
+	if val, err := getInt64ValueFromMetaOrEnv("targetWorkflowQueueLength", config, defaultTargetWorkflowQueueLength); err == nil && val != -1 {
+		meta.targetWorkflowQueueLength = val
+	} else {
 		return nil, err
 	}
 
-	meta.activationTargetWorkflowQueueLength, err = getInt64ValueFromMetaOrEnv("activationTargetWorkflowQueueLength", config, defaultActivationTargetWorkflowQueueLength)
-	if err != nil {
+	if val, err := getInt64ValueFromMetaOrEnv("activationTargetWorkflowQueueLength", config, defaultActivationTargetWorkflowQueueLength); err == nil && val != -1 {
+		meta.activationTargetWorkflowQueueLength = val
+	} else {
 		return nil, err
 	}
 
-	labels, _ := getValueFromMetaOrEnv("labels", config.TriggerMetadata, config.ResolvedEnv, "LABELS")
-	if labels != "" {
-		meta.labels = strings.Split(labels, ",")
+	if val, err := getValueFromMetaOrEnv("labels", config.TriggerMetadata, config.ResolvedEnv, "LABELS"); err == nil && val != "" {
+		meta.labels = strings.Split(val, ",")
 	}
 
-	repos, _ := getValueFromMetaOrEnv("repos", config.TriggerMetadata, config.ResolvedEnv, "")
-	if repos != "" {
-		meta.repos = strings.Split(repos, ",")
+	if val, err := getValueFromMetaOrEnv("repos", config.TriggerMetadata, config.ResolvedEnv, ""); err == nil && val != "" {
+		meta.repos = strings.Split(val, ",")
 	}
 
-	meta.githubAPIURL, err = getValueFromMetaOrEnv("githubApiURL", config.TriggerMetadata, config.ResolvedEnv, "GITHUB_API_URL")
-	if err != nil {
+	if val, err := getValueFromMetaOrEnv("githubApiURL", config.TriggerMetadata, config.ResolvedEnv, "GITHUB_API_URL"); err == nil && val != "" {
+		meta.githubAPIURL = val
+	} else {
 		meta.githubAPIURL = defaultGithubAPIURL
 	}
 
@@ -432,9 +433,10 @@ func parseGitHubRunnerMetadata(config *ScalerConfig) (*githubRunnerMetadata, err
 		// Found the personalAccessToken in a parameter from TriggerAuthentication
 		meta.personalAccessToken = val
 	} else {
-		meta.personalAccessToken, err = getValueFromMetaOrEnv("personalAccessToken", config.TriggerMetadata, config.ResolvedEnv, "ACCESS_TOKEN")
-		if err != nil {
-			return nil, fmt.Errorf("no personalAccessToken given")
+		if val, err := getValueFromMetaOrEnv("personalAccessToken", config.TriggerMetadata, config.ResolvedEnv, "ACCESS_TOKEN"); err == nil && val != "" {
+			meta.personalAccessToken = val
+		} else {
+			return nil, err
 		}
 	}
 
