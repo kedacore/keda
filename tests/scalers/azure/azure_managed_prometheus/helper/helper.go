@@ -189,8 +189,8 @@ metadata:
 spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
-  MinReplicaCount: {{.MinReplicaCount}}
-  MaxReplicaCount: {{.MaxReplicaCount}}
+  minReplicaCount: {{.MinReplicaCount}}
+  maxReplicaCount: {{.MaxReplicaCount}}
   pollingInterval: 3
   cooldownPeriod:  1
   triggers:
