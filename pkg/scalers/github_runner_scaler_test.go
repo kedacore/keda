@@ -113,7 +113,7 @@ func TestGitHubRunnerParseMetadata(t *testing.T) {
 			if testData.isError && err != nil && err.Error() != testData.expectedError {
 				t.Fatal("expected error " + testData.expectedError + " but got error " + err.Error())
 			}
-			if !testData.isError && err != nil { //&& err.Error() != testData.expectedError {
+			if !testData.isError && err != nil { 
 				t.Fatalf("expected no error but got %s", err)
 			}
 		})
