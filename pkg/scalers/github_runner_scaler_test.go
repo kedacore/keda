@@ -35,7 +35,7 @@ var testGitHubRunnerResolvedEnv = map[string]string{
 }
 
 var testGitHubRunnerTokenEnv = map[string]string{
-	"ACCESS_TOKEN_DIFF":   "sample",
+	"ACCESS_TOKEN_DIFF": "sample",
 }
 
 var testGitHubRunnerMetadata = []parseGitHubRunnerMetadataTestData{
@@ -113,7 +113,7 @@ func TestGitHubRunnerParseMetadata(t *testing.T) {
 			if testData.isError && err != nil && err.Error() != testData.expectedError {
 				t.Fatal("expected error " + testData.expectedError + " but got error " + err.Error())
 			}
-			if !testData.isError && err != nil { 
+			if !testData.isError && err != nil {
 				t.Fatalf("expected no error but got %s", err)
 			}
 		})
