@@ -430,14 +430,14 @@ func parseGitHubRunnerMetadata(config *ScalerConfig) (*githubRunnerMetadata, err
 	}
 
 	if val, ok := config.AuthParams["personalAccessToken"]; ok && val != "" {
-		// Found the personalAccessToken in a parameter from TriggerAuthentication
+		// Found the organizationURL in a parameter from TriggerAuthentication
+		meta.personalAccessToken = val
+	} else if val, ok := config.TriggerMetadata["personalAccessTokenFromEnv"]; ok && val != "" {
+		meta.personalAccessToken = config.ResolvedEnv[val]
+	} else if val, ok := config.ResolvedEnv["ACCESS_TOKEN"]; ok && val != "" {
 		meta.personalAccessToken = val
 	} else {
-		if val, err := getValueFromMetaOrEnv("personalAccessToken", config.TriggerMetadata, config.ResolvedEnv, "ACCESS_TOKEN"); err == nil && val != "" {
-			meta.personalAccessToken = val
-		} else {
-			return nil, err
-		}
+		return nil, fmt.Errorf("no personalAccessToken given")
 	}
 
 	return &meta, nil
