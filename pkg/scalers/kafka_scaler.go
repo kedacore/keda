@@ -119,11 +119,28 @@ func NewKafkaScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
+func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata, logger logr.Logger) error {
 	meta.saslType = KafkaSASLTypeNone
+	var saslAuthType string
+	switch {
+	case config.TriggerMetadata["saslAuthType"] != "":
+		saslAuthType = config.TriggerMetadata["saslAuthType"]
+	default:
+		saslAuthType = ""
+	}
+
+	// FIXME: DEPRECATED, to be removed in version 2.12
 	if val, ok := config.AuthParams["sasl"]; ok {
-		val = strings.TrimSpace(val)
-		mode := kafkaSaslType(val)
+		logger.V(1).Info("Setting `sasl` in TriggerAuthentication is " +
+			"going to be deprecated in version 2.12. Please use `saslAuthType` in ScaleObject")
+		if saslAuthType != "" {
+			return errors.New("unable to set `saslAuthType` in ScaledObject and `sasl` in TriggerAuthentication together")
+		}
+		saslAuthType = val
+	}
+
+	if saslAuthType != "" {
+		mode := kafkaSaslType(saslAuthType)
 
 		if mode == KafkaSASLTypePlaintext || mode == KafkaSASLTypeSCRAMSHA256 || mode == KafkaSASLTypeSCRAMSHA512 || mode == KafkaSASLTypeOAuthbearer {
 			if config.AuthParams["username"] == "" {
@@ -151,30 +168,51 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	}
 
 	meta.enableTLS = false
+	enableTls := false
+	if val, ok := config.TriggerMetadata["enableTls"]; ok {
+		t, err := strconv.ParseBool(val)
+		if err != nil {
+			return fmt.Errorf("error parsing enableTls: %w", err)
+		}
+		enableTls = t
+	}
+
+	// FIXME: DEPRECATED, to be removed in version 2.12
 	if val, ok := config.AuthParams["tls"]; ok {
 		val = strings.TrimSpace(val)
-
-		if val == "enable" {
-			certGiven := config.AuthParams["cert"] != ""
-			keyGiven := config.AuthParams["key"] != ""
-			if certGiven && !keyGiven {
-				return errors.New("key must be provided with cert")
-			}
-			if keyGiven && !certGiven {
-				return errors.New("cert must be provided with key")
-			}
-			meta.ca = config.AuthParams["ca"]
-			meta.cert = config.AuthParams["cert"]
-			meta.key = config.AuthParams["key"]
-			if value, found := config.AuthParams["keyPassword"]; found {
-				meta.keyPassword = value
-			} else {
-				meta.keyPassword = ""
-			}
-			meta.enableTLS = true
-		} else if val != "disable" {
-			return fmt.Errorf("err incorrect value for TLS given: %s", val)
+		if enableTls {
+			return errors.New("unable to set `enableTls` in ScaledObject and `tls` in TriggerAuthentication together")
 		}
+		switch val {
+		case "enable":
+			enableTls = true
+		case "disable":
+			enableTls = false
+		default:
+			return fmt.Errorf("err incorrect TLS value given, got %s", val)
+		}
+		logger.V(1).Info("Setting `tls` in TriggerAuthentication is " +
+			"going to be deprecated in version 2.12. Please use `enableTls` in ScaleObject")
+	}
+
+	if enableTls {
+		certGiven := config.AuthParams["cert"] != ""
+		keyGiven := config.AuthParams["key"] != ""
+		if certGiven && !keyGiven {
+			return errors.New("key must be provided with cert")
+		}
+		if keyGiven && !certGiven {
+			return errors.New("cert must be provided with key")
+		}
+		meta.ca = config.AuthParams["ca"]
+		meta.cert = config.AuthParams["cert"]
+		meta.key = config.AuthParams["key"]
+		if value, found := config.AuthParams["keyPassword"]; found {
+			meta.keyPassword = value
+		} else {
+			meta.keyPassword = ""
+		}
+		meta.enableTLS = true
 	}
 
 	return nil
@@ -263,7 +301,7 @@ func parseKafkaMetadata(config *ScalerConfig, logger logr.Logger) (kafkaMetadata
 		meta.activationLagThreshold = t
 	}
 
-	if err := parseKafkaAuthParams(config, &meta); err != nil {
+	if err := parseKafkaAuthParams(config, &meta, logger); err != nil {
 		return meta, err
 	}
 

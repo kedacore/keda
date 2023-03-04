@@ -23,10 +23,18 @@ type parseKafkaMetadataTestData struct {
 	excludePersistentLag bool
 }
 
+// FIXME: DEPRECATED, to be removed in version 2.12
 type parseKafkaAuthParamsTestData struct {
 	authParams map[string]string
 	isError    bool
 	enableTLS  bool
+}
+
+type parseAuthParamsTestData struct {
+	metadata   map[string]string
+	authParams map[string]string
+	isError    bool
+	enableTls  bool
 }
 
 type kafkaMetricIdentifier struct {
@@ -45,6 +53,7 @@ var validKafkaMetadata = map[string]string{
 
 // A complete valid authParams example for sasl, with username and passwd
 var validWithAuthParams = map[string]string{
+	// FIXME: DEPRECATED, to be removed in version 2.12
 	"sasl":     "plaintext",
 	"username": "admin",
 	"password": "admin",
@@ -106,6 +115,7 @@ var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), true, false},
 }
 
+// FIXME: DEPRECATED, to be removed in version 2.12
 var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	// success, SASL only
 	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin"}, false, false},
@@ -158,8 +168,66 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	// failure, SASL + TLS, missing key
 	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert"}, true, false},
 }
+var parseAuthParamsTestDataset = []parseAuthParamsTestData{
+	//success, SASL plaintext
+	{map[string]string{"saslAuthType": "plaintext", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin"}, false, false},
+	// success, SASL scram_sha256
+	{map[string]string{"saslAuthType": "scram_sha256", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin"}, false, false},
+	// success, SASL scram_sha512
+	{map[string]string{"saslAuthType": "scram_sha512", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin"}, false, false},
+	// success, TLS only
+	{map[string]string{"enableTls": "true", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"ca": "caaa", "cert": "ceert", "key": "keey"}, false, true},
+	// success, TLS cert/key and assumed public CA
+	{map[string]string{"enableTls": "true", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"cert": "ceert", "key": "keey"}, false, true},
+	// success, TLS cert/key + key password and assumed public CA
+	{map[string]string{"enableTls": "true", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"cert": "ceert", "key": "keey", "keyPassword": "keeyPassword"}, false, true},
+	// success, TLS CA only
+	{map[string]string{"enableTls": "true", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"ca": "caaa"}, false, true},
+	// success, SASL + TLS
+	{map[string]string{"saslAuthType": "plaintext", "enableTls": "true", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, true},
+	// success, SASL + TLS explicitly disabled
+	{map[string]string{"saslAuthType": "plaintext", "enableTls": "false", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin"}, false, false},
+	// success, SASL OAUTHBEARER + TLS explicitly disabled
+	{map[string]string{"saslAuthType": "oauthbearer", "enableTls": "false", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com"}, false, false},
+	// failure, SASL OAUTHBEARER + TLS explicitly disable +  bad SASL type
+	{map[string]string{"saslAuthType": "foo", "enableTls": "false", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com"}, true, false},
+	// success, SASL OAUTHBEARER + TLS missing scope
+	{map[string]string{"saslAuthType": "oauthbearer", "enableTls": "false", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin", "oauthTokenEndpointUri": "https://website.com"}, false, false},
+	// failure, SASL OAUTHBEARER + TLS missing oauthTokenEndpointUri
+	{map[string]string{"saslAuthType": "oauthbearer", "enableTls": "false", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": ""}, true, false},
+	// failure, SASL incorrect type
+	{map[string]string{"saslAuthType": "foo", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin"}, true, false},
+	// failure, SASL missing username
+	{map[string]string{"saslAuthType": "plaintext", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"password": "admin"}, true, false},
+	// failure, SASL missing password
+	{map[string]string{"saslAuthType": "plaintext", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin"}, true, false},
+	// failure, TLS missing cert
+	{map[string]string{"enableTls": "true", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"ca": "caaa", "key": "keey"}, true, false},
+	// failure, TLS missing key
+	{map[string]string{"enableTls": "true", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"ca": "caaa", "cert": "ceert"}, true, false},
+	// failure, TLS invalid
+	{map[string]string{"enableTls": "random", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"tls": "yes", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
+	// failure, SASL + TLS, incorrect SASL type
+	{map[string]string{"saslAuthType": "foo", "enableTls": "true", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
+	// failure, SASL + TLS, incorrect tls
+	{map[string]string{"saslAuthType": "plaintext", "enableTls": "foo", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
+	// failure, SASL + TLS, missing username
+	{map[string]string{"saslAuthType": "plaintext", "enableTls": "true", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"password": "admin", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
+	// failure, SASL + TLS, missing password
+	{map[string]string{"saslAuthType": "plaintext", "enableTls": "true", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
+	// failure, SASL + TLS, missing cert
+	{map[string]string{"saslAuthType": "plaintext", "enableTls": "true", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin", "ca": "caaa", "key": "keey"}, true, false},
+	// failure, SASL + TLS, missing key
+	{map[string]string{"saslAuthType": "plaintext", "enableTls": "true", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "ca": "caaa", "cert": "ceert"}, true, false},
 
-var parseKafkaOAuthbreakerAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
+	// FIXME: DEPRECATED, to be removed in version 2.12
+	// failure, setting SASL values in both places
+	{map[string]string{"saslAuthType": "scram_sha512", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"sasl": "scram_sha512", "username": "admin", "password": "admin"}, true, false},
+	// failure, setting TLS values in both places
+	{map[string]string{"enableTls": "true", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, true},
+}
+
+var parseKafkaOAuthbrearerAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	// success, SASL OAUTHBEARER + TLS
 	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, false, false},
 	// success, SASL OAUTHBEARER + TLS multiple scopes
@@ -243,6 +311,7 @@ func TestGetBrokers(t *testing.T) {
 }
 
 func TestKafkaAuthParams(t *testing.T) {
+	// FIXME: DEPRECATED, to be removed in version 2.12
 	for _, testData := range parseKafkaAuthParamsTestDataset {
 		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: validKafkaMetadata, AuthParams: testData.authParams}, logr.Discard())
 
@@ -270,10 +339,41 @@ func TestKafkaAuthParams(t *testing.T) {
 			}
 		}
 	}
+
+	for id, testData := range parseAuthParamsTestDataset {
+		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
+
+		if err != nil && !testData.isError {
+			t.Errorf("Test case: %v. Expected success but got error %v", id, err)
+		}
+		if testData.isError && err == nil {
+			t.Errorf("Test case: %v. Expected error but got success", id)
+		}
+		if !testData.isError {
+			if testData.metadata["enableTls"] == "true" && !meta.enableTLS {
+				t.Errorf("Test case: %v. Expected enableTls to be set to %v but got %v\n", id, testData.metadata["enableTls"], meta.enableTLS)
+
+			}
+			if meta.enableTLS {
+				if meta.ca != testData.authParams["ca"] {
+					t.Errorf("Test case: %v. Expected ca to be set to %v but got %v\n", id, testData.authParams["ca"], meta.ca)
+				}
+				if meta.cert != testData.authParams["cert"] {
+					t.Errorf("Test case: %v. Expected cert to be set to %v but got %v\n", id, testData.authParams["cert"], meta.cert)
+				}
+				if meta.key != testData.authParams["key"] {
+					t.Errorf("Test case: %v. Expected key to be set to %v but got %v\n", id, testData.authParams["key"], meta.key)
+				}
+				if meta.keyPassword != testData.authParams["keyPassword"] {
+					t.Errorf("Test case: %v. Expected key to be set to %v but got %v\n", id, testData.authParams["keyPassword"], meta.keyPassword)
+				}
+			}
+		}
+	}
 }
 
-func TestKafkaOAuthbreakerAuthParams(t *testing.T) {
-	for _, testData := range parseKafkaOAuthbreakerAuthParamsTestDataset {
+func TestKafkaOAuthbrearerAuthParams(t *testing.T) {
+	for _, testData := range parseKafkaOAuthbrearerAuthParamsTestDataset {
 		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: validKafkaMetadata, AuthParams: testData.authParams}, logr.Discard())
 
 		if err != nil && !testData.isError {
