@@ -84,3 +84,7 @@ func TestRemoveCertManager(t *testing.T) {
 
 	DeleteNamespace(t, KubeClient, CertManagerNamespace)
 }
+
+func TestRemoveAzureManagedPrometheusComponents(t *testing.T) {
+	KubectlDeleteWithTemplate(t, templateData{}, "azureManagedPrometheusConfigMapTemplate", azureManagedPrometheusConfigMapTemplate)
+}

@@ -249,3 +249,8 @@ func TestSetupAadPodIdentityComponents(t *testing.T) {
 		AzureAdPodIdentityNamespace, AzureADMsiClientID, AzureADMsiID))
 	require.NoErrorf(t, err, "cannot install aad pod identity webhook - %s", err)
 }
+
+func TestSetupAzureManagedPrometheusComponents(t *testing.T) {
+	// this will install config map in kube-system namespace, as needed by azure manage prometheus collector agent
+	KubectlApplyWithTemplate(t, templateData{}, "azureManagedPrometheusConfigMapTemplate", azureManagedPrometheusConfigMapTemplate)
+}
