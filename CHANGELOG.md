@@ -44,7 +44,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Breaking Changes
 
-- TODO
+- **Kafka Scaler**: move `tls` and `sasl` in TriggerAuthentication to `enableTls` and `saslAuthType` in ScaledObject ([#4232](https://github.com/kedacore/keda/issues/4322))
 
 ### New
 

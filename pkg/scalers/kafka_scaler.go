@@ -168,26 +168,26 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata, logger logr
 	}
 
 	meta.enableTLS = false
-	enableTls := false
+	enableTLS := false
 	if val, ok := config.TriggerMetadata["enableTls"]; ok {
 		t, err := strconv.ParseBool(val)
 		if err != nil {
 			return fmt.Errorf("error parsing enableTls: %w", err)
 		}
-		enableTls = t
+		enableTLS = t
 	}
 
 	// FIXME: DEPRECATED, to be removed in version 2.12
 	if val, ok := config.AuthParams["tls"]; ok {
 		val = strings.TrimSpace(val)
-		if enableTls {
+		if enableTLS {
 			return errors.New("unable to set `enableTls` in ScaledObject and `tls` in TriggerAuthentication together")
 		}
 		switch val {
 		case "enable":
-			enableTls = true
+			enableTLS = true
 		case "disable":
-			enableTls = false
+			enableTLS = false
 		default:
 			return fmt.Errorf("err incorrect TLS value given, got %s", val)
 		}
@@ -195,7 +195,7 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata, logger logr
 			"going to be deprecated in version 2.12. Please use `enableTls` in ScaleObject")
 	}
 
-	if enableTls {
+	if enableTLS {
 		certGiven := config.AuthParams["cert"] != ""
 		keyGiven := config.AuthParams["key"] != ""
 		if certGiven && !keyGiven {

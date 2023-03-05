@@ -34,7 +34,7 @@ type parseAuthParamsTestData struct {
 	metadata   map[string]string
 	authParams map[string]string
 	isError    bool
-	enableTls  bool
+	enableTLS  bool
 }
 
 type kafkaMetricIdentifier struct {
@@ -169,7 +169,7 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert"}, true, false},
 }
 var parseAuthParamsTestDataset = []parseAuthParamsTestData{
-	//success, SASL plaintext
+	// success, SASL plaintext
 	{map[string]string{"saslAuthType": "plaintext", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin"}, false, false},
 	// success, SASL scram_sha256
 	{map[string]string{"saslAuthType": "scram_sha256", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin"}, false, false},
@@ -352,7 +352,6 @@ func TestKafkaAuthParams(t *testing.T) {
 		if !testData.isError {
 			if testData.metadata["enableTls"] == "true" && !meta.enableTLS {
 				t.Errorf("Test case: %v. Expected enableTls to be set to %v but got %v\n", id, testData.metadata["enableTls"], meta.enableTLS)
-
 			}
 			if meta.enableTLS {
 				if meta.ca != testData.authParams["ca"] {
