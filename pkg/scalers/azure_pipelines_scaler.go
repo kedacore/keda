@@ -219,11 +219,14 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 		meta.demands = ""
 	}
 	
+	meta.jobsToFetch = 250
 	if val, ok := config.TriggerMetadata["jobsToFetch"]; ok && val != "" {
-		meta.jobsToFetch = config.TriggerMetadata["jobsToFetch"]
-	} else {
-		meta.jobsToFetch = 250
-	}
+		jobsToFetch, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing jobsToFetch: %w", err)
+		}
+		meta.jobsToFetch = jobsToFetch
+	} 
 
 	meta.requireAllDemands = false
 	if val, ok := config.TriggerMetadata["requireAllDemands"]; ok && val != "" {
