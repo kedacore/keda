@@ -15,6 +15,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
+	"github.com/kedacore/keda/v2/tests/utils/helper"
 )
 
 func TestVerifyCommands(t *testing.T) {
@@ -53,6 +54,12 @@ func TestSetupHelm(t *testing.T) {
 
 	_, err = ExecuteCommand("helm version")
 	require.NoErrorf(t, err, "cannot get helm version - %s", err)
+}
+
+// doing early in the sequence of tests so that config map update has time to be effective before the azure tests get executed.
+func TestSetupAzureManagedPrometheusComponents(t *testing.T) {
+	// this will install config map in kube-system namespace, as needed by azure manage prometheus collector agent
+	KubectlApplyWithTemplate(t, helper.EmptyTemplateData{}, "azureManagedPrometheusConfigMapTemplate", helper.AzureManagedPrometheusConfigMapTemplate)
 }
 
 func TestSetupWorkloadIdentityComponents(t *testing.T) {
