@@ -133,7 +133,7 @@ type azurePipelinesMetadata struct {
 	poolID                               int
 	targetPipelinesQueueLength           int64
 	activationTargetPipelinesQueueLength int64
-	jobsToFetch			     int64
+	jobsToFetch                          int64
 	scalerIndex                          int
 	requireAllDemands                    bool
 }
@@ -218,7 +218,7 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 	} else {
 		meta.demands = ""
 	}
-	
+
 	meta.jobsToFetch = 250
 	if val, ok := config.TriggerMetadata["jobsToFetch"]; ok && val != "" {
 		jobsToFetch, err := strconv.ParseInt(val, 10, 64)
@@ -226,7 +226,7 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 			return nil, fmt.Errorf("error parsing jobsToFetch: %w", err)
 		}
 		meta.jobsToFetch = jobsToFetch
-	} 
+	}
 
 	meta.requireAllDemands = false
 	if val, ok := config.TriggerMetadata["requireAllDemands"]; ok && val != "" {
