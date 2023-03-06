@@ -133,6 +133,7 @@ type azurePipelinesMetadata struct {
 	poolID                               int
 	targetPipelinesQueueLength           int64
 	activationTargetPipelinesQueueLength int64
+	jobsToFetch			     int
 	scalerIndex                          int
 	requireAllDemands                    bool
 }
@@ -216,6 +217,12 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 		meta.demands = config.TriggerMetadata["demands"]
 	} else {
 		meta.demands = ""
+	}
+	
+	if val, ok := config.TriggerMetadata["jobsToFetch"]; ok && val != "" {
+		meta.jobsToFetch = config.TriggerMetadata["jobsToFetch"]
+	} else {
+		meta.jobsToFetch = 250
 	}
 
 	meta.requireAllDemands = false
@@ -322,7 +329,7 @@ func getAzurePipelineRequest(ctx context.Context, url string, metadata *azurePip
 }
 
 func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context) (int64, error) {
-	url := fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests?$top=250", s.metadata.organizationURL, s.metadata.poolID)
+	url := fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests?$top=%d", s.metadata.organizationURL, s.metadata.poolID, s.metadata.jobsToFetch)
 	body, err := getAzurePipelineRequest(ctx, url, s.metadata, s.httpClient)
 	if err != nil {
 		return -1, err
