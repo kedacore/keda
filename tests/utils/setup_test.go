@@ -56,6 +56,12 @@ func TestSetupHelm(t *testing.T) {
 	require.NoErrorf(t, err, "cannot get helm version - %s", err)
 }
 
+// doing early in the sequence of tests so that config map update has time to be effective before the azure tests get executed.
+func TestSetupAzureManagedPrometheusComponents(t *testing.T) {
+	// this will install config map in kube-system namespace, as needed by azure manage prometheus collector agent
+	KubectlApplyWithTemplate(t, helper.EmptyTemplateData{}, "azureManagedPrometheusConfigMapTemplate", helper.AzureManagedPrometheusConfigMapTemplate)
+}
+
 func TestSetupWorkloadIdentityComponents(t *testing.T) {
 	if AzureRunWorkloadIdentityTests == "" || AzureRunWorkloadIdentityTests == StringFalse {
 		t.Skip("skipping as workload identity tests are disabled")
@@ -249,9 +255,4 @@ func TestSetupAadPodIdentityComponents(t *testing.T) {
 		"--set azureIdentities.keda.binding.name=keda",
 		AzureAdPodIdentityNamespace, AzureADMsiClientID, AzureADMsiID))
 	require.NoErrorf(t, err, "cannot install aad pod identity webhook - %s", err)
-}
-
-func TestSetupAzureManagedPrometheusComponents(t *testing.T) {
-	// this will install config map in kube-system namespace, as needed by azure manage prometheus collector agent
-	KubectlApplyWithTemplate(t, helper.EmptyTemplateData{}, "azureManagedPrometheusConfigMapTemplate", helper.AzureManagedPrometheusConfigMapTemplate)
 }
