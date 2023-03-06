@@ -156,6 +156,11 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 	prometheusServer := &prommetrics.PrometheusMetricServer{}
 	go func() { prometheusServer.NewServer(fmt.Sprintf(":%v", prometheusMetricsPort), prometheusMetricsPath) }()
 
+	stopCh := make(chan struct{})
+	if err := runScaledObjectController(ctx, mgr, handler, logger, externalMetricsInfo, externalMetricsInfoLock, maxConcurrentReconciles, stopCh, secretInformer.Informer().HasSynced); err != nil {
+		return nil, nil, err
+	}
+
 	logger.Info("Connecting Metrics Service gRPC client to the server", "address", metricsServiceAddr)
 	grpcClient, err := metricsservice.NewGrpcClient(metricsServiceAddr, a.SecureServing.ServerCert.CertDirectory)
 	if err != nil {
@@ -163,10 +168,6 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 		return nil, nil, err
 	}
 
-	stopCh := make(chan struct{})
-	if err := runScaledObjectController(ctx, mgr, handler, logger, externalMetricsInfo, externalMetricsInfoLock, maxConcurrentReconciles, stopCh, secretInformer.Informer().HasSynced); err != nil {
-		return nil, nil, err
-	}
 	return kedaprovider.NewProvider(ctx, logger, handler, mgr.GetClient(), *grpcClient, useMetricsServiceGrpc, namespace, externalMetricsInfo, externalMetricsInfoLock), stopCh, nil
 }
 
@@ -208,6 +209,23 @@ func getWatchNamespace() (string, error) {
 		return "", fmt.Errorf("%s must be set", WatchNamespaceEnvVar)
 	}
 	return ns, nil
+}
+
+// printWelcomeMsg prints welcome message during the start of the adater
+func printWelcomeMsg(cmd *Adapter) error {
+	clientset, err := cmd.DiscoveryClient()
+	if err != nil {
+		logger.Error(err, "not able to get Kubernetes version")
+		return err
+	}
+	version, err := clientset.ServerVersion()
+	if err != nil {
+		logger.Error(err, "not able to get Kubernetes version")
+		return err
+	}
+	kedautil.PrintWelcome(logger, kedautil.NewK8sVersion(version), "metrics server")
+
+	return nil
 }
 
 func main() {
@@ -254,26 +272,17 @@ func main() {
 		return
 	}
 
+	err = printWelcomeMsg(cmd)
+	if err != nil {
+		return
+	}
+
 	kedaProvider, stopCh, err := cmd.makeProvider(ctx, time.Duration(globalHTTPTimeoutMS)*time.Millisecond, controllerMaxReconciles)
 	if err != nil {
 		logger.Error(err, "making provider")
 		return
 	}
 	cmd.WithExternalMetrics(kedaProvider)
-
-	clientset, err := cmd.DiscoveryClient()
-	if err != nil {
-		logger.Error(err, "not able to get Kubernetes version")
-		return
-	}
-	version, err := clientset.ServerVersion()
-	if err != nil {
-		logger.Error(err, "not able to get Kubernetes version")
-		return
-	}
-	kubeVersion := kedautil.NewK8sVersion(version)
-
-	kedautil.PrintWelcome(logger, kubeVersion, "metrics server")
 
 	logger.Info(cmd.Message)
 	if err = cmd.Run(stopCh); err != nil {

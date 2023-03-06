@@ -56,6 +56,8 @@ type KedaProvider struct {
 var (
 	logger            logr.Logger
 	promMetricsServer prommetrics.PrometheusMetricServer
+
+	grpcClientConnected bool
 )
 
 // NewProvider returns an instance of KedaProvider
@@ -72,6 +74,17 @@ func NewProvider(ctx context.Context, adapterLogger logr.Logger, scaleHandler sc
 	}
 	logger = adapterLogger.WithName("provider")
 	logger.Info("starting")
+
+	go func() {
+		if !grpcClient.WaitForConnectionReady(ctx, logger) {
+			grpcClientConnected = false
+			logger.Error(fmt.Errorf("timeout while waiting to establish gRPC connection to KEDA Metrics Service server"), "timeout", "server", grpcClient.GetServerURL())
+		} else if !grpcClientConnected {
+			grpcClientConnected = true
+			logger.Info("Connection to KEDA Metrics Service gRPC server has been successfully established", "server", grpcClient.GetServerURL())
+		}
+	}()
+
 	return provider
 }
 
@@ -93,8 +106,13 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 	// Get Metrics from Metrics Service gRPC Server
 	if p.useMetricsServiceGrpc {
 		if !p.grpcClient.WaitForConnectionReady(ctx, logger) {
-			logger.Error(fmt.Errorf("timeout while waiting to establish gRPC connection to KEDA Metrics Server"), "timeout")
+			grpcClientConnected = false
+			logger.Error(fmt.Errorf("timeout while waiting to establish gRPC connection to KEDA Metrics Service server"), "timeout", "server", p.grpcClient.GetServerURL())
 			return nil, err
+		}
+		if !grpcClientConnected {
+			grpcClientConnected = true
+			logger.Info("Connection to KEDA Metrics Service gRPC server has been successfully established", "server", p.grpcClient.GetServerURL())
 		}
 
 		// selector is in form: `scaledobject.keda.sh/name: scaledobject-name`

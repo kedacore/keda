@@ -107,3 +107,8 @@ func (c *GrpcClient) WaitForConnectionReady(ctx context.Context, logger logr.Log
 	}
 	return true
 }
+
+// GetServerURL returns url of the gRPC server this client is connected to
+func (c *GrpcClient) GetServerURL() string {
+	return c.connection.Target()
+}
