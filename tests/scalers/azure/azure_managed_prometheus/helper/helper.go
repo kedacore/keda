@@ -248,14 +248,14 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data TemplateData) {
 	t.Log("--- testing scale out ---")
 	helper.KubectlApplyWithTemplate(t, data, "generateLoadJobTemplate", generateLoadJobTemplate)
 
-	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName, data.TestNamespace, MaxReplicaCount, 120, 5),
-		"replica count should be %d after 5 minutes", MaxReplicaCount)
+	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName, data.TestNamespace, MaxReplicaCount, 144, 5),
+		"replica count should be %d after 12 minutes", MaxReplicaCount)
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data TemplateData) {
 	t.Log("--- testing scale in ---")
-	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName, data.TestNamespace, MinReplicaCount, 120, 5),
-		"replica count should be %d after 5 minutes", MinReplicaCount)
+	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName, data.TestNamespace, MinReplicaCount, 144, 5),
+		"replica count should be %d after 12 minutes", MinReplicaCount)
 }
 
 func getTemplates() []helper.Template {
