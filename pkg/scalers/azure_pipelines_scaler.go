@@ -322,7 +322,7 @@ func getAzurePipelineRequest(ctx context.Context, url string, metadata *azurePip
 }
 
 func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context) (int64, error) {
-	url := fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests", s.metadata.organizationURL, s.metadata.poolID)
+	url := fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests?$top=250", s.metadata.organizationURL, s.metadata.poolID)
 	body, err := getAzurePipelineRequest(ctx, url, s.metadata, s.httpClient)
 	if err != nil {
 		return -1, err
