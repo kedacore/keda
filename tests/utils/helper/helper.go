@@ -1,9 +1,9 @@
-package utils
+package helper
 
-type templateData struct{}
+type EmptyTemplateData struct{}
 
 const (
-	azureManagedPrometheusConfigMapTemplate = `apiVersion: v1
+	AzureManagedPrometheusConfigMapTemplate = `apiVersion: v1
 kind: ConfigMap
 metadata:
   name: ama-metrics-prometheus-config

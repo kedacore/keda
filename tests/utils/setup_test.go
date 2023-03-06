@@ -15,6 +15,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
+	"github.com/kedacore/keda/v2/tests/utils/helper"
 )
 
 func TestVerifyCommands(t *testing.T) {
@@ -252,5 +253,5 @@ func TestSetupAadPodIdentityComponents(t *testing.T) {
 
 func TestSetupAzureManagedPrometheusComponents(t *testing.T) {
 	// this will install config map in kube-system namespace, as needed by azure manage prometheus collector agent
-	KubectlApplyWithTemplate(t, templateData{}, "azureManagedPrometheusConfigMapTemplate", azureManagedPrometheusConfigMapTemplate)
+	KubectlApplyWithTemplate(t, helper.EmptyTemplateData{}, "azureManagedPrometheusConfigMapTemplate", helper.AzureManagedPrometheusConfigMapTemplate)
 }
