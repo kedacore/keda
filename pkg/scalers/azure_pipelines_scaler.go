@@ -133,7 +133,7 @@ type azurePipelinesMetadata struct {
 	poolID                               int
 	targetPipelinesQueueLength           int64
 	activationTargetPipelinesQueueLength int64
-	jobsToFetch			     int
+	jobsToFetch			     int64
 	scalerIndex                          int
 	requireAllDemands                    bool
 }
