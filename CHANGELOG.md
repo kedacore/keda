@@ -107,6 +107,7 @@ New deprecation(s):
 - **General**: Compare error with `errors.Is` ([#4004](https://github.com/kedacore/keda/pull/4004))
 - **General**: Consolidate `GetMetrics` and `IsActive` to `GetMetricsAndActivity` for Azure Event Hub, Cron and External scalers ([#4015](https://github.com/kedacore/keda/issues/4015))
 - **General**: Improve test coverage in `pkg/util` ([#3871](https://github.com/kedacore/keda/issues/3871))
+- **General**: Metrics Server: print a message on successful connection to gRPC server ([#4190](https://github.com/kedacore/keda/issues/4190))
 - **General**: Pass deep copy object to scalers cache from the ScaledObject controller ([#4207](https://github.com/kedacore/keda/issues/4207))
 - **General**: Review CodeQL rules and enable it on PRs ([#4032](https://github.com/kedacore/keda/pull/4032))
 - **RabbitMQ Scaler:** Move from `streadway/amqp` to `rabbitmq/amqp091-go` ([#4004](https://github.com/kedacore/keda/pull/4039))
