@@ -41,7 +41,7 @@ var testAzurePipelinesMetadata = []parseAzurePipelinesMetadataTestData{
 	// activationTargetPipelinesQueueLength malformed
 	{"all properly formed", map[string]string{"organizationURLFromEnv": "AZP_URL", "personalAccessTokenFromEnv": "AZP_TOKEN", "poolID": "1", "targetPipelinesQueueLength": "1", "activationTargetPipelinesQueueLength": "A"}, true, testAzurePipelinesResolvedEnv, map[string]string{}},
 	// jobsToFetch malformed
-	{"jobsToFetch malformed", map[string]string{"organizationURLFromEnv": "AZP_URL", "personalAccessTokenFromEnv": "AZP_TOKEN", "poolID": "1", "targetPipelinesQueueLength": "1", "jobsToFetch": "test"}, false, testAzurePipelinesResolvedEnv, map[string]string{}},
+	{"jobsToFetch malformed", map[string]string{"organizationURLFromEnv": "AZP_URL", "personalAccessTokenFromEnv": "AZP_TOKEN", "poolID": "1", "targetPipelinesQueueLength": "1", "jobsToFetch": "test"}, true, testAzurePipelinesResolvedEnv, map[string]string{}},
 
 }
 
