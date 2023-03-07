@@ -13,8 +13,6 @@ import (
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
@@ -294,17 +292,9 @@ func (s *awsCloudwatchScaler) GetMetricsAndActivity(ctx context.Context, metricN
 }
 
 func (s *awsCloudwatchScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
-	var metricNameSuffix string
-
-	if s.metadata.expression != "" {
-		metricNameSuffix = s.metadata.metricsName
-	} else {
-		metricNameSuffix = s.metadata.dimensionName[0]
-	}
-
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-cloudwatch-%s", metricNameSuffix))),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, "aws-cloudwatch"),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.targetMetricValue),
 	}
