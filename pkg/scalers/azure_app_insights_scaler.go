@@ -28,7 +28,7 @@ const (
 )
 
 var (
-	azureAppInsightsDefaultIgnoreNullValues = true
+	azureAppInsightsDefaultIgnoreNullValues = false
 )
 
 type azureAppInsightsMetadata struct {
