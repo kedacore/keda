@@ -120,18 +120,6 @@ func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, e
 	var err error
 	meta := awsCloudwatchMetadata{}
 
-	if val, ok := config.TriggerMetadata["namespace"]; ok && val != "" {
-		meta.namespace = val
-	} else {
-		return nil, fmt.Errorf("namespace not given")
-	}
-
-	if val, ok := config.TriggerMetadata["metricName"]; ok && val != "" {
-		meta.metricsName = val
-	} else {
-		return nil, fmt.Errorf("metric name not given")
-	}
-
 	if config.TriggerMetadata["expression"] != "" {
 		if val, ok := config.TriggerMetadata["expression"]; ok && val != "" {
 			meta.expression = val
@@ -139,6 +127,18 @@ func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, e
 			return nil, fmt.Errorf("expression not given")
 		}
 	} else {
+		if val, ok := config.TriggerMetadata["namespace"]; ok && val != "" {
+			meta.namespace = val
+		} else {
+			return nil, fmt.Errorf("namespace not given")
+		}
+
+		if val, ok := config.TriggerMetadata["metricName"]; ok && val != "" {
+			meta.metricsName = val
+		} else {
+			return nil, fmt.Errorf("metric name not given")
+		}
+
 		if val, ok := config.TriggerMetadata["dimensionName"]; ok && val != "" {
 			meta.dimensionName = strings.Split(val, ";")
 		} else {
@@ -331,7 +331,6 @@ func (s *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 					Expression: aws.String(s.metadata.expression),
 					Id:         aws.String("q1"),
 					Period:     aws.Int64(s.metadata.metricStatPeriod),
-					Label:      aws.String(s.metadata.metricsName),
 				},
 			},
 		}
