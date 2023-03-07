@@ -24,6 +24,11 @@ const (
 	azureAppInsightsMetricAggregationTypeName     = "metricAggregationType"
 	azureAppInsightsMetricFilterName              = "metricFilter"
 	azureAppInsightsTenantIDName                  = "tenantId"
+	azureAppInsightsIgnoreNullValues              = "ignoreNullValues"
+)
+
+var (
+	azureAppInsightsDefaultIgnoreNullValues = true
 )
 
 type azureAppInsightsMetadata struct {
@@ -31,6 +36,11 @@ type azureAppInsightsMetadata struct {
 	targetValue           float64
 	activationTargetValue float64
 	scalerIndex           int
+	// sometimes we should consider there is an error we can accept
+	// default value is true/t, to ignore the null value returned from prometheus
+	// change to false/f if you can not accept prometheus returning null values
+	// https://github.com/kedacore/keda/issues/4316
+	ignoreNullValues bool
 }
 
 type azureAppInsightsScaler struct {
@@ -139,6 +149,16 @@ func parseAzureAppInsightsMetadata(config *ScalerConfig, logger logr.Logger) (*a
 	}
 	meta.azureAppInsightsInfo.ActiveDirectoryEndpoint = activeDirectoryEndpoint
 
+	meta.ignoreNullValues = azureAppInsightsDefaultIgnoreNullValues
+	if val, ok := config.TriggerMetadata[azureAppInsightsIgnoreNullValues]; ok && val != "" {
+		azureAppInsightsIgnoreNullValues, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("err incorrect value for azureAppInsightsIgnoreNullValues given: %s, "+
+				"please use true or false", val)
+		}
+		meta.ignoreNullValues = azureAppInsightsIgnoreNullValues
+	}
+
 	// Required authentication parameters below
 
 	val, err = getParameterFromConfig(config, azureAppInsightsAppIDName, true)
@@ -182,7 +202,7 @@ func (s *azureAppInsightsScaler) GetMetricSpecForScaling(context.Context) []v2.M
 
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *azureAppInsightsScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	val, err := azure.GetAzureAppInsightsMetricValue(ctx, s.metadata.azureAppInsightsInfo, s.podIdentity)
+	val, err := azure.GetAzureAppInsightsMetricValue(ctx, s.metadata.azureAppInsightsInfo, s.podIdentity, s.metadata.ignoreNullValues)
 	if err != nil {
 		s.logger.Error(err, "error getting azure app insights metric")
 		return []external_metrics.ExternalMetricValue{}, false, err

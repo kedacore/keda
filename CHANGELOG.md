@@ -66,6 +66,7 @@ Here is an overview of all new **experimental** features:
 - **General**: Add a warning when KEDA run outside supported k8s versions ([#4130](https://github.com/kedacore/keda/issues/4130))
 - **General**: Use (self-signed) certificates for all the communications (internals and externals) ([#3931](https://github.com/kedacore/keda/issues/3931))
 - **General**: Use TLS1.2 as minimum TLS version ([#4193](https://github.com/kedacore/keda/issues/4193))
+- **Azure Application Insights Scaler**: Add ignoreNullValues to ignore errors when the data returned has null in its values ([#4316](https://github.com/kedacore/keda/issues/4316))
 - **Azure Pipelines Scaler**: Improve error logging for `validatePoolID` ([#3996](https://github.com/kedacore/keda/issues/3996))
 - **Azure Pipelines Scaler**: New configuration parameter `requireAllDemands` to scale only if jobs request all demands provided by the scaling definition ([#4138](https://github.com/kedacore/keda/issues/4138))
 - **Hashicorp Vault**: Add support to secrets backend version 1 ([#2645](https://github.com/kedacore/keda/issues/2645))
