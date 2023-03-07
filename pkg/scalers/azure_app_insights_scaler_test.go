@@ -150,7 +150,7 @@ var azureAppInsightsScalerData = []azureAppInsightsScalerTestData{
 		},
 		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload},
 	}},
-	{name: "incorrect ignoreNullValues", isError: false, config: ScalerConfig{
+	{name: "incorrect ignoreNullValues", isError: true, config: ScalerConfig{
 		TriggerMetadata: map[string]string{
 			"targetValue": "11", "applicationInsightsId": "1234", "metricId": "unittest/test", "metricAggregationTimespan": "01:02", "metricAggregationType": "max", "metricFilter": "cloud/roleName eq 'test'", "tenantId": "1234", "ignoreNullValues": "not a boolean",
 		},
