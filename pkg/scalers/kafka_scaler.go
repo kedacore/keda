@@ -212,7 +212,8 @@ func parseKafkaMetadata(config *ScalerConfig, logger logr.Logger) (kafkaMetadata
 	}
 
 	meta.partitionLimitation = nil
-	if config.TriggerMetadata["partitionLimitation"] != "" {
+	partitionLimitationMetadata := strings.TrimSpace(config.TriggerMetadata["partitionLimitation"])
+	if partitionLimitationMetadata != "" {
 		if meta.topic == "" {
 			logger.V(1).Info("no specific topic set, ignoring partitionLimitation setting")
 		} else {
