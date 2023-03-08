@@ -40,6 +40,7 @@ func (o *Options) HTTPClient() *http.Client {
 		o.httpClient = &http.Client{
 			Timeout: time.Second * time.Duration(o.HTTPRequestTimeout()),
 			Transport: &http.Transport{
+				Proxy: http.ProxyFromEnvironment,
 				DialContext: (&net.Dialer{
 					Timeout: 5 * time.Second,
 				}).DialContext,

@@ -1,3 +1,10 @@
+# v7.17.7
+
+## Client
+
+* Added the option to override the `Content-Type` to enable usage of alternative serialization. ([#542](https://github.com/elastic/go-elasticsearch/pull/542))
+* API is compatible with Elasticsearch 7.17.7
+
 # v7.17.1
 
 ## Client

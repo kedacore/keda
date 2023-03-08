@@ -31,20 +31,20 @@ import (
 // Strings returns a cel.EnvOption to configure extended functions for string manipulation.
 // As a general note, all indices are zero-based.
 //
-// CharAt
+// # CharAt
 //
 // Returns the character at the given position. If the position is negative, or greater than
 // the length of the string, the function will produce an error:
 //
-//     <string>.charAt(<int>) -> <string>
+//	<string>.charAt(<int>) -> <string>
 //
 // Examples:
 //
-//     'hello'.charAt(4)  // return 'o'
-//     'hello'.charAt(5)  // return ''
-//     'hello'.charAt(-1) // error
+//	'hello'.charAt(4)  // return 'o'
+//	'hello'.charAt(5)  // return ''
+//	'hello'.charAt(-1) // error
 //
-// IndexOf
+// # IndexOf
 //
 // Returns the integer index of the first occurrence of the search string. If the search string is
 // not found the function returns -1.
@@ -52,19 +52,19 @@ import (
 // The function also accepts an optional position from which to begin the substring search. If the
 // substring is the empty string, the index where the search starts is returned (zero or custom).
 //
-//     <string>.indexOf(<string>) -> <int>
-//     <string>.indexOf(<string>, <int>) -> <int>
+//	<string>.indexOf(<string>) -> <int>
+//	<string>.indexOf(<string>, <int>) -> <int>
 //
 // Examples:
 //
-//     'hello mellow'.indexOf('')         // returns 0
-//     'hello mellow'.indexOf('ello')     // returns 1
-//     'hello mellow'.indexOf('jello')    // returns -1
-//     'hello mellow'.indexOf('', 2)      // returns 2
-//     'hello mellow'.indexOf('ello', 2)  // returns 7
-//     'hello mellow'.indexOf('ello', 20) // error
+//	'hello mellow'.indexOf('')         // returns 0
+//	'hello mellow'.indexOf('ello')     // returns 1
+//	'hello mellow'.indexOf('jello')    // returns -1
+//	'hello mellow'.indexOf('', 2)      // returns 2
+//	'hello mellow'.indexOf('ello', 2)  // returns 7
+//	'hello mellow'.indexOf('ello', 20) // error
 //
-// Join
+// # Join
 //
 // Returns a new string where the elements of string list are concatenated.
 //
@@ -75,12 +75,12 @@ import (
 //
 // Examples:
 //
-//     ['hello', 'mellow'].join() // returns 'hellomellow'
-//     ['hello', 'mellow'].join(' ') // returns 'hello mellow'
-//     [].join() // returns ''
-//     [].join('/') // returns ''
+//	['hello', 'mellow'].join() // returns 'hellomellow'
+//	['hello', 'mellow'].join(' ') // returns 'hello mellow'
+//	[].join() // returns ''
+//	[].join('/') // returns ''
 //
-// LastIndexOf
+// # LastIndexOf
 //
 // Returns the integer index at the start of the last occurrence of the search string. If the
 // search string is not found the function returns -1.
@@ -89,31 +89,31 @@ import (
 // considered as the beginning of the substring match. If the substring is the empty string,
 // the index where the search starts is returned (string length or custom).
 //
-//     <string>.lastIndexOf(<string>) -> <int>
-//     <string>.lastIndexOf(<string>, <int>) -> <int>
+//	<string>.lastIndexOf(<string>) -> <int>
+//	<string>.lastIndexOf(<string>, <int>) -> <int>
 //
 // Examples:
 //
-//     'hello mellow'.lastIndexOf('')         // returns 12
-//     'hello mellow'.lastIndexOf('ello')     // returns 7
-//     'hello mellow'.lastIndexOf('jello')    // returns -1
-//     'hello mellow'.lastIndexOf('ello', 6)  // returns 1
-//     'hello mellow'.lastIndexOf('ello', -1) // error
+//	'hello mellow'.lastIndexOf('')         // returns 12
+//	'hello mellow'.lastIndexOf('ello')     // returns 7
+//	'hello mellow'.lastIndexOf('jello')    // returns -1
+//	'hello mellow'.lastIndexOf('ello', 6)  // returns 1
+//	'hello mellow'.lastIndexOf('ello', -1) // error
 //
-// LowerAscii
+// # LowerAscii
 //
 // Returns a new string where all ASCII characters are lower-cased.
 //
 // This function does not perform Unicode case-mapping for characters outside the ASCII range.
 //
-//     <string>.lowerAscii() -> <string>
+//	<string>.lowerAscii() -> <string>
 //
 // Examples:
 //
-//     'TacoCat'.lowerAscii()      // returns 'tacocat'
-//     'TacoCÆt Xii'.lowerAscii()  // returns 'tacocÆt xii'
+//	'TacoCat'.lowerAscii()      // returns 'tacocat'
+//	'TacoCÆt Xii'.lowerAscii()  // returns 'tacocÆt xii'
 //
-// Replace
+// # Replace
 //
 // Returns a new string based on the target, which replaces the occurrences of a search string
 // with a replacement string if present. The function accepts an optional limit on the number of
@@ -122,17 +122,17 @@ import (
 // When the replacement limit is 0, the result is the original string. When the limit is a negative
 // number, the function behaves the same as replace all.
 //
-//     <string>.replace(<string>, <string>) -> <string>
-//     <string>.replace(<string>, <string>, <int>) -> <string>
+//	<string>.replace(<string>, <string>) -> <string>
+//	<string>.replace(<string>, <string>, <int>) -> <string>
 //
 // Examples:
 //
-//     'hello hello'.replace('he', 'we')     // returns 'wello wello'
-//     'hello hello'.replace('he', 'we', -1) // returns 'wello wello'
-//     'hello hello'.replace('he', 'we', 1)  // returns 'wello hello'
-//     'hello hello'.replace('he', 'we', 0)  // returns 'hello hello'
+//	'hello hello'.replace('he', 'we')     // returns 'wello wello'
+//	'hello hello'.replace('he', 'we', -1) // returns 'wello wello'
+//	'hello hello'.replace('he', 'we', 1)  // returns 'wello hello'
+//	'hello hello'.replace('he', 'we', 0)  // returns 'hello hello'
 //
-// Split
+// # Split
 //
 // Returns a list of strings split from the input by the given separator. The function accepts
 // an optional argument specifying a limit on the number of substrings produced by the split.
@@ -141,18 +141,18 @@ import (
 // target string to split. When the limit is a negative number, the function behaves the same as
 // split all.
 //
-//     <string>.split(<string>) -> <list<string>>
-//     <string>.split(<string>, <int>) -> <list<string>>
+//	<string>.split(<string>) -> <list<string>>
+//	<string>.split(<string>, <int>) -> <list<string>>
 //
 // Examples:
 //
-//     'hello hello hello'.split(' ')     // returns ['hello', 'hello', 'hello']
-//     'hello hello hello'.split(' ', 0)  // returns []
-//     'hello hello hello'.split(' ', 1)  // returns ['hello hello hello']
-//     'hello hello hello'.split(' ', 2)  // returns ['hello', 'hello hello']
-//     'hello hello hello'.split(' ', -1) // returns ['hello', 'hello', 'hello']
+//	'hello hello hello'.split(' ')     // returns ['hello', 'hello', 'hello']
+//	'hello hello hello'.split(' ', 0)  // returns []
+//	'hello hello hello'.split(' ', 1)  // returns ['hello hello hello']
+//	'hello hello hello'.split(' ', 2)  // returns ['hello', 'hello hello']
+//	'hello hello hello'.split(' ', -1) // returns ['hello', 'hello', 'hello']
 //
-// Substring
+// # Substring
 //
 // Returns the substring given a numeric range corresponding to character positions. Optionally
 // may omit the trailing range for a substring from a given character position until the end of
@@ -162,46 +162,52 @@ import (
 // error to specify an end range that is lower than the start range, or for either the start or end
 // index to be negative or exceed the string length.
 //
-//     <string>.substring(<int>) -> <string>
-//     <string>.substring(<int>, <int>) -> <string>
+//	<string>.substring(<int>) -> <string>
+//	<string>.substring(<int>, <int>) -> <string>
 //
 // Examples:
 //
-//     'tacocat'.substring(4)    // returns 'cat'
-//     'tacocat'.substring(0, 4) // returns 'taco'
-//     'tacocat'.substring(-1)   // error
-//     'tacocat'.substring(2, 1) // error
+//	'tacocat'.substring(4)    // returns 'cat'
+//	'tacocat'.substring(0, 4) // returns 'taco'
+//	'tacocat'.substring(-1)   // error
+//	'tacocat'.substring(2, 1) // error
 //
-// Trim
+// # Trim
 //
 // Returns a new string which removes the leading and trailing whitespace in the target string.
 // The trim function uses the Unicode definition of whitespace which does not include the
 // zero-width spaces. See: https://en.wikipedia.org/wiki/Whitespace_character#Unicode
 //
-//      <string>.trim() -> <string>
+//	<string>.trim() -> <string>
 //
 // Examples:
 //
-//     '  \ttrim\n    '.trim() // returns 'trim'
+//	'  \ttrim\n    '.trim() // returns 'trim'
 //
-// UpperAscii
+// # UpperAscii
 //
 // Returns a new string where all ASCII characters are upper-cased.
 //
 // This function does not perform Unicode case-mapping for characters outside the ASCII range.
 //
-//    <string>.upperAscii() -> <string>
+//	<string>.upperAscii() -> <string>
 //
 // Examples:
 //
-//     'TacoCat'.upperAscii()      // returns 'TACOCAT'
-//     'TacoCÆt Xii'.upperAscii()  // returns 'TACOCÆT XII'
+//	'TacoCat'.upperAscii()      // returns 'TACOCAT'
+//	'TacoCÆt Xii'.upperAscii()  // returns 'TACOCÆT XII'
 func Strings() cel.EnvOption {
 	return cel.Lib(stringLib{})
 }
 
 type stringLib struct{}
 
+// LibraryName implements the SingletonLibrary interface method.
+func (stringLib) LibraryName() string {
+	return "cel.lib.ext.strings"
+}
+
+// CompileOptions implements the Library interface method.
 func (stringLib) CompileOptions() []cel.EnvOption {
 	return []cel.EnvOption{
 		cel.Function("charAt",
@@ -324,6 +330,7 @@ func (stringLib) CompileOptions() []cel.EnvOption {
 	}
 }
 
+// ProgramOptions implements the Library interface method.
 func (stringLib) ProgramOptions() []cel.ProgramOption {
 	return []cel.ProgramOption{}
 }

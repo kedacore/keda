@@ -13,3 +13,6 @@ vendor
 # Helper files
 debug/
 *.log
+
+# direnv files
+.envrc

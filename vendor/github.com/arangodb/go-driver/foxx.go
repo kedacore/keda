@@ -24,8 +24,8 @@ package driver
 
 import (
 	"context"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
 )
 
@@ -40,7 +40,7 @@ func (c *client) InstallFoxxService(ctx context.Context, zipFile string, options
 	req.SetHeader("Content-Type", "application/zip")
 	req.SetQuery("mount", options.Mount)
 
-	bytes, err := ioutil.ReadFile(zipFile)
+	bytes, err := os.ReadFile(zipFile)
 	if err != nil {
 		return WithStack(err)
 	}

@@ -26,7 +26,9 @@ import (
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	openapinamer "k8s.io/apiserver/pkg/endpoints/openapi"
+	"k8s.io/apiserver/pkg/features"
 	genericapiserver "k8s.io/apiserver/pkg/server"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/informers"
@@ -243,7 +245,7 @@ func mergeOpenAPIDefinitions(definitionsGetters []openapicommon.GetOpenAPIDefini
 	}
 }
 
-func (b *AdapterBase) defaultOpenAPIConfig() *openapicommon.Config {
+func (b *AdapterBase) openAPIConfig(createConfig func(getDefinitions openapicommon.GetOpenAPIDefinitions, defNamer *openapinamer.DefinitionNamer) *openapicommon.Config) *openapicommon.Config {
 	definitionsGetters := []openapicommon.GetOpenAPIDefinitions{generatedcore.GetOpenAPIDefinitions}
 	if b.cmProvider != nil {
 		definitionsGetters = append(definitionsGetters, generatedcustommetrics.GetOpenAPIDefinitions)
@@ -252,10 +254,18 @@ func (b *AdapterBase) defaultOpenAPIConfig() *openapicommon.Config {
 		definitionsGetters = append(definitionsGetters, generatedexternalmetrics.GetOpenAPIDefinitions)
 	}
 	getAPIDefinitions := mergeOpenAPIDefinitions(definitionsGetters)
-	openAPIConfig := genericapiserver.DefaultOpenAPIConfig(getAPIDefinitions, openapinamer.NewDefinitionNamer(apiserver.Scheme))
+	openAPIConfig := createConfig(getAPIDefinitions, openapinamer.NewDefinitionNamer(apiserver.Scheme))
 	openAPIConfig.Info.Title = b.Name
 	openAPIConfig.Info.Version = "1.0.0"
 	return openAPIConfig
+}
+
+func (b *AdapterBase) defaultOpenAPIConfig() *openapicommon.Config {
+	return b.openAPIConfig(genericapiserver.DefaultOpenAPIConfig)
+}
+
+func (b *AdapterBase) defaultOpenAPIV3Config() *openapicommon.Config {
+	return b.openAPIConfig(genericapiserver.DefaultOpenAPIV3Config)
 }
 
 // Config fetches the configuration used to ultimately create the custom metrics adapter's
@@ -274,6 +284,9 @@ func (b *AdapterBase) Config() (*apiserver.Config, error) {
 			b.OpenAPIConfig = b.defaultOpenAPIConfig()
 		}
 		b.CustomMetricsAdapterServerOptions.OpenAPIConfig = b.OpenAPIConfig
+		if b.OpenAPIV3Config == nil && utilfeature.DefaultFeatureGate.Enabled(features.OpenAPIV3) {
+			b.OpenAPIV3Config = b.defaultOpenAPIV3Config()
+		}
 
 		if errList := b.CustomMetricsAdapterServerOptions.Validate(); len(errList) > 0 {
 			return nil, utilerrors.NewAggregate(errList)

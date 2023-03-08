@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -41,11 +41,9 @@ func newCCRPutAutoFollowPatternFunc(t Transport) CCRPutAutoFollowPattern {
 // CCRPutAutoFollowPattern - Creates a new named collection of auto-follow patterns against a specified remote cluster. Newly created indices on the remote cluster matching any of the specified patterns will be automatically configured as follower indices.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/ccr-put-auto-follow-pattern.html.
-//
 type CCRPutAutoFollowPattern func(name string, body io.Reader, o ...func(*CCRPutAutoFollowPatternRequest)) (*Response, error)
 
 // CCRPutAutoFollowPatternRequest configures the CCR Put Auto Follow Pattern API request.
-//
 type CCRPutAutoFollowPatternRequest struct {
 	Body io.Reader
 
@@ -62,7 +60,6 @@ type CCRPutAutoFollowPatternRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r CCRPutAutoFollowPatternRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -111,10 +108,6 @@ func (r CCRPutAutoFollowPatternRequest) Do(ctx context.Context, transport Transp
 		req.URL.RawQuery = q.Encode()
 	}
 
-	if r.Body != nil {
-		req.Header[headerContentType] = headerContentTypeJSON
-	}
-
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -125,6 +118,10 @@ func (r CCRPutAutoFollowPatternRequest) Do(ctx context.Context, transport Transp
 				}
 			}
 		}
+	}
+
+	if r.Body != nil && req.Header.Get(headerContentType) == "" {
+		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -146,7 +143,6 @@ func (r CCRPutAutoFollowPatternRequest) Do(ctx context.Context, transport Transp
 }
 
 // WithContext sets the request context.
-//
 func (f CCRPutAutoFollowPattern) WithContext(v context.Context) func(*CCRPutAutoFollowPatternRequest) {
 	return func(r *CCRPutAutoFollowPatternRequest) {
 		r.ctx = v
@@ -154,7 +150,6 @@ func (f CCRPutAutoFollowPattern) WithContext(v context.Context) func(*CCRPutAuto
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f CCRPutAutoFollowPattern) WithPretty() func(*CCRPutAutoFollowPatternRequest) {
 	return func(r *CCRPutAutoFollowPatternRequest) {
 		r.Pretty = true
@@ -162,7 +157,6 @@ func (f CCRPutAutoFollowPattern) WithPretty() func(*CCRPutAutoFollowPatternReque
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f CCRPutAutoFollowPattern) WithHuman() func(*CCRPutAutoFollowPatternRequest) {
 	return func(r *CCRPutAutoFollowPatternRequest) {
 		r.Human = true
@@ -170,7 +164,6 @@ func (f CCRPutAutoFollowPattern) WithHuman() func(*CCRPutAutoFollowPatternReques
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f CCRPutAutoFollowPattern) WithErrorTrace() func(*CCRPutAutoFollowPatternRequest) {
 	return func(r *CCRPutAutoFollowPatternRequest) {
 		r.ErrorTrace = true
@@ -178,7 +171,6 @@ func (f CCRPutAutoFollowPattern) WithErrorTrace() func(*CCRPutAutoFollowPatternR
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f CCRPutAutoFollowPattern) WithFilterPath(v ...string) func(*CCRPutAutoFollowPatternRequest) {
 	return func(r *CCRPutAutoFollowPatternRequest) {
 		r.FilterPath = v
@@ -186,7 +178,6 @@ func (f CCRPutAutoFollowPattern) WithFilterPath(v ...string) func(*CCRPutAutoFol
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f CCRPutAutoFollowPattern) WithHeader(h map[string]string) func(*CCRPutAutoFollowPatternRequest) {
 	return func(r *CCRPutAutoFollowPatternRequest) {
 		if r.Header == nil {
@@ -199,7 +190,6 @@ func (f CCRPutAutoFollowPattern) WithHeader(h map[string]string) func(*CCRPutAut
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f CCRPutAutoFollowPattern) WithOpaqueID(s string) func(*CCRPutAutoFollowPatternRequest) {
 	return func(r *CCRPutAutoFollowPatternRequest) {
 		if r.Header == nil {

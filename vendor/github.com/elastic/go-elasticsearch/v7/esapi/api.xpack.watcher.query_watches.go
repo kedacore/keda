@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -41,11 +41,9 @@ func newWatcherQueryWatchesFunc(t Transport) WatcherQueryWatches {
 // WatcherQueryWatches - Retrieves stored watches.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/watcher-api-query-watches.html.
-//
 type WatcherQueryWatches func(o ...func(*WatcherQueryWatchesRequest)) (*Response, error)
 
 // WatcherQueryWatchesRequest configures the Watcher Query Watches API request.
-//
 type WatcherQueryWatchesRequest struct {
 	Body io.Reader
 
@@ -60,7 +58,6 @@ type WatcherQueryWatchesRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r WatcherQueryWatchesRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -104,10 +101,6 @@ func (r WatcherQueryWatchesRequest) Do(ctx context.Context, transport Transport)
 		req.URL.RawQuery = q.Encode()
 	}
 
-	if r.Body != nil {
-		req.Header[headerContentType] = headerContentTypeJSON
-	}
-
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -118,6 +111,10 @@ func (r WatcherQueryWatchesRequest) Do(ctx context.Context, transport Transport)
 				}
 			}
 		}
+	}
+
+	if r.Body != nil && req.Header.Get(headerContentType) == "" {
+		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -139,7 +136,6 @@ func (r WatcherQueryWatchesRequest) Do(ctx context.Context, transport Transport)
 }
 
 // WithContext sets the request context.
-//
 func (f WatcherQueryWatches) WithContext(v context.Context) func(*WatcherQueryWatchesRequest) {
 	return func(r *WatcherQueryWatchesRequest) {
 		r.ctx = v
@@ -147,7 +143,6 @@ func (f WatcherQueryWatches) WithContext(v context.Context) func(*WatcherQueryWa
 }
 
 // WithBody - From, size, query, sort and search_after.
-//
 func (f WatcherQueryWatches) WithBody(v io.Reader) func(*WatcherQueryWatchesRequest) {
 	return func(r *WatcherQueryWatchesRequest) {
 		r.Body = v
@@ -155,7 +150,6 @@ func (f WatcherQueryWatches) WithBody(v io.Reader) func(*WatcherQueryWatchesRequ
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f WatcherQueryWatches) WithPretty() func(*WatcherQueryWatchesRequest) {
 	return func(r *WatcherQueryWatchesRequest) {
 		r.Pretty = true
@@ -163,7 +157,6 @@ func (f WatcherQueryWatches) WithPretty() func(*WatcherQueryWatchesRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f WatcherQueryWatches) WithHuman() func(*WatcherQueryWatchesRequest) {
 	return func(r *WatcherQueryWatchesRequest) {
 		r.Human = true
@@ -171,7 +164,6 @@ func (f WatcherQueryWatches) WithHuman() func(*WatcherQueryWatchesRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f WatcherQueryWatches) WithErrorTrace() func(*WatcherQueryWatchesRequest) {
 	return func(r *WatcherQueryWatchesRequest) {
 		r.ErrorTrace = true
@@ -179,7 +171,6 @@ func (f WatcherQueryWatches) WithErrorTrace() func(*WatcherQueryWatchesRequest) 
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f WatcherQueryWatches) WithFilterPath(v ...string) func(*WatcherQueryWatchesRequest) {
 	return func(r *WatcherQueryWatchesRequest) {
 		r.FilterPath = v
@@ -187,7 +178,6 @@ func (f WatcherQueryWatches) WithFilterPath(v ...string) func(*WatcherQueryWatch
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f WatcherQueryWatches) WithHeader(h map[string]string) func(*WatcherQueryWatchesRequest) {
 	return func(r *WatcherQueryWatchesRequest) {
 		if r.Header == nil {
@@ -200,7 +190,6 @@ func (f WatcherQueryWatches) WithHeader(h map[string]string) func(*WatcherQueryW
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f WatcherQueryWatches) WithOpaqueID(s string) func(*WatcherQueryWatchesRequest) {
 	return func(r *WatcherQueryWatchesRequest) {
 		if r.Header == nil {

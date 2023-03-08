@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -41,11 +41,9 @@ func newCatCountFunc(t Transport) CatCount {
 // CatCount provides quick access to the document count of the entire cluster, or individual indices.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/cat-count.html.
-//
 type CatCount func(o ...func(*CatCountRequest)) (*Response, error)
 
 // CatCountRequest configures the Cat Count API request.
-//
 type CatCountRequest struct {
 	Index []string
 
@@ -66,7 +64,6 @@ type CatCountRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r CatCountRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -168,7 +165,6 @@ func (r CatCountRequest) Do(ctx context.Context, transport Transport) (*Response
 }
 
 // WithContext sets the request context.
-//
 func (f CatCount) WithContext(v context.Context) func(*CatCountRequest) {
 	return func(r *CatCountRequest) {
 		r.ctx = v
@@ -176,7 +172,6 @@ func (f CatCount) WithContext(v context.Context) func(*CatCountRequest) {
 }
 
 // WithIndex - a list of index names to limit the returned information.
-//
 func (f CatCount) WithIndex(v ...string) func(*CatCountRequest) {
 	return func(r *CatCountRequest) {
 		r.Index = v
@@ -184,7 +179,6 @@ func (f CatCount) WithIndex(v ...string) func(*CatCountRequest) {
 }
 
 // WithFormat - a short version of the accept header, e.g. json, yaml.
-//
 func (f CatCount) WithFormat(v string) func(*CatCountRequest) {
 	return func(r *CatCountRequest) {
 		r.Format = v
@@ -192,7 +186,6 @@ func (f CatCount) WithFormat(v string) func(*CatCountRequest) {
 }
 
 // WithH - comma-separated list of column names to display.
-//
 func (f CatCount) WithH(v ...string) func(*CatCountRequest) {
 	return func(r *CatCountRequest) {
 		r.H = v
@@ -200,7 +193,6 @@ func (f CatCount) WithH(v ...string) func(*CatCountRequest) {
 }
 
 // WithHelp - return help information.
-//
 func (f CatCount) WithHelp(v bool) func(*CatCountRequest) {
 	return func(r *CatCountRequest) {
 		r.Help = &v
@@ -208,7 +200,6 @@ func (f CatCount) WithHelp(v bool) func(*CatCountRequest) {
 }
 
 // WithS - comma-separated list of column names or column aliases to sort by.
-//
 func (f CatCount) WithS(v ...string) func(*CatCountRequest) {
 	return func(r *CatCountRequest) {
 		r.S = v
@@ -216,7 +207,6 @@ func (f CatCount) WithS(v ...string) func(*CatCountRequest) {
 }
 
 // WithV - verbose mode. display column headers.
-//
 func (f CatCount) WithV(v bool) func(*CatCountRequest) {
 	return func(r *CatCountRequest) {
 		r.V = &v
@@ -224,7 +214,6 @@ func (f CatCount) WithV(v bool) func(*CatCountRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f CatCount) WithPretty() func(*CatCountRequest) {
 	return func(r *CatCountRequest) {
 		r.Pretty = true
@@ -232,7 +221,6 @@ func (f CatCount) WithPretty() func(*CatCountRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f CatCount) WithHuman() func(*CatCountRequest) {
 	return func(r *CatCountRequest) {
 		r.Human = true
@@ -240,7 +228,6 @@ func (f CatCount) WithHuman() func(*CatCountRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f CatCount) WithErrorTrace() func(*CatCountRequest) {
 	return func(r *CatCountRequest) {
 		r.ErrorTrace = true
@@ -248,7 +235,6 @@ func (f CatCount) WithErrorTrace() func(*CatCountRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f CatCount) WithFilterPath(v ...string) func(*CatCountRequest) {
 	return func(r *CatCountRequest) {
 		r.FilterPath = v
@@ -256,7 +242,6 @@ func (f CatCount) WithFilterPath(v ...string) func(*CatCountRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f CatCount) WithHeader(h map[string]string) func(*CatCountRequest) {
 	return func(r *CatCountRequest) {
 		if r.Header == nil {
@@ -269,7 +254,6 @@ func (f CatCount) WithHeader(h map[string]string) func(*CatCountRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f CatCount) WithOpaqueID(s string) func(*CatCountRequest) {
 	return func(r *CatCountRequest) {
 		if r.Header == nil {

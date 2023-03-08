@@ -30,6 +30,10 @@ type azureCLITokenProvider func(ctx context.Context, resource string, tenantID s
 
 // AzureCLICredentialOptions contains optional parameters for AzureCLICredential.
 type AzureCLICredentialOptions struct {
+	// AdditionallyAllowedTenants specifies tenants for which the credential may acquire tokens, in addition
+	// to TenantID. Add the wildcard value "*" to allow the credential to acquire tokens for any tenant the
+	// logged in account can access.
+	AdditionallyAllowedTenants []string
 	// TenantID identifies the tenant the credential should authenticate in.
 	// Defaults to the CLI's default tenant, which is typically the home tenant of the logged in user.
 	TenantID string
@@ -46,8 +50,9 @@ func (o *AzureCLICredentialOptions) init() {
 
 // AzureCLICredential authenticates as the identity logged in to the Azure CLI.
 type AzureCLICredential struct {
-	tokenProvider azureCLITokenProvider
-	tenantID      string
+	additionallyAllowedTenants []string
+	tenantID                   string
+	tokenProvider              azureCLITokenProvider
 }
 
 // NewAzureCLICredential constructs an AzureCLICredential. Pass nil to accept default options.
@@ -58,8 +63,9 @@ func NewAzureCLICredential(options *AzureCLICredentialOptions) (*AzureCLICredent
 	}
 	cp.init()
 	return &AzureCLICredential{
-		tokenProvider: cp.tokenProvider,
-		tenantID:      cp.TenantID,
+		additionallyAllowedTenants: resolveAdditionallyAllowedTenants(cp.AdditionallyAllowedTenants),
+		tenantID:                   cp.TenantID,
+		tokenProvider:              cp.tokenProvider,
 	}, nil
 }
 
@@ -69,9 +75,17 @@ func (c *AzureCLICredential) GetToken(ctx context.Context, opts policy.TokenRequ
 	if len(opts.Scopes) != 1 {
 		return azcore.AccessToken{}, errors.New(credNameAzureCLI + ": GetToken() requires exactly one scope")
 	}
-	// CLI expects an AAD v1 resource, not a v2 scope
-	scope := strings.TrimSuffix(opts.Scopes[0], defaultSuffix)
-	at, err := c.authenticate(ctx, scope)
+	tenant, err := resolveTenant(c.tenantID, opts.TenantID, c.additionallyAllowedTenants)
+	if err != nil {
+		return azcore.AccessToken{}, err
+	}
+	// CLI expects an AAD v1 resource, not a v2 resource
+	resource := strings.TrimSuffix(opts.Scopes[0], defaultSuffix)
+	b, err := c.tokenProvider(ctx, resource, tenant)
+	if err != nil {
+		return azcore.AccessToken{}, err
+	}
+	at, err := c.createAccessToken(b)
 	if err != nil {
 		return azcore.AccessToken{}, err
 	}
@@ -80,15 +94,6 @@ func (c *AzureCLICredential) GetToken(ctx context.Context, opts policy.TokenRequ
 }
 
 const timeoutCLIRequest = 10 * time.Second
-
-func (c *AzureCLICredential) authenticate(ctx context.Context, resource string) (azcore.AccessToken, error) {
-	output, err := c.tokenProvider(ctx, resource, c.tenantID)
-	if err != nil {
-		return azcore.AccessToken{}, err
-	}
-
-	return c.createAccessToken(output)
-}
 
 func defaultTokenProvider() func(ctx context.Context, resource string, tenantID string) ([]byte, error) {
 	return func(ctx context.Context, resource string, tenantID string) ([]byte, error) {

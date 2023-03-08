@@ -357,9 +357,9 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 }
 
 var awsCloudwatchMetricIdentifiers = []awsCloudwatchMetricIdentifier{
-	{&testAWSCloudwatchMetadata[1], 0, "s0-aws-cloudwatch-QueueName"},
-	{&testAWSCloudwatchMetadata[1], 3, "s3-aws-cloudwatch-QueueName"},
-	{&testAWSCloudwatchMetadata[2], 5, "s5-aws-cloudwatch-ApproximateNumberOfMessagesVisible"},
+	{&testAWSCloudwatchMetadata[1], 0, "s0-aws-cloudwatch"},
+	{&testAWSCloudwatchMetadata[1], 3, "s3-aws-cloudwatch"},
+	{&testAWSCloudwatchMetadata[2], 5, "s5-aws-cloudwatch"},
 }
 
 var awsCloudwatchGetMetricTestData = []awsCloudwatchMetadata{

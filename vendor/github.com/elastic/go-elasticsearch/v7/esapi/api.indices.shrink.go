@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -43,11 +43,9 @@ func newIndicesShrinkFunc(t Transport) IndicesShrink {
 // IndicesShrink allow to shrink an existing index into a new index with fewer primary shards.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-shrink-index.html.
-//
 type IndicesShrink func(index string, target string, o ...func(*IndicesShrinkRequest)) (*Response, error)
 
 // IndicesShrinkRequest configures the Indices Shrink API request.
-//
 type IndicesShrinkRequest struct {
 	Index string
 
@@ -71,7 +69,6 @@ type IndicesShrinkRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r IndicesShrinkRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -136,10 +133,6 @@ func (r IndicesShrinkRequest) Do(ctx context.Context, transport Transport) (*Res
 		req.URL.RawQuery = q.Encode()
 	}
 
-	if r.Body != nil {
-		req.Header[headerContentType] = headerContentTypeJSON
-	}
-
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -150,6 +143,10 @@ func (r IndicesShrinkRequest) Do(ctx context.Context, transport Transport) (*Res
 				}
 			}
 		}
+	}
+
+	if r.Body != nil && req.Header.Get(headerContentType) == "" {
+		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -171,7 +168,6 @@ func (r IndicesShrinkRequest) Do(ctx context.Context, transport Transport) (*Res
 }
 
 // WithContext sets the request context.
-//
 func (f IndicesShrink) WithContext(v context.Context) func(*IndicesShrinkRequest) {
 	return func(r *IndicesShrinkRequest) {
 		r.ctx = v
@@ -179,7 +175,6 @@ func (f IndicesShrink) WithContext(v context.Context) func(*IndicesShrinkRequest
 }
 
 // WithBody - The configuration for the target index (`settings` and `aliases`).
-//
 func (f IndicesShrink) WithBody(v io.Reader) func(*IndicesShrinkRequest) {
 	return func(r *IndicesShrinkRequest) {
 		r.Body = v
@@ -187,7 +182,6 @@ func (f IndicesShrink) WithBody(v io.Reader) func(*IndicesShrinkRequest) {
 }
 
 // WithCopySettings - whether or not to copy settings from the source index (defaults to false).
-//
 func (f IndicesShrink) WithCopySettings(v bool) func(*IndicesShrinkRequest) {
 	return func(r *IndicesShrinkRequest) {
 		r.CopySettings = &v
@@ -195,7 +189,6 @@ func (f IndicesShrink) WithCopySettings(v bool) func(*IndicesShrinkRequest) {
 }
 
 // WithMasterTimeout - specify timeout for connection to master.
-//
 func (f IndicesShrink) WithMasterTimeout(v time.Duration) func(*IndicesShrinkRequest) {
 	return func(r *IndicesShrinkRequest) {
 		r.MasterTimeout = v
@@ -203,7 +196,6 @@ func (f IndicesShrink) WithMasterTimeout(v time.Duration) func(*IndicesShrinkReq
 }
 
 // WithTimeout - explicit operation timeout.
-//
 func (f IndicesShrink) WithTimeout(v time.Duration) func(*IndicesShrinkRequest) {
 	return func(r *IndicesShrinkRequest) {
 		r.Timeout = v
@@ -211,7 +203,6 @@ func (f IndicesShrink) WithTimeout(v time.Duration) func(*IndicesShrinkRequest) 
 }
 
 // WithWaitForActiveShards - set the number of active shards to wait for on the shrunken index before the operation returns..
-//
 func (f IndicesShrink) WithWaitForActiveShards(v string) func(*IndicesShrinkRequest) {
 	return func(r *IndicesShrinkRequest) {
 		r.WaitForActiveShards = v
@@ -219,7 +210,6 @@ func (f IndicesShrink) WithWaitForActiveShards(v string) func(*IndicesShrinkRequ
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f IndicesShrink) WithPretty() func(*IndicesShrinkRequest) {
 	return func(r *IndicesShrinkRequest) {
 		r.Pretty = true
@@ -227,7 +217,6 @@ func (f IndicesShrink) WithPretty() func(*IndicesShrinkRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f IndicesShrink) WithHuman() func(*IndicesShrinkRequest) {
 	return func(r *IndicesShrinkRequest) {
 		r.Human = true
@@ -235,7 +224,6 @@ func (f IndicesShrink) WithHuman() func(*IndicesShrinkRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f IndicesShrink) WithErrorTrace() func(*IndicesShrinkRequest) {
 	return func(r *IndicesShrinkRequest) {
 		r.ErrorTrace = true
@@ -243,7 +231,6 @@ func (f IndicesShrink) WithErrorTrace() func(*IndicesShrinkRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f IndicesShrink) WithFilterPath(v ...string) func(*IndicesShrinkRequest) {
 	return func(r *IndicesShrinkRequest) {
 		r.FilterPath = v
@@ -251,7 +238,6 @@ func (f IndicesShrink) WithFilterPath(v ...string) func(*IndicesShrinkRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f IndicesShrink) WithHeader(h map[string]string) func(*IndicesShrinkRequest) {
 	return func(r *IndicesShrinkRequest) {
 		if r.Header == nil {
@@ -264,7 +250,6 @@ func (f IndicesShrink) WithHeader(h map[string]string) func(*IndicesShrinkReques
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f IndicesShrink) WithOpaqueID(s string) func(*IndicesShrinkRequest) {
 	return func(r *IndicesShrinkRequest) {
 		if r.Header == nil {

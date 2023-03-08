@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -45,11 +45,9 @@ func newMLFindFileStructureFunc(t Transport) MLFindFileStructure {
 // This API is experimental.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/find-structure.html.
-//
 type MLFindFileStructure func(body io.Reader, o ...func(*MLFindFileStructureRequest)) (*Response, error)
 
 // MLFindFileStructureRequest configures the ML Find File Structure API request.
-//
 type MLFindFileStructureRequest struct {
 	Body io.Reader
 
@@ -79,7 +77,6 @@ type MLFindFileStructureRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r MLFindFileStructureRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -179,10 +176,6 @@ func (r MLFindFileStructureRequest) Do(ctx context.Context, transport Transport)
 		req.URL.RawQuery = q.Encode()
 	}
 
-	if r.Body != nil {
-		req.Header[headerContentType] = headerContentTypeJSON
-	}
-
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -193,6 +186,10 @@ func (r MLFindFileStructureRequest) Do(ctx context.Context, transport Transport)
 				}
 			}
 		}
+	}
+
+	if r.Body != nil && req.Header.Get(headerContentType) == "" {
+		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -214,7 +211,6 @@ func (r MLFindFileStructureRequest) Do(ctx context.Context, transport Transport)
 }
 
 // WithContext sets the request context.
-//
 func (f MLFindFileStructure) WithContext(v context.Context) func(*MLFindFileStructureRequest) {
 	return func(r *MLFindFileStructureRequest) {
 		r.ctx = v
@@ -222,7 +218,6 @@ func (f MLFindFileStructure) WithContext(v context.Context) func(*MLFindFileStru
 }
 
 // WithCharset - optional parameter to specify the character set of the file.
-//
 func (f MLFindFileStructure) WithCharset(v string) func(*MLFindFileStructureRequest) {
 	return func(r *MLFindFileStructureRequest) {
 		r.Charset = v
@@ -230,7 +225,6 @@ func (f MLFindFileStructure) WithCharset(v string) func(*MLFindFileStructureRequ
 }
 
 // WithColumnNames - optional parameter containing a comma separated list of the column names for a delimited file.
-//
 func (f MLFindFileStructure) WithColumnNames(v ...string) func(*MLFindFileStructureRequest) {
 	return func(r *MLFindFileStructureRequest) {
 		r.ColumnNames = v
@@ -238,7 +232,6 @@ func (f MLFindFileStructure) WithColumnNames(v ...string) func(*MLFindFileStruct
 }
 
 // WithDelimiter - optional parameter to specify the delimiter character for a delimited file - must be a single character.
-//
 func (f MLFindFileStructure) WithDelimiter(v string) func(*MLFindFileStructureRequest) {
 	return func(r *MLFindFileStructureRequest) {
 		r.Delimiter = v
@@ -246,7 +239,6 @@ func (f MLFindFileStructure) WithDelimiter(v string) func(*MLFindFileStructureRe
 }
 
 // WithExplain - whether to include a commentary on how the structure was derived.
-//
 func (f MLFindFileStructure) WithExplain(v bool) func(*MLFindFileStructureRequest) {
 	return func(r *MLFindFileStructureRequest) {
 		r.Explain = &v
@@ -254,7 +246,6 @@ func (f MLFindFileStructure) WithExplain(v bool) func(*MLFindFileStructureReques
 }
 
 // WithFormat - optional parameter to specify the high level file format.
-//
 func (f MLFindFileStructure) WithFormat(v string) func(*MLFindFileStructureRequest) {
 	return func(r *MLFindFileStructureRequest) {
 		r.Format = v
@@ -262,7 +253,6 @@ func (f MLFindFileStructure) WithFormat(v string) func(*MLFindFileStructureReque
 }
 
 // WithGrokPattern - optional parameter to specify the grok pattern that should be used to extract fields from messages in a semi-structured text file.
-//
 func (f MLFindFileStructure) WithGrokPattern(v string) func(*MLFindFileStructureRequest) {
 	return func(r *MLFindFileStructureRequest) {
 		r.GrokPattern = v
@@ -270,7 +260,6 @@ func (f MLFindFileStructure) WithGrokPattern(v string) func(*MLFindFileStructure
 }
 
 // WithHasHeaderRow - optional parameter to specify whether a delimited file includes the column names in its first row.
-//
 func (f MLFindFileStructure) WithHasHeaderRow(v bool) func(*MLFindFileStructureRequest) {
 	return func(r *MLFindFileStructureRequest) {
 		r.HasHeaderRow = &v
@@ -278,7 +267,6 @@ func (f MLFindFileStructure) WithHasHeaderRow(v bool) func(*MLFindFileStructureR
 }
 
 // WithLineMergeSizeLimit - maximum number of characters permitted in a single message when lines are merged to create messages..
-//
 func (f MLFindFileStructure) WithLineMergeSizeLimit(v int) func(*MLFindFileStructureRequest) {
 	return func(r *MLFindFileStructureRequest) {
 		r.LineMergeSizeLimit = &v
@@ -286,7 +274,6 @@ func (f MLFindFileStructure) WithLineMergeSizeLimit(v int) func(*MLFindFileStruc
 }
 
 // WithLinesToSample - how many lines of the file should be included in the analysis.
-//
 func (f MLFindFileStructure) WithLinesToSample(v int) func(*MLFindFileStructureRequest) {
 	return func(r *MLFindFileStructureRequest) {
 		r.LinesToSample = &v
@@ -294,7 +281,6 @@ func (f MLFindFileStructure) WithLinesToSample(v int) func(*MLFindFileStructureR
 }
 
 // WithQuote - optional parameter to specify the quote character for a delimited file - must be a single character.
-//
 func (f MLFindFileStructure) WithQuote(v string) func(*MLFindFileStructureRequest) {
 	return func(r *MLFindFileStructureRequest) {
 		r.Quote = v
@@ -302,7 +288,6 @@ func (f MLFindFileStructure) WithQuote(v string) func(*MLFindFileStructureReques
 }
 
 // WithShouldTrimFields - optional parameter to specify whether the values between delimiters in a delimited file should have whitespace trimmed from them.
-//
 func (f MLFindFileStructure) WithShouldTrimFields(v bool) func(*MLFindFileStructureRequest) {
 	return func(r *MLFindFileStructureRequest) {
 		r.ShouldTrimFields = &v
@@ -310,7 +295,6 @@ func (f MLFindFileStructure) WithShouldTrimFields(v bool) func(*MLFindFileStruct
 }
 
 // WithTimeout - timeout after which the analysis will be aborted.
-//
 func (f MLFindFileStructure) WithTimeout(v time.Duration) func(*MLFindFileStructureRequest) {
 	return func(r *MLFindFileStructureRequest) {
 		r.Timeout = v
@@ -318,7 +302,6 @@ func (f MLFindFileStructure) WithTimeout(v time.Duration) func(*MLFindFileStruct
 }
 
 // WithTimestampField - optional parameter to specify the timestamp field in the file.
-//
 func (f MLFindFileStructure) WithTimestampField(v string) func(*MLFindFileStructureRequest) {
 	return func(r *MLFindFileStructureRequest) {
 		r.TimestampField = v
@@ -326,7 +309,6 @@ func (f MLFindFileStructure) WithTimestampField(v string) func(*MLFindFileStruct
 }
 
 // WithTimestampFormat - optional parameter to specify the timestamp format in the file - may be either a joda or java time format.
-//
 func (f MLFindFileStructure) WithTimestampFormat(v string) func(*MLFindFileStructureRequest) {
 	return func(r *MLFindFileStructureRequest) {
 		r.TimestampFormat = v
@@ -334,7 +316,6 @@ func (f MLFindFileStructure) WithTimestampFormat(v string) func(*MLFindFileStruc
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f MLFindFileStructure) WithPretty() func(*MLFindFileStructureRequest) {
 	return func(r *MLFindFileStructureRequest) {
 		r.Pretty = true
@@ -342,7 +323,6 @@ func (f MLFindFileStructure) WithPretty() func(*MLFindFileStructureRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f MLFindFileStructure) WithHuman() func(*MLFindFileStructureRequest) {
 	return func(r *MLFindFileStructureRequest) {
 		r.Human = true
@@ -350,7 +330,6 @@ func (f MLFindFileStructure) WithHuman() func(*MLFindFileStructureRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f MLFindFileStructure) WithErrorTrace() func(*MLFindFileStructureRequest) {
 	return func(r *MLFindFileStructureRequest) {
 		r.ErrorTrace = true
@@ -358,7 +337,6 @@ func (f MLFindFileStructure) WithErrorTrace() func(*MLFindFileStructureRequest) 
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f MLFindFileStructure) WithFilterPath(v ...string) func(*MLFindFileStructureRequest) {
 	return func(r *MLFindFileStructureRequest) {
 		r.FilterPath = v
@@ -366,7 +344,6 @@ func (f MLFindFileStructure) WithFilterPath(v ...string) func(*MLFindFileStructu
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f MLFindFileStructure) WithHeader(h map[string]string) func(*MLFindFileStructureRequest) {
 	return func(r *MLFindFileStructureRequest) {
 		if r.Header == nil {
@@ -379,7 +356,6 @@ func (f MLFindFileStructure) WithHeader(h map[string]string) func(*MLFindFileStr
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f MLFindFileStructure) WithOpaqueID(s string) func(*MLFindFileStructureRequest) {
 	return func(r *MLFindFileStructureRequest) {
 		if r.Header == nil {

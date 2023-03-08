@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -40,11 +40,9 @@ func newShutdownDeleteNodeFunc(t Transport) ShutdownDeleteNode {
 // ShutdownDeleteNode removes a node from the shutdown list. Designed for indirect use by ECE/ESS and ECK. Direct use is not supported.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current.
-//
 type ShutdownDeleteNode func(node_id string, o ...func(*ShutdownDeleteNodeRequest)) (*Response, error)
 
 // ShutdownDeleteNodeRequest configures the Shutdown Delete Node API request.
-//
 type ShutdownDeleteNodeRequest struct {
 	NodeID string
 
@@ -59,7 +57,6 @@ type ShutdownDeleteNodeRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r ShutdownDeleteNodeRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -139,7 +136,6 @@ func (r ShutdownDeleteNodeRequest) Do(ctx context.Context, transport Transport) 
 }
 
 // WithContext sets the request context.
-//
 func (f ShutdownDeleteNode) WithContext(v context.Context) func(*ShutdownDeleteNodeRequest) {
 	return func(r *ShutdownDeleteNodeRequest) {
 		r.ctx = v
@@ -147,7 +143,6 @@ func (f ShutdownDeleteNode) WithContext(v context.Context) func(*ShutdownDeleteN
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f ShutdownDeleteNode) WithPretty() func(*ShutdownDeleteNodeRequest) {
 	return func(r *ShutdownDeleteNodeRequest) {
 		r.Pretty = true
@@ -155,7 +150,6 @@ func (f ShutdownDeleteNode) WithPretty() func(*ShutdownDeleteNodeRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f ShutdownDeleteNode) WithHuman() func(*ShutdownDeleteNodeRequest) {
 	return func(r *ShutdownDeleteNodeRequest) {
 		r.Human = true
@@ -163,7 +157,6 @@ func (f ShutdownDeleteNode) WithHuman() func(*ShutdownDeleteNodeRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f ShutdownDeleteNode) WithErrorTrace() func(*ShutdownDeleteNodeRequest) {
 	return func(r *ShutdownDeleteNodeRequest) {
 		r.ErrorTrace = true
@@ -171,7 +164,6 @@ func (f ShutdownDeleteNode) WithErrorTrace() func(*ShutdownDeleteNodeRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f ShutdownDeleteNode) WithFilterPath(v ...string) func(*ShutdownDeleteNodeRequest) {
 	return func(r *ShutdownDeleteNodeRequest) {
 		r.FilterPath = v
@@ -179,7 +171,6 @@ func (f ShutdownDeleteNode) WithFilterPath(v ...string) func(*ShutdownDeleteNode
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f ShutdownDeleteNode) WithHeader(h map[string]string) func(*ShutdownDeleteNodeRequest) {
 	return func(r *ShutdownDeleteNodeRequest) {
 		if r.Header == nil {
@@ -192,7 +183,6 @@ func (f ShutdownDeleteNode) WithHeader(h map[string]string) func(*ShutdownDelete
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f ShutdownDeleteNode) WithOpaqueID(s string) func(*ShutdownDeleteNodeRequest) {
 	return func(r *ShutdownDeleteNodeRequest) {
 		if r.Header == nil {

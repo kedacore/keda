@@ -15,6 +15,11 @@ import (
 	"time"
 )
 
+func (w *writer) WriteFrameNoFlush(frame frame) (err error) {
+	err = frame.write(w.w)
+	return
+}
+
 func (w *writer) WriteFrame(frame frame) (err error) {
 	if err = frame.write(w.w); err != nil {
 		return
@@ -63,8 +68,8 @@ func (f *heartbeatFrame) write(w io.Writer) (err error) {
 // +----------+--------+-----------+----------------+------------- - -
 // | class-id | weight | body size | property flags | property list...
 // +----------+--------+-----------+----------------+------------- - -
-//    short     short    long long       short        remainder...
 //
+//	short     short    long long       short        remainder...
 func (f *headerFrame) write(w io.Writer) (err error) {
 	var payload bytes.Buffer
 	var zeroTime time.Time

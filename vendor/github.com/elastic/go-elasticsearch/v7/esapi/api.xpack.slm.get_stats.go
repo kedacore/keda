@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -40,11 +40,9 @@ func newSlmGetStatsFunc(t Transport) SlmGetStats {
 // SlmGetStats - Returns global and policy-level statistics about actions taken by snapshot lifecycle management.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/slm-api-get-stats.html.
-//
 type SlmGetStats func(o ...func(*SlmGetStatsRequest)) (*Response, error)
 
 // SlmGetStatsRequest configures the Slm Get Stats API request.
-//
 type SlmGetStatsRequest struct {
 	Pretty     bool
 	Human      bool
@@ -57,7 +55,6 @@ type SlmGetStatsRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r SlmGetStatsRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -132,7 +129,6 @@ func (r SlmGetStatsRequest) Do(ctx context.Context, transport Transport) (*Respo
 }
 
 // WithContext sets the request context.
-//
 func (f SlmGetStats) WithContext(v context.Context) func(*SlmGetStatsRequest) {
 	return func(r *SlmGetStatsRequest) {
 		r.ctx = v
@@ -140,7 +136,6 @@ func (f SlmGetStats) WithContext(v context.Context) func(*SlmGetStatsRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f SlmGetStats) WithPretty() func(*SlmGetStatsRequest) {
 	return func(r *SlmGetStatsRequest) {
 		r.Pretty = true
@@ -148,7 +143,6 @@ func (f SlmGetStats) WithPretty() func(*SlmGetStatsRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f SlmGetStats) WithHuman() func(*SlmGetStatsRequest) {
 	return func(r *SlmGetStatsRequest) {
 		r.Human = true
@@ -156,7 +150,6 @@ func (f SlmGetStats) WithHuman() func(*SlmGetStatsRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f SlmGetStats) WithErrorTrace() func(*SlmGetStatsRequest) {
 	return func(r *SlmGetStatsRequest) {
 		r.ErrorTrace = true
@@ -164,7 +157,6 @@ func (f SlmGetStats) WithErrorTrace() func(*SlmGetStatsRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f SlmGetStats) WithFilterPath(v ...string) func(*SlmGetStatsRequest) {
 	return func(r *SlmGetStatsRequest) {
 		r.FilterPath = v
@@ -172,7 +164,6 @@ func (f SlmGetStats) WithFilterPath(v ...string) func(*SlmGetStatsRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f SlmGetStats) WithHeader(h map[string]string) func(*SlmGetStatsRequest) {
 	return func(r *SlmGetStatsRequest) {
 		if r.Header == nil {
@@ -185,7 +176,6 @@ func (f SlmGetStats) WithHeader(h map[string]string) func(*SlmGetStatsRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f SlmGetStats) WithOpaqueID(s string) func(*SlmGetStatsRequest) {
 	return func(r *SlmGetStatsRequest) {
 		if r.Header == nil {

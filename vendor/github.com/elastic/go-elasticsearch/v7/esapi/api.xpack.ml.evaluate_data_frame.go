@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -41,11 +41,9 @@ func newMLEvaluateDataFrameFunc(t Transport) MLEvaluateDataFrame {
 // MLEvaluateDataFrame - Evaluates the data frame analytics for an annotated index.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/evaluate-dfanalytics.html.
-//
 type MLEvaluateDataFrame func(body io.Reader, o ...func(*MLEvaluateDataFrameRequest)) (*Response, error)
 
 // MLEvaluateDataFrameRequest configures the ML Evaluate Data Frame API request.
-//
 type MLEvaluateDataFrameRequest struct {
 	Body io.Reader
 
@@ -60,7 +58,6 @@ type MLEvaluateDataFrameRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r MLEvaluateDataFrameRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -104,10 +101,6 @@ func (r MLEvaluateDataFrameRequest) Do(ctx context.Context, transport Transport)
 		req.URL.RawQuery = q.Encode()
 	}
 
-	if r.Body != nil {
-		req.Header[headerContentType] = headerContentTypeJSON
-	}
-
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -118,6 +111,10 @@ func (r MLEvaluateDataFrameRequest) Do(ctx context.Context, transport Transport)
 				}
 			}
 		}
+	}
+
+	if r.Body != nil && req.Header.Get(headerContentType) == "" {
+		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -139,7 +136,6 @@ func (r MLEvaluateDataFrameRequest) Do(ctx context.Context, transport Transport)
 }
 
 // WithContext sets the request context.
-//
 func (f MLEvaluateDataFrame) WithContext(v context.Context) func(*MLEvaluateDataFrameRequest) {
 	return func(r *MLEvaluateDataFrameRequest) {
 		r.ctx = v
@@ -147,7 +143,6 @@ func (f MLEvaluateDataFrame) WithContext(v context.Context) func(*MLEvaluateData
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f MLEvaluateDataFrame) WithPretty() func(*MLEvaluateDataFrameRequest) {
 	return func(r *MLEvaluateDataFrameRequest) {
 		r.Pretty = true
@@ -155,7 +150,6 @@ func (f MLEvaluateDataFrame) WithPretty() func(*MLEvaluateDataFrameRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f MLEvaluateDataFrame) WithHuman() func(*MLEvaluateDataFrameRequest) {
 	return func(r *MLEvaluateDataFrameRequest) {
 		r.Human = true
@@ -163,7 +157,6 @@ func (f MLEvaluateDataFrame) WithHuman() func(*MLEvaluateDataFrameRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f MLEvaluateDataFrame) WithErrorTrace() func(*MLEvaluateDataFrameRequest) {
 	return func(r *MLEvaluateDataFrameRequest) {
 		r.ErrorTrace = true
@@ -171,7 +164,6 @@ func (f MLEvaluateDataFrame) WithErrorTrace() func(*MLEvaluateDataFrameRequest) 
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f MLEvaluateDataFrame) WithFilterPath(v ...string) func(*MLEvaluateDataFrameRequest) {
 	return func(r *MLEvaluateDataFrameRequest) {
 		r.FilterPath = v
@@ -179,7 +171,6 @@ func (f MLEvaluateDataFrame) WithFilterPath(v ...string) func(*MLEvaluateDataFra
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f MLEvaluateDataFrame) WithHeader(h map[string]string) func(*MLEvaluateDataFrameRequest) {
 	return func(r *MLEvaluateDataFrameRequest) {
 		if r.Header == nil {
@@ -192,7 +183,6 @@ func (f MLEvaluateDataFrame) WithHeader(h map[string]string) func(*MLEvaluateDat
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f MLEvaluateDataFrame) WithOpaqueID(s string) func(*MLEvaluateDataFrameRequest) {
 	return func(r *MLEvaluateDataFrameRequest) {
 		if r.Header == nil {

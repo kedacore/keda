@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -43,11 +43,9 @@ func newScrollFunc(t Transport) Scroll {
 // Scroll allows to retrieve a large numbers of results from a single search request.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/search-request-body.html#request-body-search-scroll.
-//
 type Scroll func(o ...func(*ScrollRequest)) (*Response, error)
 
 // ScrollRequest configures the Scroll API request.
-//
 type ScrollRequest struct {
 	Body io.Reader
 
@@ -67,7 +65,6 @@ type ScrollRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r ScrollRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -123,10 +120,6 @@ func (r ScrollRequest) Do(ctx context.Context, transport Transport) (*Response, 
 		req.URL.RawQuery = q.Encode()
 	}
 
-	if r.Body != nil {
-		req.Header[headerContentType] = headerContentTypeJSON
-	}
-
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -137,6 +130,10 @@ func (r ScrollRequest) Do(ctx context.Context, transport Transport) (*Response, 
 				}
 			}
 		}
+	}
+
+	if r.Body != nil && req.Header.Get(headerContentType) == "" {
+		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -158,7 +155,6 @@ func (r ScrollRequest) Do(ctx context.Context, transport Transport) (*Response, 
 }
 
 // WithContext sets the request context.
-//
 func (f Scroll) WithContext(v context.Context) func(*ScrollRequest) {
 	return func(r *ScrollRequest) {
 		r.ctx = v
@@ -166,7 +162,6 @@ func (f Scroll) WithContext(v context.Context) func(*ScrollRequest) {
 }
 
 // WithBody - The scroll ID if not passed by URL or query parameter..
-//
 func (f Scroll) WithBody(v io.Reader) func(*ScrollRequest) {
 	return func(r *ScrollRequest) {
 		r.Body = v
@@ -174,7 +169,6 @@ func (f Scroll) WithBody(v io.Reader) func(*ScrollRequest) {
 }
 
 // WithScrollID - the scroll ID.
-//
 func (f Scroll) WithScrollID(v string) func(*ScrollRequest) {
 	return func(r *ScrollRequest) {
 		r.ScrollID = v
@@ -182,7 +176,6 @@ func (f Scroll) WithScrollID(v string) func(*ScrollRequest) {
 }
 
 // WithRestTotalHitsAsInt - indicates whether hits.total should be rendered as an integer or an object in the rest search response.
-//
 func (f Scroll) WithRestTotalHitsAsInt(v bool) func(*ScrollRequest) {
 	return func(r *ScrollRequest) {
 		r.RestTotalHitsAsInt = &v
@@ -190,7 +183,6 @@ func (f Scroll) WithRestTotalHitsAsInt(v bool) func(*ScrollRequest) {
 }
 
 // WithScroll - specify how long a consistent view of the index should be maintained for scrolled search.
-//
 func (f Scroll) WithScroll(v time.Duration) func(*ScrollRequest) {
 	return func(r *ScrollRequest) {
 		r.Scroll = v
@@ -198,7 +190,6 @@ func (f Scroll) WithScroll(v time.Duration) func(*ScrollRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f Scroll) WithPretty() func(*ScrollRequest) {
 	return func(r *ScrollRequest) {
 		r.Pretty = true
@@ -206,7 +197,6 @@ func (f Scroll) WithPretty() func(*ScrollRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f Scroll) WithHuman() func(*ScrollRequest) {
 	return func(r *ScrollRequest) {
 		r.Human = true
@@ -214,7 +204,6 @@ func (f Scroll) WithHuman() func(*ScrollRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f Scroll) WithErrorTrace() func(*ScrollRequest) {
 	return func(r *ScrollRequest) {
 		r.ErrorTrace = true
@@ -222,7 +211,6 @@ func (f Scroll) WithErrorTrace() func(*ScrollRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f Scroll) WithFilterPath(v ...string) func(*ScrollRequest) {
 	return func(r *ScrollRequest) {
 		r.FilterPath = v
@@ -230,7 +218,6 @@ func (f Scroll) WithFilterPath(v ...string) func(*ScrollRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f Scroll) WithHeader(h map[string]string) func(*ScrollRequest) {
 	return func(r *ScrollRequest) {
 		if r.Header == nil {
@@ -243,7 +230,6 @@ func (f Scroll) WithHeader(h map[string]string) func(*ScrollRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f Scroll) WithOpaqueID(s string) func(*ScrollRequest) {
 	return func(r *ScrollRequest) {
 		if r.Header == nil {

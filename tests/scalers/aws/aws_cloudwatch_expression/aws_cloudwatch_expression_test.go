@@ -36,8 +36,6 @@ type templateData struct {
 	AwsAccessKeyID             string
 	AwsSecretAccessKey         string
 	AwsRegion                  string
-	CloudWatchMetricName       string
-	CloudWatchMetricNamespace  string
 	CloudwatchMetricExpression string
 }
 
@@ -112,9 +110,7 @@ spec:
         name: keda-trigger-auth-aws-credentials
       metadata:
         awsRegion: {{.AwsRegion}}
-        namespace: {{.CloudWatchMetricNamespace}}
         expression: {{.CloudwatchMetricExpression}}
-        metricName: {{.CloudWatchMetricName}}
         targetMetricValue: "1"
         activationTargetMetricValue: "5"
         minMetricValue: "0"
@@ -228,8 +224,6 @@ func getTemplateData() (templateData, []Template) {
 			AwsAccessKeyID:             base64.StdEncoding.EncodeToString([]byte(awsAccessKeyID)),
 			AwsSecretAccessKey:         base64.StdEncoding.EncodeToString([]byte(awsSecretAccessKey)),
 			AwsRegion:                  awsRegion,
-			CloudWatchMetricName:       cloudwatchMetricName,
-			CloudWatchMetricNamespace:  cloudwatchMetricNamespace,
 			CloudwatchMetricExpression: cloudwatchMetricExpression,
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
