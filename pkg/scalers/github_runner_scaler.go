@@ -18,12 +18,11 @@ import (
 )
 
 const (
-	defaultTargetWorkflowQueueLength           = 1
-	defaultActivationTargetWorkflowQueueLength = 0
-	defaultGithubAPIURL                        = "https://api.github.com"
-	ORG                                        = "org"
-	ENT                                        = "ent"
-	REPO                                       = "repo"
+	defaultTargetWorkflowQueueLength = 1
+	defaultGithubAPIURL              = "https://api.github.com"
+	ORG                              = "org"
+	ENT                              = "ent"
+	REPO                             = "repo"
 )
 
 var reservedLabels = []string{"self-hosted", "linux", "x64"}
@@ -36,15 +35,14 @@ type githubRunnerScaler struct {
 }
 
 type githubRunnerMetadata struct {
-	githubAPIURL                        string
-	owner                               string
-	runnerScope                         string
-	personalAccessToken                 string
-	repos                               []string
-	labels                              []string
-	targetWorkflowQueueLength           int64
-	activationTargetWorkflowQueueLength int64
-	scalerIndex                         int
+	githubAPIURL              string
+	owner                     string
+	runnerScope               string
+	personalAccessToken       string
+	repos                     []string
+	labels                    []string
+	targetWorkflowQueueLength int64
+	scalerIndex               int
 }
 
 type WorkflowRuns struct {
@@ -345,13 +343,11 @@ func NewGitHubRunnerScaler(config *ScalerConfig) (Scaler, error) {
 }
 
 // getValueFromMetaOrEnv returns the value of the given key from the metadata or the environment variables
-func getValueFromMetaOrEnv(key string, metadata map[string]string, env map[string]string, defEnv string) (string, error) {
+func getValueFromMetaOrEnv(key string, metadata map[string]string, env map[string]string) (string, error) {
 	if val, ok := metadata[key]; ok && val != "" {
 		return val, nil
 	} else if val, ok := metadata[key+"FromEnv"]; ok && val != "" {
 		return env[val], nil
-	} else if val, ok := env[defEnv]; ok && val != "" {
-		return val, nil
 	}
 	return "", fmt.Errorf("no %s given", key)
 }
@@ -361,11 +357,11 @@ func getOwner(runnerScope string, config *ScalerConfig) (string, error) {
 	var owner string
 	switch runnerScope {
 	case ORG:
-		owner, err = getValueFromMetaOrEnv("owner", config.TriggerMetadata, config.ResolvedEnv, "ORG_NAME")
+		owner, err = getValueFromMetaOrEnv("owner", config.TriggerMetadata, config.ResolvedEnv)
 	case ENT:
-		owner, err = getValueFromMetaOrEnv("owner", config.TriggerMetadata, config.ResolvedEnv, "ENTERPRISE_NAME")
+		owner, err = getValueFromMetaOrEnv("owner", config.TriggerMetadata, config.ResolvedEnv)
 	default:
-		owner, err = getValueFromMetaOrEnv("owner", config.TriggerMetadata, config.ResolvedEnv, "")
+		owner, err = getValueFromMetaOrEnv("owner", config.TriggerMetadata, config.ResolvedEnv)
 	}
 	if err != nil {
 		return "", err
@@ -374,10 +370,10 @@ func getOwner(runnerScope string, config *ScalerConfig) (string, error) {
 }
 
 // getInt64ValueFromMetaOrEnv returns the value of the given key from the metadata or the environment variables
-func getInt64ValueFromMetaOrEnv(key string, config *ScalerConfig, defVal int64) (int64, error) {
-	sInt, err := getValueFromMetaOrEnv(key, config.TriggerMetadata, config.ResolvedEnv, "")
+func getInt64ValueFromMetaOrEnv(key string, config *ScalerConfig) (int64, error) {
+	sInt, err := getValueFromMetaOrEnv(key, config.TriggerMetadata, config.ResolvedEnv)
 	if err != nil {
-		return defVal, nil
+		return -1, fmt.Errorf("error parsing %s: %w", key, err)
 	}
 
 	goodInt, err := strconv.ParseInt(sInt, 10, 64)
@@ -391,7 +387,7 @@ func parseGitHubRunnerMetadata(config *ScalerConfig) (*githubRunnerMetadata, err
 	meta := githubRunnerMetadata{}
 	meta.targetWorkflowQueueLength = defaultTargetWorkflowQueueLength
 
-	if val, err := getValueFromMetaOrEnv("runnerScope", config.TriggerMetadata, config.ResolvedEnv, "RUNNER_SCOPE"); err == nil && val != "" {
+	if val, err := getValueFromMetaOrEnv("runnerScope", config.TriggerMetadata, config.ResolvedEnv); err == nil && val != "" {
 		meta.runnerScope = val
 	} else {
 		return nil, err
@@ -403,27 +399,21 @@ func parseGitHubRunnerMetadata(config *ScalerConfig) (*githubRunnerMetadata, err
 		return nil, err
 	}
 
-	if val, err := getInt64ValueFromMetaOrEnv("targetWorkflowQueueLength", config, defaultTargetWorkflowQueueLength); err == nil && val != -1 {
+	if val, err := getInt64ValueFromMetaOrEnv("targetWorkflowQueueLength", config); err == nil && val != -1 {
 		meta.targetWorkflowQueueLength = val
 	} else {
-		return nil, err
+		meta.targetWorkflowQueueLength = defaultTargetWorkflowQueueLength
 	}
 
-	if val, err := getInt64ValueFromMetaOrEnv("activationTargetWorkflowQueueLength", config, defaultActivationTargetWorkflowQueueLength); err == nil && val != -1 {
-		meta.activationTargetWorkflowQueueLength = val
-	} else {
-		return nil, err
-	}
-
-	if val, err := getValueFromMetaOrEnv("labels", config.TriggerMetadata, config.ResolvedEnv, "LABELS"); err == nil && val != "" {
+	if val, err := getValueFromMetaOrEnv("labels", config.TriggerMetadata, config.ResolvedEnv); err == nil && val != "" {
 		meta.labels = strings.Split(val, ",")
 	}
 
-	if val, err := getValueFromMetaOrEnv("repos", config.TriggerMetadata, config.ResolvedEnv, ""); err == nil && val != "" {
+	if val, err := getValueFromMetaOrEnv("repos", config.TriggerMetadata, config.ResolvedEnv); err == nil && val != "" {
 		meta.repos = strings.Split(val, ",")
 	}
 
-	if val, err := getValueFromMetaOrEnv("githubApiURL", config.TriggerMetadata, config.ResolvedEnv, "GITHUB_API_URL"); err == nil && val != "" {
+	if val, err := getValueFromMetaOrEnv("githubApiURL", config.TriggerMetadata, config.ResolvedEnv); err == nil && val != "" {
 		meta.githubAPIURL = val
 	} else {
 		meta.githubAPIURL = defaultGithubAPIURL
@@ -431,10 +421,6 @@ func parseGitHubRunnerMetadata(config *ScalerConfig) (*githubRunnerMetadata, err
 
 	if val, ok := config.AuthParams["personalAccessToken"]; ok && val != "" {
 		// Found the organizationURL in a parameter from TriggerAuthentication
-		meta.personalAccessToken = val
-	} else if val, ok := config.TriggerMetadata["personalAccessTokenFromEnv"]; ok && val != "" {
-		meta.personalAccessToken = config.ResolvedEnv[val]
-	} else if val, ok := config.ResolvedEnv["ACCESS_TOKEN"]; ok && val != "" {
 		meta.personalAccessToken = val
 	} else {
 		return nil, fmt.Errorf("no personalAccessToken given")
@@ -627,7 +613,7 @@ func (s *githubRunnerScaler) GetMetricsAndActivity(ctx context.Context, metricNa
 
 	metric := GenerateMetricInMili(metricName, float64(queueLen))
 
-	return []external_metrics.ExternalMetricValue{metric}, queueLen > s.metadata.activationTargetWorkflowQueueLength, nil
+	return []external_metrics.ExternalMetricValue{metric}, queueLen >= s.metadata.targetWorkflowQueueLength, nil
 }
 
 func (s *githubRunnerScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
