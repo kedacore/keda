@@ -129,10 +129,7 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata, logger logr
 		saslAuthType = ""
 	}
 
-	// FIXME: DEPRECATED, to be removed in version 2.12
 	if val, ok := config.AuthParams["sasl"]; ok {
-		logger.V(1).Info("Setting `sasl` in TriggerAuthentication is " +
-			"going to be deprecated in version 2.12. Please use `saslAuthType` in ScaleObject")
 		if saslAuthType != "" {
 			return errors.New("unable to set `saslAuthType` in ScaledObject and `sasl` in TriggerAuthentication together")
 		}
@@ -177,7 +174,6 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata, logger logr
 		enableTLS = t
 	}
 
-	// FIXME: DEPRECATED, to be removed in version 2.12
 	if val, ok := config.AuthParams["tls"]; ok {
 		val = strings.TrimSpace(val)
 		if enableTLS {
@@ -191,8 +187,6 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata, logger logr
 		default:
 			return fmt.Errorf("err incorrect TLS value given, got %s", val)
 		}
-		logger.V(1).Info("Setting `tls` in TriggerAuthentication is " +
-			"going to be deprecated in version 2.12. Please use `enableTls` in ScaleObject")
 	}
 
 	if enableTLS {

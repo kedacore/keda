@@ -23,14 +23,14 @@ type parseKafkaMetadataTestData struct {
 	excludePersistentLag bool
 }
 
-// FIXME: DEPRECATED, to be removed in version 2.12
 type parseKafkaAuthParamsTestData struct {
 	authParams map[string]string
 	isError    bool
 	enableTLS  bool
 }
 
-type parseAuthParamsTestData struct {
+// Testing the case where `enableTls` and `saslAuthType` are specified in ScaledObject
+type parseAuthParamsTestDataSecondAuthMethod struct {
 	metadata   map[string]string
 	authParams map[string]string
 	isError    bool
@@ -53,7 +53,6 @@ var validKafkaMetadata = map[string]string{
 
 // A complete valid authParams example for sasl, with username and passwd
 var validWithAuthParams = map[string]string{
-	// FIXME: DEPRECATED, to be removed in version 2.12
 	"sasl":     "plaintext",
 	"username": "admin",
 	"password": "admin",
@@ -115,7 +114,6 @@ var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), true, false},
 }
 
-// FIXME: DEPRECATED, to be removed in version 2.12
 var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	// success, SASL only
 	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin"}, false, false},
@@ -168,7 +166,7 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	// failure, SASL + TLS, missing key
 	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert"}, true, false},
 }
-var parseAuthParamsTestDataset = []parseAuthParamsTestData{
+var parseAuthParamsTestDataset = []parseAuthParamsTestDataSecondAuthMethod{
 	// success, SASL plaintext
 	{map[string]string{"saslAuthType": "plaintext", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin"}, false, false},
 	// success, SASL scram_sha256
@@ -220,7 +218,6 @@ var parseAuthParamsTestDataset = []parseAuthParamsTestData{
 	// failure, SASL + TLS, missing key
 	{map[string]string{"saslAuthType": "plaintext", "enableTls": "true", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "ca": "caaa", "cert": "ceert"}, true, false},
 
-	// FIXME: DEPRECATED, to be removed in version 2.12
 	// failure, setting SASL values in both places
 	{map[string]string{"saslAuthType": "scram_sha512", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"sasl": "scram_sha512", "username": "admin", "password": "admin"}, true, false},
 	// failure, setting TLS values in both places
@@ -311,7 +308,7 @@ func TestGetBrokers(t *testing.T) {
 }
 
 func TestKafkaAuthParams(t *testing.T) {
-	// FIXME: DEPRECATED, to be removed in version 2.12
+	// Testing tls and sasl value in TriggerAuthentication
 	for _, testData := range parseKafkaAuthParamsTestDataset {
 		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: validKafkaMetadata, AuthParams: testData.authParams}, logr.Discard())
 
@@ -340,6 +337,7 @@ func TestKafkaAuthParams(t *testing.T) {
 		}
 	}
 
+	// Testing tls and sasl value in scaledObject
 	for id, testData := range parseAuthParamsTestDataset {
 		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
 
