@@ -119,7 +119,7 @@ func NewKafkaScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata, logger logr.Logger) error {
+func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	meta.saslType = KafkaSASLTypeNone
 	var saslAuthType string
 	switch {
@@ -295,7 +295,7 @@ func parseKafkaMetadata(config *ScalerConfig, logger logr.Logger) (kafkaMetadata
 		meta.activationLagThreshold = t
 	}
 
-	if err := parseKafkaAuthParams(config, &meta, logger); err != nil {
+	if err := parseKafkaAuthParams(config, &meta); err != nil {
 		return meta, err
 	}
 
