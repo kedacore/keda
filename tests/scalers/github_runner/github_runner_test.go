@@ -29,10 +29,10 @@ const (
 )
 
 var (
-	personalAccessToken = os.Getenv("GITHUB_PAT")
-	owner               = os.Getenv("GITHUB_OWNER")
-	githubScope         = os.Getenv("GITHUB_SCOPE")
-	repos               = os.Getenv("GITHUB_REPOS")
+	personalAccessToken = os.Getenv("GH_AUTOMATIONS_PAT")
+	owner               = os.Getenv("GH_OWNER")
+	githubScope         = os.Getenv("GH_SCOPE")
+	repos               = os.Getenv("GH_REPOS")
 	testNamespace       = fmt.Sprintf("%s-ns", testName)
 	secretName          = fmt.Sprintf("%s-secret", testName)
 	deploymentName      = fmt.Sprintf("%s-deployment", testName)
@@ -40,8 +40,8 @@ var (
 	scaledJobName       = fmt.Sprintf("%s-sj", testName)
 	minReplicaCount     = 0
 	maxReplicaCount     = 1
-	workflowID          = os.Getenv("GITHUB_WORKFLOW_ID")
-	soWorkflowID        = os.Getenv("GITHUB_SO_WORKFLOW_ID")
+	workflowID          = os.Getenv("GH_WORKFLOW_ID")
+	soWorkflowID        = os.Getenv("GH_SO_WORKFLOW_ID")
 )
 
 type templateData struct {
@@ -206,12 +206,12 @@ func getGitHubClient() *github.Client {
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, personalAccessToken, "GITHUB_PAT env variable is required for github runner test")
-	require.NotEmpty(t, owner, "GITHUB_OWNER env variable is required for github runner test")
-	require.NotEmpty(t, githubScope, "GITHUB_SCOPE env variable is required for github runner test")
-	require.NotEmpty(t, repos, "GITHUB_REPOS env variable is required for github runner test")
-	require.NotEmpty(t, workflowID, "GITHUB_WORKFLOW_ID env variable is required for github runner test")
-	require.NotEmpty(t, soWorkflowID, "GITHUB_SO_WORKFLOW_ID env variable is required for github runner test")
+	require.NotEmpty(t, personalAccessToken, "GH_AUTOMATION_PAT env variable is required for github runner test")
+	require.NotEmpty(t, owner, "GH_OWNER env variable is required for github runner test")
+	require.NotEmpty(t, githubScope, "GH_SCOPE env variable is required for github runner test")
+	require.NotEmpty(t, repos, "GH_REPOS env variable is required for github runner test")
+	require.NotEmpty(t, workflowID, "GH_WORKFLOW_ID env variable is required for github runner test")
+	require.NotEmpty(t, soWorkflowID, "GH_SO_WORKFLOW_ID env variable is required for github runner test")
 
 	client := getGitHubClient()
 	cancelAllRuns(t, client, repos, workflowID)
