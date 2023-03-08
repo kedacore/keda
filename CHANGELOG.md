@@ -79,6 +79,7 @@ Here is an overview of all new **experimental** features:
 
 - **General**: Fix regression in fallback mechanism ([#4249](https://github.com/kedacore/keda/issues/4249))
 - **General**: Prevent a panic that might occur while refreshing a scaler cache ([#4092](https://github.com/kedacore/keda/issues/4092))
+- **AWS Cloudwatch Scaler:** Make `metricName` and `namespace` optional when using `expression` ([#4334](https://github.com/kedacore/keda/issues/4262))
 - **Azure Pipelines Scaler**: Add new parameter to limit the jobs returned ([#4324](https://github.com/kedacore/keda/issues/4324))
 - **Azure Queue Scaler**: Fix azure queue length ([#4002](https://github.com/kedacore/keda/issues/4002))
 - **Azure Service Bus Scaler:** Use correct auth flows with pod identity ([#4026](https://github.com/kedacore/keda/issues/4026)|[#4123](https://github.com/kedacore/keda/issues/4123))
