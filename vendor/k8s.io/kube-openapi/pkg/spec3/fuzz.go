@@ -1,9 +1,10 @@
 package spec3
 
 import (
-	fuzz "github.com/google/gofuzz"
 	"math/rand"
 	"strings"
+
+	fuzz "github.com/google/gofuzz"
 
 	"k8s.io/kube-openapi/pkg/validation/spec"
 )
@@ -169,82 +170,85 @@ var OpenAPIV3FuzzFuncs []interface{} = []interface{}{
 		c.Fuzz(&v.VendorExtensible)
 	},
 	func(v *spec.Extensions, c fuzz.Continue) {
-		*v = spec.Extensions{}
 		numChildren := c.Intn(5)
-		if numChildren == 0 {
-			*v = nil
-		}
 		for i := 0; i < numChildren; i++ {
-			v.Add("x-"+randAlphanumString(), c.RandString()+"x")
+			if *v == nil {
+				*v = spec.Extensions{}
+			}
+			(*v)["x-"+c.RandString()] = c.RandString()
 		}
 	},
 	func(v *spec.ExternalDocumentation, c fuzz.Continue) {
 		c.Fuzz(&v.Description)
 		v.URL = "https://" + randAlphanumString()
 	},
+	func(v *spec.SchemaURL, c fuzz.Continue) {
+		*v = spec.SchemaURL("https://" + randAlphanumString())
+	},
+	func(v *spec.SchemaOrBool, c fuzz.Continue) {
+		*v = spec.SchemaOrBool{}
+
+		if c.RandBool() {
+			v.Allows = c.RandBool()
+		} else {
+			v.Schema = &spec.Schema{}
+			v.Allows = true
+			c.Fuzz(&v.Schema)
+		}
+	},
+	func(v *spec.SchemaOrArray, c fuzz.Continue) {
+		*v = spec.SchemaOrArray{}
+		if c.RandBool() {
+			schema := spec.Schema{}
+			c.Fuzz(&schema)
+			v.Schema = &schema
+		} else {
+			v.Schemas = []spec.Schema{}
+			numChildren := c.Intn(5)
+			for i := 0; i < numChildren; i++ {
+				schema := spec.Schema{}
+				c.Fuzz(&schema)
+				v.Schemas = append(v.Schemas, schema)
+			}
+
+		}
+
+	},
+	func(v *spec.SchemaOrStringArray, c fuzz.Continue) {
+		if c.RandBool() {
+			*v = spec.SchemaOrStringArray{}
+			if c.RandBool() {
+				c.Fuzz(&v.Property)
+			} else {
+				c.Fuzz(&v.Schema)
+			}
+		}
+	},
 	func(v *spec.Schema, c fuzz.Continue) {
 		if c.Intn(refChance) == 0 {
 			c.Fuzz(&v.Ref)
 			return
 		}
-		c.Fuzz(&v.VendorExtensible)
-		c.Fuzz(&v.Description)
-		c.Fuzz(&v.Nullable)
-		c.Fuzz(&v.Title)
-		c.Fuzz(&v.Required)
-		c.Fuzz(&v.ExternalDocs)
-		n := c.Intn(8)
-		switch n {
-		case 0:
-			// To prevent exponential growth from recursively generating properties, only allow the schema to be an object with low frequency
-			if c.Intn(5) == 0 {
-				c.Fuzz(&v.Properties)
-				c.Fuzz(&v.MinProperties)
-				c.Fuzz(&v.MaxProperties)
-			} else {
-				v.Type = spec.StringOrArray{"integer"}
-				switch c.Intn(3) {
-				case 0:
-					v.Format = "int32"
-				case 1:
-					v.Format = "int64"
-				}
-				c.Fuzz(&v.MultipleOf)
-				c.Fuzz(&v.Minimum)
-				c.Fuzz(&v.Maximum)
-				c.Fuzz(&v.ExclusiveMaximum)
-				c.Fuzz(&v.ExclusiveMinimum)
-			}
-		case 1:
-			v.Type = spec.StringOrArray{"number"}
-			switch c.Intn(3) {
-			case 0:
-				v.Format = "float"
-			case 1:
-				v.Format = "double"
-			}
-			c.Fuzz(&v.MultipleOf)
-			c.Fuzz(&v.ExclusiveMaximum)
-			c.Fuzz(&v.ExclusiveMinimum)
-			c.Fuzz(&v.Minimum)
-			c.Fuzz(&v.Maximum)
-		case 2:
-			v.Type = spec.StringOrArray{"string"}
-			c.Fuzz(&v.MinLength)
-			c.Fuzz(&v.MaxLength)
-		case 3:
-			v.Type = spec.StringOrArray{"boolean"}
-		case 4:
-			v.Type = spec.StringOrArray{"array"}
-			s := spec.Schema{}
-			c.Fuzz(&s)
-			v.Items = &spec.SchemaOrArray{Schema: &s}
-		case 5:
-			c.Fuzz(&v.AnyOf)
-		case 6:
-			c.Fuzz(&v.AllOf)
-		case 7:
-			c.Fuzz(&v.OneOf)
+		if c.RandBool() {
+			// file schema
+			c.Fuzz(&v.Default)
+			c.Fuzz(&v.Description)
+			c.Fuzz(&v.Example)
+			c.Fuzz(&v.ExternalDocs)
+
+			c.Fuzz(&v.Format)
+			c.Fuzz(&v.ReadOnly)
+			c.Fuzz(&v.Required)
+			c.Fuzz(&v.Title)
+			v.Type = spec.StringOrArray{"file"}
+
+		} else {
+			// normal schema
+			c.Fuzz(&v.SchemaProps)
+			c.Fuzz(&v.SwaggerSchemaProps)
+			c.Fuzz(&v.VendorExtensible)
+			c.Fuzz(&v.ExtraProps)
 		}
+
 	},
 }

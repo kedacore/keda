@@ -1,3 +1,12 @@
+## 2.9.0
+
+### Features
+- AttachProgressReporter is an experimental feature that allows users to provide arbitrary information when a ProgressReport is requested [28801fe]
+
+- GinkgoT() has been expanded to include several Ginkgo-specific methods [2bd5a3b]
+
+  The intent is to enable the development of third-party libraries that integrate deeply with Ginkgo using `GinkgoT()` to access Ginkgo's functionality.
+
 ## 2.8.4
 
 ### Features

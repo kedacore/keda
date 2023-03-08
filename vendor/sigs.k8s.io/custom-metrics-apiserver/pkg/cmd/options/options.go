@@ -39,8 +39,9 @@ type CustomMetricsAdapterServerOptions struct {
 	Audit          *genericoptions.AuditOptions
 	Features       *genericoptions.FeatureOptions
 
-	OpenAPIConfig *openapicommon.Config
-	EnableMetrics bool
+	OpenAPIConfig   *openapicommon.Config
+	OpenAPIV3Config *openapicommon.Config
+	EnableMetrics   bool
 }
 
 // NewCustomMetricsAdapterServerOptions creates a new instance of
@@ -105,6 +106,9 @@ func (o *CustomMetricsAdapterServerOptions) ApplyTo(serverConfig *genericapiserv
 	// enable OpenAPI schemas
 	if o.OpenAPIConfig != nil {
 		serverConfig.OpenAPIConfig = o.OpenAPIConfig
+	}
+	if o.OpenAPIV3Config != nil {
+		serverConfig.OpenAPIV3Config = o.OpenAPIV3Config
 	}
 
 	serverConfig.EnableMetrics = o.EnableMetrics

@@ -540,7 +540,7 @@ and will simply log the passed in text to the GinkgoWriter.  If By is handed a f
 
 By will also generate and attach a ReportEntry to the spec.  This will ensure that By annotations appear in Ginkgo's machine-readable reports.
 
-Note that By does not generate a new Ginkgo node - rather it is simply synctactic sugar around GinkgoWriter and AddReportEntry
+Note that By does not generate a new Ginkgo node - rather it is simply syntactic sugar around GinkgoWriter and AddReportEntry
 You can learn more about By here: https://onsi.github.io/ginkgo/#documenting-complex-specs-by
 */
 func By(text string, callback ...func()) {
@@ -770,4 +770,25 @@ func DeferCleanup(args ...interface{}) {
 		global.Failer.Fail(message, cl)
 	}
 	pushNode(internal.NewCleanupNode(deprecationTracker, fail, args...))
+}
+
+/*
+AttachProgressReporter allows you to register a function that will be called whenever Ginkgo generates a Progress Report.  The contents returned by the function will be included in the report.
+
+**This is an experimental feature and the public-facing interface may change in a future minor version of Ginkgo**
+
+Progress Reports are generated:
+- whenever the user explicitly requests one (via `SIGINFO` or `SIGUSR1`)
+- on nodes decorated  with PollProgressAfter
+- on suites run with --poll-progress-after
+- whenever a test times out
+
+Ginkgo uses Progress Reports to convey the current state of the test suite, including any running goroutines.  By attaching a progress reporter you are able to supplement these reports with additional information.
+
+# AttachProgressReporter returns a function that can be called to detach the progress reporter
+
+You can learn more about AttachProgressReporter here: https://onsi.github.io/ginkgo/#attaching-additional-information-to-progress-reports
+*/
+func AttachProgressReporter(reporter func() string) func() {
+	return global.Suite.AttachProgressReporter(reporter)
 }
