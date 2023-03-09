@@ -118,6 +118,7 @@ Here is an overview of all new **experimental** features:
 - **NATS Jetstream Scaler**: Fix compatibility when cluster not on kubernetes ([#4101](https://github.com/kedacore/keda/issues/4101))
 - **Prometheus Metrics**: Expose Prometheus Metrics also when getting ScaledObject state ([#4075](https://github.com/kedacore/keda/issues/4075))
 - **Redis Scalers**: Fix panic produced by incorrect logger initialization ([#4197](https://github.com/kedacore/keda/issues/4197))
+- **Selenium Grid Scaler**: ScaledObject with a trigger whose metadata browserVersion is latest is always being triggered regardless of the browserVersion requested by the user ([#4347](https://github.com/kedacore/keda/issues/4347))
 
 ### Deprecations
 
