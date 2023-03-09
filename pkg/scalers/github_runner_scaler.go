@@ -352,23 +352,6 @@ func getValueFromMetaOrEnv(key string, metadata map[string]string, env map[strin
 	return "", fmt.Errorf("no %s given", key)
 }
 
-func getOwner(runnerScope string, config *ScalerConfig) (string, error) {
-	var err error
-	var owner string
-	switch runnerScope {
-	case ORG:
-		owner, err = getValueFromMetaOrEnv("owner", config.TriggerMetadata, config.ResolvedEnv)
-	case ENT:
-		owner, err = getValueFromMetaOrEnv("owner", config.TriggerMetadata, config.ResolvedEnv)
-	default:
-		owner, err = getValueFromMetaOrEnv("owner", config.TriggerMetadata, config.ResolvedEnv)
-	}
-	if err != nil {
-		return "", err
-	}
-	return owner, nil
-}
-
 // getInt64ValueFromMetaOrEnv returns the value of the given key from the metadata or the environment variables
 func getInt64ValueFromMetaOrEnv(key string, config *ScalerConfig) (int64, error) {
 	sInt, err := getValueFromMetaOrEnv(key, config.TriggerMetadata, config.ResolvedEnv)
@@ -393,7 +376,7 @@ func parseGitHubRunnerMetadata(config *ScalerConfig) (*githubRunnerMetadata, err
 		return nil, err
 	}
 
-	if val, err := getOwner(meta.runnerScope, config); err == nil && val != "" {
+	if val, err := getValueFromMetaOrEnv("owner", config.TriggerMetadata, config.ResolvedEnv); err == nil && val != "" {
 		meta.owner = val
 	} else {
 		return nil, err
@@ -425,6 +408,8 @@ func parseGitHubRunnerMetadata(config *ScalerConfig) (*githubRunnerMetadata, err
 	} else {
 		return nil, fmt.Errorf("no personalAccessToken given")
 	}
+
+	meta.scalerIndex = config.ScalerIndex
 
 	return &meta, nil
 }

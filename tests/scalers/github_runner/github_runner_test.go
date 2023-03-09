@@ -103,6 +103,7 @@ spec:
       containers:
       - name: github-runner
         image: myoung34/github-runner:2.302.1-ubuntu-focal
+        imagePullPolicy: IfNotPresent
         env:
           - name: EPHEMERAL
             value: "true"
@@ -159,7 +160,7 @@ spec:
         containers:
         - name: {{.ScaledJobName}}
           image: myoung34/github-runner:2.302.1-ubuntu-focal
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           env:
           - name: EPHEMERAL
             value: "true"

@@ -504,3 +504,35 @@ func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_PulledRepos_NoRate(t *testi
 		t.Fail()
 	}
 }
+
+type githubRunnerMetricIdentifier struct {
+	metadataTestData *map[string]string
+	scalerIndex      int
+	name             string
+}
+
+var githubRunnerMetricIdentifiers = []githubRunnerMetricIdentifier{
+	{&testGitHubRunnerMetadata[1].metadata, 0, "s0-github-runner-ownername"},
+	{&testGitHubRunnerMetadata[1].metadata, 1, "s1-github-runner-ownername"},
+}
+
+func TestGithubRunnerGetMetricSpecForScaling(t *testing.T) {
+	for i, testData := range githubRunnerMetricIdentifiers {
+		ctx := context.Background()
+		meta, err := parseGitHubRunnerMetadata(&ScalerConfig{ResolvedEnv: testGitHubRunnerResolvedEnv, TriggerMetadata: *testData.metadataTestData, AuthParams: testAuthParams, ScalerIndex: testData.scalerIndex})
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+		mockGitHubRunnerScaler := githubRunnerScaler{
+			metadata:   meta,
+			httpClient: http.DefaultClient,
+		}
+
+		metricSpec := mockGitHubRunnerScaler.GetMetricSpecForScaling(ctx)
+		metricName := metricSpec[0].External.Metric.Name
+		t.Log(i)
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName+"!="+testData.name)
+		}
+	}
+}
