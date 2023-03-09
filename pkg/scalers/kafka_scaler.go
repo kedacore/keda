@@ -25,6 +25,11 @@ type kafkaScaler struct {
 	previousOffsets map[string]map[int32]int64
 }
 
+const (
+	stringEnable  = "enable"
+	stringDisable = "disable"
+)
+
 type kafkaMetadata struct {
 	bootstrapServers       []string
 	group                  string
@@ -121,9 +126,23 @@ func NewKafkaScaler(config *ScalerConfig) (Scaler, error) {
 
 func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	meta.saslType = KafkaSASLTypeNone
+	var saslAuthType string
+	switch {
+	case config.TriggerMetadata["sasl"] != "":
+		saslAuthType = config.TriggerMetadata["sasl"]
+	default:
+		saslAuthType = ""
+	}
+
 	if val, ok := config.AuthParams["sasl"]; ok {
-		val = strings.TrimSpace(val)
-		mode := kafkaSaslType(val)
+		if saslAuthType != "" {
+			return errors.New("unable to set `sasl` in both ScaledObject and TriggerAuthentication together")
+		}
+		saslAuthType = val
+	}
+
+	if saslAuthType != "" {
+		mode := kafkaSaslType(saslAuthType)
 
 		if mode == KafkaSASLTypePlaintext || mode == KafkaSASLTypeSCRAMSHA256 || mode == KafkaSASLTypeSCRAMSHA512 || mode == KafkaSASLTypeOAuthbearer {
 			if config.AuthParams["username"] == "" {
@@ -151,30 +170,51 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	}
 
 	meta.enableTLS = false
+	enableTLS := false
+	if val, ok := config.TriggerMetadata["tls"]; ok {
+		switch val {
+		case stringEnable:
+			enableTLS = true
+		case stringDisable:
+			enableTLS = false
+		default:
+			return fmt.Errorf("error incorrect TLS value given, got %s", val)
+		}
+	}
+
 	if val, ok := config.AuthParams["tls"]; ok {
 		val = strings.TrimSpace(val)
-
-		if val == "enable" {
-			certGiven := config.AuthParams["cert"] != ""
-			keyGiven := config.AuthParams["key"] != ""
-			if certGiven && !keyGiven {
-				return errors.New("key must be provided with cert")
-			}
-			if keyGiven && !certGiven {
-				return errors.New("cert must be provided with key")
-			}
-			meta.ca = config.AuthParams["ca"]
-			meta.cert = config.AuthParams["cert"]
-			meta.key = config.AuthParams["key"]
-			if value, found := config.AuthParams["keyPassword"]; found {
-				meta.keyPassword = value
-			} else {
-				meta.keyPassword = ""
-			}
-			meta.enableTLS = true
-		} else if val != "disable" {
-			return fmt.Errorf("err incorrect value for TLS given: %s", val)
+		if enableTLS {
+			return errors.New("unable to set `tls` in both ScaledObject and TriggerAuthentication together")
 		}
+		switch val {
+		case stringEnable:
+			enableTLS = true
+		case stringDisable:
+			enableTLS = false
+		default:
+			return fmt.Errorf("error incorrect TLS value given, got %s", val)
+		}
+	}
+
+	if enableTLS {
+		certGiven := config.AuthParams["cert"] != ""
+		keyGiven := config.AuthParams["key"] != ""
+		if certGiven && !keyGiven {
+			return errors.New("key must be provided with cert")
+		}
+		if keyGiven && !certGiven {
+			return errors.New("cert must be provided with key")
+		}
+		meta.ca = config.AuthParams["ca"]
+		meta.cert = config.AuthParams["cert"]
+		meta.key = config.AuthParams["key"]
+		if value, found := config.AuthParams["keyPassword"]; found {
+			meta.keyPassword = value
+		} else {
+			meta.keyPassword = ""
+		}
+		meta.enableTLS = true
 	}
 
 	return nil
