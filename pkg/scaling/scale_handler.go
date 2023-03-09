@@ -565,10 +565,29 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 			cache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 		}
 
+		// if true, it means ScaleToZero in cpu/mem scaler metadata is set to true
+		// and its requirements are met
+		cpuMemScalesToZero := false
+
 		for _, spec := range metricSpecs {
-			// skip cpu/memory resource scaler, these scalers are also always Active
+			// if cpu/memory resource scaler has scaleToZero metadata in trigger data
+			// & minReplicas==0 & atleast one external trigger exists -> object can be
+			// scaled to zero even if cpu/mem trigger is given
 			if spec.External == nil {
-				isScaledObjectActive = true
+				cpuMemCount := 0
+				for _, trigger := range scaledObject.Spec.Triggers {
+					if trigger.Type == "cpu" || trigger.Type == "memory" {
+						cpuMemCount += 1
+					}
+				}
+				if len(scaledObject.Spec.Triggers) > cpuMemCount && *scaledObject.Spec.MinReplicaCount == 0 {
+					_, cpuMemScalesToZero, _ = scalers[scalerIndex].GetMetricsAndActivity(ctx, spec.Resource.String())
+					if cpuMemScalesToZero {
+						isScaledObjectActive = true
+					}
+				} else {
+					isScaledObjectActive = true
+				}
 				continue
 			}
 

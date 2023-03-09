@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -138,6 +139,7 @@ func verifyHpas(incomingSo *ScaledObject, action string) error {
 	return nil
 }
 
+// TODO
 func verifyScaledObjects(incomingSo *ScaledObject, action string) error {
 	soList := &ScaledObjectList{}
 	opt := &client.ListOptions{
@@ -234,6 +236,42 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
 						err := fmt.Errorf("the scaledobject has a memory trigger but the container %s doesn't have the memory request defined", container.Name)
 						scaledobjectlog.Error(err, "validation error")
 						prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
+						return err
+					}
+				}
+			}
+
+			// validate field scaleToZero in scaleObject metadata of cpu/mem trigger:
+			// 1. (Error) SO has to have atleast one external trigger (non cpu/mem)
+			// 2. (Warning) SO has to have MinReplicaCount set to <= 0
+			if trigger.Metadata["scaleToZero"] == "true" {
+				stzBool, err := strconv.ParseBool(trigger.Metadata["scaleToZero"])
+				if err != nil {
+					scaledobjectlog.Error(err, "validation error")
+					prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "bad-bool-conversion")
+					return err
+				}
+
+				if stzBool {
+					// error for external triggers
+					scaleToZeroErr := true
+					for _, trig := range incomingSo.Spec.Triggers {
+						if trig.Type != "cpu" && trig.Type != "memory" {
+							scaleToZeroErr = false
+							break
+						}
+					}
+					if scaleToZeroErr {
+						err := fmt.Errorf("scaledobject has scaleToZero metadata field in cpu/mem trigger but no external triggers")
+						scaledobjectlog.Error(err, "validation error")
+						prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "scaleToZero-no-external-trig")
+						return err
+					}
+					// warning for minReplicas
+					if *incomingSo.Spec.MinReplicaCount > 0 {
+						err := fmt.Errorf("scaledobject MinReplicas is > 0, scaleToZero field is not used")
+						scaledobjectlog.Error(err, "scaleToZero min replicas")
+						prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "scaleToZero-min-replicas")
 						return err
 					}
 				}
