@@ -263,6 +263,30 @@ func WaitForJobSuccess(t *testing.T, kc *kubernetes.Clientset, jobName, namespac
 	return false
 }
 
+func WaitForAllJobsSuccess(t *testing.T, kc *kubernetes.Clientset, namespace string, iterations, interval int) bool {
+	for i := 0; i < iterations; i++ {
+		jobs, err := kc.BatchV1().Jobs(namespace).List(context.Background(), metav1.ListOptions{})
+		if err != nil {
+			t.Logf("cannot list jobs - %s", err)
+		}
+
+		allJobsSuccess := true
+		for _, job := range jobs.Items {
+			if job.Status.Succeeded == 0 {
+				allJobsSuccess = false
+				break
+			}
+		}
+
+		if allJobsSuccess {
+			t.Logf("all jobs ran successfully!")
+			return true // Job ran successfully
+		}
+		time.Sleep(time.Duration(interval) * time.Second)
+	}
+	return false
+}
+
 func WaitForNamespaceDeletion(t *testing.T, kc *kubernetes.Clientset, nsName string) bool {
 	for i := 0; i < 30; i++ {
 		t.Logf("waiting for namespace %s deletion", nsName)
