@@ -181,7 +181,6 @@ spec:
 )
 
 func TestCpuScaler(t *testing.T) {
-
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
@@ -243,7 +242,6 @@ func scaleToZero(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicas, 60, 1),
 		"Replica count should be %v", minReplicas)
-
 }
 
 func getTemplateData() (templateData, []Template) {

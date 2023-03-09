@@ -43,7 +43,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	//+kubebuilder:scaffold:imports
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
@@ -401,12 +400,12 @@ var _ = It("should validate the so creation without cpu and memory when custom r
 	Expect(err).ToNot(HaveOccurred())
 })
 
-var _ = It("should validate so creation with scaleToZero metadata when all requirements are met", func() {
+var _ = It("should validate so creation when all requirements are met for scaling to zero with cpu scaler", func() {
 	namespaceName := "scale-to-zero-good"
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, true, false)
 
-	scaledobject := createScaledObjectSTZ(soName, namespaceName, workloadName, 0, 5, "true", true)
+	scaledobject := createScaledObjectSTZ(soName, namespaceName, workloadName, 0, 5, true)
 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
@@ -418,12 +417,12 @@ var _ = It("should validate so creation with scaleToZero metadata when all requi
 	Expect(err).ToNot(HaveOccurred())
 })
 
-var _ = It("shouldn't validate so creation with scaleToZero metadata when minReplicas is > 0", func() {
-	namespaceName := "scale-to-zero-min-replicas"
+var _ = It("shouldn't validate so creation with cpu scaler requirements not being met for scaling to 0", func() {
+	namespaceName := "scale-to-zero-min-replicas-bad"
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, true, false)
 
-	scaledobject := createScaledObjectSTZ(soName, namespaceName, workloadName, 2, 5, "true", true)
+	scaledobject := createScaledObjectSTZ(soName, namespaceName, workloadName, 0, 5, false)
 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
@@ -433,19 +432,19 @@ var _ = It("shouldn't validate so creation with scaleToZero metadata when minRep
 	Expect(err).To(HaveOccurred())
 })
 
-var _ = It("shouldn't validate so creation with scaleToZero metadata when no external trigger is given", func() {
-	namespaceName := "scale-to-zero-no-external-trigger"
+var _ = It("should validate so creation when min replicas is > 0 with only cpu scaler given", func() {
+	namespaceName := "scale-to-zero-no-external-trigger-good"
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, true, false)
 
-	scaledobject := createScaledObjectSTZ(soName, namespaceName, workloadName, 0, 5, "true", false)
+	scaledobject := createScaledObjectSTZ(soName, namespaceName, workloadName, 1, 5, false)
 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
 	err = k8sClient.Create(context.Background(), workload)
 	Expect(err).ToNot(HaveOccurred())
 	err = k8sClient.Create(context.Background(), scaledobject)
-	Expect(err).To(HaveOccurred())
+	Expect(err).ToNot(HaveOccurred())
 
 })
 
@@ -644,24 +643,15 @@ func createStatefulSet(namespace string, hasCPU, hasMemory bool) *appsv1.Statefu
 	}
 }
 
-func createScaledObjectSTZ(name string, namespace string, targetName string, minReplicas int32, maxReplicas int32, STZvalue string, hasExternalTrigger bool) *ScaledObject {
+func createScaledObjectSTZ(name string, namespace string, targetName string, minReplicas int32, maxReplicas int32, hasExternalTrigger bool) *ScaledObject {
 	triggers := []ScaleTriggers{
 		{
 			Type: "cpu",
 			Metadata: map[string]string{
-				"value":       "10",
-				"scaleToZero": STZvalue,
+				"value": "10",
 			},
 		},
 	}
-	// memoryTrigger := ScaleTriggers{
-	// 	Type: "memory",
-	// 	Metadata: map[string]string{
-	// 		"value":       "10",
-	// 		"scaleToZero": STZvalue,
-	// 	},
-	// }
-	// triggers = append(triggers, memoryTrigger)
 
 	if hasExternalTrigger {
 		kubeWorkloadTrigger := ScaleTriggers{

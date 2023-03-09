@@ -23,7 +23,6 @@ type cpuMemoryMetadata struct {
 	AverageValue       *resource.Quantity
 	AverageUtilization *int32
 	ContainerName      string
-	ScaleToZero        bool
 }
 
 // NewCPUMemoryScaler creates a new cpuMemoryScaler
@@ -80,16 +79,7 @@ func parseResourceMetadata(config *ScalerConfig, logger logr.Logger) (*cpuMemory
 	if value, ok = config.TriggerMetadata["containerName"]; ok && value != "" {
 		meta.ContainerName = value
 	}
-	if value, ok = config.TriggerMetadata["scaleToZero"]; ok && value != "" {
-		if value != "true" && value != "false" {
-			return nil, fmt.Errorf("unsupported scaleToZero value, allowed values are 'true' or 'false'")
-		}
-		scaleBool, err := strconv.ParseBool(value)
-		if err != nil {
-			return nil, err
-		}
-		meta.ScaleToZero = scaleBool
-	}
+
 	return meta, nil
 }
 
@@ -128,12 +118,7 @@ func (s *cpuMemoryScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSp
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics no need for cpu/memory metrics and if ScaleToZero is 'true', scaler
-// can be NOT active (based on other non cpu/mem triggers) otherwise its active
-// for cpu/memory scaler
+// GetMetrics no need for cpu/memory scaler and always active for cpu/memory scaler
 func (s *cpuMemoryScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	if s.metadata.ScaleToZero {
-		return nil, false, nil
-	}
 	return nil, true, nil
 }

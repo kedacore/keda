@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -40,6 +39,9 @@ var scaledobjectlog = logf.Log.WithName("scaledobject-validation-webhook")
 
 var kc client.Client
 var restMapper meta.RESTMapper
+
+var memoryString = "memory"
+var cpuString = "cpu"
 
 func (so *ScaledObject) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	kc = mgr.GetClient()
@@ -184,7 +186,7 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string) error {
 func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
 	var podSpec *corev1.PodSpec
 	for _, trigger := range incomingSo.Spec.Triggers {
-		if trigger.Type == "cpu" || trigger.Type == "memory" {
+		if trigger.Type == cpuString || trigger.Type == memoryString {
 			if podSpec == nil {
 				key := types.NamespacedName{
 					Namespace: incomingSo.Namespace,
@@ -220,7 +222,7 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
 				if conainerName != "" && container.Name != conainerName {
 					continue
 				}
-				if trigger.Type == "cpu" {
+				if trigger.Type == cpuString {
 					if container.Resources.Requests == nil ||
 						container.Resources.Requests.Cpu() == nil ||
 						container.Resources.Requests.Cpu().AsApproximateFloat64() == 0 {
@@ -229,7 +231,7 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
 						prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
 						return err
 					}
-				} else if trigger.Type == "memory" {
+				} else if trigger.Type == memoryString {
 					if container.Resources.Requests == nil ||
 						container.Resources.Requests.Memory() == nil ||
 						container.Resources.Requests.Memory().AsApproximateFloat64() == 0 {
@@ -241,40 +243,22 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
 				}
 			}
 
-			// validate field scaleToZero in scaleObject metadata of cpu/mem trigger:
-			// 1. (Error) SO has to have atleast one external trigger (non cpu/mem)
-			// 2. (Warning) SO has to have MinReplicaCount set to <= 0
-			if trigger.Metadata["scaleToZero"] == "true" {
-				stzBool, err := strconv.ParseBool(trigger.Metadata["scaleToZero"])
-				if err != nil {
-					scaledobjectlog.Error(err, "validation error")
-					prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "bad-bool-conversion")
-					return err
+			// validate scaledObject with cpu/mem triggers:
+			// If scaled object has only cpu/mem triggers AND has minReplicaCount 0
+			// return an error because it will never scale to zero
+			scaleToZeroErr := true
+			for _, trig := range incomingSo.Spec.Triggers {
+				if trig.Type != cpuString && trig.Type != memoryString {
+					scaleToZeroErr = false
+					break
 				}
+			}
 
-				if stzBool {
-					// error for external triggers
-					scaleToZeroErr := true
-					for _, trig := range incomingSo.Spec.Triggers {
-						if trig.Type != "cpu" && trig.Type != "memory" {
-							scaleToZeroErr = false
-							break
-						}
-					}
-					if scaleToZeroErr {
-						err := fmt.Errorf("scaledobject has scaleToZero metadata field in cpu/mem trigger but no external triggers")
-						scaledobjectlog.Error(err, "validation error")
-						prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "scaleToZero-no-external-trig")
-						return err
-					}
-					// warning for minReplicas
-					if *incomingSo.Spec.MinReplicaCount > 0 {
-						err := fmt.Errorf("scaledobject MinReplicas is > 0, scaleToZero field is not used")
-						scaledobjectlog.Error(err, "scaleToZero min replicas")
-						prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "scaleToZero-min-replicas")
-						return err
-					}
-				}
+			if (scaleToZeroErr && incomingSo.Spec.MinReplicaCount == nil) || (scaleToZeroErr && *incomingSo.Spec.MinReplicaCount == 0) {
+				err := fmt.Errorf("scaledobject has no external triggers AND minReplica is 0 (it can never scale down to 0)")
+				scaledobjectlog.Error(err, "validation error")
+				prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "scale-to-zero-requirements-not-met")
+				return err
 			}
 		}
 	}
