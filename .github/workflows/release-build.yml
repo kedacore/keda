@@ -105,7 +105,7 @@ jobs:
 
       # Upload core deployment YAML file to GitHub release (TO BE DELETED FOR v2.12)
       - name: Upload Deployment YAML file
-        id: upload-deployment-yaml
+        id: upload-core-deployment-yaml
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
