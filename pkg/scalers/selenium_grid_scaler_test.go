@@ -112,13 +112,35 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "2 active sessions with matching browsername on 2 nodes and maxSession=4 should return count as 3 (rounded up from 2.5)",
+			name: "2 session queue with matching browsername and browserversion should return count as 1",
 			args: args{
 				b: []byte(`{
 					"data": {
 						"grid":{
 							"maxSession": 4,
 							"nodeCount": 2
+						},
+						"sessionsInfo": {
+							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"browserVersion\": \"91.0\"\n}","{\n  \"browserName\": \"chrome\"\n}","{\n  \"browserName\": \"chrome\"\n}"]
+						}
+					}
+				}`),
+				browserName:        "chrome",
+				sessionBrowserName: "chrome",
+				browserVersion:     "latest",
+				platformName:       "linux",
+			},
+			want:    1,
+			wantErr: false,
+		},
+		{
+			name: "2 active sessions with matching browsername on 2 nodes and maxSession=4 should return count as 1 (rounded up from 0.75)",
+			args: args{
+				b: []byte(`{
+					"data": {
+						"grid":{
+							"maxSession": 4,
+							"nodeCount": 1
 						},
 						"sessionsInfo": {
 							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"browserVersion\": \"91.0\"\n}","{\n  \"browserName\": \"chrome\"\n}","{\n  \"browserName\": \"chrome\"\n}"],
@@ -139,14 +161,14 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				}`),
 				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion:     "latest",
+				browserVersion:     "91.0",
 				platformName:       "linux",
 			},
-			want:    3,
+			want:    1,
 			wantErr: false,
 		},
 		{
-			name: "2 active sessions with matching browsername on 1 node and maxSession=3 should return count as 2 (rounded up from 1.33)",
+			name: "2 active sessions with matching browsername on 1 node and maxSession=3 should return count as 1 (rounded up from 0.33)",
 			args: args{
 				b: []byte(`{
 					"data": {
@@ -176,7 +198,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "latest",
 				platformName:       "linux",
 			},
-			want:    2,
+			want:    1,
 			wantErr: false,
 		},
 		{
@@ -184,12 +206,12 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 			args: args{
 				b: []byte(`{
 					"data": {
+						"grid":{
+							"maxSession": 2,
+							"nodeCount": 2
+						},
 						"sessionsInfo": {
-							"grid":{
-								"maxSession": 2,
-								"nodeCount": 2
-							},
-							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\"\n}","{\n  \"browserName\": \"chrome\"\n}","{\n  \"browserName\": \"chrome\"\n}"],
+							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"browserVersion\": \"91.0\"\n}","{\n  \"browserName\": \"chrome\",\n \"browserVersion\": \"91.0\"\n}","{\n  \"browserName\": \"chrome\",\n \"browserVersion\": \"91.0\"\n}"],
 							"sessions": [
 								{
 									"id": "0f9c5a941aa4d755a54b84be1f6535b1",
@@ -207,7 +229,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				}`),
 				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion:     "latest",
+				browserVersion:     "91.0",
 				platformName:       "linux",
 			},
 			want:    5,
@@ -252,7 +274,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 							"nodeCount": 1
 						},
 						"sessionsInfo": {
-							"sessionQueueRequests": ["{\n  \"browserName\": \"MicrosoftEdge\"\n}","{\n  \"browserName\": \"MicrosoftEdge\"\n}"],
+							"sessionQueueRequests": ["{\n  \"browserName\": \"MicrosoftEdge\",\n \"browserVersion\": \"91.0\"\n}","{\n  \"browserName\": \"MicrosoftEdge\",\n \"browserVersion\": \"91.0\"\n}"],
 							"sessions": [
 								{
 									"id": "0f9c5a941aa4d755a54b84be1f6535b1",
@@ -265,7 +287,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				}`),
 				browserName:        "MicrosoftEdge",
 				sessionBrowserName: "msedge",
-				browserVersion:     "latest",
+				browserVersion:     "91.0",
 				platformName:       "linux",
 			},
 			want:    3,
@@ -385,7 +407,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 							"nodeCount": 1
 						},
 						"sessionsInfo": {
-							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"Windows 11\"\n}"],
+							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"Windows 11\",\n \"browserVersion\": \"91.0\"\n}"],
 							"sessions": [
 								{
 									"id": "0f9c5a941aa4d755a54b84be1f6535b1",
@@ -403,7 +425,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				}`),
 				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion:     "latest",
+				browserVersion:     "91.0",
 				platformName:       "Windows 11",
 			},
 			want:    2,
