@@ -25,6 +25,11 @@ type kafkaScaler struct {
 	previousOffsets map[string]map[int32]int64
 }
 
+const (
+	stringEnable  = "enable"
+	stringDisable = "disable"
+)
+
 type kafkaMetadata struct {
 	bootstrapServers       []string
 	group                  string
@@ -168,9 +173,9 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	enableTLS := false
 	if val, ok := config.TriggerMetadata["tls"]; ok {
 		switch val {
-		case "enable":
+		case stringEnable:
 			enableTLS = true
-		case "disable":
+		case stringDisable:
 			enableTLS = false
 		default:
 			return fmt.Errorf("error incorrect TLS value given, got %s", val)
@@ -183,9 +188,9 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 			return errors.New("unable to set `tls` in both ScaledObject and TriggerAuthentication together")
 		}
 		switch val {
-		case "enable":
+		case stringEnable:
 			enableTLS = true
-		case "disable":
+		case stringDisable:
 			enableTLS = false
 		default:
 			return fmt.Errorf("error incorrect TLS value given, got %s", val)
