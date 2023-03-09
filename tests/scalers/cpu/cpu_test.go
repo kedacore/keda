@@ -218,20 +218,32 @@ func scaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 }
 
 func scaleToZero(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing scale to zero ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
-		"Replica count should start out as 1")
+		"Replica count should be 1")
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 1, 60)
 
+	// replica count is 1 without scaleToZero metadata field
+
 	KubectlApplyWithTemplate(t, data, "scaledObjectTwoTriggerTemplate", scaledObjectTwoTriggerTemplate)
 
+	// expect replica count to drop to 0 after updating SO with scaleToZero
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"Replica count should be 0")
 
+	// scale external trigger out (expect replicas scale out)
 	KubernetesScaleDeployment(t, kc, workloadDeploymentName, int64(maxReplicas), testNamespace)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicas, 60, 1),
 		"Replica count should be %v", maxReplicas)
+
+	// scale external trigger in (expect replicas back to 0 -- external trigger not active)
+	KubernetesScaleDeployment(t, kc, workloadDeploymentName, int64(minReplicas), testNamespace)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicas, 60, 1),
+		"Replica count should be %v", minReplicas)
+
 }
 
 func getTemplateData() (templateData, []Template) {
