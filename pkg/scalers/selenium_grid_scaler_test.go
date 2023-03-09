@@ -112,7 +112,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "2 session queue with maching browsername and browserversion should return count as 1",
+			name: "2 session queue with matching browsername and browserversion should return count as 1",
 			args: args{
 				b: []byte(`{
 					"data": {
