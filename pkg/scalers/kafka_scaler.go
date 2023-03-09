@@ -123,15 +123,15 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	meta.saslType = KafkaSASLTypeNone
 	var saslAuthType string
 	switch {
-	case config.TriggerMetadata["saslAuthType"] != "":
-		saslAuthType = config.TriggerMetadata["saslAuthType"]
+	case config.TriggerMetadata["sasl"] != "":
+		saslAuthType = config.TriggerMetadata["sasl"]
 	default:
 		saslAuthType = ""
 	}
 
 	if val, ok := config.AuthParams["sasl"]; ok {
 		if saslAuthType != "" {
-			return errors.New("unable to set `saslAuthType` in ScaledObject and `sasl` in TriggerAuthentication together")
+			return errors.New("unable to set `sasl` in both ScaledObject and TriggerAuthentication together")
 		}
 		saslAuthType = val
 	}
@@ -166,18 +166,21 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 
 	meta.enableTLS = false
 	enableTLS := false
-	if val, ok := config.TriggerMetadata["enableTls"]; ok {
-		t, err := strconv.ParseBool(val)
-		if err != nil {
-			return fmt.Errorf("error parsing enableTls: %w", err)
+	if val, ok := config.TriggerMetadata["tls"]; ok {
+		switch val {
+		case "enable":
+			enableTLS = true
+		case "disable":
+			enableTLS = false
+		default:
+			return fmt.Errorf("error incorrect TLS value given, got %s", val)
 		}
-		enableTLS = t
 	}
 
 	if val, ok := config.AuthParams["tls"]; ok {
 		val = strings.TrimSpace(val)
 		if enableTLS {
-			return errors.New("unable to set `enableTls` in ScaledObject and `tls` in TriggerAuthentication together")
+			return errors.New("unable to set `tls` in both ScaledObject and TriggerAuthentication together")
 		}
 		switch val {
 		case "enable":
@@ -185,7 +188,7 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 		case "disable":
 			enableTLS = false
 		default:
-			return fmt.Errorf("err incorrect TLS value given, got %s", val)
+			return fmt.Errorf("error incorrect TLS value given, got %s", val)
 		}
 	}
 
