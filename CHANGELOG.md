@@ -42,7 +42,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - [v1.0.0](#v100)
 
 ## Unreleased
-
+- **cpu/mem scaler**: Add option to scale to zero with cpu/mem scaler([#4269](https://github.com/kedacore/keda/issues/4269))
 ### New
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
