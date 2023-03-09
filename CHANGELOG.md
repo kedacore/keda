@@ -72,7 +72,7 @@ Here is an overview of all new **experimental** features:
 - **Azure Pipelines Scaler**: New configuration parameter `requireAllDemands` to scale only if jobs request all demands provided by the scaling definition ([#4138](https://github.com/kedacore/keda/issues/4138))
 - **Hashicorp Vault**: Add support to secrets backend version 1 ([#2645](https://github.com/kedacore/keda/issues/2645))
 - **Kafka Scaler**: Improve error logging for `GetBlock` method ([#4232](https://github.com/kedacore/keda/issues/4232))
-- **Kafka Scaler**: Add support to use `enableTls` and `saslAuthType` in ScaledObject ([#4232](https://github.com/kedacore/keda/issues/4322))
+- **Kafka Scaler**: Add support to use `tls` and `sasl` in ScaledObject ([#4232](https://github.com/kedacore/keda/issues/4322))
 - **Prometheus Scaler**: Add custom headers and custom auth support ([#4208](https://github.com/kedacore/keda/issues/4208))
 - **RabbitMQ Scaler**:  Add TLS support ([#967](https://github.com/kedacore/keda/issues/967))
 - **Redis Scalers**: Add support to Redis 7 ([#4052](https://github.com/kedacore/keda/issues/4052))
