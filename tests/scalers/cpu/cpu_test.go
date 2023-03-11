@@ -134,7 +134,6 @@ spec:
     metadata:
       type: Utilization
       value: "50"
-      scaleToZero: "true"
   - type: kubernetes-workload
     metadata:
       podSelector: 'pod={{.WorkloadDeploymentName}}'

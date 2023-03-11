@@ -28,7 +28,7 @@ var (
 	workloadDeploymentName = fmt.Sprintf("%s-workload-deployment", testName)
 	minReplicas            = 0
 	maxReplicas            = 5
-	utilizationValue       = 1
+	utilizationValue       = 45 // downScale value
 )
 
 type templateData struct {
@@ -47,6 +47,8 @@ const (
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  labels:
+    deploy: {{.DeploymentName}}
   name: {{.DeploymentName}}
   namespace: {{.TestNamespace}}
 spec:
@@ -122,11 +124,10 @@ spec:
   maxReplicaCount: {{.MaxReplicas}}
   cooldownPeriod: 1
   triggers:
-  - type: cpu
+  - type: memory
     metadata:
       type: Utilization
-      value: "50"
-      scaleToZero: "true"
+      value: "{{.UtilizationValue}}"
   - type: kubernetes-workload
     metadata:
       podSelector: 'pod={{.WorkloadDeploymentName}}'
@@ -161,10 +162,9 @@ spec:
 func TestMemoryScaler(t *testing.T) {
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
-	utilizationValue = 1
 	data, templates := getTemplateData()
 
-	CreateKubernetesResources(t, kc, testNamespace, data, []Template{{Name: "deploymentTemplate", Config: deploymentTemplate}})
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	scaleOut(t, kc, data)
 	scaleToZero(t, kc, data)
@@ -180,6 +180,7 @@ func scaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
 	t.Log("--- applying scaled object with scaled up utilization ---")
 
+	data.UtilizationValue = int32(scaleUpValue)
 	KubectlApplyMultipleWithTemplate(t, data, []Template{{Name: "scaledObjectTemplate", Config: scaledObjectTemplate}})
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 180, 1),
@@ -188,8 +189,7 @@ func scaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale in ---")
 	t.Log("--- applying scaled object with scaled down utilization ---")
 
-	utilizationValue = scaleDownValue
-	data, _ = getTemplateData()
+	data.UtilizationValue = int32(scaleDownValue)
 	KubectlApplyMultipleWithTemplate(t, data, []Template{{Name: "scaledObjectTemplate", Config: scaledObjectTemplate}})
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 180, 1),
@@ -226,10 +226,13 @@ func scaleToZero(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:    testNamespace,
-			DeploymentName:   deploymentName,
-			ScaledObjectName: scaledObjectName,
-			UtilizationValue: int32(utilizationValue),
+			TestNamespace:          testNamespace,
+			DeploymentName:         deploymentName,
+			ScaledObjectName:       scaledObjectName,
+			UtilizationValue:       int32(utilizationValue),
+			MinReplicas:            fmt.Sprintf("%v", minReplicas),
+			MaxReplicas:            fmt.Sprintf("%v", maxReplicas),
+			WorkloadDeploymentName: workloadDeploymentName,
 		}, []Template{
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
