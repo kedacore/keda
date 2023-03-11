@@ -867,8 +867,7 @@ github.com/newrelic/newrelic-client-go/pkg/workloads
 # github.com/nxadm/tail v1.4.8
 ## explicit
 # github.com/oklog/run v1.1.0
-## explicit; go 1.13
-github.com/oklog/run
+## explicit
 # github.com/olekukonko/tablewriter v0.0.5
 ## explicit; go 1.12
 github.com/olekukonko/tablewriter
@@ -1217,7 +1216,6 @@ go.uber.org/zap/zapcore
 go.uber.org/zap/zapgrpc
 # golang.org/x/crypto v0.6.0 => golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
 ## explicit; go 1.17
-golang.org/x/crypto/blake2b
 golang.org/x/crypto/cast5
 golang.org/x/crypto/cryptobyte
 golang.org/x/crypto/cryptobyte/asn1
