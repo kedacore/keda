@@ -129,6 +129,9 @@ func Trimean(input Float64Data) (float64, error) {}
 func VarP(input Float64Data) (sdev float64, err error) {}
 func VarS(input Float64Data) (sdev float64, err error) {}
 func Variance(input Float64Data) (sdev float64, err error) {}
+func ProbGeom(a int, b int, p float64) (prob float64, err error) {}
+func ExpGeom(p float64) (exp float64, err error) {}
+func VarGeom(p float64) (exp float64, err error) {}
 
 type Coordinate struct {
     X, Y float64

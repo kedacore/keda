@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -41,11 +41,9 @@ func newMLGetModelSnapshotUpgradeStatsFunc(t Transport) MLGetModelSnapshotUpgrad
 // MLGetModelSnapshotUpgradeStats - Gets stats for anomaly detection job model snapshot upgrades that are in progress.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/ml-get-job-model-snapshot-upgrade-stats.html.
-//
 type MLGetModelSnapshotUpgradeStats func(snapshot_id string, job_id string, o ...func(*MLGetModelSnapshotUpgradeStatsRequest)) (*Response, error)
 
 // MLGetModelSnapshotUpgradeStatsRequest configures the ML Get Model Snapshot Upgrade Stats API request.
-//
 type MLGetModelSnapshotUpgradeStatsRequest struct {
 	JobID      string
 	SnapshotID string
@@ -63,7 +61,6 @@ type MLGetModelSnapshotUpgradeStatsRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r MLGetModelSnapshotUpgradeStatsRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -155,7 +152,6 @@ func (r MLGetModelSnapshotUpgradeStatsRequest) Do(ctx context.Context, transport
 }
 
 // WithContext sets the request context.
-//
 func (f MLGetModelSnapshotUpgradeStats) WithContext(v context.Context) func(*MLGetModelSnapshotUpgradeStatsRequest) {
 	return func(r *MLGetModelSnapshotUpgradeStatsRequest) {
 		r.ctx = v
@@ -163,7 +159,6 @@ func (f MLGetModelSnapshotUpgradeStats) WithContext(v context.Context) func(*MLG
 }
 
 // WithAllowNoMatch - whether to ignore if a wildcard expression matches no jobs or no snapshots. (this includes the `_all` string.).
-//
 func (f MLGetModelSnapshotUpgradeStats) WithAllowNoMatch(v bool) func(*MLGetModelSnapshotUpgradeStatsRequest) {
 	return func(r *MLGetModelSnapshotUpgradeStatsRequest) {
 		r.AllowNoMatch = &v
@@ -171,7 +166,6 @@ func (f MLGetModelSnapshotUpgradeStats) WithAllowNoMatch(v bool) func(*MLGetMode
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f MLGetModelSnapshotUpgradeStats) WithPretty() func(*MLGetModelSnapshotUpgradeStatsRequest) {
 	return func(r *MLGetModelSnapshotUpgradeStatsRequest) {
 		r.Pretty = true
@@ -179,7 +173,6 @@ func (f MLGetModelSnapshotUpgradeStats) WithPretty() func(*MLGetModelSnapshotUpg
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f MLGetModelSnapshotUpgradeStats) WithHuman() func(*MLGetModelSnapshotUpgradeStatsRequest) {
 	return func(r *MLGetModelSnapshotUpgradeStatsRequest) {
 		r.Human = true
@@ -187,7 +180,6 @@ func (f MLGetModelSnapshotUpgradeStats) WithHuman() func(*MLGetModelSnapshotUpgr
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f MLGetModelSnapshotUpgradeStats) WithErrorTrace() func(*MLGetModelSnapshotUpgradeStatsRequest) {
 	return func(r *MLGetModelSnapshotUpgradeStatsRequest) {
 		r.ErrorTrace = true
@@ -195,7 +187,6 @@ func (f MLGetModelSnapshotUpgradeStats) WithErrorTrace() func(*MLGetModelSnapsho
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f MLGetModelSnapshotUpgradeStats) WithFilterPath(v ...string) func(*MLGetModelSnapshotUpgradeStatsRequest) {
 	return func(r *MLGetModelSnapshotUpgradeStatsRequest) {
 		r.FilterPath = v
@@ -203,7 +194,6 @@ func (f MLGetModelSnapshotUpgradeStats) WithFilterPath(v ...string) func(*MLGetM
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f MLGetModelSnapshotUpgradeStats) WithHeader(h map[string]string) func(*MLGetModelSnapshotUpgradeStatsRequest) {
 	return func(r *MLGetModelSnapshotUpgradeStatsRequest) {
 		if r.Header == nil {
@@ -216,7 +206,6 @@ func (f MLGetModelSnapshotUpgradeStats) WithHeader(h map[string]string) func(*ML
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f MLGetModelSnapshotUpgradeStats) WithOpaqueID(s string) func(*MLGetModelSnapshotUpgradeStatsRequest) {
 	return func(r *MLGetModelSnapshotUpgradeStatsRequest) {
 		if r.Header == nil {

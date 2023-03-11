@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -40,11 +40,9 @@ func newSecurityDisableUserFunc(t Transport) SecurityDisableUser {
 // SecurityDisableUser - Disables users in the native realm.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-disable-user.html.
-//
 type SecurityDisableUser func(username string, o ...func(*SecurityDisableUserRequest)) (*Response, error)
 
 // SecurityDisableUserRequest configures the Security Disable User API request.
-//
 type SecurityDisableUserRequest struct {
 	Username string
 
@@ -61,7 +59,6 @@ type SecurityDisableUserRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r SecurityDisableUserRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -147,7 +144,6 @@ func (r SecurityDisableUserRequest) Do(ctx context.Context, transport Transport)
 }
 
 // WithContext sets the request context.
-//
 func (f SecurityDisableUser) WithContext(v context.Context) func(*SecurityDisableUserRequest) {
 	return func(r *SecurityDisableUserRequest) {
 		r.ctx = v
@@ -155,7 +151,6 @@ func (f SecurityDisableUser) WithContext(v context.Context) func(*SecurityDisabl
 }
 
 // WithRefresh - if `true` (the default) then refresh the affected shards to make this operation visible to search, if `wait_for` then wait for a refresh to make this operation visible to search, if `false` then do nothing with refreshes..
-//
 func (f SecurityDisableUser) WithRefresh(v string) func(*SecurityDisableUserRequest) {
 	return func(r *SecurityDisableUserRequest) {
 		r.Refresh = v
@@ -163,7 +158,6 @@ func (f SecurityDisableUser) WithRefresh(v string) func(*SecurityDisableUserRequ
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f SecurityDisableUser) WithPretty() func(*SecurityDisableUserRequest) {
 	return func(r *SecurityDisableUserRequest) {
 		r.Pretty = true
@@ -171,7 +165,6 @@ func (f SecurityDisableUser) WithPretty() func(*SecurityDisableUserRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f SecurityDisableUser) WithHuman() func(*SecurityDisableUserRequest) {
 	return func(r *SecurityDisableUserRequest) {
 		r.Human = true
@@ -179,7 +172,6 @@ func (f SecurityDisableUser) WithHuman() func(*SecurityDisableUserRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f SecurityDisableUser) WithErrorTrace() func(*SecurityDisableUserRequest) {
 	return func(r *SecurityDisableUserRequest) {
 		r.ErrorTrace = true
@@ -187,7 +179,6 @@ func (f SecurityDisableUser) WithErrorTrace() func(*SecurityDisableUserRequest) 
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f SecurityDisableUser) WithFilterPath(v ...string) func(*SecurityDisableUserRequest) {
 	return func(r *SecurityDisableUserRequest) {
 		r.FilterPath = v
@@ -195,7 +186,6 @@ func (f SecurityDisableUser) WithFilterPath(v ...string) func(*SecurityDisableUs
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f SecurityDisableUser) WithHeader(h map[string]string) func(*SecurityDisableUserRequest) {
 	return func(r *SecurityDisableUserRequest) {
 		if r.Header == nil {
@@ -208,7 +198,6 @@ func (f SecurityDisableUser) WithHeader(h map[string]string) func(*SecurityDisab
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f SecurityDisableUser) WithOpaqueID(s string) func(*SecurityDisableUserRequest) {
 	return func(r *SecurityDisableUserRequest) {
 		if r.Header == nil {

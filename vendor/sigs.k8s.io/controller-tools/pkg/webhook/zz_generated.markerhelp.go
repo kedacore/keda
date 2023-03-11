@@ -96,6 +96,15 @@ func (Generator) Help() *markers.DefinitionHelp {
 			Summary: "generates (partial) {Mutating,Validating}WebhookConfiguration objects.",
 			Details: "",
 		},
-		FieldHelp: map[string]markers.DetailedHelp{},
+		FieldHelp: map[string]markers.DetailedHelp{
+			"HeaderFile": {
+				Summary: "specifies the header text (e.g. license) to prepend to generated files.",
+				Details: "",
+			},
+			"Year": {
+				Summary: "specifies the year to substitute for \" YEAR\" in the header file.",
+				Details: "",
+			},
+		},
 	}
 }

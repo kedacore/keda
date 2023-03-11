@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
+	"github.com/kedacore/keda/v2/tests/utils/helper"
 )
 
 func TestRemoveKEDA(t *testing.T) {
@@ -83,4 +84,8 @@ func TestRemoveCertManager(t *testing.T) {
 	KubeClient = GetKubernetesClient(t)
 
 	DeleteNamespace(t, KubeClient, CertManagerNamespace)
+}
+
+func TestRemoveAzureManagedPrometheusComponents(t *testing.T) {
+	KubectlDeleteWithTemplate(t, helper.EmptyTemplateData{}, "azureManagedPrometheusConfigMapTemplate", helper.AzureManagedPrometheusConfigMapTemplate)
 }

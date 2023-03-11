@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-ELASTICSEARCH_DEFAULT_BUILD_VERSION = "7.17.1-SNAPSHOT"
+ELASTICSEARCH_DEFAULT_BUILD_VERSION = "7.17.7-SNAPSHOT"
 
 ##@ Test
 test-unit:  ## Run unit tests
@@ -267,7 +267,7 @@ godoc: ## Display documentation for the package
 	godoc --http=localhost:6060 --play
 
 cluster: ## Launch an Elasticsearch cluster with Docker
-	$(eval version ?= "elasticsearch:7.17.1-SNAPSHOT")
+	$(eval version ?= "elasticsearch:7.17.4-SNAPSHOT")
 	$(eval flavor ?= "core")
 	$(eval elasticsearch_url = "http://es1:9200")
 

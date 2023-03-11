@@ -5,7 +5,7 @@ jobs:
   validate:
     name: validate - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/build-tools:1.19.5
+    container: ghcr.io/kedacore/build-tools:1.19.7
     strategy:
       matrix:
         include:
@@ -33,13 +33,13 @@ jobs:
           echo ::set-output name=build_cache::$(go env GOCACHE)
 
       - name: Go modules cache
-        uses: actions/cache@v3.2.6
+        uses: actions/cache@v3.3.0
         with:
           path: ${{ steps.go-paths.outputs.mod_cache }}
           key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
 
       - name: Go build cache
-        uses: actions/cache@v3.2.6
+        uses: actions/cache@v3.3.0
         with:
           path: ${{ steps.go-paths.outputs.build_cache }}
           key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
@@ -65,7 +65,7 @@ jobs:
   validate-dockerfiles:
     name: validate-dockerfiles - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/build-tools:1.19.5
+    container: ghcr.io/kedacore/build-tools:1.19.7
     strategy:
        matrix:
         include:
@@ -96,7 +96,7 @@ jobs:
   validate-build-tools:
     name: Validate build-tools - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/build-tools:1.19.5
+    container: ghcr.io/kedacore/build-tools:1.19.7
     strategy:
        matrix:
         include:
@@ -133,7 +133,7 @@ jobs:
   validate-dev-container:
     name: Validate dev-container - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/build-tools:1.19.5
+    container: ghcr.io/kedacore/build-tools:1.19.7
     strategy:
        matrix:
         include:

@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -42,11 +42,9 @@ func newCatAllocationFunc(t Transport) CatAllocation {
 // CatAllocation provides a snapshot of how many shards are allocated to each data node and how much disk space they are using.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/cat-allocation.html.
-//
 type CatAllocation func(o ...func(*CatAllocationRequest)) (*Response, error)
 
 // CatAllocationRequest configures the Cat Allocation API request.
-//
 type CatAllocationRequest struct {
 	NodeID []string
 
@@ -70,7 +68,6 @@ type CatAllocationRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r CatAllocationRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -184,7 +181,6 @@ func (r CatAllocationRequest) Do(ctx context.Context, transport Transport) (*Res
 }
 
 // WithContext sets the request context.
-//
 func (f CatAllocation) WithContext(v context.Context) func(*CatAllocationRequest) {
 	return func(r *CatAllocationRequest) {
 		r.ctx = v
@@ -192,7 +188,6 @@ func (f CatAllocation) WithContext(v context.Context) func(*CatAllocationRequest
 }
 
 // WithNodeID - a list of node ids or names to limit the returned information.
-//
 func (f CatAllocation) WithNodeID(v ...string) func(*CatAllocationRequest) {
 	return func(r *CatAllocationRequest) {
 		r.NodeID = v
@@ -200,7 +195,6 @@ func (f CatAllocation) WithNodeID(v ...string) func(*CatAllocationRequest) {
 }
 
 // WithBytes - the unit in which to display byte values.
-//
 func (f CatAllocation) WithBytes(v string) func(*CatAllocationRequest) {
 	return func(r *CatAllocationRequest) {
 		r.Bytes = v
@@ -208,7 +202,6 @@ func (f CatAllocation) WithBytes(v string) func(*CatAllocationRequest) {
 }
 
 // WithFormat - a short version of the accept header, e.g. json, yaml.
-//
 func (f CatAllocation) WithFormat(v string) func(*CatAllocationRequest) {
 	return func(r *CatAllocationRequest) {
 		r.Format = v
@@ -216,7 +209,6 @@ func (f CatAllocation) WithFormat(v string) func(*CatAllocationRequest) {
 }
 
 // WithH - comma-separated list of column names to display.
-//
 func (f CatAllocation) WithH(v ...string) func(*CatAllocationRequest) {
 	return func(r *CatAllocationRequest) {
 		r.H = v
@@ -224,7 +216,6 @@ func (f CatAllocation) WithH(v ...string) func(*CatAllocationRequest) {
 }
 
 // WithHelp - return help information.
-//
 func (f CatAllocation) WithHelp(v bool) func(*CatAllocationRequest) {
 	return func(r *CatAllocationRequest) {
 		r.Help = &v
@@ -232,7 +223,6 @@ func (f CatAllocation) WithHelp(v bool) func(*CatAllocationRequest) {
 }
 
 // WithLocal - return local information, do not retrieve the state from master node (default: false).
-//
 func (f CatAllocation) WithLocal(v bool) func(*CatAllocationRequest) {
 	return func(r *CatAllocationRequest) {
 		r.Local = &v
@@ -240,7 +230,6 @@ func (f CatAllocation) WithLocal(v bool) func(*CatAllocationRequest) {
 }
 
 // WithMasterTimeout - explicit operation timeout for connection to master node.
-//
 func (f CatAllocation) WithMasterTimeout(v time.Duration) func(*CatAllocationRequest) {
 	return func(r *CatAllocationRequest) {
 		r.MasterTimeout = v
@@ -248,7 +237,6 @@ func (f CatAllocation) WithMasterTimeout(v time.Duration) func(*CatAllocationReq
 }
 
 // WithS - comma-separated list of column names or column aliases to sort by.
-//
 func (f CatAllocation) WithS(v ...string) func(*CatAllocationRequest) {
 	return func(r *CatAllocationRequest) {
 		r.S = v
@@ -256,7 +244,6 @@ func (f CatAllocation) WithS(v ...string) func(*CatAllocationRequest) {
 }
 
 // WithV - verbose mode. display column headers.
-//
 func (f CatAllocation) WithV(v bool) func(*CatAllocationRequest) {
 	return func(r *CatAllocationRequest) {
 		r.V = &v
@@ -264,7 +251,6 @@ func (f CatAllocation) WithV(v bool) func(*CatAllocationRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f CatAllocation) WithPretty() func(*CatAllocationRequest) {
 	return func(r *CatAllocationRequest) {
 		r.Pretty = true
@@ -272,7 +258,6 @@ func (f CatAllocation) WithPretty() func(*CatAllocationRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f CatAllocation) WithHuman() func(*CatAllocationRequest) {
 	return func(r *CatAllocationRequest) {
 		r.Human = true
@@ -280,7 +265,6 @@ func (f CatAllocation) WithHuman() func(*CatAllocationRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f CatAllocation) WithErrorTrace() func(*CatAllocationRequest) {
 	return func(r *CatAllocationRequest) {
 		r.ErrorTrace = true
@@ -288,7 +272,6 @@ func (f CatAllocation) WithErrorTrace() func(*CatAllocationRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f CatAllocation) WithFilterPath(v ...string) func(*CatAllocationRequest) {
 	return func(r *CatAllocationRequest) {
 		r.FilterPath = v
@@ -296,7 +279,6 @@ func (f CatAllocation) WithFilterPath(v ...string) func(*CatAllocationRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f CatAllocation) WithHeader(h map[string]string) func(*CatAllocationRequest) {
 	return func(r *CatAllocationRequest) {
 		if r.Header == nil {
@@ -309,7 +291,6 @@ func (f CatAllocation) WithHeader(h map[string]string) func(*CatAllocationReques
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f CatAllocation) WithOpaqueID(s string) func(*CatAllocationRequest) {
 	return func(r *CatAllocationRequest) {
 		if r.Header == nil {

@@ -138,6 +138,24 @@ var azureAppInsightsScalerData = []azureAppInsightsScalerTestData{
 		},
 		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProvider("notAzureWorkload")},
 	}},
+	{name: "correct ignoreNullValues (true)", isError: false, config: ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"targetValue": "11", "applicationInsightsId": "1234", "metricId": "unittest/test", "metricAggregationTimespan": "01:02", "metricAggregationType": "max", "metricFilter": "cloud/roleName eq 'test'", "tenantId": "1234", "ignoreNullValues": "true",
+		},
+		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload},
+	}},
+	{name: "correct ignoreNullValues (false)", isError: false, config: ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"targetValue": "11", "applicationInsightsId": "1234", "metricId": "unittest/test", "metricAggregationTimespan": "01:02", "metricAggregationType": "max", "metricFilter": "cloud/roleName eq 'test'", "tenantId": "1234", "ignoreNullValues": "false",
+		},
+		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload},
+	}},
+	{name: "incorrect ignoreNullValues", isError: true, config: ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"targetValue": "11", "applicationInsightsId": "1234", "metricId": "unittest/test", "metricAggregationTimespan": "01:02", "metricAggregationType": "max", "metricFilter": "cloud/roleName eq 'test'", "tenantId": "1234", "ignoreNullValues": "not a boolean",
+		},
+		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload},
+	}},
 	{name: "app insights id in auth", isError: false, config: ScalerConfig{
 		TriggerMetadata: map[string]string{
 			"targetValue": "11", "metricId": "unittest/test", "metricAggregationTimespan": "01:02", "metricAggregationType": "max", "metricFilter": "cloud/roleName eq 'test'", "tenantId": "1234",

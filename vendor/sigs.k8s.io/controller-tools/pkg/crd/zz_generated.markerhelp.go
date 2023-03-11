@@ -53,6 +53,14 @@ func (Generator) Help() *markers.DefinitionHelp {
 				Summary: "specifies if any embedded ObjectMeta in the CRD should be generated",
 				Details: "",
 			},
+			"HeaderFile": {
+				Summary: "specifies the header text (e.g. license) to prepend to generated files.",
+				Details: "",
+			},
+			"Year": {
+				Summary: "specifies the year to substitute for \" YEAR\" in the header file.",
+				Details: "",
+			},
 		},
 	}
 }

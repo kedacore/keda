@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -41,11 +41,9 @@ func newCatMLJobsFunc(t Transport) CatMLJobs {
 // CatMLJobs - Gets configuration and usage information about anomaly detection jobs.
 //
 // See full documentation at http://www.elastic.co/guide/en/elasticsearch/reference/current/cat-anomaly-detectors.html.
-//
 type CatMLJobs func(o ...func(*CatMLJobsRequest)) (*Response, error)
 
 // CatMLJobsRequest configures the CatML Jobs API request.
-//
 type CatMLJobsRequest struct {
 	JobID string
 
@@ -70,7 +68,6 @@ type CatMLJobsRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r CatMLJobsRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -190,7 +187,6 @@ func (r CatMLJobsRequest) Do(ctx context.Context, transport Transport) (*Respons
 }
 
 // WithContext sets the request context.
-//
 func (f CatMLJobs) WithContext(v context.Context) func(*CatMLJobsRequest) {
 	return func(r *CatMLJobsRequest) {
 		r.ctx = v
@@ -198,7 +194,6 @@ func (f CatMLJobs) WithContext(v context.Context) func(*CatMLJobsRequest) {
 }
 
 // WithJobID - the ID of the jobs stats to fetch.
-//
 func (f CatMLJobs) WithJobID(v string) func(*CatMLJobsRequest) {
 	return func(r *CatMLJobsRequest) {
 		r.JobID = v
@@ -206,7 +201,6 @@ func (f CatMLJobs) WithJobID(v string) func(*CatMLJobsRequest) {
 }
 
 // WithAllowNoJobs - whether to ignore if a wildcard expression matches no jobs. (this includes `_all` string or when no jobs have been specified).
-//
 func (f CatMLJobs) WithAllowNoJobs(v bool) func(*CatMLJobsRequest) {
 	return func(r *CatMLJobsRequest) {
 		r.AllowNoJobs = &v
@@ -214,7 +208,6 @@ func (f CatMLJobs) WithAllowNoJobs(v bool) func(*CatMLJobsRequest) {
 }
 
 // WithAllowNoMatch - whether to ignore if a wildcard expression matches no jobs. (this includes `_all` string or when no jobs have been specified).
-//
 func (f CatMLJobs) WithAllowNoMatch(v bool) func(*CatMLJobsRequest) {
 	return func(r *CatMLJobsRequest) {
 		r.AllowNoMatch = &v
@@ -222,7 +215,6 @@ func (f CatMLJobs) WithAllowNoMatch(v bool) func(*CatMLJobsRequest) {
 }
 
 // WithBytes - the unit in which to display byte values.
-//
 func (f CatMLJobs) WithBytes(v string) func(*CatMLJobsRequest) {
 	return func(r *CatMLJobsRequest) {
 		r.Bytes = v
@@ -230,7 +222,6 @@ func (f CatMLJobs) WithBytes(v string) func(*CatMLJobsRequest) {
 }
 
 // WithFormat - a short version of the accept header, e.g. json, yaml.
-//
 func (f CatMLJobs) WithFormat(v string) func(*CatMLJobsRequest) {
 	return func(r *CatMLJobsRequest) {
 		r.Format = v
@@ -238,7 +229,6 @@ func (f CatMLJobs) WithFormat(v string) func(*CatMLJobsRequest) {
 }
 
 // WithH - comma-separated list of column names to display.
-//
 func (f CatMLJobs) WithH(v ...string) func(*CatMLJobsRequest) {
 	return func(r *CatMLJobsRequest) {
 		r.H = v
@@ -246,7 +236,6 @@ func (f CatMLJobs) WithH(v ...string) func(*CatMLJobsRequest) {
 }
 
 // WithHelp - return help information.
-//
 func (f CatMLJobs) WithHelp(v bool) func(*CatMLJobsRequest) {
 	return func(r *CatMLJobsRequest) {
 		r.Help = &v
@@ -254,7 +243,6 @@ func (f CatMLJobs) WithHelp(v bool) func(*CatMLJobsRequest) {
 }
 
 // WithS - comma-separated list of column names or column aliases to sort by.
-//
 func (f CatMLJobs) WithS(v ...string) func(*CatMLJobsRequest) {
 	return func(r *CatMLJobsRequest) {
 		r.S = v
@@ -262,7 +250,6 @@ func (f CatMLJobs) WithS(v ...string) func(*CatMLJobsRequest) {
 }
 
 // WithTime - the unit in which to display time values.
-//
 func (f CatMLJobs) WithTime(v string) func(*CatMLJobsRequest) {
 	return func(r *CatMLJobsRequest) {
 		r.Time = v
@@ -270,7 +257,6 @@ func (f CatMLJobs) WithTime(v string) func(*CatMLJobsRequest) {
 }
 
 // WithV - verbose mode. display column headers.
-//
 func (f CatMLJobs) WithV(v bool) func(*CatMLJobsRequest) {
 	return func(r *CatMLJobsRequest) {
 		r.V = &v
@@ -278,7 +264,6 @@ func (f CatMLJobs) WithV(v bool) func(*CatMLJobsRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f CatMLJobs) WithPretty() func(*CatMLJobsRequest) {
 	return func(r *CatMLJobsRequest) {
 		r.Pretty = true
@@ -286,7 +271,6 @@ func (f CatMLJobs) WithPretty() func(*CatMLJobsRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f CatMLJobs) WithHuman() func(*CatMLJobsRequest) {
 	return func(r *CatMLJobsRequest) {
 		r.Human = true
@@ -294,7 +278,6 @@ func (f CatMLJobs) WithHuman() func(*CatMLJobsRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f CatMLJobs) WithErrorTrace() func(*CatMLJobsRequest) {
 	return func(r *CatMLJobsRequest) {
 		r.ErrorTrace = true
@@ -302,7 +285,6 @@ func (f CatMLJobs) WithErrorTrace() func(*CatMLJobsRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f CatMLJobs) WithFilterPath(v ...string) func(*CatMLJobsRequest) {
 	return func(r *CatMLJobsRequest) {
 		r.FilterPath = v
@@ -310,7 +292,6 @@ func (f CatMLJobs) WithFilterPath(v ...string) func(*CatMLJobsRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f CatMLJobs) WithHeader(h map[string]string) func(*CatMLJobsRequest) {
 	return func(r *CatMLJobsRequest) {
 		if r.Header == nil {
@@ -323,7 +304,6 @@ func (f CatMLJobs) WithHeader(h map[string]string) func(*CatMLJobsRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f CatMLJobs) WithOpaqueID(s string) func(*CatMLJobsRequest) {
 	return func(r *CatMLJobsRequest) {
 		if r.Header == nil {

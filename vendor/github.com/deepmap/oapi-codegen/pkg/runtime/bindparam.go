@@ -26,7 +26,7 @@ import (
 	"github.com/deepmap/oapi-codegen/pkg/types"
 )
 
-// This function binds a parameter as described in the Path Parameters
+// BindStyledParameter binds a parameter as described in the Path Parameters
 // section here to a Go object:
 // https://swagger.io/docs/specification/serialization/
 // It is a backward compatible function to clients generated with codegen
@@ -36,7 +36,7 @@ func BindStyledParameter(style string, explode bool, paramName string,
 	return BindStyledParameterWithLocation(style, explode, paramName, ParamLocationUndefined, value, dest)
 }
 
-// This function binds a parameter as described in the Path Parameters
+// BindStyledParameterWithLocation binds a parameter as described in the Path Parameters
 // section here to a Go object:
 // https://swagger.io/docs/specification/serialization/
 func BindStyledParameterWithLocation(style string, explode bool, paramName string,
@@ -68,7 +68,7 @@ func BindStyledParameterWithLocation(style string, explode bool, paramName strin
 	// If the destination implements encoding.TextUnmarshaler we use it for binding
 	if tu, ok := dest.(encoding.TextUnmarshaler); ok {
 		if err := tu.UnmarshalText([]byte(value)); err != nil {
-			return fmt.Errorf("error unmarshaling '%s' text as %T: %s", value, dest, err)
+			return fmt.Errorf("error unmarshalling '%s' text as %T: %s", value, dest, err)
 		}
 
 		return nil
@@ -82,7 +82,7 @@ func BindStyledParameterWithLocation(style string, explode bool, paramName strin
 
 	if t.Kind() == reflect.Struct {
 		// We've got a destination object, we'll create a JSON representation
-		// of the input value, and let the json library deal with the unmarshaling
+		// of the input value, and let the json library deal with the unmarshalling
 		parts, err := splitStyledParameter(style, explode, true, paramName, value)
 		if err != nil {
 			return err
@@ -233,7 +233,7 @@ func bindSplitPartsToDestinationArray(parts []string, dest interface{}) error {
 // into the struct.
 func bindSplitPartsToDestinationStruct(paramName string, parts []string, explode bool, dest interface{}) error {
 	// We've got a destination object, we'll create a JSON representation
-	// of the input value, and let the json library deal with the unmarshaling
+	// of the input value, and let the json library deal with the unmarshalling
 	var fields []string
 	if explode {
 		fields = make([]string, len(parts))
@@ -462,7 +462,7 @@ func bindParamsToExplodedObject(paramName string, values url.Values, dest interf
 		return true, BindStringToObject(values.Get(paramName), dest)
 	}
 	if t.Kind() != reflect.Struct {
-		return false, fmt.Errorf("unmarshaling query arg '%s' into wrong type", paramName)
+		return false, fmt.Errorf("unmarshalling query arg '%s' into wrong type", paramName)
 	}
 
 	fieldsPresent := false

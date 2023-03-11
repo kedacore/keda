@@ -113,11 +113,11 @@ func applyReceiverOptions(receiver *Receiver, entity *entity, options *ReceiverO
 }
 
 type newReceiverArgs struct {
-	ns                  internal.NamespaceWithNewAMQPLinks
+	ns                  internal.NamespaceForAMQPLinks
 	entity              entity
 	cleanupOnClose      func()
 	getRecoveryKindFunc func(err error) internal.RecoveryKind
-	newLinkFn           func(ctx context.Context, session amqpwrap.AMQPSession) (internal.AMQPSenderCloser, internal.AMQPReceiverCloser, error)
+	newLinkFn           func(ctx context.Context, session amqpwrap.AMQPSession) (amqpwrap.AMQPSenderCloser, amqpwrap.AMQPReceiverCloser, error)
 	retryOptions        RetryOptions
 }
 
@@ -157,7 +157,12 @@ func newReceiver(args newReceiverArgs, options *ReceiverOptions) (*Receiver, err
 		newLinkFn = args.newLinkFn
 	}
 
-	receiver.amqpLinks = args.ns.NewAMQPLinks(receiver.entityPath, newLinkFn, args.getRecoveryKindFunc)
+	receiver.amqpLinks = internal.NewAMQPLinks(internal.NewAMQPLinksArgs{
+		NS:                  args.ns,
+		EntityPath:          receiver.entityPath,
+		CreateLinkFunc:      newLinkFn,
+		GetRecoveryKindFunc: args.getRecoveryKindFunc,
+	})
 
 	// 'nil' settler handles returning an error message for receiveAndDelete links.
 	if receiver.receiveMode == ReceiveModePeekLock {
@@ -169,7 +174,7 @@ func newReceiver(args newReceiverArgs, options *ReceiverOptions) (*Receiver, err
 	return receiver, nil
 }
 
-func (r *Receiver) newReceiverLink(ctx context.Context, session amqpwrap.AMQPSession) (internal.AMQPSenderCloser, internal.AMQPReceiverCloser, error) {
+func (r *Receiver) newReceiverLink(ctx context.Context, session amqpwrap.AMQPSession) (amqpwrap.AMQPSenderCloser, amqpwrap.AMQPReceiverCloser, error) {
 	linkOptions := createLinkOptions(r.receiveMode)
 	link, err := session.NewReceiver(ctx, r.entityPath, linkOptions)
 	return nil, link, err

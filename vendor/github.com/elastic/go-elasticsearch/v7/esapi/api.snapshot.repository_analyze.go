@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -42,11 +42,9 @@ func newSnapshotRepositoryAnalyzeFunc(t Transport) SnapshotRepositoryAnalyze {
 // SnapshotRepositoryAnalyze analyzes a repository for correctness and performance
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/modules-snapshots.html.
-//
 type SnapshotRepositoryAnalyze func(repository string, o ...func(*SnapshotRepositoryAnalyzeRequest)) (*Response, error)
 
 // SnapshotRepositoryAnalyzeRequest configures the Snapshot Repository Analyze API request.
-//
 type SnapshotRepositoryAnalyzeRequest struct {
 	Repository string
 
@@ -73,7 +71,6 @@ type SnapshotRepositoryAnalyzeRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r SnapshotRepositoryAnalyzeRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -197,7 +194,6 @@ func (r SnapshotRepositoryAnalyzeRequest) Do(ctx context.Context, transport Tran
 }
 
 // WithContext sets the request context.
-//
 func (f SnapshotRepositoryAnalyze) WithContext(v context.Context) func(*SnapshotRepositoryAnalyzeRequest) {
 	return func(r *SnapshotRepositoryAnalyzeRequest) {
 		r.ctx = v
@@ -205,7 +201,6 @@ func (f SnapshotRepositoryAnalyze) WithContext(v context.Context) func(*Snapshot
 }
 
 // WithBlobCount - number of blobs to create during the test. defaults to 100..
-//
 func (f SnapshotRepositoryAnalyze) WithBlobCount(v int) func(*SnapshotRepositoryAnalyzeRequest) {
 	return func(r *SnapshotRepositoryAnalyzeRequest) {
 		r.BlobCount = &v
@@ -213,7 +208,6 @@ func (f SnapshotRepositoryAnalyze) WithBlobCount(v int) func(*SnapshotRepository
 }
 
 // WithConcurrency - number of operations to run concurrently during the test. defaults to 10..
-//
 func (f SnapshotRepositoryAnalyze) WithConcurrency(v int) func(*SnapshotRepositoryAnalyzeRequest) {
 	return func(r *SnapshotRepositoryAnalyzeRequest) {
 		r.Concurrency = &v
@@ -221,7 +215,6 @@ func (f SnapshotRepositoryAnalyze) WithConcurrency(v int) func(*SnapshotReposito
 }
 
 // WithDetailed - whether to return detailed results or a summary. defaults to 'false' so that only the summary is returned..
-//
 func (f SnapshotRepositoryAnalyze) WithDetailed(v bool) func(*SnapshotRepositoryAnalyzeRequest) {
 	return func(r *SnapshotRepositoryAnalyzeRequest) {
 		r.Detailed = &v
@@ -229,7 +222,6 @@ func (f SnapshotRepositoryAnalyze) WithDetailed(v bool) func(*SnapshotRepository
 }
 
 // WithEarlyReadNodeCount - number of nodes on which to perform an early read on a blob, i.e. before writing has completed. early reads are rare actions so the 'rare_action_probability' parameter is also relevant. defaults to 2..
-//
 func (f SnapshotRepositoryAnalyze) WithEarlyReadNodeCount(v int) func(*SnapshotRepositoryAnalyzeRequest) {
 	return func(r *SnapshotRepositoryAnalyzeRequest) {
 		r.EarlyReadNodeCount = &v
@@ -237,7 +229,6 @@ func (f SnapshotRepositoryAnalyze) WithEarlyReadNodeCount(v int) func(*SnapshotR
 }
 
 // WithMaxBlobSize - maximum size of a blob to create during the test, e.g '1gb' or '100mb'. defaults to '10mb'..
-//
 func (f SnapshotRepositoryAnalyze) WithMaxBlobSize(v string) func(*SnapshotRepositoryAnalyzeRequest) {
 	return func(r *SnapshotRepositoryAnalyzeRequest) {
 		r.MaxBlobSize = v
@@ -245,7 +236,6 @@ func (f SnapshotRepositoryAnalyze) WithMaxBlobSize(v string) func(*SnapshotRepos
 }
 
 // WithMaxTotalDataSize - maximum total size of all blobs to create during the test, e.g '1tb' or '100gb'. defaults to '1gb'..
-//
 func (f SnapshotRepositoryAnalyze) WithMaxTotalDataSize(v string) func(*SnapshotRepositoryAnalyzeRequest) {
 	return func(r *SnapshotRepositoryAnalyzeRequest) {
 		r.MaxTotalDataSize = v
@@ -253,7 +243,6 @@ func (f SnapshotRepositoryAnalyze) WithMaxTotalDataSize(v string) func(*Snapshot
 }
 
 // WithRareActionProbability - probability of taking a rare action such as an early read or an overwrite. defaults to 0.02..
-//
 func (f SnapshotRepositoryAnalyze) WithRareActionProbability(v int) func(*SnapshotRepositoryAnalyzeRequest) {
 	return func(r *SnapshotRepositoryAnalyzeRequest) {
 		r.RareActionProbability = &v
@@ -261,7 +250,6 @@ func (f SnapshotRepositoryAnalyze) WithRareActionProbability(v int) func(*Snapsh
 }
 
 // WithRarelyAbortWrites - whether to rarely abort writes before they complete. defaults to 'true'..
-//
 func (f SnapshotRepositoryAnalyze) WithRarelyAbortWrites(v bool) func(*SnapshotRepositoryAnalyzeRequest) {
 	return func(r *SnapshotRepositoryAnalyzeRequest) {
 		r.RarelyAbortWrites = &v
@@ -269,7 +257,6 @@ func (f SnapshotRepositoryAnalyze) WithRarelyAbortWrites(v bool) func(*SnapshotR
 }
 
 // WithReadNodeCount - number of nodes on which to read a blob after writing. defaults to 10..
-//
 func (f SnapshotRepositoryAnalyze) WithReadNodeCount(v int) func(*SnapshotRepositoryAnalyzeRequest) {
 	return func(r *SnapshotRepositoryAnalyzeRequest) {
 		r.ReadNodeCount = &v
@@ -277,7 +264,6 @@ func (f SnapshotRepositoryAnalyze) WithReadNodeCount(v int) func(*SnapshotReposi
 }
 
 // WithSeed - seed for the random number generator used to create the test workload. defaults to a random value..
-//
 func (f SnapshotRepositoryAnalyze) WithSeed(v int) func(*SnapshotRepositoryAnalyzeRequest) {
 	return func(r *SnapshotRepositoryAnalyzeRequest) {
 		r.Seed = &v
@@ -285,7 +271,6 @@ func (f SnapshotRepositoryAnalyze) WithSeed(v int) func(*SnapshotRepositoryAnaly
 }
 
 // WithTimeout - explicit operation timeout. defaults to '30s'..
-//
 func (f SnapshotRepositoryAnalyze) WithTimeout(v time.Duration) func(*SnapshotRepositoryAnalyzeRequest) {
 	return func(r *SnapshotRepositoryAnalyzeRequest) {
 		r.Timeout = v
@@ -293,7 +278,6 @@ func (f SnapshotRepositoryAnalyze) WithTimeout(v time.Duration) func(*SnapshotRe
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f SnapshotRepositoryAnalyze) WithPretty() func(*SnapshotRepositoryAnalyzeRequest) {
 	return func(r *SnapshotRepositoryAnalyzeRequest) {
 		r.Pretty = true
@@ -301,7 +285,6 @@ func (f SnapshotRepositoryAnalyze) WithPretty() func(*SnapshotRepositoryAnalyzeR
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f SnapshotRepositoryAnalyze) WithHuman() func(*SnapshotRepositoryAnalyzeRequest) {
 	return func(r *SnapshotRepositoryAnalyzeRequest) {
 		r.Human = true
@@ -309,7 +292,6 @@ func (f SnapshotRepositoryAnalyze) WithHuman() func(*SnapshotRepositoryAnalyzeRe
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f SnapshotRepositoryAnalyze) WithErrorTrace() func(*SnapshotRepositoryAnalyzeRequest) {
 	return func(r *SnapshotRepositoryAnalyzeRequest) {
 		r.ErrorTrace = true
@@ -317,7 +299,6 @@ func (f SnapshotRepositoryAnalyze) WithErrorTrace() func(*SnapshotRepositoryAnal
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f SnapshotRepositoryAnalyze) WithFilterPath(v ...string) func(*SnapshotRepositoryAnalyzeRequest) {
 	return func(r *SnapshotRepositoryAnalyzeRequest) {
 		r.FilterPath = v
@@ -325,7 +306,6 @@ func (f SnapshotRepositoryAnalyze) WithFilterPath(v ...string) func(*SnapshotRep
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f SnapshotRepositoryAnalyze) WithHeader(h map[string]string) func(*SnapshotRepositoryAnalyzeRequest) {
 	return func(r *SnapshotRepositoryAnalyzeRequest) {
 		if r.Header == nil {
@@ -338,7 +318,6 @@ func (f SnapshotRepositoryAnalyze) WithHeader(h map[string]string) func(*Snapsho
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f SnapshotRepositoryAnalyze) WithOpaqueID(s string) func(*SnapshotRepositoryAnalyzeRequest) {
 	return func(r *SnapshotRepositoryAnalyzeRequest) {
 		if r.Header == nil {

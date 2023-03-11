@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -42,11 +42,9 @@ func newIndicesExistsAliasFunc(t Transport) IndicesExistsAlias {
 // IndicesExistsAlias returns information about whether a particular alias exists.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-aliases.html.
-//
 type IndicesExistsAlias func(name []string, o ...func(*IndicesExistsAliasRequest)) (*Response, error)
 
 // IndicesExistsAliasRequest configures the Indices Exists Alias API request.
-//
 type IndicesExistsAliasRequest struct {
 	Index []string
 
@@ -68,7 +66,6 @@ type IndicesExistsAliasRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r IndicesExistsAliasRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -170,7 +167,6 @@ func (r IndicesExistsAliasRequest) Do(ctx context.Context, transport Transport) 
 }
 
 // WithContext sets the request context.
-//
 func (f IndicesExistsAlias) WithContext(v context.Context) func(*IndicesExistsAliasRequest) {
 	return func(r *IndicesExistsAliasRequest) {
 		r.ctx = v
@@ -178,7 +174,6 @@ func (f IndicesExistsAlias) WithContext(v context.Context) func(*IndicesExistsAl
 }
 
 // WithIndex - a list of index names to filter aliases.
-//
 func (f IndicesExistsAlias) WithIndex(v ...string) func(*IndicesExistsAliasRequest) {
 	return func(r *IndicesExistsAliasRequest) {
 		r.Index = v
@@ -186,7 +181,6 @@ func (f IndicesExistsAlias) WithIndex(v ...string) func(*IndicesExistsAliasReque
 }
 
 // WithAllowNoIndices - whether to ignore if a wildcard indices expression resolves into no concrete indices. (this includes `_all` string or when no indices have been specified).
-//
 func (f IndicesExistsAlias) WithAllowNoIndices(v bool) func(*IndicesExistsAliasRequest) {
 	return func(r *IndicesExistsAliasRequest) {
 		r.AllowNoIndices = &v
@@ -194,7 +188,6 @@ func (f IndicesExistsAlias) WithAllowNoIndices(v bool) func(*IndicesExistsAliasR
 }
 
 // WithExpandWildcards - whether to expand wildcard expression to concrete indices that are open, closed or both..
-//
 func (f IndicesExistsAlias) WithExpandWildcards(v string) func(*IndicesExistsAliasRequest) {
 	return func(r *IndicesExistsAliasRequest) {
 		r.ExpandWildcards = v
@@ -202,7 +195,6 @@ func (f IndicesExistsAlias) WithExpandWildcards(v string) func(*IndicesExistsAli
 }
 
 // WithIgnoreUnavailable - whether specified concrete indices should be ignored when unavailable (missing or closed).
-//
 func (f IndicesExistsAlias) WithIgnoreUnavailable(v bool) func(*IndicesExistsAliasRequest) {
 	return func(r *IndicesExistsAliasRequest) {
 		r.IgnoreUnavailable = &v
@@ -210,7 +202,6 @@ func (f IndicesExistsAlias) WithIgnoreUnavailable(v bool) func(*IndicesExistsAli
 }
 
 // WithLocal - return local information, do not retrieve the state from master node (default: false).
-//
 func (f IndicesExistsAlias) WithLocal(v bool) func(*IndicesExistsAliasRequest) {
 	return func(r *IndicesExistsAliasRequest) {
 		r.Local = &v
@@ -218,7 +209,6 @@ func (f IndicesExistsAlias) WithLocal(v bool) func(*IndicesExistsAliasRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f IndicesExistsAlias) WithPretty() func(*IndicesExistsAliasRequest) {
 	return func(r *IndicesExistsAliasRequest) {
 		r.Pretty = true
@@ -226,7 +216,6 @@ func (f IndicesExistsAlias) WithPretty() func(*IndicesExistsAliasRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f IndicesExistsAlias) WithHuman() func(*IndicesExistsAliasRequest) {
 	return func(r *IndicesExistsAliasRequest) {
 		r.Human = true
@@ -234,7 +223,6 @@ func (f IndicesExistsAlias) WithHuman() func(*IndicesExistsAliasRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f IndicesExistsAlias) WithErrorTrace() func(*IndicesExistsAliasRequest) {
 	return func(r *IndicesExistsAliasRequest) {
 		r.ErrorTrace = true
@@ -242,7 +230,6 @@ func (f IndicesExistsAlias) WithErrorTrace() func(*IndicesExistsAliasRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f IndicesExistsAlias) WithFilterPath(v ...string) func(*IndicesExistsAliasRequest) {
 	return func(r *IndicesExistsAliasRequest) {
 		r.FilterPath = v
@@ -250,7 +237,6 @@ func (f IndicesExistsAlias) WithFilterPath(v ...string) func(*IndicesExistsAlias
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f IndicesExistsAlias) WithHeader(h map[string]string) func(*IndicesExistsAliasRequest) {
 	return func(r *IndicesExistsAliasRequest) {
 		if r.Header == nil {
@@ -263,7 +249,6 @@ func (f IndicesExistsAlias) WithHeader(h map[string]string) func(*IndicesExistsA
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f IndicesExistsAlias) WithOpaqueID(s string) func(*IndicesExistsAliasRequest) {
 	return func(r *IndicesExistsAliasRequest) {
 		if r.Header == nil {

@@ -13,7 +13,7 @@ import (
 
 const (
 	// Version defines current version
-	Version = "2.12.0"
+	Version = "2.12.2"
 )
 
 func init() {

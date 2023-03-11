@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -41,11 +41,9 @@ func newCCRFollowFunc(t Transport) CCRFollow {
 // CCRFollow - Creates a new follower index configured to follow the referenced leader index.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/ccr-put-follow.html.
-//
 type CCRFollow func(index string, body io.Reader, o ...func(*CCRFollowRequest)) (*Response, error)
 
 // CCRFollowRequest configures the CCR Follow API request.
-//
 type CCRFollowRequest struct {
 	Index string
 
@@ -64,7 +62,6 @@ type CCRFollowRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r CCRFollowRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -117,10 +114,6 @@ func (r CCRFollowRequest) Do(ctx context.Context, transport Transport) (*Respons
 		req.URL.RawQuery = q.Encode()
 	}
 
-	if r.Body != nil {
-		req.Header[headerContentType] = headerContentTypeJSON
-	}
-
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -131,6 +124,10 @@ func (r CCRFollowRequest) Do(ctx context.Context, transport Transport) (*Respons
 				}
 			}
 		}
+	}
+
+	if r.Body != nil && req.Header.Get(headerContentType) == "" {
+		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -152,7 +149,6 @@ func (r CCRFollowRequest) Do(ctx context.Context, transport Transport) (*Respons
 }
 
 // WithContext sets the request context.
-//
 func (f CCRFollow) WithContext(v context.Context) func(*CCRFollowRequest) {
 	return func(r *CCRFollowRequest) {
 		r.ctx = v
@@ -160,7 +156,6 @@ func (f CCRFollow) WithContext(v context.Context) func(*CCRFollowRequest) {
 }
 
 // WithWaitForActiveShards - sets the number of shard copies that must be active before returning. defaults to 0. set to `all` for all shard copies, otherwise set to any non-negative value less than or equal to the total number of copies for the shard (number of replicas + 1).
-//
 func (f CCRFollow) WithWaitForActiveShards(v string) func(*CCRFollowRequest) {
 	return func(r *CCRFollowRequest) {
 		r.WaitForActiveShards = v
@@ -168,7 +163,6 @@ func (f CCRFollow) WithWaitForActiveShards(v string) func(*CCRFollowRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f CCRFollow) WithPretty() func(*CCRFollowRequest) {
 	return func(r *CCRFollowRequest) {
 		r.Pretty = true
@@ -176,7 +170,6 @@ func (f CCRFollow) WithPretty() func(*CCRFollowRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f CCRFollow) WithHuman() func(*CCRFollowRequest) {
 	return func(r *CCRFollowRequest) {
 		r.Human = true
@@ -184,7 +177,6 @@ func (f CCRFollow) WithHuman() func(*CCRFollowRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f CCRFollow) WithErrorTrace() func(*CCRFollowRequest) {
 	return func(r *CCRFollowRequest) {
 		r.ErrorTrace = true
@@ -192,7 +184,6 @@ func (f CCRFollow) WithErrorTrace() func(*CCRFollowRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f CCRFollow) WithFilterPath(v ...string) func(*CCRFollowRequest) {
 	return func(r *CCRFollowRequest) {
 		r.FilterPath = v
@@ -200,7 +191,6 @@ func (f CCRFollow) WithFilterPath(v ...string) func(*CCRFollowRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f CCRFollow) WithHeader(h map[string]string) func(*CCRFollowRequest) {
 	return func(r *CCRFollowRequest) {
 		if r.Header == nil {
@@ -213,7 +203,6 @@ func (f CCRFollow) WithHeader(h map[string]string) func(*CCRFollowRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f CCRFollow) WithOpaqueID(s string) func(*CCRFollowRequest) {
 	return func(r *CCRFollowRequest) {
 		if r.Header == nil {

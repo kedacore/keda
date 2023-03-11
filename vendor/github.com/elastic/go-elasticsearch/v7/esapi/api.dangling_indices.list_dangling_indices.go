@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -40,11 +40,9 @@ func newDanglingIndicesListDanglingIndicesFunc(t Transport) DanglingIndicesListD
 // DanglingIndicesListDanglingIndices returns all dangling indices.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/modules-gateway-dangling-indices.html.
-//
 type DanglingIndicesListDanglingIndices func(o ...func(*DanglingIndicesListDanglingIndicesRequest)) (*Response, error)
 
 // DanglingIndicesListDanglingIndicesRequest configures the Dangling Indices List Dangling Indices API request.
-//
 type DanglingIndicesListDanglingIndicesRequest struct {
 	Pretty     bool
 	Human      bool
@@ -57,7 +55,6 @@ type DanglingIndicesListDanglingIndicesRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r DanglingIndicesListDanglingIndicesRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -132,7 +129,6 @@ func (r DanglingIndicesListDanglingIndicesRequest) Do(ctx context.Context, trans
 }
 
 // WithContext sets the request context.
-//
 func (f DanglingIndicesListDanglingIndices) WithContext(v context.Context) func(*DanglingIndicesListDanglingIndicesRequest) {
 	return func(r *DanglingIndicesListDanglingIndicesRequest) {
 		r.ctx = v
@@ -140,7 +136,6 @@ func (f DanglingIndicesListDanglingIndices) WithContext(v context.Context) func(
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f DanglingIndicesListDanglingIndices) WithPretty() func(*DanglingIndicesListDanglingIndicesRequest) {
 	return func(r *DanglingIndicesListDanglingIndicesRequest) {
 		r.Pretty = true
@@ -148,7 +143,6 @@ func (f DanglingIndicesListDanglingIndices) WithPretty() func(*DanglingIndicesLi
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f DanglingIndicesListDanglingIndices) WithHuman() func(*DanglingIndicesListDanglingIndicesRequest) {
 	return func(r *DanglingIndicesListDanglingIndicesRequest) {
 		r.Human = true
@@ -156,7 +150,6 @@ func (f DanglingIndicesListDanglingIndices) WithHuman() func(*DanglingIndicesLis
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f DanglingIndicesListDanglingIndices) WithErrorTrace() func(*DanglingIndicesListDanglingIndicesRequest) {
 	return func(r *DanglingIndicesListDanglingIndicesRequest) {
 		r.ErrorTrace = true
@@ -164,7 +157,6 @@ func (f DanglingIndicesListDanglingIndices) WithErrorTrace() func(*DanglingIndic
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f DanglingIndicesListDanglingIndices) WithFilterPath(v ...string) func(*DanglingIndicesListDanglingIndicesRequest) {
 	return func(r *DanglingIndicesListDanglingIndicesRequest) {
 		r.FilterPath = v
@@ -172,7 +164,6 @@ func (f DanglingIndicesListDanglingIndices) WithFilterPath(v ...string) func(*Da
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f DanglingIndicesListDanglingIndices) WithHeader(h map[string]string) func(*DanglingIndicesListDanglingIndicesRequest) {
 	return func(r *DanglingIndicesListDanglingIndicesRequest) {
 		if r.Header == nil {
@@ -185,7 +176,6 @@ func (f DanglingIndicesListDanglingIndices) WithHeader(h map[string]string) func
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f DanglingIndicesListDanglingIndices) WithOpaqueID(s string) func(*DanglingIndicesListDanglingIndicesRequest) {
 	return func(r *DanglingIndicesListDanglingIndicesRequest) {
 		if r.Header == nil {

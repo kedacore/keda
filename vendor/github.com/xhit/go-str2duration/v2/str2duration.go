@@ -182,3 +182,150 @@ func leadingFraction(s string) (x int64, scale float64, rem string) {
 	}
 	return x, scale, s[i:]
 }
+
+// String returns a string representing the duration in the form "1w4d2h3m5s".
+// Units with 0 values aren't returned, for example: 1d1ms is 1 day 1 milliseconds
+func String(d time.Duration) string {
+	if d == 0 {
+		return "0s"
+	}
+
+	// Largest time is 15250w1d23h47m16s854ms775us807ns
+	var buf [32]byte
+	w := len(buf)
+	var sign string
+
+	u := uint64(d)
+	neg := d < 0
+	if neg {
+		u = -u
+		sign = "-"
+	}
+
+	// u is nanoseconds (ns)
+	if u > 0 {
+		w--
+
+		if u%1000 > 0 {
+			buf[w] = 's'
+			w--
+			buf[w] = 'n'
+			w = fmtInt(buf[:w], u%1000)
+		} else {
+			w++
+		}
+
+		u /= 1000
+
+		// u is now integer microseconds (us)
+		if u > 0 {
+			w--
+			if u%1000 > 0 {
+				buf[w] = 's'
+				w--
+				buf[w] = 'u'
+				w = fmtInt(buf[:w], u%1000)
+			} else {
+				w++
+			}
+			u /= 1000
+
+			// u is now integer milliseconds (ms)
+			if u > 0 {
+				w--
+				if u%1000 > 0 {
+					buf[w] = 's'
+					w--
+					buf[w] = 'm'
+					w = fmtInt(buf[:w], u%1000)
+				} else {
+					w++
+				}
+				u /= 1000
+
+				// u is now integer seconds (s)
+				if u > 0 {
+					w--
+					if u%60 > 0 {
+						buf[w] = 's'
+						w = fmtInt(buf[:w], u%60)
+					} else {
+						w++
+					}
+					u /= 60
+
+					// u is now integer minutes (m)
+					if u > 0 {
+						w--
+
+						if u%60 > 0 {
+							buf[w] = 'm'
+							w = fmtInt(buf[:w], u%60)
+						} else {
+							w++
+						}
+
+						u /= 60
+
+						// u is now integer hours (h)
+						if u > 0 {
+							w--
+
+							if u%24 > 0 {
+								buf[w] = 'h'
+								w = fmtInt(buf[:w], u%24)
+							} else {
+								w++
+							}
+
+							u /= 24
+
+							// u is now integer days (d)
+							if u > 0 {
+								w--
+
+								if u%7 > 0 {
+									buf[w] = 'd'
+									w = fmtInt(buf[:w], u%7)
+								} else {
+									w++
+								}
+
+								u /= 7
+
+								// u is now integer weeks (w)
+								if u > 0 {
+									w--
+									buf[w] = 'w'
+									w = fmtInt(buf[:w], u)
+								}
+
+							}
+
+						}
+					}
+				}
+			}
+		}
+
+	}
+
+	return sign + string(buf[w:])
+}
+
+// fmtInt formats v into the tail of buf.
+// It returns the index where the output begins.
+func fmtInt(buf []byte, v uint64) int {
+	w := len(buf)
+	if v == 0 {
+		w--
+		buf[w] = '0'
+	} else {
+		for v > 0 {
+			w--
+			buf[w] = byte(v%10) + '0'
+			v /= 10
+		}
+	}
+	return w
+}

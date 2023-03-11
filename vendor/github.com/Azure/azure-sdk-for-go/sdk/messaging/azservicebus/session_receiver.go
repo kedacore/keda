@@ -52,7 +52,7 @@ func toReceiverOptions(sropts *SessionReceiverOptions) *ReceiverOptions {
 
 type newSessionReceiverArgs struct {
 	sessionID         *string
-	ns                internal.NamespaceWithNewAMQPLinks
+	ns                internal.NamespaceForAMQPLinks
 	entity            entity
 	cleanupOnClose    func()
 	retryOptions      RetryOptions
@@ -90,7 +90,7 @@ func newSessionReceiver(ctx context.Context, args newSessionReceiverArgs, option
 	return sessionReceiver, nil
 }
 
-func (r *SessionReceiver) newLink(ctx context.Context, session amqpwrap.AMQPSession) (internal.AMQPSenderCloser, internal.AMQPReceiverCloser, error) {
+func (r *SessionReceiver) newLink(ctx context.Context, session amqpwrap.AMQPSession) (amqpwrap.AMQPSenderCloser, amqpwrap.AMQPReceiverCloser, error) {
 	const sessionFilterName = "com.microsoft:session-filter"
 	const code = uint64(0x00000137000000C)
 
@@ -231,6 +231,7 @@ type SetSessionStateOptions struct {
 }
 
 // SetSessionState sets the state associated with the session.
+// Pass nil for the state parameter to clear the stored session state.
 // If the operation fails it can return an *azservicebus.Error type if the failure is actionable.
 func (sr *SessionReceiver) SetSessionState(ctx context.Context, state []byte, options *SetSessionStateOptions) error {
 	err := sr.inner.amqpLinks.Retry(ctx, EventReceiver, "SetSessionState", func(ctx context.Context, lwv *internal.LinksWithID, args *utils.RetryFnArgs) error {
@@ -249,7 +250,7 @@ type RenewSessionLockOptions struct {
 // using `LockedUntil`.
 // If the operation fails it can return an *azservicebus.Error type if the failure is actionable.
 func (sr *SessionReceiver) RenewSessionLock(ctx context.Context, options *RenewSessionLockOptions) error {
-	err := sr.inner.amqpLinks.Retry(ctx, EventReceiver, "SetSessionState", func(ctx context.Context, lwv *internal.LinksWithID, args *utils.RetryFnArgs) error {
+	err := sr.inner.amqpLinks.Retry(ctx, EventReceiver, "RenewSessionLock", func(ctx context.Context, lwv *internal.LinksWithID, args *utils.RetryFnArgs) error {
 		newLockedUntil, err := internal.RenewSessionLock(ctx, lwv.RPC, lwv.Receiver.LinkName(), *sr.sessionID)
 
 		if err != nil {

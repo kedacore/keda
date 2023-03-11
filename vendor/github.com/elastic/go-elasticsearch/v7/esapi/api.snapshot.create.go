@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -43,11 +43,9 @@ func newSnapshotCreateFunc(t Transport) SnapshotCreate {
 // SnapshotCreate creates a snapshot in a repository.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/modules-snapshots.html.
-//
 type SnapshotCreate func(repository string, snapshot string, o ...func(*SnapshotCreateRequest)) (*Response, error)
 
 // SnapshotCreateRequest configures the Snapshot Create API request.
-//
 type SnapshotCreateRequest struct {
 	Body io.Reader
 
@@ -68,7 +66,6 @@ type SnapshotCreateRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r SnapshotCreateRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -125,10 +122,6 @@ func (r SnapshotCreateRequest) Do(ctx context.Context, transport Transport) (*Re
 		req.URL.RawQuery = q.Encode()
 	}
 
-	if r.Body != nil {
-		req.Header[headerContentType] = headerContentTypeJSON
-	}
-
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -139,6 +132,10 @@ func (r SnapshotCreateRequest) Do(ctx context.Context, transport Transport) (*Re
 				}
 			}
 		}
+	}
+
+	if r.Body != nil && req.Header.Get(headerContentType) == "" {
+		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -160,7 +157,6 @@ func (r SnapshotCreateRequest) Do(ctx context.Context, transport Transport) (*Re
 }
 
 // WithContext sets the request context.
-//
 func (f SnapshotCreate) WithContext(v context.Context) func(*SnapshotCreateRequest) {
 	return func(r *SnapshotCreateRequest) {
 		r.ctx = v
@@ -168,7 +164,6 @@ func (f SnapshotCreate) WithContext(v context.Context) func(*SnapshotCreateReque
 }
 
 // WithBody - The snapshot definition.
-//
 func (f SnapshotCreate) WithBody(v io.Reader) func(*SnapshotCreateRequest) {
 	return func(r *SnapshotCreateRequest) {
 		r.Body = v
@@ -176,7 +171,6 @@ func (f SnapshotCreate) WithBody(v io.Reader) func(*SnapshotCreateRequest) {
 }
 
 // WithMasterTimeout - explicit operation timeout for connection to master node.
-//
 func (f SnapshotCreate) WithMasterTimeout(v time.Duration) func(*SnapshotCreateRequest) {
 	return func(r *SnapshotCreateRequest) {
 		r.MasterTimeout = v
@@ -184,7 +178,6 @@ func (f SnapshotCreate) WithMasterTimeout(v time.Duration) func(*SnapshotCreateR
 }
 
 // WithWaitForCompletion - should this request wait until the operation has completed before returning.
-//
 func (f SnapshotCreate) WithWaitForCompletion(v bool) func(*SnapshotCreateRequest) {
 	return func(r *SnapshotCreateRequest) {
 		r.WaitForCompletion = &v
@@ -192,7 +185,6 @@ func (f SnapshotCreate) WithWaitForCompletion(v bool) func(*SnapshotCreateReques
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f SnapshotCreate) WithPretty() func(*SnapshotCreateRequest) {
 	return func(r *SnapshotCreateRequest) {
 		r.Pretty = true
@@ -200,7 +192,6 @@ func (f SnapshotCreate) WithPretty() func(*SnapshotCreateRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f SnapshotCreate) WithHuman() func(*SnapshotCreateRequest) {
 	return func(r *SnapshotCreateRequest) {
 		r.Human = true
@@ -208,7 +199,6 @@ func (f SnapshotCreate) WithHuman() func(*SnapshotCreateRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f SnapshotCreate) WithErrorTrace() func(*SnapshotCreateRequest) {
 	return func(r *SnapshotCreateRequest) {
 		r.ErrorTrace = true
@@ -216,7 +206,6 @@ func (f SnapshotCreate) WithErrorTrace() func(*SnapshotCreateRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f SnapshotCreate) WithFilterPath(v ...string) func(*SnapshotCreateRequest) {
 	return func(r *SnapshotCreateRequest) {
 		r.FilterPath = v
@@ -224,7 +213,6 @@ func (f SnapshotCreate) WithFilterPath(v ...string) func(*SnapshotCreateRequest)
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f SnapshotCreate) WithHeader(h map[string]string) func(*SnapshotCreateRequest) {
 	return func(r *SnapshotCreateRequest) {
 		if r.Header == nil {
@@ -237,7 +225,6 @@ func (f SnapshotCreate) WithHeader(h map[string]string) func(*SnapshotCreateRequ
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f SnapshotCreate) WithOpaqueID(s string) func(*SnapshotCreateRequest) {
 	return func(r *SnapshotCreateRequest) {
 		if r.Header == nil {

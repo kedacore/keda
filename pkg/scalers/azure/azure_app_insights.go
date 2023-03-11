@@ -89,7 +89,7 @@ func extractAppInsightValue(info AppInsightsInfo, metric ApplicationInsightsMetr
 		}
 		floatVal = val.(float64)
 	} else {
-		return -1, fmt.Errorf("metric %s did not containe aggregation type %s", info.MetricID, info.AggregationType)
+		return -1, fmt.Errorf("metric %s did not contain aggregation type %s", info.MetricID, info.AggregationType)
 	}
 
 	azureAppInsightsLog.V(2).Info("value extracted from metric request", "metric type", info.AggregationType, "metric value", floatVal)
@@ -115,7 +115,7 @@ func queryParamsForAppInsightsRequest(info AppInsightsInfo) (map[string]interfac
 }
 
 // GetAzureAppInsightsMetricValue returns the value of an Azure App Insights metric, rounded to the nearest int
-func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity) (float64, error) {
+func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity, ignoreNullValues bool) (float64, error) {
 	config := getAuthConfig(ctx, info, podIdentity)
 	authorizer, err := config.Authorizer()
 	if err != nil {
@@ -154,5 +154,9 @@ func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, p
 		return -1, err
 	}
 
-	return extractAppInsightValue(info, *metric)
+	val, err := extractAppInsightValue(info, *metric)
+	if err != nil && ignoreNullValues {
+		return 0.0, nil
+	}
+	return val, err
 }

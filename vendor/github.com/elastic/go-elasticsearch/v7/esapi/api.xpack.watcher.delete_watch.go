@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -40,11 +40,9 @@ func newWatcherDeleteWatchFunc(t Transport) WatcherDeleteWatch {
 // WatcherDeleteWatch - Removes a watch from Watcher.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/watcher-api-delete-watch.html.
-//
 type WatcherDeleteWatch func(id string, o ...func(*WatcherDeleteWatchRequest)) (*Response, error)
 
 // WatcherDeleteWatchRequest configures the Watcher Delete Watch API request.
-//
 type WatcherDeleteWatchRequest struct {
 	WatchID string
 
@@ -59,7 +57,6 @@ type WatcherDeleteWatchRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r WatcherDeleteWatchRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -139,7 +136,6 @@ func (r WatcherDeleteWatchRequest) Do(ctx context.Context, transport Transport) 
 }
 
 // WithContext sets the request context.
-//
 func (f WatcherDeleteWatch) WithContext(v context.Context) func(*WatcherDeleteWatchRequest) {
 	return func(r *WatcherDeleteWatchRequest) {
 		r.ctx = v
@@ -147,7 +143,6 @@ func (f WatcherDeleteWatch) WithContext(v context.Context) func(*WatcherDeleteWa
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f WatcherDeleteWatch) WithPretty() func(*WatcherDeleteWatchRequest) {
 	return func(r *WatcherDeleteWatchRequest) {
 		r.Pretty = true
@@ -155,7 +150,6 @@ func (f WatcherDeleteWatch) WithPretty() func(*WatcherDeleteWatchRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f WatcherDeleteWatch) WithHuman() func(*WatcherDeleteWatchRequest) {
 	return func(r *WatcherDeleteWatchRequest) {
 		r.Human = true
@@ -163,7 +157,6 @@ func (f WatcherDeleteWatch) WithHuman() func(*WatcherDeleteWatchRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f WatcherDeleteWatch) WithErrorTrace() func(*WatcherDeleteWatchRequest) {
 	return func(r *WatcherDeleteWatchRequest) {
 		r.ErrorTrace = true
@@ -171,7 +164,6 @@ func (f WatcherDeleteWatch) WithErrorTrace() func(*WatcherDeleteWatchRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f WatcherDeleteWatch) WithFilterPath(v ...string) func(*WatcherDeleteWatchRequest) {
 	return func(r *WatcherDeleteWatchRequest) {
 		r.FilterPath = v
@@ -179,7 +171,6 @@ func (f WatcherDeleteWatch) WithFilterPath(v ...string) func(*WatcherDeleteWatch
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f WatcherDeleteWatch) WithHeader(h map[string]string) func(*WatcherDeleteWatchRequest) {
 	return func(r *WatcherDeleteWatchRequest) {
 		if r.Header == nil {
@@ -192,7 +183,6 @@ func (f WatcherDeleteWatch) WithHeader(h map[string]string) func(*WatcherDeleteW
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f WatcherDeleteWatch) WithOpaqueID(s string) func(*WatcherDeleteWatchRequest) {
 	return func(r *WatcherDeleteWatchRequest) {
 		if r.Header == nil {

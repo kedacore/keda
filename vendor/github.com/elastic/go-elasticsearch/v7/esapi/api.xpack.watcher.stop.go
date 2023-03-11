@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -40,11 +40,9 @@ func newWatcherStopFunc(t Transport) WatcherStop {
 // WatcherStop - Stops Watcher if it is running.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/watcher-api-stop.html.
-//
 type WatcherStop func(o ...func(*WatcherStopRequest)) (*Response, error)
 
 // WatcherStopRequest configures the Watcher Stop API request.
-//
 type WatcherStopRequest struct {
 	Pretty     bool
 	Human      bool
@@ -57,7 +55,6 @@ type WatcherStopRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r WatcherStopRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -132,7 +129,6 @@ func (r WatcherStopRequest) Do(ctx context.Context, transport Transport) (*Respo
 }
 
 // WithContext sets the request context.
-//
 func (f WatcherStop) WithContext(v context.Context) func(*WatcherStopRequest) {
 	return func(r *WatcherStopRequest) {
 		r.ctx = v
@@ -140,7 +136,6 @@ func (f WatcherStop) WithContext(v context.Context) func(*WatcherStopRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f WatcherStop) WithPretty() func(*WatcherStopRequest) {
 	return func(r *WatcherStopRequest) {
 		r.Pretty = true
@@ -148,7 +143,6 @@ func (f WatcherStop) WithPretty() func(*WatcherStopRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f WatcherStop) WithHuman() func(*WatcherStopRequest) {
 	return func(r *WatcherStopRequest) {
 		r.Human = true
@@ -156,7 +150,6 @@ func (f WatcherStop) WithHuman() func(*WatcherStopRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f WatcherStop) WithErrorTrace() func(*WatcherStopRequest) {
 	return func(r *WatcherStopRequest) {
 		r.ErrorTrace = true
@@ -164,7 +157,6 @@ func (f WatcherStop) WithErrorTrace() func(*WatcherStopRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f WatcherStop) WithFilterPath(v ...string) func(*WatcherStopRequest) {
 	return func(r *WatcherStopRequest) {
 		r.FilterPath = v
@@ -172,7 +164,6 @@ func (f WatcherStop) WithFilterPath(v ...string) func(*WatcherStopRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f WatcherStop) WithHeader(h map[string]string) func(*WatcherStopRequest) {
 	return func(r *WatcherStopRequest) {
 		if r.Header == nil {
@@ -185,7 +176,6 @@ func (f WatcherStop) WithHeader(h map[string]string) func(*WatcherStopRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f WatcherStop) WithOpaqueID(s string) func(*WatcherStopRequest) {
 	return func(r *WatcherStopRequest) {
 		if r.Header == nil {

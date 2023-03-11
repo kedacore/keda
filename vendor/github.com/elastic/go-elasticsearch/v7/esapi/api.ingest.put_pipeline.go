@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -43,11 +43,9 @@ func newIngestPutPipelineFunc(t Transport) IngestPutPipeline {
 // IngestPutPipeline creates or updates a pipeline.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/put-pipeline-api.html.
-//
 type IngestPutPipeline func(id string, body io.Reader, o ...func(*IngestPutPipelineRequest)) (*Response, error)
 
 // IngestPutPipelineRequest configures the Ingest Put Pipeline API request.
-//
 type IngestPutPipelineRequest struct {
 	PipelineID string
 
@@ -68,7 +66,6 @@ type IngestPutPipelineRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r IngestPutPipelineRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -129,10 +126,6 @@ func (r IngestPutPipelineRequest) Do(ctx context.Context, transport Transport) (
 		req.URL.RawQuery = q.Encode()
 	}
 
-	if r.Body != nil {
-		req.Header[headerContentType] = headerContentTypeJSON
-	}
-
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -143,6 +136,10 @@ func (r IngestPutPipelineRequest) Do(ctx context.Context, transport Transport) (
 				}
 			}
 		}
+	}
+
+	if r.Body != nil && req.Header.Get(headerContentType) == "" {
+		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -164,7 +161,6 @@ func (r IngestPutPipelineRequest) Do(ctx context.Context, transport Transport) (
 }
 
 // WithContext sets the request context.
-//
 func (f IngestPutPipeline) WithContext(v context.Context) func(*IngestPutPipelineRequest) {
 	return func(r *IngestPutPipelineRequest) {
 		r.ctx = v
@@ -172,7 +168,6 @@ func (f IngestPutPipeline) WithContext(v context.Context) func(*IngestPutPipelin
 }
 
 // WithIfVersion - required version for optimistic concurrency control for pipeline updates.
-//
 func (f IngestPutPipeline) WithIfVersion(v int) func(*IngestPutPipelineRequest) {
 	return func(r *IngestPutPipelineRequest) {
 		r.IfVersion = &v
@@ -180,7 +175,6 @@ func (f IngestPutPipeline) WithIfVersion(v int) func(*IngestPutPipelineRequest) 
 }
 
 // WithMasterTimeout - explicit operation timeout for connection to master node.
-//
 func (f IngestPutPipeline) WithMasterTimeout(v time.Duration) func(*IngestPutPipelineRequest) {
 	return func(r *IngestPutPipelineRequest) {
 		r.MasterTimeout = v
@@ -188,7 +182,6 @@ func (f IngestPutPipeline) WithMasterTimeout(v time.Duration) func(*IngestPutPip
 }
 
 // WithTimeout - explicit operation timeout.
-//
 func (f IngestPutPipeline) WithTimeout(v time.Duration) func(*IngestPutPipelineRequest) {
 	return func(r *IngestPutPipelineRequest) {
 		r.Timeout = v
@@ -196,7 +189,6 @@ func (f IngestPutPipeline) WithTimeout(v time.Duration) func(*IngestPutPipelineR
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f IngestPutPipeline) WithPretty() func(*IngestPutPipelineRequest) {
 	return func(r *IngestPutPipelineRequest) {
 		r.Pretty = true
@@ -204,7 +196,6 @@ func (f IngestPutPipeline) WithPretty() func(*IngestPutPipelineRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f IngestPutPipeline) WithHuman() func(*IngestPutPipelineRequest) {
 	return func(r *IngestPutPipelineRequest) {
 		r.Human = true
@@ -212,7 +203,6 @@ func (f IngestPutPipeline) WithHuman() func(*IngestPutPipelineRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f IngestPutPipeline) WithErrorTrace() func(*IngestPutPipelineRequest) {
 	return func(r *IngestPutPipelineRequest) {
 		r.ErrorTrace = true
@@ -220,7 +210,6 @@ func (f IngestPutPipeline) WithErrorTrace() func(*IngestPutPipelineRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f IngestPutPipeline) WithFilterPath(v ...string) func(*IngestPutPipelineRequest) {
 	return func(r *IngestPutPipelineRequest) {
 		r.FilterPath = v
@@ -228,7 +217,6 @@ func (f IngestPutPipeline) WithFilterPath(v ...string) func(*IngestPutPipelineRe
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f IngestPutPipeline) WithHeader(h map[string]string) func(*IngestPutPipelineRequest) {
 	return func(r *IngestPutPipelineRequest) {
 		if r.Header == nil {
@@ -241,7 +229,6 @@ func (f IngestPutPipeline) WithHeader(h map[string]string) func(*IngestPutPipeli
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f IngestPutPipeline) WithOpaqueID(s string) func(*IngestPutPipelineRequest) {
 	return func(r *IngestPutPipelineRequest) {
 		if r.Header == nil {

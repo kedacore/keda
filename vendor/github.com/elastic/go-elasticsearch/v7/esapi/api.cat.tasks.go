@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -41,11 +41,9 @@ func newCatTasksFunc(t Transport) CatTasks {
 // CatTasks returns information about the tasks currently executing on one or more nodes in the cluster.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/tasks.html.
-//
 type CatTasks func(o ...func(*CatTasksRequest)) (*Response, error)
 
 // CatTasksRequest configures the Cat Tasks API request.
-//
 type CatTasksRequest struct {
 	Actions      []string
 	Detailed     *bool
@@ -69,7 +67,6 @@ type CatTasksRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r CatTasksRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -184,7 +181,6 @@ func (r CatTasksRequest) Do(ctx context.Context, transport Transport) (*Response
 }
 
 // WithContext sets the request context.
-//
 func (f CatTasks) WithContext(v context.Context) func(*CatTasksRequest) {
 	return func(r *CatTasksRequest) {
 		r.ctx = v
@@ -192,7 +188,6 @@ func (f CatTasks) WithContext(v context.Context) func(*CatTasksRequest) {
 }
 
 // WithActions - a list of actions that should be returned. leave empty to return all..
-//
 func (f CatTasks) WithActions(v ...string) func(*CatTasksRequest) {
 	return func(r *CatTasksRequest) {
 		r.Actions = v
@@ -200,7 +195,6 @@ func (f CatTasks) WithActions(v ...string) func(*CatTasksRequest) {
 }
 
 // WithDetailed - return detailed task information (default: false).
-//
 func (f CatTasks) WithDetailed(v bool) func(*CatTasksRequest) {
 	return func(r *CatTasksRequest) {
 		r.Detailed = &v
@@ -208,7 +202,6 @@ func (f CatTasks) WithDetailed(v bool) func(*CatTasksRequest) {
 }
 
 // WithFormat - a short version of the accept header, e.g. json, yaml.
-//
 func (f CatTasks) WithFormat(v string) func(*CatTasksRequest) {
 	return func(r *CatTasksRequest) {
 		r.Format = v
@@ -216,7 +209,6 @@ func (f CatTasks) WithFormat(v string) func(*CatTasksRequest) {
 }
 
 // WithH - comma-separated list of column names to display.
-//
 func (f CatTasks) WithH(v ...string) func(*CatTasksRequest) {
 	return func(r *CatTasksRequest) {
 		r.H = v
@@ -224,7 +216,6 @@ func (f CatTasks) WithH(v ...string) func(*CatTasksRequest) {
 }
 
 // WithHelp - return help information.
-//
 func (f CatTasks) WithHelp(v bool) func(*CatTasksRequest) {
 	return func(r *CatTasksRequest) {
 		r.Help = &v
@@ -232,7 +223,6 @@ func (f CatTasks) WithHelp(v bool) func(*CatTasksRequest) {
 }
 
 // WithNodes - a list of node ids or names to limit the returned information; use `_local` to return information from the node you're connecting to, leave empty to get information from all nodes.
-//
 func (f CatTasks) WithNodes(v ...string) func(*CatTasksRequest) {
 	return func(r *CatTasksRequest) {
 		r.Nodes = v
@@ -240,7 +230,6 @@ func (f CatTasks) WithNodes(v ...string) func(*CatTasksRequest) {
 }
 
 // WithParentTaskID - return tasks with specified parent task ID (node_id:task_number). set to -1 to return all..
-//
 func (f CatTasks) WithParentTaskID(v string) func(*CatTasksRequest) {
 	return func(r *CatTasksRequest) {
 		r.ParentTaskID = v
@@ -248,7 +237,6 @@ func (f CatTasks) WithParentTaskID(v string) func(*CatTasksRequest) {
 }
 
 // WithS - comma-separated list of column names or column aliases to sort by.
-//
 func (f CatTasks) WithS(v ...string) func(*CatTasksRequest) {
 	return func(r *CatTasksRequest) {
 		r.S = v
@@ -256,7 +244,6 @@ func (f CatTasks) WithS(v ...string) func(*CatTasksRequest) {
 }
 
 // WithTime - the unit in which to display time values.
-//
 func (f CatTasks) WithTime(v string) func(*CatTasksRequest) {
 	return func(r *CatTasksRequest) {
 		r.Time = v
@@ -264,7 +251,6 @@ func (f CatTasks) WithTime(v string) func(*CatTasksRequest) {
 }
 
 // WithV - verbose mode. display column headers.
-//
 func (f CatTasks) WithV(v bool) func(*CatTasksRequest) {
 	return func(r *CatTasksRequest) {
 		r.V = &v
@@ -272,7 +258,6 @@ func (f CatTasks) WithV(v bool) func(*CatTasksRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f CatTasks) WithPretty() func(*CatTasksRequest) {
 	return func(r *CatTasksRequest) {
 		r.Pretty = true
@@ -280,7 +265,6 @@ func (f CatTasks) WithPretty() func(*CatTasksRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f CatTasks) WithHuman() func(*CatTasksRequest) {
 	return func(r *CatTasksRequest) {
 		r.Human = true
@@ -288,7 +272,6 @@ func (f CatTasks) WithHuman() func(*CatTasksRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f CatTasks) WithErrorTrace() func(*CatTasksRequest) {
 	return func(r *CatTasksRequest) {
 		r.ErrorTrace = true
@@ -296,7 +279,6 @@ func (f CatTasks) WithErrorTrace() func(*CatTasksRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f CatTasks) WithFilterPath(v ...string) func(*CatTasksRequest) {
 	return func(r *CatTasksRequest) {
 		r.FilterPath = v
@@ -304,7 +286,6 @@ func (f CatTasks) WithFilterPath(v ...string) func(*CatTasksRequest) {
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f CatTasks) WithHeader(h map[string]string) func(*CatTasksRequest) {
 	return func(r *CatTasksRequest) {
 		if r.Header == nil {
@@ -317,7 +298,6 @@ func (f CatTasks) WithHeader(h map[string]string) func(*CatTasksRequest) {
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f CatTasks) WithOpaqueID(s string) func(*CatTasksRequest) {
 	return func(r *CatTasksRequest) {
 		if r.Header == nil {

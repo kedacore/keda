@@ -58,6 +58,8 @@ const (
 	CRDConversion
 	//APIServiceWebhook indicates the webhook is an extension API server
 	APIService
+	//ExternalDataProvider indicates the webhook is a Gatekeeper External Data Provider
+	ExternalDataProvider
 )
 
 var _ manager.Runnable = &CertRotator{}
@@ -83,10 +85,11 @@ type WebhookInfo struct {
 
 func (w WebhookInfo) gvk() schema.GroupVersionKind {
 	t2g := map[WebhookType]schema.GroupVersionKind{
-		Validating:    {Group: "admissionregistration.k8s.io", Version: "v1", Kind: "ValidatingWebhookConfiguration"},
-		Mutating:      {Group: "admissionregistration.k8s.io", Version: "v1", Kind: "MutatingWebhookConfiguration"},
-		CRDConversion: {Group: "apiextensions.k8s.io", Version: "v1", Kind: "CustomResourceDefinition"},
-		APIService:    {Group: "apiregistration.k8s.io", Version: "v1", Kind: "APIService"},
+		Validating:           {Group: "admissionregistration.k8s.io", Version: "v1", Kind: "ValidatingWebhookConfiguration"},
+		Mutating:             {Group: "admissionregistration.k8s.io", Version: "v1", Kind: "MutatingWebhookConfiguration"},
+		CRDConversion:        {Group: "apiextensions.k8s.io", Version: "v1", Kind: "CustomResourceDefinition"},
+		APIService:           {Group: "apiregistration.k8s.io", Version: "v1", Kind: "APIService"},
+		ExternalDataProvider: {Group: "externaldata.gatekeeper.sh", Version: "v1beta1", Kind: "Provider"},
 	}
 	return t2g[w.Type]
 }
@@ -321,8 +324,10 @@ func injectCert(updatedResource *unstructured.Unstructured, certPem []byte, webh
 		return injectCertToConversionWebhook(updatedResource, certPem)
 	case APIService:
 		return injectCertToApiService(updatedResource, certPem)
+	case ExternalDataProvider:
+		return injectCertToExternalDataProvider(updatedResource, certPem)
 	}
-	return fmt.Errorf("Incorrect webhook type")
+	return fmt.Errorf("incorrect webhook type")
 }
 
 func injectCertToWebhook(wh *unstructured.Unstructured, certPem []byte) error {
@@ -373,6 +378,21 @@ func injectCertToApiService(apiService *unstructured.Unstructured, certPem []byt
 		return errors.New("`spec` field not found in APIService")
 	}
 	if err := unstructured.SetNestedField(apiService.Object, base64.StdEncoding.EncodeToString(certPem), "spec", "caBundle"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func injectCertToExternalDataProvider(externalDataProvider *unstructured.Unstructured, certPem []byte) error {
+	_, found, err := unstructured.NestedMap(externalDataProvider.Object, "spec")
+	if err != nil {
+		return err
+	}
+	if !found {
+		return errors.New("`spec` field not found in Provider")
+	}
+	if err := unstructured.SetNestedField(externalDataProvider.Object, base64.StdEncoding.EncodeToString(certPem), "spec", "caBundle"); err != nil {
 		return err
 	}
 

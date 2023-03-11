@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.1: DO NOT EDIT
+// Code generated from specification version 7.17.7: DO NOT EDIT
 
 package esapi
 
@@ -41,11 +41,9 @@ func newSecurityPutRoleFunc(t Transport) SecurityPutRole {
 // SecurityPutRole - Adds and updates roles in the native realm.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-put-role.html.
-//
 type SecurityPutRole func(name string, body io.Reader, o ...func(*SecurityPutRoleRequest)) (*Response, error)
 
 // SecurityPutRoleRequest configures the Security Put Role API request.
-//
 type SecurityPutRoleRequest struct {
 	Body io.Reader
 
@@ -64,7 +62,6 @@ type SecurityPutRoleRequest struct {
 }
 
 // Do executes the request and returns response or error.
-//
 func (r SecurityPutRoleRequest) Do(ctx context.Context, transport Transport) (*Response, error) {
 	var (
 		method string
@@ -117,10 +114,6 @@ func (r SecurityPutRoleRequest) Do(ctx context.Context, transport Transport) (*R
 		req.URL.RawQuery = q.Encode()
 	}
 
-	if r.Body != nil {
-		req.Header[headerContentType] = headerContentTypeJSON
-	}
-
 	if len(r.Header) > 0 {
 		if len(req.Header) == 0 {
 			req.Header = r.Header
@@ -131,6 +124,10 @@ func (r SecurityPutRoleRequest) Do(ctx context.Context, transport Transport) (*R
 				}
 			}
 		}
+	}
+
+	if r.Body != nil && req.Header.Get(headerContentType) == "" {
+		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if ctx != nil {
@@ -152,7 +149,6 @@ func (r SecurityPutRoleRequest) Do(ctx context.Context, transport Transport) (*R
 }
 
 // WithContext sets the request context.
-//
 func (f SecurityPutRole) WithContext(v context.Context) func(*SecurityPutRoleRequest) {
 	return func(r *SecurityPutRoleRequest) {
 		r.ctx = v
@@ -160,7 +156,6 @@ func (f SecurityPutRole) WithContext(v context.Context) func(*SecurityPutRoleReq
 }
 
 // WithRefresh - if `true` (the default) then refresh the affected shards to make this operation visible to search, if `wait_for` then wait for a refresh to make this operation visible to search, if `false` then do nothing with refreshes..
-//
 func (f SecurityPutRole) WithRefresh(v string) func(*SecurityPutRoleRequest) {
 	return func(r *SecurityPutRoleRequest) {
 		r.Refresh = v
@@ -168,7 +163,6 @@ func (f SecurityPutRole) WithRefresh(v string) func(*SecurityPutRoleRequest) {
 }
 
 // WithPretty makes the response body pretty-printed.
-//
 func (f SecurityPutRole) WithPretty() func(*SecurityPutRoleRequest) {
 	return func(r *SecurityPutRoleRequest) {
 		r.Pretty = true
@@ -176,7 +170,6 @@ func (f SecurityPutRole) WithPretty() func(*SecurityPutRoleRequest) {
 }
 
 // WithHuman makes statistical values human-readable.
-//
 func (f SecurityPutRole) WithHuman() func(*SecurityPutRoleRequest) {
 	return func(r *SecurityPutRoleRequest) {
 		r.Human = true
@@ -184,7 +177,6 @@ func (f SecurityPutRole) WithHuman() func(*SecurityPutRoleRequest) {
 }
 
 // WithErrorTrace includes the stack trace for errors in the response body.
-//
 func (f SecurityPutRole) WithErrorTrace() func(*SecurityPutRoleRequest) {
 	return func(r *SecurityPutRoleRequest) {
 		r.ErrorTrace = true
@@ -192,7 +184,6 @@ func (f SecurityPutRole) WithErrorTrace() func(*SecurityPutRoleRequest) {
 }
 
 // WithFilterPath filters the properties of the response body.
-//
 func (f SecurityPutRole) WithFilterPath(v ...string) func(*SecurityPutRoleRequest) {
 	return func(r *SecurityPutRoleRequest) {
 		r.FilterPath = v
@@ -200,7 +191,6 @@ func (f SecurityPutRole) WithFilterPath(v ...string) func(*SecurityPutRoleReques
 }
 
 // WithHeader adds the headers to the HTTP request.
-//
 func (f SecurityPutRole) WithHeader(h map[string]string) func(*SecurityPutRoleRequest) {
 	return func(r *SecurityPutRoleRequest) {
 		if r.Header == nil {
@@ -213,7 +203,6 @@ func (f SecurityPutRole) WithHeader(h map[string]string) func(*SecurityPutRoleRe
 }
 
 // WithOpaqueID adds the X-Opaque-Id header to the HTTP request.
-//
 func (f SecurityPutRole) WithOpaqueID(s string) func(*SecurityPutRoleRequest) {
 	return func(r *SecurityPutRoleRequest) {
 		if r.Header == nil {

@@ -23,6 +23,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"strings"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -55,17 +56,20 @@ func getRootCAs() *x509.CertPool {
 	}
 
 	for _, file := range files {
-		if file.IsDir() {
+		if file.IsDir() || strings.HasPrefix(file.Name(), "..") {
+			logger.V(1).Info(fmt.Sprintf("%s isn't a valid certificate", file.Name()))
 			continue
 		}
 
 		certs, err := os.ReadFile(path.Join(customCAPath, file.Name()))
 		if err != nil {
-			logger.Error(err, fmt.Sprintf("Failed to append %q to certPool", file.Name()))
+			logger.Error(err, fmt.Sprintf("error reading %q", file.Name()))
+			continue
 		}
 
 		if ok := rootCAs.AppendCertsFromPEM(certs); !ok {
 			logger.Error(fmt.Errorf("no certs appended"), fmt.Sprintf("the certificate %s hasn't been added to the pool", file.Name()))
+			continue
 		}
 		logger.V(1).Info(fmt.Sprintf("the certificate %s has been added to the pool", file.Name()))
 	}
