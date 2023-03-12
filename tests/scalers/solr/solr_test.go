@@ -205,7 +205,7 @@ func setupSolr(t *testing.T, kc *kubernetes.Clientset) {
 	t.Logf("Output: %s, Error: %s", out, errOut)
 
 	// Enable BasicAuth
-	out, errOut, _ = ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("echo '{\"authentication\":{\"class\":\"solr.BasicAuthPlugin\",\"credentials\":{\"solr\":\"IV0EHq1OnNrj6gvRCwvFwTrZ1+z1oBbnQdiVC3otuq0= Ndd7LKvVBAaZIF0QAVi1ekCfAJXr1GGfLtRUXhgrF8c=\"}},\"authorization\":{\"class\":\"solr.RuleBasedAuthorizationPlugin\",\"permissions\":[{\"name\":\"security-edit\",\"role\":\"admin\"}],\"user-role\":{\"solr\":\"admin\"}}}' > /var/solr/data/security.json"))
+	out, errOut, _ = ExecCommandOnSpecificPod(t, solrPodName, testNamespace, "echo '{\"authentication\":{\"class\":\"solr.BasicAuthPlugin\",\"credentials\":{\"solr\":\"IV0EHq1OnNrj6gvRCwvFwTrZ1+z1oBbnQdiVC3otuq0= Ndd7LKvVBAaZIF0QAVi1ekCfAJXr1GGfLtRUXhgrF8c=\"}},\"authorization\":{\"class\":\"solr.RuleBasedAuthorizationPlugin\",\"permissions\":[{\"name\":\"security-edit\",\"role\":\"admin\"}],\"user-role\":{\"solr\":\"admin\"}}}' > /var/solr/data/security.json")
 	t.Logf("Output: %s, Error: %s", out, errOut)
 
 	// Restart solr to apply auth

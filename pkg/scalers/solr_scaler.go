@@ -9,9 +9,10 @@ import (
 	"strconv"
 
 	"github.com/go-logr/logr"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type solrScaler struct {
@@ -103,7 +104,7 @@ func parseSolrMetadata(config *ScalerConfig) (*solrMetadata, error) {
 		}
 		meta.activationTargetQueryValue = activationTargetQueryValue
 	}
-	//Parse Authentication
+	// Parse Authentication
 	if val, ok := config.TriggerMetadata["username"]; ok {
 		meta.username = val
 	} else {
@@ -131,12 +132,12 @@ func (s *solrScaler) getItemCount(ctx context.Context) (float64, error) {
 	if err != nil {
 		return -1, err
 	}
-	//Add BasicAuth
+	// Add BasicAuth
 	req.SetBasicAuth(s.metadata.username, s.metadata.password)
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		return -1, fmt.Errorf("Error sending request to Solr, %w", err)
+		return -1, fmt.Errorf("error sending request to solr, %w", err)
 	}
 
 	defer resp.Body.Close()
@@ -157,7 +158,7 @@ func (s *solrScaler) getItemCount(ctx context.Context) (float64, error) {
 func (s *solrScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("solr"))),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString("solr")),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.targetQueryValue),
 	}
