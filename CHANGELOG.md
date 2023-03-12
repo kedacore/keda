@@ -81,7 +81,6 @@ Here is an overview of all **stable** additions:
 - **Prometheus Metrics**: Introduce scaler latency in Prometheus metrics ([#4037](https://github.com/kedacore/keda/issues/4037))
 - **Prometheus Scaler**: Extend Prometheus Scaler to support Azure managed service for Prometheus ([#4153](https://github.com/kedacore/keda/issues/4153))
 
-
 Here is an overview of all new **experimental** features:
 
 - **GitHub Scaler**: Introduced new GitHub Scaler (#1732)
