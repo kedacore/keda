@@ -135,13 +135,13 @@ metadata:
   namespace: {{.TestNamespace}}
 spec:
   selector:
-    app: solr-app  
+    app: solr-app
   type: NodePort
   ports:
   - protocol: TCP
     port: 8983
     targetPort: 8983
-    nodePort: 30007  
+    nodePort: 30007
 `
 
 	scaledObjectTemplate = `
