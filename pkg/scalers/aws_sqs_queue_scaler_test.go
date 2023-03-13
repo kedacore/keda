@@ -308,7 +308,8 @@ var awsSQSMetricIdentifiers = []awsSQSMetricIdentifier{
 }
 
 var awsSQSGetMetricTestData = []*awsSqsQueueMetadata{
-	{queueURL: testAWSSQSProperQueueURL},
+	{queueURL: testAWSSQSProperQueueURL, scaleOnInFlight: false},
+	{queueURL: testAWSSQSProperQueueURL, scaleOnInFlight: true},
 	{queueURL: testAWSSQSErrorQueueURL},
 	{queueURL: testAWSSQSBadDataQueueURL},
 }

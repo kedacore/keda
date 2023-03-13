@@ -23,9 +23,13 @@ const (
 	defaultScaleOnInFlight             = true
 )
 
-var awsSqsQueueMetricNames = []string{
+var awsSqsQueueMetricNamesForScalingInFlight = []string{
 	"ApproximateNumberOfMessages",
 	"ApproximateNumberOfMessagesNotVisible",
+}
+
+var awsSqsQueueMetricNamesForNotScalingInFlight = []string{
+	"ApproximateNumberOfMessages",
 }
 
 type awsSqsQueueScaler struct {
@@ -45,6 +49,7 @@ type awsSqsQueueMetadata struct {
 	awsAuthorization            awsAuthorizationMetadata
 	scalerIndex                 int
 	scaleOnInFlight             bool
+	awsSqsQueueMetricNames      []string
 }
 
 // NewAwsSqsQueueScaler creates a new awsSqsQueueScaler
@@ -104,10 +109,10 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig, logger logr.Logger) (*awsSqs
 		}
 	}
 
-	if !meta.scaleOnInFlight {
-		awsSqsQueueMetricNames = []string{
-			"ApproximateNumberOfMessages",
-		}
+	if meta.scaleOnInFlight {
+		meta.awsSqsQueueMetricNames = awsSqsQueueMetricNamesForScalingInFlight
+	} else {
+		meta.awsSqsQueueMetricNames = awsSqsQueueMetricNamesForNotScalingInFlight
 	}
 
 	if val, ok := config.TriggerMetadata["queueURL"]; ok && val != "" {
@@ -198,7 +203,7 @@ func (s *awsSqsQueueScaler) GetMetricsAndActivity(ctx context.Context, metricNam
 // Get SQS Queue Length
 func (s *awsSqsQueueScaler) getAwsSqsQueueLength() (int64, error) {
 	input := &sqs.GetQueueAttributesInput{
-		AttributeNames: aws.StringSlice(awsSqsQueueMetricNames),
+		AttributeNames: aws.StringSlice(s.metadata.awsSqsQueueMetricNames),
 		QueueUrl:       aws.String(s.metadata.queueURL),
 	}
 
@@ -208,7 +213,7 @@ func (s *awsSqsQueueScaler) getAwsSqsQueueLength() (int64, error) {
 	}
 
 	var approximateNumberOfMessages int64
-	for _, awsSqsQueueMetric := range awsSqsQueueMetricNames {
+	for _, awsSqsQueueMetric := range s.metadata.awsSqsQueueMetricNames {
 		metricValue, err := strconv.ParseInt(*output.Attributes[awsSqsQueueMetric], 10, 32)
 		if err != nil {
 			return -1, err
