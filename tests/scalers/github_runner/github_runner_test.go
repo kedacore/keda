@@ -29,7 +29,7 @@ const (
 )
 
 var (
-	personalAccessToken = os.Getenv("GH_AUTOMATIONS_PAT")
+	personalAccessToken = os.Getenv("GH_AUTOMATION_PAT")
 	owner               = os.Getenv("GH_OWNER")
 	githubScope         = os.Getenv("GH_SCOPE")
 	repos               = os.Getenv("GH_REPOS")

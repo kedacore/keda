@@ -9,7 +9,7 @@ jobs:
     steps:
       - name: Get project data
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_AUTOMATIONS_PAT }}
+          GITHUB_TOKEN: ${{ secrets.GH_AUTOMATION_PAT }}
           ORGANIZATION: kedacore
           # This refers to our backlog project: https://github.com/orgs/kedacore/projects/2/views/1
           PROJECT_NUMBER: 2
@@ -34,7 +34,7 @@ jobs:
           echo 'PROJECT_ID='$(jq '.data.organization.projectV2.id' project_data.json) >> $GITHUB_ENV
       - name: Add issue to project
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_AUTOMATIONS_PAT }}
+          GITHUB_TOKEN: ${{ secrets.GH_AUTOMATION_PAT }}
           ISSUE_ID: ${{ github.event.issue.node_id }}
         run: |
           item_id="$( gh api graphql -f query='
