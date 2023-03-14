@@ -1193,7 +1193,6 @@ go.uber.org/zap/zapcore
 go.uber.org/zap/zapgrpc
 # golang.org/x/crypto v0.6.0 => golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
 ## explicit; go 1.17
-golang.org/x/crypto/blake2b
 golang.org/x/crypto/cast5
 golang.org/x/crypto/cryptobyte
 golang.org/x/crypto/cryptobyte/asn1
@@ -2402,6 +2401,7 @@ sigs.k8s.io/yaml
 # github.com/chzyer/logex => github.com/chzyer/logex v1.2.1
 # github.com/dgrijalva/jwt-go => github.com/golang-jwt/jwt/v4 v4.1.0
 # github.com/emicklei/go-restful => github.com/emicklei/go-restful v2.16.0+incompatible
+# github.com/otiai10/mint => github.com/otiai10/mint v1.4.1
 # golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
 # golang.org/x/net => golang.org/x/net v0.7.0
 # golang.org/x/text => golang.org/x/text v0.7.0
