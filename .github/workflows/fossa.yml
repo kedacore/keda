@@ -27,7 +27,7 @@ jobs:
           api-key: ${{ env.fossa-key }}
           branch: ${{ steps.branch-name.outputs.current_branch }}
       - uses: fossas/fossa-action@main
-        name: Scanning with FOSSA
+        name: Executing tests with FOSSA
         with:
           api-key: ${{ env.fossa-key }}
           run-tests: true
