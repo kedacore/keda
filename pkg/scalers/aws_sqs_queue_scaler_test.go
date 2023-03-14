@@ -307,10 +307,43 @@ var awsSQSMetricIdentifiers = []awsSQSMetricIdentifier{
 	{&testAWSSQSMetadata[1], 1, "s1-aws-sqs-DeleteArtifactQ"},
 }
 
-var awsSQSGetMetricTestData = []*awsSqsQueueMetadata{
-	{queueURL: testAWSSQSProperQueueURL},
-	{queueURL: testAWSSQSErrorQueueURL},
-	{queueURL: testAWSSQSBadDataQueueURL},
+var awsSQSGetMetricTestData = []*parseAWSSQSMetadataTestData{
+	{map[string]string{
+		"queueURL":        testAWSSQSProperQueueURL,
+		"queueLength":     "1",
+		"awsRegion":       "eu-west-1",
+		"scaleOnInFlight": "false"},
+		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
+		false,
+		"not error with scaleOnInFlight disabled"},
+	{map[string]string{
+		"queueURL":        testAWSSQSProperQueueURL,
+		"queueLength":     "1",
+		"awsRegion":       "eu-west-1",
+		"scaleOnInFlight": "true"},
+		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
+		false,
+		"not error with scaleOnInFlight enabled"},
+	{map[string]string{
+		"queueURL":        testAWSSQSErrorQueueURL,
+		"queueLength":     "1",
+		"awsRegion":       "eu-west-1",
+		"scaleOnInFlight": "false"},
+		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
+		false,
+		"error queue"},
+	{map[string]string{
+		"queueURL":        testAWSSQSBadDataQueueURL,
+		"queueLength":     "1",
+		"awsRegion":       "eu-west-1",
+		"scaleOnInFlight": "true"},
+		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
+		false,
+		"bad data"},
 }
 
 func TestSQSParseMetadata(t *testing.T) {
@@ -343,8 +376,13 @@ func TestAWSSQSGetMetricSpecForScaling(t *testing.T) {
 }
 
 func TestAWSSQSScalerGetMetrics(t *testing.T) {
-	for _, meta := range awsSQSGetMetricTestData {
+	for index, testData := range awsSQSGetMetricTestData {
+		meta, err := parseAwsSqsQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams, ScalerIndex: index}, logr.Discard())
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
 		scaler := awsSqsQueueScaler{"", meta, &mockSqs{}, logr.Discard()}
+
 		value, _, err := scaler.GetMetricsAndActivity(context.Background(), "MetricName")
 		switch meta.queueURL {
 		case testAWSSQSErrorQueueURL:
