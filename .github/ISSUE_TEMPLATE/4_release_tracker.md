@@ -13,6 +13,7 @@ For the full release process, we recommend reading [this document](https://githu
 ## Progress
 
 - [ ] Prepare changelog
+- [ ] [Welcome message supported versions](https://github.com/kedacore/keda/blob/main/pkg/util/welcome.go#L29-L30) are up-to-date
 - [ ] Add the new version to GitHub Bug report template
 - [ ] Create KEDA release
 - [ ] Publish new documentation version
