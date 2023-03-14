@@ -65,7 +65,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Other
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- **General**: Drop a transitive dependency on bou.ke/monkey ([#4364](https://github.com/kedacore/keda/issues/4364))
 
 ## v2.10.0
 
