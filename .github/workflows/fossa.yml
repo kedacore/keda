@@ -1,7 +1,8 @@
 name: FOSSA
+
 on:
-  push:
-    branches: [main]
+  - pull_request
+  - push
 
 jobs:
   build:
@@ -16,4 +17,3 @@ jobs:
         name: Scanning with FOSSA
         with:
           api-key: 9e722f2c8904586d61f97f0bf05a99e4 # This is a public key only for pushing, it's safe here
-          branch: main
