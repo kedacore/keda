@@ -30,5 +30,4 @@ jobs:
         name: Scanning with FOSSA
         with:
           api-key: ${{ env.fossa-key }}
-          branch: ${{ steps.branch-name.outputs.current_branch }}"
           run-tests: true
