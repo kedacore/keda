@@ -36,6 +36,7 @@ require (
 	github.com/gocql/gocql v1.3.1
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.9
+	github.com/google/go-github/v50 v50.1.0
 	github.com/google/uuid v1.3.0
 	github.com/gophercloud/gophercloud v1.2.0
 	github.com/hashicorp/vault/api v1.9.0
@@ -97,6 +98,9 @@ replace (
 
 	// https://nvd.nist.gov/vuln/detail/CVE-2022-1996
 	github.com/emicklei/go-restful => github.com/emicklei/go-restful v2.16.0+incompatible
+
+	// we need to drop a transitive dependency on bou.ke/monkey -> https://github.com/kedacore/keda/issues/4364
+	github.com/otiai10/mint => github.com/otiai10/mint v1.4.1
 
 	// https://avd.aquasec.com/nvd/2022/cve-2022-27191/
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
@@ -176,7 +180,6 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/cel-go v0.13.0 // indirect
 	github.com/google/gnostic v0.6.9 // indirect
-	github.com/google/go-github/v50 v50.1.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/pprof v0.0.0-20230228050547-1710fef4ab10 // indirect
