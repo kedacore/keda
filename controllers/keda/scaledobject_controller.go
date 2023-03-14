@@ -220,7 +220,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 		return "ScaledObject doesn't have correct Idle/Min/Max Replica Counts specification", err
 	}
 
-	err = r.checkTriggers(scaledObject)
+	err = r.checkTriggers(logger, scaledObject)
 	if err != nil {
 		return "ScaledObject doesn't have correct triggers specification", err
 	}
@@ -337,7 +337,7 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 // checkTriggers checks that general trigger metadata are valid, it checks:
 // - triggerNames in ScaledObject are unique
 // - useCachedMetrics is defined only for a supported triggers
-func (r *ScaledObjectReconciler) checkTriggers(scaledObject *kedav1alpha1.ScaledObject) error {
+func (r *ScaledObjectReconciler) checkTriggers(logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
 	triggersCount := len(scaledObject.Spec.Triggers)
 
 	if triggersCount > 1 {
@@ -355,14 +355,14 @@ func (r *ScaledObjectReconciler) checkTriggers(scaledObject *kedav1alpha1.Scaled
 			_, hasMetricName := trigger.Metadata["metricName"]
 			// aws-cloudwatch and huawei-cloudeye have a meaningful use of metricName
 			if hasMetricName && trigger.Type != "aws-cloudwatch" && trigger.Type != "huawei-cloudeye" {
-				log.Log.Info("metricName is deprecated and will be removed in v2.12, please do not set it anymore (used in %q)", trigger.Type)
+				logger.Info("\"metricName\" is deprecated and will be removed in v2.12, please do not set it anymore", "trigger.type", trigger.Type)
 			}
 
 			name := trigger.Name
 			if name != "" {
 				if _, found := triggerNames[name]; found {
 					// found duplicate name
-					return fmt.Errorf("triggerName=%s is defined multiple times in the ScaledObject, but it must be unique", name)
+					return fmt.Errorf("triggerName %q is defined multiple times in the ScaledObject, but it must be unique", name)
 				}
 				triggerNames[name] = true
 			}
