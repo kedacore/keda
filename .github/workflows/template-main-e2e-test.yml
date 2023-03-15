@@ -41,3 +41,4 @@ jobs:
         with:
           name: e2e-test-logs
           path: '${{ github.workspace }}/tests/**/*.log'
+          if-no-files-found: ignore
