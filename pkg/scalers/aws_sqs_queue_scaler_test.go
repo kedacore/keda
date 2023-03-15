@@ -65,6 +65,7 @@ func (m *mockSqs) GetQueueAttributes(input *sqs.GetQueueAttributesInput) (*sqs.G
 			Attributes: map[string]*string{
 				"ApproximateNumberOfMessages":           aws.String("NotInt"),
 				"ApproximateNumberOfMessagesNotVisible": aws.String("NotInt"),
+				"ApproximateNumberOfMessagesDelayed":    aws.String("NotInt"),
 			},
 		}, nil
 	}
@@ -73,6 +74,7 @@ func (m *mockSqs) GetQueueAttributes(input *sqs.GetQueueAttributesInput) (*sqs.G
 		Attributes: map[string]*string{
 			"ApproximateNumberOfMessages":           aws.String("200"),
 			"ApproximateNumberOfMessagesNotVisible": aws.String("100"),
+			"ApproximateNumberOfMessagesDelayed":    aws.String("400"),
 		},
 	}, nil
 }
@@ -276,6 +278,24 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		false,
 		"properly formed queue and region"},
 	{map[string]string{
+		"queueURL":        testAWSSimpleQueueURL,
+		"queueLength":     "1",
+		"awsRegion":       "eu-west-1",
+		"scaleOnDelayed":  "true"},
+		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
+		false,
+		"properly formed queue and region"},
+	{map[string]string{
+		"queueURL":        testAWSSimpleQueueURL,
+		"queueLength":     "1",
+		"awsRegion":       "eu-west-1",
+		"scaleOnDelayed":  "false"},
+		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
+		false,
+		"properly formed queue and region"},
+	{map[string]string{
 		"queueURLFromEnv": "QUEUE_URL",
 		"queueLength":     "1",
 		"awsRegion":       "eu-west-1"},
@@ -326,6 +346,24 @@ var awsSQSGetMetricTestData = []*parseAWSSQSMetadataTestData{
 		testAWSSQSEmptyResolvedEnv,
 		false,
 		"not error with scaleOnInFlight enabled"},
+	{map[string]string{
+		"queueURL":        testAWSSQSProperQueueURL,
+		"queueLength":     "1",
+		"awsRegion":       "eu-west-1",
+		"scaleOnDelayed": "false"},
+		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
+		false,
+		"not error with scaleOnDelayed disabled"},
+	{map[string]string{
+		"queueURL":        testAWSSQSProperQueueURL,
+		"queueLength":     "1",
+		"awsRegion":       "eu-west-1",
+		"scaleOnDelayed": "true"},
+		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
+		false,
+		"not error with scaleOnDelayed enabled"},
 	{map[string]string{
 		"queueURL":        testAWSSQSErrorQueueURL,
 		"queueLength":     "1",
@@ -390,9 +428,13 @@ func TestAWSSQSScalerGetMetrics(t *testing.T) {
 		case testAWSSQSBadDataQueueURL:
 			assert.Error(t, err, "expect error because of bad data return from sqs")
 		default:
-			if meta.scaleOnInFlight {
+			if meta.scaleOnInFlight && meta.scaleOnDelayed {
+				assert.EqualValues(t, int64(700.0), value[0].Value.Value())
+			} else if meta.scaleOnInFlight && !meta.scaleOnDelayed {
 				assert.EqualValues(t, int64(300.0), value[0].Value.Value())
-			} else {
+			} else if !meta.scaleOnInFlight && meta.scaleOnDelayed {
+				assert.EqualValues(t, int64(600.0), value[0].Value.Value())
+			} else if !meta.scaleOnInFlight && !meta.scaleOnDelayed {
 				assert.EqualValues(t, int64(200.0), value[0].Value.Value())
 			}
 		}
