@@ -566,7 +566,7 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 		}
 
 		for _, spec := range metricSpecs {
-			// if cpu/memory resource scaler has minReplicas==0 & atleast one external
+			// if cpu/memory resource scaler has minReplicas==0 & at least one external
 			// trigger exists -> object can be scaled to zero
 			//
 			if spec.External == nil {

@@ -141,7 +141,6 @@ func verifyHpas(incomingSo *ScaledObject, action string) error {
 	return nil
 }
 
-// TODO
 func verifyScaledObjects(incomingSo *ScaledObject, action string) error {
 	soList := &ScaledObjectList{}
 	opt := &client.ListOptions{
@@ -255,7 +254,7 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
 			}
 
 			if (scaleToZeroErr && incomingSo.Spec.MinReplicaCount == nil) || (scaleToZeroErr && *incomingSo.Spec.MinReplicaCount == 0) {
-				err := fmt.Errorf("scaledobject has no external triggers AND minReplica is 0 (it can never scale down to 0)")
+				err := fmt.Errorf("scaledobject has only cpu/memory triggers AND minReplica is 0 (scale to zero doesn't work in this case)")
 				scaledobjectlog.Error(err, "validation error")
 				prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "scale-to-zero-requirements-not-met")
 				return err
