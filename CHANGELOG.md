@@ -83,7 +83,7 @@ Here is an overview of all **stable** additions:
 
 Here is an overview of all new **experimental** features:
 
-- **GitHub Scaler**: Introduced new GitHub Scaler (#1732)
+- **GitHub Scaler**: Introduced new GitHub Scaler ([#1732](https://github.com/kedacore/keda/issues/1732))
 
 ### Improvements
 
