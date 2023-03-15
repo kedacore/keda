@@ -42,6 +42,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
+	//+kubebuilder:scaffold:imports
 )
 
 var (

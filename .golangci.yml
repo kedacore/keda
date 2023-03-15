@@ -107,6 +107,21 @@ issues:
     - path: mongo_scaler.go
       linters:
         - dupl
+  # Exclude gci check for //+kubebuilder:scaffold:imports comments. Waiting to
+  # resolve https://github.com/kedacore/keda/issues/4379 (#4379)
+    - path: cmd/operator/main.go
+      linters:
+        - gci
+    - path: cmd/webhooks/main.go
+      linters:
+        - gci
+    - path: controllers/keda/suite_test.go
+      linters:
+        - gci
+    - path: apis/keda/v1alpha1/scaledobject_webhook_test.go
+      linters:
+        - gci
+
 
 linters-settings:
   funlen:
