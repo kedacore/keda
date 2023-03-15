@@ -430,11 +430,11 @@ func TestAWSSQSScalerGetMetrics(t *testing.T) {
 		default:
 			if meta.scaleOnInFlight && meta.scaleOnDelayed {
 				assert.EqualValues(t, int64(700.0), value[0].Value.Value())
-			} else if meta.scaleOnInFlight && !meta.scaleOnDelayed {
+			if meta.scaleOnInFlight && !meta.scaleOnDelayed {
 				assert.EqualValues(t, int64(300.0), value[0].Value.Value())
-			} else if !meta.scaleOnInFlight && meta.scaleOnDelayed {
+			if !meta.scaleOnInFlight && meta.scaleOnDelayed {
 				assert.EqualValues(t, int64(600.0), value[0].Value.Value())
-			} else if !meta.scaleOnInFlight && !meta.scaleOnDelayed {
+			if !meta.scaleOnInFlight && !meta.scaleOnDelayed {
 				assert.EqualValues(t, int64(200.0), value[0].Value.Value())
 			}
 		}
