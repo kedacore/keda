@@ -53,6 +53,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
+- **AWS SQS Scaler**: Respect `scaleOnDelayed` value ([#4377](https://github.com/kedacore/keda/issue/4377))
 - **AWS SQS Scaler**: Respect `scaleOnInFlight` value ([#4276](https://github.com/kedacore/keda/issue/4276))
 
 ### Deprecations
