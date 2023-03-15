@@ -102,7 +102,7 @@ spec:
       terminationGracePeriodSeconds: 90
       containers:
       - name: github-runner
-        image: myoung34/github-runner:2.302.1-ubuntu-focal
+        image: myoung34/github-runner
         imagePullPolicy: IfNotPresent
         env:
           - name: EPHEMERAL
@@ -159,7 +159,7 @@ spec:
       spec:
         containers:
         - name: {{.ScaledJobName}}
-          image: myoung34/github-runner:2.302.1-ubuntu-focal
+          image: myoung34/github-runner
           imagePullPolicy: IfNotPresent
           env:
           - name: EPHEMERAL
