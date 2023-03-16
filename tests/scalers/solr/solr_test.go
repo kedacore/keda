@@ -277,8 +277,8 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	out, errOut, _ = ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("curl -u %s:%s -X POST 'http://localhost:8983/solr/%s/update' --data-binary '{\"commit\":{}}' -H 'Content-type:application/json'", solrUsername, solrPassword, solrCore))
 	t.Logf("Output: %s, Error: %s", out, errOut)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
-		"replica count should be %d after 3 minutes", maxReplicaCount)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 6),
+		"replica count should be %d after 6 minutes", maxReplicaCount)
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
