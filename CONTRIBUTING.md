@@ -28,6 +28,36 @@ There are many areas we can use contributions - ranging from code, documentation
 
 You can learn about the governance of KEDA [here](https://github.com/kedacore/governance).
 
+## How to Contribute?
+
+To contribute an authentication source to a project on GitHub, you can follow these general steps:
+
+1) Fork the project repository: Visit the project repository on GitHub and click the "Fork" button in the top right corner of the page. This will create a copy of the project in your own GitHub account.
+
+2) Clone the repository: Clone the forked repository to your local machine using Git. You can do this by running the following command in your terminal:
+```
+git clone https://github.com/your-username/keda.git
+```
+Replace "your-username" with your GitHub username and "project-name" with the name of the project you forked.
+
+3) Make changes: Create a new branch for your changes and make the necessary modifications to add your authentication source.
+
+4) Test your changes: Test your authentication source thoroughly to ensure that it works as intended.
+
+5) Commit and push your changes: Once you are satisfied with your changes, commit them with a descriptive commit message and push them to your forked repository:
+```
+git add .
+git commit -m "Added authentication source for X"
+git push origin your-branch-name
+```
+Replace "your-branch-name" with the name of the branch you created in step 3.
+
+6) Create a pull request: Go to your forked repository on GitHub and click the "New pull request" button. Select the branch you just pushed your changes to as the base branch, and the original project's main branch as the head branch. Give your pull request a descriptive title and description, and submit it for review.
+
+7) Collaborate and respond to feedback: The project maintainers may provide feedback on your pull request, so be sure to respond to any comments or suggestions they make. Work collaboratively with the maintainers to address any issues and get your changes merged into the project.
+
+These are the general steps you can follow to contribute an authentication source to a project on GitHub. Be sure to read the project's contribution guidelines and follow their specific instructions for contributing.
+
 ## Getting Help
 
 If you have a question about KEDA or how best to contribute, the [#KEDA](https://kubernetes.slack.com/archives/CKZJ36A5D) channel on the Kubernetes slack channel ([get an invite if you don't have one already](https://slack.k8s.io/)) is a good place to start.  We also have regular [community stand-ups](https://github.com/kedacore/keda#community) to track ongoing work and discuss areas of contribution.  For any issues with the product you can [create an issue](https://github.com/kedacore/keda/issues/new) in this repo.
