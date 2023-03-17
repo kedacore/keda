@@ -136,12 +136,11 @@ metadata:
 spec:
   selector:
     app: solr-app
-  type: NodePort
+  type: ClusterIP
   ports:
   - protocol: TCP
     port: 8983
     targetPort: 8983
-    nodePort: 30007
 `
 
 	scaledObjectTemplate = `
@@ -163,7 +162,7 @@ spec:
   - type: solr
     metadata:
       username: "solr"
-      host: "http://192.168.49.2:30007"
+      host: "http://{{.DeploymentName}}.{{.TestNamespace}}.svc.cluster.local:8983"
       core: "my_core"
       query: "*:*"
       targetQueryValue: "1"
