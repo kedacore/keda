@@ -401,6 +401,54 @@ var _ = It("should validate the so creation without cpu and memory when custom r
 	Expect(err).ToNot(HaveOccurred())
 })
 
+var _ = It("should validate so creation when all requirements are met for scaling to zero with cpu scaler", func() {
+	namespaceName := "scale-to-zero-good"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, true, false)
+
+	scaledobject := createScaledObjectSTZ(soName, namespaceName, workloadName, 0, 5, true)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), scaledobject)
+	Expect(err).ToNot(HaveOccurred())
+})
+
+var _ = It("shouldn't validate so creation with cpu scaler requirements not being met for scaling to 0", func() {
+	namespaceName := "scale-to-zero-min-replicas-bad"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, true, false)
+
+	scaledobject := createScaledObjectSTZ(soName, namespaceName, workloadName, 0, 5, false)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), scaledobject)
+	Expect(err).To(HaveOccurred())
+})
+
+var _ = It("should validate so creation when min replicas is > 0 with only cpu scaler given", func() {
+	namespaceName := "scale-to-zero-no-external-trigger-good"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, true, false)
+
+	scaledobject := createScaledObjectSTZ(soName, namespaceName, workloadName, 1, 5, false)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), scaledobject)
+	Expect(err).ToNot(HaveOccurred())
+
+})
+
 var _ = AfterSuite(func() {
 	cancel()
 	By("tearing down the test environment")
@@ -592,6 +640,49 @@ func createStatefulSet(namespace string, hasCPU, hasMemory bool) *appsv1.Statefu
 					},
 				},
 			},
+		},
+	}
+}
+
+func createScaledObjectSTZ(name string, namespace string, targetName string, minReplicas int32, maxReplicas int32, hasExternalTrigger bool) *ScaledObject {
+	triggers := []ScaleTriggers{
+		{
+			Type: "cpu",
+			Metadata: map[string]string{
+				"value": "10",
+			},
+		},
+	}
+
+	if hasExternalTrigger {
+		kubeWorkloadTrigger := ScaleTriggers{
+			Type: "kubernetes-workload",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		}
+		triggers = append(triggers, kubeWorkloadTrigger)
+	}
+
+	return &ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			UID:       types.UID(name),
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ScaledObject",
+			APIVersion: "keda.sh",
+		},
+		Spec: ScaledObjectSpec{
+			ScaleTargetRef: &ScaleTarget{
+				Name: targetName,
+			},
+			MinReplicaCount: pointer.Int32(minReplicas),
+			MaxReplicaCount: pointer.Int32(maxReplicas),
+			CooldownPeriod:  pointer.Int32(1),
+			Triggers:        triggers,
 		},
 	}
 }

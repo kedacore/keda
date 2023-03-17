@@ -45,6 +45,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
+- **CPU/Memory scaler**: Add support for scale to zero if there are multiple triggers([#4269](https://github.com/kedacore/keda/issues/4269))
 - TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
 
 ### Improvements

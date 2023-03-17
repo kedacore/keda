@@ -40,6 +40,9 @@ var scaledobjectlog = logf.Log.WithName("scaledobject-validation-webhook")
 var kc client.Client
 var restMapper meta.RESTMapper
 
+var memoryString = "memory"
+var cpuString = "cpu"
+
 func (so *ScaledObject) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	kc = mgr.GetClient()
 	restMapper = mgr.GetRESTMapper()
@@ -182,7 +185,7 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string) error {
 func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
 	var podSpec *corev1.PodSpec
 	for _, trigger := range incomingSo.Spec.Triggers {
-		if trigger.Type == "cpu" || trigger.Type == "memory" {
+		if trigger.Type == cpuString || trigger.Type == memoryString {
 			if podSpec == nil {
 				key := types.NamespacedName{
 					Namespace: incomingSo.Namespace,
@@ -218,7 +221,7 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
 				if conainerName != "" && container.Name != conainerName {
 					continue
 				}
-				if trigger.Type == "cpu" {
+				if trigger.Type == cpuString {
 					if container.Resources.Requests == nil ||
 						container.Resources.Requests.Cpu() == nil ||
 						container.Resources.Requests.Cpu().AsApproximateFloat64() == 0 {
@@ -227,7 +230,7 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
 						prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
 						return err
 					}
-				} else if trigger.Type == "memory" {
+				} else if trigger.Type == memoryString {
 					if container.Resources.Requests == nil ||
 						container.Resources.Requests.Memory() == nil ||
 						container.Resources.Requests.Memory().AsApproximateFloat64() == 0 {
@@ -237,6 +240,24 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
 						return err
 					}
 				}
+			}
+
+			// validate scaledObject with cpu/mem triggers:
+			// If scaled object has only cpu/mem triggers AND has minReplicaCount 0
+			// return an error because it will never scale to zero
+			scaleToZeroErr := true
+			for _, trig := range incomingSo.Spec.Triggers {
+				if trig.Type != cpuString && trig.Type != memoryString {
+					scaleToZeroErr = false
+					break
+				}
+			}
+
+			if (scaleToZeroErr && incomingSo.Spec.MinReplicaCount == nil) || (scaleToZeroErr && *incomingSo.Spec.MinReplicaCount == 0) {
+				err := fmt.Errorf("scaledobject has only cpu/memory triggers AND minReplica is 0 (scale to zero doesn't work in this case)")
+				scaledobjectlog.Error(err, "validation error")
+				prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "scale-to-zero-requirements-not-met")
+				return err
 			}
 		}
 	}
