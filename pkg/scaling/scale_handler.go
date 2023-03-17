@@ -550,6 +550,17 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 		return false, true, map[string]metricscache.MetricsRecord{}, fmt.Errorf("error getting scalers cache %w", err)
 	}
 
+	// count the number of non-external triggers (cpu/mem) in order to check for
+	// scale to zero requirements if atleast one cpu/mem trigger is given.
+	// This is calculated here because of algorithm complexity but
+	// evaluated in the loop below.
+	cpuMemCount := 0
+	for _, trigger := range scaledObject.Spec.Triggers {
+		if trigger.Type == "cpu" || trigger.Type == "memory" {
+			cpuMemCount++
+		}
+	}
+
 	// Let's collect status of all scalers, no matter if any scaler raises error or is active
 	scalers, scalerConfigs := cache.GetScalers()
 	for scalerIndex := 0; scalerIndex < len(scalers); scalerIndex++ {
@@ -568,14 +579,7 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 		for _, spec := range metricSpecs {
 			// if cpu/memory resource scaler has minReplicas==0 & at least one external
 			// trigger exists -> object can be scaled to zero
-			//
 			if spec.External == nil {
-				cpuMemCount := 0
-				for _, trigger := range scaledObject.Spec.Triggers {
-					if trigger.Type == "cpu" || trigger.Type == "memory" {
-						cpuMemCount++
-					}
-				}
 				if len(scaledObject.Spec.Triggers) <= cpuMemCount {
 					isScaledObjectActive = true
 				}
