@@ -24,7 +24,7 @@ type solrScaler struct {
 
 type solrMetadata struct {
 	host                       string
-	core                       string
+	collection                 string
 	targetQueryValue           float64
 	activationTargetQueryValue float64
 	query                      string
@@ -74,10 +74,10 @@ func parseSolrMetadata(config *ScalerConfig) (*solrMetadata, error) {
 		return nil, fmt.Errorf("no host given")
 	}
 
-	if val, ok := config.TriggerMetadata["core"]; ok {
-		meta.core = val
+	if val, ok := config.TriggerMetadata["collection"]; ok {
+		meta.collection = val
 	} else {
-		return nil, fmt.Errorf("no core given")
+		return nil, fmt.Errorf("no collection given")
 	}
 
 	if val, ok := config.TriggerMetadata["query"]; ok {
@@ -126,7 +126,7 @@ func (s *solrScaler) getItemCount(ctx context.Context) (float64, error) {
 	var itemCount float64
 
 	url := fmt.Sprintf("%s/solr/%s/select?q=%s&wt=json",
-		s.metadata.host, s.metadata.core, s.metadata.query)
+		s.metadata.host, s.metadata.collection, s.metadata.query)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -148,7 +148,7 @@ func (s *solrScaler) getItemCount(ctx context.Context) (float64, error) {
 
 	err = json.Unmarshal(body, &SolrResponse1)
 	if err != nil {
-		return -1, fmt.Errorf("%w, make sure you enter username, password and core values correctly in the yaml file", err)
+		return -1, fmt.Errorf("%w, make sure you enter username, password and collection values correctly in the yaml file", err)
 	}
 	itemCount = float64(SolrResponse1.Response.NumFound)
 	return itemCount, nil

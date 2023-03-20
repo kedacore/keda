@@ -32,7 +32,7 @@ var (
 	secretName       = fmt.Sprintf("%s-secret", testName)
 	solrUsername     = "solr"
 	solrPassword     = "SolrRocks"
-	solrCore         = "my_core"
+	solrCollection   = "my_core"
 	solrPodName      = "solr-0"
 	solrPath         = "bin/solr"
 
@@ -163,7 +163,7 @@ spec:
     metadata:
       username: "solr"
       host: "http://{{.DeploymentName}}.{{.TestNamespace}}.svc.cluster.local:8983"
-      core: "my_core"
+      collection: "my_core"
       query: "*:*"
       targetQueryValue: "1"
       activationTargetQueryValue: "5"
@@ -199,8 +199,8 @@ func setupSolr(t *testing.T, kc *kubernetes.Clientset) {
 	err := checkIfSolrStatusIsReady(t, solrPodName)
 	assert.NoErrorf(t, err, "%s", err)
 
-	// Create the core
-	out, errOut, _ := ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("%s create_core -c %s", solrPath, solrCore))
+	// Create the collection
+	out, errOut, _ := ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("%s create_core -c %s", solrPath, solrCollection))
 	t.Logf("Output: %s, Error: %s", out, errOut)
 
 	// Enable BasicAuth
@@ -256,10 +256,10 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing activation ---")
 
 	// Add documents
-	out, errOut, _ := ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("curl -u %s:%s -X POST -H 'Content-Type: application/json' 'http://localhost:8983/solr/%s/update' --data-binary '[{\"id\": \"1\",\"title\": \"Doc 1\"},,{\"id\": \"2\",\"title\": \"Doc 2\"},{\"id\": \"3\",\"title\":\"Doc 3\"}]'", solrUsername, solrPassword, solrCore))
+	out, errOut, _ := ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("curl -u %s:%s -X POST -H 'Content-Type: application/json' 'http://localhost:8983/solr/%s/update' --data-binary '[{\"id\": \"1\",\"title\": \"Doc 1\"},,{\"id\": \"2\",\"title\": \"Doc 2\"},{\"id\": \"3\",\"title\":\"Doc 3\"}]'", solrUsername, solrPassword, solrCollection))
 	t.Logf("Output: %s, Error: %s", out, errOut)
 	// Update documents
-	out, errOut, _ = ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("curl -u %s:%s -X POST 'http://localhost:8983/solr/%s/update' --data-binary '{\"commit\":{}}' -H 'Content-type:application/json'", solrUsername, solrPassword, solrCore))
+	out, errOut, _ = ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("curl -u %s:%s -X POST 'http://localhost:8983/solr/%s/update' --data-binary '{\"commit\":{}}' -H 'Content-type:application/json'", solrUsername, solrPassword, solrCollection))
 	t.Logf("Output: %s, Error: %s", out, errOut)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
@@ -270,10 +270,10 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale out ---")
 
 	// Add documents
-	out, errOut, _ := ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("curl -u %s:%s -X POST -H 'Content-Type: application/json' 'http://localhost:8983/solr/%s/update' --data-binary '[{ \"id\": \"10\",\"title\": \"Doc 10\"},{ \"id\": \"20\",\"title\": \"Doc 20\"},{ \"id\": \"30\",\"title\": \"Doc 30\"}]'", solrUsername, solrPassword, solrCore))
+	out, errOut, _ := ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("curl -u %s:%s -X POST -H 'Content-Type: application/json' 'http://localhost:8983/solr/%s/update' --data-binary '[{ \"id\": \"10\",\"title\": \"Doc 10\"},{ \"id\": \"20\",\"title\": \"Doc 20\"},{ \"id\": \"30\",\"title\": \"Doc 30\"}]'", solrUsername, solrPassword, solrCollection))
 	t.Logf("Output: %s, Error: %s", out, errOut)
 	// Update documents
-	out, errOut, _ = ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("curl -u %s:%s -X POST 'http://localhost:8983/solr/%s/update' --data-binary '{\"commit\":{}}' -H 'Content-type:application/json'", solrUsername, solrPassword, solrCore))
+	out, errOut, _ = ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("curl -u %s:%s -X POST 'http://localhost:8983/solr/%s/update' --data-binary '{\"commit\":{}}' -H 'Content-type:application/json'", solrUsername, solrPassword, solrCollection))
 	t.Logf("Output: %s, Error: %s", out, errOut)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
@@ -283,7 +283,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
 
-	_, _, err := ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("bin/post -u %s:%s -c %s -d \"<delete><query>*:*</query></delete>\"", solrUsername, solrPassword, solrCore))
+	_, _, err := ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("bin/post -u %s:%s -c %s -d \"<delete><query>*:*</query></delete>\"", solrUsername, solrPassword, solrCollection))
 	assert.NoErrorf(t, err, "cannot enqueue messages - %s", err)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)

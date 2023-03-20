@@ -22,19 +22,19 @@ var testSolrMetadata = []parseSolrMetadataTestData{
 	// nothing passed
 	{map[string]string{}, true, map[string]string{}},
 	// properly formed metadata
-	{map[string]string{"host": "http://192.168.49.2:30217", "core": "mycore1", "query": "*:*", "targetQueryValue": "1", "username": "solr"}, false, map[string]string{"password": "U29sclJvY2tz"}},
+	{map[string]string{"host": "http://192.168.49.2:30217", "collection": "my_core", "query": "*:*", "targetQueryValue": "1", "username": "solr"}, false, map[string]string{"password": "U29sclJvY2tz"}},
 	// no query passed
-	{map[string]string{"host": "http://192.168.49.2:30217", "core": "mycore1", "targetQueryValue": "1", "username": "solr"}, false, map[string]string{"password": "U29sclJvY2tz"}},
+	{map[string]string{"host": "http://192.168.49.2:30217", "collection": "my_core", "targetQueryValue": "1", "username": "solr"}, false, map[string]string{"password": "U29sclJvY2tz"}},
 	// no host passed
-	{map[string]string{"core": "mycore1", "query": "*:*", "targetQueryValue": "1", "username": "solr"}, true, map[string]string{"password": "U29sclJvY2tz"}},
-	// no core passed
+	{map[string]string{"collection": "my_core", "query": "*:*", "targetQueryValue": "1", "username": "solr"}, true, map[string]string{"password": "U29sclJvY2tz"}},
+	// no collection passed
 	{map[string]string{"host": "http://192.168.49.2:30217", "query": "*:*", "targetQueryValue": "1", "username": "solr"}, true, map[string]string{"password": "U29sclJvY2tz"}},
 	// no targetQueryValue passed
-	{map[string]string{"host": "http://192.168.49.2:30217", "core": "mycore1", "query": "*:*", "username": "solr"}, true, map[string]string{"password": "U29sclJvY2tz"}},
+	{map[string]string{"host": "http://192.168.49.2:30217", "collection": "my_core", "query": "*:*", "username": "solr"}, true, map[string]string{"password": "U29sclJvY2tz"}},
 	// no username passed
-	{map[string]string{"host": "http://192.168.49.2:30217", "core": "mycore1", "query": "*:*", "targetQueryValue": "1"}, true, map[string]string{"password": "U29sclJvY2tz"}},
+	{map[string]string{"host": "http://192.168.49.2:30217", "collection": "my_core", "query": "*:*", "targetQueryValue": "1"}, true, map[string]string{"password": "U29sclJvY2tz"}},
 	// no password passed
-	{map[string]string{"host": "http://192.168.49.2:30217", "core": "mycore1", "query": "*:*", "targetQueryValue": "1", "username": "solr"}, true, map[string]string{}},
+	{map[string]string{"host": "http://192.168.49.2:30217", "collection": "my_core", "query": "*:*", "targetQueryValue": "1", "username": "solr"}, true, map[string]string{}},
 }
 
 var solrMetricIdentifiers = []solrMetricIdentifier{

@@ -42,11 +42,11 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - [v1.0.0](#v100)
 
 ## Unreleased
-- **General:** Introduce new Solr Scaler ([#4234](https://github.com/kedacore/keda/issues/4234))
 
 ### New
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- **General:** Introduce new Solr Scaler ([#4234](https://github.com/kedacore/keda/issues/4234))
 
 ### Improvements
 
