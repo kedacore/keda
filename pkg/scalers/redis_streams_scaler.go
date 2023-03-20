@@ -14,13 +14,20 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
+type scaleFactor int8
+
+const (
+	xPendingFactor scaleFactor = iota + 1
+	xLengthFactor
+)
+
 const (
 	// defaults
-	defaultTargetPendingEntriesCount = 5
-	defaultDBIndex                   = 0
+	defaultDBIndex = 0
 
 	// metadata names
 	pendingEntriesCountMetadata = "pendingEntriesCount"
+	streamLengthMetadata        = "streamLength"
 	streamNameMetadata          = "stream"
 	consumerGroupNameMetadata   = "consumerGroup"
 	usernameMetadata            = "username"
@@ -30,15 +37,17 @@ const (
 )
 
 type redisStreamsScaler struct {
-	metricType               v2.MetricTargetType
-	metadata                 *redisStreamsMetadata
-	closeFn                  func() error
-	getPendingEntriesCountFn func(ctx context.Context) (int64, error)
-	logger                   logr.Logger
+	metricType        v2.MetricTargetType
+	metadata          *redisStreamsMetadata
+	closeFn           func() error
+	getEntriesCountFn func(ctx context.Context) (int64, error)
+	logger            logr.Logger
 }
 
 type redisStreamsMetadata struct {
+	scaleFactor               scaleFactor
 	targetPendingEntriesCount int64
+	targetStreamLength        int64
 	streamName                string
 	consumerGroupName         string
 	databaseIndex             int
@@ -89,21 +98,15 @@ func createClusteredRedisStreamsScaler(ctx context.Context, meta *redisStreamsMe
 		return nil
 	}
 
-	pendingEntriesCountFn := func(ctx context.Context) (int64, error) {
-		pendingEntries, err := client.XPending(ctx, meta.streamName, meta.consumerGroupName).Result()
-		if err != nil {
-			return -1, err
-		}
-		return pendingEntries.Count, nil
-	}
+	entriesCountFn, err := createEntriesCountFn(client, meta)
 
 	return &redisStreamsScaler{
-		metricType:               metricType,
-		metadata:                 meta,
-		closeFn:                  closeFn,
-		getPendingEntriesCountFn: pendingEntriesCountFn,
-		logger:                   logger,
-	}, nil
+		metricType:        metricType,
+		metadata:          meta,
+		closeFn:           closeFn,
+		getEntriesCountFn: entriesCountFn,
+		logger:            logger,
+	}, err
 }
 
 func createSentinelRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata, metricType v2.MetricTargetType, logger logr.Logger) (Scaler, error) {
@@ -133,29 +136,50 @@ func createScaler(client *redis.Client, meta *redisStreamsMetadata, metricType v
 		return nil
 	}
 
-	pendingEntriesCountFn := func(ctx context.Context) (int64, error) {
-		pendingEntries, err := client.XPending(ctx, meta.streamName, meta.consumerGroupName).Result()
-		if err != nil {
-			return -1, err
-		}
-		return pendingEntries.Count, nil
-	}
+	entriesCountFn, err := createEntriesCountFn(client, meta)
 
 	return &redisStreamsScaler{
-		metricType:               metricType,
-		metadata:                 meta,
-		closeFn:                  closeFn,
-		getPendingEntriesCountFn: pendingEntriesCountFn,
-		logger:                   logger,
-	}, nil
+		metricType:        metricType,
+		metadata:          meta,
+		closeFn:           closeFn,
+		getEntriesCountFn: entriesCountFn,
+		logger:            logger,
+	}, err
+}
+
+func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (entriesCountFn func(ctx context.Context) (int64, error), err error) {
+	switch meta.scaleFactor {
+	case xPendingFactor:
+		entriesCountFn = func(ctx context.Context) (int64, error) {
+			pendingEntries, err := client.XPending(ctx, meta.streamName, meta.consumerGroupName).Result()
+			if err != nil {
+				return -1, err
+			}
+			return pendingEntries.Count, nil
+		}
+	case xLengthFactor:
+		entriesCountFn = func(ctx context.Context) (int64, error) {
+			entriesLength, err := client.XLen(ctx, meta.streamName).Result()
+			if err != nil {
+				return -1, err
+			}
+			return entriesLength, nil
+		}
+	default:
+		err = fmt.Errorf("unrecognized scale factor %v", meta.scaleFactor)
+	}
+	return
 }
 
 var (
-	// ErrRedisMissingPendingEntriesCount is returned when "pendingEntriesCount" is missing.
-	ErrRedisMissingPendingEntriesCount = errors.New("missing pending entries count")
+	// ErrRedisMissingPendingEntriesCountOrStreamLength is returned when "pendingEntriesCount" is missing.
+	ErrRedisMissingPendingEntriesCountOrStreamLength = errors.New("missing pending entries count or stream length")
 
 	// ErrRedisMissingStreamName is returned when "stream" is missing.
 	ErrRedisMissingStreamName = errors.New("missing redis stream name")
+
+	// ErrRedisMissingConsumerGroupName is returned when "consumerGroup" is missing but "pendingEntriesCount" is passed.
+	ErrRedisMissingConsumerGroupName = errors.New("missing redis stream consumer group name")
 )
 
 func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser) (*redisStreamsMetadata, error) {
@@ -185,28 +209,34 @@ func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser)
 		meta.connectionInfo.unsafeSsl = parsedVal
 	}
 
-	meta.targetPendingEntriesCount = defaultTargetPendingEntriesCount
-
-	if val, ok := config.TriggerMetadata[pendingEntriesCountMetadata]; ok {
-		pendingEntriesCount, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing pending entries count: %w", err)
-		}
-		meta.targetPendingEntriesCount = pendingEntriesCount
-	} else {
-		return nil, ErrRedisMissingPendingEntriesCount
-	}
-
 	if val, ok := config.TriggerMetadata[streamNameMetadata]; ok {
 		meta.streamName = val
 	} else {
 		return nil, ErrRedisMissingStreamName
 	}
 
-	if val, ok := config.TriggerMetadata[consumerGroupNameMetadata]; ok {
-		meta.consumerGroupName = val
+	if val, ok := config.TriggerMetadata[pendingEntriesCountMetadata]; ok {
+		meta.scaleFactor = xPendingFactor
+		pendingEntriesCount, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing pending entries count: %w", err)
+		}
+		meta.targetPendingEntriesCount = pendingEntriesCount
+
+		if val, ok := config.TriggerMetadata[consumerGroupNameMetadata]; ok {
+			meta.consumerGroupName = val
+		} else {
+			return nil, ErrRedisMissingConsumerGroupName
+		}
+	} else if val, ok = config.TriggerMetadata[streamLengthMetadata]; ok {
+		meta.scaleFactor = xLengthFactor
+		streamLength, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing stream length: %w", err)
+		}
+		meta.targetStreamLength = streamLength
 	} else {
-		return nil, fmt.Errorf("missing redis stream consumer group name")
+		return nil, ErrRedisMissingPendingEntriesCountOrStreamLength
 	}
 
 	meta.databaseIndex = defaultDBIndex
@@ -228,11 +258,20 @@ func (s *redisStreamsScaler) Close(context.Context) error {
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *redisStreamsScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	var metricValue int64
+
+	switch s.metadata.scaleFactor {
+	case xPendingFactor:
+		metricValue = s.metadata.targetPendingEntriesCount
+	case xLengthFactor:
+		metricValue = s.metadata.targetStreamLength
+	}
+
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("redis-streams-%s", s.metadata.streamName))),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.targetPendingEntriesCount),
+		Target: GetMetricTarget(s.metricType, metricValue),
 	}
 	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2.MetricSpec{metricSpec}
@@ -240,7 +279,7 @@ func (s *redisStreamsScaler) GetMetricSpecForScaling(context.Context) []v2.Metri
 
 // GetMetricsAndActivity fetches the number of pending entries for a consumer group in a stream
 func (s *redisStreamsScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	pendingEntriesCount, err := s.getPendingEntriesCountFn(ctx)
+	pendingEntriesCount, err := s.getEntriesCountFn(ctx)
 
 	if err != nil {
 		s.logger.Error(err, "error fetching pending entries count")
