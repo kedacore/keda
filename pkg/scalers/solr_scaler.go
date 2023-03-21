@@ -105,7 +105,7 @@ func parseSolrMetadata(config *ScalerConfig) (*solrMetadata, error) {
 		meta.activationTargetQueryValue = activationTargetQueryValue
 	}
 	// Parse Authentication
-	if val, ok := config.TriggerMetadata["username"]; ok {
+	if val, ok := config.AuthParams["username"]; ok {
 		meta.username = val
 	} else {
 		return nil, fmt.Errorf("no username given")

@@ -45,6 +45,7 @@ type templateData struct {
 	DeploymentName     string
 	ScaledObjectName   string
 	SecretName         string
+	SolrUsernameBase64 string
 	SolrPasswordBase64 string
 }
 
@@ -55,6 +56,7 @@ metadata:
   name: {{.SecretName}}
   namespace: {{.TestNamespace}}
 data:
+  solr_username: {{.SolrUsernameBase64}}
   solr_password: {{.SolrPasswordBase64}}
 `
 
@@ -65,9 +67,12 @@ metadata:
   namespace: {{.TestNamespace}}
 spec:
   secretTargetRef:
-  - parameter: password
-    name: {{.SecretName}}
-    key: solr_password
+    - parameter: username
+      name: {{.SecretName}}
+      key: solr_username
+    - parameter: password
+      name: {{.SecretName}}
+      key: solr_password
 `
 
 	deploymentTemplate = `
@@ -161,7 +166,6 @@ spec:
   triggers:
   - type: solr
     metadata:
-      username: "solr"
       host: "http://{{.DeploymentName}}.{{.TestNamespace}}.svc.cluster.local:8983"
       collection: "my_core"
       query: "*:*"
@@ -240,6 +244,7 @@ func getTemplateData() (templateData, []Template) {
 			DeploymentName:     deploymentName,
 			ScaledObjectName:   scaledObjectName,
 			SecretName:         secretName,
+			SolrUsernameBase64: base64.StdEncoding.EncodeToString([]byte(solrUsername)),
 			SolrPasswordBase64: base64.StdEncoding.EncodeToString([]byte(solrPassword)),
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
