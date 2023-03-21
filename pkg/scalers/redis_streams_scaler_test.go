@@ -93,12 +93,10 @@ func TestParseRedisStreamsMetadataForInvalidCases(t *testing.T) {
 
 		{"missing stream", map[string]string{"pendingEntriesCount": "5", "consumerGroup": "my-stream-consumer-group", "address": "REDIS_HOST"}, resolvedEnvMap},
 
-		{"missing consumerGroup", map[string]string{"stream": "my-stream", "pendingEntriesCount": "5", "address": "REDIS_HOST"}, resolvedEnvMap},
-
-		{"missing pendingEntriesCount", map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "address": "REDIS_HOST"}, resolvedEnvMap},
-
 		// invalid value for respective fields
 		{"invalid pendingEntriesCount", map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "junk", "host": "REDIS_HOST", "port": "REDIS_PORT", "databaseIndex": "0", "enableTLS": "false"}, resolvedEnvMap},
+
+		{"invalid streamLength", map[string]string{"stream": "my-stream", "streamLength": "junk", "host": "REDIS_HOST", "port": "REDIS_PORT", "databaseIndex": "0", "enableTLS": "false"}, resolvedEnvMap},
 
 		{"invalid databaseIndex", map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "15", "address": "REDIS_SERVER", "databaseIndex": "junk", "enableTLS": "false"}, resolvedEnvMap},
 
@@ -189,21 +187,12 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			wantErr:  ErrRedisMissingStreamName,
 		},
 		{
-			name: "missing pending entries count",
-			metadata: map[string]string{
-				"hosts":  "a, b, c",
-				"ports":  "1, 2, 3",
-				"stream": "my-stream",
-			},
-			wantMeta: nil,
-			wantErr:  ErrRedisMissingPendingEntriesCountOrStreamLength,
-		},
-		{
 			name: "invalid pending entries count",
 			metadata: map[string]string{
 				"stream":              "my-stream",
 				"hosts":               "a, b, c",
 				"ports":               "1, 2, 3",
+				"consumerGroup":       "consumer1",
 				"pendingEntriesCount": "invalid",
 			},
 			wantMeta: nil,
@@ -442,6 +431,44 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			},
 			wantErr: nil,
 		},
+		{
+			name: "stream is provided",
+			metadata: map[string]string{
+				"stream": "my-stream",
+			},
+			authParams: map[string]string{
+				"addresses": ":7001, :7002",
+			},
+			wantMeta: &redisStreamsMetadata{
+				streamName:         "my-stream",
+				targetStreamLength: 5,
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{":7001", ":7002"},
+				},
+				scaleFactor: xLengthFactor,
+			},
+			wantErr: nil,
+		},
+		{
+			name: "stream, consumerGroup is provided",
+			metadata: map[string]string{
+				"stream":        "my-stream",
+				"consumerGroup": "consumer1",
+			},
+			authParams: map[string]string{
+				"addresses": ":7001, :7002",
+			},
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 5,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{":7001", ":7002"},
+				},
+				scaleFactor: xPendingFactor,
+			},
+			wantErr: nil,
+		},
 	}
 
 	for _, testCase := range cases {
@@ -497,21 +524,12 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			wantErr:  ErrRedisMissingStreamName,
 		},
 		{
-			name: "missing pending entries count",
-			metadata: map[string]string{
-				"hosts":  "a, b, c",
-				"ports":  "1, 2, 3",
-				"stream": "my-stream",
-			},
-			wantMeta: nil,
-			wantErr:  ErrRedisMissingPendingEntriesCountOrStreamLength,
-		},
-		{
 			name: "invalid pending entries count",
 			metadata: map[string]string{
 				"stream":              "my-stream",
 				"hosts":               "a, b, c",
 				"ports":               "1, 2, 3",
+				"consumerGroup":       "consumer1",
 				"pendingEntriesCount": "invalid",
 			},
 			wantMeta: nil,
@@ -1017,8 +1035,20 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				"pendingEntriesCount": "30",
 			},
 			authParams: map[string]string{},
-			wantMeta:   nil,
-			wantErr:    ErrRedisMissingConsumerGroupName,
+			wantMeta: &redisStreamsMetadata{
+				streamName:         "my-stream",
+				targetStreamLength: 15,
+				connectionInfo: redisConnectionInfo{
+					addresses: []string{"a:1"},
+					hosts:     []string{"a"},
+					ports:     []string{"1"},
+					password:  "",
+					enableTLS: false,
+					unsafeSsl: false,
+				},
+				scaleFactor: xLengthFactor,
+			},
+			wantErr: nil,
 		},
 	}
 

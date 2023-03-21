@@ -23,7 +23,8 @@ const (
 
 const (
 	// defaults
-	defaultDBIndex = 0
+	defaultDBIndex       = 0
+	defaultTargetEntries = 5
 
 	// metadata names
 	pendingEntriesCountMetadata = "pendingEntriesCount"
@@ -172,14 +173,8 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 }
 
 var (
-	// ErrRedisMissingPendingEntriesCountOrStreamLength is returned when "pendingEntriesCount" is missing.
-	ErrRedisMissingPendingEntriesCountOrStreamLength = errors.New("missing pending entries count or stream length")
-
 	// ErrRedisMissingStreamName is returned when "stream" is missing.
 	ErrRedisMissingStreamName = errors.New("missing redis stream name")
-
-	// ErrRedisMissingConsumerGroupName is returned when "consumerGroup" is missing but "pendingEntriesCount" is passed.
-	ErrRedisMissingConsumerGroupName = errors.New("missing redis stream consumer group name")
 )
 
 func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser) (*redisStreamsMetadata, error) {
@@ -215,28 +210,25 @@ func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser)
 		return nil, ErrRedisMissingStreamName
 	}
 
-	if val, ok := config.TriggerMetadata[pendingEntriesCountMetadata]; ok {
+	if val, ok := config.TriggerMetadata[consumerGroupNameMetadata]; ok {
+		meta.consumerGroupName = val
 		meta.scaleFactor = xPendingFactor
-		pendingEntriesCount, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing pending entries count: %w", err)
+		meta.targetPendingEntriesCount = defaultTargetEntries
+		if val, ok := config.TriggerMetadata[pendingEntriesCountMetadata]; ok {
+			meta.targetPendingEntriesCount, err = strconv.ParseInt(val, 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("error parsing pending entries count: %w", err)
+			}
 		}
-		meta.targetPendingEntriesCount = pendingEntriesCount
-
-		if val, ok := config.TriggerMetadata[consumerGroupNameMetadata]; ok {
-			meta.consumerGroupName = val
-		} else {
-			return nil, ErrRedisMissingConsumerGroupName
-		}
-	} else if val, ok = config.TriggerMetadata[streamLengthMetadata]; ok {
-		meta.scaleFactor = xLengthFactor
-		streamLength, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing stream length: %w", err)
-		}
-		meta.targetStreamLength = streamLength
 	} else {
-		return nil, ErrRedisMissingPendingEntriesCountOrStreamLength
+		meta.scaleFactor = xLengthFactor
+		meta.targetStreamLength = defaultTargetEntries
+		if val, ok := config.TriggerMetadata[streamLengthMetadata]; ok {
+			meta.targetStreamLength, err = strconv.ParseInt(val, 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("error parsing stream length: %w", err)
+			}
+		}
 	}
 
 	meta.databaseIndex = defaultDBIndex
