@@ -71,11 +71,13 @@ spec:
     spec:
       containers:
       - name: redis-worker
-        image: ghcr.io/kedacore/tests-redis-sentinel-streams-length:latest
+        image: ghcr.io/kedacore/tests-redis-streams:latest
         imagePullPolicy: IfNotPresent
         command: ["./main"]
         args: ["consumer"]
         env:
+        - name: REDIS_MODE
+          value: SENTINEL
         - name: REDIS_HOSTS
           value: {{.RedisHost}}.{{.RedisNamespace}}
         - name: REDIS_PORTS
@@ -90,6 +92,8 @@ spec:
           value: {{.RedisPassword}}
         - name: REDIS_SENTINEL_MASTER
           value: mymaster
+        - name: DELETE_MESSAGES
+          value: "1"
 `
 
 	secretTemplate = `apiVersion: v1
@@ -157,11 +161,13 @@ spec:
     spec:
       containers:
       - name: redis
-        image: ghcr.io/kedacore/tests-redis-sentinel-streams-length:latest
+        image: ghcr.io/kedacore/tests-redis-streams:latest
         imagePullPolicy: IfNotPresent
         command: ["./main"]
         args: ["producer"]
         env:
+        - name: REDIS_MODE
+          value: SENTINEL
         - name: REDIS_HOSTS
           value: {{.RedisHost}}.{{.RedisNamespace}}
         - name: REDIS_PORTS

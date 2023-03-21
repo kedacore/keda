@@ -73,11 +73,13 @@ spec:
     spec:
       containers:
       - name: redis-worker
-        image: ghcr.io/kedacore/tests-redis-streams-length:latest
+        image: ghcr.io/kedacore/tests-redis-streams:latest
         imagePullPolicy: IfNotPresent
         command: ["./main"]
         args: ["consumer"]
         env:
+        - name: REDIS_MODE
+          value: STANDALONE
         - name: REDIS_ADDRESS
           value: {{.RedisAddress}}
         - name: REDIS_STREAM_NAME
@@ -86,6 +88,8 @@ spec:
           value: {{.RedisPassword}}
         - name: REDIS_STREAM_CONSUMER_GROUP_NAME
           value: "consumer-group-1"
+        - name: DELETE_MESSAGES
+          value: "1"
 `
 
 	secretTemplate = `apiVersion: v1
@@ -148,11 +152,13 @@ spec:
     spec:
       containers:
       - name: redis
-        image: ghcr.io/kedacore/tests-redis-streams-length:latest
+        image: ghcr.io/kedacore/tests-redis-streams:latest
         imagePullPolicy: IfNotPresent
         command: ["./main"]
         args: ["producer"]
         env:
+        - name: REDIS_MODE
+          value: STANDALONE
         - name: REDIS_ADDRESS
           value: {{.RedisAddress}}
         - name: REDIS_PASSWORD
