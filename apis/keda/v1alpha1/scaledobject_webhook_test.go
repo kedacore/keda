@@ -449,6 +449,32 @@ var _ = It("should validate so creation when min replicas is > 0 with only cpu s
 
 })
 
+var _ = It("should validate the so update if it's removing the finalizer even if it's invalid", func() {
+
+	namespaceName := "removing-finalizers"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, true, true)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true)
+	so.ObjectMeta.Finalizers = append(so.ObjectMeta.Finalizers, "finalizer")
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), so)
+	Expect(err).ToNot(HaveOccurred())
+
+	workload.Spec.Template.Spec.Containers[0].Resources.Requests = nil
+	err = k8sClient.Update(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	so.ObjectMeta.Finalizers = []string{}
+	err = k8sClient.Update(context.Background(), so)
+	Expect(err).ToNot(HaveOccurred())
+})
+
 var _ = AfterSuite(func() {
 	cancel()
 	By("tearing down the test environment")
