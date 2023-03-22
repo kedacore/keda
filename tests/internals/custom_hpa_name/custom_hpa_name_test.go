@@ -64,7 +64,7 @@ spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
   pollingInterval: 5
-  minReplicaCount: 0
+  minReplicaCount: 1
   maxReplicaCount: 1
   cooldownPeriod: 10
   triggers:
