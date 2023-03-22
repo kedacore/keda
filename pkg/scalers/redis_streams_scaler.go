@@ -215,19 +215,21 @@ func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser)
 		meta.scaleFactor = xPendingFactor
 		meta.targetPendingEntriesCount = defaultTargetEntries
 		if val, ok := config.TriggerMetadata[pendingEntriesCountMetadata]; ok {
-			meta.targetPendingEntriesCount, err = strconv.ParseInt(val, 10, 64)
+			pendingEntriesCount, err := strconv.ParseInt(val, 10, 64)
 			if err != nil {
 				return nil, fmt.Errorf("error parsing pending entries count: %w", err)
 			}
+			meta.targetPendingEntriesCount = pendingEntriesCount
 		}
 	} else {
 		meta.scaleFactor = xLengthFactor
 		meta.targetStreamLength = defaultTargetEntries
 		if val, ok := config.TriggerMetadata[streamLengthMetadata]; ok {
-			meta.targetStreamLength, err = strconv.ParseInt(val, 10, 64)
+			streamLength, err := strconv.ParseInt(val, 10, 64)
 			if err != nil {
 				return nil, fmt.Errorf("error parsing stream length: %w", err)
 			}
+			meta.targetStreamLength = streamLength
 		}
 	}
 
