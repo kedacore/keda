@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package azure_pipelines_test
+package azure_pipelines_adv_test
 
 import (
 	"context"
