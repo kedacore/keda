@@ -114,6 +114,27 @@ spec:
         value: '1'
 `
 
+	wrongScledObjectTemplate = `
+	apiVersion: keda.sh/v1alpha1
+	kind: ScaledObject
+	metadata:
+	  name: {{.ScaledObjectName}}
+	  namespace: {{.TestNamespace}}
+	spec:
+	  scaleTargetRef:
+		name: {{.DeploymentName}}
+	  pollingInterval: 5
+	  idleReplicaCount: 0
+	  minReplicaCount: 1
+	  maxReplicaCount: 2
+	  cooldownPeriod: 10
+	  triggers:
+		- type: kubernetes-workload
+		  metadata:
+			podSelector: 'app=non-existing-label'
+			value: '1'
+	`
+
 	cronScaledJobTemplate = `
 apiVersion: keda.sh/v1alpha1
 kind: ScaledJob
@@ -371,6 +392,15 @@ func testOperatorMetrics(t *testing.T, kc *kubernetes.Clientset, data templateDa
 
 	KubectlDeleteWithTemplate(t, data, "cronScaledJobTemplate", cronScaledJobTemplate)
 	testOperatorMetricValues(t, kc)
+}
+
+func testSclaerError(t *testing.T, data templateData) {
+	t.Log("--- testing sclaer error ---")
+
+	data.ScaledObjectName = "wrong_object"
+	err := KubectlApplyWithErrors(t, data, "wrongScledObjectTemplate", wrongScledObjectTemplate)
+	assert.NoErrorf(t, err, "error applying scled object")
+
 }
 
 func testWebhookMetrics(t *testing.T, data templateData) {
