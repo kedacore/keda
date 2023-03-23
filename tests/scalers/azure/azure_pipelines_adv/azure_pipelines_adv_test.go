@@ -298,29 +298,29 @@ func TestScaler(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	// seed never runner jobs and setup Azure DevOps
-	err := preSeedAgentPool(t, kc, data)
+	err := preSeedAgentPool(t, data)
 	require.NoError(t, err)
 
 	WaitForPodCountInNamespace(t, kc, testNamespace, minReplicaCount, 60, 2)
 	// new demand tests (assumes pre-seeded template)
 
 	KubectlApplyWithTemplate(t, data, "demandScaledJobTemplate", demandScaledJobTemplate)
-	testJobScaleOut(t, kc, connection, 1)
+	testJobScaleOut(t, kc, connection)
 	testJobScaleIn(t, kc)
 	KubectlDeleteWithTemplate(t, data, "demandScaledJobTemplate", demandScaledJobTemplate)
 
 	KubectlApplyWithTemplate(t, data, "parentScaledJobTemplate", parentScaledJobTemplate)
-	testJobScaleOut(t, kc, connection, 1)
+	testJobScaleOut(t, kc, connection)
 	testJobScaleIn(t, kc)
 	KubectlDeleteWithTemplate(t, data, "parentScaledJobTemplate", parentScaledJobTemplate)
 
 	KubectlApplyWithTemplate(t, data, "anyScaledJobTemplate", anyScaledJobTemplate)
-	testJobScaleOut(t, kc, connection, 1)
+	testJobScaleOut(t, kc, connection)
 	testJobScaleIn(t, kc)
 	KubectlDeleteWithTemplate(t, data, "anyScaledJobTemplate", anyScaledJobTemplate)
 
 	KubectlApplyWithTemplate(t, data, "demandRequireAllScaledJobTemplate", demandRequireAllScaledJobTemplate)
-	testJobScaleOut(t, kc, connection, 1)
+	testJobScaleOut(t, kc, connection)
 	testJobScaleIn(t, kc)
 	KubectlDeleteWithTemplate(t, data, "demandRequireAllScaledJobTemplate", demandRequireAllScaledJobTemplate)
 
@@ -419,17 +419,15 @@ func getTemplateData() (templateData, []Template) {
 		}
 }
 
-func testJobScaleOut(t *testing.T, kc *kubernetes.Clientset, connection *azuredevops.Connection, num int) {
+func testJobScaleOut(t *testing.T, kc *kubernetes.Clientset, connection *azuredevops.Connection) {
 	t.Log("--- testing scale out ---")
 	id, err := strconv.Atoi(demandParentBuildID)
 	if err != nil {
 		t.Errorf("unable to parse buildID")
 	}
-	for i := 0; i < num; i++ {
-		queueBuild(t, connection, id)
-	}
+	queueBuild(t, connection, id)
 
-	assert.True(t, WaitForJobCount(t, kc, testNamespace, num, 180, 1), "replica count should be 1 after 3 minutes")
+	assert.True(t, WaitForJobCount(t, kc, testNamespace, 1, 180, 1), "replica count should be 1 after 3 minutes")
 }
 
 func testJobScaleIn(t *testing.T, kc *kubernetes.Clientset) {
@@ -440,7 +438,7 @@ func testJobScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 }
 
 // preSeed Agent Pool to stop AzDO auto failing unfulfillable jobs
-func preSeedAgentPool(t *testing.T, kc *kubernetes.Clientset, data templateData) error {
+func preSeedAgentPool(t *testing.T, data templateData) error {
 	naData := data
 	naData.SeedType = "never"
 	naData.ScaledJobName = "never-agent-demand-scaledjob"
@@ -459,26 +457,26 @@ func preSeedAgentPool(t *testing.T, kc *kubernetes.Clientset, data templateData)
 		return err
 	}
 	// wait for deployment to be ready in AzDO
-	for !checkAgentState(t, kc, data, "online") {
+	for !checkAgentState(t, data, "online") {
 		time.Sleep(10 * time.Second)
 	}
-	for !checkAgentState(t, kc, naData, "online") {
+	for !checkAgentState(t, naData, "online") {
 		time.Sleep(10 * time.Second)
 	}
 	// delete the deployment
 	KubectlDeleteWithTemplate(t, naData, "deploymentTemplateSeed", seedDeploymentTemplate)
 	KubectlDeleteWithTemplate(t, data, "deploymentTemplateSeed", seedDeploymentTemplate)
-	for !checkAgentState(t, kc, data, "offline") {
+	for !checkAgentState(t, data, "offline") {
 		time.Sleep(10 * time.Second)
 	}
-	for !checkAgentState(t, kc, naData, "offline") {
+	for !checkAgentState(t, naData, "offline") {
 		time.Sleep(10 * time.Second)
 	}
 	return nil
 }
 
 // isAgentPoolReady checks if the agent pool is ready
-func checkAgentState(t *testing.T, kc *kubernetes.Clientset, data templateData, state string) bool {
+func checkAgentState(t *testing.T, data templateData, state string) bool {
 	// get the agent pool id
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

@@ -361,7 +361,6 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 			if s.metadata.parent == "" {
 				// doesn't use parent, switch to demand
 				if getCanAgentDemandFulfilJob(job, s.metadata) {
-					s.logger.Info("Job can be fulfilled", "demandsIn", job.Demands, "demandsOut", s.metadata.demands)
 					count++
 				}
 			} else {
