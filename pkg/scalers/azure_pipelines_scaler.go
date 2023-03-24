@@ -385,10 +385,14 @@ func getCanAgentDemandFulfilJob(jr JobRequest, metadata *azurePipelinesMetadata)
 	var demandsAvail = strings.Split(metadata.demands, ",")
 	var countDemands = 0
 	for _, dr := range demandsReq {
-		for _, da := range demandsAvail {
-			if dr == da || strings.HasPrefix(dr, "Agent.Version") {
-				countDemands++
+		if !strings.HasPrefix(dr, "Agent.Version") {
+			for _, da := range demandsAvail {
+				if dr == da {
+					countDemands++
+				}
 			}
+		} else {
+			countDemands++
 		}
 	}
 
