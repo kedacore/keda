@@ -28,7 +28,7 @@ import (
 var _ = godotenv.Load("../../../.env")
 
 const (
-	testName = "azure-pipelines-test"
+	testName = "azure-pipelines-demands-test"
 )
 
 var (
