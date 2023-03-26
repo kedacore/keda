@@ -337,7 +337,7 @@ func getClientForConnectionPool(metadata externalScalerMetadata, logger logr.Log
 			return grpc.Dial(metadata.scalerAddress, grpc.WithTransportCredentials(creds))
 		}
 
-		tlsConfig := &tls.Config{}
+		tlsConfig := &tls.Config{MinVersion: tls.VersionTLS13}
 
 		if metadata.caCert != nil {
 			tlsConfig.RootCAs = metadata.caCert
