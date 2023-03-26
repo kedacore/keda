@@ -2,6 +2,9 @@ package scalers
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"strings"
 	"sync"
@@ -31,10 +34,15 @@ type externalPushScaler struct {
 }
 
 type externalScalerMetadata struct {
-	scalerAddress    string
-	tlsCertFile      string
-	originalMetadata map[string]string
-	scalerIndex      int
+	scalerAddress      string
+	tlsCertFile        string
+	originalMetadata   map[string]string
+	scalerIndex        int
+	caCert             *x509.CertPool
+	tlsClientCert      []byte
+	tlsClientKey       []byte
+	forceTls           string
+	skipInsecureVerify string
 }
 
 type connectionGroup struct {
@@ -112,6 +120,46 @@ func parseExternalScalerMetadata(config *ScalerConfig) (externalScalerMetadata, 
 	}
 
 	meta.originalMetadata = make(map[string]string)
+	if val, ok := config.AuthParams["caCert"]; ok {
+		caCertBytes := []byte(val)
+		block, _ := pem.Decode(caCertBytes)
+		if block == nil {
+			return meta, fmt.Errorf("failed to decode PEM-encoded certificate in caCert")
+		}
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return meta, err
+		}
+		certPool := x509.NewCertPool()
+		certPool.AddCert(cert)
+		meta.caCert = certPool
+	}
+
+	if val, ok := config.AuthParams["tlsClientCert"]; ok {
+		certBytes := []byte(val)
+		block, _ := pem.Decode(certBytes)
+		if block == nil {
+			return meta, fmt.Errorf("failed to decode PEM-encoded certificate in tlsClientCert")
+		}
+		_, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return meta, fmt.Errorf("failed to parse certificate in tlsClientCert")
+		}
+		meta.tlsClientCert = certBytes
+	}
+
+	if val, ok := config.AuthParams["tlsClientKey"]; ok {
+		keyBytes := []byte(val)
+		block, _ := pem.Decode(keyBytes)
+		if block == nil {
+			return meta, fmt.Errorf("failed to decode PEM-encoded private key in tlsClientKey")
+		}
+		_, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+		if err != nil {
+			return meta, fmt.Errorf("failed to parse private key in tlsClientKey")
+		}
+		meta.tlsClientKey = keyBytes
+	}
 
 	// Add elements to metadata
 	for key, value := range config.TriggerMetadata {
@@ -136,7 +184,7 @@ func (s *externalScaler) Close(context.Context) error {
 func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
 	var result []v2.MetricSpec
 
-	grpcClient, err := getClientForConnectionPool(s.metadata)
+	grpcClient, err := getClientForConnectionPool(s.metadata, s.logger)
 	if err != nil {
 		s.logger.Error(err, "error building grpc connection")
 		return result
@@ -171,7 +219,7 @@ func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2.Metri
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *externalScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	var metrics []external_metrics.ExternalMetricValue
-	grpcClient, err := getClientForConnectionPool(s.metadata)
+	grpcClient, err := getClientForConnectionPool(s.metadata, s.logger)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
@@ -212,7 +260,7 @@ func (s *externalPushScaler) Run(ctx context.Context, active chan<- bool) {
 	defer close(active)
 	// It's possible for the connection to get terminated anytime, we need to run this in a retry loop
 	runWithLog := func() {
-		grpcClient, err := getClientForConnectionPool(s.metadata)
+		grpcClient, err := getClientForConnectionPool(s.metadata, s.logger)
 		if err != nil {
 			s.logger.Error(err, "error running internalRun")
 			return
@@ -223,7 +271,7 @@ func (s *externalPushScaler) Run(ctx context.Context, active chan<- bool) {
 		}
 	}
 
-	// retry on error from runWithLog() starting by 2 sec backing off * 2 with a max of 1 minute
+	// retry on error from runWithLog() starting by 2 sec backing off * 2 with a max of 2 minute
 	retryDuration := time.Second * 2
 	// the caller of this function needs to ensure that they call Stop() on the resulting
 	// timer, to release background resources.
@@ -273,17 +321,37 @@ var connectionPoolMutex sync.Mutex
 
 // getClientForConnectionPool returns a grpcClient and a done() Func. The done() function must be called once the client is no longer
 // in use to clean up the shared grpc.ClientConn
-func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalScalerClient, error) {
+func getClientForConnectionPool(metadata externalScalerMetadata, logger logr.Logger) (pb.ExternalScalerClient, error) {
 	connectionPoolMutex.Lock()
 	defer connectionPoolMutex.Unlock()
 
 	buildGRPCConnection := func(metadata externalScalerMetadata) (*grpc.ClientConn, error) {
+		// FIXME: DEPRECATED to be removed in v2.13
 		if metadata.tlsCertFile != "" {
+			logger.V(1).Info("tlsCertFile in ScaleObject metadata will be deprecated in v2.12. Please use" +
+				"tlsClientCert, tlsClientKey and caCert in TriggerAuthentication instead.")
 			creds, err := credentials.NewClientTLSFromFile(metadata.tlsCertFile, "")
 			if err != nil {
 				return nil, err
 			}
 			return grpc.Dial(metadata.scalerAddress, grpc.WithTransportCredentials(creds))
+		}
+
+		tlsConfig := &tls.Config{}
+
+		if metadata.caCert != nil {
+			tlsConfig.RootCAs = metadata.caCert
+		}
+
+		if metadata.tlsClientCert != nil && metadata.tlsClientKey != nil {
+			tlsCert, err := tls.X509KeyPair(metadata.tlsClientCert, metadata.tlsClientKey)
+			if err != nil {
+				return nil, err
+			}
+			tlsConfig.Certificates = []tls.Certificate{tlsCert}
+		}
+		if len(tlsConfig.Certificates) > 0 || tlsConfig.RootCAs != nil {
+			return grpc.Dial(metadata.scalerAddress, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 		}
 
 		return grpc.Dial(metadata.scalerAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
