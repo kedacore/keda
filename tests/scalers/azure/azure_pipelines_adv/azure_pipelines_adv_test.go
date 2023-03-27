@@ -35,9 +35,8 @@ var (
 	organizationURL     = os.Getenv("AZURE_DEVOPS_ORGANIZATION_URL")
 	personalAccessToken = os.Getenv("AZURE_DEVOPS_PAT")
 	project             = os.Getenv("AZURE_DEVOPS_PROJECT")
-	buildID             = os.Getenv("AZURE_DEVOPS_BUILD_DEFINITION_ID")
 	demandParentBuildID = os.Getenv("AZURE_DEVOPS_DEMAND_PARENT_BUILD_DEFINITION_ID")
-	poolName            = os.Getenv("AZURE_DEVOPS_POOL_NAME")
+	poolName            = os.Getenv("AZURE_DEVOPS_DEMAND_POOL_NAME")
 	poolID              = "0"
 	testNamespace       = fmt.Sprintf("%s-ns", testName)
 	secretName          = fmt.Sprintf("%s-secret", testName)
@@ -283,9 +282,8 @@ func TestScaler(t *testing.T) {
 	require.NotEmpty(t, organizationURL, "AZURE_DEVOPS_ORGANIZATION_URL env variable is required for azure pipelines test")
 	require.NotEmpty(t, personalAccessToken, "AZURE_DEVOPS_PAT env variable is required for azure pipelines test")
 	require.NotEmpty(t, project, "AZURE_DEVOPS_PROJECT env variable is required for azure pipelines test")
-	require.NotEmpty(t, buildID, "AZURE_DEVOPS_BUILD_DEFINITION_ID env variable is required for azure pipelines test")
 	require.NotEmpty(t, demandParentBuildID, "AZURE_DEVOPS_DEMAND_PARENT_BUILD_DEFINITION_ID env variable is required for azure pipelines test")
-	require.NotEmpty(t, poolName, "AZURE_DEVOPS_POOL_NAME env variable is required for azure pipelines test")
+	require.NotEmpty(t, poolName, "AZURE_DEVOPS_DEMAND_POOL_NAME env variable is required for azure pipelines test")
 	connection := azuredevops.NewPatConnection(organizationURL, personalAccessToken)
 	clearAllBuilds(t, connection)
 	// Get pool ID
