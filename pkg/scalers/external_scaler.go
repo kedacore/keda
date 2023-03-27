@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -41,8 +42,7 @@ type externalScalerMetadata struct {
 	caCert             *x509.CertPool
 	tlsClientCert      []byte
 	tlsClientKey       []byte
-	forceTls           string
-	skipInsecureVerify string
+	insecureSkipVerify bool
 }
 
 type connectionGroup struct {
@@ -161,6 +161,14 @@ func parseExternalScalerMetadata(config *ScalerConfig) (externalScalerMetadata, 
 		meta.tlsClientKey = keyBytes
 	}
 
+	meta.insecureSkipVerify = false
+	if val, ok := config.TriggerMetadata["insecureSkipVerify"]; ok && val != "" {
+		boolVal, err := strconv.ParseBool(val)
+		if err != nil {
+			return meta, fmt.Errorf("failed to parse insecureSkipVerify value. Must be either true or false")
+		}
+		meta.insecureSkipVerify = boolVal
+	}
 	// Add elements to metadata
 	for key, value := range config.TriggerMetadata {
 		// Check if key is in resolved environment and resolve
@@ -350,6 +358,11 @@ func getClientForConnectionPool(metadata externalScalerMetadata, logger logr.Log
 			}
 			tlsConfig.Certificates = []tls.Certificate{tlsCert}
 		}
+
+		if metadata.insecureSkipVerify {
+			tlsConfig.InsecureSkipVerify = metadata.insecureSkipVerify
+		}
+
 		if len(tlsConfig.Certificates) > 0 || tlsConfig.RootCAs != nil {
 			return grpc.Dial(metadata.scalerAddress, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 		}

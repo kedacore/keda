@@ -95,7 +95,7 @@ type parseExternalScalerMetadataTestData struct {
 var testExternalScalerMetadata = []parseExternalScalerMetadataTestData{
 	{map[string]string{}, true, map[string]string{}},
 	// all properly formed
-	{map[string]string{"scalerAddress": "myservice", "test1": "7", "test2": "SAMPLE_CREDS"}, false, map[string]string{"caCert": serverRootCA, "tlsClientCert": clientCert, "tlsClientKey": clientKey}},
+	{map[string]string{"scalerAddress": "myservice", "test1": "7", "test2": "SAMPLE_CREDS", "insecureSkipVerify": "true"}, false, map[string]string{"caCert": serverRootCA, "tlsClientCert": clientCert, "tlsClientKey": clientKey}},
 	// bad caCert
 	{map[string]string{"scalerAddress": "myservice", "test1": "7", "test2": "SAMPLE_CREDS"}, true, map[string]string{"caCert": "random", "tlsClientCert": clientCert, "tlsClientKey": clientKey}},
 	// bad tlsClientCert
@@ -108,9 +108,13 @@ var testExternalScalerMetadata = []parseExternalScalerMetadataTestData{
 
 func TestExternalScalerParseMetadata(t *testing.T) {
 	for _, testData := range testExternalScalerMetadata {
-		_, err := parseExternalScalerMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: map[string]string{}, AuthParams: testData.authParams})
+		metadata, err := parseExternalScalerMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: map[string]string{}, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
+		}
+
+		if testData.metadata["insecureSkipVerify"] == "true" && !metadata.insecureSkipVerify {
+			t.Error("Expected insecureSkipVerify to be true but got", metadata.insecureSkipVerify)
 		}
 		if testData.isError && err == nil {
 			t.Error("Expected error but got success")
