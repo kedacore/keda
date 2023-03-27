@@ -406,9 +406,8 @@ func getCanAgentDemandFulfilJob(jr JobRequest, metadata *azurePipelinesMetadata)
 
 	if metadata.requireAllDemands {
 		return countDemands == len(demandsInJob) && countDemands == len(demandsInScaler)
-	} else {
-		return countDemands == len(demandsInJob)
 	}
+	return countDemands == len(demandsInJob)
 }
 
 // Determine if the Job and Parent Agent Template have matching capabilities
