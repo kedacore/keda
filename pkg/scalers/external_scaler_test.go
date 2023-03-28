@@ -57,34 +57,6 @@ mauSvQwA0SRKECr46F8dSeFE1uIbN4ZNgrisBTVkoPYZuF7pAsSsjqGM0phUKiI8
 5thG2dnqJSunC+vZW8QY+x3eq4XzFEpIYcaV9YpiGHbv8N6gzJydL/GB
 -----END CERTIFICATE-----
 `
-var clientKey = `-----BEGIN RSA PRIVATE KEY-----
-MIIEowIBAAKCAQEA3k7zr+QbOHXMqhyUM6OzSuGGqQttIGZEs12eLSRlGY9vL+pf
-/G3CubkGsTtp5b5tmP4CNYcGtU8wSJMn23BqBbXECpDXh6cuo+56VVAMJyNqZoIe
-S4JfKX5mvj4WrfpVJ3e+o6lrebAICK1qqTwqz6N6ZUkeF552aTh8RAgEiKJlylmK
-dHc/IF3+oLc2aA7IAl+zxYOTCrjIiUrc54OBgYCkCSb0P4SPHE8ryB0pN8S3LdtZ
-rgVIzewd24joKbXL7hBZ3ltaj0t2kK2CTCxbI3te0JdIaPV2TxCnK9dxLRkFXNjz
-/7V45rbRLXtSPoirKseUR2zbo5kfquY0J2hvnwIDAQABAoIBAQC66kksZ6+Xbjxx
-/2uAa7BxUmRFt+y+JB65bQp0zDgRIK+M6xRfiu4B+BcvZ1QnrlA6JcA3v1sdkQJ4
-0vndIIyUVnsJozUEwsWNYhMLri05ryZkIB1Wwbw/iB7c8BljmKqGb8EjnGxYOXDX
-0u9ucb9RLBPaG3sowryuxaZ+EPu24Ls/WnL6zZ3WarhuL3j3toWGzTaAriL2J9kB
-VbeTGb8IoLbR6uzYg0SdRTzx4obIHwl2kYO/l+9bZMJU3WUTE62lbw56Zg1sENdm
-sIIx/DWWhZiXJl9sJ7jOW9JY7rsvHvxxEh64o+WRa3KaHgBTFGw+3pjf3Dw/XM4a
-iQY8MbhRAoGBAPVzB7s1OzrNLdUOTDq6k6NNsD2xrUepBE1tm6sSGHSjNR5SvYFa
-3bx7O0OQm0Fmu6qVyetlebnkxZCUjgo6jk8FrpytKa+KoPYN7qsXH19FGj+qmtWh
-QAGfV3SgtepGZf5Gj5DGNMEuCWQAmPmn4CzrWJ2BjnhF0NMcBkOUoOInAoGBAOfd
-Rk4N3pv0tSeyCbi9TXDrXRIGarsahIHUb9zokRzw9DJqDKFshgSS/gPO1GhynAD8
-Ysvxb+DnW1R3CH+E5nh5nx//dTELsHcQMXtoXeltCKoNEOReWrQ8jy6JBqoFEYRU
-WRBK8fDKG8w2dzq5ggFmDOoiVG3lS/zubz8dcInJAoGAWf1erEiL+rcXQrIHSND3
-KDxnjXcDLO7O4QR6unHb/YeJBiEX0cFa4qvbwp3WDlh4HcblTSTbSEiUFrogiaeG
-XXqb1l22luGguhXJl3jWy7suMIGAWyrPqMie6+ewSsCczGlaYZ4J4Xnbf4qoi3/9
-NPrkdnr1nSsbsQrpUQXBJqkCgYBChubJNomMzeW8ggTwEMDLiXym01iEXtNuPPnr
-tH8OgsROQsdk+bJqVZK0nP+tCFViowfl5Fxpd3ho/85caFGId70EfVOuwt/bCbZo
-5kUr2LEHucADBl+YH1glzgMvfUzNXzY+yoIoyJS5P1dubhOzOwixlTAMaCIpbHBW
-96d2oQKBgCFhqmBv2swexhyu46ol4lOus78NpSMyvnG5GqcRBlcFiQNI/hQ78MW0
-vnC/XfKzpLiOmdCMVO4eUM6R41blE9/QFm/XIoshoFkubii4DgqTcxK4Z3WMolkh
-Qcz/BgNq+YA4o5WduTBKalU8bZ9cEuwh4SMMPPqolHZxWkhVI85L
------END RSA PRIVATE KEY-----
-`
 
 type parseExternalScalerMetadataTestData struct {
 	metadata   map[string]string
@@ -95,11 +67,11 @@ type parseExternalScalerMetadataTestData struct {
 var testExternalScalerMetadata = []parseExternalScalerMetadataTestData{
 	{map[string]string{}, true, map[string]string{}},
 	// all properly formed
-	{map[string]string{"scalerAddress": "myservice", "test1": "7", "test2": "SAMPLE_CREDS", "insecureSkipVerify": "true"}, false, map[string]string{"caCert": serverRootCA, "tlsClientCert": clientCert, "tlsClientKey": clientKey}},
+	{map[string]string{"scalerAddress": "myservice", "test1": "7", "test2": "SAMPLE_CREDS", "insecureSkipVerify": "true"}, false, map[string]string{"caCert": serverRootCA, "tlsClientCert": clientCert}},
 	// bad caCert
-	{map[string]string{"scalerAddress": "myservice", "test1": "7", "test2": "SAMPLE_CREDS"}, true, map[string]string{"caCert": "random", "tlsClientCert": clientCert, "tlsClientKey": clientKey}},
+	{map[string]string{"scalerAddress": "myservice", "test1": "7", "test2": "SAMPLE_CREDS"}, true, map[string]string{"caCert": "random", "tlsClientCert": clientCert}},
 	// bad tlsClientCert
-	{map[string]string{"scalerAddress": "myservice", "test1": "7", "test2": "SAMPLE_CREDS"}, true, map[string]string{"caCert": serverRootCA, "tlsClientCert": "random", "tlsClientKey": clientKey}},
+	{map[string]string{"scalerAddress": "myservice", "test1": "7", "test2": "SAMPLE_CREDS"}, true, map[string]string{"caCert": serverRootCA, "tlsClientCert": "random"}},
 	// bad tlsClientKey
 	{map[string]string{"scalerAddress": "myservice", "test1": "7", "test2": "SAMPLE_CREDS"}, true, map[string]string{"caCert": serverRootCA, "tlsClientCert": clientCert, "tlsClientKey": "random"}},
 	// missing scalerAddress

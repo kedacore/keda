@@ -121,7 +121,7 @@ func parseAzureQueueMetadata(config *ScalerConfig, logger logr.Logger) (*azureQu
 
 	// before triggerAuthentication CRD, pod identity was configured using this property
 	if val, ok := config.TriggerMetadata["useAAdPodIdentity"]; ok && config.PodIdentity.Provider == "" {
-		if val == "true" {
+		if val == stringTrue {
 			config.PodIdentity = kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}
 		}
 	}
