@@ -54,6 +54,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Fixes
 
 - **AWS SQS Scaler**: Respect `scaleOnInFlight` value ([#4276](https://github.com/kedacore/keda/issue/4276))
+- **Azure Pipelines**: Fix for disallowing `$top` on query when using `meta.parentID` method ([#4397])
 
 ### Deprecations
 
