@@ -1,19 +1,33 @@
 name: FOSSA
+
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  fossa-key: 9e722f2c8904586d61f97f0bf05a99e4 # This is a public key only for pushing, it's safe here
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v4
         with:
           go-version: 1.19
       - run: go version
+      - name: Get branch name
+        id: branch-name
+        uses: tj-actions/branch-names@v6
       - uses: fossas/fossa-action@main
         name: Scanning with FOSSA
         with:
-          api-key: 9e722f2c8904586d61f97f0bf05a99e4 # This is a public key only for pushing, it's safe here
-          branch: main
+          api-key: ${{ env.fossa-key }}
+          branch: ${{ steps.branch-name.outputs.current_branch }}
+      - uses: fossas/fossa-action@main
+        name: Executing tests with FOSSA
+        with:
+          api-key: ${{ env.fossa-key }}
+          run-tests: true

@@ -45,7 +45,9 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
+- **CPU/Memory scaler**: Add support for scale to zero if there are multiple triggers([#4269](https://github.com/kedacore/keda/issues/4269))
 - TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- **General:** Introduce new Solr Scaler ([#4234](https://github.com/kedacore/keda/issues/4234))
 
 ### Improvements
 
@@ -53,6 +55,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
+- **Admission Webhooks**: Allow to remove the finalizer even if the ScaledObject isn't valid ([#4396](https://github.com/kedacore/keda/issue/4396))
+- **AWS SQS Scaler**: Respect `scaleOnInFlight` value ([#4276](https://github.com/kedacore/keda/issue/4276))
 - **Azure Pipelines**: Fix for disallowing `$top` on query when using `meta.parentID` method ([#4397])
 
 ### Deprecations
@@ -65,7 +69,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Other
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- **General**: Drop a transitive dependency on bou.ke/monkey ([#4364](https://github.com/kedacore/keda/issues/4364))
+- **General**: Fix odd number of arguments passed as key-value pairs for logging ([#4368](https://github.com/kedacore/keda/issues/4368))
 
 ## v2.10.0
 
@@ -82,7 +87,7 @@ Here is an overview of all **stable** additions:
 
 Here is an overview of all new **experimental** features:
 
-- **GitHub Scaler**: Introduced new GitHub Scaler (#1732)
+- **GitHub Scaler**: Introduced new GitHub Scaler ([#1732](https://github.com/kedacore/keda/issues/1732))
 
 ### Improvements
 

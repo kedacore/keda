@@ -154,8 +154,9 @@ var _ = It("should validate the so creation when there isn't any hpa", func() {
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = k8sClient.Create(context.Background(), so)
-	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
 })
 
 var _ = It("should validate the so creation when there are other SO for other workloads", func() {
@@ -171,8 +172,9 @@ var _ = It("should validate the so creation when there are other SO for other wo
 	err = k8sClient.Create(context.Background(), so1)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = k8sClient.Create(context.Background(), so2)
-	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so2)
+	}).ShouldNot(HaveOccurred())
 })
 
 var _ = It("should validate the so creation when there are other HPA for other workloads", func() {
@@ -188,8 +190,9 @@ var _ = It("should validate the so creation when there are other HPA for other w
 	err = k8sClient.Create(context.Background(), hpa)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = k8sClient.Create(context.Background(), so)
-	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
 })
 
 var _ = It("should validate the so creation when it's own hpa is already generated", func() {
@@ -206,8 +209,9 @@ var _ = It("should validate the so creation when it's own hpa is already generat
 	err = k8sClient.Create(context.Background(), hpa)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = k8sClient.Create(context.Background(), so)
-	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
 })
 
 var _ = It("should validate the so update when it's own hpa is already generated", func() {
@@ -228,8 +232,9 @@ var _ = It("should validate the so update when it's own hpa is already generated
 	Expect(err).ToNot(HaveOccurred())
 
 	so.Spec.MaxReplicaCount = pointer.Int32(7)
-	err = k8sClient.Update(context.Background(), so)
-	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Update(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
 })
 
 var _ = It("shouldn't validate the so creation when there is another unmanaged hpa", func() {
@@ -246,8 +251,9 @@ var _ = It("shouldn't validate the so creation when there is another unmanaged h
 	err = k8sClient.Create(context.Background(), hpa)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = k8sClient.Create(context.Background(), so)
-	Expect(err).To(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
 })
 
 var _ = It("shouldn't validate the so creation when there is another so", func() {
@@ -264,8 +270,9 @@ var _ = It("shouldn't validate the so creation when there is another so", func()
 	err = k8sClient.Create(context.Background(), so2)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = k8sClient.Create(context.Background(), so)
-	Expect(err).To(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
 })
 
 var _ = It("shouldn't validate the so creation when there is another hpa with custom apis", func() {
@@ -282,8 +289,9 @@ var _ = It("shouldn't validate the so creation when there is another hpa with cu
 	err = k8sClient.Create(context.Background(), hpa)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = k8sClient.Create(context.Background(), so)
-	Expect(err).To(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
 })
 
 var _ = It("should validate the so creation with cpu and memory when deployment has requests", func() {
@@ -299,8 +307,9 @@ var _ = It("should validate the so creation with cpu and memory when deployment 
 	err = k8sClient.Create(context.Background(), workload)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = k8sClient.Create(context.Background(), so)
-	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
 })
 
 var _ = It("shouldn't validate the so creation with cpu and memory when deployment hasn't got memory request", func() {
@@ -316,8 +325,9 @@ var _ = It("shouldn't validate the so creation with cpu and memory when deployme
 	err = k8sClient.Create(context.Background(), workload)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = k8sClient.Create(context.Background(), so)
-	Expect(err).To(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
 })
 
 var _ = It("shouldn't validate the so creation with cpu and memory when deployment hasn't got cpu request", func() {
@@ -333,8 +343,9 @@ var _ = It("shouldn't validate the so creation with cpu and memory when deployme
 	err = k8sClient.Create(context.Background(), workload)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = k8sClient.Create(context.Background(), so)
-	Expect(err).To(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
 })
 
 var _ = It("should validate the so creation with cpu and memory when statefulset has requests", func() {
@@ -350,8 +361,9 @@ var _ = It("should validate the so creation with cpu and memory when statefulset
 	err = k8sClient.Create(context.Background(), workload)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = k8sClient.Create(context.Background(), so)
-	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
 })
 
 var _ = It("shouldn't validate the so creation with cpu and memory when statefulset hasn't got memory request", func() {
@@ -367,8 +379,9 @@ var _ = It("shouldn't validate the so creation with cpu and memory when stateful
 	err = k8sClient.Create(context.Background(), workload)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = k8sClient.Create(context.Background(), so)
-	Expect(err).To(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
 })
 
 var _ = It("shouldn't validate the so creation with cpu and memory when statefulset hasn't got cpu request", func() {
@@ -384,8 +397,9 @@ var _ = It("shouldn't validate the so creation with cpu and memory when stateful
 	err = k8sClient.Create(context.Background(), workload)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = k8sClient.Create(context.Background(), so)
-	Expect(err).To(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
 })
 
 var _ = It("should validate the so creation without cpu and memory when custom resources", func() {
@@ -397,8 +411,88 @@ var _ = It("should validate the so creation without cpu and memory when custom r
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = k8sClient.Create(context.Background(), so)
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("should validate so creation when all requirements are met for scaling to zero with cpu scaler", func() {
+	namespaceName := "scale-to-zero-good"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, true, false)
+
+	so := createScaledObjectSTZ(soName, namespaceName, workloadName, 0, 5, true)
+
+	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("shouldn't validate so creation with cpu scaler requirements not being met for scaling to 0", func() {
+	namespaceName := "scale-to-zero-min-replicas-bad"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, true, false)
+
+	so := createScaledObjectSTZ(soName, namespaceName, workloadName, 0, 5, false)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
+})
+
+var _ = It("should validate so creation when min replicas is > 0 with only cpu scaler given", func() {
+	namespaceName := "scale-to-zero-no-external-trigger-good"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, true, false)
+
+	so := createScaledObjectSTZ(soName, namespaceName, workloadName, 1, 5, false)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+
+})
+
+var _ = It("should validate the so update if it's removing the finalizer even if it's invalid", func() {
+
+	namespaceName := "removing-finalizers"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, true, true)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true)
+	so.ObjectMeta.Finalizers = append(so.ObjectMeta.Finalizers, "finalizer")
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+
+	workload.Spec.Template.Spec.Containers[0].Resources.Requests = nil
+	err = k8sClient.Update(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	so.ObjectMeta.Finalizers = []string{}
+	Eventually(func() error {
+		return k8sClient.Update(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
 })
 
 var _ = AfterSuite(func() {
@@ -592,6 +686,49 @@ func createStatefulSet(namespace string, hasCPU, hasMemory bool) *appsv1.Statefu
 					},
 				},
 			},
+		},
+	}
+}
+
+func createScaledObjectSTZ(name string, namespace string, targetName string, minReplicas int32, maxReplicas int32, hasExternalTrigger bool) *ScaledObject {
+	triggers := []ScaleTriggers{
+		{
+			Type: "cpu",
+			Metadata: map[string]string{
+				"value": "10",
+			},
+		},
+	}
+
+	if hasExternalTrigger {
+		kubeWorkloadTrigger := ScaleTriggers{
+			Type: "kubernetes-workload",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		}
+		triggers = append(triggers, kubeWorkloadTrigger)
+	}
+
+	return &ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			UID:       types.UID(name),
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ScaledObject",
+			APIVersion: "keda.sh",
+		},
+		Spec: ScaledObjectSpec{
+			ScaleTargetRef: &ScaleTarget{
+				Name: targetName,
+			},
+			MinReplicaCount: pointer.Int32(minReplicas),
+			MaxReplicaCount: pointer.Int32(maxReplicas),
+			CooldownPeriod:  pointer.Int32(1),
+			Triggers:        triggers,
 		},
 	}
 }

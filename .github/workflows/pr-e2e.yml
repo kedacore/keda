@@ -138,7 +138,7 @@ jobs:
           TEST_CLUSTER_NAME: keda-pr-run
         run: |
           MESSAGE="${{ github.event.comment.body }}"
-          REGEX='/run-e2e (.+)'
+          REGEX='/run-e2e (.+[\*|.go])'
           if [[ "$MESSAGE" =~ $REGEX ]]
           then
             export E2E_TEST_REGEX="${BASH_REMATCH[1]}"
@@ -193,3 +193,4 @@ jobs:
         with:
           name: e2e-test-logs
           path: '${{ github.workspace }}/tests/**/*.log'
+          if-no-files-found: ignore
