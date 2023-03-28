@@ -248,6 +248,11 @@ deploy: kustomize manifests kustomize ## Deploy controller to the K8s cluster sp
 	if [ "$(AZURE_RUN_AAD_POD_IDENTITY_TESTS)" = true ]; then \
 		$(KUSTOMIZE) edit add label --force aadpodidbinding:keda; \
 	fi
+	if [ "$(AZURE_RUN_WORKLOAD_IDENTITY_TESTS)" = true ]; then \
+		cd config/service_account && \
+		$(KUSTOMIZE) edit add label --force azure.workload.identity/use:true; \
+		$(KUSTOMIZE) edit add annotation --force azure.workload.identity/client-id:${TF_AZURE_IDENTITY_1_APP_ID} azure.workload.identity/tenant-id:${TF_AZURE_SP_TENANT}; \
+	fi
 	cd config/metrics-server && \
     $(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-metrics-apiserver=${IMAGE_ADAPTER} && \
 	if [ "$(AZURE_RUN_AAD_POD_IDENTITY_TESTS)" = true ]; then \
