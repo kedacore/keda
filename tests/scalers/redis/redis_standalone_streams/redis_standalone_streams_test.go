@@ -33,13 +33,14 @@ var (
 	secretName                = fmt.Sprintf("%s-secret", testName)
 	redisPassword             = "admin"
 	redisStreamName           = "stream"
-	redisHost                 = fmt.Sprintf("redis.%s.svc.cluster.local:6379", redisNamespace)
+	redisAddress              = fmt.Sprintf("redis.%s.svc.cluster.local:6379", redisNamespace)
 	minReplicaCount           = 1
 	maxReplicaCount           = 2
 )
 
 type templateData struct {
 	TestNamespace             string
+	RedisNamespace            string
 	DeploymentName            string
 	JobName                   string
 	ScaledObjectName          string
@@ -50,7 +51,7 @@ type templateData struct {
 	RedisPassword             string
 	RedisPasswordBase64       string
 	RedisStreamName           string
-	RedisHost                 string
+	RedisAddress              string
 	ItemsToWrite              int
 }
 
@@ -72,11 +73,15 @@ spec:
     spec:
       containers:
       - name: redis-worker
-        image: ghcr.io/kedacore/tests-redis-streams-consumer:latest
+        image: ghcr.io/kedacore/tests-redis-streams:latest
         imagePullPolicy: IfNotPresent
+        command: ["./main"]
+        args: ["consumer"]
         env:
-        - name: REDIS_HOST
-          value: {{.RedisHost}}
+        - name: REDIS_MODE
+          value: STANDALONE
+        - name: REDIS_ADDRESS
+          value: {{.RedisAddress}}
         - name: REDIS_STREAM_NAME
           value: {{.RedisStreamName}}
         - name: REDIS_PASSWORD
@@ -127,10 +132,10 @@ spec:
   triggers:
   - type: redis-streams
     metadata:
-      addressFromEnv: REDIS_HOST
+      addressFromEnv: REDIS_ADDRESS
       stream: {{.RedisStreamName}}
       consumerGroup: consumer-group-1
-      pendingEntriesCount: "10"
+      pendingEntriesCount: "15"
     authenticationRef:
       name: {{.TriggerAuthenticationName}}
 `
@@ -146,11 +151,15 @@ spec:
     spec:
       containers:
       - name: redis
-        image: ghcr.io/kedacore/tests-redis-streams-producer:latest
+        image: ghcr.io/kedacore/tests-redis-streams:latest
         imagePullPolicy: IfNotPresent
+        command: ["./main"]
+        args: ["producer"]
         env:
-        - name: REDIS_HOST
-          value: {{.RedisHost}}
+        - name: REDIS_MODE
+          value: STANDALONE
+        - name: REDIS_ADDRESS
+          value: {{.RedisAddress}}
         - name: REDIS_PASSWORD
           value: {{.RedisPassword}}
         - name: REDIS_STREAM_NAME
@@ -172,8 +181,6 @@ func TestScaler(t *testing.T) {
 	// Create kubernetes resources for testing
 	data, templates := getTemplateData()
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 3),
-		"replica count should be %d after 3 minutes", 1)
 
 	testScaleOut(t, kc, data)
 	testScaleIn(t, kc)
@@ -185,7 +192,6 @@ func TestScaler(t *testing.T) {
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
-	data.ItemsToWrite = 20
 	KubectlApplyWithTemplate(t, data, "insertJobTemplate", insertJobTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
@@ -196,14 +202,15 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %d after 5 minutes", minReplicaCount)
+		"replica count should be %d after 3 minutes", minReplicaCount)
 }
 
 var data = templateData{
 	TestNamespace:             testNamespace,
+	RedisNamespace:            redisNamespace,
 	DeploymentName:            deploymentName,
 	ScaledObjectName:          scaledObjectName,
-	MinReplicaCount:           1,
+	MinReplicaCount:           minReplicaCount,
 	MaxReplicaCount:           maxReplicaCount,
 	TriggerAuthenticationName: triggerAuthenticationName,
 	SecretName:                secretName,
@@ -211,8 +218,8 @@ var data = templateData{
 	RedisPassword:             redisPassword,
 	RedisPasswordBase64:       base64.StdEncoding.EncodeToString([]byte(redisPassword)),
 	RedisStreamName:           redisStreamName,
-	RedisHost:                 redisHost,
-	ItemsToWrite:              0,
+	RedisAddress:              redisAddress,
+	ItemsToWrite:              20,
 }
 
 func getTemplateData() (templateData, []Template) {

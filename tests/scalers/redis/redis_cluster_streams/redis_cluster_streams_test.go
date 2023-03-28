@@ -71,11 +71,13 @@ spec:
     spec:
       containers:
       - name: redis-worker
-        image: ghcr.io/kedacore/tests-redis-cluster-streams:latest
+        image: ghcr.io/kedacore/tests-redis-streams:latest
         imagePullPolicy: IfNotPresent
         command: ["./main"]
         args: ["consumer"]
         env:
+        - name: REDIS_MODE
+          value: CLUSTER
         - name: REDIS_HOSTS
           value: {{.RedisHost}}.{{.RedisNamespace}}
         - name: REDIS_PORTS
@@ -150,11 +152,13 @@ spec:
     spec:
       containers:
       - name: redis
-        image: ghcr.io/kedacore/tests-redis-cluster-streams:latest
+        image: ghcr.io/kedacore/tests-redis-streams:latest
         imagePullPolicy: IfNotPresent
         command: ["./main"]
         args: ["producer"]
         env:
+        - name: REDIS_MODE
+          value: CLUSTER
         - name: REDIS_HOSTS
           value: {{.RedisHost}}.{{.RedisNamespace}}
         - name: REDIS_PORTS
