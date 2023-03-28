@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package redis_sentinel_streams_test
+package redis_cluster_streams_length_test
 
 import (
 	"encoding/base64"
@@ -20,7 +20,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "redis-sentinel-streams-test"
+	testName = "redis-cluster-streams-length-test"
 )
 
 var (
@@ -34,7 +34,7 @@ var (
 	redisPassword             = "admin"
 	redisHost                 = fmt.Sprintf("%s-headless", testName)
 	minReplicaCount           = 1
-	maxReplicaCount           = 4
+	maxReplicaCount           = 5
 )
 
 type templateData struct {
@@ -77,21 +77,19 @@ spec:
         args: ["consumer"]
         env:
         - name: REDIS_MODE
-          value: SENTINEL
+          value: CLUSTER
         - name: REDIS_HOSTS
           value: {{.RedisHost}}.{{.RedisNamespace}}
         - name: REDIS_PORTS
-          value: "26379"
+          value: "6379"
         - name: REDIS_STREAM_NAME
           value: my-stream
         - name: REDIS_STREAM_CONSUMER_GROUP_NAME
           value: consumer-group-1
         - name: REDIS_PASSWORD
           value: {{.RedisPassword}}
-        - name: REDIS_SENTINEL_PASSWORD
-          value: {{.RedisPassword}}
-        - name: REDIS_SENTINEL_MASTER
-          value: mymaster
+        - name: DELETE_MESSAGES
+          value: "1"
 `
 
 	secretTemplate = `apiVersion: v1
@@ -114,9 +112,6 @@ spec:
   - parameter: password
     name: {{.SecretName}}
     key: password
-  - parameter: sentinelPassword
-    name: {{.SecretName}}
-    key: password
 `
 
 	scaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
@@ -137,14 +132,12 @@ spec:
         scaleDown:
           stabilizationWindowSeconds: 15
   triggers:
-  - type: redis-sentinel-streams
+  - type: redis-cluster-streams
     metadata:
       hostsFromEnv: REDIS_HOSTS
       portsFromEnv: REDIS_PORTS
       stream: my-stream
-      consumerGroup: consumer-group-1
-      sentinelMaster: mymaster
-      pendingEntriesCount: "10"
+      streamLength: "15"
     authenticationRef:
       name: {{.TriggerAuthenticationName}}
 `
@@ -166,21 +159,15 @@ spec:
         args: ["producer"]
         env:
         - name: REDIS_MODE
-          value: SENTINEL
+          value: CLUSTER
         - name: REDIS_HOSTS
           value: {{.RedisHost}}.{{.RedisNamespace}}
         - name: REDIS_PORTS
-          value: "26379"
+          value: "6379"
         - name: REDIS_STREAM_NAME
           value: my-stream
-        - name: REDIS_STREAM_CONSUMER_GROUP_NAME
-          value: consumer-group-1
         - name: REDIS_PASSWORD
           value: {{.RedisPassword}}
-        - name: REDIS_SENTINEL_PASSWORD
-          value: {{.RedisPassword}}
-        - name: REDIS_SENTINEL_MASTER
-          value: mymaster
         - name: NUM_MESSAGES
           value: "{{.ItemsToWrite}}"
       restartPolicy: Never
@@ -192,8 +179,8 @@ func TestScaler(t *testing.T) {
 	// Create kubernetes resources for PostgreSQL server
 	kc := GetKubernetesClient(t)
 
-	// Create Redis Sentinel
-	redis.InstallSentinel(t, kc, testName, redisNamespace, redisPassword)
+	// Create Redis Cluster
+	redis.InstallCluster(t, kc, testName, redisNamespace, redisPassword)
 
 	// Create kubernetes resources for testing
 	data, templates := getTemplateData()
@@ -203,7 +190,7 @@ func TestScaler(t *testing.T) {
 	testScaleIn(t, kc)
 
 	// cleanup
-	redis.RemoveSentinel(t, kc, testName, redisNamespace)
+	redis.RemoveCluster(t, kc, testName, redisNamespace)
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
 }
 

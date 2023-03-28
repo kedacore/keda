@@ -332,7 +332,13 @@ func getAzurePipelineRequest(ctx context.Context, url string, metadata *azurePip
 }
 
 func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context) (int64, error) {
-	url := fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests?$top=%d", s.metadata.organizationURL, s.metadata.poolID, s.metadata.jobsToFetch)
+	// HotFix Issue (#4387), $top changes the format of the returned JSON
+	var url string
+	if s.metadata.parent != "" {
+		url = fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests", s.metadata.organizationURL, s.metadata.poolID)
+	} else {
+		url = fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests?$top=%d", s.metadata.organizationURL, s.metadata.poolID, s.metadata.jobsToFetch)
+	}
 	body, err := getAzurePipelineRequest(ctx, url, s.metadata, s.httpClient)
 	if err != nil {
 		return -1, err
