@@ -16,14 +16,11 @@ import (
 )
 
 const (
-	compositeSubscriptionIDPrefix                      = "projects/[a-z][a-zA-Z0-9-]*[a-zA-Z0-9]/subscriptions/[a-zA-Z][a-zA-Z0-9-_~%\\+\\.]*"
-	defaultTargetSubscriptionSize                      = 5
-	defaultTargetOldestUnackedMessageAge               = 10
-	pubSubStackDriverSubscriptionSizeMetricName        = "pubsub.googleapis.com/subscription/num_undelivered_messages"
-	pubSubStackDriverOldestUnackedMessageAgeMetricName = "pubsub.googleapis.com/subscription/oldest_unacked_message_age"
+	compositeSubscriptionIDPrefix       = "projects/[a-z][a-zA-Z0-9-]*[a-zA-Z0-9]/subscriptions/[a-zA-Z][a-zA-Z0-9-_~%\\+\\.]*"
+	prefixPubSubStackDriverSubscription = "pubsub.googleapis.com/subscription/"
 
-	pubsubModeSubscriptionSize        = "SubscriptionSize"
-	pubsubModeOldestUnackedMessageAge = "OldestUnackedMessageAge"
+	pubSubModeSubscriptionSize = "SubscriptionSize"
+	pubSubDefaultValue         = 10
 )
 
 var regexpCompositeSubscriptionIDPrefix = regexp.MustCompile(compositeSubscriptionIDPrefix)
@@ -67,8 +64,8 @@ func NewPubSubScaler(config *ScalerConfig) (Scaler, error) {
 }
 
 func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetadata, error) {
-	meta := pubsubMetadata{}
-	meta.mode = pubsubModeSubscriptionSize
+	// set subscription size to the default mode
+	meta := pubsubMetadata{mode: pubSubModeSubscriptionSize}
 
 	mode, modePresent := config.TriggerMetadata["mode"]
 	value, valuePresent := config.TriggerMetadata["value"]
@@ -78,7 +75,6 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 			return nil, errors.New("you can use either mode and value fields or subscriptionSize field")
 		}
 		logger.Info("subscriptionSize field is deprecated. Use mode and value fields instead")
-		meta.mode = pubsubModeSubscriptionSize
 		subSizeValue, err := strconv.ParseFloat(subSize, 64)
 		if err != nil {
 			return nil, fmt.Errorf("value parsing error %w", err)
@@ -87,15 +83,7 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 	} else {
 		if modePresent {
 			meta.mode = mode
-		}
-
-		switch meta.mode {
-		case pubsubModeSubscriptionSize:
-			meta.value = defaultTargetSubscriptionSize
-		case pubsubModeOldestUnackedMessageAge:
-			meta.value = defaultTargetOldestUnackedMessageAge
-		default:
-			return nil, fmt.Errorf("trigger mode %s must be one of %s, %s", meta.mode, pubsubModeSubscriptionSize, pubsubModeOldestUnackedMessageAge)
+			meta.value = pubSubDefaultValue
 		}
 
 		if valuePresent {
@@ -167,22 +155,20 @@ func (s *pubsubScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec 
 
 // GetMetricsAndActivity connects to Stack Driver and finds the size of the pub sub subscription
 func (s *pubsubScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	var value float64
-	var err error
+	mode := s.metadata.mode
 
-	switch s.metadata.mode {
-	case pubsubModeSubscriptionSize:
-		value, err = s.getMetrics(ctx, pubSubStackDriverSubscriptionSizeMetricName)
-		if err != nil {
-			s.logger.Error(err, "error getting subscription size")
-			return []external_metrics.ExternalMetricValue{}, false, err
-		}
-	case pubsubModeOldestUnackedMessageAge:
-		value, err = s.getMetrics(ctx, pubSubStackDriverOldestUnackedMessageAgeMetricName)
-		if err != nil {
-			s.logger.Error(err, "error getting oldest unacked message age")
-			return []external_metrics.ExternalMetricValue{}, false, err
-		}
+	// SubscriptionSize is actually NumUndeliveredMessages in GCP PubSub.
+	// Considering backward compatibility, fallback "SubscriptionSize" to "NumUndeliveredMessages"
+	if mode == pubSubModeSubscriptionSize {
+		mode = "NumUndeliveredMessages"
+	}
+
+	metricType := prefixPubSubStackDriverSubscription + snakeCase(mode)
+
+	value, err := s.getMetrics(ctx, metricType)
+	if err != nil {
+		s.logger.Error(err, "error getting metric", metricType)
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, value)
@@ -233,4 +219,15 @@ func getSubscriptionData(s *pubsubScaler) (string, string) {
 		subscriptionID = s.metadata.subscriptionName
 	}
 	return subscriptionID, projectID
+}
+
+var (
+	regexpFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")
+	regexpAllCap   = regexp.MustCompile("([a-z0-9])([A-Z])")
+)
+
+func snakeCase(camelCase string) string {
+	snake := regexpFirstCap.ReplaceAllString(camelCase, "${1}_${2}")
+	snake = regexpAllCap.ReplaceAllString(snake, "${1}_${2}")
+	return strings.ToLower(snake)
 }
