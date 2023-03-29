@@ -20,7 +20,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "redis-sentinel-streams-test"
+	testName = "redis-sentinel-streams-test-length"
 )
 
 var (
@@ -92,6 +92,8 @@ spec:
           value: {{.RedisPassword}}
         - name: REDIS_SENTINEL_MASTER
           value: mymaster
+        - name: DELETE_MESSAGES
+          value: "1"
 `
 
 	secretTemplate = `apiVersion: v1
@@ -142,9 +144,8 @@ spec:
       hostsFromEnv: REDIS_HOSTS
       portsFromEnv: REDIS_PORTS
       stream: my-stream
-      consumerGroup: consumer-group-1
+      streamLength: "10"
       sentinelMaster: mymaster
-      pendingEntriesCount: "10"
     authenticationRef:
       name: {{.TriggerAuthenticationName}}
 `
