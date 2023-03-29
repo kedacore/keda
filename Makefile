@@ -247,6 +247,9 @@ deploy: kustomize manifests kustomize ## Deploy controller to the K8s cluster sp
 	$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda=${IMAGE_CONTROLLER} && \
 	if [ "$(AZURE_RUN_AAD_POD_IDENTITY_TESTS)" = true ]; then \
 		$(KUSTOMIZE) edit add label --force aadpodidbinding:keda; \
+	fi && \
+	if [ "$(AZURE_RUN_WORKLOAD_IDENTITY_TESTS)" = true ]; then \
+		$(KUSTOMIZE) edit add label --force azure.workload.identity/use:true; \
 	fi
 	cd config/metrics-server && \
     $(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-metrics-apiserver=${IMAGE_ADAPTER} && \
