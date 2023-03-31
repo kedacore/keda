@@ -31,7 +31,7 @@ var (
 	secretName                  = fmt.Sprintf("%s-secret", testName)
 	metricsServerEndpoint       = fmt.Sprintf("http://%s.%s.svc.cluster.local:8080/api/value", serviceName, namespace)
 	minReplicas                 = 0
-	maxReplicas                 = 5
+	maxReplicas                 = 1
 	pollingInterval             = 1 // (don't set it to 0 to avoid cpu leaks)
 	cooldownPeriod              = 0
 )
@@ -165,6 +165,7 @@ metadata:
   generateName: update-ms-value-
   namespace: {{.TestNamespace}}
 spec:
+  backoffLimit: 4
   template:
     spec:
       containers:
@@ -172,7 +173,7 @@ spec:
         image: curlimages/curl
         imagePullPolicy: Always
         command: ["curl", "-X", "POST", "{{.MetricsServerEndpoint}}/{{.MetricValue}}"]
-      restartPolicy: Never
+      restartPolicy: OnFailure
 `
 
 	serviceTemplate = `
@@ -202,7 +203,7 @@ func TestPollingInterval(t *testing.T) {
 	data, templates := getTemplateData()
 	CreateKubernetesResources(t, kc, namespace, data, templates)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 18, 10),
 		"replica count should be %d after 3 minutes", minReplicas)
 
 	testPollingIntervalUp(t, kc, data)
@@ -218,69 +219,65 @@ func testPollingIntervalUp(t *testing.T, kc *kubernetes.Clientset, data template
 	data.MetricValue = 0
 	KubectlCreateWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 0, 180, 3),
-		"replica count should be %d after 3 minutes", 0)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 18, 10),
+		"replica count should be %d after 3 minutes", minReplicas)
 
-	// wait for atleast 60+5 seconds before getting new metric
-	data.PollingInterval = 60 + 5 // 5 seconds as a reserve
+	// wait for atleast 60+30 seconds before getting new metric
+	data.PollingInterval = 60 + 30 // 30 seconds as a reserve
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	data.MetricValue = 1
+	data.MetricValue = maxReplicas
 	KubectlCreateWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 0, 60)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, minReplicas, 60)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 1, 180, 3),
-		"replica count should be %d after 3 minutes", 1)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, maxReplicas, 6, 10),
+		"replica count should be %d after 1 minutes", maxReplicas)
 }
 
 func testPollingIntervalDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- test Polling Interval down ---")
 
-	data.CooldownPeriod = 0 // remove cooldownPeriod to test PI
-	data.PollingInterval = 1
-	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-
 	data.MetricValue = 1
 	KubectlCreateWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 1, 180, 3),
-		"replica count should be %d after 3 minutes", 1)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, maxReplicas, 18, 10),
+		"replica count should be %d after 3 minutes", minReplicas)
 
-	// wait for atleast 60+5 seconds before getting new metric
-	data.PollingInterval = 60 + 5 // 5 seconds as a reserve
-
+	// wait for atleast 60+30 seconds before getting new metric
+	data.PollingInterval = 60 + 30 // 30 seconds as a reserve
+	data.CooldownPeriod = 0
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	data.MetricValue = 0 // go to minReplicas
+	data.MetricValue = minReplicas
 	KubectlCreateWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 1, 60)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, maxReplicas, 60)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 0, 180, 3),
-		"replica count should be %d after 3 minutes", 0)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 6, 10),
+		"replica count should be %d after 1 minutes", maxReplicas)
 }
 
 func testCooldownPeriod(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- test Cooldown Period ---")
 
-	data.PollingInterval = 1     // remove polling interval to test CP (don't set it to 0 to avoid cpu leaks)
-	data.CooldownPeriod = 60 + 5 // 5 seconds as a reserve
+	data.PollingInterval = 5      // remove polling interval to test CP (don't set it to 0 to avoid cpu leaks)
+	data.CooldownPeriod = 60 + 30 // 30 seconds as a reserve
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
 	data.MetricValue = 1
 	KubectlCreateWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 1, 180, 3),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, maxReplicas, 18, 10),
 		"replica count should be %d after 3 minutes", 1)
 
 	data.MetricValue = 0
 	KubectlCreateWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 1, 60)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, maxReplicas, 60)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 0, 180, 3),
-		"replica count should be %d after 3 minutes", 0)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 6, 10),
+		"replica count should be %d after 1 minute", minReplicas)
 }
 
 func getTemplateData() (templateData, []Template) {
