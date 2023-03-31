@@ -78,7 +78,7 @@ spec:
                                                               --filter="" --max-deliver="-1" --max-pending=1000
                                                               --no-headers-only --wait=5s --backoff=none'
 				]
-      restartPolicy: Never
+      restartPolicy: OnFailure
   backoffLimit: 4
   `
 
@@ -128,7 +128,7 @@ spec:
           value: {{.NatsAddress}}
         - name: NUM_MESSAGES
           value: "{{.NumberOfMessages}}"
-      restartPolicy: Never
+      restartPolicy: OnFailure
   backoffLimit: 4
 `
 
@@ -152,7 +152,7 @@ spec:
           value: {{.NatsAddress}}
         - name: NUM_MESSAGES
           value: "{{.NumberOfMessages}}"
-      restartPolicy: Never
+      restartPolicy: OnFailure
   backoffLimit: 4
 `
 

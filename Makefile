@@ -93,11 +93,11 @@ get-cluster-context: ## Get Azure cluster context.
 e2e-test: get-cluster-context ## Run e2e tests against Azure cluster.
 	TERMINFO=/etc/terminfo
 	TERM=linux
-	./tests/run-all.sh
+	go run -tags e2e ./tests/run-all.go
 
 .PHONY: e2e-test-local
 e2e-test-local: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/config.
-	./tests/run-all.sh
+	go run -tags e2e ./tests/run-all.go
 
 .PHONY: e2e-test-clean-crds
 e2e-test-clean-crds: ## Delete all scaled objects and jobs across all namespaces
@@ -247,6 +247,9 @@ deploy: kustomize manifests kustomize ## Deploy controller to the K8s cluster sp
 	$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda=${IMAGE_CONTROLLER} && \
 	if [ "$(AZURE_RUN_AAD_POD_IDENTITY_TESTS)" = true ]; then \
 		$(KUSTOMIZE) edit add label --force aadpodidbinding:keda; \
+	fi && \
+	if [ "$(AZURE_RUN_WORKLOAD_IDENTITY_TESTS)" = true ]; then \
+		$(KUSTOMIZE) edit add label --force azure.workload.identity/use:true; \
 	fi
 	cd config/metrics-server && \
     $(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-metrics-apiserver=${IMAGE_ADAPTER} && \

@@ -13,3 +13,7 @@
       defaultMode: 420
       secretName: custom-cas
       optional: true
+
+- op: replace
+  path: /spec/template/spec/containers/0/resources/requests/cpu
+  value: 1

@@ -32,7 +32,7 @@ var (
 	metricsServerEndpoint       = fmt.Sprintf("http://%s.%s.svc.cluster.local:8080/api/value", serviceName, namespace)
 	minReplicas                 = 0
 	maxReplicas                 = 5
-	pollingInterval             = 0
+	pollingInterval             = 1 // (don't set it to 0 to avoid cpu leaks)
 	cooldownPeriod              = 0
 )
 
@@ -264,7 +264,7 @@ func testPollingIntervalDown(t *testing.T, kc *kubernetes.Clientset, data templa
 func testCooldownPeriod(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- test Cooldown Period ---")
 
-	data.PollingInterval = 0     // remove polling interval to test CP
+	data.PollingInterval = 1     // remove polling interval to test CP (don't set it to 0 to avoid cpu leaks)
 	data.CooldownPeriod = 60 + 5 // 5 seconds as a reserve
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 

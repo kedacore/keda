@@ -617,20 +617,19 @@ func RemoveANSI(input string) string {
 	return reg.ReplaceAllString(input, "")
 }
 
-func FindPodLogs(t *testing.T, kc *kubernetes.Clientset, namespace, label string) []string {
+func FindPodLogs(kc *kubernetes.Clientset, namespace, label string) ([]string, error) {
 	var podLogs []string
-	t.Logf("Searching for pod logs.........")
 	pods, err := kc.CoreV1().Pods(namespace).List(context.TODO(),
 		metav1.ListOptions{LabelSelector: label})
 	if err != nil {
-		assert.NoErrorf(t, err, "no pod in the list - %s", err)
+		return []string{}, err
 	}
 	var podLogRequest *rest.Request
 	for _, v := range pods.Items {
 		podLogRequest = kc.CoreV1().Pods(namespace).GetLogs(v.Name, &corev1.PodLogOptions{})
 		stream, err := podLogRequest.Stream(context.TODO())
 		if err != nil {
-			assert.NoErrorf(t, err, "cannot open the stream - %s", err)
+			return []string{}, err
 		}
 		defer stream.Close()
 		for {
@@ -643,12 +642,12 @@ func FindPodLogs(t *testing.T, kc *kubernetes.Clientset, namespace, label string
 				continue
 			}
 			if err != nil {
-				assert.NoErrorf(t, err, "cannot read log stream - %s", err)
+				return []string{}, err
 			}
 			podLogs = append(podLogs, string(buf[:numBytes]))
 		}
 	}
-	return podLogs
+	return podLogs, nil
 }
 
 // Delete all pods in namespace by selector
