@@ -67,7 +67,7 @@ require (
 	github.com/xhit/go-str2duration/v2 v2.1.0
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a
 	go.etcd.io/etcd/client/v3 v3.5.7
-	go.mongodb.org/mongo-driver v1.11.2
+	go.mongodb.org/mongo-driver v1.11.3
 	golang.org/x/oauth2 v0.6.0
 	google.golang.org/api v0.111.0
 	google.golang.org/grpc v1.53.0

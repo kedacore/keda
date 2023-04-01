@@ -94,17 +94,17 @@ func DecompressPayload(in []byte, opts CompressionOpts) ([]byte, error) {
 		}
 		return uncompressed, nil
 	case wiremessage.CompressorZstd:
-		w, err := zstd.NewReader(bytes.NewBuffer(in))
+		r, err := zstd.NewReader(bytes.NewBuffer(in))
 		if err != nil {
 			return nil, err
 		}
-		defer w.Close()
-		var b bytes.Buffer
-		_, err = io.Copy(&b, w)
+		defer r.Close()
+		uncompressed := make([]byte, opts.UncompressedSize)
+		_, err = io.ReadFull(r, uncompressed)
 		if err != nil {
 			return nil, err
 		}
-		return b.Bytes(), nil
+		return uncompressed, nil
 	default:
 		return nil, fmt.Errorf("unknown compressor ID %v", opts.Compressor)
 	}
