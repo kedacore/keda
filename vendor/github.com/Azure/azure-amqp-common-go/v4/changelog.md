@@ -1,5 +1,13 @@
 # Change Log
 
+## `v4.1.0`
+- Update to the latest go-amqp
+  [PR#72](https://github.com/Azure/azure-amqp-common-go/pull/72)
+
+## `v4.0.0`
+- Updated to the latest go-amqp which includes a few minor changes in public surface area.
+  [PR#68](https://github.com/Azure/azure-amqp-common-go/pull/68)
+
 ## `v3.2.0`
 - Change the default credits for the RPC link to be more reasonable (1000)
   [PR#54](https://github.com/Azure/azure-amqp-common-go/pull/54)

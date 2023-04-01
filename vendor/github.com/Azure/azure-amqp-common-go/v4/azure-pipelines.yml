@@ -9,12 +9,12 @@ jobs:
 
     strategy:
       matrix:
-        Linux_Go113:
-          vm.image: 'ubuntu-18.04'
-          go.version: '1.14.10'
-        Linux_Go114:
-          vm.image: 'ubuntu-18.04'
-          go.version: '1.15.3'
+        Linux_Go118:
+          vm.image: 'ubuntu-20.04'
+          go.version: '1.18.8'
+        Linux_Go119:
+          vm.image: 'ubuntu-20.04'
+          go.version: '1.19.3'
 
     pool:
       vmImage: '$(vm.image)'
@@ -37,12 +37,11 @@ jobs:
 
       - script: |
           set -e
-          go get github.com/jstemmer/go-junit-report
-          go get github.com/axw/gocov/gocov
-          go get github.com/AlekSi/gocov-xml
-          go get -u github.com/matm/gocov-html
-          go get -u golang.org/x/lint/golint
-          go get github.com/fzipp/gocyclo/cmd/gocyclo
+          go install github.com/jstemmer/go-junit-report@v0.9.1
+          go install github.com/axw/gocov/gocov@v1.1.0
+          go install github.com/AlekSi/gocov-xml@v1.0.0
+          go install github.com/matm/gocov-html@v0.0.0-20200509184451-71874e2e203b
+          go install github.com/fzipp/gocyclo/cmd/gocyclo@v0.6.0
         workingDirectory: '$(sdkPath)'
         displayName: 'Install Dependencies'
 
@@ -57,7 +56,9 @@ jobs:
         displayName: 'Vet'
 
       - script: |
-          golint ./...
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.50.1
+          golangci-lint --version
+          golangci-lint run
         workingDirectory: '$(sdkPath)'
         displayName: 'Lint'
 

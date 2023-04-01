@@ -7,7 +7,7 @@ require (
 	cloud.google.com/go/monitoring v1.12.0
 	cloud.google.com/go/storage v1.29.0
 	github.com/Azure/azure-amqp-common-go/v3 v3.2.3
-	github.com/Azure/azure-event-hubs-go/v3 v3.3.20
+	github.com/Azure/azure-event-hubs-go/v3 v3.5.0
 	github.com/Azure/azure-kusto-go v0.9.2
 	github.com/Azure/azure-sdk-for-go v68.0.0+incompatible
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.4.0-beta.1
@@ -120,9 +120,10 @@ require (
 	cloud.google.com/go/compute v1.18.0 // indirect
 	cloud.google.com/go/iam v0.12.0 // indirect
 	code.cloudfoundry.org/clock v1.0.0 // indirect
+	github.com/Azure/azure-amqp-common-go/v4 v4.1.0 // indirect
 	github.com/Azure/azure-pipeline-go v0.2.3 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.1.2 // indirect
-	github.com/Azure/go-amqp v0.17.5 // indirect
+	github.com/Azure/go-amqp v0.19.1 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.9.22 // indirect
 	github.com/Azure/go-autorest/autorest/azure/cli v0.4.6 // indirect
@@ -272,13 +273,13 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
-	golang.org/x/crypto v0.6.0 // indirect
+	golang.org/x/crypto v0.7.0 // indirect
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/net v0.8.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.5.0 // indirect
-	golang.org/x/term v0.5.0 // indirect
-	golang.org/x/text v0.7.0 // indirect
+	golang.org/x/sys v0.6.0 // indirect
+	golang.org/x/term v0.6.0 // indirect
+	golang.org/x/text v0.8.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect

@@ -30,18 +30,22 @@ cloud.google.com/go/storage/internal/apiv2/stubs
 code.cloudfoundry.org/clock
 # github.com/Azure/azure-amqp-common-go/v3 v3.2.3
 ## explicit; go 1.12
-github.com/Azure/azure-amqp-common-go/v3
 github.com/Azure/azure-amqp-common-go/v3/aad
 github.com/Azure/azure-amqp-common-go/v3/auth
-github.com/Azure/azure-amqp-common-go/v3/cbs
-github.com/Azure/azure-amqp-common-go/v3/conn
-github.com/Azure/azure-amqp-common-go/v3/internal
-github.com/Azure/azure-amqp-common-go/v3/internal/tracing
-github.com/Azure/azure-amqp-common-go/v3/rpc
-github.com/Azure/azure-amqp-common-go/v3/sas
-github.com/Azure/azure-amqp-common-go/v3/uuid
-# github.com/Azure/azure-event-hubs-go/v3 v3.3.20
-## explicit; go 1.13
+# github.com/Azure/azure-amqp-common-go/v4 v4.1.0
+## explicit; go 1.18
+github.com/Azure/azure-amqp-common-go/v4
+github.com/Azure/azure-amqp-common-go/v4/aad
+github.com/Azure/azure-amqp-common-go/v4/auth
+github.com/Azure/azure-amqp-common-go/v4/cbs
+github.com/Azure/azure-amqp-common-go/v4/conn
+github.com/Azure/azure-amqp-common-go/v4/internal
+github.com/Azure/azure-amqp-common-go/v4/internal/tracing
+github.com/Azure/azure-amqp-common-go/v4/rpc
+github.com/Azure/azure-amqp-common-go/v4/sas
+github.com/Azure/azure-amqp-common-go/v4/uuid
+# github.com/Azure/azure-event-hubs-go/v3 v3.5.0
+## explicit; go 1.18
 github.com/Azure/azure-event-hubs-go/v3
 github.com/Azure/azure-event-hubs-go/v3/atom
 github.com/Azure/azure-event-hubs-go/v3/persist
@@ -124,13 +128,16 @@ github.com/Azure/azure-storage-blob-go/azblob
 # github.com/Azure/azure-storage-queue-go v0.0.0-20191125232315-636801874cdd
 ## explicit
 github.com/Azure/azure-storage-queue-go/azqueue
-# github.com/Azure/go-amqp v0.17.5
-## explicit; go 1.12
+# github.com/Azure/go-amqp v0.19.1
+## explicit; go 1.18
 github.com/Azure/go-amqp
 github.com/Azure/go-amqp/internal/bitmap
 github.com/Azure/go-amqp/internal/buffer
+github.com/Azure/go-amqp/internal/debug
 github.com/Azure/go-amqp/internal/encoding
 github.com/Azure/go-amqp/internal/frames
+github.com/Azure/go-amqp/internal/queue
+github.com/Azure/go-amqp/internal/shared
 # github.com/Azure/go-autorest v14.2.0+incompatible
 ## explicit
 github.com/Azure/go-autorest
@@ -1191,7 +1198,7 @@ go.uber.org/zap/internal/color
 go.uber.org/zap/internal/exit
 go.uber.org/zap/zapcore
 go.uber.org/zap/zapgrpc
-# golang.org/x/crypto v0.6.0 => golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
+# golang.org/x/crypto v0.7.0 => golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
 ## explicit; go 1.17
 golang.org/x/crypto/cast5
 golang.org/x/crypto/cryptobyte
@@ -1251,7 +1258,7 @@ golang.org/x/oauth2/jwt
 ## explicit
 golang.org/x/sync/errgroup
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.5.0
+# golang.org/x/sys v0.6.0
 ## explicit; go 1.17
 golang.org/x/sys/cpu
 golang.org/x/sys/execabs
@@ -1260,10 +1267,10 @@ golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
-# golang.org/x/term v0.5.0
+# golang.org/x/term v0.6.0
 ## explicit; go 1.17
 golang.org/x/term
-# golang.org/x/text v0.7.0 => golang.org/x/text v0.7.0
+# golang.org/x/text v0.8.0 => golang.org/x/text v0.7.0
 ## explicit; go 1.17
 golang.org/x/text/cases
 golang.org/x/text/encoding
