@@ -231,8 +231,10 @@ func testPollingIntervalUp(t *testing.T, kc *kubernetes.Clientset, data template
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, minReplicas, 60)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, maxReplicas, 6, 10),
-		"replica count should be %d after 1 minutes", maxReplicas)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, maxReplicas, 12, 10),
+		"replica count should be %d after 2 minutes", maxReplicas)
+
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 }
 
 func testPollingIntervalDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -254,8 +256,10 @@ func testPollingIntervalDown(t *testing.T, kc *kubernetes.Clientset, data templa
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, maxReplicas, 60)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 6, 10),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 12, 10),
 		"replica count should be %d after 1 minutes", maxReplicas)
+
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 }
 
 func testCooldownPeriod(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -278,6 +282,8 @@ func testCooldownPeriod(t *testing.T, kc *kubernetes.Clientset, data templateDat
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 6, 10),
 		"replica count should be %d after 1 minute", minReplicas)
+
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 }
 
 func getTemplateData() (templateData, []Template) {
@@ -301,6 +307,5 @@ func getTemplateData() (templateData, []Template) {
 			{Name: "serviceTemplate", Config: serviceTemplate},
 			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }

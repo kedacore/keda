@@ -194,7 +194,9 @@ func TestNATSJetStreamScaler(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	// Create stream and consumer.
-	installStreamAndConsumer(t, testNamespace, natsAddress)
+	data.NatsStream = "standalone"
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", nats.ScaledObjectTemplate)
+	installStreamAndConsumer(t, data.NatsStream, testNamespace, natsAddress)
 	assert.True(t, WaitForJobSuccess(t, kc, "stream", testNamespace, 60, 3),
 		"stream and consumer creation job should be success")
 
@@ -212,12 +214,12 @@ func TestNATSJetStreamScaler(t *testing.T) {
 }
 
 // installStreamAndConsumer creates stream and consumer.
-func installStreamAndConsumer(t *testing.T, namespace, natsAddress string) {
+func installStreamAndConsumer(t *testing.T, stream, namespace, natsAddress string) {
 	data := nats.JetStreamTemplateData{
 		TestNamespace:  namespace,
 		NatsAddress:    natsAddress,
 		NatsConsumer:   nats.NatsJetStreamConsumerName,
-		NatsStream:     nats.NatsJetStreamStreamName,
+		NatsStream:     stream,
 		StreamReplicas: 1,
 	}
 
