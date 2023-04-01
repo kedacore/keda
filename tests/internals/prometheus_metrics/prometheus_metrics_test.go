@@ -257,7 +257,7 @@ func TestPrometheusMetrics(t *testing.T) {
 	testScalerMetricLatency(t)
 	testScalerActiveMetric(t)
 	testSclaedObjectErrors(t, data)
-	testSclaerErrors(t, data)
+	testSclaerErrors(t)
 	testScalerErrorsTotal(t, data)
 	testMetricsServerScalerMetricValue(t)
 	testOperatorMetrics(t, kc, data)
@@ -330,14 +330,14 @@ func testSclaedObjectErrors(t *testing.T, data templateData) {
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 	if val, ok := family["keda_scaled_object_errors"]; ok {
-		errCounterVal1 := getErrorMetricsValue(t, val)
+		errCounterVal1 := getErrorMetricsValue(val)
 
 		// wait for 2 seconds as pollinginterval is 2
 		time.Sleep(2 * time.Second)
 
 		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 		if val, ok := family["keda_scaled_object_errors"]; ok {
-			errCounterVal2 := getErrorMetricsValue(t, val)
+			errCounterVal2 := getErrorMetricsValue(val)
 			assert.Greater(t, errCounterVal2, errCounterVal1)
 		} else {
 			t.Errorf("metric not available")
@@ -347,19 +347,19 @@ func testSclaedObjectErrors(t *testing.T, data templateData) {
 	}
 }
 
-func testSclaerErrors(t *testing.T, data templateData) {
+func testSclaerErrors(t *testing.T) {
 	t.Log("--- testing sclaer errors ---")
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 	if val, ok := family["keda_scaler_errors"]; ok {
-		errCounterVal1 := getErrorMetricsValue(t, val)
+		errCounterVal1 := getErrorMetricsValue(val)
 
 		// wait for 2 seconds as pollinginterval is 2
 		time.Sleep(2 * time.Second)
 
 		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 		if val, ok := family["keda_scaler_errors"]; ok {
-			errCounterVal2 := getErrorMetricsValue(t, val)
+			errCounterVal2 := getErrorMetricsValue(val)
 			assert.Greater(t, errCounterVal2, errCounterVal1)
 		} else {
 			t.Errorf("metric not available")
@@ -374,14 +374,14 @@ func testScalerErrorsTotal(t *testing.T, data templateData) {
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 	if val, ok := family["keda_scaler_errors_total"]; ok {
-		errCounterVal1 := getErrorMetricsValue(t, val)
+		errCounterVal1 := getErrorMetricsValue(val)
 
 		// wait for 2 seconds as pollinginterval is 2
 		time.Sleep(2 * time.Second)
 
 		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 		if val, ok := family["keda_scaler_errors_total"]; ok {
-			errCounterVal2 := getErrorMetricsValue(t, val)
+			errCounterVal2 := getErrorMetricsValue(val)
 			assert.Greater(t, errCounterVal2, errCounterVal1)
 		} else {
 			t.Errorf("metric not available")
@@ -394,14 +394,14 @@ func testScalerErrorsTotal(t *testing.T, data templateData) {
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 }
 
-func getErrorMetricsValue(t *testing.T, val *promModel.MetricFamily) float64 {
-
-	if val.GetName() == "keda_scaler_errors_total" {
+func getErrorMetricsValue(val *promModel.MetricFamily) float64 {
+	switch val.GetName() {
+	case "keda_scaler_errors_total":
 		metrics := val.GetMetric()
 		for _, metric := range metrics {
 			return metric.GetCounter().GetValue()
 		}
-	} else if val.GetName() == "keda_scaled_object_errors" {
+	case "keda_scaled_object_errors":
 		metrics := val.GetMetric()
 		for _, metric := range metrics {
 			labels := metric.GetLabel()
@@ -411,7 +411,7 @@ func getErrorMetricsValue(t *testing.T, val *promModel.MetricFamily) float64 {
 				}
 			}
 		}
-	} else if val.GetName() == "keda_scaler_errors" {
+	case "keda_scaler_errors":
 		metrics := val.GetMetric()
 		for _, metric := range metrics {
 			labels := metric.GetLabel()
