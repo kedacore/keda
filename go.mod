@@ -73,13 +73,13 @@ require (
 	google.golang.org/grpc v1.53.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.3.0
 	google.golang.org/protobuf v1.28.1
-	k8s.io/api v0.26.2
-	k8s.io/apimachinery v0.26.2
-	k8s.io/client-go v0.26.2
-	k8s.io/code-generator v0.26.2
+	k8s.io/api v0.26.3
+	k8s.io/apimachinery v0.26.3
+	k8s.io/client-go v0.26.3
+	k8s.io/code-generator v0.26.3
 	k8s.io/klog/v2 v2.90.1
 	k8s.io/kube-openapi v0.0.0-20230303024457-afdc3dddf62d
-	k8s.io/metrics v0.26.2
+	k8s.io/metrics v0.26.3
 	k8s.io/utils v0.0.0-20230220204549-a5ecb0141aa5
 	knative.dev/pkg v0.0.0-20230306194819-b77a78c6c0ad
 	sigs.k8s.io/controller-runtime v0.14.5
