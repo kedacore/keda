@@ -126,7 +126,7 @@ metadata:
 spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
-  pollingInterval: 5
+  pollingInterval: 2
   idleReplicaCount: 0
   minReplicaCount: 1
   maxReplicaCount: 2
@@ -326,29 +326,25 @@ func testSclaedObjectErrors(t *testing.T, data templateData) {
 	t.Log("--- testing scaled object errors ---")
 
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-
 	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
-
-	time.Sleep(5 * time.Second)
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 	if val, ok := family["keda_scaled_object_errors"]; ok {
-		var found bool
-		metrics := val.GetMetric()
-		for _, metric := range metrics {
-			labels := metric.GetLabel()
-			for _, label := range labels {
-				if *label.Name == "scaledObject" && *label.Value == wrongScaledObjectName {
-					assert.NotEqual(t, float64(0), *metric.Counter.Value)
-					found = true
-				}
-			}
+		errCounterVal1 := getErrorMetricsValue(t, val)
+
+		// wait for 2 seconds as pollinginterval is 2
+		time.Sleep(2 * time.Second)
+
+		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+		if val, ok := family["keda_scaled_object_errors"]; ok {
+			errCounterVal2 := getErrorMetricsValue(t, val)
+			assert.Greater(t, errCounterVal2, errCounterVal1)
+		} else {
+			t.Errorf("metric not available")
 		}
-		assert.Equal(t, true, found)
 	} else {
 		t.Errorf("metric not available")
 	}
-
 }
 
 func testSclaerErrors(t *testing.T, data templateData) {
@@ -356,18 +352,18 @@ func testSclaerErrors(t *testing.T, data templateData) {
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 	if val, ok := family["keda_scaler_errors"]; ok {
-		var found bool
-		metrics := val.GetMetric()
-		for _, metric := range metrics {
-			labels := metric.GetLabel()
-			for _, label := range labels {
-				if *label.Name == "scaler" && *label.Value == "prometheusScaler" {
-					assert.NotEqual(t, float64(0), *metric.Counter.Value)
-					found = true
-				}
-			}
+		errCounterVal1 := getErrorMetricsValue(t, val)
+
+		// wait for 2 seconds as pollinginterval is 2
+		time.Sleep(2 * time.Second)
+
+		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+		if val, ok := family["keda_scaler_errors"]; ok {
+			errCounterVal2 := getErrorMetricsValue(t, val)
+			assert.Greater(t, errCounterVal2, errCounterVal1)
+		} else {
+			t.Errorf("metric not available")
 		}
-		assert.Equal(t, true, found)
 	} else {
 		t.Errorf("metric not available")
 	}
@@ -378,9 +374,17 @@ func testScalerErrorsTotal(t *testing.T, data templateData) {
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 	if val, ok := family["keda_scaler_errors_total"]; ok {
-		metrics := val.GetMetric()
-		for _, metric := range metrics {
-			assert.NotEqual(t, float64(0), metric.GetCounter().GetValue())
+		errCounterVal1 := getErrorMetricsValue(t, val)
+
+		// wait for 2 seconds as pollinginterval is 2
+		time.Sleep(2 * time.Second)
+
+		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+		if val, ok := family["keda_scaler_errors_total"]; ok {
+			errCounterVal2 := getErrorMetricsValue(t, val)
+			assert.Greater(t, errCounterVal2, errCounterVal1)
+		} else {
+			t.Errorf("metric not available")
 		}
 	} else {
 		t.Errorf("metric not available")
@@ -388,6 +392,37 @@ func testScalerErrorsTotal(t *testing.T, data templateData) {
 
 	KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+}
+
+func getErrorMetricsValue(t *testing.T, val *promModel.MetricFamily) float64 {
+
+	if val.GetName() == "keda_scaler_errors_total" {
+		metrics := val.GetMetric()
+		for _, metric := range metrics {
+			return metric.GetCounter().GetValue()
+		}
+	} else if val.GetName() == "keda_scaled_object_errors" {
+		metrics := val.GetMetric()
+		for _, metric := range metrics {
+			labels := metric.GetLabel()
+			for _, label := range labels {
+				if *label.Name == "scaledObject" && *label.Value == wrongScaledObjectName {
+					return *metric.Counter.Value
+				}
+			}
+		}
+	} else if val.GetName() == "keda_scaler_errors" {
+		metrics := val.GetMetric()
+		for _, metric := range metrics {
+			labels := metric.GetLabel()
+			for _, label := range labels {
+				if *label.Name == "scaler" && *label.Value == "prometheusScaler" {
+					return *metric.Counter.Value
+				}
+			}
+		}
+	}
+	return 0
 }
 
 func testScalerMetricLatency(t *testing.T) {
