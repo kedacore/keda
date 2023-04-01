@@ -628,7 +628,7 @@ github.com/hashicorp/hcl/json/token
 # github.com/hashicorp/vault/api v1.9.0
 ## explicit; go 1.19
 github.com/hashicorp/vault/api
-# github.com/imdario/mergo v0.3.13
+# github.com/imdario/mergo v0.3.15
 ## explicit; go 1.13
 github.com/imdario/mergo
 # github.com/inconshreveable/mousetrap v1.1.0
