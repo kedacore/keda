@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	promModel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
@@ -29,6 +30,7 @@ var (
 	deploymentName            = fmt.Sprintf("%s-deployment", testName)
 	monitoredDeploymentName   = fmt.Sprintf("%s-monitored", testName)
 	scaledObjectName          = fmt.Sprintf("%s-so", testName)
+	wrongScaledObjectName     = fmt.Sprintf("%s-wrong", testName)
 	cronScaledJobName         = fmt.Sprintf("%s-cron-sj", testName)
 	clientName                = fmt.Sprintf("%s-client", testName)
 	kedaOperatorPrometheusURL = "http://keda-operator.keda.svc.cluster.local:8080/metrics"
@@ -41,6 +43,7 @@ type templateData struct {
 	TestNamespace           string
 	DeploymentName          string
 	ScaledObjectName        string
+	WrongScaledObjectName   string
 	CronScaledJobName       string
 	MonitoredDeploymentName string
 	ClientName              string
@@ -114,26 +117,28 @@ spec:
         value: '1'
 `
 
-	wrongScledObjectTemplate = `
-	apiVersion: keda.sh/v1alpha1
-	kind: ScaledObject
-	metadata:
-	  name: {{.ScaledObjectName}}
-	  namespace: {{.TestNamespace}}
-	spec:
-	  scaleTargetRef:
-		name: {{.DeploymentName}}
-	  pollingInterval: 5
-	  idleReplicaCount: 0
-	  minReplicaCount: 1
-	  maxReplicaCount: 2
-	  cooldownPeriod: 10
-	  triggers:
-		- type: kubernetes-workload
-		  metadata:
-			podSelector: 'app=non-existing-label'
-			value: '1'
-	`
+	wrongScaledObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.WrongScaledObjectName}}
+  namespace: {{.TestNamespace}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  pollingInterval: 5
+  idleReplicaCount: 0
+  minReplicaCount: 1
+  maxReplicaCount: 2
+  cooldownPeriod: 10
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://keda-prometheus.keda.svc.cluster.local:8080
+        metricName: keda_scaler_errors_total
+        threshold: '1'
+        query: 'keda_scaler_errors_total{namespace="{{.TestNamespace}}",scaledObject="{{.WrongScaledObjectName}}"}'
+`
 
 	cronScaledJobTemplate = `
 apiVersion: keda.sh/v1alpha1
@@ -251,6 +256,9 @@ func TestPrometheusMetrics(t *testing.T) {
 	testScalerMetricValue(t)
 	testScalerMetricLatency(t)
 	testScalerActiveMetric(t)
+	testSclaedObjectErrors(t, data)
+	testSclaerErrors(t, data)
+	testScalerErrorsTotal(t, data)
 	testMetricsServerScalerMetricValue(t)
 	testOperatorMetrics(t, kc, data)
 	testWebhookMetrics(t, data)
@@ -265,6 +273,7 @@ func getTemplateData() (templateData, []Template) {
 			TestNamespace:           testNamespace,
 			DeploymentName:          deploymentName,
 			ScaledObjectName:        scaledObjectName,
+			WrongScaledObjectName:   wrongScaledObjectName,
 			MonitoredDeploymentName: monitoredDeploymentName,
 			ClientName:              clientName,
 			CronScaledJobName:       cronScaledJobName,
@@ -311,6 +320,74 @@ func testScalerMetricValue(t *testing.T) {
 	} else {
 		t.Errorf("metric not available")
 	}
+}
+
+func testSclaedObjectErrors(t *testing.T, data templateData) {
+	t.Log("--- testing scaled object errors ---")
+
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+
+	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
+
+	time.Sleep(5 * time.Second)
+
+	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+	if val, ok := family["keda_scaled_object_errors"]; ok {
+		var found bool
+		metrics := val.GetMetric()
+		for _, metric := range metrics {
+			labels := metric.GetLabel()
+			for _, label := range labels {
+				if *label.Name == "scaledObject" && *label.Value == wrongScaledObjectName {
+					assert.NotEqual(t, float64(0), *metric.Counter.Value)
+					found = true
+				}
+			}
+		}
+		assert.Equal(t, true, found)
+	} else {
+		t.Errorf("metric not available")
+	}
+
+}
+
+func testSclaerErrors(t *testing.T, data templateData) {
+	t.Log("--- testing sclaer errors ---")
+
+	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+	if val, ok := family["keda_scaler_errors"]; ok {
+		var found bool
+		metrics := val.GetMetric()
+		for _, metric := range metrics {
+			labels := metric.GetLabel()
+			for _, label := range labels {
+				if *label.Name == "scaler" && *label.Value == "prometheusScaler" {
+					assert.NotEqual(t, float64(0), *metric.Counter.Value)
+					found = true
+				}
+			}
+		}
+		assert.Equal(t, true, found)
+	} else {
+		t.Errorf("metric not available")
+	}
+}
+
+func testScalerErrorsTotal(t *testing.T, data templateData) {
+	t.Log("--- testing sclaer errors toatl ---")
+
+	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+	if val, ok := family["keda_scaler_errors_total"]; ok {
+		metrics := val.GetMetric()
+		for _, metric := range metrics {
+			assert.NotEqual(t, float64(0), metric.GetCounter().GetValue())
+		}
+	} else {
+		t.Errorf("metric not available")
+	}
+
+	KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 }
 
 func testScalerMetricLatency(t *testing.T) {
@@ -392,15 +469,6 @@ func testOperatorMetrics(t *testing.T, kc *kubernetes.Clientset, data templateDa
 
 	KubectlDeleteWithTemplate(t, data, "cronScaledJobTemplate", cronScaledJobTemplate)
 	testOperatorMetricValues(t, kc)
-}
-
-func testSclaerError(t *testing.T, data templateData) {
-	t.Log("--- testing sclaer error ---")
-
-	data.ScaledObjectName = "wrong_object"
-	err := KubectlApplyWithErrors(t, data, "wrongScledObjectTemplate", wrongScledObjectTemplate)
-	assert.NoErrorf(t, err, "error applying scled object")
-
 }
 
 func testWebhookMetrics(t *testing.T, data templateData) {
