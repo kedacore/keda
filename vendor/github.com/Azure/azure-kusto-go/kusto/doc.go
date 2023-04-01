@@ -11,10 +11,10 @@ For details on the Azure Kusto service, see: https://azure.microsoft.com/en-us/s
 
 For general documentation on APIs and the Kusto query language, see: https://docs.microsoft.com/en-us/azure/data-explorer/
 
-
-Creating an Authorizer and a Client
+# Creating an Authorizer and a Client
 
 To begin using this package, create an Authorizer and a client targeting your Kusto endpoint:
+
 	// auth package is: "github.com/Azure/go-autorest/autorest/azure/auth"
 
 	authorizer := kusto.Authorization{
@@ -25,13 +25,14 @@ To begin using this package, create an Authorizer and a client targeting your Ku
 	if err != nil {
 		panic("add error handling")
 	}
+
 For more examples on ways to create an Authorization object, see the Authorization object documentation.
 
-
-Querying for Rows
+# Querying for Rows
 
 Kusto provides a single method for querying, Query().  Query uses a Stmt object to provides SQL-like injection protection
 and accepts only string constants for arguments.
+
 	// table package is: data/table
 
 	// Query our database table "systemNodes" for the CollectionTimes and the NodeIds.
@@ -55,8 +56,7 @@ and accepts only string constants for arguments.
 		panic("add error handling")
 	}
 
-
-Querying Rows Into Structs
+# Querying Rows Into Structs
 
 Keeping our query the same, instead of printing the Rows we will simply put them into a slice of structs
 
@@ -126,8 +126,7 @@ The following is a conversion table from the Kusto column types to native Go val
 
 For more information on Kusto scalar types, see: https://docs.microsoft.com/en-us/azure/kusto/query/scalar-data-types/
 
-
-Stmt
+# Stmt
 
 Every query is done using a Stmt. A Stmt is built with Go string constants and can do variable substitution
 using Kusto's Query Paramaters.
@@ -157,18 +156,17 @@ using Kusto's Query Paramaters.
 		),
 	)
 
-
-Ingest
+# Ingest
 
 Support for Kusto ingestion from local files, Azure Blob Storage and streaming is supported in the sub-package ingest.
 See documentation in that package for more details
 
-Mocking
+# Mocking
 
 To support mocking for this client in your code for hermetic testing purposes, this client supports mocking the data
 returned by our RowIterator object. Please see the MockRows documentation for code examples.
 
-Package Examples
+# Package Examples
 
 Below you will find a simple and complex example of doing Query() the represent compiled code:
 */

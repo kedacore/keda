@@ -23,7 +23,10 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 )
 
-const credNameAzureCLI = "AzureCLICredential"
+const (
+	credNameAzureCLI  = "AzureCLICredential"
+	timeoutCLIRequest = 10 * time.Second
+)
 
 // used by tests to fake invoking the CLI
 type azureCLITokenProvider func(ctx context.Context, resource string, tenantID string) ([]byte, error)
@@ -50,9 +53,8 @@ func (o *AzureCLICredentialOptions) init() {
 
 // AzureCLICredential authenticates as the identity logged in to the Azure CLI.
 type AzureCLICredential struct {
-	additionallyAllowedTenants []string
-	tenantID                   string
-	tokenProvider              azureCLITokenProvider
+	s             *syncer
+	tokenProvider azureCLITokenProvider
 }
 
 // NewAzureCLICredential constructs an AzureCLICredential. Pass nil to accept default options.
@@ -62,11 +64,9 @@ func NewAzureCLICredential(options *AzureCLICredentialOptions) (*AzureCLICredent
 		cp = *options
 	}
 	cp.init()
-	return &AzureCLICredential{
-		additionallyAllowedTenants: resolveAdditionallyAllowedTenants(cp.AdditionallyAllowedTenants),
-		tenantID:                   cp.TenantID,
-		tokenProvider:              cp.tokenProvider,
-	}, nil
+	c := AzureCLICredential{tokenProvider: cp.tokenProvider}
+	c.s = newSyncer(credNameAzureCLI, cp.TenantID, cp.AdditionallyAllowedTenants, c.requestToken, c.requestToken)
+	return &c, nil
 }
 
 // GetToken requests a token from the Azure CLI. This credential doesn't cache tokens, so every call invokes the CLI.
@@ -75,13 +75,13 @@ func (c *AzureCLICredential) GetToken(ctx context.Context, opts policy.TokenRequ
 	if len(opts.Scopes) != 1 {
 		return azcore.AccessToken{}, errors.New(credNameAzureCLI + ": GetToken() requires exactly one scope")
 	}
-	tenant, err := resolveTenant(c.tenantID, opts.TenantID, c.additionallyAllowedTenants)
-	if err != nil {
-		return azcore.AccessToken{}, err
-	}
-	// CLI expects an AAD v1 resource, not a v2 resource
-	resource := strings.TrimSuffix(opts.Scopes[0], defaultSuffix)
-	b, err := c.tokenProvider(ctx, resource, tenant)
+	// CLI expects an AAD v1 resource, not a v2 scope
+	opts.Scopes = []string{strings.TrimSuffix(opts.Scopes[0], defaultSuffix)}
+	return c.s.GetToken(ctx, opts)
+}
+
+func (c *AzureCLICredential) requestToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
+	b, err := c.tokenProvider(ctx, opts.Scopes[0], opts.TenantID)
 	if err != nil {
 		return azcore.AccessToken{}, err
 	}
@@ -89,11 +89,8 @@ func (c *AzureCLICredential) GetToken(ctx context.Context, opts policy.TokenRequ
 	if err != nil {
 		return azcore.AccessToken{}, err
 	}
-	logGetTokenSuccess(c, opts)
 	return at, nil
 }
-
-const timeoutCLIRequest = 10 * time.Second
 
 func defaultTokenProvider() func(ctx context.Context, resource string, tenantID string) ([]byte, error) {
 	return func(ctx context.Context, resource string, tenantID string) ([]byte, error) {

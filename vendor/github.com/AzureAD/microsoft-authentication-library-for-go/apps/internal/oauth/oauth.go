@@ -171,7 +171,7 @@ func (t *Client) UsernamePassword(ctx context.Context, authParams authority.Auth
 
 	userRealm, err := t.Authority.UserRealm(ctx, authParams)
 	if err != nil {
-		return accesstokens.TokenResponse{}, fmt.Errorf("problem getting user realm(user: %s) from authority: %w", authParams.Username, err)
+		return accesstokens.TokenResponse{}, fmt.Errorf("problem getting user realm from authority: %w", err)
 	}
 
 	switch userRealm.AccountType {
@@ -212,7 +212,6 @@ func (d DeviceCode) Token(ctx context.Context) (accesstokens.TokenResponse, erro
 	}
 
 	var cancel context.CancelFunc
-	d.Result.ExpiresOn.Sub(time.Now().UTC())
 	if deadline, ok := ctx.Deadline(); !ok || d.Result.ExpiresOn.Before(deadline) {
 		ctx, cancel = context.WithDeadline(ctx, d.Result.ExpiresOn)
 	} else {

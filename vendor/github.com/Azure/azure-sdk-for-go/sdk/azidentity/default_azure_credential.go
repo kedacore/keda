@@ -67,7 +67,6 @@ func NewDefaultAzureCredential(options *DefaultAzureCredentialOptions) (*Default
 			additionalTenants = strings.Split(tenants, ";")
 		}
 	}
-	additionalTenants = resolveAdditionallyAllowedTenants(additionalTenants)
 
 	envCred, err := NewEnvironmentCredential(&EnvironmentCredentialOptions{
 		ClientOptions: options.ClientOptions, DisableInstanceDiscovery: options.DisableInstanceDiscovery, additionallyAllowedTenants: additionalTenants},
@@ -88,8 +87,10 @@ func NewDefaultAzureCredential(options *DefaultAzureCredentialOptions) (*Default
 				if tenantID, ok := os.LookupEnv(azureTenantID); ok {
 					haveWorkloadConfig = true
 					workloadCred, err := NewWorkloadIdentityCredential(tenantID, clientID, file, &WorkloadIdentityCredentialOptions{
-						ClientOptions: options.ClientOptions},
-					)
+						AdditionallyAllowedTenants: additionalTenants,
+						ClientOptions:              options.ClientOptions,
+						DisableInstanceDiscovery:   options.DisableInstanceDiscovery,
+					})
 					if err == nil {
 						creds = append(creds, workloadCred)
 					} else {
