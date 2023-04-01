@@ -256,8 +256,8 @@ func TestPrometheusMetrics(t *testing.T) {
 	testScalerMetricValue(t)
 	testScalerMetricLatency(t)
 	testScalerActiveMetric(t)
-	testSclaedObjectErrors(t, data)
-	testSclaerErrors(t)
+	testScaledObjectErrors(t, data)
+	testScalerErrors(t, data)
 	testScalerErrorsTotal(t, data)
 	testMetricsServerScalerMetricValue(t)
 	testOperatorMetrics(t, kc, data)
@@ -322,7 +322,7 @@ func testScalerMetricValue(t *testing.T) {
 	}
 }
 
-func testSclaedObjectErrors(t *testing.T, data templateData) {
+func testScaledObjectErrors(t *testing.T, data templateData) {
 	t.Log("--- testing scaled object errors ---")
 
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
@@ -345,10 +345,16 @@ func testSclaedObjectErrors(t *testing.T, data templateData) {
 	} else {
 		t.Errorf("metric not available")
 	}
+
+	KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 }
 
-func testSclaerErrors(t *testing.T) {
-	t.Log("--- testing sclaer errors ---")
+func testScalerErrors(t *testing.T, data templateData) {
+	t.Log("--- testing scaler errors ---")
+
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 	if val, ok := family["keda_scaler_errors"]; ok {
@@ -367,10 +373,16 @@ func testSclaerErrors(t *testing.T) {
 	} else {
 		t.Errorf("metric not available")
 	}
+
+	KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 }
 
 func testScalerErrorsTotal(t *testing.T, data templateData) {
-	t.Log("--- testing sclaer errors toatl ---")
+	t.Log("--- testing scaler errors total ---")
+
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 	if val, ok := family["keda_scaler_errors_total"]; ok {
