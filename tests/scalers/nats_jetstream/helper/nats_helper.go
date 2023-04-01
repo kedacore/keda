@@ -121,7 +121,7 @@ spec:
       - name: sub
         image: "ghcr.io/kedacore/tests-nats-jetstream"
         imagePullPolicy: Always
-        command: 
+        command:
         - /app
         - consumer
         env:
@@ -143,7 +143,7 @@ spec:
       - name: pub
         image: "ghcr.io/kedacore/tests-nats-jetstream"
         imagePullPolicy: Always
-        command: 
+        command:
         - /app
         - publisher
         env:
@@ -169,7 +169,7 @@ spec:
       - name: pub
         image: "ghcr.io/kedacore/tests-nats-jetstream"
         imagePullPolicy: Always
-        command: 
+        command:
         - /app
         - publisher
         env:
