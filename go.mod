@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	cloud.google.com/go/compute/metadata v0.2.3
-	cloud.google.com/go/monitoring v1.12.0
+	cloud.google.com/go/monitoring v1.13.0
 	cloud.google.com/go/storage v1.29.0
 	github.com/Azure/azure-amqp-common-go/v3 v3.2.3
 	github.com/Azure/azure-event-hubs-go/v3 v3.3.20
