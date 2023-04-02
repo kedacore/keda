@@ -519,27 +519,6 @@ func KubectlApplyWithTemplate(t *testing.T, data interface{}, templateName strin
 	assert.NoErrorf(t, err, "cannot close temp file - %s", err)
 }
 
-func KubectlCreateWithTemplate(t *testing.T, data interface{}, templateName string, config string) {
-	t.Logf("Applying template: %s", templateName)
-
-	tmpl, err := template.New("kubernetes resource template").Parse(config)
-	assert.NoErrorf(t, err, "cannot parse template - %s", err)
-
-	tempFile, err := os.CreateTemp("", templateName)
-	assert.NoErrorf(t, err, "cannot create temp file - %s", err)
-
-	defer os.Remove(tempFile.Name())
-
-	err = tmpl.Execute(tempFile, data)
-	assert.NoErrorf(t, err, "cannot insert data into template - %s", err)
-
-	_, err = ExecuteCommand(fmt.Sprintf("kubectl create -f %s", tempFile.Name()))
-	assert.NoErrorf(t, err, "cannot apply file - %s", err)
-
-	err = tempFile.Close()
-	assert.NoErrorf(t, err, "cannot close temp file - %s", err)
-}
-
 func KubectlApplyWithErrors(t *testing.T, data interface{}, templateName string, config string) error {
 	t.Logf("Applying template: %s", templateName)
 
