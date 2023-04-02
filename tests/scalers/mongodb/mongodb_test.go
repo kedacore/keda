@@ -154,7 +154,7 @@ func getTemplateData() (templateData, []Template) {
 
 func setupMongo(t *testing.T, kc *kubernetes.Clientset) string {
 	CreateNamespace(t, kc, mongoNamespace)
-	_, err := ExecuteCommand(fmt.Sprintf("helm repo add bitnami https://charts.bitnami.com/bitnami"))
+	_, err := ExecuteCommand("helm repo add bitnami https://charts.bitnami.com/bitnami")
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("helm repo update")
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)

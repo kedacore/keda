@@ -6,12 +6,9 @@ package cassandra_test
 import (
 	"bytes"
 	"encoding/base64"
-	"errors"
 	"fmt"
-	"strings"
 	"testing"
 	"text/template"
-	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -203,7 +200,7 @@ func TestCassandraScaler(t *testing.T) {
 }
 
 func installCassandra(t *testing.T) {
-	_, err := ExecuteCommand(fmt.Sprintf("helm repo add bitnami https://charts.bitnami.com/bitnami"))
+	_, err := ExecuteCommand("helm repo add bitnami https://charts.bitnami.com/bitnami")
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("helm repo update")
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
@@ -226,21 +223,6 @@ func setupCassandra(t *testing.T, kc *kubernetes.Clientset, data interface{}) {
 	out, errOut, _ = ExecCommandOnSpecificPod(t, "cassandra-client-0", testNamespace, fmt.Sprintf("bash cqlsh -u %s -p %s cassandra.%s --execute=\"%s\"", cassandraUsername, cassandraPassword, testNamespace, createTableCQL))
 	t.Logf("Output: %s, Error: %s", out, errOut)
 	t.Log("--- cassandra is ready ---")
-}
-
-func checkIfCassandraStatusIsReady(t *testing.T, name string) error {
-	t.Log("--- checking cassandra status ---")
-	time.Sleep(time.Second * 10)
-	for i := 0; i < 60; i++ {
-		out, errOut, _ := ExecCommandOnSpecificPod(t, name, testNamespace, "nodetool status")
-		t.Logf("Output: %s, Error: %s", out, errOut)
-		if !strings.Contains(out, "UN ") {
-			time.Sleep(time.Second * 10)
-			continue
-		}
-		return nil
-	}
-	return errors.New("cassandra is not ready")
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset) {
