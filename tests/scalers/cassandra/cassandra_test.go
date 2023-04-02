@@ -45,6 +45,7 @@ type templateData struct {
 	DeploymentName          string
 	ScaledObjectName        string
 	SecretName              string
+	Command                 string
 	CassandraPasswordBase64 string
 	CassandraKeyspace       string
 	CassandraTableName      string
@@ -97,36 +98,30 @@ spec:
         - containerPort: 80
 `
 
-	cassandraClientDeploymentTemplate = `
-apiVersion: apps/v1
-kind: StatefulSet
+	jobTemplate = `
+apiVersion: batch/v1
+kind: Job
 metadata:
-  labels:
-    app: cassandra-client
-  name: cassandra-client
+  name: client
   namespace: {{.TestNamespace}}
 spec:
-  serviceName: {{.DeploymentName}}
-  replicas: 1
-  selector:
-    matchLabels:
-      app: cassandra-client
   template:
-    metadata:
-      labels:
-        app: cassandra-client
     spec:
       containers:
-      - image: bitnami/cassandra:4.0.4
-        imagePullPolicy: IfNotPresent
-        name: cassandra-client
-        ports:
-        - containerPort: 9042
+      - name: client
+        image: "bitnami/cassandra"
+        imagePullPolicy: Always
+        command:
+        - sh
+        - -c
+        - "{{.Command}}"
         env:
-          - name: MAX_HEAP_SIZE
-            value: 1024M
-          - name: HEAP_NEWSIZE
-            value: 100M
+        - name: MAX_HEAP_SIZE
+          value: 1024M
+        - name: HEAP_NEWSIZE
+          value: 100M
+      restartPolicy: OnFailure
+  backoffLimit: 4
 `
 
 	scaledObjectTemplate = `
@@ -190,9 +185,9 @@ func TestCassandraScaler(t *testing.T) {
 		"replica count should be %d after 3 minutes", minReplicaCount)
 
 	// test scaling
-	testActivation(t, kc)
-	testScaleOut(t, kc)
-	testScaleIn(t, kc)
+	testActivation(t, kc, data)
+	testScaleOut(t, kc, data)
+	testScaleIn(t, kc, data)
 
 	// cleanup
 	uninstallCassandra(t)
@@ -213,44 +208,53 @@ func uninstallCassandra(t *testing.T) {
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
-func setupCassandra(t *testing.T, kc *kubernetes.Clientset, data interface{}) {
-	KubectlApplyWithTemplate(t, data, "cassandraClientDeploymentTemplate", cassandraClientDeploymentTemplate)
-	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, "cassandra-client", testNamespace, 1, 60, 3),
-		"cassandra should be up")
+func setupCassandra(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	// Create the key space
+	data.Command = fmt.Sprintf("cqlsh -u %s -p %s cassandra.%s --execute=\\\"%s\\\"", cassandraUsername, cassandraPassword, testNamespace, createKeyspace)
+	KubectlApplyWithTemplate(t, data, "jobTemplate", jobTemplate)
+	assert.True(t, WaitForJobSuccess(t, kc, "client", testNamespace, 6, 10), "create database job failed")
+	KubectlDeleteWithTemplate(t, data, "jobTemplate", jobTemplate)
 	// Create the table
-	out, errOut, _ := ExecCommandOnSpecificPod(t, "cassandra-client-0", testNamespace, fmt.Sprintf("bash cqlsh -u %s -p %s cassandra.%s --execute=\"%s\"", cassandraUsername, cassandraPassword, testNamespace, createKeyspace))
-	t.Logf("Output: %s, Error: %s", out, errOut)
-	out, errOut, _ = ExecCommandOnSpecificPod(t, "cassandra-client-0", testNamespace, fmt.Sprintf("bash cqlsh -u %s -p %s cassandra.%s --execute=\"%s\"", cassandraUsername, cassandraPassword, testNamespace, createTableCQL))
-	t.Logf("Output: %s, Error: %s", out, errOut)
+	data.Command = fmt.Sprintf("cqlsh -u %s -p %s cassandra.%s --execute=\\\"%s\\\"", cassandraUsername, cassandraPassword, testNamespace, createTableCQL)
+	KubectlApplyWithTemplate(t, data, "jobTemplate", jobTemplate)
+	assert.True(t, WaitForJobSuccess(t, kc, "client", testNamespace, 6, 10), "create database job failed")
+	KubectlDeleteWithTemplate(t, data, "jobTemplate", jobTemplate)
+
 	t.Log("--- cassandra is ready ---")
 }
 
-func testActivation(t *testing.T, kc *kubernetes.Clientset) {
+func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
 	result, err := getCassandraInsertCmd(insertDataTemplateA)
 	assert.NoErrorf(t, err, "cannot parse log - %s", err)
-	out, errOut, _ := ExecCommandOnSpecificPod(t, "cassandra-client-0", testNamespace, fmt.Sprintf("bash cqlsh -u %s -p %s cassandra.%s --execute=\"%s\"", cassandraUsername, cassandraPassword, testNamespace, result))
-	t.Logf("Output: %s, Error: %s", out, errOut)
+	data.Command = fmt.Sprintf("cqlsh -u %s -p %s cassandra.%s --execute=\\\"%s\\\"", cassandraUsername, cassandraPassword, testNamespace, result)
+	KubectlApplyWithTemplate(t, data, "jobTemplate", jobTemplate)
+	assert.True(t, WaitForJobSuccess(t, kc, "client", testNamespace, 6, 10), "insert job failed")
+	KubectlDeleteWithTemplate(t, data, "jobTemplate", jobTemplate)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
 	result, err := getCassandraInsertCmd(insertDataTemplateB)
 	assert.NoErrorf(t, err, "cannot parse log - %s", err)
-	out, errOut, _ := ExecCommandOnSpecificPod(t, "cassandra-client-0", testNamespace, fmt.Sprintf("bash cqlsh -u %s -p %s cassandra.%s --execute=\"%s\"", cassandraUsername, cassandraPassword, testNamespace, result))
-	t.Logf("Output: %s, Error: %s", out, errOut)
+	data.Command = fmt.Sprintf("cqlsh -u %s -p %s cassandra.%s --execute=\\\"%s\\\"", cassandraUsername, cassandraPassword, testNamespace, result)
+	KubectlApplyWithTemplate(t, data, "jobTemplate", jobTemplate)
+	assert.True(t, WaitForJobSuccess(t, kc, "client", testNamespace, 6, 10), "insert job failed")
+	KubectlDeleteWithTemplate(t, data, "jobTemplate", jobTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale in ---")
 
-	out, errOut, _ := ExecCommandOnSpecificPod(t, "cassandra-client-0", testNamespace, fmt.Sprintf("bash cqlsh -u %s -p %s cassandra.%s --execute=\"%s\"", cassandraUsername, cassandraPassword, testNamespace, truncateData))
-	t.Logf("Output: %s, Error: %s", out, errOut)
+	data.Command = fmt.Sprintf("cqlsh -u %s -p %s cassandra.%s --execute=\\\"%s\\\"", cassandraUsername, cassandraPassword, testNamespace, truncateData)
+	KubectlApplyWithTemplate(t, data, "jobTemplate", jobTemplate)
+	assert.True(t, WaitForJobSuccess(t, kc, "client", testNamespace, 6, 10), "insert job failed")
+	KubectlDeleteWithTemplate(t, data, "jobTemplate", jobTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
