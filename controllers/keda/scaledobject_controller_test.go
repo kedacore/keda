@@ -728,8 +728,9 @@ var _ = Describe("ScaledObjectController", func() {
 		)
 
 		// Create the scaling target.
-		err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
-		Expect(err).ToNot(HaveOccurred())
+		Eventually(func() error {
+			return k8sClient.Create(context.Background(), generateDeployment(deploymentName))
+		}).ShouldNot(HaveOccurred())
 
 		so := &kedav1alpha1.ScaledObject{
 			ObjectMeta: metav1.ObjectMeta{Name: soName, Namespace: "default"},
@@ -756,37 +757,45 @@ var _ = Describe("ScaledObjectController", func() {
 				},
 			},
 		}
-		err = k8sClient.Create(context.Background(), so)
-		Expect(err).ToNot(HaveOccurred())
+		Eventually(func() error {
+			return k8sClient.Create(context.Background(), so)
+		}).ShouldNot(HaveOccurred())
 
 		// wait so's ready condition Ready
 		Eventually(func() metav1.ConditionStatus {
-			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
-			Expect(err).ToNot(HaveOccurred())
+			err := k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+			if err != nil {
+				return metav1.ConditionUnknown
+			}
 			return so.Status.Conditions.GetReadyCondition().Status
-		}, 5*time.Second).Should(Equal(metav1.ConditionTrue))
+		}).Should(Equal(metav1.ConditionTrue))
 
 		// check hpa
 		hpa := &autoscalingv2.HorizontalPodAutoscaler{}
 		Eventually(func() int {
-			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: getHPAName(so), Namespace: "default"}, hpa)
-			Expect(err).ToNot(HaveOccurred())
+			err := k8sClient.Get(context.Background(), types.NamespacedName{Name: getHPAName(so), Namespace: "default"}, hpa)
+			if err != nil {
+				return -1
+			}
 			return len(hpa.Spec.Metrics)
-		}, 1*time.Second).Should(Equal(2))
+		}, 5*time.Second).Should(Equal(2))
 
 		// mock external server offline
 		atomic.StoreInt32(&scalers.MockExternalServerStatus, scalers.MockExternalServerStatusOffline)
 
 		// wait so's ready condition not
 		Eventually(func() metav1.ConditionStatus {
-			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
-			Expect(err).ToNot(HaveOccurred())
+			err := k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+			if err != nil {
+				return metav1.ConditionTrue
+			}
 			return so.Status.Conditions.GetReadyCondition().Status
 		}, 5*time.Second).Should(Or(Equal(metav1.ConditionFalse), Equal(metav1.ConditionUnknown)))
 
 		// mock kube-controller-manager request v1beta1.custom.metrics.k8s.io api GetMetrics
-		err = k8sClient.Get(context.Background(), types.NamespacedName{Name: getHPAName(so), Namespace: "default"}, hpa)
-		Expect(err).ToNot(HaveOccurred())
+		Eventually(func() error {
+			return k8sClient.Get(context.Background(), types.NamespacedName{Name: getHPAName(so), Namespace: "default"}, hpa)
+		}).ShouldNot(HaveOccurred())
 		hpa.Status.CurrentMetrics = []autoscalingv2.MetricStatus{
 			{
 				Type: autoscalingv2.ResourceMetricSourceType,
@@ -798,14 +807,16 @@ var _ = Describe("ScaledObjectController", func() {
 				},
 			},
 		}
-		err = k8sClient.Status().Update(ctx, hpa)
-		Expect(err).ToNot(HaveOccurred())
+		Eventually(func() error {
+			return k8sClient.Status().Update(ctx, hpa)
+		}).ShouldNot(HaveOccurred())
 
 		// hpa metrics will only left CPU metric
 		Eventually(func() int {
-			hpa := &autoscalingv2.HorizontalPodAutoscaler{}
-			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: getHPAName(so), Namespace: "default"}, hpa)
-			Expect(err).ToNot(HaveOccurred())
+			err := k8sClient.Get(context.Background(), types.NamespacedName{Name: getHPAName(so), Namespace: "default"}, hpa)
+			if err != nil {
+				return -1
+			}
 			return len(hpa.Spec.Metrics)
 		}, 5*time.Second).Should(Equal(1))
 
@@ -814,16 +825,19 @@ var _ = Describe("ScaledObjectController", func() {
 
 		// wait so's ready condition Ready
 		Eventually(func() metav1.ConditionStatus {
-			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
-			Expect(err).ToNot(HaveOccurred())
+			err := k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+			if err != nil {
+				return metav1.ConditionUnknown
+			}
 			return so.Status.Conditions.GetReadyCondition().Status
 		}, 5*time.Second).Should(Equal(metav1.ConditionTrue))
 
 		// hpa will recover
 		Eventually(func() int {
-			hpa := &autoscalingv2.HorizontalPodAutoscaler{}
-			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: getHPAName(so), Namespace: "default"}, hpa)
-			Expect(err).ToNot(HaveOccurred())
+			err := k8sClient.Get(context.Background(), types.NamespacedName{Name: getHPAName(so), Namespace: "default"}, hpa)
+			if err != nil {
+				return -1
+			}
 			return len(hpa.Spec.Metrics)
 		}, 5*time.Second).Should(Equal(2))
 	})

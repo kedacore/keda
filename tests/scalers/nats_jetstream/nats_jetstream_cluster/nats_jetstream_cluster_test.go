@@ -49,7 +49,9 @@ func TestNATSJetStreamScalerClusterWithStreamReplicas(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, testData, testTemplates)
 
 	// Create 3 replica stream with consumer
-	installStreamAndConsumer(t, 3, testNamespace, natsAddress)
+	testData.NatsStream = "case1"
+	installStreamAndConsumer(t, 3, testData.NatsStream, testNamespace, natsAddress)
+	KubectlApplyWithTemplate(t, testData, "scaledObjectTemplate", nats.ScaledObjectTemplate)
 	assert.True(t, WaitForJobSuccess(t, kc, "stream", testNamespace, 60, 3),
 		"stream and consumer creation job with 3 stream replicas should be success")
 
@@ -58,12 +60,14 @@ func TestNATSJetStreamScalerClusterWithStreamReplicas(t *testing.T) {
 	testScaleIn(t, kc)
 
 	// Remove 3 replica stream with consumer
-	removeStreamAndConsumer(t, 3, testNamespace, natsAddress)
+	removeStreamAndConsumer(t, 3, testData.NatsStream, testNamespace, natsAddress)
 	assert.True(t, WaitForJobCount(t, kc, testNamespace, 0, 60, 3),
 		"job count in namespace should be 0")
 
 	// Create stream and consumer with 2 stream replicas
-	installStreamAndConsumer(t, 2, testNamespace, natsAddress)
+	testData.NatsStream = "case2"
+	installStreamAndConsumer(t, 2, testData.NatsStream, testNamespace, natsAddress)
+	KubectlApplyWithTemplate(t, testData, "scaledObjectTemplate", nats.ScaledObjectTemplate)
 	assert.True(t, WaitForJobSuccess(t, kc, "stream", testNamespace, 60, 3),
 		"stream and consumer creation job with 2 stream replicas should be success")
 
@@ -72,12 +76,14 @@ func TestNATSJetStreamScalerClusterWithStreamReplicas(t *testing.T) {
 	testScaleIn(t, kc)
 
 	// Remove 2 replica stream with consumer
-	removeStreamAndConsumer(t, 2, testNamespace, natsAddress)
+	removeStreamAndConsumer(t, 2, testData.NatsStream, testNamespace, natsAddress)
 	assert.True(t, WaitForJobCount(t, kc, testNamespace, 0, 60, 3),
 		"job count in namespace should be 0")
 
 	// Create single replica stream with consumer
-	installStreamAndConsumer(t, 1, testNamespace, natsAddress)
+	testData.NatsStream = "case3"
+	installStreamAndConsumer(t, 1, testData.NatsStream, testNamespace, natsAddress)
+	KubectlApplyWithTemplate(t, testData, "scaledObjectTemplate", nats.ScaledObjectTemplate)
 	assert.True(t, WaitForJobSuccess(t, kc, "stream", testNamespace, 60, 3),
 		"stream and consumer creation job with 1 stream replica should be success")
 
@@ -85,24 +91,24 @@ func TestNATSJetStreamScalerClusterWithStreamReplicas(t *testing.T) {
 	testScaleOut(t, kc, testData)
 	testScaleIn(t, kc)
 
+	// Cleanup test namespace
+	removeStreamAndConsumer(t, 1, testData.NatsStream, testNamespace, natsAddress)
+	DeleteKubernetesResources(t, kc, testNamespace, testData, testTemplates)
+
 	// Cleanup nats namespace
 	removeClusterWithJetStream(t)
 	DeleteNamespace(t, kc, natsNamespace)
 	deleted := WaitForNamespaceDeletion(t, kc, natsNamespace)
 	assert.Truef(t, deleted, "%s namespace not deleted", natsNamespace)
-
-	// Cleanup test namespace
-	removeStreamAndConsumer(t, 1, testNamespace, natsAddress)
-	DeleteKubernetesResources(t, kc, testNamespace, testData, testTemplates)
 }
 
 // installStreamAndConsumer creates stream and consumer job.
-func installStreamAndConsumer(t *testing.T, streamReplicas int, namespace, natsAddress string) {
+func installStreamAndConsumer(t *testing.T, streamReplicas int, stream, namespace, natsAddress string) {
 	data := nats.JetStreamTemplateData{
 		TestNamespace:  namespace,
 		NatsAddress:    natsAddress,
 		NatsConsumer:   nats.NatsJetStreamConsumerName,
-		NatsStream:     nats.NatsJetStreamStreamName,
+		NatsStream:     stream,
 		StreamReplicas: streamReplicas,
 	}
 
@@ -110,16 +116,16 @@ func installStreamAndConsumer(t *testing.T, streamReplicas int, namespace, natsA
 }
 
 // removeStreamAndConsumer deletes stream and consumer job.
-func removeStreamAndConsumer(t *testing.T, streamReplicas int, namespace, natsAddress string) {
+func removeStreamAndConsumer(t *testing.T, streamReplicas int, stream, namespace, natsAddress string) {
 	data := nats.JetStreamTemplateData{
 		TestNamespace:  namespace,
 		NatsAddress:    natsAddress,
 		NatsConsumer:   nats.NatsJetStreamConsumerName,
-		NatsStream:     nats.NatsJetStreamStreamName,
+		NatsStream:     stream,
 		StreamReplicas: streamReplicas,
 	}
 
-	KubectlDeleteWithTemplate(t, data, "streamAndConsumerTemplate", nats.StreamAndConsumerTemplate)
+	KubectlApplyWithTemplate(t, data, "deleteStreamTemplate", nats.DeleteStreamTemplate)
 }
 
 // installClusterWithJetStream install the nats helm chart with clustered jetstream enabled

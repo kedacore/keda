@@ -4,7 +4,7 @@ patchesJson6902:
     version: v1
     kind: Deployment
     name: keda-operator
-  path: create_cas_volume.yml
+  path: patch_operator.yml
 
 bases:
 - ../default
