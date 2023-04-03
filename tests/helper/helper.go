@@ -288,7 +288,7 @@ func WaitForAllJobsSuccess(t *testing.T, kc *kubernetes.Clientset, namespace str
 }
 
 func WaitForNamespaceDeletion(t *testing.T, kc *kubernetes.Clientset, nsName string) bool {
-	for i := 0; i < 30; i++ {
+	for i := 0; i < 120; i++ {
 		t.Logf("waiting for namespace %s deletion", nsName)
 		_, err := KubeClient.CoreV1().Namespaces().Get(context.Background(), nsName, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
