@@ -37,7 +37,7 @@ var testPubSubMetadata = []parsePubSubMetadataTestData{
 	// all properly formed
 	{nil, map[string]string{"subscriptionName": "mysubscription", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS", "activationValue": "5"}, false},
 	// all properly formed with oldest unacked message age mode
-	{nil, map[string]string{"subscriptionName": "mysubscription", "mode": pubsubModeOldestUnackedMessageAge, "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	{nil, map[string]string{"subscriptionName": "mysubscription", "mode": "OldestUnackedMessageAge", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// missing subscriptionName
 	{nil, map[string]string{"subscriptionName": "", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// missing credentials
@@ -109,6 +109,27 @@ func TestGcpPubSubSubscriptionName(t *testing.T) {
 
 		if subscriptionID != testData.name || projectID != testData.projectID {
 			t.Error("Wrong Subscription parsing:", subscriptionID, projectID)
+		}
+	}
+}
+
+func TestGcpPubSubSnakeCase(t *testing.T) {
+	testCases := []struct {
+		input string
+		want  string
+	}{
+		{"PullAckRequestCount", "pull_ack_request_count"},
+		{"AckLatencies", "ack_latencies"},
+		{"AckMessageCount", "ack_message_count"},
+		{"BacklogBytes", "backlog_bytes"},
+		{"NumOutstandingMessages", "num_outstanding_messages"},
+		{"NumUndeliveredMessages", "num_undelivered_messages"},
+	}
+
+	for _, tc := range testCases {
+		got := snakeCase(tc.input)
+		if got != tc.want {
+			t.Fatalf(`want "%s" but got "%s"`, tc.want, got)
 		}
 	}
 }
