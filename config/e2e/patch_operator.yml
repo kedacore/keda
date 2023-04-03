@@ -16,4 +16,4 @@
 
 - op: replace
   path: /spec/template/spec/containers/0/resources/requests/cpu
-  value: 1
+  value: 500m
