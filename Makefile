@@ -54,7 +54,7 @@ GO_LDFLAGS="-X=github.com/kedacore/keda/v2/version.GitCommit=$(GIT_COMMIT) -X=gi
 COSIGN_FLAGS ?= -a GIT_HASH=${GIT_COMMIT} -a GIT_VERSION=${VERSION} -a BUILD_DATE=${DATE}
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.25
+ENVTEST_K8S_VERSION = 1.26
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
@@ -93,11 +93,11 @@ get-cluster-context: ## Get Azure cluster context.
 e2e-test: get-cluster-context ## Run e2e tests against Azure cluster.
 	TERMINFO=/etc/terminfo
 	TERM=linux
-	./tests/run-all.sh
+	go run -tags e2e ./tests/run-all.go
 
 .PHONY: e2e-test-local
 e2e-test-local: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/config.
-	./tests/run-all.sh
+	go run -tags e2e ./tests/run-all.go
 
 .PHONY: e2e-test-clean-crds
 e2e-test-clean-crds: ## Delete all scaled objects and jobs across all namespaces

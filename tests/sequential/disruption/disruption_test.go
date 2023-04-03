@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package chaos_test
+package disruption_test
 
 import (
 	"bufio"
@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	testName = "chaos-test"
+	testName = "disruption-test"
 )
 
 var (
@@ -30,7 +30,7 @@ var (
 	operatorLabelSelector   = "app=keda-operator"
 	msLabelSelector         = "app=keda-metrics-apiserver"
 	operatorLogName         = fmt.Sprintf("%s-operator", testName)
-	msLogName               = fmt.Sprintf("%s-ms", testName)
+	msLogName               = fmt.Sprintf("%s-metrics-server", testName)
 	scaledObjectCount       = 5
 	minReplicaCount         = 0
 	maxReplicaCount         = 4
@@ -157,8 +157,8 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	wg.Add(scaledObjectCount)
 	for i := 0; i < scaledObjectCount; i++ {
 		go func(index int) {
-			assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, fmt.Sprintf(sutDeploymentName, index), testNamespace, replicas, 60, 2),
-				fmt.Sprintf("replica count should be %d after 2 minute", replicas))
+			assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, fmt.Sprintf(sutDeploymentName, index), testNamespace, replicas, 60, 3),
+				fmt.Sprintf("replica count should be %d after 3 minutes", replicas))
 			wg.Done()
 		}(i)
 	}
@@ -172,8 +172,8 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	wg.Add(scaledObjectCount)
 	for i := 0; i < scaledObjectCount; i++ {
 		go func(index int) {
-			assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, fmt.Sprintf(sutDeploymentName, index), testNamespace, replicas, 60, 2),
-				fmt.Sprintf("replica count should be %d after 2 minute", replicas))
+			assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, fmt.Sprintf(sutDeploymentName, index), testNamespace, replicas, 60, 3),
+				fmt.Sprintf("replica count should be %d after 3 minutes", replicas))
 			wg.Done()
 		}(i)
 	}
@@ -187,8 +187,8 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	wg.Add(scaledObjectCount)
 	for i := 0; i < scaledObjectCount; i++ {
 		go func(index int) {
-			assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, fmt.Sprintf(sutDeploymentName, index), testNamespace, replicas, 60, 2),
-				fmt.Sprintf("replica count should be %d after 2 minute", replicas))
+			assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, fmt.Sprintf(sutDeploymentName, index), testNamespace, replicas, 60, 3),
+				fmt.Sprintf("replica count should be %d after 3 minutes", replicas))
 			wg.Done()
 		}(i)
 	}
@@ -207,8 +207,8 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	wg.Add(scaledObjectCount)
 	for i := 0; i < scaledObjectCount; i++ {
 		go func(index int) {
-			assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, fmt.Sprintf(sutDeploymentName, index), testNamespace, replicas, 60, 2),
-				fmt.Sprintf("replica count should be %d after 2 minute", replicas))
+			assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, fmt.Sprintf(sutDeploymentName, index), testNamespace, replicas, 60, 3),
+				fmt.Sprintf("replica count should be %d after 3 minutes", replicas))
 			wg.Done()
 		}(i)
 	}
@@ -222,8 +222,8 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	wg.Add(scaledObjectCount)
 	for i := 0; i < scaledObjectCount; i++ {
 		go func(index int) {
-			assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, fmt.Sprintf(sutDeploymentName, index), testNamespace, replicas, 60, 2),
-				fmt.Sprintf("replica count should be %d after 2 minute", replicas))
+			assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, fmt.Sprintf(sutDeploymentName, index), testNamespace, replicas, 60, 3),
+				fmt.Sprintf("replica count should be %d after 3 minutes", replicas))
 			wg.Done()
 		}(i)
 	}
@@ -231,7 +231,8 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 }
 
 func saveLogs(t *testing.T, kc *kubernetes.Clientset, logName, selector, namespace string) {
-	logs := FindPodLogs(t, kc, namespace, selector)
+	logs, err := FindPodLogs(kc, namespace, selector)
+	assert.NoErrorf(t, err, "cannotget logs - %s", err)
 	f, err := os.Create(fmt.Sprintf("%s-%s.log", logName, time.Now().Format("20060102150405")))
 	assert.NoErrorf(t, err, "cannot create log file - %s", err)
 	defer f.Close()

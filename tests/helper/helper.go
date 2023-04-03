@@ -288,7 +288,7 @@ func WaitForAllJobsSuccess(t *testing.T, kc *kubernetes.Clientset, namespace str
 }
 
 func WaitForNamespaceDeletion(t *testing.T, kc *kubernetes.Clientset, nsName string) bool {
-	for i := 0; i < 30; i++ {
+	for i := 0; i < 120; i++ {
 		t.Logf("waiting for namespace %s deletion", nsName)
 		_, err := KubeClient.CoreV1().Namespaces().Get(context.Background(), nsName, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
@@ -519,27 +519,6 @@ func KubectlApplyWithTemplate(t *testing.T, data interface{}, templateName strin
 	assert.NoErrorf(t, err, "cannot close temp file - %s", err)
 }
 
-func KubectlCreateWithTemplate(t *testing.T, data interface{}, templateName string, config string) {
-	t.Logf("Applying template: %s", templateName)
-
-	tmpl, err := template.New("kubernetes resource template").Parse(config)
-	assert.NoErrorf(t, err, "cannot parse template - %s", err)
-
-	tempFile, err := os.CreateTemp("", templateName)
-	assert.NoErrorf(t, err, "cannot create temp file - %s", err)
-
-	defer os.Remove(tempFile.Name())
-
-	err = tmpl.Execute(tempFile, data)
-	assert.NoErrorf(t, err, "cannot insert data into template - %s", err)
-
-	_, err = ExecuteCommand(fmt.Sprintf("kubectl create -f %s", tempFile.Name()))
-	assert.NoErrorf(t, err, "cannot apply file - %s", err)
-
-	err = tempFile.Close()
-	assert.NoErrorf(t, err, "cannot close temp file - %s", err)
-}
-
 func KubectlApplyWithErrors(t *testing.T, data interface{}, templateName string, config string) error {
 	t.Logf("Applying template: %s", templateName)
 
@@ -617,20 +596,19 @@ func RemoveANSI(input string) string {
 	return reg.ReplaceAllString(input, "")
 }
 
-func FindPodLogs(t *testing.T, kc *kubernetes.Clientset, namespace, label string) []string {
+func FindPodLogs(kc *kubernetes.Clientset, namespace, label string) ([]string, error) {
 	var podLogs []string
-	t.Logf("Searching for pod logs.........")
 	pods, err := kc.CoreV1().Pods(namespace).List(context.TODO(),
 		metav1.ListOptions{LabelSelector: label})
 	if err != nil {
-		assert.NoErrorf(t, err, "no pod in the list - %s", err)
+		return []string{}, err
 	}
 	var podLogRequest *rest.Request
 	for _, v := range pods.Items {
 		podLogRequest = kc.CoreV1().Pods(namespace).GetLogs(v.Name, &corev1.PodLogOptions{})
 		stream, err := podLogRequest.Stream(context.TODO())
 		if err != nil {
-			assert.NoErrorf(t, err, "cannot open the stream - %s", err)
+			return []string{}, err
 		}
 		defer stream.Close()
 		for {
@@ -643,12 +621,12 @@ func FindPodLogs(t *testing.T, kc *kubernetes.Clientset, namespace, label string
 				continue
 			}
 			if err != nil {
-				assert.NoErrorf(t, err, "cannot read log stream - %s", err)
+				return []string{}, err
 			}
 			podLogs = append(podLogs, string(buf[:numBytes]))
 		}
 	}
-	return podLogs
+	return podLogs, nil
 }
 
 // Delete all pods in namespace by selector

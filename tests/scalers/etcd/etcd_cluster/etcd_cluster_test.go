@@ -23,6 +23,8 @@ var (
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
 	jobName          = fmt.Sprintf("%s-job", testName)
+	minReplicaCount  = 0
+	maxReplicaCount  = 2
 )
 
 type templateData struct {
@@ -30,7 +32,10 @@ type templateData struct {
 	DeploymentName   string
 	JobName          string
 	ScaledObjectName string
+	MinReplicaCount  int
+	MaxReplicaCount  int
 	EtcdName         string
+	Value            int
 }
 
 const (
@@ -64,8 +69,10 @@ metadata:
 spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
-  pollingInterval: 30
+  pollingInterval: 15
   cooldownPeriod: 5
+  minReplicaCount: {{.MinReplicaCount}}
+  maxReplicaCount: {{.MaxReplicaCount}}
   advanced:
     horizontalPodAutoscalerConfig:
       name: keda-hpa-etcd-scaledobject
@@ -78,15 +85,16 @@ spec:
         endpoints: {{.EtcdName}}-0.etcd-headless.{{.TestNamespace}}:2379,{{.EtcdName}}-1.etcd-headless.{{.TestNamespace}}:2379,{{.EtcdName}}-2.etcd-headless.{{.TestNamespace}}:2379
         watchKey: var
         value: '1.5'
+        activationValue: '5'
         watchProgressNotifyInterval: '10'
 `
-	insertJobTemplate = `apiVersion: batch/v1
+	setJobTemplate = `apiVersion: batch/v1
 kind: Job
 metadata:
   name: {{.JobName}}
   namespace: {{.TestNamespace}}
 spec:
-  ttlSecondsAfterFinished: 0
+  ttlSecondsAfterFinished: 5
   template:
     spec:
       containers:
@@ -96,27 +104,7 @@ spec:
         command:
         - sh
         - -c
-        - "/usr/local/bin/etcdctl put var 9 --endpoints=http://{{.EtcdName}}-0.etcd-headless.{{.TestNamespace}}:2380,http://{{.EtcdName}}-1.etcd-headless.{{.TestNamespace}}:2380,http://{{.EtcdName}}-2.etcd-headless.{{.TestNamespace}}:2380"
-      restartPolicy: Never
-  backoffLimit: 4
-`
-	deleteJobTemplate = `apiVersion: batch/v1
-kind: Job
-metadata:
-  name: {{.JobName}}
-  namespace: {{.TestNamespace}}
-spec:
-  ttlSecondsAfterFinished: 0
-  template:
-    spec:
-      containers:
-      - name: etcd
-        image: gcr.io/etcd-development/etcd:v3.4.20
-        imagePullPolicy: IfNotPresent
-        command:
-        - sh
-        - -c
-        - "/usr/local/bin/etcdctl put var 0 --endpoints=http://{{.EtcdName}}-0.etcd-headless.{{.TestNamespace}}:2380,http://{{.EtcdName}}-1.etcd-headless.{{.TestNamespace}}:2380,http://{{.EtcdName}}-2.etcd-headless.{{.TestNamespace}}:2380"
+        - "/usr/local/bin/etcdctl put var {{.Value}} --endpoints=http://{{.EtcdName}}-0.etcd-headless.{{.TestNamespace}}:2380,http://{{.EtcdName}}-1.etcd-headless.{{.TestNamespace}}:2380,http://{{.EtcdName}}-2.etcd-headless.{{.TestNamespace}}:2380"
       restartPolicy: Never
   backoffLimit: 4
 `
@@ -128,16 +116,18 @@ func TestScaler(t *testing.T) {
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 
-	// Create kubernetes resources for testing
-	data, templates := getTemplateData()
-	CreateKubernetesResources(t, kc, testNamespace, data, templates)
+	CreateNamespace(t, kc, testNamespace)
 
 	// Create Etcd Cluster
 	etcd.InstallCluster(t, kc, testName, testNamespace)
 
+	// Create kubernetes resources for testing
+	data, templates := getTemplateData()
+	KubectlApplyMultipleWithTemplate(t, data, templates)
+
 	testActivation(t, kc, data)
+	testScaleOut(t, kc, data)
 	testScaleIn(t, kc, data)
-	testScaleOut(t, kc)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -145,38 +135,41 @@ func TestScaler(t *testing.T) {
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
-	KubectlApplyWithTemplate(t, data, "insertJobTemplate", insertJobTemplate)
+	data.Value = 4
+	KubectlApplyWithTemplate(t, data, "insertJobTemplate", setJobTemplate)
 
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 10)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
+}
+
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing scale out ---")
+	data.Value = 9
+	KubectlApplyWithTemplate(t, data, "deleteJobTemplate", setJobTemplate)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
+		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale in ---")
-	KubectlApplyWithTemplate(t, data, "insertJobTemplate", insertJobTemplate)
+	data.Value = 0
+	KubectlApplyWithTemplate(t, data, "insertJobTemplate", setJobTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 6, 60, 3),
-		"replica count should be %d after 3 minutes", 6)
-}
-
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale out ---")
-	KubectlApplyWithTemplate(t, data, "deleteJobTemplate", deleteJobTemplate)
-
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 3),
-		"replica count should be %d after 3 minutes", 0)
-}
-
-var data = templateData{
-	TestNamespace:    testNamespace,
-	DeploymentName:   deploymentName,
-	ScaledObjectName: scaledObjectName,
-	JobName:          jobName,
-	EtcdName:         testName,
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
+		"replica count should be %d after 3 minutes", minReplicaCount)
 }
 
 func getTemplateData() (templateData, []Template) {
-	return data, []Template{
-		{Name: "deploymentTemplate", Config: deploymentTemplate},
-		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-	}
+	return templateData{
+			TestNamespace:    testNamespace,
+			DeploymentName:   deploymentName,
+			ScaledObjectName: scaledObjectName,
+			JobName:          jobName,
+			EtcdName:         testName,
+			MinReplicaCount:  minReplicaCount,
+			MaxReplicaCount:  maxReplicaCount,
+		}, []Template{
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		}
 }
