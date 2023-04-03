@@ -212,7 +212,8 @@ func runWriteJob(t *testing.T, kc *kubernetes.Clientset) templateData {
 	assert.True(t, WaitForJobSuccess(t, kc, influxdbJobName, testNamespace, 30, 2), "Job should run successfully")
 
 	// get pod logs
-	log := FindPodLogs(t, kc, testNamespace, label)
+	log, err := FindPodLogs(kc, testNamespace, label)
+	assert.NoErrorf(t, err, "cannotget logs - %s", err)
 
 	var lines []string
 	sc := bufio.NewScanner(strings.NewReader(log[0]))

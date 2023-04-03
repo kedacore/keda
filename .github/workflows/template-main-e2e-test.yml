@@ -6,7 +6,7 @@ on:
 jobs:
   e2e-tests:
     name: Run e2e test
-    runs-on: ubuntu-latest
+    runs-on: ARM64
     # build-tools is built from ../../tools/build-tools.Dockerfile
     container: ghcr.io/kedacore/build-tools:1.19.7
     concurrency: e2e-tests
