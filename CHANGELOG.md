@@ -52,6 +52,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Improvements
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- **GCP PubSub Scaler**: Make it more flexible for metrics ([#4243](https://github.com/kedacore/keda/issues/4243))
 
 ### Fixes
 
