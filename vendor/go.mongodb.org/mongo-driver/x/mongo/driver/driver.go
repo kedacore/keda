@@ -59,7 +59,7 @@ type Server interface {
 // Connection represents a connection to a MongoDB server.
 type Connection interface {
 	WriteWireMessage(context.Context, []byte) error
-	ReadWireMessage(ctx context.Context, dst []byte) ([]byte, error)
+	ReadWireMessage(ctx context.Context) ([]byte, error)
 	Description() description.Server
 
 	// Close closes any underlying connection and returns or frees any resources held by the

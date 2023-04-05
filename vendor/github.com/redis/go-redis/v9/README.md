@@ -13,9 +13,13 @@
 > See [OpenTelemetry](example/otel) example which demonstrates how you can use Uptrace to monitor
 > go-redis.
 
+## Documentation
+
+- [English](https://redis.uptrace.dev)
+- [简体中文](https://redis.uptrace.dev/zh/)
+
 ## Resources
 
-- [Documentation](https://redis.uptrace.dev)
 - [Discussions](https://github.com/redis/go-redis/discussions)
 - [Chat](https://discord.gg/rWtp5Aj)
 - [Reference](https://pkg.go.dev/github.com/redis/go-redis/v9)
@@ -161,6 +165,12 @@ Lastly, run:
 
 ```shell
 go test
+```
+
+Another option is to run your specific tests with an already running redis. The example below, tests against a redis running on port 9999.:
+
+```shell
+REDIS_PORT=9999 go test <your options>
 ```
 
 ## See also

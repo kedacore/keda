@@ -443,6 +443,7 @@ func (x *Distribution_Exemplar) GetAttachments() []*anypb.Any {
 // following boundaries:
 //
 //	Upper bound (0 <= i < N-1):     offset + (width * i).
+//
 //	Lower bound (1 <= i < N):       offset + (width * (i - 1)).
 type Distribution_BucketOptions_Linear struct {
 	state         protoimpl.MessageState
@@ -518,6 +519,7 @@ func (x *Distribution_BucketOptions_Linear) GetOffset() float64 {
 // following boundaries:
 //
 //	Upper bound (0 <= i < N-1):     scale * (growth_factor ^ i).
+//
 //	Lower bound (1 <= i < N):       scale * (growth_factor ^ (i - 1)).
 type Distribution_BucketOptions_Exponential struct {
 	state         protoimpl.MessageState
