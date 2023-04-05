@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Azure/azure-amqp-common-go/v4/aad"
 	eventhub "github.com/Azure/azure-event-hubs-go/v3"
 	"github.com/Azure/go-autorest/autorest/azure"
 
@@ -44,14 +45,32 @@ func GetEventHubClient(ctx context.Context, info EventHubInfo) (*eventhub.Hub, e
 		}
 		return hub, nil
 
-	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+	case kedav1alpha1.PodIdentityProviderAzure:
 		env := azure.Environment{ActiveDirectoryEndpoint: info.ActiveDirectoryEndpoint, ServiceBusEndpointSuffix: info.ServiceBusEndpointSuffix}
 		hubEnvOptions := eventhub.HubWithEnvironment(env)
-		creds, chainedErr := NewChainedCredential(info.PodIdentity.IdentityID, info.PodIdentity.Provider)
-		if chainedErr != nil {
-			return nil, chainedErr
+		// Since there is no connectionstring, then user wants to use AAD Pod identity
+		// Internally, the JWTProvider will use Managed Service Identity to authenticate if no Service Principal info supplied
+		envJWTProviderOption := aad.JWTProviderWithAzureEnvironment(&env)
+		resourceURLJWTProviderOption := aad.JWTProviderWithResourceURI(info.EventHubResourceURL)
+		clientIDJWTProviderOption := func(config *aad.TokenProviderConfiguration) error {
+			config.ClientID = info.PodIdentity.IdentityID
+			return nil
 		}
-		return eventhub.NewHub(info.Namespace, info.EventHubName, creds, hubEnvOptions)
+
+		provider, aadErr := aad.NewJWTProvider(envJWTProviderOption, resourceURLJWTProviderOption, clientIDJWTProviderOption)
+
+		if aadErr == nil {
+			return eventhub.NewHub(info.Namespace, info.EventHubName, provider, hubEnvOptions)
+		}
+
+		return nil, aadErr
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		// User wants to use AAD Workload Identity
+		env := azure.Environment{ActiveDirectoryEndpoint: info.ActiveDirectoryEndpoint, ServiceBusEndpointSuffix: info.ServiceBusEndpointSuffix}
+		hubEnvOptions := eventhub.HubWithEnvironment(env)
+		provider := NewAzureADWorkloadIdentityTokenProvider(ctx, info.PodIdentity.IdentityID, info.EventHubResourceURL)
+
+		return eventhub.NewHub(info.Namespace, info.EventHubName, provider, hubEnvOptions)
 	}
 
 	return nil, fmt.Errorf("event hub does not support pod identity %v", info.PodIdentity)

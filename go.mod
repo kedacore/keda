@@ -79,7 +79,7 @@ require (
 	k8s.io/client-go v0.26.3
 	k8s.io/code-generator v0.26.3
 	k8s.io/klog/v2 v2.90.1
-	k8s.io/kube-openapi v0.0.0-20230327201221-f5883ff37f0c
+	k8s.io/kube-openapi v0.0.0-20230303024457-afdc3dddf62d
 	k8s.io/metrics v0.26.3
 	k8s.io/utils v0.0.0-20230313181309-38a27ef9d749
 	knative.dev/pkg v0.0.0-20230404101938-ee73c9355c9d
