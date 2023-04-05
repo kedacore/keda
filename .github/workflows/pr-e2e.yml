@@ -138,10 +138,10 @@ jobs:
           TEST_CLUSTER_NAME: keda-pr-run
         run: |
           MESSAGE="${{ github.event.comment.body }}"
-          REGEX='/run-e2e (.+[\*|.go])'
+          REGEX='/run-e2e (.+)'
           if [[ "$MESSAGE" =~ $REGEX ]]
           then
-            export E2E_TEST_REGEX="${BASH_REMATCH[1]}"
+            export E2E_TEST_REGEX="$(echo ${BASH_REMATCH[1]} | head -1)"
           fi
           echo "${{ needs.triage.outputs.pr_num }}"
           make e2e-test
