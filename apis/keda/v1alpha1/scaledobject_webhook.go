@@ -62,11 +62,28 @@ func (so *ScaledObject) ValidateCreate() error {
 func (so *ScaledObject) ValidateUpdate(old runtime.Object) error {
 	val, _ := json.MarshalIndent(so, "", "  ")
 	scaledobjectlog.V(1).Info(fmt.Sprintf("validating scaledobject update for %s", string(val)))
+
+	if isRemovingFinalizer(so, old) {
+		scaledobjectlog.V(1).Info("finalizer removal, skipping validation")
+		return nil
+	}
+
 	return validateWorkload(so, "update")
 }
 
 func (so *ScaledObject) ValidateDelete() error {
 	return nil
+}
+
+func isRemovingFinalizer(so *ScaledObject, old runtime.Object) bool {
+	oldSo := old.(*ScaledObject)
+
+	soSpec, _ := json.MarshalIndent(so.Spec, "", "  ")
+	oldSoSpec, _ := json.MarshalIndent(oldSo.Spec, "", "  ")
+	soSpecString := string(soSpec)
+	oldSoSpecString := string(oldSoSpec)
+
+	return len(so.ObjectMeta.Finalizers) == 0 && len(oldSo.ObjectMeta.Finalizers) == 1 && soSpecString == oldSoSpecString
 }
 
 func validateWorkload(so *ScaledObject, action string) error {

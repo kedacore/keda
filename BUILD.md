@@ -287,7 +287,8 @@ Follow these instructions if you want to debug the KEDA webhook using VS Code.
      clientConfig:
        url: "https://${YOUR_URL}/validate-keda-sh-v1alpha1-scaledobject"
    ```
-   **Note:** You could need to define also the key `caBundle` with the CA bundle encoded in base64 if the cluster can get it during the manifest apply (this happens with localtunnel for instance)
+   **Note:** You need to define also the key `caBundle` with the CA bundle encoded in base64. This `caBundle` is the pem file from the CA used to sign the certificate. Remember to disable the `caBundle` inyection to avoid unintended rewrites of your `caBundle` (by KEDA operator or by any other 3rd party)
+
 
 4. Deploy CRDs and KEDA into `keda` namespace
    ```bash
