@@ -341,10 +341,14 @@ func parseKafkaMetadata(config *ScalerConfig, logger logr.Logger) (kafkaMetadata
 		if err != nil {
 			return meta, fmt.Errorf("error parsing limitToPartitionsWithLag: %w", err)
 		}
-		if meta.allowIdleConsumers {
+		meta.limitToPartitionsWithLag = t
+
+		if meta.allowIdleConsumers && meta.limitToPartitionsWithLag {
 			return meta, fmt.Errorf("allowIdleConsumers and limitToPartitionsWithLag cannot be set simultaneously")
 		}
-		meta.limitToPartitionsWithLag = t
+		if len(meta.topic) == 0 && meta.limitToPartitionsWithLag {
+			return meta, fmt.Errorf("topic must be specified when using limitToPartitionsWithLag")
+		}
 	}
 
 	meta.version = sarama.V1_0_0_0
