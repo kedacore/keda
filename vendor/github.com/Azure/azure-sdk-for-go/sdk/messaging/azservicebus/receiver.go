@@ -45,22 +45,18 @@ const (
 
 // Receiver receives messages using pull based functions (ReceiveMessages).
 type Receiver struct {
-	receiveMode ReceiveMode
-	entityPath  string
-
-	settler        settler
-	retryOptions   RetryOptions
-	cleanupOnClose func()
-
-	lastPeekedSequenceNumber int64
 	amqpLinks                internal.AMQPLinks
-
-	mu        sync.Mutex
-	receiving bool
-
+	cancelReleaser           *atomic.Value
+	cleanupOnClose           func()
 	defaultTimeAfterFirstMsg time.Duration
-
-	cancelReleaser *atomic.Value
+	entityPath               string
+	lastPeekedSequenceNumber int64
+	maxAllowedCredits        uint32
+	mu                       sync.Mutex
+	receiveMode              ReceiveMode
+	receiving                bool
+	retryOptions             RetryOptions
+	settler                  settler
 }
 
 // ReceiverOptions contains options for the `Client.NewReceiverForQueue` or `Client.NewReceiverForSubscription`
@@ -85,7 +81,10 @@ type ReceiverOptions struct {
 	SubQueue SubQueue
 }
 
-const defaultLinkRxBuffer = 2048
+// defaultLinkRxBuffer is the maximum number of transfer frames we can handle
+// on the Receiver. This matches the current default window size that go-amqp
+// uses for sessions.
+const defaultLinkRxBuffer uint32 = 5000
 
 func applyReceiverOptions(receiver *Receiver, entity *entity, options *ReceiverOptions) error {
 	if options == nil {
@@ -131,11 +130,12 @@ func newReceiver(args newReceiverArgs, options *ReceiverOptions) (*Receiver, err
 	}
 
 	receiver := &Receiver{
-		lastPeekedSequenceNumber: 0,
+		cancelReleaser:           &atomic.Value{},
 		cleanupOnClose:           args.cleanupOnClose,
 		defaultTimeAfterFirstMsg: 20 * time.Millisecond,
+		lastPeekedSequenceNumber: 0,
+		maxAllowedCredits:        defaultLinkRxBuffer,
 		retryOptions:             args.retryOptions,
-		cancelReleaser:           &atomic.Value{},
 	}
 
 	receiver.cancelReleaser.Store(emptyCancelFn)
@@ -363,6 +363,14 @@ func (r *Receiver) DeadLetterMessage(ctx context.Context, message *ReceivedMessa
 func (r *Receiver) receiveMessagesImpl(ctx context.Context, maxMessages int, options *ReceiveMessagesOptions) ([]*ReceivedMessage, error) {
 	cancelReleaser := r.cancelReleaser.Swap(emptyCancelFn).(func() string)
 	_ = cancelReleaser()
+
+	if maxMessages <= 0 {
+		return nil, internal.NewErrNonRetriable("maxMessages should be greater than 0")
+	}
+
+	if maxMessages > int(r.maxAllowedCredits) {
+		return nil, internal.NewErrNonRetriable(fmt.Sprintf("maxMessages cannot exceed %d", r.maxAllowedCredits))
+	}
 
 	var linksWithID *internal.LinksWithID
 

@@ -93,7 +93,6 @@ func NewEnvironmentCredential(options *EnvironmentCredentialOptions) (*Environme
 			additionalTenants = strings.Split(tenants, ";")
 		}
 	}
-	additionalTenants = resolveAdditionallyAllowedTenants(additionalTenants)
 	if clientSecret := os.Getenv(azureClientSecret); clientSecret != "" {
 		log.Write(EventAuthentication, "EnvironmentCredential will authenticate with ClientSecretCredential")
 		o := &ClientSecretCredentialOptions{

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Azure/azure-amqp-common-go/v3/aad"
+	"github.com/Azure/azure-amqp-common-go/v4/aad"
 	eventhub "github.com/Azure/azure-event-hubs-go/v3"
 	"github.com/Azure/go-autorest/autorest/azure"
 
@@ -44,6 +44,7 @@ func GetEventHubClient(ctx context.Context, info EventHubInfo) (*eventhub.Hub, e
 			return nil, fmt.Errorf("failed to create hub client: %w", err)
 		}
 		return hub, nil
+
 	case kedav1alpha1.PodIdentityProviderAzure:
 		env := azure.Environment{ActiveDirectoryEndpoint: info.ActiveDirectoryEndpoint, ServiceBusEndpointSuffix: info.ServiceBusEndpointSuffix}
 		hubEnvOptions := eventhub.HubWithEnvironment(env)

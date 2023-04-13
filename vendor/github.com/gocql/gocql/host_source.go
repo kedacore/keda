@@ -11,6 +11,9 @@ import (
 	"time"
 )
 
+var ErrCannotFindHost = errors.New("cannot find host")
+var ErrHostAlreadyExists = errors.New("host already exists")
+
 type nodeState int32
 
 func (n nodeState) String() string {
@@ -667,7 +670,7 @@ func (r *ringDescriber) refreshRing() error {
 	// if we have 0 hosts this will return the previous list of hosts to
 	// attempt to reconnect to the cluster otherwise we would never find
 	// downed hosts again, could possibly have an optimisation to only
-	// try to add new hosts if GetHosts didnt error and the hosts didnt change.
+	// try to add new hosts if GetHosts didn't error and the hosts didn't change.
 	hosts, partitioner, err := r.GetHosts()
 	if err != nil {
 		return err
@@ -684,7 +687,25 @@ func (r *ringDescriber) refreshRing() error {
 		if host, ok := r.session.ring.addHostIfMissing(h); !ok {
 			r.session.startPoolFill(h)
 		} else {
-			host.update(h)
+			// host (by hostID) already exists; determine if IP has changed
+			newHostID := h.HostID()
+			existing, ok := prevHosts[newHostID]
+			if !ok {
+				return fmt.Errorf("get existing host=%s from prevHosts: %w", h, ErrCannotFindHost)
+			}
+			if h.nodeToNodeAddress().Equal(existing.nodeToNodeAddress()) {
+				// no host IP change
+				host.update(h)
+			} else {
+				// host IP has changed
+				// remove old HostInfo (w/old IP)
+				r.session.removeHost(existing)
+				if _, alreadyExists := r.session.ring.addHostIfMissing(h); alreadyExists {
+					return fmt.Errorf("add new host=%s after removal: %w", h, ErrHostAlreadyExists)
+				}
+				// add new HostInfo (same hostID, new IP)
+				r.session.startPoolFill(h)
+			}
 		}
 		delete(prevHosts, h.HostID())
 	}

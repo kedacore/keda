@@ -1,5 +1,22 @@
 # Release History
 
+## 1.3.0-beta.4 (2023-03-08)
+
+### Features Added
+* Added `WorkloadIdentityCredentialOptions.AdditionallyAllowedTenants` and `.DisableInstanceDiscovery`
+
+### Bugs Fixed
+* Credentials now synchronize within `GetToken()` so a single instance can be shared among goroutines
+  ([#20044](https://github.com/Azure/azure-sdk-for-go/issues/20044))
+
+### Other Changes
+* Upgraded dependencies
+
+## 1.2.2 (2023-03-07)
+
+### Other Changes
+* Upgraded dependencies
+
 ## 1.3.0-beta.3 (2023-02-07)
 
 ### Features Added

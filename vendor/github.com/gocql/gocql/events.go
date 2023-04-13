@@ -129,6 +129,14 @@ func (s *Session) handleKeyspaceChange(keyspace, change string) {
 	s.policy.KeyspaceChanged(KeyspaceUpdateEvent{Keyspace: keyspace, Change: change})
 }
 
+// handleNodeEvent handles inbound status and topology change events.
+//
+// Within each category (topology vs status), events are debounced by
+// host IP; only the latest event is processed.
+//
+// Processing topology change events before status change events ensures
+// that a NEW_NODE event is not dropped in favor of a newer UP event (which
+// would itself be dropped/ignored, as the node is not yet known).
 func (s *Session) handleNodeEvent(frames []frame) {
 	type nodeEvent struct {
 		change string
@@ -136,32 +144,35 @@ func (s *Session) handleNodeEvent(frames []frame) {
 		port   int
 	}
 
-	events := make(map[string]*nodeEvent)
+	// topology change events
+	tEvents := make(map[string]*nodeEvent)
+	// status change events
+	sEvents := make(map[string]*nodeEvent)
 
 	for _, frame := range frames {
 		// TODO: can we be sure the order of events in the buffer is correct?
 		switch f := frame.(type) {
 		case *topologyChangeEventFrame:
-			event, ok := events[f.host.String()]
+			event, ok := tEvents[f.host.String()]
 			if !ok {
 				event = &nodeEvent{change: f.change, host: f.host, port: f.port}
-				events[f.host.String()] = event
+				tEvents[f.host.String()] = event
 			}
 			event.change = f.change
 
 		case *statusChangeEventFrame:
-			event, ok := events[f.host.String()]
+			event, ok := sEvents[f.host.String()]
 			if !ok {
 				event = &nodeEvent{change: f.change, host: f.host, port: f.port}
-				events[f.host.String()] = event
+				sEvents[f.host.String()] = event
 			}
 			event.change = f.change
 		}
 	}
 
-	for _, f := range events {
+	for _, f := range tEvents {
 		if gocqlDebug {
-			s.logger.Printf("gocql: dispatching event: %+v\n", f)
+			s.logger.Printf("gocql: dispatching topology change event: %+v\n", f)
 		}
 
 		// ignore events we received if they were disabled
@@ -176,8 +187,19 @@ func (s *Session) handleNodeEvent(frames []frame) {
 				s.handleRemovedNode(f.host, f.port)
 			}
 		case "MOVED_NODE":
-		// java-driver handles this, not mentioned in the spec
-		// TODO(zariel): refresh token map
+			// java-driver handles this, not mentioned in the spec
+			// TODO(zariel): refresh token map
+		}
+	}
+
+	for _, f := range sEvents {
+		if gocqlDebug {
+			s.logger.Printf("gocql: dispatching status change event: %+v\n", f)
+		}
+
+		// ignore events we received if they were disabled
+		// see https://github.com/gocql/gocql/issues/1591
+		switch f.change {
 		case "UP":
 			if !s.cfg.Events.DisableNodeStatusEvents {
 				s.handleNodeUp(f.host, f.port)
@@ -264,6 +286,9 @@ func (s *Session) handleNodeUp(eventIp net.IP, eventPort int) {
 
 	host, ok := s.ring.getHostByIP(eventIp.String())
 	if !ok {
+		if err := s.hostSource.refreshRing(); err != nil && gocqlDebug {
+			s.logger.Printf("gocql: Session.handleNodeUp: failed to refresh ring: %w\n", err.Error())
+		}
 		return
 	}
 

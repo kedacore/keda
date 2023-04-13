@@ -49,6 +49,10 @@ type KReference struct {
 	// Note: This API is EXPERIMENTAL and might break anytime. For more details: https://github.com/knative/eventing/issues/5086
 	// +optional
 	Group string `json:"group,omitempty"`
+
+	// Address points to a specific Address Name.
+	// +optional
+	Address *string `json:"address,omitempty"`
 }
 
 func (kr *KReference) Validate(ctx context.Context) *apis.FieldError {

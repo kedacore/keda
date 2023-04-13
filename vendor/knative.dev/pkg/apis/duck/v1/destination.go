@@ -31,6 +31,13 @@ type Destination struct {
 	// URI can be an absolute URL(non-empty scheme and non-empty host) pointing to the target or a relative URI. Relative URIs will be resolved using the base URI retrieved from Ref.
 	// +optional
 	URI *apis.URL `json:"uri,omitempty"`
+
+	// CACerts are Certification Authority (CA) certificates in PEM format
+	// according to https://www.rfc-editor.org/rfc/rfc7468.
+	// If set, these CAs are appended to the set of CAs provided
+	// by the Addressable target, if any.
+	// +optional
+	CACerts *string `json:"CACerts,omitempty"`
 }
 
 // Validate the Destination has all the necessary fields and check the

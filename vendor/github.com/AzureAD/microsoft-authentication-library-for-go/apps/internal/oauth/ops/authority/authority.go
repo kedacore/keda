@@ -309,30 +309,23 @@ func firstPathSegment(u *url.URL) (string, error) {
 		return pathParts[1], nil
 	}
 
-	return "", errors.New("authority does not have two segments")
+	return "", errors.New(`authority must be an https URL such as "https://login.microsoftonline.com/<your tenant>"`)
 }
 
 // NewInfoFromAuthorityURI creates an AuthorityInfo instance from the authority URL provided.
-func NewInfoFromAuthorityURI(authorityURI string, validateAuthority bool, instanceDiscoveryDisabled bool) (Info, error) {
-	authorityURI = strings.ToLower(authorityURI)
-	var authorityType string
-	u, err := url.Parse(authorityURI)
-	if err != nil {
-		return Info{}, fmt.Errorf("authorityURI passed could not be parsed: %w", err)
-	}
-	if u.Scheme != "https" {
-		return Info{}, fmt.Errorf("authorityURI(%s) must have scheme https", authorityURI)
+func NewInfoFromAuthorityURI(authority string, validateAuthority bool, instanceDiscoveryDisabled bool) (Info, error) {
+	u, err := url.Parse(strings.ToLower(authority))
+	if err != nil || u.Scheme != "https" {
+		return Info{}, errors.New(`authority must be an https URL such as "https://login.microsoftonline.com/<your tenant>"`)
 	}
 
 	tenant, err := firstPathSegment(u)
-	if tenant == "adfs" {
-		authorityType = ADFS
-	} else {
-		authorityType = AAD
-	}
-
 	if err != nil {
 		return Info{}, err
+	}
+	authorityType := AAD
+	if tenant == "adfs" {
+		authorityType = ADFS
 	}
 
 	// u.Host includes the port, if any, which is required for private cloud deployments

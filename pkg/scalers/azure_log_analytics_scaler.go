@@ -31,7 +31,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Azure/azure-amqp-common-go/v3/auth"
+	"github.com/Azure/azure-amqp-common-go/v4/auth"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"

@@ -10755,6 +10755,10 @@ type CreateTableInput struct {
 	//    workloads. PAY_PER_REQUEST sets the billing mode to On-Demand Mode (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadWriteCapacityMode.html#HowItWorks.OnDemand).
 	BillingMode *string `type:"string" enum:"BillingMode"`
 
+	// Indicates whether deletion protection is to be enabled (true) or disabled
+	// (false) on the table.
+	DeletionProtectionEnabled *bool `type:"boolean"`
+
 	// One or more global secondary indexes (the maximum is 20) to be created on
 	// the table. Each global secondary index in the array includes the following:
 	//
@@ -10997,6 +11001,12 @@ func (s *CreateTableInput) SetAttributeDefinitions(v []*AttributeDefinition) *Cr
 // SetBillingMode sets the BillingMode field's value.
 func (s *CreateTableInput) SetBillingMode(v string) *CreateTableInput {
 	s.BillingMode = &v
+	return s
+}
+
+// SetDeletionProtectionEnabled sets the DeletionProtectionEnabled field's value.
+func (s *CreateTableInput) SetDeletionProtectionEnabled(v bool) *CreateTableInput {
+	s.DeletionProtectionEnabled = &v
 	return s
 }
 
@@ -22986,6 +22996,10 @@ type TableDescription struct {
 	// format.
 	CreationDateTime *time.Time `type:"timestamp"`
 
+	// Indicates whether deletion protection is enabled (true) or disabled (false)
+	// on the table.
+	DeletionProtectionEnabled *bool `type:"boolean"`
+
 	// The global secondary indexes, if any, on the table. Each index is scoped
 	// to a given partition key value. Each element is composed of:
 	//
@@ -23217,6 +23231,12 @@ func (s *TableDescription) SetBillingModeSummary(v *BillingModeSummary) *TableDe
 // SetCreationDateTime sets the CreationDateTime field's value.
 func (s *TableDescription) SetCreationDateTime(v time.Time) *TableDescription {
 	s.CreationDateTime = &v
+	return s
+}
+
+// SetDeletionProtectionEnabled sets the DeletionProtectionEnabled field's value.
+func (s *TableDescription) SetDeletionProtectionEnabled(v bool) *TableDescription {
+	s.DeletionProtectionEnabled = &v
 	return s
 }
 
@@ -25811,6 +25831,10 @@ type UpdateTableInput struct {
 	//    workloads. PAY_PER_REQUEST sets the billing mode to On-Demand Mode (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadWriteCapacityMode.html#HowItWorks.OnDemand).
 	BillingMode *string `type:"string" enum:"BillingMode"`
 
+	// Indicates whether deletion protection is to be enabled (true) or disabled
+	// (false) on the table.
+	DeletionProtectionEnabled *bool `type:"boolean"`
+
 	// An array of one or more global secondary indexes for the table. For each
 	// index in the array, you can request one action:
 	//
@@ -25943,6 +25967,12 @@ func (s *UpdateTableInput) SetAttributeDefinitions(v []*AttributeDefinition) *Up
 // SetBillingMode sets the BillingMode field's value.
 func (s *UpdateTableInput) SetBillingMode(v string) *UpdateTableInput {
 	s.BillingMode = &v
+	return s
+}
+
+// SetDeletionProtectionEnabled sets the DeletionProtectionEnabled field's value.
+func (s *UpdateTableInput) SetDeletionProtectionEnabled(v bool) *UpdateTableInput {
+	s.DeletionProtectionEnabled = &v
 	return s
 }
 

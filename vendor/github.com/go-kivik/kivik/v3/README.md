@@ -20,8 +20,9 @@ Example configuration for common dependency managers follow.
 
 ## Go Modules
 
-Kivik 3.x and later depends on Go modules, which requires Go 1.11 or later. If
-your project does not use modules, and you are unable to switch, you may use
+Kivik 3.x is tested against Go 1.13 and later versions, and depends on Go
+modules support (added in Go 1.11). If your project does not use modules, and
+you are unable to switch, you may use
 [Kivik 2.x](https://github.com/go-kivik/kivik/tree/v2).
 
 # Installation
