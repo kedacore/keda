@@ -53,6 +53,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
 - **GCP PubSub Scaler**: Make it more flexible for metrics ([#4243](https://github.com/kedacore/keda/issues/4243))
+- **Kafka Scaler**: Ability to set upper bound to the number of partitions with lag ([#3997](https://github.com/kedacore/keda/issues/3997))
 
 ### Fixes
 
