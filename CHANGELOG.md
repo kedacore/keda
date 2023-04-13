@@ -16,6 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.10.1](#v2101)
 - [v2.10.0](#v2100)
 - [v2.9.3](#v293)
 - [v2.9.2](#v292)
@@ -53,10 +54,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
-- **Admission Webhooks**: Allow to remove the finalizer even if the ScaledObject isn't valid ([#4396](https://github.com/kedacore/keda/issue/4396))
-- **AWS SQS Scaler**: Respect `scaleOnInFlight` value ([#4276](https://github.com/kedacore/keda/issue/4276))
-- **Azure Pipelines**: Fix for disallowing `$top` on query when using `meta.parentID` method ([#4397])
-- **Azure Pipelines**: Respect all required demands ([#4404](https://github.com/kedacore/keda/issues/4404))
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
 
 ### Deprecations
 
@@ -65,6 +63,19 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Breaking Changes
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+### Other
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+## v2.10.1
+
+### Fixes
+
+- **Admission Webhooks**: Allow to remove the finalizer even if the ScaledObject isn't valid ([#4396](https://github.com/kedacore/keda/issue/4396))
+- **AWS SQS Scaler**: Respect `scaleOnInFlight` value ([#4276](https://github.com/kedacore/keda/issue/4276))
+- **Azure Pipelines**: Fix for disallowing `$top` on query when using `meta.parentID` method ([#4397])
+- **Azure Pipelines**: Respect all required demands ([#4404](https://github.com/kedacore/keda/issues/4404))
 
 ### Other
 
