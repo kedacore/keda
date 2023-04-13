@@ -385,26 +385,35 @@ func stripDeadJobs(jobs []JobRequest) []JobRequest {
 	return filtered
 }
 
+func stripAgentVFromArray(array []string) []string {
+	var result []string
+
+	for _, item := range array {
+		if !strings.HasPrefix(item, "Agent.Version") {
+			result = append(result, item)
+		}
+	}
+	return result
+}
+
 // Determine if the scaledjob has the right demands to spin up
 func getCanAgentDemandFulfilJob(jr JobRequest, metadata *azurePipelinesMetadata) bool {
-	var demandsReq = jr.Demands
-	var demandsAvail = strings.Split(metadata.demands, ",")
-	var countDemands = 0
-	for _, dr := range demandsReq {
-		for _, da := range demandsAvail {
-			strDr := fmt.Sprintf("%v", dr)
-			if !strings.HasPrefix(strDr, "Agent.Version") {
-				if strDr == da {
-					countDemands++
-				}
+	countDemands := 0
+	demandsInJob := stripAgentVFromArray(jr.Demands)
+	demandsInScaler := stripAgentVFromArray(strings.Split(metadata.demands, ","))
+
+	for _, demandInJob := range demandsInJob {
+		for _, demandInScaler := range demandsInScaler {
+			if demandInJob == demandInScaler {
+				countDemands++
 			}
 		}
 	}
-	matchDemands := countDemands == len(demandsReq)-1
+
 	if metadata.requireAllDemands {
-		return matchDemands && countDemands == len(demandsAvail)
+		return countDemands == len(demandsInJob) && countDemands == len(demandsInScaler)
 	}
-	return matchDemands
+	return countDemands == len(demandsInJob)
 }
 
 // Determine if the Job and Parent Agent Template have matching capabilities

@@ -121,6 +121,11 @@ issues:
     - path: apis/keda/v1alpha1/scaledobject_webhook_test.go
       linters:
         - gci
+  # Exclude for azure_pipelines_scaler, reason:
+  # pkg/scalers/azure_pipelines_scaler.go:408:10: badCond: `countDemands == len(demandsInJob) && countDemands == len(demandsInScaler)` condition is suspicious (gocritic)
+    - path: azure_pipelines_scaler.go
+      linters:
+        - gocritic
 
 
 linters-settings:
