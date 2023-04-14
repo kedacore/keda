@@ -8,6 +8,7 @@ package types
 import (
 	"flag"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -600,11 +601,27 @@ func VetAndInitializeCLIAndGoConfig(cliConfig CLIConfig, goFlagsConfig GoFlagsCo
 }
 
 // GenerateGoTestCompileArgs is used by the Ginkgo CLI to generate command line arguments to pass to the go test -c command when compiling the test
-func GenerateGoTestCompileArgs(goFlagsConfig GoFlagsConfig, destination string, packageToBuild string) ([]string, error) {
+func GenerateGoTestCompileArgs(goFlagsConfig GoFlagsConfig, destination string, packageToBuild string, pathToInvocationPath string) ([]string, error) {
 	// if the user has set the CoverProfile run-time flag make sure to set the build-time cover flag to make sure
 	// the built test binary can generate a coverprofile
 	if goFlagsConfig.CoverProfile != "" {
 		goFlagsConfig.Cover = true
+	}
+
+	if goFlagsConfig.CoverPkg != "" {
+		coverPkgs := strings.Split(goFlagsConfig.CoverPkg, ",")
+		adjustedCoverPkgs := make([]string, len(coverPkgs))
+		for i, coverPkg := range coverPkgs {
+			coverPkg = strings.Trim(coverPkg, " ")
+			if strings.HasPrefix(coverPkg, "./") {
+				// this is a relative coverPkg - we need to reroot it
+				adjustedCoverPkgs[i] = "./" + filepath.Join(pathToInvocationPath, strings.TrimPrefix(coverPkg, "./"))
+			} else {
+				// this is a package name - don't touch it
+				adjustedCoverPkgs[i] = coverPkg
+			}
+		}
+		goFlagsConfig.CoverPkg = strings.Join(adjustedCoverPkgs, ",")
 	}
 
 	args := []string{"test", "-c", "-o", destination, packageToBuild}

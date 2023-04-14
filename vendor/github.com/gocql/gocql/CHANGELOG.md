@@ -12,7 +12,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [1.3.2] - 2023-03-27
+
+### Changed
+
+- Supported versions of Go that we test against are now Go 1.19 and Go 1.20.
+
+### Fixed
+
+- Node event handling now processes topology events before status events.
+  This fixes some cases where new nodes were missed. (#1682)
+- Learning a new IP address for an existing node (identified by host ID) now triggers replacement of that host.
+  This fixes some Kubernetes reconnection failures. (#1682)
+- Refresh ring when processing a node UP event for an unknown host.
+  This fixes some cases where new nodes were missed. (#1669)
+
 ## [1.3.1] - 2022-12-13
+
+### Fixed
 
 - Panic in RackAwareRoundRobinPolicy caused by wrong alignment on 32-bit platforms. (#1666) 
 

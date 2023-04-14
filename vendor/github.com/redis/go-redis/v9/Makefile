@@ -4,6 +4,7 @@ test: testdeps
 	set -e; for dir in $(GO_MOD_DIRS); do \
 	  echo "go test in $${dir}"; \
 	  (cd "$${dir}" && \
+	    go mod tidy -compat=1.18 && \
 	    go test && \
 	    go test ./... -short -race && \
 	    go test ./... -run=NONE -bench=. -benchmem && \
@@ -22,7 +23,7 @@ bench: testdeps
 
 testdata/redis:
 	mkdir -p $@
-	wget -qO- https://download.redis.io/releases/redis-7.0.7.tar.gz | tar xvz --strip-components=1 -C $@
+	wget -qO- https://download.redis.io/releases/redis-7.0.10.tar.gz | tar xvz --strip-components=1 -C $@
 
 testdata/redis/src/redis-server: testdata/redis
 	cd $< && make all

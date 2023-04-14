@@ -102,6 +102,13 @@ func IsDetachError(err error) bool {
 	return errors.As(err, &de)
 }
 
+func IsNotAllowedError(err error) bool {
+	var e *amqp.Error
+
+	return errors.As(err, &e) &&
+		e.Condition == amqp.ErrorNotAllowed
+}
+
 func IsCancelError(err error) bool {
 	if err == nil {
 		return false

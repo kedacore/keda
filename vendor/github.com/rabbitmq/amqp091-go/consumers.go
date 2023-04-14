@@ -75,6 +75,33 @@ func (subs *consumers) buffer(in chan *Delivery, out chan Delivery) {
 				}
 
 			case out <- *queue[0]:
+				/*
+				* https://github.com/rabbitmq/amqp091-go/issues/179
+				* https://github.com/rabbitmq/amqp091-go/pull/180
+				*
+				* Comment from @lars-t-hansen:
+				*
+				* Given Go's slice semantics, and barring any information
+				* available to the compiler that proves that queue is the only
+				* pointer to the memory it references, the only meaning that
+				* queue = queue[1:] can have is basically queue += sizeof(queue
+				* element), ie, it bumps a pointer. Looking at the generated
+				* code for a simple example (on ARM64 in this case) bears this
+				* out. So what we're left with is an array that we have a
+				* pointer into the middle of. When the GC traces this pointer,
+				* it too does not know whether the array has multiple
+				* referents, and so its only sensible choice is to find the
+				* beginning of the array, and if the array is not already
+				* visited, mark every element in it, including the "dead"
+				* pointer.
+				*
+				* (Depending on the program dynamics, an element may eventually
+				* be appended to the queue when the queue is at capacity, and
+				* in this case the live elements are copied into a new array
+				* and the old array is left to be GC'd eventually, along with
+				* the dead object. But that can take time.)
+				 */
+				queue[0] = nil
 				queue = queue[1:]
 			}
 		}

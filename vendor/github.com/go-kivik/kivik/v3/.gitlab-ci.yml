@@ -1,83 +1,100 @@
 stages:
-    - test
+  - test
 
 variables:
-    GO111MODULE: "on"
-    COUCHDB_USER: admin
-    COUCHDB_PASSWORD: abc123
-    KIVIK_TEST_DSN_COUCH23: http://admin:abc123@couch23:5984/
-    KIVIK_TEST_DSN_COUCH30: http://admin:abc123@couch30:5984/
+  GO111MODULE: "on"
+  COUCHDB_USER: admin
+  COUCHDB_PASSWORD: abc123
+  KIVIK_TEST_DSN_COUCH23: http://admin:abc123@couch23:5984/
+  KIVIK_TEST_DSN_COUCH30: http://admin:abc123@couch30:5984/
 
-.test: &test_template
-    stage: test
-    services:
-        - name: apache/couchdb:2.3.1
-          alias: couch23
-        - name: apache/couchdb:3.0.0
-          alias: couch30
-    before_script:
-        - ./script/complete_couch2.sh ${KIVIK_TEST_DSN_COUCH23}
-        - ./script/complete_couch2.sh ${KIVIK_TEST_DSN_COUCH30}
-    script:
-        - go mod download
-        - ./script/test_version.sh
-        - go test -race -tags=livetest ./...
+.go_test: &go_test_template
+  stage: test
+  services:
+    - name: apache/couchdb:2.3.1
+      alias: couch23
+    - name: couchdb:3.0.0
+      alias: couch30
+  before_script:
+    - ./script/complete_couch2.sh ${KIVIK_TEST_DSN_COUCH23}
+    - ./script/complete_couch2.sh ${KIVIK_TEST_DSN_COUCH30}
+  script:
+    - go mod download
+    - ./script/test_version.sh
+    - go test -race -tags=livetest ./...
 
 linter:
-    stage: test
-    image: golangci/golangci-lint:v1.33
-    script:
-        - go mod download
-        - golangci-lint run ./...
-
-go-1.11:
-    <<: *test_template
-    image: golang:1.11
-
-go-1.12:
-    <<: *test_template
-    image: golang:1.12
+  stage: test
+  image: golangci/golangci-lint:v1.33
+  script:
+    - go mod download
+    - golangci-lint run ./...
 
 go-1.13:
-    <<: *test_template
-    image: golang:1.13
+  <<: *go_test_template
+  image: golang:1.13
 
 go-1.14:
-    <<: *test_template
-    image: golang:1.14
+  <<: *go_test_template
+  image: golang:1.14
 
 go-1.15:
-    <<: *test_template
-    image: golang:1.15
+  <<: *go_test_template
+  image: golang:1.15
 
-gopherjs-1.12:
-    <<: *test_template
-    image: golang:1.14
-    variables:
-      SRCDIR: /go/src/github.com/go-kivik/kivik/v3
-    script:
-        - go get golang.org/dl/go1.12.16
-        - go1.12.16 download
-        - mkdir -p ${SRCDIR}
-        - mv ${CI_PROJECT_DIR}/* ${SRCDIR}
-        - cd ${SRCDIR}
-        - go mod vendor
-        - curl -sL https://deb.nodesource.com/setup_12.x | bash -
-        - apt-get update -qq && apt-get install -y nodejs
-        - npm install
-        - GO111MODULE=off go get -u github.com/gopherjs/gopherjs
-        - npm install source-map-support
-        - |
-            (
-                cd $GOPATH/src/github.com/gopherjs/gopherjs/node-syscall/
-                npm install --global node-gyp
-                node-gyp rebuild
-                mkdir -p ~/.node_libraries/
-                cp build/Release/syscall.node ~/.node_libraries/syscall.node
-            )
-        - GOPHERJS_GOROOT="$(go1.12.16 env GOROOT)" gopherjs test ./...
+go-1.16:
+  <<: *go_test_template
+  image: golang:1.16
+
+go-1.17:
+  <<: *go_test_template
+  image: golang:1.17
+
+go-1.18:
+  <<: *go_test_template
+  image: golang:1.18
+
+go-1.19:
+  <<: *go_test_template
+  image: golang:1.19
+
+go-1.20:
+  <<: *go_test_template
+  image: golang:1.20
+
+.gopherjs_test: &gopherjs_test_template
+  <<: *go_test_template
+  before_script:
+    - curl -sL https://deb.nodesource.com/setup_12.x | bash -
+    - apt-get update -qq && apt-get install -y nodejs
+  script:
+    - npm install -g npm@7.5.2 && npm update
+    - npm install
+    - npm install source-map-support
+    - mkdir -p /tmp/src
+    - ( cd /tmp && go install github.com/gopherjs/gopherjs@${GOPHERJS_TAG} )
+    - npm install -S https://github.com/gopherjs/gopherjs#${GOPHERJS_TAG} && node -r syscall
+    - gopherjs test ./...
+
+gopherjs-1.16:
+  <<: *gopherjs_test_template
+  image: golang:1.16
+  variables:
+    GOPHERJS_TAG: 1.16.4+go1.16.7
+
+gopherjs-1.17:
+  <<: *gopherjs_test_template
+  image: golang:1.17
+  variables:
+    GOPHERJS_TAG: v1.17.2+go1.17.9
+
+gopherjs-1.18:
+  <<: *go_test_template
+  image: golang:1.18
+  variables:
+    GOPHERJS_TAG: v1.18.0-beta2+go1.18.5
 
 go-rc:
-    <<: *test_template
-    image: golang:rc
-    allow_failure: true
+  <<: *go_test_template
+  image: golang:rc
+  allow_failure: true

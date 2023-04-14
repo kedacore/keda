@@ -504,9 +504,7 @@ func ScheduleMessages(ctx context.Context, rpcLink amqpwrap.RPCLink, linkName st
 		const sequenceFieldName = "sequence-numbers"
 		if rawArr, ok := rawVal[sequenceFieldName]; ok {
 			if arr, ok := rawArr.([]int64); ok {
-				for i := range arr {
-					retval = append(retval, arr[i])
-				}
+				retval = append(retval, arr...)
 				return retval, nil
 			}
 			return nil, NewErrIncorrectType(sequenceFieldName, []int64{}, rawArr)

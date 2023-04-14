@@ -5,13 +5,13 @@ import "github.com/Azure/go-amqp/internal/encoding"
 // Sender Settlement Modes
 const (
 	// Sender will send all deliveries initially unsettled to the receiver.
-	ModeUnsettled = encoding.ModeUnsettled
+	SenderSettleModeUnsettled SenderSettleMode = encoding.SenderSettleModeUnsettled
 
 	// Sender will send all deliveries settled to the receiver.
-	ModeSettled = encoding.ModeSettled
+	SenderSettleModeSettled SenderSettleMode = encoding.SenderSettleModeSettled
 
 	// Sender MAY send a mixture of settled and unsettled deliveries to the receiver.
-	ModeMixed = encoding.ModeMixed
+	SenderSettleModeMixed SenderSettleMode = encoding.SenderSettleModeMixed
 )
 
 // SenderSettleMode specifies how the sender will settle messages.
@@ -19,20 +19,23 @@ type SenderSettleMode = encoding.SenderSettleMode
 
 func senderSettleModeValue(m *SenderSettleMode) SenderSettleMode {
 	if m == nil {
-		return ModeMixed
+		return SenderSettleModeMixed
 	}
 	return *m
 }
 
 // Receiver Settlement Modes
 const (
-	// Receiver will spontaneously settle all incoming transfers.
-	ModeFirst = encoding.ModeFirst
+	// Receiver is the first to consider the message as settled.
+	// Once the corresponding disposition frame is sent, the message
+	// is considered to be settled.
+	ReceiverSettleModeFirst ReceiverSettleMode = encoding.ReceiverSettleModeFirst
 
-	// Receiver will only settle after sending the disposition to the
-	// sender and receiving a disposition indicating settlement of
-	// the delivery from the sender.
-	ModeSecond = encoding.ModeSecond
+	// Receiver is the second to consider the message as settled.
+	// Once the corresponding disposition frame is sent, the settlement
+	// is considered in-flight and the message will not be considered as
+	// settled until the sender replies acknowledging the settlement.
+	ReceiverSettleModeSecond ReceiverSettleMode = encoding.ReceiverSettleModeSecond
 )
 
 // ReceiverSettleMode specifies how the receiver will settle messages.
@@ -40,7 +43,7 @@ type ReceiverSettleMode = encoding.ReceiverSettleMode
 
 func receiverSettleModeValue(m *ReceiverSettleMode) ReceiverSettleMode {
 	if m == nil {
-		return ModeFirst
+		return ReceiverSettleModeFirst
 	}
 	return *m
 }
@@ -48,16 +51,16 @@ func receiverSettleModeValue(m *ReceiverSettleMode) ReceiverSettleMode {
 // Durability Policies
 const (
 	// No terminus state is retained durably.
-	DurabilityNone = encoding.DurabilityNone
+	DurabilityNone Durability = encoding.DurabilityNone
 
 	// Only the existence and configuration of the terminus is
 	// retained durably.
-	DurabilityConfiguration = encoding.DurabilityConfiguration
+	DurabilityConfiguration Durability = encoding.DurabilityConfiguration
 
 	// In addition to the existence and configuration of the
 	// terminus, the unsettled state for durable messages is
 	// retained durably.
-	DurabilityUnsettledState = encoding.DurabilityUnsettledState
+	DurabilityUnsettledState Durability = encoding.DurabilityUnsettledState
 )
 
 // Durability specifies the durability of a link.
@@ -66,18 +69,18 @@ type Durability = encoding.Durability
 // Expiry Policies
 const (
 	// The expiry timer starts when terminus is detached.
-	ExpiryLinkDetach = encoding.ExpiryLinkDetach
+	ExpiryPolicyLinkDetach ExpiryPolicy = encoding.ExpiryLinkDetach
 
 	// The expiry timer starts when the most recently
 	// associated session is ended.
-	ExpirySessionEnd = encoding.ExpirySessionEnd
+	ExpiryPolicySessionEnd ExpiryPolicy = encoding.ExpirySessionEnd
 
 	// The expiry timer starts when most recently associated
 	// connection is closed.
-	ExpiryConnectionClose = encoding.ExpiryConnectionClose
+	ExpiryPolicyConnectionClose ExpiryPolicy = encoding.ExpiryConnectionClose
 
 	// The terminus never expires.
-	ExpiryNever = encoding.ExpiryNever
+	ExpiryPolicyNever ExpiryPolicy = encoding.ExpiryNever
 )
 
 // ExpiryPolicy specifies when the expiry timer of a terminus
