@@ -84,7 +84,7 @@ test: manifests generate fmt vet envtest install-test-deps ## Run tests and expo
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test -v 2>&1 ./... -coverprofile cover.out | go-junit-report -iocopy -set-exit-code -out report.xml
 
 .PHONY:
-az-login: 
+az-login:
 	@az login --service-principal -u $(TF_AZURE_SP_APP_ID) -p "$(AZURE_SP_KEY)" --tenant $(TF_AZURE_SP_TENANT)
 
 .PHONY: get-cluster-context
