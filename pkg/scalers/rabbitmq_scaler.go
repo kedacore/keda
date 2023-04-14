@@ -442,7 +442,8 @@ func (s *rabbitMQScaler) getQueueStatus() (int64, float64, error) {
 		return int64(info.Messages), info.MessageStat.PublishDetail.Rate, nil
 	}
 
-	items, err := s.channel.QueueInspect(s.metadata.queueName)
+	// QueueDeclarePassive assumes that the queue exists and fails if it doesn't
+	items, err := s.channel.QueueDeclarePassive(s.metadata.queueName, false, false, false, false, amqp.Table{})
 	if err != nil {
 		return -1, -1, err
 	}

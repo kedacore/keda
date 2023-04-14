@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	amqpAuth "github.com/Azure/azure-amqp-common-go/v3/auth"
+	amqpAuth "github.com/Azure/azure-amqp-common-go/v4/auth"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
@@ -76,11 +76,10 @@ func GetAzureADWorkloadIdentityToken(ctx context.Context, identityID, resource s
 		return signedAssertion, nil
 	})
 
-	authorityOption := confidential.WithAuthority(fmt.Sprintf("%s%s/oauth2/token", AuthorityHost, TenantID))
 	confidentialClient, err := confidential.New(
+		fmt.Sprintf("%s%s/oauth2/token", AuthorityHost, TenantID),
 		clientID,
 		cred,
-		authorityOption,
 	)
 	if err != nil {
 		return AADToken{}, fmt.Errorf("error creating confidential client - %w", err)

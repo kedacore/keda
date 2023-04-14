@@ -45,8 +45,12 @@ type partitionedManager interface {
 
 type noopCacheAccessor struct{}
 
-func (n noopCacheAccessor) Replace(cache cache.Unmarshaler, key string) {}
-func (n noopCacheAccessor) Export(cache cache.Marshaler, key string)    {}
+func (n noopCacheAccessor) Replace(ctx context.Context, u cache.Unmarshaler, h cache.ReplaceHints) error {
+	return nil
+}
+func (n noopCacheAccessor) Export(ctx context.Context, m cache.Marshaler, h cache.ExportHints) error {
+	return nil
+}
 
 // AcquireTokenSilentParameters contains the parameters to acquire a token silently (from cache).
 type AcquireTokenSilentParameters struct {
@@ -279,12 +283,12 @@ func (b Client) AuthCodeURL(ctx context.Context, clientID, redirectURI string, s
 	return baseURL.String(), nil
 }
 
-func (b Client) AcquireTokenSilent(ctx context.Context, silent AcquireTokenSilentParameters) (AuthResult, error) {
+func (b Client) AcquireTokenSilent(ctx context.Context, silent AcquireTokenSilentParameters) (ar AuthResult, err error) {
 	// when tenant == "", the caller didn't specify a tenant and WithTenant will use the client's configured tenant
 	tenant := silent.TenantID
 	authParams, err := b.AuthParams.WithTenant(tenant)
 	if err != nil {
-		return AuthResult{}, err
+		return ar, err
 	}
 	authParams.Scopes = silent.Scopes
 	authParams.HomeAccountID = silent.Account.HomeAccountID
@@ -296,37 +300,48 @@ func (b Client) AcquireTokenSilent(ctx context.Context, silent AcquireTokenSilen
 	if authParams.AuthorizationType == authority.ATOnBehalfOf {
 		if s, ok := b.pmanager.(cache.Serializer); ok {
 			suggestedCacheKey := authParams.CacheKey(silent.IsAppCache)
-			b.cacheAccessor.Replace(s, suggestedCacheKey)
-			defer b.cacheAccessor.Export(s, suggestedCacheKey)
+			err = b.cacheAccessor.Replace(ctx, s, cache.ReplaceHints{PartitionKey: suggestedCacheKey})
+			if err != nil {
+				return ar, err
+			}
+			defer func() {
+				err = b.export(ctx, s, suggestedCacheKey, err)
+			}()
 		}
 		storageTokenResponse, err = b.pmanager.Read(ctx, authParams)
 		if err != nil {
-			return AuthResult{}, err
+			return ar, err
 		}
 	} else {
 		if s, ok := b.manager.(cache.Serializer); ok {
 			suggestedCacheKey := authParams.CacheKey(silent.IsAppCache)
-			b.cacheAccessor.Replace(s, suggestedCacheKey)
-			defer b.cacheAccessor.Export(s, suggestedCacheKey)
+			err = b.cacheAccessor.Replace(ctx, s, cache.ReplaceHints{PartitionKey: suggestedCacheKey})
+			if err != nil {
+				return ar, err
+			}
+			defer func() {
+				err = b.export(ctx, s, suggestedCacheKey, err)
+			}()
 		}
 		authParams.AuthorizationType = authority.ATRefreshToken
 		storageTokenResponse, err = b.manager.Read(ctx, authParams, silent.Account)
 		if err != nil {
-			return AuthResult{}, err
+			return ar, err
 		}
 	}
 
 	// ignore cached access tokens when given claims
 	if silent.Claims == "" {
-		result, err := AuthResultFromStorage(storageTokenResponse)
+		ar, err = AuthResultFromStorage(storageTokenResponse)
 		if err == nil {
-			return result, nil
+			return ar, err
 		}
 	}
 
 	// redeem a cached refresh token, if available
 	if reflect.ValueOf(storageTokenResponse.RefreshToken).IsZero() {
-		return AuthResult{}, errors.New("no token found")
+		err = errors.New("no token found")
+		return ar, err
 	}
 	var cc *accesstokens.Credential
 	if silent.RequestType == accesstokens.ATConfidential {
@@ -335,10 +350,11 @@ func (b Client) AcquireTokenSilent(ctx context.Context, silent AcquireTokenSilen
 
 	token, err := b.Token.Refresh(ctx, silent.RequestType, authParams, cc, storageTokenResponse.RefreshToken)
 	if err != nil {
-		return AuthResult{}, err
+		return ar, err
 	}
 
-	return b.AuthResultFromToken(ctx, authParams, token, true)
+	ar, err = b.AuthResultFromToken(ctx, authParams, token, true)
+	return ar, err
 }
 
 func (b Client) AcquireTokenByAuthCode(ctx context.Context, authCodeParams AcquireTokenAuthCodeParameters) (AuthResult, error) {
@@ -401,67 +417,103 @@ func (b Client) AcquireTokenOnBehalfOf(ctx context.Context, onBehalfOfParams Acq
 	return ar, err
 }
 
-func (b Client) AuthResultFromToken(ctx context.Context, authParams authority.AuthParams, token accesstokens.TokenResponse, cacheWrite bool) (AuthResult, error) {
+func (b Client) AuthResultFromToken(ctx context.Context, authParams authority.AuthParams, token accesstokens.TokenResponse, cacheWrite bool) (ar AuthResult, err error) {
 	if !cacheWrite {
 		return NewAuthResult(token, shared.Account{})
 	}
 
 	var account shared.Account
-	var err error
 	if authParams.AuthorizationType == authority.ATOnBehalfOf {
 		if s, ok := b.pmanager.(cache.Serializer); ok {
 			suggestedCacheKey := token.CacheKey(authParams)
-			b.cacheAccessor.Replace(s, suggestedCacheKey)
-			defer b.cacheAccessor.Export(s, suggestedCacheKey)
+			err = b.cacheAccessor.Replace(ctx, s, cache.ReplaceHints{PartitionKey: suggestedCacheKey})
+			if err != nil {
+				return ar, err
+			}
+			defer func() {
+				err = b.export(ctx, s, suggestedCacheKey, err)
+			}()
 		}
 		account, err = b.pmanager.Write(authParams, token)
 		if err != nil {
-			return AuthResult{}, err
+			return ar, err
 		}
 	} else {
 		if s, ok := b.manager.(cache.Serializer); ok {
 			suggestedCacheKey := token.CacheKey(authParams)
-			b.cacheAccessor.Replace(s, suggestedCacheKey)
-			defer b.cacheAccessor.Export(s, suggestedCacheKey)
+			err = b.cacheAccessor.Replace(ctx, s, cache.ReplaceHints{PartitionKey: suggestedCacheKey})
+			if err != nil {
+				return ar, err
+			}
+			defer func() {
+				err = b.export(ctx, s, suggestedCacheKey, err)
+			}()
 		}
 		account, err = b.manager.Write(authParams, token)
 		if err != nil {
-			return AuthResult{}, err
+			return ar, err
 		}
 	}
-	return NewAuthResult(token, account)
+	ar, err = NewAuthResult(token, account)
+	return ar, err
 }
 
-func (b Client) AllAccounts() []shared.Account {
+func (b Client) AllAccounts(ctx context.Context) (accts []shared.Account, err error) {
 	if s, ok := b.manager.(cache.Serializer); ok {
 		suggestedCacheKey := b.AuthParams.CacheKey(false)
-		b.cacheAccessor.Replace(s, suggestedCacheKey)
-		defer b.cacheAccessor.Export(s, suggestedCacheKey)
+		err = b.cacheAccessor.Replace(ctx, s, cache.ReplaceHints{PartitionKey: suggestedCacheKey})
+		if err != nil {
+			return accts, err
+		}
+		defer func() {
+			err = b.export(ctx, s, suggestedCacheKey, err)
+		}()
 	}
 
-	accounts := b.manager.AllAccounts()
-	return accounts
+	accts = b.manager.AllAccounts()
+	return accts, err
 }
 
-func (b Client) Account(homeAccountID string) shared.Account {
+func (b Client) Account(ctx context.Context, homeAccountID string) (acct shared.Account, err error) {
 	authParams := b.AuthParams // This is a copy, as we dont' have a pointer receiver and .AuthParams is not a pointer.
 	authParams.AuthorizationType = authority.AccountByID
 	authParams.HomeAccountID = homeAccountID
 	if s, ok := b.manager.(cache.Serializer); ok {
 		suggestedCacheKey := b.AuthParams.CacheKey(false)
-		b.cacheAccessor.Replace(s, suggestedCacheKey)
-		defer b.cacheAccessor.Export(s, suggestedCacheKey)
+		err = b.cacheAccessor.Replace(ctx, s, cache.ReplaceHints{PartitionKey: suggestedCacheKey})
+		if err != nil {
+			return acct, err
+		}
+		defer func() {
+			err = b.export(ctx, s, suggestedCacheKey, err)
+		}()
 	}
-	account := b.manager.Account(homeAccountID)
-	return account
+	acct = b.manager.Account(homeAccountID)
+	return acct, err
 }
 
 // RemoveAccount removes all the ATs, RTs and IDTs from the cache associated with this account.
-func (b Client) RemoveAccount(account shared.Account) {
+func (b Client) RemoveAccount(ctx context.Context, account shared.Account) (err error) {
 	if s, ok := b.manager.(cache.Serializer); ok {
 		suggestedCacheKey := b.AuthParams.CacheKey(false)
-		b.cacheAccessor.Replace(s, suggestedCacheKey)
-		defer b.cacheAccessor.Export(s, suggestedCacheKey)
+		err = b.cacheAccessor.Replace(ctx, s, cache.ReplaceHints{PartitionKey: suggestedCacheKey})
+		if err != nil {
+			return err
+		}
+		defer func() {
+			err = b.export(ctx, s, suggestedCacheKey, err)
+		}()
 	}
 	b.manager.RemoveAccount(account, b.AuthParams.ClientID)
+	return err
+}
+
+// export helps other methods defer exporting the cache after possibly updating its in-memory content.
+// err is the error the calling method will return. If err isn't nil, export returns it without
+// exporting the cache.
+func (b Client) export(ctx context.Context, marshal cache.Marshaler, key string, err error) error {
+	if err != nil {
+		return err
+	}
+	return b.cacheAccessor.Export(ctx, marshal, cache.ExportHints{PartitionKey: key})
 }

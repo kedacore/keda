@@ -45,11 +45,6 @@ func newAuthenticationFailedError(credType string, message string, resp *http.Re
 	return &AuthenticationFailedError{credType: credType, message: message, RawResponse: resp}
 }
 
-func newAuthenticationFailedErrorFromMSALError(credType string, err error) error {
-	res := getResponseFromError(err)
-	return newAuthenticationFailedError(credType, err.Error(), res)
-}
-
 // Error implements the error interface. Note that the message contents are not contractual and can change over time.
 func (e *AuthenticationFailedError) Error() string {
 	if e.RawResponse == nil {

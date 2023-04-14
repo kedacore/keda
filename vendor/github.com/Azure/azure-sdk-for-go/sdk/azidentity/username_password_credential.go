@@ -8,7 +8,6 @@ package azidentity
 
 import (
 	"context"
-	"errors"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
@@ -34,10 +33,10 @@ type UsernamePasswordCredentialOptions struct {
 // with any form of multi-factor authentication, and the application must already have user or admin consent.
 // This credential can only authenticate work and school accounts; it can't authenticate Microsoft accounts.
 type UsernamePasswordCredential struct {
-	account                    public.Account
-	additionallyAllowedTenants []string
-	client                     publicClient
-	password, tenant, username string
+	account            public.Account
+	client             publicClient
+	password, username string
+	s                  *syncer
 }
 
 // NewUsernamePasswordCredential creates a UsernamePasswordCredential. clientID is the ID of the application the user
@@ -50,39 +49,30 @@ func NewUsernamePasswordCredential(tenantID string, clientID string, username st
 	if err != nil {
 		return nil, err
 	}
-	return &UsernamePasswordCredential{
-		additionallyAllowedTenants: resolveAdditionallyAllowedTenants(options.AdditionallyAllowedTenants),
-		client:                     c,
-		password:                   password,
-		tenant:                     tenantID,
-		username:                   username,
-	}, nil
+	upc := UsernamePasswordCredential{client: c, password: password, username: username}
+	upc.s = newSyncer(credNameUserPassword, tenantID, options.AdditionallyAllowedTenants, upc.requestToken, upc.silentAuth)
+	return &upc, nil
 }
 
 // GetToken requests an access token from Azure Active Directory. This method is called automatically by Azure SDK clients.
 func (c *UsernamePasswordCredential) GetToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
-	if len(opts.Scopes) == 0 {
-		return azcore.AccessToken{}, errors.New(credNameUserPassword + ": GetToken() requires at least one scope")
+	return c.s.GetToken(ctx, opts)
+}
+
+func (c *UsernamePasswordCredential) requestToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
+	ar, err := c.client.AcquireTokenByUsernamePassword(ctx, opts.Scopes, c.username, c.password, public.WithClaims(opts.Claims), public.WithTenantID(opts.TenantID))
+	if err == nil {
+		c.account = ar.Account
 	}
-	tenant, err := resolveTenant(c.tenant, opts.TenantID, c.additionallyAllowedTenants)
-	if err != nil {
-		return azcore.AccessToken{}, err
-	}
+	return azcore.AccessToken{Token: ar.AccessToken, ExpiresOn: ar.ExpiresOn.UTC()}, err
+}
+
+func (c *UsernamePasswordCredential) silentAuth(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
 	ar, err := c.client.AcquireTokenSilent(ctx, opts.Scopes,
 		public.WithClaims(opts.Claims),
 		public.WithSilentAccount(c.account),
-		public.WithTenantID(tenant),
+		public.WithTenantID(opts.TenantID),
 	)
-	if err == nil {
-		logGetTokenSuccess(c, opts)
-		return azcore.AccessToken{Token: ar.AccessToken, ExpiresOn: ar.ExpiresOn.UTC()}, err
-	}
-	ar, err = c.client.AcquireTokenByUsernamePassword(ctx, opts.Scopes, c.username, c.password, public.WithClaims(opts.Claims), public.WithTenantID(tenant))
-	if err != nil {
-		return azcore.AccessToken{}, newAuthenticationFailedErrorFromMSALError(credNameUserPassword, err)
-	}
-	c.account = ar.Account
-	logGetTokenSuccess(c, opts)
 	return azcore.AccessToken{Token: ar.AccessToken, ExpiresOn: ar.ExpiresOn.UTC()}, err
 }
 
