@@ -68,12 +68,6 @@ var testExternalScalerMetadata = []parseExternalScalerMetadataTestData{
 	{map[string]string{}, true, map[string]string{}},
 	// all properly formed
 	{map[string]string{"scalerAddress": "myservice", "test1": "7", "test2": "SAMPLE_CREDS", "insecureSkipVerify": "true"}, false, map[string]string{"caCert": serverRootCA, "tlsClientCert": clientCert}},
-	// bad caCert
-	{map[string]string{"scalerAddress": "myservice", "test1": "7", "test2": "SAMPLE_CREDS"}, true, map[string]string{"caCert": "random", "tlsClientCert": clientCert}},
-	// bad tlsClientCert
-	{map[string]string{"scalerAddress": "myservice", "test1": "7", "test2": "SAMPLE_CREDS"}, true, map[string]string{"caCert": serverRootCA, "tlsClientCert": "random"}},
-	// bad tlsClientKey
-	{map[string]string{"scalerAddress": "myservice", "test1": "7", "test2": "SAMPLE_CREDS"}, true, map[string]string{"caCert": serverRootCA, "tlsClientCert": clientCert, "tlsClientKey": "random"}},
 	// missing scalerAddress
 	{map[string]string{"test1": "1", "test2": "SAMPLE_CREDS"}, true, map[string]string{}},
 }

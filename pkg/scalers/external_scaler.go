@@ -2,9 +2,6 @@ package scalers
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"strconv"
 	"strings"
@@ -12,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/kedacore/keda/v2/pkg/util"
 	"github.com/mitchellh/hashstructure"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -39,9 +37,9 @@ type externalScalerMetadata struct {
 	tlsCertFile        string
 	originalMetadata   map[string]string
 	scalerIndex        int
-	caCert             *x509.CertPool
-	tlsClientCert      []byte
-	tlsClientKey       []byte
+	caCert             string
+	tlsClientCert      string
+	tlsClientKey       string
 	insecureSkipVerify bool
 }
 
@@ -121,44 +119,15 @@ func parseExternalScalerMetadata(config *ScalerConfig) (externalScalerMetadata, 
 
 	meta.originalMetadata = make(map[string]string)
 	if val, ok := config.AuthParams["caCert"]; ok {
-		caCertBytes := []byte(val)
-		block, _ := pem.Decode(caCertBytes)
-		if block == nil {
-			return meta, fmt.Errorf("failed to decode PEM-encoded certificate in caCert")
-		}
-		cert, err := x509.ParseCertificate(block.Bytes)
-		if err != nil {
-			return meta, err
-		}
-		certPool := x509.NewCertPool()
-		certPool.AddCert(cert)
-		meta.caCert = certPool
+		meta.caCert = val
 	}
 
 	if val, ok := config.AuthParams["tlsClientCert"]; ok {
-		certBytes := []byte(val)
-		block, _ := pem.Decode(certBytes)
-		if block == nil {
-			return meta, fmt.Errorf("failed to decode PEM-encoded certificate in tlsClientCert")
-		}
-		_, err := x509.ParseCertificate(block.Bytes)
-		if err != nil {
-			return meta, fmt.Errorf("failed to parse certificate in tlsClientCert")
-		}
-		meta.tlsClientCert = certBytes
+		meta.tlsClientCert = val
 	}
 
 	if val, ok := config.AuthParams["tlsClientKey"]; ok {
-		keyBytes := []byte(val)
-		block, _ := pem.Decode(keyBytes)
-		if block == nil {
-			return meta, fmt.Errorf("failed to decode PEM-encoded private key in tlsClientKey")
-		}
-		_, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-		if err != nil {
-			return meta, fmt.Errorf("failed to parse private key in tlsClientKey")
-		}
-		meta.tlsClientKey = keyBytes
+		meta.tlsClientKey = val
 	}
 
 	meta.insecureSkipVerify = false
@@ -345,22 +314,9 @@ func getClientForConnectionPool(metadata externalScalerMetadata, logger logr.Log
 			return grpc.Dial(metadata.scalerAddress, grpc.WithTransportCredentials(creds))
 		}
 
-		tlsConfig := &tls.Config{MinVersion: tls.VersionTLS13}
-
-		if metadata.caCert != nil {
-			tlsConfig.RootCAs = metadata.caCert
-		}
-
-		if metadata.tlsClientCert != nil && metadata.tlsClientKey != nil {
-			tlsCert, err := tls.X509KeyPair(metadata.tlsClientCert, metadata.tlsClientKey)
-			if err != nil {
-				return nil, err
-			}
-			tlsConfig.Certificates = []tls.Certificate{tlsCert}
-		}
-
-		if metadata.insecureSkipVerify {
-			tlsConfig.InsecureSkipVerify = metadata.insecureSkipVerify
+		tlsConfig, err := util.NewTLSConfig(metadata.tlsClientCert, metadata.tlsClientKey, metadata.caCert, metadata.insecureSkipVerify)
+		if err != nil {
+			return nil, err
 		}
 
 		if len(tlsConfig.Certificates) > 0 || tlsConfig.RootCAs != nil {
