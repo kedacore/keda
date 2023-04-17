@@ -79,7 +79,7 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig, logger logr.Logger) (*awsSqs
 	meta.targetQueueLength = defaultTargetQueueLength
 	meta.scaleOnInFlight = defaultScaleOnInFlight
 
-	if val, ok := config.TriggerMetadata["queueLength"]; ok && val != "" {
+	if val, err := GetFromAuthOrMeta(config, "queueLength"); err == nil && val != "" {
 		queueLength, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			meta.targetQueueLength = targetQueueLengthDefault
@@ -89,7 +89,7 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig, logger logr.Logger) (*awsSqs
 		}
 	}
 
-	if val, ok := config.TriggerMetadata["activationQueueLength"]; ok && val != "" {
+	if val, err := GetFromAuthOrMeta(config, "activationQueueLength"); err == nil && val != "" {
 		activationQueueLength, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			meta.activationTargetQueueLength = activationTargetQueueLengthDefault
@@ -99,7 +99,7 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig, logger logr.Logger) (*awsSqs
 		}
 	}
 
-	if val, ok := config.TriggerMetadata["scaleOnInFlight"]; ok && val != "" {
+	if val, err := GetFromAuthOrMeta(config, "scaleOnInFlight"); err == nil && val != "" {
 		scaleOnInFlight, err := strconv.ParseBool(val)
 		if err != nil {
 			meta.scaleOnInFlight = defaultScaleOnInFlight
@@ -115,7 +115,7 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig, logger logr.Logger) (*awsSqs
 		meta.awsSqsQueueMetricNames = awsSqsQueueMetricNamesForNotScalingInFlight
 	}
 
-	if val, ok := config.TriggerMetadata["queueURL"]; ok && val != "" {
+	if val, err := GetFromAuthOrMeta(config, "queueURL"); err == nil && val != "" {
 		meta.queueURL = val
 	} else if val, ok := config.TriggerMetadata["queueURLFromEnv"]; ok && val != "" {
 		if val, ok := config.ResolvedEnv[val]; ok && val != "" {
@@ -141,13 +141,13 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig, logger logr.Logger) (*awsSqs
 		meta.queueName = queueURLPathParts[2]
 	}
 
-	if val, ok := config.TriggerMetadata["awsRegion"]; ok && val != "" {
+	if val, err := GetFromAuthOrMeta(config, "awsRegion"); err == nil && val != "" {
 		meta.awsRegion = val
 	} else {
 		return nil, fmt.Errorf("no awsRegion given")
 	}
 
-	if val, ok := config.TriggerMetadata["awsEndpoint"]; ok {
+	if val, err := GetFromAuthOrMeta(config, "awsEndpoint"); err == nil && val != "" {
 		meta.awsEndpoint = val
 	}
 

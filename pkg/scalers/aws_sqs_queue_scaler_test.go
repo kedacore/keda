@@ -92,6 +92,16 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		false,
 		"properly formed queue and region"},
 	{map[string]string{
+		"queueLength": "1"},
+		map[string]string{
+			"awsAccessKeyId":     testAWSSQSAccessKeyID,
+			"awsSecretAccessKey": testAWSSQSSecretAccessKey,
+			"queueURL":           testAWSSQSProperQueueURL,
+			"awsRegion":          "eu-west-1"},
+		testAWSSQSEmptyResolvedEnv,
+		false,
+		"properly formed queue and region from TriggerAuthentication"},
+	{map[string]string{
 		"queueURL":    testAWSSQSProperQueueURL,
 		"queueLength": "1",
 		"awsRegion":   "eu-west-1",
