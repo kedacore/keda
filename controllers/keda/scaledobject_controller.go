@@ -188,6 +188,11 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		conditions.SetReadyCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionReadySucccesReason, msg)
 	}
 
+	if _, present := scaledObject.GetAnnotations()[kedacontrollerutil.PausedReplicasAnnotation]; present {
+		ref := scaledObject.Spec.ScaleTargetRef
+		reqLogger.Info("Detect ScaledObject with pause annotation", "targetKind", ref.Kind, "targetName", ref.Name)
+	}
+
 	if err := kedacontrollerutil.SetStatusConditions(ctx, r.Client, reqLogger, scaledObject, &conditions); err != nil {
 		return ctrl.Result{}, err
 	}
@@ -523,10 +528,18 @@ func (r *ScaledObjectReconciler) updatePromMetrics(scaledObject *kedav1alpha1.Sc
 	}
 	metricsData.triggerTypes = triggerTypes
 
+	_, isPausedObject := scaledObject.GetAnnotations()[kedacontrollerutil.PausedReplicasAnnotation]
+	value := 0
+	if isPausedObject {
+		value = 1
+	}
+
+	prommetrics.RecordScalerPaused(namespacedName, scaledObject.Name, float64(value))
+
 	scaledObjectPromMetricsMap[namespacedName] = metricsData
 }
 
-func (r *ScaledObjectReconciler) updatePromMetricsOnDelete(namespacedName string) {
+func (r *ScaledObjectReconciler) updatePromMetricsOnDelete(namespacedName string, scaledObject string) {
 	scaledObjectPromMetricsLock.Lock()
 	defer scaledObjectPromMetricsLock.Unlock()
 
@@ -535,6 +548,7 @@ func (r *ScaledObjectReconciler) updatePromMetricsOnDelete(namespacedName string
 		for _, triggerType := range metricsData.triggerTypes {
 			prommetrics.DecrementTriggerTotal(triggerType)
 		}
+		prommetrics.RecordScalerPaused(namespacedName, scaledObject, 0)
 	}
 
 	delete(scaledObjectPromMetricsMap, namespacedName)

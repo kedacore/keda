@@ -211,6 +211,50 @@ spec:
     key: key
 ---
 `
+	deploymentForPausedTemplate = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.DeploymentName}}-pause
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.DeploymentName}}-pause
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{.DeploymentName}}-pause
+  template:
+    metadata:
+      labels:
+        app: {{.DeploymentName}}-pause
+    spec:
+      containers:
+        - name: {{.DeploymentName}}-pause
+          image: nginxinc/nginx-unprivileged
+`
+
+	scaledObjectPausedTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectName}}-paused
+  namespace: {{.TestNamespace}}
+  annotaions
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}-pause
+  pollingInterval: 5
+  idleReplicaCount: 0
+  minReplicaCount: 1
+  maxReplicaCount: 2
+  cooldownPeriod: 10
+  triggers:
+    - type: kubernetes-workload
+      metadata:
+        podSelector: 'app={{.DeploymentName}}-pause'
+        value: '1'
+`
 )
 
 func TestPrometheusMetrics(t *testing.T) {
@@ -233,6 +277,7 @@ func TestPrometheusMetrics(t *testing.T) {
 	testMetricsServerScalerMetricValue(t)
 	testOperatorMetrics(t, kc, data)
 	testWebhookMetrics(t, data)
+	testPauseMetric(t, data)
 
 	// cleanup
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -554,4 +599,37 @@ func checkWebhookValues(t *testing.T, families map[string]*promModel.MetricFamil
 		metricValue += *metric.Counter.Value
 	}
 	assert.GreaterOrEqual(t, metricValue, 1.0, "keda_webhook_scaled_object_validation_total has to be greater than 0")
+}
+
+func testPauseMetric(t *testing.T, data templateData) {
+	t.Log("--- testing scaleobject pause metric ---")
+
+	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+
+	if _, ok := family["keda_scaleobject_pause"]; ok {
+		t.Errorf("metric should not be available")
+	}
+
+	KubectlApplyWithTemplate(t, data, "deploymentForPausedTemplate", deploymentForPausedTemplate)
+	KubectlApplyWithTemplate(t, data, "scaledObjectPausedTemplate", scaledObjectPausedTemplate)
+
+	family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+
+	if val, ok := family["keda_scaleobject_pause"]; ok {
+		metrics := val.GetMetric()
+		for _, metric := range metrics {
+			assert.Equal(t, float64(1), *metric.Gauge.Value)
+		}
+	} else {
+		t.Errorf("metric not available")
+	}
+
+	KubectlDeleteWithTemplate(t, data, "deploymentForPausedTemplate", deploymentForPausedTemplate)
+	KubectlDeleteWithTemplate(t, data, "scaledObjectPausedTemplate", scaledObjectPausedTemplate)
+
+	family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+
+	if _, ok := family["keda_scaleobject_pause"]; ok {
+		t.Errorf("metric should not be available")
+	}
 }
