@@ -48,6 +48,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **CPU/Memory scaler**: Add support for scale to zero if there are multiple triggers([#4269](https://github.com/kedacore/keda/issues/4269))
 - **Redis Scalers**: Allow scaling using redis stream length ([#4277](https://github.com/kedacore/keda/issues/4277))
 - **General:** Introduce new Solr Scaler ([#4234](https://github.com/kedacore/keda/issues/4234))
+- **Prometheus Metrics**: Introduce number of paused ScaledObjects in Prometheus metrics ([#4430](https://github.com/kedacore/keda/issues/4430))
+
 
 ### Improvements
 

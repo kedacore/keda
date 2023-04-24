@@ -109,6 +109,16 @@ var (
 		},
 		[]string{"type", "namespace"},
 	)
+
+	scaledObjectPausedTotal = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "scaled_object",
+			Name:      "paused",
+			Help:      "Total number of paused scaled_objects",
+		},
+		[]string{"namespace", "scaledObject"},
+	)
 )
 
 func init() {
@@ -118,6 +128,7 @@ func init() {
 	metrics.Registry.MustRegister(scalerActive)
 	metrics.Registry.MustRegister(scalerErrors)
 	metrics.Registry.MustRegister(scaledObjectErrors)
+	metrics.Registry.MustRegister(scaledObjectPausedTotal)
 
 	metrics.Registry.MustRegister(triggerTotalsGaugeVec)
 	metrics.Registry.MustRegister(crdTotalsGaugeVec)
@@ -203,4 +214,10 @@ func DecrementCRDTotal(crdType, namespace string) {
 	}
 
 	crdTotalsGaugeVec.WithLabelValues(crdType, namespace).Dec()
+}
+
+func RecordScalerPaused(namespace string, scaledObject string, value float64) {
+	labels := prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject}
+
+	scaledObjectPausedTotal.With(labels).Set(value)
 }
