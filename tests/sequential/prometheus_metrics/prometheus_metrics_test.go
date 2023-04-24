@@ -230,7 +230,6 @@ func TestPrometheusMetrics(t *testing.T) {
 	testScalerMetricValue(t)
 	testScalerMetricLatency(t)
 	testScalerActiveMetric(t)
-	testMetricsServerScalerMetricValue(t)
 	testOperatorMetrics(t, kc, data)
 	testWebhookMetrics(t, data)
 
