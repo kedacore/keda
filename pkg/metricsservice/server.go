@@ -45,8 +45,7 @@ type GrpcServer struct {
 func (s *GrpcServer) GetMetrics(ctx context.Context, in *api.ScaledObjectRef) (*api.Response, error) {
 	response := api.Response{}
 	v1beta1ExtMetrics := &v1beta1.ExternalMetricValueList{}
-	extMetrics, exportedMetrics, err := (*s.scalerHandler).GetScaledObjectMetrics(ctx, in.Name, in.Namespace, in.MetricName)
-	response.PromMetrics = exportedMetrics
+	extMetrics, err := (*s.scalerHandler).GetScaledObjectMetrics(ctx, in.Name, in.Namespace, in.MetricName)
 	if err != nil {
 		return &response, fmt.Errorf("error when getting metric values %w", err)
 	}

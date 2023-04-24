@@ -43,7 +43,6 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollers "github.com/kedacore/keda/v2/controllers/keda"
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
-	prommetrics "github.com/kedacore/keda/v2/pkg/prommetrics/adapter"
 	kedaprovider "github.com/kedacore/keda/v2/pkg/provider"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -152,9 +151,6 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 
 	externalMetricsInfo := &[]provider.ExternalMetricInfo{}
 	externalMetricsInfoLock := &sync.RWMutex{}
-
-	prometheusServer := &prommetrics.PrometheusMetricServer{}
-	go func() { prometheusServer.NewServer(fmt.Sprintf(":%v", prometheusMetricsPort), prometheusMetricsPath) }()
 
 	stopCh := make(chan struct{})
 	if err := runScaledObjectController(ctx, mgr, handler, logger, externalMetricsInfo, externalMetricsInfoLock, maxConcurrentReconciles, stopCh, secretInformer.Informer().HasSynced); err != nil {

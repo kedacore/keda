@@ -34,14 +34,6 @@ message ScaledObjectRef {
 
 message Response {
     k8s.io.metrics.pkg.apis.external_metrics.v1beta1.ExternalMetricValueList metrics = 1;
-    PromMetricsMsg promMetrics = 2;
-}
-
-// [DEPRECATED] PromMetricsMsg provides metrics for deprecated Prometheus Metrics in Metrics Server
-message PromMetricsMsg {
-    bool scaledObjectErr = 1;
-    repeated ScalerMetricMsg scalerMetric = 2;
-    repeated ScalerErrorMsg scalerError = 3;
 }
 
 message ScalerMetricMsg {

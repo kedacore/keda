@@ -67,7 +67,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- Prometheus metrics on KEDA Metric Server are deprecated in favor of Prometheus metrics on KEDA Operator ([#3972](https://github.com/kedacore/keda/issues/3972))
 
 ### Other
 

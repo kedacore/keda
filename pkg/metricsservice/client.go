@@ -65,13 +65,13 @@ func NewGrpcClient(url, certDir string) (*GrpcClient, error) {
 	return &GrpcClient{client: api.NewMetricsServiceClient(conn), connection: conn}, nil
 }
 
-func (c *GrpcClient) GetMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, *api.PromMetricsMsg, error) {
+func (c *GrpcClient) GetMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, error) {
 	// nosemgrep: trailofbits.go.invalid-usage-of-modified-variable.invalid-usage-of-modified-variable
 	response, err := c.client.GetMetrics(ctx, &api.ScaledObjectRef{Name: scaledObjectName, Namespace: scaledObjectNamespace, MetricName: metricName})
 	if err != nil {
 		// in certain cases we would like to get Prometheus metrics even if there's an error
 		// so we can expose information about the error in the client
-		return nil, response.GetPromMetrics(), err
+		return nil, err
 	}
 
 	extMetrics := &external_metrics.ExternalMetricValueList{}
@@ -79,10 +79,10 @@ func (c *GrpcClient) GetMetrics(ctx context.Context, scaledObjectName, scaledObj
 	if err != nil {
 		// in certain cases we would like to get Prometheus metrics even if there's an error
 		// so we can expose information about the error in the client
-		return nil, response.GetPromMetrics(), fmt.Errorf("error when converting metric values %w", err)
+		return nil, fmt.Errorf("error when converting metric values %w", err)
 	}
 
-	return extMetrics, response.GetPromMetrics(), nil
+	return extMetrics, nil
 }
 
 // WaitForConnectionReady waits for gRPC connection to be ready
