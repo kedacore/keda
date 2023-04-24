@@ -67,8 +67,6 @@ spec:
           - containerPort: 6443
             name: https
           - containerPort: 8080
-            name: http
-          - containerPort: 9022
             name: metrics
           volumeMounts:
           - mountPath: /tmp

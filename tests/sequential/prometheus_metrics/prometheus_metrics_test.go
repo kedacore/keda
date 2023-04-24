@@ -338,30 +338,6 @@ func testScalerActiveMetric(t *testing.T) {
 	}
 }
 
-// [DEPRECATED] handle exporting Prometheus metrics from Operator to Metrics Server
-func testMetricsServerScalerMetricValue(t *testing.T) {
-	t.Log("--- testing scaler metric value in metrics server ---")
-
-	family := fetchAndParsePrometheusMetrics(t, "curl --insecure http://keda-metrics-apiserver.keda:9022/metrics")
-
-	if val, ok := family["keda_metrics_adapter_scaler_metrics_value"]; ok {
-		var found bool
-		metrics := val.GetMetric()
-		for _, metric := range metrics {
-			labels := metric.GetLabel()
-			for _, label := range labels {
-				if *label.Name == labelScaledObject && *label.Value == scaledObjectName {
-					assert.Equal(t, float64(4), *metric.Gauge.Value)
-					found = true
-				}
-			}
-		}
-		assert.Equal(t, true, found)
-	} else {
-		t.Errorf("metric not available")
-	}
-}
-
 func testOperatorMetrics(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing operator metrics ---")
 	testOperatorMetricValues(t, kc)
