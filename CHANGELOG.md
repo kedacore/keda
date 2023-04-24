@@ -67,7 +67,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- Remove deprecated field rolloutStrategy ([#3596](https://github.com/kedacore/keda/issue/3596))
 
 ### Other
 
