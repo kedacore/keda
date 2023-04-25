@@ -67,7 +67,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Breaking Changes
 
-- Prometheus metrics on KEDA Metric Server are removed ([#3972](https://github.com/kedacore/keda/issues/3972))
+- Prometheus metrics on KEDA Metric Server are removed (As per [deprecation notice](https://github.com/kedacore/keda/issues/3972) from December 2022)
 
 ### Other
 
