@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/kedacore/keda/v2/pkg/util"
 	"github.com/mitchellh/hashstructure"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -19,6 +18,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	pb "github.com/kedacore/keda/v2/pkg/scalers/externalscaler"
+	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 type externalScaler struct {

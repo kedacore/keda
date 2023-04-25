@@ -239,7 +239,7 @@ func TestNewTLSConfig_WithPassword(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			config, err := NewTLSConfigWithPassword(test.cert, test.key, test.password, test.CACert, false)
 			if err != nil && !test.isError {
-				t.Errorf("Expected sucess but got error: %s", err)
+				t.Errorf("Expected success but got error: %s", err)
 			} else if test.isError && err == nil {
 				t.Errorf("Expect error but got success")
 			} else if err == nil {
