@@ -607,7 +607,7 @@ func testPauseMetric(t *testing.T, data templateData) {
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 
-	if _, ok := family["keda_scaleobject_pause"]; ok {
+	if _, ok := family["keda_scaled_object_paused"]; ok {
 		t.Errorf("metric should not be available")
 	}
 
@@ -616,7 +616,7 @@ func testPauseMetric(t *testing.T, data templateData) {
 
 	family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 
-	if val, ok := family["keda_scaleobject_pause"]; ok {
+	if val, ok := family["keda_scaled_object_paused"]; ok {
 		metrics := val.GetMetric()
 		for _, metric := range metrics {
 			assert.Equal(t, float64(1), *metric.Gauge.Value)
@@ -630,7 +630,7 @@ func testPauseMetric(t *testing.T, data templateData) {
 
 	family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 
-	if _, ok := family["keda_scaleobject_pause"]; ok {
+	if _, ok := family["keda_scaled_object_paused"]; ok {
 		t.Errorf("metric should not be available")
 	}
 }
