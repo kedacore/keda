@@ -238,11 +238,12 @@ func TestNewTLSConfig_WithPassword(t *testing.T) {
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
 			config, err := NewTLSConfigWithPassword(test.cert, test.key, test.password, test.CACert, false)
-			if err != nil && !test.isError {
+			switch {
+			case err != nil && !test.isError:
 				t.Errorf("Expected success but got error: %s", err)
-			} else if test.isError && err == nil {
+			case test.isError && err == nil:
 				t.Errorf("Expect error but got success")
-			} else if err == nil {
+			case err == nil:
 				cert, err := x509.ParseCertificate(config.Certificates[0].Certificate[0])
 				if err != nil {
 					t.Errorf("Bad certificate")
