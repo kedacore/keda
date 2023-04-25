@@ -240,7 +240,8 @@ kind: ScaledObject
 metadata:
   name: {{.ScaledObjectName}}-paused
   namespace: {{.TestNamespace}}
-  annotaions
+  annotations:
+    autoscaling.keda.sh/paused-replicas: "2"
 spec:
   scaleTargetRef:
     name: {{.DeploymentName}}-pause
