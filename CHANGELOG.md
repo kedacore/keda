@@ -62,6 +62,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **AWS SQS Scaler**: Respect `scaleOnInFlight` value ([#4276](https://github.com/kedacore/keda/issue/4276))
 - **Azure Pipelines**: Fix for disallowing `$top` on query when using `meta.parentID` method ([#4397])
 - **Azure Pipelines**: Respect all required demands ([#4404](https://github.com/kedacore/keda/issues/4404))
+- **Prometheus Metrics**: Create e2e tests for all exposed Prometheus metrics ([#4127](https://github.com/kedacore/keda/issues/4127))
 
 ### Deprecations
 
