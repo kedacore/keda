@@ -13,8 +13,8 @@ RUN ln -sf bash /bin/sh
 # Install python3
 RUN apt install -y python3 python3-pip
 
-# Install azure-cli (using pip)
-RUN python3 -m pip install azure.cli
+# Install azure-cli
+RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash
 
 # Install docker
 RUN apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common lsb-release && \
