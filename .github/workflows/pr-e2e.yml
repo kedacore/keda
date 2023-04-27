@@ -130,7 +130,6 @@ jobs:
         run: make scale-node-pool
         env:
           NODE_POOL_SIZE: 4
-          WAIT_NODE_POOL_SCALING: false
 
       - name: Run end to end tests
         continue-on-error: true
@@ -163,7 +162,6 @@ jobs:
         run: make scale-node-pool
         env:
           NODE_POOL_SIZE: 1
-          WAIT_NODE_POOL_SCALING: true
 
       - name: React to comment with success
         uses: dkershner6/reaction-action@v1

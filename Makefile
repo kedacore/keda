@@ -38,7 +38,6 @@ DATE        = $(shell date -u +"%Y.%m.%d.%H.%M.%S")
 
 TEST_CLUSTER_NAME ?= keda-nightly-run-3
 NODE_POOL_SIZE ?= 1
-WAIT_NODE_POOL_SCALING ?=true
 NON_ROOT_USER_ID ?= 1000
 
 GCP_WI_PROVIDER ?= projects/${TF_GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${TEST_CLUSTER_NAME}/providers/${TEST_CLUSTER_NAME}
@@ -100,8 +99,7 @@ scale-node-pool: az-login ## Scale nodepool.
 		--name $(TEST_CLUSTER_NAME) \
 		--subscription $(TF_AZURE_SUBSCRIPTION) \
 		--resource-group $(TF_AZURE_RESOURCE_GROUP) \
-		--node-count $(NODE_POOL_SIZE) \
-		`if [ "$(WAIT_NODE_POOL_SCALING)" == "false" ]; then echo "--no-wait"; fi`
+		--node-count $(NODE_POOL_SIZE)
 
 .PHONY: e2e-test
 e2e-test: get-cluster-context ## Run e2e tests against Azure cluster.
