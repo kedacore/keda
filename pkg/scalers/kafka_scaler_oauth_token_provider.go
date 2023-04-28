@@ -10,9 +10,10 @@ import (
 
 type TokenProvider struct {
 	tokenSource oauth2.TokenSource
+	extensions  map[string]string
 }
 
-func OAuthBearerTokenProvider(clientID, clientSecret, tokenURL string, scopes []string) sarama.AccessTokenProvider {
+func OAuthBearerTokenProvider(clientID, clientSecret, tokenURL string, scopes []string, extensions map[string]string) sarama.AccessTokenProvider {
 	cfg := clientcredentials.Config{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
@@ -22,6 +23,7 @@ func OAuthBearerTokenProvider(clientID, clientSecret, tokenURL string, scopes []
 
 	return &TokenProvider{
 		tokenSource: cfg.TokenSource(context.Background()),
+		extensions:  extensions,
 	}
 }
 
@@ -31,5 +33,5 @@ func (t *TokenProvider) Token() (*sarama.AccessToken, error) {
 		return nil, err
 	}
 
-	return &sarama.AccessToken{Token: token.AccessToken}, nil
+	return &sarama.AccessToken{Token: token.AccessToken, Extensions: t.extensions}, nil
 }

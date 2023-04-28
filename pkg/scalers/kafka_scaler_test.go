@@ -235,6 +235,12 @@ var parseKafkaOAuthbrearerAuthParamsTestDataset = []parseKafkaAuthParamsTestData
 	{map[string]string{"sasl": "foo", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, true, false},
 	// failure, SASL OAUTHBEARER + TLS missing oauthTokenEndpointUri
 	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "", "tls": "disable"}, true, false},
+	// success, SASL OAUTHBEARER + extension
+	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable", "oauthExtensions": "extension_foo=bar"}, false, false},
+	// success, SASL OAUTHBEARER + multiple extensions
+	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable", "oauthExtensions": "extension_foo=bar,extension_baz=baz"}, false, false},
+	// failure, SASL OAUTHBEARER + bad extension
+	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable", "oauthExtensions": "extension_foo=bar,extension_bazbaz"}, true, false},
 }
 
 var kafkaMetricIdentifiers = []kafkaMetricIdentifier{
@@ -382,6 +388,11 @@ func TestKafkaOAuthbrearerAuthParams(t *testing.T) {
 		if testData.authParams["scopes"] == "" {
 			if len(meta.scopes) != strings.Count(testData.authParams["scopes"], ",")+1 {
 				t.Errorf("Expected scopes to be set to %v but got %v\n", strings.Count(testData.authParams["scopes"], ","), len(meta.scopes))
+			}
+		}
+		if err == nil && testData.authParams["oauthExtensions"] != "" {
+			if len(meta.oauthExtensions) != strings.Count(testData.authParams["oauthExtensions"], ",")+1 {
+				t.Errorf("Expected number of extensions to be set to %v but got %v\n", strings.Count(testData.authParams["oauthExtensions"], ",")+1, len(meta.oauthExtensions))
 			}
 		}
 	}
