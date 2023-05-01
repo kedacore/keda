@@ -1651,6 +1651,10 @@ func (c *Conn) querySystemPeers(ctx context.Context, version cassVersion) *Iter 
 	}
 }
 
+func (c *Conn) querySystemLocal(ctx context.Context) *Iter {
+	return c.query(ctx, "SELECT * FROM system.local WHERE key='local'")
+}
+
 func (c *Conn) awaitSchemaAgreement(ctx context.Context) (err error) {
 	const localSchemas = "SELECT schema_version FROM system.local WHERE key='local'"
 
@@ -1719,23 +1723,6 @@ func (c *Conn) awaitSchemaAgreement(ctx context.Context) (err error) {
 
 	// not exported
 	return fmt.Errorf("gocql: cluster schema versions not consistent: %+v", schemas)
-}
-
-func (c *Conn) localHostInfo(ctx context.Context) (*HostInfo, error) {
-	row, err := c.query(ctx, "SELECT * FROM system.local WHERE key='local'").rowMap()
-	if err != nil {
-		return nil, err
-	}
-
-	port := c.conn.RemoteAddr().(*net.TCPAddr).Port
-
-	// TODO(zariel): avoid doing this here
-	host, err := c.session.hostInfoFromMap(row, &HostInfo{connectAddress: c.host.connectAddress, port: port})
-	if err != nil {
-		return nil, err
-	}
-
-	return c.session.ring.addOrUpdate(host), nil
 }
 
 var (

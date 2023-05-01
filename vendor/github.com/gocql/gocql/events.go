@@ -131,8 +131,10 @@ func (s *Session) handleKeyspaceChange(keyspace, change string) {
 
 // handleNodeEvent handles inbound status and topology change events.
 //
-// Within each category (topology vs status), events are debounced by
-// host IP; only the latest event is processed.
+// Status events are debounced by host IP; only the latest event is processed.
+//
+// Topology events are debounced by performing a single full topology refresh
+// whenever any topology event comes in.
 //
 // Processing topology change events before status change events ensures
 // that a NEW_NODE event is not dropped in favor of a newer UP event (which
@@ -144,22 +146,14 @@ func (s *Session) handleNodeEvent(frames []frame) {
 		port   int
 	}
 
-	// topology change events
-	tEvents := make(map[string]*nodeEvent)
+	topologyEventReceived := false
 	// status change events
 	sEvents := make(map[string]*nodeEvent)
 
 	for _, frame := range frames {
-		// TODO: can we be sure the order of events in the buffer is correct?
 		switch f := frame.(type) {
 		case *topologyChangeEventFrame:
-			event, ok := tEvents[f.host.String()]
-			if !ok {
-				event = &nodeEvent{change: f.change, host: f.host, port: f.port}
-				tEvents[f.host.String()] = event
-			}
-			event.change = f.change
-
+			topologyEventReceived = true
 		case *statusChangeEventFrame:
 			event, ok := sEvents[f.host.String()]
 			if !ok {
@@ -170,26 +164,8 @@ func (s *Session) handleNodeEvent(frames []frame) {
 		}
 	}
 
-	for _, f := range tEvents {
-		if gocqlDebug {
-			s.logger.Printf("gocql: dispatching topology change event: %+v\n", f)
-		}
-
-		// ignore events we received if they were disabled
-		// see https://github.com/gocql/gocql/issues/1591
-		switch f.change {
-		case "NEW_NODE":
-			if !s.cfg.Events.DisableTopologyEvents {
-				s.handleNewNode(f.host, f.port)
-			}
-		case "REMOVED_NODE":
-			if !s.cfg.Events.DisableTopologyEvents {
-				s.handleRemovedNode(f.host, f.port)
-			}
-		case "MOVED_NODE":
-			// java-driver handles this, not mentioned in the spec
-			// TODO(zariel): refresh token map
-		}
+	if topologyEventReceived && !s.cfg.Events.DisableTopologyEvents {
+		s.debounceRingRefresh()
 	}
 
 	for _, f := range sEvents {
@@ -212,73 +188,6 @@ func (s *Session) handleNodeEvent(frames []frame) {
 	}
 }
 
-func (s *Session) addNewNode(hostID UUID) {
-	// Get host info and apply any filters to the host
-	hostInfo, err := s.hostSource.getHostInfo(hostID)
-	if err != nil {
-		s.logger.Printf("gocql: events: unable to fetch host info for hostID: %q: %v\n", hostID, err)
-		return
-	} else if hostInfo == nil {
-		// ignore if it's null because we couldn't find it
-		return
-	}
-
-	if t := hostInfo.Version().nodeUpDelay(); t > 0 {
-		time.Sleep(t)
-	}
-
-	// should this handle token moving?
-	hostInfo = s.ring.addOrUpdate(hostInfo)
-
-	if !s.cfg.filterHost(hostInfo) {
-		s.startPoolFill(hostInfo)
-	}
-
-	if s.control != nil && !s.cfg.IgnorePeerAddr {
-		// TODO(zariel): debounce ring refresh
-		s.hostSource.refreshRing()
-	}
-}
-
-func (s *Session) handleNewNode(ip net.IP, port int) {
-	if gocqlDebug {
-		s.logger.Printf("gocql: Session.handleNewNode: %s:%d\n", ip.String(), port)
-	}
-
-	host, ok := s.ring.getHostByIP(ip.String())
-	if ok && host.IsUp() {
-		return
-	}
-
-	if err := s.hostSource.refreshRing(); err != nil && gocqlDebug {
-		s.logger.Printf("gocql: Session.handleNewNode: failed to refresh ring: %w\n", err.Error())
-	}
-}
-
-func (s *Session) handleRemovedNode(ip net.IP, port int) {
-	if gocqlDebug {
-		s.logger.Printf("gocql: Session.handleRemovedNode: %s:%d\n", ip.String(), port)
-	}
-
-	// we remove all nodes but only add ones which pass the filter
-	host, ok := s.ring.getHostByIP(ip.String())
-	if ok {
-		hostID := host.HostID()
-		s.ring.removeHost(hostID)
-
-		host.setState(NodeDown)
-		if !s.cfg.filterHost(host) {
-			s.policy.RemoveHost(host)
-			s.pool.removeHost(hostID)
-		}
-
-	}
-
-	if err := s.hostSource.refreshRing(); err != nil && gocqlDebug {
-		s.logger.Println("failed to refresh ring:", err)
-	}
-}
-
 func (s *Session) handleNodeUp(eventIp net.IP, eventPort int) {
 	if gocqlDebug {
 		s.logger.Printf("gocql: Session.handleNodeUp: %s:%d\n", eventIp.String(), eventPort)
@@ -286,9 +195,7 @@ func (s *Session) handleNodeUp(eventIp net.IP, eventPort int) {
 
 	host, ok := s.ring.getHostByIP(eventIp.String())
 	if !ok {
-		if err := s.hostSource.refreshRing(); err != nil && gocqlDebug {
-			s.logger.Printf("gocql: Session.handleNodeUp: failed to refresh ring: %w\n", err.Error())
-		}
+		s.debounceRingRefresh()
 		return
 	}
 

@@ -98,7 +98,7 @@ func (c *controlConn) heartBeat() {
 	reconn:
 		// try to connect a bit faster
 		sleepTime = 1 * time.Second
-		c.reconnect(true)
+		c.reconnect()
 		continue
 	}
 }
@@ -269,10 +269,13 @@ type connHost struct {
 
 func (c *controlConn) setupConn(conn *Conn) error {
 	// we need up-to-date host info for the filterHost call below
-	host, err := conn.localHostInfo(context.TODO())
+	iter := conn.querySystemLocal(context.TODO())
+	host, err := c.session.hostInfoFromIter(iter, conn.host.connectAddress, conn.conn.RemoteAddr().(*net.TCPAddr).Port)
 	if err != nil {
 		return err
 	}
+
+	host = c.session.ring.addOrUpdate(host)
 
 	if c.session.cfg.filterHost(host) {
 		return fmt.Errorf("host was filtered: %v", host.ConnectAddress())
@@ -335,7 +338,7 @@ func (c *controlConn) registerEvents(conn *Conn) error {
 	return nil
 }
 
-func (c *controlConn) reconnect(refreshring bool) {
+func (c *controlConn) reconnect() {
 	if atomic.LoadInt32(&c.state) == controlConnClosing {
 		return
 	}
@@ -381,8 +384,9 @@ func (c *controlConn) reconnect(refreshring bool) {
 		return
 	}
 
-	if refreshring {
-		c.session.hostSource.refreshRing()
+	err = c.session.refreshRing()
+	if err != nil {
+		c.session.logger.Printf("gocql: unable to refresh ring: %v\n", err)
 	}
 }
 
@@ -399,7 +403,7 @@ func (c *controlConn) HandleError(conn *Conn, err error, closed bool) {
 		return
 	}
 
-	c.reconnect(false)
+	c.reconnect()
 }
 
 func (c *controlConn) getConn() *connHost {
@@ -433,7 +437,7 @@ func (c *controlConn) withConnHost(fn func(*connHost) *Iter) *Iter {
 
 			connectAttempts++
 
-			c.reconnect(false)
+			c.reconnect()
 			continue
 		}
 
