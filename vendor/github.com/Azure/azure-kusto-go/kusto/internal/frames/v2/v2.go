@@ -86,9 +86,10 @@ type DataSetCompletion struct {
 	// Cancelled indicates that the request was cancelled.
 	Cancelled bool
 	// OneAPIErrors is a list of errors encountered.
-	OneAPIErrors []string `json:"OneApiErrors"`
+	OneAPIErrors []interface{} `json:"OneApiErrors"`
 
-	Op errors.Op `json:"-"`
+	Error errors.Error
+	Op    errors.Op `json:"-"`
 }
 
 // IsFrame implements frame.Frame.
@@ -98,8 +99,13 @@ func (DataSetCompletion) IsFrame() {}
 func (d *DataSetCompletion) UnmarshalRaw(raw json.RawMessage) error {
 	err := json.Unmarshal(raw, &d)
 	if err != nil {
-		err = errors.GetCombinedError(fmt.Errorf("json parsing failed: %v", raw), err)
+		err = errors.GetCombinedError(fmt.Errorf("json parsing failed: %v", string(raw)), err)
+	} else {
+		if d.HasErrors {
+			d.Error = *errors.OneToErr(map[string]interface{}{"OneApiErrors": d.OneAPIErrors}, d.Op)
+		}
 	}
+
 	return err
 }
 

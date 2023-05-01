@@ -5,8 +5,7 @@ on the column's type setting.
 The type information here is used to define what types of paramaters will substituted for in Stmt objects and to
 do discovery on table columns, if trying to do some type of dynamic discovery.
 
-
-Column
+# Column
 
 Column represents a Column type. A user should never try to implemenet these. Instead they should use
 the constants defined in this package, such as types.Bool, types.DateTime, ...  Any other value that these
