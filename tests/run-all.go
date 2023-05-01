@@ -198,6 +198,7 @@ func main() {
 	passSummary := []string{}
 	failSummary := []string{}
 	exitCode := 0
+
 	for _, result := range testResults {
 		if !result.Passed {
 			message := fmt.Sprintf("\tExecution of %s, has failed after %d tries", result.TestCase, len(result.Tries))
@@ -269,9 +270,6 @@ func getRegularTestFiles(e2eRegex string) []string {
 
 func getSequentialTestFiles(e2eRegex string) []string {
 	filter := func(path string, file string) bool {
-		if strings.Contains(path, "sequential") {
-			fmt.Println(path)
-		}
 		return !strings.Contains(path, "sequential") ||
 			!strings.HasSuffix(file, "_test.go")
 	}
