@@ -117,7 +117,7 @@ func (c *ChainedTokenCredential) GetToken(ctx context.Context, opts policy.Token
 			err = newCredentialUnavailableError(c.name, msg)
 		} else {
 			res := getResponseFromError(err)
-			err = newAuthenticationFailedError(c.name, msg, res)
+			err = newAuthenticationFailedError(c.name, msg, res, err)
 		}
 	}
 	return token, err
