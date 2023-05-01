@@ -263,5 +263,5 @@ func (g Generator) Generate(ctx *genall.GenerationContext) error {
 		return nil
 	}
 
-	return ctx.WriteYAML("role.yaml", objs)
+	return ctx.WriteYAML("role.yaml", objs, genall.WithTransform(genall.TransformRemoveCreationTimestamp))
 }

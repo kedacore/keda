@@ -153,7 +153,7 @@ func (g Generator) Generate(ctx *genall.GenerationContext) error {
 			} else {
 				fileName = fmt.Sprintf("%s_%s.%s.yaml", crdRaw.Spec.Group, crdRaw.Spec.Names.Plural, crdVersions[i])
 			}
-			if err := ctx.WriteYAML(fileName, []interface{}{crd}, genall.WithTransform(transformRemoveCRDStatus)); err != nil {
+			if err := ctx.WriteYAML(fileName, []interface{}{crd}, genall.WithTransform(transformRemoveCRDStatus), genall.WithTransform(genall.TransformRemoveCreationTimestamp)); err != nil {
 				return err
 			}
 		}

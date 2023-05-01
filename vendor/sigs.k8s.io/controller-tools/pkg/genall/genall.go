@@ -133,6 +133,13 @@ func WithTransform(transform func(obj map[string]interface{}) error) *WriteYAMLO
 	}
 }
 
+// TransformRemoveCreationTimestamp ensures we do not write the metadata.creationTimestamp field.
+func TransformRemoveCreationTimestamp(obj map[string]interface{}) error {
+	metadata := obj["metadata"].(map[interface{}]interface{})
+	delete(metadata, "creationTimestamp")
+	return nil
+}
+
 // WriteYAML writes the given objects out, serialized as YAML, using the
 // context's OutputRule.  Objects are written as separate documents, separated
 // from each other by `---` (as per the YAML spec).

@@ -412,7 +412,7 @@ func (Generator) Generate(ctx *genall.GenerationContext) error {
 		} else {
 			fileName = fmt.Sprintf("manifests.%s.yaml", k)
 		}
-		if err := ctx.WriteYAML(fileName, v); err != nil {
+		if err := ctx.WriteYAML(fileName, v, genall.WithTransform(genall.TransformRemoveCreationTimestamp)); err != nil {
 			return err
 		}
 	}
