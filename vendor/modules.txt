@@ -767,7 +767,7 @@ github.com/kylelemons/godebug/pretty
 # github.com/leodido/go-urn v1.2.2
 ## explicit; go 1.16
 github.com/leodido/go-urn
-# github.com/lib/pq v1.10.7
+# github.com/lib/pq v1.10.9
 ## explicit; go 1.13
 github.com/lib/pq
 github.com/lib/pq/oid

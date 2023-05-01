@@ -43,7 +43,7 @@ require (
 	github.com/imdario/mergo v0.3.15
 	github.com/influxdata/influxdb-client-go/v2 v2.12.3
 	github.com/joho/godotenv v1.5.1
-	github.com/lib/pq v1.10.7
+	github.com/lib/pq v1.10.9
 	github.com/microsoft/ApplicationInsights-Go v0.4.4
 	github.com/microsoft/azure-devops-go-api/azuredevops v1.0.0-b5
 	github.com/mitchellh/hashstructure v1.1.0
