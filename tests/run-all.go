@@ -43,6 +43,7 @@ func main() {
 	regularTestResults := []TestResult{}
 	sequentialTestResults := []TestResult{}
 	exitCode := 0
+	validRegex := true
 
 	e2eRegex := os.Getenv("E2E_TEST_REGEX")
 	if e2eRegex == "" {
@@ -66,14 +67,13 @@ func main() {
 	regularTestFiles := getRegularTestFiles(e2eRegex)
 	sequentialTestFiles := getSequentialTestFiles(e2eRegex)
 	if len(regularTestFiles) == 0 && len(sequentialTestFiles) == 0 {
-		fmt.Printf("No test has been executed, please review your regex: '%s'", e2eRegex)
-		exitCode = 1
+		validRegex = false
 	}
 
 	//
 	// Execute regular tests
 	//
-	if exitCode == 0 {
+	if validRegex {
 		for _, testFile := range regularTestFiles {
 			if err := sem.Acquire(ctx, 1); err != nil {
 				fmt.Printf("Failed to acquire semaphore: %v", err)
@@ -181,52 +181,56 @@ func main() {
 				}
 			}
 		}
-
-		//
-		// Uninstall KEDA
-		//
 	}
+	//
+	// Uninstall KEDA
+	//
+
 	removal := executeTest(ctx, "tests/utils/cleanup_test.go", "15m", 1)
 	fmt.Print(removal.Tries[0])
 	if !removal.Passed {
 		exitCode = 1
 	}
 
-	testResults := []TestResult{}
-	testResults = append(testResults, regularTestResults...)
-	testResults = append(testResults, sequentialTestResults...)
-	passSummary := []string{}
-	failSummary := []string{}
+	if validRegex {
+		testResults := []TestResult{}
+		testResults = append(testResults, regularTestResults...)
+		testResults = append(testResults, sequentialTestResults...)
+		passSummary := []string{}
+		failSummary := []string{}
 
-	for _, result := range testResults {
-		if !result.Passed {
-			message := fmt.Sprintf("\tExecution of %s, has failed after %d tries", result.TestCase, len(result.Tries))
-			failSummary = append(failSummary, message)
-			exitCode = 1
-			continue
+		for _, result := range testResults {
+			if !result.Passed {
+				message := fmt.Sprintf("\tExecution of %s, has failed after %d tries", result.TestCase, len(result.Tries))
+				failSummary = append(failSummary, message)
+				exitCode = 1
+				continue
+			}
+			message := fmt.Sprintf("\tExecution of %s, has passed after %d tries", result.TestCase, len(result.Tries))
+			passSummary = append(passSummary, message)
 		}
-		message := fmt.Sprintf("\tExecution of %s, has passed after %d tries", result.TestCase, len(result.Tries))
-		passSummary = append(passSummary, message)
-	}
 
-	fmt.Println("##############################################")
-	fmt.Println("##############################################")
-	fmt.Println("EXECUTION SUMMARY")
-	fmt.Println("##############################################")
-	fmt.Println("##############################################")
+		fmt.Println("##############################################")
+		fmt.Println("##############################################")
+		fmt.Println("EXECUTION SUMMARY")
+		fmt.Println("##############################################")
+		fmt.Println("##############################################")
 
-	if len(passSummary) > 0 {
-		fmt.Println("Passed tests:")
-		for _, message := range passSummary {
-			fmt.Println(message)
+		if len(passSummary) > 0 {
+			fmt.Println("Passed tests:")
+			for _, message := range passSummary {
+				fmt.Println(message)
+			}
 		}
-	}
 
-	if len(failSummary) > 0 {
-		fmt.Println("Failed tests:")
-		for _, message := range failSummary {
-			fmt.Println(message)
+		if len(failSummary) > 0 {
+			fmt.Println("Failed tests:")
+			for _, message := range failSummary {
+				fmt.Println(message)
+			}
 		}
+	} else {
+		fmt.Println(fmt.Sprintf("No test has been executed, please review your regex: '%s'", e2eRegex))
 	}
 
 	os.Exit(exitCode)
@@ -259,10 +263,9 @@ func executeTest(ctx context.Context, file string, timeout string, tries int) Te
 }
 
 func getRegularTestFiles(e2eRegex string) []string {
-	// We exclude utils and chaos folders and helper files
+	// We exclude utils and sequential folders and helper files
 	filter := func(path string, file string) bool {
-		return !strings.HasPrefix(path, "tests") ||
-			strings.Contains(path, "utils") ||
+		return strings.Contains(path, "utils") ||
 			strings.Contains(path, "sequential") ||
 			!strings.HasSuffix(file, "_test.go")
 	}
@@ -271,8 +274,10 @@ func getRegularTestFiles(e2eRegex string) []string {
 
 func getSequentialTestFiles(e2eRegex string) []string {
 	filter := func(path string, file string) bool {
-		return !strings.HasPrefix(path, "tests") ||
-			!strings.Contains(path, "sequential") ||
+		if strings.Contains(path, "sequential") {
+			fmt.Println(path)
+		}
+		return !strings.Contains(path, "sequential") ||
 			!strings.HasSuffix(file, "_test.go")
 	}
 	return getTestFiles(e2eRegex, filter)
@@ -291,11 +296,11 @@ func getTestFiles(e2eRegex string, filter func(path string, file string) bool) [
 			if err != nil {
 				return err
 			}
-			// We exclude utils and chaos folders and helper files
+			// We exclude utils and sequential folders and helper files
 			if filter(path, info.Name()) {
 				return nil
 			}
-			if regex.MatchString(info.Name()) {
+			if regex.MatchString(path) {
 				testFiles = append(testFiles, path)
 			}
 
