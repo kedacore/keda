@@ -63,8 +63,8 @@ func main() {
 	regularTestFiles := getRegularTestFiles(e2eRegex)
 	sequentialTestFiles := getSequentialTestFiles(e2eRegex)
 	if len(regularTestFiles) == 0 && len(sequentialTestFiles) == 0 {
-		fmt.Printf("No test has been executed, please review your regex: '%s'\n", e2eRegex)
 		uninstallKeda(ctx)
+		fmt.Printf("No test has been executed, please review your regex: '%s'\n", e2eRegex)
 		os.Exit(1)
 	}
 
