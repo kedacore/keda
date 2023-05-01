@@ -145,6 +145,7 @@ spec:
       consumerGroup: consumer-group-1
       sentinelMaster: mymaster
       pendingEntriesCount: "10"
+      lag: "5"
     authenticationRef:
       name: {{.TriggerAuthenticationName}}
 `
