@@ -42,8 +42,6 @@ func main() {
 	sem := semaphore.NewWeighted(int64(concurrentTests))
 	regularTestResults := []TestResult{}
 	sequentialTestResults := []TestResult{}
-	exitCode := 0
-	validRegex := true
 
 	e2eRegex := os.Getenv("E2E_TEST_REGEX")
 	if e2eRegex == "" {
@@ -57,7 +55,8 @@ func main() {
 	installation := executeTest(ctx, "tests/utils/setup_test.go", "15m", 1)
 	fmt.Print(installation.Tries[0])
 	if !installation.Passed {
-		exitCode = 1
+		uninstallKeda(ctx)
+		os.Exit(1)
 	}
 
 	//
@@ -67,172 +66,168 @@ func main() {
 	regularTestFiles := getRegularTestFiles(e2eRegex)
 	sequentialTestFiles := getSequentialTestFiles(e2eRegex)
 	if len(regularTestFiles) == 0 && len(sequentialTestFiles) == 0 {
-		validRegex = false
+		fmt.Println(fmt.Sprintf("No test has been executed, please review your regex: '%s'", e2eRegex))
+		uninstallKeda(ctx)
+		os.Exit(1)
 	}
 
 	//
 	// Execute regular tests
 	//
-	if validRegex {
-		for _, testFile := range regularTestFiles {
-			if err := sem.Acquire(ctx, 1); err != nil {
-				fmt.Printf("Failed to acquire semaphore: %v", err)
-				exitCode = 1
-			}
-
-			go func(file string) {
-				defer sem.Release(1)
-				testExecution := executeTest(ctx, file, regularTestsTimeout, regularTestsRetries)
-				regularTestResults = append(regularTestResults, testExecution)
-			}(testFile)
+	for _, testFile := range regularTestFiles {
+		if err := sem.Acquire(ctx, 1); err != nil {
+			fmt.Printf("Failed to acquire semaphore: %v", err)
+			uninstallKeda(ctx)
+			os.Exit(1)
 		}
 
-		// Wait until all secuential tests ends
-		if err := sem.Acquire(ctx, int64(concurrentTests)); err != nil {
-			log.Printf("Failed to acquire semaphore: %v", err)
+		go func(file string) {
+			defer sem.Release(1)
+			testExecution := executeTest(ctx, file, regularTestsTimeout, regularTestsRetries)
+			regularTestResults = append(regularTestResults, testExecution)
+		}(testFile)
+	}
+
+	// Wait until all secuential tests ends
+	if err := sem.Acquire(ctx, int64(concurrentTests)); err != nil {
+		log.Printf("Failed to acquire semaphore: %v", err)
+	}
+
+	//
+	// Print regular logs
+	//
+
+	for _, result := range regularTestResults {
+		status := "failed"
+		if result.Passed {
+			status = "passed"
 		}
-
-		//
-		// Print regular logs
-		//
-
-		for _, result := range regularTestResults {
-			status := "failed"
-			if result.Passed {
-				status = "passed"
-			}
-			fmt.Printf("%s has %s after %d tries \n", result.TestCase, status, len(result.Tries))
-			for index, log := range result.Tries {
-				fmt.Printf("try number %d\n", index+1)
-				fmt.Println(log)
-			}
+		fmt.Printf("%s has %s after %d tries \n", result.TestCase, status, len(result.Tries))
+		for index, log := range result.Tries {
+			fmt.Printf("try number %d\n", index+1)
+			fmt.Println(log)
 		}
+	}
 
-		if len(regularTestResults) > 0 {
-			kubeConfig, _ := config.GetConfig()
-			kubeClient, _ := kubernetes.NewForConfig(kubeConfig)
+	if len(regularTestResults) > 0 {
+		kubeConfig, _ := config.GetConfig()
+		kubeClient, _ := kubernetes.NewForConfig(kubeConfig)
 
-			operatorLogs, err := helper.FindPodLogs(kubeClient, "keda", "app=keda-operator")
-			if err == nil {
-				fmt.Println(">>> KEDA Operator log <<<")
-				fmt.Println(operatorLogs)
-				fmt.Println("##############################################")
-				fmt.Println("##############################################")
-			}
-
-			msLogs, err := helper.FindPodLogs(kubeClient, "keda", "app=keda-metrics-apiserver")
-			if err == nil {
-				fmt.Println(">>> KEDA Metrics Server log <<<")
-				fmt.Println(msLogs)
-				fmt.Println("##############################################")
-				fmt.Println("##############################################")
-			}
-
-			hooksLogs, err := helper.FindPodLogs(kubeClient, "keda", "app=keda-admission-webhooks")
-			if err == nil {
-				fmt.Println(">>> KEDA Admission Webhooks log <<<")
-				fmt.Println(hooksLogs)
-				fmt.Println("##############################################")
-				fmt.Println("##############################################")
-			}
-		}
-		//
-		// Execute secuential tests
-		//
-
-		for _, testFile := range sequentialTestFiles {
-			testExecution := executeTest(ctx, testFile, sequentialTestsTimeout, sequentialTestsRetries)
-			sequentialTestResults = append(sequentialTestResults, testExecution)
-		}
-
-		//
-		// Print secuential logs
-		//
-
-		for _, result := range sequentialTestResults {
-			status := "failed"
-			if result.Passed {
-				status = "passed"
-			}
-			fmt.Printf("%s has %s after %d tries \n", result.TestCase, status, len(result.Tries))
-			for index, log := range result.Tries {
-				fmt.Printf("try number %d\n", index+1)
-				fmt.Println(log)
-			}
-			dir := filepath.Dir(result.TestCase)
-			files, _ := os.ReadDir(dir)
+		operatorLogs, err := helper.FindPodLogs(kubeClient, "keda", "app=keda-operator")
+		if err == nil {
 			fmt.Println(">>> KEDA Operator log <<<")
-			for _, file := range files {
-				if strings.Contains(file.Name(), "operator") {
-					fmt.Println("##############################################")
-					content, _ := os.ReadFile(path.Join(dir, file.Name()))
-					fmt.Println(string(content))
-					fmt.Println("##############################################")
-				}
-			}
+			fmt.Println(operatorLogs)
+			fmt.Println("##############################################")
+			fmt.Println("##############################################")
+		}
 
+		msLogs, err := helper.FindPodLogs(kubeClient, "keda", "app=keda-metrics-apiserver")
+		if err == nil {
 			fmt.Println(">>> KEDA Metrics Server log <<<")
-			for _, file := range files {
-				if strings.Contains(file.Name(), "metrics-server") {
-					fmt.Println("##############################################")
-					content, _ := os.ReadFile(path.Join(dir, file.Name()))
-					fmt.Println(string(content))
-					fmt.Println("##############################################")
-				}
+			fmt.Println(msLogs)
+			fmt.Println("##############################################")
+			fmt.Println("##############################################")
+		}
+
+		hooksLogs, err := helper.FindPodLogs(kubeClient, "keda", "app=keda-admission-webhooks")
+		if err == nil {
+			fmt.Println(">>> KEDA Admission Webhooks log <<<")
+			fmt.Println(hooksLogs)
+			fmt.Println("##############################################")
+			fmt.Println("##############################################")
+		}
+	}
+	//
+	// Execute secuential tests
+	//
+
+	for _, testFile := range sequentialTestFiles {
+		testExecution := executeTest(ctx, testFile, sequentialTestsTimeout, sequentialTestsRetries)
+		sequentialTestResults = append(sequentialTestResults, testExecution)
+	}
+
+	//
+	// Print secuential logs
+	//
+
+	for _, result := range sequentialTestResults {
+		status := "failed"
+		if result.Passed {
+			status = "passed"
+		}
+		fmt.Printf("%s has %s after %d tries \n", result.TestCase, status, len(result.Tries))
+		for index, log := range result.Tries {
+			fmt.Printf("try number %d\n", index+1)
+			fmt.Println(log)
+		}
+		dir := filepath.Dir(result.TestCase)
+		files, _ := os.ReadDir(dir)
+		fmt.Println(">>> KEDA Operator log <<<")
+		for _, file := range files {
+			if strings.Contains(file.Name(), "operator") {
+				fmt.Println("##############################################")
+				content, _ := os.ReadFile(path.Join(dir, file.Name()))
+				fmt.Println(string(content))
+				fmt.Println("##############################################")
+			}
+		}
+
+		fmt.Println(">>> KEDA Metrics Server log <<<")
+		for _, file := range files {
+			if strings.Contains(file.Name(), "metrics-server") {
+				fmt.Println("##############################################")
+				content, _ := os.ReadFile(path.Join(dir, file.Name()))
+				fmt.Println(string(content))
+				fmt.Println("##############################################")
 			}
 		}
 	}
+
 	//
 	// Uninstall KEDA
 	//
 
-	removal := executeTest(ctx, "tests/utils/cleanup_test.go", "15m", 1)
-	fmt.Print(removal.Tries[0])
-	if !removal.Passed {
-		exitCode = 1
+	passed := uninstallKeda(ctx)
+	if !passed {
+		os.Exit(1)
 	}
 
-	if validRegex {
-		testResults := []TestResult{}
-		testResults = append(testResults, regularTestResults...)
-		testResults = append(testResults, sequentialTestResults...)
-		passSummary := []string{}
-		failSummary := []string{}
-
-		for _, result := range testResults {
-			if !result.Passed {
-				message := fmt.Sprintf("\tExecution of %s, has failed after %d tries", result.TestCase, len(result.Tries))
-				failSummary = append(failSummary, message)
-				exitCode = 1
-				continue
-			}
-			message := fmt.Sprintf("\tExecution of %s, has passed after %d tries", result.TestCase, len(result.Tries))
-			passSummary = append(passSummary, message)
+	testResults := []TestResult{}
+	testResults = append(testResults, regularTestResults...)
+	testResults = append(testResults, sequentialTestResults...)
+	passSummary := []string{}
+	failSummary := []string{}
+	exitCode := 0
+	for _, result := range testResults {
+		if !result.Passed {
+			message := fmt.Sprintf("\tExecution of %s, has failed after %d tries", result.TestCase, len(result.Tries))
+			failSummary = append(failSummary, message)
+			exitCode = 1
+			continue
 		}
-
-		fmt.Println("##############################################")
-		fmt.Println("##############################################")
-		fmt.Println("EXECUTION SUMMARY")
-		fmt.Println("##############################################")
-		fmt.Println("##############################################")
-
-		if len(passSummary) > 0 {
-			fmt.Println("Passed tests:")
-			for _, message := range passSummary {
-				fmt.Println(message)
-			}
-		}
-
-		if len(failSummary) > 0 {
-			fmt.Println("Failed tests:")
-			for _, message := range failSummary {
-				fmt.Println(message)
-			}
-		}
-	} else {
-		fmt.Println(fmt.Sprintf("No test has been executed, please review your regex: '%s'", e2eRegex))
+		message := fmt.Sprintf("\tExecution of %s, has passed after %d tries", result.TestCase, len(result.Tries))
+		passSummary = append(passSummary, message)
 	}
 
+	fmt.Println("##############################################")
+	fmt.Println("##############################################")
+	fmt.Println("EXECUTION SUMMARY")
+	fmt.Println("##############################################")
+	fmt.Println("##############################################")
+
+	if len(passSummary) > 0 {
+		fmt.Println("Passed tests:")
+		for _, message := range passSummary {
+			fmt.Println(message)
+		}
+	}
+
+	if len(failSummary) > 0 {
+		fmt.Println("Failed tests:")
+		for _, message := range failSummary {
+			fmt.Println(message)
+		}
+	}
 	os.Exit(exitCode)
 }
 
@@ -318,4 +313,10 @@ func getTestFiles(e2eRegex string, filter func(path string, file string) bool) [
 	})
 
 	return testFiles
+}
+
+func uninstallKeda(ctx context.Context) bool {
+	removal := executeTest(ctx, "tests/utils/cleanup_test.go", "15m", 1)
+	fmt.Print(removal.Tries[0])
+	return removal.Passed
 }
