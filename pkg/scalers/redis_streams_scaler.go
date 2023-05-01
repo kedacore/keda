@@ -162,7 +162,6 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 			}
 			return pendingEntries.Count, nil
 		}
-	/*
 		case xLengthFactor:
 			entriesCountFn = func(ctx context.Context) (int64, error) {
 				entriesLength, err := client.XLen(ctx, meta.streamName).Result()
@@ -170,7 +169,7 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 					return -1, err
 				}
 				return entriesLength, nil
-			}*/
+			}
 	case xLagFactor:
 		// Insert lag implementation here
 		entriesCountFn = func(ctx context.Context) (int64, error) {
