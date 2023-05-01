@@ -43,6 +43,7 @@ type Session struct {
 	frameObserver       FrameHeaderObserver
 	streamObserver      StreamObserver
 	hostSource          *ringDescriber
+	ringRefresher       *refreshDebouncer
 	stmtsLRU            *preparedLRU
 
 	connCfg *ConnConfig
@@ -73,8 +74,10 @@ type Session struct {
 
 	// sessionStateMu protects isClosed and isInitialized.
 	sessionStateMu sync.RWMutex
-	// isClosed is true once Session.Close is called.
+	// isClosed is true once Session.Close is finished.
 	isClosed bool
+	// isClosing bool is true once Session.Close is started.
+	isClosing bool
 	// isInitialized is true once Session.init succeeds.
 	// you can use initialized() to read the value.
 	isInitialized bool
@@ -84,7 +87,7 @@ type Session struct {
 
 var queryPool = &sync.Pool{
 	New: func() interface{} {
-		return new(Query)
+		return &Query{refCount: 1}
 	},
 }
 
@@ -144,6 +147,7 @@ func NewSession(cfg ClusterConfig) (*Session, error) {
 	s.routingKeyInfoCache.lru = lru.New(cfg.MaxRoutingKeyInfo)
 
 	s.hostSource = &ringDescriber{session: s}
+	s.ringRefresher = newRefreshDebouncer(ringRefreshDebounceTime, func() error { return refreshRing(s.hostSource) })
 
 	if cfg.PoolConfig.HostSelectionPolicy == nil {
 		cfg.PoolConfig.HostSelectionPolicy = RoundRobinHostPolicy()
@@ -463,11 +467,12 @@ func (s *Session) Bind(stmt string, b func(q *QueryInfo) ([]interface{}, error))
 func (s *Session) Close() {
 
 	s.sessionStateMu.Lock()
-	defer s.sessionStateMu.Unlock()
-	if s.isClosed {
+	if s.isClosing {
+		s.sessionStateMu.Unlock()
 		return
 	}
-	s.isClosed = true
+	s.isClosing = true
+	s.sessionStateMu.Unlock()
 
 	if s.pool != nil {
 		s.pool.Close()
@@ -485,9 +490,17 @@ func (s *Session) Close() {
 		s.schemaEvents.stop()
 	}
 
+	if s.ringRefresher != nil {
+		s.ringRefresher.stop()
+	}
+
 	if s.cancel != nil {
 		s.cancel()
 	}
+
+	s.sessionStateMu.Lock()
+	s.isClosed = true
+	s.sessionStateMu.Unlock()
 }
 
 func (s *Session) Closed() bool {
@@ -886,6 +899,7 @@ type Query struct {
 	idempotent            bool
 	customPayload         map[string][]byte
 	metrics               *queryMetrics
+	refCount              uint32
 
 	disableAutoPage bool
 
@@ -1324,13 +1338,32 @@ func (q *Query) MapScanCAS(dest map[string]interface{}) (applied bool, err error
 //	qry.Exec()
 //	qry.Release()
 func (q *Query) Release() {
-	q.reset()
-	queryPool.Put(q)
+	q.decRefCount()
 }
 
 // reset zeroes out all fields of a query so that it can be safely pooled.
 func (q *Query) reset() {
-	*q = Query{}
+	*q = Query{refCount: 1}
+}
+
+func (q *Query) incRefCount() {
+	atomic.AddUint32(&q.refCount, 1)
+}
+
+func (q *Query) decRefCount() {
+	if res := atomic.AddUint32(&q.refCount, ^uint32(0)); res == 0 {
+		// do release
+		q.reset()
+		queryPool.Put(q)
+	}
+}
+
+func (q *Query) borrowForExecution() {
+	q.incRefCount()
+}
+
+func (q *Query) releaseAfterExecution() {
+	q.decRefCount()
 }
 
 // Iter represents an iterator that can be used to iterate over all rows that
@@ -1930,6 +1963,16 @@ func createRoutingKey(routingKeyInfo *routingKeyInfo, values []interface{}) ([]b
 	}
 	routingKey := buf.Bytes()
 	return routingKey, nil
+}
+
+func (b *Batch) borrowForExecution() {
+	// empty, because Batch has no equivalent of Query.Release()
+	// that would race with speculative executions.
+}
+
+func (b *Batch) releaseAfterExecution() {
+	// empty, because Batch has no equivalent of Query.Release()
+	// that would race with speculative executions.
 }
 
 type BatchType byte

@@ -15,14 +15,14 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.2.1
 	github.com/Azure/azure-storage-blob-go v0.15.0
 	github.com/Azure/azure-storage-queue-go v0.0.0-20191125232315-636801874cdd
-	github.com/Azure/go-autorest/autorest v0.11.28
+	github.com/Azure/go-autorest/autorest v0.11.29
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.12
-	github.com/AzureAD/microsoft-authentication-library-for-go v0.9.0
+	github.com/AzureAD/microsoft-authentication-library-for-go v1.0.0
 	github.com/DataDog/datadog-api-client-go v1.16.0
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.38.1
 	github.com/arangodb/go-driver v1.5.2
-	github.com/aws/aws-sdk-go v1.44.236
+	github.com/aws/aws-sdk-go v1.44.253
 	github.com/denisenkom/go-mssqldb v0.12.3
 	github.com/dysnix/predictkube-libs v0.0.4-0.20230109175007-5a82fccd31c7
 	github.com/dysnix/predictkube-proto v0.0.0-20220713123213-7135dce1e9c9
@@ -30,20 +30,20 @@ require (
 	github.com/go-kivik/couchdb/v3 v3.3.0
 	github.com/go-kivik/kivik/v3 v3.2.4
 	github.com/go-logr/logr v1.2.4
-	github.com/go-playground/validator/v10 v10.12.0
-	github.com/go-sql-driver/mysql v1.7.0
+	github.com/go-playground/validator/v10 v10.13.0
+	github.com/go-sql-driver/mysql v1.7.1
 	github.com/gobwas/glob v0.2.3
-	github.com/gocql/gocql v1.3.2
+	github.com/gocql/gocql v1.4.0
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.9
 	github.com/google/go-github/v50 v50.2.0
 	github.com/google/uuid v1.3.0
 	github.com/gophercloud/gophercloud v1.3.0
-	github.com/hashicorp/vault/api v1.9.0
+	github.com/hashicorp/vault/api v1.9.1
 	github.com/imdario/mergo v0.3.15
 	github.com/influxdata/influxdb-client-go/v2 v2.12.3
 	github.com/joho/godotenv v1.5.1
-	github.com/lib/pq v1.10.7
+	github.com/lib/pq v1.10.9
 	github.com/microsoft/ApplicationInsights-Go v0.4.4
 	github.com/microsoft/azure-devops-go-api/azuredevops v1.0.0-b5
 	github.com/mitchellh/hashstructure v1.1.0
@@ -53,7 +53,7 @@ require (
 	github.com/open-policy-agent/cert-controller v0.7.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.14.0
+	github.com/prometheus/client_golang v1.15.0
 	github.com/prometheus/client_model v0.3.0
 	github.com/prometheus/common v0.42.0
 	github.com/rabbitmq/amqp091-go v1.8.0
@@ -66,11 +66,11 @@ require (
 	github.com/xdg/scram v1.0.5
 	github.com/xhit/go-str2duration/v2 v2.1.0
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a
-	go.etcd.io/etcd/client/v3 v3.5.7
+	go.etcd.io/etcd/client/v3 v3.5.8
 	go.mongodb.org/mongo-driver v1.11.4
-	golang.org/x/oauth2 v0.6.0
+	golang.org/x/oauth2 v0.7.0
 	golang.org/x/sync v0.1.0
-	google.golang.org/api v0.115.0
+	google.golang.org/api v0.120.0
 	google.golang.org/grpc v1.54.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.3.0
 	google.golang.org/protobuf v1.30.0
@@ -100,6 +100,9 @@ replace (
 	// https://nvd.nist.gov/vuln/detail/CVE-2022-1996
 	github.com/emicklei/go-restful => github.com/emicklei/go-restful v2.16.0+incompatible
 
+	// we need a version without GPL3.0 license
+	github.com/leodido/go-urn => github.com/leodido/go-urn v1.2.4
+
 	// we need to drop a transitive dependency on bou.ke/monkey -> https://github.com/kedacore/keda/issues/4364
 	github.com/otiai10/mint => github.com/otiai10/mint v1.4.1
 
@@ -122,7 +125,7 @@ require (
 	cloud.google.com/go/iam v0.13.0 // indirect
 	code.cloudfoundry.org/clock v1.0.0 // indirect
 	github.com/Azure/azure-pipeline-go v0.2.3 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/internal v1.1.2 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/internal v1.3.0 // indirect
 	github.com/Azure/go-amqp v0.19.1 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.9.22 // indirect
@@ -186,6 +189,7 @@ require (
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/pprof v0.0.0-20230228050547-1710fef4ab10 // indirect
+	github.com/google/s2a-go v0.1.2 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.3 // indirect
 	github.com/googleapis/gax-go/v2 v2.8.0 // indirect
@@ -217,7 +221,7 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.16.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
-	github.com/leodido/go-urn v1.2.2 // indirect
+	github.com/leodido/go-urn v1.2.3 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-ieproxy v0.0.10 // indirect
@@ -259,8 +263,8 @@ require (
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/xdg/stringprep v1.0.3 // indirect
 	github.com/xlab/treeprint v1.1.0 // indirect
-	go.etcd.io/etcd/api/v3 v3.5.7 // indirect
-	go.etcd.io/etcd/client/pkg/v3 v3.5.7 // indirect
+	go.etcd.io/etcd/api/v3 v3.5.8 // indirect
+	go.etcd.io/etcd/client/pkg/v3 v3.5.8 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.40.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.40.0 // indirect
@@ -278,16 +282,16 @@ require (
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/crypto v0.7.0 // indirect
 	golang.org/x/mod v0.9.0 // indirect
-	golang.org/x/net v0.8.0 // indirect
-	golang.org/x/sys v0.6.0 // indirect
+	golang.org/x/net v0.9.0 // indirect
+	golang.org/x/sys v0.7.0 // indirect
 	golang.org/x/term v0.6.0 // indirect
-	golang.org/x/text v0.8.0 // indirect
+	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.7.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20230331144136-dcfb400f0633 // indirect
+	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
