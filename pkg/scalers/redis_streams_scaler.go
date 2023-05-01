@@ -19,14 +19,17 @@ type scaleFactor int8
 const (
 	xPendingFactor scaleFactor = iota + 1
 	xLengthFactor
+	xLagFactor
 )
 
 const (
 	// defaults
 	defaultDBIndex       = 0
 	defaultTargetEntries = 5
+	defaultTargetLag     = 5
 
 	// metadata names
+	lagMetadata                 = "lag"
 	pendingEntriesCountMetadata = "pendingEntriesCount"
 	streamLengthMetadata        = "streamLength"
 	streamNameMetadata          = "stream"
@@ -49,6 +52,7 @@ type redisStreamsMetadata struct {
 	scaleFactor               scaleFactor
 	targetPendingEntriesCount int64
 	targetStreamLength        int64
+	targetLag                 int64
 	streamName                string
 	consumerGroupName         string
 	databaseIndex             int
@@ -158,13 +162,30 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 			}
 			return pendingEntries.Count, nil
 		}
-	case xLengthFactor:
+	/*
+		case xLengthFactor:
+			entriesCountFn = func(ctx context.Context) (int64, error) {
+				entriesLength, err := client.XLen(ctx, meta.streamName).Result()
+				if err != nil {
+					return -1, err
+				}
+				return entriesLength, nil
+			}*/
+	case xLagFactor:
+		// Insert lag implementation here
 		entriesCountFn = func(ctx context.Context) (int64, error) {
-			entriesLength, err := client.XLen(ctx, meta.streamName).Result()
+			groups, err := client.XInfoGroups(ctx, meta.streamName).Result()
 			if err != nil {
 				return -1, err
 			}
-			return entriesLength, nil
+			numGroups := len(groups)
+			totalLag := int64(0)
+			for i := 0; i < numGroups; i++ {
+				group := groups[i]
+				totalLag += group.Lag
+			}
+			averageLag := totalLag / int64(numGroups)
+			return averageLag, nil
 		}
 	default:
 		err = fmt.Errorf("unrecognized scale factor %v", meta.scaleFactor)
@@ -211,16 +232,31 @@ func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser)
 	}
 
 	if val, ok := config.TriggerMetadata[consumerGroupNameMetadata]; ok {
+		// For now, we'll make the default xLagFactor
+		meta.scaleFactor = xLagFactor
+		meta.targetLag = defaultTargetLag
 		meta.consumerGroupName = val
-		meta.scaleFactor = xPendingFactor
 		meta.targetPendingEntriesCount = defaultTargetEntries
-		if val, ok := config.TriggerMetadata[pendingEntriesCountMetadata]; ok {
-			pendingEntriesCount, err := strconv.ParseInt(val, 10, 64)
+		if val, ok := config.TriggerMetadata[lagMetadata]; ok {
+			lag, err := strconv.ParseInt(val, 10, 64)
 			if err != nil {
-				return nil, fmt.Errorf("error parsing pending entries count: %w", err)
+				return nil, fmt.Errorf("error parsing lag: %w", err)
 			}
-			meta.targetPendingEntriesCount = pendingEntriesCount
+			meta.targetLag = lag
 		}
+		// Remember to add user-defined targetLag capability later. For now, just use default.
+		/*
+			meta.consumerGroupName = val
+			meta.scaleFactor = xPendingFactor
+			meta.targetPendingEntriesCount = defaultTargetEntries
+			if val, ok := config.TriggerMetadata[pendingEntriesCountMetadata]; ok {
+				pendingEntriesCount, err := strconv.ParseInt(val, 10, 64)
+				if err != nil {
+					return nil, fmt.Errorf("error parsing pending entries count: %w", err)
+				}
+				meta.targetPendingEntriesCount = pendingEntriesCount
+			}
+		*/
 	} else {
 		meta.scaleFactor = xLengthFactor
 		meta.targetStreamLength = defaultTargetEntries
@@ -259,6 +295,8 @@ func (s *redisStreamsScaler) GetMetricSpecForScaling(context.Context) []v2.Metri
 		metricValue = s.metadata.targetPendingEntriesCount
 	case xLengthFactor:
 		metricValue = s.metadata.targetStreamLength
+	case xLagFactor:
+		metricValue = s.metadata.targetLag
 	}
 
 	externalMetric := &v2.ExternalMetricSource{
