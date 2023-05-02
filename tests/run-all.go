@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/sync/semaphore"
@@ -78,7 +79,7 @@ func main() {
 	// Execute secuential tests
 	//
 
-	sequentialTestResults := executeSequentialTests(ctx, regularTestFiles)
+	sequentialTestResults := executeSequentialTests(ctx, sequentialTestFiles)
 
 	//
 	// Uninstall KEDA
@@ -129,7 +130,8 @@ func executeTest(ctx context.Context, file string, timeout string, tries int) Te
 func getRegularTestFiles(e2eRegex string) []string {
 	// We exclude utils and sequential folders and helper files
 	filter := func(path string, file string) bool {
-		return strings.Contains(path, "utils") ||
+		return !strings.HasPrefix(path, "tests") || // we need this condition to skip non e2e test from execution
+			strings.Contains(path, "utils") ||
 			strings.Contains(path, "sequential") ||
 			!strings.HasSuffix(file, "_test.go")
 	}
@@ -138,7 +140,8 @@ func getRegularTestFiles(e2eRegex string) []string {
 
 func getSequentialTestFiles(e2eRegex string) []string {
 	filter := func(path string, file string) bool {
-		return !strings.Contains(path, "sequential") ||
+		return !strings.HasPrefix(path, "tests") || // we need this condition to skip non e2e test from execution
+			!strings.Contains(path, "sequential") ||
 			!strings.HasSuffix(file, "_test.go")
 	}
 	return getTestFiles(e2eRegex, filter)
@@ -183,6 +186,7 @@ func getTestFiles(e2eRegex string, filter func(path string, file string) bool) [
 
 func executeRegularTests(ctx context.Context, testCases []string) []TestResult {
 	sem := semaphore.NewWeighted(int64(concurrentTests))
+	mutex := &sync.RWMutex{}
 	testResults := []TestResult{}
 
 	//
@@ -198,7 +202,9 @@ func executeRegularTests(ctx context.Context, testCases []string) []TestResult {
 		go func(file string) {
 			defer sem.Release(1)
 			testExecution := executeTest(ctx, file, regularTestsTimeout, regularTestsRetries)
+			mutex.Lock()
 			testResults = append(testResults, testExecution)
+			mutex.Unlock()
 		}(testFile)
 	}
 
