@@ -130,6 +130,7 @@ jobs:
         run: make scale-node-pool
         env:
           NODE_POOL_SIZE: 4
+          TEST_CLUSTER_NAME: keda-pr-run
 
       - name: Run end to end tests
         continue-on-error: true
@@ -162,6 +163,7 @@ jobs:
         run: make scale-node-pool
         env:
           NODE_POOL_SIZE: 1
+          TEST_CLUSTER_NAME: keda-pr-run
 
       - name: React to comment with success
         uses: dkershner6/reaction-action@v1
