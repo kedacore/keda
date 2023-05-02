@@ -109,7 +109,7 @@ func getDataExplorerAuthConfig(metadata *DataExplorerMetadata) (*kusto.Connectio
 func GetAzureDataExplorerMetricValue(ctx context.Context, client *kusto.Client, db string, query string) (float64, error) {
 	azureDataExplorerLogger.V(1).Info("Querying Azure Data Explorer", "db", db, "query", query)
 
-	iter, err := client.Query(ctx, db, kql.New("").AddString(query))
+	iter, err := client.Query(ctx, db, kql.New("").AddUnsafe(query))
 	if err != nil {
 		return -1, fmt.Errorf("failed to get azure data explorer metric result from query %s: %w", query, err)
 	}
