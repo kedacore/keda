@@ -129,7 +129,8 @@ func executeTest(ctx context.Context, file string, timeout string, tries int) Te
 func getRegularTestFiles(e2eRegex string) []string {
 	// We exclude utils and sequential folders and helper files
 	filter := func(path string, file string) bool {
-		return strings.Contains(path, "utils") ||
+		return !strings.HasPrefix(path, "tests") || // we need this condition to skip non e2e test from execution
+			strings.Contains(path, "utils") ||
 			strings.Contains(path, "sequential") ||
 			!strings.HasSuffix(file, "_test.go")
 	}
@@ -138,7 +139,8 @@ func getRegularTestFiles(e2eRegex string) []string {
 
 func getSequentialTestFiles(e2eRegex string) []string {
 	filter := func(path string, file string) bool {
-		return !strings.Contains(path, "sequential") ||
+		return !strings.HasPrefix(path, "tests") || // we need this condition to skip non e2e test from execution
+			!strings.Contains(path, "sequential") ||
 			!strings.HasSuffix(file, "_test.go")
 	}
 	return getTestFiles(e2eRegex, filter)
