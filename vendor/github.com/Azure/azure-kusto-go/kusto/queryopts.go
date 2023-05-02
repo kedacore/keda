@@ -4,6 +4,7 @@ package kusto
 // it clogs up the main kusto.go file.
 
 import (
+	"github.com/Azure/azure-kusto-go/kusto/kql"
 	"time"
 
 	"github.com/Azure/azure-kusto-go/kusto/data/errors"
@@ -14,10 +15,12 @@ import (
 // For more information please look at: https://docs.microsoft.com/en-us/azure/kusto/api/netfx/request-properties
 // Not all of the documented options are implemented.
 type requestProperties struct {
-	Options     map[string]interface{}
-	Parameters  map[string]string
-	Application string
-	User        string
+	Options         map[string]interface{}
+	Parameters      map[string]string
+	Application     string         `json:"-"`
+	User            string         `json:"-"`
+	QueryParameters kql.Parameters `json:"-"`
+	ClientRequestID string         `json:"-"`
 }
 
 type queryOptions struct {
@@ -75,10 +78,27 @@ const TruncationMaxRecordsValue = "truncation_max_records"
 const TruncationMaxSizeValue = "truncation_max_size"
 const ValidatePermissionsValue = "validate_permissions"
 
+// ClientRequestID sets the x-ms-client-request-id header, and can be used to identify the request in the `.show queries` output.
+func ClientRequestID(clientRequestID string) QueryOption {
+	return func(q *queryOptions) error {
+		q.requestProperties.ClientRequestID = clientRequestID
+		return nil
+	}
+}
+
 // Application sets the x-ms-app header, and can be used to identify the application making the request in the `.show queries` output.
 func Application(appName string) QueryOption {
 	return func(q *queryOptions) error {
 		q.requestProperties.Application = appName
+		return nil
+	}
+}
+
+// QueryParameters sets the parameters to be used in the query.
+func QueryParameters(queryParameters *kql.Parameters) QueryOption {
+	return func(q *queryOptions) error {
+		q.requestProperties.QueryParameters = *queryParameters
+		q.requestProperties.Parameters = queryParameters.ToParameterCollection()
 		return nil
 	}
 }
