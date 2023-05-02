@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	semaphore "golang.org/x/sync/semaphore"
+	"golang.org/x/sync/semaphore"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
@@ -39,9 +39,6 @@ type TestResult struct {
 
 func main() {
 	ctx := context.Background()
-	sem := semaphore.NewWeighted(int64(concurrentTests))
-	regularTestResults := []TestResult{}
-	sequentialTestResults := []TestResult{}
 
 	e2eRegex := os.Getenv("E2E_TEST_REGEX")
 	if e2eRegex == "" {
@@ -55,6 +52,7 @@ func main() {
 	installation := executeTest(ctx, "tests/utils/setup_test.go", "15m", 1)
 	fmt.Print(installation.Tries[0])
 	if !installation.Passed {
+		uninstallKeda(ctx)
 		os.Exit(1)
 	}
 
@@ -65,7 +63,8 @@ func main() {
 	regularTestFiles := getRegularTestFiles(e2eRegex)
 	sequentialTestFiles := getSequentialTestFiles(e2eRegex)
 	if len(regularTestFiles) == 0 && len(sequentialTestFiles) == 0 {
-		fmt.Printf("No test has been executed, please review your regex: '%s'", e2eRegex)
+		uninstallKeda(ctx)
+		fmt.Printf("No test has been executed, please review your regex: '%s'\n", e2eRegex)
 		os.Exit(1)
 	}
 
@@ -73,16 +72,133 @@ func main() {
 	// Execute regular tests
 	//
 
-	for _, testFile := range regularTestFiles {
+	regularTestResults := executeRegularTests(ctx, regularTestFiles)
+
+	//
+	// Execute secuential tests
+	//
+
+	sequentialTestResults := executeSequentialTests(ctx, regularTestFiles)
+
+	//
+	// Uninstall KEDA
+	//
+
+	passed := uninstallKeda(ctx)
+	if !passed {
+		os.Exit(1)
+	}
+
+	//
+	// Generate execution outcome
+	//
+	testResults := []TestResult{}
+	testResults = append(testResults, regularTestResults...)
+	testResults = append(testResults, sequentialTestResults...)
+	exitCode := evaluateExecution(testResults)
+
+	os.Exit(exitCode)
+}
+
+func executeTest(ctx context.Context, file string, timeout string, tries int) TestResult {
+	result := TestResult{
+		TestCase: file,
+		Passed:   false,
+		Tries:    []string{},
+	}
+	for i := 1; i <= tries; i++ {
+		fmt.Printf("Executing %s, try '%d'\n", file, i)
+		cmd := exec.CommandContext(ctx, "go", "test", "-v", "-tags", "e2e", "-timeout", timeout, file)
+		stdout, err := cmd.Output()
+		logFile := fmt.Sprintf("%s.%d.log", file, i)
+		fileError := os.WriteFile(logFile, stdout, 0644)
+		if fileError != nil {
+			fmt.Printf("Execution of %s, try '%d' has failed writing the logs : %s\n", file, i, fileError)
+		}
+		result.Tries = append(result.Tries, string(stdout))
+		if err == nil {
+			fmt.Printf("Execution of %s, try '%d' has passed\n", file, i)
+			result.Passed = true
+			break
+		}
+		fmt.Printf("Execution of %s, try '%d' has failed: %s \n", file, i, err)
+	}
+	return result
+}
+
+func getRegularTestFiles(e2eRegex string) []string {
+	// We exclude utils and sequential folders and helper files
+	filter := func(path string, file string) bool {
+		return strings.Contains(path, "utils") ||
+			strings.Contains(path, "sequential") ||
+			!strings.HasSuffix(file, "_test.go")
+	}
+	return getTestFiles(e2eRegex, filter)
+}
+
+func getSequentialTestFiles(e2eRegex string) []string {
+	filter := func(path string, file string) bool {
+		return !strings.Contains(path, "sequential") ||
+			!strings.HasSuffix(file, "_test.go")
+	}
+	return getTestFiles(e2eRegex, filter)
+}
+
+func getTestFiles(e2eRegex string, filter func(path string, file string) bool) []string {
+	testFiles := []string{}
+	regex, err := regexp.Compile(e2eRegex)
+
+	if err != nil {
+		return testFiles
+	}
+
+	err = filepath.Walk(".",
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			// We exclude utils and sequential folders and helper files
+			if filter(path, info.Name()) {
+				return nil
+			}
+			if regex.MatchString(path) {
+				testFiles = append(testFiles, path)
+			}
+
+			return nil
+		})
+
+	if err != nil {
+		return []string{}
+	}
+
+	// We randomize the executions
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(testFiles), func(i, j int) {
+		testFiles[i], testFiles[j] = testFiles[j], testFiles[i]
+	})
+
+	return testFiles
+}
+
+func executeRegularTests(ctx context.Context, testCases []string) []TestResult {
+	sem := semaphore.NewWeighted(int64(concurrentTests))
+	testResults := []TestResult{}
+
+	//
+	// Execute regular tests
+	//
+	for _, testFile := range testCases {
 		if err := sem.Acquire(ctx, 1); err != nil {
 			fmt.Printf("Failed to acquire semaphore: %v", err)
+			uninstallKeda(ctx)
 			os.Exit(1)
 		}
 
 		go func(file string) {
 			defer sem.Release(1)
 			testExecution := executeTest(ctx, file, regularTestsTimeout, regularTestsRetries)
-			regularTestResults = append(regularTestResults, testExecution)
+			testResults = append(testResults, testExecution)
 		}(testFile)
 	}
 
@@ -95,7 +211,7 @@ func main() {
 	// Print regular logs
 	//
 
-	for _, result := range regularTestResults {
+	for _, result := range testResults {
 		status := "failed"
 		if result.Passed {
 			status = "passed"
@@ -107,7 +223,7 @@ func main() {
 		}
 	}
 
-	if len(regularTestResults) > 0 {
+	if len(testResults) > 0 {
 		kubeConfig, _ := config.GetConfig()
 		kubeClient, _ := kubernetes.NewForConfig(kubeConfig)
 
@@ -135,20 +251,26 @@ func main() {
 			fmt.Println("##############################################")
 		}
 	}
+	return testResults
+}
+
+func executeSequentialTests(ctx context.Context, testCases []string) []TestResult {
+	testResults := []TestResult{}
+
 	//
 	// Execute secuential tests
 	//
 
-	for _, testFile := range sequentialTestFiles {
+	for _, testFile := range testCases {
 		testExecution := executeTest(ctx, testFile, sequentialTestsTimeout, sequentialTestsRetries)
-		sequentialTestResults = append(sequentialTestResults, testExecution)
+		testResults = append(testResults, testExecution)
 	}
 
 	//
 	// Print secuential logs
 	//
 
-	for _, result := range sequentialTestResults {
+	for _, result := range testResults {
 		status := "failed"
 		if result.Passed {
 			status = "passed"
@@ -181,22 +303,19 @@ func main() {
 		}
 	}
 
-	//
-	// Uninstall KEDA
-	//
+	return testResults
+}
 
+func uninstallKeda(ctx context.Context) bool {
 	removal := executeTest(ctx, "tests/utils/cleanup_test.go", "15m", 1)
 	fmt.Print(removal.Tries[0])
-	if !removal.Passed {
-		os.Exit(1)
-	}
+	return removal.Passed
+}
 
-	exitCode := 0
-	testResults := []TestResult{}
-	testResults = append(testResults, regularTestResults...)
-	testResults = append(testResults, sequentialTestResults...)
+func evaluateExecution(testResults []TestResult) int {
 	passSummary := []string{}
 	failSummary := []string{}
+	exitCode := 0
 
 	for _, result := range testResults {
 		if !result.Passed {
@@ -229,88 +348,5 @@ func main() {
 		}
 	}
 
-	os.Exit(exitCode)
-}
-
-func executeTest(ctx context.Context, file string, timeout string, tries int) TestResult {
-	result := TestResult{
-		TestCase: file,
-		Passed:   false,
-		Tries:    []string{},
-	}
-	for i := 1; i <= tries; i++ {
-		fmt.Printf("Executing %s, try '%d'\n", file, i)
-		cmd := exec.CommandContext(ctx, "go", "test", "-v", "-tags", "e2e", "-timeout", timeout, file)
-		stdout, err := cmd.Output()
-		logFile := fmt.Sprintf("%s.%d.log", file, i)
-		fileError := os.WriteFile(logFile, stdout, 0644)
-		if fileError != nil {
-			fmt.Printf("Execution of %s, try '%d' has failed writing the logs : %s\n", file, i, fileError)
-		}
-		result.Tries = append(result.Tries, string(stdout))
-		if err == nil {
-			fmt.Printf("Execution of %s, try '%d' has passed\n", file, i)
-			result.Passed = true
-			break
-		}
-		fmt.Printf("Execution of %s, try '%d' has failed: %s \n", file, i, err)
-	}
-	return result
-}
-
-func getRegularTestFiles(e2eRegex string) []string {
-	// We exclude utils and chaos folders and helper files
-	filter := func(path string, file string) bool {
-		return !strings.HasPrefix(path, "tests") ||
-			strings.Contains(path, "utils") ||
-			strings.Contains(path, "sequential") ||
-			!strings.HasSuffix(file, "_test.go")
-	}
-	return getTestFiles(e2eRegex, filter)
-}
-
-func getSequentialTestFiles(e2eRegex string) []string {
-	filter := func(path string, file string) bool {
-		return !strings.HasPrefix(path, "tests") ||
-			!strings.Contains(path, "sequential") ||
-			!strings.HasSuffix(file, "_test.go")
-	}
-	return getTestFiles(e2eRegex, filter)
-}
-
-func getTestFiles(e2eRegex string, filter func(path string, file string) bool) []string {
-	testFiles := []string{}
-	regex, err := regexp.Compile(e2eRegex)
-
-	if err != nil {
-		return testFiles
-	}
-
-	err = filepath.Walk(".",
-		func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			// We exclude utils and chaos folders and helper files
-			if filter(path, info.Name()) {
-				return nil
-			}
-			if regex.MatchString(info.Name()) {
-				testFiles = append(testFiles, path)
-			}
-
-			return nil
-		})
-
-	if err != nil {
-		return []string{}
-	}
-
-	// We randomize the executions
-	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(len(testFiles), func(i, j int) {
-		testFiles[i], testFiles[j] = testFiles[j], testFiles[i]
-	})
-
-	return testFiles
+	return exitCode
 }
