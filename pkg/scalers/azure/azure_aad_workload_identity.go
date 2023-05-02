@@ -133,11 +133,11 @@ func (aadWiConfig ADWorkloadIdentityConfig) Authorizer() (autorest.Authorizer, e
 }
 
 func NewADWorkloadIdentityCredential(identityID string) (*azidentity.WorkloadIdentityCredential, error) {
-	clientID := DefaultClientID
+	options := &azidentity.WorkloadIdentityCredentialOptions{}
 	if identityID != "" {
-		clientID = identityID
+		options.ClientID = identityID
 	}
-	return azidentity.NewWorkloadIdentityCredential(TenantID, clientID, TokenFilePath, &azidentity.WorkloadIdentityCredentialOptions{})
+	return azidentity.NewWorkloadIdentityCredential(options)
 }
 
 // ADWorkloadIdentityTokenProvider is a type that implements the adal.OAuthTokenProvider and adal.Refresher interfaces.

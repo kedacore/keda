@@ -24,7 +24,8 @@ const envVarSendCertChain = "AZURE_CLIENT_SEND_CERTIFICATE_CHAIN"
 type EnvironmentCredentialOptions struct {
 	azcore.ClientOptions
 
-	// DisableInstanceDiscovery allows disconnected cloud solutions to skip instance discovery for unknown authority hosts.
+	// DisableInstanceDiscovery should be true for applications authenticating in disconnected or private clouds.
+	// This skips a metadata request that will fail for such applications.
 	DisableInstanceDiscovery bool
 	// additionallyAllowedTenants is used only by NewDefaultAzureCredential() to enable that constructor's explicit
 	// option to override the value of AZURE_ADDITIONALLY_ALLOWED_TENANTS. Applications using EnvironmentCredential
