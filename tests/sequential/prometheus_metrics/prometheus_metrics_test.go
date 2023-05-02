@@ -31,6 +31,7 @@ var (
 	monitoredDeploymentName   = fmt.Sprintf("%s-monitored", testName)
 	scaledObjectName          = fmt.Sprintf("%s-so", testName)
 	wrongScaledObjectName     = fmt.Sprintf("%s-wrong", testName)
+	wrongScalerName           = fmt.Sprintf("%s-wrong-scaler", testName)
 	cronScaledJobName         = fmt.Sprintf("%s-cron-sj", testName)
 	clientName                = fmt.Sprintf("%s-client", testName)
 	kedaOperatorPrometheusURL = "http://keda-operator.keda.svc.cluster.local:8080/metrics"
@@ -44,6 +45,7 @@ type templateData struct {
 	DeploymentName          string
 	ScaledObjectName        string
 	WrongScaledObjectName   string
+	WrongScalerName         string
 	CronScaledJobName       string
 	MonitoredDeploymentName string
 	ClientName              string
@@ -133,6 +135,7 @@ spec:
   cooldownPeriod: 10
   triggers:
     - type: prometheus
+      name: {{.WrongScalerName}}
       metadata:
         serverAddress: http://keda-prometheus.keda.svc.cluster.local:8080
         metricName: keda_scaler_errors_total
@@ -320,6 +323,7 @@ func getTemplateData() (templateData, []Template) {
 			DeploymentName:          deploymentName,
 			ScaledObjectName:        scaledObjectName,
 			WrongScaledObjectName:   wrongScaledObjectName,
+			WrongScalerName:         wrongScalerName,
 			MonitoredDeploymentName: monitoredDeploymentName,
 			ClientName:              clientName,
 			CronScaledJobName:       cronScaledJobName,
@@ -407,8 +411,8 @@ func testScalerErrors(t *testing.T, data templateData) {
 	if val, ok := family["keda_scaler_errors"]; ok {
 		errCounterVal1 := getErrorMetricsValue(val)
 
-		// wait for 4 seconds to correctly fetch metrics.
-		time.Sleep(4 * time.Second)
+		// wait for 10 seconds to correctly fetch metrics.
+		time.Sleep(10 * time.Second)
 
 		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 		if val, ok := family["keda_scaler_errors"]; ok {
@@ -477,7 +481,7 @@ func getErrorMetricsValue(val *promModel.MetricFamily) float64 {
 		for _, metric := range metrics {
 			labels := metric.GetLabel()
 			for _, label := range labels {
-				if *label.Name == "scaler" && *label.Value == "prometheusScaler" {
+				if *label.Name == "scaler" && *label.Value == wrongScalerName {
 					return *metric.Counter.Value
 				}
 			}

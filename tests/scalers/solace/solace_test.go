@@ -180,11 +180,11 @@ func TestStanScaler(t *testing.T) {
 }
 
 func installSolace(t *testing.T) {
-	_, err := ExecuteCommand("helm repo add solacecharts https://solaceproducts.github.io/pubsubplus-kubernetes-quickstart/helm-charts")
+	_, err := ExecuteCommand("helm repo add solacecharts https://solaceproducts.github.io/pubsubplus-kubernetes-helm-quickstart/helm-charts")
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("helm repo update")
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --set solace.usernameAdminPassword=KedaLabAdminPwd1 --set storage.persistent=false --namespace %s --wait kedalab solacecharts/pubsubplus-dev`,
+	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --set solace.usernameAdminPassword=KedaLabAdminPwd1 --set storage.persistent=false --namespace %s --wait --timeout 900s kedalab solacecharts/pubsubplus-dev`,
 		testNamespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	// Create the pubsub broker
