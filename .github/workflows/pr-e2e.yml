@@ -126,6 +126,11 @@ jobs:
         with:
           secrets: ${{ toJSON(secrets) }}
 
+      - name: Scale cluster
+        run: make scale-node-pool
+        env:
+          NODE_POOL_SIZE: 4
+
       - name: Run end to end tests
         continue-on-error: true
         id: test
@@ -151,6 +156,12 @@ jobs:
         run: make e2e-test-clean
         env:
           TEST_CLUSTER_NAME: keda-pr-run
+
+      - name: Scale cluster
+        if: ${{ always() }}
+        run: make scale-node-pool
+        env:
+          NODE_POOL_SIZE: 1
 
       - name: React to comment with success
         uses: dkershner6/reaction-action@v1
