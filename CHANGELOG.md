@@ -61,6 +61,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Azure Pipelines**: Fix for disallowing `$top` on query when using `meta.parentID` method ([#4397])
 - **Azure Pipelines**: Respect all required demands ([#4404](https://github.com/kedacore/keda/issues/4404))
 - **Prometheus Metrics**: Create e2e tests for all exposed Prometheus metrics ([#4127](https://github.com/kedacore/keda/issues/4127))
+- **Grafana Dashboard**: Fix HPA metrics panel to use range instead of instant ([#4511](https://github.com/kedacore/keda/pull/4511))
 
 ### Deprecations
 
@@ -74,6 +75,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General**: Drop a transitive dependency on bou.ke/monkey ([#4364](https://github.com/kedacore/keda/issues/4364))
 - **General**: Fix odd number of arguments passed as key-value pairs for logging ([#4368](https://github.com/kedacore/keda/issues/4368))
+- **General**: Automatically scale test clusters in/out to reduce environmental footprint & improve cost-efficiency ([#4456](https://github.com/kedacore/keda/pull/4456))
 
 ## v2.10.0
 
