@@ -37,6 +37,7 @@ GIT_COMMIT  ?= $(shell git rev-list -1 HEAD)
 DATE        = $(shell date -u +"%Y.%m.%d.%H.%M.%S")
 
 TEST_CLUSTER_NAME ?= keda-nightly-run-3
+NODE_POOL_SIZE ?= 1
 NON_ROOT_USER_ID ?= 1000
 
 GCP_WI_PROVIDER ?= projects/${TF_GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${TEST_CLUSTER_NAME}/providers/${TEST_CLUSTER_NAME}
@@ -81,13 +82,24 @@ install-test-deps:
 test: manifests generate fmt vet envtest install-test-deps ## Run tests and export the result to junit format.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test -v 2>&1 ./... -coverprofile cover.out | go-junit-report -iocopy -set-exit-code -out report.xml
 
-.PHONY: get-cluster-context
-get-cluster-context: ## Get Azure cluster context.
+.PHONY:
+az-login:
 	@az login --service-principal -u $(TF_AZURE_SP_APP_ID) -p "$(AZURE_SP_KEY)" --tenant $(TF_AZURE_SP_TENANT)
+
+.PHONY: get-cluster-context
+get-cluster-context: az-login ## Get Azure cluster context.
 	@az aks get-credentials \
 		--name $(TEST_CLUSTER_NAME) \
 		--subscription $(TF_AZURE_SUBSCRIPTION) \
 		--resource-group $(TF_AZURE_RESOURCE_GROUP)
+
+.PHONY: scale-node-pool
+scale-node-pool: az-login ## Scale nodepool.
+	@az aks scale \
+		--name $(TEST_CLUSTER_NAME) \
+		--subscription $(TF_AZURE_SUBSCRIPTION) \
+		--resource-group $(TF_AZURE_RESOURCE_GROUP) \
+		--node-count $(NODE_POOL_SIZE)
 
 .PHONY: e2e-test
 e2e-test: get-cluster-context ## Run e2e tests against Azure cluster.

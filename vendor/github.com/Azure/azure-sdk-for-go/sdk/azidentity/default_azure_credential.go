@@ -27,7 +27,8 @@ type DefaultAzureCredentialOptions struct {
 	// the wildcard value "*" to allow the credential to acquire tokens for any tenant. This value can also be
 	// set as a semicolon delimited list of tenants in the environment variable AZURE_ADDITIONALLY_ALLOWED_TENANTS.
 	AdditionallyAllowedTenants []string
-	// DisableInstanceDiscovery allows disconnected cloud solutions to skip instance discovery for unknown authority hosts.
+	// DisableInstanceDiscovery should be true for applications authenticating in disconnected or private clouds.
+	// This skips a metadata request that will fail for such applications.
 	DisableInstanceDiscovery bool
 	// TenantID identifies the tenant the Azure CLI should authenticate in.
 	// Defaults to the CLI's default tenant, which is typically the home tenant of the user logged in to the CLI.
@@ -79,36 +80,20 @@ func NewDefaultAzureCredential(options *DefaultAzureCredentialOptions) (*Default
 	}
 
 	// workload identity requires values for AZURE_AUTHORITY_HOST, AZURE_CLIENT_ID, AZURE_FEDERATED_TOKEN_FILE, AZURE_TENANT_ID
-	haveWorkloadConfig := false
-	clientID, haveClientID := os.LookupEnv(azureClientID)
-	if haveClientID {
-		if file, ok := os.LookupEnv(azureFederatedTokenFile); ok {
-			if _, ok := os.LookupEnv(azureAuthorityHost); ok {
-				if tenantID, ok := os.LookupEnv(azureTenantID); ok {
-					haveWorkloadConfig = true
-					workloadCred, err := NewWorkloadIdentityCredential(tenantID, clientID, file, &WorkloadIdentityCredentialOptions{
-						AdditionallyAllowedTenants: additionalTenants,
-						ClientOptions:              options.ClientOptions,
-						DisableInstanceDiscovery:   options.DisableInstanceDiscovery,
-					})
-					if err == nil {
-						creds = append(creds, workloadCred)
-					} else {
-						errorMessages = append(errorMessages, credNameWorkloadIdentity+": "+err.Error())
-						creds = append(creds, &defaultCredentialErrorReporter{credType: credNameWorkloadIdentity, err: err})
-					}
-				}
-			}
-		}
-	}
-	if !haveWorkloadConfig {
-		err := errors.New("missing environment variables for workload identity. Check webhook and pod configuration")
+	wic, err := NewWorkloadIdentityCredential(&WorkloadIdentityCredentialOptions{
+		AdditionallyAllowedTenants: additionalTenants,
+		ClientOptions:              options.ClientOptions,
+		DisableInstanceDiscovery:   options.DisableInstanceDiscovery,
+	})
+	if err == nil {
+		creds = append(creds, wic)
+	} else {
+		errorMessages = append(errorMessages, credNameWorkloadIdentity+": "+err.Error())
 		creds = append(creds, &defaultCredentialErrorReporter{credType: credNameWorkloadIdentity, err: err})
 	}
-
 	o := &ManagedIdentityCredentialOptions{ClientOptions: options.ClientOptions}
-	if haveClientID {
-		o.ID = ClientID(clientID)
+	if ID, ok := os.LookupEnv(azureClientID); ok {
+		o.ID = ClientID(ID)
 	}
 	miCred, err := NewManagedIdentityCredential(o)
 	if err == nil {
@@ -195,7 +180,7 @@ func (w *timeoutWrapper) GetToken(ctx context.Context, opts policy.TokenRequestO
 		c, cancel := context.WithTimeout(ctx, w.timeout)
 		defer cancel()
 		tk, err = w.mic.GetToken(c, opts)
-		if ce := c.Err(); errors.Is(ce, context.DeadlineExceeded) {
+		if isAuthFailedDueToContext(err) {
 			err = newCredentialUnavailableError(credNameManagedIdentity, "managed identity timed out")
 		} else {
 			// some managed identity implementation is available, so don't apply the timeout to future calls
@@ -205,4 +190,16 @@ func (w *timeoutWrapper) GetToken(ctx context.Context, opts policy.TokenRequestO
 		tk, err = w.mic.GetToken(ctx, opts)
 	}
 	return tk, err
+}
+
+// unwraps nested AuthenticationFailedErrors to get the root error
+func isAuthFailedDueToContext(err error) bool {
+	for {
+		var authFailedErr *AuthenticationFailedError
+		if !errors.As(err, &authFailedErr) {
+			break
+		}
+		err = authFailedErr.err
+	}
+	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
 }

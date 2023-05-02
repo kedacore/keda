@@ -46,8 +46,9 @@ const (
 
 var (
 	// capability CP1 indicates the client application is capable of handling CAE claims challenges
-	cp1        = []string{"CP1"}
-	disableCP1 = strings.ToLower(os.Getenv("AZURE_IDENTITY_DISABLE_CP1")) == "true"
+	cp1 = []string{"CP1"}
+	// CP1 is disabled until CAE support is added back
+	disableCP1 = true
 )
 
 var getConfidentialClient = func(clientID, tenantID string, cred confidential.Credential, co *azcore.ClientOptions, additionalOpts ...confidential.Option) (confidentialClient, error) {

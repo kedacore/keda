@@ -18,6 +18,9 @@ const (
 
 	// Default Storage Endpoint key in trigger metadata
 	DefaultStorageSuffixKey string = "storageEndpointSuffix"
+
+	// Default Active Directory Endpoint Key in trigger metadata
+	DefaultActiveDirectoryEndpointKey string = "activeDirectoryEndpoint"
 )
 
 // EnvironmentPropertyProvider for different types of Azure scalers
@@ -50,5 +53,5 @@ func ParseEnvironmentProperty(metadata map[string]string, propertyKey string, en
 }
 
 func ParseActiveDirectoryEndpoint(metadata map[string]string) (string, error) {
-	return ParseEnvironmentProperty(metadata, "activeDirectoryEndpoint", activeDirectoryEndpointProvider)
+	return ParseEnvironmentProperty(metadata, DefaultActiveDirectoryEndpointKey, activeDirectoryEndpointProvider)
 }
