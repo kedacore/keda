@@ -24,7 +24,8 @@ type UsernamePasswordCredentialOptions struct {
 	// Add the wildcard value "*" to allow the credential to acquire tokens for any tenant in which the
 	// application is registered.
 	AdditionallyAllowedTenants []string
-	// DisableInstanceDiscovery allows disconnected cloud solutions to skip instance discovery for unknown authority hosts.
+	// DisableInstanceDiscovery should be true for applications authenticating in disconnected or private clouds.
+	// This skips a metadata request that will fail for such applications.
 	DisableInstanceDiscovery bool
 }
 
@@ -60,7 +61,7 @@ func (c *UsernamePasswordCredential) GetToken(ctx context.Context, opts policy.T
 }
 
 func (c *UsernamePasswordCredential) requestToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
-	ar, err := c.client.AcquireTokenByUsernamePassword(ctx, opts.Scopes, c.username, c.password, public.WithClaims(opts.Claims), public.WithTenantID(opts.TenantID))
+	ar, err := c.client.AcquireTokenByUsernamePassword(ctx, opts.Scopes, c.username, c.password)
 	if err == nil {
 		c.account = ar.Account
 	}
@@ -69,9 +70,7 @@ func (c *UsernamePasswordCredential) requestToken(ctx context.Context, opts poli
 
 func (c *UsernamePasswordCredential) silentAuth(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
 	ar, err := c.client.AcquireTokenSilent(ctx, opts.Scopes,
-		public.WithClaims(opts.Claims),
 		public.WithSilentAccount(c.account),
-		public.WithTenantID(opts.TenantID),
 	)
 	return azcore.AccessToken{Token: ar.AccessToken, ExpiresOn: ar.ExpiresOn.UTC()}, err
 }

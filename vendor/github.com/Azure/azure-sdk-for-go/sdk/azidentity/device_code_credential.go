@@ -27,7 +27,8 @@ type DeviceCodeCredentialOptions struct {
 	// ClientID is the ID of the application users will authenticate to.
 	// Defaults to the ID of an Azure development application.
 	ClientID string
-	// DisableInstanceDiscovery allows disconnected cloud solutions to skip instance discovery for unknown authority hosts.
+	// DisableInstanceDiscovery should be true for applications authenticating in disconnected or private clouds.
+	// This skips a metadata request that will fail for such applications.
 	DisableInstanceDiscovery bool
 	// TenantID is the Azure Active Directory tenant the credential authenticates in. Defaults to the
 	// "organizations" tenant, which can authenticate work and school accounts. Required for single-tenant
@@ -100,7 +101,7 @@ func (c *DeviceCodeCredential) GetToken(ctx context.Context, opts policy.TokenRe
 }
 
 func (c *DeviceCodeCredential) requestToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
-	dc, err := c.client.AcquireTokenByDeviceCode(ctx, opts.Scopes, public.WithClaims(opts.Claims), public.WithTenantID(opts.TenantID))
+	dc, err := c.client.AcquireTokenByDeviceCode(ctx, opts.Scopes)
 	if err != nil {
 		return azcore.AccessToken{}, err
 	}
@@ -122,9 +123,7 @@ func (c *DeviceCodeCredential) requestToken(ctx context.Context, opts policy.Tok
 
 func (c *DeviceCodeCredential) silentAuth(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
 	ar, err := c.client.AcquireTokenSilent(ctx, opts.Scopes,
-		public.WithClaims(opts.Claims),
 		public.WithSilentAccount(c.account),
-		public.WithTenantID(opts.TenantID),
 	)
 	return azcore.AccessToken{Token: ar.AccessToken, ExpiresOn: ar.ExpiresOn.UTC()}, err
 }
