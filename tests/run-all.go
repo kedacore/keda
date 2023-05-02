@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/sync/semaphore"
@@ -78,7 +79,7 @@ func main() {
 	// Execute secuential tests
 	//
 
-	sequentialTestResults := executeSequentialTests(ctx, regularTestFiles)
+	sequentialTestResults := executeSequentialTests(ctx, sequentialTestFiles)
 
 	//
 	// Uninstall KEDA
@@ -185,6 +186,7 @@ func getTestFiles(e2eRegex string, filter func(path string, file string) bool) [
 
 func executeRegularTests(ctx context.Context, testCases []string) []TestResult {
 	sem := semaphore.NewWeighted(int64(concurrentTests))
+	mutex := &sync.RWMutex{}
 	testResults := []TestResult{}
 
 	//
@@ -200,7 +202,9 @@ func executeRegularTests(ctx context.Context, testCases []string) []TestResult {
 		go func(file string) {
 			defer sem.Release(1)
 			testExecution := executeTest(ctx, file, regularTestsTimeout, regularTestsRetries)
+			mutex.Lock()
 			testResults = append(testResults, testExecution)
+			mutex.Unlock()
 		}(testFile)
 	}
 
