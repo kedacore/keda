@@ -99,7 +99,7 @@ func InstallArangoDB(t *testing.T, kc *kubernetes.Clientset, testNamespace strin
 	assert.True(t, helper.WaitForAllPodRunningInNamespace(t, kc, testNamespace, 5, 20), "all pods should be running")
 }
 
-func SetupArangoDB(t *testing.T, kc *kubernetes.Clientset, testNamespace, arangoDBName, arangoDBCollection, arangoDBUsername string) {
+func SetupArangoDB(t *testing.T, kc *kubernetes.Clientset, testNamespace, arangoDBName, arangoDBCollection string) {
 	helper.KubectlApplyWithTemplate(t, templateData{Namespace: testNamespace, Database: arangoDBName}, "createDatabaseTemplate", createDatabaseTemplate)
 	assert.True(t, helper.WaitForJobSuccess(t, kc, "create-db", testNamespace, 5, 10), "create database job failed")
 
@@ -107,7 +107,7 @@ func SetupArangoDB(t *testing.T, kc *kubernetes.Clientset, testNamespace, arango
 	assert.True(t, helper.WaitForJobSuccess(t, kc, "create-arangodb-collection", testNamespace, 5, 10), "create collection job failed")
 }
 
-func UninstallArangoDB(t *testing.T, kc *kubernetes.Clientset, namespace string) {
+func UninstallArangoDB(t *testing.T, namespace string) {
 	helper.KubectlDeleteMultipleWithTemplate(t, templateData{Namespace: namespace}, []helper.Template{{Name: "arangoDeploymentTemplate", Config: arangoDeploymentTemplate}})
 
 	_, err := helper.ExecuteCommand(fmt.Sprintf("helm uninstall arangodb --namespace=%s --wait", namespace))

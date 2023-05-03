@@ -26,7 +26,7 @@ var (
 
 type externalMockScaler struct{}
 
-func NewExternalMockScaler(config *ScalerConfig) (Scaler, error) {
+func NewExternalMockScaler(_ *ScalerConfig) (Scaler, error) {
 	return &externalMockScaler{}, nil
 }
 
