@@ -464,7 +464,7 @@ func TestActiveMQScaler(t *testing.T) {
 	testScaleIn(t, kc)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func setupActiveMQ(t *testing.T, kc *kubernetes.Clientset) {

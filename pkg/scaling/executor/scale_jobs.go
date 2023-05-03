@@ -395,7 +395,7 @@ type ScalingStrategy interface {
 type defaultScalingStrategy struct {
 }
 
-func (s defaultScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, pendingJobCount, maxReplicaCount int64) int64 {
+func (s defaultScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, _, _ int64) int64 {
 	return maxScale - runningJobCount
 }
 
@@ -404,7 +404,7 @@ type customScalingStrategy struct {
 	CustomScalingRunningJobPercentage *float64
 }
 
-func (s customScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, pendingJobCount, maxReplicaCount int64) int64 {
+func (s customScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, _, maxReplicaCount int64) int64 {
 	return min(maxScale-int64(*s.CustomScalingQueueLengthDeduction)-int64(float64(runningJobCount)*(*s.CustomScalingRunningJobPercentage)), maxReplicaCount)
 }
 

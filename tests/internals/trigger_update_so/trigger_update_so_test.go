@@ -311,7 +311,7 @@ func TestScaledObjectGeneral(t *testing.T) {
 	testRemoveTrigger(t, kc, data)        // remove trigger during active scaling
 	testThreeTriggersWithCPU(t, kc, data) // three triggers
 
-	DeleteKubernetesResources(t, kc, namespace, data, templates)
+	DeleteKubernetesResources(t, namespace, data, templates)
 }
 
 // tests basic scaling with one trigger based on metrics

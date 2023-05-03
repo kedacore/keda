@@ -22,7 +22,7 @@ IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda$(SUFFIX):$(VERSION)
 IMAGE_ADAPTER    = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-metrics-apiserver$(SUFFIX):$(VERSION)
 IMAGE_WEBHOOKS   = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-admission-webhooks$(SUFFIX):$(VERSION)
 
-BUILD_TOOLS_GO_VERSION = 1.19.7
+BUILD_TOOLS_GO_VERSION = 1.20.4
 IMAGE_BUILD_TOOLS = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/build-tools:$(BUILD_TOOLS_GO_VERSION)
 
 ARCH       ?=amd64
@@ -36,7 +36,7 @@ GIT_VERSION ?= $(shell git describe --always --abbrev=7)
 GIT_COMMIT  ?= $(shell git rev-list -1 HEAD)
 DATE        = $(shell date -u +"%Y.%m.%d.%H.%M.%S")
 
-TEST_CLUSTER_NAME ?= keda-nightly-run-3
+TEST_CLUSTER_NAME ?= keda-e2e-cluster-nightly
 NODE_POOL_SIZE ?= 1
 NON_ROOT_USER_ID ?= 1000
 

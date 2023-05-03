@@ -276,7 +276,7 @@ func TestMssqlScaler(t *testing.T) {
 	testScaleIn(t, kc)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 // insert 10 records in the table -> activation should not happen (activationTargetValue = 15)

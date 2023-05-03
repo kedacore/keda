@@ -135,7 +135,7 @@ func TestSqsScaler(t *testing.T) {
 	testScaleIn(t, kc, sqsClient, queue.QueueUrl)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 	cleanupQueue(t, sqsClient, queue.QueueUrl)
 }
 

@@ -157,7 +157,7 @@ func TestScaler(t *testing.T) {
 	testScaleIn(t, kc, client)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, client appinsights.TelemetryClient) {

@@ -154,7 +154,7 @@ func TestScaler(t *testing.T) {
     testScaleOut(t)
 
     // Ensure that this gets run. Using defer is necessary
-    DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+    DeleteKubernetesResources(t, testNamespace, data, templates)
     cleanupTest(t)
 }
 

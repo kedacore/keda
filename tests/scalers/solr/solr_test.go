@@ -194,7 +194,7 @@ func TestSolrScaler(t *testing.T) {
 	testScaleIn(t, kc)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func setupSolr(t *testing.T, kc *kubernetes.Clientset) {

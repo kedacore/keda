@@ -228,7 +228,7 @@ func TestScaler(t *testing.T) {
 
 	// cleanup
 	KubectlDeleteMultipleWithTemplate(t, data, templates)
-	prometheus.Uninstall(t, kc, prometheusServerName, testNamespace)
+	prometheus.Uninstall(t, prometheusServerName, testNamespace)
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
