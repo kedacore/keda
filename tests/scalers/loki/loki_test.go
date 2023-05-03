@@ -161,7 +161,7 @@ func TestLokiScaler(t *testing.T) {
 
 	// cleanup
 	KubectlDeleteMultipleWithTemplate(t, data, templates)
-	uninstallLoki(t, kc, testNamespace)
+	uninstallLoki(t, testNamespace)
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -210,7 +210,7 @@ func installLoki(t *testing.T, kc *kubernetes.Clientset, namespace string) {
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
-func uninstallLoki(t *testing.T, kc *kubernetes.Clientset, namespace string) {
+func uninstallLoki(t *testing.T, namespace string) {
 	_, err := ExecuteCommand(fmt.Sprintf("helm uninstall loki --wait --namespace=%s", namespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	DeleteNamespace(t, namespace)

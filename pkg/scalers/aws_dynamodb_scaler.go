@@ -180,7 +180,7 @@ func createDynamoDBClient(metadata *awsDynamoDBMetadata) *dynamodb.DynamoDB {
 	return dynamodb.New(sess, config)
 }
 
-func (s *awsDynamoDBScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+func (s *awsDynamoDBScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	metricValue, err := s.GetQueryMetrics()
 	if err != nil {
 		s.logger.Error(err, "Error getting metric value")

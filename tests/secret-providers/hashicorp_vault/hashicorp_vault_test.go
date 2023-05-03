@@ -318,7 +318,7 @@ func TestPostreSQLScaler(t *testing.T) {
 
 			// cleanup
 			KubectlDeleteMultipleWithTemplate(t, data, templates)
-			cleanupHashiCorpVault(t, kc)
+			cleanupHashiCorpVault(t)
 			DeleteKubernetesResources(t, testNamespace, data, postgreSQLtemplates)
 		})
 	}
@@ -354,7 +354,7 @@ func setupHashiCorpVault(t *testing.T, kc *kubernetes.Clientset, kvVersion uint)
 	return out
 }
 
-func cleanupHashiCorpVault(t *testing.T, kc *kubernetes.Clientset) {
+func cleanupHashiCorpVault(t *testing.T) {
 	_, err := ExecuteCommand(fmt.Sprintf("helm uninstall vault --namespace %s", vaultNamespace))
 	assert.NoErrorf(t, err, "cannot uninstall hashicorp vault - %s", err)
 

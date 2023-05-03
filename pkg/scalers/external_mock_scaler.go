@@ -31,7 +31,7 @@ func NewExternalMockScaler(_ *ScalerConfig) (Scaler, error) {
 }
 
 // Close implements Scaler
-func (*externalMockScaler) Close(ctx context.Context) error {
+func (*externalMockScaler) Close(_ context.Context) error {
 	return nil
 }
 
@@ -45,7 +45,7 @@ func (*externalMockScaler) GetMetricSpecForScaling(context.Context) []v2.MetricS
 }
 
 // GetMetricsAndActivity implements Scaler
-func (*externalMockScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+func (*externalMockScaler) GetMetricsAndActivity(_ context.Context, _ string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	if atomic.LoadInt32(&MockExternalServerStatus) != MockExternalServerStatusOnline {
 		return nil, false, ErrMock
 	}

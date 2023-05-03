@@ -205,7 +205,7 @@ func TestNATSJetStreamScaler(t *testing.T) {
 	testScaleIn(t, kc)
 
 	// Cleanup nats namespace
-	removeServerWithJetStream(t, kc, natsNamespace)
+	removeServerWithJetStream(t, natsNamespace)
 	DeleteNamespace(t, natsNamespace)
 	deleted := WaitForNamespaceDeletion(t, natsNamespace)
 	assert.Truef(t, deleted, "%s namespace not deleted", natsNamespace)
@@ -238,7 +238,7 @@ func installServerWithJetStream(t *testing.T, kc *k8s.Clientset, namespace strin
 }
 
 // removeServerWithJetStream will remove the NATS server and delete the namespace.
-func removeServerWithJetStream(t *testing.T, kc *k8s.Clientset, namespace string) {
+func removeServerWithJetStream(t *testing.T, namespace string) {
 	data := nats.JetStreamTemplateData{
 		NatsNamespace: namespace,
 		NatsVersion:   nats.NatsJetStreamServerVersion,

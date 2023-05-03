@@ -127,7 +127,7 @@ func TestScaler(t *testing.T) {
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
-	cleanupMongo(t, kc)
+	cleanupMongo(t)
 }
 
 func getTemplateData() (templateData, []Template) {
@@ -214,7 +214,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, mongoPod string) {
 		"job count should be 5 after 1 minute")
 }
 
-func cleanupMongo(t *testing.T, kc *kubernetes.Clientset) {
+func cleanupMongo(t *testing.T) {
 	_, err := ExecuteCommand(fmt.Sprintf("helm uninstall mongodb --namespace %s", mongoNamespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	DeleteNamespace(t, mongoNamespace)
