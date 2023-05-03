@@ -55,7 +55,7 @@ jobs:
     needs: triage
     runs-on: ubuntu-latest
     name: Build images
-    container: ghcr.io/kedacore/build-tools:1.19.7
+    container: ghcr.io/kedacore/build-tools:1.20.4
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
@@ -98,7 +98,7 @@ jobs:
     needs: [triage, build-test-images]
     runs-on: e2e
     name: Execute e2e tests
-    container: ghcr.io/kedacore/build-tools:1.19.7
+    container: ghcr.io/kedacore/build-tools:1.20.4
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress

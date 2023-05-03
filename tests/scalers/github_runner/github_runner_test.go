@@ -238,7 +238,7 @@ func TestScaler(t *testing.T) {
 	testSOScaleIn(t, kc)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func queueRun(t *testing.T, ghClient *github.Client, flowID string) {

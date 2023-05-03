@@ -129,7 +129,7 @@ func TestMinReplicaCount(t *testing.T) {
 	testMinReplicaCountGreaterMaxReplicaCountScalesOnlyToMaxReplicaCount(t, kc, data)
 	testMinReplicaCountWithMetricValueGreaterMaxReplicaCountScalesOnlyToMaxReplicaCount(t, kc, data)
 
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func testMinReplicaCountWithMetricValue(t *testing.T, kc *kubernetes.Clientset, data templateData) {

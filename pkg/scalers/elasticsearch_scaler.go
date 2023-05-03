@@ -256,7 +256,7 @@ func newElasticsearchClient(meta *elasticsearchMetadata, logger logr.Logger) (*e
 	return esClient, nil
 }
 
-func (s *elasticsearchScaler) Close(ctx context.Context) error {
+func (s *elasticsearchScaler) Close(_ context.Context) error {
 	return nil
 }
 

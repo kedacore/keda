@@ -213,7 +213,7 @@ func TestScaler(t *testing.T) {
 	scaleMinReplicasDownToZero(t, kc, data)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, namespace, data, templates)
+	DeleteKubernetesResources(t, namespace, data, templates)
 }
 
 // expect replicas to scale up because maxReplicas was updated

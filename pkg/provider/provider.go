@@ -239,14 +239,14 @@ func (p *KedaProvider) ListAllExternalMetrics() []provider.ExternalMetricInfo {
 
 // GetMetricByName fetches a particular metric for a particular object.
 // The namespace will be empty if the metric is root-scoped.
-func (p *KedaProvider) GetMetricByName(ctx context.Context, name types.NamespacedName, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValue, error) {
+func (p *KedaProvider) GetMetricByName(_ context.Context, _ types.NamespacedName, _ provider.CustomMetricInfo, _ labels.Selector) (*custom_metrics.MetricValue, error) {
 	// not implemented yet
 	return nil, apiErrors.NewServiceUnavailable("not implemented yet")
 }
 
 // GetMetricBySelector fetches a particular metric for a set of objects matching
 // the given label selector.  The namespace will be empty if the metric is root-scoped.
-func (p *KedaProvider) GetMetricBySelector(ctx context.Context, namespace string, selector labels.Selector, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValueList, error) {
+func (p *KedaProvider) GetMetricBySelector(_ context.Context, namespace string, selector labels.Selector, info provider.CustomMetricInfo, _ labels.Selector) (*custom_metrics.MetricValueList, error) {
 	logger.V(0).Info("Received request for custom metric, which is not supported by this adapter", "groupresource", info.GroupResource.String(), "namespace", namespace, "metric name", info.Metric, "selector", selector.String())
 	return nil, apiErrors.NewServiceUnavailable("not implemented yet")
 }

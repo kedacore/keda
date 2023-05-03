@@ -535,7 +535,7 @@ func (s *rabbitMQScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpe
 }
 
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
-func (s *rabbitMQScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+func (s *rabbitMQScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	messages, publishRate, err := s.getQueueStatus()
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, false, s.anonimizeRabbitMQError(err)
@@ -600,8 +600,8 @@ func getSum(q []queueInfo) (int, int, float64) {
 
 func getAverage(q []queueInfo) (int, int, float64) {
 	sumMessages, sumReady, sumRate := getSum(q)
-	len := len(q)
-	return sumMessages / len, sumReady / len, sumRate / float64(len)
+	length := len(q)
+	return sumMessages / length, sumReady / length, sumRate / float64(length)
 }
 
 func getMaximum(q []queueInfo) (int, int, float64) {

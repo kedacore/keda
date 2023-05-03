@@ -203,7 +203,7 @@ func TestPollingInterval(t *testing.T) {
 	testPollingIntervalDown(t, kc, data)
 	testCooldownPeriod(t, kc, data)
 
-	DeleteKubernetesResources(t, kc, namespace, data, templates)
+	DeleteKubernetesResources(t, namespace, data, templates)
 }
 
 func testPollingIntervalUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {

@@ -179,7 +179,7 @@ func RMQInstall(t *testing.T, kc *kubernetes.Clientset, namespace, user, passwor
 	helper.KubectlApplyWithTemplate(t, data, "rmqDeploymentTemplate", deploymentTemplate)
 }
 
-func RMQUninstall(t *testing.T, kc *kubernetes.Clientset, namespace, user, password, vhost string) {
+func RMQUninstall(t *testing.T, namespace, user, password, vhost string) {
 	data := templateData{
 		Namespace: namespace,
 		VHostName: vhost,
@@ -188,7 +188,7 @@ func RMQUninstall(t *testing.T, kc *kubernetes.Clientset, namespace, user, passw
 	}
 
 	helper.KubectlDeleteWithTemplate(t, data, "rmqDeploymentTemplate", deploymentTemplate)
-	helper.DeleteNamespace(t, kc, namespace)
+	helper.DeleteNamespace(t, namespace)
 }
 
 func RMQPublishMessages(t *testing.T, namespace, connectionString, queueName string, messageCount int) {

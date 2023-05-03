@@ -31,7 +31,7 @@ func TestRemoveAadPodIdentityComponents(t *testing.T) {
 
 	KubeClient = GetKubernetesClient(t)
 
-	DeleteNamespace(t, KubeClient, AzureAdPodIdentityNamespace)
+	DeleteNamespace(t, AzureAdPodIdentityNamespace)
 }
 
 func TestRemoveWorkloadIdentityComponents(t *testing.T) {
@@ -44,7 +44,7 @@ func TestRemoveWorkloadIdentityComponents(t *testing.T) {
 
 	KubeClient = GetKubernetesClient(t)
 
-	DeleteNamespace(t, KubeClient, AzureWorkloadIdentityNamespace)
+	DeleteNamespace(t, AzureWorkloadIdentityNamespace)
 }
 
 func TestRemoveAwsIdentityComponents(t *testing.T) {
@@ -57,7 +57,7 @@ func TestRemoveAwsIdentityComponents(t *testing.T) {
 
 	KubeClient = GetKubernetesClient(t)
 
-	DeleteNamespace(t, KubeClient, AwsIdentityNamespace)
+	DeleteNamespace(t, AwsIdentityNamespace)
 }
 
 func TestRemoveGcpIdentityComponents(t *testing.T) {
@@ -70,7 +70,7 @@ func TestRemoveGcpIdentityComponents(t *testing.T) {
 
 	KubeClient = GetKubernetesClient(t)
 
-	DeleteNamespace(t, KubeClient, GcpIdentityNamespace)
+	DeleteNamespace(t, GcpIdentityNamespace)
 }
 
 func TestRemoveCertManager(t *testing.T) {
@@ -83,7 +83,7 @@ func TestRemoveCertManager(t *testing.T) {
 
 	KubeClient = GetKubernetesClient(t)
 
-	DeleteNamespace(t, KubeClient, CertManagerNamespace)
+	DeleteNamespace(t, CertManagerNamespace)
 }
 
 func TestRemoveAzureManagedPrometheusComponents(t *testing.T) {

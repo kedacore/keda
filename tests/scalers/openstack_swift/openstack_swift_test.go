@@ -171,7 +171,7 @@ func TestScaler(t *testing.T) {
 	testScaleIn(t, kc, client)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 
 	// delete openstack resources
 	helper.DeleteContainer(t, client, containerName)

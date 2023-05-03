@@ -66,7 +66,7 @@ type mockAwsDynamoDBStreams struct {
 	dynamodbstreamsiface.DynamoDBStreamsAPI
 }
 
-func (m *mockAwsDynamoDBStreams) DescribeStreamWithContext(ctx context.Context, input *dynamodbstreams.DescribeStreamInput, opts ...request.Option) (*dynamodbstreams.DescribeStreamOutput, error) {
+func (m *mockAwsDynamoDBStreams) DescribeStreamWithContext(_ context.Context, input *dynamodbstreams.DescribeStreamInput, _ ...request.Option) (*dynamodbstreams.DescribeStreamOutput, error) {
 	switch *input.StreamArn {
 	case testAWSDynamoDBStreamsErrorArn:
 		return nil, errors.New("Error dynamodbstream DescribeStream")
@@ -95,7 +95,7 @@ type mockAwsDynamoDB struct {
 	dynamodbiface.DynamoDBAPI
 }
 
-func (m *mockAwsDynamoDB) DescribeTableWithContext(ctx context.Context, input *dynamodb.DescribeTableInput, opts ...request.Option) (*dynamodb.DescribeTableOutput, error) {
+func (m *mockAwsDynamoDB) DescribeTableWithContext(_ context.Context, input *dynamodb.DescribeTableInput, _ ...request.Option) (*dynamodb.DescribeTableOutput, error) {
 	switch *input.TableName {
 	case testAWSDynamoDBInvalidTable:
 		return nil, fmt.Errorf("DynamoDB Stream Arn is invalid")

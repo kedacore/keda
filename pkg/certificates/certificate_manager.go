@@ -73,7 +73,7 @@ func (cm CertManager) AddCertificateRotation(ctx context.Context, mgr manager.Ma
 	extraDNSNames = append(extraDNSNames, getDNSNames(cm.MetricsServerService)...)
 
 	cm.Logger.V(1).Info("setting up cert rotation")
-	if err := rotator.AddRotator(mgr, &rotator.CertRotator{
+	err = rotator.AddRotator(mgr, &rotator.CertRotator{
 		SecretKey: types.NamespacedName{
 			Namespace: kedautil.GetPodNamespace(),
 			Name:      cm.SecretName,
@@ -91,10 +91,8 @@ func (cm CertManager) AddCertificateRotation(ctx context.Context, mgr manager.Ma
 			x509.ExtKeyUsageServerAuth,
 			x509.ExtKeyUsageClientAuth,
 		},
-	}); err != nil {
-		return err
-	}
-	return nil
+	})
+	return err
 }
 
 // getDNSNames  creates all the possible DNS names for a given service

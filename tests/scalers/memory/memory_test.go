@@ -170,7 +170,7 @@ func TestMemoryScaler(t *testing.T) {
 	scaleToZero(t, kc, data)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func scaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
