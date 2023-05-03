@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  creationTimestamp: "2023-05-01T21:41:01Z"
+  labels:
+    kubernetes.io/metadata.name: redis-cluster-streams-test-ns
+    type: e2e
+  name: redis-cluster-streams-test-ns
+  resourceVersion: "1575227882"
+  uid: bb61a453-5eed-4152-b2ca-b3f2e9ae48c2
+spec:
+  finalizers:
+status:
+  phase: Active

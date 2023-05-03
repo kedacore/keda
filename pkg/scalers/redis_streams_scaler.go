@@ -162,14 +162,14 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 			}
 			return pendingEntries.Count, nil
 		}
-		case xLengthFactor:
-			entriesCountFn = func(ctx context.Context) (int64, error) {
-				entriesLength, err := client.XLen(ctx, meta.streamName).Result()
-				if err != nil {
-					return -1, err
-				}
-				return entriesLength, nil
+	case xLengthFactor:
+		entriesCountFn = func(ctx context.Context) (int64, error) {
+			entriesLength, err := client.XLen(ctx, meta.streamName).Result()
+			if err != nil {
+				return -1, err
 			}
+			return entriesLength, nil
+		}
 	case xLagFactor:
 		// Insert lag implementation here
 		entriesCountFn = func(ctx context.Context) (int64, error) {
@@ -178,13 +178,14 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 				return -1, err
 			}
 			numGroups := len(groups)
-			totalLag := int64(0)
 			for i := 0; i < numGroups; i++ {
 				group := groups[i]
-				totalLag += group.Lag
+				if group.Name == meta.consumerGroupName {
+					return group.Lag, nil
+				}
 			}
-			averageLag := totalLag / int64(numGroups)
-			return averageLag, nil
+			err = fmt.Errorf("Stream name does not exist.")
+			return int64(0), err
 		}
 	default:
 		err = fmt.Errorf("unrecognized scale factor %v", meta.scaleFactor)
