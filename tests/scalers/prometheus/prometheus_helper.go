@@ -504,5 +504,5 @@ func Uninstall(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
 		PrometheusServerName: name,
 	}
 	helper.KubectlDeleteMultipleWithTemplate(t, data, prometheusTemplates)
-	helper.DeleteNamespace(t, kc, namespace)
+	helper.DeleteNamespace(t, namespace)
 }

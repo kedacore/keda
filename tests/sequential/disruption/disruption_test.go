@@ -144,7 +144,7 @@ func TestScaler(t *testing.T) {
 		KubectlDeleteMultipleWithTemplate(t, data, sutDeployment)
 		KubectlDeleteMultipleWithTemplate(t, data, scaledObject)
 	}
-	DeleteNamespace(t, kc, testNamespace)
+	DeleteNamespace(t, testNamespace)
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {

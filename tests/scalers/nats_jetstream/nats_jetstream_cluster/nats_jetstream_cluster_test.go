@@ -97,8 +97,8 @@ func TestNATSJetStreamScalerClusterWithStreamReplicas(t *testing.T) {
 
 	// Cleanup nats namespace
 	removeClusterWithJetStream(t)
-	DeleteNamespace(t, kc, natsNamespace)
-	deleted := WaitForNamespaceDeletion(t, kc, natsNamespace)
+	DeleteNamespace(t, natsNamespace)
+	deleted := WaitForNamespaceDeletion(t, natsNamespace)
 	assert.Truef(t, deleted, "%s namespace not deleted", natsNamespace)
 }
 

@@ -361,7 +361,7 @@ func cleanupHashiCorpVault(t *testing.T, kc *kubernetes.Clientset) {
 	_, err = ExecuteCommand("helm repo remove hashicorp")
 	assert.NoErrorf(t, err, "cannot remove hashicorp repo - %s", err)
 
-	DeleteNamespace(t, kc, vaultNamespace)
+	DeleteNamespace(t, vaultNamespace)
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {

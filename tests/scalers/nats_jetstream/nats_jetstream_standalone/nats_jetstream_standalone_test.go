@@ -206,8 +206,8 @@ func TestNATSJetStreamScaler(t *testing.T) {
 
 	// Cleanup nats namespace
 	removeServerWithJetStream(t, kc, natsNamespace)
-	DeleteNamespace(t, kc, natsNamespace)
-	deleted := WaitForNamespaceDeletion(t, kc, natsNamespace)
+	DeleteNamespace(t, natsNamespace)
+	deleted := WaitForNamespaceDeletion(t, natsNamespace)
 	assert.Truef(t, deleted, "%s namespace not deleted", natsNamespace)
 	// Cleanup test namespace
 	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
@@ -245,7 +245,7 @@ func removeServerWithJetStream(t *testing.T, kc *k8s.Clientset, namespace string
 	}
 
 	KubectlDeleteWithTemplate(t, data, "natsServerTemplate", natsServerTemplate)
-	DeleteNamespace(t, kc, namespace)
+	DeleteNamespace(t, namespace)
 }
 
 func testActivation(t *testing.T, kc *k8s.Clientset, data nats.JetStreamDeploymentTemplateData) {

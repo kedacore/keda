@@ -188,7 +188,7 @@ func RMQUninstall(t *testing.T, kc *kubernetes.Clientset, namespace, user, passw
 	}
 
 	helper.KubectlDeleteWithTemplate(t, data, "rmqDeploymentTemplate", deploymentTemplate)
-	helper.DeleteNamespace(t, kc, namespace)
+	helper.DeleteNamespace(t, namespace)
 }
 
 func RMQPublishMessages(t *testing.T, namespace, connectionString, queueName string, messageCount int) {

@@ -82,7 +82,7 @@ func RemoveStandalone(t *testing.T, kc *kubernetes.Clientset, name, namespace st
 		RedisName: name,
 	}
 	helper.KubectlApplyMultipleWithTemplate(t, data, redisStandaloneTemplates)
-	helper.DeleteNamespace(t, kc, namespace)
+	helper.DeleteNamespace(t, namespace)
 }
 
 func InstallSentinel(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {
@@ -103,7 +103,7 @@ func RemoveSentinel(t *testing.T, kc *kubernetes.Clientset, name, namespace stri
 		name,
 		namespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	helper.DeleteNamespace(t, kc, namespace)
+	helper.DeleteNamespace(t, namespace)
 }
 
 func InstallCluster(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {
@@ -124,5 +124,5 @@ func RemoveCluster(t *testing.T, kc *kubernetes.Clientset, name, namespace strin
 		name,
 		namespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	helper.DeleteNamespace(t, kc, namespace)
+	helper.DeleteNamespace(t, namespace)
 }

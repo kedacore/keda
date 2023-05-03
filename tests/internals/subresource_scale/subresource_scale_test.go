@@ -148,7 +148,7 @@ func cleanupArgo(t *testing.T, kc *kubernetes.Clientset) {
 	_, err := ExecuteCommand(cmdWithNamespace)
 
 	assert.NoErrorf(t, err, "cannot delete argo resources - %s", err)
-	DeleteNamespace(t, kc, argoNamespace)
+	DeleteNamespace(t, argoNamespace)
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {

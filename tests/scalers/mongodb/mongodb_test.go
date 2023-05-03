@@ -217,5 +217,5 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, mongoPod string) {
 func cleanupMongo(t *testing.T, kc *kubernetes.Clientset) {
 	_, err := ExecuteCommand(fmt.Sprintf("helm uninstall mongodb --namespace %s", mongoNamespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	DeleteNamespace(t, kc, mongoNamespace)
+	DeleteNamespace(t, mongoNamespace)
 }

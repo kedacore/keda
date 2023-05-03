@@ -600,8 +600,8 @@ func getSum(q []queueInfo) (int, int, float64) {
 
 func getAverage(q []queueInfo) (int, int, float64) {
 	sumMessages, sumReady, sumRate := getSum(q)
-	len := len(q)
-	return sumMessages / len, sumReady / len, sumRate / float64(len)
+	lenght := len(q)
+	return sumMessages / lenght, sumReady / lenght, sumRate / float64(lenght)
 }
 
 func getMaximum(q []queueInfo) (int, int, float64) {

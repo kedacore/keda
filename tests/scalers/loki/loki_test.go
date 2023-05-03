@@ -213,6 +213,6 @@ func installLoki(t *testing.T, kc *kubernetes.Clientset, namespace string) {
 func uninstallLoki(t *testing.T, kc *kubernetes.Clientset, namespace string) {
 	_, err := ExecuteCommand(fmt.Sprintf("helm uninstall loki --wait --namespace=%s", namespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	DeleteNamespace(t, kc, namespace)
-	WaitForNamespaceDeletion(t, kc, namespace)
+	DeleteNamespace(t, namespace)
+	WaitForNamespaceDeletion(t, namespace)
 }

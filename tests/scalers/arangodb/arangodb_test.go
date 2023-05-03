@@ -222,8 +222,8 @@ func TestArangoDBScaler(t *testing.T) {
 	KubectlDeleteMultipleWithTemplate(t, data, templates)
 	arangodb.UninstallArangoDB(t, kc, testNamespace)
 
-	DeleteNamespace(t, kc, testNamespace)
-	WaitForNamespaceDeletion(t, kc, testNamespace)
+	DeleteNamespace(t, testNamespace)
+	WaitForNamespaceDeletion(t, testNamespace)
 }
 
 func getTemplateData() (templateData, []Template) {
