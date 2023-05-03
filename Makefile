@@ -84,7 +84,7 @@ test: manifests generate fmt vet envtest install-test-deps ## Run tests and expo
 
 .PHONY:
 az-login:
-	@az login --service-principal -u $(TF_AZURE_SP_APP_ID) -p "$(AZURE_SP_KEY)" --tenant $(TF_AZURE_SP_TENANT)
+	@az login --service-principal -u $(TF_AZURE_SP_APP_ID) -p "$(TF_AZURE_SP_KEY)" --tenant $(TF_AZURE_SP_TENANT)
 
 .PHONY: get-cluster-context
 get-cluster-context: az-login ## Get Azure cluster context.

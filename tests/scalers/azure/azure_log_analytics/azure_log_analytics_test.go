@@ -27,7 +27,7 @@ const (
 var (
 	logAnalyticsWorkspaceID = os.Getenv("TF_AZURE_LOG_ANALYTICS_WORKSPACE_ID")
 	azureADClientID         = os.Getenv("TF_AZURE_SP_APP_ID")
-	azureADSecret           = os.Getenv("AZURE_SP_KEY")
+	azureADSecret           = os.Getenv("TF_AZURE_SP_KEY")
 	azureADTenantID         = os.Getenv("TF_AZURE_SP_TENANT")
 	testNamespace           = fmt.Sprintf("%s-ns", testName)
 	secretName              = fmt.Sprintf("%s-secret", testName)
@@ -129,7 +129,7 @@ func TestScaler(t *testing.T) {
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, logAnalyticsWorkspaceID, "TF_AZURE_LOG_ANALYTICS_WORKSPACE_ID env variable is required for deployment bus tests")
 	require.NotEmpty(t, azureADClientID, "TF_AZURE_SP_APP_ID env variable is required for deployment bus tests")
-	require.NotEmpty(t, azureADSecret, "AZURE_SP_KEY env variable is required for deployment bus tests")
+	require.NotEmpty(t, azureADSecret, "TF_AZURE_SP_KEY env variable is required for deployment bus tests")
 	require.NotEmpty(t, azureADTenantID, "TF_AZURE_SP_TENANT env variable is required for deployment bus tests")
 
 	// Create kubernetes resources

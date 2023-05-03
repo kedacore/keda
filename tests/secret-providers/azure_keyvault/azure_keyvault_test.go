@@ -34,7 +34,7 @@ var (
 	connectionString = os.Getenv("TF_AZURE_STORAGE_CONNECTION_STRING")
 	keyvaultURI      = os.Getenv("TF_AZURE_KEYVAULT_URI")
 	azureADClientID  = os.Getenv("TF_AZURE_SP_APP_ID")
-	azureADSecret    = os.Getenv("AZURE_SP_KEY")
+	azureADSecret    = os.Getenv("TF_AZURE_SP_KEY")
 	azureADTenantID  = os.Getenv("TF_AZURE_SP_TENANT")
 	testNamespace    = fmt.Sprintf("%s-ns", testName)
 	secretName       = fmt.Sprintf("%s-secret", testName)
@@ -152,7 +152,7 @@ func TestScaler(t *testing.T) {
 	require.NotEmpty(t, connectionString, "TF_AZURE_STORAGE_CONNECTION_STRING env variable is required for key vault tests")
 	require.NotEmpty(t, keyvaultURI, "TF_AZURE_KEYVAULT_URI env variable is required for key vault tests")
 	require.NotEmpty(t, azureADClientID, "TF_AZURE_SP_APP_ID env variable is required for key vault tests")
-	require.NotEmpty(t, azureADSecret, "AZURE_SP_KEY env variable is required for key vault tests")
+	require.NotEmpty(t, azureADSecret, "TF_AZURE_SP_KEY env variable is required for key vault tests")
 	require.NotEmpty(t, azureADTenantID, "TF_AZURE_SP_TENANT env variable is required for key vault tests")
 
 	queueURL, messageURL := createQueue(t)
