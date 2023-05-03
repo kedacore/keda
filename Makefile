@@ -36,7 +36,7 @@ GIT_VERSION ?= $(shell git describe --always --abbrev=7)
 GIT_COMMIT  ?= $(shell git rev-list -1 HEAD)
 DATE        = $(shell date -u +"%Y.%m.%d.%H.%M.%S")
 
-TEST_CLUSTER_NAME ?= keda-nightly-run-3
+TEST_CLUSTER_NAME ?= keda-e2e-cluster-nightly
 NODE_POOL_SIZE ?= 1
 NON_ROOT_USER_ID ?= 1000
 
