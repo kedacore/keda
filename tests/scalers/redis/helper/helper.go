@@ -98,7 +98,7 @@ func InstallSentinel(t *testing.T, kc *kubernetes.Clientset, name, namespace, pa
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
-func RemoveSentinel(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
+func RemoveSentinel(t *testing.T, name, namespace string) {
 	_, err := helper.ExecuteCommand(fmt.Sprintf(`helm uninstall --wait --timeout 900s %s --namespace %s`,
 		name,
 		namespace))
@@ -119,7 +119,7 @@ func InstallCluster(t *testing.T, kc *kubernetes.Clientset, name, namespace, pas
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
-func RemoveCluster(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
+func RemoveCluster(t *testing.T, name, namespace string) {
 	_, err := helper.ExecuteCommand(fmt.Sprintf(`helm uninstall --wait --timeout 900s %s --namespace %s`,
 		name,
 		namespace))

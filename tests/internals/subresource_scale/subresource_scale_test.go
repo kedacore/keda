@@ -130,7 +130,7 @@ func TestScaler(t *testing.T) {
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
-	cleanupArgo(t, kc)
+	cleanupArgo(t)
 }
 
 func setupArgo(t *testing.T, kc *kubernetes.Clientset) {
@@ -142,7 +142,7 @@ func setupArgo(t *testing.T, kc *kubernetes.Clientset) {
 	assert.NoErrorf(t, err, "cannot install argo resources - %s", err)
 }
 
-func cleanupArgo(t *testing.T, kc *kubernetes.Clientset) {
+func cleanupArgo(t *testing.T) {
 	cmdWithNamespace := fmt.Sprintf("kubectl delete -n %s -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml",
 		argoNamespace)
 	_, err := ExecuteCommand(cmdWithNamespace)

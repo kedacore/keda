@@ -601,7 +601,7 @@ func (s *githubRunnerScaler) GetMetricsAndActivity(ctx context.Context, metricNa
 	return []external_metrics.ExternalMetricValue{metric}, queueLen >= s.metadata.targetWorkflowQueueLength, nil
 }
 
-func (s *githubRunnerScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
+func (s *githubRunnerScaler) GetMetricSpecForScaling(_ context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("github-runner-%s", s.metadata.owner))),
@@ -612,6 +612,6 @@ func (s *githubRunnerScaler) GetMetricSpecForScaling(ctx context.Context) []v2.M
 	return []v2.MetricSpec{metricSpec}
 }
 
-func (s *githubRunnerScaler) Close(ctx context.Context) error {
+func (s *githubRunnerScaler) Close(_ context.Context) error {
 	return nil
 }
