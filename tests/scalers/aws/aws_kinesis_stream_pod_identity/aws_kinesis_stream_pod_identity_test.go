@@ -141,7 +141,7 @@ func TestKiensisScaler(t *testing.T) {
 	testScaleIn(t, kc, kinesisClient)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 	cleanupStream(t, kinesisClient)
 }
 

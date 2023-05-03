@@ -134,7 +134,7 @@ func (s *awsKinesisStreamScaler) GetMetricSpecForScaling(context.Context) []v2.M
 }
 
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
-func (s *awsKinesisStreamScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+func (s *awsKinesisStreamScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	shardCount, err := s.GetAwsKinesisOpenShardCount()
 
 	if err != nil {

@@ -190,8 +190,8 @@ func TestScaler(t *testing.T) {
 	testScaleIn(t, kc)
 
 	// cleanup
-	redis.RemoveSentinel(t, kc, testName, redisNamespace)
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	redis.RemoveSentinel(t, testName, redisNamespace)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {

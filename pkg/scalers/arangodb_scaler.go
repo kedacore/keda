@@ -202,7 +202,7 @@ func parseArangoDBMetadata(config *ScalerConfig) (*arangoDBMetadata, error) {
 }
 
 // Close disposes of arangoDB connections
-func (s *arangoDBScaler) Close(ctx context.Context) error {
+func (s *arangoDBScaler) Close(_ context.Context) error {
 	return nil
 }
 

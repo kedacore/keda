@@ -13,7 +13,7 @@ jobs:
       id-token: write # needed for signing the images with GitHub OIDC Token **not production ready**
 
     # build-tools is built from ../../tools/build-tools.Dockerfile
-    container: ghcr.io/kedacore/build-tools:1.19.7
+    container: ghcr.io/kedacore/build-tools:1.20.4
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -41,7 +41,7 @@ jobs:
           key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
 
       - name: Go modules sync
-        run: go mod tidy -compat=1.19
+        run: go mod tidy -compat=1.20
 
       - name: Test
         run: make test

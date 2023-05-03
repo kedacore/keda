@@ -186,7 +186,7 @@ func (wiTokenProvider *ADWorkloadIdentityTokenProvider) EnsureFresh() error {
 }
 
 // GetToken is for implementing the auth.TokenProvider interface
-func (wiTokenProvider *ADWorkloadIdentityTokenProvider) GetToken(uri string) (*amqpAuth.Token, error) {
+func (wiTokenProvider *ADWorkloadIdentityTokenProvider) GetToken(_ string) (*amqpAuth.Token, error) {
 	err := wiTokenProvider.Refresh()
 	if err != nil {
 		return nil, err

@@ -93,12 +93,12 @@ func TestNATSJetStreamScalerClusterWithStreamReplicas(t *testing.T) {
 
 	// Cleanup test namespace
 	removeStreamAndConsumer(t, 1, testData.NatsStream, testNamespace, natsAddress)
-	DeleteKubernetesResources(t, kc, testNamespace, testData, testTemplates)
+	DeleteKubernetesResources(t, testNamespace, testData, testTemplates)
 
 	// Cleanup nats namespace
 	removeClusterWithJetStream(t)
-	DeleteNamespace(t, kc, natsNamespace)
-	deleted := WaitForNamespaceDeletion(t, kc, natsNamespace)
+	DeleteNamespace(t, natsNamespace)
+	deleted := WaitForNamespaceDeletion(t, natsNamespace)
 	assert.Truef(t, deleted, "%s namespace not deleted", natsNamespace)
 }
 

@@ -146,7 +146,7 @@ func TestDynamoDBScaler(t *testing.T) {
 	testScaleIn(t, kc, dynamodbClient)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 	cleanupTable(t, dynamodbClient)
 }
 

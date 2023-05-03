@@ -90,8 +90,8 @@ func TestScaler(t *testing.T) {
 
 	// cleanup
 	t.Log("--- cleaning up ---")
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
-	RMQUninstall(t, kc, rmqNamespace, user, password, vhost)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
+	RMQUninstall(t, rmqNamespace, user, password, vhost)
 }
 
 func getTemplateData() (templateData, []Template) {

@@ -145,7 +145,7 @@ func TestScaledObjectValidations(t *testing.T) {
 
 	testMissingMemory(t, data)
 
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func testWithNotScaledWorkload(t *testing.T, data templateData) {
