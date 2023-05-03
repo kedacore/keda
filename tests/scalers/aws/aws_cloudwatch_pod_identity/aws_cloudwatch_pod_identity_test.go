@@ -147,7 +147,7 @@ func TestCloudWatchScaler(t *testing.T) {
 	testScaleIn(t, kc, cloudwatchClient)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 
 	setCloudWatchCustomMetric(t, cloudwatchClient, 0)
 }

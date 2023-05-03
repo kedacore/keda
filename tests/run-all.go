@@ -176,7 +176,7 @@ func getTestFiles(e2eRegex string, filter func(path string, file string) bool) [
 	}
 
 	// We randomize the executions
-	rand.Seed(time.Now().UnixNano())
+	rand.New(rand.NewSource(time.Now().UnixNano()))
 	rand.Shuffle(len(testFiles), func(i, j int) {
 		testFiles[i], testFiles[j] = testFiles[j], testFiles[i]
 	})

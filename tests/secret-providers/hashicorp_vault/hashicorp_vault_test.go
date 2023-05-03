@@ -319,7 +319,7 @@ func TestPostreSQLScaler(t *testing.T) {
 			// cleanup
 			KubectlDeleteMultipleWithTemplate(t, data, templates)
 			cleanupHashiCorpVault(t, kc)
-			DeleteKubernetesResources(t, kc, testNamespace, data, postgreSQLtemplates)
+			DeleteKubernetesResources(t, testNamespace, data, postgreSQLtemplates)
 		})
 	}
 }

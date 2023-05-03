@@ -485,11 +485,11 @@ func (m *MockClusterAdmin) DescribeConfig(_ sarama.ConfigResource) ([]sarama.Con
 	return nil, nil
 }
 
-func (m *MockClusterAdmin) AlterConfig(_ sarama.ConfigResourceType, _ string, _ map[string]*string, validateOnly bool) error {
+func (m *MockClusterAdmin) AlterConfig(_ sarama.ConfigResourceType, _ string, _ map[string]*string, _ bool) error {
 	return nil
 }
 
-func (m *MockClusterAdmin) IncrementalAlterConfig(_ sarama.ConfigResourceType, _ string, _ map[string]sarama.IncrementalAlterConfigsEntry, validateOnly bool) error {
+func (m *MockClusterAdmin) IncrementalAlterConfig(_ sarama.ConfigResourceType, _ string, _ map[string]sarama.IncrementalAlterConfigsEntry, _ bool) error {
 	return nil
 }
 
@@ -549,11 +549,11 @@ func (m *MockClusterAdmin) UpsertUserScramCredentials(_ []sarama.AlterUserScramC
 	return nil, nil
 }
 
-func (m *MockClusterAdmin) DescribeClientQuotas(_ []sarama.QuotaFilterComponent, strict bool) ([]sarama.DescribeClientQuotasEntry, error) {
+func (m *MockClusterAdmin) DescribeClientQuotas(_ []sarama.QuotaFilterComponent, _ bool) ([]sarama.DescribeClientQuotasEntry, error) {
 	return nil, nil
 }
 
-func (m *MockClusterAdmin) AlterClientQuotas(_ []sarama.QuotaEntityComponent, op sarama.ClientQuotasOp, validateOnly bool) error {
+func (m *MockClusterAdmin) AlterClientQuotas(_ []sarama.QuotaEntityComponent, _ sarama.ClientQuotasOp, _ bool) error {
 	return nil
 }
 
@@ -561,7 +561,7 @@ func (m *MockClusterAdmin) Controller() (*sarama.Broker, error) {
 	return nil, nil
 }
 
-func (m *MockClusterAdmin) RemoveMemberFromConsumerGroup(_ string, groupInstanceIds []string) (*sarama.LeaveGroupResponse, error) {
+func (m *MockClusterAdmin) RemoveMemberFromConsumerGroup(_ string, _ []string) (*sarama.LeaveGroupResponse, error) {
 	return nil, nil
 }
 

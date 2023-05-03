@@ -126,7 +126,7 @@ func TestScaler(t *testing.T) {
 	testScaleOut(t, kc, mongoPod)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 	cleanupMongo(t, kc)
 }
 

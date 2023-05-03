@@ -176,7 +176,7 @@ func TestStanScaler(t *testing.T) {
 	// cleanup
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	uninstallSolace(t)
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func installSolace(t *testing.T) {

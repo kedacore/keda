@@ -395,7 +395,7 @@ type ScalingStrategy interface {
 type defaultScalingStrategy struct {
 }
 
-func (s defaultScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, _, maxReplicaCount int64) int64 {
+func (s defaultScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, _, _ int64) int64 {
 	return maxScale - runningJobCount
 }
 

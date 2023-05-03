@@ -76,7 +76,7 @@ func InstallStandalone(t *testing.T, kc *kubernetes.Clientset, name, namespace, 
 	helper.KubectlApplyMultipleWithTemplate(t, data, redisStandaloneTemplates)
 }
 
-func RemoveStandalone(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
+func RemoveStandalone(t *testing.T, name, namespace string) {
 	var data = templateData{
 		Namespace: namespace,
 		RedisName: name,

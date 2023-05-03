@@ -267,7 +267,7 @@ func TestPrometheusMetrics(t *testing.T) {
 	testWebhookMetrics(t, data)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func getTemplateData() (templateData, []Template) {

@@ -312,7 +312,7 @@ func TestElasticsearchScaler(t *testing.T) {
 	testScaleIn(t, kc)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func setupElasticsearch(t *testing.T, kc *kubernetes.Clientset) {

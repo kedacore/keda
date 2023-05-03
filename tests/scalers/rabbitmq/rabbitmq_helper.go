@@ -179,7 +179,7 @@ func RMQInstall(t *testing.T, kc *kubernetes.Clientset, namespace, user, passwor
 	helper.KubectlApplyWithTemplate(t, data, "rmqDeploymentTemplate", deploymentTemplate)
 }
 
-func RMQUninstall(t *testing.T, kc *kubernetes.Clientset, namespace, user, password, vhost string) {
+func RMQUninstall(t *testing.T, namespace, user, password, vhost string) {
 	data := templateData{
 		Namespace: namespace,
 		VHostName: vhost,

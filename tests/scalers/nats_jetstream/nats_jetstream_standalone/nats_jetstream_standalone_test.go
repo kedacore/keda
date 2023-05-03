@@ -210,7 +210,7 @@ func TestNATSJetStreamScaler(t *testing.T) {
 	deleted := WaitForNamespaceDeletion(t, natsNamespace)
 	assert.Truef(t, deleted, "%s namespace not deleted", natsNamespace)
 	// Cleanup test namespace
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 // installStreamAndConsumer creates stream and consumer.

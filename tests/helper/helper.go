@@ -580,7 +580,7 @@ func CreateKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName st
 	KubectlApplyMultipleWithTemplate(t, data, templates)
 }
 
-func DeleteKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName string, data interface{}, templates []Template) {
+func DeleteKubernetesResources(t *testing.T, nsName string, data interface{}, templates []Template) {
 	KubectlDeleteMultipleWithTemplate(t, data, templates)
 	DeleteNamespace(t, nsName)
 	deleted := WaitForNamespaceDeletion(t, nsName)
