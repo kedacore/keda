@@ -228,7 +228,8 @@ func testPollingIntervalUp(t *testing.T, kc *kubernetes.Clientset, data template
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
 	// wait until HPA to ensure that ScaledObject reconciliation loop has happened
-	WaitForHpaCreation(t, kc, hpaName, namespace, 60, 2)
+	_, err := WaitForHpaCreation(t, kc, hpaName, namespace, 60, 2)
+	assert.NoError(t, err)
 
 	data.MetricValue = maxReplicas
 	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
@@ -259,7 +260,8 @@ func testPollingIntervalDown(t *testing.T, kc *kubernetes.Clientset, data templa
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
 	// wait until HPA to ensure that ScaledObject reconciliation loop has happened
-	WaitForHpaCreation(t, kc, hpaName, namespace, 60, 2)
+	_, err := WaitForHpaCreation(t, kc, hpaName, namespace, 60, 2)
+	assert.NoError(t, err)
 
 	data.MetricValue = minReplicas
 	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
@@ -293,7 +295,8 @@ func testCooldownPeriod(t *testing.T, kc *kubernetes.Clientset, data templateDat
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
 	// wait until HPA to ensure that ScaledObject reconciliation loop has happened
-	WaitForHpaCreation(t, kc, hpaName, namespace, 60, 2)
+	_, err := WaitForHpaCreation(t, kc, hpaName, namespace, 60, 2)
+	assert.NoError(t, err)
 
 	data.MetricValue = 0
 	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
