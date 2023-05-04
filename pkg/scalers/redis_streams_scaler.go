@@ -244,7 +244,8 @@ func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser)
 			}
 			meta.targetLag = lag
 		}
-		// Remember to add user-defined targetLag capability later. For now, just use default.
+		// Remember to add user-defined targetLag capability later. For now, just use default. 
+		// Need to add below functionality back
 		/*
 			meta.consumerGroupName = val
 			meta.scaleFactor = xPendingFactor
