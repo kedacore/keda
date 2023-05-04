@@ -52,16 +52,16 @@ metadata:
   name: {{.MonitoredDeploymentName}}
   namespace: {{.TestNamespace}}
   labels:
-    deploy: {{.MonitoredDeploymentName}}
+    deploy: workload-test
 spec:
   replicas: 0
   selector:
     matchLabels:
-      pod: {{.MonitoredDeploymentName}}
+      pod: workload-test
   template:
     metadata:
       labels:
-        pod: {{.MonitoredDeploymentName}}
+        pod: workload-test
     spec:
       containers:
         - name: nginx
@@ -73,16 +73,16 @@ metadata:
   name: {{.SutDeploymentName}}
   namespace: {{.TestNamespace}}
   labels:
-    deploy: {{.SutDeploymentName}}
+    deploy: workload-sut
 spec:
   replicas: 0
   selector:
     matchLabels:
-      pod: {{.SutDeploymentName}}
+      pod: workload-sut
   template:
     metadata:
       labels:
-        pod: {{.SutDeploymentName}}
+        pod: workload-sut
     spec:
       containers:
       - name: nginx
@@ -108,7 +108,7 @@ spec:
   triggers:
   - type: kubernetes-workload
     metadata:
-      podSelector: 'pod={{.MonitoredDeploymentName}}'
+      podSelector: 'pod=workload-test'
       value: '1'`
 )
 
