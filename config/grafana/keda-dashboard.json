@@ -735,18 +735,23 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "drawStyle": "bars",
+            "drawStyle": "line",
             "fillOpacity": 100,
-            "gradientMode": "hue",
+            "gradientMode": "opacity",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
             },
             "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
             "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": {
@@ -756,7 +761,7 @@
             "spanNulls": false,
             "stacking": {
               "group": "A",
-              "mode": "normal"
+              "mode": "none"
             },
             "thresholdsStyle": {
               "mode": "off"
@@ -787,7 +792,8 @@
         "legend": {
           "calcs": [],
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "single",
@@ -804,10 +810,10 @@
           "exemplar": false,
           "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"$namespace\",horizontalpodautoscaler=\"keda-hpa-$scaledObject\"}",
           "format": "time_series",
-          "instant": true,
+          "instant": false,
           "interval": "",
           "legendFormat": "current_replicas",
-          "range": false,
+          "range": true,
           "refId": "A"
         },
         {
@@ -820,9 +826,9 @@
           "expr": "kube_horizontalpodautoscaler_spec_max_replicas{namespace=\"$namespace\",horizontalpodautoscaler=\"keda-hpa-$scaledObject\"}",
           "format": "time_series",
           "hide": false,
-          "instant": true,
+          "instant": false,
           "legendFormat": "max_replicas",
-          "range": false,
+          "range": true,
           "refId": "B"
         }
       ],

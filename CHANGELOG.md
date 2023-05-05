@@ -62,6 +62,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **AWS SQS Scaler**: Respect `scaleOnInFlight` value ([#4276](https://github.com/kedacore/keda/issue/4276))
 - **Azure Pipelines**: Fix for disallowing `$top` on query when using `meta.parentID` method ([#4397])
 - **Azure Pipelines**: Respect all required demands ([#4404](https://github.com/kedacore/keda/issues/4404))
+- **Prometheus Metrics**: Create e2e tests for all exposed Prometheus metrics ([#4127](https://github.com/kedacore/keda/issues/4127))
+- **Grafana Dashboard**: Fix HPA metrics panel to use range instead of instant ([#4513](https://github.com/kedacore/keda/pull/4513))
 
 ### Deprecations
 
@@ -73,8 +75,10 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Other
 
+- **General**: Bump Golang to 1.20 ([#4517](https://github.com/kedacore/keda/issues/4517))
 - **General**: Drop a transitive dependency on bou.ke/monkey ([#4364](https://github.com/kedacore/keda/issues/4364))
 - **General**: Fix odd number of arguments passed as key-value pairs for logging ([#4368](https://github.com/kedacore/keda/issues/4368))
+- **General**: Automatically scale test clusters in/out to reduce environmental footprint & improve cost-efficiency ([#4456](https://github.com/kedacore/keda/pull/4456))
 
 ## v2.10.0
 

@@ -220,8 +220,8 @@ func GetKedaKubernetesClient(t *testing.T) *v1alpha1.KedaV1alpha1Client {
 
 // Creates a new namespace. If it already exists, make sure it is deleted first.
 func CreateNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
-	DeleteNamespace(t, kc, nsName)
-	WaitForNamespaceDeletion(t, kc, nsName)
+	DeleteNamespace(t, nsName)
+	WaitForNamespaceDeletion(t, nsName)
 
 	t.Logf("Creating namespace - %s", nsName)
 	namespace := &corev1.Namespace{
@@ -235,7 +235,7 @@ func CreateNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
 	assert.NoErrorf(t, err, "cannot create kubernetes namespace - %s", err)
 }
 
-func DeleteNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
+func DeleteNamespace(t *testing.T, nsName string) {
 	t.Logf("deleting namespace %s", nsName)
 	period := int64(0)
 	err := KubeClient.CoreV1().Namespaces().Delete(context.Background(), nsName, metav1.DeleteOptions{
@@ -287,7 +287,7 @@ func WaitForAllJobsSuccess(t *testing.T, kc *kubernetes.Clientset, namespace str
 	return false
 }
 
-func WaitForNamespaceDeletion(t *testing.T, kc *kubernetes.Clientset, nsName string) bool {
+func WaitForNamespaceDeletion(t *testing.T, nsName string) bool {
 	for i := 0; i < 120; i++ {
 		t.Logf("waiting for namespace %s deletion", nsName)
 		_, err := KubeClient.CoreV1().Namespaces().Get(context.Background(), nsName, metav1.GetOptions{})
@@ -580,10 +580,10 @@ func CreateKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName st
 	KubectlApplyMultipleWithTemplate(t, data, templates)
 }
 
-func DeleteKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName string, data interface{}, templates []Template) {
+func DeleteKubernetesResources(t *testing.T, nsName string, data interface{}, templates []Template) {
 	KubectlDeleteMultipleWithTemplate(t, data, templates)
-	DeleteNamespace(t, kc, nsName)
-	deleted := WaitForNamespaceDeletion(t, kc, nsName)
+	DeleteNamespace(t, nsName)
+	deleted := WaitForNamespaceDeletion(t, nsName)
 	assert.Truef(t, deleted, "%s namespace not deleted", nsName)
 }
 

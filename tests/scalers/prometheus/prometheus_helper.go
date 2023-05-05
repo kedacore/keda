@@ -498,11 +498,11 @@ func Install(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
 		"replica count should be 1 after 3 minutes")
 }
 
-func Uninstall(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
+func Uninstall(t *testing.T, name, namespace string) {
 	var data = templateData{
 		Namespace:            namespace,
 		PrometheusServerName: name,
 	}
 	helper.KubectlDeleteMultipleWithTemplate(t, data, prometheusTemplates)
-	helper.DeleteNamespace(t, kc, namespace)
+	helper.DeleteNamespace(t, namespace)
 }

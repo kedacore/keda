@@ -209,7 +209,7 @@ func TestScaler(t *testing.T) {
 	testScaleIn(t, kc)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 	deleteEventHub(t, adminClient)
 	deleteContainer(t, container)
 }

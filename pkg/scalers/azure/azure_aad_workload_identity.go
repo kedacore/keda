@@ -133,11 +133,11 @@ func (aadWiConfig ADWorkloadIdentityConfig) Authorizer() (autorest.Authorizer, e
 }
 
 func NewADWorkloadIdentityCredential(identityID string) (*azidentity.WorkloadIdentityCredential, error) {
-	clientID := DefaultClientID
+	options := &azidentity.WorkloadIdentityCredentialOptions{}
 	if identityID != "" {
-		clientID = identityID
+		options.ClientID = identityID
 	}
-	return azidentity.NewWorkloadIdentityCredential(TenantID, clientID, TokenFilePath, &azidentity.WorkloadIdentityCredentialOptions{})
+	return azidentity.NewWorkloadIdentityCredential(options)
 }
 
 // ADWorkloadIdentityTokenProvider is a type that implements the adal.OAuthTokenProvider and adal.Refresher interfaces.
@@ -186,7 +186,7 @@ func (wiTokenProvider *ADWorkloadIdentityTokenProvider) EnsureFresh() error {
 }
 
 // GetToken is for implementing the auth.TokenProvider interface
-func (wiTokenProvider *ADWorkloadIdentityTokenProvider) GetToken(uri string) (*amqpAuth.Token, error) {
+func (wiTokenProvider *ADWorkloadIdentityTokenProvider) GetToken(_ string) (*amqpAuth.Token, error) {
 	err := wiTokenProvider.Refresh()
 	if err != nil {
 		return nil, err

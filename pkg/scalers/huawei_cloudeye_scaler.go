@@ -240,7 +240,7 @@ func gethuaweiAuthorization(authParams map[string]string) (huaweiAuthorizationMe
 	return meta, nil
 }
 
-func (s *huaweiCloudeyeScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+func (s *huaweiCloudeyeScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	metricValue, err := s.GetCloudeyeMetrics()
 
 	if err != nil {

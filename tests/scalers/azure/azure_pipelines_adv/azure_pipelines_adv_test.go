@@ -322,7 +322,7 @@ func TestScaler(t *testing.T) {
 	testJobScaleIn(t, kc)
 	KubectlDeleteWithTemplate(t, data, "demandRequireAllScaledJobTemplate", demandRequireAllScaledJobTemplate)
 
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 	CleanUpAdo(t, data)
 }
 

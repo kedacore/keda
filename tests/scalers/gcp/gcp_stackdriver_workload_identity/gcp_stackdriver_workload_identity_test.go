@@ -211,7 +211,7 @@ func TestScaler(t *testing.T) {
 		}
 	}
 
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func createPubsub(t *testing.T) error {

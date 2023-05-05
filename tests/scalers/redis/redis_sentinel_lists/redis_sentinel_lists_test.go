@@ -190,8 +190,8 @@ func TestScaler(t *testing.T) {
 	testScaleIn(t, kc)
 
 	// cleanup
-	redis.RemoveSentinel(t, kc, testName, redisNamespace)
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	redis.RemoveSentinel(t, testName, redisNamespace)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -203,7 +203,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
-	data.ItemsToWrite = 200
+	data.ItemsToWrite = 400
 	KubectlApplyWithTemplate(t, data, "insertJobTemplate", insertJobTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),

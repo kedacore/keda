@@ -150,7 +150,7 @@ func test(t *testing.T, testName string, firstHpaName string, firstSOTemplate st
 	assert.True(t, errors.IsNotFound(err))
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func getTemplateData(testNamespace string, deploymentName string, scaledObjectName string, customHpaName string) templateData {

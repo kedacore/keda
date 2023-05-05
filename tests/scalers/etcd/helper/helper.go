@@ -140,6 +140,6 @@ func InstallCluster(t *testing.T, kc *kubernetes.Clientset, name, namespace stri
 		EtcdName:  name,
 	}
 	helper.KubectlApplyMultipleWithTemplate(t, data, etcdClusterTemplates)
-	assert.True(t, helper.WaitForStatefulsetReplicaReadyCount(t, kc, name, namespace, 3, 60, 3),
+	assert.True(t, helper.WaitForStatefulsetReplicaReadyCount(t, kc, name, namespace, 3, 60, 5),
 		"etcd-cluster should be up")
 }

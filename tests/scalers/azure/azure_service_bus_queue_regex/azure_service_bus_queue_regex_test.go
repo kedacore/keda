@@ -149,7 +149,7 @@ func TestScaler(t *testing.T) {
 	testScale(t, kc, client, queueName1, queueName2, data)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 	cleanupServiceBusQueue(t, adminClient, queueName1)
 	cleanupServiceBusQueue(t, adminClient, queueName2)
 }
