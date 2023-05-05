@@ -73,16 +73,16 @@ metadata:
   name: {{.SutDeploymentName}}
   namespace: {{.TestNamespace}}
   labels:
-    deploy: workload-sut
+    deploy: {{.SutDeploymentName}}
 spec:
   replicas: 0
   selector:
     matchLabels:
-      pod: workload-sut
+      pod: {{.SutDeploymentName}}
   template:
     metadata:
       labels:
-        pod: workload-sut
+        pod: {{.SutDeploymentName}}
     spec:
       containers:
       - name: nginx

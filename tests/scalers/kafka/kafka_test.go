@@ -135,8 +135,25 @@ metadata:
   labels:
     app: {{.DeploymentName}}
 spec:
+  pollingInterval: 5
+  cooldownPeriod: 0
   scaleTargetRef:
     name: {{.DeploymentName}}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+        scaleDown:
+          stabilizationWindowSeconds: 0
+          policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
   triggers:
   - type: kafka
     metadata:
@@ -156,8 +173,25 @@ metadata:
   labels:
     app: {{.DeploymentName}}
 spec:
+  pollingInterval: 5
+  cooldownPeriod: 0
   scaleTargetRef:
     name: {{.DeploymentName}}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+        scaleDown:
+          stabilizationWindowSeconds: 0
+          policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
   triggers:
   - type: kafka
     metadata:
@@ -175,8 +209,25 @@ metadata:
   labels:
     app: {{.DeploymentName}}
 spec:
+  pollingInterval: 5
+  cooldownPeriod: 0
   scaleTargetRef:
     name: {{.DeploymentName}}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+        scaleDown:
+          stabilizationWindowSeconds: 0
+          policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
   triggers:
   - type: kafka
     metadata:
@@ -196,20 +247,21 @@ metadata:
   labels:
     app: {{.DeploymentName}}
 spec:
-  pollingInterval: 15
+  pollingInterval: 5
+  cooldownPeriod: 0
   scaleTargetRef:
     name: {{.DeploymentName}}
   advanced:
     horizontalPodAutoscalerConfig:
       behavior:
         scaleUp:
-          stabilizationWindowSeconds: 30
+          stabilizationWindowSeconds: 0
           policies:
           - type: Percent
             value: 100
             periodSeconds: 15
         scaleDown:
-          stabilizationWindowSeconds: 30
+          stabilizationWindowSeconds: 0
           policies:
           - type: Percent
             value: 100
@@ -327,11 +379,11 @@ func testEarliestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateDat
 	KubectlApplyWithTemplate(t, data, "singleScaledObjectTemplate", singleScaledObjectTemplate)
 
 	// Shouldn't scale pods applying earliest policy
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
 
 	// Shouldn't scale pods with only 1 message due to activation value
 	publishMessage(t, topic1)
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
 
 	// Scale application with kafka messages
 	publishMessage(t, topic1)
@@ -362,11 +414,11 @@ func testLatestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData)
 	KubectlApplyWithTemplate(t, data, "singleScaledObjectTemplate", singleScaledObjectTemplate)
 
 	// Shouldn't scale pods
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
 
 	// Shouldn't scale pods with only 1 message due to activation value
 	publishMessage(t, topic1)
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
 
 	// Scale application with kafka messages
 	publishMessage(t, topic1)
@@ -396,7 +448,7 @@ func testMultiTopic(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	KubectlApplyWithTemplate(t, data, "multiScaledObjectTemplate", multiScaledObjectTemplate)
 
 	// Shouldn't scale pods
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
 
 	// Scale application with kafka messages in topic 1
 	publishMessage(t, topic1)
@@ -428,7 +480,7 @@ func testZeroOnInvalidOffset(t *testing.T, kc *kubernetes.Clientset, data templa
 	KubectlApplyWithTemplate(t, data, "invalidOffsetScaledObjectTemplate", invalidOffsetScaledObjectTemplate)
 
 	// Shouldn't scale pods
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
 
 	KubectlDeleteWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
 	KubectlDeleteWithTemplate(t, data, "invalidOffsetScaledObjectTemplate", invalidOffsetScaledObjectTemplate)
@@ -535,13 +587,13 @@ func addTopic(t *testing.T, data templateData, name string, partitions int) {
 	data.KafkaTopicName = name
 	data.KafkaTopicPartitions = partitions
 	KubectlApplyWithTemplate(t, data, "kafkaTopicTemplate", kafkaTopicTemplate)
-	_, err := ExecuteCommand(fmt.Sprintf("kubectl wait kafkatopic/%s --for=condition=Ready --timeout=300s --namespace %s", name, testNamespace))
+	_, err := ExecuteCommand(fmt.Sprintf("kubectl wait kafkatopic/%s --for=condition=Ready --timeout=480s --namespace %s", name, testNamespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
 func addCluster(t *testing.T, data templateData) {
 	KubectlApplyWithTemplate(t, data, "kafkaClusterTemplate", kafkaClusterTemplate)
-	_, err := ExecuteCommand(fmt.Sprintf("kubectl wait kafka/%s --for=condition=Ready --timeout=300s --namespace %s", kafkaName, testNamespace))
+	_, err := ExecuteCommand(fmt.Sprintf("kubectl wait kafka/%s --for=condition=Ready --timeout=480s --namespace %s", kafkaName, testNamespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
