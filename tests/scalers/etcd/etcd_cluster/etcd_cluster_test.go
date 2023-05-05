@@ -94,7 +94,6 @@ metadata:
   name: {{.JobName}}
   namespace: {{.TestNamespace}}
 spec:
-  ttlSecondsAfterFinished: 5
   template:
     spec:
       containers:
@@ -136,7 +135,9 @@ func TestScaler(t *testing.T) {
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
 	data.Value = 4
-	KubectlApplyWithTemplate(t, data, "insertJobTemplate", setJobTemplate)
+	KubectlApplyWithTemplate(t, data, jobName, setJobTemplate)
+	assert.True(t, WaitForJobSuccess(t, kc, jobName, data.TestNamespace, 6, 10), "update job failed")
+	KubectlDeleteWithTemplate(t, data, jobName, setJobTemplate)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
@@ -144,7 +145,9 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
 	data.Value = 9
-	KubectlApplyWithTemplate(t, data, "deleteJobTemplate", setJobTemplate)
+	KubectlApplyWithTemplate(t, data, jobName, setJobTemplate)
+	assert.True(t, WaitForJobSuccess(t, kc, jobName, data.TestNamespace, 6, 10), "update job failed")
+	KubectlDeleteWithTemplate(t, data, jobName, setJobTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
@@ -153,7 +156,9 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale in ---")
 	data.Value = 0
-	KubectlApplyWithTemplate(t, data, "insertJobTemplate", setJobTemplate)
+	KubectlApplyWithTemplate(t, data, jobName, setJobTemplate)
+	assert.True(t, WaitForJobSuccess(t, kc, jobName, data.TestNamespace, 6, 10), "update job failed")
+	KubectlDeleteWithTemplate(t, data, jobName, setJobTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
