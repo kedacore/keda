@@ -35,6 +35,7 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/klog/v2/klogr"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	basecmd "sigs.k8s.io/custom-metrics-apiserver/pkg/cmd"
@@ -177,7 +178,10 @@ func runScaledObjectController(ctx context.Context, mgr manager.Manager, scaleHa
 		ScaleHandler:            scaleHandler,
 		ExternalMetricsInfo:     externalMetricsInfo,
 		ExternalMetricsInfoLock: externalMetricsInfoLock,
-	}).SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: maxConcurrentReconciles}); err != nil {
+	}).SetupWithManager(mgr, controller.Options{
+		Controller: config.Controller{
+			MaxConcurrentReconciles: maxConcurrentReconciles,
+		}}); err != nil {
 		return err
 	}
 
