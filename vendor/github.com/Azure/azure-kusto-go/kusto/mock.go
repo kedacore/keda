@@ -133,7 +133,7 @@ func (m mockConn) query(_ context.Context, _ string, _ Statement, _ *queryOption
 	return execResp{}, nil
 }
 
-func (m mockConn) mgmt(_ context.Context, _ string, _ Statement, _ *mgmtOptions) (execResp, error) {
+func (m mockConn) mgmt(_ context.Context, _ string, _ Statement, _ *queryOptions) (execResp, error) {
 	framesCh := make(chan frames.Frame, 100)
 	framesCh <- v1.DataTable{}
 	close(framesCh)

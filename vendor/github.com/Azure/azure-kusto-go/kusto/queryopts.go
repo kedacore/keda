@@ -7,7 +7,6 @@ import (
 	"github.com/Azure/azure-kusto-go/kusto/kql"
 	"time"
 
-	"github.com/Azure/azure-kusto-go/kusto/data/errors"
 	"github.com/Azure/azure-kusto-go/kusto/data/value"
 )
 
@@ -25,8 +24,10 @@ type requestProperties struct {
 
 type queryOptions struct {
 	requestProperties *requestProperties
+	queryIngestion    bool
 }
 
+const RequestProgressiveEnabledValue = "results_progressive_enabled"
 const NoRequestTimeoutValue = "norequesttimeout"
 const NoTruncationValue = "notruncation"
 const ServerTimeoutValue = "servertimeout"
@@ -130,19 +131,14 @@ func NoTruncation() QueryOption {
 // ResultsProgressiveDisable disables the progressive query stream.
 func ResultsProgressiveDisable() QueryOption {
 	return func(q *queryOptions) error {
-		delete(q.requestProperties.Options, "results_progressive_enabled")
+		delete(q.requestProperties.Options, RequestProgressiveEnabledValue)
 		return nil
 	}
 }
 
-// queryServerTimeout is the amount of time the server will allow a query to take.
-// NOTE: I have made the serverTimeout private. For the moment, I'm going to use the context.Context timer
-// to set timeouts via this private method.
-func queryServerTimeout(d time.Duration) QueryOption {
+// ServerTimeout overrides the default request timeout.
+func ServerTimeout(d time.Duration) QueryOption {
 	return func(q *queryOptions) error {
-		if d > 1*time.Hour {
-			return errors.ES(errors.OpQuery, errors.KClientArgs, "ServerTimeout option was set to %v, but can't be more than 1 hour", d)
-		}
 		q.requestProperties.Options[ServerTimeoutValue] = value.Timespan{Valid: true, Value: d}.Marshal()
 		return nil
 	}
@@ -567,6 +563,15 @@ func TruncationMaxSize(i int64) QueryOption {
 func ValidatePermissions() QueryOption {
 	return func(q *queryOptions) error {
 		q.requestProperties.Options[ValidatePermissionsValue] = true
+		return nil
+	}
+}
+
+// IngestionEndpoint will instruct the Mgmt call to connect to the ingest-[endpoint] instead of [endpoint].
+// This is not often used by end users and can only be used with a Mgmt() call.
+func IngestionEndpoint() QueryOption {
+	return func(m *queryOptions) error {
+		m.queryIngestion = true
 		return nil
 	}
 }

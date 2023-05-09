@@ -78,7 +78,6 @@ type queryMsg struct {
 
 type connOptions struct {
 	queryOptions *queryOptions
-	mgmtOptions  *mgmtOptions
 }
 
 // query makes a query for the purpose of extracting data from Kusto. Context can be used to set
@@ -92,7 +91,7 @@ func (c *Conn) query(ctx context.Context, db string, query Statement, options *q
 }
 
 // mgmt is used to do management queries to Kusto.
-func (c *Conn) mgmt(ctx context.Context, db string, query Statement, options *mgmtOptions) (execResp, error) {
+func (c *Conn) mgmt(ctx context.Context, db string, query Statement, options *queryOptions) (execResp, error) {
 	return c.execute(ctx, execMgmt, db, query, *options.requestProperties)
 }
 

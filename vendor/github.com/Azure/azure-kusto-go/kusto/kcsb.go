@@ -267,7 +267,7 @@ func (kcsb *ConnectionStringBuilder) WithInteractiveLogin(authorityID string) *C
 // Read more at https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/azcore@v1.2.0/policy#ClientOptions
 func (kcsb *ConnectionStringBuilder) AttachPolicyClientOptions(options *azcore.ClientOptions) *ConnectionStringBuilder {
 	requireNonEmpty(dataSource, kcsb.DataSource)
-	if options == nil {
+	if options != nil {
 		kcsb.ClientOptions = options
 	}
 	return kcsb

@@ -7,12 +7,17 @@ import (
 	"github.com/google/uuid"
 	"io"
 	"net/url"
+	"time"
 )
 
 type DataFormatForStreaming interface {
 	CamelCase() string
 	KnownOrDefault() DataFormatForStreaming
 }
+
+var (
+	streamingIngestDefaultTimeout = 10 * time.Minute
+)
 
 func (c *Conn) StreamIngest(ctx context.Context, db, table string, payload io.Reader, format DataFormatForStreaming, mappingName string, clientRequestId string) error {
 	streamUrl, err := url.Parse(c.endStreamIngest.String())
@@ -47,6 +52,10 @@ func (c *Conn) StreamIngest(ctx context.Context, db, table string, payload io.Re
 	headers := c.getHeaders(properties)
 	headers.Del("Content-Type")
 	headers.Add("Content-Encoding", "gzip")
+
+	if _, ok := ctx.Deadline(); !ok {
+		ctx, _ = context.WithTimeout(ctx, streamingIngestDefaultTimeout)
+	}
 
 	_, body, err := c.doRequestImpl(ctx, errors.OpIngestStream, streamUrl, closeablePayload, headers, fmt.Sprintf("With db: %s, table: %s, mappingName: %s, clientRequestId: %s", db, table, mappingName, clientRequestId))
 	if body != nil {
