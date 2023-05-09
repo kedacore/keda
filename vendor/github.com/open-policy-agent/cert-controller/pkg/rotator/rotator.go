@@ -142,9 +142,11 @@ func AddRotator(mgr manager.Manager, cr *CertRotator) error {
 func addNamespacedCache(mgr manager.Manager, namespace string) (cache.Cache, error) {
 	c, err := cache.New(mgr.GetConfig(),
 		cache.Options{
-			Scheme:    mgr.GetScheme(),
-			Mapper:    mgr.GetRESTMapper(),
-			Namespace: namespace,
+			Scheme: mgr.GetScheme(),
+			Mapper: mgr.GetRESTMapper(),
+			Namespaces: []string{
+				namespace,
+			},
 		})
 	if err != nil {
 		return nil, err
@@ -605,8 +607,8 @@ func ValidCert(caCert, cert, key []byte, dnsName string, keyUsages *[]x509.ExtKe
 	return true, nil
 }
 
-func reconcileSecretAndWebhookMapFunc(webhook WebhookInfo, r *ReconcileWH) func(object client.Object) []reconcile.Request {
-	return func(object client.Object) []reconcile.Request {
+func reconcileSecretAndWebhookMapFunc(webhook WebhookInfo, r *ReconcileWH) func(ctx context.Context, object client.Object) []reconcile.Request {
+	return func(ctx context.Context, object client.Object) []reconcile.Request {
 		whKey := types.NamespacedName{Name: webhook.Name}
 		if object.GetNamespace() != whKey.Namespace {
 			return nil
@@ -630,7 +632,7 @@ func addController(mgr manager.Manager, r *ReconcileWH) error {
 	}
 
 	err = c.Watch(
-		source.NewKindWithCache(&corev1.Secret{}, r.cache),
+		source.Kind(r.cache, &corev1.Secret{}),
 		&handler.EnqueueRequestForObject{},
 	)
 	if err != nil {
@@ -641,7 +643,7 @@ func addController(mgr manager.Manager, r *ReconcileWH) error {
 		wh := &unstructured.Unstructured{}
 		wh.SetGroupVersionKind(webhook.gvk())
 		err = c.Watch(
-			source.NewKindWithCache(wh, r.cache),
+			source.Kind(r.cache, wh),
 			handler.EnqueueRequestsFromMapFunc(reconcileSecretAndWebhookMapFunc(webhook, r)),
 		)
 		if err != nil {

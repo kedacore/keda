@@ -69,7 +69,7 @@ var (
 	metricsServiceAddr        string
 )
 
-func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Duration, maxConcurrentReconciles int) (provider.MetricsProvider, <-chan struct{}, error) {
+func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Duration, maxConcurrentReconciles int) (provider.ExternalMetricsProvider, <-chan struct{}, error) {
 	scheme := scheme.Scheme
 	if err := appsv1.SchemeBuilder.AddToScheme(scheme); err != nil {
 		logger.Error(err, "failed to add apps/v1 scheme to runtime scheme")

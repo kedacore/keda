@@ -92,8 +92,8 @@ type CustomMetricsProvider interface {
 
 	// ListAllMetrics provides a list of all available metrics at
 	// the current time.  Note that this is not allowed to return
-	// an error, so it is recommended that implementors cache and
-	// periodically update this list, instead of querying every time.
+	// an error, so it is recommended that implementors use the
+	// default implementation provided by DefaultCustomMetricsProvider.
 	ListAllMetrics() []CustomMetricInfo
 }
 
@@ -104,6 +104,11 @@ type CustomMetricsProvider interface {
 type ExternalMetricsProvider interface {
 	GetExternalMetric(ctx context.Context, namespace string, metricSelector labels.Selector, info ExternalMetricInfo) (*external_metrics.ExternalMetricValueList, error)
 
+	// ListAllExternalMetrics provides a list of all available
+	// external metrics at the current time.
+	// Note that this is not allowed to return an error, so it is
+	// recommended that implementors use the default implementation
+	// provided by DefaultExternalMetricsProvider.
 	ListAllExternalMetrics() []ExternalMetricInfo
 }
 
