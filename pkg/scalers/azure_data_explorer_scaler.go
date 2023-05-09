@@ -42,7 +42,7 @@ type azureDataExplorerScaler struct {
 
 const adxName = "azure-data-explorer"
 
-func NewAzureDataExplorerScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+func NewAzureDataExplorerScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
