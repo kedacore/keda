@@ -59,6 +59,10 @@ spec:
             name: http
             protocol: TCP
           env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
             - name: WATCH_NAMESPACE
               value: ""
             - name: KEDA_HTTP_DEFAULT_TIMEOUT
