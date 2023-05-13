@@ -320,7 +320,8 @@ func getClientForConnectionPool(metadata externalScalerMetadata, logger logr.Log
 		}
 
 		if len(tlsConfig.Certificates) > 0 || metadata.caCert != "" {
-			return grpc.Dial(metadata.scalerAddress, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+			creds := credentials.NewTLS(tlsConfig)
+			return grpc.Dial(metadata.scalerAddress, grpc.WithTransportCredentials(creds))
 		}
 
 		return grpc.Dial(metadata.scalerAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
