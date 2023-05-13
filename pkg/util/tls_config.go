@@ -20,7 +20,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"os"
 
@@ -60,15 +59,7 @@ func NewTLSConfigWithPassword(clientCert, clientKey, clientKeyPassword, caCert s
 	}
 
 	if caCert != "" {
-		validCA, err := isValidCACert(caCert)
-		if err != nil {
-			return nil, err
-		}
-		if validCA {
-			config.RootCAs.AppendCertsFromPEM([]byte(caCert))
-		} else {
-			return nil, fmt.Errorf("not a valid CA")
-		}
+		config.RootCAs.AppendCertsFromPEM([]byte(caCert))
 	}
 
 	return config, nil
@@ -137,21 +128,4 @@ func decryptClientKey(clientKey, clientKeyPassword string) ([]byte, error) {
 	encodedData := pem.EncodeToMemory(pemPrivateBlock)
 
 	return encodedData, nil
-}
-
-func isValidCACert(cert string) (bool, error) {
-	block, _ := pem.Decode([]byte(cert))
-	if block == nil {
-		return false, errors.New("invalid certificate format")
-	}
-
-	parsedCert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		return false, err
-	}
-
-	if !parsedCert.IsCA {
-		return false, nil
-	}
-	return true, nil
 }

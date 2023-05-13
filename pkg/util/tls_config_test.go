@@ -225,15 +225,6 @@ func TestNewTLSConfig_WithPassword(t *testing.T) {
 			CACert:   "",
 			isError:  false,
 		},
-		{
-			name:     "Cert_WithInvalidCACert",
-			cert:     rsaCertPEM,
-			key:      encryptedKeyPEM,
-			password: "keypass",
-			issuer:   "O=Internet Widgits Pty Ltd,ST=Some-State,C=AU",
-			CACert:   "invalidCACert",
-			isError:  true,
-		},
 	}
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
