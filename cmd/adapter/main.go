@@ -21,7 +21,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -151,14 +150,11 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 	handler := scaling.NewScaleHandler(mgr.GetClient(), nil, scheme, globalHTTPTimeout, recorder, secretInformer.Lister())
 	kubeInformerFactory.Start(ctx.Done())
 
-	externalMetricsInfo := &[]provider.ExternalMetricInfo{}
-	externalMetricsInfoLock := &sync.RWMutex{}
-
 	prometheusServer := &prommetrics.PrometheusMetricServer{}
 	go func() { prometheusServer.NewServer(fmt.Sprintf(":%v", prometheusMetricsPort), prometheusMetricsPath) }()
 
 	stopCh := make(chan struct{})
-	if err := runScaledObjectController(ctx, mgr, handler, logger, externalMetricsInfo, externalMetricsInfoLock, maxConcurrentReconciles, stopCh, secretInformer.Informer().HasSynced); err != nil {
+	if err := runScaledObjectController(ctx, mgr, handler, logger, maxConcurrentReconciles, stopCh, secretInformer.Informer().HasSynced); err != nil {
 		return nil, nil, err
 	}
 
@@ -169,15 +165,13 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 		return nil, nil, err
 	}
 
-	return kedaprovider.NewProvider(ctx, logger, handler, mgr.GetClient(), *grpcClient, useMetricsServiceGrpc, namespace, externalMetricsInfo, externalMetricsInfoLock), stopCh, nil
+	return kedaprovider.NewProvider(ctx, logger, handler, mgr.GetClient(), *grpcClient, useMetricsServiceGrpc, namespace), stopCh, nil
 }
 
-func runScaledObjectController(ctx context.Context, mgr manager.Manager, scaleHandler scaling.ScaleHandler, logger logr.Logger, externalMetricsInfo *[]provider.ExternalMetricInfo, externalMetricsInfoLock *sync.RWMutex, maxConcurrentReconciles int, stopCh chan<- struct{}, secretSynced cache.InformerSynced) error {
+func runScaledObjectController(ctx context.Context, mgr manager.Manager, scaleHandler scaling.ScaleHandler, logger logr.Logger, maxConcurrentReconciles int, stopCh chan<- struct{}, secretSynced cache.InformerSynced) error {
 	if err := (&kedacontrollers.MetricsScaledObjectReconciler{
-		Client:                  mgr.GetClient(),
-		ScaleHandler:            scaleHandler,
-		ExternalMetricsInfo:     externalMetricsInfo,
-		ExternalMetricsInfoLock: externalMetricsInfoLock,
+		Client:       mgr.GetClient(),
+		ScaleHandler: scaleHandler,
 	}).SetupWithManager(mgr, controller.Options{
 		Controller: config.Controller{
 			MaxConcurrentReconciles: maxConcurrentReconciles,

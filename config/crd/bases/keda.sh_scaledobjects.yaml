@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.11.1
+    controller-gen.kubebuilder.io/version: v0.11.3
   creationTimestamp: null
   name: scaledobjects.keda.sh
 spec:
@@ -97,18 +97,18 @@ spec:
                                     which must hold true for a specified past interval.
                                   properties:
                                     periodSeconds:
-                                      description: PeriodSeconds specifies the window
+                                      description: periodSeconds specifies the window
                                         of time for which the policy should hold true.
                                         PeriodSeconds must be greater than zero and
                                         less than or equal to 1800 (30 min).
                                       format: int32
                                       type: integer
                                     type:
-                                      description: Type is used to specify the scaling
+                                      description: type is used to specify the scaling
                                         policy.
                                       type: string
                                     value:
-                                      description: Value contains the amount of change
+                                      description: value contains the amount of change
                                         which is permitted by the policy. It must
                                         be greater than zero
                                       format: int32
@@ -126,7 +126,7 @@ spec:
                                   Max is used.
                                 type: string
                               stabilizationWindowSeconds:
-                                description: 'StabilizationWindowSeconds is the number
+                                description: 'stabilizationWindowSeconds is the number
                                   of seconds for which past recommendations should
                                   be considered while scaling up or scaling down.
                                   StabilizationWindowSeconds must be greater than
@@ -154,18 +154,18 @@ spec:
                                     which must hold true for a specified past interval.
                                   properties:
                                     periodSeconds:
-                                      description: PeriodSeconds specifies the window
+                                      description: periodSeconds specifies the window
                                         of time for which the policy should hold true.
                                         PeriodSeconds must be greater than zero and
                                         less than or equal to 1800 (30 min).
                                       format: int32
                                       type: integer
                                     type:
-                                      description: Type is used to specify the scaling
+                                      description: type is used to specify the scaling
                                         policy.
                                       type: string
                                     value:
-                                      description: Value contains the amount of change
+                                      description: value contains the amount of change
                                         which is permitted by the policy. It must
                                         be greater than zero
                                       format: int32
@@ -183,7 +183,7 @@ spec:
                                   Max is used.
                                 type: string
                               stabilizationWindowSeconds:
-                                description: 'StabilizationWindowSeconds is the number
+                                description: 'stabilizationWindowSeconds is the number
                                   of seconds for which past recommendations should
                                   be considered while scaling up or scaling down.
                                   StabilizationWindowSeconds must be greater than

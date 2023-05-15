@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/labels"
@@ -42,12 +41,10 @@ import (
 type KedaProvider struct {
 	defaults.DefaultExternalMetricsProvider
 
-	client                  client.Client
-	scaleHandler            scaling.ScaleHandler
-	watchedNamespace        string
-	ctx                     context.Context
-	externalMetricsInfo     *[]provider.ExternalMetricInfo
-	externalMetricsInfoLock *sync.RWMutex
+	client           client.Client
+	scaleHandler     scaling.ScaleHandler
+	watchedNamespace string
+	ctx              context.Context
 
 	grpcClient            metricsservice.GrpcClient
 	useMetricsServiceGrpc bool
@@ -61,16 +58,14 @@ var (
 )
 
 // NewProvider returns an instance of KedaProvider
-func NewProvider(ctx context.Context, adapterLogger logr.Logger, scaleHandler scaling.ScaleHandler, client client.Client, grpcClient metricsservice.GrpcClient, useMetricsServiceGrpc bool, watchedNamespace string, externalMetricsInfo *[]provider.ExternalMetricInfo, externalMetricsInfoLock *sync.RWMutex) provider.ExternalMetricsProvider {
+func NewProvider(ctx context.Context, adapterLogger logr.Logger, scaleHandler scaling.ScaleHandler, client client.Client, grpcClient metricsservice.GrpcClient, useMetricsServiceGrpc bool, watchedNamespace string) provider.ExternalMetricsProvider {
 	provider := &KedaProvider{
-		client:                  client,
-		scaleHandler:            scaleHandler,
-		watchedNamespace:        watchedNamespace,
-		ctx:                     ctx,
-		externalMetricsInfo:     externalMetricsInfo,
-		externalMetricsInfoLock: externalMetricsInfoLock,
-		grpcClient:              grpcClient,
-		useMetricsServiceGrpc:   useMetricsServiceGrpc,
+		client:                client,
+		scaleHandler:          scaleHandler,
+		watchedNamespace:      watchedNamespace,
+		ctx:                   ctx,
+		grpcClient:            grpcClient,
+		useMetricsServiceGrpc: useMetricsServiceGrpc,
 	}
 	logger = adapterLogger.WithName("provider")
 	logger.Info("starting")
