@@ -51,7 +51,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- **Azure Data Exporer Scaler**: Use azidentity SDK ([#4489](https://github.com/kedacore/keda/issues/4489))
 - **GCP PubSub Scaler**: Make it more flexible for metrics ([#4243](https://github.com/kedacore/keda/issues/4243))
 
 ### Fixes
@@ -66,7 +66,12 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Deprecations
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
+
+New deprecation(s):
+
+- **Azure Data Explorer**: Deprecate `metadata.clientSecret` ([#4514](https://github.com/kedacore/keda/issues/4514))
+
 
 ### Breaking Changes
 
