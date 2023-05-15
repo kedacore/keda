@@ -45,11 +45,12 @@ func (hd *defaultHostDialer) DialHost(ctx context.Context, host *HostInfo) (*Dia
 		return nil, fmt.Errorf("host missing port: %v", port)
 	}
 
-	addr := host.HostnameAndPort()
-	conn, err := hd.dialer.DialContext(ctx, "tcp", addr)
+	connAddr := host.ConnectAddressAndPort()
+	conn, err := hd.dialer.DialContext(ctx, "tcp", connAddr)
 	if err != nil {
 		return nil, err
 	}
+	addr := host.HostnameAndPort()
 	return WrapTLS(ctx, conn, addr, hd.tlsConfig)
 }
 

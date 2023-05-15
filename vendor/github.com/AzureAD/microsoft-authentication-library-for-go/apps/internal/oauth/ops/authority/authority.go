@@ -28,10 +28,19 @@ const (
 	regionName                        = "REGION_NAME"
 	defaultAPIVersion                 = "2021-10-01"
 	imdsEndpoint                      = "http://169.254.169.254/metadata/instance/compute/location?format=text&api-version=" + defaultAPIVersion
-	defaultHost                       = "login.microsoftonline.com"
 	autoDetectRegion                  = "TryAutoDetect"
 )
 
+// These are various hosts that host AAD Instance discovery endpoints.
+const (
+	defaultHost          = "login.microsoftonline.com"
+	loginMicrosoft       = "login.microsoft.com"
+	loginWindows         = "login.windows.net"
+	loginSTSWindows      = "sts.windows.net"
+	loginMicrosoftOnline = defaultHost
+)
+
+// jsonCaller is an interface that allows us to mock the JSONCall method.
 type jsonCaller interface {
 	JSONCall(ctx context.Context, endpoint string, headers http.Header, qv url.Values, body, resp interface{}) error
 }
@@ -54,6 +63,8 @@ func TrustedHost(host string) bool {
 	return false
 }
 
+// OAuthResponseBase is the base JSON return message for an OAuth call.
+// This is embedded in other calls to get the base fields from every response.
 type OAuthResponseBase struct {
 	Error            string `json:"error"`
 	SubError         string `json:"suberror"`
@@ -442,6 +453,8 @@ func (c Client) GetTenantDiscoveryResponse(ctx context.Context, openIDConfigurat
 	return resp, err
 }
 
+// AADInstanceDiscovery attempts to discover a tenant endpoint (used in OIDC auth with an authorization endpoint).
+// This is done by AAD which allows for aliasing of tenants (windows.sts.net is the same as login.windows.com).
 func (c Client) AADInstanceDiscovery(ctx context.Context, authorityInfo Info) (InstanceDiscoveryResponse, error) {
 	region := ""
 	var err error
@@ -454,9 +467,10 @@ func (c Client) AADInstanceDiscovery(ctx context.Context, authorityInfo Info) (I
 	if region != "" {
 		environment := authorityInfo.Host
 		switch environment {
-		case "login.microsoft.com", "login.windows.net", "sts.windows.net", defaultHost:
-			environment = "r." + defaultHost
+		case loginMicrosoft, loginWindows, loginSTSWindows, defaultHost:
+			environment = loginMicrosoft
 		}
+
 		resp.TenantDiscoveryEndpoint = fmt.Sprintf(tenantDiscoveryEndpointWithRegion, region, environment, authorityInfo.Tenant)
 		metadata := InstanceDiscoveryMetadata{
 			PreferredNetwork: fmt.Sprintf("%v.%v", region, authorityInfo.Host),
