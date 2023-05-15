@@ -33,7 +33,7 @@ var (
 	secretName                = fmt.Sprintf("%s-secret", testName)
 	redisPassword             = "admin"
 	redisHost                 = fmt.Sprintf("%s-headless", testName)
-	minReplicaCount           = 1
+	minReplicaCount           = 0
 	maxReplicaCount           = 4
 )
 

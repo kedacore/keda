@@ -233,21 +233,18 @@ func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser)
 
 	if val, ok := config.TriggerMetadata[consumerGroupNameMetadata]; ok {
 		// For now, we'll make the default xLagFactor
-		meta.scaleFactor = xLagFactor
-		meta.targetLag = defaultTargetLag
 		meta.consumerGroupName = val
-		meta.targetPendingEntriesCount = defaultTargetEntries
+		// meta.targetPendingEntriesCount = defaultTargetEntries
 		if val, ok := config.TriggerMetadata[lagMetadata]; ok {
+			meta.scaleFactor = xLagFactor
+			meta.targetLag = defaultTargetLag
 			lag, err := strconv.ParseInt(val, 10, 64)
 			if err != nil {
 				return nil, fmt.Errorf("error parsing lag: %w", err)
 			}
 			meta.targetLag = lag
-		}
-		// Remember to add user-defined targetLag capability later. For now, just use default. 
-		// Need to add below functionality back
-		/*
-			meta.consumerGroupName = val
+		} else {
+			// return nil, fmt.Errorf("error parsing pending entries count: %w", err)
 			meta.scaleFactor = xPendingFactor
 			meta.targetPendingEntriesCount = defaultTargetEntries
 			if val, ok := config.TriggerMetadata[pendingEntriesCountMetadata]; ok {
@@ -257,7 +254,7 @@ func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser)
 				}
 				meta.targetPendingEntriesCount = pendingEntriesCount
 			}
-		*/
+		}
 	} else {
 		meta.scaleFactor = xLengthFactor
 		meta.targetStreamLength = defaultTargetEntries

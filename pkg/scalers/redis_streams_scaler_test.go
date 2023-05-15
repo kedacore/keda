@@ -212,7 +212,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			},
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5, // default. Will change to add flexibility later
+				targetPendingEntriesCount: 0, 
 				targetLag:                 6,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -236,7 +236,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			},
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 6,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -263,7 +263,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			},
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 7,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -290,7 +290,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			authParams: map[string]string{},
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 7,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -318,7 +318,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			resolvedEnv: testRedisResolvedEnv,
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 7,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -346,7 +346,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			},
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 7,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -374,7 +374,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			resolvedEnv: testRedisResolvedEnv,
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 7,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -403,7 +403,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			},
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 7,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -435,7 +435,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			},
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 7,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -480,12 +480,12 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
-				targetLag:                 5,
+				targetLag:                 0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{":7001", ":7002"},
 				},
-				scaleFactor: xLagFactor,
+				scaleFactor: xPendingFactor,
 			},
 			wantErr: nil,
 		},
@@ -569,7 +569,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			},
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 7,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -593,7 +593,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			},
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 7,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -620,7 +620,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			},
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 7,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -647,7 +647,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			authParams: map[string]string{},
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 7,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -675,7 +675,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			resolvedEnv: testRedisResolvedEnv,
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 7,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -703,7 +703,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			},
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 7,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -731,7 +731,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			resolvedEnv: testRedisResolvedEnv,
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 7,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -759,7 +759,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			},
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 7,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -786,7 +786,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			authParams: map[string]string{},
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 7,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -814,7 +814,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			resolvedEnv: testRedisResolvedEnv,
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 7,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -842,7 +842,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			},
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 7,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -870,7 +870,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			resolvedEnv: testRedisResolvedEnv,
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 7,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -898,7 +898,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			},
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 7,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -925,7 +925,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			authParams: map[string]string{},
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 7,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -953,7 +953,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			resolvedEnv: testRedisResolvedEnv,
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 7,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -982,7 +982,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			},
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 7,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -1014,7 +1014,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			},
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 7,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
@@ -1067,7 +1067,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			authParams: map[string]string{},
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
-				targetPendingEntriesCount: 5,
+				targetPendingEntriesCount: 0,
 				targetLag:                 70,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
