@@ -245,6 +245,20 @@ github.com/andybalholm/brotli
 # github.com/antlr/antlr4/runtime/Go/antlr v1.4.10
 ## explicit; go 1.16
 github.com/antlr/antlr4/runtime/Go/antlr
+# github.com/antonmedv/expr v1.12.5
+## explicit; go 1.13
+github.com/antonmedv/expr
+github.com/antonmedv/expr/ast
+github.com/antonmedv/expr/builtin
+github.com/antonmedv/expr/checker
+github.com/antonmedv/expr/compiler
+github.com/antonmedv/expr/conf
+github.com/antonmedv/expr/file
+github.com/antonmedv/expr/optimizer
+github.com/antonmedv/expr/parser
+github.com/antonmedv/expr/parser/lexer
+github.com/antonmedv/expr/vm
+github.com/antonmedv/expr/vm/runtime
 # github.com/apapsch/go-jsonmerge/v2 v2.0.0
 ## explicit; go 1.12
 github.com/apapsch/go-jsonmerge/v2

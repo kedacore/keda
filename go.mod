@@ -22,6 +22,7 @@ require (
 	github.com/DataDog/datadog-api-client-go v1.16.0
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.38.1
+	github.com/antonmedv/expr v1.12.5
 	github.com/arangodb/go-driver v1.6.0
 	github.com/aws/aws-sdk-go v1.44.287
 	github.com/bradleyfalzon/ghinstallation/v2 v2.5.0
