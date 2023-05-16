@@ -19,13 +19,16 @@ package keda
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode"
 
 	"github.com/go-logr/logr"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -212,6 +215,7 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 		return nil, err
 	}
 
+	// TODO: it returns indexed names here
 	metricSpecs := cache.GetMetricSpecForScaling(ctx)
 
 	for _, metricSpec := range metricSpecs {
@@ -246,7 +250,47 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 
 	updateHealthStatus(scaledObject, externalMetricNames, status)
 
+	// if ComplexScalingLogic struct is not nil, expect Formula or ExternalCalculation
+	// to be non-empty. If target is > 0.0 create a compositeScaler structure
+	if !reflect.DeepEqual(scaledObject.Spec.Advanced.ComplexScalingLogic, kedav1alpha1.ComplexScalingLogic{}) {
+		validNumTarget, validMetricType, err := validateCompositeScalingLogic(scaledObject, scaledObjectMetricSpecs)
+		if err != nil {
+			logger.Error(err, "error validating compositeScalingLogic")
+			return nil, err
+		}
+
+		// if target is valid, use composite scaler.
+		// Expect Formula or ExternalCalculation that returns one metric
+		if validNumTarget > 0.0 {
+			qual := resource.NewMilliQuantity(int64(validNumTarget*1000), resource.DecimalSI)
+
+			if err != nil {
+				logger.Error(err, "Error parsing Quantity elements for composite scaler")
+				return nil, err
+			}
+			compositeSpec := autoscalingv2.MetricSpec{
+				Type: autoscalingv2.MetricSourceType("External"),
+				External: &autoscalingv2.ExternalMetricSource{
+					Metric: autoscalingv2.MetricIdentifier{
+						Name: "composite-metric-name",
+						Selector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{"scaledobject.keda.sh/name": scaledObject.Name},
+						},
+					},
+					Target: autoscalingv2.MetricTarget{
+						Type:         validMetricType,
+						AverageValue: qual,
+					},
+				},
+			}
+			status.CompositeScalerName = "composite-metric-name"
+
+			// overwrite returned array with composite metric ONLY
+			scaledObjectMetricSpecs = []autoscalingv2.MetricSpec{compositeSpec}
+		}
+	}
 	err = kedastatus.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status)
+
 	if err != nil {
 		logger.Error(err, "Error updating scaledObject status with used externalMetricNames")
 		return nil, err
@@ -294,4 +338,62 @@ func getHPAMaxReplicas(scaledObject *kedav1alpha1.ScaledObject) int32 {
 		return *scaledObject.Spec.MaxReplicaCount
 	}
 	return defaultHPAMaxReplicas
+}
+
+// validateCompositeScalingLogic validates all combinations of given arguments
+// and their values
+func validateCompositeScalingLogic(so *kedav1alpha1.ScaledObject, specs []autoscalingv2.MetricSpec) (float64, autoscalingv2.MetricTargetType, error) {
+	csl := so.Spec.Advanced.ComplexScalingLogic
+
+	// if Formula AND ExternalCalculation is empty, return an error
+	if csl.Formula == "" && len(csl.ExternalCalculations) == 0 {
+		return -1, autoscalingv2.MetricTargetType(""), fmt.Errorf("error atleast one complex scaling logic needs to be specified (formula or externalCalculation)")
+	}
+
+	var num float64
+	var metricType autoscalingv2.MetricTargetType
+	var err error
+	// If ComplexScalingLogic.Formula is non-empty, target needs to be specified
+	if csl.Formula != "" {
+		if csl.Target == "" {
+			return -1, autoscalingv2.MetricTargetType(""), fmt.Errorf("error complexScalingLogic formula is given, but target is empty")
+		}
+		// TODO: possibly validate formula here otherwise combine the two ifs above
+	}
+
+	// if ExternalCalculation is given, target doesnt need to be specified but can depending
+	// on if the user wants to use custom composite scaler
+	// if len(csl.ExternalCalculations) > 0 {
+	// TODO: check if connection to the endpoints are valid?
+	// }
+
+	if csl.Target != "" {
+		// convert string to float
+		num, err = strconv.ParseFloat(csl.Target, 64)
+		if err != nil || num <= 0.0 {
+			return -1, autoscalingv2.MetricTargetType(""), fmt.Errorf("error converting target for complex logic (string->float): %s", err)
+		}
+	}
+
+	// if both are empty OR both are given its an error
+	// if (csl.Formula == "" && len(csl.ComplexScalingLogic) == 0) ||
+	// (csl.Formula != "" && len(csl.ComplexScalingLogic) > 0) {
+	// err := fmt.Errorf("error exactly one of Formula or ExternalCalculator can be given")
+	// return -1, autoscalingv2.MetricTargetType(""), err
+	// }
+
+	// if target is given, complex custom scaler for metric collection will be
+	// passed to HPA config -> all types need to be the same
+	if csl.Target != "" {
+		// make sure all scalers have the same metricTargetType
+		for i, metric := range specs {
+			if i == 0 {
+				metricType = metric.External.Target.Type
+			} else if metric.External.Target.Type != metricType {
+				err := fmt.Errorf("error metric target type not the same for composite scaler: %s & %s", metricType, metric.External.Target.Type)
+				return -1, metricType, err
+			}
+		}
+	}
+	return num, metricType, nil
 }

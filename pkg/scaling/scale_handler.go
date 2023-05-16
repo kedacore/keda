@@ -23,7 +23,10 @@ import (
 	"sync"
 	"time"
 
+	expr "github.com/antonmedv/expr"
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	corev1listers "k8s.io/client-go/listers/core/v1"
@@ -402,7 +405,7 @@ func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject int
 
 // GetScaledObjectMetrics returns metrics for specified metric name for a ScaledObject identified by its name and namespace.
 // It could either query the metric value directly from the scaler or from a cache, that's being stored for the scaler.
-func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, error) {
+func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricsName string) (*external_metrics.ExternalMetricValueList, error) {
 	logger := log.WithValues("scaledObject.Namespace", scaledObjectNamespace, "scaledObject.Name", scaledObjectName)
 
 	var matchingMetrics []external_metrics.ExternalMetricValue
@@ -426,6 +429,9 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	isScalerError := false
 	scaledObjectIdentifier := scaledObject.GenerateIdentifier()
 
+	metricsArray := getTrueMetricArray(metricsName, scaledObject)
+	metricTriggerPairList := make(map[string]string)
+
 	// let's check metrics for all scalers in a ScaledObject
 	scalers, scalerConfigs := cache.GetScalers()
 	for scalerIndex := 0; scalerIndex < len(scalers); scalerIndex++ {
@@ -441,14 +447,32 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 			cache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 		}
 
+		if len(metricsArray) == 0 {
+			err = fmt.Errorf("no metrics found getting metricsArray array")
+			logger.Error(err, "error metricsArray is empty")
+			// TODO: add cache.Recorder?
+		}
+
 		for _, spec := range metricSpecs {
 			// skip cpu/memory resource scaler
 			if spec.External == nil {
 				continue
 			}
 
-			// Filter only the desired metric
-			if strings.EqualFold(spec.External.Metric.Name, metricName) {
+			// Filter only the desired metric or if composite scaler is active, metricsArray
+			// is all external metrics
+			if arrayContainsElement(spec.External.Metric.Name, metricsArray) {
+				// if compositeScaler is used, override with current metric, otherwise do nothing
+				metricName := spec.External.Metric.Name
+
+				// if compositeScaler is given, add pair to the list
+				if scaledObject.Spec.Advanced.ComplexScalingLogic.Target != "" {
+					metricTriggerPairList, err = pairTriggersAndMetrics(metricTriggerPairList, metricName, scalerConfigs[scalerIndex].TriggerName)
+					if err != nil {
+						logger.Error(err, "error pairing triggers & metrics for compositeScaler")
+					}
+				}
+
 				var metrics []external_metrics.ExternalMetricValue
 
 				// if cache is defined for this scaler/metric, let's try to hit it first
@@ -500,7 +524,24 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	}
 
 	if len(matchingMetrics) == 0 {
-		return nil, fmt.Errorf("no matching metrics found for " + metricName)
+		return nil, fmt.Errorf("no matching metrics found for " + metricsName)
+	}
+
+	logger.V(0).Info(">>3: MATCHED-METRICS", "metrics", matchingMetrics, "metricsName", metricsName)
+
+	// apply external calculations
+	for i, ec := range scaledObject.Spec.Advanced.ComplexScalingLogic.ExternalCalculations {
+		// call urls and return modified metric list
+		logger.V(0).Info(">>3.1 EXT-CALC CALL", "i", i, "name", ec.Name, "url", ec.URL)
+	}
+
+	// apply formula
+	if scaledObject.Spec.Advanced.ComplexScalingLogic.Formula != "" {
+		logger.V(0).Info(">>3.2 FORMULA", "formula", scaledObject.Spec.Advanced.ComplexScalingLogic.Formula, "target", scaledObject.Spec.Advanced.ComplexScalingLogic.Target)
+		matchingMetrics, err = applyCustomScalerFormula(matchingMetrics, scaledObject.Spec.Advanced.ComplexScalingLogic.Formula, metricTriggerPairList, logger)
+		if err != nil {
+			logger.Error(err, "error applying custom compositeScaler formula")
+		}
 	}
 
 	return &external_metrics.ExternalMetricValueList{
@@ -680,4 +721,82 @@ func (h *scaleHandler) isScaledJobActive(ctx context.Context, scaledJob *kedav1a
 
 	logger.V(1).WithValues("ScaledJob", scaledJob.Name).Info("Checking if ScaleJob Scalers are active", "isActive", isActive, "maxValue", maxFloatValue, "MultipleScalersCalculation", scaledJob.Spec.ScalingStrategy.MultipleScalersCalculation)
 	return isActive, queueLength, maxValue
+	// getTrueMetricArray is a help function made for composite scaler to determine
+	// what metrics should be used. In case of composite scaler, all external
+	// metrics will be used (returns all external metrics), otherwise it returns the
+	// same metric given
+}
+
+func getTrueMetricArray(metricName string, so *kedav1alpha1.ScaledObject) []string {
+	// if composite scaler is given return all external metrics
+	if so.Spec.Advanced.ComplexScalingLogic.Target != "" {
+		return so.Status.ExternalMetricNames
+	}
+	return []string{metricName}
+}
+
+// help function to determine whether or not metricName is the correct one.
+// standard function will be array of one element if it matches or none if it doesnt
+// that is given from getTrueMetricArray().
+// In case of compositeScaler, cycle through all external metric names
+func arrayContainsElement(el string, arr []string) bool {
+	for _, item := range arr {
+		if strings.EqualFold(item, el) {
+			return true
+		}
+	}
+	return false
+}
+
+// apply custom formula to metrics and return calculated and finalized metric
+func applyCustomScalerFormula(list []external_metrics.ExternalMetricValue, formula string, pairList map[string]string, logger logr.Logger) ([]external_metrics.ExternalMetricValue, error) {
+	var ret external_metrics.ExternalMetricValue
+	var out float64
+	ret.MetricName = "composite-metric-name"
+	ret.Timestamp = v1.Now()
+
+	// using https://github.com/antonmedv/expr to evaluate formula expression
+	data := make(map[string]float64)
+	for _, v := range list {
+		data[pairList[v.MetricName]] = v.Value.AsApproximateFloat64()
+	}
+
+	program, err := expr.Compile(formula)
+	if err != nil {
+		return nil, fmt.Errorf("error trying to compile custom formula: %s", err)
+	}
+
+	tmp, err := expr.Run(program, data)
+	if err != nil {
+		return nil, fmt.Errorf("error trying to run custom formula: %s", err)
+	}
+
+	out = tmp.(float64)
+	ret.Value.SetMilli(int64(out * 1000))
+	logger.V(0).Info(">>3.3: RUN", "tmp", tmp, "out", out, "struct", ret)
+	return []external_metrics.ExternalMetricValue{ret}, nil
+}
+
+func pairTriggersAndMetrics(list map[string]string, metric string, trigger string) (map[string]string, error) {
+	if trigger == "" {
+		return list, fmt.Errorf("trigger name not given with compositeScaler for metric %s", metric)
+	}
+
+	triggerHasMetrics := 0
+	// count number of metrics per trigger
+	for _, t := range list {
+		if strings.HasPrefix(t, trigger) {
+			triggerHasMetrics++
+		}
+	}
+
+	// if trigger doesnt have a pair yet
+	if triggerHasMetrics == 0 {
+		list[metric] = trigger
+	} else {
+		// if trigger has a pair add a number
+		list[metric] = fmt.Sprintf("%s%02d", trigger, triggerHasMetrics)
+	}
+
+	return list, nil
 }

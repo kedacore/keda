@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package externalCalculation;
+option go_package = ".;externalCalculation";
+
+service ExternalCalculation {
+	rpc Calculate (MetricsList) returns (Response) {};
+}
+
+message MetricsList {
+	repeated Metric metricValues = 1;
+}
+
+message Metric {
+	string name = 1;
+	float value = 2;
+}
+
+message Response {
+	MetricsList list = 1;
+	string error = 2;
+}

@@ -102,6 +102,26 @@ type AdvancedConfig struct {
 	HorizontalPodAutoscalerConfig *HorizontalPodAutoscalerConfig `json:"horizontalPodAutoscalerConfig,omitempty"`
 	// +optional
 	RestoreToOriginalReplicaCount bool `json:"restoreToOriginalReplicaCount,omitempty"`
+	// +optional
+	ComplexScalingLogic ComplexScalingLogic `json:"complexScalingLogic,omitempty"`
+}
+
+// complexScalingLogic describes formula for scaling with its target
+type ComplexScalingLogic struct {
+	// +optional
+	ExternalCalculations []ExternalCalculation `json:"externalCalculator,omitempty"`
+	// +optional
+	Formula string `json:"formula,omitempty"`
+	// +optional
+	Target string `json:"target,omitempty"`
+}
+
+type ExternalCalculation struct {
+	Name    string `json:"name"`
+	URL     string `json:"url"`
+	Timeout string `json:"timeout"`
+	// +optional
+	Fallback Fallback `json:"fallback,omitempty"`
 }
 
 // HorizontalPodAutoscalerConfig specifies horizontal scale config
@@ -140,6 +160,8 @@ type ScaledObjectStatus struct {
 	ExternalMetricNames []string `json:"externalMetricNames,omitempty"`
 	// +optional
 	ResourceMetricNames []string `json:"resourceMetricNames,omitempty"`
+	// +optional
+	CompositeScalerName string `json:"compositeScalerName,omitempty"`
 	// +optional
 	Conditions Conditions `json:"conditions,omitempty"`
 	// +optional
