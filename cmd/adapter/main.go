@@ -150,11 +150,6 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 	prometheusServer := &prommetrics.PrometheusMetricServer{}
 	go func() { prometheusServer.NewServer(fmt.Sprintf(":%v", prometheusMetricsPort), prometheusMetricsPath) }()
 
-	stopCh := make(chan struct{})
-	if err := runScaledObjectController(ctx, mgr, handler, logger, stopCh, secretInformer.Informer().HasSynced); err != nil {
-		return nil, nil, err
-	}
-
 	logger.Info("Connecting Metrics Service gRPC client to the server", "address", metricsServiceAddr)
 	grpcClient, err := metricsservice.NewGrpcClient(metricsServiceAddr, a.SecureServing.ServerCert.CertDirectory)
 	if err != nil {
@@ -163,21 +158,6 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 	}
 
 	return kedaprovider.NewProvider(ctx, logger, handler, mgr.GetClient(), *grpcClient, useMetricsServiceGrpc, namespace), stopCh, nil
-}
-
-func runScaledObjectController(ctx context.Context, mgr manager.Manager, scaleHandler scaling.ScaleHandler, logger logr.Logger, stopCh chan<- struct{}, secretSynced cache.InformerSynced) error {
-	go func() {
-		if err := mgr.Start(ctx); err != nil {
-			logger.Error(err, "controller-runtime encountered an error")
-			stopCh <- struct{}{}
-			close(stopCh)
-		}
-	}()
-
-	if ok := cache.WaitForCacheSync(ctx.Done(), secretSynced); !ok {
-		return fmt.Errorf("failed to wait Secrets cache synced")
-	}
-	return nil
 }
 
 // generateDefaultMetricsServiceAddr generates default Metrics Service gRPC Server address based on the current Namespace.
