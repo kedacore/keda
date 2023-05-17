@@ -35,6 +35,9 @@ spec:
     - jsonPath: .status.conditions[?(@.type=="Active")].status
       name: Active
       type: string
+    - jsonPath: .status.conditions[?(@.type=="Paused")].status
+      name: Paused
+      type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
@@ -8264,6 +8267,8 @@ spec:
           status:
             description: ScaledJobStatus defines the observed state of ScaledJob
             properties:
+              Paused:
+                type: string
               conditions:
                 description: Conditions an array representation to store multiple
                   Conditions
