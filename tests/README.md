@@ -25,7 +25,7 @@ go test -v -tags e2e ./scalers/azure_queue/azure_queue_test.go # Assumes that se
 > **Note**
 > On macOS you might need to set following environment variable in order to run the tests: `GOOS="darwin"`
 >
-> eg. `GOOS="darwin" go test -v tags e2e ...`
+> eg. `GOOS="darwin" go test -v -tags e2e ...`
 
 Refer to [this](https://pkg.go.dev/testing) for more information about testing in `Go`.
 
@@ -66,6 +66,7 @@ Test are split in different folders based on what it's testing:
 - `internals`: KEDA internals (ie: HPA related stuff).
 - `scalers`: Anything related with scalers.
 - `secret-providers`: Anything related with how KEDA gets the secrets for working (ie: pod-identity, vault, etc).
+- `sequential`: Tests that can't be run in parallel with other tests (eg. the test modifies KEDA installation or configuration, etc.).
 
 #### ⚠⚠ Important: ⚠⚠
 >
