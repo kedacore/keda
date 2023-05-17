@@ -23,18 +23,16 @@ import (
 	"os"
 	"time"
 
-	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 	"k8s.io/klog/v2/klogr"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 	basecmd "sigs.k8s.io/custom-metrics-apiserver/pkg/cmd"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 
@@ -66,44 +64,44 @@ var (
 	metricsServiceAddr        string
 )
 
-func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Duration) (provider.ExternalMetricsProvider, <-chan struct{}, error) {
+func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Duration) (provider.ExternalMetricsProvider, error) {
 	scheme := scheme.Scheme
 	if err := appsv1.SchemeBuilder.AddToScheme(scheme); err != nil {
 		logger.Error(err, "failed to add apps/v1 scheme to runtime scheme")
-		return nil, nil, fmt.Errorf("failed to add apps/v1 scheme to runtime scheme (%s)", err)
+		return nil, fmt.Errorf("failed to add apps/v1 scheme to runtime scheme (%s)", err)
 	}
 	if err := kedav1alpha1.SchemeBuilder.AddToScheme(scheme); err != nil {
 		logger.Error(err, "failed to add keda scheme to runtime scheme")
-		return nil, nil, fmt.Errorf("failed to add keda scheme to runtime scheme (%s)", err)
+		return nil, fmt.Errorf("failed to add keda scheme to runtime scheme (%s)", err)
 	}
 	namespace, err := getWatchNamespace()
 	if err != nil {
 		logger.Error(err, "failed to get watch namespace")
-		return nil, nil, fmt.Errorf("failed to get watch namespace (%s)", err)
+		return nil, fmt.Errorf("failed to get watch namespace (%s)", err)
 	}
 
 	leaseDuration, err := kedautil.ResolveOsEnvDuration("KEDA_METRICS_LEADER_ELECTION_LEASE_DURATION")
 	if err != nil {
 		logger.Error(err, "invalid KEDA_METRICS_LEADER_ELECTION_LEASE_DURATION")
-		return nil, nil, fmt.Errorf("invalid KEDA_METRICS_LEADER_ELECTION_LEASE_DURATION (%s)", err)
+		return nil, fmt.Errorf("invalid KEDA_METRICS_LEADER_ELECTION_LEASE_DURATION (%s)", err)
 	}
 
 	renewDeadline, err := kedautil.ResolveOsEnvDuration("KEDA_METRICS_LEADER_ELECTION_RENEW_DEADLINE")
 	if err != nil {
 		logger.Error(err, "Invalid KEDA_METRICS_LEADER_ELECTION_RENEW_DEADLINE")
-		return nil, nil, fmt.Errorf("invalid KEDA_METRICS_LEADER_ELECTION_RENEW_DEADLINE (%s)", err)
+		return nil, fmt.Errorf("invalid KEDA_METRICS_LEADER_ELECTION_RENEW_DEADLINE (%s)", err)
 	}
 
 	retryPeriod, err := kedautil.ResolveOsEnvDuration("KEDA_METRICS_LEADER_ELECTION_RETRY_PERIOD")
 	if err != nil {
 		logger.Error(err, "Invalid KEDA_METRICS_LEADER_ELECTION_RETRY_PERIOD")
-		return nil, nil, fmt.Errorf("invalid KEDA_METRICS_LEADER_ELECTION_RETRY_PERIOD (%s)", err)
+		return nil, fmt.Errorf("invalid KEDA_METRICS_LEADER_ELECTION_RETRY_PERIOD (%s)", err)
 	}
 
 	useMetricsServiceGrpc, err := kedautil.ResolveOsEnvBool("KEDA_USE_METRICS_SERVICE_GRPC", true)
 	if err != nil {
 		logger.Error(err, "Invalid KEDA_USE_METRICS_SERVICE_GRPC")
-		return nil, nil, fmt.Errorf("invalid KEDA_USE_METRICS_SERVICE_GRPC (%s)", err)
+		return nil, fmt.Errorf("invalid KEDA_USE_METRICS_SERVICE_GRPC (%s)", err)
 	}
 
 	// Get a config to talk to the apiserver
@@ -123,7 +121,7 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 	})
 	if err != nil {
 		logger.Error(err, "failed to setup manager")
-		return nil, nil, err
+		return nil, err
 	}
 
 	broadcaster := record.NewBroadcaster()
@@ -132,12 +130,12 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 	kubeClientset, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		logger.Error(err, "Unable to create kube clientset")
-		return nil, nil, err
+		return nil, err
 	}
 	objectNamespace, err := kedautil.GetClusterObjectNamespace()
 	if err != nil {
 		logger.Error(err, "Unable to get cluster object namespace")
-		return nil, nil, err
+		return nil, err
 	}
 	// the namespaced kubeInformerFactory is used to restrict secret informer to only list/watch secrets in KEDA cluster object namespace,
 	// refer to https://github.com/kedacore/keda/issues/3668
@@ -154,10 +152,10 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 	grpcClient, err := metricsservice.NewGrpcClient(metricsServiceAddr, a.SecureServing.ServerCert.CertDirectory)
 	if err != nil {
 		logger.Error(err, "error connecting Metrics Service gRPC client to the server", "address", metricsServiceAddr)
-		return nil, nil, err
+		return nil, err
 	}
 
-	return kedaprovider.NewProvider(ctx, logger, handler, mgr.GetClient(), *grpcClient, useMetricsServiceGrpc, namespace), stopCh, nil
+	return kedaprovider.NewProvider(ctx, logger, handler, mgr.GetClient(), *grpcClient, useMetricsServiceGrpc, namespace), nil
 }
 
 // generateDefaultMetricsServiceAddr generates default Metrics Service gRPC Server address based on the current Namespace.
@@ -236,7 +234,7 @@ func main() {
 		return
 	}
 
-	kedaProvider, stopCh, err := cmd.makeProvider(ctx, time.Duration(globalHTTPTimeoutMS)*time.Millisecond)
+	kedaProvider, err := cmd.makeProvider(ctx, time.Duration(globalHTTPTimeoutMS)*time.Millisecond)
 	if err != nil {
 		logger.Error(err, "making provider")
 		return
@@ -244,7 +242,7 @@ func main() {
 	cmd.WithExternalMetrics(kedaProvider)
 
 	logger.Info(cmd.Message)
-	if err = cmd.Run(stopCh); err != nil {
+	if err = cmd.Run(wait.NeverStop); err != nil {
 		return
 	}
 }
