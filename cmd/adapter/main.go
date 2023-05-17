@@ -34,14 +34,11 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/klog/v2/klogr"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/config"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	basecmd "sigs.k8s.io/custom-metrics-apiserver/pkg/cmd"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	kedacontrollers "github.com/kedacore/keda/v2/controllers/keda"
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
 	prommetrics "github.com/kedacore/keda/v2/pkg/prommetrics/adapter"
 	kedaprovider "github.com/kedacore/keda/v2/pkg/provider"
@@ -69,7 +66,7 @@ var (
 	metricsServiceAddr        string
 )
 
-func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Duration, maxConcurrentReconciles int) (provider.ExternalMetricsProvider, <-chan struct{}, error) {
+func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Duration) (provider.ExternalMetricsProvider, <-chan struct{}, error) {
 	scheme := scheme.Scheme
 	if err := appsv1.SchemeBuilder.AddToScheme(scheme); err != nil {
 		logger.Error(err, "failed to add apps/v1 scheme to runtime scheme")
@@ -154,7 +151,7 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 	go func() { prometheusServer.NewServer(fmt.Sprintf(":%v", prometheusMetricsPort), prometheusMetricsPath) }()
 
 	stopCh := make(chan struct{})
-	if err := runScaledObjectController(ctx, mgr, handler, logger, maxConcurrentReconciles, stopCh, secretInformer.Informer().HasSynced); err != nil {
+	if err := runScaledObjectController(ctx, mgr, handler, logger, stopCh, secretInformer.Informer().HasSynced); err != nil {
 		return nil, nil, err
 	}
 
@@ -168,17 +165,7 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 	return kedaprovider.NewProvider(ctx, logger, handler, mgr.GetClient(), *grpcClient, useMetricsServiceGrpc, namespace), stopCh, nil
 }
 
-func runScaledObjectController(ctx context.Context, mgr manager.Manager, scaleHandler scaling.ScaleHandler, logger logr.Logger, maxConcurrentReconciles int, stopCh chan<- struct{}, secretSynced cache.InformerSynced) error {
-	if err := (&kedacontrollers.MetricsScaledObjectReconciler{
-		Client:       mgr.GetClient(),
-		ScaleHandler: scaleHandler,
-	}).SetupWithManager(mgr, controller.Options{
-		Controller: config.Controller{
-			MaxConcurrentReconciles: maxConcurrentReconciles,
-		}}); err != nil {
-		return err
-	}
-
+func runScaledObjectController(ctx context.Context, mgr manager.Manager, scaleHandler scaling.ScaleHandler, logger logr.Logger, stopCh chan<- struct{}, secretSynced cache.InformerSynced) error {
 	go func() {
 		if err := mgr.Start(ctx); err != nil {
 			logger.Error(err, "controller-runtime encountered an error")
@@ -264,18 +251,12 @@ func main() {
 		return
 	}
 
-	controllerMaxReconciles, err := kedautil.ResolveOsEnvInt("KEDA_METRICS_CTRL_MAX_RECONCILES", 1)
-	if err != nil {
-		logger.Error(err, "Invalid KEDA_METRICS_CTRL_MAX_RECONCILES")
-		return
-	}
-
 	err = printWelcomeMsg(cmd)
 	if err != nil {
 		return
 	}
 
-	kedaProvider, stopCh, err := cmd.makeProvider(ctx, time.Duration(globalHTTPTimeoutMS)*time.Millisecond, controllerMaxReconciles)
+	kedaProvider, stopCh, err := cmd.makeProvider(ctx, time.Duration(globalHTTPTimeoutMS)*time.Millisecond)
 	if err != nil {
 		logger.Error(err, "making provider")
 		return
