@@ -79,8 +79,8 @@ func TestExternalScalerParseMetadata(t *testing.T) {
 			t.Error("Expected success but got error", err)
 		}
 
-		if testData.metadata["insecureSkipVerify"] == "true" && !metadata.insecureSkipVerify {
-			t.Error("Expected insecureSkipVerify to be true but got", metadata.insecureSkipVerify)
+		if testData.metadata["unsafeSsl"] == "true" && !metadata.unsafeSsl {
+			t.Error("Expected unsafeSsl to be true but got", metadata.unsafeSsl)
 		}
 		if testData.isError && err == nil {
 			t.Error("Expected error but got success")

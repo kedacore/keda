@@ -33,14 +33,14 @@ type externalPushScaler struct {
 }
 
 type externalScalerMetadata struct {
-	scalerAddress      string
-	tlsCertFile        string
-	originalMetadata   map[string]string
-	scalerIndex        int
-	caCert             string
-	tlsClientCert      string
-	tlsClientKey       string
-	insecureSkipVerify bool
+	scalerAddress    string
+	tlsCertFile      string
+	originalMetadata map[string]string
+	scalerIndex      int
+	caCert           string
+	tlsClientCert    string
+	tlsClientKey     string
+	unsafeSsl        bool
 }
 
 type connectionGroup struct {
@@ -130,13 +130,13 @@ func parseExternalScalerMetadata(config *ScalerConfig) (externalScalerMetadata, 
 		meta.tlsClientKey = val
 	}
 
-	meta.insecureSkipVerify = false
-	if val, ok := config.TriggerMetadata["insecureSkipVerify"]; ok && val != "" {
+	meta.unsafeSsl = false
+	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok && val != "" {
 		boolVal, err := strconv.ParseBool(val)
 		if err != nil {
 			return meta, fmt.Errorf("failed to parse insecureSkipVerify value. Must be either true or false")
 		}
-		meta.insecureSkipVerify = boolVal
+		meta.unsafeSsl = boolVal
 	}
 	// Add elements to metadata
 	for key, value := range config.TriggerMetadata {
@@ -314,7 +314,7 @@ func getClientForConnectionPool(metadata externalScalerMetadata, logger logr.Log
 			return grpc.Dial(metadata.scalerAddress, grpc.WithTransportCredentials(creds))
 		}
 
-		tlsConfig, err := util.NewTLSConfig(metadata.tlsClientCert, metadata.tlsClientKey, metadata.caCert, metadata.insecureSkipVerify)
+		tlsConfig, err := util.NewTLSConfig(metadata.tlsClientCert, metadata.tlsClientKey, metadata.caCert, metadata.unsafeSsl)
 		if err != nil {
 			return nil, err
 		}
