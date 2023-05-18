@@ -17,24 +17,70 @@ import (
 	pb "github.com/kedacore/keda/v2/pkg/scalers/externalscaler"
 )
 
+var serverRootCA = `-----BEGIN CERTIFICATE-----
+MIIDPTCCAiWgAwIBAgIUTPXiztn8CG3+NQdeEIlpA1F9Ec4wDQYJKoZIhvcNAQEL
+BQAwLTEOMAwGA1UEAwwFa2VkYTExCzAJBgNVBAYTAlVTMQ4wDAYDVQQHDAVFYXJ0
+aDAgFw0yMzAzMjYxMzU1MDJaGA8yMDUxMDgwMjEzNTUwMlowLTEOMAwGA1UEAwwF
+a2VkYTExCzAJBgNVBAYTAlVTMQ4wDAYDVQQHDAVFYXJ0aDCCASIwDQYJKoZIhvcN
+AQEBBQADggEPADCCAQoCggEBAOaQl2+EEZycNQlO1nEeFgheUZ20gTVAButKjvEK
+vIZv+x4AdwNaOcKahro5b09QinoGakTJEOrpks+VUSqQpJ+zVmja5vpIb92gnmGQ
+B3rl7nD9rP/bLffa5bNDhmMR7vRd88PYvopn6+hTyX3EGkvbCZD8WNs5f8jslzek
+0xj4U4LgC9T1pBykNl5nZs5Fd4CdaO+vi3cywmgjaiPzDOYMbYH4pzflH7aNsEEc
+IYs9fQ8SwzsocXpKUS+bTg9OmrDMAwan+mxz6m15BxvJzHQqmp/aE70BSkinBwCg
+dgzgQUwg6ko/jnJixP4tkr8p8nURBL7GNvuVIS7Z2EjD240CAwEAAaNTMFEwHQYD
+VR0OBBYEFN03E9o2ne0s5GZSZ7rZczisME5RMB8GA1UdIwQYMBaAFN03E9o2ne0s
+5GZSZ7rZczisME5RMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEB
+ADM6vkgjttrU9bYRviwdgohvGNYegDXfyKt25gwYn5+UwUtqjjztTWMr6aAKLNob
+Dqjb0BDR5Ow0kD9KXyO4m0gTBzxrHzDnFeTQxE2h8Gl/VRGueJQ2sfmU8oG2/3GV
+4nEWLAu1XMqXcFQWT9X+JS3Wxqc1DLrAeX8u0ZIx5Lkk4kPV3d3BP8KyX+AQGt57
+p0kdhXOTNW1kUPCrtnc0uBJNHqlev3KkHebH20G7iAZFCCpul9cyLK1fftCBuVE/
+jtq3TnHHw+BroQPje3zF/MZTAA8Z9RejkpALMtoHeE68ar07FPlC8wZXDlfQXzYS
+PWO1PoIiMX1UsfdZ35JCOF4=
+-----END CERTIFICATE-----
+`
+var clientCert = `-----BEGIN CERTIFICATE-----
+MIIC9jCCAd4CFEGcfEWHP2ckC/kIgUEDUPkAVHHIMA0GCSqGSIb3DQEBCwUAMC0x
+DjAMBgNVBAMMBWtlZGEyMQswCQYDVQQGEwJVUzEOMAwGA1UEBwwFRWFydGgwIBcN
+MjMwMzI2MTM1NTAzWhgPMjA1MTA2MDcxMzU1MDNaMEAxCzAJBgNVBAYTAlVTMQsw
+CQYDVQQIDAJDQTEUMBIGA1UECgwLTXlPcmcsIEluYy4xDjAMBgNVBAMMBWtlZGEy
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3k7zr+QbOHXMqhyUM6Oz
+SuGGqQttIGZEs12eLSRlGY9vL+pf/G3CubkGsTtp5b5tmP4CNYcGtU8wSJMn23Bq
+BbXECpDXh6cuo+56VVAMJyNqZoIeS4JfKX5mvj4WrfpVJ3e+o6lrebAICK1qqTwq
+z6N6ZUkeF552aTh8RAgEiKJlylmKdHc/IF3+oLc2aA7IAl+zxYOTCrjIiUrc54OB
+gYCkCSb0P4SPHE8ryB0pN8S3LdtZrgVIzewd24joKbXL7hBZ3ltaj0t2kK2CTCxb
+I3te0JdIaPV2TxCnK9dxLRkFXNjz/7V45rbRLXtSPoirKseUR2zbo5kfquY0J2hv
+nwIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQCiZI/N/60Gj8711V+Uhj1j9iw3s4oU
+qT4r9NozotrhjIMe14rhkJ1k+1x7pyLX8QHgO0WxiAp8tKX0kcUQO/ZQfTAM6FpW
+cevGTxrVk5CcilafIBzaZF5Mz6diBxbTnhFS+hZXiwavkImBK4zZY9aUcVIjJfPv
+xSaEVvMdofrhaio9M0deYzQ/Bf/uMkR3Fxs4qbhsg3gkbepFm3yJoSANzXCMvDnv
+mauSvQwA0SRKECr46F8dSeFE1uIbN4ZNgrisBTVkoPYZuF7pAsSsjqGM0phUKiI8
+5thG2dnqJSunC+vZW8QY+x3eq4XzFEpIYcaV9YpiGHbv8N6gzJydL/GB
+-----END CERTIFICATE-----
+`
+
 type parseExternalScalerMetadataTestData struct {
-	metadata map[string]string
-	isError  bool
+	metadata   map[string]string
+	isError    bool
+	authParams map[string]string
 }
 
 var testExternalScalerMetadata = []parseExternalScalerMetadataTestData{
-	{map[string]string{}, true},
+	{map[string]string{}, true, map[string]string{}},
 	// all properly formed
-	{map[string]string{"scalerAddress": "myservice", "test1": "7", "test2": "SAMPLE_CREDS"}, false},
+	{map[string]string{"scalerAddress": "myservice", "test1": "7", "test2": "SAMPLE_CREDS", "insecureSkipVerify": "true"}, false, map[string]string{"caCert": serverRootCA, "tlsClientCert": clientCert}},
 	// missing scalerAddress
-	{map[string]string{"test1": "1", "test2": "SAMPLE_CREDS"}, true},
+	{map[string]string{"test1": "1", "test2": "SAMPLE_CREDS"}, true, map[string]string{}},
 }
 
 func TestExternalScalerParseMetadata(t *testing.T) {
 	for _, testData := range testExternalScalerMetadata {
-		_, err := parseExternalScalerMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: map[string]string{}})
+		metadata, err := parseExternalScalerMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: map[string]string{}, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
+		}
+
+		if testData.metadata["unsafeSsl"] == "true" && !metadata.unsafeSsl {
+			t.Error("Expected unsafeSsl to be true but got", metadata.unsafeSsl)
 		}
 		if testData.isError && err == nil {
 			t.Error("Expected error but got success")
@@ -104,7 +150,6 @@ type testServer struct {
 
 func createGRPCServers(count int, t *testing.T) []testServer {
 	result := make([]testServer, 0, count)
-
 	for i := 0; i < count; i++ {
 		grpcServer := grpc.NewServer()
 		address := fmt.Sprintf("127.0.0.1:%d", 5050+i)
@@ -211,7 +256,7 @@ func TestWaitForState(t *testing.T) {
 		// server stop will lead to Idle.
 		<-waitForState(context.TODO(), grpcClient, connectivity.Idle, connectivity.Shutdown)
 		grpcClient.Close()
-		// after close the state to Shutdown.
+		// after close the state to shut down.
 		t.Log("close state:", grpcClient.GetState().String())
 		close(graceDone)
 	}()
