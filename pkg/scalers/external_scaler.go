@@ -303,7 +303,7 @@ func getClientForConnectionPool(metadata externalScalerMetadata, logger logr.Log
 	defer connectionPoolMutex.Unlock()
 
 	buildGRPCConnection := func(metadata externalScalerMetadata) (*grpc.ClientConn, error) {
-		// FIXME: DEPRECATED to be removed in v2.13
+		// FIXME: DEPRECATED to be removed in v2.13 https://github.com/kedacore/keda/issues/4549
 		if metadata.tlsCertFile != "" {
 			logger.V(1).Info("tlsCertFile in ScaleObject metadata will be deprecated in v2.12. Please use" +
 				"tlsClientCert, tlsClientKey and caCert in TriggerAuthentication instead.")
