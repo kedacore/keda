@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	prommetrics "github.com/kedacore/keda/v2/pkg/prommetrics/webhook"
 )
@@ -56,26 +57,26 @@ func (so *ScaledObject) SetupWebhookWithManager(mgr ctrl.Manager) error {
 var _ webhook.Validator = &ScaledObject{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (so *ScaledObject) ValidateCreate() error {
+func (so *ScaledObject) ValidateCreate() (admission.Warnings, error) {
 	val, _ := json.MarshalIndent(so, "", "  ")
 	scaledobjectlog.V(1).Info(fmt.Sprintf("validating scaledobject creation for %s", string(val)))
 	return validateWorkload(so, "create")
 }
 
-func (so *ScaledObject) ValidateUpdate(old runtime.Object) error {
+func (so *ScaledObject) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	val, _ := json.MarshalIndent(so, "", "  ")
 	scaledobjectlog.V(1).Info(fmt.Sprintf("validating scaledobject update for %s", string(val)))
 
 	if isRemovingFinalizer(so, old) {
 		scaledobjectlog.V(1).Info("finalizer removal, skipping validation")
-		return nil
+		return nil, nil
 	}
 
 	return validateWorkload(so, "update")
 }
 
-func (so *ScaledObject) ValidateDelete() error {
-	return nil
+func (so *ScaledObject) ValidateDelete() (admission.Warnings, error) {
+	return nil, nil
 }
 
 func isRemovingFinalizer(so *ScaledObject, old runtime.Object) bool {
@@ -89,23 +90,23 @@ func isRemovingFinalizer(so *ScaledObject, old runtime.Object) bool {
 	return len(so.ObjectMeta.Finalizers) == 0 && len(oldSo.ObjectMeta.Finalizers) == 1 && soSpecString == oldSoSpecString
 }
 
-func validateWorkload(so *ScaledObject, action string) error {
+func validateWorkload(so *ScaledObject, action string) (admission.Warnings, error) {
 	prommetrics.RecordScaledObjectValidatingTotal(so.Namespace, action)
 	err := verifyCPUMemoryScalers(so, action)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = verifyScaledObjects(so, action)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = verifyHpas(so, action)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	scaledobjectlog.V(1).Info(fmt.Sprintf("scaledobject %s is valid", so.Name))
-	return nil
+	return nil, nil
 }
 
 func verifyHpas(incomingSo *ScaledObject, action string) error {

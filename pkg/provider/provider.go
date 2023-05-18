@@ -20,16 +20,13 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/go-logr/logr"
-	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/metrics/pkg/apis/custom_metrics"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
+	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider/defaults"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/fallback"
@@ -42,12 +39,12 @@ import (
 
 // KedaProvider implements External Metrics Provider
 type KedaProvider struct {
-	client                  client.Client
-	scaleHandler            scaling.ScaleHandler
-	watchedNamespace        string
-	ctx                     context.Context
-	externalMetricsInfo     *[]provider.ExternalMetricInfo
-	externalMetricsInfoLock *sync.RWMutex
+	defaults.DefaultExternalMetricsProvider
+
+	client           client.Client
+	scaleHandler     scaling.ScaleHandler
+	watchedNamespace string
+	ctx              context.Context
 
 	grpcClient            metricsservice.GrpcClient
 	useMetricsServiceGrpc bool
@@ -61,16 +58,14 @@ var (
 )
 
 // NewProvider returns an instance of KedaProvider
-func NewProvider(ctx context.Context, adapterLogger logr.Logger, scaleHandler scaling.ScaleHandler, client client.Client, grpcClient metricsservice.GrpcClient, useMetricsServiceGrpc bool, watchedNamespace string, externalMetricsInfo *[]provider.ExternalMetricInfo, externalMetricsInfoLock *sync.RWMutex) provider.MetricsProvider {
+func NewProvider(ctx context.Context, adapterLogger logr.Logger, scaleHandler scaling.ScaleHandler, client client.Client, grpcClient metricsservice.GrpcClient, useMetricsServiceGrpc bool, watchedNamespace string) provider.ExternalMetricsProvider {
 	provider := &KedaProvider{
-		client:                  client,
-		scaleHandler:            scaleHandler,
-		watchedNamespace:        watchedNamespace,
-		ctx:                     ctx,
-		externalMetricsInfo:     externalMetricsInfo,
-		externalMetricsInfoLock: externalMetricsInfoLock,
-		grpcClient:              grpcClient,
-		useMetricsServiceGrpc:   useMetricsServiceGrpc,
+		client:                client,
+		scaleHandler:          scaleHandler,
+		watchedNamespace:      watchedNamespace,
+		ctx:                   ctx,
+		grpcClient:            grpcClient,
+		useMetricsServiceGrpc: useMetricsServiceGrpc,
 	}
 	logger = adapterLogger.WithName("provider")
 	logger.Info("starting")
@@ -224,38 +219,4 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 	return &external_metrics.ExternalMetricValueList{
 		Items: matchingMetrics,
 	}, nil
-}
-
-// ListAllExternalMetrics returns the supported external metrics for this provider
-func (p *KedaProvider) ListAllExternalMetrics() []provider.ExternalMetricInfo {
-	logger.V(1).Info("KEDA Metrics Server received request for list of all provided external metrics names")
-
-	p.externalMetricsInfoLock.RLock()
-	defer p.externalMetricsInfoLock.RUnlock()
-	externalMetricsInfo := *p.externalMetricsInfo
-
-	return externalMetricsInfo
-}
-
-// GetMetricByName fetches a particular metric for a particular object.
-// The namespace will be empty if the metric is root-scoped.
-func (p *KedaProvider) GetMetricByName(_ context.Context, _ types.NamespacedName, _ provider.CustomMetricInfo, _ labels.Selector) (*custom_metrics.MetricValue, error) {
-	// not implemented yet
-	return nil, apiErrors.NewServiceUnavailable("not implemented yet")
-}
-
-// GetMetricBySelector fetches a particular metric for a set of objects matching
-// the given label selector.  The namespace will be empty if the metric is root-scoped.
-func (p *KedaProvider) GetMetricBySelector(_ context.Context, namespace string, selector labels.Selector, info provider.CustomMetricInfo, _ labels.Selector) (*custom_metrics.MetricValueList, error) {
-	logger.V(0).Info("Received request for custom metric, which is not supported by this adapter", "groupresource", info.GroupResource.String(), "namespace", namespace, "metric name", info.Metric, "selector", selector.String())
-	return nil, apiErrors.NewServiceUnavailable("not implemented yet")
-}
-
-// ListAllMetrics provides a list of all available metrics at
-// the current time.  Note that this is not allowed to return
-// an error, so it is recommended that implementors cache and
-// periodically update this list, instead of querying every time.
-func (p *KedaProvider) ListAllMetrics() []provider.CustomMetricInfo {
-	// not implemented yet
-	return []provider.CustomMetricInfo{}
 }

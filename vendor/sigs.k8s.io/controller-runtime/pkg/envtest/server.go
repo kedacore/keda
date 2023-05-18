@@ -230,17 +230,19 @@ func (te *Environment) Start() (*rest.Config, error) {
 		if os.Getenv(envAttachOutput) == "true" {
 			te.AttachControlPlaneOutput = true
 		}
-		if apiServer.Out == nil && te.AttachControlPlaneOutput {
-			apiServer.Out = os.Stdout
-		}
-		if apiServer.Err == nil && te.AttachControlPlaneOutput {
-			apiServer.Err = os.Stderr
-		}
-		if te.ControlPlane.Etcd.Out == nil && te.AttachControlPlaneOutput {
-			te.ControlPlane.Etcd.Out = os.Stdout
-		}
-		if te.ControlPlane.Etcd.Err == nil && te.AttachControlPlaneOutput {
-			te.ControlPlane.Etcd.Err = os.Stderr
+		if te.AttachControlPlaneOutput {
+			if apiServer.Out == nil {
+				apiServer.Out = os.Stdout
+			}
+			if apiServer.Err == nil {
+				apiServer.Err = os.Stderr
+			}
+			if te.ControlPlane.Etcd.Out == nil {
+				te.ControlPlane.Etcd.Out = os.Stdout
+			}
+			if te.ControlPlane.Etcd.Err == nil {
+				te.ControlPlane.Etcd.Err = os.Stderr
+			}
 		}
 
 		apiServer.Path = process.BinPathFinder("kube-apiserver", te.BinaryAssetsDirectory)
