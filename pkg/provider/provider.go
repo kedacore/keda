@@ -19,7 +19,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/labels"
@@ -29,13 +28,9 @@ import (
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider/defaults"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/fallback"
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
-	prommetrics "github.com/kedacore/keda/v2/pkg/prommetrics/adapter"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 )
-
-//	prommetrics "github.com/kedacore/keda/v2/pkg/prommetrics/adapter"
 
 // KedaProvider implements External Metrics Provider
 type KedaProvider struct {
@@ -51,8 +46,7 @@ type KedaProvider struct {
 }
 
 var (
-	logger            logr.Logger
-	promMetricsServer prommetrics.PrometheusMetricServer
+	logger logr.Logger
 
 	grpcClientConnected bool
 )
@@ -99,124 +93,27 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 	}
 
 	// Get Metrics from Metrics Service gRPC Server
-	if p.useMetricsServiceGrpc {
-		if !p.grpcClient.WaitForConnectionReady(ctx, logger) {
-			grpcClientConnected = false
-			logger.Error(fmt.Errorf("timeout while waiting to establish gRPC connection to KEDA Metrics Service server"), "timeout", "server", p.grpcClient.GetServerURL())
-			return nil, err
-		}
-		if !grpcClientConnected {
-			grpcClientConnected = true
-			logger.Info("Connection to KEDA Metrics Service gRPC server has been successfully established", "server", p.grpcClient.GetServerURL())
-		}
-
-		// selector is in form: `scaledobject.keda.sh/name: scaledobject-name`
-		scaledObjectName := selector.Get(kedav1alpha1.ScaledObjectOwnerAnnotation)
-		if scaledObjectName == "" {
-			err := fmt.Errorf("scaledObject name is not specified")
-			logger.Error(err, fmt.Sprintf("please specify scaledObject name, it needs to be set as value of label selector %q on the query", kedav1alpha1.ScaledObjectOwnerAnnotation))
-
-			return &external_metrics.ExternalMetricValueList{}, err
-		}
-
-		metrics, promMetrics, err := p.grpcClient.GetMetrics(ctx, scaledObjectName, namespace, info.Metric)
-		logger.V(1).WithValues("scaledObjectName", scaledObjectName, "scaledObjectNamespace", namespace, "metrics", metrics).Info("Receiving metrics")
-
-		// [DEPRECATED] handle exporting Prometheus metrics from Operator to Metrics Server
-		if promMetrics != nil {
-			var scaledObjectErr error
-			if promMetrics.ScaledObjectErr {
-				scaledObjectErr = fmt.Errorf("scaledObject error")
-			}
-			promMetricsServer.RecordScaledObjectError(namespace, scaledObjectName, scaledObjectErr)
-			for _, scalerMetric := range promMetrics.ScalerMetric {
-				promMetricsServer.RecordHPAScalerMetric(namespace, scaledObjectName, scalerMetric.ScalerName, int(scalerMetric.ScalerIndex), scalerMetric.MetricName, float64(scalerMetric.MetricValue))
-			}
-			for _, scalerError := range promMetrics.ScalerError {
-				var scalerErr error
-				if scalerError.Error {
-					scalerErr = fmt.Errorf("scaler error")
-				}
-				promMetricsServer.RecordHPAScalerError(namespace, scaledObjectName, scalerError.ScalerName, int(scalerError.ScalerIndex), scalerError.MetricName, scalerErr)
-			}
-		}
-
-		return metrics, err
-	}
-
-	// ------ Deprecated way of getting metric directly from MS ------ //
-	// --------------------------------------------------------------- //
-	// Get Metrics by querying directly the external service
-	scaledObjects := &kedav1alpha1.ScaledObjectList{}
-	opts := []client.ListOption{
-		client.InNamespace(namespace),
-		client.MatchingLabels(selector),
-	}
-	err = p.client.List(ctx, scaledObjects, opts...)
-	if err != nil {
+	if !p.grpcClient.WaitForConnectionReady(ctx, logger) {
+		grpcClientConnected = false
+		logger.Error(fmt.Errorf("timeout while waiting to establish gRPC connection to KEDA Metrics Service server"), "timeout", "server", p.grpcClient.GetServerURL())
 		return nil, err
-	} else if len(scaledObjects.Items) != 1 {
-		return nil, fmt.Errorf("exactly one ScaledObject should match label %s", metricSelector.String())
+	}
+	if !grpcClientConnected {
+		grpcClientConnected = true
+		logger.Info("Connection to KEDA Metrics Service gRPC server has been successfully established", "server", p.grpcClient.GetServerURL())
 	}
 
-	scaledObject := &scaledObjects.Items[0]
-	var matchingMetrics []external_metrics.ExternalMetricValue
+	// selector is in form: `scaledobject.keda.sh/name: scaledobject-name`
+	scaledObjectName := selector.Get(kedav1alpha1.ScaledObjectOwnerAnnotation)
+	if scaledObjectName == "" {
+		err := fmt.Errorf("scaledObject name is not specified")
+		logger.Error(err, fmt.Sprintf("please specify scaledObject name, it needs to be set as value of label selector %q on the query", kedav1alpha1.ScaledObjectOwnerAnnotation))
 
-	cache, err := p.scaleHandler.GetScalersCache(ctx, scaledObject)
-	promMetricsServer.RecordScaledObjectError(scaledObject.Namespace, scaledObject.Name, err)
-	if err != nil {
-		return nil, fmt.Errorf("error when getting scalers %w", err)
+		return &external_metrics.ExternalMetricValueList{}, err
 	}
 
-	// let's check metrics for all scalers in a ScaledObject
-	scalerError := false
-	scalers, scalerConfigs := cache.GetScalers()
-	for scalerIndex := 0; scalerIndex < len(scalers); scalerIndex++ {
-		metricSpecs := scalers[scalerIndex].GetMetricSpecForScaling(ctx)
-		scalerName := strings.Replace(fmt.Sprintf("%T", scalers[scalerIndex]), "*scalers.", "", 1)
-		if scalerConfigs[scalerIndex].TriggerName != "" {
-			scalerName = scalerConfigs[scalerIndex].TriggerName
-		}
+	metrics, err := p.grpcClient.GetMetrics(ctx, scaledObjectName, namespace, info.Metric)
+	logger.V(1).WithValues("scaledObjectName", scaledObjectName, "scaledObjectNamespace", namespace, "metrics", metrics).Info("Receiving metrics")
 
-		for _, metricSpec := range metricSpecs {
-			// skip cpu/memory resource scaler
-			if metricSpec.External == nil {
-				continue
-			}
-			// Filter only the desired metric
-			if strings.EqualFold(metricSpec.External.Metric.Name, info.Metric) {
-				metrics, _, _, err := cache.GetMetricsAndActivityForScaler(ctx, scalerIndex, info.Metric)
-				metrics, err = fallback.GetMetricsWithFallback(ctx, p.client, metrics, err, info.Metric, scaledObject, metricSpec)
-				if err != nil {
-					scalerError = true
-					logger.Error(err, "error getting metric for scaler", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "scaler", scalerName)
-				} else {
-					for _, metric := range metrics {
-						metricValue := metric.Value.AsApproximateFloat64()
-						promMetricsServer.RecordHPAScalerMetric(namespace, scaledObject.Name, scalerName, scalerIndex, metric.MetricName, metricValue)
-					}
-					matchingMetrics = append(matchingMetrics, metrics...)
-				}
-				promMetricsServer.RecordHPAScalerError(namespace, scaledObject.Name, scalerName, scalerIndex, info.Metric, err)
-			}
-		}
-	}
-
-	// invalidate the cache for the ScaledObject, if we hit an error in any scaler
-	// in this case we try to build all scalers (and resolve all secrets/creds) again in the next call
-	if scalerError {
-		err := p.scaleHandler.ClearScalersCache(ctx, scaledObject)
-		if err != nil {
-			logger.Error(err, "error clearing scalers cache")
-		}
-		logger.V(1).Info("scaler error encountered, clearing scaler cache")
-	}
-
-	if len(matchingMetrics) == 0 {
-		return nil, fmt.Errorf("no matching metrics found for " + info.Metric)
-	}
-
-	return &external_metrics.ExternalMetricValueList{
-		Items: matchingMetrics,
-	}, nil
+	return metrics, err
 }

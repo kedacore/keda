@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	promModel "github.com/prometheus/client_model/go"
+	prommodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -262,7 +262,6 @@ func TestPrometheusMetrics(t *testing.T) {
 	testScaledObjectErrors(t, data)
 	testScalerErrors(t, data)
 	testScalerErrorsTotal(t, data)
-	testMetricsServerScalerMetricValue(t)
 	testOperatorMetrics(t, kc, data)
 	testWebhookMetrics(t, data)
 
@@ -290,7 +289,7 @@ func getTemplateData() (templateData, []Template) {
 		}
 }
 
-func fetchAndParsePrometheusMetrics(t *testing.T, cmd string) map[string]*promModel.MetricFamily {
+func fetchAndParsePrometheusMetrics(t *testing.T, cmd string) map[string]*prommodel.MetricFamily {
 	out, _, err := ExecCommandOnSpecificPod(t, clientName, testNamespace, cmd)
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 
@@ -413,7 +412,7 @@ func testScalerErrorsTotal(t *testing.T, data templateData) {
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 }
 
-func getErrorMetricsValue(val *promModel.MetricFamily) float64 {
+func getErrorMetricsValue(val *prommodel.MetricFamily) float64 {
 	switch val.GetName() {
 	case "keda_scaler_errors_total":
 		metrics := val.GetMetric()
@@ -480,30 +479,6 @@ func testScalerActiveMetric(t *testing.T) {
 			for _, label := range labels {
 				if *label.Name == labelScaledObject && *label.Value == scaledObjectName {
 					assert.Equal(t, float64(1), *metric.Gauge.Value)
-					found = true
-				}
-			}
-		}
-		assert.Equal(t, true, found)
-	} else {
-		t.Errorf("metric not available")
-	}
-}
-
-// [DEPRECATED] handle exporting Prometheus metrics from Operator to Metrics Server
-func testMetricsServerScalerMetricValue(t *testing.T) {
-	t.Log("--- testing scaler metric value in metrics server ---")
-
-	family := fetchAndParsePrometheusMetrics(t, "curl --insecure http://keda-metrics-apiserver.keda:9022/metrics")
-
-	if val, ok := family["keda_metrics_adapter_scaler_metrics_value"]; ok {
-		var found bool
-		metrics := val.GetMetric()
-		for _, metric := range metrics {
-			labels := metric.GetLabel()
-			for _, label := range labels {
-				if *label.Name == labelScaledObject && *label.Value == scaledObjectName {
-					assert.Equal(t, float64(4), *metric.Gauge.Value)
 					found = true
 				}
 			}
@@ -608,7 +583,7 @@ func testOperatorMetricValues(t *testing.T, kc *kubernetes.Clientset) {
 	checkCRTotalValues(t, families, expectedCrTotals)
 }
 
-func checkTriggerTotalValues(t *testing.T, families map[string]*promModel.MetricFamily, expected map[string]int) {
+func checkTriggerTotalValues(t *testing.T, families map[string]*prommodel.MetricFamily, expected map[string]int) {
 	t.Log("--- testing trigger total metrics ---")
 
 	family, ok := families["keda_trigger_totals"]
@@ -637,7 +612,7 @@ func checkTriggerTotalValues(t *testing.T, families map[string]*promModel.Metric
 	assert.Equal(t, 0, len(expected))
 }
 
-func checkCRTotalValues(t *testing.T, families map[string]*promModel.MetricFamily, expected map[string]map[string]int) {
+func checkCRTotalValues(t *testing.T, families map[string]*prommodel.MetricFamily, expected map[string]map[string]int) {
 	t.Log("--- testing resource total metrics ---")
 
 	family, ok := families["keda_resource_totals"]
@@ -666,7 +641,7 @@ func checkCRTotalValues(t *testing.T, families map[string]*promModel.MetricFamil
 	}
 }
 
-func checkWebhookValues(t *testing.T, families map[string]*promModel.MetricFamily) {
+func checkWebhookValues(t *testing.T, families map[string]*prommodel.MetricFamily) {
 	t.Log("--- testing webhook metrics ---")
 
 	family, ok := families["keda_webhook_scaled_object_validation_errors"]
