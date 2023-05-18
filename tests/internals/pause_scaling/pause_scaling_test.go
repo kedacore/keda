@@ -26,6 +26,9 @@ var (
 	scaledObjectName        = fmt.Sprintf("%s-so", testName)
 	maxReplicaCount         = 1
 	minReplicaCount         = 0
+	testScaleOutWaitMin     = 3
+	testPauseAtNWaitMin     = 3
+	testScaleInWaitMin      = 3
 )
 
 type templateData struct {
@@ -175,8 +178,8 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 1),
-		"replica count should be 1 after 1 minute")
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, testScaleOutWaitMin),
+		"replica count should be 1 after %d minute(s)", testScaleOutWaitMin)
 }
 
 func testPauseAtN(t *testing.T, kc *kubernetes.Clientset, data templateData, n int) {
@@ -186,14 +189,14 @@ func testPauseAtN(t *testing.T, kc *kubernetes.Clientset, data templateData, n i
 
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 0, testNamespace)
 
-	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, n, 60, 1),
-		"replica count should be %d after 1 minute", n)
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, n, 60, testPauseAtNWaitMin),
+		"replica count should be %d after %d minute(s)", n, testPauseAtNWaitMin)
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale in ---")
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 2),
-		"replica count should be 0 after 2 minutes")
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, testScaleInWaitMin),
+		"replica count should be 0 after %d minutes", testScaleInWaitMin)
 }

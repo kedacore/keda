@@ -198,6 +198,20 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 // reconcileScaledObject implements reconciler logic for ScaledObject
 func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (string, error) {
+	// Check the presence of "autoscaling.keda.sh/paused-replicas" annotation on the scaledObject (since the presence of this annotation will pause
+	// autoscaling no matter what number of replicas is provided), and if so, stop the scale loop and delete the HPA on the scaled object.
+	_, paused := scaledObject.GetAnnotations()[kedacontrollerutil.PausedReplicasAnnotation]
+	if paused {
+		logger.Info("ScaledObject is paused, so skipping the request.")
+		if err := r.stopScaleLoop(ctx, logger, scaledObject); err != nil {
+			return "Failed to stop the scale loop for paused ScaledObject", err
+		}
+		if deleted, err := r.ensureHPAForScaledObjectIsDeleted(ctx, logger, scaledObject); !deleted {
+			return "Failed to delete HPA for paused ScaledObject", err
+		}
+		return kedav1alpha1.ScaledObjectConditionReadySuccessMessage, nil
+	}
+
 	// Check scale target Name is specified
 	if scaledObject.Spec.ScaleTargetRef.Name == "" {
 		err := fmt.Errorf("ScaledObject.spec.scaleTargetRef.name is missing")
@@ -436,6 +450,31 @@ func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Cont
 	}
 
 	return false, nil
+}
+
+// ensureHPAForScaledObjectIsDeleted ensures that in cluster any HPA for specified ScaledObject is deleted, returns true if no HPA exists
+func (r *ScaledObjectReconciler) ensureHPAForScaledObjectIsDeleted(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (bool, error) {
+	var hpaName string
+	if scaledObject.Status.HpaName != "" {
+		hpaName = scaledObject.Status.HpaName
+	} else {
+		hpaName = getHPAName(scaledObject)
+	}
+	foundHpa := &autoscalingv2.HorizontalPodAutoscaler{}
+	// Check if HPA for this ScaledObject already exists
+	err := r.Client.Get(ctx, types.NamespacedName{Name: hpaName, Namespace: scaledObject.Namespace}, foundHpa)
+	if err != nil && errors.IsNotFound(err) {
+		return true, nil
+	} else if err != nil {
+		logger.Error(err, "Failed to get HPA from cluster")
+		return false, err
+	}
+
+	if err := r.deleteHPA(ctx, logger, scaledObject, foundHpa); err != nil {
+		logger.Error(err, "Failed to delete HPA from cluster")
+		return false, err
+	}
+	return true, nil
 }
 
 func isHpaRenamed(scaledObject *kedav1alpha1.ScaledObject, foundHpa *autoscalingv2.HorizontalPodAutoscaler) bool {
