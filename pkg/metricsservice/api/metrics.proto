@@ -22,38 +22,11 @@ option go_package = ".;api";
 import "k8s.io/metrics/pkg/apis/external_metrics/v1beta1/generated.proto";
 
 service MetricsService {
-    rpc GetMetrics (ScaledObjectRef) returns (Response) {};
+    rpc GetMetrics (ScaledObjectRef) returns (k8s.io.metrics.pkg.apis.external_metrics.v1beta1.ExternalMetricValueList) {};
 }
 
 message ScaledObjectRef {
     string name = 1;
     string namespace = 2;
     string metricName = 3;
-}
-
-
-message Response {
-    k8s.io.metrics.pkg.apis.external_metrics.v1beta1.ExternalMetricValueList metrics = 1;
-    PromMetricsMsg promMetrics = 2;
-}
-
-// [DEPRECATED] PromMetricsMsg provides metrics for deprecated Prometheus Metrics in Metrics Server
-message PromMetricsMsg {
-    bool scaledObjectErr = 1;
-    repeated ScalerMetricMsg scalerMetric = 2;
-    repeated ScalerErrorMsg scalerError = 3;
-}
-
-message ScalerMetricMsg {
-    string scalerName = 1;
-    int32 scalerIndex = 2;
-    string metricName = 3;
-    float metricValue = 4;
-}
-
-message ScalerErrorMsg {
-    string scalerName = 1;
-    int32 scalerIndex = 2;
-    string metricName = 3;
-    bool error = 4;
 }

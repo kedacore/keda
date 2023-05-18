@@ -123,9 +123,8 @@ func TestGetScaledObjectMetrics_DirectCall(t *testing.T) {
 	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs)
 	// hitting directly GetMetricsAndActivity()
 	scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{metricValue}, true, nil)
-	metrics, promMsg, err := sh.GetScaledObjectMetrics(context.TODO(), scaledObjectName, scaledObjectNamespace, metricName)
+	metrics, err := sh.GetScaledObjectMetrics(context.TODO(), scaledObjectName, scaledObjectNamespace, metricName)
 	assert.NotNil(t, metrics)
-	assert.NotNil(t, promMsg)
 	assert.Nil(t, err)
 
 	scaler.EXPECT().Close(gomock.Any())
@@ -214,9 +213,8 @@ func TestGetScaledObjectMetrics_FromCache(t *testing.T) {
 	mockStatusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs)
 	// hitting cache here instead of calling GetMetricsAndActivity()
-	metrics, promMsg, err := sh.GetScaledObjectMetrics(context.TODO(), scaledObjectName, scaledObjectNamespace, metricName)
+	metrics, err := sh.GetScaledObjectMetrics(context.TODO(), scaledObjectName, scaledObjectNamespace, metricName)
 	assert.NotNil(t, metrics)
-	assert.NotNil(t, promMsg)
 	assert.Nil(t, err)
 
 	scaler.EXPECT().Close(gomock.Any())
