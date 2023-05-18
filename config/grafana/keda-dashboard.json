@@ -14,7 +14,7 @@
         "target": {
           "limit": 100,
           "matchAny": false,
-          "tags": [],
+          "tags": [ ],
           "type": "dashboard"
         },
         "type": "dashboard"
@@ -26,7 +26,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": 9794,
-  "links": [],
+  "links": [ ],
   "liveNow": false,
   "panels": [
     {
@@ -38,7 +38,7 @@
         "y": 0
       },
       "id": 8,
-      "panels": [],
+      "panels": [ ],
       "title": "Metric Server",
       "type": "row"
     },
@@ -81,7 +81,7 @@
               "mode": "off"
             }
           },
-          "mappings": [],
+          "mappings": [ ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -154,7 +154,7 @@
       "id": 4,
       "options": {
         "legend": {
-          "calcs": [],
+          "calcs": [ ],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
@@ -219,7 +219,7 @@
               "mode": "off"
             }
           },
-          "mappings": [],
+          "mappings": [ ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -292,7 +292,7 @@
       "id": 3,
       "options": {
         "legend": {
-          "calcs": [],
+          "calcs": [ ],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
@@ -309,7 +309,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by(scaler) (rate(keda_scaler_errors{namespace=~\"$namespace\", scaledObject=~\"$scaledObject\", scaler=~\"$scaler\"}[5m]))",
+          "expr": "sum by(scaler) (rate(keda_scaler_errors{exported_namespace=~\"$namespace\", scaledObject=~\"$scaledObject\", scaler=~\"$scaler\"}[5m]))",
           "legendFormat": "{{ scaler }}",
           "range": true,
           "refId": "A"
@@ -357,7 +357,7 @@
               "mode": "off"
             }
           },
-          "mappings": [],
+          "mappings": [ ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -400,7 +400,7 @@
       "id": 2,
       "options": {
         "legend": {
-          "calcs": [],
+          "calcs": [ ],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
@@ -417,7 +417,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by(scaledObject) (rate(keda_scaled_object_errors{namespace=~\"$namespace\", scaledObject=~\"$scaledObject\"}[5m]))",
+          "expr": "sum by(scaledObject) (rate(keda_scaled_object_errors{exported_namespace=~\"$namespace\", scaledObject=~\"$scaledObject\"}[5m]))",
           "legendFormat": "{{ scaledObject }}",
           "range": true,
           "refId": "A"
@@ -465,7 +465,7 @@
               "mode": "off"
             }
           },
-          "mappings": [],
+          "mappings": [ ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -508,7 +508,7 @@
       "id": 5,
       "options": {
         "legend": {
-          "calcs": [],
+          "calcs": [ ],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
@@ -525,7 +525,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by(metric) (rate(keda_scaler_metrics_value{namespace=~\"$namespace\", metric=~\"$metric\"}[5m]))",
+          "expr": "sum by(metric) (rate(keda_scaler_metrics_value{exported_namespace=~\"$namespace\", metric=~\"$metric\"}[5m]))",
           "legendFormat": "{{ metric }}",
           "range": true,
           "refId": "A"
@@ -543,7 +543,7 @@
         "y": 19
       },
       "id": 10,
-      "panels": [],
+      "panels": [ ],
       "title": "Scale Target",
       "type": "row"
     },
@@ -589,7 +589,7 @@
           },
           "unit": "none"
         },
-        "overrides": []
+        "overrides": [ ]
       },
       "gridPos": {
         "h": 10,
@@ -652,7 +652,7 @@
           "color": {
             "mode": "thresholds"
           },
-          "mappings": [],
+          "mappings": [ ],
           "min": 0,
           "thresholds": {
             "mode": "percentage",
@@ -669,7 +669,7 @@
           },
           "unit": "short"
         },
-        "overrides": []
+        "overrides": [ ]
       },
       "gridPos": {
         "h": 8,
@@ -767,7 +767,7 @@
               "mode": "off"
             }
           },
-          "mappings": [],
+          "mappings": [ ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -779,7 +779,7 @@
           },
           "unit": "short"
         },
-        "overrides": []
+        "overrides": [ ]
       },
       "gridPos": {
         "h": 8,
@@ -790,7 +790,7 @@
       "id": 13,
       "options": {
         "legend": {
-          "calcs": [],
+          "calcs": [ ],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
@@ -854,7 +854,7 @@
         "includeAll": false,
         "multi": false,
         "name": "datasource",
-        "options": [],
+        "options": [ ],
         "query": "prometheus",
         "queryValue": "",
         "refresh": 1,
@@ -872,14 +872,14 @@
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(keda_scaled_object_errors, namespace)",
+        "definition": "label_values(keda_scaled_object_errors, exported_namespace)",
         "hide": 0,
         "includeAll": false,
         "multi": false,
         "name": "namespace",
-        "options": [],
+        "options": [ ],
         "query": {
-          "query": "label_values(keda_scaled_object_errors, namespace)",
+          "query": "label_values(keda_scaled_object_errors, exported_namespace)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 1,
@@ -902,14 +902,14 @@
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(keda_scaled_object_errors{namespace=\"$namespace\"}, scaledObject)",
+        "definition": "label_values(keda_scaled_object_errors{exported_namespace=\"$namespace\"}, scaledObject)",
         "hide": 0,
         "includeAll": true,
         "multi": true,
         "name": "scaledObject",
-        "options": [],
+        "options": [ ],
         "query": {
-          "query": "label_values(keda_scaled_object_errors{namespace=\"$namespace\"}, scaledObject)",
+          "query": "label_values(keda_scaled_object_errors{exported_namespace=\"$namespace\"}, scaledObject)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
@@ -928,14 +928,14 @@
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(keda_scaler_errors{namespace=\"$namespace\"}, scaler)",
+        "definition": "label_values(keda_scaler_errors{exported_namespace=\"$namespace\"}, scaler)",
         "hide": 0,
         "includeAll": false,
         "multi": false,
         "name": "scaler",
-        "options": [],
+        "options": [ ],
         "query": {
-          "query": "label_values(keda_scaler_errors{namespace=\"$namespace\"}, scaler)",
+          "query": "label_values(keda_scaler_errors{exported_namespace=\"$namespace\"}, scaler)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
@@ -954,14 +954,14 @@
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(keda_scaler_errors{namespace=\"$namespace\"}, metric)",
+        "definition": "label_values(keda_scaler_errors{exported_namespace=\"$namespace\"}, metric)",
         "hide": 0,
         "includeAll": false,
         "multi": false,
         "name": "metric",
-        "options": [],
+        "options": [ ],
         "query": {
-          "query": "label_values(keda_scaler_errors{namespace=\"$namespace\"}, metric)",
+          "query": "label_values(keda_scaler_errors{exported_namespace=\"$namespace\"}, metric)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
@@ -976,7 +976,7 @@
     "from": "now-24h",
     "to": "now"
   },
-  "timepicker": {},
+  "timepicker": { },
   "timezone": "",
   "title": "Keda",
   "uid": "asdasd8rvmMxdVk",
