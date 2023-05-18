@@ -19,7 +19,7 @@ type scaleFactor int8
 const (
 	xPendingFactor scaleFactor = iota + 1
 	xLengthFactor
-	xLagFactor
+	lagFactor
 )
 
 const (
@@ -29,7 +29,7 @@ const (
 	defaultTargetLag     = 5
 
 	// metadata names
-	lagMetadata                 = "lag"
+	lagMetadata                 = "lagCount"
 	pendingEntriesCountMetadata = "pendingEntriesCount"
 	streamLengthMetadata        = "streamLength"
 	streamNameMetadata          = "stream"
@@ -170,8 +170,7 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 			}
 			return entriesLength, nil
 		}
-	case xLagFactor:
-		// Insert lag implementation here
+	case lagFactor:
 		entriesCountFn = func(ctx context.Context) (int64, error) {
 			groups, err := client.XInfoGroups(ctx, meta.streamName).Result()
 			if err != nil {
@@ -232,11 +231,9 @@ func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser)
 	}
 
 	if val, ok := config.TriggerMetadata[consumerGroupNameMetadata]; ok {
-		// For now, we'll make the default xLagFactor
 		meta.consumerGroupName = val
-		// meta.targetPendingEntriesCount = defaultTargetEntries
 		if val, ok := config.TriggerMetadata[lagMetadata]; ok {
-			meta.scaleFactor = xLagFactor
+			meta.scaleFactor = lagFactor
 			meta.targetLag = defaultTargetLag
 			lag, err := strconv.ParseInt(val, 10, 64)
 			if err != nil {
@@ -244,7 +241,6 @@ func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser)
 			}
 			meta.targetLag = lag
 		} else {
-			// return nil, fmt.Errorf("error parsing pending entries count: %w", err)
 			meta.scaleFactor = xPendingFactor
 			meta.targetPendingEntriesCount = defaultTargetEntries
 			if val, ok := config.TriggerMetadata[pendingEntriesCountMetadata]; ok {
@@ -293,7 +289,7 @@ func (s *redisStreamsScaler) GetMetricSpecForScaling(context.Context) []v2.Metri
 		metricValue = s.metadata.targetPendingEntriesCount
 	case xLengthFactor:
 		metricValue = s.metadata.targetStreamLength
-	case xLagFactor:
+	case lagFactor:
 		metricValue = s.metadata.targetLag
 	}
 
