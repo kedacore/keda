@@ -137,7 +137,7 @@ spec:
       stream: my-stream
       consumerGroup: consumer-group-1
       pendingEntriesCount: "10"
-      lag: "4"
+      lagCount: "4"
     authenticationRef:
       name: {{.TriggerAuthenticationName}}
 `
