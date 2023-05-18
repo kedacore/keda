@@ -35,7 +35,7 @@ var (
 type TestResult struct {
 	TestCase string
 	Passed   bool
-	Tries    []string
+	Attempts []string
 }
 
 func main() {
@@ -49,9 +49,8 @@ func main() {
 	//
 	// Install KEDA
 	//
-
 	installation := executeTest(ctx, "tests/utils/setup_test.go", "15m", 1)
-	fmt.Print(installation.Tries[0])
+	fmt.Print(installation.Attempts[0])
 	if !installation.Passed {
 		uninstallKeda(ctx)
 		os.Exit(1)
@@ -60,7 +59,6 @@ func main() {
 	//
 	// Detect test cases
 	//
-
 	regularTestFiles := getRegularTestFiles(e2eRegex)
 	sequentialTestFiles := getSequentialTestFiles(e2eRegex)
 	if len(regularTestFiles) == 0 && len(sequentialTestFiles) == 0 {
@@ -72,19 +70,16 @@ func main() {
 	//
 	// Execute regular tests
 	//
-
 	regularTestResults := executeRegularTests(ctx, regularTestFiles)
 
 	//
 	// Execute secuential tests
 	//
-
 	sequentialTestResults := executeSequentialTests(ctx, sequentialTestFiles)
 
 	//
 	// Uninstall KEDA
 	//
-
 	passed := uninstallKeda(ctx)
 	if !passed {
 		os.Exit(1)
@@ -105,24 +100,24 @@ func executeTest(ctx context.Context, file string, timeout string, tries int) Te
 	result := TestResult{
 		TestCase: file,
 		Passed:   false,
-		Tries:    []string{},
+		Attempts: []string{},
 	}
 	for i := 1; i <= tries; i++ {
-		fmt.Printf("Executing %s, try '%d'\n", file, i)
+		fmt.Printf("Executing %s, attempt %q\n", file, numberToWord(i))
 		cmd := exec.CommandContext(ctx, "go", "test", "-v", "-tags", "e2e", "-timeout", timeout, file)
 		stdout, err := cmd.Output()
 		logFile := fmt.Sprintf("%s.%d.log", file, i)
 		fileError := os.WriteFile(logFile, stdout, 0644)
 		if fileError != nil {
-			fmt.Printf("Execution of %s, try '%d' has failed writing the logs : %s\n", file, i, fileError)
+			fmt.Printf("Execution of %s, attempt %q has failed writing the logs : %s\n", file, numberToWord(i), fileError)
 		}
-		result.Tries = append(result.Tries, string(stdout))
+		result.Attempts = append(result.Attempts, string(stdout))
 		if err == nil {
-			fmt.Printf("Execution of %s, try '%d' has passed\n", file, i)
+			fmt.Printf("Execution of %s, attempt %q has passed\n", file, numberToWord(i))
 			result.Passed = true
 			break
 		}
-		fmt.Printf("Execution of %s, try '%d' has failed: %s \n", file, i, err)
+		fmt.Printf("Execution of %s, attempt %q has failed: %s \n", file, numberToWord(i), err)
 	}
 	return result
 }
@@ -222,9 +217,9 @@ func executeRegularTests(ctx context.Context, testCases []string) []TestResult {
 		if result.Passed {
 			status = "passed"
 		}
-		fmt.Printf("%s has %s after %d tries \n", result.TestCase, status, len(result.Tries))
-		for index, log := range result.Tries {
-			fmt.Printf("try number %d\n", index+1)
+		fmt.Printf("%s has %s after %q attempts \n", result.TestCase, status, numberToWord(len(result.Attempts)))
+		for index, log := range result.Attempts {
+			fmt.Printf("attempt number %q\n", numberToWord(index+1))
 			fmt.Println(log)
 		}
 	}
@@ -281,9 +276,9 @@ func executeSequentialTests(ctx context.Context, testCases []string) []TestResul
 		if result.Passed {
 			status = "passed"
 		}
-		fmt.Printf("%s has %s after %d tries \n", result.TestCase, status, len(result.Tries))
-		for index, log := range result.Tries {
-			fmt.Printf("try number %d\n", index+1)
+		fmt.Printf("%s has %s after %q attempts \n", result.TestCase, status, numberToWord(len(result.Attempts)))
+		for index, log := range result.Attempts {
+			fmt.Printf("attempt number %q\n", numberToWord(index+1))
 			fmt.Println(log)
 		}
 		dir := filepath.Dir(result.TestCase)
@@ -314,7 +309,7 @@ func executeSequentialTests(ctx context.Context, testCases []string) []TestResul
 
 func uninstallKeda(ctx context.Context) bool {
 	removal := executeTest(ctx, "tests/utils/cleanup_test.go", "15m", 1)
-	fmt.Print(removal.Tries[0])
+	fmt.Print(removal.Attempts[0])
 	return removal.Passed
 }
 
@@ -325,12 +320,12 @@ func evaluateExecution(testResults []TestResult) int {
 
 	for _, result := range testResults {
 		if !result.Passed {
-			message := fmt.Sprintf("\tExecution of %s, has failed after %d tries", result.TestCase, len(result.Tries))
+			message := fmt.Sprintf("\tExecution of %s, has failed after %q attempts", result.TestCase, numberToWord(len(result.Attempts)))
 			failSummary = append(failSummary, message)
 			exitCode = 1
 			continue
 		}
-		message := fmt.Sprintf("\tExecution of %s, has passed after %d tries", result.TestCase, len(result.Tries))
+		message := fmt.Sprintf("\tExecution of %s, has passed after %q attempts", result.TestCase, numberToWord(len(result.Attempts)))
 		passSummary = append(passSummary, message)
 	}
 
@@ -355,4 +350,20 @@ func evaluateExecution(testResults []TestResult) int {
 	}
 
 	return exitCode
+}
+
+// numberToWord converts input integer (0-20) to corresponding word (zero-twenty)
+// numbers > 20 are just converted from int to string.
+// We need to do this hack, because GitHub Actions obfuscate numbers in the log (eg. 1 -> ***),
+// which is very not very helpful :(
+func numberToWord(num int) string {
+	if num >= 0 && num <= 20 {
+		words := []string{
+			"zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+			"ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen",
+			"seventeen", "eighteen", "nineteen", "twenty",
+		}
+		return words[num]
+	}
+	return fmt.Sprintf("%d", num)
 }
