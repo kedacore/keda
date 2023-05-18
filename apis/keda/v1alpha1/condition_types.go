@@ -39,6 +39,8 @@ const (
 	ScaledObjectConditionReadySucccesReason = "ScaledObjectReady"
 	// ScaledObjectConditionReadySuccessMessage defines the default Message for correct ScaledObject
 	ScaledObjectConditionReadySuccessMessage = "ScaledObject is defined correctly and is ready for scaling"
+	// ScaledObjectConditionPausedMessage defines the default Message for paused ScaledObject
+	ScaledObjectConditionPausedMessage = "ScaledObject is paused"
 )
 
 // Condition to store the condition state
