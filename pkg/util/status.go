@@ -71,24 +71,24 @@ func TransformObject(ctx context.Context, client runtimeclient.StatusClient, log
 	case *kedav1alpha1.ScaledObject:
 		patch = runtimeclient.MergeFrom(obj.DeepCopy())
 		if err := transform(obj, target); err != nil {
-			logger.Error(err, "Failed to patch ScaledObject")
+			logger.Error(err, "failed to patch ScaledObject")
 			return err
 		}
 	case *kedav1alpha1.ScaledJob:
 		patch = runtimeclient.MergeFrom(obj.DeepCopy())
 		if err := transform(obj, target); err != nil {
-			logger.Error(err, "Failed to patch ScaledJob")
+			logger.Error(err, "failed to patch ScaledJob")
 			return err
 		}
 	default:
 		err := fmt.Errorf("unknown scalable object type %v", obj)
-		logger.Error(err, "Failed to patch Objects")
+		logger.Error(err, "failed to patch Objects")
 		return err
 	}
 
 	err := client.Status().Patch(ctx, runtimeObj, patch)
 	if err != nil {
-		logger.Error(err, "Failed to patch Objects")
+		logger.Error(err, "failed to patch Objects")
 	}
 	return err
 }
