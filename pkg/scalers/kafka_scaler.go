@@ -54,6 +54,7 @@ type kafkaMetadata struct {
 	// OAUTHBEARER
 	scopes                []string
 	oauthTokenEndpointURI string
+	oauthExtensions       map[string]string
 
 	// TLS
 	enableTLS   bool
@@ -163,6 +164,18 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 					return errors.New("no oauth token endpoint uri given")
 				}
 				meta.oauthTokenEndpointURI = strings.TrimSpace(config.AuthParams["oauthTokenEndpointUri"])
+
+				meta.oauthExtensions = make(map[string]string)
+				oauthExtensionsRaw := config.AuthParams["oauthExtensions"]
+				if oauthExtensionsRaw != "" {
+					for _, extension := range strings.Split(oauthExtensionsRaw, ",") {
+						splittedExtension := strings.Split(extension, "=")
+						if len(splittedExtension) != 2 {
+							return errors.New("invalid OAuthBearer extension, must be of format key=value")
+						}
+						meta.oauthExtensions[splittedExtension[0]] = splittedExtension[1]
+					}
+				}
 			}
 		} else {
 			return fmt.Errorf("err SASL mode %s given", mode)
@@ -382,7 +395,7 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 
 	if metadata.saslType == KafkaSASLTypeOAuthbearer {
 		config.Net.SASL.Mechanism = sarama.SASLTypeOAuth
-		config.Net.SASL.TokenProvider = OAuthBearerTokenProvider(metadata.username, metadata.password, metadata.oauthTokenEndpointURI, metadata.scopes)
+		config.Net.SASL.TokenProvider = OAuthBearerTokenProvider(metadata.username, metadata.password, metadata.oauthTokenEndpointURI, metadata.scopes, metadata.oauthExtensions)
 	}
 
 	client, err := sarama.NewClient(metadata.bootstrapServers, config)
