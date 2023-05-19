@@ -903,6 +903,15 @@ var _ = Describe("ScaledObjectController", func() {
 		Eventually(func() error {
 			return k8sClient.Get(context.Background(), types.NamespacedName{Name: fmt.Sprintf("keda-hpa-%s", soName), Namespace: "default"}, hpa)
 		}).Should(HaveOccurred())
+
+		// wait so's Paused condition true
+		Eventually(func() metav1.ConditionStatus {
+			err := k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+			if err != nil {
+				return metav1.ConditionUnknown
+			}
+			return so.Status.Conditions.GetPausedCondition().Status
+		}, 1*time.Minute).Should(Equal(metav1.ConditionTrue))
 	})
 })
 

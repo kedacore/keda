@@ -203,13 +203,20 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 	_, paused := scaledObject.GetAnnotations()[kedacontrollerutil.PausedReplicasAnnotation]
 	if paused {
 		logger.Info("ScaledObject is paused, so skipping the request.")
+		msg := kedav1alpha1.ScaledObjectConditionPausedMessage
+		conditions := scaledObject.Status.Conditions.DeepCopy()
 		if err := r.stopScaleLoop(ctx, logger, scaledObject); err != nil {
-			return "failed to stop the scale loop for paused ScaledObject", err
+			msg = "failed to stop the scale loop for paused ScaledObject"
+			conditions.SetPausedCondition(metav1.ConditionFalse, "ScaledObjectStopScaleLoopFailed", msg)
+			return msg, err
 		}
 		if deleted, err := r.ensureHPAForScaledObjectIsDeleted(ctx, logger, scaledObject); !deleted {
-			return "failed to delete HPA for paused ScaledObject", err
+			msg = "failed to delete HPA for paused ScaledObject"
+			conditions.SetPausedCondition(metav1.ConditionFalse, "ScaledObjectHPADeleteFailed", msg)
+			return msg, err
 		}
-		return kedav1alpha1.ScaledObjectConditionPausedMessage, nil
+		conditions.SetPausedCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionPausedReason, msg)
+		return msg, nil
 	}
 
 	// Check scale target Name is specified
