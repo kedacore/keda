@@ -31,6 +31,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, isActive bool, isError bool) {
@@ -106,7 +107,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 				return
 			}
 			status.PausedReplicaCount = pausedCount
-			err = kedacontrollerutil.UpdateScaledObjectStatus(ctx, e.client, logger, scaledObject, status)
+			err = kedautil.UpdateScaledObjectStatus(ctx, e.client, logger, scaledObject, status)
 			if err != nil {
 				logger.Error(err, "error updating status paused replica count")
 				return
