@@ -209,14 +209,17 @@ func (s *pulsarScaler) GetStats(ctx context.Context) (*pulsarStats, error) {
 
 	req, err := http.NewRequestWithContext(ctx, "GET", s.metadata.statsURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("error requesting stats from url: %w", err)
+		return nil, fmt.Errorf("error requesting stats from admin url: %w", err)
 	}
 
 	addAuthHeaders(req, &s.metadata)
 
 	res, err := s.client.Do(req)
-	if res == nil || err != nil {
-		return nil, fmt.Errorf("error requesting stats from url: %w", err)
+	if err != nil {
+		return nil, fmt.Errorf("error requesting stats from admin url: %w", err)
+	}
+	if res == nil {
+		return nil, fmt.Errorf("error requesting stats from admin url, got empty response")
 	}
 
 	defer res.Body.Close()
@@ -225,7 +228,7 @@ func (s *pulsarScaler) GetStats(ctx context.Context) (*pulsarStats, error) {
 	case 200:
 		body, err := io.ReadAll(res.Body)
 		if err != nil {
-			return nil, fmt.Errorf("error requesting stats from url: %w", err)
+			return nil, fmt.Errorf("error requesting stats from admin url: %w", err)
 		}
 		err = json.Unmarshal(body, stats)
 		if err != nil {
@@ -233,9 +236,9 @@ func (s *pulsarScaler) GetStats(ctx context.Context) (*pulsarStats, error) {
 		}
 		return stats, nil
 	case 404:
-		return nil, fmt.Errorf("error requesting stats from url: %w", err)
+		return nil, fmt.Errorf("error requesting stats from admin url, response status is (404): %s", res.Status)
 	default:
-		return nil, fmt.Errorf("error requesting stats from url: %w", err)
+		return nil, fmt.Errorf("error requesting stats from admin url, response status is: %s", res.Status)
 	}
 }
 
