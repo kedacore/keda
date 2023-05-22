@@ -16,7 +16,7 @@ Here's an overview:
 
 We have a few preventive measures in place to detect security vulnerabilities:
 
-- [Renovate](https://renovatebot.com) helps us keep our dependencies up-to-date to patch vulnerabilities as soon as possible.
+- [Renovate](https://renovatebot.com) & [Dependabot](https://docs.github.com/en/code-security/dependabot/dependabot-security-updates/about-dependabot-security-updates) help us keep our dependencies up-to-date to patch vulnerabilities as soon as possible by creating awareness and automated PRs.
 - [Snyk](https://snyk.io/) helps us ship secure container images:
   - Images are scanned in every pull request (PR) to detect new vulnerabilities.
   - Published images on GitHub Container Registry are monitored to detect new vulnerabilities so we can ship patches
