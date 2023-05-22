@@ -26,6 +26,7 @@ We have a few preventive measures in place to detect security vulnerabilities:
 - [GitHub's security features](https://github.com/features/security) are constantly monitoring our repo and dependencies:
   - All pull requests (PRs) are using CodeQL to scan our source code for vulnerabilities
   - Dependabot will automatically identify vulnerabilities based on GitHub Advisory Database and open PRs with patches
+  - Automated [secret scanning](https://docs.github.com/en/enterprise-cloud@latest/code-security/secret-scanning/about-secret-scanning#about-secret-scanning-for-partner-patterns) & alerts
 
 KEDA maintainers are working to improve our prevention by adding additional measures:
 
