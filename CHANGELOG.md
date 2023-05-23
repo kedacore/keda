@@ -16,6 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.10.1](#v2101)
 - [v2.10.0](#v2100)
 - [v2.9.3](#v293)
 - [v2.9.2](#v292)
@@ -90,6 +91,18 @@ New deprecation(s):
 - **General**: Automatically scale test clusters in/out to reduce environmental footprint & improve cost-efficiency ([#4456](https://github.com/kedacore/keda/pull/4456))
 - **General**: Use default metrics provider from sigs.k8s.io/custom-metrics-apiserver ([#4473](https://github.com/kedacore/keda/pull/4473))
 - **General**: Refactor several functions for Status & Conditions handling into pkg util functions ([#2906](https://github.com/kedacore/keda/pull/2906))
+
+## v2.10.1
+
+### Fixes
+
+- **General**: Drop a transitive dependency on bou.ke/monkey ([#4366](https://github.com/kedacore/keda/issue/4366))
+- **General**: Fix odd number of arguments passed as key-value pairs for logging ([#4369](https://github.com/kedacore/keda/issue/4369))
+- **General**: Update supported versions in the welcome message ([#4360](https://github.com/kedacore/keda/issue/4360))
+- **Admission Webhooks**: Allow to remove the finalizer even if the ScaledObject isn't valid ([#4396](https://github.com/kedacore/keda/issue/4396))
+- **AWS SQS Scaler**: Respect `scaleOnInFlight` value ([#4276](https://github.com/kedacore/keda/issue/4276))
+- **Azure Pipelines**: Fix for disallowing `$top` on query when using `meta.parentID` method ([#4397])
+- **Azure Pipelines**: Respect all required demands ([#4404](https://github.com/kedacore/keda/issues/4404))
 
 ## v2.10.0
 
