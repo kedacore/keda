@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -68,6 +69,10 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	{map[string]string{"queueName": "sample", "host": "http://"}, false, map[string]string{}},
 	// auto protocol and an HTTPS URL
 	{map[string]string{"queueName": "sample", "host": "https://"}, false, map[string]string{}},
+	// unsafeSsl true
+	{map[string]string{"queueName": "sample", "host": "https://", "unsafeSsl": "true"}, false, map[string]string{}},
+	// unsafeSsl wrong input
+	{map[string]string{"queueName": "sample", "host": "https://", "unsafeSsl": "random"}, true, map[string]string{}},
 	// queueLength and mode
 	{map[string]string{"queueLength": "10", "mode": "QueueLength", "queueName": "sample", "host": "https://"}, true, map[string]string{}},
 	// queueLength and value
@@ -150,13 +155,23 @@ var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
 }
 
 func TestRabbitMQParseMetadata(t *testing.T) {
-	for _, testData := range testRabbitMQMetadata {
-		_, err := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+	for idx, testData := range testRabbitMQMetadata {
+		meta, err := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
 		if testData.isError && err == nil {
-			t.Error("Expected error but got success")
+			t.Errorf("Expected error but got success in test case %d", idx)
+		}
+		if val, ok := testData.metadata["unsafeSsl"]; ok && err == nil {
+			boolVal, err := strconv.ParseBool(val)
+			if err != nil && !testData.isError {
+				t.Errorf("Expect error but got success in test case %d", idx)
+			}
+			if boolVal != meta.unsafeSsl {
+				t.Errorf("Expect %t but got %t in test case %d", boolVal, meta.unsafeSsl, idx)
+			}
+
 		}
 	}
 }

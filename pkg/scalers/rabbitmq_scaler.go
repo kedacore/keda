@@ -84,6 +84,7 @@ type rabbitMQMetadata struct {
 	key         string
 	keyPassword string
 	enableTLS   bool
+	unsafeSsl   bool
 }
 
 type queueInfo struct {
@@ -196,6 +197,15 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	keyGiven := meta.key != ""
 	if certGiven != keyGiven {
 		return nil, fmt.Errorf("both key and cert must be provided")
+	}
+
+	meta.unsafeSsl = false
+	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
+		boolVal, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse unsafeSsl value. Must be either true or false")
+		}
+		meta.unsafeSsl = boolVal
 	}
 
 	// If the protocol is auto, check the host scheme.
@@ -396,7 +406,7 @@ func getConnectionAndChannel(host string, meta *rabbitMQMetadata) (*amqp.Connect
 	var conn *amqp.Connection
 	var err error
 	if meta.enableTLS {
-		tlsConfig, configErr := kedautil.NewTLSConfigWithPassword(meta.cert, meta.key, meta.keyPassword, meta.ca, false)
+		tlsConfig, configErr := kedautil.NewTLSConfigWithPassword(meta.cert, meta.key, meta.keyPassword, meta.ca, meta.unsafeSsl)
 		if configErr == nil {
 			conn, err = amqp.DialTLS(host, tlsConfig)
 		}
