@@ -43,20 +43,31 @@ func LoadGrpcTLSCredentials(certDir string, server bool) (credentials.TransportC
 		return nil, fmt.Errorf("failed to add client CA's certificate")
 	}
 
+	// Disabling client side auth for now
+
 	// Load certificate and private key
-	cert, err := tls.LoadX509KeyPair(path.Join(certDir, "tls.crt"), path.Join(certDir, "tls.key"))
-	if err != nil {
-		return nil, err
-	}
+	// cert, err := tls.LoadX509KeyPair(path.Join(certDir, "tls.crt"), path.Join(certDir, "tls.key"))
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	// Create the credentials and return it
 	config := &tls.Config{
-		MinVersion:   tls.VersionTLS13,
-		Certificates: []tls.Certificate{cert},
+		MinVersion: tls.VersionTLS13,
+		//		Certificates: []tls.Certificate{cert},
 	}
 	if server {
-		config.ClientAuth = tls.RequireAndVerifyClientCert
+		//		config.ClientAuth = tls.RequireAndVerifyClientCert
+		config.ClientAuth = tls.VerifyClientCertIfGiven
 		config.ClientCAs = certPool
+
+		//	Load certificate and private key
+		cert, err := tls.LoadX509KeyPair(path.Join(certDir, "tls.crt"), path.Join(certDir, "tls.key"))
+		if err != nil {
+			return nil, err
+		}
+		config.Certificates = []tls.Certificate{cert}
+
 	} else {
 		config.RootCAs = certPool
 	}
