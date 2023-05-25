@@ -361,12 +361,6 @@ func validateCompositeScalingLogic(so *kedav1alpha1.ScaledObject, specs []autosc
 		// TODO: possibly validate formula here otherwise combine the two ifs above
 	}
 
-	// if ExternalCalculation is given, target doesnt need to be specified but can depending
-	// on if the user wants to use custom composite scaler
-	// if len(csl.ExternalCalculations) > 0 {
-	// TODO: check if connection to the endpoints are valid?
-	// }
-
 	if csl.Target != "" {
 		// convert string to float
 		num, err = strconv.ParseFloat(csl.Target, 64)
