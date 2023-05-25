@@ -36,7 +36,15 @@ const (
 )
 
 var (
-	metricLabels      = []string{"namespace", "metric", "scaledObject", "scaler", "scalerIndex"}
+	metricLabels = []string{"namespace", "metric", "scaledObject", "scaler", "scalerIndex"}
+	buildInfo    = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Name:      "build_info",
+			Help:      "A metric with a constant '1' value labeled by version, git_commit and goversion from which KEDA was built.",
+		},
+		[]string{"version", "git_commit", "goversion"},
+	)
 	scalerErrorsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: DefaultPromMetricsNamespace,
@@ -121,6 +129,7 @@ func init() {
 
 	metrics.Registry.MustRegister(triggerTotalsGaugeVec)
 	metrics.Registry.MustRegister(crdTotalsGaugeVec)
+	metrics.Registry.MustRegister(buildInfo)
 }
 
 // RecordScalerMetric create a measurement of the external metric used by the HPA
@@ -203,4 +212,8 @@ func DecrementCRDTotal(crdType, namespace string) {
 	}
 
 	crdTotalsGaugeVec.WithLabelValues(crdType, namespace).Dec()
+}
+
+func SetBuildInfo(version, commit, goVersion string) {
+	buildInfo.WithLabelValues(version, commit, goVersion).Set(1)
 }

@@ -181,6 +181,7 @@ func printWelcomeMsg(cmd *Adapter) error {
 		return err
 	}
 	kedautil.PrintWelcome(logger, kedautil.NewK8sVersion(version), "metrics server")
+	kedautil.PublishBuildInfo()
 
 	return nil
 }

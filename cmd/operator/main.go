@@ -279,6 +279,7 @@ func main() {
 	}
 
 	kedautil.PrintWelcome(setupLog, kubeVersion, "manager")
+	kedautil.PublishBuildInfo()
 
 	kubeInformerFactory.Start(ctx.Done())
 
