@@ -233,7 +233,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 	}
 	scaleObjectSpecChanged := false
 	if !newHPACreated {
-		// Lets Check whether ScaledObject generation was changed, ie. there were changes in ScaledObject.Spec
+		// Let's Check whether ScaledObject generation was changed, i.e. there were changes in ScaledObject.Spec
 		// if it was changed we should start a new ScaleLoop
 		// (we can omit this check if a new HPA was created, which fires new ScaleLoop anyway)
 		scaleObjectSpecChanged, err = r.scaledObjectGenerationChanged(logger, scaledObject)
