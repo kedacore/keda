@@ -39,6 +39,8 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/common/message"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
+	externalscaling "github.com/kedacore/keda/v2/pkg/externalscaling"
+	externalscalingAPI "github.com/kedacore/keda/v2/pkg/externalscaling/api"
 	"github.com/kedacore/keda/v2/pkg/fallback"
 	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	"github.com/kedacore/keda/v2/pkg/scalers"
@@ -452,7 +454,6 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 			logger.Error(err, "error metricsArray is empty")
 			// TODO: add cache.Recorder?
 		}
-
 		for _, spec := range metricSpecs {
 			// skip cpu/memory resource scaler
 			if spec.External == nil {
@@ -531,12 +532,62 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 
 	// apply external calculations
 	for i, ec := range scaledObject.Spec.Advanced.ComplexScalingLogic.ExternalCalculations {
-		// call urls and return modified metric list
+		// call server on each url and return modified metric list in order
 		logger.V(0).Info(">>3.1 EXT-CALC CALL", "i", i, "name", ec.Name, "url", ec.URL)
+
+		listStruct := externalscalingAPI.MetricsList{}
+		for _, val := range matchingMetrics {
+			// if value is 0, its empty in the list
+			metric := &externalscalingAPI.Metric{Name: val.MetricName, Value: float32(val.Value.Value())}
+			listStruct.MetricValues = append(listStruct.MetricValues, metric)
+		}
+		logger.V(0).Info(">>3.2 LIST", "list", listStruct.MetricValues)
+
+		esGrpcClient, err := externalscaling.NewGrpcClient(ec.URL, logger)
+		if err != nil {
+			logger.Error(err, "error connecting external calculation grpc client to server")
+			break
+		}
+
+		if !esGrpcClient.WaitForConnectionReady(ctx, logger) {
+			err = fmt.Errorf("client didnt connect to server successfully")
+			logger.Error(err, "error in connection")
+		}
+		logger.Info("connected to gRPC server")
+
+		res, err := esGrpcClient.Calculate(ctx, &listStruct, logger)
+		if err != nil {
+			logger.Error(err, "error calculating in grpc server for external calculation")
+			break
+		}
+		logger.V(0).Info(">>3.4 CALCULATE GRPC", "result", res)
+		// TODO: turn to fallback here if error != nil & err is given (remove break 2 lines up)
+
+		var finalList []external_metrics.ExternalMetricValue
+
+		for _, val := range res.MetricValues {
+			tmp := external_metrics.ExternalMetricValue{}
+			tmp.MetricName = val.Name
+			tmp.Timestamp = v1.Now()
+			tmp.Value.SetMilli(int64(val.Value * 1000))
+			finalList = append(finalList, tmp)
+		}
+		matchingMetrics = finalList
+		logger.V(0).Info(">>3.5 CALCULATE AFTER", "matchingMetrics", matchingMetrics)
 	}
 
 	// apply formula
 	if scaledObject.Spec.Advanced.ComplexScalingLogic.Formula != "" {
+		// add last external calculation name as a possible trigger (user can
+		// manipulate with metrics in ExternalCalculation service and it is expected
+		// to be named as the ExternalCalculation[len()-1] value)
+		if len(scaledObject.Spec.Advanced.ComplexScalingLogic.ExternalCalculations) > 0 {
+			lastElemIndex := len(scaledObject.Spec.Advanced.ComplexScalingLogic.ExternalCalculations) - 1
+			lastElem := scaledObject.Spec.Advanced.ComplexScalingLogic.ExternalCalculations[lastElemIndex].Name
+			// expect last element of external calculation array via its name
+			metricTriggerPairList[lastElem] = lastElem
+		}
+		logger.V(0).Info(">>3.2 FORMULA", "pairlist", metricTriggerPairList)
 		logger.V(0).Info(">>3.2 FORMULA", "formula", scaledObject.Spec.Advanced.ComplexScalingLogic.Formula, "target", scaledObject.Spec.Advanced.ComplexScalingLogic.Target)
 		matchingMetrics, err = applyCustomScalerFormula(matchingMetrics, scaledObject.Spec.Advanced.ComplexScalingLogic.Formula, metricTriggerPairList, logger)
 		if err != nil {
@@ -760,11 +811,12 @@ func applyCustomScalerFormula(list []external_metrics.ExternalMetricValue, formu
 	for _, v := range list {
 		data[pairList[v.MetricName]] = v.Value.AsApproximateFloat64()
 	}
-
+	logger.Info(">>3.6 FORMULA", "data", data)
 	program, err := expr.Compile(formula)
 	if err != nil {
 		return nil, fmt.Errorf("error trying to compile custom formula: %s", err)
 	}
+	logger.Info(">>3.7 FORMULA", "compile", program)
 
 	tmp, err := expr.Run(program, data)
 	if err != nil {
@@ -773,7 +825,7 @@ func applyCustomScalerFormula(list []external_metrics.ExternalMetricValue, formu
 
 	out = tmp.(float64)
 	ret.Value.SetMilli(int64(out * 1000))
-	logger.V(0).Info(">>3.3: RUN", "tmp", tmp, "out", out, "struct", ret)
+	logger.V(0).Info(">>3.8: RUN", "tmp", tmp, "out", out, "struct", ret)
 	return []external_metrics.ExternalMetricValue{ret}, nil
 }
 
