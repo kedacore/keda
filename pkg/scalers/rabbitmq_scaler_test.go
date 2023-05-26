@@ -171,7 +171,6 @@ func TestRabbitMQParseMetadata(t *testing.T) {
 			if boolVal != meta.unsafeSsl {
 				t.Errorf("Expect %t but got %t in test case %d", boolVal, meta.unsafeSsl, idx)
 			}
-
 		}
 	}
 }

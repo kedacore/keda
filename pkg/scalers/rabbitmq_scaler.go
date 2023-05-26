@@ -150,10 +150,7 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 	return s, nil
 }
 
-func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
-	meta := rabbitMQMetadata{}
-
-	// Resolve protocol type
+func resolveProtocol(config *ScalerConfig, meta *rabbitMQMetadata) error {
 	meta.protocol = defaultProtocol
 	if val, ok := config.AuthParams["protocol"]; ok {
 		meta.protocol = val
@@ -162,10 +159,12 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		meta.protocol = val
 	}
 	if meta.protocol != amqpProtocol && meta.protocol != httpProtocol && meta.protocol != autoProtocol {
-		return nil, fmt.Errorf("the protocol has to be either `%s`, `%s`, or `%s` but is `%s`", amqpProtocol, httpProtocol, autoProtocol, meta.protocol)
+		return fmt.Errorf("the protocol has to be either `%s`, `%s`, or `%s` but is `%s`", amqpProtocol, httpProtocol, autoProtocol, meta.protocol)
 	}
+	return nil
+}
 
-	// Resolve host value
+func resolveHostValue(config *ScalerConfig, meta *rabbitMQMetadata) error {
 	switch {
 	case config.AuthParams["host"] != "":
 		meta.host = config.AuthParams["host"]
@@ -174,10 +173,31 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	case config.TriggerMetadata["hostFromEnv"] != "":
 		meta.host = config.ResolvedEnv[config.TriggerMetadata["hostFromEnv"]]
 	default:
-		return nil, fmt.Errorf("no host setting given")
+		return fmt.Errorf("no host setting given")
 	}
+	return nil
+}
 
-	// Resolve TLS authentication parameters
+func resolveTimeout(config *ScalerConfig, meta *rabbitMQMetadata) error {
+	if val, ok := config.TriggerMetadata["timeout"]; ok {
+		timeoutMS, err := strconv.Atoi(val)
+		if err != nil {
+			return fmt.Errorf("unable to parse timeout: %w", err)
+		}
+		if meta.protocol == amqpProtocol {
+			return fmt.Errorf("amqp protocol doesn't support custom timeouts: %w", err)
+		}
+		if timeoutMS <= 0 {
+			return fmt.Errorf("timeout must be greater than 0: %w", err)
+		}
+		meta.timeout = time.Duration(timeoutMS) * time.Millisecond
+	} else {
+		meta.timeout = config.GlobalHTTPTimeout
+	}
+	return nil
+}
+
+func resolveTLSAuthParams(config *ScalerConfig, meta *rabbitMQMetadata) error {
 	meta.enableTLS = false
 	if val, ok := config.AuthParams["tls"]; ok {
 		val = strings.TrimSpace(val)
@@ -187,8 +207,28 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 			meta.key = config.AuthParams["key"]
 			meta.enableTLS = true
 		} else if val != "disable" {
-			return nil, fmt.Errorf("err incorrect value for TLS given: %s", val)
+			return fmt.Errorf("err incorrect value for TLS given: %s", val)
 		}
+	}
+	return nil
+}
+
+func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
+	meta := rabbitMQMetadata{}
+
+	// Resolve protocol type
+	if err := resolveProtocol(config, &meta); err != nil {
+		return nil, err
+	}
+
+	// Resolve host value
+	if err := resolveHostValue(config, &meta); err != nil {
+		return nil, err
+	}
+
+	// Resolve TLS authentication parameters
+	if err := resolveTLSAuthParams(config, &meta); err != nil {
+		return nil, err
 	}
 
 	meta.keyPassword = config.AuthParams["keyPassword"]
@@ -264,22 +304,9 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	}
 
 	// Resolve timeout
-	if val, ok := config.TriggerMetadata["timeout"]; ok {
-		timeoutMS, err := strconv.Atoi(val)
-		if err != nil {
-			return nil, fmt.Errorf("unable to parse timeout: %w", err)
-		}
-		if meta.protocol == amqpProtocol {
-			return nil, fmt.Errorf("amqp protocol doesn't support custom timeouts: %w", err)
-		}
-		if timeoutMS <= 0 {
-			return nil, fmt.Errorf("timeout must be greater than 0: %w", err)
-		}
-		meta.timeout = time.Duration(timeoutMS) * time.Millisecond
-	} else {
-		meta.timeout = config.GlobalHTTPTimeout
+	if err := resolveTimeout(config, &meta); err != nil {
+		return nil, err
 	}
-
 	meta.scalerIndex = config.ScalerIndex
 
 	return &meta, nil
