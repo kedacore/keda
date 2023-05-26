@@ -69,10 +69,6 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	{map[string]string{"queueName": "sample", "host": "http://"}, false, map[string]string{}},
 	// auto protocol and an HTTPS URL
 	{map[string]string{"queueName": "sample", "host": "https://"}, false, map[string]string{}},
-	// unsafeSsl true
-	{map[string]string{"queueName": "sample", "host": "https://", "unsafeSsl": "true"}, false, map[string]string{}},
-	// unsafeSsl wrong input
-	{map[string]string{"queueName": "sample", "host": "https://", "unsafeSsl": "random"}, true, map[string]string{}},
 	// queueLength and mode
 	{map[string]string{"queueLength": "10", "mode": "QueueLength", "queueName": "sample", "host": "https://"}, true, map[string]string{}},
 	// queueLength and value
@@ -131,6 +127,10 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	{map[string]string{"mode": "QueueLength", "value": "1000", "queueName": "sample", "host": "http://", "useRegex": "true", "excludeUnacknowledged": "true"}, false, map[string]string{}},
 	// amqp and excludeUnacknowledged
 	{map[string]string{"mode": "QueueLength", "value": "1000", "queueName": "sample", "host": "amqp://", "useRegex": "true", "excludeUnacknowledged": "true"}, true, map[string]string{}},
+	// unsafeSsl true
+	{map[string]string{"queueName": "sample", "host": "https://", "unsafeSsl": "true"}, false, map[string]string{}},
+	// unsafeSsl wrong input
+	{map[string]string{"queueName": "sample", "host": "https://", "unsafeSsl": "random"}, true, map[string]string{}},
 }
 
 var testRabbitMQAuthParamData = []parseRabbitMQAuthParamTestData{
