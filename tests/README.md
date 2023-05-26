@@ -238,4 +238,4 @@ There are cases where it isn't needed the whole e2e test suite. In order to redu
 
 This regex will be evaluated by the golang script, so it has to be written in a golang compliance way.
 
-This new check is mandatory on every PR, the CI checks expect to execute the e2e tests. As not always the e2e tests are useful (for instance, when the changes apply only to documentation), it can be skipped labeling the PR with `skip-e2e` 
+This new check is mandatory on every PR, the CI checks expect to execute the e2e tests. As not always the e2e tests are useful (for instance, when the changes apply only to documentation), it can be skipped labeling the PR with `skip-e2e`
