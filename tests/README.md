@@ -217,3 +217,23 @@ In order to manage these e2e resources, there are 2 different repositories:
 - [kedacore/testing-infrastructure](https://github.com/kedacore/testing-infrastructure) for cloud resources.
 
 If any change is needed in e2e test infrastructure, please open a PR in those repositories and use kedacore resources for e2e tests.
+
+## How to execute e2e tests during a PR
+
+As e2e tests are executed using real infrastructure we don't execute them directly on the PRs. A member of [@keda-e2e-test-executors team](https://github.com/orgs/kedacore/teams/keda-e2e-test-executors) has to write a comment in the PR where the e2e tests should be executed:
+
+```
+/run-e2e
+```
+
+This comment will trigger a [workflow](https://github.com/kedacore/keda/blob/main/.github/workflows/pr-e2e.yml) that generates the docker images using the last commit (at the moment of the comment) and tests them. The commit will have an extra check (which can block the PR) and the member message will be updated with a link to the workflow execution.
+
+There are cases where it isn't needed the whole e2e test suite. In order to reduce the time and required resources in those cases, the command can be appended with a regex which matches the desired e2e tests:
+
+```
+/run-e2e desired-regex
+# e.g:
+/run-e2e azure
+```
+
+This regex will be evaluated by the golang script, so it has to be written in a golang compliance way
