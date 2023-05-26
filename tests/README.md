@@ -236,4 +236,4 @@ There are cases where it isn't needed the whole e2e test suite. In order to redu
 /run-e2e azure
 ```
 
-This regex will be evaluated by the golang script, so it has to be written in a golang compliance way
+This regex will be evaluated by the golang script, so it has to be written in a golang compliance way.
