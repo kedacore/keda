@@ -171,7 +171,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by(job) (rate(keda_scaler_errors_total{}[5m]))",
+          "expr": "sum by(job) (rate(keda_metrics_adapter_scaler_errors_total{}[5m]))",
           "legendFormat": "{{ job }}",
           "range": true,
           "refId": "A"
@@ -309,7 +309,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by(scaler) (rate(keda_scaler_errors{namespace=~\"$namespace\", scaledObject=~\"$scaledObject\", scaler=~\"$scaler\"}[5m]))",
+          "expr": "sum by(scaler) (rate(keda_metrics_adapter_scaler_errors{namespace=~\"$namespace\", scaledObject=~\"$scaledObject\", scaler=~\"$scaler\"}[5m]))",
           "legendFormat": "{{ scaler }}",
           "range": true,
           "refId": "A"
@@ -417,7 +417,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by(scaledObject) (rate(keda_scaled_object_errors{namespace=~\"$namespace\", scaledObject=~\"$scaledObject\"}[5m]))",
+          "expr": "sum by(scaledObject) (rate(keda_metrics_adapter_scaled_object_errors{namespace=~\"$namespace\", scaledObject=~\"$scaledObject\"}[5m]))",
           "legendFormat": "{{ scaledObject }}",
           "range": true,
           "refId": "A"
@@ -872,14 +872,14 @@
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(keda_scaled_object_errors, namespace)",
+        "definition": "label_values(keda_metrics_adapter_scaled_object_errors, namespace)",
         "hide": 0,
         "includeAll": false,
         "multi": false,
         "name": "namespace",
         "options": [],
         "query": {
-          "query": "label_values(keda_scaled_object_errors, namespace)",
+          "query": "label_values(keda_metrics_adapter_scaled_object_errors, namespace)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 1,
@@ -902,14 +902,14 @@
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(keda_scaled_object_errors{namespace=\"$namespace\"}, scaledObject)",
+        "definition": "label_values(keda_metrics_adapter_scaled_object_errors{namespace=\"$namespace\"}, scaledobject)",
         "hide": 0,
         "includeAll": true,
         "multi": true,
         "name": "scaledObject",
         "options": [],
         "query": {
-          "query": "label_values(keda_scaled_object_errors{namespace=\"$namespace\"}, scaledObject)",
+          "query": "label_values(keda_metrics_adapter_scaled_object_errors{namespace=\"$namespace\"}, scaledobject)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
@@ -928,14 +928,14 @@
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(keda_scaler_errors{namespace=\"$namespace\"}, scaler)",
+        "definition": "label_values(keda_metrics_adapter_scaler_errors{namespace=\"$namespace\"}, scaler)",
         "hide": 0,
         "includeAll": false,
         "multi": false,
         "name": "scaler",
         "options": [],
         "query": {
-          "query": "label_values(keda_scaler_errors{namespace=\"$namespace\"}, scaler)",
+          "query": "label_values(keda_metrics_adapter_scaler_errors{namespace=\"$namespace\"}, scaler)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
@@ -954,14 +954,14 @@
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(keda_scaler_errors{namespace=\"$namespace\"}, metric)",
+        "definition": "label_values(keda_metrics_adapter_scaler_errors{namespace=\"$namespace\"}, metric)",
         "hide": 0,
         "includeAll": false,
         "multi": false,
         "name": "metric",
         "options": [],
         "query": {
-          "query": "label_values(keda_scaler_errors{namespace=\"$namespace\"}, metric)",
+          "query": "label_values(keda_metrics_adapter_scaler_errors{namespace=\"$namespace\"}, metric)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
