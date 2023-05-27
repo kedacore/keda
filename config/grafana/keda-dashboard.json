@@ -525,7 +525,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by(metric) (rate(keda_scaler_metrics_value{namespace=~\"$namespace\", metric=~\"$metric\"}[5m]))",
+          "expr": "sum by(metric) (rate(keda_metrics_adapter_scaler_metrics_value{namespace=~\"$namespace\", metric=~\"$metric\"}[5m]))",
           "legendFormat": "{{ metric }}",
           "range": true,
           "refId": "A"
