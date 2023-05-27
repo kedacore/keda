@@ -175,7 +175,7 @@ func TestRabbitMQParseMetadata(t *testing.T) {
 	}
 }
 
-func TestRabbitMQParseAuthParamdata(t *testing.T) {
+func TestRabbitMQParseAuthParamData(t *testing.T) {
 	for _, testData := range testRabbitMQAuthParamData {
 		metadata, err := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
@@ -265,7 +265,7 @@ var testQueueInfoTestData = []getQueueInfoTestData{
 	{`Password is incorrect`, http.StatusUnauthorized, false, nil, ""},
 }
 
-var vhostPathes = []string{"/myhost", "", "/", "//", rabbitRootVhostPath}
+var vhostPaths = []string{"/myhost", "", "/", "//", rabbitRootVhostPath}
 
 var testQueueInfoTestDataSingleVhost = []getQueueInfoTestData{
 	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "myhost"}, "/myhost"},
@@ -279,7 +279,7 @@ var testQueueInfoTestDataSingleVhost = []getQueueInfoTestData{
 func TestGetQueueInfo(t *testing.T) {
 	allTestData := []getQueueInfoTestData{}
 	for _, testData := range testQueueInfoTestData {
-		for _, vhostPath := range vhostPathes {
+		for _, vhostPath := range vhostPaths {
 			testData := testData
 			testData.vhostPath = vhostPath
 			allTestData = append(allTestData, testData)
@@ -414,12 +414,12 @@ var testRegexQueueInfoTestData = []getQueueInfoTestData{
 	{`{"items":[]}`, http.StatusOK, false, map[string]string{"mode": "MessageRate", "value": "1000", "useRegex": "true", "operation": "avg"}, ""},
 }
 
-var vhostPathesForRegex = []string{"", "/test-vh", rabbitRootVhostPath}
+var vhostPathsForRegex = []string{"", "/test-vh", rabbitRootVhostPath}
 
 func TestGetQueueInfoWithRegex(t *testing.T) {
 	allTestData := []getQueueInfoTestData{}
 	for _, testData := range testRegexQueueInfoTestData {
-		for _, vhostPath := range vhostPathesForRegex {
+		for _, vhostPath := range vhostPathsForRegex {
 			testData := testData
 			testData.vhostPath = vhostPath
 			allTestData = append(allTestData, testData)
@@ -499,7 +499,7 @@ var testRegexPageSizeTestData = []getRegexPageSizeTestData{
 func TestGetPageSizeWithRegex(t *testing.T) {
 	allTestData := []getRegexPageSizeTestData{}
 	for _, testData := range testRegexPageSizeTestData {
-		for _, vhostPath := range vhostPathesForRegex {
+		for _, vhostPath := range vhostPathsForRegex {
 			testData := testData
 			testData.queueInfo.vhostPath = vhostPath
 			allTestData = append(allTestData, testData)
@@ -594,7 +594,7 @@ var anonimizeRabbitMQErrorTestData = []rabbitMQErrorTestData{
 	{fmt.Errorf("the queue https://user1:fdasr345_-@domain.com/api/virtual is unavailable"), "error inspecting rabbitMQ: the queue https://user:password@domain.com/api/virtual is unavailable"},
 }
 
-func TestRabbitMQAnonimizeRabbitMQError(t *testing.T) {
+func TestRabbitMQAnonymizeRabbitMQError(t *testing.T) {
 	metadata := map[string]string{
 		"queueName":   "evaluate_trials",
 		"hostFromEnv": host,

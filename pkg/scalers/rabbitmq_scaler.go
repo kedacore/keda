@@ -125,7 +125,7 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing rabbitmq metadata: %w", err)
 	}
 	s.metadata = meta
-	s.httpClient = kedautil.CreateHTTPClient(meta.timeout, false)
+	s.httpClient = kedautil.CreateHTTPClient(meta.timeout, meta.unsafeSsl)
 
 	if meta.protocol == amqpProtocol {
 		// Override vhost if requested.
@@ -575,7 +575,7 @@ func (s *rabbitMQScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpe
 func (s *rabbitMQScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	messages, publishRate, err := s.getQueueStatus()
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, s.anonimizeRabbitMQError(err)
+		return []external_metrics.ExternalMetricValue{}, false, s.anonymizeRabbitMQError(err)
 	}
 
 	var metric external_metrics.ExternalMetricValue
@@ -660,7 +660,7 @@ func getMaximum(q []queueInfo) (int, int, float64) {
 }
 
 // Mask host for log purposes
-func (s *rabbitMQScaler) anonimizeRabbitMQError(err error) error {
+func (s *rabbitMQScaler) anonymizeRabbitMQError(err error) error {
 	errorMessage := fmt.Sprintf("error inspecting rabbitMQ: %s", err)
 	return fmt.Errorf(rabbitMQAnonymizePattern.ReplaceAllString(errorMessage, "user:password@"))
 }
