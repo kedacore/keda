@@ -172,9 +172,9 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		}
 	}
 
-	// reconcile ScaledObject and set status appropriately
-	msg, err := r.reconcileScaledObject(ctx, reqLogger, scaledObject)
 	conditions := scaledObject.Status.Conditions.DeepCopy()
+	// reconcile ScaledObject and set status appropriately
+	msg, err := r.reconcileScaledObject(ctx, reqLogger, scaledObject, &conditions)
 	if err != nil {
 		reqLogger.Error(err, msg)
 		conditions.SetReadyCondition(metav1.ConditionFalse, "ScaledObjectCheckFailed", msg)
@@ -197,14 +197,13 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 }
 
 // reconcileScaledObject implements reconciler logic for ScaledObject
-func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (string, error) {
+func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, conditions *kedav1alpha1.Conditions) (string, error) {
 	// Check the presence of "autoscaling.keda.sh/paused-replicas" annotation on the scaledObject (since the presence of this annotation will pause
 	// autoscaling no matter what number of replicas is provided), and if so, stop the scale loop and delete the HPA on the scaled object.
 	_, paused := scaledObject.GetAnnotations()[kedacontrollerutil.PausedReplicasAnnotation]
 	if paused {
 		logger.Info("ScaledObject is paused, so skipping the request.")
 		msg := kedav1alpha1.ScaledObjectConditionPausedMessage
-		conditions := scaledObject.Status.Conditions.DeepCopy()
 		if err := r.stopScaleLoop(ctx, logger, scaledObject); err != nil {
 			msg = "failed to stop the scale loop for paused ScaledObject"
 			conditions.SetPausedCondition(metav1.ConditionFalse, "ScaledObjectStopScaleLoopFailed", msg)
@@ -416,7 +415,7 @@ func (r *ScaledObjectReconciler) checkReplicaCountBoundsAreValid(scaledObject *k
 
 // ensureHPAForScaledObjectExists ensures that in cluster exist up-to-date HPA for specified ScaledObject, returns true if a new HPA was created
 func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedav1alpha1.GroupVersionKindResource) (bool, error) {
-	hpaName := getHPAName(scaledObject)
+	hpaName := getHPANameOnEnsure(scaledObject)
 	foundHpa := &autoscalingv2.HorizontalPodAutoscaler{}
 	// Check if HPA for this ScaledObject already exists
 	err := r.Client.Get(ctx, types.NamespacedName{Name: hpaName, Namespace: scaledObject.Namespace}, foundHpa)
@@ -456,7 +455,7 @@ func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Cont
 
 // ensureHPAForScaledObjectIsDeleted ensures that in cluster any HPA for specified ScaledObject is deleted, returns true if no HPA exists
 func (r *ScaledObjectReconciler) ensureHPAForScaledObjectIsDeleted(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (bool, error) {
-	hpaName := getHPAName(scaledObject)
+	hpaName := getHPANameOnEnsure(scaledObject)
 	foundHpa := &autoscalingv2.HorizontalPodAutoscaler{}
 	// Check if HPA for this ScaledObject already exists
 	err := r.Client.Get(ctx, types.NamespacedName{Name: hpaName, Namespace: scaledObject.Namespace}, foundHpa)
@@ -472,6 +471,13 @@ func (r *ScaledObjectReconciler) ensureHPAForScaledObjectIsDeleted(ctx context.C
 		return false, err
 	}
 	return true, nil
+}
+
+func getHPANameOnEnsure(scaledObject *kedav1alpha1.ScaledObject) string {
+	if scaledObject.Status.HpaName != "" {
+		return scaledObject.Status.HpaName
+	}
+	return getHPAName(scaledObject)
 }
 
 func isHpaRenamed(scaledObject *kedav1alpha1.ScaledObject, foundHpa *autoscalingv2.HorizontalPodAutoscaler) bool {

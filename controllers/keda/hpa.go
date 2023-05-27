@@ -269,9 +269,6 @@ func updateHealthStatus(scaledObject *kedav1alpha1.ScaledObject, externalMetricN
 
 // getHPAName returns generated HPA name for ScaledObject specified in the parameter
 func getHPAName(scaledObject *kedav1alpha1.ScaledObject) string {
-	if scaledObject.Status.HpaName != "" {
-		return scaledObject.Status.HpaName
-	}
 	if scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Name != "" {
 		return scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Name
 	}
