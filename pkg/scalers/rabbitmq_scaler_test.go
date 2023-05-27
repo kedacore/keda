@@ -582,7 +582,7 @@ type rabbitMQErrorTestData struct {
 	message string
 }
 
-var anonimizeRabbitMQErrorTestData = []rabbitMQErrorTestData{
+var anonymizeRabbitMQErrorTestData = []rabbitMQErrorTestData{
 	{fmt.Errorf("https://user1:password1@domain.com"), "error inspecting rabbitMQ: https://user:password@domain.com"},
 	{fmt.Errorf("https://fdasr345_-:password1@domain.com"), "error inspecting rabbitMQ: https://user:password@domain.com"},
 	{fmt.Errorf("https://user1:fdasr345_-@domain.com"), "error inspecting rabbitMQ: https://user:password@domain.com"},
@@ -610,8 +610,8 @@ func TestRabbitMQAnonymizeRabbitMQError(t *testing.T) {
 		metadata:   meta,
 		httpClient: nil,
 	}
-	for _, testData := range anonimizeRabbitMQErrorTestData {
-		err := s.anonimizeRabbitMQError(testData.err)
+	for _, testData := range anonymizeRabbitMQErrorTestData {
+		err := s.anonymizeRabbitMQError(testData.err)
 		assert.Equal(t, fmt.Sprint(err), testData.message)
 	}
 }
