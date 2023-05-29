@@ -138,9 +138,8 @@ func TestMinReplicaCount(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	minReplicaCount := 2
 	maxReplicaCount := 10
-	metricValue := 0
 
-	data, templates := getTemplateData(minReplicaCount, maxReplicaCount, metricValue)
+	data, templates := getTemplateData(minReplicaCount, maxReplicaCount)
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
@@ -197,7 +196,7 @@ func testMinReplicaCountWithMetricValueGreaterMaxReplicaCountScalesOnlyToMaxRepl
 		"job count should be %d after %d iterations", data.MaxReplicaCount, iterationCount)
 }
 
-func getTemplateData(minReplicaCount int, maxReplicaCount int, metricValue int) (templateData, []Template) {
+func getTemplateData(minReplicaCount int, maxReplicaCount int) (templateData, []Template) {
 	return templateData{
 			TestNamespace:         testNamespace,
 			ServiceName:           serviceName,
