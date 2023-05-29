@@ -9,7 +9,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	cl "github.com/kedacore/keda/v2/pkg/externalscaling/api"
 )
 
@@ -72,4 +75,38 @@ func (c *GrpcClient) WaitForConnectionReady(ctx context.Context, logger logr.Log
 		}
 	}
 	return true
+}
+
+// ConvertToGeneratedStruct converts K8s external metrics list to gRPC generated
+// external metrics list
+func ConvertToGeneratedStruct(inK8sList []external_metrics.ExternalMetricValue) (outExternal *cl.MetricsList) {
+	listStruct := cl.MetricsList{}
+	for _, val := range inK8sList {
+		// if value is 0, its empty in the list
+		metric := &cl.Metric{Name: val.MetricName, Value: float32(val.Value.Value())}
+		listStruct.MetricValues = append(listStruct.MetricValues, metric)
+	}
+	return
+}
+
+// ConvertFromGeneratedStruct converts gRPC generated external metrics list to
+// K8s external_metrics list
+func ConvertFromGeneratedStruct(inExternal *cl.MetricsList) (outK8sList []external_metrics.ExternalMetricValue) {
+	for _, inValue := range inExternal.MetricValues {
+		outValue := external_metrics.ExternalMetricValue{}
+		outValue.MetricName = inValue.Name
+		outValue.Timestamp = v1.Now()
+		outValue.Value.SetMilli(int64(inValue.Value * 1000))
+		outK8sList = append(outK8sList, outValue)
+	}
+	return
+}
+
+func Fallback(err bool, list *cl.MetricsList, ec v1alpha1.ExternalCalculation) (listOut *cl.MetricsList, errOut bool) {
+	if err {
+		// returned metrics
+		return
+	}
+
+	return
 }
