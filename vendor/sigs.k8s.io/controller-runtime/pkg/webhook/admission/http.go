@@ -69,7 +69,7 @@ func (wh *Webhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// verify the content type is accurate
 	if contentType := r.Header.Get("Content-Type"); contentType != "application/json" {
 		err = fmt.Errorf("contentType=%s, expected application/json", contentType)
-		wh.getLogger(nil).Error(err, "unable to process a request with an unknown content type", "content type", contentType)
+		wh.getLogger(nil).Error(err, "unable to process a request with unknown content type")
 		reviewResponse = Errored(http.StatusBadRequest, err)
 		wh.writeResponse(w, reviewResponse)
 		return
@@ -93,7 +93,7 @@ func (wh *Webhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		wh.writeResponse(w, reviewResponse)
 		return
 	}
-	wh.getLogger(nil).V(1).Info("received request", "UID", req.UID, "kind", req.Kind, "resource", req.Resource)
+	wh.getLogger(&req).V(4).Info("received request")
 
 	reviewResponse = wh.Handle(ctx, req)
 	wh.writeResponseTyped(w, reviewResponse, actualAdmRevGVK)
@@ -136,11 +136,11 @@ func (wh *Webhook) writeAdmissionResponse(w io.Writer, ar v1.AdmissionReview) {
 		}
 	} else {
 		res := ar.Response
-		if log := wh.getLogger(nil); log.V(1).Enabled() {
+		if log := wh.getLogger(nil); log.V(4).Enabled() {
 			if res.Result != nil {
 				log = log.WithValues("code", res.Result.Code, "reason", res.Result.Reason, "message", res.Result.Message)
 			}
-			log.V(1).Info("wrote response", "UID", res.UID, "allowed", res.Allowed)
+			log.V(4).Info("wrote response", "requestID", res.UID, "allowed", res.Allowed)
 		}
 	}
 }
