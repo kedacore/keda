@@ -17,7 +17,9 @@ limitations under the License.
 package main
 
 import (
+	"crypto/tls"
 	"flag"
+	"fmt"
 	"os"
 
 	"github.com/spf13/pflag"
@@ -29,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/k8s"
@@ -74,14 +77,37 @@ func main() {
 	cfg := ctrl.GetConfigOrDie()
 	cfg.QPS = webhooksClientRequestQPS
 	cfg.Burst = webhooksClientRequestBurst
+	// Configuring minimum TLS version for the webhook server
+	var minTLSVersion uint16
+
+	switch tlsMinVersion {
+	case "1.0":
+		minTLSVersion = tls.VersionTLS10
+	case "1.1":
+		minTLSVersion = tls.VersionTLS11
+	case "1.2":
+		minTLSVersion = tls.VersionTLS11
+	case "1.3":
+		minTLSVersion = tls.VersionTLS13
+	default:
+		setupLog.Error(fmt.Errorf("unsupported minimum TLS version"), fmt.Sprintf("option %s non recognized", tlsMinVersion))
+		os.Exit(1)
+	}
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-		Scheme:                 scheme,
-		LeaderElection:         false,
-		MetricsBindAddress:     metricsAddr,
-		Port:                   9443,
+		Scheme:             scheme,
+		LeaderElection:     false,
+		MetricsBindAddress: metricsAddr,
+		WebhookServer: webhook.NewServer(webhook.Options{
+			Port:    9443,
+			CertDir: certDir,
+			TLSOpts: []func(tlsConfig *tls.Config){
+				func(tlsConfig *tls.Config) {
+					tlsConfig.MinVersion = minTLSVersion
+				},
+			},
+		}),
 		HealthProbeBindAddress: probeAddr,
-		CertDir:                certDir,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start admission webhooks")
@@ -98,7 +124,7 @@ func main() {
 
 	kedautil.PrintWelcome(setupLog, kubeVersion, "admission webhooks")
 
-	setupWebhook(mgr, tlsMinVersion)
+	setupWebhook(mgr)
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
@@ -115,14 +141,10 @@ func main() {
 	}
 }
 
-func setupWebhook(mgr manager.Manager, tlsMinVersion string) {
+func setupWebhook(mgr manager.Manager) {
 	// setup webhooks
 	if err := (&kedav1alpha1.ScaledObject{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "ScaledObject")
 		os.Exit(1)
 	}
-
-	setupLog.V(1).Info("setting up webhook server")
-	hookServer := mgr.GetWebhookServer()
-	hookServer.TLSMinVersion = tlsMinVersion
 }
