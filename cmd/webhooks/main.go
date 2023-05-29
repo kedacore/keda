@@ -78,18 +78,8 @@ func main() {
 	cfg.QPS = webhooksClientRequestQPS
 	cfg.Burst = webhooksClientRequestBurst
 	// Configuring minimum TLS version for the webhook server
-	var minTLSVersion uint16
-
-	switch tlsMinVersion {
-	case "1.0":
-		minTLSVersion = tls.VersionTLS10
-	case "1.1":
-		minTLSVersion = tls.VersionTLS11
-	case "1.2":
-		minTLSVersion = tls.VersionTLS11
-	case "1.3":
-		minTLSVersion = tls.VersionTLS13
-	default:
+	minTLSVersion, err := kedautil.ParseTLSMinVersionAsString(tlsMinVersion)
+	if err != nil {
 		setupLog.Error(fmt.Errorf("unsupported minimum TLS version"), fmt.Sprintf("option %s non recognized", tlsMinVersion))
 		os.Exit(1)
 	}
