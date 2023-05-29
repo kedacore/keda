@@ -39,7 +39,6 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	externalscaling "github.com/kedacore/keda/v2/pkg/externalscaling"
-	externalscalingAPI "github.com/kedacore/keda/v2/pkg/externalscaling/api"
 	"github.com/kedacore/keda/v2/pkg/fallback"
 	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	"github.com/kedacore/keda/v2/pkg/scalers"
@@ -529,51 +528,41 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 
 	logger.V(0).Info(">>3: MATCHED-METRICS", "metrics", matchingMetrics, "metricsName", metricsName)
 
-	// apply external calculations
+	grpcMetricList := externalscaling.ConvertToGeneratedStruct(matchingMetrics)
+	logger.V(0).Info(">>3.1 LIST", "list", grpcMetricList.MetricValues)
+
+	// Apply external calculations - call gRPC server on each url and return
+	// modified metric list in order
 	for i, ec := range scaledObject.Spec.Advanced.ComplexScalingLogic.ExternalCalculations {
-		// call server on each url and return modified metric list in order
-		logger.V(0).Info(">>3.1 EXT-CALC CALL", "i", i, "name", ec.Name, "url", ec.URL)
-
-		listStruct := externalscalingAPI.MetricsList{}
-		for _, val := range matchingMetrics {
-			// if value is 0, its empty in the list
-			metric := &externalscalingAPI.Metric{Name: val.MetricName, Value: float32(val.Value.Value())}
-			listStruct.MetricValues = append(listStruct.MetricValues, metric)
-		}
-		logger.V(0).Info(">>3.2 LIST", "list", listStruct.MetricValues)
-
+		hasError := false
 		esGrpcClient, err := externalscaling.NewGrpcClient(ec.URL, logger)
 		if err != nil {
 			logger.Error(err, "error connecting external calculation grpc client to server")
-			break
-		}
+			hasError = true
+		} else {
+			if !esGrpcClient.WaitForConnectionReady(ctx, logger) {
+				err = fmt.Errorf("client didnt connect to server successfully")
+				logger.Error(err, "error in connection")
+				hasError = true
+			}
+			logger.Info("connected to gRPC server")
 
-		if !esGrpcClient.WaitForConnectionReady(ctx, logger) {
-			err = fmt.Errorf("client didnt connect to server successfully")
-			logger.Error(err, "error in connection")
-		}
-		logger.Info("connected to gRPC server")
+			grpcMetricList, err = esGrpcClient.Calculate(ctx, grpcMetricList, logger)
+			if err != nil {
+				logger.Error(err, "error calculating in grpc server at %s for external calculation", ec.URL)
+				hasError = true
+			}
 
-		res, err := esGrpcClient.Calculate(ctx, &listStruct, logger)
-		if err != nil {
-			logger.Error(err, "error calculating in grpc server for external calculation")
-			break
+			// run Fallback if error was given
+			grpcMetricList, hasError = externalscaling.Fallback(hasError, grpcMetricList, ec)
+			if hasError {
+				// if fallback metrics not used, stop calculating
+				break
+			}
 		}
-		logger.V(0).Info(">>3.4 CALCULATE GRPC", "result", res)
-		// TODO: turn to fallback here if error != nil & err is given (remove break 2 lines up)
-
-		var finalList []external_metrics.ExternalMetricValue
-
-		for _, val := range res.MetricValues {
-			tmp := external_metrics.ExternalMetricValue{}
-			tmp.MetricName = val.Name
-			tmp.Timestamp = v1.Now()
-			tmp.Value.SetMilli(int64(val.Value * 1000))
-			finalList = append(finalList, tmp)
-		}
-		matchingMetrics = finalList
-		logger.V(0).Info(">>3.5 CALCULATE AFTER", "matchingMetrics", matchingMetrics)
+		logger.V(0).Info(fmt.Sprintf(">>3.5:%d CALCULATE END", i), "metrics", grpcMetricList)
 	}
+	matchingMetrics = externalscaling.ConvertFromGeneratedStruct(grpcMetricList)
 
 	// apply formula
 	if scaledObject.Spec.Advanced.ComplexScalingLogic.Formula != "" {
