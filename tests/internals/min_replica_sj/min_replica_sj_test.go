@@ -22,11 +22,12 @@ const (
 )
 
 var (
-	testNamespace  = fmt.Sprintf("%s-ns", testName)
-	serviceName    = fmt.Sprintf("%s-service", testName)
-	scalerName     = fmt.Sprintf("%s-scaler", testName)
-	scaledJobName  = fmt.Sprintf("%s-sj", testName)
-	iterationCount = 15
+	testNamespace         = fmt.Sprintf("%s-ns", testName)
+	serviceName           = fmt.Sprintf("%s-service", testName)
+	scalerName            = fmt.Sprintf("%s-scaler", testName)
+	scaledJobName         = fmt.Sprintf("%s-sj", testName)
+	metricsServerEndpoint = fmt.Sprintf("http://%s.%s.svc.cluster.local:8080/api/value", serviceName, testNamespace)
+	iterationCount        = 60
 )
 
 type templateData struct {
@@ -34,6 +35,7 @@ type templateData struct {
 	ServiceName                      string
 	ScalerName                       string
 	ScaledJobName                    string
+	MetricsServerEndpoint            string
 	MetricThreshold, MetricValue     int
 	MinReplicaCount, MaxReplicaCount int
 }
@@ -48,7 +50,11 @@ metadata:
 spec:
   ports:
     - port: 6000
+      name: grpc
       targetPort: 6000
+    - port: 8080
+      name: http
+      targetPort: 8080
   selector:
     app: {{.ScalerName}}
 `
@@ -73,10 +79,11 @@ spec:
     spec:
       containers:
         - name: scaler
-          image: ghcr.io/kedacore/tests-external-scaler-e2e:latest
+          image: ghcr.io/kedacore/tests-external-scaler:latest
           imagePullPolicy: Always
           ports:
           - containerPort: 6000
+          - containerPort: 8080
 `
 
 	scaledJobTemplate = `
@@ -108,8 +115,23 @@ spec:
       metadata:
         scalerAddress: {{.ServiceName}}.{{.TestNamespace}}:6000
         metricThreshold: "{{.MetricThreshold}}"
-        metricValue: "{{.MetricValue}}"
 `
+
+	updateMetricTemplate = `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: update-metric-value
+  namespace: {{.TestNamespace}}
+spec:
+  ttlSecondsAfterFinished: 0
+  template:
+    spec:
+      containers:
+      - name: curl-client
+        image: curlimages/curl
+        imagePullPolicy: Always
+        command: ["curl", "-X", "POST", "{{.MetricsServerEndpoint}}/{{.MetricValue}}"]
+      restartPolicy: Never`
 )
 
 func TestMinReplicaCount(t *testing.T) {
@@ -122,7 +144,7 @@ func TestMinReplicaCount(t *testing.T) {
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	assert.True(t, WaitForJobCountUntilIteration(t, kc, testNamespace, minReplicaCount, iterationCount, 1),
+	assert.True(t, WaitForJobCount(t, kc, testNamespace, minReplicaCount, iterationCount, 1),
 		"job count should be %d after %d iterations", minReplicaCount, iterationCount)
 
 	testMinReplicaCountWithMetricValue(t, kc, data)
@@ -140,9 +162,10 @@ func testMinReplicaCountWithMetricValue(t *testing.T, kc *kubernetes.Clientset, 
 	data.MetricValue = 1
 
 	KubectlApplyWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
+	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	expectedTarget := data.MinReplicaCount + data.MetricValue
-	assert.True(t, WaitForJobCountUntilIteration(t, kc, testNamespace, expectedTarget, 15, 1),
+	assert.True(t, WaitForJobCount(t, kc, testNamespace, expectedTarget, iterationCount, 1),
 		"job count should be %d after %d iterations", expectedTarget, iterationCount)
 }
 
@@ -154,8 +177,9 @@ func testMinReplicaCountGreaterMaxReplicaCountScalesOnlyToMaxReplicaCount(t *tes
 	data.MetricValue = 0
 
 	KubectlApplyWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
+	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
-	assert.True(t, WaitForJobCountUntilIteration(t, kc, testNamespace, data.MaxReplicaCount, 15, 1),
+	assert.True(t, WaitForJobCount(t, kc, testNamespace, data.MaxReplicaCount, iterationCount, 1),
 		"job count should be %d after %d iterations", data.MaxReplicaCount, iterationCount)
 }
 
@@ -167,21 +191,22 @@ func testMinReplicaCountWithMetricValueGreaterMaxReplicaCountScalesOnlyToMaxRepl
 	data.MetricValue = 3
 
 	KubectlApplyWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
+	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
-	assert.True(t, WaitForJobCountUntilIteration(t, kc, testNamespace, data.MaxReplicaCount, 15, 1),
+	assert.True(t, WaitForJobCount(t, kc, testNamespace, data.MaxReplicaCount, iterationCount, 1),
 		"job count should be %d after %d iterations", data.MaxReplicaCount, iterationCount)
 }
 
 func getTemplateData(minReplicaCount int, maxReplicaCount int, metricValue int) (templateData, []Template) {
 	return templateData{
-			TestNamespace:   testNamespace,
-			ServiceName:     serviceName,
-			ScalerName:      scalerName,
-			ScaledJobName:   scaledJobName,
-			MetricThreshold: 1,
-			MetricValue:     metricValue,
-			MinReplicaCount: minReplicaCount,
-			MaxReplicaCount: maxReplicaCount,
+			TestNamespace:         testNamespace,
+			ServiceName:           serviceName,
+			ScalerName:            scalerName,
+			ScaledJobName:         scaledJobName,
+			MetricThreshold:       1,
+			MetricsServerEndpoint: metricsServerEndpoint,
+			MinReplicaCount:       minReplicaCount,
+			MaxReplicaCount:       maxReplicaCount,
 		}, []Template{
 			{Name: "scalerTemplate", Config: scalerTemplate},
 			{Name: "serviceTemplate", Config: serviceTemplate},
