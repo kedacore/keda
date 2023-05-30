@@ -184,7 +184,7 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 				}
 			}
 			err = fmt.Errorf("Stream name does not exist.")
-			return int64(0), err
+			return int64(-1), err
 		}
 	default:
 		err = fmt.Errorf("unrecognized scale factor %v", meta.scaleFactor)
