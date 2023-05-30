@@ -19,7 +19,57 @@ func TestParseRedisStreamsMetadata(t *testing.T) {
 
 	authParams := map[string]string{"username": "foobarred", "password": "foobarred"}
 
-	testCases := []testCase{
+	testCasesPending := []testCase{
+		{
+			name:     "with address",
+			metadata: map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "5", "addressFromEnv": "REDIS_SERVICE", "usernameFromEnv": "REDIS_USERNAME", "passwordFromEnv": "REDIS_PASSWORD", "databaseIndex": "0", "enableTLS": "true"},
+			resolvedEnv: map[string]string{
+				"REDIS_SERVICE":  "myredis:6379",
+				"REDIS_USERNAME": "foobarred",
+				"REDIS_PASSWORD": "foobarred",
+			},
+			authParams: nil,
+		},
+
+		{
+			name:     "with host and port",
+			metadata: map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "15", "hostFromEnv": "REDIS_HOST", "port": "REDIS_PORT", "usernameFromEnv": "REDIS_USERNAME", "passwordFromEnv": "REDIS_PASSWORD", "databaseIndex": "0", "enableTLS": "false"},
+			resolvedEnv: map[string]string{
+				"REDIS_HOST":     "myredis",
+				"REDIS_PORT":     "6379",
+				"REDIS_USERNAME": "foobarred",
+				"REDIS_PASSWORD": "foobarred",
+			},
+			authParams: authParams,
+		},
+	}
+
+	for _, tc := range testCasesPending {
+		tc := tc
+		t.Run(tc.name, func(te *testing.T) {
+			m, err := parseRedisStreamsMetadata(&ScalerConfig{TriggerMetadata: tc.metadata, ResolvedEnv: tc.resolvedEnv, AuthParams: tc.authParams}, parseRedisAddress)
+			assert.Nil(t, err)
+			assert.Equal(t, m.streamName, tc.metadata[streamNameMetadata])
+			assert.Equal(t, m.consumerGroupName, tc.metadata[consumerGroupNameMetadata])
+			assert.Equal(t, strconv.FormatInt(m.targetPendingEntriesCount, 10), tc.metadata[pendingEntriesCountMetadata])
+			if authParams != nil {
+				// if authParam is used
+				assert.Equal(t, m.connectionInfo.username, authParams[usernameMetadata])
+				assert.Equal(t, m.connectionInfo.password, authParams[passwordMetadata])
+			} else {
+				// if metadata is used to pass credentials' env var names
+				assert.Equal(t, m.connectionInfo.username, tc.resolvedEnv[tc.metadata[usernameMetadata]])
+				assert.Equal(t, m.connectionInfo.password, tc.resolvedEnv[tc.metadata[passwordMetadata]])
+			}
+
+			assert.Equal(t, strconv.Itoa(m.databaseIndex), tc.metadata[databaseIndexMetadata])
+			b, err := strconv.ParseBool(tc.metadata[enableTLSMetadata])
+			assert.Nil(t, err)
+			assert.Equal(t, m.connectionInfo.enableTLS, b)
+		})
+	}
+
+	testCasesLag := []testCase{
 		{
 			name:     "with address",
 			metadata: map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "5", "lagCount": "5", "addressFromEnv": "REDIS_SERVICE", "usernameFromEnv": "REDIS_USERNAME", "passwordFromEnv": "REDIS_PASSWORD", "databaseIndex": "0", "enableTLS": "true"},
@@ -44,7 +94,7 @@ func TestParseRedisStreamsMetadata(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
+	for _, tc := range testCasesLag {
 		tc := tc
 		t.Run(tc.name, func(te *testing.T) {
 			m, err := parseRedisStreamsMetadata(&ScalerConfig{TriggerMetadata: tc.metadata, ResolvedEnv: tc.resolvedEnv, AuthParams: tc.authParams}, parseRedisAddress)

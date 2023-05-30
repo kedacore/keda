@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"os/exec"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/redis/go-redis/v9"
@@ -91,6 +93,7 @@ func NewRedisStreamsScaler(ctx context.Context, isClustered, isSentinel bool, co
 
 func createClusteredRedisStreamsScaler(ctx context.Context, meta *redisStreamsMetadata, metricType v2.MetricTargetType, logger logr.Logger) (Scaler, error) {
 	client, err := getRedisClusterClient(ctx, meta.connectionInfo)
+
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis cluster failed: %w", err)
 	}
@@ -171,6 +174,21 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 			return entriesLength, nil
 		}
 	case lagFactor:
+	    // Make sure that redis is version 7+, which is required for xinfo lag
+		cmd := exec.Command("redis-cli", "--version")
+		out, err := cmd.Output()
+		if err != nil {
+		  fmt.Println("could not run command: ", err)
+		}
+		filter_version := strings.Split(string(out[:]), " ") 
+		version := filter_version[1]                                      // Extract version
+		version_split := strings.Split(version, ".")                      // Extract first number of version string
+		version_number, err := strconv.ParseInt(version_split[0], 10, 64)
+		if err != nil {
+		  fmt.Println("Could not extract redis version number: ", err)
+		}
+		assert.GreaterOrEqual(t, int(version_number), 7, "Need Redis version 7 or higher.") // xInfo lag is compatible only with Redis 7+
+		
 		entriesCountFn = func(ctx context.Context) (int64, error) {
 			groups, err := client.XInfoGroups(ctx, meta.streamName).Result()
 			if err != nil {
