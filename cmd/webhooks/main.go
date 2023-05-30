@@ -19,7 +19,6 @@ package main
 import (
 	"crypto/tls"
 	"flag"
-	"fmt"
 	"os"
 
 	"github.com/spf13/pflag"
@@ -57,13 +56,12 @@ func main() {
 	var webhooksClientRequestQPS float32
 	var webhooksClientRequestBurst int
 	var certDir string
-	var tlsMinVersion string
+
 	pflag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	pflag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	pflag.Float32Var(&webhooksClientRequestQPS, "kube-api-qps", 20.0, "Set the QPS rate for throttling requests sent to the apiserver")
 	pflag.IntVar(&webhooksClientRequestBurst, "kube-api-burst", 30, "Set the burst for throttling requests sent to the apiserver")
 	pflag.StringVar(&certDir, "cert-dir", "/certs", "Webhook certificates dir to use. Defaults to /certs")
-	pflag.StringVar(&tlsMinVersion, "tls-min-version", "1.3", "Minimum TLS version")
 
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
@@ -77,12 +75,6 @@ func main() {
 	cfg := ctrl.GetConfigOrDie()
 	cfg.QPS = webhooksClientRequestQPS
 	cfg.Burst = webhooksClientRequestBurst
-	// Configuring minimum TLS version for the webhook server
-	minTLSVersion, err := kedautil.ParseTLSMinVersionAsString(tlsMinVersion)
-	if err != nil {
-		setupLog.Error(fmt.Errorf("unsupported minimum TLS version"), fmt.Sprintf("option %s non recognized", tlsMinVersion))
-		os.Exit(1)
-	}
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:             scheme,
@@ -93,7 +85,7 @@ func main() {
 			CertDir: certDir,
 			TLSOpts: []func(tlsConfig *tls.Config){
 				func(tlsConfig *tls.Config) {
-					tlsConfig.MinVersion = minTLSVersion
+					tlsConfig.MinVersion = kedautil.GetMinTLSVersion()
 				},
 			},
 		}),
