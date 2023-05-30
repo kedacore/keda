@@ -51,7 +51,7 @@ func TestParseRedisStreamsMetadata(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, m.streamName, tc.metadata[streamNameMetadata])
 			assert.Equal(t, m.consumerGroupName, tc.metadata[consumerGroupNameMetadata])
-			assert.Equal(t, strconv.FormatInt(m.targetPendingEntriesCount, 10), tc.metadata[pendingEntriesCountMetadata])
+			assert.Equal(t, strconv.FormatInt(m.targetPendingEntriesCount, 10), tc.metadata[pendingMetadata])
 			if authParams != nil {
 				// if authParam is used
 				assert.Equal(t, m.connectionInfo.username, authParams[usernameMetadata])
