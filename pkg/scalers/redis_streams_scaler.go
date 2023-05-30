@@ -187,8 +187,12 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 		if err != nil {
 		  fmt.Println("Could not extract redis version number: ", err)
 		}
-		assert.GreaterOrEqual(t, int(version_number), 7, "Need Redis version 7 or higher.") // xInfo lag is compatible only with Redis 7+
-		
+		// assert.GreaterOrEqual(t, int(version_number), 7, "Need Redis version 7 or higher.") // xInfo lag is compatible only with Redis 7+
+		if int(version_number) < 7 {
+			err := errors.New("Redis version 7+ required for lag")
+			return nil, err
+		}
+
 		entriesCountFn = func(ctx context.Context) (int64, error) {
 			groups, err := client.XInfoGroups(ctx, meta.streamName).Result()
 			if err != nil {
