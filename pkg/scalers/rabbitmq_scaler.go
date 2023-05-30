@@ -84,6 +84,7 @@ type rabbitMQMetadata struct {
 	key         string
 	keyPassword string
 	enableTLS   bool
+	unsafeSsl   bool
 }
 
 type queueInfo struct {
@@ -124,7 +125,7 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing rabbitmq metadata: %w", err)
 	}
 	s.metadata = meta
-	s.httpClient = kedautil.CreateHTTPClient(meta.timeout, false)
+	s.httpClient = kedautil.CreateHTTPClient(meta.timeout, meta.unsafeSsl)
 
 	if meta.protocol == amqpProtocol {
 		// Override vhost if requested.
@@ -149,10 +150,7 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 	return s, nil
 }
 
-func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
-	meta := rabbitMQMetadata{}
-
-	// Resolve protocol type
+func resolveProtocol(config *ScalerConfig, meta *rabbitMQMetadata) error {
 	meta.protocol = defaultProtocol
 	if val, ok := config.AuthParams["protocol"]; ok {
 		meta.protocol = val
@@ -161,10 +159,12 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		meta.protocol = val
 	}
 	if meta.protocol != amqpProtocol && meta.protocol != httpProtocol && meta.protocol != autoProtocol {
-		return nil, fmt.Errorf("the protocol has to be either `%s`, `%s`, or `%s` but is `%s`", amqpProtocol, httpProtocol, autoProtocol, meta.protocol)
+		return fmt.Errorf("the protocol has to be either `%s`, `%s`, or `%s` but is `%s`", amqpProtocol, httpProtocol, autoProtocol, meta.protocol)
 	}
+	return nil
+}
 
-	// Resolve host value
+func resolveHostValue(config *ScalerConfig, meta *rabbitMQMetadata) error {
 	switch {
 	case config.AuthParams["host"] != "":
 		meta.host = config.AuthParams["host"]
@@ -173,10 +173,31 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	case config.TriggerMetadata["hostFromEnv"] != "":
 		meta.host = config.ResolvedEnv[config.TriggerMetadata["hostFromEnv"]]
 	default:
-		return nil, fmt.Errorf("no host setting given")
+		return fmt.Errorf("no host setting given")
 	}
+	return nil
+}
 
-	// Resolve TLS authentication parameters
+func resolveTimeout(config *ScalerConfig, meta *rabbitMQMetadata) error {
+	if val, ok := config.TriggerMetadata["timeout"]; ok {
+		timeoutMS, err := strconv.Atoi(val)
+		if err != nil {
+			return fmt.Errorf("unable to parse timeout: %w", err)
+		}
+		if meta.protocol == amqpProtocol {
+			return fmt.Errorf("amqp protocol doesn't support custom timeouts: %w", err)
+		}
+		if timeoutMS <= 0 {
+			return fmt.Errorf("timeout must be greater than 0: %w", err)
+		}
+		meta.timeout = time.Duration(timeoutMS) * time.Millisecond
+	} else {
+		meta.timeout = config.GlobalHTTPTimeout
+	}
+	return nil
+}
+
+func resolveTLSAuthParams(config *ScalerConfig, meta *rabbitMQMetadata) error {
 	meta.enableTLS = false
 	if val, ok := config.AuthParams["tls"]; ok {
 		val = strings.TrimSpace(val)
@@ -186,8 +207,28 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 			meta.key = config.AuthParams["key"]
 			meta.enableTLS = true
 		} else if val != "disable" {
-			return nil, fmt.Errorf("err incorrect value for TLS given: %s", val)
+			return fmt.Errorf("err incorrect value for TLS given: %s", val)
 		}
+	}
+	return nil
+}
+
+func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
+	meta := rabbitMQMetadata{}
+
+	// Resolve protocol type
+	if err := resolveProtocol(config, &meta); err != nil {
+		return nil, err
+	}
+
+	// Resolve host value
+	if err := resolveHostValue(config, &meta); err != nil {
+		return nil, err
+	}
+
+	// Resolve TLS authentication parameters
+	if err := resolveTLSAuthParams(config, &meta); err != nil {
+		return nil, err
 	}
 
 	meta.keyPassword = config.AuthParams["keyPassword"]
@@ -196,6 +237,15 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	keyGiven := meta.key != ""
 	if certGiven != keyGiven {
 		return nil, fmt.Errorf("both key and cert must be provided")
+	}
+
+	meta.unsafeSsl = false
+	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
+		boolVal, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse unsafeSsl value. Must be either true or false")
+		}
+		meta.unsafeSsl = boolVal
 	}
 
 	// If the protocol is auto, check the host scheme.
@@ -254,22 +304,9 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	}
 
 	// Resolve timeout
-	if val, ok := config.TriggerMetadata["timeout"]; ok {
-		timeoutMS, err := strconv.Atoi(val)
-		if err != nil {
-			return nil, fmt.Errorf("unable to parse timeout: %w", err)
-		}
-		if meta.protocol == amqpProtocol {
-			return nil, fmt.Errorf("amqp protocol doesn't support custom timeouts: %w", err)
-		}
-		if timeoutMS <= 0 {
-			return nil, fmt.Errorf("timeout must be greater than 0: %w", err)
-		}
-		meta.timeout = time.Duration(timeoutMS) * time.Millisecond
-	} else {
-		meta.timeout = config.GlobalHTTPTimeout
+	if err := resolveTimeout(config, &meta); err != nil {
+		return nil, err
 	}
-
 	meta.scalerIndex = config.ScalerIndex
 
 	return &meta, nil
@@ -396,7 +433,7 @@ func getConnectionAndChannel(host string, meta *rabbitMQMetadata) (*amqp.Connect
 	var conn *amqp.Connection
 	var err error
 	if meta.enableTLS {
-		tlsConfig, configErr := kedautil.NewTLSConfigWithPassword(meta.cert, meta.key, meta.keyPassword, meta.ca, false)
+		tlsConfig, configErr := kedautil.NewTLSConfigWithPassword(meta.cert, meta.key, meta.keyPassword, meta.ca, meta.unsafeSsl)
 		if configErr == nil {
 			conn, err = amqp.DialTLS(host, tlsConfig)
 		}
@@ -538,7 +575,7 @@ func (s *rabbitMQScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpe
 func (s *rabbitMQScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	messages, publishRate, err := s.getQueueStatus()
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, s.anonimizeRabbitMQError(err)
+		return []external_metrics.ExternalMetricValue{}, false, s.anonymizeRabbitMQError(err)
 	}
 
 	var metric external_metrics.ExternalMetricValue
@@ -623,7 +660,7 @@ func getMaximum(q []queueInfo) (int, int, float64) {
 }
 
 // Mask host for log purposes
-func (s *rabbitMQScaler) anonimizeRabbitMQError(err error) error {
+func (s *rabbitMQScaler) anonymizeRabbitMQError(err error) error {
 	errorMessage := fmt.Sprintf("error inspecting rabbitMQ: %s", err)
 	return fmt.Errorf(rabbitMQAnonymizePattern.ReplaceAllString(errorMessage, "user:password@"))
 }
