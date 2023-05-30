@@ -32,11 +32,9 @@ var minTLSVersion uint16
 func init() {
 	var err error
 
-	version, _ := os.LookupEnv("KEDA_HTTP_MIN_TLS_VERSION")
-	if minTLSVersion, err = ParseTLSMinVersionAsString(version); err != nil {
+	if minTLSVersion, err = initMinTLSVersion(); err != nil {
 		ctrl.Log.WithName("tls_setup").Info(err.Error())
 	}
-
 }
 
 // NewTLSConfigWithPassword returns a *tls.Config using the given ceClient cert, ceClient key,
@@ -90,8 +88,10 @@ func GetMinTLSVersion() uint16 {
 	return minTLSVersion
 }
 
-func ParseTLSMinVersionAsString(value string) (uint16, error) {
-	switch value {
+func initMinTLSVersion() (uint16, error) {
+	version, _ := os.LookupEnv("KEDA_HTTP_MIN_TLS_VERSION")
+
+	switch version {
 	case "":
 		minTLSVersion = tls.VersionTLS12
 	case "TLS10":
@@ -103,7 +103,7 @@ func ParseTLSMinVersionAsString(value string) (uint16, error) {
 	case "TLS13":
 		minTLSVersion = tls.VersionTLS13
 	default:
-		return tls.VersionTLS12, fmt.Errorf("%s is not a valid value, using `TLS12`. Allowed values are: `TLS13`,`TLS12`,`TLS11`,`TLS10`", value)
+		return tls.VersionTLS12, fmt.Errorf("%s is not a valid value, using `TLS12`. Allowed values are: `TLS13`,`TLS12`,`TLS11`,`TLS10`", version)
 	}
 
 	return minTLSVersion, nil

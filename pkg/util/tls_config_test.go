@@ -19,6 +19,7 @@ package util
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"os"
 	"strings"
 	"testing"
 )
@@ -253,38 +254,46 @@ func TestNewTLSConfig_WithPassword(t *testing.T) {
 }
 
 type minTLSVersionTestData struct {
+	envSet          bool
 	envValue        string
 	expectedVersion uint16
 }
 
 var minTLSVersionTestDatas = []minTLSVersionTestData{
 	{
+		envSet:          true,
 		envValue:        "TLS10",
 		expectedVersion: tls.VersionTLS10,
 	},
 	{
+		envSet:          true,
 		envValue:        "TLS11",
 		expectedVersion: tls.VersionTLS11,
 	},
 	{
+		envSet:          true,
 		envValue:        "TLS12",
 		expectedVersion: tls.VersionTLS12,
 	},
 	{
+		envSet:          true,
 		envValue:        "TLS13",
 		expectedVersion: tls.VersionTLS13,
 	},
 	{
+		envSet:          false,
 		expectedVersion: tls.VersionTLS12,
 	},
 }
 
 func TestResolveMinTLSVersion(t *testing.T) {
+	defer os.Unsetenv("KEDA_HTTP_MIN_TLS_VERSION")
 	for _, testData := range minTLSVersionTestDatas {
-		minVersion, err := ParseTLSMinVersionAsString(testData.envValue)
-		if err != nil {
-			t.Errorf("Expected nil, got an error: %s", err.Error())
+		os.Unsetenv("KEDA_HTTP_MIN_TLS_VERSION")
+		if testData.envSet {
+			os.Setenv("KEDA_HTTP_MIN_TLS_VERSION", testData.envValue)
 		}
+		minVersion, _ := initMinTLSVersion()
 
 		if testData.expectedVersion != minVersion {
 			t.Error("Failed to resolve minTLSVersion correctly", "wants", testData.expectedVersion, "got", minVersion)
