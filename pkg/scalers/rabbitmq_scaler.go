@@ -415,6 +415,15 @@ func getConnectionAndChannel(host string, meta *rabbitMQMetadata) (*amqp.Connect
 	return conn, channel, nil
 }
 
+// Get path prefix and vhost from RabbitMQ host Url path
+func getPathPrefixAndVhostFromURLPath(urlPath string) (string, string) {
+	// Extract vhost and prefix from URL's path.
+	parts := strings.Split(urlPath, "/")
+	prefix := strings.Join(parts[0:len(parts)-1], "/")
+	vhost := "/" + parts[len(parts)-1]
+	return prefix, vhost
+}
+
 // Close disposes of RabbitMQ connections
 func (s *rabbitMQScaler) Close(context.Context) error {
 	if s.connection != nil {
@@ -488,8 +497,8 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 		return nil, err
 	}
 
-	// Extract vhost from URL's path.
-	vhost := parsedURL.Path
+	// Extract prefix and vhost from URL's path.
+	prefix, vhost := getPathPrefixAndVhostFromURLPath(parsedURL.Path)
 
 	if s.metadata.vhostName != "" {
 		vhost = "/" + url.QueryEscape(s.metadata.vhostName)
@@ -500,7 +509,7 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 	}
 
 	// Clear URL path to get the correct host.
-	parsedURL.Path = ""
+	parsedURL.Path = prefix
 
 	var getQueueInfoManagementURI string
 	if s.metadata.useRegex {
