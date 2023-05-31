@@ -192,7 +192,7 @@ func TestScaler(t *testing.T) {
     if err != nil {
       fmt.Println("Could not extract redis version number: ", err)
     }
-    assert.GreaterOrEqual(t, int(version_number), 7, "Need Redis version 7 or higher.") // xInfo lag is compatible only with Redis 7+
+    assert.GreaterOrEqual(t, int64(version_number), int64(7), "Need Redis version 7 or higher.") // xInfo lag is compatible only with Redis 7+
 
 	// Create kubernetes resources for PostgreSQL server
 	kc := GetKubernetesClient(t)

@@ -187,7 +187,7 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 		if err != nil {
 		  fmt.Println("Could not extract redis version number: ", err)
 		}
-		if int64(version_number) < 7 {
+		if int64(version_number) < int64(7) {
 			err := errors.New("Redis version 7+ required for lag")
 			return nil, err
 		}
