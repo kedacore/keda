@@ -420,6 +420,9 @@ github.com/evanphx/json-patch
 # github.com/evanphx/json-patch/v5 v5.6.0
 ## explicit; go 1.12
 github.com/evanphx/json-patch/v5
+# github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a
+## explicit
+github.com/facebookgo/clock
 # github.com/fatih/color v1.13.0
 ## explicit; go 1.13
 github.com/fatih/color
@@ -499,12 +502,20 @@ github.com/gocql/gocql/internal/streams
 # github.com/gofrs/uuid v4.2.0+incompatible
 ## explicit
 github.com/gofrs/uuid
+# github.com/gogo/googleapis v1.4.1
+## explicit; go 1.12
+github.com/gogo/googleapis/google/rpc
 # github.com/gogo/protobuf v1.3.2
 ## explicit; go 1.15
 github.com/gogo/protobuf/gogoproto
+github.com/gogo/protobuf/jsonpb
 github.com/gogo/protobuf/proto
 github.com/gogo/protobuf/protoc-gen-gogo/descriptor
 github.com/gogo/protobuf/sortkeys
+github.com/gogo/protobuf/types
+# github.com/gogo/status v1.1.1
+## explicit; go 1.12
+github.com/gogo/status
 # github.com/golang-jwt/jwt v3.2.2+incompatible
 ## explicit
 github.com/golang-jwt/jwt
@@ -637,6 +648,9 @@ github.com/gophercloud/gophercloud/pagination
 # github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 ## explicit; go 1.14
 github.com/grpc-ecosystem/go-grpc-middleware
+github.com/grpc-ecosystem/go-grpc-middleware/retry
+github.com/grpc-ecosystem/go-grpc-middleware/util/backoffutils
+github.com/grpc-ecosystem/go-grpc-middleware/util/metautils
 # github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 ## explicit
 github.com/grpc-ecosystem/go-grpc-prometheus
@@ -948,6 +962,9 @@ github.com/onsi/gomega/types
 # github.com/open-policy-agent/cert-controller v0.7.1-0.20230509041528-f5436ecd020f
 ## explicit; go 1.20
 github.com/open-policy-agent/cert-controller/pkg/rotator
+# github.com/pborman/uuid v1.2.1
+## explicit
+github.com/pborman/uuid
 # github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 ## explicit
 github.com/phayes/freeport
@@ -1010,6 +1027,9 @@ github.com/redis/go-redis/v9/internal/util
 # github.com/rivo/uniseg v0.4.4
 ## explicit; go 1.18
 github.com/rivo/uniseg
+# github.com/robfig/cron v1.2.0
+## explicit
+github.com/robfig/cron
 # github.com/robfig/cron/v3 v3.0.1
 ## explicit; go 1.12
 github.com/robfig/cron/v3
@@ -1025,9 +1045,10 @@ github.com/shopspring/decimal
 # github.com/sirupsen/logrus v1.9.0
 ## explicit; go 1.13
 github.com/sirupsen/logrus
-# github.com/spf13/afero v1.6.0
-## explicit; go 1.13
+# github.com/spf13/afero v1.9.2
+## explicit; go 1.16
 github.com/spf13/afero
+github.com/spf13/afero/internal/common
 github.com/spf13/afero/mem
 # github.com/spf13/cobra v1.6.1
 ## explicit; go 1.15
@@ -1041,8 +1062,8 @@ github.com/stoewer/go-strcase
 # github.com/stretchr/objx v0.5.0
 ## explicit; go 1.12
 github.com/stretchr/objx
-# github.com/stretchr/testify v1.8.2
-## explicit; go 1.13
+# github.com/stretchr/testify v1.8.3
+## explicit; go 1.20
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/mock
 github.com/stretchr/testify/require
@@ -1244,6 +1265,46 @@ go.starlark.net/resolve
 go.starlark.net/starlark
 go.starlark.net/starlarkstruct
 go.starlark.net/syntax
+# go.temporal.io/api v1.21.0
+## explicit; go 1.16
+go.temporal.io/api/batch/v1
+go.temporal.io/api/command/v1
+go.temporal.io/api/common/v1
+go.temporal.io/api/enums/v1
+go.temporal.io/api/errordetails/v1
+go.temporal.io/api/failure/v1
+go.temporal.io/api/filter/v1
+go.temporal.io/api/history/v1
+go.temporal.io/api/namespace/v1
+go.temporal.io/api/operatorservice/v1
+go.temporal.io/api/protocol/v1
+go.temporal.io/api/proxy
+go.temporal.io/api/query/v1
+go.temporal.io/api/replication/v1
+go.temporal.io/api/schedule/v1
+go.temporal.io/api/sdk/v1
+go.temporal.io/api/serviceerror
+go.temporal.io/api/taskqueue/v1
+go.temporal.io/api/update/v1
+go.temporal.io/api/version/v1
+go.temporal.io/api/workflow/v1
+go.temporal.io/api/workflowservice/v1
+go.temporal.io/api/workflowservicemock/v1
+# go.temporal.io/sdk v1.23.0
+## explicit; go 1.16
+go.temporal.io/sdk/client
+go.temporal.io/sdk/converter
+go.temporal.io/sdk/internal
+go.temporal.io/sdk/internal/common
+go.temporal.io/sdk/internal/common/backoff
+go.temporal.io/sdk/internal/common/cache
+go.temporal.io/sdk/internal/common/metrics
+go.temporal.io/sdk/internal/common/retry
+go.temporal.io/sdk/internal/common/serializer
+go.temporal.io/sdk/internal/common/util
+go.temporal.io/sdk/internal/log
+go.temporal.io/sdk/internal/protocol
+go.temporal.io/sdk/log
 # go.uber.org/atomic v1.11.0
 ## explicit; go 1.18
 go.uber.org/atomic
@@ -1280,7 +1341,7 @@ golang.org/x/crypto/pkcs12/internal/rc2
 golang.org/x/crypto/salsa20/salsa
 golang.org/x/crypto/scrypt
 golang.org/x/crypto/sha3
-# golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17
+# golang.org/x/exp v0.0.0-20220827204233-334a2380cb91
 ## explicit; go 1.18
 golang.org/x/exp/constraints
 # golang.org/x/mod v0.9.0
@@ -1289,7 +1350,7 @@ golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/modfile
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/net v0.9.0 => golang.org/x/net v0.7.0
+# golang.org/x/net v0.10.0 => golang.org/x/net v0.7.0
 ## explicit; go 1.17
 golang.org/x/net/context
 golang.org/x/net/html
@@ -1423,7 +1484,7 @@ google.golang.org/appengine/internal/socket
 google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/socket
 google.golang.org/appengine/urlfetch
-# google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1
+# google.golang.org/genproto v0.0.0-20230525154841-bd750badd5c6
 ## explicit; go 1.19
 google.golang.org/genproto/googleapis/api
 google.golang.org/genproto/googleapis/api/annotations
@@ -1440,7 +1501,7 @@ google.golang.org/genproto/googleapis/type/calendarperiod
 google.golang.org/genproto/googleapis/type/date
 google.golang.org/genproto/googleapis/type/expr
 google.golang.org/genproto/protobuf/field_mask
-# google.golang.org/grpc v1.54.0
+# google.golang.org/grpc v1.55.0
 ## explicit; go 1.17
 google.golang.org/grpc
 google.golang.org/grpc/attributes

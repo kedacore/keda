@@ -1,0 +1,20 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: temporal-scaledobject
+  namespace: temporal
+spec:
+  scaleTargetRef:
+    name: workflow-app-kq557wre
+  pollingInterval: 20
+  cooldownPeriod:  200
+  minReplicaCount: 1
+  maxReplicaCount: 50
+  triggers:
+  - type: temporal
+    metadata:
+      address: "10.244.1.25:7233"
+      threshold:           '10'
+      #activationThreshold: '50'
+      
+      
