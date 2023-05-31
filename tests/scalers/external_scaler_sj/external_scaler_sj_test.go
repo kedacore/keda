@@ -119,7 +119,6 @@ metadata:
   name: update-metric-value
   namespace: {{.TestNamespace}}
 spec:
-  ttlSecondsAfterFinished: 0
   template:
     spec:
       containers:
@@ -173,8 +172,9 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	data.MetricValue = data.MetricThreshold * 3
 	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
-	assert.True(t, WaitForJobCount(t, kc, testNamespace, 3, 60, 1),
+	assert.True(t, WaitForScaledJobCount(t, kc, scaledJobName, testNamespace, 3, 60, 1),
 		"job count should be 3 after 1 minute")
+	KubectlDeleteWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -184,6 +184,7 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	data.MetricValue = 0
 	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
-	assert.True(t, WaitForJobCount(t, kc, testNamespace, 0, 60, 1),
+	assert.True(t, WaitForScaledJobCount(t, kc, scaledJobName, testNamespace, 0, 60, 1),
 		"job count should be 0 after 1 minute")
+	KubectlDeleteWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 }

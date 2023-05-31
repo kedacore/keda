@@ -135,7 +135,6 @@ metadata:
   name: update-metric-value
   namespace: {{.TestNamespace}}
 spec:
-  ttlSecondsAfterFinished: 0
   template:
     spec:
       containers:
@@ -196,6 +195,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"replica count should be 1 after 1 minute")
+	KubectlDeleteWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	t.Log("scaling to max replicas")
 	data.MetricValue = data.MetricThreshold * 2
@@ -203,6 +203,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 2),
 		"replica count should be 2 after 2 minutes")
+	KubectlDeleteWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -214,4 +215,5 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 2),
 		"replica count should be 0 after 2 minutes")
+	KubectlDeleteWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 }
