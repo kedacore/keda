@@ -148,6 +148,9 @@ vet: ## Run go vet against code.
 golangci: ## Run golangci against code.
 	golangci-lint run
 
+verify-manifests: ## Verify manifests are up to date.
+	./hack/verify-manifests.sh
+
 clientset-verify: ## Verify that generated client-go clientset, listers and informers are up to date.
 	./hack/verify-codegen.sh
 
@@ -248,13 +251,13 @@ set-version:
 
 ##@ Deployment
 
-install: kustomize manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/crd | kubectl apply -f -
+install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+	$(KUSTOMIZE) build config/crd | kubectl apply --server-side -f -
 
-uninstall: kustomize manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
+uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/crd | kubectl delete -f -
 
-deploy: kustomize manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+deploy: install ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && \
 	$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda=${IMAGE_CONTROLLER} && \
 	if [ "$(AZURE_RUN_AAD_POD_IDENTITY_TESTS)" = true ]; then \
@@ -293,6 +296,7 @@ deploy: kustomize manifests kustomize ## Deploy controller to the K8s cluster sp
 
 undeploy: kustomize e2e-test-clean-crds ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/e2e | kubectl delete -f -
+	make uninstall
 
 ## Location to install dependencies to
 LOCALBIN ?= $(shell pwd)/bin

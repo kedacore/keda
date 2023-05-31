@@ -50,6 +50,9 @@ jobs:
       - name: Verify Generated clientset is up to date
         run: make clientset-verify
 
+      - name: Manifests
+        run: make verify-manifests
+
       - name: Build
         run: make build
 
