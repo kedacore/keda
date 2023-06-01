@@ -17,6 +17,8 @@ limitations under the License.
 package prommetrics
 
 import (
+	"github.com/kedacore/keda/v2/version"
+	"runtime"
 	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -214,6 +216,6 @@ func DecrementCRDTotal(crdType, namespace string) {
 	crdTotalsGaugeVec.WithLabelValues(crdType, namespace).Dec()
 }
 
-func SetBuildInfo(version, commit, goVersion, goos, goarch string) {
-	buildInfo.WithLabelValues(version, commit, goVersion, goos, goarch).Set(1)
+func SetBuildInfo() {
+	buildInfo.WithLabelValues(version.Version, version.GitCommit, runtime.Version(), runtime.GOOS, runtime.GOARCH).Set(1)
 }

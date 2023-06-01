@@ -229,7 +229,7 @@ func main() {
 		return
 	}
 
-	prommetrics.SetBuildInfo(version.Version, version.GitCommit, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+	prommetrics.SetBuildInfo()
 
 	kedaProvider, err := cmd.makeProvider(ctx, time.Duration(globalHTTPTimeoutMS)*time.Millisecond)
 	if err != nil {

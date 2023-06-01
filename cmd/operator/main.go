@@ -283,7 +283,7 @@ func main() {
 	}
 
 	kedautil.PrintWelcome(setupLog, kubeVersion, "manager")
-	prommetrics.SetBuildInfo(version.Version, version.GitCommit, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+	prommetrics.SetBuildInfo()
 
 	kubeInformerFactory.Start(ctx.Done())
 
