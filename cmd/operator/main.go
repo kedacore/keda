@@ -41,7 +41,6 @@ import (
 	"github.com/kedacore/keda/v2/pkg/certificates"
 	"github.com/kedacore/keda/v2/pkg/k8s"
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
-	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	//+kubebuilder:scaffold:imports
@@ -280,7 +279,6 @@ func main() {
 	}
 
 	kedautil.PrintWelcome(setupLog, kubeVersion, "manager")
-	prommetrics.SetBuildInfo()
 
 	kubeInformerFactory.Start(ctx.Done())
 

@@ -133,6 +133,8 @@ func init() {
 	metrics.Registry.MustRegister(triggerTotalsGaugeVec)
 	metrics.Registry.MustRegister(crdTotalsGaugeVec)
 	metrics.Registry.MustRegister(buildInfo)
+
+	RecordBuildInfo()
 }
 
 // RecordScalerMetric create a measurement of the external metric used by the HPA
@@ -185,6 +187,11 @@ func RecordScaledObjectError(namespace string, scaledObject string, err error) {
 	}
 }
 
+// RecordBuildInfo publishes information about Keda version and runtime info through an info metric (gauge).
+func RecordBuildInfo() {
+	buildInfo.WithLabelValues(version.Version, version.GitCommit, runtime.Version(), runtime.GOOS, runtime.GOARCH).Set(1)
+}
+
 func getLabels(namespace string, scaledObject string, scaler string, scalerIndex int, metric string) prometheus.Labels {
 	return prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject, "scaler": scaler, "scalerIndex": strconv.Itoa(scalerIndex), "metric": metric}
 }
@@ -215,8 +222,4 @@ func DecrementCRDTotal(crdType, namespace string) {
 	}
 
 	crdTotalsGaugeVec.WithLabelValues(crdType, namespace).Dec()
-}
-
-func SetBuildInfo() {
-	buildInfo.WithLabelValues(version.Version, version.GitCommit, runtime.Version(), runtime.GOOS, runtime.GOARCH).Set(1)
 }

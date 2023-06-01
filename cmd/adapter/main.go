@@ -38,7 +38,6 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
-	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	kedaprovider "github.com/kedacore/keda/v2/pkg/provider"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -226,8 +225,6 @@ func main() {
 	if err != nil {
 		return
 	}
-
-	prommetrics.SetBuildInfo()
 
 	kedaProvider, err := cmd.makeProvider(ctx, time.Duration(globalHTTPTimeoutMS)*time.Millisecond)
 	if err != nil {
