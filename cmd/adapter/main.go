@@ -175,12 +175,12 @@ func printWelcomeMsg(cmd *Adapter) error {
 		logger.Error(err, "not able to get Kubernetes version")
 		return err
 	}
-	k8sVersion, err := clientset.ServerVersion()
+	version, err := clientset.ServerVersion()
 	if err != nil {
 		logger.Error(err, "not able to get Kubernetes version")
 		return err
 	}
-	kedautil.PrintWelcome(logger, kedautil.NewK8sVersion(k8sVersion), "metrics server")
+	kedautil.PrintWelcome(logger, kedautil.NewK8sVersion(version), "metrics server")
 
 	return nil
 }

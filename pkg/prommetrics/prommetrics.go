@@ -187,7 +187,7 @@ func RecordScaledObjectError(namespace string, scaledObject string, err error) {
 	}
 }
 
-// RecordBuildInfo publishes information about Keda version and runtime info through an info metric (gauge).
+// RecordBuildInfo publishes information about KEDA version and runtime info through an info metric (gauge).
 func RecordBuildInfo() {
 	buildInfo.WithLabelValues(version.Version, version.GitCommit, runtime.Version(), runtime.GOOS, runtime.GOARCH).Set(1)
 }
