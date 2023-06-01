@@ -21,7 +21,6 @@ import (
 
 	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	. "github.com/kedacore/keda/v2/tests/helper"
-	"github.com/kedacore/keda/v2/version"
 )
 
 const (
@@ -599,7 +598,6 @@ func checkBuildInfo(t *testing.T, families map[string]*prommodel.MetricFamily) {
 
 	latestCommit := getLatestCommit(t)
 	expected := map[string]string{
-		"version":    version.Version,
 		"git_commit": latestCommit,
 		"goos":       "linux",
 	}
@@ -612,6 +610,7 @@ func checkBuildInfo(t *testing.T, families map[string]*prommodel.MetricFamily) {
 				assert.EqualValues(t, expectedValue, *labelPair.Value, "values do not match for label %s", *labelPair.Name)
 			}
 		}
+		assert.EqualValues(t, 1, metric.GetGauge().GetValue())
 	}
 }
 
