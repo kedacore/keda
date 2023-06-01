@@ -181,18 +181,26 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 				return -1, err
 			}
 			infoLines := strings.Split(info, "\n")
-			versionLine := infoLines[1]
-			versionSplit := strings.Split(versionLine, ":")
-			version := versionSplit[1]
-			versionNumString := strings.Split(version, ".")[0]
-			versionNum, err := strconv.ParseInt(versionNumString, 10, 64)
-			if err != nil {
-				err := errors.New("redis version could not be converted to number")
-				return -1, err
-			}
-			if versionNum < int64(7) {
-				err := errors.New("redis version 7+ required for lag")
-				return -1, err
+			for i := 0; i < len(infoLines); i++ {
+				line := infoLines[i]
+				lineSplit := strings.Split(line, ":")
+				if len(lineSplit) > 1 {
+					fieldName := lineSplit[0]
+					fieldValue := lineSplit[1]
+					if fieldName == "redis_version" {
+						versionNumString := strings.Split(fieldValue, ".")[0]
+						versionNum, err := strconv.ParseInt(versionNumString, 10, 64)
+						if err != nil {
+							err := errors.New("redis version could not be converted to number")
+							return -1, err
+						}
+						if versionNum < int64(7) {
+							err := errors.New("redis version 7+ required for lag")
+							return -1, err
+						}
+						break
+					}
+				}
 			}
 			groups, err := client.XInfoGroups(ctx, meta.streamName).Result()
 			if err != nil {
