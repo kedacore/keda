@@ -133,15 +133,27 @@ func WithTransform(transform func(obj map[string]interface{}) error) *WriteYAMLO
 	}
 }
 
+// TransformRemoveCreationTimestamp ensures we do not write the metadata.creationTimestamp field.
+func TransformRemoveCreationTimestamp(obj map[string]interface{}) error {
+	metadata := obj["metadata"].(map[interface{}]interface{})
+	delete(metadata, "creationTimestamp")
+	return nil
+}
+
 // WriteYAML writes the given objects out, serialized as YAML, using the
 // context's OutputRule.  Objects are written as separate documents, separated
 // from each other by `---` (as per the YAML spec).
-func (g GenerationContext) WriteYAML(itemPath string, objs []interface{}, options ...*WriteYAMLOptions) error {
+func (g GenerationContext) WriteYAML(itemPath, headerText string, objs []interface{}, options ...*WriteYAMLOptions) error {
 	out, err := g.Open(nil, itemPath)
 	if err != nil {
 		return err
 	}
 	defer out.Close()
+
+	_, err = out.Write([]byte(headerText))
+	if err != nil {
+		return err
+	}
 
 	for _, obj := range objs {
 		yamlContent, err := yamlMarshal(obj, options...)

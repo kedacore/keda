@@ -173,7 +173,7 @@ type Pattern string
 type MaxItems int
 
 // +controllertools:marker:generateHelp:category="CRD validation"
-// MinItems specifies the minimun length for this list.
+// MinItems specifies the minimum length for this list.
 type MinItems int
 
 // +controllertools:marker:generateHelp:category="CRD validation"
