@@ -181,6 +181,7 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 				return -1, err
 			}
 			infoLines := strings.Split(info, "\n")
+			versionFound := false
 			for i := 0; i < len(infoLines); i++ {
 				line := infoLines[i]
 				lineSplit := strings.Split(line, ":")
@@ -188,6 +189,7 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 					fieldName := lineSplit[0]
 					fieldValue := lineSplit[1]
 					if fieldName == "redis_version" {
+						versionFound = true
 						versionNumString := strings.Split(fieldValue, ".")[0]
 						versionNum, err := strconv.ParseInt(versionNumString, 10, 64)
 						if err != nil {
@@ -201,6 +203,10 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 						break
 					}
 				}
+			}
+			if versionFound == false {
+				err := errors.New("could not find Redis version number")
+				return -1, err
 			}
 			groups, err := client.XInfoGroups(ctx, meta.streamName).Result()
 			if err != nil {
