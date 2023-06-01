@@ -26,7 +26,7 @@ import (
 	"strings"
 	"unicode"
 
-	"gopkg.in/square/go-jose.v2/json"
+	"github.com/go-jose/go-jose/v3/json"
 )
 
 // Helper function to serialize known-good objects.
@@ -41,7 +41,7 @@ func mustSerializeJSON(value interface{}) []byte {
 	// MarshalJSON will happily serialize it as the top-level value "null". If
 	// that value is then embedded in another operation, for instance by being
 	// base64-encoded and fed as input to a signing algorithm
-	// (https://github.com/square/go-jose/issues/22), the result will be
+	// (https://github.com/go-jose/go-jose/issues/22), the result will be
 	// incorrect. Because this method is intended for known-good objects, and a nil
 	// pointer is not a known-good object, we are free to panic in this case.
 	// Note: It's not possible to directly check whether the data pointed at by an
@@ -127,7 +127,7 @@ func newBuffer(data []byte) *byteBuffer {
 
 func newFixedSizeBuffer(data []byte, length int) *byteBuffer {
 	if len(data) > length {
-		panic("square/go-jose: invalid call to newFixedSizeBuffer (len(data) > length)")
+		panic("go-jose/go-jose: invalid call to newFixedSizeBuffer (len(data) > length)")
 	}
 	pad := make([]byte, length-len(data))
 	return newBuffer(append(pad, data...))
@@ -154,7 +154,7 @@ func (b *byteBuffer) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	decoded, err := base64.RawURLEncoding.DecodeString(encoded)
+	decoded, err := base64URLDecode(encoded)
 	if err != nil {
 		return err
 	}
@@ -182,4 +182,10 @@ func (b byteBuffer) bigInt() *big.Int {
 
 func (b byteBuffer) toInt() int {
 	return int(b.bigInt().Int64())
+}
+
+// base64URLDecode is implemented as defined in https://www.rfc-editor.org/rfc/rfc7515.html#appendix-C
+func base64URLDecode(value string) ([]byte, error) {
+	value = strings.TrimRight(value, "=")
+	return base64.RawURLEncoding.DecodeString(value)
 }

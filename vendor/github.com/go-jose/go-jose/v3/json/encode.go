@@ -648,7 +648,7 @@ func encodeByteSlice(e *encodeState, v reflect.Value, _ bool) {
 		// for large buffers, avoid unnecessary extra temporary
 		// buffer space.
 		enc := base64.NewEncoder(base64.StdEncoding, e)
-		enc.Write(s)
+		_, _ = enc.Write(s)
 		enc.Close()
 	}
 	e.WriteByte('"')

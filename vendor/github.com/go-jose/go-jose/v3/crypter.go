@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"gopkg.in/square/go-jose.v2/json"
+	"github.com/go-jose/go-jose/v3/json"
 )
 
 // Encrypter represents an encrypter which produces an encrypted JWE object.
@@ -201,8 +201,8 @@ func NewMultiEncrypter(enc ContentEncryption, rcpts []Recipient, opts *Encrypter
 	if cipher == nil {
 		return nil, ErrUnsupportedAlgorithm
 	}
-	if rcpts == nil || len(rcpts) == 0 {
-		return nil, fmt.Errorf("square/go-jose: recipients is nil or empty")
+	if len(rcpts) == 0 {
+		return nil, fmt.Errorf("go-jose/go-jose: recipients is nil or empty")
 	}
 
 	encrypter := &genericEncrypter{
@@ -234,7 +234,7 @@ func (ctx *genericEncrypter) addRecipient(recipient Recipient) (err error) {
 
 	switch recipient.Algorithm {
 	case DIRECT, ECDH_ES:
-		return fmt.Errorf("square/go-jose: key algorithm '%s' not supported in multi-recipient mode", recipient.Algorithm)
+		return fmt.Errorf("go-jose/go-jose: key algorithm '%s' not supported in multi-recipient mode", recipient.Algorithm)
 	}
 
 	recipientInfo, err = makeJWERecipient(recipient.Algorithm, recipient.Key)
@@ -326,7 +326,7 @@ func (ctx *genericEncrypter) EncryptWithAuthData(plaintext, aad []byte) (*JSONWe
 	obj.recipients = make([]recipientInfo, len(ctx.recipients))
 
 	if len(ctx.recipients) == 0 {
-		return nil, fmt.Errorf("square/go-jose: no recipients to encrypt to")
+		return nil, fmt.Errorf("go-jose/go-jose: no recipients to encrypt to")
 	}
 
 	cek, headers, err := ctx.keyGenerator.genKey()
@@ -410,26 +410,27 @@ func (obj JSONWebEncryption) Decrypt(decryptionKey interface{}) ([]byte, error) 
 	headers := obj.mergedHeaders(nil)
 
 	if len(obj.recipients) > 1 {
-		return nil, errors.New("square/go-jose: too many recipients in payload; expecting only one")
+		return nil, errors.New("go-jose/go-jose: too many recipients in payload; expecting only one")
 	}
 
 	critical, err := headers.getCritical()
 	if err != nil {
-		return nil, fmt.Errorf("square/go-jose: invalid crit header")
+		return nil, fmt.Errorf("go-jose/go-jose: invalid crit header")
 	}
 
 	if len(critical) > 0 {
-		return nil, fmt.Errorf("square/go-jose: unsupported crit header")
+		return nil, fmt.Errorf("go-jose/go-jose: unsupported crit header")
 	}
 
-	decrypter, err := newDecrypter(decryptionKey)
+	key := tryJWKS(decryptionKey, obj.Header)
+	decrypter, err := newDecrypter(key)
 	if err != nil {
 		return nil, err
 	}
 
 	cipher := getContentCipher(headers.getEncryption())
 	if cipher == nil {
-		return nil, fmt.Errorf("square/go-jose: unsupported enc value '%s'", string(headers.getEncryption()))
+		return nil, fmt.Errorf("go-jose/go-jose: unsupported enc value '%s'", string(headers.getEncryption()))
 	}
 
 	generator := randomKeyGenerator{
@@ -475,14 +476,15 @@ func (obj JSONWebEncryption) DecryptMulti(decryptionKey interface{}) (int, Heade
 
 	critical, err := globalHeaders.getCritical()
 	if err != nil {
-		return -1, Header{}, nil, fmt.Errorf("square/go-jose: invalid crit header")
+		return -1, Header{}, nil, fmt.Errorf("go-jose/go-jose: invalid crit header")
 	}
 
 	if len(critical) > 0 {
-		return -1, Header{}, nil, fmt.Errorf("square/go-jose: unsupported crit header")
+		return -1, Header{}, nil, fmt.Errorf("go-jose/go-jose: unsupported crit header")
 	}
 
-	decrypter, err := newDecrypter(decryptionKey)
+	key := tryJWKS(decryptionKey, obj.Header)
+	decrypter, err := newDecrypter(key)
 	if err != nil {
 		return -1, Header{}, nil, err
 	}
@@ -490,7 +492,7 @@ func (obj JSONWebEncryption) DecryptMulti(decryptionKey interface{}) (int, Heade
 	encryption := globalHeaders.getEncryption()
 	cipher := getContentCipher(encryption)
 	if cipher == nil {
-		return -1, Header{}, nil, fmt.Errorf("square/go-jose: unsupported enc value '%s'", string(encryption))
+		return -1, Header{}, nil, fmt.Errorf("go-jose/go-jose: unsupported enc value '%s'", string(encryption))
 	}
 
 	generator := randomKeyGenerator{
@@ -524,18 +526,18 @@ func (obj JSONWebEncryption) DecryptMulti(decryptionKey interface{}) (int, Heade
 		}
 	}
 
-	if plaintext == nil || err != nil {
+	if plaintext == nil {
 		return -1, Header{}, nil, ErrCryptoFailure
 	}
 
 	// The "zip" header parameter may only be present in the protected header.
 	if comp := obj.protected.getCompression(); comp != "" {
-		plaintext, err = decompress(comp, plaintext)
+		plaintext, _ = decompress(comp, plaintext)
 	}
 
 	sanitized, err := headers.sanitized()
 	if err != nil {
-		return -1, Header{}, nil, fmt.Errorf("square/go-jose: failed to sanitize header: %v", err)
+		return -1, Header{}, nil, fmt.Errorf("go-jose/go-jose: failed to sanitize header: %v", err)
 	}
 
 	return index, sanitized, plaintext, err
