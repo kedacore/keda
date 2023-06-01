@@ -1,5 +1,9 @@
 # Change Log
 
+## `v3.6.0`
+
+- Updated to latest `azure-amqp-common-go` and GA version of `go-amqp` modules.
+
 ## `v3.5.0`
 
 - Updated to latest `azure-amqp-common-go` and `go-amqp` modules.
