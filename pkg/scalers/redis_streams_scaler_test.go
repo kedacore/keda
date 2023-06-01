@@ -239,13 +239,13 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			wantErr:  ErrRedisMissingStreamName,
 		},
 		{
-			name: "invalid pendingEntriesCount",
+			name: "invalid pending entries count",
 			metadata: map[string]string{
 				"stream":              "my-stream",
 				"hosts":               "a, b, c",
 				"ports":               "1, 2, 3",
 				"consumerGroup":       "consumer1",
-				"pendingEntriesCount": "junk",
+				"pendingEntriesCount": "invalid",
 			},
 			wantMeta: nil,
 			wantErr:  strconv.ErrSyntax,
