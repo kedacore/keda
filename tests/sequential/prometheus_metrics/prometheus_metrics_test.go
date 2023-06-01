@@ -585,7 +585,7 @@ func testOperatorMetricValues(t *testing.T, kc *kubernetes.Clientset) {
 }
 
 func checkBuildInfo(t *testing.T, families map[string]*prommodel.MetricFamily) {
-	t.Log("--- testing trigger total metrics ---")
+	t.Log("--- testing build info metric ---")
 
 	family, ok := families["keda_build_info"]
 	if !ok {
