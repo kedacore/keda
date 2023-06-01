@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package external_scale_so_test
+package external_push_scaler_test
 
 import (
 	"fmt"
@@ -18,7 +18,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "external-scaler-so-test"
+	testName = "external-push-scaler-test"
 )
 
 var (
@@ -124,7 +124,7 @@ spec:
   minReplicaCount: 1
   maxReplicaCount: 2
   triggers:
-    - type: external
+    - type: external-push
       metadata:
         scalerAddress: {{.ServiceName}}.{{.TestNamespace}}:6000
         metricThreshold: "{{.MetricThreshold}}"

@@ -299,10 +299,22 @@ func WaitForNamespaceDeletion(t *testing.T, nsName string) bool {
 	return false
 }
 
+func WaitForScaledJobCount(t *testing.T, kc *kubernetes.Clientset, scaledJobName, namespace string,
+	target, iterations, intervalSeconds int) bool {
+	return waitForJobCount(t, kc, fmt.Sprintf("scaledjob.keda.sh/name=%s", scaledJobName), namespace, target, iterations, intervalSeconds)
+}
+
 func WaitForJobCount(t *testing.T, kc *kubernetes.Clientset, namespace string,
 	target, iterations, intervalSeconds int) bool {
+	return waitForJobCount(t, kc, "", namespace, target, iterations, intervalSeconds)
+}
+
+func waitForJobCount(t *testing.T, kc *kubernetes.Clientset, selector, namespace string,
+	target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
-		jobList, _ := kc.BatchV1().Jobs(namespace).List(context.Background(), metav1.ListOptions{})
+		jobList, _ := kc.BatchV1().Jobs(namespace).List(context.Background(), metav1.ListOptions{
+			LabelSelector: selector,
+		})
 		count := len(jobList.Items)
 
 		t.Logf("Waiting for job count to hit target. Namespace - %s, Current  - %d, Target - %d",
