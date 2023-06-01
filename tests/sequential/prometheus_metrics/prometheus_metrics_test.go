@@ -17,6 +17,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/kedacore/keda/v2/pkg/prommetrics"
+	. "github.com/kedacore/keda/v2/tests/helper"
 	"github.com/kedacore/keda/v2/version"
 )
 

@@ -21,7 +21,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"runtime"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -43,7 +42,6 @@ import (
 	kedaprovider "github.com/kedacore/keda/v2/pkg/provider"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
-	"github.com/kedacore/keda/v2/version"
 )
 
 // Adapter creates External Metrics Provider

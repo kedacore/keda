@@ -17,13 +17,14 @@ limitations under the License.
 package prommetrics
 
 import (
-	"github.com/kedacore/keda/v2/version"
 	"runtime"
 	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
+
+	"github.com/kedacore/keda/v2/version"
 )
 
 var log = logf.Log.WithName("prometheus_server")

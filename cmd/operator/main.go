@@ -20,10 +20,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"runtime"
 	"time"
-
-	"github.com/kedacore/keda/v2/version"
 
 	"github.com/spf13/pflag"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
