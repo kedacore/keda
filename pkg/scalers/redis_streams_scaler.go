@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"os/exec"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -174,25 +173,27 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 			return entriesLength, nil
 		}
 	case lagFactor:
-	    // Make sure that redis is version 7+, which is required for xinfo lag
-		cmd := exec.Command("redis-cli", "--version")
-		out, err := cmd.Output()
-		if err != nil {
-		  fmt.Println("could not run command: ", err)
-		}
-		filter_version := strings.Split(string(out[:]), " ") 
-		version := filter_version[1]                                      // Extract version
-		version_split := strings.Split(version, ".")                      // Extract first number of version string
-		version_number, err := strconv.ParseInt(version_split[0], 10, 64)
-		if err != nil {
-		  fmt.Println("Could not extract redis version number: ", err)
-		}
-		if int64(version_number) < int64(7) {
-			err := errors.New("Redis version 7+ required for lag")
-			return nil, err
-		}
-
 		entriesCountFn = func(ctx context.Context) (int64, error) {
+			// Make sure that redis is version 7+, which is required for xinfo lag
+			info, err := client.Info(ctx).Result()
+			if err != nil {
+				err := errors.New("could not find Redis version")
+				return -1, err
+			}
+			info_lines := strings.Split(info, "\n")
+			version_line := info_lines[1]
+			version_split := strings.Split(version_line, ":")
+			version := version_split[1]
+			version_num_string := strings.Split(version, ".")[0]
+			version_num, err := strconv.ParseInt(version_num_string, 10, 64)
+			if err != nil {
+				err := errors.New("redis version could not be converted to number")
+				return -1, err
+			}
+			if int64(version_num) < int64(7) {
+				err := errors.New("Redis version 7+ required for lag")
+				return -1, err
+			}
 			groups, err := client.XInfoGroups(ctx, meta.streamName).Result()
 			if err != nil {
 				return -1, err

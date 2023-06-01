@@ -7,9 +7,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"testing"
-  "os/exec"
-  "strings"
-  "strconv"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -193,21 +190,6 @@ spec:
 )
 
 func TestScaler(t *testing.T) {
-  // Make sure that redis is version 7+, which is required for xinfo lag
-  cmd := exec.Command("redis-cli", "--version")
-  out, err := cmd.Output()
-  if err != nil {
-    fmt.Println("could not run command: ", err)
-  }
-  filter_version := strings.Split(string(out[:]), " ") 
-  version := filter_version[1]                                      // Extract version
-  version_split := strings.Split(version, ".")                      // Extract first number of version string
-  version_number, err := strconv.ParseInt(version_split[0], 10, 64)
-  if err != nil {
-    fmt.Println("Could not extract redis version number: ", err)
-  }
-  assert.GreaterOrEqual(t, int64(version_number), int64(7), "Need Redis version 7 or higher.") // xInfo lag is compatible only with Redis 7+
-
 	// Create kubernetes resources for PostgreSQL server
 	kc := GetKubernetesClient(t)
 
