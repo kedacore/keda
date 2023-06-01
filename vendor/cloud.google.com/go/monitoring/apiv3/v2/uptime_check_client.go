@@ -127,13 +127,13 @@ type internalUptimeCheckClient interface {
 // Methods, except Close, may be called concurrently. However, fields must not be modified concurrently with method calls.
 //
 // The UptimeCheckService API is used to manage (list, create, delete, edit)
-// Uptime check configurations in the Stackdriver Monitoring product. An Uptime
+// Uptime check configurations in the Cloud Monitoring product. An Uptime
 // check is a piece of configuration that determines which resources and
 // services to monitor for availability. These configurations can also be
-// configured interactively by navigating to the [Cloud Console]
-// (http://console.cloud.google.com (at http://console.cloud.google.com)), selecting the appropriate project,
-// clicking on “Monitoring” on the left-hand side to navigate to Stackdriver,
-// and then clicking on “Uptime”.
+// configured interactively by navigating to the [Cloud console]
+// (https://console.cloud.google.com (at https://console.cloud.google.com)), selecting the appropriate project,
+// clicking on “Monitoring” on the left-hand side to navigate to Cloud
+// Monitoring, and then clicking on “Uptime”.
 type UptimeCheckClient struct {
 	// The internal transport-dependent client.
 	internalClient internalUptimeCheckClient
@@ -225,13 +225,13 @@ type uptimeCheckGRPCClient struct {
 // The returned client must be Closed when it is done being used to clean up its underlying connections.
 //
 // The UptimeCheckService API is used to manage (list, create, delete, edit)
-// Uptime check configurations in the Stackdriver Monitoring product. An Uptime
+// Uptime check configurations in the Cloud Monitoring product. An Uptime
 // check is a piece of configuration that determines which resources and
 // services to monitor for availability. These configurations can also be
-// configured interactively by navigating to the [Cloud Console]
-// (http://console.cloud.google.com (at http://console.cloud.google.com)), selecting the appropriate project,
-// clicking on “Monitoring” on the left-hand side to navigate to Stackdriver,
-// and then clicking on “Uptime”.
+// configured interactively by navigating to the [Cloud console]
+// (https://console.cloud.google.com (at https://console.cloud.google.com)), selecting the appropriate project,
+// clicking on “Monitoring” on the left-hand side to navigate to Cloud
+// Monitoring, and then clicking on “Uptime”.
 func NewUptimeCheckClient(ctx context.Context, opts ...option.ClientOption) (*UptimeCheckClient, error) {
 	clientOpts := defaultUptimeCheckGRPCClientOptions()
 	if newUptimeCheckClientHook != nil {
