@@ -134,12 +134,19 @@ func (c *client) ServerID(ctx context.Context) (string, error) {
 	return data.ID, nil
 }
 
-// clusterEndpoints returns the endpoints of a cluster.
+// echo returns what is sent to the server.
 func (c *client) echo(ctx context.Context) error {
 	req, err := c.conn.NewRequest("GET", "_admin/echo")
 	if err != nil {
 		return WithStack(err)
 	}
+
+	// Velocypack requires non-empty body for versions < 3.11.
+	req, err = req.SetBody("echo")
+	if err != nil {
+		return WithStack(err)
+	}
+
 	applyContextSettings(ctx, req)
 	resp, err := c.conn.Do(ctx, req)
 	if err != nil {

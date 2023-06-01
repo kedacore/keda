@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2022 ArangoDB GmbH, Cologne, Germany
+// Copyright 2023 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -57,13 +57,13 @@ type PregelJobOptions struct {
 	Algorithm PregelAlgorithm `json:"algorithm"`
 	// Name of a graph. Either this or the parameters VertexCollections and EdgeCollections are required.
 	// Please note that there are special sharding requirements for graphs in order to be used with Pregel.
-	GraphName string `json:"graphName,optional"`
+	GraphName string `json:"graphName,omitempty"`
 	// List of vertex collection names. Please note that there are special sharding requirements for collections in order to be used with Pregel.
-	VertexCollections []string `json:"vertexCollections,optional"`
+	VertexCollections []string `json:"vertexCollections,omitempty"`
 	// List of edge collection names. Please note that there are special sharding requirements for collections in order to be used with Pregel.
-	EdgeCollections []string `json:"edgeCollections,optional"`
+	EdgeCollections []string `json:"edgeCollections,omitempty"`
 	// General as well as algorithm-specific options.
-	Params map[string]interface{} `json:"params,optional"`
+	Params map[string]interface{} `json:"params,omitempty"`
 }
 
 type PregelJobState string

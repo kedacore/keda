@@ -251,7 +251,7 @@ github.com/antlr/antlr4/runtime/Go/antlr
 # github.com/apapsch/go-jsonmerge/v2 v2.0.0
 ## explicit; go 1.12
 github.com/apapsch/go-jsonmerge/v2
-# github.com/arangodb/go-driver v1.5.2
+# github.com/arangodb/go-driver v1.6.0
 ## explicit; go 1.19
 github.com/arangodb/go-driver
 github.com/arangodb/go-driver/cluster

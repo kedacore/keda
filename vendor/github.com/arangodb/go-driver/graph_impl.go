@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// Copyright 2023 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 // limitations under the License.
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
-//
-// Author Ewout Prangsma
 //
 
 package driver
@@ -81,7 +79,7 @@ func (g *graph) Key() DocumentID {
 	return g.input.Key
 }
 
-// Key returns the key of the graph.
+// Rev returns the key of the graph.
 func (g *graph) Rev() string {
 	return g.input.Rev
 }
@@ -91,7 +89,7 @@ func (g *graph) EdgeDefinitions() []EdgeDefinition {
 	return g.input.EdgeDefinitions
 }
 
-// IsSmart returns the isSmart setting of the graph.
+// SmartGraphAttribute returns the attributes of a smart graph if there are any.
 func (g *graph) SmartGraphAttribute() string {
 	return g.input.SmartGraphAttribute
 }
@@ -106,7 +104,7 @@ func (g *graph) NumberOfShards() int {
 	return g.input.NumberOfShards
 }
 
-// OrphanCollections returns the orphan collcetions of the graph.
+// OrphanCollections returns the orphan collections of the graph.
 func (g *graph) OrphanCollections() []string {
 	return g.input.OrphanCollections
 }
@@ -128,6 +126,7 @@ func (g *graph) Remove(ctx context.Context) error {
 	if err != nil {
 		return WithStack(err)
 	}
+	applyContextSettings(ctx, req)
 	resp, err := g.conn.Do(ctx, req)
 	if err != nil {
 		return WithStack(err)
