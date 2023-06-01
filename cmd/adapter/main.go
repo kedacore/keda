@@ -21,6 +21,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -38,9 +39,11 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
+	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	kedaprovider "github.com/kedacore/keda/v2/pkg/provider"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
+	"github.com/kedacore/keda/v2/version"
 )
 
 // Adapter creates External Metrics Provider
@@ -175,13 +178,12 @@ func printWelcomeMsg(cmd *Adapter) error {
 		logger.Error(err, "not able to get Kubernetes version")
 		return err
 	}
-	version, err := clientset.ServerVersion()
+	k8sVersion, err := clientset.ServerVersion()
 	if err != nil {
 		logger.Error(err, "not able to get Kubernetes version")
 		return err
 	}
-	kedautil.PrintWelcome(logger, kedautil.NewK8sVersion(version), "metrics server")
-	kedautil.PublishBuildInfo()
+	kedautil.PrintWelcome(logger, kedautil.NewK8sVersion(k8sVersion), "metrics server")
 
 	return nil
 }
@@ -226,6 +228,8 @@ func main() {
 	if err != nil {
 		return
 	}
+
+	prommetrics.SetBuildInfo(version.Version, version.GitCommit, runtime.Version(), runtime.GOOS, runtime.GOARCH)
 
 	kedaProvider, err := cmd.makeProvider(ctx, time.Duration(globalHTTPTimeoutMS)*time.Millisecond)
 	if err != nil {

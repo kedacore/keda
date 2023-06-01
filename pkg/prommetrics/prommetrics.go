@@ -43,7 +43,7 @@ var (
 			Name:      "build_info",
 			Help:      "A metric with a constant '1' value labeled by version, git_commit and goversion from which KEDA was built.",
 		},
-		[]string{"version", "git_commit", "goversion"},
+		[]string{"version", "git_commit", "goversion", "goos", "goarch"},
 	)
 	scalerErrorsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -214,6 +214,6 @@ func DecrementCRDTotal(crdType, namespace string) {
 	crdTotalsGaugeVec.WithLabelValues(crdType, namespace).Dec()
 }
 
-func SetBuildInfo(version, commit, goVersion string) {
-	buildInfo.WithLabelValues(version, commit, goVersion).Set(1)
+func SetBuildInfo(version, commit, goVersion, goos, goarch string) {
+	buildInfo.WithLabelValues(version, commit, goVersion, goos, goarch).Set(1)
 }

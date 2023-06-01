@@ -6,6 +6,7 @@ package prometheus_metrics_test
 import (
 	"context"
 	"fmt"
+	"github.com/kedacore/keda/v2/version"
 	"strings"
 	"testing"
 	"time"
@@ -17,7 +18,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/kedacore/keda/v2/pkg/prommetrics"
-	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 const (
@@ -581,6 +581,32 @@ func testOperatorMetricValues(t *testing.T, kc *kubernetes.Clientset) {
 
 	checkTriggerTotalValues(t, families, expectedTriggerTotals)
 	checkCRTotalValues(t, families, expectedCrTotals)
+	checkBuildInfo(t, families)
+}
+
+func checkBuildInfo(t *testing.T, families map[string]*prommodel.MetricFamily) {
+	t.Log("--- testing trigger total metrics ---")
+
+	family, ok := families["keda_build_info"]
+	if !ok {
+		t.Errorf("metric not available")
+		return
+	}
+
+	expected := map[string]string{
+		"version":    version.Version,
+		"git_commit": version.Version,
+	}
+
+	metrics := family.GetMetric()
+	for _, metric := range metrics {
+		labels := metric.GetLabel()
+		for _, labelPair := range labels {
+			if expectedValue, ok := expected[*labelPair.Name]; ok {
+				assert.EqualValues(t, expectedValue, *labelPair.Value)
+			}
+		}
+	}
 }
 
 func checkTriggerTotalValues(t *testing.T, families map[string]*prommodel.MetricFamily, expected map[string]int) {

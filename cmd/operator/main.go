@@ -20,7 +20,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime"
 	"time"
+
+	"github.com/kedacore/keda/v2/version"
 
 	"github.com/spf13/pflag"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
@@ -41,6 +44,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/certificates"
 	"github.com/kedacore/keda/v2/pkg/k8s"
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
+	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	//+kubebuilder:scaffold:imports
@@ -279,7 +283,7 @@ func main() {
 	}
 
 	kedautil.PrintWelcome(setupLog, kubeVersion, "manager")
-	kedautil.PublishBuildInfo()
+	prommetrics.SetBuildInfo(version.Version, version.GitCommit, runtime.Version(), runtime.GOOS, runtime.GOARCH)
 
 	kubeInformerFactory.Start(ctx.Done())
 
