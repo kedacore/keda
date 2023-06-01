@@ -766,8 +766,8 @@ go.etcd.io/etcd/client/v3 v3.5.8/go.mod h1:idZYIPVkttBJBiRigkB5EM0MmEyx8jcl18zCV
 go.etcd.io/etcd/pkg/v3 v3.5.7 h1:obOzeVwerFwZ9trMWapU/VjDcYUJb5OfgC1zqEGWO/0=
 go.etcd.io/etcd/raft/v3 v3.5.7 h1:aN79qxLmV3SvIq84aNTliYGmjwsW6NqJSnqmI1HLJKc=
 go.etcd.io/etcd/server/v3 v3.5.7 h1:BTBD8IJUV7YFgsczZMHhMTS67XuA4KpRquL0MFOJGRk=
-go.mongodb.org/mongo-driver v1.11.4 h1:4ayjakA013OdpGyL2K3ZqylTac/rMjrJOMZ1EHizXas=
-go.mongodb.org/mongo-driver v1.11.4/go.mod h1:PTSz5yu21bkT/wXpkS7WR5f0ddqw5quethTUn9WM+2g=
+go.mongodb.org/mongo-driver v1.11.6 h1:XM7G6PjiGAO5betLF13BIa5TlLUUE3uJ/2Ox3Lz1K+o=
+go.mongodb.org/mongo-driver v1.11.6/go.mod h1:G9TgswdsWjX4tmDA5zfs2+6AEPpYJwqblyjsfuh8oXY=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
 go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=
 go.opencensus.io v0.22.2/go.mod h1:yxeiOL68Rb0Xd1ddK5vPZ/oVn4vY4Ynel7k9FzqtOIw=
