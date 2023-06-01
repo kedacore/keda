@@ -40,7 +40,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gophercloud/gophercloud v1.3.0
 	github.com/hashicorp/vault/api v1.9.1
-	github.com/imdario/mergo v0.3.15
+	github.com/imdario/mergo v0.3.16
 	github.com/influxdata/influxdb-client-go/v2 v2.12.3
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9
