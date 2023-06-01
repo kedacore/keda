@@ -10,8 +10,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/amqpwrap"
-	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/go-amqp"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/utils"
+	"github.com/Azure/go-amqp"
 )
 
 // SessionReceiver is a Receiver that handles sessions.
@@ -97,9 +97,9 @@ func (r *SessionReceiver) newLink(ctx context.Context, session amqpwrap.AMQPSess
 	linkOptions := createLinkOptions(r.inner.receiveMode)
 
 	if r.sessionID == nil {
-		linkOptions.Filters = append(linkOptions.Filters, amqp.LinkFilterSource(sessionFilterName, code, nil))
+		linkOptions.Filters = append(linkOptions.Filters, amqp.NewLinkFilter(sessionFilterName, code, nil))
 	} else {
-		linkOptions.Filters = append(linkOptions.Filters, amqp.LinkFilterSource(sessionFilterName, code, r.sessionID))
+		linkOptions.Filters = append(linkOptions.Filters, amqp.NewLinkFilter(sessionFilterName, code, r.sessionID))
 	}
 
 	if r.acceptNextTimeout > 0 {

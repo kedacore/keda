@@ -81,6 +81,8 @@ type Message struct {
 	// the possibility of a null key) and the values are restricted to be of
 	// simple types only, that is, excluding map, list, and array types.
 
+	// NOTE: the Data, Value, and Sequence fields are mutually exclusive.
+
 	// Data payloads.
 	// A data section contains opaque binary data.
 	Data [][]byte
@@ -103,11 +105,14 @@ type Message struct {
 	settled    bool   // whether transfer was settled by sender
 }
 
-// NewMessage returns a *Message with data as the payload.
+// NewMessage returns a *Message with data as the first payload in the Data field.
 //
 // This constructor is intended as a helper for basic Messages with a
 // single data payload. It is valid to construct a Message directly for
 // more complex usages.
+//
+// To create a Message using the Value or Sequence fields, don't use this
+// constructor, create a new Message instead.
 func NewMessage(data []byte) *Message {
 	return &Message{
 		Data: [][]byte{data},

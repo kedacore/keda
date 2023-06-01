@@ -104,7 +104,7 @@ github.com/Azure/azure-sdk-for-go/sdk/internal/poller
 github.com/Azure/azure-sdk-for-go/sdk/internal/telemetry
 github.com/Azure/azure-sdk-for-go/sdk/internal/temporal
 github.com/Azure/azure-sdk-for-go/sdk/internal/uuid
-# github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.2.1
+# github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.3.0
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/admin
@@ -114,12 +114,6 @@ github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/atom
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/auth
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/conn
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/exported
-github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/go-amqp
-github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/go-amqp/internal/bitmap
-github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/go-amqp/internal/buffer
-github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/go-amqp/internal/encoding
-github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/go-amqp/internal/frames
-github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/go-amqp/internal/log
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/sas
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/sbauth
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/utils
@@ -129,7 +123,7 @@ github.com/Azure/azure-storage-blob-go/azblob
 # github.com/Azure/azure-storage-queue-go v0.0.0-20191125232315-636801874cdd
 ## explicit
 github.com/Azure/azure-storage-queue-go/azqueue
-# github.com/Azure/go-amqp v0.19.1
+# github.com/Azure/go-amqp v1.0.0
 ## explicit; go 1.18
 github.com/Azure/go-amqp
 github.com/Azure/go-amqp/internal/bitmap
@@ -2256,8 +2250,6 @@ knative.dev/pkg/kmap
 knative.dev/pkg/kmeta
 knative.dev/pkg/kmp
 knative.dev/pkg/tracker
-# nhooyr.io/websocket v1.8.7
-## explicit; go 1.13
 # sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.1.2
 ## explicit; go 1.17
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client/pkg/client
