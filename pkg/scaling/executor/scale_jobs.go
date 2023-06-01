@@ -131,6 +131,7 @@ func (e *scaleExecutor) createJobs(ctx context.Context, logger logr.Logger, scal
 				GenerateName: scaledJob.GetName() + "-",
 				Namespace:    scaledJob.GetNamespace(),
 				Labels:       labels,
+				Annotations:  scaledJob.ObjectMeta.Annotations,
 			},
 			Spec: *scaledJob.Spec.JobTargetRef.DeepCopy(),
 		}

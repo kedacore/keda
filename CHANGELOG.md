@@ -61,6 +61,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Pulsar Scaler**: Improve error messages for unsuccessful connections ([#4563](https://github.com/kedacore/keda/issues/4563))
 - **Security:** Enable secret scanning in GitHub repo
 - **RabbitMQ Scaler**: Add support for `unsafeSsl` in trigger metadata ([#4448](https://github.com/kedacore/keda/issues/4448))
+- **ScaledJobs** Support add ScaledJob's annotations to its job ([#4594](https://github.com/kedacore/keda/issues/4594))
 
 ### Fixes
 
