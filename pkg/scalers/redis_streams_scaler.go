@@ -180,18 +180,18 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 				err := errors.New("could not find Redis version")
 				return -1, err
 			}
-			info_lines := strings.Split(info, "\n")
-			version_line := info_lines[1]
-			version_split := strings.Split(version_line, ":")
-			version := version_split[1]
-			version_num_string := strings.Split(version, ".")[0]
-			version_num, err := strconv.ParseInt(version_num_string, 10, 64)
+			infoLines := strings.Split(info, "\n")
+			versionLine := infoLines[1]
+			versionSplit := strings.Split(versionLine, ":")
+			version := versionSplit[1]
+			versionNumString := strings.Split(version, ".")[0]
+			versionNum, err := strconv.ParseInt(versionNumString, 10, 64)
 			if err != nil {
 				err := errors.New("redis version could not be converted to number")
 				return -1, err
 			}
-			if int64(version_num) < int64(7) {
-				err := errors.New("Redis version 7+ required for lag")
+			if versionNum < int64(7) {
+				err := errors.New("redis version 7+ required for lag")
 				return -1, err
 			}
 			groups, err := client.XInfoGroups(ctx, meta.streamName).Result()
@@ -205,7 +205,7 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 					return group.Lag, nil
 				}
 			}
-			err = fmt.Errorf("Stream name does not exist.")
+			err = fmt.Errorf("stream name does not exist")
 			return int64(-1), err
 		}
 	default:
