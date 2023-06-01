@@ -37,6 +37,8 @@ const (
 	rabbitMetricType                       = "External"
 	rabbitRootVhostPath                    = "/%2F"
 	rmqTLSEnable                           = "enable"
+	rabbitHttpQueryMessageRateAge          = "messageRatesAge"
+	rabbitHttpQueryMessageRatesIncrement   = "messageRatesIncrement"
 )
 
 const (
@@ -64,19 +66,20 @@ type rabbitMQScaler struct {
 
 type rabbitMQMetadata struct {
 	queueName             string
-	mode                  string        // QueueLength or MessageRate
-	value                 float64       // trigger value (queue length or publish/sec. rate)
-	activationValue       float64       // activation value
-	host                  string        // connection string for either HTTP or AMQP protocol
-	protocol              string        // either http or amqp protocol
-	vhostName             string        // override the vhost from the connection info
-	useRegex              bool          // specify if the queueName contains a rexeg
-	excludeUnacknowledged bool          // specify if the QueueLength value should exclude Unacknowledged messages (Ready messages only)
-	pageSize              int64         // specify the page size if useRegex is enabled
-	operation             string        // specify the operation to apply in case of multiples queues
-	metricName            string        // custom metric name for trigger
-	timeout               time.Duration // custom http timeout for a specific trigger
-	scalerIndex           int           // scaler index
+	mode                  string              // QueueLength or MessageRate
+	value                 float64             // trigger value (queue length or publish/sec. rate)
+	activationValue       float64             // activation value
+	host                  string              // connection string for either HTTP or AMQP protocol
+	protocol              string              // either http or amqp protocol
+	vhostName             string              // override the vhost from the connection info
+	useRegex              bool                // specify if the queueName contains a rexeg
+	excludeUnacknowledged bool                // specify if the QueueLength value should exclude Unacknowledged messages (Ready messages only)
+	pageSize              int64               // specify the page size if useRegex is enabled
+	operation             string              // specify the operation to apply in case of multiples queues
+	metricName            string              // custom metric name for trigger
+	timeout               time.Duration       // custom http timeout for a specific trigger
+	scalerIndex           int                 // scaler index
+	httpQueryParameters   httpQueryParameters // Query parameters to set for the rabbitMQ request
 
 	// TLS
 	ca          string
@@ -85,6 +88,11 @@ type rabbitMQMetadata struct {
 	keyPassword string
 	enableTLS   bool
 	unsafeSsl   bool
+}
+
+type httpQueryParameters struct {
+	MessageRatesAge       int64 // Oldest message to consider when calculating the average rate
+	MessageRatesIncrement int64 // Sampling rate for messages, in seconds
 }
 
 type queueInfo struct {
@@ -105,7 +113,9 @@ type messageStat struct {
 }
 
 type publishDetail struct {
-	Rate float64 `json:"rate"`
+	Rate        float64 `json:"rate"`
+	AverageRate float64 `json:"avg_rate,omitempty"`
+	Average     float64 `json:"avg,omitempty"`
 }
 
 // NewRabbitMQScaler creates a new rabbitMQ scaler
@@ -351,6 +361,24 @@ func parseRabbitMQHttpProtocolMetadata(config *ScalerConfig, meta *rabbitMQMetad
 		meta.operation = val
 	}
 
+	httpMessageRatesAge, httpMessageRatesAgePresent := config.TriggerMetadata[rabbitHttpQueryMessageRateAge]
+	if httpMessageRatesAgePresent {
+		messageRatesAge, err := strconv.ParseInt(httpMessageRatesAge, 10, 0)
+		if err != nil {
+			return fmt.Errorf("can't parse %s: %w", rabbitHttpQueryMessageRateAge, err)
+		}
+		meta.httpQueryParameters.MessageRatesAge = messageRatesAge
+	}
+
+	httpMessageRatesIncrement, httpMessageRatesIncrementPresent := config.TriggerMetadata[rabbitHttpQueryMessageRatesIncrement]
+	if httpMessageRatesIncrementPresent {
+		messageRatesIncrement, err := strconv.ParseInt(httpMessageRatesIncrement, 10, 0)
+		if err != nil {
+			return fmt.Errorf("can't parse %s: %w", rabbitHttpQueryMessageRatesIncrement, err)
+		}
+		meta.httpQueryParameters.MessageRatesIncrement = messageRatesIncrement
+	}
+
 	return nil
 }
 
@@ -471,12 +499,19 @@ func (s *rabbitMQScaler) getQueueStatus() (int64, float64, error) {
 			return -1, -1, err
 		}
 
+		var messageRate float64
+		if shouldUseAvgRateField(s) {
+			messageRate = info.MessageStat.PublishDetail.AverageRate
+		} else {
+			messageRate = info.MessageStat.PublishDetail.Rate
+		}
+
 		if s.metadata.excludeUnacknowledged {
 			// messages count includes only ready
-			return int64(info.MessagesReady), info.MessageStat.PublishDetail.Rate, nil
+			return int64(info.MessagesReady), messageRate, nil
 		}
 		// messages count includes count of ready and unack-ed
-		return int64(info.Messages), info.MessageStat.PublishDetail.Rate, nil
+		return int64(info.Messages), messageRate, nil
 	}
 
 	// QueueDeclarePassive assumes that the queue exists and fails if it doesn't
@@ -536,18 +571,31 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 		vhost = rabbitRootVhostPath
 	}
 
-	// Clear URL path to get the correct host.
-	parsedURL.Path = ""
+	v := parsedURL.Query()
 
-	var getQueueInfoManagementURI string
 	if s.metadata.useRegex {
-		getQueueInfoManagementURI = fmt.Sprintf("%s/api/queues%s?page=1&use_regex=true&pagination=false&name=%s&page_size=%d", parsedURL.String(), vhost, url.QueryEscape(s.metadata.queueName), s.metadata.pageSize)
+		v.Set("use_regex", "true")
+		v.Set("page", "1")
+		v.Set("pagination", "false")
+		v.Set("name", s.metadata.queueName)
+		v.Set("page_size", strconv.FormatInt(s.metadata.pageSize, 10))
+		parsedURL.Path = fmt.Sprintf("/api/queues%s", vhost)
 	} else {
-		getQueueInfoManagementURI = fmt.Sprintf("%s/api/queues%s/%s", parsedURL.String(), vhost, url.QueryEscape(s.metadata.queueName))
+		parsedURL.Path = fmt.Sprintf("/api/queues%s/%s", vhost, url.QueryEscape(s.metadata.queueName))
 	}
 
+	if s.metadata.httpQueryParameters.MessageRatesAge != 0 {
+		v.Set("msg_rates_age", strconv.FormatInt(s.metadata.httpQueryParameters.MessageRatesAge, 10))
+	}
+
+	if s.metadata.httpQueryParameters.MessageRatesIncrement != 0 {
+		v.Set("msg_rates_incr", strconv.FormatInt(s.metadata.httpQueryParameters.MessageRatesIncrement, 10))
+	}
+
+	parsedURL.RawQuery = v.Encode()
+
 	var info queueInfo
-	info, err = getJSON(s, getQueueInfoManagementURI)
+	info, err = getJSON(s, parsedURL.String())
 
 	if err != nil {
 		return nil, err
@@ -585,7 +633,7 @@ func (s *rabbitMQScaler) GetMetricsAndActivity(_ context.Context, metricName str
 		isActive = float64(messages) > s.metadata.activationValue
 	} else {
 		metric = GenerateMetricInMili(metricName, publishRate)
-		isActive = publishRate > s.metadata.activationValue || float64(messages) > s.metadata.activationValue
+		isActive = publishRate > s.metadata.activationValue
 	}
 
 	return []external_metrics.ExternalMetricValue{metric}, isActive, nil
@@ -598,50 +646,67 @@ func getComposedQueue(s *rabbitMQScaler, q []queueInfo) (queueInfo, error) {
 	if len(q) > 0 {
 		switch s.metadata.operation {
 		case sumOperation:
-			sumMessages, sumReady, sumRate := getSum(q)
+			sumMessages, sumReady, sumRate := getSum(s, q)
 			queue.Messages = sumMessages
 			queue.MessagesReady = sumReady
-			queue.MessageStat.PublishDetail.Rate = sumRate
+			if shouldUseAvgRateField(s) {
+				queue.MessageStat.PublishDetail.AverageRate = sumRate
+			} else {
+				queue.MessageStat.PublishDetail.Rate = sumRate
+			}
 		case avgOperation:
-			avgMessages, avgReady, avgRate := getAverage(q)
+			avgMessages, avgReady, avgRate := getAverage(s, q)
 			queue.Messages = avgMessages
 			queue.MessagesReady = avgReady
-			queue.MessageStat.PublishDetail.Rate = avgRate
+			if shouldUseAvgRateField(s) {
+				queue.MessageStat.PublishDetail.AverageRate = avgRate
+			} else {
+				queue.MessageStat.PublishDetail.Rate = avgRate
+			}
 		case maxOperation:
-			maxMessages, maxReady, maxRate := getMaximum(q)
+			maxMessages, maxReady, maxRate := getMaximum(s, q)
 			queue.Messages = maxMessages
 			queue.MessagesReady = maxReady
-			queue.MessageStat.PublishDetail.Rate = maxRate
+			if shouldUseAvgRateField(s) {
+				queue.MessageStat.PublishDetail.AverageRate = maxRate
+			} else {
+				queue.MessageStat.PublishDetail.Rate = maxRate
+			}
 		default:
 			return queue, fmt.Errorf("operation mode %s must be one of %s, %s, %s", s.metadata.operation, sumOperation, avgOperation, maxOperation)
 		}
 	} else {
 		queue.Messages = 0
 		queue.MessageStat.PublishDetail.Rate = 0
+		queue.MessageStat.PublishDetail.AverageRate = 0
 	}
 
 	return queue, nil
 }
 
-func getSum(q []queueInfo) (int, int, float64) {
+func getSum(s *rabbitMQScaler, q []queueInfo) (int, int, float64) {
 	var sumMessages int
 	var sumMessagesReady int
 	var sumRate float64
 	for _, value := range q {
 		sumMessages += value.Messages
 		sumMessagesReady += value.MessagesReady
-		sumRate += value.MessageStat.PublishDetail.Rate
+		if shouldUseAvgRateField(s) {
+			sumRate += value.MessageStat.PublishDetail.AverageRate
+		} else {
+			sumRate += value.MessageStat.PublishDetail.Rate
+		}
 	}
 	return sumMessages, sumMessagesReady, sumRate
 }
 
-func getAverage(q []queueInfo) (int, int, float64) {
-	sumMessages, sumReady, sumRate := getSum(q)
+func getAverage(s *rabbitMQScaler, q []queueInfo) (int, int, float64) {
+	sumMessages, sumReady, sumRate := getSum(s, q)
 	length := len(q)
 	return sumMessages / length, sumReady / length, sumRate / float64(length)
 }
 
-func getMaximum(q []queueInfo) (int, int, float64) {
+func getMaximum(s *rabbitMQScaler, q []queueInfo) (int, int, float64) {
 	var maxMessages int
 	var maxReady int
 	var maxRate float64
@@ -652,7 +717,9 @@ func getMaximum(q []queueInfo) (int, int, float64) {
 		if value.MessagesReady > maxReady {
 			maxReady = value.MessagesReady
 		}
-		if value.MessageStat.PublishDetail.Rate > maxRate {
+		if shouldUseAvgRateField(s) && value.MessageStat.PublishDetail.AverageRate > maxRate {
+			maxRate = value.MessageStat.PublishDetail.AverageRate
+		} else if value.MessageStat.PublishDetail.Rate > maxRate {
 			maxRate = value.MessageStat.PublishDetail.Rate
 		}
 	}
@@ -663,4 +730,12 @@ func getMaximum(q []queueInfo) (int, int, float64) {
 func (s *rabbitMQScaler) anonymizeRabbitMQError(err error) error {
 	errorMessage := fmt.Sprintf("error inspecting rabbitMQ: %s", err)
 	return fmt.Errorf(rabbitMQAnonymizePattern.ReplaceAllString(errorMessage, "user:password@"))
+}
+
+// Helper function to decide if we should be using rate or average rate
+func shouldUseAvgRateField(s *rabbitMQScaler) bool {
+	if s.metadata.httpQueryParameters.MessageRatesAge != 0 || s.metadata.httpQueryParameters.MessageRatesIncrement != 0 {
+		return true
+	}
+	return false
 }

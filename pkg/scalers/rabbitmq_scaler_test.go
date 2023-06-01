@@ -2,6 +2,7 @@ package scalers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -226,6 +227,7 @@ func TestParseDefaultQueueLength(t *testing.T) {
 }
 
 type getQueueInfoTestData struct {
+	description    string
 	response       string
 	responseStatus int
 	isActive       bool
@@ -233,47 +235,160 @@ type getQueueInfoTestData struct {
 	vhostPath      string
 }
 
+func (r queueInfo) toString() string {
+	b, _ := json.Marshal(r)
+	return string(b)
+}
+
+func (r regexQueueInfo) toString() string {
+	b, _ := json.Marshal(r)
+	return string(b)
+}
+
+func mockResponse(name string, total int, ready int, unacked int, rate float64) queueInfo {
+	return queueInfo{
+		Name:                   name,
+		Messages:               total,
+		MessagesReady:          ready,
+		MessagesUnacknowledged: unacked,
+		MessageStat: messageStat{
+			publishDetail{
+				Rate: rate,
+			},
+		},
+	}
+}
+
+func evaluateTrialsMockResponse(total int, ready int, unacked int, rate float64) queueInfo {
+	return mockResponse("evaluate_trials", total, ready, unacked, rate)
+}
+
+func evaluateTrials2MockResponse(total int, ready int, unacked int, rate float64) queueInfo {
+	return mockResponse("evaluate_trials2", total, ready, unacked, rate)
+}
+
 var testQueueInfoTestData = []getQueueInfoTestData{
 	// queueLength
-	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"queueLength": "10"}, ""},
-	{`{"messages": 1, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"queueLength": "10"}, ""},
-	{`{"messages": 1, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"queueLength": "10"}, ""},
-	{`{"messages": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, false, map[string]string{"queueLength": "10"}, ""},
-	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"queueLength": "10"}, ""},
-	{`{"messages": 1, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"queueLength": "10"}, ""},
-	{`{"messages": 1, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"queueLength": "10"}, ""},
-	{`{"messages": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, false, map[string]string{"queueLength": "10"}, ""},
+	{
+		description:    "Legacy queueLength: 10 - 10R messages - expect active",
+		response:       evaluateTrialsMockResponse(10, 10, 0, 0).toString(),
+		responseStatus: http.StatusOK,
+		isActive:       true,
+		extraMetadata:  map[string]string{"queueLength": "10"},
+		vhostPath:      "",
+	},
+	{
+		description:    "Legacy queueLength: 10 - 10R/0U messages - expect no active",
+		response:       evaluateTrialsMockResponse(10, 10, 0, 0).toString(),
+		responseStatus: http.StatusOK,
+		isActive:       false,
+		extraMetadata:  map[string]string{"queueLength": "10", "activationValue": "10"},
+		vhostPath:      "",
+	},
 	// mode QueueLength
-	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "QueueLength"}, ""},
-	{`{"messages": 1, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "QueueLength"}, ""},
-	{`{"messages": 1, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "QueueLength"}, ""},
-	{`{"messages": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, false, map[string]string{"value": "100", "mode": "QueueLength"}, ""},
-	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "QueueLength"}, ""},
-	{`{"messages": 1, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "QueueLength"}, ""},
-	{`{"messages": 1, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "QueueLength"}, ""},
-	{`{"messages": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, false, map[string]string{"value": "100", "mode": "QueueLength"}, ""},
+	{
+		description:    "QueueLength: 10 - 10R/0U messages - expect no active",
+		response:       evaluateTrialsMockResponse(10, 10, 0, 0).toString(),
+		responseStatus: http.StatusOK,
+		isActive:       false,
+		extraMetadata:  map[string]string{"value": "10", "mode": "QueueLength", "activationValue": "10"},
+		vhostPath:      "",
+	},
+	{
+		description:    "QueueLength: 11 - 11R/0U messages - expect active + trigger",
+		response:       evaluateTrialsMockResponse(11, 11, 0, 0).toString(),
+		responseStatus: http.StatusOK,
+		isActive:       true,
+		extraMetadata:  map[string]string{"value": "10", "mode": "QueueLength", "activationValue": "10"},
+		vhostPath:      "",
+	},
 	// mode MessageRate
-	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "MessageRate"}, ""},
-	{`{"messages": 1, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "MessageRate"}, ""},
-	{`{"messages": 1, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "MessageRate"}, ""},
-	{`{"messages": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, false, map[string]string{"value": "100", "mode": "MessageRate"}, ""},
-	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "MessageRate"}, ""},
-	{`{"messages": 1, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "MessageRate"}, ""},
-	{`{"messages": 1, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "MessageRate"}, ""},
-	{`{"messages": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"value": "100", "mode": "MessageRate"}, ""},
-	// error response
-	{`Password is incorrect`, http.StatusUnauthorized, false, nil, ""},
+	{
+		description:    "QueueLength: 10 - 10R/0U messages - rate 1.5 - expect no active",
+		response:       evaluateTrialsMockResponse(10, 10, 0, 1.5).toString(),
+		responseStatus: http.StatusOK,
+		isActive:       false,
+		extraMetadata:  map[string]string{"value": "1.2", "mode": "MessageRate", "activationValue": "2"},
+		vhostPath:      "",
+	},
+	{
+		description:    "QueueLength: 11 - 11R/0U messages - rate 2.5 - expect active",
+		response:       evaluateTrialsMockResponse(11, 11, 0, 2.5).toString(),
+		responseStatus: http.StatusOK,
+		isActive:       true,
+		extraMetadata:  map[string]string{"value": "1.2", "mode": "MessageRate", "activationValue": "2"},
+		vhostPath:      "",
+	},
+	{
+		description: "avg rate (5) with activationValue 4 should be active",
+		response: queueInfo{
+			Name:                   "evaluate_trials",
+			Messages:               0,
+			MessagesReady:          0,
+			MessagesUnacknowledged: 0,
+			MessageStat: messageStat{
+				publishDetail{
+					Rate:        0,
+					AverageRate: 5,
+					Average:     0,
+				},
+			},
+		}.toString(),
+		responseStatus: http.StatusOK,
+		isActive:       true,
+		extraMetadata: map[string]string{
+			"mode":                  "MessageRate",
+			"messageRatesAge":       "5",
+			"messageRatesIncrement": "1",
+			"activationValue":       "4",
+			"value":                 "99",
+		},
+		vhostPath: "",
+	},
+	{
+		description: "avg rate (5) with activationValue 5 should not be active",
+		response: queueInfo{
+			Name:                   "evaluate_trials",
+			Messages:               0,
+			MessagesReady:          0,
+			MessagesUnacknowledged: 0,
+			MessageStat: messageStat{
+				publishDetail{
+					Rate:        0,
+					AverageRate: 5,
+					Average:     0,
+				},
+			},
+		}.toString(),
+		responseStatus: http.StatusOK,
+		isActive:       false,
+		extraMetadata: map[string]string{
+			"mode":                  "MessageRate",
+			"messageRatesAge":       "5",
+			"messageRatesIncrement": "1",
+			"activationValue":       "5",
+			"value":                 "99",
+		},
+		vhostPath: "",
+	},
+	{"Authentication issue", `Password is incorrect`, http.StatusUnauthorized, false, nil, ""},
 }
 
 var vhostPaths = []string{"/myhost", "", "/", "//", rabbitRootVhostPath}
 
 var testQueueInfoTestDataSingleVhost = []getQueueInfoTestData{
-	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "myhost"}, "/myhost"},
-	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "/"}, "//"},
-	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 1.4}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": ""}, ""},
-	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "myhost"}, "/myhost"},
-	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": "/"}, rabbitRootVhostPath},
-	{`{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"}`, http.StatusOK, true, map[string]string{"hostFromEnv": "plainHost", "vhostName": ""}, "/"},
+	{"vhostName: myhost - vhostPath: /myhost", evaluateTrialsMockResponse(1, 1, 0, 0).toString(), http.StatusOK, true,
+		map[string]string{"hostFromEnv": "plainHost", "vhostName": "myhost"}, "/myhost"},
+	{"vhostName: / - vhostPath: //", evaluateTrialsMockResponse(1, 1, 0, 0).toString(), http.StatusOK, true,
+		map[string]string{"hostFromEnv": "plainHost", "vhostName": "/"}, "//"},
+	{"vhostName: \"\" - vhostPath: \"\"", evaluateTrialsMockResponse(1, 1, 0, 0).toString(), http.StatusOK, true,
+		map[string]string{"hostFromEnv": "plainHost", "vhostName": ""}, ""},
+	{"vhostName: myhost - vhostPath: /myhost", evaluateTrialsMockResponse(1, 1, 0, 0).toString(), http.StatusOK, true,
+		map[string]string{"hostFromEnv": "plainHost", "vhostName": "myhost"}, "/myhost"},
+	{"vhostName: / - vhostPath: " + rabbitRootVhostPath, evaluateTrialsMockResponse(1, 1, 0, 0).toString(), http.StatusOK, true,
+		map[string]string{"hostFromEnv": "plainHost", "vhostName": "/"}, rabbitRootVhostPath},
+	{"vhostName: \"\" - vhostPath: /", evaluateTrialsMockResponse(1, 1, 0, 0).toString(), http.StatusOK, true,
+		map[string]string{"hostFromEnv": "plainHost", "vhostName": ""}, "/"},
 }
 
 func TestGetQueueInfo(t *testing.T) {
@@ -292,7 +407,7 @@ func TestGetQueueInfo(t *testing.T) {
 
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			expectedPath := fmt.Sprintf("/api/queues%s/evaluate_trials", getExpectedVhost(testData.vhostPath))
-			if r.RequestURI != expectedPath {
+			if r.URL.Path != expectedPath {
 				t.Error("Expect request path to =", expectedPath, "but it is", r.RequestURI)
 			}
 
@@ -337,9 +452,9 @@ func TestGetQueueInfo(t *testing.T) {
 
 			if active != testData.isActive {
 				if testData.isActive {
-					t.Error("Expect to be active")
+					t.Errorf("Expect to be active: %v", testData.description)
 				} else {
-					t.Error("Expect to not be active")
+					t.Errorf("Expect to not be active: %v", testData.description)
 				}
 			}
 		} else if !strings.Contains(err.Error(), testData.response) {
@@ -348,77 +463,493 @@ func TestGetQueueInfo(t *testing.T) {
 	}
 }
 
-var testRegexQueueInfoTestData = []getQueueInfoTestData{
-	// sum queue length
-	{`{"items":[{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum"}, ""},
-	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum"}, ""},
-	{`{"items":[{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum"}, ""},
-	{`{"items":[{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum"}, ""},
-	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum"}, ""},
-	{`{"items":[]}`, http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum"}, ""},
+var _testRegexQueueInfoTestDataLegacy = []getQueueInfoTestData{{
+	"Legacy queueLength sum (0,1) + (4,1) with activationValue 6 should not be active",
+	regexQueueInfo{
+		Queues: []queueInfo{
+			evaluateTrialsMockResponse(1, 0, 1, 0),
+			evaluateTrials2MockResponse(5, 4, 1, 0),
+		},
+	}.toString(),
+	http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum", "activationValue": "6"}, "",
+}}
+
+// sum queue length
+var _testRegexQueueInfoTestDataSum = []getQueueInfoTestData{
+	{
+		"sum (0,1) + (4,1) with activationValue 6 should not be active",
+		regexQueueInfo{
+			Queues: []queueInfo{
+				evaluateTrialsMockResponse(1, 0, 1, 0),
+				evaluateTrials2MockResponse(5, 4, 1, 0),
+			},
+		}.toString(),
+		http.StatusOK, false, map[string]string{"mode": "QueueLength", "value": "10", "useRegex": "true", "operation": "sum", "activationValue": "6"}, "",
+	},
+	{
+		"sum (0,1) + (4,1) should be active",
+		regexQueueInfo{
+			Queues: []queueInfo{
+				evaluateTrialsMockResponse(1, 0, 1, 0),
+				evaluateTrials2MockResponse(5, 4, 1, 0),
+			},
+		}.toString(),
+		http.StatusOK, true, map[string]string{"mode": "QueueLength", "value": "10", "useRegex": "true", "operation": "sum"}, "",
+	},
+	{
+		"sum (4,1) + (0,1) should be active",
+		regexQueueInfo{
+			Queues: []queueInfo{
+				evaluateTrialsMockResponse(5, 4, 1, 0),
+				evaluateTrials2MockResponse(1, 0, 1, 0),
+			},
+		}.toString(),
+		http.StatusOK, true, map[string]string{"mode": "QueueLength", "value": "10", "useRegex": "true", "operation": "sum"}, "",
+	},
+	{
+		"sum (4,1) should  be active",
+		regexQueueInfo{
+			Queues: []queueInfo{evaluateTrials2MockResponse(5, 4, 1, 0)},
+		}.toString(),
+		http.StatusOK, true, map[string]string{"mode": "QueueLength", "value": "10", "useRegex": "true", "operation": "sum"}, "",
+	},
 	// sum queue length + ignoreUnacknowledged
-	{`{"items":[{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum", "excludeUnacknowledged": "true"}, ""},
-	{`{"items":[{"messages": 0, "messages_ready": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum", "excludeUnacknowledged": "true"}, ""},
-	{`{"items":[{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_ready": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum", "excludeUnacknowledged": "true"}, ""},
-	{`{"items":[{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum"}, ""},
-	{`{"items":[{"messages": 0, "messages_ready": 0, "messages_unacknowledged": 0, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_ready": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum", "excludeUnacknowledged": "true"}, ""},
-	{`{"items":[]}`, http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "sum"}, ""},
+	{
+		"sum (0,1) + (4,1) with activationValue 5 and excludeUnacknowledged should not be active",
+		regexQueueInfo{
+			Queues: []queueInfo{
+				evaluateTrialsMockResponse(1, 0, 1, 0),
+				evaluateTrials2MockResponse(5, 4, 1, 0),
+			},
+		}.toString(),
+		http.StatusOK, false, map[string]string{
+			"queueLength":           "10",
+			"useRegex":              "true",
+			"operation":             "sum",
+			"excludeUnacknowledged": "true",
+			"activationValue":       "5",
+		},
+		"",
+	},
+	{
+		"sum (0,1) + (4,1) with activationValue 5 should be active",
+		regexQueueInfo{
+			Queues: []queueInfo{
+				evaluateTrialsMockResponse(1, 0, 1, 0),
+				evaluateTrials2MockResponse(5, 4, 1, 0),
+			},
+		}.toString(),
+		http.StatusOK, true, map[string]string{
+			"queueLength":           "10",
+			"useRegex":              "true",
+			"operation":             "sum",
+			"excludeUnacknowledged": "false",
+			// "activationValue": "5",
+			"activationValue": "4",
+		},
+		"",
+	},
+}
+
+var _testRegexQueueInfoTestDataMax = []getQueueInfoTestData{
 	// max queue length
-	{`{"items":[{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "max"}, ""},
-	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "max"}, ""},
-	{`{"items":[{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "max"}, ""},
-	{`{"items":[{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "max"}, ""},
-	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "max"}, ""},
-	{`{"items":[]}`, http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "max"}, ""},
-	// max queue length + excludeUnacknowledged
-	{`{"items":[{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "max", "excludeUnacknowledged": "true"}, ""},
-	{`{"items":[{"messages": 0, "messages_ready": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "max", "excludeUnacknowledged": "true"}, ""},
-	{`{"items":[{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_ready": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "max", "excludeUnacknowledged": "true"}, ""},
-	{`{"items":[{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "max"}, ""},
-	{`{"items":[{"messages": 0, "messages_ready": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_ready": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "max", "excludeUnacknowledged": "true"}, ""},
-	{`{"items":[]}`, http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "max"}, ""},
+	{
+		"max (0,1), (4,1) with activationValue 3 should be active",
+		regexQueueInfo{
+			Queues: []queueInfo{
+				evaluateTrialsMockResponse(1, 0, 1, 0),
+				evaluateTrials2MockResponse(5, 4, 1, 0),
+			},
+		}.toString(),
+		http.StatusOK, true, map[string]string{
+			"queueLength":     "4",
+			"useRegex":        "true",
+			"operation":       "max",
+			"activationValue": "3",
+		},
+		"",
+	},
+	{
+		"max (0,1), (4,1) with activationValue 4 should be active",
+		regexQueueInfo{
+			Queues: []queueInfo{
+				evaluateTrialsMockResponse(1, 0, 1, 0),
+				evaluateTrials2MockResponse(5, 4, 1, 0),
+			},
+		}.toString(),
+		http.StatusOK, true, map[string]string{
+			"queueLength":     "4",
+			"useRegex":        "true",
+			"operation":       "max",
+			"activationValue": "4",
+		},
+		"",
+	},
+	// max queue length + ignore unacknowledged
+	{
+		"max (0,1), (4,1) with activationValue 5 and exclude unack should not be active",
+		regexQueueInfo{
+			Queues: []queueInfo{
+				evaluateTrialsMockResponse(1, 0, 1, 0),
+				evaluateTrials2MockResponse(5, 4, 1, 0),
+			},
+		}.toString(),
+		http.StatusOK, false, map[string]string{
+			"queueLength":           "4",
+			"useRegex":              "true",
+			"operation":             "max",
+			"activationValue":       "5",
+			"excludeUnacknowledged": "true",
+		},
+		"",
+	},
+	{
+		"max () should not be active",
+		regexQueueInfo{
+			Queues: []queueInfo{},
+		}.toString(),
+		http.StatusOK, false, map[string]string{
+			"queueLength":           "4",
+			"useRegex":              "true",
+			"operation":             "max",
+			"excludeUnacknowledged": "true",
+		},
+		"",
+	},
+}
+
+var _testRegexQueueInfoTestDataAvg = []getQueueInfoTestData{
 	// avg queue length
-	{`{"items":[{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "avg"}, ""},
-	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "avg"}, ""},
-	{`{"items":[{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "avg"}, ""},
-	{`{"items":[{"messages": 4, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "avg"}, ""},
-	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "avg"}, ""},
-	{`{"items":[]}`, http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "avg"}, ""},
-	// avg queue length + excludeUnacknowledged
-	{`{"items":[{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "avg", "excludeUnacknowledged": "true"}, ""},
-	{`{"items":[{"messages": 0, "messages_ready": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "avg", "excludeUnacknowledged": "true"}, ""},
-	{`{"items":[{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_ready": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "avg", "excludeUnacknowledged": "true"}, ""},
-	{`{"items":[{"messages": 4, "messages_ready": 3, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "avg"}, ""},
-	{`{"items":[{"messages": 0, "messages_ready": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_ready": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "avg", "excludeUnacknowledged": "true"}, ""},
-	{`{"items":[]}`, http.StatusOK, false, map[string]string{"queueLength": "10", "useRegex": "true", "operation": "avg"}, ""},
-	// sum message rate
-	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 4}}, "name": "evaluate_trials"},{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 4}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"mode": "MessageRate", "value": "1000", "useRegex": "true", "operation": "sum"}, ""},
-	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 4}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"mode": "MessageRate", "value": "1000", "useRegex": "true", "operation": "sum"}, ""},
-	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 4}}, "name": "evaluate_trials"},{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"mode": "MessageRate", "value": "1000", "useRegex": "true", "operation": "sum"}, ""},
-	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 4}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"mode": "MessageRate", "value": "1000", "useRegex": "true", "operation": "sum"}, ""},
-	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, false, map[string]string{"mode": "MessageRate", "value": "1000", "useRegex": "true", "operation": "sum"}, ""},
-	{`{"items":[]}`, http.StatusOK, false, map[string]string{"mode": "MessageRate", "value": "1000", "useRegex": "true", "operation": "sum"}, ""},
-	// max message rate
-	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 4}}, "name": "evaluate_trials"},{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 4}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"mode": "MessageRate", "value": "1000", "useRegex": "true", "operation": "max"}, ""},
-	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 4}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"mode": "MessageRate", "value": "1000", "useRegex": "true", "operation": "max"}, ""},
-	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 4}}, "name": "evaluate_trials"},{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"mode": "MessageRate", "value": "1000", "useRegex": "true", "operation": "max"}, ""},
-	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 4}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"mode": "MessageRate", "value": "1000", "useRegex": "true", "operation": "max"}, ""},
-	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, false, map[string]string{"mode": "MessageRate", "value": "1000", "useRegex": "true", "operation": "max"}, ""},
-	{`{"items":[]}`, http.StatusOK, false, map[string]string{"mode": "MessageRate", "value": "1000", "useRegex": "true", "operation": "max"}, ""},
-	// avg message rate
-	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 4}}, "name": "evaluate_trials"},{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 4}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"mode": "MessageRate", "value": "1000", "useRegex": "true", "operation": "avg"}, ""},
-	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 4}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"mode": "MessageRate", "value": "1000", "useRegex": "true", "operation": "avg"}, ""},
-	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 4}}, "name": "evaluate_trials"},{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"mode": "MessageRate", "value": "1000", "useRegex": "true", "operation": "avg"}, ""},
-	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 4}}, "name": "evaluate_trial2"}]}`, http.StatusOK, true, map[string]string{"mode": "MessageRate", "value": "1000", "useRegex": "true", "operation": "avg"}, ""},
-	{`{"items":[{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trials"},{"messages": 0, "messages_unacknowledged": 1, "message_stats": {"publish_details": {"rate": 0}}, "name": "evaluate_trial2"}]}`, http.StatusOK, false, map[string]string{"mode": "MessageRate", "value": "1000", "useRegex": "true", "operation": "avg"}, ""},
-	{`{"items":[]}`, http.StatusOK, false, map[string]string{"mode": "MessageRate", "value": "1000", "useRegex": "true", "operation": "avg"}, ""},
+	{
+		"avg (0,1), (4,1) with activationValue 3 and should not be active",
+		regexQueueInfo{
+			Queues: []queueInfo{
+				evaluateTrialsMockResponse(1, 0, 1, 0),
+				evaluateTrials2MockResponse(5, 4, 1, 0),
+			},
+		}.toString(),
+		http.StatusOK, false, map[string]string{
+			"queueLength":           "4",
+			"useRegex":              "true",
+			"operation":             "avg",
+			"activationValue":       "3",
+			"excludeUnacknowledged": "true",
+		},
+		"",
+	},
+	{
+		"avg (2,1), (4,1) with activationValue 2, excluding unack, should be active",
+		regexQueueInfo{
+			Queues: []queueInfo{
+				evaluateTrialsMockResponse(3, 2, 1, 0),
+				evaluateTrials2MockResponse(5, 4, 1, 0),
+			},
+		}.toString(),
+		http.StatusOK, true, map[string]string{
+			"queueLength":           "4",
+			"useRegex":              "true",
+			"operation":             "avg",
+			"activationValue":       "2",
+			"excludeUnacknowledged": "true",
+		},
+		"",
+	},
+	{
+		"avg () should not be active",
+		regexQueueInfo{
+			Queues: []queueInfo{},
+		}.toString(),
+		http.StatusOK, false, map[string]string{
+			"mode": "QueueLength", "value": "4",
+			"useRegex":  "true",
+			"operation": "avg",
+		},
+		"",
+	},
+	// avg queue length + ignore unacknowledged
+	{
+		"avg (0,1), (4,1) with activationValue 2 and should not be active",
+		regexQueueInfo{
+			Queues: []queueInfo{
+				evaluateTrialsMockResponse(4, 0, 1, 0),
+				evaluateTrials2MockResponse(4, 4, 1, 0),
+			},
+		}.toString(),
+		http.StatusOK, false, map[string]string{
+			"queueLength":           "4",
+			"useRegex":              "true",
+			"operation":             "avg",
+			"activationValue":       "2",
+			"excludeUnacknowledged": "true",
+		},
+		"",
+	},
+}
+
+var _testRegexQueueInfoTestDataSumRate = []getQueueInfoTestData{
+	{
+		"sum (1.2) + (1.8) with activationValue 6 should not be active",
+		regexQueueInfo{
+			Queues: []queueInfo{
+				evaluateTrialsMockResponse(0, 0, 0, 1.2),
+				evaluateTrials2MockResponse(0, 0, 0, 1.8),
+			},
+		}.toString(),
+		http.StatusOK, false, map[string]string{"mode": "MessageRate", "value": "10", "useRegex": "true", "operation": "sum", "activationValue": "3"}, "",
+	},
+	{
+		"sum (1.2) + (1.8) should be active",
+		regexQueueInfo{
+			Queues: []queueInfo{
+				evaluateTrialsMockResponse(0, 0, 0, 1.2),
+				evaluateTrials2MockResponse(0, 0, 0, 1.8),
+			},
+		}.toString(),
+		http.StatusOK, true, map[string]string{"mode": "MessageRate", "value": "10", "useRegex": "true", "operation": "sum", "activationValue": "2.9"}, "",
+	},
+	{
+		"sum (1.8) + (1.2) with unset activationValue should be active",
+		regexQueueInfo{
+			Queues: []queueInfo{
+				evaluateTrialsMockResponse(0, 0, 0, 1.8),
+				evaluateTrials2MockResponse(0, 0, 0, 1.2),
+			},
+		}.toString(),
+		http.StatusOK, true, map[string]string{"mode": "MessageRate", "value": "10", "useRegex": "true", "operation": "sum"}, "",
+	},
+	{
+		"sum (3) should  be active",
+		regexQueueInfo{
+			Queues: []queueInfo{evaluateTrials2MockResponse(0, 0, 0, 3)},
+		}.toString(),
+		http.StatusOK, true, map[string]string{"mode": "MessageRate", "value": "2.9", "useRegex": "true", "operation": "sum"}, "",
+	},
+	{
+		"sum (1.2) + (1.8) with activationValue 5 should not be active",
+		regexQueueInfo{
+			Queues: []queueInfo{
+				evaluateTrialsMockResponse(0, 0, 0, 1.2),
+				evaluateTrials2MockResponse(0, 0, 0, 1.8),
+			},
+		}.toString(),
+		http.StatusOK, false, map[string]string{
+			"mode":                  "MessageRate",
+			"useRegex":              "true",
+			"operation":             "sum",
+			"excludeUnacknowledged": "true",
+			"activationValue":       "5",
+			"value":                 "999",
+		},
+		"",
+	},
+}
+
+var _testRegexQueueInfoTestDataMaxRate = []getQueueInfoTestData{
+	{
+		"max (1.2), (1.8) with activationValue 1.7 should be active",
+		regexQueueInfo{
+			Queues: []queueInfo{
+				evaluateTrialsMockResponse(0, 0, 0, 1.2),
+				evaluateTrials2MockResponse(0, 0, 0, 1.8),
+			},
+		}.toString(),
+		http.StatusOK, true, map[string]string{
+			"mode":            "MessageRate",
+			"useRegex":        "true",
+			"operation":       "max",
+			"activationValue": "1.7",
+			"value":           "99",
+		},
+		"",
+	},
+	{
+		"max (1.2), (1.8) with activationValue 3.1 should not be active",
+		regexQueueInfo{
+			Queues: []queueInfo{
+				evaluateTrialsMockResponse(0, 0, 0, 1.2),
+				evaluateTrials2MockResponse(0, 0, 0, 1.8),
+			},
+		}.toString(),
+		http.StatusOK, false, map[string]string{
+			"mode":            "MessageRate",
+			"useRegex":        "true",
+			"operation":       "max",
+			"activationValue": "3.1",
+			"value":           "99",
+		},
+		"",
+	},
+	{
+		"max () should not be active",
+		regexQueueInfo{
+			Queues: []queueInfo{},
+		}.toString(),
+		http.StatusOK, false, map[string]string{
+			"mode":                  "MessageRate",
+			"useRegex":              "true",
+			"operation":             "max",
+			"excludeUnacknowledged": "true",
+			"value":                 "99",
+		},
+		"",
+	},
+}
+
+var _testRegexQueueInfoTestDataAvgRate = []getQueueInfoTestData{
+	{
+		"avg (1.2), (1.8) with activationValue 1.5 and should not be active",
+		regexQueueInfo{
+			Queues: []queueInfo{
+				evaluateTrialsMockResponse(0, 0, 0, 1.2),
+				evaluateTrials2MockResponse(0, 0, 0, 1.8),
+			},
+		}.toString(),
+		http.StatusOK, false, map[string]string{
+			"mode":                  "MessageRate",
+			"useRegex":              "true",
+			"operation":             "avg",
+			"activationValue":       "1.5",
+			"excludeUnacknowledged": "true",
+			"value":                 "99",
+		},
+		"",
+	},
+	{
+		"avg (1.2), (1.8) with activationValue 1 and should be active",
+		regexQueueInfo{
+			Queues: []queueInfo{
+				evaluateTrialsMockResponse(0, 0, 0, 1.2),
+				evaluateTrials2MockResponse(0, 0, 0, 1.8),
+			},
+		}.toString(),
+		http.StatusOK, true, map[string]string{
+			"mode":                  "MessageRate",
+			"useRegex":              "true",
+			"operation":             "avg",
+			"activationValue":       "1",
+			"excludeUnacknowledged": "true",
+			"value":                 "99",
+		},
+		"",
+	},
+	{
+		"avg () should not be active",
+		regexQueueInfo{
+			Queues: []queueInfo{},
+		}.toString(),
+		http.StatusOK, false, map[string]string{
+			"mode":      "MessageRate",
+			"value":     "4",
+			"useRegex":  "true",
+			"operation": "avg",
+		},
+		"",
+	},
+}
+
+var _testQueueInfoTestAvgRate = []getQueueInfoTestData{
+	{
+		description: "avg rate (10) with activationValue 11 should not be active",
+		response: regexQueueInfo{
+			Queues: []queueInfo{
+				{
+					Name:                   "evaluate_trials",
+					Messages:               0,
+					MessagesReady:          0,
+					MessagesUnacknowledged: 0,
+					MessageStat: messageStat{
+						publishDetail{
+							Rate:        0,
+							AverageRate: 10,
+							Average:     0,
+						},
+					},
+				},
+				{
+					Name: "evaluate_trials",
+					MessageStat: messageStat{
+						publishDetail{
+							AverageRate: 10,
+						},
+					},
+				},
+			},
+		}.toString(),
+		responseStatus: http.StatusOK,
+		isActive:       true,
+		extraMetadata: map[string]string{
+			"useRegex":              "true",
+			"mode":                  "MessageRate",
+			"messageRatesAge":       "5",
+			"messageRatesIncrement": "1",
+			"activationValue":       "11",
+			"value":                 "99",
+		},
+		vhostPath: "",
+	},
+	{
+		description: "avg rate (10) with activationValue 9 should be active",
+		response: regexQueueInfo{
+			Queues: []queueInfo{
+				{
+					Name:                   "evaluate_trials",
+					Messages:               0,
+					MessagesReady:          0,
+					MessagesUnacknowledged: 0,
+					MessageStat: messageStat{
+						publishDetail{
+							Rate:        0,
+							AverageRate: 10,
+							Average:     0,
+						},
+					},
+				},
+				{
+					Name: "evaluate_trials",
+					MessageStat: messageStat{
+						publishDetail{
+							AverageRate: 10,
+						},
+					},
+				},
+			},
+		}.toString(),
+		responseStatus: http.StatusOK,
+		isActive:       true,
+		extraMetadata: map[string]string{
+			"useRegex":              "true",
+			"mode":                  "MessageRate",
+			"messageRatesAge":       "5",
+			"messageRatesIncrement": "1",
+			"activationValue":       "9",
+			"value":                 "99",
+		},
+		vhostPath: "",
+	},
+}
+
+func getTestRegexQueueInfoTestData() []getQueueInfoTestData {
+	var testRegexQueueInfoTestData = []getQueueInfoTestData{}
+	for _, testgroup := range [][]getQueueInfoTestData{
+		_testRegexQueueInfoTestDataLegacy,
+		_testRegexQueueInfoTestDataSum,
+		_testRegexQueueInfoTestDataMax,
+		_testRegexQueueInfoTestDataAvg,
+		_testRegexQueueInfoTestDataSumRate,
+		_testRegexQueueInfoTestDataMaxRate,
+		_testRegexQueueInfoTestDataAvgRate,
+		_testQueueInfoTestAvgRate,
+	} {
+		testRegexQueueInfoTestData = append(testRegexQueueInfoTestData, testgroup...)
+	}
+	return testRegexQueueInfoTestData
 }
 
 var vhostPathsForRegex = []string{"", "/test-vh", rabbitRootVhostPath}
 
 func TestGetQueueInfoWithRegex(t *testing.T) {
 	allTestData := []getQueueInfoTestData{}
-	for _, testData := range testRegexQueueInfoTestData {
+	for _, testData := range getTestRegexQueueInfoTestData() {
 		for _, vhostPath := range vhostPathsForRegex {
 			testData := testData
 			testData.vhostPath = vhostPath
@@ -428,9 +959,31 @@ func TestGetQueueInfoWithRegex(t *testing.T) {
 
 	for _, testData := range allTestData {
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			expectedPath := fmt.Sprintf("/api/queues%s?page=1&use_regex=true&pagination=false&name=%%5Eevaluate_trials%%24&page_size=100", getExpectedVhost(testData.vhostPath))
-			if r.RequestURI != expectedPath {
-				t.Error("Expect request path to =", expectedPath, "but it is", r.RequestURI)
+			expectedValues := map[string][]string{
+				"name":       {"^evaluate_trials$"},
+				"page":       {"1"},
+				"page_size":  {"100"},
+				"pagination": {"false"},
+				"use_regex":  {"true"},
+			}
+
+			val, ok := testData.extraMetadata["messageRatesAge"]
+			if ok {
+				expectedValues["msg_rates_age"] = []string{val}
+			}
+			val, ok = testData.extraMetadata["messageRatesIncrement"]
+			if ok {
+				expectedValues["msg_rates_incr"] = []string{val}
+			}
+			expectedJSON, _ := json.Marshal(expectedValues)
+			haveJSON, _ := json.Marshal(r.URL.Query())
+			if string(expectedJSON) != string(haveJSON) {
+				t.Error("Expect request query to =", expectedValues, "but it is", r.URL.Query())
+			}
+
+			expectedPath := fmt.Sprintf("/api/queues%s", getExpectedVhost(testData.vhostPath))
+			if r.URL.Path != expectedPath {
+				t.Error("Expect request path to =", expectedPath, "but it is", r.URL.Path)
 			}
 
 			w.WriteHeader(testData.responseStatus)
@@ -461,7 +1014,7 @@ func TestGetQueueInfoWithRegex(t *testing.T) {
 		)
 
 		if err != nil {
-			t.Error("Expect success", err)
+			t.Errorf("Expect success for %v", testData.description)
 		}
 
 		ctx := context.TODO()
@@ -474,9 +1027,9 @@ func TestGetQueueInfoWithRegex(t *testing.T) {
 
 			if active != testData.isActive {
 				if testData.isActive {
-					t.Error("Expect to be active")
+					t.Errorf("Expect to be active: %v", testData.description)
 				} else {
-					t.Error("Expect to not be active")
+					t.Errorf("Expect to not be active: %v", testData.description)
 				}
 			}
 		} else if !strings.Contains(err.Error(), testData.response) {
@@ -490,14 +1043,15 @@ type getRegexPageSizeTestData struct {
 	pageSize  int
 }
 
-var testRegexPageSizeTestData = []getRegexPageSizeTestData{
-	{testRegexQueueInfoTestData[0], 100},
-	{testRegexQueueInfoTestData[0], 200},
-	{testRegexQueueInfoTestData[0], 500},
-}
-
 func TestGetPageSizeWithRegex(t *testing.T) {
 	allTestData := []getRegexPageSizeTestData{}
+	regexTestData := getTestRegexQueueInfoTestData()
+
+	var testRegexPageSizeTestData = []getRegexPageSizeTestData{
+		{regexTestData[0], 100},
+		{regexTestData[0], 200},
+		{regexTestData[0], 500},
+	}
 	for _, testData := range testRegexPageSizeTestData {
 		for _, vhostPath := range vhostPathsForRegex {
 			testData := testData
@@ -508,8 +1062,21 @@ func TestGetPageSizeWithRegex(t *testing.T) {
 
 	for _, testData := range allTestData {
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			expectedPath := fmt.Sprintf("/api/queues%s?page=1&use_regex=true&pagination=false&name=%%5Eevaluate_trials%%24&page_size=%d", getExpectedVhost(testData.queueInfo.vhostPath), testData.pageSize)
-			if r.RequestURI != expectedPath {
+			expectedValues := map[string][]string{
+				"name":       {"^evaluate_trials$"},
+				"page":       {"1"},
+				"page_size":  {fmt.Sprint(testData.pageSize)},
+				"pagination": {"false"},
+				"use_regex":  {"true"},
+			}
+			expectedJSON, _ := json.Marshal(expectedValues)
+			haveJSON, _ := json.Marshal(r.URL.Query())
+			if string(expectedJSON) != string(haveJSON) {
+				t.Error("Expect request query to =", expectedValues, "but it is", r.URL.Query())
+			}
+
+			expectedPath := fmt.Sprintf("/api/queues%s", getExpectedVhost(testData.queueInfo.vhostPath))
+			if r.URL.Path != expectedPath {
 				t.Error("Expect request path to =", expectedPath, "but it is", r.RequestURI)
 			}
 
@@ -630,8 +1197,23 @@ var testRegexQueueInfoNavigationTestData = []getQueueInfoNavigationTestData{
 func TestRegexQueueMissingError(t *testing.T) {
 	for _, testData := range testRegexQueueInfoNavigationTestData {
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			expectedPath := "/api/queues/%2F?page=1&use_regex=true&pagination=false&name=evaluate_trials&page_size=100"
-			if r.RequestURI != expectedPath {
+			expectedValues := map[string][]string{
+				"name":       {"evaluate_trials"},
+				"page":       {"1"},
+				"page_size":  {"100"},
+				"pagination": {"false"},
+				"use_regex":  {"true"},
+			}
+
+			expectedJSON, _ := json.Marshal(expectedValues)
+			haveJSON, _ := json.Marshal(r.URL.Query())
+
+			if string(expectedJSON) != string(haveJSON) {
+				t.Error("Expect request query to =", expectedValues, "but it is", r.URL.Query())
+			}
+
+			expectedPath := "/api/queues/%2F"
+			if r.URL.Path != expectedPath {
 				t.Error("Expect request path to =", expectedPath, "but it is", r.RequestURI)
 			}
 

@@ -61,6 +61,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Pulsar Scaler**: Improve error messages for unsuccessful connections ([#4563](https://github.com/kedacore/keda/issues/4563))
 - **Security:** Enable secret scanning in GitHub repo
 - **RabbitMQ Scaler**: Add support for `unsafeSsl` in trigger metadata ([#4448](https://github.com/kedacore/keda/issues/4448))
+- **RabbitMQ Scaler**: Add support for `avg_rate` in trigger metadata ([#4507](https://github.com/kedacore/keda/issues/4507))
 - **Prometheus Metrics**: Add new metric with KEDA build info ([#4647](https://github.com/kedacore/keda/issues/4647))
 
 ### Fixes
@@ -74,6 +75,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Prometheus Metrics**: Create e2e tests for all exposed Prometheus metrics ([#4127](https://github.com/kedacore/keda/issues/4127))
 - **Grafana Dashboard**: Fix HPA metrics panel to use range instead of instant ([#4513](https://github.com/kedacore/keda/pull/4513))
 - **Grafana Dashboard**: Fix HPA metrics panel by replacing $namepsace to $exported_namespace due to label conflict ([#4539](https://github.com/kedacore/keda/pull/4539))
+- **RabbitMQ Scaler**: Fix erroneous queue length check for MessageRate activation `avg_rate` in trigger metadata ([#4507](https://github.com/kedacore/keda/issues/4507#issuecomment-1577227024))
 
 ### Deprecations
 
