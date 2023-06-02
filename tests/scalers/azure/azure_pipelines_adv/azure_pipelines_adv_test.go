@@ -20,8 +20,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
-
-	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 // Load environment variables from .env file
@@ -97,7 +95,7 @@ spec:
           preStop:
             exec:
               command: ["/bin/sleep","60"]
-        image: eldarrin/azure:main
+        image: ghcr.io/kedacore/tests-azure-pipelines-advagent:latest
         env:
           - name: AZP_URL
             value: {{.URL}}
@@ -128,7 +126,7 @@ spec:
       spec:
         containers:
         - name: {{.ScaledJobName}}
-          image: eldarrin/azure:main
+          image: ghcr.io/kedacore/tests-azure-pipelines-advagent:latest
           env:
             - name: AZP_URL
               value: {{.URL}}
@@ -168,7 +166,7 @@ spec:
       spec:
         containers:
         - name: {{.ScaledJobName}}
-          image: eldarrin/azure:main
+          image: ghcr.io/kedacore/tests-azure-pipelines-advagent:latest
           env:
             - name: AZP_URL
               value: {{.URL}}
@@ -210,7 +208,7 @@ spec:
       spec:
         containers:
         - name: {{.ScaledJobName}}
-          image: eldarrin/azure:main
+          image: ghcr.io/kedacore/tests-azure-pipelines-advagent:latest
           env:
             - name: AZP_URL
               value: {{.URL}}
@@ -250,7 +248,7 @@ spec:
       spec:
         containers:
         - name: {{.ScaledJobName}}
-          image: eldarrin/azure:main
+          image: ghcr.io/kedacore/tests-azure-pipelines-advagent:latest
           env:
             - name: AZP_URL
               value: {{.URL}}
