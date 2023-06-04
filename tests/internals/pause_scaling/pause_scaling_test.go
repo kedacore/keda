@@ -26,9 +26,9 @@ var (
 	scaledObjectName        = fmt.Sprintf("%s-so", testName)
 	maxReplicaCount         = 1
 	minReplicaCount         = 0
-	testScaleOutWaitMin     = 3
-	testPauseAtNWaitMin     = 3
-	testScaleInWaitMin      = 3
+	testScaleOutWaitMin     = 5
+	testPauseAtNWaitMin     = 5
+	testScaleInWaitMin      = 5
 )
 
 type templateData struct {
