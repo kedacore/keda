@@ -6,7 +6,9 @@ on:
     branches:
     - 'main'
 
-permissions: read-all
+permissions:
+  id-token: read
+  pull-requests: write
 
 jobs:
   pr_bot:
