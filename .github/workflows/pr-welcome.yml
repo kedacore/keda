@@ -6,6 +6,8 @@ on:
     branches:
     - 'main'
 
+permissions: read-all
+
 jobs:
   pr_bot:
     name: PR Bot
