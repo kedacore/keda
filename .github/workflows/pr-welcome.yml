@@ -1,4 +1,4 @@
-name: PR Bot
+name: PR Welcome Bot
 
 on:
   pull_request:
