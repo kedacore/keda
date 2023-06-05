@@ -33,6 +33,7 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/pointer"
+
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
@@ -86,7 +87,7 @@ type Manager interface {
 	Start(ctx context.Context) error
 
 	// GetWebhookServer returns a webhook.Server
-	GetWebhookServer() *webhook.Server
+	GetWebhookServer() webhook.Server
 
 	// GetLogger returns this manager's logger.
 	GetLogger() logr.Logger
@@ -281,12 +282,12 @@ type Options struct {
 	// Port is the port that the webhook server serves at.
 	// It is used to set webhook.Server.Port if WebhookServer is not set.
 	//
-	// Deprecated: Use WebhookServer.Port instead.
+	// Deprecated: Use WebhookServer instead. A WebhookServer can be created via webhook.NewServer.
 	Port int
 	// Host is the hostname that the webhook server binds to.
 	// It is used to set webhook.Server.Host if WebhookServer is not set.
 	//
-	// Deprecated: Use WebhookServer.Host instead.
+	// Deprecated: Use WebhookServer instead. A WebhookServer can be created via webhook.NewServer.
 	Host string
 
 	// CertDir is the directory that contains the server key and certificate.
@@ -295,18 +296,18 @@ type Options struct {
 	// must be named tls.key and tls.crt, respectively.
 	// It is used to set webhook.Server.CertDir if WebhookServer is not set.
 	//
-	// Deprecated: Use WebhookServer.CertDir instead.
+	// Deprecated: Use WebhookServer instead. A WebhookServer can be created via webhook.NewServer.
 	CertDir string
 
 	// TLSOpts is used to allow configuring the TLS config used for the webhook server.
 	//
-	// Deprecated: Use WebhookServer.TLSConfig instead.
+	// Deprecated: Use WebhookServer instead. A WebhookServer can be created via webhook.NewServer.
 	TLSOpts []func(*tls.Config)
 
 	// WebhookServer is an externally configured webhook.Server. By default,
 	// a Manager will create a default server using Port, Host, and CertDir;
 	// if this is set, the Manager will use this server instead.
-	WebhookServer *webhook.Server
+	WebhookServer webhook.Server
 
 	// BaseContext is the function that provides Context values to Runnables
 	// managed by the Manager. If a BaseContext function isn't provided, Runnables
@@ -556,11 +557,11 @@ func (o Options) AndFrom(loader config.ControllerManagerConfiguration) (Options,
 		o.CertDir = newObj.Webhook.CertDir
 	}
 	if o.WebhookServer == nil {
-		o.WebhookServer = &webhook.Server{
+		o.WebhookServer = webhook.NewServer(webhook.Options{
 			Port:    o.Port,
 			Host:    o.Host,
 			CertDir: o.CertDir,
-		}
+		})
 	}
 
 	if newObj.Controller != nil {
@@ -733,12 +734,12 @@ func setOptionsDefaults(options Options) Options {
 	}
 
 	if options.WebhookServer == nil {
-		options.WebhookServer = &webhook.Server{
+		options.WebhookServer = webhook.NewServer(webhook.Options{
 			Host:    options.Host,
 			Port:    options.Port,
 			CertDir: options.CertDir,
 			TLSOpts: options.TLSOpts,
-		}
+		})
 	}
 
 	return options

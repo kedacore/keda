@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/go-logr/logr"
 	"github.com/youmark/pkcs8"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
@@ -31,8 +30,11 @@ import (
 var minTLSVersion uint16
 
 func init() {
-	setupLog := ctrl.Log.WithName("tls_setup")
-	minTLSVersion = initMinTLSVersion(setupLog)
+	var err error
+
+	if minTLSVersion, err = initMinTLSVersion(); err != nil {
+		ctrl.Log.WithName("tls_setup").Info(err.Error())
+	}
 }
 
 // NewTLSConfigWithPassword returns a *tls.Config using the given ceClient cert, ceClient key,
@@ -86,25 +88,25 @@ func GetMinTLSVersion() uint16 {
 	return minTLSVersion
 }
 
-func initMinTLSVersion(logger logr.Logger) uint16 {
-	version, found := os.LookupEnv("KEDA_HTTP_MIN_TLS_VERSION")
-	minVersion := tls.VersionTLS12
-	if found {
-		switch version {
-		case "TLS13":
-			minVersion = tls.VersionTLS13
-		case "TLS12":
-			minVersion = tls.VersionTLS12
-		case "TLS11":
-			minVersion = tls.VersionTLS11
-		case "TLS10":
-			minVersion = tls.VersionTLS10
-		default:
-			logger.Info(fmt.Sprintf("%s is not a valid value, using `TLS12`. Allowed values are: `TLS13`,`TLS12`,`TLS11`,`TLS10`", version))
-			minVersion = tls.VersionTLS12
-		}
+func initMinTLSVersion() (uint16, error) {
+	version, _ := os.LookupEnv("KEDA_HTTP_MIN_TLS_VERSION")
+
+	switch version {
+	case "":
+		minTLSVersion = tls.VersionTLS12
+	case "TLS10":
+		minTLSVersion = tls.VersionTLS10
+	case "TLS11":
+		minTLSVersion = tls.VersionTLS11
+	case "TLS12":
+		minTLSVersion = tls.VersionTLS12
+	case "TLS13":
+		minTLSVersion = tls.VersionTLS13
+	default:
+		return tls.VersionTLS12, fmt.Errorf("%s is not a valid value, using `TLS12`. Allowed values are: `TLS13`,`TLS12`,`TLS11`,`TLS10`", version)
 	}
-	return uint16(minVersion)
+
+	return minTLSVersion, nil
 }
 
 func decryptClientKey(clientKey, clientKeyPassword string) ([]byte, error) {

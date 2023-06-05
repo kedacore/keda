@@ -10,38 +10,29 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type (
-
-	// Funcs contains functions that are called instead of the underlying client's methods.
-	Funcs struct {
-		Get         func(ctx context.Context, client client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error
-		List        func(ctx context.Context, client client.WithWatch, list client.ObjectList, opts ...client.ListOption) error
-		Create      func(ctx context.Context, client client.WithWatch, obj client.Object, opts ...client.CreateOption) error
-		Delete      func(ctx context.Context, client client.WithWatch, obj client.Object, opts ...client.DeleteOption) error
-		DeleteAllOf func(ctx context.Context, client client.WithWatch, obj client.Object, opts ...client.DeleteAllOfOption) error
-		Update      func(ctx context.Context, client client.WithWatch, obj client.Object, opts ...client.UpdateOption) error
-		Patch       func(ctx context.Context, client client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error
-		Watch       func(ctx context.Context, client client.WithWatch, obj client.ObjectList, opts ...client.ListOption) (watch.Interface, error)
-		SubResource func(client client.WithWatch, subResource string) client.SubResourceClient
-	}
-
-	// SubResourceFuncs is a set of functions that can be used to intercept calls to a SubResourceClient.
-	SubResourceFuncs struct {
-		Get    func(ctx context.Context, client client.SubResourceClient, obj client.Object, subResource client.Object, opts ...client.SubResourceGetOption) error
-		Create func(ctx context.Context, client client.SubResourceClient, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error
-		Update func(ctx context.Context, client client.SubResourceClient, obj client.Object, opts ...client.SubResourceUpdateOption) error
-		Patch  func(ctx context.Context, client client.SubResourceClient, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error
-	}
-)
+// Funcs contains functions that are called instead of the underlying client's methods.
+type Funcs struct {
+	Get               func(ctx context.Context, client client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error
+	List              func(ctx context.Context, client client.WithWatch, list client.ObjectList, opts ...client.ListOption) error
+	Create            func(ctx context.Context, client client.WithWatch, obj client.Object, opts ...client.CreateOption) error
+	Delete            func(ctx context.Context, client client.WithWatch, obj client.Object, opts ...client.DeleteOption) error
+	DeleteAllOf       func(ctx context.Context, client client.WithWatch, obj client.Object, opts ...client.DeleteAllOfOption) error
+	Update            func(ctx context.Context, client client.WithWatch, obj client.Object, opts ...client.UpdateOption) error
+	Patch             func(ctx context.Context, client client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error
+	Watch             func(ctx context.Context, client client.WithWatch, obj client.ObjectList, opts ...client.ListOption) (watch.Interface, error)
+	SubResource       func(client client.WithWatch, subResource string) client.SubResourceClient
+	SubResourceGet    func(ctx context.Context, client client.Client, subResourceName string, obj client.Object, subResource client.Object, opts ...client.SubResourceGetOption) error
+	SubResourceCreate func(ctx context.Context, client client.Client, subResourceName string, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error
+	SubResourceUpdate func(ctx context.Context, client client.Client, subResourceName string, obj client.Object, opts ...client.SubResourceUpdateOption) error
+	SubResourcePatch  func(ctx context.Context, client client.Client, subResourceName string, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error
+}
 
 // NewClient returns a new interceptor client that calls the functions in funcs instead of the underlying client's methods, if they are not nil.
 func NewClient(interceptedClient client.WithWatch, funcs Funcs) client.WithWatch {
-	return interceptor{client: interceptedClient, funcs: funcs}
-}
-
-// NewSubResourceClient returns a SubResourceClient that intercepts calls to the provided client with the provided functions.
-func NewSubResourceClient(interceptedClient client.SubResourceClient, funcs SubResourceFuncs) client.SubResourceClient {
-	return subResourceInterceptor{client: interceptedClient, funcs: funcs}
+	return interceptor{
+		client: interceptedClient,
+		funcs:  funcs,
+	}
 }
 
 type interceptor struct {
@@ -116,7 +107,11 @@ func (c interceptor) SubResource(subResource string) client.SubResourceClient {
 	if c.funcs.SubResource != nil {
 		return c.funcs.SubResource(c.client, subResource)
 	}
-	return c.client.SubResource(subResource)
+	return subResourceInterceptor{
+		subResourceName: subResource,
+		client:          c.client,
+		funcs:           c.funcs,
+	}
 }
 
 func (c interceptor) Scheme() *runtime.Scheme {
@@ -135,36 +130,37 @@ func (c interceptor) Watch(ctx context.Context, obj client.ObjectList, opts ...c
 }
 
 type subResourceInterceptor struct {
-	client client.SubResourceClient
-	funcs  SubResourceFuncs
+	subResourceName string
+	client          client.Client
+	funcs           Funcs
 }
 
 var _ client.SubResourceClient = &subResourceInterceptor{}
 
 func (s subResourceInterceptor) Get(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceGetOption) error {
-	if s.funcs.Get != nil {
-		return s.funcs.Get(ctx, s.client, obj, subResource, opts...)
+	if s.funcs.SubResourceGet != nil {
+		return s.funcs.SubResourceGet(ctx, s.client, s.subResourceName, obj, subResource, opts...)
 	}
-	return s.client.Get(ctx, obj, subResource, opts...)
+	return s.client.SubResource(s.subResourceName).Get(ctx, obj, subResource, opts...)
 }
 
 func (s subResourceInterceptor) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error {
-	if s.funcs.Create != nil {
-		return s.funcs.Create(ctx, s.client, obj, subResource, opts...)
+	if s.funcs.SubResourceCreate != nil {
+		return s.funcs.SubResourceCreate(ctx, s.client, s.subResourceName, obj, subResource, opts...)
 	}
-	return s.client.Create(ctx, obj, subResource, opts...)
+	return s.client.SubResource(s.subResourceName).Create(ctx, obj, subResource, opts...)
 }
 
 func (s subResourceInterceptor) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
-	if s.funcs.Update != nil {
-		return s.funcs.Update(ctx, s.client, obj, opts...)
+	if s.funcs.SubResourceUpdate != nil {
+		return s.funcs.SubResourceUpdate(ctx, s.client, s.subResourceName, obj, opts...)
 	}
-	return s.client.Update(ctx, obj, opts...)
+	return s.client.SubResource(s.subResourceName).Update(ctx, obj, opts...)
 }
 
 func (s subResourceInterceptor) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error {
-	if s.funcs.Patch != nil {
-		return s.funcs.Patch(ctx, s.client, obj, patch, opts...)
+	if s.funcs.SubResourcePatch != nil {
+		return s.funcs.SubResourcePatch(ctx, s.client, s.subResourceName, obj, patch, opts...)
 	}
-	return s.client.Patch(ctx, obj, patch, opts...)
+	return s.client.SubResource(s.subResourceName).Patch(ctx, obj, patch, opts...)
 }

@@ -22,8 +22,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-
-	"github.com/go-logr/logr"
 )
 
 var randomCACert = `-----BEGIN CERTIFICATE-----
@@ -295,7 +293,7 @@ func TestResolveMinTLSVersion(t *testing.T) {
 		if testData.envSet {
 			os.Setenv("KEDA_HTTP_MIN_TLS_VERSION", testData.envValue)
 		}
-		minVersion := initMinTLSVersion(logr.Discard())
+		minVersion, _ := initMinTLSVersion()
 
 		if testData.expectedVersion != minVersion {
 			t.Error("Failed to resolve minTLSVersion correctly", "wants", testData.expectedVersion, "got", minVersion)

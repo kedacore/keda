@@ -191,13 +191,13 @@ func newClient(config *rest.Config, options Options) (*client, error) {
 
 	// Load uncached GVKs.
 	c.cacheUnstructured = options.Cache.Unstructured
-	uncachedGVKs := map[schema.GroupVersionKind]struct{}{}
+	c.uncachedGVKs = map[schema.GroupVersionKind]struct{}{}
 	for _, obj := range options.Cache.DisableFor {
 		gvk, err := c.GroupVersionKindFor(obj)
 		if err != nil {
 			return nil, err
 		}
-		uncachedGVKs[gvk] = struct{}{}
+		c.uncachedGVKs[gvk] = struct{}{}
 	}
 	return c, nil
 }
