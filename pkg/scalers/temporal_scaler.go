@@ -16,7 +16,9 @@ import (
 )
 
 const (
-	temporalHost = "http://20.81.100.134:8088/"
+	address          = "address"
+	scaler_threshold = "threshold"
+	scaler_name      = "temporal"
 )
 
 type temporalScaler struct {
@@ -38,18 +40,18 @@ func NewTemporalScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
-	logger := InitializeLogger(config, fmt.Sprintf("%s_scaler", scalerName))
+	logger := InitializeLogger(config, fmt.Sprintf("%s_scaler", scaler_name))
 
 	meta, err := parseTemporalMetadata(config, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing %s metadata: %w", scalerName, err)
+		return nil, fmt.Errorf("error parsing %s metadata: %w", scaler_name, err)
 	}
 
 	if err != nil {
 		log.Fatal("error initializing client:", err)
 	}
 
-	logMsg := fmt.Sprintf("Initializing Temporal Scaler")
+	logMsg := fmt.Sprintf("Initializing Temporal Scaler connected to %s", address)
 
 	logger.Info(logMsg)
 
@@ -137,7 +139,7 @@ func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 }
 
 func (s *temporalScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
-	metricName := kedautil.NormalizeString(scalerName)
+	metricName := kedautil.NormalizeString(scaler_name)
 
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
