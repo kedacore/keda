@@ -49,23 +49,23 @@ func TestParseRedisStreamsMetadata(t *testing.T) {
 		t.Run(tc.name, func(te *testing.T) {
 			m, err := parseRedisStreamsMetadata(&ScalerConfig{TriggerMetadata: tc.metadata, ResolvedEnv: tc.resolvedEnv, AuthParams: tc.authParams}, parseRedisAddress)
 			assert.Nil(t, err)
-			assert.Equal(t, m.streamName, tc.metadata[streamNameMetadata])
-			assert.Equal(t, m.consumerGroupName, tc.metadata[consumerGroupNameMetadata])
-			assert.Equal(t, strconv.FormatInt(m.targetPendingEntriesCount, 10), tc.metadata[pendingEntriesCountMetadata])
+			assert.Equal(t, tc.metadata[streamNameMetadata], m.streamName)
+			assert.Equal(t, tc.metadata[consumerGroupNameMetadata], m.consumerGroupName)
+			assert.Equal(t, tc.metadata[pendingEntriesCountMetadata], strconv.FormatInt(m.targetPendingEntriesCount, 10))
 			if authParams != nil {
 				// if authParam is used
-				assert.Equal(t, m.connectionInfo.username, authParams[usernameMetadata])
-				assert.Equal(t, m.connectionInfo.password, authParams[passwordMetadata])
+				assert.Equal(t, authParams[usernameMetadata], m.connectionInfo.username)
+				assert.Equal(t, authParams[passwordMetadata], m.connectionInfo.password)
 			} else {
 				// if metadata is used to pass credentials' env var names
-				assert.Equal(t, m.connectionInfo.username, tc.resolvedEnv[tc.metadata[usernameMetadata]])
-				assert.Equal(t, m.connectionInfo.password, tc.resolvedEnv[tc.metadata[passwordMetadata]])
+				assert.Equal(t, tc.resolvedEnv[tc.metadata[usernameMetadata]], m.connectionInfo.username)
+				assert.Equal(t, tc.resolvedEnv[tc.metadata[passwordMetadata]], m.connectionInfo.password)
 			}
 
-			assert.Equal(t, strconv.Itoa(m.databaseIndex), tc.metadata[databaseIndexMetadata])
+			assert.Equal(t, tc.metadata[databaseIndexMetadata], strconv.Itoa(m.databaseIndex))
 			b, err := strconv.ParseBool(tc.metadata[enableTLSMetadata])
 			assert.Nil(t, err)
-			assert.Equal(t, m.connectionInfo.enableTLS, b)
+			assert.Equal(t, b, m.connectionInfo.enableTLS)
 		})
 	}
 }
