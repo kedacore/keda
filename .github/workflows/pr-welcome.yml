@@ -23,5 +23,5 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: ${{ github.event.number }},
-              body: 'Thank you for your contribution! 🙏 We will review it as soon as possible.\n\nLearn more about:\n- Our [contribution guide](https://github.com/kedacore/keda/blob/main/CONTRIBUTING.md)\n- Guidance on [creating a new scaler](https://github.com/kedacore/keda/blob/main/CREATE-NEW-SCALER.md)\n- Fixing [DCO issues](https://github.com/kedacore/keda/blob/main/CONTRIBUTING.md#i-didnt-sign-my-commit-now-what)'
+              body: 'Thank you for your contribution! 🙏 We will review your PR as soon as possible.\n\nLearn more about:\n- Our [contribution guide](https://github.com/kedacore/keda/blob/main/CONTRIBUTING.md)\n- Guidance on [creating a new scaler](https://github.com/kedacore/keda/blob/main/CREATE-NEW-SCALER.md)\n- Fixing [DCO issues](https://github.com/kedacore/keda/blob/main/CONTRIBUTING.md#i-didnt-sign-my-commit-now-what)'
             });
