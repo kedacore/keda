@@ -304,7 +304,8 @@ func getTriggerAuthSpec(ctx context.Context, client client.Client, triggerAuthRe
 
 func resolveEnv(ctx context.Context, client client.Client, logger logr.Logger, container *corev1.Container, namespace string, secretsLister corev1listers.SecretLister) (map[string]string, error) {
 	resolved := make(map[string]string)
-
+	secretAccessRestricted := isSecretAccessRestricted(logger)
+	accessSecrets := readSecrets(secretAccessRestricted, namespace)
 	if container.EnvFrom != nil {
 		for _, source := range container.EnvFrom {
 			if source.ConfigMapRef != nil {
@@ -320,7 +321,7 @@ func resolveEnv(ctx context.Context, client client.Client, logger logr.Logger, c
 				default:
 					return nil, fmt.Errorf("error reading config ref %s on namespace %s/: %w", source.ConfigMapRef, namespace, err)
 				}
-			} else if source.SecretRef != nil {
+			} else if source.SecretRef != nil && accessSecrets {
 				secretsMap, err := resolveSecretMap(ctx, client, logger, source.SecretRef, namespace, secretsLister)
 				switch {
 				case err == nil:
@@ -349,7 +350,7 @@ func resolveEnv(ctx context.Context, client client.Client, logger logr.Logger, c
 			} else if envVar.ValueFrom != nil {
 				// env is an EnvVarSource, that can be on of the 4 below
 				switch {
-				case envVar.ValueFrom.SecretKeyRef != nil:
+				case envVar.ValueFrom.SecretKeyRef != nil && accessSecrets:
 					// env is a secret selector
 					value, err = resolveSecretValue(ctx, client, logger, envVar.ValueFrom.SecretKeyRef, envVar.ValueFrom.SecretKeyRef.Key, namespace, secretsLister)
 					if err != nil {
@@ -382,6 +383,13 @@ func resolveEnv(ctx context.Context, client client.Client, logger logr.Logger, c
 		}
 	}
 	return resolved, nil
+}
+
+func readSecrets(secretAccessRestricted bool, namespace string) bool {
+	if secretAccessRestricted && (namespace != kedaNamespace) {
+		return false
+	}
+	return true
 }
 
 func resolveEnvValue(value string, env map[string]string) string {

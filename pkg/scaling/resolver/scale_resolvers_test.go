@@ -21,6 +21,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,6 +32,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	mock_v1 "github.com/kedacore/keda/v2/pkg/mock/mock_secretlister"
 )
 
 var (
@@ -537,6 +539,120 @@ func TestResolveDependentEnv(t *testing.T) {
 			envMap, _ := resolveEnv(ctx, fake.NewClientBuilder().Build(), logf.Log.WithName("test"), test.container, namespace, secretsLister)
 			if diff := cmp.Diff(envMap, test.expected); diff != "" {
 				t.Errorf("Returned authParams are different: %s", diff)
+			}
+		})
+	}
+}
+
+func TestEnvWithRestrictSecretAccess(t *testing.T) {
+	tests := []struct {
+		name      string
+		expected  map[string]string
+		container *corev1.Container
+	}{
+		{
+			name: "env reference secret key",
+			container: &corev1.Container{
+				Env: []corev1.EnvVar{{
+					Name: envKey,
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: secretName,
+							},
+							Key: secretKey,
+						},
+					},
+				}},
+			},
+			expected: map[string]string{},
+		},
+		{
+			name: "env reference secret name",
+			container: &corev1.Container{
+				EnvFrom: []corev1.EnvFromSource{{
+					SecretRef: &corev1.SecretEnvSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secretName,
+						},
+					},
+				}},
+			},
+			expected: map[string]string{},
+		},
+	}
+	var secretsLister corev1listers.SecretLister
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			os.Setenv("KEDA_RESTRICT_SECRET_ACCESS", "true")
+			ctx := context.Background()
+			envMap, _ := resolveEnv(ctx, fake.NewClientBuilder().Build(), logf.Log.WithName("test"), test.container, namespace, secretsLister)
+			if diff := cmp.Diff(envMap, test.expected); diff != "" {
+				t.Errorf("Returned env map is different: %s", diff)
+			}
+		})
+	}
+}
+
+func TestEnvWithRestrictedNamespace(t *testing.T) {
+	tests := []struct {
+		name      string
+		expected  map[string]string
+		container *corev1.Container
+	}{
+		{
+			name: "env reference secret key",
+			container: &corev1.Container{
+				Env: []corev1.EnvVar{{
+					Name: envKey,
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: secretName,
+							},
+							Key: secretKey,
+						},
+					},
+				}},
+			},
+			expected: map[string]string{envKey: secretData},
+		},
+		{
+			name: "env reference secret name",
+			container: &corev1.Container{
+				EnvFrom: []corev1.EnvFromSource{{
+					SecretRef: &corev1.SecretEnvSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secretName,
+						},
+					},
+				}},
+			},
+			expected: map[string]string{secretKey: secretData},
+		},
+	}
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: clusterNamespace,
+			Name:      secretName,
+		},
+		Data: map[string][]byte{secretKey: []byte(secretData)},
+	}
+	ctrl := gomock.NewController(t)
+	mockSecretNamespaceLister := mock_v1.NewMockSecretNamespaceLister(ctrl)
+	mockSecretNamespaceLister.EXPECT().Get(secretName).Return(secret, nil).AnyTimes()
+	mockSecretLister := mock_v1.NewMockSecretLister(ctrl)
+	mockSecretLister.EXPECT().Secrets(clusterNamespace).Return(mockSecretNamespaceLister).AnyTimes()
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			os.Setenv("KEDA_CLUSTER_OBJECT_NAMESPACE", "keda")
+			os.Setenv("KEDA_RESTRICT_SECRET_ACCESS", "true")
+			ctx := context.Background()
+			envMap, _ := resolveEnv(ctx, fake.NewClientBuilder().Build(), logf.Log.WithName("test"), test.container, clusterNamespace, mockSecretLister)
+			if diff := cmp.Diff(envMap, test.expected); diff != "" {
+				t.Errorf("Returned env map is different: %s", diff)
 			}
 		})
 	}
