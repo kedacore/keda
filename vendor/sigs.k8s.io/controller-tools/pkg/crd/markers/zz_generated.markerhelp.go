@@ -218,7 +218,7 @@ func (MinItems) Help() *markers.DefinitionHelp {
 	return &markers.DefinitionHelp{
 		Category: "CRD validation",
 		DetailedHelp: markers.DetailedHelp{
-			Summary: "specifies the minimun length for this list.",
+			Summary: "specifies the minimum length for this list.",
 			Details: "",
 		},
 		FieldHelp: map[string]markers.DetailedHelp{},

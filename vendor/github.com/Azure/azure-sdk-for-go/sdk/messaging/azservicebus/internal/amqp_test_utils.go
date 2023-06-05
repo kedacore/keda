@@ -8,10 +8,11 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/internal/log"
+	azlog "github.com/Azure/azure-sdk-for-go/sdk/internal/log"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/amqpwrap"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/exported"
-	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/go-amqp"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/utils"
+	"github.com/Azure/go-amqp"
 )
 
 type FakeNS struct {
@@ -135,7 +136,7 @@ func (r *FakeAMQPReceiver) Prefetched() *amqp.Message {
 
 // Receive returns the next result from ReceiveResults or, if the ReceiveResults
 // is empty, will block on ctx.Done().
-func (r *FakeAMQPReceiver) Receive(ctx context.Context) (*amqp.Message, error) {
+func (r *FakeAMQPReceiver) Receive(ctx context.Context, o *amqp.ReceiveOptions) (*amqp.Message, error) {
 	r.ReceiveCalled++
 
 	select {
@@ -207,6 +208,14 @@ func (l *FakeAMQPLinks) Retry(ctx context.Context, eventName log.Event, operatio
 	return fn(ctx, lwr, &utils.RetryFnArgs{})
 }
 
+func (l *FakeAMQPLinks) Writef(evt azlog.Event, format string, args ...any) {
+	log.Writef(evt, "[prefix] "+format, args...)
+}
+
+func (l *FakeAMQPLinks) Prefix() string {
+	return "prefix"
+}
+
 func (l *FakeAMQPLinks) Close(ctx context.Context, permanently bool) error {
 	if permanently {
 		l.permanently = true
@@ -223,6 +232,10 @@ func (l *FakeAMQPLinks) CloseIfNeeded(ctx context.Context, err error) RecoveryKi
 
 func (l *FakeAMQPLinks) ClosedPermanently() bool {
 	return l.permanently
+}
+
+func (s *FakeAMQPSender) LinkName() string {
+	return "sender-link-name"
 }
 
 func (s *FakeAMQPSender) Close(ctx context.Context) error {

@@ -22,6 +22,7 @@ import (
 	"golang.org/x/crypto/sha3"
 	"golang.org/x/text/language"
 
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/leodido/go-urn"
 )
 
@@ -144,6 +145,7 @@ var (
 		"endswith":                      endsWith,
 		"startsnotwith":                 startsNotWith,
 		"endsnotwith":                   endsNotWith,
+		"image":                         isImage,
 		"isbn":                          isISBN,
 		"isbn10":                        isISBN10,
 		"isbn13":                        isISBN13,
@@ -1412,22 +1414,18 @@ func isURL(fl FieldLevel) bool {
 	switch field.Kind() {
 	case reflect.String:
 
-		var i int
 		s := field.String()
-
-		// checks needed as of Go 1.6 because of change https://github.com/golang/go/commit/617c93ce740c3c3cc28cdd1a0d712be183d0b328#diff-6c2d018290e298803c0c9419d8739885L195
-		// emulate browser and strip the '#' suffix prior to validation. see issue-#237
-		if i = strings.Index(s, "#"); i > -1 {
-			s = s[:i]
-		}
 
 		if len(s) == 0 {
 			return false
 		}
 
-		url, err := url.ParseRequestURI(s)
-
+		url, err := url.Parse(s)
 		if err != nil || url.Scheme == "" {
+			return false
+		}
+
+		if url.Host == "" && url.Fragment == "" && url.Opaque == "" {
 			return false
 		}
 
@@ -1448,7 +1446,13 @@ func isHttpURL(fl FieldLevel) bool {
 	case reflect.String:
 
 		s := strings.ToLower(field.String())
-		return strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://")
+
+		url, err := url.Parse(s)
+		if err != nil || url.Host == "" {
+			return false
+		}
+
+		return url.Scheme == "http" || url.Scheme == "https"
 	}
 
 	panic(fmt.Sprintf("Bad field type %T", field.Interface()))
@@ -1486,6 +1490,67 @@ func isFile(fl FieldLevel) bool {
 	}
 
 	panic(fmt.Sprintf("Bad field type %T", field.Interface()))
+}
+
+// isImage is the validation function for validating if the current field's value contains the path to a valid image file
+func isImage(fl FieldLevel) bool {
+	mimetypes := map[string]bool{
+		"image/bmp":                true,
+		"image/cis-cod":            true,
+		"image/gif":                true,
+		"image/ief":                true,
+		"image/jpeg":               true,
+		"image/jp2":                true,
+		"image/jpx":                true,
+		"image/jpm":                true,
+		"image/pipeg":              true,
+		"image/png":                true,
+		"image/svg+xml":            true,
+		"image/tiff":               true,
+		"image/webp":               true,
+		"image/x-cmu-raster":       true,
+		"image/x-cmx":              true,
+		"image/x-icon":             true,
+		"image/x-portable-anymap":  true,
+		"image/x-portable-bitmap":  true,
+		"image/x-portable-graymap": true,
+		"image/x-portable-pixmap":  true,
+		"image/x-rgb":              true,
+		"image/x-xbitmap":          true,
+		"image/x-xpixmap":          true,
+		"image/x-xwindowdump":      true,
+	}
+	field := fl.Field()
+
+	switch field.Kind() {
+	case reflect.String:
+		filePath := field.String()
+		fileInfo, err := os.Stat(filePath)
+
+		if err != nil {
+			return false
+		}
+
+		if fileInfo.IsDir() {
+			return false
+		}
+
+		file, err := os.Open(filePath)
+		if err != nil {
+			return false
+		}
+		defer file.Close()
+
+		mime, err := mimetype.DetectReader(file)
+		if err != nil {
+			return false
+		}
+
+		if _, ok := mimetypes[mime.String()]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 // isFilePath is the validation function for validating if the current field's value is a valid file path.
@@ -2505,9 +2570,17 @@ func isDirPath(fl FieldLevel) bool {
 func isJSON(fl FieldLevel) bool {
 	field := fl.Field()
 
-	if field.Kind() == reflect.String {
+	switch field.Kind() {
+	case reflect.String:
 		val := field.String()
 		return json.Valid([]byte(val))
+	case reflect.Slice:
+		fieldType := field.Type()
+
+		if fieldType.ConvertibleTo(byteSliceType) {
+			b := field.Convert(byteSliceType).Interface().([]byte)
+			return json.Valid(b)
+		}
 	}
 
 	panic(fmt.Sprintf("Bad field type %T", field.Interface()))

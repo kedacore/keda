@@ -9,13 +9,13 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/internal/log"
-	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/go-amqp"
+	"github.com/Azure/go-amqp"
 )
 
 // ReceivedMessage is a received message from a Client.NewReceiver().
 type ReceivedMessage struct {
 	// ApplicationProperties can be used to store custom metadata for a message.
-	ApplicationProperties map[string]interface{}
+	ApplicationProperties map[string]any
 
 	// Body is the payload for a message.
 	Body []byte
@@ -148,7 +148,7 @@ const (
 // Properties that are pointers are optional.
 type Message struct {
 	// ApplicationProperties can be used to store custom metadata for a message.
-	ApplicationProperties map[string]interface{}
+	ApplicationProperties map[string]any
 
 	// Body corresponds to the first []byte array in the Data section of an AMQP message.
 	Body []byte
@@ -239,7 +239,7 @@ func (m *Message) toAMQPMessage() *amqp.Message {
 		amqpMsg.Header.TTL = *m.TimeToLive
 	}
 
-	var messageID interface{}
+	var messageID any
 
 	if m.MessageID != nil {
 		messageID = *m.MessageID
@@ -268,13 +268,13 @@ func (m *Message) toAMQPMessage() *amqp.Message {
 	amqpMsg.Properties.ReplyToGroupID = m.ReplyToSessionID
 
 	if len(m.ApplicationProperties) > 0 {
-		amqpMsg.ApplicationProperties = make(map[string]interface{})
+		amqpMsg.ApplicationProperties = make(map[string]any)
 		for key, value := range m.ApplicationProperties {
 			amqpMsg.ApplicationProperties[key] = value
 		}
 	}
 
-	amqpMsg.Annotations = map[interface{}]interface{}{}
+	amqpMsg.Annotations = map[any]any{}
 
 	if m.PartitionKey != nil {
 		amqpMsg.Annotations[partitionKeyAnnotation] = *m.PartitionKey
@@ -312,9 +312,9 @@ func (m *Message) toAMQPMessage() *amqp.Message {
 // newReceivedMessage creates a received message from an AMQP message.
 // NOTE: this converter assumes that the Body of this message will be the first
 // serialized byte array in the Data section of the messsage.
-func newReceivedMessage(amqpMsg *amqp.Message) *ReceivedMessage {
+func newReceivedMessage(amqpMsg *amqp.Message, receivingLinkName string) *ReceivedMessage {
 	msg := &ReceivedMessage{
-		RawAMQPMessage: newAMQPAnnotatedMessage(amqpMsg),
+		RawAMQPMessage: newAMQPAnnotatedMessage(amqpMsg, receivingLinkName),
 		State:          MessageStateActive,
 	}
 
@@ -344,7 +344,7 @@ func newReceivedMessage(amqpMsg *amqp.Message) *ReceivedMessage {
 	}
 
 	if amqpMsg.ApplicationProperties != nil {
-		msg.ApplicationProperties = make(map[string]interface{}, len(amqpMsg.ApplicationProperties))
+		msg.ApplicationProperties = make(map[string]any, len(amqpMsg.ApplicationProperties))
 		for key, value := range amqpMsg.ApplicationProperties {
 			msg.ApplicationProperties[key] = value
 		}
@@ -417,7 +417,7 @@ func newReceivedMessage(amqpMsg *amqp.Message) *ReceivedMessage {
 		// This approach is also consistent with the behavior of .NET:
 		//
 		//	https://docs.microsoft.com/en-us/dotnet/api/azure.messaging.eventhubs.eventdata.systemproperties?view=azure-dotnet#Azure_Messaging_EventHubs_EventData_SystemProperties
-		// msg.SystemProperties.Annotations = make(map[string]interface{})
+		// msg.SystemProperties.Annotations = make(map[string]any)
 		// for key, val := range amqpMsg.Annotations {
 		// 	if s, ok := key.(string); ok {
 		// 		msg.SystemProperties.Annotations[s] = val
@@ -477,7 +477,7 @@ func uuidFromLockTokenBytes(bytes []byte) (*amqp.UUID, error) {
 	return &amqpUUID, nil
 }
 
-func asInt64(v interface{}, defVal int64) int64 {
+func asInt64(v any, defVal int64) int64 {
 	switch v2 := v.(type) {
 	case int32:
 		return int64(v2)

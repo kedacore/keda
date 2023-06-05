@@ -24,8 +24,10 @@ const envVarSendCertChain = "AZURE_CLIENT_SEND_CERTIFICATE_CHAIN"
 type EnvironmentCredentialOptions struct {
 	azcore.ClientOptions
 
-	// DisableInstanceDiscovery should be true for applications authenticating in disconnected or private clouds.
-	// This skips a metadata request that will fail for such applications.
+	// DisableInstanceDiscovery should be set true only by applications authenticating in disconnected clouds, or
+	// private clouds such as Azure Stack. It determines whether the credential requests Azure AD instance metadata
+	// from https://login.microsoft.com before authenticating. Setting this to true will skip this request, making
+	// the application responsible for ensuring the configured authority is valid and trustworthy.
 	DisableInstanceDiscovery bool
 	// additionallyAllowedTenants is used only by NewDefaultAzureCredential() to enable that constructor's explicit
 	// option to override the value of AZURE_ADDITIONALLY_ALLOWED_TENANTS. Applications using EnvironmentCredential

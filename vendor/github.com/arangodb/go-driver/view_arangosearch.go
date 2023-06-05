@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// Copyright 2018-2023 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 // limitations under the License.
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
-//
-// Author Ewout Prangsma
 //
 
 package driver
@@ -63,6 +61,10 @@ const (
 	ArangoSearchAnalyzerTypeStopwords ArangoSearchAnalyzerType = "stopwords"
 	// ArangoSearchAnalyzerTypeGeoJSON an Analyzer capable of breaking up a GeoJSON object into a set of indexable tokens for further usage with ArangoSearch Geo functions.
 	ArangoSearchAnalyzerTypeGeoJSON ArangoSearchAnalyzerType = "geojson"
+	// ArangoSearchAnalyzerTypeGeoS2 an Analyzer capable of index GeoJSON data with inverted indexes or Views similar
+	// to the existing `geojson` Analyzer, but it internally uses a format for storing the geo-spatial data.
+	// that is more efficient.
+	ArangoSearchAnalyzerTypeGeoS2 ArangoSearchAnalyzerType = "geo_s2"
 	// ArangoSearchAnalyzerTypeGeoPoint an Analyzer capable of breaking up JSON object describing a coordinate into a set of indexable tokens for further usage with ArangoSearch Geo functions.
 	ArangoSearchAnalyzerTypeGeoPoint ArangoSearchAnalyzerType = "geopoint"
 	// ArangoSearchAnalyzerTypeSegmentation an Analyzer capable of breaking up the input text into tokens in a language-agnostic manner
@@ -131,6 +133,24 @@ type ArangoSearchEdgeNGram struct {
 	Max *int64 `json:"max,omitempty"`
 	// PreserveOriginal used by Text
 	PreserveOriginal *bool `json:"preserveOriginal,omitempty"`
+}
+
+type ArangoSearchFormat string
+
+const (
+	// FormatLatLngDouble stores each latitude and longitude value as an 8-byte floating-point value (16 bytes per coordinate pair).
+	// It is default value.
+	FormatLatLngDouble ArangoSearchFormat = "latLngDouble"
+	// FormatLatLngInt stores each latitude and longitude value as an 4-byte integer value (8 bytes per coordinate pair).
+	// This is the most compact format but the precision is limited to approximately 1 to 10 centimeters.
+	FormatLatLngInt ArangoSearchFormat = "latLngInt"
+	// FormatS2Point store each longitude-latitude pair in the native format of Google S2 which is used for geo-spatial
+	// calculations (24 bytes per coordinate pair).
+	FormatS2Point ArangoSearchFormat = "s2Point"
+)
+
+func (a ArangoSearchFormat) New() *ArangoSearchFormat {
+	return &a
 }
 
 // ArangoSearchAnalyzerProperties specifies options for the analyzer. Which fields are required and
@@ -223,6 +243,9 @@ type ArangoSearchAnalyzerProperties struct {
 	// NumHashes used by Minhash
 	// Size of min hash signature. Must be greater or equal to 1.
 	NumHashes *uint64 `json:"numHashes,omitempty"`
+
+	// Format is the internal binary representation to use for storing the geo-spatial data in an index.
+	Format *ArangoSearchFormat `json:"format,omitempty"`
 }
 
 // ArangoSearchAnalyzerGeoJSONType GeoJSON Type parameter.
@@ -337,6 +360,10 @@ type ArangoSearchViewProperties struct {
 	// are indexed in the view.
 	// The key of the map are collection names.
 	Links ArangoSearchLinks `json:"links,omitempty"`
+
+	// OptimizeTopK is an array of strings defining optimized sort expressions.
+	// Introduced in v3.11.0, Enterprise Edition only.
+	OptimizeTopK []string `json:"optimizeTopK,omitempty"`
 
 	// PrimarySort describes how individual fields are sorted
 	PrimarySort []ArangoSearchPrimarySortEntry `json:"primarySort,omitempty"`

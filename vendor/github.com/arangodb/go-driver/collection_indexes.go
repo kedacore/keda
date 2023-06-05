@@ -262,6 +262,9 @@ type InvertedIndexOptions struct {
 	// 0 value turns off this limit for any writer (buffer) and data will be flushed periodically based on the value defined for the flush thread (ArangoDB server startup option).
 	// 0 value should be used carefully due to high potential memory consumption (default: 33554432, use 0 to disable)
 	WriteBufferSizeMax *int64 `json:"writebufferSizeMax,omitempty"`
+	// OptimizeTopK is an array of strings defining optimized sort expressions.
+	// Introduced in v3.11.0, Enterprise Edition only.
+	OptimizeTopK []string `json:"optimizeTopK,omitempty"`
 }
 
 // InvertedIndexPrimarySort defines compression and list of fields to be sorted.

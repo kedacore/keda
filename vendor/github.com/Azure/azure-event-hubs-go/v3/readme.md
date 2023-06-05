@@ -1,5 +1,5 @@
-**Please note, a new beta package is available: [azeventhubs](https://github.com/Azure/azure-sdk-for-go/blob/main/sdk/messaging/azeventhubs/README.md) as of [2022-11-09].**
-**See the [Migration Guide](https://github.com/Azure/azure-sdk-for-go/blob/main/sdk/messaging/azeventhubs/migrationguide.md) for more details.**
+**Please note, a newer package is available: [azeventhubs](https://github.com/Azure/azure-sdk-for-go/blob/main/sdk/messaging/azeventhubs/README.md) as of [2023-05-09].**
+**We strongly encourage you to upgrade. See the [Migration Guide](https://github.com/Azure/azure-sdk-for-go/blob/main/sdk/messaging/azeventhubs/migrationguide.md) for more details.**
 
 # Microsoft Azure Event Hubs Client for Golang
 [![Go Report Card](https://goreportcard.com/badge/github.com/Azure/azure-event-hubs-go)](https://goreportcard.com/report/github.com/Azure/azure-event-hubs-go)

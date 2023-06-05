@@ -138,23 +138,29 @@ func (cp *statusConnectionPool) Next() (*Connection, error) {
 // OnSuccess marks the connection as successful.
 //
 func (cp *statusConnectionPool) OnSuccess(c *Connection) error {
+	// Short-circuit for live connection
+	c.Lock()
+	if !c.IsDead {
+		c.Unlock()
+		return nil
+	}
+	c.Unlock()
+
+	cp.Lock()
+	defer cp.Unlock()
+
 	c.Lock()
 	defer c.Unlock()
 
-	// Short-circuit for live connection
 	if !c.IsDead {
 		return nil
 	}
 
 	c.markAsHealthy()
-
-	cp.Lock()
-	defer cp.Unlock()
 	return cp.resurrect(c, true)
 }
 
 // OnFailure marks the connection as failed.
-//
 func (cp *statusConnectionPool) OnFailure(c *Connection) error {
 	cp.Lock()
 	defer cp.Unlock()

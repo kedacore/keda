@@ -10,6 +10,10 @@ import "fmt"
 type Code string
 
 const (
+	// CodeUnauthorizedAccess means the credentials provided are not valid for use with
+	// a particular entity, or have expired.
+	CodeUnauthorizedAccess Code = "unauthorized"
+
 	// CodeConnectionLost means our connection was lost and all retry attempts failed.
 	// This typically reflects an extended outage or connection disruption and may
 	// require manual intervention.

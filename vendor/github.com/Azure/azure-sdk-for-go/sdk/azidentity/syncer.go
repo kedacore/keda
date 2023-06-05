@@ -48,6 +48,13 @@ func (s *syncer) GetToken(ctx context.Context, opts policy.TokenRequestOptions) 
 		return at, errors.New(s.name + ".GetToken() requires at least one scope")
 	}
 	// we don't resolve the tenant for managed identities because they can acquire tokens only from their home tenants
+	if s.name != credNameManagedIdentity {
+		tenant, err := s.resolveTenant(opts.TenantID)
+		if err != nil {
+			return at, err
+		}
+		opts.TenantID = tenant
+	}
 	auth := false
 	s.cond.L.Lock()
 	defer s.cond.L.Unlock()
