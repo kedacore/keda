@@ -128,3 +128,12 @@ func isKReferenceGroupAllowed(ctx context.Context) bool {
 func KReferenceGroupAllowed(ctx context.Context) context.Context {
 	return context.WithValue(ctx, isGroupAllowed{}, struct{}{})
 }
+
+func (kr *KReference) String() string {
+	address := ""
+	if kr.Address != nil {
+		address = *kr.Address
+	}
+	return fmt.Sprintf("Kind = %s, Namespace = %s, Name = %s, APIVersion = %s, Group = %s, Address = %s",
+		kr.Kind, kr.Namespace, kr.Name, kr.APIVersion, kr.Group, address)
+}

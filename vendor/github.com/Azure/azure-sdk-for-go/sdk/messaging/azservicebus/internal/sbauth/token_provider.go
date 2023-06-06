@@ -117,8 +117,17 @@ func (tpa *TokenProvider) getSASToken(uri string) (*auth.Token, time.Time, error
 		return nil, time.Time{}, err
 	}
 
+	// we can ignore the error here since we did the string-izing of the time
+	// in the first place.
+	var expiryTime time.Time
+
+	if authToken.Expiry != "0" {
+		// TODO: I'd like to just use the actual Expiry time we generated
+		// Filed here https://github.com/Azure/azure-sdk-for-go/issues/20468
+		expiryTime = time.Now().Add(time.Minute * 15)
+	}
+
 	return authToken,
-		// expiration is hardcoded for SAS tokens
-		time.Now().Add(time.Minute * 15),
+		expiryTime,
 		nil
 }

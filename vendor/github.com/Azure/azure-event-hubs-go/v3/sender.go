@@ -309,6 +309,8 @@ func sendMessage(ctx context.Context, getAmqpSender getAmqpSender, maxRetries in
 				if e.Condition == errorServerBusy || e.Condition == errorTimeout {
 					recoverLink(sender.LinkName(), err, false)
 					break
+				} else if e.Condition == amqp.ErrCondMessageSizeExceeded || e.Condition == amqp.ErrCondTransferLimitExceeded {
+					return e
 				}
 				recoverLink(sender.LinkName(), err, true)
 			case net.Error:

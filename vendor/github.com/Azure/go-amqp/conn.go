@@ -25,6 +25,7 @@ const (
 	defaultIdleTimeout  = 1 * time.Minute
 	defaultMaxFrameSize = 65536
 	defaultMaxSessions  = 65536
+	defaultWriteTimeout = 30 * time.Second
 )
 
 // ConnOptions contains the optional settings for configuring an AMQP connection.
@@ -73,11 +74,22 @@ type ConnOptions struct {
 	// providing a URL scheme of "amqps://" is sufficient.
 	TLSConfig *tls.Config
 
+	// WriteTimeout controls the write deadline when writing AMQP frames to the
+	// underlying net.Conn and no caller provided context.Context is available or
+	// the context contains no deadline (e.g. context.Background()).
+	// The timeout is set per write.
+	//
+	// Setting to a value less than zero means no timeout is set, so writes
+	// defer to the underlying behavior of net.Conn with no write deadline.
+	//
+	// Default: 30s
+	WriteTimeout time.Duration
+
 	// test hook
 	dialer dialer
 }
 
-// Dial connects to an AMQP server.
+// Dial connects to an AMQP broker.
 //
 // If the addr includes a scheme, it must be "amqp", "amqps", or "amqp+ssl".
 // If no port is provided, 5672 will be used for "amqp" and 5671 for "amqps" or "amqp+ssl".
@@ -87,12 +99,11 @@ type ConnOptions struct {
 //
 // opts: pass nil to accept the default values.
 func Dial(ctx context.Context, addr string, opts *ConnOptions) (*Conn, error) {
-	deadline, _ := ctx.Deadline()
-	c, err := dialConn(deadline, addr, opts)
+	c, err := dialConn(ctx, addr, opts)
 	if err != nil {
 		return nil, err
 	}
-	err = c.start(deadline)
+	err = c.start(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -106,8 +117,7 @@ func NewConn(ctx context.Context, conn net.Conn, opts *ConnOptions) (*Conn, erro
 	if err != nil {
 		return nil, err
 	}
-	deadline, _ := ctx.Deadline()
-	err = c.start(deadline)
+	err = c.start(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -116,8 +126,9 @@ func NewConn(ctx context.Context, conn net.Conn, opts *ConnOptions) (*Conn, erro
 
 // Conn is an AMQP connection.
 type Conn struct {
-	net    net.Conn // underlying connection
-	dialer dialer   // used for testing purposes, it allows faking dialing TCP/TLS endpoints
+	net          net.Conn      // underlying connection
+	dialer       dialer        // used for testing purposes, it allows faking dialing TCP/TLS endpoints
+	writeTimeout time.Duration // controls write deadline in absense of a context
 
 	// TLS
 	tlsNegotiation bool        // negotiate TLS
@@ -153,40 +164,43 @@ type Conn struct {
 	sessionsByChannel   map[uint16]*Session
 	sessionsByChannelMu sync.RWMutex
 
+	abandonedSessionsMu sync.Mutex
+	abandonedSessions   []*Session
+
 	// connReader
 	rxBuf  buffer.Buffer // incoming bytes buffer
 	rxDone chan struct{} // closed when connReader exits
 	rxErr  error         // contains last error reading from c.net; DO NOT TOUCH outside of connReader until rxDone has been closed!
 
 	// connWriter
-	txFrame chan frames.Frame // AMQP frames to be sent by connWriter
-	txBuf   buffer.Buffer     // buffer for marshaling frames before transmitting
-	txDone  chan struct{}     // closed when connWriter exits
-	txErr   error             // contains last error writing to c.net; DO NOT TOUCH outside of connWriter until txDone has been closed!
+	txFrame chan frameEnvelope // AMQP frames to be sent by connWriter
+	txBuf   buffer.Buffer      // buffer for marshaling frames before transmitting
+	txDone  chan struct{}      // closed when connWriter exits
+	txErr   error              // contains last error writing to c.net; DO NOT TOUCH outside of connWriter until txDone has been closed!
 }
 
 // used to abstract the underlying dialer for testing purposes
 type dialer interface {
-	NetDialerDial(deadline time.Time, c *Conn, host, port string) error
-	TLSDialWithDialer(deadline time.Time, c *Conn, host, port string) error
+	NetDialerDial(ctx context.Context, c *Conn, host, port string) error
+	TLSDialWithDialer(ctx context.Context, c *Conn, host, port string) error
 }
 
 // implements the dialer interface
 type defaultDialer struct{}
 
-func (defaultDialer) NetDialerDial(deadline time.Time, c *Conn, host, port string) (err error) {
-	dialer := &net.Dialer{Deadline: deadline}
-	c.net, err = dialer.Dial("tcp", net.JoinHostPort(host, port))
+func (defaultDialer) NetDialerDial(ctx context.Context, c *Conn, host, port string) (err error) {
+	dialer := &net.Dialer{}
+	c.net, err = dialer.DialContext(ctx, "tcp", net.JoinHostPort(host, port))
 	return
 }
 
-func (defaultDialer) TLSDialWithDialer(deadline time.Time, c *Conn, host, port string) (err error) {
-	dialer := &net.Dialer{Deadline: deadline}
-	c.net, err = tls.DialWithDialer(dialer, "tcp", net.JoinHostPort(host, port), c.tlsConfig)
+func (defaultDialer) TLSDialWithDialer(ctx context.Context, c *Conn, host, port string) (err error) {
+	dialer := &tls.Dialer{Config: c.tlsConfig}
+	c.net, err = dialer.DialContext(ctx, "tcp", net.JoinHostPort(host, port))
 	return
 }
 
-func dialConn(deadline time.Time, addr string, opts *ConnOptions) (*Conn, error) {
+func dialConn(ctx context.Context, addr string, opts *ConnOptions) (*Conn, error) {
 	u, err := url.Parse(addr)
 	if err != nil {
 		return nil, err
@@ -221,11 +235,11 @@ func dialConn(deadline time.Time, addr string, opts *ConnOptions) (*Conn, error)
 
 	switch u.Scheme {
 	case "amqp", "":
-		err = c.dialer.NetDialerDial(deadline, c, host, port)
+		err = c.dialer.NetDialerDial(ctx, c, host, port)
 	case "amqps", "amqp+ssl":
 		c.initTLSConfig()
 		c.tlsNegotiation = false
-		err = c.dialer.TLSDialWithDialer(deadline, c, host, port)
+		err = c.dialer.TLSDialWithDialer(ctx, c, host, port)
 	default:
 		err = fmt.Errorf("unsupported scheme %q", u.Scheme)
 	}
@@ -248,9 +262,10 @@ func newConn(netConn net.Conn, opts *ConnOptions) (*Conn, error) {
 		done:              make(chan struct{}),
 		rxtxExit:          make(chan struct{}),
 		rxDone:            make(chan struct{}),
-		txFrame:           make(chan frames.Frame),
+		txFrame:           make(chan frameEnvelope),
 		txDone:            make(chan struct{}),
 		sessionsByChannel: map[uint16]*Session{},
+		writeTimeout:      defaultWriteTimeout,
 	}
 
 	// apply options
@@ -258,6 +273,11 @@ func newConn(netConn net.Conn, opts *ConnOptions) (*Conn, error) {
 		opts = &ConnOptions{}
 	}
 
+	if opts.WriteTimeout > 0 {
+		c.writeTimeout = opts.WriteTimeout
+	} else if opts.WriteTimeout < 0 {
+		c.writeTimeout = 0
+	}
 	if opts.ContainerID != "" {
 		c.containerID = opts.ContainerID
 	}
@@ -311,25 +331,36 @@ func (c *Conn) initTLSConfig() {
 
 // start establishes the connection and begins multiplexing network IO.
 // It is an error to call Start() on a connection that's been closed.
-func (c *Conn) start(deadline time.Time) error {
-	// set connection establishment deadline
-	_ = c.net.SetDeadline(deadline)
+func (c *Conn) start(ctx context.Context) (err error) {
+	// if the context has a deadline or is cancellable, start the interruptor goroutine.
+	// this will close the underlying net.Conn in response to the context.
 
-	// run connection establishment state machine
-	for state := c.negotiateProto; state != nil; {
-		var err error
-		state, err = state()
-		// check if err occurred
-		if err != nil {
-			close(c.txDone) // close here since connWriter hasn't been started yet
-			close(c.rxDone)
-			_ = c.Close()
-			return err
-		}
+	if ctx.Done() != nil {
+		done := make(chan struct{})
+		interruptRes := make(chan error, 1)
+
+		defer func() {
+			close(done)
+			if ctxErr := <-interruptRes; ctxErr != nil {
+				// return context error to caller
+				err = ctxErr
+			}
+		}()
+
+		go func() {
+			select {
+			case <-ctx.Done():
+				c.closeDuringStart()
+				interruptRes <- ctx.Err()
+			case <-done:
+				interruptRes <- nil
+			}
+		}()
 	}
 
-	// remove connection establishment deadline
-	_ = c.net.SetDeadline(time.Time{})
+	if err = c.startImpl(ctx); err != nil {
+		return err
+	}
 
 	// we can't create the channel bitmap until the connection has been established.
 	// this is because our peer can tell us the max channels they support.
@@ -338,12 +369,44 @@ func (c *Conn) start(deadline time.Time) error {
 	go c.connWriter()
 	go c.connReader()
 
+	return
+}
+
+func (c *Conn) startImpl(ctx context.Context) error {
+	// set connection establishment deadline as required
+	if deadline, ok := ctx.Deadline(); ok && !deadline.IsZero() {
+		_ = c.net.SetDeadline(deadline)
+
+		// remove connection establishment deadline
+		defer func() {
+			_ = c.net.SetDeadline(time.Time{})
+		}()
+	}
+
+	// run connection establishment state machine
+	for state := c.negotiateProto; state != nil; {
+		var err error
+		state, err = state(ctx)
+		// check if err occurred
+		if err != nil {
+			c.closeDuringStart()
+			return err
+		}
+	}
+
 	return nil
 }
 
 // Close closes the connection.
 func (c *Conn) Close() error {
 	c.close()
+
+	// wait until the reader/writer goroutines have exited before proceeding.
+	// this is to prevent a race between calling Close() and a reader/writer
+	// goroutine calling close() due to a terminal error.
+	<-c.txDone
+	<-c.rxDone
+
 	var connErr *ConnError
 	if errors.As(c.doneErr, &connErr) && connErr.RemoteErr == nil && connErr.inner == nil {
 		// an empty ConnectionError means the connection was closed by the caller
@@ -383,7 +446,8 @@ func (c *Conn) close() {
 			// we experienced a peer-initiated close that contained an Error.  return it
 			c.doneErr = &ConnError{RemoteErr: amqpErr}
 		} else if c.txErr != nil {
-			c.doneErr = &ConnError{inner: c.txErr}
+			// c.txErr is already wrapped in a ConnError
+			c.doneErr = c.txErr
 		} else if c.rxErr != nil {
 			c.doneErr = &ConnError{inner: c.rxErr}
 		} else {
@@ -392,25 +456,54 @@ func (c *Conn) close() {
 	})
 }
 
+// closeDuringStart is a special close to be used only during startup (i.e. c.start() and any of its children)
+func (c *Conn) closeDuringStart() {
+	c.closeOnce.Do(func() {
+		c.net.Close()
+	})
+}
+
 // NewSession starts a new session on the connection.
 //   - ctx controls waiting for the peer to acknowledge the session
 //   - opts contains optional values, pass nil to accept the defaults
 //
 // If the context's deadline expires or is cancelled before the operation
-// completes, the application can be left in an unknown state, potentially
-// resulting in connection errors.
+// completes, an error is returned. If the Session was successfully
+// created, it will be cleaned up in future calls to NewSession.
 func (c *Conn) NewSession(ctx context.Context, opts *SessionOptions) (*Session, error) {
+	// clean up any abandoned sessions first
+	if err := c.freeAbandonedSessions(ctx); err != nil {
+		return nil, err
+	}
+
 	session, err := c.newSession(opts)
 	if err != nil {
 		return nil, err
 	}
 
 	if err := session.begin(ctx); err != nil {
-		c.deleteSession(session)
+		c.abandonSession(session)
 		return nil, err
 	}
 
 	return session, nil
+}
+
+func (c *Conn) freeAbandonedSessions(ctx context.Context) error {
+	c.abandonedSessionsMu.Lock()
+	defer c.abandonedSessionsMu.Unlock()
+
+	debug.Log(3, "TX (Conn %p): cleaning up %d abandoned sessions", c, len(c.abandonedSessions))
+
+	for _, s := range c.abandonedSessions {
+		fr := frames.PerformEnd{}
+		if err := s.txFrameAndWait(ctx, &fr); err != nil {
+			return err
+		}
+	}
+
+	c.abandonedSessions = nil
+	return nil
 }
 
 func (c *Conn) newSession(opts *SessionOptions) (*Session, error) {
@@ -421,7 +514,10 @@ func (c *Conn) newSession(opts *SessionOptions) (*Session, error) {
 	// note that channel always start at 0
 	channel, ok := c.channels.Next()
 	if !ok {
-		return nil, fmt.Errorf("reached connection channel max (%d)", c.channelMax)
+		if err := c.Close(); err != nil {
+			return nil, err
+		}
+		return nil, &ConnError{inner: fmt.Errorf("reached connection channel max (%d)", c.channelMax)}
 	}
 	session := newSession(c, uint16(channel), opts)
 	c.sessionsByChannel[session.channel] = session
@@ -437,6 +533,12 @@ func (c *Conn) deleteSession(s *Session) {
 	c.channels.Remove(uint32(s.channel))
 }
 
+func (c *Conn) abandonSession(s *Session) {
+	c.abandonedSessionsMu.Lock()
+	defer c.abandonedSessionsMu.Unlock()
+	c.abandonedSessions = append(c.abandonedSessions, s)
+}
+
 // connReader reads from the net.Conn, decodes frames, and either handles
 // them here as appropriate or sends them to the session.rx channel.
 func (c *Conn) connReader() {
@@ -449,7 +551,7 @@ func (c *Conn) connReader() {
 	var err error
 	for {
 		if err != nil {
-			debug.Log(1, "RX (connReader): terminal error: %v", err)
+			debug.Log(1, "RX (connReader %p): terminal error: %v", c, err)
 			c.rxErr = err
 			return
 		}
@@ -460,7 +562,7 @@ func (c *Conn) connReader() {
 			continue
 		}
 
-		debug.Log(1, "RX (connReader): %s", fr)
+		debug.Log(1, "RX (connReader %p): %s", c, fr)
 
 		var (
 			session *Session
@@ -509,6 +611,7 @@ func (c *Conn) connReader() {
 			// the ack (i.e. before passing it on to the session mux) on the session
 			// ending since the numbers are recycled.
 			delete(sessionsByRemoteChannel, fr.Channel)
+			c.deleteSession(session)
 
 		default:
 			// pass on performative to the correct session
@@ -522,7 +625,7 @@ func (c *Conn) connReader() {
 		q := session.rxQ.Acquire()
 		q.Enqueue(fr.Body)
 		session.rxQ.Release(q)
-		debug.Log(2, "RX (connReader): mux frame to session: %s", fr)
+		debug.Log(2, "RX (connReader %p): mux frame to Session (%p): %s", c, session, fr)
 	}
 }
 
@@ -589,7 +692,7 @@ func (c *Conn) readFrame() (frames.Frame, error) {
 
 		// check if body is empty (keepalive)
 		if bodySize == 0 {
-			debug.Log(3, "RX (connReader): received keep-alive frame")
+			debug.Log(3, "RX (connReader %p): received keep-alive frame", c)
 			continue
 		}
 
@@ -606,6 +709,16 @@ func (c *Conn) readFrame() (frames.Frame, error) {
 
 		return frames.Frame{Channel: currentHeader.Channel, Body: parsedBody}, nil
 	}
+}
+
+// frameEnvelope is used when sending a frame to connWriter to be written to net.Conn
+type frameEnvelope struct {
+	Ctx   context.Context
+	Frame frames.Frame
+
+	// optional channel that is closed on successful write to net.Conn or contains the write error
+	// NOTE: use a buffered channel of size 1 when populating
+	Sent chan error
 }
 
 func (c *Conn) connWriter() {
@@ -632,24 +745,40 @@ func (c *Conn) connWriter() {
 	var err error
 	for {
 		if err != nil {
-			debug.Log(1, "TX (connWriter): terminal error: %v", err)
+			debug.Log(1, "TX (connWriter %p): terminal error: %v", c, err)
 			c.txErr = err
 			return
 		}
 
 		select {
 		// frame write request
-		case fr := <-c.txFrame:
-			debug.Log(1, "TX (connWriter): %s", fr)
-			err = c.writeFrame(fr)
-			if err == nil && fr.Done != nil {
-				close(fr.Done)
+		case env := <-c.txFrame:
+			timeout, ctxErr := c.getWriteTimeout(env.Ctx)
+			if ctxErr != nil {
+				debug.Log(1, "TX (connWriter %p) deadline exceeded: %s", c, env.Frame)
+				if env.Sent != nil {
+					env.Sent <- ctxErr
+				}
+				continue
+			}
+
+			debug.Log(1, "TX (connWriter %p) timeout %s: %s", c, timeout, env.Frame)
+			err = c.writeFrame(timeout, env.Frame)
+			if env.Sent != nil {
+				if err == nil {
+					close(env.Sent)
+				} else {
+					env.Sent <- err
+				}
 			}
 
 		// keepalive timer
 		case <-keepalive:
-			debug.Log(3, "TX (connWriter): sending keep-alive frame")
-			_, err = c.net.Write(keepaliveFrame)
+			debug.Log(3, "TX (connWriter %p): sending keep-alive frame", c)
+			_ = c.net.SetWriteDeadline(time.Now().Add(c.writeTimeout))
+			if _, err = c.net.Write(keepaliveFrame); err != nil {
+				err = &ConnError{inner: err}
+			}
 			// It would be slightly more efficient in terms of network
 			// resources to reset the timer each time a frame is sent.
 			// However, keepalives are small (8 bytes) and the interval
@@ -668,8 +797,8 @@ func (c *Conn) connWriter() {
 				Type: frames.TypeAMQP,
 				Body: &frames.PerformClose{},
 			}
-			debug.Log(1, "TX (connWriter): %s", fr)
-			c.txErr = c.writeFrame(fr)
+			debug.Log(1, "TX (connWriter %p): %s", c, fr)
+			c.txErr = c.writeFrame(c.writeTimeout, fr)
 			return
 		}
 	}
@@ -677,24 +806,36 @@ func (c *Conn) connWriter() {
 
 // writeFrame writes a frame to the network.
 // used externally by SASL only.
-func (c *Conn) writeFrame(fr frames.Frame) error {
+//   - timeout - the write deadline to set. zero means no deadline
+//
+// errors are wrapped in a ConnError as they can be returned to outside callers.
+func (c *Conn) writeFrame(timeout time.Duration, fr frames.Frame) error {
 	// writeFrame into txBuf
 	c.txBuf.Reset()
 	err := frames.Write(&c.txBuf, fr)
 	if err != nil {
-		return err
+		return &ConnError{inner: err}
 	}
 
 	// validate the frame isn't exceeding peer's max frame size
 	requiredFrameSize := c.txBuf.Len()
 	if uint64(requiredFrameSize) > uint64(c.peerMaxFrameSize) {
-		return fmt.Errorf("%T frame size %d larger than peer's max frame size %d", fr, requiredFrameSize, c.peerMaxFrameSize)
+		return &ConnError{inner: fmt.Errorf("%T frame size %d larger than peer's max frame size %d", fr, requiredFrameSize, c.peerMaxFrameSize)}
+	}
+
+	if timeout == 0 {
+		_ = c.net.SetWriteDeadline(time.Time{})
+	} else if timeout > 0 {
+		_ = c.net.SetWriteDeadline(time.Now().Add(timeout))
 	}
 
 	// write to network
 	n, err := c.net.Write(c.txBuf.Bytes())
 	if l := c.txBuf.Len(); n > 0 && n < l && err != nil {
-		debug.Log(1, "TX (writeFrame): wrote %d bytes less than len %d: %v", n, l, err)
+		debug.Log(1, "TX (writeFrame %p): wrote %d bytes less than len %d: %v", c, n, l, err)
+	}
+	if err != nil {
+		err = &ConnError{inner: err}
 	}
 	return err
 }
@@ -710,13 +851,17 @@ func (c *Conn) writeProtoHeader(pID protoID) error {
 var keepaliveFrame = []byte{0x00, 0x00, 0x00, 0x08, 0x02, 0x00, 0x00, 0x00}
 
 // SendFrame is used by sessions and links to send frames across the network.
-func (c *Conn) sendFrame(fr frames.Frame) error {
+//   - ctx is used to provide the write deadline
+//   - fr is the frame to write to net.Conn
+//   - sent is the optional channel that will contain the error if the write fails
+func (c *Conn) sendFrame(ctx context.Context, fr frames.Frame, sent chan error) {
 	select {
-	case c.txFrame <- fr:
-		debug.Log(2, "TX (Conn): mux frame to connWriter: %s", fr)
-		return nil
+	case c.txFrame <- frameEnvelope{Ctx: ctx, Frame: fr, Sent: sent}:
+		debug.Log(2, "TX (Conn %p): mux frame to connWriter: %s", c, fr)
 	case <-c.done:
-		return c.doneErr
+		if sent != nil {
+			sent <- c.doneErr
+		}
 	}
 }
 
@@ -724,11 +869,11 @@ func (c *Conn) sendFrame(fr frames.Frame) error {
 //
 // The state is advanced by returning the next state.
 // The state machine concludes when nil is returned.
-type stateFunc func() (stateFunc, error)
+type stateFunc func(context.Context) (stateFunc, error)
 
 // negotiateProto determines which proto to negotiate next.
 // used externally by SASL only.
-func (c *Conn) negotiateProto() (stateFunc, error) {
+func (c *Conn) negotiateProto(ctx context.Context) (stateFunc, error) {
 	// in the order each must be negotiated
 	switch {
 	case c.tlsNegotiation && !c.tlsComplete:
@@ -829,14 +974,14 @@ func (c *Conn) readProtoHeader() (protoHeader, error) {
 }
 
 // startTLS wraps the conn with TLS and returns to Client.negotiateProto
-func (c *Conn) startTLS() (stateFunc, error) {
+func (c *Conn) startTLS(ctx context.Context) (stateFunc, error) {
 	c.initTLSConfig()
 
 	_ = c.net.SetReadDeadline(time.Time{}) // clear timeout
 
 	// wrap existing net.Conn and perform TLS handshake
 	tlsConn := tls.Client(c.net, c.tlsConfig)
-	if err := tlsConn.Handshake(); err != nil {
+	if err := tlsConn.HandshakeContext(ctx); err != nil {
 		return nil, err
 	}
 
@@ -849,7 +994,7 @@ func (c *Conn) startTLS() (stateFunc, error) {
 }
 
 // openAMQP round trips the AMQP open performative
-func (c *Conn) openAMQP() (stateFunc, error) {
+func (c *Conn) openAMQP(ctx context.Context) (stateFunc, error) {
 	// send open frame
 	open := &frames.PerformOpen{
 		ContainerID:  c.containerID,
@@ -864,9 +1009,12 @@ func (c *Conn) openAMQP() (stateFunc, error) {
 		Body:    open,
 		Channel: 0,
 	}
-	debug.Log(1, "TX (openAMQP): %s", fr)
-	err := c.writeFrame(fr)
+	debug.Log(1, "TX (openAMQP %p): %s", c, fr)
+	timeout, err := c.getWriteTimeout(ctx)
 	if err != nil {
+		return nil, err
+	}
+	if err = c.writeFrame(timeout, fr); err != nil {
 		return nil, err
 	}
 
@@ -875,7 +1023,7 @@ func (c *Conn) openAMQP() (stateFunc, error) {
 	if err != nil {
 		return nil, err
 	}
-	debug.Log(1, "RX (openAMQP): %s", fr)
+	debug.Log(1, "RX (openAMQP %p): %s", c, fr)
 	o, ok := fr.Body.(*frames.PerformOpen)
 	if !ok {
 		return nil, fmt.Errorf("openAMQP: unexpected frame type %T", fr.Body)
@@ -899,13 +1047,13 @@ func (c *Conn) openAMQP() (stateFunc, error) {
 
 // negotiateSASL returns the SASL handler for the first matched
 // mechanism specified by the server
-func (c *Conn) negotiateSASL() (stateFunc, error) {
+func (c *Conn) negotiateSASL(context.Context) (stateFunc, error) {
 	// read mechanisms frame
 	fr, err := c.readSingleFrame()
 	if err != nil {
 		return nil, err
 	}
-	debug.Log(1, "RX (negotiateSASL): %s", fr)
+	debug.Log(1, "RX (negotiateSASL %p): %s", c, fr)
 	sm, ok := fr.Body.(*frames.SASLMechanisms)
 	if !ok {
 		return nil, fmt.Errorf("negotiateSASL: unexpected frame type %T", fr.Body)
@@ -928,13 +1076,13 @@ func (c *Conn) negotiateSASL() (stateFunc, error) {
 // SASL handlers return this stateFunc when the mechanism specific negotiation
 // has completed.
 // used externally by SASL only.
-func (c *Conn) saslOutcome() (stateFunc, error) {
+func (c *Conn) saslOutcome(context.Context) (stateFunc, error) {
 	// read outcome frame
 	fr, err := c.readSingleFrame()
 	if err != nil {
 		return nil, err
 	}
-	debug.Log(1, "RX (saslOutcome): %s", fr)
+	debug.Log(1, "RX (saslOutcome %p): %s", c, fr)
 	so, ok := fr.Body.(*frames.SASLOutcome)
 	if !ok {
 		return nil, fmt.Errorf("saslOutcome: unexpected frame type %T", fr.Body)
@@ -960,6 +1108,20 @@ func (c *Conn) readSingleFrame() (frames.Frame, error) {
 	}
 
 	return fr, nil
+}
+
+// getWriteTimeout returns the timeout as calculated from the context's deadline
+// or the default write timeout if the context has no deadline.
+// if the context has timed out or was cancelled, an error is returned.
+func (c *Conn) getWriteTimeout(ctx context.Context) (time.Duration, error) {
+	if deadline, ok := ctx.Deadline(); ok {
+		until := time.Until(deadline)
+		if until <= 0 {
+			return 0, context.DeadlineExceeded
+		}
+		return until, nil
+	}
+	return c.writeTimeout, nil
 }
 
 type protoHeader struct {

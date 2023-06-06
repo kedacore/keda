@@ -122,7 +122,7 @@ var OutputToStdout = outputToStdout{}
 // Generally useful for single-artifact outputs.
 type outputToStdout struct{}
 
-func (o outputToStdout) Open(_ *loader.Package, itemPath string) (io.WriteCloser, error) {
+func (o outputToStdout) Open(_ *loader.Package, _ string) (io.WriteCloser, error) {
 	return nopCloser{os.Stdout}, nil
 }
 

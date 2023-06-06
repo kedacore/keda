@@ -428,10 +428,8 @@ func (cs *ChangeStream) createPipelineOptionsDoc() (bsoncore.Document, error) {
 		plDoc = bsoncore.AppendBooleanElement(plDoc, "allChangesForCluster", true)
 	}
 
-	if cs.options.FullDocument != nil {
-		if *cs.options.FullDocument != options.Default {
-			plDoc = bsoncore.AppendStringElement(plDoc, "fullDocument", string(*cs.options.FullDocument))
-		}
+	if cs.options.FullDocument != nil && *cs.options.FullDocument != options.Default {
+		plDoc = bsoncore.AppendStringElement(plDoc, "fullDocument", string(*cs.options.FullDocument))
 	}
 
 	if cs.options.FullDocumentBeforeChange != nil {

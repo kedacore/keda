@@ -29,8 +29,8 @@ const (
 
 type (
 	EntityManager interface {
-		Get(ctx context.Context, entityPath string, respObj interface{}) (*http.Response, error)
-		Put(ctx context.Context, entityPath string, body interface{}, respObj interface{}, options *ExecuteOptions) (*http.Response, error)
+		Get(ctx context.Context, entityPath string, respObj any) (*http.Response, error)
+		Put(ctx context.Context, entityPath string, body any, respObj any, options *ExecuteOptions) (*http.Response, error)
 		Delete(ctx context.Context, entityPath string) (*http.Response, error)
 		TokenProvider() auth.TokenProvider
 	}
@@ -120,7 +120,7 @@ func NewEntityManager(ns string, tokenCredential azcore.TokenCredential, version
 }
 
 // Get performs an HTTP Get for a given entity path, deserializing the returned XML into `respObj`
-func (em *entityManager) Get(ctx context.Context, entityPath string, respObj interface{}) (*http.Response, error) {
+func (em *entityManager) Get(ctx context.Context, entityPath string, respObj any) (*http.Response, error) {
 	resp, err := em.execute(ctx, http.MethodGet, entityPath, http.NoBody, nil)
 	defer CloseRes(ctx, resp)
 
@@ -132,7 +132,7 @@ func (em *entityManager) Get(ctx context.Context, entityPath string, respObj int
 }
 
 // Put performs an HTTP PUT for a given entity path and body, deserializing the returned XML into `respObj`
-func (em *entityManager) Put(ctx context.Context, entityPath string, body interface{}, respObj interface{}, options *ExecuteOptions) (*http.Response, error) {
+func (em *entityManager) Put(ctx context.Context, entityPath string, body any, respObj any, options *ExecuteOptions) (*http.Response, error) {
 	bodyBytes, err := xml.Marshal(body)
 
 	if err != nil {
@@ -212,7 +212,7 @@ var ErrFeedEmpty = errors.New("entity does not exist")
 // deserializeBody deserializes the body of the response into the type specified by respObj
 // (similar to xml.Unmarshal, which this func is calling).
 // If an empty feed is found, it returns nil.
-func deserializeBody(resp *http.Response, respObj interface{}) (*http.Response, error) {
+func deserializeBody(resp *http.Response, respObj any) (*http.Response, error) {
 	bytes, err := io.ReadAll(resp.Body)
 
 	if err != nil {

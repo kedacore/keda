@@ -4,10 +4,10 @@ param baseName string = resourceGroup().name
 @description('The client OID to grant access to test resources.')
 param testApplicationOid string
 
+@description('The resource location')
+param location string = resourceGroup().location
+
 var apiVersion = '2017-04-01'
-var location = resourceGroup().location
-var authorizationRuleName_var = '${baseName}/RootManageSharedAccessKey'
-var authorizationRuleNameNoManage_var = '${baseName}/NoManage'
 var serviceBusDataOwnerRoleId = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/090c5cfd-751d-490a-894a-3ce6f1109419'
 
 var sbPremiumName = 'sb-premium-${baseName}'
@@ -35,7 +35,8 @@ resource servicebusPremium 'Microsoft.ServiceBus/namespaces@2018-01-01-preview' 
 
 
 resource authorizationRuleName 'Microsoft.ServiceBus/namespaces/AuthorizationRules@2015-08-01' = {
-  name: authorizationRuleName_var
+  parent: servicebus
+  name: 'RootManageSharedAccessKey'
   location: location
   properties: {
     rights: [
@@ -44,13 +45,11 @@ resource authorizationRuleName 'Microsoft.ServiceBus/namespaces/AuthorizationRul
       'Send'
     ]
   }
-  dependsOn: [
-    servicebus
-  ]
 }
 
 resource authorizationRuleNameNoManage 'Microsoft.ServiceBus/namespaces/AuthorizationRules@2015-08-01' = {
-  name: authorizationRuleNameNoManage_var
+  parent: servicebus
+  name: 'NoManage'
   location: location
   properties: {
     rights: [
@@ -58,12 +57,29 @@ resource authorizationRuleNameNoManage 'Microsoft.ServiceBus/namespaces/Authoriz
       'Send'
     ]
   }
-  dependsOn: [
-    servicebus
-  ]
 }
 
+resource authorizationRuleNameSendOnly 'Microsoft.ServiceBus/namespaces/AuthorizationRules@2015-08-01' = {
+  parent: servicebus
+  name: 'SendOnly'
+  location: location
+  properties: {
+    rights: [
+      'Send'
+    ]
+  }
+}
 
+resource authorizationRuleNameListenOnly 'Microsoft.ServiceBus/namespaces/AuthorizationRules@2015-08-01' = {
+  parent: servicebus
+  name: 'ListenOnly'
+  location: location
+  properties: {
+    rights: [
+      'Listen'
+    ]
+  }
+}
 
 resource dataOwnerRoleId 'Microsoft.Authorization/roleAssignments@2018-01-01-preview' = {
   name: guid('dataOwnerRoleId${baseName}')
@@ -113,7 +129,12 @@ resource testQueueWithSessions 'Microsoft.ServiceBus/namespaces/queues@2017-04-0
 }
 
 output SERVICEBUS_CONNECTION_STRING string = listKeys(resourceId('Microsoft.ServiceBus/namespaces/authorizationRules', baseName, 'RootManageSharedAccessKey'), apiVersion).primaryConnectionString
+
+// connection strings with fewer rights - no manage rights, listen only (ie, receive) and send only.
 output SERVICEBUS_CONNECTION_STRING_NO_MANAGE string = listKeys(resourceId('Microsoft.ServiceBus/namespaces/authorizationRules', baseName, 'NoManage'), apiVersion).primaryConnectionString
+output SERVICEBUS_CONNECTION_STRING_SEND_ONLY string = listKeys(resourceId('Microsoft.ServiceBus/namespaces/authorizationRules', baseName, 'SendOnly'), apiVersion).primaryConnectionString
+output SERVICEBUS_CONNECTION_STRING_LISTEN_ONLY string = listKeys(resourceId('Microsoft.ServiceBus/namespaces/authorizationRules', baseName, 'ListenOnly'), apiVersion).primaryConnectionString
+
 output SERVICEBUS_CONNECTION_STRING_PREMIUM string = listKeys(resourceId('Microsoft.ServiceBus/namespaces/authorizationRules', sbPremiumName, 'RootManageSharedAccessKey'), apiVersion).primaryConnectionString
 output SERVICEBUS_ENDPOINT string = replace(replace(servicebus.properties.serviceBusEndpoint, ':443/', ''), 'https://', '')
 output QUEUE_NAME string = 'testQueue'

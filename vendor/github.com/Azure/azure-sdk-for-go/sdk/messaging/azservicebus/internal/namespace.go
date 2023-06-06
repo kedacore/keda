@@ -20,9 +20,9 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/auth"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/conn"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/exported"
-	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/go-amqp"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/sbauth"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/utils"
+	"github.com/Azure/go-amqp"
 )
 
 var rootUserAgent = telemetry.Format("azservicebus", Version)
@@ -70,7 +70,17 @@ type NamespaceForAMQPLinks interface {
 	NewAMQPSession(ctx context.Context) (amqpwrap.AMQPSession, uint64, error)
 	NewRPCLink(ctx context.Context, managementPath string) (amqpwrap.RPCLink, error)
 	GetEntityAudience(entityPath string) string
+
+	// Recover destroys the currently held AMQP connection and recreates it, if needed.
+	//
+	// If a new client is actually created (rather than just cached) then the returned bool
+	// will be true. Any links that were created from the original connection will need to
+	// be recreated.
+	//
+	// NOTE: cancelling the context only cancels the initialization of a new AMQP
+	// connection - the previous connection is always closed.
 	Recover(ctx context.Context, clientRevision uint64) (bool, error)
+
 	Close(permanently bool) error
 }
 
@@ -164,7 +174,7 @@ func (ns *Namespace) newClientImpl(ctx context.Context) (amqpwrap.AMQPClient, er
 	connOptions := amqp.ConnOptions{
 		SASLType:    amqp.SASLTypeAnonymous(),
 		MaxSessions: 65535,
-		Properties: map[string]interface{}{
+		Properties: map[string]any{
 			"product":    "MSGolangClient",
 			"version":    Version,
 			"platform":   runtime.GOOS,
@@ -193,12 +203,12 @@ func (ns *Namespace) newClientImpl(ctx context.Context) (amqpwrap.AMQPClient, er
 		}
 
 		connOptions.HostName = ns.FQDN
-		client, err := amqp.New(nConn, &connOptions)
+		client, err := amqp.NewConn(ctx, nConn, &connOptions)
 
 		return &amqpwrap.AMQPClientWrapper{Inner: client, ID: id.String()}, err
 	}
 
-	client, err := amqp.Dial(ns.getAMQPHostURI(), &connOptions)
+	client, err := amqp.Dial(ctx, ns.getAMQPHostURI(), &connOptions)
 	return &amqpwrap.AMQPClientWrapper{Inner: client, ID: id.String()}, err
 }
 
@@ -247,7 +257,10 @@ func (ns *Namespace) Close(permanently bool) error {
 	if ns.client != nil {
 		err := ns.client.Close()
 		ns.client = nil
-		return err
+
+		if err != nil {
+			log.Writef(exported.EventConn, "Failed when closing AMQP connection: %s", err)
+		}
 	}
 
 	return nil
@@ -268,9 +281,13 @@ func (ns *Namespace) Check() error {
 var ErrClientClosed = NewErrNonRetriable("client has been closed by user")
 
 // Recover destroys the currently held AMQP connection and recreates it, if needed.
-// If a new is actually created (rather than just cached) then the returned bool
+//
+// If a new client is actually created (rather than just cached) then the returned bool
 // will be true. Any links that were created from the original connection will need to
 // be recreated.
+//
+// NOTE: cancelling the context only cancels the initialization of a new AMQP
+// connection - the previous connection is always closed.
 func (ns *Namespace) Recover(ctx context.Context, theirConnID uint64) (bool, error) {
 	if err := ns.Check(); err != nil {
 		return false, err
@@ -321,7 +338,7 @@ func (ns *Namespace) NegotiateClaim(ctx context.Context, entityPath string) (con
 // when the background renewal stops or an error.
 func (ns *Namespace) startNegotiateClaimRenewer(ctx context.Context,
 	entityPath string,
-	cbsNegotiateClaim func(ctx context.Context, audience string, conn amqpwrap.AMQPClient, provider auth.TokenProvider) error,
+	cbsNegotiateClaim func(ctx context.Context, audience string, conn amqpwrap.AMQPClient, provider auth.TokenProvider, contextWithTimeoutFn contextWithTimeoutFn) error,
 	nextClaimRefreshDurationFn func(expirationTime time.Time, currentTime time.Time) time.Duration) (func(), <-chan struct{}, error) {
 	audience := ns.GetEntityAudience(entityPath)
 
@@ -347,7 +364,7 @@ func (ns *Namespace) startNegotiateClaimRenewer(ctx context.Context,
 		// The current cbs.NegotiateClaim implementation automatically creates and shuts
 		// down it's own link so we have to guard against that here.
 		ns.negotiateClaimMu.Lock()
-		err = cbsNegotiateClaim(ctx, audience, amqpClient, token)
+		err = cbsNegotiateClaim(ctx, audience, amqpClient, token, context.WithTimeout)
 		ns.negotiateClaimMu.Unlock()
 
 		if err != nil {
@@ -378,6 +395,8 @@ func (ns *Namespace) startNegotiateClaimRenewer(ctx context.Context,
 
 	// connection strings with embedded SAS tokens will return a zero expiration time since they can't be renewed.
 	if expiresOn.IsZero() {
+		log.Writef(exported.EventAuth, "Token does not have an expiration date, no background renewal needed.")
+
 		// cancel everything related to the claims refresh loop.
 		cancelRefreshCtx()
 		close(refreshStoppedCh)

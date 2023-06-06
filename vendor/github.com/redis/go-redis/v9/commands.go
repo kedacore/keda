@@ -106,18 +106,53 @@ func appendStructField(dst []interface{}, v reflect.Value) []interface{} {
 		if tag == "" || tag == "-" {
 			continue
 		}
-		tag = strings.Split(tag, ",")[0]
-		if tag == "" {
+		name, opt, _ := strings.Cut(tag, ",")
+		if name == "" {
 			continue
 		}
 
 		field := v.Field(i)
+
+		// miss field
+		if omitEmpty(opt) && isEmptyValue(field) {
+			continue
+		}
+
 		if field.CanInterface() {
-			dst = append(dst, tag, field.Interface())
+			dst = append(dst, name, field.Interface())
 		}
 	}
 
 	return dst
+}
+
+func omitEmpty(opt string) bool {
+	for opt != "" {
+		var name string
+		name, opt, _ = strings.Cut(opt, ",")
+		if name == "omitempty" {
+			return true
+		}
+	}
+	return false
+}
+
+func isEmptyValue(v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
+		return v.Len() == 0
+	case reflect.Bool:
+		return !v.Bool()
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return v.Int() == 0
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return v.Uint() == 0
+	case reflect.Float32, reflect.Float64:
+		return v.Float() == 0
+	case reflect.Interface, reflect.Pointer:
+		return v.IsNil()
+	}
+	return false
 }
 
 type Cmdable interface {
@@ -338,6 +373,7 @@ type Cmdable interface {
 	ZRangeArgsWithScores(ctx context.Context, z ZRangeArgs) *ZSliceCmd
 	ZRangeStore(ctx context.Context, dst string, z ZRangeArgs) *IntCmd
 	ZRank(ctx context.Context, key, member string) *IntCmd
+	ZRankWithScore(ctx context.Context, key, member string) *RankWithScoreCmd
 	ZRem(ctx context.Context, key string, members ...interface{}) *IntCmd
 	ZRemRangeByRank(ctx context.Context, key string, start, stop int64) *IntCmd
 	ZRemRangeByScore(ctx context.Context, key, min, max string) *IntCmd
@@ -348,6 +384,7 @@ type Cmdable interface {
 	ZRevRangeByLex(ctx context.Context, key string, opt *ZRangeBy) *StringSliceCmd
 	ZRevRangeByScoreWithScores(ctx context.Context, key string, opt *ZRangeBy) *ZSliceCmd
 	ZRevRank(ctx context.Context, key, member string) *IntCmd
+	ZRevRankWithScore(ctx context.Context, key, member string) *RankWithScoreCmd
 	ZScore(ctx context.Context, key, member string) *FloatCmd
 	ZUnionStore(ctx context.Context, dest string, store *ZStore) *IntCmd
 	ZRandMember(ctx context.Context, key string, count int) *StringSliceCmd
@@ -367,6 +404,7 @@ type Cmdable interface {
 	ClientKill(ctx context.Context, ipPort string) *StatusCmd
 	ClientKillByFilter(ctx context.Context, keys ...string) *IntCmd
 	ClientList(ctx context.Context) *StringCmd
+	ClientInfo(ctx context.Context) *ClientInfoCmd
 	ClientPause(ctx context.Context, dur time.Duration) *BoolCmd
 	ClientUnpause(ctx context.Context) *BoolCmd
 	ClientID(ctx context.Context) *IntCmd
@@ -416,6 +454,7 @@ type Cmdable interface {
 	FunctionStats(ctx context.Context) *FunctionStatsCmd
 	FCall(ctx context.Context, function string, keys []string, args ...interface{}) *Cmd
 	FCallRo(ctx context.Context, function string, keys []string, args ...interface{}) *Cmd
+	FCallRO(ctx context.Context, function string, keys []string, args ...interface{}) *Cmd
 
 	Publish(ctx context.Context, channel string, message interface{}) *IntCmd
 	SPublish(ctx context.Context, channel string, message interface{}) *IntCmd
@@ -425,6 +464,7 @@ type Cmdable interface {
 	PubSubShardChannels(ctx context.Context, pattern string) *StringSliceCmd
 	PubSubShardNumSub(ctx context.Context, channels ...string) *MapStringIntCmd
 
+	ClusterMyShardID(ctx context.Context) *StringCmd
 	ClusterSlots(ctx context.Context) *ClusterSlotsCmd
 	ClusterShards(ctx context.Context) *ClusterShardsCmd
 	ClusterLinks(ctx context.Context) *ClusterLinksCmd
@@ -460,6 +500,10 @@ type Cmdable interface {
 	GeoHash(ctx context.Context, key string, members ...string) *StringSliceCmd
 
 	ACLDryRun(ctx context.Context, username string, command ...interface{}) *StringCmd
+	ACLLog(ctx context.Context, count int64) *ACLLogCmd
+	ACLLogReset(ctx context.Context) *StatusCmd
+
+	ModuleLoadex(ctx context.Context, conf *ModuleLoadexConfig) *StringCmd
 }
 
 type StatefulCmdable interface {
@@ -2845,6 +2889,14 @@ func (c cmdable) ZRank(ctx context.Context, key, member string) *IntCmd {
 	return cmd
 }
 
+// ZRankWithScore according to the Redis documentation, if member does not exist
+// in the sorted set or key does not exist, it will return a redis.Nil error.
+func (c cmdable) ZRankWithScore(ctx context.Context, key, member string) *RankWithScoreCmd {
+	cmd := NewRankWithScoreCmd(ctx, "zrank", key, member, "withscore")
+	_ = c(ctx, cmd)
+	return cmd
+}
+
 func (c cmdable) ZRem(ctx context.Context, key string, members ...interface{}) *IntCmd {
 	args := make([]interface{}, 2, 2+len(members))
 	args[0] = "zrem"
@@ -2885,6 +2937,8 @@ func (c cmdable) ZRevRange(ctx context.Context, key string, start, stop int64) *
 	return cmd
 }
 
+// ZRevRangeWithScores according to the Redis documentation, if member does not exist
+// in the sorted set or key does not exist, it will return a redis.Nil error.
 func (c cmdable) ZRevRangeWithScores(ctx context.Context, key string, start, stop int64) *ZSliceCmd {
 	cmd := NewZSliceCmd(ctx, "zrevrange", key, start, stop, "withscores")
 	_ = c(ctx, cmd)
@@ -2931,6 +2985,12 @@ func (c cmdable) ZRevRangeByScoreWithScores(ctx context.Context, key string, opt
 
 func (c cmdable) ZRevRank(ctx context.Context, key, member string) *IntCmd {
 	cmd := NewIntCmd(ctx, "zrevrank", key, member)
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+func (c cmdable) ZRevRankWithScore(ctx context.Context, key, member string) *RankWithScoreCmd {
+	cmd := NewRankWithScoreCmd(ctx, "zrevrank", key, member, "withscore")
 	_ = c(ctx, cmd)
 	return cmd
 }
@@ -3134,6 +3194,14 @@ func (c cmdable) ClientUnblockWithError(ctx context.Context, id int64) *IntCmd {
 	_ = c(ctx, cmd)
 	return cmd
 }
+
+func (c cmdable) ClientInfo(ctx context.Context) *ClientInfoCmd {
+	cmd := NewClientInfoCmd(ctx, "client", "info")
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// ------------------------------------------------------------------------------------------------
 
 func (c cmdable) ConfigGet(ctx context.Context, parameter string) *MapStringStringCmd {
 	cmd := NewMapStringStringCmd(ctx, "config", "get", parameter)
@@ -3459,7 +3527,14 @@ func (c cmdable) FCall(ctx context.Context, function string, keys []string, args
 	_ = c(ctx, cmd)
 	return cmd
 }
+
+// FCallRo this function simply calls FCallRO,
+// Deprecated: to maintain convention FCallRO.
 func (c cmdable) FCallRo(ctx context.Context, function string, keys []string, args ...interface{}) *Cmd {
+	return c.FCallRO(ctx, function, keys, args...)
+}
+
+func (c cmdable) FCallRO(ctx context.Context, function string, keys []string, args ...interface{}) *Cmd {
 	cmdArgs := fcallArgs("fcall_ro", function, keys, args...)
 	cmd := NewCmd(ctx, cmdArgs...)
 	if len(keys) > 0 {
@@ -3548,6 +3623,12 @@ func (c cmdable) PubSubNumPat(ctx context.Context) *IntCmd {
 }
 
 //------------------------------------------------------------------------------
+
+func (c cmdable) ClusterMyShardID(ctx context.Context) *StringCmd {
+	cmd := NewStringCmd(ctx, "cluster", "myshardid")
+	_ = c(ctx, cmd)
+	return cmd
+}
 
 func (c cmdable) ClusterSlots(ctx context.Context) *ClusterSlotsCmd {
 	cmd := NewClusterSlotsCmd(ctx, "cluster", "slots")
@@ -3835,6 +3916,52 @@ func (c cmdable) ACLDryRun(ctx context.Context, username string, command ...inte
 	args = append(args, "acl", "dryrun", username)
 	args = append(args, command...)
 	cmd := NewStringCmd(ctx, args...)
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// ModuleLoadexConfig struct is used to specify the arguments for the MODULE LOADEX command of redis.
+// `MODULE LOADEX path [CONFIG name value [CONFIG name value ...]] [ARGS args [args ...]]`
+type ModuleLoadexConfig struct {
+	Path string
+	Conf map[string]interface{}
+	Args []interface{}
+}
+
+func (c *ModuleLoadexConfig) toArgs() []interface{} {
+	args := make([]interface{}, 3, 3+len(c.Conf)*3+len(c.Args)*2)
+	args[0] = "MODULE"
+	args[1] = "LOADEX"
+	args[2] = c.Path
+	for k, v := range c.Conf {
+		args = append(args, "CONFIG", k, v)
+	}
+	for _, arg := range c.Args {
+		args = append(args, "ARGS", arg)
+	}
+	return args
+}
+
+// ModuleLoadex Redis `MODULE LOADEX path [CONFIG name value [CONFIG name value ...]] [ARGS args [args ...]]` command.
+func (c cmdable) ModuleLoadex(ctx context.Context, conf *ModuleLoadexConfig) *StringCmd {
+	cmd := NewStringCmd(ctx, conf.toArgs()...)
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+func (c cmdable) ACLLog(ctx context.Context, count int64) *ACLLogCmd {
+	args := make([]interface{}, 0, 3)
+	args = append(args, "acl", "log")
+	if count > 0 {
+		args = append(args, count)
+	}
+	cmd := NewACLLogCmd(ctx, args...)
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+func (c cmdable) ACLLogReset(ctx context.Context) *StatusCmd {
+	cmd := NewStatusCmd(ctx, "acl", "log", "reset")
 	_ = c(ctx, cmd)
 	return cmd
 }

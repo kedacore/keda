@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.10: DO NOT EDIT
 
 package esapi
 
@@ -28,7 +28,7 @@ import (
 
 func newSecurityClearCachedServiceTokensFunc(t Transport) SecurityClearCachedServiceTokens {
 	return func(name []string, namespace string, service string, o ...func(*SecurityClearCachedServiceTokensRequest)) (*Response, error) {
-		var r = SecurityClearCachedServiceTokensRequest{Name: name, Namespace: namespace, Service: service}
+		var r = SecurityClearCachedServiceTokensRequest{Name: name, Service: service, Namespace: namespace}
 		for _, f := range o {
 			f(&r)
 		}

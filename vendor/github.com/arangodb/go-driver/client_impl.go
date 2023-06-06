@@ -24,6 +24,7 @@ package driver
 
 import (
 	"context"
+	"net/http"
 	"path"
 	"time"
 
@@ -150,4 +151,63 @@ func (c *client) clusterEndpoints(ctx context.Context, dbname string) (clusterEn
 		return clusterEndpointsResponse{}, WithStack(err)
 	}
 	return data, nil
+}
+
+// GetLogLevels returns log levels for topics.
+func (c *client) GetLogLevels(ctx context.Context, opts *LogLevelsGetOptions) (LogLevels, error) {
+	req, err := c.conn.NewRequest(http.MethodGet, "_admin/log/level")
+	if err != nil {
+		return nil, WithStack(err)
+	}
+
+	if opts != nil {
+		if len(opts.ServerID) > 0 {
+			req.SetQuery("serverId", string(opts.ServerID))
+		}
+	}
+
+	applyContextSettings(ctx, req)
+	resp, err := c.conn.Do(ctx, req)
+	if err != nil {
+		return nil, WithStack(err)
+	}
+	if err := resp.CheckStatus(http.StatusOK); err != nil {
+		return nil, WithStack(err)
+	}
+
+	result := make(LogLevels)
+	if err := resp.ParseBody("", &result); err != nil {
+		return nil, WithStack(err)
+	}
+
+	return result, nil
+}
+
+// SetLogLevels sets log levels for a given topics.
+func (c *client) SetLogLevels(ctx context.Context, logLevels LogLevels, opts *LogLevelsSetOptions) error {
+	req, err := c.conn.NewRequest(http.MethodPut, "_admin/log/level")
+	if err != nil {
+		return WithStack(err)
+	}
+
+	if opts != nil {
+		if len(opts.ServerID) > 0 {
+			req = req.SetQuery("serverId", string(opts.ServerID))
+		}
+	}
+
+	if _, err := req.SetBody(logLevels); err != nil {
+		return WithStack(err)
+	}
+	applyContextSettings(ctx, req)
+	resp, err := c.conn.Do(ctx, req)
+	if err != nil {
+		return WithStack(err)
+	}
+
+	if err := resp.CheckStatus(http.StatusOK); err != nil {
+		return WithStack(err)
+	}
+
+	return nil
 }

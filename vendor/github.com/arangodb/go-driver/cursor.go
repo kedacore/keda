@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// Copyright 2023 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,9 +16,6 @@
 // limitations under the License.
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
-//
-// Author Ewout Prangsma
-//
 
 package driver
 
@@ -36,28 +33,34 @@ type QueryExtra interface {
 	// GetProfileRaw returns raw profile information in json
 	GetProfileRaw() ([]byte, bool, error)
 
-	// PlanRaw returns raw plan
+	// GetPlanRaw returns raw plan
 	GetPlanRaw() ([]byte, bool, error)
 }
 
-// Statistics returned with the query cursor
+// QueryStatistics Statistics returned with the query cursor
 type QueryStatistics interface {
-	// the total number of data-modification operations successfully executed.
+	// WritesExecuted the total number of data-modification operations successfully executed.
 	WritesExecuted() int64
-	// The total number of data-modification operations that were unsuccessful
+
+	// WritesIgnored The total number of data-modification operations that were unsuccessful
 	WritesIgnored() int64
-	// The total number of documents iterated over when scanning a collection without an index.
+
+	// ScannedFull The total number of documents iterated over when scanning a collection without an index.
 	ScannedFull() int64
-	// The total number of documents iterated over when scanning a collection using an index.
+
+	// ScannedIndex The total number of documents iterated over when scanning a collection using an index.
 	ScannedIndex() int64
-	// the total number of documents that were removed after executing a filter condition in a FilterNode
+
+	// Filtered the total number of documents that were removed after executing a filter condition in a FilterNode
 	Filtered() int64
-	// Returns the numer of results before the last LIMIT in the query was applied.
+
+	// FullCount Returns the number of results before the last LIMIT in the query was applied.
 	// A valid return value is only available when the has been created with a context that was
-	// prepared with `WithFullCount`. Additionally this will also not return a valid value if
+	// prepared with `WithFullCount`. Additionally, this will also not return a valid value if
 	// the context was prepared with `WithStream`.
 	FullCount() int64
-	// Execution time of the query (wall-clock time). value will be set from the outside
+
+	// ExecutionTime of the query (wall-clock time). value will be set from the outside
 	ExecutionTime() time.Duration
 }
 
@@ -70,11 +73,16 @@ type Cursor interface {
 	HasMore() bool
 
 	// ReadDocument reads the next document from the cursor.
-	// The document data is stored into result, the document meta data is returned.
+	// The document data is stored into result, the document metadata is returned.
 	// If the cursor has no more documents, a NoMoreDocuments error is returned.
 	// Note: If the query (resulting in this cursor) does not return documents,
 	//       then the returned DocumentMeta will be empty.
 	ReadDocument(ctx context.Context, result interface{}) (DocumentMeta, error)
+
+	// RetryReadDocument reads the last document from the cursor once more time
+	// It can be used e.g., in case of network error during ReadDocument
+	// It requires 'driver.WithQueryAllowRetry' to be set to true on the Context during Cursor creation.
+	RetryReadDocument(ctx context.Context, result interface{}) (DocumentMeta, error)
 
 	// Count returns the total number of result documents available.
 	// A valid return value is only available when the cursor has been created with a context that was
