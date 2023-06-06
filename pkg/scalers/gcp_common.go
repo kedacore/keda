@@ -24,7 +24,7 @@ type gcpAuthorizationMetadata struct {
 	podIdentityProviderEnabled       bool
 }
 
-func (a *gcpAuthorizationMetadata) TokenSource(ctx context.Context, scopes ...string) (oauth2.TokenSource, error) {
+func (a *gcpAuthorizationMetadata) tokenSource(ctx context.Context, scopes ...string) (oauth2.TokenSource, error) {
 	if a.podIdentityProviderEnabled {
 		return google.DefaultTokenSource(ctx, scopes...)
 	}
@@ -55,15 +55,6 @@ func (a *gcpAuthorizationMetadata) TokenSource(ctx context.Context, scopes ...st
 	return nil, errGoogleApplicationCrendentialsNotFound
 }
 
-func (a *gcpAuthorizationMetadata) Transport(base http.RoundTripper, scopes ...string) (http.RoundTripper, error) {
-	ts, err := a.TokenSource(context.Background(), scopes...)
-	if err != nil {
-		return nil, err
-	}
-
-	return &oauth2.Transport{Source: ts, Base: base}, nil
-}
-
 func getGCPAuthorization(config *ScalerConfig) (*gcpAuthorizationMetadata, error) {
 	if config.PodIdentity.Provider == kedav1alpha1.PodIdentityProviderGCP {
 		return &gcpAuthorizationMetadata{podIdentityProviderEnabled: true}, nil
@@ -90,5 +81,10 @@ func getGCPOAuth2HTTPTransport(config *ScalerConfig, base http.RoundTripper, sco
 		return nil, err
 	}
 
-	return a.Transport(base, scopes...)
+	ts, err := a.tokenSource(context.Background(), scopes...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &oauth2.Transport{Source: ts, Base: base}, nil
 }
