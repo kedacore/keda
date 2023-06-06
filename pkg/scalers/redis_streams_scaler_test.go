@@ -4,13 +4,10 @@ import (
 	"context"
 	"strconv"
 	"testing"
-	// "fmt"
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 )
-
-
 
 func TestParseRedisStreamsMetadata(t *testing.T) {
 	type testCase struct {
@@ -1922,7 +1919,8 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 }
 
 func TestActivityCount(t *testing.T) {
-	// Test to make sure GetMetricsAndActivity returns true for isActive 
+
+	// Test to make sure GetMetricsAndActivity returns true for isActive
 	// when the lag count is greater than activationTargetLag and false
 	// when it is less.
 	type testCase struct {
@@ -1935,30 +1933,30 @@ func TestActivityCount(t *testing.T) {
 	}
 	c := testCase{
 		name: "sentinelMaster given in metadata from env",
-			metadata: map[string]string{
-				"hosts":                 "a, b, c",
-				"ports":                 "1, 2, 3",
-				"stream":                "my-stream",
-				"lagCount":              "7",
-				"activationTargetLag":   "3",
-				"consumerGroup":         "consumer1",
+		metadata: map[string]string{
+			"hosts":               "a, b, c",
+			"ports":               "1, 2, 3",
+			"stream":              "my-stream",
+			"lagCount":            "7",
+			"activationTargetLag": "3",
+			"consumerGroup":       "consumer1",
+		},
+		authParams:  map[string]string{},
+		resolvedEnv: testRedisResolvedEnv,
+		wantMeta: &redisStreamsMetadata{
+			streamName:                "my-stream",
+			targetPendingEntriesCount: 0,
+			targetLag:                 7,
+			activationTargetLag:       3,
+			consumerGroupName:         "consumer1",
+			connectionInfo: redisConnectionInfo{
+				addresses: []string{"a:1", "b:2", "c:3"},
+				hosts:     []string{"a", "b", "c"},
+				ports:     []string{"1", "2", "3"},
 			},
-			authParams:  map[string]string{},
-			resolvedEnv: testRedisResolvedEnv,
-			wantMeta: &redisStreamsMetadata{
-				streamName:                "my-stream",
-				targetPendingEntriesCount: 0,
-				targetLag:                 7,
-				activationTargetLag:       3,
-				consumerGroupName:         "consumer1",
-				connectionInfo: redisConnectionInfo{
-					addresses:      []string{"a:1", "b:2", "c:3"},
-					hosts:          []string{"a", "b", "c"},
-					ports:          []string{"1", "2", "3"},
-				},
-				scaleFactor: lagFactor,
-			},
-			wantErr: nil,
+			scaleFactor: lagFactor,
+		},
+		wantErr: nil,
 	}
 	t.Run(c.name, func(t *testing.T) {
 		config := &ScalerConfig{
@@ -2008,14 +2006,14 @@ func TestActivityCount(t *testing.T) {
 		assert.Equal(t, isActive, false, "redis scaler shouldn't be active when lag is less than activation")
 
 		scaler.getEntriesCountFn = func(ctx context.Context) (int64, error) {
-			return 4, nil	// Simulate having a lag of 4, one more than the activation value.
+			return 4, nil // Simulate having a lag of 4, one more than the activation value.
 		}
 		_, isActive, err = scaler.GetMetricsAndActivity(ctx, metricName)
 
 		if err != nil {
 			t.Logf("Error when running GetMetricsAndActivity: %s", err)
 		}
-		
+
 		assert.Equal(t, isActive, true, "redis scaler should be active when lag is greater than activation")
 	})
 }

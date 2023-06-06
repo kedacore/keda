@@ -234,7 +234,7 @@ func testActivationValue(t *testing.T, kc *kubernetes.Clientset, activationData 
   t.Log("--- testing activation value ---")
   KubectlApplyWithTemplate(t, activationData, "insertJobTemplate", insertJobTemplate)
 
-  time.Sleep(time.Duration(60 * time.Second))
+  time.Sleep(60 * time.Second)
   AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
 }
 
