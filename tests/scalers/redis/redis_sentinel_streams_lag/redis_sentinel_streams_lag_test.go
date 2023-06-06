@@ -7,7 +7,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"testing"
-  "time"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -201,13 +201,13 @@ func TestScaler(t *testing.T) {
 	data, templates := getTemplateData()
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
-  testScaleOut(t, kc, data)
+	testScaleOut(t, kc, data)
 	testScaleIn(t, kc)
-  DeleteKubernetesResources(t, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 
-  CreateKubernetesResources(t, kc, testNamespace, activationData, templates)
-  testActivationValue(t, kc, activationData)
-  DeleteKubernetesResources(t, testNamespace, activationData, templates)
+	CreateKubernetesResources(t, kc, testNamespace, activationData, templates)
+	testActivationValue(t, kc, activationData)
+	DeleteKubernetesResources(t, testNamespace, activationData, templates)
 
 	// cleanup
 	redis.RemoveCluster(t, testName, redisNamespace)
@@ -227,15 +227,15 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
 
-    AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
 }
 
 func testActivationValue(t *testing.T, kc *kubernetes.Clientset, activationData templateData) {
-  t.Log("--- testing activation value ---")
-  KubectlApplyWithTemplate(t, activationData, "insertJobTemplate", insertJobTemplate)
+	t.Log("--- testing activation value ---")
+	KubectlApplyWithTemplate(t, activationData, "insertJobTemplate", insertJobTemplate)
 
-  time.Sleep(60 * time.Second)
-  AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
+	time.Sleep(60 * time.Second)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
 }
 
 var data = templateData{
