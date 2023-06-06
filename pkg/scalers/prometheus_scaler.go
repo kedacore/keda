@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -67,12 +68,12 @@ type prometheusMetadata struct {
 
 type promQueryResult struct {
 	Status string `json:"status"`
-	Data   struct {
+
+	Data struct {
 		ResultType string `json:"resultType"`
 		Result     []struct {
-			Metric struct {
-			} `json:"metric"`
-			Value []interface{} `json:"value"`
+			Metric struct{}      `json:"metric"`
+			Value  []interface{} `json:"value"`
 		} `json:"result"`
 	} `json:"data"`
 }
@@ -110,7 +111,6 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 		// could be the case of azure managed prometheus. Try and get the roundtripper.
 		// If its not the case of azure managed prometheus, we will get both transport and err as nil and proceed assuming no auth.
 		transport, err := azure.TryAndGetAzureManagedPrometheusHTTPRoundTripper(config.PodIdentity, config.TriggerMetadata)
-
 		if err != nil {
 			logger.V(1).Error(err, "error while init Azure Managed Prometheus client http transport")
 			return nil, err
@@ -118,6 +118,16 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 
 		// transport should not be nil if its a case of azure managed prometheus
 		if transport != nil {
+			httpClient.Transport = transport
+		}
+
+		transport, err = getGCPOAuth2HTTPTransport(config, httpClient.Transport, gcpScopeMonitoringRead)
+		if err != nil && !errors.Is(err, errGoogleApplicationCrendentialsNotFound) {
+			logger.V(1).Error(err, "failed to get GCP client HTTP transport (either using Google application credentials or workload identity)")
+			return nil, err
+		}
+
+		if err == nil && transport != nil {
 			httpClient.Transport = transport
 		}
 	}
@@ -292,7 +302,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	if err != nil {
 		return -1, err
 	}
-	_ = r.Body.Close()
+	defer r.Body.Close()
 
 	if !(r.StatusCode >= 200 && r.StatusCode <= 299) {
 		err := fmt.Errorf("prometheus query api returned error. status: %d response: %s", r.StatusCode, string(b))

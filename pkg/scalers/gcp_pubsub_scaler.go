@@ -114,7 +114,7 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 		meta.activationValue = activationValue
 	}
 
-	auth, err := getGcpAuthorization(config, config.ResolvedEnv)
+	auth, err := getGCPAuthorization(config)
 	if err != nil {
 		return nil, err
 	}
