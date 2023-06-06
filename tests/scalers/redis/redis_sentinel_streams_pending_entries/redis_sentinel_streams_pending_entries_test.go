@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package redis_sentinel_streams_test
+package redis_sentinel_streams_pending_entries_test
 
 import (
 	"encoding/base64"
@@ -20,7 +20,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "redis-sentinel-streams-test"
+	testName = "redis-sentinel-streams-pending-entries-test"
 )
 
 var (

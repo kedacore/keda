@@ -1,12 +1,13 @@
 //go:build e2e
 // +build e2e
 
-package redis_sentinel_streams_test
+package redis_sentinel_streams_lag_test
 
 import (
 	"encoding/base64"
 	"fmt"
 	"testing"
+  "time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -20,7 +21,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "redis-sentinel-streams-test"
+	testName = "redis-sentinel-streams-lag-test"
 )
 
 var (
@@ -144,8 +145,8 @@ spec:
       stream: my-stream
       consumerGroup: consumer-group-1
       sentinelMaster: mymaster
-      pendingEntriesCount: "10"
       lagCount: "5"
+      activationTargetLag: "3"
     authenticationRef:
       name: {{.TriggerAuthenticationName}}
 `
@@ -198,14 +199,18 @@ func TestScaler(t *testing.T) {
 
 	// Create kubernetes resources for testing
 	data, templates := getTemplateData()
-	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	testScaleOut(t, kc, data)
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
+  testScaleOut(t, kc, data)
 	testScaleIn(t, kc)
+  DeleteKubernetesResources(t, testNamespace, data, templates)
+
+  CreateKubernetesResources(t, kc, testNamespace, activationData, templates)
+  testActivationValue(t, kc, activationData)
+  DeleteKubernetesResources(t, testNamespace, activationData, templates)
 
 	// cleanup
 	redis.RemoveCluster(t, testName, redisNamespace)
-	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -221,6 +226,16 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
+
+    AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
+}
+
+func testActivationValue(t *testing.T, kc *kubernetes.Clientset, activationData templateData) {
+  t.Log("--- testing activation value ---")
+  KubectlApplyWithTemplate(t, activationData, "insertJobTemplate", insertJobTemplate)
+
+  time.Sleep(time.Duration(60 * time.Second))
+  AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
 }
 
 var data = templateData{
@@ -237,6 +252,22 @@ var data = templateData{
 	RedisPasswordBase64:       base64.StdEncoding.EncodeToString([]byte(redisPassword)),
 	RedisHost:                 redisHost,
 	ItemsToWrite:              100,
+}
+
+var activationData = templateData{
+	TestNamespace:             testNamespace,
+	RedisNamespace:            redisNamespace,
+	DeploymentName:            deploymentName,
+	ScaledObjectName:          scaledObjectName,
+	MinReplicaCount:           minReplicaCount,
+	MaxReplicaCount:           maxReplicaCount,
+	TriggerAuthenticationName: triggerAuthenticationName,
+	SecretName:                secretName,
+	JobName:                   jobName,
+	RedisPassword:             redisPassword,
+	RedisPasswordBase64:       base64.StdEncoding.EncodeToString([]byte(redisPassword)),
+	RedisHost:                 redisHost,
+	ItemsToWrite:              2,
 }
 
 func getTemplateData() (templateData, []Template) {

@@ -4,10 +4,13 @@ import (
 	"context"
 	"strconv"
 	"testing"
+	// "fmt"
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 )
+
+
 
 func TestParseRedisStreamsMetadata(t *testing.T) {
 	type testCase struct {
@@ -72,7 +75,7 @@ func TestParseRedisStreamsMetadata(t *testing.T) {
 	testCasesLag := []testCase{
 		{
 			name:     "with address",
-			metadata: map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "5", "lagCount": "5", "addressFromEnv": "REDIS_SERVICE", "usernameFromEnv": "REDIS_USERNAME", "passwordFromEnv": "REDIS_PASSWORD", "databaseIndex": "0", "enableTLS": "true"},
+			metadata: map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "lagCount": "5", "activationTargetLag": "3", "addressFromEnv": "REDIS_SERVICE", "usernameFromEnv": "REDIS_USERNAME", "passwordFromEnv": "REDIS_PASSWORD", "databaseIndex": "0", "enableTLS": "true"},
 			resolvedEnv: map[string]string{
 				"REDIS_SERVICE":  "myredis:6379",
 				"REDIS_USERNAME": "foobarred",
@@ -83,7 +86,7 @@ func TestParseRedisStreamsMetadata(t *testing.T) {
 
 		{
 			name:     "with host and port",
-			metadata: map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "pendingEntriesCount": "15", "lagCount": "2", "hostFromEnv": "REDIS_HOST", "port": "REDIS_PORT", "usernameFromEnv": "REDIS_USERNAME", "passwordFromEnv": "REDIS_PASSWORD", "databaseIndex": "0", "enableTLS": "false"},
+			metadata: map[string]string{"stream": "my-stream", "consumerGroup": "my-stream-consumer-group", "lagCount": "2", "activationTargetLag": "3", "hostFromEnv": "REDIS_HOST", "port": "REDIS_PORT", "usernameFromEnv": "REDIS_USERNAME", "passwordFromEnv": "REDIS_PASSWORD", "databaseIndex": "0", "enableTLS": "false"},
 			resolvedEnv: map[string]string{
 				"REDIS_HOST":     "myredis",
 				"REDIS_PORT":     "6379",
@@ -267,8 +270,8 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			name: "address is defined in auth params",
 			metadata: map[string]string{
 				"stream":              "my-stream",
-				"pendingEntriesCount": "5",
 				"lagCount":            "6",
+				"activationTargetLag": "3",
 				"consumerGroup":       "consumer1",
 			},
 			authParams: map[string]string{
@@ -278,6 +281,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 6,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{":7001", ":7002"},
@@ -299,6 +303,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{":7001", ":7002"},
@@ -311,8 +316,8 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			name: "hosts and ports given in auth params",
 			metadata: map[string]string{
 				"stream":              "my-stream",
-				"pendingEntriesCount": "5",
 				"lagCount":            "6",
+				"activationTargetLag": "3",
 				"consumerGroup":       "consumer1",
 			},
 			authParams: map[string]string{
@@ -323,6 +328,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 6,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -347,6 +353,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -363,8 +370,8 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 				"hosts":               "a, b, c",
 				"ports":               "1, 2, 3",
 				"stream":              "my-stream",
-				"pendingEntriesCount": "5",
 				"lagCount":            "7",
+				"activationTargetLag": "3",
 				"consumerGroup":       "consumer1",
 			},
 			authParams: map[string]string{
@@ -374,6 +381,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 7,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -400,6 +408,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -425,6 +434,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -442,8 +452,8 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 				"hosts":               "a, b, c",
 				"ports":               "1, 2, 3",
 				"stream":              "my-stream",
-				"pendingEntriesCount": "5",
 				"lagCount":            "7",
+				"activationTargetLag": "3",
 				"consumerGroup":       "consumer1",
 				"usernameFromEnv":     "REDIS_USERNAME",
 			},
@@ -453,6 +463,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 7,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -479,6 +490,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -496,8 +508,8 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 				"hosts":               "a, b, c",
 				"ports":               "1, 2, 3",
 				"stream":              "my-stream",
-				"pendingEntriesCount": "5",
 				"lagCount":            "7",
+				"activationTargetLag": "3",
 				"consumerGroup":       "consumer1",
 			},
 			authParams: map[string]string{
@@ -507,6 +519,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 7,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -533,6 +546,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -550,8 +564,8 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 				"hosts":               "a, b, c",
 				"ports":               "1, 2, 3",
 				"stream":              "my-stream",
-				"pendingEntriesCount": "5",
 				"lagCount":            "7",
+				"activationTargetLag": "3",
 				"consumerGroup":       "consumer1",
 				"passwordFromEnv":     "REDIS_PASSWORD",
 			},
@@ -561,6 +575,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 7,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -587,6 +602,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -604,8 +620,8 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 				"hosts":               "a, b, c",
 				"ports":               "1, 2, 3",
 				"stream":              "my-stream",
-				"pendingEntriesCount": "5",
 				"lagCount":            "7",
+				"activationTargetLag": "3",
 				"consumerGroup":       "consumer1",
 				"enableTLS":           "true",
 			},
@@ -616,6 +632,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 7,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -645,6 +662,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -664,8 +682,8 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 				"hosts":               "a, b, c",
 				"ports":               "1, 2, 3",
 				"stream":              "my-stream",
-				"pendingEntriesCount": "5",
 				"lagCount":            "7",
+				"activationTargetLag": "3",
 				"consumerGroup":       "consumer1",
 				"enableTLS":           "true",
 				"unsafeSsl":           "true",
@@ -677,6 +695,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 7,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -707,6 +726,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -751,6 +771,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
 				targetLag:                 0,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{":7001", ":7002"},
@@ -822,6 +843,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				"consumerGroup":       "consumer1",
 				"pendingEntriesCount": "5",
 				"lagCount":            "invalid",
+				"activationTargetLag": "3",
 			},
 			wantMeta: nil,
 			wantErr:  strconv.ErrSyntax,
@@ -830,8 +852,8 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			name: "address is defined in auth params",
 			metadata: map[string]string{
 				"stream":              "my-stream",
-				"pendingEntriesCount": "5",
 				"lagCount":            "7",
+				"activationTargetLag": "3",
 				"consumerGroup":       "consumer1",
 			},
 			authParams: map[string]string{
@@ -841,6 +863,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 7,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{":7001", ":7002"},
@@ -862,6 +885,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{":7001", ":7002"},
@@ -874,8 +898,8 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			name: "hosts and ports given in auth params",
 			metadata: map[string]string{
 				"stream":              "my-stream",
-				"pendingEntriesCount": "5",
 				"lagCount":            "7",
+				"activationTargetLag": "3",
 				"consumerGroup":       "consumer1",
 			},
 			authParams: map[string]string{
@@ -886,6 +910,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 7,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -910,6 +935,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -926,8 +952,8 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				"hosts":               "a, b, c",
 				"ports":               "1, 2, 3",
 				"stream":              "my-stream",
-				"pendingEntriesCount": "5",
 				"lagCount":            "7",
+				"activationTargetLag": "3",
 				"consumerGroup":       "consumer1",
 			},
 			authParams: map[string]string{
@@ -937,6 +963,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 7,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -963,6 +990,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -980,17 +1008,17 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				"hosts":               "a, b, c",
 				"ports":               "1, 2, 3",
 				"stream":              "my-stream",
-				"pendingEntriesCount": "5",
 				"lagCount":            "7",
+				"activationTargetLag": "3",
 				"consumerGroup":       "consumer1",
 				"username":            "username",
 			},
 			authParams: map[string]string{},
 			wantMeta: &redisStreamsMetadata{
-				streamName:                "my-stream",
-				targetPendingEntriesCount: 0,
-				targetLag:                 7,
-				consumerGroupName:         "consumer1",
+				streamName:          "my-stream",
+				targetLag:           7,
+				activationTargetLag: 3,
+				consumerGroupName:   "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
 					hosts:     []string{"a", "b", "c"},
@@ -1015,6 +1043,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -1032,8 +1061,8 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				"hosts":               "a, b, c",
 				"ports":               "1, 2, 3",
 				"stream":              "my-stream",
-				"pendingEntriesCount": "5",
 				"lagCount":            "7",
+				"activationTargetLag": "3",
 				"consumerGroup":       "consumer1",
 				"usernameFromEnv":     "REDIS_USERNAME",
 			},
@@ -1043,6 +1072,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 7,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -1069,6 +1099,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -1086,8 +1117,8 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				"hosts":               "a, b, c",
 				"ports":               "1, 2, 3",
 				"stream":              "my-stream",
-				"pendingEntriesCount": "5",
 				"lagCount":            "7",
+				"activationTargetLag": "3",
 				"consumerGroup":       "consumer1",
 			},
 			authParams: map[string]string{
@@ -1097,6 +1128,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 7,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -1123,6 +1155,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -1140,8 +1173,8 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				"hosts":               "a, b, c",
 				"ports":               "1, 2, 3",
 				"stream":              "my-stream",
-				"pendingEntriesCount": "5",
 				"lagCount":            "7",
+				"activationTargetLag": "3",
 				"consumerGroup":       "consumer1",
 				"passwordFromEnv":     "REDIS_PASSWORD",
 			},
@@ -1151,6 +1184,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 7,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -1177,6 +1211,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -1194,8 +1229,8 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				"hosts":               "a, b, c",
 				"ports":               "1, 2, 3",
 				"stream":              "my-stream",
-				"pendingEntriesCount": "5",
 				"lagCount":            "7",
+				"activationTargetLag": "3",
 				"consumerGroup":       "consumer1",
 			},
 			authParams: map[string]string{
@@ -1205,6 +1240,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 7,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses:        []string{"a:1", "b:2", "c:3"},
@@ -1231,6 +1267,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses:        []string{"a:1", "b:2", "c:3"},
@@ -1248,8 +1285,8 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				"hosts":               "a, b, c",
 				"ports":               "1, 2, 3",
 				"stream":              "my-stream",
-				"pendingEntriesCount": "5",
 				"lagCount":            "7",
+				"activationTargetLag": "3",
 				"consumerGroup":       "consumer1",
 				"sentinelUsername":    "sentinelUsername",
 			},
@@ -1258,6 +1295,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 7,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses:        []string{"a:1", "b:2", "c:3"},
@@ -1283,6 +1321,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses:        []string{"a:1", "b:2", "c:3"},
@@ -1300,8 +1339,8 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				"hosts":                   "a, b, c",
 				"ports":                   "1, 2, 3",
 				"stream":                  "my-stream",
-				"pendingEntriesCount":     "5",
 				"lagCount":                "7",
+				"activationTargetLag":     "3",
 				"consumerGroup":           "consumer1",
 				"sentinelUsernameFromEnv": "REDIS_SENTINEL_USERNAME",
 			},
@@ -1311,6 +1350,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 7,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses:        []string{"a:1", "b:2", "c:3"},
@@ -1337,6 +1377,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses:        []string{"a:1", "b:2", "c:3"},
@@ -1354,8 +1395,8 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				"hosts":               "a, b, c",
 				"ports":               "1, 2, 3",
 				"stream":              "my-stream",
-				"pendingEntriesCount": "5",
 				"lagCount":            "7",
+				"activationTargetLag": "3",
 				"consumerGroup":       "consumer1",
 			},
 			authParams: map[string]string{
@@ -1365,6 +1406,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 7,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses:        []string{"a:1", "b:2", "c:3"},
@@ -1391,6 +1433,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses:        []string{"a:1", "b:2", "c:3"},
@@ -1408,8 +1451,8 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				"hosts":                   "a, b, c",
 				"ports":                   "1, 2, 3",
 				"stream":                  "my-stream",
-				"pendingEntriesCount":     "5",
 				"lagCount":                "7",
+				"activationTargetLag":     "3",
 				"consumerGroup":           "consumer1",
 				"sentinelPasswordFromEnv": "REDIS_SENTINEL_PASSWORD",
 			},
@@ -1419,6 +1462,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 7,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses:        []string{"a:1", "b:2", "c:3"},
@@ -1445,6 +1489,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses:        []string{"a:1", "b:2", "c:3"},
@@ -1462,8 +1507,8 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				"hosts":               "a, b, c",
 				"ports":               "1, 2, 3",
 				"stream":              "my-stream",
-				"pendingEntriesCount": "5",
 				"lagCount":            "7",
+				"activationTargetLag": "3",
 				"consumerGroup":       "consumer1",
 			},
 			authParams: map[string]string{
@@ -1473,6 +1518,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 7,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses:      []string{"a:1", "b:2", "c:3"},
@@ -1499,6 +1545,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses:      []string{"a:1", "b:2", "c:3"},
@@ -1516,8 +1563,8 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				"hosts":               "a, b, c",
 				"ports":               "1, 2, 3",
 				"stream":              "my-stream",
-				"pendingEntriesCount": "5",
 				"lagCount":            "7",
+				"activationTargetLag": "3",
 				"consumerGroup":       "consumer1",
 				"sentinelMaster":      "sentinelMaster",
 			},
@@ -1526,6 +1573,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 7,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses:      []string{"a:1", "b:2", "c:3"},
@@ -1551,6 +1599,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses:      []string{"a:1", "b:2", "c:3"},
@@ -1568,8 +1617,8 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				"hosts":                 "a, b, c",
 				"ports":                 "1, 2, 3",
 				"stream":                "my-stream",
-				"pendingEntriesCount":   "5",
 				"lagCount":              "7",
+				"activationTargetLag":   "3",
 				"consumerGroup":         "consumer1",
 				"sentinelMasterFromEnv": "REDIS_SENTINEL_MASTER",
 			},
@@ -1579,6 +1628,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 7,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses:      []string{"a:1", "b:2", "c:3"},
@@ -1605,6 +1655,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses:      []string{"a:1", "b:2", "c:3"},
@@ -1622,8 +1673,8 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				"hosts":               "a, b, c",
 				"ports":               "1, 2, 3",
 				"stream":              "my-stream",
-				"pendingEntriesCount": "5",
 				"lagCount":            "7",
+				"activationTargetLag": "3",
 				"consumerGroup":       "consumer1",
 				"enableTLS":           "true",
 			},
@@ -1634,6 +1685,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 7,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -1663,6 +1715,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -1682,8 +1735,8 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				"hosts":               "a, b, c",
 				"ports":               "1, 2, 3",
 				"stream":              "my-stream",
-				"pendingEntriesCount": "5",
 				"lagCount":            "7",
+				"activationTargetLag": "3",
 				"consumerGroup":       "consumer1",
 				"enableTLS":           "true",
 				"unsafeSsl":           "true",
@@ -1695,6 +1748,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 7,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -1725,6 +1779,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1", "b:2", "c:3"},
@@ -1769,8 +1824,8 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				"ports":               "1",
 				"stream":              "my-stream",
 				"streamLength":        "15",
-				"pendingEntriesCount": "5",
 				"lagCount":            "70",
+				"activationTargetLag": "3",
 				"consumerGroup":       "consumer1",
 			},
 			authParams: map[string]string{},
@@ -1778,6 +1833,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 0,
 				targetLag:                 70,
+				activationTargetLag:       3,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1"},
@@ -1805,6 +1861,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			wantMeta: &redisStreamsMetadata{
 				streamName:                "my-stream",
 				targetPendingEntriesCount: 5,
+				activationTargetLag:       0,
 				consumerGroupName:         "consumer1",
 				connectionInfo: redisConnectionInfo{
 					addresses: []string{"a:1"},
@@ -1862,4 +1919,103 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 			assert.Equal(t, c.wantMeta, meta)
 		})
 	}
+}
+
+func TestActivityCount(t *testing.T) {
+	// Test to make sure GetMetricsAndActivity returns true for isActive 
+	// when the lag count is greater than activationTargetLag and false
+	// when it is less.
+	type testCase struct {
+		name        string
+		metadata    map[string]string
+		resolvedEnv map[string]string
+		authParams  map[string]string
+		wantMeta    *redisStreamsMetadata
+		wantErr     error
+	}
+	c := testCase{
+		name: "sentinelMaster given in metadata from env",
+			metadata: map[string]string{
+				"hosts":                 "a, b, c",
+				"ports":                 "1, 2, 3",
+				"stream":                "my-stream",
+				"lagCount":              "7",
+				"activationTargetLag":   "3",
+				"consumerGroup":         "consumer1",
+			},
+			authParams:  map[string]string{},
+			resolvedEnv: testRedisResolvedEnv,
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 0,
+				targetLag:                 7,
+				activationTargetLag:       3,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses:      []string{"a:1", "b:2", "c:3"},
+					hosts:          []string{"a", "b", "c"},
+					ports:          []string{"1", "2", "3"},
+				},
+				scaleFactor: lagFactor,
+			},
+			wantErr: nil,
+	}
+	t.Run(c.name, func(t *testing.T) {
+		config := &ScalerConfig{
+			TriggerMetadata: c.metadata,
+			ResolvedEnv:     c.resolvedEnv,
+			AuthParams:      c.authParams,
+		}
+		meta, err := parseRedisStreamsMetadata(config, parseRedisClusterAddress)
+		if c.wantErr != nil {
+			assert.ErrorIs(t, err, c.wantErr)
+		} else {
+			assert.NoError(t, err)
+		}
+		assert.Equal(t, c.wantMeta, meta)
+		ctx := context.Background()
+		metricType, err := GetMetricTargetType(config)
+		logger := InitializeLogger(config, "redis_streams_scaler")
+		closeFn := func() error {
+			return nil
+		}
+
+		entriesCountFn := func(ctx context.Context) (int64, error) {
+			return 0, nil // Initiall, there is a lag of 0.
+		}
+
+		scaler := &redisStreamsScaler{
+			metricType:        metricType,
+			metadata:          meta,
+			closeFn:           closeFn,
+			getEntriesCountFn: entriesCountFn,
+			logger:            logger,
+		}
+
+		if err != nil {
+			t.Logf("Scaler error: %s", err)
+		}
+
+		// When the lag is 0, the scaler should be inactive.
+		metricSpec := scaler.GetMetricSpecForScaling(context.Background())
+		metricName := metricSpec[0].External.Metric.Name
+		_, isActive, err := scaler.GetMetricsAndActivity(ctx, metricName)
+
+		if err != nil {
+			t.Logf("Error when running GetMetricsAndActivity: %s", err)
+		}
+
+		assert.Equal(t, isActive, false, "redis scaler shouldn't be active when lag is less than activation")
+
+		scaler.getEntriesCountFn = func(ctx context.Context) (int64, error) {
+			return 4, nil	// Simulate having a lag of 4, one more than the activation value.
+		}
+		_, isActive, err = scaler.GetMetricsAndActivity(ctx, metricName)
+
+		if err != nil {
+			t.Logf("Error when running GetMetricsAndActivity: %s", err)
+		}
+		
+		assert.Equal(t, isActive, true, "redis scaler should be active when lag is greater than activation")
+	})
 }

@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package redis_cluster_streams_test
+package redis_cluster_streams_pending_entries_test
 
 import (
 	"encoding/base64"
@@ -20,7 +20,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "redis-cluster-streams-test"
+	testName = "redis-cluster-streams-pending-entries-test"
 )
 
 var (

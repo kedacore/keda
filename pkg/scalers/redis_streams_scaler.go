@@ -25,20 +25,22 @@ const (
 
 const (
 	// defaults
-	defaultDBIndex       = 0
-	defaultTargetEntries = 5
-	defaultTargetLag     = 5
+	defaultDBIndex             = 0
+	defaultTargetEntries       = 5
+	defaultTargetLag           = 5
+	defaultActivationTargetLag = 0
 
 	// metadata names
-	lagMetadata                 = "lagCount"
-	pendingEntriesCountMetadata = "pendingEntriesCount"
-	streamLengthMetadata        = "streamLength"
-	streamNameMetadata          = "stream"
-	consumerGroupNameMetadata   = "consumerGroup"
-	usernameMetadata            = "username"
-	passwordMetadata            = "password"
-	databaseIndexMetadata       = "databaseIndex"
-	enableTLSMetadata           = "enableTLS"
+	lagMetadata                      = "lagCount"
+	pendingEntriesCountMetadata      = "pendingEntriesCount"
+	streamLengthMetadata             = "streamLength"
+	streamNameMetadata               = "stream"
+	consumerGroupNameMetadata        = "consumerGroup"
+	usernameMetadata                 = "username"
+	passwordMetadata                 = "password"
+	databaseIndexMetadata            = "databaseIndex"
+	enableTLSMetadata                = "enableTLS"
+	activationValueTriggerConfigName = "activationTargetLag"
 )
 
 type redisStreamsScaler struct {
@@ -59,6 +61,7 @@ type redisStreamsMetadata struct {
 	databaseIndex             int
 	connectionInfo            redisConnectionInfo
 	scalerIndex               int
+	activationTargetLag       int64
 }
 
 // NewRedisStreamsScaler creates a new redisStreamsScaler
@@ -204,7 +207,7 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 					}
 				}
 			}
-			if versionFound == false {
+			if !versionFound {
 				err := errors.New("could not find Redis version number")
 				return -1, err
 			}
@@ -266,16 +269,28 @@ func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser)
 		return nil, ErrRedisMissingStreamName
 	}
 
+	meta.activationTargetLag = defaultActivationTargetLag
+
 	if val, ok := config.TriggerMetadata[consumerGroupNameMetadata]; ok {
 		meta.consumerGroupName = val
 		if val, ok := config.TriggerMetadata[lagMetadata]; ok {
 			meta.scaleFactor = lagFactor
-			meta.targetLag = defaultTargetLag
 			lag, err := strconv.ParseInt(val, 10, 64)
 			if err != nil {
 				return nil, fmt.Errorf("error parsing lag: %w", err)
 			}
 			meta.targetLag = lag
+
+			if val, ok := config.TriggerMetadata[activationValueTriggerConfigName]; ok {
+				activationVal, err := strconv.ParseInt(val, 10, 64)
+				if err != nil {
+					return nil, errors.New("error while parsing activation lag value")
+				}
+				meta.activationTargetLag = activationVal
+			} else {
+				err := errors.New("activationTargetLag required for Redis lag")
+				return nil, err
+			}
 		} else {
 			meta.scaleFactor = xPendingFactor
 			meta.targetPendingEntriesCount = defaultTargetEntries
@@ -341,14 +356,16 @@ func (s *redisStreamsScaler) GetMetricSpecForScaling(context.Context) []v2.Metri
 
 // GetMetricsAndActivity fetches the number of pending entries for a consumer group in a stream
 func (s *redisStreamsScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	pendingEntriesCount, err := s.getEntriesCountFn(ctx)
+	metricCount, err := s.getEntriesCountFn(ctx)
 
 	if err != nil {
-		s.logger.Error(err, "error fetching pending entries count")
+		s.logger.Error(err, "error fetching metric count")
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
-	metric := GenerateMetricInMili(metricName, float64(pendingEntriesCount))
+	metric := GenerateMetricInMili(metricName, float64(metricCount))
 
-	return []external_metrics.ExternalMetricValue{metric}, pendingEntriesCount > 0, nil
+	fmt.Printf("Redis metric count: %d", metricCount)
+	fmt.Printf("Redis activationTargetLag: %d", s.metadata.activationTargetLag)
+	return []external_metrics.ExternalMetricValue{metric}, metricCount > s.metadata.activationTargetLag, nil
 }
