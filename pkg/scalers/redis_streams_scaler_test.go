@@ -1919,7 +1919,6 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 }
 
 func TestActivityCount(t *testing.T) {
-
 	// Test to make sure GetMetricsAndActivity returns true for isActive
 	// when the lag count is greater than activationTargetLag and false
 	// when it is less.
