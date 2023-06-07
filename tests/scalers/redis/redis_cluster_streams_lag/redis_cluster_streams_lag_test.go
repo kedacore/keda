@@ -190,7 +190,7 @@ func TestScaler(t *testing.T) {
 	t.Log("--- testing activation ---")
 	testActivationValue(t, kc, data, 3)
 
-	t.Log("--- testing scale out with one more than activation ---")
+	t.Log("--- testing scale out with one more message than activation ---")
 	testScaleOut(t, kc, data, 1, 1)
 
 	t.Log("--- testing scale out with many messages ---")
