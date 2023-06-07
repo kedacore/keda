@@ -201,38 +201,39 @@ func TestScaler(t *testing.T) {
 	data, templates := getTemplateData()
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
-	testScaleOut(t, kc, data)
-	testScaleIn(t, kc)
-	DeleteKubernetesResources(t, testNamespace, data, templates)
+	t.Log("--- testing activation ---")
+	testActivationValue(t, kc, data, 3)
 
-	CreateKubernetesResources(t, kc, testNamespace, activationData, templates)
-	testActivationValue(t, kc, activationData)
-	DeleteKubernetesResources(t, testNamespace, activationData, templates)
+	t.Log("--- testing scale out with one more than activation ---")
+	testScaleOut(t, kc, data, 1, 1)
+
+	t.Log("--- testing scale out with many messages ---")
+	testScaleOut(t, kc, data, 100, maxReplicaCount)
+
+	t.Log("--- testing scale in ---")
+	testScaleIn(t, kc, minReplicaCount)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 
 	// cleanup
 	redis.RemoveCluster(t, testName, redisNamespace)
 }
 
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing scale out ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData, numMessages int, maxReplicas int) {
+	data.ItemsToWrite = numMessages
 	KubectlApplyWithTemplate(t, data, "insertJobTemplate", insertJobTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
-		"replica count should be %d after 3 minutes", maxReplicaCount)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicas, 60, 3),
+		"replica count should be %d after 3 minutes", maxReplicas)
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale in ---")
-
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %d after 3 minutes", minReplicaCount)
-
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, minReplicas int) {
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicas, 60, 3),
+		"replica count should be %d after 3 minutes", minReplicas)
 }
 
-func testActivationValue(t *testing.T, kc *kubernetes.Clientset, activationData templateData) {
-	t.Log("--- testing activation value ---")
-	KubectlApplyWithTemplate(t, activationData, "insertJobTemplate", insertJobTemplate)
+func testActivationValue(t *testing.T, kc *kubernetes.Clientset, data templateData, numMessages int) {
+	data.ItemsToWrite = numMessages
+	KubectlApplyWithTemplate(t, data, "insertJobTemplate", insertJobTemplate)
 
 	time.Sleep(60 * time.Second)
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
@@ -252,22 +253,6 @@ var data = templateData{
 	RedisPasswordBase64:       base64.StdEncoding.EncodeToString([]byte(redisPassword)),
 	RedisHost:                 redisHost,
 	ItemsToWrite:              100,
-}
-
-var activationData = templateData{
-	TestNamespace:             testNamespace,
-	RedisNamespace:            redisNamespace,
-	DeploymentName:            deploymentName,
-	ScaledObjectName:          scaledObjectName,
-	MinReplicaCount:           minReplicaCount,
-	MaxReplicaCount:           maxReplicaCount,
-	TriggerAuthenticationName: triggerAuthenticationName,
-	SecretName:                secretName,
-	JobName:                   jobName,
-	RedisPassword:             redisPassword,
-	RedisPasswordBase64:       base64.StdEncoding.EncodeToString([]byte(redisPassword)),
-	RedisHost:                 redisHost,
-	ItemsToWrite:              2,
 }
 
 func getTemplateData() (templateData, []Template) {
