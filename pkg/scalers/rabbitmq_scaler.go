@@ -37,8 +37,8 @@ const (
 	rabbitMetricType                       = "External"
 	rabbitRootVhostPath                    = "/%2F"
 	rmqTLSEnable                           = "enable"
-	rabbitHttpQueryMessageRateAge          = "messageRatesAge"
-	rabbitHttpQueryMessageRatesIncrement   = "messageRatesIncrement"
+	rabbitHttpQueryMessageRateAge          = "messageRateAge"
+	rabbitHttpQueryMessageRatesIncrement   = "messageRateIncrement"
 )
 
 const (
