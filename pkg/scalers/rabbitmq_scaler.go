@@ -363,20 +363,20 @@ func parseRabbitMQHttpProtocolMetadata(config *ScalerConfig, meta *rabbitMQMetad
 
 	httpMessageRatesAge, httpMessageRatesAgePresent := config.TriggerMetadata[rabbitHttpQueryMessageRateAge]
 	if httpMessageRatesAgePresent {
-		messageRatesAge, err := strconv.ParseInt(httpMessageRatesAge, 10, 0)
+		messageRateAge, err := strconv.ParseInt(httpMessageRatesAge, 10, 0)
 		if err != nil {
 			return fmt.Errorf("can't parse %s: %w", rabbitHttpQueryMessageRateAge, err)
 		}
-		meta.httpQueryParameters.MessageRatesAge = messageRatesAge
+		meta.httpQueryParameters.MessageRatesAge = messageRateAge
 	}
 
 	httpMessageRatesIncrement, httpMessageRatesIncrementPresent := config.TriggerMetadata[rabbitHttpQueryMessageRatesIncrement]
 	if httpMessageRatesIncrementPresent {
-		messageRatesIncrement, err := strconv.ParseInt(httpMessageRatesIncrement, 10, 0)
+		messageRateIncrement, err := strconv.ParseInt(httpMessageRatesIncrement, 10, 0)
 		if err != nil {
 			return fmt.Errorf("can't parse %s: %w", rabbitHttpQueryMessageRatesIncrement, err)
 		}
-		meta.httpQueryParameters.MessageRatesIncrement = messageRatesIncrement
+		meta.httpQueryParameters.MessageRatesIncrement = messageRateIncrement
 	}
 
 	return nil

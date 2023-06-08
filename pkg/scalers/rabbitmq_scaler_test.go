@@ -338,8 +338,8 @@ var testQueueInfoTestData = []getQueueInfoTestData{
 		isActive:       true,
 		extraMetadata: map[string]string{
 			"mode":                  "MessageRate",
-			"messageRatesAge":       "5",
-			"messageRatesIncrement": "1",
+			"messageRateAge":       "5",
+			"messageRateIncrement": "1",
 			"activationValue":       "4",
 			"value":                 "99",
 		},
@@ -364,8 +364,8 @@ var testQueueInfoTestData = []getQueueInfoTestData{
 		isActive:       false,
 		extraMetadata: map[string]string{
 			"mode":                  "MessageRate",
-			"messageRatesAge":       "5",
-			"messageRatesIncrement": "1",
+			"messageRateAge":       "5",
+			"messageRateIncrement": "1",
 			"activationValue":       "5",
 			"value":                 "99",
 		},
@@ -880,8 +880,8 @@ var _testQueueInfoTestAvgRate = []getQueueInfoTestData{
 		extraMetadata: map[string]string{
 			"useRegex":              "true",
 			"mode":                  "MessageRate",
-			"messageRatesAge":       "5",
-			"messageRatesIncrement": "1",
+			"messageRateAge":       "5",
+			"messageRateIncrement": "1",
 			"activationValue":       "11",
 			"value":                 "99",
 		},
@@ -919,8 +919,8 @@ var _testQueueInfoTestAvgRate = []getQueueInfoTestData{
 		extraMetadata: map[string]string{
 			"useRegex":              "true",
 			"mode":                  "MessageRate",
-			"messageRatesAge":       "5",
-			"messageRatesIncrement": "1",
+			"messageRateAge":       "5",
+			"messageRateIncrement": "1",
 			"activationValue":       "9",
 			"value":                 "99",
 		},
@@ -967,11 +967,11 @@ func TestGetQueueInfoWithRegex(t *testing.T) {
 				"use_regex":  {"true"},
 			}
 
-			val, ok := testData.extraMetadata["messageRatesAge"]
+			val, ok := testData.extraMetadata["messageRateAge"]
 			if ok {
 				expectedValues["msg_rates_age"] = []string{val}
 			}
-			val, ok = testData.extraMetadata["messageRatesIncrement"]
+			val, ok = testData.extraMetadata["messageRateIncrement"]
 			if ok {
 				expectedValues["msg_rates_incr"] = []string{val}
 			}
