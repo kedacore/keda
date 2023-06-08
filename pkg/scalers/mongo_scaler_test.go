@@ -57,14 +57,14 @@ var testMONGODBMetadata = []parseMongoDBMetadataTestData{
 	// from passwordFromEnv
 	{
 		metadata:    map[string]string{"query": `{"name":"John"}`, "metricName": "hpa", "collection": "demo", "queryValue": "12", "passwordFromEnv": "MongoDB_PASSWORD"},
-		authParams:  map[string]string{"dbName": "test", "host": "localshot", "port": "1234", "username": "sample"},
+		authParams:  map[string]string{"dbName": "test", "host": "localhost", "port": "1234", "username": "sample"},
 		resolvedEnv: testMongoDBResolvedEnv,
 		raisesError: false,
 	},
 	// from trigger auth
 	{
 		metadata:    map[string]string{"query": `{"name":"John"}`, "metricName": "hpa", "collection": "demo", "queryValue": "12"},
-		authParams:  map[string]string{"dbName": "test", "host": "localshot", "port": "1234", "username": "sample", "password": "sec@ure"},
+		authParams:  map[string]string{"dbName": "test", "host": "localhost", "port": "1234", "username": "sample", "password": "sec@ure"},
 		resolvedEnv: testMongoDBResolvedEnv,
 		raisesError: false,
 	},
@@ -79,8 +79,8 @@ var testMONGODBMetadata = []parseMongoDBMetadataTestData{
 
 var mongoDBConnectionStringTestDatas = []mongoDBConnectionStringTestData{
 	{metadataTestData: &testMONGODBMetadata[2], connectionString: "mongodb://mongodb0.example.com:27017"},
-	{metadataTestData: &testMONGODBMetadata[3], connectionString: "mongodb://sample:test%40password@localshot:1234/test"},
-	{metadataTestData: &testMONGODBMetadata[4], connectionString: "mongodb://sample:sec%40ure@localshot:1234/test"},
+	{metadataTestData: &testMONGODBMetadata[3], connectionString: "mongodb://sample:test%40password@localhost:1234/test"},
+	{metadataTestData: &testMONGODBMetadata[4], connectionString: "mongodb://sample:sec%40ure@localhost:1234/test"},
 }
 
 var mongoDBMetricIdentifiers = []mongoDBMetricIdentifier{
