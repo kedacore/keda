@@ -60,7 +60,7 @@ spec:
     spec:
       containers:
         - name: {{.MonitoredDeploymentName}}
-          image: nginxinc/nginx-unprivileged
+          image: nginxinc/nginx-unprivileged:alpine-slim
 `
 
 	deploymentTemplate = `
@@ -83,7 +83,7 @@ spec:
     spec:
       containers:
         - name: {{.DeploymentName}}
-          image: nginxinc/nginx-unprivileged
+          image: nginxinc/nginx-unprivileged:alpine-slim
 `
 
 	scaledObjectTemplate = `
@@ -170,6 +170,8 @@ func getTemplateData() (templateData, []Template) {
 func testPauseAt0(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing pausing at 0 ---")
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 2, testNamespace)
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, monitoredDeploymentName, testNamespace, 2, 60, testScaleOutWaitMin),
+		"monitoredDeploymentName replica count should be 2 after %d minute(s)", testScaleOutWaitMin)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
@@ -188,6 +190,9 @@ func testPauseAtN(t *testing.T, kc *kubernetes.Clientset, data templateData, n i
 	KubectlApplyWithTemplate(t, data, "scaledObjectAnnotatedTemplate", scaledObjectAnnotatedTemplate)
 
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 0, testNamespace)
+
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, monitoredDeploymentName, testNamespace, 0, 60, testPauseAtNWaitMin),
+		"monitoredDeploymentName replica count should be 0 after %d minute(s)", testPauseAtNWaitMin)
 
 	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, n, 60, testPauseAtNWaitMin),
 		"replica count should be %d after %d minute(s)", n, testPauseAtNWaitMin)
