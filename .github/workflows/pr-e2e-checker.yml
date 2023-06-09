@@ -1,4 +1,4 @@
-name: e2e-tests
+name: E2E Test Checker
 on:
   pull_request_target:
     types:
