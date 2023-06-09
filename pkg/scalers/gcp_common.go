@@ -6,9 +6,10 @@ import (
 	"net/http"
 	"os"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 var (
