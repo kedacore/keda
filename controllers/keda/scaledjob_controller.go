@@ -39,6 +39,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	"github.com/kedacore/keda/v2/pkg/scaling"
@@ -155,6 +156,9 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if err := kedautil.SetStatusConditions(ctx, r.Client, reqLogger, scaledJob, &conditions); err != nil {
 		return ctrl.Result{}, err
 	}
+
+	r.updateTriggerAuthenticationStatus(ctx, reqLogger, scaledJob)
+
 	return ctrl.Result{}, err
 }
 
@@ -312,4 +316,65 @@ func (r *ScaledJobReconciler) updatePromMetricsOnDelete(namespacedName string) {
 	}
 
 	delete(scaledJobPromMetricsMap, namespacedName)
+}
+
+func (r *ScaledJobReconciler) updateTriggerAuthenticationStatus(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
+	for _, trigger := range scaledJob.Spec.Triggers {
+		var triggerAuthentication kedav1alpha1.TriggerAuthenticationStatusHandler
+
+		if trigger.AuthenticationRef.Kind == "ClusterTriggerAuthentication" {
+			triggerAuthentication = &kedav1alpha1.ClusterTriggerAuthentication{}
+		} else {
+			triggerAuthentication = &kedav1alpha1.TriggerAuthentication{}
+		}
+
+		err := r.Client.Get(ctx, client.ObjectKey{Namespace: scaledJob.Namespace, Name: trigger.AuthenticationRef.Name}, triggerAuthentication.(client.Object))
+
+		if err != nil {
+			if errors.IsNotFound(err) {
+				logger.Info("TriggerAuthentication Not Found")
+			}
+			logger.Error(err, "Failed to get TriggerAuthentication")
+			continue
+		}
+
+		triggerAuthentication.SetScaledJobNameStr(kedacontrollerutil.AppendIntoString(triggerAuthentication.GetScaledJobNameStr(), scaledJob.GetName(), ","))
+		err = r.Client.Status().Update(ctx, triggerAuthentication.(client.Object))
+		if err != nil {
+			logger.Error(err, "Error updating TriggerAuthentication Status")
+			return "Update TriggerAuthentication Status Failed", err
+		}
+	}
+	return "Update TriggerAuthentication Status Successfully", nil
+}
+
+func (r *ScaledJobReconciler) updateTriggerAuthenticationStatusOnDelete(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
+
+	for _, trigger := range scaledJob.Spec.Triggers {
+		var triggerAuthentication kedav1alpha1.TriggerAuthenticationStatusHandler
+
+		if trigger.AuthenticationRef.Kind == "ClusterTriggerAuthentication" {
+			triggerAuthentication = &kedav1alpha1.ClusterTriggerAuthentication{}
+		} else {
+			triggerAuthentication = &kedav1alpha1.TriggerAuthentication{}
+		}
+
+		err := r.Client.Get(ctx, client.ObjectKey{Namespace: scaledJob.Namespace, Name: trigger.AuthenticationRef.Name}, triggerAuthentication.(client.Object))
+
+		if err != nil {
+			if errors.IsNotFound(err) {
+				logger.Info("TriggerAuthentication Not Found")
+			}
+			logger.Error(err, "Failed to get TriggerAuthentication")
+			continue
+		}
+
+		triggerAuthentication.SetScaledJobNameStr(kedacontrollerutil.RemoveFromString(triggerAuthentication.GetScaledJobNameStr(), scaledJob.GetName(), ","))
+		err = r.Client.Status().Update(ctx, triggerAuthentication.(client.Object))
+		if err != nil {
+			logger.Error(err, "Error updating TriggerAuthentication Status")
+			return "Update TriggerAuthentication Status Failed", err
+		}
+	}
+	return "Update TriggerAuthentication Status OnDelete Successfully", nil
 }

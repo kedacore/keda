@@ -79,6 +79,7 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(ctx context.Context, logge
 			return err
 		}
 
+		r.updateTriggerAuthenticationStatusOnDelete(ctx, logger, scaledObject)
 		r.updatePromMetricsOnDelete(namespacedName)
 	}
 

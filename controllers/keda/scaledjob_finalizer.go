@@ -50,6 +50,7 @@ func (r *ScaledJobReconciler) finalizeScaledJob(ctx context.Context, logger logr
 			return err
 		}
 
+		r.updateTriggerAuthenticationStatusOnDelete(ctx, logger, scaledJob)
 		r.updatePromMetricsOnDelete(namespacedName)
 	}
 
