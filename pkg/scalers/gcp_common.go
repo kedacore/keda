@@ -12,7 +12,6 @@ import (
 )
 
 var (
-	defaultGCPScopes       = []string{"https://www.googleapis.com/auth/cloud-platform"}
 	gcpScopeMonitoringRead = "https://www.googleapis.com/auth/monitoring.read"
 
 	errGoogleApplicationCrendentialsNotFound = errors.New("google application credentials not found")
