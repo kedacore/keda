@@ -396,7 +396,6 @@ func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject int
 /// --------------------------------------------------------------------------- ///
 
 // GetScaledObjectMetrics returns metrics for specified metric name for a ScaledObject identified by it's name and namespace.
-// The second return value are Prometheus metrics that needed to be exposed (used by DEPRECATED Prometheus Server on KEDA Metrics Server)
 // It could either query the metric value directly from the scaler or from a cache, that's being stored for the scaler.
 func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, error) {
 	logger := log.WithValues("scaledObject.Namespace", scaledObjectNamespace, "scaledObject.Name", scaledObjectName)
