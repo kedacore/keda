@@ -376,12 +376,7 @@ func TestPrometheusScaler_ExecutePromQuery_WithGCPNativeAuthentication(t *testin
 	}))
 	defer fakeGoogleOAuthServer.Close()
 
-	filename := filepath.Join(t.TempDir(), "fake_application_default_credentials.json")
-	f, err := os.Create(filename)
-	require.NoError(t, err)
-	defer func() { require.NoError(t, f.Close()) }()
-
-	fakeGCPCreds := map[string]string{
+	fakeGCPCredsJSON, err := json.Marshal(map[string]string{
 		"type": "service_account",
 		"private_key": `-----BEGIN RSA PRIVATE KEY-----
 MIIBOwIBAAJBAOfgBHLEOcXo2X+8SSzF1rEsTewRzZIOZAak4XRULY+dBd1bsGBM
@@ -393,49 +388,110 @@ m0Lc0xIXFuYd+QIgZ9DpkomnVd3/BytxQqJ2I+tXmpXfmfwkA9lRXOJ94uECIQC8
 IisErx3ap2o99Zn+Yotv/TGZkS+lfMLdbcOBr8a57Q==
 -----END RSA PRIVATE KEY-----`,
 		"token_uri": fakeGoogleOAuthServer.URL,
-	}
-	require.NoError(t, json.NewEncoder(f).Encode(fakeGCPCreds))
-	t.Setenv("GOOGLE_APPLICATION_CREDENTIALS", filename)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/v1/projects/my-fake-project/location/global/prometheus/api/v1/query", r.URL.Path)
-		assert.True(t, r.URL.Query().Has("time"))
-		assert.Equal(t, "sum(rate(http_requests_total{instance=\"my-instance\"}[5m]))", r.URL.Query().Get("query"))
-
-		if !assert.Equal(t, "Bearer fake_access_token", r.Header.Get("Authorization")) {
-			w.WriteHeader(http.StatusUnauthorized)
-		}
-
-		assert.NoError(t, json.NewEncoder(w).Encode(map[string]any{
-			"status": "success",
-			"data": map[string]any{
-				"resultType": "vector",
-				"result": []map[string]any{
-					{"metric": map[string]string{}, "value": []any{1686063687, "777"}},
-				},
-			},
-		}))
-	}))
-	defer server.Close()
-
-	scaler, err := NewPrometheusScaler(&ScalerConfig{
-		PodIdentity: kedav1alpha1.AuthPodIdentity{
-			Provider: kedav1alpha1.PodIdentityProviderGCP,
-		},
-		TriggerMetadata: map[string]string{
-			"serverAddress": server.URL + "/v1/projects/my-fake-project/location/global/prometheus",
-			"query":         "sum(rate(http_requests_total{instance=\"my-instance\"}[5m]))",
-			"threshold":     "100",
-		},
 	})
 	require.NoError(t, err)
 
-	s, ok := scaler.(*prometheusScaler)
-	require.True(t, ok, "Scaler must be a Prometheus Scaler")
-	_, ok = s.httpClient.Transport.(*oauth2.Transport)
-	require.True(t, ok, "HTTP transport must be Google OAuth2")
+	fakeGCPCredsPath := filepath.Join(t.TempDir(), "fake_application_default_credentials.json")
 
-	got, err := s.ExecutePromQuery(context.TODO())
+	f, err := os.Create(fakeGCPCredsPath)
 	require.NoError(t, err)
-	assert.Equal(t, float64(777), got)
+	_, err = f.Write(fakeGCPCredsJSON)
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+
+	newFakeServer := func(t *testing.T) *httptest.Server {
+		t.Helper()
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/v1/projects/my-fake-project/location/global/prometheus/api/v1/query", r.URL.Path)
+			assert.True(t, r.URL.Query().Has("time"))
+			assert.Equal(t, "sum(rate(http_requests_total{instance=\"my-instance\"}[5m]))", r.URL.Query().Get("query"))
+
+			if !assert.Equal(t, "Bearer fake_access_token", r.Header.Get("Authorization")) {
+				w.WriteHeader(http.StatusUnauthorized)
+			}
+
+			assert.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+				"status": "success",
+				"data": map[string]any{
+					"resultType": "vector",
+					"result": []map[string]any{
+						{"metric": map[string]string{}, "value": []any{1686063687, "777"}},
+					},
+				},
+			}))
+		}))
+	}
+
+	tests := map[string]struct {
+		config func(*testing.T, *ScalerConfig) *ScalerConfig
+	}{
+		"using GCP workload identity": {
+			config: func(t *testing.T, config *ScalerConfig) *ScalerConfig {
+				t.Setenv("GOOGLE_APPLICATION_CREDENTIALS", fakeGCPCredsPath)
+				config.PodIdentity = kedav1alpha1.AuthPodIdentity{
+					Provider: kedav1alpha1.PodIdentityProviderGCP,
+				}
+				return config
+			},
+		},
+
+		"with Google app credentials on auth params": {
+			config: func(t *testing.T, config *ScalerConfig) *ScalerConfig {
+				config.AuthParams = map[string]string{
+					"GoogleApplicationCredentials": string(fakeGCPCredsJSON),
+				}
+				return config
+			},
+		},
+
+		"with Google app credentials on envs": {
+			config: func(t *testing.T, config *ScalerConfig) *ScalerConfig {
+				config.TriggerMetadata["credentialsFromEnv"] = "GCP_APP_CREDENTIALS"
+				config.ResolvedEnv = map[string]string{
+					"GCP_APP_CREDENTIALS": string(fakeGCPCredsJSON),
+				}
+				return config
+			},
+		},
+
+		"with Google app credentials file on auth params": {
+			config: func(t *testing.T, config *ScalerConfig) *ScalerConfig {
+				config.TriggerMetadata["credentialsFromEnvFile"] = "GCP_APP_CREDENTIALS"
+				config.ResolvedEnv = map[string]string{
+					"GCP_APP_CREDENTIALS": fakeGCPCredsPath,
+				}
+				return config
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			server := newFakeServer(t)
+			defer server.Close()
+
+			baseConfig := &ScalerConfig{
+				TriggerMetadata: map[string]string{
+					"serverAddress": server.URL + "/v1/projects/my-fake-project/location/global/prometheus",
+					"query":         "sum(rate(http_requests_total{instance=\"my-instance\"}[5m]))",
+					"threshold":     "100",
+				},
+			}
+
+			require.NotNil(t, tt.config, "you must provide a config generator func")
+			config := tt.config(t, baseConfig)
+
+			scaler, err := NewPrometheusScaler(config)
+			require.NoError(t, err)
+
+			s, ok := scaler.(*prometheusScaler)
+			require.True(t, ok, "Scaler must be a Prometheus Scaler")
+			_, ok = s.httpClient.Transport.(*oauth2.Transport)
+			require.True(t, ok, "HTTP transport must be Google OAuth2")
+
+			got, err := s.ExecutePromQuery(context.TODO())
+			require.NoError(t, err)
+			assert.Equal(t, float64(777), got)
+		})
+	}
 }
