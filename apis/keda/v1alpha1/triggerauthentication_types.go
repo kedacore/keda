@@ -31,8 +31,8 @@ import (
 // +kubebuilder:printcolumn:name="Secret",type="string",JSONPath=".spec.secretTargetRef[*].name"
 // +kubebuilder:printcolumn:name="Env",type="string",JSONPath=".spec.env[*].name"
 // +kubebuilder:printcolumn:name="VaultAddress",type="string",JSONPath=".spec.hashiCorpVault.address"
-// +kubebuilder:printcolumn:name="ScaledObjects",type="string",JSONPath=".status.allscaledobjectnamesstring"
-// +kubebuilder:printcolumn:name="ScaledJobs",type="string",JSONPath=".status.allscaledjobnamesstring"
+// +kubebuilder:printcolumn:name="ScaledObjects",type="string",JSONPath=".status.scaledobjects"
+// +kubebuilder:printcolumn:name="ScaledJobs",type="string",JSONPath=".status.scaledjobs"
 type ClusterTriggerAuthentication struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -60,8 +60,8 @@ type ClusterTriggerAuthenticationList struct {
 // +kubebuilder:printcolumn:name="Secret",type="string",JSONPath=".spec.secretTargetRef[*].name"
 // +kubebuilder:printcolumn:name="Env",type="string",JSONPath=".spec.env[*].name"
 // +kubebuilder:printcolumn:name="VaultAddress",type="string",JSONPath=".spec.hashiCorpVault.address"
-// +kubebuilder:printcolumn:name="ScaledObjects",type="string",JSONPath=".status.allscaledobjectnamesstring"
-// +kubebuilder:printcolumn:name="ScaledJobs",type="string",JSONPath=".status.allscaledjobnamesstring"
+// +kubebuilder:printcolumn:name="ScaledObjects",type="string",JSONPath=".status.scaledobjects"
+// +kubebuilder:printcolumn:name="ScaledJobs",type="string",JSONPath=".status.scaledjobs"
 type TriggerAuthentication struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -91,9 +91,9 @@ type TriggerAuthenticationSpec struct {
 // TriggerAuthenticationStatus defines the observed state of TriggerAuthentication
 type TriggerAuthenticationStatus struct {
 	// +optional
-	ScaledObjectNamesStr string `json:"allscaledobjectnamesstring,omitempty"`
+	ScaledObjectNamesStr string `json:"scaledobjects,omitempty"`
 	// +optional
-	ScaledJobNamesStr string `json:"allscaledjobnamesstring,omitempty"`
+	ScaledJobNamesStr string `json:"scaledjobs,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
