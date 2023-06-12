@@ -545,16 +545,7 @@ func (r *ScaledObjectReconciler) updatePromMetricsOnDelete(namespacedName string
 
 func (r *ScaledObjectReconciler) updateTriggerAuthenticationStatus(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (string, error) {
 	for _, trigger := range scaledObject.Spec.Triggers {
-		var triggerAuthentication kedav1alpha1.TriggerAuthenticationStatusHandler
-
-		if trigger.AuthenticationRef.Kind == "ClusterTriggerAuthentication" {
-			triggerAuthentication = &kedav1alpha1.ClusterTriggerAuthentication{}
-		} else {
-			triggerAuthentication = &kedav1alpha1.TriggerAuthentication{}
-		}
-
-		err := r.Client.Get(ctx, client.ObjectKey{Namespace: scaledObject.Namespace, Name: trigger.AuthenticationRef.Name}, triggerAuthentication.(client.Object))
-
+		triggerAuth, err := GetTriggerAuth(ctx, r.Client, trigger.AuthenticationRef, scaledObject.GetNamespace())
 		if err != nil {
 			if errors.IsNotFound(err) {
 				logger.Info("TriggerAuthentication Not Found")
@@ -563,42 +554,53 @@ func (r *ScaledObjectReconciler) updateTriggerAuthenticationStatus(ctx context.C
 			continue
 		}
 
-		triggerAuthentication.SetScaledObjectNameStr(kedacontrollerutil.AppendIntoString(triggerAuthentication.GetScaledObjectNameStr(), scaledObject.GetName(), ","))
-		err = r.Client.Status().Update(ctx, triggerAuthentication.(client.Object))
+		triggerAuthenticationStatus, err := GetTriggerAuthStatus(triggerAuth)
 		if err != nil {
-			logger.Error(err, "Error updating TriggerAuthentication Status")
-			return "Update TriggerAuthentication Status Failed", err
+			if errors.IsNotFound(err) {
+				logger.Info("TriggerAuthenticationStatus Not Found")
+			}
+			logger.Error(err, "Failed to get TriggerAuthenticationStatus")
+			continue
+		}
+
+		triggerAuthenticationStatus = triggerAuthenticationStatus.DeepCopy()
+		triggerAuthenticationStatus.ScaledObjectNamesStr = kedacontrollerutil.AppendIntoString(triggerAuthenticationStatus.ScaledObjectNamesStr, scaledObject.GetName(), ",")
+
+		if err := kedautil.UpdateTriggerAuthenticationStatus(ctx, r.Client, logger, triggerAuth, triggerAuthenticationStatus); err != nil {
+			logger.Error(err, "Failed to update TriggerAuthenticationStatus")
 		}
 	}
 	return "Update TriggerAuthentication Status Successfully", nil
 }
 
-func (r *ScaledObjectReconciler) updateTriggerAuthenticationStatusOnDelete(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (string, error) {
+func (r *ScaledObjectReconciler) updateTriggerAuthenticationStatusOnDelete(ctx context.Context, logger logr.Logger, scaledObject kedav1alpha1.ScaledObject) (string, error) {
 
 	for _, trigger := range scaledObject.Spec.Triggers {
-		var triggerAuthentication kedav1alpha1.TriggerAuthenticationStatusHandler
-
-		if trigger.AuthenticationRef.Kind == "ClusterTriggerAuthentication" {
-			triggerAuthentication = &kedav1alpha1.ClusterTriggerAuthentication{}
-		} else {
-			triggerAuthentication = &kedav1alpha1.TriggerAuthentication{}
-		}
-
-		err := r.Client.Get(ctx, client.ObjectKey{Namespace: scaledObject.Namespace, Name: trigger.AuthenticationRef.Name}, triggerAuthentication.(client.Object))
+		triggerAuth, err := GetTriggerAuth(ctx, r.Client, trigger.AuthenticationRef, scaledObject.GetNamespace())
 
 		if err != nil {
 			if errors.IsNotFound(err) {
 				logger.Info("TriggerAuthentication Not Found")
 			}
-			logger.Error(err, "Failed to get TriggerAuthentication")
+			logger.Error(err, "Failed to get TriggerAuthentication1111"+err.Error())
 			continue
 		}
 
-		triggerAuthentication.SetScaledObjectNameStr(kedacontrollerutil.RemoveFromString(triggerAuthentication.GetScaledObjectNameStr(), scaledObject.GetName(), ","))
-		err = r.Client.Status().Update(ctx, triggerAuthentication.(client.Object))
+		triggerAuthenticationStatus, err := GetTriggerAuthStatus(triggerAuth)
+
 		if err != nil {
-			logger.Error(err, "Error updating TriggerAuthentication Status")
-			return "Update TriggerAuthentication Status Failed", err
+			if errors.IsNotFound(err) {
+				logger.Info("TriggerAuthenticationStatus Not Found")
+			}
+			logger.Error(err, "Failed to get TriggerAuthenticationStatus")
+			continue
+		}
+
+		triggerAuthenticationStatus = triggerAuthenticationStatus.DeepCopy()
+		triggerAuthenticationStatus.ScaledObjectNamesStr = kedacontrollerutil.RemoveFromString(triggerAuthenticationStatus.ScaledObjectNamesStr, scaledObject.GetName(), ",")
+
+		if err := kedautil.UpdateTriggerAuthenticationStatus(ctx, r.Client, logger, triggerAuth, triggerAuthenticationStatus); err != nil {
+			logger.Error(err, "Failed to update TriggerAuthenticationStatus")
 		}
 	}
 	return "Update TriggerAuthentication Status OnDelete Successfully", nil

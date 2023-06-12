@@ -18,10 +18,12 @@ package keda
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -115,4 +117,35 @@ func (r *TriggerAuthenticationReconciler) UpdatePromMetricsOnDelete(namespacedNa
 	}
 
 	delete(triggerAuthPromMetricsMap, namespacedName)
+}
+
+func GetTriggerAuth(ctx context.Context, client client.Client, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, namespace string) (client.Object, error) {
+
+	if triggerAuthRef.Kind == "" || triggerAuthRef.Kind == "TriggerAuthentication" {
+		triggerAuth := &kedav1alpha1.TriggerAuthentication{}
+		err := client.Get(ctx, types.NamespacedName{Name: triggerAuthRef.Name, Namespace: namespace}, triggerAuth)
+		if err != nil {
+			return nil, err
+		}
+		return triggerAuth, nil
+	} else if triggerAuthRef.Kind == "ClusterTriggerAuthentication" {
+		clusterTriggerAuth := &kedav1alpha1.ClusterTriggerAuthentication{}
+		err := client.Get(ctx, types.NamespacedName{Name: triggerAuthRef.Name, Namespace: namespace}, clusterTriggerAuth)
+		if err != nil {
+			return nil, err
+		}
+		return clusterTriggerAuth, nil
+	}
+	return nil, fmt.Errorf("unknown trigger auth kind %s", triggerAuthRef.Kind)
+}
+
+func GetTriggerAuthStatus(triggerAuth client.Object) (*kedav1alpha1.TriggerAuthenticationStatus, error) {
+	switch obj := triggerAuth.(type) {
+	case *kedav1alpha1.TriggerAuthentication:
+		return &obj.Status, nil
+	case *kedav1alpha1.ClusterTriggerAuthentication:
+		return &obj.Status, nil
+	default:
+		return nil, fmt.Errorf("unknown trigger auth status %s", obj)
+	}
 }

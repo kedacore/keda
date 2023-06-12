@@ -62,6 +62,25 @@ func UpdateScaledObjectStatus(ctx context.Context, client runtimeclient.StatusCl
 	return TransformObject(ctx, client, logger, scaledObject, status, transform)
 }
 
+// UpdateTriggerAuthenticationStatus patches the given TriggerAuthentication/ClusterTriggerAuthentication with the updated status passed to it or returns an error.
+func UpdateTriggerAuthenticationStatus(ctx context.Context, client runtimeclient.StatusClient, logger logr.Logger, object runtimeclient.Object, status *kedav1alpha1.TriggerAuthenticationStatus) error {
+	transform := func(runtimeObj runtimeclient.Object, target interface{}) error {
+		status, ok := target.(*kedav1alpha1.TriggerAuthenticationStatus)
+		if !ok {
+			return fmt.Errorf("transform target is not kedav1alpha1.TriggerAuthenticationStatus type %v", target)
+		}
+		switch obj := runtimeObj.(type) {
+		case *kedav1alpha1.TriggerAuthentication:
+			obj.Status = *status
+		case *kedav1alpha1.ClusterTriggerAuthentication:
+			obj.Status = *status
+		default:
+		}
+		return nil
+	}
+	return TransformObject(ctx, client, logger, object, status, transform)
+}
+
 // TransformObject patches the given object with the targeted passed to it through a transformer function or returns an error.
 func TransformObject(ctx context.Context, client runtimeclient.StatusClient, logger logr.Logger, object interface{}, target interface{}, transform func(runtimeclient.Object, interface{}) error) error {
 	var patch runtimeclient.Patch
@@ -78,6 +97,18 @@ func TransformObject(ctx context.Context, client runtimeclient.StatusClient, log
 		patch = runtimeclient.MergeFrom(obj.DeepCopy())
 		if err := transform(obj, target); err != nil {
 			logger.Error(err, "failed to patch ScaledJob")
+			return err
+		}
+	case *kedav1alpha1.TriggerAuthentication:
+		patch = runtimeclient.MergeFrom(obj.DeepCopy())
+		if err := transform(obj, target); err != nil {
+			logger.Error(err, "failed to patch TriggerAuthentication")
+			return err
+		}
+	case *kedav1alpha1.ClusterTriggerAuthentication:
+		patch = runtimeclient.MergeFrom(obj.DeepCopy())
+		if err := transform(obj, target); err != nil {
+			logger.Error(err, "failed to patch ClusterTriggerAuthentication")
 			return err
 		}
 	default:
