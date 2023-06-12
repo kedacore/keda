@@ -32,6 +32,7 @@ type awsDynamoDBMetadata struct {
 	keyConditionExpression    string
 	expressionAttributeNames  map[string]*string
 	expressionAttributeValues map[string]*dynamodb.AttributeValue
+	indexName                 string
 	targetValue               int64
 	activationTargetValue     int64
 	awsAuthorization          awsAuthorizationMetadata
@@ -104,6 +105,10 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 
 	if val, ok := config.TriggerMetadata["awsEndpoint"]; ok {
 		meta.awsEndpoint = val
+	}
+
+	if val, ok := config.TriggerMetadata["indexName"]; ok {
+		meta.indexName = val
 	}
 
 	if val, ok := config.TriggerMetadata["keyConditionExpression"]; ok && val != "" {
@@ -213,6 +218,7 @@ func (s *awsDynamoDBScaler) Close(context.Context) error {
 func (s *awsDynamoDBScaler) GetQueryMetrics() (float64, error) {
 	dimensions := dynamodb.QueryInput{
 		TableName:                 aws.String(s.metadata.tableName),
+		IndexName:                 aws.String(s.metadata.indexName),
 		KeyConditionExpression:    aws.String(s.metadata.keyConditionExpression),
 		ExpressionAttributeNames:  s.metadata.expressionAttributeNames,
 		ExpressionAttributeValues: s.metadata.expressionAttributeValues,
