@@ -573,7 +573,7 @@ func (r *ScaledObjectReconciler) updateTriggerAuthenticationStatus(ctx context.C
 	return "Update TriggerAuthentication Status Successfully", nil
 }
 
-func (r *ScaledObjectReconciler) updateTriggerAuthenticationStatusOnDelete(ctx context.Context, logger logr.Logger, scaledObject kedav1alpha1.ScaledObject) (string, error) {
+func (r *ScaledObjectReconciler) updateTriggerAuthenticationStatusOnDelete(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (string, error) {
 
 	for _, trigger := range scaledObject.Spec.Triggers {
 		triggerAuth, err := GetTriggerAuth(ctx, r.Client, trigger.AuthenticationRef, scaledObject.GetNamespace())
