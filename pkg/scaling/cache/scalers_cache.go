@@ -254,16 +254,7 @@ func (c *ScalersCache) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 		}
 
 		// TODO here we should probably loop through all metrics in a Scaler
-		// as it is done for ScaledObject
-		metrics, isTriggerActive, err := s.Scaler.GetMetricsAndActivity(ctx, metricSpecs[0].External.Metric.Name)
-		if err != nil {
-			var ns scalers.Scaler
-			ns, err = c.refreshScaler(ctx, i)
-			if err == nil {
-				metrics, isTriggerActive, err = ns.GetMetricsAndActivity(ctx, metricSpecs[0].External.Metric.Name)
-			}
-		}
-
+		metrics, isTriggerActive, _, err := c.GetMetricsAndActivityForScaler(ctx, i, metricSpecs[0].External.Metric.Name)
 		if err != nil {
 			scalerLogger.V(1).Info("Error getting scaler metrics and activity, but continue", "error", err)
 			c.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
