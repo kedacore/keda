@@ -218,10 +218,13 @@ func (s *awsDynamoDBScaler) Close(context.Context) error {
 func (s *awsDynamoDBScaler) GetQueryMetrics() (float64, error) {
 	dimensions := dynamodb.QueryInput{
 		TableName:                 aws.String(s.metadata.tableName),
-		IndexName:                 aws.String(s.metadata.indexName),
 		KeyConditionExpression:    aws.String(s.metadata.keyConditionExpression),
 		ExpressionAttributeNames:  s.metadata.expressionAttributeNames,
 		ExpressionAttributeValues: s.metadata.expressionAttributeValues,
+	}
+
+	if s.metadata.indexName != "" {
+		dimensions.IndexName = aws.String(s.metadata.indexName)
 	}
 
 	res, err := s.dbClient.Query(&dimensions)

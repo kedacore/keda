@@ -18,6 +18,7 @@ const (
 	testAWSDynamoSecretAccessKey = "none"
 	testAWSDynamoErrorTable      = "Error"
 	testAWSDynamoNoValueTable    = "NoValue"
+	testAWSDynamoIndexTable      = "Index"
 )
 
 var testAWSDynamoAuthentication = map[string]string{
@@ -313,6 +314,7 @@ type mockDynamoDB struct {
 }
 
 var result int64 = 4
+var indexResult int64 = 2
 var empty int64
 
 func (c *mockDynamoDB) Query(input *dynamodb.QueryInput) (*dynamodb.QueryOutput, error) {
@@ -322,6 +324,12 @@ func (c *mockDynamoDB) Query(input *dynamodb.QueryInput) (*dynamodb.QueryOutput,
 	case testAWSCloudwatchNoValueMetric:
 		return &dynamodb.QueryOutput{
 			Count: &empty,
+		}, nil
+	}
+
+	if input.IndexName != nil {
+		return &dynamodb.QueryOutput{
+			Count: &indexResult,
 		}, nil
 	}
 
@@ -338,7 +346,6 @@ var awsDynamoDBGetMetricTestData = []awsDynamoDBMetadata{
 	{
 		tableName:                 "ValidTable",
 		awsRegion:                 "eu-west-1",
-		indexName:                 "test-index",
 		keyConditionExpression:    "#yr = :yyyy",
 		expressionAttributeNames:  map[string]*string{"#yr": &year},
 		expressionAttributeValues: map[string]*dynamodb.AttributeValue{":yyyy": &yearAttr},
@@ -347,7 +354,6 @@ var awsDynamoDBGetMetricTestData = []awsDynamoDBMetadata{
 	{
 		tableName:                 testAWSDynamoErrorTable,
 		awsRegion:                 "eu-west-1",
-		indexName:                 "test-index",
 		keyConditionExpression:    "#yr = :yyyy",
 		expressionAttributeNames:  map[string]*string{"#yr": &year},
 		expressionAttributeValues: map[string]*dynamodb.AttributeValue{":yyyy": &yearAttr},
@@ -356,10 +362,19 @@ var awsDynamoDBGetMetricTestData = []awsDynamoDBMetadata{
 	{
 		tableName:                 testAWSDynamoNoValueTable,
 		awsRegion:                 "eu-west-1",
+		keyConditionExpression:    "#yr = :yyyy",
+		expressionAttributeNames:  map[string]*string{"#yr": &year},
+		expressionAttributeValues: map[string]*dynamodb.AttributeValue{":yyyy": &yearAttr},
+		targetValue:               3,
+	},
+	{
+		tableName:                 testAWSDynamoIndexTable,
+		awsRegion:                 "eu-west-1",
 		indexName:                 "test-index",
 		keyConditionExpression:    "#yr = :yyyy",
 		expressionAttributeNames:  map[string]*string{"#yr": &year},
 		expressionAttributeValues: map[string]*dynamodb.AttributeValue{":yyyy": &yearAttr},
+		activationTargetValue:     3,
 		targetValue:               3,
 	},
 }
@@ -375,9 +390,12 @@ func TestDynamoGetMetrics(t *testing.T) {
 				assert.EqualError(t, err, "error", "expect error because of dynamodb api error")
 			case testAWSDynamoNoValueTable:
 				assert.NoError(t, err, "dont expect error when returning empty result from dynamodb")
+			case testAWSDynamoIndexTable:
+				assert.EqualValues(t, int64(2), value[0].Value.Value())
 			default:
 				assert.EqualValues(t, int64(4), value[0].Value.Value())
 			}
+
 		})
 	}
 }
@@ -393,6 +411,8 @@ func TestDynamoGetQueryMetrics(t *testing.T) {
 				assert.EqualError(t, err, "error", "expect error because of dynamodb api error")
 			case testAWSDynamoNoValueTable:
 				assert.NoError(t, err, "dont expect error when returning empty result from dynamodb")
+			case testAWSDynamoIndexTable:
+				assert.EqualValues(t, int64(2), value)
 			default:
 				assert.EqualValues(t, int64(4), value)
 			}
@@ -411,6 +431,8 @@ func TestDynamoIsActive(t *testing.T) {
 				assert.EqualError(t, err, "error", "expect error because of dynamodb api error")
 			case testAWSDynamoNoValueTable:
 				assert.NoError(t, err, "dont expect error when returning empty result from dynamodb")
+			case testAWSDynamoIndexTable:
+				assert.EqualValues(t, false, value)
 			default:
 				assert.EqualValues(t, true, value)
 			}
