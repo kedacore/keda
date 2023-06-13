@@ -95,6 +95,17 @@ func (c *FakeClusterTriggerAuthentications) Update(ctx context.Context, clusterT
 	return obj.(*v1alpha1.ClusterTriggerAuthentication), err
 }
 
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+func (c *FakeClusterTriggerAuthentications) UpdateStatus(ctx context.Context, clusterTriggerAuthentication *v1alpha1.ClusterTriggerAuthentication, opts v1.UpdateOptions) (*v1alpha1.ClusterTriggerAuthentication, error) {
+	obj, err := c.Fake.
+		Invokes(testing.NewRootUpdateSubresourceAction(clustertriggerauthenticationsResource, "status", clusterTriggerAuthentication), &v1alpha1.ClusterTriggerAuthentication{})
+	if obj == nil {
+		return nil, err
+	}
+	return obj.(*v1alpha1.ClusterTriggerAuthentication), err
+}
+
 // Delete takes name of the clusterTriggerAuthentication and deletes it. Returns an error if one occurs.
 func (c *FakeClusterTriggerAuthentications) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
