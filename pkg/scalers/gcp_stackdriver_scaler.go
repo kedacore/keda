@@ -109,7 +109,7 @@ func parseStackdriverMetadata(config *ScalerConfig, logger logr.Logger) (*stackd
 		meta.activationTargetValue = activationTargetValue
 	}
 
-	auth, err := getGcpAuthorization(config, config.ResolvedEnv)
+	auth, err := getGCPAuthorization(config)
 	if err != nil {
 		return nil, err
 	}
