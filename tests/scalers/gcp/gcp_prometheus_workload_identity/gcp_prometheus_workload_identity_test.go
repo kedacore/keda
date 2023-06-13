@@ -20,7 +20,7 @@ import (
 var _ = godotenv.Load("../../../.env")
 
 const (
-	testName = "gcp-prometheus-test"
+	testName = "gcp-prometheus-workload-identity-test"
 )
 
 var (
