@@ -18,7 +18,6 @@ package keda
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 
@@ -37,6 +36,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
+	"github.com/pkg/errors"
 )
 
 // TriggerAuthenticationReconciler reconciles a TriggerAuthentication object
@@ -123,7 +123,9 @@ func (r *TriggerAuthenticationReconciler) UpdatePromMetricsOnDelete(namespacedNa
 }
 
 func GetTriggerAuth(ctx context.Context, client client.Client, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, namespace string) (client.Object, error) {
-	if triggerAuthRef.Kind == "" || triggerAuthRef.Kind == "TriggerAuthentication" {
+	if triggerAuthRef == nil {
+		return nil, fmt.Errorf("triggerAuthRef is nil")
+	} else if triggerAuthRef.Kind == "" || triggerAuthRef.Kind == "TriggerAuthentication" {
 		triggerAuth := &kedav1alpha1.TriggerAuthentication{}
 		err := client.Get(ctx, types.NamespacedName{Name: triggerAuthRef.Name, Namespace: namespace}, triggerAuth)
 		if err != nil {
@@ -155,6 +157,10 @@ func GetTriggerAuthStatus(triggerAuth client.Object) (*kedav1alpha1.TriggerAuthe
 func UpdateTriggerAuthenticationStatusHandler(ctx context.Context, logger logr.Logger, client client.Client, namespace string, scaleTriggers []kedav1alpha1.ScaleTriggers, statusHandler func(*kedav1alpha1.TriggerAuthenticationStatus) *kedav1alpha1.TriggerAuthenticationStatus) (string, error) {
 	var errs error
 	for _, trigger := range scaleTriggers {
+		if trigger.AuthenticationRef == nil {
+			continue
+		}
+
 		triggerAuth, err := GetTriggerAuth(ctx, client, trigger.AuthenticationRef, namespace)
 
 		if err != nil {
@@ -162,7 +168,7 @@ func UpdateTriggerAuthenticationStatusHandler(ctx context.Context, logger logr.L
 				logger.Info("TriggerAuthentication Not Found")
 			}
 			logger.Error(err, "Failed to get TriggerAuthentication")
-			errs = errors.Join(errs, err)
+			errs = errors.Wrap(errs, err.Error())
 			continue
 		}
 
@@ -173,7 +179,7 @@ func UpdateTriggerAuthenticationStatusHandler(ctx context.Context, logger logr.L
 				logger.Info("TriggerAuthenticationStatus Not Found")
 			}
 			logger.Error(err, "Failed to get TriggerAuthenticationStatus")
-			errs = errors.Join(errs, err)
+			errs = errors.Wrap(errs, err.Error())
 			continue
 		}
 
@@ -181,7 +187,7 @@ func UpdateTriggerAuthenticationStatusHandler(ctx context.Context, logger logr.L
 
 		if err := kedautil.UpdateTriggerAuthenticationStatus(ctx, client, logger, triggerAuth, triggerAuthenticationStatus); err != nil {
 			logger.Error(err, "Failed to update TriggerAuthenticationStatus")
-			errs = errors.Join(errs, err)
+			errs = errors.Wrap(errs, err.Error())
 		}
 	}
 
