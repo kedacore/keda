@@ -30,10 +30,10 @@ spec:
     - jsonPath: .spec.hashiCorpVault.address
       name: VaultAddress
       type: string
-    - jsonPath: .status.allscaledobjectnamesstring
+    - jsonPath: .status.scaledobjects
       name: ScaledObjects
       type: string
-    - jsonPath: .status.allscaledjobnamesstring
+    - jsonPath: .status.scaledjobs
       name: ScaledJobs
       type: string
     name: v1alpha1
@@ -231,9 +231,9 @@ spec:
             description: TriggerAuthenticationStatus defines the observed state of
               TriggerAuthentication
             properties:
-              allscaledjobnamesstring:
+              scaledjobs:
                 type: string
-              allscaledobjectnamesstring:
+              scaledobjects:
                 type: string
             type: object
         required:
