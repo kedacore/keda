@@ -395,7 +395,6 @@ func TestDynamoGetMetrics(t *testing.T) {
 			default:
 				assert.EqualValues(t, int64(4), value[0].Value.Value())
 			}
-
 		})
 	}
 }
