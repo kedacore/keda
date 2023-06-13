@@ -554,7 +554,6 @@ func (r *ScaledObjectReconciler) updateTriggerAuthenticationStatus(ctx context.C
 }
 
 func (r *ScaledObjectReconciler) updateTriggerAuthenticationStatusOnDelete(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (string, error) {
-
 	return r.updateTriggerAuthenticationStatusHandler(ctx, logger, scaledObject, func(triggerAuthenticationStatus *kedav1alpha1.TriggerAuthenticationStatus) *kedav1alpha1.TriggerAuthenticationStatus {
 		triggerAuthenticationStatus.ScaledObjectNamesStr = kedacontrollerutil.RemoveFromString(triggerAuthenticationStatus.ScaledObjectNamesStr, scaledObject.GetName(), ",")
 		return triggerAuthenticationStatus

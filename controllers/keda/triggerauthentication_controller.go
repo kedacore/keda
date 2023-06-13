@@ -120,7 +120,6 @@ func (r *TriggerAuthenticationReconciler) UpdatePromMetricsOnDelete(namespacedNa
 }
 
 func GetTriggerAuth(ctx context.Context, client client.Client, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, namespace string) (client.Object, error) {
-
 	if triggerAuthRef.Kind == "" || triggerAuthRef.Kind == "TriggerAuthentication" {
 		triggerAuth := &kedav1alpha1.TriggerAuthentication{}
 		err := client.Get(ctx, types.NamespacedName{Name: triggerAuthRef.Name, Namespace: namespace}, triggerAuth)

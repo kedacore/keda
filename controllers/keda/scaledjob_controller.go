@@ -329,7 +329,6 @@ func (r *ScaledJobReconciler) updateTriggerAuthenticationStatus(ctx context.Cont
 }
 
 func (r *ScaledJobReconciler) updateTriggerAuthenticationStatusOnDelete(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
-
 	return r.updateTriggerAuthenticationStatusHandler(ctx, logger, scaledJob, func(triggerAuthenticationStatus *kedav1alpha1.TriggerAuthenticationStatus) *kedav1alpha1.TriggerAuthenticationStatus {
 		triggerAuthenticationStatus.ScaledJobNamesStr = kedacontrollerutil.RemoveFromString(triggerAuthenticationStatus.ScaledJobNamesStr, scaledJob.GetName(), ",")
 		return triggerAuthenticationStatus
