@@ -18,6 +18,7 @@ package keda
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -25,7 +26,7 @@ import (
 	"github.com/go-logr/logr"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	corev1listers "k8s.io/client-go/listers/core/v1"
@@ -97,7 +98,7 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	scaledJob := &kedav1alpha1.ScaledJob{}
 	err := r.Client.Get(ctx, req.NamespacedName, scaledJob)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8sErrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
@@ -157,7 +158,9 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	r.updateTriggerAuthenticationStatus(ctx, reqLogger, scaledJob)
+	if _, err := r.updateTriggerAuthenticationStatus(ctx, reqLogger, scaledJob); err != nil {
+		reqLogger.Error(err, "Error updating TriggerAuthentication Status")
+	}
 
 	return ctrl.Result{}, err
 }
@@ -319,64 +322,55 @@ func (r *ScaledJobReconciler) updatePromMetricsOnDelete(namespacedName string) {
 }
 
 func (r *ScaledJobReconciler) updateTriggerAuthenticationStatus(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
-	for _, trigger := range scaledJob.Spec.Triggers {
-		triggerAuth, err := GetTriggerAuth(ctx, r.Client, trigger.AuthenticationRef, scaledJob.GetNamespace())
-		if err != nil {
-			if errors.IsNotFound(err) {
-				logger.Info("TriggerAuthentication Not Found")
-			}
-			logger.Error(err, "Failed to get TriggerAuthentication")
-			continue
-		}
-
-		triggerAuthenticationStatus, err := GetTriggerAuthStatus(triggerAuth)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				logger.Info("TriggerAuthenticationStatus Not Found")
-			}
-			logger.Error(err, "Failed to get TriggerAuthenticationStatus")
-			continue
-		}
-
-		triggerAuthenticationStatus = triggerAuthenticationStatus.DeepCopy()
+	return r.updateTriggerAuthenticationStatusHandler(ctx, logger, scaledJob, func(triggerAuthenticationStatus *kedav1alpha1.TriggerAuthenticationStatus) *kedav1alpha1.TriggerAuthenticationStatus {
 		triggerAuthenticationStatus.ScaledJobNamesStr = kedacontrollerutil.AppendIntoString(triggerAuthenticationStatus.ScaledJobNamesStr, scaledJob.GetName(), ",")
-
-		if err := kedautil.UpdateTriggerAuthenticationStatus(ctx, r.Client, logger, triggerAuth, triggerAuthenticationStatus); err != nil {
-			logger.Error(err, "Failed to update TriggerAuthenticationStatus")
-		}
-	}
-	return "Update TriggerAuthentication Status Successfully", nil
+		return triggerAuthenticationStatus
+	})
 }
 
 func (r *ScaledJobReconciler) updateTriggerAuthenticationStatusOnDelete(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
 
+	return r.updateTriggerAuthenticationStatusHandler(ctx, logger, scaledJob, func(triggerAuthenticationStatus *kedav1alpha1.TriggerAuthenticationStatus) *kedav1alpha1.TriggerAuthenticationStatus {
+		triggerAuthenticationStatus.ScaledJobNamesStr = kedacontrollerutil.RemoveFromString(triggerAuthenticationStatus.ScaledJobNamesStr, scaledJob.GetName(), ",")
+		return triggerAuthenticationStatus
+	})
+}
+
+func (r *ScaledJobReconciler) updateTriggerAuthenticationStatusHandler(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob, statusHandler func(*kedav1alpha1.TriggerAuthenticationStatus) *kedav1alpha1.TriggerAuthenticationStatus) (string, error) {
+	var errs error
 	for _, trigger := range scaledJob.Spec.Triggers {
 		triggerAuth, err := GetTriggerAuth(ctx, r.Client, trigger.AuthenticationRef, scaledJob.GetNamespace())
 
 		if err != nil {
-			if errors.IsNotFound(err) {
+			if k8sErrors.IsNotFound(err) {
 				logger.Info("TriggerAuthentication Not Found")
 			}
-			logger.Error(err, "Failed to get TriggerAuthentication1111"+err.Error())
+			logger.Error(err, "Failed to get TriggerAuthentication")
+			errs = errors.Join(errs, err)
 			continue
 		}
 
 		triggerAuthenticationStatus, err := GetTriggerAuthStatus(triggerAuth)
 
 		if err != nil {
-			if errors.IsNotFound(err) {
+			if k8sErrors.IsNotFound(err) {
 				logger.Info("TriggerAuthenticationStatus Not Found")
 			}
 			logger.Error(err, "Failed to get TriggerAuthenticationStatus")
+			errs = errors.Join(errs, err)
 			continue
 		}
 
-		triggerAuthenticationStatus = triggerAuthenticationStatus.DeepCopy()
-		triggerAuthenticationStatus.ScaledJobNamesStr = kedacontrollerutil.RemoveFromString(triggerAuthenticationStatus.ScaledJobNamesStr, scaledJob.GetName(), ",")
+		triggerAuthenticationStatus = statusHandler(triggerAuthenticationStatus.DeepCopy())
 
 		if err := kedautil.UpdateTriggerAuthenticationStatus(ctx, r.Client, logger, triggerAuth, triggerAuthenticationStatus); err != nil {
 			logger.Error(err, "Failed to update TriggerAuthenticationStatus")
+			errs = errors.Join(errs, err)
 		}
 	}
-	return "Update TriggerAuthentication Status OnDelete Successfully", nil
+
+	if errs != nil {
+		return "Update TriggerAuthentication Status Failed", errs
+	}
+	return "Update TriggerAuthentication Status Successfully", nil
 }

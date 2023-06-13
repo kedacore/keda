@@ -50,7 +50,9 @@ func (r *ScaledJobReconciler) finalizeScaledJob(ctx context.Context, logger logr
 			return err
 		}
 
-		r.updateTriggerAuthenticationStatusOnDelete(ctx, logger, scaledJob)
+		if _, err := r.updateTriggerAuthenticationStatusOnDelete(ctx, logger, scaledJob); err != nil {
+			logger.Error(err, "Failed to update TriggerAuthentication Status after removing a finalizer")
+		}
 		r.updatePromMetricsOnDelete(namespacedName)
 	}
 
