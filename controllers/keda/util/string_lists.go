@@ -40,7 +40,7 @@ func Remove(list []string, s string) []string {
 	return list
 }
 
-// Append a new string into a string that has seprator
+// AppendIntoString append a new string into a string that has seprator
 func AppendIntoString(srcStr string, appendStr string, sep string) string {
 	splitStrings := []string{}
 	if srcStr != "" {
@@ -54,7 +54,7 @@ func AppendIntoString(srcStr string, appendStr string, sep string) string {
 	return srcStr
 }
 
-// Remove a string from src string that has seprator
+// RemoveFromString remove a string from src string that has seprator
 func RemoveFromString(srcStr string, str string, sep string) string {
 	if srcStr == "" {
 		return srcStr
