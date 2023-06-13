@@ -53,6 +53,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Improvements
 
 - **General**: Metrics Adapter: remove deprecated Prometheus Metrics and non-gRPC code ([#3930](https://github.com/kedacore/keda/issues/3930))
+- **AWS DynamoDB:** Add support for `indexName` ([#4680](https://github.com/kedacore/keda/issues/4680))
 - **Azure Data Explorer Scaler**: Use azidentity SDK ([#4489](https://github.com/kedacore/keda/issues/4489))
 - **External Scaler**: Add tls options in TriggerAuth metadata. ([#3565](https://github.com/kedacore/keda/issues/3565))
 - **GCP PubSub Scaler**: Make it more flexible for metrics ([#4243](https://github.com/kedacore/keda/issues/4243))
@@ -62,7 +63,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Security:** Enable secret scanning in GitHub repo
 - **RabbitMQ Scaler**: Add support for `unsafeSsl` in trigger metadata ([#4448](https://github.com/kedacore/keda/issues/4448))
 - **Prometheus Metrics**: Add new metric with KEDA build info ([#4647](https://github.com/kedacore/keda/issues/4647))
-- **AWS DynamoDB:** Add support for `indexName` ([#4680](https://github.com/kedacore/keda/issues/4680))
+- **Prometheus Scaler**: Add support for Google Managed Prometheus ([#4675](https://github.com/kedacore/keda/pull/4675))
 
 ### Fixes
 
