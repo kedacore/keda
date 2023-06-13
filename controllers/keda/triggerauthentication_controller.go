@@ -21,6 +21,12 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/go-logr/logr"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/eventreason"
+	"github.com/kedacore/keda/v2/pkg/prommetrics"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -30,13 +36,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-
-	"github.com/go-logr/logr"
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/eventreason"
-	"github.com/kedacore/keda/v2/pkg/prommetrics"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
-	"github.com/pkg/errors"
 )
 
 // TriggerAuthenticationReconciler reconciles a TriggerAuthentication object
@@ -125,7 +124,9 @@ func (r *TriggerAuthenticationReconciler) UpdatePromMetricsOnDelete(namespacedNa
 func GetTriggerAuth(ctx context.Context, client client.Client, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, namespace string) (client.Object, error) {
 	if triggerAuthRef == nil {
 		return nil, fmt.Errorf("triggerAuthRef is nil")
-	} else if triggerAuthRef.Kind == "" || triggerAuthRef.Kind == "TriggerAuthentication" {
+	}
+
+	if triggerAuthRef.Kind == "" || triggerAuthRef.Kind == "TriggerAuthentication" {
 		triggerAuth := &kedav1alpha1.TriggerAuthentication{}
 		err := client.Get(ctx, types.NamespacedName{Name: triggerAuthRef.Name, Namespace: namespace}, triggerAuth)
 		if err != nil {
