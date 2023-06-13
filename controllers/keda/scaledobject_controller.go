@@ -18,7 +18,6 @@ package keda
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 
@@ -26,7 +25,7 @@ import (
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
-	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -140,7 +139,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	scaledObject := &kedav1alpha1.ScaledObject{}
 	err := r.Client.Get(ctx, req.NamespacedName, scaledObject)
 	if err != nil {
-		if k8sErrors.IsNotFound(err) {
+		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
@@ -409,7 +408,7 @@ func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Cont
 	foundHpa := &autoscalingv2.HorizontalPodAutoscaler{}
 	// Check if HPA for this ScaledObject already exists
 	err := r.Client.Get(ctx, types.NamespacedName{Name: hpaName, Namespace: scaledObject.Namespace}, foundHpa)
-	if err != nil && k8sErrors.IsNotFound(err) {
+	if err != nil && errors.IsNotFound(err) {
 		// HPA wasn't found -> let's create a new one
 		err = r.createAndDeployNewHPA(ctx, logger, scaledObject, gvkr)
 		if err != nil {
@@ -547,54 +546,17 @@ func (r *ScaledObjectReconciler) updatePromMetricsOnDelete(namespacedName string
 }
 
 func (r *ScaledObjectReconciler) updateTriggerAuthenticationStatus(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (string, error) {
-	return r.updateTriggerAuthenticationStatusHandler(ctx, logger, scaledObject, func(triggerAuthenticationStatus *kedav1alpha1.TriggerAuthenticationStatus) *kedav1alpha1.TriggerAuthenticationStatus {
-		triggerAuthenticationStatus.ScaledObjectNamesStr = kedacontrollerutil.AppendIntoString(triggerAuthenticationStatus.ScaledObjectNamesStr, scaledObject.GetName(), ",")
-		return triggerAuthenticationStatus
-	})
+	return UpdateTriggerAuthenticationStatusHandler(ctx, logger, r.Client, scaledObject.GetNamespace(), scaledObject.Spec.Triggers,
+		func(triggerAuthenticationStatus *kedav1alpha1.TriggerAuthenticationStatus) *kedav1alpha1.TriggerAuthenticationStatus {
+			triggerAuthenticationStatus.ScaledObjectNamesStr = kedacontrollerutil.AppendIntoString(triggerAuthenticationStatus.ScaledObjectNamesStr, scaledObject.GetName(), ",")
+			return triggerAuthenticationStatus
+		})
 }
 
 func (r *ScaledObjectReconciler) updateTriggerAuthenticationStatusOnDelete(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (string, error) {
-	return r.updateTriggerAuthenticationStatusHandler(ctx, logger, scaledObject, func(triggerAuthenticationStatus *kedav1alpha1.TriggerAuthenticationStatus) *kedav1alpha1.TriggerAuthenticationStatus {
-		triggerAuthenticationStatus.ScaledObjectNamesStr = kedacontrollerutil.RemoveFromString(triggerAuthenticationStatus.ScaledObjectNamesStr, scaledObject.GetName(), ",")
-		return triggerAuthenticationStatus
-	})
-}
-
-func (r *ScaledObjectReconciler) updateTriggerAuthenticationStatusHandler(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, statusHandler func(*kedav1alpha1.TriggerAuthenticationStatus) *kedav1alpha1.TriggerAuthenticationStatus) (string, error) {
-	var errs error
-	for _, trigger := range scaledObject.Spec.Triggers {
-		triggerAuth, err := GetTriggerAuth(ctx, r.Client, trigger.AuthenticationRef, scaledObject.GetNamespace())
-
-		if err != nil {
-			if k8sErrors.IsNotFound(err) {
-				logger.Info("TriggerAuthentication Not Found")
-			}
-			logger.Error(err, "Failed to get TriggerAuthentication")
-			errs = errors.Join(errs, err)
-			continue
-		}
-
-		triggerAuthenticationStatus, err := GetTriggerAuthStatus(triggerAuth)
-
-		if err != nil {
-			if k8sErrors.IsNotFound(err) {
-				logger.Info("TriggerAuthenticationStatus Not Found")
-			}
-			logger.Error(err, "Failed to get TriggerAuthenticationStatus")
-			errs = errors.Join(errs, err)
-			continue
-		}
-
-		triggerAuthenticationStatus = statusHandler(triggerAuthenticationStatus.DeepCopy())
-
-		if err := kedautil.UpdateTriggerAuthenticationStatus(ctx, r.Client, logger, triggerAuth, triggerAuthenticationStatus); err != nil {
-			logger.Error(err, "Failed to update TriggerAuthenticationStatus")
-			errs = errors.Join(errs, err)
-		}
-	}
-
-	if errs != nil {
-		return "Updated TriggerAuthentication Status Failed", errs
-	}
-	return "Updated TriggerAuthentication Status Successfully", nil
+	return UpdateTriggerAuthenticationStatusHandler(ctx, logger, r.Client, scaledObject.GetNamespace(), scaledObject.Spec.Triggers,
+		func(triggerAuthenticationStatus *kedav1alpha1.TriggerAuthenticationStatus) *kedav1alpha1.TriggerAuthenticationStatus {
+			triggerAuthenticationStatus.ScaledObjectNamesStr = kedacontrollerutil.RemoveFromString(triggerAuthenticationStatus.ScaledObjectNamesStr, scaledObject.GetName(), ",")
+			return triggerAuthenticationStatus
+		})
 }
