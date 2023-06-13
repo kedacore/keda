@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	gha "github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -43,6 +44,8 @@ type githubRunnerMetadata struct {
 	labels                    []string
 	targetWorkflowQueueLength int64
 	scalerIndex               int
+	applicationID             *int64
+	installationID            *int64
 }
 
 type WorkflowRuns struct {
@@ -334,6 +337,15 @@ func NewGitHubRunnerScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing GitHub Runner metadata: %w", err)
 	}
 
+	if meta.applicationID != nil && meta.installationID != nil {
+		httpTrans := kedautil.CreateHTTPTransport(false)
+		hc, err := gha.New(httpTrans, *meta.applicationID, *meta.installationID, []byte(meta.personalAccessToken))
+		if err != nil {
+			return nil, fmt.Errorf("error creating GitHub App client: %w", err)
+		}
+		httpClient = &http.Client{Transport: hc}
+	}
+
 	return &githubRunnerScaler{
 		metricType: metricType,
 		metadata:   meta,
@@ -402,6 +414,18 @@ func parseGitHubRunnerMetadata(config *ScalerConfig) (*githubRunnerMetadata, err
 		meta.githubAPIURL = defaultGithubAPIURL
 	}
 
+	if val, err := getInt64ValueFromMetaOrEnv("applicationID", config); err == nil && val != -1 {
+		meta.applicationID = &val
+	}
+
+	if val, err := getInt64ValueFromMetaOrEnv("installationID", config); err == nil && val != -1 {
+		meta.installationID = &val
+	}
+
+	if (meta.applicationID != nil && meta.installationID == nil) || (meta.applicationID == nil && meta.installationID != nil) {
+		return nil, fmt.Errorf("both applicationID and installationID must be given")
+	}
+
 	if val, ok := config.AuthParams["personalAccessToken"]; ok && val != "" {
 		// Found the organizationURL in a parameter from TriggerAuthentication
 		meta.personalAccessToken = val
@@ -457,8 +481,11 @@ func getGithubRequest(ctx context.Context, url string, metadata *githubRunnerMet
 	}
 
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
-	req.Header.Set("Authorization", "Bearer "+metadata.personalAccessToken)
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+
+	if metadata.applicationID != nil {
+		req.Header.Set("Authorization", "Bearer "+metadata.personalAccessToken)
+	}
 
 	r, err := httpClient.Do(req)
 	if err != nil {

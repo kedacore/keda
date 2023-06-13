@@ -92,6 +92,12 @@ var testGitHubRunnerMetadata = []parseGitHubRunnerMetadataTestData{
 	{"missing repos, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "labels": "golang", "targetWorkflowQueueLength": "1"}, false, false, ""},
 	// empty repos, no envs
 	{"empty repos, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "labels": "golang", "repos": "", "targetWorkflowQueueLength": "1"}, false, false, ""},
+	// missing installationID
+	{"missing installationID", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "applicationID": "1"}, true, true, ""},
+	// missing applicationID
+	{"missing applicationID", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "installationID": "1"}, true, true, ""},
+	// all good
+	{"missing applicationID", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "applicationID": "1", "installationID": "1"}, true, false, ""},
 }
 
 func TestGitHubRunnerParseMetadata(t *testing.T) {
