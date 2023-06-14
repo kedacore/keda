@@ -200,22 +200,26 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, conditions *kedav1alpha1.Conditions) (string, error) {
 	// Check the presence of "autoscaling.keda.sh/paused-replicas" annotation on the scaledObject (since the presence of this annotation will pause
 	// autoscaling no matter what number of replicas is provided), and if so, stop the scale loop and delete the HPA on the scaled object.
-	_, paused := scaledObject.GetAnnotations()[kedacontrollerutil.PausedReplicasAnnotation]
-	if paused {
-		logger.Info("ScaledObject is paused, so skipping the request.")
-		msg := kedav1alpha1.ScaledObjectConditionPausedMessage
-		if err := r.stopScaleLoop(ctx, logger, scaledObject); err != nil {
-			msg = "failed to stop the scale loop for paused ScaledObject"
-			conditions.SetPausedCondition(metav1.ConditionFalse, "ScaledObjectStopScaleLoopFailed", msg)
-			return msg, err
+	_, pausedAnnotationFound := scaledObject.GetAnnotations()[kedacontrollerutil.PausedReplicasAnnotation]
+	if pausedAnnotationFound {
+		if conditions.GetPausedCondition().Status == metav1.ConditionTrue {
+			return kedav1alpha1.ScaledObjectConditionReadySuccessMessage, nil
 		}
-		if deleted, err := r.ensureHPAForScaledObjectIsDeleted(ctx, logger, scaledObject); !deleted {
-			msg = "failed to delete HPA for paused ScaledObject"
-			conditions.SetPausedCondition(metav1.ConditionFalse, "ScaledObjectHPADeleteFailed", msg)
-			return msg, err
+		if scaledObject.Status.PausedReplicaCount != nil {
+			msg := kedav1alpha1.ScaledObjectConditionPausedMessage
+			if err := r.stopScaleLoop(ctx, logger, scaledObject); err != nil {
+				msg = "failed to stop the scale loop for paused ScaledObject"
+				return msg, err
+			}
+			if deleted, err := r.ensureHPAForScaledObjectIsDeleted(ctx, logger, scaledObject); !deleted {
+				msg = "failed to delete HPA for paused ScaledObject"
+				return msg, err
+			}
+			conditions.SetPausedCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionPausedReason, msg)
+			return msg, nil
 		}
-		conditions.SetPausedCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionPausedReason, msg)
-		return msg, nil
+	} else if conditions.GetPausedCondition().Status == metav1.ConditionTrue {
+		conditions.SetPausedCondition(metav1.ConditionFalse, "ScaledObjectUnpaused", "pause annotation removed for ScaledObject")
 	}
 
 	// Check scale target Name is specified
@@ -268,6 +272,10 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 			return "failed to start a new scale loop with scaling logic", err
 		}
 		logger.Info("Initializing Scaling logic according to ScaledObject Specification")
+	}
+
+	if pausedAnnotationFound && conditions.GetPausedCondition().Status != metav1.ConditionTrue {
+		return "ScaledObject paused replicas are being scaled", fmt.Errorf("ScaledObject paused replicas are being scaled")
 	}
 	return kedav1alpha1.ScaledObjectConditionReadySuccessMessage, nil
 }

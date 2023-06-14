@@ -26,9 +26,9 @@ var (
 	scaledObjectName        = fmt.Sprintf("%s-so", testName)
 	maxReplicaCount         = 1
 	minReplicaCount         = 0
-	testScaleOutWaitMin     = 5
-	testPauseAtNWaitMin     = 5
-	testScaleInWaitMin      = 5
+	testScaleOutWaitMin     = 1
+	testPauseAtNWaitMin     = 1
+	testScaleInWaitMin      = 1
 )
 
 type templateData struct {
@@ -37,6 +37,7 @@ type templateData struct {
 	ScaledObjectName        string
 	MonitoredDeploymentName string
 	PausedReplicaCount      int
+	CooldownPeriod          int
 }
 
 const (
@@ -98,7 +99,7 @@ spec:
   pollingInterval: 5
   minReplicaCount: 0
   maxReplicaCount: 1
-  cooldownPeriod: 10
+  cooldownPeriod:  {{.CooldownPeriod}}
   triggers:
     - type: kubernetes-workload
       metadata:
@@ -120,7 +121,7 @@ spec:
   pollingInterval: 5
   minReplicaCount: 0
   maxReplicaCount: 1
-  cooldownPeriod: 10
+  cooldownPeriod:  {{.CooldownPeriod}}
   triggers:
     - type: kubernetes-workload
       metadata:
@@ -160,6 +161,7 @@ func getTemplateData() (templateData, []Template) {
 			ScaledObjectName:        scaledObjectName,
 			MonitoredDeploymentName: monitoredDeploymentName,
 			PausedReplicaCount:      0,
+			CooldownPeriod:          10,
 		}, []Template{
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
@@ -178,7 +180,11 @@ func testPauseAt0(t *testing.T, kc *kubernetes.Clientset) {
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
+	data.CooldownPeriod = 15
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, monitoredDeploymentName, testNamespace, 2, 60, testScaleOutWaitMin),
+		"monitoredDeploymentName replica count should be 2 after %d minute(s)", testScaleOutWaitMin)
 
 	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, testScaleOutWaitMin),
 		"replica count should be 1 after %d minute(s)", testScaleOutWaitMin)
@@ -187,6 +193,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 func testPauseAtN(t *testing.T, kc *kubernetes.Clientset, data templateData, n int) {
 	t.Log("--- testing pausing at N ---")
 	data.PausedReplicaCount = n
+	data.CooldownPeriod = 10
 	KubectlApplyWithTemplate(t, data, "scaledObjectAnnotatedTemplate", scaledObjectAnnotatedTemplate)
 
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 0, testNamespace)
@@ -200,6 +207,7 @@ func testPauseAtN(t *testing.T, kc *kubernetes.Clientset, data templateData, n i
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale in ---")
+	data.CooldownPeriod = 15
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
 	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, testScaleInWaitMin),
