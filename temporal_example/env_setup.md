@@ -71,7 +71,7 @@ sudo IMAGE_REGISTRY=<rg-name>.azurecr.io IMAGE_REPO=<rg-name> make publish
 - Deploy KEDA resources
 
 ```bash
-IMAGE_REGISTRY=<rg-name>.azurecr.io IMAGE_REPO=<rg-name> make publish
+IMAGE_REGISTRY=<rg-name>.azurecr.io IMAGE_REPO=<rg-name> make deploy
 ```
 
 ### Deploy Temporal KEDA scaleable object

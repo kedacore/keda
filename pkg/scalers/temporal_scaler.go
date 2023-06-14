@@ -83,7 +83,7 @@ func parseTemporalMetadata(config *ScalerConfig, logger logr.Logger) (*temporalM
 		meta.activationThreshold = activationThreshold
 	}
 
-	// If Query Return an Empty Data , shall we treat it as an error or not
+	// If Query Return an Empty Data, shall we treat it as an error or not
 	// default is NO error is returned when query result is empty/no data
 	if val, ok := config.TriggerMetadata["address"]; ok {
 		address := val
@@ -104,7 +104,7 @@ func (s *temporalScaler) executeTemporalQuery(ctx context.Context) (float64, err
 		HostPort: s.metadata.address,
 	})
 	if err != nil {
-		log.Fatalln("Unable to create Temporal Client", err)
+		log.Fatalln(fmt.Sprintf("Unable to create Temporal Client: %s", s.metadata.address), err)
 	}
 
 	if _, err := temporalClient.CheckHealth(context.Background(), &client.CheckHealthRequest{}); err != nil {
