@@ -11,7 +11,6 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
 )
@@ -34,7 +33,6 @@ var (
 	scaledJobName          = fmt.Sprintf("%s-sj", testName)
 	scaledJob2Name         = fmt.Sprintf("%s-sj-2", testName)
 	minReplicas            = 1
-	midReplicas            = 3
 	maxReplicas            = 5
 	triggerAuthKind        = "TriggerAuthentication"
 	clusterTriggerAuthKind = "ClusterTriggerAuthentication"
@@ -283,7 +281,7 @@ func TestTriggerAuthenticationGeneral(t *testing.T) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
 		"replica count should be %d after 3 minutes", minReplicas)
 
-	testTriggerAuthenticationStatusValue(t, kc, data, triggerAuthKind)
+	testTriggerAuthenticationStatusValue(t, data, triggerAuthKind)
 
 	// Clean resources and then testing clustertriggerauthentication
 	DeleteKubernetesResources(t, namespace, data, templates)
@@ -295,7 +293,7 @@ func TestTriggerAuthenticationGeneral(t *testing.T) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
 		"replica count should be %d after 3 minutes", minReplicas)
 
-	testTriggerAuthenticationStatusValue(t, kc, data, clusterTriggerAuthKind)
+	testTriggerAuthenticationStatusValue(t, data, clusterTriggerAuthKind)
 	DeleteKubernetesResources(t, namespace, data, templates)
 }
 
@@ -320,7 +318,7 @@ func checkScaleJobStatusFromKubectl(t *testing.T, kind string, expected string) 
 }
 
 // tests basic scaling with one trigger based on metrics
-func testTriggerAuthenticationStatusValue(t *testing.T, kc *kubernetes.Clientset, data templateData, kind string) {
+func testTriggerAuthenticationStatusValue(t *testing.T, data templateData, kind string) {
 	KubectlApplyWithTemplate(t, data, "triggerAuthenticationTemplate", triggerAuthenticationTemplate)
 	t.Log("--- test one scaledObject ---")
 	KubectlApplyWithTemplate(t, data, "scaledObjectTriggerTemplate", scaledObjectTriggerTemplate)
@@ -367,6 +365,7 @@ func getTemplateData(triggerAuthKind string) (templateData, []Template) {
 			MinReplicas:     fmt.Sprintf("%v", minReplicas),
 			MaxReplicas:     fmt.Sprintf("%v", maxReplicas),
 		}, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "deployment2Template", Config: deployment2Template},
 		}
