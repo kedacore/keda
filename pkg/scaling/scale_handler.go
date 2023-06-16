@@ -166,12 +166,12 @@ func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1a
 	for {
 		// we calculate the next execution time based on the pollingInterval and record the difference
 		// between the expected execution time and the real execution time
-		delay := time.Now().Sub(next)
-		miliseconds := delay.Milliseconds()
-		prommetrics.RecordScalableObjectLatency(withTriggers.Namespace, withTriggers.Name, isScaledObject, float64(miliseconds))
-		next = time.Now().Add(pollingInterval)
+		delay := time.Since(next)
+		prommetrics.RecordScalableObjectLatency(withTriggers.Namespace, withTriggers.Name, isScaledObject, float64(delay.Milliseconds()))
 
 		tmr := time.NewTimer(pollingInterval)
+		next = time.Now().Add(pollingInterval)
+
 		h.checkScalers(ctx, scalableObject, scalingMutex)
 
 		select {
