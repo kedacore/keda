@@ -48,19 +48,19 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **CPU/Memory scaler**: Add support for scale to zero if there are multiple triggers([#4269](https://github.com/kedacore/keda/issues/4269))
 - **Redis Scalers**: Allow scaling using redis stream length ([#4277](https://github.com/kedacore/keda/issues/4277))
-- **General:** Introduce new Solr Scaler ([#4234](https://github.com/kedacore/keda/issues/4234))
+- **General**: Introduce new Solr Scaler ([#4234](https://github.com/kedacore/keda/issues/4234))
 
 ### Improvements
 
 - **General**: Metrics Adapter: remove deprecated Prometheus Metrics and non-gRPC code ([#3930](https://github.com/kedacore/keda/issues/3930))
-- **AWS DynamoDB:** Add support for `indexName` ([#4680](https://github.com/kedacore/keda/issues/4680))
+- **AWS DynamoDB**: Add support for `indexName` ([#4680](https://github.com/kedacore/keda/issues/4680))
 - **Azure Data Explorer Scaler**: Use azidentity SDK ([#4489](https://github.com/kedacore/keda/issues/4489))
 - **External Scaler**: Add tls options in TriggerAuth metadata. ([#3565](https://github.com/kedacore/keda/issues/3565))
 - **GCP PubSub Scaler**: Make it more flexible for metrics ([#4243](https://github.com/kedacore/keda/issues/4243))
-- **Kafka Scaler:** Add support for OAuth extensions ([#4544](https://github.com/kedacore/keda/issues/4544))
-- **NATS JetStream Scaler:** Add support for pulling AccountID from TriggerAuthentication ([#4586]https://github.com/kedacore/keda/issues/4586)
+- **Kafka Scaler**: Add support for OAuth extensions ([#4544](https://github.com/kedacore/keda/issues/4544))
+- **NATS JetStream Scaler**: Add support for pulling AccountID from TriggerAuthentication ([#4586]https://github.com/kedacore/keda/issues/4586)
 - **Pulsar Scaler**: Improve error messages for unsuccessful connections ([#4563](https://github.com/kedacore/keda/issues/4563))
-- **Security:** Enable secret scanning in GitHub repo
+- **Security**: Enable secret scanning in GitHub repo
 - **RabbitMQ Scaler**: Add support for `unsafeSsl` in trigger metadata ([#4448](https://github.com/kedacore/keda/issues/4448))
 - **Prometheus Metrics**: Add new metric with KEDA build info ([#4647](https://github.com/kedacore/keda/issues/4647))
 - **Prometheus Scaler**: Add support for Google Managed Prometheus ([#4675](https://github.com/kedacore/keda/pull/4675))
@@ -76,6 +76,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Prometheus Metrics**: Create e2e tests for all exposed Prometheus metrics ([#4127](https://github.com/kedacore/keda/issues/4127))
 - **Grafana Dashboard**: Fix HPA metrics panel to use range instead of instant ([#4513](https://github.com/kedacore/keda/pull/4513))
 - **Grafana Dashboard**: Fix HPA metrics panel by replacing $namepsace to $exported_namespace due to label conflict ([#4539](https://github.com/kedacore/keda/pull/4539))
+- **Kafka Scaler**: Add back `strings.TrimSpace()` function for saslAuthType ([#4689](https://github.com/kedacore/keda/issues/4689))
 
 ### Deprecations
 
