@@ -19,6 +19,7 @@ package scaling
 import (
 	"context"
 	"errors"
+	"fmt"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	"sync"
@@ -411,7 +412,7 @@ func TestIsScaledJobActive(t *testing.T) {
 	// Keep the current behavior
 	// Assme 1 trigger only
 	scaledJobSingle := createScaledJob(1, 100, "") // testing default = max
-	scalerSingle := []cache.ScalerBuilder{{
+	scalers2 := []cache.ScalerBuilder{{
 		Scaler: createScaler(ctrl, int64(20), int64(2), true, metricName),
 		Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
 			return createScaler(ctrl, int64(20), int64(2), true, metricName), &scalers.ScalerConfig{}, nil
@@ -419,8 +420,7 @@ func TestIsScaledJobActive(t *testing.T) {
 	}}
 
 	scalerCache := cache.ScalersCache{
-		//Scalers:  scalers,
-		Scalers:  scalerSingle,
+		Scalers:  scalers2,
 		Recorder: recorder,
 	}
 
@@ -441,8 +441,72 @@ func TestIsScaledJobActive(t *testing.T) {
 	assert.Equal(t, true, isActive)
 	assert.Equal(t, int64(20), queueLength)
 	assert.Equal(t, int64(10), maxValue)
-	// yoon
+	//yoon
 	//cache.Close(context.Background())
+
+	// Test the valiation
+	scalerTestDatam := []scalerTestData{
+		newScalerTestData("s0-queueLength", 100, "max", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 20, 20),
+		newScalerTestData("queueLength", 100, "min", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 5, 2),
+		newScalerTestData("messageCount", 100, "avg", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 12, 9),
+		newScalerTestData("s3-messageCount", 100, "sum", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 35, 27),
+		newScalerTestData("s10-messageCount", 25, "sum", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 35, 25),
+	}
+
+	for index, scalerTestData := range scalerTestDatam {
+		scaledJob := createScaledJob(scalerTestData.MinReplicaCount, scalerTestData.MaxReplicaCount, scalerTestData.MultipleScalersCalculation)
+		scalersToTest := []cache.ScalerBuilder{{
+			Scaler: createScaler(ctrl, scalerTestData.Scaler1QueueLength, scalerTestData.Scaler1AverageValue, scalerTestData.Scaler1IsActive, scalerTestData.MetricName),
+			Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+				return createScaler(ctrl, scalerTestData.Scaler1QueueLength, scalerTestData.Scaler1AverageValue, scalerTestData.Scaler1IsActive, scalerTestData.MetricName), &scalers.ScalerConfig{}, nil
+			},
+		}, {
+			Scaler: createScaler(ctrl, scalerTestData.Scaler2QueueLength, scalerTestData.Scaler2AverageValue, scalerTestData.Scaler2IsActive, scalerTestData.MetricName),
+			Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+				return createScaler(ctrl, scalerTestData.Scaler2QueueLength, scalerTestData.Scaler2AverageValue, scalerTestData.Scaler2IsActive, scalerTestData.MetricName), &scalers.ScalerConfig{}, nil
+			},
+		}, {
+			Scaler: createScaler(ctrl, scalerTestData.Scaler3QueueLength, scalerTestData.Scaler3AverageValue, scalerTestData.Scaler3IsActive, scalerTestData.MetricName),
+			Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+				return createScaler(ctrl, scalerTestData.Scaler3QueueLength, scalerTestData.Scaler3AverageValue, scalerTestData.Scaler3IsActive, scalerTestData.MetricName), &scalers.ScalerConfig{}, nil
+			},
+		}, {
+			Scaler: createScaler(ctrl, scalerTestData.Scaler4QueueLength, scalerTestData.Scaler4AverageValue, scalerTestData.Scaler4IsActive, scalerTestData.MetricName),
+			Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+				return createScaler(ctrl, scalerTestData.Scaler4QueueLength, scalerTestData.Scaler4AverageValue, scalerTestData.Scaler4IsActive, scalerTestData.MetricName), &scalers.ScalerConfig{}, nil
+			},
+		}}
+
+		//cache = ScalersCache{
+		//	Scalers:  scalersToTest,
+		//	Recorder: recorder,
+		//}
+		scalerCache = cache.ScalersCache{
+			Scalers:  scalersToTest,
+			Recorder: recorder,
+		}
+
+		caches := map[string]*cache.ScalersCache{}
+		caches[scaledJobSingle.GenerateIdentifier()] = &scalerCache
+
+		sh := scaleHandler{
+			//client:                   mockClient,
+			scaleLoopContexts: &sync.Map{},
+			//scaleExecutor:            mockExecutor,
+			globalHTTPTimeout:        time.Duration(1000),
+			recorder:                 recorder,
+			scalerCaches:             caches,
+			scalerCachesLock:         &sync.RWMutex{},
+			scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+		}
+		fmt.Printf("index: %d", index)
+		isActive, queueLength, maxValue := sh.isScaledJobActive(context.TODO(), scaledJob)
+		//	assert.Equal(t, 5, index)
+		assert.Equal(t, scalerTestData.ResultIsActive, isActive)
+		assert.Equal(t, scalerTestData.ResultQueueLength, queueLength)
+		assert.Equal(t, scalerTestData.ResultMaxValue, maxValue)
+		//cache.Close(context.Background())
+	}
 }
 
 func TestIsScaledJobActiveIfQueueEmptyButMinReplicaCountGreaterZero(t *testing.T) {
