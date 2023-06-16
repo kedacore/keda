@@ -50,6 +50,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Redis Scalers**: Allow scaling using redis stream length ([#4277](https://github.com/kedacore/keda/issues/4277))
 - **Redis Scalers**: Allow scaling using consumer group lag ([#3127](https://github.com/kedacore/keda/issues/3127))
 - **General:** Introduce new Solr Scaler ([#4234](https://github.com/kedacore/keda/issues/4234))
+- **Admission Webhooks**: Support ScaledObject taking over existing HPAs with the same name while they are not managed by other ScaledObject ([#4457](https://github.com/kedacore/keda/issues/4457))
 
 ### Improvements
 
