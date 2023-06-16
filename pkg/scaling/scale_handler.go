@@ -118,10 +118,10 @@ func (h *scaleHandler) HandleScalableObject(ctx context.Context, scalableObject 
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
 		go h.startPushScalers(ctx, withTriggers, obj.DeepCopy(), scalingMutex)
-		go h.startScaleLoop(ctx, withTriggers, obj.DeepCopy(), scalingMutex)
+		go h.startScaleLoop(ctx, withTriggers, obj.DeepCopy(), scalingMutex, true)
 	case *kedav1alpha1.ScaledJob:
 		go h.startPushScalers(ctx, withTriggers, obj.DeepCopy(), scalingMutex)
-		go h.startScaleLoop(ctx, withTriggers, obj.DeepCopy(), scalingMutex)
+		go h.startScaleLoop(ctx, withTriggers, obj.DeepCopy(), scalingMutex, false)
 	}
 	return nil
 }
@@ -155,16 +155,26 @@ func (h *scaleHandler) DeleteScalableObject(ctx context.Context, scalableObject 
 }
 
 // startScaleLoop blocks forever and checks the scalableObject based on its pollingInterval
-func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, scalableObject interface{}, scalingMutex sync.Locker) {
+func (h *scaleHandler) startScaleLoop(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, scalableObject interface{}, scalingMutex sync.Locker, isScaledObject bool) {
 	logger := log.WithValues("type", withTriggers.Kind, "namespace", withTriggers.Namespace, "name", withTriggers.Name)
 
 	pollingInterval := withTriggers.GetPollingInterval()
 	logger.V(1).Info("Watching with pollingInterval", "PollingInterval", pollingInterval)
 
+	next := time.Now()
+
 	for {
+		// we calculate the next execution time based on the pollingInterval and record the difference
+		// between the expected execution time and the real execution time
+		delay := time.Now().Sub(next)
+		miliseconds := delay.Milliseconds()
+		prommetrics.RecordScalableObjectLatency(withTriggers.Namespace, withTriggers.Name, isScaledObject, float64(miliseconds))
+		next = time.Now().Add(pollingInterval)
+
 		tmr := time.NewTimer(pollingInterval)
 		h.checkScalers(ctx, scalableObject, scalingMutex)
 
+		time.Sleep(1300 * time.Millisecond)
 		select {
 		case <-tmr.C:
 			tmr.Stop()

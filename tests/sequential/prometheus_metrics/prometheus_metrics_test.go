@@ -264,6 +264,7 @@ func TestPrometheusMetrics(t *testing.T) {
 	testScalerErrorsTotal(t, data)
 	testOperatorMetrics(t, kc, data)
 	testWebhookMetrics(t, data)
+	testScalableObjectMetrics(t)
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
@@ -456,6 +457,44 @@ func testScalerMetricLatency(t *testing.T) {
 			for _, label := range labels {
 				if *label.Name == labelScaledObject && *label.Value == scaledObjectName {
 					assert.Equal(t, float64(0), *metric.Gauge.Value)
+					found = true
+				}
+			}
+		}
+		assert.Equal(t, true, found)
+	} else {
+		t.Errorf("metric not available")
+	}
+}
+
+func testScalableObjectMetrics(t *testing.T) {
+	t.Log("--- testing scalable objects latency ---")
+
+	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+
+	if val, ok := family["keda_scaled_object_latency"]; ok {
+		var found bool
+		metrics := val.GetMetric()
+		for _, metric := range metrics {
+			labels := metric.GetLabel()
+			for _, label := range labels {
+				if *label.Name == labelScaledObject && *label.Value == scaledObjectName {
+					found = true
+				}
+			}
+		}
+		assert.Equal(t, true, found)
+	} else {
+		t.Errorf("metric not available")
+	}
+
+	if val, ok := family["keda_scaled_job_latency"]; ok {
+		var found bool
+		metrics := val.GetMetric()
+		for _, metric := range metrics {
+			labels := metric.GetLabel()
+			for _, label := range labels {
+				if *label.Name == labelScaledObject && *label.Value == cronScaledJobName {
 					found = true
 				}
 			}

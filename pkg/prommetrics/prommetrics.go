@@ -109,12 +109,33 @@ var (
 		},
 		[]string{"type", "namespace"},
 	)
+
+	scaledObjectLatency = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "scaled_object",
+			Name:      "latency",
+			Help:      "ScaledObject Latency",
+		},
+		[]string{"namespace", "scaledObject"},
+	)
+
+	scaledJobLatency = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "scaled_job",
+			Name:      "latency",
+			Help:      "ScaledJob Latency",
+		},
+		[]string{"namespace", "scaledJob"},
+	)
 )
 
 func init() {
 	metrics.Registry.MustRegister(scalerErrorsTotal)
 	metrics.Registry.MustRegister(scalerMetricsValue)
 	metrics.Registry.MustRegister(scalerMetricsLatency)
+	metrics.Registry.MustRegister(scaledObjectLatency)
 	metrics.Registry.MustRegister(scalerActive)
 	metrics.Registry.MustRegister(scalerErrors)
 	metrics.Registry.MustRegister(scaledObjectErrors)
@@ -131,6 +152,15 @@ func RecordScalerMetric(namespace string, scaledObject string, scaler string, sc
 // RecordScalerLatency create a measurement of the latency to external metric
 func RecordScalerLatency(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64) {
 	scalerMetricsLatency.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Set(value)
+}
+
+// RecordScaledObjectLatency create a measurement of the latency executing scalable object loop
+func RecordScalableObjectLatency(namespace string, scalableObject string, isScaledObject bool, value float64) {
+	if isScaledObject {
+		scaledObjectLatency.WithLabelValues(namespace, scalableObject).Set(value)
+	} else {
+		scaledJobLatency.WithLabelValues(namespace, scalableObject).Set(value)
+	}
 }
 
 // RecordScalerActive create a measurement of the activity of the scaler
