@@ -273,7 +273,7 @@ func getDefaultHpaName(scaledObject *kedav1alpha1.ScaledObject) string {
 
 // getHPAMinReplicas returns MinReplicas based on definition in ScaledObject or default value if not defined
 func getHPAMinReplicas(scaledObject *kedav1alpha1.ScaledObject) *int32 {
-	if scaledObject.Spec.MinReplicaCount != nil && *scaledObject.Spec.MinReplicaCount > 0 {
+	if scaledObject.Spec.MinReplicaCount != nil && *scaledObject.Spec.MinReplicaCount >= 0 {
 		return scaledObject.Spec.MinReplicaCount
 	}
 	tmp := defaultHPAMinReplicas
