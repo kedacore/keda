@@ -6,5 +6,10 @@ patchesJson6902:
     name: keda-operator
   path: patch_operator.yml
 
-bases:
-- ../default
+resources:
+- ../general
+- ../rbac
+- ../manager
+- ../metrics-server
+- ../service_account
+- ../webhooks

@@ -4,8 +4,10 @@
 package prometheus_metrics_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -13,6 +15,7 @@ import (
 	prommodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
@@ -620,6 +623,44 @@ func testOperatorMetricValues(t *testing.T, kc *kubernetes.Clientset) {
 
 	checkTriggerTotalValues(t, families, expectedTriggerTotals)
 	checkCRTotalValues(t, families, expectedCrTotals)
+	checkBuildInfo(t, families)
+}
+
+func checkBuildInfo(t *testing.T, families map[string]*prommodel.MetricFamily) {
+	t.Log("--- testing build info metric ---")
+
+	family, ok := families["keda_build_info"]
+	if !ok {
+		t.Errorf("metric not available")
+		return
+	}
+
+	latestCommit := getLatestCommit(t)
+	expected := map[string]string{
+		"git_commit": latestCommit,
+		"goos":       "linux",
+	}
+
+	metrics := family.GetMetric()
+	for _, metric := range metrics {
+		labels := metric.GetLabel()
+		for _, labelPair := range labels {
+			if expectedValue, ok := expected[*labelPair.Name]; ok {
+				assert.EqualValues(t, expectedValue, *labelPair.Value, "values do not match for label %s", *labelPair.Name)
+			}
+		}
+		assert.EqualValues(t, 1, metric.GetGauge().GetValue())
+	}
+}
+
+func getLatestCommit(t *testing.T) string {
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	require.NoError(t, err)
+
+	return strings.Trim(out.String(), "\n")
 }
 
 func checkTriggerTotalValues(t *testing.T, families map[string]*prommodel.MetricFamily, expected map[string]int) {

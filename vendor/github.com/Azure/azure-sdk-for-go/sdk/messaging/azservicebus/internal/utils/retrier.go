@@ -50,7 +50,7 @@ func Retry(ctx context.Context, eventName log.Event, operation string, fn func(c
 	for i := int32(0); i <= ro.MaxRetries; i++ {
 		if i > 0 {
 			sleep := calcDelay(ro, i)
-			log.Writef(eventName, "(%s) Retry attempt %d sleeping for %s", operation, i, sleep)
+			log.Writef(eventName, "%s Retry attempt %d sleeping for %s", operation, i, sleep)
 
 			select {
 			case <-ctx.Done():
@@ -66,7 +66,7 @@ func Retry(ctx context.Context, eventName log.Event, operation string, fn func(c
 		err = fn(ctx, &args)
 
 		if args.resetAttempts {
-			log.Writef(eventName, "(%s) Resetting retry attempts", operation)
+			log.Writef(eventName, "%s Resetting retry attempts", operation)
 
 			// it looks weird, but we're doing -1 here because the post-increment
 			// will set it back to 0, which is what we want - go back to the 0th
@@ -79,13 +79,13 @@ func Retry(ctx context.Context, eventName log.Event, operation string, fn func(c
 		if err != nil {
 			if isFatalFn(err) {
 				if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-					log.Writef(eventName, "(%s) Retry attempt %d was cancelled, stopping: %s", operation, i, err.Error())
+					log.Writef(eventName, "%s Retry attempt %d was cancelled, stopping: %s", operation, i, err.Error())
 				} else {
-					log.Writef(eventName, "(%s) Retry attempt %d returned non-retryable error: %s", operation, i, err.Error())
+					log.Writef(eventName, "%s Retry attempt %d returned non-retryable error: %s", operation, i, err.Error())
 				}
 				return err
 			} else {
-				log.Writef(eventName, "(%s) Retry attempt %d returned retryable error: %s", operation, i, err.Error())
+				log.Writef(eventName, "%s Retry attempt %d returned retryable error: %s", operation, i, err.Error())
 			}
 
 			continue

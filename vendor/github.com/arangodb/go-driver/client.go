@@ -76,6 +76,31 @@ type Client interface {
 	ClientAdminBackup
 
 	ClientFoxx
+
+	ClientLog
+}
+
+// LogLevels is a map of topics to log level.
+type LogLevels map[string]string
+
+// ClientLog provides access to client logs' wide specific operations.
+type ClientLog interface {
+	// GetLogLevels returns log levels for topics.
+	GetLogLevels(ctx context.Context, opts *LogLevelsGetOptions) (LogLevels, error)
+	// SetLogLevels sets log levels for a given topics
+	SetLogLevels(ctx context.Context, logLevels LogLevels, opts *LogLevelsSetOptions) error
+}
+
+// LogLevelsGetOptions describes log levels get options.
+type LogLevelsGetOptions struct {
+	// serverID describes log levels for a specific server ID.
+	ServerID ServerID
+}
+
+// LogLevelsSetOptions describes log levels set options.
+type LogLevelsSetOptions struct {
+	// serverID describes log levels for a specific server ID.
+	ServerID ServerID
 }
 
 // ClientConfig contains all settings needed to create a client.

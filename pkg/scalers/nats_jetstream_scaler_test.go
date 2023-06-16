@@ -63,6 +63,10 @@ var testNATSJetStreamMetadata = []parseNATSJetStreamMetadataTestData{
 	{map[string]string{"account": "$G", "stream": "mystream", "consumer": "pull_consumer", jetStreamLagThresholdMetricName: "6"}, map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222"}, false},
 	// Misconfigured lag threshold
 	{map[string]string{"account": "$G", "stream": "mystream", "consumer": "pull_consumer", jetStreamLagThresholdMetricName: "Y"}, map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222"}, true},
+	// All good + account from authParams
+	{map[string]string{"stream": "mystream", "consumer": "pull_consumer"}, map[string]string{"account": "$G", "natsServerMonitoringEndpoint": "nats.nats:8222"}, false},
+	// Misconfigured account
+	{map[string]string{"stream": "mystream", "consumer": "pull_consumer"}, map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222"}, true},
 }
 
 var natsJetStreamMetricIdentifiers = []natsJetStreamMetricIdentifier{

@@ -74,7 +74,6 @@ type ChangeStreamOptions struct {
 // ChangeStream creates a new ChangeStreamOptions instance.
 func ChangeStream() *ChangeStreamOptions {
 	cso := &ChangeStreamOptions{}
-	cso.SetFullDocument(Default)
 	return cso
 }
 

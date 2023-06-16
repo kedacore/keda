@@ -22,11 +22,12 @@ const (
 )
 
 var (
-	testNamespace    = fmt.Sprintf("%s-ns", testName)
-	serviceName      = fmt.Sprintf("%s-service", testName)
-	deploymentName   = fmt.Sprintf("%s-deployment", testName)
-	scalerName       = fmt.Sprintf("%s-scaler", testName)
-	scaledObjectName = fmt.Sprintf("%s-so", testName)
+	testNamespace         = fmt.Sprintf("%s-ns", testName)
+	serviceName           = fmt.Sprintf("%s-service", testName)
+	deploymentName        = fmt.Sprintf("%s-deployment", testName)
+	scalerName            = fmt.Sprintf("%s-scaler", testName)
+	scaledObjectName      = fmt.Sprintf("%s-so", testName)
+	metricsServerEndpoint = fmt.Sprintf("http://%s.%s.svc.cluster.local:8080/api/value", serviceName, testNamespace)
 )
 
 type templateData struct {
@@ -35,6 +36,7 @@ type templateData struct {
 	DeploymentName               string
 	ScalerName                   string
 	ScaledObjectName             string
+	MetricsServerEndpoint        string
 	MetricThreshold, MetricValue int
 }
 
@@ -48,7 +50,11 @@ metadata:
 spec:
   ports:
     - port: 6000
+      name: grpc
       targetPort: 6000
+    - port: 8080
+      name: http
+      targetPort: 8080
   selector:
     app: {{.ScalerName}}
 `
@@ -73,10 +79,11 @@ spec:
     spec:
       containers:
         - name: scaler
-          image: ghcr.io/kedacore/tests-external-scaler-e2e:latest
+          image: ghcr.io/kedacore/tests-external-scaler:latest
           imagePullPolicy: Always
           ports:
           - containerPort: 6000
+          - containerPort: 8080
 `
 
 	deploymentTemplate = `
@@ -121,8 +128,21 @@ spec:
       metadata:
         scalerAddress: {{.ServiceName}}.{{.TestNamespace}}:6000
         metricThreshold: "{{.MetricThreshold}}"
-        metricValue: "{{.MetricValue}}"
 `
+	updateMetricTemplate = `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: update-metric-value
+  namespace: {{.TestNamespace}}
+spec:
+  template:
+    spec:
+      containers:
+      - name: curl-client
+        image: curlimages/curl
+        imagePullPolicy: Always
+        command: ["curl", "-X", "POST", "{{.MetricsServerEndpoint}}/{{.MetricValue}}"]
+      restartPolicy: Never`
 )
 
 func TestScaler(t *testing.T) {
@@ -151,13 +171,13 @@ func TestScaler(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:    testNamespace,
-			ServiceName:      serviceName,
-			DeploymentName:   deploymentName,
-			ScalerName:       scalerName,
-			ScaledObjectName: scaledObjectName,
-			MetricThreshold:  10,
-			MetricValue:      0,
+			TestNamespace:         testNamespace,
+			ServiceName:           serviceName,
+			DeploymentName:        deploymentName,
+			ScalerName:            scalerName,
+			ScaledObjectName:      scaledObjectName,
+			MetricThreshold:       10,
+			MetricsServerEndpoint: metricsServerEndpoint,
 		}, []Template{
 			{Name: "scalerTemplate", Config: scalerTemplate},
 			{Name: "serviceTemplate", Config: serviceTemplate},
@@ -171,17 +191,19 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 	t.Log("scaling to min replicas")
 	data.MetricValue = data.MetricThreshold
-	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"replica count should be 1 after 1 minute")
+	KubectlDeleteWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	t.Log("scaling to max replicas")
 	data.MetricValue = data.MetricThreshold * 2
-	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 2),
 		"replica count should be 2 after 2 minutes")
+	KubectlDeleteWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -189,8 +211,9 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 	t.Log("scaling to idle replicas")
 	data.MetricValue = 0
-	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 2),
 		"replica count should be 0 after 2 minutes")
+	KubectlDeleteWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 }

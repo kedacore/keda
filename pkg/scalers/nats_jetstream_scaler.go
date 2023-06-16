@@ -135,10 +135,11 @@ func NewNATSJetStreamScaler(config *ScalerConfig) (Scaler, error) {
 func parseNATSJetStreamMetadata(config *ScalerConfig) (natsJetStreamMetadata, error) {
 	meta := natsJetStreamMetadata{}
 
-	if config.TriggerMetadata["account"] == "" {
-		return meta, errors.New("no account name given")
+	account, err := GetFromAuthOrMeta(config, "account")
+	if err != nil {
+		return meta, err
 	}
-	meta.account = config.TriggerMetadata["account"]
+	meta.account = account
 
 	if config.TriggerMetadata["stream"] == "" {
 		return meta, errors.New("no stream name given")

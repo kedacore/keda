@@ -81,7 +81,7 @@ func (c *AzureCLICredential) GetToken(ctx context.Context, opts policy.TokenRequ
 }
 
 func (c *AzureCLICredential) requestToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
-	b, err := c.tokenProvider(ctx, opts.Scopes[0], "")
+	b, err := c.tokenProvider(ctx, opts.Scopes[0], opts.TenantID)
 	if err != nil {
 		return azcore.AccessToken{}, err
 	}

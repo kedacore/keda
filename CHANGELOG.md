@@ -48,18 +48,23 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **CPU/Memory scaler**: Add support for scale to zero if there are multiple triggers([#4269](https://github.com/kedacore/keda/issues/4269))
 - **Redis Scalers**: Allow scaling using redis stream length ([#4277](https://github.com/kedacore/keda/issues/4277))
-- **General:** Introduce new Solr Scaler ([#4234](https://github.com/kedacore/keda/issues/4234))
+- **General**: Introduce new Solr Scaler ([#4234](https://github.com/kedacore/keda/issues/4234))
 
 ### Improvements
 
 - **General**: Metrics Adapter: remove deprecated Prometheus Metrics and non-gRPC code ([#3930](https://github.com/kedacore/keda/issues/3930))
-- **General**: Add a Promethean metric for measuring the processing loop lag ([#4702](https://github.com/kedacore/keda/issues/4702))
-- **Azure Data Exporer Scaler**: Use azidentity SDK ([#4489](https://github.com/kedacore/keda/issues/4489))
+- **General**: Add a Prometheus metric for measuring the processing loop lag ([#4702](https://github.com/kedacore/keda/issues/4702))
+- **AWS DynamoDB**: Add support for `indexName` ([#4680](https://github.com/kedacore/keda/issues/4680))
+- **Azure Data Explorer Scaler**: Use azidentity SDK ([#4489](https://github.com/kedacore/keda/issues/4489))
 - **External Scaler**: Add tls options in TriggerAuth metadata. ([#3565](https://github.com/kedacore/keda/issues/3565))
 - **GCP PubSub Scaler**: Make it more flexible for metrics ([#4243](https://github.com/kedacore/keda/issues/4243))
-- **Kafka Scaler:** Add support for OAuth extensions ([#4544](https://github.com/kedacore/keda/issues/4544))
+- **Kafka Scaler**: Add support for OAuth extensions ([#4544](https://github.com/kedacore/keda/issues/4544))
+- **NATS JetStream Scaler**: Add support for pulling AccountID from TriggerAuthentication ([#4586]https://github.com/kedacore/keda/issues/4586)
 - **Pulsar Scaler**: Improve error messages for unsuccessful connections ([#4563](https://github.com/kedacore/keda/issues/4563))
-- **Security:** Enable secret scanning in GitHub repo
+- **Security**: Enable secret scanning in GitHub repo
+- **RabbitMQ Scaler**: Add support for `unsafeSsl` in trigger metadata ([#4448](https://github.com/kedacore/keda/issues/4448))
+- **Prometheus Metrics**: Add new metric with KEDA build info ([#4647](https://github.com/kedacore/keda/issues/4647))
+- **Prometheus Scaler**: Add support for Google Managed Prometheus ([#4675](https://github.com/kedacore/keda/pull/4675))
 
 ### Fixes
 
@@ -71,6 +76,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **NATS Jetstream Scaler**: Fix compatibility if node is not advertised ([#4524](https://github.com/kedacore/keda/issues/4524))
 - **Prometheus Metrics**: Create e2e tests for all exposed Prometheus metrics ([#4127](https://github.com/kedacore/keda/issues/4127))
 - **Grafana Dashboard**: Fix HPA metrics panel to use range instead of instant ([#4513](https://github.com/kedacore/keda/pull/4513))
+- **Grafana Dashboard**: Fix HPA metrics panel by replacing $namepsace to $exported_namespace due to label conflict ([#4539](https://github.com/kedacore/keda/pull/4539))
+- **Kafka Scaler**: Add back `strings.TrimSpace()` function for saslAuthType ([#4689](https://github.com/kedacore/keda/issues/4689))
 
 ### Deprecations
 
@@ -80,19 +87,20 @@ New deprecation(s):
 
 - **Azure Data Explorer**: Deprecate `metadata.clientSecret` ([#4514](https://github.com/kedacore/keda/issues/4514))
 
-
 ### Breaking Changes
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
 
 ### Other
 
+- **General**: Add e2e test for external push scaler ([#2698](https://github.com/kedacore/keda/pull/2698))
 - **General**: Bump Golang to 1.20 ([#4517](https://github.com/kedacore/keda/issues/4517))
 - **General**: Drop a transitive dependency on bou.ke/monkey ([#4364](https://github.com/kedacore/keda/issues/4364))
 - **General**: Fix odd number of arguments passed as key-value pairs for logging ([#4368](https://github.com/kedacore/keda/issues/4368))
 - **General**: Automatically scale test clusters in/out to reduce environmental footprint & improve cost-efficiency ([#4456](https://github.com/kedacore/keda/pull/4456))
 - **General**: Use default metrics provider from sigs.k8s.io/custom-metrics-apiserver ([#4473](https://github.com/kedacore/keda/pull/4473))
 - **General**: Refactor several functions for Status & Conditions handling into pkg util functions ([#2906](https://github.com/kedacore/keda/pull/2906))
+- **General**: Bump `kubernetes-sigs/controller-runtime` to v0.15.0 and code alignment ([#4582](https://github.com/kedacore/keda/pull/4582))
 
 ## v2.10.1
 

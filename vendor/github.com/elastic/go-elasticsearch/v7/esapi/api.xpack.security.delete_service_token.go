@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.10: DO NOT EDIT
 
 package esapi
 
@@ -26,7 +26,7 @@ import (
 )
 
 func newSecurityDeleteServiceTokenFunc(t Transport) SecurityDeleteServiceToken {
-	return func(name string, service string, namespace string, o ...func(*SecurityDeleteServiceTokenRequest)) (*Response, error) {
+	return func(name string, namespace string, service string, o ...func(*SecurityDeleteServiceTokenRequest)) (*Response, error) {
 		var r = SecurityDeleteServiceTokenRequest{Name: name, Namespace: namespace, Service: service}
 		for _, f := range o {
 			f(&r)
