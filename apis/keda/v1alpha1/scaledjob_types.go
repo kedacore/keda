@@ -143,6 +143,6 @@ func (s ScaledJob) MinReplicaCount() int64 {
 	return defaultScaledJobMinReplicaCount
 }
 
-func (so *ScaledJob) GenerateIdentifier() string {
-	return GenerateIdentifier("ScaledJob", so.Namespace, so.Name)
+func (s *ScaledJob) GenerateIdentifier() string {
+	return GenerateIdentifier("ScaledJob", s.Namespace, s.Name)
 }
