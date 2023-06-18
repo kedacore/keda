@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
+	"golang.org/x/oauth2/clientcredentials"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -31,6 +32,11 @@ type pulsarMetadata struct {
 	subscription                  string
 	msgBacklogThreshold           int64
 	activationMsgBacklogThreshold int64
+
+	oauthTokenURI string
+	grantType     string
+	scopes        []string
+	clientID      string
 
 	pulsarAuth *authentication.AuthMeta
 
@@ -165,6 +171,16 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 		return meta, errors.New("no subscription given")
 	}
 
+	if config.TriggerMetadata["oauthTokenURI"] != "" {
+		meta.oauthTokenURI = config.TriggerMetadata["oauthTokenURI"]
+	}
+	if config.TriggerMetadata["grantType"] != "" {
+		meta.grantType = config.TriggerMetadata["grantType"]
+	}
+	if config.TriggerMetadata["scope"] != "" {
+		meta.scopes = strings.Split(config.TriggerMetadata["scope"], " ")
+	}
+
 	meta.metricName = fmt.Sprintf("%s-%s-%s", "pulsar", meta.topic, meta.subscription)
 
 	meta.activationMsgBacklogThreshold = 0
@@ -199,6 +215,16 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 	if err != nil {
 		return meta, fmt.Errorf("error parsing %s: %w", msgBacklogMetricName, err)
 	}
+
+	if auth != nil && auth.EnableOAuth {
+		// use clientID from authenticationRef if provided
+		// otherwise from the metadata
+		if auth.ClientID != "" {
+			meta.clientID = auth.ClientID
+		} else {
+			meta.clientID = config.TriggerMetadata["clientID"]
+		}
+	}
 	meta.pulsarAuth = auth
 	meta.scalerIndex = config.ScalerIndex
 	return meta, nil
@@ -212,9 +238,19 @@ func (s *pulsarScaler) GetStats(ctx context.Context) (*pulsarStats, error) {
 		return nil, fmt.Errorf("error requesting stats from admin url: %w", err)
 	}
 
+	client := s.client
+	if s.metadata.pulsarAuth.EnableOAuth {
+		config := clientcredentials.Config{
+			ClientID:     s.metadata.clientID,
+			ClientSecret: s.metadata.pulsarAuth.ClientSecret,
+			TokenURL:     s.metadata.oauthTokenURI,
+			Scopes:       s.metadata.scopes,
+		}
+		client = config.Client(context.Background())
+	}
 	addAuthHeaders(req, &s.metadata)
 
-	res, err := s.client.Do(req)
+	res, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error requesting stats from admin url: %w", err)
 	}

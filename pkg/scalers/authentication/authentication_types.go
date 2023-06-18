@@ -16,6 +16,8 @@ const (
 	BearerAuthType Type = "bearer"
 	// CustomAuthType is a auth type using a custom header
 	CustomAuthType Type = "custom"
+	// OAuthType is a auth type using a oAuth2
+	OAuthType Type = "oauth"
 )
 
 // TransportType is type of http transport
@@ -41,6 +43,11 @@ type AuthMeta struct {
 	Cert      string
 	Key       string
 	CA        string
+
+	// oAuth2
+	EnableOAuth  bool
+	ClientID     string
+	ClientSecret string
 
 	// custom auth header
 	EnableCustomAuth bool

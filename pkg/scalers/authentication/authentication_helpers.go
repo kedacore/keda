@@ -41,8 +41,10 @@ func GetAuthConfigs(triggerMetadata, authParams map[string]string) (out *AuthMet
 			if out.EnableBasicAuth {
 				return nil, errors.New("both bearer and basic authentication can not be set")
 			}
-
-			out.BearerToken = authParams["bearerToken"]
+			if out.EnableOAuth {
+				return nil, errors.New("both bearer and OAuth can not be set")
+			}
+			out.BearerToken = strings.TrimSuffix(authParams["bearerToken"], "\n")
 			out.EnableBearerAuth = true
 		case BasicAuthType:
 			if len(authParams["username"]) == 0 {
@@ -50,6 +52,9 @@ func GetAuthConfigs(triggerMetadata, authParams map[string]string) (out *AuthMet
 			}
 			if out.EnableBearerAuth {
 				return nil, errors.New("both bearer and basic authentication can not be set")
+			}
+			if out.EnableOAuth {
+				return nil, errors.New("both bearer and OAuth can not be set")
 			}
 
 			out.Username = authParams["username"]
@@ -80,6 +85,16 @@ func GetAuthConfigs(triggerMetadata, authParams map[string]string) (out *AuthMet
 			}
 			out.CustomAuthValue = authParams["customAuthValue"]
 			out.EnableCustomAuth = true
+		case OAuthType:
+			if out.EnableBasicAuth {
+				return nil, errors.New("both oauth and basic authentication can not be set")
+			}
+			if out.EnableBearerAuth {
+				return nil, errors.New("both oauth and bearer authentication can not be set")
+			}
+			out.EnableOAuth = true
+			out.ClientID = authParams["clientID"]
+			out.ClientSecret = authParams["clientSecret"]
 		default:
 			return nil, fmt.Errorf("incorrect value for authMode is given: %s", t)
 		}
