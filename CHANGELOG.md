@@ -68,6 +68,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Fixes
 
 - **Admission Webhooks**: Allow to remove the finalizer even if the ScaledObject isn't valid ([#4396](https://github.com/kedacore/keda/issue/4396))
+- **Admission Webhooks**: Check ScaledObjects with multiple triggers with non unique name ([#4664](https://github.com/kedacore/keda/issue/4664))
 - **ScaledJob**: Check if MaxReplicaCount is nil before access to it ([#4568]https://github.com/kedacore/keda/issues/4568)
 - **AWS SQS Scaler**: Respect `scaleOnInFlight` value ([#4276](https://github.com/kedacore/keda/issue/4276))
 - **Azure Pipelines**: Fix for disallowing `$top` on query when using `meta.parentID` method ([#4397])
