@@ -406,7 +406,7 @@ func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject int
 /// ----------             ScaledObject related methods               --------- ///
 /// --------------------------------------------------------------------------- ///
 
-// GetScaledObjectMetrics returns metrics for specified metric name for a ScaledObject identified by it's name and namespace.
+// GetScaledObjectMetrics returns metrics for specified metric name for a ScaledObject identified by its name and namespace.
 // It could either query the metric value directly from the scaler or from a cache, that's being stored for the scaler.
 func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, error) {
 	logger := log.WithValues("scaledObject.Namespace", scaledObjectNamespace, "scaledObject.Name", scaledObjectName)
@@ -516,9 +516,9 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 
 // getScaledObjectState returns whether the input ScaledObject:
 // is active as the first return value,
-// the second return value indicates whether there was any error during quering scalers,
-// the third return value is a map of metrics record - a metric value for each scaler and it's metric
-// the fourth return value contains error if is not able access scalers cache
+// the second return value indicates whether there was any error during querying scalers,
+// the third return value is a map of metrics record - a metric value for each scaler and its metric
+// the fourth return value contains error if is not able to access scalers cache
 func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) (bool, bool, map[string]metricscache.MetricsRecord, error) {
 	logger := log.WithValues("scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
 
@@ -623,70 +623,19 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	return isScaledObjectActive, isScalerError, metricsRecord, nil
 }
 
-func (h *scaleHandler) isScaledJobActive(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob) (bool, int64, int64) {
-	var queueLength float64
-	var maxValue float64
-	isActive := false
-
-	logger := logf.Log.WithName("scalemetrics")
-	scalersMetrics := h.getScaledJobMetrics(ctx, scaledJob)
-	switch scaledJob.Spec.ScalingStrategy.MultipleScalersCalculation {
-	case "min":
-		for _, metrics := range scalersMetrics {
-			if (queueLength == 0 || metrics.queueLength < queueLength) && metrics.isActive {
-				queueLength = metrics.queueLength
-				maxValue = metrics.maxValue
-				isActive = metrics.isActive
-			}
-		}
-	case "avg":
-		queueLengthSum := float64(0)
-		maxValueSum := float64(0)
-		length := 0
-		for _, metrics := range scalersMetrics {
-			if metrics.isActive {
-				queueLengthSum += metrics.queueLength
-				maxValueSum += metrics.maxValue
-				isActive = metrics.isActive
-				length++
-			}
-		}
-		if length != 0 {
-			queueLength = queueLengthSum / float64(length)
-			maxValue = maxValueSum / float64(length)
-		}
-	case "sum":
-		for _, metrics := range scalersMetrics {
-			if metrics.isActive {
-				queueLength += metrics.queueLength
-				maxValue += metrics.maxValue
-				isActive = metrics.isActive
-			}
-		}
-	default: // max
-		for _, metrics := range scalersMetrics {
-			if metrics.queueLength > queueLength && metrics.isActive {
-				queueLength = metrics.queueLength
-				maxValue = metrics.maxValue
-				isActive = metrics.isActive
-			}
-		}
-	}
-
-	if scaledJob.MinReplicaCount() > 0 {
-		isActive = true
-	}
-
-	maxValue = min(float64(scaledJob.MaxReplicaCount()), maxValue)
-	logger.V(1).WithValues("ScaledJob", scaledJob.Name).Info("Checking if ScaleJob Scalers are active", "isActive", isActive, "maxValue", maxValue, "MultipleScalersCalculation", scaledJob.Spec.ScalingStrategy.MultipleScalersCalculation)
-
-	return isActive, ceilToInt64(queueLength), ceilToInt64(maxValue)
+type scalerMetrics struct {
+	queueLength float64
+	maxValue    float64
+	isActive    bool
 }
 
+// / --------------------------------------------------------------------------- ///
+// / ----------             ScaledJob related methods               --------- ///
+// / --------------------------------------------------------------------------- ///
+// getScaledJobMetrics returns metrics for specified metric name for a ScaledJob identified by its name and namespace.
+// It could either query the metric value directly from the scaler or from a cache, that's being stored for the scaler.
 func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob) []scalerMetrics {
 	// TODO this loop should be probably done similar way the ScaledObject loop is done
-
-	// yoon GetScalersCache !!! This is all !!!
 	cache, err := h.GetScalersCache(ctx, scaledJob)
 	if err != nil {
 		log.Error(err, "error getting scalers cache", "scaledJob.Namespace", scaledJob.Namespace, "scaledJob.Name", scaledJob.Name)
@@ -747,6 +696,69 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 	return scalersMetrics
 }
 
+// isScaledJobActive returns whether the input ScaledJob:
+// is active as the first return value,
+// the second and the third return values indicate queueLength and maxValue for scale
+func (h *scaleHandler) isScaledJobActive(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob) (bool, int64, int64) {
+	var queueLength float64
+	var maxValue float64
+	isActive := false
+
+	logger := logf.Log.WithName("scalemetrics")
+	scalersMetrics := h.getScaledJobMetrics(ctx, scaledJob)
+	switch scaledJob.Spec.ScalingStrategy.MultipleScalersCalculation {
+	case "min":
+		for _, metrics := range scalersMetrics {
+			if (queueLength == 0 || metrics.queueLength < queueLength) && metrics.isActive {
+				queueLength = metrics.queueLength
+				maxValue = metrics.maxValue
+				isActive = metrics.isActive
+			}
+		}
+	case "avg":
+		queueLengthSum := float64(0)
+		maxValueSum := float64(0)
+		length := 0
+		for _, metrics := range scalersMetrics {
+			if metrics.isActive {
+				queueLengthSum += metrics.queueLength
+				maxValueSum += metrics.maxValue
+				isActive = metrics.isActive
+				length++
+			}
+		}
+		if length != 0 {
+			queueLength = queueLengthSum / float64(length)
+			maxValue = maxValueSum / float64(length)
+		}
+	case "sum":
+		for _, metrics := range scalersMetrics {
+			if metrics.isActive {
+				queueLength += metrics.queueLength
+				maxValue += metrics.maxValue
+				isActive = metrics.isActive
+			}
+		}
+	default: // max
+		for _, metrics := range scalersMetrics {
+			if metrics.queueLength > queueLength && metrics.isActive {
+				queueLength = metrics.queueLength
+				maxValue = metrics.maxValue
+				isActive = metrics.isActive
+			}
+		}
+	}
+
+	if scaledJob.MinReplicaCount() > 0 {
+		isActive = true
+	}
+
+	maxValue = min(float64(scaledJob.MaxReplicaCount()), maxValue)
+	logger.V(1).WithValues("ScaledJob", scaledJob.Name).Info("Checking if ScaleJob Scalers are active", "isActive", isActive, "maxValue", maxValue, "MultipleScalersCalculation", scaledJob.Spec.ScalingStrategy.MultipleScalersCalculation)
+
+	return isActive, ceilToInt64(queueLength), ceilToInt64(maxValue)
+}
+
 func getTargetAverageValue(metricSpecs []v2.MetricSpec) float64 {
 	var targetAverageValue float64
 	var metricValue float64
@@ -776,10 +788,4 @@ func min(x, y float64) float64 {
 		return y
 	}
 	return x
-}
-
-type scalerMetrics struct {
-	queueLength float64
-	maxValue    float64
-	isActive    bool
 }

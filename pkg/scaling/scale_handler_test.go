@@ -412,15 +412,13 @@ func TestIsScaledJobActive(t *testing.T) {
 	// Keep the current behavior
 	// Assme 1 trigger only
 	scaledJobSingle := createScaledJob(1, 100, "") // testing default = max
-	scalers2 := []cache.ScalerBuilder{{
-		Scaler: createScaler(ctrl, int64(20), int64(2), true, metricName),
-		Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
-			return createScaler(ctrl, int64(20), int64(2), true, metricName), &scalers.ScalerConfig{}, nil
-		},
-	}}
-
 	scalerCache := cache.ScalersCache{
-		Scalers:  scalers2,
+		Scalers: []cache.ScalerBuilder{{
+			Scaler: createScaler(ctrl, int64(20), int64(2), true, metricName),
+			Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+				return createScaler(ctrl, int64(20), int64(2), true, metricName), &scalers.ScalerConfig{}, nil
+			},
+		}},
 		Recorder: recorder,
 	}
 
@@ -428,9 +426,7 @@ func TestIsScaledJobActive(t *testing.T) {
 	caches[scaledJobSingle.GenerateIdentifier()] = &scalerCache
 
 	sh := scaleHandler{
-		//client:                   mockClient,
-		scaleLoopContexts: &sync.Map{},
-		//scaleExecutor:            mockExecutor,
+		scaleLoopContexts:        &sync.Map{},
 		globalHTTPTimeout:        time.Duration(1000),
 		recorder:                 recorder,
 		scalerCaches:             caches,
@@ -441,8 +437,7 @@ func TestIsScaledJobActive(t *testing.T) {
 	assert.Equal(t, true, isActive)
 	assert.Equal(t, int64(20), queueLength)
 	assert.Equal(t, int64(10), maxValue)
-	//yoon
-	//cache.Close(context.Background())
+	scalerCache.Close(context.Background())
 
 	// Test the valiation
 	scalerTestDatam := []scalerTestData{
@@ -477,22 +472,16 @@ func TestIsScaledJobActive(t *testing.T) {
 			},
 		}}
 
-		//cache = ScalersCache{
-		//	Scalers:  scalersToTest,
-		//	Recorder: recorder,
-		//}
 		scalerCache = cache.ScalersCache{
 			Scalers:  scalersToTest,
 			Recorder: recorder,
 		}
 
-		caches := map[string]*cache.ScalersCache{}
+		caches = map[string]*cache.ScalersCache{}
 		caches[scaledJobSingle.GenerateIdentifier()] = &scalerCache
 
-		sh := scaleHandler{
-			//client:                   mockClient,
-			scaleLoopContexts: &sync.Map{},
-			//scaleExecutor:            mockExecutor,
+		sh = scaleHandler{
+			scaleLoopContexts:        &sync.Map{},
 			globalHTTPTimeout:        time.Duration(1000),
 			recorder:                 recorder,
 			scalerCaches:             caches,
@@ -500,12 +489,12 @@ func TestIsScaledJobActive(t *testing.T) {
 			scaledObjectsMetricCache: metricscache.NewMetricsCache(),
 		}
 		fmt.Printf("index: %d", index)
-		isActive, queueLength, maxValue := sh.isScaledJobActive(context.TODO(), scaledJob)
+		isActive, queueLength, maxValue = sh.isScaledJobActive(context.TODO(), scaledJob)
 		//	assert.Equal(t, 5, index)
 		assert.Equal(t, scalerTestData.ResultIsActive, isActive)
 		assert.Equal(t, scalerTestData.ResultQueueLength, queueLength)
 		assert.Equal(t, scalerTestData.ResultMaxValue, maxValue)
-		//cache.Close(context.Background())
+		scalerCache.Close(context.Background())
 	}
 }
 
@@ -524,7 +513,6 @@ func TestIsScaledJobActiveIfQueueEmptyButMinReplicaCountGreaterZero(t *testing.T
 	}}
 
 	scalerCache := cache.ScalersCache{
-		//Scalers:  scalers,
 		Scalers:  scalerSingle,
 		Recorder: recorder,
 	}
@@ -533,9 +521,7 @@ func TestIsScaledJobActiveIfQueueEmptyButMinReplicaCountGreaterZero(t *testing.T
 	caches[scaledJobSingle.GenerateIdentifier()] = &scalerCache
 
 	sh := scaleHandler{
-		//client:                   mockClient,
-		scaleLoopContexts: &sync.Map{},
-		//scaleExecutor:            mockExecutor,
+		scaleLoopContexts:        &sync.Map{},
 		globalHTTPTimeout:        time.Duration(1000),
 		recorder:                 recorder,
 		scalerCaches:             caches,
@@ -547,7 +533,7 @@ func TestIsScaledJobActiveIfQueueEmptyButMinReplicaCountGreaterZero(t *testing.T
 	assert.Equal(t, true, isActive)
 	assert.Equal(t, int64(0), queueLength)
 	assert.Equal(t, int64(0), maxValue)
-	//cache.Close(context.Background())
+	scalerCache.Close(context.Background())
 }
 
 func newScalerTestData(
@@ -671,7 +657,6 @@ func createScaler(ctrl *gomock.Controller, queueLength int64, averageValue int64
 	}
 	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs)
 	scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return(metrics, isActive, nil)
-	// yoon
-	//scaler.EXPECT().Close(gomock.Any())
+	scaler.EXPECT().Close(gomock.Any())
 	return scaler
 }
