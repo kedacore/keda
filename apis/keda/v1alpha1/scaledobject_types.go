@@ -122,21 +122,6 @@ type ScaleTarget struct {
 	EnvSourceContainerName string `json:"envSourceContainerName,omitempty"`
 }
 
-// ScaleTriggers reference the scaler that will be used
-type ScaleTriggers struct {
-	Type string `json:"type"`
-	// +optional
-	Name string `json:"name,omitempty"`
-
-	UseCachedMetrics bool `json:"useCachedMetrics,omitempty"`
-
-	Metadata map[string]string `json:"metadata"`
-	// +optional
-	AuthenticationRef *ScaledObjectAuthRef `json:"authenticationRef,omitempty"`
-	// +optional
-	MetricType autoscalingv2.MetricTargetType `json:"metricType,omitempty"`
-}
-
 // +k8s:openapi-gen=true
 
 // ScaledObjectStatus is the status for a ScaledObject resource
@@ -171,15 +156,6 @@ type ScaledObjectList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 	Items           []ScaledObject `json:"items"`
-}
-
-// ScaledObjectAuthRef points to the TriggerAuthentication or ClusterTriggerAuthentication object that
-// is used to authenticate the scaler with the environment
-type ScaledObjectAuthRef struct {
-	Name string `json:"name"`
-	// Kind of the resource being referred to. Defaults to TriggerAuthentication.
-	// +optional
-	Kind string `json:"kind,omitempty"`
 }
 
 func init() {
