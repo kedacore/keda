@@ -93,11 +93,11 @@ var testGitHubRunnerMetadata = []parseGitHubRunnerMetadataTestData{
 	// empty repos, no envs
 	{"empty repos, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "labels": "golang", "repos": "", "targetWorkflowQueueLength": "1"}, false, false, ""},
 	// missing installationID
-	{"missing installationID", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "applicationID": "1"}, true, true, ""},
+	{"missing installationID", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "applicationID": "1"}, true, true, "applicationID, installationID and applicationKey must be given"},
 	// missing applicationID
-	{"missing applicationID", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "installationID": "1"}, true, true, ""},
+	{"missing applicationID", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "installationID": "1"}, true, true, "applicationID, installationID and applicationKey must be given"},
 	// all good
-	{"missing applicationID", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "applicationID": "1", "installationID": "1"}, true, false, ""},
+	{"missing applicationKey", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "applicationID": "1", "installationID": "1"}, true, true, "applicationID, installationID and applicationKey must be given"},
 }
 
 func TestGitHubRunnerParseMetadata(t *testing.T) {
@@ -123,11 +123,13 @@ func TestGitHubRunnerParseMetadata(t *testing.T) {
 }
 
 func getGitHubTestMetaData(url string) *githubRunnerMetadata {
+	testpat := "testpat"
+
 	meta := githubRunnerMetadata{
 		githubAPIURL:              url,
 		runnerScope:               "repo",
 		owner:                     "testOwner",
-		personalAccessToken:       "testPAT",
+		personalAccessToken:       &testpat,
 		targetWorkflowQueueLength: 1,
 	}
 

@@ -56,6 +56,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Azure Data Explorer Scaler**: Use azidentity SDK ([#4489](https://github.com/kedacore/keda/issues/4489))
 - **External Scaler**: Add tls options in TriggerAuth metadata. ([#3565](https://github.com/kedacore/keda/issues/3565))
 - **GCP PubSub Scaler**: Make it more flexible for metrics ([#4243](https://github.com/kedacore/keda/issues/4243))
+- **GitHub Runner Scaler**: Added support for GitHub App authentication ([#4651](https://github.com/kedacore/keda/issues/4651))
 - **Kafka Scaler:** Add support for OAuth extensions ([#4544](https://github.com/kedacore/keda/issues/4544))
 - **NATS JetStream Scaler:** Add support for pulling AccountID from TriggerAuthentication ([#4586]https://github.com/kedacore/keda/issues/4586)
 - **Pulsar Scaler**: Improve error messages for unsuccessful connections ([#4563](https://github.com/kedacore/keda/issues/4563))
