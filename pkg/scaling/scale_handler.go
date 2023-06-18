@@ -248,12 +248,6 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 			h.scaledObjectsMetricCache.StoreRecords(obj.GenerateIdentifier(), metricsRecords)
 		}
 	case *kedav1alpha1.ScaledJob:
-		//cache, err := h.GetScalersCache(ctx, scalableObject)
-		//if err != nil {
-		//	log.Error(err, "error getting scalers cache", "scaledJob.Namespace", obj.Namespace, "scaledJob.Name", obj.Name)
-		//	return
-		//}
-
 		err := h.client.Get(ctx, types.NamespacedName{Name: obj.Name, Namespace: obj.Namespace}, obj)
 		if err != nil {
 			log.Error(err, "error getting scaledJob", "scaledJob.Namespace", obj.Namespace, "scaledJob.Name", obj.Name)
@@ -632,6 +626,7 @@ type scalerMetrics struct {
 // / --------------------------------------------------------------------------- ///
 // / ----------             ScaledJob related methods               --------- ///
 // / --------------------------------------------------------------------------- ///
+
 // getScaledJobMetrics returns metrics for specified metric name for a ScaledJob identified by its name and namespace.
 // It could either query the metric value directly from the scaler or from a cache, that's being stored for the scaler.
 func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob) []scalerMetrics {
