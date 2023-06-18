@@ -19,12 +19,12 @@ package scaling
 import (
 	"context"
 	"fmt"
-	v2 "k8s.io/api/autoscaling/v2"
 	"math"
 	"strings"
 	"sync"
 	"time"
 
+	v2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
