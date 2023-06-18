@@ -100,6 +100,7 @@ New deprecation(s):
 - **General**: Use default metrics provider from sigs.k8s.io/custom-metrics-apiserver ([#4473](https://github.com/kedacore/keda/pull/4473))
 - **General**: Refactor several functions for Status & Conditions handling into pkg util functions ([#2906](https://github.com/kedacore/keda/pull/2906))
 - **General**: Bump `kubernetes-sigs/controller-runtime` to v0.15.0 and code alignment ([#4582](https://github.com/kedacore/keda/pull/4582))
+- **General**: Stop logging errors for paused ScaledObject (with "autoscaling.keda.sh/paused-replicas" annotation) by skipping reconciliation loop for the object (stop the scale loop and delete the HPA) ([#4253](https://github.com/kedacore/keda/pull/4253))
 
 ## v2.10.1
 

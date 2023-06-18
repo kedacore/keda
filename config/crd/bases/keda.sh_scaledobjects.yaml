@@ -44,6 +44,9 @@ spec:
     - jsonPath: .status.conditions[?(@.type=="Fallback")].status
       name: Fallback
       type: string
+    - jsonPath: .status.conditions[?(@.type=="Paused")].status
+      name: Paused
+      type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
