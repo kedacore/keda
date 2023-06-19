@@ -19,6 +19,7 @@ package scaling
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -448,6 +449,8 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 			cache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 		}
 
+		logger.V(0).Info(">>2: MATCHED-METRICS", "metricsArr", metricsArray, "metricsName", metricsName)
+
 		if len(metricsArray) == 0 {
 			err = fmt.Errorf("no metrics found getting metricsArray array")
 			logger.Error(err, "error metricsArray is empty")
@@ -459,14 +462,14 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 				continue
 			}
 
-			// Filter only the desired metric or if composite scaler is active, metricsArray
-			// is all external metrics
+			// Filter only the desired metric or if composite scaler is active,
+			// metricsArray contains all external metrics
 			if arrayContainsElement(spec.External.Metric.Name, metricsArray) {
 				// if compositeScaler is used, override with current metric, otherwise do nothing
 				metricName := spec.External.Metric.Name
 
-				// if compositeScaler is given, add pair to the list
-				if scaledObject.Spec.Advanced.ComplexScalingLogic.Target != "" {
+				// if ComplexScalingLogic custom formula is given, create metric-trigger pair list
+				if scaledObject.Spec.Advanced.ComplexScalingLogic.Formula != "" {
 					metricTriggerPairList, err = pairTriggersAndMetrics(metricTriggerPairList, metricName, scalerConfigs[scalerIndex].TriggerName)
 					if err != nil {
 						logger.Error(err, "error pairing triggers & metrics for compositeScaler")
@@ -529,59 +532,72 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 
 	logger.V(0).Info(">>3: MATCHED-METRICS", "metrics", matchingMetrics, "metricsName", metricsName)
 
-	grpcMetricList := externalscaling.ConvertToGeneratedStruct(matchingMetrics)
-	logger.V(0).Info(">>3.1 LIST", "list", grpcMetricList.MetricValues)
+	// convert k8s list to grpc generated list structure
+	grpcMetricList := externalscaling.ConvertToGeneratedStruct(matchingMetrics, logger)
+	// grpcMetricList := &externalscalingAPI.MetricsList{}
+	// for _, val := range matchingMetrics {
+	// 	metric := externalscalingAPI.Metric{Name: val.MetricName, Value: float32(val.Value.Value())}
+	// 	grpcMetricList.MetricValues = append(grpcMetricList.MetricValues, &metric)
+	// }
 
 	// Apply external calculations - call gRPC server on each url and return
 	// modified metric list in order
 	for i, ec := range scaledObject.Spec.Advanced.ComplexScalingLogic.ExternalCalculations {
-		hasError := false
+		timeout, err := strconv.ParseInt(ec.Timeout, 10, 64)
+		if err != nil {
+			// expect timeout in time format like 1m10s
+			parsedTime, err := time.ParseDuration(ec.Timeout)
+			if err != nil {
+				logger.Error(err, "error while converting type of timeout for external calculation")
+				break
+			}
+			timeout = int64(parsedTime.Seconds())
+		}
+
 		esGrpcClient, err := externalscaling.NewGrpcClient(ec.URL, logger)
 		if err != nil {
-			logger.Error(err, "error connecting external calculation grpc client to server")
-			hasError = true
+			logger.Error(err, "error creating new grpc client for external calculator")
 		} else {
-			if !esGrpcClient.WaitForConnectionReady(ctx, logger) {
+			if !esGrpcClient.WaitForConnectionReady(ctx, ec.URL, time.Duration(timeout), logger) {
 				err = fmt.Errorf("client didnt connect to server successfully")
-				logger.Error(err, "error in connection")
-				hasError = true
+				logger.Error(err, fmt.Sprintf("error in grpc connection for external calculator %s", ec.URL))
+			} else {
+				logger.Info(fmt.Sprintf("connected to gRPC server for external calculation %s", ec.Name))
 			}
-			logger.Info("connected to gRPC server")
 
 			grpcMetricList, err = esGrpcClient.Calculate(ctx, grpcMetricList, logger)
 			if err != nil {
 				logger.Error(err, "error calculating in grpc server at %s for external calculation", ec.URL)
-				hasError = true
 			}
-
-			// run Fallback if error was given
-			grpcMetricList, hasError = externalscaling.Fallback(hasError, grpcMetricList, ec)
-			if hasError {
-				// if fallback metrics not used, stop calculating
-				break
+			if grpcMetricList == nil {
+				err = fmt.Errorf("grpc method Calculate returned nil metric list for external calculator")
+				logger.Error(err, "error in external calculator after Calculate")
 			}
+		}
+		grpcMetricList, errFallback := externalscaling.Fallback(err, grpcMetricList, ec, scaledObject.Spec.Advanced.ComplexScalingLogic.Target, logger)
+		if errFallback != nil {
+			logger.Error(errFallback, "subsequent error occurred when trying to apply fallback metrics for external calculation")
+			break
 		}
 		logger.V(0).Info(fmt.Sprintf(">>3.5:%d CALCULATE END", i), "metrics", grpcMetricList)
 	}
+
+	// Convert from generated structure to k8s structure
 	matchingMetrics = externalscaling.ConvertFromGeneratedStruct(grpcMetricList)
+	// outK8sList := []external_metrics.ExternalMetricValue{}
+	// for _, inValue := range grpcMetricList.MetricValues {
+	// 	outValue := external_metrics.ExternalMetricValue{}
+	// 	outValue.MetricName = inValue.Name
+	// 	outValue.Timestamp = v1.Now()
+	// 	outValue.Value.SetMilli(int64(inValue.Value * 1000))
+	// 	outK8sList = append(outK8sList, outValue)
+	// }
+	// matchingMetrics = outK8sList
 
 	// apply formula
-	if scaledObject.Spec.Advanced.ComplexScalingLogic.Formula != "" {
-		// add last external calculation name as a possible trigger (user can
-		// manipulate with metrics in ExternalCalculation service and it is expected
-		// to be named as the ExternalCalculation[len()-1] value)
-		if len(scaledObject.Spec.Advanced.ComplexScalingLogic.ExternalCalculations) > 0 {
-			lastElemIndex := len(scaledObject.Spec.Advanced.ComplexScalingLogic.ExternalCalculations) - 1
-			lastElem := scaledObject.Spec.Advanced.ComplexScalingLogic.ExternalCalculations[lastElemIndex].Name
-			// expect last element of external calculation array via its name
-			metricTriggerPairList[lastElem] = lastElem
-		}
-		logger.V(0).Info(">>3.2 FORMULA", "pairlist", metricTriggerPairList)
-		logger.V(0).Info(">>3.2 FORMULA", "formula", scaledObject.Spec.Advanced.ComplexScalingLogic.Formula, "target", scaledObject.Spec.Advanced.ComplexScalingLogic.Target)
-		matchingMetrics, err = applyCustomScalerFormula(matchingMetrics, scaledObject.Spec.Advanced.ComplexScalingLogic.Formula, metricTriggerPairList, logger)
-		if err != nil {
-			logger.Error(err, "error applying custom compositeScaler formula")
-		}
+	matchingMetrics, err = applyComplexLogicFormula(scaledObject.Spec.Advanced.ComplexScalingLogic, matchingMetrics, metricTriggerPairList, logger)
+	if err != nil {
+		logger.Error(err, "error applying custom compositeScaler formula")
 	}
 
 	return &external_metrics.ExternalMetricValueList{
@@ -788,8 +804,28 @@ func arrayContainsElement(el string, arr []string) bool {
 	return false
 }
 
-// apply custom formula to metrics and return calculated and finalized metric
-func applyCustomScalerFormula(list []external_metrics.ExternalMetricValue, formula string, pairList map[string]string, logger logr.Logger) ([]external_metrics.ExternalMetricValue, error) {
+// if given right conditions, try to apply the given custom formula in SO
+func applyComplexLogicFormula(csl kedav1alpha1.ComplexScalingLogic, metrics []external_metrics.ExternalMetricValue, pairList map[string]string, logger logr.Logger) ([]external_metrics.ExternalMetricValue, error) {
+	if csl.Formula != "" {
+		// add last external calculation name as a possible trigger (user can
+		// manipulate with metrics in ExternalCalculation service and it is expected
+		// to be named as the ExternalCalculation[len()-1] value)
+		if len(csl.ExternalCalculations) > 0 {
+			lastElemIndex := len(csl.ExternalCalculations) - 1
+			lastElem := csl.ExternalCalculations[lastElemIndex].Name
+			// expect last element of external calculation array via its name
+			pairList[lastElem] = lastElem
+		}
+		logger.V(0).Info(">>3.2 FORMULA", "pairlist", pairList)
+		logger.V(0).Info(">>3.2 FORMULA", "formula", csl.Formula, "target", csl.Target)
+		metrics, err := calculateComplexLogicFormula(metrics, csl.Formula, pairList, logger)
+		return metrics, err
+	}
+	return metrics, nil
+}
+
+// calculate custom formula to metrics and return calculated and finalized metric
+func calculateComplexLogicFormula(list []external_metrics.ExternalMetricValue, formula string, pairList map[string]string, logger logr.Logger) ([]external_metrics.ExternalMetricValue, error) {
 	var ret external_metrics.ExternalMetricValue
 	var out float64
 	ret.MetricName = "composite-metric-name"
@@ -818,6 +854,8 @@ func applyCustomScalerFormula(list []external_metrics.ExternalMetricValue, formu
 	return []external_metrics.ExternalMetricValue{ret}, nil
 }
 
+// Pair trigger names and metric names for custom formula. Trigger name is used in
+// formula itself (in SO) and metric name is used for its value
 func pairTriggersAndMetrics(list map[string]string, metric string, trigger string) (map[string]string, error) {
 	if trigger == "" {
 		return list, fmt.Errorf("trigger name not given with compositeScaler for metric %s", metric)

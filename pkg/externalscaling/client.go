@@ -3,6 +3,7 @@ package externalscaling
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -56,13 +57,16 @@ func (c *GrpcClient) Calculate(ctx context.Context, list *cl.MetricsList, logger
 
 // WaitForConnectionReady waits for gRPC connection to be ready
 // returns true if the connection was successful, false if we hit a timeut from context
-func (c *GrpcClient) WaitForConnectionReady(ctx context.Context, logger logr.Logger) bool {
+func (c *GrpcClient) WaitForConnectionReady(ctx context.Context, url string, timeout time.Duration, logger logr.Logger) bool {
 	currentState := c.connection.GetState()
 	if currentState != connectivity.Ready {
-		logger.Info("Waiting for establishing a gRPC connection to server")
+		logger.Info(fmt.Sprintf("Waiting for establishing a gRPC connection to server for external calculator at %s", url))
+		timer := time.After(timeout)
 		for {
 			select {
 			case <-ctx.Done():
+				return false
+			case <-timer:
 				return false
 			default:
 				c.connection.Connect()
@@ -79,19 +83,19 @@ func (c *GrpcClient) WaitForConnectionReady(ctx context.Context, logger logr.Log
 
 // ConvertToGeneratedStruct converts K8s external metrics list to gRPC generated
 // external metrics list
-func ConvertToGeneratedStruct(inK8sList []external_metrics.ExternalMetricValue) (outExternal *cl.MetricsList) {
-	listStruct := cl.MetricsList{}
+func ConvertToGeneratedStruct(inK8sList []external_metrics.ExternalMetricValue, l logr.Logger) *cl.MetricsList {
+	outExternal := cl.MetricsList{}
 	for _, val := range inK8sList {
-		// if value is 0, its empty in the list
-		metric := &cl.Metric{Name: val.MetricName, Value: float32(val.Value.Value())}
-		listStruct.MetricValues = append(listStruct.MetricValues, metric)
+		metric := cl.Metric{Name: val.MetricName, Value: float32(val.Value.Value())}
+		outExternal.MetricValues = append(outExternal.MetricValues, &metric)
 	}
-	return
+	return &outExternal
 }
 
 // ConvertFromGeneratedStruct converts gRPC generated external metrics list to
 // K8s external_metrics list
-func ConvertFromGeneratedStruct(inExternal *cl.MetricsList) (outK8sList []external_metrics.ExternalMetricValue) {
+func ConvertFromGeneratedStruct(inExternal *cl.MetricsList) []external_metrics.ExternalMetricValue {
+	outK8sList := []external_metrics.ExternalMetricValue{}
 	for _, inValue := range inExternal.MetricValues {
 		outValue := external_metrics.ExternalMetricValue{}
 		outValue.MetricName = inValue.Name
@@ -99,14 +103,40 @@ func ConvertFromGeneratedStruct(inExternal *cl.MetricsList) (outK8sList []extern
 		outValue.Value.SetMilli(int64(inValue.Value * 1000))
 		outK8sList = append(outK8sList, outValue)
 	}
-	return
+	return outK8sList
 }
 
-func Fallback(err bool, list *cl.MetricsList, ec v1alpha1.ExternalCalculation) (listOut *cl.MetricsList, errOut bool) {
-	if err {
-		// returned metrics
-		return
+// Fallback function returns generated structure for metrics if its given in
+// scaledObject. Returned structure has one metric value. Name of the metric is
+// either name of already existing metric if its the only one, otherwise it will
+// be named after current external calculator
+func Fallback(err error, list *cl.MetricsList, ec v1alpha1.ExternalCalculation, targetValueString string, logger logr.Logger) (*cl.MetricsList, error) {
+	if err == nil {
+		// return unmodified list when no error exists
+		return list, nil
 	}
 
-	return
+	targetValue, errParse := strconv.ParseFloat(targetValueString, 64)
+	if errParse != nil {
+		return nil, errParse
+	}
+
+	listOut := cl.MetricsList{}
+	// if list contains only one metric, return the same one (by name) otherwise
+	// if multiple metrics are given, return just one with the name of ExternalCalculator
+	metricName := ""
+	if len(list.MetricValues) == 1 {
+		metricName = list.MetricValues[0].Name
+	} else {
+		metricName = ec.Name
+	}
+	// returned metrics
+	metricValue := int64((targetValue * 1000) * float64(ec.FallbackReplicas))
+	metric := cl.Metric{
+		Name:  metricName,
+		Value: float32(metricValue),
+	}
+	listOut.MetricValues = append(listOut.MetricValues, &metric)
+	logger.Info(fmt.Sprintf("surpressing error for externalCalculator '%s' by activating its fallback", ec.Name))
+	return &listOut, nil
 }

@@ -110,22 +110,23 @@ type AdvancedConfig struct {
 // and gRPC server for external calculations
 type ComplexScalingLogic struct {
 	// +optional
-	ExternalCalculations []ExternalCalculation `json:"externalCalculator,omitempty"`
+	ExternalCalculations []ExternalCalculation `json:"externalCalculators,omitempty"`
 	// +optional
 	Formula string `json:"formula,omitempty"`
 	// +optional
 	Target string `json:"target,omitempty"`
 }
 
-// ExternalCalculation structure describes names and URLs of a gRPC server
+// ExternalCalculation structure describes name and URL of a gRPC server
 // that KEDA can connect to with collected metrics and modify them. Each server
-// has a timeout and optional Fallback functionality.
+// has a timeout and optional Fallback replica count. It is not a complete
+// fallback functionality because the threshold should be always 1.
 type ExternalCalculation struct {
 	Name    string `json:"name"`
 	URL     string `json:"url"`
 	Timeout string `json:"timeout"`
 	// +optional
-	Fallback Fallback `json:"fallback,omitempty"`
+	FallbackReplicas int32 `json:"fallbackReplicas,omitempty"`
 }
 
 // HorizontalPodAutoscalerConfig specifies horizontal scale config

@@ -193,6 +193,42 @@ spec:
       value: '1'
 `
 
+	soFormulaTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObject}}
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.DeploymentName}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  advanced:
+    complexScalingLogic:
+      target: '2'
+      formula: metrics_api + kw_trig
+  pollingInterval: 5
+  cooldownPeriod: 5
+  minReplicaCount: 0
+  maxReplicaCount: 10
+  triggers:
+  - type: metrics-api
+    name: metrics_api
+    metadata:
+      targetValue: "2"
+      url: "{{.MetricsServerEndpoint}}"
+      valueLocation: 'value'
+      method: "query"
+    authenticationRef:
+      name: {{.TriggerAuthName}}
+  - type: kubernetes-workload
+    name: kw_trig
+    metadata:
+      podSelector: pod=workload-test
+      value: '1'
+`
+
 	workloadDeploymentTemplate = `
 apiVersion: apps/v1
 kind: Deployment
@@ -245,9 +281,7 @@ metadata:
 spec:
   containers:
   - name: server-avg-container
-    image: docker.io/4141gauron3268/python-proto-server
-    ports:
-    - containerPort: 6379
+    image: docker.io/4141gauron3268/python-proto-server-avg
 `
 
 	// image contains python grpc server that adds 2 to the metric value
@@ -263,8 +297,6 @@ spec:
   containers:
   - name: server-add-container
     image: docker.io/4141gauron3268/python-proto-server-add
-    ports:
-    - containerPort: 6379
 `
 
 	serviceTemplate = `
@@ -330,7 +362,7 @@ func TestExternalScaling(t *testing.T) {
 	data.ExternalAvgIP = strings.Split(string(AVGIP), "\n")[1]
 	data.ExternalAddIP = strings.Split(string(ADDIP), "\n")[1]
 	testTwoExternalCalculators(t, kc, data)
-	// testComplexFormula()
+	testComplexFormula(t, kc, data)
 	// testFormulaAndEC()
 
 	DeleteKubernetesResources(t, namespace, data, templates)
@@ -351,6 +383,35 @@ func testTwoExternalCalculators(t *testing.T, kc *kubernetes.Clientset, data tem
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 3, 12, 10),
 		"replica count should be %d after 2 minutes", 3)
+
+	// metrics calculation: avg-> 5 + 5 = 10 / 2 = 5; add-> 5 + 2 = 7; target=2 ==> 4
+	data.MetricValue = 5
+	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+	_, err = ExecuteCommand(fmt.Sprintf("kubectl scale deployment/depl-workload-base --replicas=5 -n %s", namespace))
+	assert.NoErrorf(t, err, "cannot scale workload deployment - %s", err)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, "depl-workload-base", namespace, 5, 6, 10),
+		"replica count should be %d after 1 minute", 5)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 4, 12, 10),
+		"replica count should be %d after 2 minutes", 4)
+}
+
+func testComplexFormula(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testComplexFormula ---")
+	// formula simply adds 2 metrics together
+	data.MetricValue = 5
+	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+
+	KubectlApplyWithTemplate(t, data, "soFormulaTemplate", soFormulaTemplate)
+	_, err := ExecuteCommand(fmt.Sprintf("kubectl scale deployment/depl-workload-base --replicas=5 -n %s", namespace))
+	assert.NoErrorf(t, err, "cannot scale workload deployment - %s", err)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, "depl-workload-base", namespace, 5, 6, 10),
+		"replica count should be %d after 1 minute", 5)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 5, 12, 10),
+		"replica count should be %d after 2 minutes", 5)
 }
 
 func getTemplateData() (templateData, []Template) {
