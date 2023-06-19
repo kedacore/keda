@@ -33,6 +33,8 @@ var testGitHubRunnerResolvedEnv = map[string]string{
 	"OWNER":          "ownername",
 	"LABELS":         "foo,bar",
 	"REPOS":          "reponame,otherrepo",
+	"APP_ID":         "1",
+	"INST_ID":        "2",
 }
 
 var testGitHubRunnerTokenEnv = map[string]string{
@@ -64,6 +66,10 @@ var testGitHubRunnerMetadata = []parseGitHubRunnerMetadataTestData{
 	{"empty owner", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "owner": "", "repos": "reponame", "targetWorkflowQueueLength": "1"}, true, true, "no owner given"},
 	// empty token
 	{"empty targetWorkflowQueueLength", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "owner": "ownername", "repos": "reponame"}, true, false, ""},
+	// missing installationID From Env
+	{"missing installationID Env", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "applicationIDFromEnv": "APP_ID"}, true, true, "applicationID, installationID and applicationKey must be given"},
+	// missing applicationID From Env
+	{"missing applicationId Env", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "installationIDFromEnv": "INST_ID"}, true, true, "applicationID, installationID and applicationKey must be given"},
 	// nothing passed
 	{"empty, no envs", map[string]string{}, false, true, "no runnerScope given"},
 	//  empty githubApiURL

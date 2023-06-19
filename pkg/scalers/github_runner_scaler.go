@@ -380,7 +380,7 @@ func getInt64ValueFromMetaOrEnv(key string, config *ScalerConfig) (int64, error)
 }
 
 func parseGitHubRunnerMetadata(config *ScalerConfig) (*githubRunnerMetadata, error) {
-	meta := githubRunnerMetadata{}
+	meta := &githubRunnerMetadata{}
 	meta.targetWorkflowQueueLength = defaultTargetWorkflowQueueLength
 
 	if val, err := getValueFromMetaOrEnv("runnerScope", config.TriggerMetadata, config.ResolvedEnv); err == nil && val != "" {
@@ -415,43 +415,59 @@ func parseGitHubRunnerMetadata(config *ScalerConfig) (*githubRunnerMetadata, err
 		meta.githubAPIURL = defaultGithubAPIURL
 	}
 
-	if val, err := getInt64ValueFromMetaOrEnv("applicationID", config); err == nil && val != -1 {
-		meta.applicationID = &val
-	}
-
-	if val, err := getInt64ValueFromMetaOrEnv("installationID", config); err == nil && val != -1 {
-		meta.installationID = &val
-	}
-
 	if val, ok := config.AuthParams["personalAccessToken"]; ok && val != "" {
 		// Found the pat token in a parameter from TriggerAuthentication
 		meta.personalAccessToken = &val
 	}
 
-	if val, ok := config.AuthParams["appKey"]; ok && val != "" {
-		meta.applicationKey = &val
-	}
-
-	if (meta.applicationID != nil || meta.installationID != nil || meta.applicationKey != nil) &&
-		(meta.applicationID == nil || meta.installationID == nil || meta.applicationKey == nil) {
-		return nil, fmt.Errorf("applicationID, installationID and applicationKey must be given")
+	if appID, instID, key, err := setupGitHubApp(meta, config); err == nil {
+		meta.applicationID = appID
+		meta.installationID = instID
+		meta.applicationKey = key
+	} else {
+		return nil, err
 	}
 
 	if meta.applicationKey == nil && meta.personalAccessToken == nil {
 		return nil, fmt.Errorf("no personalAccessToken or appKey given")
 	}
 
+	meta.scalerIndex = config.ScalerIndex
+
+	return meta, nil
+}
+
+func setupGitHubApp(meta *githubRunnerMetadata, config *ScalerConfig) (*int64, *int64, *string, error) {
+	var appID *int64
+	var instID *int64
+	var appKey *string
+
+	if val, err := getInt64ValueFromMetaOrEnv("applicationID", config); err == nil && val != -1 {
+		appID = &val
+	}
+
+	if val, err := getInt64ValueFromMetaOrEnv("installationID", config); err == nil && val != -1 {
+		instID = &val
+	}
+
+	if val, ok := config.AuthParams["appKey"]; ok && val != "" {
+		appKey = &val
+	}
+
+	if (appID != nil || instID != nil || appKey != nil) &&
+		(appID == nil || instID == nil || appKey == nil) {
+		return nil, nil, nil, fmt.Errorf("applicationID, installationID and applicationKey must be given")
+	}
+
 	if meta.applicationID != nil && meta.installationID != nil && meta.applicationKey != nil {
 		httpTrans := kedautil.CreateHTTPTransport(false)
 		_, err := gha.New(httpTrans, *meta.applicationID, *meta.installationID, []byte(*meta.applicationKey))
 		if err != nil {
-			return nil, fmt.Errorf("error creating GitHub App client: %w, \n appID: %d, instID: %d, key: %s", err, *meta.applicationID, *meta.installationID, *meta.applicationKey)
+			return nil, nil, nil, fmt.Errorf("error creating GitHub App client: %w, \n appID: %d, instID: %d", err, appID, instID)
 		}
 	}
 
-	meta.scalerIndex = config.ScalerIndex
-
-	return &meta, nil
+	return appID, instID, appKey, nil
 }
 
 // getRepositories returns a list of repositories for a given organization, user or enterprise
