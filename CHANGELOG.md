@@ -53,7 +53,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Improvements
 
 - **General**: Metrics Adapter: remove deprecated Prometheus Metrics and non-gRPC code ([#3930](https://github.com/kedacore/keda/issues/3930))
-- **Azure PodIdentity**:Add validation of identity id to block empty identity id ([#4528](https://github.com/kedacore/keda/issues/4528))
+- **Azure Pod Identity**: Add validation of identity ID to prevent usage of empty identity ID ([#4528](https://github.com/kedacore/keda/issues/4528))
 - **Azure Data Explorer Scaler**: Use azidentity SDK ([#4489](https://github.com/kedacore/keda/issues/4489))
 - **External Scaler**: Add tls options in TriggerAuth metadata. ([#3565](https://github.com/kedacore/keda/issues/3565))
 - **GCP PubSub Scaler**: Make it more flexible for metrics ([#4243](https://github.com/kedacore/keda/issues/4243))
