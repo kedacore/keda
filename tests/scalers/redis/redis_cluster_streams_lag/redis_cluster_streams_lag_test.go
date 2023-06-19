@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -137,8 +136,8 @@ spec:
       portsFromEnv: REDIS_PORTS
       stream: my-stream
       consumerGroup: consumer-group-1
-      lagCount: "4"
-      activationTargetLag: "3"
+      lagCount: "12"
+      activationTargetLag: "10"
     authenticationRef:
       name: {{.TriggerAuthenticationName}}
 `
@@ -187,10 +186,14 @@ func TestScaler(t *testing.T) {
 	data, templates := getTemplateData()
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
-	t.Log("--- testing activation ---")
-	testActivationValue(t, kc, data, 3)
 
-	t.Log("--- testing scale out with one more message than activation ---")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 3),
+		"replica count should be %d after 3 minutes", minReplicaCount)
+
+	t.Log("--- testing activation ---")
+	testActivationValue(t, kc, data, 10)
+
+	t.Log("--- testing scale out with one more than activation value ---")
 	testScaleOut(t, kc, data, 1, 1)
 
 	t.Log("--- testing scale out with many messages ---")
@@ -198,8 +201,9 @@ func TestScaler(t *testing.T) {
 
 	t.Log("--- testing scale in ---")
 	testScaleIn(t, kc, minReplicaCount)
+
+	// Clean up
 	DeleteKubernetesResources(t, testNamespace, data, templates)
-	// cleanup
 	redis.RemoveCluster(t, testName, redisNamespace)
 }
 
@@ -219,8 +223,6 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, minReplicas int) {
 func testActivationValue(t *testing.T, kc *kubernetes.Clientset, data templateData, numMessages int) {
 	data.ItemsToWrite = numMessages
 	KubectlApplyWithTemplate(t, data, "insertJobTemplate", insertJobTemplate)
-
-	time.Sleep(60 * time.Second)
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
 }
 
@@ -237,7 +239,7 @@ var data = templateData{
 	RedisPassword:             redisPassword,
 	RedisPasswordBase64:       base64.StdEncoding.EncodeToString([]byte(redisPassword)),
 	RedisHost:                 redisHost,
-	ItemsToWrite:              100,
+	ItemsToWrite:              1,
 }
 
 func getTemplateData() (templateData, []Template) {

@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package redis_sentinel_streams_lag_test
+package redis_standalone_streams_lag_test
 
 import (
 	"encoding/base64"
@@ -20,7 +20,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "redis-sentinel-streams-lag-test"
+	testName = "redis-standalone-streams-lag-test"
 )
 
 var (
@@ -32,9 +32,10 @@ var (
 	triggerAuthenticationName = fmt.Sprintf("%s-ta", testName)
 	secretName                = fmt.Sprintf("%s-secret", testName)
 	redisPassword             = "admin"
-	redisHost                 = fmt.Sprintf("%s-headless", testName)
+	redisStreamName           = "stream"
+	redisAddress              = fmt.Sprintf("redis.%s.svc.cluster.local:6379", redisNamespace)
 	minReplicaCount           = 0
-	maxReplicaCount           = 4
+	maxReplicaCount           = 2
 )
 
 type templateData struct {
@@ -49,7 +50,8 @@ type templateData struct {
 	MaxReplicaCount           int
 	RedisPassword             string
 	RedisPasswordBase64       string
-	RedisHost                 string
+	RedisStreamName           string
+	RedisAddress              string
 	ItemsToWrite              int
 }
 
@@ -77,21 +79,15 @@ spec:
         args: ["consumer"]
         env:
         - name: REDIS_MODE
-          value: SENTINEL
-        - name: REDIS_HOSTS
-          value: {{.RedisHost}}.{{.RedisNamespace}}
-        - name: REDIS_PORTS
-          value: "26379"
+          value: STANDALONE
+        - name: REDIS_ADDRESS
+          value: {{.RedisAddress}}
         - name: REDIS_STREAM_NAME
-          value: my-stream
-        - name: REDIS_STREAM_CONSUMER_GROUP_NAME
-          value: consumer-group-1
+          value: {{.RedisStreamName}}
         - name: REDIS_PASSWORD
           value: {{.RedisPassword}}
-        - name: REDIS_SENTINEL_PASSWORD
-          value: {{.RedisPassword}}
-        - name: REDIS_SENTINEL_MASTER
-          value: mymaster
+        - name: REDIS_STREAM_CONSUMER_GROUP_NAME
+          value: "consumer-group-1"
 `
 
 	secretTemplate = `apiVersion: v1
@@ -114,9 +110,6 @@ spec:
   - parameter: password
     name: {{.SecretName}}
     key: password
-  - parameter: sentinelPassword
-    name: {{.SecretName}}
-    key: password
 `
 
 	scaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
@@ -137,13 +130,11 @@ spec:
         scaleDown:
           stabilizationWindowSeconds: 15
   triggers:
-  - type: redis-sentinel-streams
+  - type: redis-streams
     metadata:
-      hostsFromEnv: REDIS_HOSTS
-      portsFromEnv: REDIS_PORTS
-      stream: my-stream
+      addressFromEnv: REDIS_ADDRESS
+      stream: {{.RedisStreamName}}
       consumerGroup: consumer-group-1
-      sentinelMaster: mymaster
       lagCount: "12"
       activationTargetLag: "10"
     authenticationRef:
@@ -167,21 +158,13 @@ spec:
         args: ["producer"]
         env:
         - name: REDIS_MODE
-          value: SENTINEL
-        - name: REDIS_HOSTS
-          value: {{.RedisHost}}.{{.RedisNamespace}}
-        - name: REDIS_PORTS
-          value: "26379"
-        - name: REDIS_STREAM_NAME
-          value: my-stream
-        - name: REDIS_STREAM_CONSUMER_GROUP_NAME
-          value: consumer-group-1
+          value: STANDALONE
+        - name: REDIS_ADDRESS
+          value: {{.RedisAddress}}
         - name: REDIS_PASSWORD
           value: {{.RedisPassword}}
-        - name: REDIS_SENTINEL_PASSWORD
-          value: {{.RedisPassword}}
-        - name: REDIS_SENTINEL_MASTER
-          value: mymaster
+        - name: REDIS_STREAM_NAME
+          value: {{.RedisStreamName}}
         - name: NUM_MESSAGES
           value: "{{.ItemsToWrite}}"
       restartPolicy: Never
@@ -193,12 +176,11 @@ func TestScaler(t *testing.T) {
 	// Create kubernetes resources for PostgreSQL server
 	kc := GetKubernetesClient(t)
 
-	// Create Redis Sentinel
-	redis.InstallSentinel(t, kc, testName, redisNamespace, redisPassword)
+	// Create Redis Standalone
+	redis.InstallStandalone(t, kc, testName, redisNamespace, redisPassword)
 
 	// Create kubernetes resources for testing
 	data, templates := getTemplateData()
-
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 3),
@@ -216,22 +198,22 @@ func TestScaler(t *testing.T) {
 	t.Log("--- testing scale in ---")
 	testScaleIn(t, kc, minReplicaCount)
 
-	// Clean up
+	// cleanup
+	redis.RemoveStandalone(t, testName, redisNamespace)
 	DeleteKubernetesResources(t, testNamespace, data, templates)
-	redis.RemoveSentinel(t, testName, redisNamespace)
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData, numMessages int, maxReplicas int) {
 	data.ItemsToWrite = numMessages
 	KubectlApplyWithTemplate(t, data, "insertJobTemplate", insertJobTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicas, 60, 3),
-		"replica count should be %d after 3 minutes", maxReplicas)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicas, 60, 1),
+		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset, minReplicas int) {
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicas, 60, 3),
-		"replica count should be %d after 3 minutes", minReplicas)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicas, 60, 1),
+		"replica count should be %d after 3 minutes", minReplicaCount)
 }
 
 func testActivationValue(t *testing.T, kc *kubernetes.Clientset, data templateData, numMessages int) {
@@ -253,8 +235,9 @@ var data = templateData{
 	JobName:                   jobName,
 	RedisPassword:             redisPassword,
 	RedisPasswordBase64:       base64.StdEncoding.EncodeToString([]byte(redisPassword)),
-	RedisHost:                 redisHost,
-	ItemsToWrite:              100,
+	RedisStreamName:           redisStreamName,
+	RedisAddress:              redisAddress,
+	ItemsToWrite:              20,
 }
 
 func getTemplateData() (templateData, []Template) {

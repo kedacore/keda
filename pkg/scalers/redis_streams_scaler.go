@@ -212,18 +212,36 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 				return -1, err
 			}
 			groups, err := client.XInfoGroups(ctx, meta.streamName).Result()
-			if err != nil {
-				return -1, err
+
+			// If XINFO GROUPS can't find the stream key, it hasn't been created
+			// yet. In that case, we return a lag of 0.
+			if fmt.Sprint(err) == "ERR no such key" {
+				return 0, nil
 			}
+
+			// If the stream has been created, then we find the consumer group
+			// associated with this scaler and return its lag.
 			numGroups := len(groups)
 			for i := 0; i < numGroups; i++ {
 				group := groups[i]
 				if group.Name == meta.consumerGroupName {
-					return group.Lag, nil
+					return int64(group.Lag), nil
 				}
 			}
-			err = fmt.Errorf("stream name does not exist")
-			return int64(-1), err
+
+			// If we can't find the consumer group, then the group hasn't been
+			// created yet. This happens during stream initialization as the
+			// consumer group is instantiated when the first job is queued. This
+			// edge case is needed to account for the cases where the first job
+			// has less than activationTargetLag number of entries, in which case
+			// it is necessary to use XLEN to return what the lag would have been
+			// if a consumer group had been created. This signals to the scaler that
+			// a consumer group needs to be instantiated for the stream.
+			entriesLength, err := client.XLen(ctx, meta.streamName).Result()
+			if err != nil {
+				return -1, err
+			}
+			return entriesLength, nil
 		}
 	default:
 		err = fmt.Errorf("unrecognized scale factor %v", meta.scaleFactor)
@@ -354,7 +372,7 @@ func (s *redisStreamsScaler) GetMetricSpecForScaling(context.Context) []v2.Metri
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetricsAndActivity fetches the number of pending entries for a consumer group in a stream
+// GetMetricsAndActivity fetches the metric value for a consumer group in a stream
 func (s *redisStreamsScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	metricCount, err := s.getEntriesCountFn(ctx)
 
@@ -364,8 +382,5 @@ func (s *redisStreamsScaler) GetMetricsAndActivity(ctx context.Context, metricNa
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(metricCount))
-
-	fmt.Printf("Redis metric count: %d", metricCount)
-	fmt.Printf("Redis activationTargetLag: %d", s.metadata.activationTargetLag)
-	return []external_metrics.ExternalMetricValue{metric}, metricCount > s.metadata.activationTargetLag, nil
+	return []external_metrics.ExternalMetricValue{metric}, int64(metricCount) > s.metadata.activationTargetLag, nil
 }
