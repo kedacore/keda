@@ -92,21 +92,32 @@ func isRemovingFinalizer(so *ScaledObject, old runtime.Object) bool {
 
 func validateWorkload(so *ScaledObject, action string) (admission.Warnings, error) {
 	prommetrics.RecordScaledObjectValidatingTotal(so.Namespace, action)
-	err := verifyCPUMemoryScalers(so, action)
-	if err != nil {
-		return nil, err
+
+	verifyFunctions := []func(*ScaledObject, string) error{
+		verifyCPUMemoryScalers,
+		verifyTriggers,
+		verifyScaledObjects,
+		verifyHpas,
 	}
-	err = verifyScaledObjects(so, action)
-	if err != nil {
-		return nil, err
-	}
-	err = verifyHpas(so, action)
-	if err != nil {
-		return nil, err
+
+	for i := range verifyFunctions {
+		err := verifyFunctions[i](so, action)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	scaledobjectlog.V(1).Info(fmt.Sprintf("scaledobject %s is valid", so.Name))
 	return nil, nil
+}
+
+func verifyTriggers(incomingSo *ScaledObject, action string) error {
+	err := ValidateTriggers(scaledobjectlog.WithValues("name", incomingSo.Name), incomingSo.Spec.Triggers)
+	if err != nil {
+		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
+		prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "incorrect-triggers")
+	}
+	return err
 }
 
 func verifyHpas(incomingSo *ScaledObject, action string) error {
