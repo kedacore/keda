@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package postgresql_test
+package postgresql_standalone_test
 
 import (
 	"encoding/base64"
