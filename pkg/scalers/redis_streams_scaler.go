@@ -229,14 +229,16 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 				}
 			}
 
-			// If we can't find the consumer group, then the group hasn't been
-			// created yet. This happens during stream initialization as the
-			// consumer group is instantiated when the first job is queued. This
-			// edge case is needed to account for the cases where the first job
-			// has less than activationTargetLag number of entries, in which case
-			// it is necessary to use XLEN to return what the lag would have been
-			// if a consumer group had been created. This signals to the scaler that
-			// a consumer group needs to be instantiated for the stream.
+			// There is an edge case where the Redis producer has set up the
+			// stream [meta.streamName], but the consumer group [meta.consumerGroupName]
+			// for that stream isn't registered with Redis. In other words, the
+			// producer has created messages for the stream, but the consumer group
+			// hasn't yet registered itself on Redis because scaling starts with 0
+			// consumers. In this case, it's necessary to use XLEN to return what
+			// the lag would have been if the consumer group had been created since
+			// it's not possible to obtain the lag for a nonexistent consumer
+			// group. From here, the consumer group gets instantiated, and scaling
+			// again occurs according to XINFO GROUP lag.
 			entriesLength, err := client.XLen(ctx, meta.streamName).Result()
 			if err != nil {
 				return -1, err
