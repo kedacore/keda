@@ -145,7 +145,7 @@ spec:
       consumerGroup: consumer-group-1
       sentinelMaster: mymaster
       lagCount: "12"
-      activationTargetLag: "10"
+      activationLagCount: "10"
     authenticationRef:
       name: {{.TriggerAuthenticationName}}
 `

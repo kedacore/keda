@@ -137,7 +137,7 @@ spec:
       stream: my-stream
       consumerGroup: consumer-group-1
       lagCount: "12"
-      activationTargetLag: "10"
+      activationLagCount: "10"
     authenticationRef:
       name: {{.TriggerAuthenticationName}}
 `
