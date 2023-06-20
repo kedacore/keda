@@ -41,6 +41,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scalers"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache/metricscache"
+	"github.com/kedacore/keda/v2/pkg/scaling/utils"
 )
 
 func TestGetScaledObjectMetrics_DirectCall(t *testing.T) {
@@ -364,14 +365,14 @@ func TestTargetAverageValue(t *testing.T) {
 	// count = 0
 	specs := []v2.MetricSpec{}
 	metricName := "s0-messageCount"
-	targetAverageValue := getTargetAverageValue(specs)
+	targetAverageValue := utils.GetTargetAverageValue(specs)
 	assert.Equal(t, float64(0), targetAverageValue)
 	// 1 1
 	specs = []v2.MetricSpec{
 		createMetricSpec(1, metricName),
 		createMetricSpec(1, metricName),
 	}
-	targetAverageValue = getTargetAverageValue(specs)
+	targetAverageValue = utils.GetTargetAverageValue(specs)
 	assert.Equal(t, float64(1), targetAverageValue)
 	// 5 5 3 -> 4.333333333333333
 	specs = []v2.MetricSpec{
@@ -379,7 +380,7 @@ func TestTargetAverageValue(t *testing.T) {
 		createMetricSpec(5, metricName),
 		createMetricSpec(3, metricName),
 	}
-	targetAverageValue = getTargetAverageValue(specs)
+	targetAverageValue = utils.GetTargetAverageValue(specs)
 	assert.Equal(t, 4.333333333333333, targetAverageValue)
 
 	// 5 5 4 -> 4.666666666666667
@@ -388,7 +389,7 @@ func TestTargetAverageValue(t *testing.T) {
 		createMetricSpec(5, metricName),
 		createMetricSpec(4, metricName),
 	}
-	targetAverageValue = getTargetAverageValue(specs)
+	targetAverageValue = utils.GetTargetAverageValue(specs)
 	assert.Equal(t, 4.666666666666667, targetAverageValue)
 }
 func createMetricSpec(averageValue int64, metricName string) v2.MetricSpec {

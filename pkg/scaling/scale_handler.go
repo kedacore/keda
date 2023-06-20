@@ -24,7 +24,6 @@ import (
 	"sync"
 	"time"
 
-	v2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -44,6 +43,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scaling/cache/metricscache"
 	"github.com/kedacore/keda/v2/pkg/scaling/executor"
 	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
+	"github.com/kedacore/keda/v2/pkg/scaling/utils"
 )
 
 var log = logf.Log.WithName("scale_handler")
@@ -663,7 +663,7 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 			continue
 		}
 
-		targetAverageValue = getTargetAverageValue(metricSpecs)
+		targetAverageValue = utils.GetTargetAverageValue(metricSpecs)
 
 		var metricValue float64
 		for _, m := range metrics {
@@ -752,25 +752,6 @@ func (h *scaleHandler) isScaledJobActive(ctx context.Context, scaledJob *kedav1a
 	logger.V(1).WithValues("ScaledJob", scaledJob.Name).Info("Checking if ScaleJob Scalers are active", "isActive", isActive, "maxValue", maxValue, "MultipleScalersCalculation", scaledJob.Spec.ScalingStrategy.MultipleScalersCalculation)
 
 	return isActive, ceilToInt64(queueLength), ceilToInt64(maxValue)
-}
-
-func getTargetAverageValue(metricSpecs []v2.MetricSpec) float64 {
-	var targetAverageValue float64
-	var metricValue float64
-	for _, metric := range metricSpecs {
-		if metric.External.Target.AverageValue == nil {
-			metricValue = 0
-		} else {
-			metricValue = metric.External.Target.AverageValue.AsApproximateFloat64()
-		}
-
-		targetAverageValue += metricValue
-	}
-	count := float64(len(metricSpecs))
-	if count != 0 {
-		return targetAverageValue / count
-	}
-	return 0
 }
 
 func ceilToInt64(x float64) int64 {
