@@ -245,7 +245,9 @@ func (suite *Suite) pushCleanupNode(node Node) error {
 
 	node.NodeIDWhereCleanupWasGenerated = suite.currentNode.ID
 	node.NestingLevel = suite.currentNode.NestingLevel
+	suite.selectiveLock.Lock()
 	suite.cleanupNodes = append(suite.cleanupNodes, node)
+	suite.selectiveLock.Unlock()
 
 	return nil
 }
@@ -937,6 +939,12 @@ func (suite *Suite) runNode(node Node, specDeadline time.Time, text string) (typ
 			gracePeriodChannel = time.After(gracePeriod)
 		case <-interruptStatus.Channel:
 			interruptStatus = suite.interruptHandler.Status()
+			// ignore interruption from other process if we are cleaning up or reporting
+			if interruptStatus.Cause == interrupt_handler.InterruptCauseAbortByOtherProcess &&
+				node.NodeType.Is(types.NodeTypesAllowedDuringReportInterrupt|types.NodeTypesAllowedDuringCleanupInterrupt) {
+				continue
+			}
+
 			deadlineChannel = nil // don't worry about deadlines, time's up now
 
 			failureTimelineLocation := suite.generateTimelineLocation()

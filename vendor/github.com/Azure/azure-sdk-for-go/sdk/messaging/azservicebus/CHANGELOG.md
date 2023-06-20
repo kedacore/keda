@@ -1,5 +1,20 @@
 # Release History
 
+## 1.3.0 (2023-05-09)
+
+### Features Added
+
+- Authentication errors are indicated with an `azservicebus.Error`, with a `Code` of `azservicebus.CodeUnauthorizedAccess`. (PR#20447)
+
+### Bugs Fixed
+
+- Authentication errors could cause unnecessary retries, making calls taking longer to fail. (PR#20447)
+- Recovery now includes internal timeouts and also handles restarting a connection if AMQP primitives aren't closed cleanly.
+- Potential leaks for $cbs and $management when there was a partial failure. (PR#20564)
+- Sending a message to an entity that is full will no longer retry. (PR#20722)
+- Sending a message that is larger than what the link supports now returns ErrMessageTooLarge. (PR#20721)
+- Latest go-amqp changes have been merged in with fixes for robustness.
+
 ## 1.2.1 (2023-03-07)
 
 ### Bugs Fixed
@@ -25,7 +40,7 @@
 
 ### Bugs Fixed
 
-- Removing changes for client-side idle timer and closing without timeout. Combined these are 
+- Removing changes for client-side idle timer and closing without timeout. Combined these are
   causing issues with links not properly recovering or closing. Investigating an alternative
   for a future release.
 
@@ -33,7 +48,7 @@
 
 ### Features Added
 
-- Added a client-side idle timer which will reset Receiver links, transparently, if the link is idle for 
+- Added a client-side idle timer which will reset Receiver links, transparently, if the link is idle for
   5 minutes.
 
 ### Bugs Fixed
@@ -44,8 +59,8 @@
 
 ### Bugs Fixed
 
-- AcceptNextSessionForQueue and AcceptNextSessionForSubscription now return an azservicebus.Error with 
-  Code set to CodeTimeout when they fail due to no sessions being available. Examples for this have 
+- AcceptNextSessionForQueue and AcceptNextSessionForSubscription now return an azservicebus.Error with
+  Code set to CodeTimeout when they fail due to no sessions being available. Examples for this have
   been added for `AcceptNextSessionForQueue`. PR#19113.
 - Retries now respect cancellation when they're in the "delay before next try" phase.
 
@@ -53,19 +68,19 @@
 
 ### Features Added
 
-- Full access to send and receive all AMQP message properties. (#18413) 
+- Full access to send and receive all AMQP message properties. (#18413)
   - Send AMQP messages using the new `AMQPAnnotatedMessage` type and `Sender.SendAMQPAnnotatedMessage()`.
   - AMQP messages can be added to MessageBatch's as well using `MessageBatch.AddAMQPAnnotatedMessage()`.
   - AMQP messages can be scheduled using `Sender.ScheduleAMQPAnnotatedMessages`.
-  - Access the full set of AMQP message properties when receiving using the `ReceivedMessage.RawAMQPMessage` property. 
+  - Access the full set of AMQP message properties when receiving using the `ReceivedMessage.RawAMQPMessage` property.
 
 ### Bugs Fixed
 
-- Changed receive messages algorithm to avoid messages being excessively locked in Service Bus without 
+- Changed receive messages algorithm to avoid messages being excessively locked in Service Bus without
   being transferred to the client. (PR#18657)
 - Updating go-amqp, which fixes several bugs related to incorrect message locking (PR#18599)
-  - Requesting large quantities of messages in a single ReceiveMessages() call could result in messages 
-    not being delivered, but still incrementing their delivery count and requiring the message lock 
+  - Requesting large quantities of messages in a single ReceiveMessages() call could result in messages
+    not being delivered, but still incrementing their delivery count and requiring the message lock
     timeout to expire.
   - Link detach could result in messages being ignored, requiring the message lock timeout to expire.
 - Subscription rules weren't deserializing properly when created from the portal (PR#18813)
@@ -74,11 +89,11 @@
 
 ### Features Added
 
-- Full access to send and receive all AMQP message properties. (#18413) 
+- Full access to send and receive all AMQP message properties. (#18413)
   - Send AMQP messages using the new `AMQPAnnotatedMessage` type and `Sender.SendAMQPAnnotatedMessage()`.
   - AMQP messages can be added to MessageBatch's as well using `MessageBatch.AddAMQPAnnotatedMessage()`.
   - AMQP messages can be scheduled using `Sender.ScheduleAMQPAnnotatedMessages`.
-  - Access the full set of AMQP message properties when receiving using the `ReceivedMessage.RawAMQPMessage` property. 
+  - Access the full set of AMQP message properties when receiving using the `ReceivedMessage.RawAMQPMessage` property.
 
 ### Bugs Fixed
 
@@ -94,7 +109,7 @@
 ### Bugs Fixed
 
 - Handle a missing CountDetails node in the returned responses for Get<Entity>RuntimeProperties which could cause a panic. (#18213)
-- Adding the `associated-link-name` property to management operations (RenewLock, settlement and others), which 
+- Adding the `associated-link-name` property to management operations (RenewLock, settlement and others), which
   can help extend link lifetime (#18291)
 - Namespace closing didn't reset the internal client, which could lead to connection recovery thrashing. (#18323)
 
@@ -109,16 +124,16 @@
 ### Features Added
 
 - Exported log.Event constants for azservicebus. This will make them easier to
-  discover and they are also documented. NOTE: The log messages themselves 
+  discover and they are also documented. NOTE: The log messages themselves
   are not guaranteed to be stable. (#17596)
-- `admin.Client` can now manage authorization rules and subscription filters and 
+- `admin.Client` can now manage authorization rules and subscription filters and
   actions. (#17616)
 - Exported an official `*azservicebus.Error` type that gets returned if the failure is
   actionable. This can indicate if the connection was lost and could not be
   recovered with the configured retries or if a message lock was lost, which would cause
-  message settlement to fail. 
+  message settlement to fail.
 
-  See the `ExampleReceiver_ReceiveMessages` in example_receiver_test.go for an example 
+  See the `ExampleReceiver_ReceiveMessages` in example_receiver_test.go for an example
   on how to use it. (#17786)
 
 ### Breaking Changes
@@ -129,7 +144,7 @@
 
 ### Bugs Fixed
 
-- Fixing issue where the AcceptNextSessionForQueue and AcceptNextSessionForSubscription 
+- Fixing issue where the AcceptNextSessionForQueue and AcceptNextSessionForSubscription
   couldn't be cancelled, forcing the user to wait for the service to timeout. (#17598)
 - Fixing bug where there was a chance that internally cached messages would not be returned when
   the receiver was draining. (#17893)
@@ -145,7 +160,7 @@
 - Fixed bug where message batch size calculation was inaccurate, resulting in batches that were too large to be sent. (#17318)
 - Fixing an issue with an entity not being found leading to a longer timeout than needed. (#17279)
 - Fixed the RPCLink so it does better handling of connection/link failures. (#17389)
-- Fixed issue where a message lock expiring would cause unnecessary retries. These retries could cause message settlement calls (ex: Receiver.CompleteMessage) 
+- Fixed issue where a message lock expiring would cause unnecessary retries. These retries could cause message settlement calls (ex: Receiver.CompleteMessage)
   to appear to hang. (#17382)
 - Fixed issue where a cancellation on ReceiveMessages() would work, but wouldn't return the proper cancellation error. (#17422)
 
@@ -155,54 +170,60 @@
 - Multiple functions have had `options` parameters added.
 - `SessionReceiver.RenewMessageLock` has been removed - it isn't used for sessions. SessionReceivers should use `SessionReceiver.RenewSessionLock`.
 - The `admin.Client` type has been changed to conform with the latest Azure Go SDK guidelines. As part of this:
+
   - Embedded `*Result` structs in `admin.Client`'s APIs have been removed. Inner *Properties values have been hoisted up to the `*Response` instead.
-  - `.Response` fields have been removed for successful results. These will be added back using a     different pattern in the next release.
-  - Fields that were of type `time.Duration` have been changed to `*string`, where the value of the string is an ISO8601 timestamp. 
-    Affected fields from Queues, Topics and Subscriptions: AutoDeleteOnIdle, DefaultMessageTimeToLive, DuplicateDetectionHistoryTimeWindow, LockDuration.    
+  - `.Response` fields have been removed for successful results. These will be added back using a different pattern in the next release.
+  - Fields that were of type `time.Duration` have been changed to `*string`, where the value of the string is an ISO8601 timestamp.
+    Affected fields from Queues, Topics and Subscriptions: AutoDeleteOnIdle, DefaultMessageTimeToLive, DuplicateDetectionHistoryTimeWindow, LockDuration.
   - Properties that were passed as a parameter to CreateQueue, CreateTopic or CreateSubscription are now in the `options` parameter (as they were optional):
     Previously:
+
     ```go
     // older code
-    adminClient.CreateQueue(context.Background(), queueName, &queueProperties, nil)	  
+    adminClient.CreateQueue(context.Background(), queueName, &queueProperties, nil)
     ```
 
     And now:
+
     ```go
     // new code
     adminClient.CreateQueue(context.Background(), queueName, &admin.CreateQueueOptions{
       Properties: queueProperties,
     })
-    ```  
+    ```
+
   - Pagers have been changed to use the new generics-based `runtime.Pager`:
-  
+
     Previously:
+
     ```go
     // older code
     for queuePager.NextPage(context.TODO()) {
-		  for _, queue := range queuePager.PageResponse().Items {
-			  fmt.Printf("Queue name: %s, max size in MB: %d\n", queue.QueueName, *queue.MaxSizeInMegabytes)
-		  }
-	  }
-    
+      for _, queue := range queuePager.PageResponse().Items {
+    	  fmt.Printf("Queue name: %s, max size in MB: %d\n", queue.QueueName, *queue.MaxSizeInMegabytes)
+      }
+    }
+
     if err := queuePager.Err(); err != nil {
       panic(err)
     }
     ```
+
     And now:
 
     ```go
     // new code
     for queuePager.More() {
-		  page, err := queuePager.NextPage(context.TODO())
+      page, err := queuePager.NextPage(context.TODO())
 
-		  if err != nil {
-			  panic(err)
-		  }
+      if err != nil {
+    	  panic(err)
+      }
 
-		  for _, queue := range page.Queues {
-			  fmt.Printf("Queue name: %s, max size in MB: %d\n", queue.QueueName, *queue.MaxSizeInMegabytes)
-		  }
-	  }
+      for _, queue := range page.Queues {
+    	  fmt.Printf("Queue name: %s, max size in MB: %d\n", queue.QueueName, *queue.MaxSizeInMegabytes)
+      }
+    }
     ```
 
 ## 0.3.6 (2022-03-08)
@@ -235,7 +256,7 @@
 
 ### Bugs Fixed
 
-- Fix unaligned 64-bit atomic operation on mips.  Thanks to @jackesdavid for contributing this fix. (#16847)
+- Fix unaligned 64-bit atomic operation on mips. Thanks to @jackesdavid for contributing this fix. (#16847)
 - Multiple fixes to address connection/link recovery (#16831)
 - Fixing panic() when the links haven't been initialized (early cancellation) (#16941)
 - Handle 500 as a retryable code (no recovery needed) (#16925)
@@ -246,7 +267,7 @@
 
 - Support the pass-through of an Application ID when constructing an Azure Service Bus Client. PR#16558 (thanks halspang!)
 
-### Bugs Fixed 
+### Bugs Fixed
 
 - Fixing connection/link recovery in Sender.SendMessages() and Sender.SendMessageBatch(). PR#16790
 - Fixing bug in the management link which could cause it to panic during recovery. PR#16790
@@ -255,13 +276,13 @@
 
 ### Features Added
 
-- Enabling websocket support via `ClientOptions.NewWebSocketConn`. For an example, see the `ExampleNewClient_usingWebsockets` 
+- Enabling websocket support via `ClientOptions.NewWebSocketConn`. For an example, see the `ExampleNewClient_usingWebsockets`
   function in `example_client_test.go`.
 
 ### Breaking Changes
 
-- Message properties that come from the standard AMQP message have been made into pointers, to allow them to be 
-  properly omitted (or indicate that they've been omitted) when sending and receiving.  
+- Message properties that come from the standard AMQP message have been made into pointers, to allow them to be
+  properly omitted (or indicate that they've been omitted) when sending and receiving.
 
 ### Bugs Fixed
 
@@ -270,13 +291,14 @@
 - Attempting to settle messages received in ReceiveAndDelete mode would cause a panic. PR#16255
 
 ### Other Changes
+
 - Removed legacy dependencies, resulting in a much smaller package.
 
 ## 0.3.1 (2021-11-16)
 
 ### Bugs Fixed
 
-- Updating go-amqp to v0.16.4 to fix a race condition found when running `go test -race`.  Thanks to @peterzeller for reporting this issue. PR: #16168
+- Updating go-amqp to v0.16.4 to fix a race condition found when running `go test -race`. Thanks to @peterzeller for reporting this issue. PR: #16168
 
 ## 0.3.0 (2021-11-12)
 
@@ -290,27 +312,27 @@
 
 - AdminClient has been moved into the `admin` subpackage.
 - ReceivedMessage.Body is now a function that returns a ([]byte, error), rather than being a field.
-  This protects against a potential data-loss scenario where a message is received with a payload 
+  This protects against a potential data-loss scenario where a message is received with a payload
   encoded in the sequence or value sections of an AMQP message, which cannot be properly represented
   in the .Body. This will now return an error.
-- Functions that have options or might have options in the future have an additional *options parameter.
+- Functions that have options or might have options in the future have an additional \*options parameter.
   As usual, passing 'nil' ignores the options, and will cause the function to use defaults.
-- MessageBatch.Add() has been renamed to MessageBatch.AddMessage(). AddMessage() now returns only an `error`, 
+- MessageBatch.Add() has been renamed to MessageBatch.AddMessage(). AddMessage() now returns only an `error`,
   with a sentinel error (ErrMessageTooLarge) signaling that the batch cannot fit a new message.
 - Sender.SendMessages() has been removed in favor of simplifications made in MessageBatch.
 
 ### Bugs Fixed
 
-- ReceiveMessages has been tuned to match the .NET limits (which has worked well in practice). This partly addresses #15963, 
+- ReceiveMessages has been tuned to match the .NET limits (which has worked well in practice). This partly addresses #15963,
   as our default limit was far higher than needed.
 
 ## 0.2.0 (2021-11-02)
 
 ### Features Added
 
-- Scheduling messages to be delivered at a later date, via the `Sender.ScheduleMessage(s)` function or 
+- Scheduling messages to be delivered at a later date, via the `Sender.ScheduleMessage(s)` function or
   setting `Message.ScheduledEnqueueTime`.
-- Added in the `Sender.SendMessages([slice of sendable messages])` function, which batches messages 
+- Added in the `Sender.SendMessages([slice of sendable messages])` function, which batches messages
   automatically. Useful when you're sending multiple messages that you are already sure will be small
   enough to fit into a single batch.
 - Receiving from sessions using a SessionReceiver, created using Client.AcceptSessionFor(Queue|Subscription)
@@ -325,4 +347,4 @@
 
 ## 0.1.0 (2021-10-05)
 
-- Initial preview for the new version of the Azure Service Bus Go SDK. 
+- Initial preview for the new version of the Azure Service Bus Go SDK.

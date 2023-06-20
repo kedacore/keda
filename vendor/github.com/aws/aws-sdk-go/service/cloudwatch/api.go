@@ -3408,6 +3408,8 @@ func (c *CloudWatch) PutMetricAlarmRequest(input *PutMetricAlarmInput) (req *req
 // AWSServiceRoleForCloudWatchEvents and AWSServiceRoleForCloudWatchAlarms_ActionSSM.
 // For more information, see Amazon Web Services service-linked role (https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_terms-and-concepts.html#iam-term-service-linked-role).
 //
+// Each PutMetricAlarm action has a maximum uncompressed payload of 120 KB.
+//
 // # Cross-account alarms
 //
 // You can set an alarm on metrics in the current account, or in another account.
@@ -9952,15 +9954,31 @@ func (s *MetricStreamEntry) SetState(v string) *MetricStreamEntry {
 	return s
 }
 
-// This structure contains the name of one of the metric namespaces that is
-// listed in a filter of a metric stream.
+// This structure contains a metric namespace and optionally, a list of metric
+// names, to either include in a metric stream or exclude from a metric stream.
 //
-// The namespace can contain only ASCII printable characters (ASCII range 32
-// through 126). It must contain at least one non-whitespace character.
+// A metric stream's filters can include up to 1000 total names. This limit
+// applies to the sum of namespace names and metric names in the filters. For
+// example, this could include 10 metric namespace filters with 99 metrics each,
+// or 20 namespace filters with 49 metrics specified in each filter.
 type MetricStreamFilter struct {
 	_ struct{} `type:"structure"`
 
-	// The name of the metric namespace in the filter.
+	// The names of the metrics to either include or exclude from the metric stream.
+	//
+	// If you omit this parameter, all metrics in the namespace are included or
+	// excluded, depending on whether this filter is specified as an exclude filter
+	// or an include filter.
+	//
+	// Each metric name can contain only ASCII printable characters (ASCII range
+	// 32 through 126). Each metric name must contain at least one non-whitespace
+	// character.
+	MetricNames []*string `type:"list"`
+
+	// The name of the metric namespace for this filter.
+	//
+	// The namespace can contain only ASCII printable characters (ASCII range 32
+	// through 126). It must contain at least one non-whitespace character.
 	Namespace *string `min:"1" type:"string"`
 }
 
@@ -9993,6 +10011,12 @@ func (s *MetricStreamFilter) Validate() error {
 		return invalidParams
 	}
 	return nil
+}
+
+// SetMetricNames sets the MetricNames field's value.
+func (s *MetricStreamFilter) SetMetricNames(v []*string) *MetricStreamFilter {
+	s.MetricNames = v
+	return s
 }
 
 // SetNamespace sets the Namespace field's value.
@@ -11029,7 +11053,7 @@ type PutMetricAlarmInput struct {
 	//
 	//    * arn:aws:autoscaling:region:account-id:scalingPolicy:policy-id:autoScalingGroupName/group-friendly-name:policyName/policy-friendly-name
 	//
-	// SSN notification action:
+	// SNS notification action:
 	//
 	//    * arn:aws:sns:region:account-id:sns-topic-name:autoScalingGroupName/group-friendly-name:policyName/policy-friendly-name
 	//
@@ -11123,7 +11147,7 @@ type PutMetricAlarmInput struct {
 	//
 	//    * arn:aws:autoscaling:region:account-id:scalingPolicy:policy-id:autoScalingGroupName/group-friendly-name:policyName/policy-friendly-name
 	//
-	// SSN notification action:
+	// SNS notification action:
 	//
 	//    * arn:aws:sns:region:account-id:sns-topic-name:autoScalingGroupName/group-friendly-name:policyName/policy-friendly-name
 	//
@@ -11189,7 +11213,7 @@ type PutMetricAlarmInput struct {
 	//
 	//    * arn:aws:autoscaling:region:account-id:scalingPolicy:policy-id:autoScalingGroupName/group-friendly-name:policyName/policy-friendly-name
 	//
-	// SSN notification action:
+	// SNS notification action:
 	//
 	//    * arn:aws:sns:region:account-id:sns-topic-name:autoScalingGroupName/group-friendly-name:policyName/policy-friendly-name
 	//

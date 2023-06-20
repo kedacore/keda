@@ -5,12 +5,13 @@ package azservicebus
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/amqpwrap"
-	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/go-amqp"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/utils"
+	"github.com/Azure/go-amqp"
 )
 
 type (
@@ -33,7 +34,7 @@ type MessageBatchOptions struct {
 // NewMessageBatch can be used to create a batch that contain multiple
 // messages. Sending a batch of messages is more efficient than sending the
 // messages one at a time.
-// If the operation fails it can return an *azservicebus.Error type if the failure is actionable.
+// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
 func (s *Sender) NewMessageBatch(ctx context.Context, options *MessageBatchOptions) (*MessageBatch, error) {
 	var batch *MessageBatch
 
@@ -61,7 +62,9 @@ type SendMessageOptions struct {
 }
 
 // SendMessage sends a Message to a queue or topic.
-// If the operation fails it can return an *azservicebus.Error type if the failure is actionable.
+// If the operation fails it can return:
+//   - [ErrMessageTooLarge] if the message is larger than the maximum allowed link size.
+//   - An [*azservicebus.Error] type if the failure is actionable.
 func (s *Sender) SendMessage(ctx context.Context, message *Message, options *SendMessageOptions) error {
 	return s.sendMessage(ctx, message)
 }
@@ -74,7 +77,9 @@ type SendAMQPAnnotatedMessageOptions struct {
 // SendAMQPAnnotatedMessage sends an AMQPMessage to a queue or topic.
 // Using an AMQPMessage allows for advanced use cases, like payload encoding, as well as better
 // interoperability with pure AMQP clients.
-// If the operation fails it can return an *azservicebus.Error type if the failure is actionable.
+// If the operation fails it can return:
+//   - [ErrMessageTooLarge] if the message is larger than the maximum allowed link size.
+//   - An [*azservicebus.Error] type if the failure is actionable.
 func (s *Sender) SendAMQPAnnotatedMessage(ctx context.Context, message *AMQPAnnotatedMessage, options *SendAMQPAnnotatedMessageOptions) error {
 	return s.sendMessage(ctx, message)
 }
@@ -89,7 +94,7 @@ type SendMessageBatchOptions struct {
 // If the operation fails it can return an *azservicebus.Error type if the failure is actionable.
 func (s *Sender) SendMessageBatch(ctx context.Context, batch *MessageBatch, options *SendMessageBatchOptions) error {
 	err := s.links.Retry(ctx, EventSender, "SendMessageBatch", func(ctx context.Context, lwid *internal.LinksWithID, args *utils.RetryFnArgs) error {
-		return lwid.Sender.Send(ctx, batch.toAMQPMessage())
+		return lwid.Sender.Send(ctx, batch.toAMQPMessage(), nil)
 	}, RetryOptions(s.retryOptions))
 
 	return internal.TransformError(err)
@@ -168,8 +173,12 @@ func (s *Sender) Close(ctx context.Context) error {
 
 func (s *Sender) sendMessage(ctx context.Context, message amqpCompatibleMessage) error {
 	err := s.links.Retry(ctx, EventSender, "SendMessage", func(ctx context.Context, lwid *internal.LinksWithID, args *utils.RetryFnArgs) error {
-		return lwid.Sender.Send(ctx, message.toAMQPMessage())
+		return lwid.Sender.Send(ctx, message.toAMQPMessage(), nil)
 	}, RetryOptions(s.retryOptions))
+
+	if amqpErr := (*amqp.Error)(nil); errors.As(err, &amqpErr) && amqpErr.Condition == amqp.ErrCondMessageSizeExceeded {
+		return ErrMessageTooLarge
+	}
 
 	return internal.TransformError(err)
 }
@@ -179,8 +188,8 @@ func (sender *Sender) createSenderLink(ctx context.Context, session amqpwrap.AMQ
 		ctx,
 		sender.queueOrTopic,
 		&amqp.SenderOptions{
-			SettlementMode:              amqp.ModeMixed.Ptr(),
-			RequestedReceiverSettleMode: amqp.ModeFirst.Ptr(),
+			SettlementMode:              amqp.SenderSettleModeMixed.Ptr(),
+			RequestedReceiverSettleMode: amqp.ReceiverSettleModeFirst.Ptr(),
 		})
 
 	if err != nil {

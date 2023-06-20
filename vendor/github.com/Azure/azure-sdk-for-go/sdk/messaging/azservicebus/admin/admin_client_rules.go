@@ -47,7 +47,7 @@ type SQLAction struct {
 	Expression string
 
 	// Parameters is a map of string to values of type string, number, or boolean.
-	Parameters map[string]interface{}
+	Parameters map[string]any
 }
 
 func (a *SQLAction) ruleAction() {}
@@ -72,7 +72,7 @@ type SQLFilter struct {
 	Expression string
 
 	// Parameters is a map of string to values of type string, number, or boolean.
-	Parameters map[string]interface{}
+	Parameters map[string]any
 }
 
 func (f *SQLFilter) ruleFilter() {}
@@ -91,7 +91,7 @@ func (f *FalseFilter) ruleFilter() {}
 // and system properties of messages for a subscription.
 type CorrelationFilter struct {
 	// ApplicationProperties will be matched against the application properties for the message.
-	ApplicationProperties map[string]interface{}
+	ApplicationProperties map[string]any
 
 	// ContentType will be matched against the ContentType property for the message.
 	ContentType *string
@@ -508,7 +508,7 @@ func (ac *Client) newRuleProperties(env *atom.RuleEnvelope) (*RuleProperties, er
 	return &props, nil
 }
 
-func publicSQLParametersToInternal(publicParams map[string]interface{}) (*atom.KeyValueList, error) {
+func publicSQLParametersToInternal(publicParams map[string]any) (*atom.KeyValueList, error) {
 	if len(publicParams) == 0 {
 		return nil, nil
 	}
@@ -571,12 +571,12 @@ func publicSQLParametersToInternal(publicParams map[string]interface{}) (*atom.K
 	return &atom.KeyValueList{KeyValues: params}, nil
 }
 
-func internalSQLParametersToPublic(kvlist *atom.KeyValueList) (map[string]interface{}, error) {
+func internalSQLParametersToPublic(kvlist *atom.KeyValueList) (map[string]any, error) {
 	if kvlist == nil {
 		return nil, nil
 	}
 
-	params := map[string]interface{}{}
+	params := map[string]any{}
 
 	for _, p := range kvlist.KeyValues {
 		// we only care about the actual type here since we can assume the

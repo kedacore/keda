@@ -1,5 +1,8 @@
 # Change Log
 
+## `v4.2.0`
+- Update to the GA verison of go-amqp
+
 ## `v4.1.0`
 - Update to the latest go-amqp
   [PR#72](https://github.com/Azure/azure-amqp-common-go/pull/72)

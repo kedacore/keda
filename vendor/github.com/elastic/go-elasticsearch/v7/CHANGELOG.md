@@ -1,3 +1,10 @@
+# v7.17.10
+
+## Transport
+
+* Fixed an issue with subdirectory in url during retry. (#657)
+* Fixed a deadlock in transport (#603 & #640)
+
 # v7.17.7
 
 ## Client

@@ -735,11 +735,14 @@ func hasAnyDeepCopyMethod(pkg *loader.Package, typeInfo types.Type) bool {
 // eventualUnderlyingType gets the "final" type in a sequence of named aliases.
 // It's effectively a shortcut for calling Underlying in a loop.
 func eventualUnderlyingType(typeInfo types.Type) types.Type {
-	last := typeInfo
-	for underlying := typeInfo.Underlying(); underlying != last; last, underlying = underlying, underlying.Underlying() {
-		// get the actual underlying type
+	for {
+		underlying := typeInfo.Underlying()
+		if underlying == typeInfo {
+			break
+		}
+		typeInfo = underlying
 	}
-	return last
+	return typeInfo
 }
 
 // fineToShallowCopy checks if a shallow-copying a type is equivalent to deepcopy-ing it.

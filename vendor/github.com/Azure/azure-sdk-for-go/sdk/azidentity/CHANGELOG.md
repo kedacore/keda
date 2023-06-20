@@ -1,5 +1,15 @@
 # Release History
 
+## 1.3.0 (2023-05-09)
+
+### Breaking Changes
+> These changes affect only code written against a beta version such as v1.3.0-beta.5
+* Renamed `NewOnBehalfOfCredentialFromCertificate` to `NewOnBehalfOfCredentialWithCertificate`
+* Renamed `NewOnBehalfOfCredentialFromSecret` to `NewOnBehalfOfCredentialWithSecret`
+
+### Other Changes
+* Upgraded to MSAL v1.0.0
+
 ## 1.3.0-beta.5 (2023-04-11)
 
 ### Breaking Changes

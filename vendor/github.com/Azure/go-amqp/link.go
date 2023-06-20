@@ -37,9 +37,8 @@ type link struct {
 	rxQ *queue.Holder[frames.FrameBody]
 
 	// used for gracefully closing link
-	close      chan struct{} // signals a link's mux to shut down; DO NOT use this to check if a link has terminated, use done instead
-	forceClose chan struct{} // used for forcibly terminate a link if Close() times out/is cancelled
-	closeOnce  *sync.Once    // closeOnce protects close from being closed multiple times
+	close     chan struct{} // signals a link's mux to shut down; DO NOT use this to check if a link has terminated, use done instead
+	closeOnce *sync.Once    // closeOnce protects close from being closed multiple times
 
 	done     chan struct{} // closed when the link has terminated (mux exited); DO NOT wait on this from within a link's mux() as it will never trigger!
 	doneErr  error         // contains the mux error state; ONLY written to by the mux and MUST only be read from after done is closed!
@@ -71,12 +70,11 @@ type link struct {
 
 func newLink(s *Session, r encoding.Role) link {
 	l := link{
-		key:        linkKey{shared.RandString(40), r},
-		session:    s,
-		close:      make(chan struct{}),
-		forceClose: make(chan struct{}),
-		closeOnce:  &sync.Once{},
-		done:       make(chan struct{}),
+		key:       linkKey{shared.RandString(40), r},
+		session:   s,
+		close:     make(chan struct{}),
+		closeOnce: &sync.Once{},
+		done:      make(chan struct{}),
 	}
 
 	// set the segment size relative to respective window
@@ -113,7 +111,12 @@ func (l *link) waitForFrame(ctx context.Context) (frames.FrameBody, error) {
 // attach sends the Attach performative to establish the link with its parent session.
 // this is automatically called by the new*Link constructors.
 func (l *link) attach(ctx context.Context, beforeAttach func(*frames.PerformAttach), afterAttach func(*frames.PerformAttach)) error {
-	if err := l.session.allocateHandle(l); err != nil {
+	if err := l.session.freeAbandonedLinks(ctx); err != nil {
+		return err
+	}
+
+	// once the abandoned links have been cleaned up we can create our link
+	if err := l.session.allocateHandle(ctx, l); err != nil {
 		return err
 	}
 
@@ -131,18 +134,20 @@ func (l *link) attach(ctx context.Context, beforeAttach func(*frames.PerformAtta
 	// link-specific configuration of the attach frame
 	beforeAttach(attach)
 
-	_ = l.session.txFrame(attach, nil)
+	if err := l.txFrameAndWait(ctx, attach); err != nil {
+		return err
+	}
 
 	// wait for response
 	fr, err := l.waitForFrame(ctx)
 	if err != nil {
-		l.session.deallocateHandle(l)
+		l.session.abandonLink(l)
 		return err
 	}
 
 	resp, ok := fr.(*frames.PerformAttach)
 	if !ok {
-		debug.Log(1, "RX (link): unexpected attach response frame %T", fr)
+		debug.Log(1, "RX (link %p): unexpected attach response frame %T", l, fr)
 		if err := l.session.conn.Close(); err != nil {
 			return err
 		}
@@ -162,7 +167,9 @@ func (l *link) attach(ctx context.Context, beforeAttach func(*frames.PerformAtta
 		// wait for detach
 		fr, err := l.waitForFrame(ctx)
 		if err != nil {
-			l.session.deallocateHandle(l)
+			// we timed out waiting for the peer to close the link, this really isn't an abandoned link.
+			// however, we still need to send the detach performative to ack the peer.
+			l.session.abandonLink(l)
 			return err
 		}
 
@@ -179,7 +186,9 @@ func (l *link) attach(ctx context.Context, beforeAttach func(*frames.PerformAtta
 			Handle: l.handle,
 			Closed: true,
 		}
-		_ = l.session.txFrame(fr, nil)
+		if err := l.txFrameAndWait(ctx, fr); err != nil {
+			return err
+		}
 
 		if detach.Error == nil {
 			return fmt.Errorf("received detach with no error specified")
@@ -200,7 +209,9 @@ func (l *link) attach(ctx context.Context, beforeAttach func(*frames.PerformAtta
 			Handle: l.handle,
 			Closed: true,
 		}
-		_ = l.session.txFrame(dr, nil)
+		if err := l.txFrameAndWait(ctx, dr); err != nil {
+			return err
+		}
 		return err
 	}
 
@@ -260,11 +271,11 @@ func (l *link) muxHandleFrame(fr frames.FrameBody) error {
 			Handle: l.handle,
 			Closed: true,
 		}
-		_ = l.session.txFrame(dr, nil)
+		l.txFrame(context.Background(), dr, nil)
 		return &LinkError{RemoteErr: fr.Error}
 
 	default:
-		debug.Log(1, "RX (link): unexpected frame: %s", fr)
+		debug.Log(1, "RX (link %p): unexpected frame: %s", l, fr)
 		l.closeWithError(ErrCondInternalError, fmt.Sprintf("link received unexpected frame %T", fr))
 		return nil
 	}
@@ -275,18 +286,21 @@ func (l *link) closeLink(ctx context.Context) error {
 	var ctxErr error
 	l.closeOnce.Do(func() {
 		close(l.close)
+
+		// once the mux has received the ack'ing detach performative, the mux will
+		// exit which deletes the link and closes l.done.
 		select {
 		case <-l.done:
 			l.closeErr = l.doneErr
 		case <-ctx.Done():
-			close(l.forceClose)
-
-			// notify the caller that the close timed out/was cancelled
+			// notify the caller that the close timed out/was cancelled.
+			// the mux will remain running and once the ack is received it will terminate.
 			ctxErr = ctx.Err()
 
-			// record that the link was forcibly closed.
+			// record that the close timed out/was cancelled.
 			// subsequent calls to closeLink() will return this
-			l.closeErr = &LinkError{inner: errLinkForciblyClosed}
+			debug.Log(1, "TX (link %p) closing %s: %v", l, l.key.name, ctxErr)
+			l.closeErr = &LinkError{inner: ctxErr}
 		}
 	})
 
@@ -310,7 +324,7 @@ func (l *link) closeLink(ctx context.Context) error {
 func (l *link) closeWithError(cnd ErrCond, desc string) {
 	amqpErr := &Error{Condition: cnd, Description: desc}
 	if l.closeInProgress {
-		debug.Log(3, "TX (link) close error already pending, discarding %v", amqpErr)
+		debug.Log(3, "TX (link %p) close error already pending, discarding %v", l, amqpErr)
 		return
 	}
 
@@ -321,7 +335,53 @@ func (l *link) closeWithError(cnd ErrCond, desc string) {
 	}
 	l.closeInProgress = true
 	l.doneErr = &LinkError{inner: fmt.Errorf("%s: %s", cnd, desc)}
-	_ = l.session.txFrame(dr, nil)
+	l.txFrame(context.Background(), dr, nil)
 }
 
-var errLinkForciblyClosed = errors.New("the link was forcibly closed")
+// txFrame sends the specified frame via the link's session.
+// you MUST call this instead of session.txFrame() to ensure
+// that frames are not sent during session shutdown.
+func (l *link) txFrame(ctx context.Context, fr frames.FrameBody, sent chan error) {
+	// NOTE: there is no need to select on l.done as this is either
+	// called from a link's mux or before the mux has even started.
+	select {
+	case <-l.session.done:
+		if sent != nil {
+			sent <- l.session.doneErr
+		}
+	case <-l.session.endSent:
+		// we swallow this to prevent the link's mux from terminating.
+		// l.session.done will soon close so this is temporary.
+		return
+	case l.session.tx <- frameBodyEnvelope{Ctx: ctx, FrameBody: fr, Sent: sent}:
+		debug.Log(2, "TX (link %p): mux frame to Session (%p): %s", l, l.session, fr)
+	}
+}
+
+// txFrame sends the specified frame via the link's session.
+// you MUST call this instead of session.txFrame() to ensure
+// that frames are not sent during session shutdown.
+func (l *link) txFrameAndWait(ctx context.Context, fr frames.FrameBody) error {
+	// NOTE: there is no need to select on l.done as this is either
+	// called from a link's mux or before the mux has even started.
+	sent := make(chan error, 1)
+	select {
+	case <-l.session.done:
+		return l.session.doneErr
+	case <-l.session.endSent:
+		// we swallow this to prevent the link's mux from terminating.
+		// l.session.done will soon close so this is temporary.
+		return nil
+	case l.session.tx <- frameBodyEnvelope{Ctx: ctx, FrameBody: fr, Sent: sent}:
+		debug.Log(2, "TX (link %p): mux frame to Session (%p): %s", l, l.session, fr)
+	}
+
+	select {
+	case err := <-sent:
+		return err
+	case <-l.done:
+		return l.doneErr
+	case <-l.session.done:
+		return l.session.doneErr
+	}
+}

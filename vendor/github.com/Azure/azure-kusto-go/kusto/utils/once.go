@@ -1,6 +1,9 @@
 package utils
 
-import "sync"
+import (
+	"sync"
+	"sync/atomic"
+)
 
 type Once[Out any] interface {
 	Do(f func() (Out, error)) (Out, error)
@@ -14,10 +17,10 @@ type OnceWithInit[Out any] interface {
 }
 
 type once[Out any] struct {
-	inner  sync.Once
+	mutex  sync.Mutex
 	result Out
 	err    error
-	done   bool
+	done   uint32
 }
 
 type onceWithInit[Out any] struct {
@@ -28,10 +31,10 @@ type onceWithInit[Out any] struct {
 func NewOnce[Out any]() Once[Out] {
 	var empty Out
 	return &once[Out]{
-		inner:  sync.Once{},
+		mutex:  sync.Mutex{},
 		result: empty,
 		err:    nil,
-		done:   false,
+		done:   0,
 	}
 }
 
@@ -58,17 +61,27 @@ func (o *onceWithInit[Out]) Result() (bool, Out, error) {
 }
 
 func (o *once[Out]) Do(f func() (Out, error)) (Out, error) {
-	o.inner.Do(func() {
+	if atomic.LoadUint32(&o.done) != 0 {
+		return o.result, o.err
+	}
+
+	o.mutex.Lock()
+	defer o.mutex.Unlock()
+	if o.done == 0 {
 		o.result, o.err = f()
-		o.done = true
-	})
+
+		if o.err == nil {
+			defer atomic.StoreUint32(&o.done, 1)
+		}
+	}
+
 	return o.result, o.err
 }
 
 func (o *once[Out]) Done() bool {
-	return o.done
+	return o.done != 0
 }
 
 func (o *once[Out]) Result() (bool, Out, error) {
-	return o.done, o.result, o.err
+	return o.Done(), o.result, o.err
 }

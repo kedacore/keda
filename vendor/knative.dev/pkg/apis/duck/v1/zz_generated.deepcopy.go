@@ -630,6 +630,11 @@ func (in *SourceStatus) DeepCopyInto(out *SourceStatus) {
 		*out = make([]CloudEventAttributes, len(*in))
 		copy(*out, *in)
 	}
+	if in.SinkCACerts != nil {
+		in, out := &in.SinkCACerts, &out.SinkCACerts
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
