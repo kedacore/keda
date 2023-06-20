@@ -796,3 +796,14 @@ func generateCA(t *testing.T) {
 		require.NoErrorf(t, err, "error closing custom CA key file- %s", err)
 	}
 }
+
+func CheckKubectlGetResult(t *testing.T, kind string, name string, namespace string, otherparameter string, expected string) {
+	time.Sleep(1 * time.Second) // wait a second for recource deployment finished
+	kctlGetCmd := fmt.Sprintf(`kubectl get %s/%s -n %s %s"`, kind, name, namespace, otherparameter)
+	t.Log("Running kubectl cmd:", kctlGetCmd)
+	output, err := ExecuteCommand(kctlGetCmd)
+	assert.NoErrorf(t, err, "cannot get rollout info - %s", err)
+
+	unqoutedOutput := strings.ReplaceAll(string(output), "\"", "")
+	assert.Equal(t, expected, unqoutedOutput)
+}

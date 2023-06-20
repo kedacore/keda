@@ -5,9 +5,7 @@ package update_ta_so_test
 
 import (
 	"fmt"
-	"strings"
 	"testing"
-	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -297,56 +295,38 @@ func TestTriggerAuthenticationGeneral(t *testing.T) {
 	DeleteKubernetesResources(t, namespace, data, templates)
 }
 
-func checkScaledObjectStatusFromKubectl(t *testing.T, kind string, expected string) {
-	time.Sleep(1 * time.Second)
-	kctlGetCmd := fmt.Sprintf(`kubectl get %s/%s -n %s -o jsonpath="{.status.scaledobjects}"`, kind, triggerAuthName, namespace)
-	output, err := ExecuteCommand(kctlGetCmd)
-	assert.NoErrorf(t, err, "cannot get rollout info - %s", err)
-
-	unqoutedOutput := strings.ReplaceAll(string(output), "\"", "")
-	assert.Equal(t, expected, unqoutedOutput)
-}
-
-func checkScaleJobStatusFromKubectl(t *testing.T, kind string, expected string) {
-	time.Sleep(1 * time.Second)
-	kctlGetCmd := fmt.Sprintf(`kubectl get %s/%s -n %s -o jsonpath="{.status.scaledjobs}"`, kind, triggerAuthName, namespace)
-	output, err := ExecuteCommand(kctlGetCmd)
-	assert.NoErrorf(t, err, "cannot get rollout info - %s", err)
-
-	unqoutedOutput := strings.ReplaceAll(string(output), "\"", "")
-	assert.Equal(t, expected, unqoutedOutput)
-}
-
 // tests basic scaling with one trigger based on metrics
 func testTriggerAuthenticationStatusValue(t *testing.T, data templateData, kind string) {
 	KubectlApplyWithTemplate(t, data, "triggerAuthenticationTemplate", triggerAuthenticationTemplate)
 	t.Log("--- test one scaledObject ---")
 	KubectlApplyWithTemplate(t, data, "scaledObjectTriggerTemplate", scaledObjectTriggerTemplate)
-	checkScaledObjectStatusFromKubectl(t, kind, scaledObjectName)
+	otherparameter := `-o jsonpath="{.status.scaledobjects}"`
+	CheckKubectlGetResult(t, kind, triggerAuthName, namespace, otherparameter, scaledObjectName)
 
 	t.Log("--- test two scaledObject ---")
 	KubectlApplyWithTemplate(t, data, "scaledObjectTrigger2Template", scaledObjectTrigger2Template)
-	checkScaledObjectStatusFromKubectl(t, kind, scaledObjectName+","+scaledObject2Name)
+	CheckKubectlGetResult(t, kind, triggerAuthName, namespace, otherparameter, scaledObjectName+","+scaledObject2Name)
 
 	t.Log("--- test reomve scaledObject ---")
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTriggerTemplate", scaledObjectTriggerTemplate)
-	checkScaledObjectStatusFromKubectl(t, kind, scaledObject2Name)
+	CheckKubectlGetResult(t, kind, triggerAuthName, namespace, otherparameter, scaledObject2Name)
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTrigger2Template", scaledObjectTrigger2Template)
-	checkScaledObjectStatusFromKubectl(t, kind, "")
+	CheckKubectlGetResult(t, kind, triggerAuthName, namespace, otherparameter, "")
 
 	t.Log("--- test one scaledJob ---")
+	otherparameter = `-o jsonpath="{.status.scaledjobs}"`
 	KubectlApplyWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
-	checkScaleJobStatusFromKubectl(t, kind, scaledJobName)
+	CheckKubectlGetResult(t, kind, triggerAuthName, namespace, otherparameter, scaledJobName)
 
 	t.Log("--- test two scaledJob ---")
 	KubectlApplyWithTemplate(t, data, "scaledJob2Template", scaledJob2Template)
-	checkScaleJobStatusFromKubectl(t, kind, scaledJobName+","+scaledJob2Name)
+	CheckKubectlGetResult(t, kind, triggerAuthName, namespace, otherparameter, scaledJobName+","+scaledJob2Name)
 
 	t.Log("--- test reomve scaledObject ---")
 	KubectlDeleteWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
-	checkScaleJobStatusFromKubectl(t, kind, scaledJob2Name)
+	CheckKubectlGetResult(t, kind, triggerAuthName, namespace, otherparameter, scaledJob2Name)
 	KubectlDeleteWithTemplate(t, data, "scaledJob2Template", scaledJob2Template)
-	checkScaleJobStatusFromKubectl(t, kind, "")
+	CheckKubectlGetResult(t, kind, triggerAuthName, namespace, otherparameter, "")
 }
 
 // help function to load template data
