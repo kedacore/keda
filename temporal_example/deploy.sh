@@ -16,7 +16,7 @@ cd .. && IMAGE_REGISTRY=${ACR_NAME}.azurecr.io IMAGE_REPO=${ACR_NAME} make publi
 
 IMAGE_REGISTRY=${ACR_NAME}.azurecr.io IMAGE_REPO=${ACR_NAME} make deploy
 
-kubectl apply -f temporal_example/temporal_scaledObject.yml
+kubectl apply -f temporal_example/temporal_scaledObject_tls.yml
 
 kubectl get pods --namespace keda
 
