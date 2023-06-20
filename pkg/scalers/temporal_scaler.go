@@ -3,8 +3,11 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"log"
 	"strconv"
+
+	// Added for TLS
+	"crypto/tls"
+	"crypto/x509"
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -13,6 +16,7 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/client"
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 )
 
 const (
@@ -22,16 +26,19 @@ const (
 )
 
 type temporalScaler struct {
-	metricType v2.MetricTargetType
-	metadata   *temporalMetadata
-	logger     logr.Logger
+	metricType 		v2.MetricTargetType
+	metadata   		*temporalMetadata
+	temporalClient	client.Client
+	logger			logr.Logger
 }
 
 type temporalMetadata struct {
-	address             string
-	threshold           float64
-	activationThreshold float64
-	scalerIndex         int
+	address             		string
+	threshold           		float64
+	activationThreshold 		float64
+	scalerIndex         		int
+	temporalAuth      			*authentication.AuthMeta
+	serverName		  			string
 }
 
 func NewTemporalScaler(config *ScalerConfig) (Scaler, error) {
@@ -47,22 +54,27 @@ func NewTemporalScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing %s metadata: %w", scaler_name, err)
 	}
 
+	clientOptions, err := parseClientOptions(meta)
 	if err != nil {
-		log.Fatal("error initializing client:", err)
+		return nil, fmt.Errorf("unable to configure Temporal Client: %w. %+v", err, meta)
 	}
 
-	logMsg := fmt.Sprintf("Initializing Temporal Scaler connected to %s", address)
+	temporalClient, err := client.Dial(clientOptions)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create Temporal Client: %w. %s", err, meta.address)
+	}
 
-	logger.Info(logMsg)
+	logger.Info(fmt.Sprintf("Initializing Temporal Scaler connected to %s", meta.address))
 
 	return &temporalScaler{
-		metricType: metricType,
-		metadata:   meta,
-		logger:     logger}, nil
+		metricType: 	metricType,
+		metadata:   	meta,
+		temporalClient: temporalClient,
+		logger:     	logger}, nil
 }
 
 func parseTemporalMetadata(config *ScalerConfig, logger logr.Logger) (*temporalMetadata, error) {
-	meta := temporalMetadata{}
+	meta := &temporalMetadata{}
 
 	if val, ok := config.TriggerMetadata[threshold]; ok && val != "" {
 		t, err := strconv.ParseFloat(val, 64)
@@ -86,43 +98,91 @@ func parseTemporalMetadata(config *ScalerConfig, logger logr.Logger) (*temporalM
 	// If Query Return an Empty Data, shall we treat it as an error or not
 	// default is NO error is returned when query result is empty/no data
 	if val, ok := config.TriggerMetadata["address"]; ok {
-		address := val
-		meta.address = address
+		meta.address = val
 	} else {
 		meta.address = "ERROR"
 	}
 	meta.scalerIndex = config.ScalerIndex
-	return &meta, nil
+	meta.serverName = config.TriggerMetadata["serverName"]
+
+	auth, err := authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
+	if err != nil {
+		return nil, err
+	}
+	meta.temporalAuth = auth
+
+	logger.Info("Parsed Temporal Scaler metadata: ", meta)
+	
+	return meta, nil
 }
+
 
 func (s *temporalScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *temporalScaler) executeTemporalQuery(ctx context.Context) (float64, error) {
-	temporalClient, err := client.Dial(client.Options{
-		HostPort: s.metadata.address,
-	})
+func parseClientOptions(metadata *temporalMetadata) (client.Options, error) {
+
+	// Read configuration from trigger metadata. EnableTLS will be set if the trigger metadata contains
+	// the required TLS configuration.
+	if !metadata.temporalAuth.EnableTLS {
+		return client.Options{
+			HostPort: metadata.address,
+		}, nil
+	}
+
+	// This implementation assumes that a PEM format is base64 encoded in the trigger metadata
+	//cert, err := tls.LoadX509KeyPair(metadata.certificate_file, metadata.certificate_key_file)
+	cert, err := tls.X509KeyPair([]byte(metadata.temporalAuth.Cert), []byte(metadata.temporalAuth.Key))
 	if err != nil {
-		log.Fatalln(fmt.Sprintf("Unable to create Temporal Client: %s", s.metadata.address), err)
+		return client.Options{}, fmt.Errorf("failed loading client cert and key: %w", err)
 	}
 
-	if _, err := temporalClient.CheckHealth(context.Background(), &client.CheckHealthRequest{}); err != nil {
-		/* health is bad */
-		log.Println("Health is bad")
+	serverCAPool := x509.NewCertPool()
+	//b, err := os.ReadFile(metadata.certificate_authority_file)
+	b:= []byte(metadata.temporalAuth.CA)
+	if !serverCAPool.AppendCertsFromPEM(b) {
+			return client.Options{}, fmt.Errorf("server CA PEM file invalid")
+	}
+	// if err != nil {
+	// 	return client.Options{}, fmt.Errorf("failed reading server CA: %w", err)
+	// } else if !serverCAPool.AppendCertsFromPEM(b) {
+	// 	return client.Options{}, fmt.Errorf("server CA PEM file invalid")
+	// }
+
+	return client.Options{
+		HostPort:  metadata.address,
+		Namespace: "default",
+		ConnectionOptions: client.ConnectionOptions{
+			TLS: &tls.Config{
+				Certificates:       []tls.Certificate{cert},
+				RootCAs:            serverCAPool,
+				ServerName:         metadata.serverName,
+				InsecureSkipVerify: true,
+			},
+		},
+	}, nil
+}
+
+func (s *temporalScaler) executeTemporalQuery(ctx context.Context) (float64, error) {
+
+	if _, err := s.temporalClient.CheckHealth(context.Background(), &client.CheckHealthRequest{}); err != nil {
+		s.logger.Info("Health is bad")
 	} else {
-		/* health is good */
-		log.Println("Health is good")
+		s.logger.Info("Health is good")
 	}
 
-	if openWorkFlows, err := temporalClient.ListOpenWorkflow(context.Background(), &workflowservice.ListOpenWorkflowExecutionsRequest{}); err != nil {
-		log.Println(err.Error())
+	openWorkFlows, err := s.temporalClient.ListOpenWorkflow(context.Background(), &workflowservice.ListOpenWorkflowExecutionsRequest{})
+	if err != nil {
+		s.logger.Error(err, "error getting list of open workflows")
 	} else {
-		log.Println(openWorkFlows.Size())
-		return float64(openWorkFlows.Size()), nil
+		size := openWorkFlows.Size()
+		logMsg := fmt.Sprintf("Open Workflows: %d", size)
+		s.logger.Info(logMsg)
+		return float64(size), nil
 	}
 
-	defer temporalClient.Close()
+	defer s.temporalClient.Close()
 	return 0, nil
 }
 
