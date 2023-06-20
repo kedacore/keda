@@ -18,14 +18,10 @@ package keda
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
-	"github.com/go-logr/logr"
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
-	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
+	errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -36,7 +32,6 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/prommetrics"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 // TriggerAuthenticationReconciler reconciles a TriggerAuthentication object
@@ -68,7 +63,7 @@ func (r *TriggerAuthenticationReconciler) Reconcile(ctx context.Context, req ctr
 	triggerAuthentication := &kedav1alpha1.TriggerAuthentication{}
 	err := r.Client.Get(ctx, req.NamespacedName, triggerAuthentication)
 	if err != nil {
-		if k8sErrors.IsNotFound(err) {
+		if errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
 		reqLogger.Error(err, "Failed to get TriggerAuthentication")
@@ -120,81 +115,4 @@ func (r *TriggerAuthenticationReconciler) UpdatePromMetricsOnDelete(namespacedNa
 	}
 
 	delete(triggerAuthPromMetricsMap, namespacedName)
-}
-
-func GetTriggerAuth(ctx context.Context, client client.Client, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, namespace string) (client.Object, error) {
-	if triggerAuthRef == nil {
-		return nil, fmt.Errorf("triggerAuthRef is nil")
-	}
-
-	if triggerAuthRef.Kind == "" || triggerAuthRef.Kind == "TriggerAuthentication" {
-		triggerAuth := &kedav1alpha1.TriggerAuthentication{}
-		err := client.Get(ctx, types.NamespacedName{Name: triggerAuthRef.Name, Namespace: namespace}, triggerAuth)
-		if err != nil {
-			return nil, err
-		}
-		return triggerAuth, nil
-	} else if triggerAuthRef.Kind == "ClusterTriggerAuthentication" {
-		clusterTriggerAuth := &kedav1alpha1.ClusterTriggerAuthentication{}
-		err := client.Get(ctx, types.NamespacedName{Name: triggerAuthRef.Name, Namespace: namespace}, clusterTriggerAuth)
-		if err != nil {
-			return nil, err
-		}
-		return clusterTriggerAuth, nil
-	}
-	return nil, fmt.Errorf("unknown trigger auth kind %s", triggerAuthRef.Kind)
-}
-
-func GetTriggerAuthStatus(triggerAuth client.Object) (*kedav1alpha1.TriggerAuthenticationStatus, error) {
-	switch obj := triggerAuth.(type) {
-	case *kedav1alpha1.TriggerAuthentication:
-		return &obj.Status, nil
-	case *kedav1alpha1.ClusterTriggerAuthentication:
-		return &obj.Status, nil
-	default:
-		return nil, fmt.Errorf("unknown trigger auth status %s", obj)
-	}
-}
-
-func UpdateTriggerAuthenticationStatusHandler(ctx context.Context, logger logr.Logger, client client.Client, namespace string, scaleTriggers []kedav1alpha1.ScaleTriggers, statusHandler func(*kedav1alpha1.TriggerAuthenticationStatus) *kedav1alpha1.TriggerAuthenticationStatus) (string, error) {
-	var errs error
-	for _, trigger := range scaleTriggers {
-		if trigger.AuthenticationRef == nil {
-			continue
-		}
-
-		triggerAuth, err := GetTriggerAuth(ctx, client, trigger.AuthenticationRef, namespace)
-
-		if err != nil {
-			if k8sErrors.IsNotFound(err) {
-				logger.Info("TriggerAuthentication Not Found")
-			}
-			logger.Error(err, "Failed to get TriggerAuthentication")
-			errs = errors.Wrap(errs, err.Error())
-			continue
-		}
-
-		triggerAuthenticationStatus, err := GetTriggerAuthStatus(triggerAuth)
-
-		if err != nil {
-			if k8sErrors.IsNotFound(err) {
-				logger.Info("TriggerAuthenticationStatus Not Found")
-			}
-			logger.Error(err, "Failed to get TriggerAuthenticationStatus")
-			errs = errors.Wrap(errs, err.Error())
-			continue
-		}
-
-		triggerAuthenticationStatus = statusHandler(triggerAuthenticationStatus.DeepCopy())
-
-		if err := kedautil.UpdateTriggerAuthenticationStatus(ctx, client, logger, triggerAuth, triggerAuthenticationStatus); err != nil {
-			logger.Error(err, "Failed to update TriggerAuthenticationStatus")
-			errs = errors.Wrap(errs, err.Error())
-		}
-	}
-
-	if errs != nil {
-		return "Update TriggerAuthentication Status Failed", errs
-	}
-	return "Update TriggerAuthentication Status Successfully", nil
 }

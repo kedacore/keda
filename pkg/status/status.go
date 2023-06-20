@@ -14,13 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package status
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -62,8 +65,42 @@ func UpdateScaledObjectStatus(ctx context.Context, client runtimeclient.StatusCl
 	return TransformObject(ctx, client, logger, scaledObject, status, transform)
 }
 
-// UpdateTriggerAuthenticationStatus patches the given TriggerAuthentication/ClusterTriggerAuthentication with the updated status passed to it or returns an error.
-func UpdateTriggerAuthenticationStatus(ctx context.Context, client runtimeclient.StatusClient, logger logr.Logger, object runtimeclient.Object, status *kedav1alpha1.TriggerAuthenticationStatus) error {
+func getTriggerAuth(ctx context.Context, client runtimeclient.Client, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, namespace string) (runtimeclient.Object, *kedav1alpha1.TriggerAuthenticationStatus, error) {
+	if triggerAuthRef == nil {
+		return nil, nil, fmt.Errorf("triggerAuthRef is nil")
+	}
+
+	if triggerAuthRef.Kind == "" || triggerAuthRef.Kind == "TriggerAuthentication" {
+		triggerAuth := &kedav1alpha1.TriggerAuthentication{}
+		err := client.Get(ctx, types.NamespacedName{Name: triggerAuthRef.Name, Namespace: namespace}, triggerAuth)
+		if err != nil {
+			return nil, nil, err
+		}
+		return triggerAuth, &triggerAuth.Status, nil
+	} else if triggerAuthRef.Kind == "ClusterTriggerAuthentication" {
+		clusterTriggerAuth := &kedav1alpha1.ClusterTriggerAuthentication{}
+		err := client.Get(ctx, types.NamespacedName{Name: triggerAuthRef.Name, Namespace: namespace}, clusterTriggerAuth)
+		if err != nil {
+			return nil, nil, err
+		}
+		return clusterTriggerAuth, &clusterTriggerAuth.Status, nil
+	}
+	return nil, nil, fmt.Errorf("unknown trigger auth kind %s", triggerAuthRef.Kind)
+}
+
+func updateTriggerAuthenticationStatus(ctx context.Context, logger logr.Logger, client runtimeclient.Client, namespace string, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, statusHandler func(*kedav1alpha1.TriggerAuthenticationStatus) *kedav1alpha1.TriggerAuthenticationStatus) error {
+	triggerAuth, triggerAuthStatus, err := getTriggerAuth(ctx, client, triggerAuthRef, namespace)
+
+	if err != nil {
+		if k8sErrors.IsNotFound(err) {
+			logger.Info("TriggerAuthentication Not Found")
+		}
+		logger.Error(err, "Failed to get TriggerAuthentication")
+		return err
+	}
+
+	triggerAuthenticationStatus := statusHandler(triggerAuthStatus.DeepCopy())
+
 	transform := func(runtimeObj runtimeclient.Object, target interface{}) error {
 		status, ok := target.(*kedav1alpha1.TriggerAuthenticationStatus)
 		if !ok {
@@ -78,7 +115,32 @@ func UpdateTriggerAuthenticationStatus(ctx context.Context, client runtimeclient
 		}
 		return nil
 	}
-	return TransformObject(ctx, client, logger, object, status, transform)
+
+	if err := TransformObject(ctx, client, logger, triggerAuth, triggerAuthenticationStatus, transform); err != nil {
+		logger.Error(err, "Failed to update TriggerAuthenticationStatus")
+	}
+
+	return err
+}
+
+// UpdateTriggerAuthenticationStatusFromTriggers patches triggerAuthenticationStatus From the given Triggers or returns an error.
+func UpdateTriggerAuthenticationStatusFromTriggers(ctx context.Context, logger logr.Logger, client runtimeclient.Client, namespace string, scaleTriggers []kedav1alpha1.ScaleTriggers, statusHandler func(*kedav1alpha1.TriggerAuthenticationStatus) *kedav1alpha1.TriggerAuthenticationStatus) (string, error) {
+	var errs error
+	for _, trigger := range scaleTriggers {
+		if trigger.AuthenticationRef == nil {
+			continue
+		}
+
+		err := updateTriggerAuthenticationStatus(ctx, logger, client, namespace, trigger.AuthenticationRef, statusHandler)
+		if err != nil {
+			errs = errors.Wrap(errs, err.Error())
+		}
+	}
+
+	if errs != nil {
+		return "Update TriggerAuthentication Status Failed", errs
+	}
+	return "Update TriggerAuthentication Status Successfully", nil
 }
 
 // TransformObject patches the given object with the targeted passed to it through a transformer function or returns an error.

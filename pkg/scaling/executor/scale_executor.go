@@ -29,7 +29,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
+	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 )
 
 const (
@@ -78,7 +78,7 @@ func (e *scaleExecutor) updateLastActiveTime(ctx context.Context, logger logr.Lo
 		}
 		return nil
 	}
-	return kedautil.TransformObject(ctx, e.client, logger, object, now, transform)
+	return kedastatus.TransformObject(ctx, e.client, logger, object, now, transform)
 }
 
 func (e *scaleExecutor) setCondition(ctx context.Context, logger logr.Logger, object interface{}, status metav1.ConditionStatus, reason string, message string, setCondition func(kedav1alpha1.Conditions, metav1.ConditionStatus, string, string)) error {
@@ -103,7 +103,7 @@ func (e *scaleExecutor) setCondition(ctx context.Context, logger logr.Logger, ob
 		reason:  reason,
 		message: message,
 	}
-	return kedautil.TransformObject(ctx, e.client, logger, object, &target, transform)
+	return kedastatus.TransformObject(ctx, e.client, logger, object, &target, transform)
 }
 
 func (e *scaleExecutor) setReadyCondition(ctx context.Context, logger logr.Logger, object interface{}, status metav1.ConditionStatus, reason string, message string) error {
