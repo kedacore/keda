@@ -32,9 +32,11 @@ spec:
       type: string
     - jsonPath: .status.scaledobjects
       name: ScaledObjects
+      priority: 1
       type: string
     - jsonPath: .status.scaledjobs
       name: ScaledJobs
+      priority: 1
       type: string
     name: v1alpha1
     schema:
