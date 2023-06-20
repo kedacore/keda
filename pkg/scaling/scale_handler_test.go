@@ -56,7 +56,7 @@ func TestGetScaledObjectMetrics_DirectCall(t *testing.T) {
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
 	mockStatusWriter := mock_client.NewMockStatusWriter(ctrl)
 
-	metricsSpecs := []v2.MetricSpec{createMetricSpec(10, metricName)}
+	metricsSpecs := []v2.MetricSpec{utils.CreateMetricSpec(10, metricName)}
 	metricValue := scalers.GenerateMetricInMili(metricName, float64(10))
 
 	metricsRecord := map[string]metricscache.MetricsRecord{}
@@ -147,7 +147,7 @@ func TestGetScaledObjectMetrics_FromCache(t *testing.T) {
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
 	mockStatusWriter := mock_client.NewMockStatusWriter(ctrl)
 
-	metricsSpecs := []v2.MetricSpec{createMetricSpec(10, metricName)}
+	metricsSpecs := []v2.MetricSpec{utils.CreateMetricSpec(10, metricName)}
 	metricValue := scalers.GenerateMetricInMili(metricName, float64(10))
 
 	metricsRecord := map[string]metricscache.MetricsRecord{}
@@ -231,7 +231,7 @@ func TestCheckScaledObjectScalersWithError(t *testing.T) {
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
 	recorder := record.NewFakeRecorder(1)
 
-	metricsSpecs := []v2.MetricSpec{createMetricSpec(1, "metric-name")}
+	metricsSpecs := []v2.MetricSpec{utils.CreateMetricSpec(1, "metric-name")}
 
 	scaler := mock_scalers.NewMockScaler(ctrl)
 	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs)
@@ -292,7 +292,7 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
 	recorder := record.NewFakeRecorder(1)
 
-	metricsSpecs := []v2.MetricSpec{createMetricSpec(1, "metric-name")}
+	metricsSpecs := []v2.MetricSpec{utils.CreateMetricSpec(1, "metric-name")}
 
 	activeFactory := func() (scalers.Scaler, *scalers.ScalerConfig, error) {
 		scaler := mock_scalers.NewMockScaler(ctrl)
@@ -359,51 +359,6 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 
 	assert.Equal(t, true, isActive)
 	assert.Equal(t, true, isError)
-}
-
-func TestTargetAverageValue(t *testing.T) {
-	// count = 0
-	specs := []v2.MetricSpec{}
-	metricName := "s0-messageCount"
-	targetAverageValue := utils.GetTargetAverageValue(specs)
-	assert.Equal(t, float64(0), targetAverageValue)
-	// 1 1
-	specs = []v2.MetricSpec{
-		createMetricSpec(1, metricName),
-		createMetricSpec(1, metricName),
-	}
-	targetAverageValue = utils.GetTargetAverageValue(specs)
-	assert.Equal(t, float64(1), targetAverageValue)
-	// 5 5 3 -> 4.333333333333333
-	specs = []v2.MetricSpec{
-		createMetricSpec(5, metricName),
-		createMetricSpec(5, metricName),
-		createMetricSpec(3, metricName),
-	}
-	targetAverageValue = utils.GetTargetAverageValue(specs)
-	assert.Equal(t, 4.333333333333333, targetAverageValue)
-
-	// 5 5 4 -> 4.666666666666667
-	specs = []v2.MetricSpec{
-		createMetricSpec(5, metricName),
-		createMetricSpec(5, metricName),
-		createMetricSpec(4, metricName),
-	}
-	targetAverageValue = utils.GetTargetAverageValue(specs)
-	assert.Equal(t, 4.666666666666667, targetAverageValue)
-}
-func createMetricSpec(averageValue int64, metricName string) v2.MetricSpec {
-	qty := resource.NewQuantity(averageValue, resource.DecimalSI)
-	return v2.MetricSpec{
-		External: &v2.ExternalMetricSource{
-			Target: v2.MetricTarget{
-				AverageValue: qty,
-			},
-			Metric: v2.MetricIdentifier{
-				Name: metricName,
-			},
-		},
-	}
 }
 
 func TestIsScaledJobActive(t *testing.T) {
@@ -648,7 +603,7 @@ func createScaledJob(minReplicaCount int32, maxReplicaCount int32, multipleScale
 
 func createScaler(ctrl *gomock.Controller, queueLength int64, averageValue int64, isActive bool, metricName string) *mock_scalers.MockScaler {
 	scaler := mock_scalers.NewMockScaler(ctrl)
-	metricsSpecs := []v2.MetricSpec{createMetricSpec(averageValue, metricName)}
+	metricsSpecs := []v2.MetricSpec{utils.CreateMetricSpec(averageValue, metricName)}
 
 	metrics := []external_metrics.ExternalMetricValue{
 		{
