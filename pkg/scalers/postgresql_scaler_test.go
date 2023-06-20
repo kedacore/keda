@@ -71,6 +71,8 @@ var testPostgreSQLConnectionstring = []postgreSQLConnectionStringTestData{
 	{metadata: map[string]string{"query": "test_query", "targetQueryValue": "5"}, authParam: map[string]string{"connection": "test_connection_from_auth"}, connectionString: "test_connection_from_auth"},
 	// from meta
 	{metadata: map[string]string{"query": "test_query", "targetQueryValue": "5", "host": "localhost", "port": "1234", "dbName": "testDb", "userName": "user", "sslmode": "required"}, connectionString: "host=localhost port=1234 user=user dbname=testDb sslmode=required password="},
+	// from meta, multiple hosts
+	{metadata: map[string]string{"query": "test_query", "targetQueryValue": "5", "host": "host1,host2", "port": "1234", "dbName": "testDb", "userName": "user", "sslmode": "required"}, connectionString: "host=host1,host2 port=1234 user=user dbname=testDb sslmode=required password="},
 }
 
 func TestPosgresSQLConnectionStringGeneration(t *testing.T) {
