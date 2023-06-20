@@ -17,11 +17,13 @@ const (
 )
 
 var (
-	testNamespace     = fmt.Sprintf("%s-ns", testName)
-	deploymentName    = fmt.Sprintf("%s-deployment", testName)
-	scaledObject1Name = fmt.Sprintf("%s-so1", testName)
-	scaledObject2Name = fmt.Sprintf("%s-so2", testName)
-	hpaName           = fmt.Sprintf("%s-hpa", testName)
+	testNamespace                     = fmt.Sprintf("%s-ns", testName)
+	deploymentName                    = fmt.Sprintf("%s-deployment", testName)
+	scaledObject1Name                 = fmt.Sprintf("%s-so1", testName)
+	scaledObject2Name                 = fmt.Sprintf("%s-so2", testName)
+	hpaName                           = fmt.Sprintf("%s-hpa", testName)
+	ownershipTransferScaledObjectName = fmt.Sprintf("%s-ownership-transfer-so", testName)
+	ownershipTransferHpaName          = fmt.Sprintf("%s-ownership-transfer-hpa", testName)
 )
 
 type templateData struct {
@@ -218,12 +220,12 @@ func testScaledWorkloadByOtherHpa(t *testing.T, data templateData) {
 func testScaledWorkloadByOtherHpaWithOwnershipTransfer(t *testing.T, data templateData) {
 	t.Log("--- already scaled workload by other hpa ownership transfer ---")
 
-	data.HpaName = hpaName
+	data.HpaName = ownershipTransferHpaName
 	err := KubectlApplyWithErrors(t, data, "hpaTemplate", hpaTemplate)
 	assert.NoErrorf(t, err, "cannot deploy the hpa - %s", err)
 
-	data.ScaledObjectName = scaledObject1Name
-	err = KubectlApplyWithErrors(t, data, "scaledObjectTemplate", ownershipTransferScaledObjectTemplate)
+	data.ScaledObjectName = ownershipTransferScaledObjectName
+	err = KubectlApplyWithErrors(t, data, "ownershipTransferScaledObjectTemplate", ownershipTransferScaledObjectTemplate)
 	assert.NoErrorf(t, err, "can deploy the scaledObject - %s", err)
 
 	KubectlDeleteWithTemplate(t, data, "hpaTemplate", hpaTemplate)
