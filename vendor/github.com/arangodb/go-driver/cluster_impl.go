@@ -66,7 +66,7 @@ func (c *cluster) Health(ctx context.Context) (ClusterHealth, error) {
 
 // DatabaseInventory Get the inventory of the cluster containing all collections (with entire details) of a database.
 func (c *cluster) DatabaseInventory(ctx context.Context, db Database) (DatabaseInventory, error) {
-	req, err := c.conn.NewRequest("GET", path.Join("_db", db.Name(), "_api/replication/clusterInventory"))
+	req, err := c.conn.NewRequest("GET", path.Join("_db", pathEscape(db.Name()), "_api/replication/clusterInventory"))
 	if err != nil {
 		return DatabaseInventory{}, WithStack(err)
 	}

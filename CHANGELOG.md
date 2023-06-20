@@ -54,18 +54,22 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Improvements
 
 - **General**: Metrics Adapter: remove deprecated Prometheus Metrics and non-gRPC code ([#3930](https://github.com/kedacore/keda/issues/3930))
+- **AWS DynamoDB**: Add support for `indexName` ([#4680](https://github.com/kedacore/keda/issues/4680))
 - **Azure Data Explorer Scaler**: Use azidentity SDK ([#4489](https://github.com/kedacore/keda/issues/4489))
 - **External Scaler**: Add tls options in TriggerAuth metadata. ([#3565](https://github.com/kedacore/keda/issues/3565))
 - **GCP PubSub Scaler**: Make it more flexible for metrics ([#4243](https://github.com/kedacore/keda/issues/4243))
-- **Kafka Scaler:** Add support for OAuth extensions ([#4544](https://github.com/kedacore/keda/issues/4544))
-- **NATS JetStream Scaler:** Add support for pulling AccountID from TriggerAuthentication ([#4586]https://github.com/kedacore/keda/issues/4586)
+- **Kafka Scaler**: Add support for OAuth extensions ([#4544](https://github.com/kedacore/keda/issues/4544))
+- **NATS JetStream Scaler**: Add support for pulling AccountID from TriggerAuthentication ([#4586]https://github.com/kedacore/keda/issues/4586)
 - **Pulsar Scaler**: Improve error messages for unsuccessful connections ([#4563](https://github.com/kedacore/keda/issues/4563))
-- **Security:** Enable secret scanning in GitHub repo
+- **Security**: Enable secret scanning in GitHub repo
 - **RabbitMQ Scaler**: Add support for `unsafeSsl` in trigger metadata ([#4448](https://github.com/kedacore/keda/issues/4448))
+- **Prometheus Metrics**: Add new metric with KEDA build info ([#4647](https://github.com/kedacore/keda/issues/4647))
+- **Prometheus Scaler**: Add support for Google Managed Prometheus ([#4675](https://github.com/kedacore/keda/pull/4675))
 
 ### Fixes
 
 - **Admission Webhooks**: Allow to remove the finalizer even if the ScaledObject isn't valid ([#4396](https://github.com/kedacore/keda/issue/4396))
+- **Admission Webhooks**: Check ScaledObjects with multiple triggers with non unique name ([#4664](https://github.com/kedacore/keda/issue/4664))
 - **ScaledJob**: Check if MaxReplicaCount is nil before access to it ([#4568]https://github.com/kedacore/keda/issues/4568)
 - **AWS SQS Scaler**: Respect `scaleOnInFlight` value ([#4276](https://github.com/kedacore/keda/issue/4276))
 - **Azure Pipelines**: Fix for disallowing `$top` on query when using `meta.parentID` method ([#4397])
@@ -74,6 +78,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Prometheus Metrics**: Create e2e tests for all exposed Prometheus metrics ([#4127](https://github.com/kedacore/keda/issues/4127))
 - **Grafana Dashboard**: Fix HPA metrics panel to use range instead of instant ([#4513](https://github.com/kedacore/keda/pull/4513))
 - **Grafana Dashboard**: Fix HPA metrics panel by replacing $namepsace to $exported_namespace due to label conflict ([#4539](https://github.com/kedacore/keda/pull/4539))
+- **Kafka Scaler**: Add back `strings.TrimSpace()` function for saslAuthType ([#4689](https://github.com/kedacore/keda/issues/4689))
 
 ### Deprecations
 
@@ -82,7 +87,6 @@ You can find all deprecations in [this overview](https://github.com/kedacore/ked
 New deprecation(s):
 
 - **Azure Data Explorer**: Deprecate `metadata.clientSecret` ([#4514](https://github.com/kedacore/keda/issues/4514))
-
 
 ### Breaking Changes
 
@@ -97,6 +101,8 @@ New deprecation(s):
 - **General**: Automatically scale test clusters in/out to reduce environmental footprint & improve cost-efficiency ([#4456](https://github.com/kedacore/keda/pull/4456))
 - **General**: Use default metrics provider from sigs.k8s.io/custom-metrics-apiserver ([#4473](https://github.com/kedacore/keda/pull/4473))
 - **General**: Refactor several functions for Status & Conditions handling into pkg util functions ([#2906](https://github.com/kedacore/keda/pull/2906))
+- **General**: Bump `kubernetes-sigs/controller-runtime` to v0.15.0 and code alignment ([#4582](https://github.com/kedacore/keda/pull/4582))
+- **General**: Stop logging errors for paused ScaledObject (with "autoscaling.keda.sh/paused-replicas" annotation) by skipping reconciliation loop for the object (stop the scale loop and delete the HPA) ([#4253](https://github.com/kedacore/keda/pull/4253))
 
 ## v2.10.1
 

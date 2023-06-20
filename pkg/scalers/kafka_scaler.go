@@ -134,7 +134,6 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	default:
 		saslAuthType = ""
 	}
-
 	if val, ok := config.AuthParams["sasl"]; ok {
 		if saslAuthType != "" {
 			return errors.New("unable to set `sasl` in both ScaledObject and TriggerAuthentication together")
@@ -143,6 +142,7 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	}
 
 	if saslAuthType != "" {
+		saslAuthType = strings.TrimSpace(saslAuthType)
 		mode := kafkaSaslType(saslAuthType)
 
 		if mode == KafkaSASLTypePlaintext || mode == KafkaSASLTypeSCRAMSHA256 || mode == KafkaSASLTypeSCRAMSHA512 || mode == KafkaSASLTypeOAuthbearer {

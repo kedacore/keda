@@ -182,6 +182,41 @@ func (d *database) ValidateQuery(ctx context.Context, query string) error {
 	return nil
 }
 
+// ExplainQuery explains an AQL query and return information about it.
+func (d *database) ExplainQuery(ctx context.Context, query string, bindVars map[string]interface{}, opts *ExplainQueryOptions) (ExplainQueryResult, error) {
+	req, err := d.conn.NewRequest("POST", path.Join(d.relPath(), "_api/explain"))
+	if err != nil {
+		return ExplainQueryResult{}, WithStack(err)
+	}
+	input := struct {
+		Query    string                 `json:"query"`
+		BindVars map[string]interface{} `json:"bindVars,omitempty"`
+		Opts     *ExplainQueryOptions   `json:"options,omitempty"`
+	}{
+		Query:    query,
+		BindVars: bindVars,
+		Opts:     opts,
+	}
+	if _, err := req.SetBody(input); err != nil {
+		return ExplainQueryResult{}, WithStack(err)
+	}
+	resp, err := d.conn.Do(ctx, req)
+	if err != nil {
+		return ExplainQueryResult{}, WithStack(err)
+	}
+
+	var result ExplainQueryResult
+	err = resp.ParseBody("", &result)
+	if err != nil {
+		return ExplainQueryResult{}, WithStack(err)
+	}
+
+	if err := resp.CheckStatus(200); err != nil {
+		return ExplainQueryResult{}, WithStack(err)
+	}
+	return result, nil
+}
+
 // OptimizerRulesForQueries returns the available optimizer rules for AQL query
 // returns an array of objects that contain the name of each available rule and its respective flags.
 func (d *database) OptimizerRulesForQueries(ctx context.Context) ([]QueryRule, error) {

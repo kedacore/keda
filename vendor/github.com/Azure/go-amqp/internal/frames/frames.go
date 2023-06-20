@@ -353,9 +353,6 @@ type Frame struct {
 	Type    Type      // AMQP/SASL
 	Channel uint16    // channel this frame is for
 	Body    FrameBody // body of the frame
-
-	// optional channel which will be closed after net transmit
-	Done chan encoding.DeliveryState
 }
 
 // String implements the fmt.Stringer interface for type Frame.

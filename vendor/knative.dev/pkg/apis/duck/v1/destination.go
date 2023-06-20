@@ -18,6 +18,8 @@ package v1
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/pem"
 
 	"knative.dev/pkg/apis"
 )
@@ -53,6 +55,7 @@ func (d *Destination) Validate(ctx context.Context) *apis.FieldError {
 func ValidateDestination(ctx context.Context, dest Destination) *apis.FieldError {
 	ref := dest.Ref
 	uri := dest.URI
+	caCerts := dest.CACerts
 	if ref == nil && uri == nil {
 		return apis.ErrGeneric("expected at least one, got none", "ref", "uri")
 	}
@@ -66,6 +69,9 @@ func ValidateDestination(ctx context.Context, dest Destination) *apis.FieldError
 	}
 	if ref != nil && uri == nil {
 		return ref.Validate(ctx).ViaField("ref")
+	}
+	if caCerts != nil {
+		return validateCACerts(caCerts)
 	}
 	return nil
 }
@@ -87,4 +93,21 @@ func (d *Destination) SetDefaults(ctx context.Context) {
 	if d.Ref != nil && d.Ref.Namespace == "" {
 		d.Ref.Namespace = apis.ParentMeta(ctx).Namespace
 	}
+}
+
+func validateCACerts(CACert *string) *apis.FieldError {
+	// Check the object.
+	var errs *apis.FieldError
+
+	block, err := pem.Decode([]byte(*CACert))
+	if err != nil && block == nil {
+		errs = errs.Also(apis.ErrInvalidValue("CA Cert provided is invalid", "caCert"))
+		return errs
+	}
+	if block.Type != "CERTIFICATE" {
+		errs = errs.Also(apis.ErrInvalidValue("CA Cert provided is not a certificate", "caCert"))
+	} else if _, err := x509.ParseCertificate(block.Bytes); err != nil {
+		errs = errs.Also(apis.ErrInvalidValue("CA Cert provided is invalid", "caCert"))
+	}
+	return errs
 }

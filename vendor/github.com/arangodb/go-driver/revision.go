@@ -167,7 +167,7 @@ func (n *RevisionUInt64) MarshalVPack() (velocypack.Slice, error) {
 // GetRevisionTree retrieves the Revision tree (Merkel tree) associated with the collection.
 func (c *client) GetRevisionTree(ctx context.Context, db Database, batchId, collection string) (RevisionTree, error) {
 
-	req, err := c.conn.NewRequest("GET", path.Join("_db", db.Name(), "_api/replication/revisions/tree"))
+	req, err := c.conn.NewRequest("GET", path.Join("_db", pathEscape(db.Name()), "_api/replication/revisions/tree"))
 	if err != nil {
 		return RevisionTree{}, WithStack(err)
 	}
@@ -196,7 +196,7 @@ func (c *client) GetRevisionTree(ctx context.Context, db Database, batchId, coll
 func (c *client) GetRevisionsByRanges(ctx context.Context, db Database, batchId, collection string,
 	minMaxRevision []RevisionMinMax, resume RevisionUInt64) (RevisionRanges, error) {
 
-	req, err := c.conn.NewRequest("PUT", path.Join("_db", db.Name(), "_api/replication/revisions/ranges"))
+	req, err := c.conn.NewRequest("PUT", path.Join("_db", pathEscape(db.Name()), "_api/replication/revisions/ranges"))
 	if err != nil {
 		return RevisionRanges{}, WithStack(err)
 	}
@@ -233,7 +233,7 @@ func (c *client) GetRevisionsByRanges(ctx context.Context, db Database, batchId,
 func (c *client) GetRevisionDocuments(ctx context.Context, db Database, batchId, collection string,
 	revisions Revisions) ([]map[string]interface{}, error) {
 
-	req, err := c.conn.NewRequest("PUT", path.Join("_db", db.Name(), "_api/replication/revisions/documents"))
+	req, err := c.conn.NewRequest("PUT", path.Join("_db", pathEscape(db.Name()), "_api/replication/revisions/documents"))
 	if err != nil {
 		return nil, WithStack(err)
 	}

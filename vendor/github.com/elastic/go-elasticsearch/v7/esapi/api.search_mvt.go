@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Code generated from specification version 7.17.7: DO NOT EDIT
+// Code generated from specification version 7.17.10: DO NOT EDIT
 
 package esapi
 
@@ -31,7 +31,7 @@ import (
 
 func newSearchMvtFunc(t Transport) SearchMvt {
 	return func(index []string, field string, zoom *int, x *int, y *int, o ...func(*SearchMvtRequest)) (*Response, error) {
-		var r = SearchMvtRequest{Index: index, Field: field, Zoom: zoom, X: x, Y: y}
+		var r = SearchMvtRequest{Index: index, Y: y, Field: field, Zoom: zoom, X: x}
 		for _, f := range o {
 			f(&r)
 		}

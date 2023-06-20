@@ -27,8 +27,10 @@ type DeviceCodeCredentialOptions struct {
 	// ClientID is the ID of the application users will authenticate to.
 	// Defaults to the ID of an Azure development application.
 	ClientID string
-	// DisableInstanceDiscovery should be true for applications authenticating in disconnected or private clouds.
-	// This skips a metadata request that will fail for such applications.
+	// DisableInstanceDiscovery should be set true only by applications authenticating in disconnected clouds, or
+	// private clouds such as Azure Stack. It determines whether the credential requests Azure AD instance metadata
+	// from https://login.microsoft.com before authenticating. Setting this to true will skip this request, making
+	// the application responsible for ensuring the configured authority is valid and trustworthy.
 	DisableInstanceDiscovery bool
 	// TenantID is the Azure Active Directory tenant the credential authenticates in. Defaults to the
 	// "organizations" tenant, which can authenticate work and school accounts. Required for single-tenant
@@ -85,7 +87,9 @@ func NewDeviceCodeCredential(options *DeviceCodeCredentialOptions) (*DeviceCodeC
 		cp = *options
 	}
 	cp.init()
-	c, err := getPublicClient(cp.ClientID, cp.TenantID, &cp.ClientOptions, public.WithInstanceDiscovery(!cp.DisableInstanceDiscovery))
+	c, err := getPublicClient(
+		cp.ClientID, cp.TenantID, &cp.ClientOptions, public.WithInstanceDiscovery(!cp.DisableInstanceDiscovery),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +105,7 @@ func (c *DeviceCodeCredential) GetToken(ctx context.Context, opts policy.TokenRe
 }
 
 func (c *DeviceCodeCredential) requestToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
-	dc, err := c.client.AcquireTokenByDeviceCode(ctx, opts.Scopes)
+	dc, err := c.client.AcquireTokenByDeviceCode(ctx, opts.Scopes, public.WithTenantID(opts.TenantID))
 	if err != nil {
 		return azcore.AccessToken{}, err
 	}
@@ -124,6 +128,7 @@ func (c *DeviceCodeCredential) requestToken(ctx context.Context, opts policy.Tok
 func (c *DeviceCodeCredential) silentAuth(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
 	ar, err := c.client.AcquireTokenSilent(ctx, opts.Scopes,
 		public.WithSilentAccount(c.account),
+		public.WithTenantID(opts.TenantID),
 	)
 	return azcore.AccessToken{Token: ar.AccessToken, ExpiresOn: ar.ExpiresOn.UTC()}, err
 }

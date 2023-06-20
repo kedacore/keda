@@ -33,6 +33,7 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/klog/v2/klogr"
 	ctrl "sigs.k8s.io/controller-runtime"
+	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
 	basecmd "sigs.k8s.io/custom-metrics-apiserver/pkg/cmd"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 
@@ -111,10 +112,12 @@ func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Durat
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		MetricsBindAddress: metricsBindAddress,
 		Scheme:             scheme,
-		Namespace:          namespace,
-		LeaseDuration:      leaseDuration,
-		RenewDeadline:      renewDeadline,
-		RetryPeriod:        retryPeriod,
+		Cache: ctrlcache.Options{
+			Namespaces: []string{namespace},
+		},
+		LeaseDuration: leaseDuration,
+		RenewDeadline: renewDeadline,
+		RetryPeriod:   retryPeriod,
 	})
 	if err != nil {
 		logger.Error(err, "failed to setup manager")
