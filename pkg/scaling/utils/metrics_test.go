@@ -1,9 +1,10 @@
 package utils
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	v2 "k8s.io/api/autoscaling/v2"
-	"testing"
 )
 
 func TestTargetAverageValue(t *testing.T) {
