@@ -69,7 +69,7 @@ require (
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a
 	go.etcd.io/etcd/client/v3 v3.5.9
 	go.mongodb.org/mongo-driver v1.11.7
-	go.temporal.io/api v1.21.0
+	go.temporal.io/api v1.23.0
 	go.temporal.io/sdk v1.23.0
 	golang.org/x/oauth2 v0.9.0
 	golang.org/x/sync v0.3.0
