@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package redis_standalone_streams_test
+package redis_cluster_streams_lag_test
 
 import (
 	"encoding/base64"
@@ -20,7 +20,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "redis-standalone-streams-test"
+	testName = "redis-cluster-streams-lag-test"
 )
 
 var (
@@ -32,10 +32,9 @@ var (
 	triggerAuthenticationName = fmt.Sprintf("%s-ta", testName)
 	secretName                = fmt.Sprintf("%s-secret", testName)
 	redisPassword             = "admin"
-	redisStreamName           = "stream"
-	redisAddress              = fmt.Sprintf("redis.%s.svc.cluster.local:6379", redisNamespace)
-	minReplicaCount           = 1
-	maxReplicaCount           = 2
+	redisHost                 = fmt.Sprintf("%s-headless", testName)
+	minReplicaCount           = 0
+	maxReplicaCount           = 4
 )
 
 type templateData struct {
@@ -50,8 +49,7 @@ type templateData struct {
 	MaxReplicaCount           int
 	RedisPassword             string
 	RedisPasswordBase64       string
-	RedisStreamName           string
-	RedisAddress              string
+	RedisHost                 string
 	ItemsToWrite              int
 }
 
@@ -79,15 +77,17 @@ spec:
         args: ["consumer"]
         env:
         - name: REDIS_MODE
-          value: STANDALONE
-        - name: REDIS_ADDRESS
-          value: {{.RedisAddress}}
+          value: CLUSTER
+        - name: REDIS_HOSTS
+          value: {{.RedisHost}}.{{.RedisNamespace}}
+        - name: REDIS_PORTS
+          value: "6379"
         - name: REDIS_STREAM_NAME
-          value: {{.RedisStreamName}}
+          value: my-stream
+        - name: REDIS_STREAM_CONSUMER_GROUP_NAME
+          value: consumer-group-1
         - name: REDIS_PASSWORD
           value: {{.RedisPassword}}
-        - name: REDIS_STREAM_CONSUMER_GROUP_NAME
-          value: "consumer-group-1"
 `
 
 	secretTemplate = `apiVersion: v1
@@ -130,12 +130,14 @@ spec:
         scaleDown:
           stabilizationWindowSeconds: 15
   triggers:
-  - type: redis-streams
+  - type: redis-cluster-streams
     metadata:
-      addressFromEnv: REDIS_ADDRESS
-      stream: {{.RedisStreamName}}
+      hostsFromEnv: REDIS_HOSTS
+      portsFromEnv: REDIS_PORTS
+      stream: my-stream
       consumerGroup: consumer-group-1
-      pendingEntriesCount: "15"
+      lagCount: "12"
+      activationLagCount: "10"
     authenticationRef:
       name: {{.TriggerAuthenticationName}}
 `
@@ -157,13 +159,15 @@ spec:
         args: ["producer"]
         env:
         - name: REDIS_MODE
-          value: STANDALONE
-        - name: REDIS_ADDRESS
-          value: {{.RedisAddress}}
+          value: CLUSTER
+        - name: REDIS_HOSTS
+          value: {{.RedisHost}}.{{.RedisNamespace}}
+        - name: REDIS_PORTS
+          value: "6379"
+        - name: REDIS_STREAM_NAME
+          value: my-stream
         - name: REDIS_PASSWORD
           value: {{.RedisPassword}}
-        - name: REDIS_STREAM_NAME
-          value: {{.RedisStreamName}}
         - name: NUM_MESSAGES
           value: "{{.ItemsToWrite}}"
       restartPolicy: Never
@@ -175,34 +179,51 @@ func TestScaler(t *testing.T) {
 	// Create kubernetes resources for PostgreSQL server
 	kc := GetKubernetesClient(t)
 
-	// Create Redis Standalone
-	redis.InstallStandalone(t, kc, testName, redisNamespace, redisPassword)
+	// Create Redis Cluster
+	redis.InstallCluster(t, kc, testName, redisNamespace, redisPassword)
 
 	// Create kubernetes resources for testing
 	data, templates := getTemplateData()
+
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	testScaleOut(t, kc, data)
-	testScaleIn(t, kc)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 3),
+		"replica count should be %d after 3 minutes", minReplicaCount)
 
-	// cleanup
-	redis.RemoveStandalone(t, testName, redisNamespace)
+	t.Log("--- testing activation ---")
+	testActivationValue(t, kc, data, 10)
+
+	t.Log("--- testing scale out with one more than activation value ---")
+	testScaleOut(t, kc, data, 1, 1)
+
+	t.Log("--- testing scale out with many messages ---")
+	testScaleOut(t, kc, data, 100, maxReplicaCount)
+
+	t.Log("--- testing scale in ---")
+	testScaleIn(t, kc, minReplicaCount)
+
+	// Clean up
 	DeleteKubernetesResources(t, testNamespace, data, templates)
+	redis.RemoveCluster(t, testName, redisNamespace)
 }
 
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing scale out ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData, numMessages int, maxReplicas int) {
+	data.ItemsToWrite = numMessages
 	KubectlApplyWithTemplate(t, data, "insertJobTemplate", insertJobTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
-		"replica count should be %d after 3 minutes", maxReplicaCount)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicas, 60, 3),
+		"replica count should be %d after 3 minutes", maxReplicas)
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale in ---")
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, minReplicas int) {
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicas, 60, 3),
+		"replica count should be %d after 3 minutes", minReplicas)
+}
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %d after 3 minutes", minReplicaCount)
+func testActivationValue(t *testing.T, kc *kubernetes.Clientset, data templateData, numMessages int) {
+	data.ItemsToWrite = numMessages
+	KubectlApplyWithTemplate(t, data, "insertJobTemplate", insertJobTemplate)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
 }
 
 var data = templateData{
@@ -217,9 +238,8 @@ var data = templateData{
 	JobName:                   jobName,
 	RedisPassword:             redisPassword,
 	RedisPasswordBase64:       base64.StdEncoding.EncodeToString([]byte(redisPassword)),
-	RedisStreamName:           redisStreamName,
-	RedisAddress:              redisAddress,
-	ItemsToWrite:              20,
+	RedisHost:                 redisHost,
+	ItemsToWrite:              1,
 }
 
 func getTemplateData() (templateData, []Template) {
