@@ -1,0 +1,451 @@
+// The MIT License
+//
+// Copyright (c) 2021 Temporal Technologies Inc.  All rights reserved.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+package internal
+
+import (
+	"context"
+	"time"
+
+	"go.temporal.io/sdk/converter"
+	"go.temporal.io/sdk/internal/common/metrics"
+	"go.temporal.io/sdk/log"
+)
+
+// InterceptorBase is a default implementation of Interceptor meant for
+// embedding. See documentation in the interceptor package for more details.
+type InterceptorBase struct {
+	ClientInterceptorBase
+	WorkerInterceptorBase
+}
+
+// WorkerInterceptorBase is a default implementation of WorkerInterceptor meant
+// for embedding. See documentation in the interceptor package for more details.
+type WorkerInterceptorBase struct{}
+
+var _ WorkerInterceptor = &WorkerInterceptorBase{}
+
+// InterceptActivity implements WorkerInterceptor.InterceptActivity.
+func (*WorkerInterceptorBase) InterceptActivity(
+	ctx context.Context,
+	next ActivityInboundInterceptor,
+) ActivityInboundInterceptor {
+	return &ActivityInboundInterceptorBase{Next: next}
+}
+
+// InterceptWorkflow implements WorkerInterceptor.InterceptWorkflow.
+func (*WorkerInterceptorBase) InterceptWorkflow(
+	ctx Context,
+	next WorkflowInboundInterceptor,
+) WorkflowInboundInterceptor {
+	return &WorkflowInboundInterceptorBase{Next: next}
+}
+
+func (*WorkerInterceptorBase) mustEmbedWorkerInterceptorBase() {}
+
+// ActivityInboundInterceptorBase is a default implementation of
+// ActivityInboundInterceptor meant for embedding. See documentation in the
+// interceptor package for more details.
+type ActivityInboundInterceptorBase struct {
+	Next ActivityInboundInterceptor
+}
+
+var _ ActivityInboundInterceptor = &ActivityInboundInterceptorBase{}
+
+// Init implements ActivityInboundInterceptor.Init.
+func (a *ActivityInboundInterceptorBase) Init(outbound ActivityOutboundInterceptor) error {
+	return a.Next.Init(outbound)
+}
+
+// ExecuteActivity implements ActivityInboundInterceptor.ExecuteActivity.
+func (a *ActivityInboundInterceptorBase) ExecuteActivity(
+	ctx context.Context,
+	in *ExecuteActivityInput,
+) (interface{}, error) {
+	return a.Next.ExecuteActivity(ctx, in)
+}
+
+func (*ActivityInboundInterceptorBase) mustEmbedActivityInboundInterceptorBase() {}
+
+// ActivityOutboundInterceptorBase is a default implementation of
+// ActivityOutboundInterceptor meant for embedding. See documentation in the
+// interceptor package for more details.
+type ActivityOutboundInterceptorBase struct {
+	Next ActivityOutboundInterceptor
+}
+
+var _ ActivityOutboundInterceptor = &ActivityOutboundInterceptorBase{}
+
+// GetInfo implements ActivityOutboundInterceptor.GetInfo.
+func (a *ActivityOutboundInterceptorBase) GetInfo(ctx context.Context) ActivityInfo {
+	return a.Next.GetInfo(ctx)
+}
+
+// GetLogger implements ActivityOutboundInterceptor.GetLogger.
+func (a *ActivityOutboundInterceptorBase) GetLogger(ctx context.Context) log.Logger {
+	return a.Next.GetLogger(ctx)
+}
+
+// GetMetricsHandler implements ActivityOutboundInterceptor.GetMetricsHandler.
+func (a *ActivityOutboundInterceptorBase) GetMetricsHandler(ctx context.Context) metrics.Handler {
+	return a.Next.GetMetricsHandler(ctx)
+}
+
+// RecordHeartbeat implements ActivityOutboundInterceptor.RecordHeartbeat.
+func (a *ActivityOutboundInterceptorBase) RecordHeartbeat(ctx context.Context, details ...interface{}) {
+	a.Next.RecordHeartbeat(ctx, details...)
+}
+
+// HasHeartbeatDetails implements
+// ActivityOutboundInterceptor.HasHeartbeatDetails.
+func (a *ActivityOutboundInterceptorBase) HasHeartbeatDetails(ctx context.Context) bool {
+	return a.Next.HasHeartbeatDetails(ctx)
+}
+
+// GetHeartbeatDetails implements
+// ActivityOutboundInterceptor.GetHeartbeatDetails.
+func (a *ActivityOutboundInterceptorBase) GetHeartbeatDetails(ctx context.Context, d ...interface{}) error {
+	return a.Next.GetHeartbeatDetails(ctx, d...)
+}
+
+// GetWorkerStopChannel implements
+// ActivityOutboundInterceptor.GetWorkerStopChannel.
+func (a *ActivityOutboundInterceptorBase) GetWorkerStopChannel(ctx context.Context) <-chan struct{} {
+	return a.Next.GetWorkerStopChannel(ctx)
+}
+
+func (*ActivityOutboundInterceptorBase) mustEmbedActivityOutboundInterceptorBase() {}
+
+// WorkflowInboundInterceptorBase is a default implementation of
+// WorkflowInboundInterceptor meant for embedding. See documentation in the
+// interceptor package for more details.
+type WorkflowInboundInterceptorBase struct {
+	Next WorkflowInboundInterceptor
+}
+
+var _ WorkflowInboundInterceptor = &WorkflowInboundInterceptorBase{}
+
+// Init implements WorkflowInboundInterceptor.Init.
+func (w *WorkflowInboundInterceptorBase) Init(outbound WorkflowOutboundInterceptor) error {
+	return w.Next.Init(outbound)
+}
+
+// ExecuteWorkflow implements WorkflowInboundInterceptor.ExecuteWorkflow.
+func (w *WorkflowInboundInterceptorBase) ExecuteWorkflow(ctx Context, in *ExecuteWorkflowInput) (interface{}, error) {
+	return w.Next.ExecuteWorkflow(ctx, in)
+}
+
+// HandleSignal implements WorkflowInboundInterceptor.HandleSignal.
+func (w *WorkflowInboundInterceptorBase) HandleSignal(ctx Context, in *HandleSignalInput) error {
+	return w.Next.HandleSignal(ctx, in)
+}
+
+// ExecuteUpdate implements WorkflowInboundInterceptor.ExecuteUpdate.
+func (w *WorkflowInboundInterceptorBase) ExecuteUpdate(ctx Context, in *UpdateInput) (interface{}, error) {
+	return w.Next.ExecuteUpdate(ctx, in)
+}
+
+// ValidateUpdate implements WorkflowInboundInterceptor.ValidateUpdate.
+func (w *WorkflowInboundInterceptorBase) ValidateUpdate(ctx Context, in *UpdateInput) error {
+	return w.Next.ValidateUpdate(ctx, in)
+}
+
+// HandleQuery implements WorkflowInboundInterceptor.HandleQuery.
+func (w *WorkflowInboundInterceptorBase) HandleQuery(ctx Context, in *HandleQueryInput) (interface{}, error) {
+	return w.Next.HandleQuery(ctx, in)
+}
+
+func (*WorkflowInboundInterceptorBase) mustEmbedWorkflowInboundInterceptorBase() {}
+
+// WorkflowOutboundInterceptorBase is a default implementation of
+// WorkflowOutboundInterceptor meant for embedding. See documentation in the
+// interceptor package for more details.
+type WorkflowOutboundInterceptorBase struct {
+	Next WorkflowOutboundInterceptor
+}
+
+var _ WorkflowOutboundInterceptor = &WorkflowOutboundInterceptorBase{}
+
+// Go implements WorkflowOutboundInterceptor.Go.
+func (w *WorkflowOutboundInterceptorBase) Go(ctx Context, name string, f func(ctx Context)) Context {
+	return w.Next.Go(ctx, name, f)
+}
+
+// ExecuteActivity implements WorkflowOutboundInterceptor.ExecuteActivity.
+func (w *WorkflowOutboundInterceptorBase) ExecuteActivity(ctx Context, activityType string, args ...interface{}) Future {
+	return w.Next.ExecuteActivity(ctx, activityType, args...)
+}
+
+// ExecuteLocalActivity implements WorkflowOutboundInterceptor.ExecuteLocalActivity.
+func (w *WorkflowOutboundInterceptorBase) ExecuteLocalActivity(
+	ctx Context,
+	activityType string,
+	args ...interface{},
+) Future {
+	return w.Next.ExecuteLocalActivity(ctx, activityType, args...)
+}
+
+// ExecuteChildWorkflow implements WorkflowOutboundInterceptor.ExecuteChildWorkflow.
+func (w *WorkflowOutboundInterceptorBase) ExecuteChildWorkflow(
+	ctx Context,
+	childWorkflowType string,
+	args ...interface{},
+) ChildWorkflowFuture {
+	return w.Next.ExecuteChildWorkflow(ctx, childWorkflowType, args...)
+}
+
+// GetInfo implements WorkflowOutboundInterceptor.GetInfo.
+func (w *WorkflowOutboundInterceptorBase) GetInfo(ctx Context) *WorkflowInfo {
+	return w.Next.GetInfo(ctx)
+}
+
+// GetLogger implements WorkflowOutboundInterceptor.GetLogger.
+func (w *WorkflowOutboundInterceptorBase) GetLogger(ctx Context) log.Logger {
+	return w.Next.GetLogger(ctx)
+}
+
+// GetMetricsHandler implements WorkflowOutboundInterceptor.GetMetricsHandler.
+func (w *WorkflowOutboundInterceptorBase) GetMetricsHandler(ctx Context) metrics.Handler {
+	return w.Next.GetMetricsHandler(ctx)
+}
+
+// Now implements WorkflowOutboundInterceptor.Now.
+func (w *WorkflowOutboundInterceptorBase) Now(ctx Context) time.Time {
+	return w.Next.Now(ctx)
+}
+
+// NewTimer implements WorkflowOutboundInterceptor.NewTimer.
+func (w *WorkflowOutboundInterceptorBase) NewTimer(ctx Context, d time.Duration) Future {
+	return w.Next.NewTimer(ctx, d)
+}
+
+// Sleep implements WorkflowOutboundInterceptor.Sleep.
+func (w *WorkflowOutboundInterceptorBase) Sleep(ctx Context, d time.Duration) (err error) {
+	return w.Next.Sleep(ctx, d)
+}
+
+// RequestCancelExternalWorkflow implements
+// WorkflowOutboundInterceptor.RequestCancelExternalWorkflow.
+func (w *WorkflowOutboundInterceptorBase) RequestCancelExternalWorkflow(
+	ctx Context,
+	workflowID string,
+	runID string,
+) Future {
+	return w.Next.RequestCancelExternalWorkflow(ctx, workflowID, runID)
+}
+
+// SignalExternalWorkflow implements
+// WorkflowOutboundInterceptor.SignalExternalWorkflow.
+func (w *WorkflowOutboundInterceptorBase) SignalExternalWorkflow(
+	ctx Context,
+	workflowID string,
+	runID string,
+	signalName string,
+	arg interface{},
+) Future {
+	return w.Next.SignalExternalWorkflow(ctx, workflowID, runID, signalName, arg)
+}
+
+// SignalChildWorkflow implements
+// WorkflowOutboundInterceptor.SignalChildWorkflow.
+func (w *WorkflowOutboundInterceptorBase) SignalChildWorkflow(
+	ctx Context,
+	workflowID string,
+	signalName string,
+	arg interface{},
+) Future {
+	return w.Next.SignalChildWorkflow(ctx, workflowID, signalName, arg)
+}
+
+// UpsertSearchAttributes implements
+// WorkflowOutboundInterceptor.UpsertSearchAttributes.
+func (w *WorkflowOutboundInterceptorBase) UpsertSearchAttributes(ctx Context, attributes map[string]interface{}) error {
+	return w.Next.UpsertSearchAttributes(ctx, attributes)
+}
+
+// UpsertMemo implements
+// WorkflowOutboundInterceptor.UpsertMemo.
+func (w *WorkflowOutboundInterceptorBase) UpsertMemo(ctx Context, memo map[string]interface{}) error {
+	return w.Next.UpsertMemo(ctx, memo)
+}
+
+// GetSignalChannel implements WorkflowOutboundInterceptor.GetSignalChannel.
+func (w *WorkflowOutboundInterceptorBase) GetSignalChannel(ctx Context, signalName string) ReceiveChannel {
+	return w.Next.GetSignalChannel(ctx, signalName)
+}
+
+// SideEffect implements WorkflowOutboundInterceptor.SideEffect.
+func (w *WorkflowOutboundInterceptorBase) SideEffect(
+	ctx Context,
+	f func(ctx Context) interface{},
+) converter.EncodedValue {
+	return w.Next.SideEffect(ctx, f)
+}
+
+// MutableSideEffect implements WorkflowOutboundInterceptor.MutableSideEffect.
+func (w *WorkflowOutboundInterceptorBase) MutableSideEffect(
+	ctx Context,
+	id string,
+	f func(ctx Context) interface{},
+	equals func(a, b interface{}) bool,
+) converter.EncodedValue {
+	return w.Next.MutableSideEffect(ctx, id, f, equals)
+}
+
+// GetVersion implements WorkflowOutboundInterceptor.GetVersion.
+func (w *WorkflowOutboundInterceptorBase) GetVersion(
+	ctx Context,
+	changeID string,
+	minSupported Version,
+	maxSupported Version,
+) Version {
+	return w.Next.GetVersion(ctx, changeID, minSupported, maxSupported)
+}
+
+// SetQueryHandler implements WorkflowOutboundInterceptor.SetQueryHandler.
+func (w *WorkflowOutboundInterceptorBase) SetQueryHandler(ctx Context, queryType string, handler interface{}) error {
+	return w.Next.SetQueryHandler(ctx, queryType, handler)
+}
+
+// SetUpdateHandler implements WorkflowOutboundInterceptor.SetUpdateHandler.
+func (w *WorkflowOutboundInterceptorBase) SetUpdateHandler(ctx Context, updateName string, handler interface{}, opts UpdateHandlerOptions) error {
+	return w.Next.SetUpdateHandler(ctx, updateName, handler, opts)
+}
+
+// IsReplaying implements WorkflowOutboundInterceptor.IsReplaying.
+func (w *WorkflowOutboundInterceptorBase) IsReplaying(ctx Context) bool {
+	return w.Next.IsReplaying(ctx)
+}
+
+// HasLastCompletionResult implements
+// WorkflowOutboundInterceptor.HasLastCompletionResult.
+func (w *WorkflowOutboundInterceptorBase) HasLastCompletionResult(ctx Context) bool {
+	return w.Next.HasLastCompletionResult(ctx)
+}
+
+// GetLastCompletionResult implements
+// WorkflowOutboundInterceptor.GetLastCompletionResult.
+func (w *WorkflowOutboundInterceptorBase) GetLastCompletionResult(ctx Context, d ...interface{}) error {
+	return w.Next.GetLastCompletionResult(ctx, d...)
+}
+
+// GetLastError implements WorkflowOutboundInterceptor.GetLastError.
+func (w *WorkflowOutboundInterceptorBase) GetLastError(ctx Context) error {
+	return w.Next.GetLastError(ctx)
+}
+
+// NewContinueAsNewError implements
+// WorkflowOutboundInterceptor.NewContinueAsNewError.
+func (w *WorkflowOutboundInterceptorBase) NewContinueAsNewError(
+	ctx Context,
+	wfn interface{},
+	args ...interface{},
+) error {
+	return w.Next.NewContinueAsNewError(ctx, wfn, args...)
+}
+
+func (*WorkflowOutboundInterceptorBase) mustEmbedWorkflowOutboundInterceptorBase() {}
+
+// ClientInterceptorBase is a default implementation of ClientInterceptor meant
+// for embedding. See documentation in the interceptor package for more details.
+type ClientInterceptorBase struct{}
+
+var _ ClientInterceptor = &ClientInterceptorBase{}
+
+// InterceptClient implements ClientInterceptor.InterceptClient.
+func (*ClientInterceptorBase) InterceptClient(
+	next ClientOutboundInterceptor,
+) ClientOutboundInterceptor {
+	return &ClientOutboundInterceptorBase{Next: next}
+}
+
+func (*ClientInterceptorBase) mustEmbedClientInterceptorBase() {}
+
+// ClientOutboundInterceptorBase is a default implementation of
+// ClientOutboundInterceptor meant for embedding. See documentation in the
+// interceptor package for more details.
+type ClientOutboundInterceptorBase struct {
+	Next ClientOutboundInterceptor
+}
+
+var _ ClientOutboundInterceptor = &ClientOutboundInterceptorBase{}
+
+func (c *ClientOutboundInterceptorBase) UpdateWorkflow(
+	ctx context.Context,
+	in *ClientUpdateWorkflowInput,
+) (WorkflowUpdateHandle, error) {
+	return c.Next.UpdateWorkflow(ctx, in)
+}
+
+func (c *ClientOutboundInterceptorBase) PollWorkflowUpdate(
+	ctx context.Context,
+	in *ClientPollWorkflowUpdateInput,
+) (converter.EncodedValue, error) {
+	return c.Next.PollWorkflowUpdate(ctx, in)
+}
+
+// ExecuteWorkflow implements ClientOutboundInterceptor.ExecuteWorkflow.
+func (c *ClientOutboundInterceptorBase) ExecuteWorkflow(
+	ctx context.Context,
+	in *ClientExecuteWorkflowInput,
+) (WorkflowRun, error) {
+	return c.Next.ExecuteWorkflow(ctx, in)
+}
+
+// SignalWorkflow implements ClientOutboundInterceptor.SignalWorkflow.
+func (c *ClientOutboundInterceptorBase) SignalWorkflow(ctx context.Context, in *ClientSignalWorkflowInput) error {
+	return c.Next.SignalWorkflow(ctx, in)
+}
+
+// SignalWithStartWorkflow implements
+// ClientOutboundInterceptor.SignalWithStartWorkflow.
+func (c *ClientOutboundInterceptorBase) SignalWithStartWorkflow(
+	ctx context.Context,
+	in *ClientSignalWithStartWorkflowInput,
+) (WorkflowRun, error) {
+	return c.Next.SignalWithStartWorkflow(ctx, in)
+}
+
+// CancelWorkflow implements ClientOutboundInterceptor.CancelWorkflow.
+func (c *ClientOutboundInterceptorBase) CancelWorkflow(ctx context.Context, in *ClientCancelWorkflowInput) error {
+	return c.Next.CancelWorkflow(ctx, in)
+}
+
+// TerminateWorkflow implements ClientOutboundInterceptor.TerminateWorkflow.
+func (c *ClientOutboundInterceptorBase) TerminateWorkflow(ctx context.Context, in *ClientTerminateWorkflowInput) error {
+	return c.Next.TerminateWorkflow(ctx, in)
+}
+
+// QueryWorkflow implements ClientOutboundInterceptor.QueryWorkflow.
+func (c *ClientOutboundInterceptorBase) QueryWorkflow(
+	ctx context.Context,
+	in *ClientQueryWorkflowInput,
+) (converter.EncodedValue, error) {
+	return c.Next.QueryWorkflow(ctx, in)
+}
+
+// ExecuteWorkflow implements ClientOutboundInterceptor.CreateSchedule.
+func (c *ClientOutboundInterceptorBase) CreateSchedule(ctx context.Context, in *ScheduleClientCreateInput) (ScheduleHandle, error) {
+	return c.Next.CreateSchedule(ctx, in)
+}
+
+func (*ClientOutboundInterceptorBase) mustEmbedClientOutboundInterceptorBase() {}
