@@ -127,3 +127,8 @@ func (*ListCollectionsBatchCursor) projectNameElement(rawDoc bsoncore.Document) 
 	filteredDoc = bsoncore.BuildDocument(filteredDoc, filteredElems)
 	return filteredDoc, nil
 }
+
+// SetBatchSize sets the batchSize for future getMores.
+func (lcbc *ListCollectionsBatchCursor) SetBatchSize(size int32) {
+	lcbc.bc.SetBatchSize(size)
+}

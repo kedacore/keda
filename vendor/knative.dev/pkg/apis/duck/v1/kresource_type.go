@@ -23,6 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
 	"knative.dev/pkg/apis/duck/ducktypes"
 
 	"knative.dev/pkg/apis"
@@ -41,6 +42,7 @@ type KRShaped interface {
 // Asserts KResource conformance with KRShaped
 var _ KRShaped = (*KResource)(nil)
 
+// +genduck
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // KResource is a skeleton type wrapping Conditions in the manner we expect
@@ -52,6 +54,11 @@ type KResource struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Status Status `json:"status"`
+}
+
+// GetFullType implements duck.Implementable
+func (*KResource) GetFullType() ducktypes.Populatable {
+	return &KResource{}
 }
 
 // Populate implements duck.Populatable
