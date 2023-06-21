@@ -308,6 +308,7 @@ github.com/aws/aws-sdk-go/service/dynamodbstreams
 github.com/aws/aws-sdk-go/service/dynamodbstreams/dynamodbstreamsiface
 github.com/aws/aws-sdk-go/service/kinesis
 github.com/aws/aws-sdk-go/service/kinesis/kinesisiface
+github.com/aws/aws-sdk-go/service/secretsmanager
 github.com/aws/aws-sdk-go/service/sqs
 github.com/aws/aws-sdk-go/service/sqs/sqsiface
 github.com/aws/aws-sdk-go/service/sso

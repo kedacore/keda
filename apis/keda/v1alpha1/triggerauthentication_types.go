@@ -78,6 +78,9 @@ type TriggerAuthenticationSpec struct {
 
 	// +optional
 	AzureKeyVault *AzureKeyVault `json:"azureKeyVault,omitempty"`
+
+	// +optional
+	AwsSecretManager *AwsSecretManager `json:"awsSecretManager,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -225,6 +228,37 @@ type AzureKeyVaultCloudInfo struct {
 	KeyVaultResourceURL string `json:"keyVaultResourceURL"`
 	// +optional
 	ActiveDirectoryEndpoint string `json:"activeDirectoryEndpoint"`
+}
+
+// AwsSecretManager is used to authenticate using AwsSecretManager
+type AwsSecretManager struct {
+	Credentials *AwsSecretManagerCredentials `json:"credentials"`
+	Secrets     []AwsSecretManagerSecret     `json:"secret"`
+
+	// +optional
+	PodIdentity *AuthPodIdentity `json:"podIdentity"`
+
+	Cloud *AwsSecretMangerCloudInfo `json:"cloud"`
+}
+
+type AwsSecretManagerCredentials struct {
+	ValuesFrom string `json:"valueFrom"`
+}
+
+type AwsSecretManagerSecret struct {
+	Parameter string `json:"parameter"`
+	Name      string `json:"name"`
+	// +optional
+	VersionId string `json:"versionId,omitempty"`
+	// +optional
+	VersionStage string `json:"versionStage,omitempty"`
+}
+
+type AwsSecretMangerCloudInfo struct {
+	// +optional
+	Region string `json:"region,omitempty"`
+	// +optional
+	Endpoint string `json:"endpoint,omitempty"`
 }
 
 func init() {
