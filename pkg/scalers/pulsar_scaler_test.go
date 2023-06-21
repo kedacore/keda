@@ -262,7 +262,6 @@ func TestPulsarAuthParams(t *testing.T) {
 		if meta.pulsarAuth.ClientSecret != testData.clientSecret {
 			t.Errorf("Expected clientSecret to be set to %s but got %s\n", testData.clientSecret, meta.pulsarAuth.ClientSecret)
 		}
-
 	}
 }
 

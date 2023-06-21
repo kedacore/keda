@@ -62,6 +62,9 @@ type SubscriptionProperties struct {
 
 	// UserMetadata is custom metadata that user can associate with the subscription.
 	UserMetadata *string
+
+	// DefaultRule is a rule that is added to the subscription as soon as it is created.
+	DefaultRule *RuleProperties
 }
 
 // SubscriptionRuntimeProperties represent dynamic properties of a subscription, such as the ActiveMessageCount.
@@ -338,7 +341,11 @@ func (ac *Client) createOrUpdateSubscriptionImpl(ctx context.Context, topicName 
 		props = &SubscriptionProperties{}
 	}
 
-	env := newSubscriptionEnvelope(props, ac.em.TokenProvider())
+	env, err := newSubscriptionEnvelope(props, ac.em.TokenProvider())
+
+	if err != nil {
+		return nil, nil, err
+	}
 
 	if !creating {
 		ctx = runtime.WithHTTPHeader(ctx, http.Header{
@@ -367,7 +374,13 @@ func (ac *Client) createOrUpdateSubscriptionImpl(ctx context.Context, topicName 
 	return &item.SubscriptionProperties, resp, nil
 }
 
-func newSubscriptionEnvelope(props *SubscriptionProperties, tokenProvider auth.TokenProvider) *atom.SubscriptionEnvelope {
+func newSubscriptionEnvelope(props *SubscriptionProperties, tokenProvider auth.TokenProvider) (*atom.SubscriptionEnvelope, error) {
+	defaultRuleDescription, err := newDefaultRuleDescription(props.DefaultRule)
+
+	if err != nil {
+		return nil, err
+	}
+
 	desc := &atom.SubscriptionDescription{
 		DefaultMessageTimeToLive:                  props.DefaultMessageTimeToLive,
 		LockDuration:                              props.LockDuration,
@@ -380,12 +393,39 @@ func newSubscriptionEnvelope(props *SubscriptionProperties, tokenProvider auth.T
 		UserMetadata:                              props.UserMetadata,
 		EnableBatchedOperations:                   props.EnableBatchedOperations,
 		AutoDeleteOnIdle:                          props.AutoDeleteOnIdle,
-		// TODO: when we get rule serialization in place.
-		// DefaultRuleDescription:                    props.DefaultRuleDescription,
-		// are these attributes just not valid anymore?
+		DefaultRuleDescription:                    defaultRuleDescription,
 	}
 
-	return atom.WrapWithSubscriptionEnvelope(desc)
+	return atom.WrapWithSubscriptionEnvelope(desc), nil
+}
+
+func newDefaultRuleDescription(properties *RuleProperties) (*atom.DefaultRuleDescription, error) {
+	if properties == nil {
+		return nil, nil
+	}
+
+	ruleDescription := atom.DefaultRuleDescription{
+		Name: makeRuleNameForProperties(properties),
+	}
+
+	filter, err := convertRuleFilterToFilterDescription(&properties.Filter)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter can never be nil because it's default is TrueFilter
+	ruleDescription.Filter = filter
+
+	action, err := convertRuleActionToActionDescription(&properties.Action)
+
+	if err != nil {
+		return nil, err
+	}
+
+	ruleDescription.Action = action
+
+	return &ruleDescription, nil
 }
 
 func newSubscriptionItem(env *atom.SubscriptionEnvelope, topicName string) (*SubscriptionPropertiesItem, error) {

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	gha "github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -38,11 +39,14 @@ type githubRunnerMetadata struct {
 	githubAPIURL              string
 	owner                     string
 	runnerScope               string
-	personalAccessToken       string
+	personalAccessToken       *string
 	repos                     []string
 	labels                    []string
 	targetWorkflowQueueLength int64
 	scalerIndex               int
+	applicationID             *int64
+	installationID            *int64
+	applicationKey            *string
 }
 
 type WorkflowRuns struct {
@@ -334,6 +338,15 @@ func NewGitHubRunnerScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing GitHub Runner metadata: %w", err)
 	}
 
+	if meta.applicationID != nil && meta.installationID != nil && meta.applicationKey != nil {
+		httpTrans := kedautil.CreateHTTPTransport(false)
+		hc, err := gha.New(httpTrans, *meta.applicationID, *meta.installationID, []byte(*meta.applicationKey))
+		if err != nil {
+			return nil, fmt.Errorf("error creating GitHub App client: %w, \n appID: %d, instID: %d", err, meta.applicationID, meta.installationID)
+		}
+		httpClient = &http.Client{Transport: hc}
+	}
+
 	return &githubRunnerScaler{
 		metricType: metricType,
 		metadata:   meta,
@@ -367,7 +380,7 @@ func getInt64ValueFromMetaOrEnv(key string, config *ScalerConfig) (int64, error)
 }
 
 func parseGitHubRunnerMetadata(config *ScalerConfig) (*githubRunnerMetadata, error) {
-	meta := githubRunnerMetadata{}
+	meta := &githubRunnerMetadata{}
 	meta.targetWorkflowQueueLength = defaultTargetWorkflowQueueLength
 
 	if val, err := getValueFromMetaOrEnv("runnerScope", config.TriggerMetadata, config.ResolvedEnv); err == nil && val != "" {
@@ -403,15 +416,50 @@ func parseGitHubRunnerMetadata(config *ScalerConfig) (*githubRunnerMetadata, err
 	}
 
 	if val, ok := config.AuthParams["personalAccessToken"]; ok && val != "" {
-		// Found the organizationURL in a parameter from TriggerAuthentication
-		meta.personalAccessToken = val
+		// Found the pat token in a parameter from TriggerAuthentication
+		meta.personalAccessToken = &val
+	}
+
+	if appID, instID, key, err := setupGitHubApp(config); err == nil {
+		meta.applicationID = appID
+		meta.installationID = instID
+		meta.applicationKey = key
 	} else {
-		return nil, fmt.Errorf("no personalAccessToken given")
+		return nil, err
+	}
+
+	if meta.applicationKey == nil && meta.personalAccessToken == nil {
+		return nil, fmt.Errorf("no personalAccessToken or appKey given")
 	}
 
 	meta.scalerIndex = config.ScalerIndex
 
-	return &meta, nil
+	return meta, nil
+}
+
+func setupGitHubApp(config *ScalerConfig) (*int64, *int64, *string, error) {
+	var appID *int64
+	var instID *int64
+	var appKey *string
+
+	if val, err := getInt64ValueFromMetaOrEnv("applicationID", config); err == nil && val != -1 {
+		appID = &val
+	}
+
+	if val, err := getInt64ValueFromMetaOrEnv("installationID", config); err == nil && val != -1 {
+		instID = &val
+	}
+
+	if val, ok := config.AuthParams["appKey"]; ok && val != "" {
+		appKey = &val
+	}
+
+	if (appID != nil || instID != nil || appKey != nil) &&
+		(appID == nil || instID == nil || appKey == nil) {
+		return nil, nil, nil, fmt.Errorf("applicationID, installationID and applicationKey must be given")
+	}
+
+	return appID, instID, appKey, nil
 }
 
 // getRepositories returns a list of repositories for a given organization, user or enterprise
@@ -457,8 +505,11 @@ func getGithubRequest(ctx context.Context, url string, metadata *githubRunnerMet
 	}
 
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
-	req.Header.Set("Authorization", "Bearer "+metadata.personalAccessToken)
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+
+	if metadata.applicationID == nil && metadata.personalAccessToken != nil {
+		req.Header.Set("Authorization", "Bearer "+*metadata.personalAccessToken)
+	}
 
 	r, err := httpClient.Do(req)
 	if err != nil {

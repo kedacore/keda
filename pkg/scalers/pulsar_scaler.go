@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -203,34 +202,19 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 	}
 
 	if auth != nil && auth.EnableOAuth {
-		auth.OauthTokenURI = readOAuthConfig(auth, config.TriggerMetadata, "OauthTokenURI")
-		auth.ClientID = readOAuthConfig(auth, config.TriggerMetadata, "ClientID")
+		if auth.OauthTokenURI == "" {
+			auth.OauthTokenURI = config.TriggerMetadata["oauthTokenURI"]
+		}
 		if auth.Scopes == nil && config.TriggerMetadata["scope"] != "" {
 			auth.Scopes = strings.Split(config.TriggerMetadata["scope"], " ")
+		}
+		if auth.ClientID == "" {
+			auth.ClientID = config.TriggerMetadata["clientID"]
 		}
 	}
 	meta.pulsarAuth = auth
 	meta.scalerIndex = config.ScalerIndex
 	return meta, nil
-}
-
-// use values from authenticationRef if provided, otherwise try the metadata
-func readOAuthConfig(auth *authentication.AuthMeta, TriggerMetadata map[string]string, key string) string {
-	authValue := reflect.ValueOf(auth).Elem()
-	value := authValue.FieldByName(key)
-	if value.IsValid() {
-		val := value.Interface().(string)
-		if val != "" {
-			return val
-		}
-	}
-
-	jsonKey := strings.ToLower(string(key[0])) + key[1:]
-	if value, ok := TriggerMetadata[jsonKey]; ok {
-		return fmt.Sprintf("%v", value)
-	}
-
-	return ""
 }
 
 func (s *pulsarScaler) GetStats(ctx context.Context) (*pulsarStats, error) {

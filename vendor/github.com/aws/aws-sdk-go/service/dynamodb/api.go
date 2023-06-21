@@ -190,10 +190,11 @@ func (c *DynamoDB) BatchGetItemRequest(input *BatchGetItemInput) (req *request.R
 //
 // A single operation can retrieve up to 16 MB of data, which can contain as
 // many as 100 items. BatchGetItem returns a partial result if the response
-// size limit is exceeded, the table's provisioned throughput is exceeded, or
-// an internal processing failure occurs. If a partial result is returned, the
-// operation returns a value for UnprocessedKeys. You can use this value to
-// retry the operation starting with the next item to get.
+// size limit is exceeded, the table's provisioned throughput is exceeded, more
+// than 1MB per partition is requested, or an internal processing failure occurs.
+// If a partial result is returned, the operation returns a value for UnprocessedKeys.
+// You can use this value to retry the operation starting with the next item
+// to get.
 //
 // If you request more than 100 items, BatchGetItem returns a ValidationException
 // with the message "Too many items requested for the BatchGetItem call."
@@ -677,6 +678,12 @@ func (c *DynamoDB) CreateBackupRequest(input *CreateBackupInput) (req *request.R
 //
 //     There is a soft account quota of 2,500 tables.
 //
+//     GetRecords was called with a value of more than 1000 for the limit request
+//     parameter.
+//
+//     More than 2 processes are reading from the same streams shard at the same
+//     time. Exceeding this limit may result in request throttling.
+//
 //   - InternalServerError
 //     An error occurred on the server side.
 //
@@ -846,6 +853,12 @@ func (c *DynamoDB) CreateGlobalTableRequest(input *CreateGlobalTableInput) (req 
 //
 //     There is a soft account quota of 2,500 tables.
 //
+//     GetRecords was called with a value of more than 1000 for the limit request
+//     parameter.
+//
+//     More than 2 processes are reading from the same streams shard at the same
+//     time. Exceeding this limit may result in request throttling.
+//
 //   - InternalServerError
 //     An error occurred on the server side.
 //
@@ -995,6 +1008,12 @@ func (c *DynamoDB) CreateTableRequest(input *CreateTableInput) (req *request.Req
 //
 //     There is a soft account quota of 2,500 tables.
 //
+//     GetRecords was called with a value of more than 1000 for the limit request
+//     parameter.
+//
+//     More than 2 processes are reading from the same streams shard at the same
+//     time. Exceeding this limit may result in request throttling.
+//
 //   - InternalServerError
 //     An error occurred on the server side.
 //
@@ -1124,6 +1143,12 @@ func (c *DynamoDB) DeleteBackupRequest(input *DeleteBackupInput) (req *request.R
 //     are allowed per account.
 //
 //     There is a soft account quota of 2,500 tables.
+//
+//     GetRecords was called with a value of more than 1000 for the limit request
+//     parameter.
+//
+//     More than 2 processes are reading from the same streams shard at the same
+//     time. Exceeding this limit may result in request throttling.
 //
 //   - InternalServerError
 //     An error occurred on the server side.
@@ -1418,6 +1443,12 @@ func (c *DynamoDB) DeleteTableRequest(input *DeleteTableInput) (req *request.Req
 //     are allowed per account.
 //
 //     There is a soft account quota of 2,500 tables.
+//
+//     GetRecords was called with a value of more than 1000 for the limit request
+//     parameter.
+//
+//     More than 2 processes are reading from the same streams shard at the same
+//     time. Exceeding this limit may result in request throttling.
 //
 //   - InternalServerError
 //     An error occurred on the server side.
@@ -1979,6 +2010,12 @@ func (c *DynamoDB) DescribeExportRequest(input *DescribeExportInput) (req *reque
 //     are allowed per account.
 //
 //     There is a soft account quota of 2,500 tables.
+//
+//     GetRecords was called with a value of more than 1000 for the limit request
+//     parameter.
+//
+//     More than 2 processes are reading from the same streams shard at the same
+//     time. Exceeding this limit may result in request throttling.
 //
 //   - InternalServerError
 //     An error occurred on the server side.
@@ -2996,6 +3033,12 @@ func (c *DynamoDB) DisableKinesisStreamingDestinationRequest(input *DisableKines
 //
 //     There is a soft account quota of 2,500 tables.
 //
+//     GetRecords was called with a value of more than 1000 for the limit request
+//     parameter.
+//
+//     More than 2 processes are reading from the same streams shard at the same
+//     time. Exceeding this limit may result in request throttling.
+//
 //   - ResourceInUseException
 //     The operation conflicts with the resource's availability. For example, you
 //     attempted to recreate an existing table, or tried to delete a table currently
@@ -3128,6 +3171,12 @@ func (c *DynamoDB) EnableKinesisStreamingDestinationRequest(input *EnableKinesis
 //     are allowed per account.
 //
 //     There is a soft account quota of 2,500 tables.
+//
+//     GetRecords was called with a value of more than 1000 for the limit request
+//     parameter.
+//
+//     More than 2 processes are reading from the same streams shard at the same
+//     time. Exceeding this limit may result in request throttling.
 //
 //   - ResourceInUseException
 //     The operation conflicts with the resource's availability. For example, you
@@ -3602,6 +3651,12 @@ func (c *DynamoDB) ExportTableToPointInTimeRequest(input *ExportTableToPointInTi
 //
 //     There is a soft account quota of 2,500 tables.
 //
+//     GetRecords was called with a value of more than 1000 for the limit request
+//     parameter.
+//
+//     More than 2 processes are reading from the same streams shard at the same
+//     time. Exceeding this limit may result in request throttling.
+//
 //   - InvalidExportTimeException
 //     The specified ExportTime is outside of the point in time recovery window.
 //
@@ -3836,6 +3891,12 @@ func (c *DynamoDB) ImportTableRequest(input *ImportTableInput) (req *request.Req
 //     are allowed per account.
 //
 //     There is a soft account quota of 2,500 tables.
+//
+//     GetRecords was called with a value of more than 1000 for the limit request
+//     parameter.
+//
+//     More than 2 processes are reading from the same streams shard at the same
+//     time. Exceeding this limit may result in request throttling.
 //
 //   - ImportConflictException
 //     There was a conflict when importing from the specified S3 source. This can
@@ -4193,6 +4254,12 @@ func (c *DynamoDB) ListExportsRequest(input *ListExportsInput) (req *request.Req
 //
 //     There is a soft account quota of 2,500 tables.
 //
+//     GetRecords was called with a value of more than 1000 for the limit request
+//     parameter.
+//
+//     More than 2 processes are reading from the same streams shard at the same
+//     time. Exceeding this limit may result in request throttling.
+//
 //   - InternalServerError
 //     An error occurred on the server side.
 //
@@ -4456,6 +4523,12 @@ func (c *DynamoDB) ListImportsRequest(input *ListImportsInput) (req *request.Req
 //     are allowed per account.
 //
 //     There is a soft account quota of 2,500 tables.
+//
+//     GetRecords was called with a value of more than 1000 for the limit request
+//     parameter.
+//
+//     More than 2 processes are reading from the same streams shard at the same
+//     time. Exceeding this limit may result in request throttling.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/dynamodb-2012-08-10/ListImports
 func (c *DynamoDB) ListImports(input *ListImportsInput) (*ListImportsOutput, error) {
@@ -5312,6 +5385,12 @@ func (c *DynamoDB) RestoreTableFromBackupRequest(input *RestoreTableFromBackupIn
 //
 //     There is a soft account quota of 2,500 tables.
 //
+//     GetRecords was called with a value of more than 1000 for the limit request
+//     parameter.
+//
+//     More than 2 processes are reading from the same streams shard at the same
+//     time. Exceeding this limit may result in request throttling.
+//
 //   - InternalServerError
 //     An error occurred on the server side.
 //
@@ -5478,6 +5557,12 @@ func (c *DynamoDB) RestoreTableToPointInTimeRequest(input *RestoreTableToPointIn
 //     are allowed per account.
 //
 //     There is a soft account quota of 2,500 tables.
+//
+//     GetRecords was called with a value of more than 1000 for the limit request
+//     parameter.
+//
+//     More than 2 processes are reading from the same streams shard at the same
+//     time. Exceeding this limit may result in request throttling.
 //
 //   - InvalidRestoreTimeException
 //     An invalid restore time was specified. RestoreDateTime must be between EarliestRestorableDateTime
@@ -5818,6 +5903,12 @@ func (c *DynamoDB) TagResourceRequest(input *TagResourceInput) (req *request.Req
 //     are allowed per account.
 //
 //     There is a soft account quota of 2,500 tables.
+//
+//     GetRecords was called with a value of more than 1000 for the limit request
+//     parameter.
+//
+//     More than 2 processes are reading from the same streams shard at the same
+//     time. Exceeding this limit may result in request throttling.
 //
 //   - ResourceNotFoundException
 //     The operation tried to access a nonexistent table or index. The resource
@@ -6491,6 +6582,12 @@ func (c *DynamoDB) UntagResourceRequest(input *UntagResourceInput) (req *request
 //
 //     There is a soft account quota of 2,500 tables.
 //
+//     GetRecords was called with a value of more than 1000 for the limit request
+//     parameter.
+//
+//     More than 2 processes are reading from the same streams shard at the same
+//     time. Exceeding this limit may result in request throttling.
+//
 //   - ResourceNotFoundException
 //     The operation tried to access a nonexistent table or index. The resource
 //     might not be specified correctly, or its status might not be ACTIVE.
@@ -7000,6 +7097,12 @@ func (c *DynamoDB) UpdateGlobalTableSettingsRequest(input *UpdateGlobalTableSett
 //
 //     There is a soft account quota of 2,500 tables.
 //
+//     GetRecords was called with a value of more than 1000 for the limit request
+//     parameter.
+//
+//     More than 2 processes are reading from the same streams shard at the same
+//     time. Exceeding this limit may result in request throttling.
+//
 //   - ResourceInUseException
 //     The operation conflicts with the resource's availability. For example, you
 //     attempted to recreate an existing table, or tried to delete a table currently
@@ -7291,6 +7394,12 @@ func (c *DynamoDB) UpdateTableRequest(input *UpdateTableInput) (req *request.Req
 //
 //     There is a soft account quota of 2,500 tables.
 //
+//     GetRecords was called with a value of more than 1000 for the limit request
+//     parameter.
+//
+//     More than 2 processes are reading from the same streams shard at the same
+//     time. Exceeding this limit may result in request throttling.
+//
 //   - InternalServerError
 //     An error occurred on the server side.
 //
@@ -7398,6 +7507,12 @@ func (c *DynamoDB) UpdateTableReplicaAutoScalingRequest(input *UpdateTableReplic
 //     are allowed per account.
 //
 //     There is a soft account quota of 2,500 tables.
+//
+//     GetRecords was called with a value of more than 1000 for the limit request
+//     parameter.
+//
+//     More than 2 processes are reading from the same streams shard at the same
+//     time. Exceeding this limit may result in request throttling.
 //
 //   - InternalServerError
 //     An error occurred on the server side.
@@ -7555,6 +7670,12 @@ func (c *DynamoDB) UpdateTimeToLiveRequest(input *UpdateTimeToLiveInput) (req *r
 //     are allowed per account.
 //
 //     There is a soft account quota of 2,500 tables.
+//
+//     GetRecords was called with a value of more than 1000 for the limit request
+//     parameter.
+//
+//     More than 2 processes are reading from the same streams shard at the same
+//     time. Exceeding this limit may result in request throttling.
 //
 //   - InternalServerError
 //     An error occurred on the server side.
@@ -17086,6 +17207,12 @@ func (s *KinesisDataStreamDestination) SetStreamArn(v string) *KinesisDataStream
 // are allowed per account.
 //
 // There is a soft account quota of 2,500 tables.
+//
+// GetRecords was called with a value of more than 1000 for the limit request
+// parameter.
+//
+// More than 2 processes are reading from the same streams shard at the same
+// time. Exceeding this limit may result in request throttling.
 type LimitExceededException struct {
 	_            struct{}                  `type:"structure"`
 	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
@@ -18533,7 +18660,7 @@ type ProvisionedThroughput struct {
 
 	// The maximum number of strongly consistent reads consumed per second before
 	// DynamoDB returns a ThrottlingException. For more information, see Specifying
-	// Read and Write Requirements (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithTables.html#ProvisionedThroughput)
+	// Read and Write Requirements (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ProvisionedThroughput.html)
 	// in the Amazon DynamoDB Developer Guide.
 	//
 	// If read/write capacity mode is PAY_PER_REQUEST the value is set to 0.
@@ -18543,7 +18670,7 @@ type ProvisionedThroughput struct {
 
 	// The maximum number of writes consumed per second before DynamoDB returns
 	// a ThrottlingException. For more information, see Specifying Read and Write
-	// Requirements (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithTables.html#ProvisionedThroughput)
+	// Requirements (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ProvisionedThroughput.html)
 	// in the Amazon DynamoDB Developer Guide.
 	//
 	// If read/write capacity mode is PAY_PER_REQUEST the value is set to 0.
