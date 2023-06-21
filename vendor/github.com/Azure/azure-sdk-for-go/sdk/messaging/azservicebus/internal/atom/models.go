@@ -169,9 +169,10 @@ type (
 	}
 	// DefaultRuleDescription is the content type for Subscription Rule management requests
 	DefaultRuleDescription struct {
-		XMLName xml.Name          `xml:"DefaultRuleDescription"`
-		Filter  FilterDescription `xml:"Filter"`
-		Name    *string           `xml:"Name,omitempty"`
+		XMLName xml.Name           `xml:"DefaultRuleDescription"`
+		Filter  *FilterDescription `xml:"Filter"`
+		Action  *ActionDescription `xml:"Action,omitempty"`
+		Name    string             `xml:"Name,omitempty"`
 	}
 
 	// FilterDescription describes a filter which can be applied to a subscription to filter messages from the topic.
@@ -268,7 +269,7 @@ type (
 		DefaultMessageTimeToLive                  *string                 `xml:"DefaultMessageTimeToLive,omitempty"`         // DefaultMessageTimeToLive - ISO 8601 default message timespan to live value. This is the duration after which the message expires, starting from when the message is sent to Service Bus. This is the default value used when TimeToLive is not set on a message itself.
 		DeadLetteringOnMessageExpiration          *bool                   `xml:"DeadLetteringOnMessageExpiration,omitempty"` // DeadLetteringOnMessageExpiration - A value that indicates whether this queue has dead letter support when a message expires.
 		DeadLetteringOnFilterEvaluationExceptions *bool                   `xml:"DeadLetteringOnFilterEvaluationExceptions,omitempty"`
-		DefaultRuleDescription                    *DefaultRuleDescription `xml:"DefaultRuleDescription,omitempty"`
+		DefaultRuleDescription                    *DefaultRuleDescription `xml:"DefaultRuleDescription,omitempty"`  // DefaultRuleDescription - A  default rule that is created right when the new subscription is created.
 		MaxDeliveryCount                          *int32                  `xml:"MaxDeliveryCount,omitempty"`        // MaxDeliveryCount - The maximum delivery count. A message is automatically deadlettered after this number of deliveries. default value is 10.
 		MessageCount                              *int64                  `xml:"MessageCount,omitempty"`            // MessageCount - The number of messages in the queue.
 		EnableBatchedOperations                   *bool                   `xml:"EnableBatchedOperations,omitempty"` // EnableBatchedOperations - Value that indicates whether server-side batched operations are enabled.

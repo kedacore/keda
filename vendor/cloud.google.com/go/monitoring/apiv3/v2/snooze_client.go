@@ -59,8 +59,11 @@ func defaultSnoozeGRPCClientOptions() []option.ClientOption {
 
 func defaultSnoozeCallOptions() *SnoozeCallOptions {
 	return &SnoozeCallOptions{
-		CreateSnooze: []gax.CallOption{},
+		CreateSnooze: []gax.CallOption{
+			gax.WithTimeout(30000 * time.Millisecond),
+		},
 		ListSnoozes: []gax.CallOption{
+			gax.WithTimeout(30000 * time.Millisecond),
 			gax.WithRetry(func() gax.Retryer {
 				return gax.OnCodes([]codes.Code{
 					codes.Unavailable,
@@ -72,6 +75,7 @@ func defaultSnoozeCallOptions() *SnoozeCallOptions {
 			}),
 		},
 		GetSnooze: []gax.CallOption{
+			gax.WithTimeout(30000 * time.Millisecond),
 			gax.WithRetry(func() gax.Retryer {
 				return gax.OnCodes([]codes.Code{
 					codes.Unavailable,
@@ -82,7 +86,9 @@ func defaultSnoozeCallOptions() *SnoozeCallOptions {
 				})
 			}),
 		},
-		UpdateSnooze: []gax.CallOption{},
+		UpdateSnooze: []gax.CallOption{
+			gax.WithTimeout(30000 * time.Millisecond),
+		},
 	}
 }
 
@@ -165,9 +171,6 @@ type snoozeGRPCClient struct {
 	// Connection pool of gRPC connections to the service.
 	connPool gtransport.ConnPool
 
-	// flag to opt out of default deadlines via GOOGLE_API_GO_EXPERIMENTAL_DISABLE_DEFAULT_DEADLINE
-	disableDeadlines bool
-
 	// Points back to the CallOptions field of the containing SnoozeClient
 	CallOptions **SnoozeCallOptions
 
@@ -194,11 +197,6 @@ func NewSnoozeClient(ctx context.Context, opts ...option.ClientOption) (*SnoozeC
 		clientOpts = append(clientOpts, hookOpts...)
 	}
 
-	disableDeadlines, err := checkDisableDeadlines()
-	if err != nil {
-		return nil, err
-	}
-
 	connPool, err := gtransport.DialPool(ctx, append(clientOpts, opts...)...)
 	if err != nil {
 		return nil, err
@@ -206,10 +204,9 @@ func NewSnoozeClient(ctx context.Context, opts ...option.ClientOption) (*SnoozeC
 	client := SnoozeClient{CallOptions: defaultSnoozeCallOptions()}
 
 	c := &snoozeGRPCClient{
-		connPool:         connPool,
-		disableDeadlines: disableDeadlines,
-		snoozeClient:     monitoringpb.NewSnoozeServiceClient(connPool),
-		CallOptions:      &client.CallOptions,
+		connPool:     connPool,
+		snoozeClient: monitoringpb.NewSnoozeServiceClient(connPool),
+		CallOptions:  &client.CallOptions,
 	}
 	c.setGoogleClientInfo()
 
@@ -230,7 +227,7 @@ func (c *snoozeGRPCClient) Connection() *grpc.ClientConn {
 // the `x-goog-api-client` header passed on each request. Intended for
 // use by Google-written clients.
 func (c *snoozeGRPCClient) setGoogleClientInfo(keyval ...string) {
-	kv := append([]string{"gl-go", versionGo()}, keyval...)
+	kv := append([]string{"gl-go", gax.GoVersion}, keyval...)
 	kv = append(kv, "gapic", getVersionClient(), "gax", gax.Version, "grpc", grpc.Version)
 	c.xGoogMetadata = metadata.Pairs("x-goog-api-client", gax.XGoogHeader(kv...))
 }
@@ -242,11 +239,6 @@ func (c *snoozeGRPCClient) Close() error {
 }
 
 func (c *snoozeGRPCClient) CreateSnooze(ctx context.Context, req *monitoringpb.CreateSnoozeRequest, opts ...gax.CallOption) (*monitoringpb.Snooze, error) {
-	if _, ok := ctx.Deadline(); !ok && !c.disableDeadlines {
-		cctx, cancel := context.WithTimeout(ctx, 30000*time.Millisecond)
-		defer cancel()
-		ctx = cctx
-	}
 	md := metadata.Pairs("x-goog-request-params", fmt.Sprintf("%s=%v", "parent", url.QueryEscape(req.GetParent())))
 
 	ctx = insertMetadata(ctx, c.xGoogMetadata, md)
@@ -309,11 +301,6 @@ func (c *snoozeGRPCClient) ListSnoozes(ctx context.Context, req *monitoringpb.Li
 }
 
 func (c *snoozeGRPCClient) GetSnooze(ctx context.Context, req *monitoringpb.GetSnoozeRequest, opts ...gax.CallOption) (*monitoringpb.Snooze, error) {
-	if _, ok := ctx.Deadline(); !ok && !c.disableDeadlines {
-		cctx, cancel := context.WithTimeout(ctx, 30000*time.Millisecond)
-		defer cancel()
-		ctx = cctx
-	}
 	md := metadata.Pairs("x-goog-request-params", fmt.Sprintf("%s=%v", "name", url.QueryEscape(req.GetName())))
 
 	ctx = insertMetadata(ctx, c.xGoogMetadata, md)
@@ -331,11 +318,6 @@ func (c *snoozeGRPCClient) GetSnooze(ctx context.Context, req *monitoringpb.GetS
 }
 
 func (c *snoozeGRPCClient) UpdateSnooze(ctx context.Context, req *monitoringpb.UpdateSnoozeRequest, opts ...gax.CallOption) (*monitoringpb.Snooze, error) {
-	if _, ok := ctx.Deadline(); !ok && !c.disableDeadlines {
-		cctx, cancel := context.WithTimeout(ctx, 30000*time.Millisecond)
-		defer cancel()
-		ctx = cctx
-	}
 	md := metadata.Pairs("x-goog-request-params", fmt.Sprintf("%s=%v", "snooze.name", url.QueryEscape(req.GetSnooze().GetName())))
 
 	ctx = insertMetadata(ctx, c.xGoogMetadata, md)

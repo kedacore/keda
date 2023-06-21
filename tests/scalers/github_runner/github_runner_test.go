@@ -42,6 +42,10 @@ var (
 	maxReplicaCount     = 1
 	workflowID          = os.Getenv("GH_WORKFLOW_ID")
 	soWorkflowID        = os.Getenv("GH_SO_WORKFLOW_ID")
+	ghaWorkflowID       = os.Getenv("GH_GHA_WORKFLOW_ID")
+	appID               = os.Getenv("GH_APP_ID")
+	instID              = os.Getenv("GH_INST_ID")
+	appKey              = os.Getenv("GH_APP_KEY")
 )
 
 type templateData struct {
@@ -57,6 +61,9 @@ type templateData struct {
 	Repos            string
 	RunnerScope      string
 	Labels           string
+	ApplicationID    string
+	InstallationID   string
+	ApplicationKey   string
 }
 
 const (
@@ -81,6 +88,28 @@ spec:
       name: {{.SecretName}}
       key: personalAccessToken
 `
+	secretGhaTemplate = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{.SecretName}}-gha
+  namespace: {{.TestNamespace}}
+data:
+  appKey: {{.ApplicationKey}}
+`
+	triggerGhaAuthTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: github-gha-trigger-auth
+  namespace: {{.TestNamespace}}
+spec:
+  secretTargetRef:
+    - parameter: appKey
+      name: {{.SecretName}}-gha
+      key: appKey
+`
+
 	deploymentTemplate = `
 apiVersion: apps/v1
 kind: Deployment
@@ -180,6 +209,7 @@ spec:
         restartPolicy: Never
   minReplicaCount: {{.MinReplicaCount}}
   maxReplicaCount: {{.MaxReplicaCount}}
+  successfulJobsHistoryLimit: 0
   pollingInterval: 15
   triggers:
   - type: github-runner
@@ -190,6 +220,57 @@ spec:
       runnerScopeFromEnv: "RUNNER_SCOPE"
     authenticationRef:
      name: github-trigger-auth
+`
+
+	scaledGhaJobTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledJob
+metadata:
+  name: {{.ScaledJobName}}-gha
+  namespace: {{.TestNamespace}}
+spec:
+  jobTargetRef:
+    template:
+      metadata:
+        labels:
+          app: {{.ScaledJobName}}
+      spec:
+        containers:
+        - name: {{.ScaledJobName}}
+          image: myoung34/github-runner
+          imagePullPolicy: IfNotPresent
+          env:
+          - name: EPHEMERAL
+            value: "true"
+          - name: DISABLE_RUNNER_UPDATE
+            value: "true"
+          - name: REPO_URL
+            value: "https://github.com/{{.Owner}}/{{.Repos}}"
+          - name: RUNNER_SCOPE
+            value: {{.RunnerScope}}
+          - name: LABELS
+            value: "e2e-gha-tester"
+          - name: ACCESS_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: {{.SecretName}}
+                key: personalAccessToken
+        restartPolicy: Never
+  minReplicaCount: {{.MinReplicaCount}}
+  maxReplicaCount: {{.MaxReplicaCount}}
+  successfulJobsHistoryLimit: 0
+  pollingInterval: 15
+  triggers:
+  - type: github-runner
+    metadata:
+      owner: {{.Owner}}
+      repos: {{.Repos}}
+      labels: "e2e-gha-tester"
+      runnerScopeFromEnv: "RUNNER_SCOPE"
+      applicationID: "{{.ApplicationID}}"
+      installationID: "{{.InstallationID}}"
+    authenticationRef:
+     name: github-gha-trigger-auth
 `
 )
 
@@ -213,10 +294,15 @@ func TestScaler(t *testing.T) {
 	require.NotEmpty(t, repos, "GH_REPOS env variable is required for github runner test")
 	require.NotEmpty(t, workflowID, "GH_WORKFLOW_ID env variable is required for github runner test")
 	require.NotEmpty(t, soWorkflowID, "GH_SO_WORKFLOW_ID env variable is required for github runner test")
+	require.NotEmpty(t, ghaWorkflowID, "GH_GHA_WORKFLOW_ID env variable is required for github runner test")
+	require.NotEmpty(t, appID, "GH_APPLICATION_ID env variable is required for github runner test")
+	require.NotEmpty(t, instID, "GH_INSTALLATION_ID env variable is required for github runner test")
+	require.NotEmpty(t, appKey, "GH_APP_KEY env variable is required for github runner test")
 
 	client := getGitHubClient()
 	cancelAllRuns(t, client, repos, workflowID)
 	cancelAllRuns(t, client, repos, soWorkflowID)
+	cancelAllRuns(t, client, repos, ghaWorkflowID)
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
@@ -225,10 +311,16 @@ func TestScaler(t *testing.T) {
 
 	WaitForPodCountInNamespace(t, kc, testNamespace, minReplicaCount, 60, 2)
 
+	// test scaling Scaled Job with App
+	KubectlApplyWithTemplate(t, data, "scaledGhaJobTemplate", scaledGhaJobTemplate)
+	// testActivation(t, kc, client)
+	testJobScaleOut(t, kc, client, ghaWorkflowID)
+	testJobScaleIn(t, kc)
+
 	// test scaling Scaled Job
 	KubectlApplyWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
 	// testActivation(t, kc, client)
-	testJobScaleOut(t, kc, client)
+	testJobScaleOut(t, kc, client, workflowID)
 	testJobScaleIn(t, kc)
 
 	// test scaling Scaled Object
@@ -294,12 +386,18 @@ func getTemplateData() (templateData, []Template) {
 			Owner:            owner,
 			Repos:            repos,
 			Labels:           "e2etester",
+			ApplicationID:    appID,
+			InstallationID:   instID,
+			ApplicationKey:   appKey,
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "authTemplate", Config: triggerAuthTemplate},
+			{Name: "secretGhaTemplate", Config: secretGhaTemplate},
+			{Name: "authGhaTemplate", Config: triggerGhaAuthTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 			{Name: "scaledJobTemplate", Config: scaledJobTemplate},
+			{Name: "scaledGhaJobTemplate", Config: scaledGhaJobTemplate},
 		}
 }
 
@@ -323,9 +421,9 @@ func testSOScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 		"pod count should be 0 after 1 minute")
 }
 
-func testJobScaleOut(t *testing.T, kc *kubernetes.Clientset, ghClient *github.Client) {
+func testJobScaleOut(t *testing.T, kc *kubernetes.Clientset, ghClient *github.Client, wfID string) {
 	t.Log("--- testing scale out ---")
-	queueRun(t, ghClient, workflowID)
+	queueRun(t, ghClient, wfID)
 
 	assert.True(t, WaitForJobCount(t, kc, testNamespace, 1, 60, 1), "replica count should be 1 after 1 minute")
 }
