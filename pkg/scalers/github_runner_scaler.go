@@ -342,7 +342,7 @@ func NewGitHubRunnerScaler(config *ScalerConfig) (Scaler, error) {
 		httpTrans := kedautil.CreateHTTPTransport(false)
 		hc, err := gha.New(httpTrans, *meta.applicationID, *meta.installationID, []byte(*meta.applicationKey))
 		if err != nil {
-			return nil, fmt.Errorf("error creating GitHub App client: %w", err)
+			return nil, fmt.Errorf("error creating GitHub App client: %w, \n appID: %d, instID: %d", err, meta.applicationID, meta.installationID)
 		}
 		httpClient = &http.Client{Transport: hc}
 	}
@@ -420,7 +420,7 @@ func parseGitHubRunnerMetadata(config *ScalerConfig) (*githubRunnerMetadata, err
 		meta.personalAccessToken = &val
 	}
 
-	if appID, instID, key, err := setupGitHubApp(meta, config); err == nil {
+	if appID, instID, key, err := setupGitHubApp(config); err == nil {
 		meta.applicationID = appID
 		meta.installationID = instID
 		meta.applicationKey = key
@@ -437,7 +437,7 @@ func parseGitHubRunnerMetadata(config *ScalerConfig) (*githubRunnerMetadata, err
 	return meta, nil
 }
 
-func setupGitHubApp(meta *githubRunnerMetadata, config *ScalerConfig) (*int64, *int64, *string, error) {
+func setupGitHubApp(config *ScalerConfig) (*int64, *int64, *string, error) {
 	var appID *int64
 	var instID *int64
 	var appKey *string
@@ -457,14 +457,6 @@ func setupGitHubApp(meta *githubRunnerMetadata, config *ScalerConfig) (*int64, *
 	if (appID != nil || instID != nil || appKey != nil) &&
 		(appID == nil || instID == nil || appKey == nil) {
 		return nil, nil, nil, fmt.Errorf("applicationID, installationID and applicationKey must be given")
-	}
-
-	if meta.applicationID != nil && meta.installationID != nil && meta.applicationKey != nil {
-		httpTrans := kedautil.CreateHTTPTransport(false)
-		_, err := gha.New(httpTrans, *meta.applicationID, *meta.installationID, []byte(*meta.applicationKey))
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("error creating GitHub App client: %w, \n appID: %d, instID: %d", err, appID, instID)
-		}
 	}
 
 	return appID, instID, appKey, nil
