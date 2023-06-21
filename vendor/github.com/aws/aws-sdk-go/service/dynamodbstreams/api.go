@@ -191,6 +191,12 @@ func (c *DynamoDBStreams) GetRecordsRequest(input *GetRecordsInput) (req *reques
 //
 //     There is a soft account quota of 2,500 tables.
 //
+//     GetRecords was called with a value of more than 1000 for the limit request
+//     parameter.
+//
+//     More than 2 processes are reading from the same streams shard at the same
+//     time. Exceeding this limit may result in request throttling.
+//
 //   - InternalServerError
 //     An error occurred on the server side.
 //
@@ -972,6 +978,12 @@ func (s *InternalServerError) RequestID() string {
 // are allowed per account.
 //
 // There is a soft account quota of 2,500 tables.
+//
+// GetRecords was called with a value of more than 1000 for the limit request
+// parameter.
+//
+// More than 2 processes are reading from the same streams shard at the same
+// time. Exceeding this limit may result in request throttling.
 type LimitExceededException struct {
 	_            struct{}                  `type:"structure"`
 	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
@@ -1182,8 +1194,8 @@ type Record struct {
 	//    * REMOVE - the item was deleted from the table
 	EventName *string `locationName:"eventName" type:"string" enum:"OperationType"`
 
-	// The AWS service from which the stream record originated. For DynamoDB Streams,
-	// this is aws:dynamodb.
+	// The Amazon Web Services service from which the stream record originated.
+	// For DynamoDB Streams, this is aws:dynamodb.
 	EventSource *string `locationName:"eventSource" type:"string"`
 
 	// The version number of the stream record format. This number is updated whenever
@@ -1437,7 +1449,7 @@ type Stream struct {
 	// However, the combination of the following three elements is guaranteed to
 	// be unique:
 	//
-	//    * the AWS customer ID.
+	//    * the Amazon Web Services customer ID.
 	//
 	//    * the table name
 	//
@@ -1519,7 +1531,7 @@ type StreamDescription struct {
 	// However, the combination of the following three elements is guaranteed to
 	// be unique:
 	//
-	//    * the AWS customer ID.
+	//    * the Amazon Web Services customer ID.
 	//
 	//    * the table name
 	//
@@ -1634,7 +1646,8 @@ type StreamRecord struct {
 	_ struct{} `type:"structure"`
 
 	// The approximate date and time when the stream record was created, in UNIX
-	// epoch time (http://www.epochconverter.com/) format.
+	// epoch time (http://www.epochconverter.com/) format and rounded down to the
+	// closest second.
 	ApproximateCreationDateTime *time.Time `type:"timestamp"`
 
 	// The primary key attribute(s) for the DynamoDB item that was modified.

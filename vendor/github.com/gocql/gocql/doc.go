@@ -30,6 +30,9 @@
 // protocol version explicitly, as it's not defined which version will be used in certain situations (for example
 // during upgrade of the cluster when some of the nodes support different set of protocol versions than other nodes).
 //
+// The driver advertises the module name and version in the STARTUP message, so servers are able to detect the version.
+// If you use replace directive in go.mod, the driver will send information about the replacement module instead.
+//
 // When ready, create a session from the configuration. Don't forget to Close the session once you are done with it:
 //
 //	session, err := cluster.CreateSession()

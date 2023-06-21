@@ -67,6 +67,7 @@ func defaultMetricGRPCClientOptions() []option.ClientOption {
 func defaultMetricCallOptions() *MetricCallOptions {
 	return &MetricCallOptions{
 		ListMonitoredResourceDescriptors: []gax.CallOption{
+			gax.WithTimeout(30000 * time.Millisecond),
 			gax.WithRetry(func() gax.Retryer {
 				return gax.OnCodes([]codes.Code{
 					codes.Unavailable,
@@ -78,6 +79,7 @@ func defaultMetricCallOptions() *MetricCallOptions {
 			}),
 		},
 		GetMonitoredResourceDescriptor: []gax.CallOption{
+			gax.WithTimeout(30000 * time.Millisecond),
 			gax.WithRetry(func() gax.Retryer {
 				return gax.OnCodes([]codes.Code{
 					codes.Unavailable,
@@ -89,6 +91,7 @@ func defaultMetricCallOptions() *MetricCallOptions {
 			}),
 		},
 		ListMetricDescriptors: []gax.CallOption{
+			gax.WithTimeout(30000 * time.Millisecond),
 			gax.WithRetry(func() gax.Retryer {
 				return gax.OnCodes([]codes.Code{
 					codes.Unavailable,
@@ -100,6 +103,7 @@ func defaultMetricCallOptions() *MetricCallOptions {
 			}),
 		},
 		GetMetricDescriptor: []gax.CallOption{
+			gax.WithTimeout(30000 * time.Millisecond),
 			gax.WithRetry(func() gax.Retryer {
 				return gax.OnCodes([]codes.Code{
 					codes.Unavailable,
@@ -110,8 +114,11 @@ func defaultMetricCallOptions() *MetricCallOptions {
 				})
 			}),
 		},
-		CreateMetricDescriptor: []gax.CallOption{},
+		CreateMetricDescriptor: []gax.CallOption{
+			gax.WithTimeout(12000 * time.Millisecond),
+		},
 		DeleteMetricDescriptor: []gax.CallOption{
+			gax.WithTimeout(30000 * time.Millisecond),
 			gax.WithRetry(func() gax.Retryer {
 				return gax.OnCodes([]codes.Code{
 					codes.Unavailable,
@@ -123,6 +130,7 @@ func defaultMetricCallOptions() *MetricCallOptions {
 			}),
 		},
 		ListTimeSeries: []gax.CallOption{
+			gax.WithTimeout(90000 * time.Millisecond),
 			gax.WithRetry(func() gax.Retryer {
 				return gax.OnCodes([]codes.Code{
 					codes.Unavailable,
@@ -133,7 +141,9 @@ func defaultMetricCallOptions() *MetricCallOptions {
 				})
 			}),
 		},
-		CreateTimeSeries:        []gax.CallOption{},
+		CreateTimeSeries: []gax.CallOption{
+			gax.WithTimeout(12000 * time.Millisecond),
+		},
 		CreateServiceTimeSeries: []gax.CallOption{},
 	}
 }
@@ -259,9 +269,6 @@ type metricGRPCClient struct {
 	// Connection pool of gRPC connections to the service.
 	connPool gtransport.ConnPool
 
-	// flag to opt out of default deadlines via GOOGLE_API_GO_EXPERIMENTAL_DISABLE_DEFAULT_DEADLINE
-	disableDeadlines bool
-
 	// Points back to the CallOptions field of the containing MetricClient
 	CallOptions **MetricCallOptions
 
@@ -287,11 +294,6 @@ func NewMetricClient(ctx context.Context, opts ...option.ClientOption) (*MetricC
 		clientOpts = append(clientOpts, hookOpts...)
 	}
 
-	disableDeadlines, err := checkDisableDeadlines()
-	if err != nil {
-		return nil, err
-	}
-
 	connPool, err := gtransport.DialPool(ctx, append(clientOpts, opts...)...)
 	if err != nil {
 		return nil, err
@@ -299,10 +301,9 @@ func NewMetricClient(ctx context.Context, opts ...option.ClientOption) (*MetricC
 	client := MetricClient{CallOptions: defaultMetricCallOptions()}
 
 	c := &metricGRPCClient{
-		connPool:         connPool,
-		disableDeadlines: disableDeadlines,
-		metricClient:     monitoringpb.NewMetricServiceClient(connPool),
-		CallOptions:      &client.CallOptions,
+		connPool:     connPool,
+		metricClient: monitoringpb.NewMetricServiceClient(connPool),
+		CallOptions:  &client.CallOptions,
 	}
 	c.setGoogleClientInfo()
 
@@ -323,7 +324,7 @@ func (c *metricGRPCClient) Connection() *grpc.ClientConn {
 // the `x-goog-api-client` header passed on each request. Intended for
 // use by Google-written clients.
 func (c *metricGRPCClient) setGoogleClientInfo(keyval ...string) {
-	kv := append([]string{"gl-go", versionGo()}, keyval...)
+	kv := append([]string{"gl-go", gax.GoVersion}, keyval...)
 	kv = append(kv, "gapic", getVersionClient(), "gax", gax.Version, "grpc", grpc.Version)
 	c.xGoogMetadata = metadata.Pairs("x-goog-api-client", gax.XGoogHeader(kv...))
 }
@@ -380,11 +381,6 @@ func (c *metricGRPCClient) ListMonitoredResourceDescriptors(ctx context.Context,
 }
 
 func (c *metricGRPCClient) GetMonitoredResourceDescriptor(ctx context.Context, req *monitoringpb.GetMonitoredResourceDescriptorRequest, opts ...gax.CallOption) (*monitoredrespb.MonitoredResourceDescriptor, error) {
-	if _, ok := ctx.Deadline(); !ok && !c.disableDeadlines {
-		cctx, cancel := context.WithTimeout(ctx, 30000*time.Millisecond)
-		defer cancel()
-		ctx = cctx
-	}
 	md := metadata.Pairs("x-goog-request-params", fmt.Sprintf("%s=%v", "name", url.QueryEscape(req.GetName())))
 
 	ctx = insertMetadata(ctx, c.xGoogMetadata, md)
@@ -447,11 +443,6 @@ func (c *metricGRPCClient) ListMetricDescriptors(ctx context.Context, req *monit
 }
 
 func (c *metricGRPCClient) GetMetricDescriptor(ctx context.Context, req *monitoringpb.GetMetricDescriptorRequest, opts ...gax.CallOption) (*metricpb.MetricDescriptor, error) {
-	if _, ok := ctx.Deadline(); !ok && !c.disableDeadlines {
-		cctx, cancel := context.WithTimeout(ctx, 30000*time.Millisecond)
-		defer cancel()
-		ctx = cctx
-	}
 	md := metadata.Pairs("x-goog-request-params", fmt.Sprintf("%s=%v", "name", url.QueryEscape(req.GetName())))
 
 	ctx = insertMetadata(ctx, c.xGoogMetadata, md)
@@ -469,11 +460,6 @@ func (c *metricGRPCClient) GetMetricDescriptor(ctx context.Context, req *monitor
 }
 
 func (c *metricGRPCClient) CreateMetricDescriptor(ctx context.Context, req *monitoringpb.CreateMetricDescriptorRequest, opts ...gax.CallOption) (*metricpb.MetricDescriptor, error) {
-	if _, ok := ctx.Deadline(); !ok && !c.disableDeadlines {
-		cctx, cancel := context.WithTimeout(ctx, 12000*time.Millisecond)
-		defer cancel()
-		ctx = cctx
-	}
 	md := metadata.Pairs("x-goog-request-params", fmt.Sprintf("%s=%v", "name", url.QueryEscape(req.GetName())))
 
 	ctx = insertMetadata(ctx, c.xGoogMetadata, md)
@@ -491,11 +477,6 @@ func (c *metricGRPCClient) CreateMetricDescriptor(ctx context.Context, req *moni
 }
 
 func (c *metricGRPCClient) DeleteMetricDescriptor(ctx context.Context, req *monitoringpb.DeleteMetricDescriptorRequest, opts ...gax.CallOption) error {
-	if _, ok := ctx.Deadline(); !ok && !c.disableDeadlines {
-		cctx, cancel := context.WithTimeout(ctx, 30000*time.Millisecond)
-		defer cancel()
-		ctx = cctx
-	}
 	md := metadata.Pairs("x-goog-request-params", fmt.Sprintf("%s=%v", "name", url.QueryEscape(req.GetName())))
 
 	ctx = insertMetadata(ctx, c.xGoogMetadata, md)
@@ -554,11 +535,6 @@ func (c *metricGRPCClient) ListTimeSeries(ctx context.Context, req *monitoringpb
 }
 
 func (c *metricGRPCClient) CreateTimeSeries(ctx context.Context, req *monitoringpb.CreateTimeSeriesRequest, opts ...gax.CallOption) error {
-	if _, ok := ctx.Deadline(); !ok && !c.disableDeadlines {
-		cctx, cancel := context.WithTimeout(ctx, 12000*time.Millisecond)
-		defer cancel()
-		ctx = cctx
-	}
 	md := metadata.Pairs("x-goog-request-params", fmt.Sprintf("%s=%v", "name", url.QueryEscape(req.GetName())))
 
 	ctx = insertMetadata(ctx, c.xGoogMetadata, md)

@@ -34,6 +34,10 @@ type batchCursor interface {
 
 	// Close closes the cursor.
 	Close(context.Context) error
+
+	// The SetBatchSize method is a modifier function used to adjust the
+	// batch size of the cursor that implements it.
+	SetBatchSize(int32)
 }
 
 // changeStreamCursor is the interface implemented by batch cursors that also provide the functionality for retrieving
