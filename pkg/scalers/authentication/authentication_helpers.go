@@ -93,6 +93,10 @@ func GetAuthConfigs(triggerMetadata, authParams map[string]string) (out *AuthMet
 				return nil, errors.New("both oauth and bearer authentication can not be set")
 			}
 			out.EnableOAuth = true
+			out.OauthTokenURI = authParams["oauthTokenURI"]
+			if authParams["scope"] != "" {
+				out.Scopes = strings.Split(authParams["scope"], " ")
+			}
 			out.ClientID = authParams["clientID"]
 			out.ClientSecret = authParams["clientSecret"]
 		default:

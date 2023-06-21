@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -32,11 +33,6 @@ type pulsarMetadata struct {
 	subscription                  string
 	msgBacklogThreshold           int64
 	activationMsgBacklogThreshold int64
-
-	oauthTokenURI string
-	grantType     string
-	scopes        []string
-	clientID      string
 
 	pulsarAuth *authentication.AuthMeta
 
@@ -171,16 +167,6 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 		return meta, errors.New("no subscription given")
 	}
 
-	if config.TriggerMetadata["oauthTokenURI"] != "" {
-		meta.oauthTokenURI = config.TriggerMetadata["oauthTokenURI"]
-	}
-	if config.TriggerMetadata["grantType"] != "" {
-		meta.grantType = config.TriggerMetadata["grantType"]
-	}
-	if config.TriggerMetadata["scope"] != "" {
-		meta.scopes = strings.Split(config.TriggerMetadata["scope"], " ")
-	}
-
 	meta.metricName = fmt.Sprintf("%s-%s-%s", "pulsar", meta.topic, meta.subscription)
 
 	meta.activationMsgBacklogThreshold = 0
@@ -217,17 +203,34 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 	}
 
 	if auth != nil && auth.EnableOAuth {
-		// use clientID from authenticationRef if provided
-		// otherwise from the metadata
-		if auth.ClientID != "" {
-			meta.clientID = auth.ClientID
-		} else {
-			meta.clientID = config.TriggerMetadata["clientID"]
+		auth.OauthTokenURI = readOAuthConfig(auth, config.TriggerMetadata, "OauthTokenURI")
+		auth.ClientID = readOAuthConfig(auth, config.TriggerMetadata, "ClientID")
+		if auth.Scopes == nil && config.TriggerMetadata["scope"] != "" {
+			auth.Scopes = strings.Split(config.TriggerMetadata["scope"], " ")
 		}
 	}
 	meta.pulsarAuth = auth
 	meta.scalerIndex = config.ScalerIndex
 	return meta, nil
+}
+
+// use values from authenticationRef if provided, otherwise try the metadata
+func readOAuthConfig(auth *authentication.AuthMeta, TriggerMetadata map[string]string, key string) string {
+	authValue := reflect.ValueOf(auth).Elem()
+	value := authValue.FieldByName(key)
+	if value.IsValid() {
+		val := value.Interface().(string)
+		if val != "" {
+			return val
+		}
+	}
+
+	jsonKey := strings.ToLower(string(key[0])) + key[1:]
+	if value, ok := TriggerMetadata[jsonKey]; ok {
+		return fmt.Sprintf("%v", value)
+	}
+
+	return ""
 }
 
 func (s *pulsarScaler) GetStats(ctx context.Context) (*pulsarStats, error) {
@@ -241,10 +244,10 @@ func (s *pulsarScaler) GetStats(ctx context.Context) (*pulsarStats, error) {
 	client := s.client
 	if s.metadata.pulsarAuth.EnableOAuth {
 		config := clientcredentials.Config{
-			ClientID:     s.metadata.clientID,
+			ClientID:     s.metadata.pulsarAuth.ClientID,
 			ClientSecret: s.metadata.pulsarAuth.ClientSecret,
-			TokenURL:     s.metadata.oauthTokenURI,
-			Scopes:       s.metadata.scopes,
+			TokenURL:     s.metadata.pulsarAuth.OauthTokenURI,
+			Scopes:       s.metadata.pulsarAuth.Scopes,
 		}
 		client = config.Client(context.Background())
 	}

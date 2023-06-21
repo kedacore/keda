@@ -45,9 +45,11 @@ type AuthMeta struct {
 	CA        string
 
 	// oAuth2
-	EnableOAuth  bool
-	ClientID     string
-	ClientSecret string
+	EnableOAuth   bool
+	OauthTokenURI string
+	Scopes        []string
+	ClientID      string
+	ClientSecret  string
 
 	// custom auth header
 	EnableCustomAuth bool

@@ -17,7 +17,6 @@ type parsePulsarMetadataTestData struct {
 	adminURL           string
 	topic              string
 	subscription       string
-	oauthData          map[string]string
 }
 
 type parsePulsarAuthParamsTestData struct {
@@ -32,6 +31,8 @@ type parsePulsarAuthParamsTestData struct {
 	username        string
 	password        string
 	enableOAuth     bool
+	oauthTokenURI   string
+	scope           string
 	clientID        string
 	clientSecret    string
 }
@@ -43,11 +44,9 @@ type pulsarMetricIdentifier struct {
 
 // A complete valid authParams example for sasl, with username and passwd
 var validPulsarWithAuthParams = map[string]string{
-	"cert":         "certdata",
-	"key":          "keydata",
-	"ca":           "cadata",
-	"clientID":     "clientIDdata",
-	"clientSecret": "clientSecretdata",
+	"cert": "certdata",
+	"key":  "keydata",
+	"ca":   "cadata",
 }
 
 // A complete valid authParams example for sasl, without username and passwd
@@ -55,46 +54,47 @@ var validPulsarWithoutAuthParams = map[string]string{}
 
 var parsePulsarMetadataTestDataset = []parsePulsarMetadataTestData{
 	// failure, no adminURL
-	{map[string]string{}, true, false, false, "", "", "", nil},
-	{map[string]string{"adminURL": "http://172.20.0.151:80"}, true, false, false, "http://172.20.0.151:80", "", "", nil},
-	{map[string]string{"adminURL": "http://172.20.0.151:80"}, true, false, false, "http://172.20.0.151:80", "", "", nil},
-	{map[string]string{"adminURL": "http://172.20.0.151:80"}, true, false, false, "http://172.20.0.151:80", "", "", nil},
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic"}, true, false, false, "http://172.20.0.151:80", "persistent://public/default/my-topic", "", nil},
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, true, false, "http://172.20.0.151:80", "persistent://public/default/my-topic", "sub1", nil},
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub2"}, false, true, false, "http://172.20.0.151:80", "persistent://public/default/my-topic", "sub2", nil},
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub3"}, false, false, false, "http://172.20.0.151:80", "persistent://public/default/my-topic", "sub3", nil},
-	{map[string]string{"adminURL": "http://127.0.0.1:8080", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, false, false, "http://127.0.0.1:8080", "persistent://public/default/my-topic", "sub1", nil},
-	{map[string]string{"adminURL": "http://127.0.0.1:8080", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, false, false, "http://127.0.0.1:8080", "persistent://public/default/my-topic", "sub1", nil},
-	{map[string]string{"adminURL": "http://127.0.0.1:8080", "topic": "persistent://public/default/my-topic", "isPartitionedTopic": "true", "subscription": "sub1"}, false, false, true, "http://127.0.0.1:8080", "persistent://public/default/my-topic", "sub1", nil},
+	{map[string]string{}, true, false, false, "", "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80"}, true, false, false, "http://172.20.0.151:80", "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80"}, true, false, false, "http://172.20.0.151:80", "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80"}, true, false, false, "http://172.20.0.151:80", "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic"}, true, false, false, "http://172.20.0.151:80", "persistent://public/default/my-topic", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, true, false, "http://172.20.0.151:80", "persistent://public/default/my-topic", "sub1"},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub2"}, false, true, false, "http://172.20.0.151:80", "persistent://public/default/my-topic", "sub2"},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub3"}, false, false, false, "http://172.20.0.151:80", "persistent://public/default/my-topic", "sub3"},
+	{map[string]string{"adminURL": "http://127.0.0.1:8080", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, false, false, "http://127.0.0.1:8080", "persistent://public/default/my-topic", "sub1"},
+	{map[string]string{"adminURL": "http://127.0.0.1:8080", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, false, false, "http://127.0.0.1:8080", "persistent://public/default/my-topic", "sub1"},
+	{map[string]string{"adminURL": "http://127.0.0.1:8080", "topic": "persistent://public/default/my-topic", "isPartitionedTopic": "true", "subscription": "sub1"}, false, false, true, "http://127.0.0.1:8080", "persistent://public/default/my-topic", "sub1"},
 
 	// tls
-	{map[string]string{"adminURL": "https://localhost:8443", "tls": "enable", "cert": "certdata", "key": "keydata", "ca": "cadata", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, true, false, "https://localhost:8443", "persistent://public/default/my-topic", "sub1", nil},
-
-	// oauth
-	{map[string]string{"adminURL": "https://localhost:8443", "authModes": "oauth", "grantType": "client_credentials", "authTokenURI": "https://localhost/token", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, true, false, "https://localhost:8443", "persistent://public/default/my-topic", "sub1", map[string]string{"grantType": "client_credentials", "authTokenURI": "https://localhost/token"}},
-	{map[string]string{"adminURL": "https://localhost:8443", "authModes": "oauth", "grantType": "client_credentials", "authTokenURI": "https://localhost/token", "scope": "sw:scope1", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, true, false, "https://localhost:8443", "persistent://public/default/my-topic", "sub1", map[string]string{"grantType": "client_credentials", "authTokenURI": "https://localhost/token", "scope": "sw:scope1"}},
-	{map[string]string{"adminURL": "https://localhost:8443", "authModes": "oauth", "grantType": "client_credentials", "authTokenURI": "https://localhost/token", "scope": "sw:scope1 sw:scope2", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, true, false, "https://localhost:8443", "persistent://public/default/my-topic", "sub1", map[string]string{"grantType": "client_credentials", "authTokenURI": "https://localhost/token", "scope": "sw:scope1 sw:scope2"}},
+	{map[string]string{"adminURL": "https://localhost:8443", "tls": "enable", "cert": "certdata", "key": "keydata", "ca": "cadata", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, true, false, "https://localhost:8443", "persistent://public/default/my-topic", "sub1"},
 }
 
 var parsePulsarMetadataTestAuthTLSDataset = []parsePulsarAuthParamsTestData{
 	// Passes, mutual TLS, no other auth (legacy "tls: enable")
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "tls": "enable"}, map[string]string{"cert": "certdata", "key": "keydata", "ca": "cadata"}, false, true, "certdata", "keydata", "cadata", "", "", "", false, "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "tls": "enable"}, map[string]string{"cert": "certdata", "key": "keydata", "ca": "cadata"}, false, true, "certdata", "keydata", "cadata", "", "", "", false, "", "", "", ""},
 	// Passes, mutual TLS, no other auth (uses new way to enable tls)
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "authModes": "tls"}, map[string]string{"cert": "certdata", "key": "keydata", "ca": "cadata"}, false, true, "certdata", "keydata", "cadata", "", "", "", false, "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "authModes": "tls"}, map[string]string{"cert": "certdata", "key": "keydata", "ca": "cadata"}, false, true, "certdata", "keydata", "cadata", "", "", "", false, "", "", "", ""},
 	// Fails, mutual TLS (legacy "tls: enable") without cert
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "tls": "enable"}, map[string]string{"cert": "", "key": "keydata", "ca": "cadata"}, true, true, "certdata", "keydata", "cadata", "", "", "", false, "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "tls": "enable"}, map[string]string{"cert": "", "key": "keydata", "ca": "cadata"}, true, true, "certdata", "keydata", "cadata", "", "", "", false, "", "", "", ""},
 	// Fails, mutual TLS, (uses new way to enable tls) without cert
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "authModes": "tls"}, map[string]string{"cert": "certdata", "key": "", "ca": "cadata"}, true, true, "certdata", "keydata", "cadata", "", "", "", false, "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "authModes": "tls"}, map[string]string{"cert": "certdata", "key": "", "ca": "cadata"}, true, true, "certdata", "keydata", "cadata", "", "", "", false, "", "", "", ""},
 	// Passes, server side TLS with bearer token. Note that EnableTLS is expected to be false because it is not mTLS.
 	// The legacy behavior required tls: enable in order to configure a custom root ca. Now, all that is required is configuring a root ca.
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "tls": "enable", "authModes": "bearer"}, map[string]string{"ca": "cadata", "bearerToken": "my-special-token"}, false, false, "", "", "cadata", "my-special-token", "", "", false, "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "tls": "enable", "authModes": "bearer"}, map[string]string{"ca": "cadata", "bearerToken": "my-special-token"}, false, false, "", "", "cadata", "my-special-token", "", "", false, "", "", "", ""},
 	// Passes, server side TLS with basic auth. Note that EnableTLS is expected to be false because it is not mTLS.
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "authModes": "basic"}, map[string]string{"ca": "cadata", "username": "admin", "password": "password123"}, false, false, "", "", "cadata", "", "admin", "password123", false, "", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "authModes": "basic"}, map[string]string{"ca": "cadata", "username": "admin", "password": "password123"}, false, false, "", "", "cadata", "", "admin", "password123", false, "", "", "", ""},
+
 	// Passes, server side TLS with oauth. Note that EnableTLS is expected to be false because it is not mTLS.
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "authModes": "oauth"}, map[string]string{"ca": "cadata", "clientID": "id1", "clientSecret": "secret123"}, false, false, "", "", "cadata", "", "", "", false, "id1", "secret123"},
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "authModes": "oauth", "clientID": "id2"}, map[string]string{"ca": "cadata", "clientID": "id1", "clientSecret": "secret123"}, false, false, "", "", "cadata", "", "", "", false, "id1", "secret123"},
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "authModes": "oauth", "clientID": "id2"}, map[string]string{"ca": "cadata", "clientID": "", "clientSecret": "secret123"}, false, false, "", "", "cadata", "", "", "", false, "id2", "secret123"},
-	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "authModes": "oauth", "clientID": "id1"}, map[string]string{}, false, false, "", "", "", "", "", "", false, "id1", ""},
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "authModes": "oauth"}, map[string]string{"ca": "cadata", "oauthTokenURI": "https1", "scope": "scope1", "clientID": "id1", "clientSecret": "secret123"}, false, false, "", "", "cadata", "", "", "", false, "https1", "scope1", "id1", "secret123"},
+	// Passes, oauth config data is set from metadata only
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "authModes": "oauth", "oauthTokenURI": "https2", "scope": "scope2", "clientID": "id2"}, map[string]string{"ca": "cadata", "oauthTokenURI": "", "scope": "", "clientID": "", "clientSecret": ""}, false, false, "", "", "cadata", "", "", "", false, "https2", "scope2", "id2", ""},
+	// Passes, oauth config data is set from TriggerAuth if both provided
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "authModes": "oauth", "oauthTokenURI": "https1", "scope": "scope1", "clientID": "id1"}, map[string]string{"ca": "cadata", "oauthTokenURI": "https3", "scope": "scope3", "clientID": "id3", "clientSecret": "secret123"}, false, false, "", "", "cadata", "", "", "", false, "https3", "scope3", "id3", "secret123"},
+	// Passes, with multiple scopes from metadata
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "authModes": "oauth", "oauthTokenURI": "https4", "scope": "sc:scope2 sc:scope1", "clientID": "id4"}, map[string]string{"ca": "cadata", "oauthTokenURI": "", "scope": "", "clientID": "", "clientSecret": ""}, false, false, "", "", "cadata", "", "", "", false, "https4", "sc:scope1 sc:scope2", "id4", ""},
+	// Passes, with multiple scopes from TriggerAuth
+	{map[string]string{"adminURL": "http://172.20.0.151:80", "topic": "persistent://public/default/my-topic", "subscription": "sub1", "authModes": "oauth"}, map[string]string{"ca": "cadata", "oauthTokenURI": "https5", "scope": "sc:scope2 sc:scope1", "clientID": "id5", "clientSecret": "secret123"}, false, false, "", "", "cadata", "", "", "", false, "https5", "sc:scope1 sc:scope2", "id5", "secret123"},
 }
 
 var pulsarMetricIdentifiers = []pulsarMetricIdentifier{
@@ -161,41 +161,20 @@ func TestParsePulsarMetadata(t *testing.T) {
 		if meta.subscription != testData.subscription {
 			t.Errorf("Expected subscription %s but got %s\n", testData.subscription, meta.subscription)
 		}
-
-		if testData.oauthData != nil {
-			if meta.oauthTokenURI != testData.oauthData["oauthTokenURI"] {
-				t.Errorf("Expected oauthTokenURI %s but got %s\n", testData.oauthData["oauthTokenURI"], meta.oauthTokenURI)
-			}
-			if meta.grantType != testData.oauthData["grantType"] {
-				t.Errorf("Expected grantType %s but got %s\n", testData.oauthData["grantType"], meta.grantType)
-			}
-			if testData.oauthData["scope"] != "" && !compareScope(meta.scopes, testData.oauthData["scope"]) {
-				t.Errorf("Expected scopes %s but got %s\n", testData.oauthData["scope"], meta.scopes)
-			}
-			if testData.oauthData["scope"] == "" && meta.scopes != nil {
-				t.Errorf("Expected scopes to be null but got %s\n", meta.scopes)
-			}
-			if meta.clientID != testData.oauthData["clientID"] {
-				t.Errorf("Expected clientID %s but got %s\n", testData.oauthData["clientID"], meta.clientID)
-			}
-		}
 	}
 }
 
 func compareScope(scopes []string, scopeStr string) bool {
 	scopeMap := make(map[string]bool)
-
 	for _, scope := range scopes {
 		scopeMap[scope] = true
 	}
-
 	scopeList := strings.Fields(scopeStr)
 	for _, scope := range scopeList {
 		if !scopeMap[scope] {
 			return false
 		}
 	}
-
 	return true
 }
 
@@ -265,13 +244,25 @@ func TestPulsarAuthParams(t *testing.T) {
 			}
 		}
 
-		if meta.clientID != testData.clientID {
-			t.Errorf("Expected clientID to be set to %s but got %s\n", testData.clientID, meta.clientID)
+		if meta.pulsarAuth.OauthTokenURI != testData.oauthTokenURI {
+			t.Errorf("Expected oauthTokenURI to be set to %s but got %s\n", testData.oauthTokenURI, meta.pulsarAuth.OauthTokenURI)
+		}
+
+		if testData.scope != "" && !compareScope(meta.pulsarAuth.Scopes, testData.scope) {
+			t.Errorf("Expected scopes %s but got %s\n", testData.scope, meta.pulsarAuth.Scopes)
+		}
+		if testData.scope == "" && meta.pulsarAuth.Scopes != nil {
+			t.Errorf("Expected scopes to be null but got %s\n", meta.pulsarAuth.Scopes)
+		}
+
+		if meta.pulsarAuth.ClientID != testData.clientID {
+			t.Errorf("Expected clientID to be set to %s but got %s\n", testData.clientID, meta.pulsarAuth.ClientID)
 		}
 
 		if meta.pulsarAuth.ClientSecret != testData.clientSecret {
 			t.Errorf("Expected clientSecret to be set to %s but got %s\n", testData.clientSecret, meta.pulsarAuth.ClientSecret)
 		}
+
 	}
 }
 
