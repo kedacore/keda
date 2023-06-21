@@ -74,31 +74,31 @@ func NewTemporalScaler(config *ScalerConfig) (Scaler, error) {
 func parseTemporalMetadata(config *ScalerConfig, logger logr.Logger) (*temporalMetadata, error) {
 	meta := &temporalMetadata{}
 
+	// Mandatory fields
+	if val, ok := config.TriggerMetadata["address"]; ok {
+		meta.address = val
+	} else {
+		return nil, fmt.Errorf("missing address value")
+	}
+
 	if val, ok := config.TriggerMetadata[threshold]; ok && val != "" {
 		t, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing %s", threshold)
+			return nil, fmt.Errorf("error parsing threshold %s %w", val, err)
 		}
 		meta.threshold = t
 	} else {
-		return nil, fmt.Errorf("missing %s value", threshold)
+		return nil, fmt.Errorf("missing threshold value")
 	}
 
+	// Optional fields
 	meta.activationThreshold = 0
 	if val, ok := config.TriggerMetadata["activationThreshold"]; ok {
 		activationThreshold, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("queryValue parsing error %w", err)
+			return nil, fmt.Errorf("error parsing activationThreshold %s %w", val, err)
 		}
 		meta.activationThreshold = activationThreshold
-	}
-
-	// If Query Return an Empty Data, shall we treat it as an error or not
-	// default is NO error is returned when query result is empty/no data
-	if val, ok := config.TriggerMetadata["address"]; ok {
-		meta.address = val
-	} else {
-		meta.address = "ERROR"
 	}
 
 	if val, ok := config.TriggerMetadata["namespace"]; ok {

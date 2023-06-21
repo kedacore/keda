@@ -26,11 +26,16 @@ var testTemporalMetadata = []parseTemporalMetadataTestData{
 	{map[string]string{"address": "http://localhost", "threshold": "100", "activationThreshold": "20"}, map[string]string{}, false},
 	// missing address
 	{map[string]string{"threshold": "100"}, map[string]string{}, true},
-	// missing account
+	// threshold wrong type
 	{map[string]string{"address": "http://localhost", "threshold": "one"}, map[string]string{}, true},
-	// malformed activationThreshold
+	// activationThreshold wrong type
 	{map[string]string{"address": "http://localhost", "threshold": "100", "activationThreshold": "notanint"}, map[string]string{}, true},
 	// missing threshold
+	{map[string]string{"address": "myUri"}, map[string]string{}, true},
+	// tls: missing cert
+	{map[string]string{"address": "http://localhost", "threshold": "100", "activationThreshold": "20", "authModes": "tls"}, map[string]string{}, true},
+	// tls: missing key
+	{map[string]string{"address": "http://localhost", "threshold": "100", "activationThreshold": "20", "authModes": "tls"}, map[string]string{"cert": "myCert"}, true},
 }
 
 var temporalMetricIdentifiers = []temporalMetricIdentifier{
@@ -45,10 +50,10 @@ func TestTemporalParseMetadata(t *testing.T) {
 			fmt.Printf("X: %s", testData.metadata)
 			t.Error("Expected success but got error", err)
 		}
-		// if testData.isError && err == nil {
-		//	fmt.Printf("X: %s", testData.metadata)
-		//	t.Error("Expected error but got success")
-		//}
+		if testData.isError && err == nil {
+			fmt.Printf("X: %s", testData.metadata)
+			t.Error("Expected error but no error returned")
+		}
 	}
 }
 func TestTemporalGetMetricSpecForScaling(t *testing.T) {
