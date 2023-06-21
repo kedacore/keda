@@ -26,6 +26,7 @@ import (
 const (
 	testName          = "prometheus-metrics-test"
 	labelScaledObject = "scaledObject"
+	labelType         = "type"
 )
 
 var (
@@ -484,7 +485,7 @@ func testScalableObjectMetrics(t *testing.T) {
 		for _, metric := range metrics {
 			labels := metric.GetLabel()
 			for _, label := range labels {
-				if *label.Name == "type" && *label.Value == "scaledobject" {
+				if *label.Name == labelType && *label.Value == "scaledobject" {
 					found = true
 				}
 			}
@@ -496,7 +497,7 @@ func testScalableObjectMetrics(t *testing.T) {
 		for _, metric := range metrics {
 			labels := metric.GetLabel()
 			for _, label := range labels {
-				if *label.Name == "type" && *label.Value == "scaledjob" {
+				if *label.Name == labelType && *label.Value == "scaledjob" {
 					found = true
 				}
 			}
@@ -675,7 +676,7 @@ func checkTriggerTotalValues(t *testing.T, families map[string]*prommodel.Metric
 	for _, metric := range metrics {
 		labels := metric.GetLabel()
 		for _, label := range labels {
-			if *label.Name == "type" {
+			if *label.Name == labelType {
 				triggerType := *label.Value
 				metricValue := *metric.Gauge.Value
 				expectedMetricValue := float64(expected[triggerType])
@@ -705,7 +706,7 @@ func checkCRTotalValues(t *testing.T, families map[string]*prommodel.MetricFamil
 		labels := metric.GetLabel()
 		var namespace, crType string
 		for _, label := range labels {
-			if *label.Name == "type" {
+			if *label.Name == labelType {
 				crType = *label.Value
 			} else if *label.Name == namespaceString {
 				namespace = *label.Value
