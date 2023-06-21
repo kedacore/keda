@@ -475,36 +475,35 @@ func testScalableObjectMetrics(t *testing.T) {
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 
-	if val, ok := family["keda_scaled_object_latency"]; ok {
+	if val, ok := family["keda_internal_scale_loop_latency"]; ok {
 		var found bool
 		metrics := val.GetMetric()
-		for _, metric := range metrics {
-			labels := metric.GetLabel()
-			for _, label := range labels {
-				if *label.Name == labelScaledObject && *label.Value == scaledObjectName {
-					found = true
-				}
-			}
-		}
-		assert.Equal(t, true, found)
-	} else {
-		t.Errorf("metric not available")
-	}
 
-	if val, ok := family["keda_scaled_job_latency"]; ok {
-		var found bool
-		metrics := val.GetMetric()
+		// check scaledobject loop
+		found = false
 		for _, metric := range metrics {
 			labels := metric.GetLabel()
 			for _, label := range labels {
-				if *label.Name == labelScaledObject && *label.Value == cronScaledJobName {
+				if *label.Name == "type" && *label.Value == "scaledobject" {
+					found = true
+				}
+			}
+		}
+		assert.Equal(t, true, found)
+
+		// check scaledjob loop
+		found = false
+		for _, metric := range metrics {
+			labels := metric.GetLabel()
+			for _, label := range labels {
+				if *label.Name == "type" && *label.Value == "scaledjob" {
 					found = true
 				}
 			}
 		}
 		assert.Equal(t, true, found)
 	} else {
-		t.Errorf("metric not available")
+		t.Errorf("scaledobject metric not available")
 	}
 }
 

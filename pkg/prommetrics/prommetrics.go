@@ -121,24 +121,14 @@ var (
 		[]string{"type", "namespace"},
 	)
 
-	scaledObjectLatency = prometheus.NewGaugeVec(
+	internalLoopLatency = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: DefaultPromMetricsNamespace,
-			Subsystem: "scaled_object",
+			Subsystem: "internal_scale_loop",
 			Name:      "latency",
-			Help:      "ScaledObject Latency",
+			Help:      "Internal latency of ScaledObject/Job loop execution",
 		},
-		[]string{"namespace", "scaledObject"},
-	)
-
-	scaledJobLatency = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: DefaultPromMetricsNamespace,
-			Subsystem: "scaled_job",
-			Name:      "latency",
-			Help:      "ScaledJob Latency",
-		},
-		[]string{"namespace", "scaledJob"},
+		[]string{"namespace", "type", "resource"},
 	)
 )
 
@@ -146,7 +136,7 @@ func init() {
 	metrics.Registry.MustRegister(scalerErrorsTotal)
 	metrics.Registry.MustRegister(scalerMetricsValue)
 	metrics.Registry.MustRegister(scalerMetricsLatency)
-	metrics.Registry.MustRegister(scaledObjectLatency)
+	metrics.Registry.MustRegister(internalLoopLatency)
 	metrics.Registry.MustRegister(scalerActive)
 	metrics.Registry.MustRegister(scalerErrors)
 	metrics.Registry.MustRegister(scaledObjectErrors)
@@ -169,12 +159,12 @@ func RecordScalerLatency(namespace string, scaledObject string, scaler string, s
 }
 
 // RecordScaledObjectLatency create a measurement of the latency executing scalable object loop
-func RecordScalableObjectLatency(namespace string, scalableObject string, isScaledObject bool, value float64) {
+func RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value float64) {
+	resourceType := "scaledjob"
 	if isScaledObject {
-		scaledObjectLatency.WithLabelValues(namespace, scalableObject).Set(value)
-	} else {
-		scaledJobLatency.WithLabelValues(namespace, scalableObject).Set(value)
+		resourceType = "scaledobject"
 	}
+	internalLoopLatency.WithLabelValues(namespace, resourceType, name).Set(value)
 }
 
 // RecordScalerActive create a measurement of the activity of the scaler
