@@ -50,6 +50,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Redis Scalers**: Allow scaling using redis stream length ([#4277](https://github.com/kedacore/keda/issues/4277))
 - **Redis Scalers**: Allow scaling using consumer group lag ([#3127](https://github.com/kedacore/keda/issues/3127))
 - **General:** Introduce new Solr Scaler ([#4234](https://github.com/kedacore/keda/issues/4234))
+- **General:** Introduce new Temporal Scaler ([#4724](https://github.com/kedacore/keda/issues/4724))
 
 ### Improvements
 
