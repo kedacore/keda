@@ -154,6 +154,50 @@ spec:
       messageSpoolUsageTarget: '1'
       activationMessageCountTarget: '20'
       activationMessageSpoolUsageTarget: '20'
+      activationMessageReceiveRateTarget: '100'
+    authenticationRef:
+      name: {{.TriggerAuthenticationName}}
+`
+
+	scaledObjectTemplateRate = `apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectName}}
+  namespace: {{.TestNamespace}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  minReplicaCount: {{.MinReplicaCount}}
+  maxReplicaCount: {{.MaxReplicaCount}}
+  pollingInterval: 3
+  cooldownPeriod:  5
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 0
+          policies:
+          - type:          Percent
+            value:         100
+            periodSeconds: 10
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+          - type:          Pods
+            value:         10
+            periodSeconds: 10
+          selectPolicy:    Max
+  triggers:
+  - type: solace-event-queue
+    metadata:
+      solaceSempBaseURL: http://kedalab-pubsubplus-dev.{{.TestNamespace}}.svc.cluster.local:8080
+      messageVpn: keda_vpn
+      queueName: SCALED_CONSUMER_QUEUE1
+      messageReceiveRateTarget: '5'
+      # Will not activate on count or spool
+      activationMessageCountTarget: '1000'
+      activationMessageSpoolUsageTarget: '1000'
+      activationMessageReceiveRateTarget: '3'
     authenticationRef:
       name: {{.TriggerAuthenticationName}}
 `
@@ -173,8 +217,14 @@ func TestStanScaler(t *testing.T) {
 	testScaleOut(t, kc)
 	testScaleIn(t, kc)
 
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplateRate", scaledObjectTemplateRate)
+
+	testActivationRate(t, kc)
+	testScaleOutRate(t, kc)
+	testScaleInRate(t, kc)
+
 	// cleanup
-	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplateRate", scaledObjectTemplateRate)
 	uninstallSolace(t)
 	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
@@ -184,8 +234,10 @@ func installSolace(t *testing.T) {
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("helm repo update")
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --set solace.usernameAdminPassword=KedaLabAdminPwd1 --set storage.persistent=false --namespace %s --wait --timeout 900s kedalab solacecharts/pubsubplus-dev`,
+	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --set solace.usernameAdminPassword=KedaLabAdminPwd1 --set storage.persistent=false,solace.size=dev,nameOverride=pubsubplus-dev --namespace %s kedalab solacecharts/pubsubplus`,
 		testNamespace))
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	_, err = ExecuteCommand("sleep 60") // there is a bug in the solace helm chart where it is looking for the wrong number of replicas on --wait
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	// Create the pubsub broker
 	_, _, err = ExecCommandOnSpecificPod(t, helperName, testNamespace, "./config/config_solace.sh")
@@ -218,6 +270,27 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
+		"replica count should be %d after 3 minutes", minReplicaCount)
+}
+
+func testActivationRate(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing activation activationMsgRxRateTarget ---")
+	// Next line is a delay -- Wait to smooth out msg receive rate to avoid false+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 30)
+	publishMessages(t, 1, 30, 256)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 30)
+}
+
+func testScaleOutRate(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale out msgRxRateTarget---")
+	publishMessages(t, 30, 300, 256)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
+		"replica count should be %d after 3 minutes", maxReplicaCount)
+}
+
+func testScaleInRate(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale in msgRxRateTarget ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
 }

@@ -17,7 +17,7 @@ import (
 )
 
 // Load environment variables from .env file
-var _ = godotenv.Load("../../.env")
+var _ = godotenv.Load("../../../.env")
 
 const (
 	testName = "rmq-queue-http-vhost-test"
@@ -80,7 +80,7 @@ func TestScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 
-	RMQInstall(t, kc, rmqNamespace, user, password, vhost)
+	RMQInstall(t, kc, rmqNamespace, user, password, vhost, WithoutOAuth())
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
@@ -91,7 +91,7 @@ func TestScaler(t *testing.T) {
 	// cleanup
 	t.Log("--- cleaning up ---")
 	DeleteKubernetesResources(t, testNamespace, data, templates)
-	RMQUninstall(t, rmqNamespace, user, password, vhost)
+	RMQUninstall(t, rmqNamespace, user, password, vhost, WithoutOAuth())
 }
 
 func getTemplateData() (templateData, []Template) {

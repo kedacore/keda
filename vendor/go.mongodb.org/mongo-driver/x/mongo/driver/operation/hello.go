@@ -240,7 +240,7 @@ func (h *Hello) GetHandshakeInformation(ctx context.Context, _ address.Address, 
 	if speculativeAuthenticate, ok := h.res.Lookup("speculativeAuthenticate").DocumentOK(); ok {
 		info.SpeculativeAuthenticate = speculativeAuthenticate
 	}
-	if serverConnectionID, ok := h.res.Lookup("connectionId").Int32OK(); ok {
+	if serverConnectionID, ok := h.res.Lookup("connectionId").AsInt64OK(); ok {
 		info.ServerConnectionID = &serverConnectionID
 	}
 	// Cast to bson.Raw to lookup saslSupportedMechs to avoid converting from bsoncore.Value to bson.RawValue for the

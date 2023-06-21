@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"sync"
@@ -91,22 +92,40 @@ type startedInformation struct {
 	cmdName                  string
 	documentSequenceIncluded bool
 	connID                   string
-	serverConnID             *int32
+	driverConnectionID       uint64 // TODO(GODRIVER-2824): change type to int64.
+	serverConnID             *int64
 	redacted                 bool
 	serviceID                *primitive.ObjectID
 }
 
 // finishedInformation keeps track of all of the information necessary for monitoring success and failure events.
 type finishedInformation struct {
-	cmdName      string
-	requestID    int32
-	response     bsoncore.Document
-	cmdErr       error
-	connID       string
-	serverConnID *int32
-	startTime    time.Time
-	redacted     bool
-	serviceID    *primitive.ObjectID
+	cmdName            string
+	requestID          int32
+	response           bsoncore.Document
+	cmdErr             error
+	connID             string
+	driverConnectionID uint64 // TODO(GODRIVER-2824): change type to int64.
+	serverConnID       *int64
+	startTime          time.Time
+	redacted           bool
+	serviceID          *primitive.ObjectID
+}
+
+// convertInt64PtrToInt32Ptr will convert an int64 pointer reference to an int32 pointer
+// reference. If the int64 value cannot be converted to int32 without causing
+// an overflow, then this function will return nil.
+func convertInt64PtrToInt32Ptr(i64 *int64) *int32 {
+	if i64 == nil {
+		return nil
+	}
+
+	if *i64 > math.MaxInt32 || *i64 < math.MinInt32 {
+		return nil
+	}
+
+	i32 := int32(*i64)
+	return &i32
 }
 
 // ResponseInfo contains the context required to parse a server response.
@@ -552,6 +571,7 @@ func (op Operation) Execute(ctx context.Context) error {
 
 		// set extra data and send event if possible
 		startedInfo.connID = conn.ID()
+		startedInfo.driverConnectionID = conn.DriverConnectionID()
 		startedInfo.cmdName = op.getCommandName(startedInfo.cmd)
 		op.cmdName = startedInfo.cmdName
 		startedInfo.redacted = op.redactCommand(startedInfo.cmdName, startedInfo.cmd)
@@ -574,13 +594,14 @@ func (op Operation) Execute(ctx context.Context) error {
 		}
 
 		finishedInfo := finishedInformation{
-			cmdName:      startedInfo.cmdName,
-			requestID:    startedInfo.requestID,
-			startTime:    time.Now(),
-			connID:       startedInfo.connID,
-			serverConnID: startedInfo.serverConnID,
-			redacted:     startedInfo.redacted,
-			serviceID:    startedInfo.serviceID,
+			cmdName:            startedInfo.cmdName,
+			requestID:          startedInfo.requestID,
+			startTime:          time.Now(),
+			connID:             startedInfo.connID,
+			driverConnectionID: startedInfo.driverConnectionID,
+			serverConnID:       startedInfo.serverConnID,
+			redacted:           startedInfo.redacted,
+			serviceID:          startedInfo.serviceID,
 		}
 
 		// Check for possible context error. If no context error, check if there's enough time to perform a
@@ -1704,7 +1725,7 @@ func (op Operation) publishStartedEvent(ctx context.Context, info startedInforma
 		CommandName:        info.cmdName,
 		RequestID:          int64(info.requestID),
 		ConnectionID:       info.connID,
-		ServerConnectionID: info.serverConnID,
+		ServerConnectionID: convertInt64PtrToInt32Ptr(info.serverConnID),
 		ServiceID:          info.serviceID,
 	}
 	op.CommandMonitor.Started(ctx, started)
@@ -1732,7 +1753,7 @@ func (op Operation) publishFinishedEvent(ctx context.Context, info finishedInfor
 		RequestID:          int64(info.requestID),
 		ConnectionID:       info.connID,
 		DurationNanos:      durationNanos,
-		ServerConnectionID: info.serverConnID,
+		ServerConnectionID: convertInt64PtrToInt32Ptr(info.serverConnID),
 		ServiceID:          info.serviceID,
 	}
 

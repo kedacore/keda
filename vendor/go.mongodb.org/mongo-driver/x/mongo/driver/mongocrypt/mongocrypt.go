@@ -321,6 +321,11 @@ func (m *MongoCrypt) RewrapDataKeyContext(filter []byte, opts *options.RewrapMan
 		return nil, m.createErrorFromStatus()
 	}
 
+	if opts.MasterKey != nil && opts.Provider == nil {
+		// Provider is nil, but MasterKey is set. This is an error.
+		return nil, fmt.Errorf("expected 'Provider' to be set to identify type of 'MasterKey'")
+	}
+
 	if opts.Provider != nil {
 		// If a provider has been specified, create an encryption key document for creating a data key or for rewrapping
 		// datakeys. If a new provider is not specified, then the filter portion of this logic returns the data as it
