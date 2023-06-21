@@ -2,27 +2,23 @@ package scalers
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"strconv"
 
-	// Added for TLS
-	"crypto/tls"
-	"crypto/x509"
-
 	"github.com/go-logr/logr"
+	"go.temporal.io/api/workflowservice/v1"
+	"go.temporal.io/sdk/client"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
-	"go.temporal.io/api/workflowservice/v1"
-	"go.temporal.io/sdk/client"
 )
 
 const (
-	address          = "address"
-	scaler_threshold = "threshold"
-	scaler_name      = "temporal"
+	temporalScalerName = "temporal"
 )
 
 type temporalScaler struct {
@@ -49,11 +45,11 @@ func NewTemporalScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
-	logger := InitializeLogger(config, fmt.Sprintf("%s_scaler", scaler_name))
+	logger := InitializeLogger(config, fmt.Sprintf("%s_scaler", temporalScalerName))
 
 	meta, err := parseTemporalMetadata(config, logger)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing %s metadata: %w", scaler_name, err)
+		return nil, fmt.Errorf("error parsing %s metadata: %w", temporalScalerName, err)
 	}
 
 	clientOptions, err := parseClientOptions(meta)
@@ -140,7 +136,6 @@ func (s *temporalScaler) Close(context.Context) error {
 }
 
 func parseClientOptions(metadata *temporalMetadata) (client.Options, error) {
-
 	// Read configuration from trigger metadata. EnableTLS will be set if the trigger metadata contains
 	// the required TLS configuration.
 	if !metadata.temporalAuth.EnableTLS {
@@ -178,25 +173,24 @@ func parseClientOptions(metadata *temporalMetadata) (client.Options, error) {
 }
 
 func (s *temporalScaler) executeTemporalQuery(ctx context.Context) (float64, error) {
-
-	if _, err := s.temporalClient.CheckHealth(context.Background(), &client.CheckHealthRequest{}); err != nil {
+	size := float64(0)
+	if _, err := s.temporalClient.CheckHealth(ctx, &client.CheckHealthRequest{}); err != nil {
 		s.logger.Info("Health is bad")
 	} else {
 		s.logger.Info("Health is good")
 	}
 
-	openWorkFlows, err := s.temporalClient.ListOpenWorkflow(context.Background(), &workflowservice.ListOpenWorkflowExecutionsRequest{})
-	if err != nil {
-		s.logger.Error(err, "error getting list of open workflows")
+	openWorkFlows, workflowErr := s.temporalClient.ListOpenWorkflow(ctx, &workflowservice.ListOpenWorkflowExecutionsRequest{})
+	if workflowErr != nil {
+		s.logger.Error(workflowErr, "error getting list of open workflows")
 	} else {
-		size := openWorkFlows.Size()
-		logMsg := fmt.Sprintf("Open Workflows: %d", size)
+		size = float64(openWorkFlows.Size())
+		logMsg := fmt.Sprintf("Open Workflows: %v", size)
 		s.logger.Info(logMsg)
-		return float64(size), nil
 	}
 
 	defer s.temporalClient.Close()
-	return 0, nil
+	return size, workflowErr
 }
 
 func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
@@ -212,7 +206,7 @@ func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 }
 
 func (s *temporalScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
-	metricName := kedautil.NormalizeString(scaler_name)
+	metricName := kedautil.NormalizeString(temporalScalerName)
 
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{

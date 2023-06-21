@@ -45,7 +45,7 @@ func TestTemporalParseMetadata(t *testing.T) {
 			fmt.Printf("X: %s", testData.metadata)
 			t.Error("Expected success but got error", err)
 		}
-		//if testData.isError && err == nil {
+		// if testData.isError && err == nil {
 		//	fmt.Printf("X: %s", testData.metadata)
 		//	t.Error("Expected error but got success")
 		//}
