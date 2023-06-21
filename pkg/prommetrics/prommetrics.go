@@ -126,7 +126,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "internal_scale_loop",
 			Name:      "latency",
-			Help:      "Internal latency of ScaledObject/Job loop execution",
+			Help:      "Internal latency of ScaledObject/ScaledJob loop execution",
 		},
 		[]string{"namespace", "type", "resource"},
 	)
