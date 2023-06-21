@@ -1296,7 +1296,7 @@ go.starlark.net/resolve
 go.starlark.net/starlark
 go.starlark.net/starlarkstruct
 go.starlark.net/syntax
-# go.temporal.io/api v1.21.0
+# go.temporal.io/api v1.23.0
 ## explicit; go 1.16
 go.temporal.io/api/batch/v1
 go.temporal.io/api/command/v1
