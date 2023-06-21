@@ -64,6 +64,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **RabbitMQ Scaler**: Add support for `unsafeSsl` in trigger metadata ([#4448](https://github.com/kedacore/keda/issues/4448))
 - **Prometheus Metrics**: Add new metric with KEDA build info ([#4647](https://github.com/kedacore/keda/issues/4647))
 - **Prometheus Scaler**: Add support for Google Managed Prometheus ([#4675](https://github.com/kedacore/keda/pull/4675))
+- **Solace Scaler**: Add new `messageReceiveRateTarget` metric to Solace Scaler ([#4665](https://github.com/kedacore/keda/issues/4665))
+
 
 ### Fixes
 
