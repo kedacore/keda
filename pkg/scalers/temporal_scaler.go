@@ -13,10 +13,10 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/client"
-	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 )
 
 const (
@@ -26,19 +26,21 @@ const (
 )
 
 type temporalScaler struct {
-	metricType 		v2.MetricTargetType
-	metadata   		*temporalMetadata
-	temporalClient	client.Client
-	logger			logr.Logger
+	metricType     v2.MetricTargetType
+	metadata       *temporalMetadata
+	temporalClient client.Client
+	logger         logr.Logger
 }
 
 type temporalMetadata struct {
-	address             		string
-	threshold           		float64
-	activationThreshold 		float64
-	scalerIndex         		int
-	temporalAuth      			*authentication.AuthMeta
-	serverName		  			string
+	address             string
+	threshold           float64
+	activationThreshold float64
+	scalerIndex         int
+	temporalAuth        *authentication.AuthMeta
+	unsafeSsl           bool
+	serverName          string
+	namespace           string
 }
 
 func NewTemporalScaler(config *ScalerConfig) (Scaler, error) {
@@ -67,10 +69,10 @@ func NewTemporalScaler(config *ScalerConfig) (Scaler, error) {
 	logger.Info(fmt.Sprintf("Initializing Temporal Scaler connected to %s", meta.address))
 
 	return &temporalScaler{
-		metricType: 	metricType,
-		metadata:   	meta,
+		metricType:     metricType,
+		metadata:       meta,
 		temporalClient: temporalClient,
-		logger:     	logger}, nil
+		logger:         logger}, nil
 }
 
 func parseTemporalMetadata(config *ScalerConfig, logger logr.Logger) (*temporalMetadata, error) {
@@ -102,6 +104,23 @@ func parseTemporalMetadata(config *ScalerConfig, logger logr.Logger) (*temporalM
 	} else {
 		meta.address = "ERROR"
 	}
+
+	if val, ok := config.TriggerMetadata["namespace"]; ok {
+		meta.namespace = val
+	} else {
+		meta.namespace = "default"
+	}
+
+	meta.unsafeSsl = false
+	if val, ok := config.TriggerMetadata[unsafeSsl]; ok && val != "" {
+		unsafeSslValue, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing %s: %w", unsafeSsl, err)
+		}
+
+		meta.unsafeSsl = unsafeSslValue
+	}
+
 	meta.scalerIndex = config.ScalerIndex
 	meta.serverName = config.TriggerMetadata["serverName"]
 
@@ -112,10 +131,9 @@ func parseTemporalMetadata(config *ScalerConfig, logger logr.Logger) (*temporalM
 	meta.temporalAuth = auth
 
 	logger.Info("Parsed Temporal Scaler metadata: ", meta)
-	
+
 	return meta, nil
 }
-
 
 func (s *temporalScaler) Close(context.Context) error {
 	return nil
@@ -127,38 +145,33 @@ func parseClientOptions(metadata *temporalMetadata) (client.Options, error) {
 	// the required TLS configuration.
 	if !metadata.temporalAuth.EnableTLS {
 		return client.Options{
-			HostPort: metadata.address,
+			HostPort:  metadata.address,
+			Namespace: metadata.namespace,
 		}, nil
 	}
 
 	// This implementation assumes that a PEM format is base64 encoded in the trigger metadata
-	//cert, err := tls.LoadX509KeyPair(metadata.certificate_file, metadata.certificate_key_file)
 	cert, err := tls.X509KeyPair([]byte(metadata.temporalAuth.Cert), []byte(metadata.temporalAuth.Key))
 	if err != nil {
 		return client.Options{}, fmt.Errorf("failed loading client cert and key: %w", err)
 	}
 
 	serverCAPool := x509.NewCertPool()
-	//b, err := os.ReadFile(metadata.certificate_authority_file)
-	b:= []byte(metadata.temporalAuth.CA)
+	b := []byte(metadata.temporalAuth.CA)
 	if !serverCAPool.AppendCertsFromPEM(b) {
-			return client.Options{}, fmt.Errorf("server CA PEM file invalid")
+		return client.Options{}, fmt.Errorf("server CA PEM file invalid")
 	}
-	// if err != nil {
-	// 	return client.Options{}, fmt.Errorf("failed reading server CA: %w", err)
-	// } else if !serverCAPool.AppendCertsFromPEM(b) {
-	// 	return client.Options{}, fmt.Errorf("server CA PEM file invalid")
-	// }
 
 	return client.Options{
 		HostPort:  metadata.address,
-		Namespace: "default",
+		Namespace: metadata.namespace,
 		ConnectionOptions: client.ConnectionOptions{
 			TLS: &tls.Config{
 				Certificates:       []tls.Certificate{cert},
 				RootCAs:            serverCAPool,
 				ServerName:         metadata.serverName,
-				InsecureSkipVerify: true,
+				MinVersion:         tls.VersionTLS13,
+				InsecureSkipVerify: metadata.unsafeSsl,
 			},
 		},
 	}, nil
