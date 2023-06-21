@@ -23,6 +23,7 @@ require (
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.38.1
 	github.com/arangodb/go-driver v1.6.0
+	github.com/bradleyfalzon/ghinstallation/v2 v2.5.0
 	github.com/aws/aws-sdk-go v1.44.286
 	github.com/denisenkom/go-mssqldb v0.12.3
 	github.com/dysnix/predictkube-libs v0.0.4-0.20230109175007-5a82fccd31c7
@@ -188,6 +189,7 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/cel-go v0.13.0 // indirect
 	github.com/google/gnostic v0.6.9 // indirect
+	github.com/google/go-github/v53 v53.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/pprof v0.0.0-20230228050547-1710fef4ab10 // indirect
