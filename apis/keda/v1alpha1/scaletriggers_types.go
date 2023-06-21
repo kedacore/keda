@@ -65,8 +65,8 @@ func ValidateTriggers(logger logr.Logger, triggers []ScaleTriggers) error {
 
 			// FIXME: DEPRECATED to be removed in v2.12
 			_, hasMetricName := trigger.Metadata["metricName"]
-			// aws-cloudwatch and huawei-cloudeye have a meaningful use of metricName
-			if hasMetricName && trigger.Type != "aws-cloudwatch" && trigger.Type != "huawei-cloudeye" {
+			// aws-cloudwatch, huawei-cloudeye and azure-monitor have a meaningful use of metricName
+			if hasMetricName && trigger.Type != "aws-cloudwatch" && trigger.Type != "huawei-cloudeye" && trigger.Type != "azure-monitor" {
 				logger.Info("\"metricName\" is deprecated and will be removed in v2.12, please do not set it anymore", "trigger.type", trigger.Type)
 			}
 
