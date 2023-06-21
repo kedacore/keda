@@ -17,6 +17,8 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -59,6 +61,7 @@ type rabbitMQScaler struct {
 	connection *amqp.Connection
 	channel    *amqp.Channel
 	httpClient *http.Client
+	azureOAuth *azure.ADWorkloadIdentityTokenProvider
 	logger     logr.Logger
 }
 
@@ -85,6 +88,10 @@ type rabbitMQMetadata struct {
 	keyPassword string
 	enableTLS   bool
 	unsafeSsl   bool
+
+	// token provider for azure AD
+	workloadIdentityClientID string
+	workloadIdentityResource string
 }
 
 type queueInfo struct {
@@ -233,6 +240,13 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 
 	meta.keyPassword = config.AuthParams["keyPassword"]
 
+	if config.PodIdentity.Provider == v1alpha1.PodIdentityProviderAzureWorkload {
+		if config.AuthParams["workloadIdentityResource"] != "" {
+			meta.workloadIdentityClientID = config.PodIdentity.IdentityID
+			meta.workloadIdentityResource = config.AuthParams["workloadIdentityResource"]
+		}
+	}
+
 	certGiven := meta.cert != ""
 	keyGiven := meta.key != ""
 	if certGiven != keyGiven {
@@ -262,6 +276,10 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		default:
 			return nil, fmt.Errorf("unknown host URL scheme `%s`", parsedURL.Scheme)
 		}
+	}
+
+	if meta.protocol == amqpProtocol && config.AuthParams["workloadIdentityResource"] != "" {
+		return nil, fmt.Errorf("workload identity is not supported for amqp protocol currently")
 	}
 
 	// Resolve queueName
@@ -464,9 +482,9 @@ func (s *rabbitMQScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *rabbitMQScaler) getQueueStatus() (int64, float64, error) {
+func (s *rabbitMQScaler) getQueueStatus(ctx context.Context) (int64, float64, error) {
 	if s.metadata.protocol == httpProtocol {
-		info, err := s.getQueueInfoViaHTTP()
+		info, err := s.getQueueInfoViaHTTP(ctx)
 		if err != nil {
 			return -1, -1, err
 		}
@@ -488,12 +506,32 @@ func (s *rabbitMQScaler) getQueueStatus() (int64, float64, error) {
 	return int64(items.Messages), 0, nil
 }
 
-func getJSON(s *rabbitMQScaler, url string) (queueInfo, error) {
+func getJSON(ctx context.Context, s *rabbitMQScaler, url string) (queueInfo, error) {
 	var result queueInfo
-	r, err := s.httpClient.Get(url)
+
+	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return result, err
 	}
+
+	if s.metadata.workloadIdentityResource != "" {
+		if s.azureOAuth == nil {
+			s.azureOAuth = azure.NewAzureADWorkloadIdentityTokenProvider(ctx, s.metadata.workloadIdentityClientID, s.metadata.workloadIdentityResource)
+		}
+
+		err = s.azureOAuth.Refresh()
+		if err != nil {
+			return result, err
+		}
+
+		request.Header.Set("Authorization", "Bearer "+s.azureOAuth.OAuthToken())
+	}
+
+	r, err := s.httpClient.Do(request)
+	if err != nil {
+		return result, err
+	}
+
 	defer r.Body.Close()
 
 	if r.StatusCode == 200 {
@@ -518,7 +556,7 @@ func getJSON(s *rabbitMQScaler, url string) (queueInfo, error) {
 	return result, fmt.Errorf("error requesting rabbitMQ API status: %s, response: %s, from: %s", r.Status, body, url)
 }
 
-func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
+func (s *rabbitMQScaler) getQueueInfoViaHTTP(ctx context.Context) (*queueInfo, error) {
 	parsedURL, err := url.Parse(s.metadata.host)
 
 	if err != nil {
@@ -547,7 +585,7 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 	}
 
 	var info queueInfo
-	info, err = getJSON(s, getQueueInfoManagementURI)
+	info, err = getJSON(ctx, s, getQueueInfoManagementURI)
 
 	if err != nil {
 		return nil, err
@@ -572,8 +610,8 @@ func (s *rabbitMQScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpe
 }
 
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
-func (s *rabbitMQScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	messages, publishRate, err := s.getQueueStatus()
+func (s *rabbitMQScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	messages, publishRate, err := s.getQueueStatus(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, false, s.anonymizeRabbitMQError(err)
 	}

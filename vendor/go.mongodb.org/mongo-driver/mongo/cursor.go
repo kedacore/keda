@@ -314,6 +314,14 @@ func (c *Cursor) closeImplicitSession() {
 	}
 }
 
+// SetBatchSize sets the number of documents to fetch from the database with
+// each iteration of the cursor's "Next" method. Note that some operations set
+// an initial cursor batch size, so this setting only affects subsequent
+// document batches fetched from the database.
+func (c *Cursor) SetBatchSize(batchSize int32) {
+	c.bc.SetBatchSize(batchSize)
+}
+
 // BatchCursorFromCursor returns a driver.BatchCursor for the given Cursor. If there is no underlying
 // driver.BatchCursor, nil is returned.
 //

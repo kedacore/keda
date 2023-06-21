@@ -1,5 +1,12 @@
 # Release History
 
+## 1.4.0 (2023-06-06)
+
+### Features Added
+
+- `admin.SubscriptionProperties` now allow for a `DefaultRule` to be set. This allows Subscriptions to be created with an immediate filter/action. 
+  Contributed by @StrawbrryFlurry. (PR#20888)
+
 ## 1.3.0 (2023-05-09)
 
 ### Features Added
