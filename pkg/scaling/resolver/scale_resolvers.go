@@ -70,6 +70,24 @@ func ResolveScaleTargetPodSpec(ctx context.Context, kubeClient client.Client, sc
 	case *kedav1alpha1.ScaledObject:
 		// Try to get a real object instance for better cache usage, but fall back to an Unstructured if needed.
 		podTemplateSpec := corev1.PodTemplateSpec{}
+
+		// trying to prevent operator crashes, due to some race condition, sometimes obj.Status.ScaleTargetGVKR is nil
+		// see https://github.com/kedacore/keda/issues/4389
+		if obj.Status.ScaleTargetGVKR == nil {
+			scaledObject := &kedav1alpha1.ScaledObject{}
+			err := kubeClient.Get(ctx, types.NamespacedName{Name: obj.Name, Namespace: obj.Namespace}, scaledObject)
+			if err != nil {
+				log.Error(err, "failed to get ScaledObject", "name", obj.Name, "namespace", obj.Namespace)
+				return nil, "", err
+			}
+			obj = scaledObject
+		}
+		if obj.Status.ScaleTargetGVKR == nil {
+			err := fmt.Errorf("failed to get ScaledObject.Status.ScaleTargetGVKR, probably invalid ScaledObject cache")
+			log.Error(err, "failed to get ScaledObject.Status.ScaleTargetGVKR, probably invalid ScaledObject cache", "scaledObject.Name", obj.Name, "scaledObject.Namespace", obj.Namespace)
+			return nil, "", err
+		}
+
 		gvk := obj.Status.ScaleTargetGVKR.GroupVersionKind()
 		objKey := client.ObjectKey{Namespace: obj.Namespace, Name: obj.Spec.ScaleTargetRef.Name}
 
