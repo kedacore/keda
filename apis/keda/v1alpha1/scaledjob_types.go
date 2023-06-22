@@ -36,6 +36,7 @@ const (
 // +kubebuilder:printcolumn:name="Authentication",type="string",JSONPath=".spec.triggers[*].authenticationRef.name"
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status"
 // +kubebuilder:printcolumn:name="Active",type="string",JSONPath=".status.conditions[?(@.type==\"Active\")].status"
+// +kubebuilder:printcolumn:name="Paused",type="string",JSONPath=".status.conditions[?(@.type==\"Paused\")].status"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // ScaledJob is the Schema for the scaledjobs API
@@ -78,6 +79,8 @@ type ScaledJobStatus struct {
 	LastActiveTime *metav1.Time `json:"lastActiveTime,omitempty"`
 	// +optional
 	Conditions Conditions `json:"conditions,omitempty"`
+	// +optional
+	Paused string `json:"Paused,omitempty"`
 }
 
 // ScaledJobList contains a list of ScaledJob
