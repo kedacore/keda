@@ -54,6 +54,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Improvements
 
 - **General**: Metrics Adapter: remove deprecated Prometheus Metrics and non-gRPC code ([#3930](https://github.com/kedacore/keda/issues/3930))
+- **General**: Add a Prometheus metric for measuring the processing loop lag ([#4702](https://github.com/kedacore/keda/issues/4702))
 - **General**: Kubernetes v1.25, v1.26 or v1.27 are supported
 - **AWS DynamoDB**: Add support for `indexName` ([#4680](https://github.com/kedacore/keda/issues/4680))
 - **Azure Data Explorer Scaler**: Use azidentity SDK ([#4489](https://github.com/kedacore/keda/issues/4489))
