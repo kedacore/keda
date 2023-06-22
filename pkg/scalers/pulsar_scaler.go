@@ -205,8 +205,9 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 		if auth.OauthTokenURI == "" {
 			auth.OauthTokenURI = config.TriggerMetadata["oauthTokenURI"]
 		}
-		if auth.Scopes == nil && config.TriggerMetadata["scope"] != "" {
-			auth.Scopes = strings.Split(config.TriggerMetadata["scope"], " ")
+		scope := strings.ReplaceAll(config.TriggerMetadata["scope"], " ", "")
+		if auth.Scopes == nil && scope != "" {
+			auth.Scopes = strings.Split(scope, ",")
 		}
 		if auth.ClientID == "" {
 			auth.ClientID = config.TriggerMetadata["clientID"]

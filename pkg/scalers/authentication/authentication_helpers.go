@@ -94,8 +94,9 @@ func GetAuthConfigs(triggerMetadata, authParams map[string]string) (out *AuthMet
 			}
 			out.EnableOAuth = true
 			out.OauthTokenURI = authParams["oauthTokenURI"]
-			if authParams["scope"] != "" {
-				out.Scopes = strings.Split(authParams["scope"], " ")
+			scope := strings.ReplaceAll(authParams["scope"], " ", "")
+			if scope != "" {
+				out.Scopes = strings.Split(scope, ",")
 			}
 			out.ClientID = authParams["clientID"]
 			out.ClientSecret = authParams["clientSecret"]
