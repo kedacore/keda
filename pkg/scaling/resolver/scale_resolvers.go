@@ -70,6 +70,24 @@ func ResolveScaleTargetPodSpec(ctx context.Context, kubeClient client.Client, sc
 	case *kedav1alpha1.ScaledObject:
 		// Try to get a real object instance for better cache usage, but fall back to an Unstructured if needed.
 		podTemplateSpec := corev1.PodTemplateSpec{}
+
+		// trying to prevent operator crashes, due to some race condition, sometimes obj.Status.ScaleTargetGVKR is nil
+		// see https://github.com/kedacore/keda/issues/4389
+		if obj.Status.ScaleTargetGVKR == nil {
+			scaledObject := &kedav1alpha1.ScaledObject{}
+			err := kubeClient.Get(ctx, types.NamespacedName{Name: obj.Name, Namespace: obj.Namespace}, scaledObject)
+			if err != nil {
+				log.Error(err, "failed to get ScaledObject", "name", obj.Name, "namespace", obj.Namespace)
+				return nil, "", err
+			}
+			obj = scaledObject
+		}
+		if obj.Status.ScaleTargetGVKR == nil {
+			err := fmt.Errorf("failed to get ScaledObject.Status.ScaleTargetGVKR, probably invalid ScaledObject cache")
+			log.Error(err, "failed to get ScaledObject.Status.ScaleTargetGVKR, probably invalid ScaledObject cache", "scaledObject.Name", obj.Name, "scaledObject.Namespace", obj.Namespace)
+			return nil, "", err
+		}
+
 		gvk := obj.Status.ScaleTargetGVKR.GroupVersionKind()
 		objKey := client.ObjectKey{Namespace: obj.Namespace, Name: obj.Spec.ScaleTargetRef.Name}
 
@@ -154,7 +172,7 @@ func ResolveContainerEnv(ctx context.Context, client client.Client, logger logr.
 
 // ResolveAuthRefAndPodIdentity provides authentication parameters and pod identity needed authenticate scaler with the environment.
 func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, logger logr.Logger,
-	triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, podTemplateSpec *corev1.PodTemplateSpec,
+	triggerAuthRef *kedav1alpha1.AuthenticationRef, podTemplateSpec *corev1.PodTemplateSpec,
 	namespace string, secretsLister corev1listers.SecretLister) (map[string]string, kedav1alpha1.AuthPodIdentity, error) {
 	if podTemplateSpec != nil {
 		authParams, podIdentity := resolveAuthRef(ctx, client, logger, triggerAuthRef, &podTemplateSpec.Spec, namespace, secretsLister)
@@ -181,7 +199,7 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 // resolveAuthRef provides authentication parameters needed authenticate scaler with the environment.
 // based on authentication method defined in TriggerAuthentication, authParams and podIdentity is returned
 func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logger,
-	triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, podSpec *corev1.PodSpec,
+	triggerAuthRef *kedav1alpha1.AuthenticationRef, podSpec *corev1.PodSpec,
 	namespace string, secretsLister corev1listers.SecretLister) (map[string]string, kedav1alpha1.AuthPodIdentity) {
 	result := make(map[string]string)
 	var podIdentity kedav1alpha1.AuthPodIdentity
@@ -261,7 +279,7 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 	return result, podIdentity
 }
 
-func getTriggerAuthSpec(ctx context.Context, client client.Client, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, namespace string) (*kedav1alpha1.TriggerAuthenticationSpec, string, error) {
+func getTriggerAuthSpec(ctx context.Context, client client.Client, triggerAuthRef *kedav1alpha1.AuthenticationRef, namespace string) (*kedav1alpha1.TriggerAuthenticationSpec, string, error) {
 	if triggerAuthRef.Kind == "" || triggerAuthRef.Kind == "TriggerAuthentication" {
 		triggerAuth := &kedav1alpha1.TriggerAuthentication{}
 		err := client.Get(ctx, types.NamespacedName{Name: triggerAuthRef.Name, Namespace: namespace}, triggerAuth)

@@ -12,6 +12,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [1.5.0] - 2023-06-12
+
+### Added
+
+- gocql now advertises the driver name and version in the STARTUP message to the server.
+  The values are taken from the Go module's path and version
+  (or from the replacement module, if used). (#1702)
+  That allows the server to track which fork of the driver is being used.
+- Query.Values() to retrieve the values bound to the Query.
+  This makes writing wrappers around Query easier. (#1700)
+
+### Fixed
+- Potential panic on deserialization (#1695)
+- Unmarshalling of dates outside of `[1677-09-22, 2262-04-11]` range. (#1692)
+
 ## [1.4.0] - 2023-04-26
 
 ### Added

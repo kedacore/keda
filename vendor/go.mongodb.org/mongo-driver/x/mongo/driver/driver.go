@@ -68,7 +68,8 @@ type Connection interface {
 	Close() error
 
 	ID() string
-	ServerConnectionID() *int32
+	ServerConnectionID() *int64
+	DriverConnectionID() uint64 // TODO(GODRIVER-2824): change type to int64.
 	Address() address.Address
 	Stale() bool
 }
@@ -157,12 +158,6 @@ const (
 	ConnectionPoolCleared
 )
 
-// ServerChanged returns true if the ProcessErrorResult indicates that the server changed from an SDAM perspective
-// during a ProcessError() call.
-func (p ProcessErrorResult) ServerChanged() bool {
-	return p != NoChange
-}
-
 // ErrorProcessor implementations can handle processing errors, which may modify their internal state.
 // If this type is implemented by a Server, then Operation.Execute will call it's ProcessError
 // method after it decodes a wire message.
@@ -178,7 +173,7 @@ type ErrorProcessor interface {
 type HandshakeInformation struct {
 	Description             description.Server
 	SpeculativeAuthenticate bsoncore.Document
-	ServerConnectionID      *int32
+	ServerConnectionID      *int64
 	SaslSupportedMechs      []string
 }
 

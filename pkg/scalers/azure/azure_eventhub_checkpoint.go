@@ -25,8 +25,8 @@ import (
 	"strconv"
 	"strings"
 
+	"dario.cat/mergo"
 	"github.com/Azure/azure-storage-blob-go/azblob"
-	"github.com/imdario/mergo"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/util"
