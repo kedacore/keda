@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package pause_scaling_test
+package pause_scaledobject_test
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ import (
 // Load environment variables from .env file
 
 const (
-	testName = "pause-scaling-test"
+	testName = "pause-scaledobject-test"
 )
 
 var (

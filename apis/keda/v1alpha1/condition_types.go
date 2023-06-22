@@ -47,6 +47,17 @@ const (
 	ScaledObjectConditionPausedMessage = "ScaledObject is paused"
 )
 
+const (
+	// ScaledJobConditionPausedReason defines the default Reason for paused ScaledJob
+	ScaledJobConditionPausedReason = "ScaledJobPaused"
+	// ScaledJobConditionPausedReason defines the default Reason for paused ScaledJob
+	ScaledJobConditionUnpausedReason = "ScaledJobUnpaused"
+	// ScaledJobConditionPausedMessage defines the default Message for paused ScaledJob
+	ScaledJobConditionPausedMessage = "ScaledJob is paused"
+	// ScaledJobConditionPausedMessage defines the default Message for paused ScaledJob
+	ScaledJobConditionUnpausedMessage = "ScaledJob is unpaused"
+)
+
 // Condition to store the condition state
 type Condition struct {
 	// Type of condition

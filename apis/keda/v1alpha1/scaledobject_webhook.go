@@ -160,10 +160,15 @@ func verifyHpas(incomingSo *ScaledObject, action string) error {
 			}
 
 			if !owned {
-				err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the hpa '%s'", incomingSo.Spec.ScaleTargetRef.Name, incomingSoGckr.GVKString(), hpa.Name)
-				scaledobjectlog.Error(err, "validation error")
-				prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-hpa")
-				return err
+				if incomingSo.ObjectMeta.Annotations[ScaledObjectTransferHpaOwnershipAnnotation] == "true" &&
+					incomingSo.Spec.Advanced.HorizontalPodAutoscalerConfig.Name == hpa.Name {
+					scaledobjectlog.Info(fmt.Sprintf("%s hpa ownership being transferred to %s", hpa.Name, incomingSo.Name))
+				} else {
+					err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the hpa '%s'", incomingSo.Spec.ScaleTargetRef.Name, incomingSoGckr.GVKString(), hpa.Name)
+					scaledobjectlog.Error(err, "validation error")
+					prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-hpa")
+					return err
+				}
 			}
 		}
 	}
