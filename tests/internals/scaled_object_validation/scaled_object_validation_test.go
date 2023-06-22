@@ -113,7 +113,7 @@ metadata:
   name: {{.ScaledObjectName}}
   namespace: {{.TestNamespace}}
   annotations:
-    keda.sh/transfer-hpa-ownership: "true"
+    scaledobject.keda.sh/transfer-hpa-ownership: "true"
 spec:
   scaleTargetRef:
     name: {{.DeploymentName}}

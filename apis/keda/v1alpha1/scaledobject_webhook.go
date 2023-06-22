@@ -160,7 +160,7 @@ func verifyHpas(incomingSo *ScaledObject, action string) error {
 			}
 
 			if !owned {
-				if incomingSo.ObjectMeta.Annotations["keda.sh/transfer-hpa-ownership"] == "true" &&
+				if incomingSo.ObjectMeta.Annotations[ScaledObjectTransferHpaOwnershipAnnotation] == "true" &&
 					incomingSo.Spec.Advanced.HorizontalPodAutoscalerConfig.Name == hpa.Name {
 					scaledobjectlog.Info(fmt.Sprintf("%s hpa ownership being transferred to %s", hpa.Name, incomingSo.Name))
 				} else {

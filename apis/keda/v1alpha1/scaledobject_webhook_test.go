@@ -262,7 +262,7 @@ var _ = It("shouldn't validate the so creation when there is another unmanaged h
 	namespaceName := "unmanaged-hpa-ownership"
 	namespace := createNamespace(namespaceName)
 	hpa := createHpa(hpaName, namespaceName, workloadName, "apps/v1", "Deployment", nil)
-	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{"keda.sh/transfer-hpa-ownership": "true"}, hpaName)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{ScaledObjectTransferHpaOwnershipAnnotation: "true"}, hpaName)
 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
