@@ -142,7 +142,6 @@ New deprecation(s):
 - **General**: Trying to prevent operator crash when accessing `ScaledObject.Status.ScaleTargetGVKR` ([#4389](https://github.com/kedacore/keda/issues/4389))
 - **General**: Use default metrics provider from `sigs.k8s.io/custom-metrics-apiserver` ([#4473](https://github.com/kedacore/keda/pull/4473))
 
-
 ## v2.10.1
 
 ### Fixes
