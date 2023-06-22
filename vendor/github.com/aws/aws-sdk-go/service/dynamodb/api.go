@@ -1832,10 +1832,8 @@ func (c *DynamoDB) DescribeEndpointsRequest(input *DescribeEndpointsInput) (req 
 
 // DescribeEndpoints API operation for Amazon DynamoDB.
 //
-// Returns the regional endpoint information. This action must be included in
-// your VPC endpoint policies, or access to the DescribeEndpoints API will be
-// denied. For more information on policy permissions, please see Internetwork
-// traffic privacy (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/inter-network-traffic-privacy.html#inter-network-traffic-DescribeEndpoints).
+// Returns the regional endpoint information. For more information on policy
+// permissions, please see Internetwork traffic privacy (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/inter-network-traffic-privacy.html#inter-network-traffic-DescribeEndpoints).
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
