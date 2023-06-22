@@ -79,7 +79,7 @@ New deprecation(s):
 
 - **General**: Introduce annotation `autoscaling.keda.sh/paused: true` for ScaledJobs to pause autoscaling ([#3303](https://github.com/kedacore/keda/issues/3303))
 - **General**: Introduce new Solr Scaler ([#4234](https://github.com/kedacore/keda/issues/4234))
-- **Admission Webhooks**: Support ScaledObject taking over existing HPAs with the same name while they are not managed by other ScaledObject ([#4457](https://github.com/kedacore/keda/issues/4457))
+- **General**: Support ScaledObject taking over existing HPAs with the same name while they are not managed by other ScaledObject ([#4457](https://github.com/kedacore/keda/issues/4457))
 - **CPU/Memory scaler**: Add support for scale to zero if there are multiple triggers([#4269](https://github.com/kedacore/keda/issues/4269))
 - **Redis Scalers**: Allow scaling using redis stream length ([#4277](https://github.com/kedacore/keda/issues/4277))
 - **Redis Scalers**: Allow scaling using consumer group lag ([#3127](https://github.com/kedacore/keda/issues/3127))
@@ -87,11 +87,11 @@ New deprecation(s):
 ### Improvements
 
 - **General**: Add a Prometheus metric for measuring the processing loop lag ([#4702](https://github.com/kedacore/keda/issues/4702))
+- **General**: Add a Prometheus metric with KEDA build info ([#4647](https://github.com/kedacore/keda/issues/4647))
+- **General**: Allow to change the port of the Admission Webhook ([#468](https://github.com/kedacore/charts/issues/468))
+- **General**: Enable secret scanning in GitHub repo
 - **General**: Metrics Adapter: remove deprecated Prometheus Metrics and non-gRPC code ([#3930](https://github.com/kedacore/keda/issues/3930))
 - **General**: Kubernetes v1.25, v1.26 or v1.27 are supported
-- **Admission Webhooks**: Allow to change the port ([#468](https://github.com/kedacore/charts/issues/468))
-- **Prometheus Metrics**: Add new metric with KEDA build info ([#4647](https://github.com/kedacore/keda/issues/4647))
-- **Security**: Enable secret scanning in GitHub repo
 - **AWS DynamoDB**: Add support for `indexName` ([#4680](https://github.com/kedacore/keda/issues/4680))
 - **Azure Data Explorer Scaler**: Use azidentity SDK ([#4489](https://github.com/kedacore/keda/issues/4489))
 - **External Scaler**: Add tls options in TriggerAuth metadata. ([#3565](https://github.com/kedacore/keda/issues/3565))
@@ -108,11 +108,11 @@ New deprecation(s):
 
 ### Fixes
 
-- **Admission Webhooks**: Allow to remove the finalizer even if the ScaledObject isn't valid ([#4396](https://github.com/kedacore/keda/issue/4396))
-- **Admission Webhooks**: Check ScaledObjects with multiple triggers with non unique name ([#4664](https://github.com/kedacore/keda/issue/4664))
-- **Grafana Dashboard**: Fix HPA metrics panel to use range instead of instant ([#4513](https://github.com/kedacore/keda/pull/4513))
-- **Grafana Dashboard**: Fix HPA metrics panel by replacing $namepsace to $exported_namespace due to label conflict ([#4539](https://github.com/kedacore/keda/pull/4539))
-- **ScaledJob**: Check if MaxReplicaCount is nil before access to it ([#4568](https://github.com/kedacore/keda/issues/4568))
+- **General**: Allow to remove the finalizer even if the ScaledObject isn't valid ([#4396](https://github.com/kedacore/keda/issue/4396))
+- **General**: Check ScaledObjects with multiple triggers with non unique name in the Admission Webhook ([#4664](https://github.com/kedacore/keda/issue/4664))
+- **General**: Grafana Dashboard: Fix HPA metrics panel to use range instead of instant ([#4513](https://github.com/kedacore/keda/pull/4513))
+- **General**: Grafana Dashboard: Fix HPA metrics panel by replacing $namepsace to $exported_namespace due to label conflict ([#4539](https://github.com/kedacore/keda/pull/4539))
+- **General**: ScaledJob: Check if MaxReplicaCount is nil before access to it ([#4568](https://github.com/kedacore/keda/issues/4568))
 - **AWS SQS Scaler**: Respect `scaleOnInFlight` value ([#4276](https://github.com/kedacore/keda/issue/4276))
 - **Azure Monitor**: Exclude Azure Monitor scaler from metricName deprecation ([#4713](https://github.com/kedacore/keda/pull/4713))
 - **Azure Pipelines**: Respect all required demands ([#4404](https://github.com/kedacore/keda/issues/4404))
