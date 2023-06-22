@@ -595,7 +595,7 @@ func TestEnvWithRestrictSecretAccess(t *testing.T) {
 	}
 }
 
-func TestEnvWitRestrictedNamespace(t *testing.T) {
+func TestEnvWithRestrictedNamespace(t *testing.T) {
 	tests := []struct {
 		name      string
 		expected  map[string]string
@@ -643,14 +643,14 @@ func TestEnvWitRestrictedNamespace(t *testing.T) {
 	mockSecretNamespaceLister := mock_v1.NewMockSecretNamespaceLister(ctrl)
 	mockSecretNamespaceLister.EXPECT().Get(secretName).Return(secret, nil).AnyTimes()
 	mockSecretLister := mock_v1.NewMockSecretLister(ctrl)
-	mockSecretLister.EXPECT().Secrets(clusterNamespace).Return(mockSsecretNamespaceLister).AnyTimes()
+	mockSecretLister.EXPECT().Secrets(clusterNamespace).Return(mockSecretNamespaceLister).AnyTimes()
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			os.Setenv("KEDA_CLUSTER_OBJECT_NAMESPACE", "keda")
 			os.Setenv("KEDA_RESTRICT_SECRET_ACCESS", "true")
 			ctx := context.Background()
-			envMap, _ := resolveEnv(ctx, fake.NewClientBuilder().Build(), logf.Log.WithName("test"), test.container, clusterNamespace, mock_secretLister)
+			envMap, _ := resolveEnv(ctx, fake.NewClientBuilder().Build(), logf.Log.WithName("test"), test.container, clusterNamespace, mockSecretLister)
 			if diff := cmp.Diff(envMap, test.expected); diff != "" {
 				t.Errorf("Returned env map is different: %s", diff)
 			}
