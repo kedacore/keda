@@ -48,6 +48,7 @@ type ScaledObject struct {
 }
 
 const ScaledObjectOwnerAnnotation = "scaledobject.keda.sh/name"
+const ScaledObjectTransferHpaOwnershipAnnotation = "scaledobject.keda.sh/transfer-hpa-ownership"
 
 // HealthStatus is the status for a ScaledObject's health
 type HealthStatus struct {

@@ -51,10 +51,12 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Redis Scalers**: Allow scaling using consumer group lag ([#3127](https://github.com/kedacore/keda/issues/3127))
 - **General:** Introduce new Solr Scaler ([#4234](https://github.com/kedacore/keda/issues/4234))
 - **General**: Introduce annotation `autoscaling.keda.sh/paused: true` for ScaledJobs to pause autoscaling ([#3303](https://github.com/kedacore/keda/issues/3303))
+- **Admission Webhooks**: Support ScaledObject taking over existing HPAs with the same name while they are not managed by other ScaledObject ([#4457](https://github.com/kedacore/keda/issues/4457))
 
 ### Improvements
 
 - **General**: Metrics Adapter: remove deprecated Prometheus Metrics and non-gRPC code ([#3930](https://github.com/kedacore/keda/issues/3930))
+- **General**: Add a Prometheus metric for measuring the processing loop lag ([#4702](https://github.com/kedacore/keda/issues/4702))
 - **General**: Kubernetes v1.25, v1.26 or v1.27 are supported
 - **AWS DynamoDB**: Add support for `indexName` ([#4680](https://github.com/kedacore/keda/issues/4680))
 - **Azure Data Explorer Scaler**: Use azidentity SDK ([#4489](https://github.com/kedacore/keda/issues/4489))
@@ -70,8 +72,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **PostgreSQL Scaler**: Replace `lib/pq` with `pgx` ([#4704](https://github.com/kedacore/keda/issues/4704))
 - **Prometheus Metrics**: Add new metric with KEDA build info ([#4647](https://github.com/kedacore/keda/issues/4647))
 - **Prometheus Scaler**: Add support for Google Managed Prometheus ([#4675](https://github.com/kedacore/keda/pull/4675))
+- **Admission Webhooks**: Allow to change the port ([#468](https://github.com/kedacore/charts/issues/468))
 - **Solace Scaler**: Add new `messageReceiveRateTarget` metric to Solace Scaler ([#4665](https://github.com/kedacore/keda/issues/4665))
-
 
 ### Fixes
 
@@ -136,7 +138,6 @@ Here is an overview of all **stable** additions:
 - **General**: Introduce new ArangoDB Scaler ([#4000](https://github.com/kedacore/keda/issues/4000))
 - **Prometheus Metrics**: Introduce scaler activity in Prometheus metrics ([#4114](https://github.com/kedacore/keda/issues/4114))
 - **Prometheus Metrics**: Introduce scaler latency in Prometheus metrics ([#4037](https://github.com/kedacore/keda/issues/4037))
-- **Prometheus Scaler**: Extend Prometheus Scaler to support Azure managed service for Prometheus ([#4153](https://github.com/kedacore/keda/issues/4153))
 
 Here is an overview of all new **experimental** features:
 
@@ -157,6 +158,7 @@ Here is an overview of all new **experimental** features:
 - **RabbitMQ Scaler**:  Add TLS support ([#967](https://github.com/kedacore/keda/issues/967))
 - **Redis Scalers**: Add support to Redis 7 ([#4052](https://github.com/kedacore/keda/issues/4052))
 - **Selenium Grid Scaler**: Add `platformName` to selenium-grid scaler metadata structure ([#4038](https://github.com/kedacore/keda/issues/4038))
+- **Prometheus Scaler**: Extend Prometheus Scaler to support Azure managed service for Prometheus ([#4153](https://github.com/kedacore/keda/issues/4153))
 
 ### Fixes
 
