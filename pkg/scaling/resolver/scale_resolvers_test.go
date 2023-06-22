@@ -595,7 +595,7 @@ func TestEnvWithRestrictSecretAccess(t *testing.T) {
 	}
 }
 
-func TestEnvWitWhitelistedNamespace(t *testing.T) {
+func TestEnvWitRestrictedNamespace(t *testing.T) {
 	tests := []struct {
 		name      string
 		expected  map[string]string
@@ -640,10 +640,10 @@ func TestEnvWitWhitelistedNamespace(t *testing.T) {
 		Data: map[string][]byte{secretKey: []byte(secretData)},
 	}
 	ctrl := gomock.NewController(t)
-	mock_secretNamespaceLister := mock_v1.NewMockSecretNamespaceLister(ctrl)
-	mock_secretNamespaceLister.EXPECT().Get(secretName).Return(secret, nil).AnyTimes()
-	mock_secretLister := mock_v1.NewMockSecretLister(ctrl)
-	mock_secretLister.EXPECT().Secrets(clusterNamespace).Return(mock_secretNamespaceLister).AnyTimes()
+	mockSecretNamespaceLister := mock_v1.NewMockSecretNamespaceLister(ctrl)
+	mockSecretNamespaceLister.EXPECT().Get(secretName).Return(secret, nil).AnyTimes()
+	mockSecretLister := mock_v1.NewMockSecretLister(ctrl)
+	mockSecretLister.EXPECT().Secrets(clusterNamespace).Return(mockSsecretNamespaceLister).AnyTimes()
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {

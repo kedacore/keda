@@ -88,7 +88,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Grafana Dashboard**: Fix HPA metrics panel to use range instead of instant ([#4513](https://github.com/kedacore/keda/pull/4513))
 - **Grafana Dashboard**: Fix HPA metrics panel by replacing $namepsace to $exported_namespace due to label conflict ([#4539](https://github.com/kedacore/keda/pull/4539))
 - **Kafka Scaler**: Add back `strings.TrimSpace()` function for saslAuthType ([#4689](https://github.com/kedacore/keda/issues/4689))
-- **General**: Skip resolving secrets if namespace is restricted ([#4634](https://github.com/kedacore/keda/pull/4645))
+- **General**: Skip resolving secrets if namespace is restricted ([#4519](https://github.com/kedacore/keda/issues/4519))
 
 ### Deprecations
 
