@@ -148,3 +148,11 @@ jobs:
       output: ''
       exit-code: 1
       publish: false
+  
+  validateChangelog:
+    name: Validate changelog
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Validate changelog
+        run: make validate-changelog
