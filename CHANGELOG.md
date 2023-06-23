@@ -55,7 +55,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- **General**: Paused ScaledObject continues working after removing the annotation ([#4733](https://github.com/kedacore/keda/issues/4733))
 
 ### Deprecations
 
