@@ -122,9 +122,9 @@ func TestScaler(t *testing.T) {
 
 	// test scaling
 	testPauseAt0(t, kc)
-	testScaleOut(t, kc, data)
-	testPauseAtN(t, kc, data, 5)
-	testScaleIn(t, kc, data)
+	testScaleOut(t, kc)
+	testPauseAtN(t, kc, 5)
+	testScaleIn(t, kc)
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
@@ -164,7 +164,7 @@ func testPauseAt0(t *testing.T, kc *kubernetes.Clientset) {
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
 
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale out ---")
 
 	removeScaledObjectAnnotation(t)
@@ -175,7 +175,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 		"replica count should be 1 after %d minute(s)", testScaleOutWaitMin)
 }
 
-func testPauseAtN(t *testing.T, kc *kubernetes.Clientset, data templateData, n int) {
+func testPauseAtN(t *testing.T, kc *kubernetes.Clientset, n int) {
 	t.Log("--- testing pausing at N ---")
 
 	upsertScaledObjectAnnotation(t, n)
@@ -188,7 +188,7 @@ func testPauseAtN(t *testing.T, kc *kubernetes.Clientset, data templateData, n i
 		"replica count should be %d after %d minute(s)", n, testPauseAtNWaitMin)
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
 
 	removeScaledObjectAnnotation(t)
