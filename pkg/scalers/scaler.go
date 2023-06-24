@@ -149,7 +149,7 @@ func InitializeLogger(config *ScalerConfig, scalerName string) logr.Logger {
 	return logf.Log.WithName(scalerName).WithValues("type", config.ScalableObjectType, "namespace", config.ScalableObjectNamespace, "name", config.ScalableObjectName)
 }
 
-// GetMetricTargetType helps getting the metric target type of the scaler
+// GetMetricTargetType helps get the metric target type of the scaler
 func GetMetricTargetType(config *ScalerConfig) (v2.MetricTargetType, error) {
 	switch config.MetricType {
 	case v2.UtilizationMetricType:

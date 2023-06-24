@@ -95,7 +95,8 @@ type pulsarStats struct {
 
 // NewPulsarScaler creates a new PulsarScaler
 func NewPulsarScaler(config *ScalerConfig) (Scaler, error) {
-	pulsarMetadata, err := parsePulsarMetadata(config)
+	logger := InitializeLogger(config, "pulsar_scaler")
+	pulsarMetadata, err := parsePulsarMetadata(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing pulsar metadata: %w", err)
 	}
@@ -125,11 +126,11 @@ func NewPulsarScaler(config *ScalerConfig) (Scaler, error) {
 	return &pulsarScaler{
 		client:   client,
 		metadata: pulsarMetadata,
-		logger:   InitializeLogger(config, "pulsar_scaler"),
+		logger:   logger,
 	}, nil
 }
 
-func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
+func parsePulsarMetadata(config *ScalerConfig, logger logr.Logger) (pulsarMetadata, error) {
 	meta := pulsarMetadata{}
 	switch {
 	case config.TriggerMetadata["adminURLFromEnv"] != "":
@@ -178,13 +179,24 @@ func parsePulsarMetadata(config *ScalerConfig) (pulsarMetadata, error) {
 
 	meta.msgBacklogThreshold = defaultMsgBacklogThreshold
 
+	// FIXME: msgBacklog support DEPRECATED to be removed in v2.13
+	fmt.Println(config.TriggerMetadata)
 	if val, ok := config.TriggerMetadata[msgBacklogMetricName]; ok {
+		logger.V(1).Info("\"msgBacklog\" is deprecated and will be removed in v2.13, please use \"msgBacklogThreshold\" instead")
+		t, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return meta, fmt.Errorf("error parsing %s: %w", msgBacklogMetricName, err)
+		}
+		meta.msgBacklogThreshold = t
+	} else if val, ok := config.TriggerMetadata["msgBacklogThreshold"]; ok {
 		t, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return meta, fmt.Errorf("error parsing %s: %w", msgBacklogMetricName, err)
 		}
 		meta.msgBacklogThreshold = t
 	}
+	// END FIXME
+
 	// For backwards compatibility, we need to map "tls: enable" to
 	if tls, ok := config.TriggerMetadata["tls"]; ok {
 		if tls == enable && (config.AuthParams["cert"] != "" || config.AuthParams["key"] != "") {
