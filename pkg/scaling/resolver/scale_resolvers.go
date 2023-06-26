@@ -157,7 +157,7 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 	triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, podTemplateSpec *corev1.PodTemplateSpec,
 	namespace string, secretsLister corev1listers.SecretLister) (map[string]string, kedav1alpha1.AuthPodIdentity, error) {
 	if podTemplateSpec != nil {
-		authParams, podIdentity := resolveAuthRef(ctx, client, logger, triggerAuthRef, &podTemplateSpec.Spec, namespace, secretsLister)
+		authParams, podIdentity := resolveAuthRef(ctx, client, logger, triggerAuthRef, podTemplateSpec, namespace, secretsLister)
 
 		if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAwsEKS {
 			serviceAccountName := podTemplateSpec.Spec.ServiceAccountName
@@ -181,7 +181,7 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 // resolveAuthRef provides authentication parameters needed authenticate scaler with the environment.
 // based on authentication method defined in TriggerAuthentication, authParams and podIdentity is returned
 func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logger,
-	triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, podSpec *corev1.PodSpec,
+	triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, podTemplateSpec *corev1.PodTemplateSpec,
 	namespace string, secretsLister corev1listers.SecretLister) (map[string]string, kedav1alpha1.AuthPodIdentity) {
 	result := make(map[string]string)
 	var podIdentity kedav1alpha1.AuthPodIdentity
@@ -196,11 +196,11 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 			}
 			if triggerAuthSpec.Env != nil {
 				for _, e := range triggerAuthSpec.Env {
-					if podSpec == nil {
+					if podTemplateSpec == nil {
 						result[e.Parameter] = ""
 						continue
 					}
-					env, err := ResolveContainerEnv(ctx, client, logger, podSpec, e.ContainerName, namespace, secretsLister)
+					env, err := ResolveContainerEnv(ctx, client, logger, &podTemplateSpec.Spec, e.ContainerName, namespace, secretsLister)
 					if err != nil {
 						result[e.Parameter] = ""
 					} else {
@@ -257,7 +257,7 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 			}
 			if triggerAuthSpec.AwsSecretManager != nil && len(triggerAuthSpec.AwsSecretManager.Secrets) > 0 {
 				AwsSecretManagerHandler := NewAwsSecretManagerHandler(triggerAuthSpec.AwsSecretManager)
-				err := AwsSecretManagerHandler.Initialize(ctx, client, logger, triggerNamespace, secretsLister)
+				err := AwsSecretManagerHandler.Initialize(ctx, client, logger, triggerNamespace, secretsLister, podTemplateSpec)
 				if err != nil {
 					logger.Error(err, "error authenticating to Aws Secret Manager", "triggerAuthRef.Name", triggerAuthRef.Name)
 				} else {

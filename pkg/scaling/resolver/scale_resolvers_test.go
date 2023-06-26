@@ -246,7 +246,7 @@ func TestResolveAuthRef(t *testing.T) {
 		name                string
 		existing            []runtime.Object
 		soar                *kedav1alpha1.ScaledObjectAuthRef
-		podSpec             *corev1.PodSpec
+		podTemplateSpec     *corev1.PodTemplateSpec
 		expected            map[string]string
 		expectedPodIdentity kedav1alpha1.AuthPodIdentity
 	}{
@@ -413,7 +413,7 @@ func TestResolveAuthRef(t *testing.T) {
 				fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(test.existing...).Build(),
 				logf.Log.WithName("test"),
 				test.soar,
-				test.podSpec,
+				test.podTemplateSpec,
 				namespace,
 				secretsLister)
 			if diff := cmp.Diff(gotMap, test.expected); diff != "" {
