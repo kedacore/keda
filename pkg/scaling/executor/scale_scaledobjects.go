@@ -336,7 +336,7 @@ func (e *scaleExecutor) updateScaleOnScaleTarget(ctx context.Context, scaledObje
 		}
 	}
 
-	// Update with requested repliacs.
+	// Update with requested replicas.
 	currentReplicas := scale.Spec.Replicas
 	scale.Spec.Replicas = replicas
 
