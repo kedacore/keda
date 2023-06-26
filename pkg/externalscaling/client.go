@@ -56,17 +56,15 @@ func (c *GrpcClient) Calculate(ctx context.Context, list *cl.MetricsList, logger
 }
 
 // WaitForConnectionReady waits for gRPC connection to be ready
-// returns true if the connection was successful, false if we hit a timeut from context
+// returns true if the connection was successful, false if we hit a timeout from context
+// TODO: add timeout instead into time.Sleep() - removed for testing
 func (c *GrpcClient) WaitForConnectionReady(ctx context.Context, url string, timeout time.Duration, logger logr.Logger) bool {
 	currentState := c.connection.GetState()
 	if currentState != connectivity.Ready {
 		logger.Info(fmt.Sprintf("Waiting for establishing a gRPC connection to server for external calculator at %s", url))
-		timer := time.After(timeout)
 		for {
 			select {
 			case <-ctx.Done():
-				return false
-			case <-timer:
 				return false
 			default:
 				c.connection.Connect()

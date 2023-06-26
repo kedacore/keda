@@ -27,16 +27,24 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	externalscaling "github.com/kedacore/keda/v2/pkg/externalscaling"
 	"github.com/kedacore/keda/v2/pkg/scalers"
 )
 
 var log = logf.Log.WithName("scalers_cache")
 
 type ScalersCache struct {
-	ScaledObject             *kedav1alpha1.ScaledObject
-	Scalers                  []ScalerBuilder
-	ScalableObjectGeneration int64
-	Recorder                 record.EventRecorder
+	ScaledObject                   *kedav1alpha1.ScaledObject
+	Scalers                        []ScalerBuilder
+	ScalableObjectGeneration       int64
+	Recorder                       record.EventRecorder
+	ExternalCalculationGrpcClients []ExternalCalculationClient
+}
+
+type ExternalCalculationClient struct {
+	Name      string
+	Client    *externalscaling.GrpcClient
+	Connected bool
 }
 
 type ScalerBuilder struct {

@@ -252,6 +252,7 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 
 	// if ComplexScalingLogic struct is not nil, expect Formula or ExternalCalculation
 	// to be non-empty. If target is > 0.0 create a compositeScaler structure
+	// TODO: rename structures to unified name
 	if !reflect.DeepEqual(scaledObject.Spec.Advanced.ComplexScalingLogic, kedav1alpha1.ComplexScalingLogic{}) {
 		validNumTarget, validMetricType, err := validateCompositeScalingLogic(scaledObject, scaledObjectMetricSpecs)
 		if err != nil {
@@ -369,21 +370,13 @@ func validateCompositeScalingLogic(so *kedav1alpha1.ScaledObject, specs []autosc
 		}
 	}
 
-	// if both are empty OR both are given its an error
-	// if (csl.Formula == "" && len(csl.ComplexScalingLogic) == 0) ||
-	// (csl.Formula != "" && len(csl.ComplexScalingLogic) > 0) {
-	// err := fmt.Errorf("error exactly one of Formula or ExternalCalculator can be given")
-	// return -1, autoscalingv2.MetricTargetType(""), err
-	// }
-
 	// if target is given, complex custom scaler for metric collection will be
 	// passed to HPA config -> all types need to be the same
 	if csl.Target != "" {
 		// make sure all scalers have the same metricTargetType
-		for i, metric := range specs {
-			if i == 0 {
-				metricType = metric.External.Target.Type
-			} else if metric.External.Target.Type != metricType {
+		metricType = specs[0].External.Target.Type
+		for _, metric := range specs {
+			if metric.External.Target.Type != metricType {
 				err := fmt.Errorf("error metric target type not the same for composite scaler: %s & %s", metricType, metric.External.Target.Type)
 				return -1, metricType, err
 			}
