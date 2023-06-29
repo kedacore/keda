@@ -36,8 +36,6 @@ type templateData struct {
 	DeploymentName          string
 	ScaledObjectName        string
 	MonitoredDeploymentName string
-	PausedReplicaCount      int
-	CooldownPeriod          int
 }
 
 const (
@@ -99,29 +97,7 @@ spec:
   pollingInterval: 5
   minReplicaCount: 0
   maxReplicaCount: 1
-  cooldownPeriod:  {{.CooldownPeriod}}
-  triggers:
-    - type: kubernetes-workload
-      metadata:
-        podSelector: 'app={{.MonitoredDeploymentName}}'
-        value: '1'
-`
-
-	scaledObjectAnnotatedTemplate = `
-apiVersion: keda.sh/v1alpha1
-kind: ScaledObject
-metadata:
-  name: {{.ScaledObjectName}}
-  namespace: {{.TestNamespace}}
-  annotations:
-    autoscaling.keda.sh/paused-replicas: "{{.PausedReplicaCount}}"
-spec:
-  scaleTargetRef:
-    name: {{.DeploymentName}}
-  pollingInterval: 5
-  minReplicaCount: 0
-  maxReplicaCount: 1
-  cooldownPeriod:  {{.CooldownPeriod}}
+  cooldownPeriod:  5
   triggers:
     - type: kubernetes-workload
       metadata:
@@ -146,9 +122,9 @@ func TestScaler(t *testing.T) {
 
 	// test scaling
 	testPauseAt0(t, kc)
-	testScaleOut(t, kc, data)
-	testPauseAtN(t, kc, data, 5)
-	testScaleIn(t, kc, data)
+	testScaleOut(t, kc)
+	testPauseAtN(t, kc, 5)
+	testScaleIn(t, kc)
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
@@ -160,17 +136,27 @@ func getTemplateData() (templateData, []Template) {
 			DeploymentName:          deploymentName,
 			ScaledObjectName:        scaledObjectName,
 			MonitoredDeploymentName: monitoredDeploymentName,
-			PausedReplicaCount:      0,
-			CooldownPeriod:          10,
 		}, []Template{
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
-			{Name: "scaledObjectAnnotatedTemplate", Config: scaledObjectAnnotatedTemplate},
+			{Name: "scaledObjectAnnotatedTemplate", Config: scaledObjectTemplate},
 		}
+}
+
+func upsertScaledObjectAnnotation(t assert.TestingT, value int) {
+	_, err := ExecuteCommand(fmt.Sprintf("kubectl annotate scaledobject/%s -n %s autoscaling.keda.sh/paused-replicas=%d --overwrite", scaledObjectName, testNamespace, value))
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+}
+
+func removeScaledObjectAnnotation(t assert.TestingT) {
+	_, err := ExecuteCommand(fmt.Sprintf("kubectl annotate scaledobject/%s -n %s autoscaling.keda.sh/paused-replicas- --overwrite", scaledObjectName, testNamespace))
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
 func testPauseAt0(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing pausing at 0 ---")
+
+	upsertScaledObjectAnnotation(t, 0)
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 2, testNamespace)
 	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, monitoredDeploymentName, testNamespace, 2, 60, testScaleOutWaitMin),
 		"monitoredDeploymentName replica count should be 2 after %d minute(s)", testScaleOutWaitMin)
@@ -178,11 +164,10 @@ func testPauseAt0(t *testing.T, kc *kubernetes.Clientset) {
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
 
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale out ---")
-	data.CooldownPeriod = 15
-	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
+	removeScaledObjectAnnotation(t)
 	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, monitoredDeploymentName, testNamespace, 2, 60, testScaleOutWaitMin),
 		"monitoredDeploymentName replica count should be 2 after %d minute(s)", testScaleOutWaitMin)
 
@@ -190,12 +175,10 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 		"replica count should be 1 after %d minute(s)", testScaleOutWaitMin)
 }
 
-func testPauseAtN(t *testing.T, kc *kubernetes.Clientset, data templateData, n int) {
+func testPauseAtN(t *testing.T, kc *kubernetes.Clientset, n int) {
 	t.Log("--- testing pausing at N ---")
-	data.PausedReplicaCount = n
-	data.CooldownPeriod = 10
-	KubectlApplyWithTemplate(t, data, "scaledObjectAnnotatedTemplate", scaledObjectAnnotatedTemplate)
 
+	upsertScaledObjectAnnotation(t, n)
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 0, testNamespace)
 
 	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, monitoredDeploymentName, testNamespace, 0, 60, testPauseAtNWaitMin),
@@ -205,11 +188,10 @@ func testPauseAtN(t *testing.T, kc *kubernetes.Clientset, data templateData, n i
 		"replica count should be %d after %d minute(s)", n, testPauseAtNWaitMin)
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
-	data.CooldownPeriod = 15
-	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
+	removeScaledObjectAnnotation(t)
 	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, testScaleInWaitMin),
 		"replica count should be 0 after %d minutes", testScaleInWaitMin)
 }
