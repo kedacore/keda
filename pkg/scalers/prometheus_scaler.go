@@ -16,6 +16,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -237,7 +238,7 @@ func parseAuthConfig(config *ScalerConfig, meta *prometheusMetadata) error {
 		return err
 	}
 
-	if auth != nil && config.PodIdentity.Provider != "" {
+	if auth != nil && !(config.PodIdentity.Provider == kedav1alpha1.PodIdentityProviderNone || config.PodIdentity.Provider == "") {
 		return fmt.Errorf("pod identity cannot be enabled with other auth types")
 	}
 	meta.prometheusAuth = auth
