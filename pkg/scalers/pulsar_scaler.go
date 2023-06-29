@@ -179,10 +179,10 @@ func parsePulsarMetadata(config *ScalerConfig, logger logr.Logger) (pulsarMetada
 
 	meta.msgBacklogThreshold = defaultMsgBacklogThreshold
 
-	// FIXME: msgBacklog support DEPRECATED to be removed in v2.13
+	// FIXME: msgBacklog support DEPRECATED to be removed in v2.14
 	fmt.Println(config.TriggerMetadata)
 	if val, ok := config.TriggerMetadata[msgBacklogMetricName]; ok {
-		logger.V(1).Info("\"msgBacklog\" is deprecated and will be removed in v2.13, please use \"msgBacklogThreshold\" instead")
+		logger.V(1).Info("\"msgBacklog\" is deprecated and will be removed in v2.14, please use \"msgBacklogThreshold\" instead")
 		t, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return meta, fmt.Errorf("error parsing %s: %w", msgBacklogMetricName, err)
