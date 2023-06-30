@@ -115,6 +115,8 @@ type ComplexScalingLogic struct {
 	Formula string `json:"formula,omitempty"`
 	// +optional
 	Target string `json:"target,omitempty"`
+	// +optional
+	Fallback *Fallback `json:"fallback,omitempty"`
 }
 
 // ExternalCalculation structure describes name and URL of a gRPC server
@@ -125,8 +127,6 @@ type ExternalCalculation struct {
 	Name    string `json:"name"`
 	URL     string `json:"url"`
 	Timeout string `json:"timeout"`
-	// +optional
-	FallbackReplicas int32 `json:"fallbackReplicas,omitempty"`
 }
 
 // HorizontalPodAutoscalerConfig specifies horizontal scale config
