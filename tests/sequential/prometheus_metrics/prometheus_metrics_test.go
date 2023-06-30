@@ -26,6 +26,7 @@ import (
 const (
 	testName          = "prometheus-metrics-test"
 	labelScaledObject = "scaledObject"
+	labelType         = "type"
 )
 
 var (
@@ -267,6 +268,7 @@ func TestPrometheusMetrics(t *testing.T) {
 	testScalerErrorsTotal(t, data)
 	testOperatorMetrics(t, kc, data)
 	testWebhookMetrics(t, data)
+	testScalableObjectMetrics(t)
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
@@ -469,6 +471,43 @@ func testScalerMetricLatency(t *testing.T) {
 	}
 }
 
+func testScalableObjectMetrics(t *testing.T) {
+	t.Log("--- testing scalable objects latency ---")
+
+	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+
+	if val, ok := family["keda_internal_scale_loop_latency"]; ok {
+		var found bool
+		metrics := val.GetMetric()
+
+		// check scaledobject loop
+		found = false
+		for _, metric := range metrics {
+			labels := metric.GetLabel()
+			for _, label := range labels {
+				if *label.Name == labelType && *label.Value == "scaledobject" {
+					found = true
+				}
+			}
+		}
+		assert.Equal(t, true, found)
+
+		// check scaledjob loop
+		found = false
+		for _, metric := range metrics {
+			labels := metric.GetLabel()
+			for _, label := range labels {
+				if *label.Name == labelType && *label.Value == "scaledjob" {
+					found = true
+				}
+			}
+		}
+		assert.Equal(t, true, found)
+	} else {
+		t.Errorf("scaledobject metric not available")
+	}
+}
+
 func testScalerActiveMetric(t *testing.T) {
 	t.Log("--- testing scaler active metric ---")
 
@@ -637,7 +676,7 @@ func checkTriggerTotalValues(t *testing.T, families map[string]*prommodel.Metric
 	for _, metric := range metrics {
 		labels := metric.GetLabel()
 		for _, label := range labels {
-			if *label.Name == "type" {
+			if *label.Name == labelType {
 				triggerType := *label.Value
 				metricValue := *metric.Gauge.Value
 				expectedMetricValue := float64(expected[triggerType])
@@ -667,7 +706,7 @@ func checkCRTotalValues(t *testing.T, families map[string]*prommodel.MetricFamil
 		labels := metric.GetLabel()
 		var namespace, crType string
 		for _, label := range labels {
-			if *label.Name == "type" {
+			if *label.Name == labelType {
 				crType = *label.Value
 			} else if *label.Name == namespaceString {
 				namespace = *label.Value

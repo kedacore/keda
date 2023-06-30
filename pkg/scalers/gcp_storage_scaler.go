@@ -145,7 +145,7 @@ func parseGcsMetadata(config *ScalerConfig, logger logr.Logger) (*gcsMetadata, e
 		meta.blobPrefix = val
 	}
 
-	auth, err := getGcpAuthorization(config, config.ResolvedEnv)
+	auth, err := getGCPAuthorization(config)
 	if err != nil {
 		return nil, err
 	}

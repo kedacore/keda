@@ -422,7 +422,9 @@ func (s *startupCoordinator) options(ctx context.Context) error {
 
 func (s *startupCoordinator) startup(ctx context.Context, supported map[string][]string) error {
 	m := map[string]string{
-		"CQL_VERSION": s.conn.cfg.CQLVersion,
+		"CQL_VERSION":    s.conn.cfg.CQLVersion,
+		"DRIVER_NAME":    driverName,
+		"DRIVER_VERSION": driverVersion,
 	}
 
 	if s.conn.compressor != nil {

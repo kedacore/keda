@@ -454,7 +454,7 @@ func (p *pool) checkOut(ctx context.Context) (conn *connection, err error) {
 			p.monitor.Event(&event.PoolEvent{
 				Type:         event.GetSucceeded,
 				Address:      p.address.String(),
-				ConnectionID: w.conn.poolID,
+				ConnectionID: w.conn.driverConnectionID,
 			})
 		}
 		return w.conn, nil
@@ -483,7 +483,7 @@ func (p *pool) checkOut(ctx context.Context) (conn *connection, err error) {
 			p.monitor.Event(&event.PoolEvent{
 				Type:         event.GetSucceeded,
 				Address:      p.address.String(),
-				ConnectionID: w.conn.poolID,
+				ConnectionID: w.conn.driverConnectionID,
 			})
 		}
 		return w.conn, nil
@@ -539,14 +539,14 @@ func (p *pool) removeConnection(conn *connection, reason string) error {
 	}
 
 	p.createConnectionsCond.L.Lock()
-	_, ok := p.conns[conn.poolID]
+	_, ok := p.conns[conn.driverConnectionID]
 	if !ok {
 		// If the connection has been removed from the pool already, exit without doing any
 		// additional state changes.
 		p.createConnectionsCond.L.Unlock()
 		return nil
 	}
-	delete(p.conns, conn.poolID)
+	delete(p.conns, conn.driverConnectionID)
 	// Signal the createConnectionsCond so any goroutines waiting for a new connection slot in the
 	// pool will proceed.
 	p.createConnectionsCond.Signal()
@@ -563,7 +563,7 @@ func (p *pool) removeConnection(conn *connection, reason string) error {
 		p.monitor.Event(&event.PoolEvent{
 			Type:         event.ConnectionClosed,
 			Address:      p.address.String(),
-			ConnectionID: conn.poolID,
+			ConnectionID: conn.driverConnectionID,
 			Reason:       reason,
 		})
 	}
@@ -584,7 +584,7 @@ func (p *pool) checkIn(conn *connection) error {
 	if p.monitor != nil {
 		p.monitor.Event(&event.PoolEvent{
 			Type:         event.ConnectionReturned,
-			ConnectionID: conn.poolID,
+			ConnectionID: conn.driverConnectionID,
 			Address:      conn.addr.String(),
 		})
 	}
@@ -817,8 +817,8 @@ func (p *pool) createConnections(ctx context.Context, wg *sync.WaitGroup) {
 
 		conn := newConnection(p.address, p.connOpts...)
 		conn.pool = p
-		conn.poolID = atomic.AddUint64(&p.nextID, 1)
-		p.conns[conn.poolID] = conn
+		conn.driverConnectionID = atomic.AddUint64(&p.nextID, 1)
+		p.conns[conn.driverConnectionID] = conn
 
 		return w, conn, true
 	}
@@ -833,7 +833,7 @@ func (p *pool) createConnections(ctx context.Context, wg *sync.WaitGroup) {
 			p.monitor.Event(&event.PoolEvent{
 				Type:         event.ConnectionCreated,
 				Address:      p.address.String(),
-				ConnectionID: conn.poolID,
+				ConnectionID: conn.driverConnectionID,
 			})
 		}
 
@@ -862,7 +862,7 @@ func (p *pool) createConnections(ctx context.Context, wg *sync.WaitGroup) {
 			p.monitor.Event(&event.PoolEvent{
 				Type:         event.ConnectionReady,
 				Address:      p.address.String(),
-				ConnectionID: conn.poolID,
+				ConnectionID: conn.driverConnectionID,
 			})
 		}
 

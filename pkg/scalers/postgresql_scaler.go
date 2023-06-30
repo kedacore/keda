@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-logr/logr"
 	// PostreSQL drive required for this scaler
-	_ "github.com/lib/pq"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -146,7 +146,7 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 }
 
 func getConnection(meta *postgreSQLMetadata, logger logr.Logger) (*sql.DB, error) {
-	db, err := sql.Open("postgres", meta.connection)
+	db, err := sql.Open("pgx", meta.connection)
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Found error opening postgreSQL: %s", err))
 		return nil, err

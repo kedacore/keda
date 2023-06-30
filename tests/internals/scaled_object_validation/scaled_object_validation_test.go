@@ -17,11 +17,13 @@ const (
 )
 
 var (
-	testNamespace     = fmt.Sprintf("%s-ns", testName)
-	deploymentName    = fmt.Sprintf("%s-deployment", testName)
-	scaledObject1Name = fmt.Sprintf("%s-so1", testName)
-	scaledObject2Name = fmt.Sprintf("%s-so2", testName)
-	hpaName           = fmt.Sprintf("%s-hpa", testName)
+	testNamespace                     = fmt.Sprintf("%s-ns", testName)
+	deploymentName                    = fmt.Sprintf("%s-deployment", testName)
+	scaledObject1Name                 = fmt.Sprintf("%s-so1", testName)
+	scaledObject2Name                 = fmt.Sprintf("%s-so2", testName)
+	hpaName                           = fmt.Sprintf("%s-hpa", testName)
+	ownershipTransferScaledObjectName = fmt.Sprintf("%s-ownership-transfer-so", testName)
+	ownershipTransferHpaName          = fmt.Sprintf("%s-ownership-transfer-hpa", testName)
 )
 
 type templateData struct {
@@ -103,6 +105,30 @@ spec:
         type: Utilization
         value: "50"
 `
+
+	ownershipTransferScaledObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectName}}
+  namespace: {{.TestNamespace}}
+  annotations:
+    scaledobject.keda.sh/transfer-hpa-ownership: "true"
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      name: {{.HpaName}}
+  triggers:
+  - type: cron
+    metadata:
+      timezone: Etc/UTC
+      start: 0 * * * *
+      end: 1 * * * *
+      desiredReplicas: '1'
+`
+
 	hpaTemplate = `
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -140,6 +166,8 @@ func TestScaledObjectValidations(t *testing.T) {
 	testScaledWorkloadByOtherScaledObject(t, data)
 
 	testScaledWorkloadByOtherHpa(t, data)
+
+	testScaledWorkloadByOtherHpaWithOwnershipTransfer(t, data)
 
 	testMissingCPU(t, data)
 
@@ -185,6 +213,20 @@ func testScaledWorkloadByOtherHpa(t *testing.T, data templateData) {
 	err = KubectlApplyWithErrors(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	assert.Errorf(t, err, "can deploy the scaledObject - %s", err)
 	assert.Contains(t, err.Error(), fmt.Sprintf("the workload '%s' of type 'apps/v1.Deployment' is already managed by the hpa '%s", deploymentName, hpaName))
+
+	KubectlDeleteWithTemplate(t, data, "hpaTemplate", hpaTemplate)
+}
+
+func testScaledWorkloadByOtherHpaWithOwnershipTransfer(t *testing.T, data templateData) {
+	t.Log("--- already scaled workload by other hpa ownership transfer ---")
+
+	data.HpaName = ownershipTransferHpaName
+	err := KubectlApplyWithErrors(t, data, "hpaTemplate", hpaTemplate)
+	assert.NoErrorf(t, err, "cannot deploy the hpa - %s", err)
+
+	data.ScaledObjectName = ownershipTransferScaledObjectName
+	err = KubectlApplyWithErrors(t, data, "ownershipTransferScaledObjectTemplate", ownershipTransferScaledObjectTemplate)
+	assert.NoErrorf(t, err, "can deploy the scaledObject - %s", err)
 
 	KubectlDeleteWithTemplate(t, data, "hpaTemplate", hpaTemplate)
 }

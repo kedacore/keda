@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -15,6 +16,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -67,12 +69,12 @@ type prometheusMetadata struct {
 
 type promQueryResult struct {
 	Status string `json:"status"`
-	Data   struct {
+
+	Data struct {
 		ResultType string `json:"resultType"`
 		Result     []struct {
-			Metric struct {
-			} `json:"metric"`
-			Value []interface{} `json:"value"`
+			Metric struct{}      `json:"metric"`
+			Value  []interface{} `json:"value"`
 		} `json:"result"`
 	} `json:"data"`
 }
@@ -109,16 +111,25 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 	} else {
 		// could be the case of azure managed prometheus. Try and get the roundtripper.
 		// If its not the case of azure managed prometheus, we will get both transport and err as nil and proceed assuming no auth.
-		transport, err := azure.TryAndGetAzureManagedPrometheusHTTPRoundTripper(config.PodIdentity, config.TriggerMetadata)
-
+		azureTransport, err := azure.TryAndGetAzureManagedPrometheusHTTPRoundTripper(config.PodIdentity, config.TriggerMetadata)
 		if err != nil {
 			logger.V(1).Error(err, "error while init Azure Managed Prometheus client http transport")
 			return nil, err
 		}
 
 		// transport should not be nil if its a case of azure managed prometheus
-		if transport != nil {
-			httpClient.Transport = transport
+		if azureTransport != nil {
+			httpClient.Transport = azureTransport
+		}
+
+		gcpTransport, err := getGCPOAuth2HTTPTransport(config, httpClient.Transport, gcpScopeMonitoringRead)
+		if err != nil && !errors.Is(err, errGoogleApplicationCrendentialsNotFound) {
+			logger.V(1).Error(err, "failed to get GCP client HTTP transport (either using Google application credentials or workload identity)")
+			return nil, err
+		}
+
+		if err == nil && gcpTransport != nil {
+			httpClient.Transport = gcpTransport
 		}
 	}
 
@@ -227,7 +238,7 @@ func parseAuthConfig(config *ScalerConfig, meta *prometheusMetadata) error {
 		return err
 	}
 
-	if auth != nil && config.PodIdentity.Provider != "" {
+	if auth != nil && !(config.PodIdentity.Provider == kedav1alpha1.PodIdentityProviderNone || config.PodIdentity.Provider == "") {
 		return fmt.Errorf("pod identity cannot be enabled with other auth types")
 	}
 	meta.prometheusAuth = auth
@@ -292,7 +303,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	if err != nil {
 		return -1, err
 	}
-	_ = r.Body.Close()
+	defer r.Body.Close()
 
 	if !(r.StatusCode >= 200 && r.StatusCode <= 299) {
 		err := fmt.Errorf("prometheus query api returned error. status: %d response: %s", r.StatusCode, string(b))

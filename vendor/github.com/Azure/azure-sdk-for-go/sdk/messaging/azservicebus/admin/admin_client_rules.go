@@ -208,7 +208,7 @@ func (ac *Client) GetRule(ctx context.Context, topicName string, subscriptionNam
 		return mapATOMError[GetRuleResponse](err)
 	}
 
-	props, err := ac.newRuleProperties(ruleEnv)
+	props, err := ac.newRulePropertiesFromEnvelope(ruleEnv)
 
 	if err != nil {
 		return nil, err
@@ -240,7 +240,7 @@ func (ac *Client) NewListRulesPager(topicName string, subscriptionName string, o
 	}
 
 	ep := &entityPager[atom.RuleFeed, atom.RuleEnvelope, RuleProperties]{
-		convertFn:    ac.newRuleProperties,
+		convertFn:    ac.newRulePropertiesFromEnvelope,
 		baseFragment: fmt.Sprintf("/%s/Subscriptions/%s/Rules/", topicName, subscriptionName),
 		maxPageSize:  pageSize,
 		em:           ac.em,
@@ -304,107 +304,25 @@ func (ac *Client) DeleteRule(ctx context.Context, topicName string, subscription
 }
 
 func (ac *Client) createOrUpdateRule(ctx context.Context, topicName string, subscriptionName string, putProps RuleProperties, creating bool) (*RuleProperties, *http.Response, error) {
-	ruleDesc := atom.RuleDescription{}
-
-	theirFilter := putProps.Filter
-
-	if theirFilter != nil {
-		switch actualFilter := theirFilter.(type) {
-		case *FalseFilter:
-			ruleDesc.Filter = &atom.FilterDescription{
-				Type:          "FalseFilter",
-				SQLExpression: to.Ptr("1=0"),
-			}
-		case *TrueFilter:
-			ruleDesc.Filter = &atom.FilterDescription{
-				Type:          "TrueFilter",
-				SQLExpression: to.Ptr("1=1"),
-			}
-		case *SQLFilter:
-			params, err := publicSQLParametersToInternal(actualFilter.Parameters)
-
-			if err != nil {
-				return nil, nil, err
-			}
-
-			ruleDesc.Filter = &atom.FilterDescription{
-				Type:          "SqlFilter",
-				SQLExpression: &actualFilter.Expression,
-				Parameters:    params,
-			}
-		case *CorrelationFilter:
-			appProps, err := publicSQLParametersToInternal(actualFilter.ApplicationProperties)
-
-			if err != nil {
-				return nil, nil, err
-			}
-
-			ruleDesc.Filter = &atom.FilterDescription{
-				Type: "CorrelationFilter",
-				CorrelationFilter: atom.CorrelationFilter{
-					ContentType:      actualFilter.ContentType,
-					CorrelationID:    actualFilter.CorrelationID,
-					MessageID:        actualFilter.MessageID,
-					ReplyTo:          actualFilter.ReplyTo,
-					ReplyToSessionID: actualFilter.ReplyToSessionID,
-					SessionID:        actualFilter.SessionID,
-					Label:            actualFilter.Subject,
-					To:               actualFilter.To,
-					Properties:       appProps,
-				},
-			}
-		case *UnknownRuleFilter:
-			fd, err := convertUnknownRuleFilterToFilterDescription(actualFilter)
-
-			if err != nil {
-				return nil, nil, err
-			}
-
-			ruleDesc.Filter = fd
-		default:
-			return nil, nil, fmt.Errorf("invalid type ('%T') for Rule.Filter", theirFilter)
-		}
-	} else {
-		ruleDesc.Filter = &atom.FilterDescription{
-			Type:          "TrueFilter",
-			SQLExpression: to.Ptr("1=1"),
-		}
+	ruleDesc := atom.RuleDescription{
+		Name: makeRuleNameForProperties(&putProps),
 	}
 
-	theirAction := putProps.Action
+	filter, err := convertRuleFilterToFilterDescription(&putProps.Filter)
 
-	if theirAction != nil {
-		switch actualAction := theirAction.(type) {
-		case *SQLAction:
-			params, err := publicSQLParametersToInternal(actualAction.Parameters)
-
-			if err != nil {
-				return nil, nil, err
-			}
-
-			ruleDesc.Action = &atom.ActionDescription{
-				Type:          "SqlRuleAction",
-				SQLExpression: actualAction.Expression,
-				Parameters:    params,
-			}
-		case *UnknownRuleAction:
-			ad, err := convertUnknownRuleActionToActionDescription(actualAction)
-
-			if err != nil {
-				return nil, nil, err
-			}
-
-			ruleDesc.Action = ad
-		default:
-			return nil, nil, fmt.Errorf("invalid type ('%T') for Rule.Action", theirAction)
-		}
+	if err != nil {
+		return nil, nil, err
 	}
 
-	ruleDesc.Name = "$Default"
+	ruleDesc.Filter = filter
 
-	if putProps.Name != "" {
-		ruleDesc.Name = putProps.Name
+	action, err := convertRuleActionToActionDescription(&putProps.Action)
+
+	if err != nil {
+		return nil, nil, err
 	}
+
+	ruleDesc.Action = action
 
 	if !creating {
 		ctx = runtime.WithHTTPHeader(ctx, http.Header{
@@ -422,16 +340,120 @@ func (ac *Client) createOrUpdateRule(ctx context.Context, topicName string, subs
 		return nil, nil, err
 	}
 
-	respProps, err := ac.newRuleProperties(respEnv)
+	respProps, err := ac.newRulePropertiesFromEnvelope(respEnv)
 
 	return respProps, httpResp, err
 }
 
-func (ac *Client) newRuleProperties(env *atom.RuleEnvelope) (*RuleProperties, error) {
+func makeRuleNameForProperties(properties *RuleProperties) string {
+	if properties.Name != "" {
+		return properties.Name
+	}
+
+	return "$Default"
+}
+
+func convertRuleFilterToFilterDescription(filter *RuleFilter) (*atom.FilterDescription, error) {
+	if *filter == nil {
+		return &atom.FilterDescription{
+			Type:          "TrueFilter",
+			SQLExpression: to.Ptr("1=1"),
+		}, nil
+	}
+
+	switch actualFilter := (*filter).(type) {
+	case *FalseFilter:
+		return &atom.FilterDescription{
+			Type:          "FalseFilter",
+			SQLExpression: to.Ptr("1=0"),
+		}, nil
+	case *TrueFilter:
+		return &atom.FilterDescription{
+			Type:          "TrueFilter",
+			SQLExpression: to.Ptr("1=1"),
+		}, nil
+	case *SQLFilter:
+		params, err := publicSQLParametersToInternal(actualFilter.Parameters)
+
+		if err != nil {
+			return nil, err
+		}
+
+		return &atom.FilterDescription{
+			Type:          "SqlFilter",
+			SQLExpression: &actualFilter.Expression,
+			Parameters:    params,
+		}, nil
+	case *CorrelationFilter:
+		appProps, err := publicSQLParametersToInternal(actualFilter.ApplicationProperties)
+
+		if err != nil {
+			return nil, err
+		}
+
+		return &atom.FilterDescription{
+			Type: "CorrelationFilter",
+			CorrelationFilter: atom.CorrelationFilter{
+				ContentType:      actualFilter.ContentType,
+				CorrelationID:    actualFilter.CorrelationID,
+				MessageID:        actualFilter.MessageID,
+				ReplyTo:          actualFilter.ReplyTo,
+				ReplyToSessionID: actualFilter.ReplyToSessionID,
+				SessionID:        actualFilter.SessionID,
+				Label:            actualFilter.Subject,
+				To:               actualFilter.To,
+				Properties:       appProps,
+			},
+		}, nil
+	case *UnknownRuleFilter:
+		filterDefinition, err := convertUnknownRuleFilterToFilterDescription(actualFilter)
+
+		if err != nil {
+			return nil, err
+		}
+
+		return filterDefinition, nil
+	default:
+		return nil, fmt.Errorf("invalid type ('%T') for Rule.Filter", filter)
+	}
+}
+
+func convertRuleActionToActionDescription(action *RuleAction) (*atom.ActionDescription, error) {
+	if *action == nil {
+		return nil, nil
+	}
+
+	switch actualAction := (*action).(type) {
+	case *SQLAction:
+		params, err := publicSQLParametersToInternal(actualAction.Parameters)
+
+		if err != nil {
+			return nil, err
+		}
+
+		return &atom.ActionDescription{
+			Type:          "SqlRuleAction",
+			SQLExpression: actualAction.Expression,
+			Parameters:    params,
+		}, nil
+	case *UnknownRuleAction:
+		ad, err := convertUnknownRuleActionToActionDescription(actualAction)
+
+		if err != nil {
+			return nil, err
+		}
+
+		return ad, nil
+	default:
+		return nil, fmt.Errorf("invalid type ('%T') for Rule.Action", &action)
+	}
+}
+
+func (ac *Client) newRulePropertiesFromEnvelope(env *atom.RuleEnvelope) (*RuleProperties, error) {
 	desc := env.Content.RuleDescription
 
 	props := RuleProperties{
-		Name: env.Title,
+		Name: desc.Name,
 	}
 
 	switch desc.Filter.Type {

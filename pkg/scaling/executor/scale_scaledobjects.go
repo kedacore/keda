@@ -38,7 +38,6 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	logger := e.logger.WithValues("scaledobject.Name", scaledObject.Name,
 		"scaledObject.Namespace", scaledObject.Namespace,
 		"scaleTarget.Name", scaledObject.Spec.ScaleTargetRef.Name)
-
 	// Get the current replica count. As a special case, Deployments and StatefulSets fetch directly from the object so they can use the informer cache
 	// to reduce API calls. Everything else uses the scale subresource.
 	var currentScale *autoscalingv1.Scale
@@ -71,7 +70,6 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		}
 		currentReplicas = currentScale.Spec.Replicas
 	}
-
 	// if the ScaledObject's triggers aren't in the error state,
 	// but ScaledObject.Status.ReadyCondition is set not set to 'true' -> set it back to 'true'
 	readyCondition := scaledObject.Status.Conditions.GetReadyCondition()
@@ -92,7 +90,6 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		logger.Error(err, "error getting the paused replica count on the current ScaledObject.")
 		return
 	}
-
 	status := scaledObject.Status.DeepCopy()
 	if pausedCount != nil {
 		// Scale the target to the paused replica count
@@ -106,6 +103,8 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 				}
 				return
 			}
+		}
+		if *pausedCount != currentReplicas || status.PausedReplicaCount == nil {
 			status.PausedReplicaCount = pausedCount
 			err = kedautil.UpdateScaledObjectStatus(ctx, e.client, logger, scaledObject, status)
 			if err != nil {
@@ -337,7 +336,7 @@ func (e *scaleExecutor) updateScaleOnScaleTarget(ctx context.Context, scaledObje
 		}
 	}
 
-	// Update with requested repliacs.
+	// Update with requested replicas.
 	currentReplicas := scale.Spec.Replicas
 	scale.Spec.Replicas = replicas
 
