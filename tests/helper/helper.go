@@ -797,6 +797,7 @@ func generateCA(t *testing.T) {
 	}
 }
 
+// CheckKubectlGetResult runs `kubectl get` with paramters and compares output with expected value
 func CheckKubectlGetResult(t *testing.T, kind string, name string, namespace string, otherparameter string, expected string) {
 	time.Sleep(1 * time.Second) // wait a second for recource deployment finished
 	kctlGetCmd := fmt.Sprintf(`kubectl get %s/%s -n %s %s"`, kind, name, namespace, otherparameter)
