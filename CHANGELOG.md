@@ -16,6 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.11.1](#v2111)
 - [v2.11.0](#v2110)
 - [v2.10.1](#v2101)
 - [v2.10.0](#v2100)
@@ -55,9 +56,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
-- **General**: Paused ScaledObject continues working after removing the annotation ([#4733](https://github.com/kedacore/keda/issues/4733))
-- **General**: Skip resolving secrets if namespace is restricted ([#4519](https://github.com/kedacore/keda/issues/4519))
-- **Prometheus**: Authenticated connections to Prometheus work in non-PodIdentity case ([#4695](https://github.com/kedacore/keda/issues/4695))
 - **Pulsar Scaler**: Fix `msgBacklogThreshold` field being named wrongly as `msgBacklog` ([#4681](https://github.com/kedacore/keda/issues/4681))
 
 ### Deprecations
@@ -75,6 +73,36 @@ New deprecation(s):
 ### Other
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+
+## v2.11.1
+
+### New
+
+None.
+
+### Improvements
+
+None.
+
+### Fixes
+
+- **General**: Paused ScaledObject continues working after removing the annotation ([#4733](https://github.com/kedacore/keda/issues/4733))
+- **General**: Skip resolving secrets if namespace is restricted ([#4519](https://github.com/kedacore/keda/issues/4519))
+- **Prometheus**: Authenticated connections to Prometheus work in non-PodIdenty case ([#4695](https://github.com/kedacore/keda/issues/4695))
+
+### Deprecations
+
+You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
+
+New deprecation(s): None.
+
+### Breaking Changes
+
+None.
+
+### Other
+
+None.
 
 ## v2.11.0
 
