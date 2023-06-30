@@ -32,8 +32,8 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
 	"github.com/kedacore/keda/v2/pkg/scaling/executor"
-	version "github.com/kedacore/keda/v2/version"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
+	version "github.com/kedacore/keda/v2/version"
 )
 
 const (
