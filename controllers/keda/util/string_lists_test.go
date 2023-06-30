@@ -32,9 +32,9 @@ func TestAppendString(t *testing.T) {
 		{"success", "viewer,editor", "owner", ",", "viewer,editor,owner"},
 		{"single_success", "viewer", "owner", ",", "viewer,owner"},
 		{"exist", "viewer,editor,owner", "editor", ",", "viewer,editor,owner"},
-		{"no_seperator", "viewer,editor", "owner", "", "viewer,editorowner"},
-		{"space_seperator", "viewer,editor", "owner", " ", "viewer,editor owner"},
-		{"diff_seperator", "viewer,editor", "owner", ":", "viewer,editor:owner"},
+		{"no_separator", "viewer,editor", "owner", "", "viewer,editorowner"},
+		{"space_separator", "viewer,editor", "owner", " ", "viewer,editor owner"},
+		{"diff_separator", "viewer,editor", "owner", ":", "viewer,editor:owner"},
 		{"no_from_str", "", "owner", ",", "owner"},
 		{"no_append_str", "viewer,editor", "", ",", "viewer,editor"},
 	}
@@ -58,9 +58,9 @@ func TestRemoveFromString(t *testing.T) {
 	}{
 		{"success", "viewer,editor,owner", "owner", ",", "viewer,editor"},
 		{"no_exist_success", "viewer", "owner", ",", "viewer"},
-		{"no_seperator", "viewer,editor,owner", "owner", "", "viewer,editor,owner"},
-		{"space_seperator", "viewer editor owner", "editor", " ", "viewer owner"},
-		{"diff_seperator", "viewer,editor,owner", "editor", ":", "viewer,editor,owner"},
+		{"no_separator", "viewer,editor,owner", "owner", "", "viewer,editor,owner"},
+		{"space_separator", "viewer editor owner", "editor", " ", "viewer owner"},
+		{"diff_separator", "viewer,editor,owner", "editor", ":", "viewer,editor,owner"},
 		{"no_from_str", "", "owner", ",", ""},
 		{"no_delete_str", "viewer,editor", "", ",", "viewer,editor"},
 	}
