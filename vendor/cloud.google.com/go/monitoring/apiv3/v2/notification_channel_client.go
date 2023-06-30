@@ -66,6 +66,7 @@ func defaultNotificationChannelGRPCClientOptions() []option.ClientOption {
 func defaultNotificationChannelCallOptions() *NotificationChannelCallOptions {
 	return &NotificationChannelCallOptions{
 		ListNotificationChannelDescriptors: []gax.CallOption{
+			gax.WithTimeout(30000 * time.Millisecond),
 			gax.WithRetry(func() gax.Retryer {
 				return gax.OnCodes([]codes.Code{
 					codes.Unavailable,
@@ -77,6 +78,7 @@ func defaultNotificationChannelCallOptions() *NotificationChannelCallOptions {
 			}),
 		},
 		GetNotificationChannelDescriptor: []gax.CallOption{
+			gax.WithTimeout(30000 * time.Millisecond),
 			gax.WithRetry(func() gax.Retryer {
 				return gax.OnCodes([]codes.Code{
 					codes.Unavailable,
@@ -88,6 +90,7 @@ func defaultNotificationChannelCallOptions() *NotificationChannelCallOptions {
 			}),
 		},
 		ListNotificationChannels: []gax.CallOption{
+			gax.WithTimeout(30000 * time.Millisecond),
 			gax.WithRetry(func() gax.Retryer {
 				return gax.OnCodes([]codes.Code{
 					codes.Unavailable,
@@ -99,6 +102,7 @@ func defaultNotificationChannelCallOptions() *NotificationChannelCallOptions {
 			}),
 		},
 		GetNotificationChannel: []gax.CallOption{
+			gax.WithTimeout(30000 * time.Millisecond),
 			gax.WithRetry(func() gax.Retryer {
 				return gax.OnCodes([]codes.Code{
 					codes.Unavailable,
@@ -109,9 +113,14 @@ func defaultNotificationChannelCallOptions() *NotificationChannelCallOptions {
 				})
 			}),
 		},
-		CreateNotificationChannel: []gax.CallOption{},
-		UpdateNotificationChannel: []gax.CallOption{},
+		CreateNotificationChannel: []gax.CallOption{
+			gax.WithTimeout(30000 * time.Millisecond),
+		},
+		UpdateNotificationChannel: []gax.CallOption{
+			gax.WithTimeout(30000 * time.Millisecond),
+		},
 		DeleteNotificationChannel: []gax.CallOption{
+			gax.WithTimeout(30000 * time.Millisecond),
 			gax.WithRetry(func() gax.Retryer {
 				return gax.OnCodes([]codes.Code{
 					codes.Unavailable,
@@ -122,8 +131,11 @@ func defaultNotificationChannelCallOptions() *NotificationChannelCallOptions {
 				})
 			}),
 		},
-		SendNotificationChannelVerificationCode: []gax.CallOption{},
+		SendNotificationChannelVerificationCode: []gax.CallOption{
+			gax.WithTimeout(30000 * time.Millisecond),
+		},
 		GetNotificationChannelVerificationCode: []gax.CallOption{
+			gax.WithTimeout(30000 * time.Millisecond),
 			gax.WithRetry(func() gax.Retryer {
 				return gax.OnCodes([]codes.Code{
 					codes.Unavailable,
@@ -135,6 +147,7 @@ func defaultNotificationChannelCallOptions() *NotificationChannelCallOptions {
 			}),
 		},
 		VerifyNotificationChannel: []gax.CallOption{
+			gax.WithTimeout(30000 * time.Millisecond),
 			gax.WithRetry(func() gax.Retryer {
 				return gax.OnCodes([]codes.Code{
 					codes.Unavailable,
@@ -289,9 +302,6 @@ type notificationChannelGRPCClient struct {
 	// Connection pool of gRPC connections to the service.
 	connPool gtransport.ConnPool
 
-	// flag to opt out of default deadlines via GOOGLE_API_GO_EXPERIMENTAL_DISABLE_DEFAULT_DEADLINE
-	disableDeadlines bool
-
 	// Points back to the CallOptions field of the containing NotificationChannelClient
 	CallOptions **NotificationChannelCallOptions
 
@@ -317,11 +327,6 @@ func NewNotificationChannelClient(ctx context.Context, opts ...option.ClientOpti
 		clientOpts = append(clientOpts, hookOpts...)
 	}
 
-	disableDeadlines, err := checkDisableDeadlines()
-	if err != nil {
-		return nil, err
-	}
-
 	connPool, err := gtransport.DialPool(ctx, append(clientOpts, opts...)...)
 	if err != nil {
 		return nil, err
@@ -330,7 +335,6 @@ func NewNotificationChannelClient(ctx context.Context, opts ...option.ClientOpti
 
 	c := &notificationChannelGRPCClient{
 		connPool:                  connPool,
-		disableDeadlines:          disableDeadlines,
 		notificationChannelClient: monitoringpb.NewNotificationChannelServiceClient(connPool),
 		CallOptions:               &client.CallOptions,
 	}
@@ -353,7 +357,7 @@ func (c *notificationChannelGRPCClient) Connection() *grpc.ClientConn {
 // the `x-goog-api-client` header passed on each request. Intended for
 // use by Google-written clients.
 func (c *notificationChannelGRPCClient) setGoogleClientInfo(keyval ...string) {
-	kv := append([]string{"gl-go", versionGo()}, keyval...)
+	kv := append([]string{"gl-go", gax.GoVersion}, keyval...)
 	kv = append(kv, "gapic", getVersionClient(), "gax", gax.Version, "grpc", grpc.Version)
 	c.xGoogMetadata = metadata.Pairs("x-goog-api-client", gax.XGoogHeader(kv...))
 }
@@ -410,11 +414,6 @@ func (c *notificationChannelGRPCClient) ListNotificationChannelDescriptors(ctx c
 }
 
 func (c *notificationChannelGRPCClient) GetNotificationChannelDescriptor(ctx context.Context, req *monitoringpb.GetNotificationChannelDescriptorRequest, opts ...gax.CallOption) (*monitoringpb.NotificationChannelDescriptor, error) {
-	if _, ok := ctx.Deadline(); !ok && !c.disableDeadlines {
-		cctx, cancel := context.WithTimeout(ctx, 30000*time.Millisecond)
-		defer cancel()
-		ctx = cctx
-	}
 	md := metadata.Pairs("x-goog-request-params", fmt.Sprintf("%s=%v", "name", url.QueryEscape(req.GetName())))
 
 	ctx = insertMetadata(ctx, c.xGoogMetadata, md)
@@ -477,11 +476,6 @@ func (c *notificationChannelGRPCClient) ListNotificationChannels(ctx context.Con
 }
 
 func (c *notificationChannelGRPCClient) GetNotificationChannel(ctx context.Context, req *monitoringpb.GetNotificationChannelRequest, opts ...gax.CallOption) (*monitoringpb.NotificationChannel, error) {
-	if _, ok := ctx.Deadline(); !ok && !c.disableDeadlines {
-		cctx, cancel := context.WithTimeout(ctx, 30000*time.Millisecond)
-		defer cancel()
-		ctx = cctx
-	}
 	md := metadata.Pairs("x-goog-request-params", fmt.Sprintf("%s=%v", "name", url.QueryEscape(req.GetName())))
 
 	ctx = insertMetadata(ctx, c.xGoogMetadata, md)
@@ -499,11 +493,6 @@ func (c *notificationChannelGRPCClient) GetNotificationChannel(ctx context.Conte
 }
 
 func (c *notificationChannelGRPCClient) CreateNotificationChannel(ctx context.Context, req *monitoringpb.CreateNotificationChannelRequest, opts ...gax.CallOption) (*monitoringpb.NotificationChannel, error) {
-	if _, ok := ctx.Deadline(); !ok && !c.disableDeadlines {
-		cctx, cancel := context.WithTimeout(ctx, 30000*time.Millisecond)
-		defer cancel()
-		ctx = cctx
-	}
 	md := metadata.Pairs("x-goog-request-params", fmt.Sprintf("%s=%v", "name", url.QueryEscape(req.GetName())))
 
 	ctx = insertMetadata(ctx, c.xGoogMetadata, md)
@@ -521,11 +510,6 @@ func (c *notificationChannelGRPCClient) CreateNotificationChannel(ctx context.Co
 }
 
 func (c *notificationChannelGRPCClient) UpdateNotificationChannel(ctx context.Context, req *monitoringpb.UpdateNotificationChannelRequest, opts ...gax.CallOption) (*monitoringpb.NotificationChannel, error) {
-	if _, ok := ctx.Deadline(); !ok && !c.disableDeadlines {
-		cctx, cancel := context.WithTimeout(ctx, 30000*time.Millisecond)
-		defer cancel()
-		ctx = cctx
-	}
 	md := metadata.Pairs("x-goog-request-params", fmt.Sprintf("%s=%v", "notification_channel.name", url.QueryEscape(req.GetNotificationChannel().GetName())))
 
 	ctx = insertMetadata(ctx, c.xGoogMetadata, md)
@@ -543,11 +527,6 @@ func (c *notificationChannelGRPCClient) UpdateNotificationChannel(ctx context.Co
 }
 
 func (c *notificationChannelGRPCClient) DeleteNotificationChannel(ctx context.Context, req *monitoringpb.DeleteNotificationChannelRequest, opts ...gax.CallOption) error {
-	if _, ok := ctx.Deadline(); !ok && !c.disableDeadlines {
-		cctx, cancel := context.WithTimeout(ctx, 30000*time.Millisecond)
-		defer cancel()
-		ctx = cctx
-	}
 	md := metadata.Pairs("x-goog-request-params", fmt.Sprintf("%s=%v", "name", url.QueryEscape(req.GetName())))
 
 	ctx = insertMetadata(ctx, c.xGoogMetadata, md)
@@ -561,11 +540,6 @@ func (c *notificationChannelGRPCClient) DeleteNotificationChannel(ctx context.Co
 }
 
 func (c *notificationChannelGRPCClient) SendNotificationChannelVerificationCode(ctx context.Context, req *monitoringpb.SendNotificationChannelVerificationCodeRequest, opts ...gax.CallOption) error {
-	if _, ok := ctx.Deadline(); !ok && !c.disableDeadlines {
-		cctx, cancel := context.WithTimeout(ctx, 30000*time.Millisecond)
-		defer cancel()
-		ctx = cctx
-	}
 	md := metadata.Pairs("x-goog-request-params", fmt.Sprintf("%s=%v", "name", url.QueryEscape(req.GetName())))
 
 	ctx = insertMetadata(ctx, c.xGoogMetadata, md)
@@ -579,11 +553,6 @@ func (c *notificationChannelGRPCClient) SendNotificationChannelVerificationCode(
 }
 
 func (c *notificationChannelGRPCClient) GetNotificationChannelVerificationCode(ctx context.Context, req *monitoringpb.GetNotificationChannelVerificationCodeRequest, opts ...gax.CallOption) (*monitoringpb.GetNotificationChannelVerificationCodeResponse, error) {
-	if _, ok := ctx.Deadline(); !ok && !c.disableDeadlines {
-		cctx, cancel := context.WithTimeout(ctx, 30000*time.Millisecond)
-		defer cancel()
-		ctx = cctx
-	}
 	md := metadata.Pairs("x-goog-request-params", fmt.Sprintf("%s=%v", "name", url.QueryEscape(req.GetName())))
 
 	ctx = insertMetadata(ctx, c.xGoogMetadata, md)
@@ -601,11 +570,6 @@ func (c *notificationChannelGRPCClient) GetNotificationChannelVerificationCode(c
 }
 
 func (c *notificationChannelGRPCClient) VerifyNotificationChannel(ctx context.Context, req *monitoringpb.VerifyNotificationChannelRequest, opts ...gax.CallOption) (*monitoringpb.NotificationChannel, error) {
-	if _, ok := ctx.Deadline(); !ok && !c.disableDeadlines {
-		cctx, cancel := context.WithTimeout(ctx, 30000*time.Millisecond)
-		defer cancel()
-		ctx = cctx
-	}
 	md := metadata.Pairs("x-goog-request-params", fmt.Sprintf("%s=%v", "name", url.QueryEscape(req.GetName())))
 
 	ctx = insertMetadata(ctx, c.xGoogMetadata, md)

@@ -17,15 +17,16 @@ type testSolaceMetadata struct {
 }
 
 var (
-	soltestValidBaseURL        = "http://localhost:8080"
-	soltestValidUsername       = "admin"
-	soltestValidPassword       = "admin"
-	soltestValidVpn            = "dennis_vpn"
-	soltestValidQueueName      = "queue3"
-	soltestValidMsgCountTarget = "10"
-	soltestValidMsgSpoolTarget = "20"
-	soltestEnvUsername         = "SOLTEST_USERNAME"
-	soltestEnvPassword         = "SOLTEST_PASSWORD"
+	soltestValidBaseURL         = "http://localhost:8080"
+	soltestValidUsername        = "admin"
+	soltestValidPassword        = "admin"
+	soltestValidVpn             = "dennis_vpn"
+	soltestValidQueueName       = "queue3"
+	soltestValidMsgCountTarget  = "10"
+	soltestValidMsgSpoolTarget  = "20"
+	soltestValidMsgRxRateTarget = "15"
+	soltestEnvUsername          = "SOLTEST_USERNAME"
+	soltestEnvPassword          = "SOLTEST_PASSWORD"
 )
 
 // AUTH RECORD FOR TEST
@@ -211,6 +212,39 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 		},
 		1,
 		false,
+	},
+	// -Case - msgRxRateTarget non-numeric
+	{
+		"#014 - msgRxRateTarget non-numeric",
+		map[string]string{
+			solaceMetaSempBaseURL:     soltestValidBaseURL,
+			solaceMetaMsgVpn:          soltestValidVpn,
+			solaceMetaUsernameFromEnv: "",
+			solaceMetaPasswordFromEnv: "",
+			solaceMetaUsername:        soltestValidUsername,
+			solaceMetaPassword:        soltestValidPassword,
+			solaceMetaQueueName:       soltestValidQueueName,
+			solaceMetaMsgRxRateTarget: "NOT_AN_INTEGER",
+		},
+		1,
+		true,
+	},
+	// -Case - activationMsgRxRateTarget non-numeric
+	{
+		"#015 - activationMsgRxRateTarget non-numeric",
+		map[string]string{
+			solaceMetaSempBaseURL:               soltestValidBaseURL,
+			solaceMetaMsgVpn:                    soltestValidVpn,
+			solaceMetaUsernameFromEnv:           "",
+			solaceMetaPasswordFromEnv:           "",
+			solaceMetaUsername:                  soltestValidUsername,
+			solaceMetaPassword:                  soltestValidPassword,
+			solaceMetaQueueName:                 soltestValidQueueName,
+			solaceMetaMsgRxRateTarget:           "10",
+			solaceMetaActivationMsgRxRateTarget: "NOT_AN_INTEGER",
+		},
+		1,
+		true,
 	},
 }
 
@@ -399,11 +433,81 @@ var testSolaceGetMetricSpecData = []testSolaceMetadata{
 		1,
 		false,
 	},
+	// Added for 'solaceMetaMsgRxRateTarget'
+	{
+		"#410 - Get Metric Spec - msgRxRateTarget",
+		map[string]string{
+			solaceMetaSempBaseURL:     soltestValidBaseURL,
+			solaceMetaMsgVpn:          soltestValidVpn,
+			solaceMetaUsernameFromEnv: "",
+			solaceMetaPasswordFromEnv: "",
+			solaceMetaUsername:        soltestValidUsername,
+			solaceMetaPassword:        soltestValidPassword,
+			solaceMetaQueueName:       soltestValidQueueName,
+			solaceMetaMsgCountTarget:  soltestValidMsgCountTarget,
+			//			solaceMetaMsgSpoolUsageTarget: soltestValidMsgSpoolTarget,
+			solaceMetaMsgRxRateTarget: soltestValidMsgRxRateTarget,
+		},
+		1,
+		false,
+	},
+	{
+		"#411 - Get Metric Spec - ALL msgSpoolUsage, msgCountTarget, and msgRxRateTarget",
+		map[string]string{
+			solaceMetaSempBaseURL:         soltestValidBaseURL,
+			solaceMetaMsgVpn:              soltestValidVpn,
+			solaceMetaUsernameFromEnv:     "",
+			solaceMetaPasswordFromEnv:     "",
+			solaceMetaUsername:            soltestValidUsername,
+			solaceMetaPassword:            soltestValidPassword,
+			solaceMetaQueueName:           soltestValidQueueName,
+			solaceMetaMsgCountTarget:      soltestValidMsgCountTarget,
+			solaceMetaMsgSpoolUsageTarget: soltestValidMsgSpoolTarget,
+			solaceMetaMsgRxRateTarget:     soltestValidMsgRxRateTarget,
+		},
+		1,
+		false,
+	},
+	{
+		"#412 - Get Metric Spec - ALL ZERO",
+		map[string]string{
+			solaceMetaSempBaseURL:         soltestValidBaseURL,
+			solaceMetaMsgVpn:              soltestValidVpn,
+			solaceMetaUsernameFromEnv:     "",
+			solaceMetaPasswordFromEnv:     "",
+			solaceMetaUsername:            soltestValidUsername,
+			solaceMetaPassword:            soltestValidPassword,
+			solaceMetaQueueName:           soltestValidQueueName,
+			solaceMetaMsgCountTarget:      "0",
+			solaceMetaMsgSpoolUsageTarget: "0",
+			solaceMetaMsgRxRateTarget:     "0",
+		},
+		1,
+		true,
+	},
+	{
+		"#413 - Get Metric Spec - msgRxRateTarget, OTHERS ZERO",
+		map[string]string{
+			solaceMetaSempBaseURL:         soltestValidBaseURL,
+			solaceMetaMsgVpn:              soltestValidVpn,
+			solaceMetaUsernameFromEnv:     "",
+			solaceMetaPasswordFromEnv:     "",
+			solaceMetaUsername:            soltestValidUsername,
+			solaceMetaPassword:            soltestValidPassword,
+			solaceMetaQueueName:           soltestValidQueueName,
+			solaceMetaMsgCountTarget:      "0",
+			solaceMetaMsgSpoolUsageTarget: "0",
+			solaceMetaMsgRxRateTarget:     soltestValidMsgRxRateTarget,
+		},
+		1,
+		false,
+	},
 }
 
 var testSolaceExpectedMetricNames = map[string]string{
 	"s1-" + solaceScalerID + "-" + soltestValidQueueName + "-" + solaceTriggermsgcount:      "",
 	"s1-" + solaceScalerID + "-" + soltestValidQueueName + "-" + solaceTriggermsgspoolusage: "",
+	"s1-" + solaceScalerID + "-" + soltestValidQueueName + "-" + solaceTriggermsgrxrate:     "",
 }
 
 func TestSolaceParseSolaceMetadata(t *testing.T) {

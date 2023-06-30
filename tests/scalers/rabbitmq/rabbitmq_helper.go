@@ -60,6 +60,15 @@ data:
     default_vhost = {{.VHostName}}
     management.tcp.port = 15672
     management.tcp.ip = 0.0.0.0
+    {{if .EnableOAuth}}
+    auth_backends.1 = rabbit_auth_backend_internal
+    auth_backends.2 = rabbit_auth_backend_oauth2
+    auth_backends.3 = rabbit_auth_backend_amqp
+    auth_oauth2.resource_server_id = {{.OAuthClientID}}
+    auth_oauth2.scope_prefix = rabbitmq.
+    auth_oauth2.additional_scopes_key = {{.OAuthScopesKey}}
+    auth_oauth2.jwks_url = {{.OAuthJwksURI}}
+    {{end}}
   enabled_plugins: |
     [rabbitmq_management].
 ---
@@ -158,6 +167,28 @@ spec:
 `
 )
 
+type RabbitOAuthConfig struct {
+	Enable    bool
+	ClientID  string
+	ScopesKey string
+	JwksURI   string
+}
+
+func WithoutOAuth() RabbitOAuthConfig {
+	return RabbitOAuthConfig{
+		Enable: false,
+	}
+}
+
+func WithAzureADOAuth(tenantID string, clientID string) RabbitOAuthConfig {
+	return RabbitOAuthConfig{
+		Enable:    true,
+		ClientID:  clientID,
+		ScopesKey: "roles",
+		JwksURI:   fmt.Sprintf("https://login.microsoftonline.com/%s/discovery/keys", tenantID),
+	}
+}
+
 type templateData struct {
 	Namespace           string
 	Connection          string
@@ -165,26 +196,38 @@ type templateData struct {
 	HostName, VHostName string
 	Username, Password  string
 	MessageCount        int
+	EnableOAuth         bool
+	OAuthClientID       string
+	OAuthScopesKey      string
+	OAuthJwksURI        string
 }
 
-func RMQInstall(t *testing.T, kc *kubernetes.Clientset, namespace, user, password, vhost string) {
+func RMQInstall(t *testing.T, kc *kubernetes.Clientset, namespace, user, password, vhost string, oauth RabbitOAuthConfig) {
 	helper.CreateNamespace(t, kc, namespace)
 	data := templateData{
-		Namespace: namespace,
-		VHostName: vhost,
-		Username:  user,
-		Password:  password,
+		Namespace:      namespace,
+		VHostName:      vhost,
+		Username:       user,
+		Password:       password,
+		EnableOAuth:    oauth.Enable,
+		OAuthClientID:  oauth.ClientID,
+		OAuthScopesKey: oauth.ScopesKey,
+		OAuthJwksURI:   oauth.JwksURI,
 	}
 
 	helper.KubectlApplyWithTemplate(t, data, "rmqDeploymentTemplate", deploymentTemplate)
 }
 
-func RMQUninstall(t *testing.T, namespace, user, password, vhost string) {
+func RMQUninstall(t *testing.T, namespace, user, password, vhost string, oauth RabbitOAuthConfig) {
 	data := templateData{
-		Namespace: namespace,
-		VHostName: vhost,
-		Username:  user,
-		Password:  password,
+		Namespace:      namespace,
+		VHostName:      vhost,
+		Username:       user,
+		Password:       password,
+		EnableOAuth:    oauth.Enable,
+		OAuthClientID:  oauth.ClientID,
+		OAuthScopesKey: oauth.ScopesKey,
+		OAuthJwksURI:   oauth.JwksURI,
 	}
 
 	helper.KubectlDeleteWithTemplate(t, data, "rmqDeploymentTemplate", deploymentTemplate)

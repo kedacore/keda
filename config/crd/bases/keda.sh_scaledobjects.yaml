@@ -44,6 +44,9 @@ spec:
     - jsonPath: .status.conditions[?(@.type=="Fallback")].status
       name: Fallback
       type: string
+    - jsonPath: .status.conditions[?(@.type=="Paused")].status
+      name: Paused
+      type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
@@ -249,7 +252,7 @@ spec:
                   description: ScaleTriggers reference the scaler that will be used
                   properties:
                     authenticationRef:
-                      description: ScaledObjectAuthRef points to the TriggerAuthentication
+                      description: AuthenticationRef points to the TriggerAuthentication
                         or ClusterTriggerAuthentication object that is used to authenticate
                         the scaler with the environment
                       properties:
