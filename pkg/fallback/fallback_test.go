@@ -202,7 +202,7 @@ var _ = Describe("fallback", func() {
 			},
 		}
 
-		isEnabled := isFallbackEnabled(so, metricsSpec)
+		isEnabled := isFallbackEnabled(so, metricsSpec, "health")
 		Expect(isEnabled).Should(BeFalse())
 	})
 
