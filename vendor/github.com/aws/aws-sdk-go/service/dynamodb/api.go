@@ -9263,6 +9263,10 @@ type BatchStatementError struct {
 	// The error code associated with the failed PartiQL batch statement.
 	Code *string `type:"string" enum:"BatchStatementErrorCodeEnum"`
 
+	// The item which caused the condition check to fail. This will be set if ReturnValuesOnConditionCheckFailure
+	// is specified as ALL_OLD.
+	Item map[string]*AttributeValue `type:"map"`
+
 	// The error message associated with the PartiQL batch response.
 	Message *string `type:"string"`
 }
@@ -9291,6 +9295,12 @@ func (s *BatchStatementError) SetCode(v string) *BatchStatementError {
 	return s
 }
 
+// SetItem sets the Item field's value.
+func (s *BatchStatementError) SetItem(v map[string]*AttributeValue) *BatchStatementError {
+	s.Item = v
+	return s
+}
+
 // SetMessage sets the Message field's value.
 func (s *BatchStatementError) SetMessage(v string) *BatchStatementError {
 	s.Message = &v
@@ -9306,6 +9316,14 @@ type BatchStatementRequest struct {
 
 	// The parameters associated with a PartiQL statement in the batch request.
 	Parameters []*AttributeValue `min:"1" type:"list"`
+
+	// An optional parameter that returns the item attributes for a PartiQL batch
+	// request operation that failed a condition check.
+	//
+	// There is no additional cost associated with requesting a return value aside
+	// from the small network and processing overhead of receiving a larger response.
+	// No read capacity units are consumed.
+	ReturnValuesOnConditionCheckFailure *string `type:"string" enum:"ReturnValuesOnConditionCheckFailure"`
 
 	// A valid PartiQL statement.
 	//
@@ -9359,6 +9377,12 @@ func (s *BatchStatementRequest) SetConsistentRead(v bool) *BatchStatementRequest
 // SetParameters sets the Parameters field's value.
 func (s *BatchStatementRequest) SetParameters(v []*AttributeValue) *BatchStatementRequest {
 	s.Parameters = v
+	return s
+}
+
+// SetReturnValuesOnConditionCheckFailure sets the ReturnValuesOnConditionCheckFailure field's value.
+func (s *BatchStatementRequest) SetReturnValuesOnConditionCheckFailure(v string) *BatchStatementRequest {
+	s.ReturnValuesOnConditionCheckFailure = &v
 	return s
 }
 
@@ -10085,6 +10109,9 @@ type ConditionalCheckFailedException struct {
 	_            struct{}                  `type:"structure"`
 	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
+	// Item which caused the ConditionalCheckFailedException.
+	Item map[string]*AttributeValue `type:"map"`
+
 	// The conditional request failed.
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -10132,7 +10159,7 @@ func (s *ConditionalCheckFailedException) OrigErr() error {
 }
 
 func (s *ConditionalCheckFailedException) Error() string {
-	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
+	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
@@ -11647,6 +11674,14 @@ type DeleteItemInput struct {
 	// DeleteItem does not recognize any values other than NONE or ALL_OLD.
 	ReturnValues *string `type:"string" enum:"ReturnValue"`
 
+	// An optional parameter that returns the item attributes for a DeleteItem operation
+	// that failed a condition check.
+	//
+	// There is no additional cost associated with requesting a return value aside
+	// from the small network and processing overhead of receiving a larger response.
+	// No read capacity units are consumed.
+	ReturnValuesOnConditionCheckFailure *string `type:"string" enum:"ReturnValuesOnConditionCheckFailure"`
+
 	// The name of the table from which to delete the item.
 	//
 	// TableName is a required field
@@ -11741,6 +11776,12 @@ func (s *DeleteItemInput) SetReturnItemCollectionMetrics(v string) *DeleteItemIn
 // SetReturnValues sets the ReturnValues field's value.
 func (s *DeleteItemInput) SetReturnValues(v string) *DeleteItemInput {
 	s.ReturnValues = &v
+	return s
+}
+
+// SetReturnValuesOnConditionCheckFailure sets the ReturnValuesOnConditionCheckFailure field's value.
+func (s *DeleteItemInput) SetReturnValuesOnConditionCheckFailure(v string) *DeleteItemInput {
+	s.ReturnValuesOnConditionCheckFailure = &v
 	return s
 }
 
@@ -13537,6 +13578,14 @@ type ExecuteStatementInput struct {
 	//    * NONE - No ConsumedCapacity details are included in the response.
 	ReturnConsumedCapacity *string `type:"string" enum:"ReturnConsumedCapacity"`
 
+	// An optional parameter that returns the item attributes for an ExecuteStatement
+	// operation that failed a condition check.
+	//
+	// There is no additional cost associated with requesting a return value aside
+	// from the small network and processing overhead of receiving a larger response.
+	// No read capacity units are consumed.
+	ReturnValuesOnConditionCheckFailure *string `type:"string" enum:"ReturnValuesOnConditionCheckFailure"`
+
 	// The PartiQL statement representing the operation to run.
 	//
 	// Statement is a required field
@@ -13613,6 +13662,12 @@ func (s *ExecuteStatementInput) SetParameters(v []*AttributeValue) *ExecuteState
 // SetReturnConsumedCapacity sets the ReturnConsumedCapacity field's value.
 func (s *ExecuteStatementInput) SetReturnConsumedCapacity(v string) *ExecuteStatementInput {
 	s.ReturnConsumedCapacity = &v
+	return s
+}
+
+// SetReturnValuesOnConditionCheckFailure sets the ReturnValuesOnConditionCheckFailure field's value.
+func (s *ExecuteStatementInput) SetReturnValuesOnConditionCheckFailure(v string) *ExecuteStatementInput {
+	s.ReturnValuesOnConditionCheckFailure = &v
 	return s
 }
 
@@ -18357,6 +18412,14 @@ type ParameterizedStatement struct {
 	// The parameter values.
 	Parameters []*AttributeValue `min:"1" type:"list"`
 
+	// An optional parameter that returns the item attributes for a PartiQL ParameterizedStatement
+	// operation that failed a condition check.
+	//
+	// There is no additional cost associated with requesting a return value aside
+	// from the small network and processing overhead of receiving a larger response.
+	// No read capacity units are consumed.
+	ReturnValuesOnConditionCheckFailure *string `type:"string" enum:"ReturnValuesOnConditionCheckFailure"`
+
 	// A PartiQL statment that uses parameters.
 	//
 	// Statement is a required field
@@ -18403,6 +18466,12 @@ func (s *ParameterizedStatement) Validate() error {
 // SetParameters sets the Parameters field's value.
 func (s *ParameterizedStatement) SetParameters(v []*AttributeValue) *ParameterizedStatement {
 	s.Parameters = v
+	return s
+}
+
+// SetReturnValuesOnConditionCheckFailure sets the ReturnValuesOnConditionCheckFailure field's value.
+func (s *ParameterizedStatement) SetReturnValuesOnConditionCheckFailure(v string) *ParameterizedStatement {
+	s.ReturnValuesOnConditionCheckFailure = &v
 	return s
 }
 
@@ -19184,6 +19253,14 @@ type PutItemInput struct {
 	// PutItem does not recognize any values other than NONE or ALL_OLD.
 	ReturnValues *string `type:"string" enum:"ReturnValue"`
 
+	// An optional parameter that returns the item attributes for a PutItem operation
+	// that failed a condition check.
+	//
+	// There is no additional cost associated with requesting a return value aside
+	// from the small network and processing overhead of receiving a larger response.
+	// No read capacity units are consumed.
+	ReturnValuesOnConditionCheckFailure *string `type:"string" enum:"ReturnValuesOnConditionCheckFailure"`
+
 	// The name of the table to contain the item.
 	//
 	// TableName is a required field
@@ -19278,6 +19355,12 @@ func (s *PutItemInput) SetReturnItemCollectionMetrics(v string) *PutItemInput {
 // SetReturnValues sets the ReturnValues field's value.
 func (s *PutItemInput) SetReturnValues(v string) *PutItemInput {
 	s.ReturnValues = &v
+	return s
+}
+
+// SetReturnValuesOnConditionCheckFailure sets the ReturnValuesOnConditionCheckFailure field's value.
+func (s *PutItemInput) SetReturnValuesOnConditionCheckFailure(v string) *PutItemInput {
+	s.ReturnValuesOnConditionCheckFailure = &v
 	return s
 }
 
@@ -25578,6 +25661,14 @@ type UpdateItemInput struct {
 	// The values returned are strongly consistent.
 	ReturnValues *string `type:"string" enum:"ReturnValue"`
 
+	// An optional parameter that returns the item attributes for an UpdateItem
+	// operation that failed a condition check.
+	//
+	// There is no additional cost associated with requesting a return value aside
+	// from the small network and processing overhead of receiving a larger response.
+	// No read capacity units are consumed.
+	ReturnValuesOnConditionCheckFailure *string `type:"string" enum:"ReturnValuesOnConditionCheckFailure"`
+
 	// The name of the table containing the item to update.
 	//
 	// TableName is a required field
@@ -25737,6 +25828,12 @@ func (s *UpdateItemInput) SetReturnItemCollectionMetrics(v string) *UpdateItemIn
 // SetReturnValues sets the ReturnValues field's value.
 func (s *UpdateItemInput) SetReturnValues(v string) *UpdateItemInput {
 	s.ReturnValues = &v
+	return s
+}
+
+// SetReturnValuesOnConditionCheckFailure sets the ReturnValuesOnConditionCheckFailure field's value.
+func (s *UpdateItemInput) SetReturnValuesOnConditionCheckFailure(v string) *UpdateItemInput {
+	s.ReturnValuesOnConditionCheckFailure = &v
 	return s
 }
 

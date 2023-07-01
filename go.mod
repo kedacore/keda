@@ -23,7 +23,7 @@ require (
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.38.1
 	github.com/arangodb/go-driver v1.6.0
-	github.com/aws/aws-sdk-go v1.44.287
+	github.com/aws/aws-sdk-go v1.44.294
 	github.com/bradleyfalzon/ghinstallation/v2 v2.5.0
 	github.com/denisenkom/go-mssqldb v0.12.3
 	github.com/dysnix/predictkube-libs v0.0.4-0.20230109175007-5a82fccd31c7
