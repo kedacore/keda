@@ -192,13 +192,8 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 		} else if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAwsKiam {
 			authParams["awsRoleArn"] = podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
 		} else if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzure {
-			// Check if podidentity is empty or default
-			if podIdentity.IdentityID == nil {
-				// Set to empty in case of trigger nil pointer error
-				podIdentity.IdentityID = new(string) 
-			} else if *podIdentity.IdentityID == "" {
-				return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
-					fmt.Errorf("error getting IdentityID, IdentityID cannot be empty")
+			if podIdentity.GetIdentityID() == "" {
+				logger.Info("WARNING: IdentityID of PodIdentity is empty or nil")
 			}
 		}
 		return authParams, podIdentity, nil

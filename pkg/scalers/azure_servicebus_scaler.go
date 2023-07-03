@@ -214,7 +214,7 @@ func parseAzureServiceBusMetadata(config *ScalerConfig, logger logr.Logger) (*az
 		}
 
 	default:
-		return nil, fmt.Errorf("azure service bus doesn't support pod identity %s", config.PodIdentity)
+		return nil, fmt.Errorf("azure service bus doesn't support pod identity %s", config.PodIdentity.Provider)
 	}
 
 	meta.scalerIndex = config.ScalerIndex
@@ -297,7 +297,7 @@ func (s *azureServiceBusScaler) getServiceBusAdminClient() (*admin.Client, error
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		client, err = admin.NewClientFromConnectionString(s.metadata.connection, nil)
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
-		creds, chainedErr := azure.NewChainedCredential(*s.podIdentity.IdentityID, s.podIdentity.Provider)
+		creds, chainedErr := azure.NewChainedCredential(s.podIdentity.GetIdentityID(), s.podIdentity.Provider)
 		if chainedErr != nil {
 			return nil, chainedErr
 		}

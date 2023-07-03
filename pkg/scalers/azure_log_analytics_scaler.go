@@ -163,7 +163,7 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
 		meta.podIdentity = config.PodIdentity
 	default:
-		return nil, fmt.Errorf("error parsing metadata. Details: Log Analytics Scaler doesn't support pod identity %s", config.PodIdentity)
+		return nil, fmt.Errorf("error parsing metadata. Details: Log Analytics Scaler doesn't support pod identity %s", config.PodIdentity.Provider)
 	}
 
 	// Getting workspaceId
@@ -480,7 +480,7 @@ func (s *azureLogAnalyticsScaler) getAuthorizationToken(ctx context.Context) (to
 
 	switch s.metadata.podIdentity.Provider {
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		aadToken, err := azure.GetAzureADWorkloadIdentityToken(ctx, *s.metadata.podIdentity.IdentityID, s.metadata.logAnalyticsResourceURL)
+		aadToken, err := azure.GetAzureADWorkloadIdentityToken(ctx, s.metadata.podIdentity.GetIdentityID(), s.metadata.logAnalyticsResourceURL)
 		if err != nil {
 			return tokenData{}, nil
 		}
@@ -565,10 +565,10 @@ func (s *azureLogAnalyticsScaler) executeAADApicall(ctx context.Context) ([]byte
 
 func (s *azureLogAnalyticsScaler) executeIMDSApicall(ctx context.Context) ([]byte, int, error) {
 	var urlStr string
-	if *s.metadata.podIdentity.IdentityID == "" {
+	if s.metadata.podIdentity.GetIdentityID() == "" {
 		urlStr = fmt.Sprintf(azure.MSIURL, s.metadata.logAnalyticsResourceURL)
 	} else {
-		urlStr = fmt.Sprintf(azure.MSIURLWithClientID, s.metadata.logAnalyticsResourceURL, url.QueryEscape(*s.metadata.podIdentity.IdentityID))
+		urlStr = fmt.Sprintf(azure.MSIURLWithClientID, s.metadata.logAnalyticsResourceURL, url.QueryEscape(s.metadata.podIdentity.GetIdentityID()))
 	}
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, urlStr, nil)

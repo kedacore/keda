@@ -119,6 +119,14 @@ type AuthPodIdentity struct {
 	IdentityID *string `json:"identityId"`
 }
 
+func (a *AuthPodIdentity) GetIdentityID() string {
+	if a.IdentityID == nil {
+		return ""
+	} else {
+		return *a.IdentityID
+	}
+}
+
 // AuthSecretTargetRef is used to authenticate using a reference to a secret
 type AuthSecretTargetRef struct {
 	Parameter string `json:"parameter"`

@@ -53,7 +53,7 @@ func GetEventHubClient(ctx context.Context, info EventHubInfo) (*eventhub.Hub, e
 		envJWTProviderOption := aad.JWTProviderWithAzureEnvironment(&env)
 		resourceURLJWTProviderOption := aad.JWTProviderWithResourceURI(info.EventHubResourceURL)
 		clientIDJWTProviderOption := func(config *aad.TokenProviderConfiguration) error {
-			config.ClientID = *info.PodIdentity.IdentityID
+			config.ClientID = info.PodIdentity.GetIdentityID()
 			return nil
 		}
 
@@ -68,7 +68,7 @@ func GetEventHubClient(ctx context.Context, info EventHubInfo) (*eventhub.Hub, e
 		// User wants to use AAD Workload Identity
 		env := azure.Environment{ActiveDirectoryEndpoint: info.ActiveDirectoryEndpoint, ServiceBusEndpointSuffix: info.ServiceBusEndpointSuffix}
 		hubEnvOptions := eventhub.HubWithEnvironment(env)
-		provider := NewAzureADWorkloadIdentityTokenProvider(ctx, *info.PodIdentity.IdentityID, info.EventHubResourceURL)
+		provider := NewAzureADWorkloadIdentityTokenProvider(ctx, info.PodIdentity.GetIdentityID(), info.EventHubResourceURL)
 
 		return eventhub.NewHub(info.Namespace, info.EventHubName, provider, hubEnvOptions)
 	}

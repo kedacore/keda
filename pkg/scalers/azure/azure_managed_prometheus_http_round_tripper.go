@@ -36,7 +36,7 @@ func TryAndGetAzureManagedPrometheusHTTPRoundTripper(podIdentity kedav1alpha1.Au
 			return nil, fmt.Errorf("trigger metadata cannot be nil")
 		}
 
-		chainedCred, err := NewChainedCredential(*podIdentity.IdentityID, podIdentity.Provider)
+		chainedCred, err := NewChainedCredential(podIdentity.GetIdentityID(), podIdentity.Provider)
 		if err != nil {
 			return nil, err
 		}
