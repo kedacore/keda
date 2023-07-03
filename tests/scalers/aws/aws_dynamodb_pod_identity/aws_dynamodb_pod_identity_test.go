@@ -73,7 +73,6 @@ spec:
       labels:
         app: {{.DeploymentName}}
     spec:
-      serviceAccountName: default
       containers:
       - name: nginx
         image: nginxinc/nginx-unprivileged
