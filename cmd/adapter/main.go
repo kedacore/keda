@@ -21,7 +21,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -56,7 +55,7 @@ var (
 	metricsServiceAddr        string
 )
 
-func (a *Adapter) makeProvider(ctx context.Context, globalHTTPTimeout time.Duration) (provider.ExternalMetricsProvider, <-chan struct{}, error) {
+func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsProvider, <-chan struct{}, error) {
 	scheme := scheme.Scheme
 	if err := appsv1.SchemeBuilder.AddToScheme(scheme); err != nil {
 		logger.Error(err, "failed to add apps/v1 scheme to runtime scheme")
@@ -197,19 +196,12 @@ func main() {
 
 	ctrl.SetLogger(logger)
 
-	// default to 3 seconds if they don't pass the env var
-	globalHTTPTimeoutMS, err := kedautil.ResolveOsEnvInt("KEDA_HTTP_DEFAULT_TIMEOUT", 3000)
-	if err != nil {
-		logger.Error(err, "Invalid KEDA_HTTP_DEFAULT_TIMEOUT")
-		return
-	}
-
 	err = printWelcomeMsg(cmd)
 	if err != nil {
 		return
 	}
 
-	kedaProvider, stopCh, err := cmd.makeProvider(ctx, time.Duration(globalHTTPTimeoutMS)*time.Millisecond)
+	kedaProvider, stopCh, err := cmd.makeProvider(ctx)
 	if err != nil {
 		logger.Error(err, "making provider")
 		return
