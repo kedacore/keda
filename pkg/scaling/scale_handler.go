@@ -870,12 +870,12 @@ func calculateComplexLogicFormula(list []external_metrics.ExternalMetricValue, f
 	}
 	program, err := expr.Compile(formula)
 	if err != nil {
-		return nil, fmt.Errorf("error trying to compile custom formula: %s", err)
+		return nil, fmt.Errorf("error trying to compile custom formula: %w", err)
 	}
 
 	tmp, err := expr.Run(program, data)
 	if err != nil {
-		return nil, fmt.Errorf("error trying to run custom formula: %s", err)
+		return nil, fmt.Errorf("error trying to run custom formula: %w", err)
 	}
 
 	out = tmp.(float64)

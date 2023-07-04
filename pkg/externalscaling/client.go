@@ -39,7 +39,7 @@ func NewGrpcClient(url string, logger logr.Logger) (*GrpcClient, error) {
 	}
 	conn, err := grpc.Dial(url, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("error in grpc.Dial: %s", err)
+		return nil, fmt.Errorf("error in grpc.Dial: %w", err)
 	}
 
 	return &GrpcClient{client: cl.NewExternalCalculationClient(conn), connection: conn}, nil
@@ -48,7 +48,7 @@ func NewGrpcClient(url string, logger logr.Logger) (*GrpcClient, error) {
 func (c *GrpcClient) Calculate(ctx context.Context, list *cl.MetricsList, logger logr.Logger) (*cl.MetricsList, error) {
 	response, err := c.client.Calculate(ctx, list)
 	if err != nil {
-		return nil, fmt.Errorf("error in externalscaling.Calculate %s", err)
+		return nil, fmt.Errorf("error in externalscaling.Calculate %w", err)
 	}
 	return response.List, nil
 }
