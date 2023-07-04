@@ -78,6 +78,14 @@ func (c *ScalersCache) GetPushScalers() []scalers.PushScaler {
 
 // Close closes all scalers in the cache
 func (c *ScalersCache) Close(ctx context.Context) {
+	for _, client := range c.ExternalCalculationGrpcClients {
+		err := client.Client.CloseConnection()
+		if err != nil {
+			log.Error(err, fmt.Sprintf("couldn't close grpc connection for externalCalculator '%s'", client.Name))
+		} else {
+			log.V(0).Info(fmt.Sprintf("successfully closed grpc connection for externalCalculator '%s'", client.Name))
+		}
+	}
 	scalers := c.Scalers
 	c.Scalers = nil
 	for _, s := range scalers {
