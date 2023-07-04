@@ -121,8 +121,7 @@ type ComplexScalingLogic struct {
 
 // ExternalCalculation structure describes name and URL of a gRPC server
 // that KEDA can connect to with collected metrics and modify them. Each server
-// has a timeout and optional Fallback replica count. It is not a complete
-// fallback functionality because the threshold should be always 1.
+// has a timeout and optional Fallback functionality.
 type ExternalCalculation struct {
 	Name    string `json:"name"`
 	URL     string `json:"url"`
