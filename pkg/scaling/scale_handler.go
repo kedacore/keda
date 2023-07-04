@@ -26,7 +26,6 @@ import (
 	"time"
 
 	expr "github.com/antonmedv/expr"
-	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -41,6 +40,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	externalscaling "github.com/kedacore/keda/v2/pkg/externalscaling"
+	externalscalingAPI "github.com/kedacore/keda/v2/pkg/externalscaling/api"
 	"github.com/kedacore/keda/v2/pkg/fallback"
 	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	"github.com/kedacore/keda/v2/pkg/scalers"
@@ -366,13 +366,10 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 	externalCalculationClients := []cache.ExternalCalculationClient{}
 
 	// if scalableObject is scaledObject, check for External Calculators and establish
-	// their connections to gRPC servers
+	// their connections to gRPC servers and save the client instances
 	// new: scaledObject is sometimes NOT updated due to unresolved issue (more info https://github.com/kedacore/keda/issues/4389)
 	switch val := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
-
-		// if scaledObject has externalCalculators, try to establish a connection to
-		// its gRPC server and save the client instances
 		// TODO: check if connection already established first?
 		for _, ec := range val.Spec.Advanced.ComplexScalingLogic.ExternalCalculations {
 			timeout, err := strconv.ParseInt(ec.Timeout, 10, 64)
@@ -391,13 +388,13 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 			if err != nil {
 				log.Error(err, fmt.Sprintf("error creating new grpc client for external calculator at %s", ec.URL))
 			} else {
-				if !ecClient.WaitForConnectionReady(ctx, ec.URL, time.Duration(timeout), log) {
+				if !ecClient.WaitForConnectionReady(ctx, ec.URL, time.Duration(timeout)*time.Second, log) {
 					connected = false
 					err = fmt.Errorf("client failed to connect to server")
-					log.Error(err, fmt.Sprintf("error in creating gRPC connection for external calculator '%s' via %s", ec.Name, ec.URL))
+					log.Error(err, fmt.Sprintf("error in creating gRPC connection for external calculator '%s' via '%s'", ec.Name, ec.URL))
 				} else {
 					connected = true
-					log.Info(fmt.Sprintf("successfully connected to gRPC server external calculator '%s'", ec.Name))
+					log.Info(fmt.Sprintf("successfully connected to gRPC server ExternalCalculator '%s' at '%s'", ec.Name, ec.URL))
 				}
 			}
 			ecClientStruct := cache.ExternalCalculationClient{Name: ec.Name, Client: ecClient, Connected: connected}
@@ -452,7 +449,6 @@ func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject int
 // It could either query the metric value directly from the scaler or from a cache, that's being stored for the scaler.
 func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricsName string) (*external_metrics.ExternalMetricValueList, error) {
 	logger := log.WithValues("scaledObject.Namespace", scaledObjectNamespace, "scaledObject.Name", scaledObjectName)
-
 	var matchingMetrics []external_metrics.ExternalMetricValue
 
 	cacheObj, err := h.getScalersCacheForScaledObject(ctx, scaledObjectName, scaledObjectNamespace)
@@ -502,6 +498,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 			logger.Error(err, "error metricsArray is empty")
 			// TODO: add cache.Recorder?
 		}
+
 		for _, spec := range metricSpecs {
 			// skip cpu/memory resource scaler
 			if spec.External == nil {
@@ -590,31 +587,25 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 				connected = ecClient.Connected
 				ecCacheClient = ecClient
 				break
-			}
-		}
-
-		// simulate false connection for first externalCalculator
-		if ec.Name == "first_avg" {
-			connected = false
+			} //TODO: didnt find client in cache??
 		}
 
 		if connected {
 			grpcMetricList, err = ecCacheClient.Client.Calculate(ctx, grpcMetricList, logger)
-			// if err != nil {
-			// 	logger.Info(fmt.Sprintf("Warning - will try fallback: %s: externalCalculator '%s' (at '%s') method Calculate returned an error (server error)", err, ec.Name, ec.URL))
-			// }
 		} else {
 			err = fmt.Errorf("trying to call method Calculate for '%s' externalCalculator when not connected", ec.Name)
-			// logger.Info(fmt.Sprintf("Warning: %s: grpc client is not connected to externalCalculator server", err))
 		}
 		if grpcMetricList == nil {
+			grpcMetricList = &externalscalingAPI.MetricsList{}
 			err = errors.Join(err, fmt.Errorf("grpc method Calculate returned nil metric list for externalCalculator"))
-			logger.Error(err, "metric list is nil for externalCalculator")
 		}
-
-		err = fallback.GetMetricsWithFallbackExternalCalculator(ctx, h.client, grpcMetricList, err, ec.Name, scaledObject)
+		fallbackApplied, err := fallback.GetMetricsWithFallbackExternalCalculator(ctx, h.client, grpcMetricList, err, ec.Name, scaledObject)
 		if err != nil {
 			logger.Error(err, fmt.Sprintf("error remained after trying to apply fallback metrics for externalCalculator '%s'", ec.Name))
+			break
+		}
+		// if fallback was applied, continue immediately
+		if fallbackApplied {
 			break
 		}
 	}
@@ -623,7 +614,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	matchingMetrics = externalscaling.ConvertFromGeneratedStruct(grpcMetricList)
 
 	// apply formula
-	matchingMetrics, err = applyComplexLogicFormula(scaledObject.Spec.Advanced.ComplexScalingLogic, matchingMetrics, metricTriggerPairList, logger)
+	matchingMetrics, err = applyComplexLogicFormula(scaledObject.Spec.Advanced.ComplexScalingLogic, matchingMetrics, metricTriggerPairList)
 	if err != nil {
 		logger.Error(err, "error applying custom compositeScaler formula")
 	}
@@ -848,7 +839,7 @@ func arrayContainsElement(el string, arr []string) bool {
 }
 
 // if given right conditions, try to apply the given custom formula in SO
-func applyComplexLogicFormula(csl kedav1alpha1.ComplexScalingLogic, metrics []external_metrics.ExternalMetricValue, pairList map[string]string, logger logr.Logger) ([]external_metrics.ExternalMetricValue, error) {
+func applyComplexLogicFormula(csl kedav1alpha1.ComplexScalingLogic, metrics []external_metrics.ExternalMetricValue, pairList map[string]string) ([]external_metrics.ExternalMetricValue, error) {
 	if csl.Formula != "" {
 		// add last external calculation name as a possible trigger (user can
 		// manipulate with metrics in ExternalCalculation service and it is expected
@@ -859,16 +850,14 @@ func applyComplexLogicFormula(csl kedav1alpha1.ComplexScalingLogic, metrics []ex
 			// expect last element of external calculation array via its name
 			pairList[lastElem] = lastElem
 		}
-		logger.V(0).Info(">>3.2 FORMULA", "pairlist", pairList)
-		logger.V(0).Info(">>3.2 FORMULA", "formula", csl.Formula, "target", csl.Target)
-		metrics, err := calculateComplexLogicFormula(metrics, csl.Formula, pairList, logger)
+		metrics, err := calculateComplexLogicFormula(metrics, csl.Formula, pairList)
 		return metrics, err
 	}
 	return metrics, nil
 }
 
 // calculate custom formula to metrics and return calculated and finalized metric
-func calculateComplexLogicFormula(list []external_metrics.ExternalMetricValue, formula string, pairList map[string]string, logger logr.Logger) ([]external_metrics.ExternalMetricValue, error) {
+func calculateComplexLogicFormula(list []external_metrics.ExternalMetricValue, formula string, pairList map[string]string) ([]external_metrics.ExternalMetricValue, error) {
 	var ret external_metrics.ExternalMetricValue
 	var out float64
 	ret.MetricName = "composite-metric-name"
@@ -879,12 +868,10 @@ func calculateComplexLogicFormula(list []external_metrics.ExternalMetricValue, f
 	for _, v := range list {
 		data[pairList[v.MetricName]] = v.Value.AsApproximateFloat64()
 	}
-	logger.Info(">>3.6 FORMULA", "data", data)
 	program, err := expr.Compile(formula)
 	if err != nil {
 		return nil, fmt.Errorf("error trying to compile custom formula: %s", err)
 	}
-	logger.Info(">>3.7 FORMULA", "compile", program)
 
 	tmp, err := expr.Run(program, data)
 	if err != nil {
@@ -893,7 +880,6 @@ func calculateComplexLogicFormula(list []external_metrics.ExternalMetricValue, f
 
 	out = tmp.(float64)
 	ret.Value.SetMilli(int64(out * 1000))
-	logger.V(0).Info(">>3.8: RUN", "tmp", tmp, "out", out, "struct", ret)
 	return []external_metrics.ExternalMetricValue{ret}, nil
 }
 

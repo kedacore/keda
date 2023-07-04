@@ -261,11 +261,63 @@ spec:
       - name: second_add
         url: {{.ExternalAddIP}}:{{.ExternalAddPort}}
         timeout: '10s'
-      formula: second_add + 10
+      formula: second_add + 2
   pollingInterval: 5
   cooldownPeriod: 5
   minReplicaCount: 0
   maxReplicaCount: 10
+  triggers:
+  - type: metrics-api
+    name: metrics_api
+    metadata:
+      targetValue: "2"
+      url: "{{.MetricsServerEndpoint}}"
+      valueLocation: 'value'
+      method: "query"
+    authenticationRef:
+      name: {{.TriggerAuthName}}
+  - type: kubernetes-workload
+    name: kw_trig
+    metadata:
+      podSelector: pod=workload-test
+      value: '1'
+`
+
+	soFallbackTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObject}}
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.DeploymentName}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 5
+    complexScalingLogic:
+      target: '2'
+      externalCalculators:
+      - name: first_avg
+        url: {{.ExternalAvgIP}}:{{.ExternalAvgPort}}
+        timeout: '10s'
+      - name: second_add
+        url: {{.ExternalAddIP}}:{{.ExternalAddPort}}
+        timeout: '10s'
+      fallback:
+        replicas: 4
+        failureThreshold: 1
+  pollingInterval: 5
+  cooldownPeriod: 5
+  minReplicaCount: 0
+  maxReplicaCount: 10
+  fallback:
+    replicas: 3
+    failureThreshold: 1
   triggers:
   - type: metrics-api
     name: metrics_api
@@ -419,7 +471,9 @@ func TestExternalScaling(t *testing.T) {
 	testTwoExternalCalculators(t, kc, data)
 	testComplexFormula(t, kc, data)
 	testFormulaAndEC(t, kc, data)
+	testFallback(t, kc, data)
 
+	templates = append(templates, Template{Name: "soFallbackTemplate", Config: soFallbackTemplate})
 	DeleteKubernetesResources(t, namespace, data, templates)
 }
 
@@ -472,17 +526,77 @@ func testFormulaAndEC(t *testing.T, kc *kubernetes.Clientset, data templateData)
 	t.Log("--- testFormulaAndEC ---")
 	KubectlApplyWithTemplate(t, data, "soBothTemplate", soBothTemplate)
 
-	data.MetricValue = 5
+	data.MetricValue = 4
 	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
-	_, err := ExecuteCommand(fmt.Sprintf("kubectl scale deployment/depl-workload-base --replicas=5 -n %s", namespace))
+	_, err := ExecuteCommand(fmt.Sprintf("kubectl scale deployment/depl-workload-base --replicas=2 -n %s", namespace))
 	assert.NoErrorf(t, err, "cannot scale workload deployment - %s", err)
 
-	// first -> 5 + 5 = 10 / 2 = 5; add 5 + 2 = 7; formula 7 + 10 = 17 / 2 -> 9
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, "depl-workload-base", namespace, 5, 6, 10),
-		"replica count should be %d after 1 minute", 5)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 9, 12, 10),
-		"replica count should be %d after 2 minutes", 9)
+	// first -> 4 + 2 = 6 / 2 = 3; add 3 + 2 = 5; formula 5 + 2 = 7 / 2 -> 4
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, "depl-workload-base", namespace, 2, 6, 10),
+		"replica count should be %d after 1 minute", 2)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 4, 12, 10),
+		"replica count should be %d after 2 minutes", 4)
+}
+
+func testFallback(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testFallback ---")
+	KubectlApplyWithTemplate(t, data, "soFallbackTemplate", soFallbackTemplate)
+	_, err := ExecuteCommand(fmt.Sprintf("kubectl scale deployment/depl-workload-base --replicas=0 -n %s", namespace))
+	assert.NoErrorf(t, err, "cannot scale workload deployment - %s", err)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, "depl-workload-base", namespace, 0, 6, 10),
+		"replica count should be %d after 1 minute", 0)
+
+	data.MetricValue = 3
+	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 2, 12, 10),
+		"replica count should be %d after 2 minutes", 2)
+
+	// delete grpc server to apply ec-fallback (simulate connection issue to server)
+	t.Logf("--- delete grpc server (named %s) for fallback ---", serverAddName)
+	KubectlDeleteWithTemplate(t, data, "podExternalAddTemplate", podExternalAddTemplate)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 4, 12, 10),
+		"replica count should be %d after 2 minutes", 4)
+
+	t.Log("--- trigger default fallback, should override and change replicas ---")
+
+	_, err = ExecuteCommand(fmt.Sprintf("kubectl scale deployment/%s --replicas=0 -n %s", metricsServerDeploymentName, namespace))
+	assert.NoErrorf(t, err, "cannot scale ms deployment - %s", err)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 3, 12, 10),
+		"replica count should be %d after 2 minutes", 3)
+
+	// fix all errors to restore function
+	t.Log("--- restore all errors subsequentially and scale normally ---")
+	t.Log("--- restore default trigger ---")
+
+	_, err = ExecuteCommand(fmt.Sprintf("kubectl scale deployment/%s --replicas=1 -n %s", metricsServerDeploymentName, namespace))
+	assert.NoErrorf(t, err, "cannot scale ms deployment - %s", err)
+	// send new metric otherwise you get: "error requesting metrics endpoint:
+	// \"http://external-scaling-test-service.external-scaling-test-ns.svc.cluster.local:8080/api/value\"
+	data.MetricValue = 3
+	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 4, 12, 10),
+		"replica count should be %d after 2 minutes", 4)
+
+	t.Log("--- restore externalCalculator ---")
+
+	KubectlApplyWithTemplate(t, data, "podExternalAddTemplate", podExternalAddTemplate)
+	// KubectlApplyWithTemplate(t, data, "serviceExternalAddTemplate", serviceExternalAddTemplate)
+	assert.True(t, waitForPodsReadyInNamespace(t, kc, namespace, []string{serverAddName}, 12, 10),
+		fmt.Sprintf("pod '%v' should be ready after 2 minutes", []string{serverAddName, serverAvgName}))
+
+	ADDIP, err := ExecuteCommand(fmt.Sprintf("kubectl get endpoints %s -o custom-columns=IP:.subsets[0].addresses[0].ip -n %s", serviceExternalAddName, namespace))
+	assert.NoErrorf(t, err, "cannot get endpoint for server ADD - %s", err)
+	data.ExternalAddIP = strings.Split(string(ADDIP), "\n")[1]
+	KubectlApplyWithTemplate(t, data, "soFallbackTemplate", soFallbackTemplate)
+	data.MetricValue = 3
+	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+	_, err = ExecuteCommand(fmt.Sprintf("kubectl scale deployment/depl-workload-base --replicas=1 -n %s", namespace))
+	assert.NoErrorf(t, err, "cannot scale workload deployment - %s", err)
+	// calculation: avg 3 + 1 = 4 / 2 = 2; add 2 + 2 = 4; 4 / 2 = 2 replicas
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 2, 18, 10),
+		"replica count should be %d after 3 minutes", 2)
 }
 
 func getTemplateData() (templateData, []Template) {
@@ -506,19 +620,22 @@ func getTemplateData() (templateData, []Template) {
 			ServerAvgName:          serverAvgName,
 			ServerAddName:          serverAddName,
 		}, []Template{
-			// basic: scaled deployment, SO, metrics-api trigger server & authentication
+			// basic: scaled deployment, metrics-api trigger server & authentication
 			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "metricsServerDeploymentTemplate", Config: metricsServerDeploymentTemplate},
 			{Name: "serviceTemplate", Config: serviceTemplate},
 			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			// pods and services for grpc servers
-			{Name: "podExternalAvgTemplate", Config: podExternalAvgTemplate},
-			{Name: "podExternalAddTemplate", Config: podExternalAddTemplate},
-			{Name: "serviceExternalAvgTemplate", Config: serviceExternalAvgTemplate},
-			{Name: "serviceExternalAddTemplate", Config: serviceExternalAddTemplate},
 			// workload base
 			{Name: "workloadDeploymentTemplate", Config: workloadDeploymentTemplate},
+			// grpc server pods
+			{Name: "podExternalAvgTemplate", Config: podExternalAvgTemplate},
+			{Name: "podExternalAddTemplate", Config: podExternalAddTemplate},
+			// services for pod endpoints
+			{Name: "serviceExternalAvgTemplate", Config: serviceExternalAvgTemplate},
+			{Name: "serviceExternalAddTemplate", Config: serviceExternalAddTemplate},
+			// so
+			// {Name: "soExternalCalculatorTwoTemplate", Config: soExternalCalculatorTwoTemplate},
 		}
 }
 
@@ -538,21 +655,21 @@ func waitForPodsReadyInNamespace(t *testing.T, kc *kubernetes.Clientset, namespa
 		}
 
 		for _, readyPod := range namedPods {
-			if readyPod.Status.Phase != corev1.PodRunning {
+			if readyPod.Status.Phase == corev1.PodRunning {
+				runningCount++
+			} else {
 				break
 			}
-			runningCount++
 		}
 
 		t.Logf("Waiting for pods '%v' to be ready. Namespace - %s, Current  - %d, Target - %d",
-			names, namespace, runningCount, len(namedPods))
+			names, namespace, runningCount, len(names))
 
-		if runningCount == len(namedPods) {
+		if runningCount == len(names) {
 			return true
 		}
 		time.Sleep(time.Duration(intervalSeconds) * time.Second)
 	}
-
 	return false
 }
 
@@ -562,6 +679,5 @@ func contains(s []string, str string) bool {
 			return true
 		}
 	}
-
 	return false
 }
