@@ -23,8 +23,8 @@ require (
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/Shopify/sarama v1.38.1
 	github.com/arangodb/go-driver v1.6.0
+	github.com/aws/aws-sdk-go v1.44.287
 	github.com/bradleyfalzon/ghinstallation/v2 v2.5.0
-	github.com/aws/aws-sdk-go v1.44.286
 	github.com/denisenkom/go-mssqldb v0.12.3
 	github.com/dysnix/predictkube-libs v0.0.4-0.20230109175007-5a82fccd31c7
 	github.com/dysnix/predictkube-proto v0.0.0-20220713123213-7135dce1e9c9
@@ -40,7 +40,7 @@ require (
 	github.com/google/go-cmp v0.5.9
 	github.com/google/go-github/v50 v50.2.0
 	github.com/google/uuid v1.3.0
-	github.com/gophercloud/gophercloud v1.4.0
+	github.com/gophercloud/gophercloud v1.5.0
 	github.com/hashicorp/vault/api v1.9.2
 	github.com/influxdata/influxdb-client-go/v2 v2.12.3
 	github.com/jackc/pgx/v5 v5.4.1
@@ -72,7 +72,7 @@ require (
 	golang.org/x/oauth2 v0.9.0
 	golang.org/x/sync v0.3.0
 	google.golang.org/api v0.128.0
-	google.golang.org/grpc v1.56.0
+	google.golang.org/grpc v1.56.1
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.3.0
 	google.golang.org/protobuf v1.30.0
 	k8s.io/api v0.27.3

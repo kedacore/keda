@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -38,9 +39,12 @@ import (
 )
 
 const (
-	referenceOperator = '$'
-	referenceOpener   = '('
-	referenceCloser   = ')'
+	referenceOperator     = '$'
+	referenceOpener       = '('
+	referenceCloser       = ')'
+	boolTrue              = true
+	boolFalse             = false
+	defaultServiceAccount = "default"
 )
 
 var (
@@ -52,13 +56,13 @@ var (
 // isSecretAccessRestricted returns whether secret access need to be restricted in KEDA namespace
 func isSecretAccessRestricted(logger logr.Logger) bool {
 	if restrictSecretAccess == "" {
-		return false
+		return boolFalse
 	}
-	if strings.ToLower(restrictSecretAccess) == "true" {
+	if strings.ToLower(restrictSecretAccess) == strconv.FormatBool(boolTrue) {
 		logger.V(1).Info("Secret Access is restricted to be in Cluster Object Namespace, please use ClusterTriggerAuthentication instead of TriggerAuthentication", "Cluster Object Namespace", kedaNamespace, "Env Var", util.RestrictSecretAccessEnvVar, "Env Value", strings.ToLower(restrictSecretAccess))
-		return true
+		return boolTrue
 	}
-	return false
+	return boolFalse
 }
 
 // ResolveScaleTargetPodSpec for given scalableObject inspects the scale target workload,
@@ -151,11 +155,11 @@ func ResolveContainerEnv(ctx context.Context, client client.Client, logger logr.
 
 	var container corev1.Container
 	if containerName != "" {
-		containerWithNameFound := false
+		containerWithNameFound := boolFalse
 		for _, c := range podSpec.Containers {
 			if c.Name == containerName {
 				container = c
-				containerWithNameFound = true
+				containerWithNameFound = boolTrue
 				break
 			}
 		}
@@ -178,7 +182,10 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 		authParams, podIdentity := resolveAuthRef(ctx, client, logger, triggerAuthRef, &podTemplateSpec.Spec, namespace, secretsLister)
 
 		if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAwsEKS {
-			serviceAccountName := podTemplateSpec.Spec.ServiceAccountName
+			serviceAccountName := defaultServiceAccount
+			if podTemplateSpec.Spec.ServiceAccountName != "" {
+				serviceAccountName = podTemplateSpec.Spec.ServiceAccountName
+			}
 			serviceAccount := &corev1.ServiceAccount{}
 			err := client.Get(ctx, types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, serviceAccount)
 			if err != nil {
@@ -304,7 +311,8 @@ func getTriggerAuthSpec(ctx context.Context, client client.Client, triggerAuthRe
 
 func resolveEnv(ctx context.Context, client client.Client, logger logr.Logger, container *corev1.Container, namespace string, secretsLister corev1listers.SecretLister) (map[string]string, error) {
 	resolved := make(map[string]string)
-
+	secretAccessRestricted := isSecretAccessRestricted(logger)
+	accessSecrets := readSecrets(secretAccessRestricted, namespace)
 	if container.EnvFrom != nil {
 		for _, source := range container.EnvFrom {
 			if source.ConfigMapRef != nil {
@@ -320,7 +328,7 @@ func resolveEnv(ctx context.Context, client client.Client, logger logr.Logger, c
 				default:
 					return nil, fmt.Errorf("error reading config ref %s on namespace %s/: %w", source.ConfigMapRef, namespace, err)
 				}
-			} else if source.SecretRef != nil {
+			} else if source.SecretRef != nil && accessSecrets {
 				secretsMap, err := resolveSecretMap(ctx, client, logger, source.SecretRef, namespace, secretsLister)
 				switch {
 				case err == nil:
@@ -349,7 +357,7 @@ func resolveEnv(ctx context.Context, client client.Client, logger logr.Logger, c
 			} else if envVar.ValueFrom != nil {
 				// env is an EnvVarSource, that can be on of the 4 below
 				switch {
-				case envVar.ValueFrom.SecretKeyRef != nil:
+				case envVar.ValueFrom.SecretKeyRef != nil && accessSecrets:
 					// env is a secret selector
 					value, err = resolveSecretValue(ctx, client, logger, envVar.ValueFrom.SecretKeyRef, envVar.ValueFrom.SecretKeyRef.Key, namespace, secretsLister)
 					if err != nil {
@@ -382,6 +390,13 @@ func resolveEnv(ctx context.Context, client client.Client, logger logr.Logger, c
 		}
 	}
 	return resolved, nil
+}
+
+func readSecrets(secretAccessRestricted bool, namespace string) bool {
+	if secretAccessRestricted && (namespace != kedaNamespace) {
+		return boolFalse
+	}
+	return boolTrue
 }
 
 func resolveEnvValue(value string, env map[string]string) string {

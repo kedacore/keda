@@ -79,6 +79,9 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(ctx context.Context, logge
 			return err
 		}
 
+		if _, err := r.updateTriggerAuthenticationStatusOnDelete(ctx, logger, scaledObject); err != nil {
+			logger.Error(err, "Failed to update TriggerAuthentication Status after removing a finalizer")
+		}
 		r.updatePromMetricsOnDelete(namespacedName)
 	}
 

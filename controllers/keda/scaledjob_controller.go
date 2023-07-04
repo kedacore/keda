@@ -39,10 +39,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	"github.com/kedacore/keda/v2/pkg/scaling"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
+	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 )
 
 // +kubebuilder:rbac:groups=keda.sh,resources=scaledjobs;scaledjobs/finalizers;scaledjobs/status,verbs="*"
@@ -84,7 +85,11 @@ func (r *ScaledJobReconciler) SetupWithManager(mgr ctrl.Manager, options control
 		WithOptions(options).
 		// Ignore updates to ScaledJob Status (in this case metadata.Generation does not change)
 		// so reconcile loop is not started on Status updates
-		For(&kedav1alpha1.ScaledJob{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&kedav1alpha1.ScaledJob{}, builder.WithPredicates(
+			predicate.Or(
+				kedacontrollerutil.PausedPredicate{},
+				predicate.GenerationChangedPredicate{},
+			))).
 		Complete(r)
 }
 
@@ -124,7 +129,7 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// ensure Status Conditions are initialized
 	if !scaledJob.Status.Conditions.AreInitialized() {
 		conditions := kedav1alpha1.GetInitializedConditions()
-		if err := kedautil.SetStatusConditions(ctx, r.Client, reqLogger, scaledJob, conditions); err != nil {
+		if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledJob, conditions); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -136,8 +141,8 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		reqLogger.Error(err, "scaledJob.spec.jobTargetRef not found")
 		return ctrl.Result{}, err
 	}
-	msg, err := r.reconcileScaledJob(ctx, reqLogger, scaledJob)
 	conditions := scaledJob.Status.Conditions.DeepCopy()
+	msg, err := r.reconcileScaledJob(ctx, reqLogger, scaledJob, &conditions)
 	if err != nil {
 		reqLogger.Error(err, msg)
 		conditions.SetReadyCondition(metav1.ConditionFalse, "ScaledJobCheckFailed", msg)
@@ -152,14 +157,27 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		conditions.SetReadyCondition(metav1.ConditionTrue, "ScaledJobReady", msg)
 	}
 
-	if err := kedautil.SetStatusConditions(ctx, r.Client, reqLogger, scaledJob, &conditions); err != nil {
+	if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledJob, &conditions); err != nil {
 		return ctrl.Result{}, err
 	}
+
+	if _, err := r.updateTriggerAuthenticationStatus(ctx, reqLogger, scaledJob); err != nil {
+		reqLogger.Error(err, "Error updating TriggerAuthentication Status")
+	}
+
 	return ctrl.Result{}, err
 }
 
 // reconcileScaledJob implements reconciler logic for K8s Jobs based ScaledJob
-func (r *ScaledJobReconciler) reconcileScaledJob(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
+func (r *ScaledJobReconciler) reconcileScaledJob(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob, conditions *kedav1alpha1.Conditions) (string, error) {
+	isPaused, err := r.checkIfPaused(ctx, logger, scaledJob, conditions)
+	if err != nil {
+		return "Failed to check if ScaledJob was paused", err
+	}
+	if isPaused {
+		return "ScaledJob is paused, skipping reconcile loop", err
+	}
+
 	// nosemgrep: trailofbits.go.invalid-usage-of-modified-variable.invalid-usage-of-modified-variable
 	msg, err := r.deletePreviousVersionScaleJobs(ctx, logger, scaledJob)
 	if err != nil {
@@ -191,6 +209,31 @@ func (r *ScaledJobReconciler) reconcileScaledJob(ctx context.Context, logger log
 	}
 	logger.Info("Initializing Scaling logic according to ScaledJob Specification")
 	return "ScaledJob is defined correctly and is ready to scaling", nil
+}
+
+// checkIfPaused checks the presence of "autoscaling.keda.sh/paused" annotation on the scaledJob and stop the scale loop.
+func (r *ScaledJobReconciler) checkIfPaused(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob, conditions *kedav1alpha1.Conditions) (bool, error) {
+	_, pausedAnnotation := scaledJob.GetAnnotations()[kedacontrollerutil.PausedAnnotation]
+	pausedStatus := conditions.GetPausedCondition().Status == metav1.ConditionTrue
+	if pausedAnnotation {
+		if !pausedStatus {
+			logger.Info("ScaledJob is paused, stopping scaling loop.")
+			msg := kedav1alpha1.ScaledJobConditionPausedMessage
+			if err := r.stopScaleLoop(ctx, logger, scaledJob); err != nil {
+				msg = "failed to stop the scale loop for paused ScaledJob"
+				conditions.SetPausedCondition(metav1.ConditionFalse, "ScaledJobStopScaleLoopFailed", msg)
+				return false, err
+			}
+			conditions.SetPausedCondition(metav1.ConditionTrue, kedav1alpha1.ScaledJobConditionPausedReason, msg)
+		}
+		return true, nil
+	}
+	if pausedStatus {
+		logger.Info("Unpausing ScaledJob.")
+		msg := kedav1alpha1.ScaledJobConditionUnpausedMessage
+		conditions.SetPausedCondition(metav1.ConditionFalse, kedav1alpha1.ScaledJobConditionUnpausedReason, msg)
+	}
+	return false, nil
 }
 
 // Delete Jobs owned by the previous version of the scaledJob based on the rolloutStrategy given for this scaledJob, if any
@@ -312,4 +355,18 @@ func (r *ScaledJobReconciler) updatePromMetricsOnDelete(namespacedName string) {
 	}
 
 	delete(scaledJobPromMetricsMap, namespacedName)
+}
+
+func (r *ScaledJobReconciler) updateTriggerAuthenticationStatus(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
+	return kedastatus.UpdateTriggerAuthenticationStatusFromTriggers(ctx, logger, r.Client, scaledJob.GetNamespace(), scaledJob.Spec.Triggers, func(triggerAuthenticationStatus *kedav1alpha1.TriggerAuthenticationStatus) *kedav1alpha1.TriggerAuthenticationStatus {
+		triggerAuthenticationStatus.ScaledJobNamesStr = kedacontrollerutil.AppendIntoString(triggerAuthenticationStatus.ScaledJobNamesStr, scaledJob.GetName(), ",")
+		return triggerAuthenticationStatus
+	})
+}
+
+func (r *ScaledJobReconciler) updateTriggerAuthenticationStatusOnDelete(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) (string, error) {
+	return kedastatus.UpdateTriggerAuthenticationStatusFromTriggers(ctx, logger, r.Client, scaledJob.GetNamespace(), scaledJob.Spec.Triggers, func(triggerAuthenticationStatus *kedav1alpha1.TriggerAuthenticationStatus) *kedav1alpha1.TriggerAuthenticationStatus {
+		triggerAuthenticationStatus.ScaledJobNamesStr = kedacontrollerutil.RemoveFromString(triggerAuthenticationStatus.ScaledJobNamesStr, scaledJob.GetName(), ",")
+		return triggerAuthenticationStatus
+	})
 }

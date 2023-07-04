@@ -32,7 +32,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
 	"github.com/kedacore/keda/v2/pkg/scaling/executor"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
+	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 	version "github.com/kedacore/keda/v2/version"
 )
 
@@ -61,7 +61,7 @@ func (r *ScaledObjectReconciler) createAndDeployNewHPA(ctx context.Context, logg
 	status := scaledObject.Status.DeepCopy()
 	status.HpaName = hpaName
 
-	err = kedautil.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status)
+	err = kedastatus.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status)
 	if err != nil {
 		logger.Error(err, "Error updating scaledObject status with used hpaName")
 		return err
@@ -246,7 +246,7 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 
 	updateHealthStatus(scaledObject, externalMetricNames, status)
 
-	err = kedautil.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status)
+	err = kedastatus.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status)
 	if err != nil {
 		logger.Error(err, "Error updating scaledObject status with used externalMetricNames")
 		return nil, err

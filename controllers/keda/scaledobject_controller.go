@@ -46,7 +46,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	"github.com/kedacore/keda/v2/pkg/scaling"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
+	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 )
 
 // +kubebuilder:rbac:groups=keda.sh,resources=scaledobjects;scaledobjects/finalizers;scaledobjects/status,verbs="*"
@@ -167,7 +167,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	// ensure Status Conditions are initialized
 	if !scaledObject.Status.Conditions.AreInitialized() {
 		conditions := kedav1alpha1.GetInitializedConditions()
-		if err := kedautil.SetStatusConditions(ctx, r.Client, reqLogger, scaledObject, conditions); err != nil {
+		if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledObject, conditions); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -189,8 +189,12 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		conditions.SetReadyCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionReadySucccesReason, msg)
 	}
 
-	if err := kedautil.SetStatusConditions(ctx, r.Client, reqLogger, scaledObject, &conditions); err != nil {
+	if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledObject, &conditions); err != nil {
 		return ctrl.Result{}, err
+	}
+
+	if _, err := r.updateTriggerAuthenticationStatus(ctx, reqLogger, scaledObject); err != nil {
+		reqLogger.Error(err, "Failed to update TriggerAuthentication Status after removing a finalizer")
 	}
 
 	return ctrl.Result{}, err
@@ -354,7 +358,7 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 			status.PausedReplicaCount = nil
 		}
 
-		if err := kedautil.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status); err != nil {
+		if err := kedastatus.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status); err != nil {
 			return gvkr, err
 		}
 		logger.Info("Detected resource targeted for scaling", "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
@@ -551,4 +555,20 @@ func (r *ScaledObjectReconciler) updatePromMetricsOnDelete(namespacedName string
 	}
 
 	delete(scaledObjectPromMetricsMap, namespacedName)
+}
+
+func (r *ScaledObjectReconciler) updateTriggerAuthenticationStatus(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (string, error) {
+	return kedastatus.UpdateTriggerAuthenticationStatusFromTriggers(ctx, logger, r.Client, scaledObject.GetNamespace(), scaledObject.Spec.Triggers,
+		func(triggerAuthenticationStatus *kedav1alpha1.TriggerAuthenticationStatus) *kedav1alpha1.TriggerAuthenticationStatus {
+			triggerAuthenticationStatus.ScaledObjectNamesStr = kedacontrollerutil.AppendIntoString(triggerAuthenticationStatus.ScaledObjectNamesStr, scaledObject.GetName(), ",")
+			return triggerAuthenticationStatus
+		})
+}
+
+func (r *ScaledObjectReconciler) updateTriggerAuthenticationStatusOnDelete(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (string, error) {
+	return kedastatus.UpdateTriggerAuthenticationStatusFromTriggers(ctx, logger, r.Client, scaledObject.GetNamespace(), scaledObject.Spec.Triggers,
+		func(triggerAuthenticationStatus *kedav1alpha1.TriggerAuthenticationStatus) *kedav1alpha1.TriggerAuthenticationStatus {
+			triggerAuthenticationStatus.ScaledObjectNamesStr = kedacontrollerutil.RemoveFromString(triggerAuthenticationStatus.ScaledObjectNamesStr, scaledObject.GetName(), ",")
+			return triggerAuthenticationStatus
+		})
 }

@@ -112,7 +112,7 @@ type HorizontalPodAutoscalerConfig struct {
 	Name string `json:"name,omitempty"`
 }
 
-// ScaleTarget holds the a reference to the scale target Object
+// ScaleTarget holds the reference to the scale target Object
 type ScaleTarget struct {
 	Name string `json:"name"`
 	// +optional
