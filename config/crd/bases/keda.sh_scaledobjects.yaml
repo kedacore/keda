@@ -73,6 +73,47 @@ spec:
               advanced:
                 description: AdvancedConfig specifies advance scaling options
                 properties:
+                  complexScalingLogic:
+                    description: ComplexScalingLogic describes advanced scaling logic
+                      options like formula and gRPC server for external calculations
+                    properties:
+                      externalCalculators:
+                        items:
+                          description: ExternalCalculation structure describes name
+                            and URL of a gRPC server that KEDA can connect to with
+                            collected metrics and modify them. Each server has a timeout
+                            and optional Fallback functionality.
+                          properties:
+                            name:
+                              type: string
+                            timeout:
+                              type: string
+                            url:
+                              type: string
+                          required:
+                          - name
+                          - timeout
+                          - url
+                          type: object
+                        type: array
+                      fallback:
+                        description: Fallback is the spec for fallback options
+                        properties:
+                          failureThreshold:
+                            format: int32
+                            type: integer
+                          replicas:
+                            format: int32
+                            type: integer
+                        required:
+                        - failureThreshold
+                        - replicas
+                        type: object
+                      formula:
+                        type: string
+                      target:
+                        type: string
+                    type: object
                   horizontalPodAutoscalerConfig:
                     description: HorizontalPodAutoscalerConfig specifies horizontal
                       scale config
@@ -291,6 +332,8 @@ spec:
           status:
             description: ScaledObjectStatus is the status for a ScaledObject resource
             properties:
+              compositeScalerName:
+                type: string
               conditions:
                 description: Conditions an array representation to store multiple
                   Conditions
@@ -315,6 +358,19 @@ spec:
                   - type
                   type: object
                 type: array
+              externalCalculationHealth:
+                additionalProperties:
+                  description: HealthStatus is the status for a ScaledObject's health
+                  properties:
+                    numberOfFailures:
+                      format: int32
+                      type: integer
+                    status:
+                      description: HealthStatusType is an indication of whether the
+                        health status is happy or failing
+                      type: string
+                  type: object
+                type: object
               externalMetricNames:
                 items:
                   type: string
