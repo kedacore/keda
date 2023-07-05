@@ -127,7 +127,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		case scaledObject.Spec.IdleReplicaCount != nil && currentReplicas < minReplicas,
 			// triggers are active, Idle Replicas mode is enabled
 			// AND
-			// replica count is less then minimum replica count
+			// replica count is less than minimum replica count
 
 			currentReplicas == 0:
 			// triggers are active
