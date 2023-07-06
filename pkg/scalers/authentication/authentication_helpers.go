@@ -94,10 +94,7 @@ func GetAuthConfigs(triggerMetadata, authParams map[string]string) (out *AuthMet
 			}
 			out.EnableOAuth = true
 			out.OauthTokenURI = authParams["oauthTokenURI"]
-			scope := strings.ReplaceAll(authParams["scope"], " ", "")
-			if scope != "" {
-				out.Scopes = strings.Split(scope, ",")
-			}
+			out.Scopes = ParseScope(authParams["scope"])
 			out.ClientID = authParams["clientID"]
 			out.ClientSecret = authParams["clientSecret"]
 		default:
@@ -110,6 +107,25 @@ func GetAuthConfigs(triggerMetadata, authParams map[string]string) (out *AuthMet
 	}
 
 	return out, err
+}
+
+func ParseScope(inputStr string) []string {
+	scope := strings.TrimSpace(inputStr)
+	if scope != "" {
+		scopes := make([]string, 0)
+		list := strings.Split(scope, ",")
+		for _, sc := range list {
+			sc := strings.TrimSpace(sc)
+			if sc != "" {
+				scopes = append(scopes, sc)
+			}
+		}
+		if len(scopes) == 0 {
+			return nil
+		}
+		return scopes
+	}
+	return nil
 }
 
 func GetBearerToken(auth *AuthMeta) string {

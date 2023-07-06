@@ -217,9 +217,8 @@ func parsePulsarMetadata(config *ScalerConfig, logger logr.Logger) (pulsarMetada
 		if auth.OauthTokenURI == "" {
 			auth.OauthTokenURI = config.TriggerMetadata["oauthTokenURI"]
 		}
-		scope := strings.ReplaceAll(config.TriggerMetadata["scope"], " ", "")
-		if auth.Scopes == nil && scope != "" {
-			auth.Scopes = strings.Split(scope, ",")
+		if auth.Scopes == nil {
+			auth.Scopes = authentication.ParseScope(config.TriggerMetadata["scope"])
 		}
 		if auth.ClientID == "" {
 			auth.ClientID = config.TriggerMetadata["clientID"]
