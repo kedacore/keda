@@ -242,7 +242,7 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 
 	if config.PodIdentity.Provider == v1alpha1.PodIdentityProviderAzureWorkload {
 		if config.AuthParams["workloadIdentityResource"] != "" {
-			meta.workloadIdentityClientID = *config.PodIdentity.IdentityID
+			meta.workloadIdentityClientID = config.PodIdentity.GetIdentityID()
 			meta.workloadIdentityResource = config.AuthParams["workloadIdentityResource"]
 		}
 	}
