@@ -31,7 +31,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
+	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 )
 
 func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, isActive bool, isError bool) {
@@ -106,7 +106,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		}
 		if *pausedCount != currentReplicas || status.PausedReplicaCount == nil {
 			status.PausedReplicaCount = pausedCount
-			err = kedautil.UpdateScaledObjectStatus(ctx, e.client, logger, scaledObject, status)
+			err = kedastatus.UpdateScaledObjectStatus(ctx, e.client, logger, scaledObject, status)
 			if err != nil {
 				logger.Error(err, "error updating status paused replica count")
 				return
@@ -127,7 +127,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		case scaledObject.Spec.IdleReplicaCount != nil && currentReplicas < minReplicas,
 			// triggers are active, Idle Replicas mode is enabled
 			// AND
-			// replica count is less then minimum replica count
+			// replica count is less than minimum replica count
 
 			currentReplicas == 0:
 			// triggers are active

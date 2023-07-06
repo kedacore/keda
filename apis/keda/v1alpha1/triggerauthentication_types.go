@@ -26,15 +26,19 @@ import (
 // +genclient
 // +genclient:nonNamespaced
 // +kubebuilder:resource:path=clustertriggerauthentications,scope=Cluster,shortName=cta;clustertriggerauth
+// +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="PodIdentity",type="string",JSONPath=".spec.podIdentity.provider"
 // +kubebuilder:printcolumn:name="Secret",type="string",JSONPath=".spec.secretTargetRef[*].name"
 // +kubebuilder:printcolumn:name="Env",type="string",JSONPath=".spec.env[*].name"
 // +kubebuilder:printcolumn:name="VaultAddress",type="string",JSONPath=".spec.hashiCorpVault.address"
+// +kubebuilder:printcolumn:name="ScaledObjects",type="string",priority=1,JSONPath=".status.scaledobjects"
+// +kubebuilder:printcolumn:name="ScaledJobs",type="string",priority=1,JSONPath=".status.scaledjobs"
 type ClusterTriggerAuthentication struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec TriggerAuthenticationSpec `json:"spec"`
+	Spec   TriggerAuthenticationSpec   `json:"spec"`
+	Status TriggerAuthenticationStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -51,15 +55,19 @@ type ClusterTriggerAuthenticationList struct {
 // TriggerAuthentication defines how a trigger can authenticate
 // +genclient
 // +kubebuilder:resource:path=triggerauthentications,scope=Namespaced,shortName=ta;triggerauth
+// +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="PodIdentity",type="string",JSONPath=".spec.podIdentity.provider"
 // +kubebuilder:printcolumn:name="Secret",type="string",JSONPath=".spec.secretTargetRef[*].name"
 // +kubebuilder:printcolumn:name="Env",type="string",JSONPath=".spec.env[*].name"
 // +kubebuilder:printcolumn:name="VaultAddress",type="string",JSONPath=".spec.hashiCorpVault.address"
+// +kubebuilder:printcolumn:name="ScaledObjects",type="string",priority=1,JSONPath=".status.scaledobjects"
+// +kubebuilder:printcolumn:name="ScaledJobs",type="string",priority=1,JSONPath=".status.scaledjobs"
 type TriggerAuthentication struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec TriggerAuthenticationSpec `json:"spec"`
+	Spec   TriggerAuthenticationSpec   `json:"spec"`
+	Status TriggerAuthenticationStatus `json:"status,omitempty"`
 }
 
 // TriggerAuthenticationSpec defines the various ways to authenticate
@@ -78,6 +86,14 @@ type TriggerAuthenticationSpec struct {
 
 	// +optional
 	AzureKeyVault *AzureKeyVault `json:"azureKeyVault,omitempty"`
+}
+
+// TriggerAuthenticationStatus defines the observed state of TriggerAuthentication
+type TriggerAuthenticationStatus struct {
+	// +optional
+	ScaledObjectNamesStr string `json:"scaledobjects,omitempty"`
+	// +optional
+	ScaledJobNamesStr string `json:"scaledjobs,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

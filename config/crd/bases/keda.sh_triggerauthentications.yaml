@@ -30,6 +30,14 @@ spec:
     - jsonPath: .spec.hashiCorpVault.address
       name: VaultAddress
       type: string
+    - jsonPath: .status.scaledobjects
+      name: ScaledObjects
+      priority: 1
+      type: string
+    - jsonPath: .status.scaledjobs
+      name: ScaledJobs
+      priority: 1
+      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
@@ -221,9 +229,19 @@ spec:
                   type: object
                 type: array
             type: object
+          status:
+            description: TriggerAuthenticationStatus defines the observed state of
+              TriggerAuthentication
+            properties:
+              scaledjobs:
+                type: string
+              scaledobjects:
+                type: string
+            type: object
         required:
         - spec
         type: object
     served: true
     storage: true
-    subresources: {}
+    subresources:
+      status: {}

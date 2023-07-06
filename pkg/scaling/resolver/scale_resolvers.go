@@ -39,11 +39,12 @@ import (
 )
 
 const (
-	referenceOperator = '$'
-	referenceOpener   = '('
-	referenceCloser   = ')'
-	boolTrue          = true
-	boolFalse         = false
+	referenceOperator     = '$'
+	referenceOpener       = '('
+	referenceCloser       = ')'
+	boolTrue              = true
+	boolFalse             = false
+	defaultServiceAccount = "default"
 )
 
 var (
@@ -181,7 +182,10 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 		authParams, podIdentity := resolveAuthRef(ctx, client, logger, triggerAuthRef, &podTemplateSpec.Spec, namespace, secretsLister)
 
 		if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAwsEKS {
-			serviceAccountName := podTemplateSpec.Spec.ServiceAccountName
+			serviceAccountName := defaultServiceAccount
+			if podTemplateSpec.Spec.ServiceAccountName != "" {
+				serviceAccountName = podTemplateSpec.Spec.ServiceAccountName
+			}
 			serviceAccount := &corev1.ServiceAccount{}
 			err := client.Get(ctx, types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, serviceAccount)
 			if err != nil {

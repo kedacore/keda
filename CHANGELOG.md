@@ -53,9 +53,11 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Improvements
 
 - **Azure Pod Identity**: Add validation of identity ID to prevent usage of empty identity ID ([#4528](https://github.com/kedacore/keda/issues/4528))
+- **General:**: Add ScaledObject/ScaledJob names to output of `kubectl get triggerauthentication/clustertriggerauthentication` ([#796](https://github.com/kedacore/keda/issues/796))
 
 ### Fixes
 
+- **AWS Pod Identity Authentication**: Use `default` service account if the workload doesn't set it ([#4767](https://github.com/kedacore/keda/issues/4767))
 - **Pulsar Scaler**: Fix `msgBacklogThreshold` field being named wrongly as `msgBacklog` ([#4681](https://github.com/kedacore/keda/issues/4681))
 
 ### Deprecations
@@ -115,13 +117,16 @@ None.
 - **Redis Scalers**: Allow scaling using redis stream length ([#4277](https://github.com/kedacore/keda/issues/4277))
 - **Redis Scalers**: Allow scaling using consumer group lag ([#3127](https://github.com/kedacore/keda/issues/3127))
 
+### Breaking Changes
+
+- **General**: Metrics Adapter: remove deprecated Prometheus Metrics and non-gRPC code ([#3930](https://github.com/kedacore/keda/issues/3930))
+
 ### Improvements
 
 - **General**: Add a Prometheus metric for measuring the processing loop lag ([#4702](https://github.com/kedacore/keda/issues/4702))
 - **General**: Add a Prometheus metric with KEDA build info ([#4647](https://github.com/kedacore/keda/issues/4647))
 - **General**: Allow to change the port of the Admission Webhook ([#468](https://github.com/kedacore/charts/issues/468))
 - **General**: Enable secret scanning in GitHub repo
-- **General**: Metrics Adapter: remove deprecated Prometheus Metrics and non-gRPC code ([#3930](https://github.com/kedacore/keda/issues/3930))
 - **General**: Kubernetes v1.25, v1.26 or v1.27 are supported
 - **AWS DynamoDB**: Add support for `indexName` ([#4680](https://github.com/kedacore/keda/issues/4680))
 - **Azure Data Explorer Scaler**: Use azidentity SDK ([#4489](https://github.com/kedacore/keda/issues/4489))

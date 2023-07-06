@@ -38,6 +38,7 @@ jobs:
         if: ${{ startsWith(github.event.comment.body,'/skip-e2e') && steps.checkUserMember.outputs.isTeamMember == 'true' }}
         uses: actions/github-script@v6
         with:
+          github-token: ${{ secrets.GH_AUTOMATION_PAT }}
           script: |
             github.rest.issues.addLabels({
               issue_number: context.issue.number,
