@@ -57,8 +57,8 @@ var _ = It("validate triggerauthentication when IdentityID is not empty", func()
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
 
-	identityId := "12345"
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, &identityId)
+	identityID := "12345"
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, &identityID)
 	ta := createTriggerAuthentication("identityidta", namespaceName, "TriggerAuthentication", spec)
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), ta)
@@ -98,19 +98,19 @@ var _ = It("validate clustertriggerauthentication when IdentityID is not empty",
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
 
-	identityId := "12345"
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, &identityId)
+	identityID := "12345"
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, &identityID)
 	ta := createTriggerAuthentication("clusteridentityidta", namespaceName, "ClusterTriggerAuthentication", spec)
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), ta)
 	}).ShouldNot(HaveOccurred())
 })
 
-func createTriggerAuthenticationSpecWithPodIdentity(provider PodIdentityProvider, identityId *string) TriggerAuthenticationSpec {
+func createTriggerAuthenticationSpecWithPodIdentity(provider PodIdentityProvider, identityID *string) TriggerAuthenticationSpec {
 	return TriggerAuthenticationSpec{
 		PodIdentity: &AuthPodIdentity{
 			Provider:   provider,
-			IdentityID: identityId,
+			IdentityID: identityID,
 		},
 	}
 }
