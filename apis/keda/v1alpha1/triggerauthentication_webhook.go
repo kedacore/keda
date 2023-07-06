@@ -113,7 +113,7 @@ func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
 			fallthrough
 		case PodIdentityProviderAzureWorkload:
 			if spec.PodIdentity.IdentityID != nil && *spec.PodIdentity.IdentityID == "" {
-				return nil, fmt.Errorf("identityid of PodIdentity should not be empty")
+				return nil, fmt.Errorf("identityid of PodIdentity should not be empty. If it's set, identityId has to be different than \"\"")
 			}
 		default:
 			return nil, nil
