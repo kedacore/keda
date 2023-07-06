@@ -30,15 +30,15 @@ import (
 
 var triggerauthenticationlog = logf.Log.WithName("triggerauthentication-validation-webhook")
 
-func (so *TriggerAuthentication) SetupWebhookWithManager(mgr ctrl.Manager) error {
+func (ta *TriggerAuthentication) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(so).
+		For(ta).
 		Complete()
 }
 
-func (so *ClusterTriggerAuthentication) SetupWebhookWithManager(mgr ctrl.Manager) error {
+func (cta *ClusterTriggerAuthentication) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(so).
+		For(cta).
 		Complete()
 }
 
@@ -65,7 +65,7 @@ func (ta *TriggerAuthentication) ValidateUpdate(old runtime.Object) (admission.W
 	return validateSpec(&ta.Spec)
 }
 
-func (so *TriggerAuthentication) ValidateDelete() (admission.Warnings, error) {
+func (ta *TriggerAuthentication) ValidateDelete() (admission.Warnings, error) {
 	return nil, nil
 }
 
@@ -93,12 +93,11 @@ func (cta *ClusterTriggerAuthentication) ValidateUpdate(old runtime.Object) (adm
 	return validateSpec(&cta.Spec)
 }
 
-func (so *ClusterTriggerAuthentication) ValidateDelete() (admission.Warnings, error) {
+func (cta *ClusterTriggerAuthentication) ValidateDelete() (admission.Warnings, error) {
 	return nil, nil
 }
 
 func isTriggerAuthenticationRemovingFinalizer(om metav1.ObjectMeta, oldOm metav1.ObjectMeta, spec TriggerAuthenticationSpec, oldSpec TriggerAuthenticationSpec) bool {
-
 	taSpec, _ := json.MarshalIndent(spec, "", "  ")
 	oldTaSpec, _ := json.MarshalIndent(oldSpec, "", "  ")
 	taSpecString := string(taSpec)

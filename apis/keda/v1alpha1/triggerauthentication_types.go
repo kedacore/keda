@@ -138,9 +138,8 @@ type AuthPodIdentity struct {
 func (a *AuthPodIdentity) GetIdentityID() string {
 	if a.IdentityID == nil {
 		return ""
-	} else {
-		return *a.IdentityID
 	}
+	return *a.IdentityID
 }
 
 // AuthSecretTargetRef is used to authenticate using a reference to a secret

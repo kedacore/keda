@@ -22,7 +22,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	//+kubebuilder:scaffold:imports
 )
 
 var _ = It("validate triggerauthentication when IdentityID is nil", func() {
@@ -32,7 +31,7 @@ var _ = It("validate triggerauthentication when IdentityID is nil", func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, nil)
-	ta := createTriggerAuthentication("nilidentityidta", namespaceName, "apps/v1", "TriggerAuthentication", spec)
+	ta := createTriggerAuthentication("nilidentityidta", namespaceName, "TriggerAuthentication", spec)
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), ta)
 	}).ShouldNot(HaveOccurred())
@@ -44,9 +43,9 @@ var _ = It("validate triggerauthentication when IdentityID is empty", func() {
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
 
-	identityId := ""
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, &identityId)
-	ta := createTriggerAuthentication("emptyidentityidta", namespaceName, "apps/v1", "TriggerAuthentication", spec)
+	identityID := ""
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, &identityID)
+	ta := createTriggerAuthentication("emptyidentityidta", namespaceName, "TriggerAuthentication", spec)
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), ta)
 	}).Should(HaveOccurred())
@@ -60,7 +59,48 @@ var _ = It("validate triggerauthentication when IdentityID is not empty", func()
 
 	identityId := "12345"
 	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, &identityId)
-	ta := createTriggerAuthentication("emptyidentityidta", namespaceName, "apps/v1", "TriggerAuthentication", spec)
+	ta := createTriggerAuthentication("identityidta", namespaceName, "TriggerAuthentication", spec)
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), ta)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("validate clustertriggerauthentication when IdentityID is nil", func() {
+	namespaceName := "clusternilidentityid"
+	namespace := createNamespace(namespaceName)
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, nil)
+	ta := createTriggerAuthentication("clusternilidentityidta", namespaceName, "ClusterTriggerAuthentication", spec)
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), ta)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("validate clustertriggerauthentication when IdentityID is empty", func() {
+	namespaceName := "clusteremptyidentityid"
+	namespace := createNamespace(namespaceName)
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	identityID := ""
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, &identityID)
+	ta := createTriggerAuthentication("clusteremptyidentityidta", namespaceName, "ClusterTriggerAuthentication", spec)
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), ta)
+	}).Should(HaveOccurred())
+})
+
+var _ = It("validate clustertriggerauthentication when IdentityID is not empty", func() {
+	namespaceName := "clusteridentityid"
+	namespace := createNamespace(namespaceName)
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	identityId := "12345"
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, &identityId)
+	ta := createTriggerAuthentication("clusteridentityidta", namespaceName, "ClusterTriggerAuthentication", spec)
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), ta)
 	}).ShouldNot(HaveOccurred())
@@ -75,7 +115,7 @@ func createTriggerAuthenticationSpecWithPodIdentity(provider PodIdentityProvider
 	}
 }
 
-func createTriggerAuthentication(name, namespace, targetAPI, targetKind string, spec TriggerAuthenticationSpec) *TriggerAuthentication {
+func createTriggerAuthentication(name, namespace, targetKind string, spec TriggerAuthenticationSpec) *TriggerAuthentication {
 	return &TriggerAuthentication{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
