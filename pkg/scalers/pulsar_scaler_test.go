@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -65,6 +66,12 @@ var parsePulsarMetadataTestDataset = []parsePulsarMetadataTestData{
 	{map[string]string{"adminURL": "http://127.0.0.1:8080", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, false, false, "http://127.0.0.1:8080", "persistent://public/default/my-topic", "sub1"},
 	{map[string]string{"adminURL": "http://127.0.0.1:8080", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, false, false, "http://127.0.0.1:8080", "persistent://public/default/my-topic", "sub1"},
 	{map[string]string{"adminURL": "http://127.0.0.1:8080", "topic": "persistent://public/default/my-topic", "isPartitionedTopic": "true", "subscription": "sub1"}, false, false, true, "http://127.0.0.1:8080", "persistent://public/default/my-topic", "sub1"},
+	// test metric msgBacklogThreshold
+	{map[string]string{"adminURL": "http://127.0.0.1:8080", "topic": "persistent://public/default/my-topic", "isPartitionedTopic": "true", "subscription": "sub1", "msgBacklogThreshold": "5"}, false, false, true, "http://127.0.0.1:8080", "persistent://public/default/my-topic", "sub1"},
+	// FIXME: msgBacklog support DEPRECATED to be removed in v2.14
+	// test metric msgBacklog
+	{map[string]string{"adminURL": "http://127.0.0.1:8080", "topic": "persistent://public/default/my-topic", "isPartitionedTopic": "true", "subscription": "sub1", "msgBacklog": "5"}, false, false, true, "http://127.0.0.1:8080", "persistent://public/default/my-topic", "sub1"},
+	// END FIXME
 
 	// tls
 	{map[string]string{"adminURL": "https://localhost:8443", "tls": "enable", "cert": "certdata", "key": "keydata", "ca": "cadata", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, true, false, "https://localhost:8443", "persistent://public/default/my-topic", "sub1"},
@@ -105,7 +112,8 @@ var pulsarMetricIdentifiers = []pulsarMetricIdentifier{
 
 func TestParsePulsarMetadata(t *testing.T) {
 	for _, testData := range parsePulsarMetadataTestDataset {
-		meta, err := parsePulsarMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validPulsarWithAuthParams})
+		logger := InitializeLogger(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validPulsarWithAuthParams}, "test_pulsar_scaler")
+		meta, err := parsePulsarMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validPulsarWithAuthParams}, logger)
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -138,12 +146,32 @@ func TestParsePulsarMetadata(t *testing.T) {
 			t.Errorf("Expected subscription %s but got %s\n", testData.subscription, meta.subscription)
 		}
 
+		var testDataMsgBacklogThreshold int64
+		// FIXME: msgBacklog support DEPRECATED to be removed in v2.14
+		if val, ok := testData.metadata["msgBacklog"]; ok {
+			testDataMsgBacklogThreshold, err = strconv.ParseInt(val, 10, 64)
+			if err != nil {
+				t.Errorf("error parseing msgBacklog: %v", err)
+			}
+			// END FiXME
+		} else if val, ok := testData.metadata["msgBacklogThreshold"]; ok {
+			testDataMsgBacklogThreshold, err = strconv.ParseInt(val, 10, 64)
+			if err != nil {
+				t.Errorf("error parseing msgBacklogThreshold: %v", err)
+			}
+		} else {
+			testDataMsgBacklogThreshold = defaultMsgBacklogThreshold
+		}
+		if meta.msgBacklogThreshold != testDataMsgBacklogThreshold && testDataMsgBacklogThreshold != defaultMsgBacklogThreshold {
+			t.Errorf("Expected msgBacklogThreshold %s but got %d\n", testData.metadata["msgBacklogThreshold"], meta.msgBacklogThreshold)
+		}
+
 		authParams := validPulsarWithoutAuthParams
 		if k, ok := testData.metadata["tls"]; ok && k == "enable" {
 			authParams = validPulsarWithAuthParams
 		}
 
-		meta, err = parsePulsarMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: authParams})
+		meta, err = parsePulsarMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: authParams}, logger)
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -182,7 +210,8 @@ func compareScope(scopes []string, scopeStr string) bool {
 
 func TestPulsarAuthParams(t *testing.T) {
 	for _, testData := range parsePulsarMetadataTestAuthTLSDataset {
-		meta, err := parsePulsarMetadata(&ScalerConfig{TriggerMetadata: testData.triggerMetadata, AuthParams: testData.authParams})
+		logger := InitializeLogger(&ScalerConfig{TriggerMetadata: testData.triggerMetadata, AuthParams: testData.authParams}, "test_pulsar_scaler")
+		meta, err := parsePulsarMetadata(&ScalerConfig{TriggerMetadata: testData.triggerMetadata, AuthParams: testData.authParams}, logger)
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", testData.authParams, err)
@@ -269,7 +298,8 @@ func TestPulsarAuthParams(t *testing.T) {
 
 func TestPulsarGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range pulsarMetricIdentifiers {
-		meta, err := parsePulsarMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validWithAuthParams})
+		logger := InitializeLogger(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validWithAuthParams}, "test_pulsar_scaler")
+		meta, err := parsePulsarMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validWithAuthParams}, logger)
 		if err != nil {
 			if testData.metadataTestData.isError {
 				continue
