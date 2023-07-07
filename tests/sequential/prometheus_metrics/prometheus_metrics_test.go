@@ -30,17 +30,18 @@ const (
 )
 
 var (
-	testNamespace             = fmt.Sprintf("%s-ns", testName)
-	deploymentName            = fmt.Sprintf("%s-deployment", testName)
-	monitoredDeploymentName   = fmt.Sprintf("%s-monitored", testName)
-	scaledObjectName          = fmt.Sprintf("%s-so", testName)
-	wrongScaledObjectName     = fmt.Sprintf("%s-wrong", testName)
-	wrongScalerName           = fmt.Sprintf("%s-wrong-scaler", testName)
-	cronScaledJobName         = fmt.Sprintf("%s-cron-sj", testName)
-	clientName                = fmt.Sprintf("%s-client", testName)
-	kedaOperatorPrometheusURL = "http://keda-operator.keda.svc.cluster.local:8080/metrics"
-	kedaWebhookPrometheusURL  = "http://keda-admission-webhooks.keda.svc.cluster.local:8080/metrics"
-	namespaceString           = "namespace"
+	testNamespace                  = fmt.Sprintf("%s-ns", testName)
+	deploymentName                 = fmt.Sprintf("%s-deployment", testName)
+	monitoredDeploymentName        = fmt.Sprintf("%s-monitored", testName)
+	scaledObjectName               = fmt.Sprintf("%s-so", testName)
+	wrongScaledObjectName          = fmt.Sprintf("%s-wrong", testName)
+	wrongScalerName                = fmt.Sprintf("%s-wrong-scaler", testName)
+	cronScaledJobName              = fmt.Sprintf("%s-cron-sj", testName)
+	clientName                     = fmt.Sprintf("%s-client", testName)
+	kedaOperatorPrometheusURL      = "http://keda-operator.keda.svc.cluster.local:8080/metrics"
+	kedaMetricsServerPrometheusURL = "http://keda-metrics-apiserver.keda.svc.cluster.local:8080/metrics"
+	kedaWebhookPrometheusURL       = "http://keda-admission-webhooks.keda.svc.cluster.local:8080/metrics"
+	namespaceString                = "namespace"
 )
 
 type templateData struct {
@@ -267,6 +268,7 @@ func TestPrometheusMetrics(t *testing.T) {
 	testScalerErrors(t, data)
 	testScalerErrorsTotal(t, data)
 	testOperatorMetrics(t, kc, data)
+	testMetricServerMetrics(t)
 	testWebhookMetrics(t, data)
 	testScalableObjectMetrics(t)
 
@@ -615,6 +617,10 @@ func getOperatorMetricsManually(t *testing.T, kc *kubernetes.Clientset) (map[str
 func testWebhookMetricValues(t *testing.T) {
 	families := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaWebhookPrometheusURL))
 	checkWebhookValues(t, families)
+}
+
+func testMetricServerMetrics(t *testing.T) {
+	_ = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaMetricsServerPrometheusURL))
 }
 
 func testOperatorMetricValues(t *testing.T, kc *kubernetes.Clientset) {
