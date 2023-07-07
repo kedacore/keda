@@ -30,11 +30,16 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	externalscaling "github.com/kedacore/keda/v2/pkg/externalscaling"
+	externalscalingAPI "github.com/kedacore/keda/v2/pkg/externalscaling/api"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
 	mock_scalers "github.com/kedacore/keda/v2/pkg/mock/mock_scaler"
 )
+
+var logger = logf.Log.WithName("fallback_test")
 
 const metricName = "some_metric_name"
 
@@ -65,7 +70,7 @@ var _ = Describe("fallback", func() {
 
 		expectedMetricValue := float64(5)
 		primeGetMetrics(scaler, expectedMetricValue)
-		so := buildScaledObject(nil, nil)
+		so := buildScaledObject(nil, nil, nil)
 		metricSpec := createMetricSpec(3)
 		expectStatusPatch(ctrl, client)
 
@@ -95,6 +100,7 @@ var _ = Describe("fallback", func() {
 					},
 				},
 			},
+			nil,
 		)
 
 		metricSpec := createMetricSpec(3)
@@ -112,7 +118,7 @@ var _ = Describe("fallback", func() {
 	It("should propagate the error when fallback is disabled", func() {
 		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("Some error"))
 
-		so := buildScaledObject(nil, nil)
+		so := buildScaledObject(nil, nil, nil)
 		metricSpec := createMetricSpec(3)
 		expectStatusPatch(ctrl, client)
 
@@ -140,6 +146,7 @@ var _ = Describe("fallback", func() {
 					},
 				},
 			},
+			nil,
 		)
 
 		metricSpec := createMetricSpec(10)
@@ -171,6 +178,7 @@ var _ = Describe("fallback", func() {
 					},
 				},
 			},
+			nil,
 		)
 		metricSpec := createMetricSpec(10)
 		expectStatusPatch(ctrl, client)
@@ -189,7 +197,7 @@ var _ = Describe("fallback", func() {
 			&kedav1alpha1.Fallback{
 				FailureThreshold: int32(3),
 				Replicas:         int32(10),
-			}, nil,
+			}, nil, nil,
 		)
 
 		qty := resource.NewQuantity(int64(3), resource.DecimalSI)
@@ -224,6 +232,7 @@ var _ = Describe("fallback", func() {
 					},
 				},
 			},
+			nil,
 		)
 		metricSpec := createMetricSpec(10)
 
@@ -257,6 +266,7 @@ var _ = Describe("fallback", func() {
 					},
 				},
 			},
+			nil,
 		)
 		metricSpec := createMetricSpec(10)
 		expectStatusPatch(ctrl, client)
@@ -291,6 +301,7 @@ var _ = Describe("fallback", func() {
 					},
 				},
 			},
+			nil,
 		)
 		metricSpec := createMetricSpec(10)
 		expectStatusPatch(ctrl, client)
@@ -325,6 +336,7 @@ var _ = Describe("fallback", func() {
 					},
 				},
 			},
+			nil,
 		)
 		metricSpec := createMetricSpec(10)
 		expectStatusPatch(ctrl, client)
@@ -335,6 +347,406 @@ var _ = Describe("fallback", func() {
 		Expect(err.Error()).Should(Equal("Some error"))
 		condition := so.Status.Conditions.GetFallbackCondition()
 		Expect(condition.IsTrue()).Should(BeFalse())
+	})
+
+	// ---------------------------------------------------------------------------
+	// fallback for ComplexScalingLogic ExternalCalculators
+	// ---------------------------------------------------------------------------
+
+	// It("should return error when ec-fallback is enabled but ExternalCalculator returns error", func() {
+	// todo
+	// })
+
+	// It("should return error when ec-fallback is enabled but ExternalCalculator returns empty list", func() {
+	// todo
+	// })
+	// --- set condition to false ---
+	// invalid FailureThreshold eg. < 0
+	It("should set the ec-fallback condition to false if the Fallback FailureThreshold is invalid", func() {
+		primeGetMetrics(scaler, 2)
+		startingNumberOfFailures := int32(0)
+		wrongThreshold := int32(-2)
+
+		csl := &kedav1alpha1.ComplexScalingLogic{
+			Formula: "",
+			Target:  "2",
+			Fallback: &kedav1alpha1.Fallback{
+				FailureThreshold: wrongThreshold,
+				Replicas:         int32(10),
+			},
+			ExternalCalculations: []kedav1alpha1.ExternalCalculation{
+				{Name: metricName, URL: "fake-url", Timeout: "5"}},
+		}
+
+		so := buildScaledObject(
+			nil,
+			&kedav1alpha1.ScaledObjectStatus{
+				ExternalCalculationHealth: map[string]kedav1alpha1.HealthStatus{
+					metricName: {
+						NumberOfFailures: &startingNumberOfFailures,
+						Status:           kedav1alpha1.HealthStatusHappy,
+					},
+				},
+			},
+			csl,
+		)
+		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
+		Expect(err).Should(BeNil())
+		convertedMetrics, err := mockCalculateForExternalCalculator(metrics, "")
+		expectStatusPatch(ctrl, client)
+		ret, fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics.GetMetricValues(), err, metricName, so)
+		convertedMetrics.MetricValues = ret
+		Expect(fbApplied).Should(BeFalse())
+		Expect(err).Should(BeNil())
+		condition := so.Status.Conditions.GetExternalFallbackCondition()
+		Expect(condition.IsTrue()).Should(BeFalse())
+		Expect(condition.Type).Should(Equal(kedav1alpha1.ConditionExternalFallback))
+		Expect(condition.Reason).Should(Equal("NoExternalFallbackFound"))
+	})
+
+	It("should set the ec-fallback condition to false when a ec-fallback disabled", func() {
+		primeGetMetrics(scaler, 2)
+		startingNumberOfFailures := int32(0)
+		so := buildScaledObject(
+			nil,
+			&kedav1alpha1.ScaledObjectStatus{
+				ExternalCalculationHealth: map[string]kedav1alpha1.HealthStatus{
+					metricName: {
+						NumberOfFailures: &startingNumberOfFailures,
+						Status:           kedav1alpha1.HealthStatusHappy,
+					},
+				},
+			},
+			nil,
+		)
+
+		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
+		Expect(err).Should(BeNil())
+		convertedMetrics, err := mockCalculateForExternalCalculator(metrics, "")
+		expectStatusPatch(ctrl, client)
+		ret, fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics.GetMetricValues(), err, metricName, so)
+		convertedMetrics.MetricValues = ret
+		Expect(fbApplied).Should(BeFalse())
+		Expect(err).Should(BeNil())
+		condition := so.Status.Conditions.GetExternalFallbackCondition()
+		Expect(condition.IsTrue()).Should(BeFalse())
+		Expect(condition.Type).Should(Equal(kedav1alpha1.ConditionExternalFallback))
+		Expect(condition.Reason).Should(Equal("NoExternalFallbackFound"))
+	})
+
+	It("should set ec-fallback condition to false when the number of replicas is invalid", func() {
+		primeGetMetrics(scaler, 2)
+		startingNumberOfFailures := int32(0)
+		threshold := int32(2)
+		replicas := int32(-1)
+
+		csl := &kedav1alpha1.ComplexScalingLogic{
+			Formula: "",
+			Target:  "2",
+			Fallback: &kedav1alpha1.Fallback{
+				FailureThreshold: threshold,
+				Replicas:         replicas,
+			},
+			ExternalCalculations: []kedav1alpha1.ExternalCalculation{
+				{Name: metricName, URL: "fake-url", Timeout: "5"}},
+		}
+
+		so := buildScaledObject(
+			nil,
+			&kedav1alpha1.ScaledObjectStatus{
+				ExternalCalculationHealth: map[string]kedav1alpha1.HealthStatus{
+					metricName: {
+						NumberOfFailures: &startingNumberOfFailures,
+						Status:           kedav1alpha1.HealthStatusHappy,
+					},
+				},
+			},
+			csl,
+		)
+		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
+		Expect(err).Should(BeNil())
+		convertedMetrics, err := mockCalculateForExternalCalculator(metrics, "")
+
+		expectStatusPatch(ctrl, client)
+		ret, fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics.GetMetricValues(), err, metricName, so)
+		convertedMetrics.MetricValues = ret
+		Expect(fbApplied).Should(BeFalse())
+		Expect(err).Should(BeNil())
+
+		condition := so.Status.Conditions.GetExternalFallbackCondition()
+		Expect(condition.IsTrue()).Should(BeFalse())
+		Expect(condition.Type).Should(Equal(kedav1alpha1.ConditionExternalFallback))
+		Expect(condition.Reason).Should(Equal("NoExternalFallbackFound"))
+	})
+
+	It("should set ec-fallback condition to false when all is valid but no error exists", func() {
+		primeGetMetrics(scaler, 2)
+		startingNumberOfFailures := int32(0)
+		threshold := int32(2)
+		replicas := int32(3)
+
+		csl := &kedav1alpha1.ComplexScalingLogic{
+			Formula: "",
+			Target:  "2",
+			Fallback: &kedav1alpha1.Fallback{
+				FailureThreshold: threshold,
+				Replicas:         replicas,
+			},
+			ExternalCalculations: []kedav1alpha1.ExternalCalculation{
+				{Name: metricName, URL: "fake-url", Timeout: "5"}},
+		}
+
+		so := buildScaledObject(
+			nil,
+			&kedav1alpha1.ScaledObjectStatus{
+				ExternalCalculationHealth: map[string]kedav1alpha1.HealthStatus{
+					metricName: {
+						NumberOfFailures: &startingNumberOfFailures,
+						Status:           kedav1alpha1.HealthStatusHappy,
+					},
+				},
+			},
+			csl,
+		)
+		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
+		Expect(err).Should(BeNil())
+		convertedMetrics, err := mockCalculateForExternalCalculator(metrics, "")
+
+		expectStatusPatch(ctrl, client)
+		ret, fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics.GetMetricValues(), err, metricName, so)
+		convertedMetrics.MetricValues = ret
+		Expect(fbApplied).Should(BeFalse())
+		Expect(err).Should(BeNil())
+
+		condition := so.Status.Conditions.GetExternalFallbackCondition()
+		Expect(condition.IsTrue()).Should(BeFalse())
+		Expect(condition.Type).Should(Equal(kedav1alpha1.ConditionExternalFallback))
+		Expect(condition.Reason).Should(Equal("NoExternalFallbackFound"))
+	})
+	It("should set ec-fallback condition to false when err exists but config is invalid", func() {
+		primeGetMetrics(scaler, 2)
+		startingNumberOfFailures := int32(0)
+		threshold := int32(-2) // invalid
+		replicas := int32(3)
+
+		csl := &kedav1alpha1.ComplexScalingLogic{
+			Formula: "",
+			Target:  "2",
+			Fallback: &kedav1alpha1.Fallback{
+				FailureThreshold: threshold,
+				Replicas:         replicas,
+			},
+			ExternalCalculations: []kedav1alpha1.ExternalCalculation{
+				{Name: metricName, URL: "fake-url", Timeout: "5"}},
+		}
+
+		so := buildScaledObject(
+			nil,
+			&kedav1alpha1.ScaledObjectStatus{
+				ExternalCalculationHealth: map[string]kedav1alpha1.HealthStatus{
+					metricName: {
+						NumberOfFailures: &startingNumberOfFailures,
+						Status:           kedav1alpha1.HealthStatusHappy,
+					},
+				},
+			},
+			csl,
+		)
+		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
+		Expect(err).Should(BeNil())
+		convertedMetrics, err := mockCalculateForExternalCalculator(metrics, "err in external calculation")
+		expectStatusPatch(ctrl, client)
+		ret, fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics.GetMetricValues(), err, metricName, so)
+		convertedMetrics.MetricValues = ret
+		Expect(fbApplied).Should(BeFalse())
+		Expect(err).ShouldNot(BeNil())
+
+		condition := so.Status.Conditions.GetExternalFallbackCondition()
+		Expect(condition.IsTrue()).Should(BeFalse())
+		Expect(condition.Type).Should(Equal(kedav1alpha1.ConditionExternalFallback))
+		Expect(condition.Reason).Should(Equal("NoExternalFallbackFound"))
+	})
+
+	It("should set ec-fallback condition to false when config valid, err exists but threshold not reached, metric didnt change", func() {
+		primeGetMetrics(scaler, 2)
+		startingNumberOfFailures := int32(0)
+		threshold := int32(2)
+		replicas := int32(3)
+		csl := &kedav1alpha1.ComplexScalingLogic{
+			Formula: "",
+			Target:  "2",
+			Fallback: &kedav1alpha1.Fallback{
+				FailureThreshold: threshold,
+				Replicas:         replicas,
+			},
+			ExternalCalculations: []kedav1alpha1.ExternalCalculation{
+				{Name: metricName, URL: "fake-url", Timeout: "5"}},
+		}
+
+		so := buildScaledObject(
+			nil,
+			&kedav1alpha1.ScaledObjectStatus{
+				ExternalCalculationHealth: map[string]kedav1alpha1.HealthStatus{
+					metricName: {
+						NumberOfFailures: &startingNumberOfFailures,
+						Status:           kedav1alpha1.HealthStatusHappy,
+					},
+				},
+			},
+			csl,
+		)
+		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
+		Expect(err).Should(BeNil())
+		convertedMetrics, err := mockCalculateForExternalCalculator(metrics, "err in external calculation")
+		expectStatusPatch(ctrl, client)
+		ret, fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics.GetMetricValues(), err, metricName, so)
+		convertedMetrics.MetricValues = ret
+		Expect(fbApplied).Should(BeFalse())
+		Expect(err).ShouldNot(BeNil())
+
+		condition := so.Status.Conditions.GetExternalFallbackCondition()
+		Expect(condition.IsTrue()).Should(BeFalse())
+		Expect(condition.Type).Should(Equal(kedav1alpha1.ConditionExternalFallback))
+		Expect(condition.Reason).Should(Equal("NoExternalFallbackFound"))
+	})
+	// --- set condition to true ---
+	It("should set ec-fallback condition to true when config is valid and err exists & return valid metric", func() {
+		primeGetMetrics(scaler, 2)
+		startingNumberOfFailures := int32(3)
+		threshold := int32(2)
+		replicas := int32(3)
+		target := "2"
+		csl := &kedav1alpha1.ComplexScalingLogic{
+			Formula: "",
+			Target:  target,
+			Fallback: &kedav1alpha1.Fallback{
+				FailureThreshold: threshold,
+				Replicas:         replicas,
+			},
+			ExternalCalculations: []kedav1alpha1.ExternalCalculation{
+				{Name: metricName, URL: "fake-url", Timeout: "5"}},
+		}
+
+		so := buildScaledObject(
+			nil,
+			&kedav1alpha1.ScaledObjectStatus{
+				ExternalCalculationHealth: map[string]kedav1alpha1.HealthStatus{
+					metricName: {
+						NumberOfFailures: &startingNumberOfFailures,
+						Status:           kedav1alpha1.HealthStatusFailing,
+					},
+				},
+			},
+			csl,
+		)
+		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
+		Expect(err).Should(BeNil())
+		convertedMetrics, err := mockCalculateForExternalCalculator(metrics, "err in external calculation")
+
+		expectStatusPatch(ctrl, client)
+		ret, fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics.GetMetricValues(), err, metricName, so)
+		convertedMetrics.MetricValues = ret
+		Expect(fbApplied).Should(BeTrue())
+		Expect(err).Should(BeNil())
+
+		// check condition
+		condition := so.Status.Conditions.GetExternalFallbackCondition()
+		Expect(condition.IsTrue()).Should(BeTrue())
+		Expect(condition.Type).Should(Equal(kedav1alpha1.ConditionExternalFallback))
+		Expect(condition.Reason).Should(Equal("ExternalFallbackExists"))
+
+		// check metric
+		Expect(convertedMetrics).ShouldNot(BeNil())
+		Expect(convertedMetrics.MetricValues).Should(HaveLen(1))
+		Expect(convertedMetrics.MetricValues[0].Value).Should(Equal(float32(replicas * 2)))
+	})
+
+	// It("should return a ec-fallback metric when number of failures are beyond threshold", func() {
+	// })
+
+	It("should bump the number of failures when calculation call fails", func() {
+		primeGetMetrics(scaler, 2)
+		startingNumberOfFailures := int32(0)
+		threshold := int32(3)
+		replicas := int32(3)
+		target := "2"
+		csl := &kedav1alpha1.ComplexScalingLogic{
+			Formula: "",
+			Target:  target,
+			Fallback: &kedav1alpha1.Fallback{
+				FailureThreshold: threshold,
+				Replicas:         replicas,
+			},
+			ExternalCalculations: []kedav1alpha1.ExternalCalculation{
+				{Name: metricName, URL: "fake-url", Timeout: "5"}},
+		}
+
+		so := buildScaledObject(
+			nil,
+			&kedav1alpha1.ScaledObjectStatus{
+				ExternalCalculationHealth: map[string]kedav1alpha1.HealthStatus{
+					metricName: {
+						NumberOfFailures: &startingNumberOfFailures,
+						Status:           kedav1alpha1.HealthStatusHappy,
+					},
+				},
+			},
+			csl,
+		)
+
+		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
+		Expect(err).Should(BeNil())
+		convertedMetrics, err := mockCalculateForExternalCalculator(metrics, "err in external calculation")
+		expectStatusPatch(ctrl, client)
+
+		ret, fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics.GetMetricValues(), err, metricName, so)
+		convertedMetrics.MetricValues = ret
+		Expect(fbApplied).Should(BeFalse())
+		Expect(err).ShouldNot(BeNil())
+
+		Expect(so.Status.ExternalCalculationHealth[metricName]).To(haveFailureAndStatus(1, kedav1alpha1.HealthStatusFailing))
+	})
+
+	It("should reset the health status when scaler metrics are available", func() {
+		primeGetMetrics(scaler, 2)
+		startingNumberOfFailures := int32(5)
+		threshold := int32(3)
+		replicas := int32(3)
+		target := "2"
+		csl := &kedav1alpha1.ComplexScalingLogic{
+			Formula: "",
+			Target:  target,
+			Fallback: &kedav1alpha1.Fallback{
+				FailureThreshold: threshold,
+				Replicas:         replicas,
+			},
+			ExternalCalculations: []kedav1alpha1.ExternalCalculation{
+				{Name: metricName, URL: "fake-url", Timeout: "5"}},
+		}
+
+		so := buildScaledObject(
+			nil,
+			&kedav1alpha1.ScaledObjectStatus{
+				ExternalCalculationHealth: map[string]kedav1alpha1.HealthStatus{
+					metricName: {
+						NumberOfFailures: &startingNumberOfFailures,
+						Status:           kedav1alpha1.HealthStatusFailing,
+					},
+				},
+			},
+			csl,
+		)
+		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
+		Expect(err).Should(BeNil())
+		convertedMetrics, err := mockCalculateForExternalCalculator(metrics, "")
+		expectStatusPatch(ctrl, client)
+
+		ret, fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics.GetMetricValues(), err, metricName, so)
+		convertedMetrics.MetricValues = ret
+		Expect(fbApplied).Should(BeFalse())
+		Expect(err).Should(BeNil())
+
+		Expect(so.Status.ExternalCalculationHealth[metricName]).To(haveFailureAndStatus(0, kedav1alpha1.HealthStatusHappy))
 	})
 })
 
@@ -380,7 +792,7 @@ func expectStatusPatch(ctrl *gomock.Controller, client *mock_client.MockClient) 
 	client.EXPECT().Status().Return(statusWriter)
 }
 
-func buildScaledObject(fallbackConfig *kedav1alpha1.Fallback, status *kedav1alpha1.ScaledObjectStatus) *kedav1alpha1.ScaledObject {
+func buildScaledObject(fallbackConfig *kedav1alpha1.Fallback, status *kedav1alpha1.ScaledObjectStatus, csl *kedav1alpha1.ComplexScalingLogic) *kedav1alpha1.ScaledObject {
 	scaledObject := &kedav1alpha1.ScaledObject{
 		ObjectMeta: metav1.ObjectMeta{Name: "clean-up-test", Namespace: "default"},
 		Spec: kedav1alpha1.ScaledObjectSpec{
@@ -404,6 +816,11 @@ func buildScaledObject(fallbackConfig *kedav1alpha1.Fallback, status *kedav1alph
 
 	if status != nil {
 		scaledObject.Status = *status
+	}
+
+	// used for testing ec-fallback (ComplexScalingLogic.ExternalCalculators)
+	if csl != nil {
+		scaledObject.Spec.Advanced = &kedav1alpha1.AdvancedConfig{ComplexScalingLogic: *csl}
 	}
 
 	scaledObject.Status.Conditions = *kedav1alpha1.GetInitializedConditions()
@@ -431,4 +848,20 @@ func createMetricSpec(averageValue int) v2.MetricSpec {
 			},
 		},
 	}
+}
+
+// simulate calculation for externalCalculator metric (return nil if empty input)
+func mockCalculateForExternalCalculator(metrics []external_metrics.ExternalMetricValue, err string) (ret *externalscalingAPI.MetricsList, resultErr error) {
+	if len(metrics) > 0 {
+		ret = externalscaling.ConvertToGeneratedStruct(metrics, logger)
+	} else {
+		ret = nil
+	}
+	if err != "" {
+		resultErr = fmt.Errorf(err)
+	} else {
+		resultErr = nil
+	}
+
+	return ret, resultErr
 }
