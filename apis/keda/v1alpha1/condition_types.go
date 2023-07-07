@@ -228,6 +228,13 @@ func (c *Conditions) GetPausedCondition() Condition {
 	return c.getCondition(ConditionPaused)
 }
 
+func (c *Conditions) GetExternalFallbackCondition() Condition {
+	if *c == nil {
+		c = GetInitializedConditions()
+	}
+	return c.getCondition(ConditionExternalFallback)
+}
+
 func (c Conditions) getCondition(conditionType ConditionType) Condition {
 	for i := range c {
 		if c[i].Type == conditionType {
