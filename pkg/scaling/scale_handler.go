@@ -43,7 +43,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scaling/cache/metricscache"
 	"github.com/kedacore/keda/v2/pkg/scaling/executor"
 	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
-	"github.com/kedacore/keda/v2/pkg/scaling/utils"
+	"github.com/kedacore/keda/v2/pkg/scaling/scaledjob"
 )
 
 var log = logf.Log.WithName("scale_handler")
@@ -630,7 +630,6 @@ type scalerMetrics struct {
 // getScaledJobMetrics returns metrics for specified metric name for a ScaledJob identified by its name and namespace.
 // It could either query the metric value directly from the scaler or from a cache, that's being stored for the scaler.
 func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob) []scalerMetrics {
-	// TODO this loop should be probably done similar way the ScaledObject loop is done
 	cache, err := h.GetScalersCache(ctx, scaledJob)
 	if err != nil {
 		log.Error(err, "error getting scalers cache", "scaledJob.Namespace", scaledJob.Namespace, "scaledJob.Name", scaledJob.Name)
@@ -655,7 +654,6 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 			continue
 		}
 
-		// TODO here we should probably loop through all metrics in a Scaler
 		metrics, isTriggerActive, _, err := cache.GetMetricsAndActivityForScaler(ctx, i, metricSpecs[0].External.Metric.Name)
 		if err != nil {
 			scalerLogger.V(1).Info("Error getting scaler metrics and activity, but continue", "error", err)
@@ -663,7 +661,7 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 			continue
 		}
 
-		targetAverageValue = utils.GetTargetAverageValue(metricSpecs)
+		targetAverageValue = scaledjob.GetTargetAverageValue(metricSpecs)
 
 		var metricValue float64
 		for _, m := range metrics {

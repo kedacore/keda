@@ -1,10 +1,11 @@
-package utils
+package scaledjob
 
 import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
+// GetTargetAverageValue returns the average of all the metrics' average value.
 func GetTargetAverageValue(metricSpecs []v2.MetricSpec) float64 {
 	var totalAverageValue float64
 	var metricValue float64
@@ -24,6 +25,7 @@ func GetTargetAverageValue(metricSpecs []v2.MetricSpec) float64 {
 	return 0
 }
 
+// CreateMetricSpec creates MetricSpec for given metric name and target value.
 func CreateMetricSpec(averageValue int64, metricName string) v2.MetricSpec {
 	qty := resource.NewQuantity(averageValue, resource.DecimalSI)
 	return v2.MetricSpec{

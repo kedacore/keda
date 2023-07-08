@@ -41,7 +41,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scalers"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache/metricscache"
-	"github.com/kedacore/keda/v2/pkg/scaling/utils"
+	"github.com/kedacore/keda/v2/pkg/scaling/scaledjob"
 )
 
 func TestGetScaledObjectMetrics_DirectCall(t *testing.T) {
@@ -56,7 +56,7 @@ func TestGetScaledObjectMetrics_DirectCall(t *testing.T) {
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
 	mockStatusWriter := mock_client.NewMockStatusWriter(ctrl)
 
-	metricsSpecs := []v2.MetricSpec{utils.CreateMetricSpec(10, metricName)}
+	metricsSpecs := []v2.MetricSpec{scaledjob.CreateMetricSpec(10, metricName)}
 	metricValue := scalers.GenerateMetricInMili(metricName, float64(10))
 
 	metricsRecord := map[string]metricscache.MetricsRecord{}
@@ -147,7 +147,7 @@ func TestGetScaledObjectMetrics_FromCache(t *testing.T) {
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
 	mockStatusWriter := mock_client.NewMockStatusWriter(ctrl)
 
-	metricsSpecs := []v2.MetricSpec{utils.CreateMetricSpec(10, metricName)}
+	metricsSpecs := []v2.MetricSpec{scaledjob.CreateMetricSpec(10, metricName)}
 	metricValue := scalers.GenerateMetricInMili(metricName, float64(10))
 
 	metricsRecord := map[string]metricscache.MetricsRecord{}
@@ -231,7 +231,7 @@ func TestCheckScaledObjectScalersWithError(t *testing.T) {
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
 	recorder := record.NewFakeRecorder(1)
 
-	metricsSpecs := []v2.MetricSpec{utils.CreateMetricSpec(1, "metric-name")}
+	metricsSpecs := []v2.MetricSpec{scaledjob.CreateMetricSpec(1, "metric-name")}
 
 	scaler := mock_scalers.NewMockScaler(ctrl)
 	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs)
@@ -292,7 +292,7 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
 	recorder := record.NewFakeRecorder(1)
 
-	metricsSpecs := []v2.MetricSpec{utils.CreateMetricSpec(1, "metric-name")}
+	metricsSpecs := []v2.MetricSpec{scaledjob.CreateMetricSpec(1, "metric-name")}
 
 	activeFactory := func() (scalers.Scaler, *scalers.ScalerConfig, error) {
 		scaler := mock_scalers.NewMockScaler(ctrl)
@@ -603,7 +603,7 @@ func createScaledJob(minReplicaCount int32, maxReplicaCount int32, multipleScale
 
 func createScaler(ctrl *gomock.Controller, queueLength int64, averageValue int64, isActive bool, metricName string) *mock_scalers.MockScaler {
 	scaler := mock_scalers.NewMockScaler(ctrl)
-	metricsSpecs := []v2.MetricSpec{utils.CreateMetricSpec(averageValue, metricName)}
+	metricsSpecs := []v2.MetricSpec{scaledjob.CreateMetricSpec(averageValue, metricName)}
 
 	metrics := []external_metrics.ExternalMetricValue{
 		{
