@@ -49,61 +49,61 @@ var testGitHubRunnerMetadata = []parseGitHubRunnerMetadataTestData{
 	// nothing passed
 	{"empty", map[string]string{}, true, true, "no runnerScope given"},
 	// properly formed
-	{"properly formed", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1"}, true, false, ""},
+	{"properly formed", map[string]string{"githubAPIURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1"}, true, false, ""},
 	// properly formed with no labels and no repos
-	{"properly formed, no labels or repos", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "owner": "ownername", "targetWorkflowQueueLength": "1"}, true, false, ""},
+	{"properly formed, no labels or repos", map[string]string{"githubAPIURL": "https://api.github.com", "runnerScope": "repo", "owner": "ownername", "targetWorkflowQueueLength": "1"}, true, false, ""},
 	// string for int64
-	{"string for int64-1", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "owner": "ownername", "targetWorkflowQueueLength": "a"}, true, false, ""},
+	{"string for int64-1", map[string]string{"githubAPIURL": "https://api.github.com", "runnerScope": "repo", "owner": "ownername", "targetWorkflowQueueLength": "a"}, true, false, ""},
 	// formed from env
-	{"formed from env", map[string]string{"githubApiURLFromEnv": "GITHUB_API_URL", "runnerScopeFromEnv": "RUNNER_SCOPE", "ownerFromEnv": "OWNER", "reposFromEnv": "REPOS", "targetWorkflowQueueLength": "1"}, true, false, ""},
+	{"formed from env", map[string]string{"githubAPIURLFromEnv": "GITHUB_API_URL", "runnerScopeFromEnv": "RUNNER_SCOPE", "ownerFromEnv": "OWNER", "reposFromEnv": "REPOS", "targetWorkflowQueueLength": "1"}, true, false, ""},
 	// missing runnerScope
-	{"missing runnerScope", map[string]string{"githubApiURL": "https://api.github.com", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1"}, true, true, "no runnerScope given"},
+	{"missing runnerScope", map[string]string{"githubAPIURL": "https://api.github.com", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1"}, true, true, "no runnerScope given"},
 	// empty runnerScope
-	{"empty runnerScope", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1"}, true, true, "no runnerScope given"},
+	{"empty runnerScope", map[string]string{"githubAPIURL": "https://api.github.com", "runnerScope": "", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1"}, true, true, "no runnerScope given"},
 	// missing owner
-	{"missing owner", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "repos": "reponame", "targetWorkflowQueueLength": "1"}, true, true, "no owner given"},
+	{"missing owner", map[string]string{"githubAPIURL": "https://api.github.com", "runnerScope": "repo", "repos": "reponame", "targetWorkflowQueueLength": "1"}, true, true, "no owner given"},
 	// empty owner
-	{"empty owner", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "owner": "", "repos": "reponame", "targetWorkflowQueueLength": "1"}, true, true, "no owner given"},
+	{"empty owner", map[string]string{"githubAPIURL": "https://api.github.com", "runnerScope": "repo", "owner": "", "repos": "reponame", "targetWorkflowQueueLength": "1"}, true, true, "no owner given"},
 	// empty token
-	{"empty targetWorkflowQueueLength", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "owner": "ownername", "repos": "reponame"}, true, false, ""},
+	{"empty targetWorkflowQueueLength", map[string]string{"githubAPIURL": "https://api.github.com", "runnerScope": "repo", "owner": "ownername", "repos": "reponame"}, true, false, ""},
 	// missing installationID From Env
-	{"missing installationID Env", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "applicationIDFromEnv": "APP_ID"}, true, true, "applicationID, installationID and applicationKey must be given"},
+	{"missing installationID Env", map[string]string{"githubAPIURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "applicationIDFromEnv": "APP_ID"}, true, true, "applicationID, installationID and applicationKey must be given"},
 	// missing applicationID From Env
-	{"missing applicationId Env", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "installationIDFromEnv": "INST_ID"}, true, true, "applicationID, installationID and applicationKey must be given"},
+	{"missing applicationId Env", map[string]string{"githubAPIURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "installationIDFromEnv": "INST_ID"}, true, true, "applicationID, installationID and applicationKey must be given"},
 	// nothing passed
 	{"empty, no envs", map[string]string{}, false, true, "no runnerScope given"},
-	//  empty githubApiURL
-	{"empty githubApiURL, no envs", map[string]string{"githubApiURL": "", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1"}, false, false, ""},
+	//  empty githubAPIURL
+	{"empty githubAPIURL, no envs", map[string]string{"githubAPIURL": "", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1"}, false, false, ""},
 	// properly formed
-	{"properly formed, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1"}, false, false, ""},
+	{"properly formed, no envs", map[string]string{"githubAPIURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1"}, false, false, ""},
 	// properly formed with no labels and no repos
-	{"properly formed, no envs, labels or repos", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "ent", "owner": "ownername", "targetWorkflowQueueLength": "1"}, false, false, ""},
+	{"properly formed, no envs, labels or repos", map[string]string{"githubAPIURL": "https://api.github.com", "runnerScope": "ent", "owner": "ownername", "targetWorkflowQueueLength": "1"}, false, false, ""},
 	// formed from env
-	{"formed from env, no envs", map[string]string{"githubApiURLFromEnv": "GITHUB_API_URL", "ownerFromEnv": "OWNER", "repos": "reponame", "targetWorkflowQueueLength": "1"}, false, true, "no runnerScope given"},
+	{"formed from env, no envs", map[string]string{"githubAPIURLFromEnv": "GITHUB_API_URL", "ownerFromEnv": "OWNER", "repos": "reponame", "targetWorkflowQueueLength": "1"}, false, true, "no runnerScope given"},
 	// formed from default env
 	{"formed from default env, no envs", map[string]string{"owner": "ownername", "repos": "reponame", "targetWorkflowQueueLength": "1"}, false, true, "no runnerScope given"},
 	// missing runnerScope
-	{"missing runnerScope, no envs", map[string]string{"githubApiURL": "https://api.github.com", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1"}, false, true, "no runnerScope given"},
+	{"missing runnerScope, no envs", map[string]string{"githubAPIURL": "https://api.github.com", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1"}, false, true, "no runnerScope given"},
 	// empty runnerScope
-	{"empty runnerScope, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1"}, false, true, "no runnerScope given"},
+	{"empty runnerScope, no envs", map[string]string{"githubAPIURL": "https://api.github.com", "runnerScope": "", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1"}, false, true, "no runnerScope given"},
 	// empty owner
-	{"empty owner, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "owner": "", "repos": "reponame", "targetWorkflowQueueLength": "1"}, false, true, "no owner given"},
+	{"empty owner, no envs", map[string]string{"githubAPIURL": "https://api.github.com", "runnerScope": "repo", "owner": "", "repos": "reponame", "targetWorkflowQueueLength": "1"}, false, true, "no owner given"},
 	// missing owner
-	{"missing owner, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "repo", "repos": "reponame", "targetWorkflowQueueLength": "1"}, false, true, "no owner given"},
+	{"missing owner, no envs", map[string]string{"githubAPIURL": "https://api.github.com", "runnerScope": "repo", "repos": "reponame", "targetWorkflowQueueLength": "1"}, false, true, "no owner given"},
 	// missing labels, no envs
-	{"missing labels, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "targetWorkflowQueueLength": "1"}, false, false, ""},
+	{"missing labels, no envs", map[string]string{"githubAPIURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "targetWorkflowQueueLength": "1"}, false, false, ""},
 	// empty labels, no envs
-	{"empty labels, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "labels": "", "repos": "reponame,otherrepo", "targetWorkflowQueueLength": "1"}, false, false, ""},
+	{"empty labels, no envs", map[string]string{"githubAPIURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "labels": "", "repos": "reponame,otherrepo", "targetWorkflowQueueLength": "1"}, false, false, ""},
 	// missing repos, no envs
-	{"missing repos, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "labels": "golang", "targetWorkflowQueueLength": "1"}, false, false, ""},
+	{"missing repos, no envs", map[string]string{"githubAPIURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "labels": "golang", "targetWorkflowQueueLength": "1"}, false, false, ""},
 	// empty repos, no envs
-	{"empty repos, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "labels": "golang", "repos": "", "targetWorkflowQueueLength": "1"}, false, false, ""},
+	{"empty repos, no envs", map[string]string{"githubAPIURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "labels": "golang", "repos": "", "targetWorkflowQueueLength": "1"}, false, false, ""},
 	// missing installationID
-	{"missing installationID", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "applicationID": "1"}, true, true, "applicationID, installationID and applicationKey must be given"},
+	{"missing installationID", map[string]string{"githubAPIURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "applicationID": "1"}, true, true, "applicationID, installationID and applicationKey must be given"},
 	// missing applicationID
-	{"missing applicationID", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "installationID": "1"}, true, true, "applicationID, installationID and applicationKey must be given"},
+	{"missing applicationID", map[string]string{"githubAPIURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "installationID": "1"}, true, true, "applicationID, installationID and applicationKey must be given"},
 	// all good
-	{"missing applicationKey", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "applicationID": "1", "installationID": "1"}, true, true, "applicationID, installationID and applicationKey must be given"},
+	{"missing applicationKey", map[string]string{"githubAPIURL": "https://api.github.com", "runnerScope": "org", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "applicationID": "1", "installationID": "1"}, true, true, "applicationID, installationID and applicationKey must be given"},
 }
 
 func TestGitHubRunnerParseMetadata(t *testing.T) {

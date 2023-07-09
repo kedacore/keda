@@ -409,7 +409,7 @@ func parseGitHubRunnerMetadata(config *ScalerConfig) (*githubRunnerMetadata, err
 		meta.repos = strings.Split(val, ",")
 	}
 
-	if val, err := getValueFromMetaOrEnv("githubApiURL", config.TriggerMetadata, config.ResolvedEnv); err == nil && val != "" {
+	if val, err := getValueFromMetaOrEnv("githubAPIURL", config.TriggerMetadata, config.ResolvedEnv); err == nil && val != "" {
 		meta.githubAPIURL = val
 	} else {
 		meta.githubAPIURL = defaultGithubAPIURL
