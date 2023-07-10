@@ -52,8 +52,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
-- **Azure Pod Identity**: Add validation of identity ID to prevent usage of empty identity ID ([#4528](https://github.com/kedacore/keda/issues/4528))
 - **General:**: Add ScaledObject/ScaledJob names to output of `kubectl get triggerauthentication/clustertriggerauthentication` ([#796](https://github.com/kedacore/keda/issues/796))
+- **Azure Pod Identity**: Introduce validation to prevent usage of empty identity ID for Azure identity providers ([#4528](https://github.com/kedacore/keda/issues/4528))
 
 ### Fixes
 
