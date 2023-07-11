@@ -30,7 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	externalscaling "github.com/kedacore/keda/v2/pkg/externalscaling"
@@ -38,8 +37,6 @@ import (
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
 	mock_scalers "github.com/kedacore/keda/v2/pkg/mock/mock_scaler"
 )
-
-var logger = logf.Log.WithName("fallback_test")
 
 const metricName = "some_metric_name"
 
@@ -394,8 +391,8 @@ var _ = Describe("fallback", func() {
 		Expect(err).Should(BeNil())
 		convertedMetrics, err := mockCalculateForExternalCalculator(metrics, "")
 		expectStatusPatch(ctrl, client)
-		ret, fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics.GetMetricValues(), err, metricName, so)
-		convertedMetrics.MetricValues = ret
+		fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics, err, metricName, so)
+
 		Expect(fbApplied).Should(BeFalse())
 		Expect(err).Should(BeNil())
 		condition := so.Status.Conditions.GetExternalFallbackCondition()
@@ -424,8 +421,8 @@ var _ = Describe("fallback", func() {
 		Expect(err).Should(BeNil())
 		convertedMetrics, err := mockCalculateForExternalCalculator(metrics, "")
 		expectStatusPatch(ctrl, client)
-		ret, fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics.GetMetricValues(), err, metricName, so)
-		convertedMetrics.MetricValues = ret
+		fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics, err, metricName, so)
+
 		Expect(fbApplied).Should(BeFalse())
 		Expect(err).Should(BeNil())
 		condition := so.Status.Conditions.GetExternalFallbackCondition()
@@ -468,8 +465,8 @@ var _ = Describe("fallback", func() {
 		convertedMetrics, err := mockCalculateForExternalCalculator(metrics, "")
 
 		expectStatusPatch(ctrl, client)
-		ret, fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics.GetMetricValues(), err, metricName, so)
-		convertedMetrics.MetricValues = ret
+		fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics, err, metricName, so)
+
 		Expect(fbApplied).Should(BeFalse())
 		Expect(err).Should(BeNil())
 
@@ -513,8 +510,8 @@ var _ = Describe("fallback", func() {
 		convertedMetrics, err := mockCalculateForExternalCalculator(metrics, "")
 
 		expectStatusPatch(ctrl, client)
-		ret, fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics.GetMetricValues(), err, metricName, so)
-		convertedMetrics.MetricValues = ret
+		fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics, err, metricName, so)
+
 		Expect(fbApplied).Should(BeFalse())
 		Expect(err).Should(BeNil())
 
@@ -556,8 +553,8 @@ var _ = Describe("fallback", func() {
 		Expect(err).Should(BeNil())
 		convertedMetrics, err := mockCalculateForExternalCalculator(metrics, "err in external calculation")
 		expectStatusPatch(ctrl, client)
-		ret, fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics.GetMetricValues(), err, metricName, so)
-		convertedMetrics.MetricValues = ret
+		fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics, err, metricName, so)
+
 		Expect(fbApplied).Should(BeFalse())
 		Expect(err).ShouldNot(BeNil())
 
@@ -599,8 +596,8 @@ var _ = Describe("fallback", func() {
 		Expect(err).Should(BeNil())
 		convertedMetrics, err := mockCalculateForExternalCalculator(metrics, "err in external calculation")
 		expectStatusPatch(ctrl, client)
-		ret, fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics.GetMetricValues(), err, metricName, so)
-		convertedMetrics.MetricValues = ret
+		fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics, err, metricName, so)
+
 		Expect(fbApplied).Should(BeFalse())
 		Expect(err).ShouldNot(BeNil())
 
@@ -644,8 +641,8 @@ var _ = Describe("fallback", func() {
 		convertedMetrics, err := mockCalculateForExternalCalculator(metrics, "err in external calculation")
 
 		expectStatusPatch(ctrl, client)
-		ret, fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics.GetMetricValues(), err, metricName, so)
-		convertedMetrics.MetricValues = ret
+		fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics, err, metricName, so)
+
 		Expect(fbApplied).Should(BeTrue())
 		Expect(err).Should(BeNil())
 
@@ -699,8 +696,8 @@ var _ = Describe("fallback", func() {
 		convertedMetrics, err := mockCalculateForExternalCalculator(metrics, "err in external calculation")
 		expectStatusPatch(ctrl, client)
 
-		ret, fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics.GetMetricValues(), err, metricName, so)
-		convertedMetrics.MetricValues = ret
+		fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics, err, metricName, so)
+
 		Expect(fbApplied).Should(BeFalse())
 		Expect(err).ShouldNot(BeNil())
 
@@ -741,8 +738,8 @@ var _ = Describe("fallback", func() {
 		convertedMetrics, err := mockCalculateForExternalCalculator(metrics, "")
 		expectStatusPatch(ctrl, client)
 
-		ret, fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics.GetMetricValues(), err, metricName, so)
-		convertedMetrics.MetricValues = ret
+		fbApplied, err := GetMetricsWithFallbackExternalCalculator(context.Background(), client, convertedMetrics, err, metricName, so)
+
 		Expect(fbApplied).Should(BeFalse())
 		Expect(err).Should(BeNil())
 
@@ -853,7 +850,7 @@ func createMetricSpec(averageValue int) v2.MetricSpec {
 // simulate calculation for externalCalculator metric (return nil if empty input)
 func mockCalculateForExternalCalculator(metrics []external_metrics.ExternalMetricValue, err string) (ret *externalscalingAPI.MetricsList, resultErr error) {
 	if len(metrics) > 0 {
-		ret = externalscaling.ConvertToGeneratedStruct(metrics, logger)
+		ret = externalscaling.ConvertToGeneratedStruct(metrics)
 	} else {
 		ret = nil
 	}
