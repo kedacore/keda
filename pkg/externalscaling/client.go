@@ -16,11 +16,11 @@ import (
 )
 
 type GrpcClient struct {
-	client     cl.ExternalCalculationClient
-	connection *grpc.ClientConn
+	Client     cl.ExternalCalculationClient
+	Connection *grpc.ClientConn
 }
 
-func NewGrpcClient(url string, logger logr.Logger) (*GrpcClient, error) {
+func NewGrpcClient(url string) (*GrpcClient, error) {
 	retryPolicy := `{
 		"methodConfig": [{
 		  "timeout": "3s",
@@ -42,11 +42,11 @@ func NewGrpcClient(url string, logger logr.Logger) (*GrpcClient, error) {
 		return nil, fmt.Errorf("error in grpc.Dial: %w", err)
 	}
 
-	return &GrpcClient{client: cl.NewExternalCalculationClient(conn), connection: conn}, nil
+	return &GrpcClient{Client: cl.NewExternalCalculationClient(conn), Connection: conn}, nil
 }
 
-func (c *GrpcClient) Calculate(ctx context.Context, list *cl.MetricsList, logger logr.Logger) (*cl.MetricsList, error) {
-	response, err := c.client.Calculate(ctx, list)
+func (c *GrpcClient) Calculate(ctx context.Context, list *cl.MetricsList) (*cl.MetricsList, error) {
+	response, err := c.Client.Calculate(ctx, list)
 	if err != nil {
 		return nil, fmt.Errorf("error in externalscaling.Calculate %w", err)
 	}
@@ -56,7 +56,7 @@ func (c *GrpcClient) Calculate(ctx context.Context, list *cl.MetricsList, logger
 // WaitForConnectionReady waits for gRPC connection to be ready
 // returns true if the connection was successful, false if we hit a timeout or context canceled
 func (c *GrpcClient) WaitForConnectionReady(ctx context.Context, url string, timeout time.Duration, logger logr.Logger) bool {
-	currentState := c.connection.GetState()
+	currentState := c.Connection.GetState()
 	if currentState != connectivity.Ready {
 		logger.Info(fmt.Sprintf("Waiting for %v to establish a gRPC connection to server for external calculator at %s", timeout, url))
 		timeoutTimer := time.After(timeout)
@@ -69,9 +69,9 @@ func (c *GrpcClient) WaitForConnectionReady(ctx context.Context, url string, tim
 				logger.Error(err, "error while waiting for connection for externalCalculator")
 				return false
 			default:
-				c.connection.Connect()
+				c.Connection.Connect()
 				time.Sleep(500 * time.Millisecond)
-				currentState := c.connection.GetState()
+				currentState := c.Connection.GetState()
 				if currentState == connectivity.Ready {
 					return true
 				}
@@ -83,7 +83,7 @@ func (c *GrpcClient) WaitForConnectionReady(ctx context.Context, url string, tim
 
 // ConvertToGeneratedStruct converts K8s external metrics list to gRPC generated
 // external metrics list
-func ConvertToGeneratedStruct(inK8sList []external_metrics.ExternalMetricValue, l logr.Logger) *cl.MetricsList {
+func ConvertToGeneratedStruct(inK8sList []external_metrics.ExternalMetricValue) *cl.MetricsList {
 	outExternal := cl.MetricsList{}
 	for _, val := range inK8sList {
 		metric := cl.Metric{Name: val.MetricName, Value: float32(val.Value.Value())}
@@ -108,8 +108,8 @@ func ConvertFromGeneratedStruct(inExternal *cl.MetricsList) []external_metrics.E
 
 // close connection
 func (c *GrpcClient) CloseConnection() error {
-	if c.connection != nil {
-		err := c.connection.Close()
+	if c.Connection != nil {
+		err := c.Connection.Close()
 		if err != nil {
 			return err
 		}

@@ -478,7 +478,7 @@ func TestExternalScaling(t *testing.T) {
 }
 
 func testTwoExternalCalculators(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("-- testTwoExternalCalculators ---")
+	t.Log("--- testTwoExternalCalculators ---")
 	KubectlApplyWithTemplate(t, data, "soExternalCalculatorTwoTemplate", soExternalCalculatorTwoTemplate)
 	// metrics calculation: avg-> 3 + 3 = 6 / 2 = 3; add-> 3 + 2 = 5; target=2 ==> 3
 	data.MetricValue = 3
