@@ -631,10 +631,7 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 	var scalersMetrics []scaledjob.ScalerMetrics
 	scalers, _ := cache.GetScalers()
 	for i, s := range scalers {
-		var queueLength float64
-		var targetAverageValue float64
 		isActive := false
-		maxValue := float64(0)
 		scalerType := fmt.Sprintf("%T:", s)
 
 		scalerLogger := log.WithValues("ScaledJob", scaledJob.Name, "Scaler", scalerType)
@@ -653,26 +650,14 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 			cache.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 			continue
 		}
-
-		targetAverageValue = scaledjob.GetTargetAverageValue(metricSpecs)
-
-		var metricValue float64
-		for _, m := range metrics {
-			if m.MetricName == metricSpecs[0].External.Metric.Name {
-				metricValue = m.Value.AsApproximateFloat64()
-				queueLength += metricValue
-			}
-		}
-		scalerLogger.V(1).Info("Scaler Metric value", "isTriggerActive", isTriggerActive, metricSpecs[0].External.Metric.Name, queueLength, "targetAverageValue", targetAverageValue)
-
 		if isTriggerActive {
 			isActive = true
 		}
 
-		if targetAverageValue != 0 {
-			averageLength := queueLength / targetAverageValue
-			maxValue = scaledjob.GetMaxValue(averageLength, scaledJob.MaxReplicaCount())
-		}
+		queueLength, maxValue, targetAverageValue := scaledjob.CalculateQueueLengthAndMaxValue(metrics, metricSpecs, scaledJob.MaxReplicaCount())
+
+		scalerLogger.V(1).Info("Scaler Metric value", "isTriggerActive", isTriggerActive, metricSpecs[0].External.Metric.Name, queueLength, "targetAverageValue", targetAverageValue)
+
 		scalersMetrics = append(scalersMetrics, scaledjob.ScalerMetrics{
 			QueueLength: queueLength,
 			MaxValue:    maxValue,
