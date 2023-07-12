@@ -19,6 +19,7 @@ package keda
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 	"unicode"
@@ -250,40 +251,42 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 
 	// if ComplexScalingLogic struct is not empty, expect Formula or ExternalCalculation
 	// to be non-empty. If target is > 0.0 create a compositeScaler structure
-	validNumTarget, validMetricType, err := kedav1alpha1.ValidateComplexScalingLogic(scaledObject, scaledObjectMetricSpecs)
-	if err != nil || validNumTarget == -1 {
-		logger.Error(err, "error validating compositeScalingLogic")
-		return nil, err
-	}
-
-	// if target is valid, use composite scaler.
-	// Expect Formula or ExternalCalculation that returns one metric
-	if validNumTarget > 0.0 {
-		qual := resource.NewMilliQuantity(int64(validNumTarget*1000), resource.DecimalSI)
-
+	if scaledObject.Spec.Advanced != nil && !reflect.DeepEqual(scaledObject.Spec.Advanced.ComplexScalingLogic, kedav1alpha1.ComplexScalingLogic{}) {
+		validNumTarget, validMetricType, err := kedav1alpha1.ValidateComplexScalingLogic(scaledObject, scaledObjectMetricSpecs)
 		if err != nil {
-			logger.Error(err, "Error parsing Quantity elements for composite scaler")
+			logger.Error(err, "error validating compositeScalingLogic")
 			return nil, err
 		}
-		compositeSpec := autoscalingv2.MetricSpec{
-			Type: autoscalingv2.MetricSourceType("External"),
-			External: &autoscalingv2.ExternalMetricSource{
-				Metric: autoscalingv2.MetricIdentifier{
-					Name: "composite-metric-name",
-					Selector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{"scaledobject.keda.sh/name": scaledObject.Name},
+
+		// if target is valid, use composite scaler.
+		// Expect Formula or ExternalCalculation that returns one metric
+		if validNumTarget > 0.0 {
+			qual := resource.NewMilliQuantity(int64(validNumTarget*1000), resource.DecimalSI)
+
+			if err != nil {
+				logger.Error(err, "Error parsing Quantity elements for composite scaler")
+				return nil, err
+			}
+			compositeSpec := autoscalingv2.MetricSpec{
+				Type: autoscalingv2.MetricSourceType("External"),
+				External: &autoscalingv2.ExternalMetricSource{
+					Metric: autoscalingv2.MetricIdentifier{
+						Name: "composite-metric-name",
+						Selector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{"scaledobject.keda.sh/name": scaledObject.Name},
+						},
+					},
+					Target: autoscalingv2.MetricTarget{
+						Type:         validMetricType,
+						AverageValue: qual,
 					},
 				},
-				Target: autoscalingv2.MetricTarget{
-					Type:         validMetricType,
-					AverageValue: qual,
-				},
-			},
-		}
-		status.CompositeScalerName = "composite-metric-name"
+			}
+			status.CompositeScalerName = "composite-metric-name"
 
-		// overwrite returned array with composite metric ONLY
-		scaledObjectMetricSpecs = []autoscalingv2.MetricSpec{compositeSpec}
+			// overwrite returned array with composite metric ONLY
+			scaledObjectMetricSpecs = []autoscalingv2.MetricSpec{compositeSpec}
+		}
 	}
 	err = kedastatus.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status)
 

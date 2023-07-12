@@ -218,12 +218,14 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string) error {
 	}
 
 	// verify ComplexScalingLogic structure if defined in ScaledObject
-	_, _, err = ValidateComplexScalingLogic(incomingSo, []autoscalingv2.MetricSpec{})
-	if err != nil {
-		scaledobjectlog.Error(err, "error validating ComplexScalingLogic")
-		prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "complex-scaling-logic")
+	if incomingSo.Spec.Advanced != nil && !reflect.DeepEqual(incomingSo.Spec.Advanced.ComplexScalingLogic, ComplexScalingLogic{}) {
+		_, _, err = ValidateComplexScalingLogic(incomingSo, []autoscalingv2.MetricSpec{})
+		if err != nil {
+			scaledobjectlog.Error(err, "error validating ComplexScalingLogic")
+			prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "complex-scaling-logic")
 
-		return err
+			return err
+		}
 	}
 	return nil
 }
@@ -313,13 +315,6 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
 // ValidateComplexScalingLogic validates all combinations of given arguments
 // and their values
 func ValidateComplexScalingLogic(so *ScaledObject, specs []autoscalingv2.MetricSpec) (float64, autoscalingv2.MetricTargetType, error) {
-	if so.Spec.Advanced == nil {
-		return -1, "", nil
-	}
-	if reflect.DeepEqual(so.Spec.Advanced.ComplexScalingLogic, ComplexScalingLogic{}) {
-		return -1, "", nil
-	}
-
 	csl := so.Spec.Advanced.ComplexScalingLogic
 
 	// if Formula AND ExternalCalculations is empty, return an error
@@ -342,7 +337,7 @@ func ValidateComplexScalingLogic(so *ScaledObject, specs []autoscalingv2.MetricS
 	}
 	// validate target if not empty
 	num, metricType, err := validateCSLtarget(csl, specs)
-	if err != nil || num == -1 {
+	if err != nil {
 		err := errors.Join(fmt.Errorf("error validating target in ComplexScalingLogic"), err)
 		return -1, autoscalingv2.MetricTargetType(""), err
 	}

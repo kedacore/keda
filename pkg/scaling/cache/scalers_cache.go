@@ -19,7 +19,6 @@ package cache
 import (
 	"context"
 	"fmt"
-	"math"
 	"strconv"
 	"time"
 
@@ -156,70 +155,6 @@ func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index
 	return metric, activity, time.Since(startTime).Milliseconds(), err
 }
 
-<<<<<<< HEAD
-=======
-// TODO needs refactor - move ScaledJob related methods to scale_handler, the similar way ScaledObject methods are
-// refactor logic
-func (c *ScalersCache) IsScaledJobActive(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob) (bool, int64, int64) {
-	var queueLength float64
-	var maxValue float64
-	isActive := false
-
-	logger := logf.Log.WithName("scalemetrics")
-	scalersMetrics := c.getScaledJobMetrics(ctx, scaledJob)
-	switch scaledJob.Spec.ScalingStrategy.MultipleScalersCalculation {
-	case "min":
-		for _, metrics := range scalersMetrics {
-			if (queueLength == 0 || metrics.queueLength < queueLength) && metrics.isActive {
-				queueLength = metrics.queueLength
-				maxValue = metrics.maxValue
-				isActive = metrics.isActive
-			}
-		}
-	case "avg":
-		queueLengthSum := float64(0)
-		maxValueSum := float64(0)
-		length := 0
-		for _, metrics := range scalersMetrics {
-			if metrics.isActive {
-				queueLengthSum += metrics.queueLength
-				maxValueSum += metrics.maxValue
-				isActive = metrics.isActive
-				length++
-			}
-		}
-		if length != 0 {
-			queueLength = queueLengthSum / float64(length)
-			maxValue = maxValueSum / float64(length)
-		}
-	case "sum":
-		for _, metrics := range scalersMetrics {
-			if metrics.isActive {
-				queueLength += metrics.queueLength
-				maxValue += metrics.maxValue
-				isActive = metrics.isActive
-			}
-		}
-	default: // max
-		for _, metrics := range scalersMetrics {
-			if metrics.queueLength > queueLength && metrics.isActive {
-				queueLength = metrics.queueLength
-				maxValue = metrics.maxValue
-				isActive = metrics.isActive
-			}
-		}
-	}
-
-	if scaledJob.MinReplicaCount() > 0 {
-		isActive = true
-	}
-
-	maxValue = min(float64(scaledJob.MaxReplicaCount()), maxValue)
-	logger.V(1).WithValues("ScaledJob", scaledJob.Name).Info("Checking if ScaleJob Scalers are active", "isActive", isActive, "maxValue", maxValue, "MultipleScalersCalculation", scaledJob.Spec.ScalingStrategy.MultipleScalersCalculation)
-
-	return isActive, ceilToInt64(queueLength), ceilToInt64(maxValue)
-}
-
 // RefreshExternalCalcClientsCache tries to create clients for all
 // externalCalculators present in the ScaledObject and saves them to the cache
 // Returns client asked for by name if exists.
@@ -281,7 +216,6 @@ func (c *ScalersCache) RefreshExternalCalcClientsCache(ctx context.Context, so *
 	return ret
 }
 
->>>>>>> 6541a2ba (webhook tests, refresh scaler if not found during metric fetch, validation funcs)
 func (c *ScalersCache) refreshScaler(ctx context.Context, id int) (scalers.Scaler, error) {
 	if id < 0 || id >= len(c.Scalers) {
 		return nil, fmt.Errorf("scaler with id %d not found, len = %d, cache has been probably already invalidated", id, len(c.Scalers))
