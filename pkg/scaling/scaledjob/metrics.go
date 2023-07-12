@@ -4,7 +4,6 @@ import (
 	"math"
 
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 )
 
@@ -43,21 +42,6 @@ func CalculateQueueLengthAndMaxValue(metrics []external_metrics.ExternalMetricVa
 		maxValue = getMaxValue(averageLength, maxReplicaCount)
 	}
 	return queueLength, maxValue, targetAverageValue
-}
-
-// CreateMetricSpec creates MetricSpec for given metric name and target value.
-func CreateMetricSpec(averageValue int64, metricName string) v2.MetricSpec {
-	qty := resource.NewQuantity(averageValue, resource.DecimalSI)
-	return v2.MetricSpec{
-		External: &v2.ExternalMetricSource{
-			Target: v2.MetricTarget{
-				AverageValue: qty,
-			},
-			Metric: v2.MetricIdentifier{
-				Name: metricName,
-			},
-		},
-	}
 }
 
 type ScalerMetrics struct {

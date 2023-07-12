@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	v2 "k8s.io/api/autoscaling/v2"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 func TestTargetAverageValue(t *testing.T) {
@@ -15,26 +16,41 @@ func TestTargetAverageValue(t *testing.T) {
 	assert.Equal(t, float64(0), targetAverageValue)
 	// 1 1
 	specs = []v2.MetricSpec{
-		CreateMetricSpec(1, metricName),
-		CreateMetricSpec(1, metricName),
+		createMetricSpec(1, metricName),
+		createMetricSpec(1, metricName),
 	}
 	targetAverageValue = getTargetAverageValue(specs)
 	assert.Equal(t, float64(1), targetAverageValue)
 	// 5 5 3 -> 4.333333333333333
 	specs = []v2.MetricSpec{
-		CreateMetricSpec(5, metricName),
-		CreateMetricSpec(5, metricName),
-		CreateMetricSpec(3, metricName),
+		createMetricSpec(5, metricName),
+		createMetricSpec(5, metricName),
+		createMetricSpec(3, metricName),
 	}
 	targetAverageValue = getTargetAverageValue(specs)
 	assert.Equal(t, 4.333333333333333, targetAverageValue)
 
 	// 5 5 4 -> 4.666666666666667
 	specs = []v2.MetricSpec{
-		CreateMetricSpec(5, metricName),
-		CreateMetricSpec(5, metricName),
-		CreateMetricSpec(4, metricName),
+		createMetricSpec(5, metricName),
+		createMetricSpec(5, metricName),
+		createMetricSpec(4, metricName),
 	}
 	targetAverageValue = getTargetAverageValue(specs)
 	assert.Equal(t, 4.666666666666667, targetAverageValue)
+}
+
+// createMetricSpec creates MetricSpec for given metric name and target value.
+func createMetricSpec(averageValue int64, metricName string) v2.MetricSpec {
+	qty := resource.NewQuantity(averageValue, resource.DecimalSI)
+	return v2.MetricSpec{
+		External: &v2.ExternalMetricSource{
+			Target: v2.MetricTarget{
+				AverageValue: qty,
+			},
+			Metric: v2.MetricIdentifier{
+				Name: metricName,
+			},
+		},
+	}
 }
