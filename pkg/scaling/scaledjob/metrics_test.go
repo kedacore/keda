@@ -19,6 +19,8 @@ func TestTargetAverageValue(t *testing.T) {
 		createMetricSpec(1, metricName),
 		createMetricSpec(1, metricName),
 	}
+
+	metricName = "s1-messageCount"
 	targetAverageValue = getTargetAverageValue(specs)
 	assert.Equal(t, float64(1), targetAverageValue)
 	// 5 5 3 -> 4.333333333333333
@@ -27,6 +29,8 @@ func TestTargetAverageValue(t *testing.T) {
 		createMetricSpec(5, metricName),
 		createMetricSpec(3, metricName),
 	}
+
+	metricName = "s2-messageCount"
 	targetAverageValue = getTargetAverageValue(specs)
 	assert.Equal(t, 4.333333333333333, targetAverageValue)
 
@@ -36,6 +40,8 @@ func TestTargetAverageValue(t *testing.T) {
 		createMetricSpec(5, metricName),
 		createMetricSpec(4, metricName),
 	}
+
+	metricName = "s3-messageCount"
 	targetAverageValue = getTargetAverageValue(specs)
 	assert.Equal(t, 4.666666666666667, targetAverageValue)
 }
