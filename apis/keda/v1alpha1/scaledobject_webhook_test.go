@@ -514,6 +514,324 @@ var _ = It("should validate the so update if it's removing the finalizer even if
 	}).ShouldNot(HaveOccurred())
 })
 
+var _ = It("should validate the so creation with ComplexScalingLogic.Formula", func() {
+	namespaceName := "complex-scaling-logic-formula-good"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, false, false)
+
+	csl := ComplexScalingLogic{Target: "2", Formula: "workload_trig + cron_trig"}
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Name: "cron_trig",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Name: "workload_trig",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+
+	so := createScaledObjectCSL(namespaceName, csl, triggers)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("should validate the so creation with ComplexScalingLogic.ExternalCalculations", func() {
+	namespaceName := "complex-scaling-logic-ec-good"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, false, false)
+
+	csl := ComplexScalingLogic{Target: "2", ExternalCalculations: []ExternalCalculation{
+		{
+			Name:    "calc1",
+			URL:     "http://test.com",
+			Timeout: "10s",
+		},
+		{
+			Name:    "calc2",
+			URL:     "http://test2.com",
+			Timeout: "20",
+		},
+	}}
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Name: "cron_trig",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Name: "workload_trig",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+
+	so := createScaledObjectCSL(namespaceName, csl, triggers)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("should validate the so creation with ComplexScalingLogic Formula & ExternalCalculations", func() {
+	namespaceName := "complex-scaling-logic-both-good"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, false, false)
+
+	csl := ComplexScalingLogic{Target: "2", Formula: "3 + calc_last", ExternalCalculations: []ExternalCalculation{
+		{
+			Name:    "calc1",
+			URL:     "http://test.com",
+			Timeout: "10s",
+		},
+		{
+			Name:    "calc_last",
+			URL:     "http://test2.com",
+			Timeout: "20",
+		},
+	},
+	}
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Name: "cron_trig",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Name: "workload_trig",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+
+	so := createScaledObjectCSL(namespaceName, csl, triggers)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("should validate the so creation with ComplexScalingLogic.ExteralCalc without Target", func() {
+	namespaceName := "complex-scaling-logic-ec-no-target-good"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, false, false)
+
+	csl := ComplexScalingLogic{ExternalCalculations: []ExternalCalculation{
+		{
+			Name:    "calc1",
+			URL:     "http://test.com",
+			Timeout: "10s",
+		}, {
+			Name:    "calc2",
+			URL:     "http://test2.com",
+			Timeout: "1m2s",
+		},
+	}}
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Name: "cron_trig",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Name: "workload_trig",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+
+	so := createScaledObjectCSL(namespaceName, csl, triggers)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("shouldnt validate the so creation with csl.Formula but no target", func() {
+	namespaceName := "complex-scaling-logic-formula-no-target-bad"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, false, false)
+
+	csl := ComplexScalingLogic{Formula: "workload_trig + cron_trig"}
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Name: "cron_trig",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Name: "workload_trig",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+
+	so := createScaledObjectCSL(namespaceName, csl, triggers)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
+})
+
+var _ = It("shouldnt validate the so creation with ComplexScalingLogic url empty", func() {
+	namespaceName := "complex-scaling-logic-empty-url-bad"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, true, true)
+
+	csl := ComplexScalingLogic{ExternalCalculations: []ExternalCalculation{
+		{
+			Name:    "calc1",
+			URL:     "",
+			Timeout: "10s",
+		},
+	},
+	}
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Name: "cron_trig",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Name: "workload_trig",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+
+	so := createScaledObjectCSL(namespaceName, csl, triggers)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
+})
+
+var _ = It("shouldnt validate the so creation with ComplexScalingLogic when triggers dont have names", func() {
+	namespaceName := "complex-scaling-logic-triggers-no-names-bad"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, true, true)
+
+	csl := ComplexScalingLogic{ExternalCalculations: []ExternalCalculation{
+		{
+			Name:    "calc1",
+			URL:     "",
+			Timeout: "10s",
+		},
+	},
+	}
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+
+	so := createScaledObjectCSL(namespaceName, csl, triggers)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
+})
+
 var _ = AfterSuite(func() {
 	cancel()
 	By("tearing down the test environment")
@@ -758,6 +1076,34 @@ func createScaledObjectSTZ(name string, namespace string, targetName string, min
 			MaxReplicaCount: pointer.Int32(maxReplicas),
 			CooldownPeriod:  pointer.Int32(1),
 			Triggers:        triggers,
+		},
+	}
+}
+
+func createScaledObjectCSL(namespace string, csl ComplexScalingLogic, triggers []ScaleTriggers) *ScaledObject {
+	name := soName
+	targetName := workloadName
+	return &ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			UID:       types.UID(name),
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ScaledObject",
+			APIVersion: "keda.sh",
+		},
+		Spec: ScaledObjectSpec{
+			ScaleTargetRef: &ScaleTarget{
+				Name: targetName,
+			},
+			MinReplicaCount: pointer.Int32(0),
+			MaxReplicaCount: pointer.Int32(10),
+			CooldownPeriod:  pointer.Int32(1),
+			Triggers:        triggers,
+			Advanced: &AdvancedConfig{
+				ComplexScalingLogic: csl,
+			},
 		},
 	}
 }

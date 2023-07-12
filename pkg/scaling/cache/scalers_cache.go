@@ -19,6 +19,8 @@ package cache
 import (
 	"context"
 	"fmt"
+	"math"
+	"strconv"
 	"time"
 
 	v2 "k8s.io/api/autoscaling/v2"
@@ -154,6 +156,132 @@ func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index
 	return metric, activity, time.Since(startTime).Milliseconds(), err
 }
 
+<<<<<<< HEAD
+=======
+// TODO needs refactor - move ScaledJob related methods to scale_handler, the similar way ScaledObject methods are
+// refactor logic
+func (c *ScalersCache) IsScaledJobActive(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob) (bool, int64, int64) {
+	var queueLength float64
+	var maxValue float64
+	isActive := false
+
+	logger := logf.Log.WithName("scalemetrics")
+	scalersMetrics := c.getScaledJobMetrics(ctx, scaledJob)
+	switch scaledJob.Spec.ScalingStrategy.MultipleScalersCalculation {
+	case "min":
+		for _, metrics := range scalersMetrics {
+			if (queueLength == 0 || metrics.queueLength < queueLength) && metrics.isActive {
+				queueLength = metrics.queueLength
+				maxValue = metrics.maxValue
+				isActive = metrics.isActive
+			}
+		}
+	case "avg":
+		queueLengthSum := float64(0)
+		maxValueSum := float64(0)
+		length := 0
+		for _, metrics := range scalersMetrics {
+			if metrics.isActive {
+				queueLengthSum += metrics.queueLength
+				maxValueSum += metrics.maxValue
+				isActive = metrics.isActive
+				length++
+			}
+		}
+		if length != 0 {
+			queueLength = queueLengthSum / float64(length)
+			maxValue = maxValueSum / float64(length)
+		}
+	case "sum":
+		for _, metrics := range scalersMetrics {
+			if metrics.isActive {
+				queueLength += metrics.queueLength
+				maxValue += metrics.maxValue
+				isActive = metrics.isActive
+			}
+		}
+	default: // max
+		for _, metrics := range scalersMetrics {
+			if metrics.queueLength > queueLength && metrics.isActive {
+				queueLength = metrics.queueLength
+				maxValue = metrics.maxValue
+				isActive = metrics.isActive
+			}
+		}
+	}
+
+	if scaledJob.MinReplicaCount() > 0 {
+		isActive = true
+	}
+
+	maxValue = min(float64(scaledJob.MaxReplicaCount()), maxValue)
+	logger.V(1).WithValues("ScaledJob", scaledJob.Name).Info("Checking if ScaleJob Scalers are active", "isActive", isActive, "maxValue", maxValue, "MultipleScalersCalculation", scaledJob.Spec.ScalingStrategy.MultipleScalersCalculation)
+
+	return isActive, ceilToInt64(queueLength), ceilToInt64(maxValue)
+}
+
+// RefreshExternalCalcClientsCache tries to create clients for all
+// externalCalculators present in the ScaledObject and saves them to the cache
+// Returns client asked for by name if exists.
+func (c *ScalersCache) RefreshExternalCalcClientsCache(ctx context.Context, so *kedav1alpha1.ScaledObject, ecName string) ExternalCalculationClient {
+	log.Info(fmt.Sprintf("Refreshing externalCalculation clients in cache because '%s' wasn't found in cache", ecName))
+	// this function is invoked most likely when cache was invalid/returned an error
+	// earlier than ec-client instances could be created
+
+	// close all existing connections
+	for _, client := range c.ExternalCalculationGrpcClients {
+		if client.Connected {
+			err := client.Client.CloseConnection()
+			if err != nil {
+				log.Error(err, fmt.Sprintf("couldn't close grpc connection for externalCalculator '%s'", client.Name))
+			} else {
+				log.V(0).Info(fmt.Sprintf("successfully closed grpc connection for externalCalculator '%s'", client.Name))
+			}
+		}
+	}
+
+	// create new clients
+	ret := ExternalCalculationClient{}
+	newClients := []ExternalCalculationClient{}
+	for _, ec := range so.Spec.Advanced.ComplexScalingLogic.ExternalCalculations {
+		// try to create new client instance and connect to the server
+		timeout, err := strconv.ParseInt(ec.Timeout, 10, 64)
+		if err != nil {
+			// expect timeout in time format like 1m10s
+			parsedTime, err := time.ParseDuration(ec.Timeout)
+			if err != nil {
+				log.Error(err, "error while converting type of timeout for external calculator")
+				break
+			}
+			timeout = int64(parsedTime.Seconds())
+		}
+		ecClient, err := externalscaling.NewGrpcClient(ec.URL)
+		var connected bool
+		if err != nil {
+			log.Error(err, fmt.Sprintf("error creating new grpc client for external calculator at %s", ec.URL))
+		} else {
+			if !ecClient.WaitForConnectionReady(ctx, ec.URL, time.Duration(timeout)*time.Second, log) {
+				connected = false
+				err = fmt.Errorf("client failed to connect to server")
+				log.Error(err, fmt.Sprintf("error in creating gRPC connection for external calculator '%s' via '%s'", ec.Name, ec.URL))
+			} else {
+				connected = true
+				log.Info(fmt.Sprintf("successfully connected to gRPC server ExternalCalculator '%s' at '%s'", ec.Name, ec.URL))
+			}
+		}
+		ecClientStruct := ExternalCalculationClient{Name: ec.Name, Client: ecClient, Connected: connected}
+		// match current one to return
+		if ecClientStruct.Name == ecName {
+			ret = ecClientStruct
+		}
+		newClients = append(newClients, ecClientStruct)
+	}
+	// save to cache
+	c.ExternalCalculationGrpcClients = newClients
+	return ret
+}
+
+>>>>>>> 6541a2ba (webhook tests, refresh scaler if not found during metric fetch, validation funcs)
 func (c *ScalersCache) refreshScaler(ctx context.Context, id int) (scalers.Scaler, error) {
 	if id < 0 || id >= len(c.Scalers) {
 		return nil, fmt.Errorf("scaler with id %d not found, len = %d, cache has been probably already invalidated", id, len(c.Scalers))
