@@ -13,8 +13,8 @@ spec:
   - name: https
     port: 443
     targetPort: 6443
-  - name: http
-    port: 80
+  - name: metrics
+    port: 8080
     targetPort: 8080
   selector:
     app: keda-metrics-apiserver
