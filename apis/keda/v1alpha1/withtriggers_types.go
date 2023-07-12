@@ -94,7 +94,7 @@ func (t *WithTriggers) GenerateIdentifier() string {
 	return GenerateIdentifier(t.InternalKind, t.Namespace, t.Name)
 }
 
-// AsDuckWithTriggers tries to generates WithTriggers object for input object
+// AsDuckWithTriggers tries to generate WithTriggers object for input object
 // returns error if input object is unknown
 func AsDuckWithTriggers(scalableObject interface{}) (*WithTriggers, error) {
 	switch obj := scalableObject.(type) {
