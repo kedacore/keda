@@ -41,7 +41,6 @@ func TestTargetAverageValue(t *testing.T) {
 		createMetricSpec(4, metricName),
 	}
 
-	metricName = "s3-messageCount"
 	targetAverageValue = getTargetAverageValue(specs)
 	assert.Equal(t, 4.666666666666667, targetAverageValue)
 }
