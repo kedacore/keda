@@ -522,15 +522,17 @@ func getGithubRequest(ctx context.Context, url string, metadata *githubRunnerMet
 	}
 	_ = r.Body.Close()
 
-	if r.StatusCode != 200 || r.Header.Get("X-RateLimit-Remaining") == "" {
+	if r.StatusCode != 200 {
+		if r.Header.Get("X-RateLimit-Remaining") != "" {
+			githubAPIRemaining, _ := strconv.Atoi(r.Header.Get("X-RateLimit-Remaining"))
+
+			if githubAPIRemaining == 0 {
+				resetTime, _ := strconv.ParseInt(r.Header.Get("X-RateLimit-Reset"), 10, 64)
+				return []byte{}, fmt.Errorf("GitHub API rate limit exceeded, resets at %s", time.Unix(resetTime, 0))
+			}
+		}
+
 		return []byte{}, fmt.Errorf("the GitHub REST API returned error. url: %s status: %d response: %s", url, r.StatusCode, string(b))
-	}
-
-	githubAPIRemaining, _ := strconv.Atoi(r.Header.Get("X-RateLimit-Remaining"))
-
-	if githubAPIRemaining == 0 {
-		resetTime, _ := strconv.ParseInt(r.Header.Get("X-RateLimit-Reset"), 10, 64)
-		return []byte{}, fmt.Errorf("GitHub API rate limit exceeded, resets at %s", time.Unix(resetTime, 0))
 	}
 
 	return b, nil
