@@ -19,7 +19,11 @@ package v1alpha1
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"reflect"
+	"strconv"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -213,6 +217,14 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string) error {
 		}
 	}
 
+	// verify ComplexScalingLogic structure if defined in ScaledObject
+	_, _, err = ValidateComplexScalingLogic(incomingSo, []autoscalingv2.MetricSpec{})
+	if err != nil {
+		scaledobjectlog.Error(err, "error validating ComplexScalingLogic")
+		prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "complex-scaling-logic")
+
+		return err
+	}
 	return nil
 }
 
@@ -296,4 +308,114 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
 		}
 	}
 	return nil
+}
+
+// ValidateComplexScalingLogic validates all combinations of given arguments
+// and their values
+func ValidateComplexScalingLogic(so *ScaledObject, specs []autoscalingv2.MetricSpec) (float64, autoscalingv2.MetricTargetType, error) {
+	if so.Spec.Advanced == nil {
+		return -1, "", nil
+	}
+	if reflect.DeepEqual(so.Spec.Advanced.ComplexScalingLogic, ComplexScalingLogic{}) {
+		return -1, "", nil
+	}
+
+	csl := so.Spec.Advanced.ComplexScalingLogic
+
+	// if Formula AND ExternalCalculations is empty, return an error
+	if csl.Formula == "" && len(csl.ExternalCalculations) < 1 {
+		return -1, autoscalingv2.MetricTargetType(""), fmt.Errorf("error atleast one ComplexScalingLogic function needs to be specified (formula or externalCalculation)")
+	}
+
+	var num float64
+	var metricType autoscalingv2.MetricTargetType
+
+	// validate formula if not empty
+	if err := validateCSLformula(so); err != nil {
+		err := errors.Join(fmt.Errorf("error validating formula in ComplexScalingLogic"), err)
+		return -1, autoscalingv2.MetricTargetType(""), err
+	}
+	// validate externalCalculators if not empty
+	if err := validateCSLexternalCalculations(csl); err != nil {
+		err := errors.Join(fmt.Errorf("error validating externalCalculator in ComplexScalingLogic"), err)
+		return -1, autoscalingv2.MetricTargetType(""), err
+	}
+	// validate target if not empty
+	num, metricType, err := validateCSLtarget(csl, specs)
+	if err != nil || num == -1 {
+		err := errors.Join(fmt.Errorf("error validating target in ComplexScalingLogic"), err)
+		return -1, autoscalingv2.MetricTargetType(""), err
+	}
+	return num, metricType, nil
+}
+
+func validateCSLformula(so *ScaledObject) error {
+	csl := so.Spec.Advanced.ComplexScalingLogic
+
+	// if formula is empty, nothing to validate
+	if csl.Formula == "" {
+		return nil
+	}
+	// formula needs target because it's always transformed to Composite scaler
+	if csl.Target == "" {
+		return fmt.Errorf("target is empty")
+	}
+
+	// possible TODO: this could be more soffisticated - only check for names that
+	// are used in the formula itself. This would require parsing the formula.
+	for _, trig := range so.Spec.Triggers {
+		if trig.Name == "" {
+			return fmt.Errorf("trigger of type '%s' has empty name but csl.Formula is defined", trig.Type)
+		}
+	}
+	if len(csl.ExternalCalculations) > 0 {
+		if csl.ExternalCalculations[len(csl.ExternalCalculations)-1].Name == "" {
+			return fmt.Errorf("last externalCalculator has empty name but csl.Formula is defined")
+		}
+	}
+	return nil
+}
+
+func validateCSLexternalCalculations(cls ComplexScalingLogic) error {
+	// timeout check
+	for _, ec := range cls.ExternalCalculations {
+		_, err := strconv.ParseInt(ec.Timeout, 10, 64)
+		if err != nil {
+			// expect timeout in time format like 1m10s
+			_, err = time.ParseDuration(ec.Timeout)
+			if err != nil {
+				return fmt.Errorf("%s: error while converting type of timeout for external calculator", err)
+			}
+		}
+		if ec.URL == "" {
+			return fmt.Errorf("URL is empty for externalCalculator '%s'", ec.Name)
+		}
+	}
+
+	return nil
+}
+
+func validateCSLtarget(csl ComplexScalingLogic, specs []autoscalingv2.MetricSpec) (float64, autoscalingv2.MetricTargetType, error) {
+	if csl.Target == "" {
+		return -1, "", nil
+	}
+	// convert string to float
+	num, err := strconv.ParseFloat(csl.Target, 64)
+	if err != nil || num <= 0.0 {
+		return -1, "", fmt.Errorf("error converting target for complex logic (string->float): %w", err)
+	}
+
+	var metricType autoscalingv2.MetricTargetType
+	// if target is given, composite scaler for metric collection will be
+	// passed to HPA config -> all types need to be the same
+	// make sure all scalers have the same metricTargetType
+	for i, metric := range specs {
+		if i == 0 {
+			metricType = metric.External.Target.Type
+		} else if metric.External.Target.Type != metricType {
+			err := fmt.Errorf("error metric target type not the same for composite scaler: %s & %s", metricType, metric.External.Target.Type)
+			return -1, "", err
+		}
+	}
+	return num, metricType, nil
 }

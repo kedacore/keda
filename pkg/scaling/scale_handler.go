@@ -578,7 +578,6 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 
 	// handle complexScalingLogic here and simply return the matchingMetrics
 	matchingMetrics = h.handleComplexScalingLogic(ctx, scaledObject, matchingMetrics, metricTriggerPairList, cacheObj, logger)
-
 	return &external_metrics.ExternalMetricValueList{
 		Items: matchingMetrics,
 	}, nil
@@ -779,8 +778,6 @@ func (h *scaleHandler) getTrueMetricArray(ctx context.Context, metricName string
 			}
 
 			so = scaledObject
-			so = scaledObject
-			so = scaledObject
 		}
 		return so.Status.ExternalMetricNames, nil
 	}
@@ -876,27 +873,32 @@ func addPairTriggerAndMetric(list map[string]string, so *kedav1alpha1.ScaledObje
 
 // getECClientFromCache returns ExternalCalculationClient from cacheClients array
 // and bool whether or not it is connected
-func getECClientFromCache(ecName string, cacheClients []cache.ExternalCalculationClient) (cache.ExternalCalculationClient, bool) {
+func getECClientFromCache(ctx context.Context, ecName string, c *cache.ScalersCache, so *kedav1alpha1.ScaledObject) cache.ExternalCalculationClient {
 	ret := cache.ExternalCalculationClient{}
-	var connected bool
-	for _, ecClient := range cacheClients {
+	found := false
+	for _, ecClient := range c.ExternalCalculationGrpcClients {
 		if ecClient.Name == ecName {
-			connected = ecClient.Connected
+			found = true
 			ret = ecClient
 			break
-		} //TODO: didnt find client in cache?? - try to create new connection?
+		}
 	}
-	return ret, connected
+	if !found {
+		// didnt find cached client that matches external Calculator, try refreshing cache
+		ret = c.RefreshExternalCalcClientsCache(ctx, so, ecName)
+	}
+
+	return ret
 }
 
 // callCalculate checks whether connection is established and calls grpc method Calculate
 // for given externalCalculator. Returns metricsList and collected errors if any
-func callCalculate(ctx context.Context, ecClient cache.ExternalCalculationClient, connected bool, list *externalscalingAPI.MetricsList, ecName string) (*externalscalingAPI.MetricsList, error) {
+func callCalculate(ctx context.Context, ecClient cache.ExternalCalculationClient, list *externalscalingAPI.MetricsList) (*externalscalingAPI.MetricsList, error) {
 	var err error
-	if connected {
+	if ecClient.Connected {
 		list, err = ecClient.Client.Calculate(ctx, list)
 	} else {
-		err = fmt.Errorf("trying to call method Calculate for '%s' externalCalculator when not connected", ecName)
+		err = fmt.Errorf("trying to call method Calculate for '%s' externalCalculator when not connected", ecClient.Name)
 	}
 	return list, err
 }
@@ -919,9 +921,10 @@ func (h *scaleHandler) handleComplexScalingLogic(ctx context.Context,
 			// modified metric list in order
 			for _, ec := range csl.ExternalCalculations {
 				// get client's instance from cache
-				ecCacheClient, connected := getECClientFromCache(ec.Name, cacheObj.ExternalCalculationGrpcClients)
+				ecCacheClient := getECClientFromCache(ctx, ec.Name, cacheObj, so)
 				// attempt to connect to the gRPC server and call its method Calculate
-				grpcMetricList, err = callCalculate(ctx, ecCacheClient, connected, grpcMetricList, ec.Name)
+				grpcMetricList, err = callCalculate(ctx, ecCacheClient, grpcMetricList)
+				log.V(1).Info(fmt.Sprintf("metricsList after calling Calculate for externalCalculator '%s': %v", ec.Name, grpcMetricList))
 				if grpcMetricList == nil {
 					grpcMetricList = &externalscalingAPI.MetricsList{}
 					err = errors.Join(err, fmt.Errorf("grpc method Calculate returned nil metric list for externalCalculator"))

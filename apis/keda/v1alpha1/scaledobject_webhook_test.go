@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/pointer"
 	"k8s.io/utils/ptr"
 )
 
@@ -663,6 +664,34 @@ func createScaledObjectSTZ(name string, namespace string, targetName string, min
 			MaxReplicaCount: ptr.To[int32](maxReplicas),
 			CooldownPeriod:  ptr.To[int32](1),
 			Triggers:        triggers,
+		},
+	}
+}
+
+func createScaledObjectCSL(namespace string, csl ComplexScalingLogic, triggers []ScaleTriggers) *ScaledObject {
+	name := soName
+	targetName := workloadName
+	return &ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			UID:       types.UID(name),
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ScaledObject",
+			APIVersion: "keda.sh",
+		},
+		Spec: ScaledObjectSpec{
+			ScaleTargetRef: &ScaleTarget{
+				Name: targetName,
+			},
+			MinReplicaCount: pointer.Int32(0),
+			MaxReplicaCount: pointer.Int32(10),
+			CooldownPeriod:  pointer.Int32(1),
+			Triggers:        triggers,
+			Advanced: &AdvancedConfig{
+				ComplexScalingLogic: csl,
+			},
 		},
 	}
 }
