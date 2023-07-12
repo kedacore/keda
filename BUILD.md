@@ -57,7 +57,7 @@ make build
 
 This project is using [Operator SDK framework](https://github.com/operator-framework/operator-sdk), make sure you
 have installed the right version. To check the current version used for KEDA check the `RELEASE_VERSION` in file
-[tools/build-tools.Dockerfile](https://github.com/kedacore/keda/blob/main/tools/build-tools.Dockerfile).
+[github.com/test-tools/tools/Dockerfile](https://github.com/kedacore/test-tools/blob/main/tools/Dockerfile).
 
 ```bash
 git clone git@github.com:kedacore/keda.git
