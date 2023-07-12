@@ -7,7 +7,6 @@ jobs:
   validate:
     name: Validate
     runs-on: ubuntu-latest
-    # build-tools is built from ../../tools/build-tools.Dockerfile
     container: kedacore/build-tools:v1
     steps:
       - name: Check out code
