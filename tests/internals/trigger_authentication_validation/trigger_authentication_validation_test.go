@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package azure_aad_pod_identity_test
+package trigger_authentication_validation_test
 
 import (
 	"context"
