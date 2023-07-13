@@ -296,7 +296,7 @@ func TestNewGitHubRunnerScaler_404(t *testing.T) {
 		httpClient: http.DefaultClient,
 	}
 
-	mockGitHubRunnerScaler.metadata.repos = []string{"test"}
+	//mockGitHubRunnerScaler.metadata.repos = []string{"test"}
 	mockGitHubRunnerScaler.metadata.labels = []string{"foo", "bar"}
 
 	_, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.TODO())
