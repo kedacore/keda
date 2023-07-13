@@ -155,15 +155,16 @@ func buildQueueJSON() []byte {
 
 func apiStubHandler(hasRateLeft bool) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if hasRateLeft {
-			w.Header().Set("X-RateLimit-Remaining", "50")
-		} else {
-			w.Header().Set("X-RateLimit-Remaining", "0")
-		}
 		futureReset := time.Now()
 		futureReset = futureReset.Add(time.Minute * 30)
 		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(futureReset.Unix()))
-		w.WriteHeader(http.StatusOK)
+		if hasRateLeft {
+			w.Header().Set("X-RateLimit-Remaining", "50")
+			w.WriteHeader(http.StatusOK)
+		} else {
+			w.Header().Set("X-RateLimit-Remaining", "0")
+			w.WriteHeader(http.StatusForbidden)
+		}
 		if strings.HasSuffix(r.URL.String(), "jobs") {
 			_, _ = w.Write([]byte(testGhWFJobResponse))
 		}
