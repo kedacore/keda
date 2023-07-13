@@ -129,7 +129,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4.6.1
+      - uses: actions/setup-python@v4.7.0
         with:
           python-version: 3.x
       - uses: actions/setup-go@v4
