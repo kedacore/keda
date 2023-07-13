@@ -160,19 +160,25 @@ func apiStubHandler(hasRateLeft bool) *httptest.Server {
 		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(futureReset.Unix()))
 		if hasRateLeft {
 			w.Header().Set("X-RateLimit-Remaining", "50")
-			w.WriteHeader(http.StatusOK)
 		} else {
 			w.Header().Set("X-RateLimit-Remaining", "0")
 			w.WriteHeader(http.StatusForbidden)
 		}
 		if strings.HasSuffix(r.URL.String(), "jobs") {
 			_, _ = w.Write([]byte(testGhWFJobResponse))
+			w.WriteHeader(http.StatusOK)
 		}
 		if strings.HasSuffix(r.URL.String(), "runs") {
-			_, _ = w.Write(buildQueueJSON())
+			if strings.Contains(r.URL.String(), "BadRepo") {
+				w.WriteHeader(http.StatusNotFound)
+			} else {
+				_, _ = w.Write(buildQueueJSON())
+				w.WriteHeader(http.StatusOK)
+			}
 		}
 		if strings.HasSuffix(r.URL.String(), "repos") {
 			_, _ = w.Write([]byte(testGhUserReposResponse))
+			w.WriteHeader(http.StatusOK)
 		}
 	}))
 }
@@ -385,6 +391,34 @@ func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_Assigned(t *testing.T) {
 	}
 
 	tRepo := []string{"test", "test2"}
+	mockGitHubRunnerScaler.metadata.repos = tRepo
+	mockGitHubRunnerScaler.metadata.runnerScope = "org"
+	mockGitHubRunnerScaler.metadata.labels = []string{"foo", "bar"}
+
+	queueLen, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.TODO())
+
+	if err != nil {
+		fmt.Println(err)
+		t.Fail()
+	}
+
+	if queueLen != 2 {
+		fmt.Println(queueLen)
+		t.Fail()
+	}
+}
+
+func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_Assigned_OneBad(t *testing.T) {
+	var apiStub = apiStubHandler(true)
+
+	meta := getGitHubTestMetaData(apiStub.URL)
+
+	mockGitHubRunnerScaler := githubRunnerScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	tRepo := []string{"test", "test2", "BadRepo"}
 	mockGitHubRunnerScaler.metadata.repos = tRepo
 	mockGitHubRunnerScaler.metadata.runnerScope = "org"
 	mockGitHubRunnerScaler.metadata.labels = []string{"foo", "bar"}
