@@ -11,6 +11,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
 )
@@ -94,10 +95,10 @@ func TestScaler(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	// test auth
-	testTriggerAuthenticationWithEmptyID(t, data)
-	testTriggerAuthenticationWithNilID(t, data)
-	testClusterTriggerAuthenticationWithEmptyID(t, data)
-	testClusterTriggerAuthenticationWithNilID(t, data)
+	testTriggerAuthenticationWithEmptyID(t, kc, data)
+	testTriggerAuthenticationWithNilID(t, kc, data)
+	testClusterTriggerAuthenticationWithEmptyID(t, kc, data)
+	testClusterTriggerAuthenticationWithNilID(t, kc, data)
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
@@ -114,7 +115,7 @@ func getTemplateData() (templateData, []Template) {
 }
 
 // expect triggerauthentication should not be created with empty identity id
-func testTriggerAuthenticationWithEmptyID(t *testing.T, data templateData) {
+func testTriggerAuthenticationWithEmptyID(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- create triggerauthentication with empty identity id  ---")
 
 	err := KubectlApplyWithErrors(t, data, "triggerAuthEmptyIDTemplate", triggerAuthEmptyIDTemplate)
@@ -122,7 +123,7 @@ func testTriggerAuthenticationWithEmptyID(t *testing.T, data templateData) {
 }
 
 // expect triggerauthentication can be created without identity id property
-func testTriggerAuthenticationWithNilID(t *testing.T, data templateData) {
+func testTriggerAuthenticationWithNilID(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- create triggerauthentication with nil identity id  ---")
 
 	kedaKc := GetKedaKubernetesClient(t)
@@ -133,7 +134,7 @@ func testTriggerAuthenticationWithNilID(t *testing.T, data templateData) {
 }
 
 // expect clustertriggerauthentication should not be created with empty identity id
-func testClusterTriggerAuthenticationWithEmptyID(t *testing.T, data templateData) {
+func testClusterTriggerAuthenticationWithEmptyID(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- create clustertriggerauthentication with empty identity id  ---")
 
 	err := KubectlApplyWithErrors(t, data, "clusterTriggerAuthEmptyIDTemplate", clusterTriggerAuthEmptyIDTemplate)
@@ -141,7 +142,7 @@ func testClusterTriggerAuthenticationWithEmptyID(t *testing.T, data templateData
 }
 
 // expect clustertriggerauthentication can be created without identity id property
-func testClusterTriggerAuthenticationWithNilID(t *testing.T, data templateData) {
+func testClusterTriggerAuthenticationWithNilID(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- create clustertriggerauthentication with nil identity id  ---")
 
 	kedaKc := GetKedaKubernetesClient(t)
