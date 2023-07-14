@@ -447,7 +447,7 @@ None.
 
 - **General:** Provide patch for CVE-2022-27191 vulnerability ([#3378](https://github.com/kedacore/keda/issues/3378))
 - **General:** Refactor adapter startup to ensure proper log initilization. ([2316](https://github.com/kedacore/keda/issues/2316))
-- **General:** Scaleobject ready condition 'False/Unknow' to 'True' requeue ([#3096](https://github.com/kedacore/keda/issues/3096))
+- **General:** Scaleobject ready condition 'False/Unknown' to 'True' requeue ([#3096](https://github.com/kedacore/keda/issues/3096))
 - **General:** Use `go install` in the Makefile for downloading dependencies ([#2916](https://github.com/kedacore/keda/issues/2916))
 - **General:** Use metricName from GetMetricsSpec in ScaledJobs instead of `queueLength` ([#3032](https://github.com/kedacore/keda/issues/3032))
 - **ActiveMQ Scaler:** KEDA doesn't respect restAPITemplate ([#3188](https://github.com/kedacore/keda/issues/3188))
