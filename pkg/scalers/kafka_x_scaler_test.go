@@ -73,7 +73,7 @@ var parseKafkaXMetadataTestDataset = []parseKafkaXMetadataTestData{
 	// success, no limitation
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "partitionLimitation": ""}, false, 1, []string{"foobar:9092"}, "my-group", []string{}, nil, offsetResetPolicy("latest"), false, false},
 	// TODO: remove failure, version not supported??
-	//{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "version": "1.2.3.4"}, true, 1, []string{"foobar:9092"}, "my-group", []string{"my-topics"}, nil, offsetResetPolicy("latest"), false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "version": "1.2.3.4"}, true, 1, []string{"foobar:9092"}, "my-group", []string{"my-topics"}, nil, offsetResetPolicy("latest"), false, false},
 	// failure, lagThreshold is negative value
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "lagThreshold": "-1"}, true, 1, []string{"foobar:9092"}, "my-group", []string{"my-topics"}, nil, offsetResetPolicy("latest"), false, false},
 	// failure, lagThreshold is 0
@@ -334,7 +334,7 @@ func TestKafkaXAuthParams(t *testing.T) {
 			t.Errorf("Test case: %#v. Expected error but got success", id)
 		}
 		if !testData.isError {
-			if testData.metadata["tls"] == "true" && !meta.enableTLS {
+			if testData.metadata["tls"] == stringTrue && !meta.enableTLS {
 				t.Errorf("Test case: %#v. Expected tls to be set to %#v but got %#v\n", id, testData.metadata["tls"], meta.enableTLS)
 			}
 			if meta.enableTLS {

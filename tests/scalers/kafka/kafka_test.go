@@ -396,7 +396,6 @@ func testEarliestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateDat
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, topicPartitions, 60, 2),
 		"replica count should be %d after 2 minute", messages)
-
 }
 
 func testLatestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData) {
