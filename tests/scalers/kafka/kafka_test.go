@@ -5,6 +5,7 @@ package kafka_test
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/joho/godotenv"
@@ -28,7 +29,6 @@ var (
 	kafkaClientName              = fmt.Sprintf("%s-client", testName)
 	scaledObjectName             = fmt.Sprintf("%s-so", testName)
 	bootstrapServer              = fmt.Sprintf("%s-kafka-bootstrap.%s:9092", kafkaName, testNamespace)
-	strimziOperatorVersion       = "0.30.0"
 	topic1                       = "kafka-topic"
 	topic2                       = "kafka-topic2"
 	zeroInvalidOffsetTopic       = "kafka-topic-zero-invalid-offset"
@@ -283,7 +283,7 @@ metadata:
   namespace: {{.TestNamespace}}
 spec:
   kafka:
-    version: "3.1.0"
+    version: "3.4.0"
     replicas: 1
     listeners:
       - name: plain
@@ -348,7 +348,7 @@ func TestScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
-	installKafkaOperator(t)
+	defer DeleteKubernetesResources(t, testNamespace, data, templates)
 	addCluster(t, data)
 	addTopic(t, data, topic1, topicPartitions)
 	addTopic(t, data, topic2, topicPartitions)
@@ -363,10 +363,6 @@ func TestScaler(t *testing.T) {
 	testZeroOnInvalidOffset(t, kc, data)
 	testOneOnInvalidOffset(t, kc, data)
 	testPersistentLag(t, kc, data)
-
-	// cleanup
-	uninstallKafkaOperator(t)
-	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func testEarliestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -376,7 +372,9 @@ func testEarliestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateDat
 	data.TopicName = topic1
 	data.ResetPolicy = "earliest"
 	KubectlApplyWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
+	defer KubectlDeleteWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
 	KubectlApplyWithTemplate(t, data, "singleScaledObjectTemplate", singleScaledObjectTemplate)
+	defer KubectlDeleteWithTemplate(t, data, "singleScaledObjectTemplate", singleScaledObjectTemplate)
 
 	// Shouldn't scale pods applying earliest policy
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
@@ -399,8 +397,6 @@ func testEarliestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateDat
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, topicPartitions, 60, 2),
 		"replica count should be %d after 2 minute", messages)
 
-	KubectlDeleteWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
-	KubectlDeleteWithTemplate(t, data, "singleScaledObjectTemplate", singleScaledObjectTemplate)
 }
 
 func testLatestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -411,7 +407,9 @@ func testLatestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData)
 	data.TopicName = topic1
 	data.ResetPolicy = "latest"
 	KubectlApplyWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
+	defer KubectlDeleteWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
 	KubectlApplyWithTemplate(t, data, "singleScaledObjectTemplate", singleScaledObjectTemplate)
+	defer KubectlDeleteWithTemplate(t, data, "singleScaledObjectTemplate", singleScaledObjectTemplate)
 
 	// Shouldn't scale pods
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
@@ -433,19 +431,16 @@ func testLatestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, topicPartitions, 60, 2),
 		"replica count should be %d after 2 minute", messages)
-
-	KubectlDeleteWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
-	KubectlDeleteWithTemplate(t, data, "singleScaledObjectTemplate", singleScaledObjectTemplate)
 }
 
 func testMultiTopic(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing multi topic: scale out ---")
 	commitPartition(t, topic1, "multiTopic")
 	commitPartition(t, topic2, "multiTopic")
-	data.Topic1Name = topic1
-	data.Topic2Name = topic2
 	KubectlApplyWithTemplate(t, data, "multiDeploymentTemplate", multiDeploymentTemplate)
+	defer KubectlDeleteWithTemplate(t, data, "multiDeploymentTemplate", multiDeploymentTemplate)
 	KubectlApplyWithTemplate(t, data, "multiScaledObjectTemplate", multiScaledObjectTemplate)
+	defer KubectlDeleteWithTemplate(t, data, "multiScaledObjectTemplate", multiScaledObjectTemplate)
 
 	// Shouldn't scale pods
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
@@ -464,9 +459,6 @@ func testMultiTopic(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	publishMessage(t, topic2)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 2),
 		"replica count should be %d after 2 minute", 2)
-
-	KubectlDeleteWithTemplate(t, data, "multiDeploymentTemplate", multiDeploymentTemplate)
-	KubectlDeleteWithTemplate(t, data, "multiScaledObjectTemplate", multiScaledObjectTemplate)
 }
 
 func testZeroOnInvalidOffset(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -477,13 +469,12 @@ func testZeroOnInvalidOffset(t *testing.T, kc *kubernetes.Clientset, data templa
 	data.ResetPolicy = invalidOffsetGroup
 	data.ScaleToZeroOnInvalid = StringTrue
 	KubectlApplyWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
+	defer KubectlDeleteWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
 	KubectlApplyWithTemplate(t, data, "invalidOffsetScaledObjectTemplate", invalidOffsetScaledObjectTemplate)
+	defer KubectlDeleteWithTemplate(t, data, "invalidOffsetScaledObjectTemplate", invalidOffsetScaledObjectTemplate)
 
 	// Shouldn't scale pods
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
-
-	KubectlDeleteWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
-	KubectlDeleteWithTemplate(t, data, "invalidOffsetScaledObjectTemplate", invalidOffsetScaledObjectTemplate)
 }
 
 func testOneOnInvalidOffset(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -494,7 +485,9 @@ func testOneOnInvalidOffset(t *testing.T, kc *kubernetes.Clientset, data templat
 	data.ResetPolicy = invalidOffsetGroup
 	data.ScaleToZeroOnInvalid = StringFalse
 	KubectlApplyWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
+	defer KubectlDeleteWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
 	KubectlApplyWithTemplate(t, data, "invalidOffsetScaledObjectTemplate", invalidOffsetScaledObjectTemplate)
+	defer KubectlDeleteWithTemplate(t, data, "invalidOffsetScaledObjectTemplate", invalidOffsetScaledObjectTemplate)
 
 	// Should scale to 1
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 2),
@@ -506,9 +499,6 @@ func testOneOnInvalidOffset(t *testing.T, kc *kubernetes.Clientset, data templat
 	// Should scale to 0
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 10),
 		"replica count should be %d after 10 minute", 0)
-
-	KubectlDeleteWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
-	KubectlDeleteWithTemplate(t, data, "invalidOffsetScaledObjectTemplate", invalidOffsetScaledObjectTemplate)
 }
 
 func publishMessage(t *testing.T, topic string) {
@@ -564,37 +554,22 @@ func testPersistentLag(t *testing.T, kc *kubernetes.Clientset, data templateData
 	KubectlDeleteWithTemplate(t, data, "persistentLagScaledObjectTemplate", persistentLagScaledObjectTemplate)
 }
 
-func installKafkaOperator(t *testing.T) {
-	_, err := ExecuteCommand("helm repo add strimzi https://strimzi.io/charts/")
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	_, err = ExecuteCommand("helm repo update")
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --namespace %s --wait %s strimzi/strimzi-kafka-operator --version %s`,
-		testNamespace,
-		testName,
-		strimziOperatorVersion))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-}
-
-func uninstallKafkaOperator(t *testing.T) {
-	_, err := ExecuteCommand(fmt.Sprintf(`helm uninstall --namespace %s %s`,
-		testNamespace,
-		testName))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-}
-
 func addTopic(t *testing.T, data templateData, name string, partitions int) {
+	t.Log("--- adding kafka topic" + name + " and partitions " + strconv.Itoa(partitions) + " ---")
 	data.KafkaTopicName = name
 	data.KafkaTopicPartitions = partitions
 	KubectlApplyWithTemplate(t, data, "kafkaTopicTemplate", kafkaTopicTemplate)
 	_, err := ExecuteCommand(fmt.Sprintf("kubectl wait kafkatopic/%s --for=condition=Ready --timeout=480s --namespace %s", name, testNamespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	t.Log("--- kafka topic added ---")
 }
 
 func addCluster(t *testing.T, data templateData) {
+	t.Log("--- adding kafka cluster ---")
 	KubectlApplyWithTemplate(t, data, "kafkaClusterTemplate", kafkaClusterTemplate)
 	_, err := ExecuteCommand(fmt.Sprintf("kubectl wait kafka/%s --for=condition=Ready --timeout=480s --namespace %s", kafkaName, testNamespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	t.Log("--- kafka cluster added ---")
 }
 
 func getTemplateData() (templateData, []Template) {
