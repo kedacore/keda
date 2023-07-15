@@ -200,6 +200,8 @@ func parseKafkaXAuthParams(config *ScalerConfig, meta *kafkaXMetadata) error {
 			}
 		case KafkaSASLTypeOAuthbearer:
 			return errors.New("SASL/OAUTHBEARER is not implemented yet")
+		default:
+			return fmt.Errorf("err sasl type %q given", mode)
 		}
 	}
 
@@ -338,6 +340,8 @@ func getKafkaXClient(metadata kafkaXMetadata, logger logr.Logger) (*kafka.Client
 	}
 
 	switch metadata.saslType {
+	case KafkaSASLTypeNone:
+		saslMechanism = nil
 	case KafkaSASLTypePlaintext:
 		saslMechanism = plain.Mechanism{
 			Username: metadata.username,
@@ -364,6 +368,8 @@ func getKafkaXClient(metadata kafkaXMetadata, logger logr.Logger) (*kafka.Client
 			Signer: sigv4.NewSigner(config.Credentials),
 			Region: metadata.awsRegion,
 		}
+	default:
+		return nil, fmt.Errorf("err sasl type %q given", metadata.saslType)
 	}
 
 	transport := &kafka.Transport{
