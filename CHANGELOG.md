@@ -48,7 +48,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- **General**: A new experimental Kafka Scaler implementation using kafka-go library `kafka-x` ([#4692](https://github.com/kedacore/keda/issues/4692))
 
 ### Improvements
 
