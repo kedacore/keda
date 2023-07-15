@@ -175,6 +175,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewInfluxDBScaler(config)
 	case "kafka":
 		return scalers.NewKafkaScaler(config)
+	case "kafka-x":
+		return scalers.NewKafkaXScaler(config)
 	case "kubernetes-workload":
 		return scalers.NewKubernetesWorkloadScaler(client, config)
 	case "liiklus":
