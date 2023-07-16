@@ -416,6 +416,68 @@ var _ = It("should validate so creation when min replicas is > 0 with only cpu s
 
 })
 
+var _ = It("should not validate ScaledObject creation when deployment only provides cpu resource limits", func() {
+
+	namespaceName := "only-cpu-resource-limits-set"
+	namespace := createNamespace(namespaceName)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	workload := createDeployment(namespaceName, false, false)
+	workload.Spec.Template.Spec.Containers[0].Resources.Limits = v1.ResourceList{
+		v1.ResourceCPU: *resource.NewMilliQuantity(100, resource.DecimalSI),
+	}
+
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
+	so.Spec.Triggers = []ScaleTriggers{
+		{
+			Type: "cpu",
+			Metadata: map[string]string{
+				"cpu": "10",
+			},
+		},
+	}
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("should not validate ScaledObject creation when deployment only provides memory resource limits", func() {
+
+	namespaceName := "only-memory-resource-limits-set"
+	namespace := createNamespace(namespaceName)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	workload := createDeployment(namespaceName, false, false)
+	workload.Spec.Template.Spec.Containers[0].Resources.Limits = v1.ResourceList{
+		v1.ResourceMemory: *resource.NewMilliQuantity(1024, resource.DecimalSI),
+	}
+
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
+	so.Spec.Triggers = []ScaleTriggers{
+		{
+			Type: "memory",
+			Metadata: map[string]string{
+				"memory": "512Mi",
+			},
+		},
+	}
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
 var _ = It("should validate the so update if it's removing the finalizer even if it's invalid", func() {
 
 	namespaceName := "removing-finalizers"
