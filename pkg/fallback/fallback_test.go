@@ -350,13 +350,6 @@ var _ = Describe("fallback", func() {
 	// fallback for ComplexScalingLogic ExternalCalculators
 	// ---------------------------------------------------------------------------
 
-	// It("should return error when ec-fallback is enabled but ExternalCalculator returns error", func() {
-	// todo
-	// })
-
-	// It("should return error when ec-fallback is enabled but ExternalCalculator returns empty list", func() {
-	// todo
-	// })
 	// --- set condition to false ---
 	// invalid FailureThreshold eg. < 0
 	It("should set the ec-fallback condition to false if the Fallback FailureThreshold is invalid", func() {
