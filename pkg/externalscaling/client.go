@@ -2,12 +2,17 @@ package externalscaling
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"os"
+	"path"
 	"time"
 
 	"github.com/go-logr/logr"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -20,7 +25,7 @@ type GrpcClient struct {
 	Connection *grpc.ClientConn
 }
 
-func NewGrpcClient(url string) (*GrpcClient, error) {
+func NewGrpcClient(url string, certDir string) (*GrpcClient, error) {
 	retryPolicy := `{
 		"methodConfig": [{
 		  "timeout": "3s",
@@ -37,9 +42,22 @@ func NewGrpcClient(url string) (*GrpcClient, error) {
 		grpc.WithDefaultServiceConfig(retryPolicy),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	}
+
+	// if certDir is not empty, load certificates
+	if certDir != "" {
+		creds, err := loadCertificates(certDir)
+		if err != nil {
+			return nil, fmt.Errorf("externalCalculator error while creating new client: %w", err)
+		}
+		opts = []grpc.DialOption{
+			grpc.WithDefaultServiceConfig(retryPolicy),
+			grpc.WithTransportCredentials(creds),
+		}
+	}
+
 	conn, err := grpc.Dial(url, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("error in grpc.Dial: %w", err)
+		return nil, fmt.Errorf("externalCalculator error while creating new client: %w", err)
 	}
 
 	return &GrpcClient{Client: cl.NewExternalCalculationClient(conn), Connection: conn}, nil
@@ -115,4 +133,38 @@ func (c *GrpcClient) CloseConnection() error {
 		}
 	}
 	return nil
+}
+
+// load certificates taken from a directory given as an argument
+// expects ca.crt, tls.crt and tls.key to be present in the directory
+func loadCertificates(certDir string) (credentials.TransportCredentials, error) {
+	// Load certificate of the CA who signed client's certificate
+	pemClientCA, err := os.ReadFile(path.Join(certDir, "ca.crt"))
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the SystemCertPool, continue with an empty pool on error
+	certPool, _ := x509.SystemCertPool()
+	if certPool == nil {
+		certPool = x509.NewCertPool()
+	}
+	if !certPool.AppendCertsFromPEM(pemClientCA) {
+		return nil, fmt.Errorf("failed to add client CA's certificate")
+	}
+
+	// Load certificate and private key
+	cert, err := tls.LoadX509KeyPair(path.Join(certDir, "tls.crt"), path.Join(certDir, "tls.key"))
+	if err != nil {
+		return nil, err
+	}
+
+	// Create the credentials and return it
+	config := &tls.Config{
+		MinVersion:   tls.VersionTLS13,
+		Certificates: []tls.Certificate{cert},
+	}
+	config.RootCAs = certPool
+
+	return credentials.NewTLS(config), nil
 }

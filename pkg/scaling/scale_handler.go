@@ -386,7 +386,7 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 					}
 					timeout = int64(parsedTime.Seconds())
 				}
-				ecClient, err := externalscaling.NewGrpcClient(ec.URL)
+				ecClient, err := externalscaling.NewGrpcClient(ec.URL, ec.CertificateDirectory)
 
 				var connected bool
 				if err != nil {

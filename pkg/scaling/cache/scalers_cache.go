@@ -190,7 +190,7 @@ func (c *ScalersCache) RefreshExternalCalcClientsCache(ctx context.Context, so *
 			}
 			timeout = int64(parsedTime.Seconds())
 		}
-		ecClient, err := externalscaling.NewGrpcClient(ec.URL)
+		ecClient, err := externalscaling.NewGrpcClient(ec.URL, ec.CertificateDirectory)
 		var connected bool
 		if err != nil {
 			log.Error(err, fmt.Sprintf("error creating new grpc client for external calculator at %s", ec.URL))
