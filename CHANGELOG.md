@@ -53,7 +53,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Improvements
 
 - **General:**: Add ScaledObject/ScaledJob names to output of `kubectl get triggerauthentication/clustertriggerauthentication` ([#796](https://github.com/kedacore/keda/issues/796))
-
+- **General**: Add ComplexScalingLogic structure to SO for advanced scaling options ([#3567](https://github.com/kedacore/keda/issues/3567)) and ([#2440](https://github.com/kedacore/keda/issues/2440))
 ### Fixes
 
 - **General**: Metrics server exposes Prometheus metrics ([#4776](https://github.com/kedacore/keda/issues/4776))
