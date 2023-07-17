@@ -204,12 +204,12 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, conditions *kedav1alpha1.Conditions) (string, error) {
 	// Check the presence of "autoscaling.keda.sh/paused-replicas" annotation on the scaledObject (since the presence of this annotation will pause
 	// autoscaling no matter what number of replicas is provided), and if so, stop the scale loop and delete the HPA on the scaled object.
-	_, pausedAnnotationFound := scaledObject.GetAnnotations()[kedacontrollerutil.PausedReplicasAnnotation]
+	pausedAnnotationFound := scaledObject.HasPausedAnnotation()
 	if pausedAnnotationFound {
 		if conditions.GetPausedCondition().Status == metav1.ConditionTrue {
 			return kedav1alpha1.ScaledObjectConditionReadySuccessMessage, nil
 		}
-		if scaledObject.Status.PausedReplicaCount != nil {
+		if scaledObject.NeedPaused() {
 			msg := kedav1alpha1.ScaledObjectConditionPausedMessage
 			if err := r.stopScaleLoop(ctx, logger, scaledObject); err != nil {
 				msg = "failed to stop the scale loop for paused ScaledObject"
@@ -312,7 +312,7 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 	logger.V(1).Info("Parsed Group, Version, Kind, Resource", "GVK", gvkString, "Resource", gvkr.Resource)
 
 	// do we need the scale to update the status later?
-	_, present := scaledObject.GetAnnotations()[kedacontrollerutil.PausedReplicasAnnotation]
+	present := scaledObject.HasPausedAnnotation()
 	removePausedStatus := scaledObject.Status.PausedReplicaCount != nil && !present
 	wantStatusUpdate := scaledObject.Status.ScaleTargetKind != gvkString || scaledObject.Status.OriginalReplicaCount == nil || removePausedStatus
 

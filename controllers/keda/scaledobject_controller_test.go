@@ -35,7 +35,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_scaling"
 	"github.com/kedacore/keda/v2/pkg/scalers"
@@ -910,7 +909,7 @@ var _ = Describe("ScaledObjectController", func() {
 			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
 			Expect(err).ToNot(HaveOccurred())
 			annotations := make(map[string]string)
-			annotations[kedacontrollerutil.PausedReplicasAnnotation] = "1"
+			annotations[kedav1alpha1.PausedReplicasAnnotation] = "1"
 			so.SetAnnotations(annotations)
 			pollingInterval := int32(6)
 			so.Spec.PollingInterval = &pollingInterval
@@ -922,8 +921,7 @@ var _ = Describe("ScaledObjectController", func() {
 		Eventually(func() bool {
 			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
 			Expect(err).ToNot(HaveOccurred())
-			_, paused := so.GetAnnotations()[kedacontrollerutil.PausedReplicasAnnotation]
-			return paused
+			return so.HasPausedAnnotation()
 		}).WithTimeout(1 * time.Minute).WithPolling(2 * time.Second).Should(BeTrue())
 
 		Eventually(func() metav1.ConditionStatus {
@@ -950,7 +948,7 @@ var _ = Describe("ScaledObjectController", func() {
 				Name:      soName,
 				Namespace: "default",
 				Annotations: map[string]string{
-					kedacontrollerutil.PausedReplicasAnnotation: pausedReplicasCountForAnnotation,
+					kedav1alpha1.PausedReplicasAnnotation: pausedReplicasCountForAnnotation,
 				},
 			},
 			Spec: kedav1alpha1.ScaledObjectSpec{
@@ -990,7 +988,8 @@ var _ = Describe("ScaledObjectController", func() {
 		// validate annotation is set correctly
 		err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
 		Expect(err).ToNot(HaveOccurred())
-		pausedReplicasCount, paused := so.GetAnnotations()[kedacontrollerutil.PausedReplicasAnnotation]
+		paused := so.HasPausedAnnotation()
+		pausedReplicasCount := so.GetAnnotations()[kedav1alpha1.PausedReplicasAnnotation]
 		Expect(paused).To(Equal(true))
 		Expect(pausedReplicasCount).To(Equal(pausedReplicasCountForAnnotation))
 

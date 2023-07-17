@@ -49,6 +49,8 @@ type ScaledObject struct {
 
 const ScaledObjectOwnerAnnotation = "scaledobject.keda.sh/name"
 const ScaledObjectTransferHpaOwnershipAnnotation = "scaledobject.keda.sh/transfer-hpa-ownership"
+const PausedReplicasAnnotation = "autoscaling.keda.sh/paused-replicas"
+const PausedAnnotation = "autoscaling.keda.sh/paused"
 
 // HealthStatus is the status for a ScaledObject's health
 type HealthStatus struct {
@@ -166,4 +168,13 @@ func init() {
 // GenerateIdentifier returns identifier for the object in for "kind.namespace.name"
 func (so *ScaledObject) GenerateIdentifier() string {
 	return GenerateIdentifier("ScaledObject", so.Namespace, so.Name)
+}
+
+func (so *ScaledObject) HasPausedAnnotation() bool {
+	_, pausedAnnotationFound := so.GetAnnotations()[PausedReplicasAnnotation]
+	return pausedAnnotationFound
+}
+
+func (so *ScaledObject) NeedPaused() bool {
+	return so.Status.PausedReplicaCount == nil
 }
