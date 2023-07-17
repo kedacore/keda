@@ -479,7 +479,7 @@ func (s *githubRunnerScaler) getRepositories(ctx context.Context) ([]string, err
 	default:
 		return nil, fmt.Errorf("runnerScope %s not supported", s.metadata.runnerScope)
 	}
-	body, err := getGithubRequest(ctx, url, s.metadata, s.httpClient)
+	body, _, err := getGithubRequest(ctx, url, s.metadata, s.httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -498,10 +498,10 @@ func (s *githubRunnerScaler) getRepositories(ctx context.Context) ([]string, err
 	return repoList, nil
 }
 
-func getGithubRequest(ctx context.Context, url string, metadata *githubRunnerMetadata, httpClient *http.Client) ([]byte, error) {
+func getGithubRequest(ctx context.Context, url string, metadata *githubRunnerMetadata, httpClient *http.Client) ([]byte, int, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, -1, err
 	}
 
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
@@ -513,27 +513,29 @@ func getGithubRequest(ctx context.Context, url string, metadata *githubRunnerMet
 
 	r, err := httpClient.Do(req)
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, -1, err
 	}
 
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, -1, err
 	}
 	_ = r.Body.Close()
 
-	if r.StatusCode != 200 || r.Header.Get("X-RateLimit-Remaining") == "" {
-		return []byte{}, fmt.Errorf("the GitHub REST API returned error. url: %s status: %d response: %s", url, r.StatusCode, string(b))
+	if r.StatusCode != 200 {
+		if r.Header.Get("X-RateLimit-Remaining") != "" {
+			githubAPIRemaining, _ := strconv.Atoi(r.Header.Get("X-RateLimit-Remaining"))
+
+			if githubAPIRemaining == 0 {
+				resetTime, _ := strconv.ParseInt(r.Header.Get("X-RateLimit-Reset"), 10, 64)
+				return []byte{}, r.StatusCode, fmt.Errorf("GitHub API rate limit exceeded, resets at %s", time.Unix(resetTime, 0))
+			}
+		}
+
+		return []byte{}, r.StatusCode, fmt.Errorf("the GitHub REST API returned error. url: %s status: %d response: %s", url, r.StatusCode, string(b))
 	}
 
-	githubAPIRemaining, _ := strconv.Atoi(r.Header.Get("X-RateLimit-Remaining"))
-
-	if githubAPIRemaining == 0 {
-		resetTime, _ := strconv.ParseInt(r.Header.Get("X-RateLimit-Reset"), 10, 64)
-		return []byte{}, fmt.Errorf("GitHub API rate limit exceeded, resets at %s", time.Unix(resetTime, 0))
-	}
-
-	return b, nil
+	return b, r.StatusCode, nil
 }
 
 func stripDeadRuns(allWfrs []WorkflowRuns) []WorkflowRun {
@@ -551,7 +553,7 @@ func stripDeadRuns(allWfrs []WorkflowRuns) []WorkflowRun {
 // getWorkflowRunJobs returns a list of jobs for a given workflow run
 func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRunID int64, repoName string) ([]Job, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs", s.metadata.githubAPIURL, s.metadata.owner, repoName, workflowRunID)
-	body, err := getGithubRequest(ctx, url, s.metadata, s.httpClient)
+	body, _, err := getGithubRequest(ctx, url, s.metadata, s.httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -568,8 +570,10 @@ func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRun
 // getWorkflowRuns returns a list of workflow runs for a given repository
 func (s *githubRunnerScaler) getWorkflowRuns(ctx context.Context, repoName string) (*WorkflowRuns, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs", s.metadata.githubAPIURL, s.metadata.owner, repoName)
-	body, err := getGithubRequest(ctx, url, s.metadata, s.httpClient)
-	if err != nil {
+	body, statusCode, err := getGithubRequest(ctx, url, s.metadata, s.httpClient)
+	if err != nil && statusCode == 404 {
+		return nil, nil
+	} else if err != nil {
 		return nil, err
 	}
 
@@ -618,7 +622,9 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 		if err != nil {
 			return -1, err
 		}
-		allWfrs = append(allWfrs, *wfrs)
+		if wfrs != nil {
+			allWfrs = append(allWfrs, *wfrs)
+		}
 	}
 
 	var queueCount int64

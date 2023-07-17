@@ -5,7 +5,7 @@ jobs:
   validate:
     name: validate - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/build-tools:1.20.5
+    container: ghcr.io/kedacore/keda-tools:1.20.5
     strategy:
       matrix:
         include:
@@ -68,7 +68,7 @@ jobs:
   validate-dockerfiles:
     name: validate-dockerfiles - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/build-tools:1.20.5
+    container: ghcr.io/kedacore/keda-tools:1.20.5
     strategy:
        matrix:
         include:
@@ -96,47 +96,10 @@ jobs:
         if: steps.filter.outputs.dockerfiles == 'true'
         run: make docker-build
 
-  validate-build-tools:
-    name: Validate build-tools - ${{ matrix.name }}
-    runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/build-tools:1.20.5
-    strategy:
-       matrix:
-        include:
-        - runner: ARM64
-          name: arm64
-        - runner: ubuntu-latest
-          name: amd64
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Register workspace path
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
-      - uses: dorny/paths-filter@v2
-        id: filter
-        with:
-          filters: |
-            tools:
-              - 'tools/**'
-              - 'Makefile'
-
-      - name: Set up QEMU
-        if: steps.filter.outputs.tools == 'true'
-        uses: docker/setup-qemu-action@v2
-
-      - name: Set up Docker Buildx
-        if: steps.filter.outputs.tools == 'true'
-        uses: docker/setup-buildx-action@v2
-
-      - name: Build tools
-        if: steps.filter.outputs.tools == 'true'
-        run: make docker-build-tools
-
   validate-dev-container:
     name: Validate dev-container - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/build-tools:1.20.5
+    container: ghcr.io/kedacore/keda-tools:1.20.5
     strategy:
        matrix:
         include:
@@ -166,7 +129,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4.6.1
+      - uses: actions/setup-python@v4.7.0
         with:
           python-version: 3.x
       - uses: actions/setup-go@v4

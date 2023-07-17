@@ -59,6 +59,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General**: Metrics server exposes Prometheus metrics ([#4776](https://github.com/kedacore/keda/issues/4776))
 - **AWS Pod Identity Authentication**: Use `default` service account if the workload doesn't set it ([#4767](https://github.com/kedacore/keda/issues/4767))
+- **GitHub Runner Scaler**: Fix rate checking on GHEC when HTTP 200 ([#4786](https://github.com/kedacore/keda/issues/4786))
+- **GitHub Runner Scaler**: Fix explicit repo check 404 to skip not crash ([#4790](https://github.com/kedacore/keda/issues/4790))
 - **Pulsar Scaler**: Fix `msgBacklogThreshold` field being named wrongly as `msgBacklog` ([#4681](https://github.com/kedacore/keda/issues/4681))
 
 ### Deprecations
@@ -75,7 +77,7 @@ New deprecation(s):
 
 ### Other
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- **General**: Refactor ScaledJob related methods to be located at scale_handler  ([#4781](https://github.com/kedacore/keda/issues/4781))
 
 ## v2.11.1
 
@@ -446,7 +448,7 @@ None.
 
 - **General:** Provide patch for CVE-2022-27191 vulnerability ([#3378](https://github.com/kedacore/keda/issues/3378))
 - **General:** Refactor adapter startup to ensure proper log initilization. ([2316](https://github.com/kedacore/keda/issues/2316))
-- **General:** Scaleobject ready condition 'False/Unknow' to 'True' requeue ([#3096](https://github.com/kedacore/keda/issues/3096))
+- **General:** Scaleobject ready condition 'False/Unknown' to 'True' requeue ([#3096](https://github.com/kedacore/keda/issues/3096))
 - **General:** Use `go install` in the Makefile for downloading dependencies ([#2916](https://github.com/kedacore/keda/issues/2916))
 - **General:** Use metricName from GetMetricsSpec in ScaledJobs instead of `queueLength` ([#3032](https://github.com/kedacore/keda/issues/3032))
 - **ActiveMQ Scaler:** KEDA doesn't respect restAPITemplate ([#3188](https://github.com/kedacore/keda/issues/3188))
