@@ -171,10 +171,20 @@ func (so *ScaledObject) GenerateIdentifier() string {
 }
 
 func (so *ScaledObject) HasPausedAnnotation() bool {
-	_, pausedAnnotationFound := so.GetAnnotations()[PausedReplicasAnnotation]
-	return pausedAnnotationFound
+	_, pausedAnnotationFound := so.GetAnnotations()[PausedAnnotation]
+	_, pausedReplicasAnnotationFound := so.GetAnnotations()[PausedReplicasAnnotation]
+	return pausedAnnotationFound || pausedReplicasAnnotationFound
 }
 
 func (so *ScaledObject) NeedPaused() bool {
-	return so.Status.PausedReplicaCount == nil
+	_, pausedAnnotationFound := so.GetAnnotations()[PausedAnnotation]
+	if pausedAnnotationFound {
+		return true
+	}
+
+	_, pausedReplicasAnnotationFound := so.GetAnnotations()[PausedReplicasAnnotation]
+	if pausedReplicasAnnotationFound {
+		return so.Status.PausedReplicaCount != nil
+	}
+	return false
 }

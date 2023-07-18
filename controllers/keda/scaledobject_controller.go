@@ -122,6 +122,7 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options cont
 		// so reconcile loop is not started on Status updates
 		For(&kedav1alpha1.ScaledObject{}, builder.WithPredicates(
 			predicate.Or(
+				kedacontrollerutil.PausedPredicate{},
 				kedacontrollerutil.PausedReplicasPredicate{},
 				kedacontrollerutil.ScaleObjectReadyConditionPredicate{},
 				predicate.GenerationChangedPredicate{},
