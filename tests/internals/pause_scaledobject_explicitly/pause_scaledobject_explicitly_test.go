@@ -24,8 +24,6 @@ var (
 	deploymentName          = fmt.Sprintf("%s-deployment", testName)
 	monitoredDeploymentName = fmt.Sprintf("%s-monitored", testName)
 	scaledObjectName        = fmt.Sprintf("%s-so", testName)
-	maxReplicaCount         = 1
-	minReplicaCount         = 0
 	testScaleOutWaitMin     = 1
 	testPauseAtNWaitMin     = 1
 	testScaleInWaitMin      = 1
@@ -193,7 +191,6 @@ func testPauseWhenScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 		"monitoredDeploymentName replica count should be 0 after %d minute(s)", testPauseAtNWaitMin)
 	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 5, 10, testPauseAtNWaitMin),
 		"replica count should be 5 after %d minute(s)", testPauseAtNWaitMin)
-
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
