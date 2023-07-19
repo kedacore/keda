@@ -360,16 +360,16 @@ var _ = Describe("fallback", func() {
 		csl := &kedav1alpha1.ComplexScalingLogic{
 			Formula: "",
 			Target:  "2",
-			Fallback: &kedav1alpha1.Fallback{
-				FailureThreshold: wrongThreshold,
-				Replicas:         int32(10),
-			},
+
 			ExternalCalculations: []kedav1alpha1.ExternalCalculation{
 				{Name: metricName, URL: "fake-url", Timeout: "5"}},
 		}
 
 		so := buildScaledObject(
-			nil,
+			&kedav1alpha1.Fallback{
+				FailureThreshold: wrongThreshold,
+				Replicas:         int32(10),
+			},
 			&kedav1alpha1.ScaledObjectStatus{
 				ExternalCalculationHealth: map[string]kedav1alpha1.HealthStatus{
 					metricName: {
@@ -433,16 +433,16 @@ var _ = Describe("fallback", func() {
 		csl := &kedav1alpha1.ComplexScalingLogic{
 			Formula: "",
 			Target:  "2",
-			Fallback: &kedav1alpha1.Fallback{
-				FailureThreshold: threshold,
-				Replicas:         replicas,
-			},
+
 			ExternalCalculations: []kedav1alpha1.ExternalCalculation{
 				{Name: metricName, URL: "fake-url", Timeout: "5"}},
 		}
 
 		so := buildScaledObject(
-			nil,
+			&kedav1alpha1.Fallback{
+				FailureThreshold: threshold,
+				Replicas:         replicas,
+			},
 			&kedav1alpha1.ScaledObjectStatus{
 				ExternalCalculationHealth: map[string]kedav1alpha1.HealthStatus{
 					metricName: {
@@ -478,16 +478,16 @@ var _ = Describe("fallback", func() {
 		csl := &kedav1alpha1.ComplexScalingLogic{
 			Formula: "",
 			Target:  "2",
-			Fallback: &kedav1alpha1.Fallback{
-				FailureThreshold: threshold,
-				Replicas:         replicas,
-			},
+
 			ExternalCalculations: []kedav1alpha1.ExternalCalculation{
 				{Name: metricName, URL: "fake-url", Timeout: "5"}},
 		}
 
 		so := buildScaledObject(
-			nil,
+			&kedav1alpha1.Fallback{
+				FailureThreshold: threshold,
+				Replicas:         replicas,
+			},
 			&kedav1alpha1.ScaledObjectStatus{
 				ExternalCalculationHealth: map[string]kedav1alpha1.HealthStatus{
 					metricName: {
@@ -522,16 +522,16 @@ var _ = Describe("fallback", func() {
 		csl := &kedav1alpha1.ComplexScalingLogic{
 			Formula: "",
 			Target:  "2",
-			Fallback: &kedav1alpha1.Fallback{
-				FailureThreshold: threshold,
-				Replicas:         replicas,
-			},
+
 			ExternalCalculations: []kedav1alpha1.ExternalCalculation{
 				{Name: metricName, URL: "fake-url", Timeout: "5"}},
 		}
 
 		so := buildScaledObject(
-			nil,
+			&kedav1alpha1.Fallback{
+				FailureThreshold: threshold,
+				Replicas:         replicas,
+			},
 			&kedav1alpha1.ScaledObjectStatus{
 				ExternalCalculationHealth: map[string]kedav1alpha1.HealthStatus{
 					metricName: {
@@ -565,16 +565,16 @@ var _ = Describe("fallback", func() {
 		csl := &kedav1alpha1.ComplexScalingLogic{
 			Formula: "",
 			Target:  "2",
-			Fallback: &kedav1alpha1.Fallback{
-				FailureThreshold: threshold,
-				Replicas:         replicas,
-			},
+
 			ExternalCalculations: []kedav1alpha1.ExternalCalculation{
 				{Name: metricName, URL: "fake-url", Timeout: "5"}},
 		}
 
 		so := buildScaledObject(
-			nil,
+			&kedav1alpha1.Fallback{
+				FailureThreshold: threshold,
+				Replicas:         replicas,
+			},
 			&kedav1alpha1.ScaledObjectStatus{
 				ExternalCalculationHealth: map[string]kedav1alpha1.HealthStatus{
 					metricName: {
@@ -609,16 +609,16 @@ var _ = Describe("fallback", func() {
 		csl := &kedav1alpha1.ComplexScalingLogic{
 			Formula: "",
 			Target:  target,
-			Fallback: &kedav1alpha1.Fallback{
-				FailureThreshold: threshold,
-				Replicas:         replicas,
-			},
+
 			ExternalCalculations: []kedav1alpha1.ExternalCalculation{
 				{Name: metricName, URL: "fake-url", Timeout: "5"}},
 		}
 
 		so := buildScaledObject(
-			nil,
+			&kedav1alpha1.Fallback{
+				FailureThreshold: threshold,
+				Replicas:         replicas,
+			},
 			&kedav1alpha1.ScaledObjectStatus{
 				ExternalCalculationHealth: map[string]kedav1alpha1.HealthStatus{
 					metricName: {
@@ -663,16 +663,16 @@ var _ = Describe("fallback", func() {
 		csl := &kedav1alpha1.ComplexScalingLogic{
 			Formula: "",
 			Target:  target,
-			Fallback: &kedav1alpha1.Fallback{
-				FailureThreshold: threshold,
-				Replicas:         replicas,
-			},
+
 			ExternalCalculations: []kedav1alpha1.ExternalCalculation{
 				{Name: metricName, URL: "fake-url", Timeout: "5"}},
 		}
 
 		so := buildScaledObject(
-			nil,
+			&kedav1alpha1.Fallback{
+				FailureThreshold: threshold,
+				Replicas:         replicas,
+			},
 			&kedav1alpha1.ScaledObjectStatus{
 				ExternalCalculationHealth: map[string]kedav1alpha1.HealthStatus{
 					metricName: {
@@ -706,16 +706,16 @@ var _ = Describe("fallback", func() {
 		csl := &kedav1alpha1.ComplexScalingLogic{
 			Formula: "",
 			Target:  target,
-			Fallback: &kedav1alpha1.Fallback{
-				FailureThreshold: threshold,
-				Replicas:         replicas,
-			},
+
 			ExternalCalculations: []kedav1alpha1.ExternalCalculation{
 				{Name: metricName, URL: "fake-url", Timeout: "5"}},
 		}
 
 		so := buildScaledObject(
-			nil,
+			&kedav1alpha1.Fallback{
+				FailureThreshold: threshold,
+				Replicas:         replicas,
+			},
 			&kedav1alpha1.ScaledObjectStatus{
 				ExternalCalculationHealth: map[string]kedav1alpha1.HealthStatus{
 					metricName: {

@@ -115,8 +115,6 @@ type ComplexScalingLogic struct {
 	Formula string `json:"formula,omitempty"`
 	// +optional
 	Target string `json:"target,omitempty"`
-	// +optional
-	Fallback *Fallback `json:"fallback,omitempty"`
 }
 
 // ExternalCalculation structure describes name and URL of a gRPC server

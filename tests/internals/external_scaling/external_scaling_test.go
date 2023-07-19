@@ -308,9 +308,6 @@ spec:
       - name: second_add
         url: {{.ExternalAddIP}}:{{.ExternalAddPort}}
         timeout: '10s'
-      fallback:
-        replicas: 4
-        failureThreshold: 1
   pollingInterval: 5
   cooldownPeriod: 5
   minReplicaCount: 0
@@ -556,19 +553,17 @@ func testFallback(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Logf("--- delete grpc server (named %s) for fallback ---", serverAddName)
 	KubectlDeleteWithTemplate(t, data, "podExternalAddTemplate", podExternalAddTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 4, 12, 10),
-		"replica count should be %d after 2 minutes", 4)
-
-	t.Log("--- trigger default fallback, should override and change replicas ---")
-
-	_, err = ExecuteCommand(fmt.Sprintf("kubectl scale deployment/%s --replicas=0 -n %s", metricsServerDeploymentName, namespace))
-	assert.NoErrorf(t, err, "cannot scale ms deployment - %s", err)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 3, 12, 10),
 		"replica count should be %d after 2 minutes", 3)
 
+	t.Log("--- trigger default fallback as well, should not change replicas ---")
+
+	_, err = ExecuteCommand(fmt.Sprintf("kubectl scale deployment/%s --replicas=0 -n %s", metricsServerDeploymentName, namespace))
+	assert.NoErrorf(t, err, "cannot scale ms deployment - %s", err)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 3, 30)
+
 	// fix all errors to restore function
-	t.Log("--- restore all errors subsequentially and scale normally ---")
-	t.Log("--- restore default trigger ---")
+	t.Log("--- restore all errors and scale normally ---")
 
 	_, err = ExecuteCommand(fmt.Sprintf("kubectl scale deployment/%s --replicas=1 -n %s", metricsServerDeploymentName, namespace))
 	assert.NoErrorf(t, err, "cannot scale ms deployment - %s", err)
@@ -576,13 +571,7 @@ func testFallback(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	// \"http://external-scaling-test-service.external-scaling-test-ns.svc.cluster.local:8080/api/value\"
 	data.MetricValue = 3
 	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 4, 12, 10),
-		"replica count should be %d after 2 minutes", 4)
-
-	t.Log("--- restore externalCalculator ---")
-
 	KubectlApplyWithTemplate(t, data, "podExternalAddTemplate", podExternalAddTemplate)
-	// KubectlApplyWithTemplate(t, data, "serviceExternalAddTemplate", serviceExternalAddTemplate)
 	assert.True(t, waitForPodsReadyInNamespace(t, kc, namespace, []string{serverAddName}, 12, 10),
 		fmt.Sprintf("pod '%v' should be ready after 2 minutes", []string{serverAddName, serverAvgName}))
 

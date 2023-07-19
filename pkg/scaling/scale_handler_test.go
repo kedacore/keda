@@ -907,11 +907,11 @@ func TestComplexScalingExternalCalculatorFallback(t *testing.T) {
 					ExternalCalculations: []kedav1alpha1.ExternalCalculation{
 						{Name: "fake_calc", URL: "fake_url", Timeout: "10s"},
 					},
-					Fallback: &kedav1alpha1.Fallback{
-						FailureThreshold: 3,
-						Replicas:         int32(6),
-					},
 				},
+			},
+			Fallback: &kedav1alpha1.Fallback{
+				FailureThreshold: 3,
+				Replicas:         int32(6),
 			},
 			Triggers: []kedav1alpha1.ScaleTriggers{
 				{Name: triggerName1, Type: "fake_trig1"},

@@ -38,6 +38,7 @@ var log = logf.Log.WithName("fallback")
 const healthStr string = "health"
 const externalCalculatorStr string = "externalcalculator"
 
+// TODO: gauron99 - possible refactor this if trying to unify status updates & fallback functionality
 func isFallbackEnabled(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, determiner string) bool {
 	switch determiner {
 	case healthStr:
@@ -49,8 +50,7 @@ func isFallbackEnabled(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.Me
 			return false
 		}
 	case externalCalculatorStr:
-		// check for nil pointer & only then check for fallback
-		if scaledObject.Spec.Advanced == nil || scaledObject.Spec.Advanced.ComplexScalingLogic.Fallback == nil {
+		if scaledObject.Spec.Fallback == nil || scaledObject.Spec.Advanced.ComplexScalingLogic.Target == "" {
 			return false
 		}
 	default:
@@ -60,7 +60,9 @@ func isFallbackEnabled(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.Me
 	return true
 }
 
-// TODO: possible refactor of fallback funcionality to unify status updates
+// TODO: gauron99 - possible refactor of fallback functionality to unify status updates
+// Possibly move external health status into the existing one with prefix like external-modifier or something.
+// Separate status updates & fallback functionality
 func GetMetricsWithFallbackExternalCalculator(ctx context.Context, client runtimeclient.Client, metrics *cl.MetricsList, suppressedError error, metricName string, scaledObject *kedav1alpha1.ScaledObject) (bool, error) {
 	const determiner string = "externalcalculator"
 	status := scaledObject.Status.DeepCopy()
@@ -95,10 +97,10 @@ func GetMetricsWithFallbackExternalCalculator(ctx context.Context, client runtim
 	switch {
 	case !isFallbackEnabled(scaledObject, v2.MetricSpec{}, determiner):
 		return false, suppressedError
-	case !validateFallback(scaledObject, determiner):
+	case !validateFallback(scaledObject):
 		log.Info("Failed to validate ScaledObject ComplexScalingLogic Fallback. Please check that parameters are positive integers", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
 		return false, suppressedError
-	case *healthStatus.NumberOfFailures > scaledObject.Spec.Advanced.ComplexScalingLogic.Fallback.FailureThreshold:
+	case *healthStatus.NumberOfFailures > scaledObject.Spec.Fallback.FailureThreshold:
 		doExternalCalculationFallback(scaledObject, metrics, metricName, suppressedError)
 		return true, nil
 
@@ -138,7 +140,7 @@ func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, me
 	switch {
 	case !isFallbackEnabled(scaledObject, metricSpec, determiner):
 		return nil, suppressedError
-	case !validateFallback(scaledObject, determiner):
+	case !validateFallback(scaledObject):
 		log.Info("Failed to validate ScaledObject Spec. Please check that parameters are positive integers", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
 		return nil, suppressedError
 	case *healthStatus.NumberOfFailures > scaledObject.Spec.Fallback.FailureThreshold:
@@ -149,7 +151,7 @@ func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, me
 }
 
 func fallbackExistsInScaledObject(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, determiner string) bool {
-	if !isFallbackEnabled(scaledObject, metricSpec, determiner) || !validateFallback(scaledObject, determiner) {
+	if !isFallbackEnabled(scaledObject, metricSpec, determiner) || !validateFallback(scaledObject) {
 		return false
 	}
 
@@ -162,7 +164,7 @@ func fallbackExistsInScaledObject(scaledObject *kedav1alpha1.ScaledObject, metri
 		}
 	case externalCalculatorStr:
 		for _, element := range scaledObject.Status.ExternalCalculationHealth {
-			if element.Status == kedav1alpha1.HealthStatusFailing && *element.NumberOfFailures > scaledObject.Spec.Advanced.ComplexScalingLogic.Fallback.FailureThreshold {
+			if element.Status == kedav1alpha1.HealthStatusFailing && *element.NumberOfFailures > scaledObject.Spec.Fallback.FailureThreshold {
 				return true
 			}
 		}
@@ -173,17 +175,9 @@ func fallbackExistsInScaledObject(scaledObject *kedav1alpha1.ScaledObject, metri
 	return false
 }
 
-func validateFallback(scaledObject *kedav1alpha1.ScaledObject, determiner string) bool {
-	switch determiner {
-	case healthStr:
-		return scaledObject.Spec.Fallback.FailureThreshold >= 0 &&
-			scaledObject.Spec.Fallback.Replicas >= 0
-	case externalCalculatorStr:
-		return scaledObject.Spec.Advanced.ComplexScalingLogic.Fallback.FailureThreshold >= 0 &&
-			scaledObject.Spec.Advanced.ComplexScalingLogic.Fallback.Replicas >= 0
-	default:
-	}
-	return false
+func validateFallback(scaledObject *kedav1alpha1.ScaledObject) bool {
+	return scaledObject.Spec.Fallback.FailureThreshold >= 0 &&
+		scaledObject.Spec.Fallback.Replicas >= 0
 }
 
 func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, metricName string, suppressedError error) []external_metrics.ExternalMetricValue {
@@ -201,7 +195,7 @@ func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpe
 }
 
 func doExternalCalculationFallback(scaledObject *kedav1alpha1.ScaledObject, metrics *cl.MetricsList, metricName string, suppressedError error) {
-	replicas := int64(scaledObject.Spec.Advanced.ComplexScalingLogic.Fallback.Replicas)
+	replicas := int64(scaledObject.Spec.Fallback.Replicas)
 	normalisationValue, err := strconv.ParseFloat(scaledObject.Spec.Advanced.ComplexScalingLogic.Target, 64)
 	if err != nil {
 		log.Error(err, "error converting string to float in ExternalCalculation fallback")
@@ -212,7 +206,7 @@ func doExternalCalculationFallback(scaledObject *kedav1alpha1.ScaledObject, metr
 		Value: float32(normalisationValue * float64(replicas)),
 	}
 	metrics.MetricValues = []*cl.Metric{&metric}
-	log.Info(fmt.Sprintf("Suppressing error, externalCalculator falling back to %d fallback.replicas", scaledObject.Spec.Advanced.ComplexScalingLogic.Fallback.Replicas), "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "suppressedError", suppressedError)
+	log.Info(fmt.Sprintf("Suppressing error, externalCalculator falling back to %d fallback.replicas", scaledObject.Spec.Fallback.Replicas), "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "suppressedError", suppressedError)
 }
 
 func updateStatus(ctx context.Context, client runtimeclient.Client, scaledObject *kedav1alpha1.ScaledObject, status *kedav1alpha1.ScaledObjectStatus, metricSpec v2.MetricSpec) {
