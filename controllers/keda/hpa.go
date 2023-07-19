@@ -284,8 +284,16 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 			}
 			status.CompositeScalerName = "composite-metric-name"
 
-			// overwrite returned array with composite metric ONLY
-			scaledObjectMetricSpecs = []autoscalingv2.MetricSpec{compositeSpec}
+			// overwrite external metrics in returned array with composite metric ONLY (keep resource metrics)
+			finalHpaSpecs := []autoscalingv2.MetricSpec{}
+			// keep resource specs
+			for _, rm := range scaledObjectMetricSpecs {
+				if rm.Resource != nil {
+					finalHpaSpecs = append(finalHpaSpecs, rm)
+				}
+			}
+			finalHpaSpecs = append(finalHpaSpecs, compositeSpec)
+			scaledObjectMetricSpecs = finalHpaSpecs
 		}
 	}
 	err = kedastatus.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status)
