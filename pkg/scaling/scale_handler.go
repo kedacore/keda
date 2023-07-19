@@ -374,7 +374,6 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 	switch val := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
 		if val.Spec.Advanced != nil {
-			// TODO: check if connection already established first?
 			for _, ec := range val.Spec.Advanced.ComplexScalingLogic.ExternalCalculations {
 				timeout, err := strconv.ParseInt(ec.Timeout, 10, 64)
 				if err != nil {
@@ -456,7 +455,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	logger := log.WithValues("scaledObject.Namespace", scaledObjectNamespace, "scaledObject.Name", scaledObjectName)
 	var matchingMetrics []external_metrics.ExternalMetricValue
 
-	cacheObj, err := h.getScalersCacheForScaledObject(ctx, scaledObjectName, scaledObjectNamespace)
+	cache, err := h.getScalersCacheForScaledObject(ctx, scaledObjectName, scaledObjectNamespace)
 	prommetrics.RecordScaledObjectError(scaledObjectNamespace, scaledObjectName, err)
 
 	if err != nil {
@@ -464,8 +463,8 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	}
 
 	var scaledObject *kedav1alpha1.ScaledObject
-	if cacheObj.ScaledObject != nil {
-		scaledObject = cacheObj.ScaledObject
+	if cache.ScaledObject != nil {
+		scaledObject = cache.ScaledObject
 	} else {
 		err := fmt.Errorf("scaledObject not found in the cache")
 		logger.Error(err, "scaledObject not found in the cache")
@@ -483,18 +482,18 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	metricTriggerPairList := make(map[string]string)
 
 	// let's check metrics for all scalers in a ScaledObject
-	scalers, scalerConfigs := cacheObj.GetScalers()
+	scalers, scalerConfigs := cache.GetScalers()
 	for scalerIndex := 0; scalerIndex < len(scalers); scalerIndex++ {
 		scalerName := strings.Replace(fmt.Sprintf("%T", scalers[scalerIndex]), "*scalers.", "", 1)
 		if scalerConfigs[scalerIndex].TriggerName != "" {
 			scalerName = scalerConfigs[scalerIndex].TriggerName
 		}
 
-		metricSpecs, err := cacheObj.GetMetricSpecForScalingForScaler(ctx, scalerIndex)
+		metricSpecs, err := cache.GetMetricSpecForScalingForScaler(ctx, scalerIndex)
 		if err != nil {
 			isScalerError = true
 			logger.Error(err, "error getting metric spec for the scaler", "scaler", scalerName)
-			cacheObj.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
+			cache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 		}
 
 		if len(metricsArray) == 0 {
@@ -537,7 +536,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 
 				if !metricsFoundInCache {
 					var latency int64
-					metrics, _, latency, err = cacheObj.GetMetricsAndActivityForScaler(ctx, scalerIndex, metricName)
+					metrics, _, latency, err = cache.GetMetricsAndActivityForScaler(ctx, scalerIndex, metricName)
 					if latency != -1 {
 						prommetrics.RecordScalerLatency(scaledObjectNamespace, scaledObject.Name, scalerName, scalerIndex, metricName, float64(latency))
 					}
@@ -577,7 +576,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	}
 
 	// handle complexScalingLogic here and simply return the matchingMetrics
-	matchingMetrics = h.handleComplexScalingLogic(ctx, scaledObject, matchingMetrics, metricTriggerPairList, cacheObj, logger)
+	matchingMetrics = h.handleComplexScalingLogic(ctx, scaledObject, matchingMetrics, metricTriggerPairList, cache, logger)
 	return &external_metrics.ExternalMetricValueList{
 		Items: matchingMetrics,
 	}, nil
