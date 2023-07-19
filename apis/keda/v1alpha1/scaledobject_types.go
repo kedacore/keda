@@ -119,8 +119,8 @@ type ComplexScalingLogic struct {
 
 // ExternalCalculation structure describes name and URL of a gRPC server
 // that KEDA can connect to with collected metrics and modify them. Each server
-// has a timeout and optional Fallback functionality and tls certification. If
-// certDir is left empty, it will connect with insecure.NewCredentials()
+// has a timeout and tls certification. If certDir is left empty, it will
+// connect with insecure.NewCredentials()
 type ExternalCalculation struct {
 	Name    string `json:"name"`
 	URL     string `json:"url"`
