@@ -115,6 +115,8 @@ func getTemplateData() (templateData, []Template) {
 }
 
 // expect triggerauthentication should not be created with empty identity id
+//
+//revive:disable:unused-parameter
 func testTriggerAuthenticationWithEmptyID(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- create triggerauthentication with empty identity id  ---")
 
@@ -123,6 +125,8 @@ func testTriggerAuthenticationWithEmptyID(t *testing.T, kc *kubernetes.Clientset
 }
 
 // expect triggerauthentication can be created without identity id property
+//
+//revive:disable:unused-parameter
 func testTriggerAuthenticationWithNilID(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- create triggerauthentication with nil identity id  ---")
 
@@ -134,6 +138,8 @@ func testTriggerAuthenticationWithNilID(t *testing.T, kc *kubernetes.Clientset, 
 }
 
 // expect clustertriggerauthentication should not be created with empty identity id
+//
+//revive:disable:unused-parameter
 func testClusterTriggerAuthenticationWithEmptyID(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- create clustertriggerauthentication with empty identity id  ---")
 
@@ -142,6 +148,8 @@ func testClusterTriggerAuthenticationWithEmptyID(t *testing.T, kc *kubernetes.Cl
 }
 
 // expect clustertriggerauthentication can be created without identity id property
+//
+//revive:disable:unused-parameter
 func testClusterTriggerAuthenticationWithNilID(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- create clustertriggerauthentication with nil identity id  ---")
 
