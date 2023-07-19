@@ -353,7 +353,7 @@ func validateCSLformula(so *ScaledObject) error {
 	}
 	// formula needs target because it's always transformed to Composite scaler
 	if csl.Target == "" {
-		return fmt.Errorf("target is empty")
+		return fmt.Errorf("formula is given but target is empty")
 	}
 
 	// possible TODO: this could be more soffisticated - only check for names that
@@ -397,15 +397,18 @@ func validateCSLtarget(csl ComplexScalingLogic, specs []autoscalingv2.MetricSpec
 	// convert string to float
 	num, err := strconv.ParseFloat(csl.Target, 64)
 	if err != nil || num <= 0.0 {
-		return -1, "", fmt.Errorf("error converting target for complex logic (string->float): %w", err)
+		return -1, "", fmt.Errorf("error converting target for complex logic (string->float) to valid target: %w", err)
 	}
 
 	var metricType autoscalingv2.MetricTargetType
 	// if target is given, composite scaler for metric collection will be
 	// passed to HPA config -> all types need to be the same
 	// make sure all scalers have the same metricTargetType
-	for i, metric := range specs {
-		if i == 0 {
+	for _, metric := range specs {
+		if metric.External == nil {
+			continue
+		}
+		if metricType == "" {
 			metricType = metric.External.Target.Type
 		} else if metric.External.Target.Type != metricType {
 			err := fmt.Errorf("error metric target type not the same for composite scaler: %s & %s", metricType, metric.External.Target.Type)
