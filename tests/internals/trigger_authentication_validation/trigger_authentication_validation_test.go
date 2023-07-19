@@ -115,9 +115,7 @@ func getTemplateData() (templateData, []Template) {
 }
 
 // expect triggerauthentication should not be created with empty identity id
-//
-//revive:disable:unused-parameter
-func testTriggerAuthenticationWithEmptyID(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testTriggerAuthenticationWithEmptyID(t *testing.T, _ *kubernetes.Clientset, data templateData) {
 	t.Log("--- create triggerauthentication with empty identity id  ---")
 
 	err := KubectlApplyWithErrors(t, data, "triggerAuthEmptyIDTemplate", triggerAuthEmptyIDTemplate)
@@ -125,9 +123,7 @@ func testTriggerAuthenticationWithEmptyID(t *testing.T, kc *kubernetes.Clientset
 }
 
 // expect triggerauthentication can be created without identity id property
-//
-//revive:disable:unused-parameter
-func testTriggerAuthenticationWithNilID(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testTriggerAuthenticationWithNilID(t *testing.T, _ *kubernetes.Clientset, data templateData) {
 	t.Log("--- create triggerauthentication with nil identity id  ---")
 
 	kedaKc := GetKedaKubernetesClient(t)
@@ -138,9 +134,7 @@ func testTriggerAuthenticationWithNilID(t *testing.T, kc *kubernetes.Clientset, 
 }
 
 // expect clustertriggerauthentication should not be created with empty identity id
-//
-//revive:disable:unused-parameter
-func testClusterTriggerAuthenticationWithEmptyID(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testClusterTriggerAuthenticationWithEmptyID(t *testing.T, _ *kubernetes.Clientset, data templateData) {
 	t.Log("--- create clustertriggerauthentication with empty identity id  ---")
 
 	err := KubectlApplyWithErrors(t, data, "clusterTriggerAuthEmptyIDTemplate", clusterTriggerAuthEmptyIDTemplate)
@@ -148,9 +142,7 @@ func testClusterTriggerAuthenticationWithEmptyID(t *testing.T, kc *kubernetes.Cl
 }
 
 // expect clustertriggerauthentication can be created without identity id property
-//
-//revive:disable:unused-parameter
-func testClusterTriggerAuthenticationWithNilID(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testClusterTriggerAuthenticationWithNilID(t *testing.T, _ *kubernetes.Clientset, data templateData) {
 	t.Log("--- create clustertriggerauthentication with nil identity id  ---")
 
 	kedaKc := GetKedaKubernetesClient(t)
