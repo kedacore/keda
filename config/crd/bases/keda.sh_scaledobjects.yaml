@@ -99,19 +99,6 @@ spec:
                           - url
                           type: object
                         type: array
-                      fallback:
-                        description: Fallback is the spec for fallback options
-                        properties:
-                          failureThreshold:
-                            format: int32
-                            type: integer
-                          replicas:
-                            format: int32
-                            type: integer
-                        required:
-                        - failureThreshold
-                        - replicas
-                        type: object
                       formula:
                         type: string
                       target:
