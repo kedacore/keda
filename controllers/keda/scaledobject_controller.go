@@ -210,7 +210,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 	if pausedAnnotationFound {
 		scaledToPausedCount := true
 		if conditions.GetPausedCondition().Status == metav1.ConditionTrue {
-			//If scaledobject is in paused condition but replica count is not equal to paused replica count, the following scaling logic needs to be trigger again.
+			// If scaledobject is in paused condition but replica count is not equal to paused replica count, the following scaling logic needs to be trigger again.
 			scaledToPausedCount = r.checkIfTargetResourceReachPausedCount(ctx, logger, scaledObject)
 			if scaledToPausedCount {
 				return kedav1alpha1.ScaledObjectConditionReadySuccessMessage, nil
