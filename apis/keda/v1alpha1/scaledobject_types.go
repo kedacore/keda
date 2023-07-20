@@ -177,14 +177,11 @@ func (so *ScaledObject) HasPausedAnnotation() bool {
 }
 
 func (so *ScaledObject) NeedPaused() bool {
-	_, pausedAnnotationFound := so.GetAnnotations()[PausedAnnotation]
-	if pausedAnnotationFound {
-		return true
-	}
-
 	_, pausedReplicasAnnotationFound := so.GetAnnotations()[PausedReplicasAnnotation]
 	if pausedReplicasAnnotationFound {
 		return so.Status.PausedReplicaCount != nil
 	}
-	return false
+
+	_, pausedAnnotationFound := so.GetAnnotations()[PausedAnnotation]
+	return pausedAnnotationFound
 }

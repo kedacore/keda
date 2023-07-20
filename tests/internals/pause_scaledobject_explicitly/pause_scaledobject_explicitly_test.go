@@ -6,6 +6,7 @@ package pause_scaledobject_explicitly_test
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
@@ -94,7 +95,7 @@ spec:
     name: {{.DeploymentName}}
   pollingInterval: 5
   minReplicaCount: 0
-  maxReplicaCount: 5
+  maxReplicaCount: 10
   cooldownPeriod:  5
   triggers:
     - type: kubernetes-workload
@@ -123,6 +124,7 @@ func TestScaler(t *testing.T) {
 	testScaleOut(t, kc)
 	testPauseWhenScaleIn(t, kc)
 	testScaleIn(t, kc)
+	testBothPauseAnnotationActive(t, kc)
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
@@ -141,31 +143,45 @@ func getTemplateData() (templateData, []Template) {
 		}
 }
 
-func upsertScaledObjectAnnotation(t assert.TestingT) {
+func upsertScaledObjectPausedAnnotation(t assert.TestingT) {
 	_, err := ExecuteCommand(fmt.Sprintf("kubectl annotate scaledobject/%s -n %s autoscaling.keda.sh/paused='true' --overwrite", scaledObjectName, testNamespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
-func removeScaledObjectAnnotation(t assert.TestingT) {
+func removeScaledObjectPausedAnnotation(t assert.TestingT) {
 	_, err := ExecuteCommand(fmt.Sprintf("kubectl annotate scaledobject/%s -n %s autoscaling.keda.sh/paused- --overwrite", scaledObjectName, testNamespace))
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+}
+func upsertScaledObjectPausedReplicasAnnotation(t assert.TestingT, value int) {
+	_, err := ExecuteCommand(fmt.Sprintf("kubectl annotate scaledobject/%s -n %s autoscaling.keda.sh/paused-replicas=%d --overwrite", scaledObjectName, testNamespace, value))
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+}
+
+func removeScaledObjectPausedReplicasAnnotation(t assert.TestingT) {
+	_, err := ExecuteCommand(fmt.Sprintf("kubectl annotate scaledobject/%s -n %s autoscaling.keda.sh/paused-replicas- --overwrite", scaledObjectName, testNamespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
 func testPauseWhenScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing pausing at 0 ---")
 
-	upsertScaledObjectAnnotation(t)
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, testScaleOutWaitMin),
+		"monitoredDeploymentName replica count should be 2 after %d minute(s)", testScaleOutWaitMin)
+
+	upsertScaledObjectPausedAnnotation(t)
+
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 2, testNamespace)
+
 	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, monitoredDeploymentName, testNamespace, 2, 60, testScaleOutWaitMin),
 		"monitoredDeploymentName replica count should be 2 after %d minute(s)", testScaleOutWaitMin)
 
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 10)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale out ---")
 
-	removeScaledObjectAnnotation(t)
+	removeScaledObjectPausedAnnotation(t)
 
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 5, testNamespace)
 	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, monitoredDeploymentName, testNamespace, 5, 60, testScaleOutWaitMin),
@@ -180,10 +196,10 @@ func testPauseWhenScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 5, testNamespace)
 
-	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 5, 10, testPauseAtNWaitMin),
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 5, 60, testPauseAtNWaitMin),
 		"replica count should be 5 after %d minute(s)", testPauseAtNWaitMin)
 
-	upsertScaledObjectAnnotation(t)
+	upsertScaledObjectPausedAnnotation(t)
 
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 0, testNamespace)
 
@@ -196,7 +212,54 @@ func testPauseWhenScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
 
-	removeScaledObjectAnnotation(t)
+	removeScaledObjectPausedAnnotation(t)
 	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, testScaleInWaitMin),
 		"replica count should be 0 after %d minutes", testScaleInWaitMin)
+}
+
+func testBothPauseAnnotationActive(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing paused and paused-replicas annotations at the same time---")
+
+	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 0, testNamespace)
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, monitoredDeploymentName, testNamespace, 0, 60, testPauseAtNWaitMin),
+		"replica count should be 5 after %d minute(s)", testPauseAtNWaitMin)
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, testPauseAtNWaitMin),
+		"replica count should be 5 after %d minute(s)", testPauseAtNWaitMin)
+
+	t.Log("--- testing adding paused first---")
+	upsertScaledObjectPausedAnnotation(t)
+	time.Sleep(3 * time.Second)
+	upsertScaledObjectPausedReplicasAnnotation(t, 5)
+
+	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 10, testNamespace)
+
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, monitoredDeploymentName, testNamespace, 10, 60, testPauseAtNWaitMin),
+		"monitoredDeploymentName replica count should be 10 after %d minute(s)", testPauseAtNWaitMin)
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 5, 60, testPauseAtNWaitMin),
+		"replica count should be 5 after %d minute(s)", testPauseAtNWaitMin)
+
+	t.Log("--- testing recover scale out---")
+	removeScaledObjectPausedAnnotation(t)
+	removeScaledObjectPausedReplicasAnnotation(t)
+
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 10, 60, testPauseAtNWaitMin),
+		"replica count should be 5 after %d minute(s)", testPauseAtNWaitMin)
+
+	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 0, testNamespace)
+
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, monitoredDeploymentName, testNamespace, 0, 60, testPauseAtNWaitMin),
+		"replica count should be 5 after %d minute(s)", testPauseAtNWaitMin)
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, testPauseAtNWaitMin),
+		"replica count should be 5 after %d minute(s)", testPauseAtNWaitMin)
+
+	t.Log("--- testing adding paused-replica first---")
+	upsertScaledObjectPausedReplicasAnnotation(t, 5)
+	time.Sleep(3 * time.Second)
+	upsertScaledObjectPausedAnnotation(t)
+	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 10, testNamespace)
+
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, monitoredDeploymentName, testNamespace, 10, 60, testPauseAtNWaitMin),
+		"monitoredDeploymentName replica count should be 0 after %d minute(s)", testPauseAtNWaitMin)
+	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 5, 60, testPauseAtNWaitMin),
+		"replica count should be 5 after %d minute(s)", testPauseAtNWaitMin)
 }
