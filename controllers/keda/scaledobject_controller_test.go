@@ -718,7 +718,7 @@ var _ = Describe("ScaledObjectController", func() {
 		})
 	})
 
-	It("scaleobject ready condition 'False/Unknow' to 'True' will requeue", func() {
+	It("scaleobject ready condition 'False/Unknown' to 'True' will requeue", func() {
 		var (
 			deploymentName        = "conditionchange"
 			soName                = "so-" + deploymentName

@@ -402,7 +402,7 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 }
 
 // checkReplicaCountBoundsAreValid checks that Idle/Min/Max ReplicaCount defined in ScaledObject are correctly specified
-// ie. that Min is not greater then Max or Idle greater or equal to Min
+// i.e. that Min is not greater than Max or Idle greater or equal to Min
 func (r *ScaledObjectReconciler) checkReplicaCountBoundsAreValid(scaledObject *kedav1alpha1.ScaledObject) error {
 	min := int32(0)
 	if scaledObject.Spec.MinReplicaCount != nil {
