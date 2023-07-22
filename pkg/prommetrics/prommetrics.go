@@ -177,7 +177,7 @@ func RecordScalerActive(namespace string, scaledObject string, scaler string, sc
 	scalerActive.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Set(float64(activeVal))
 }
 
-// RecordScalerError counts the number of errors occurred in trying get an external metric used by the HPA
+// RecordScalerError counts the number of errors occurred in trying to get an external metric used by the HPA
 func RecordScalerError(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, err error) {
 	if err != nil {
 		scalerErrors.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Inc()
