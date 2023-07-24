@@ -77,6 +77,7 @@ New deprecation(s):
 ### Other
 
 - **General**: Refactor ScaledJob related methods to be located at scale_handler  ([#4781](https://github.com/kedacore/keda/issues/4781))
+- **General**: Expose prometheus metrics at ScaledJob like ScaledObject ([#4798](https://github.com/kedacore/keda/issues/4798))
 
 ## v2.11.1
 
