@@ -352,6 +352,10 @@ func validateCSLformula(so *ScaledObject) error {
 	// possible TODO: this could be more soffisticated - only check for names that
 	// are used in the formula itself. This would require parsing the formula.
 	for _, trig := range so.Spec.Triggers {
+		// if resource metrics are given, skip
+		if trig.Type == "cpu" || trig.Type == "memory" {
+			continue
+		}
 		if trig.Name == "" {
 			return fmt.Errorf("trigger of type '%s' has empty name but csl.Formula is defined", trig.Type)
 		}
