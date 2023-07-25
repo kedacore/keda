@@ -77,6 +77,7 @@ New deprecation(s):
 ### Other
 
 - **General**: Refactor ScaledJob related methods to be located at scale_handler  ([#4781](https://github.com/kedacore/keda/issues/4781))
+- **General**: Add `serverAPIPath` option to Prometheus scaler if not found at `/api/v1/query`, which is the default (supporting Grafana Cloud hosted Prometheus)
 
 ## v2.11.1
 

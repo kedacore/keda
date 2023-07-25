@@ -34,6 +34,8 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 	{map[string]string{}, true},
 	// all properly formed
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up"}, false},
+	// all properly formed, with api path
+	{map[string]string{"serverAddress": "http://localhost:9090", "serverAPIPath": "/api/prom", "metricName": "http_requests_total", "threshold": "100", "query": "up"}, false},
 	// all properly formed, with namespace
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "namespace": "foo"}, false},
 	// all properly formed, with ignoreNullValues

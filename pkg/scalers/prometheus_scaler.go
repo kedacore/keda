@@ -24,6 +24,7 @@ import (
 
 const (
 	promServerAddress = "serverAddress"
+	promServerAPIPath = "serverAPIPath"
 
 	// FIXME: DEPRECATED to be removed in v2.12
 	promMetricName = "metricName"
@@ -51,6 +52,7 @@ type prometheusScaler struct {
 
 type prometheusMetadata struct {
 	serverAddress       string
+	serverAPIPath       string
 	metricName          string
 	query               string
 	threshold           float64
@@ -148,6 +150,12 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 		meta.serverAddress = val
 	} else {
 		return nil, fmt.Errorf("no %s given", promServerAddress)
+	}
+
+	if val, ok := config.TriggerMetadata[promServerAPIPath]; ok && val != "" {
+		meta.serverAPIPath = val
+	} else {
+		meta.serverAPIPath = "/api/v1/query"
 	}
 
 	if val, ok := config.TriggerMetadata[promQuery]; ok && val != "" {
@@ -267,7 +275,7 @@ func (s *prometheusScaler) GetMetricSpecForScaling(context.Context) []v2.MetricS
 func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error) {
 	t := time.Now().UTC().Format(time.RFC3339)
 	queryEscaped := url_pkg.QueryEscape(s.metadata.query)
-	url := fmt.Sprintf("%s/api/v1/query?query=%s&time=%s", s.metadata.serverAddress, queryEscaped, t)
+	url := fmt.Sprintf("%s%s?query=%s&time=%s", s.metadata.serverAddress, s.metadata.serverAPIPath, queryEscaped, t)
 
 	// set 'namespace' parameter for namespaced Prometheus requests (eg. for Thanos Querier)
 	if s.metadata.namespace != "" {
