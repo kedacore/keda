@@ -47,6 +47,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
+- **General**: Add formula for composing external metrics ([#2440](https://github.com/kedacore/keda/issues/2440))
+
 ### New
 
 - **General**: Introduce new Google Cloud Tasks scaler functionality to scale based on the queue length ([#3613](https://github.com/kedacore/keda/issues/3613))
