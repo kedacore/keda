@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
-	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -317,9 +316,8 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
 func ValidateComplexScalingLogic(so *ScaledObject, specs []autoscalingv2.MetricSpec) (float64, autoscalingv2.MetricTargetType, error) {
 	csl := so.Spec.Advanced.ComplexScalingLogic
 
-	// if Formula AND ExternalCalculations is empty, return an error
-	if csl.Formula == "" && len(csl.ExternalCalculations) < 1 {
-		return -1, autoscalingv2.MetricTargetType(""), fmt.Errorf("error atleast one ComplexScalingLogic function needs to be specified (formula or externalCalculation)")
+	if csl.Formula == "" {
+		return -1, autoscalingv2.MetricTargetType(""), fmt.Errorf("error ComplexScalingLogic.Formula needs to be specified with structure")
 	}
 
 	var num float64
@@ -328,11 +326,6 @@ func ValidateComplexScalingLogic(so *ScaledObject, specs []autoscalingv2.MetricS
 	// validate formula if not empty
 	if err := validateCSLformula(so); err != nil {
 		err := errors.Join(fmt.Errorf("error validating formula in ComplexScalingLogic"), err)
-		return -1, autoscalingv2.MetricTargetType(""), err
-	}
-	// validate externalCalculators if not empty
-	if err := validateCSLexternalCalculations(csl); err != nil {
-		err := errors.Join(fmt.Errorf("error validating externalCalculator in ComplexScalingLogic"), err)
 		return -1, autoscalingv2.MetricTargetType(""), err
 	}
 	// validate target if not empty
@@ -363,30 +356,6 @@ func validateCSLformula(so *ScaledObject) error {
 			return fmt.Errorf("trigger of type '%s' has empty name but csl.Formula is defined", trig.Type)
 		}
 	}
-	if len(csl.ExternalCalculations) > 0 {
-		if csl.ExternalCalculations[len(csl.ExternalCalculations)-1].Name == "" {
-			return fmt.Errorf("last externalCalculator has empty name but csl.Formula is defined")
-		}
-	}
-	return nil
-}
-
-func validateCSLexternalCalculations(cls ComplexScalingLogic) error {
-	// timeout check
-	for _, ec := range cls.ExternalCalculations {
-		_, err := strconv.ParseInt(ec.Timeout, 10, 64)
-		if err != nil {
-			// expect timeout in time format like 1m10s
-			_, err = time.ParseDuration(ec.Timeout)
-			if err != nil {
-				return fmt.Errorf("%s: error while converting type of timeout for external calculator", err)
-			}
-		}
-		if ec.URL == "" {
-			return fmt.Errorf("URL is empty for externalCalculator '%s'", ec.Name)
-		}
-	}
-
 	return nil
 }
 

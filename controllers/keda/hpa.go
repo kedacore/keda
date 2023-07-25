@@ -249,7 +249,7 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 
 	updateHealthStatus(scaledObject, externalMetricNames, status)
 
-	// if ComplexScalingLogic struct is not empty, expect Formula or ExternalCalculation
+	// if ComplexScalingLogic struct is not empty, expect Formula
 	// to be non-empty. If target is > 0.0 create a compositeScaler structure
 	if scaledObject.Spec.Advanced != nil && !reflect.DeepEqual(scaledObject.Spec.Advanced.ComplexScalingLogic, kedav1alpha1.ComplexScalingLogic{}) {
 		validNumTarget, validMetricType, err := kedav1alpha1.ValidateComplexScalingLogic(scaledObject, scaledObjectMetricSpecs)
@@ -258,8 +258,7 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 			return nil, err
 		}
 
-		// if target is valid, use composite scaler.
-		// Expect Formula or ExternalCalculation that returns one metric
+		// if target is valid, use composite scaler. Expect defined formula that returns one metric
 		if validNumTarget > 0.0 {
 			qual := resource.NewMilliQuantity(int64(validNumTarget*1000), resource.DecimalSI)
 

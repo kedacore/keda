@@ -19,7 +19,6 @@ package cache
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	v2 "k8s.io/api/autoscaling/v2"
@@ -28,24 +27,16 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	externalscaling "github.com/kedacore/keda/v2/pkg/externalscaling"
 	"github.com/kedacore/keda/v2/pkg/scalers"
 )
 
 var log = logf.Log.WithName("scalers_cache")
 
 type ScalersCache struct {
-	ScaledObject                   *kedav1alpha1.ScaledObject
-	Scalers                        []ScalerBuilder
-	ScalableObjectGeneration       int64
-	Recorder                       record.EventRecorder
-	ExternalCalculationGrpcClients []ExternalCalculationClient
-}
-
-type ExternalCalculationClient struct {
-	Name      string
-	Client    *externalscaling.GrpcClient
-	Connected bool
+	ScaledObject             *kedav1alpha1.ScaledObject
+	Scalers                  []ScalerBuilder
+	ScalableObjectGeneration int64
+	Recorder                 record.EventRecorder
 }
 
 type ScalerBuilder struct {
@@ -79,14 +70,6 @@ func (c *ScalersCache) GetPushScalers() []scalers.PushScaler {
 
 // Close closes all scalers in the cache
 func (c *ScalersCache) Close(ctx context.Context) {
-	for _, client := range c.ExternalCalculationGrpcClients {
-		err := client.Client.CloseConnection()
-		if err != nil {
-			log.Error(err, fmt.Sprintf("couldn't close grpc connection for externalCalculator '%s'", client.Name))
-		} else {
-			log.V(0).Info(fmt.Sprintf("successfully closed grpc connection for externalCalculator '%s'", client.Name))
-		}
-	}
 	scalers := c.Scalers
 	c.Scalers = nil
 	for _, s := range scalers {
@@ -153,67 +136,6 @@ func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index
 	startTime = time.Now()
 	metric, activity, err = ns.GetMetricsAndActivity(ctx, metricName)
 	return metric, activity, time.Since(startTime).Milliseconds(), err
-}
-
-// RefreshExternalCalcClientsCache tries to create clients for all
-// externalCalculators present in the ScaledObject and saves them to the cache
-// Returns client asked for by name if exists.
-func (c *ScalersCache) RefreshExternalCalcClientsCache(ctx context.Context, so *kedav1alpha1.ScaledObject, ecName string) ExternalCalculationClient {
-	log.Info(fmt.Sprintf("Refreshing externalCalculation clients in cache because '%s' wasn't found in cache", ecName))
-	// this function is invoked most likely when cache was invalid/returned an error
-	// earlier than ec-client instances could be created
-
-	// close all existing connections
-	for _, client := range c.ExternalCalculationGrpcClients {
-		if client.Connected {
-			err := client.Client.CloseConnection()
-			if err != nil {
-				log.Error(err, fmt.Sprintf("couldn't close grpc connection for externalCalculator '%s'", client.Name))
-			} else {
-				log.V(0).Info(fmt.Sprintf("successfully closed grpc connection for externalCalculator '%s'", client.Name))
-			}
-		}
-	}
-
-	// create new clients
-	ret := ExternalCalculationClient{}
-	newClients := []ExternalCalculationClient{}
-	for _, ec := range so.Spec.Advanced.ComplexScalingLogic.ExternalCalculations {
-		// try to create new client instance and connect to the server
-		timeout, err := strconv.ParseInt(ec.Timeout, 10, 64)
-		if err != nil {
-			// expect timeout in time format like 1m10s
-			parsedTime, err := time.ParseDuration(ec.Timeout)
-			if err != nil {
-				log.Error(err, "error while converting type of timeout for external calculator")
-				break
-			}
-			timeout = int64(parsedTime.Seconds())
-		}
-		ecClient, err := externalscaling.NewGrpcClient(ec.URL, ec.CertificateDirectory)
-		var connected bool
-		if err != nil {
-			log.Error(err, fmt.Sprintf("error creating new grpc client for external calculator at %s", ec.URL))
-		} else {
-			if !ecClient.WaitForConnectionReady(ctx, ec.URL, time.Duration(timeout)*time.Second, log) {
-				connected = false
-				err = fmt.Errorf("client failed to connect to server")
-				log.Error(err, fmt.Sprintf("error in creating gRPC connection for external calculator '%s' via '%s'", ec.Name, ec.URL))
-			} else {
-				connected = true
-				log.Info(fmt.Sprintf("successfully connected to gRPC server ExternalCalculator '%s' at '%s'", ec.Name, ec.URL))
-			}
-		}
-		ecClientStruct := ExternalCalculationClient{Name: ec.Name, Client: ecClient, Connected: connected}
-		// match current one to return
-		if ecClientStruct.Name == ecName {
-			ret = ecClientStruct
-		}
-		newClients = append(newClients, ecClientStruct)
-	}
-	// save to cache
-	c.ExternalCalculationGrpcClients = newClients
-	return ret
 }
 
 func (c *ScalersCache) refreshScaler(ctx context.Context, id int) (scalers.Scaler, error) {

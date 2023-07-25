@@ -18,10 +18,8 @@ package scaling
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -42,8 +40,6 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/common/message"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
-	externalscaling "github.com/kedacore/keda/v2/pkg/externalscaling"
-	externalscalingAPI "github.com/kedacore/keda/v2/pkg/externalscaling/api"
 	"github.com/kedacore/keda/v2/pkg/fallback"
 	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	"github.com/kedacore/keda/v2/pkg/scalers"
@@ -366,47 +362,6 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 		return nil, err
 	}
 
-	externalCalculationClients := []cache.ExternalCalculationClient{}
-
-	// if scalableObject is scaledObject, check for External Calculators and establish
-	// their connections to gRPC servers and save the client instances
-	// new: scaledObject is sometimes NOT updated due to unresolved issue (more info https://github.com/kedacore/keda/issues/4389)
-	switch val := scalableObject.(type) {
-	case *kedav1alpha1.ScaledObject:
-		if val.Spec.Advanced != nil {
-			for _, ec := range val.Spec.Advanced.ComplexScalingLogic.ExternalCalculations {
-				timeout, err := strconv.ParseInt(ec.Timeout, 10, 64)
-				if err != nil {
-					// expect timeout in time format like 1m10s
-					parsedTime, err := time.ParseDuration(ec.Timeout)
-					if err != nil {
-						log.Error(err, "error while converting type of timeout for external calculator")
-						break
-					}
-					timeout = int64(parsedTime.Seconds())
-				}
-				ecClient, err := externalscaling.NewGrpcClient(ec.URL, ec.CertificateDirectory)
-
-				var connected bool
-				if err != nil {
-					log.Error(err, fmt.Sprintf("error creating new grpc client for external calculator at %s", ec.URL))
-				} else {
-					if !ecClient.WaitForConnectionReady(ctx, ec.URL, time.Duration(timeout)*time.Second, log) {
-						connected = false
-						err = fmt.Errorf("client failed to connect to server")
-						log.Error(err, fmt.Sprintf("error in creating gRPC connection for external calculator '%s' via '%s'", ec.Name, ec.URL))
-					} else {
-						connected = true
-						log.Info(fmt.Sprintf("successfully connected to gRPC server ExternalCalculator '%s' at '%s'", ec.Name, ec.URL))
-					}
-				}
-				ecClientStruct := cache.ExternalCalculationClient{Name: ec.Name, Client: ecClient, Connected: connected}
-				externalCalculationClients = append(externalCalculationClients, ecClientStruct)
-			}
-		}
-	default:
-	}
-
 	newCache := &cache.ScalersCache{
 		Scalers:                  scalers,
 		ScalableObjectGeneration: withTriggers.Generation,
@@ -415,7 +370,6 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
 		newCache.ScaledObject = obj
-		newCache.ExternalCalculationGrpcClients = externalCalculationClients
 	default:
 	}
 
@@ -480,6 +434,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 		logger.Error(err, "error getting true metrics array, probably because of invalid cache")
 	}
 	metricTriggerPairList := make(map[string]string)
+	fallbackActive := false
 
 	// let's check metrics for all scalers in a ScaledObject
 	scalers, scalerConfigs := cache.GetScalers()
@@ -501,7 +456,6 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 			logger.Error(err, "error metricsArray is empty")
 			// TODO: add cache.Recorder?
 		}
-
 		for _, spec := range metricSpecs {
 			// skip cpu/memory resource scaler
 			if spec.External == nil {
@@ -544,8 +498,10 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 				}
 
 				// check if we need to set a fallback
-				metrics, err = fallback.GetMetricsWithFallback(ctx, h.client, metrics, err, metricName, scaledObject, spec)
-
+				metrics, fallbackApplied, err := fallback.GetMetricsWithFallback(ctx, h.client, metrics, err, metricName, scaledObject, spec)
+				if fallbackApplied {
+					fallbackActive = true
+				}
 				if err != nil {
 					isScalerError = true
 					logger.Error(err, "error getting metric for scaler", "scaler", scalerName)
@@ -576,7 +532,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	}
 
 	// handle complexScalingLogic here and simply return the matchingMetrics
-	matchingMetrics = h.handleComplexScalingLogic(ctx, scaledObject, matchingMetrics, metricTriggerPairList, cache, logger)
+	matchingMetrics = h.handleComplexScalingLogic(scaledObject, matchingMetrics, metricTriggerPairList, fallbackActive, logger)
 	return &external_metrics.ExternalMetricValueList{
 		Items: matchingMetrics,
 	}, nil
@@ -799,15 +755,6 @@ func arrayContainsElement(el string, arr []string) bool {
 // if given right conditions, try to apply the given custom formula in SO
 func applyComplexLogicFormula(csl kedav1alpha1.ComplexScalingLogic, metrics []external_metrics.ExternalMetricValue, pairList map[string]string) ([]external_metrics.ExternalMetricValue, error) {
 	if csl.Formula != "" {
-		// add last external calculation name as a possible trigger (user can
-		// manipulate with metrics in ExternalCalculation service and it is expected
-		// to be named as the ExternalCalculation[len()-1] value)
-		if len(csl.ExternalCalculations) > 0 {
-			lastElemIndex := len(csl.ExternalCalculations) - 1
-			lastElem := csl.ExternalCalculations[lastElemIndex].Name
-			// expect last element of external calculation array via its name
-			pairList[lastElem] = lastElem
-		}
 		metrics, err := calculateComplexLogicFormula(metrics, csl.Formula, pairList)
 		return metrics, err
 	}
@@ -870,81 +817,20 @@ func addPairTriggerAndMetric(list map[string]string, so *kedav1alpha1.ScaledObje
 	return map[string]string{}, nil
 }
 
-// getECClientFromCache returns ExternalCalculationClient from cacheClients array
-// and bool whether or not it is connected
-func getECClientFromCache(ctx context.Context, ecName string, c *cache.ScalersCache, so *kedav1alpha1.ScaledObject) cache.ExternalCalculationClient {
-	ret := cache.ExternalCalculationClient{}
-	found := false
-	for _, ecClient := range c.ExternalCalculationGrpcClients {
-		if ecClient.Name == ecName {
-			found = true
-			ret = ecClient
-			break
-		}
-	}
-	if !found {
-		// didnt find cached client that matches external Calculator, try refreshing cache
-		ret = c.RefreshExternalCalcClientsCache(ctx, so, ecName)
-	}
-
-	return ret
-}
-
-// callCalculate checks whether connection is established and calls grpc method Calculate
-// for given externalCalculator. Returns metricsList and collected errors if any
-func callCalculate(ctx context.Context, ecClient cache.ExternalCalculationClient, list *externalscalingAPI.MetricsList) (*externalscalingAPI.MetricsList, error) {
+// apply defined ComplexScalingLogic structure (formula) and simply return
+// calculated metrics
+func (h *scaleHandler) handleComplexScalingLogic(so *kedav1alpha1.ScaledObject, metrics []external_metrics.ExternalMetricValue, metricTriggerList map[string]string, fallbackActive bool, log logr.Logger) []external_metrics.ExternalMetricValue {
 	var err error
-	if ecClient.Connected {
-		list, err = ecClient.Client.Calculate(ctx, list)
-	} else {
-		err = fmt.Errorf("trying to call method Calculate for '%s' externalCalculator when not connected", ecClient.Name)
-	}
-	return list, err
-}
-
-// apply all defined ComplexScalingLogic structures (externalCalculators/formula)
-// and simply return calculated metrics
-func (h *scaleHandler) handleComplexScalingLogic(ctx context.Context,
-	so *kedav1alpha1.ScaledObject, metrics []external_metrics.ExternalMetricValue,
-	metricTriggerList map[string]string, cacheObj *cache.ScalersCache, log logr.Logger) []external_metrics.ExternalMetricValue {
-	var err error
-	// if ComplexScalingLogic structure for externalCalculator/formula is defined, let's apply it
-	if so != nil && so.Spec.Advanced != nil && !reflect.DeepEqual(so.Spec.Advanced.ComplexScalingLogic, kedav1alpha1.ComplexScalingLogic{}) {
+	log.Info(">> complexScalingLogic", "fallbackActive", fallbackActive)
+	if !fallbackActive && so != nil && so.Spec.Advanced != nil && !reflect.DeepEqual(so.Spec.Advanced.ComplexScalingLogic, kedav1alpha1.ComplexScalingLogic{}) {
 		csl := so.Spec.Advanced.ComplexScalingLogic
 
-		// apply externalCalculators if defined
-		if len(csl.ExternalCalculations) > 0 {
-			grpcMetricList := externalscaling.ConvertToGeneratedStruct(metrics)
-
-			// Apply external calculations - call gRPC server on each url and return
-			// modified metric list in order
-			for _, ec := range csl.ExternalCalculations {
-				// get client's instance from cache
-				ecCacheClient := getECClientFromCache(ctx, ec.Name, cacheObj, so)
-				// attempt to connect to the gRPC server and call its method Calculate
-				grpcMetricList, err = callCalculate(ctx, ecCacheClient, grpcMetricList)
-				log.V(1).Info(fmt.Sprintf("metricsList after calling Calculate for externalCalculator '%s': %v", ec.Name, grpcMetricList))
-				if grpcMetricList == nil {
-					grpcMetricList = &externalscalingAPI.MetricsList{}
-					err = errors.Join(err, fmt.Errorf("grpc method Calculate returned nil metric list for externalCalculator"))
-				}
-				// externalCalculator fallback logic
-				fallbackApplied, err := fallback.GetMetricsWithFallbackExternalCalculator(ctx, h.client, grpcMetricList, err, ec.Name, so)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("error remained after trying to apply fallback metrics for externalCalculator '%s'", ec.Name))
-					break
-				}
-				if fallbackApplied {
-					break
-				}
-			}
-			metrics = externalscaling.ConvertFromGeneratedStruct(grpcMetricList)
-		}
 		// apply formula if defined
 		metrics, err = applyComplexLogicFormula(csl, metrics, metricTriggerList)
 		if err != nil {
 			log.Error(err, "error applying custom compositeScaler formula")
 		}
+		log.V(1).Info("returned metrics after formula is applied", "metrics", metrics)
 	}
 	return metrics
 }

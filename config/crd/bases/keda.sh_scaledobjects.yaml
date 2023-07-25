@@ -75,30 +75,8 @@ spec:
                 properties:
                   complexScalingLogic:
                     description: ComplexScalingLogic describes advanced scaling logic
-                      options like formula and gRPC server for external calculations
+                      options like formula
                     properties:
-                      externalCalculators:
-                        items:
-                          description: ExternalCalculation structure describes name
-                            and URL of a gRPC server that KEDA can connect to with
-                            collected metrics and modify them. Each server has a timeout
-                            and tls certification. If certDir is left empty, it will
-                            connect with insecure.NewCredentials()
-                          properties:
-                            certDir:
-                              type: string
-                            name:
-                              type: string
-                            timeout:
-                              type: string
-                            url:
-                              type: string
-                          required:
-                          - name
-                          - timeout
-                          - url
-                          type: object
-                        type: array
                       formula:
                         type: string
                       target:
@@ -348,19 +326,6 @@ spec:
                   - type
                   type: object
                 type: array
-              externalCalculationHealth:
-                additionalProperties:
-                  description: HealthStatus is the status for a ScaledObject's health
-                  properties:
-                    numberOfFailures:
-                      format: int32
-                      type: integer
-                    status:
-                      description: HealthStatusType is an indication of whether the
-                        health status is happy or failing
-                      type: string
-                  type: object
-                type: object
               externalMetricNames:
                 items:
                   type: string

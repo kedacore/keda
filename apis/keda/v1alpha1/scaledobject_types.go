@@ -107,26 +107,9 @@ type AdvancedConfig struct {
 }
 
 // ComplexScalingLogic describes advanced scaling logic options like formula
-// and gRPC server for external calculations
 type ComplexScalingLogic struct {
-	// +optional
-	ExternalCalculations []ExternalCalculation `json:"externalCalculators,omitempty"`
-	// +optional
 	Formula string `json:"formula,omitempty"`
-	// +optional
-	Target string `json:"target,omitempty"`
-}
-
-// ExternalCalculation structure describes name and URL of a gRPC server
-// that KEDA can connect to with collected metrics and modify them. Each server
-// has a timeout and tls certification. If certDir is left empty, it will
-// connect with insecure.NewCredentials()
-type ExternalCalculation struct {
-	Name    string `json:"name"`
-	URL     string `json:"url"`
-	Timeout string `json:"timeout"`
-	// +optional
-	CertificateDirectory string `json:"certDir"`
+	Target  string `json:"target,omitempty"`
 }
 
 // HorizontalPodAutoscalerConfig specifies horizontal scale config
@@ -167,8 +150,6 @@ type ScaledObjectStatus struct {
 	ResourceMetricNames []string `json:"resourceMetricNames,omitempty"`
 	// +optional
 	CompositeScalerName string `json:"compositeScalerName,omitempty"`
-	// +optional
-	ExternalCalculationHealth map[string]HealthStatus `json:"externalCalculationHealth,omitempty"`
 	// +optional
 	Conditions Conditions `json:"conditions,omitempty"`
 	// +optional
