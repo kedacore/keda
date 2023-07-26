@@ -214,7 +214,6 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 		return nil, err
 	}
 
-	// TODO: it returns indexed names here
 	metricSpecs := cache.GetMetricSpecForScaling(ctx)
 
 	for _, metricSpec := range metricSpecs {
