@@ -124,47 +124,6 @@ spec:
             name: {{.SecretName}}
         imagePullPolicy: Always
 `
-
-	soFormulaTemplate = `
-apiVersion: keda.sh/v1alpha1
-kind: ScaledObject
-metadata:
-  name: {{.ScaledObject}}
-  namespace: {{.TestNamespace}}
-  labels:
-    app: {{.DeploymentName}}
-spec:
-  scaleTargetRef:
-    name: {{.DeploymentName}}
-  advanced:
-    horizontalPodAutoscalerConfig:
-      behavior:
-        scaleDown:
-          stabilizationWindowSeconds: 5
-    complexScalingLogic:
-      target: '2'
-      formula: metrics_api + kw_trig
-  pollingInterval: 5
-  cooldownPeriod: 5
-  minReplicaCount: 0
-  maxReplicaCount: 10
-  triggers:
-  - type: metrics-api
-    name: metrics_api
-    metadata:
-      targetValue: "2"
-      url: "{{.MetricsServerEndpoint}}"
-      valueLocation: 'value'
-      method: "query"
-    authenticationRef:
-      name: {{.TriggerAuthName}}
-  - type: kubernetes-workload
-    name: kw_trig
-    metadata:
-      podSelector: pod=workload-test
-      value: '1'
-`
-
 	soFallbackTemplate = `
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -283,7 +242,7 @@ func testComplexFormula(t *testing.T, kc *kubernetes.Clientset, data templateDat
 	data.MetricValue = 3
 	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
-	KubectlApplyWithTemplate(t, data, "soFormulaTemplate", soFormulaTemplate)
+	KubectlApplyWithTemplate(t, data, "soFallbackTemplate", soFallbackTemplate)
 	_, err := ExecuteCommand(fmt.Sprintf("kubectl scale deployment/depl-workload-base --replicas=2 -n %s", namespace))
 	assert.NoErrorf(t, err, "cannot scale workload deployment - %s", err)
 
@@ -292,13 +251,22 @@ func testComplexFormula(t *testing.T, kc *kubernetes.Clientset, data templateDat
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 3, 12, 10),
 		"replica count should be %d after 2 minutes", 3)
 
-	// so with fallback
-	KubectlApplyWithTemplate(t, data, "soFallbackTemplate", soFallbackTemplate)
+	// apply fallback fallback
 	_, err = ExecuteCommand(fmt.Sprintf("kubectl scale deployment/%s --replicas=0 -n %s", metricsServerDeploymentName, namespace))
 	assert.NoErrorf(t, err, "cannot scale metricsServer deployment - %s", err)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 5, 12, 10),
 		"replica count should be %d after 2 minutes", 5)
+
+	// ensure state returns to normal after error resolved and triggers are healthy
+	_, err = ExecuteCommand(fmt.Sprintf("kubectl scale deployment/%s --replicas=1 -n %s", metricsServerDeploymentName, namespace))
+	assert.NoErrorf(t, err, "cannot scale metricsServer deployment - %s", err)
+
+	data.MetricValue = 2
+	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+	// 2+2=4; target = 2 -> 4/2 replicas should be 2
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 2, 12, 10),
+		"replica count should be %d after 2 minutes", 2)
 }
 
 func getTemplateData() (templateData, []Template) {

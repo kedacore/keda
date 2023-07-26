@@ -262,10 +262,15 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 		if validNumTarget > 0.0 {
 			qual := resource.NewMilliQuantity(int64(validNumTarget*1000), resource.DecimalSI)
 
-			if err != nil {
-				logger.Error(err, "Error parsing Quantity elements for composite scaler")
-				return nil, err
+			correctHpaTarget := autoscalingv2.MetricTarget{
+				Type: validMetricType,
 			}
+			if validMetricType == autoscalingv2.AverageValueMetricType {
+				correctHpaTarget.AverageValue = qual
+			} else if validMetricType == autoscalingv2.ValueMetricType {
+				correctHpaTarget.Value = qual
+			}
+
 			compositeSpec := autoscalingv2.MetricSpec{
 				Type: autoscalingv2.MetricSourceType("External"),
 				External: &autoscalingv2.ExternalMetricSource{
@@ -275,10 +280,7 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 							MatchLabels: map[string]string{"scaledobject.keda.sh/name": scaledObject.Name},
 						},
 					},
-					Target: autoscalingv2.MetricTarget{
-						Type:         validMetricType,
-						AverageValue: qual,
-					},
+					Target: correctHpaTarget,
 				},
 			}
 			status.CompositeScalerName = "composite-metric-name"

@@ -329,7 +329,7 @@ func ValidateComplexScalingLogic(so *ScaledObject, specs []autoscalingv2.MetricS
 		return -1, autoscalingv2.MetricTargetType(""), err
 	}
 	// validate target if not empty
-	num, metricType, err := validateCSLtarget(csl, specs)
+	num, metricType, err := validateCSLtarget(so, specs)
 	if err != nil {
 		err := errors.Join(fmt.Errorf("error validating target in ComplexScalingLogic"), err)
 		return -1, autoscalingv2.MetricTargetType(""), err
@@ -353,7 +353,7 @@ func validateCSLformula(so *ScaledObject) error {
 	// are used in the formula itself. This would require parsing the formula.
 	for _, trig := range so.Spec.Triggers {
 		// if resource metrics are given, skip
-		if trig.Type == "cpu" || trig.Type == "memory" {
+		if trig.Type == cpuString || trig.Type == memoryString {
 			continue
 		}
 		if trig.Name == "" {
@@ -363,7 +363,9 @@ func validateCSLformula(so *ScaledObject) error {
 	return nil
 }
 
-func validateCSLtarget(csl ComplexScalingLogic, specs []autoscalingv2.MetricSpec) (float64, autoscalingv2.MetricTargetType, error) {
+func validateCSLtarget(so *ScaledObject, specs []autoscalingv2.MetricSpec) (float64, autoscalingv2.MetricTargetType, error) {
+	csl := so.Spec.Advanced.ComplexScalingLogic
+
 	if csl.Target == "" {
 		return -1, "", nil
 	}
@@ -373,10 +375,36 @@ func validateCSLtarget(csl ComplexScalingLogic, specs []autoscalingv2.MetricSpec
 		return -1, "", fmt.Errorf("error converting target for complex logic (string->float) to valid target: %w", err)
 	}
 
+	// if target is given, composite-scaler will be passed to HPA -> all types
+	// need to be the same make sure all metrics are of the same metricTargetType
+
+	// check trigger types in SO
+	var trigType autoscalingv2.MetricTargetType
+
+	for _, trig := range so.Spec.Triggers {
+		if trig.Type == cpuString || trig.Type == memoryString {
+			continue
+		}
+		var current autoscalingv2.MetricTargetType
+		if trig.MetricType == "" {
+			current = autoscalingv2.AverageValueMetricType // default is AverageValue
+		} else {
+			current = trig.MetricType
+		}
+		if trigType == "" {
+			trigType = current
+		} else if trigType != current {
+			err := fmt.Errorf("error trigger types are not the same for composite scaler: %s & %s", trigType, current)
+			return -1, "", err
+		}
+	}
+	if trigType == autoscalingv2.UtilizationMetricType {
+		err := fmt.Errorf("error trigger type is Utilization, but it needs to be AverageValue or Value for external metrics")
+		return -1, "", err
+	}
+
+	// check metric specs
 	var metricType autoscalingv2.MetricTargetType
-	// if target is given, composite scaler for metric collection will be
-	// passed to HPA config -> all types need to be the same
-	// make sure all scalers have the same metricTargetType
 	for _, metric := range specs {
 		if metric.External == nil {
 			continue
@@ -384,9 +412,13 @@ func validateCSLtarget(csl ComplexScalingLogic, specs []autoscalingv2.MetricSpec
 		if metricType == "" {
 			metricType = metric.External.Target.Type
 		} else if metric.External.Target.Type != metricType {
-			err := fmt.Errorf("error metric target type not the same for composite scaler: %s & %s", metricType, metric.External.Target.Type)
+			err := fmt.Errorf("error metric target type is not the same for composite scaler: %s & %s", metricType, metric.External.Target.Type)
 			return -1, "", err
 		}
+	}
+	if metricType == autoscalingv2.UtilizationMetricType {
+		err := fmt.Errorf("error metric target type is Utilization, but it needs to be AverageValue or Value for external metrics")
+		return -1, "", err
 	}
 	return num, metricType, nil
 }
