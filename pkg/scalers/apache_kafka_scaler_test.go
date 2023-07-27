@@ -9,7 +9,7 @@ import (
 	"github.com/go-logr/logr"
 )
 
-type parseKafkaXMetadataTestData struct {
+type parseApacheKafkaMetadataTestData struct {
 	metadata             map[string]string
 	isError              bool
 	numBrokers           int
@@ -22,28 +22,28 @@ type parseKafkaXMetadataTestData struct {
 	excludePersistentLag bool
 }
 
-type parseKafkaXAuthParamsTestData struct {
+type parseApacheKafkaAuthParamsTestData struct {
 	authParams map[string]string
 	isError    bool
 	enableTLS  bool
 }
 
 // Testing the case where `tls` and `sasl` are specified in ScaledObject
-type parseKafkaXAuthParamsTestDataSecondAuthMethod struct {
+type parseApacheKafkaAuthParamsTestDataSecondAuthMethod struct {
 	metadata   map[string]string
 	authParams map[string]string
 	isError    bool
 	enableTLS  bool
 }
 
-type kafkaXMetricIdentifier struct {
-	metadataTestData *parseKafkaXMetadataTestData
+type apacheKafkaMetricIdentifier struct {
+	metadataTestData *parseApacheKafkaMetadataTestData
 	scalerIndex      int
 	name             string
 }
 
 // A complete valid metadata example for reference
-var validKafkaXMetadata = map[string]string{
+var validApacheKafkaMetadata = map[string]string{
 	"bootstrapServers":   "broker1:9092,broker2:9092",
 	"consumerGroup":      "my-group",
 	"topic":              "my-topics",
@@ -51,16 +51,16 @@ var validKafkaXMetadata = map[string]string{
 }
 
 // A complete valid authParams example for sasl, with username and passwd
-var validKafkaXWithAuthParams = map[string]string{
+var validApacheKafkaWithAuthParams = map[string]string{
 	"sasl":     "plaintext",
 	"username": "admin",
 	"password": "admin",
 }
 
 // A complete valid authParams example for sasl, without username and passwd
-var validKafkaXWithoutAuthParams = map[string]string{}
+var validApacheKafkaWithoutAuthParams = map[string]string{}
 
-var parseKafkaXMetadataTestDataset = []parseKafkaXMetadataTestData{
+var parseApacheKafkaMetadataTestDataset = []parseApacheKafkaMetadataTestData{
 	// failure, no consumer group
 	{map[string]string{"bootstrapServers": "foobar:9092"}, true, 1, []string{"foobar:9092"}, "", nil, nil, "latest", false, false},
 	// success, no topics
@@ -107,7 +107,7 @@ var parseKafkaXMetadataTestDataset = []parseKafkaXMetadataTestData{
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "allowIdleConsumers": "true"}, false, 1, []string{"foobar:9092"}, "my-group", []string{"my-topics"}, nil, offsetResetPolicy("latest"), true, false},
 }
 
-var parseKafkaXAuthParamsTestDataset = []parseKafkaXAuthParamsTestData{
+var parseApacheKafkaAuthParamsTestDataset = []parseApacheKafkaAuthParamsTestData{
 	// success, SASL only
 	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin"}, false, false},
 	// success, SASL only
@@ -151,7 +151,7 @@ var parseKafkaXAuthParamsTestDataset = []parseKafkaXAuthParamsTestData{
 	// failure, SASL + TLS, missing key
 	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert"}, true, true},
 }
-var parseKafkaXAuthParamsTestDataset2 = []parseKafkaXAuthParamsTestDataSecondAuthMethod{
+var parseApacheKafkaAuthParamsTestDataset2 = []parseApacheKafkaAuthParamsTestDataSecondAuthMethod{
 	// success, SASL plaintext
 	{map[string]string{"sasl": "plaintext", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "allowIdleConsumers": "true"}, map[string]string{"username": "admin", "password": "admin"}, false, false},
 	// success, SASL scram_sha256
@@ -219,15 +219,15 @@ var parseKafkaXAuthParamsTestDataset2 = []parseKafkaXAuthParamsTestDataSecondAut
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "allowIdleConsumers": "true", "awsRegion": "us-east-1"}, map[string]string{"sasl": "aws_msk_iam", "awsAccessKeyID": "none", "awsSecretAccessKey": "none"}, true, false},
 }
 
-var kafkaXMetricIdentifiers = []kafkaXMetricIdentifier{
-	{&parseKafkaXMetadataTestDataset[10], 0, "s0-kafka-my-topics"},
-	{&parseKafkaXMetadataTestDataset[10], 1, "s1-kafka-my-topics"},
-	{&parseKafkaXMetadataTestDataset[2], 1, "s1-kafka-my-group-topics"},
+var apacheKafkaMetricIdentifiers = []apacheKafkaMetricIdentifier{
+	{&parseApacheKafkaMetadataTestDataset[10], 0, "s0-kafka-my-topics"},
+	{&parseApacheKafkaMetadataTestDataset[10], 1, "s1-kafka-my-topics"},
+	{&parseApacheKafkaMetadataTestDataset[2], 1, "s1-kafka-my-group-topics"},
 }
 
-func TestKafkaXGetBrokers(t *testing.T) {
-	for _, testData := range parseKafkaXMetadataTestDataset {
-		meta, err := parseKafkaXMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validKafkaXWithAuthParams}, logr.Discard())
+func TestApacheKafkaGetBrokers(t *testing.T) {
+	for _, testData := range parseApacheKafkaMetadataTestDataset {
+		meta, err := parseApacheKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validApacheKafkaWithAuthParams}, logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -254,7 +254,7 @@ func TestKafkaXGetBrokers(t *testing.T) {
 			t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.offsetResetPolicy)
 		}
 
-		meta, err = parseKafkaXMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validKafkaXWithoutAuthParams}, logr.Discard())
+		meta, err = parseApacheKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validApacheKafkaWithoutAuthParams}, logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -289,10 +289,10 @@ func TestKafkaXGetBrokers(t *testing.T) {
 	}
 }
 
-func TestKafkaXAuthParams(t *testing.T) {
+func TestApacheKafkaAuthParams(t *testing.T) {
 	// Testing tls and sasl value in TriggerAuthentication
-	for _, testData := range parseKafkaXAuthParamsTestDataset {
-		meta, err := parseKafkaXMetadata(&ScalerConfig{TriggerMetadata: validKafkaXMetadata, AuthParams: testData.authParams}, logr.Discard())
+	for _, testData := range parseApacheKafkaAuthParamsTestDataset {
+		meta, err := parseApacheKafkaMetadata(&ScalerConfig{TriggerMetadata: validApacheKafkaMetadata, AuthParams: testData.authParams}, logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -321,8 +321,8 @@ func TestKafkaXAuthParams(t *testing.T) {
 	}
 
 	// Testing tls and sasl value in scaledObject
-	for id, testData := range parseKafkaXAuthParamsTestDataset2 {
-		meta, err := parseKafkaXMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
+	for id, testData := range parseApacheKafkaAuthParamsTestDataset2 {
+		meta, err := parseApacheKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Errorf("Test case: %#v. Expected success but got error %#v", id, err)
@@ -352,13 +352,13 @@ func TestKafkaXAuthParams(t *testing.T) {
 	}
 }
 
-func TestKafkaXGetMetricSpecForScaling(t *testing.T) {
-	for _, testData := range kafkaXMetricIdentifiers {
-		meta, err := parseKafkaXMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validKafkaXWithAuthParams, ScalerIndex: testData.scalerIndex}, logr.Discard())
+func TestApacheKafkaGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range apacheKafkaMetricIdentifiers {
+		meta, err := parseApacheKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validApacheKafkaWithAuthParams, ScalerIndex: testData.scalerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockKafkaScaler := kafkaXScaler{"", meta, nil, logr.Discard(), make(map[string]map[int]int64)}
+		mockKafkaScaler := apacheKafkaScaler{"", meta, nil, logr.Discard(), make(map[string]map[int]int64)}
 
 		metricSpec := mockKafkaScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

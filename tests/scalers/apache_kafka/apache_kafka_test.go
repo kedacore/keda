@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package kafka_x_test
+package apache_kafka_test
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "kafka-x-test"
+	testName = "apache-kafka-test"
 )
 
 var (
@@ -155,7 +155,7 @@ spec:
             value: 100
             periodSeconds: 15
   triggers:
-  - type: kafka-x
+  - type: apache-kafka
     metadata:
       topic: {{.TopicName}}
       bootstrapServers: {{.BootstrapServer}}
@@ -193,7 +193,7 @@ spec:
             value: 100
             periodSeconds: 15
   triggers:
-  - type: kafka-x
+  - type: apache-kafka
     metadata:
       topic: {{.TopicName}}
       bootstrapServers: {{.BootstrapServer}}
@@ -230,7 +230,7 @@ spec:
             value: 100
             periodSeconds: 15
   triggers:
-  - type: kafka-x
+  - type: apache-kafka
     metadata:
       topic: {{.TopicName}}
       bootstrapServers: {{.BootstrapServer}}
@@ -268,7 +268,7 @@ spec:
             value: 100
             periodSeconds: 15
   triggers:
-  - type: kafka-x
+  - type: apache-kafka
     metadata:
       topic: {{.TopicName}}
       bootstrapServers: {{.BootstrapServer}}

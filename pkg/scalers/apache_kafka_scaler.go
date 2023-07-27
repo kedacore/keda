@@ -21,15 +21,15 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
-type kafkaXScaler struct {
+type apacheKafkaScaler struct {
 	metricType      v2.MetricTargetType
-	metadata        kafkaXMetadata
+	metadata        apacheKafkaMetadata
 	client          *kafka.Client
 	logger          logr.Logger
 	previousOffsets map[string]map[int]int64
 }
 
-type kafkaXMetadata struct {
+type apacheKafkaMetadata struct {
 	bootstrapServers       []string
 	group                  string
 	topic                  []string
@@ -68,28 +68,28 @@ const (
 	KafkaSASLTypeMskIam = "aws_msk_iam"
 )
 
-// NewKafkaXScaler creates a new KafkaXScaler
-func NewKafkaXScaler(config *ScalerConfig) (Scaler, error) {
+// NewApacheKafkaScaler creates a new apacheKafkaScaler
+func NewApacheKafkaScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
-	logger := InitializeLogger(config, "kafka_x_scaler")
+	logger := InitializeLogger(config, "apache_kafka_scaler")
 
-	kafkaMetadata, err := parseKafkaXMetadata(config, logger)
+	kafkaMetadata, err := parseApacheKafkaMetadata(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing kafka metadata: %w", err)
 	}
 
-	client, err := getKafkaXClient(kafkaMetadata, logger)
+	client, err := getApacheKafkaClient(kafkaMetadata, logger)
 	if err != nil {
 		return nil, err
 	}
 
 	previousOffsets := make(map[string]map[int]int64)
 
-	return &kafkaXScaler{
+	return &apacheKafkaScaler{
 		client:          client,
 		metricType:      metricType,
 		metadata:        kafkaMetadata,
@@ -98,7 +98,7 @@ func NewKafkaXScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseKafkaXAuthParams(config *ScalerConfig, meta *kafkaXMetadata) error {
+func parseApacheKafkaAuthParams(config *ScalerConfig, meta *apacheKafkaMetadata) error {
 	meta.enableTLS = false
 	enableTLS := false
 	if val, ok := config.TriggerMetadata["tls"]; ok {
@@ -208,8 +208,8 @@ func parseKafkaXAuthParams(config *ScalerConfig, meta *kafkaXMetadata) error {
 	return nil
 }
 
-func parseKafkaXMetadata(config *ScalerConfig, logger logr.Logger) (kafkaXMetadata, error) {
-	meta := kafkaXMetadata{}
+func parseApacheKafkaMetadata(config *ScalerConfig, logger logr.Logger) (apacheKafkaMetadata, error) {
+	meta := apacheKafkaMetadata{}
 	switch {
 	case config.TriggerMetadata["bootstrapServersFromEnv"] != "":
 		meta.bootstrapServers = strings.Split(config.ResolvedEnv[config.TriggerMetadata["bootstrapServersFromEnv"]], ",")
@@ -291,7 +291,7 @@ func parseKafkaXMetadata(config *ScalerConfig, logger logr.Logger) (kafkaXMetada
 		meta.activationLagThreshold = t
 	}
 
-	if err := parseKafkaXAuthParams(config, &meta); err != nil {
+	if err := parseApacheKafkaAuthParams(config, &meta); err != nil {
 		return meta, err
 	}
 
@@ -326,7 +326,7 @@ func parseKafkaXMetadata(config *ScalerConfig, logger logr.Logger) (kafkaXMetada
 	return meta, nil
 }
 
-func getKafkaXClient(metadata kafkaXMetadata, logger logr.Logger) (*kafka.Client, error) {
+func getApacheKafkaClient(metadata apacheKafkaMetadata, logger logr.Logger) (*kafka.Client, error) {
 	var saslMechanism sasl.Mechanism
 	var tlsConfig *tls.Config
 	var err error
@@ -387,8 +387,8 @@ func getKafkaXClient(metadata kafkaXMetadata, logger logr.Logger) (*kafka.Client
 	return &client, nil
 }
 
-func (s *kafkaXScaler) getTopicPartitions() (map[string][]int, error) {
-	metadata, err := s.client.Metadata(context.Background(), &kafka.MetadataRequest{
+func (s *apacheKafkaScaler) getTopicPartitions(ctx context.Context) (map[string][]int, error) {
+	metadata, err := s.client.Metadata(ctx, &kafka.MetadataRequest{
 		Addr: s.client.Addr,
 	})
 	if err != nil {
@@ -404,7 +404,7 @@ func (s *kafkaXScaler) getTopicPartitions() (map[string][]int, error) {
 				s.metadata.group,
 			},
 		}
-		describeGrp, err := s.client.DescribeGroups(context.Background(), describeGrpReq)
+		describeGrp, err := s.client.DescribeGroups(ctx, describeGrpReq)
 		if err != nil {
 			return nil, fmt.Errorf("error describing group: %w", err)
 		}
@@ -443,9 +443,9 @@ func (s *kafkaXScaler) getTopicPartitions() (map[string][]int, error) {
 	return result, nil
 }
 
-func (s *kafkaXScaler) getConsumerOffsets(topicPartitions map[string][]int) (map[string]map[int]int64, error) {
+func (s *apacheKafkaScaler) getConsumerOffsets(ctx context.Context, topicPartitions map[string][]int) (map[string]map[int]int64, error) {
 	response, err := s.client.OffsetFetch(
-		context.Background(),
+		ctx,
 		&kafka.OffsetFetchRequest{
 			GroupID: s.metadata.group,
 			Topics:  topicPartitions,
@@ -471,7 +471,7 @@ When excludePersistentLag is set to `false` (default), lag will always be equal 
 When excludePersistentLag is set to `true`, if partition is deemed to have persistent lag, lag will be set to 0 and lagWithPersistent will be latestOffset - consumerOffset
 These return values will allow proper scaling from 0 -> 1 replicas by the IsActive func.
 */
-func (s *kafkaXScaler) getLagForPartition(topic string, partitionID int, consumerOffsets map[string]map[int]int64, producerOffsets map[string]map[int]int64) (int64, int64, error) {
+func (s *apacheKafkaScaler) getLagForPartition(topic string, partitionID int, consumerOffsets map[string]map[int]int64, producerOffsets map[string]map[int]int64) (int64, int64, error) {
 	if len(consumerOffsets) == 0 {
 		return 0, 0, fmt.Errorf("consumerOffsets is empty")
 	}
@@ -528,7 +528,7 @@ func (s *kafkaXScaler) getLagForPartition(topic string, partitionID int, consume
 }
 
 // Close closes the kafka client
-func (s *kafkaXScaler) Close(context.Context) error {
+func (s *apacheKafkaScaler) Close(context.Context) error {
 	if s.client == nil {
 		return nil
 	}
@@ -539,7 +539,7 @@ func (s *kafkaXScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *kafkaXScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+func (s *apacheKafkaScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	var metricName string
 	if s.metadata.topic != nil && len(s.metadata.topic) > 0 {
 		metricName = fmt.Sprintf("kafka-%s", strings.Join(s.metadata.topic, ","))
@@ -557,28 +557,28 @@ func (s *kafkaXScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec 
 	return []v2.MetricSpec{metricSpec}
 }
 
-type kafkaXConsumerOffsetResult struct {
+type apacheKafkaConsumerOffsetResult struct {
 	consumerOffsets map[string]map[int]int64
 	err             error
 }
 
-type kafkaXProducerOffsetResult struct {
+type apacheKafkaProducerOffsetResult struct {
 	producerOffsets map[string]map[int]int64
 	err             error
 }
 
 // getConsumerAndProducerOffsets returns (consumerOffsets, producerOffsets, error)
-func (s *kafkaXScaler) getConsumerAndProducerOffsets(topicPartitions map[string][]int) (map[string]map[int]int64, map[string]map[int]int64, error) {
-	consumerChan := make(chan kafkaXConsumerOffsetResult, 1)
+func (s *apacheKafkaScaler) getConsumerAndProducerOffsets(ctx context.Context, topicPartitions map[string][]int) (map[string]map[int]int64, map[string]map[int]int64, error) {
+	consumerChan := make(chan apacheKafkaConsumerOffsetResult, 1)
 	go func() {
-		consumerOffsets, err := s.getConsumerOffsets(topicPartitions)
-		consumerChan <- kafkaXConsumerOffsetResult{consumerOffsets, err}
+		consumerOffsets, err := s.getConsumerOffsets(ctx, topicPartitions)
+		consumerChan <- apacheKafkaConsumerOffsetResult{consumerOffsets, err}
 	}()
 
-	producerChan := make(chan kafkaXProducerOffsetResult, 1)
+	producerChan := make(chan apacheKafkaProducerOffsetResult, 1)
 	go func() {
-		producerOffsets, err := s.getProducerOffsets(topicPartitions)
-		producerChan <- kafkaXProducerOffsetResult{producerOffsets, err}
+		producerOffsets, err := s.getProducerOffsets(ctx, topicPartitions)
+		producerChan <- apacheKafkaProducerOffsetResult{producerOffsets, err}
 	}()
 
 	consumerRes := <-consumerChan
@@ -595,8 +595,8 @@ func (s *kafkaXScaler) getConsumerAndProducerOffsets(topicPartitions map[string]
 }
 
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
-func (s *kafkaXScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	totalLag, totalLagWithPersistent, err := s.getTotalLag()
+func (s *apacheKafkaScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	totalLag, totalLagWithPersistent, err := s.getTotalLag(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
@@ -605,21 +605,17 @@ func (s *kafkaXScaler) GetMetricsAndActivity(_ context.Context, metricName strin
 	return []external_metrics.ExternalMetricValue{metric}, totalLagWithPersistent > s.metadata.activationLagThreshold, nil
 }
 
-func (s *kafkaXScaler) TotalLag() (int64, int64, error) {
-	return s.getTotalLag()
-}
-
 // getTotalLag returns totalLag, totalLagWithPersistent, error
 // totalLag and totalLagWithPersistent are the summations of lag and lagWithPersistent returned by getLagForPartition function respectively.
 // totalLag maybe less than totalLagWithPersistent when excludePersistentLag is set to `true` due to some partitions deemed as having persistent lag
-func (s *kafkaXScaler) getTotalLag() (int64, int64, error) {
-	topicPartitions, err := s.getTopicPartitions()
+func (s *apacheKafkaScaler) getTotalLag(ctx context.Context) (int64, int64, error) {
+	topicPartitions, err := s.getTopicPartitions(ctx)
 	if err != nil {
 		return 0, 0, err
 	}
 	s.logger.V(4).Info(fmt.Sprintf("Kafka scaler: Topic partitions %v", topicPartitions))
 
-	consumerOffsets, producerOffsets, err := s.getConsumerAndProducerOffsets(topicPartitions)
+	consumerOffsets, producerOffsets, err := s.getConsumerAndProducerOffsets(ctx, topicPartitions)
 	s.logger.V(4).Info(fmt.Sprintf("Kafka scaler: Consumer offsets %v, producer offsets %v", consumerOffsets, producerOffsets))
 	if err != nil {
 		return 0, 0, err
@@ -654,7 +650,7 @@ func (s *kafkaXScaler) getTotalLag() (int64, int64, error) {
 }
 
 // getProducerOffsets returns the latest offsets for the given topic partitions
-func (s *kafkaXScaler) getProducerOffsets(topicPartitions map[string][]int) (map[string]map[int]int64, error) {
+func (s *apacheKafkaScaler) getProducerOffsets(ctx context.Context, topicPartitions map[string][]int) (map[string]map[int]int64, error) {
 	// Step 1: build one OffsetRequest
 	offsetRequest := make(map[string][]kafka.OffsetRequest)
 
@@ -665,7 +661,7 @@ func (s *kafkaXScaler) getProducerOffsets(topicPartitions map[string][]int) (map
 	}
 
 	// Step 2: send request
-	res, err := s.client.ListOffsets(context.Background(), &kafka.ListOffsetsRequest{
+	res, err := s.client.ListOffsets(ctx, &kafka.ListOffsetsRequest{
 		Addr:   s.client.Addr,
 		Topics: offsetRequest,
 	})

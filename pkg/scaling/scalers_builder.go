@@ -104,6 +104,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	switch triggerType {
 	case "activemq":
 		return scalers.NewActiveMQScaler(config)
+	case "apache-kafka":
+		return scalers.NewApacheKafkaScaler(config)
 	case "arangodb":
 		return scalers.NewArangoDBScaler(config)
 	case "artemis-queue":
@@ -175,8 +177,6 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewInfluxDBScaler(config)
 	case "kafka":
 		return scalers.NewKafkaScaler(config)
-	case "kafka-x":
-		return scalers.NewKafkaXScaler(config)
 	case "kubernetes-workload":
 		return scalers.NewKubernetesWorkloadScaler(client, config)
 	case "liiklus":
