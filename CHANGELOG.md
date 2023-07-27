@@ -16,7 +16,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
-- [v2.11.1](#v2111)
+- [v2.11.2](#v2110)
+- [v2.11.1](#v2110)
 - [v2.11.0](#v2110)
 - [v2.10.1](#v2101)
 - [v2.10.0](#v2100)
@@ -57,11 +58,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
-- **General**: Metrics server exposes Prometheus metrics ([#4776](https://github.com/kedacore/keda/issues/4776))
-- **AWS Pod Identity Authentication**: Use `default` service account if the workload doesn't set it ([#4767](https://github.com/kedacore/keda/issues/4767))
-- **GitHub Runner Scaler**: Fix rate checking on GHEC when HTTP 200 ([#4786](https://github.com/kedacore/keda/issues/4786))
-- **GitHub Runner Scaler**: Fix explicit repo check 404 to skip not crash ([#4790](https://github.com/kedacore/keda/issues/4790))
-- **Pulsar Scaler**: Fix `msgBacklogThreshold` field being named wrongly as `msgBacklog` ([#4681](https://github.com/kedacore/keda/issues/4681))
+- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
 
 ### Deprecations
 
@@ -78,6 +75,24 @@ New deprecation(s):
 ### Other
 
 - **General**: Refactor ScaledJob related methods to be located at scale_handler  ([#4781](https://github.com/kedacore/keda/issues/4781))
+
+## v2.11.2
+
+### Fixes
+
+- **General**: Metrics server exposes Prometheus metrics ([#4776](https://github.com/kedacore/keda/issues/4776))
+- **AWS Pod Identity Authentication**: Use `default` service account if the workload doesn't set it ([#4767](https://github.com/kedacore/keda/issues/4767))
+- **GitHub Runner Scaler**: Fix rate checking on GHEC when HTTP 200 ([#4786](https://github.com/kedacore/keda/issues/4786))
+- **GitHub Runner Scaler**: Fix explicit repo check 404 to skip not crash ([#4790](https://github.com/kedacore/keda/issues/4790))
+- **Pulsar Scaler**: Fix `msgBacklogThreshold` field being named wrongly as `msgBacklog` ([#4681](https://github.com/kedacore/keda/issues/4681))
+
+### Deprecations
+
+You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
+
+New deprecation(s):
+
+- **Pulsar Scaler**: Fix `msgBacklogThreshold` field being named wrongly as `msgBacklog` ([#4681](https://github.com/kedacore/keda/issues/4681))
 
 ## v2.11.1
 
