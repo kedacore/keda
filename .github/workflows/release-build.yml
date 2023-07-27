@@ -114,3 +114,15 @@ jobs:
           asset_path: keda-${{ steps.get_version.outputs.VERSION }}-core.yaml
           asset_name: keda-${{ steps.get_version.outputs.VERSION }}-core.yaml
           asset_content_type: application/x-yaml
+
+      # Upload CRD deployment YAML file to GitHub release
+      - name: Upload Deployment YAML file
+        id: upload-crd-deployment-yaml
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: https://uploads.github.com/repos/kedacore/keda/releases/${{ steps.get-release-info.outputs.id }}/assets?name=keda-${{ steps.get_version.outputs.VERSION }}-crds.yaml
+          asset_path: keda-${{ steps.get_version.outputs.VERSION }}-crds.yaml
+          asset_name: keda-${{ steps.get_version.outputs.VERSION }}-crds.yaml
+          asset_content_type: application/x-yaml
