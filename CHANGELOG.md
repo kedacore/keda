@@ -52,7 +52,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 Here is an overview of all new **experimental** features:
 
-- **General**: A new experimental Kafka Scaler implementation using kafka-go library `kafka-x` ([#4692](https://github.com/kedacore/keda/issues/4692))
+- **General**: A new experimental Kafka Scaler implementation using kafka-go library `apache-kafka` ([#4692](https://github.com/kedacore/keda/issues/4692))
 
 ### Improvements
 
