@@ -19,7 +19,7 @@ go test -v -tags e2e ./utils/cleanup_test.go      # Skip if you want to keep tes
 ### Specific test
 
 ```bash
-go test -v -tags e2e ./scalers/azure_queue/azure_queue_test.go # Assumes that setup has been run before
+go test -v -tags e2e ./scalers/azure/azure_queue/azure_queue_test.go # Assumes that setup has been run before
 ```
 
 > **Note**
@@ -59,7 +59,7 @@ in parallel, but tests within a file can be run in parallel or in series. More a
 ## Adding tests
 
 - Tests are written using `Go`'s default [`testing`](https://pkg.go.dev/testing) framework, and [`testify`](https://pkg.go.dev/github.com/stretchr/testify).
-- Each e2e test should be in its own package, **ex -** `scalers/azure_queue/azure_queue_test.go`, or `scalers/kafka/kafka_test.go`, etc
+- Each e2e test should be in its own package, **ex -** `scalers/azure/azure_queue/azure_queue_test.go`, or `scalers/kafka/kafka_test.go`, etc
 - Each test file is expected to do its own setup and clean for resources.
 
 Test are split in different folders based on what it's testing:
@@ -199,7 +199,7 @@ func cleanupTest(t *testing.T) {
 
 #### Notes
 
-- You can see [`azure_queue_test.go`](scalers/azure_queue/azure_queue_test.go) for a full example.
+- You can see [`azure_queue_test.go`](scalers/azure/azure_queue/azure_queue_test.go) for a full example.
 - All tests must have the `// +build e2e` build tag.
 - Refer [`helper.go`](helper.go) for various helper methods available to use in your tests.
 - Prefer using helper methods or `k8s` libraries in `Go` over manually executing `shell` commands. Only if the task
