@@ -87,6 +87,8 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 			}
 			return nil, err
 		}
+		msg := fmt.Sprintf("Scaler %s is built.", trigger.Type)
+		h.recorder.Event(withTriggers, corev1.EventTypeNormal, eventreason.KEDAScalersStarted, msg)
 
 		result = append(result, cache.ScalerBuilder{
 			Scaler:       scaler,
