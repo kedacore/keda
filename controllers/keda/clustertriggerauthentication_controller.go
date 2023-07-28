@@ -66,7 +66,9 @@ func (r *ClusterTriggerAuthenticationReconciler) Reconcile(ctx context.Context, 
 		if errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
+		msg := "Failed to get ClusterTriggerAuthentication"
 		reqLogger.Error(err, "Failed to get ClusterTriggerAuthentication")
+		r.EventRecorder.Event(clusterTriggerAuthentication, corev1.EventTypeNormal, eventreason.ClusterTriggerAuthenticationFailed, msg)
 		return ctrl.Result{}, err
 	}
 

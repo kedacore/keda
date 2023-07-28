@@ -66,7 +66,9 @@ func (r *TriggerAuthenticationReconciler) Reconcile(ctx context.Context, req ctr
 		if errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
-		reqLogger.Error(err, "Failed to get TriggerAuthentication")
+		msg := "Failed to get TriggerAuthentication"
+		reqLogger.Error(err, msg)
+		r.EventRecorder.Event(triggerAuthentication, corev1.EventTypeNormal, eventreason.TriggerAuthenticationFailed, msg)
 		return ctrl.Result{}, err
 	}
 
