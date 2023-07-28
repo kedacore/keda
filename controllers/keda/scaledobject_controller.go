@@ -134,7 +134,6 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options cont
 // Reconcile performs reconciliation on the identified ScaledObject resource based on the request information passed, returns the result and an error (if any).
 func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := log.FromContext(ctx)
-
 	// Fetch the ScaledObject instance
 	scaledObject := &kedav1alpha1.ScaledObject{}
 	err := r.Client.Get(ctx, req.NamespacedName, scaledObject)
@@ -146,7 +145,9 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			return ctrl.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
-		reqLogger.Error(err, "failed to get ScaledObject")
+		msg := "failed to get ScaledObject"
+		reqLogger.Error(err, msg)
+		r.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.ScaledObjectCheckFailed, msg)
 		return ctrl.Result{}, err
 	}
 
@@ -168,6 +169,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if !scaledObject.Status.Conditions.AreInitialized() {
 		conditions := kedav1alpha1.GetInitializedConditions()
 		if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledObject, conditions); err != nil {
+			r.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.ScaledObjectUpdateFailed, err.Error())
 			return ctrl.Result{}, err
 		}
 	}
@@ -190,6 +192,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledObject, &conditions); err != nil {
+		r.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.ScaledObjectUpdateFailed, err.Error())
 		return ctrl.Result{}, err
 	}
 
@@ -305,7 +308,9 @@ func (r *ScaledObjectReconciler) ensureScaledObjectLabel(ctx context.Context, lo
 func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (kedav1alpha1.GroupVersionKindResource, error) {
 	gvkr, err := kedav1alpha1.ParseGVKR(r.restMapper, scaledObject.Spec.ScaleTargetRef.APIVersion, scaledObject.Spec.ScaleTargetRef.Kind)
 	if err != nil {
-		logger.Error(err, "failed to parse Group, Version, Kind, Resource", "apiVersion", scaledObject.Spec.ScaleTargetRef.APIVersion, "kind", scaledObject.Spec.ScaleTargetRef.Kind)
+		msg := "failed to parse Group, Version, Kind, Resource"
+		logger.Error(err, msg, "apiVersion", scaledObject.Spec.ScaleTargetRef.APIVersion, "kind", scaledObject.Spec.ScaleTargetRef.Kind)
+		r.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.ScaledObjectUpdateFailed, msg)
 		return gvkr, err
 	}
 	gvkString := gvkr.GVKString()
@@ -331,11 +336,15 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 			unstruct.SetGroupVersionKind(gvkr.GroupVersionKind())
 			if err := r.Client.Get(ctx, client.ObjectKey{Namespace: scaledObject.Namespace, Name: scaledObject.Spec.ScaleTargetRef.Name}, unstruct); err != nil {
 				// resource doesn't exist
-				logger.Error(err, "target resource doesn't exist", "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
+				msg := "target resource doesn't exist"
+				logger.Error(err, msg, "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
+				r.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.ScaledObjectCheckFailed, msg)
 				return gvkr, err
 			}
 			// resource exist but doesn't expose /scale subresource
-			logger.Error(errScale, "target resource doesn't expose /scale subresource", "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
+			msg := "target resource doesn't expose /scale subresource"
+			logger.Error(errScale, msg, "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
+			r.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.ScaledObjectCheckFailed, msg)
 			return gvkr, errScale
 		}
 		isScalableCache.Store(gr.String(), true)

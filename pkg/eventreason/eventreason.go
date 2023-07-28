@@ -29,6 +29,12 @@ const (
 	// ScaledJobCheckFailed is for event when ScaledJob validation check fails
 	ScaledJobCheckFailed = "ScaledJobCheckFailed"
 
+	// ScaledObjectUpdateFailed is for event when ScaledObject update status fails
+	ScaledObjectUpdateFailed = "ScaledObjectUpdateFailed"
+
+	// ScaledJobUpdateFailed is for event when ScaledJob update status fails
+	ScaledJobUpdateFailed = "ScaledJobUpdateFailed"
+
 	// ScaledObjectDeleted is for event when ScaledObject is deleted
 	ScaledObjectDeleted = "ScaledObjectDeleted"
 
