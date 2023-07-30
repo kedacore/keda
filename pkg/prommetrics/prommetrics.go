@@ -39,9 +39,9 @@ const (
 )
 
 var (
-	metricLabels          = []string{"namespace", "metric", "scaledObject", "scaler", "scalerIndex"}
-	scaledJobmetricLabels = []string{"namespace", "metric", "scaledJob", "scaler", "scalerIndex"}
-	buildInfo             = prometheus.NewGaugeVec(
+	scaledObjectMetricLabels = []string{"namespace", "metric", "scaledObject", "scaler", "scalerIndex"}
+	scaledJobmetricLabels    = []string{"namespace", "metric", "scaledJob", "scaler", "scalerIndex"}
+	buildInfo                = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: DefaultPromMetricsNamespace,
 			Name:      "build_info",
@@ -58,14 +58,14 @@ var (
 		},
 		[]string{},
 	)
-	scalerMetricsValue = prometheus.NewGaugeVec(
+	scaledObjectScalerMetricsValue = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaler",
-			Name:      "metrics_value",
+			Name:      "scaledobject_metrics_value",
 			Help:      "Metric Value used for HPA",
 		},
-		metricLabels,
+		scaledObjectMetricLabels,
 	)
 	scaledJobScalerMetricsValue = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -76,14 +76,14 @@ var (
 		},
 		scaledJobmetricLabels,
 	)
-	scalerMetricsLatency = prometheus.NewGaugeVec(
+	scaledObjectScalerMetricsLatency = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaler",
-			Name:      "metrics_latency",
+			Name:      "scaledobject_metrics_latency",
 			Help:      "Scaler Metrics Latency",
 		},
-		metricLabels,
+		scaledObjectMetricLabels,
 	)
 	scaledJobScalerMetricsLatency = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -94,14 +94,14 @@ var (
 		},
 		scaledJobmetricLabels,
 	)
-	scalerActive = prometheus.NewGaugeVec(
+	scaledObjectScalerActive = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaler",
-			Name:      "active",
+			Name:      "scaledobject_active",
 			Help:      "Activity of a Scaler Metric",
 		},
-		metricLabels,
+		scaledObjectMetricLabels,
 	)
 	scaledJobScalerActive = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -112,14 +112,14 @@ var (
 		},
 		scaledJobmetricLabels,
 	)
-	scalerErrors = prometheus.NewCounterVec(
+	scaledObjectScalerErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaler",
-			Name:      "errors",
+			Name:      "scaledobject_errors",
 			Help:      "Number of scaler errors",
 		},
-		metricLabels,
+		scaledObjectMetricLabels,
 	)
 	scaledJobScalerErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -141,7 +141,6 @@ var (
 	)
 	scaledJobErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			// yoon
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaled_job",
 			Name:      "errors",
@@ -181,14 +180,14 @@ var (
 
 func init() {
 	metrics.Registry.MustRegister(scalerErrorsTotal)
-	metrics.Registry.MustRegister(scalerMetricsValue)
-	metrics.Registry.MustRegister(scalerMetricsLatency)
 	metrics.Registry.MustRegister(internalLoopLatency)
-	metrics.Registry.MustRegister(scalerActive)
-	metrics.Registry.MustRegister(scalerErrors)
+
+	metrics.Registry.MustRegister(scaledObjectScalerMetricsValue)
+	metrics.Registry.MustRegister(scaledObjectScalerMetricsLatency)
+	metrics.Registry.MustRegister(scaledObjectScalerActive)
+	metrics.Registry.MustRegister(scaledObjectScalerErrors)
 	metrics.Registry.MustRegister(scaledObjectErrors)
 
-	// yoon
 	metrics.Registry.MustRegister(scaledJobScalerMetricsValue)
 	metrics.Registry.MustRegister(scaledJobScalerMetricsLatency)
 	metrics.Registry.MustRegister(scaledJobScalerActive)
@@ -207,7 +206,7 @@ func RecordScalerMetric(namespace string, scaledResource string, scaler string, 
 	labels := getLabels(namespace, scaledResource, scaler, scalerIndex, metric, resourceType)
 	switch resourceType {
 	case ScaledObjectResource:
-		scalerMetricsValue.With(labels).Set(value)
+		scaledObjectScalerMetricsValue.With(labels).Set(value)
 	case ScaledJobResource:
 		scaledJobScalerMetricsValue.With(labels).Set(value)
 	}
@@ -218,7 +217,7 @@ func RecordScalerLatency(namespace string, scaledResource string, scaler string,
 	labels := getLabels(namespace, scaledResource, scaler, scalerIndex, metric, resourceType)
 	switch resourceType {
 	case ScaledObjectResource:
-		scalerMetricsLatency.With(labels).Set(value)
+		scaledObjectScalerMetricsLatency.With(labels).Set(value)
 	case ScaledJobResource:
 		scaledJobScalerMetricsLatency.With(labels).Set(value)
 	}
@@ -242,7 +241,7 @@ func RecordScalerActive(namespace string, scaledResource string, scaler string, 
 	labels := getLabels(namespace, scaledResource, scaler, scalerIndex, metric, resourceType)
 	switch resourceType {
 	case ScaledObjectResource:
-		scalerActive.With(labels).Set(float64(activeVal))
+		scaledObjectScalerActive.With(labels).Set(float64(activeVal))
 	case ScaledJobResource:
 		scaledJobScalerActive.With(labels).Set(float64(activeVal))
 	}
@@ -254,14 +253,13 @@ func RecordScalerError(namespace string, scaledResource string, scaler string, s
 	switch resourceType {
 	case ScaledObjectResource:
 		if err != nil {
-			scalerErrors.With(labels).Inc()
+			scaledObjectScalerErrors.With(labels).Inc()
 			RecordScaledObjectError(namespace, scaledResource, err, resourceType)
 			scalerErrorsTotal.With(prometheus.Labels{}).Inc()
-			// yoon
 			break
 		}
 		// initialize metric with 0 if not already set
-		_, errScaler := scalerErrors.GetMetricWith(labels)
+		_, errScaler := scaledObjectScalerErrors.GetMetricWith(labels)
 		if errScaler != nil {
 			log.Error(errScaler, "Unable to write to metrics to Prometheus Server: %v")
 		}
