@@ -320,7 +320,7 @@ func getLabels(namespace string, scaledResource string, scaler string, scalerInd
 	case ScaledJobResource:
 		return prometheus.Labels{"namespace": namespace, "scaledJob": scaledResource, "scaler": scaler, "scalerIndex": strconv.Itoa(scalerIndex), "metric": metric}
 	}
-	// Only two types are currently supported. It cannot be reached here
+	// Only two types(ScaledObject and ScaledJob) are currently supported. It cannot be reached here
 	return nil
 }
 
