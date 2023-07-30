@@ -204,22 +204,24 @@ func init() {
 
 // RecordScalerMetric create a measurement of the external metric used by the HPA
 func RecordScalerMetric(namespace string, scaledResource string, scaler string, scalerIndex int, metric string, value float64, resourceType string) {
-	if resourceType == ScaledObjectResource {
-		scalerMetricsValue.With(getLabels(namespace, scaledResource, scaler, scalerIndex, metric)).Set(value)
-	} else {
-		scaledJobScalerMetricsValue.With(getYoonLabels(namespace, scaledResource, scaler, scalerIndex, metric)).Set(value)
+	labels := getLabels(namespace, scaledResource, scaler, scalerIndex, metric, resourceType)
+	switch resourceType {
+	case ScaledObjectResource:
+		scalerMetricsValue.With(labels).Set(value)
+	case ScaledJobResource:
+		scaledJobScalerMetricsValue.With(labels).Set(value)
 	}
-
 }
 
 // RecordScalerLatency create a measurement of the latency to external metric
 func RecordScalerLatency(namespace string, scaledResource string, scaler string, scalerIndex int, metric string, value float64, resourceType string) {
-	if resourceType == ScaledObjectResource {
-		scalerMetricsLatency.With(getLabels(namespace, scaledResource, scaler, scalerIndex, metric)).Set(value)
-	} else {
-		scaledJobScalerMetricsLatency.With(getYoonLabels(namespace, scaledResource, scaler, scalerIndex, metric)).Set(value)
+	labels := getLabels(namespace, scaledResource, scaler, scalerIndex, metric, resourceType)
+	switch resourceType {
+	case ScaledObjectResource:
+		scalerMetricsLatency.With(labels).Set(value)
+	case ScaledJobResource:
+		scaledJobScalerMetricsLatency.With(labels).Set(value)
 	}
-
 }
 
 // RecordScaledObjectLatency create a measurement of the latency executing scalable object loop
@@ -237,35 +239,41 @@ func RecordScalerActive(namespace string, scaledResource string, scaler string, 
 	if active {
 		activeVal = 1
 	}
-	if resourceType == ScaledObjectResource {
-		scalerActive.With(getLabels(namespace, scaledResource, scaler, scalerIndex, metric)).Set(float64(activeVal))
-	} else {
-		scaledJobScalerActive.With(getYoonLabels(namespace, scaledResource, scaler, scalerIndex, metric)).Set(float64(activeVal))
+	labels := getLabels(namespace, scaledResource, scaler, scalerIndex, metric, resourceType)
+	switch resourceType {
+	case ScaledObjectResource:
+		scalerActive.With(labels).Set(float64(activeVal))
+	case ScaledJobResource:
+		scaledJobScalerActive.With(labels).Set(float64(activeVal))
 	}
-
 }
 
 // RecordScalerError counts the number of errors occurred in trying to get an external metric used by the HPA
 func RecordScalerError(namespace string, scaledResource string, scaler string, scalerIndex int, metric string, err error, resourceType string) {
-	if err != nil {
-		if resourceType == ScaledObjectResource {
-			scalerErrors.With(getLabels(namespace, scaledResource, scaler, scalerIndex, metric)).Inc()
-		} else {
-			scaledJobScalerErrors.With(getYoonLabels(namespace, scaledResource, scaler, scalerIndex, metric)).Inc()
+	labels := getLabels(namespace, scaledResource, scaler, scalerIndex, metric, resourceType)
+	switch resourceType {
+	case ScaledObjectResource:
+		if err != nil {
+			scalerErrors.With(labels).Inc()
+			RecordScaledObjectError(namespace, scaledResource, err, resourceType)
+			scalerErrorsTotal.With(prometheus.Labels{}).Inc()
+			// yoon
+			break
 		}
-
-		RecordScaledObjectError(namespace, scaledResource, err, resourceType)
-		scalerErrorsTotal.With(prometheus.Labels{}).Inc()
-		return
-	}
-	// initialize metric with 0 if not already set
-	if resourceType == ScaledObjectResource {
-		_, errScaler := scalerErrors.GetMetricWith(getLabels(namespace, scaledResource, scaler, scalerIndex, metric))
+		// initialize metric with 0 if not already set
+		_, errScaler := scalerErrors.GetMetricWith(labels)
 		if errScaler != nil {
 			log.Error(errScaler, "Unable to write to metrics to Prometheus Server: %v")
 		}
-	} else {
-		_, errScaler := scaledJobScalerErrors.GetMetricWith(getYoonLabels(namespace, scaledResource, scaler, scalerIndex, metric))
+	case ScaledJobResource:
+		if err != nil {
+			scaledJobScalerErrors.With(labels).Inc()
+			RecordScaledObjectError(namespace, scaledResource, err, resourceType)
+			scalerErrorsTotal.With(prometheus.Labels{}).Inc()
+			break
+		}
+		// initialize metric with 0 if not already set
+		_, errScaler := scaledJobScalerErrors.GetMetricWith(labels)
 		if errScaler != nil {
 			log.Error(errScaler, "Unable to write to metrics to Prometheus Server: %v")
 		}
@@ -274,7 +282,8 @@ func RecordScalerError(namespace string, scaledResource string, scaler string, s
 
 // RecordScaleObjectError counts the number of errors with the scaled object
 func RecordScaledObjectError(namespace string, scaledResource string, err error, resourceType string) {
-	if resourceType == ScaledObjectResource {
+	switch resourceType {
+	case ScaledObjectResource:
 		labels := prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource}
 		if err != nil {
 			scaledObjectErrors.With(labels).Inc()
@@ -286,7 +295,7 @@ func RecordScaledObjectError(namespace string, scaledResource string, err error,
 			log.Error(errScaledObject, "Unable to write to metrics to Prometheus Server: %v")
 			return
 		}
-	} else {
+	case ScaledJobResource:
 		labels := prometheus.Labels{"namespace": namespace, "scaledJob": scaledResource}
 		if err != nil {
 			scaledJobErrors.With(labels).Inc()
@@ -299,7 +308,6 @@ func RecordScaledObjectError(namespace string, scaledResource string, err error,
 			return
 		}
 	}
-
 }
 
 // RecordBuildInfo publishes information about KEDA version and runtime info through an info metric (gauge).
@@ -307,13 +315,15 @@ func RecordBuildInfo() {
 	buildInfo.WithLabelValues(version.Version, version.GitCommit, runtime.Version(), runtime.GOOS, runtime.GOARCH).Set(1)
 }
 
-func getLabels(namespace string, scaledObject string, scaler string, scalerIndex int, metric string) prometheus.Labels {
-	return prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject, "scaler": scaler, "scalerIndex": strconv.Itoa(scalerIndex), "metric": metric}
-}
-
-// yoon
-func getYoonLabels(namespace string, scaledJob string, scaler string, scalerIndex int, metric string) prometheus.Labels {
-	return prometheus.Labels{"namespace": namespace, "scaledJob": scaledJob, "scaler": scaler, "scalerIndex": strconv.Itoa(scalerIndex), "metric": metric}
+func getLabels(namespace string, scaledResource string, scaler string, scalerIndex int, metric string, resourceType string) prometheus.Labels {
+	switch resourceType {
+	case ScaledObjectResource:
+		return prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "scaler": scaler, "scalerIndex": strconv.Itoa(scalerIndex), "metric": metric}
+	case ScaledJobResource:
+		return prometheus.Labels{"namespace": namespace, "scaledJob": scaledResource, "scaler": scaler, "scalerIndex": strconv.Itoa(scalerIndex), "metric": metric}
+	}
+	// Only two types are currently supported. It cannot be reached here
+	return nil
 }
 
 func IncrementTriggerTotal(triggerType string) {
