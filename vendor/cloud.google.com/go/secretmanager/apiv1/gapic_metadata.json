@@ -1,0 +1,173 @@
+{
+  "schema": "1.0",
+  "comment": "This file maps proto services/RPCs to the corresponding library clients/methods.",
+  "language": "go",
+  "protoPackage": "google.cloud.secretmanager.v1",
+  "libraryPackage": "cloud.google.com/go/secretmanager/apiv1",
+  "services": {
+    "SecretManagerService": {
+      "clients": {
+        "grpc": {
+          "libraryClient": "Client",
+          "rpcs": {
+            "AccessSecretVersion": {
+              "methods": [
+                "AccessSecretVersion"
+              ]
+            },
+            "AddSecretVersion": {
+              "methods": [
+                "AddSecretVersion"
+              ]
+            },
+            "CreateSecret": {
+              "methods": [
+                "CreateSecret"
+              ]
+            },
+            "DeleteSecret": {
+              "methods": [
+                "DeleteSecret"
+              ]
+            },
+            "DestroySecretVersion": {
+              "methods": [
+                "DestroySecretVersion"
+              ]
+            },
+            "DisableSecretVersion": {
+              "methods": [
+                "DisableSecretVersion"
+              ]
+            },
+            "EnableSecretVersion": {
+              "methods": [
+                "EnableSecretVersion"
+              ]
+            },
+            "GetIamPolicy": {
+              "methods": [
+                "GetIamPolicy"
+              ]
+            },
+            "GetSecret": {
+              "methods": [
+                "GetSecret"
+              ]
+            },
+            "GetSecretVersion": {
+              "methods": [
+                "GetSecretVersion"
+              ]
+            },
+            "ListSecretVersions": {
+              "methods": [
+                "ListSecretVersions"
+              ]
+            },
+            "ListSecrets": {
+              "methods": [
+                "ListSecrets"
+              ]
+            },
+            "SetIamPolicy": {
+              "methods": [
+                "SetIamPolicy"
+              ]
+            },
+            "TestIamPermissions": {
+              "methods": [
+                "TestIamPermissions"
+              ]
+            },
+            "UpdateSecret": {
+              "methods": [
+                "UpdateSecret"
+              ]
+            }
+          }
+        },
+        "rest": {
+          "libraryClient": "Client",
+          "rpcs": {
+            "AccessSecretVersion": {
+              "methods": [
+                "AccessSecretVersion"
+              ]
+            },
+            "AddSecretVersion": {
+              "methods": [
+                "AddSecretVersion"
+              ]
+            },
+            "CreateSecret": {
+              "methods": [
+                "CreateSecret"
+              ]
+            },
+            "DeleteSecret": {
+              "methods": [
+                "DeleteSecret"
+              ]
+            },
+            "DestroySecretVersion": {
+              "methods": [
+                "DestroySecretVersion"
+              ]
+            },
+            "DisableSecretVersion": {
+              "methods": [
+                "DisableSecretVersion"
+              ]
+            },
+            "EnableSecretVersion": {
+              "methods": [
+                "EnableSecretVersion"
+              ]
+            },
+            "GetIamPolicy": {
+              "methods": [
+                "GetIamPolicy"
+              ]
+            },
+            "GetSecret": {
+              "methods": [
+                "GetSecret"
+              ]
+            },
+            "GetSecretVersion": {
+              "methods": [
+                "GetSecretVersion"
+              ]
+            },
+            "ListSecretVersions": {
+              "methods": [
+                "ListSecretVersions"
+              ]
+            },
+            "ListSecrets": {
+              "methods": [
+                "ListSecrets"
+              ]
+            },
+            "SetIamPolicy": {
+              "methods": [
+                "SetIamPolicy"
+              ]
+            },
+            "TestIamPermissions": {
+              "methods": [
+                "TestIamPermissions"
+              ]
+            },
+            "UpdateSecret": {
+              "methods": [
+                "UpdateSecret"
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

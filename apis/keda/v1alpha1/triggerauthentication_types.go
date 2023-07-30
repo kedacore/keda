@@ -86,6 +86,9 @@ type TriggerAuthenticationSpec struct {
 
 	// +optional
 	AzureKeyVault *AzureKeyVault `json:"azureKeyVault,omitempty"`
+
+	// +optional
+	GCPSecretManager *GCPSecretManager `json:"gcpSecretManager,omitempty"`
 }
 
 // TriggerAuthenticationStatus defines the observed state of TriggerAuthentication
@@ -241,6 +244,29 @@ type AzureKeyVaultCloudInfo struct {
 	KeyVaultResourceURL string `json:"keyVaultResourceURL"`
 	// +optional
 	ActiveDirectoryEndpoint string `json:"activeDirectoryEndpoint"`
+}
+
+type GCPSecretManager struct {
+	Secrets []Secrets `json:"secrets"`
+	// +optional
+	Credentials *GCPCredentials `json:"gcpCredentials"`
+	// +optional
+	PodIdentity *AuthPodIdentity `json:"podIdentity"`
+	// +optional
+	GCPProjectID string `json:"gcpProjectID"`
+}
+
+type GCPCredentials struct {
+	ClientSecret struct {
+		ValueFrom ValueFromSecret `json:"valueFrom"`
+	} `json:"clientSecret"`
+}
+
+type Secrets struct {
+	Parameter string `json:"parameter"`
+	ID        string `json:"id"`
+	// +optional
+	Version string `json:"version,omitempty"`
 }
 
 func init() {

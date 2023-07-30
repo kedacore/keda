@@ -280,6 +280,27 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 					}
 				}
 			}
+			if triggerAuthSpec.GCPSecretManager != nil && len(triggerAuthSpec.GCPSecretManager.Secrets) > 0 {
+				vaultHandler := NewGCPSecretManagerHandler(triggerAuthSpec.GCPSecretManager, ctx)
+				err := vaultHandler.Initialize(client, logger, triggerNamespace, secretsLister)
+				if err != nil {
+					logger.Error(err, "error authenticating to GCP Secret Manager", "triggerAuthRef.Name", triggerAuthRef.Name)
+				} else {
+					for _, secret := range triggerAuthSpec.GCPSecretManager.Secrets {
+						version := "latest"
+						if secret.Version != "" {
+							version = secret.Version
+						}
+						res, err := vaultHandler.Read(secret.ID, version)
+						if err != nil {
+							logger.Error(err, "error trying to read secret from GCP Secret Manager", "triggerAuthRef.Name", triggerAuthRef.Name,
+								"secret.Name", secret.ID, "secret.Version", secret.Version)
+						} else {
+							result[secret.Parameter] = res
+						}
+					}
+				}
+			}
 		}
 	}
 
