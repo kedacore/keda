@@ -55,6 +55,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General:**: Add ScaledObject/ScaledJob names to output of `kubectl get triggerauthentication/clustertriggerauthentication` ([#796](https://github.com/kedacore/keda/issues/796))
 - **General:**: Add standalone CRD generation to release workflow ([#2726](https://github.com/kedacore/keda/issues/2726))
+- **Cloud Tasks Scaler**: Add functionality to scale based on the queue length ([#3613](https://github.com/kedacore/keda/issues/3613))
 
 ### Fixes
 
