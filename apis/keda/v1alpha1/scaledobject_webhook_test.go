@@ -437,7 +437,7 @@ var _ = It("should not validate ScaledObject creation when deployment only provi
 		{
 			Type: "cpu",
 			Metadata: map[string]string{
-				"cpu": "10",
+				"value": "10",
 			},
 		},
 	}
@@ -468,7 +468,7 @@ var _ = It("should not validate ScaledObject creation when deployment only provi
 		{
 			Type: "memory",
 			Metadata: map[string]string{
-				"memory": "512Mi",
+				"value": "512Mi",
 			},
 		},
 	}
