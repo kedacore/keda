@@ -30,7 +30,7 @@ type cloudTaskMetadata struct {
 	activationValue float64
 
 	queueName        string
-	projectId        string
+	projectID        string
 	gcpAuthorization *gcpAuthorizationMetadata
 	scalerIndex      int
 }
@@ -44,7 +44,7 @@ func NewCloudTasksScaler(config *ScalerConfig) (Scaler, error) {
 
 	logger := InitializeLogger(config, "gcp_cloud_tasks_scaler")
 
-	meta, err := parseCloudTasksMetadata(config, logger)
+	meta, err := parseCloudTasksMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing Cloud Tasks metadata: %w", err)
 	}
@@ -56,9 +56,9 @@ func NewCloudTasksScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseCloudTasksMetadata(config *ScalerConfig, logger logr.Logger) (*cloudTaskMetadata, error) {
+func parseCloudTasksMetadata(config *ScalerConfig) (*cloudTaskMetadata, error) {
 
-	meta := cloudTaskMetadata{}
+	meta := cloudTaskMetadata{value: cloudTaskDefaultValue}
 
 	value, valuePresent := config.TriggerMetadata["value"]
 
@@ -89,12 +89,12 @@ func parseCloudTasksMetadata(config *ScalerConfig, logger logr.Logger) (*cloudTa
 		meta.activationValue = activationValue
 	}
 
-	if val, ok := config.TriggerMetadata["projectId"]; ok {
+	if val, ok := config.TriggerMetadata["projectID"]; ok {
 		if val == "" {
 			return nil, fmt.Errorf("no project id given")
 		}
 
-		meta.projectId = val
+		meta.projectID = val
 	} else {
 		return nil, fmt.Errorf("no project id given")
 	}
@@ -181,5 +181,5 @@ func (s *cloudTasksScaler) getMetrics(ctx context.Context, metricType string) (f
 
 	// Cloud Tasks metrics are collected every 60 seconds so no need to aggregate them.
 	// See: https://cloud.google.com/monitoring/api/metrics_gcp#gcp-cloudtasks
-	return s.client.GetMetrics(ctx, filter, s.metadata.projectId, nil)
+	return s.client.GetMetrics(ctx, filter, s.metadata.projectID, nil)
 }

@@ -26,23 +26,23 @@ type gcpCloudTasksMetricIdentifier struct {
 var testCloudTasksMetadata = []parseCloudTasksMetadataTestData{
 	{map[string]string{}, map[string]string{}, true},
 	// all properly formed
-	{nil, map[string]string{"queueName": "myQueue", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS", "projectId": "myproject", "activationValue": "5"}, false},
+	{nil, map[string]string{"queueName": "myQueue", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS", "projectID": "myproject", "activationValue": "5"}, false},
 	// missing subscriptionName
-	{nil, map[string]string{"queueName": "", "value": "7", "projectId": "myproject", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	{nil, map[string]string{"queueName": "", "value": "7", "projectID": "myproject", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// missing credentials
-	{nil, map[string]string{"queueName": "myQueue", "value": "7", "projectId": "myproject", "credentialsFromEnv": ""}, true},
+	{nil, map[string]string{"queueName": "myQueue", "value": "7", "projectID": "myproject", "credentialsFromEnv": ""}, true},
 	// malformed subscriptionSize
-	{nil, map[string]string{"queueName": "myQueue", "value": "AA", "projectId": "myproject", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	{nil, map[string]string{"queueName": "myQueue", "value": "AA", "projectID": "myproject", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// malformed mode
-	{nil, map[string]string{"queueName": "", "mode": "AA", "value": "7", "projectId": "myproject", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	{nil, map[string]string{"queueName": "", "mode": "AA", "value": "7", "projectID": "myproject", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// malformed activationTargetValue
-	{nil, map[string]string{"queueName": "myQueue", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS", "projectId": "myproject", "activationValue": "AA"}, true},
+	{nil, map[string]string{"queueName": "myQueue", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS", "projectID": "myproject", "activationValue": "AA"}, true},
 	// Credentials from AuthParams
-	{map[string]string{"GoogleApplicationCredentials": "Creds"}, map[string]string{"queueName": "myQueue", "value": "7", "projectId": "myproject"}, false},
+	{map[string]string{"GoogleApplicationCredentials": "Creds"}, map[string]string{"queueName": "myQueue", "value": "7", "projectID": "myproject"}, false},
 	// Credentials from AuthParams with empty creds
-	{map[string]string{"GoogleApplicationCredentials": ""}, map[string]string{"queueName": "myQueue", "subscriptionSize": "7", "projectId": "myproject"}, true},
+	{map[string]string{"GoogleApplicationCredentials": ""}, map[string]string{"queueName": "myQueue", "subscriptionSize": "7", "projectID": "myproject"}, true},
 	// properly formed float value and activationTargetValue
-	{nil, map[string]string{"queueName": "mysubscription", "value": "7.1", "credentialsFromEnv": "SAMPLE_CREDS", "activationValue": "2.1", "projectId": "myproject"}, false},
+	{nil, map[string]string{"queueName": "mysubscription", "value": "7.1", "credentialsFromEnv": "SAMPLE_CREDS", "activationValue": "2.1", "projectID": "myproject"}, false},
 }
 
 var gcpCloudTasksMetricIdentifiers = []gcpCloudTasksMetricIdentifier{
@@ -52,7 +52,7 @@ var gcpCloudTasksMetricIdentifiers = []gcpCloudTasksMetricIdentifier{
 
 func TestCloudTasksParseMetadata(t *testing.T) {
 	for _, testData := range testCloudTasksMetadata {
-		_, err := parseCloudTasksMetadata(&ScalerConfig{AuthParams: testData.authParams, TriggerMetadata: testData.metadata, ResolvedEnv: testCloudTasksResolvedEnv}, logr.Discard())
+		_, err := parseCloudTasksMetadata(&ScalerConfig{AuthParams: testData.authParams, TriggerMetadata: testData.metadata, ResolvedEnv: testCloudTasksResolvedEnv})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -64,7 +64,7 @@ func TestCloudTasksParseMetadata(t *testing.T) {
 
 func TestGcpCloudTasksGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range gcpCloudTasksMetricIdentifiers {
-		meta, err := parseCloudTasksMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testCloudTasksResolvedEnv, ScalerIndex: testData.scalerIndex}, logr.Discard())
+		meta, err := parseCloudTasksMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testCloudTasksResolvedEnv, ScalerIndex: testData.scalerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
