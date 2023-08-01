@@ -36,7 +36,7 @@ var (
 	secretName          = fmt.Sprintf("%s-secret", testName)
 	deploymentName      = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName    = fmt.Sprintf("%s-so", testName)
-	projectID           = creds["project_id"]
+	projectID           = fmt.Sprintf("%s", creds["project_id"])
 	queueID             = fmt.Sprintf("keda-test-queue-%d", now)
 	maxReplicaCount     = 4
 	activationThreshold = 5

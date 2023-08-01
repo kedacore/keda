@@ -57,7 +57,6 @@ func NewCloudTasksScaler(config *ScalerConfig) (Scaler, error) {
 }
 
 func parseCloudTasksMetadata(config *ScalerConfig) (*cloudTaskMetadata, error) {
-
 	meta := cloudTaskMetadata{value: cloudTaskDefaultValue}
 
 	value, valuePresent := config.TriggerMetadata["value"]
