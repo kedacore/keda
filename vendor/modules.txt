@@ -444,7 +444,7 @@ github.com/go-jose/go-jose/v3
 github.com/go-jose/go-jose/v3/cipher
 github.com/go-jose/go-jose/v3/json
 github.com/go-jose/go-jose/v3/jwt
-# github.com/go-kivik/couchdb/v3 v3.3.0
+# github.com/go-kivik/couchdb/v3 v3.4.0
 ## explicit; go 1.13
 github.com/go-kivik/couchdb/v3
 github.com/go-kivik/couchdb/v3/chttp
