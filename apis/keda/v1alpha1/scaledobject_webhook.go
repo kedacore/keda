@@ -318,16 +318,16 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string, dryRun bool
 				}
 
 				if trigger.Type == cpuString {
-					if container.Resources.Requests.Cpu().AsApproximateFloat64() == 0 &&
-						container.Resources.Limits.Cpu().AsApproximateFloat64() == 0 {
+					if (container.Resources.Requests == nil || container.Resources.Requests.Cpu() == nil || container.Resources.Requests.Cpu().AsApproximateFloat64() == 0) &&
+						(container.Resources.Limits == nil || container.Resources.Limits.Cpu() == nil || container.Resources.Limits.Cpu().AsApproximateFloat64() == 0) {
 						err := fmt.Errorf("the scaledobject has a cpu trigger but the container %s doesn't have the cpu request defined", container.Name)
 						scaledobjectlog.Error(err, "validation error")
 						metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
 						return err
 					}
 				} else if trigger.Type == memoryString {
-					if container.Resources.Requests.Memory().AsApproximateFloat64() == 0 &&
-						container.Resources.Limits.Memory().AsApproximateFloat64() == 0 {
+					if (container.Resources.Requests == nil || container.Resources.Requests.Memory() == nil || container.Resources.Requests.Memory().AsApproximateFloat64() == 0) &&
+						(container.Resources.Limits == nil || container.Resources.Limits.Memory() == nil || container.Resources.Limits.Memory().AsApproximateFloat64() == 0) {
 						err := fmt.Errorf("the scaledobject has a memory trigger but the container %s doesn't have the memory request defined", container.Name)
 						scaledobjectlog.Error(err, "validation error")
 						metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
