@@ -108,9 +108,7 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
-		errMsg := "Failed to get ScaleJob"
-		reqLogger.Error(err, errMsg)
-		r.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.ScaledJobCheckFailed, errMsg)
+		reqLogger.Error(err, "Failed to get ScaleJob")
 		return ctrl.Result{}, err
 	}
 

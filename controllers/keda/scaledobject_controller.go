@@ -145,9 +145,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			return ctrl.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
-		msg := "failed to get ScaledObject"
-		reqLogger.Error(err, msg)
-		r.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.ScaledObjectCheckFailed, msg)
+		reqLogger.Error(err, "failed to get ScaledObject")
 		return ctrl.Result{}, err
 	}
 
