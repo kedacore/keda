@@ -81,13 +81,23 @@ spec:
   cooldownPeriod: 10
   triggers:
     - type: gcp-cloudtasks
+	  authenticationRef:
+	    name: keda-trigger-auth-gcp-credentials
       metadata:
         projectId: {{.ProjectID}}
         queueId: {{.QueueID}}
         value: "5"
         activationValue: "{{.ActivationThreshold}}"
-        credentialsFromEnv: GOOGLE_APPLICATION_CREDENTIALS_JSON
 `
+
+	triggerAuthenticationTemplate = `apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: keda-trigger-auth-gcp-credentials
+  namespace: {{.TestNamespace}}
+spec:
+  podIdentity:
+    provider: gcp`
 
 	gcpSdkTemplate = `
 apiVersion: apps/v1
@@ -200,6 +210,7 @@ func getTemplateData() (templateData, []Template) {
 			ActivationThreshold: activationThreshold,
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 			{Name: "gcpSdkTemplate", Config: gcpSdkTemplate},
 		}
