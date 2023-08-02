@@ -219,7 +219,7 @@ func getTemplateData() (templateData, []Template) {
 func createTasks(t *testing.T, count int) {
 	t.Logf("--- creating %d tasks ---", count)
 	publish := fmt.Sprintf(
-		"%s/bin/bash -c -- 'for i in {1..%d}; do gcloud tasks create-http-task --queue %s --url http://foo.bar;done'",
+		"%s/bin/bash -c -- 'for i in {1..%d}; do gcloud tasks create-http-task --location europe-west1 --queue %s --url http://foo.bar;done'",
 		gsPrefix,
 		count,
 		queueID)
