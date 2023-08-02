@@ -169,7 +169,7 @@ func createCloudTasks(t *testing.T) error {
 
 	// Create queue
 	t.Log("--- create queue ---")
-	cmd = fmt.Sprintf("%sgcloud tasks queues create %s --max-concurrent-dispatches 1 --max-dispatches-per-second 1", gsPrefix, queueID)
+	cmd = fmt.Sprintf("%sgcloud tasks queues create %s --location europe-west1 --max-concurrent-dispatches 1 --max-dispatches-per-second 1", gsPrefix, queueID)
 	_, err = ExecuteCommand(cmd)
 	assert.NoErrorf(t, err, "Failed to create Cloud Tasks queue %s: %s", queueID, err)
 	if err != nil {
@@ -182,7 +182,7 @@ func createCloudTasks(t *testing.T) error {
 func cleanupCloudTasks(t *testing.T) {
 	// Delete the queue
 	t.Log("--- cleaning up the queue ---")
-	_, _ = ExecuteCommand(fmt.Sprintf("%sgcloud tasks queues delete %s --quiet", gsPrefix, queueID))
+	_, _ = ExecuteCommand(fmt.Sprintf("%sgcloud tasks queues delete %s --location europe-west1 --quiet", gsPrefix, queueID))
 }
 
 func getTemplateData() (templateData, []Template) {
