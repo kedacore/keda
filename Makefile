@@ -98,14 +98,18 @@ scale-node-pool: az-login ## Scale nodepool.
 		--resource-group $(TF_AZURE_RESOURCE_GROUP) \
 		--node-count $(NODE_POOL_SIZE)
 
+.PHONY: e2e-regex
+e2e-regex:
+	go run -tags e2e-regex ./tests/run-regex.go
+
 .PHONY: e2e-test
-e2e-test: get-cluster-context ## Run e2e tests against Azure cluster.
+e2e-test: get-cluster-context e2e-regex ## Run e2e tests against Azure cluster.
 	TERMINFO=/etc/terminfo
 	TERM=linux
 	go run -tags e2e ./tests/run-all.go
 
 .PHONY: e2e-test-local
-e2e-test-local: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/config.
+e2e-test-local: e2e-regex ## Run e2e tests against Kubernetes cluster configured in ~/.kube/config.
 	go run -tags e2e ./tests/run-all.go
 
 .PHONY: e2e-test-clean-crds
