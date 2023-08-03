@@ -84,8 +84,8 @@ spec:
       authenticationRef:
         name: keda-trigger-auth-gcp-credentials
       metadata:
-        projectId: {{.ProjectID}}
-        queueId: {{.QueueID}}
+        projectID: {{.ProjectID}}
+        queueName: {{.QueueID}}
         value: "5"
         activationValue: "{{.ActivationThreshold}}"
 `
@@ -98,6 +98,46 @@ metadata:
 spec:
   podIdentity:
     provider: gcp`
+
+	deploymentTemplate = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.DeploymentName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.DeploymentName}}
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: {{.DeploymentName}}
+  template:
+    metadata:
+      labels:
+        app: {{.DeploymentName}}
+    spec:
+      containers:
+        - name: {{.DeploymentName}}-processor
+          image: google/cloud-sdk:slim
+          # Consume a message
+          command: [ "/bin/bash", "-c", "--" ]
+          args: [ "gcloud auth activate-service-account --key-file /etc/secret-volume/creds.json && \
+          while true; do gcloud tasks list --queue={{.QueueID}} --location=europe-west1; sleep 20; done" ]
+          env:
+            - name: GOOGLE_APPLICATION_CREDENTIALS_JSON
+              valueFrom:
+                secretKeyRef:
+                  name: {{.SecretName}}
+                  key: creds.json
+          volumeMounts:
+            - name: secret-volume
+              mountPath: /etc/secret-volume
+      volumes:
+        - name: secret-volume
+          secret:
+            secretName: {{.SecretName}}
+`
 
 	gcpSdkTemplate = `
 apiVersion: apps/v1
@@ -210,6 +250,7 @@ func getTemplateData() (templateData, []Template) {
 			ActivationThreshold: activationThreshold,
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 			{Name: "gcpSdkTemplate", Config: gcpSdkTemplate},
