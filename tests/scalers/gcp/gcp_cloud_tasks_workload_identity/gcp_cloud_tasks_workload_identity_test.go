@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package gcp_cloud_tasks_test
+package gcp_cloud_tasks_workload_identity_test
 
 import (
 	"encoding/base64"
@@ -81,8 +81,8 @@ spec:
   cooldownPeriod: 10
   triggers:
     - type: gcp-cloudtasks
-	  authenticationRef:
-	    name: keda-trigger-auth-gcp-credentials
+      authenticationRef:
+        name: keda-trigger-auth-gcp-credentials
       metadata:
         projectId: {{.ProjectID}}
         queueId: {{.QueueID}}
@@ -248,7 +248,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
-	cmd := fmt.Sprintf("%sgcloud tasks queues purge %s --quiet", gsPrefix, queueID)
+	cmd := fmt.Sprintf("%sgcloud tasks queues purge %s --location europe-west1 --quiet", gsPrefix, queueID)
 	_, err := ExecuteCommand(cmd)
 	assert.NoErrorf(t, err, "cannot purge queue - %s", err)
 

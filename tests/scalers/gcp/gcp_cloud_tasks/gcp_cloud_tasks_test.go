@@ -237,7 +237,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
-	cmd := fmt.Sprintf("%sgcloud tasks queues purge %s --quiet", gsPrefix, queueID)
+	cmd := fmt.Sprintf("%sgcloud tasks queues purge %s --location europe-west1 --quiet", gsPrefix, queueID)
 	_, err := ExecuteCommand(cmd)
 	assert.NoErrorf(t, err, "cannot purge queue - %s", err)
 
