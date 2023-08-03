@@ -25,7 +25,7 @@ var _ = godotenv.Load("../../.env")
 var now = time.Now().UnixNano()
 
 const (
-	testName = "gcp-cloud-tasks-test"
+	testName = "gcp-cloud-tasks-workload-identity-test"
 )
 
 var (
