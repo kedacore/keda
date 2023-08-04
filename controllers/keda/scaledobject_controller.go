@@ -44,7 +44,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
-	"github.com/kedacore/keda/v2/pkg/prommetrics"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 )
@@ -524,18 +524,18 @@ func (r *ScaledObjectReconciler) updatePromMetrics(scaledObject *kedav1alpha1.Sc
 	metricsData, ok := scaledObjectPromMetricsMap[namespacedName]
 
 	if ok {
-		prommetrics.DecrementCRDTotal(prommetrics.ScaledObjectResource, metricsData.namespace)
+		metricscollector.DecrementCRDTotal(metricscollector.ScaledObjectResource, metricsData.namespace)
 		for _, triggerType := range metricsData.triggerTypes {
-			prommetrics.DecrementTriggerTotal(triggerType)
+			metricscollector.DecrementTriggerTotal(triggerType)
 		}
 	}
 
-	prommetrics.IncrementCRDTotal(prommetrics.ScaledObjectResource, scaledObject.Namespace)
+	metricscollector.IncrementCRDTotal(metricscollector.ScaledObjectResource, scaledObject.Namespace)
 	metricsData.namespace = scaledObject.Namespace
 
 	triggerTypes := make([]string, len(scaledObject.Spec.Triggers))
 	for _, trigger := range scaledObject.Spec.Triggers {
-		prommetrics.IncrementTriggerTotal(trigger.Type)
+		metricscollector.IncrementTriggerTotal(trigger.Type)
 		triggerTypes = append(triggerTypes, trigger.Type)
 	}
 	metricsData.triggerTypes = triggerTypes
@@ -548,9 +548,9 @@ func (r *ScaledObjectReconciler) updatePromMetricsOnDelete(namespacedName string
 	defer scaledObjectPromMetricsLock.Unlock()
 
 	if metricsData, ok := scaledObjectPromMetricsMap[namespacedName]; ok {
-		prommetrics.DecrementCRDTotal(prommetrics.ScaledObjectResource, metricsData.namespace)
+		metricscollector.DecrementCRDTotal(metricscollector.ScaledObjectResource, metricsData.namespace)
 		for _, triggerType := range metricsData.triggerTypes {
-			prommetrics.DecrementTriggerTotal(triggerType)
+			metricscollector.DecrementTriggerTotal(triggerType)
 		}
 	}
 

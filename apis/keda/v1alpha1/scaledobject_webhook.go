@@ -33,7 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	prommetrics "github.com/kedacore/keda/v2/pkg/prommetrics/webhook"
+	prommetrics "github.com/kedacore/keda/v2/pkg/metricscollector/webhook"
 )
 
 var scaledobjectlog = logf.Log.WithName("scaledobject-validation-webhook")

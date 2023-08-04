@@ -41,6 +41,7 @@ import (
 	kedacontrollers "github.com/kedacore/keda/v2/controllers/keda"
 	"github.com/kedacore/keda/v2/pkg/certificates"
 	"github.com/kedacore/keda/v2/pkg/k8s"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -70,6 +71,8 @@ func getWatchNamespace() (string, error) {
 }
 
 func main() {
+	var enablePrometheusMetrics bool
+	var enableOpenTelemetryMetrics bool
 	var metricsAddr string
 	var probeAddr string
 	var metricsServiceAddr string
@@ -84,7 +87,9 @@ func main() {
 	var webhooksServiceName string
 	var enableCertRotation bool
 	var validatingWebhookName string
-	pflag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	pflag.BoolVar(&enablePrometheusMetrics, "enable-prometheus-metrics", true, "Enable the prometheus metric of keda-operator.")
+	pflag.BoolVar(&enableOpenTelemetryMetrics, "enable-opentelemetry-metrics", false, "Enable the opentelemetry metric of keda-operator.")
+	pflag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the prometheus metric endpoint binds to.")
 	pflag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	pflag.StringVar(&metricsServiceAddr, "metrics-service-bind-address", ":9666", "The address the gRPRC Metrics Service endpoint binds to.")
 	pflag.BoolVar(&enableLeaderElection, "leader-elect", false,
@@ -135,6 +140,11 @@ func main() {
 	cfg.QPS = adapterClientRequestQPS
 	cfg.Burst = adapterClientRequestBurst
 	cfg.DisableCompression = disableCompression
+
+	if !enablePrometheusMetrics {
+		metricsAddr = "0"
+	}
+	metricscollector.NewMetricsCollectors(enablePrometheusMetrics, enableOpenTelemetryMetrics)
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:             scheme,

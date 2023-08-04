@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package prommetrics
+package metricscollector
 
 import (
 	"runtime"
@@ -28,15 +28,6 @@ import (
 )
 
 var log = logf.Log.WithName("prometheus_server")
-
-const (
-	ClusterTriggerAuthenticationResource = "cluster_trigger_authentication"
-	TriggerAuthenticationResource        = "trigger_authentication"
-	ScaledObjectResource                 = "scaled_object"
-	ScaledJobResource                    = "scaled_job"
-
-	DefaultPromMetricsNamespace = "keda"
-)
 
 var (
 	metricLabels = []string{"namespace", "metric", "scaledObject", "scaler", "scalerIndex"}
@@ -132,7 +123,10 @@ var (
 	)
 )
 
-func init() {
+type PromMetrics struct {
+}
+
+func NewPromMetrics() *PromMetrics {
 	metrics.Registry.MustRegister(scalerErrorsTotal)
 	metrics.Registry.MustRegister(scalerMetricsValue)
 	metrics.Registry.MustRegister(scalerMetricsLatency)
@@ -146,20 +140,26 @@ func init() {
 	metrics.Registry.MustRegister(buildInfo)
 
 	RecordBuildInfo()
+	return &PromMetrics{}
+}
+
+// RecordBuildInfo publishes information about KEDA version and runtime info through an info metric (gauge).
+func RecordBuildInfo() {
+	buildInfo.WithLabelValues(version.Version, version.GitCommit, runtime.Version(), runtime.GOOS, runtime.GOARCH).Set(1)
 }
 
 // RecordScalerMetric create a measurement of the external metric used by the HPA
-func RecordScalerMetric(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64) {
+func (p *PromMetrics) RecordScalerMetric(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64) {
 	scalerMetricsValue.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Set(value)
 }
 
 // RecordScalerLatency create a measurement of the latency to external metric
-func RecordScalerLatency(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64) {
+func (p *PromMetrics) RecordScalerLatency(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64) {
 	scalerMetricsLatency.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Set(value)
 }
 
 // RecordScaledObjectLatency create a measurement of the latency executing scalable object loop
-func RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value float64) {
+func (p *PromMetrics) RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value float64) {
 	resourceType := "scaledjob"
 	if isScaledObject {
 		resourceType = "scaledobject"
@@ -168,7 +168,7 @@ func RecordScalableObjectLatency(namespace string, name string, isScaledObject b
 }
 
 // RecordScalerActive create a measurement of the activity of the scaler
-func RecordScalerActive(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, active bool) {
+func (p *PromMetrics) RecordScalerActive(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, active bool) {
 	activeVal := 0
 	if active {
 		activeVal = 1
@@ -178,10 +178,10 @@ func RecordScalerActive(namespace string, scaledObject string, scaler string, sc
 }
 
 // RecordScalerError counts the number of errors occurred in trying get an external metric used by the HPA
-func RecordScalerError(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, err error) {
+func (p *PromMetrics) RecordScalerError(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, err error) {
 	if err != nil {
 		scalerErrors.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Inc()
-		RecordScaledObjectError(namespace, scaledObject, err)
+		p.RecordScaledObjectError(namespace, scaledObject, err)
 		scalerErrorsTotal.With(prometheus.Labels{}).Inc()
 		return
 	}
@@ -193,7 +193,7 @@ func RecordScalerError(namespace string, scaledObject string, scaler string, sca
 }
 
 // RecordScaleObjectError counts the number of errors with the scaled object
-func RecordScaledObjectError(namespace string, scaledObject string, err error) {
+func (p *PromMetrics) RecordScaledObjectError(namespace string, scaledObject string, err error) {
 	labels := prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject}
 	if err != nil {
 		scaledObjectErrors.With(labels).Inc()
@@ -207,28 +207,23 @@ func RecordScaledObjectError(namespace string, scaledObject string, err error) {
 	}
 }
 
-// RecordBuildInfo publishes information about KEDA version and runtime info through an info metric (gauge).
-func RecordBuildInfo() {
-	buildInfo.WithLabelValues(version.Version, version.GitCommit, runtime.Version(), runtime.GOOS, runtime.GOARCH).Set(1)
-}
-
 func getLabels(namespace string, scaledObject string, scaler string, scalerIndex int, metric string) prometheus.Labels {
 	return prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject, "scaler": scaler, "scalerIndex": strconv.Itoa(scalerIndex), "metric": metric}
 }
 
-func IncrementTriggerTotal(triggerType string) {
+func (p *PromMetrics) IncrementTriggerTotal(triggerType string) {
 	if triggerType != "" {
 		triggerTotalsGaugeVec.WithLabelValues(triggerType).Inc()
 	}
 }
 
-func DecrementTriggerTotal(triggerType string) {
+func (p *PromMetrics) DecrementTriggerTotal(triggerType string) {
 	if triggerType != "" {
 		triggerTotalsGaugeVec.WithLabelValues(triggerType).Dec()
 	}
 }
 
-func IncrementCRDTotal(crdType, namespace string) {
+func (p *PromMetrics) IncrementCRDTotal(crdType, namespace string) {
 	if namespace == "" {
 		namespace = "default"
 	}
@@ -236,7 +231,7 @@ func IncrementCRDTotal(crdType, namespace string) {
 	crdTotalsGaugeVec.WithLabelValues(crdType, namespace).Inc()
 }
 
-func DecrementCRDTotal(crdType, namespace string) {
+func (p *PromMetrics) DecrementCRDTotal(crdType, namespace string) {
 	if namespace == "" {
 		namespace = "default"
 	}
