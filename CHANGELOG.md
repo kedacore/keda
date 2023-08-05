@@ -49,7 +49,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- **General**: Add Temporal Scaler `temporal` ([#4724](https://github.com/kedacore/keda/issues/4724))
 
 ### Improvements
 
