@@ -229,6 +229,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewSolrScaler(config)
 	case "stan":
 		return scalers.NewStanScaler(config)
+	case "temporal":
+		return scalers.NewTemporalWorkflowScaler(config)
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", triggerType)
 	}
