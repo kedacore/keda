@@ -18,7 +18,6 @@ package resolver
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"hash/crc32"
@@ -37,7 +36,6 @@ type GCPSecretManagerHandler struct {
 	gcpSecretsManager       *kedav1alpha1.GCPSecretManager
 	gcpSecretsManagerClient *secretmanager.Client
 	ctx                     context.Context
-	gcpProjectID            string
 }
 
 // NewGCPSecretManagerHandler creates a HashicorpVaultHandler object
@@ -72,14 +70,6 @@ func (vh *GCPSecretManagerHandler) Initialize(client client.Client, logger logr.
 			return missingErr
 		}
 
-		projectID := struct {
-			ID string `json:"project_id"`
-		}{}
-		if err := json.Unmarshal([]byte(clientSecret), &projectID); err != nil {
-			return fmt.Errorf("failed to unmarshal json key, %v", err)
-		}
-		vh.gcpProjectID = projectID.ID
-
 		gcpCredentials, err := google.CredentialsFromJSON(vh.ctx, []byte(clientSecret), secretmanager.DefaultAuthScopes()...)
 		if err != nil {
 			return fmt.Errorf("failed to get credentials from json, %v", err)
@@ -91,12 +81,6 @@ func (vh *GCPSecretManagerHandler) Initialize(client client.Client, logger logr.
 		}
 
 	case kedav1alpha1.PodIdentityProviderGCP:
-		if vh.gcpProjectID == "" {
-			return fmt.Errorf("gcp project id needs to be provided for using the gcp pod identity, %v", err)
-		}
-
-		vh.gcpProjectID = vh.gcpSecretsManager.GCPProjectID
-
 		if vh.gcpSecretsManagerClient, err = secretmanager.NewClient(vh.ctx); err != nil {
 			return fmt.Errorf("failed to create secretmanager client: %v", err)
 		}
@@ -109,7 +93,7 @@ func (vh *GCPSecretManagerHandler) Initialize(client client.Client, logger logr.
 
 func (vh *GCPSecretManagerHandler) Read(secretID, secretVersion string) (string, error) {
 	req := &secretmanagerpb.AccessSecretVersionRequest{
-		Name: fmt.Sprintf("projects/%s/secrets/%s/versions/%s", vh.gcpProjectID, secretID, secretVersion),
+		Name: fmt.Sprintf("projects/%s/secrets/%s/versions/%s", vh.gcpSecretsManager.GCPProjectID, secretID, secretVersion),
 	}
 
 	result, err := vh.gcpSecretsManagerClient.AccessSecretVersion(vh.ctx, req)

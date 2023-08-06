@@ -156,38 +156,42 @@ spec:
                 properties:
                   gcpCredentials:
                     properties:
-                      auth_provider_x509_cert_url:
+                      clientSecret:
+                        properties:
+                          valueFrom:
+                            properties:
+                              secretKeyRef:
+                                properties:
+                                  key:
+                                    type: string
+                                  name:
+                                    type: string
+                                required:
+                                - key
+                                - name
+                                type: object
+                            required:
+                            - secretKeyRef
+                            type: object
+                        required:
+                        - valueFrom
+                        type: object
+                    required:
+                    - clientSecret
+                    type: object
+                  gcpProjectID:
+                    type: string
+                  podIdentity:
+                    description: AuthPodIdentity allows users to select the platform
+                      native identity mechanism
+                    properties:
+                      identityId:
                         type: string
-                      auth_uri:
-                        type: string
-                      client_email:
-                        type: string
-                      client_id:
-                        type: string
-                      client_x509_cert_url:
-                        type: string
-                      private_key:
-                        type: string
-                      private_key_id:
-                        type: string
-                      project_id:
-                        type: string
-                      token_uri:
-                        type: string
-                      type:
-                        type: string
-                      universe_domain:
+                      provider:
+                        description: PodIdentityProvider contains the list of providers
                         type: string
                     required:
-                    - auth_provider_x509_cert_url
-                    - auth_uri
-                    - client_email
-                    - client_id
-                    - client_x509_cert_url
-                    - private_key
-                    - private_key_id
-                    - project_id
-                    - token_uri
+                    - provider
                     type: object
                   secrets:
                     items:
@@ -204,7 +208,7 @@ spec:
                       type: object
                     type: array
                 required:
-                - gcpCredentials
+                - gcpProjectID
                 - secrets
                 type: object
               hashiCorpVault:

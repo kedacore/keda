@@ -251,15 +251,16 @@ type GCPSecretManager struct {
 	// +optional
 	Credentials *GCPCredentials `json:"gcpCredentials"`
 	// +optional
-	PodIdentity *AuthPodIdentity `json:"podIdentity"`
-	// +optional
-	GCPProjectID string `json:"gcpProjectID"`
+	PodIdentity  *AuthPodIdentity `json:"podIdentity"`
+	GCPProjectID string           `json:"gcpProjectID"`
 }
 
 type GCPCredentials struct {
-	ClientSecret struct {
-		ValueFrom ValueFromSecret `json:"valueFrom"`
-	} `json:"clientSecret"`
+	ClientSecret GCPSecretmanagerClientSecret `json:"clientSecret"`
+}
+
+type GCPSecretmanagerClientSecret struct {
+	ValueFrom ValueFromSecret `json:"valueFrom"`
 }
 
 type Secrets struct {

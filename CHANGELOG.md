@@ -48,7 +48,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- **Trigger Authentication for GCP Secrets Manager**: Adds support for GCP Secret Manager as a source for scaler triggerAuthentication ([#4831](https://github.com/kedacore/keda/issues/4831))
 
 ### Improvements
 
