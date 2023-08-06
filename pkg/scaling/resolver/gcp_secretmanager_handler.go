@@ -72,17 +72,17 @@ func (vh *GCPSecretManagerHandler) Initialize(client client.Client, logger logr.
 
 		gcpCredentials, err := google.CredentialsFromJSON(vh.ctx, []byte(clientSecret), secretmanager.DefaultAuthScopes()...)
 		if err != nil {
-			return fmt.Errorf("failed to get credentials from json, %v", err)
+			return fmt.Errorf("failed to get credentials from json, %w", err)
 		}
 
 		vh.gcpSecretsManagerClient, err = secretmanager.NewClient(vh.ctx, option.WithCredentials(gcpCredentials))
 		if err != nil {
-			return fmt.Errorf("failed to create secretmanager client, %v", err)
+			return fmt.Errorf("failed to create secretmanager client, %w", err)
 		}
 
 	case kedav1alpha1.PodIdentityProviderGCP:
 		if vh.gcpSecretsManagerClient, err = secretmanager.NewClient(vh.ctx); err != nil {
-			return fmt.Errorf("failed to create secretmanager client: %v", err)
+			return fmt.Errorf("failed to create secretmanager client: %w", err)
 		}
 	default:
 		return fmt.Errorf("key vault does not support pod identity provider - %s", podIdentity)
@@ -98,7 +98,7 @@ func (vh *GCPSecretManagerHandler) Read(secretID, secretVersion string) (string,
 
 	result, err := vh.gcpSecretsManagerClient.AccessSecretVersion(vh.ctx, req)
 	if err != nil {
-		return "", fmt.Errorf("failed to access the secret, %v", err)
+		return "", fmt.Errorf("failed to access the secret %s version %s, %w", secretID, secretVersion, err)
 	}
 
 	crc32c := crc32.MakeTable(crc32.Castagnoli)
