@@ -25,11 +25,12 @@ import (
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
 	"github.com/go-logr/logr"
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 type GCPSecretManagerHandler struct {
@@ -39,7 +40,7 @@ type GCPSecretManagerHandler struct {
 }
 
 // NewGCPSecretManagerHandler creates a HashicorpVaultHandler object
-func NewGCPSecretManagerHandler(v *kedav1alpha1.GCPSecretManager, ctx context.Context) *GCPSecretManagerHandler {
+func NewGCPSecretManagerHandler(ctx context.Context, v *kedav1alpha1.GCPSecretManager) *GCPSecretManagerHandler {
 	return &GCPSecretManagerHandler{
 		gcpSecretsManager: v,
 		ctx:               ctx,

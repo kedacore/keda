@@ -281,7 +281,7 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 				}
 			}
 			if triggerAuthSpec.GCPSecretManager != nil && len(triggerAuthSpec.GCPSecretManager.Secrets) > 0 {
-				vaultHandler := NewGCPSecretManagerHandler(triggerAuthSpec.GCPSecretManager, ctx)
+				vaultHandler := NewGCPSecretManagerHandler(ctx, triggerAuthSpec.GCPSecretManager)
 				err := vaultHandler.Initialize(client, logger, triggerNamespace, secretsLister)
 				if err != nil {
 					logger.Error(err, "error authenticating to GCP Secret Manager", "triggerAuthRef.Name", triggerAuthRef.Name)
