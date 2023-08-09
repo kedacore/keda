@@ -106,20 +106,37 @@ func (s *temporalWorkflowScaler) GetMetricsAndActivity(ctx context.Context, metr
 
 // getQueueSize returns the queue size of open workflows.
 func (s *temporalWorkflowScaler) getQueueSize(ctx context.Context) (int64, error) {
-	listOpenWorkflowExecutionsRequest := &workflowservice.ListOpenWorkflowExecutionsRequest{
-		Namespace: s.metadata.namespace,
-		Filters: &workflowservice.ListOpenWorkflowExecutionsRequest_TypeFilter{
-			TypeFilter: &tclfilter.WorkflowTypeFilter{
-				Name: s.metadata.workflowName,
+
+	var executionIds = make([]string, 0)
+	var nextPageToken []byte
+
+	for {
+		listOpenWorkflowExecutionsRequest := &workflowservice.ListOpenWorkflowExecutionsRequest{
+			Namespace:       s.metadata.namespace,
+			MaximumPageSize: 1000,
+			NextPageToken:   nextPageToken,
+			Filters: &workflowservice.ListOpenWorkflowExecutionsRequest_TypeFilter{
+				TypeFilter: &tclfilter.WorkflowTypeFilter{
+					Name: s.metadata.workflowName,
+				},
 			},
-		},
-	}
-	ws, err := s.tcl.ListOpenWorkflow(ctx, listOpenWorkflowExecutionsRequest)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get workflows: %w", err)
+		}
+		ws, err := s.tcl.ListOpenWorkflow(ctx, listOpenWorkflowExecutionsRequest)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get workflows: %w", err)
+		}
+
+		for _, execution := range ws.Executions {
+			executionId := execution.Execution.WorkflowId + "__" + execution.Execution.RunId
+			executionIds = append(executionIds, executionId)
+		}
+
+		if nextPageToken = ws.NextPageToken; len(nextPageToken) == 0 {
+			break
+		}
 	}
 
-	queueLength := int64(len(ws.Executions))
+	queueLength := int64(len(executionIds))
 	return queueLength, nil
 }
 
