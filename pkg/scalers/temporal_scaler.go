@@ -5,8 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 
+	"github.com/go-logr/logr"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	tclfilter "go.temporal.io/api/filter/v1"
 	workflowservice "go.temporal.io/api/workflowservice/v1"
@@ -19,12 +22,19 @@ import (
 const (
 	defaultTargetWorkflowLength           = 5
 	defaultActivationTargetWorkflowLength = 0
+	temporalClientTimeOut                 = 30
 )
+
+type executionInfo struct {
+	workflowId string
+	runId      string
+}
 
 type temporalWorkflowScaler struct {
 	metricType v2.MetricTargetType
 	metadata   *temporalWorkflowMetadata
 	tcl        sdk.Client
+	logger     logr.Logger
 }
 
 type temporalWorkflowMetadata struct {
@@ -32,6 +42,7 @@ type temporalWorkflowMetadata struct {
 	endpoint                       string
 	namespace                      string
 	workflowName                   string
+	activities                     []string
 	scalerIndex                    int
 	targetQueueSize                int64
 	metricName                     string
@@ -49,11 +60,13 @@ func NewTemporalWorkflowScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("failed to parse Temporal metadata: %w", err)
 	}
 
+	logger := InitializeLogger(config, "temporal_workflow_scaler")
+
 	c, err := sdk.Dial(sdk.Options{
 		HostPort: meta.endpoint,
 		ConnectionOptions: sdk.ConnectionOptions{
 			DialOptions: []grpc.DialOption{
-				grpc.WithTimeout(time.Duration(10) * time.Second),
+				grpc.WithTimeout(time.Duration(temporalClientTimeOut) * time.Second),
 			},
 		},
 	})
@@ -66,6 +79,7 @@ func NewTemporalWorkflowScaler(config *ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   meta,
 		tcl:        c,
+		logger:     logger,
 	}, nil
 }
 
@@ -107,9 +121,8 @@ func (s *temporalWorkflowScaler) GetMetricsAndActivity(ctx context.Context, metr
 // getQueueSize returns the queue size of open workflows.
 func (s *temporalWorkflowScaler) getQueueSize(ctx context.Context) (int64, error) {
 
-	var executionIds = make([]string, 0)
+	var executions []executionInfo
 	var nextPageToken []byte
-
 	for {
 		listOpenWorkflowExecutionsRequest := &workflowservice.ListOpenWorkflowExecutionsRequest{
 			Namespace:       s.metadata.namespace,
@@ -126,9 +139,12 @@ func (s *temporalWorkflowScaler) getQueueSize(ctx context.Context) (int64, error
 			return 0, fmt.Errorf("failed to get workflows: %w", err)
 		}
 
-		for _, execution := range ws.Executions {
-			executionId := execution.Execution.WorkflowId + "__" + execution.Execution.RunId
-			executionIds = append(executionIds, executionId)
+		for _, exec := range ws.GetExecutions() {
+			execution := executionInfo{
+				workflowId: exec.Execution.GetWorkflowId(),
+				runId:      exec.Execution.RunId,
+			}
+			executions = append(executions, execution)
 		}
 
 		if nextPageToken = ws.NextPageToken; len(nextPageToken) == 0 {
@@ -136,8 +152,68 @@ func (s *temporalWorkflowScaler) getQueueSize(ctx context.Context) (int64, error
 		}
 	}
 
-	queueLength := int64(len(executionIds))
+	pendingCh := make(chan string, len(executions))
+	var wg sync.WaitGroup
+
+	for _, execInfo := range executions {
+		wg.Add(1)
+		go func(e executionInfo) {
+			defer wg.Done()
+
+			workflowId := e.workflowId
+			runId := e.runId
+
+			if !s.isActivityRunning(ctx, workflowId, runId) {
+				executionId := workflowId + "__" + runId
+				pendingCh <- executionId
+			}
+
+		}(execInfo)
+	}
+	wg.Wait()
+	close(pendingCh)
+
+	var queueLength int64
+	for range pendingCh {
+		queueLength++
+	}
 	return queueLength, nil
+}
+
+// isActivityRunning checks if there are running activities associated with a specific workflow execution.
+func (s *temporalWorkflowScaler) isActivityRunning(ctx context.Context, workflowId, runId string) bool {
+	resp, err := s.tcl.DescribeWorkflowExecution(ctx, workflowId, runId)
+	if err != nil {
+		s.logger.Error(err, "error describing workflow execution", "workflowId", workflowId, "runId", runId)
+		return false
+	}
+
+	// If there is no activityName and there are running activities, return true.
+	if len(s.metadata.activities) == 0 && len(resp.GetPendingActivities()) > 0 {
+		return true
+	}
+
+	// Store the IDs of running activities. Make sure no duplicates incase of anything.
+	runningActivities := make(map[string]struct{})
+	for _, pendingActivity := range resp.GetPendingActivities() {
+		activityName := pendingActivity.ActivityType.GetName()
+		if s.hasMatchingActivityName(activityName) {
+			runningActivities[pendingActivity.ActivityId] = struct{}{}
+		}
+	}
+
+	// Return true if there are any running activities, otherwise false.
+	return len(runningActivities) > 0
+}
+
+// hasMatchingActivityName checks if the provided activity name matches any of the defined activity names in the metadata.
+func (s *temporalWorkflowScaler) hasMatchingActivityName(activityName string) bool {
+	for _, activity := range s.metadata.activities {
+		if activityName == activity {
+			return true
+		}
+	}
+	return false
 }
 
 // parseTemporalMetadata parses the Temporal metadata from the ScalerConfig.
@@ -161,6 +237,10 @@ func parseTemporalMetadata(config *ScalerConfig) (*temporalWorkflowMetadata, err
 		return nil, errors.New("no workflow name provided")
 	}
 	meta.workflowName = config.TriggerMetadata["workflowName"]
+
+	if activities := config.TriggerMetadata["activityName"]; activities != "" {
+		meta.activities = strings.Split(activities, ",")
+	}
 
 	if size, ok := config.TriggerMetadata["targetQueueSize"]; ok {
 		queueSize, err := strconv.ParseInt(size, 10, 64)

@@ -196,6 +196,7 @@ spec:
     metadata:
       namespace: default
       workflowName: SayHello
+      activityName: say_hello
       targetQueueSize: "2"
       activationTargetQueueSize: "3"
       endpoint: {{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233

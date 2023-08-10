@@ -3,12 +3,15 @@ package scalers
 import (
 	"context"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var (
 	temporalEndpoint     = "localhost:7233"
 	temporalNamespace    = "v2"
 	temporalWorkflowName = "SayHello"
+	activityName         = "say_hello"
 )
 
 type parseTemporalMetadataTestData struct {
@@ -32,9 +35,9 @@ var testTemporalMetadata = []parseTemporalMetadataTestData{
 	// Missing endpoint, should fail
 	{map[string]string{"workflowName": temporalWorkflowName, "namespace": temporalNamespace}, true},
 	// All good.
-	{map[string]string{"endpoint": temporalEndpoint, "workflowName": temporalWorkflowName, "namespace": temporalNamespace}, false},
+	{map[string]string{"endpoint": temporalEndpoint, "activityName": activityName, "workflowName": temporalWorkflowName, "namespace": temporalNamespace}, false},
 	// All good + activationLagThreshold
-	{map[string]string{"endpoint": temporalEndpoint, "workflowName": temporalWorkflowName, "namespace": temporalNamespace, "activationTargetQueueSize": "10"}, false},
+	{map[string]string{"endpoint": temporalEndpoint, "activityName": activityName, "workflowName": temporalWorkflowName, "namespace": temporalNamespace, "activationTargetQueueSize": "10"}, false},
 }
 
 var temporalMetricIdentifiers = []temporalMetricIdentifier{
@@ -69,5 +72,100 @@ func TestTemporalGetMetricSpecForScaling(t *testing.T) {
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)
 		}
+	}
+}
+
+func TestParseTemporalMetadata(t *testing.T) {
+	cases := []struct {
+		name     string
+		metadata map[string]string
+		wantMeta *temporalWorkflowMetadata
+		wantErr  bool
+	}{
+		{
+			name:     "empty metadata",
+			wantMeta: nil,
+			wantErr:  true,
+		},
+		{
+			name: "empty workflowName",
+			metadata: map[string]string{
+				"endpoint":     "test:7233",
+				"namespace":    "default",
+				"activityName": "test123",
+			},
+			wantMeta: nil,
+			wantErr:  true,
+		},
+		{
+			name: "multiple activityName",
+			metadata: map[string]string{
+				"endpoint":     "test:7233",
+				"namespace":    "default",
+				"activityName": "test123,test",
+				"workflowName": "testxx",
+			},
+			wantMeta: &temporalWorkflowMetadata{
+				endpoint:        "test:7233",
+				namespace:       "default",
+				activities:      []string{"test123", "test"},
+				workflowName:    "testxx",
+				targetQueueSize: 5,
+				metricName:      "s0-temporal-default-testxx",
+			},
+			wantErr: false,
+		},
+		{
+			name: "empty activityName",
+			metadata: map[string]string{
+				"endpoint":     "test:7233",
+				"namespace":    "default",
+				"workflowName": "testxx",
+			},
+			wantMeta: &temporalWorkflowMetadata{
+				endpoint:        "test:7233",
+				namespace:       "default",
+				activities:      nil,
+				workflowName:    "testxx",
+				targetQueueSize: 5,
+				metricName:      "s0-temporal-default-testxx",
+			},
+			wantErr: false,
+		},
+		{
+			name: "activationTargetQueueSize should not be 0",
+			metadata: map[string]string{
+				"endpoint":                  "test:7233",
+				"namespace":                 "default",
+				"workflowName":              "testxx",
+				"activationTargetQueueSize": "12",
+			},
+			wantMeta: &temporalWorkflowMetadata{
+				endpoint:                       "test:7233",
+				namespace:                      "default",
+				activities:                     nil,
+				workflowName:                   "testxx",
+				targetQueueSize:                5,
+				metricName:                     "s0-temporal-default-testxx",
+				activationTargetWorkflowLength: 12,
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, testCase := range cases {
+		c := testCase
+		t.Run(c.name, func(t *testing.T) {
+			config := &ScalerConfig{
+				TriggerMetadata: c.metadata,
+			}
+			meta, err := parseTemporalMetadata(config)
+			if c.wantErr == true && err != nil {
+				t.Log("Expected error, got err")
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, c.wantMeta, meta)
+		})
 	}
 }
