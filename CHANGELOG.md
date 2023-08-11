@@ -108,7 +108,9 @@ None.
 
 - **General**: Paused ScaledObject continues working after removing the annotation ([#4733](https://github.com/kedacore/keda/issues/4733))
 - **General**: Skip resolving secrets if namespace is restricted ([#4519](https://github.com/kedacore/keda/issues/4519))
+- **General**: Adding a changelog validating script to check for formatting and order in make and github action ([#3190](https://github.com/kedacore/keda/issues/3190))
 - **Prometheus**: Authenticated connections to Prometheus work in non-PodIdenty case ([#4695](https://github.com/kedacore/keda/issues/4695))
+
 
 ### Deprecations
 

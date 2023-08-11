@@ -148,7 +148,7 @@ jobs:
       output: ''
       exit-code: 1
       publish: false
-  
+
   validateChangelog:
     name: Validate changelog
     runs-on: ubuntu-latest

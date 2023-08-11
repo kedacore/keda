@@ -23,7 +23,7 @@ fi
 # Define a function to extract and sort sections
 function extract_and_check() {
   local section=$1
-  local content=$(awk "/### $section/{flag=1;next}/### /{flag=0}flag" <<< "$unreleased" | grep '^- \*\*') 
+  local content=$(awk "/### $section/{flag=1;next}/### /{flag=0}flag" <<< "$unreleased" | grep '^- \*\*')
 
   # Skip if content does not exist
   if [[ -z "$content" ]]; then
@@ -31,13 +31,13 @@ function extract_and_check() {
   fi
 
   local sorted_content=$(echo "$content" | sort)
-  
+
   # Check pattern and throw error if wrong pattern found
-  echo "$content" | grep -Pv '^(-\s\*\*[^*]+\*\*: .*\(\[#(\d+)\]\(https:\/\/github\.com\/kedacore\/keda\/(pull|issues)\/\2\)\))$' | while read -r line ; do
-    echo "Error: Wrong pattern found in $section section, line: $line"
-    exit 1
-  done
-  
+  while IFS= read -r line; do
+      echo "Error: Wrong pattern found in $section section, line: $line"
+      exit 1
+  done < <(grep -Pv '^(-\s\*\*[^*]+\*\*: .*\(\[#(\d+)\]\(https:\/\/github\.com\/kedacore\/keda\/(pull|issues)\/\2\)\))$' <<< "$content")
+
   if [ "$content" != "$sorted_content" ]; then
       echo "Error: The $section section is not sorted correctly. Correct order:"
       echo "$sorted_content"
