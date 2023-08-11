@@ -137,7 +137,7 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// Check jobTargetRef is specified
 	if scaledJob.Spec.JobTargetRef == nil {
-		errMsg := "scaledJob.spec.jobTargetRef not found"
+		errMsg := "ScaledJob.spec.jobTargetRef not found"
 		err := fmt.Errorf(errMsg)
 		reqLogger.Error(err, errMsg)
 		r.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.ScaledJobCheckFailed, errMsg)

@@ -306,7 +306,7 @@ func (r *ScaledObjectReconciler) ensureScaledObjectLabel(ctx context.Context, lo
 func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (kedav1alpha1.GroupVersionKindResource, error) {
 	gvkr, err := kedav1alpha1.ParseGVKR(r.restMapper, scaledObject.Spec.ScaleTargetRef.APIVersion, scaledObject.Spec.ScaleTargetRef.Kind)
 	if err != nil {
-		msg := "failed to parse Group, Version, Kind, Resource"
+		msg := "Failed to parse Group, Version, Kind, Resource"
 		logger.Error(err, msg, "apiVersion", scaledObject.Spec.ScaleTargetRef.APIVersion, "kind", scaledObject.Spec.ScaleTargetRef.Kind)
 		r.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.ScaledObjectUpdateFailed, msg)
 		return gvkr, err
@@ -334,13 +334,13 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 			unstruct.SetGroupVersionKind(gvkr.GroupVersionKind())
 			if err := r.Client.Get(ctx, client.ObjectKey{Namespace: scaledObject.Namespace, Name: scaledObject.Spec.ScaleTargetRef.Name}, unstruct); err != nil {
 				// resource doesn't exist
-				msg := "target resource doesn't exist"
+				msg := "Target resource doesn't exist"
 				logger.Error(err, msg, "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
 				r.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.ScaledObjectCheckFailed, msg)
 				return gvkr, err
 			}
 			// resource exist but doesn't expose /scale subresource
-			msg := "target resource doesn't expose /scale subresource"
+			msg := "Target resource doesn't expose /scale subresource"
 			logger.Error(errScale, msg, "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
 			r.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.ScaledObjectCheckFailed, msg)
 			return gvkr, errScale
