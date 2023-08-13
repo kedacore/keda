@@ -142,14 +142,7 @@ func parseAzureBlobMetadata(config *ScalerConfig, logger logr.Logger) (*azure.Bl
 	if val, ok := config.TriggerMetadata["useAAdPodIdentity"]; ok && config.PodIdentity.Provider == "" && val == stringTrue {
 		config.PodIdentity = kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}
 	}
-
-	// FIXME: DEPRECATED to be removed in v2.12
-	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		meta.MetricName = kedautil.NormalizeString(fmt.Sprintf("azure-blob-%s", val))
-	} else {
-		meta.MetricName = kedautil.NormalizeString(fmt.Sprintf("azure-blob-%s", meta.BlobContainerName))
-	}
-
+	meta.MetricName = kedautil.NormalizeString(fmt.Sprintf("azure-blob-%s", meta.BlobContainerName))
 	// If the Use AAD Pod Identity is not present, or set to "none"
 	// then check for connection string
 	switch config.PodIdentity.Provider {

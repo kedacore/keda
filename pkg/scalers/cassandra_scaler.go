@@ -147,14 +147,7 @@ func parseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 	} else {
 		return nil, fmt.Errorf("no keyspace given")
 	}
-
-	// FIXME: DEPRECATED to be removed in v2.12
-	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("cassandra-%s", val))
-	} else {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("cassandra-%s", meta.keyspace))
-	}
-
+	meta.metricName = kedautil.NormalizeString(fmt.Sprintf("cassandra-%s", meta.keyspace))
 	if val, ok := config.AuthParams["password"]; ok {
 		meta.password = val
 	} else {

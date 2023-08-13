@@ -311,16 +311,7 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse trigger: %w", err)
 	}
-
-	// Resolve metricName
-
-	// FIXME: DEPRECATED to be removed in v2.12
-	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("rabbitmq-%s", url.QueryEscape(val)))
-	} else {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("rabbitmq-%s", url.QueryEscape(meta.queueName)))
-	}
-
+	meta.metricName = kedautil.NormalizeString(fmt.Sprintf("rabbitmq-%s", url.QueryEscape(meta.queueName)))
 	// Resolve timeout
 	if err := resolveTimeout(config, &meta); err != nil {
 		return nil, err

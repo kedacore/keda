@@ -17,11 +17,7 @@ import (
 )
 
 const (
-	graphiteServerAddress = "serverAddress"
-
-	// FIXME: DEPRECATED to be removed in v2.12
-	graphiteMetricName = "metricName"
-
+	graphiteServerAddress              = "serverAddress"
 	graphiteQuery                      = "query"
 	graphiteThreshold                  = "threshold"
 	graphiteActivationThreshold        = "activationThreshold"
@@ -95,12 +91,7 @@ func parseGraphiteMetadata(config *ScalerConfig) (*graphiteMetadata, error) {
 		return nil, fmt.Errorf("no %s given", graphiteQuery)
 	}
 
-	// FIXME: DEPRECATED to be removed in v2.12
-	if val, ok := config.TriggerMetadata[graphiteMetricName]; ok && val != "" {
-		meta.metricName = val
-	} else {
-		meta.metricName = "graphite"
-	}
+	meta.metricName = "graphite"
 
 	if val, ok := config.TriggerMetadata[graphiteQueryTime]; ok && val != "" {
 		meta.from = val

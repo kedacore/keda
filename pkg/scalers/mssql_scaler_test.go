@@ -39,13 +39,12 @@ var testInputs = []mssqlTestData{
 		authParams:               map[string]string{"connectionString": "Server=example.database.windows.net;port=1433;Database=AdventureWorks;Persist Security Info=False;User ID=user1;Password=Password#1;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"},
 		expectedConnectionString: "Server=example.database.windows.net;port=1433;Database=AdventureWorks;Persist Security Info=False;User ID=user1;Password=Password#1;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;",
 	},
-	// connection string input via environment variables + explicit metricName
+	// connection string input via environment variables
 	{
-		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "connectionStringFromEnv": "test_connection_string", "metricName": "myMetric"},
+		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "connectionStringFromEnv": "test_connection_string"},
 		resolvedEnv:              map[string]string{"test_connection_string": "sqlserver://localhost?database=AdventureWorks"},
 		authParams:               map[string]string{},
 		expectedConnectionString: "sqlserver://localhost?database=AdventureWorks",
-		expectedMetricName:       "mssql-myMetric",
 	},
 	// connection string generated from minimal required metadata
 	{
@@ -57,10 +56,9 @@ var testInputs = []mssqlTestData{
 	},
 	// connection string generated from full metadata
 	{
-		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "example.database.windows.net", "username": "user1", "passwordFromEnv": "test_password", "port": "1433", "database": "AdventureWorks", "metricName": "myMetric1"},
+		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "example.database.windows.net", "username": "user1", "passwordFromEnv": "test_password", "port": "1433", "database": "AdventureWorks"},
 		resolvedEnv:              map[string]string{"test_password": "Password#1"},
 		authParams:               map[string]string{},
-		expectedMetricName:       "mssql-myMetric1",
 		expectedConnectionString: "sqlserver://user1:Password%231@example.database.windows.net:1433?database=AdventureWorks",
 	},
 	// variation of previous: no port, password from authParams, metricName from database name

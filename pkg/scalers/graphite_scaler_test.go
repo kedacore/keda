@@ -24,13 +24,13 @@ type graphiteMetricIdentifier struct {
 var testGrapMetadata = []parseGraphiteMetadataTestData{
 	{map[string]string{}, true},
 	// all properly formed
-	{map[string]string{"serverAddress": "http://localhost:81", "metricName": "request-count", "threshold": "100", "activationThreshold": "23", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds"}, false},
+	{map[string]string{"serverAddress": "http://localhost:81", "threshold": "100", "activationThreshold": "23", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds"}, false},
 	// missing serverAddress
-	{map[string]string{"serverAddress": "", "metricName": "request-count", "threshold": "100", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds"}, true},
+	{map[string]string{"serverAddress": "", "threshold": "100", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds"}, true},
 	// malformed threshold
-	{map[string]string{"serverAddress": "http://localhost:81", "metricName": "request-count", "threshold": "one", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds"}, true},
+	{map[string]string{"serverAddress": "http://localhost:81", "threshold": "one", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds"}, true},
 	// malformed activationThreshold
-	{map[string]string{"serverAddress": "http://localhost:81", "metricName": "request-count", "threshold": "100", "activationThreshold": "one", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds"}, true},
+	{map[string]string{"serverAddress": "http://localhost:81", "threshold": "100", "activationThreshold": "one", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds"}, true},
 	// missing query
 	{map[string]string{"serverAddress": "http://localhost:81", "metricName": "request-count", "threshold": "100", "query": "", "queryTime": "-30Seconds", "disableScaleToZero": "true"}, true},
 	// missing queryTime
@@ -38,8 +38,8 @@ var testGrapMetadata = []parseGraphiteMetadataTestData{
 }
 
 var graphiteMetricIdentifiers = []graphiteMetricIdentifier{
-	{&testGrapMetadata[1], 0, "s0-graphite-request-count"},
-	{&testGrapMetadata[1], 1, "s1-graphite-request-count"},
+	{&testGrapMetadata[1], 0, "s0-graphite-graphite"},
+	{&testGrapMetadata[1], 1, "s1-graphite-graphite"},
 }
 
 type graphiteAuthMetadataTestData struct {

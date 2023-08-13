@@ -168,21 +168,13 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 			meta.password = config.ResolvedEnv[config.TriggerMetadata["passwordFromEnv"]]
 		}
 	}
-
-	// get the metricName, which can be explicit or from the (masked) connection string
-
-	// FIXME: DEPRECATED to be removed in v2.12
-	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mssql-%s", val))
-	} else {
-		switch {
-		case meta.database != "":
-			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mssql-%s", meta.database))
-		case meta.host != "":
-			meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mssql-%s", meta.host))
-		default:
-			meta.metricName = "mssql"
-		}
+	switch {
+	case meta.database != "":
+		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mssql-%s", meta.database))
+	case meta.host != "":
+		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mssql-%s", meta.host))
+	default:
+		meta.metricName = "mssql"
 	}
 	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil

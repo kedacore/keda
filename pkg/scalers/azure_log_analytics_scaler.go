@@ -180,7 +180,7 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 	}
 	meta.query = query
 
-	// Getting threshold, observe that we dont check AuthParams for threshold
+	// Getting threshold, observe that we don't check AuthParams for threshold
 	val, err := getParameterFromConfig(config, "threshold", false)
 	if err != nil {
 		return nil, err
@@ -201,16 +201,7 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 		}
 		meta.activationThreshold = activationThreshold
 	}
-
-	// Resolve metricName
-
-	// FIXME: DEPRECATED to be removed in v2.12
-	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-log-analytics", val))
-	} else {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-log-analytics", meta.workspaceID))
-	}
-
+	meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-log-analytics", meta.workspaceID))
 	meta.scalerIndex = config.ScalerIndex
 
 	meta.logAnalyticsResourceURL = defaultLogAnalyticsResourceURL
@@ -234,7 +225,7 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 	}
 	meta.activeDirectoryEndpoint = activeDirectoryEndpoint
 
-	// Getting unsafeSsl, observe that we dont check AuthParams for unsafeSsl
+	// Getting unsafeSsl, observe that we don't check AuthParams for unsafeSsl
 	meta.unsafeSsl = false
 	unsafeSslVal, err := getParameterFromConfig(config, "unsafeSsl", false)
 	if err == nil {

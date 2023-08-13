@@ -23,11 +23,7 @@ import (
 )
 
 const (
-	promServerAddress = "serverAddress"
-
-	// FIXME: DEPRECATED to be removed in v2.12
-	promMetricName = "metricName"
-
+	promServerAddress       = "serverAddress"
 	promQuery               = "query"
 	promThreshold           = "threshold"
 	promActivationThreshold = "activationThreshold"
@@ -109,8 +105,8 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 			httpClient.Transport = transport
 		}
 	} else {
-		// could be the case of azure managed prometheus. Try and get the roundtripper.
-		// If its not the case of azure managed prometheus, we will get both transport and err as nil and proceed assuming no auth.
+		// could be the case of azure managed prometheus. Try and get the round-tripper.
+		// If it's not the case of azure managed prometheus, we will get both transport and err as nil and proceed assuming no auth.
 		azureTransport, err := azure.TryAndGetAzureManagedPrometheusHTTPRoundTripper(config.PodIdentity, config.TriggerMetadata)
 		if err != nil {
 			logger.V(1).Error(err, "error while init Azure Managed Prometheus client http transport")
@@ -156,13 +152,7 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 		return nil, fmt.Errorf("no %s given", promQuery)
 	}
 
-	// FIXME: DEPRECATED to be removed in v2.12
-	if val, ok := config.TriggerMetadata[promMetricName]; ok && val != "" {
-		meta.metricName = val
-	} else {
-		meta.metricName = "prometheus"
-	}
-
+	meta.metricName = "prometheus"
 	if val, ok := config.TriggerMetadata[promThreshold]; ok && val != "" {
 		t, err := strconv.ParseFloat(val, 64)
 		if err != nil {
