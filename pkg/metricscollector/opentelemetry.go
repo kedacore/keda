@@ -61,38 +61,10 @@ type OtelMetrics struct {
 
 func NewOtelMetrics() *OtelMetrics {
 
-	// port := make([]string, 1)
-	// port[0] = "4317"
-
-	// raw_connect("172.17.24.213", port)
-	// out, _ := exec.Command("ping", "172.17.24.213", "-c 5", "-i 3", "-w 10").Output()
-	// if strings.Contains(string(out), "Destination Host Unreachable") {
-	// 	fmt.Println("TANGO DOWN")
-	// } else {
-	// 	fmt.Println("IT'S ALIVEEE")
-	// }
-
 	ctx := context.Background()
 	fmt.Printf("serving metrics at localhost:2222/metrics")
 
-	// The exporter embeds a default OpenTelemetry Reader, allowing it to be used in WithReader.
-	// exporter, err := otelprom.New()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// conn, err := grpc.DialContext(ctx, "localhost:4317", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
-
-	// opts := []otlpmetricgrpc.Option{
-	// 	// otlpmetricgrpc.WithGRPCConn(conn),
-	// }
-
-	// // client, err := otlpmetricgrpc.New(ctx, opts...)
-	// exporter, err := otlpmetricgrpc.New(ctx, opts...)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	exporter, err := otlpmetrichttp.New(ctx) //, opts...)
+	exporter, err := otlpmetrichttp.New(ctx)
 	meterProvider = metric.NewMeterProvider(
 		metric.WithReader(metric.NewPeriodicReader(exporter)),
 	)
