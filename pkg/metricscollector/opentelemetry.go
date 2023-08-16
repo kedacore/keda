@@ -59,23 +59,30 @@ var (
 type OtelMetrics struct {
 }
 
-func NewOtelMetrics() *OtelMetrics {
+func NewOtelMetrics(options ...metric.Option) *OtelMetrics {
 
 	ctx := context.Background()
 	fmt.Printf("serving metrics at localhost:2222/metrics")
 
-	exporter, err := otlpmetrichttp.New(ctx)
-	meterProvider = metric.NewMeterProvider(
-		metric.WithReader(metric.NewPeriodicReader(exporter)),
-	)
-	otel.SetMeterProvider(meterProvider)
-	if err != nil {
-		fmt.Printf("Error:" + err.Error())
+	// create default options with env
+	if options == nil {
+		exporter, err := otlpmetrichttp.New(context.Background())
+		if err != nil {
+			fmt.Printf("Error:" + err.Error())
+			return nil
+		}
+		options = []metric.Option{metric.WithReader(metric.NewPeriodicReader(exporter))}
 	}
+
+	meterProvider = metric.NewMeterProvider(options...)
+	otel.SetMeterProvider(meterProvider)
 
 	meter = meterProvider.Meter(meterName)
 	initCounter()
-	return &OtelMetrics{}
+
+	otel := &OtelMetrics{}
+	otel.RecordBuildInfo()
+	return otel
 }
 
 func initCounter() {
@@ -128,12 +135,12 @@ func initCounter() {
 }
 
 func (o *OtelMetrics) RecordScalerMetric(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64) {
-	otScalerMetricsValueCounter.Add(ctx, value, getScalerMeasurementOption(namespace, scaledObject, scaler, scalerIndex, metric))
+	otScalerMetricsValueCounter.Add(context.Background(), value, getScalerMeasurementOption(namespace, scaledObject, scaler, scalerIndex, metric))
 }
 
 // RecordScalerLatency create a measurement of the latency to external metric
 func (o *OtelMetrics) RecordScalerLatency(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64) {
-	otScalerMetricsLatencyCounter.Add(ctx, value, getScalerMeasurementOption(namespace, scaledObject, scaler, scalerIndex, metric))
+	otScalerMetricsLatencyCounter.Add(context.Background(), value, getScalerMeasurementOption(namespace, scaledObject, scaler, scalerIndex, metric))
 }
 
 // RecordScaledObjectLatency create a measurement of the latency executing scalable object loop
@@ -147,7 +154,7 @@ func (o *OtelMetrics) RecordScalableObjectLatency(namespace string, name string,
 		attribute.Key("namespace").String(namespace),
 		attribute.Key("resourceType").String(resourceType),
 		attribute.Key("name").String(name))
-	otInternalLoopLatencyCounter.Add(ctx, value, opt)
+	otInternalLoopLatencyCounter.Add(context.Background(), value, opt)
 }
 
 // RecordScalerActive create a measurement of the activity of the scaler
@@ -157,15 +164,15 @@ func (o *OtelMetrics) RecordScalerActive(namespace string, scaledObject string, 
 		activeVal = 1
 	}
 
-	otScalerActiveCounter.Add(ctx, int64(activeVal), getScalerMeasurementOption(namespace, scaledObject, scaler, scalerIndex, metric))
+	otScalerActiveCounter.Add(context.Background(), int64(activeVal), getScalerMeasurementOption(namespace, scaledObject, scaler, scalerIndex, metric))
 }
 
 // RecordScalerError counts the number of errors occurred in trying get an external metric used by the HPA
 func (o *OtelMetrics) RecordScalerError(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, err error) {
 	if err != nil {
-		otScalerErrorsCounter.Add(ctx, 1, getScalerMeasurementOption(namespace, scaledObject, scaler, scalerIndex, metric))
+		otScalerErrorsCounter.Add(context.Background(), 1, getScalerMeasurementOption(namespace, scaledObject, scaler, scalerIndex, metric))
 		o.RecordScaledObjectError(namespace, scaledObject, err)
-		otScaledObjectErrorsCounter.Add(ctx, 1)
+		otScaledObjectErrorsCounter.Add(context.Background(), 1)
 		return
 	}
 }
@@ -176,7 +183,7 @@ func (o *OtelMetrics) RecordScaledObjectError(namespace string, scaledObject str
 		attribute.Key("namespace").String(namespace),
 		attribute.Key("scaledObject").String(scaledObject))
 	if err != nil {
-		otScaledObjectErrorsCounter.Add(ctx, 1, opt)
+		otScaledObjectErrorsCounter.Add(context.Background(), 1, opt)
 		return
 	}
 }
@@ -190,18 +197,18 @@ func (o *OtelMetrics) RecordBuildInfo() {
 		attribute.Key("runtime.GOOS").String(runtime.GOOS),
 		attribute.Key("runtime.GOARCH").String(runtime.GOARCH),
 	)
-	otBuildInfo.Add(ctx, 1, opt)
+	otBuildInfo.Add(context.Background(), 1, opt)
 }
 
 func (o *OtelMetrics) IncrementTriggerTotal(triggerType string) {
 	if triggerType != "" {
-		otTriggerTotalsCounter.Add(ctx, 1, api.WithAttributes(attribute.Key("triggerType").String(triggerType)))
+		otTriggerTotalsCounter.Add(context.Background(), 1, api.WithAttributes(attribute.Key("triggerType").String(triggerType)))
 	}
 }
 
 func (o *OtelMetrics) DecrementTriggerTotal(triggerType string) {
 	if triggerType != "" {
-		otTriggerTotalsCounter.Add(ctx, -1, api.WithAttributes(attribute.Key("triggerType").String(triggerType)))
+		otTriggerTotalsCounter.Add(context.Background(), -1, api.WithAttributes(attribute.Key("triggerType").String(triggerType)))
 	}
 }
 
@@ -213,7 +220,8 @@ func (o *OtelMetrics) IncrementCRDTotal(crdType, namespace string) {
 		attribute.Key("namespace").String(namespace),
 		attribute.Key("crdType").String(crdType),
 	)
-	otCrdTotalsCounter.Add(ctx, 1, opt)
+
+	otCrdTotalsCounter.Add(context.Background(), 1, opt)
 }
 
 func (o *OtelMetrics) DecrementCRDTotal(crdType, namespace string) {
@@ -225,7 +233,7 @@ func (o *OtelMetrics) DecrementCRDTotal(crdType, namespace string) {
 		attribute.Key("namespace").String(namespace),
 		attribute.Key("crdType").String(crdType),
 	)
-	otCrdTotalsCounter.Add(ctx, -1, opt)
+	otCrdTotalsCounter.Add(context.Background(), -1, opt)
 }
 
 func getScalerMeasurementOption(namespace string, scaledObject string, scaler string, scalerIndex int, metric string) api.MeasurementOption {
