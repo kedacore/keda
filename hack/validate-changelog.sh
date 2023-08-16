@@ -30,7 +30,14 @@ function extract_and_check() {
     return
   fi
 
-  local sorted_content=$(echo "$content" | sort)
+  # Separate and sort the **General**: lines
+  local sorted_general_lines=$(echo "$content" | grep '^- \*\*General\*\*:' | sort)
+
+  # Sort the remaining lines
+  local sorted_content=$(echo "$content" | grep -v '^- \*\*General\*\*:' | sort)
+
+  # Concatenate the sorted **General**: lines at the top of the sorted_content
+  sorted_content=$(printf "%s\n%s" "$sorted_general_lines" "$sorted_content")
 
   # Check pattern and throw error if wrong pattern found
   while IFS= read -r line; do
