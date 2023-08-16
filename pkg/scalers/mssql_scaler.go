@@ -14,8 +14,6 @@ import (
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 var (
@@ -168,14 +166,7 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 			meta.password = config.ResolvedEnv[config.TriggerMetadata["passwordFromEnv"]]
 		}
 	}
-	switch {
-	case meta.database != "":
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mssql-%s", meta.database))
-	case meta.host != "":
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mssql-%s", meta.host))
-	default:
-		meta.metricName = "mssql"
-	}
+	meta.metricName = "mssql"
 	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil
 }

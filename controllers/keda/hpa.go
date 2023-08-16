@@ -222,7 +222,7 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 		if metricSpec.External != nil {
 			externalMetricName := metricSpec.External.Metric.Name
 			if kedacontrollerutil.Contains(externalMetricNames, externalMetricName) {
-				return nil, fmt.Errorf("metricName %s defined multiple times in ScaledObject %s, please refer the documentation how to define metricName manually", externalMetricName, scaledObject.Name)
+				return nil, fmt.Errorf("metricName %s defined multiple times in ScaledObject %s", externalMetricName, scaledObject.Name)
 			}
 
 			// add the scaledobject.keda.sh/name label. This is how the MetricsAdapter will know which scaledobject a metric is for when the HPA queries it.
