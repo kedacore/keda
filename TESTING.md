@@ -1,6 +1,6 @@
 # Testing strategy
 
-## Unit tests / code coverage
+## Unit tests / code coverage
 
 There are unit tests present for each scaler implementation, and for the majority of the core.
 Code coverage “is something that we need to work on” constantly.
@@ -11,7 +11,7 @@ For each PR, we automatically build and run our unit test suite but also build D
 
 Lastly, we automatically perform code quality analysis with golangci-lint and check licenses of our dependencies with FOSSA.
 
-## End-to-end tests
+## End-to-end tests
 
 There are end-to-end tests for the core functionality and majority of features of KEDA as well as the scalers that it offers. These tests are required for every PR and run in the CI (however, maintainers trigger them as a security precaution). Additionally, we run our e2e test suite for every merged commit to the main branch as well as during our nightly CI schedule ([link](https://github.com/kedacore/keda/actions/workflows/nightly-e2e.yml)). Implementing end-to-end tests is a requirement for adding a new scaler, as per [our policy](https://github.com/kedacore/governance/blob/main/SCALERS.md#requirements-for-a-built-in-scaler).
 
