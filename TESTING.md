@@ -1,6 +1,6 @@
 # Testing strategy
 
-## Unit tests / code coverage 
+## Unit tests / code coverage
 
 There are unit tests present for each scaler implementation, and for the majority of the core.
 Code coverage “is something that we need to work on” constantly.
