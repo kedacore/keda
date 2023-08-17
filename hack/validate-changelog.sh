@@ -27,7 +27,7 @@ function extract_and_check() {
 
   # Separate and sort the **General**: lines
   local sorted_general_lines=$(echo "$content" | grep '^- \*\*General\*\*:' | sort --ignore-case --dictionary-order)
-  
+
   # Sort the remaining lines
   local sorted_content=$(echo "$content" | grep -v '^- \*\*General\*\*:' | sort --ignore-case --dictionary-order)
 
