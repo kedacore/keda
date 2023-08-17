@@ -8,12 +8,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/kedacore/keda/v2/pkg/common/message"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	. "github.com/kedacore/keda/v2/tests/helper"
-	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -23,7 +23,6 @@ const (
 var (
 	testNamespace                       = fmt.Sprintf("%s-ns", testName)
 	deploymentName                      = fmt.Sprintf("%s-deployment", testName)
-	deploymentNotExistName              = fmt.Sprintf("%s-deployment-not-exist", testName)
 	daemonsetName                       = fmt.Sprintf("%s-daemonset", testName)
 	scaledObjectName                    = fmt.Sprintf("%s-so", testName)
 	scaledObjectTargetNotFoundName      = fmt.Sprintf("%s-so-target-error", testName)
@@ -36,7 +35,6 @@ type templateData struct {
 	ScaledObjectTargetNotFoundName      string
 	ScaledObjectTargetNoSubresourceName string
 	DeploymentName                      string
-	DeploymentNotExistName              string
 	DaemonsetName                       string
 }
 
@@ -171,7 +169,7 @@ func checkingEvent(t *testing.T, index int, eventreason string, message string) 
 	assert.Equal(t, lastEventMessage, eventreason+":"+message)
 }
 
-func testNormalEvent(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testNormalEvent(t *testing.T, _ *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing normal event ---")
 
 	KubectlApplyWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
@@ -181,7 +179,7 @@ func testNormalEvent(t *testing.T, kc *kubernetes.Clientset, data templateData) 
 	checkingEvent(t, 2, eventreason.ScaledObjectReady, message.ScalerReadyMsg)
 }
 
-func testTargetNotFoundErr(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testTargetNotFoundErr(t *testing.T, _ *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing target not found error event ---")
 
 	KubectlApplyWithTemplate(t, data, "scaledObjectTargetErrTemplate", scaledObjectTargetErrTemplate)
@@ -189,7 +187,7 @@ func testTargetNotFoundErr(t *testing.T, kc *kubernetes.Clientset, data template
 	checkingEvent(t, -1, eventreason.ScaledObjectCheckFailed, message.ScaleTargetErrMsg)
 }
 
-func testTargetNotSupportEventErr(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testTargetNotSupportEventErr(t *testing.T, _ *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing target not support error event ---")
 
 	KubectlApplyWithTemplate(t, data, "daemonSetTemplate", daemonSetTemplate)
