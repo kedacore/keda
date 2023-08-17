@@ -43,6 +43,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
+	"github.com/kedacore/keda/v2/pkg/common/message"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	"github.com/kedacore/keda/v2/pkg/scaling"
@@ -183,7 +184,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	} else {
 		wasReady := conditions.GetReadyCondition()
 		if wasReady.IsFalse() || wasReady.IsUnknown() {
-			r.Recorder.Event(scaledObject, corev1.EventTypeNormal, eventreason.ScaledObjectReady, "ScaledObject is ready for scaling")
+			r.Recorder.Event(scaledObject, corev1.EventTypeNormal, eventreason.ScaledObjectReady, message.ScalerReadyMsg)
 		}
 		reqLogger.V(1).Info(msg)
 		conditions.SetReadyCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionReadySucccesReason, msg)
@@ -230,7 +231,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 	// Check scale target Name is specified
 	if scaledObject.Spec.ScaleTargetRef.Name == "" {
 		err := fmt.Errorf("ScaledObject.spec.scaleTargetRef.name is missing")
-		return "ScaledObject doesn't have correct scaleTargetRef specification", err
+		return message.ScaleTargetErrMsg, err
 	}
 
 	// Check the label needed for Metrics servers is present on ScaledObject
@@ -242,7 +243,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 	// Check if resource targeted for scaling exists and exposes /scale subresource
 	gvkr, err := r.checkTargetResourceIsScalable(ctx, logger, scaledObject)
 	if err != nil {
-		return "ScaledObject doesn't have correct scaleTargetRef specification", err
+		return message.ScaleTargetErrMsg, err
 	}
 
 	err = r.checkReplicaCountBoundsAreValid(scaledObject)
@@ -334,15 +335,13 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 			unstruct.SetGroupVersionKind(gvkr.GroupVersionKind())
 			if err := r.Client.Get(ctx, client.ObjectKey{Namespace: scaledObject.Namespace, Name: scaledObject.Spec.ScaleTargetRef.Name}, unstruct); err != nil {
 				// resource doesn't exist
-				msg := "Target resource doesn't exist"
-				logger.Error(err, msg, "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
-				r.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.ScaledObjectCheckFailed, msg)
+				logger.Error(err, message.ScaleTargetNotFoundMsg, "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
+				r.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.ScaledObjectCheckFailed, message.ScaleTargetNotFoundMsg)
 				return gvkr, err
 			}
 			// resource exist but doesn't expose /scale subresource
-			msg := "Target resource doesn't expose /scale subresource"
-			logger.Error(errScale, msg, "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
-			r.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.ScaledObjectCheckFailed, msg)
+			logger.Error(errScale, message.ScaleTargetNoSubresourceMsg, "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
+			r.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.ScaledObjectCheckFailed, message.ScaleTargetNoSubresourceMsg)
 			return gvkr, errScale
 		}
 		isScalableCache.Store(gr.String(), true)
