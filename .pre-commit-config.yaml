@@ -49,4 +49,3 @@ repos:
       language: system
       entry: "bash hack/validate-changelog.sh"
       pass_filenames: false
-      files: CHANGELOG\.md
