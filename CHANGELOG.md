@@ -220,7 +220,7 @@ Here is an overview of all **stable** additions:
 - **Prometheus Metrics**: Introduce scaler activity in Prometheus metrics ([#4114](https://github.com/kedacore/keda/issues/4114))
 - **Prometheus Metrics**: Introduce scaler latency in Prometheus metrics ([#4037](https://github.com/kedacore/keda/issues/4037))
 
-#### Experimental 
+#### Experimental
 
 Here is an overview of all new **experimental** features:
 
@@ -334,7 +334,7 @@ Here is an overview of all **stable** additions:
 - **Prometheus Metrics**: Provide Prometheus metric with indication of total number of triggers per trigger type in `ScaledJob`/`ScaledObject`. ([#3663](https://github.com/kedacore/keda/issues/3663))
 - **Selenium Grid Scaler**: Allow setting url trigger parameter from TriggerAuthentication/ClusterTriggerAuthentication ([#3752](https://github.com/kedacore/keda/pull/3752))
 
-#### Experimental 
+#### Experimental
 
 Here is an overview of all new **experimental** features:
 
