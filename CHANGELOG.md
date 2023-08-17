@@ -55,6 +55,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General**: Add ScaledObject/ScaledJob names to output of `kubectl get triggerauthentication/clustertriggerauthentication` ([#796](https://github.com/kedacore/keda/issues/796))
 - **General**: Add standalone CRD generation to release workflow ([#2726](https://github.com/kedacore/keda/issues/2726))
+- **General**: Adding a changelog validating script to check for formatting and order ([#3190](https://github.com/kedacore/keda/issues/3190))
 
 ### Fixes
 
@@ -106,7 +107,6 @@ None.
 
 ### Fixes
 
-- **General**: Adding a changelog validating script to check for formatting and order ([#3190](https://github.com/kedacore/keda/issues/3190))
 - **General**: Paused ScaledObject continues working after removing the annotation ([#4733](https://github.com/kedacore/keda/issues/4733))
 - **General**: Skip resolving secrets if namespace is restricted ([#4519](https://github.com/kedacore/keda/issues/4519))
 - **Prometheus**: Authenticated connections to Prometheus work in non-PodIdenty case ([#4695](https://github.com/kedacore/keda/issues/4695))
@@ -201,12 +201,13 @@ New deprecation(s):
 
 ### Fixes
 
-- **General**: Add support to register custom CAs globally in KEDA operator ([#4168](https://github.com/kedacore/keda/issues/4168))
-- **General**: Introduce admission webhooks to automatically validate resource changes to prevent misconfiguration and enforce best practices ([#3755](https://github.com/kedacore/keda/issues/3755))
-- **General**: Introduce new ArangoDB Scaler ([#4000](https://github.com/kedacore/keda/issues/4000))
-- **GitHub Scaler**: Introduced new GitHub Scaler ([#1732](https://github.com/kedacore/keda/issues/1732))
-- **Prometheus Metrics**: Introduce scaler activity in Prometheus metrics ([#4114](https://github.com/kedacore/keda/issues/4114))
-- **Prometheus Metrics**: Introduce scaler latency in Prometheus metrics ([#4037](https://github.com/kedacore/keda/issues/4037))
+- **General**: Drop a transitive dependency on bou.ke/monkey ([#4366](https://github.com/kedacore/keda/issues/4366))
+- **General**: Fix odd number of arguments passed as key-value pairs for logging ([#4369](https://github.com/kedacore/keda/issues/4369))
+- **General**: Update supported versions in the welcome message ([#4360](https://github.com/kedacore/keda/issues/4360))
+- **Admission Webhooks**: Allow to remove the finalizer even if the ScaledObject isn't valid ([#4396](https://github.com/kedacore/keda/issues/4396))
+- **AWS SQS Scaler**: Respect `scaleOnInFlight` value ([#4276](https://github.com/kedacore/keda/issues/4276))
+- **Azure Pipelines**: Fix for disallowing `$top` on query when using `meta.parentID` method ([#4397](https://github.com/kedacore/keda/issues/4397))
+- **Azure Pipelines**: Respect all required demands ([#4404](https://github.com/kedacore/keda/issues/4404))
 
 ## v2.10.0
 
