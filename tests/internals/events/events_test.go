@@ -92,9 +92,10 @@ spec:
         podSelector: 'app={{.DeploymentName}}'
         value: '1'
 `
+
 	daemonSetTemplate = `
 apiVersion: apps/v1
-kind: DaemonSet 
+kind: DaemonSet
 metadata:
   name: {{.DaemonsetName}}
   namespace: {{.TestNamespace}}
@@ -113,6 +114,7 @@ spec:
         - name: {{.DaemonsetName}}
           image: nginxinc/nginx-unprivileged:alpine-slim
 `
+
 	scaledObjectTargetNotSupportTemplate = `
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
