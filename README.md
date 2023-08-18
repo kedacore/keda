@@ -32,6 +32,7 @@ We are a Cloud Native Computing Foundation (CNCF) incubation project.
 - [Releases](#releases)
 - [Contributing](#contributing)
   - [Building & deploying locally](#building--deploying-locally)
+  - [Testing strategy](#testing-strategy)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -83,3 +84,6 @@ You can find contributing guide [here](./CONTRIBUTING.md).
 
 ### Building & deploying locally
 Learn how to build & deploy KEDA locally [here](./BUILD.md).
+
+### Testing strategy
+Learn more about our testing strategy [here](./TESTING.md).
