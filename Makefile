@@ -234,6 +234,7 @@ release: manifests kustomize set-version ## Produce new KEDA release in keda-$(V
 	rm -rf config/default/kustomize-config/metadataLabelTransformer.yaml.out
 	$(KUSTOMIZE) build config/default > keda-$(VERSION).yaml
 	$(KUSTOMIZE) build config/minimal > keda-$(VERSION)-core.yaml
+	$(KUSTOMIZE) build config/crd     > keda-$(VERSION)-crds.yaml
 
 sign-images: ## Sign KEDA images published on GitHub Container Registry
 	COSIGN_EXPERIMENTAL=1 cosign sign ${COSIGN_FLAGS} $(IMAGE_CONTROLLER)
@@ -362,3 +363,7 @@ help: ## Display this help.
 .PHONY: docker-build-dev-containers
 docker-build-dev-containers: ## Build dev-containers image
 	docker build -f .devcontainer/Dockerfile .
+
+.PHONY: validate-changelog
+validate-changelog: ## Validate changelog
+	./hack/validate-changelog.sh

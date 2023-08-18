@@ -16,7 +16,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
-- [v2.11.1](#v2111)
+- [v2.11.2](#v2110)
+- [v2.11.1](#v2110)
 - [v2.11.0](#v2110)
 - [v2.10.1](#v2101)
 - [v2.10.0](#v2100)
@@ -48,19 +49,43 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ### Improvements
 
 - **General:**: Add ScaledObject/ScaledJob names to output of `kubectl get triggerauthentication/clustertriggerauthentication` ([#796](https://github.com/kedacore/keda/issues/796))
+- **General**: Add standalone CRD generation to release workflow ([#2726](https://github.com/kedacore/keda/issues/2726))
+- **General**: Adding a changelog validating script to check for formatting and order ([#3190](https://github.com/kedacore/keda/issues/3190))
 - **Azure Pod Identity**: Introduce validation to prevent usage of empty identity ID for Azure identity providers ([#4528](https://github.com/kedacore/keda/issues/4528))
+
+### Fixes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Deprecations
+
+You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
+
+New deprecation(s):
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Breaking Changes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Other
+
+- **General**: Refactor ScaledJob related methods to be located at scale_handler  ([#4781](https://github.com/kedacore/keda/issues/4781))
+
+## v2.11.2
 
 ### Fixes
 
 - **General**: Metrics server exposes Prometheus metrics ([#4776](https://github.com/kedacore/keda/issues/4776))
 - **AWS Pod Identity Authentication**: Use `default` service account if the workload doesn't set it ([#4767](https://github.com/kedacore/keda/issues/4767))
-- **GitHub Runner Scaler**: Fix rate checking on GHEC when HTTP 200 ([#4786](https://github.com/kedacore/keda/issues/4786))
 - **GitHub Runner Scaler**: Fix explicit repo check 404 to skip not crash ([#4790](https://github.com/kedacore/keda/issues/4790))
+- **GitHub Runner Scaler**: Fix rate checking on GHEC when HTTP 200 ([#4786](https://github.com/kedacore/keda/issues/4786))
 - **Pulsar Scaler**: Fix `msgBacklogThreshold` field being named wrongly as `msgBacklog` ([#4681](https://github.com/kedacore/keda/issues/4681))
 
 ### Deprecations
@@ -69,15 +94,7 @@ You can find all deprecations in [this overview](https://github.com/kedacore/ked
 
 New deprecation(s):
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
-
-### Breaking Changes
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issue/XXX))
-
-### Other
-
-- **General**: Refactor ScaledJob related methods to be located at scale_handler  ([#4781](https://github.com/kedacore/keda/issues/4781))
+- **Pulsar Scaler**: Fix `msgBacklogThreshold` field being named wrongly as `msgBacklog` ([#4681](https://github.com/kedacore/keda/issues/4681))
 
 ## v2.11.1
 
@@ -117,8 +134,8 @@ None.
 - **General**: Introduce new Solr Scaler ([#4234](https://github.com/kedacore/keda/issues/4234))
 - **General**: Support ScaledObject taking over existing HPAs with the same name while they are not managed by other ScaledObject ([#4457](https://github.com/kedacore/keda/issues/4457))
 - **CPU/Memory scaler**: Add support for scale to zero if there are multiple triggers([#4269](https://github.com/kedacore/keda/issues/4269))
-- **Redis Scalers**: Allow scaling using redis stream length ([#4277](https://github.com/kedacore/keda/issues/4277))
 - **Redis Scalers**: Allow scaling using consumer group lag ([#3127](https://github.com/kedacore/keda/issues/3127))
+- **Redis Scalers**: Allow scaling using redis stream length ([#4277](https://github.com/kedacore/keda/issues/4277))
 
 ### Breaking Changes
 
@@ -129,8 +146,8 @@ None.
 - **General**: Add a Prometheus metric for measuring the processing loop lag ([#4702](https://github.com/kedacore/keda/issues/4702))
 - **General**: Add a Prometheus metric with KEDA build info ([#4647](https://github.com/kedacore/keda/issues/4647))
 - **General**: Allow to change the port of the Admission Webhook ([#468](https://github.com/kedacore/charts/issues/468))
-- **General**: Enable secret scanning in GitHub repo
-- **General**: Kubernetes v1.25, v1.26 or v1.27 are supported
+- **General**: Enable secret scanning in GitHub repo ([#4710](https://github.com/kedacore/keda/issues/4710))
+- **General**: Kubernetes v1.25, v1.26 or v1.27 are supported ([#4710](https://github.com/kedacore/keda/issues/4710))
 - **AWS DynamoDB**: Add support for `indexName` ([#4680](https://github.com/kedacore/keda/issues/4680))
 - **Azure Data Explorer Scaler**: Use azidentity SDK ([#4489](https://github.com/kedacore/keda/issues/4489))
 - **External Scaler**: Add tls options in TriggerAuth metadata. ([#3565](https://github.com/kedacore/keda/issues/3565))
@@ -139,7 +156,7 @@ None.
 - **Kafka Scaler**: Add support for OAuth extensions ([#4544](https://github.com/kedacore/keda/issues/4544))
 - **NATS JetStream Scaler**: Add support for pulling AccountID from TriggerAuthentication ([#4586](https://github.com/kedacore/keda/issues/4586))
 - **PostgreSQL Scaler**: Replace `lib/pq` with `pgx` ([#4704](https://github.com/kedacore/keda/issues/4704))
-- **Prometheus Scaler**: Add support for Google Managed Prometheus ([#467](https://github.com/kedacore/keda/issues/4674))
+- **Prometheus Scaler**: Add support for Google Managed Prometheus ([#4674](https://github.com/kedacore/keda/issues/4674))
 - **Pulsar Scaler**: Improve error messages for unsuccessful connections ([#4563](https://github.com/kedacore/keda/issues/4563))
 - **RabbitMQ Scaler**: Add support for `unsafeSsl` in trigger metadata ([#4448](https://github.com/kedacore/keda/issues/4448))
 - **RabbitMQ Scaler**: Add support for `workloadIdentityResource` and utilize AzureAD Workload Identity for HTTP authorization ([#4716](https://github.com/kedacore/keda/issues/4716))
@@ -147,12 +164,12 @@ None.
 
 ### Fixes
 
-- **General**: Allow to remove the finalizer even if the ScaledObject isn't valid ([#4396](https://github.com/kedacore/keda/issue/4396))
-- **General**: Check ScaledObjects with multiple triggers with non unique name in the Admission Webhook ([#4664](https://github.com/kedacore/keda/issue/4664))
-- **General**: Grafana Dashboard: Fix HPA metrics panel to use range instead of instant ([#4513](https://github.com/kedacore/keda/pull/4513))
+- **General**: Allow to remove the finalizer even if the ScaledObject isn't valid ([#4396](https://github.com/kedacore/keda/issues/4396))
+- **General**: Check ScaledObjects with multiple triggers with non unique name in the Admission Webhook ([#4664](https://github.com/kedacore/keda/issues/4664))
 - **General**: Grafana Dashboard: Fix HPA metrics panel by replacing $namepsace to $exported_namespace due to label conflict ([#4539](https://github.com/kedacore/keda/pull/4539))
+- **General**: Grafana Dashboard: Fix HPA metrics panel to use range instead of instant ([#4513](https://github.com/kedacore/keda/pull/4513))
 - **General**: ScaledJob: Check if MaxReplicaCount is nil before access to it ([#4568](https://github.com/kedacore/keda/issues/4568))
-- **AWS SQS Scaler**: Respect `scaleOnInFlight` value ([#4276](https://github.com/kedacore/keda/issue/4276))
+- **AWS SQS Scaler**: Respect `scaleOnInFlight` value ([#4276](https://github.com/kedacore/keda/issues/4276))
 - **Azure Monitor**: Exclude Azure Monitor scaler from metricName deprecation ([#4713](https://github.com/kedacore/keda/pull/4713))
 - **Azure Pipelines**: Respect all required demands ([#4404](https://github.com/kedacore/keda/issues/4404))
 - **Kafka Scaler**: Add back `strings.TrimSpace()` function for saslAuthType ([#4689](https://github.com/kedacore/keda/issues/4689))
@@ -184,12 +201,12 @@ New deprecation(s):
 
 ### Fixes
 
-- **General**: Drop a transitive dependency on bou.ke/monkey ([#4366](https://github.com/kedacore/keda/issue/4366))
-- **General**: Fix odd number of arguments passed as key-value pairs for logging ([#4369](https://github.com/kedacore/keda/issue/4369))
-- **General**: Update supported versions in the welcome message ([#4360](https://github.com/kedacore/keda/issue/4360))
-- **Admission Webhooks**: Allow to remove the finalizer even if the ScaledObject isn't valid ([#4396](https://github.com/kedacore/keda/issue/4396))
-- **AWS SQS Scaler**: Respect `scaleOnInFlight` value ([#4276](https://github.com/kedacore/keda/issue/4276))
-- **Azure Pipelines**: Fix for disallowing `$top` on query when using `meta.parentID` method ([#4397])
+- **General**: Drop a transitive dependency on bou.ke/monkey ([#4366](https://github.com/kedacore/keda/issues/4366))
+- **General**: Fix odd number of arguments passed as key-value pairs for logging ([#4369](https://github.com/kedacore/keda/issues/4369))
+- **General**: Update supported versions in the welcome message ([#4360](https://github.com/kedacore/keda/issues/4360))
+- **Admission Webhooks**: Allow to remove the finalizer even if the ScaledObject isn't valid ([#4396](https://github.com/kedacore/keda/issues/4396))
+- **AWS SQS Scaler**: Respect `scaleOnInFlight` value ([#4276](https://github.com/kedacore/keda/issues/4276))
+- **Azure Pipelines**: Fix for disallowing `$top` on query when using `meta.parentID` method ([#4397](https://github.com/kedacore/keda/issues/4397))
 - **Azure Pipelines**: Respect all required demands ([#4404](https://github.com/kedacore/keda/issues/4404))
 
 ## v2.10.0
@@ -204,6 +221,8 @@ Here is an overview of all **stable** additions:
 - **Prometheus Metrics**: Introduce scaler activity in Prometheus metrics ([#4114](https://github.com/kedacore/keda/issues/4114))
 - **Prometheus Metrics**: Introduce scaler latency in Prometheus metrics ([#4037](https://github.com/kedacore/keda/issues/4037))
 
+#### Experimental
+
 Here is an overview of all new **experimental** features:
 
 - **GitHub Scaler**: Introduced new GitHub Scaler ([#1732](https://github.com/kedacore/keda/issues/1732))
@@ -217,19 +236,19 @@ Here is an overview of all new **experimental** features:
 - **Azure Pipelines Scaler**: Improve error logging for `validatePoolID` ([#3996](https://github.com/kedacore/keda/issues/3996))
 - **Azure Pipelines Scaler**: New configuration parameter `requireAllDemands` to scale only if jobs request all demands provided by the scaling definition ([#4138](https://github.com/kedacore/keda/issues/4138))
 - **Hashicorp Vault**: Add support to secrets backend version 1 ([#2645](https://github.com/kedacore/keda/issues/2645))
-- **Kafka Scaler**: Add support to use `tls` and `sasl` in ScaledObject ([#4232](https://github.com/kedacore/keda/issues/4322))
+- **Kafka Scaler**: Add support to use `tls` and `sasl` in ScaledObject ([#4322](https://github.com/kedacore/keda/issues/4322))
 - **Kafka Scaler**: Improve error logging for `GetBlock` method ([#4232](https://github.com/kedacore/keda/issues/4232))
 - **Prometheus Scaler**: Add custom headers and custom auth support ([#4208](https://github.com/kedacore/keda/issues/4208))
+- **Prometheus Scaler**: Extend Prometheus Scaler to support Azure managed service for Prometheus ([#4153](https://github.com/kedacore/keda/issues/4153))
 - **RabbitMQ Scaler**:  Add TLS support ([#967](https://github.com/kedacore/keda/issues/967))
 - **Redis Scalers**: Add support to Redis 7 ([#4052](https://github.com/kedacore/keda/issues/4052))
 - **Selenium Grid Scaler**: Add `platformName` to selenium-grid scaler metadata structure ([#4038](https://github.com/kedacore/keda/issues/4038))
-- **Prometheus Scaler**: Extend Prometheus Scaler to support Azure managed service for Prometheus ([#4153](https://github.com/kedacore/keda/issues/4153))
 
 ### Fixes
 
 - **General**: Fix regression in fallback mechanism ([#4249](https://github.com/kedacore/keda/issues/4249))
 - **General**: Prevent a panic that might occur while refreshing a scaler cache ([#4092](https://github.com/kedacore/keda/issues/4092))
-- **AWS Cloudwatch Scaler:** Make `metricName` and `namespace` optional when using `expression` ([#4334](https://github.com/kedacore/keda/issues/4262))
+- **AWS Cloudwatch Scaler**: Make `metricName` and `namespace` optional when using `expression` ([#4334](https://github.com/kedacore/keda/issues/4334))
 - **Azure Pipelines Scaler**: Add new parameter to limit the jobs returned ([#4324](https://github.com/kedacore/keda/issues/4324))
 - **Azure Queue Scaler**: Fix azure queue length ([#4002](https://github.com/kedacore/keda/issues/4002))
 - **Azure Service Bus Scaler**: Improve way clients are created to reduce amount of ARM requests ([#4262](https://github.com/kedacore/keda/issues/4262))
@@ -239,7 +258,7 @@ Here is an overview of all new **experimental** features:
 - **Datadog Scaler**: Return correct error when getting a 429 error ([#4187](https://github.com/kedacore/keda/issues/4187))
 - **Kafka Scaler**: Return error if the processing of the partition lag fails ([#4098](https://github.com/kedacore/keda/issues/4098))
 - **Kafka Scaler**: Support 0 in activationLagThreshold configuration ([#4137](https://github.com/kedacore/keda/issues/4137))
-- **Kafka Scaler:** Trim whitespace from `partitionLimitation` field ([#4333](https://github.com/kedacore/keda/pull/4333))
+- **Kafka Scaler**: Trim whitespace from `partitionLimitation` field ([#4333](https://github.com/kedacore/keda/pull/4333))
 - **NATS Jetstream Scaler**: Fix compatibility when cluster not on kubernetes ([#4101](https://github.com/kedacore/keda/issues/4101))
 - **Prometheus Metrics**: Expose Prometheus Metrics also when getting ScaledObject state ([#4075](https://github.com/kedacore/keda/issues/4075))
 - **Redis Scalers**: Fix panic produced by incorrect logger initialization ([#4197](https://github.com/kedacore/keda/issues/4197))
@@ -264,103 +283,104 @@ New deprecation(s):
 - **General**: Metrics Server: print a message on successful connection to gRPC server ([#4190](https://github.com/kedacore/keda/issues/4190))
 - **General**: Pass deep copy object to scalers cache from the ScaledObject controller ([#4207](https://github.com/kedacore/keda/issues/4207))
 - **General**: Review CodeQL rules and enable it on PRs ([#4032](https://github.com/kedacore/keda/pull/4032))
-- **RabbitMQ Scaler:** Move from `streadway/amqp` to `rabbitmq/amqp091-go` ([#4004](https://github.com/kedacore/keda/pull/4039))
+- **RabbitMQ Scaler**: Move from `streadway/amqp` to `rabbitmq/amqp091-go` ([#4004](https://github.com/kedacore/keda/issues/4004))
 
 ## v2.9.3
 
 ### Fixes
 
-- **Azure Service Bus Scaler:** Use correct auth flows with pod identity ([#4026](https://github.com/kedacore/keda/issues/4026)|[#4123](https://github.com/kedacore/keda/issues/4123))
+- **Azure Service Bus Scaler**: Use correct auth flows with pod identity ([#4026](https://github.com/kedacore/keda/issues/4026)|[#4123](https://github.com/kedacore/keda/issues/4123))
 
 ## v2.9.2
 
 ### Fixes
 
 - **General**: Prevent a panic that might occur while refreshing a scaler cache ([#4092](https://github.com/kedacore/keda/issues/4092))
+- **Azure Service Bus Scaler**: Use correct auth flows with pod identity ([#4026](https://github.com/kedacore/keda/issues/4026))
 - **Prometheus Metrics**: Fix exposed metric from `keda_scaled_errors` to `keda_scaled_object_errors` ([#4037](https://github.com/kedacore/keda/issues/4037))
-- **Azure Service Bus Scaler:** Use correct auth flows with pod identity ([#4026](https://github.com/kedacore/keda/issues/4026))
 
 ## v2.9.1
 
 ### Fixes
 
 - **General**: Properly retrieve and close scalers cache ([#4011](https://github.com/kedacore/keda/issues/4011))
-- **Azure Key Vault:** Raise an error if authentication mechanism not provided ([#4010](https://github.com/kedacore/keda/issues/4010))
+- **Azure Key Vault**: Raise an error if authentication mechanism not provided ([#4010](https://github.com/kedacore/keda/issues/4010))
 - **Redis Scalers**: Support `unsafeSsl` and enable ssl verification as default ([#4005](https://github.com/kedacore/keda/issues/4005))
 
 ## v2.9.0
 
 ### Breaking Changes
 
-- **General:** Change API version of HPA from `autoscaling/v2beta2` to `autoscaling/v2` ([#2462](https://github.com/kedacore/keda/issues/2462))
-- **General:** As per our [support policy](https://github.com/kedacore/governance/blob/main/SUPPORT.md), Kubernetes v1.23 or above is required and support for Kubernetes v1.22 or below was removed ([docs](https://keda.sh/docs/2.9/operate/cluster/#kubernetes-compatibility))
+- **General**: Change API version of HPA from `autoscaling/v2beta2` to `autoscaling/v2` ([#2462](https://github.com/kedacore/keda/issues/2462))
+- **General**: As per our [support policy](https://github.com/kedacore/governance/blob/main/SUPPORT.md), Kubernetes v1.23 or above is required and support for Kubernetes v1.22 or below was removed ([docs](https://keda.sh/docs/2.9/operate/cluster/#kubernetes-compatibility))
 
 ### New
 
 Here is an overview of all **stable** additions:
 
-- **General**: **EXPERIMENTAL** Adding an option to cache metric values for a scaler during the polling interval ([#2282](https://github.com/kedacore/keda/issues/2282))
-- **General:** Introduce new CouchDB Scaler ([#3746](https://github.com/kedacore/keda/issues/3746))
-- **General:** Introduce new Etcd Scaler ([#3880](https://github.com/kedacore/keda/issues/3880))
-- **General:** Introduce new Loki Scaler ([#3699](https://github.com/kedacore/keda/issues/3699))
+- **General**: Introduce new CouchDB Scaler ([#3746](https://github.com/kedacore/keda/issues/3746))
+- **General**: Introduce new Etcd Scaler ([#3880](https://github.com/kedacore/keda/issues/3880))
+- **General**: Introduce new Loki Scaler ([#3699](https://github.com/kedacore/keda/issues/3699))
 - **General**: Introduce rate-limitting parameters to KEDA manager to allow override of client defaults ([#3730](https://github.com/kedacore/keda/issues/3730))
-- **General**: Introduction deprecation & breaking change policy ([Governance #68](https://github.com/kedacore/governance/issues/68))
-- **General**: Provide off-the-shelf Grafana dashboard for application autoscaling ([Docs](https://keda.sh/docs/2.9/operate/prometheus/) | [#3911](https://github.com/kedacore/keda/issues/3911))
-- **General:** Produce reproducible builds ([#3509](https://github.com/kedacore/keda/issues/3509)
+- **General**: Introduction deprecation & breaking change policy ([#68](https://github.com/kedacore/governance/issues/68))
+- **General**: Produce reproducible builds ([#3509](https://github.com/kedacore/keda/issues/3509))
+- **General**: Provide off-the-shelf Grafana dashboard for application autoscaling ([#3911](https://github.com/kedacore/keda/issues/3911))
 - **AWS Scalers**: Introduce new AWS endpoint URL settings. ([#3337](https://github.com/kedacore/keda/issues/3337))
 - **Azure Service Bus Scaler**: Support for Shared Access Signature (SAS) tokens for authentication. ([#2920](https://github.com/kedacore/keda/issues/2920))
-- **Azure Service Bus Scaler:** Support regex usage in queueName / subscriptionName parameters. ([#1624](https://github.com/kedacore/keda/issues/1624))
-- **ElasticSearch Scaler**: Support for ElasticSearch Service on Elastic Cloud ([#3785](https://github.com/kedacore/keda/issues/3785)
-- **Prometheus Metrics**: Introduce new `ScalerName` label in Prometheus metrics. ([#3588](https://github.com/kedacore/keda/issues/3588))
+- **Azure Service Bus Scaler**: Support regex usage in queueName / subscriptionName parameters. ([#1624](https://github.com/kedacore/keda/issues/1624))
+- **ElasticSearch Scaler**: Support for ElasticSearch Service on Elastic Cloud ([#3785](https://github.com/kedacore/keda/issues/3785))
 - **Prometheus Metrics**: Expose renamed version of existing Prometheus Metrics in KEDA Operator. ([#3919](https://github.com/kedacore/keda/issues/3919))
+- **Prometheus Metrics**: Introduce new `ScalerName` label in Prometheus metrics. ([#3588](https://github.com/kedacore/keda/issues/3588))
 - **Prometheus Metrics**: Provide Prometheus metric with indication of total number of custom resources per namespace for each custom resource type (CRD). ([#2637](https://github.com/kedacore/keda/issues/2637)|[#2638](https://github.com/kedacore/keda/issues/2638)|[#2639](https://github.com/kedacore/keda/issues/2639))
 - **Prometheus Metrics**: Provide Prometheus metric with indication of total number of triggers per trigger type in `ScaledJob`/`ScaledObject`. ([#3663](https://github.com/kedacore/keda/issues/3663))
-- **Selenium Grid Scaler:** Allow setting url trigger parameter from TriggerAuthentication/ClusterTriggerAuthentication ([#3752](https://github.com/kedacore/keda/pull/3752))
+- **Selenium Grid Scaler**: Allow setting url trigger parameter from TriggerAuthentication/ClusterTriggerAuthentication ([#3752](https://github.com/kedacore/keda/pull/3752))
+
+#### Experimental
 
 Here is an overview of all new **experimental** features:
 
-- **General**: **EXPERIMENTAL** Adding an option to cache metric values for a scaler during the polling interval ([#2282](https://github.com/kedacore/keda/issues/2282))
+- **General**: Adding an option to cache metric values for a scaler during the polling interval ([#2282](https://github.com/kedacore/keda/issues/2282))
 
 ### Improvements
 
-- **General:** Add explicit `seccompProfile` type to `securityContext` config ([#3561](https://github.com/kedacore/keda/issues/3561))
-- **General:** Add `Min` column to ScaledJob visualization ([#3689](https://github.com/kedacore/keda/issues/3689))
-- **General**: Disable response compression for k8s restAPI in client-go ([#3863](https://github.com/kedacore/keda/issues/3863) | [Kubernetes #112296](https://github.com/kubernetes/kubernetes/issues/112296))
-- **General:** Improve the function used to normalize metric names ([#3789](https://github.com/kedacore/keda/issues/3789)
-- **General:** Support for using pod identities for authentication in Azure Key Vault ([#3813](https://github.com/kedacore/keda/issues/3813)
-- **General:** Support disable keep http connection alive ([#3874](https://github.com/kedacore/keda/issues/3874)
-- **General:** Support "Restrict Secret Access" to mitigate the security risk ([#3668](https://github.com/kedacore/keda/issues/3668)
-- **Apache Kafka Scaler:** Support for SASL/OAuth bearer authentication ([#3681](https://github.com/kedacore/keda/issues/3681))
-- **Apache Kafka Scaler:** Support for limiting Kafka partitions KEDA will monitor ([#3830](https://github.com/kedacore/keda/issues/3830))
-- **Apache Kafka Scaler:** Support for excluding persistent lag ([#3904](https://github.com/kedacore/keda/issues/3904))
-- **Azure AD Pod Identity Authentication:** Improve logs around integration with aad-pod-identity for simplified troubleshooting ([#3610](https://github.com/kedacore/keda/issues/3610))
-- **Azure Event Hubs Scaler:** Support Azure Active Directory Pod & Workload Identity for Storage Blobs ([#3569](https://github.com/kedacore/keda/issues/3569))
-- **Azure Event Hubs Scaler:** Support for using connection strings for Event Hub namespace instead of the Event Hub itself. ([#3922](https://github.com/kedacore/keda/issues/3922))
-- **Azure Event Hubs Scaler:** Support for `dapr` checkpoint strategy ([#3022](https://github.com/kedacore/keda/issues/3022))
-- **Azure Pipelines Scaler:** Improved performance for scaling big amount of job requests ([#3702](https://github.com/kedacore/keda/issues/3702))
-- **Cron Scaler**: Improve instance count determination. ([#3838](https://github.com/kedacore/keda/issues/3854))
-- **GCP Storage Scaler:** Support for blob prefix ([#3756](https://github.com/kedacore/keda/issues/3756))
-- **GCP Storage Scaler:** Support for blob delimiters ([#3756](https://github.com/kedacore/keda/issues/3756))
-- **Metrics API Scaler:** Support for `unsafeSsl` parameter to skip certificate validation when connecting over HTTPS ([#3728](https://github.com/kedacore/keda/discussions/3728))
-- **NATS Jetstream Scaler:** Improved querying to respect stream consumer leader in clustered scenarios ([#3860](https://github.com/kedacore/keda/issues/3860))
-- **NATS Scalers:** Support HTTPS protocol in NATS Scalers ([#3805](https://github.com/kedacore/keda/issues/3805))
-- **Prometheus Scaler:** Introduce skipping of certificate check for unsigned certs ([#2310](https://github.com/kedacore/keda/issues/2310))
-- **Pulsar Scaler:** Add support for basic authentication ([#3844](https://github.com/kedacore/keda/issues/3844))
-- **Pulsar Scaler:** Add support for bearer token authentication ([#3844](https://github.com/kedacore/keda/issues/3844))
-- **Pulsar Scaler:** Add support for partitioned topics ([#3833](https://github.com/kedacore/keda/issues/3833))
+- **General**: Add explicit `seccompProfile` type to `securityContext` config ([#3561](https://github.com/kedacore/keda/issues/3561))
+- **General**: Add `Min` column to ScaledJob visualization ([#3689](https://github.com/kedacore/keda/issues/3689))
+- **General**: Disable response compression for k8s restAPI in client-go ([#3863](https://github.com/kedacore/keda/issues/3863))
+- **General**: Improve the function used to normalize metric names ([#3789](https://github.com/kedacore/keda/issues/3789))
+- **General**: Support disable keep http connection alive ([#3874](https://github.com/kedacore/keda/issues/3874))
+- **General**: Support for using pod identities for authentication in Azure Key Vault ([#3813](https://github.com/kedacore/keda/issues/3813))
+- **General**: Support "Restrict Secret Access" to mitigate the security risk ([#3668](https://github.com/kedacore/keda/issues/3668))
+- **Apache Kafka Scaler**: Support for excluding persistent lag ([#3904](https://github.com/kedacore/keda/issues/3904))
+- **Apache Kafka Scaler**: Support for limiting Kafka partitions KEDA will monitor ([#3830](https://github.com/kedacore/keda/issues/3830))
+- **Apache Kafka Scaler**: Support for SASL/OAuth bearer authentication ([#3681](https://github.com/kedacore/keda/issues/3681))
+- **Azure AD Pod Identity Authentication**: Improve logs around integration with aad-pod-identity for simplified troubleshooting ([#3610](https://github.com/kedacore/keda/issues/3610))
+- **Azure Event Hubs Scaler**: Support Azure Active Directory Pod & Workload Identity for Storage Blobs ([#3569](https://github.com/kedacore/keda/issues/3569))
+- **Azure Event Hubs Scaler**: Support for `dapr` checkpoint strategy ([#3022](https://github.com/kedacore/keda/issues/3022))
+- **Azure Event Hubs Scaler**: Support for using connection strings for Event Hub namespace instead of the Event Hub itself. ([#3922](https://github.com/kedacore/keda/issues/3922))
+- **Azure Pipelines Scaler**: Improved performance for scaling big amount of job requests ([#3702](https://github.com/kedacore/keda/issues/3702))
+- **Cron Scaler**: Improve instance count determination. ([#3838](https://github.com/kedacore/keda/issues/3838))
+- **GCP Storage Scaler**: Support for blob delimiters ([#3756](https://github.com/kedacore/keda/issues/3756))
+- **GCP Storage Scaler**: Support for blob prefix ([#3756](https://github.com/kedacore/keda/issues/3756))
+- **Metrics API Scaler**: Support for `unsafeSsl` parameter to skip certificate validation when connecting over HTTPS ([#3728](https://github.com/kedacore/keda/discussions/3728))
+- **NATS Jetstream Scaler**: Improved querying to respect stream consumer leader in clustered scenarios ([#3860](https://github.com/kedacore/keda/issues/3860))
+- **NATS Scalers**: Support HTTPS protocol in NATS Scalers ([#3805](https://github.com/kedacore/keda/issues/3805))
+- **Prometheus Scaler**: Introduce skipping of certificate check for unsigned certs ([#2310](https://github.com/kedacore/keda/issues/2310))
+- **Pulsar Scaler**: Add support for basic authentication ([#3844](https://github.com/kedacore/keda/issues/3844))
+- **Pulsar Scaler**: Add support for bearer token authentication ([#3844](https://github.com/kedacore/keda/issues/3844))
+- **Pulsar Scaler**: Add support for partitioned topics ([#3833](https://github.com/kedacore/keda/issues/3833))
 
 ### Fixes
 
-- **General:** Respect optional parameter inside `envs` for ScaledJobs ([#3568](https://github.com/kedacore/keda/issues/3568))
-- **General:** Ensure `Close` is only called once during `PushScaler`'s deletion ([#3881](https://github.com/kedacore/keda/issues/3881))
-- **Security:** Provide patch for CVE-2022-3172 vulnerability ([#3690](https://github.com/kedacore/keda/issues/3690))
-- **Azure Blob Scaler** Store forgotten logger ([#3811](https://github.com/kedacore/keda/issues/3811))
-- **Datadog Scaler** The last data point of some specific query is always null ([#3906](https://github.com/kedacore/keda/issues/3906))
-- **GCP Stackdriver Scalar:** Update Stackdriver client to handle detecting double and int64 value types ([#3777](https://github.com/kedacore/keda/issues/3777))
-- **MongoDB Scaler:** Username/password can contain `:/?#[]@` ([#3992](https://github.com/kedacore/keda/issues/3992))
-- **New Relic Scaler** Store forgotten logger ([#3945](https://github.com/kedacore/keda/issues/3945))
-- **Prometheus Scaler:** Treat Inf the same as Null result ([#3644](https://github.com/kedacore/keda/issues/3644))
-- **NATS Jetstream:** Correctly count messages that should be redelivered (waiting for ack) towards KEDA value ([#3787](https://github.com/kedacore/keda/issues/3787))
+- **General**: Ensure `Close` is only called once during `PushScaler`'s deletion ([#3881](https://github.com/kedacore/keda/issues/3881))
+- **General**: Respect optional parameter inside `envs` for ScaledJobs ([#3568](https://github.com/kedacore/keda/issues/3568))
+- **Azure Blob Scaler**: Store forgotten logger ([#3811](https://github.com/kedacore/keda/issues/3811))
+- **Datadog Scaler**: The last data point of some specific query is always null ([#3906](https://github.com/kedacore/keda/issues/3906))
+- **GCP Stackdriver Scalar**: Update Stackdriver client to handle detecting double and int64 value types ([#3777](https://github.com/kedacore/keda/issues/3777))
+- **MongoDB Scaler**: Username/password can contain `:/?#[]@` ([#3992](https://github.com/kedacore/keda/issues/3992))
+- **NATS Jetstream**: Correctly count messages that should be redelivered (waiting for ack) towards KEDA value ([#3787](https://github.com/kedacore/keda/issues/3787))
+- **New Relic Scaler**: Store forgotten logger ([#3945](https://github.com/kedacore/keda/issues/3945))
+- **Prometheus Scaler**: Treat Inf the same as Null result ([#3644](https://github.com/kedacore/keda/issues/3644))
+- **Security**: Provide patch for CVE-2022-3172 vulnerability ([#3690](https://github.com/kedacore/keda/issues/3690))
 
 ### Deprecations
 
@@ -378,13 +398,13 @@ Previously announced deprecation(s):
 
 ### Other
 
-- **General**: Bump Golang to 1.18.6 ([#3205](https://github.com/kedacore/keda/issues/3205))
 - **General**: Bump `github.com/Azure/azure-event-hubs-go/v3` ([#2986](https://github.com/kedacore/keda/issues/2986))
-- **General**: Migrate from `azure-service-bus-go` to `azservicebus` ([#3394](https://github.com/kedacore/keda/issues/3394))
+- **General**: Bump Golang to 1.18.6 ([#3205](https://github.com/kedacore/keda/issues/3205))
 - **General**: Metrics Server: use gRPC connection to get metrics from Operator ([#3920](https://github.com/kedacore/keda/issues/3920))
 - **General**: Metrics Server: use OpenAPI definitions served by custom-metrics-apiserver ([#3929](https://github.com/kedacore/keda/issues/3929))
+- **General**: Migrate from `azure-service-bus-go` to `azservicebus` ([#3394](https://github.com/kedacore/keda/issues/3394))
+- **Apache Kafka Scaler**: Increase logging V-level  ([#3948](https://github.com/kedacore/keda/issues/3948))
 - **Azure EventHub**: Add e2e tests ([#2792](https://github.com/kedacore/keda/issues/2792))
-- **Apache Kafka Scaler:** Increase logging V-level  ([#3948](https://github.com/kedacore/keda/issues/3948))
 
 ## v2.8.1
 
@@ -394,13 +414,13 @@ None.
 
 ### Improvements
 
-- **Datadog Scaler:** Support multi-query metrics, and aggregation ([#3423](https://github.com/kedacore/keda/issues/3423))
+- **Datadog Scaler**: Support multi-query metrics, and aggregation ([#3423](https://github.com/kedacore/keda/issues/3423))
 
 ### Fixes
 
-- **General:** Metrics endpoint returns correct HPA values ([#3554](https://github.com/kedacore/keda/issues/3554))
-- **Datadog Scaler:** Fix: panic in datadog scaler ([#3448](https://github.com/kedacore/keda/issues/3448))
-- **RabbitMQ Scaler:** Parse vhost correctly if it's provided in the host url ([#3602](https://github.com/kedacore/keda/issues/3602))
+- **General**: Metrics endpoint returns correct HPA values ([#3554](https://github.com/kedacore/keda/issues/3554))
+- **Datadog Scaler**: Fix: panic in datadog scaler ([#3448](https://github.com/kedacore/keda/issues/3448))
+- **RabbitMQ Scaler**: Parse vhost correctly if it's provided in the host url ([#3602](https://github.com/kedacore/keda/issues/3602))
 
 ### Deprecations
 
@@ -412,52 +432,52 @@ None.
 
 ### Other
 
-- **General:** Execute trivy scan (on PRs) only if there are changes in deps ([#3540](https://github.com/kedacore/keda/issues/3540))
-- **General:** Use re-usable workflows for GitHub Actions ([#2569](https://github.com/kedacore/keda/issues/2569))
+- **General**: Execute trivy scan (on PRs) only if there are changes in deps ([#3540](https://github.com/kedacore/keda/issues/3540))
+- **General**: Use re-usable workflows for GitHub Actions ([#2569](https://github.com/kedacore/keda/issues/2569))
 
 ## v2.8.0
 
 ### New
 
-- **General:** Introduce new AWS DynamoDB Streams Scaler ([#3124](https://github.com/kedacore/keda/issues/3124))
-- **General:** Introduce new NATS JetStream scaler ([#2391](https://github.com/kedacore/keda/issues/2391))
-- **General:** Introduce `activationThreshold`/`minMetricValue` for all scalers ([#2800](https://github.com/kedacore/keda/issues/2800))
-- **General:** Support for `minReplicaCount` in ScaledJob ([#3426](https://github.com/kedacore/keda/issues/3426))
-- **General:** Support to customize HPA name ([#3057](https://github.com/kedacore/keda/issues/3057))
-- **General:** Make propagation policy for ScaledJob rollout configurable ([#2910](https://github.com/kedacore/keda/issues/2910))
-- **General:** Support for Azure AD Workload Identity as a pod identity provider. ([#2487](https://github.com/kedacore/keda/issues/2487)|[#2656](https://github.com/kedacore/keda/issues/2656))
-- **General:** Support for permission segregation when using Azure AD Pod / Workload Identity. ([#2656](https://github.com/kedacore/keda/issues/2656))
-- **AWS SQS Queue Scaler:** Support for scaling to include in-flight messages. ([#3133](https://github.com/kedacore/keda/issues/3133))
-- **Azure Pipelines Scaler:** Support for Azure Pipelines to support demands (capabilities) ([#2328](https://github.com/kedacore/keda/issues/2328))
-- **CPU Scaler:** Support for targeting specific container in a pod ([#1378](https://github.com/kedacore/keda/issues/1378))
-- **GCP Stackdriver Scaler:** Added aggregation parameters ([#3008](https://github.com/kedacore/keda/issues/3008))
-- **Kafka Scaler:** Support of passphrase encrypted PKCS #\8 private key ([3449](https://github.com/kedacore/keda/issues/3449))
-- **Memory Scaler:** Support for targeting specific container in a pod ([#1378](https://github.com/kedacore/keda/issues/1378))
-- **Prometheus Scaler:** Add `ignoreNullValues` to return error when prometheus return null in values ([#3065](https://github.com/kedacore/keda/issues/3065))
+- **General**: Introduce `activationThreshold`/`minMetricValue` for all scalers ([#2800](https://github.com/kedacore/keda/issues/2800))
+- **General**: Introduce new AWS DynamoDB Streams Scaler ([#3124](https://github.com/kedacore/keda/issues/3124))
+- **General**: Introduce new NATS JetStream scaler ([#2391](https://github.com/kedacore/keda/issues/2391))
+- **General**: Make propagation policy for ScaledJob rollout configurable ([#2910](https://github.com/kedacore/keda/issues/2910))
+- **General**: Support for Azure AD Workload Identity as a pod identity provider. ([#2487](https://github.com/kedacore/keda/issues/2487)|[#2656](https://github.com/kedacore/keda/issues/2656))
+- **General**: Support for `minReplicaCount` in ScaledJob ([#3426](https://github.com/kedacore/keda/issues/3426))
+- **General**: Support for permission segregation when using Azure AD Pod / Workload Identity. ([#2656](https://github.com/kedacore/keda/issues/2656))
+- **General**: Support to customize HPA name ([#3057](https://github.com/kedacore/keda/issues/3057))
+- **AWS SQS Queue Scaler**: Support for scaling to include in-flight messages. ([#3133](https://github.com/kedacore/keda/issues/3133))
+- **Azure Pipelines Scaler**: Support for Azure Pipelines to support demands (capabilities) ([#2328](https://github.com/kedacore/keda/issues/2328))
+- **CPU Scaler**: Support for targeting specific container in a pod ([#1378](https://github.com/kedacore/keda/issues/1378))
+- **GCP Stackdriver Scaler**: Added aggregation parameters ([#3008](https://github.com/kedacore/keda/issues/3008))
+- **Kafka Scaler**: Support of passphrase encrypted PKCS #\8 private key ([#3449](https://github.com/kedacore/keda/issues/3449))
+- **Memory Scaler**: Support for targeting specific container in a pod ([#1378](https://github.com/kedacore/keda/issues/1378))
+- **Prometheus Scaler**: Add `ignoreNullValues` to return error when prometheus return null in values ([#3065](https://github.com/kedacore/keda/issues/3065))
 
 ### Improvements
 
-- **General:** Add settings for configuring leader election ([#2836](https://github.com/kedacore/keda/issues/2836))
-- **General:** `external` extension reduces connection establishment with long links ([#3193](https://github.com/kedacore/keda/issues/3193))
-- **General:** Reference ScaledObject's/ScaledJob's name in the scalers log ([3419](https://github.com/kedacore/keda/issues/3419))
-- **General:** Use `mili` scale for the returned metrics ([#3135](https://github.com/kedacore/keda/issues/3135))
-- **General:** Use more readable timestamps in KEDA Operator logs ([#3066](https://github.com/kedacore/keda/issues/3066))
-- **Kafka Scaler:** Handle Sarama errors properly ([#3056](https://github.com/kedacore/keda/issues/3056))
+- **General**: Add settings for configuring leader election ([#2836](https://github.com/kedacore/keda/issues/2836))
+- **General**: `external` extension reduces connection establishment with long links ([#3193](https://github.com/kedacore/keda/issues/3193))
+- **General**: Reference ScaledObject's/ScaledJob's name in the scalers log ([#3419](https://github.com/kedacore/keda/issues/3419))
+- **General**: Use `mili` scale for the returned metrics ([#3135](https://github.com/kedacore/keda/issues/3135))
+- **General**: Use more readable timestamps in KEDA Operator logs ([#3066](https://github.com/kedacore/keda/issues/3066))
+- **Kafka Scaler**: Handle Sarama errors properly ([#3056](https://github.com/kedacore/keda/issues/3056))
 
 ### Fixes
 
-- **General:** Provide patch for CVE-2022-27191 vulnerability ([#3378](https://github.com/kedacore/keda/issues/3378))
-- **General:** Refactor adapter startup to ensure proper log initilization. ([2316](https://github.com/kedacore/keda/issues/2316))
-- **General:** Scaleobject ready condition 'False/Unknown' to 'True' requeue ([#3096](https://github.com/kedacore/keda/issues/3096))
-- **General:** Use `go install` in the Makefile for downloading dependencies ([#2916](https://github.com/kedacore/keda/issues/2916))
-- **General:** Use metricName from GetMetricsSpec in ScaledJobs instead of `queueLength` ([#3032](https://github.com/kedacore/keda/issues/3032))
-- **ActiveMQ Scaler:** KEDA doesn't respect restAPITemplate ([#3188](https://github.com/kedacore/keda/issues/3188))
-- **Azure Eventhub Scaler:** KEDA operator crashes on nil memory panic if the eventhub connectionstring for Azure Eventhub Scaler contains an invalid character ([#3082](https://github.com/kedacore/keda/issues/3082))
-- **Azure Pipelines Scaler:** Fix issue with Azure Pipelines wrong PAT Auth. ([#3159](https://github.com/kedacore/keda/issues/3159))
-- **Datadog Scaler:** Ensure that returns the same element that has been checked ([#3448](https://github.com/kedacore/keda/issues/3448))
-- **Kafka Scaler:** Check `lagThreshold` is a positive number ([#3366](https://github.com/kedacore/keda/issues/3366))
-- **Selenium Grid Scaler:** Fix bug where edge active sessions not being properly counted ([#2709](https://github.com/kedacore/keda/issues/2709))
-- **Selenium Grid Scaler:** Fix bug where Max Sessions was not working correctly ([#3061](https://github.com/kedacore/keda/issues/3061))
+- **General**: Provide patch for CVE-2022-27191 vulnerability ([#3378](https://github.com/kedacore/keda/issues/3378))
+- **General**: Refactor adapter startup to ensure proper log initilization. ([#2316](https://github.com/kedacore/keda/issues/2316))
+- **General**: Scaleobject ready condition 'False/Unknown' to 'True' requeue ([#3096](https://github.com/kedacore/keda/issues/3096))
+- **General**: Use `go install` in the Makefile for downloading dependencies ([#2916](https://github.com/kedacore/keda/issues/2916))
+- **General**: Use metricName from GetMetricsSpec in ScaledJobs instead of `queueLength` ([#3032](https://github.com/kedacore/keda/issues/3032))
+- **ActiveMQ Scaler**: KEDA doesn't respect restAPITemplate ([#3188](https://github.com/kedacore/keda/issues/3188))
+- **Azure Eventhub Scaler**: KEDA operator crashes on nil memory panic if the eventhub connectionstring for Azure Eventhub Scaler contains an invalid character ([#3082](https://github.com/kedacore/keda/issues/3082))
+- **Azure Pipelines Scaler**: Fix issue with Azure Pipelines wrong PAT Auth. ([#3159](https://github.com/kedacore/keda/issues/3159))
+- **Datadog Scaler**: Ensure that returns the same element that has been checked ([#3448](https://github.com/kedacore/keda/issues/3448))
+- **Kafka Scaler**: Check `lagThreshold` is a positive number ([#3366](https://github.com/kedacore/keda/issues/3366))
+- **Selenium Grid Scaler**: Fix bug where edge active sessions not being properly counted ([#2709](https://github.com/kedacore/keda/issues/2709))
+- **Selenium Grid Scaler**: Fix bug where Max Sessions was not working correctly ([#3061](https://github.com/kedacore/keda/issues/3061))
 
 ### Deprecations
 
@@ -469,14 +489,14 @@ None.
 
 ### Other
 
-- **General:** Migrate e2e test to Go. ([2737](https://github.com/kedacore/keda/issues/2737))
 - **General**: Bump Golang to 1.17.13 and deps ([#3447](https://github.com/kedacore/keda/issues/3447))
-- **General:** Fix devcontainer on ARM64 Arch. ([3084](https://github.com/kedacore/keda/issues/3084))
-- **General:** Improve error message in resolving ServiceAccount for AWS EKS PodIdentity ([3142](https://github.com/kedacore/keda/issues/3142))
-- **General:** Improve e2e on PR process through comments. ([3004](https://github.com/kedacore/keda/issues/3004))
-- **General:** Split e2e test by functionality. ([#3270](https://github.com/kedacore/keda/issues/3270))
-- **General:** Unify the used tooling on different workflows and arch. ([3092](https://github.com/kedacore/keda/issues/3092))
-- **General:** Use Github's Checks API for e2e tests on PR. ([2567](https://github.com/kedacore/keda/issues/2567))
+- **General**: Fix devcontainer on ARM64 Arch. ([#3084](https://github.com/kedacore/keda/issues/3084))
+- **General**: Improve e2e on PR process through comments. ([#3004](https://github.com/kedacore/keda/issues/3004))
+- **General**: Improve error message in resolving ServiceAccount for AWS EKS PodIdentity ([#3142](https://github.com/kedacore/keda/issues/3142))
+- **General**: Migrate e2e test to Go. ([#2737](https://github.com/kedacore/keda/issues/2737))
+- **General**: Split e2e test by functionality. ([#3270](https://github.com/kedacore/keda/issues/3270))
+- **General**: Unify the used tooling on different workflows and arch. ([#3092](https://github.com/kedacore/keda/issues/3092))
+- **General**: Use Github's Checks API for e2e tests on PR. ([#2567](https://github.com/kedacore/keda/issues/2567))
 
 ## v2.7.1
 
@@ -486,52 +506,52 @@ None.
 
 ### Other
 
-- **General**: Fix CVE-2022-21221 in `github.com/valyala/fasthttp` ([#2775](https://github.com/kedacore/keda/issues/2775))
 - **General**: Bump Golang to 1.17.9 ([#3016](https://github.com/kedacore/keda/issues/3016))
 - **General**: Fix autoscaling behaviour while paused. ([#3009](https://github.com/kedacore/keda/issues/3009))
+- **General**: Fix CVE-2022-21221 in `github.com/valyala/fasthttp` ([#2775](https://github.com/kedacore/keda/issues/2775))
 
 ## v2.7.0
 
 ### New
 
-- **General:** Introduce annotation `"autoscaling.keda.sh/paused-replicas"` for ScaledObjects to pause scaling at a fixed replica count. ([#944](https://github.com/kedacore/keda/issues/944))
-- **General:** Introduce ARM-based container image for KEDA ([#2263](https://github.com/kedacore/keda/issues/2263)|[#2262](https://github.com/kedacore/keda/issues/2262))
-- **General:** Introduce new AWS DynamoDB Scaler ([#2486](https://github.com/kedacore/keda/issues/2482))
-- **General:** Introduce new Azure Data Explorer Scaler ([#1488](https://github.com/kedacore/keda/issues/1488)|[#2734](https://github.com/kedacore/keda/issues/2734))
-- **General:** Introduce new GCP Stackdriver Scaler ([#2661](https://github.com/kedacore/keda/issues/2661))
-- **General:** Introduce new GCP Storage Scaler ([#2628](https://github.com/kedacore/keda/issues/2628))
-- **General:** Provide support for authentication via Azure Key Vault ([#900](https://github.com/kedacore/keda/issues/900)|[#2733](https://github.com/kedacore/keda/issues/2733))
+- **General**: Introduce annotation `"autoscaling.keda.sh/paused-replicas"` for ScaledObjects to pause scaling at a fixed replica count. ([#944](https://github.com/kedacore/keda/issues/944))
+- **General**: Introduce ARM-based container image for KEDA ([#2263](https://github.com/kedacore/keda/issues/2263)|[#2262](https://github.com/kedacore/keda/issues/2262))
+- **General**: Introduce new AWS DynamoDB Scaler ([#2482](https://github.com/kedacore/keda/issues/2482))
+- **General**: Introduce new Azure Data Explorer Scaler ([#1488](https://github.com/kedacore/keda/issues/1488)|[#2734](https://github.com/kedacore/keda/issues/2734))
+- **General**: Introduce new GCP Stackdriver Scaler ([#2661](https://github.com/kedacore/keda/issues/2661))
+- **General**: Introduce new GCP Storage Scaler ([#2628](https://github.com/kedacore/keda/issues/2628))
+- **General**: Provide support for authentication via Azure Key Vault ([#900](https://github.com/kedacore/keda/issues/900)|[#2733](https://github.com/kedacore/keda/issues/2733))
 - **General**: Support for `ValueMetricType` in `ScaledObject` for all scalers except CPU/Memory ([#2030](https://github.com/kedacore/keda/issues/2030))
 
 ### Improvements
 
-- **General:** Bump dependencies versions ([#2978](https://github.com/kedacore/keda/issues/2978))
-- **General:** Properly handle `restoreToOriginalReplicaCount` if `ScaleTarget` is missing ([#2872](https://github.com/kedacore/keda/issues/2872))
-- **General:** Support for running KEDA secure-by-default as non-root ([#2933](https://github.com/kedacore/keda/issues/2933))
-- **General:** Synchronize HPA annotations from ScaledObject ([#2659](https://github.com/kedacore/keda/pull/2659))
-- **General:** Updated HTTPClient to be proxy-aware, if available, from environment variables. ([#2577](https://github.com/kedacore/keda/issues/2577))
-- **General:** Using manager client in KEDA Metrics Server to avoid flush request to Kubernetes Apiserver([2914](https://github.com/kedacore/keda/issues/2914))
-- **ActiveMQ Scaler:** Add CorsHeader information to ActiveMQ Scaler ([#2884](https://github.com/kedacore/keda/issues/2884))
-- **AWS CloudWatch:** Add support to use expressions([#2998](https://github.com/kedacore/keda/issues/2998))
-- **Azure Application Insights Scaler:** Provide support for non-public clouds ([#2735](https://github.com/kedacore/keda/issues/2735))
-- **Azure Blob Storage Scaler:** Add optional parameters for counting blobs recursively ([#1789](https://github.com/kedacore/keda/issues/1789))
-- **Azure Event Hub Scaler:** Improve logging when blob container not found ([#2363](https://github.com/kedacore/keda/issues/2363))
-- **Azure Event Hub Scaler:** Provide support for non-public clouds ([#1915](https://github.com/kedacore/keda/issues/1915))
-- **Azure Log Analytics Scaler:** Provide support for non-public clouds ([#1916](https://github.com/kedacore/keda/issues/1916))
-- **Azure Monitor Scaler:** Provide support for non-public clouds ([#1917](https://github.com/kedacore/keda/issues/1917))
-- **Azure Queue:** Don't call Azure queue GetProperties API unnecessarily ([#2613](https://github.com/kedacore/keda/pull/2613))
-- **Datadog Scaler:** Validate query to contain `{` to prevent panic on invalid query ([#2625](https://github.com/kedacore/keda/issues/2625))
-- **Datadog Scaler:** Several improvements, including a new optional parameter `metricUnavailableValue` to fill data when no Datadog metric was returned ([#2657](https://github.com/kedacore/keda/issues/2657))
-- **Datadog Scaler:** Rely on Datadog API to validate the query ([2761](https://github.com/kedacore/keda/issues/2761))
-- **Graphite Scaler**  Use the latest non-null datapoint returned by query. ([#2625](https://github.com/kedacore/keda/issues/2944))
-- **Kafka Scaler:** Make "disable" a valid value for tls auth parameter ([#2608](https://github.com/kedacore/keda/issues/2608))
-- **Kafka Scaler:** New `scaleToZeroOnInvalidOffset` to control behavior when partitions have an invalid offset ([#2033](https://github.com/kedacore/keda/issues/2033)[#2612](https://github.com/kedacore/keda/issues/2612))
-- **Metric API Scaler:** Improve error handling on not-ok response ([#2317](https://github.com/kedacore/keda/issues/2317))
-- **New Relic Scaler:** Support to get account value from authentication resources. ([#2883](https://github.com/kedacore/keda/issues/2883))
-- **Prometheus Scaler:** Check and properly inform user that `threshold` is not set ([#2793](https://github.com/kedacore/keda/issues/2793))
-- **Prometheus Scaler:** Support for `X-Scope-OrgID` header ([#2667](https://github.com/kedacore/keda/issues/2667))
-- **RabbitMQ Scaler:** Include `vhost` for RabbitMQ when retrieving queue info with `useRegex` ([#2498](https://github.com/kedacore/keda/issues/2498))
-- **Selenium Grid Scaler:** Consider `maxSession` grid info when scaling. ([#2618](https://github.com/kedacore/keda/issues/2618))
+- **General**: Bump dependencies versions ([#2978](https://github.com/kedacore/keda/issues/2978))
+- **General**: Properly handle `restoreToOriginalReplicaCount` if `ScaleTarget` is missing ([#2872](https://github.com/kedacore/keda/issues/2872))
+- **General**: Support for running KEDA secure-by-default as non-root ([#2933](https://github.com/kedacore/keda/issues/2933))
+- **General**: Synchronize HPA annotations from ScaledObject ([#2659](https://github.com/kedacore/keda/pull/2659))
+- **General**: Updated HTTPClient to be proxy-aware, if available, from environment variables. ([#2577](https://github.com/kedacore/keda/issues/2577))
+- **General**: Using manager client in KEDA Metrics Server to avoid flush request to Kubernetes Apiserver([#2914](https://github.com/kedacore/keda/issues/2914))
+- **ActiveMQ Scaler**: Add CorsHeader information to ActiveMQ Scaler ([#2884](https://github.com/kedacore/keda/issues/2884))
+- **AWS CloudWatch**: Add support to use expressions([#2998](https://github.com/kedacore/keda/issues/2998))
+- **Azure Application Insights Scaler**: Provide support for non-public clouds ([#2735](https://github.com/kedacore/keda/issues/2735))
+- **Azure Blob Storage Scaler**: Add optional parameters for counting blobs recursively ([#1789](https://github.com/kedacore/keda/issues/1789))
+- **Azure Event Hub Scaler**: Improve logging when blob container not found ([#2363](https://github.com/kedacore/keda/issues/2363))
+- **Azure Event Hub Scaler**: Provide support for non-public clouds ([#1915](https://github.com/kedacore/keda/issues/1915))
+- **Azure Log Analytics Scaler**: Provide support for non-public clouds ([#1916](https://github.com/kedacore/keda/issues/1916))
+- **Azure Monitor Scaler**: Provide support for non-public clouds ([#1917](https://github.com/kedacore/keda/issues/1917))
+- **Azure Queue**: Don't call Azure queue GetProperties API unnecessarily ([#2613](https://github.com/kedacore/keda/pull/2613))
+- **Datadog Scaler**: Rely on Datadog API to validate the query ([#2761](https://github.com/kedacore/keda/issues/2761))
+- **Datadog Scaler**: Several improvements, including a new optional parameter `metricUnavailableValue` to fill data when no Datadog metric was returned ([#2657](https://github.com/kedacore/keda/issues/2657))
+- **Datadog Scaler**: Validate query to contain `{` to prevent panic on invalid query ([#2625](https://github.com/kedacore/keda/issues/2625))
+- **Graphite Scaler**: Use the latest non-null datapoint returned by query ([#2944](https://github.com/kedacore/keda/issues/2944))
+- **Kafka Scaler**: Make "disable" a valid value for tls auth parameter ([#2608](https://github.com/kedacore/keda/issues/2608))
+- **Kafka Scaler**: New `scaleToZeroOnInvalidOffset` to control behavior when partitions have an invalid offset ([#2033](https://github.com/kedacore/keda/issues/2033)|[#2612](https://github.com/kedacore/keda/issues/2612))
+- **Metric API Scaler**: Improve error handling on not-ok response ([#2317](https://github.com/kedacore/keda/issues/2317))
+- **New Relic Scaler**: Support to get account value from authentication resources. ([#2883](https://github.com/kedacore/keda/issues/2883))
+- **Prometheus Scaler**: Check and properly inform user that `threshold` is not set ([#2793](https://github.com/kedacore/keda/issues/2793))
+- **Prometheus Scaler**: Support for `X-Scope-OrgID` header ([#2667](https://github.com/kedacore/keda/issues/2667))
+- **RabbitMQ Scaler**: Include `vhost` for RabbitMQ when retrieving queue info with `useRegex` ([#2498](https://github.com/kedacore/keda/issues/2498))
+- **Selenium Grid Scaler**: Consider `maxSession` grid info when scaling. ([#2618](https://github.com/kedacore/keda/issues/2618))
 
 ### Deprecations
 
@@ -543,26 +563,26 @@ None.
 
 ### Other
 
-- **General:** Clean go.mod to fix golangci-lint ([#2783](https://github.com/kedacore/keda/issues/2783))
-- **General:** Consistent file naming in `pkg/scalers/` ([#2806](https://github.com/kedacore/keda/issues/2806))
-- **General:** Fix mismatched errors for updating HPA ([#2719](https://github.com/kedacore/keda/issues/2719))
-- **General:** Improve e2e tests reliability ([#2580](https://github.com/kedacore/keda/issues/2580))
-- **General:** Improve e2e tests to always cleanup resources in cluster ([#2584](https://github.com/kedacore/keda/issues/2584))
-- **General:** Internally represent value and threshold as int64 ([#2790](https://github.com/kedacore/keda/issues/2790))
-- **General:** Refactor active directory endpoint parsing for Azure scalers. ([#2853](https://github.com/kedacore/keda/pull/2853))
-- **AWS CloudWatch:** Adding e2e test ([#1525](https://github.com/kedacore/keda/issues/1525))
-- **AWS DynamoDB:** Setup AWS DynamoDB test account ([#2803](https://github.com/kedacore/keda/issues/2803))
-- **AWS Kinesis Stream:** Adding e2e test ([#1526](https://github.com/kedacore/keda/issues/1526))
-- **AWS SQS Queue:** Adding e2e test ([#1527](https://github.com/kedacore/keda/issues/1527))
-- **Azure Data Explorer:** Adding e2e test ([#2841](https://github.com/kedacore/keda/issues/2841))
-- **Azure Data Explorer:** Replace deprecated function `iter.Next()` in favour of `iter.NextRowOrError()` ([#2989](https://github.com/kedacore/keda/issues/2989))
-- **Azure Service Bus:** Adding e2e test ([#2731](https://github.com/kedacore/keda/issues/2731)|[#2732](https://github.com/kedacore/keda/issues/2732))
-- **External Scaler:** Adding e2e test. ([#2697](https://github.com/kedacore/keda/issues/2697))
-- **External Scaler:** Fix issue with internal KEDA core prefix being passed to external scaler. ([#2640](https://github.com/kedacore/keda/issues/2640))
-- **GCP Pubsub Scaler:** Adding e2e test ([#1528](https://github.com/kedacore/keda/issues/1528))
-- **Hashicorp Vault Secret Provider:** Adding e2e test ([#2842](https://github.com/kedacore/keda/issues/2842))
-- **Memory Scaler:** Adding e2e test ([#2220](https://github.com/kedacore/keda/issues/2220))
-- **Selenium Grid Scaler:** Adding e2e test ([#2791](https://github.com/kedacore/keda/issues/2791))
+- **General**: Clean go.mod to fix golangci-lint ([#2783](https://github.com/kedacore/keda/issues/2783))
+- **General**: Consistent file naming in `pkg/scalers/` ([#2806](https://github.com/kedacore/keda/issues/2806))
+- **General**: Fix mismatched errors for updating HPA ([#2719](https://github.com/kedacore/keda/issues/2719))
+- **General**: Improve e2e tests reliability ([#2580](https://github.com/kedacore/keda/issues/2580))
+- **General**: Improve e2e tests to always cleanup resources in cluster ([#2584](https://github.com/kedacore/keda/issues/2584))
+- **General**: Internally represent value and threshold as int64 ([#2790](https://github.com/kedacore/keda/issues/2790))
+- **General**: Refactor active directory endpoint parsing for Azure scalers. ([#2853](https://github.com/kedacore/keda/pull/2853))
+- **AWS CloudWatch**: Adding e2e test ([#1525](https://github.com/kedacore/keda/issues/1525))
+- **AWS DynamoDB**: Setup AWS DynamoDB test account ([#2803](https://github.com/kedacore/keda/issues/2803))
+- **AWS Kinesis Stream**: Adding e2e test ([#1526](https://github.com/kedacore/keda/issues/1526))
+- **AWS SQS Queue**: Adding e2e test ([#1527](https://github.com/kedacore/keda/issues/1527))
+- **Azure Data Explorer**: Adding e2e test ([#2841](https://github.com/kedacore/keda/issues/2841))
+- **Azure Data Explorer**: Replace deprecated function `iter.Next()` in favour of `iter.NextRowOrError()` ([#2989](https://github.com/kedacore/keda/issues/2989))
+- **Azure Service Bus**: Adding e2e test ([#2731](https://github.com/kedacore/keda/issues/2731)|[#2732](https://github.com/kedacore/keda/issues/2732))
+- **External Scaler**: Adding e2e test. ([#2697](https://github.com/kedacore/keda/issues/2697))
+- **External Scaler**: Fix issue with internal KEDA core prefix being passed to external scaler. ([#2640](https://github.com/kedacore/keda/issues/2640))
+- **GCP Pubsub Scaler**: Adding e2e test ([#1528](https://github.com/kedacore/keda/issues/1528))
+- **Hashicorp Vault Secret Provider**: Adding e2e test ([#2842](https://github.com/kedacore/keda/issues/2842))
+- **Memory Scaler**: Adding e2e test ([#2220](https://github.com/kedacore/keda/issues/2220))
+- **Selenium Grid Scaler**: Adding e2e test ([#2791](https://github.com/kedacore/keda/issues/2791))
 
 ## v2.6.1
 
@@ -573,7 +593,7 @@ None.
 
 ### Other
 
-- **General:** Fix failing tests based on the scale to zero bug ([#2603](https://github.com/kedacore/keda/issues/2603))
+- **General**: Fix failing tests based on the scale to zero bug ([#2603](https://github.com/kedacore/keda/issues/2603))
 
 ## v2.6.0
 
@@ -587,22 +607,22 @@ None.
 
 ### Improvements
 
-- **General:** Delete the cache entry when a ScaledObject is deleted ([#2564](https://github.com/kedacore/keda/pull/2564))
-- **General:** Fail fast on `buildScalers` when not able to resolve a secret that a deployment is relying on ([#2394](https://github.com/kedacore/keda/pull/2394))
-- **General:** `keda-operator` Cluster Role: add `list` and `watch` access to service accounts ([#2406](https://github.com/kedacore/keda/pull/2406))|([#2410](https://github.com/kedacore/keda/pull/2410))
-- **General:** Sign KEDA images published on GitHub Container Registry ([#2501](https://github.com/kedacore/keda/pull/2501))|([#2502](https://github.com/kedacore/keda/pull/2502))|([#2504](https://github.com/kedacore/keda/pull/2504))
-- **AWS Scalers:** Support temporary AWS credentials using session tokens ([#2573](https://github.com/kedacore/keda/pull/2573))
-- **AWS SQS Scaler:** Allow using simple queue name instead of URL ([#2483](https://github.com/kedacore/keda/pull/2483))
-- **Azure EventHub Scaler:** Don't expose connection string in metricName ([#2404](https://github.com/kedacore/keda/pull/2404))
-- **Azure Pipelines Scaler:** Support `poolName` or `poolID` validation ([#2370](https://github.com/kedacore/keda/pull/2370))
-- **CPU Scaler:** Adding e2e test for the cpu scaler ([#2441](https://github.com/kedacore/keda/pull/2441))
-- **External Scaler:** Fix wrong calculation of retry backoff duration ([#2416](https://github.com/kedacore/keda/pull/2416))
-- **Graphite Scaler:** Use the latest datapoint returned, not the earliest ([#2365](https://github.com/kedacore/keda/pull/2365))
-- **Kafka Scaler:** Allow flag `topic` to be optional, where lag of all topics within the consumer group will be used for scaling ([#2409](https://github.com/kedacore/keda/pull/2409))
-- **Kafka Scaler:** Concurrently query brokers for consumer and producer offsets ([#2405](https://github.com/kedacore/keda/pull/2405))
-- **Kubernetes Workload Scaler:** Ignore terminated pods ([#2384](https://github.com/kedacore/keda/pull/2384))
-- **PostgreSQL Scaler:** Assign PostgreSQL `userName` to correct attribute ([#2432](https://github.com/kedacore/keda/pull/2432))|([#2433](https://github.com/kedacore/keda/pull/2433))
-- **Prometheus Scaler:** Support namespaced Prometheus queries ([#2575](https://github.com/kedacore/keda/issues/2575))
+- **General**: Delete the cache entry when a ScaledObject is deleted ([#2564](https://github.com/kedacore/keda/pull/2564))
+- **General**: Fail fast on `buildScalers` when not able to resolve a secret that a deployment is relying on ([#2394](https://github.com/kedacore/keda/pull/2394))
+- **General**: `keda-operator` Cluster Role: add `list` and `watch` access to service accounts ([#2406](https://github.com/kedacore/keda/pull/2406))|([#2410](https://github.com/kedacore/keda/pull/2410))
+- **General**: Sign KEDA images published on GitHub Container Registry ([#2501](https://github.com/kedacore/keda/pull/2501))|([#2502](https://github.com/kedacore/keda/pull/2502))|([#2504](https://github.com/kedacore/keda/pull/2504))
+- **AWS Scalers**: Support temporary AWS credentials using session tokens ([#2573](https://github.com/kedacore/keda/pull/2573))
+- **AWS SQS Scaler**: Allow using simple queue name instead of URL ([#2483](https://github.com/kedacore/keda/pull/2483))
+- **Azure EventHub Scaler**: Don't expose connection string in metricName ([#2404](https://github.com/kedacore/keda/pull/2404))
+- **Azure Pipelines Scaler**: Support `poolName` or `poolID` validation ([#2370](https://github.com/kedacore/keda/pull/2370))
+- **CPU Scaler**: Adding e2e test for the cpu scaler ([#2441](https://github.com/kedacore/keda/pull/2441))
+- **External Scaler**: Fix wrong calculation of retry backoff duration ([#2416](https://github.com/kedacore/keda/pull/2416))
+- **Graphite Scaler**: Use the latest datapoint returned, not the earliest ([#2365](https://github.com/kedacore/keda/pull/2365))
+- **Kafka Scaler**: Allow flag `topic` to be optional, where lag of all topics within the consumer group will be used for scaling ([#2409](https://github.com/kedacore/keda/pull/2409))
+- **Kafka Scaler**: Concurrently query brokers for consumer and producer offsets ([#2405](https://github.com/kedacore/keda/pull/2405))
+- **Kubernetes Workload Scaler**: Ignore terminated pods ([#2384](https://github.com/kedacore/keda/pull/2384))
+- **PostgreSQL Scaler**: Assign PostgreSQL `userName` to correct attribute ([#2432](https://github.com/kedacore/keda/pull/2432))|([#2433](https://github.com/kedacore/keda/pull/2433))
+- **Prometheus Scaler**: Support namespaced Prometheus queries ([#2575](https://github.com/kedacore/keda/issues/2575))
 
 ### Breaking Changes
 
