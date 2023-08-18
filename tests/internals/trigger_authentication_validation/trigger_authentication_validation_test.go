@@ -95,7 +95,7 @@ spec:
 apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
-  name: {{.TriggerAuthEmptyIDName}}
+  name: {{.TriggerAuthWorkloadEmptyIDName}}
   namespace: {{.TestNamespace}}
 spec:
   podIdentity:
@@ -107,7 +107,7 @@ spec:
 apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
-  name: {{.TriggerAuthNilIDName}}
+  name: {{.TriggerAuthWorkloadNilIDName}}
   namespace: {{.TestNamespace}}
 spec:
   podIdentity:
@@ -117,7 +117,7 @@ spec:
 apiVersion: keda.sh/v1alpha1
 kind: ClusterTriggerAuthentication
 metadata:
-  name: {{.ClusterTriggerAuthEmptyIDName}}
+  name: {{.ClusterTriggerAuthWorkloadEmptyIDName}}
 spec:
   podIdentity:
     provider: azure-workload
@@ -128,7 +128,7 @@ spec:
 apiVersion: keda.sh/v1alpha1
 kind: ClusterTriggerAuthentication
 metadata:
-  name: {{.ClusterTriggerAuthNilIDName}}
+  name: {{.ClusterTriggerAuthWorkloadNilIDName}}
 spec:
   podIdentity:
     provider: azure-workload
@@ -203,7 +203,7 @@ func testClusterTriggerAuthenticationWithEmptyID(t *testing.T, _ *kubernetes.Cli
 	err := KubectlApplyWithErrors(t, data, "clusterTriggerAuthEmptyIDTemplate", clusterTriggerAuthEmptyIDTemplate)
 	assert.Errorf(t, err, "can deploy ClusterTriggerAuthtication - %s", err)
 
-	err = KubectlApplyWithErrors(t, data, "clusterTriggerAuthWorkloadEmptyIDName", clusterTriggerAuthWorkloadEmptyIDName)
+	err = KubectlApplyWithErrors(t, data, "clusterTriggerAuthWorkloadEmptyIDTemplate", clusterTriggerAuthWorkloadEmptyIDTemplate)
 	assert.Errorf(t, err, "can deploy ClusterTriggerAuthtication with azureworkload - %s", err)
 }
 
