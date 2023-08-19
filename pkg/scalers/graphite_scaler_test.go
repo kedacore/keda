@@ -38,8 +38,8 @@ var testGrapMetadata = []parseGraphiteMetadataTestData{
 }
 
 var graphiteMetricIdentifiers = []graphiteMetricIdentifier{
-	{&testGrapMetadata[1], 0, "s0-graphite-graphite"},
-	{&testGrapMetadata[1], 1, "s1-graphite-graphite"},
+	{&testGrapMetadata[1], 0, "s0-graphite"},
+	{&testGrapMetadata[1], 1, "s1-graphite"},
 }
 
 type graphiteAuthMetadataTestData struct {

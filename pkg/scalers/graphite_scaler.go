@@ -35,7 +35,6 @@ type graphiteScaler struct {
 
 type graphiteMetadata struct {
 	serverAddress       string
-	metricName          string
 	query               string
 	threshold           float64
 	activationThreshold float64
@@ -90,8 +89,6 @@ func parseGraphiteMetadata(config *ScalerConfig) (*graphiteMetadata, error) {
 	} else {
 		return nil, fmt.Errorf("no %s given", graphiteQuery)
 	}
-
-	meta.metricName = "graphite"
 
 	if val, ok := config.TriggerMetadata[graphiteQueryTime]; ok && val != "" {
 		meta.from = val
@@ -150,7 +147,7 @@ func (s *graphiteScaler) Close(context.Context) error {
 func (s *graphiteScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("graphite-%s", s.metadata.metricName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, "graphite"),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}

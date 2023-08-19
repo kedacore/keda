@@ -62,9 +62,6 @@ type mssqlMetadata struct {
 	// The threshold that is used in activation phase
 	// +optional
 	activationTargetValue float64
-	// The name of the metric to use in the Horizontal Pod Autoscaler. This value will be prefixed with "mssql-".
-	// +optional
-	metricName string
 	// The index of the scaler inside the ScaledObject
 	// +internal
 	scalerIndex int
@@ -166,7 +163,6 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 			meta.password = config.ResolvedEnv[config.TriggerMetadata["passwordFromEnv"]]
 		}
 	}
-	meta.metricName = "mssql"
 	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil
 }
@@ -227,7 +223,7 @@ func getMSSQLConnectionString(meta *mssqlMetadata) string {
 func (s *mssqlScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, "mssql"),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.targetValue),
 	}

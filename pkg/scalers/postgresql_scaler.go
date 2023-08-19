@@ -28,7 +28,6 @@ type postgreSQLMetadata struct {
 	activationTargetQueryValue float64
 	connection                 string
 	query                      string
-	metricName                 string
 	scalerIndex                int
 }
 
@@ -134,7 +133,6 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 		params = append(params, "password="+escapePostgreConnectionParameter(password))
 		meta.connection = strings.Join(params, " ")
 	}
-	meta.metricName = kedautil.NormalizeString("postgresql")
 	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil
 }
@@ -177,7 +175,7 @@ func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (float64, error)
 func (s *postgreSQLScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString("postgresql")),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.targetQueryValue),
 	}

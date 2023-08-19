@@ -47,7 +47,6 @@ type prometheusScaler struct {
 
 type prometheusMetadata struct {
 	serverAddress       string
-	metricName          string
 	query               string
 	threshold           float64
 	activationThreshold float64
@@ -152,7 +151,6 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 		return nil, fmt.Errorf("no %s given", promQuery)
 	}
 
-	meta.metricName = "prometheus"
 	if val, ok := config.TriggerMetadata[promThreshold]; ok && val != "" {
 		t, err := strconv.ParseFloat(val, 64)
 		if err != nil {
@@ -241,7 +239,7 @@ func (s *prometheusScaler) Close(context.Context) error {
 }
 
 func (s *prometheusScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
-	metricName := kedautil.NormalizeString(fmt.Sprintf("prometheus-%s", s.metadata.metricName))
+	metricName := kedautil.NormalizeString("prometheus")
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
@@ -259,7 +257,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	queryEscaped := url_pkg.QueryEscape(s.metadata.query)
 	url := fmt.Sprintf("%s/api/v1/query?query=%s&time=%s", s.metadata.serverAddress, queryEscaped, t)
 
-	// set 'namespace' parameter for namespaced Prometheus requests (eg. for Thanos Querier)
+	// set 'namespace' parameter for namespaced Prometheus requests (e.g. for Thanos Querier)
 	if s.metadata.namespace != "" {
 		url = fmt.Sprintf("%s&namespace=%s", url, s.metadata.namespace)
 	}
@@ -314,7 +312,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		if s.metadata.ignoreNullValues {
 			return 0, nil
 		}
-		return -1, fmt.Errorf("prometheus metrics %s target may be lost, the result is empty", s.metadata.metricName)
+		return -1, fmt.Errorf("prometheus metrics 'prometheus' target may be lost, the result is empty")
 	} else if len(result.Data.Result) > 1 {
 		return -1, fmt.Errorf("prometheus query %s returned multiple elements", s.metadata.query)
 	}
@@ -324,7 +322,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		if s.metadata.ignoreNullValues {
 			return 0, nil
 		}
-		return -1, fmt.Errorf("prometheus metrics %s target may be lost, the value list is empty", s.metadata.metricName)
+		return -1, fmt.Errorf("prometheus metrics 'prometheus' target may be lost, the value list is empty")
 	} else if valueLen < 2 {
 		return -1, fmt.Errorf("prometheus query %s didn't return enough values", s.metadata.query)
 	}

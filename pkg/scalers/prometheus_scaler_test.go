@@ -63,8 +63,8 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 }
 
 var prometheusMetricIdentifiers = []prometheusMetricIdentifier{
-	{&testPromMetadata[1], 0, "s0-prometheus-prometheus"},
-	{&testPromMetadata[1], 1, "s1-prometheus-prometheus"},
+	{&testPromMetadata[1], 0, "s0-prometheus"},
+	{&testPromMetadata[1], 1, "s1-prometheus"},
 }
 
 type prometheusAuthMetadataTestData struct {

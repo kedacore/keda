@@ -34,16 +34,16 @@ type mongoDBMetadata struct {
 	// The string is used by connected with mongoDB.
 	// +optional
 	connectionString string
-	// Specify the host to connect to the mongoDB server,if the connectionString be provided, don't need specify this param.
+	// Specify the host to connect to the mongoDB server,if the connectionString be provided, don't need to specify this param.
 	// +optional
 	host string
-	// Specify the port to connect to the mongoDB server,if the connectionString be provided, don't need specify this param.
+	// Specify the port to connect to the mongoDB server,if the connectionString be provided, don't need to specify this param.
 	// +optional
 	port string
-	// Specify the username to connect to the mongoDB server,if the connectionString be provided, don't need specify this param.
+	// Specify the username to connect to the mongoDB server,if the connectionString be provided, don't need to specify this param.
 	// +optional
 	username string
-	// Specify the password to connect to the mongoDB server,if the connectionString be provided, don't need specify this param.
+	// Specify the password to connect to the mongoDB server,if the connectionString be provided, don't need to specify this param.
 	// +optional
 	password string
 
@@ -62,9 +62,6 @@ type mongoDBMetadata struct {
 	// A threshold that is used to check if scaler is active
 	// +optional
 	activationQueryValue int64
-	// The name of the metric to use in the Horizontal Pod Autoscaler. This value will be prefixed with "mongodb-".
-	// +optional
-	metricName string
 
 	// The index of the scaler inside the ScaledObject
 	// +internal
@@ -197,7 +194,6 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 		// nosemgrep: db-connection-string
 		connStr = fmt.Sprintf("mongodb://%s:%s@%s/%s", url.QueryEscape(meta.username), url.QueryEscape(meta.password), addr, meta.dbName)
 	}
-	meta.metricName = kedautil.NormalizeString(fmt.Sprintf("mongodb-%s", meta.collection))
 	meta.scalerIndex = config.ScalerIndex
 	return &meta, connStr, nil
 }
@@ -251,7 +247,7 @@ func (s *mongoDBScaler) GetMetricsAndActivity(ctx context.Context, metricName st
 func (s *mongoDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("mongodb-%s", s.metadata.collection))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.queryValue),
 	}

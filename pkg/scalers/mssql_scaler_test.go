@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"context"
 	"errors"
 	"testing"
 )
@@ -17,7 +18,13 @@ type mssqlTestData struct {
 	expectedError            error
 }
 
-var testInputs = []mssqlTestData{
+type mssqlMetricIdentifier struct {
+	metadataTestData *mssqlTestData
+	scalerIndex      int
+	name             string
+}
+
+var testMssqlMetadata = []mssqlTestData{
 	// direct connection string input
 	{
 		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1"},
@@ -108,8 +115,13 @@ var testInputs = []mssqlTestData{
 	},
 }
 
+var mssqlMetricIdentifiers = []mssqlMetricIdentifier{
+	{&testMssqlMetadata[0], 0, "s0-mssql"},
+	{&testMssqlMetadata[1], 1, "s1-mssql"},
+}
+
 func TestMSSQLMetadataParsing(t *testing.T) {
-	for _, testData := range testInputs {
+	for _, testData := range testMssqlMetadata {
 		var config = ScalerConfig{
 			ResolvedEnv:     testData.resolvedEnv,
 			TriggerMetadata: testData.metadata,
@@ -142,8 +154,30 @@ func TestMSSQLMetadataParsing(t *testing.T) {
 			t.Errorf("Wrong connection string. Expected '%s' but got '%s'", testData.expectedConnectionString, outputConnectionString)
 		}
 
-		if testData.expectedMetricName != "" && testData.expectedMetricName != outputMetadata.metricName {
-			t.Errorf("Wrong metric name. Expected '%s' but got '%s'", testData.expectedMetricName, outputMetadata.metricName)
+	}
+}
+
+func TestMSSQLGetMetricSpecForScaling(t *testing.T) {
+	for _, testData := range mssqlMetricIdentifiers {
+		ctx := context.Background()
+		var config = ScalerConfig{
+			ResolvedEnv:     testData.metadataTestData.resolvedEnv,
+			TriggerMetadata: testData.metadataTestData.metadata,
+			AuthParams:      testData.metadataTestData.authParams,
+			ScalerIndex:     testData.scalerIndex,
+		}
+		meta, err := parseMSSQLMetadata(&config)
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+
+		mockMssqlScaler := mssqlScaler{
+			metadata: meta,
+		}
+		metricSpec := mockMssqlScaler.GetMetricSpecForScaling(ctx)
+		metricName := metricSpec[0].External.Metric.Name
+		if metricName != testData.name {
+			t.Error("Wrong External metric source name:", metricName, testData.name)
 		}
 	}
 }
