@@ -213,12 +213,6 @@ func TestLogAnalyticsGetMetricSpecForScaling(t *testing.T) {
 	}
 }
 
-type parseMetadataMetricNameTestData struct {
-	metadata    map[string]string
-	scalerIndex int
-	metricName  string
-}
-
 type parseLogAnalyticsMetadataTestUnsafeSsl struct {
 	metadata  map[string]string
 	unsafeSsl bool

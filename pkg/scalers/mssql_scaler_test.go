@@ -153,7 +153,6 @@ func TestMSSQLMetadataParsing(t *testing.T) {
 		if testData.expectedConnectionString != outputConnectionString {
 			t.Errorf("Wrong connection string. Expected '%s' but got '%s'", testData.expectedConnectionString, outputConnectionString)
 		}
-
 	}
 }
 
