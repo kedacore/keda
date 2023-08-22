@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	// "fmt"
-	// "net/http"
 
 	// "github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -27,20 +26,6 @@ var otLog = logf.Log.WithName("prometheus_server")
 
 const meterName = "keda-open-telemetry-metrics"
 
-// func raw_connect(host string, ports []string) {
-// 	for _, port := range ports {
-// 		timeout := time.Second
-// 		conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, port), timeout)
-// 		if err != nil {
-// 			fmt.Println("Connecting error:", err)
-// 		}
-// 		if conn != nil {
-// 			defer conn.Close()
-// 			fmt.Println("Opened", net.JoinHostPort(host, port))
-// 		}
-// 	}
-// }
-
 var (
 	meterProvider                 *metric.MeterProvider
 	meter                         api.Meter
@@ -49,21 +34,17 @@ var (
 	otScalerMetricsLatencyCounter api.Float64UpDownCounter
 	otInternalLoopLatencyCounter  api.Float64UpDownCounter
 	otScalerActiveCounter         api.Int64UpDownCounter
+	otErrorsTotalCounter          api.Int64Counter
 	otScalerErrorsCounter         api.Int64Counter
 	otScaledObjectErrorsCounter   api.Int64Counter
 	otTriggerTotalsCounter        api.Int64UpDownCounter
 	otCrdTotalsCounter            api.Int64UpDownCounter
-	ctx                           context.Context
 )
 
 type OtelMetrics struct {
 }
 
 func NewOtelMetrics(options ...metric.Option) *OtelMetrics {
-
-	ctx := context.Background()
-	fmt.Printf("serving metrics at localhost:2222/metrics")
-
 	// create default options with env
 	if options == nil {
 		exporter, err := otlpmetrichttp.New(context.Background())
@@ -93,22 +74,7 @@ func initCounter() {
 		otLog.Error(err, msg)
 	}
 
-	otScalerMetricsValueCounter, err = meter.Float64UpDownCounter("scaler.metrics.value", api.WithDescription("Metric Value used for HPA"))
-	if err != nil {
-		otLog.Error(err, msg)
-	}
-
-	otScalerMetricsLatencyCounter, err = meter.Float64UpDownCounter("scaler.metrics.latency", api.WithDescription("Scaler Metrics Latency"))
-	if err != nil {
-		otLog.Error(err, msg)
-	}
-
-	otInternalLoopLatencyCounter, err = meter.Float64UpDownCounter("internal.scale.loop.latency", api.WithDescription("Internal latency of ScaledObject/ScaledJob loop execution"))
-	if err != nil {
-		otLog.Error(err, msg)
-	}
-
-	otScalerActiveCounter, err = meter.Int64UpDownCounter("scaler.active", api.WithDescription("Activity of a Scaler Metric"))
+	otErrorsTotalCounter, err = meter.Int64Counter("scaler.errors.total", api.WithDescription("Total number of errors for all scalers"))
 	if err != nil {
 		otLog.Error(err, msg)
 	}
@@ -135,12 +101,34 @@ func initCounter() {
 }
 
 func (o *OtelMetrics) RecordScalerMetric(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64) {
-	otScalerMetricsValueCounter.Add(context.Background(), value, getScalerMeasurementOption(namespace, scaledObject, scaler, scalerIndex, metric))
+	cback := func(ctx context.Context, obsrv api.Float64Observer) error {
+		obsrv.Observe(value, getScalerMeasurementOption(namespace, scaledObject, scaler, scalerIndex, metric))
+		return nil
+	}
+	_, err := meter.Float64ObservableGauge(
+		"scaler.metrics.value",
+		api.WithDescription("Metric Value used for HPA"),
+		api.WithFloat64Callback(cback),
+	)
+	if err != nil {
+		fmt.Println("failed to register scaler metrics value")
+	}
 }
 
 // RecordScalerLatency create a measurement of the latency to external metric
 func (o *OtelMetrics) RecordScalerLatency(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64) {
-	otScalerMetricsLatencyCounter.Add(context.Background(), value, getScalerMeasurementOption(namespace, scaledObject, scaler, scalerIndex, metric))
+	cback := func(ctx context.Context, obsrv api.Float64Observer) error {
+		obsrv.Observe(value, getScalerMeasurementOption(namespace, scaledObject, scaler, scalerIndex, metric))
+		return nil
+	}
+	_, err := meter.Float64ObservableGauge(
+		"scaler.metrics.latency",
+		api.WithDescription("Scaler Metrics Latency"),
+		api.WithFloat64Callback(cback),
+	)
+	if err != nil {
+		fmt.Println("failed to register scaler metrics latency")
+	}
 }
 
 // RecordScaledObjectLatency create a measurement of the latency executing scalable object loop
@@ -154,7 +142,19 @@ func (o *OtelMetrics) RecordScalableObjectLatency(namespace string, name string,
 		attribute.Key("namespace").String(namespace),
 		attribute.Key("resourceType").String(resourceType),
 		attribute.Key("name").String(name))
-	otInternalLoopLatencyCounter.Add(context.Background(), value, opt)
+
+	cback := func(ctx context.Context, obsrv api.Float64Observer) error {
+		obsrv.Observe(value, opt)
+		return nil
+	}
+	_, err := meter.Float64ObservableGauge(
+		"internal.scale.loop.latency",
+		api.WithDescription("Internal latency of ScaledObject/ScaledJob loop execution"),
+		api.WithFloat64Callback(cback),
+	)
+	if err != nil {
+		fmt.Println("failed to register internal scale loop latency")
+	}
 }
 
 // RecordScalerActive create a measurement of the activity of the scaler
@@ -164,7 +164,18 @@ func (o *OtelMetrics) RecordScalerActive(namespace string, scaledObject string, 
 		activeVal = 1
 	}
 
-	otScalerActiveCounter.Add(context.Background(), int64(activeVal), getScalerMeasurementOption(namespace, scaledObject, scaler, scalerIndex, metric))
+	cback := func(ctx context.Context, obsrv api.Float64Observer) error {
+		obsrv.Observe(float64(activeVal), getScalerMeasurementOption(namespace, scaledObject, scaler, scalerIndex, metric))
+		return nil
+	}
+	_, err := meter.Float64ObservableGauge(
+		"scaler.active",
+		api.WithDescription("Activity of a Scaler Metric"),
+		api.WithFloat64Callback(cback),
+	)
+	if err != nil {
+		fmt.Println("failed to register internal scale loop latency")
+	}
 }
 
 // RecordScalerError counts the number of errors occurred in trying get an external metric used by the HPA
@@ -172,7 +183,7 @@ func (o *OtelMetrics) RecordScalerError(namespace string, scaledObject string, s
 	if err != nil {
 		otScalerErrorsCounter.Add(context.Background(), 1, getScalerMeasurementOption(namespace, scaledObject, scaler, scalerIndex, metric))
 		o.RecordScaledObjectError(namespace, scaledObject, err)
-		otScaledObjectErrorsCounter.Add(context.Background(), 1)
+		otErrorsTotalCounter.Add(context.Background(), 1)
 		return
 	}
 }
@@ -239,7 +250,6 @@ func (o *OtelMetrics) DecrementCRDTotal(crdType, namespace string) {
 func getScalerMeasurementOption(namespace string, scaledObject string, scaler string, scalerIndex int, metric string) api.MeasurementOption {
 	return api.WithAttributes(
 		attribute.Key("namespace").String(namespace),
-		attribute.Key("scaledObject").String(scaledObject),
 		attribute.Key("scaledObject").String(scaledObject),
 		attribute.Key("scaler").String(scaler),
 		attribute.Key("scalerIndex").String(strconv.Itoa(scalerIndex)),

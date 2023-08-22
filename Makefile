@@ -285,6 +285,10 @@ deploy: install ## Deploy controller to the K8s cluster specified in ~/.kube/con
 		cd config/service_account && \
 		$(KUSTOMIZE) edit add annotation --force cloud.google.com/workload-identity-provider:${GCP_WI_PROVIDER} cloud.google.com/service-account-email:${TF_GCP_SA_EMAIL} cloud.google.com/gcloud-run-as-user:${NON_ROOT_USER_ID}; \
 	fi
+	if [ "$(OEPNTELEMETRY_RUN_TESTS)" = true ]; then \
+		cd config/e2e && \
+		$(KUSTOMIZE) edit add component ../../tests/opentelemetry_setup/keda_setup/; \
+	fi
 
 	cd config/webhooks && \
 	$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-admission-webhooks=${IMAGE_WEBHOOKS}

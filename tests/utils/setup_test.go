@@ -167,6 +167,32 @@ func TesVerifyPodsIdentity(t *testing.T) {
 	}
 }
 
+func TestSetupOpentelemetryComponents(t *testing.T) {
+	if OpentelemetryTests == "" || OpentelemetryTests == StringFalse {
+		t.Skip("skipping opentelemetry tests are disabled")
+	}
+
+	_, err := ExecuteCommand("helm version")
+	require.NoErrorf(t, err, "helm is not installed - %s", err)
+
+	_, err = ExecuteCommand("helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts")
+	require.NoErrorf(t, err, "cannot add open-telemetry helm repo - %s", err)
+
+	_, err = ExecuteCommand("helm repo update open-telemetry")
+	require.NoErrorf(t, err, "cannot update open-telemetry helm repo - %s", err)
+
+	KubeClient = GetKubernetesClient(t)
+	CreateNamespace(t, KubeClient, OpentelemetryNamespace)
+
+	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install opentelemetry-collector open-telemetry/opentelemetry-collector  --namespace %s -f ../opentelemetry_setup/otlp.yml",
+		OpentelemetryNamespace))
+
+	require.NoErrorf(t, err, "cannot install opentelemetry - %s", err)
+
+	_, err = ExecuteCommand("kubectl apply -f ../opentelemetry_setup/service.yml")
+	require.NoErrorf(t, err, "cannot update opentelemetry ports - %s", err)
+}
+
 func TestDeployKEDA(t *testing.T) {
 	KubeClient = GetKubernetesClient(t)
 	CreateNamespace(t, KubeClient, KEDANamespace)

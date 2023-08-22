@@ -1,0 +1,25 @@
+mode: deployment
+config:
+  exporters:
+    logging:
+      loglevel: debug
+    prometheus:
+      endpoint: 0.0.0.0:8889
+      namespace: "e2e_test"
+  receivers:
+    jaeger: null
+    prometheus: null
+    zipkin: null
+  service:
+    #telemetry:
+    # metrics:
+    #   address: ":7888"
+    pipelines:
+      traces: null
+      metrics: 
+        receivers:
+          - otlp
+        exporters:
+          - logging
+          - prometheus
+      logs: null

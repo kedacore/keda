@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: opentelemetry-collector
+  namespace: open-telemetry-system
+spec:
+  selector:
+    app.kubernetes.io/name: opentelemetry-collector
+  ports:
+    - protocol: TCP
+      port: 8889
+      targetPort: 8889
+      name: prometheus
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opentelemetry-collector
+  namespace: open-telemetry-system
+spec:
+  template:
+    spec:
+      containers:
+      - name: opentelemetry-collector
+        ports:
+        - containerPort: 8889
+          name: prometheus
+          protocol: TCP
+
+  

@@ -73,6 +73,19 @@ func TestRemoveGcpIdentityComponents(t *testing.T) {
 	DeleteNamespace(t, GcpIdentityNamespace)
 }
 
+func TestRemoveOpentelemetryComponents(t *testing.T) {
+	if OpentelemetryNamespace == "" || OpentelemetryNamespace == StringFalse {
+		t.Skip("skipping as opentelemetry tests are disabled")
+	}
+
+	_, err := ExecuteCommand(fmt.Sprintf("helm uninstall opentelemetry-collector --namespace %s", OpentelemetryNamespace))
+	require.NoErrorf(t, err, "cannot uninstall opentelemetry-collector - %s", err)
+
+	KubeClient = GetKubernetesClient(t)
+
+	DeleteNamespace(t, OpentelemetryNamespace)
+}
+
 func TestRemoveCertManager(t *testing.T) {
 	if !InstallCertManager {
 		t.Skip("skipping as cert manager isn't required")
