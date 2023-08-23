@@ -24,29 +24,29 @@ var testCassandraMetadata = []parseCassandraMetadataTestData{
 	// nothing passed
 	{map[string]string{}, true, map[string]string{}},
 	// everything is passed in verbatim
-	{map[string]string{"query": "SELECT COUNT(*) FROM test_keyspace.test_table;", "targetQueryValue": "1", "username": "cassandra", "port": "9042", "clusterIPAddress": "cassandra.test", "keyspace": "test_keyspace", "ScalerIndex": "0", "metricName": "myMetric"}, false, map[string]string{"password": "Y2Fzc2FuZHJhCg=="}},
-	// no metricName passed, metricName is generated from keyspace
+	{map[string]string{"query": "SELECT COUNT(*) FROM test_keyspace.test_table;", "targetQueryValue": "1", "username": "cassandra", "port": "9042", "clusterIPAddress": "cassandra.test", "keyspace": "test_keyspace", "ScalerIndex": "0"}, false, map[string]string{"password": "Y2Fzc2FuZHJhCg=="}},
+	// metricName is generated from keyspace
 	{map[string]string{"query": "SELECT COUNT(*) FROM test_keyspace.test_table;", "targetQueryValue": "1", "username": "cassandra", "clusterIPAddress": "cassandra.test:9042", "keyspace": "test_keyspace", "ScalerIndex": "0"}, false, map[string]string{"password": "Y2Fzc2FuZHJhCg=="}},
 	// no query passed
-	{map[string]string{"targetQueryValue": "1", "username": "cassandra", "clusterIPAddress": "cassandra.test:9042", "keyspace": "test_keyspace", "ScalerIndex": "0", "metricName": "myMetric"}, true, map[string]string{"password": "Y2Fzc2FuZHJhCg=="}},
+	{map[string]string{"targetQueryValue": "1", "username": "cassandra", "clusterIPAddress": "cassandra.test:9042", "keyspace": "test_keyspace", "ScalerIndex": "0"}, true, map[string]string{"password": "Y2Fzc2FuZHJhCg=="}},
 	// no targetQueryValue passed
-	{map[string]string{"query": "SELECT COUNT(*) FROM test_keyspace.test_table;", "username": "cassandra", "clusterIPAddress": "cassandra.test:9042", "keyspace": "test_keyspace", "ScalerIndex": "0", "metricName": "myMetric"}, true, map[string]string{"password": "Y2Fzc2FuZHJhCg=="}},
+	{map[string]string{"query": "SELECT COUNT(*) FROM test_keyspace.test_table;", "username": "cassandra", "clusterIPAddress": "cassandra.test:9042", "keyspace": "test_keyspace", "ScalerIndex": "0"}, true, map[string]string{"password": "Y2Fzc2FuZHJhCg=="}},
 	// no username passed
-	{map[string]string{"query": "SELECT COUNT(*) FROM test_keyspace.test_table;", "targetQueryValue": "1", "clusterIPAddress": "cassandra.test:9042", "keyspace": "test_keyspace", "ScalerIndex": "0", "metricName": "myMetric"}, true, map[string]string{"password": "Y2Fzc2FuZHJhCg=="}},
+	{map[string]string{"query": "SELECT COUNT(*) FROM test_keyspace.test_table;", "targetQueryValue": "1", "clusterIPAddress": "cassandra.test:9042", "keyspace": "test_keyspace", "ScalerIndex": "0"}, true, map[string]string{"password": "Y2Fzc2FuZHJhCg=="}},
 	// no port passed
-	{map[string]string{"query": "SELECT COUNT(*) FROM test_keyspace.test_table;", "targetQueryValue": "1", "username": "cassandra", "clusterIPAddress": "cassandra.test", "keyspace": "test_keyspace", "ScalerIndex": "0", "metricName": "myMetric"}, true, map[string]string{"password": "Y2Fzc2FuZHJhCg=="}},
+	{map[string]string{"query": "SELECT COUNT(*) FROM test_keyspace.test_table;", "targetQueryValue": "1", "username": "cassandra", "clusterIPAddress": "cassandra.test", "keyspace": "test_keyspace", "ScalerIndex": "0"}, true, map[string]string{"password": "Y2Fzc2FuZHJhCg=="}},
 	// no clusterIPAddress passed
-	{map[string]string{"query": "SELECT COUNT(*) FROM test_keyspace.test_table;", "targetQueryValue": "1", "username": "cassandra", "port": "9042", "keyspace": "test_keyspace", "ScalerIndex": "0", "metricName": "myMetric"}, true, map[string]string{"password": "Y2Fzc2FuZHJhCg=="}},
+	{map[string]string{"query": "SELECT COUNT(*) FROM test_keyspace.test_table;", "targetQueryValue": "1", "username": "cassandra", "port": "9042", "keyspace": "test_keyspace", "ScalerIndex": "0"}, true, map[string]string{"password": "Y2Fzc2FuZHJhCg=="}},
 	// no keyspace passed
-	{map[string]string{"query": "SELECT COUNT(*) FROM test_keyspace.test_table;", "targetQueryValue": "1", "username": "cassandra", "clusterIPAddress": "cassandra.test:9042", "ScalerIndex": "0", "metricName": "myMetric"}, true, map[string]string{"password": "Y2Fzc2FuZHJhCg=="}},
+	{map[string]string{"query": "SELECT COUNT(*) FROM test_keyspace.test_table;", "targetQueryValue": "1", "username": "cassandra", "clusterIPAddress": "cassandra.test:9042", "ScalerIndex": "0"}, true, map[string]string{"password": "Y2Fzc2FuZHJhCg=="}},
 	// no password passed
-	{map[string]string{"query": "SELECT COUNT(*) FROM test_keyspace.test_table;", "targetQueryValue": "1", "username": "cassandra", "clusterIPAddress": "cassandra.test:9042", "keyspace": "test_keyspace", "ScalerIndex": "0", "metricName": "myMetric"}, true, map[string]string{}},
+	{map[string]string{"query": "SELECT COUNT(*) FROM test_keyspace.test_table;", "targetQueryValue": "1", "username": "cassandra", "clusterIPAddress": "cassandra.test:9042", "keyspace": "test_keyspace", "ScalerIndex": "0"}, true, map[string]string{}},
 	// fix issue[4110] passed
-	{map[string]string{"query": "SELECT COUNT(*) FROM test_keyspace.test_table;", "targetQueryValue": "1", "username": "cassandra", "port": "9042", "clusterIPAddress": "https://cassandra.test", "keyspace": "test_keyspace", "ScalerIndex": "0", "metricName": "myMetric"}, false, map[string]string{"password": "Y2Fzc2FuZHJhCg=="}},
+	{map[string]string{"query": "SELECT COUNT(*) FROM test_keyspace.test_table;", "targetQueryValue": "1", "username": "cassandra", "port": "9042", "clusterIPAddress": "https://cassandra.test", "keyspace": "test_keyspace", "ScalerIndex": "0"}, false, map[string]string{"password": "Y2Fzc2FuZHJhCg=="}},
 }
 
 var cassandraMetricIdentifiers = []cassandraMetricIdentifier{
-	{&testCassandraMetadata[1], 0, "s0-cassandra-myMetric"},
+	{&testCassandraMetadata[1], 0, "s0-cassandra-test_keyspace"},
 	{&testCassandraMetadata[2], 1, "s1-cassandra-test_keyspace"},
 }
 
