@@ -51,7 +51,7 @@ var testInfluxDBMetadata = []parseInfluxDBMetadataTestData{
 }
 
 var influxDBMetricIdentifiers = []influxDBMetricIdentifier{
-	{&testInfluxDBMetadata[1], 0, "s0-influxdb-influx_metric"},
+	{&testInfluxDBMetadata[1], 0, "s0-influxdb-influx_org"},
 	{&testInfluxDBMetadata[2], 1, "s1-influxdb-influx_org"},
 }
 
