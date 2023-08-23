@@ -5,7 +5,7 @@ config:
       loglevel: debug
     prometheus:
       endpoint: 0.0.0.0:8889
-      namespace: "e2e_test"
+      namespace: "keda"
   receivers:
     jaeger: null
     prometheus: null

@@ -140,7 +140,7 @@ func (o *OtelMetrics) RecordScalableObjectLatency(namespace string, name string,
 
 	opt := api.WithAttributes(
 		attribute.Key("namespace").String(namespace),
-		attribute.Key("resourceType").String(resourceType),
+		attribute.Key("type").String(resourceType),
 		attribute.Key("name").String(name))
 
 	cback := func(ctx context.Context, obsrv api.Float64Observer) error {
@@ -203,23 +203,34 @@ func (o *OtelMetrics) RecordScaledObjectError(namespace string, scaledObject str
 func (o *OtelMetrics) RecordBuildInfo() {
 	opt := api.WithAttributes(
 		attribute.Key("version").String(version.Version),
-		attribute.Key("GitCommit").String(version.GitCommit),
-		attribute.Key("runtion.version").String(runtime.Version()),
-		attribute.Key("runtime.GOOS").String(runtime.GOOS),
-		attribute.Key("runtime.GOARCH").String(runtime.GOARCH),
+		attribute.Key("git_commit").String(version.GitCommit),
+		attribute.Key("goversion").String(runtime.Version()),
+		attribute.Key("goos").String(runtime.GOOS),
+		attribute.Key("goarch").String(runtime.GOARCH),
 	)
-	otBuildInfo.Add(context.Background(), 1, opt)
+	cback := func(ctx context.Context, obsrv api.Int64Observer) error {
+		obsrv.Observe(1, opt)
+		return nil
+	}
+	_, err := meter.Int64ObservableGauge(
+		"build.info",
+		api.WithDescription("A metric with a constant '1' value labeled by version, git_commit and goversion from which KEDA was built."),
+		api.WithInt64Callback(cback),
+	)
+	if err != nil {
+		fmt.Println("failed to register scaler metrics value")
+	}
 }
 
 func (o *OtelMetrics) IncrementTriggerTotal(triggerType string) {
 	if triggerType != "" {
-		otTriggerTotalsCounter.Add(context.Background(), 1, api.WithAttributes(attribute.Key("triggerType").String(triggerType)))
+		otTriggerTotalsCounter.Add(context.Background(), 1, api.WithAttributes(attribute.Key("type").String(triggerType)))
 	}
 }
 
 func (o *OtelMetrics) DecrementTriggerTotal(triggerType string) {
 	if triggerType != "" {
-		otTriggerTotalsCounter.Add(context.Background(), -1, api.WithAttributes(attribute.Key("triggerType").String(triggerType)))
+		otTriggerTotalsCounter.Add(context.Background(), -1, api.WithAttributes(attribute.Key("type").String(triggerType)))
 	}
 }
 
@@ -229,7 +240,7 @@ func (o *OtelMetrics) IncrementCRDTotal(crdType, namespace string) {
 	}
 	opt := api.WithAttributes(
 		attribute.Key("namespace").String(namespace),
-		attribute.Key("crdType").String(crdType),
+		attribute.Key("type").String(crdType),
 	)
 
 	otCrdTotalsCounter.Add(context.Background(), 1, opt)
@@ -242,7 +253,7 @@ func (o *OtelMetrics) DecrementCRDTotal(crdType, namespace string) {
 
 	opt := api.WithAttributes(
 		attribute.Key("namespace").String(namespace),
-		attribute.Key("crdType").String(crdType),
+		attribute.Key("type").String(crdType),
 	)
 	otCrdTotalsCounter.Add(context.Background(), -1, opt)
 }
