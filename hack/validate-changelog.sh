@@ -40,7 +40,7 @@ function extract_and_check() {
   while IFS= read -r line; do
       echo "Error: Wrong pattern found in section: $section , line: $line"
       exit 1
-  done < <(grep -Ev '^(-\s\*\*[^*]+\*\*: .*\(\[#(\d+)\]\(https:\/\/github\.com\/kedacore\/(keda|charts|governance)\/(pull|issues|discussions)\/\2\)(?:\|\[#(\d+)\]\(https:\/\/github\.com\/kedacore\/(keda|charts|governance)\/(pull|issues|discussions)\/\5\)){0,}\))$' <<< "$content")
+  done < <(grep -Pv '^(-\s\*\*[^*]+\*\*: .*\(\[#(\d+)\]\(https:\/\/github\.com\/kedacore\/(keda|charts|governance)\/(pull|issues|discussions)\/\2\)(?:\|\[#(\d+)\]\(https:\/\/github\.com\/kedacore\/(keda|charts|governance)\/(pull|issues|discussions)\/(?:\5)\)){0,}\))$' <<< "$content")
 
   if [ "$content" != "$sorted_content" ]; then
       echo "Error: Section: $section is not sorted correctly. Correct order:"
