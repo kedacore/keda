@@ -49,7 +49,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- **Governance**: KEDA transitioned to CNCF Graduated project ([press release](https://www.cncf.io/announcements/2023/08/22/cloud-native-computing-foundation-announces-graduation-of-kubernetes-autoscaler-keda/))
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ### Improvements
 
