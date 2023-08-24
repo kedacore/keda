@@ -56,7 +56,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Add ScaledObject/ScaledJob names to output of `kubectl get triggerauthentication/clustertriggerauthentication` ([#796](https://github.com/kedacore/keda/issues/796))
 - **General**: Add standalone CRD generation to release workflow ([#2726](https://github.com/kedacore/keda/issues/2726))
 - **General**: Adding a changelog validating script to check for formatting and order ([#3190](https://github.com/kedacore/keda/issues/3190))
-- **General**: Introduce opentelemetry metric collect ([#3078](https://github.com/kedacore/keda/issues/3078))
+- **General**: Introduce operational metrics in OpenTelemetry Collector ([#3078](https://github.com/kedacore/keda/issues/3078))
 - **General**: Update golangci-lint version documented in CONTRIBUTING.md since old version doesn't support go 1.20 (N/A)
 
 ### Fixes
