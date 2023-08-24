@@ -249,7 +249,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 		return "ScaledObject doesn't have correct Idle/Min/Max Replica Counts specification", err
 	}
 
-	err = kedav1alpha1.ValidateTriggers(logger, scaledObject.Spec.Triggers)
+	err = kedav1alpha1.ValidateTriggers(scaledObject.Spec.Triggers)
 	if err != nil {
 		return "ScaledObject doesn't have correct triggers specification", err
 	}
