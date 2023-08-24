@@ -26,5 +26,3 @@ spec:
         - containerPort: 8889
           name: prometheus
           protocol: TCP
-
-  

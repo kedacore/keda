@@ -225,7 +225,7 @@ func (p *PromMetrics) DecrementTriggerTotal(triggerType string) {
 
 func (p *PromMetrics) IncrementCRDTotal(crdType, namespace string) {
 	if namespace == "" {
-		namespace = "default"
+		namespace = defaultNamespace
 	}
 
 	crdTotalsGaugeVec.WithLabelValues(crdType, namespace).Inc()
@@ -233,7 +233,7 @@ func (p *PromMetrics) IncrementCRDTotal(crdType, namespace string) {
 
 func (p *PromMetrics) DecrementCRDTotal(crdType, namespace string) {
 	if namespace == "" {
-		namespace = "default"
+		namespace = defaultNamespace
 	}
 
 	crdTotalsGaugeVec.WithLabelValues(crdType, namespace).Dec()

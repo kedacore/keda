@@ -306,7 +306,6 @@ func fetchAndParsePrometheusMetrics(t *testing.T, cmd string) map[string]*prommo
 	families, err := parser.TextToMetricFamilies(reader)
 	assert.NoErrorf(t, err, "cannot parse metrics - %s", err)
 
-	t.Log(fmt.Sprintf("fetchAndParsePrometheusMetrics %v", families))
 	return families
 }
 

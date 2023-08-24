@@ -181,7 +181,7 @@ func TestSetupOpentelemetryComponents(t *testing.T) {
 	_, err = ExecuteCommand("helm repo update open-telemetry")
 	require.NoErrorf(t, err, "cannot update open-telemetry helm repo - %s", err)
 
-	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install opentelemetry-collector open-telemetry/opentelemetry-collector -f ../opentelemetry_setup/otlp.yml"))
+	_, err = ExecuteCommand("helm upgrade --install opentelemetry-collector open-telemetry/opentelemetry-collector -f ../opentelemetry_setup/otlp.yml")
 
 	require.NoErrorf(t, err, "cannot install opentelemetry - %s", err)
 

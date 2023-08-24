@@ -74,7 +74,7 @@ func TestRemoveGcpIdentityComponents(t *testing.T) {
 }
 
 func TestRemoveOpentelemetryComponents(t *testing.T) {
-	_, err := ExecuteCommand(fmt.Sprintf("helm uninstall opentelemetry-collector"))
+	_, err := ExecuteCommand("helm uninstall opentelemetry-collector")
 	require.NoErrorf(t, err, "cannot uninstall opentelemetry-collector - %s", err)
 }
 

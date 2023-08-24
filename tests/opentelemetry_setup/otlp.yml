@@ -16,7 +16,7 @@ config:
     #   address: ":7888"
     pipelines:
       traces: null
-      metrics: 
+      metrics:
         receivers:
           - otlp
         exporters:

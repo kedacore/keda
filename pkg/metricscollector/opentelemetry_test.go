@@ -78,5 +78,4 @@ func TestIncrementTriggerTotal(t *testing.T) {
 
 	data = buildInfo.Data.(metricdata.Sum[int64]).DataPoints[0]
 	assert.Equal(t, data.Value, int64(0))
-
 }

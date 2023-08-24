@@ -6,39 +6,29 @@ import (
 	"runtime"
 	"strconv"
 
-	// "fmt"
-
-	// "github.com/prometheus/client_golang/prometheus/promhttp"
-
-	"github.com/kedacore/keda/v2/version"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	// "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
-
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	api "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/sdk/metric"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/kedacore/keda/v2/version"
 )
 
 var otLog = logf.Log.WithName("prometheus_server")
 
 const meterName = "keda-open-telemetry-metrics"
+const defaultNamespace = "default"
 
 var (
-	meterProvider                 *metric.MeterProvider
-	meter                         api.Meter
-	otBuildInfo                   api.Int64Counter
-	otScalerMetricsValueCounter   api.Float64UpDownCounter
-	otScalerMetricsLatencyCounter api.Float64UpDownCounter
-	otInternalLoopLatencyCounter  api.Float64UpDownCounter
-	otScalerActiveCounter         api.Int64UpDownCounter
-	otErrorsTotalCounter          api.Int64Counter
-	otScalerErrorsCounter         api.Int64Counter
-	otScaledObjectErrorsCounter   api.Int64Counter
-	otTriggerTotalsCounter        api.Int64UpDownCounter
-	otCrdTotalsCounter            api.Int64UpDownCounter
+	meterProvider               *metric.MeterProvider
+	meter                       api.Meter
+	otErrorsTotalCounter        api.Int64Counter
+	otScalerErrorsCounter       api.Int64Counter
+	otScaledObjectErrorsCounter api.Int64Counter
+	otTriggerTotalsCounter      api.Int64UpDownCounter
+	otCrdTotalsCounter          api.Int64UpDownCounter
 )
 
 type OtelMetrics struct {
@@ -69,10 +59,6 @@ func NewOtelMetrics(options ...metric.Option) *OtelMetrics {
 func initCounter() {
 	var err error
 	msg := "create opentelemetry counter failed"
-	otBuildInfo, err = meter.Int64Counter("build.info", api.WithDescription("A metric with a constant '1' value labeled by version, git_commit and goversion from which KEDA was built."))
-	if err != nil {
-		otLog.Error(err, msg)
-	}
 
 	otErrorsTotalCounter, err = meter.Int64Counter("scaler.errors.total", api.WithDescription("Total number of errors for all scalers"))
 	if err != nil {
@@ -236,7 +222,7 @@ func (o *OtelMetrics) DecrementTriggerTotal(triggerType string) {
 
 func (o *OtelMetrics) IncrementCRDTotal(crdType, namespace string) {
 	if namespace == "" {
-		namespace = "default"
+		namespace = defaultNamespace
 	}
 	opt := api.WithAttributes(
 		attribute.Key("namespace").String(namespace),
@@ -248,7 +234,7 @@ func (o *OtelMetrics) IncrementCRDTotal(crdType, namespace string) {
 
 func (o *OtelMetrics) DecrementCRDTotal(crdType, namespace string) {
 	if namespace == "" {
-		namespace = "default"
+		namespace = defaultNamespace
 	}
 
 	opt := api.WithAttributes(
