@@ -76,6 +76,7 @@ New deprecation(s):
 
 ### Other
 
+- **General**: Fixed a typo in the StatefulSet scaling resolver ([#4902](https://github.com/kedacore/keda/pull/4902))
 - **General**: Refactor ScaledJob related methods to be located at scale_handler  ([#4781](https://github.com/kedacore/keda/issues/4781))
 
 ## v2.11.2
