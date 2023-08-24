@@ -40,13 +40,13 @@ func TestBuildInfo(t *testing.T) {
 
 	assert.NotNil(t, buildInfo)
 
-	data := buildInfo.Data.(metricdata.Sum[int64]).DataPoints[0]
+	data := buildInfo.Data.(metricdata.Gauge[int64]).DataPoints[0]
 
 	assert.True(t, data.Attributes.HasValue("version"))
-	assert.True(t, data.Attributes.HasValue("GitCommit"))
-	assert.True(t, data.Attributes.HasValue("runtion.version"))
-	assert.True(t, data.Attributes.HasValue("runtime.GOOS"))
-	assert.True(t, data.Attributes.HasValue("runtime.GOARCH"))
+	assert.True(t, data.Attributes.HasValue("git_commit"))
+	assert.True(t, data.Attributes.HasValue("version"))
+	assert.True(t, data.Attributes.HasValue("goos"))
+	assert.True(t, data.Attributes.HasValue("goarch"))
 
 	assert.Equal(t, data.Value, int64(1))
 }
