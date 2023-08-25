@@ -6,6 +6,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"testing"
 
@@ -168,11 +169,17 @@ func TesVerifyPodsIdentity(t *testing.T) {
 }
 
 func TestSetupOpentelemetryComponents(t *testing.T) {
-	if OpentelemetryTests == "" || OpentelemetryTests == StringFalse {
-		t.Skip("skipping opentelemetry tests are disabled")
-	}
+	otlpTempFileName := "otlp.yml"
+	otlpServiceTempFileName := "otlpServicePatch.yml"
+	defer os.Remove(otlpTempFileName)
+	defer os.Remove(otlpServiceTempFileName)
+	err := os.WriteFile(otlpTempFileName, []byte(helper.OtlpConfig), 0755)
+	assert.NoErrorf(t, err, "cannot create otlp config file - %s", err)
 
-	_, err := ExecuteCommand("helm version")
+	err = os.WriteFile(otlpServiceTempFileName, []byte(helper.OtlpServicePatch), 0755)
+	assert.NoErrorf(t, err, "cannot create otlp service patch file - %s", err)
+
+	_, err = ExecuteCommand("helm version")
 	require.NoErrorf(t, err, "helm is not installed - %s", err)
 
 	_, err = ExecuteCommand("helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts")
@@ -181,11 +188,11 @@ func TestSetupOpentelemetryComponents(t *testing.T) {
 	_, err = ExecuteCommand("helm repo update open-telemetry")
 	require.NoErrorf(t, err, "cannot update open-telemetry helm repo - %s", err)
 
-	_, err = ExecuteCommand("helm upgrade --install opentelemetry-collector open-telemetry/opentelemetry-collector -f ../opentelemetry_setup/otlp.yml")
+	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install opentelemetry-collector open-telemetry/opentelemetry-collector -f %s", otlpTempFileName))
 
 	require.NoErrorf(t, err, "cannot install opentelemetry - %s", err)
 
-	_, err = ExecuteCommand("kubectl apply -f ../opentelemetry_setup/service.yml")
+	_, err = ExecuteCommand(fmt.Sprintf("kubectl apply -f %s", otlpServiceTempFileName))
 	require.NoErrorf(t, err, "cannot update opentelemetry ports - %s", err)
 }
 
