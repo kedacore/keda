@@ -55,6 +55,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Add ScaledObject/ScaledJob names to output of `kubectl get triggerauthentication/clustertriggerauthentication` ([#796](https://github.com/kedacore/keda/issues/796))
 - **General**: Add standalone CRD generation to release workflow ([#2726](https://github.com/kedacore/keda/issues/2726))
 - **General**: Adding a changelog validating script to check for formatting and order ([#3190](https://github.com/kedacore/keda/issues/3190))
+- **General**: Update golangci-lint version documented in CONTRIBUTING.md since old version doesn't support go 1.20 (N/A)
 - **Azure Pod Identity**: Introduce validation to prevent usage of empty identity ID for Azure identity providers ([#4528](https://github.com/kedacore/keda/issues/4528))
 
 ### Fixes
@@ -67,7 +68,7 @@ You can find all deprecations in [this overview](https://github.com/kedacore/ked
 
 New deprecation(s):
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Clean up previously deprecated code for 2.12 release ([#4899](https://github.com/kedacore/keda/issues/4899))
 
 ### Breaking Changes
 
@@ -75,6 +76,7 @@ New deprecation(s):
 
 ### Other
 
+- **General**: Fixed a typo in the StatefulSet scaling resolver ([#4902](https://github.com/kedacore/keda/pull/4902))
 - **General**: Refactor ScaledJob related methods to be located at scale_handler  ([#4781](https://github.com/kedacore/keda/issues/4781))
 
 ## v2.11.2

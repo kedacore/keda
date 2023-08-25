@@ -77,7 +77,6 @@ type rabbitMQMetadata struct {
 	excludeUnacknowledged bool          // specify if the QueueLength value should exclude Unacknowledged messages (Ready messages only)
 	pageSize              int64         // specify the page size if useRegex is enabled
 	operation             string        // specify the operation to apply in case of multiples queues
-	metricName            string        // custom metric name for trigger
 	timeout               time.Duration // custom http timeout for a specific trigger
 	scalerIndex           int           // scaler index
 
@@ -311,16 +310,6 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse trigger: %w", err)
 	}
-
-	// Resolve metricName
-
-	// FIXME: DEPRECATED to be removed in v2.12
-	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("rabbitmq-%s", url.QueryEscape(val)))
-	} else {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("rabbitmq-%s", url.QueryEscape(meta.queueName)))
-	}
-
 	// Resolve timeout
 	if err := resolveTimeout(config, &meta); err != nil {
 		return nil, err
@@ -598,7 +587,7 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP(ctx context.Context) (*queueInfo, e
 func (s *rabbitMQScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("rabbitmq-%s", url.QueryEscape(s.metadata.queueName)))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.value),
 	}
