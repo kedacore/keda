@@ -212,34 +212,42 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	}
 
 	if enableTLS {
-		certGiven := config.AuthParams["cert"] != ""
-		keyGiven := config.AuthParams["key"] != ""
-		if certGiven && !keyGiven {
-			return errors.New("key must be provided with cert")
+		if err := parseTLS(config, meta); err != nil {
+			return err
 		}
-		if keyGiven && !certGiven {
-			return errors.New("cert must be provided with key")
-		}
-		meta.ca = config.AuthParams["ca"]
-		meta.cert = config.AuthParams["cert"]
-		meta.key = config.AuthParams["key"]
-		meta.unsafeSsl = defaultUnsafeSsl
-
-		if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
-			unsafeSsl, err := strconv.ParseBool(val)
-			if err != nil {
-				return fmt.Errorf("error parsing unsafeSsl: %w", err)
-			}
-			meta.unsafeSsl = unsafeSsl
-		}
-
-		if value, found := config.AuthParams["keyPassword"]; found {
-			meta.keyPassword = value
-		} else {
-			meta.keyPassword = ""
-		}
-		meta.enableTLS = true
 	}
+
+	return nil
+}
+
+func parseTLS(config *ScalerConfig, meta *kafkaMetadata) error {
+	certGiven := config.AuthParams["cert"] != ""
+	keyGiven := config.AuthParams["key"] != ""
+	if certGiven && !keyGiven {
+		return errors.New("key must be provided with cert")
+	}
+	if keyGiven && !certGiven {
+		return errors.New("cert must be provided with key")
+	}
+	meta.ca = config.AuthParams["ca"]
+	meta.cert = config.AuthParams["cert"]
+	meta.key = config.AuthParams["key"]
+	meta.unsafeSsl = defaultUnsafeSsl
+
+	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
+		unsafeSsl, err := strconv.ParseBool(val)
+		if err != nil {
+			return fmt.Errorf("error parsing unsafeSsl: %w", err)
+		}
+		meta.unsafeSsl = unsafeSsl
+	}
+
+	if value, found := config.AuthParams["keyPassword"]; found {
+		meta.keyPassword = value
+	} else {
+		meta.keyPassword = ""
+	}
+	meta.enableTLS = true
 
 	return nil
 }
