@@ -23,7 +23,6 @@ type influxDBScaler struct {
 
 type influxDBMetadata struct {
 	authToken                string
-	metricName               string
 	organizationName         string
 	query                    string
 	serverURL                string
@@ -64,7 +63,6 @@ func NewInfluxDBScaler(config *ScalerConfig) (Scaler, error) {
 // parseInfluxDBMetadata parses the metadata passed in from the ScaledObject config
 func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 	var authToken string
-	var metricName string
 	var organizationName string
 	var query string
 	var serverURL string
@@ -118,13 +116,6 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 		return nil, fmt.Errorf("no server url given")
 	}
 
-	// FIXME: DEPRECATED to be removed in v2.12
-	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		metricName = util.NormalizeString(fmt.Sprintf("influxdb-%s", val))
-	} else {
-		metricName = util.NormalizeString(fmt.Sprintf("influxdb-%s", organizationName))
-	}
-
 	if val, ok := config.TriggerMetadata["activationThresholdValue"]; ok {
 		value, err := strconv.ParseFloat(val, 64)
 		if err != nil {
@@ -153,7 +144,6 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 
 	return &influxDBMetadata{
 		authToken:                authToken,
-		metricName:               metricName,
 		organizationName:         organizationName,
 		query:                    query,
 		serverURL:                serverURL,
@@ -213,7 +203,7 @@ func (s *influxDBScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 func (s *influxDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, util.NormalizeString(fmt.Sprintf("influxdb-%s", s.metadata.organizationName))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.thresholdValue),
 	}
