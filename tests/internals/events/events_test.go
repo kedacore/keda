@@ -22,6 +22,7 @@ const (
 
 var (
 	testNamespace                       = fmt.Sprintf("%s-ns", testName)
+	monitoredDeploymentName             = fmt.Sprintf("%s-monitor-deployment", testName)
 	deploymentName                      = fmt.Sprintf("%s-deployment", testName)
 	daemonsetName                       = fmt.Sprintf("%s-daemonset", testName)
 	scaledObjectName                    = fmt.Sprintf("%s-so", testName)
@@ -35,6 +36,7 @@ type templateData struct {
 	ScaledObjectTargetNotFoundName      string
 	ScaledObjectTargetNoSubresourceName string
 	DeploymentName                      string
+	MonitoredDeploymentName             string
 	DaemonsetName                       string
 }
 
@@ -51,9 +53,31 @@ spec:
   triggers:
     - type: kubernetes-workload
       metadata:
-        podSelector: 'app={{.DeploymentName}}'
+        podSelector: 'app={{.MonitoredDeploymentName}}'
         value: '1'
 `
+	monitoredDeploymentTemplate = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.MonitoredDeploymentName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.MonitoredDeploymentName}}
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: {{.MonitoredDeploymentName}}
+  template:
+    metadata:
+      labels:
+        app: {{.MonitoredDeploymentName}}
+    spec:
+      containers:
+        - name: nginx
+          image: 'nginxinc/nginx-unprivileged'
+`
+
 	deploymentTemplate = `
 apiVersion: apps/v1
 kind: Deployment
@@ -156,6 +180,7 @@ func getTemplateData() (templateData, []Template) {
 	return templateData{
 		TestNamespace:                       testNamespace,
 		DeploymentName:                      deploymentName,
+		MonitoredDeploymentName:             monitoredDeploymentName,
 		DaemonsetName:                       daemonsetName,
 		ScaledObjectName:                    scaledObjectName,
 		ScaledObjectTargetNotFoundName:      scaledObjectTargetNotFoundName,
@@ -163,30 +188,36 @@ func getTemplateData() (templateData, []Template) {
 	}, []Template{}
 }
 
-func checkingEvent(t *testing.T, index int, eventreason string, message string) {
-	result, err := ExecuteCommand(fmt.Sprintf("kubectl get events -n events-test-ns --sort-by=.metadata.creationTimestamp -o jsonpath=\"{.items[%d].reason}:{.items[%d].message}\"", index, index))
+func checkingEvent(t *testing.T, scaledObject string, index int, eventreason string, message string) {
+	result, err := ExecuteCommand(fmt.Sprintf("kubectl get events -n %s --field-selector involvedObject.name=%s --sort-by=.metadata.creationTimestamp -o jsonpath=\"{.items[%d].reason}:{.items[%d].message}\"", testNamespace, scaledObject, index, index))
 
 	assert.NoError(t, err)
 	lastEventMessage := strings.Trim(string(result), "\"")
 	assert.Equal(t, lastEventMessage, eventreason+":"+message)
 }
 
-func testNormalEvent(t *testing.T, _ *kubernetes.Clientset, data templateData) {
+func testNormalEvent(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing normal event ---")
 
 	KubectlApplyWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
+	KubectlApplyWithTemplate(t, data, "monitoredDeploymentName", monitoredDeploymentTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	checkingEvent(t, 0, eventreason.KEDAScalersStarted, fmt.Sprintf(message.ScalerIsBuiltMsg, "kubernetes-workload"))
-	checkingEvent(t, 1, eventreason.KEDAScalersStarted, message.ScalerStartMsg)
-	checkingEvent(t, 2, eventreason.ScaledObjectReady, message.ScalerReadyMsg)
+
+	// time.Sleep(2 * time.Second)
+	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 2, testNamespace)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
+		"replica count should be 2 after 1 minute")
+	checkingEvent(t, scaledObjectName, 0, eventreason.KEDAScalersStarted, fmt.Sprintf(message.ScalerIsBuiltMsg, "kubernetes-workload"))
+	checkingEvent(t, scaledObjectName, 1, eventreason.KEDAScalersStarted, message.ScalerStartMsg)
+	checkingEvent(t, scaledObjectName, 2, eventreason.ScaledObjectReady, message.ScalerReadyMsg)
 }
 
 func testTargetNotFoundErr(t *testing.T, _ *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing target not found error event ---")
 
 	KubectlApplyWithTemplate(t, data, "scaledObjectTargetErrTemplate", scaledObjectTargetErrTemplate)
-	checkingEvent(t, -2, eventreason.ScaledObjectCheckFailed, message.ScaleTargetNotFoundMsg)
-	checkingEvent(t, -1, eventreason.ScaledObjectCheckFailed, message.ScaleTargetErrMsg)
+	checkingEvent(t, scaledObjectTargetNotFoundName, -2, eventreason.ScaledObjectCheckFailed, message.ScaleTargetNotFoundMsg)
+	checkingEvent(t, scaledObjectTargetNotFoundName, -1, eventreason.ScaledObjectCheckFailed, message.ScaleTargetErrMsg)
 }
 
 func testTargetNotSupportEventErr(t *testing.T, _ *kubernetes.Clientset, data templateData) {
@@ -194,6 +225,6 @@ func testTargetNotSupportEventErr(t *testing.T, _ *kubernetes.Clientset, data te
 
 	KubectlApplyWithTemplate(t, data, "daemonSetTemplate", daemonSetTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTargetNotSupportTemplate", scaledObjectTargetNotSupportTemplate)
-	checkingEvent(t, -2, eventreason.ScaledObjectCheckFailed, message.ScaleTargetNoSubresourceMsg)
-	checkingEvent(t, -1, eventreason.ScaledObjectCheckFailed, message.ScaleTargetErrMsg)
+	checkingEvent(t, scaledObjectTargetNoSubresourceName, -2, eventreason.ScaledObjectCheckFailed, message.ScaleTargetNoSubresourceMsg)
+	checkingEvent(t, scaledObjectTargetNoSubresourceName, -1, eventreason.ScaledObjectCheckFailed, message.ScaleTargetErrMsg)
 }
