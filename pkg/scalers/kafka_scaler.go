@@ -223,14 +223,14 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 		meta.ca = config.AuthParams["ca"]
 		meta.cert = config.AuthParams["cert"]
 		meta.key = config.AuthParams["key"]
+		meta.unsafeSsl = defaultUnsafeSsl
+
 		if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
 			unsafeSsl, err := strconv.ParseBool(val)
 			if err != nil {
 				return fmt.Errorf("error parsing unsafeSsl: %w", err)
 			}
 			meta.unsafeSsl = unsafeSsl
-		} else {
-			meta.unsafeSsl = defaultUnsafeSsl
 		}
 
 		if value, found := config.AuthParams["keyPassword"]; found {
