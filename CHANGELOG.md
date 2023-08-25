@@ -49,7 +49,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **AWS SQS Scaler**: Support for scaling to include delayed messages. [#4377](https://github.com/kedacore/keda/issues/4377)
 
 ### Improvements
 
