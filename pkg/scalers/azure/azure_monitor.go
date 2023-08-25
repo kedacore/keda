@@ -89,11 +89,11 @@ func createMetricsClient(ctx context.Context, info MonitorInfo, podIdentity keda
 	case kedav1alpha1.PodIdentityProviderAzure:
 		config := auth.NewMSIConfig()
 		config.Resource = info.AzureResourceManagerEndpoint
-		config.ClientID = *podIdentity.IdentityID
+		config.ClientID = podIdentity.GetIdentityID()
 
 		authConfig = config
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		authConfig = NewAzureADWorkloadIdentityConfig(ctx, *podIdentity.IdentityID, info.AzureResourceManagerEndpoint)
+		authConfig = NewAzureADWorkloadIdentityConfig(ctx, podIdentity.GetIdentityID(), info.AzureResourceManagerEndpoint)
 	}
 
 	authorizer, _ := authConfig.Authorizer()
