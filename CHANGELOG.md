@@ -53,9 +53,9 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
+- **General**: Add more events for user checking ([#796](https://github.com/kedacore/keda/issues/3764))
 - **General**: Add ScaledObject/ScaledJob names to output of `kubectl get triggerauthentication/clustertriggerauthentication` ([#796](https://github.com/kedacore/keda/issues/796))
 - **General**: Add standalone CRD generation to release workflow ([#2726](https://github.com/kedacore/keda/issues/2726))
-- **General**: Add more events for user checking ([#796](https://github.com/kedacore/keda/issues/3764))
 - **General**: Adding a changelog validating script to check for formatting and order ([#3190](https://github.com/kedacore/keda/issues/3190))
 - **General**: Update golangci-lint version documented in CONTRIBUTING.md since old version doesn't support go 1.20 (N/A)
 
