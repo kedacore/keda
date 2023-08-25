@@ -62,6 +62,7 @@ type kafkaMetadata struct {
 	key         string
 	keyPassword string
 	ca          string
+	unsafeSsl   bool
 
 	scalerIndex int
 }
@@ -222,6 +223,16 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 		meta.ca = config.AuthParams["ca"]
 		meta.cert = config.AuthParams["cert"]
 		meta.key = config.AuthParams["key"]
+		if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
+			unsafeSsl, err := strconv.ParseBool(val)
+			if err != nil {
+				return fmt.Errorf("error parsing unsafeSsl: %w", err)
+			}
+			meta.unsafeSsl = unsafeSsl
+		} else {
+			meta.unsafeSsl = defaultUnsafeSsl
+		}
+
 		if value, found := config.AuthParams["keyPassword"]; found {
 			meta.keyPassword = value
 		} else {
@@ -372,7 +383,7 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 
 	if metadata.enableTLS {
 		config.Net.TLS.Enable = true
-		tlsConfig, err := kedautil.NewTLSConfigWithPassword(metadata.cert, metadata.key, metadata.keyPassword, metadata.ca, false)
+		tlsConfig, err := kedautil.NewTLSConfigWithPassword(metadata.cert, metadata.key, metadata.keyPassword, metadata.ca, metadata.unsafeSsl)
 		if err != nil {
 			return nil, nil, err
 		}
