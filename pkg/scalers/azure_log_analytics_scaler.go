@@ -65,7 +65,6 @@ type azureLogAnalyticsMetadata struct {
 	query                   string
 	threshold               float64
 	activationThreshold     float64
-	metricName              string // Custom metric name for trigger
 	scalerIndex             int
 	logAnalyticsResourceURL string
 	activeDirectoryEndpoint string
@@ -180,7 +179,7 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 	}
 	meta.query = query
 
-	// Getting threshold, observe that we dont check AuthParams for threshold
+	// Getting threshold, observe that we don't check AuthParams for threshold
 	val, err := getParameterFromConfig(config, "threshold", false)
 	if err != nil {
 		return nil, err
@@ -201,16 +200,6 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 		}
 		meta.activationThreshold = activationThreshold
 	}
-
-	// Resolve metricName
-
-	// FIXME: DEPRECATED to be removed in v2.12
-	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-log-analytics", val))
-	} else {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-log-analytics", meta.workspaceID))
-	}
-
 	meta.scalerIndex = config.ScalerIndex
 
 	meta.logAnalyticsResourceURL = defaultLogAnalyticsResourceURL
@@ -234,7 +223,7 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 	}
 	meta.activeDirectoryEndpoint = activeDirectoryEndpoint
 
-	// Getting unsafeSsl, observe that we dont check AuthParams for unsafeSsl
+	// Getting unsafeSsl, observe that we don't check AuthParams for unsafeSsl
 	meta.unsafeSsl = false
 	unsafeSslVal, err := getParameterFromConfig(config, "unsafeSsl", false)
 	if err == nil {
@@ -264,7 +253,7 @@ func getParameterFromConfig(config *ScalerConfig, parameter string, checkAuthPar
 func (s *azureLogAnalyticsScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-log-analytics", s.metadata.workspaceID))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}

@@ -112,7 +112,7 @@ func ResolveScaleTargetPodSpec(ctx context.Context, kubeClient client.Client, sc
 			statefulSet := &appsv1.StatefulSet{}
 			if err := kubeClient.Get(ctx, objKey, statefulSet); err != nil {
 				// resource doesn't exist
-				logger.Error(err, "target deployment doesn't exist")
+				logger.Error(err, "target statefulset doesn't exist")
 				return nil, "", err
 			}
 			podTemplateSpec.ObjectMeta = statefulSet.ObjectMeta

@@ -49,28 +49,28 @@ var testMONGODBMetadata = []parseMongoDBMetadataTestData{
 	},
 	// with metric name
 	{
-		metadata:    map[string]string{"query": `{"name":"John"}`, "metricName": "hpa", "collection": "demo", "queryValue": "12", "connectionStringFromEnv": "MongoDB_CONN_STR", "dbName": "test"},
+		metadata:    map[string]string{"query": `{"name":"John"}`, "collection": "demo", "queryValue": "12", "connectionStringFromEnv": "MongoDB_CONN_STR", "dbName": "test"},
 		authParams:  map[string]string{},
 		resolvedEnv: testMongoDBResolvedEnv,
 		raisesError: false,
 	},
 	// from passwordFromEnv
 	{
-		metadata:    map[string]string{"query": `{"name":"John"}`, "metricName": "hpa", "collection": "demo", "queryValue": "12", "passwordFromEnv": "MongoDB_PASSWORD"},
+		metadata:    map[string]string{"query": `{"name":"John"}`, "collection": "demo", "queryValue": "12", "passwordFromEnv": "MongoDB_PASSWORD"},
 		authParams:  map[string]string{"dbName": "test", "host": "localhost", "port": "1234", "username": "sample"},
 		resolvedEnv: testMongoDBResolvedEnv,
 		raisesError: false,
 	},
 	// from trigger auth
 	{
-		metadata:    map[string]string{"query": `{"name":"John"}`, "metricName": "hpa", "collection": "demo", "queryValue": "12"},
+		metadata:    map[string]string{"query": `{"name":"John"}`, "collection": "demo", "queryValue": "12"},
 		authParams:  map[string]string{"dbName": "test", "host": "localhost", "port": "1234", "username": "sample", "password": "sec@ure"},
 		resolvedEnv: testMongoDBResolvedEnv,
 		raisesError: false,
 	},
 	// wrong activationQueryValue
 	{
-		metadata:    map[string]string{"query": `{"name":"John"}`, "metricName": "hpa", "collection": "demo", "queryValue": "12", "activationQueryValue": "aa", "connectionStringFromEnv": "Mongo_CONN_STR", "dbName": "test"},
+		metadata:    map[string]string{"query": `{"name":"John"}`, "collection": "demo", "queryValue": "12", "activationQueryValue": "aa", "connectionStringFromEnv": "Mongo_CONN_STR", "dbName": "test"},
 		authParams:  map[string]string{},
 		resolvedEnv: testMongoDBResolvedEnv,
 		raisesError: true,
@@ -84,8 +84,8 @@ var mongoDBConnectionStringTestDatas = []mongoDBConnectionStringTestData{
 }
 
 var mongoDBMetricIdentifiers = []mongoDBMetricIdentifier{
-	{metadataTestData: &testMONGODBMetadata[2], scalerIndex: 0, name: "s0-mongodb-hpa"},
-	{metadataTestData: &testMONGODBMetadata[2], scalerIndex: 1, name: "s1-mongodb-hpa"},
+	{metadataTestData: &testMONGODBMetadata[2], scalerIndex: 0, name: "s0-mongodb-demo"},
+	{metadataTestData: &testMONGODBMetadata[2], scalerIndex: 1, name: "s1-mongodb-demo"},
 }
 
 func TestParseMongoDBMetadata(t *testing.T) {
@@ -121,7 +121,7 @@ func TestMongoDBGetMetricSpecForScaling(t *testing.T) {
 		metricSpec := mockMongoDBScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
-			t.Error("Wrong External metric source name:", metricName)
+			t.Error("Wrong External metric source name:", metricName, "Expected", testData.name)
 		}
 	}
 }
