@@ -407,7 +407,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	var matchingMetrics []external_metrics.ExternalMetricValue
 
 	cache, err := h.getScalersCacheForScaledObject(ctx, scaledObjectName, scaledObjectNamespace)
-	prommetrics.RecordScaledObjectError(scaledObjectNamespace, scaledObjectName, err, prommetrics.ScaledObjectResource)
+	prommetrics.RecordScaledObjectError(scaledObjectNamespace, scaledObjectName, err)
 
 	if err != nil {
 		return nil, fmt.Errorf("error getting scalers %w", err)
@@ -465,7 +465,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 					var latency int64
 					metrics, _, latency, err = cache.GetMetricsAndActivityForScaler(ctx, scalerIndex, metricName)
 					if latency != -1 {
-						prommetrics.RecordScalerLatency(scaledObjectNamespace, scaledObject.Name, scalerName, scalerIndex, metricName, float64(latency), prommetrics.ScaledObjectResource)
+						prommetrics.RecordScalerLatency(scaledObjectNamespace, scaledObject.Name, scalerName, scalerIndex, metricName, float64(latency))
 					}
 					logger.V(1).Info("Getting metrics from scaler", "scaler", scalerName, "metricName", spec.External.Metric.Name, "metrics", metrics, "scalerError", err)
 				}
@@ -479,11 +479,11 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 				} else {
 					for _, metric := range metrics {
 						metricValue := metric.Value.AsApproximateFloat64()
-						prommetrics.RecordScalerMetric(scaledObjectNamespace, scaledObjectName, scalerName, scalerIndex, metric.MetricName, metricValue, prommetrics.ScaledObjectResource)
+						prommetrics.RecordScalerMetric(scaledObjectNamespace, scaledObjectName, scalerName, scalerIndex, metric.MetricName, metricValue)
 					}
 					matchingMetrics = append(matchingMetrics, metrics...)
 				}
-				prommetrics.RecordScalerError(scaledObjectNamespace, scaledObjectName, scalerName, scalerIndex, metricName, err, prommetrics.ScaledObjectResource)
+				prommetrics.RecordScalerError(scaledObjectNamespace, scaledObjectName, scalerName, scalerIndex, metricName, err)
 			}
 		}
 	}
@@ -520,7 +520,7 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	metricsRecord := map[string]metricscache.MetricsRecord{}
 
 	cache, err := h.GetScalersCache(ctx, scaledObject)
-	prommetrics.RecordScaledObjectError(scaledObject.Namespace, scaledObject.Name, err, prommetrics.ScaledObjectResource)
+	prommetrics.RecordScaledObjectError(scaledObject.Namespace, scaledObject.Name, err)
 	if err != nil {
 		return false, true, map[string]metricscache.MetricsRecord{}, fmt.Errorf("error getting scalers cache %w", err)
 	}
@@ -566,7 +566,7 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 			var latency int64
 			metrics, isMetricActive, latency, err := cache.GetMetricsAndActivityForScaler(ctx, scalerIndex, metricName)
 			if latency != -1 {
-				prommetrics.RecordScalerLatency(scaledObject.Namespace, scaledObject.Name, scalerName, scalerIndex, metricName, float64(latency), prommetrics.ScaledObjectResource)
+				prommetrics.RecordScalerLatency(scaledObject.Namespace, scaledObject.Name, scalerName, scalerIndex, metricName, float64(latency))
 			}
 			logger.V(1).Info("Getting metrics and activity from scaler", "scaler", scalerName, "metricName", metricName, "metrics", metrics, "activity", isMetricActive, "scalerError", err)
 
@@ -585,7 +585,7 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 			} else {
 				for _, metric := range metrics {
 					metricValue := metric.Value.AsApproximateFloat64()
-					prommetrics.RecordScalerMetric(scaledObject.Namespace, scaledObject.Name, scalerName, scalerIndex, metric.MetricName, metricValue, prommetrics.ScaledObjectResource)
+					prommetrics.RecordScalerMetric(scaledObject.Namespace, scaledObject.Name, scalerName, scalerIndex, metric.MetricName, metricValue)
 				}
 
 				if isMetricActive {
@@ -598,8 +598,8 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 					}
 				}
 			}
-			prommetrics.RecordScalerError(scaledObject.Namespace, scaledObject.Name, scalerName, scalerIndex, metricName, err, prommetrics.ScaledObjectResource)
-			prommetrics.RecordScalerActive(scaledObject.Namespace, scaledObject.Name, scalerName, scalerIndex, metricName, isMetricActive, prommetrics.ScaledObjectResource)
+			prommetrics.RecordScalerError(scaledObject.Namespace, scaledObject.Name, scalerName, scalerIndex, metricName, err)
+			prommetrics.RecordScalerActive(scaledObject.Namespace, scaledObject.Name, scalerName, scalerIndex, metricName, isMetricActive)
 		}
 	}
 
@@ -626,7 +626,7 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 	logger := log.WithValues("scaledJob.Namespace", scaledJob.Namespace, "scaledJob.Name", scaledJob.Name)
 
 	cache, err := h.GetScalersCache(ctx, scaledJob)
-	prommetrics.RecordScaledObjectError(scaledJob.Namespace, scaledJob.Name, err, prommetrics.ScaledJobResource)
+	prommetrics.RecordScaledObjectError(scaledJob.Namespace, scaledJob.Name, err)
 	if err != nil {
 		log.Error(err, "error getting scalers cache", "scaledJob.Namespace", scaledJob.Namespace, "scaledJob.Name", scaledJob.Name)
 		return nil
@@ -655,7 +655,7 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 			metricName := spec.External.Metric.Name
 			metrics, isTriggerActive, latency, err := cache.GetMetricsAndActivityForScaler(ctx, scalerIndex, metricName)
 			if latency != -1 {
-				prommetrics.RecordScalerLatency(scaledJob.Namespace, scaledJob.Name, scalerName, scalerIndex, metricName, float64(latency), prommetrics.ScaledJobResource)
+				prommetrics.RecordScalerLatency(scaledJob.Namespace, scaledJob.Name, scalerName, scalerIndex, metricName, float64(latency))
 			}
 
 			if err != nil {
@@ -679,7 +679,7 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 
 			for _, metric := range metrics {
 				metricValue := metric.Value.AsApproximateFloat64()
-				prommetrics.RecordScalerMetric(scaledJob.Namespace, scaledJob.Name, scalerName, scalerIndex, metric.MetricName, metricValue, prommetrics.ScaledJobResource)
+				prommetrics.RecordScalerMetric(scaledJob.Namespace, scaledJob.Name, scalerName, scalerIndex, metric.MetricName, metricValue)
 			}
 
 			if isTriggerActive {
@@ -690,8 +690,9 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 					logger.V(1).Info("Scaler for scaledObject is active", "scaler", scalerName, "metricName", spec.Resource.Name)
 				}
 			}
-			prommetrics.RecordScalerError(scaledJob.Namespace, scaledJob.Name, scalerName, scalerIndex, metricName, err, prommetrics.ScaledJobResource)
-			prommetrics.RecordScalerActive(scaledJob.Namespace, scaledJob.Name, scalerName, scalerIndex, metricName, isTriggerActive, prommetrics.ScaledJobResource)
+
+			prommetrics.RecordScalerError(scaledJob.Namespace, scaledJob.Name, scalerName, scalerIndex, metricName, err)
+			prommetrics.RecordScalerActive(scaledJob.Namespace, scaledJob.Name, scalerName, scalerIndex, metricName, isTriggerActive)
 		}
 	}
 	return scalersMetrics
