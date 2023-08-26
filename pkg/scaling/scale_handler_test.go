@@ -285,7 +285,7 @@ func TestCheckScaledObjectScalersWithError(t *testing.T) {
 	assert.Equal(t, true, isError)
 }
 
-func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
+func TestCheckvaObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockClient := mock_client.NewMockClient(ctrl)
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)

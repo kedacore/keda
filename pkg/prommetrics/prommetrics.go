@@ -149,6 +149,7 @@ func init() {
 	metrics.Registry.MustRegister(scalerActive)
 	metrics.Registry.MustRegister(scalerErrors)
 	metrics.Registry.MustRegister(scaledObjectErrors)
+	metrics.Registry.MustRegister(scaledJobErrors)
 
 	metrics.Registry.MustRegister(triggerTotalsGaugeVec)
 	metrics.Registry.MustRegister(crdTotalsGaugeVec)
@@ -224,7 +225,7 @@ func RecordScaledJobError(namespace string, scaledJob string, err error) {
 		return
 	}
 	// initialize metric with 0 if not already set
-	_, errscaledjob := scaledObjectErrors.GetMetricWith(labels)
+	_, errscaledjob := scaledJobErrors.GetMetricWith(labels)
 	if errscaledjob != nil {
 		log.Error(err, "Unable to write to metrics to Prometheus Server: %v")
 		return
