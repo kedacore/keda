@@ -52,6 +52,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### New
 
 - **General**: Introduce new AWS Authentication ([#4134](https://github.com/kedacore/keda/issues/4134))
+- - **Prometheus Metrics**: Expose prometheus metrics for ScaledJob resources ([#4798](https://github.com/kedacore/keda/issues/4798))
+>>>>>>> 83108fc2 (Expose prometheus metrics at ScaledJob like ScaledObject)
 
 #### Experimental
 
