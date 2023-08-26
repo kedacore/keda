@@ -39,7 +39,7 @@ const (
 )
 
 var (
-	metricLabels = []string{"namespace", "metric", "scaledObject", "scaler", "scalerIndex"}
+	metricLabels = []string{"namespace", "metric", "scaledObject", "scaler", "scalerIndex", "type"}
 	buildInfo    = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: DefaultPromMetricsNamespace,
@@ -102,6 +102,15 @@ var (
 		},
 		[]string{"namespace", "scaledObject"},
 	)
+	scaledJobErrors = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "scaled_job",
+			Name:      "errors",
+			Help:      "Number of scaled job errors",
+		},
+		[]string{"namespace", "scaledJob"},
+	)
 
 	triggerTotalsGaugeVec = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -149,44 +158,44 @@ func init() {
 }
 
 // RecordScalerMetric create a measurement of the external metric used by the HPA
-func RecordScalerMetric(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64) {
-	scalerMetricsValue.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Set(value)
+func RecordScalerMetric(namespace string, scaledResource string, scaler string, scalerIndex int, metric string, isScaledObject bool, value float64) {
+	scalerMetricsValue.With(getLabels(namespace, scaledResource, scaler, scalerIndex, metric, getResourceType(isScaledObject))).Set(value)
 }
 
 // RecordScalerLatency create a measurement of the latency to external metric
-func RecordScalerLatency(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64) {
-	scalerMetricsLatency.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Set(value)
+func RecordScalerLatency(namespace string, scaledResource string, scaler string, scalerIndex int, metric string, isScaledObject bool, value float64) {
+	scalerMetricsLatency.With(getLabels(namespace, scaledResource, scaler, scalerIndex, metric, getResourceType(isScaledObject))).Set(value)
 }
 
 // RecordScaledObjectLatency create a measurement of the latency executing scalable object loop
 func RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value float64) {
-	resourceType := "scaledjob"
-	if isScaledObject {
-		resourceType = "scaledobject"
-	}
-	internalLoopLatency.WithLabelValues(namespace, resourceType, name).Set(value)
+	internalLoopLatency.WithLabelValues(namespace, getResourceType(isScaledObject), name).Set(value)
 }
 
 // RecordScalerActive create a measurement of the activity of the scaler
-func RecordScalerActive(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, active bool) {
+func RecordScalerActive(namespace string, scaledResource string, scaler string, scalerIndex int, metric string, isScaledObject bool, active bool) {
 	activeVal := 0
 	if active {
 		activeVal = 1
 	}
 
-	scalerActive.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Set(float64(activeVal))
+	scalerActive.With(getLabels(namespace, scaledResource, scaler, scalerIndex, metric, getResourceType(isScaledObject))).Set(float64(activeVal))
 }
 
 // RecordScalerError counts the number of errors occurred in trying to get an external metric used by the HPA
-func RecordScalerError(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, err error) {
+func RecordScalerError(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, isScaledObject bool, err error) {
 	if err != nil {
-		scalerErrors.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Inc()
-		RecordScaledObjectError(namespace, scaledObject, err)
+		scalerErrors.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric, getResourceType(isScaledObject))).Inc()
+		if isScaledObject {
+			RecordScaledObjectError(namespace, scaledObject, err)
+		} else {
+			RecordScaledJobError(namespace, scaledObject, err)
+		}
 		scalerErrorsTotal.With(prometheus.Labels{}).Inc()
 		return
 	}
 	// initialize metric with 0 if not already set
-	_, errscaler := scalerErrors.GetMetricWith(getLabels(namespace, scaledObject, scaler, scalerIndex, metric))
+	_, errscaler := scalerErrors.GetMetricWith(getLabels(namespace, scaledObject, scaler, scalerIndex, metric, getResourceType(isScaledObject)))
 	if errscaler != nil {
 		log.Error(errscaler, "Unable to write to metrics to Prometheus Server: %v")
 	}
@@ -207,13 +216,28 @@ func RecordScaledObjectError(namespace string, scaledObject string, err error) {
 	}
 }
 
+// RecordScaleJobError counts the number of errors with the scaled job
+func RecordScaledJobError(namespace string, scaledJob string, err error) {
+	labels := prometheus.Labels{"namespace": namespace, "scaledJob": scaledJob}
+	if err != nil {
+		scaledObjectErrors.With(labels).Inc()
+		return
+	}
+	// initialize metric with 0 if not already set
+	_, errscaledjob := scaledObjectErrors.GetMetricWith(labels)
+	if errscaledjob != nil {
+		log.Error(err, "Unable to write to metrics to Prometheus Server: %v")
+		return
+	}
+}
+
 // RecordBuildInfo publishes information about KEDA version and runtime info through an info metric (gauge).
 func RecordBuildInfo() {
 	buildInfo.WithLabelValues(version.Version, version.GitCommit, runtime.Version(), runtime.GOOS, runtime.GOARCH).Set(1)
 }
 
-func getLabels(namespace string, scaledObject string, scaler string, scalerIndex int, metric string) prometheus.Labels {
-	return prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject, "scaler": scaler, "scalerIndex": strconv.Itoa(scalerIndex), "metric": metric}
+func getLabels(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, resourceType string) prometheus.Labels {
+	return prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject, "scaler": scaler, "scalerIndex": strconv.Itoa(scalerIndex), "metric": metric, "type": resourceType}
 }
 
 func IncrementTriggerTotal(triggerType string) {
@@ -242,4 +266,11 @@ func DecrementCRDTotal(crdType, namespace string) {
 	}
 
 	crdTotalsGaugeVec.WithLabelValues(crdType, namespace).Dec()
+}
+
+func getResourceType(isScaledObject bool) string {
+	if isScaledObject {
+		return "scaledobject"
+	}
+	return "scaledjob"
 }
