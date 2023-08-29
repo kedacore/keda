@@ -422,7 +422,7 @@ func TestResolveAuthRef(t *testing.T) {
 				t.Errorf("Returned authParams are different: %s", diff)
 			}
 			if gotPodIdentity != test.expectedPodIdentity {
-				t.Errorf("Unexpected podidentity, wanted: %q got: %q", test.expectedPodIdentity, gotPodIdentity)
+				t.Errorf("Unexpected podidentity, wanted: %q got: %q", test.expectedPodIdentity.Provider, gotPodIdentity.Provider)
 			}
 		})
 	}
