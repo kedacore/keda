@@ -207,7 +207,7 @@ func parseAzurePodIdentityParams(config *ScalerConfig) (clientID string, clientP
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
 		// no params required to be parsed
 	default:
-		return "", "", fmt.Errorf("azure Monitor doesn't support pod identity %s", config.PodIdentity)
+		return "", "", fmt.Errorf("azure Monitor doesn't support pod identity %s", config.PodIdentity.Provider)
 	}
 
 	return clientID, clientPassword, nil

@@ -165,7 +165,7 @@ func parseAzureBlobMetadata(config *ScalerConfig, logger logr.Logger) (*azure.Bl
 			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no accountName given")
 		}
 	default:
-		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("pod identity %s not supported for azure storage blobs", config.PodIdentity)
+		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("pod identity %s not supported for azure storage blobs", config.PodIdentity.Provider)
 	}
 
 	meta.ScalerIndex = config.ScalerIndex
