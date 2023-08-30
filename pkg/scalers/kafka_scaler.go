@@ -212,9 +212,7 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	}
 
 	if enableTLS {
-		if err := parseTLS(config, meta); err != nil {
-			return err
-		}
+		return parseTLS(config, meta)
 	}
 
 	return nil
