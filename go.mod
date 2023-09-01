@@ -40,7 +40,7 @@ require (
 	github.com/google/go-cmp v0.5.9
 	github.com/google/go-github/v50 v50.2.0
 	github.com/google/uuid v1.3.0
-	github.com/gophercloud/gophercloud v1.5.0
+	github.com/gophercloud/gophercloud v1.6.0
 	github.com/hashicorp/vault/api v1.9.2
 	github.com/influxdata/influxdb-client-go/v2 v2.12.3
 	github.com/jackc/pgx/v5 v5.4.1
