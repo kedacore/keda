@@ -23,15 +23,6 @@ const (
 	defaultScaleOnDelayed              = false
 )
 
-var awsSqsQueueMetricNamesForScalingInFlight = []types.QueueAttributeName{
-	types.QueueAttributeNameApproximateNumberOfMessages,
-	types.QueueAttributeNameApproximateNumberOfMessagesNotVisible,
-}
-
-var awsSqsQueueMetricNamesForNotScalingInFlight = []types.QueueAttributeName{
-	types.QueueAttributeNameApproximateNumberOfMessages,
-}
-
 type awsSqsQueueScaler struct {
 	metricType       v2.MetricTargetType
 	metadata         *awsSqsQueueMetadata
