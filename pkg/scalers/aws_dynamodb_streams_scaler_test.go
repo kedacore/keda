@@ -4,18 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
-	"testing"
-
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/request"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
-	"github.com/aws/aws-sdk-go/service/dynamodbstreams"
-	"github.com/aws/aws-sdk-go/service/dynamodbstreams/dynamodbstreamsiface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	dynamodbTypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodbstreams"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodbstreams/types"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+	"reflect"
+	"testing"
 )
 
 const (
@@ -39,10 +37,10 @@ var testAwsDynamoDBStreamAuthentication = map[string]string{
 	"awsSecretAccessKey": testAWSDynamoDBStreamsSecretAccessKey,
 }
 
-func generateTestDynamoDBStreamShards(shardNum int64) []*dynamodbstreams.Shard {
-	var shards []*dynamodbstreams.Shard
+func generateTestDynamoDBStreamShards(shardNum int64) []types.Shard {
+	var shards []types.Shard
 	for i := 0; i < int(shardNum); i++ {
-		shards = append(shards, &dynamodbstreams.Shard{})
+		shards = append(shards, types.Shard{})
 	}
 	return shards
 }
@@ -63,57 +61,55 @@ type awsDynamoDBStreamsMetricIdentifier struct {
 }
 
 type mockAwsDynamoDBStreams struct {
-	dynamodbstreamsiface.DynamoDBStreamsAPI
 }
 
-func (m *mockAwsDynamoDBStreams) DescribeStreamWithContext(_ context.Context, input *dynamodbstreams.DescribeStreamInput, _ ...request.Option) (*dynamodbstreams.DescribeStreamOutput, error) {
+func (m *mockAwsDynamoDBStreams) DescribeStream(_ context.Context, input *dynamodbstreams.DescribeStreamInput, _ ...func(*dynamodbstreams.Options)) (*dynamodbstreams.DescribeStreamOutput, error) {
 	switch *input.StreamArn {
 	case testAWSDynamoDBStreamsErrorArn:
 		return nil, errors.New("Error dynamodbstream DescribeStream")
 	case testAWSDynamoDBStreamsArnForBigTable:
 		if input.ExclusiveStartShardId != nil {
 			return &dynamodbstreams.DescribeStreamOutput{
-				StreamDescription: &dynamodbstreams.StreamDescription{
+				StreamDescription: &types.StreamDescription{
 					Shards: generateTestDynamoDBStreamShards(5),
 				}}, nil
 		}
 		lastShardID := "testid"
 		return &dynamodbstreams.DescribeStreamOutput{
-			StreamDescription: &dynamodbstreams.StreamDescription{
+			StreamDescription: &types.StreamDescription{
 				Shards:               generateTestDynamoDBStreamShards(100),
 				LastEvaluatedShardId: &lastShardID,
 			}}, nil
 	default:
 		return &dynamodbstreams.DescribeStreamOutput{
-			StreamDescription: &dynamodbstreams.StreamDescription{
+			StreamDescription: &types.StreamDescription{
 				Shards: generateTestDynamoDBStreamShards(5),
 			}}, nil
 	}
 }
 
 type mockAwsDynamoDB struct {
-	dynamodbiface.DynamoDBAPI
 }
 
-func (m *mockAwsDynamoDB) DescribeTableWithContext(_ context.Context, input *dynamodb.DescribeTableInput, _ ...request.Option) (*dynamodb.DescribeTableOutput, error) {
+func (m *mockAwsDynamoDB) DescribeTable(_ context.Context, input *dynamodb.DescribeTableInput, _ ...func(*dynamodb.Options)) (*dynamodb.DescribeTableOutput, error) {
 	switch *input.TableName {
 	case testAWSDynamoDBInvalidTable:
 		return nil, fmt.Errorf("DynamoDB Stream Arn is invalid")
 	case testAWSDynamoDBErrorTable:
 		return &dynamodb.DescribeTableOutput{
-			Table: &dynamodb.TableDescription{
+			Table: &dynamodbTypes.TableDescription{
 				LatestStreamArn: aws.String(testAWSDynamoDBStreamsErrorArn),
 			},
 		}, nil
 	case testAWSDynamoDBBigTable:
 		return &dynamodb.DescribeTableOutput{
-			Table: &dynamodb.TableDescription{
+			Table: &dynamodbTypes.TableDescription{
 				LatestStreamArn: aws.String(testAWSDynamoDBStreamsArnForBigTable),
 			},
 		}, nil
 	default:
 		return &dynamodb.DescribeTableOutput{
-			Table: &dynamodb.TableDescription{
+			Table: &dynamodbTypes.TableDescription{
 				LatestStreamArn: aws.String(testAWSDynamoDBStreamsArnForSmallTable),
 			},
 		}, nil

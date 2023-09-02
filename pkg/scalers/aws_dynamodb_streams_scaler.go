@@ -3,15 +3,12 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"strconv"
-
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
-	"github.com/aws/aws-sdk-go/service/dynamodbstreams"
-	"github.com/aws/aws-sdk-go/service/dynamodbstreams/dynamodbstreamsiface"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodbstreams"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+	"strconv"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -22,11 +19,11 @@ const (
 )
 
 type awsDynamoDBStreamsScaler struct {
-	metricType     v2.MetricTargetType
-	metadata       *awsDynamoDBStreamsMetadata
-	streamArn      *string
-	dbStreamClient dynamodbstreamsiface.DynamoDBStreamsAPI
-	logger         logr.Logger
+	metricType            v2.MetricTargetType
+	metadata              *awsDynamoDBStreamsMetadata
+	streamArn             *string
+	dbStreamWrapperClient DynamodbStreamWrapperClient
+	logger                logr.Logger
 }
 
 type awsDynamoDBStreamsMetadata struct {
@@ -61,11 +58,13 @@ func NewAwsDynamoDBStreamsScaler(ctx context.Context, config *ScalerConfig) (Sca
 	}
 
 	return &awsDynamoDBStreamsScaler{
-		metricType:     metricType,
-		metadata:       meta,
-		streamArn:      streamArn,
-		dbStreamClient: dbStreamClient,
-		logger:         logger,
+		metricType: metricType,
+		metadata:   meta,
+		streamArn:  streamArn,
+		dbStreamWrapperClient: &dynamodbStreamWrapperClient{
+			dbStreamClient: dbStreamClient,
+		},
+		logger: logger,
 	}, nil
 }
 
@@ -119,22 +118,31 @@ func parseAwsDynamoDBStreamsMetadata(config *ScalerConfig, logger logr.Logger) (
 	return &meta, nil
 }
 
-func createClientsForDynamoDBStreamsScaler(metadata *awsDynamoDBStreamsMetadata) (*dynamodb.DynamoDB, *dynamodbstreams.DynamoDBStreams) {
-	sess, config := getAwsConfig(metadata.awsRegion,
+func createClientsForDynamoDBStreamsScaler(metadata *awsDynamoDBStreamsMetadata) (*dynamodb.Client, *dynamodbstreams.Client) {
+	cfg, _ := getAwsConfig(metadata.awsRegion,
 		metadata.awsEndpoint,
 		metadata.awsAuthorization)
 
-	var dbClient *dynamodb.DynamoDB
-	var dbStreamClient *dynamodbstreams.DynamoDBStreams
-
-	dbClient = dynamodb.New(sess, config)
-	dbStreamClient = dynamodbstreams.New(sess, config)
+	dbClient := dynamodb.NewFromConfig(*cfg)
+	dbStreamClient := dynamodbstreams.NewFromConfig(*cfg)
 
 	return dbClient, dbStreamClient
 }
 
-func getDynamoDBStreamsArn(ctx context.Context, db dynamodbiface.DynamoDBAPI, tableName *string) (*string, error) {
-	tableOutput, err := db.DescribeTableWithContext(ctx, &dynamodb.DescribeTableInput{
+type DynamodbStreamWrapperClient interface {
+	DescribeStream(ctx context.Context, params *dynamodbstreams.DescribeStreamInput, optFns ...func(*dynamodbstreams.Options)) (*dynamodbstreams.DescribeStreamOutput, error)
+}
+
+type dynamodbStreamWrapperClient struct {
+	dbStreamClient *dynamodbstreams.Client
+}
+
+func (w dynamodbStreamWrapperClient) DescribeStream(ctx context.Context, params *dynamodbstreams.DescribeStreamInput, optFns ...func(*dynamodbstreams.Options)) (*dynamodbstreams.DescribeStreamOutput, error) {
+	return w.dbStreamClient.DescribeStream(ctx, params, optFns...)
+}
+
+func getDynamoDBStreamsArn(ctx context.Context, db dynamodb.DescribeTableAPIClient, tableName *string) (*string, error) {
+	tableOutput, err := db.DescribeTable(ctx, &dynamodb.DescribeTableInput{
 		TableName: tableName,
 	})
 	if err != nil {
@@ -146,11 +154,11 @@ func getDynamoDBStreamsArn(ctx context.Context, db dynamodbiface.DynamoDBAPI, ta
 	return tableOutput.Table.LatestStreamArn, nil
 }
 
-func (s *awsDynamoDBStreamsScaler) Close(context.Context) error {
+func (s *awsDynamoDBStreamsScaler) Close(_ context.Context) error {
 	return nil
 }
 
-func (s *awsDynamoDBStreamsScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+func (s *awsDynamoDBStreamsScaler) GetMetricSpecForScaling(_ context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-dynamodb-streams-%s", s.metadata.tableName))),
@@ -162,8 +170,8 @@ func (s *awsDynamoDBStreamsScaler) GetMetricSpecForScaling(context.Context) []v2
 }
 
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
-func (s *awsDynamoDBStreamsScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	shardCount, err := s.GetDynamoDBStreamShardCount(ctx)
+func (s *awsDynamoDBStreamsScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	shardCount, err := s.getDynamoDBStreamShardCount()
 
 	if err != nil {
 		s.logger.Error(err, "error getting shard count")
@@ -175,8 +183,8 @@ func (s *awsDynamoDBStreamsScaler) GetMetricsAndActivity(ctx context.Context, me
 	return []external_metrics.ExternalMetricValue{metric}, shardCount > s.metadata.activationTargetShardCount, nil
 }
 
-// Get DynamoDB Stream Shard Count
-func (s *awsDynamoDBStreamsScaler) GetDynamoDBStreamShardCount(ctx context.Context) (int64, error) {
+// GetDynamoDBStreamShardCount Get DynamoDB Stream Shard Count
+func (s *awsDynamoDBStreamsScaler) getDynamoDBStreamShardCount() (int64, error) {
 	var shardNum int64
 	var lastShardID *string
 
@@ -192,7 +200,7 @@ func (s *awsDynamoDBStreamsScaler) GetDynamoDBStreamShardCount(ctx context.Conte
 				ExclusiveStartShardId: lastShardID,
 			}
 		}
-		des, err := s.dbStreamClient.DescribeStreamWithContext(ctx, &input)
+		des, err := s.dbStreamWrapperClient.DescribeStream(context.TODO(), &input)
 		if err != nil {
 			return -1, err
 		}
