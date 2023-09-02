@@ -3,17 +3,17 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/sqs"
-	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
-	"github.com/go-logr/logr"
-	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/metrics/pkg/apis/external_metrics"
 	"net/url"
 	"strconv"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	"github.com/go-logr/logr"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
+	v2 "k8s.io/api/autoscaling/v2"
+	"k8s.io/metrics/pkg/apis/external_metrics"
 )
 
 const (

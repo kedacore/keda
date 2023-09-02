@@ -3,14 +3,14 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"strconv"
+
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodbstreams"
 	"github.com/go-logr/logr"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	"strconv"
-
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (

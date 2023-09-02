@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
+	"testing"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	dynamodbTypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -12,8 +15,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	"reflect"
-	"testing"
 )
 
 const (

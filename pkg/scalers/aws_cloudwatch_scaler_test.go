@@ -3,11 +3,11 @@ package scalers
 import (
 	"context"
 	"errors"
-	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
-	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 )

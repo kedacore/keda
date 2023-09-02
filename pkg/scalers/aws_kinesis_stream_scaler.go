@@ -3,14 +3,13 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 	"strconv"
 
+	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 	"github.com/go-logr/logr"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
