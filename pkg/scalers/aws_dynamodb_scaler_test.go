@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"strconv"
 	"testing"
 
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 )
@@ -403,7 +403,7 @@ func TestDynamoGetQueryMetrics(t *testing.T) {
 		t.Run(meta.tableName, func(t *testing.T) {
 			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}, logr.Discard()}
 
-			value, err := scaler.GetQueryMetrics(context.Background())
+			value, err := scaler.GetQueryMetrics()
 			switch meta.tableName {
 			case testAWSDynamoErrorTable:
 				assert.EqualError(t, err, "error", "expect error because of dynamodb api error")

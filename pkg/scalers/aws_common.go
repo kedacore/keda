@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -27,12 +26,15 @@ type awsAuthorizationMetadata struct {
 
 type awsConfigMetadata struct {
 	awsRegion        string
+	awsEndpoint      string
 	awsAuthorization awsAuthorizationMetadata
 }
 
-func getAwsConfig(ctx context.Context, awsRegion string, awsAuthorization awsAuthorizationMetadata) (*aws.Config, error) {
+func getAwsConfig(awsRegion string, awsEndpoint string, awsAuthorization awsAuthorizationMetadata) (*aws.Config, error) {
+	ctx := context.TODO()
 	metadata := &awsConfigMetadata{
 		awsRegion:        awsRegion,
+		awsEndpoint:      awsEndpoint,
 		awsAuthorization: awsAuthorization,
 	}
 

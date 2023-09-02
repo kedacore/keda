@@ -8,15 +8,15 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	dynamodbTypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	dynamodbTypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodbstreams"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -180,7 +180,7 @@ func createTable(db *dynamodb.Client) error {
 	keySchema := []dynamodbTypes.KeySchemaElement{
 		{
 			AttributeName: aws.String("id"),
-			KeyType:       dynamodbTypes.KeyTypeHash,
+			KeyType:       dynamodbTypes.KeyTypeRange,
 		},
 	}
 	attributeDefinitions := []dynamodbTypes.AttributeDefinition{

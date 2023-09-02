@@ -7,10 +7,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"os"
-	"testing"
-	"time"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -19,6 +15,9 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
+	"os"
+	"testing"
+	"time"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
 )

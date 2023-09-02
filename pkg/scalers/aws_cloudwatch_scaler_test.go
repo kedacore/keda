@@ -3,11 +3,11 @@ package scalers
 import (
 	"context"
 	"errors"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
-	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 )
@@ -446,7 +446,7 @@ var awsCloudwatchGetMetricTestData = []awsCloudwatchMetadata{
 type mockCloudwatch struct {
 }
 
-func (m *mockCloudwatch) GetMetricData(_ context.Context, input *cloudwatch.GetMetricDataInput, _ ...func(*cloudwatch.Options)) (*cloudwatch.GetMetricDataOutput, error) {
+func (m *mockCloudwatch) GetMetricData(_ context.Context, input *cloudwatch.GetMetricDataInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.GetMetricDataOutput, error) {
 	if input.MetricDataQueries[0].MetricStat != nil {
 		switch *input.MetricDataQueries[0].MetricStat.Metric.MetricName {
 		case testAWSCloudwatchErrorMetric:

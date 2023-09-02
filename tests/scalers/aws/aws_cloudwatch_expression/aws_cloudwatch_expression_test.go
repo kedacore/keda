@@ -7,19 +7,17 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"os"
-	"testing"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/joho/godotenv"
+	. "github.com/kedacore/keda/v2/tests/helper"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
-
-	. "github.com/kedacore/keda/v2/tests/helper"
+	"os"
+	"testing"
 )
 
 // Load environment variables from .env file
