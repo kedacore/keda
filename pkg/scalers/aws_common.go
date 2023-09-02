@@ -31,8 +31,7 @@ type awsConfigMetadata struct {
 	awsAuthorization awsAuthorizationMetadata
 }
 
-func getAwsConfig(awsRegion string, awsEndpoint string, awsAuthorization awsAuthorizationMetadata) (*aws.Config, error) {
-	ctx := context.TODO()
+func getAwsConfig(ctx context.Context, awsRegion string, awsEndpoint string, awsAuthorization awsAuthorizationMetadata) (*aws.Config, error) {
 	metadata := &awsConfigMetadata{
 		awsRegion:        awsRegion,
 		awsEndpoint:      awsEndpoint,

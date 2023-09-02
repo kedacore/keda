@@ -11,10 +11,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/go-logr/logr"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"go.mongodb.org/mongo-driver/bson"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type awsDynamoDBScaler struct {
@@ -39,7 +40,7 @@ type awsDynamoDBMetadata struct {
 	metricName                string
 }
 
-func NewAwsDynamoDBScaler(config *ScalerConfig) (Scaler, error) {
+func NewAwsDynamoDBScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -49,7 +50,7 @@ func NewAwsDynamoDBScaler(config *ScalerConfig) (Scaler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error parsing DynamoDb metadata: %w", err)
 	}
-	dbClient, err := createDynamoDBClient(meta)
+	dbClient, err := createDynamoDBClient(ctx, meta)
 	if err != nil {
 		return nil, fmt.Errorf("error when creating dynamodb client: %w", err)
 	}
@@ -179,16 +180,16 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 	return &meta, nil
 }
 
-func createDynamoDBClient(metadata *awsDynamoDBMetadata) (*dynamodb.Client, error) {
-	cfg, err := getAwsConfig(metadata.awsRegion, metadata.awsEndpoint, metadata.awsAuthorization)
+func createDynamoDBClient(ctx context.Context, metadata *awsDynamoDBMetadata) (*dynamodb.Client, error) {
+	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsEndpoint, metadata.awsAuthorization)
 	if err != nil {
 		return nil, err
 	}
 	return dynamodb.NewFromConfig(*cfg), nil
 }
 
-func (s *awsDynamoDBScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	metricValue, err := s.GetQueryMetrics()
+func (s *awsDynamoDBScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	metricValue, err := s.GetQueryMetrics(ctx)
 	if err != nil {
 		s.logger.Error(err, "Error getting metric value")
 		return []external_metrics.ExternalMetricValue{}, false, err
@@ -217,7 +218,7 @@ func (s *awsDynamoDBScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *awsDynamoDBScaler) GetQueryMetrics() (float64, error) {
+func (s *awsDynamoDBScaler) GetQueryMetrics(ctx context.Context) (float64, error) {
 	dimensions := dynamodb.QueryInput{
 		TableName:                 aws.String(s.metadata.tableName),
 		KeyConditionExpression:    aws.String(s.metadata.keyConditionExpression),
@@ -229,7 +230,7 @@ func (s *awsDynamoDBScaler) GetQueryMetrics() (float64, error) {
 		dimensions.IndexName = aws.String(s.metadata.indexName)
 	}
 
-	res, err := s.dbClient.Query(context.TODO(), &dimensions)
+	res, err := s.dbClient.Query(ctx, &dimensions)
 	if err != nil {
 		s.logger.Error(err, "Failed to get output")
 		return 0, err

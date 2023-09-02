@@ -53,12 +53,12 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Governance**: KEDA transitioned to CNCF Graduated project ([#63](https://github.com/kedacore/governance/issues/63))
 
 ### Improvements
-- **General**: Add more events for user checking ([#796](https://github.com/kedacore/keda/issues/3764))
+- **General**: Add more events for user checking ([#3764](https://github.com/kedacore/keda/issues/3764))
 - **General**: Add ScaledObject/ScaledJob names to output of `kubectl get triggerauthentication/clustertriggerauthentication` ([#796](https://github.com/kedacore/keda/issues/796))
 - **General**: Add standalone CRD generation to release workflow ([#2726](https://github.com/kedacore/keda/issues/2726))
 - **General**: Adding a changelog validating script to check for formatting and order ([#3190](https://github.com/kedacore/keda/issues/3190))
 - **General**: Update golangci-lint version documented in CONTRIBUTING.md since old version doesn't support go 1.20 (N/A)
-- **General**: Updated AWS SDK and updated all the scalers ([#4905](https://github.com/kedacore/keda/issues/3764))
+- **General**: Updated AWS SDK and updated all the scalers ([#4905](https://github.com/kedacore/keda/issues/4905))
 - **Azure Pod Identity**: Introduce validation to prevent usage of empty identity ID for Azure identity providers ([#4528](https://github.com/kedacore/keda/issues/4528))
 
 ### Fixes

@@ -55,7 +55,7 @@ type awsCloudwatchMetadata struct {
 }
 
 // NewAwsCloudwatchScaler creates a new awsCloudwatchScaler
-func NewAwsCloudwatchScaler(config *ScalerConfig) (Scaler, error) {
+func NewAwsCloudwatchScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -66,7 +66,7 @@ func NewAwsCloudwatchScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing cloudwatch metadata: %w", err)
 	}
 
-	cloudwatchClient, err := createCloudwatchClient(meta)
+	cloudwatchClient, err := createCloudwatchClient(ctx, meta)
 	if err != nil {
 		return nil, fmt.Errorf("error creating cloudwatch client: %w", err)
 	}
@@ -110,10 +110,8 @@ func getFloatMetadataValue(metadata map[string]string, key string, required bool
 	return defaultValue, nil
 }
 
-func createCloudwatchClient(metadata *awsCloudwatchMetadata) (*cloudwatch.Client, error) {
-	cfg, err := getAwsConfig(metadata.awsRegion,
-		metadata.awsEndpoint,
-		metadata.awsAuthorization)
+func createCloudwatchClient(ctx context.Context, metadata *awsCloudwatchMetadata) (*cloudwatch.Client, error) {
+	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsEndpoint, metadata.awsAuthorization)
 
 	if err != nil {
 		return nil, err
@@ -285,8 +283,8 @@ func computeQueryWindow(current time.Time, metricPeriodSec, metricEndTimeOffsetS
 	return
 }
 
-func (s *awsCloudwatchScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	metricValue, err := s.GetCloudwatchMetrics()
+func (s *awsCloudwatchScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	metricValue, err := s.GetCloudwatchMetrics(ctx)
 
 	if err != nil {
 		s.logger.Error(err, "Error getting metric value")
@@ -313,7 +311,7 @@ func (s *awsCloudwatchScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
+func (s *awsCloudwatchScaler) GetCloudwatchMetrics(ctx context.Context) (float64, error) {
 	var input cloudwatch.GetMetricDataInput
 
 	startTime, endTime := computeQueryWindow(time.Now(), s.metadata.metricStatPeriod, s.metadata.metricEndTimeOffset, s.metadata.metricCollectionTime)
@@ -368,7 +366,7 @@ func (s *awsCloudwatchScaler) GetCloudwatchMetrics() (float64, error) {
 		}
 	}
 
-	output, err := s.cwClient.GetMetricData(context.TODO(), &input)
+	output, err := s.cwClient.GetMetricData(ctx, &input)
 
 	if err != nil {
 		s.logger.Error(err, "Failed to get output")

@@ -11,9 +11,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/go-logr/logr"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
@@ -45,7 +46,7 @@ type awsSqsQueueMetadata struct {
 }
 
 // NewAwsSqsQueueScaler creates a new awsSqsQueueScaler
-func NewAwsSqsQueueScaler(config *ScalerConfig) (Scaler, error) {
+func NewAwsSqsQueueScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -57,9 +58,10 @@ func NewAwsSqsQueueScaler(config *ScalerConfig) (Scaler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error parsing SQS queue metadata: %w", err)
 	}
-
-	awsSqsClient := createSqsClient(meta)
-
+	awsSqsClient, err := createSqsClient(ctx, meta)
+	if err != nil {
+		return nil, fmt.Errorf("error when creating sqs client: %w", err)
+	}
 	return &awsSqsQueueScaler{
 		metricType: metricType,
 		metadata:   meta,
@@ -185,12 +187,12 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig, logger logr.Logger) (*awsSqs
 	return &meta, nil
 }
 
-func createSqsClient(metadata *awsSqsQueueMetadata) *sqs.Client {
-	cfg, _ := getAwsConfig(metadata.awsRegion,
-		metadata.awsEndpoint,
-		metadata.awsAuthorization)
-
-	return sqs.NewFromConfig(*cfg)
+func createSqsClient(ctx context.Context, metadata *awsSqsQueueMetadata) (*sqs.Client, error) {
+	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsEndpoint, metadata.awsAuthorization)
+	if err != nil {
+		return nil, err
+	}
+	return sqs.NewFromConfig(*cfg), nil
 }
 
 func (s *awsSqsQueueScaler) Close(context.Context) error {
@@ -209,8 +211,8 @@ func (s *awsSqsQueueScaler) GetMetricSpecForScaling(context.Context) []v2.Metric
 }
 
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
-func (s *awsSqsQueueScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	queuelen, err := s.getAwsSqsQueueLength()
+func (s *awsSqsQueueScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	queuelen, err := s.getAwsSqsQueueLength(ctx)
 
 	if err != nil {
 		s.logger.Error(err, "Error getting queue length")
@@ -223,13 +225,13 @@ func (s *awsSqsQueueScaler) GetMetricsAndActivity(_ context.Context, metricName 
 }
 
 // Get SQS Queue Length
-func (s *awsSqsQueueScaler) getAwsSqsQueueLength() (int64, error) {
+func (s *awsSqsQueueScaler) getAwsSqsQueueLength(ctx context.Context) (int64, error) {
 	input := &sqs.GetQueueAttributesInput{
 		AttributeNames: s.metadata.awsSqsQueueMetricNames,
 		QueueUrl:       aws.String(s.metadata.queueURL),
 	}
 
-	output, err := s.sqsWrapperClient.GetQueueAttributes(context.TODO(), input)
+	output, err := s.sqsWrapperClient.GetQueueAttributes(ctx, input)
 	if err != nil {
 		return -1, err
 	}

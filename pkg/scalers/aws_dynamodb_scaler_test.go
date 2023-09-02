@@ -403,7 +403,7 @@ func TestDynamoGetQueryMetrics(t *testing.T) {
 		t.Run(meta.tableName, func(t *testing.T) {
 			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}, logr.Discard()}
 
-			value, err := scaler.GetQueryMetrics()
+			value, err := scaler.GetQueryMetrics(context.Background())
 			switch meta.tableName {
 			case testAWSDynamoErrorTable:
 				assert.EqualError(t, err, "error", "expect error because of dynamodb api error")

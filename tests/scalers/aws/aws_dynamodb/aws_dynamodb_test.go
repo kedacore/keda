@@ -18,9 +18,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/joho/godotenv"
-	. "github.com/kedacore/keda/v2/tests/helper"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
+
+	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 // Load environment variables from .env file
