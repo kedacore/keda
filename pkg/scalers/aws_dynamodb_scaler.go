@@ -5,16 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/go-logr/logr"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"go.mongodb.org/mongo-driver/bson"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	"strconv"
-
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type awsDynamoDBScaler struct {
@@ -281,9 +281,9 @@ func attributeValueFromInterface(value interface{}) (types.AttributeValue, error
 			case "S":
 				return &types.AttributeValueMemberS{Value: val.(string)}, nil
 			case "N":
-				switch val.(type) {
+				switch av := val.(type) {
 				case string:
-					return &types.AttributeValueMemberN{Value: val.(string)}, nil
+					return &types.AttributeValueMemberN{Value: av}, nil
 				default:
 					return nil, ErrAwsDynamoInvalidExpressionAttributeValues
 				}
