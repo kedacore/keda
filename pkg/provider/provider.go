@@ -35,12 +35,10 @@ import (
 type KedaProvider struct {
 	defaults.DefaultExternalMetricsProvider
 
-	client           client.Client
-	watchedNamespace string
-	ctx              context.Context
+	client client.Client
+	ctx    context.Context
 
-	grpcClient            metricsservice.GrpcClient
-	useMetricsServiceGrpc bool
+	grpcClient metricsservice.GrpcClient
 }
 
 var (
@@ -50,13 +48,11 @@ var (
 )
 
 // NewProvider returns an instance of KedaProvider
-func NewProvider(ctx context.Context, adapterLogger logr.Logger, client client.Client, grpcClient metricsservice.GrpcClient, useMetricsServiceGrpc bool, watchedNamespace string) provider.ExternalMetricsProvider {
+func NewProvider(ctx context.Context, adapterLogger logr.Logger, client client.Client, grpcClient metricsservice.GrpcClient, useMetricsServiceGrpc bool) provider.ExternalMetricsProvider {
 	provider := &KedaProvider{
-		client:                client,
-		watchedNamespace:      watchedNamespace,
-		ctx:                   ctx,
-		grpcClient:            grpcClient,
-		useMetricsServiceGrpc: useMetricsServiceGrpc,
+		client:     client,
+		ctx:        ctx,
+		grpcClient: grpcClient,
 	}
 	logger = adapterLogger.WithName("provider")
 	logger.Info("starting")
