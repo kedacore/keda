@@ -43,7 +43,6 @@ import (
 	"github.com/kedacore/keda/v2/pkg/k8s"
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
 	"github.com/kedacore/keda/v2/pkg/scaling"
-	"github.com/kedacore/keda/v2/pkg/util"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	//+kubebuilder:scaffold:imports
 )
@@ -98,7 +97,7 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 	ctx := ctrl.SetupSignalHandler()
-	namespaces, err := util.GetWatchNamespaces()
+	namespaces, err := kedautil.GetWatchNamespaces()
 	if err != nil {
 		setupLog.Error(err, "failed to get watch namespace")
 		os.Exit(1)

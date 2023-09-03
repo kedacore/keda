@@ -48,7 +48,7 @@ var (
 )
 
 // NewProvider returns an instance of KedaProvider
-func NewProvider(ctx context.Context, adapterLogger logr.Logger, client client.Client, grpcClient metricsservice.GrpcClient, useMetricsServiceGrpc bool) provider.ExternalMetricsProvider {
+func NewProvider(ctx context.Context, adapterLogger logr.Logger, client client.Client, grpcClient metricsservice.GrpcClient) provider.ExternalMetricsProvider {
 	provider := &KedaProvider{
 		client:     client,
 		ctx:        ctx,

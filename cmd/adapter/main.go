@@ -35,7 +35,6 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
 	kedaprovider "github.com/kedacore/keda/v2/pkg/provider"
-	"github.com/kedacore/keda/v2/pkg/util"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -67,7 +66,7 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 		logger.Error(err, "failed to add keda scheme to runtime scheme")
 		return nil, nil, fmt.Errorf("failed to add keda scheme to runtime scheme (%s)", err)
 	}
-	namespaces, err := util.GetWatchNamespaces()
+	namespaces, err := kedautil.GetWatchNamespaces()
 	if err != nil {
 		logger.Error(err, "failed to get watch namespace")
 		return nil, nil, fmt.Errorf("failed to get watch namespace (%s)", err)
@@ -89,12 +88,6 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 	if err != nil {
 		logger.Error(err, "Invalid KEDA_METRICS_LEADER_ELECTION_RETRY_PERIOD")
 		return nil, nil, fmt.Errorf("invalid KEDA_METRICS_LEADER_ELECTION_RETRY_PERIOD (%s)", err)
-	}
-
-	useMetricsServiceGrpc, err := kedautil.ResolveOsEnvBool("KEDA_USE_METRICS_SERVICE_GRPC", true)
-	if err != nil {
-		logger.Error(err, "Invalid KEDA_USE_METRICS_SERVICE_GRPC")
-		return nil, nil, fmt.Errorf("invalid KEDA_USE_METRICS_SERVICE_GRPC (%s)", err)
 	}
 
 	// Get a config to talk to the apiserver
@@ -135,7 +128,7 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 			close(stopCh)
 		}
 	}()
-	return kedaprovider.NewProvider(ctx, logger, mgr.GetClient(), *grpcClient, useMetricsServiceGrpc), stopCh, nil
+	return kedaprovider.NewProvider(ctx, logger, mgr.GetClient(), *grpcClient), stopCh, nil
 }
 
 // generateDefaultMetricsServiceAddr generates default Metrics Service gRPC Server address based on the current Namespace.
