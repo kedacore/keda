@@ -17,6 +17,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/bsoncodec"
 	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/internal"
+	"go.mongodb.org/mongo-driver/internal/logger"
 	"go.mongodb.org/mongo-driver/internal/uuid"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -60,6 +61,7 @@ type Client struct {
 	readPreference *readpref.ReadPref
 	readConcern    *readconcern.ReadConcern
 	writeConcern   *writeconcern.WriteConcern
+	bsonOpts       *options.BSONOptions
 	registry       *bsoncodec.Registry
 	monitor        *event.CommandMonitor
 	serverAPI      *driver.ServerAPIOptions
@@ -67,6 +69,7 @@ type Client struct {
 	sessionPool    *session.Pool
 	timeout        *time.Duration
 	httpClient     *http.Client
+	logger         *logger.Logger
 
 	// client-side encryption fields
 	keyVaultClientFLE  *Client
@@ -125,6 +128,8 @@ func Connect(ctx context.Context, opts ...*options.ClientOptions) (*Client, erro
 // option fields of previous options, there is no partial overwriting. For example, if Username is
 // set in the Auth field for the first option, and Password is set for the second but with no
 // Username, after the merge the Username field will be empty.
+//
+// Deprecated: Use [Connect] instead.
 func NewClient(opts ...*options.ClientOptions) (*Client, error) {
 	clientOpt := options.MergeClientOptions(opts...)
 
@@ -159,6 +164,10 @@ func NewClient(opts ...*options.ClientOptions) (*Client, error) {
 	client.readPreference = readpref.Primary()
 	if clientOpt.ReadPreference != nil {
 		client.readPreference = clientOpt.ReadPreference
+	}
+	// BSONOptions
+	if clientOpt.BSONOptions != nil {
+		client.bsonOpts = clientOpt.BSONOptions
 	}
 	// Registry
 	client.registry = bson.DefaultRegistry
@@ -216,6 +225,13 @@ func NewClient(opts ...*options.ClientOptions) (*Client, error) {
 			return nil, replaceErrors(err)
 		}
 	}
+
+	// Create a logger for the client.
+	client.logger, err = newLogger(clientOpt.LoggerOptions)
+	if err != nil {
+		return nil, fmt.Errorf("invalid logger options: %w", err)
+	}
+
 	return client, nil
 }
 
@@ -224,6 +240,8 @@ func NewClient(opts ...*options.ClientOptions) (*Client, error) {
 //
 // Connect starts background goroutines to monitor the state of the deployment and does not do any I/O in the main
 // goroutine. The Client.Ping method can be used to verify that the connection was created successfully.
+//
+// Deprecated: Use [mongo.Connect] instead.
 func (c *Client) Connect(ctx context.Context) error {
 	if connector, ok := c.deployment.(driver.Connector); ok {
 		err := connector.Connect()
@@ -277,6 +295,10 @@ func (c *Client) Connect(ctx context.Context) error {
 // or write operations. If this method returns with no errors, all connections
 // associated with this Client have been closed.
 func (c *Client) Disconnect(ctx context.Context) error {
+	if c.logger != nil {
+		defer c.logger.Close()
+	}
+
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -445,14 +467,14 @@ func (c *Client) configureAutoEncryption(clientOpts *options.ClientOptions) erro
 		return err
 	}
 
-	// If the crypt_shared library was loaded successfully, signal to the mongocryptd client creator
-	// that it can bypass spawning mongocryptd.
-	cryptSharedLibAvailable := mc.CryptSharedLibVersionString() != ""
-	mongocryptdFLE, err := newMongocryptdClient(cryptSharedLibAvailable, clientOpts.AutoEncryptionOptions)
-	if err != nil {
-		return err
+	// If the crypt_shared library was not loaded, try to spawn and connect to mongocryptd.
+	if mc.CryptSharedLibVersionString() == "" {
+		mongocryptdFLE, err := newMongocryptdClient(clientOpts.AutoEncryptionOptions)
+		if err != nil {
+			return err
+		}
+		c.mongocryptdFLE = mongocryptdFLE
 	}
-	c.mongocryptdFLE = mongocryptdFLE
 
 	c.configureCryptFLE(mc, clientOpts.AutoEncryptionOptions)
 	return nil
@@ -514,7 +536,7 @@ func (c *Client) newMongoCrypt(opts *options.AutoEncryptionOptions) (*mongocrypt
 	// convert schemas in SchemaMap to bsoncore documents
 	cryptSchemaMap := make(map[string]bsoncore.Document)
 	for k, v := range opts.SchemaMap {
-		schema, err := transformBsoncoreDocument(c.registry, v, true, "schemaMap")
+		schema, err := marshal(v, c.bsonOpts, c.registry)
 		if err != nil {
 			return nil, err
 		}
@@ -524,14 +546,14 @@ func (c *Client) newMongoCrypt(opts *options.AutoEncryptionOptions) (*mongocrypt
 	// convert schemas in EncryptedFieldsMap to bsoncore documents
 	cryptEncryptedFieldsMap := make(map[string]bsoncore.Document)
 	for k, v := range opts.EncryptedFieldsMap {
-		encryptedFields, err := transformBsoncoreDocument(c.registry, v, true, "encryptedFieldsMap")
+		encryptedFields, err := marshal(v, c.bsonOpts, c.registry)
 		if err != nil {
 			return nil, err
 		}
 		cryptEncryptedFieldsMap[k] = encryptedFields
 	}
 
-	kmsProviders, err := transformBsoncoreDocument(c.registry, opts.KmsProviders, true, "kmsProviders")
+	kmsProviders, err := marshal(opts.KmsProviders, c.bsonOpts, c.registry)
 	if err != nil {
 		return nil, fmt.Errorf("error creating KMS providers document: %v", err)
 	}
@@ -565,7 +587,8 @@ func (c *Client) newMongoCrypt(opts *options.AutoEncryptionOptions) (*mongocrypt
 		SetBypassQueryAnalysis(bypassQueryAnalysis).
 		SetEncryptedFieldsMap(cryptEncryptedFieldsMap).
 		SetCryptSharedLibDisabled(cryptSharedLibDisabled || bypassAutoEncryption).
-		SetCryptSharedLibOverridePath(cryptSharedLibPath))
+		SetCryptSharedLibOverridePath(cryptSharedLibPath).
+		SetHTTPClient(opts.HTTPClient))
 	if err != nil {
 		return nil, err
 	}
@@ -609,7 +632,6 @@ func (c *Client) configureCryptFLE(mc *mongocrypt.MongoCrypt, opts *options.Auto
 		KeyFn:                kr.cryptKeys,
 		MarkFn:               c.mongocryptdFLE.markCommand,
 		TLSConfig:            opts.TLSConfig,
-		HTTPClient:           opts.HTTPClient,
 		BypassAutoEncryption: bypass,
 	})
 }
@@ -657,7 +679,7 @@ func (c *Client) ListDatabases(ctx context.Context, filter interface{}, opts ...
 		return ListDatabasesResult{}, err
 	}
 
-	filterDoc, err := transformBsoncoreDocument(c.registry, filter, true, "filter")
+	filterDoc, err := marshal(filter, c.bsonOpts, c.registry)
 	if err != nil {
 		return ListDatabasesResult{}, err
 	}
@@ -788,6 +810,7 @@ func (c *Client) Watch(ctx context.Context, pipeline interface{},
 		readConcern:    c.readConcern,
 		readPreference: c.readPreference,
 		client:         c,
+		bsonOpts:       c.bsonOpts,
 		registry:       c.registry,
 		streamType:     ClientStream,
 		crypt:          c.cryptFLE,
@@ -816,4 +839,29 @@ func (c *Client) createBaseCursorOptions() driver.CursorOptions {
 		Crypt:          c.cryptFLE,
 		ServerAPI:      c.serverAPI,
 	}
+}
+
+// newLogger will use the LoggerOptions to create an internal logger and publish
+// messages using a LogSink.
+func newLogger(opts *options.LoggerOptions) (*logger.Logger, error) {
+	// If there are no logger options, then create a default logger.
+	if opts == nil {
+		opts = options.Logger()
+	}
+
+	// If there are no component-level options and the environment does not
+	// contain component variables, then do nothing.
+	if (opts.ComponentLevels == nil || len(opts.ComponentLevels) == 0) &&
+		!logger.EnvHasComponentVariables() {
+
+		return nil, nil
+	}
+
+	// Otherwise, collect the component-level options and create a logger.
+	componentLevels := make(map[logger.Component]logger.Level)
+	for component, level := range opts.ComponentLevels {
+		componentLevels[logger.Component(component)] = logger.Level(level)
+	}
+
+	return logger.New(opts.Sink, opts.MaxDocumentLength, componentLevels)
 }

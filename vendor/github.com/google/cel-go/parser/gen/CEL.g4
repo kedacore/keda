@@ -52,15 +52,15 @@ unary
 
 member
     : primary                                                       # PrimaryExpr
-    | member op=('.'|'.?') id=IDENTIFIER                            # Select
+    | member op='.' (opt='?')? id=IDENTIFIER                        # Select
     | member op='.' id=IDENTIFIER open='(' args=exprList? ')'       # MemberCall
-    | member op=('['|'[?') index=expr ']'                           # Index
+    | member op='[' (opt='?')? index=expr ']'                       # Index
     ;
 
 primary
     : leadingDot='.'? id=IDENTIFIER (op='(' args=exprList? ')')?    # IdentOrGlobalCall
     | '(' e=expr ')'                                                # Nested
-    | op='[' elems=exprList? ','? ']'                               # CreateList
+    | op='[' elems=listInit? ','? ']'                               # CreateList
     | op='{' entries=mapInitializerList? ','? '}'                   # CreateStruct
     | leadingDot='.'? ids+=IDENTIFIER (ops+='.' ids+=IDENTIFIER)*
         op='{' entries=fieldInitializerList? ','? '}'               # CreateMessage
@@ -69,6 +69,10 @@ primary
 
 exprList
     : e+=expr (',' e+=expr)*
+    ;
+
+listInit
+    : elems+=optExpr (',' elems+=optExpr)*
     ;
 
 fieldInitializerList
@@ -80,22 +84,22 @@ optField
     ;
 
 mapInitializerList
-    : keys+=optKey cols+=':' values+=expr (',' keys+=optKey cols+=':' values+=expr)*
+    : keys+=optExpr cols+=':' values+=expr (',' keys+=optExpr cols+=':' values+=expr)*
     ;
 
-optKey
-    : (opt='?')? expr
+optExpr
+    : (opt='?')? e=expr
     ;
 
 literal
     : sign=MINUS? tok=NUM_INT   # Int
-    | tok=NUM_UINT  # Uint
+    | tok=NUM_UINT              # Uint
     | sign=MINUS? tok=NUM_FLOAT # Double
-    | tok=STRING    # String
-    | tok=BYTES     # Bytes
-    | tok=CEL_TRUE   # BoolTrue
-    | tok=CEL_FALSE  # BoolFalse
-    | tok=NUL        # Null
+    | tok=STRING                # String
+    | tok=BYTES                 # Bytes
+    | tok=CEL_TRUE              # BoolTrue
+    | tok=CEL_FALSE             # BoolFalse
+    | tok=NUL                   # Null
     ;
 
 // Lexer Rules

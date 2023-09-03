@@ -111,6 +111,12 @@ func DecompressPayload(in []byte, opts CompressionOpts) (uncompressed []byte, er
 	case wiremessage.CompressorNoOp:
 		return in, nil
 	case wiremessage.CompressorSnappy:
+		l, err := snappy.DecodedLen(in)
+		if err != nil {
+			return nil, fmt.Errorf("decoding compressed length %w", err)
+		} else if int32(l) != opts.UncompressedSize {
+			return nil, fmt.Errorf("unexpected decompression size, expected %v but got %v", opts.UncompressedSize, l)
+		}
 		uncompressed = make([]byte, opts.UncompressedSize)
 		return snappy.Decode(uncompressed, in)
 	case wiremessage.CompressorZLib:

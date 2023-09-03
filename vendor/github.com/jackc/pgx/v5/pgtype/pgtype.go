@@ -44,7 +44,7 @@ const (
 	MacaddrOID             = 829
 	InetOID                = 869
 	BoolArrayOID           = 1000
-	QCharArrayOID          = 1003
+	QCharArrayOID          = 1002
 	NameArrayOID           = 1003
 	Int2ArrayOID           = 1005
 	Int4ArrayOID           = 1007
@@ -1138,25 +1138,6 @@ func (m *Map) Scan(oid uint32, formatCode int16, src []byte, dst any) error {
 
 	plan := m.PlanScan(oid, formatCode, dst)
 	return plan.Scan(src, dst)
-}
-
-func scanUnknownType(oid uint32, formatCode int16, buf []byte, dest any) error {
-	switch dest := dest.(type) {
-	case *string:
-		if formatCode == BinaryFormatCode {
-			return fmt.Errorf("unknown oid %d in binary format cannot be scanned into %T", oid, dest)
-		}
-		*dest = string(buf)
-		return nil
-	case *[]byte:
-		*dest = buf
-		return nil
-	default:
-		if nextDst, retry := GetAssignToDstType(dest); retry {
-			return scanUnknownType(oid, formatCode, buf, nextDst)
-		}
-		return fmt.Errorf("unknown oid %d cannot be scanned into %T", oid, dest)
-	}
 }
 
 var ErrScanTargetTypeChanged = errors.New("scan target type changed")

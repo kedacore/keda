@@ -8,19 +8,11 @@ package internal // import "go.mongodb.org/mongo-driver/internal"
 
 import (
 	"net/http"
-	"time"
 )
 
 // DefaultHTTPClient is the default HTTP client used across the driver.
 var DefaultHTTPClient = &http.Client{
-	// TODO(GODRIVER-2623): Use "http.DefaultTransport.Clone" once we change the minimum supported Go version to 1.13.
-	Transport: &http.Transport{
-		Proxy:                 http.ProxyFromEnvironment,
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-	},
+	Transport: http.DefaultTransport.(*http.Transport).Clone(),
 }
 
 // CloseIdleHTTPConnections closes any connections which were previously

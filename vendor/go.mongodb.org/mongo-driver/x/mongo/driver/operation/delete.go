@@ -14,6 +14,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/internal/logger"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
@@ -41,6 +42,7 @@ type Delete struct {
 	serverAPI    *driver.ServerAPIOptions
 	let          bsoncore.Document
 	timeout      *time.Duration
+	logger       *logger.Logger
 }
 
 // DeleteResult represents a delete result returned by the server.
@@ -111,6 +113,7 @@ func (d *Delete) Execute(ctx context.Context) error {
 		WriteConcern:      d.writeConcern,
 		ServerAPI:         d.serverAPI,
 		Timeout:           d.timeout,
+		Logger:            d.logger,
 	}.Execute(ctx)
 
 }
@@ -310,5 +313,16 @@ func (d *Delete) Timeout(timeout *time.Duration) *Delete {
 	}
 
 	d.timeout = timeout
+	return d
+}
+
+// Logger sets the logger for this operation.
+func (d *Delete) Logger(logger *logger.Logger) *Delete {
+	if d == nil {
+		d = new(Delete)
+	}
+
+	d.logger = logger
+
 	return d
 }
