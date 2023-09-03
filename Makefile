@@ -320,7 +320,7 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Install kustomize from vendor dir if necessary.
 $(KUSTOMIZE): $(LOCALBIN)
-	test -s $(LOCALBIN)/kustomize || GOBIN=$(LOCALBIN) go install sigs.k8s.io/kustomize/kustomize/v4
+	test -s $(LOCALBIN)/kustomize || GOBIN=$(LOCALBIN) go install sigs.k8s.io/kustomize/kustomize/v5
 
 .PHONY: envtest
 envtest: $(ENVTEST) ## Install envtest-setup from vendor dir if necessary.

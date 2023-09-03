@@ -258,8 +258,8 @@ github.com/arangodb/go-driver/util
 # github.com/arangodb/go-velocypack v0.0.0-20200318135517-5af53c29c67e
 ## explicit; go 1.12
 github.com/arangodb/go-velocypack
-# github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a
-## explicit
+# github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
+## explicit; go 1.13
 github.com/asaskevich/govalidator
 # github.com/aws/aws-sdk-go v1.45.2
 ## explicit; go 1.11
@@ -437,8 +437,8 @@ github.com/gabriel-vasile/mimetype
 github.com/gabriel-vasile/mimetype/internal/charset
 github.com/gabriel-vasile/mimetype/internal/json
 github.com/gabriel-vasile/mimetype/internal/magic
-# github.com/go-errors/errors v1.0.1
-## explicit
+# github.com/go-errors/errors v1.4.2
+## explicit; go 1.14
 github.com/go-errors/errors
 # github.com/go-jose/go-jose/v3 v3.0.0
 ## explicit; go 1.12
@@ -573,12 +573,6 @@ github.com/google/cel-go/interpreter
 github.com/google/cel-go/interpreter/functions
 github.com/google/cel-go/parser
 github.com/google/cel-go/parser/gen
-# github.com/google/gnostic v0.6.9
-## explicit; go 1.12
-github.com/google/gnostic/compiler
-github.com/google/gnostic/extensions
-github.com/google/gnostic/jsonschema
-github.com/google/gnostic/openapiv2
 # github.com/google/gnostic-models v0.6.8
 ## explicit; go 1.18
 github.com/google/gnostic-models/compiler
@@ -1138,7 +1132,7 @@ github.com/xdg/stringprep
 # github.com/xhit/go-str2duration/v2 v2.1.0
 ## explicit; go 1.13
 github.com/xhit/go-str2duration/v2
-# github.com/xlab/treeprint v1.1.0
+# github.com/xlab/treeprint v1.2.0
 ## explicit; go 1.13
 github.com/xlab/treeprint
 # github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a
@@ -2287,7 +2281,6 @@ k8s.io/kube-openapi/pkg/validation/errors
 k8s.io/kube-openapi/pkg/validation/spec
 k8s.io/kube-openapi/pkg/validation/strfmt
 k8s.io/kube-openapi/pkg/validation/strfmt/bson
-k8s.io/kube-openapi/pkg/validation/validate
 # k8s.io/metrics v0.28.1
 ## explicit; go 1.20
 k8s.io/metrics/pkg/apis/custom_metrics
@@ -2426,8 +2419,8 @@ sigs.k8s.io/custom-metrics-apiserver/pkg/registry/external_metrics
 ## explicit; go 1.18
 sigs.k8s.io/json
 sigs.k8s.io/json/internal/golang/encoding/json
-# sigs.k8s.io/kustomize/api v0.12.1
-## explicit; go 1.18
+# sigs.k8s.io/kustomize/api v0.14.0
+## explicit; go 1.20
 sigs.k8s.io/kustomize/api/filters/annotations
 sigs.k8s.io/kustomize/api/filters/fieldspec
 sigs.k8s.io/kustomize/api/filters/filtersutil
@@ -2453,6 +2446,7 @@ sigs.k8s.io/kustomize/api/internal/builtins
 sigs.k8s.io/kustomize/api/internal/generators
 sigs.k8s.io/kustomize/api/internal/git
 sigs.k8s.io/kustomize/api/internal/kusterr
+sigs.k8s.io/kustomize/api/internal/localizer
 sigs.k8s.io/kustomize/api/internal/plugins/builtinconfig
 sigs.k8s.io/kustomize/api/internal/plugins/builtinhelpers
 sigs.k8s.io/kustomize/api/internal/plugins/execplugin
@@ -2465,6 +2459,7 @@ sigs.k8s.io/kustomize/api/internal/validate
 sigs.k8s.io/kustomize/api/konfig
 sigs.k8s.io/kustomize/api/konfig/builtinpluginconsts
 sigs.k8s.io/kustomize/api/krusty
+sigs.k8s.io/kustomize/api/krusty/localizer
 sigs.k8s.io/kustomize/api/kv
 sigs.k8s.io/kustomize/api/loader
 sigs.k8s.io/kustomize/api/provenance
@@ -2472,8 +2467,8 @@ sigs.k8s.io/kustomize/api/provider
 sigs.k8s.io/kustomize/api/resmap
 sigs.k8s.io/kustomize/api/resource
 sigs.k8s.io/kustomize/api/types
-# sigs.k8s.io/kustomize/cmd/config v0.10.9
-## explicit; go 1.18
+# sigs.k8s.io/kustomize/cmd/config v0.11.3
+## explicit; go 1.20
 sigs.k8s.io/kustomize/cmd/config/completion
 sigs.k8s.io/kustomize/cmd/config/configcobra
 sigs.k8s.io/kustomize/cmd/config/ext
@@ -2483,26 +2478,27 @@ sigs.k8s.io/kustomize/cmd/config/internal/generateddocs/api
 sigs.k8s.io/kustomize/cmd/config/internal/generateddocs/commands
 sigs.k8s.io/kustomize/cmd/config/internal/generateddocs/tutorials
 sigs.k8s.io/kustomize/cmd/config/runner
-# sigs.k8s.io/kustomize/kustomize/v4 v4.5.7
-## explicit; go 1.18
-sigs.k8s.io/kustomize/kustomize/v4
-sigs.k8s.io/kustomize/kustomize/v4/commands
-sigs.k8s.io/kustomize/kustomize/v4/commands/build
-sigs.k8s.io/kustomize/kustomize/v4/commands/create
-sigs.k8s.io/kustomize/kustomize/v4/commands/edit
-sigs.k8s.io/kustomize/kustomize/v4/commands/edit/add
-sigs.k8s.io/kustomize/kustomize/v4/commands/edit/fix
-sigs.k8s.io/kustomize/kustomize/v4/commands/edit/listbuiltin
-sigs.k8s.io/kustomize/kustomize/v4/commands/edit/remove
-sigs.k8s.io/kustomize/kustomize/v4/commands/edit/set
-sigs.k8s.io/kustomize/kustomize/v4/commands/internal/kustfile
-sigs.k8s.io/kustomize/kustomize/v4/commands/internal/util
-sigs.k8s.io/kustomize/kustomize/v4/commands/openapi
-sigs.k8s.io/kustomize/kustomize/v4/commands/openapi/fetch
-sigs.k8s.io/kustomize/kustomize/v4/commands/openapi/info
-sigs.k8s.io/kustomize/kustomize/v4/commands/version
-# sigs.k8s.io/kustomize/kyaml v0.13.9
-## explicit; go 1.18
+# sigs.k8s.io/kustomize/kustomize/v5 v5.1.1
+## explicit; go 1.20
+sigs.k8s.io/kustomize/kustomize/v5
+sigs.k8s.io/kustomize/kustomize/v5/commands
+sigs.k8s.io/kustomize/kustomize/v5/commands/build
+sigs.k8s.io/kustomize/kustomize/v5/commands/create
+sigs.k8s.io/kustomize/kustomize/v5/commands/edit
+sigs.k8s.io/kustomize/kustomize/v5/commands/edit/add
+sigs.k8s.io/kustomize/kustomize/v5/commands/edit/fix
+sigs.k8s.io/kustomize/kustomize/v5/commands/edit/listbuiltin
+sigs.k8s.io/kustomize/kustomize/v5/commands/edit/remove
+sigs.k8s.io/kustomize/kustomize/v5/commands/edit/set
+sigs.k8s.io/kustomize/kustomize/v5/commands/internal/kustfile
+sigs.k8s.io/kustomize/kustomize/v5/commands/internal/util
+sigs.k8s.io/kustomize/kustomize/v5/commands/localize
+sigs.k8s.io/kustomize/kustomize/v5/commands/openapi
+sigs.k8s.io/kustomize/kustomize/v5/commands/openapi/fetch
+sigs.k8s.io/kustomize/kustomize/v5/commands/openapi/info
+sigs.k8s.io/kustomize/kustomize/v5/commands/version
+# sigs.k8s.io/kustomize/kyaml v0.14.3
+## explicit; go 1.20
 sigs.k8s.io/kustomize/kyaml/comments
 sigs.k8s.io/kustomize/kyaml/errors
 sigs.k8s.io/kustomize/kyaml/ext
@@ -2517,18 +2513,15 @@ sigs.k8s.io/kustomize/kyaml/internal/forked/github.com/qri-io/starlib/util
 sigs.k8s.io/kustomize/kyaml/kio
 sigs.k8s.io/kustomize/kyaml/kio/filters
 sigs.k8s.io/kustomize/kyaml/kio/kioutil
-sigs.k8s.io/kustomize/kyaml/krmfile
 sigs.k8s.io/kustomize/kyaml/openapi
 sigs.k8s.io/kustomize/kyaml/openapi/kubernetesapi
-sigs.k8s.io/kustomize/kyaml/openapi/kubernetesapi/v1212
+sigs.k8s.io/kustomize/kyaml/openapi/kubernetesapi/v1_21_2
 sigs.k8s.io/kustomize/kyaml/openapi/kustomizationapi
 sigs.k8s.io/kustomize/kyaml/order
 sigs.k8s.io/kustomize/kyaml/pathutil
 sigs.k8s.io/kustomize/kyaml/resid
 sigs.k8s.io/kustomize/kyaml/runfn
 sigs.k8s.io/kustomize/kyaml/sets
-sigs.k8s.io/kustomize/kyaml/setters2
-sigs.k8s.io/kustomize/kyaml/setters2/settersutil
 sigs.k8s.io/kustomize/kyaml/sliceutil
 sigs.k8s.io/kustomize/kyaml/utils
 sigs.k8s.io/kustomize/kyaml/yaml

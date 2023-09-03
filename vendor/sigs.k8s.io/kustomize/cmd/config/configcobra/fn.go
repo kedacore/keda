@@ -11,14 +11,9 @@ import (
 func GetFn(name string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "fn",
-		Short: "Commands for running functions against configuration.",
+		Short: "Commands for running functions against configuration",
 	}
 
 	cmd.AddCommand(commands.RunCommand(name))
-	cmd.AddCommand(commands.SinkCommand(name))
-	cmd.AddCommand(commands.SourceCommand(name))
-	cmd.AddCommand(commands.WrapCommand())
-	cmd.AddCommand(commands.XArgsCommand())
-
 	return cmd
 }
