@@ -104,6 +104,9 @@ replace (
 	// we need a version without GPL3.0 license
 	github.com/leodido/go-urn => github.com/leodido/go-urn v1.2.4
 
+	// Pending their merge
+	github.com/open-policy-agent/cert-controller => github.com/JorTurFer/cert-controller v0.0.0-20230903160356-80880e509908
+
 	// we need to drop a transitive dependency on bou.ke/monkey -> https://github.com/kedacore/keda/issues/4364
 	github.com/otiai10/mint => github.com/otiai10/mint v1.4.1
 
@@ -309,7 +312,7 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.28.0 // indirect
+	k8s.io/apiextensions-apiserver v0.28.1 // indirect
 	k8s.io/apiserver v0.28.1 // indirect
 	k8s.io/component-base v0.28.1 // indirect
 	k8s.io/gengo v0.0.0-20230829151522-9cce18d56c01 // indirect

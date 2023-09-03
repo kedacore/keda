@@ -149,8 +149,8 @@ func addNamespacedCache(mgr manager.Manager, namespace string) (cache.Cache, err
 		cache.Options{
 			Scheme: mgr.GetScheme(),
 			Mapper: mgr.GetRESTMapper(),
-			Namespaces: []string{
-				namespace,
+			DefaultNamespaces: map[string]cache.Config{
+				namespace: {},
 			},
 		})
 	if err != nil {
