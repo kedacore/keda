@@ -11,4 +11,4 @@ jobs:
     with:
       runs-on: ARM64
       kubernetesVersion: v1.26
-      kindImage: kindest/node:v1.26.0@sha256:691e24bd2417609db7e589e1a479b902d2e209892a10ce375fab60a8407c7352
+      kindImage: kindest/node:v1.26.6@sha256:6e2d8b28a5b601defe327b98bd1c2d1930b49e5d8c512e1895099e4504007adb
