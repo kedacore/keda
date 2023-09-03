@@ -105,7 +105,7 @@ replace (
 	github.com/leodido/go-urn => github.com/leodido/go-urn v1.2.4
 
 	// Pending their merge
-	github.com/open-policy-agent/cert-controller => github.com/JorTurFer/cert-controller v0.0.0-20230903160356-80880e509908
+	github.com/open-policy-agent/cert-controller => github.com/JorTurFer/cert-controller v0.0.0-20230903233222-4c5e4a72d53b
 
 	// we need to drop a transitive dependency on bou.ke/monkey -> https://github.com/kedacore/keda/issues/4364
 	github.com/otiai10/mint => github.com/otiai10/mint v1.4.1

@@ -983,7 +983,7 @@ github.com/onsi/gomega/matchers/support/goraph/edge
 github.com/onsi/gomega/matchers/support/goraph/node
 github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
-# github.com/open-policy-agent/cert-controller v0.8.0 => github.com/JorTurFer/cert-controller v0.0.0-20230903160356-80880e509908
+# github.com/open-policy-agent/cert-controller v0.8.0 => github.com/JorTurFer/cert-controller v0.0.0-20230903233222-4c5e4a72d53b
 ## explicit; go 1.20
 github.com/open-policy-agent/cert-controller/pkg/rotator
 # github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
@@ -2549,7 +2549,7 @@ sigs.k8s.io/yaml
 # github.com/dgrijalva/jwt-go => github.com/golang-jwt/jwt/v4 v4.1.0
 # github.com/emicklei/go-restful => github.com/emicklei/go-restful v2.16.0+incompatible
 # github.com/leodido/go-urn => github.com/leodido/go-urn v1.2.4
-# github.com/open-policy-agent/cert-controller => github.com/JorTurFer/cert-controller v0.0.0-20230903160356-80880e509908
+# github.com/open-policy-agent/cert-controller => github.com/JorTurFer/cert-controller v0.0.0-20230903233222-4c5e4a72d53b
 # github.com/otiai10/mint => github.com/otiai10/mint v1.4.1
 # golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
 # golang.org/x/net => golang.org/x/net v0.7.0

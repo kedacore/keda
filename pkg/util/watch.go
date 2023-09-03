@@ -15,9 +15,11 @@ func GetWatchNamespaces() (map[string]cache.Config, error) {
 		return map[string]cache.Config{}, fmt.Errorf("%s must be set", WatchNamespaceEnvVar)
 	}
 
-	namespaces := map[string]cache.Config{
-		ns: {},
+	if ns == "" {
+		return map[string]cache.Config{}, nil
 	}
 
-	return namespaces, nil
+	return map[string]cache.Config{
+		ns: {},
+	}, nil
 }

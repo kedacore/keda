@@ -145,13 +145,18 @@ func AddRotator(mgr manager.Manager, cr *CertRotator) error {
 // The cache will be started by the manager when it starts, and consumers should synchronize on
 // it using WaitForCacheSync().
 func addNamespacedCache(mgr manager.Manager, namespace string) (cache.Cache, error) {
+	var namespaces map[string]cache.Config
+	if namespace != "" {
+		namespaces = map[string]cache.Config{
+			namespace: {},
+		}
+	}
+
 	c, err := cache.New(mgr.GetConfig(),
 		cache.Options{
-			Scheme: mgr.GetScheme(),
-			Mapper: mgr.GetRESTMapper(),
-			DefaultNamespaces: map[string]cache.Config{
-				namespace: {},
-			},
+			Scheme:            mgr.GetScheme(),
+			Mapper:            mgr.GetRESTMapper(),
+			DefaultNamespaces: namespaces,
 		})
 	if err != nil {
 		return nil, err
