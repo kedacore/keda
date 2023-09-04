@@ -53,7 +53,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Introduce new Google Cloud Tasks scaler functionality to scale based on the queue length ([#3613](https://github.com/kedacore/keda/issues/3613))
 - **AWS SQS Scaler**: Support for scaling to include delayed messages. ([#4377](https://github.com/kedacore/keda/issues/4377))
 - **Governance**: KEDA transitioned to CNCF Graduated project ([#63](https://github.com/kedacore/governance/issues/63))
-- **General**: Add formula for composing external metrics ([#2440](https://github.com/kedacore/keda/issues/2440))
 
 ### Improvements
 
