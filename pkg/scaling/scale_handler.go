@@ -821,7 +821,6 @@ func addPairTriggerAndMetric(list map[string]string, so *kedav1alpha1.ScaledObje
 // calculated metrics
 func (h *scaleHandler) handleComplexScalingLogic(so *kedav1alpha1.ScaledObject, metrics []external_metrics.ExternalMetricValue, metricTriggerList map[string]string, fallbackActive bool, log logr.Logger) []external_metrics.ExternalMetricValue {
 	var err error
-	log.Info(">> complexScalingLogic", "fallbackActive", fallbackActive)
 	if !fallbackActive && so != nil && so.Spec.Advanced != nil && !reflect.DeepEqual(so.Spec.Advanced.ComplexScalingLogic, kedav1alpha1.ComplexScalingLogic{}) {
 		csl := so.Spec.Advanced.ComplexScalingLogic
 

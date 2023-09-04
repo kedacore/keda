@@ -259,22 +259,22 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 
 		// if target is valid, use composite scaler. Expect defined formula that returns one metric
 		if validNumTarget > 0.0 {
-			qual := resource.NewMilliQuantity(int64(validNumTarget*1000), resource.DecimalSI)
+			quan := resource.NewMilliQuantity(int64(validNumTarget*1000), resource.DecimalSI)
 
 			correctHpaTarget := autoscalingv2.MetricTarget{
 				Type: validMetricType,
 			}
 			if validMetricType == autoscalingv2.AverageValueMetricType {
-				correctHpaTarget.AverageValue = qual
+				correctHpaTarget.AverageValue = quan
 			} else if validMetricType == autoscalingv2.ValueMetricType {
-				correctHpaTarget.Value = qual
+				correctHpaTarget.Value = quan
 			}
-
+			compMetricName := "composite-metric-name"
 			compositeSpec := autoscalingv2.MetricSpec{
 				Type: autoscalingv2.MetricSourceType("External"),
 				External: &autoscalingv2.ExternalMetricSource{
 					Metric: autoscalingv2.MetricIdentifier{
-						Name: "composite-metric-name",
+						Name: compMetricName,
 						Selector: &metav1.LabelSelector{
 							MatchLabels: map[string]string{"scaledobject.keda.sh/name": scaledObject.Name},
 						},
@@ -282,7 +282,7 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 					Target: correctHpaTarget,
 				},
 			}
-			status.CompositeScalerName = "composite-metric-name"
+			status.CompositeScalerName = compMetricName
 
 			// overwrite external metrics in returned array with composite metric ONLY (keep resource metrics)
 			finalHpaSpecs := []autoscalingv2.MetricSpec{}
