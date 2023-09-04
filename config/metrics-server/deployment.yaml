@@ -57,6 +57,7 @@ spec:
           args:
           - /usr/local/bin/keda-adapter
           - --secure-port=6443
+          - --logtostderr=true
           - --stderrthreshold=ERROR
           - --v=0
           - --client-ca-file=/certs/ca.crt
