@@ -63,7 +63,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Solace Scaler**: Fix a bug where `queueName` is not properly escaped during URL encode ([#4936](https://github.com/kedacore/keda/issues/4936))
 
 ### Deprecations
 
