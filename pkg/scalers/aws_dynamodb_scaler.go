@@ -181,11 +181,16 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 }
 
 func createDynamoDBClient(ctx context.Context, metadata *awsDynamoDBMetadata) (*dynamodb.Client, error) {
-	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsEndpoint, metadata.awsAuthorization)
+	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
 	if err != nil {
 		return nil, err
 	}
-	return dynamodb.NewFromConfig(*cfg), nil
+
+	return dynamodb.NewFromConfig(*cfg, func(options *dynamodb.Options) {
+		if metadata.awsEndpoint != "" {
+			options.BaseEndpoint = aws.String(metadata.awsEndpoint)
+		}
+	}), nil
 }
 
 func (s *awsDynamoDBScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {

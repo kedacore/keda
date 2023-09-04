@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodbstreams"
 	"github.com/go-logr/logr"
@@ -122,12 +123,20 @@ func parseAwsDynamoDBStreamsMetadata(config *ScalerConfig, logger logr.Logger) (
 }
 
 func createClientsForDynamoDBStreamsScaler(ctx context.Context, metadata *awsDynamoDBStreamsMetadata) (*dynamodb.Client, *dynamodbstreams.Client, error) {
-	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsEndpoint, metadata.awsAuthorization)
+	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
 	if err != nil {
 		return nil, nil, err
 	}
-	dbClient := dynamodb.NewFromConfig(*cfg)
-	dbStreamClient := dynamodbstreams.NewFromConfig(*cfg)
+	dbClient := dynamodb.NewFromConfig(*cfg, func(options *dynamodb.Options) {
+		if metadata.awsEndpoint != "" {
+			options.BaseEndpoint = aws.String(metadata.awsEndpoint)
+		}
+	})
+	dbStreamClient := dynamodbstreams.NewFromConfig(*cfg, func(options *dynamodbstreams.Options) {
+		if metadata.awsEndpoint != "" {
+			options.BaseEndpoint = aws.String(metadata.awsEndpoint)
+		}
+	})
 
 	return dbClient, dbStreamClient, nil
 }

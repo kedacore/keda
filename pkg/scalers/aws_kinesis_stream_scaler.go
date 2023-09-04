@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -128,11 +129,15 @@ func parseAwsKinesisStreamMetadata(config *ScalerConfig, logger logr.Logger) (*a
 }
 
 func createKinesisClient(ctx context.Context, metadata *awsKinesisStreamMetadata) (*kinesis.Client, error) {
-	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsEndpoint, metadata.awsAuthorization)
+	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
 	if err != nil {
 		return nil, err
 	}
-	return kinesis.NewFromConfig(*cfg), nil
+	return kinesis.NewFromConfig(*cfg, func(options *kinesis.Options) {
+		if metadata.awsEndpoint != "" {
+			options.BaseEndpoint = aws.String(metadata.awsEndpoint)
+		}
+	}), nil
 }
 
 func (s *awsKinesisStreamScaler) Close(context.Context) error {
