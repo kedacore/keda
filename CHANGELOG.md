@@ -91,6 +91,8 @@ New deprecation(s):
 - **GitHub Runner Scaler**: Fix explicit repo check 404 to skip not crash ([#4790](https://github.com/kedacore/keda/issues/4790))
 - **GitHub Runner Scaler**: Fix rate checking on GHEC when HTTP 200 ([#4786](https://github.com/kedacore/keda/issues/4786))
 - **Pulsar Scaler**: Fix `msgBacklogThreshold` field being named wrongly as `msgBacklog` ([#4681](https://github.com/kedacore/keda/issues/4681))
+- **General**: Add one deployment arg in keda-metrics-apiserver for only printing errors, but errors should go to stderr ([#4049](https://github.com/kedacore/keda/issues/4049))
+
 
 ### Deprecations
 
