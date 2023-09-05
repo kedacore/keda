@@ -176,10 +176,6 @@ None.
 - **General**: ScaledJob: Check if MaxReplicaCount is nil before access to it ([#4568](https://github.com/kedacore/keda/issues/4568))
 - **AWS SQS Scaler**: Respect `scaleOnInFlight` value ([#4276](https://github.com/kedacore/keda/issues/4276))
 - **Azure Monitor**: Exclude Azure Monitor scaler from metricName deprecation ([#4713](https://github.com/kedacore/keda/pull/4713))
-- **Admission Webhooks**: Allow to remove the finalizer even if the ScaledObject isn't valid ([#4396](https://github.com/kedacore/keda/issue/4396))
-- **ScaledJob**: Check if MaxReplicaCount is nil before access to it ([#4568]https://github.com/kedacore/keda/issues/4568)
-- **AWS SQS Scaler**: Respect `scaleOnInFlight` value ([#4276](https://github.com/kedacore/keda/issue/4276))
-- **Azure Pipelines**: Fix for disallowing `$top` on query when using `meta.parentID` method ([#4397])
 - **Azure Pipelines**: Respect all required demands ([#4404](https://github.com/kedacore/keda/issues/4404))
 - **Kafka Scaler**: Add back `strings.TrimSpace()` function for saslAuthType ([#4689](https://github.com/kedacore/keda/issues/4689))
 - **NATS Jetstream Scaler**: Fix compatibility if node is not advertised ([#4524](https://github.com/kedacore/keda/issues/4524))
@@ -217,20 +213,6 @@ New deprecation(s):
 - **AWS SQS Scaler**: Respect `scaleOnInFlight` value ([#4276](https://github.com/kedacore/keda/issues/4276))
 - **Azure Pipelines**: Fix for disallowing `$top` on query when using `meta.parentID` method ([#4397](https://github.com/kedacore/keda/issues/4397))
 - **Azure Pipelines**: Respect all required demands ([#4404](https://github.com/kedacore/keda/issues/4404))
-
-## v2.10.1
-
-### Fixes
-
-- **Admission Webhooks**: Allow to remove the finalizer even if the ScaledObject isn't valid ([#4396](https://github.com/kedacore/keda/issue/4396))
-- **AWS SQS Scaler**: Respect `scaleOnInFlight` value ([#4276](https://github.com/kedacore/keda/issue/4276))
-- **Azure Pipelines**: Fix for disallowing `$top` on query when using `meta.parentID` method ([#4397])
-- **Azure Pipelines**: Respect all required demands ([#4404](https://github.com/kedacore/keda/issues/4404))
-
-### Other
-
-- **General**: Drop a transitive dependency on bou.ke/monkey ([#4364](https://github.com/kedacore/keda/issues/4364))
-- **General**: Fix odd number of arguments passed as key-value pairs for logging ([#4368](https://github.com/kedacore/keda/issues/4368))
 
 ## v2.10.0
 
