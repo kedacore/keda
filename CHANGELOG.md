@@ -93,7 +93,6 @@ New deprecation(s):
 - **Pulsar Scaler**: Fix `msgBacklogThreshold` field being named wrongly as `msgBacklog` ([#4681](https://github.com/kedacore/keda/issues/4681))
 - **General**: Add one deployment arg in keda-metrics-apiserver for only printing errors, but errors should go to stderr ([#4049](https://github.com/kedacore/keda/issues/4049))
 
-
 ### Deprecations
 
 You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
