@@ -44,7 +44,7 @@ func NewGcpCloudTasksScaler(config *ScalerConfig) (Scaler, error) {
 
 	logger := InitializeLogger(config, "gcp_cloud_tasks_scaler")
 
-	meta, err := parseCloudTasksMetadata(config)
+	meta, err := parseGcpCloudTasksMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing Cloud Tasks metadata: %w", err)
 	}
@@ -56,7 +56,7 @@ func NewGcpCloudTasksScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseCloudTasksMetadata(config *ScalerConfig) (*gcpCloudTaskMetadata, error) {
+func parseGcpCloudTasksMetadata(config *ScalerConfig) (*gcpCloudTaskMetadata, error) {
 	meta := gcpCloudTaskMetadata{value: cloudTaskDefaultValue}
 
 	value, valuePresent := config.TriggerMetadata["value"]

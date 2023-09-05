@@ -182,7 +182,7 @@ func TestScaler(t *testing.T) {
 	assert.True(t, sdkReady, "gcp-sdk deployment should be ready after a minute")
 
 	if sdkReady {
-		if createCloudTasks(t) == nil {
+		if createGcpCloudTasks(t) == nil {
 			// test scaling
 			testActivation(t, kc)
 			testScaleOut(t, kc)
@@ -190,14 +190,14 @@ func TestScaler(t *testing.T) {
 
 			// cleanup
 			t.Log("--- cleanup ---")
-			cleanupCloudTasks(t)
+			cleanupGcpCloudTasks(t)
 		}
 	}
 
 	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
-func createCloudTasks(t *testing.T) error {
+func createGcpCloudTasks(t *testing.T) error {
 	// Authenticate to GCP
 	t.Log("--- authenticate to GCP ---")
 	cmd := fmt.Sprintf("%sgcloud auth activate-service-account %s --key-file /etc/secret-volume/creds.json --project=%s", gsPrefix, creds["client_email"], projectID)
@@ -219,7 +219,7 @@ func createCloudTasks(t *testing.T) error {
 	return err
 }
 
-func cleanupCloudTasks(t *testing.T) {
+func cleanupGcpCloudTasks(t *testing.T) {
 	// Delete the queue
 	t.Log("--- cleaning up the queue ---")
 	_, _ = ExecuteCommand(fmt.Sprintf("%sgcloud tasks queues delete %s --location europe-west1 --quiet", gsPrefix, queueID))
@@ -246,7 +246,7 @@ func getTemplateData() (templateData, []Template) {
 		}
 }
 
-func createTasks(t *testing.T, count int) {
+func createGcpTasks(t *testing.T, count int) {
 	t.Logf("--- creating %d tasks ---", count)
 	publish := fmt.Sprintf(
 		"%s/bin/bash -c -- 'for i in {1..%d}; do gcloud tasks create-http-task --location europe-west1 --queue %s --url http://foo.bar;done'",
@@ -260,7 +260,7 @@ func createTasks(t *testing.T, count int) {
 func testActivation(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing not scaling if below threshold ---")
 
-	createTasks(t, activationThreshold)
+	createGcpTasks(t, activationThreshold)
 
 	t.Log("--- waiting to see replicas are not scaled up ---")
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 240)
@@ -269,7 +269,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset) {
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale out ---")
 
-	createTasks(t, 20-activationThreshold)
+	createGcpTasks(t, 20-activationThreshold)
 
 	t.Log("--- waiting for replicas to scale out ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 30, 10),
