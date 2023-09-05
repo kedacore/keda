@@ -98,20 +98,8 @@ replace (
 	// https://www.whitesourcesoftware.com/vulnerability-database/CVE-2020-26160
 	github.com/dgrijalva/jwt-go => github.com/golang-jwt/jwt/v4 v4.1.0
 
-	// https://nvd.nist.gov/vuln/detail/CVE-2022-1996
-	github.com/emicklei/go-restful => github.com/emicklei/go-restful v2.16.0+incompatible
-
-	// we need a version without GPL3.0 license
-	github.com/leodido/go-urn => github.com/leodido/go-urn v1.2.4
-
-	// we need to drop a transitive dependency on bou.ke/monkey -> https://github.com/kedacore/keda/issues/4364
-	github.com/otiai10/mint => github.com/otiai10/mint v1.4.1
-
 	// https://avd.aquasec.com/nvd/2022/cve-2022-27191/
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
-
-	// Needed for cve-2022-41723 https://avd.aquasec.com/nvd/2022/cve-2022-41723
-	golang.org/x/net => golang.org/x/net v0.7.0
 
 	// https://nvd.nist.gov/vuln/detail/CVE-2022-32149
 	golang.org/x/text => golang.org/x/text v0.7.0
