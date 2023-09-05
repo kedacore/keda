@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 	"testing"
 
 	v2 "k8s.io/api/autoscaling/v2"
@@ -245,6 +247,23 @@ var testParseSolaceMetadata = []testSolaceMetadata{
 		},
 		1,
 		true,
+	},
+	// +Case - Properly encode queueName
+	{
+		"#016 - Properly Encode QueueName- ",
+		map[string]string{
+			"":                        "",
+			solaceMetaSempBaseURL:     soltestValidBaseURL,
+			solaceMetaMsgVpn:          soltestValidVpn,
+			solaceMetaUsernameFromEnv: "",
+			solaceMetaPasswordFromEnv: "",
+			solaceMetaUsername:        soltestValidUsername,
+			solaceMetaPassword:        soltestValidPassword,
+			solaceMetaQueueName:       "with/slash",
+			solaceMetaMsgCountTarget:  soltestValidMsgCountTarget,
+		},
+		1,
+		false,
 	},
 }
 
@@ -513,7 +532,7 @@ var testSolaceExpectedMetricNames = map[string]string{
 func TestSolaceParseSolaceMetadata(t *testing.T) {
 	for _, testData := range testParseSolaceMetadata {
 		fmt.Print(testData.testID)
-		_, err := parseSolaceMetadata(&ScalerConfig{ResolvedEnv: nil, TriggerMetadata: testData.metadata, AuthParams: nil, ScalerIndex: testData.scalerIndex})
+		meta, err := parseSolaceMetadata(&ScalerConfig{ResolvedEnv: nil, TriggerMetadata: testData.metadata, AuthParams: nil, ScalerIndex: testData.scalerIndex})
 		switch {
 		case err != nil && !testData.isError:
 			t.Error("expected success but got error: ", err)
@@ -523,6 +542,10 @@ func TestSolaceParseSolaceMetadata(t *testing.T) {
 			fmt.Println(" --> FAIL")
 		default:
 			fmt.Println(" --> PASS")
+		}
+		if !testData.isError && strings.Contains(testData.metadata["queueName"], "/") && !strings.Contains(meta.endpointURL, url.QueryEscape(testData.metadata["queueName"])) {
+			t.Error("expected endpointURL to query escape special characters in the URL but got:", meta.endpointURL)
+			fmt.Println(" --> FAIL")
 		}
 	}
 	for _, testData := range testSolaceEnvCreds {
