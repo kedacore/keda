@@ -16,7 +16,7 @@ jobs:
     container: ghcr.io/kedacore/keda-tools:1.20.5
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4
         with:
           fetch-depth: 1
 
@@ -25,8 +25,8 @@ jobs:
 
       - id: go-paths
         run: |
-          echo ::set-output name=mod_cache::$(go env GOMODCACHE)
-          echo ::set-output name=build_cache::$(go env GOCACHE)
+          echo "mod_cache=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+          echo "build_cache=$(go env GOCACHE)" >> $GITHUB_OUTPUT
 
       - name: Go modules cache
         uses: actions/cache@v3.3.1

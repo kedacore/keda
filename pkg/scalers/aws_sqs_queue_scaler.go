@@ -21,16 +21,8 @@ const (
 	targetQueueLengthDefault           = 5
 	activationTargetQueueLengthDefault = 0
 	defaultScaleOnInFlight             = true
+	defaultScaleOnDelayed              = false
 )
-
-var awsSqsQueueMetricNamesForScalingInFlight = []string{
-	"ApproximateNumberOfMessages",
-	"ApproximateNumberOfMessagesNotVisible",
-}
-
-var awsSqsQueueMetricNamesForNotScalingInFlight = []string{
-	"ApproximateNumberOfMessages",
-}
 
 type awsSqsQueueScaler struct {
 	metricType v2.MetricTargetType
@@ -49,6 +41,7 @@ type awsSqsQueueMetadata struct {
 	awsAuthorization            awsAuthorizationMetadata
 	scalerIndex                 int
 	scaleOnInFlight             bool
+	scaleOnDelayed              bool
 	awsSqsQueueMetricNames      []string
 }
 
@@ -78,6 +71,7 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig, logger logr.Logger) (*awsSqs
 	meta := awsSqsQueueMetadata{}
 	meta.targetQueueLength = defaultTargetQueueLength
 	meta.scaleOnInFlight = defaultScaleOnInFlight
+	meta.scaleOnDelayed = defaultScaleOnDelayed
 
 	if val, ok := config.TriggerMetadata["queueLength"]; ok && val != "" {
 		queueLength, err := strconv.ParseInt(val, 10, 64)
@@ -109,10 +103,22 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig, logger logr.Logger) (*awsSqs
 		}
 	}
 
+	if val, ok := config.TriggerMetadata["scaleOnDelayed"]; ok && val != "" {
+		scaleOnDelayed, err := strconv.ParseBool(val)
+		if err != nil {
+			meta.scaleOnDelayed = defaultScaleOnDelayed
+			logger.Error(err, "Error parsing SQS queue metadata scaleOnDelayed, using default %n", defaultScaleOnDelayed)
+		} else {
+			meta.scaleOnDelayed = scaleOnDelayed
+		}
+	}
+
+	meta.awsSqsQueueMetricNames = []string{"ApproximateNumberOfMessages"}
 	if meta.scaleOnInFlight {
-		meta.awsSqsQueueMetricNames = awsSqsQueueMetricNamesForScalingInFlight
-	} else {
-		meta.awsSqsQueueMetricNames = awsSqsQueueMetricNamesForNotScalingInFlight
+		meta.awsSqsQueueMetricNames = append(meta.awsSqsQueueMetricNames, "ApproximateNumberOfMessagesNotVisible")
+	}
+	if meta.scaleOnDelayed {
+		meta.awsSqsQueueMetricNames = append(meta.awsSqsQueueMetricNames, "ApproximateNumberOfMessagesDelayed")
 	}
 
 	if val, ok := config.TriggerMetadata["queueURL"]; ok && val != "" {
