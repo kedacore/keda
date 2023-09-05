@@ -62,7 +62,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Azure Pod Identity**: Introduce validation to prevent usage of empty identity ID for Azure identity providers ([#4528](https://github.com/kedacore/keda/issues/4528))
 
 ### Fixes
-
+- **Selenium Grid Scaler**: Fix latest browser version use case scaling ([#4858](https://github.com/kedacore/keda/issues/4858))
 - **Solace Scaler**: Fix a bug where `queueName` is not properly escaped during URL encode ([#4936](https://github.com/kedacore/keda/issues/4936))
 
 ### Deprecations
