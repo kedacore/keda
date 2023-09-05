@@ -68,7 +68,7 @@ func TestGcpCloudTasksGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockGcpCloudTasksScaler := cloudTasksScaler{nil, "", meta, logr.Discard()}
+		mockGcpCloudTasksScaler := gcpCloudTasksScaler{nil, "", meta, logr.Discard()}
 
 		metricSpec := mockGcpCloudTasksScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
