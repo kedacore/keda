@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -545,6 +546,24 @@ func getJSON(ctx context.Context, s *rabbitMQScaler, url string) (queueInfo, err
 	return result, fmt.Errorf("error requesting rabbitMQ API status: %s, response: %s, from: %s", r.Status, body, url)
 }
 
+func getVhostAndPathFromURL(rawPath, vhostName string) (resolvedVhostPath, resolvedPath string) {
+	pathParts := strings.Split(rawPath, "/")
+	resolvedVhostPath = "/" + pathParts[len(pathParts)-1]
+	resolvedPath = path.Join(pathParts[:len(pathParts)-1]...)
+
+	if len(resolvedPath) > 0 {
+		resolvedPath = "/" + resolvedPath
+	}
+	if vhostName != "" {
+		resolvedVhostPath = "/" + url.QueryEscape(vhostName)
+	}
+	if resolvedVhostPath == "" || resolvedVhostPath == "/" || resolvedVhostPath == "//" {
+		resolvedVhostPath = rabbitRootVhostPath
+	}
+
+	return
+}
+
 func (s *rabbitMQScaler) getQueueInfoViaHTTP(ctx context.Context) (*queueInfo, error) {
 	parsedURL, err := url.Parse(s.metadata.host)
 
@@ -552,19 +571,8 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP(ctx context.Context) (*queueInfo, e
 		return nil, err
 	}
 
-	// Extract vhost from URL's path.
-	vhost := parsedURL.Path
-
-	if s.metadata.vhostName != "" {
-		vhost = "/" + url.QueryEscape(s.metadata.vhostName)
-	}
-
-	if vhost == "" || vhost == "/" || vhost == "//" {
-		vhost = rabbitRootVhostPath
-	}
-
-	// Clear URL path to get the correct host.
-	parsedURL.Path = ""
+	vhost, subpaths := getVhostAndPathFromURL(parsedURL.Path, s.metadata.vhostName)
+	parsedURL.Path = subpaths
 
 	var getQueueInfoManagementURI string
 	if s.metadata.useRegex {
