@@ -112,15 +112,6 @@ func (r *REST) List(ctx context.Context, options *metainternalversion.ListOption
 
 	groupResource := schema.ParseGroupResource(resourceRaw)
 
-	// handle metrics describing namespaces
-	if namespace != "" && resourceRaw == "metrics" {
-		// namespace-describing metrics have a path of /namespaces/$NS/metrics/$metric,
-		groupResource = schema.GroupResource{Resource: "namespaces"}
-		metricName = name
-		name = namespace
-		namespace = ""
-	}
-
 	var res *custom_metrics.MetricValueList
 	var err error
 

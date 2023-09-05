@@ -51,7 +51,7 @@ require (
 	github.com/newrelic/newrelic-client-go v1.1.0
 	github.com/onsi/ginkgo/v2 v2.12.0
 	github.com/onsi/gomega v1.27.10
-	github.com/open-policy-agent/cert-controller v0.8.0
+	github.com/open-policy-agent/cert-controller v0.9.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.16.0
@@ -87,7 +87,7 @@ require (
 	sigs.k8s.io/controller-runtime v0.16.1
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20230901192909-1449c3654655
 	sigs.k8s.io/controller-tools v0.13.0
-	sigs.k8s.io/custom-metrics-apiserver v1.27.0
+	sigs.k8s.io/custom-metrics-apiserver v1.28.0
 	sigs.k8s.io/kustomize/kustomize/v5 v5.1.1
 )
 
@@ -103,9 +103,6 @@ replace (
 
 	// we need a version without GPL3.0 license
 	github.com/leodido/go-urn => github.com/leodido/go-urn v1.2.4
-
-	// Pending their merge
-	github.com/open-policy-agent/cert-controller => github.com/JorTurFer/cert-controller v0.0.0-20230903233222-4c5e4a72d53b
 
 	// we need to drop a transitive dependency on bou.ke/monkey -> https://github.com/kedacore/keda/issues/4364
 	github.com/otiai10/mint => github.com/otiai10/mint v1.4.1
@@ -163,7 +160,7 @@ require (
 	github.com/eapache/go-resiliency v1.4.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
-	github.com/emicklei/go-restful/v3 v3.10.2 // indirect
+	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
 	github.com/fatih/color v1.15.0 // indirect
