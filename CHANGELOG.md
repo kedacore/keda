@@ -62,7 +62,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
-- **Selenium Grid Scaler**: Fix latest browser version use case scaling ([#4922](https://github.com/kedacore/keda/pull/4922))
+- **Selenium Grid Scaler**: Fix latest browser version use case scaling ([#4858](https://github.com/kedacore/keda/issues/4858))
 
 ### Deprecations
 
