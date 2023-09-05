@@ -18,14 +18,14 @@ const (
 	cloudTaskDefaultValue = 100
 )
 
-type cloudTasksScaler struct {
+type gcpCloudTasksScaler struct {
 	client     *StackDriverClient
 	metricType v2.MetricTargetType
-	metadata   *cloudTaskMetadata
+	metadata   *gcpCloudTaskMetadata
 	logger     logr.Logger
 }
 
-type cloudTaskMetadata struct {
+type gcpCloudTaskMetadata struct {
 	value           float64
 	activationValue float64
 
@@ -36,7 +36,7 @@ type cloudTaskMetadata struct {
 }
 
 // NewCloudTaskScaler creates a new cloudTaskScaler
-func NewCloudTasksScaler(config *ScalerConfig) (Scaler, error) {
+func NewGcpCloudTasksScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -49,15 +49,15 @@ func NewCloudTasksScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing Cloud Tasks metadata: %w", err)
 	}
 
-	return &cloudTasksScaler{
+	return &gcpCloudTasksScaler{
 		metricType: metricType,
 		metadata:   meta,
 		logger:     logger,
 	}, nil
 }
 
-func parseCloudTasksMetadata(config *ScalerConfig) (*cloudTaskMetadata, error) {
-	meta := cloudTaskMetadata{value: cloudTaskDefaultValue}
+func parseCloudTasksMetadata(config *ScalerConfig) (*gcpCloudTaskMetadata, error) {
+	meta := gcpCloudTaskMetadata{value: cloudTaskDefaultValue}
 
 	value, valuePresent := config.TriggerMetadata["value"]
 
@@ -107,7 +107,7 @@ func parseCloudTasksMetadata(config *ScalerConfig) (*cloudTaskMetadata, error) {
 	return &meta, nil
 }
 
-func (s *cloudTasksScaler) Close(context.Context) error {
+func (s *gcpCloudTasksScaler) Close(context.Context) error {
 	if s.client != nil {
 		err := s.client.metricsClient.Close()
 		s.client = nil
@@ -120,7 +120,7 @@ func (s *cloudTasksScaler) Close(context.Context) error {
 }
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
-func (s *cloudTasksScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+func (s *gcpCloudTasksScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("gcp-ct-%s", s.metadata.queueName))),
@@ -138,7 +138,7 @@ func (s *cloudTasksScaler) GetMetricSpecForScaling(context.Context) []v2.MetricS
 }
 
 // GetMetricsAndActivity connects to Stack Driver and finds the size of the cloud task
-func (s *cloudTasksScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+func (s *gcpCloudTasksScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	metricType := cloudTasksStackDriverQueueSize
 
 	value, err := s.getMetrics(ctx, metricType)
@@ -152,7 +152,7 @@ func (s *cloudTasksScaler) GetMetricsAndActivity(ctx context.Context, metricName
 	return []external_metrics.ExternalMetricValue{metric}, value > s.metadata.activationValue, nil
 }
 
-func (s *cloudTasksScaler) setStackdriverClient(ctx context.Context) error {
+func (s *gcpCloudTasksScaler) setStackdriverClient(ctx context.Context) error {
 	var client *StackDriverClient
 	var err error
 	if s.metadata.gcpAuthorization.podIdentityProviderEnabled {
@@ -169,7 +169,7 @@ func (s *cloudTasksScaler) setStackdriverClient(ctx context.Context) error {
 }
 
 // getMetrics gets metric type value from stackdriver api
-func (s *cloudTasksScaler) getMetrics(ctx context.Context, metricType string) (float64, error) {
+func (s *gcpCloudTasksScaler) getMetrics(ctx context.Context, metricType string) (float64, error) {
 	if s.client == nil {
 		err := s.setStackdriverClient(ctx)
 		if err != nil {
