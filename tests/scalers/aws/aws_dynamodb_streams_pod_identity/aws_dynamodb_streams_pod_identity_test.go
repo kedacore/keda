@@ -180,7 +180,7 @@ func createTable(db *dynamodb.Client) error {
 	keySchema := []dynamodbTypes.KeySchemaElement{
 		{
 			AttributeName: aws.String("id"),
-			KeyType:       dynamodbTypes.KeyTypeRange,
+			KeyType:       dynamodbTypes.KeyTypeHash,
 		},
 	}
 	attributeDefinitions := []dynamodbTypes.AttributeDefinition{
