@@ -106,6 +106,11 @@ func (t *AppsTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return resp, err
 }
 
+// AppID returns the appID of the transport
+func (t *AppsTransport) AppID() int64 {
+	return t.appID
+}
+
 type AppsTransportOption func(*AppsTransport)
 
 // WithSigner configures the AppsTransport to use the given Signer for generating JWT tokens.

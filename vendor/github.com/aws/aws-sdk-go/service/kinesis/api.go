@@ -3427,6 +3427,7 @@ func (c *Kinesis) SubscribeToShardWithContext(ctx aws.Context, input *SubscribeT
 }
 
 var _ awserr.Error
+var _ time.Time
 
 // SubscribeToShardEventStream provides the event stream handling for the SubscribeToShard.
 //
