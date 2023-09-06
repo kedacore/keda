@@ -10,6 +10,8 @@
 package mongocrypt
 
 import (
+	"context"
+
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/mongocrypt/options"
 )
@@ -26,37 +28,42 @@ func Version() string {
 }
 
 // NewMongoCrypt constructs a new MongoCrypt instance configured using the provided MongoCryptOptions.
-func NewMongoCrypt(opts *options.MongoCryptOptions) (*MongoCrypt, error) {
+func NewMongoCrypt(*options.MongoCryptOptions) (*MongoCrypt, error) {
 	panic(cseNotSupportedMsg)
 }
 
 // CreateEncryptionContext creates a Context to use for encryption.
-func (m *MongoCrypt) CreateEncryptionContext(db string, cmd bsoncore.Document) (*Context, error) {
+func (m *MongoCrypt) CreateEncryptionContext(string, bsoncore.Document) (*Context, error) {
+	panic(cseNotSupportedMsg)
+}
+
+// CreateExplicitEncryptionExpressionContext creates a Context to use for explicit encryption of an expression.
+func (m *MongoCrypt) CreateExplicitEncryptionExpressionContext(bsoncore.Document, *options.ExplicitEncryptionOptions) (*Context, error) {
 	panic(cseNotSupportedMsg)
 }
 
 // CreateDecryptionContext creates a Context to use for decryption.
-func (m *MongoCrypt) CreateDecryptionContext(cmd bsoncore.Document) (*Context, error) {
+func (m *MongoCrypt) CreateDecryptionContext(bsoncore.Document) (*Context, error) {
 	panic(cseNotSupportedMsg)
 }
 
 // CreateDataKeyContext creates a Context to use for creating a data key.
-func (m *MongoCrypt) CreateDataKeyContext(kmsProvider string, opts *options.DataKeyOptions) (*Context, error) {
+func (m *MongoCrypt) CreateDataKeyContext(string, *options.DataKeyOptions) (*Context, error) {
 	panic(cseNotSupportedMsg)
 }
 
 // CreateExplicitEncryptionContext creates a Context to use for explicit encryption.
-func (m *MongoCrypt) CreateExplicitEncryptionContext(doc bsoncore.Document, opts *options.ExplicitEncryptionOptions) (*Context, error) {
+func (m *MongoCrypt) CreateExplicitEncryptionContext(bsoncore.Document, *options.ExplicitEncryptionOptions) (*Context, error) {
 	panic(cseNotSupportedMsg)
 }
 
 // RewrapDataKeyContext creates a Context to use for rewrapping a data key.
-func (m *MongoCrypt) RewrapDataKeyContext(filter []byte, opts *options.RewrapManyDataKeyOptions) (*Context, error) {
+func (m *MongoCrypt) RewrapDataKeyContext([]byte, *options.RewrapManyDataKeyOptions) (*Context, error) {
 	panic(cseNotSupportedMsg)
 }
 
 // CreateExplicitDecryptionContext creates a Context to use for explicit decryption.
-func (m *MongoCrypt) CreateExplicitDecryptionContext(doc bsoncore.Document) (*Context, error) {
+func (m *MongoCrypt) CreateExplicitDecryptionContext(bsoncore.Document) (*Context, error) {
 	panic(cseNotSupportedMsg)
 }
 
@@ -78,6 +85,6 @@ func (m *MongoCrypt) Close() {
 }
 
 // GetKmsProviders returns the originally configured KMS providers.
-func (m *MongoCrypt) GetKmsProviders() bsoncore.Document {
+func (m *MongoCrypt) GetKmsProviders(context.Context) (bsoncore.Document, error) {
 	panic(cseNotSupportedMsg)
 }

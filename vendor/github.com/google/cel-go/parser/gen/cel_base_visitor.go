@@ -1,7 +1,7 @@
-// Code generated from /Users/tswadell/go/src/github.com/google/cel-go/parser/gen/CEL.g4 by ANTLR 4.10.1. DO NOT EDIT.
+// Code generated from /Users/tswadell/go/src/github.com/google/cel-go/parser/gen/CEL.g4 by ANTLR 4.12.0. DO NOT EDIT.
 
 package gen // CEL
-import "github.com/antlr/antlr4/runtime/Go/antlr"
+import "github.com/antlr/antlr4/runtime/Go/antlr/v4"
 
 type BaseCELVisitor struct {
 	*antlr.BaseParseTreeVisitor
@@ -87,6 +87,10 @@ func (v *BaseCELVisitor) VisitExprList(ctx *ExprListContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseCELVisitor) VisitListInit(ctx *ListInitContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseCELVisitor) VisitFieldInitializerList(ctx *FieldInitializerListContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -99,7 +103,7 @@ func (v *BaseCELVisitor) VisitMapInitializerList(ctx *MapInitializerListContext)
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseCELVisitor) VisitOptKey(ctx *OptKeyContext) interface{} {
+func (v *BaseCELVisitor) VisitOptExpr(ctx *OptExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

@@ -9,8 +9,10 @@ package operation
 import (
 	"context"
 	"errors"
+	"os"
 	"runtime"
 	"strconv"
+	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/internal"
@@ -21,6 +23,15 @@ import (
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
 )
+
+// maxClientMetadataSize is the maximum size of the client metadata document
+// that can be sent to the server. Note that the maximum document size on
+// standalone and replica servers is 1024, but the maximum document size on
+// sharded clusters is 512.
+const maxClientMetadataSize = 512
+
+const awsLambdaPrefix = "AWS_Lambda_"
+const driverName = "mongo-go-driver"
 
 // Hello is used to run the handshake operation.
 type Hello struct {
@@ -113,6 +124,343 @@ func (h *Hello) Result(addr address.Address) description.Server {
 	return description.NewServer(addr, bson.Raw(h.res))
 }
 
+const (
+	// FaaS environment variable names
+	envVarAWSExecutionEnv        = "AWS_EXECUTION_ENV"
+	envVarAWSLambdaRuntimeAPI    = "AWS_LAMBDA_RUNTIME_API"
+	envVarFunctionsWorkerRuntime = "FUNCTIONS_WORKER_RUNTIME"
+	envVarKService               = "K_SERVICE"
+	envVarFunctionName           = "FUNCTION_NAME"
+	envVarVercel                 = "VERCEL"
+)
+
+const (
+	// FaaS environment variable names
+	envVarAWSRegion                   = "AWS_REGION"
+	envVarAWSLambdaFunctionMemorySize = "AWS_LAMBDA_FUNCTION_MEMORY_SIZE"
+	envVarFunctionMemoryMB            = "FUNCTION_MEMORY_MB"
+	envVarFunctionTimeoutSec          = "FUNCTION_TIMEOUT_SEC"
+	envVarFunctionRegion              = "FUNCTION_REGION"
+	envVarVercelRegion                = "VERCEL_REGION"
+)
+
+const (
+	// FaaS environment names used by the client
+	envNameAWSLambda = "aws.lambda"
+	envNameAzureFunc = "azure.func"
+	envNameGCPFunc   = "gcp.func"
+	envNameVercel    = "vercel"
+)
+
+// getFaasEnvName parses the FaaS environment variable name and returns the
+// corresponding name used by the client. If none of the variables or variables
+// for multiple names are populated the client.env value MUST be entirely
+// omitted. When variables for multiple "client.env.name" values are present,
+// "vercel" takes precedence over "aws.lambda"; any other combination MUST cause
+// "client.env" to be entirely omitted.
+func getFaasEnvName() string {
+	envVars := []string{
+		envVarAWSExecutionEnv,
+		envVarAWSLambdaRuntimeAPI,
+		envVarFunctionsWorkerRuntime,
+		envVarKService,
+		envVarFunctionName,
+		envVarVercel,
+	}
+
+	// If none of the variables are populated the client.env value MUST be
+	// entirely omitted.
+	names := make(map[string]struct{})
+
+	for _, envVar := range envVars {
+		val := os.Getenv(envVar)
+		if val == "" {
+			continue
+		}
+
+		var name string
+
+		switch envVar {
+		case envVarAWSExecutionEnv:
+			if !strings.HasPrefix(val, awsLambdaPrefix) {
+				continue
+			}
+
+			name = envNameAWSLambda
+		case envVarAWSLambdaRuntimeAPI:
+			name = envNameAWSLambda
+		case envVarFunctionsWorkerRuntime:
+			name = envNameAzureFunc
+		case envVarKService, envVarFunctionName:
+			name = envNameGCPFunc
+		case envVarVercel:
+			// "vercel" takes precedence over "aws.lambda".
+			delete(names, envNameAWSLambda)
+
+			name = envNameVercel
+		}
+
+		names[name] = struct{}{}
+		if len(names) > 1 {
+			// If multiple names are populated the client.env value
+			// MUST be entirely omitted.
+			names = nil
+
+			break
+		}
+	}
+
+	for name := range names {
+		return name
+	}
+
+	return ""
+}
+
+// appendClientAppName appends the application metadata to the dst. It is the
+// responsibility of the caller to check that this appending does not cause dst
+// to exceed any size limitations.
+func appendClientAppName(dst []byte, name string) ([]byte, error) {
+	if name == "" {
+		return dst, nil
+	}
+
+	var idx int32
+	idx, dst = bsoncore.AppendDocumentElementStart(dst, "application")
+
+	dst = bsoncore.AppendStringElement(dst, "name", name)
+
+	return bsoncore.AppendDocumentEnd(dst, idx)
+}
+
+// appendClientDriver appends the driver metadata to dst. It is the
+// responsibility of the caller to check that this appending does not cause dst
+// to exceed any size limitations.
+func appendClientDriver(dst []byte) ([]byte, error) {
+	var idx int32
+	idx, dst = bsoncore.AppendDocumentElementStart(dst, "driver")
+
+	dst = bsoncore.AppendStringElement(dst, "name", driverName)
+	dst = bsoncore.AppendStringElement(dst, "version", version.Driver)
+
+	return bsoncore.AppendDocumentEnd(dst, idx)
+}
+
+// appendClientEnv appends the environment metadata to dst. It is the
+// responsibility of the caller to check that this appending does not cause dst
+// to exceed any size limitations.
+func appendClientEnv(dst []byte, omitNonName, omitDoc bool) ([]byte, error) {
+	if omitDoc {
+		return dst, nil
+	}
+
+	name := getFaasEnvName()
+	if name == "" {
+		return dst, nil
+	}
+
+	var idx int32
+
+	idx, dst = bsoncore.AppendDocumentElementStart(dst, "env")
+	dst = bsoncore.AppendStringElement(dst, "name", name)
+
+	addMem := func(envVar string) []byte {
+		mem := os.Getenv(envVar)
+		if mem == "" {
+			return dst
+		}
+
+		memInt64, err := strconv.ParseInt(mem, 10, 32)
+		if err != nil {
+			return dst
+		}
+
+		memInt32 := int32(memInt64)
+
+		return bsoncore.AppendInt32Element(dst, "memory_mb", memInt32)
+	}
+
+	addRegion := func(envVar string) []byte {
+		region := os.Getenv(envVar)
+		if region == "" {
+			return dst
+		}
+
+		return bsoncore.AppendStringElement(dst, "region", region)
+	}
+
+	addTimeout := func(envVar string) []byte {
+		timeout := os.Getenv(envVar)
+		if timeout == "" {
+			return dst
+		}
+
+		timeoutInt64, err := strconv.ParseInt(timeout, 10, 32)
+		if err != nil {
+			return dst
+		}
+
+		timeoutInt32 := int32(timeoutInt64)
+		return bsoncore.AppendInt32Element(dst, "timeout_sec", timeoutInt32)
+	}
+
+	if !omitNonName {
+		switch name {
+		case envNameAWSLambda:
+			dst = addMem(envVarAWSLambdaFunctionMemorySize)
+			dst = addRegion(envVarAWSRegion)
+		case envNameGCPFunc:
+			dst = addMem(envVarFunctionMemoryMB)
+			dst = addRegion(envVarFunctionRegion)
+			dst = addTimeout(envVarFunctionTimeoutSec)
+		case envNameVercel:
+			dst = addRegion(envVarVercelRegion)
+		}
+	}
+
+	return bsoncore.AppendDocumentEnd(dst, idx)
+}
+
+// appendClientOS appends the OS metadata to dst. It is the responsibility of the
+// caller to check that this appending does not cause dst to exceed any size
+// limitations.
+func appendClientOS(dst []byte, omitNonType bool) ([]byte, error) {
+	var idx int32
+
+	idx, dst = bsoncore.AppendDocumentElementStart(dst, "os")
+
+	dst = bsoncore.AppendStringElement(dst, "type", runtime.GOOS)
+	if !omitNonType {
+		dst = bsoncore.AppendStringElement(dst, "architecture", runtime.GOARCH)
+	}
+
+	return bsoncore.AppendDocumentEnd(dst, idx)
+}
+
+// appendClientPlatform appends the platform metadata to dst. It is the
+// responsibility of the caller to check that this appending does not cause dst
+// to exceed any size limitations.
+func appendClientPlatform(dst []byte) []byte {
+	return bsoncore.AppendStringElement(dst, "platform", runtime.Version())
+}
+
+// encodeClientMetadata encodes the client metadata into a BSON document. maxLen
+// is the maximum length the document can be. If the document exceeds maxLen,
+// then an empty byte slice is returned. If there is not enough space to encode
+// a document, the document is truncated and returned.
+//
+// This function attempts to build the following document. Fields are omitted to
+// save space following the MongoDB Handshake.
+//
+//	{
+//		application: {
+//			name: "<string>"
+//		},
+//		driver: {
+//		      	name: "<string>",
+//		        version: "<string>"
+//		},
+//		platform: "<string>",
+//		os: {
+//		        type: "<string>",
+//		        name: "<string>",
+//		        architecture: "<string>",
+//		        version: "<string>"
+//		},
+//		env: {
+//		        name: "<string>",
+//		        timeout_sec: 42,
+//		        memory_mb: 1024,
+//		        region: "<string>",
+//		}
+//	}
+func encodeClientMetadata(appname string, maxLen int) ([]byte, error) {
+	dst := make([]byte, 0, maxLen)
+
+	omitEnvDoc := false
+	omitEnvNonName := false
+	omitOSNonType := false
+	omitEnvDocument := false
+	truncatePlatform := false
+
+retry:
+	var idx int32
+	idx, dst = bsoncore.AppendDocumentStart(dst)
+
+	var err error
+	dst, err = appendClientAppName(dst, appname)
+	if err != nil {
+		return nil, err
+	}
+
+	dst, err = appendClientDriver(dst)
+	if err != nil {
+		return nil, err
+	}
+
+	dst, err = appendClientOS(dst, omitOSNonType)
+	if err != nil {
+		return nil, err
+	}
+
+	if !truncatePlatform {
+		dst = appendClientPlatform(dst)
+	}
+
+	if !omitEnvDocument {
+		dst, err = appendClientEnv(dst, omitEnvNonName, omitEnvDoc)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	dst, err = bsoncore.AppendDocumentEnd(dst, idx)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(dst) > maxLen {
+		// Implementors SHOULD cumulatively update fields in the
+		// following order until the document is under the size limit
+		//
+		//    1. Omit fields from ``env`` except ``env.name``
+		//    2. Omit fields from ``os`` except ``os.type``
+		//    3. Omit the ``env`` document entirely
+		//    4. Truncate ``platform``
+		dst = dst[:0]
+
+		if !omitEnvNonName {
+			omitEnvNonName = true
+
+			goto retry
+		}
+
+		if !omitOSNonType {
+			omitOSNonType = true
+
+			goto retry
+		}
+
+		if !omitEnvDoc {
+			omitEnvDoc = true
+
+			goto retry
+		}
+
+		if !truncatePlatform {
+			truncatePlatform = true
+
+			goto retry
+		}
+
+		// There is nothing left to update. Return an empty slice to
+		// tell caller not to append a `client` document.
+		return nil, nil
+	}
+
+	return dst, nil
+}
+
 // handshakeCommand appends all necessary command fields as well as client metadata, SASL supported mechs, and compression.
 func (h *Hello) handshakeCommand(dst []byte, desc description.SelectedServer) ([]byte, error) {
 	dst, err := h.command(dst, desc)
@@ -133,26 +481,12 @@ func (h *Hello) handshakeCommand(dst []byte, desc description.SelectedServer) ([
 	}
 	dst, _ = bsoncore.AppendArrayEnd(dst, idx)
 
-	// append client metadata
-	idx, dst = bsoncore.AppendDocumentElementStart(dst, "client")
+	clientMetadata, _ := encodeClientMetadata(h.appname, maxClientMetadataSize)
 
-	didx, dst := bsoncore.AppendDocumentElementStart(dst, "driver")
-	dst = bsoncore.AppendStringElement(dst, "name", "mongo-go-driver")
-	dst = bsoncore.AppendStringElement(dst, "version", version.Driver)
-	dst, _ = bsoncore.AppendDocumentEnd(dst, didx)
-
-	didx, dst = bsoncore.AppendDocumentElementStart(dst, "os")
-	dst = bsoncore.AppendStringElement(dst, "type", runtime.GOOS)
-	dst = bsoncore.AppendStringElement(dst, "architecture", runtime.GOARCH)
-	dst, _ = bsoncore.AppendDocumentEnd(dst, didx)
-
-	dst = bsoncore.AppendStringElement(dst, "platform", runtime.Version())
-	if h.appname != "" {
-		didx, dst = bsoncore.AppendDocumentElementStart(dst, "application")
-		dst = bsoncore.AppendStringElement(dst, "name", h.appname)
-		dst, _ = bsoncore.AppendDocumentEnd(dst, didx)
+	// If the client metadata is empty, do not append it to the command.
+	if len(clientMetadata) > 0 {
+		dst = bsoncore.AppendDocumentElement(dst, "client", clientMetadata)
 	}
-	dst, _ = bsoncore.AppendDocumentEnd(dst, idx)
 
 	return dst, nil
 }
@@ -222,7 +556,7 @@ func (h *Hello) GetHandshakeInformation(ctx context.Context, _ address.Address, 
 	err := driver.Operation{
 		Clock:      h.clock,
 		CommandFn:  h.handshakeCommand,
-		Deployment: driver.SingleConnectionDeployment{c},
+		Deployment: driver.SingleConnectionDeployment{C: c},
 		Database:   "admin",
 		ProcessResponseFn: func(info driver.ResponseInfo) error {
 			h.res = info.ServerResponse

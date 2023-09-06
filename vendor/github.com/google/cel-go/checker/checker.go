@@ -406,16 +406,29 @@ func (c *checker) resolveOverload(
 
 func (c *checker) checkCreateList(e *exprpb.Expr) {
 	create := e.GetListExpr()
-	var elemType *exprpb.Type
-	for _, e := range create.GetElements() {
+	var elemsType *exprpb.Type
+	optionalIndices := create.GetOptionalIndices()
+	optionals := make(map[int32]bool, len(optionalIndices))
+	for _, optInd := range optionalIndices {
+		optionals[optInd] = true
+	}
+	for i, e := range create.GetElements() {
 		c.check(e)
-		elemType = c.joinTypes(c.location(e), elemType, c.getType(e))
+		elemType := c.getType(e)
+		if optionals[int32(i)] {
+			var isOptional bool
+			elemType, isOptional = maybeUnwrapOptional(elemType)
+			if !isOptional && !isDyn(elemType) {
+				c.errors.typeMismatch(c.location(e), decls.NewOptionalType(elemType), elemType)
+			}
+		}
+		elemsType = c.joinTypes(c.location(e), elemsType, elemType)
 	}
-	if elemType == nil {
+	if elemsType == nil {
 		// If the list is empty, assign free type var to elem type.
-		elemType = c.newTypeVar()
+		elemsType = c.newTypeVar()
 	}
-	c.setType(e, decls.NewListType(elemType))
+	c.setType(e, decls.NewListType(elemsType))
 }
 
 func (c *checker) checkCreateStruct(e *exprpb.Expr) {

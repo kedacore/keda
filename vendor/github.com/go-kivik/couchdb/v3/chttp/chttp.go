@@ -27,7 +27,7 @@ const typeJSON = "application/json"
 // The default UserAgent values
 const (
 	UserAgent = "Kivik chttp"
-	Version   = "3.3.0"
+	Version   = "3.4.1"
 )
 
 // Client represents a client connection. It embeds an *http.Client

@@ -106,7 +106,7 @@ func (dc *DropCollection) Execute(ctx context.Context) error {
 
 }
 
-func (dc *DropCollection) command(dst []byte, desc description.SelectedServer) ([]byte, error) {
+func (dc *DropCollection) command(dst []byte, _ description.SelectedServer) ([]byte, error) {
 	dst = bsoncore.AppendStringElement(dst, "drop", dc.collection)
 	return dst, nil
 }

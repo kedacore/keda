@@ -23,7 +23,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/antlr/antlr4/runtime/Go/antlr"
+	antlr "github.com/antlr/antlr4/runtime/Go/antlr/v4"
 
 	"github.com/google/cel-go/common"
 	"github.com/google/cel-go/common/operators"
@@ -46,6 +46,9 @@ func NewParser(opts ...Option) (*Parser, error) {
 		if err := opt(&p.options); err != nil {
 			return nil, err
 		}
+	}
+	if p.errorReportingLimit == 0 {
+		p.errorReportingLimit = 100
 	}
 	if p.maxRecursionDepth == 0 {
 		p.maxRecursionDepth = 250
@@ -91,6 +94,7 @@ func (p *Parser) Parse(source common.Source) (*exprpb.ParsedExpr, *common.Errors
 		helper:                           newParserHelper(source),
 		macros:                           p.macros,
 		maxRecursionDepth:                p.maxRecursionDepth,
+		errorReportingLimit:              p.errorReportingLimit,
 		errorRecoveryLimit:               p.errorRecoveryLimit,
 		errorRecoveryLookaheadTokenLimit: p.errorRecoveryTokenLookaheadLimit,
 		populateMacroCalls:               p.populateMacroCalls,
@@ -200,6 +204,16 @@ func (rl *recursionListener) ExitEveryRule(ctx antlr.ParserRuleContext) {
 
 var _ antlr.ParseTreeListener = &recursionListener{}
 
+type tooManyErrors struct {
+	errorReportingLimit int
+}
+
+func (t *tooManyErrors) Error() string {
+	return fmt.Sprintf("More than %d syntax errors", t.errorReportingLimit)
+}
+
+var _ error = &tooManyErrors{}
+
 type recoveryLimitError struct {
 	message string
 }
@@ -274,7 +288,9 @@ type parser struct {
 	helper                           *parserHelper
 	macros                           map[string]Macro
 	recursionDepth                   int
+	errorReports                     int
 	maxRecursionDepth                int
+	errorReportingLimit              int
 	errorRecoveryLimit               int
 	errorRecoveryLookaheadTokenLimit int
 	populateMacroCalls               bool
@@ -306,14 +322,14 @@ func (p *parser) parse(expr runes.Buffer, desc string) *exprpb.Expr {
 	lexer := lexerPool.Get().(*gen.CELLexer)
 	prsr := parserPool.Get().(*gen.CELParser)
 
-	// Unfortunately ANTLR Go runtime is missing (*antlr.BaseParser).RemoveParseListeners, so this is
-	// good enough until that is exported.
 	prsrListener := &recursionListener{
 		maxDepth:      p.maxRecursionDepth,
 		ruleTypeDepth: map[int]*int{},
 	}
 
 	defer func() {
+		// Unfortunately ANTLR Go runtime is missing (*antlr.BaseParser).RemoveParseListeners,
+		// so this is good enough until that is exported.
 		// Reset the lexer and parser before putting them back in the pool.
 		lexer.RemoveErrorListeners()
 		prsr.RemoveParseListener(prsrListener)
@@ -344,6 +360,8 @@ func (p *parser) parse(expr runes.Buffer, desc string) *exprpb.Expr {
 				p.errors.ReportError(common.NoLocation, err.Error())
 			case *recursionError:
 				p.errors.ReportError(common.NoLocation, err.Error())
+			case *tooManyErrors:
+				// do nothing
 			case *recoveryLimitError:
 				// do nothing, listeners already notified and error reported.
 			default:
@@ -552,7 +570,7 @@ func (p *parser) VisitSelect(ctx *gen.SelectContext) any {
 		return p.helper.newExpr(ctx)
 	}
 	id := ctx.GetId().GetText()
-	if ctx.GetOp().GetText() == ".?" {
+	if ctx.GetOpt() != nil {
 		if !p.enableOptionalSyntax {
 			return p.reportError(ctx.GetOp(), "unsupported syntax '.?'")
 		}
@@ -574,7 +592,7 @@ func (p *parser) VisitMemberCall(ctx *gen.MemberCallContext) any {
 	}
 	id := ctx.GetId().GetText()
 	opID := p.helper.id(ctx.GetOpen())
-	return p.receiverCallOrMacro(opID, id, operand, p.visitList(ctx.GetArgs())...)
+	return p.receiverCallOrMacro(opID, id, operand, p.visitExprList(ctx.GetArgs())...)
 }
 
 // Visit a parse tree produced by CELParser#Index.
@@ -587,7 +605,7 @@ func (p *parser) VisitIndex(ctx *gen.IndexContext) any {
 	opID := p.helper.id(ctx.GetOp())
 	index := p.Visit(ctx.GetIndex()).(*exprpb.Expr)
 	operator := operators.Index
-	if ctx.GetOp().GetText() == "[?" {
+	if ctx.GetOpt() != nil {
 		if !p.enableOptionalSyntax {
 			return p.reportError(ctx.GetOp(), "unsupported syntax '[?'")
 		}
@@ -666,7 +684,7 @@ func (p *parser) VisitIdentOrGlobalCall(ctx *gen.IdentOrGlobalCallContext) any {
 	identName += id
 	if ctx.GetOp() != nil {
 		opID := p.helper.id(ctx.GetOp())
-		return p.globalCallOrMacro(opID, identName, p.visitList(ctx.GetArgs())...)
+		return p.globalCallOrMacro(opID, identName, p.visitExprList(ctx.GetArgs())...)
 	}
 	return p.helper.newIdent(ctx.GetId(), identName)
 }
@@ -674,7 +692,8 @@ func (p *parser) VisitIdentOrGlobalCall(ctx *gen.IdentOrGlobalCallContext) any {
 // Visit a parse tree produced by CELParser#CreateList.
 func (p *parser) VisitCreateList(ctx *gen.CreateListContext) any {
 	listID := p.helper.id(ctx.GetOp())
-	return p.helper.newList(listID, p.visitList(ctx.GetElems())...)
+	elems, optionals := p.visitListInit(ctx.GetElems())
+	return p.helper.newList(listID, elems, optionals...)
 }
 
 // Visit a parse tree produced by CELParser#CreateStruct.
@@ -703,13 +722,13 @@ func (p *parser) VisitMapInitializerList(ctx *gen.MapInitializerListContext) any
 			// This is the result of a syntax error detected elsewhere.
 			return []*exprpb.Expr_CreateStruct_Entry{}
 		}
-		optKey := keys[i].(*gen.OptKeyContext)
+		optKey := keys[i]
 		optional := optKey.GetOpt() != nil
 		if !p.enableOptionalSyntax && optional {
 			p.reportError(optKey, "unsupported syntax '?'")
 			continue
 		}
-		key := p.Visit(optKey.Expr()).(*exprpb.Expr)
+		key := p.Visit(optKey.GetE()).(*exprpb.Expr)
 		value := p.Visit(vals[i]).(*exprpb.Expr)
 		entry := p.helper.newMapEntry(colID, key, value, optional)
 		result[i] = entry
@@ -796,11 +815,35 @@ func (p *parser) VisitNull(ctx *gen.NullContext) any {
 				NullValue: structpb.NullValue_NULL_VALUE}})
 }
 
-func (p *parser) visitList(ctx gen.IExprListContext) []*exprpb.Expr {
+func (p *parser) visitExprList(ctx gen.IExprListContext) []*exprpb.Expr {
 	if ctx == nil {
 		return []*exprpb.Expr{}
 	}
 	return p.visitSlice(ctx.GetE())
+}
+
+func (p *parser) visitListInit(ctx gen.IListInitContext) ([]*exprpb.Expr, []int32) {
+	if ctx == nil {
+		return []*exprpb.Expr{}, []int32{}
+	}
+	elements := ctx.GetElems()
+	result := make([]*exprpb.Expr, len(elements))
+	optionals := []int32{}
+	for i, e := range elements {
+		ex := p.Visit(e.GetE()).(*exprpb.Expr)
+		if ex == nil {
+			return []*exprpb.Expr{}, []int32{}
+		}
+		result[i] = ex
+		if e.GetOpt() != nil {
+			if !p.enableOptionalSyntax {
+				p.reportError(e.GetOpt(), "unsupported syntax '?'")
+				continue
+			}
+			optionals = append(optionals, int32(i))
+		}
+	}
+	return result, optionals
 }
 
 func (p *parser) visitSlice(expressions []gen.IExprContext) []*exprpb.Expr {
@@ -841,7 +884,6 @@ func (p *parser) reportError(ctx any, format string, args ...any) *exprpb.Expr {
 
 // ANTLR Parse listener implementations
 func (p *parser) SyntaxError(recognizer antlr.Recognizer, offendingSymbol any, line, column int, msg string, e antlr.RecognitionException) {
-	// TODO: Snippet
 	l := p.helper.source.NewLocation(line, column)
 	// Hack to keep existing error messages consistent with previous versions of CEL when a reserved word
 	// is used as an identifier. This behavior needs to be overhauled to provide consistent, normalized error
@@ -849,7 +891,16 @@ func (p *parser) SyntaxError(recognizer antlr.Recognizer, offendingSymbol any, l
 	if strings.Contains(msg, "no viable alternative") {
 		msg = reservedIdentifier.ReplaceAllString(msg, mismatchedReservedIdentifier)
 	}
-	p.errors.syntaxError(l, msg)
+	// Ensure that no more than 100 syntax errors are reported as this will halt attempts to recover from a
+	// seriously broken expression.
+	if p.errorReports < p.errorReportingLimit {
+		p.errorReports++
+		p.errors.syntaxError(l, msg)
+	} else {
+		tme := &tooManyErrors{errorReportingLimit: p.errorReportingLimit}
+		p.errors.syntaxError(l, tme.Error())
+		panic(tme)
+	}
 }
 
 func (p *parser) ReportAmbiguity(recognizer antlr.Parser, dfa *antlr.DFA, startIndex, stopIndex int, exact bool, ambigAlts *antlr.BitSet, configs antlr.ATNConfigSet) {
