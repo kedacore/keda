@@ -67,6 +67,9 @@ func (b *BulkWriteOptions) SetLet(let interface{}) *BulkWriteOptions {
 
 // MergeBulkWriteOptions combines the given BulkWriteOptions instances into a single BulkWriteOptions in a last-one-wins
 // fashion.
+//
+// Deprecated: Merging options structs will not be supported in Go Driver 2.0. Users should create a
+// single options struct instead.
 func MergeBulkWriteOptions(opts ...*BulkWriteOptions) *BulkWriteOptions {
 	b := BulkWrite()
 	for _, opt := range opts {

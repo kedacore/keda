@@ -80,7 +80,9 @@ func (r *Resolver) fetchSeedlistFromSRV(host string, srvName string, stopOnErr b
 		srvName = "mongodb"
 	}
 	_, addresses, err := r.LookupSRV(srvName, "tcp", host)
-	if err != nil {
+	if err != nil && strings.Contains(err.Error(), "cannot unmarshal DNS message") {
+		return nil, fmt.Errorf("see https://pkg.go.dev/go.mongodb.org/mongo-driver/mongo#hdr-Potential_DNS_Issues: %w", err)
+	} else if err != nil {
 		return nil, err
 	}
 

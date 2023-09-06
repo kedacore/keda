@@ -17,7 +17,6 @@ package cel
 import (
 	"context"
 	"fmt"
-	"math"
 	"sync"
 
 	"github.com/google/cel-go/common/types"
@@ -207,13 +206,47 @@ func newProgram(e *Env, ast *Ast, opts []ProgramOption) (Program, error) {
 	if len(p.regexOptimizations) > 0 {
 		decorators = append(decorators, interpreter.CompileRegexConstants(p.regexOptimizations...))
 	}
+	// Enable compile-time checking of syntax/cardinality for string.format calls.
+	if p.evalOpts&OptCheckStringFormat == OptCheckStringFormat {
+		var isValidType func(id int64, validTypes ...*types.TypeValue) (bool, error)
+		if ast.IsChecked() {
+			isValidType = func(id int64, validTypes ...*types.TypeValue) (bool, error) {
+				t, err := ExprTypeToType(ast.typeMap[id])
+				if err != nil {
+					return false, err
+				}
+				if t.kind == DynKind {
+					return true, nil
+				}
+				for _, vt := range validTypes {
+					k, err := typeValueToKind(vt)
+					if err != nil {
+						return false, err
+					}
+					if k == t.kind {
+						return true, nil
+					}
+				}
+				return false, nil
+			}
+		} else {
+			// if the AST isn't type-checked, short-circuit validation
+			isValidType = func(id int64, validTypes ...*types.TypeValue) (bool, error) {
+				return true, nil
+			}
+		}
+		decorators = append(decorators, interpreter.InterpolateFormattedString(isValidType))
+	}
 
 	// Enable exhaustive eval, state tracking and cost tracking last since they require a factory.
 	if p.evalOpts&(OptExhaustiveEval|OptTrackState|OptTrackCost) != 0 {
 		factory := func(state interpreter.EvalState, costTracker *interpreter.CostTracker) (Program, error) {
 			costTracker.Estimator = p.callCostEstimator
 			costTracker.Limit = p.costLimit
-			decs := decorators
+			// Limit capacity to guarantee a reallocation when calling 'append(decs, ...)' below. This
+			// prevents the underlying memory from being shared between factory function calls causing
+			// undesired mutations.
+			decs := decorators[:len(decorators):len(decorators)]
 			var observers []interpreter.EvalObserver
 
 			if p.evalOpts&(OptExhaustiveEval|OptTrackState) != 0 {
@@ -326,11 +359,6 @@ func (p *prog) ContextEval(ctx context.Context, input any) (ref.Val, *EvalDetail
 	return p.Eval(vars)
 }
 
-// Cost implements the Coster interface method.
-func (p *prog) Cost() (min, max int64) {
-	return estimateCost(p.interpretable)
-}
-
 // progFactory is a helper alias for marking a program creation factory function.
 type progFactory func(interpreter.EvalState, *interpreter.CostTracker) (Program, error)
 
@@ -401,29 +429,6 @@ func (gen *progGen) ContextEval(ctx context.Context, input any) (ref.Val, *EvalD
 		return v, det, err
 	}
 	return v, det, nil
-}
-
-// Cost implements the Coster interface method.
-func (gen *progGen) Cost() (min, max int64) {
-	// Use an empty state value since no evaluation is performed.
-	p, err := gen.factory(emptyEvalState, nil)
-	if err != nil {
-		return 0, math.MaxInt64
-	}
-	return estimateCost(p)
-}
-
-// EstimateCost returns the heuristic cost interval for the program.
-func EstimateCost(p Program) (min, max int64) {
-	return estimateCost(p)
-}
-
-func estimateCost(i any) (min, max int64) {
-	c, ok := i.(interpreter.Coster)
-	if !ok {
-		return 0, math.MaxInt64
-	}
-	return c.Cost()
 }
 
 type ctxEvalActivation struct {

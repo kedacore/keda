@@ -27,7 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 var _ = It("should validate the so creation when there isn't any hpa", func() {
@@ -116,7 +116,7 @@ var _ = It("should validate the so update when it's own hpa is already generated
 	err = k8sClient.Create(context.Background(), so)
 	Expect(err).ToNot(HaveOccurred())
 
-	so.Spec.MaxReplicaCount = pointer.Int32(7)
+	so.Spec.MaxReplicaCount = ptr.To[int32](7)
 	Eventually(func() error {
 		return k8sClient.Update(context.Background(), so)
 	}).ShouldNot(HaveOccurred())
@@ -467,9 +467,9 @@ func createScaledObject(name, namespace, targetName, targetAPI, targetKind strin
 				APIVersion: targetAPI,
 				Kind:       targetKind,
 			},
-			IdleReplicaCount: pointer.Int32(1),
-			MinReplicaCount:  pointer.Int32(5),
-			MaxReplicaCount:  pointer.Int32(10),
+			IdleReplicaCount: ptr.To[int32](1),
+			MinReplicaCount:  ptr.To[int32](5),
+			MaxReplicaCount:  ptr.To[int32](10),
 			Triggers:         triggers,
 			Advanced:         advancedConfig,
 		},
@@ -485,14 +485,14 @@ func createHpa(name, namespace, targetName, targetAPI, targetKind string, owner 
 				APIVersion: targetAPI,
 				Kind:       targetKind,
 			},
-			MinReplicas: pointer.Int32(5),
+			MinReplicas: ptr.To[int32](5),
 			MaxReplicas: 10,
 			Metrics: []v2.MetricSpec{
 				{
 					Resource: &v2.ResourceMetricSource{
 						Name: v1.ResourceCPU,
 						Target: v2.MetricTarget{
-							AverageUtilization: pointer.Int32(30),
+							AverageUtilization: ptr.To[int32](30),
 							Type:               v2.AverageValueMetricType,
 						},
 					},
@@ -527,7 +527,7 @@ func createDeployment(namespace string, hasCPU, hasMemory bool) *appsv1.Deployme
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{Name: workloadName, Namespace: namespace},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: pointer.Int32(1),
+			Replicas: ptr.To[int32](1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"test": "test",
@@ -572,7 +572,7 @@ func createStatefulSet(namespace string, hasCPU, hasMemory bool) *appsv1.Statefu
 	return &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{Name: workloadName, Namespace: namespace},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: pointer.Int32(1),
+			Replicas: ptr.To[int32](1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"test": "test",
@@ -639,9 +639,9 @@ func createScaledObjectSTZ(name string, namespace string, targetName string, min
 			ScaleTargetRef: &ScaleTarget{
 				Name: targetName,
 			},
-			MinReplicaCount: pointer.Int32(minReplicas),
-			MaxReplicaCount: pointer.Int32(maxReplicas),
-			CooldownPeriod:  pointer.Int32(1),
+			MinReplicaCount: ptr.To[int32](minReplicas),
+			MaxReplicaCount: ptr.To[int32](maxReplicas),
+			CooldownPeriod:  ptr.To[int32](1),
 			Triggers:        triggers,
 		},
 	}

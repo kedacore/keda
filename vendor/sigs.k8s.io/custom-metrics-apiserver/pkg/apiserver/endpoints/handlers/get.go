@@ -41,6 +41,29 @@ func ListResourceWithOptions(r cm_rest.ListerWithOptions, scope handlers.Request
 		// For performance tracking purposes.
 		trace := utiltrace.New("List " + req.URL.Path)
 
+		requestInfo, ok := request.RequestInfoFrom(req.Context())
+		if !ok {
+			err := errors.NewBadRequest("missing requestInfo")
+			writeError(&scope, err, w, req)
+			return
+		}
+
+		// handle metrics describing namespaces
+		if requestInfo.Namespace != "" && requestInfo.Resource == "metrics" {
+			requestInfo.Subresource = requestInfo.Name
+			requestInfo.Name = requestInfo.Namespace
+			requestInfo.Resource = "namespaces"
+			requestInfo.Namespace = ""
+			requestInfo.Parts = append([]string{"namespaces", requestInfo.Name}, requestInfo.Parts[1:]...)
+		}
+
+		// handle invalid requests, e.g. /namespaces/name/foo
+		if len(requestInfo.Parts) < 3 {
+			err := errors.NewBadRequest("invalid request path")
+			writeError(&scope, err, w, req)
+			return
+		}
+
 		namespace, err := scope.Namer.Namespace(req)
 		if err != nil {
 			writeError(&scope, err, w, req)

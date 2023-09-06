@@ -13,6 +13,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/internal/logger"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -60,6 +61,7 @@ type Find struct {
 	result              driver.CursorResponse
 	serverAPI           *driver.ServerAPIOptions
 	timeout             *time.Duration
+	logger              *logger.Logger
 }
 
 // NewFind constructs and returns a new Find.
@@ -105,6 +107,7 @@ func (f *Find) Execute(ctx context.Context) error {
 		Legacy:            driver.LegacyFind,
 		ServerAPI:         f.serverAPI,
 		Timeout:           f.timeout,
+		Logger:            f.logger,
 	}.Execute(ctx)
 
 }
@@ -544,5 +547,15 @@ func (f *Find) Timeout(timeout *time.Duration) *Find {
 	}
 
 	f.timeout = timeout
+	return f
+}
+
+// Logger sets the logger for this operation.
+func (f *Find) Logger(logger *logger.Logger) *Find {
+	if f == nil {
+		f = new(Find)
+	}
+
+	f.logger = logger
 	return f
 }

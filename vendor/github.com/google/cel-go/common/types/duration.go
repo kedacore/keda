@@ -57,14 +57,14 @@ func (d Duration) Add(other ref.Val) ref.Val {
 		dur2 := other.(Duration)
 		val, err := addDurationChecked(d.Duration, dur2.Duration)
 		if err != nil {
-			return wrapErr(err)
+			return WrapErr(err)
 		}
 		return durationOf(val)
 	case TimestampType:
 		ts := other.(Timestamp).Time
 		val, err := addTimeDurationChecked(ts, d.Duration)
 		if err != nil {
-			return wrapErr(err)
+			return WrapErr(err)
 		}
 		return timestampOf(val)
 	}
@@ -147,7 +147,7 @@ func (d Duration) IsZeroValue() bool {
 func (d Duration) Negate() ref.Val {
 	val, err := negateDurationChecked(d.Duration)
 	if err != nil {
-		return wrapErr(err)
+		return WrapErr(err)
 	}
 	return durationOf(val)
 }
@@ -170,7 +170,7 @@ func (d Duration) Subtract(subtrahend ref.Val) ref.Val {
 	}
 	val, err := subtractDurationChecked(d.Duration, subtraDur.Duration)
 	if err != nil {
-		return wrapErr(err)
+		return WrapErr(err)
 	}
 	return durationOf(val)
 }

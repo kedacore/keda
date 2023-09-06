@@ -1,5 +1,9 @@
 # Change Log
 
+## `v3.6.1`
+
+- Deprecate module. Use github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs instead.
+
 ## `v3.6.0`
 
 - Updated to latest `azure-amqp-common-go` and GA version of `go-amqp` modules.

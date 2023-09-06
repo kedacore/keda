@@ -76,9 +76,14 @@ func setRetryHeaderHTTP(req interface{ Header() http.Header }) func(string, int)
 			return
 		}
 		header := req.Header()
+		// TODO(b/274504690): Consider dropping gccl-invocation-id key since it
+		// duplicates the X-Goog-Gcs-Idempotency-Token header (added in v1.31.0).
 		invocationHeader := fmt.Sprintf("gccl-invocation-id/%v gccl-attempt-count/%v", invocationID, attempts)
 		xGoogHeader := strings.Join([]string{invocationHeader, xGoogDefaultHeader}, " ")
 		header.Set("x-goog-api-client", xGoogHeader)
+		// Also use the invocationID for the idempotency token header, which will
+		// enable idempotent retries for more operations.
+		header.Set("x-goog-gcs-idempotency-token", invocationID)
 	}
 }
 
@@ -131,12 +136,11 @@ func ShouldRetry(err error) bool {
 			return true
 		}
 	}
-	// HTTP 429, 502, 503, and 504 all map to gRPC UNAVAILABLE per
-	// https://grpc.github.io/grpc/core/md_doc_http-grpc-status-mapping.html.
-	//
-	// This is only necessary for the experimental gRPC-based media operations.
-	if st, ok := status.FromError(err); ok && st.Code() == codes.Unavailable {
-		return true
+	// UNAVAILABLE, RESOURCE_EXHAUSTED, and INTERNAL codes are all retryable for gRPC.
+	if st, ok := status.FromError(err); ok {
+		if code := st.Code(); code == codes.Unavailable || code == codes.ResourceExhausted || code == codes.Internal {
+			return true
+		}
 	}
 	// Unwrap is only supported in go1.13.x+
 	if e, ok := err.(interface{ Unwrap() error }); ok {

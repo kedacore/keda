@@ -98,6 +98,9 @@ func (s *SessionOptions) SetSnapshot(b bool) *SessionOptions {
 
 // MergeSessionOptions combines the given SessionOptions instances into a single SessionOptions in a last-one-wins
 // fashion.
+//
+// Deprecated: Merging options structs will not be supported in Go Driver 2.0. Users should create a
+// single options struct instead.
 func MergeSessionOptions(opts ...*SessionOptions) *SessionOptions {
 	s := Session()
 	for _, opt := range opts {
