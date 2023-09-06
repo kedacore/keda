@@ -65,8 +65,8 @@ var _ = Describe("ScaledObjectController", func() {
 		)
 
 		var triggerMeta = []map[string]string{
-			{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "disableScaleToZero": "true"},
-			{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total2", "threshold": "100", "query": "up"},
+			{"serverAddress": "http://localhost:9090", "threshold": "100", "query": "up", "disableScaleToZero": "true"},
+			{"serverAddress": "http://localhost:9090", "threshold": "100", "query": "up"},
 		}
 
 		BeforeEach(func() {
@@ -96,6 +96,7 @@ var _ = Describe("ScaledObjectController", func() {
 						TriggerMetadata:         tm,
 						ResolvedEnv:             nil,
 						AuthParams:              nil,
+						ScalerIndex:             i,
 					}
 
 					s, err := scalers.NewPrometheusScaler(config)
@@ -220,6 +221,7 @@ var _ = Describe("ScaledObjectController", func() {
 
 				// Call function tobe tested
 				metricSpecs, err := metricNameTestReconciler.getScaledObjectMetricSpecs(context.Background(), testLogger, duplicateNamedScaledObject)
+				Ω(err).ShouldNot(BeNil())
 
 				// Test that the status was not updated
 				Ω(duplicateNamedScaledObject.Status.ExternalMetricNames).Should(BeNil())

@@ -17,11 +17,7 @@ import (
 )
 
 const (
-	graphiteServerAddress = "serverAddress"
-
-	// FIXME: DEPRECATED to be removed in v2.12
-	graphiteMetricName = "metricName"
-
+	graphiteServerAddress              = "serverAddress"
 	graphiteQuery                      = "query"
 	graphiteThreshold                  = "threshold"
 	graphiteActivationThreshold        = "activationThreshold"
@@ -39,7 +35,6 @@ type graphiteScaler struct {
 
 type graphiteMetadata struct {
 	serverAddress       string
-	metricName          string
 	query               string
 	threshold           float64
 	activationThreshold float64
@@ -93,13 +88,6 @@ func parseGraphiteMetadata(config *ScalerConfig) (*graphiteMetadata, error) {
 		meta.query = val
 	} else {
 		return nil, fmt.Errorf("no %s given", graphiteQuery)
-	}
-
-	// FIXME: DEPRECATED to be removed in v2.12
-	if val, ok := config.TriggerMetadata[graphiteMetricName]; ok && val != "" {
-		meta.metricName = val
-	} else {
-		meta.metricName = "graphite"
 	}
 
 	if val, ok := config.TriggerMetadata[graphiteQueryTime]; ok && val != "" {
@@ -159,7 +147,7 @@ func (s *graphiteScaler) Close(context.Context) error {
 func (s *graphiteScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("graphite-%s", s.metadata.metricName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, "graphite"),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}

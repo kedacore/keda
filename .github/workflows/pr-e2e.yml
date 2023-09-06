@@ -16,7 +16,7 @@ jobs:
       image_tag: "pr-${{ steps.parser.outputs.pr_num }}-${{ steps.parser.outputs.commit_sha }}"
       commit_sha: ${{ steps.parser.outputs.commit_sha }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4
 
       - uses: tspascoal/get-user-teams-membership@v2
         id: checkUserMember
@@ -57,12 +57,12 @@ jobs:
           PR_URL="${{ github.event.issue.pull_request.url }}"
           PR_NUM=${PR_URL##*/}
           echo "Checking out from PR #$PR_NUM based on URL: $PR_URL"
-          echo "::set-output name=pr_num::$PR_NUM"
+          echo "pr_num=$PR_NUM" >> $GITHUB_OUTPUT
           # Get commit SHA
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           gh pr checkout $PR_NUM
           SHA=$(git log -n 1 --pretty=format:"%H")
-          echo "::set-output name=commit_sha::$SHA"
+          echo "commit_sha=$SHA" >> $GITHUB_OUTPUT
 
   build-test-images:
     needs: triage
@@ -72,7 +72,7 @@ jobs:
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
-        uses: LouisBrunner/checks-action@v1.6.0
+        uses: LouisBrunner/checks-action@v1.6.2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
@@ -80,7 +80,7 @@ jobs:
           status: in_progress
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4
 
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -115,7 +115,7 @@ jobs:
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
-        uses: LouisBrunner/checks-action@v1.6.0
+        uses: LouisBrunner/checks-action@v1.6.2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
@@ -123,7 +123,7 @@ jobs:
           status: in_progress
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4
 
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -188,7 +188,7 @@ jobs:
           reaction: "+1"
 
       - name: Set status success
-        uses: LouisBrunner/checks-action@v1.6.0
+        uses: LouisBrunner/checks-action@v1.6.2
         if: steps.test.outcome == 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -206,7 +206,7 @@ jobs:
           reaction: "-1"
 
       - name: Set status failure
-        uses: LouisBrunner/checks-action@v1.6.0
+        uses: LouisBrunner/checks-action@v1.6.2
         if: steps.test.outcome != 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
