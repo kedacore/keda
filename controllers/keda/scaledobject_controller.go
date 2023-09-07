@@ -218,7 +218,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 				return kedav1alpha1.ScaledObjectConditionReadySuccessMessage, nil
 			}
 		}
-		if scaledObject.NeedPaused() && scaledToPausedCount {
+		if scaledObject.NeedToBePausedByAnnotation() && scaledToPausedCount {
 			msg := kedav1alpha1.ScaledObjectConditionPausedMessage
 			if err := r.stopScaleLoop(ctx, logger, scaledObject); err != nil {
 				msg = "failed to stop the scale loop for paused ScaledObject"
