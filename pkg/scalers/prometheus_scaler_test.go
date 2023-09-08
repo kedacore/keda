@@ -60,6 +60,10 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "customHeaders": "key1=value1,key2"}, true},
 	// deprecated cortexOrgID
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "cortexOrgID": "my-org"}, true},
+	// queryParameters
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "queryParameters": "key1=value1,key2=value2"}, false},
+	// queryParameters with wrong format
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "queryParameters": "key1=value1,key2"}, true},
 }
 
 var prometheusMetricIdentifiers = []prometheusMetricIdentifier{
@@ -346,6 +350,45 @@ func TestPrometheusScalerCustomHeaders(t *testing.T) {
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		for headerName, headerValue := range customHeadersValue {
+			reqHeader := request.Header.Get(headerName)
+			assert.Equal(t, reqHeader, headerValue)
+		}
+
+		writer.WriteHeader(testData.responseStatus)
+		if _, err := writer.Write([]byte(testData.bodyStr)); err != nil {
+			t.Fatal(err)
+		}
+	}))
+
+	scaler := prometheusScaler{
+		metadata: &prometheusMetadata{
+			serverAddress:    server.URL,
+			customHeaders:    customHeadersValue,
+			ignoreNullValues: testData.ignoreNullValues,
+		},
+		httpClient: http.DefaultClient,
+	}
+
+	_, err := scaler.ExecutePromQuery(context.TODO())
+
+	assert.NoError(t, err)
+}
+
+func TestPrometheusScalerQueryParameters(t *testing.T) {
+	testData := prometheusQromQueryResultTestData{
+		name:             "no values",
+		bodyStr:          `{"data":{"result":[]}}`,
+		responseStatus:   http.StatusOK,
+		expectedValue:    0,
+		isError:          false,
+		ignoreNullValues: true,
+	}
+	queryParametersValue := map[string]string{
+		"name":                 "organization",
+		"thanos-tenant":        "tenant-1"
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		for headerName, headerValue := range queryParametersValue {
 			reqHeader := request.Header.Get(headerName)
 			assert.Equal(t, reqHeader, headerValue)
 		}
