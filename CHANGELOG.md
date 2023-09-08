@@ -53,6 +53,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Governance**: KEDA transitioned to CNCF Graduated project ([#63](https://github.com/kedacore/governance/issues/63))
 
 ### Improvements
+- **General**: Add parameter queryParameters in prometheus-scaler (N/A)
 - **General**: Add more events for user checking ([#796](https://github.com/kedacore/keda/issues/3764))
 - **General**: Add ScaledObject/ScaledJob names to output of `kubectl get triggerauthentication/clustertriggerauthentication` ([#796](https://github.com/kedacore/keda/issues/796))
 - **General**: Add standalone CRD generation to release workflow ([#2726](https://github.com/kedacore/keda/issues/2726))
