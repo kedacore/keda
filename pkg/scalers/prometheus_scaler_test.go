@@ -374,43 +374,38 @@ func TestPrometheusScalerCustomHeaders(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestPrometheusScalerQueryParameters(t *testing.T) {
-	testData := prometheusQromQueryResultTestData{
-		name:             "no values",
-		bodyStr:          `{"data":{"result":[]}}`,
-		responseStatus:   http.StatusOK,
-		expectedValue:    0,
-		isError:          false,
-		ignoreNullValues: true,
+func TestPrometheusScalerExecutePromQueryParameters(t *testing.T) {
+	for _, testData := range testPromQueryParametersResult {
+		t.Run(testData.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+				writer.WriteHeader(testData.responseStatus)
+
+				if _, err := writer.Write([]byte(testData.bodyStr)); err != nil {
+					t.Fatal(err)
+				}
+			}))
+
+			scaler := prometheusScaler{
+				metadata: &prometheusMetadata{
+					serverAddress:    server.URL,
+					ignoreNullValues: testData.ignoreNullValues,
+					unsafeSsl:        testData.unsafeSsl,
+				},
+				httpClient: http.DefaultClient,
+				logger:     logr.Discard(),
+			}
+
+			value, err := scaler.ExecutePromQueryParameters(context.TODO())
+
+			assert.Equal(t, testData.expectedValue, value)
+
+			if testData.isError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-	queryParametersValue := map[string]string{
-		"name":                 "organization",
-		"thanos-tenant":        "tenant-1"
-	}
-	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		for headerName, headerValue := range queryParametersValue {
-			reqHeader := request.Header.Get(headerName)
-			assert.Equal(t, reqHeader, headerValue)
-		}
-
-		writer.WriteHeader(testData.responseStatus)
-		if _, err := writer.Write([]byte(testData.bodyStr)); err != nil {
-			t.Fatal(err)
-		}
-	}))
-
-	scaler := prometheusScaler{
-		metadata: &prometheusMetadata{
-			serverAddress:    server.URL,
-			customHeaders:    customHeadersValue,
-			ignoreNullValues: testData.ignoreNullValues,
-		},
-		httpClient: http.DefaultClient,
-	}
-
-	_, err := scaler.ExecutePromQuery(context.TODO())
-
-	assert.NoError(t, err)
 }
 
 func TestPrometheusScaler_ExecutePromQuery_WithGCPNativeAuthentication(t *testing.T) {
