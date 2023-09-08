@@ -10,10 +10,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
@@ -152,22 +152,22 @@ func TestSqsScaler(t *testing.T) {
 	cleanupQueue(t, sqsClient, queue.QueueUrl)
 }
 
-func testActivation(t *testing.T, kc *kubernetes.Clientset, sqsClient *sqs.SQS, queueURL *string) {
+func testActivation(t *testing.T, kc *kubernetes.Clientset, sqsClient *sqs.Client, queueURL *string) {
 	t.Log("--- testing activation ---")
 	addMessages(t, sqsClient, queueURL, 4)
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset, sqsClient *sqs.SQS, queueURL *string) {
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, sqsClient *sqs.Client, queueURL *string) {
 	t.Log("--- testing scale out ---")
 	addMessages(t, sqsClient, queueURL, 6)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 180, 1),
 		"replica count should be 2 after 3 minutes")
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset, sqsClient *sqs.SQS, queueURL *string) {
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, sqsClient *sqs.Client, queueURL *string) {
 	t.Log("--- testing scale in ---")
-	_, err := sqsClient.PurgeQueueWithContext(context.Background(), &sqs.PurgeQueueInput{
+	_, err := sqsClient.PurgeQueue(context.Background(), &sqs.PurgeQueueInput{
 		QueueUrl: queueURL,
 	})
 	assert.NoErrorf(t, err, "cannot clear queue - %s", err)
@@ -176,46 +176,43 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, sqsClient *sqs.SQS, que
 		"replica count should be 0 after 3 minutes")
 }
 
-func addMessages(t *testing.T, sqsClient *sqs.SQS, queueURL *string, messages int) {
+func addMessages(t *testing.T, sqsClient *sqs.Client, queueURL *string, messages int) {
 	for i := 0; i < messages; i++ {
 		msg := fmt.Sprintf("Message - %d", i)
-		_, err := sqsClient.SendMessageWithContext(context.Background(), &sqs.SendMessageInput{
+		_, err := sqsClient.SendMessage(context.Background(), &sqs.SendMessageInput{
 			QueueUrl:     queueURL,
 			MessageBody:  aws.String(msg),
-			DelaySeconds: aws.Int64(10),
+			DelaySeconds: 10,
 		})
 		assert.NoErrorf(t, err, "cannot send message - %s", err)
 	}
 }
 
-func createSqsQueue(t *testing.T, sqsClient *sqs.SQS) *sqs.CreateQueueOutput {
-	queue, err := sqsClient.CreateQueueWithContext(context.Background(), &sqs.CreateQueueInput{
+func createSqsQueue(t *testing.T, sqsClient *sqs.Client) *sqs.CreateQueueOutput {
+	queue, err := sqsClient.CreateQueue(context.Background(), &sqs.CreateQueueInput{
 		QueueName: &sqsQueueName,
-		Attributes: map[string]*string{
-			"DelaySeconds":           aws.String("60"),
-			"MessageRetentionPeriod": aws.String("86400"),
+		Attributes: map[string]string{
+			"DelaySeconds":           "60",
+			"MessageRetentionPeriod": "86400",
 		}})
 	assert.NoErrorf(t, err, "failed to create queue - %s", err)
 	return queue
 }
 
-func cleanupQueue(t *testing.T, sqsClient *sqs.SQS, queueURL *string) {
+func cleanupQueue(t *testing.T, sqsClient *sqs.Client, queueURL *string) {
 	t.Log("--- cleaning up ---")
-	_, err := sqsClient.DeleteQueueWithContext(context.Background(), &sqs.DeleteQueueInput{
+	_, err := sqsClient.DeleteQueue(context.Background(), &sqs.DeleteQueueInput{
 		QueueUrl: queueURL,
 	})
 	assert.NoErrorf(t, err, "cannot delete queue - %s", err)
 }
 
-func createSqsClient() *sqs.SQS {
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(awsRegion),
-	}))
-
-	return sqs.New(sess, &aws.Config{
-		Region:      aws.String(awsRegion),
-		Credentials: credentials.NewStaticCredentials(awsAccessKeyID, awsSecretAccessKey, ""),
-	})
+func createSqsClient() *sqs.Client {
+	configOptions := make([]func(*config.LoadOptions) error, 0)
+	configOptions = append(configOptions, config.WithRegion(awsRegion))
+	cfg, _ := config.LoadDefaultConfig(context.TODO(), configOptions...)
+	cfg.Credentials = credentials.NewStaticCredentialsProvider(awsAccessKeyID, awsSecretAccessKey, "")
+	return sqs.NewFromConfig(cfg)
 }
 
 func getTemplateData(sqsQueue string) (templateData, []Template) {

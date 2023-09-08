@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/sqs"
-	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -25,10 +25,10 @@ const (
 )
 
 type awsSqsQueueScaler struct {
-	metricType v2.MetricTargetType
-	metadata   *awsSqsQueueMetadata
-	sqsClient  sqsiface.SQSAPI
-	logger     logr.Logger
+	metricType       v2.MetricTargetType
+	metadata         *awsSqsQueueMetadata
+	sqsWrapperClient SqsWrapperClient
+	logger           logr.Logger
 }
 
 type awsSqsQueueMetadata struct {
@@ -42,11 +42,11 @@ type awsSqsQueueMetadata struct {
 	scalerIndex                 int
 	scaleOnInFlight             bool
 	scaleOnDelayed              bool
-	awsSqsQueueMetricNames      []string
+	awsSqsQueueMetricNames      []types.QueueAttributeName
 }
 
 // NewAwsSqsQueueScaler creates a new awsSqsQueueScaler
-func NewAwsSqsQueueScaler(config *ScalerConfig) (Scaler, error) {
+func NewAwsSqsQueueScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -58,13 +58,30 @@ func NewAwsSqsQueueScaler(config *ScalerConfig) (Scaler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error parsing SQS queue metadata: %w", err)
 	}
-
+	awsSqsClient, err := createSqsClient(ctx, meta)
+	if err != nil {
+		return nil, fmt.Errorf("error when creating sqs client: %w", err)
+	}
 	return &awsSqsQueueScaler{
 		metricType: metricType,
 		metadata:   meta,
-		sqsClient:  createSqsClient(meta),
-		logger:     logger,
+		sqsWrapperClient: &sqsWrapperClient{
+			sqsClient: awsSqsClient,
+		},
+		logger: logger,
 	}, nil
+}
+
+type SqsWrapperClient interface {
+	GetQueueAttributes(ctx context.Context, params *sqs.GetQueueAttributesInput, optFns ...func(*sqs.Options)) (*sqs.GetQueueAttributesOutput, error)
+}
+
+type sqsWrapperClient struct {
+	sqsClient *sqs.Client
+}
+
+func (w sqsWrapperClient) GetQueueAttributes(ctx context.Context, params *sqs.GetQueueAttributesInput, optFns ...func(*sqs.Options)) (*sqs.GetQueueAttributesOutput, error) {
+	return w.sqsClient.GetQueueAttributes(ctx, params, optFns...)
 }
 
 func parseAwsSqsQueueMetadata(config *ScalerConfig, logger logr.Logger) (*awsSqsQueueMetadata, error) {
@@ -93,16 +110,6 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig, logger logr.Logger) (*awsSqs
 		}
 	}
 
-	if val, ok := config.TriggerMetadata["scaleOnInFlight"]; ok && val != "" {
-		scaleOnInFlight, err := strconv.ParseBool(val)
-		if err != nil {
-			meta.scaleOnInFlight = defaultScaleOnInFlight
-			logger.Error(err, "Error parsing SQS queue metadata scaleOnInFlight, using default %n", defaultScaleOnInFlight)
-		} else {
-			meta.scaleOnInFlight = scaleOnInFlight
-		}
-	}
-
 	if val, ok := config.TriggerMetadata["scaleOnDelayed"]; ok && val != "" {
 		scaleOnDelayed, err := strconv.ParseBool(val)
 		if err != nil {
@@ -113,12 +120,23 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig, logger logr.Logger) (*awsSqs
 		}
 	}
 
-	meta.awsSqsQueueMetricNames = []string{"ApproximateNumberOfMessages"}
+	if val, ok := config.TriggerMetadata["scaleOnInFlight"]; ok && val != "" {
+		scaleOnInFlight, err := strconv.ParseBool(val)
+		if err != nil {
+			meta.scaleOnInFlight = defaultScaleOnInFlight
+			logger.Error(err, "Error parsing SQS queue metadata scaleOnInFlight, using default %n", defaultScaleOnInFlight)
+		} else {
+			meta.scaleOnInFlight = scaleOnInFlight
+		}
+	}
+
+	meta.awsSqsQueueMetricNames = []types.QueueAttributeName{}
+	meta.awsSqsQueueMetricNames = append(meta.awsSqsQueueMetricNames, types.QueueAttributeNameApproximateNumberOfMessages)
 	if meta.scaleOnInFlight {
-		meta.awsSqsQueueMetricNames = append(meta.awsSqsQueueMetricNames, "ApproximateNumberOfMessagesNotVisible")
+		meta.awsSqsQueueMetricNames = append(meta.awsSqsQueueMetricNames, types.QueueAttributeNameApproximateNumberOfMessagesNotVisible)
 	}
 	if meta.scaleOnDelayed {
-		meta.awsSqsQueueMetricNames = append(meta.awsSqsQueueMetricNames, "ApproximateNumberOfMessagesDelayed")
+		meta.awsSqsQueueMetricNames = append(meta.awsSqsQueueMetricNames, types.QueueAttributeNameApproximateNumberOfMessagesDelayed)
 	}
 
 	if val, ok := config.TriggerMetadata["queueURL"]; ok && val != "" {
@@ -169,12 +187,16 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig, logger logr.Logger) (*awsSqs
 	return &meta, nil
 }
 
-func createSqsClient(metadata *awsSqsQueueMetadata) *sqs.SQS {
-	sess, config := getAwsConfig(metadata.awsRegion,
-		metadata.awsEndpoint,
-		metadata.awsAuthorization)
-
-	return sqs.New(sess, config)
+func createSqsClient(ctx context.Context, metadata *awsSqsQueueMetadata) (*sqs.Client, error) {
+	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+	if err != nil {
+		return nil, err
+	}
+	return sqs.NewFromConfig(*cfg, func(options *sqs.Options) {
+		if metadata.awsEndpoint != "" {
+			options.BaseEndpoint = aws.String(metadata.awsEndpoint)
+		}
+	}), nil
 }
 
 func (s *awsSqsQueueScaler) Close(context.Context) error {
@@ -193,8 +215,8 @@ func (s *awsSqsQueueScaler) GetMetricSpecForScaling(context.Context) []v2.Metric
 }
 
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
-func (s *awsSqsQueueScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	queuelen, err := s.getAwsSqsQueueLength()
+func (s *awsSqsQueueScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	queuelen, err := s.getAwsSqsQueueLength(ctx)
 
 	if err != nil {
 		s.logger.Error(err, "Error getting queue length")
@@ -207,20 +229,20 @@ func (s *awsSqsQueueScaler) GetMetricsAndActivity(_ context.Context, metricName 
 }
 
 // Get SQS Queue Length
-func (s *awsSqsQueueScaler) getAwsSqsQueueLength() (int64, error) {
+func (s *awsSqsQueueScaler) getAwsSqsQueueLength(ctx context.Context) (int64, error) {
 	input := &sqs.GetQueueAttributesInput{
-		AttributeNames: aws.StringSlice(s.metadata.awsSqsQueueMetricNames),
+		AttributeNames: s.metadata.awsSqsQueueMetricNames,
 		QueueUrl:       aws.String(s.metadata.queueURL),
 	}
 
-	output, err := s.sqsClient.GetQueueAttributes(input)
+	output, err := s.sqsWrapperClient.GetQueueAttributes(ctx, input)
 	if err != nil {
 		return -1, err
 	}
 
 	var approximateNumberOfMessages int64
 	for _, awsSqsQueueMetric := range s.metadata.awsSqsQueueMetricNames {
-		metricValue, err := strconv.ParseInt(*output.Attributes[awsSqsQueueMetric], 10, 32)
+		metricValue, err := strconv.ParseInt(output.Attributes[string(awsSqsQueueMetric)], 10, 32)
 		if err != nil {
 			return -1, err
 		}

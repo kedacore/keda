@@ -1,13 +1,15 @@
 package scalers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
-	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
 // ErrAwsNoAccessKey is returned when awsAccessKeyID is missing.
@@ -25,39 +27,36 @@ type awsAuthorizationMetadata struct {
 
 type awsConfigMetadata struct {
 	awsRegion        string
-	awsEndpoint      string
 	awsAuthorization awsAuthorizationMetadata
 }
 
-func getAwsConfig(awsRegion string, awsEndpoint string, awsAuthorization awsAuthorizationMetadata) (*session.Session, *aws.Config) {
+func getAwsConfig(ctx context.Context, awsRegion string, awsAuthorization awsAuthorizationMetadata) (*aws.Config, error) {
 	metadata := &awsConfigMetadata{
 		awsRegion:        awsRegion,
-		awsEndpoint:      awsEndpoint,
-		awsAuthorization: awsAuthorization}
-
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region:   aws.String(metadata.awsRegion),
-		Endpoint: aws.String(metadata.awsEndpoint),
-	}))
-
-	if !metadata.awsAuthorization.podIdentityOwner {
-		return sess, &aws.Config{
-			Region:   aws.String(metadata.awsRegion),
-			Endpoint: aws.String(metadata.awsEndpoint),
-		}
+		awsAuthorization: awsAuthorization,
 	}
 
-	creds := credentials.NewStaticCredentials(metadata.awsAuthorization.awsAccessKeyID, metadata.awsAuthorization.awsSecretAccessKey, "")
+	configOptions := make([]func(*config.LoadOptions) error, 0)
+	configOptions = append(configOptions, config.WithRegion(metadata.awsRegion))
+	cfg, err := config.LoadDefaultConfig(ctx, configOptions...)
+	if err != nil {
+		return nil, err
+	}
+	if !metadata.awsAuthorization.podIdentityOwner {
+		return &cfg, nil
+	}
+	if metadata.awsAuthorization.awsAccessKeyID != "" && metadata.awsAuthorization.awsSecretAccessKey != "" {
+		staticCredentialsProvider := aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(metadata.awsAuthorization.awsAccessKeyID, metadata.awsAuthorization.awsSecretAccessKey, ""))
+		cfg.Credentials = staticCredentialsProvider
+	}
 
 	if metadata.awsAuthorization.awsRoleArn != "" {
-		creds = stscreds.NewCredentials(sess, metadata.awsAuthorization.awsRoleArn)
+		stsSvc := sts.NewFromConfig(cfg)
+		stsCredentialProvider := stscreds.NewAssumeRoleProvider(stsSvc, metadata.awsAuthorization.awsRoleArn, func(options *stscreds.AssumeRoleOptions) {})
+		cfg.Credentials = aws.NewCredentialsCache(stsCredentialProvider)
 	}
 
-	return sess, &aws.Config{
-		Region:      aws.String(metadata.awsRegion),
-		Endpoint:    aws.String(metadata.awsEndpoint),
-		Credentials: creds,
-	}
+	return &cfg, err
 }
 
 func getAwsAuthorization(authParams, metadata, resolvedEnv map[string]string) (awsAuthorizationMetadata, error) {
