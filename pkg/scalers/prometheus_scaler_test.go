@@ -180,6 +180,7 @@ type prometheusQromQueryResultTestData struct {
 	unsafeSsl        bool
 }
 
+
 var testPromQueryResult = []prometheusQromQueryResultTestData{
 	{
 		name:             "no results",
@@ -375,7 +376,7 @@ func TestPrometheusScalerCustomHeaders(t *testing.T) {
 }
 
 func TestPrometheusScalerExecutePromQueryParameters(t *testing.T) {
-	for _, testData := range testPromQueryParametersResult {
+	for _, testData := range testPromQueryResult {
 		t.Run(testData.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 				writer.WriteHeader(testData.responseStatus)
