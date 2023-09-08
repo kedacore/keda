@@ -65,7 +65,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General**: Introduce new Google Cloud Tasks scaler functionality to scale based on the queue length ([#3613](https://github.com/kedacore/keda/issues/3613))
 
-
 ### Fixes
 
 - **Solace Scaler**: Fix a bug where `queueName` is not properly escaped during URL encode ([#4936](https://github.com/kedacore/keda/issues/4936))
