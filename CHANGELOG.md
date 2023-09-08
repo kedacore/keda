@@ -61,8 +61,9 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Azure Pod Identity**: Introduce validation to prevent usage of empty identity ID for Azure identity providers ([#4528](https://github.com/kedacore/keda/issues/4528))
 - **General:**: Add ScaledObject/ScaledJob names to output of `kubectl get triggerauthentication/clustertriggerauthentication` ([#796](https://github.com/kedacore/keda/issues/796))
 
-- **General**: Introduce new Google Cloud Tasks scaler functionality to scale based on the queue length ([#3613](https://github.com/kedacore/keda/issues/3613))
+### Scalers
 
+- **General**: Introduce new Google Cloud Tasks scaler functionality to scale based on the queue length ([#3613](https://github.com/kedacore/keda/issues/3613))
 
 
 ### Fixes
