@@ -396,7 +396,7 @@ func TestPrometheusScalerExecutePromQueryParameters(t *testing.T) {
 				logger:     logr.Discard(),
 			}
 
-			value, err := scaler.ExecutePromQueryParameters(context.TODO())
+			value, err := scaler.ExecutePromQuery(context.TODO())
 
 			assert.Equal(t, testData.expectedValue, value)
 
