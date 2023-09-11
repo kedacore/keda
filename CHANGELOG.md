@@ -60,7 +60,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Update golangci-lint version documented in CONTRIBUTING.md since old version doesn't support go 1.20 (N/A)
 - **General**: Updated AWS SDK and updated all the aws scalers ([#4905](https://github.com/kedacore/keda/issues/4905))
 - **Azure Pod Identity**: Introduce validation to prevent usage of empty identity ID for Azure identity providers ([#4528](https://github.com/kedacore/keda/issues/4528))
-- **Prometheus CustomAuth Params**: Remove trailing whitespaces in customAtuhHeader and value. ([#4960](https://github.com/kedacore/keda/issues/4960)) 
+- **Prometheus CustomAuth Params**: Remove trailing whitespaces in customAtuhHeader and value. ([#4960](https://github.com/kedacore/keda/issues/4960))
 
 ### Fixes
 - **RabbitMQ Scaler**: Allow subpaths along with vhost in connection string ([#2634](https://github.com/kedacore/keda/issues/2634))
