@@ -50,6 +50,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### New
 
 - **AWS SQS Scaler**: Support for scaling to include delayed messages. ([#4377](https://github.com/kedacore/keda/issues/4377))
+- **General**: Introduce new Google Cloud Tasks scaler functionality to scale based on the queue length ([#3613](https://github.com/kedacore/keda/issues/3613))
 - **Governance**: KEDA transitioned to CNCF Graduated project ([#63](https://github.com/kedacore/governance/issues/63))
 
 ### Improvements
@@ -60,10 +61,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Update golangci-lint version documented in CONTRIBUTING.md since old version doesn't support go 1.20 (N/A)
 - **Azure Pod Identity**: Introduce validation to prevent usage of empty identity ID for Azure identity providers ([#4528](https://github.com/kedacore/keda/issues/4528))
 - **General:**: Add ScaledObject/ScaledJob names to output of `kubectl get triggerauthentication/clustertriggerauthentication` ([#796](https://github.com/kedacore/keda/issues/796))
-
-### Scalers
-
-- **General**: Introduce new Google Cloud Tasks scaler functionality to scale based on the queue length ([#3613](https://github.com/kedacore/keda/issues/3613))
 
 ### Fixes
 
