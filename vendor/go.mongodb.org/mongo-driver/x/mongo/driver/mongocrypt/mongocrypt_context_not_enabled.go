@@ -27,7 +27,7 @@ func (c *Context) NextOperation() (bsoncore.Document, error) {
 }
 
 // AddOperationResult feeds the result of a database operation to mongocrypt.
-func (c *Context) AddOperationResult(result bsoncore.Document) error {
+func (c *Context) AddOperationResult(bsoncore.Document) error {
 	panic(cseNotSupportedMsg)
 }
 
@@ -57,6 +57,6 @@ func (c *Context) Close() {
 }
 
 // ProvideKmsProviders provides the KMS providers when in the NeedKmsCredentials state.
-func (c *Context) ProvideKmsProviders(kmsProviders bsoncore.Document) error {
+func (c *Context) ProvideKmsProviders(bsoncore.Document) error {
 	panic(cseNotSupportedMsg)
 }

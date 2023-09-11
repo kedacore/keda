@@ -68,7 +68,7 @@ func (at *AbortTransaction) Execute(ctx context.Context) error {
 
 }
 
-func (at *AbortTransaction) command(dst []byte, desc description.SelectedServer) ([]byte, error) {
+func (at *AbortTransaction) command(dst []byte, _ description.SelectedServer) ([]byte, error) {
 
 	dst = bsoncore.AppendInt32Element(dst, "abortTransaction", 1)
 	if at.recoveryToken != nil {

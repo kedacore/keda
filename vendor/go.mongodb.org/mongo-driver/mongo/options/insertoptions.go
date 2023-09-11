@@ -38,6 +38,9 @@ func (ioo *InsertOneOptions) SetComment(comment interface{}) *InsertOneOptions {
 
 // MergeInsertOneOptions combines the given InsertOneOptions instances into a single InsertOneOptions in a last-one-wins
 // fashion.
+//
+// Deprecated: Merging options structs will not be supported in Go Driver 2.0. Users should create a
+// single options struct instead.
 func MergeInsertOneOptions(opts ...*InsertOneOptions) *InsertOneOptions {
 	ioOpts := InsertOne()
 	for _, ioo := range opts {
@@ -98,6 +101,9 @@ func (imo *InsertManyOptions) SetOrdered(b bool) *InsertManyOptions {
 
 // MergeInsertManyOptions combines the given InsertManyOptions instances into a single InsertManyOptions in a last one
 // wins fashion.
+//
+// Deprecated: Merging options structs will not be supported in Go Driver 2.0. Users should create a
+// single options struct instead.
 func MergeInsertManyOptions(opts ...*InsertManyOptions) *InsertManyOptions {
 	imOpts := InsertMany()
 	for _, imo := range opts {

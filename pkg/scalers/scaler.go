@@ -36,7 +36,7 @@ import (
 
 func init() {
 	// Disable metrics for kafka client (sarama)
-	// https://github.com/Shopify/sarama/issues/1321
+	// https://github.com/IBM/sarama/issues/1321
 	metrics.UseNilMetrics = true
 }
 

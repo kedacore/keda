@@ -28,6 +28,7 @@ import (
 	"k8s.io/klog/v2/klogr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	basecmd "sigs.k8s.io/custom-metrics-apiserver/pkg/cmd"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 
@@ -65,7 +66,7 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 		logger.Error(err, "failed to add keda scheme to runtime scheme")
 		return nil, nil, fmt.Errorf("failed to add keda scheme to runtime scheme (%s)", err)
 	}
-	namespace, err := getWatchNamespace()
+	namespaces, err := kedautil.GetWatchNamespaces()
 	if err != nil {
 		logger.Error(err, "failed to get watch namespace")
 		return nil, nil, fmt.Errorf("failed to get watch namespace (%s)", err)
@@ -89,12 +90,6 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 		return nil, nil, fmt.Errorf("invalid KEDA_METRICS_LEADER_ELECTION_RETRY_PERIOD (%s)", err)
 	}
 
-	useMetricsServiceGrpc, err := kedautil.ResolveOsEnvBool("KEDA_USE_METRICS_SERVICE_GRPC", true)
-	if err != nil {
-		logger.Error(err, "Invalid KEDA_USE_METRICS_SERVICE_GRPC")
-		return nil, nil, fmt.Errorf("invalid KEDA_USE_METRICS_SERVICE_GRPC (%s)", err)
-	}
-
 	// Get a config to talk to the apiserver
 	cfg := ctrl.GetConfigOrDie()
 	cfg.QPS = adapterClientRequestQPS
@@ -103,10 +98,12 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 
 	metricsBindAddress := fmt.Sprintf(":%v", metricsAPIServerPort)
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-		MetricsBindAddress: metricsBindAddress,
-		Scheme:             scheme,
+		Metrics: server.Options{
+			BindAddress: metricsBindAddress,
+		},
+		Scheme: scheme,
 		Cache: ctrlcache.Options{
-			Namespaces: []string{namespace},
+			DefaultNamespaces: namespaces,
 		},
 		LeaseDuration: leaseDuration,
 		RenewDeadline: renewDeadline,
@@ -131,23 +128,13 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 			close(stopCh)
 		}
 	}()
-	return kedaprovider.NewProvider(ctx, logger, mgr.GetClient(), *grpcClient, useMetricsServiceGrpc, namespace), stopCh, nil
+	return kedaprovider.NewProvider(ctx, logger, mgr.GetClient(), *grpcClient), stopCh, nil
 }
 
 // generateDefaultMetricsServiceAddr generates default Metrics Service gRPC Server address based on the current Namespace.
 // By default the Metrics Service gRPC Server runs in the same namespace on the keda-operator pod.
 func generateDefaultMetricsServiceAddr() string {
 	return fmt.Sprintf("keda-operator.%s.svc.cluster.local:9666", kedautil.GetPodNamespace())
-}
-
-// getWatchNamespace returns the namespace the operator should be watching for changes
-func getWatchNamespace() (string, error) {
-	const WatchNamespaceEnvVar = "WATCH_NAMESPACE"
-	ns, found := os.LookupEnv(WatchNamespaceEnvVar)
-	if !found {
-		return "", fmt.Errorf("%s must be set", WatchNamespaceEnvVar)
-	}
-	return ns, nil
 }
 
 // printWelcomeMsg prints welcome message during the start of the adater

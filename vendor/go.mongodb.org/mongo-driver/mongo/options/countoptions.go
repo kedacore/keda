@@ -89,6 +89,9 @@ func (co *CountOptions) SetSkip(i int64) *CountOptions {
 }
 
 // MergeCountOptions combines the given CountOptions instances into a single CountOptions in a last-one-wins fashion.
+//
+// Deprecated: Merging options structs will not be supported in Go Driver 2.0. Users should create a
+// single options struct instead.
 func MergeCountOptions(opts ...*CountOptions) *CountOptions {
 	countOpts := Count()
 	for _, co := range opts {

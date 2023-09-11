@@ -148,11 +148,6 @@ type Options struct {
 	// DestWriter controls the destination of the log output.  Defaults to
 	// os.Stderr.
 	DestWriter io.Writer
-	// DestWritter controls the destination of the log output.  Defaults to
-	// os.Stderr.
-	//
-	// Deprecated: Use DestWriter instead
-	DestWritter io.Writer
 	// Level configures the verbosity of the logging.
 	// Defaults to Debug when Development is true and Info otherwise.
 	// A zap log level should be multiplied by -1 to get the logr verbosity.
@@ -174,11 +169,8 @@ type Options struct {
 
 // addDefaults adds defaults to the Options.
 func (o *Options) addDefaults() {
-	if o.DestWriter == nil && o.DestWritter == nil {
+	if o.DestWriter == nil {
 		o.DestWriter = os.Stderr
-	} else if o.DestWriter == nil && o.DestWritter != nil {
-		// while misspelled DestWritter is deprecated but still not removed
-		o.DestWriter = o.DestWritter
 	}
 
 	if o.Development {

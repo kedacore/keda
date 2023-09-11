@@ -112,15 +112,15 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "artemis-queue":
 		return scalers.NewArtemisQueueScaler(config)
 	case "aws-cloudwatch":
-		return scalers.NewAwsCloudwatchScaler(config)
+		return scalers.NewAwsCloudwatchScaler(ctx, config)
 	case "aws-dynamodb":
-		return scalers.NewAwsDynamoDBScaler(config)
+		return scalers.NewAwsDynamoDBScaler(ctx, config)
 	case "aws-dynamodb-streams":
 		return scalers.NewAwsDynamoDBStreamsScaler(ctx, config)
 	case "aws-kinesis-stream":
-		return scalers.NewAwsKinesisStreamScaler(config)
+		return scalers.NewAwsKinesisStreamScaler(ctx, config)
 	case "aws-sqs-queue":
-		return scalers.NewAwsSqsQueueScaler(config)
+		return scalers.NewAwsSqsQueueScaler(ctx, config)
 	case "azure-app-insights":
 		return scalers.NewAzureAppInsightsScaler(config)
 	case "azure-blob":

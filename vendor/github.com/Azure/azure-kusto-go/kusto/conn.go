@@ -11,7 +11,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -22,11 +21,9 @@ import (
 	v1 "github.com/Azure/azure-kusto-go/kusto/internal/frames/v1"
 	v2 "github.com/Azure/azure-kusto-go/kusto/internal/frames/v2"
 	"github.com/Azure/azure-kusto-go/kusto/internal/response"
-	truestedEndpoints "github.com/Azure/azure-kusto-go/kusto/trusted_endpoints"
+	truestedEndpoints "github.com/Azure/azure-kusto-go/kusto/trustedendpoints"
 	"github.com/google/uuid"
 )
-
-var validURL = regexp.MustCompile(`https://([a-zA-Z0-9_-]+\.){1,2}.*`)
 
 var bufferPool = sync.Pool{
 	New: func() interface{} {
@@ -46,14 +43,19 @@ type Conn struct {
 
 // NewConn returns a new Conn object with an injected http.Client
 func NewConn(endpoint string, auth Authorization, client *http.Client, clientDetails *ClientDetails) (*Conn, error) {
-	if !validURL.MatchString(endpoint) {
-		return nil, errors.ES(errors.OpServConn, errors.KClientArgs, "endpoint is not valid(%s), should be https://<cluster name>.*", endpoint).SetNoRetry()
-	}
-
 	u, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, errors.ES(errors.OpServConn, errors.KClientArgs, "could not parse the endpoint(%s): %s", endpoint, err).SetNoRetry()
 	}
+
+	if endpoint == "" {
+		return nil, errors.ES(errors.OpQuery, errors.KClientArgs, "endpoint cannot be empty")
+	}
+
+	if (u.Scheme != "https") && auth.TokenProvider.AuthorizationRequired() {
+		return nil, errors.ES(errors.OpServConn, errors.KClientArgs, "cannot use token provider with http endpoint, as it would send the token in clear text").SetNoRetry()
+	}
+
 	if !strings.HasPrefix(u.Path, "/") {
 		u.Path = "/" + u.Path
 	}
@@ -65,6 +67,7 @@ func NewConn(endpoint string, auth Authorization, client *http.Client, clientDet
 		endStreamIngest: u.JoinPath("/v1/rest/ingest"),
 		client:          client,
 		clientDetails:   clientDetails,
+		endpoint:        endpoint,
 	}
 
 	return c, nil

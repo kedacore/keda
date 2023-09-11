@@ -10,10 +10,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/cloudwatch"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
@@ -151,14 +152,14 @@ func TestCloudWatchScaler(t *testing.T) {
 	setCloudWatchCustomMetric(t, cloudwatchClient, 0)
 }
 
-func testActivation(t *testing.T, kc *kubernetes.Clientset, cloudwatchClient *cloudwatch.CloudWatch) {
+func testActivation(t *testing.T, kc *kubernetes.Clientset, cloudwatchClient *cloudwatch.Client) {
 	t.Log("--- testing activation ---")
 	setCloudWatchCustomMetric(t, cloudwatchClient, 3)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset, cloudwatchClient *cloudwatch.CloudWatch) {
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, cloudwatchClient *cloudwatch.Client) {
 	t.Log("--- testing scale out ---")
 	setCloudWatchCustomMetric(t, cloudwatchClient, 10)
 
@@ -166,7 +167,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, cloudwatchClient *clou
 		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset, cloudwatchClient *cloudwatch.CloudWatch) {
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, cloudwatchClient *cloudwatch.Client) {
 	t.Log("--- testing scale in ---")
 
 	setCloudWatchCustomMetric(t, cloudwatchClient, 0)
@@ -175,18 +176,18 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, cloudwatchClient *cloud
 		"replica count should be %d after 3 minutes", minReplicaCount)
 }
 
-func setCloudWatchCustomMetric(t *testing.T, cloudwatchClient *cloudwatch.CloudWatch, value float64) {
-	_, err := cloudwatchClient.PutMetricDataWithContext(context.Background(), &cloudwatch.PutMetricDataInput{
-		MetricData: []*cloudwatch.MetricDatum{
+func setCloudWatchCustomMetric(t *testing.T, cloudwatchClient *cloudwatch.Client, value float64) {
+	_, err := cloudwatchClient.PutMetricData(context.Background(), &cloudwatch.PutMetricDataInput{
+		MetricData: []types.MetricDatum{
 			{
 				MetricName: aws.String(cloudwatchMetricName),
-				Dimensions: []*cloudwatch.Dimension{
+				Dimensions: []types.Dimension{
 					{
 						Name:  aws.String(cloudwatchMetricDimensionName),
 						Value: aws.String(cloudwatchMetricDimensionValue),
 					},
 				},
-				Unit:  aws.String("None"),
+				Unit:  types.StandardUnitNone,
 				Value: aws.Float64(value),
 			},
 		},
@@ -195,15 +196,12 @@ func setCloudWatchCustomMetric(t *testing.T, cloudwatchClient *cloudwatch.CloudW
 	assert.NoErrorf(t, err, "failed to set cloudwatch metric - %s", err)
 }
 
-func createCloudWatchClient() *cloudwatch.CloudWatch {
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(awsRegion),
-	}))
-
-	return cloudwatch.New(sess, &aws.Config{
-		Region:      aws.String(awsRegion),
-		Credentials: credentials.NewStaticCredentials(awsAccessKeyID, awsSecretAccessKey, ""),
-	})
+func createCloudWatchClient() *cloudwatch.Client {
+	configOptions := make([]func(*config.LoadOptions) error, 0)
+	configOptions = append(configOptions, config.WithRegion(awsRegion))
+	cfg, _ := config.LoadDefaultConfig(context.TODO(), configOptions...)
+	cfg.Credentials = credentials.NewStaticCredentialsProvider(awsAccessKeyID, awsSecretAccessKey, "")
+	return cloudwatch.NewFromConfig(cfg)
 }
 
 func getTemplateData() (templateData, []Template) {

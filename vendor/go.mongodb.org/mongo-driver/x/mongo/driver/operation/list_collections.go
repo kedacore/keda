@@ -92,7 +92,7 @@ func (lc *ListCollections) Execute(ctx context.Context) error {
 
 }
 
-func (lc *ListCollections) command(dst []byte, desc description.SelectedServer) ([]byte, error) {
+func (lc *ListCollections) command(dst []byte, _ description.SelectedServer) ([]byte, error) {
 	dst = bsoncore.AppendInt32Element(dst, "listCollections", 1)
 	if lc.filter != nil {
 		dst = bsoncore.AppendDocumentElement(dst, "filter", lc.filter)

@@ -15,7 +15,8 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsoncodec"
-	"go.mongodb.org/mongo-driver/x/bsonx"
+	"go.mongodb.org/mongo-driver/bson/bsonrw"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
@@ -32,17 +33,27 @@ type Cursor struct {
 	bc            batchCursor
 	batch         *bsoncore.DocumentSequence
 	batchLength   int
+	bsonOpts      *options.BSONOptions
 	registry      *bsoncodec.Registry
 	clientSession *session.Client
 
 	err error
 }
 
-func newCursor(bc batchCursor, registry *bsoncodec.Registry) (*Cursor, error) {
-	return newCursorWithSession(bc, registry, nil)
+func newCursor(
+	bc batchCursor,
+	bsonOpts *options.BSONOptions,
+	registry *bsoncodec.Registry,
+) (*Cursor, error) {
+	return newCursorWithSession(bc, bsonOpts, registry, nil)
 }
 
-func newCursorWithSession(bc batchCursor, registry *bsoncodec.Registry, clientSession *session.Client) (*Cursor, error) {
+func newCursorWithSession(
+	bc batchCursor,
+	bsonOpts *options.BSONOptions,
+	registry *bsoncodec.Registry,
+	clientSession *session.Client,
+) (*Cursor, error) {
 	if registry == nil {
 		registry = bson.DefaultRegistry
 	}
@@ -51,6 +62,7 @@ func newCursorWithSession(bc batchCursor, registry *bsoncodec.Registry, clientSe
 	}
 	c := &Cursor{
 		bc:            bc,
+		bsonOpts:      bsonOpts,
 		registry:      registry,
 		clientSession: clientSession,
 	}
@@ -83,8 +95,6 @@ func NewCursorFromDocuments(documents []interface{}, err error, registry *bsonco
 		switch t := doc.(type) {
 		case nil:
 			return nil, ErrNilDocument
-		case bsonx.Doc:
-			doc = t.Copy()
 		case []byte:
 			// Slight optimization so we'll just use MarshalBSON and not go through the codec machinery.
 			doc = bson.Raw(t)
@@ -115,8 +125,8 @@ func (c *Cursor) ID() int64 { return c.bc.ID() }
 // Next gets the next document for this cursor. It returns true if there were no errors and the cursor has not been
 // exhausted.
 //
-// Next blocks until a document is available, an error occurs, or ctx expires. If ctx expires, the
-// error will be set to ctx.Err(). In an error case, Next will return false.
+// Next blocks until a document is available or an error occurs. If the context expires, the cursor's error will
+// be set to ctx.Err(). In case of an error, Next will return false.
 //
 // If Next returns false, subsequent calls will also return false.
 func (c *Cursor) Next(ctx context.Context) bool {
@@ -128,7 +138,7 @@ func (c *Cursor) Next(ctx context.Context) bool {
 // Next. See https://www.mongodb.com/docs/manual/core/tailable-cursors/ for more information about tailable cursors.
 //
 // TryNext returns false if the cursor is exhausted, an error occurs when getting results from the server, the next
-// document is not yet available, or ctx expires. If ctx expires, the error will be set to ctx.Err().
+// document is not yet available, or ctx expires. If the context  expires, the cursor's error will be set to ctx.Err().
 //
 // If TryNext returns false and an error occurred or the cursor has been exhausted (i.e. c.Err() != nil || c.ID() == 0),
 // subsequent attempts will also return false. Otherwise, it is safe to call TryNext again until a document is
@@ -206,10 +216,62 @@ func (c *Cursor) next(ctx context.Context, nonBlocking bool) bool {
 	}
 }
 
+func getDecoder(
+	data []byte,
+	opts *options.BSONOptions,
+	reg *bsoncodec.Registry,
+) (*bson.Decoder, error) {
+	dec, err := bson.NewDecoder(bsonrw.NewBSONDocumentReader(data))
+	if err != nil {
+		return nil, err
+	}
+
+	if opts != nil {
+		if opts.AllowTruncatingDoubles {
+			dec.AllowTruncatingDoubles()
+		}
+		if opts.BinaryAsSlice {
+			dec.BinaryAsSlice()
+		}
+		if opts.DefaultDocumentD {
+			dec.DefaultDocumentD()
+		}
+		if opts.DefaultDocumentM {
+			dec.DefaultDocumentM()
+		}
+		if opts.UseJSONStructTags {
+			dec.UseJSONStructTags()
+		}
+		if opts.UseLocalTimeZone {
+			dec.UseLocalTimeZone()
+		}
+		if opts.ZeroMaps {
+			dec.ZeroMaps()
+		}
+		if opts.ZeroStructs {
+			dec.ZeroStructs()
+		}
+	}
+
+	if reg != nil {
+		// TODO:(GODRIVER-2719): Remove error handling.
+		if err := dec.SetRegistry(reg); err != nil {
+			return nil, err
+		}
+	}
+
+	return dec, nil
+}
+
 // Decode will unmarshal the current document into val and return any errors from the unmarshalling process without any
 // modification. If val is nil or is a typed nil, an error will be returned.
 func (c *Cursor) Decode(val interface{}) error {
-	return bson.UnmarshalWithRegistry(c.registry, c.Current, val)
+	dec, err := getDecoder(c.Current, c.bsonOpts, c.registry)
+	if err != nil {
+		return fmt.Errorf("error configuring BSON decoder: %w", err)
+	}
+
+	return dec.Decode(val)
 }
 
 // Err returns the last error seen by the Cursor, or nil if no error has occurred.
@@ -298,7 +360,12 @@ func (c *Cursor) addFromBatch(sliceVal reflect.Value, elemType reflect.Type, bat
 		}
 
 		currElem := sliceVal.Index(index).Addr().Interface()
-		if err = bson.UnmarshalWithRegistry(c.registry, doc, currElem); err != nil {
+		dec, err := getDecoder(doc, c.bsonOpts, c.registry)
+		if err != nil {
+			return sliceVal, index, fmt.Errorf("error configuring BSON decoder: %w", err)
+		}
+		err = dec.Decode(currElem)
+		if err != nil {
 			return sliceVal, index, err
 		}
 
