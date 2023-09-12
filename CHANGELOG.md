@@ -79,10 +79,10 @@ New deprecation(s):
 
 ### Other
 
-- **General**: Add one deployment arg in keda-metrics-apiserver for only printing errors, but errors should go to stderr ([#4049](https://github.com/kedacore/keda/issues/4049))
 - **General**: Fixed a typo in the StatefulSet scaling resolver ([#4902](https://github.com/kedacore/keda/pull/4902))
 - **General**: Refactor ScaledJob related methods to be located at scale_handler  ([#4781](https://github.com/kedacore/keda/issues/4781))
 - **General**: Replace deprecated `set-output` command with environment file ([#4914](https://github.com/kedacore/keda/issues/4914))
+- **General**: Show only logs with a severity level of ERROR or higher in the stderr ([#4049](https://github.com/kedacore/keda/issues/4049))
 
 ## v2.11.2
 
