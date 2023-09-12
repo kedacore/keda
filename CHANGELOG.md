@@ -71,7 +71,7 @@ New deprecation(s):
 
 ### Breaking Changes
 
-- **General**: Clean up previously deprecated code for 2.12 release ([#4899](https://github.com/kedacore/keda/issues/4899))
+- **General**: Remove deprecated `metricName` from trigger metadata section ([#4899](https://github.com/kedacore/keda/issues/4899))
 
 ### Other
 
