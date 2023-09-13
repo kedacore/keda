@@ -63,7 +63,7 @@ func (r *ScaledObjectReconciler) createAndDeployNewHPA(ctx context.Context, logg
 
 	err = kedastatus.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status)
 	if err != nil {
-		logger.Error(err, "Error updating scaledObject status with used hpaName")
+		logger.Error(err, "Failed to update scaledObject status with used hpaName")
 		return err
 	}
 
