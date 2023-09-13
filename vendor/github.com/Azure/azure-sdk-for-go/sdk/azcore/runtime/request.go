@@ -9,7 +9,6 @@ package runtime
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -28,14 +27,14 @@ import (
 
 // Base64Encoding is usesd to specify which base-64 encoder/decoder to use when
 // encoding/decoding a slice of bytes to/from a string.
-type Base64Encoding int
+type Base64Encoding = exported.Base64Encoding
 
 const (
 	// Base64StdFormat uses base64.StdEncoding for encoding and decoding payloads.
-	Base64StdFormat Base64Encoding = 0
+	Base64StdFormat Base64Encoding = exported.Base64StdFormat
 
 	// Base64URLFormat uses base64.RawURLEncoding for encoding and decoding payloads.
-	Base64URLFormat Base64Encoding = 1
+	Base64URLFormat Base64Encoding = exported.Base64URLFormat
 )
 
 // NewRequest creates a new policy.Request with the specified input.
@@ -79,10 +78,7 @@ func JoinPaths(root string, paths ...string) string {
 
 // EncodeByteArray will base-64 encode the byte slice v.
 func EncodeByteArray(v []byte, format Base64Encoding) string {
-	if format == Base64URLFormat {
-		return base64.RawURLEncoding.EncodeToString(v)
-	}
-	return base64.StdEncoding.EncodeToString(v)
+	return exported.EncodeByteArray(v, format)
 }
 
 // MarshalAsByteArray will base-64 encode the byte slice v, then calls SetBody.
@@ -168,6 +164,9 @@ func SetMultipartFormData(req *policy.Request, formData map[string]interface{}) 
 func SkipBodyDownload(req *policy.Request) {
 	req.SetOperationValue(bodyDownloadPolicyOpValues{Skip: true})
 }
+
+// CtxAPINameKey is used as a context key for adding/retrieving the API name.
+type CtxAPINameKey = shared.CtxAPINameKey
 
 // returns a clone of the object graph pointed to by v, omitting values of all read-only
 // fields. if there are no read-only fields in the object graph, no clone is created.

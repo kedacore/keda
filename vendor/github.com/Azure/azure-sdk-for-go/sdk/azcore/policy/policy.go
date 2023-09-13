@@ -29,7 +29,8 @@ type Request = exported.Request
 // ClientOptions contains optional settings for a client's pipeline.
 // All zero-value fields will be initialized with default values.
 type ClientOptions struct {
-	// APIVersion overrides the default version requested of the service. Set with caution as this package version has not been tested with arbitrary service versions.
+	// APIVersion overrides the default version requested of the service.
+	// Set with caution as this package version has not been tested with arbitrary service versions.
 	APIVersion string
 
 	// Cloud specifies a cloud for the client. The default is Azure Public Cloud.

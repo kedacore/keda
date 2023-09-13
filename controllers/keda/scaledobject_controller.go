@@ -43,6 +43,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
+	"github.com/kedacore/keda/v2/pkg/eventemitter"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/prommetrics"
 	"github.com/kedacore/keda/v2/pkg/scaling"
@@ -66,6 +67,7 @@ type ScaledObjectReconciler struct {
 	Recorder     record.EventRecorder
 	ScaleClient  scale.ScalesGetter
 	ScaleHandler scaling.ScaleHandler
+	EventEmitter eventemitter.EventEmitter
 
 	restMapper               meta.RESTMapper
 	scaledObjectsGenerations *sync.Map
@@ -152,6 +154,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	reqLogger.Info("Reconciling ScaledObject")
 
+	r.EventEmitter.Emit(ctx, scaledObject, req.NamespacedName, corev1.EventTypeNormal, eventreason.ScaledObjectReady, "Reconciling ScaledObject")
 	// Check if the ScaledObject instance is marked to be deleted, which is
 	// indicated by the deletion timestamp being set.
 	if scaledObject.GetDeletionTimestamp() != nil {

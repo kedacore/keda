@@ -91,6 +91,13 @@ rules:
 - apiGroups:
   - keda.sh
   resources:
+  - cloudevents
+  - cloudevents/status
+  verbs:
+  - '*'
+- apiGroups:
+  - keda.sh
+  resources:
   - clustertriggerauthentications
   - clustertriggerauthentications/status
   verbs:

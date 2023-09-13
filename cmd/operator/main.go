@@ -40,6 +40,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollers "github.com/kedacore/keda/v2/controllers/keda"
 	"github.com/kedacore/keda/v2/pkg/certificates"
+	"github.com/kedacore/keda/v2/pkg/eventemitter"
 	"github.com/kedacore/keda/v2/pkg/k8s"
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
 	"github.com/kedacore/keda/v2/pkg/scaling"
@@ -178,6 +179,7 @@ func main() {
 
 	globalHTTPTimeout := time.Duration(globalHTTPTimeoutMS) * time.Millisecond
 	eventRecorder := mgr.GetEventRecorderFor("keda-operator")
+	eventEmitter := eventemitter.NewEventEmitter(mgr.GetClient(), eventRecorder)
 
 	kubeClientset, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
@@ -208,6 +210,7 @@ func main() {
 		Recorder:     eventRecorder,
 		ScaleClient:  scaleClient,
 		ScaleHandler: scaledHandler,
+		EventEmitter: *eventEmitter,
 	}).SetupWithManager(mgr, controller.Options{
 		MaxConcurrentReconciles: scaledObjectMaxReconciles,
 	}); err != nil {
@@ -239,6 +242,13 @@ func main() {
 		EventRecorder: eventRecorder,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterTriggerAuthentication")
+		os.Exit(1)
+	}
+	if err = (&kedacontrollers.CloudEventsReconciler{
+		Client:       mgr.GetClient(),
+		EventEmitter: *eventEmitter,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "CloudEvents")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

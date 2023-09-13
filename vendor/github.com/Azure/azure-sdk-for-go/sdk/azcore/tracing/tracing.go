@@ -45,21 +45,28 @@ func (p Provider) NewTracer(name, version string) (tracer Tracer) {
 
 // TracerOptions contains the optional values when creating a Tracer.
 type TracerOptions struct {
-	// for future expansion
+	// SpanFromContext contains the implementation for the Tracer.SpanFromContext method.
+	SpanFromContext func(context.Context) Span
 }
 
 // NewTracer creates a Tracer with the specified values.
 //   - newSpanFn is the underlying implementation for creating Span instances
 //   - options contains optional values; pass nil to accept the default value
 func NewTracer(newSpanFn func(ctx context.Context, spanName string, options *SpanOptions) (context.Context, Span), options *TracerOptions) Tracer {
+	if options == nil {
+		options = &TracerOptions{}
+	}
 	return Tracer{
-		newSpanFn: newSpanFn,
+		newSpanFn:         newSpanFn,
+		spanFromContextFn: options.SpanFromContext,
 	}
 }
 
 // Tracer is the factory that creates Span instances.
 type Tracer struct {
-	newSpanFn func(ctx context.Context, spanName string, options *SpanOptions) (context.Context, Span)
+	attrs             []Attribute
+	newSpanFn         func(ctx context.Context, spanName string, options *SpanOptions) (context.Context, Span)
+	spanFromContextFn func(ctx context.Context) Span
 }
 
 // Start creates a new span and a context.Context that contains it.
@@ -68,9 +75,35 @@ type Tracer struct {
 //   - options contains optional values for the span, pass nil to accept any defaults
 func (t Tracer) Start(ctx context.Context, spanName string, options *SpanOptions) (context.Context, Span) {
 	if t.newSpanFn != nil {
-		return t.newSpanFn(ctx, spanName, options)
+		opts := SpanOptions{}
+		if options != nil {
+			opts = *options
+		}
+		opts.Attributes = append(opts.Attributes, t.attrs...)
+		return t.newSpanFn(ctx, spanName, &opts)
 	}
 	return ctx, Span{}
+}
+
+// SetAttributes sets attrs to be applied to each Span. If a key from attrs
+// already exists for an attribute of the Span it will be overwritten with
+// the value contained in attrs.
+func (t *Tracer) SetAttributes(attrs ...Attribute) {
+	t.attrs = append(t.attrs, attrs...)
+}
+
+// Enabled returns true if this Tracer is capable of creating Spans.
+func (t Tracer) Enabled() bool {
+	return t.newSpanFn != nil
+}
+
+// SpanFromContext returns the Span associated with the current context.
+// If the provided context has no Span, false is returned.
+func (t Tracer) SpanFromContext(ctx context.Context) Span {
+	if t.spanFromContextFn != nil {
+		return t.spanFromContextFn(ctx)
+	}
+	return Span{}
 }
 
 // SpanOptions contains optional settings for creating a span.
@@ -97,9 +130,6 @@ type SpanImpl struct {
 	// AddEvent contains the implementation for the Span.AddEvent method.
 	AddEvent func(string, ...Attribute)
 
-	// AddError contains the implementation for the Span.AddError method.
-	AddError func(err error)
-
 	// SetStatus contains the implementation for the Span.SetStatus method.
 	SetStatus func(SpanStatus, string)
 }
@@ -119,7 +149,7 @@ type Span struct {
 
 // End terminates the span and MUST be called before the span leaves scope.
 // Any further updates to the span will be ignored after End is called.
-func (s Span) End() {
+func (s Span) End(opts *SpanEndOptions) {
 	if s.impl.End != nil {
 		s.impl.End()
 	}
@@ -140,18 +170,16 @@ func (s Span) AddEvent(name string, attrs ...Attribute) {
 	}
 }
 
-// AddError adds the specified error event to the span.
-func (s Span) AddError(err error) {
-	if s.impl.AddError != nil {
-		s.impl.AddError(err)
-	}
-}
-
 // SetStatus sets the status on the span along with a description.
 func (s Span) SetStatus(code SpanStatus, desc string) {
 	if s.impl.SetStatus != nil {
 		s.impl.SetStatus(code, desc)
 	}
+}
+
+// SpanEndOptions contains the optional values for the Span.End() method.
+type SpanEndOptions struct {
+	// for future expansion
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////

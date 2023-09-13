@@ -18,6 +18,14 @@ limitations under the License.
 
 package v1alpha1
 
+// CloudEventListerExpansion allows custom methods to be added to
+// CloudEventLister.
+type CloudEventListerExpansion interface{}
+
+// CloudEventNamespaceListerExpansion allows custom methods to be added to
+// CloudEventNamespaceLister.
+type CloudEventNamespaceListerExpansion interface{}
+
 // ClusterTriggerAuthenticationListerExpansion allows custom methods to be added to
 // ClusterTriggerAuthenticationLister.
 type ClusterTriggerAuthenticationListerExpansion interface{}
