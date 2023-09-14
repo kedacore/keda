@@ -24,6 +24,7 @@ import (
 
 	"github.com/go-logr/logr"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -45,17 +46,19 @@ type EventEmitter struct {
 }
 
 type EventData struct {
-	object     string
+	namespace  string
+	objectName string
 	eventtype  string
 	reason     string
 	message    string
+	time       time.Time
 	handlerKey string
 	retryTimes int
 	err        error
 }
 
 type EventDataHandler interface {
-	EmitEvent(eventData EventData, failureFunc func(eventData EventData, err error)) error
+	EmitEvent(eventData EventData, failureFunc func(eventData EventData, err error))
 	CloseHandler()
 }
 
@@ -74,7 +77,6 @@ func NewEventEmitter(client client.Client, recorder record.EventRecorder) *Event
 }
 
 func (e *EventEmitter) HandleCloudEvents(ctx context.Context, logger logr.Logger, cloudEvent *kedav1alpha1.CloudEvent) error {
-
 	e.createEventHandlers(ctx, cloudEvent)
 
 	key := cloudEvent.GenerateIdentifier()
@@ -126,8 +128,14 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEvents *ked
 	defer e.eventHandlersCachesLock.Unlock()
 
 	key := cloudEvents.GenerateIdentifier()
+
+	clusterName := cloudEvents.Spec.ClusterName
+	if clusterName == "" {
+		clusterName = "default"
+	}
+
 	if cloudEvents.Spec.AzureEventGrid != nil {
-		azureEventGridHandler, err := NewAzureEventGridHandler(*cloudEvents.Spec.AzureEventGrid)
+		azureEventGridHandler, err := NewAzureEventGridHandler(*cloudEvents.Spec.AzureEventGrid, clusterName, log)
 		if err != nil {
 			return
 		}
@@ -153,21 +161,20 @@ func (e *EventEmitter) clearEventHandlersCache(ctx context.Context, cloudEvents 
 
 func (e *EventEmitter) startEventLoop(ctx context.Context, cloudEvents *kedav1alpha1.CloudEvent, scalingMutex sync.Locker) {
 
-	pollingInterval := 500 * time.Millisecond
-	log.V(1).Info("Watching with pollingInterval", "PollingInterval", pollingInterval)
+	consumingInterval := 500 * time.Millisecond
 
 	if ch == nil {
 		ch = make(chan EventData, 10)
 	}
 
 	for {
-		tmr := time.NewTimer(pollingInterval)
+		tmr := time.NewTimer(consumingInterval)
 
 		select {
 		case <-tmr.C:
 			tmr.Stop()
 		case eventData := <-ch:
-			fmt.Printf("\n\n\nConsuming eventing......\n\n")
+			log.V(1).Info("Consuming evens.")
 			e.emitEventByHandler(ctx, eventData, scalingMutex)
 		case <-ctx.Done():
 			tmr.Stop()
@@ -177,12 +184,17 @@ func (e *EventEmitter) startEventLoop(ctx context.Context, cloudEvents *kedav1al
 	}
 }
 
-func (e *EventEmitter) Emit(ctx context.Context, object runtime.Object, namesapce types.NamespacedName, eventtype, reason, message string) {
-
-	fmt.Printf("\n\n\nEmitEmitEmitEmitEmitEmit\n\n")
+func (e *EventEmitter) Emit(object runtime.Object, namesapce types.NamespacedName, eventtype, reason, message string) {
 	e.EventRecorder.Event(object, eventtype, reason, message)
-
-	eventData := EventData{object: object.GetObjectKind().GroupVersionKind().Kind, eventtype: eventtype, reason: reason, message: message}
+	name, _ := meta.NewAccessor().Name(object)
+	eventData := EventData{
+		namespace:  namesapce.Namespace,
+		objectName: name,
+		eventtype:  eventtype,
+		reason:     reason,
+		message:    message,
+		time:       time.Now().UTC(),
+	}
 	go e.inqueueEventData(eventData)
 }
 
@@ -207,22 +219,24 @@ func (e *EventEmitter) emitEventByHandler(ctx context.Context, eventData EventDa
 	e.eventHandlersCachesLock.Lock()
 	defer e.eventHandlersCachesLock.Unlock()
 
-	if eventData.handlerKey == "" {
+	if eventData.retryTimes >= MAX_RETRY_TIMES {
+		log.Error(eventData.err, "Failed to emit Event multiple times. Will drop this event and need to check if event endpoint works well", "Handler", eventData.handlerKey)
+	} else if eventData.handlerKey == "" {
 		for key, handler := range e.eventHandlersCache {
-			fmt.Printf("\n\n\nemitEventByHandler Key: %s, Value: %T\n\n\n", key, handler)
-			go handler.EmitEvent(eventData, emitErrorHandle)
+			eventData.handlerKey = key
+			go handler.EmitEvent(eventData, e.emitErrorHandle)
 		}
-	} else if eventData.retryTimes > MAX_RETRY_TIMES {
-		log.Error(eventData.err, "Failed to Emit Event")
 	} else {
+		log.Info("Reemit failed event", "handler", eventData.handlerKey, "retry times", eventData.retryTimes)
 		handler := e.eventHandlersCache[eventData.handlerKey]
-		go handler.EmitEvent(eventData, emitErrorHandle)
+		go handler.EmitEvent(eventData, e.emitErrorHandle)
 	}
 }
 
-func emitErrorHandle(eventData EventData, err error) {
+func (e *EventEmitter) emitErrorHandle(eventData EventData, err error) {
 	requeueData := eventData
 	requeueData.handlerKey = eventData.handlerKey
 	requeueData.retryTimes++
 	requeueData.err = err
+	e.inqueueEventData(requeueData)
 }

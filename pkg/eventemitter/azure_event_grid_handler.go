@@ -21,7 +21,9 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/messaging"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventgrid"
+	"github.com/go-logr/logr"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
@@ -30,48 +32,66 @@ type AzureEventGridHandler struct {
 	Key              string
 	TopicName        string
 	SubscriptionName string
+	ClusterName      string
 	Client           *azeventgrid.Client
+	logger           logr.Logger
 }
 
-func NewAzureEventGridHandler(spec kedav1alpha1.AzureEventGridSpec) (*AzureEventGridHandler, error) {
+func NewAzureEventGridHandler(spec kedav1alpha1.AzureEventGridSpec, clusterName string, logger logr.Logger) (*AzureEventGridHandler, error) {
 	client, err := azeventgrid.NewClientWithSharedKeyCredential(spec.EndPoint, spec.Key, nil)
 
 	if err != nil {
 		return nil, err
 	}
+
 	fmt.Print("new azure event grid handler....")
-	return &AzureEventGridHandler{Client: client, Endpoint: spec.EndPoint, Key: spec.Key, TopicName: spec.TopicName, SubscriptionName: spec.SubscriptionName}, nil
+	return &AzureEventGridHandler{
+		Client:           client,
+		Endpoint:         spec.EndPoint,
+		Key:              spec.Key,
+		TopicName:        spec.TopicName,
+		SubscriptionName: spec.SubscriptionName,
+		ClusterName:      clusterName,
+		logger:           logger,
+	}, nil
 }
 
 func (a *AzureEventGridHandler) CloseHandler() {
 
 }
 
-func (a *AzureEventGridHandler) EmitEvent(eventData EventData, failureFunc func(eventData EventData, err error)) error {
-
-	type SampleData struct {
-		Name string `json:"name"`
+func (a *AzureEventGridHandler) EmitEvent(eventData EventData, failureFunc func(eventData EventData, err error)) {
+	type emitData struct {
+		Reason  string `json:"reason"`
+		Message string `json:"message"`
 	}
 
-	event, err := messaging.NewCloudEvent("testsource", "testeventType", SampleData{Name: "hello"}, nil)
+	source := "/" + a.ClusterName + "/" + eventData.namespace + "/keda"
+	subject := "/" + a.ClusterName + "/" + eventData.namespace + "/workload/" + eventData.objectName
+	opt := &messaging.CloudEventOptions{
+		Subject:         &subject,
+		DataContentType: to.Ptr("application/json"),
+		Time:            &eventData.time,
+	}
+
+	event, err := messaging.NewCloudEvent(source, eventData.eventtype, emitData{Reason: eventData.reason, Message: eventData.message}, opt)
 
 	if err != nil {
-		fmt.Printf("EmitEvent error %s", err.Error())
-		return err
+		a.logger.Error(err, "EmitEvent error %s")
+		return
 	}
 
 	eventsToSend := []messaging.CloudEvent{
 		event,
 	}
 
-	// NOTE: we're sending a single event as an example. For better efficiency it's best if you send
-	// multiple events at a time.
-	response, err := a.Client.PublishCloudEvents(context.TODO(), a.TopicName, eventsToSend, nil)
+	_, err = a.Client.PublishCloudEvents(context.TODO(), a.TopicName, eventsToSend, nil)
 
 	if err != nil {
-		fmt.Printf("Publish failed %s", err.Error())
+		a.logger.Error(err, "Failed to Publish Event to Azure Event Grid ")
 		failureFunc(eventData, err)
+		return
 	}
-	fmt.Printf("Publish successfully %s", response)
-	return nil
+
+	a.logger.Info("Publish Event to Azure Event Grid Successfully")
 }
