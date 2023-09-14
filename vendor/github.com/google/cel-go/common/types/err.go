@@ -22,6 +22,12 @@ import (
 	"github.com/google/cel-go/common/types/ref"
 )
 
+// Error interface which allows types types.Err values to be treated as error values.
+type Error interface {
+	error
+	ref.Val
+}
+
 // Err type which extends the built-in go error and implements ref.Val.
 type Err struct {
 	error
@@ -81,8 +87,8 @@ func ValOrErr(val ref.Val, format string, args ...any) ref.Val {
 	return val
 }
 
-// wrapErr wraps an existing Go error value into a CEL Err value.
-func wrapErr(err error) ref.Val {
+// WrapErr wraps an existing Go error value into a CEL Err value.
+func WrapErr(err error) ref.Val {
 	return &Err{error: err}
 }
 

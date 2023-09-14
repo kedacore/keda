@@ -96,15 +96,21 @@ func (ls *latencySelector) SelectServer(t Topology, candidates []Server) ([]Serv
 
 		max := min + ls.latency
 
-		var result []Server
-		for _, candidate := range candidates {
+		viableIndexes := make([]int, 0, len(candidates))
+		for i, candidate := range candidates {
 			if candidate.AverageRTTSet {
 				if candidate.AverageRTT <= max {
-					result = append(result, candidate)
+					viableIndexes = append(viableIndexes, i)
 				}
 			}
 		}
-
+		if len(viableIndexes) == len(candidates) {
+			return candidates, nil
+		}
+		result := make([]Server, len(viableIndexes))
+		for i, idx := range viableIndexes {
+			result[i] = candidates[idx]
+		}
 		return result, nil
 	}
 }
@@ -303,6 +309,9 @@ func selectByKind(candidates []Server, kind ServerKind) []Server {
 		if s.Kind == kind {
 			viableIndexes = append(viableIndexes, i)
 		}
+	}
+	if len(viableIndexes) == len(candidates) {
+		return candidates
 	}
 	result := make([]Server, len(viableIndexes))
 	for i, idx := range viableIndexes {

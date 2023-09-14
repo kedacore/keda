@@ -9,9 +9,11 @@ package mongo
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsoncodec"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // ErrNoDocuments is returned by SingleResult methods when the operation that created the SingleResult did not return
@@ -22,10 +24,12 @@ var ErrNoDocuments = errors.New("mongo: no documents in result")
 // SingleResult methods will return that error. If the operation did not return any documents, all SingleResult methods
 // will return ErrNoDocuments.
 type SingleResult struct {
-	err error
-	cur *Cursor
-	rdr bson.Raw
-	reg *bsoncodec.Registry
+	ctx      context.Context
+	err      error
+	cur      *Cursor
+	rdr      bson.Raw
+	bsonOpts *options.BSONOptions
+	reg      *bsoncodec.Registry
 }
 
 // NewSingleResultFromDocument creates a SingleResult with the provided error, registry, and an underlying Cursor pre-loaded with
@@ -70,7 +74,13 @@ func (sr *SingleResult) Decode(v interface{}) error {
 	if sr.err = sr.setRdrContents(); sr.err != nil {
 		return sr.err
 	}
-	return bson.UnmarshalWithRegistry(sr.reg, sr.rdr, v)
+
+	dec, err := getDecoder(sr.rdr, sr.bsonOpts, sr.reg)
+	if err != nil {
+		return fmt.Errorf("error configuring BSON decoder: %w", err)
+	}
+
+	return dec.Decode(v)
 }
 
 // DecodeBytes will return the document represented by this SingleResult as a bson.Raw. If there was an error from the
@@ -95,9 +105,9 @@ func (sr *SingleResult) setRdrContents() error {
 	case sr.rdr != nil:
 		return nil
 	case sr.cur != nil:
-		defer sr.cur.Close(context.TODO())
+		defer sr.cur.Close(sr.ctx)
 
-		if !sr.cur.Next(context.TODO()) {
+		if !sr.cur.Next(sr.ctx) {
 			if err := sr.cur.Err(); err != nil {
 				return err
 			}
@@ -111,9 +121,10 @@ func (sr *SingleResult) setRdrContents() error {
 	return ErrNoDocuments
 }
 
-// Err returns the error from the operation that created this SingleResult. If the operation was successful but did not
-// return any documents, Err will return ErrNoDocuments. If the operation was successful and returned a document, Err
-// will return nil.
+// Err provides a way to check for query errors without calling Decode. Err returns the error, if
+// any, that was encountered while running the operation. If the operation was successful but did
+// not return any documents, Err returns ErrNoDocuments. If this error is not nil, this error will
+// also be returned from Decode.
 func (sr *SingleResult) Err() error {
 	sr.err = sr.setRdrContents()
 

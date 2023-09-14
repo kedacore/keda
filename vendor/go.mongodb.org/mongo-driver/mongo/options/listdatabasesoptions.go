@@ -37,6 +37,9 @@ func (ld *ListDatabasesOptions) SetAuthorizedDatabases(b bool) *ListDatabasesOpt
 
 // MergeListDatabasesOptions combines the given ListDatabasesOptions instances into a single *ListDatabasesOptions in a
 // last-one-wins fashion.
+//
+// Deprecated: Merging options structs will not be supported in Go Driver 2.0. Users should create a
+// single options struct instead.
 func MergeListDatabasesOptions(opts ...*ListDatabasesOptions) *ListDatabasesOptions {
 	ld := ListDatabases()
 	for _, opt := range opts {

@@ -24,6 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/common/message"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/scalers"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache"
@@ -87,6 +88,8 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 			}
 			return nil, err
 		}
+		msg := fmt.Sprintf(message.ScalerIsBuiltMsg, trigger.Type)
+		h.recorder.Event(withTriggers, corev1.EventTypeNormal, eventreason.KEDAScalersStarted, msg)
 
 		result = append(result, cache.ScalerBuilder{
 			Scaler:       scaler,
@@ -111,15 +114,15 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "artemis-queue":
 		return scalers.NewArtemisQueueScaler(config)
 	case "aws-cloudwatch":
-		return scalers.NewAwsCloudwatchScaler(config)
+		return scalers.NewAwsCloudwatchScaler(ctx, config)
 	case "aws-dynamodb":
-		return scalers.NewAwsDynamoDBScaler(config)
+		return scalers.NewAwsDynamoDBScaler(ctx, config)
 	case "aws-dynamodb-streams":
 		return scalers.NewAwsDynamoDBStreamsScaler(ctx, config)
 	case "aws-kinesis-stream":
-		return scalers.NewAwsKinesisStreamScaler(config)
+		return scalers.NewAwsKinesisStreamScaler(ctx, config)
 	case "aws-sqs-queue":
-		return scalers.NewAwsSqsQueueScaler(config)
+		return scalers.NewAwsSqsQueueScaler(ctx, config)
 	case "azure-app-insights":
 		return scalers.NewAzureAppInsightsScaler(config)
 	case "azure-blob":
@@ -159,6 +162,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewExternalMockScaler(config)
 	case "external-push":
 		return scalers.NewExternalPushScaler(config)
+	case "gcp-cloudtasks":
+		return scalers.NewGcpCloudTasksScaler(config)
 	case "gcp-pubsub":
 		return scalers.NewPubSubScaler(config)
 	case "gcp-stackdriver":

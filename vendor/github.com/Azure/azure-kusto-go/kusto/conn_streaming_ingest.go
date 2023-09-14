@@ -3,11 +3,12 @@ package kusto
 import (
 	"context"
 	"fmt"
-	"github.com/Azure/azure-kusto-go/kusto/data/errors"
-	"github.com/google/uuid"
 	"io"
 	"net/url"
 	"time"
+
+	"github.com/Azure/azure-kusto-go/kusto/data/errors"
+	"github.com/google/uuid"
 )
 
 type DataFormatForStreaming interface {
@@ -19,7 +20,7 @@ var (
 	streamingIngestDefaultTimeout = 10 * time.Minute
 )
 
-func (c *Conn) StreamIngest(ctx context.Context, db, table string, payload io.Reader, format DataFormatForStreaming, mappingName string, clientRequestId string) error {
+func (c *Conn) StreamIngest(ctx context.Context, db, table string, payload io.Reader, format DataFormatForStreaming, mappingName string, clientRequestId string, isBlobUri bool) error {
 	streamUrl, err := url.Parse(c.endStreamIngest.String())
 	if err != nil {
 		return errors.ES(errors.OpIngestStream, errors.KClientArgs, "could not parse the stream endpoint(%s): %s", c.endStreamIngest.String(), err).SetNoRetry()
@@ -35,6 +36,9 @@ func (c *Conn) StreamIngest(ctx context.Context, db, table string, payload io.Re
 		qv.Add("mappingName", mappingName)
 	}
 	qv.Add("streamFormat", format.KnownOrDefault().CamelCase())
+	if isBlobUri {
+		qv.Add("sourceKind", "uri")
+	}
 	streamUrl.RawQuery = qv.Encode()
 
 	var closeablePayload io.ReadCloser
@@ -51,7 +55,9 @@ func (c *Conn) StreamIngest(ctx context.Context, db, table string, payload io.Re
 	properties.ClientRequestID = clientRequestId
 	headers := c.getHeaders(properties)
 	headers.Del("Content-Type")
-	headers.Add("Content-Encoding", "gzip")
+	if !isBlobUri {
+		headers.Add("Content-Encoding", "gzip")
+	}
 
 	if _, ok := ctx.Deadline(); !ok {
 		ctx, _ = context.WithTimeout(ctx, streamingIngestDefaultTimeout)

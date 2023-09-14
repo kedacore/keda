@@ -8,11 +8,12 @@ package mongo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/bsonrw"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
@@ -43,7 +44,7 @@ func NewClientEncryption(keyVaultClient *Client, opts ...*options.ClientEncrypti
 	db, coll := splitNamespace(ceo.KeyVaultNamespace)
 	ce.keyVaultColl = ce.keyVaultClient.Database(db).Collection(coll, keyVaultCollOpts)
 
-	kmsProviders, err := transformBsoncoreDocument(bson.DefaultRegistry, ceo.KmsProviders, true, "kmsProviders")
+	kmsProviders, err := marshal(ceo.KmsProviders, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating KMS providers map: %v", err)
 	}
@@ -53,7 +54,8 @@ func NewClientEncryption(keyVaultClient *Client, opts ...*options.ClientEncrypti
 		// Explicitly disable loading the crypt_shared library for the Crypt used for
 		// ClientEncryption because it's only needed for AutoEncryption and we don't expect users to
 		// have the crypt_shared library installed if they're using ClientEncryption.
-		SetCryptSharedLibDisabled(true))
+		SetCryptSharedLibDisabled(true).
+		SetHTTPClient(ceo.HTTPClient))
 	if err != nil {
 		return nil, err
 	}
@@ -66,10 +68,65 @@ func NewClientEncryption(keyVaultClient *Client, opts ...*options.ClientEncrypti
 		KeyFn:      kr.cryptKeys,
 		CollInfoFn: cir.cryptCollInfo,
 		TLSConfig:  ceo.TLSConfig,
-		HTTPClient: ceo.HTTPClient,
 	})
 
 	return ce, nil
+}
+
+// CreateEncryptedCollection creates a new collection for Queryable Encryption with the help of automatic generation of new encryption data keys for null keyIds.
+// It returns the created collection and the encrypted fields document used to create it.
+func (ce *ClientEncryption) CreateEncryptedCollection(ctx context.Context,
+	db *Database, coll string, createOpts *options.CreateCollectionOptions,
+	kmsProvider string, masterKey interface{}) (*Collection, bson.M, error) {
+	if createOpts == nil {
+		return nil, nil, errors.New("nil CreateCollectionOptions")
+	}
+	ef := createOpts.EncryptedFields
+	if ef == nil {
+		return nil, nil, errors.New("no EncryptedFields defined for the collection")
+	}
+
+	efBSON, err := marshal(ef, db.bsonOpts, db.registry)
+	if err != nil {
+		return nil, nil, err
+	}
+	r := bsonrw.NewBSONDocumentReader(efBSON)
+	dec, err := bson.NewDecoder(r)
+	if err != nil {
+		return nil, nil, err
+	}
+	var m bson.M
+	err = dec.Decode(&m)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if v, ok := m["fields"]; ok {
+		if fields, ok := v.(bson.A); ok {
+			for _, field := range fields {
+				if f, ok := field.(bson.M); !ok {
+					continue
+				} else if v, ok := f["keyId"]; ok && v == nil {
+					dkOpts := options.DataKey()
+					if masterKey != nil {
+						dkOpts.SetMasterKey(masterKey)
+					}
+					keyid, err := ce.CreateDataKey(ctx, kmsProvider, dkOpts)
+					if err != nil {
+						createOpts.EncryptedFields = m
+						return nil, m, err
+					}
+					f["keyId"] = keyid
+				}
+			}
+			createOpts.EncryptedFields = m
+		}
+	}
+	err = db.CreateCollection(ctx, coll, createOpts)
+	if err != nil {
+		return nil, m, err
+	}
+	return db.Collection(coll), m, nil
 }
 
 // AddKeyAltName adds a keyAltName to the keyAltNames array of the key document in the key vault collection with the
@@ -90,7 +147,10 @@ func (ce *ClientEncryption) CreateDataKey(ctx context.Context, kmsProvider strin
 	dko := options.MergeDataKeyOptions(opts...)
 	co := mcopts.DataKey().SetKeyAltNames(dko.KeyAltNames)
 	if dko.MasterKey != nil {
-		keyDoc, err := transformBsoncoreDocument(ce.keyVaultClient.registry, dko.MasterKey, true, "masterKey")
+		keyDoc, err := marshal(
+			dko.MasterKey,
+			ce.keyVaultClient.bsonOpts,
+			ce.keyVaultClient.registry)
 		if err != nil {
 			return primitive.Binary{}, err
 		}
@@ -116,10 +176,8 @@ func (ce *ClientEncryption) CreateDataKey(ctx context.Context, kmsProvider strin
 	return primitive.Binary{Subtype: subtype, Data: data}, nil
 }
 
-// Encrypt encrypts a BSON value with the given key and algorithm. Returns an encrypted value (BSON binary of subtype 6).
-func (ce *ClientEncryption) Encrypt(ctx context.Context, val bson.RawValue,
-	opts ...*options.EncryptOptions) (primitive.Binary, error) {
-
+// transformExplicitEncryptionOptions creates explicit encryption options to be passed to libmongocrypt.
+func transformExplicitEncryptionOptions(opts ...*options.EncryptOptions) *mcopts.ExplicitEncryptionOptions {
 	eo := options.MergeEncryptOptions(opts...)
 	transformed := mcopts.ExplicitEncryption()
 	if eo.KeyID != nil {
@@ -135,11 +193,67 @@ func (ce *ClientEncryption) Encrypt(ctx context.Context, val bson.RawValue,
 		transformed.SetContentionFactor(*eo.ContentionFactor)
 	}
 
+	if eo.RangeOptions != nil {
+		var transformedRange mcopts.ExplicitRangeOptions
+		if eo.RangeOptions.Min != nil {
+			transformedRange.Min = &bsoncore.Value{Type: eo.RangeOptions.Min.Type, Data: eo.RangeOptions.Min.Value}
+		}
+		if eo.RangeOptions.Max != nil {
+			transformedRange.Max = &bsoncore.Value{Type: eo.RangeOptions.Max.Type, Data: eo.RangeOptions.Max.Value}
+		}
+		if eo.RangeOptions.Precision != nil {
+			transformedRange.Precision = eo.RangeOptions.Precision
+		}
+		transformedRange.Sparsity = eo.RangeOptions.Sparsity
+		transformed.SetRangeOptions(transformedRange)
+	}
+	return transformed
+}
+
+// Encrypt encrypts a BSON value with the given key and algorithm. Returns an encrypted value (BSON binary of subtype 6).
+func (ce *ClientEncryption) Encrypt(ctx context.Context, val bson.RawValue,
+	opts ...*options.EncryptOptions) (primitive.Binary, error) {
+
+	transformed := transformExplicitEncryptionOptions(opts...)
 	subtype, data, err := ce.crypt.EncryptExplicit(ctx, bsoncore.Value{Type: val.Type, Data: val.Value}, transformed)
 	if err != nil {
 		return primitive.Binary{}, err
 	}
 	return primitive.Binary{Subtype: subtype, Data: data}, nil
+}
+
+// EncryptExpression encrypts an expression to query a range index.
+// On success, `result` is populated with the resulting BSON document.
+// `expr` is expected to be a BSON document of one of the following forms:
+// 1. A Match Expression of this form:
+// {$and: [{<field>: {$gt: <value1>}}, {<field>: {$lt: <value2> }}]}
+// 2. An Aggregate Expression of this form:
+// {$and: [{$gt: [<fieldpath>, <value1>]}, {$lt: [<fieldpath>, <value2>]}]
+// $gt may also be $gte. $lt may also be $lte.
+// Only supported for queryType "rangePreview"
+// Beta: The Range algorithm is experimental only. It is not intended for public use. It is subject to breaking changes.
+func (ce *ClientEncryption) EncryptExpression(ctx context.Context, expr interface{}, result interface{}, opts ...*options.EncryptOptions) error {
+	transformed := transformExplicitEncryptionOptions(opts...)
+
+	exprDoc, err := marshal(expr, nil, nil)
+	if err != nil {
+		return err
+	}
+
+	encryptedExprDoc, err := ce.crypt.EncryptExplicitExpression(ctx, exprDoc, transformed)
+	if err != nil {
+		return err
+	}
+	if raw, ok := result.(*bson.Raw); ok {
+		// Avoid the cost of Unmarshal.
+		*raw = bson.Raw(encryptedExprDoc)
+		return nil
+	}
+	err = bson.Unmarshal([]byte(encryptedExprDoc), result)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Decrypt decrypts an encrypted value (BSON binary of subtype 6) and returns the original BSON value.
@@ -269,7 +383,10 @@ func (ce *ClientEncryption) RewrapManyDataKey(ctx context.Context, filter interf
 	// Transfer rmdko options to /x/ package options to publish the mongocrypt feed.
 	co := mcopts.RewrapManyDataKey()
 	if rmdko.MasterKey != nil {
-		keyDoc, err := transformBsoncoreDocument(ce.keyVaultClient.registry, rmdko.MasterKey, true, "masterKey")
+		keyDoc, err := marshal(
+			rmdko.MasterKey,
+			ce.keyVaultClient.bsonOpts,
+			ce.keyVaultClient.registry)
 		if err != nil {
 			return nil, err
 		}
@@ -280,7 +397,7 @@ func (ce *ClientEncryption) RewrapManyDataKey(ctx context.Context, filter interf
 	}
 
 	// Prepare the filters and rewrap the data key using mongocrypt.
-	filterdoc, err := transformBsoncoreDocument(ce.keyVaultClient.registry, filter, true, "filter")
+	filterdoc, err := marshal(filter, ce.keyVaultClient.bsonOpts, ce.keyVaultClient.registry)
 	if err != nil {
 		return nil, err
 	}

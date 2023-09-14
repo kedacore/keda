@@ -20,11 +20,9 @@ var (
 	errInvalidReadPreference = errors.New("can not specify tags, max staleness, or hedge with mode primary")
 )
 
-var primary = ReadPref{mode: PrimaryMode}
-
 // Primary constructs a read preference with a PrimaryMode.
 func Primary() *ReadPref {
-	return &primary
+	return &ReadPref{mode: PrimaryMode}
 }
 
 // PrimaryPreferred constructs a read preference with a PrimaryPreferredMode.

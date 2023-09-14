@@ -17,7 +17,7 @@ package parser
 import (
 	"sync"
 
-	"github.com/antlr/antlr4/runtime/Go/antlr"
+	antlr "github.com/antlr/antlr4/runtime/Go/antlr/v4"
 
 	"github.com/google/cel-go/common"
 
@@ -117,10 +117,13 @@ func (p *parserHelper) newReceiverCall(ctx any, function string, target *exprpb.
 	return exprNode
 }
 
-func (p *parserHelper) newList(ctx any, elements ...*exprpb.Expr) *exprpb.Expr {
+func (p *parserHelper) newList(ctx any, elements []*exprpb.Expr, optionals ...int32) *exprpb.Expr {
 	exprNode := p.newExpr(ctx)
 	exprNode.ExprKind = &exprpb.Expr_ListExpr{
-		ListExpr: &exprpb.Expr_CreateList{Elements: elements}}
+		ListExpr: &exprpb.Expr_CreateList{
+			Elements:        elements,
+			OptionalIndices: optionals,
+		}}
 	return exprNode
 }
 
@@ -256,7 +259,8 @@ func (p *parserHelper) buildMacroCallArg(expr *exprpb.Expr) *exprpb.Expr {
 			Id: expr.GetId(),
 			ExprKind: &exprpb.Expr_ListExpr{
 				ListExpr: &exprpb.Expr_CreateList{
-					Elements: macroListArgs,
+					Elements:        macroListArgs,
+					OptionalIndices: listExpr.GetOptionalIndices(),
 				},
 			},
 		}
@@ -486,7 +490,7 @@ func (e *exprHelper) LiteralUint(value uint64) *exprpb.Expr {
 
 // NewList implements the ExprHelper interface method.
 func (e *exprHelper) NewList(elems ...*exprpb.Expr) *exprpb.Expr {
-	return e.parserHelper.newList(e.nextMacroID(), elems...)
+	return e.parserHelper.newList(e.nextMacroID(), elems)
 }
 
 // NewMap implements the ExprHelper interface method.

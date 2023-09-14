@@ -59,7 +59,7 @@ func (i Uint) Add(other ref.Val) ref.Val {
 	}
 	val, err := addUint64Checked(uint64(i), uint64(otherUint))
 	if err != nil {
-		return wrapErr(err)
+		return WrapErr(err)
 	}
 	return Uint(val)
 }
@@ -149,7 +149,7 @@ func (i Uint) ConvertToType(typeVal ref.Type) ref.Val {
 	case IntType:
 		v, err := uint64ToInt64Checked(uint64(i))
 		if err != nil {
-			return wrapErr(err)
+			return WrapErr(err)
 		}
 		return Int(v)
 	case UintType:
@@ -172,7 +172,7 @@ func (i Uint) Divide(other ref.Val) ref.Val {
 	}
 	div, err := divideUint64Checked(uint64(i), uint64(otherUint))
 	if err != nil {
-		return wrapErr(err)
+		return WrapErr(err)
 	}
 	return Uint(div)
 }
@@ -207,7 +207,7 @@ func (i Uint) Modulo(other ref.Val) ref.Val {
 	}
 	mod, err := moduloUint64Checked(uint64(i), uint64(otherUint))
 	if err != nil {
-		return wrapErr(err)
+		return WrapErr(err)
 	}
 	return Uint(mod)
 }
@@ -220,7 +220,7 @@ func (i Uint) Multiply(other ref.Val) ref.Val {
 	}
 	val, err := multiplyUint64Checked(uint64(i), uint64(otherUint))
 	if err != nil {
-		return wrapErr(err)
+		return WrapErr(err)
 	}
 	return Uint(val)
 }
@@ -233,7 +233,7 @@ func (i Uint) Subtract(subtrahend ref.Val) ref.Val {
 	}
 	val, err := subtractUint64Checked(uint64(i), uint64(subtraUint))
 	if err != nil {
-		return wrapErr(err)
+		return WrapErr(err)
 	}
 	return Uint(val)
 }

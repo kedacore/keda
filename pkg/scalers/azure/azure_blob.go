@@ -34,7 +34,6 @@ type BlobMetadata struct {
 	BlobPrefix                string
 	Connection                string
 	AccountName               string
-	MetricName                string
 	EndpointSuffix            string
 	ScalerIndex               int
 	GlobPattern               *glob.Glob

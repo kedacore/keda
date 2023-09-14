@@ -12,10 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
@@ -163,28 +164,32 @@ func TestDynamoDBScaler(t *testing.T) {
 	cleanupTable(t, dynamodbClient)
 }
 
-func testActivation(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamodb.DynamoDB) {
+func testActivation(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamodb.Client) {
 	t.Log("--- testing activation ---")
 	addMessages(t, dynamodbClient, 3)
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamodb.DynamoDB) {
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamodb.Client) {
 	t.Log("--- testing scale out ---")
 	addMessages(t, dynamodbClient, 6)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamodb.DynamoDB) {
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamodb.Client) {
 	t.Log("--- testing scale in ---")
 
 	for i := 0; i < 6; i++ {
-		_, err := dynamodbClient.DeleteItemWithContext(context.Background(), &dynamodb.DeleteItemInput{
+		_, err := dynamodbClient.DeleteItem(context.Background(), &dynamodb.DeleteItemInput{
 			TableName: aws.String(dynamoDBTableName),
-			Key: map[string]*dynamodb.AttributeValue{
-				"event_type": {S: aws.String("scaling_event")},
-				"event_id":   {S: aws.String(strconv.Itoa(i))},
+			Key: map[string]types.AttributeValue{
+				"event_type": &types.AttributeValueMemberS{
+					Value: "scaling_event",
+				},
+				"event_id": &types.AttributeValueMemberS{
+					Value: strconv.Itoa(i),
+				},
 			},
 		})
 		assert.NoErrorf(t, err, "failed to delete item - %s", err)
@@ -194,13 +199,17 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamod
 		"replica count should be %d after 3 minutes", minReplicaCount)
 }
 
-func addMessages(t *testing.T, dynamodbClient *dynamodb.DynamoDB, messages int) {
+func addMessages(t *testing.T, dynamodbClient *dynamodb.Client, messages int) {
 	for i := 0; i < messages; i++ {
-		_, err := dynamodbClient.PutItemWithContext(context.Background(), &dynamodb.PutItemInput{
+		_, err := dynamodbClient.PutItem(context.Background(), &dynamodb.PutItemInput{
 			TableName: aws.String(dynamoDBTableName),
-			Item: map[string]*dynamodb.AttributeValue{
-				"event_type": {S: aws.String("scaling_event")},
-				"event_id":   {S: aws.String(strconv.Itoa(i))},
+			Item: map[string]types.AttributeValue{
+				"event_type": &types.AttributeValueMemberS{
+					Value: "scaling_event",
+				},
+				"event_id": &types.AttributeValueMemberS{
+					Value: strconv.Itoa(i),
+				},
 			},
 		})
 		t.Log("Message enqueued")
@@ -208,18 +217,18 @@ func addMessages(t *testing.T, dynamodbClient *dynamodb.DynamoDB, messages int) 
 	}
 }
 
-func createDynamoDBTable(t *testing.T, dynamodbClient *dynamodb.DynamoDB) {
-	_, err := dynamodbClient.CreateTableWithContext(context.Background(), &dynamodb.CreateTableInput{
+func createDynamoDBTable(t *testing.T, dynamodbClient *dynamodb.Client) {
+	_, err := dynamodbClient.CreateTable(context.Background(), &dynamodb.CreateTableInput{
 		TableName: aws.String(dynamoDBTableName),
-		KeySchema: []*dynamodb.KeySchemaElement{
-			{AttributeName: aws.String("event_type"), KeyType: aws.String("HASH")},
-			{AttributeName: aws.String("event_id"), KeyType: aws.String("RANGE")},
+		KeySchema: []types.KeySchemaElement{
+			{AttributeName: aws.String("event_type"), KeyType: types.KeyTypeHash},
+			{AttributeName: aws.String("event_id"), KeyType: types.KeyTypeRange},
 		},
-		AttributeDefinitions: []*dynamodb.AttributeDefinition{
-			{AttributeName: aws.String("event_type"), AttributeType: aws.String("S")},
-			{AttributeName: aws.String("event_id"), AttributeType: aws.String("S")},
+		AttributeDefinitions: []types.AttributeDefinition{
+			{AttributeName: aws.String("event_type"), AttributeType: types.ScalarAttributeTypeS},
+			{AttributeName: aws.String("event_id"), AttributeType: types.ScalarAttributeTypeS},
 		},
-		ProvisionedThroughput: &dynamodb.ProvisionedThroughput{
+		ProvisionedThroughput: &types.ProvisionedThroughput{
 			ReadCapacityUnits:  aws.Int64(5),
 			WriteCapacityUnits: aws.Int64(5),
 		},
@@ -231,13 +240,13 @@ func createDynamoDBTable(t *testing.T, dynamodbClient *dynamodb.DynamoDB) {
 	}
 }
 
-func waitForTableActiveStatus(t *testing.T, dynamodbClient *dynamodb.DynamoDB) bool {
+func waitForTableActiveStatus(t *testing.T, dynamodbClient *dynamodb.Client) bool {
 	for i := 0; i < 30; i++ {
-		describe, _ := dynamodbClient.DescribeTableWithContext(context.Background(), &dynamodb.DescribeTableInput{
+		describe, _ := dynamodbClient.DescribeTable(context.Background(), &dynamodb.DescribeTableInput{
 			TableName: aws.String(dynamoDBTableName),
 		})
-		t.Logf("Waiting for table ACTIVE status. current status - %s", *describe.Table.TableStatus)
-		if *describe.Table.TableStatus == "ACTIVE" {
+		t.Logf("Waiting for table ACTIVE status. current status - %s", describe.Table.TableStatus)
+		if describe.Table.TableStatus == "ACTIVE" {
 			return true
 		}
 		time.Sleep(time.Second * 2)
@@ -245,23 +254,20 @@ func waitForTableActiveStatus(t *testing.T, dynamodbClient *dynamodb.DynamoDB) b
 	return false
 }
 
-func cleanupTable(t *testing.T, dynamodbClient *dynamodb.DynamoDB) {
+func cleanupTable(t *testing.T, dynamodbClient *dynamodb.Client) {
 	t.Log("--- cleaning up ---")
-	_, err := dynamodbClient.DeleteTableWithContext(context.Background(), &dynamodb.DeleteTableInput{
+	_, err := dynamodbClient.DeleteTable(context.Background(), &dynamodb.DeleteTableInput{
 		TableName: aws.String(dynamoDBTableName),
 	})
 	assert.NoErrorf(t, err, "cannot delete stream - %s", err)
 }
 
-func createDynamoDBClient() *dynamodb.DynamoDB {
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(awsRegion),
-	}))
-
-	return dynamodb.New(sess, &aws.Config{
-		Region:      aws.String(awsRegion),
-		Credentials: credentials.NewStaticCredentials(awsAccessKeyID, awsSecretAccessKey, ""),
-	})
+func createDynamoDBClient() *dynamodb.Client {
+	configOptions := make([]func(*config.LoadOptions) error, 0)
+	configOptions = append(configOptions, config.WithRegion(awsRegion))
+	cfg, _ := config.LoadDefaultConfig(context.TODO(), configOptions...)
+	cfg.Credentials = credentials.NewStaticCredentialsProvider(awsAccessKeyID, awsSecretAccessKey, "")
+	return dynamodb.NewFromConfig(cfg)
 }
 
 func getTemplateData() (templateData, []Template) {

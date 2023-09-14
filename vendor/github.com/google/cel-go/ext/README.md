@@ -3,6 +3,30 @@
 CEL extensions are a related set of constants, functions, macros, or other
 features which may not be covered by the core CEL spec.
 
+## Bindings 
+
+Returns a cel.EnvOption to configure support for local variable bindings
+in expressions.
+
+# Cel.Bind
+
+Binds a simple identifier to an initialization expression which may be used
+in a subsequenct result expression. Bindings may also be nested within each
+other.
+
+    cel.bind(<varName>, <initExpr>, <resultExpr>)
+
+Examples:
+
+    cel.bind(a, 'hello',
+     cel.bind(b, 'world', a + b + b + a)) // "helloworldworldhello"
+
+    // Avoid a list allocation within the exists comprehension.
+    cel.bind(valid_values, [a, b, c],
+     [d, e, f].exists(elem, elem in valid_values))
+
+Local bindings are not guaranteed to be evaluated before use.
+
 ## Encoders
 
 Encoding utilies for marshalling data into standardized representations.
@@ -33,8 +57,7 @@ Example:
 
 ## Math
 
-Math returns a cel.EnvOption to configure namespaced math helper macros and
-functions.
+Math helper macros and functions.
 
 Note, all macros use the 'math' namespace; however, at the time of macro
 expansion the namespace looks just like any other identifier. If you are
@@ -96,8 +119,7 @@ Examples:
 
 ## Protos
 
-Protos returns a cel.EnvOption to configure extended macros and functions for
-proto manipulation.
+Protos configure extended macros and functions for proto manipulation.
 
 Note, all macros use the 'proto' namespace; however, at the time of macro
 expansion the namespace looks just like any other identifier. If you are
@@ -126,6 +148,62 @@ an extension field is set on a proto2 syntax message.
 Example:
 
     proto.hasExt(msg, google.expr.proto2.test.int32_ext) // returns true || false
+
+## Sets
+
+Sets provides set relationship tests.
+
+There is no set type within CEL, and while one may be introduced in the
+future, there are cases where a `list` type is known to behave like a set.
+For such cases, this library provides some basic functionality for
+determining set containment, equivalence, and intersection.
+
+### Sets.Contains
+
+Returns whether the first list argument contains all elements in the second
+list argument. The list may contain elements of any type and standard CEL
+equality is used to determine whether a value exists in both lists. If the
+second list is empty, the result will always return true.
+
+    sets.contains(list(T), list(T)) -> bool
+
+Examples:
+
+    sets.contains([], []) // true
+    sets.contains([], [1]) // false
+    sets.contains([1, 2, 3, 4], [2, 3]) // true
+    sets.contains([1, 2.0, 3u], [1.0, 2u, 3]) // true
+
+### Sets.Equivalent
+
+Returns whether the first and second list are set equivalent. Lists are set
+equivalent if for every item in the first list, there is an element in the
+second which is equal. The lists may not be of the same size as they do not
+guarantee the elements within them are unique, so size does not factor into
+the computation.
+
+    sets.equivalent(list(T), list(T)) -> bool
+
+Examples:
+
+    sets.equivalent([], []) // true
+    sets.equivalent([1], [1, 1]) // true
+    sets.equivalent([1], [1u, 1.0]) // true
+    sets.equivalent([1, 2, 3], [3u, 2.0, 1]) // true
+
+### Sets.Intersects
+
+Returns whether the first list has at least one element whose value is equal
+to an element in the second list. If either list is empty, the result will
+be false.
+
+    sets.intersects(list(T), list(T)) -> bool
+
+Examples:
+
+    sets.intersects([1], []) // false
+    sets.intersects([1], [1, 2]) // true
+    sets.intersects([[1], [2, 3]], [[1, 2], [2, 3.0]]) // true
 
 ## Strings
 
@@ -166,6 +244,23 @@ Examples:
     'hello mellow'.indexOf('ello', 2)  // returns 7
     'hello mellow'.indexOf('ello', 20) // error
 
+### Join
+
+Returns a new string where the elements of string list are concatenated.
+
+The function also accepts an optional separator which is placed between
+elements in the resulting string.
+
+    <list<string>>.join() -> <string>
+    <list<string>>.join(<string>) -> <string>
+
+Examples:
+
+	['hello', 'mellow'].join() // returns 'hellomellow'
+	['hello', 'mellow'].join(' ') // returns 'hello mellow'
+	[].join() // returns ''
+	[].join('/') // returns ''
+
 ### LastIndexOf
 
 Returns the integer index of the last occurrence of the search string. If the
@@ -200,6 +295,20 @@ Examples:
 
      'TacoCat'.lowerAscii()      // returns 'tacocat'
      'TacoCÆt Xii'.lowerAscii()  // returns 'tacocÆt xii'
+
+### Quote
+
+**Introduced in version 1**
+
+Takes the given string and makes it safe to print (without any formatting due to escape sequences).
+If any invalid UTF-8 characters are encountered, they are replaced with \uFFFD.
+
+    strings.quote(<string>)
+
+Examples:
+
+    strings.quote('single-quote with "double quote"') // returns '"single-quote with \"double quote\""'
+    strings.quote("two escape sequences \a\n") // returns '"two escape sequences \\a\\n"'
 
 ### Replace
 

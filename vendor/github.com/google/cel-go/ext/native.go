@@ -31,10 +31,13 @@ import (
 	"github.com/google/cel-go/common/types/traits"
 
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 )
 
 var (
 	nativeObjTraitMask = traits.FieldTesterType | traits.IndexerType
+	jsonValueType      = reflect.TypeOf(&structpb.Value{})
+	jsonStructType     = reflect.TypeOf(&structpb.Struct{})
 )
 
 // NativeTypes creates a type provider which uses reflect.Type and reflect.Value instances
@@ -207,6 +210,9 @@ func (tp *nativeTypeProvider) NativeToValue(val any) ref.Val {
 	if val == nil {
 		return types.NullValue
 	}
+	if v, ok := val.(ref.Val); ok {
+		return v
+	}
 	rawVal := reflect.ValueOf(val)
 	refVal := rawVal
 	if refVal.Kind() == reflect.Ptr {
@@ -216,7 +222,7 @@ func (tp *nativeTypeProvider) NativeToValue(val any) ref.Val {
 	// but maybe an acceptable limitation.
 	switch refVal.Kind() {
 	case reflect.Array, reflect.Slice:
-		switch val.(type) {
+		switch val := val.(type) {
 		case []byte:
 			return tp.baseAdapter.NativeToValue(val)
 		default:
@@ -226,8 +232,6 @@ func (tp *nativeTypeProvider) NativeToValue(val any) ref.Val {
 		return types.NewDynamicMap(tp, val)
 	case reflect.Struct:
 		switch val := val.(type) {
-		case ref.Val:
-			return val
 		case proto.Message, *pb.Map, protoreflect.List, protoreflect.Message, protoreflect.Value,
 			time.Time:
 			return tp.baseAdapter.NativeToValue(val)
@@ -316,7 +320,7 @@ type nativeObj struct {
 // ConvertToNative implements the ref.Val interface method.
 //
 // CEL does not have a notion of pointers, so whether a field is a pointer or value
-// is handled as part of this converstion step.
+// is handled as part of this conversion step.
 func (o *nativeObj) ConvertToNative(typeDesc reflect.Type) (any, error) {
 	if o.refValue.Type() == typeDesc {
 		return o.val, nil
@@ -328,6 +332,32 @@ func (o *nativeObj) ConvertToNative(typeDesc reflect.Type) (any, error) {
 		ptr := reflect.New(typeDesc.Elem())
 		ptr.Elem().Set(o.refValue)
 		return ptr.Interface(), nil
+	}
+	switch typeDesc {
+	case jsonValueType:
+		jsonStruct, err := o.ConvertToNative(jsonStructType)
+		if err != nil {
+			return nil, err
+		}
+		return structpb.NewStructValue(jsonStruct.(*structpb.Struct)), nil
+	case jsonStructType:
+		refVal := reflect.Indirect(o.refValue)
+		refType := refVal.Type()
+		fields := make(map[string]*structpb.Value, refVal.NumField())
+		for i := 0; i < refVal.NumField(); i++ {
+			fieldType := refType.Field(i)
+			fieldValue := refVal.Field(i)
+			if !fieldValue.IsValid() || fieldValue.IsZero() {
+				continue
+			}
+			fieldCELVal := o.NativeToValue(fieldValue.Interface())
+			fieldJSONVal, err := fieldCELVal.ConvertToNative(jsonValueType)
+			if err != nil {
+				return nil, err
+			}
+			fields[fieldType.Name] = fieldJSONVal.(*structpb.Value)
+		}
+		return &structpb.Struct{Fields: fields}, nil
 	}
 	return nil, fmt.Errorf("type conversion error from '%v' to '%v'", o.Type(), typeDesc)
 }
