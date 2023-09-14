@@ -49,13 +49,11 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
+- **General**: A new experimental Kafka Scaler implementation using kafka-go library `apache-kafka` ([#4692](https://github.com/kedacore/keda/issues/4692))
 - **General**: Introduce new Google Cloud Tasks scaler functionality to scale based on the queue length ([#3613](https://github.com/kedacore/keda/issues/3613))
 - **AWS SQS Scaler**: Support for scaling to include delayed messages. ([#4377](https://github.com/kedacore/keda/issues/4377))
 - **Governance**: KEDA transitioned to CNCF Graduated project ([#63](https://github.com/kedacore/governance/issues/63))
 
-Here is an overview of all new **experimental** features:
-
-- **General**: A new experimental Kafka Scaler implementation using kafka-go library `apache-kafka` ([#4692](https://github.com/kedacore/keda/issues/4692))
 
 ### Improvements
 
@@ -88,9 +86,9 @@ New deprecation(s):
 ### Other
 
 - **General**: Fixed a typo in the StatefulSet scaling resolver ([#4902](https://github.com/kedacore/keda/pull/4902))
+- **General**: In Metrics server show only logs with a severity level of ERROR or higher in the stderr ([#4049](https://github.com/kedacore/keda/issues/4049))
 - **General**: Refactor ScaledJob related methods to be located at scale_handler  ([#4781](https://github.com/kedacore/keda/issues/4781))
 - **General**: Replace deprecated `set-output` command with environment file ([#4914](https://github.com/kedacore/keda/issues/4914))
-- **General**: In Metrics server show only logs with a severity level of ERROR or higher in the stderr ([#4049](https://github.com/kedacore/keda/issues/4049))
 
 ## v2.11.2
 
