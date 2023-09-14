@@ -1174,9 +1174,9 @@ github.com/segmentio/kafka-go/protocol/txnoffsetcommit
 github.com/segmentio/kafka-go/sasl
 github.com/segmentio/kafka-go/sasl/plain
 github.com/segmentio/kafka-go/sasl/scram
-# github.com/segmentio/kafka-go/sasl/aws_msk_iam v0.1.0
+# github.com/segmentio/kafka-go/sasl/aws_msk_iam_v2 v0.1.0
 ## explicit; go 1.15
-github.com/segmentio/kafka-go/sasl/aws_msk_iam
+github.com/segmentio/kafka-go/sasl/aws_msk_iam_v2
 # github.com/shopspring/decimal v1.3.1
 ## explicit; go 1.13
 github.com/shopspring/decimal
