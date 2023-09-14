@@ -67,8 +67,8 @@ func (r *CloudEventsReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	err := r.Client.Get(ctx, req.NamespacedName, cloudEvent)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+			// Request cloudevent not found, could have been deleted after reconcile request.
+			// Owned cloudevent are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
 			return ctrl.Result{}, nil
 		}
@@ -77,7 +77,6 @@ func (r *CloudEventsReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
-	//TODO: add Checking(exists, generation changed...)
 	if cloudEvent.GetDeletionTimestamp() != nil {
 		return ctrl.Result{}, r.FinalizeCloudEventsResource(ctx, reqLogger, cloudEvent, req.NamespacedName.String())
 	}
@@ -112,13 +111,13 @@ func (r *CloudEventsReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-// requestEventLoop tries to start ScaleLoop handler for the respective CloudEvent
+// requestEventLoop tries to start EventLoop handler for the respective CloudEvent
 func (r *CloudEventsReconciler) requestEventLoop(ctx context.Context, logger logr.Logger, cloudEvent *kedav1alpha1.CloudEvent) error {
-	logger.V(1).Info("Notify scaleHandler of an update in scaledObject")
+	logger.V(1).Info("Notify eventHandler of an update in cloudEvent")
 
 	key, err := cache.MetaNamespaceKeyFunc(cloudEvent)
 	if err != nil {
-		logger.Error(err, "error getting key for scaledObject")
+		logger.Error(err, "error getting key for cloudEvent")
 		return err
 	}
 
@@ -143,7 +142,7 @@ func (r *CloudEventsReconciler) stopEventLoop(ctx context.Context, logger logr.L
 	if err := r.EventEmitter.DeleteCloudEvents(ctx, logger, cloudEvent); err != nil {
 		return err
 	}
-	// delete ScaledObject's current Generation
+	// delete CloudEvent's current Generation
 	r.cloudEventsGenerations.Delete(key)
 	return nil
 }
@@ -152,7 +151,7 @@ func (r *CloudEventsReconciler) stopEventLoop(ctx context.Context, logger logr.L
 func (r *CloudEventsReconciler) cloudEventsGenerationChanged(logger logr.Logger, cloudEvent *kedav1alpha1.CloudEvent) (bool, error) {
 	key, err := cache.MetaNamespaceKeyFunc(cloudEvent)
 	if err != nil {
-		logger.Error(err, "error getting key for scaledObject")
+		logger.Error(err, "error getting key for cloudEvent")
 		return true, err
 	}
 

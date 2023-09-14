@@ -18,7 +18,6 @@ package eventemitter
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -36,6 +35,7 @@ var log = logf.Log.WithName("event_emitter")
 var ch chan EventData
 
 const MAX_RETRY_TIMES = 5
+const MAX_CHANNEL_BUFFER = 10
 
 type EventEmitter struct {
 	client.Client
@@ -45,6 +45,7 @@ type EventEmitter struct {
 	eventLoopContexts       *sync.Map
 }
 
+// EventData will save all event info and handler info for retry.
 type EventData struct {
 	namespace  string
 	objectName string
@@ -82,7 +83,7 @@ func (e *EventEmitter) HandleCloudEvents(ctx context.Context, logger logr.Logger
 	key := cloudEvent.GenerateIdentifier()
 	ctx, cancel := context.WithCancel(ctx)
 
-	// cancel the outdated ScaleLoop for the same ScaledObject (if exists)
+	// cancel the outdated EventLoop for the same CloudEvent (if exists)
 	value, loaded := e.eventLoopContexts.LoadOrStore(key, cancel)
 	if loaded {
 		cancelValue, ok := value.(context.CancelFunc)
@@ -90,15 +91,13 @@ func (e *EventEmitter) HandleCloudEvents(ctx context.Context, logger logr.Logger
 			cancelValue()
 		}
 		e.eventLoopContexts.Store(key, cancel)
-	} else {
-		// h.recorder.Event(withTriggers, corev1.EventTypeNormal, eventreason.KEDAScalersStarted, "Started scalers watch")
 	}
 
-	// a mutex is used to synchronize scale requests per scalableObject
-	scalingMutex := &sync.Mutex{}
+	// a mutex is used to synchronize event requests per cloudEvents
+	emittingMutex := &sync.Mutex{}
 
-	// passing deep copy of ScaledObject/ScaledJob to the scaleLoop go routines, it's a precaution to not have global objects shared between threads
-	go e.startEventLoop(ctx, cloudEvent.DeepCopy(), scalingMutex)
+	// passing deep copy of CloudEvents to the eventLoop go routines, it's a precaution to not have global objects shared between threads
+	go e.startEventLoop(ctx, cloudEvent.DeepCopy(), emittingMutex)
 	return nil
 }
 
@@ -117,7 +116,7 @@ func (e *EventEmitter) DeleteCloudEvents(ctx context.Context, logger logr.Logger
 			log.Error(err, "error clearing cloudEvent cache", "cloudEvent", cloudEvent, "key", key)
 		}
 	} else {
-		log.V(1).Info("ScalableObject was not found in controller cache", "key", key)
+		log.V(1).Info("CloudEvent was not found in controller cache", "key", key)
 	}
 
 	return nil
@@ -159,8 +158,7 @@ func (e *EventEmitter) clearEventHandlersCache(ctx context.Context, cloudEvents 
 	return nil
 }
 
-func (e *EventEmitter) startEventLoop(ctx context.Context, cloudEvents *kedav1alpha1.CloudEvent, scalingMutex sync.Locker) {
-
+func (e *EventEmitter) startEventLoop(ctx context.Context, cloudEvents *kedav1alpha1.CloudEvent, emittingMutex sync.Locker) {
 	consumingInterval := 500 * time.Millisecond
 
 	if ch == nil {
@@ -174,8 +172,8 @@ func (e *EventEmitter) startEventLoop(ctx context.Context, cloudEvents *kedav1al
 		case <-tmr.C:
 			tmr.Stop()
 		case eventData := <-ch:
-			log.V(1).Info("Consuming evens.")
-			e.emitEventByHandler(ctx, eventData, scalingMutex)
+			log.V(1).Info("Consuming events.")
+			e.emitEventByHandler(ctx, eventData, emittingMutex)
 		case <-ctx.Done():
 			tmr.Stop()
 			return
@@ -184,6 +182,7 @@ func (e *EventEmitter) startEventLoop(ctx context.Context, cloudEvents *kedav1al
 	}
 }
 
+// Emit is emitting event to both local kubernetes and custom CloudEvents handler. After emit event to local kubernetes, event will inqueue and waitng for handler's consuming.
 func (e *EventEmitter) Emit(object runtime.Object, namesapce types.NamespacedName, eventtype, reason, message string) {
 	e.EventRecorder.Event(object, eventtype, reason, message)
 	name, _ := meta.NewAccessor().Name(object)
@@ -201,20 +200,25 @@ func (e *EventEmitter) Emit(object runtime.Object, namesapce types.NamespacedNam
 func (e *EventEmitter) inqueueEventData(eventData EventData) {
 	count := 0
 	for {
-		if count > 5 {
+		if count > MAX_CHANNEL_BUFFER {
+			log.Info("CloudEvents' channel is full and need to be check if handler cannot emit events")
 			return
 		}
 		select {
 		case ch <- eventData:
 			return
 		default:
-			fmt.Println("channel full")
+			log.Info("Event cannot inqueue. Wait for next round.")
 			count++
 		}
 		time.Sleep(time.Millisecond * 500)
 	}
 }
 
+// emitEventByHandler handles event emitting. It will follow these logic:
+// 1. If there is a new EventData, call all handlers for emitting.
+// 2. Once there is an error when emitting event, record the handler's key and reqeueu this EventData.
+// 3. If the maximum number of retries has been exceeded, discard this event.
 func (e *EventEmitter) emitEventByHandler(ctx context.Context, eventData EventData, emittingMutex sync.Locker) {
 	e.eventHandlersCachesLock.Lock()
 	defer e.eventHandlersCachesLock.Unlock()
