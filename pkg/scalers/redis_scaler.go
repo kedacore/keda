@@ -55,6 +55,10 @@ type redisConnectionInfo struct {
 	ports            []string
 	enableTLS        bool
 	unsafeSsl        bool
+	cert             string
+	key              string
+	keyPassword      string
+	ca               string
 }
 
 type redisMetadata struct {
@@ -197,13 +201,13 @@ func parseRedisMetadata(config *ScalerConfig, parserFn redisAddressParser) (*red
 		connectionInfo: connInfo,
 	}
 
-	meta.connectionInfo.enableTLS = defaultEnableTLS
+	enableTLS := defaultEnableTLS
 	if val, ok := config.TriggerMetadata["enableTLS"]; ok {
 		tls, err := strconv.ParseBool(val)
 		if err != nil {
 			return nil, fmt.Errorf("enableTLS parsing error %w", err)
 		}
-		meta.connectionInfo.enableTLS = tls
+		enableTLS = tls
 	}
 
 	meta.connectionInfo.unsafeSsl = false
@@ -214,6 +218,41 @@ func parseRedisMetadata(config *ScalerConfig, parserFn redisAddressParser) (*red
 		}
 		meta.connectionInfo.unsafeSsl = parsedVal
 	}
+
+	// parse tls config defined in auth params
+	if val, ok := config.AuthParams["tls"]; ok {
+		val = strings.TrimSpace(val)
+		if enableTLS {
+			return nil, errors.New("unable to set `tls` in both ScaledObject and TriggerAuthentication together")
+		}
+		switch val {
+		case stringEnable:
+			enableTLS = true
+		case stringDisable:
+			enableTLS = false
+		default:
+			return nil, fmt.Errorf("error incorrect TLS value given, got %s", val)
+		}
+	}
+	if enableTLS {
+		certGiven := config.AuthParams["cert"] != ""
+		keyGiven := config.AuthParams["key"] != ""
+		if certGiven && !keyGiven {
+			return nil, errors.New("key must be provided with cert")
+		}
+		if keyGiven && !certGiven {
+			return nil, errors.New("cert must be provided with key")
+		}
+		meta.connectionInfo.ca = config.AuthParams["ca"]
+		meta.connectionInfo.cert = config.AuthParams["cert"]
+		meta.connectionInfo.key = config.AuthParams["key"]
+		if value, found := config.AuthParams["keyPassword"]; found {
+			meta.connectionInfo.keyPassword = value
+		} else {
+			meta.connectionInfo.keyPassword = ""
+		}
+	}
+	meta.connectionInfo.enableTLS = enableTLS
 
 	meta.listLength = defaultListLength
 	if val, ok := config.TriggerMetadata["listLength"]; ok {
@@ -463,7 +502,11 @@ func getRedisClusterClient(ctx context.Context, info redisConnectionInfo) (*redi
 		Password: info.password,
 	}
 	if info.enableTLS {
-		options.TLSConfig = util.CreateTLSClientConfig(info.unsafeSsl)
+		tlsConfig, err := util.NewTLSConfigWithPassword(info.cert, info.key, info.keyPassword, info.ca, info.unsafeSsl)
+		if err != nil {
+			return nil, err
+		}
+		options.TLSConfig = tlsConfig
 	}
 
 	// confirm if connected
@@ -485,7 +528,11 @@ func getRedisSentinelClient(ctx context.Context, info redisConnectionInfo, dbInd
 		MasterName:       info.sentinelMaster,
 	}
 	if info.enableTLS {
-		options.TLSConfig = util.CreateTLSClientConfig(info.unsafeSsl)
+		tlsConfig, err := util.NewTLSConfigWithPassword(info.cert, info.key, info.keyPassword, info.ca, info.unsafeSsl)
+		if err != nil {
+			return nil, err
+		}
+		options.TLSConfig = tlsConfig
 	}
 
 	// confirm if connected
@@ -504,7 +551,11 @@ func getRedisClient(ctx context.Context, info redisConnectionInfo, dbIndex int) 
 		DB:       dbIndex,
 	}
 	if info.enableTLS {
-		options.TLSConfig = util.CreateTLSClientConfig(info.unsafeSsl)
+		tlsConfig, err := util.NewTLSConfigWithPassword(info.cert, info.key, info.keyPassword, info.ca, info.unsafeSsl)
+		if err != nil {
+			return nil, err
+		}
+		options.TLSConfig = tlsConfig
 	}
 
 	// confirm if connected
