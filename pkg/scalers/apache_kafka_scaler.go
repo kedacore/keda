@@ -8,11 +8,10 @@ import (
 	"strconv"
 	"strings"
 
-	sigv4 "github.com/aws/aws-sdk-go/aws/signer/v4"
 	"github.com/go-logr/logr"
 	"github.com/segmentio/kafka-go"
 	"github.com/segmentio/kafka-go/sasl"
-	"github.com/segmentio/kafka-go/sasl/aws_msk_iam"
+	"github.com/segmentio/kafka-go/sasl/aws_msk_iam_v2"
 	"github.com/segmentio/kafka-go/sasl/plain"
 	"github.com/segmentio/kafka-go/sasl/scram"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -69,7 +68,7 @@ const (
 )
 
 // NewApacheKafkaScaler creates a new apacheKafkaScaler
-func NewApacheKafkaScaler(config *ScalerConfig) (Scaler, error) {
+func NewApacheKafkaScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -82,7 +81,7 @@ func NewApacheKafkaScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing kafka metadata: %w", err)
 	}
 
-	client, err := getApacheKafkaClient(kafkaMetadata, logger)
+	client, err := getApacheKafkaClient(ctx, kafkaMetadata, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -326,7 +325,7 @@ func parseApacheKafkaMetadata(config *ScalerConfig, logger logr.Logger) (apacheK
 	return meta, nil
 }
 
-func getApacheKafkaClient(metadata apacheKafkaMetadata, logger logr.Logger) (*kafka.Client, error) {
+func getApacheKafkaClient(ctx context.Context, metadata apacheKafkaMetadata, logger logr.Logger) (*kafka.Client, error) {
 	var saslMechanism sasl.Mechanism
 	var tlsConfig *tls.Config
 	var err error
@@ -360,14 +359,12 @@ func getApacheKafkaClient(metadata apacheKafkaMetadata, logger logr.Logger) (*ka
 	case KafkaSASLTypeOAuthbearer:
 		return nil, errors.New("SASL/OAUTHBEARER is not implemented yet")
 	case KafkaSASLTypeMskIam:
-		_, config := getAwsConfig(metadata.awsRegion,
-			metadata.awsEndpoint,
-			metadata.awsAuthorization)
-
-		saslMechanism = &aws_msk_iam.Mechanism{
-			Signer: sigv4.NewSigner(config.Credentials),
-			Region: metadata.awsRegion,
+		cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+		if err != nil {
+			return nil, err
 		}
+
+		saslMechanism = aws_msk_iam_v2.NewMechanism(*cfg)
 	default:
 		return nil, fmt.Errorf("err sasl type %q given", metadata.saslType)
 	}
