@@ -18,7 +18,6 @@ package eventemitter
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/messaging"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
@@ -44,7 +43,7 @@ func NewAzureEventGridHandler(spec kedav1alpha1.AzureEventGridSpec, clusterName 
 		return nil, err
 	}
 
-	fmt.Print("new azure event grid handler....")
+	logger.V(1).Info("Create new azure event grid handler")
 	return &AzureEventGridHandler{
 		Client:           client,
 		Endpoint:         spec.EndPoint,
