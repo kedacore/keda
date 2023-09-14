@@ -138,7 +138,7 @@ func (c *Count) Execute(ctx context.Context) error {
 	return err
 }
 
-func (c *Count) command(dst []byte, desc description.SelectedServer) ([]byte, error) {
+func (c *Count) command(dst []byte, _ description.SelectedServer) ([]byte, error) {
 	dst = bsoncore.AppendStringElement(dst, "count", c.collection)
 	if c.query != nil {
 		dst = bsoncore.AppendDocumentElement(dst, "query", c.query)

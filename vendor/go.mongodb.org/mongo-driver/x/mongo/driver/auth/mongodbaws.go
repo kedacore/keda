@@ -9,6 +9,10 @@ package auth
 import (
 	"context"
 	"errors"
+
+	"go.mongodb.org/mongo-driver/internal/aws/credentials"
+	"go.mongodb.org/mongo-driver/internal/credproviders"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/auth/creds"
 )
 
 // MongoDBAWS is the mechanism name for MongoDBAWS.
@@ -19,19 +23,22 @@ func newMongoDBAWSAuthenticator(cred *Cred) (Authenticator, error) {
 		return nil, newAuthError("MONGODB-AWS source must be empty or $external", nil)
 	}
 	return &MongoDBAWSAuthenticator{
-		source:       cred.Source,
-		username:     cred.Username,
-		password:     cred.Password,
-		sessionToken: cred.Props["AWS_SESSION_TOKEN"],
+		source: cred.Source,
+		credentials: &credproviders.StaticProvider{
+			Value: credentials.Value{
+				ProviderName:    cred.Source,
+				AccessKeyID:     cred.Username,
+				SecretAccessKey: cred.Password,
+				SessionToken:    cred.Props["AWS_SESSION_TOKEN"],
+			},
+		},
 	}, nil
 }
 
 // MongoDBAWSAuthenticator uses AWS-IAM credentials over SASL to authenticate a connection.
 type MongoDBAWSAuthenticator struct {
-	source       string
-	username     string
-	password     string
-	sessionToken string
+	source      string
+	credentials *credproviders.StaticProvider
 }
 
 // Auth authenticates the connection.
@@ -40,12 +47,10 @@ func (a *MongoDBAWSAuthenticator) Auth(ctx context.Context, cfg *Config) error {
 	if httpClient == nil {
 		return errors.New("cfg.HTTPClient must not be nil")
 	}
+	providers := creds.NewAWSCredentialProvider(httpClient, a.credentials)
 	adapter := &awsSaslAdapter{
 		conversation: &awsConversation{
-			username:   a.username,
-			password:   a.password,
-			token:      a.sessionToken,
-			httpClient: httpClient,
+			credentials: providers.Cred,
 		},
 	}
 	err := ConductSaslConversation(ctx, cfg, a.source, adapter)

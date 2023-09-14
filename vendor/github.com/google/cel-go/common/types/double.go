@@ -134,13 +134,13 @@ func (d Double) ConvertToType(typeVal ref.Type) ref.Val {
 	case IntType:
 		i, err := doubleToInt64Checked(float64(d))
 		if err != nil {
-			return wrapErr(err)
+			return WrapErr(err)
 		}
 		return Int(i)
 	case UintType:
 		i, err := doubleToUint64Checked(float64(d))
 		if err != nil {
-			return wrapErr(err)
+			return WrapErr(err)
 		}
 		return Uint(i)
 	case DoubleType:

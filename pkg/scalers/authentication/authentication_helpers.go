@@ -78,12 +78,12 @@ func GetAuthConfigs(triggerMetadata, authParams map[string]string) (out *AuthMet
 			if len(authParams["customAuthHeader"]) == 0 {
 				return nil, errors.New("no custom auth header given")
 			}
-			out.CustomAuthHeader = authParams["customAuthHeader"]
+			out.CustomAuthHeader = strings.TrimSuffix(authParams["customAuthHeader"], "\n")
 
 			if len(authParams["customAuthValue"]) == 0 {
 				return nil, errors.New("no custom auth value given")
 			}
-			out.CustomAuthValue = authParams["customAuthValue"]
+			out.CustomAuthValue = strings.TrimSuffix(authParams["customAuthValue"], "\n")
 			out.EnableCustomAuth = true
 		case OAuthType:
 			if out.EnableBasicAuth {

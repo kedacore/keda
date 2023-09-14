@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -79,9 +80,11 @@ func main() {
 	cfg.Burst = webhooksClientRequestBurst
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-		Scheme:             scheme,
-		LeaderElection:     false,
-		MetricsBindAddress: metricsAddr,
+		Scheme:         scheme,
+		LeaderElection: false,
+		Metrics: server.Options{
+			BindAddress: metricsAddr,
+		},
 		WebhookServer: webhook.NewServer(webhook.Options{
 			Port:    webhooksPort,
 			CertDir: certDir,
@@ -129,6 +132,14 @@ func setupWebhook(mgr manager.Manager) {
 	// setup webhooks
 	if err := (&kedav1alpha1.ScaledObject{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "ScaledObject")
+		os.Exit(1)
+	}
+	if err := (&kedav1alpha1.TriggerAuthentication{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "TriggerAuthentication")
+		os.Exit(1)
+	}
+	if err := (&kedav1alpha1.ClusterTriggerAuthentication{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "ClusterTriggerAuthentication")
 		os.Exit(1)
 	}
 }

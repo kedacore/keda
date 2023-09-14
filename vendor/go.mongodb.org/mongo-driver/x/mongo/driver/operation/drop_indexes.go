@@ -103,7 +103,7 @@ func (di *DropIndexes) Execute(ctx context.Context) error {
 
 }
 
-func (di *DropIndexes) command(dst []byte, desc description.SelectedServer) ([]byte, error) {
+func (di *DropIndexes) command(dst []byte, _ description.SelectedServer) ([]byte, error) {
 	dst = bsoncore.AppendStringElement(dst, "dropIndexes", di.collection)
 	if di.index != nil {
 		dst = bsoncore.AppendStringElement(dst, "index", *di.index)

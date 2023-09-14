@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -77,7 +78,6 @@ type rabbitMQMetadata struct {
 	excludeUnacknowledged bool          // specify if the QueueLength value should exclude Unacknowledged messages (Ready messages only)
 	pageSize              int64         // specify the page size if useRegex is enabled
 	operation             string        // specify the operation to apply in case of multiples queues
-	metricName            string        // custom metric name for trigger
 	timeout               time.Duration // custom http timeout for a specific trigger
 	scalerIndex           int           // scaler index
 
@@ -242,7 +242,7 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 
 	if config.PodIdentity.Provider == v1alpha1.PodIdentityProviderAzureWorkload {
 		if config.AuthParams["workloadIdentityResource"] != "" {
-			meta.workloadIdentityClientID = config.PodIdentity.IdentityID
+			meta.workloadIdentityClientID = config.PodIdentity.GetIdentityID()
 			meta.workloadIdentityResource = config.AuthParams["workloadIdentityResource"]
 		}
 	}
@@ -311,16 +311,6 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse trigger: %w", err)
 	}
-
-	// Resolve metricName
-
-	// FIXME: DEPRECATED to be removed in v2.12
-	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("rabbitmq-%s", url.QueryEscape(val)))
-	} else {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("rabbitmq-%s", url.QueryEscape(meta.queueName)))
-	}
-
 	// Resolve timeout
 	if err := resolveTimeout(config, &meta); err != nil {
 		return nil, err
@@ -556,6 +546,24 @@ func getJSON(ctx context.Context, s *rabbitMQScaler, url string) (queueInfo, err
 	return result, fmt.Errorf("error requesting rabbitMQ API status: %s, response: %s, from: %s", r.Status, body, url)
 }
 
+func getVhostAndPathFromURL(rawPath, vhostName string) (resolvedVhostPath, resolvedPath string) {
+	pathParts := strings.Split(rawPath, "/")
+	resolvedVhostPath = "/" + pathParts[len(pathParts)-1]
+	resolvedPath = path.Join(pathParts[:len(pathParts)-1]...)
+
+	if len(resolvedPath) > 0 {
+		resolvedPath = "/" + resolvedPath
+	}
+	if vhostName != "" {
+		resolvedVhostPath = "/" + url.QueryEscape(vhostName)
+	}
+	if resolvedVhostPath == "" || resolvedVhostPath == "/" || resolvedVhostPath == "//" {
+		resolvedVhostPath = rabbitRootVhostPath
+	}
+
+	return
+}
+
 func (s *rabbitMQScaler) getQueueInfoViaHTTP(ctx context.Context) (*queueInfo, error) {
 	parsedURL, err := url.Parse(s.metadata.host)
 
@@ -563,19 +571,8 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP(ctx context.Context) (*queueInfo, e
 		return nil, err
 	}
 
-	// Extract vhost from URL's path.
-	vhost := parsedURL.Path
-
-	if s.metadata.vhostName != "" {
-		vhost = "/" + url.QueryEscape(s.metadata.vhostName)
-	}
-
-	if vhost == "" || vhost == "/" || vhost == "//" {
-		vhost = rabbitRootVhostPath
-	}
-
-	// Clear URL path to get the correct host.
-	parsedURL.Path = ""
+	vhost, subpaths := getVhostAndPathFromURL(parsedURL.Path, s.metadata.vhostName)
+	parsedURL.Path = subpaths
 
 	var getQueueInfoManagementURI string
 	if s.metadata.useRegex {
@@ -598,7 +595,7 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP(ctx context.Context) (*queueInfo, e
 func (s *rabbitMQScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("rabbitmq-%s", url.QueryEscape(s.metadata.queueName)))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.value),
 	}
