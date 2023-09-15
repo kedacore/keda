@@ -51,7 +51,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **AWS SQS Scaler**: Support for scaling to include delayed messages. ([#4377](https://github.com/kedacore/keda/issues/4377))
 - **Governance**: KEDA transitioned to CNCF Graduated project ([#63](https://github.com/kedacore/governance/issues/63))
-- **Kafka Scaler**: Add UnsafeSSL flag for kafka scaler ([#4911](https://github.com/kedacore/keda/pull/4911))
 
 ### Improvements
 
@@ -60,6 +59,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Add standalone CRD generation to release workflow ([#2726](https://github.com/kedacore/keda/issues/2726))
 - **General**: Adding a changelog validating script to check for formatting and order ([#3190](https://github.com/kedacore/keda/issues/3190))
 - **General**: Update golangci-lint version documented in CONTRIBUTING.md since old version doesn't support go 1.20 (N/A)
+- **Kafka Scaler**: Add UnsafeSSL flag for kafka scaler ([#4977](https://github.com/kedacore/keda/issues/4977))
 
 ### Fixes
 
