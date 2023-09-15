@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-logr/logr"
 	"golang.org/x/oauth2/clientcredentials"
@@ -222,6 +223,11 @@ func parsePulsarMetadata(config *ScalerConfig, logger logr.Logger) (pulsarMetada
 		}
 		if auth.ClientID == "" {
 			auth.ClientID = config.TriggerMetadata["clientID"]
+		}
+		// client_secret is not required for mtls OAuth(RFC8705)
+		// set secret to random string to work around the Go OAuth lib
+		if auth.ClientSecret == "" {
+			auth.ClientSecret = time.Now().String()
 		}
 	}
 	meta.pulsarAuth = auth

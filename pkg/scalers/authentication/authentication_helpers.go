@@ -109,6 +109,8 @@ func GetAuthConfigs(triggerMetadata, authParams map[string]string) (out *AuthMet
 	return out, err
 }
 
+// ParseScope parse OAuth scopes from a comma separated string
+// whitespace is trimmed
 func ParseScope(inputStr string) []string {
 	scope := strings.TrimSpace(inputStr)
 	if scope != "" {

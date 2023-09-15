@@ -46,7 +46,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - [v1.0.0](#v100)
 
 ## Unreleased
-- **Pulsar Scaler**: Add support for OAuth extensions ([#4700](https://github.com/kedacore/keda/issues/4700))
 
 ### New
 
@@ -64,6 +63,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Updated AWS SDK and updated all the aws scalers ([#4905](https://github.com/kedacore/keda/issues/4905))
 - **Azure Pod Identity**: Introduce validation to prevent usage of empty identity ID for Azure identity providers ([#4528](https://github.com/kedacore/keda/issues/4528))
 - **Prometheus Scaler**: Remove trailing whitespaces in customAuthHeader and customAuthValue ([#4960](https://github.com/kedacore/keda/issues/4960))
+- **Pulsar Scaler**: Add support for OAuth extensions ([#4700](https://github.com/kedacore/keda/issues/4700))
 
 ### Fixes
 - **RabbitMQ Scaler**: Allow subpaths along with vhost in connection string ([#2634](https://github.com/kedacore/keda/issues/2634))
@@ -85,9 +85,9 @@ New deprecation(s):
 ### Other
 
 - **General**: Fixed a typo in the StatefulSet scaling resolver ([#4902](https://github.com/kedacore/keda/pull/4902))
+- **General**: In Metrics server show only logs with a severity level of ERROR or higher in the stderr ([#4049](https://github.com/kedacore/keda/issues/4049))
 - **General**: Refactor ScaledJob related methods to be located at scale_handler  ([#4781](https://github.com/kedacore/keda/issues/4781))
 - **General**: Replace deprecated `set-output` command with environment file ([#4914](https://github.com/kedacore/keda/issues/4914))
-- **General**: In Metrics server show only logs with a severity level of ERROR or higher in the stderr ([#4049](https://github.com/kedacore/keda/issues/4049))
 
 ## v2.11.2
 

@@ -267,6 +267,25 @@ func TestPulsarAuthParams(t *testing.T) {
 		if meta.pulsarAuth.Password != testData.password {
 			t.Errorf("Expected password to be set to %s but got %s\n", testData.password, meta.pulsarAuth.Password)
 		}
+	}
+}
+
+func TestPulsarOAuthParams(t *testing.T) {
+	for _, testData := range parsePulsarMetadataTestAuthTLSDataset {
+		logger := InitializeLogger(&ScalerConfig{TriggerMetadata: testData.triggerMetadata, AuthParams: testData.authParams}, "test_pulsar_scaler")
+		meta, err := parsePulsarMetadata(&ScalerConfig{TriggerMetadata: testData.triggerMetadata, AuthParams: testData.authParams}, logger)
+
+		if err != nil && !testData.isError {
+			t.Error("Expected success but got error", testData.authParams, err)
+		}
+		if testData.isError && err == nil {
+			t.Error("Expected error but got success")
+		}
+
+		if meta.pulsarAuth == nil {
+			t.Log("meta.pulsarAuth is nil, skipping rest of validation of", testData)
+			continue
+		}
 
 		if meta.pulsarAuth.EnableOAuth != (testData.clientID != "" || testData.clientSecret != "") {
 			if testData.clientID != "" {
@@ -292,7 +311,11 @@ func TestPulsarAuthParams(t *testing.T) {
 			t.Errorf("Expected clientID to be set to %s but got %s\n", testData.clientID, meta.pulsarAuth.ClientID)
 		}
 
-		if meta.pulsarAuth.ClientSecret != testData.clientSecret {
+		if meta.pulsarAuth.EnableOAuth && meta.pulsarAuth.ClientSecret == "" {
+			t.Errorf("Expected clientSecret not to be empty.\n")
+		}
+
+		if testData.clientSecret != "" && strings.Compare(meta.pulsarAuth.ClientSecret, testData.clientSecret) != 0 {
 			t.Errorf("Expected clientSecret to be set to %s but got %s\n", testData.clientSecret, meta.pulsarAuth.ClientSecret)
 		}
 	}
