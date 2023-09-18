@@ -685,9 +685,9 @@ func createScaledObjectCSL(namespace string, csl ComplexScalingLogic, triggers [
 			ScaleTargetRef: &ScaleTarget{
 				Name: targetName,
 			},
-			MinReplicaCount: pointer.Int32(0),
-			MaxReplicaCount: pointer.Int32(10),
-			CooldownPeriod:  pointer.Int32(1),
+			MinReplicaCount: ptr.To[int32](0),
+			MaxReplicaCount: ptr.To[int32](10),
+			CooldownPeriod:  ptr.To[int32](1),
 			Triggers:        triggers,
 			Advanced: &AdvancedConfig{
 				ComplexScalingLogic: csl,
