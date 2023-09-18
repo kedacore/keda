@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/antonmedv/expr"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -686,6 +687,10 @@ func TestComplexScalingFormula(t *testing.T) {
 		},
 	}
 
+	// formula is compiled and cached
+	compiledFormula, err := expr.Compile(scaledObject.Spec.Advanced.ComplexScalingLogic.Formula)
+	assert.Equal(t, err, nil)
+
 	scalerCache := cache.ScalersCache{
 		ScaledObject: &scaledObject,
 		Scalers: []cache.ScalerBuilder{{
@@ -699,7 +704,8 @@ func TestComplexScalingFormula(t *testing.T) {
 				Factory:      factory2,
 			},
 		},
-		Recorder: recorder,
+		Recorder:        recorder,
+		CompiledFormula: compiledFormula,
 	}
 
 	caches := map[string]*cache.ScalersCache{}

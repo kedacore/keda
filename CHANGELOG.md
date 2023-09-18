@@ -47,7 +47,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
-
 ### New
 
 - **General**: Introduce new Google Cloud Tasks scaler functionality to scale based on the queue length ([#3613](https://github.com/kedacore/keda/issues/3613))

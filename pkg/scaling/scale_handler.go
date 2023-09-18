@@ -19,15 +19,12 @@ package scaling
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strings"
 	"sync"
 	"time"
 
-	expr "github.com/antonmedv/expr"
-	"github.com/go-logr/logr"
+	"github.com/antonmedv/expr"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	corev1listers "k8s.io/client-go/listers/core/v1"
@@ -46,6 +43,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scaling/cache"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache/metricscache"
 	"github.com/kedacore/keda/v2/pkg/scaling/executor"
+	"github.com/kedacore/keda/v2/pkg/scaling/modifiers"
 	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
 	"github.com/kedacore/keda/v2/pkg/scaling/scaledjob"
 )
@@ -369,6 +367,13 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 	}
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
+		if obj.Spec.Advanced != nil && obj.Spec.Advanced.ComplexScalingLogic.Formula != "" {
+			program, err := expr.Compile(obj.Spec.Advanced.ComplexScalingLogic.Formula)
+			if err != nil {
+				return nil, fmt.Errorf("error trying to compile custom formula: %w", err)
+			}
+			newCache.CompiledFormula = program
+		}
 		newCache.ScaledObject = obj
 	default:
 	}
@@ -464,13 +469,13 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 
 			// Filter only the desired metric or if composite scaler is active,
 			// metricsArray contains all external metrics
-			if arrayContainsElement(spec.External.Metric.Name, metricsArray) {
+			if modifiers.ArrayContainsElement(spec.External.Metric.Name, metricsArray) {
 				// if compositeScaler is used, override with current metric, otherwise do nothing
 				metricName := spec.External.Metric.Name
 
 				// Pair metric values with its trigger names. This is applied only when
 				// ComplexScalingLogic.Formula is defined in SO.
-				metricTriggerPairList, err = addPairTriggerAndMetric(metricTriggerPairList, scaledObject, metricName, scalerConfigs[scalerIndex].TriggerName)
+				metricTriggerPairList, err = modifiers.AddPairTriggerAndMetric(metricTriggerPairList, scaledObject, metricName, scalerConfigs[scalerIndex].TriggerName)
 				if err != nil {
 					logger.Error(err, "error pairing triggers & metrics for compositeScaler")
 				}
@@ -532,7 +537,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	}
 
 	// handle complexScalingLogic here and simply return the matchingMetrics
-	matchingMetrics = h.handleComplexScalingLogic(scaledObject, matchingMetrics, metricTriggerPairList, fallbackActive, logger)
+	matchingMetrics = modifiers.HandleComplexScalingLogic(scaledObject, matchingMetrics, metricTriggerPairList, fallbackActive, cache, logger)
 	return &external_metrics.ExternalMetricValueList{
 		Items: matchingMetrics,
 	}, nil
@@ -716,8 +721,12 @@ func (h *scaleHandler) isScaledJobActive(ctx context.Context, scaledJob *kedav1a
 // what metrics should be used. In case of composite scaler (ComplexScalingLogic struct),
 // all external metrics will be used. Returns all external metrics otherwise it
 // returns the same metric given.
+// TODO: if the bug is fixed this can be moved to modifiers/ with the rest of the functions
 func (h *scaleHandler) getTrueMetricArray(ctx context.Context, metricName string, so *kedav1alpha1.ScaledObject) ([]string, error) {
 	// if composite scaler is given return all external metrics
+
+	// bug fix for the invalid cache (not loaded properly) and needs to be fetched again
+	// Tracking issue: https://github.com/kedacore/keda/issues/4955
 	if so != nil && so.Spec.Advanced != nil && so.Spec.Advanced.ComplexScalingLogic.Target != "" {
 		if len(so.Status.ExternalMetricNames) == 0 {
 			scaledObject := &kedav1alpha1.ScaledObject{}
@@ -737,99 +746,4 @@ func (h *scaleHandler) getTrueMetricArray(ctx context.Context, metricName string
 		return so.Status.ExternalMetricNames, nil
 	}
 	return []string{metricName}, nil
-}
-
-// help function to determine whether or not metricName is the correct one.
-// standard function will be array of one element if it matches or none if it doesnt
-// that is given from getTrueMetricArray().
-// In case of compositeScaler, cycle through all external metric names
-func arrayContainsElement(el string, arr []string) bool {
-	for _, item := range arr {
-		if strings.EqualFold(item, el) {
-			return true
-		}
-	}
-	return false
-}
-
-// if given right conditions, try to apply the given custom formula in SO
-func applyComplexLogicFormula(csl kedav1alpha1.ComplexScalingLogic, metrics []external_metrics.ExternalMetricValue, pairList map[string]string) ([]external_metrics.ExternalMetricValue, error) {
-	if csl.Formula != "" {
-		metrics, err := calculateComplexLogicFormula(metrics, csl.Formula, pairList)
-		return metrics, err
-	}
-	return metrics, nil
-}
-
-// calculate custom formula to metrics and return calculated and finalized metric
-func calculateComplexLogicFormula(list []external_metrics.ExternalMetricValue, formula string, pairList map[string]string) ([]external_metrics.ExternalMetricValue, error) {
-	var ret external_metrics.ExternalMetricValue
-	var out float64
-	ret.MetricName = "composite-metric-name"
-	ret.Timestamp = v1.Now()
-
-	// using https://github.com/antonmedv/expr to evaluate formula expression
-	data := make(map[string]float64)
-	for _, v := range list {
-		data[pairList[v.MetricName]] = v.Value.AsApproximateFloat64()
-	}
-	program, err := expr.Compile(formula)
-	if err != nil {
-		return nil, fmt.Errorf("error trying to compile custom formula: %w", err)
-	}
-
-	tmp, err := expr.Run(program, data)
-	if err != nil {
-		return nil, fmt.Errorf("error trying to run custom formula: %w", err)
-	}
-
-	out = tmp.(float64)
-	ret.Value.SetMilli(int64(out * 1000))
-	return []external_metrics.ExternalMetricValue{ret}, nil
-}
-
-// Add pair trigger-metric to the triggers-metrics list for custom formula. Trigger name is used in
-// formula itself (in SO) and metric name is used for its value internally.
-func addPairTriggerAndMetric(list map[string]string, so *kedav1alpha1.ScaledObject, metric string, trigger string) (map[string]string, error) {
-	if so.Spec.Advanced != nil && so.Spec.Advanced.ComplexScalingLogic.Formula != "" {
-		if trigger == "" {
-			return list, fmt.Errorf("trigger name not given with compositeScaler for metric %s", metric)
-		}
-
-		triggerHasMetrics := 0
-		// count number of metrics per trigger
-		for _, t := range list {
-			if strings.HasPrefix(t, trigger) {
-				triggerHasMetrics++
-			}
-		}
-
-		// if trigger doesnt have a pair yet
-		if triggerHasMetrics == 0 {
-			list[metric] = trigger
-		} else {
-			// if trigger has a pair add a number
-			list[metric] = fmt.Sprintf("%s%02d", trigger, triggerHasMetrics)
-		}
-
-		return list, nil
-	}
-	return map[string]string{}, nil
-}
-
-// apply defined ComplexScalingLogic structure (formula) and simply return
-// calculated metrics
-func (h *scaleHandler) handleComplexScalingLogic(so *kedav1alpha1.ScaledObject, metrics []external_metrics.ExternalMetricValue, metricTriggerList map[string]string, fallbackActive bool, log logr.Logger) []external_metrics.ExternalMetricValue {
-	var err error
-	if !fallbackActive && so != nil && so.Spec.Advanced != nil && !reflect.DeepEqual(so.Spec.Advanced.ComplexScalingLogic, kedav1alpha1.ComplexScalingLogic{}) {
-		csl := so.Spec.Advanced.ComplexScalingLogic
-
-		// apply formula if defined
-		metrics, err = applyComplexLogicFormula(csl, metrics, metricTriggerList)
-		if err != nil {
-			log.Error(err, "error applying custom compositeScaler formula")
-		}
-		log.V(1).Info("returned metrics after formula is applied", "metrics", metrics)
-	}
-	return metrics
 }
