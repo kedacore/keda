@@ -50,6 +50,13 @@ spec:
                 - subscriptionName
                 - topicName
                 type: object
+              cloudEventHttp:
+                properties:
+                  endPoint:
+                    type: string
+                required:
+                - endPoint
+                type: object
               clusterName:
                 type: string
             type: object

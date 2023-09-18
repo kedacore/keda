@@ -10,3 +10,5 @@ spec:
     key: FXZBmVucowoeM/Kl0zNeDJHoyOZO+sXB+IeeE7S6aSg=
     topicName: testtopicone
     subscriptionName: 66a7fcba-dac3-46d8-b509-202f305618c8
+  cloudEventHttp:
+    endPoint: "http://localhost:8899"

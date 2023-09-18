@@ -60,11 +60,6 @@ func (a *AzureEventGridHandler) CloseHandler() {
 }
 
 func (a *AzureEventGridHandler) EmitEvent(eventData EventData, failureFunc func(eventData EventData, err error)) {
-	type emitData struct {
-		Reason  string `json:"reason"`
-		Message string `json:"message"`
-	}
-
 	source := "/" + a.ClusterName + "/" + eventData.namespace + "/keda"
 	subject := "/" + a.ClusterName + "/" + eventData.namespace + "/workload/" + eventData.objectName
 	opt := &messaging.CloudEventOptions{
@@ -73,7 +68,7 @@ func (a *AzureEventGridHandler) EmitEvent(eventData EventData, failureFunc func(
 		Time:            &eventData.time,
 	}
 
-	event, err := messaging.NewCloudEvent(source, eventData.eventtype, emitData{Reason: eventData.reason, Message: eventData.message}, opt)
+	event, err := messaging.NewCloudEvent(source, eventData.eventtype, EmitData{Reason: eventData.reason, Message: eventData.message}, opt)
 
 	if err != nil {
 		a.logger.Error(err, "EmitEvent error %s")

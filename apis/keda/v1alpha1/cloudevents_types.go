@@ -48,7 +48,14 @@ type CloudEventSpec struct {
 	ClusterName string `json:"clusterName,omitempty"`
 
 	// +optional
+	CloudEventHttp *CloudEventHttpSpec `json:"cloudEventHttp,omitempty"`
+
+	// +optional
 	AzureEventGrid *AzureEventGridSpec `json:"azureEventGrid,omitempty"`
+}
+
+type CloudEventHttpSpec struct {
+	EndPoint string `json:"endPoint"`
 }
 
 type AzureEventGridSpec struct {

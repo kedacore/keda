@@ -63,8 +63,14 @@ type EventDataHandler interface {
 	CloseHandler()
 }
 
+type EmitData struct {
+	Reason  string `json:"reason"`
+	Message string `json:"message"`
+}
+
 const (
 	AzureEventGrid = "AzureEventGrid"
+	CloudEventHttp = "CloudEventHttp"
 )
 
 func NewEventEmitter(client client.Client, recorder record.EventRecorder) *EventEmitter {
@@ -140,6 +146,14 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEvents *ked
 		}
 		e.eventHandlersCache[key+AzureEventGrid] = azureEventGridHandler
 	}
+
+	if cloudEvents.Spec.CloudEventHttp != nil {
+		cloudEventHttpHandler, err := NewCloudEventHttpHandler(ctx, *cloudEvents.Spec.CloudEventHttp, clusterName, log)
+		if err != nil {
+			return
+		}
+		e.eventHandlersCache[key+CloudEventHttp] = cloudEventHttpHandler
+	}
 }
 
 func (e *EventEmitter) clearEventHandlersCache(ctx context.Context, cloudEvents *kedav1alpha1.CloudEvent) error {
@@ -147,11 +161,20 @@ func (e *EventEmitter) clearEventHandlersCache(ctx context.Context, cloudEvents 
 	defer e.eventHandlersCachesLock.Unlock()
 
 	key := cloudEvents.GenerateIdentifier()
+
 	if cloudEvents.Spec.AzureEventGrid != nil {
 		azureEventGridKey := key + AzureEventGrid
 		if azureEventGridHandler, found := e.eventHandlersCache[azureEventGridKey]; found {
 			azureEventGridHandler.CloseHandler()
 			delete(e.eventHandlersCache, azureEventGridKey)
+		}
+	}
+
+	if cloudEvents.Spec.CloudEventHttp != nil {
+		cloudEventHttpKey := key + CloudEventHttp
+		if azureEventGridHandler, found := e.eventHandlersCache[cloudEventHttpKey]; found {
+			azureEventGridHandler.CloseHandler()
+			delete(e.eventHandlersCache, cloudEventHttpKey)
 		}
 	}
 
