@@ -192,6 +192,62 @@ func createRedisScalerWithClient(client *redis.Client, meta *redisMetadata, scri
 	}
 }
 
+func parseTLSConfigIntoConnectionInfo(config *ScalerConfig, connInfo *redisConnectionInfo) error {
+	enableTLS := defaultEnableTLS
+	if val, ok := config.TriggerMetadata["enableTLS"]; ok {
+		tls, err := strconv.ParseBool(val)
+		if err != nil {
+			return fmt.Errorf("enableTLS parsing error %w", err)
+		}
+		enableTLS = tls
+	}
+
+	connInfo.unsafeSsl = false
+	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
+		parsedVal, err := strconv.ParseBool(val)
+		if err != nil {
+			return fmt.Errorf("error parsing unsafeSsl: %w", err)
+		}
+		connInfo.unsafeSsl = parsedVal
+	}
+
+	// parse tls config defined in auth params
+	if val, ok := config.AuthParams["tls"]; ok {
+		val = strings.TrimSpace(val)
+		if enableTLS {
+			return errors.New("unable to set `tls` in both ScaledObject and TriggerAuthentication together")
+		}
+		switch val {
+		case stringEnable:
+			enableTLS = true
+		case stringDisable:
+			enableTLS = false
+		default:
+			return fmt.Errorf("error incorrect TLS value given, got %s", val)
+		}
+	}
+	if enableTLS {
+		certGiven := config.AuthParams["cert"] != ""
+		keyGiven := config.AuthParams["key"] != ""
+		if certGiven && !keyGiven {
+			return errors.New("key must be provided with cert")
+		}
+		if keyGiven && !certGiven {
+			return errors.New("cert must be provided with key")
+		}
+		connInfo.ca = config.AuthParams["ca"]
+		connInfo.cert = config.AuthParams["cert"]
+		connInfo.key = config.AuthParams["key"]
+		if value, found := config.AuthParams["keyPassword"]; found {
+			connInfo.keyPassword = value
+		} else {
+			connInfo.keyPassword = ""
+		}
+	}
+	connInfo.enableTLS = enableTLS
+	return nil
+}
+
 func parseRedisMetadata(config *ScalerConfig, parserFn redisAddressParser) (*redisMetadata, error) {
 	connInfo, err := parserFn(config.TriggerMetadata, config.ResolvedEnv, config.AuthParams)
 	if err != nil {
@@ -201,58 +257,10 @@ func parseRedisMetadata(config *ScalerConfig, parserFn redisAddressParser) (*red
 		connectionInfo: connInfo,
 	}
 
-	enableTLS := defaultEnableTLS
-	if val, ok := config.TriggerMetadata["enableTLS"]; ok {
-		tls, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, fmt.Errorf("enableTLS parsing error %w", err)
-		}
-		enableTLS = tls
+	err = parseTLSConfigIntoConnectionInfo(config, &meta.connectionInfo)
+	if err != nil {
+		return nil, err
 	}
-
-	meta.connectionInfo.unsafeSsl = false
-	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
-		parsedVal, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing unsafeSsl: %w", err)
-		}
-		meta.connectionInfo.unsafeSsl = parsedVal
-	}
-
-	// parse tls config defined in auth params
-	if val, ok := config.AuthParams["tls"]; ok {
-		val = strings.TrimSpace(val)
-		if enableTLS {
-			return nil, errors.New("unable to set `tls` in both ScaledObject and TriggerAuthentication together")
-		}
-		switch val {
-		case stringEnable:
-			enableTLS = true
-		case stringDisable:
-			enableTLS = false
-		default:
-			return nil, fmt.Errorf("error incorrect TLS value given, got %s", val)
-		}
-	}
-	if enableTLS {
-		certGiven := config.AuthParams["cert"] != ""
-		keyGiven := config.AuthParams["key"] != ""
-		if certGiven && !keyGiven {
-			return nil, errors.New("key must be provided with cert")
-		}
-		if keyGiven && !certGiven {
-			return nil, errors.New("cert must be provided with key")
-		}
-		meta.connectionInfo.ca = config.AuthParams["ca"]
-		meta.connectionInfo.cert = config.AuthParams["cert"]
-		meta.connectionInfo.key = config.AuthParams["key"]
-		if value, found := config.AuthParams["keyPassword"]; found {
-			meta.connectionInfo.keyPassword = value
-		} else {
-			meta.connectionInfo.keyPassword = ""
-		}
-	}
-	meta.connectionInfo.enableTLS = enableTLS
 
 	meta.listLength = defaultListLength
 	if val, ok := config.TriggerMetadata["listLength"]; ok {
