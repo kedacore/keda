@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/pointer"
 	"k8s.io/utils/ptr"
 )
 
@@ -397,6 +398,27 @@ var _ = It("should validate the so update if it's removing the finalizer even if
 	Eventually(func() error {
 		return k8sClient.Update(context.Background(), so)
 	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("shouldn't create so when stabilizationWindowSeconds exceeds 3600", func() {
+
+	namespaceName := "fail-so-creation"
+	namespace := createNamespace(namespaceName)
+	stabilizationWindowSeconds := 3700
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
+	so.Spec.Advanced.HorizontalPodAutoscalerConfig = &HorizontalPodAutoscalerConfig{
+		Behavior: &v2.HorizontalPodAutoscalerBehavior{
+			ScaleDown: &v2.HPAScalingRules{
+				StabilizationWindowSeconds: pointer.Int32(int32(stabilizationWindowSeconds)),
+			},
+		},
+	}
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
 })
 
 var _ = AfterSuite(func() {
