@@ -73,15 +73,6 @@ spec:
               advanced:
                 description: AdvancedConfig specifies advance scaling options
                 properties:
-                  complexScalingLogic:
-                    description: ComplexScalingLogic describes advanced scaling logic
-                      options like formula
-                    properties:
-                      formula:
-                        type: string
-                      target:
-                        type: string
-                    type: object
                   horizontalPodAutoscalerConfig:
                     description: HorizontalPodAutoscalerConfig specifies horizontal
                       scale config
@@ -212,6 +203,15 @@ spec:
                     type: object
                   restoreToOriginalReplicaCount:
                     type: boolean
+                  scalingModifiers:
+                    description: ScalingModifiers describes advanced scaling logic
+                      options like formula
+                    properties:
+                      formula:
+                        type: string
+                      target:
+                        type: string
+                    type: object
                 type: object
               cooldownPeriod:
                 format: int32

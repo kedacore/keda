@@ -216,11 +216,11 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string) error {
 		}
 	}
 
-	// verify ComplexScalingLogic structure if defined in ScaledObject
-	if incomingSo.Spec.Advanced != nil && !reflect.DeepEqual(incomingSo.Spec.Advanced.ComplexScalingLogic, ComplexScalingLogic{}) {
-		_, _, err = ValidateComplexScalingLogic(incomingSo, []autoscalingv2.MetricSpec{})
+	// verify ScalingModifiers structure if defined in ScaledObject
+	if incomingSo.Spec.Advanced != nil && !reflect.DeepEqual(incomingSo.Spec.Advanced.ScalingModifiers, ScalingModifiers{}) {
+		_, _, err = ValidateScalingModifiers(incomingSo, []autoscalingv2.MetricSpec{})
 		if err != nil {
-			scaledobjectlog.Error(err, "error validating ComplexScalingLogic")
+			scaledobjectlog.Error(err, "error validating ScalingModifiers")
 			prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "complex-scaling-logic")
 
 			return err
@@ -311,13 +311,13 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
 	return nil
 }
 
-// ValidateComplexScalingLogic validates all combinations of given arguments
+// ValidateScalingModifiers validates all combinations of given arguments
 // and their values
-func ValidateComplexScalingLogic(so *ScaledObject, specs []autoscalingv2.MetricSpec) (float64, autoscalingv2.MetricTargetType, error) {
-	csl := so.Spec.Advanced.ComplexScalingLogic
+func ValidateScalingModifiers(so *ScaledObject, specs []autoscalingv2.MetricSpec) (float64, autoscalingv2.MetricTargetType, error) {
+	sm := so.Spec.Advanced.ScalingModifiers
 
-	if csl.Formula == "" {
-		return -1, autoscalingv2.MetricTargetType(""), fmt.Errorf("error ComplexScalingLogic.Formula needs to be specified with structure")
+	if sm.Formula == "" {
+		return -1, autoscalingv2.MetricTargetType(""), fmt.Errorf("error ScalingModifiers.Formula needs to be specified with structure")
 	}
 
 	var num float64
@@ -325,27 +325,27 @@ func ValidateComplexScalingLogic(so *ScaledObject, specs []autoscalingv2.MetricS
 
 	// validate formula if not empty
 	if err := validateCSLformula(so); err != nil {
-		err := errors.Join(fmt.Errorf("error validating formula in ComplexScalingLogic"), err)
+		err := errors.Join(fmt.Errorf("error validating formula in ScalingModifiers"), err)
 		return -1, autoscalingv2.MetricTargetType(""), err
 	}
 	// validate target if not empty
 	num, metricType, err := validateCSLtarget(so, specs)
 	if err != nil {
-		err := errors.Join(fmt.Errorf("error validating target in ComplexScalingLogic"), err)
+		err := errors.Join(fmt.Errorf("error validating target in ScalingModifiers"), err)
 		return -1, autoscalingv2.MetricTargetType(""), err
 	}
 	return num, metricType, nil
 }
 
 func validateCSLformula(so *ScaledObject) error {
-	csl := so.Spec.Advanced.ComplexScalingLogic
+	sm := so.Spec.Advanced.ScalingModifiers
 
 	// if formula is empty, nothing to validate
-	if csl.Formula == "" {
+	if sm.Formula == "" {
 		return nil
 	}
 	// formula needs target because it's always transformed to Composite scaler
-	if csl.Target == "" {
+	if sm.Target == "" {
 		return fmt.Errorf("formula is given but target is empty")
 	}
 
@@ -357,20 +357,20 @@ func validateCSLformula(so *ScaledObject) error {
 			continue
 		}
 		if trig.Name == "" {
-			return fmt.Errorf("trigger of type '%s' has empty name but csl.Formula is defined", trig.Type)
+			return fmt.Errorf("trigger of type '%s' has empty name but sm.Formula is defined", trig.Type)
 		}
 	}
 	return nil
 }
 
 func validateCSLtarget(so *ScaledObject, specs []autoscalingv2.MetricSpec) (float64, autoscalingv2.MetricTargetType, error) {
-	csl := so.Spec.Advanced.ComplexScalingLogic
+	sm := so.Spec.Advanced.ScalingModifiers
 
-	if csl.Target == "" {
+	if sm.Target == "" {
 		return -1, "", nil
 	}
 	// convert string to float
-	num, err := strconv.ParseFloat(csl.Target, 64)
+	num, err := strconv.ParseFloat(sm.Target, 64)
 	if err != nil || num <= 0.0 {
 		return -1, "", fmt.Errorf("error converting target for complex logic (string->float) to valid target: %w", err)
 	}

@@ -27,7 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
 	"k8s.io/utils/ptr"
 )
 
@@ -668,7 +667,7 @@ func createScaledObjectSTZ(name string, namespace string, targetName string, min
 	}
 }
 
-func createScaledObjectCSL(namespace string, csl ComplexScalingLogic, triggers []ScaleTriggers) *ScaledObject {
+func createScaledObjectCSL(namespace string, sm ScalingModifiers, triggers []ScaleTriggers) *ScaledObject {
 	name := soName
 	targetName := workloadName
 	return &ScaledObject{
@@ -690,7 +689,7 @@ func createScaledObjectCSL(namespace string, csl ComplexScalingLogic, triggers [
 			CooldownPeriod:  ptr.To[int32](1),
 			Triggers:        triggers,
 			Advanced: &AdvancedConfig{
-				ComplexScalingLogic: csl,
+				ScalingModifiers: sm,
 			},
 		},
 	}

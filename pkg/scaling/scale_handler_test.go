@@ -622,7 +622,7 @@ func createScaler(ctrl *gomock.Controller, queueLength int64, averageValue int64
 }
 
 // -----------------------------------------------------------------------------
-// test for complexScalingLogic formula
+// test for scalingModifiers formula
 // -----------------------------------------------------------------------------
 
 const triggerName1 = "trigger_one"
@@ -668,7 +668,7 @@ func TestComplexScalingFormula(t *testing.T) {
 				Name: "test",
 			},
 			Advanced: &kedav1alpha1.AdvancedConfig{
-				ComplexScalingLogic: kedav1alpha1.ComplexScalingLogic{
+				ScalingModifiers: kedav1alpha1.ScalingModifiers{
 					Target:  "2",
 					Formula: fmt.Sprintf("%s + %s", triggerName1, triggerName2),
 				},
@@ -688,7 +688,7 @@ func TestComplexScalingFormula(t *testing.T) {
 	}
 
 	// formula is compiled and cached
-	compiledFormula, err := expr.Compile(scaledObject.Spec.Advanced.ComplexScalingLogic.Formula)
+	compiledFormula, err := expr.Compile(scaledObject.Spec.Advanced.ScalingModifiers.Formula)
 	assert.Equal(t, err, nil)
 
 	scalerCache := cache.ScalersCache{

@@ -367,8 +367,8 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 	}
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
-		if obj.Spec.Advanced != nil && obj.Spec.Advanced.ComplexScalingLogic.Formula != "" {
-			program, err := expr.Compile(obj.Spec.Advanced.ComplexScalingLogic.Formula)
+		if obj.Spec.Advanced != nil && obj.Spec.Advanced.ScalingModifiers.Formula != "" {
+			program, err := expr.Compile(obj.Spec.Advanced.ScalingModifiers.Formula)
 			if err != nil {
 				return nil, fmt.Errorf("error trying to compile custom formula: %w", err)
 			}
@@ -459,7 +459,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 		if len(metricsArray) == 0 {
 			err = fmt.Errorf("no metrics found getting metricsArray array %s", metricsName)
 			logger.Error(err, "error metricsArray is empty")
-			// TODO: add cache.Recorder?
+			cache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 		}
 		for _, spec := range metricSpecs {
 			// skip cpu/memory resource scaler
@@ -474,7 +474,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 				metricName := spec.External.Metric.Name
 
 				// Pair metric values with its trigger names. This is applied only when
-				// ComplexScalingLogic.Formula is defined in SO.
+				// ScalingModifiers.Formula is defined in SO.
 				metricTriggerPairList, err = modifiers.AddPairTriggerAndMetric(metricTriggerPairList, scaledObject, metricName, scalerConfigs[scalerIndex].TriggerName)
 				if err != nil {
 					logger.Error(err, "error pairing triggers & metrics for compositeScaler")
@@ -536,8 +536,8 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 		return nil, fmt.Errorf("no matching metrics found for " + metricsName)
 	}
 
-	// handle complexScalingLogic here and simply return the matchingMetrics
-	matchingMetrics = modifiers.HandleComplexScalingLogic(scaledObject, matchingMetrics, metricTriggerPairList, fallbackActive, cache, logger)
+	// handle scalingModifiers here and simply return the matchingMetrics
+	matchingMetrics = modifiers.HandleScalingModifiers(scaledObject, matchingMetrics, metricTriggerPairList, fallbackActive, cache, logger)
 	return &external_metrics.ExternalMetricValueList{
 		Items: matchingMetrics,
 	}, nil
@@ -718,7 +718,7 @@ func (h *scaleHandler) isScaledJobActive(ctx context.Context, scaledJob *kedav1a
 }
 
 // getTrueMetricArray is a help function made for composite scaler to determine
-// what metrics should be used. In case of composite scaler (ComplexScalingLogic struct),
+// what metrics should be used. In case of composite scaler (ScalingModifiers struct),
 // all external metrics will be used. Returns all external metrics otherwise it
 // returns the same metric given.
 // TODO: if the bug is fixed this can be moved to modifiers/ with the rest of the functions
@@ -727,7 +727,7 @@ func (h *scaleHandler) getTrueMetricArray(ctx context.Context, metricName string
 
 	// bug fix for the invalid cache (not loaded properly) and needs to be fetched again
 	// Tracking issue: https://github.com/kedacore/keda/issues/4955
-	if so != nil && so.Spec.Advanced != nil && so.Spec.Advanced.ComplexScalingLogic.Target != "" {
+	if so != nil && so.Spec.Advanced != nil && so.Spec.Advanced.ScalingModifiers.Target != "" {
 		if len(so.Status.ExternalMetricNames) == 0 {
 			scaledObject := &kedav1alpha1.ScaledObject{}
 			err := h.client.Get(ctx, types.NamespacedName{Name: so.Name, Namespace: so.Namespace}, scaledObject)

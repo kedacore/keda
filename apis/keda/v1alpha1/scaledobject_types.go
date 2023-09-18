@@ -103,11 +103,11 @@ type AdvancedConfig struct {
 	// +optional
 	RestoreToOriginalReplicaCount bool `json:"restoreToOriginalReplicaCount,omitempty"`
 	// +optional
-	ComplexScalingLogic ComplexScalingLogic `json:"complexScalingLogic,omitempty"`
+	ScalingModifiers ScalingModifiers `json:"scalingModifiers,omitempty"`
 }
 
-// ComplexScalingLogic describes advanced scaling logic options like formula
-type ComplexScalingLogic struct {
+// ScalingModifiers describes advanced scaling logic options like formula
+type ScalingModifiers struct {
 	Formula string `json:"formula,omitempty"`
 	Target  string `json:"target,omitempty"`
 }

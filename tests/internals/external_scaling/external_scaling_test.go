@@ -140,7 +140,7 @@ spec:
       behavior:
         scaleDown:
           stabilizationWindowSeconds: 5
-    complexScalingLogic:
+    scalingModifiers:
       formula: metrics_api + kw_trig
       target: '2'
   pollingInterval: 5
