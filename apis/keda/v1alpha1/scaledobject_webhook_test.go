@@ -27,7 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
 	"k8s.io/utils/ptr"
 )
 
@@ -404,12 +403,11 @@ var _ = It("shouldn't create so when stabilizationWindowSeconds exceeds 3600", f
 
 	namespaceName := "fail-so-creation"
 	namespace := createNamespace(namespaceName)
-	stabilizationWindowSeconds := 3700
 	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
 	so.Spec.Advanced.HorizontalPodAutoscalerConfig = &HorizontalPodAutoscalerConfig{
 		Behavior: &v2.HorizontalPodAutoscalerBehavior{
 			ScaleDown: &v2.HPAScalingRules{
-				StabilizationWindowSeconds: pointer.Int32(int32(stabilizationWindowSeconds)),
+				StabilizationWindowSeconds: ptr.To[int32](3700),
 			},
 		},
 	}
