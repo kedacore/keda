@@ -34,6 +34,6 @@ func (kc *KmsContext) BytesNeeded() int32 {
 }
 
 // FeedResponse feeds the bytes received from the KMS to mongocrypt.
-func (kc *KmsContext) FeedResponse(response []byte) error {
+func (kc *KmsContext) FeedResponse([]byte) error {
 	panic(cseNotSupportedMsg)
 }

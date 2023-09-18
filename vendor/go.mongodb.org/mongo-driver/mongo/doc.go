@@ -94,10 +94,13 @@
 //
 // # Potential DNS Issues
 //
-// Building with Go 1.11+ and using connection strings with the "mongodb+srv"[1] scheme is
+// Building with Go 1.11+ and using connection strings with the "mongodb+srv"[1] scheme is unfortunately
 // incompatible with some DNS servers in the wild due to the change introduced in
-// https://github.com/golang/go/issues/10622. If you receive an error with the message "cannot
-// unmarshal DNS message" while running an operation, we suggest you use a different DNS server.
+// https://github.com/golang/go/issues/10622. You may receive an error with the message "cannot unmarshal DNS message"
+// while running an operation when using DNS servers that non-compliantly compress SRV records. Old versions of kube-dns
+// and the native DNS resolver (systemd-resolver) on Ubuntu 18.04 are known to be non-compliant in this manner. We suggest
+// using a different DNS server (8.8.8.8 is the common default), and, if that's not possible, avoiding the "mongodb+srv"
+// scheme.
 //
 // # Client Side Encryption
 //
@@ -121,6 +124,8 @@
 // There is a severe bug when calling RewrapManyDataKey with libmongocrypt versions less than 1.5.2.
 // This bug may result in data corruption.
 // Please use libmongocrypt 1.5.2 or higher when calling RewrapManyDataKey.
+//
+// - Go Driver v1.12.0 requires libmongocrypt v1.8.0 or higher.
 //
 // To install libmongocrypt, follow the instructions for your
 // operating system:

@@ -6,6 +6,8 @@
 
 package options
 
+import "time"
+
 // DefaultIndexOptions represents the default options for a collection to apply on new indexes. This type can be used
 // when creating a new collection through the CreateCollectionOptions.SetDefaultIndexOptions method.
 type DefaultIndexOptions struct {
@@ -28,18 +30,30 @@ func (d *DefaultIndexOptions) SetStorageEngine(storageEngine interface{}) *Defau
 
 // TimeSeriesOptions specifies options on a time-series collection.
 type TimeSeriesOptions struct {
-	// Name of the top-level field to be used for time. Inserted documents must have this field,
+	// TimeField is the top-level field to be used for time. Inserted documents must have this field,
 	// and the field must be of the BSON UTC datetime type (0x9).
 	TimeField string
 
-	// Optional name of the top-level field describing the series. This field is used to group
+	// MetaField is the name of the top-level field describing the series. This field is used to group
 	// related data and may be of any BSON type, except for array. This name may not be the same
-	// as the TimeField or _id.
+	// as the TimeField or _id. This field is optional.
 	MetaField *string
 
-	// Optional string specifying granularity of time-series data. Allowed granularity options are
-	// "seconds", "minutes" and "hours".
+	// Granularity is the granularity of time-series data. Allowed granularity options are
+	// "seconds", "minutes" and "hours". This field is optional.
 	Granularity *string
+
+	// BucketMaxSpan is the maximum range of time values for a bucket. The
+	// time.Duration is rounded down to the nearest second and applied as
+	// the command option: "bucketRoundingSeconds". This field is optional.
+	BucketMaxSpan *time.Duration
+
+	// BucketRounding is used to determine the minimum time boundary when
+	// opening a new bucket by rounding the first timestamp down to the next
+	// multiple of this value. The time.Duration is rounded down to the
+	// nearest second and applied as the command option:
+	// "bucketRoundingSeconds". This field is optional.
+	BucketRounding *time.Duration
 }
 
 // TimeSeries creates a new TimeSeriesOptions instance.
@@ -62,6 +76,20 @@ func (tso *TimeSeriesOptions) SetMetaField(metaField string) *TimeSeriesOptions 
 // SetGranularity sets the value for Granularity.
 func (tso *TimeSeriesOptions) SetGranularity(granularity string) *TimeSeriesOptions {
 	tso.Granularity = &granularity
+	return tso
+}
+
+// SetBucketMaxSpan sets the value for BucketMaxSpan.
+func (tso *TimeSeriesOptions) SetBucketMaxSpan(dur time.Duration) *TimeSeriesOptions {
+	tso.BucketMaxSpan = &dur
+
+	return tso
+}
+
+// SetBucketRounding sets the value for BucketRounding.
+func (tso *TimeSeriesOptions) SetBucketRounding(dur time.Duration) *TimeSeriesOptions {
+	tso.BucketRounding = &dur
+
 	return tso
 }
 
@@ -234,6 +262,9 @@ func (c *CreateCollectionOptions) SetClusteredIndex(clusteredIndex interface{}) 
 
 // MergeCreateCollectionOptions combines the given CreateCollectionOptions instances into a single
 // CreateCollectionOptions in a last-one-wins fashion.
+//
+// Deprecated: Merging options structs will not be supported in Go Driver 2.0. Users should create a
+// single options struct instead.
 func MergeCreateCollectionOptions(opts ...*CreateCollectionOptions) *CreateCollectionOptions {
 	cc := CreateCollection()
 
@@ -309,6 +340,9 @@ func (c *CreateViewOptions) SetCollation(collation *Collation) *CreateViewOption
 
 // MergeCreateViewOptions combines the given CreateViewOptions instances into a single CreateViewOptions in a
 // last-one-wins fashion.
+//
+// Deprecated: Merging options structs will not be supported in Go Driver 2.0. Users should create a
+// single options struct instead.
 func MergeCreateViewOptions(opts ...*CreateViewOptions) *CreateViewOptions {
 	cv := CreateView()
 

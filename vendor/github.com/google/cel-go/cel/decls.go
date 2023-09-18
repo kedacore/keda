@@ -139,7 +139,7 @@ var (
 		kind:        TypeKind,
 		runtimeType: types.TypeType,
 	}
-	//UintType represents a uint type.
+	// UintType represents a uint type.
 	UintType = &Type{
 		kind:        UintKind,
 		runtimeType: types.UintType,
@@ -413,7 +413,7 @@ func Function(name string, opts ...FunctionOpt) EnvOption {
 // FunctionOpt defines a functional  option for configuring a function declaration.
 type FunctionOpt func(*functionDecl) (*functionDecl, error)
 
-// SingletonUnaryBinding creates a singleton function defintion to be used for all function overloads.
+// SingletonUnaryBinding creates a singleton function definition to be used for all function overloads.
 //
 // Note, this approach works well if operand is expected to have a specific trait which it implements,
 // e.g. traits.ContainerType. Otherwise, prefer per-overload function bindings.
@@ -748,9 +748,8 @@ func (f *functionDecl) addOverload(overload *overloadDecl) error {
 				// Allow redefinition of an overload implementation so long as the signatures match.
 				f.overloads[index] = overload
 				return nil
-			} else {
-				return fmt.Errorf("overload redefinition in function. %s: %s has multiple definitions", f.name, o.id)
 			}
+			return fmt.Errorf("overload redefinition in function. %s: %s has multiple definitions", f.name, o.id)
 		}
 	}
 	f.overloads = append(f.overloads, overload)
@@ -1203,5 +1202,45 @@ func collectParamNames(paramNames map[string]struct{}, arg *Type) {
 	}
 	for _, param := range arg.parameters {
 		collectParamNames(paramNames, param)
+	}
+}
+
+func typeValueToKind(tv *types.TypeValue) (Kind, error) {
+	switch tv {
+	case types.BoolType:
+		return BoolKind, nil
+	case types.DoubleType:
+		return DoubleKind, nil
+	case types.IntType:
+		return IntKind, nil
+	case types.UintType:
+		return UintKind, nil
+	case types.ListType:
+		return ListKind, nil
+	case types.MapType:
+		return MapKind, nil
+	case types.StringType:
+		return StringKind, nil
+	case types.BytesType:
+		return BytesKind, nil
+	case types.DurationType:
+		return DurationKind, nil
+	case types.TimestampType:
+		return TimestampKind, nil
+	case types.NullType:
+		return NullTypeKind, nil
+	case types.TypeType:
+		return TypeKind, nil
+	default:
+		switch tv.TypeName() {
+		case "dyn":
+			return DynKind, nil
+		case "google.protobuf.Any":
+			return AnyKind, nil
+		case "optional":
+			return OpaqueKind, nil
+		default:
+			return 0, fmt.Errorf("no known conversion for type of %s", tv.TypeName())
+		}
 	}
 }

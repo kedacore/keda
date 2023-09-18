@@ -76,6 +76,9 @@ func (t *TransactionOptions) SetMaxCommitTime(mct *time.Duration) *TransactionOp
 
 // MergeTransactionOptions combines the given TransactionOptions instances into a single TransactionOptions in a
 // last-one-wins fashion.
+//
+// Deprecated: Merging options structs will not be supported in Go Driver 2.0. Users should create a
+// single options struct instead.
 func MergeTransactionOptions(opts ...*TransactionOptions) *TransactionOptions {
 	t := Transaction()
 	for _, opt := range opts {

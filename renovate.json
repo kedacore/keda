@@ -16,6 +16,7 @@
   "extends": [
     "config:base",
     ":gitSignOff",
-    "default:disablePrControls"
+    "default:disablePrControls",
+    "helpers:pinGitHubActionDigests"
   ]
 }

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"

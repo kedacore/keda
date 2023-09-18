@@ -57,6 +57,9 @@ func (do *DistinctOptions) SetMaxTime(d time.Duration) *DistinctOptions {
 
 // MergeDistinctOptions combines the given DistinctOptions instances into a single DistinctOptions in a last-one-wins
 // fashion.
+//
+// Deprecated: Merging options structs will not be supported in Go Driver 2.0. Users should create a
+// single options struct instead.
 func MergeDistinctOptions(opts ...*DistinctOptions) *DistinctOptions {
 	distinctOpts := Distinct()
 	for _, do := range opts {

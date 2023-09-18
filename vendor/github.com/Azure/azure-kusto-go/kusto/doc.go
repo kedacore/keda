@@ -212,7 +212,7 @@ that is returned supports this via the `.ToStruct()` method.
 // NodeRec represents our Kusto data that will be returned.
 
 	type NodeRec struct {
-		// ID is the table's NodeId. We use the field tag here to to instruct our client to convert NodeId to ID.
+		// ID is the table's NodeId. We use the field tag here to instruct our client to convert NodeId to ID.
 		ID int64 `kusto:"NodeId"`
 		// CollectionTime is Go representation of the Kusto datetime type.
 		CollectionTime time.Time
