@@ -22,7 +22,7 @@ patchesJson6902:
     group: apiextensions.k8s.io
     kind: CustomResourceDefinition
     name: scaledobjects.keda.sh
-  path: patches/scaledobject_patch.yaml    
+  path: patches/scaledobject_patch.yaml
 
 patchesStrategicMerge:
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix.
