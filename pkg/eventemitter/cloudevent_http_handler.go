@@ -20,6 +20,7 @@ import (
 	"context"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
+	"github.com/cloudevents/sdk-go/v2/protocol"
 	"github.com/go-logr/logr"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
@@ -63,8 +64,9 @@ func (c *CloudEventHttpHandler) EmitEvent(eventData EventData, failureFunc func(
 	event.SetType(subject)
 	event.SetData(cloudevents.ApplicationJSON, EmitData{Reason: eventData.reason, Message: eventData.message})
 
-	if err := c.Client.Send(c.ctx, event); err != nil {
+	if err := c.Client.Send(c.ctx, event); protocol.IsUndelivered(err) {
 		c.logger.Error(err, "Failed to send event to cloudevent")
+		failureFunc(eventData, err)
 		return
 	}
 
