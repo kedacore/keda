@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	apimetrics "k8s.io/apiserver/pkg/endpoints/metrics"
@@ -179,7 +180,10 @@ func RunMetricsServer(stopCh <-chan struct{}) {
 	go func() {
 		<-stopCh
 		logger.Info("Shutting down the /metrics server gracefully...")
-		if err := server.Shutdown(context.TODO()); err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := server.Shutdown(ctx); err != nil {
 			logger.Error(err, "http server shutdown error")
 		}
 	}()
