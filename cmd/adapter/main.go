@@ -137,6 +137,7 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 	return kedaprovider.NewProvider(ctx, logger, mgr.GetClient(), *grpcClient), stopCh, nil
 }
 
+// getMetricHandler returns a http handler that exposes metrics from controller-runtime and apiserver
 func getMetricHandler() http.HandlerFunc {
 	// Register apiserver metrics in legacy registry
 	// this contains the apiserver_* metrics
@@ -154,19 +155,32 @@ func getMetricHandler() http.HandlerFunc {
 	}
 }
 
-func RunMetricsServer() {
+// RunMetricsServer runs a http listener and handles the /metrics endpoint
+func RunMetricsServer(stopCh <-chan struct{}) {
 	h := getMetricHandler()
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", h)
-
 	metricsBindAddress := fmt.Sprintf(":%v", metricsAPIServerPort)
+
+	server := &http.Server{
+		Addr:    metricsBindAddress,
+		Handler: mux,
+	}
 
 	go func() {
 		logger.Info("starting /metrics server endpoint")
 		// nosemgrep: use-tls
-		err := http.ListenAndServe(metricsBindAddress, mux)
+		err := server.ListenAndServe()
 		if err != nil {
 			panic(err)
+		}
+	}()
+
+	go func() {
+		<-stopCh
+		logger.Info("Shutting down the /metrics server gracefully...")
+		if err := server.Shutdown(context.TODO()); err != nil {
+			logger.Error(err, "http server shutdown error")
 		}
 	}()
 }
@@ -237,7 +251,8 @@ func main() {
 
 	logger.Info(cmd.Message)
 
-	RunMetricsServer()
+	RunMetricsServer(stopCh)
+
 	if err = cmd.Run(stopCh); err != nil {
 		return
 	}
