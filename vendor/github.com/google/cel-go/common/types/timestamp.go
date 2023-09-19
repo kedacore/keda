@@ -165,14 +165,14 @@ func (t Timestamp) Subtract(subtrahend ref.Val) ref.Val {
 		dur := subtrahend.(Duration)
 		val, err := subtractTimeDurationChecked(t.Time, dur.Duration)
 		if err != nil {
-			return wrapErr(err)
+			return WrapErr(err)
 		}
 		return timestampOf(val)
 	case TimestampType:
 		t2 := subtrahend.(Timestamp).Time
 		val, err := subtractTimeChecked(t.Time, t2)
 		if err != nil {
-			return wrapErr(err)
+			return WrapErr(err)
 		}
 		return durationOf(val)
 	}
@@ -293,7 +293,7 @@ func timeZone(tz ref.Val, visitor timestampVisitor) timestampVisitor {
 		if ind == -1 {
 			loc, err := time.LoadLocation(val)
 			if err != nil {
-				return wrapErr(err)
+				return WrapErr(err)
 			}
 			return visitor(t.In(loc))
 		}
@@ -302,11 +302,11 @@ func timeZone(tz ref.Val, visitor timestampVisitor) timestampVisitor {
 		// in the format ^(+|-)(0[0-9]|1[0-4]):[0-5][0-9]$. The numerical input is parsed in terms of hours and minutes.
 		hr, err := strconv.Atoi(string(val[0:ind]))
 		if err != nil {
-			return wrapErr(err)
+			return WrapErr(err)
 		}
 		min, err := strconv.Atoi(string(val[ind+1:]))
 		if err != nil {
-			return wrapErr(err)
+			return WrapErr(err)
 		}
 		var offset int
 		if string(val[0]) == "-" {

@@ -8,11 +8,13 @@ package topology
 
 import (
 	"crypto/tls"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/internal/logger"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
@@ -62,7 +64,7 @@ func NewConfig(co *options.ClientOptions, clock *session.ClusterClock) (*Config,
 	var connOpts []ConnectionOption
 	var serverOpts []ServerOption
 
-	cfgp := new(Config)
+	cfgp := &Config{}
 
 	// Set the default "ServerSelectionTimeout" to 30 seconds.
 	cfgp.ServerSelectionTimeout = defaultServerSelectionTimeout
@@ -224,7 +226,7 @@ func NewConfig(co *options.ClientOptions, clock *session.ClusterClock) (*Config,
 
 	// MaxConIdleTime
 	if co.MaxConnIdleTime != nil {
-		connOpts = append(connOpts, WithIdleTimeout(
+		serverOpts = append(serverOpts, WithConnectionPoolMaxIdleTime(
 			func(time.Duration) time.Duration { return *co.MaxConnIdleTime },
 		))
 	}
@@ -330,6 +332,24 @@ func NewConfig(co *options.ClientOptions, clock *session.ClusterClock) (*Config,
 		connOpts = append(
 			connOpts,
 			WithConnectionLoadBalanced(func(bool) bool { return *co.LoadBalanced }),
+		)
+	}
+
+	if opts := co.LoggerOptions; opts != nil {
+		// Build an internal component-level mapping.
+		componentLevels := make(map[logger.Component]logger.Level)
+		for component, level := range opts.ComponentLevels {
+			componentLevels[logger.Component(component)] = logger.Level(level)
+		}
+
+		log, err := logger.New(opts.Sink, opts.MaxDocumentLength, componentLevels)
+		if err != nil {
+			return nil, fmt.Errorf("error creating logger: %w", err)
+		}
+
+		serverOpts = append(
+			serverOpts,
+			withLogger(func() *logger.Logger { return log }),
 		)
 	}
 

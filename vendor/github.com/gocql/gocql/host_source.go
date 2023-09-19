@@ -714,7 +714,7 @@ func refreshRing(r *ringDescriber) error {
 			if !ok {
 				return fmt.Errorf("get existing host=%s from prevHosts: %w", h, ErrCannotFindHost)
 			}
-			if h.nodeToNodeAddress().Equal(existing.nodeToNodeAddress()) {
+			if h.connectAddress.Equal(existing.connectAddress) && h.nodeToNodeAddress().Equal(existing.nodeToNodeAddress()) {
 				// no host IP change
 				host.update(h)
 			} else {

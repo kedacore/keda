@@ -112,7 +112,7 @@ func validateWorkload(so *ScaledObject, action string) (admission.Warnings, erro
 }
 
 func verifyTriggers(incomingSo *ScaledObject, action string) error {
-	err := ValidateTriggers(scaledobjectlog.WithValues("name", incomingSo.Name), incomingSo.Spec.Triggers)
+	err := ValidateTriggers(incomingSo.Spec.Triggers)
 	if err != nil {
 		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
 		prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "incorrect-triggers")

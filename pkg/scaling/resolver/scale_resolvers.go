@@ -112,7 +112,7 @@ func ResolveScaleTargetPodSpec(ctx context.Context, kubeClient client.Client, sc
 			statefulSet := &appsv1.StatefulSet{}
 			if err := kubeClient.Get(ctx, objKey, statefulSet); err != nil {
 				// resource doesn't exist
-				logger.Error(err, "target deployment doesn't exist")
+				logger.Error(err, "target statefulset doesn't exist")
 				return nil, "", err
 			}
 			podTemplateSpec.ObjectMeta = statefulSet.ObjectMeta
@@ -181,7 +181,8 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 	if podTemplateSpec != nil {
 		authParams, podIdentity := resolveAuthRef(ctx, client, logger, triggerAuthRef, &podTemplateSpec.Spec, namespace, secretsLister)
 
-		if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAwsEKS {
+		switch podIdentity.Provider {
+		case kedav1alpha1.PodIdentityProviderAwsEKS:
 			serviceAccountName := defaultServiceAccount
 			if podTemplateSpec.Spec.ServiceAccountName != "" {
 				serviceAccountName = podTemplateSpec.Spec.ServiceAccountName
@@ -193,8 +194,13 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 					fmt.Errorf("error getting service account: '%s', error: %w", serviceAccountName, err)
 			}
 			authParams["awsRoleArn"] = serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS]
-		} else if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAwsKiam {
+		case kedav1alpha1.PodIdentityProviderAwsKiam:
 			authParams["awsRoleArn"] = podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
+		case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+			if podIdentity.IdentityID != nil && *podIdentity.IdentityID == "" {
+				return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, fmt.Errorf("IdentityID of PodIdentity should not be empty")
+			}
+		default:
 		}
 		return authParams, podIdentity, nil
 	}

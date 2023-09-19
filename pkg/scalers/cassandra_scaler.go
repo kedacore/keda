@@ -35,7 +35,6 @@ type CassandraMetadata struct {
 	query                      string
 	targetQueryValue           int64
 	activationTargetQueryValue int64
-	metricName                 string
 	scalerIndex                int
 }
 
@@ -147,14 +146,6 @@ func parseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 	} else {
 		return nil, fmt.Errorf("no keyspace given")
 	}
-
-	// FIXME: DEPRECATED to be removed in v2.12
-	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("cassandra-%s", val))
-	} else {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("cassandra-%s", meta.keyspace))
-	}
-
 	if val, ok := config.AuthParams["password"]; ok {
 		meta.password = val
 	} else {
@@ -189,7 +180,7 @@ func newCassandraSession(meta *CassandraMetadata, logger logr.Logger) (*gocql.Se
 func (s *cassandraScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("cassandra-%s", s.metadata.keyspace))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.targetQueryValue),
 	}

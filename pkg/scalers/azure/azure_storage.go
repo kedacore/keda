@@ -111,7 +111,7 @@ func ParseAzureStorageQueueConnection(ctx context.Context, httpClient util.HTTPD
 
 		return credential, endpoint, nil
 	default:
-		return nil, nil, fmt.Errorf("azure queues doesn't support %s pod identity type", podIdentity)
+		return nil, nil, fmt.Errorf("azure queues doesn't support %s pod identity type", podIdentity.Provider)
 	}
 }
 
@@ -139,7 +139,7 @@ func ParseAzureStorageBlobConnection(ctx context.Context, httpClient util.HTTPDo
 
 		return credential, endpoint, nil
 	default:
-		return nil, nil, fmt.Errorf("azure queues doesn't support %s pod identity type", podIdentity)
+		return nil, nil, fmt.Errorf("azure queues doesn't support %s pod identity type", podIdentity.Provider)
 	}
 }
 
@@ -207,9 +207,9 @@ func parseAccessTokenAndEndpoint(ctx context.Context, httpClient util.HTTPDoer, 
 
 	switch podIdentity.Provider {
 	case kedav1alpha1.PodIdentityProviderAzure:
-		token, err = GetAzureADPodIdentityToken(ctx, httpClient, podIdentity.IdentityID, storageResource)
+		token, err = GetAzureADPodIdentityToken(ctx, httpClient, podIdentity.GetIdentityID(), storageResource)
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		token, err = GetAzureADWorkloadIdentityToken(ctx, podIdentity.IdentityID, storageResource)
+		token, err = GetAzureADWorkloadIdentityToken(ctx, podIdentity.GetIdentityID(), storageResource)
 	}
 
 	if err != nil {

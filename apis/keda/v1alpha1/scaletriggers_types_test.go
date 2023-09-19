@@ -3,7 +3,6 @@ package v1alpha1
 import (
 	"testing"
 
-	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -90,7 +89,7 @@ func TestValidateTriggers(t *testing.T) {
 	for _, test := range tests {
 		tt := test
 		t.Run(test.name, func(t *testing.T) {
-			err := ValidateTriggers(logr.Discard(), tt.triggers)
+			err := ValidateTriggers(tt.triggers)
 			if test.expectedErrMsg == "" {
 				assert.NoError(t, err)
 			} else {
