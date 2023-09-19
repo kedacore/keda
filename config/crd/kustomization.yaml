@@ -17,6 +17,13 @@ patchesJson6902:
     name: scaledjobs.keda.sh
   path: patches/scaledjob_patch.yaml
 
+- target:
+    version: v1
+    group: apiextensions.k8s.io
+    kind: CustomResourceDefinition
+    name: scaledobjects.keda.sh
+  path: patches/scaledobject_patch.yaml    
+
 patchesStrategicMerge:
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix.
 # patches here are for enabling the conversion webhook for each CRD
