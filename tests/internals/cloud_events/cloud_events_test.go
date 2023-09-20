@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -94,7 +95,7 @@ const (
       spec:
         containers:
         - name: httpreceiver
-          image: docker.io/spiritzhou/cloudeventhttp:v2
+          image: ghcr.io/kedacore/tests-cloudevents-http:latest
           ports:
           - containerPort: 8899
           resources:
@@ -145,6 +146,7 @@ func TestScaledObjectGeneral(t *testing.T) {
 	data, templates := getTemplateData()
 	CreateKubernetesResources(t, kc, namespace, data, templates)
 
+	time.Sleep(15 * time.Second)
 	assert.True(t, WaitForAllPodRunningInNamespace(t, kc, namespace, 5, 20), "all pods should be running")
 
 	testErrCloudEventEmitValue(t, kc, data)
