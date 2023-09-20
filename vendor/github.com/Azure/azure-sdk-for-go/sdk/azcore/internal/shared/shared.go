@@ -14,8 +14,6 @@ import (
 	"regexp"
 	"strconv"
 	"time"
-
-	"github.com/Azure/azure-sdk-for-go/sdk/internal/errorinfo"
 )
 
 // CtxWithHTTPHeaderKey is used as a context key for adding/retrieving http.Header.
@@ -26,12 +24,6 @@ type CtxWithRetryOptionsKey struct{}
 
 // CtxIncludeResponseKey is used as a context key for retrieving the raw response.
 type CtxIncludeResponseKey struct{}
-
-// CtxWithTracingTracer is used as a context key for adding/retrieving tracing.Tracer.
-type CtxWithTracingTracer struct{}
-
-// CtxAPINameKey is used as a context key for adding/retrieving the API name.
-type CtxAPINameKey struct{}
 
 // Delay waits for the duration to elapse or the context to be cancelled.
 func Delay(ctx context.Context, delay time.Duration) error {
@@ -109,26 +101,3 @@ func ExtractModuleName(clientName string) (string, string, error) {
 	}
 	return matches[3], matches[2], nil
 }
-
-// NonRetriableError marks the specified error as non-retriable.
-func NonRetriableError(err error) error {
-	return &nonRetriableError{err}
-}
-
-type nonRetriableError struct {
-	error
-}
-
-func (p *nonRetriableError) Error() string {
-	return p.error.Error()
-}
-
-func (*nonRetriableError) NonRetriable() {
-	// marker method
-}
-
-func (p *nonRetriableError) Unwrap() error {
-	return p.error
-}
-
-var _ errorinfo.NonRetriable = (*nonRetriableError)(nil)
