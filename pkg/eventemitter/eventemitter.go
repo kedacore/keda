@@ -35,6 +35,7 @@ import (
 var log = logf.Log.WithName("event_emitter")
 var ch chan EventData
 
+const CloudEventType = "com.cloudevents.keda"
 const MaxRetryTimes = 5
 const MaxChannelBuffer = 10
 

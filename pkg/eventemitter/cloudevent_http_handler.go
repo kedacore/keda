@@ -82,7 +82,8 @@ func (c *CloudEventHTTPHandler) EmitEvent(eventData EventData, failureFunc func(
 
 	event := cloudevents.NewEvent()
 	event.SetSource(source)
-	event.SetType(subject)
+	event.SetSubject(subject)
+	event.SetType(CloudEventType)
 
 	if err := event.SetData(cloudevents.ApplicationJSON, EmitData{Reason: eventData.reason, Message: eventData.message}); err != nil {
 		c.logger.Error(err, "Failed to set data to cloudevent")
