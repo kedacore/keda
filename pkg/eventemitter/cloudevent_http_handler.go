@@ -18,14 +18,15 @@ package eventemitter
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/cloudevents/sdk-go/v2/protocol"
 	"github.com/go-logr/logr"
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
-type CloudEventHttpHandler struct {
+type CloudEventHTTPHandler struct {
 	Endpoint    string
 	Client      cloudevents.Client
 	ClusterName string
@@ -33,38 +34,63 @@ type CloudEventHttpHandler struct {
 	logger      logr.Logger
 }
 
-func NewCloudEventHttpHandler(context context.Context, spec kedav1alpha1.CloudEventHttpSpec, clusterName string, logger logr.Logger) (*CloudEventHttpHandler, error) {
+type CloudEventHTTPMetadata struct {
+	endPoint string
+}
+
+func NewCloudEventHTTPHandler(context context.Context, metaData map[string]string, clusterName string, logger logr.Logger) (*CloudEventHTTPHandler, error) {
+	meta, err := parseCloudEventHTTPMetadata(metaData)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing CloudEventHTTP metadata: %w", err)
+	}
+
 	client, err := cloudevents.NewClientHTTP()
-	ctx := cloudevents.ContextWithTarget(context, spec.EndPoint)
+	ctx := cloudevents.ContextWithTarget(context, meta.endPoint)
 	if err != nil {
 		return nil, err
 	}
 
-	logger.V(1).Info("Create new cloudevents http handler")
-	return &CloudEventHttpHandler{
+	logger.Info("Create new cloudevents http handler with endPoint: " + meta.endPoint)
+	return &CloudEventHTTPHandler{
 		Client:      client,
-		Endpoint:    spec.EndPoint,
+		Endpoint:    meta.endPoint,
 		ClusterName: clusterName,
 		ctx:         ctx,
 		logger:      logger,
 	}, nil
 }
 
-func (c *CloudEventHttpHandler) CloseHandler() {
+func parseCloudEventHTTPMetadata(metaData map[string]string) (*CloudEventHTTPMetadata, error) {
+	meta := CloudEventHTTPMetadata{}
+
+	if val, ok := metaData["endPoint"]; ok && val != "" {
+		meta.endPoint = val
+	} else {
+		return nil, errors.New("empty endPoint")
+	}
+
+	return &meta, nil
+}
+
+func (c *CloudEventHTTPHandler) CloseHandler() {
 
 }
 
-func (c *CloudEventHttpHandler) EmitEvent(eventData EventData, failureFunc func(eventData EventData, err error)) {
-
+func (c *CloudEventHTTPHandler) EmitEvent(eventData EventData, failureFunc func(eventData EventData, err error)) {
 	source := "/" + c.ClusterName + "/" + eventData.namespace + "/keda"
 	subject := "/" + c.ClusterName + "/" + eventData.namespace + "/workload/" + eventData.objectName
 
 	event := cloudevents.NewEvent()
 	event.SetSource(source)
 	event.SetType(subject)
-	event.SetData(cloudevents.ApplicationJSON, EmitData{Reason: eventData.reason, Message: eventData.message})
 
-	if err := c.Client.Send(c.ctx, event); protocol.IsUndelivered(err) {
+	if err := event.SetData(cloudevents.ApplicationJSON, EmitData{Reason: eventData.reason, Message: eventData.message}); err != nil {
+		c.logger.Error(err, "Failed to set data to cloudevent")
+		return
+	}
+
+	err := c.Client.Send(c.ctx, event)
+	if protocol.IsNACK(err) || protocol.IsUndelivered(err) {
 		c.logger.Error(err, "Failed to send event to cloudevent")
 		failureFunc(eventData, err)
 		return

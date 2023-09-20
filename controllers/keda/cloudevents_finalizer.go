@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
+
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/controllers/keda/util"
 )
@@ -51,7 +52,7 @@ func (r *CloudEventsReconciler) FinalizeCloudEventsResource(ctx context.Context,
 	cloudEventsResourceType := "CloudEvents"
 
 	if util.Contains(cloudEvent.GetFinalizers(), cloudEventsFinalizer) {
-		if err := r.stopEventLoop(ctx, logger, cloudEvent); err != nil {
+		if err := r.stopEventLoop(logger, cloudEvent); err != nil {
 			return err
 		}
 		cloudEvent.SetFinalizers(util.Remove(cloudEvent.GetFinalizers(), cloudEventsFinalizer))

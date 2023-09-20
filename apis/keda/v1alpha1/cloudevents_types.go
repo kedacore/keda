@@ -47,25 +47,15 @@ type CloudEventSpec struct {
 	// +optional
 	ClusterName string `json:"clusterName,omitempty"`
 
-	// +optional
-	CloudEventHttp *CloudEventHttpSpec `json:"cloudEventHttp,omitempty"`
-
-	// +optional
-	AzureEventGrid *AzureEventGridSpec `json:"azureEventGrid,omitempty"`
+	EventHandlers []CloudEventHandler `json:"eventHandlers"`
 }
 
-type CloudEventHttpSpec struct {
-	EndPoint string `json:"endPoint"`
-}
+type CloudEventHandler struct {
+	Type string `json:"type"`
+	// +optional
+	Name string `json:"name,omitempty"`
 
-type AzureEventGridSpec struct {
-	EndPoint string `json:"endPoint"`
-
-	Key string `json:"key"`
-
-	TopicName string `json:"topicName"`
-
-	SubscriptionName string `json:"subscriptionName"`
+	Metadata map[string]string `json:"metadata"`
 }
 
 func init() {

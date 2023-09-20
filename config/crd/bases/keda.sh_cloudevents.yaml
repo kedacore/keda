@@ -34,31 +34,26 @@ spec:
           spec:
             description: CloudEvent
             properties:
-              azureEventGrid:
-                properties:
-                  endPoint:
-                    type: string
-                  key:
-                    type: string
-                  subscriptionName:
-                    type: string
-                  topicName:
-                    type: string
-                required:
-                - endPoint
-                - key
-                - subscriptionName
-                - topicName
-                type: object
-              cloudEventHttp:
-                properties:
-                  endPoint:
-                    type: string
-                required:
-                - endPoint
-                type: object
               clusterName:
                 type: string
+              eventHandlers:
+                items:
+                  properties:
+                    metadata:
+                      additionalProperties:
+                        type: string
+                      type: object
+                    name:
+                      type: string
+                    type:
+                      type: string
+                  required:
+                  - metadata
+                  - type
+                  type: object
+                type: array
+            required:
+            - eventHandlers
             type: object
         required:
         - spec

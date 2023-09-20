@@ -20,6 +20,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/cache"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -28,7 +29,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	"github.com/go-logr/logr"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventemitter"
 	"github.com/kedacore/keda/v2/pkg/prommetrics"
@@ -121,7 +121,7 @@ func (r *CloudEventsReconciler) requestEventLoop(ctx context.Context, logger log
 		return err
 	}
 
-	if err = r.EventEmitter.HandleCloudEvents(ctx, logger, cloudEvent); err != nil {
+	if err = r.EventEmitter.HandleCloudEvents(ctx, cloudEvent); err != nil {
 		return err
 	}
 
@@ -132,14 +132,14 @@ func (r *CloudEventsReconciler) requestEventLoop(ctx context.Context, logger log
 }
 
 // stopEventLoop stops EventLoop handler for the respective CloudEvent
-func (r *CloudEventsReconciler) stopEventLoop(ctx context.Context, logger logr.Logger, cloudEvent *kedav1alpha1.CloudEvent) error {
+func (r *CloudEventsReconciler) stopEventLoop(logger logr.Logger, cloudEvent *kedav1alpha1.CloudEvent) error {
 	key, err := cache.MetaNamespaceKeyFunc(cloudEvent)
 	if err != nil {
 		logger.Error(err, "error getting key for cloudEvent")
 		return err
 	}
 
-	if err := r.EventEmitter.DeleteCloudEvents(ctx, logger, cloudEvent); err != nil {
+	if err := r.EventEmitter.DeleteCloudEvents(cloudEvent); err != nil {
 		return err
 	}
 	// delete CloudEvent's current Generation

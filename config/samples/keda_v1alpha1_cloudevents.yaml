@@ -5,10 +5,8 @@ metadata:
   namespace: keda
 spec:
   clusterName: cluster-sample
-  azureEventGrid: 
-    endPoint: https://eventgridtestnamespace.eastus-1.eventgrid.azure.net/
-    key: FXZBmVucowoeM/Kl0zNeDJHoyOZO+sXB+IeeE7S6aSg=
-    topicName: testtopicone
-    subscriptionName: 66a7fcba-dac3-46d8-b509-202f305618c8
-  cloudEventHttp:
-    endPoint: "http://localhost:8899"
+  eventHandlers:
+  - type: cloud-event-http
+    name: cloud-event-http-sample
+    metadata:
+      endPoint: "http://localhost:8899"
