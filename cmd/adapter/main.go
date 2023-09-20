@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	appsv1 "k8s.io/api/apps/v1"
@@ -156,7 +155,7 @@ func getMetricHandler() http.HandlerFunc {
 }
 
 // RunMetricsServer runs a http listener and handles the /metrics endpoint
-func RunMetricsServer(stopCh <-chan struct{}) {
+func RunMetricsServer(ctx context.Context, stopCh <-chan struct{}) {
 	h := getMetricHandler()
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", h)
@@ -171,7 +170,7 @@ func RunMetricsServer(stopCh <-chan struct{}) {
 		logger.Info("starting /metrics server endpoint")
 		// nosemgrep: use-tls
 		err := server.ListenAndServe()
-		if err != nil {
+		if err != http.ErrServerClosed {
 			panic(err)
 		}
 	}()
@@ -179,8 +178,6 @@ func RunMetricsServer(stopCh <-chan struct{}) {
 	go func() {
 		<-stopCh
 		logger.Info("Shutting down the /metrics server gracefully...")
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
 
 		if err := server.Shutdown(ctx); err != nil {
 			logger.Error(err, "http server shutdown error")
@@ -254,7 +251,7 @@ func main() {
 
 	logger.Info(cmd.Message)
 
-	RunMetricsServer(stopCh)
+	RunMetricsServer(ctx, stopCh)
 
 	if err = cmd.Run(stopCh); err != nil {
 		return

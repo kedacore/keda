@@ -620,7 +620,9 @@ func testWebhookMetricValues(t *testing.T) {
 }
 
 func testMetricServerMetrics(t *testing.T) {
-	_ = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaMetricsServerPrometheusURL))
+	families := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaMetricsServerPrometheusURL))
+	checkMetricServerValues(t, families)
+	checkBuildInfo(t, families)
 }
 
 func testOperatorMetricValues(t *testing.T, kc *kubernetes.Clientset) {
@@ -767,4 +769,39 @@ func checkWebhookValues(t *testing.T, families map[string]*prommodel.MetricFamil
 		metricValue += *metric.Counter.Value
 	}
 	assert.GreaterOrEqual(t, metricValue, 1.0, "keda_webhook_scaled_object_validation_total has to be greater than 0")
+}
+
+func checkMetricServerValues(t *testing.T, families map[string]*prommodel.MetricFamily) {
+	t.Log("--- testing metric server metrics ---")
+
+	family, ok := families["workqueue_adds_total"]
+	if !ok {
+		t.Errorf("metric workqueue_adds_total not available")
+		return
+	}
+
+	metricValue := 0.0
+	metrics := family.GetMetric()
+	for _, metric := range metrics {
+		metricValue += *metric.Counter.Value
+	}
+	assert.GreaterOrEqual(t, metricValue, 1.0, "workqueue_adds_total has to be greater than 0")
+
+	family, ok = families["apiserver_request_total"]
+	if !ok {
+		t.Errorf("metric apiserver_request_total not available")
+		return
+	}
+
+	metricValue = 0.0
+	metrics = family.GetMetric()
+	for _, metric := range metrics {
+		labels := metric.GetLabel()
+		for _, label := range labels {
+			if *label.Name == "group" && *label.Value == "external.metrics.k8s.io" {
+				metricValue = *metric.Counter.Value
+			}
+		}
+	}
+	assert.GreaterOrEqual(t, metricValue, 1.0, "apiserver_request_total has to be greater than 0")
 }
