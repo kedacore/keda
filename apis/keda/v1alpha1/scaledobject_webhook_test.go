@@ -399,6 +399,26 @@ var _ = It("should validate the so update if it's removing the finalizer even if
 	}).ShouldNot(HaveOccurred())
 })
 
+var _ = It("shouldn't create so when stabilizationWindowSeconds exceeds 3600", func() {
+
+	namespaceName := "fail-so-creation"
+	namespace := createNamespace(namespaceName)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
+	so.Spec.Advanced.HorizontalPodAutoscalerConfig = &HorizontalPodAutoscalerConfig{
+		Behavior: &v2.HorizontalPodAutoscalerBehavior{
+			ScaleDown: &v2.HPAScalingRules{
+				StabilizationWindowSeconds: ptr.To[int32](3700),
+			},
+		},
+	}
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
+})
+
 var _ = AfterSuite(func() {
 	cancel()
 	By("tearing down the test environment")
