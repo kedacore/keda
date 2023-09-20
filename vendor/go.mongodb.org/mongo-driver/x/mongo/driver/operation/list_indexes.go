@@ -87,7 +87,7 @@ func (li *ListIndexes) Execute(ctx context.Context) error {
 
 }
 
-func (li *ListIndexes) command(dst []byte, desc description.SelectedServer) ([]byte, error) {
+func (li *ListIndexes) command(dst []byte, _ description.SelectedServer) ([]byte, error) {
 	dst = bsoncore.AppendStringElement(dst, "listIndexes", li.collection)
 	cursorIdx, cursorDoc := bsoncore.AppendDocumentStart(nil)
 

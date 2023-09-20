@@ -63,7 +63,7 @@ func (es *EndSessions) Execute(ctx context.Context) error {
 
 }
 
-func (es *EndSessions) command(dst []byte, desc description.SelectedServer) ([]byte, error) {
+func (es *EndSessions) command(dst []byte, _ description.SelectedServer) ([]byte, error) {
 	if es.sessionIDs != nil {
 		dst = bsoncore.AppendArrayElement(dst, "endSessions", es.sessionIDs)
 	}

@@ -132,7 +132,14 @@ const (
 type AuthPodIdentity struct {
 	Provider PodIdentityProvider `json:"provider"`
 	// +optional
-	IdentityID string `json:"identityId"`
+	IdentityID *string `json:"identityId"`
+}
+
+func (a *AuthPodIdentity) GetIdentityID() string {
+	if a.IdentityID == nil {
+		return ""
+	}
+	return *a.IdentityID
 }
 
 // AuthSecretTargetRef is used to authenticate using a reference to a secret

@@ -75,9 +75,8 @@ type Client struct {
 	tr tracing.Tracer
 
 	// cached on the client to support shallow copying with new values
-	tp        tracing.Provider
-	modVer    string
-	namespace string
+	tp     tracing.Provider
+	modVer string
 }
 
 // NewClient creates a new Client instance with the provided values.
@@ -105,16 +104,12 @@ func NewClient(clientName, moduleVersion string, plOpts runtime.PipelineOptions,
 	pl := runtime.NewPipeline(mod, moduleVersion, plOpts, options)
 
 	tr := options.TracingProvider.NewTracer(client, moduleVersion)
-	if tr.Enabled() && plOpts.TracingNamespace != "" {
-		tr.SetAttributes(tracing.Attribute{Key: "az.namespace", Value: plOpts.TracingNamespace})
-	}
 
 	return &Client{
-		pl:        pl,
-		tr:        tr,
-		tp:        options.TracingProvider,
-		modVer:    moduleVersion,
-		namespace: plOpts.TracingNamespace,
+		pl:     pl,
+		tr:     tr,
+		tp:     options.TracingProvider,
+		modVer: moduleVersion,
 	}, nil
 }
 
@@ -133,8 +128,5 @@ func (c *Client) Tracer() tracing.Tracer {
 //   - clientName - the fully qualified name of the client ("package.Client"); this is used by the tracing provider when creating spans
 func (c *Client) WithClientName(clientName string) *Client {
 	tr := c.tp.NewTracer(clientName, c.modVer)
-	if tr.Enabled() && c.namespace != "" {
-		tr.SetAttributes(tracing.Attribute{Key: "az.namespace", Value: c.namespace})
-	}
-	return &Client{pl: c.pl, tr: tr, tp: c.tp, modVer: c.modVer, namespace: c.namespace}
+	return &Client{pl: c.pl, tr: tr, tp: c.tp, modVer: c.modVer}
 }
