@@ -24,6 +24,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	appsv1 "k8s.io/api/apps/v1"
 	apimetrics "k8s.io/apiserver/pkg/endpoints/metrics"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -35,7 +36,6 @@ import (
 	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
 	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
-
 	basecmd "sigs.k8s.io/custom-metrics-apiserver/pkg/cmd"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 
@@ -43,7 +43,6 @@ import (
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
 	kedaprovider "github.com/kedacore/keda/v2/pkg/provider"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
-	"github.com/prometheus/client_golang/prometheus/collectors"
 )
 
 // Adapter creates External Metrics Provider
