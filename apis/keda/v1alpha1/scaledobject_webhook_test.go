@@ -539,7 +539,7 @@ var _ = It("should validate the so creation with ScalingModifiers when formula t
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, true, true)
 
-	sm := ScalingModifiers{Formula: "workload_trig + 1"}
+	sm := ScalingModifiers{Target: "2", Formula: "workload_trig + 1"}
 
 	triggers := []ScaleTriggers{
 		{
