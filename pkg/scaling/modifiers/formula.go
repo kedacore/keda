@@ -124,3 +124,17 @@ func AddPairTriggerAndMetric(list map[string]string, so *kedav1alpha1.ScaledObje
 	}
 	return map[string]string{}, nil
 }
+
+// this functions servers a purpose of being dummy value filler for expr.Compile.
+// When expression is compiled with value-map it will detect whenever any is
+// undefined - detecting if trigger isn't defined.
+func CreateDummyFormulaMap(triggers []kedav1alpha1.ScaleTriggers) map[string]float64 {
+	dummyValue := -1.0
+	ret := make(map[string]float64)
+	for _, trigger := range triggers {
+		if trigger.Name != "" {
+			ret[trigger.Name] = dummyValue
+		}
+	}
+	return ret
+}

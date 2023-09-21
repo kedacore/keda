@@ -667,7 +667,7 @@ func createScaledObjectSTZ(name string, namespace string, targetName string, min
 	}
 }
 
-func createScaledObjectCSL(namespace string, sm ScalingModifiers, triggers []ScaleTriggers) *ScaledObject {
+func createScaledObjectScalingModifiers(namespace string, sm ScalingModifiers, triggers []ScaleTriggers) *ScaledObject {
 	name := soName
 	targetName := workloadName
 	return &ScaledObject{

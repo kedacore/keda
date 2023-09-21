@@ -251,7 +251,7 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 	// if ScalingModifiers struct is not empty, expect Formula
 	// to be non-empty. If target is > 0.0 create a compositeScaler structure
 	if scaledObject.Spec.Advanced != nil && !reflect.DeepEqual(scaledObject.Spec.Advanced.ScalingModifiers, kedav1alpha1.ScalingModifiers{}) {
-		validNumTarget, validMetricType, err := kedav1alpha1.ValidateScalingModifiers(scaledObject, scaledObjectMetricSpecs)
+		validNumTarget, validMetricType, err := kedav1alpha1.ValidateScalingModifiers(scaledObject, scaledObjectMetricSpecs, "hpa")
 		if err != nil {
 			logger.Error(err, "error validating compositeScalingLogic")
 			return nil, err

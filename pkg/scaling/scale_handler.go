@@ -368,7 +368,11 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
 		if obj.Spec.Advanced != nil && obj.Spec.Advanced.ScalingModifiers.Formula != "" {
-			program, err := expr.Compile(obj.Spec.Advanced.ScalingModifiers.Formula)
+			// gauron99 possible TODO: add expr.AsFloat64() with expr.Env(triggerMap)
+			// if the trigger-metrics pairs can be effectively got here instead of when
+			// iterating over all metrics - this would make this a better check
+			dummyFormulaMap := modifiers.CreateDummyFormulaMap(obj.Spec.Triggers)
+			program, err := expr.Compile(obj.Spec.Advanced.ScalingModifiers.Formula, expr.AsFloat64(), expr.Env(dummyFormulaMap))
 			if err != nil {
 				return nil, fmt.Errorf("error trying to compile custom formula: %w", err)
 			}

@@ -36,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	"github.com/antonmedv/expr"
 	prommetrics "github.com/kedacore/keda/v2/pkg/prommetrics/webhook"
 )
 
@@ -218,7 +219,7 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string) error {
 
 	// verify ScalingModifiers structure if defined in ScaledObject
 	if incomingSo.Spec.Advanced != nil && !reflect.DeepEqual(incomingSo.Spec.Advanced.ScalingModifiers, ScalingModifiers{}) {
-		_, _, err = ValidateScalingModifiers(incomingSo, []autoscalingv2.MetricSpec{})
+		_, _, err = ValidateScalingModifiers(incomingSo, []autoscalingv2.MetricSpec{}, "webhook")
 		if err != nil {
 			scaledobjectlog.Error(err, "error validating ScalingModifiers")
 			prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "complex-scaling-logic")
@@ -313,23 +314,23 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
 
 // ValidateScalingModifiers validates all combinations of given arguments
 // and their values
-func ValidateScalingModifiers(so *ScaledObject, specs []autoscalingv2.MetricSpec) (float64, autoscalingv2.MetricTargetType, error) {
+func ValidateScalingModifiers(so *ScaledObject, specs []autoscalingv2.MetricSpec, identifier string) (float64, autoscalingv2.MetricTargetType, error) {
 	sm := so.Spec.Advanced.ScalingModifiers
 
 	if sm.Formula == "" {
-		return -1, autoscalingv2.MetricTargetType(""), fmt.Errorf("error ScalingModifiers.Formula needs to be specified with structure")
+		return -1, autoscalingv2.MetricTargetType(""), fmt.Errorf("error ScalingModifiers.Formula is mandatory")
 	}
 
 	var num float64
 	var metricType autoscalingv2.MetricTargetType
 
 	// validate formula if not empty
-	if err := validateCSLformula(so); err != nil {
+	if err := validateScalingModifiersFormula(so, identifier); err != nil {
 		err := errors.Join(fmt.Errorf("error validating formula in ScalingModifiers"), err)
 		return -1, autoscalingv2.MetricTargetType(""), err
 	}
 	// validate target if not empty
-	num, metricType, err := validateCSLtarget(so, specs)
+	num, metricType, err := validateScalingModifiersTarget(so, specs)
 	if err != nil {
 		err := errors.Join(fmt.Errorf("error validating target in ScalingModifiers"), err)
 		return -1, autoscalingv2.MetricTargetType(""), err
@@ -337,7 +338,7 @@ func ValidateScalingModifiers(so *ScaledObject, specs []autoscalingv2.MetricSpec
 	return num, metricType, nil
 }
 
-func validateCSLformula(so *ScaledObject) error {
+func validateScalingModifiersFormula(so *ScaledObject, identifier string) error {
 	sm := so.Spec.Advanced.ScalingModifiers
 
 	// if formula is empty, nothing to validate
@@ -349,21 +350,32 @@ func validateCSLformula(so *ScaledObject) error {
 		return fmt.Errorf("formula is given but target is empty")
 	}
 
-	// possible TODO: this could be more soffisticated - only check for names that
-	// are used in the formula itself. This would require parsing the formula.
-	for _, trig := range so.Spec.Triggers {
-		// if resource metrics are given, skip
-		if trig.Type == cpuString || trig.Type == memoryString {
-			continue
+	// Compile & Run with dummy values to determine if all triggers in formula are
+	// defined (have names) ONLY in Webhook to avoid compiling in reconcile loop
+	if identifier == "webhook" {
+		triggersMap := make(map[string]float64)
+		for _, trig := range so.Spec.Triggers {
+			// if resource metrics are given, skip
+			if trig.Type == cpuString || trig.Type == memoryString {
+				continue
+			}
+			if trig.Name != "" {
+				triggersMap[trig.Name] = 1.0
+			}
 		}
-		if trig.Name == "" {
-			return fmt.Errorf("trigger of type '%s' has empty name but sm.Formula is defined", trig.Type)
+		compiled, err := expr.Compile(sm.Formula, expr.Env(triggersMap), expr.AsFloat64())
+		if err != nil {
+			return err
+		}
+		_, err = expr.Run(compiled, triggersMap)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
-func validateCSLtarget(so *ScaledObject, specs []autoscalingv2.MetricSpec) (float64, autoscalingv2.MetricTargetType, error) {
+func validateScalingModifiersTarget(so *ScaledObject, specs []autoscalingv2.MetricSpec) (float64, autoscalingv2.MetricTargetType, error) {
 	sm := so.Spec.Advanced.ScalingModifiers
 
 	if sm.Target == "" {
@@ -381,8 +393,10 @@ func validateCSLtarget(so *ScaledObject, specs []autoscalingv2.MetricSpec) (floa
 	// check trigger types in SO
 	var trigType autoscalingv2.MetricTargetType
 
+	// gauron99: possible TODO: more sofisticated check for trigger could be used here
+	// as well if solution is found (check just the right triggers that are used)
 	for _, trig := range so.Spec.Triggers {
-		if trig.Type == cpuString || trig.Type == memoryString {
+		if trig.Type == cpuString || trig.Type == memoryString || trig.Name == "" {
 			continue
 		}
 		var current autoscalingv2.MetricTargetType
