@@ -45,7 +45,7 @@ import (
 )
 
 const testNamespaceGlobal = "testNamespace"
-const compositeMetricNameGlobal = "composite-metric-name"
+const compositeMetricNameGlobal = "composite-metric"
 const testNameGlobal = "testName"
 
 func TestGetScaledObjectMetrics_DirectCall(t *testing.T) {
@@ -630,7 +630,7 @@ const triggerName2 = "trigger_two"
 const metricName1 = "metric_one"
 const metricName2 = "metric_two"
 
-func TestComplexScalingFormula(t *testing.T) {
+func TestScalingModifiersFormula(t *testing.T) {
 	scaledObjectName := testNameGlobal
 	scaledObjectNamespace := testNamespaceGlobal
 	compositeMetricName := compositeMetricNameGlobal

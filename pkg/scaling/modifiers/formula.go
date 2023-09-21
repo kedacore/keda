@@ -14,6 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// ******************************* DESCRIPTION ****************************** \\
+// modifiers package describes functions that handle scaling modifiers. This
+// file contains main functionality and supporting functions. The parent
+// function is HandleScalingModifiers() that is called from scale_handler.
+// If fallback is active or the struct scalingModifiers in SO is not defined,
+// input metrics are simply returned without change, otherwise apply formula if
+// conditions are met.
+// ************************************************************************** \\
+
 package modifiers
 
 import (
@@ -30,27 +39,26 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scaling/cache"
 )
 
-// apply defined ScalingModifiers structure (formula) and simply return
-// calculated metrics
+// HandleScalingModifiers is the parent function for scalingModifiers structure.
+// If the structure is defined and conditions are met, apply the formula to
+// manipulate the metrics and return them
 func HandleScalingModifiers(so *kedav1alpha1.ScaledObject, metrics []external_metrics.ExternalMetricValue, metricTriggerList map[string]string, fallbackActive bool, cacheObj *cache.ScalersCache, log logr.Logger) []external_metrics.ExternalMetricValue {
 	var err error
+	// dont manipulate with metrics if fallback is currently active or structure isnt defined
 	if !fallbackActive && so != nil && so.Spec.Advanced != nil && !reflect.DeepEqual(so.Spec.Advanced.ScalingModifiers, kedav1alpha1.ScalingModifiers{}) {
 		sm := so.Spec.Advanced.ScalingModifiers
 
 		// apply formula if defined
-		metrics, err = applyComplexLogicFormula(sm, metrics, metricTriggerList, cacheObj)
+		metrics, err = applyScalingModifiersFormula(sm, metrics, metricTriggerList, cacheObj)
 		if err != nil {
-			log.Error(err, "error applying custom compositeScaler formula")
+			log.Error(err, "error applying custom scalingModifiers.Formula")
 		}
 		log.V(1).Info("returned metrics after formula is applied", "metrics", metrics)
 	}
 	return metrics
 }
 
-// help function to determine whether or not metricName is the correct one.
-// standard function will be array of one element if it matches or none if it doesnt
-// that is given from getTrueMetricArray().
-// In case of compositeScaler, cycle through all external metric names
+// ArrayContainsElement determines whether array 'arr' contains element 'el'
 func ArrayContainsElement(el string, arr []string) bool {
 	for _, item := range arr {
 		if strings.EqualFold(item, el) {
@@ -60,20 +68,22 @@ func ArrayContainsElement(el string, arr []string) bool {
 	return false
 }
 
-// if given right conditions, try to apply the given custom formula in SO
-func applyComplexLogicFormula(sm kedav1alpha1.ScalingModifiers, metrics []external_metrics.ExternalMetricValue, pairList map[string]string, cacheObj *cache.ScalersCache) ([]external_metrics.ExternalMetricValue, error) {
+// applyScalingModifiersFormula applies formula if formula is defined, otherwise
+// skip
+func applyScalingModifiersFormula(sm kedav1alpha1.ScalingModifiers, metrics []external_metrics.ExternalMetricValue, pairList map[string]string, cacheObj *cache.ScalersCache) ([]external_metrics.ExternalMetricValue, error) {
 	if sm.Formula != "" {
-		metrics, err := calculateComplexLogicFormula(metrics, cacheObj, pairList)
+		metrics, err := calculateScalingModifiersFormula(metrics, cacheObj, pairList)
 		return metrics, err
 	}
 	return metrics, nil
 }
 
-// calculate custom formula to metrics and return calculated and finalized metric
-func calculateComplexLogicFormula(list []external_metrics.ExternalMetricValue, cacheObj *cache.ScalersCache, pairList map[string]string) ([]external_metrics.ExternalMetricValue, error) {
+// calculateScalingModifiersFormula creates custom composite metric & calculates
+// custom formula and returns this finalized metric
+func calculateScalingModifiersFormula(list []external_metrics.ExternalMetricValue, cacheObj *cache.ScalersCache, pairList map[string]string) ([]external_metrics.ExternalMetricValue, error) {
 	var ret external_metrics.ExternalMetricValue
 	var out float64
-	ret.MetricName = "composite-metric-name"
+	ret.MetricName = kedav1alpha1.CompositeMetricName
 	ret.Timestamp = v1.Now()
 
 	// using https://github.com/antonmedv/expr to evaluate formula expression
@@ -86,18 +96,21 @@ func calculateComplexLogicFormula(list []external_metrics.ExternalMetricValue, c
 		return nil, fmt.Errorf("cached compiled formula is nil during its calculation")
 	}
 
+	// run expression with precompiled formula and real data
 	tmp, err := expr.Run(cacheObj.CompiledFormula, data)
 	if err != nil {
 		return nil, fmt.Errorf("error trying to run custom formula: %w", err)
 	}
 
+	// return values to known format for externalMetricValue struct
 	out = tmp.(float64)
 	ret.Value.SetMilli(int64(out * 1000))
 	return []external_metrics.ExternalMetricValue{ret}, nil
 }
 
-// Add pair trigger-metric to the triggers-metrics list for custom formula. Trigger name is used in
-// formula itself (in SO) and metric name is used for its value internally.
+// AddPairTriggerAndMetric adds new pair of trigger-metric to the list for
+// scalingModifiers formula list thats needed to map the metric value to
+// trigger name. This is only ran if scalingModifiers.Formula is defined in SO.
 func AddPairTriggerAndMetric(list map[string]string, so *kedav1alpha1.ScaledObject, metric string, trigger string) (map[string]string, error) {
 	if so.Spec.Advanced != nil && so.Spec.Advanced.ScalingModifiers.Formula != "" {
 		if trigger == "" {
@@ -123,18 +136,4 @@ func AddPairTriggerAndMetric(list map[string]string, so *kedav1alpha1.ScaledObje
 		return list, nil
 	}
 	return map[string]string{}, nil
-}
-
-// this functions servers a purpose of being dummy value filler for expr.Compile.
-// When expression is compiled with value-map it will detect whenever any is
-// undefined - detecting if trigger isn't defined.
-func CreateDummyFormulaMap(triggers []kedav1alpha1.ScaleTriggers) map[string]float64 {
-	dummyValue := -1.0
-	ret := make(map[string]float64)
-	for _, trigger := range triggers {
-		if trigger.Name != "" {
-			ret[trigger.Name] = dummyValue
-		}
-	}
-	return ret
 }

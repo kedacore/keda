@@ -25,6 +25,7 @@ import (
 	"strconv"
 
 	"github.com/antonmedv/expr"
+	"github.com/antonmedv/expr/vm"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -219,10 +220,10 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string) error {
 
 	// verify ScalingModifiers structure if defined in ScaledObject
 	if incomingSo.Spec.Advanced != nil && !reflect.DeepEqual(incomingSo.Spec.Advanced.ScalingModifiers, ScalingModifiers{}) {
-		_, _, err = ValidateScalingModifiers(incomingSo, []autoscalingv2.MetricSpec{}, "webhook")
+		_, err = ValidateAndCompileScalingModifiers(incomingSo)
 		if err != nil {
 			scaledobjectlog.Error(err, "error validating ScalingModifiers")
-			prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "complex-scaling-logic")
+			prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "scaling-modifiers")
 
 			return err
 		}
@@ -312,85 +313,89 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
 	return nil
 }
 
-// ValidateScalingModifiers validates all combinations of given arguments
-// and their values
-func ValidateScalingModifiers(so *ScaledObject, specs []autoscalingv2.MetricSpec, identifier string) (float64, autoscalingv2.MetricTargetType, error) {
+// ValidateAndCompileScalingModifiers validates all combinations of given arguments
+// and their values. Expects the whole structure's path to be defined (like .Advanced).
+// As part of formula validation this function also compiles the formula
+// (with dummy values that determine whether all necessary triggers are defined)
+// and returns it to be stored in cache and reused.
+func ValidateAndCompileScalingModifiers(so *ScaledObject) (*vm.Program, error) {
 	sm := so.Spec.Advanced.ScalingModifiers
 
 	if sm.Formula == "" {
-		return -1, autoscalingv2.MetricTargetType(""), fmt.Errorf("error ScalingModifiers.Formula is mandatory")
+		return nil, fmt.Errorf("error ScalingModifiers.Formula is mandatory")
 	}
-
-	var num float64
-	var metricType autoscalingv2.MetricTargetType
 
 	// validate formula if not empty
-	if err := validateScalingModifiersFormula(so, identifier); err != nil {
+	compiledFormula, err := validateScalingModifiersFormula(so)
+	if err != nil {
 		err := errors.Join(fmt.Errorf("error validating formula in ScalingModifiers"), err)
-		return -1, autoscalingv2.MetricTargetType(""), err
+		return nil, err
 	}
 	// validate target if not empty
-	num, metricType, err := validateScalingModifiersTarget(so, specs)
+	err = validateScalingModifiersTarget(so)
 	if err != nil {
 		err := errors.Join(fmt.Errorf("error validating target in ScalingModifiers"), err)
-		return -1, autoscalingv2.MetricTargetType(""), err
+		return nil, err
 	}
-	return num, metricType, nil
+	return compiledFormula, nil
 }
 
-func validateScalingModifiersFormula(so *ScaledObject, identifier string) error {
+// validateScalingModifiersFormula helps validate the ScalingModifiers struct,
+// specifically the formula.
+func validateScalingModifiersFormula(so *ScaledObject) (*vm.Program, error) {
 	sm := so.Spec.Advanced.ScalingModifiers
 
 	// if formula is empty, nothing to validate
 	if sm.Formula == "" {
-		return nil
+		return nil, nil
 	}
-	// formula needs target because it's always transformed to Composite scaler
+	// formula needs target because it's always transformed to composite-scaler
 	if sm.Target == "" {
-		return fmt.Errorf("formula is given but target is empty")
+		return nil, fmt.Errorf("formula is given but target is empty")
 	}
+
+	// dummy value for compiled map of triggers
+	dummyValue := -1.0
 
 	// Compile & Run with dummy values to determine if all triggers in formula are
-	// defined (have names) ONLY in Webhook to avoid compiling in reconcile loop
-	if identifier == "webhook" {
-		triggersMap := make(map[string]float64)
-		for _, trig := range so.Spec.Triggers {
-			// if resource metrics are given, skip
-			if trig.Type == cpuString || trig.Type == memoryString {
-				continue
-			}
-			if trig.Name != "" {
-				triggersMap[trig.Name] = 1.0
-			}
+	// defined (have names)
+	triggersMap := make(map[string]float64)
+	for _, trig := range so.Spec.Triggers {
+		// if resource metrics are given, skip
+		if trig.Type == cpuString || trig.Type == memoryString {
+			continue
 		}
-		compiled, err := expr.Compile(sm.Formula, expr.Env(triggersMap), expr.AsFloat64())
-		if err != nil {
-			return err
-		}
-		_, err = expr.Run(compiled, triggersMap)
-		if err != nil {
-			return err
+		if trig.Name != "" {
+			triggersMap[trig.Name] = dummyValue
 		}
 	}
-	return nil
+	compiled, err := expr.Compile(sm.Formula, expr.Env(triggersMap), expr.AsFloat64())
+	if err != nil {
+		return nil, err
+	}
+	_, err = expr.Run(compiled, triggersMap)
+	if err != nil {
+		return nil, err
+	}
+	return compiled, nil
 }
 
-func validateScalingModifiersTarget(so *ScaledObject, specs []autoscalingv2.MetricSpec) (float64, autoscalingv2.MetricTargetType, error) {
+func validateScalingModifiersTarget(so *ScaledObject) error {
 	sm := so.Spec.Advanced.ScalingModifiers
 
 	if sm.Target == "" {
-		return -1, "", nil
+		return nil
 	}
+
 	// convert string to float
 	num, err := strconv.ParseFloat(sm.Target, 64)
 	if err != nil || num <= 0.0 {
-		return -1, "", fmt.Errorf("error converting target for complex logic (string->float) to valid target: %w", err)
+		return fmt.Errorf("error converting target for scalingModifiers (string->float) to valid target: %w", err)
 	}
 
 	// if target is given, composite-scaler will be passed to HPA -> all types
-	// need to be the same make sure all metrics are of the same metricTargetType
+	// need to be the same - make sure all metrics are of the same metricTargetType
 
-	// check trigger types in SO
 	var trigType autoscalingv2.MetricTargetType
 
 	// gauron99: possible TODO: more sofisticated check for trigger could be used here
@@ -409,30 +414,13 @@ func validateScalingModifiersTarget(so *ScaledObject, specs []autoscalingv2.Metr
 			trigType = current
 		} else if trigType != current {
 			err := fmt.Errorf("error trigger types are not the same for composite scaler: %s & %s", trigType, current)
-			return -1, "", err
+			return err
 		}
 	}
 	if trigType == autoscalingv2.UtilizationMetricType {
 		err := fmt.Errorf("error trigger type is Utilization, but it needs to be AverageValue or Value for external metrics")
-		return -1, "", err
+		return err
 	}
 
-	// check metric specs
-	var metricType autoscalingv2.MetricTargetType
-	for _, metric := range specs {
-		if metric.External == nil {
-			continue
-		}
-		if metricType == "" {
-			metricType = metric.External.Target.Type
-		} else if metric.External.Target.Type != metricType {
-			err := fmt.Errorf("error metric target type is not the same for composite scaler: %s & %s", metricType, metric.External.Target.Type)
-			return -1, "", err
-		}
-	}
-	if metricType == autoscalingv2.UtilizationMetricType {
-		err := fmt.Errorf("error metric target type is Utilization, but it needs to be AverageValue or Value for external metrics")
-		return -1, "", err
-	}
-	return num, metricType, nil
+	return nil
 }

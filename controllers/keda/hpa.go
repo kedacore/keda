@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -251,9 +252,26 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 	// if ScalingModifiers struct is not empty, expect Formula
 	// to be non-empty. If target is > 0.0 create a compositeScaler structure
 	if scaledObject.Spec.Advanced != nil && !reflect.DeepEqual(scaledObject.Spec.Advanced.ScalingModifiers, kedav1alpha1.ScalingModifiers{}) {
-		validNumTarget, validMetricType, err := kedav1alpha1.ValidateScalingModifiers(scaledObject, scaledObjectMetricSpecs, "hpa")
-		if err != nil {
-			logger.Error(err, "error validating compositeScalingLogic")
+		// convert string to float (this is already validated in:
+		// cache, err := r.ScaleHandler.GetScalersCache(ctx, scaledObject.DeepCopy())
+		// at the beginning of this function, where the whole scalingModifiers are validated)
+		validNumTarget, _ := strconv.ParseFloat(scaledObject.Spec.Advanced.ScalingModifiers.Target, 64)
+
+		// check & get metric specs type
+		var validMetricType autoscalingv2.MetricTargetType
+		for _, metric := range metricSpecs {
+			if metric.External == nil {
+				continue
+			}
+			if validMetricType == "" {
+				validMetricType = metric.External.Target.Type
+			} else if metric.External.Target.Type != validMetricType {
+				err := fmt.Errorf("error metric target type is not the same for composite scaler: %s & %s", validMetricType, metric.External.Target.Type)
+				return nil, err
+			}
+		}
+		if validMetricType == autoscalingv2.UtilizationMetricType {
+			err := fmt.Errorf("error metric target type is Utilization, but it needs to be AverageValue or Value for external metrics")
 			return nil, err
 		}
 
@@ -269,7 +287,7 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 			} else if validMetricType == autoscalingv2.ValueMetricType {
 				correctHpaTarget.Value = quan
 			}
-			compMetricName := "composite-metric-name"
+			compMetricName := kedav1alpha1.CompositeMetricName
 			compositeSpec := autoscalingv2.MetricSpec{
 				Type: autoscalingv2.MetricSourceType("External"),
 				External: &autoscalingv2.ExternalMetricSource{

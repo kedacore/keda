@@ -67,6 +67,9 @@ const (
 
 	// HealthStatusFailing means the status of the health object is failing
 	HealthStatusFailing HealthStatusType = "Failing"
+
+	// Composite metric name used for scalingModifiers composite metric
+	CompositeMetricName string = "composite-metric"
 )
 
 // ScaledObjectSpec is the spec for a ScaledObject resource

@@ -23,7 +23,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/antonmedv/expr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -368,13 +367,11 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
 		if obj.Spec.Advanced != nil && obj.Spec.Advanced.ScalingModifiers.Formula != "" {
-			// gauron99 possible TODO: add expr.AsFloat64() with expr.Env(triggerMap)
-			// if the trigger-metrics pairs can be effectively got here instead of when
-			// iterating over all metrics - this would make this a better check
-			dummyFormulaMap := modifiers.CreateDummyFormulaMap(obj.Spec.Triggers)
-			program, err := expr.Compile(obj.Spec.Advanced.ScalingModifiers.Formula, expr.AsFloat64(), expr.Env(dummyFormulaMap))
+			// validate scalingModifiers struct and compile formula
+			program, err := kedav1alpha1.ValidateAndCompileScalingModifiers(obj)
 			if err != nil {
-				return nil, fmt.Errorf("error trying to compile custom formula: %w", err)
+				log.Error(err, "error validating-compiling scalingModifiers")
+				return nil, err
 			}
 			newCache.CompiledFormula = program
 		}
@@ -725,7 +722,8 @@ func (h *scaleHandler) isScaledJobActive(ctx context.Context, scaledJob *kedav1a
 // what metrics should be used. In case of composite scaler (ScalingModifiers struct),
 // all external metrics will be used. Returns all external metrics otherwise it
 // returns the same metric given.
-// TODO: if the bug is fixed this can be moved to modifiers/ with the rest of the functions
+// TODO: if the bug (mentioned in function below) is fixed this can be moved to
+// 'modifiers/' directory with the rest of the functions
 func (h *scaleHandler) getTrueMetricArray(ctx context.Context, metricName string, so *kedav1alpha1.ScaledObject) ([]string, error) {
 	// if composite scaler is given return all external metrics
 
