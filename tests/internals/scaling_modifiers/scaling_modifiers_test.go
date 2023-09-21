@@ -223,7 +223,7 @@ spec:
 `
 )
 
-func TestExternalScaling(t *testing.T) {
+func TestScalingModifiers(t *testing.T) {
 	// setup
 	t.Log("-- setting up ---")
 	kc := GetKubernetesClient(t)
