@@ -38,22 +38,21 @@ type CloudEventHTTPMetadata struct {
 	endPoint string
 }
 
-func NewCloudEventHTTPHandler(context context.Context, metaData map[string]string, clusterName string, logger logr.Logger) (*CloudEventHTTPHandler, error) {
-	meta, err := parseCloudEventHTTPMetadata(metaData)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing CloudEventHTTP metadata: %w", err)
+func NewCloudEventHTTPHandler(context context.Context, clusterName string, uri string, logger logr.Logger) (*CloudEventHTTPHandler, error) {
+	if uri == "" {
+		return nil, fmt.Errorf("uri cannot be empty")
 	}
 
 	client, err := cloudevents.NewClientHTTP()
-	ctx := cloudevents.ContextWithTarget(context, meta.endPoint)
+	ctx := cloudevents.ContextWithTarget(context, uri)
 	if err != nil {
 		return nil, err
 	}
 
-	logger.Info("Create new cloudevents http handler with endPoint: " + meta.endPoint)
+	logger.Info("Create new cloudevents http handler with endPoint: " + uri)
 	return &CloudEventHTTPHandler{
 		Client:      client,
-		Endpoint:    meta.endPoint,
+		Endpoint:    uri,
 		ClusterName: clusterName,
 		ctx:         ctx,
 		logger:      logger,

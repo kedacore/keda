@@ -52,11 +52,9 @@ const (
     namespace: {{.TestNamespace}}
   spec:
     clusterName: cluster-sample
-    eventHandlers:
-    - type: cloud-event-http
-      name: cloud-event-http-sample
-      metadata:
-        endPoint: {{.CloudEventHTTPServiceURL}}
+    destination:
+      http:
+        uri: {{.CloudEventHTTPServiceURL}}
   `
 
 	cloudEventHTTPServiceTemplate = `

@@ -36,24 +36,18 @@ spec:
             properties:
               clusterName:
                 type: string
-              eventHandlers:
-                items:
-                  properties:
-                    metadata:
-                      additionalProperties:
+              destination:
+                properties:
+                  http:
+                    properties:
+                      uri:
                         type: string
-                      type: object
-                    name:
-                      type: string
-                    type:
-                      type: string
-                  required:
-                  - metadata
-                  - type
-                  type: object
-                type: array
-            required:
-            - eventHandlers
+                    required:
+                    - uri
+                    type: object
+                required:
+                - http
+                type: object
             type: object
         required:
         - spec

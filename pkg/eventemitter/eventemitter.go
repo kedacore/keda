@@ -18,7 +18,6 @@ package eventemitter
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -71,7 +70,6 @@ type EmitData struct {
 }
 
 const (
-	AzureEventGrid = "AzureEventGrid"
 	CloudEventHTTP = "CloudEventHTTP"
 )
 
@@ -135,21 +133,15 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEvents *ked
 		clusterName = "default"
 	}
 
-	for _, handlerSpec := range cloudEvents.Spec.EventHandlers {
+	if cloudEvents.Spec.Destination.CloudEventHTTP != nil {
 		var err error
 		var eventHandler EventDataHandler
+		eventHandler, err = NewCloudEventHTTPHandler(ctx, clusterName, cloudEvents.Spec.Destination.CloudEventHTTP.Uri, log)
 
-		switch handlerSpec.Type {
-		case "cloud-event-http":
-			eventHandler, err = NewCloudEventHTTPHandler(ctx, handlerSpec.Metadata, clusterName, log)
-
-		default:
-			err = fmt.Errorf("no scaler found for type: %s", handlerSpec.Type)
+		if err != nil {
+			log.Error(err, "create cloudevent handler failed")
 		}
-
-		if err == nil {
-			e.eventHandlersCache[key+handlerSpec.Type] = eventHandler
-		}
+		e.eventHandlersCache[key+CloudEventHTTP] = eventHandler
 	}
 }
 
@@ -159,8 +151,8 @@ func (e *EventEmitter) clearEventHandlersCache(cloudEvents *kedav1alpha1.CloudEv
 
 	key := cloudEvents.GenerateIdentifier()
 
-	for _, handlerSpec := range cloudEvents.Spec.EventHandlers {
-		eventHandlerKey := key + handlerSpec.Type
+	if cloudEvents.Spec.Destination.CloudEventHTTP != nil {
+		eventHandlerKey := key + CloudEventHTTP
 		if eventHandler, found := e.eventHandlersCache[eventHandlerKey]; found {
 			eventHandler.CloseHandler()
 			delete(e.eventHandlersCache, key)

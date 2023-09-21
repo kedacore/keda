@@ -47,15 +47,16 @@ type CloudEventSpec struct {
 	// +optional
 	ClusterName string `json:"clusterName,omitempty"`
 
-	EventHandlers []CloudEventHandler `json:"eventHandlers"`
+	// +optional
+	Destination Destination `json:"destination"`
 }
 
-type CloudEventHandler struct {
-	Type string `json:"type"`
-	// +optional
-	Name string `json:"name,omitempty"`
+type Destination struct {
+	CloudEventHTTP *CloudEventHTTP `json:"http"`
+}
 
-	Metadata map[string]string `json:"metadata"`
+type CloudEventHTTP struct {
+	Uri string `json:"uri"`
 }
 
 func init() {
