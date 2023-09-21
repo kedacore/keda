@@ -24,6 +24,7 @@ import (
 	"reflect"
 	"strconv"
 
+	"github.com/antonmedv/expr"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -36,7 +37,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"github.com/antonmedv/expr"
 	prommetrics "github.com/kedacore/keda/v2/pkg/prommetrics/webhook"
 )
 

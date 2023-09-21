@@ -237,11 +237,7 @@ func In(needle any, array any) bool {
 		if needle == nil {
 			value = v.MapIndex(reflect.Zero(v.Type().Key()))
 		} else {
-			n := reflect.ValueOf(needle)
-			if !n.IsValid() {
-				panic(fmt.Sprintf("cannot use %T as index to %T", needle, array))
-			}
-			value = v.MapIndex(n)
+			value = v.MapIndex(reflect.ValueOf(needle))
 		}
 		if value.IsValid() {
 			return true

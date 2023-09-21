@@ -73,6 +73,12 @@ type varScope struct {
 type info struct {
 	method bool
 	fn     *ast.Function
+
+	// elem is element type of array or map.
+	// Arrays created with type []any, but
+	// we would like to detect expressions
+	// like `42 in ["a"]` as invalid.
+	elem reflect.Type
 }
 
 func (v *checker) visit(node ast.Node) (reflect.Type, info) {
@@ -227,7 +233,7 @@ func (v *checker) UnaryNode(node *ast.UnaryNode) (reflect.Type, info) {
 
 func (v *checker) BinaryNode(node *ast.BinaryNode) (reflect.Type, info) {
 	l, _ := v.visit(node.Left)
-	r, _ := v.visit(node.Right)
+	r, ri := v.visit(node.Right)
 
 	l = deref(l)
 	r = deref(r)
@@ -350,6 +356,9 @@ func (v *checker) BinaryNode(node *ast.BinaryNode) (reflect.Type, info) {
 			}
 			if !isComparable(l, r.Elem()) {
 				return v.error(node, "cannot use %v as type %v in array", l, r.Elem())
+			}
+			if !isComparable(l, ri.elem) {
+				return v.error(node, "cannot use %v as type %v in array", l, ri.elem)
 			}
 			return boolType, info{}
 		}
@@ -1067,8 +1076,21 @@ func (v *checker) ConditionalNode(node *ast.ConditionalNode) (reflect.Type, info
 }
 
 func (v *checker) ArrayNode(node *ast.ArrayNode) (reflect.Type, info) {
-	for _, node := range node.Nodes {
-		v.visit(node)
+	var prev reflect.Type
+	allElementsAreSameType := true
+	for i, node := range node.Nodes {
+		curr, _ := v.visit(node)
+		if i > 0 {
+			if curr == nil || prev == nil {
+				allElementsAreSameType = false
+			} else if curr.Kind() != prev.Kind() {
+				allElementsAreSameType = false
+			}
+		}
+		prev = curr
+	}
+	if allElementsAreSameType && prev != nil {
+		return arrayType, info{elem: prev}
 	}
 	return arrayType, info{}
 }
