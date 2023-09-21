@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package external_scaling_test
+package scaling_modifiers_test
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	testName = "external-scaling-test"
+	testName = "scaling-modifiers-test"
 )
 
 // Load environment variables from .env file
@@ -230,14 +230,14 @@ func TestExternalScaling(t *testing.T) {
 	data, templates := getTemplateData()
 	CreateKubernetesResources(t, kc, namespace, data, templates)
 
-	testComplexFormula(t, kc, data)
+	testFormula(t, kc, data)
 
 	templates = append(templates, Template{Name: "soFallbackTemplate", Config: soFallbackTemplate})
 	DeleteKubernetesResources(t, namespace, data, templates)
 }
 
-func testComplexFormula(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testComplexFormula ---")
+func testFormula(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testFormula ---")
 	// formula simply adds 2 metrics together (3+2=5; target = 2 -> 5/2 replicas should be 3)
 	data.MetricValue = 3
 	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
