@@ -155,6 +155,9 @@ func getMetricHandler() http.HandlerFunc {
 }
 
 // RunMetricsServer runs a http listener and handles the /metrics endpoint
+// this is needed to consolidate apiserver and controller-runtime metrics
+// we have to use a separate http server & can't rely on the controller-runtime implementation
+// because apiserver doesn't provide a way to register metrics to other prometheus registries
 func RunMetricsServer(ctx context.Context, stopCh <-chan struct{}) {
 	h := getMetricHandler()
 	mux := http.NewServeMux()
