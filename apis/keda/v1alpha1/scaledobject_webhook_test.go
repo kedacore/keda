@@ -419,6 +419,159 @@ var _ = It("shouldn't create so when stabilizationWindowSeconds exceeds 3600", f
 	}).Should(HaveOccurred())
 })
 
+var _ = It("should validate the so creation with ScalingModifiers.Formula", func() {
+	namespaceName := "scaling-modifiers-formula-good"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, false, false)
+
+	sm := ScalingModifiers{Target: "2", Formula: "workload_trig + cron_trig"}
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Name: "cron_trig",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Name: "workload_trig",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+
+	so := createScaledObjectScalingModifiers(namespaceName, sm, triggers)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("shouldnt validate the so creation with scalingModifiers.Formula but no target", func() {
+	namespaceName := "scaling-modifiers-formula-no-target-bad"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, false, false)
+
+	sm := ScalingModifiers{Formula: "workload_trig + cron_trig"}
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Name: "cron_trig",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Name: "workload_trig",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+
+	so := createScaledObjectScalingModifiers(namespaceName, sm, triggers)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
+})
+
+var _ = It("shouldnt validate the so creation with ScalingModifiers when triggers dont have names", func() {
+	namespaceName := "scaling-modifiers-triggers-no-names-bad"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, true, true)
+
+	sm := ScalingModifiers{Formula: "workload_trig + cron_trig"}
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+
+	so := createScaledObjectScalingModifiers(namespaceName, sm, triggers)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
+})
+
+var _ = It("should validate the so creation with ScalingModifiers when formula triggers do have names but not all triggers", func() {
+	namespaceName := "scaling-modifiers-specific-triggers-good"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, true, true)
+
+	sm := ScalingModifiers{Target: "2", Formula: "workload_trig + 1"}
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Name: "workload_trig",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+
+	so := createScaledObjectScalingModifiers(namespaceName, sm, triggers)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
 var _ = AfterSuite(func() {
 	cancel()
 	By("tearing down the test environment")
@@ -663,6 +816,34 @@ func createScaledObjectSTZ(name string, namespace string, targetName string, min
 			MaxReplicaCount: ptr.To[int32](maxReplicas),
 			CooldownPeriod:  ptr.To[int32](1),
 			Triggers:        triggers,
+		},
+	}
+}
+
+func createScaledObjectScalingModifiers(namespace string, sm ScalingModifiers, triggers []ScaleTriggers) *ScaledObject {
+	name := soName
+	targetName := workloadName
+	return &ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			UID:       types.UID(name),
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ScaledObject",
+			APIVersion: "keda.sh",
+		},
+		Spec: ScaledObjectSpec{
+			ScaleTargetRef: &ScaleTarget{
+				Name: targetName,
+			},
+			MinReplicaCount: ptr.To[int32](0),
+			MaxReplicaCount: ptr.To[int32](10),
+			CooldownPeriod:  ptr.To[int32](1),
+			Triggers:        triggers,
+			Advanced: &AdvancedConfig{
+				ScalingModifiers: sm,
+			},
 		},
 	}
 }

@@ -53,6 +53,12 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **AWS SQS Scaler**: Support for scaling to include delayed messages. ([#4377](https://github.com/kedacore/keda/issues/4377))
 - **Governance**: KEDA transitioned to CNCF Graduated project ([#63](https://github.com/kedacore/governance/issues/63))
 
+#### Experimental
+
+Here is an overview of all new **experimental** features:
+
+- **General**: Add support for formula based evaluation of metric values ([#2440](https://github.com/kedacore/keda/issues/2440))
+
 ### Improvements
 
 - **General**: Add more events for user checking ([#796](https://github.com/kedacore/keda/issues/3764))
