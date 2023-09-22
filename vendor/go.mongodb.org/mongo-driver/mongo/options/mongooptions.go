@@ -31,6 +31,8 @@ type Collation struct {
 }
 
 // ToDocument converts the Collation to a bson.Raw.
+//
+// Deprecated: Marshaling a Collation to BSON will not be supported in Go Driver 2.0.
 func (co *Collation) ToDocument() bson.Raw {
 	idx, doc := bsoncore.AppendDocumentStart(nil)
 	if co.Locale != "" {
@@ -107,14 +109,24 @@ const (
 	WhenAvailable FullDocument = "whenAvailable"
 )
 
+// TODO(GODRIVER-2617): Once Registry is removed, ArrayFilters doesn't need to
+// TODO be a separate type. Remove the type and update all ArrayFilters fields
+// TODO to be type []interface{}.
+
 // ArrayFilters is used to hold filters for the array filters CRUD option. If a registry is nil, bson.DefaultRegistry
 // will be used when converting the filter interfaces to BSON.
 type ArrayFilters struct {
-	Registry *bsoncodec.Registry // The registry to use for converting filters. Defaults to bson.DefaultRegistry.
-	Filters  []interface{}       // The filters to apply
+	// Registry is the registry to use for converting filters. Defaults to bson.DefaultRegistry.
+	//
+	// Deprecated: Marshaling ArrayFilters to BSON will not be supported in Go Driver 2.0.
+	Registry *bsoncodec.Registry
+
+	Filters []interface{} // The filters to apply
 }
 
 // ToArray builds a []bson.Raw from the provided ArrayFilters.
+//
+// Deprecated: Marshaling ArrayFilters to BSON will not be supported in Go Driver 2.0.
 func (af *ArrayFilters) ToArray() ([]bson.Raw, error) {
 	registry := af.Registry
 	if registry == nil {
@@ -133,6 +145,8 @@ func (af *ArrayFilters) ToArray() ([]bson.Raw, error) {
 
 // ToArrayDocument builds a BSON array for the array filters CRUD option. If the registry for af is nil,
 // bson.DefaultRegistry will be used when converting the filter interfaces to BSON.
+//
+// Deprecated: Marshaling ArrayFilters to BSON will not be supported in Go Driver 2.0.
 func (af *ArrayFilters) ToArrayDocument() (bson.Raw, error) {
 	registry := af.Registry
 	if registry == nil {
@@ -154,12 +168,16 @@ func (af *ArrayFilters) ToArrayDocument() (bson.Raw, error) {
 
 // MarshalError is returned when attempting to transform a value into a document
 // results in an error.
+//
+// Deprecated: MarshalError is unused and will be removed in Go Driver 2.0.
 type MarshalError struct {
 	Value interface{}
 	Err   error
 }
 
 // Error implements the error interface.
+//
+// Deprecated: MarshalError is unused and will be removed in Go Driver 2.0.
 func (me MarshalError) Error() string {
 	return fmt.Sprintf("cannot transform type %s to a bson.Raw", reflect.TypeOf(me.Value))
 }

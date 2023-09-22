@@ -201,6 +201,8 @@ type unmarshalIndexSpecification struct {
 }
 
 // UnmarshalBSON implements the bson.Unmarshaler interface.
+//
+// Deprecated: Unmarshaling an IndexSpecification from BSON will not be supported in Go Driver 2.0.
 func (i *IndexSpecification) UnmarshalBSON(data []byte) error {
 	var temp unmarshalIndexSpecification
 	if err := bson.Unmarshal(data, &temp); err != nil {
@@ -258,6 +260,9 @@ type unmarshalCollectionSpecification struct {
 }
 
 // UnmarshalBSON implements the bson.Unmarshaler interface.
+//
+// Deprecated: Unmarshaling a CollectionSpecification from BSON will not be supported in Go Driver
+// 2.0.
 func (cs *CollectionSpecification) UnmarshalBSON(data []byte) error {
 	var temp unmarshalCollectionSpecification
 	if err := bson.Unmarshal(data, &temp); err != nil {

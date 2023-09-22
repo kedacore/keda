@@ -918,6 +918,10 @@ type preparedMetadata struct {
 
 	// proto v4+
 	pkeyColumns []int
+
+	keyspace string
+
+	table string
 }
 
 func (r preparedMetadata) String() string {
@@ -952,11 +956,10 @@ func (f *framer) parsePreparedMetadata() preparedMetadata {
 		return meta
 	}
 
-	var keyspace, table string
 	globalSpec := meta.flags&flagGlobalTableSpec == flagGlobalTableSpec
 	if globalSpec {
-		keyspace = f.readString()
-		table = f.readString()
+		meta.keyspace = f.readString()
+		meta.table = f.readString()
 	}
 
 	var cols []ColumnInfo
@@ -964,14 +967,14 @@ func (f *framer) parsePreparedMetadata() preparedMetadata {
 		// preallocate columninfo to avoid excess copying
 		cols = make([]ColumnInfo, meta.colCount)
 		for i := 0; i < meta.colCount; i++ {
-			f.readCol(&cols[i], &meta.resultMetadata, globalSpec, keyspace, table)
+			f.readCol(&cols[i], &meta.resultMetadata, globalSpec, meta.keyspace, meta.table)
 		}
 	} else {
 		// use append, huge number of columns usually indicates a corrupt frame or
 		// just a huge row.
 		for i := 0; i < meta.colCount; i++ {
 			var col ColumnInfo
-			f.readCol(&col, &meta.resultMetadata, globalSpec, keyspace, table)
+			f.readCol(&col, &meta.resultMetadata, globalSpec, meta.keyspace, meta.table)
 			cols = append(cols, col)
 		}
 	}

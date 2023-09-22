@@ -412,6 +412,9 @@ const (
 	// OptTrackCost enables the runtime cost calculation while validation and return cost within evalDetails
 	// cost calculation is available via func ActualCost()
 	OptTrackCost EvalOption = 1 << iota
+
+	// OptCheckStringFormat enables compile-time checking of string.format calls for syntax/cardinality.
+	OptCheckStringFormat EvalOption = 1 << iota
 )
 
 // EvalOptions sets one or more evaluation options which may affect the evaluation or Result.
@@ -562,6 +565,15 @@ func features(flag int, enabled bool) EnvOption {
 func ParserRecursionLimit(limit int) EnvOption {
 	return func(e *Env) (*Env, error) {
 		e.prsrOpts = append(e.prsrOpts, parser.MaxRecursionDepth(limit))
+		return e, nil
+	}
+}
+
+// ParserExpressionSizeLimit adjusts the number of code points the expression parser is allowed to parse.
+// Defaults defined in the parser package.
+func ParserExpressionSizeLimit(limit int) EnvOption {
+	return func(e *Env) (*Env, error) {
+		e.prsrOpts = append(e.prsrOpts, parser.ExpressionSizeCodePointLimit(limit))
 		return e, nil
 	}
 }

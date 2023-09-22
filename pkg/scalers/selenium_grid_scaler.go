@@ -255,7 +255,7 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 			if capability.BrowserName == sessionBrowserName {
 				if strings.HasPrefix(capability.BrowserVersion, browserVersion) && platformNameMatches {
 					count++
-				} else if len(strings.TrimSpace(capability.BrowserVersion)) == 0 && browserVersion == DefaultBrowserVersion && platformNameMatches {
+				} else if browserVersion == DefaultBrowserVersion && platformNameMatches {
 					count++
 				}
 			}

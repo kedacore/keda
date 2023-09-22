@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -252,7 +253,8 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 		solaceAPIVersion,
 		meta.messageVpn,
 		solaceAPIObjectTypeQueue,
-		meta.queueName)
+		url.QueryEscape(meta.queueName),
+	)
 
 	// Get Credentials
 	var e error

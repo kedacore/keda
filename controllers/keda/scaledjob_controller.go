@@ -130,15 +130,17 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if !scaledJob.Status.Conditions.AreInitialized() {
 		conditions := kedav1alpha1.GetInitializedConditions()
 		if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledJob, conditions); err != nil {
+			r.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.ScaledJobUpdateFailed, err.Error())
 			return ctrl.Result{}, err
 		}
 	}
 
 	// Check jobTargetRef is specified
 	if scaledJob.Spec.JobTargetRef == nil {
-		errMsg := "scaledJob.spec.jobTargetRef is not set"
+		errMsg := "ScaledJob.spec.jobTargetRef not found"
 		err := fmt.Errorf(errMsg)
-		reqLogger.Error(err, "scaledJob.spec.jobTargetRef not found")
+		reqLogger.Error(err, errMsg)
+		r.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.ScaledJobCheckFailed, errMsg)
 		return ctrl.Result{}, err
 	}
 	conditions := scaledJob.Status.Conditions.DeepCopy()
@@ -158,6 +160,7 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledJob, &conditions); err != nil {
+		r.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.ScaledJobUpdateFailed, err.Error())
 		return ctrl.Result{}, err
 	}
 
