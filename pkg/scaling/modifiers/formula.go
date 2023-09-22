@@ -27,7 +27,6 @@ package modifiers
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/antonmedv/expr"
@@ -45,7 +44,7 @@ import (
 func HandleScalingModifiers(so *kedav1alpha1.ScaledObject, metrics []external_metrics.ExternalMetricValue, metricTriggerList map[string]string, fallbackActive bool, cacheObj *cache.ScalersCache, log logr.Logger) []external_metrics.ExternalMetricValue {
 	var err error
 	// dont manipulate with metrics if fallback is currently active or structure isnt defined
-	if !fallbackActive && so != nil && so.Spec.Advanced != nil && !reflect.DeepEqual(so.Spec.Advanced.ScalingModifiers, kedav1alpha1.ScalingModifiers{}) {
+	if !fallbackActive && so != nil && so.IsUsingModifiers() {
 		sm := so.Spec.Advanced.ScalingModifiers
 
 		// apply formula if defined

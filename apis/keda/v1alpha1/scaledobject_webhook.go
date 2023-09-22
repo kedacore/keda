@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
 	"strconv"
 
 	"github.com/antonmedv/expr"
@@ -219,7 +218,7 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string) error {
 	}
 
 	// verify ScalingModifiers structure if defined in ScaledObject
-	if incomingSo.Spec.Advanced != nil && !reflect.DeepEqual(incomingSo.Spec.Advanced.ScalingModifiers, ScalingModifiers{}) {
+	if incomingSo.IsUsingModifiers() {
 		_, err = ValidateAndCompileScalingModifiers(incomingSo)
 		if err != nil {
 			scaledobjectlog.Error(err, "error validating ScalingModifiers")

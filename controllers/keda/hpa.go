@@ -19,7 +19,6 @@ package keda
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -249,9 +248,10 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 
 	updateHealthStatus(scaledObject, externalMetricNames, status)
 
-	// if ScalingModifiers struct is not empty, expect Formula
-	// to be non-empty. If target is > 0.0 create a compositeScaler structure
-	if scaledObject.Spec.Advanced != nil && !reflect.DeepEqual(scaledObject.Spec.Advanced.ScalingModifiers, kedav1alpha1.ScalingModifiers{}) {
+	// if ScalingModifiers struct is not empty, expect Formula and Target to be
+	// non-empty (is validated beforehand - in cache). Only if target is > 0.0
+	// create a compositeScaler structure
+	if scaledObject.IsUsingModifiers() {
 		// convert string to float (this is already validated in:
 		// cache, err := r.ScaleHandler.GetScalersCache(ctx, scaledObject.DeepCopy())
 		// at the beginning of this function, where the whole scalingModifiers are validated)
@@ -294,7 +294,7 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 					Metric: autoscalingv2.MetricIdentifier{
 						Name: compMetricName,
 						Selector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{"scaledobject.keda.sh/name": scaledObject.Name},
+							MatchLabels: map[string]string{kedav1alpha1.ScaledObjectOwnerAnnotation: scaledObject.Name},
 						},
 					},
 					Target: correctHpaTarget,

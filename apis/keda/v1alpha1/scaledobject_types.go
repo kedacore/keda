@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"reflect"
+
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -179,4 +181,9 @@ func init() {
 // GenerateIdentifier returns identifier for the object in for "kind.namespace.name"
 func (so *ScaledObject) GenerateIdentifier() string {
 	return GenerateIdentifier("ScaledObject", so.Namespace, so.Name)
+}
+
+// IsUsingModifiers determines whether scalingModifiers are defined or not
+func (so *ScaledObject) IsUsingModifiers() bool {
+	return so.Spec.Advanced != nil && !reflect.DeepEqual(so.Spec.Advanced.ScalingModifiers, ScalingModifiers{})
 }
