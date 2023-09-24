@@ -86,7 +86,7 @@ func (vh *GCPSecretManagerHandler) Initialize(client client.Client, logger logr.
 			return fmt.Errorf("failed to create secretmanager client: %w", err)
 		}
 	default:
-		return fmt.Errorf("key vault does not support pod identity provider - %s", podIdentity)
+		return fmt.Errorf("key vault does not support pod identity provider - %v", podIdentity)
 	}
 
 	return nil

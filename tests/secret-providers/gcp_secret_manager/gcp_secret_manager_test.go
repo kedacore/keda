@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
@@ -74,6 +75,7 @@ type templateData struct {
 	GCPCredentialsSecretName         string
 	GCPCredentialsSecretKey          string
 	SecretManagerSecretID            string
+	GCPKeyBase64                     string
 }
 
 const (
@@ -120,6 +122,15 @@ type: Opaque
 data:
   postgresql_conn_str: {{.PostgreSQLConnectionStringBase64}}
 `
+	gcpCredentialsSecretTemplate = `apiVersion: v1
+kind: Secret
+metadata:
+  name: {{.GCPCredentialsSecretName}}
+  namespace: {{.TestNamespace}}
+type: Opaque
+data:
+  {{.GCPCredentialsSecretKey}}: {{.GCPKeyBase64}}
+`
 
 	triggerAuthenticationTemplate = `apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
@@ -131,14 +142,14 @@ spec:
     gcpProjectID: {{.GCPProjectID}}
     secrets:
       - parameter: connection
-	    id: {{.SecretManagerSecretID}}
-	    version: "latest"
+        id: {{.SecretManagerSecretID}}
+        version: "1"
     gcpCredentials:
       clientSecret:
-	    valueFrom:
-	      secretKeyRef:
-		    name: {{.GCPCredentialsSecretName}}
-		    key: {{.GCPCredentialsSecretKey}}
+        valueFrom:
+          secretKeyRef:
+            name: {{.GCPCredentialsSecretName}}
+            key: {{.GCPCredentialsSecretKey}}
 `
 
 	scaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
@@ -279,12 +290,12 @@ spec:
 `
 )
 
-func TestPostreSQLScaler(t *testing.T) {
+func TestPostgreSQLScaler(t *testing.T) {
 	require.NotEmpty(t, gcpKey, "TF_GCP_SA_CREDENTIALS env variable is required for GCP Secret Manager test")
 	require.NoErrorf(t, errGcpKey, "Failed to load credentials from gcpKey - %s", errGcpKey)
 
 	// Create the secret in GCP
-	err := createGCPSecret()
+	err := createGCPSecret(t)
 	assert.NoErrorf(t, err, "cannot create GCP Secret Manager secret - %s", err)
 
 	// Create kubernetes resources for PostgreSQL server
@@ -302,9 +313,6 @@ func TestPostreSQLScaler(t *testing.T) {
 	ok, out, errOut, err := WaitForSuccessfulExecCommandOnSpecificPod(t, postgresqlPodName, testNamespace, psqlCreateTableCmd, 60, 3)
 	assert.True(t, ok, "executing a command on PostreSQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", out, errOut, err)
 
-	_, err = ExecuteCommand(fmt.Sprintf("kubectl create secret generic %s --from-literal=%s=%s -n %s", gcpCredentialsSecretName, gcpCredentialsSecretKey, gcpKey, testNamespace))
-	assert.NoErrorf(t, err, "cannot create Kubernetes GCP Service Account key secret - %s", err)
-
 	// Create kubernetes resources for testing
 	data, templates := getTemplateData()
 
@@ -321,7 +329,7 @@ func TestPostreSQLScaler(t *testing.T) {
 	DeleteKubernetesResources(t, testNamespace, data, postgreSQLtemplates)
 
 	// Delete the secret in GCP
-	err = deleteGCPSecret()
+	err = deleteGCPSecret(t)
 	assert.NoErrorf(t, err, "cannot delete GCP Secret Manager secret - %s", err)
 }
 
@@ -340,6 +348,9 @@ var data = templateData{
 	PostgreSQLConnectionStringBase64: base64.StdEncoding.EncodeToString([]byte(postgreSQLConnectionString)),
 	GCPProjectID:                     projectID.(string),
 	SecretManagerSecretID:            secretManagerSecretID,
+	GCPKeyBase64:                     base64.StdEncoding.EncodeToString([]byte(strings.TrimSpace(gcpKey))),
+	GCPCredentialsSecretName:         gcpCredentialsSecretName,
+	GCPCredentialsSecretKey:          gcpCredentialsSecretKey,
 }
 
 func getPostgreSQLTemplateData() (templateData, []Template) {
@@ -355,6 +366,7 @@ func getTemplateData() (templateData, []Template) {
 		{Name: "deploymentTemplate", Config: deploymentTemplate},
 		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
 		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		{Name: "gcpCredentialsSecretTemplate", Config: gcpCredentialsSecretTemplate},
 	}
 }
 
@@ -380,7 +392,7 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 		"replica count should be %d after 3 minutes", minReplicaCount)
 }
 
-func createGCPSecret() error {
+func createGCPSecret(t *testing.T) error {
 	ctx := context.Background()
 
 	gcpCreds, err := google.CredentialsFromJSON(ctx, []byte(gcpKey), secretmanager.DefaultAuthScopes()...)
@@ -421,17 +433,17 @@ func createGCPSecret() error {
 		},
 	}
 
-	version, err := client.AddSecretVersion(ctx, createVersionReq)
+	_, err = client.AddSecretVersion(ctx, createVersionReq)
 	if err != nil {
 		return fmt.Errorf("failed to create secret version: %v", err)
 	}
 
-	fmt.Printf("Created secret version: %s\n", version.Name)
+	t.Log("Created secret in GCP Secret Manager.")
 
 	return nil
 }
 
-func deleteGCPSecret() error {
+func deleteGCPSecret(t *testing.T) error {
 	ctx := context.Background()
 
 	gcpCreds, err := google.CredentialsFromJSON(ctx, []byte(gcpKey), secretmanager.DefaultAuthScopes()...)
@@ -458,7 +470,7 @@ func deleteGCPSecret() error {
 		return fmt.Errorf("failed to delete secret: %w", err)
 	}
 
-	fmt.Printf("Secret %s deleted.\n", secretName)
+	t.Log("Deleted secret from GCP Secret Manager.")
 
 	return nil
 }
