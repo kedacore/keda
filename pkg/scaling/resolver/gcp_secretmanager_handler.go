@@ -36,19 +36,17 @@ import (
 type GCPSecretManagerHandler struct {
 	gcpSecretsManager       *kedav1alpha1.GCPSecretManager
 	gcpSecretsManagerClient *secretmanager.Client
-	ctx                     context.Context
 }
 
-// NewGCPSecretManagerHandler creates a HashicorpVaultHandler object
-func NewGCPSecretManagerHandler(ctx context.Context, v *kedav1alpha1.GCPSecretManager) *GCPSecretManagerHandler {
+// NewGCPSecretManagerHandler creates a GCPSecretManagerHandler object
+func NewGCPSecretManagerHandler(v *kedav1alpha1.GCPSecretManager) *GCPSecretManagerHandler {
 	return &GCPSecretManagerHandler{
 		gcpSecretsManager: v,
-		ctx:               ctx,
 	}
 }
 
 // Initialize the GCP Secret Manager client
-func (vh *GCPSecretManagerHandler) Initialize(client client.Client, logger logr.Logger, triggerNamespace string, secretsLister corev1listers.SecretLister) error {
+func (vh *GCPSecretManagerHandler) Initialize(ctx context.Context, client client.Client, logger logr.Logger, triggerNamespace string, secretsLister corev1listers.SecretLister) error {
 	var err error
 
 	podIdentity := vh.gcpSecretsManager.PodIdentity
@@ -65,39 +63,39 @@ func (vh *GCPSecretManagerHandler) Initialize(client client.Client, logger logr.
 
 		clientSecretName := vh.gcpSecretsManager.Credentials.ClientSecret.ValueFrom.SecretKeyRef.Name
 		clientSecretKey := vh.gcpSecretsManager.Credentials.ClientSecret.ValueFrom.SecretKeyRef.Key
-		clientSecret := resolveAuthSecret(vh.ctx, client, logger, clientSecretName, triggerNamespace, clientSecretKey, secretsLister)
+		clientSecret := resolveAuthSecret(ctx, client, logger, clientSecretName, triggerNamespace, clientSecretKey, secretsLister)
 
 		if clientSecret == "" {
 			return missingErr
 		}
 
-		gcpCredentials, err := google.CredentialsFromJSON(vh.ctx, []byte(clientSecret), secretmanager.DefaultAuthScopes()...)
+		gcpCredentials, err := google.CredentialsFromJSON(ctx, []byte(clientSecret), secretmanager.DefaultAuthScopes()...)
 		if err != nil {
 			return fmt.Errorf("failed to get credentials from json, %w", err)
 		}
 
-		vh.gcpSecretsManagerClient, err = secretmanager.NewClient(vh.ctx, option.WithCredentials(gcpCredentials))
+		vh.gcpSecretsManagerClient, err = secretmanager.NewClient(ctx, option.WithCredentials(gcpCredentials))
 		if err != nil {
 			return fmt.Errorf("failed to create secretmanager client, %w", err)
 		}
 
 	case kedav1alpha1.PodIdentityProviderGCP:
-		if vh.gcpSecretsManagerClient, err = secretmanager.NewClient(vh.ctx); err != nil {
+		if vh.gcpSecretsManagerClient, err = secretmanager.NewClient(ctx); err != nil {
 			return fmt.Errorf("failed to create secretmanager client: %w", err)
 		}
 	default:
-		return fmt.Errorf("key vault does not support pod identity provider - %v", podIdentity)
+		return fmt.Errorf("gcp secret manager does not support pod identity provider - %v", podIdentity)
 	}
 
 	return nil
 }
 
-func (vh *GCPSecretManagerHandler) Read(secretID, secretVersion string) (string, error) {
+func (vh *GCPSecretManagerHandler) Read(ctx context.Context, secretID, secretVersion string) (string, error) {
 	req := &secretmanagerpb.AccessSecretVersionRequest{
 		Name: fmt.Sprintf("projects/%s/secrets/%s/versions/%s", vh.gcpSecretsManager.GCPProjectID, secretID, secretVersion),
 	}
 
-	result, err := vh.gcpSecretsManagerClient.AccessSecretVersion(vh.ctx, req)
+	result, err := vh.gcpSecretsManagerClient.AccessSecretVersion(ctx, req)
 	if err != nil {
 		return "", fmt.Errorf("failed to access the secret %s version %s, %w", secretID, secretVersion, err)
 	}
