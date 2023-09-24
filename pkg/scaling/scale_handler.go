@@ -667,41 +667,54 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 	}
 	var scalersMetrics []scaledjob.ScalerMetrics
 	scalers, _ := cache.GetScalers()
+
+	wg := sync.WaitGroup{}
+	ch := make(chan scaledjob.ScalerMetrics, len(scalers))
 	for i, s := range scalers {
-		isActive := false
-		scalerType := fmt.Sprintf("%T:", s)
-
-		scalerLogger := log.WithValues("ScaledJob", scaledJob.Name, "Scaler", scalerType)
-
-		metricSpecs := s.GetMetricSpecForScaling(ctx)
-
-		// skip scaler that doesn't return any metric specs (usually External scaler with incorrect metadata)
-		// or skip cpu/memory resource scaler
-		if len(metricSpecs) < 1 || metricSpecs[0].External == nil {
-			continue
-		}
-
-		metrics, isTriggerActive, _, err := cache.GetMetricsAndActivityForScaler(ctx, i, metricSpecs[0].External.Metric.Name)
-		if err != nil {
-			scalerLogger.V(1).Info("Error getting scaler metrics and activity, but continue", "error", err)
-			cache.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
-			continue
-		}
-		if isTriggerActive {
-			isActive = true
-		}
-
-		queueLength, maxValue, targetAverageValue := scaledjob.CalculateQueueLengthAndMaxValue(metrics, metricSpecs, scaledJob.MaxReplicaCount())
-
-		scalerLogger.V(1).Info("Scaler Metric value", "isTriggerActive", isTriggerActive, metricSpecs[0].External.Metric.Name, queueLength, "targetAverageValue", targetAverageValue)
-
-		scalersMetrics = append(scalersMetrics, scaledjob.ScalerMetrics{
-			QueueLength: queueLength,
-			MaxValue:    maxValue,
-			IsActive:    isActive,
-		})
+		wg.Add(1)
+		go h.calculateJobScaler(ctx, s, scaledJob, cache, i, &wg, ch)
+	}
+	wg.Wait()
+	close(ch)
+	for scalerMetric := range ch {
+		scalersMetrics = append(scalersMetrics, scalerMetric)
 	}
 	return scalersMetrics
+}
+
+func (*scaleHandler) calculateJobScaler(ctx context.Context, s scalers.Scaler, scaledJob *kedav1alpha1.ScaledJob, cache *cache.ScalersCache, scalerIndex int, wg *sync.WaitGroup, ch chan scaledjob.ScalerMetrics) {
+	defer wg.Done()
+
+	isActive := false
+	scalerType := fmt.Sprintf("%T:", s)
+
+	scalerLogger := log.WithValues("ScaledJob", scaledJob.Name, "Scaler", scalerType)
+
+	metricSpecs := s.GetMetricSpecForScaling(ctx)
+
+	if len(metricSpecs) < 1 || metricSpecs[0].External == nil {
+		return
+	}
+
+	metrics, isTriggerActive, _, err := cache.GetMetricsAndActivityForScaler(ctx, scalerIndex, metricSpecs[0].External.Metric.Name)
+	if err != nil {
+		scalerLogger.V(1).Info("Error getting scaler metrics and activity, but continue", "error", err)
+		cache.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
+		return
+	}
+	if isTriggerActive {
+		isActive = true
+	}
+
+	queueLength, maxValue, targetAverageValue := scaledjob.CalculateQueueLengthAndMaxValue(metrics, metricSpecs, scaledJob.MaxReplicaCount())
+
+	scalerLogger.V(1).Info("Scaler Metric value", "isTriggerActive", isTriggerActive, metricSpecs[0].External.Metric.Name, queueLength, "targetAverageValue", targetAverageValue)
+
+	ch <- scaledjob.ScalerMetrics{
+		QueueLength: queueLength,
+		MaxValue:    maxValue,
+		IsActive:    isActive,
+	}
 }
 
 // isScaledJobActive returns whether the input ScaledJob:
