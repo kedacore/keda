@@ -136,7 +136,6 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 		} else {
 			return nil, fmt.Errorf("no threshold value given")
 		}
-
 	}
 	unsafeSsl = false
 	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
