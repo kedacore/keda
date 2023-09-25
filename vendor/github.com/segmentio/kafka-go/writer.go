@@ -1156,7 +1156,7 @@ func (ptw *partitionWriter) writeBatch(batch *writeBatch) {
 		stats.errors.observe(1)
 
 		ptw.w.withErrorLogger(func(log Logger) {
-			log.Printf("error writing messages to %s (partition %d): %s", key.topic, key.partition, err)
+			log.Printf("error writing messages to %s (partition %d, attempt %d): %s", key.topic, key.partition, attempt, err)
 		})
 
 		if !isTemporary(err) && !isTransientNetworkError(err) {

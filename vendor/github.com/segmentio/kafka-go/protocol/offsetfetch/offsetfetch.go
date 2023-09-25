@@ -8,7 +8,7 @@ func init() {
 
 type Request struct {
 	GroupID string         `kafka:"min=v0,max=v5"`
-	Topics  []RequestTopic `kafka:"min=v0,max=v5"`
+	Topics  []RequestTopic `kafka:"min=v0,max=v5,nullable"`
 }
 
 func (r *Request) ApiKey() protocol.ApiKey { return protocol.OffsetFetch }

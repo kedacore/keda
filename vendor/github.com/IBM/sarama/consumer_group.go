@@ -114,6 +114,9 @@ func NewConsumerGroup(addrs []string, groupID string, config *Config) (ConsumerG
 // necessary to call Close() on the underlying client when shutting down this consumer.
 // PLEASE NOTE: consumer groups can only re-use but not share clients.
 func NewConsumerGroupFromClient(groupID string, client Client) (ConsumerGroup, error) {
+	if client == nil {
+		return nil, ConfigurationError("client must not be nil")
+	}
 	// For clients passed in by the client, ensure we don't
 	// call Close() on it.
 	cli := &nopCloserClient{client}
@@ -239,6 +242,8 @@ func (c *consumerGroup) ResumeAll() {
 
 func (c *consumerGroup) retryNewSession(ctx context.Context, topics []string, handler ConsumerGroupHandler, retries int, refreshCoordinator bool) (*consumerGroupSession, error) {
 	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	case <-c.closed:
 		return nil, ErrClosedConsumerGroup
 	case <-time.After(c.config.Consumer.Group.Rebalance.Retry.Backoff):
@@ -258,6 +263,9 @@ func (c *consumerGroup) retryNewSession(ctx context.Context, topics []string, ha
 }
 
 func (c *consumerGroup) newSession(ctx context.Context, topics []string, handler ConsumerGroupHandler, retries int) (*consumerGroupSession, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
 	coordinator, err := c.client.Coordinator(c.groupID)
 	if err != nil {
 		if retries <= 0 {
