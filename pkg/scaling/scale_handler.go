@@ -603,6 +603,9 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 		for k, v := range result.Pairs {
 			metricTriggerPairList[k] = v
 		}
+		for k, v := range result.Records {
+			metricsRecord[k] = v
+		}
 	}
 
 	// invalidate the cache for the ScaledObject, if we hit an error in any scaler
@@ -665,7 +668,13 @@ func (*scaleHandler) processScaledObjectStateScaler(
 	logger logr.Logger,
 	scaledObject *kedav1alpha1.ScaledObject,
 ) ScaledObjectStateScalerResult {
-	result := ScaledObjectStateScalerResult{}
+	result := ScaledObjectStateScalerResult{
+		IsActive: false,
+		IsError:  false,
+		Metrics:  []external_metrics.ExternalMetricValue{},
+		Pairs:    map[string]string{},
+		Records:  map[string]metricscache.MetricsRecord{},
+	}
 
 	scalerName := strings.Replace(fmt.Sprintf("%T", scaler), "*scalers.", "", 1)
 	if scalerConfig.TriggerName != "" {
