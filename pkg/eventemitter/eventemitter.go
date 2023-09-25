@@ -232,7 +232,7 @@ func (e *EventEmitter) emitEventByHandler(eventData EventData) {
 			go handler.EmitEvent(eventData, e.emitErrorHandle)
 		}
 	} else {
-		log.Info("Reemit failed event", "handler", eventData.handlerKey, "retry times", eventData.retryTimes)
+		log.V(1).Info("Reemit failed event", "handler", eventData.handlerKey, "retry times", eventData.retryTimes)
 		handler := e.eventHandlersCache[eventData.handlerKey]
 		go handler.EmitEvent(eventData, e.emitErrorHandle)
 	}
