@@ -410,7 +410,6 @@ func parsePredictKubeMetadata(config *ScalerConfig) (result *predictKubeMetadata
 		} else {
 			return nil, fmt.Errorf("no threshold given")
 		}
-
 	}
 
 	meta.activationThreshold = 0

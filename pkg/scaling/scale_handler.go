@@ -638,7 +638,6 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 				isScaledObjectActive = value > activationValue
 			}
 		}
-
 	}
 
 	// if cpu/memory resource scaler has minReplicas==0 & at least one external

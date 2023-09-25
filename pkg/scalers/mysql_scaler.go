@@ -83,7 +83,6 @@ func parseMySQLMetadata(config *ScalerConfig) (*mySQLMetadata, error) {
 		} else {
 			return nil, fmt.Errorf("no queryValue given")
 		}
-
 	}
 
 	meta.activationQueryValue = 0
