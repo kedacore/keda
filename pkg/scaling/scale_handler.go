@@ -626,23 +626,26 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	matchingMetrics = modifiers.HandleScalingModifiers(scaledObject, matchingMetrics, metricTriggerPairList, false, cache, logger)
 
 	// when we are using formula, we need to reevaluate if it's active here
-	if scaledObject.IsUsingModifiers() && !isScaledObjectError {
+	if scaledObject.IsUsingModifiers() {
+		// we need to reset the activity even if there is an error
 		isScaledObjectActive = false
-		activationValue := float64(0)
-		if scaledObject.Spec.Advanced.ScalingModifiers.ActivationTarget != "" {
-			targetValue, err := strconv.ParseFloat(scaledObject.Spec.Advanced.ScalingModifiers.ActivationTarget, 64)
-			if err != nil {
-				return false, true, metricsRecord, fmt.Errorf("scalingModifiers.ActivationTarget parsing error %w", err)
+		if !isScaledObjectError {
+			activationValue := float64(0)
+			if scaledObject.Spec.Advanced.ScalingModifiers.ActivationTarget != "" {
+				targetValue, err := strconv.ParseFloat(scaledObject.Spec.Advanced.ScalingModifiers.ActivationTarget, 64)
+				if err != nil {
+					return false, true, metricsRecord, fmt.Errorf("scalingModifiers.ActivationTarget parsing error %w", err)
+				}
+				activationValue = targetValue
 			}
-			activationValue = targetValue
-		}
 
-		for _, metric := range matchingMetrics {
-			value := metric.Value.AsApproximateFloat64()
-			prommetrics.RecordScalerMetric(scaledObject.Namespace, scaledObject.Name, kedav1alpha1.CompositeMetricName, 0, metric.MetricName, value)
-			prommetrics.RecordScalerActive(scaledObject.Namespace, scaledObject.Name, kedav1alpha1.CompositeMetricName, 0, metric.MetricName, value > activationValue)
-			if !isScaledObjectActive {
-				isScaledObjectActive = value > activationValue
+			for _, metric := range matchingMetrics {
+				value := metric.Value.AsApproximateFloat64()
+				prommetrics.RecordScalerMetric(scaledObject.Namespace, scaledObject.Name, kedav1alpha1.CompositeMetricName, 0, metric.MetricName, value)
+				prommetrics.RecordScalerActive(scaledObject.Namespace, scaledObject.Name, kedav1alpha1.CompositeMetricName, 0, metric.MetricName, value > activationValue)
+				if !isScaledObjectActive {
+					isScaledObjectActive = value > activationValue
+				}
 			}
 		}
 	}
@@ -726,7 +729,7 @@ func (*scaleHandler) processScaledObjectStateScaler(
 				cache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 			}
 		} else {
-			result.IsActive = true
+			result.IsActive = isMetricActive
 			for _, metric := range metrics {
 				metricValue := metric.Value.AsApproximateFloat64()
 				prommetrics.RecordScalerMetric(scaledObject.Namespace, scaledObject.Name, scalerName, scalerIndex, metric.MetricName, metricValue)
