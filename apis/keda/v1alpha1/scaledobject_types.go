@@ -117,6 +117,10 @@ type AdvancedConfig struct {
 type ScalingModifiers struct {
 	Formula string `json:"formula,omitempty"`
 	Target  string `json:"target,omitempty"`
+	// +optional
+	ActivationTarget string `json:"activationTarget,omitempty"`
+	// +optional
+	MetricType autoscalingv2.MetricTargetType `json:"metricType,omitempty"`
 }
 
 // HorizontalPodAutoscalerConfig specifies horizontal scale config

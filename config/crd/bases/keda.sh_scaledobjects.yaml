@@ -207,7 +207,14 @@ spec:
                     description: ScalingModifiers describes advanced scaling logic
                       options like formula
                     properties:
+                      activationTarget:
+                        type: string
                       formula:
+                        type: string
+                      metricType:
+                        description: MetricTargetType specifies the type of metric
+                          being targeted, and should be either "Value", "AverageValue",
+                          or "Utilization"
                         type: string
                       target:
                         type: string

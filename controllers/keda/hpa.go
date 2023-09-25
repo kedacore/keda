@@ -258,19 +258,12 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 		validNumTarget, _ := strconv.ParseFloat(scaledObject.Spec.Advanced.ScalingModifiers.Target, 64)
 
 		// check & get metric specs type
-		var validMetricType autoscalingv2.MetricTargetType
-		for _, metric := range metricSpecs {
-			if metric.External == nil {
-				continue
-			}
-			if validMetricType == "" {
-				validMetricType = metric.External.Target.Type
-			} else if metric.External.Target.Type != validMetricType {
-				err := fmt.Errorf("error metric target type is not the same for composite scaler: %s & %s", validMetricType, metric.External.Target.Type)
-				return nil, err
-			}
+		metricType := autoscalingv2.AverageValueMetricType
+		if scaledObject.Spec.Advanced.ScalingModifiers.MetricType != "" {
+			metricType = scaledObject.Spec.Advanced.ScalingModifiers.MetricType
 		}
-		if validMetricType == autoscalingv2.UtilizationMetricType {
+
+		if metricType == autoscalingv2.UtilizationMetricType {
 			err := fmt.Errorf("error metric target type is Utilization, but it needs to be AverageValue or Value for external metrics")
 			return nil, err
 		}
@@ -280,11 +273,11 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 			quan := resource.NewMilliQuantity(int64(validNumTarget*1000), resource.DecimalSI)
 
 			correctHpaTarget := autoscalingv2.MetricTarget{
-				Type: validMetricType,
+				Type: metricType,
 			}
-			if validMetricType == autoscalingv2.AverageValueMetricType {
+			if metricType == autoscalingv2.AverageValueMetricType {
 				correctHpaTarget.AverageValue = quan
-			} else if validMetricType == autoscalingv2.ValueMetricType {
+			} else if metricType == autoscalingv2.ValueMetricType {
 				correctHpaTarget.Value = quan
 			}
 			compMetricName := kedav1alpha1.CompositeMetricName

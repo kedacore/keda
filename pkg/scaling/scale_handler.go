@@ -19,6 +19,7 @@ package scaling
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -555,6 +556,8 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	isScaledObjectActive := false
 	isScalerError := false
 	metricsRecord := map[string]metricscache.MetricsRecord{}
+	metricTriggerPairList := make(map[string]string)
+	var matchingMetrics []external_metrics.ExternalMetricValue
 
 	cache, err := h.GetScalersCache(ctx, scaledObject)
 	prommetrics.RecordScaledObjectError(scaledObject.Namespace, scaledObject.Name, err)
@@ -592,9 +595,6 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 			// if cpu/memory resource scaler has minReplicas==0 & at least one external
 			// trigger exists -> object can be scaled to zero
 			if spec.External == nil {
-				if len(scaledObject.Spec.Triggers) <= cpuMemCount {
-					isScaledObjectActive = true
-				}
 				continue
 			}
 
@@ -605,6 +605,7 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 			if latency != -1 {
 				prommetrics.RecordScalerLatency(scaledObject.Namespace, scaledObject.Name, scalerName, scalerIndex, metricName, float64(latency))
 			}
+			matchingMetrics = append(matchingMetrics, metrics...)
 			logger.V(1).Info("Getting metrics and activity from scaler", "scaler", scalerName, "metricName", metricName, "metrics", metrics, "activity", isMetricActive, "scalerError", err)
 
 			if scalerConfigs[scalerIndex].TriggerUseCachedMetrics {
@@ -615,28 +616,47 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 				}
 			}
 
-			if err != nil {
-				isScalerError = true
-				logger.Error(err, "error getting scale decision", "scaler", scalerName)
-				cache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
+			if scaledObject.IsUsingModifiers() {
+				if err != nil {
+					isScalerError = true
+					logger.Error(err, "error getting metric source", "source", scalerName)
+					cache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAMetricSourceFailed, err.Error())
+				} else {
+					for _, metric := range metrics {
+						metricValue := metric.Value.AsApproximateFloat64()
+						prommetrics.RecordScalerMetric(scaledObject.Namespace, scaledObject.Name, scalerName, scalerIndex, metric.MetricName, metricValue)
+					}
+				}
+				prommetrics.RecordScalerError(scaledObject.Namespace, scaledObject.Name, scalerName, scalerIndex, metricName, err)
 			} else {
-				for _, metric := range metrics {
-					metricValue := metric.Value.AsApproximateFloat64()
-					prommetrics.RecordScalerMetric(scaledObject.Namespace, scaledObject.Name, scalerName, scalerIndex, metric.MetricName, metricValue)
-				}
+				if err != nil {
+					isScalerError = true
+					logger.Error(err, "error getting scale decision", "scaler", scalerName)
+					cache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
+				} else {
+					for _, metric := range metrics {
+						metricValue := metric.Value.AsApproximateFloat64()
+						prommetrics.RecordScalerMetric(scaledObject.Namespace, scaledObject.Name, scalerName, scalerIndex, metric.MetricName, metricValue)
+					}
 
-				if isMetricActive {
-					isScaledObjectActive = true
-					if spec.External != nil {
-						logger.V(1).Info("Scaler for scaledObject is active", "scaler", scalerName, "metricName", metricName)
-					}
-					if spec.Resource != nil {
-						logger.V(1).Info("Scaler for scaledObject is active", "scaler", scalerName, "metricName", spec.Resource.Name)
+					if isMetricActive {
+						isScaledObjectActive = true
+						if spec.External != nil {
+							logger.V(1).Info("Scaler for scaledObject is active", "scaler", scalerName, "metricName", metricName)
+						}
+						if spec.Resource != nil {
+							logger.V(1).Info("Scaler for scaledObject is active", "scaler", scalerName, "metricName", spec.Resource.Name)
+						}
 					}
 				}
+				prommetrics.RecordScalerError(scaledObject.Namespace, scaledObject.Name, scalerName, scalerIndex, metricName, err)
+				prommetrics.RecordScalerActive(scaledObject.Namespace, scaledObject.Name, scalerName, scalerIndex, metricName, isMetricActive)
 			}
-			prommetrics.RecordScalerError(scaledObject.Namespace, scaledObject.Name, scalerName, scalerIndex, metricName, err)
-			prommetrics.RecordScalerActive(scaledObject.Namespace, scaledObject.Name, scalerName, scalerIndex, metricName, isMetricActive)
+
+			metricTriggerPairList, err = modifiers.AddPairTriggerAndMetric(metricTriggerPairList, scaledObject, metricName, scalerConfigs[scalerIndex].TriggerName)
+			if err != nil {
+				logger.Error(err, "error pairing triggers & metrics for compositeScaler")
+			}
 		}
 	}
 
@@ -650,7 +670,38 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 		logger.V(1).Info("scaler error encountered, clearing scaler cache")
 	}
 
-	return isScaledObjectActive, isScalerError, metricsRecord, nil
+	// apply scaling modifiers
+	matchingMetrics = modifiers.HandleScalingModifiers(scaledObject, matchingMetrics, metricTriggerPairList, false, cache, logger)
+
+	// when we are using formula, we need to reevaluate if it's active here
+	if scaledObject.IsUsingModifiers() && !isScalerError {
+		isScaledObjectActive = false
+		activationValue := float64(0)
+		if scaledObject.Spec.Advanced.ScalingModifiers.ActivationTarget != "" {
+			targetQueryValue, err := strconv.ParseFloat(scaledObject.Spec.Advanced.ScalingModifiers.ActivationTarget, 64)
+			if err != nil {
+				return false, true, metricsRecord, fmt.Errorf("scalingModifiers.ActivationTarget parsing error %w", err)
+			}
+			activationValue = targetQueryValue
+		}
+
+		for _, metric := range matchingMetrics {
+			value := metric.Value.AsApproximateFloat64()
+			prommetrics.RecordScalerMetric(scaledObject.Namespace, scaledObject.Name, kedav1alpha1.CompositeMetricName, 0, metric.MetricName, value)
+			prommetrics.RecordScalerActive(scaledObject.Namespace, scaledObject.Name, kedav1alpha1.CompositeMetricName, 0, metric.MetricName, value > activationValue)
+			if !isScaledObjectActive {
+				isScaledObjectActive = value > activationValue
+			}
+		}
+
+	}
+
+	// if cpu/memory resource scaler has minReplicas==0 & at least one external
+	// trigger exists -> object can be scaled to zero
+	if len(scaledObject.Spec.Triggers) <= cpuMemCount && !isScalerError {
+		isScaledObjectActive = true
+	}
+	return isScaledObjectActive, isScalerError, metricsRecord, err
 }
 
 // / --------------------------------------------------------------------------- ///
