@@ -29,7 +29,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 )
@@ -362,7 +361,7 @@ func getIdleOrMinimumReplicaCount(scaledObject *kedav1alpha1.ScaledObject) (bool
 // If not paused, it returns nil.
 func GetPausedReplicaCount(scaledObject *kedav1alpha1.ScaledObject) (*int32, error) {
 	if scaledObject.Annotations != nil {
-		if val, ok := scaledObject.Annotations[kedacontrollerutil.PausedReplicasAnnotation]; ok {
+		if val, ok := scaledObject.Annotations[kedav1alpha1.PausedReplicasAnnotation]; ok {
 			conv, err := strconv.ParseInt(val, 10, 32)
 			if err != nil {
 				return nil, err
