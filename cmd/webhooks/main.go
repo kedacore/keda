@@ -22,7 +22,6 @@ import (
 	"os"
 
 	"github.com/spf13/pflag"
-	_ "go.uber.org/automaxprocs"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
