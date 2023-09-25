@@ -143,6 +143,7 @@ spec:
     scalingModifiers:
       formula: metrics_api + kw_trig
       target: '2'
+      activationTarget: '2'
   pollingInterval: 5
   cooldownPeriod: 5
   minReplicaCount: 0
@@ -238,6 +239,12 @@ func TestScalingModifiers(t *testing.T) {
 
 func testFormula(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testFormula ---")
+
+	// formula simply adds 2 metrics together (0+2=2; activationTarget = 2 -> replicas should be 0)
+	data.MetricValue = 0
+	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 0, 60)
+
 	// formula simply adds 2 metrics together (3+2=5; target = 2 -> 5/2 replicas should be 3)
 	data.MetricValue = 3
 	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
