@@ -358,7 +358,7 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 		return nil, err
 	}
 
-	scalers, err := h.buildScalers(ctx, withTriggers, podTemplateSpec, containerName)
+	scalers, err := h.buildScalers(ctx, withTriggers, podTemplateSpec, containerName, asMetricSource)
 	if err != nil {
 		return nil, err
 	}
