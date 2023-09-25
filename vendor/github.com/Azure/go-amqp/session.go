@@ -50,9 +50,9 @@ type Session struct {
 	handleMax uint32
 
 	// link management
-	linksMu    sync.RWMutex      // used to synchronize link handle allocation
-	linksByKey map[linkKey]*link // mapping of name+role link
-	handles    *bitmap.Bitmap    // allocated handles
+	linksMu       sync.RWMutex      // used to synchronize link handle allocation
+	linksByKey    map[linkKey]*link // mapping of name+role link
+	outputHandles *bitmap.Bitmap    // allocated output handles
 
 	abandonedLinksMu sync.Mutex
 	abandonedLinks   []*link
@@ -93,8 +93,8 @@ func newSession(c *Conn, channel uint16, opts *SessionOptions) *Session {
 		}
 	}
 
-	// create handle map after options have been applied
-	s.handles = bitmap.New(s.handleMax)
+	// create output handle map after options have been applied
+	s.outputHandles = bitmap.New(s.handleMax)
 
 	s.rxQ = queue.NewHolder(queue.New[frames.FrameBody](int(s.incomingWindow)))
 
@@ -211,26 +211,32 @@ func (s *Session) Close(ctx context.Context) error {
 // txFrame sends a frame to the connWriter.
 //   - ctx is used to provide the write deadline
 //   - fr is the frame to write to net.Conn
-//   - sent is the optional channel that will contain the error if the write fails
-func (s *Session) txFrame(ctx context.Context, fr frames.FrameBody, sent chan error) {
+func (s *Session) txFrame(frameCtx *frameContext, fr frames.FrameBody) {
 	debug.Log(2, "TX (Session %p) mux frame to Conn (%p): %s", s, s.conn, fr)
-	s.conn.sendFrame(ctx, frames.Frame{
-		Type:    frames.TypeAMQP,
-		Channel: s.channel,
-		Body:    fr,
-	}, sent)
+	s.conn.sendFrame(frameEnvelope{
+		FrameCtx: frameCtx,
+		Frame: frames.Frame{
+			Type:    frames.TypeAMQP,
+			Channel: s.channel,
+			Body:    fr,
+		},
+	})
 }
 
 // txFrameAndWait sends a frame to the connWriter and waits for the write to complete
 //   - ctx is used to provide the write deadline
 //   - fr is the frame to write to net.Conn
 func (s *Session) txFrameAndWait(ctx context.Context, fr frames.FrameBody) error {
-	sent := make(chan error, 1)
-	s.txFrame(ctx, fr, sent)
+	frameCtx := frameContext{
+		Ctx:  ctx,
+		Done: make(chan struct{}),
+	}
+
+	s.txFrame(&frameCtx, fr)
 
 	select {
-	case err := <-sent:
-		return err
+	case <-frameCtx.Done:
+		return frameCtx.Err
 	case <-s.conn.done:
 		return s.conn.doneErr
 	case <-s.done:
@@ -247,6 +253,11 @@ func (s *Session) txFrameAndWait(ctx context.Context, fr frames.FrameBody) error
 // completes, an error is returned. If the Receiver was successfully
 // created, it will be cleaned up in future calls to NewReceiver.
 func (s *Session) NewReceiver(ctx context.Context, source string, opts *ReceiverOptions) (*Receiver, error) {
+	return newReceiverForSession(ctx, s, source, opts, receiverTestHooks{})
+}
+
+// split out so tests can add hooks
+func newReceiverForSession(ctx context.Context, s *Session, source string, opts *ReceiverOptions, hooks receiverTestHooks) (*Receiver, error) {
 	r, err := newReceiver(source, s, opts)
 	if err != nil {
 		return nil, err
@@ -255,7 +266,7 @@ func (s *Session) NewReceiver(ctx context.Context, source string, opts *Receiver
 		return nil, err
 	}
 
-	go r.mux(receiverTestHooks{})
+	go r.mux(hooks)
 
 	return r, nil
 }
@@ -269,6 +280,11 @@ func (s *Session) NewReceiver(ctx context.Context, source string, opts *Receiver
 // completes, an error is returned. If the Sender was successfully
 // created, it will be cleaned up in future calls to NewSender.
 func (s *Session) NewSender(ctx context.Context, target string, opts *SenderOptions) (*Sender, error) {
+	return newSenderForSession(ctx, s, target, opts, senderTestHooks{})
+}
+
+// split out so tests can add hooks
+func newSenderForSession(ctx context.Context, s *Session, target string, opts *SenderOptions, hooks senderTestHooks) (*Sender, error) {
 	l, err := newSender(target, s, opts)
 	if err != nil {
 		return nil, err
@@ -277,7 +293,7 @@ func (s *Session) NewSender(ctx context.Context, target string, opts *SenderOpti
 		return nil, err
 	}
 
-	go l.mux(senderTestHooks{})
+	go l.mux(hooks)
 
 	return l, nil
 }
@@ -300,14 +316,23 @@ func (s *Session) mux(remoteBegin *frames.PerformBegin) {
 	}()
 
 	var (
-		links                     = make(map[uint32]*link)  // mapping of remote handles to links
-		handlesByDeliveryID       = make(map[uint32]uint32) // mapping of deliveryIDs to handles
-		deliveryIDByHandle        = make(map[uint32]uint32) // mapping of handles to latest deliveryID
-		handlesByRemoteDeliveryID = make(map[uint32]uint32) // mapping of remote deliveryID to handles
+		// maps input (remote) handles to links
+		linkFromInputHandle = make(map[uint32]*link)
 
-		settlementByDeliveryID = make(map[uint32]chan encoding.DeliveryState)
+		// maps local delivery IDs (sending transfers) to input (remote) handles
+		inputHandleFromDeliveryID = make(map[uint32]uint32)
 
-		nextDeliveryID uint32 // tracks the next delivery ID for outgoing transfers
+		// maps remote delivery IDs (receiving transfers) to input (remote) handles
+		inputHandleFromRemoteDeliveryID = make(map[uint32]uint32)
+
+		// maps delivery IDs to output (our) handles. used for multi-frame transfers
+		deliveryIDFromOutputHandle = make(map[uint32]uint32)
+
+		// maps delivery IDs to the settlement state channel
+		settlementFromDeliveryID = make(map[uint32]chan encoding.DeliveryState)
+
+		// tracks the next delivery ID for outgoing transfers
+		nextDeliveryID uint32
 
 		// flow control values
 		nextOutgoingID       uint32
@@ -326,7 +351,7 @@ func (s *Session) mux(remoteBegin *frames.PerformBegin) {
 
 		closeInProgress = true
 		s.doneErr = e2
-		s.txFrame(context.Background(), &frames.PerformEnd{Error: e1}, nil)
+		s.txFrame(&frameContext{Ctx: context.Background()}, &frames.PerformEnd{Error: e1})
 		close(s.endSent)
 	}
 
@@ -372,7 +397,7 @@ func (s *Session) mux(remoteBegin *frames.PerformBegin) {
 			}
 			// session is being closed by the client
 			closeInProgress = true
-			s.txFrame(context.Background(), &frames.PerformEnd{}, nil)
+			s.txFrame(&frameContext{Ctx: context.Background()}, &frames.PerformEnd{})
 			close(s.endSent)
 
 		// incoming frame
@@ -391,14 +416,18 @@ func (s *Session) mux(remoteBegin *frames.PerformBegin) {
 					end = *body.Last
 				}
 				for deliveryID := start; deliveryID <= end; deliveryID++ {
-					handles := handlesByDeliveryID
+					// find the input (remote) handle for this delivery ID.
+					// default to the map for local delivery IDs.
+					handles := inputHandleFromDeliveryID
 					if body.Role == encoding.RoleSender {
-						handles = handlesByRemoteDeliveryID
+						// the disposition frame is meant for a receiver
+						// so look in the map for remote delivery IDs.
+						handles = inputHandleFromRemoteDeliveryID
 					}
 
-					handle, ok := handles[deliveryID]
+					inputHandle, ok := handles[deliveryID]
 					if !ok {
-						debug.Log(2, "RX (Session %p): role %s: didn't find deliveryID %d in handles map", s, body.Role, deliveryID)
+						debug.Log(2, "RX (Session %p): role %s: didn't find deliveryID %d in inputHandlesByDeliveryID map", s, body.Role, deliveryID)
 						continue
 					}
 					delete(handles, deliveryID)
@@ -406,8 +435,8 @@ func (s *Session) mux(remoteBegin *frames.PerformBegin) {
 					if body.Settled && body.Role == encoding.RoleReceiver {
 						// check if settlement confirmation was requested, if so
 						// confirm by closing channel
-						if done, ok := settlementByDeliveryID[deliveryID]; ok {
-							delete(settlementByDeliveryID, deliveryID)
+						if done, ok := settlementFromDeliveryID[deliveryID]; ok {
+							delete(settlementFromDeliveryID, deliveryID)
 							select {
 							case done <- body.State:
 							default:
@@ -416,12 +445,13 @@ func (s *Session) mux(remoteBegin *frames.PerformBegin) {
 						}
 					}
 
-					link, ok := links[handle]
+					// now find the *link for this input (remote) handle
+					link, ok := linkFromInputHandle[inputHandle]
 					if !ok {
 						closeWithError(&Error{
 							Condition:   ErrCondUnattachedHandle,
 							Description: "received disposition frame referencing a handle that's not in use",
-						}, fmt.Errorf("received disposition frame with unknown link handle %d", handle))
+						}, fmt.Errorf("received disposition frame with unknown link input handle %d", inputHandle))
 						continue
 					}
 
@@ -461,7 +491,7 @@ func (s *Session) mux(remoteBegin *frames.PerformBegin) {
 
 				// Send to link if handle is set
 				if body.Handle != nil {
-					link, ok := links[*body.Handle]
+					link, ok := linkFromInputHandle[*body.Handle]
 					if !ok {
 						closeWithError(&Error{
 							Condition:   ErrCondUnattachedHandle,
@@ -482,7 +512,7 @@ func (s *Session) mux(remoteBegin *frames.PerformBegin) {
 						NextOutgoingID: nextOutgoingID,
 						OutgoingWindow: s.outgoingWindow,
 					}
-					s.txFrame(context.Background(), resp, nil)
+					s.txFrame(&frameContext{Ctx: context.Background()}, resp)
 				}
 
 			case *frames.PerformAttach:
@@ -502,10 +532,14 @@ func (s *Session) mux(remoteBegin *frames.PerformBegin) {
 					continue
 				}
 
-				link.remoteHandle = body.Handle
-				links[link.remoteHandle] = link
+				// track the input (remote) handle number for this link.
+				// note that it might be a different value than our output handle.
+				link.inputHandle = body.Handle
+				linkFromInputHandle[link.inputHandle] = link
 
 				s.muxFrameToLink(link, fr)
+
+				debug.Log(1, "RX (Session %p): link %s attached, input handle %d, output handle %d", s, link.key.name, link.inputHandle, link.outputHandle)
 
 			case *frames.PerformTransfer:
 				s.needFlowCount++
@@ -519,7 +553,7 @@ func (s *Session) mux(remoteBegin *frames.PerformBegin) {
 				if remoteOutgoingWindow > 0 {
 					remoteOutgoingWindow--
 				}
-				link, ok := links[body.Handle]
+				link, ok := linkFromInputHandle[body.Handle]
 				if !ok {
 					closeWithError(&Error{
 						Condition:   ErrCondUnattachedHandle,
@@ -532,8 +566,8 @@ func (s *Session) mux(remoteBegin *frames.PerformBegin) {
 
 				// if this message is received unsettled and link rcv-settle-mode == second, add to handlesByRemoteDeliveryID
 				if !body.Settled && body.DeliveryID != nil && link.receiverSettleMode != nil && *link.receiverSettleMode == ReceiverSettleModeSecond {
-					debug.Log(1, "RX (Session %p): adding handle to handlesByRemoteDeliveryID. delivery ID: %d", s, *body.DeliveryID)
-					handlesByRemoteDeliveryID[*body.DeliveryID] = body.Handle
+					debug.Log(1, "RX (Session %p): adding handle %d to inputHandleFromRemoteDeliveryID. remote delivery ID: %d", s, body.Handle, *body.DeliveryID)
+					inputHandleFromRemoteDeliveryID[*body.DeliveryID] = body.Handle
 				}
 
 				// Update peer's outgoing window if half has been consumed.
@@ -547,11 +581,11 @@ func (s *Session) mux(remoteBegin *frames.PerformBegin) {
 						NextOutgoingID: nextOutgoingID,
 						OutgoingWindow: s.outgoingWindow,
 					}
-					s.txFrame(context.Background(), flow, nil)
+					s.txFrame(&frameContext{Ctx: context.Background()}, flow)
 				}
 
 			case *frames.PerformDetach:
-				link, ok := links[body.Handle]
+				link, ok := linkFromInputHandle[body.Handle]
 				if !ok {
 					closeWithError(&Error{
 						Condition:   ErrCondUnattachedHandle,
@@ -566,8 +600,8 @@ func (s *Session) mux(remoteBegin *frames.PerformBegin) {
 				// detach or our peer detached us. either way, now that
 				// the link has processed the frame it's detached so we
 				// are safe to clean up its state.
-				delete(links, link.remoteHandle)
-				delete(deliveryIDByHandle, link.handle)
+				delete(linkFromInputHandle, link.inputHandle)
+				delete(deliveryIDFromOutputHandle, link.outputHandle)
 				s.deallocateHandle(link)
 
 			case *frames.PerformEnd:
@@ -585,7 +619,7 @@ func (s *Session) mux(remoteBegin *frames.PerformBegin) {
 				}
 
 				fr := frames.PerformEnd{}
-				s.txFrame(context.Background(), &fr, nil)
+				s.txFrame(&frameContext{Ctx: context.Background()}, &fr)
 
 				// per spec, when end is received, we're no longer allowed to receive frames
 				return
@@ -606,38 +640,43 @@ func (s *Session) mux(remoteBegin *frames.PerformBegin) {
 				deliveryID = nextDeliveryID
 				fr.DeliveryID = &deliveryID
 				nextDeliveryID++
-				deliveryIDByHandle[fr.Handle] = deliveryID
+				deliveryIDFromOutputHandle[fr.Handle] = deliveryID
 
-				// add to handleByDeliveryID if not sender-settled
 				if !fr.Settled {
-					handlesByDeliveryID[deliveryID] = fr.Handle
+					inputHandleFromDeliveryID[deliveryID] = env.InputHandle
 				}
 			} else {
 				// if fr.DeliveryID is nil it must have been added
-				// to deliveryIDByHandle already
-				deliveryID = deliveryIDByHandle[fr.Handle]
+				// to deliveryIDByHandle already (multi-frame transfer)
+				deliveryID = deliveryIDFromOutputHandle[fr.Handle]
 			}
 
 			// log after the delivery ID has been assigned
 			debug.Log(2, "TX (Session %p): %d, %s", s, s.channel, fr)
 
-			// frame has been sender-settled, remove from map
+			// frame has been sender-settled, remove from map.
+			// this should only come into play for multi-frame transfers.
 			if fr.Settled {
-				delete(handlesByDeliveryID, deliveryID)
+				delete(inputHandleFromDeliveryID, deliveryID)
 			}
 
-			s.txFrame(env.Ctx, fr, env.Sent)
-			if sendErr := <-env.Sent; sendErr != nil {
-				s.doneErr = sendErr
+			s.txFrame(env.FrameCtx, fr)
 
-				// put the error back as our sender will read from this channel
-				env.Sent <- sendErr
-				return
+			select {
+			case <-env.FrameCtx.Done:
+				if env.FrameCtx.Err != nil {
+					// transfer wasn't sent, don't update state
+					continue
+				}
+				// transfer was written to the network
+			case <-s.conn.done:
+				// the write failed, Conn is going down
+				continue
 			}
 
 			// if not settled, add done chan to map
 			if !fr.Settled && fr.Done != nil {
-				settlementByDeliveryID[deliveryID] = fr.Done
+				settlementFromDeliveryID[deliveryID] = fr.Done
 			} else if fr.Done != nil {
 				// sender-settled, close done now that the transfer has been sent
 				close(fr.Done)
@@ -669,8 +708,8 @@ func (s *Session) mux(remoteBegin *frames.PerformBegin) {
 					for deliveryID := start; deliveryID <= end; deliveryID++ {
 						// send delivery state to the channel and close it to signal
 						// that the delivery has completed.
-						if done, ok := settlementByDeliveryID[deliveryID]; ok {
-							delete(settlementByDeliveryID, deliveryID)
+						if done, ok := settlementFromDeliveryID[deliveryID]; ok {
+							delete(settlementFromDeliveryID, deliveryID)
 							select {
 							case done <- fr.State:
 							default:
@@ -679,18 +718,18 @@ func (s *Session) mux(remoteBegin *frames.PerformBegin) {
 						}
 					}
 				}
-				s.txFrame(env.Ctx, fr, env.Sent)
+				s.txFrame(env.FrameCtx, fr)
 			case *frames.PerformFlow:
 				niID := nextIncomingID
 				fr.NextIncomingID = &niID
 				fr.IncomingWindow = s.incomingWindow
 				fr.NextOutgoingID = nextOutgoingID
 				fr.OutgoingWindow = s.outgoingWindow
-				s.txFrame(context.Background(), fr, env.Sent)
+				s.txFrame(env.FrameCtx, fr)
 			case *frames.PerformTransfer:
 				panic("transfer frames must use txTransfer")
 			default:
-				s.txFrame(context.Background(), fr, env.Sent)
+				s.txFrame(env.FrameCtx, fr)
 			}
 		}
 	}
@@ -706,7 +745,7 @@ func (s *Session) allocateHandle(ctx context.Context, l *link) error {
 		return fmt.Errorf("link with name '%v' already exists", l.key.name)
 	}
 
-	next, ok := s.handles.Next()
+	next, ok := s.outputHandles.Next()
 	if !ok {
 		if err := s.Close(ctx); err != nil {
 			return err
@@ -715,7 +754,7 @@ func (s *Session) allocateHandle(ctx context.Context, l *link) error {
 		return &SessionError{inner: fmt.Errorf("reached session handle max (%d)", s.handleMax+1)}
 	}
 
-	l.handle = next         // allocate handle to the link
+	l.outputHandle = next   // allocate handle to the link
 	s.linksByKey[l.key] = l // add to mapping
 
 	return nil
@@ -726,7 +765,7 @@ func (s *Session) deallocateHandle(l *link) {
 	defer s.linksMu.Unlock()
 
 	delete(s.linksByKey, l.key)
-	s.handles.Remove(l.handle)
+	s.outputHandles.Remove(l.outputHandle)
 }
 
 func (s *Session) abandonLink(l *link) {
@@ -743,7 +782,7 @@ func (s *Session) freeAbandonedLinks(ctx context.Context) error {
 
 	for _, l := range s.abandonedLinks {
 		dr := &frames.PerformDetach{
-			Handle: l.handle,
+			Handle: l.outputHandle,
 			Closed: true,
 		}
 		if err := s.txFrameAndWait(ctx, dr); err != nil {
@@ -764,24 +803,18 @@ func (s *Session) muxFrameToLink(l *link, fr frames.FrameBody) {
 
 // transferEnvelope is used by senders to send transfer frames
 type transferEnvelope struct {
-	Ctx   context.Context
-	Frame frames.PerformTransfer
+	FrameCtx *frameContext
 
-	// Sent is *never* nil as we use this for confirmation of sending
-	// NOTE: use a buffered channel of size 1 when populating
-	Sent chan error
+	// the link's remote handle
+	InputHandle uint32
+
+	Frame frames.PerformTransfer
 }
 
 // frameBodyEnvelope is used by senders and receivers to send frames.
 type frameBodyEnvelope struct {
-	Ctx       context.Context
+	FrameCtx  *frameContext
 	FrameBody frames.FrameBody
-
-	// Sent *can* be nil depending on what frame is being sent.
-	// e.g. sending a disposition frame frame a receiver's settlement
-	// APIs will have a non-nil channel vs sending a flow frame
-	// NOTE: use a buffered channel of size 1 when populating
-	Sent chan error
 }
 
 // the address of this var is a sentinel value indicating
