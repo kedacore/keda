@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/go-logr/logr"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
@@ -83,6 +84,10 @@ func NewEventEmitter(client client.Client, recorder record.EventRecorder) *Event
 	}
 }
 
+func InitializeLogger(cloudEvents *kedav1alpha1.CloudEvent, cloudEventEmitterName string) logr.Logger {
+	return logf.Log.WithName(cloudEventEmitterName).WithValues("type", cloudEvents.Kind, "namespace", cloudEvents.Namespace, "name", cloudEvents.Name)
+}
+
 func (e *EventEmitter) HandleCloudEvents(ctx context.Context, cloudEvent *kedav1alpha1.CloudEvent) error {
 	e.createEventHandlers(ctx, cloudEvent)
 
@@ -136,7 +141,7 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEvents *ked
 	if cloudEvents.Spec.Destination.CloudEventHTTP != nil {
 		var err error
 		var eventHandler EventDataHandler
-		eventHandler, err = NewCloudEventHTTPHandler(ctx, clusterName, cloudEvents.Spec.Destination.CloudEventHTTP.Uri, log)
+		eventHandler, err = NewCloudEventHTTPHandler(ctx, clusterName, cloudEvents.Spec.Destination.CloudEventHTTP.Uri, InitializeLogger(cloudEvents, "cloudevent_http"))
 
 		if err != nil {
 			log.Error(err, "create cloudevent handler failed")
