@@ -155,7 +155,6 @@ spec:
   - type: metrics-api
     name: metrics_api
     metadata:
-      targetValue: "2"
       url: "{{.MetricsServerEndpoint}}"
       valueLocation: 'value'
       method: "query"
@@ -165,7 +164,6 @@ spec:
     name: kw_trig
     metadata:
       podSelector: pod=workload-test
-      value: '1'
 `
 
 	workloadDeploymentTemplate = `
