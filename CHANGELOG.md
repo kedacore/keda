@@ -71,6 +71,7 @@ Here is an overview of all new **experimental** features:
 - **Azure Pod Identity**: Introduce validation to prevent usage of empty identity ID for Azure identity providers ([#4528](https://github.com/kedacore/keda/issues/4528))
 - **Prometheus Scaler**: Remove trailing whitespaces in customAuthHeader and customAuthValue ([#4960](https://github.com/kedacore/keda/issues/4960))
 - **Pulsar Scaler**: Add support for OAuth extensions ([#4700](https://github.com/kedacore/keda/issues/4700))
+- **Redis Scalers**: Add TLS authentication support for Redis and Redis stream scalers ([#4917](https://github.com/kedacore/keda/issues/4917))
 
 ### Fixes
 - **General**: Add validations for stabilizationWindowSeconds ([#4976](https://github.com/kedacore/keda/issues/4976))
