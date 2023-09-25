@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.12.0
+    controller-gen.kubebuilder.io/version: v0.13.0
   name: scaledobjects.keda.sh
 spec:
   group: keda.sh
@@ -203,6 +203,15 @@ spec:
                     type: object
                   restoreToOriginalReplicaCount:
                     type: boolean
+                  scalingModifiers:
+                    description: ScalingModifiers describes advanced scaling logic
+                      options like formula
+                    properties:
+                      formula:
+                        type: string
+                      target:
+                        type: string
+                    type: object
                 type: object
               cooldownPeriod:
                 format: int32
@@ -291,6 +300,8 @@ spec:
           status:
             description: ScaledObjectStatus is the status for a ScaledObject resource
             properties:
+              compositeScalerName:
+                type: string
               conditions:
                 description: Conditions an array representation to store multiple
                   Conditions

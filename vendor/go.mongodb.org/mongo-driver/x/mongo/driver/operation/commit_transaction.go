@@ -70,7 +70,7 @@ func (ct *CommitTransaction) Execute(ctx context.Context) error {
 
 }
 
-func (ct *CommitTransaction) command(dst []byte, desc description.SelectedServer) ([]byte, error) {
+func (ct *CommitTransaction) command(dst []byte, _ description.SelectedServer) ([]byte, error) {
 
 	dst = bsoncore.AppendInt32Element(dst, "commitTransaction", 1)
 	if ct.recoveryToken != nil {

@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,6 +23,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/internal"
+	"go.mongodb.org/mongo-driver/internal/logger"
+	"go.mongodb.org/mongo-driver/mongo/address"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -44,6 +47,8 @@ var (
 	ErrReplyDocumentMismatch = errors.New("number of documents returned does not match numberReturned field")
 	// ErrNonPrimaryReadPref is returned when a read is attempted in a transaction with a non-primary read preference.
 	ErrNonPrimaryReadPref = errors.New("read preference in a transaction must be primary")
+	// errDatabaseNameEmpty occurs when a database name is not provided.
+	errDatabaseNameEmpty = errors.New("database name cannot be empty")
 )
 
 const (
@@ -96,6 +101,7 @@ type startedInformation struct {
 	serverConnID             *int64
 	redacted                 bool
 	serviceID                *primitive.ObjectID
+	serverAddress            address.Address
 }
 
 // finishedInformation keeps track of all of the information necessary for monitoring success and failure events.
@@ -107,9 +113,10 @@ type finishedInformation struct {
 	connID             string
 	driverConnectionID uint64 // TODO(GODRIVER-2824): change type to int64.
 	serverConnID       *int64
-	startTime          time.Time
 	redacted           bool
 	serviceID          *primitive.ObjectID
+	serverAddress      address.Address
+	duration           time.Duration
 }
 
 // convertInt64PtrToInt32Ptr will convert an int64 pointer reference to an int32 pointer
@@ -128,6 +135,20 @@ func convertInt64PtrToInt32Ptr(i64 *int64) *int32 {
 	return &i32
 }
 
+// success returns true if there was no command error or the command error is a
+// "WriteCommandError". Commands that executed on the server and return a status
+// of { ok: 1.0 } are considered successful commands and MUST generate a
+// CommandSucceededEvent and "command succeeded" log message. Commands that have
+// write errors are included since the actual command did succeed, only writes
+// failed.
+func (info finishedInformation) success() bool {
+	if _, ok := info.cmdErr.(WriteCommandError); ok {
+		return true
+	}
+
+	return info.cmdErr == nil
+}
+
 // ResponseInfo contains the context required to parse a server response.
 type ResponseInfo struct {
 	ServerResponse        bsoncore.Document
@@ -135,6 +156,37 @@ type ResponseInfo struct {
 	Connection            Connection
 	ConnectionDescription description.Server
 	CurrentIndex          int
+}
+
+func redactStartedInformationCmd(op Operation, info startedInformation) bson.Raw {
+	var cmdCopy bson.Raw
+
+	// Make a copy of the command. Redact if the command is security
+	// sensitive and cannot be monitored. If there was a type 1 payload for
+	// the current batch, convert it to a BSON array
+	if !info.redacted {
+		cmdCopy = make([]byte, len(info.cmd))
+		copy(cmdCopy, info.cmd)
+
+		if info.documentSequenceIncluded {
+			// remove 0 byte at end
+			cmdCopy = cmdCopy[:len(info.cmd)-1]
+			cmdCopy = op.addBatchArray(cmdCopy)
+
+			// add back 0 byte and update length
+			cmdCopy, _ = bsoncore.AppendDocumentEnd(cmdCopy, 0)
+		}
+	}
+
+	return cmdCopy
+}
+
+func redactFinishedInformationResponse(info finishedInformation) bson.Raw {
+	if !info.redacted {
+		return bson.Raw(info.response)
+	}
+
+	return bson.Raw{}
 }
 
 // Operation is used to execute an operation. It contains all of the common code required to
@@ -252,6 +304,8 @@ type Operation struct {
 	// nil, which means that the timeout of the operation's caller will be used.
 	Timeout *time.Duration
 
+	Logger *logger.Logger
+
 	// cmdName is only set when serializing OP_MSG and is used internally in readWireMessage.
 	cmdName string
 }
@@ -337,7 +391,7 @@ func (op Operation) Validate() error {
 		return InvalidOperationError{MissingField: "Deployment"}
 	}
 	if op.Database == "" {
-		return InvalidOperationError{MissingField: "Database"}
+		return errDatabaseNameEmpty
 	}
 	if op.Client != nil && !writeconcern.AckWrite(op.WriteConcern) {
 		return errors.New("session provided for an unacknowledged write")
@@ -577,6 +631,8 @@ func (op Operation) Execute(ctx context.Context) error {
 		startedInfo.redacted = op.redactCommand(startedInfo.cmdName, startedInfo.cmd)
 		startedInfo.serviceID = conn.Description().ServiceID
 		startedInfo.serverConnID = conn.ServerConnectionID()
+		startedInfo.serverAddress = conn.Description().Addr
+
 		op.publishStartedEvent(ctx, startedInfo)
 
 		// get the moreToCome flag information before we compress
@@ -595,14 +651,16 @@ func (op Operation) Execute(ctx context.Context) error {
 
 		finishedInfo := finishedInformation{
 			cmdName:            startedInfo.cmdName,
-			requestID:          startedInfo.requestID,
-			startTime:          time.Now(),
-			connID:             startedInfo.connID,
 			driverConnectionID: startedInfo.driverConnectionID,
+			requestID:          startedInfo.requestID,
+			connID:             startedInfo.connID,
 			serverConnID:       startedInfo.serverConnID,
 			redacted:           startedInfo.redacted,
 			serviceID:          startedInfo.serviceID,
+			serverAddress:      desc.Server.Addr,
 		}
+
+		startedTime := time.Now()
 
 		// Check for possible context error. If no context error, check if there's enough time to perform a
 		// round trip before the Context deadline. If ctx is a Timeout Context, use the 90th percentile RTT
@@ -621,7 +679,7 @@ func (op Operation) Execute(ctx context.Context) error {
 		if err == nil {
 			// roundtrip using either the full roundTripper or a special one for when the moreToCome
 			// flag is set
-			var roundTrip = op.roundTrip
+			roundTrip := op.roundTrip
 			if moreToCome {
 				roundTrip = op.moreToComeRoundTrip
 			}
@@ -634,6 +692,8 @@ func (op Operation) Execute(ctx context.Context) error {
 
 		finishedInfo.response = res
 		finishedInfo.cmdErr = err
+		finishedInfo.duration = time.Since(startedTime)
+
 		op.publishFinishedEvent(ctx, finishedInfo)
 
 		// prevIndefiniteErrorIsSet is "true" if the "err" variable has been set to the "prevIndefiniteErr" in
@@ -1016,8 +1076,8 @@ func (op Operation) createWireMessage(
 	dst []byte,
 	desc description.SelectedServer,
 	maxTimeMS uint64,
-	conn Connection) ([]byte, startedInformation, error) {
-
+	conn Connection,
+) ([]byte, startedInformation, error) {
 	// If topology is not LoadBalanced, API version is not declared, and wire version is unknown
 	// or less than 6, use OP_QUERY. Otherwise, use OP_MSG.
 	if desc.Kind != description.LoadBalanced && op.ServerAPI == nil &&
@@ -1109,8 +1169,8 @@ func (op Operation) createQueryWireMessage(maxTimeMS uint64, dst []byte, desc de
 }
 
 func (op Operation) createMsgWireMessage(ctx context.Context, maxTimeMS uint64, dst []byte, desc description.SelectedServer,
-	conn Connection) ([]byte, startedInformation, error) {
-
+	conn Connection,
+) ([]byte, startedInformation, error) {
 	var info startedInformation
 	var flags wiremessage.MsgFlag
 	var wmindex int32
@@ -1698,76 +1758,141 @@ func (op *Operation) redactCommand(cmd string, doc bsoncore.Document) bool {
 	return err == nil
 }
 
+// canLogCommandMessage returns true if the command can be logged.
+func (op Operation) canLogCommandMessage() bool {
+	return op.Logger != nil && op.Logger.LevelComponentEnabled(logger.LevelDebug, logger.ComponentCommand)
+}
+
+func (op Operation) canPublishStartedEvent() bool {
+	return op.CommandMonitor != nil && op.CommandMonitor.Started != nil
+}
+
 // publishStartedEvent publishes a CommandStartedEvent to the operation's command monitor if possible. If the command is
 // an unacknowledged write, a CommandSucceededEvent will be published as well. If started events are not being monitored,
 // no events are published.
 func (op Operation) publishStartedEvent(ctx context.Context, info startedInformation) {
-	if op.CommandMonitor == nil || op.CommandMonitor.Started == nil {
-		return
+	// If logging is enabled for the command component at the debug level, log the command response.
+	if op.canLogCommandMessage() {
+		host, port, _ := net.SplitHostPort(info.serverAddress.String())
+
+		redactedCmd := redactStartedInformationCmd(op, info).String()
+		formattedCmd := logger.FormatMessage(redactedCmd, op.Logger.MaxDocumentLength)
+
+		op.Logger.Print(logger.LevelDebug,
+			logger.ComponentCommand,
+			logger.CommandStarted,
+			logger.SerializeCommand(logger.Command{
+				DriverConnectionID: info.driverConnectionID,
+				Message:            logger.CommandStarted,
+				Name:               info.cmdName,
+				RequestID:          int64(info.requestID),
+				ServerConnectionID: info.serverConnID,
+				ServerHost:         host,
+				ServerPort:         port,
+				ServiceID:          info.serviceID,
+			},
+				logger.KeyCommand, formattedCmd,
+				logger.KeyDatabaseName, op.Database)...)
+
 	}
 
-	// Make a copy of the command. Redact if the command is security sensitive and cannot be monitored.
-	// If there was a type 1 payload for the current batch, convert it to a BSON array.
-	cmdCopy := bson.Raw{}
-	if !info.redacted {
-		cmdCopy = make([]byte, len(info.cmd))
-		copy(cmdCopy, info.cmd)
-		if info.documentSequenceIncluded {
-			cmdCopy = cmdCopy[:len(info.cmd)-1] // remove 0 byte at end
-			cmdCopy = op.addBatchArray(cmdCopy)
-			cmdCopy, _ = bsoncore.AppendDocumentEnd(cmdCopy, 0) // add back 0 byte and update length
+	if op.canPublishStartedEvent() {
+		started := &event.CommandStartedEvent{
+			Command:              redactStartedInformationCmd(op, info),
+			DatabaseName:         op.Database,
+			CommandName:          info.cmdName,
+			RequestID:            int64(info.requestID),
+			ConnectionID:         info.connID,
+			ServerConnectionID:   convertInt64PtrToInt32Ptr(info.serverConnID),
+			ServerConnectionID64: info.serverConnID,
+			ServiceID:            info.serviceID,
 		}
+		op.CommandMonitor.Started(ctx, started)
 	}
+}
 
-	started := &event.CommandStartedEvent{
-		Command:            cmdCopy,
-		DatabaseName:       op.Database,
-		CommandName:        info.cmdName,
-		RequestID:          int64(info.requestID),
-		ConnectionID:       info.connID,
-		ServerConnectionID: convertInt64PtrToInt32Ptr(info.serverConnID),
-		ServiceID:          info.serviceID,
-	}
-	op.CommandMonitor.Started(ctx, started)
+// canPublishSucceededEvent returns true if a CommandSucceededEvent can be
+// published for the given command. This is true if the command is not an
+// unacknowledged write and the command monitor is monitoring succeeded events.
+func (op Operation) canPublishFinishedEvent(info finishedInformation) bool {
+	success := info.success()
+
+	return op.CommandMonitor != nil &&
+		(!success || op.CommandMonitor.Succeeded != nil) &&
+		(success || op.CommandMonitor.Failed != nil)
 }
 
 // publishFinishedEvent publishes either a CommandSucceededEvent or a CommandFailedEvent to the operation's command
 // monitor if possible. If success/failure events aren't being monitored, no events are published.
 func (op Operation) publishFinishedEvent(ctx context.Context, info finishedInformation) {
-	success := info.cmdErr == nil
-	if _, ok := info.cmdErr.(WriteCommandError); ok {
-		success = true
+	if op.canLogCommandMessage() && info.success() {
+		host, port, _ := net.SplitHostPort(info.serverAddress.String())
+
+		redactedReply := redactFinishedInformationResponse(info).String()
+		formattedReply := logger.FormatMessage(redactedReply, op.Logger.MaxDocumentLength)
+
+		op.Logger.Print(logger.LevelDebug,
+			logger.ComponentCommand,
+			logger.CommandSucceeded,
+			logger.SerializeCommand(logger.Command{
+				DriverConnectionID: info.driverConnectionID,
+				Message:            logger.CommandSucceeded,
+				Name:               info.cmdName,
+				RequestID:          int64(info.requestID),
+				ServerConnectionID: info.serverConnID,
+				ServerHost:         host,
+				ServerPort:         port,
+				ServiceID:          info.serviceID,
+			},
+				logger.KeyDurationMS, info.duration.Milliseconds(),
+				logger.KeyReply, formattedReply)...)
 	}
-	if op.CommandMonitor == nil || (success && op.CommandMonitor.Succeeded == nil) || (!success && op.CommandMonitor.Failed == nil) {
+
+	if op.canLogCommandMessage() && !info.success() {
+		host, port, _ := net.SplitHostPort(info.serverAddress.String())
+
+		formattedReply := logger.FormatMessage(info.cmdErr.Error(), op.Logger.MaxDocumentLength)
+
+		op.Logger.Print(logger.LevelDebug,
+			logger.ComponentCommand,
+			logger.CommandFailed,
+			logger.SerializeCommand(logger.Command{
+				DriverConnectionID: info.driverConnectionID,
+				Message:            logger.CommandFailed,
+				Name:               info.cmdName,
+				RequestID:          int64(info.requestID),
+				ServerConnectionID: info.serverConnID,
+				ServerHost:         host,
+				ServerPort:         port,
+				ServiceID:          info.serviceID,
+			},
+				logger.KeyDurationMS, info.duration.Milliseconds(),
+				logger.KeyFailure, formattedReply)...)
+	}
+
+	// If the finished event cannot be published, return early.
+	if !op.canPublishFinishedEvent(info) {
 		return
 	}
 
-	var durationNanos int64
-	var emptyTime time.Time
-	if info.startTime != emptyTime {
-		durationNanos = time.Since(info.startTime).Nanoseconds()
-	}
-
 	finished := event.CommandFinishedEvent{
-		CommandName:        info.cmdName,
-		RequestID:          int64(info.requestID),
-		ConnectionID:       info.connID,
-		DurationNanos:      durationNanos,
-		ServerConnectionID: convertInt64PtrToInt32Ptr(info.serverConnID),
-		ServiceID:          info.serviceID,
+		CommandName:          info.cmdName,
+		RequestID:            int64(info.requestID),
+		ConnectionID:         info.connID,
+		Duration:             info.duration,
+		DurationNanos:        info.duration.Nanoseconds(),
+		ServerConnectionID:   convertInt64PtrToInt32Ptr(info.serverConnID),
+		ServerConnectionID64: info.serverConnID,
+		ServiceID:            info.serviceID,
 	}
 
-	if success {
-		res := bson.Raw{}
-		// Only copy the reply for commands that are not security sensitive
-		if !info.redacted {
-			res = bson.Raw(info.response)
-		}
+	if info.success() {
 		successEvent := &event.CommandSucceededEvent{
-			Reply:                res,
+			Reply:                redactFinishedInformationResponse(info),
 			CommandFinishedEvent: finished,
 		}
 		op.CommandMonitor.Succeeded(ctx, successEvent)
+
 		return
 	}
 

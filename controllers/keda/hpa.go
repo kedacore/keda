@@ -20,12 +20,14 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode"
 
 	"github.com/go-logr/logr"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -63,7 +65,7 @@ func (r *ScaledObjectReconciler) createAndDeployNewHPA(ctx context.Context, logg
 
 	err = kedastatus.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status)
 	if err != nil {
-		logger.Error(err, "Error updating scaledObject status with used hpaName")
+		logger.Error(err, "Failed to update scaledObject status with used hpaName")
 		return err
 	}
 
@@ -246,7 +248,74 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 
 	updateHealthStatus(scaledObject, externalMetricNames, status)
 
+	// if ScalingModifiers struct is not empty, expect Formula and Target to be
+	// non-empty (is validated beforehand - in cache). Only if target is > 0.0
+	// create a compositeScaler structure
+	if scaledObject.IsUsingModifiers() {
+		// convert string to float (this is already validated in:
+		// cache, err := r.ScaleHandler.GetScalersCache(ctx, scaledObject.DeepCopy())
+		// at the beginning of this function, where the whole scalingModifiers are validated)
+		validNumTarget, _ := strconv.ParseFloat(scaledObject.Spec.Advanced.ScalingModifiers.Target, 64)
+
+		// check & get metric specs type
+		var validMetricType autoscalingv2.MetricTargetType
+		for _, metric := range metricSpecs {
+			if metric.External == nil {
+				continue
+			}
+			if validMetricType == "" {
+				validMetricType = metric.External.Target.Type
+			} else if metric.External.Target.Type != validMetricType {
+				err := fmt.Errorf("error metric target type is not the same for composite scaler: %s & %s", validMetricType, metric.External.Target.Type)
+				return nil, err
+			}
+		}
+		if validMetricType == autoscalingv2.UtilizationMetricType {
+			err := fmt.Errorf("error metric target type is Utilization, but it needs to be AverageValue or Value for external metrics")
+			return nil, err
+		}
+
+		// if target is valid, use composite scaler. Expect defined formula that returns one metric
+		if validNumTarget > 0.0 {
+			quan := resource.NewMilliQuantity(int64(validNumTarget*1000), resource.DecimalSI)
+
+			correctHpaTarget := autoscalingv2.MetricTarget{
+				Type: validMetricType,
+			}
+			if validMetricType == autoscalingv2.AverageValueMetricType {
+				correctHpaTarget.AverageValue = quan
+			} else if validMetricType == autoscalingv2.ValueMetricType {
+				correctHpaTarget.Value = quan
+			}
+			compMetricName := kedav1alpha1.CompositeMetricName
+			compositeSpec := autoscalingv2.MetricSpec{
+				Type: autoscalingv2.MetricSourceType("External"),
+				External: &autoscalingv2.ExternalMetricSource{
+					Metric: autoscalingv2.MetricIdentifier{
+						Name: compMetricName,
+						Selector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{kedav1alpha1.ScaledObjectOwnerAnnotation: scaledObject.Name},
+						},
+					},
+					Target: correctHpaTarget,
+				},
+			}
+			status.CompositeScalerName = compMetricName
+
+			// overwrite external metrics in returned array with composite metric ONLY (keep resource metrics)
+			finalHpaSpecs := []autoscalingv2.MetricSpec{}
+			// keep resource specs
+			for _, rm := range scaledObjectMetricSpecs {
+				if rm.Resource != nil {
+					finalHpaSpecs = append(finalHpaSpecs, rm)
+				}
+			}
+			finalHpaSpecs = append(finalHpaSpecs, compositeSpec)
+			scaledObjectMetricSpecs = finalHpaSpecs
+		}
+	}
 	err = kedastatus.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status)
+
 	if err != nil {
 		logger.Error(err, "Error updating scaledObject status with used externalMetricNames")
 		return nil, err

@@ -56,6 +56,15 @@ type ExplicitEncryptionOptions struct {
 	Algorithm        string
 	QueryType        string
 	ContentionFactor *int64
+	RangeOptions     *ExplicitRangeOptions
+}
+
+// ExplicitRangeOptions specifies options for the range index.
+type ExplicitRangeOptions struct {
+	Min       *bsoncore.Value
+	Max       *bsoncore.Value
+	Sparsity  int64
+	Precision *int32
 }
 
 // ExplicitEncryption creates a new ExplicitEncryptionOptions instance.
@@ -93,6 +102,12 @@ func (eeo *ExplicitEncryptionOptions) SetContentionFactor(contentionFactor int64
 	return eeo
 }
 
+// SetRangeOptions specifies the range options.
+func (eeo *ExplicitEncryptionOptions) SetRangeOptions(ro ExplicitRangeOptions) *ExplicitEncryptionOptions {
+	eeo.RangeOptions = &ro
+	return eeo
+}
+
 // RewrapManyDataKeyOptions represents all possible options used to decrypt and encrypt all matching data keys with a
 // possibly new masterKey.
 type RewrapManyDataKeyOptions struct {
@@ -122,6 +137,9 @@ func (rmdko *RewrapManyDataKeyOptions) SetMasterKey(masterKey bsoncore.Document)
 
 // MergeRewrapManyDataKeyOptions combines the given RewrapManyDataKeyOptions instances into a single
 // RewrapManyDataKeyOptions in a last one wins fashion.
+//
+// Deprecated: Merging options structs will not be supported in Go Driver 2.0. Users should create a
+// single options struct instead.
 func MergeRewrapManyDataKeyOptions(opts ...*RewrapManyDataKeyOptions) *RewrapManyDataKeyOptions {
 	rmdkOpts := RewrapManyDataKey()
 	for _, rmdko := range opts {

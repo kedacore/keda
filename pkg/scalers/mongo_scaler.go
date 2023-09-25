@@ -14,7 +14,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
-	"go.mongodb.org/mongo-driver/x/bsonx"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -257,9 +256,9 @@ func (s *mongoDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec
 	return []v2.MetricSpec{metricSpec}
 }
 
-// json2BsonDoc convert Json to Bson.Doc
-func json2BsonDoc(js string) (doc bsonx.Doc, err error) {
-	doc = bsonx.Doc{}
+// json2BsonDoc convert Json to bson.D
+func json2BsonDoc(js string) (doc bson.D, err error) {
+	doc = bson.D{}
 	err = bson.UnmarshalExtJSON([]byte(js), true, &doc)
 	if err != nil {
 		return nil, err

@@ -6,9 +6,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/sqs"
-	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 )
@@ -58,28 +56,26 @@ type awsSQSMetricIdentifier struct {
 }
 
 type mockSqs struct {
-	sqsiface.SQSAPI
 }
 
-func (m *mockSqs) GetQueueAttributes(input *sqs.GetQueueAttributesInput) (*sqs.GetQueueAttributesOutput, error) {
+func (m *mockSqs) GetQueueAttributes(_ context.Context, input *sqs.GetQueueAttributesInput, _ ...func(*sqs.Options)) (*sqs.GetQueueAttributesOutput, error) {
 	switch *input.QueueUrl {
 	case testAWSSQSErrorQueueURL:
 		return nil, errors.New("some error")
 	case testAWSSQSBadDataQueueURL:
 		return &sqs.GetQueueAttributesOutput{
-			Attributes: map[string]*string{
-				"ApproximateNumberOfMessages":           aws.String("NotInt"),
-				"ApproximateNumberOfMessagesNotVisible": aws.String("NotInt"),
-				"ApproximateNumberOfMessagesDelayed":    aws.String("NotInt"),
+			Attributes: map[string]string{
+				"ApproximateNumberOfMessages":           "NotInt",
+				"ApproximateNumberOfMessagesNotVisible": "NotInt",
 			},
 		}, nil
 	}
 
 	return &sqs.GetQueueAttributesOutput{
-		Attributes: map[string]*string{
-			"ApproximateNumberOfMessages":           aws.String(strconv.Itoa(testAWSSQSApproximateNumberOfMessagesVisible)),
-			"ApproximateNumberOfMessagesNotVisible": aws.String(strconv.Itoa(testAWSSQSApproximateNumberOfMessagesNotVisible)),
-			"ApproximateNumberOfMessagesDelayed":    aws.String(strconv.Itoa(testAWSSQSApproximateNumberOfMessagesDelayed)),
+		Attributes: map[string]string{
+			"ApproximateNumberOfMessages":           strconv.Itoa(testAWSSQSApproximateNumberOfMessagesVisible),
+			"ApproximateNumberOfMessagesNotVisible": strconv.Itoa(testAWSSQSApproximateNumberOfMessagesNotVisible),
+			"ApproximateNumberOfMessagesDelayed":    strconv.Itoa(testAWSSQSApproximateNumberOfMessagesDelayed),
 		},
 	}, nil
 }
@@ -436,15 +432,12 @@ func TestAWSSQSScalerGetMetrics(t *testing.T) {
 			assert.Error(t, err, "expect error because of bad data return from sqs")
 		default:
 			expectedMessages := testAWSSQSApproximateNumberOfMessagesVisible
-
 			if meta.scaleOnInFlight {
 				expectedMessages += testAWSSQSApproximateNumberOfMessagesNotVisible
 			}
-
 			if meta.scaleOnDelayed {
 				expectedMessages += testAWSSQSApproximateNumberOfMessagesDelayed
 			}
-
 			assert.EqualValues(t, int64(expectedMessages), value[0].Value.Value())
 		}
 	}

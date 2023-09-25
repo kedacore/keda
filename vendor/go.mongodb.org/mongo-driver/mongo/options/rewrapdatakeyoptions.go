@@ -35,6 +35,9 @@ func (rmdko *RewrapManyDataKeyOptions) SetMasterKey(masterKey interface{}) *Rewr
 
 // MergeRewrapManyDataKeyOptions combines the given RewrapManyDataKeyOptions instances into a single
 // RewrapManyDataKeyOptions in a last one wins fashion.
+//
+// Deprecated: Merging options structs will not be supported in Go Driver 2.0. Users should create a
+// single options struct instead.
 func MergeRewrapManyDataKeyOptions(opts ...*RewrapManyDataKeyOptions) *RewrapManyDataKeyOptions {
 	rmdkOpts := RewrapManyDataKey()
 	for _, rmdko := range opts {
