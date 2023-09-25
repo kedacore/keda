@@ -116,7 +116,11 @@ func parseNewRelicMetadata(config *ScalerConfig, logger logr.Logger) (*newrelicM
 		}
 		meta.threshold = t
 	} else {
-		return nil, fmt.Errorf("missing %s value", threshold)
+		if config.AsMetricSource {
+			meta.threshold = 0
+		} else {
+			return nil, fmt.Errorf("missing %s value", threshold)
+		}
 	}
 
 	meta.activationThreshold = 0

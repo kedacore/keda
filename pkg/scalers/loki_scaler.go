@@ -110,7 +110,12 @@ func parseLokiMetadata(config *ScalerConfig) (meta *lokiMetadata, err error) {
 
 		meta.threshold = t
 	} else {
-		return nil, fmt.Errorf("no %s given", lokiThreshold)
+		if config.AsMetricSource {
+			meta.threshold = 0
+		} else {
+			return nil, fmt.Errorf("no %s given", lokiThreshold)
+		}
+
 	}
 
 	meta.activationThreshold = 0

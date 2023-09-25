@@ -199,7 +199,11 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 
 	targetValueString, err := GetFromAuthOrMeta(config, "targetValue")
 	if err != nil {
-		return nil, err
+		if config.AsMetricSource {
+			targetValueString = "0"
+		} else {
+			return nil, err
+		}
 	}
 	targetValue, err := strconv.ParseFloat(targetValueString, 64)
 	if err != nil {

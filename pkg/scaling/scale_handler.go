@@ -320,6 +320,8 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 		}
 	}
 
+	asMetricSource := false
+
 	if scalableObject == nil {
 		switch scalableObjectKind {
 		case "ScaledObject":
@@ -330,6 +332,7 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 				return nil, err
 			}
 			scalableObject = scaledObject
+			asMetricSource = scaledObject.IsUsingModifiers()
 		case "ScaledJob":
 			scaledJob := &kedav1alpha1.ScaledJob{}
 			err := h.client.Get(ctx, types.NamespacedName{Name: scalableObjectName, Namespace: scalableObjectNamespace}, scaledJob)

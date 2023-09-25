@@ -159,7 +159,11 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 
 		meta.threshold = t
 	} else {
-		return nil, fmt.Errorf("no %s given", promThreshold)
+		if config.AsMetricSource {
+			meta.threshold = 0
+		} else {
+			return nil, fmt.Errorf("no %s given", promThreshold)
+		}
 	}
 
 	meta.activationThreshold = 0

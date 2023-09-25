@@ -182,7 +182,11 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 	// Getting threshold, observe that we don't check AuthParams for threshold
 	val, err := getParameterFromConfig(config, "threshold", false)
 	if err != nil {
-		return nil, err
+		if config.AsMetricSource {
+			val = "0"
+		} else {
+			return nil, err
+		}
 	}
 	threshold, err := strconv.ParseFloat(val, 64)
 	if err != nil {

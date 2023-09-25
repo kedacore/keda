@@ -405,7 +405,12 @@ func parsePredictKubeMetadata(config *ScalerConfig) (result *predictKubeMetadata
 		}
 		meta.threshold = threshold
 	} else {
-		return nil, fmt.Errorf("no threshold given")
+		if config.AsMetricSource {
+			meta.threshold = 0
+		} else {
+			return nil, fmt.Errorf("no threshold given")
+		}
+
 	}
 
 	meta.activationThreshold = 0
