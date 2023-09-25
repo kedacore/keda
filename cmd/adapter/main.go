@@ -20,14 +20,20 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	appsv1 "k8s.io/api/apps/v1"
+	apimetrics "k8s.io/apiserver/pkg/endpoints/metrics"
 	"k8s.io/client-go/kubernetes/scheme"
+	kubemetrics "k8s.io/component-base/metrics"
+	"k8s.io/component-base/metrics/legacyregistry"
 	"k8s.io/klog/v2"
 	"k8s.io/klog/v2/klogr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
+	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	basecmd "sigs.k8s.io/custom-metrics-apiserver/pkg/cmd"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
@@ -96,10 +102,9 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 	cfg.Burst = adapterClientRequestBurst
 	cfg.DisableCompression = disableCompression
 
-	metricsBindAddress := fmt.Sprintf(":%v", metricsAPIServerPort)
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Metrics: server.Options{
-			BindAddress: metricsBindAddress,
+			BindAddress: "0", // disabled since we use our own server to serve metrics
 		},
 		Scheme: scheme,
 		Cache: ctrlcache.Options{
@@ -129,6 +134,58 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 		}
 	}()
 	return kedaprovider.NewProvider(ctx, logger, mgr.GetClient(), *grpcClient), stopCh, nil
+}
+
+// getMetricHandler returns a http handler that exposes metrics from controller-runtime and apiserver
+func getMetricHandler() http.HandlerFunc {
+	// Register apiserver metrics in legacy registry
+	// this contains the apiserver_* metrics
+	apimetrics.Register()
+
+	// unregister duplicate collectors that are already handled by controller-runtime's registry
+	legacyregistry.Registerer().Unregister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	legacyregistry.Registerer().Unregister(collectors.NewGoCollector(collectors.WithGoCollectorRuntimeMetrics(collectors.MetricsAll)))
+
+	// Return handler that serves metrics from both legacy and controller-runtime registry
+	return func(w http.ResponseWriter, req *http.Request) {
+		legacyregistry.Handler().ServeHTTP(w, req)
+
+		kubemetrics.HandlerFor(ctrlmetrics.Registry, kubemetrics.HandlerOpts{}).ServeHTTP(w, req)
+	}
+}
+
+// RunMetricsServer runs a http listener and handles the /metrics endpoint
+// this is needed to consolidate apiserver and controller-runtime metrics
+// we have to use a separate http server & can't rely on the controller-runtime implementation
+// because apiserver doesn't provide a way to register metrics to other prometheus registries
+func RunMetricsServer(ctx context.Context, stopCh <-chan struct{}) {
+	h := getMetricHandler()
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", h)
+	metricsBindAddress := fmt.Sprintf(":%v", metricsAPIServerPort)
+
+	server := &http.Server{
+		Addr:    metricsBindAddress,
+		Handler: mux,
+	}
+
+	go func() {
+		logger.Info("starting /metrics server endpoint")
+		// nosemgrep: use-tls
+		err := server.ListenAndServe()
+		if err != http.ErrServerClosed {
+			panic(err)
+		}
+	}()
+
+	go func() {
+		<-stopCh
+		logger.Info("Shutting down the /metrics server gracefully...")
+
+		if err := server.Shutdown(ctx); err != nil {
+			logger.Error(err, "http server shutdown error")
+		}
+	}()
 }
 
 // generateDefaultMetricsServiceAddr generates default Metrics Service gRPC Server address based on the current Namespace.
@@ -196,6 +253,9 @@ func main() {
 	cmd.WithExternalMetrics(kedaProvider)
 
 	logger.Info(cmd.Message)
+
+	RunMetricsServer(ctx, stopCh)
+
 	if err = cmd.Run(stopCh); err != nil {
 		return
 	}

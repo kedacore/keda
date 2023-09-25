@@ -60,7 +60,7 @@ Here is an overview of all new **experimental** features:
 - **General**: Add support for formula based evaluation of metric values ([#2440](https://github.com/kedacore/keda/issues/2440))
 
 ### Improvements
-
+- **General**: Add apiserver Prometheus metrics to KEDA Metric Server ([#4460](https://github.com/kedacore/keda/issues/4460))
 - **General**: Add more events for user checking ([#796](https://github.com/kedacore/keda/issues/3764))
 - **General**: Add ScaledObject/ScaledJob names to output of `kubectl get triggerauthentication/clustertriggerauthentication` ([#796](https://github.com/kedacore/keda/issues/796))
 - **General**: Add standalone CRD generation to release workflow ([#2726](https://github.com/kedacore/keda/issues/2726))
