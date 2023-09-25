@@ -18,6 +18,8 @@ package eventemitter
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -91,6 +93,10 @@ func InitializeLogger(cloudEvents *kedav1alpha1.CloudEvent, cloudEventEmitterNam
 func (e *EventEmitter) HandleCloudEvents(ctx context.Context, cloudEvent *kedav1alpha1.CloudEvent) error {
 	e.createEventHandlers(ctx, cloudEvent)
 
+	if !e.checkIfEventHandlersExist(cloudEvent) {
+		return fmt.Errorf("no CloudEvent handler is created for %s", cloudEvent.Name)
+	}
+
 	key := cloudEvent.GenerateIdentifier()
 	ctx, cancel := context.WithCancel(ctx)
 
@@ -139,14 +145,14 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEvents *ked
 	}
 
 	if cloudEvents.Spec.Destination.CloudEventHTTP != nil {
-		var err error
 		var eventHandler EventDataHandler
-		eventHandler, err = NewCloudEventHTTPHandler(ctx, clusterName, cloudEvents.Spec.Destination.CloudEventHTTP.Uri, InitializeLogger(cloudEvents, "cloudevent_http"))
+		eventHandler, err := NewCloudEventHTTPHandler(ctx, clusterName, cloudEvents.Spec.Destination.CloudEventHTTP.Uri, InitializeLogger(cloudEvents, "cloudevent_http"))
 
 		if err != nil {
 			log.Error(err, "create cloudevent handler failed")
+		} else {
+			e.eventHandlersCache[key+CloudEventHTTP] = eventHandler
 		}
-		e.eventHandlersCache[key+CloudEventHTTP] = eventHandler
 	}
 }
 
@@ -163,6 +169,20 @@ func (e *EventEmitter) clearEventHandlersCache(cloudEvents *kedav1alpha1.CloudEv
 			delete(e.eventHandlersCache, key)
 		}
 	}
+}
+
+func (e *EventEmitter) checkIfEventHandlersExist(cloudEvents *kedav1alpha1.CloudEvent) bool {
+	e.eventHandlersCachesLock.RLock()
+	defer e.eventHandlersCachesLock.RUnlock()
+
+	key := cloudEvents.GenerateIdentifier()
+
+	for k := range e.eventHandlersCache {
+		if strings.Contains(k, key) {
+			return true
+		}
+	}
+	return false
 }
 
 func (e *EventEmitter) startEventLoop(ctx context.Context) {
@@ -207,7 +227,7 @@ func (e *EventEmitter) inqueueEventData(eventData EventData) {
 	count := 0
 	for {
 		if count > MaxChannelBuffer {
-			log.Info("CloudEvents' channel is full and need to be check if handler cannot emit events")
+			log.Error(nil, "CloudEvents' channel is full and need to be check if handler cannot emit events")
 			return
 		}
 		select {
