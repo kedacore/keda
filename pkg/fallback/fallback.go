@@ -44,7 +44,7 @@ func isFallbackEnabled(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.Me
 	return true
 }
 
-func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, metrics []external_metrics.ExternalMetricValue, suppressedError error, metricName string, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec) ([]external_metrics.ExternalMetricValue, error) {
+func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, metrics []external_metrics.ExternalMetricValue, suppressedError error, metricName string, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec) ([]external_metrics.ExternalMetricValue, bool, error) {
 	status := scaledObject.Status.DeepCopy()
 
 	initHealthStatus(status)
@@ -57,7 +57,7 @@ func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, me
 		status.Health[metricName] = *healthStatus
 
 		updateStatus(ctx, client, scaledObject, status, metricSpec)
-		return metrics, nil
+		return metrics, false, nil
 	}
 
 	healthStatus.Status = kedav1alpha1.HealthStatusFailing
@@ -68,14 +68,14 @@ func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, me
 
 	switch {
 	case !isFallbackEnabled(scaledObject, metricSpec):
-		return nil, suppressedError
+		return nil, false, suppressedError
 	case !validateFallback(scaledObject):
 		log.Info("Failed to validate ScaledObject Spec. Please check that parameters are positive integers", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
-		return nil, suppressedError
+		return nil, false, suppressedError
 	case *healthStatus.NumberOfFailures > scaledObject.Spec.Fallback.FailureThreshold:
-		return doFallback(scaledObject, metricSpec, metricName, suppressedError), nil
+		return doFallback(scaledObject, metricSpec, metricName, suppressedError), true, nil
 	default:
-		return nil, suppressedError
+		return nil, false, suppressedError
 	}
 }
 

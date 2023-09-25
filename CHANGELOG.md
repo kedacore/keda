@@ -54,6 +54,12 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **AWS SQS Scaler**: Support for scaling to include delayed messages. ([#4377](https://github.com/kedacore/keda/issues/4377))
 - **Governance**: KEDA transitioned to CNCF Graduated project ([#63](https://github.com/kedacore/governance/issues/63))
 
+#### Experimental
+
+Here is an overview of all new **experimental** features:
+
+- **General**: Add support for formula based evaluation of metric values ([#2440](https://github.com/kedacore/keda/issues/2440))
+
 ### Improvements
 
 - **General**: Add more events for user checking ([#796](https://github.com/kedacore/keda/issues/3764))
@@ -67,6 +73,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Pulsar Scaler**: Add support for OAuth extensions ([#4700](https://github.com/kedacore/keda/issues/4700))
 
 ### Fixes
+- **General**: Add validations for stabilizationWindowSeconds ([#4976](https://github.com/kedacore/keda/issues/4976))
 - **RabbitMQ Scaler**: Allow subpaths along with vhost in connection string ([#2634](https://github.com/kedacore/keda/issues/2634))
 - **Selenium Grid Scaler**: Fix latest browser version use case scaling ([#4858](https://github.com/kedacore/keda/issues/4858))
 - **Solace Scaler**: Fix a bug where `queueName` is not properly escaped during URL encode ([#4936](https://github.com/kedacore/keda/issues/4936))
@@ -77,11 +84,11 @@ You can find all deprecations in [this overview](https://github.com/kedacore/ked
 
 New deprecation(s):
 
-- **General**: Clean up previously deprecated code for 2.12 release ([#4899](https://github.com/kedacore/keda/issues/4899))
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Remove deprecated `metricName` from trigger metadata section ([#4899](https://github.com/kedacore/keda/issues/4899))
 
 ### Other
 

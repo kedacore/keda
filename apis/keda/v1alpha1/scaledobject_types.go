@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"reflect"
+
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -67,6 +69,9 @@ const (
 
 	// HealthStatusFailing means the status of the health object is failing
 	HealthStatusFailing HealthStatusType = "Failing"
+
+	// Composite metric name used for scalingModifiers composite metric
+	CompositeMetricName string = "composite-metric"
 )
 
 // ScaledObjectSpec is the spec for a ScaledObject resource
@@ -102,6 +107,14 @@ type AdvancedConfig struct {
 	HorizontalPodAutoscalerConfig *HorizontalPodAutoscalerConfig `json:"horizontalPodAutoscalerConfig,omitempty"`
 	// +optional
 	RestoreToOriginalReplicaCount bool `json:"restoreToOriginalReplicaCount,omitempty"`
+	// +optional
+	ScalingModifiers ScalingModifiers `json:"scalingModifiers,omitempty"`
+}
+
+// ScalingModifiers describes advanced scaling logic options like formula
+type ScalingModifiers struct {
+	Formula string `json:"formula,omitempty"`
+	Target  string `json:"target,omitempty"`
 }
 
 // HorizontalPodAutoscalerConfig specifies horizontal scale config
@@ -141,6 +154,8 @@ type ScaledObjectStatus struct {
 	// +optional
 	ResourceMetricNames []string `json:"resourceMetricNames,omitempty"`
 	// +optional
+	CompositeScalerName string `json:"compositeScalerName,omitempty"`
+	// +optional
 	Conditions Conditions `json:"conditions,omitempty"`
 	// +optional
 	Health map[string]HealthStatus `json:"health,omitempty"`
@@ -166,4 +181,9 @@ func init() {
 // GenerateIdentifier returns identifier for the object in for "kind.namespace.name"
 func (so *ScaledObject) GenerateIdentifier() string {
 	return GenerateIdentifier("ScaledObject", so.Namespace, so.Name)
+}
+
+// IsUsingModifiers determines whether scalingModifiers are defined or not
+func (so *ScaledObject) IsUsingModifiers() bool {
+	return so.Spec.Advanced != nil && !reflect.DeepEqual(so.Spec.Advanced.ScalingModifiers, ScalingModifiers{})
 }
