@@ -89,3 +89,14 @@ func TestRemoveCertManager(t *testing.T) {
 func TestRemoveAzureManagedPrometheusComponents(t *testing.T) {
 	KubectlDeleteWithTemplate(t, helper.EmptyTemplateData{}, "azureManagedPrometheusConfigMapTemplate", helper.AzureManagedPrometheusConfigMapTemplate)
 }
+
+func TestRemoveStrimzi(t *testing.T) {
+	_, err := ExecuteCommand(fmt.Sprintf(`helm uninstall --namespace %s %s`,
+		StrimziNamespace,
+		StrimziChartName))
+	require.NoErrorf(t, err, "cannot uninstall strimzi - %s", err)
+
+	KubeClient = GetKubernetesClient(t)
+
+	DeleteNamespace(t, StrimziNamespace)
+}
