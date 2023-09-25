@@ -239,6 +239,7 @@ func testFormula(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testFormula ---")
 
 	// formula simply adds 2 metrics together (0+2=2; activationTarget = 2 -> replicas should be 0)
+	KubectlApplyWithTemplate(t, data, "soFallbackTemplate", soFallbackTemplate)
 	data.MetricValue = 0
 	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 0, 60)
@@ -247,7 +248,6 @@ func testFormula(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	data.MetricValue = 3
 	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
-	KubectlApplyWithTemplate(t, data, "soFallbackTemplate", soFallbackTemplate)
 	_, err := ExecuteCommand(fmt.Sprintf("kubectl scale deployment/depl-workload-base --replicas=2 -n %s", namespace))
 	assert.NoErrorf(t, err, "cannot scale workload deployment - %s", err)
 
