@@ -321,8 +321,6 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 		}
 	}
 
-	asMetricSource := false
-
 	if scalableObject == nil {
 		switch scalableObjectKind {
 		case "ScaledObject":
@@ -333,7 +331,6 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 				return nil, err
 			}
 			scalableObject = scaledObject
-			asMetricSource = scaledObject.IsUsingModifiers()
 		case "ScaledJob":
 			scaledJob := &kedav1alpha1.ScaledJob{}
 			err := h.client.Get(ctx, types.NamespacedName{Name: scalableObjectName, Namespace: scalableObjectNamespace}, scaledJob)
@@ -357,6 +354,13 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 	podTemplateSpec, containerName, err := resolver.ResolveScaleTargetPodSpec(ctx, h.client, scalableObject)
 	if err != nil {
 		return nil, err
+	}
+
+	asMetricSource := false
+	switch obj := scalableObject.(type) {
+	case *kedav1alpha1.ScaledObject:
+		asMetricSource = obj.IsUsingModifiers()
+	default:
 	}
 
 	scalers, err := h.buildScalers(ctx, withTriggers, podTemplateSpec, containerName, asMetricSource)
@@ -626,11 +630,11 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 		isScaledObjectActive = false
 		activationValue := float64(0)
 		if scaledObject.Spec.Advanced.ScalingModifiers.ActivationTarget != "" {
-			targetQueryValue, err := strconv.ParseFloat(scaledObject.Spec.Advanced.ScalingModifiers.ActivationTarget, 64)
+			targetValue, err := strconv.ParseFloat(scaledObject.Spec.Advanced.ScalingModifiers.ActivationTarget, 64)
 			if err != nil {
 				return false, true, metricsRecord, fmt.Errorf("scalingModifiers.ActivationTarget parsing error %w", err)
 			}
-			activationValue = targetQueryValue
+			activationValue = targetValue
 		}
 
 		for _, metric := range matchingMetrics {
