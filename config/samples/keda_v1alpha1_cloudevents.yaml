@@ -5,8 +5,6 @@ metadata:
   namespace: keda
 spec:
   clusterName: cluster-sample
-  eventHandlers:
-  - type: cloud-event-http
-    name: cloud-event-http-sample
-    metadata:
-      endPoint: "http://localhost:8899"
+  destination:
+    http:
+      uri: http://foo.bar
