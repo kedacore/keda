@@ -259,3 +259,23 @@ func TestSetupAadPodIdentityComponents(t *testing.T) {
 		AzureAdPodIdentityNamespace, AzureADMsiClientID, AzureADMsiID))
 	require.NoErrorf(t, err, "cannot install aad pod identity webhook - %s", err)
 }
+
+func TestSetUpStrimzi(t *testing.T) {
+	t.Log("--- installing kafka operator ---")
+	_, err := ExecuteCommand("helm repo add strimzi https://strimzi.io/charts/")
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	_, err = ExecuteCommand("helm repo update")
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+
+	KubeClient = GetKubernetesClient(t)
+
+	CreateNamespace(t, KubeClient, StrimziNamespace)
+
+	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --namespace %s --wait %s strimzi/strimzi-kafka-operator --version %s --set watchAnyNamespace=true`,
+		StrimziNamespace,
+		StrimziChartName,
+		StrimziVersion))
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+
+	t.Log("--- kafka operator installed ---")
+}

@@ -40,6 +40,14 @@ type Destination struct {
 	// by the Addressable target, if any.
 	// +optional
 	CACerts *string `json:"CACerts,omitempty"`
+
+	// Audience is the OIDC audience.
+	// This need only be set, if the target is not an Addressable
+	// and thus the Audience can't be received from the Addressable itself.
+	// In case the Addressable specifies an Audience too, the Destinations
+	// Audience takes preference.
+	// +optional
+	Audience *string `json:"audience,omitempty"`
 }
 
 // Validate the Destination has all the necessary fields and check the

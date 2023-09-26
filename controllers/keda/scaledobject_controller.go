@@ -19,6 +19,7 @@ package keda
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/go-logr/logr"
@@ -123,6 +124,7 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options cont
 		// so reconcile loop is not started on Status updates
 		For(&kedav1alpha1.ScaledObject{}, builder.WithPredicates(
 			predicate.Or(
+				kedacontrollerutil.PausedPredicate{},
 				kedacontrollerutil.PausedReplicasPredicate{},
 				kedacontrollerutil.ScaleObjectReadyConditionPredicate{},
 				predicate.GenerationChangedPredicate{},
@@ -206,12 +208,17 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, conditions *kedav1alpha1.Conditions) (string, error) {
 	// Check the presence of "autoscaling.keda.sh/paused-replicas" annotation on the scaledObject (since the presence of this annotation will pause
 	// autoscaling no matter what number of replicas is provided), and if so, stop the scale loop and delete the HPA on the scaled object.
-	_, pausedAnnotationFound := scaledObject.GetAnnotations()[kedacontrollerutil.PausedReplicasAnnotation]
+	pausedAnnotationFound := scaledObject.HasPausedAnnotation()
 	if pausedAnnotationFound {
+		scaledToPausedCount := true
 		if conditions.GetPausedCondition().Status == metav1.ConditionTrue {
-			return kedav1alpha1.ScaledObjectConditionReadySuccessMessage, nil
+			// If scaledobject is in paused condition but replica count is not equal to paused replica count, the following scaling logic needs to be trigger again.
+			scaledToPausedCount = r.checkIfTargetResourceReachPausedCount(ctx, logger, scaledObject)
+			if scaledToPausedCount {
+				return kedav1alpha1.ScaledObjectConditionReadySuccessMessage, nil
+			}
 		}
-		if scaledObject.Status.PausedReplicaCount != nil {
+		if scaledObject.NeedToBePausedByAnnotation() && scaledToPausedCount {
 			msg := kedav1alpha1.ScaledObjectConditionPausedMessage
 			if err := r.stopScaleLoop(ctx, logger, scaledObject); err != nil {
 				msg = "failed to stop the scale loop for paused ScaledObject"
@@ -279,7 +286,6 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 		}
 		logger.Info("Initializing Scaling logic according to ScaledObject Specification")
 	}
-
 	if pausedAnnotationFound && conditions.GetPausedCondition().Status != metav1.ConditionTrue {
 		return "ScaledObject paused replicas are being scaled", fmt.Errorf("ScaledObject paused replicas are being scaled")
 	}
@@ -303,6 +309,34 @@ func (r *ScaledObjectReconciler) ensureScaledObjectLabel(ctx context.Context, lo
 	return r.Client.Update(ctx, scaledObject)
 }
 
+func (r *ScaledObjectReconciler) checkIfTargetResourceReachPausedCount(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) bool {
+	pausedReplicaCount, pausedReplicasAnnotationFound := scaledObject.GetAnnotations()[kedav1alpha1.PausedReplicasAnnotation]
+	if !pausedReplicasAnnotationFound {
+		return true
+	}
+	pausedReplicaCountNum, err := strconv.ParseInt(pausedReplicaCount, 10, 32)
+	if err != nil {
+		return true
+	}
+
+	gvkr, err := kedav1alpha1.ParseGVKR(r.restMapper, scaledObject.Spec.ScaleTargetRef.APIVersion, scaledObject.Spec.ScaleTargetRef.Kind)
+	if err != nil {
+		logger.Error(err, "failed to parse Group, Version, Kind, Resource", "apiVersion", scaledObject.Spec.ScaleTargetRef.APIVersion, "kind", scaledObject.Spec.ScaleTargetRef.Kind)
+		return true
+	}
+	gvkString := gvkr.GVKString()
+	logger.V(1).Info("Parsed Group, Version, Kind, Resource", "GVK", gvkString, "Resource", gvkr.Resource)
+
+	// check if we already know.
+	var scale *autoscalingv1.Scale
+	gr := gvkr.GroupResource()
+	scale, errScale := (r.ScaleClient).Scales(scaledObject.Namespace).Get(ctx, gr, scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
+	if errScale != nil {
+		return true
+	}
+	return scale.Spec.Replicas == int32(pausedReplicaCountNum)
+}
+
 // checkTargetResourceIsScalable checks if resource targeted for scaling exists and exposes /scale subresource
 func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (kedav1alpha1.GroupVersionKindResource, error) {
 	gvkr, err := kedav1alpha1.ParseGVKR(r.restMapper, scaledObject.Spec.ScaleTargetRef.APIVersion, scaledObject.Spec.ScaleTargetRef.Kind)
@@ -316,7 +350,7 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 	logger.V(1).Info("Parsed Group, Version, Kind, Resource", "GVK", gvkString, "Resource", gvkr.Resource)
 
 	// do we need the scale to update the status later?
-	_, present := scaledObject.GetAnnotations()[kedacontrollerutil.PausedReplicasAnnotation]
+	present := scaledObject.HasPausedAnnotation()
 	removePausedStatus := scaledObject.Status.PausedReplicaCount != nil && !present
 	wantStatusUpdate := scaledObject.Status.ScaleTargetKind != gvkString || scaledObject.Status.OriginalReplicaCount == nil || removePausedStatus
 

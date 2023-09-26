@@ -1,5 +1,16 @@
 # Release History
 
+## 1.4.1 (2023-09-12)
+
+### Features Added
+
+- `ReceivedMessage` can be converted to a `Message` for easier re-sending, using `ReceivedMessage.Message()`. PR#21472
+
+### Bugs Fixed
+
+- admin.Client properly populates the request body when retrying operations. PR#21496
+- Senders could potentially hang forever on SendMessage() calls due to a race condition. Fixed by upgrading to go-amqp v1.0.2. PR#21465
+
 ## 1.4.0 (2023-06-06)
 
 ### Features Added

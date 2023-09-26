@@ -273,7 +273,6 @@ spec:
                               x-kubernetes-list-type: atomic
                           required:
                           - action
-                          - onPodConditions
                           type: object
                         type: array
                         x-kubernetes-list-type: atomic

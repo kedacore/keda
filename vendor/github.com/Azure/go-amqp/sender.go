@@ -21,6 +21,7 @@ type Sender struct {
 	mu              sync.Mutex // protects buf and nextDeliveryTag
 	buf             buffer.Buffer
 	nextDeliveryTag uint64
+	rollback        chan struct{}
 }
 
 // LinkName() is the name of the link used for this Sender.
@@ -142,7 +143,7 @@ func (s *Sender) send(ctx context.Context, msg *Message, opts *SendOptions) (cha
 	}
 
 	fr := frames.PerformTransfer{
-		Handle:        s.l.handle,
+		Handle:        s.l.outputHandle,
 		DeliveryID:    &needsDeliveryID,
 		DeliveryTag:   deliveryTag,
 		MessageFormat: &msg.Format,
@@ -168,9 +169,13 @@ func (s *Sender) send(ctx context.Context, msg *Message, opts *SendOptions) (cha
 
 		// NOTE: we MUST send a copy of fr here since we modify it post send
 
-		sent := make(chan error, 1)
+		frameCtx := frameContext{
+			Ctx:  ctx,
+			Done: make(chan struct{}),
+		}
+
 		select {
-		case s.transfers <- transferEnvelope{Ctx: ctx, Frame: fr, Sent: sent}:
+		case s.transfers <- transferEnvelope{FrameCtx: &frameCtx, InputHandle: s.l.inputHandle, Frame: fr}:
 			// frame was sent to our mux
 		case <-s.l.done:
 			return nil, s.l.doneErr
@@ -179,10 +184,19 @@ func (s *Sender) send(ctx context.Context, msg *Message, opts *SendOptions) (cha
 		}
 
 		select {
-		case err := <-sent:
-			if err != nil {
-				return nil, err
+		case <-frameCtx.Done:
+			if frameCtx.Err != nil {
+				if !fr.More {
+					select {
+					case s.rollback <- struct{}{}:
+						// the write never happened so signal the mux to roll back the delivery count and link credit
+					case <-s.l.close:
+						// the link is going down
+					}
+				}
+				return nil, frameCtx.Err
 			}
+			// frame was written to the network
 		case <-s.l.done:
 			return nil, s.l.doneErr
 		}
@@ -221,7 +235,8 @@ func newSender(target string, session *Session, opts *SenderOptions) (*Sender, e
 	l.target = &frames.Target{Address: target}
 	l.source = new(frames.Source)
 	s := &Sender{
-		l: l,
+		l:        l,
+		rollback: make(chan struct{}),
 	}
 
 	if opts == nil {
@@ -312,12 +327,16 @@ func (s *Sender) attach(ctx context.Context) error {
 }
 
 type senderTestHooks struct {
+	MuxSelect   func()
 	MuxTransfer func()
 }
 
 func (s *Sender) mux(hooks senderTestHooks) {
+	if hooks.MuxSelect == nil {
+		hooks.MuxSelect = nopHook
+	}
 	if hooks.MuxTransfer == nil {
-		hooks.MuxTransfer = nop
+		hooks.MuxTransfer = nopHook
 	}
 
 	defer func() {
@@ -344,6 +363,8 @@ Loop:
 			// the peer sending disposition frames.
 			outgoingTransfers = nil
 		}
+
+		hooks.MuxSelect()
 
 		select {
 		// received frame
@@ -389,14 +410,19 @@ Loop:
 			// sender is being closed by the client
 			s.l.closeInProgress = true
 			fr := &frames.PerformDetach{
-				Handle: s.l.handle,
+				Handle: s.l.outputHandle,
 				Closed: true,
 			}
-			s.l.txFrame(context.Background(), fr, nil)
+			s.l.txFrame(&frameContext{Ctx: context.Background()}, fr)
 
 		case <-s.l.session.done:
 			s.l.doneErr = s.l.session.doneErr
 			return
+
+		case <-s.rollback:
+			s.l.deliveryCount--
+			s.l.linkCredit++
+			debug.Log(3, "TX (Sender %p): rollback link: %s, link credit: %d", s, s.l.key.name, s.l.linkCredit)
 		}
 	}
 }
@@ -431,13 +457,13 @@ func (s *Sender) muxHandleFrame(fr frames.FrameBody) error {
 
 		// send flow
 		resp := &frames.PerformFlow{
-			Handle:        &s.l.handle,
+			Handle:        &s.l.outputHandle,
 			DeliveryCount: &deliveryCount,
 			LinkCredit:    &linkCredit, // max number of messages
 		}
 
 		select {
-		case s.l.session.tx <- frameBodyEnvelope{Ctx: context.Background(), FrameBody: resp}:
+		case s.l.session.tx <- frameBodyEnvelope{FrameCtx: &frameContext{Ctx: context.Background()}, FrameBody: resp}:
 			debug.Log(2, "TX (Sender %p): mux frame to Session (%p): %d, %s", s, s.l.session, s.l.session.channel, resp)
 		case <-s.l.close:
 			return nil
@@ -461,7 +487,7 @@ func (s *Sender) muxHandleFrame(fr frames.FrameBody) error {
 		}
 
 		select {
-		case s.l.session.tx <- frameBodyEnvelope{Ctx: context.Background(), FrameBody: dr}:
+		case s.l.session.tx <- frameBodyEnvelope{FrameCtx: &frameContext{Ctx: context.Background()}, FrameBody: dr}:
 			debug.Log(2, "TX (Sender %p): mux frame to Session (%p): %d, %s", s, s.l.session, s.l.session.channel, dr)
 		case <-s.l.close:
 			return nil

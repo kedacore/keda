@@ -56,6 +56,10 @@ const (
 
 	StringFalse = "false"
 	StringTrue  = "true"
+
+	StrimziVersion   = "0.35.0"
+	StrimziChartName = "strimzi"
+	StrimziNamespace = "strimzi"
 )
 
 const (

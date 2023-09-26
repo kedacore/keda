@@ -1,0 +1,18 @@
+---
+## needs to be patched because of an issue with stabilizationWindowSeconds maximum limit
+## https://github.com/kedacore/keda/issues/4976
+- op: add
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/advanced/properties/horizontalPodAutoscalerConfig/properties/behavior/properties/scaleDown/properties/stabilizationWindowSeconds/minimum
+  value: 0
+
+- op: add
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/advanced/properties/horizontalPodAutoscalerConfig/properties/behavior/properties/scaleDown/properties/stabilizationWindowSeconds/maximum
+  value: 3600
+
+- op: add
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/advanced/properties/horizontalPodAutoscalerConfig/properties/behavior/properties/scaleUp/properties/stabilizationWindowSeconds/minimum
+  value: 0
+
+- op: add
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/advanced/properties/horizontalPodAutoscalerConfig/properties/behavior/properties/scaleUp/properties/stabilizationWindowSeconds/maximum
+  value: 3600

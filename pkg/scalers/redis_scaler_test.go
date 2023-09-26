@@ -23,6 +23,7 @@ type parseRedisMetadataTestData struct {
 	metadata   map[string]string
 	isError    bool
 	authParams map[string]string
+	enableTLS  bool
 }
 
 type redisMetricIdentifier struct {
@@ -33,31 +34,43 @@ type redisMetricIdentifier struct {
 
 var testRedisMetadata = []parseRedisMetadataTestData{
 	// nothing passed
-	{map[string]string{}, true, map[string]string{}},
+	{map[string]string{}, true, map[string]string{}, false},
 	// properly formed listName
-	{map[string]string{"listName": "mylist", "listLength": "10", "addressFromEnv": "REDIS_HOST", "passwordFromEnv": "REDIS_PASSWORD"}, false, map[string]string{}},
+	{map[string]string{"listName": "mylist", "listLength": "10", "addressFromEnv": "REDIS_HOST", "passwordFromEnv": "REDIS_PASSWORD"}, false, map[string]string{}, false},
 	// properly formed hostPort
-	{map[string]string{"listName": "mylist", "listLength": "10", "hostFromEnv": "REDIS_HOST", "portFromEnv": "REDIS_PORT", "passwordFromEnv": "REDIS_PASSWORD"}, false, map[string]string{}},
+	{map[string]string{"listName": "mylist", "listLength": "10", "hostFromEnv": "REDIS_HOST", "portFromEnv": "REDIS_PORT", "passwordFromEnv": "REDIS_PASSWORD"}, false, map[string]string{}, false},
 	// properly formed hostPort
-	{map[string]string{"listName": "mylist", "listLength": "10", "addressFromEnv": "REDIS_HOST", "host": "REDIS_HOST", "port": "REDIS_PORT", "passwordFromEnv": "REDIS_PASSWORD"}, false, map[string]string{}},
+	{map[string]string{"listName": "mylist", "listLength": "10", "addressFromEnv": "REDIS_HOST", "host": "REDIS_HOST", "port": "REDIS_PORT", "passwordFromEnv": "REDIS_PASSWORD"}, false, map[string]string{}, false},
 	// improperly formed hostPort
-	{map[string]string{"listName": "mylist", "listLength": "10", "hostFromEnv": "REDIS_HOST", "passwordFromEnv": "REDIS_PASSWORD"}, true, map[string]string{}},
+	{map[string]string{"listName": "mylist", "listLength": "10", "hostFromEnv": "REDIS_HOST", "passwordFromEnv": "REDIS_PASSWORD"}, true, map[string]string{}, false},
 	// properly formed listName, empty address
-	{map[string]string{"listName": "mylist", "listLength": "10", "address": "", "password": ""}, true, map[string]string{}},
+	{map[string]string{"listName": "mylist", "listLength": "10", "address": "", "password": ""}, true, map[string]string{}, false},
 	// improperly formed listLength
-	{map[string]string{"listName": "mylist", "listLength": "AA", "addressFromEnv": "REDIS_HOST", "password": ""}, true, map[string]string{}},
+	{map[string]string{"listName": "mylist", "listLength": "AA", "addressFromEnv": "REDIS_HOST", "password": ""}, true, map[string]string{}, false},
 	// improperly formed activationListLength
-	{map[string]string{"listName": "mylist", "listLength": "1", "activationListLength": "AA", "addressFromEnv": "REDIS_HOST", "password": ""}, true, map[string]string{}},
+	{map[string]string{"listName": "mylist", "listLength": "1", "activationListLength": "AA", "addressFromEnv": "REDIS_HOST", "password": ""}, true, map[string]string{}, false},
 	// address does not resolve
-	{map[string]string{"listName": "mylist", "listLength": "0", "addressFromEnv": "REDIS_WRONG", "password": ""}, true, map[string]string{}},
+	{map[string]string{"listName": "mylist", "listLength": "0", "addressFromEnv": "REDIS_WRONG", "password": ""}, true, map[string]string{}, false},
 	// password is defined in the authParams
-	{map[string]string{"listName": "mylist", "listLength": "0", "addressFromEnv": "REDIS_WRONG"}, true, map[string]string{"password": ""}},
+	{map[string]string{"listName": "mylist", "listLength": "0", "addressFromEnv": "REDIS_WRONG"}, true, map[string]string{"password": ""}, false},
 	// address is defined in the authParams
-	{map[string]string{"listName": "mylist", "listLength": "0"}, false, map[string]string{"address": "localhost:6379"}},
+	{map[string]string{"listName": "mylist", "listLength": "0"}, false, map[string]string{"address": "localhost:6379"}, false},
 	// host and port is defined in the authParams
-	{map[string]string{"listName": "mylist", "listLength": "0"}, false, map[string]string{"host": "localhost", "port": "6379"}},
+	{map[string]string{"listName": "mylist", "listLength": "0"}, false, map[string]string{"host": "localhost", "port": "6379"}, false},
+	// enableTLS, TLS defined in the authParams only
+	{map[string]string{"listName": "mylist", "listLength": "0"}, false, map[string]string{"address": "localhost:6379", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, true},
+	// enableTLS, TLS cert/key and assumed public CA
+	{map[string]string{"listName": "mylist", "listLength": "0"}, false, map[string]string{"address": "localhost:6379", "tls": "enable", "cert": "ceert", "key": "keey"}, true},
+	// enableTLS, TLS cert/key + key password and assumed public CA
+	{map[string]string{"listName": "mylist", "listLength": "0"}, false, map[string]string{"address": "localhost:6379", "tls": "enable", "cert": "ceert", "key": "keey", "keyPassword": "keeyPassword"}, true},
+	// enableTLS, TLS CA only
+	{map[string]string{"listName": "mylist", "listLength": "0"}, false, map[string]string{"address": "localhost:6379", "tls": "enable", "ca": "caaa"}, true},
+	// enableTLS is enabled by metadata
+	{map[string]string{"listName": "mylist", "listLength": "0", "enableTLS": "true"}, false, map[string]string{"address": "localhost:6379"}, true},
+	// enableTLS is defined both in authParams and metadata
+	{map[string]string{"listName": "mylist", "listLength": "0", "enableTLS": "true"}, true, map[string]string{"address": "localhost:6379", "tls": "disable"}, true},
 	// host only is defined in the authParams
-	{map[string]string{"listName": "mylist", "listLength": "0"}, true, map[string]string{"host": "localhost"}}}
+	{map[string]string{"listName": "mylist", "listLength": "0"}, true, map[string]string{"host": "localhost"}, false}}
 
 var redisMetricIdentifiers = []redisMetricIdentifier{
 	{&testRedisMetadata[1], 0, "s0-redis-mylist"},
@@ -65,16 +78,36 @@ var redisMetricIdentifiers = []redisMetricIdentifier{
 }
 
 func TestRedisParseMetadata(t *testing.T) {
-	testCaseNum := 1
+	testCaseNum := 0
 	for _, testData := range testRedisMetadata {
-		_, err := parseRedisMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testRedisResolvedEnv, AuthParams: testData.authParams}, parseRedisAddress)
+		testCaseNum++
+		meta, err := parseRedisMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testRedisResolvedEnv, AuthParams: testData.authParams}, parseRedisAddress)
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success but got error for unit test # %v", testCaseNum)
 		}
 		if testData.isError && err == nil {
 			t.Errorf("Expected error but got success for unit test #%v", testCaseNum)
 		}
-		testCaseNum++
+		if testData.isError {
+			continue
+		}
+		if meta.connectionInfo.enableTLS != testData.enableTLS {
+			t.Errorf("Expected enableTLS to be set to %v but got %v for unit test #%v\n", testData.enableTLS, meta.connectionInfo.enableTLS, testCaseNum)
+		}
+		if meta.connectionInfo.enableTLS {
+			if meta.connectionInfo.ca != testData.authParams["ca"] {
+				t.Errorf("Expected ca to be set to %v but got %v for unit test #%v\n", testData.authParams["ca"], meta.connectionInfo.enableTLS, testCaseNum)
+			}
+			if meta.connectionInfo.cert != testData.authParams["cert"] {
+				t.Errorf("Expected cert to be set to %v but got %v for unit test #%v\n", testData.authParams["cert"], meta.connectionInfo.cert, testCaseNum)
+			}
+			if meta.connectionInfo.key != testData.authParams["key"] {
+				t.Errorf("Expected key to be set to %v but got %v for unit test #%v\n", testData.authParams["key"], meta.connectionInfo.key, testCaseNum)
+			}
+			if meta.connectionInfo.keyPassword != testData.authParams["keyPassword"] {
+				t.Errorf("Expected key to be set to %v but got %v for unit test #%v\n", testData.authParams["keyPassword"], meta.connectionInfo.key, testCaseNum)
+			}
+		}
 	}
 }
 
