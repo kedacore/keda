@@ -24,6 +24,7 @@ import (
 	"os"
 
 	"github.com/prometheus/client_golang/prometheus/collectors"
+	_ "go.uber.org/automaxprocs"
 	appsv1 "k8s.io/api/apps/v1"
 	apimetrics "k8s.io/apiserver/pkg/endpoints/metrics"
 	"k8s.io/client-go/kubernetes/scheme"
