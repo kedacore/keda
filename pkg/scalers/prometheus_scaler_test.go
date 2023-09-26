@@ -180,7 +180,6 @@ type prometheusQromQueryResultTestData struct {
 	unsafeSsl        bool
 }
 
-
 var testPromQueryResult = []prometheusQromQueryResultTestData{
 	{
 		name:             "no results",
@@ -376,37 +375,43 @@ func TestPrometheusScalerCustomHeaders(t *testing.T) {
 }
 
 func TestPrometheusScalerExecutePromQueryParameters(t *testing.T) {
-	for _, testData := range testPromQueryResult {
-		t.Run(testData.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
-				writer.WriteHeader(testData.responseStatus)
-
-				if _, err := writer.Write([]byte(testData.bodyStr)); err != nil {
-					t.Fatal(err)
-				}
-			}))
-
-			scaler := prometheusScaler{
-				metadata: &prometheusMetadata{
-					serverAddress:    server.URL,
-					ignoreNullValues: testData.ignoreNullValues,
-					unsafeSsl:        testData.unsafeSsl,
-				},
-				httpClient: http.DefaultClient,
-				logger:     logr.Discard(),
-			}
-
-			value, err := scaler.ExecutePromQuery(context.TODO())
-
-			assert.Equal(t, testData.expectedValue, value)
-
-			if testData.isError {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
-		})
+	testData := prometheusQromQueryResultTestData{
+		name:             "no values",
+		bodyStr:          `{"data":{"result":[]}}`,
+		responseStatus:   http.StatusOK,
+		expectedValue:    0,
+		isError:          false,
+		ignoreNullValues: true,
 	}
+	queryParametersValue := map[string]string{
+		"first":  "foo",
+		"second": "bar",
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		for queryParameterName, queryParameterValue := range queryParametersValue {
+			queryParameter := request.URL.Query()
+			queryParameter.Add(queryParameterName, queryParameterValue)
+		}
+
+		
+		writer.WriteHeader(testData.responseStatus)
+		if _, err := writer.Write([]byte(testData.bodyStr)); err != nil {
+			t.Fatal(err)
+		}
+	}))
+
+	scaler := prometheusScaler{
+		metadata: &prometheusMetadata{
+			serverAddress:    server.URL,
+			queryParameters:  queryParametersValue,
+			ignoreNullValues: testData.ignoreNullValues,
+		},
+		httpClient: http.DefaultClient,
+	}
+
+	_, err := scaler.ExecutePromQuery(context.TODO())
+
+	assert.NoError(t, err)
 }
 
 func TestPrometheusScaler_ExecutePromQuery_WithGCPNativeAuthentication(t *testing.T) {
