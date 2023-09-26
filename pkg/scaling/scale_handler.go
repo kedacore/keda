@@ -587,7 +587,6 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	// Let's collect status of all scalers, no matter if any scaler raises error or is active
 	scalers, scalerConfigs := cache.GetScalers()
 	for scalerIndex := 0; scalerIndex < len(scalers); scalerIndex++ {
-
 		req := getStateScalerRequest{
 			ctx:          ctx,
 			scaler:       scalers[scalerIndex],
