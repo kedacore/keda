@@ -22,8 +22,7 @@ import (
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// CloudEvent defines how a trigger can authenticate globally
-// +genclient
+// CloudEvent defines how a keda event will be sent to event sink
 // +kubebuilder:resource:path=cloudevents,scope=Namespaced
 // +kubebuilder:subresource:status
 type CloudEvent struct {
