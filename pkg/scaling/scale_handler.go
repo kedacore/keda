@@ -649,11 +649,11 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	return isScaledObjectActive, isScaledObjectError, metricsRecord, err
 }
 
-// getStateScalerResult is used as return
+// scalerState is used as return
 // for the funtion getScalerState. It contains
 // the state of the scaler and all the required
 // info for calculating the ScaledObjectState
-type getStateScalerResult struct {
+type scalerState struct {
 	// IsActive will be overrided by formula calculation
 	IsActive bool
 	IsError  bool
@@ -667,8 +667,8 @@ type getStateScalerResult struct {
 // with erros, but also the records for the cache and he metrics
 // for the custom formulas
 func (*scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler, scalerIndex int, scalerConfig scalers.ScalerConfig,
-	cache *cache.ScalersCache, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) getStateScalerResult {
-	result := getStateScalerResult{
+	cache *cache.ScalersCache, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) scalerState {
+	result := scalerState{
 		IsActive: false,
 		IsError:  false,
 		Metrics:  []external_metrics.ExternalMetricValue{},
