@@ -268,7 +268,7 @@ Follow these instructions if you want to debug the KEDA webhook using VS Code.
    Refer to [this](https://code.visualstudio.com/docs/editor/debugging) for more information about debugging with VS Code.
 2. Expose your local instance to internet. If you can't expose it directly, you can use something like [localtunnel](https://theboroer.github.io/localtunnel-www/) using the command `lt --port 9443 --local-https --allow-invalid-cert` after installing the tool.
 
-3. Update the `admissing_webhooks.yaml` in `config/webhooks`, replacing the section (but not commiting this change)
+3. Update the `admissing_webhooks.yaml` in `config/webhooks`, replacing the section (but not committing this change)
    ```yaml
    webhooks:
    - admissionReviewVersions:
