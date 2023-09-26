@@ -14,11 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// ******************************* DESCRIPTION ****************************** \\
+// CloudEventHTTPHandler focus on emitting the CloudEvents to CloudEvent HTTP
+// URI. URI can be defined in CloudEventSpec.
+// ************************************************************************** \\
+
 package eventemitter
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
@@ -32,10 +36,6 @@ type CloudEventHTTPHandler struct {
 	ClusterName string
 	ctx         context.Context
 	logger      logr.Logger
-}
-
-type CloudEventHTTPMetadata struct {
-	endPoint string
 }
 
 func NewCloudEventHTTPHandler(context context.Context, clusterName string, uri string, logger logr.Logger) (*CloudEventHTTPHandler, error) {
@@ -57,18 +57,6 @@ func NewCloudEventHTTPHandler(context context.Context, clusterName string, uri s
 		ctx:         ctx,
 		logger:      logger,
 	}, nil
-}
-
-func parseCloudEventHTTPMetadata(metaData map[string]string) (*CloudEventHTTPMetadata, error) {
-	meta := CloudEventHTTPMetadata{}
-
-	if val, ok := metaData["endPoint"]; ok && val != "" {
-		meta.endPoint = val
-	} else {
-		return nil, errors.New("empty endPoint")
-	}
-
-	return &meta, nil
 }
 
 func (c *CloudEventHTTPHandler) CloseHandler() {

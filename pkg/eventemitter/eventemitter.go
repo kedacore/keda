@@ -14,6 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// ******************************* DESCRIPTION ****************************** \\
+// eventemitter package describes functions that manage different CloudEvent
+// handlers and emit KEDA events to different CloudEvent destinations through
+// these handlers. A loop will be launched to monitor whether there is a new
+// KEDA event once a valid CloudEvent CRD is created. And then the eventemitter
+// will send the event data to all event handlers when a new KEDA event reached.
+// ************************************************************************** \\
+
 package eventemitter
 
 import (
@@ -90,6 +98,8 @@ func initializeLogger(cloudEvents *kedav1alpha1.CloudEvent, cloudEventEmitterNam
 	return logf.Log.WithName(cloudEventEmitterName).WithValues("type", cloudEvents.Kind, "namespace", cloudEvents.Namespace, "name", cloudEvents.Name)
 }
 
+// HandleCloudEvents will create CloudEvent handlers that defined in spec and start an event loop once handlers
+// are created successfully.
 func (e *EventEmitter) HandleCloudEvents(ctx context.Context, cloudEvent *kedav1alpha1.CloudEvent) error {
 	e.createEventHandlers(ctx, cloudEvent)
 
@@ -116,6 +126,7 @@ func (e *EventEmitter) HandleCloudEvents(ctx context.Context, cloudEvent *kedav1
 	return nil
 }
 
+// DeleteCloudEvents will stop the event loop and clean event handlers in cache.
 func (e *EventEmitter) DeleteCloudEvents(cloudEvent *kedav1alpha1.CloudEvent) error {
 	key := cloudEvent.GenerateIdentifier()
 	result, ok := e.eventLoopContexts.Load(key)
@@ -133,6 +144,8 @@ func (e *EventEmitter) DeleteCloudEvents(cloudEvent *kedav1alpha1.CloudEvent) er
 	return nil
 }
 
+// createEventHandlers will create different handler as defined in CloudEvent, and store them in cache for repeated
+// use in the loop.
 func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEvents *kedav1alpha1.CloudEvent) {
 	e.eventHandlersCachesLock.Lock()
 	defer e.eventHandlersCachesLock.Unlock()
@@ -156,6 +169,7 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEvents *ked
 	}
 }
 
+// clearEventHandlersCache will clear all event handlers that created by the passing CloudEvents
 func (e *EventEmitter) clearEventHandlersCache(cloudEvents *kedav1alpha1.CloudEvent) {
 	e.eventHandlersCachesLock.Lock()
 	defer e.eventHandlersCachesLock.Unlock()
@@ -171,6 +185,7 @@ func (e *EventEmitter) clearEventHandlersCache(cloudEvents *kedav1alpha1.CloudEv
 	}
 }
 
+// clearEventHandlersCache will check if the event handlers that were created by passing CloudEvents exist
 func (e *EventEmitter) checkIfEventHandlersExist(cloudEvents *kedav1alpha1.CloudEvent) bool {
 	e.eventHandlersCachesLock.RLock()
 	defer e.eventHandlersCachesLock.RUnlock()
