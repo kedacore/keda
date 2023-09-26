@@ -73,7 +73,6 @@ func parseGcpCloudTasksMetadata(config *ScalerConfig) (*gcpCloudTaskMetadata, er
 		if val == "" {
 			return nil, fmt.Errorf("no queue name given")
 		}
-
 		meta.queueName = val
 	} else {
 		return nil, fmt.Errorf("no queue name given")

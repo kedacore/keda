@@ -99,6 +99,9 @@ type ScalerConfig struct {
 
 	// MetricType
 	MetricType v2.MetricTargetType
+
+	// When we use the scaler for composite scaler, we shouldn't require the value because it'll be ignored
+	AsMetricSource bool
 }
 
 var (

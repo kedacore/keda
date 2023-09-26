@@ -143,7 +143,11 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 		}
 		meta.queryValue = queryValue
 	} else {
-		return nil, fmt.Errorf("no queryValue given")
+		if config.AsMetricSource {
+			meta.queryValue = 0
+		} else {
+			return nil, fmt.Errorf("no queryValue given")
+		}
 	}
 
 	if val, ok := config.TriggerMetadata["queryAggregator"]; ok && val != "" {

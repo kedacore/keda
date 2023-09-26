@@ -392,31 +392,7 @@ func validateScalingModifiersTarget(so *ScaledObject) error {
 		return fmt.Errorf("error converting target for scalingModifiers (string->float) to valid target: %w", err)
 	}
 
-	// if target is given, composite-scaler will be passed to HPA -> all types
-	// need to be the same - make sure all metrics are of the same metricTargetType
-
-	var trigType autoscalingv2.MetricTargetType
-
-	// gauron99: possible TODO: more sofisticated check for trigger could be used here
-	// as well if solution is found (check just the right triggers that are used)
-	for _, trig := range so.Spec.Triggers {
-		if trig.Type == cpuString || trig.Type == memoryString || trig.Name == "" {
-			continue
-		}
-		var current autoscalingv2.MetricTargetType
-		if trig.MetricType == "" {
-			current = autoscalingv2.AverageValueMetricType // default is AverageValue
-		} else {
-			current = trig.MetricType
-		}
-		if trigType == "" {
-			trigType = current
-		} else if trigType != current {
-			err := fmt.Errorf("error trigger types are not the same for composite scaler: %s & %s", trigType, current)
-			return err
-		}
-	}
-	if trigType == autoscalingv2.UtilizationMetricType {
+	if so.Spec.Advanced.ScalingModifiers.MetricType == autoscalingv2.UtilizationMetricType {
 		err := fmt.Errorf("error trigger type is Utilization, but it needs to be AverageValue or Value for external metrics")
 		return err
 	}
