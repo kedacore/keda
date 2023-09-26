@@ -650,7 +650,7 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 }
 
 // scalerState is used as return
-// for the funtion getScalerState. It contains
+// for the function getScalerState. It contains
 // the state of the scaler and all the required
 // info for calculating the ScaledObjectState
 type scalerState struct {
