@@ -30,7 +30,7 @@ bash "${CODEGEN_PKG}"/generate-groups.sh "client,informer,lister" \
   --go-header-file "${SCRIPT_ROOT}"/hack/boilerplate.go.txt --output-base "${CODEGEN_OUTPUT_BASE}"
 
 # (Zbynek): If v2 is specified in go.mod, codegen unfortunately outputs to 'v2/pkg/generated' instead of 'pkg/generated',
-# and since we are using a specific ouput for codegen,  we need to move the generated code around the repo a bit
+# and since we are using a specific output for codegen,  we need to move the generated code around the repo a bit
 if [ -d "${CODEGEN_OUTPUT_GENERATED}" ]; then
   rm -rf "${SCRIPT_ROOT}"/pkg/generated
   mv "${CODEGEN_OUTPUT_GENERATED}" "${SCRIPT_ROOT}"/pkg/
