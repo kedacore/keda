@@ -96,5 +96,5 @@ func (c *CloudEventHTTPHandler) EmitEvent(eventData EventData, failureFunc func(
 		return
 	}
 
-	c.logger.Info("Publish Event to CloudEvents receiver Successfully")
+	c.logger.V(1).Info("Publish Event to CloudEvents receiver Successfully")
 }
