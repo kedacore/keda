@@ -666,15 +666,8 @@ type getStateScalerResult struct {
 // for an specific scaler. The state contains if it's active or
 // with erros, but also the records for the cache and he metrics
 // for the custom formulas
-func (*scaleHandler) getScalerState(
-	ctx context.Context,
-	scaler scalers.Scaler,
-	scalerIndex int,
-	scalerConfig scalers.ScalerConfig,
-	cache *cache.ScalersCache,
-	logger logr.Logger,
-	scaledObject *kedav1alpha1.ScaledObject,
-) getStateScalerResult {
+func (*scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler, scalerIndex int, scalerConfig scalers.ScalerConfig,
+	cache *cache.ScalersCache, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) getStateScalerResult {
 	result := getStateScalerResult{
 		IsActive: false,
 		IsError:  false,
