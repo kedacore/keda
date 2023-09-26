@@ -81,6 +81,7 @@ type kafkaMetadata struct {
 	key         string
 	keyPassword string
 	ca          string
+	unsafeSsl   bool
 
 	scalerIndex int
 }
@@ -230,24 +231,40 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	}
 
 	if enableTLS {
-		certGiven := config.AuthParams["cert"] != ""
-		keyGiven := config.AuthParams["key"] != ""
-		if certGiven && !keyGiven {
-			return errors.New("key must be provided with cert")
-		}
-		if keyGiven && !certGiven {
-			return errors.New("cert must be provided with key")
-		}
-		meta.ca = config.AuthParams["ca"]
-		meta.cert = config.AuthParams["cert"]
-		meta.key = config.AuthParams["key"]
-		if value, found := config.AuthParams["keyPassword"]; found {
-			meta.keyPassword = value
-		} else {
-			meta.keyPassword = ""
-		}
-		meta.enableTLS = true
+		return parseTLS(config, meta)
 	}
+
+	return nil
+}
+
+func parseTLS(config *ScalerConfig, meta *kafkaMetadata) error {
+	certGiven := config.AuthParams["cert"] != ""
+	keyGiven := config.AuthParams["key"] != ""
+	if certGiven && !keyGiven {
+		return errors.New("key must be provided with cert")
+	}
+	if keyGiven && !certGiven {
+		return errors.New("cert must be provided with key")
+	}
+	meta.ca = config.AuthParams["ca"]
+	meta.cert = config.AuthParams["cert"]
+	meta.key = config.AuthParams["key"]
+	meta.unsafeSsl = defaultUnsafeSsl
+
+	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
+		unsafeSsl, err := strconv.ParseBool(val)
+		if err != nil {
+			return fmt.Errorf("error parsing unsafeSsl: %w", err)
+		}
+		meta.unsafeSsl = unsafeSsl
+	}
+
+	if value, found := config.AuthParams["keyPassword"]; found {
+		meta.keyPassword = value
+	} else {
+		meta.keyPassword = ""
+	}
+	meta.enableTLS = true
 
 	return nil
 }
@@ -391,7 +408,7 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 
 	if metadata.enableTLS {
 		config.Net.TLS.Enable = true
-		tlsConfig, err := kedautil.NewTLSConfigWithPassword(metadata.cert, metadata.key, metadata.keyPassword, metadata.ca, false)
+		tlsConfig, err := kedautil.NewTLSConfigWithPassword(metadata.cert, metadata.key, metadata.keyPassword, metadata.ca, metadata.unsafeSsl)
 		if err != nil {
 			return nil, nil, err
 		}
