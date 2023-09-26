@@ -86,7 +86,7 @@ func NewEventEmitter(client client.Client, recorder record.EventRecorder) *Event
 	}
 }
 
-func InitializeLogger(cloudEvents *kedav1alpha1.CloudEvent, cloudEventEmitterName string) logr.Logger {
+func initializeLogger(cloudEvents *kedav1alpha1.CloudEvent, cloudEventEmitterName string) logr.Logger {
 	return logf.Log.WithName(cloudEventEmitterName).WithValues("type", cloudEvents.Kind, "namespace", cloudEvents.Namespace, "name", cloudEvents.Name)
 }
 
@@ -146,7 +146,7 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEvents *ked
 
 	if cloudEvents.Spec.Destination.CloudEventHTTP != nil {
 		var eventHandler EventDataHandler
-		eventHandler, err := NewCloudEventHTTPHandler(ctx, clusterName, cloudEvents.Spec.Destination.CloudEventHTTP.Uri, InitializeLogger(cloudEvents, "cloudevent_http"))
+		eventHandler, err := NewCloudEventHTTPHandler(ctx, clusterName, cloudEvents.Spec.Destination.CloudEventHTTP.Uri, initializeLogger(cloudEvents, "cloudevent_http"))
 
 		if err != nil {
 			log.Error(err, "create cloudevent handler failed")
