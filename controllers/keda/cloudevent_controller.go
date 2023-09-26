@@ -77,6 +77,8 @@ func (r *CloudEventsReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
+	reqLogger.Info("Reconciling CloudEvents")
+
 	if cloudEvent.GetDeletionTimestamp() != nil {
 		return ctrl.Result{}, r.FinalizeCloudEventsResource(ctx, reqLogger, cloudEvent, req.NamespacedName.String())
 	}
@@ -97,8 +99,6 @@ func (r *CloudEventsReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			return ctrl.Result{}, err
 		}
 	}
-
-	reqLogger.Info("Initializing Scaling logic according to CloudEvents Specification")
 
 	return ctrl.Result{}, nil
 }
