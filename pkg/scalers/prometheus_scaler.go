@@ -274,6 +274,11 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	}
 
 	if len(s.metadata.queryParameters) > 0 {
+		test := s.metadata.queryParameters[len(s.metadata.queryParameters)-1:]
+		if test == "?" || test == "&"{
+			s.metadata.queryParameters = strings.TrimSuffix(s.metadata.queryParameters, test)
+		}
+
 		url = fmt.Sprintf("%s&%s", url, s.metadata.queryParameters)
 	}
 
