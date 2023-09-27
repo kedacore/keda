@@ -339,13 +339,9 @@ func testScaledObjectErrors(t *testing.T, data templateData) {
 	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
 
 	// wait for 2 seconds as pollinginterval is 2
-	time.Sleep(2 * time.Second)
+	time.Sleep(20 * time.Second)
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
-	for k, v := range family {
-		t.Log(fmt.Sprintf("fetch metric key:%s value:%T\n", k, v))
-	}
-
 	if val, ok := family["keda_scaled_object_errors"]; ok {
 		errCounterVal1 := getErrorMetricsValue(val)
 
@@ -355,6 +351,7 @@ func testScaledObjectErrors(t *testing.T, data templateData) {
 		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 		if val, ok := family["keda_scaled_object_errors"]; ok {
 			errCounterVal2 := getErrorMetricsValue(val)
+			t.Log(fmt.Sprintf("ferrCounterVal2:%f\n", errCounterVal2))
 			assert.NotEqual(t, errCounterVal2, float64(0))
 			assert.GreaterOrEqual(t, errCounterVal2, errCounterVal1)
 		} else {
