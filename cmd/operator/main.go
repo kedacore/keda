@@ -73,6 +73,7 @@ func main() {
 	var operatorServiceName string
 	var metricsServerServiceName string
 	var webhooksServiceName string
+	var k8sClusterDomain string
 	var enableCertRotation bool
 	var validatingWebhookName string
 	pflag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
@@ -89,6 +90,7 @@ func main() {
 	pflag.StringVar(&operatorServiceName, "operator-service-name", "keda-operator", "Operator service name. Defaults to keda-operator")
 	pflag.StringVar(&metricsServerServiceName, "metrics-server-service-name", "keda-metrics-apiserver", "Metrics server service name. Defaults to keda-metrics-apiserver")
 	pflag.StringVar(&webhooksServiceName, "webhooks-service-name", "keda-admission-webhooks", "Webhook service name. Defaults to keda-admission-webhooks")
+	pflag.StringVar(&k8sClusterDomain, "k8s-cluster-domain", "cluster.local", "Kubernetes cluster domain. Defaults to cluster.local")
 	pflag.BoolVar(&enableCertRotation, "enable-cert-rotation", false, "enable automatic generation and rotation of TLS certificates/keys")
 	pflag.StringVar(&validatingWebhookName, "validating-webhook-name", "keda-admission", "ValidatingWebhookConfiguration name. Defaults to keda-admission")
 	opts := zap.Options{}
@@ -253,6 +255,7 @@ func main() {
 			OperatorService:       operatorServiceName,
 			MetricsServerService:  metricsServerServiceName,
 			WebhookService:        webhooksServiceName,
+			K8sClusterDomain:      k8sClusterDomain,
 			CAName:                "KEDA",
 			CAOrganization:        "KEDAORG",
 			ValidatingWebhookName: validatingWebhookName,
