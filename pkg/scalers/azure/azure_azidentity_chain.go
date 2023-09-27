@@ -5,18 +5,22 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/go-logr/logr"
 
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
-func NewChainedCredential(identityID string, podIdentity v1alpha1.PodIdentityProvider) (*azidentity.ChainedTokenCredential, error) {
+func NewChainedCredential(logger logr.Logger, identityID string, podIdentity v1alpha1.PodIdentityProvider) (*azidentity.ChainedTokenCredential, error) {
 	var creds []azcore.TokenCredential
 
 	// Used for local debug based on az-cli user
 	// As production images don't have shell, we can't register this provider always
 	if _, err := os.Stat("/bin/sh"); err == nil {
 		cliCred, err := azidentity.NewAzureCLICredential(&azidentity.AzureCLICredentialOptions{})
-		if err == nil {
+		if err != nil {
+			logger.Error(err, "error starting az-cli token provider")
+		} else {
+			logger.V(1).Info("az-cli token provider registered")
 			creds = append(creds, cliCred)
 		}
 	}
@@ -31,12 +35,18 @@ func NewChainedCredential(identityID string, podIdentity v1alpha1.PodIdentityPro
 	case v1alpha1.PodIdentityProviderAzure:
 		// Used for aad-pod-identity
 		msiCred, err := ManagedIdentityWrapperCredential(identityID)
-		if err == nil {
+		if err != nil {
+			logger.Error(err, "error starting aad-pod-identity token provider")
+		} else {
+			logger.V(1).Info("aad-pod-identity token provider registered")
 			creds = append(creds, msiCred)
 		}
 	case v1alpha1.PodIdentityProviderAzureWorkload:
 		wiCred, err := NewADWorkloadIdentityCredential(identityID)
-		if err == nil {
+		if err != nil {
+			logger.Error(err, "error starting azure workload-identity token provider")
+		} else {
+			logger.V(1).Info("azure workload-identity token provider registered")
 			creds = append(creds, wiCred)
 		}
 	}
