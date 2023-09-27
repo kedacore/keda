@@ -351,7 +351,6 @@ func testScaledObjectErrors(t *testing.T, data templateData) {
 		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 		if val, ok := family["keda_scaled_object_errors"]; ok {
 			errCounterVal2 := getErrorMetricsValue(val)
-			t.Log(fmt.Sprintf("ferrCounterVal2:%f\n", errCounterVal2))
 			assert.NotEqual(t, errCounterVal2, float64(0))
 			assert.GreaterOrEqual(t, errCounterVal2, errCounterVal1)
 		} else {
