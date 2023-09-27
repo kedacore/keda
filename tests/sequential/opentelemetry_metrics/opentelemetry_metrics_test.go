@@ -30,16 +30,16 @@ const (
 )
 
 var (
-	testNamespace             = fmt.Sprintf("%s-ns", testName)
-	deploymentName            = fmt.Sprintf("%s-deployment", testName)
-	monitoredDeploymentName   = fmt.Sprintf("%s-monitored", testName)
-	scaledObjectName          = fmt.Sprintf("%s-so", testName)
-	wrongScaledObjectName     = fmt.Sprintf("%s-wrong", testName)
-	wrongScalerName           = fmt.Sprintf("%s-wrong-scaler", testName)
-	cronScaledJobName         = fmt.Sprintf("%s-cron-sj", testName)
-	clientName                = fmt.Sprintf("%s-client", testName)
-	kedaOperatorPrometheusURL = "http://opentelemetry-collector.default.svc.cluster.local:8889/metrics"
-	namespaceString           = "namespace"
+	testNamespace                            = fmt.Sprintf("%s-ns", testName)
+	deploymentName                           = fmt.Sprintf("%s-deployment", testName)
+	monitoredDeploymentName                  = fmt.Sprintf("%s-monitored", testName)
+	scaledObjectName                         = fmt.Sprintf("%s-so", testName)
+	wrongScaledObjectName                    = fmt.Sprintf("%s-wrong", testName)
+	wrongScalerName                          = fmt.Sprintf("%s-wrong-scaler", testName)
+	cronScaledJobName                        = fmt.Sprintf("%s-cron-sj", testName)
+	clientName                               = fmt.Sprintf("%s-client", testName)
+	kedaOperatorCollectorPrometheusExportURL = "http://opentelemetry-collector.default.svc.cluster.local:8889/metrics"
+	namespaceString                          = "namespace"
 )
 
 type templateData struct {
@@ -307,7 +307,7 @@ func fetchAndParsePrometheusMetrics(t *testing.T, cmd string) map[string]*prommo
 
 func testScalerMetricValue(t *testing.T) {
 	t.Log("--- testing scaler metric value ---")
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
 
 	if val, ok := family["keda_scaler_metrics_value"]; ok {
 		var found bool
@@ -336,14 +336,14 @@ func testScaledObjectErrors(t *testing.T, data templateData) {
 	// wait for 2 seconds as pollinginterval is 2
 	time.Sleep(5 * time.Second)
 
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
 	if val, ok := family["keda_scaledobject_errors"]; ok {
 		errCounterVal1 := getErrorMetricsValue(val)
 
 		// wait for 2 seconds as pollinginterval is 2
 		time.Sleep(2 * time.Second)
 
-		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
 		if val, ok := family["keda_scaledobject_errors"]; ok {
 			errCounterVal2 := getErrorMetricsValue(val)
 			assert.NotEqual(t, errCounterVal2, float64(0))
@@ -367,14 +367,14 @@ func testScalerErrors(t *testing.T, data templateData) {
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
 
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
 	if val, ok := family["keda_scaler_errors"]; ok {
 		errCounterVal1 := getErrorMetricsValue(val)
 
 		// wait for 10 seconds to correctly fetch metrics.
 		time.Sleep(10 * time.Second)
 
-		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
 		if val, ok := family["keda_scaler_errors"]; ok {
 			errCounterVal2 := getErrorMetricsValue(val)
 			assert.NotEqual(t, errCounterVal2, float64(0))
@@ -396,14 +396,14 @@ func testScalerErrorsTotal(t *testing.T, data templateData) {
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
 
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
 	if val, ok := family["keda_scaler_errors_total"]; ok {
 		errCounterVal1 := getErrorMetricsValue(val)
 
 		// wait for 2 seconds as pollinginterval is 2
 		time.Sleep(2 * time.Second)
 
-		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
 		if val, ok := family["keda_scaler_errors_total"]; ok {
 			errCounterVal2 := getErrorMetricsValue(val)
 			assert.NotEqual(t, errCounterVal2, float64(0))
@@ -453,7 +453,7 @@ func getErrorMetricsValue(val *prommodel.MetricFamily) float64 {
 func testScalerMetricLatency(t *testing.T) {
 	t.Log("--- testing scaler metric latency ---")
 
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
 
 	if val, ok := family["keda_scaler_metrics_latency"]; ok {
 		var found bool
@@ -476,7 +476,7 @@ func testScalerMetricLatency(t *testing.T) {
 func testScalableObjectMetrics(t *testing.T) {
 	t.Log("--- testing scalable objects latency ---")
 
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
 
 	if val, ok := family["keda_internal_scale_loop_latency"]; ok {
 		var found bool
@@ -513,7 +513,7 @@ func testScalableObjectMetrics(t *testing.T) {
 func testScalerActiveMetric(t *testing.T) {
 	t.Log("--- testing scaler active metric ---")
 
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
 
 	if val, ok := family["keda_scaler_active"]; ok {
 		var found bool
@@ -608,7 +608,7 @@ func testOperatorMetricValues(t *testing.T, kc *kubernetes.Clientset) {
 	// wait for 5 seconds to correctly fetch metrics.
 	time.Sleep(5 * time.Second)
 
-	families := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+	families := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
 	expectedTriggerTotals, expectedCrTotals := getOperatorMetricsManually(t, kc)
 
 	checkTriggerTotalValues(t, families, expectedTriggerTotals)
