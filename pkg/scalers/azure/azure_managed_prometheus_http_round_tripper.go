@@ -8,6 +8,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	az "github.com/Azure/go-autorest/autorest/azure"
+	"github.com/go-logr/logr"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/util"
@@ -28,7 +29,7 @@ type azureManagedPrometheusHTTPRoundTripper struct {
 // Tries to get a round tripper.
 // If the pod identity represents azure auth, it creates a round tripper and returns that. Returns error if fails to create one.
 // If its not azure auth, then this becomes a no-op. Neither returns round tripper nor error.
-func TryAndGetAzureManagedPrometheusHTTPRoundTripper(podIdentity kedav1alpha1.AuthPodIdentity, triggerMetadata map[string]string) (http.RoundTripper, error) {
+func TryAndGetAzureManagedPrometheusHTTPRoundTripper(logger logr.Logger, podIdentity kedav1alpha1.AuthPodIdentity, triggerMetadata map[string]string) (http.RoundTripper, error) {
 	switch podIdentity.Provider {
 	case kedav1alpha1.PodIdentityProviderAzureWorkload, kedav1alpha1.PodIdentityProviderAzure:
 
@@ -36,7 +37,7 @@ func TryAndGetAzureManagedPrometheusHTTPRoundTripper(podIdentity kedav1alpha1.Au
 			return nil, fmt.Errorf("trigger metadata cannot be nil")
 		}
 
-		chainedCred, err := NewChainedCredential(podIdentity.GetIdentityID(), podIdentity.Provider)
+		chainedCred, err := NewChainedCredential(logger, podIdentity.GetIdentityID(), podIdentity.Provider)
 		if err != nil {
 			return nil, err
 		}

@@ -297,7 +297,7 @@ func (s *azureServiceBusScaler) getServiceBusAdminClient() (*admin.Client, error
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		client, err = admin.NewClientFromConnectionString(s.metadata.connection, nil)
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
-		creds, chainedErr := azure.NewChainedCredential(s.podIdentity.GetIdentityID(), s.podIdentity.Provider)
+		creds, chainedErr := azure.NewChainedCredential(s.logger, s.podIdentity.GetIdentityID(), s.podIdentity.Provider)
 		if chainedErr != nil {
 			return nil, chainedErr
 		}
