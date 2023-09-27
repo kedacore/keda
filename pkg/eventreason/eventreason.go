@@ -50,6 +50,9 @@ const (
 	// KEDAScalerFailed is for event when a scaler fails for a ScaledJob or a ScaledObject
 	KEDAScalerFailed = "KEDAScalerFailed"
 
+	// KEDAMetricSourceFailed is for event when a scaler fails as metric source for custom formula
+	KEDAMetricSourceFailed = "KEDAMetricSourceFailed"
+
 	// KEDAScaleTargetActivated is for event when the scale target of ScaledObject was activated
 	KEDAScaleTargetActivated = "KEDAScaleTargetActivated"
 

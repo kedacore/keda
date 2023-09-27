@@ -371,8 +371,8 @@ func testScalerErrors(t *testing.T, data templateData) {
 	if val, ok := family["keda_scaler_errors"]; ok {
 		errCounterVal1 := getErrorMetricsValue(val)
 
-		// wait for 10 seconds to correctly fetch metrics.
-		time.Sleep(10 * time.Second)
+		// wait for 20 seconds to correctly fetch metrics.
+		time.Sleep(20 * time.Second)
 
 		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 		if val, ok := family["keda_scaler_errors"]; ok {

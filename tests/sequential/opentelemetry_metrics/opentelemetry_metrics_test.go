@@ -264,7 +264,6 @@ func TestPrometheusMetrics(t *testing.T) {
 	testScalerActiveMetric(t)
 	testScaledObjectErrors(t, data)
 	testScalerErrors(t, data)
-	testScalerErrorsTotal(t, data)
 	testOperatorMetrics(t, kc, data)
 	testScalableObjectMetrics(t)
 
@@ -333,18 +332,17 @@ func testScaledObjectErrors(t *testing.T, data templateData) {
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
 
-	// wait for 2 seconds as pollinginterval is 2
-	time.Sleep(5 * time.Second)
+	time.Sleep(20 * time.Second)
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
-	if val, ok := family["keda_scaledobject_errors"]; ok {
+	if val, ok := family["keda_scaledobject_errors_total"]; ok {
 		errCounterVal1 := getErrorMetricsValue(val)
 
 		// wait for 2 seconds as pollinginterval is 2
-		time.Sleep(2 * time.Second)
+		time.Sleep(5 * time.Second)
 
 		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
-		if val, ok := family["keda_scaledobject_errors"]; ok {
+		if val, ok := family["keda_scaledobject_errors_total"]; ok {
 			errCounterVal2 := getErrorMetricsValue(val)
 			assert.NotEqual(t, errCounterVal2, float64(0))
 			assert.GreaterOrEqual(t, errCounterVal2, errCounterVal1)
@@ -367,41 +365,14 @@ func testScalerErrors(t *testing.T, data templateData) {
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
 
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
-	if val, ok := family["keda_scaler_errors"]; ok {
-		errCounterVal1 := getErrorMetricsValue(val)
-
-		// wait for 10 seconds to correctly fetch metrics.
-		time.Sleep(10 * time.Second)
-
-		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
-		if val, ok := family["keda_scaler_errors"]; ok {
-			errCounterVal2 := getErrorMetricsValue(val)
-			assert.NotEqual(t, errCounterVal2, float64(0))
-			assert.GreaterOrEqual(t, errCounterVal2, errCounterVal1)
-		} else {
-			t.Errorf("metric not available")
-		}
-	} else {
-		t.Errorf("metric not available")
-	}
-
-	KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
-	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-}
-
-func testScalerErrorsTotal(t *testing.T, data templateData) {
-	t.Log("--- testing scaler errors total ---")
-
-	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
+	time.Sleep(15 * time.Second)
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
 	if val, ok := family["keda_scaler_errors_total"]; ok {
 		errCounterVal1 := getErrorMetricsValue(val)
 
-		// wait for 2 seconds as pollinginterval is 2
-		time.Sleep(2 * time.Second)
+		// wait for 10 seconds to correctly fetch metrics.
+		time.Sleep(5 * time.Second)
 
 		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
 		if val, ok := family["keda_scaler_errors_total"]; ok {
@@ -421,12 +392,7 @@ func testScalerErrorsTotal(t *testing.T, data templateData) {
 
 func getErrorMetricsValue(val *prommodel.MetricFamily) float64 {
 	switch val.GetName() {
-	case "keda_scaler_errors_total":
-		metrics := val.GetMetric()
-		for _, metric := range metrics {
-			return metric.GetCounter().GetValue()
-		}
-	case "keda_scaledobject_errors":
+	case "keda_scaledobject_errors_total":
 		metrics := val.GetMetric()
 		for _, metric := range metrics {
 			labels := metric.GetLabel()
@@ -436,7 +402,7 @@ func getErrorMetricsValue(val *prommodel.MetricFamily) float64 {
 				}
 			}
 		}
-	case "keda_scaler_errors":
+	case "keda_scaler_errors_total":
 		metrics := val.GetMetric()
 		for _, metric := range metrics {
 			labels := metric.GetLabel()

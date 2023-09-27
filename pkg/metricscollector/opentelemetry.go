@@ -24,7 +24,6 @@ const defaultNamespace = "default"
 var (
 	meterProvider               *metric.MeterProvider
 	meter                       api.Meter
-	otErrorsTotalCounter        api.Int64Counter
 	otScalerErrorsCounter       api.Int64Counter
 	otScaledObjectErrorsCounter api.Int64Counter
 	otTriggerTotalsCounter      api.Int64UpDownCounter
@@ -60,27 +59,22 @@ func initCounter() {
 	var err error
 	msg := "create opentelemetry counter failed"
 
-	otErrorsTotalCounter, err = meter.Int64Counter("scaler.errors.total", api.WithDescription("Total number of errors for all scalers"))
+	otScalerErrorsCounter, err = meter.Int64Counter("keda.scaler.errors", api.WithDescription("Number of scaler errors"))
 	if err != nil {
 		otLog.Error(err, msg)
 	}
 
-	otScalerErrorsCounter, err = meter.Int64Counter("scaler.errors", api.WithDescription("Number of scaler errors"))
+	otScaledObjectErrorsCounter, err = meter.Int64Counter("keda.scaledobject.errors", api.WithDescription("Number of scaled object errors"))
 	if err != nil {
 		otLog.Error(err, msg)
 	}
 
-	otScaledObjectErrorsCounter, err = meter.Int64Counter("scaledobject.errors", api.WithDescription("Number of scaled object errors"))
+	otTriggerTotalsCounter, err = meter.Int64UpDownCounter("keda.trigger.totals", api.WithDescription("Total triggers"))
 	if err != nil {
 		otLog.Error(err, msg)
 	}
 
-	otTriggerTotalsCounter, err = meter.Int64UpDownCounter("trigger.totals", api.WithDescription("Total triggers"))
-	if err != nil {
-		otLog.Error(err, msg)
-	}
-
-	otCrdTotalsCounter, err = meter.Int64UpDownCounter("resource.totals", api.WithDescription("Total resources"))
+	otCrdTotalsCounter, err = meter.Int64UpDownCounter("keda.resource.totals", api.WithDescription("Total resources"))
 	if err != nil {
 		otLog.Error(err, msg)
 	}
@@ -92,7 +86,7 @@ func (o *OtelMetrics) RecordScalerMetric(namespace string, scaledObject string, 
 		return nil
 	}
 	_, err := meter.Float64ObservableGauge(
-		"scaler.metrics.value",
+		"keda.scaler.metrics.value",
 		api.WithDescription("Metric Value used for HPA"),
 		api.WithFloat64Callback(cback),
 	)
@@ -108,7 +102,7 @@ func (o *OtelMetrics) RecordScalerLatency(namespace string, scaledObject string,
 		return nil
 	}
 	_, err := meter.Float64ObservableGauge(
-		"scaler.metrics.latency",
+		"keda.scaler.metrics.latency",
 		api.WithDescription("Scaler Metrics Latency"),
 		api.WithFloat64Callback(cback),
 	)
@@ -134,7 +128,7 @@ func (o *OtelMetrics) RecordScalableObjectLatency(namespace string, name string,
 		return nil
 	}
 	_, err := meter.Float64ObservableGauge(
-		"internal.scale.loop.latency",
+		"keda.internal.scale.loop.latency",
 		api.WithDescription("Internal latency of ScaledObject/ScaledJob loop execution"),
 		api.WithFloat64Callback(cback),
 	)
@@ -155,7 +149,7 @@ func (o *OtelMetrics) RecordScalerActive(namespace string, scaledObject string, 
 		return nil
 	}
 	_, err := meter.Float64ObservableGauge(
-		"scaler.active",
+		"keda.scaler.active",
 		api.WithDescription("Activity of a Scaler Metric"),
 		api.WithFloat64Callback(cback),
 	)
@@ -169,7 +163,6 @@ func (o *OtelMetrics) RecordScalerError(namespace string, scaledObject string, s
 	if err != nil {
 		otScalerErrorsCounter.Add(context.Background(), 1, getScalerMeasurementOption(namespace, scaledObject, scaler, scalerIndex, metric))
 		o.RecordScaledObjectError(namespace, scaledObject, err)
-		otErrorsTotalCounter.Add(context.Background(), 1)
 		return
 	}
 }
@@ -199,7 +192,7 @@ func (o *OtelMetrics) RecordBuildInfo() {
 		return nil
 	}
 	_, err := meter.Int64ObservableGauge(
-		"build.info",
+		"keda.build.info",
 		api.WithDescription("A metric with a constant '1' value labeled by version, git_commit and goversion from which KEDA was built."),
 		api.WithInt64Callback(cback),
 	)

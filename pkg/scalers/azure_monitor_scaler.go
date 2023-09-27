@@ -87,7 +87,11 @@ func parseAzureMonitorMetadata(config *ScalerConfig, logger logr.Logger) (*azure
 		}
 		meta.targetValue = targetValue
 	} else {
-		return nil, fmt.Errorf("no targetValue given")
+		if config.AsMetricSource {
+			meta.targetValue = 0
+		} else {
+			return nil, fmt.Errorf("no targetValue given")
+		}
 	}
 
 	if val, ok := config.TriggerMetadata[activationTargetValueName]; ok && val != "" {

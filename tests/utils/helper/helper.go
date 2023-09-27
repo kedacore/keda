@@ -53,7 +53,6 @@ config:
       loglevel: debug
     prometheus:
       endpoint: 0.0.0.0:8889
-      namespace: "keda"
   receivers:
     jaeger: null
     prometheus: null
