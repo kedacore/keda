@@ -222,7 +222,7 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string) error {
 		_, err = ValidateAndCompileScalingModifiers(incomingSo)
 		if err != nil {
 			scaledobjectlog.Error(err, "error validating ScalingModifiers")
-			prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "scaling-modifiers")
+			metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "scaling-modifiers")
 
 			return err
 		}
