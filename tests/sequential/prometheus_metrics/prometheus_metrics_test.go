@@ -338,7 +338,8 @@ func testScaledObjectErrors(t *testing.T, data templateData) {
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
 
-	time.Sleep(500 * time.Millisecond)
+	// wait for 2 seconds as pollinginterval is 2
+	time.Sleep(2 * time.Second)
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 	if val, ok := family["keda_scaled_object_errors"]; ok {
