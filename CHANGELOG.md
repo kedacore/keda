@@ -67,6 +67,7 @@ Here is an overview of all new **experimental** features:
 - **General**: Add standalone CRD generation to release workflow ([#2726](https://github.com/kedacore/keda/issues/2726))
 - **General**: Adding a changelog validating script to check for formatting and order ([#3190](https://github.com/kedacore/keda/issues/3190))
 - **General**: Automatically set `GOMAXPROCS` to match Linux container CPU quota ([#4999](https://github.com/kedacore/keda/issues/4999))
+- **General**: Configurable K8s cluster domain for Cert Manager ([#4861](https://github.com/kedacore/keda/issues/4861))
 - **General**: Emit more Kubernetes events about internal state and scaling ([#3764](https://github.com/kedacore/keda/issues/3764))
 - **General**: Introduce annotation `autoscaling.keda.sh/paused: true` for ScaledObject to pause autoscaling ([#3304](https://github.com/kedacore/keda/issues/3304))
 - **General**: Updated AWS SDK and updated all the aws scalers ([#4905](https://github.com/kedacore/keda/issues/4905))
