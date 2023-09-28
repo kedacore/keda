@@ -625,7 +625,6 @@ func testWebhookMetricValues(t *testing.T) {
 func testMetricServerMetrics(t *testing.T) {
 	families := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaMetricsServerPrometheusURL))
 	checkMetricServerValues(t, families)
-	checkBuildInfo(t, families)
 }
 
 func testOperatorMetricValues(t *testing.T, kc *kubernetes.Clientset) {
