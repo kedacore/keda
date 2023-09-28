@@ -64,7 +64,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
-- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **GCP PubSub**: Fix GCP PodIdentity not considered with WorkloadIdentity ([#5021](https://github.com/kedacore/keda/issues/5021))
 
 ### Deprecations
 
