@@ -16,8 +16,9 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
-- [v2.11.2](#v2110)
-- [v2.11.1](#v2110)
+- [v2.12.0](#v2120)
+- [v2.11.2](#v2112)
+- [v2.11.1](#v2111)
 - [v2.11.0](#v2110)
 - [v2.10.1](#v2101)
 - [v2.10.0](#v2100)
@@ -93,20 +94,20 @@ New deprecation(s):
 
 Here is an overview of all new **experimental** features:
 
+- **General**: Introduce pushing operational metrics to an OpenTelemetry Collector ([#3078](https://github.com/kedacore/keda/issues/3078))
 - **General**: New `apache-kafka` scaler based on kafka-go library ([#4692](https://github.com/kedacore/keda/issues/4692))
 - **General**: Support for formula-based evaluation of metric values ([#2440](https://github.com/kedacore/keda/issues/2440)|[#4998](https://github.com/kedacore/keda/pull/4998))
-- **General**: Introduce pushing operational metrics to an OpenTelemetry Collector ([#3078](https://github.com/kedacore/keda/issues/3078))
 
 ### Improvements
 
-- **General**: Introduce Prometheus metrics of API server to KEDA Metric Server ([#4460](https://github.com/kedacore/keda/issues/4460))
-- **General**: Show ScaledObject/ScaledJob names to output of `kubectl get triggerauthentication/clustertriggerauthentication` ([#796](https://github.com/kedacore/keda/issues/796))
-- **General**: Introduce standalone CRD generation to release workflow ([#2726](https://github.com/kedacore/keda/issues/2726))
-- **General**: Introduce changelog validation check during PR for formatting and order violations ([#3190](https://github.com/kedacore/keda/issues/3190))
 - **General**: Automatically set `GOMAXPROCS` to match Linux container CPU quota ([#4999](https://github.com/kedacore/keda/issues/4999))
 - **General**: Configurable Kubernetes cluster domain for Cert Manager ([#4861](https://github.com/kedacore/keda/issues/4861))
-- **General**: Provide new Kubernetes events about internal state and scaling ([#3764](https://github.com/kedacore/keda/issues/3764))
 - **General**: Introduce annotation `autoscaling.keda.sh/paused: true` for ScaledObject to pause autoscaling ([#3304](https://github.com/kedacore/keda/issues/3304))
+- **General**: Introduce changelog validation check during PR for formatting and order violations ([#3190](https://github.com/kedacore/keda/issues/3190))
+- **General**: Introduce Prometheus metrics of API server to KEDA Metric Server ([#4460](https://github.com/kedacore/keda/issues/4460))
+- **General**: Introduce standalone CRD generation to release workflow ([#2726](https://github.com/kedacore/keda/issues/2726))
+- **General**: Provide new Kubernetes events about internal state and scaling ([#3764](https://github.com/kedacore/keda/issues/3764))
+- **General**: Show ScaledObject/ScaledJob names to output of `kubectl get triggerauthentication/clustertriggerauthentication` ([#796](https://github.com/kedacore/keda/issues/796))
 - **General**: Updated AWS SDK and updated all the AWS scalers ([#4905](https://github.com/kedacore/keda/issues/4905))
 - **Azure Pod Identity**: Introduce validation to prevent usage of empty identity ID for Azure identity providers ([#4528](https://github.com/kedacore/keda/issues/4528))
 - **Kafka Scaler**: Add `unsafeSsl` flag for kafka scaler ([#4977](https://github.com/kedacore/keda/issues/4977))
