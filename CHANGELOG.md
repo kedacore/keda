@@ -81,14 +81,6 @@ New deprecation(s):
 
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
-### Deprecations
-
-You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
-
-New deprecation(s):
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
 ## v2.12.0
 
 ### New
