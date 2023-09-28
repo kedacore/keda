@@ -6,6 +6,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"testing"
 
@@ -165,6 +166,34 @@ func TesVerifyPodsIdentity(t *testing.T) {
 		assert.True(t, WaitForDeploymentReplicaReadyCount(t, KubeClient, "gcp-identity-webhook-controller-manager", "gcp-identity-system", 1, 30, 6),
 			"replica count should be 1 after 3 minutes")
 	}
+}
+
+func TestSetupOpentelemetryComponents(t *testing.T) {
+	otlpTempFileName := "otlp.yml"
+	otlpServiceTempFileName := "otlpServicePatch.yml"
+	defer os.Remove(otlpTempFileName)
+	defer os.Remove(otlpServiceTempFileName)
+	err := os.WriteFile(otlpTempFileName, []byte(helper.OtlpConfig), 0755)
+	assert.NoErrorf(t, err, "cannot create otlp config file - %s", err)
+
+	err = os.WriteFile(otlpServiceTempFileName, []byte(helper.OtlpServicePatch), 0755)
+	assert.NoErrorf(t, err, "cannot create otlp service patch file - %s", err)
+
+	_, err = ExecuteCommand("helm version")
+	require.NoErrorf(t, err, "helm is not installed - %s", err)
+
+	_, err = ExecuteCommand("helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts")
+	require.NoErrorf(t, err, "cannot add open-telemetry helm repo - %s", err)
+
+	_, err = ExecuteCommand("helm repo update open-telemetry")
+	require.NoErrorf(t, err, "cannot update open-telemetry helm repo - %s", err)
+
+	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install opentelemetry-collector open-telemetry/opentelemetry-collector -f %s", otlpTempFileName))
+
+	require.NoErrorf(t, err, "cannot install opentelemetry - %s", err)
+
+	_, err = ExecuteCommand(fmt.Sprintf("kubectl apply -f %s", otlpServiceTempFileName))
+	require.NoErrorf(t, err, "cannot update opentelemetry ports - %s", err)
 }
 
 func TestDeployKEDA(t *testing.T) {

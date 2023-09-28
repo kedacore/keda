@@ -73,6 +73,11 @@ func TestRemoveGcpIdentityComponents(t *testing.T) {
 	DeleteNamespace(t, GcpIdentityNamespace)
 }
 
+func TestRemoveOpentelemetryComponents(t *testing.T) {
+	_, err := ExecuteCommand("helm uninstall opentelemetry-collector")
+	require.NoErrorf(t, err, "cannot uninstall opentelemetry-collector - %s", err)
+}
+
 func TestRemoveCertManager(t *testing.T) {
 	if !InstallCertManager {
 		t.Skip("skipping as cert manager isn't required")

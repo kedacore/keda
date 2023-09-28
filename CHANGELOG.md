@@ -59,6 +59,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 Here is an overview of all new **experimental** features:
 
 - **General**: Add support for formula based evaluation of metric values ([#2440](https://github.com/kedacore/keda/issues/2440)|[#4998](https://github.com/kedacore/keda/pull/4998))
+- **General**: Introduce operational metrics in OpenTelemetry Collector ([#3078](https://github.com/kedacore/keda/issues/3078))
 
 ### Improvements
 - **General**: Add apiserver Prometheus metrics to KEDA Metric Server ([#4460](https://github.com/kedacore/keda/issues/4460))

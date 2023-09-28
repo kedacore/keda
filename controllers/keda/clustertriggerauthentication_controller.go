@@ -31,7 +31,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
-	"github.com/kedacore/keda/v2/pkg/prommetrics"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 )
 
 // ClusterTriggerAuthenticationReconciler reconciles a ClusterTriggerAuthentication object
@@ -97,10 +97,10 @@ func (r *ClusterTriggerAuthenticationReconciler) updatePromMetrics(clusterTrigge
 	defer clusterTriggerAuthPromMetricsLock.Unlock()
 
 	if metricsData, ok := clusterTriggerAuthPromMetricsMap[namespacedName]; ok {
-		prommetrics.DecrementCRDTotal(prommetrics.ClusterTriggerAuthenticationResource, metricsData.namespace)
+		metricscollector.DecrementCRDTotal(metricscollector.ClusterTriggerAuthenticationResource, metricsData.namespace)
 	}
 
-	prommetrics.IncrementCRDTotal(prommetrics.ClusterTriggerAuthenticationResource, clusterTriggerAuth.Namespace)
+	metricscollector.IncrementCRDTotal(metricscollector.ClusterTriggerAuthenticationResource, clusterTriggerAuth.Namespace)
 	clusterTriggerAuthPromMetricsMap[namespacedName] = clusterTriggerAuthMetricsData{namespace: clusterTriggerAuth.Namespace}
 }
 
@@ -110,7 +110,7 @@ func (r *ClusterTriggerAuthenticationReconciler) UpdatePromMetricsOnDelete(names
 	defer clusterTriggerAuthPromMetricsLock.Unlock()
 
 	if metricsData, ok := clusterTriggerAuthPromMetricsMap[namespacedName]; ok {
-		prommetrics.DecrementCRDTotal(prommetrics.ClusterTriggerAuthenticationResource, metricsData.namespace)
+		metricscollector.DecrementCRDTotal(metricscollector.ClusterTriggerAuthenticationResource, metricsData.namespace)
 	}
 
 	delete(clusterTriggerAuthPromMetricsMap, namespacedName)
