@@ -91,7 +91,7 @@ func getDataExplorerAuthConfig(metadata *DataExplorerMetadata) (*kusto.Connectio
 
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
 		azureDataExplorerLogger.V(1).Info(fmt.Sprintf("Creating Azure Data Explorer Client using podIdentity %s", metadata.PodIdentity.Provider))
-		creds, chainedErr := NewChainedCredential(metadata.PodIdentity.IdentityID, metadata.PodIdentity.Provider)
+		creds, chainedErr := NewChainedCredential(azureDataExplorerLogger, metadata.PodIdentity.GetIdentityID(), metadata.PodIdentity.Provider)
 		if chainedErr != nil {
 			return nil, chainedErr
 		}

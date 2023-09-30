@@ -8,11 +8,11 @@ jobs:
     name: Run e2e test
     runs-on: ARM64
     # keda-tools is built from github.com/test-tools/tools/Dockerfile
-    container: ghcr.io/kedacore/keda-tools:1.20.5
+    container: ghcr.io/kedacore/keda-tools:1.20.8
     concurrency: e2e-tests
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
         with:
           fetch-depth: 1
 
@@ -47,7 +47,7 @@ jobs:
           NODE_POOL_SIZE: 1
 
       - name: Upload test logs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3
         if: ${{ always() }}
         with:
           name: e2e-test-logs

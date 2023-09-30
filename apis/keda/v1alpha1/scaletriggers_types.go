@@ -19,7 +19,6 @@ package v1alpha1
 import (
 	"fmt"
 
-	"github.com/go-logr/logr"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 )
 
@@ -50,7 +49,7 @@ type AuthenticationRef struct {
 // ValidateTriggers checks that general trigger metadata are valid, it checks:
 // - triggerNames in ScaledObject are unique
 // - useCachedMetrics is defined only for a supported triggers
-func ValidateTriggers(logger logr.Logger, triggers []ScaleTriggers) error {
+func ValidateTriggers(triggers []ScaleTriggers) error {
 	triggersCount := len(triggers)
 	if triggers != nil && triggersCount > 0 {
 		triggerNames := make(map[string]bool, triggersCount)
@@ -61,13 +60,6 @@ func ValidateTriggers(logger logr.Logger, triggers []ScaleTriggers) error {
 				if trigger.Type == "cpu" || trigger.Type == "memory" || trigger.Type == "cron" {
 					return fmt.Errorf("property \"useCachedMetrics\" is not supported for %q scaler", trigger.Type)
 				}
-			}
-
-			// FIXME: DEPRECATED to be removed in v2.12
-			_, hasMetricName := trigger.Metadata["metricName"]
-			// aws-cloudwatch, huawei-cloudeye and azure-monitor have a meaningful use of metricName
-			if hasMetricName && trigger.Type != "aws-cloudwatch" && trigger.Type != "huawei-cloudeye" && trigger.Type != "azure-monitor" {
-				logger.Info("\"metricName\" is deprecated and will be removed in v2.12, please do not set it anymore", "trigger.type", trigger.Type)
 			}
 
 			name := trigger.Name

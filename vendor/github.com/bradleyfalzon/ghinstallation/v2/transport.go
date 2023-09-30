@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/go-github/v53/github"
+	"github.com/google/go-github/v55/github"
 )
 
 const (
@@ -189,6 +189,16 @@ func (t *Transport) Expiry() (expiresAt time.Time, refreshAt time.Time, err erro
 		return time.Time{}, time.Time{}, errors.New("Expiry() = unknown, err: nil token")
 	}
 	return t.token.ExpiresAt, t.token.getRefreshTime(), nil
+}
+
+// AppID returns the app ID associated with the transport
+func (t *Transport) AppID() int64 {
+	return t.appID
+}
+
+// InstallationID returns the installation ID associated with the transport
+func (t *Transport) InstallationID() int64 {
+	return t.installationID
 }
 
 func (t *Transport) refreshToken(ctx context.Context) error {

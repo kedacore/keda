@@ -31,8 +31,6 @@ import (
 
 	// Using v4 to match upstream
 	jsonpatch "github.com/evanphx/json-patch"
-	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
-
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
@@ -52,10 +50,11 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/testing"
-	"sigs.k8s.io/controller-runtime/pkg/internal/field/selector"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
+	"sigs.k8s.io/controller-runtime/pkg/internal/field/selector"
 	"sigs.k8s.io/controller-runtime/pkg/internal/objectutil"
 )
 
@@ -88,19 +87,8 @@ const (
 
 // NewFakeClient creates a new fake client for testing.
 // You can choose to initialize it with a slice of runtime.Object.
-//
-// Deprecated: Please use NewClientBuilder instead.
 func NewFakeClient(initObjs ...runtime.Object) client.WithWatch {
 	return NewClientBuilder().WithRuntimeObjects(initObjs...).Build()
-}
-
-// NewFakeClientWithScheme creates a new fake client with the given scheme
-// for testing.
-// You can choose to initialize it with a slice of runtime.Object.
-//
-// Deprecated: Please use NewClientBuilder instead.
-func NewFakeClientWithScheme(clientScheme *runtime.Scheme, initObjs ...runtime.Object) client.WithWatch {
-	return NewClientBuilder().WithScheme(clientScheme).WithRuntimeObjects(initObjs...).Build()
 }
 
 // NewClientBuilder returns a new builder to create a fake client.
@@ -412,9 +400,12 @@ func (t versionedTracker) update(gvr schema.GroupVersionResource, obj runtime.Ob
 
 	if t.withStatusSubresource.Has(gvk) {
 		if isStatus { // copy everything but status and metadata.ResourceVersion from original object
-			if err := copyNonStatusFrom(oldObject, obj); err != nil {
+			if err := copyStatusFrom(obj, oldObject); err != nil {
 				return fmt.Errorf("failed to copy non-status field for object with status subresouce: %w", err)
 			}
+			passedRV := accessor.GetResourceVersion()
+			reflect.ValueOf(obj).Elem().Set(reflect.ValueOf(oldObject.DeepCopyObject()).Elem())
+			accessor.SetResourceVersion(passedRV)
 		} else { // copy status from original object
 			if err := copyStatusFrom(oldObject, obj); err != nil {
 				return fmt.Errorf("failed to copy the status for object with status subresource: %w", err)
@@ -961,45 +952,6 @@ func dryPatch(action testing.PatchActionImpl, tracker testing.ObjectTracker) (ru
 	return obj, nil
 }
 
-func copyNonStatusFrom(old, new runtime.Object) error {
-	newClientObject, ok := new.(client.Object)
-	if !ok {
-		return fmt.Errorf("%T is not a client.Object", new)
-	}
-	// The only thing other than status we have to retain
-	rv := newClientObject.GetResourceVersion()
-
-	oldMapStringAny, err := toMapStringAny(old)
-	if err != nil {
-		return fmt.Errorf("failed to convert old to *unstructured.Unstructured: %w", err)
-	}
-	newMapStringAny, err := toMapStringAny(new)
-	if err != nil {
-		return fmt.Errorf("failed to convert new to *unststructured.Unstructured: %w", err)
-	}
-
-	// delete everything other than status in case it has fields that were not present in
-	// the old object
-	for k := range newMapStringAny {
-		if k != "status" {
-			delete(newMapStringAny, k)
-		}
-	}
-	// copy everything other than status from the old object
-	for k := range oldMapStringAny {
-		if k != "status" {
-			newMapStringAny[k] = oldMapStringAny[k]
-		}
-	}
-
-	newClientObject.SetResourceVersion(rv)
-
-	if err := fromMapStringAny(newMapStringAny, new); err != nil {
-		return fmt.Errorf("failed to convert back from map[string]any: %w", err)
-	}
-	return nil
-}
-
 // copyStatusFrom copies the status from old into new
 func copyStatusFrom(old, new runtime.Object) error {
 	oldMapStringAny, err := toMapStringAny(old)
@@ -1045,6 +997,7 @@ func fromMapStringAny(u map[string]any, target runtime.Object) error {
 		return fmt.Errorf("failed to serialize: %w", err)
 	}
 
+	zero(target)
 	if err := json.Unmarshal(serialized, &target); err != nil {
 		return fmt.Errorf("failed to deserialize: %w", err)
 	}
@@ -1177,7 +1130,7 @@ func allowsUnconditionalUpdate(gvk schema.GroupVersionKind) bool {
 		case "PodSecurityPolicy":
 			return true
 		}
-	case "rbac":
+	case "rbac.authorization.k8s.io":
 		switch gvk.Kind {
 		case "ClusterRole", "ClusterRoleBinding", "Role", "RoleBinding":
 			return true

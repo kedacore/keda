@@ -70,7 +70,7 @@ var _ = Describe("fallback", func() {
 		expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		metrics, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
+		metrics, _, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
 
 		Expect(err).ToNot(HaveOccurred())
 		value := metrics[0].Value.AsApproximateFloat64()
@@ -101,7 +101,7 @@ var _ = Describe("fallback", func() {
 		expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		metrics, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
+		metrics, _, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
 
 		Expect(err).ToNot(HaveOccurred())
 		value := metrics[0].Value.AsApproximateFloat64()
@@ -117,7 +117,7 @@ var _ = Describe("fallback", func() {
 		expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		_, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
+		_, _, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
 
 		Expect(err).ShouldNot(BeNil())
 		Expect(err.Error()).Should(Equal("Some error"))
@@ -146,7 +146,7 @@ var _ = Describe("fallback", func() {
 		expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		_, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
+		_, _, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
 
 		Expect(err).ShouldNot(BeNil())
 		Expect(err.Error()).Should(Equal("Some error"))
@@ -176,7 +176,7 @@ var _ = Describe("fallback", func() {
 		expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		metrics, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
+		metrics, _, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
 
 		Expect(err).ToNot(HaveOccurred())
 		value := metrics[0].Value.AsApproximateFloat64()
@@ -232,7 +232,7 @@ var _ = Describe("fallback", func() {
 		client.EXPECT().Status().Return(statusWriter)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		metrics, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
+		metrics, _, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
 
 		Expect(err).ToNot(HaveOccurred())
 		value := metrics[0].Value.AsApproximateFloat64()
@@ -262,7 +262,7 @@ var _ = Describe("fallback", func() {
 		expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		_, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
+		_, _, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
 
 		Expect(err).ShouldNot(BeNil())
 		Expect(err.Error()).Should(Equal("Some error"))
@@ -296,7 +296,7 @@ var _ = Describe("fallback", func() {
 		expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		_, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
+		_, _, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
 		Expect(err).ToNot(HaveOccurred())
 		condition := so.Status.Conditions.GetFallbackCondition()
 		Expect(condition.IsTrue()).Should(BeTrue())
@@ -330,7 +330,7 @@ var _ = Describe("fallback", func() {
 		expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		_, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
+		_, _, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
 		Expect(err).ShouldNot(BeNil())
 		Expect(err.Error()).Should(Equal("Some error"))
 		condition := so.Status.Conditions.GetFallbackCondition()

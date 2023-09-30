@@ -1,6 +1,6 @@
 # ghinstallation
 
-[![GoDoc](https://godoc.org/github.com/bradleyfalzon/ghinstallation?status.svg)](https://godoc.org/github.com/bradleyfalzon/ghinstallation)
+[![GoDoc](https://godoc.org/github.com/bradleyfalzon/ghinstallation?status.svg)](https://godoc.org/github.com/bradleyfalzon/ghinstallation/v2)
 
 `ghinstallation` provides `Transport`, which implements `http.RoundTripper` to
 provide authentication as an installation for GitHub Apps.
@@ -38,6 +38,8 @@ func main() {
     client := github.NewClient(&http.Client{Transport: itr})
 }
 ```
+
+You can also use [`New()`](https://pkg.go.dev/github.com/bradleyfalzon/ghinstallation/v2#New) to load a key directly from a `[]byte`.
 
 # GitHub Enterprise Example
 

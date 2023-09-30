@@ -32,6 +32,7 @@ import (
 	"cloud.google.com/go/iam/apiv1/iampb"
 	"cloud.google.com/go/internal/optional"
 	"cloud.google.com/go/internal/trace"
+	"github.com/googleapis/gax-go/v2/callctx"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iterator"
@@ -44,12 +45,10 @@ import (
 
 // httpStorageClient is the HTTP-JSON API implementation of the transport-agnostic
 // storageClient interface.
-//
-// This is an experimental API and not intended for public use.
 type httpStorageClient struct {
 	creds    *google.Credentials
 	hc       *http.Client
-	readHost string
+	xmlHost  string
 	raw      *raw.Service
 	scheme   string
 	settings *settings
@@ -58,8 +57,6 @@ type httpStorageClient struct {
 
 // newHTTPStorageClient initializes a new storageClient that uses the HTTP-JSON
 // Storage API.
-//
-// This is an experimental API and not intended for public use.
 func newHTTPStorageClient(ctx context.Context, opts ...storageOption) (storageClient, error) {
 	s := initSettings(opts...)
 	o := s.clientOption
@@ -123,7 +120,7 @@ func newHTTPStorageClient(ctx context.Context, opts ...storageOption) (storageCl
 	if err != nil {
 		return nil, fmt.Errorf("storage client: %w", err)
 	}
-	// Update readHost and scheme with the chosen endpoint.
+	// Update xmlHost and scheme with the chosen endpoint.
 	u, err := url.Parse(ep)
 	if err != nil {
 		return nil, fmt.Errorf("supplied endpoint %q is not valid: %w", ep, err)
@@ -132,7 +129,7 @@ func newHTTPStorageClient(ctx context.Context, opts ...storageOption) (storageCl
 	return &httpStorageClient{
 		creds:    creds,
 		hc:       hc,
-		readHost: u.Host,
+		xmlHost:  u.Host,
 		raw:      rawService,
 		scheme:   u.Scheme,
 		settings: s,
@@ -347,6 +344,7 @@ func (c *httpStorageClient) ListObjects(ctx context.Context, bucket string, q *Q
 		req.EndOffset(it.query.EndOffset)
 		req.Versions(it.query.Versions)
 		req.IncludeTrailingDelimiter(it.query.IncludeTrailingDelimiter)
+		req.MatchGlob(it.query.MatchGlob)
 		if selection := it.query.toFieldSelection(); selection != "" {
 			req.Fields("nextPageToken", googleapi.Field(selection))
 		}
@@ -790,9 +788,10 @@ func (c *httpStorageClient) NewRangeReader(ctx context.Context, params *newRange
 
 func (c *httpStorageClient) newRangeReaderXML(ctx context.Context, params *newRangeReaderParams, s *settings) (r *Reader, err error) {
 	u := &url.URL{
-		Scheme: c.scheme,
-		Host:   c.readHost,
-		Path:   fmt.Sprintf("/%s/%s", params.bucket, params.object),
+		Scheme:  c.scheme,
+		Host:    c.xmlHost,
+		Path:    fmt.Sprintf("/%s/%s", params.bucket, params.object),
+		RawPath: fmt.Sprintf("/%s/%s", params.bucket, url.PathEscape(params.object)),
 	}
 	verb := "GET"
 	if params.length == 0 {
@@ -810,6 +809,15 @@ func (c *httpStorageClient) newRangeReaderXML(ctx context.Context, params *newRa
 
 	if err := setRangeReaderHeaders(req.Header, params); err != nil {
 		return nil, err
+	}
+
+	// Set custom headers passed in via the context. This is only required for XML;
+	// for gRPC & JSON this is handled in the GAPIC and Apiary layers respectively.
+	ctxHeaders := callctx.HeadersFromContext(ctx)
+	for k, vals := range ctxHeaders {
+		for _, v := range vals {
+			req.Header.Add(k, v)
+		}
 	}
 
 	reopen := readerReopen(ctx, req.Header, params, s,
@@ -1373,6 +1381,8 @@ func parseReadResponse(res *http.Response, params *newRangeReaderParams, reopen 
 
 	remain := res.ContentLength
 	body := res.Body
+	// If the user requested zero bytes, explicitly close and remove the request
+	// body.
 	if params.length == 0 {
 		remain = 0
 		body.Close()

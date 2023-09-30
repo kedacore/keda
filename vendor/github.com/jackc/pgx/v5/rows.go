@@ -231,7 +231,11 @@ func (rows *baseRows) Scan(dest ...any) error {
 
 	if len(dest) == 1 {
 		if rc, ok := dest[0].(RowScanner); ok {
-			return rc.ScanRow(rows)
+			err := rc.ScanRow(rows)
+			if err != nil {
+				rows.fatal(err)
+			}
+			return err
 		}
 	}
 
@@ -302,7 +306,7 @@ func (rows *baseRows) Values() ([]any, error) {
 				copy(newBuf, buf)
 				values = append(values, newBuf)
 			default:
-				rows.fatal(errors.New("Unknown format code"))
+				rows.fatal(errors.New("unknown format code"))
 			}
 		}
 
@@ -492,7 +496,8 @@ func (rs *mapRowScanner) ScanRow(rows Rows) error {
 }
 
 // RowToStructByPos returns a T scanned from row. T must be a struct. T must have the same number a public fields as row
-// has fields. The row and T fields will by matched by position.
+// has fields. The row and T fields will by matched by position. If the "db" struct tag is "-" then the field will be
+// ignored.
 func RowToStructByPos[T any](row CollectableRow) (T, error) {
 	var value T
 	err := row.Scan(&positionalStructRowScanner{ptrToStruct: &value})
@@ -500,7 +505,8 @@ func RowToStructByPos[T any](row CollectableRow) (T, error) {
 }
 
 // RowToAddrOfStructByPos returns the address of a T scanned from row. T must be a struct. T must have the same number a
-// public fields as row has fields. The row and T fields will by matched by position.
+// public fields as row has fields. The row and T fields will by matched by position. If the "db" struct tag is "-" then
+// the field will be ignored.
 func RowToAddrOfStructByPos[T any](row CollectableRow) (*T, error) {
 	var value T
 	err := row.Scan(&positionalStructRowScanner{ptrToStruct: &value})
@@ -541,6 +547,11 @@ func (rs *positionalStructRowScanner) appendScanTargets(dstElemValue reflect.Val
 		if sf.Anonymous && sf.Type.Kind() == reflect.Struct {
 			scanTargets = rs.appendScanTargets(dstElemValue.Field(i), scanTargets)
 		} else if sf.PkgPath == "" {
+			dbTag, _ := sf.Tag.Lookup(structTagKey)
+			if dbTag == "-" {
+				// Field is ignored, skip it.
+				continue
+			}
 			scanTargets = append(scanTargets, dstElemValue.Field(i).Addr().Interface())
 		}
 	}

@@ -18,132 +18,18 @@ package v1alpha1
 
 import (
 	"context"
-	"crypto/tls"
-	"fmt"
-	"net"
-	"path/filepath"
-	"testing"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	v2 "k8s.io/api/autoscaling/v2"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
-	"k8s.io/utils/pointer"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	//+kubebuilder:scaffold:imports
+	"k8s.io/utils/ptr"
 )
-
-// These tests use Ginkgo (BDD-style Go testing framework). Refer to
-// http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
-
-var cfg *rest.Config
-var k8sClient client.Client
-var testEnv *envtest.Environment
-var ctx context.Context
-var cancel context.CancelFunc
-
-const (
-	workloadName = "deployment-name"
-	soName       = "test-so"
-)
-
-func TestAPIs(t *testing.T) {
-	RegisterFailHandler(Fail)
-
-	RunSpecs(t, "Webhook Suite")
-}
-
-var _ = BeforeSuite(func() {
-	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
-
-	ctx, cancel = context.WithCancel(context.Background())
-
-	By("bootstrapping test environment")
-	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "..", "config", "crd", "bases")},
-		ErrorIfCRDPathMissing: false,
-		WebhookInstallOptions: envtest.WebhookInstallOptions{
-			Paths: []string{filepath.Join("..", "..", "..", "config", "webhooks")},
-		},
-	}
-
-	var err error
-	// cfg is defined in this file globally.
-	done := make(chan interface{})
-	go func() {
-		defer GinkgoRecover()
-		cfg, err = testEnv.Start()
-		close(done)
-	}()
-	Eventually(done).WithTimeout(time.Minute).Should(BeClosed())
-	Expect(err).NotTo(HaveOccurred())
-	Expect(cfg).NotTo(BeNil())
-
-	scheme := runtime.NewScheme()
-	err = AddToScheme(scheme)
-	Expect(err).NotTo(HaveOccurred())
-
-	err = clientgoscheme.AddToScheme(scheme)
-	Expect(err).NotTo(HaveOccurred())
-
-	err = admissionv1beta1.AddToScheme(scheme)
-	Expect(err).NotTo(HaveOccurred())
-
-	//+kubebuilder:scaffold:scheme
-
-	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme})
-	Expect(err).NotTo(HaveOccurred())
-	Expect(k8sClient).NotTo(BeNil())
-
-	// start webhook server using Manager
-	webhookInstallOptions := &testEnv.WebhookInstallOptions
-	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-		Scheme:             scheme,
-		Host:               webhookInstallOptions.LocalServingHost,
-		Port:               webhookInstallOptions.LocalServingPort,
-		CertDir:            webhookInstallOptions.LocalServingCertDir,
-		LeaderElection:     false,
-		MetricsBindAddress: "0",
-	})
-	Expect(err).NotTo(HaveOccurred())
-
-	err = (&ScaledObject{}).SetupWebhookWithManager(mgr)
-	Expect(err).NotTo(HaveOccurred())
-
-	//+kubebuilder:scaffold:webhook
-
-	go func() {
-		defer GinkgoRecover()
-		err = mgr.Start(ctx)
-		Expect(err).NotTo(HaveOccurred())
-	}()
-
-	// wait for the webhook server to get ready
-	dialer := &net.Dialer{Timeout: time.Second}
-	addrPort := fmt.Sprintf("%s:%d", webhookInstallOptions.LocalServingHost, webhookInstallOptions.LocalServingPort)
-	Eventually(func() error {
-		conn, err := tls.DialWithDialer(dialer, "tcp", addrPort, &tls.Config{InsecureSkipVerify: true})
-		if err != nil {
-			return err
-		}
-		conn.Close()
-		return nil
-	}).Should(Succeed())
-
-})
 
 var _ = It("should validate the so creation when there isn't any hpa", func() {
 
@@ -231,7 +117,7 @@ var _ = It("should validate the so update when it's own hpa is already generated
 	err = k8sClient.Create(context.Background(), so)
 	Expect(err).ToNot(HaveOccurred())
 
-	so.Spec.MaxReplicaCount = pointer.Int32(7)
+	so.Spec.MaxReplicaCount = ptr.To[int32](7)
 	Eventually(func() error {
 		return k8sClient.Update(context.Background(), so)
 	}).ShouldNot(HaveOccurred())
@@ -514,6 +400,181 @@ var _ = It("should validate the so update if it's removing the finalizer even if
 	}).ShouldNot(HaveOccurred())
 })
 
+var _ = It("shouldn't create so when stabilizationWindowSeconds exceeds 3600", func() {
+
+	namespaceName := "fail-so-creation"
+	namespace := createNamespace(namespaceName)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
+	so.Spec.Advanced.HorizontalPodAutoscalerConfig = &HorizontalPodAutoscalerConfig{
+		Behavior: &v2.HorizontalPodAutoscalerBehavior{
+			ScaleDown: &v2.HPAScalingRules{
+				StabilizationWindowSeconds: ptr.To[int32](3700),
+			},
+		},
+	}
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).
+		WithTimeout(5 * time.Second).
+		Should(HaveOccurred())
+})
+
+var _ = It("should validate the so creation with ScalingModifiers.Formula", func() {
+	namespaceName := "scaling-modifiers-formula-good"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, false, false)
+
+	sm := ScalingModifiers{Target: "2", Formula: "workload_trig + cron_trig"}
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Name: "cron_trig",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Name: "workload_trig",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+
+	so := createScaledObjectScalingModifiers(namespaceName, sm, triggers)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("shouldnt validate the so creation with scalingModifiers.Formula but no target", func() {
+	namespaceName := "scaling-modifiers-formula-no-target-bad"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, false, false)
+
+	sm := ScalingModifiers{Formula: "workload_trig + cron_trig"}
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Name: "cron_trig",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Name: "workload_trig",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+
+	so := createScaledObjectScalingModifiers(namespaceName, sm, triggers)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
+})
+
+var _ = It("shouldnt validate the so creation with ScalingModifiers when triggers dont have names", func() {
+	namespaceName := "scaling-modifiers-triggers-no-names-bad"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, true, true)
+
+	sm := ScalingModifiers{Formula: "workload_trig + cron_trig"}
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+
+	so := createScaledObjectScalingModifiers(namespaceName, sm, triggers)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
+})
+
+var _ = It("should validate the so creation with ScalingModifiers when formula triggers do have names but not all triggers", func() {
+	namespaceName := "scaling-modifiers-specific-triggers-good"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, true, true)
+
+	sm := ScalingModifiers{Target: "2", Formula: "workload_trig + 1"}
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Name: "workload_trig",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+
+	so := createScaledObjectScalingModifiers(namespaceName, sm, triggers)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
 var _ = AfterSuite(func() {
 	cancel()
 	By("tearing down the test environment")
@@ -582,9 +643,9 @@ func createScaledObject(name, namespace, targetName, targetAPI, targetKind strin
 				APIVersion: targetAPI,
 				Kind:       targetKind,
 			},
-			IdleReplicaCount: pointer.Int32(1),
-			MinReplicaCount:  pointer.Int32(5),
-			MaxReplicaCount:  pointer.Int32(10),
+			IdleReplicaCount: ptr.To[int32](1),
+			MinReplicaCount:  ptr.To[int32](5),
+			MaxReplicaCount:  ptr.To[int32](10),
 			Triggers:         triggers,
 			Advanced:         advancedConfig,
 		},
@@ -600,14 +661,14 @@ func createHpa(name, namespace, targetName, targetAPI, targetKind string, owner 
 				APIVersion: targetAPI,
 				Kind:       targetKind,
 			},
-			MinReplicas: pointer.Int32(5),
+			MinReplicas: ptr.To[int32](5),
 			MaxReplicas: 10,
 			Metrics: []v2.MetricSpec{
 				{
 					Resource: &v2.ResourceMetricSource{
 						Name: v1.ResourceCPU,
 						Target: v2.MetricTarget{
-							AverageUtilization: pointer.Int32(30),
+							AverageUtilization: ptr.To[int32](30),
 							Type:               v2.AverageValueMetricType,
 						},
 					},
@@ -642,7 +703,7 @@ func createDeployment(namespace string, hasCPU, hasMemory bool) *appsv1.Deployme
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{Name: workloadName, Namespace: namespace},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: pointer.Int32(1),
+			Replicas: ptr.To[int32](1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"test": "test",
@@ -687,7 +748,7 @@ func createStatefulSet(namespace string, hasCPU, hasMemory bool) *appsv1.Statefu
 	return &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{Name: workloadName, Namespace: namespace},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: pointer.Int32(1),
+			Replicas: ptr.To[int32](1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"test": "test",
@@ -754,10 +815,38 @@ func createScaledObjectSTZ(name string, namespace string, targetName string, min
 			ScaleTargetRef: &ScaleTarget{
 				Name: targetName,
 			},
-			MinReplicaCount: pointer.Int32(minReplicas),
-			MaxReplicaCount: pointer.Int32(maxReplicas),
-			CooldownPeriod:  pointer.Int32(1),
+			MinReplicaCount: ptr.To[int32](minReplicas),
+			MaxReplicaCount: ptr.To[int32](maxReplicas),
+			CooldownPeriod:  ptr.To[int32](1),
 			Triggers:        triggers,
+		},
+	}
+}
+
+func createScaledObjectScalingModifiers(namespace string, sm ScalingModifiers, triggers []ScaleTriggers) *ScaledObject {
+	name := soName
+	targetName := workloadName
+	return &ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			UID:       types.UID(name),
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ScaledObject",
+			APIVersion: "keda.sh",
+		},
+		Spec: ScaledObjectSpec{
+			ScaleTargetRef: &ScaleTarget{
+				Name: targetName,
+			},
+			MinReplicaCount: ptr.To[int32](0),
+			MaxReplicaCount: ptr.To[int32](10),
+			CooldownPeriod:  ptr.To[int32](1),
+			Triggers:        triggers,
+			Advanced: &AdvancedConfig{
+				ScalingModifiers: sm,
+			},
 		},
 	}
 }

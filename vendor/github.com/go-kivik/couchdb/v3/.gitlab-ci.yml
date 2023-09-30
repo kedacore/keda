@@ -53,21 +53,13 @@ linter:
 
 coverage:
     stage: test
-    image: golang:1.15
+    image: golang:1.20
     services: []
     before_script:
         - ''
     script:
         - go mod download
         - ./script/coverage.sh
-
-go-1.11:
-    <<: *test_template
-    image: golang:1.11
-
-go-1.12:
-    <<: *test_template
-    image: golang:1.12
 
 go-1.13:
     <<: *test_template
@@ -88,6 +80,18 @@ go-1.16:
 go-1.17:
   <<: *test_template
   image: golang:1.17
+
+go-1.18:
+  <<: *test_template
+  image: golang:1.18
+
+go-1.19:
+  <<: *test_template
+  image: golang:1.19
+
+go-1.20:
+  <<: *test_template
+  image: golang:1.20
 
 go-rc:
     <<: *test_template

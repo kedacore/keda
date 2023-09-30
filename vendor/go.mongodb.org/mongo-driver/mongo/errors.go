@@ -320,7 +320,7 @@ func (we WriteError) HasErrorCode(code int) bool {
 
 // HasErrorLabel returns true if the error contains the specified label. WriteErrors do not contain labels,
 // so we always return false.
-func (we WriteError) HasErrorLabel(label string) bool {
+func (we WriteError) HasErrorLabel(string) bool {
 	return false
 }
 

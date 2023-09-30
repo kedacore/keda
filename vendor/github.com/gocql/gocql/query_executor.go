@@ -15,6 +15,7 @@ type ExecutableQuery interface {
 	speculativeExecutionPolicy() SpeculativeExecutionPolicy
 	GetRoutingKey() ([]byte, error)
 	Keyspace() string
+	Table() string
 	IsIdempotent() bool
 
 	withContext(context.Context) ExecutableQuery

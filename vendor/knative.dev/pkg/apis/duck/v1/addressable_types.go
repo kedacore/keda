@@ -48,6 +48,10 @@ type Addressable struct {
 	// according to https://www.rfc-editor.org/rfc/rfc7468.
 	// +optional
 	CACerts *string `json:"CACerts,omitempty"`
+
+	// Audience is the OIDC audience for this address.
+	// +optional
+	Audience *string `json:"audience,omitempty"`
 }
 
 var (

@@ -16,18 +16,27 @@ package mongocrypt
 // #include <stdlib.h>
 import "C"
 import (
+	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"unsafe"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/internal"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/auth/creds"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/mongocrypt/options"
 )
 
+type kmsProvider interface {
+	GetCredentialsDoc(context.Context) (bsoncore.Document, error)
+}
+
 type MongoCrypt struct {
 	wrapped      *C.mongocrypt_t
-	kmsProviders bsoncore.Document
+	kmsProviders map[string]kmsProvider
+	httpClient   *http.Client
 }
 
 // Version returns the version string for the loaded libmongocrypt, or an empty string
@@ -44,9 +53,24 @@ func NewMongoCrypt(opts *options.MongoCryptOptions) (*MongoCrypt, error) {
 	if wrapped == nil {
 		return nil, errors.New("could not create new mongocrypt object")
 	}
+	httpClient := opts.HTTPClient
+	if httpClient == nil {
+		httpClient = internal.DefaultHTTPClient
+	}
+	kmsProviders := make(map[string]kmsProvider)
+	if needsKmsProvider(opts.KmsProviders, "gcp") {
+		kmsProviders["gcp"] = creds.NewGCPCredentialProvider(httpClient)
+	}
+	if needsKmsProvider(opts.KmsProviders, "aws") {
+		kmsProviders["aws"] = creds.NewAWSCredentialProvider(httpClient)
+	}
+	if needsKmsProvider(opts.KmsProviders, "azure") {
+		kmsProviders["azure"] = creds.NewAzureCredentialProvider(httpClient)
+	}
 	crypt := &MongoCrypt{
 		wrapped:      wrapped,
-		kmsProviders: opts.KmsProviders,
+		kmsProviders: kmsProviders,
+		httpClient:   httpClient,
 	}
 
 	// set options in mongocrypt
@@ -222,9 +246,8 @@ const (
 	IndexTypeIndexed   = 2
 )
 
-// CreateExplicitEncryptionContext creates a Context to use for explicit encryption.
-func (m *MongoCrypt) CreateExplicitEncryptionContext(doc bsoncore.Document, opts *options.ExplicitEncryptionOptions) (*Context, error) {
-
+// createExplicitEncryptionContext creates an explicit encryption context.
+func (m *MongoCrypt) createExplicitEncryptionContext(opts *options.ExplicitEncryptionOptions) (*Context, error) {
 	ctx := newContext(C.mongocrypt_ctx_new(m.wrapped))
 	if ctx.wrapped == nil {
 		return nil, m.createErrorFromStatus()
@@ -241,6 +264,32 @@ func (m *MongoCrypt) CreateExplicitEncryptionContext(doc bsoncore.Document, opts
 	if opts.KeyAltName != nil {
 		if err := setAltName(ctx, *opts.KeyAltName); err != nil {
 			return nil, err
+		}
+	}
+
+	if opts.RangeOptions != nil {
+		idx, mongocryptDoc := bsoncore.AppendDocumentStart(nil)
+		if opts.RangeOptions.Min != nil {
+			mongocryptDoc = bsoncore.AppendValueElement(mongocryptDoc, "min", *opts.RangeOptions.Min)
+		}
+		if opts.RangeOptions.Max != nil {
+			mongocryptDoc = bsoncore.AppendValueElement(mongocryptDoc, "max", *opts.RangeOptions.Max)
+		}
+		if opts.RangeOptions.Precision != nil {
+			mongocryptDoc = bsoncore.AppendInt32Element(mongocryptDoc, "precision", *opts.RangeOptions.Precision)
+		}
+		mongocryptDoc = bsoncore.AppendInt64Element(mongocryptDoc, "sparsity", opts.RangeOptions.Sparsity)
+
+		mongocryptDoc, err := bsoncore.AppendDocumentEnd(mongocryptDoc, idx)
+		if err != nil {
+			return nil, err
+		}
+
+		mongocryptBinary := newBinaryFromBytes(mongocryptDoc)
+		defer mongocryptBinary.close()
+
+		if ok := C.mongocrypt_ctx_setopt_algorithm_range(ctx.wrapped, mongocryptBinary.wrapped); !ok {
+			return nil, ctx.createErrorFromStatus()
 		}
 	}
 
@@ -264,10 +313,33 @@ func (m *MongoCrypt) CreateExplicitEncryptionContext(doc bsoncore.Document, opts
 			return nil, ctx.createErrorFromStatus()
 		}
 	}
+	return ctx, nil
+}
 
+// CreateExplicitEncryptionContext creates a Context to use for explicit encryption.
+func (m *MongoCrypt) CreateExplicitEncryptionContext(doc bsoncore.Document, opts *options.ExplicitEncryptionOptions) (*Context, error) {
+	ctx, err := m.createExplicitEncryptionContext(opts)
+	if err != nil {
+		return ctx, err
+	}
 	docBinary := newBinaryFromBytes(doc)
 	defer docBinary.close()
 	if ok := C.mongocrypt_ctx_explicit_encrypt_init(ctx.wrapped, docBinary.wrapped); !ok {
+		return nil, ctx.createErrorFromStatus()
+	}
+
+	return ctx, nil
+}
+
+// CreateExplicitEncryptionExpressionContext creates a Context to use for explicit encryption of an expression.
+func (m *MongoCrypt) CreateExplicitEncryptionExpressionContext(doc bsoncore.Document, opts *options.ExplicitEncryptionOptions) (*Context, error) {
+	ctx, err := m.createExplicitEncryptionContext(opts)
+	if err != nil {
+		return ctx, err
+	}
+	docBinary := newBinaryFromBytes(doc)
+	defer docBinary.close()
+	if ok := C.mongocrypt_ctx_explicit_encrypt_expression_init(ctx.wrapped, docBinary.wrapped); !ok {
 		return nil, ctx.createErrorFromStatus()
 	}
 
@@ -309,6 +381,9 @@ func (m *MongoCrypt) CryptSharedLibVersionString() string {
 // Close cleans up any resources associated with the given MongoCrypt instance.
 func (m *MongoCrypt) Close() {
 	C.mongocrypt_destroy(m.wrapped)
+	if m.httpClient == internal.DefaultHTTPClient {
+		internal.CloseIdleHTTPConnections(m.httpClient)
+	}
 }
 
 // RewrapDataKeyContext create a Context to use for rewrapping a data key.
@@ -415,7 +490,30 @@ func (m *MongoCrypt) createErrorFromStatus() error {
 	return errorFromStatus(status)
 }
 
-// GetKmsProviders returns the originally configured KMS providers.
-func (m *MongoCrypt) GetKmsProviders() bsoncore.Document {
-	return m.kmsProviders
+// needsKmsProvider returns true if provider was initially set to an empty document.
+// An empty document signals the driver to fetch credentials.
+func needsKmsProvider(kmsProviders bsoncore.Document, provider string) bool {
+	val, err := kmsProviders.LookupErr(provider)
+	if err != nil {
+		// KMS provider is not configured.
+		return false
+	}
+	doc, ok := val.DocumentOK()
+	// KMS provider is an empty document if the length is 5.
+	// An empty document contains 4 bytes of "\x00" and a null byte.
+	return ok && len(doc) == 5
+}
+
+// GetKmsProviders attempts to obtain credentials from environment.
+// It is expected to be called when a libmongocrypt context is in the mongocrypt.NeedKmsCredentials state.
+func (m *MongoCrypt) GetKmsProviders(ctx context.Context) (bsoncore.Document, error) {
+	builder := bsoncore.NewDocumentBuilder()
+	for k, p := range m.kmsProviders {
+		doc, err := p.GetCredentialsDoc(ctx)
+		if err != nil {
+			return nil, internal.WrapErrorf(err, "unable to retrieve %s credentials", k)
+		}
+		builder.AppendDocument(k, doc)
+	}
+	return builder.Build(), nil
 }

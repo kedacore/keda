@@ -38,7 +38,6 @@ type couchDBMetadata struct {
 	query                string
 	queryValue           int64
 	activationQueryValue int64
-	metricName           string
 	scalerIndex          int
 }
 
@@ -51,7 +50,7 @@ type Res struct {
 func (s *couchDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("coucdb-%s", s.metadata.dbName))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.queryValue),
 	}
@@ -115,7 +114,11 @@ func parseCouchDBMetadata(config *ScalerConfig) (*couchDBMetadata, string, error
 		}
 		meta.queryValue = queryValue
 	} else {
-		return nil, "", fmt.Errorf("no queryValue given")
+		if config.AsMetricSource {
+			meta.queryValue = 0
+		} else {
+			return nil, "", fmt.Errorf("no queryValue given")
+		}
 	}
 
 	meta.activationQueryValue = 0
@@ -176,9 +179,6 @@ func parseCouchDBMetadata(config *ScalerConfig) (*couchDBMetadata, string, error
 		// nosemgrep: db-connection-string
 		connStr = "http://" + addr
 	}
-
-	// FIXME: DEPRECATED to be removed in v2.12
-	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("coucdb-%s", meta.dbName)))
 	meta.scalerIndex = config.ScalerIndex
 	return &meta, connStr, nil
 }

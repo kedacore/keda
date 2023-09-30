@@ -73,7 +73,11 @@ func parseWorkloadMetadata(config *ScalerConfig) (*kubernetesWorkloadMetadata, e
 	meta.podSelector = podSelector
 	value, err := strconv.ParseFloat(config.TriggerMetadata[valueKey], 64)
 	if err != nil || value == 0 {
-		return nil, fmt.Errorf("value must be a float greater than 0")
+		if config.AsMetricSource {
+			value = 0
+		} else {
+			return nil, fmt.Errorf("value must be a float greater than 0")
+		}
 	}
 	meta.value = value
 

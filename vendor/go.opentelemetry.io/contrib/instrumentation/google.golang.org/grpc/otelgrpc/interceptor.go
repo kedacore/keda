@@ -33,6 +33,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc/internal"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -63,7 +64,7 @@ func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
 	cfg := newConfig(opts)
 	tracer := cfg.TracerProvider.Tracer(
 		instrumentationName,
-		trace.WithInstrumentationVersion(SemVersion()),
+		trace.WithInstrumentationVersion(Version()),
 	)
 
 	return func(
@@ -238,7 +239,7 @@ func StreamClientInterceptor(opts ...Option) grpc.StreamClientInterceptor {
 	cfg := newConfig(opts)
 	tracer := cfg.TracerProvider.Tracer(
 		instrumentationName,
-		trace.WithInstrumentationVersion(SemVersion()),
+		trace.WithInstrumentationVersion(Version()),
 	)
 
 	return func(
@@ -302,7 +303,7 @@ func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 	cfg := newConfig(opts)
 	tracer := cfg.TracerProvider.Tracer(
 		instrumentationName,
-		trace.WithInstrumentationVersion(SemVersion()),
+		trace.WithInstrumentationVersion(Version()),
 	)
 
 	return func(
@@ -336,14 +337,15 @@ func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 		defer func(t time.Time) {
 			elapsedTime := time.Since(t) / time.Millisecond
 			attr = append(attr, semconv.RPCGRPCStatusCodeKey.Int64(int64(statusCode)))
-			cfg.rpcServerDuration.Record(ctx, int64(elapsedTime), attr...)
+			o := metric.WithAttributes(attr...)
+			cfg.rpcServerDuration.Record(ctx, int64(elapsedTime), o)
 		}(time.Now())
 
 		resp, err := handler(ctx, req)
 		if err != nil {
 			s, _ := status.FromError(err)
-			statusCode = s.Code()
-			span.SetStatus(codes.Error, s.Message())
+			statusCode, msg := serverStatus(s)
+			span.SetStatus(statusCode, msg)
 			span.SetAttributes(statusCodeAttr(s.Code()))
 			messageSent.Event(ctx, 1, s.Proto())
 		} else {
@@ -403,7 +405,7 @@ func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
 	cfg := newConfig(opts)
 	tracer := cfg.TracerProvider.Tracer(
 		instrumentationName,
-		trace.WithInstrumentationVersion(SemVersion()),
+		trace.WithInstrumentationVersion(Version()),
 	)
 
 	return func(
@@ -435,7 +437,8 @@ func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
 		err := handler(srv, wrapServerStream(ctx, ss))
 		if err != nil {
 			s, _ := status.FromError(err)
-			span.SetStatus(codes.Error, s.Message())
+			statusCode, msg := serverStatus(s)
+			span.SetStatus(statusCode, msg)
 			span.SetAttributes(statusCodeAttr(s.Code()))
 		} else {
 			span.SetAttributes(statusCodeAttr(grpc_codes.OK))
@@ -498,4 +501,27 @@ func peerFromCtx(ctx context.Context) string {
 // statusCodeAttr returns status code attribute based on given gRPC code.
 func statusCodeAttr(c grpc_codes.Code) attribute.KeyValue {
 	return GRPCStatusCodeKey.Int64(int64(c))
+}
+
+// serverStatus returns a span status code and message for a given gRPC
+// status code. It maps specific gRPC status codes to a corresponding span
+// status code and message. This function is intended for use on the server
+// side of a gRPC connection.
+//
+// If the gRPC status code is Unknown, DeadlineExceeded, Unimplemented,
+// Internal, Unavailable, or DataLoss, it returns a span status code of Error
+// and the message from the gRPC status. Otherwise, it returns a span status
+// code of Unset and an empty message.
+func serverStatus(grpcStatus *status.Status) (codes.Code, string) {
+	switch grpcStatus.Code() {
+	case grpc_codes.Unknown,
+		grpc_codes.DeadlineExceeded,
+		grpc_codes.Unimplemented,
+		grpc_codes.Internal,
+		grpc_codes.Unavailable,
+		grpc_codes.DataLoss:
+		return codes.Error, grpcStatus.Message()
+	default:
+		return codes.Unset, ""
+	}
 }

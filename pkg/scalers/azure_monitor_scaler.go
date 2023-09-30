@@ -87,7 +87,11 @@ func parseAzureMonitorMetadata(config *ScalerConfig, logger logr.Logger) (*azure
 		}
 		meta.targetValue = targetValue
 	} else {
-		return nil, fmt.Errorf("no targetValue given")
+		if config.AsMetricSource {
+			meta.targetValue = 0
+		} else {
+			return nil, fmt.Errorf("no targetValue given")
+		}
 	}
 
 	if val, ok := config.TriggerMetadata[activationTargetValueName]; ok && val != "" {
@@ -207,7 +211,7 @@ func parseAzurePodIdentityParams(config *ScalerConfig) (clientID string, clientP
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
 		// no params required to be parsed
 	default:
-		return "", "", fmt.Errorf("azure Monitor doesn't support pod identity %s", config.PodIdentity)
+		return "", "", fmt.Errorf("azure Monitor doesn't support pod identity %s", config.PodIdentity.Provider)
 	}
 
 	return clientID, clientPassword, nil

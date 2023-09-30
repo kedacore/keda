@@ -20,14 +20,22 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 
+	"github.com/prometheus/client_golang/prometheus/collectors"
+	_ "go.uber.org/automaxprocs"
 	appsv1 "k8s.io/api/apps/v1"
+	apimetrics "k8s.io/apiserver/pkg/endpoints/metrics"
 	"k8s.io/client-go/kubernetes/scheme"
+	kubemetrics "k8s.io/component-base/metrics"
+	"k8s.io/component-base/metrics/legacyregistry"
 	"k8s.io/klog/v2"
 	"k8s.io/klog/v2/klogr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
+	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	basecmd "sigs.k8s.io/custom-metrics-apiserver/pkg/cmd"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 
@@ -65,7 +73,7 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 		logger.Error(err, "failed to add keda scheme to runtime scheme")
 		return nil, nil, fmt.Errorf("failed to add keda scheme to runtime scheme (%s)", err)
 	}
-	namespace, err := getWatchNamespace()
+	namespaces, err := kedautil.GetWatchNamespaces()
 	if err != nil {
 		logger.Error(err, "failed to get watch namespace")
 		return nil, nil, fmt.Errorf("failed to get watch namespace (%s)", err)
@@ -89,24 +97,19 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 		return nil, nil, fmt.Errorf("invalid KEDA_METRICS_LEADER_ELECTION_RETRY_PERIOD (%s)", err)
 	}
 
-	useMetricsServiceGrpc, err := kedautil.ResolveOsEnvBool("KEDA_USE_METRICS_SERVICE_GRPC", true)
-	if err != nil {
-		logger.Error(err, "Invalid KEDA_USE_METRICS_SERVICE_GRPC")
-		return nil, nil, fmt.Errorf("invalid KEDA_USE_METRICS_SERVICE_GRPC (%s)", err)
-	}
-
 	// Get a config to talk to the apiserver
 	cfg := ctrl.GetConfigOrDie()
 	cfg.QPS = adapterClientRequestQPS
 	cfg.Burst = adapterClientRequestBurst
 	cfg.DisableCompression = disableCompression
 
-	metricsBindAddress := fmt.Sprintf(":%v", metricsAPIServerPort)
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-		MetricsBindAddress: metricsBindAddress,
-		Scheme:             scheme,
+		Metrics: server.Options{
+			BindAddress: "0", // disabled since we use our own server to serve metrics
+		},
+		Scheme: scheme,
 		Cache: ctrlcache.Options{
-			Namespaces: []string{namespace},
+			DefaultNamespaces: namespaces,
 		},
 		LeaseDuration: leaseDuration,
 		RenewDeadline: renewDeadline,
@@ -131,23 +134,65 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 			close(stopCh)
 		}
 	}()
-	return kedaprovider.NewProvider(ctx, logger, mgr.GetClient(), *grpcClient, useMetricsServiceGrpc, namespace), stopCh, nil
+	return kedaprovider.NewProvider(ctx, logger, mgr.GetClient(), *grpcClient), stopCh, nil
+}
+
+// getMetricHandler returns a http handler that exposes metrics from controller-runtime and apiserver
+func getMetricHandler() http.HandlerFunc {
+	// Register apiserver metrics in legacy registry
+	// this contains the apiserver_* metrics
+	apimetrics.Register()
+
+	// unregister duplicate collectors that are already handled by controller-runtime's registry
+	legacyregistry.Registerer().Unregister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	legacyregistry.Registerer().Unregister(collectors.NewGoCollector(collectors.WithGoCollectorRuntimeMetrics(collectors.MetricsAll)))
+
+	// Return handler that serves metrics from both legacy and controller-runtime registry
+	return func(w http.ResponseWriter, req *http.Request) {
+		legacyregistry.Handler().ServeHTTP(w, req)
+
+		kubemetrics.HandlerFor(ctrlmetrics.Registry, kubemetrics.HandlerOpts{}).ServeHTTP(w, req)
+	}
+}
+
+// RunMetricsServer runs a http listener and handles the /metrics endpoint
+// this is needed to consolidate apiserver and controller-runtime metrics
+// we have to use a separate http server & can't rely on the controller-runtime implementation
+// because apiserver doesn't provide a way to register metrics to other prometheus registries
+func RunMetricsServer(ctx context.Context, stopCh <-chan struct{}) {
+	h := getMetricHandler()
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", h)
+	metricsBindAddress := fmt.Sprintf(":%v", metricsAPIServerPort)
+
+	server := &http.Server{
+		Addr:    metricsBindAddress,
+		Handler: mux,
+	}
+
+	go func() {
+		logger.Info("starting /metrics server endpoint")
+		// nosemgrep: use-tls
+		err := server.ListenAndServe()
+		if err != http.ErrServerClosed {
+			panic(err)
+		}
+	}()
+
+	go func() {
+		<-stopCh
+		logger.Info("Shutting down the /metrics server gracefully...")
+
+		if err := server.Shutdown(ctx); err != nil {
+			logger.Error(err, "http server shutdown error")
+		}
+	}()
 }
 
 // generateDefaultMetricsServiceAddr generates default Metrics Service gRPC Server address based on the current Namespace.
 // By default the Metrics Service gRPC Server runs in the same namespace on the keda-operator pod.
 func generateDefaultMetricsServiceAddr() string {
 	return fmt.Sprintf("keda-operator.%s.svc.cluster.local:9666", kedautil.GetPodNamespace())
-}
-
-// getWatchNamespace returns the namespace the operator should be watching for changes
-func getWatchNamespace() (string, error) {
-	const WatchNamespaceEnvVar = "WATCH_NAMESPACE"
-	ns, found := os.LookupEnv(WatchNamespaceEnvVar)
-	if !found {
-		return "", fmt.Errorf("%s must be set", WatchNamespaceEnvVar)
-	}
-	return ns, nil
 }
 
 // printWelcomeMsg prints welcome message during the start of the adater
@@ -209,6 +254,9 @@ func main() {
 	cmd.WithExternalMetrics(kedaProvider)
 
 	logger.Info(cmd.Message)
+
+	RunMetricsServer(ctx, stopCh)
+
 	if err = cmd.Run(stopCh); err != nil {
 		return
 	}

@@ -144,7 +144,7 @@ The script wraps itself using ` + "`" + `config run wrap -- $0` + "`" + ` which 
 
 ` + "`" + `Dockerfile` + "`" + ` installs ` + "`" + `kustomize fn` + "`" + ` and copies the script into the container image.
 
-	FROM golang:1.18-stretch
+	FROM golang:1.20-bullseye
 	RUN go get sigs.k8s.io/kustomize/cmd/config
 	RUN mv /go/bin/config /usr/bin/config
 	COPY nginx-template.sh /usr/bin/nginx-template.sh
@@ -255,7 +255,7 @@ interpreted as described in [RFC 2119][2].
 
 
 - Pre-commit / delivery validation and linting of configuration
-  - e.g. Fail if any containers don't have PodSecurityPolicy or CPU / Memory limits
+  - e.g. Fail if any containers don't have CPU / Memory limits
 - Implementation of abstractions as client actuated APIs (e.g. templating)
   - e.g. Create a client-side _"CRD"_ for generating configuration checked into git
 - Aspect Orient configuration / Injection of cross-cutting configuration

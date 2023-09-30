@@ -132,6 +132,26 @@ type ReceivedMessage struct {
 	deferred bool
 }
 
+// Message creates a shallow copy of the fields from this message to an instance of
+// [Message].
+func (rm *ReceivedMessage) Message() *Message {
+	return &Message{
+		ApplicationProperties: rm.ApplicationProperties,
+		Body:                  rm.Body,
+		ContentType:           rm.ContentType,
+		CorrelationID:         rm.CorrelationID,
+		MessageID:             &rm.MessageID,
+		PartitionKey:          rm.PartitionKey,
+		ReplyTo:               rm.ReplyTo,
+		ReplyToSessionID:      rm.ReplyToSessionID,
+		ScheduledEnqueueTime:  rm.ScheduledEnqueueTime,
+		SessionID:             rm.SessionID,
+		Subject:               rm.Subject,
+		TimeToLive:            rm.TimeToLive,
+		To:                    rm.To,
+	}
+}
+
 // MessageState represents the current state of a message (Active, Scheduled, Deferred).
 type MessageState int32
 
@@ -283,28 +303,6 @@ func (m *Message) toAMQPMessage() *amqp.Message {
 	if m.ScheduledEnqueueTime != nil {
 		amqpMsg.Annotations[scheduledEnqueuedTimeAnnotation] = *m.ScheduledEnqueueTime
 	}
-
-	// TODO: These are 'received' message properties so I believe their inclusion here was just an artifact of only
-	// having one message type.
-
-	// if m.SystemProperties != nil {
-	// 	// Set the raw annotations first (they may be nil) and add the explicit
-	// 	// system properties second to ensure they're set properly.
-	// 	amqpMsg.Annotations = addMapToAnnotations(amqpMsg.Annotations, m.SystemProperties.Annotations)
-
-	// 	sysPropMap, err := encodeStructureToMap(m.SystemProperties)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	amqpMsg.Annotations = addMapToAnnotations(amqpMsg.Annotations, sysPropMap)
-	// }
-
-	// if m.LockToken != nil {
-	// 	if amqpMsg.DeliveryAnnotations == nil {
-	// 		amqpMsg.DeliveryAnnotations = make(amqp.Annotations)
-	// 	}
-	// 	amqpMsg.DeliveryAnnotations[lockTokenName] = *m.LockToken
-	// }
 
 	return amqpMsg
 }

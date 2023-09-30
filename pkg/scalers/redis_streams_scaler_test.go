@@ -738,6 +738,43 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			wantErr: nil,
 		},
 		{
+			name: "tls in auth param",
+			metadata: map[string]string{
+				"hosts":               "a, b, c",
+				"ports":               "1, 2, 3",
+				"stream":              "my-stream",
+				"pendingEntriesCount": "5",
+				"consumerGroup":       "consumer1",
+			},
+			authParams: map[string]string{
+				"password":    "password",
+				"tls":         "enable",
+				"ca":          "caaa",
+				"cert":        "ceert",
+				"key":         "keey",
+				"keyPassword": "keeyPassword",
+			},
+			wantMeta: &redisStreamsMetadata{
+				streamName:                "my-stream",
+				targetPendingEntriesCount: 5,
+				activationLagCount:        0,
+				consumerGroupName:         "consumer1",
+				connectionInfo: redisConnectionInfo{
+					addresses:   []string{"a:1", "b:2", "c:3"},
+					hosts:       []string{"a", "b", "c"},
+					ports:       []string{"1", "2", "3"},
+					password:    "password",
+					enableTLS:   true,
+					ca:          "caaa",
+					cert:        "ceert",
+					key:         "keey",
+					keyPassword: "keeyPassword",
+				},
+				scaleFactor: xPendingFactor,
+			},
+			wantErr: nil,
+		},
+		{
 			name: "stream is provided",
 			metadata: map[string]string{
 				"stream": "my-stream",

@@ -35,7 +35,7 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 	// all properly formed
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up"}, false},
 	// all properly formed, with namespace
-	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "namespace": "foo"}, false},
+	{map[string]string{"serverAddress": "http://localhost:9090", "threshold": "100", "query": "up", "namespace": "foo"}, false},
 	// all properly formed, with ignoreNullValues
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "ignoreNullValues": "false"}, false},
 	// all properly formed, with activationThreshold
@@ -63,8 +63,8 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 }
 
 var prometheusMetricIdentifiers = []prometheusMetricIdentifier{
-	{&testPromMetadata[1], 0, "s0-prometheus-http_requests_total"},
-	{&testPromMetadata[1], 1, "s1-prometheus-http_requests_total"},
+	{&testPromMetadata[1], 0, "s0-prometheus"},
+	{&testPromMetadata[1], 1, "s1-prometheus"},
 }
 
 type prometheusAuthMetadataTestData struct {
@@ -101,6 +101,8 @@ var testPrometheusAuthMetadata = []prometheusAuthMetadataTestData{
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "authModes": "custom"}, map[string]string{"customAuthHeader": ""}, "", true},
 	// fail custom auth with no customAuthValue
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "authModes": "custom"}, map[string]string{"customAuthValue": ""}, "", true},
+	// success custom auth with newlines in customAuthHeader
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "authModes": "custom"}, map[string]string{"customAuthHeader": "header\n", "customAuthValue": "value\n"}, "", false},
 
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "authModes": "tls,basic"}, map[string]string{"username": "user", "password": "pass"}, "", true},
 	// pod identity and other auth modes enabled together
