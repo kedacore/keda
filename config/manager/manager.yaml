@@ -83,6 +83,7 @@ spec:
       terminationGracePeriodSeconds: 10
       nodeSelector:
         kubernetes.io/os: linux
+      volumes:
       - name: certificates
         secret:
           defaultMode: 420
