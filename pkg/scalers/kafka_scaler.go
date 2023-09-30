@@ -333,19 +333,19 @@ func saveToFile(content string) (string, error) {
 	tempKrbDir := fmt.Sprintf("%s%c%s", os.TempDir(), os.PathSeparator, "kerberos")
 	err := os.MkdirAll(tempKrbDir, 0700)
 	if err != nil {
-		return "", fmt.Errorf(`error creating temporary directory: %s.  Error: %s
+		return "", fmt.Errorf(`error creating temporary directory: %s.  Error: %w
 		Note, when running in a container a writable /tmp/kerberos emptyDir must be mounted.  Refer to documentation`, tempKrbDir, err)
 	}
 
 	tempFile, err := os.CreateTemp(tempKrbDir, "krb_*")
 	if err != nil {
-		return "", fmt.Errorf("error creating temporary file: %s", err)
+		return "", fmt.Errorf("error creating temporary file: %w", err)
 	}
 	defer tempFile.Close()
 
 	_, err = tempFile.Write(data)
 	if err != nil {
-		return "", fmt.Errorf("error writing to temporary file: %s", err)
+		return "", fmt.Errorf("error writing to temporary file: %w", err)
 	}
 
 	// Get the temporary file's name
