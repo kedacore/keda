@@ -77,19 +77,12 @@ spec:
             seccompProfile:
               type: RuntimeDefault
           volumeMounts:
-          - mountPath: /tmp/kerberos
-            name: temp-kerberos-vol
-            readOnly: false
           - mountPath: /certs
             name: certificates
             readOnly: true
       terminationGracePeriodSeconds: 10
       nodeSelector:
         kubernetes.io/os: linux
-      volumes:
-      - name: temp-kerberos-vol
-        emptyDir:
-          medium: Memory
       - name: certificates
         secret:
           defaultMode: 420
