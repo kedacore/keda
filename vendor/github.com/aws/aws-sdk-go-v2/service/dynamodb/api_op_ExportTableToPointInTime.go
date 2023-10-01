@@ -67,6 +67,14 @@ type ExportTableToPointInTimeInput struct {
 	// state at this point in time.
 	ExportTime *time.Time
 
+	// Choice of whether to execute as a full export or incremental export. Valid
+	// values are FULL_EXPORT or INCREMENTAL_EXPORT . If INCREMENTAL_EXPORT is
+	// provided, the IncrementalExportSpecification must also be used.
+	ExportType types.ExportType
+
+	// Optional object containing the parameters specific to an incremental export.
+	IncrementalExportSpecification *types.IncrementalExportSpecification
+
 	// The ID of the Amazon Web Services account that owns the bucket the export will
 	// be stored in.
 	S3BucketOwner *string

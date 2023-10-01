@@ -18,13 +18,16 @@ import (
 	"time"
 )
 
-// List backups associated with an Amazon Web Services account. To list backups
-// for a given table, specify TableName . ListBackups returns a paginated list of
+// List DynamoDB backups that are associated with an Amazon Web Services account
+// and weren't made with Amazon Web Services Backup. To list these backups for a
+// given table, specify TableName . ListBackups returns a paginated list of
 // results with at most 1 MB worth of items in a page. You can also specify a
 // maximum number of entries to be returned in a page. In the request, start time
 // is inclusive, but end time is exclusive. Note that these boundaries are for the
 // time at which the original backup was requested. You can call ListBackups a
-// maximum of five times per second.
+// maximum of five times per second. If you want to retrieve the complete list of
+// backups made with Amazon Web Services Backup, use the Amazon Web Services
+// Backup list API. (https://docs.aws.amazon.com/aws-backup/latest/devguide/API_ListBackupJobs.html)
 func (c *Client) ListBackups(ctx context.Context, params *ListBackupsInput, optFns ...func(*Options)) (*ListBackupsOutput, error) {
 	if params == nil {
 		params = &ListBackupsInput{}

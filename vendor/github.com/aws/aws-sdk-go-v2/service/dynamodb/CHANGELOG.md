@@ -1,3 +1,7 @@
+# v1.22.0 (2023-09-26)
+
+* **Feature**: Amazon DynamoDB now supports Incremental Export as an enhancement to the existing Export Table
+
 # v1.21.5 (2023-08-21)
 
 * **Dependency Update**: Updated to the latest SDK module versions

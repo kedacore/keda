@@ -28,7 +28,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.18.42
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.40
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.27.7
-	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.21.5
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.22.0
 	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.15.5
 	github.com/aws/aws-sdk-go-v2/service/kinesis v1.19.0
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.24.5
