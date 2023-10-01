@@ -205,7 +205,7 @@ func parsePulsarMetadata(config *ScalerConfig, logger logr.Logger) (pulsarMetada
 			if authModes, authModesOk := config.TriggerMetadata[authentication.AuthModesKey]; authModesOk {
 				config.TriggerMetadata[authentication.AuthModesKey] = fmt.Sprintf("%s,%s", authModes, authentication.TLSAuthType)
 			} else {
-				config.TriggerMetadata[authentication.AuthModesKey] = string(authentication.TLSAuthType)
+				config.TriggerMetadata[authentication.AuthModesKey] = authentication.TLSAuthType
 			}
 		}
 	}
@@ -298,7 +298,7 @@ func (s *pulsarScaler) getMsgBackLog(ctx context.Context) (int64, bool, error) {
 	return v.Msgbacklog, found, nil
 }
 
-// GetGetMetricsAndActivityMetrics returns value for a supported metric and an error if there is a problem getting the metric
+// GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *pulsarScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	msgBacklog, found, err := s.getMsgBackLog(ctx)
 	if err != nil {

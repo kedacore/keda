@@ -68,7 +68,7 @@ func (cm CertManager) AddCertificateRotation(ctx context.Context, mgr manager.Ma
 	if err != nil {
 		return err
 	}
-	extraDNSNames := []string{}
+	var extraDNSNames []string
 	extraDNSNames = append(extraDNSNames, getDNSNames(cm.OperatorService, cm.K8sClusterDomain)...)
 	extraDNSNames = append(extraDNSNames, getDNSNames(cm.WebhookService, cm.K8sClusterDomain)...)
 	extraDNSNames = append(extraDNSNames, getDNSNames(cm.MetricsServerService, cm.K8sClusterDomain)...)

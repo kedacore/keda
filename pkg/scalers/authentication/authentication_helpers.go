@@ -31,7 +31,7 @@ func GetAuthConfigs(triggerMetadata, authParams map[string]string) (out *AuthMet
 
 	authTypes := strings.Split(authModes, ",")
 	for _, t := range authTypes {
-		authType := Type(strings.TrimSpace(t))
+		authType := strings.TrimSpace(t)
 
 		switch authType {
 		case BearerAuthType:

@@ -59,7 +59,7 @@ func (c *ScalersCache) GetScalers() ([]scalers.Scaler, []scalers.ScalerConfig) {
 	return scalersList, configsList
 }
 
-// GetPushScaler returns array of push scalers stored in the cache
+// GetPushScalers returns array of push scalers stored in the cache
 func (c *ScalersCache) GetPushScalers() []scalers.PushScaler {
 	var result []scalers.PushScaler
 	for _, s := range c.Scalers {

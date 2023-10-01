@@ -62,7 +62,7 @@ const (
 	solaceTriggermsgrxrate     = "msgrcvrate"
 )
 
-// Struct for Observed Metric Values
+// SolaceMetricValues is the struct for Observed Metric Values
 type SolaceMetricValues struct {
 	//	Observed Message Count
 	msgCount int
@@ -134,7 +134,7 @@ type solaceSEMPMetadata struct {
 	ResponseCode int `json:"responseCode"`
 }
 
-// Constructor for SolaceScaler
+// NewSolaceScaler is the constructor for SolaceScaler
 func NewSolaceScaler(config *ScalerConfig) (Scaler, error) {
 	// Create HTTP Client
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
@@ -428,9 +428,9 @@ func (s *SolaceScaler) GetMetricsAndActivity(ctx context.Context, metricName str
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 	return []external_metrics.ExternalMetricValue{metric},
-		(metricValues.msgCount > s.metadata.activationMsgCountTarget ||
+		metricValues.msgCount > s.metadata.activationMsgCountTarget ||
 			metricValues.msgSpoolUsage > s.metadata.activationMsgSpoolUsageTarget ||
-			metricValues.msgRcvRate > s.metadata.activationMsgRxRateTarget),
+			metricValues.msgRcvRate > s.metadata.activationMsgRxRateTarget,
 		nil
 }
 

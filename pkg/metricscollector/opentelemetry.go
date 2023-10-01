@@ -111,7 +111,7 @@ func (o *OtelMetrics) RecordScalerLatency(namespace string, scaledObject string,
 	}
 }
 
-// RecordScaledObjectLatency create a measurement of the latency executing scalable object loop
+// RecordScalableObjectLatency create a measurement of the latency executing scalable object loop
 func (o *OtelMetrics) RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value float64) {
 	resourceType := "scaledjob"
 	if isScaledObject {
@@ -167,7 +167,7 @@ func (o *OtelMetrics) RecordScalerError(namespace string, scaledObject string, s
 	}
 }
 
-// RecordScaleObjectError counts the number of errors with the scaled object
+// RecordScaledObjectError counts the number of errors with the scaled object
 func (o *OtelMetrics) RecordScaledObjectError(namespace string, scaledObject string, err error) {
 	opt := api.WithAttributes(
 		attribute.Key("namespace").String(namespace),

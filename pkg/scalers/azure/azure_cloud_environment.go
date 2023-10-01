@@ -13,13 +13,13 @@ const (
 	// PrivateCloud cloud type
 	PrivateCloud string = "Private"
 
-	// Default Endpoint key in trigger metadata
+	// DefaultEndpointSuffixKey is the default endpoint key in trigger metadata
 	DefaultEndpointSuffixKey string = "endpointSuffix"
 
-	// Default Storage Endpoint key in trigger metadata
+	// DefaultStorageSuffixKey is the default storage endpoint key in trigger metadata
 	DefaultStorageSuffixKey string = "storageEndpointSuffix"
 
-	// Default Active Directory Endpoint Key in trigger metadata
+	// DefaultActiveDirectoryEndpointKey is the default active directory endpoint key in trigger metadata
 	DefaultActiveDirectoryEndpointKey string = "activeDirectoryEndpoint"
 )
 
