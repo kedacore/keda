@@ -158,7 +158,7 @@ func (p *PromMetrics) RecordScalerLatency(namespace string, scaledObject string,
 	scalerMetricsLatency.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Set(value)
 }
 
-// RecordScaledObjectLatency create a measurement of the latency executing scalable object loop
+// RecordScalableObjectLatency create a measurement of the latency executing scalable object loop
 func (p *PromMetrics) RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value float64) {
 	resourceType := "scaledjob"
 	if isScaledObject {
@@ -192,7 +192,7 @@ func (p *PromMetrics) RecordScalerError(namespace string, scaledObject string, s
 	}
 }
 
-// RecordScaleObjectError counts the number of errors with the scaled object
+// RecordScaledObjectError counts the number of errors with the scaled object
 func (p *PromMetrics) RecordScaledObjectError(namespace string, scaledObject string, err error) {
 	labels := prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject}
 	if err != nil {

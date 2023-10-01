@@ -100,22 +100,22 @@ func GetCheckpointFromBlobStorage(ctx context.Context, httpClient util.HTTPDoer,
 
 func newCheckpointer(info EventHubInfo, partitionID string) checkpointer {
 	switch {
-	case (info.CheckpointStrategy == "goSdk"):
+	case info.CheckpointStrategy == "goSdk":
 		return &goSdkCheckpointer{
 			containerName: info.BlobContainer,
 			partitionID:   partitionID,
 		}
-	case (info.CheckpointStrategy == "dapr"):
+	case info.CheckpointStrategy == "dapr":
 		return &daprCheckpointer{
 			containerName: info.BlobContainer,
 			partitionID:   partitionID,
 		}
-	case (info.CheckpointStrategy == "blobMetadata"):
+	case info.CheckpointStrategy == "blobMetadata":
 		return &blobMetadataCheckpointer{
 			containerName: info.BlobContainer,
 			partitionID:   partitionID,
 		}
-	case (info.CheckpointStrategy == "azureFunction" || info.BlobContainer == ""):
+	case info.CheckpointStrategy == "azureFunction" || info.BlobContainer == "":
 		return &azureFunctionCheckpointer{
 			containerName: "azure-webjobs-eventhub",
 			partitionID:   partitionID,
