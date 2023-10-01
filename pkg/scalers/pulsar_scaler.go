@@ -205,7 +205,7 @@ func parsePulsarMetadata(config *ScalerConfig, logger logr.Logger) (pulsarMetada
 			if authModes, authModesOk := config.TriggerMetadata[authentication.AuthModesKey]; authModesOk {
 				config.TriggerMetadata[authentication.AuthModesKey] = fmt.Sprintf("%s,%s", authModes, authentication.TLSAuthType)
 			} else {
-				config.TriggerMetadata[authentication.AuthModesKey] = authentication.TLSAuthType
+				config.TriggerMetadata[authentication.AuthModesKey] = string(authentication.TLSAuthType)
 			}
 		}
 	}
