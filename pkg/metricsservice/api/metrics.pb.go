@@ -22,12 +22,11 @@
 package api
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	v1beta1 "k8s.io/metrics/pkg/apis/external_metrics/v1beta1"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
