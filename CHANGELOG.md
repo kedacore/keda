@@ -71,7 +71,7 @@ You can find all deprecations in [this overview](https://github.com/kedacore/ked
 
 New deprecation(s):
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- Removal of AAD-Pod-Identity ([#5035](https://github.com/kedacore/keda/issues/5035))
 
 ### Breaking Changes
 

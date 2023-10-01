@@ -198,6 +198,10 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 		case kedav1alpha1.PodIdentityProviderAwsKiam:
 			authParams["awsRoleArn"] = podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
 		case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+			if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzure {
+				// FIXME: Delete this for v2.15
+				logger.Info("WARNING: aad-pod-identity is out of support (https://github.com/Azure/aad-pod-identity#-announcement) and it'll be removed from KEDA on v2.15")
+			}
 			if podIdentity.IdentityID != nil && *podIdentity.IdentityID == "" {
 				return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, fmt.Errorf("IdentityID of PodIdentity should not be empty")
 			}
