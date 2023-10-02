@@ -37,7 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	prommetrics "github.com/kedacore/keda/v2/pkg/prommetrics/webhook"
+	metricscollector "github.com/kedacore/keda/v2/pkg/metricscollector/webhook"
 )
 
 var scaledobjectlog = logf.Log.WithName("scaledobject-validation-webhook")
@@ -95,7 +95,7 @@ func isRemovingFinalizer(so *ScaledObject, old runtime.Object) bool {
 }
 
 func validateWorkload(so *ScaledObject, action string) (admission.Warnings, error) {
-	prommetrics.RecordScaledObjectValidatingTotal(so.Namespace, action)
+	metricscollector.RecordScaledObjectValidatingTotal(so.Namespace, action)
 
 	verifyFunctions := []func(*ScaledObject, string) error{
 		verifyCPUMemoryScalers,
@@ -119,7 +119,7 @@ func verifyTriggers(incomingSo *ScaledObject, action string) error {
 	err := ValidateTriggers(incomingSo.Spec.Triggers)
 	if err != nil {
 		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
-		prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "incorrect-triggers")
+		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "incorrect-triggers")
 	}
 	return err
 }
@@ -170,7 +170,7 @@ func verifyHpas(incomingSo *ScaledObject, action string) error {
 				} else {
 					err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the hpa '%s'", incomingSo.Spec.ScaleTargetRef.Name, incomingSoGckr.GVKString(), hpa.Name)
 					scaledobjectlog.Error(err, "validation error")
-					prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-hpa")
+					metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-hpa")
 					return err
 				}
 			}
@@ -212,7 +212,7 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string) error {
 			so.Spec.ScaleTargetRef.Name == incomingSo.Spec.ScaleTargetRef.Name {
 			err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the ScaledObject '%s'", so.Spec.ScaleTargetRef.Name, incomingSoGckr.GVKString(), so.Name)
 			scaledobjectlog.Error(err, "validation error")
-			prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-scaled-object")
+			metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-scaled-object")
 			return err
 		}
 	}
@@ -222,7 +222,7 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string) error {
 		_, err = ValidateAndCompileScalingModifiers(incomingSo)
 		if err != nil {
 			scaledobjectlog.Error(err, "error validating ScalingModifiers")
-			prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "scaling-modifiers")
+			metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "scaling-modifiers")
 
 			return err
 		}
@@ -275,7 +275,7 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
 						container.Resources.Requests.Cpu().AsApproximateFloat64() == 0 {
 						err := fmt.Errorf("the scaledobject has a cpu trigger but the container %s doesn't have the cpu request defined", container.Name)
 						scaledobjectlog.Error(err, "validation error")
-						prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
+						metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
 						return err
 					}
 				} else if trigger.Type == memoryString {
@@ -284,7 +284,7 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
 						container.Resources.Requests.Memory().AsApproximateFloat64() == 0 {
 						err := fmt.Errorf("the scaledobject has a memory trigger but the container %s doesn't have the memory request defined", container.Name)
 						scaledobjectlog.Error(err, "validation error")
-						prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
+						metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
 						return err
 					}
 				}
@@ -304,7 +304,7 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
 			if (scaleToZeroErr && incomingSo.Spec.MinReplicaCount == nil) || (scaleToZeroErr && *incomingSo.Spec.MinReplicaCount == 0) {
 				err := fmt.Errorf("scaledobject has only cpu/memory triggers AND minReplica is 0 (scale to zero doesn't work in this case)")
 				scaledobjectlog.Error(err, "validation error")
-				prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "scale-to-zero-requirements-not-met")
+				metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "scale-to-zero-requirements-not-met")
 				return err
 			}
 		}
@@ -392,31 +392,7 @@ func validateScalingModifiersTarget(so *ScaledObject) error {
 		return fmt.Errorf("error converting target for scalingModifiers (string->float) to valid target: %w", err)
 	}
 
-	// if target is given, composite-scaler will be passed to HPA -> all types
-	// need to be the same - make sure all metrics are of the same metricTargetType
-
-	var trigType autoscalingv2.MetricTargetType
-
-	// gauron99: possible TODO: more sofisticated check for trigger could be used here
-	// as well if solution is found (check just the right triggers that are used)
-	for _, trig := range so.Spec.Triggers {
-		if trig.Type == cpuString || trig.Type == memoryString || trig.Name == "" {
-			continue
-		}
-		var current autoscalingv2.MetricTargetType
-		if trig.MetricType == "" {
-			current = autoscalingv2.AverageValueMetricType // default is AverageValue
-		} else {
-			current = trig.MetricType
-		}
-		if trigType == "" {
-			trigType = current
-		} else if trigType != current {
-			err := fmt.Errorf("error trigger types are not the same for composite scaler: %s & %s", trigType, current)
-			return err
-		}
-	}
-	if trigType == autoscalingv2.UtilizationMetricType {
+	if so.Spec.Advanced.ScalingModifiers.MetricType == autoscalingv2.UtilizationMetricType {
 		err := fmt.Errorf("error trigger type is Utilization, but it needs to be AverageValue or Value for external metrics")
 		return err
 	}

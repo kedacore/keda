@@ -3,6 +3,8 @@ package azure
 import (
 	"testing"
 
+	"github.com/go-logr/logr"
+
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
@@ -60,7 +62,7 @@ var testAzureManagedPrometheusResourceURLTestData = []testAzureManagedPrometheus
 
 func TestTryAndGetAzureManagedPrometheusHTTPRoundTripperForTriggerMetadataAbsent(t *testing.T) {
 	for _, testData := range testTryAndGetAzureManagedPrometheusHTTPRoundTripperTestData {
-		_, err := TryAndGetAzureManagedPrometheusHTTPRoundTripper(kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentityProvider}, nil)
+		_, err := TryAndGetAzureManagedPrometheusHTTPRoundTripper(logr.Discard(), kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentityProvider}, nil)
 		if testData.isError {
 			if err == nil {
 				t.Errorf("Test: %v; Expected error but got success. testData: %v", testData.testName, testData)
@@ -73,7 +75,7 @@ func TestTryAndGetAzureManagedPrometheusHTTPRoundTripperForTriggerMetadataAbsent
 
 func TestTryAndGetAzureManagedPrometheusHTTPRoundTripperWithTriggerForResourceURL(t *testing.T) {
 	for _, testData := range testAzureManagedPrometheusResourceURLTestData {
-		rt, err := TryAndGetAzureManagedPrometheusHTTPRoundTripper(kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentityProvider}, testData.metadata)
+		rt, err := TryAndGetAzureManagedPrometheusHTTPRoundTripper(logr.Discard(), kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentityProvider}, testData.metadata)
 		if testData.isError {
 			if err == nil {
 				t.Errorf("Test: %v; Expected error but got success. testData: %v", testData.testName, testData)

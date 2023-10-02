@@ -20,7 +20,7 @@ go test -v -tags e2e ./utils/cleanup_test.go      # Skip if you want to keep tes
 > As default, `go test -v -tags e2e ./utils/setup_test.go` deploys KEDA from upstream's main branch,
 > if you are adding an e2e test to your own code, this is not useful as you need your own version.
 > Like for [building and deploying your own image](../BUILD.md#custom-keda-as-an-image), you can use
-> the Makefile envrionment variables to customize KEDA deployment.
+> the Makefile environment variables to customize KEDA deployment.
 > eg. `IMAGE_REGISTRY=docker.io IMAGE_REPO=johndoe go test -v -tags e2e ./utils/setup_test.go`
 
 ### Specific test

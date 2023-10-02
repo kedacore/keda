@@ -19,7 +19,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/kedacore/keda/v2/pkg/prommetrics"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
@@ -338,6 +338,9 @@ func testScaledObjectErrors(t *testing.T, data templateData) {
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
 
+	// wait for 2 seconds as pollinginterval is 2
+	time.Sleep(20 * time.Second)
+
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 	if val, ok := family["keda_scaled_object_errors"]; ok {
 		errCounterVal1 := getErrorMetricsValue(val)
@@ -371,8 +374,8 @@ func testScalerErrors(t *testing.T, data templateData) {
 	if val, ok := family["keda_scaler_errors"]; ok {
 		errCounterVal1 := getErrorMetricsValue(val)
 
-		// wait for 10 seconds to correctly fetch metrics.
-		time.Sleep(10 * time.Second)
+		// wait for 20 seconds to correctly fetch metrics.
+		time.Sleep(20 * time.Second)
 
 		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 		if val, ok := family["keda_scaler_errors"]; ok {
@@ -576,7 +579,7 @@ func getOperatorMetricsManually(t *testing.T, kc *kubernetes.Clientset) (map[str
 		if namespace == "" {
 			namespace = "default"
 		}
-		crTotals[prommetrics.ClusterTriggerAuthenticationResource][namespace]++
+		crTotals[metricscollector.ClusterTriggerAuthenticationResource][namespace]++
 	}
 
 	for _, namespace := range namespaceList.Items {
@@ -588,7 +591,7 @@ func getOperatorMetricsManually(t *testing.T, kc *kubernetes.Clientset) (map[str
 		scaledObjectList, err := kedaKc.ScaledObjects(namespace.Name).List(context.Background(), v1.ListOptions{})
 		assert.NoErrorf(t, err, "failed to list scaledObjects in namespace - %s with err - %s", namespace.Name, err)
 
-		crTotals[prommetrics.ScaledObjectResource][namespaceName] = len(scaledObjectList.Items)
+		crTotals[metricscollector.ScaledObjectResource][namespaceName] = len(scaledObjectList.Items)
 		for _, scaledObject := range scaledObjectList.Items {
 			for _, trigger := range scaledObject.Spec.Triggers {
 				triggerTotals[trigger.Type]++
@@ -598,7 +601,7 @@ func getOperatorMetricsManually(t *testing.T, kc *kubernetes.Clientset) (map[str
 		scaledJobList, err := kedaKc.ScaledJobs(namespace.Name).List(context.Background(), v1.ListOptions{})
 		assert.NoErrorf(t, err, "failed to list scaledJobs in namespace - %s with err - %s", namespace.Name, err)
 
-		crTotals[prommetrics.ScaledJobResource][namespaceName] = len(scaledJobList.Items)
+		crTotals[metricscollector.ScaledJobResource][namespaceName] = len(scaledJobList.Items)
 		for _, scaledJob := range scaledJobList.Items {
 			for _, trigger := range scaledJob.Spec.Triggers {
 				triggerTotals[trigger.Type]++
@@ -608,7 +611,7 @@ func getOperatorMetricsManually(t *testing.T, kc *kubernetes.Clientset) (map[str
 		triggerAuthList, err := kedaKc.TriggerAuthentications(namespace.Name).List(context.Background(), v1.ListOptions{})
 		assert.NoErrorf(t, err, "failed to list triggerAuthentications in namespace - %s with err - %s", namespace.Name, err)
 
-		crTotals[prommetrics.TriggerAuthenticationResource][namespaceName] = len(triggerAuthList.Items)
+		crTotals[metricscollector.TriggerAuthenticationResource][namespaceName] = len(triggerAuthList.Items)
 	}
 
 	return triggerTotals, crTotals
@@ -620,7 +623,8 @@ func testWebhookMetricValues(t *testing.T) {
 }
 
 func testMetricServerMetrics(t *testing.T) {
-	_ = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaMetricsServerPrometheusURL))
+	families := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaMetricsServerPrometheusURL))
+	checkMetricServerValues(t, families)
 }
 
 func testOperatorMetricValues(t *testing.T, kc *kubernetes.Clientset) {
@@ -767,4 +771,39 @@ func checkWebhookValues(t *testing.T, families map[string]*prommodel.MetricFamil
 		metricValue += *metric.Counter.Value
 	}
 	assert.GreaterOrEqual(t, metricValue, 1.0, "keda_webhook_scaled_object_validation_total has to be greater than 0")
+}
+
+func checkMetricServerValues(t *testing.T, families map[string]*prommodel.MetricFamily) {
+	t.Log("--- testing metric server metrics ---")
+
+	family, ok := families["workqueue_adds_total"]
+	if !ok {
+		t.Errorf("metric workqueue_adds_total not available")
+		return
+	}
+
+	metricValue := 0.0
+	metrics := family.GetMetric()
+	for _, metric := range metrics {
+		metricValue += *metric.Counter.Value
+	}
+	assert.GreaterOrEqual(t, metricValue, 1.0, "workqueue_adds_total has to be greater than 0")
+
+	family, ok = families["apiserver_request_total"]
+	if !ok {
+		t.Errorf("metric apiserver_request_total not available")
+		return
+	}
+
+	metricValue = 0.0
+	metrics = family.GetMetric()
+	for _, metric := range metrics {
+		labels := metric.GetLabel()
+		for _, label := range labels {
+			if *label.Name == "group" && *label.Value == "external.metrics.k8s.io" {
+				metricValue = *metric.Counter.Value
+			}
+		}
+	}
+	assert.GreaterOrEqual(t, metricValue, 1.0, "apiserver_request_total has to be greater than 0")
 }

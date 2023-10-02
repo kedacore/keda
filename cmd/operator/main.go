@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
+	_ "go.uber.org/automaxprocs"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	kubeinformers "k8s.io/client-go/informers"
@@ -41,6 +42,7 @@ import (
 	kedacontrollers "github.com/kedacore/keda/v2/controllers/keda"
 	"github.com/kedacore/keda/v2/pkg/certificates"
 	"github.com/kedacore/keda/v2/pkg/k8s"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -60,6 +62,8 @@ func init() {
 }
 
 func main() {
+	var enablePrometheusMetrics bool
+	var enableOpenTelemetryMetrics bool
 	var metricsAddr string
 	var probeAddr string
 	var metricsServiceAddr string
@@ -72,9 +76,12 @@ func main() {
 	var operatorServiceName string
 	var metricsServerServiceName string
 	var webhooksServiceName string
+	var k8sClusterDomain string
 	var enableCertRotation bool
 	var validatingWebhookName string
-	pflag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	pflag.BoolVar(&enablePrometheusMetrics, "enable-prometheus-metrics", true, "Enable the prometheus metric of keda-operator.")
+	pflag.BoolVar(&enableOpenTelemetryMetrics, "enable-opentelemetry-metrics", false, "Enable the opentelemetry metric of keda-operator.")
+	pflag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the prometheus metric endpoint binds to.")
 	pflag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	pflag.StringVar(&metricsServiceAddr, "metrics-service-bind-address", ":9666", "The address the gRPRC Metrics Service endpoint binds to.")
 	pflag.BoolVar(&enableLeaderElection, "leader-elect", false,
@@ -88,6 +95,7 @@ func main() {
 	pflag.StringVar(&operatorServiceName, "operator-service-name", "keda-operator", "Operator service name. Defaults to keda-operator")
 	pflag.StringVar(&metricsServerServiceName, "metrics-server-service-name", "keda-metrics-apiserver", "Metrics server service name. Defaults to keda-metrics-apiserver")
 	pflag.StringVar(&webhooksServiceName, "webhooks-service-name", "keda-admission-webhooks", "Webhook service name. Defaults to keda-admission-webhooks")
+	pflag.StringVar(&k8sClusterDomain, "k8s-cluster-domain", "cluster.local", "Kubernetes cluster domain. Defaults to cluster.local")
 	pflag.BoolVar(&enableCertRotation, "enable-cert-rotation", false, "enable automatic generation and rotation of TLS certificates/keys")
 	pflag.StringVar(&validatingWebhookName, "validating-webhook-name", "keda-admission", "ValidatingWebhookConfiguration name. Defaults to keda-admission")
 	opts := zap.Options{}
@@ -125,6 +133,11 @@ func main() {
 	cfg.QPS = adapterClientRequestQPS
 	cfg.Burst = adapterClientRequestBurst
 	cfg.DisableCompression = disableCompression
+
+	if !enablePrometheusMetrics {
+		metricsAddr = "0"
+	}
+	metricscollector.NewMetricsCollectors(enablePrometheusMetrics, enableOpenTelemetryMetrics)
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme,
@@ -252,6 +265,7 @@ func main() {
 			OperatorService:       operatorServiceName,
 			MetricsServerService:  metricsServerServiceName,
 			WebhookService:        webhooksServiceName,
+			K8sClusterDomain:      k8sClusterDomain,
 			CAName:                "KEDA",
 			CAOrganization:        "KEDAORG",
 			ValidatingWebhookName: validatingWebhookName,

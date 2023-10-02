@@ -131,7 +131,11 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 		}
 		meta.queryValue = queryValue
 	} else {
-		return nil, "", fmt.Errorf("no queryValue given")
+		if config.AsMetricSource {
+			meta.queryValue = 0
+		} else {
+			return nil, "", fmt.Errorf("no queryValue given")
+		}
 	}
 
 	meta.activationQueryValue = 0

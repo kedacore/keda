@@ -73,7 +73,11 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 		}
 		meta.targetQueryValue = targetQueryValue
 	} else {
-		return nil, fmt.Errorf("no targetQueryValue given")
+		if config.AsMetricSource {
+			meta.targetQueryValue = 0
+		} else {
+			return nil, fmt.Errorf("no targetQueryValue given")
+		}
 	}
 
 	meta.activationTargetQueryValue = 0

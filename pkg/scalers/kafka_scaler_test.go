@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -181,6 +182,8 @@ var parseAuthParamsTestDataset = []parseAuthParamsTestDataSecondAuthMethod{
 	{map[string]string{"tls": "enable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"cert": "ceert", "key": "keey", "keyPassword": "keeyPassword"}, false, true},
 	// success, TLS CA only
 	{map[string]string{"tls": "enable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"ca": "caaa"}, false, true},
+	// success, TLS CA only and unsafeSSL
+	{map[string]string{"tls": "enable", "unsafeSsl": "true", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"ca": "caaa"}, false, true},
 	// success, SASL + TLS
 	{map[string]string{"sasl": "plaintext", "tls": "enable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, true},
 	// success, SASL + TLS explicitly disabled
@@ -381,6 +384,15 @@ func TestKafkaAuthParams(t *testing.T) {
 				}
 				if meta.keyPassword != testData.authParams["keyPassword"] {
 					t.Errorf("Test case: %v. Expected key to be set to %v but got %v\n", id, testData.authParams["keyPassword"], meta.keyPassword)
+				}
+				if val, ok := testData.authParams["unsafeSsl"]; ok && err == nil {
+					boolVal, err := strconv.ParseBool(val)
+					if err != nil && !testData.isError {
+						t.Errorf("Expect error but got success in test case %s", meta.key)
+					}
+					if boolVal != meta.unsafeSsl {
+						t.Errorf("Expected unsafeSsl key to be set to %v but got %v\n", boolVal, meta.unsafeSsl)
+					}
 				}
 			}
 		}
