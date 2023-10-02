@@ -19,6 +19,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 
 	"github.com/Azure/azure-kusto-go/kusto"
@@ -159,18 +160,20 @@ func parseAzureDataExplorerAuthParams(config *ScalerConfig, logger logr.Logger) 
 		}
 		metadata.ClientID = clientID
 
-		// FIXME: DEPRECATED to be removed in v2.13
-		// We should get the secret only from AuthConfig or env
-		clientSecret, err := getParameterFromConfig(config, "clientSecret", true)
+		clientSecretFromEnv, err := getParameterFromConfig(config, "clientSecretFromEnv", true)
 		if err != nil {
 			return nil, err
 		}
-		if val, ok := config.TriggerMetadata["clientSecret"]; ok && val != "" {
-			logger.Info("getting 'clientSecret' from metadata is deprecated, use 'clientSecretFromEnv' or TriggerAuthentication instead")
+		var clientSecretFromTrigger string
+		if val, ok := config.TriggerMetadata["clientSecret"]; ok {
+			clientSecretFromTrigger = os.Getenv(val)
 		}
-		// FIXME: DEPRECATED to be removed in v2.13
 
-		metadata.ClientSecret = clientSecret
+		if clientSecretFromTrigger != "" {
+			metadata.ClientSecret = clientSecretFromTrigger
+		} else if clientSecretFromEnv != "" {
+			metadata.ClientSecret = clientSecretFromEnv
+		}
 	default:
 		return nil, fmt.Errorf("error parsing auth params")
 	}
