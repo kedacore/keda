@@ -50,7 +50,7 @@ var (
 	creds                 = make(map[string]interface{})
 	errGcpKey             = json.Unmarshal([]byte(gcpKey), &creds)
 	projectID             = creds["project_id"]
-	secretManagerSecretID = "connectionString"
+	secretManagerSecretID = "connectionStringWorkloadIdentity"
 )
 
 type templateData struct {
