@@ -34,7 +34,6 @@ type externalPushScaler struct {
 
 type externalScalerMetadata struct {
 	scalerAddress    string
-	tlsCertFile      string
 	originalMetadata map[string]string
 	scalerIndex      int
 	caCert           string
@@ -111,10 +110,6 @@ func parseExternalScalerMetadata(config *ScalerConfig) (externalScalerMetadata, 
 		meta.scalerAddress = val
 	} else {
 		return meta, fmt.Errorf("scaler Address is a required field")
-	}
-
-	if val, ok := config.TriggerMetadata["tlsCertFile"]; ok && val != "" {
-		meta.tlsCertFile = val
 	}
 
 	meta.originalMetadata = make(map[string]string)
@@ -303,17 +298,6 @@ func getClientForConnectionPool(metadata externalScalerMetadata, logger logr.Log
 	defer connectionPoolMutex.Unlock()
 
 	buildGRPCConnection := func(metadata externalScalerMetadata) (*grpc.ClientConn, error) {
-		// FIXME: DEPRECATED to be removed in v2.13 https://github.com/kedacore/keda/issues/4549
-		if metadata.tlsCertFile != "" {
-			logger.V(1).Info("tlsCertFile in ScaleObject metadata will be deprecated in v2.12. Please use" +
-				"tlsClientCert, tlsClientKey and caCert in TriggerAuthentication instead.")
-			creds, err := credentials.NewClientTLSFromFile(metadata.tlsCertFile, "")
-			if err != nil {
-				return nil, err
-			}
-			return grpc.Dial(metadata.scalerAddress, grpc.WithTransportCredentials(creds))
-		}
-
 		tlsConfig, err := util.NewTLSConfig(metadata.tlsClientCert, metadata.tlsClientKey, metadata.caCert, metadata.unsafeSsl)
 		if err != nil {
 			return nil, err
