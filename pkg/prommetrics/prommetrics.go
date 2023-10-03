@@ -224,5 +224,5 @@ func RecordScalerPaused(namespace string, scaledObject string, active bool) {
 		activeVal = 1
 	}
 
-	///scaledObjectPausedTotal.With(labels).Set(float64(activeVal))
+	scaledObjectPausedTotal.With(labels).Set(float64(activeVal))
 }
