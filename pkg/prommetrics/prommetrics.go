@@ -114,8 +114,8 @@ var (
 		prometheus.GaugeOpts{
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaled_object",
-			Name:      "paused",
-			Help:      "Total number of paused scaled_objects",
+			Name:      "paused_total",
+			Help:      "Total number of scaled objects currently in a paused state",
 		},
 		[]string{"namespace", "scaledObject"},
 	)
