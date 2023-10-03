@@ -216,8 +216,13 @@ func DecrementCRDTotal(crdType, namespace string) {
 	crdTotalsGaugeVec.WithLabelValues(crdType, namespace).Dec()
 }
 
-func RecordScalerPaused(namespace string, scaledObject string, value float64) {
+func RecordScalerPaused(namespace string, scaledObject string, active bool) {
 	labels := prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject}
 
-	scaledObjectPausedTotal.With(labels).Set(value)
+	activeVal := 0
+	if active {
+		activeVal = 1
+	}
+
+	scaledObjectPausedTotal.With(labels).Set(float64(activeVal))
 }

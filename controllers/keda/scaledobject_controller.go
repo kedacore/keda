@@ -529,12 +529,12 @@ func (r *ScaledObjectReconciler) updatePromMetrics(scaledObject *kedav1alpha1.Sc
 	metricsData.triggerTypes = triggerTypes
 
 	_, isPausedObject := scaledObject.GetAnnotations()[kedacontrollerutil.PausedReplicasAnnotation]
-	value := 0
+	value := false
 	if isPausedObject {
-		value = 1
+		value = true
 	}
 
-	prommetrics.RecordScalerPaused(namespacedName, scaledObject.Name, float64(value))
+	prommetrics.RecordScalerPaused(namespacedName, scaledObject.Name, value)
 
 	scaledObjectPromMetricsMap[namespacedName] = metricsData
 }
@@ -548,7 +548,7 @@ func (r *ScaledObjectReconciler) updatePromMetricsOnDelete(namespacedName string
 		for _, triggerType := range metricsData.triggerTypes {
 			prommetrics.DecrementTriggerTotal(triggerType)
 		}
-		prommetrics.RecordScalerPaused(namespacedName, scaledObject, 0)
+		prommetrics.RecordScalerPaused(namespacedName, scaledObject, false)
 	}
 
 	delete(scaledObjectPromMetricsMap, namespacedName)
