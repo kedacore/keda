@@ -130,26 +130,33 @@ type azurePipelinesMetadata struct {
 	personalAccessToken                  string
 	parent                               string
 	demands                              string
-	poolID                               int
+	poolName                             string
+	poolID                               int64
 	targetPipelinesQueueLength           int64
 	activationTargetPipelinesQueueLength int64
 	jobsToFetch                          int64
 	scalerIndex                          int
 	requireAllDemands                    bool
+	unsafeSsl                            bool
 }
 
 // NewAzurePipelinesScaler creates a new AzurePipelinesScaler
 func NewAzurePipelinesScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
-
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
-	meta, err := parseAzurePipelinesMetadata(ctx, config, httpClient)
+	meta, err := parseAzurePipelinesMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure Pipelines metadata: %w", err)
+	}
+
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsl)
+
+	err = validateAzurePipelinesMetadata(ctx, meta, httpClient)
+	if err != nil {
+		return nil, fmt.Errorf("error validating azure Pipelines metadata: %w", err)
 	}
 
 	return &azurePipelinesScaler{
@@ -160,7 +167,7 @@ func NewAzurePipelinesScaler(ctx context.Context, config *ScalerConfig) (Scaler,
 	}, nil
 }
 
-func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, httpClient *http.Client) (*azurePipelinesMetadata, error) {
+func parseAzurePipelinesMetadata(config *ScalerConfig) (*azurePipelinesMetadata, error) {
 	meta := azurePipelinesMetadata{}
 	meta.targetPipelinesQueueLength = defaultTargetPipelinesQueueLength
 
@@ -238,23 +245,28 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 	}
 
 	if val, ok := config.TriggerMetadata["poolName"]; ok && val != "" {
-		var err error
-		poolID, err := getPoolIDFromName(ctx, val, &meta, httpClient)
+		meta.poolName = config.TriggerMetadata["poolName"]
+	} else {
+		meta.poolName = ""
+	}
+
+	if val, ok := config.TriggerMetadata["poolID"]; ok && val != "" {
+		poolID, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error parsing poolID: %w", err)
 		}
 		meta.poolID = poolID
 	} else {
-		if val, ok := config.TriggerMetadata["poolID"]; ok && val != "" {
-			var err error
-			poolID, err := validatePoolID(ctx, val, &meta, httpClient)
-			if err != nil {
-				return nil, err
-			}
-			meta.poolID = poolID
-		} else {
-			return nil, fmt.Errorf("no poolName or poolID given")
+		meta.poolID = -1
+	}
+
+	meta.unsafeSsl = false
+	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok && val != "" {
+		unsafeSslValue, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing unsafeSsl: %w", err)
 		}
+		meta.unsafeSsl = unsafeSslValue
 	}
 
 	// Trim any trailing new lines from the Azure Pipelines PAT
@@ -264,8 +276,8 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 	return &meta, nil
 }
 
-func getPoolIDFromName(ctx context.Context, poolName string, metadata *azurePipelinesMetadata, httpClient *http.Client) (int, error) {
-	url := fmt.Sprintf("%s/_apis/distributedtask/pools?poolName=%s", metadata.organizationURL, poolName)
+func getPoolIDFromName(ctx context.Context, metadata *azurePipelinesMetadata, httpClient *http.Client) (int, error) {
+	url := fmt.Sprintf("%s/_apis/distributedtask/pools?poolName=%s", metadata.organizationURL, metadata.poolName)
 	body, err := getAzurePipelineRequest(ctx, url, metadata, httpClient)
 	if err != nil {
 		return -1, err
@@ -279,21 +291,21 @@ func getPoolIDFromName(ctx context.Context, poolName string, metadata *azurePipe
 
 	count := len(result.Value)
 	if count == 0 {
-		return -1, fmt.Errorf("agent pool with name `%s` not found", poolName)
+		return -1, fmt.Errorf("agent pool with name `%s` not found", metadata.poolName)
 	}
 
 	if count != 1 {
-		return -1, fmt.Errorf("found %d agent pool with name `%s`", count, poolName)
+		return -1, fmt.Errorf("found %d agent pool with name `%s`", count, metadata.poolName)
 	}
 
 	return result.Value[0].ID, nil
 }
 
-func validatePoolID(ctx context.Context, poolID string, metadata *azurePipelinesMetadata, httpClient *http.Client) (int, error) {
-	url := fmt.Sprintf("%s/_apis/distributedtask/pools?poolID=%s", metadata.organizationURL, poolID)
+func validatePoolID(ctx context.Context, metadata *azurePipelinesMetadata, httpClient *http.Client) (int, error) {
+	url := fmt.Sprintf("%s/_apis/distributedtask/pools?poolID=%d", metadata.organizationURL, metadata.poolID)
 	body, err := getAzurePipelineRequest(ctx, url, metadata, httpClient)
 	if err != nil {
-		return -1, fmt.Errorf("agent pool with id `%s` not found: %w", poolID, err)
+		return -1, fmt.Errorf("agent pool with id `%d` not found: %w", metadata.poolID, err)
 	}
 
 	var result azurePipelinesPoolIDResponse
@@ -303,6 +315,30 @@ func validatePoolID(ctx context.Context, poolID string, metadata *azurePipelines
 	}
 
 	return result.ID, nil
+}
+
+func validateAzurePipelinesMetadata(ctx context.Context, meta *azurePipelinesMetadata, httpClient *http.Client) error {
+	if meta.poolName != "" {
+		var err error
+		poolID, err := getPoolIDFromName(ctx, meta, httpClient)
+		if err != nil {
+			return err
+		}
+		meta.poolID = int64(poolID)
+	} else {
+		if meta.poolID != -1 {
+			var err error
+			poolID, err := validatePoolID(ctx, meta, httpClient)
+			if err != nil {
+				return err
+			}
+			meta.poolID = int64(poolID)
+		} else {
+			return fmt.Errorf("no poolName or poolID given")
+		}
+	}
+
+	return nil
 }
 
 func getAzurePipelineRequest(ctx context.Context, url string, metadata *azurePipelinesMetadata, httpClient *http.Client) ([]byte, error) {
