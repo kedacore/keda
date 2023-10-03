@@ -160,13 +160,15 @@ func parseAzureDataExplorerAuthParams(config *ScalerConfig, logger logr.Logger) 
 		}
 		metadata.ClientID = clientID
 
-		clientSecretFromEnv, err := getParameterFromConfig(config, "clientSecretFromEnv", true)
+		clientSecretEnVar, err := getParameterFromConfig(config, "clientSecretFromEnv", true)
 		if err != nil {
 			return nil, err
 		}
+		clientSecretFromEnv := os.Getenv(clientSecretEnVar)
+
 		var clientSecretFromTrigger string
 		if val, ok := config.TriggerMetadata["clientSecret"]; ok {
-			clientSecretFromTrigger = os.Getenv(val)
+			clientSecretFromTrigger = val
 		}
 
 		if clientSecretFromTrigger != "" {

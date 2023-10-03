@@ -156,7 +156,7 @@ func (s *externalScaler) Close(context.Context) error {
 func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
 	var result []v2.MetricSpec
 
-	grpcClient, err := getClientForConnectionPool(s.metadata, s.logger)
+	grpcClient, err := getClientForConnectionPool(s.metadata)
 	if err != nil {
 		s.logger.Error(err, "error building grpc connection")
 		return result
@@ -191,7 +191,7 @@ func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2.Metri
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *externalScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	var metrics []external_metrics.ExternalMetricValue
-	grpcClient, err := getClientForConnectionPool(s.metadata, s.logger)
+	grpcClient, err := getClientForConnectionPool(s.metadata)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
@@ -232,7 +232,7 @@ func (s *externalPushScaler) Run(ctx context.Context, active chan<- bool) {
 	defer close(active)
 	// It's possible for the connection to get terminated anytime, we need to run this in a retry loop
 	runWithLog := func() {
-		grpcClient, err := getClientForConnectionPool(s.metadata, s.logger)
+		grpcClient, err := getClientForConnectionPool(s.metadata)
 		if err != nil {
 			s.logger.Error(err, "error running internalRun")
 			return
@@ -293,7 +293,7 @@ var connectionPoolMutex sync.Mutex
 
 // getClientForConnectionPool returns a grpcClient and a done() Func. The done() function must be called once the client is no longer
 // in use to clean up the shared grpc.ClientConn
-func getClientForConnectionPool(metadata externalScalerMetadata, logger logr.Logger) (pb.ExternalScalerClient, error) {
+func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalScalerClient, error) {
 	connectionPoolMutex.Lock()
 	defer connectionPoolMutex.Unlock()
 

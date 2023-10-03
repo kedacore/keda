@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"os"
 
 	"github.com/go-logr/logr"
 
@@ -59,45 +60,45 @@ var testDataExplorerMetadataWithClientAndSecret = []parseDataExplorerMetadataTes
 	// Empty metadata - fail
 	{map[string]string{}, true},
 	// Missing tenantId - fail
-	{map[string]string{"tenantId": "", "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, true},
+	{map[string]string{"tenantId": "", "clientId": aadAppClientID, "clientSecretFromEnv": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, true},
 	// Missing clientId - fail
-	{map[string]string{"tenantId": azureTenantID, "clientId": "", "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, true},
+	{map[string]string{"tenantId": azureTenantID, "clientId": "", "clientSecretFromEnv": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, true},
 	// Missing clientSecret - fail
-	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": "", "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, true},
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecretFromEnv": "", "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, true},
 	// Missing endpoint - fail
-	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": "", "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, true},
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecretFromEnv": aadAppSecret, "endpoint": "", "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, true},
 	// Missing databaseName - fail
-	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": "", "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, true},
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecretFromEnv": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": "", "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, true},
 	// Missing query - fail
-	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": "", "threshold": dataExplorerThreshold}, true},
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecretFromEnv": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": "", "threshold": dataExplorerThreshold}, true},
 	// Missing threshold - fail
-	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": ""}, true},
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecretFromEnv": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": ""}, true},
 	// Invalid activationThreshold - fail
-	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": "1", "activationThreshold": "A"}, true},
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecretFromEnv": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": "1", "activationThreshold": "A"}, true},
 	// known cloud
-	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold,
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecretFromEnv": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold,
 		"cloud": "azureChinaCloud"}, false},
 	// private cloud
-	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold,
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecretFromEnv": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold,
 		"cloud": "private", "activeDirectoryEndpoint": activeDirectoryEndpoint}, false},
 	// private cloud - missing active directory endpoint - fail
-	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold,
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecretFromEnv": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold,
 		"cloud": "private"}, true},
 	// All parameters set - pass
-	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, false},
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecretFromEnv": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, false},
 }
 
 var testDataExplorerMetadataWithPodIdentity = []parseDataExplorerMetadataTestData{
 	// Empty metadata - fail
 	{map[string]string{}, true},
 	// Missing endpoint - fail
-	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": "", "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, true},
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecretFromEnv": aadAppSecret, "endpoint": "", "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, true},
 	// Missing query - fail
-	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": "", "threshold": dataExplorerThreshold}, true},
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecretFromEnv": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": "", "threshold": dataExplorerThreshold}, true},
 	// Missing threshold - fail
-	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": ""}, true},
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecretFromEnv": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": ""}, true},
 	// All parameters set - pass
-	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, false},
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecretFromEnv": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, false},
 }
 
 var testDataExplorerMetricIdentifiers = []dataExplorerMetricIdentifier{
@@ -108,7 +109,9 @@ var testDataExplorerMetricIdentifiers = []dataExplorerMetricIdentifier{
 func TestDataExplorerParseMetadata(t *testing.T) {
 	// Auth through clientId, clientSecret and tenantId
 	for _, testData := range testDataExplorerMetadataWithClientAndSecret {
-		_, err := parseAzureDataExplorerMetadata(
+		// Setting the key and value of the environment variable to be the same 
+		_ = os.Setenv(testData.metadata["clientSecretFromEnv"], testData.metadata["clientSecretFromEnv"])
+		meta, err := parseAzureDataExplorerMetadata(
 			&ScalerConfig{
 				ResolvedEnv:     dataExplorerResolvedEnv,
 				TriggerMetadata: testData.metadata,
@@ -121,6 +124,9 @@ func TestDataExplorerParseMetadata(t *testing.T) {
 		}
 		if testData.isError && err == nil {
 			t.Error("Expected error but got success")
+		}
+		if !testData.isError && err == nil && meta.ClientSecret != testData.metadata["clientSecretFromEnv"] {
+			t.Errorf("Expected clientSecret to be %s but got %s", testData.metadata["clientSecretFromEnv"], meta.ClientSecret)	
 		}
 	}
 
