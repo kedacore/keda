@@ -19,8 +19,8 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"testing"
 	"os"
+	"testing"
 
 	"github.com/go-logr/logr"
 
@@ -109,7 +109,7 @@ var testDataExplorerMetricIdentifiers = []dataExplorerMetricIdentifier{
 func TestDataExplorerParseMetadata(t *testing.T) {
 	// Auth through clientId, clientSecret and tenantId
 	for _, testData := range testDataExplorerMetadataWithClientAndSecret {
-		// Setting the key and value of the environment variable to be the same 
+		// Setting the key and value of the environment variable to be the same
 		_ = os.Setenv(testData.metadata["clientSecretFromEnv"], testData.metadata["clientSecretFromEnv"])
 		meta, err := parseAzureDataExplorerMetadata(
 			&ScalerConfig{
@@ -126,7 +126,7 @@ func TestDataExplorerParseMetadata(t *testing.T) {
 			t.Error("Expected error but got success")
 		}
 		if !testData.isError && err == nil && meta.ClientSecret != testData.metadata["clientSecretFromEnv"] {
-			t.Errorf("Expected clientSecret to be %s but got %s", testData.metadata["clientSecretFromEnv"], meta.ClientSecret)	
+			t.Errorf("Expected clientSecret to be %s but got %s", testData.metadata["clientSecretFromEnv"], meta.ClientSecret)
 		}
 	}
 
