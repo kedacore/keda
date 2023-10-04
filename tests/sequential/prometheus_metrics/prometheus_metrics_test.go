@@ -756,6 +756,7 @@ func checkWebhookValues(t *testing.T, families map[string]*promModel.MetricFamil
 
 func testPauseMetric(t *testing.T, data templateData) {
 	t.Log("--- testing scaleobject pause metric ---")
+	time.Sleep(5)
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 
