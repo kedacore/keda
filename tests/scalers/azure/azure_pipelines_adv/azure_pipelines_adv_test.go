@@ -97,7 +97,7 @@ spec:
           preStop:
             exec:
               command: ["/bin/sleep","60"]
-        image: eldarrin/azure:main
+        image: ghcr.io/kedacore/tests-azure-pipelines-advagent:latest
         env:
           - name: AZP_URL
             value: {{.URL}}
@@ -128,7 +128,7 @@ spec:
       spec:
         containers:
         - name: {{.ScaledJobName}}
-          image: eldarrin/azure:main
+          image: ghcr.io/kedacore/tests-azure-pipelines-advagent:latest
           env:
             - name: AZP_URL
               value: {{.URL}}
@@ -168,7 +168,7 @@ spec:
       spec:
         containers:
         - name: {{.ScaledJobName}}
-          image: eldarrin/azure:main
+          image: ghcr.io/kedacore/tests-azure-pipelines-advagent:latest
           env:
             - name: AZP_URL
               value: {{.URL}}
@@ -210,7 +210,7 @@ spec:
       spec:
         containers:
         - name: {{.ScaledJobName}}
-          image: eldarrin/azure:main
+          image: ghcr.io/kedacore/tests-azure-pipelines-advagent:latest
           env:
             - name: AZP_URL
               value: {{.URL}}
@@ -250,7 +250,7 @@ spec:
       spec:
         containers:
         - name: {{.ScaledJobName}}
-          image: eldarrin/azure:main
+          image: ghcr.io/kedacore/tests-azure-pipelines-advagent:latest
           env:
             - name: AZP_URL
               value: {{.URL}}
@@ -322,7 +322,7 @@ func TestScaler(t *testing.T) {
 	testJobScaleIn(t, kc)
 	KubectlDeleteWithTemplate(t, data, "demandRequireAllScaledJobTemplate", demandRequireAllScaledJobTemplate)
 
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 	CleanUpAdo(t, data)
 }
 

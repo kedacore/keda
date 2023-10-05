@@ -3,8 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.11.1
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.13.0
   name: scaledobjects.keda.sh
 spec:
   group: keda.sh
@@ -44,6 +43,9 @@ spec:
       type: string
     - jsonPath: .status.conditions[?(@.type=="Fallback")].status
       name: Fallback
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Paused")].status
+      name: Paused
       type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
@@ -97,18 +99,18 @@ spec:
                                     which must hold true for a specified past interval.
                                   properties:
                                     periodSeconds:
-                                      description: PeriodSeconds specifies the window
+                                      description: periodSeconds specifies the window
                                         of time for which the policy should hold true.
                                         PeriodSeconds must be greater than zero and
                                         less than or equal to 1800 (30 min).
                                       format: int32
                                       type: integer
                                     type:
-                                      description: Type is used to specify the scaling
+                                      description: type is used to specify the scaling
                                         policy.
                                       type: string
                                     value:
-                                      description: Value contains the amount of change
+                                      description: value contains the amount of change
                                         which is permitted by the policy. It must
                                         be greater than zero
                                       format: int32
@@ -126,7 +128,7 @@ spec:
                                   Max is used.
                                 type: string
                               stabilizationWindowSeconds:
-                                description: 'StabilizationWindowSeconds is the number
+                                description: 'stabilizationWindowSeconds is the number
                                   of seconds for which past recommendations should
                                   be considered while scaling up or scaling down.
                                   StabilizationWindowSeconds must be greater than
@@ -154,18 +156,18 @@ spec:
                                     which must hold true for a specified past interval.
                                   properties:
                                     periodSeconds:
-                                      description: PeriodSeconds specifies the window
+                                      description: periodSeconds specifies the window
                                         of time for which the policy should hold true.
                                         PeriodSeconds must be greater than zero and
                                         less than or equal to 1800 (30 min).
                                       format: int32
                                       type: integer
                                     type:
-                                      description: Type is used to specify the scaling
+                                      description: type is used to specify the scaling
                                         policy.
                                       type: string
                                     value:
-                                      description: Value contains the amount of change
+                                      description: value contains the amount of change
                                         which is permitted by the policy. It must
                                         be greater than zero
                                       format: int32
@@ -183,7 +185,7 @@ spec:
                                   Max is used.
                                 type: string
                               stabilizationWindowSeconds:
-                                description: 'StabilizationWindowSeconds is the number
+                                description: 'stabilizationWindowSeconds is the number
                                   of seconds for which past recommendations should
                                   be considered while scaling up or scaling down.
                                   StabilizationWindowSeconds must be greater than
@@ -201,6 +203,22 @@ spec:
                     type: object
                   restoreToOriginalReplicaCount:
                     type: boolean
+                  scalingModifiers:
+                    description: ScalingModifiers describes advanced scaling logic
+                      options like formula
+                    properties:
+                      activationTarget:
+                        type: string
+                      formula:
+                        type: string
+                      metricType:
+                        description: MetricTargetType specifies the type of metric
+                          being targeted, and should be either "Value", "AverageValue",
+                          or "Utilization"
+                        type: string
+                      target:
+                        type: string
+                    type: object
                 type: object
               cooldownPeriod:
                 format: int32
@@ -231,8 +249,7 @@ spec:
                 format: int32
                 type: integer
               scaleTargetRef:
-                description: ScaleTarget holds the a reference to the scale target
-                  Object
+                description: ScaleTarget holds the reference to the scale target Object
                 properties:
                   apiVersion:
                     type: string
@@ -250,7 +267,7 @@ spec:
                   description: ScaleTriggers reference the scaler that will be used
                   properties:
                     authenticationRef:
-                      description: ScaledObjectAuthRef points to the TriggerAuthentication
+                      description: AuthenticationRef points to the TriggerAuthentication
                         or ClusterTriggerAuthentication object that is used to authenticate
                         the scaler with the environment
                       properties:
@@ -290,6 +307,8 @@ spec:
           status:
             description: ScaledObjectStatus is the status for a ScaledObject resource
             properties:
+              compositeScalerName:
+                type: string
               conditions:
                 description: Conditions an array representation to store multiple
                   Conditions

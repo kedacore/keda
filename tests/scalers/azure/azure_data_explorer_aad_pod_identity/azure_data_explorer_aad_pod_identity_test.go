@@ -134,7 +134,7 @@ func TestScaler(t *testing.T) {
 	// cleanup
 	templates = append(templates, Template{Name: "triggerAuthTemplate", Config: triggerAuthTemplate})
 	templates = append(templates, Template{Name: "scaledObjectTemplate", Config: scaledObjectTemplate})
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {

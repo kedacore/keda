@@ -32,7 +32,7 @@ type Message struct {
 	// The delivery-annotations section is used for delivery-specific non-standard
 	// properties at the head of the message. Delivery annotations convey information
 	// from the sending peer to the receiving peer.
-	DeliveryAnnotations encoding.Annotations
+	DeliveryAnnotations Annotations
 	// If the recipient does not understand the annotation it cannot be acted upon
 	// and its effects (such as any implied propagation) cannot be acted upon.
 	// Annotations might be specific to one implementation, or common to multiple
@@ -48,7 +48,7 @@ type Message struct {
 
 	// The message-annotations section is used for properties of the message which
 	// are aimed at the infrastructure.
-	Annotations encoding.Annotations
+	Annotations Annotations
 	// The message-annotations section is used for properties of the message which
 	// are aimed at the infrastructure and SHOULD be propagated across every
 	// delivery step. Message annotations convey information about the message.
@@ -76,10 +76,12 @@ type Message struct {
 	// The application-properties section is a part of the bare message used for
 	// structured application data. Intermediaries can use the data within this
 	// structure for the purposes of filtering or routing.
-	ApplicationProperties map[string]interface{}
+	ApplicationProperties map[string]any
 	// The keys of this map are restricted to be of type string (which excludes
 	// the possibility of a null key) and the values are restricted to be of
 	// simple types only, that is, excluding map, list, and array types.
+
+	// NOTE: the Data, Value, and Sequence fields are mutually exclusive.
 
 	// Data payloads.
 	// A data section contains opaque binary data.
@@ -87,33 +89,30 @@ type Message struct {
 
 	// Value payload.
 	// An amqp-value section contains a single AMQP value.
-	Value interface{}
+	Value any
 
 	// Sequence will contain AMQP sequence sections from the body of the message.
 	// An amqp-sequence section contains an AMQP sequence.
-	Sequence [][]interface{}
+	Sequence [][]any
 
 	// The footer section is used for details about the message or delivery which
 	// can only be calculated or evaluated once the whole bare message has been
 	// constructed or seen (for example message hashes, HMACs, signatures and
 	// encryption details).
-	Footer encoding.Annotations
+	Footer Annotations
 
-	// Mark the message as settled when LinkSenderSettle is ModeMixed.
-	//
-	// This field is ignored when LinkSenderSettle is not ModeMixed.
-	SendSettled bool
-
-	link       *link  // the receiving link
 	deliveryID uint32 // used when sending disposition
 	settled    bool   // whether transfer was settled by sender
 }
 
-// NewMessage returns a *Message with data as the payload.
+// NewMessage returns a *Message with data as the first payload in the Data field.
 //
 // This constructor is intended as a helper for basic Messages with a
 // single data payload. It is valid to construct a Message directly for
 // more complex usages.
+//
+// To create a Message using the Value or Sequence fields, don't use this
+// constructor, create a new Message instead.
 func NewMessage(data []byte) *Message {
 	return &Message{
 		Data: [][]byte{data},
@@ -129,23 +128,11 @@ func (m *Message) GetData() []byte {
 	return m.Data[0]
 }
 
-// LinkName returns the receiving link name or the empty string.
-func (m *Message) LinkName() string {
-	if m.link != nil {
-		return m.link.Key.name
-	}
-	return ""
-}
-
 // MarshalBinary encodes the message into binary form.
 func (m *Message) MarshalBinary() ([]byte, error) {
 	buf := &buffer.Buffer{}
 	err := m.Marshal(buf)
 	return buf.Detach(), err
-}
-
-func (m *Message) shouldSendDisposition() bool {
-	return !m.settled
 }
 
 func (m *Message) Marshal(wr *buffer.Buffer) error {
@@ -242,7 +229,7 @@ func (m *Message) Unmarshal(r *buffer.Buffer) error {
 		}
 
 		var (
-			section interface{}
+			section any
 			// section header is read from r before
 			// unmarshaling section is set to true
 			discardHeader = true
@@ -281,7 +268,7 @@ func (m *Message) Unmarshal(r *buffer.Buffer) error {
 		case encoding.TypeCodeAMQPSequence:
 			r.Skip(int(headerLength))
 
-			var data []interface{}
+			var data []any
 			err = encoding.Unmarshal(r, &data)
 			if err != nil {
 				return err
@@ -353,35 +340,6 @@ func (h *MessageHeader) Unmarshal(r *buffer.Buffer) error {
 	}...)
 }
 
-// AMQP types
-type (
-	// AMQPAddress corresponds to the 'address' type in the AMQP spec.
-	// <type name="address-string" class="restricted" source="string" provides="address"/>
-	AMQPAddress = string
-
-	// AMQPMessageID corresponds to the 'message-id' type in the AMQP spec. Internally it can
-	// be one of the following:
-	// - uint64:    <type name="message-id-ulong" class="restricted" source="ulong" provides="message-id"/>
-	// - amqp.UUID: <type name="message-id-uuid" class="restricted" source="uuid" provides="message-id"/>
-	// - []byte:    <type name="message-id-binary" class="restricted" source="binary" provides="message-id"/>
-	// - string:    <type name="message-id-string" class="restricted" source="string" provides="message-id"/>
-	AMQPMessageID = interface{}
-
-	// AMQPSymbol corresponds to the 'symbol' type in the AMQP spec.
-	// <type name="symbol" class="primitive"/>
-	// And either:
-	// - variable-width, 1 byte size	up to 2^8 - 1 seven bit ASCII characters representing a symbolic value
-	// - variable-width, 4 byte size	up to 2^32 - 1 seven bit ASCII characters representing a symbolic value
-	AMQPSymbol = string
-
-	// AMQPSequenceNumber corresponds to the `sequence-no` type in the AMQP spec.
-	// <type name="sequence-no" class="restricted" source="uint"/>
-	AMQPSequenceNumber = uint32
-
-	// AMQPBinary corresponds to the `binary` type in the AMQP spec.
-	AMQPBinary = []byte
-)
-
 /*
 <type name="properties" class="composite" source="list" provides="section">
     <descriptor name="amqp:properties:list" code="0x00000000:0x00000073"/>
@@ -408,25 +366,31 @@ type MessageProperties struct {
 	// such a way that it is assured to be globally unique. A broker MAY discard a
 	// message as a duplicate if the value of the message-id matches that of a
 	// previously received message sent to the same node.
-	MessageID AMQPMessageID // uint64, UUID, []byte, or string
+	//
+	// The value is restricted to the following types
+	//   - uint64, UUID, []byte, or string
+	MessageID any
 
 	// The identity of the user responsible for producing the message.
 	// The client sets this value, and it MAY be authenticated by intermediaries.
-	UserID AMQPBinary
+	UserID []byte
 
 	// The to field identifies the node that is the intended destination of the message.
 	// On any given transfer this might not be the node at the receiving end of the link.
-	To *AMQPAddress
+	To *string
 
 	// A common field for summary information about the message content and purpose.
 	Subject *string
 
 	// The address of the node to send replies to.
-	ReplyTo *AMQPAddress
+	ReplyTo *string
 
 	// This is a client-specific id that can be used to mark or identify messages
 	// between clients.
-	CorrelationID AMQPMessageID // uint64, UUID, []byte, or string
+	//
+	// The value is restricted to the following types
+	//   - uint64, UUID, []byte, or string
+	CorrelationID any
 
 	// The RFC-2046 [RFC2046] MIME type for the message's application-data section
 	// (body). As per RFC-2046 [RFC2046] this can contain a charset parameter defining
@@ -439,7 +403,7 @@ type MessageProperties struct {
 	//
 	// When using an application-data section with a section code other than data,
 	// content-type SHOULD NOT be set.
-	ContentType *AMQPSymbol
+	ContentType *string
 
 	// The content-encoding property is used as a modifier to the content-type.
 	// When present, its value indicates what additional content encodings have been
@@ -464,7 +428,7 @@ type MessageProperties struct {
 	//
 	// Implementations SHOULD NOT specify multiple content-encoding values except as to
 	// be compatible with messages originally sent with other protocols, e.g. HTTP or SMTP.
-	ContentEncoding *AMQPSymbol
+	ContentEncoding *string
 
 	// An absolute time when this message is considered to be expired.
 	AbsoluteExpiryTime *time.Time
@@ -476,7 +440,9 @@ type MessageProperties struct {
 	GroupID *string
 
 	// The relative position of this message within its group.
-	GroupSequence *AMQPSequenceNumber // RFC-1982 sequence number
+	//
+	// The value is defined as a RFC-1982 sequence number
+	GroupSequence *uint32
 
 	// This is a client-specific id that is used so that client can send replies to this
 	// message to a specific group.
@@ -524,4 +490,5 @@ func (p *MessageProperties) Unmarshal(r *buffer.Buffer) error {
 // String keys are encoded as AMQP Symbols.
 type Annotations = encoding.Annotations
 
+// UUID is a 128 bit identifier as defined in RFC 4122.
 type UUID = encoding.UUID

@@ -2,7 +2,7 @@
 Package value holds Kusto data value representations. All types provide a Kusto that
 stores the native value and Valid which indicates if the value was set or was null.
 
-Kusto Value
+# Kusto Value
 
 A value.Kusto can hold types that represent Kusto Scalar types that define column data.
 We represent that with an interface:

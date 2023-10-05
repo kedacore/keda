@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// Copyright 2023 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 // limitations under the License.
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
-//
-// Author Ewout Prangsma
 //
 
 package http
@@ -204,18 +202,12 @@ func (c *httpConnection) NewRequest(method, path string) (driver.Request, error)
 		return nil, driver.WithStack(driver.InvalidArgumentError{Message: fmt.Sprintf("Invalid method '%s'", method)})
 	}
 
-	ct := c.contentType
-	if ct != driver.ContentTypeJSON && strings.Contains(path, "_api/gharial") {
-		// Currently (3.1.18) calls to this API do not work well with vpack.
-		ct = driver.ContentTypeJSON
-	}
-
 	r := &httpRequest{
 		method: method,
 		path:   path,
 	}
 
-	switch ct {
+	switch c.contentType {
 	case driver.ContentTypeJSON:
 		r.bodyBuilder = NewJsonBodyBuilder()
 		return r, nil

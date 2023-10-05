@@ -84,53 +84,58 @@ func SessionFromContext(ctx context.Context) Session {
 // https://www.mongodb.com/docs/manual/core/transactions/.
 //
 // Implementations of Session are not safe for concurrent use by multiple goroutines.
-//
-// StartTransaction starts a new transaction, configured with the given options, on this session. This method will
-// return an error if there is already a transaction in-progress for this session.
-//
-// CommitTransaction commits the active transaction for this session. This method will return an error if there is no
-// active transaction for this session or the transaction has been aborted.
-//
-// AbortTransaction aborts the active transaction for this session. This method will return an error if there is no
-// active transaction for this session or the transaction has been committed or aborted.
-//
-// WithTransaction starts a transaction on this session and runs the fn callback. Errors with the
-// TransientTransactionError and UnknownTransactionCommitResult labels are retried for up to 120 seconds. Inside the
-// callback, sessCtx must be used as the Context parameter for any operations that should be part of the transaction. If
-// the ctx parameter already has a Session attached to it, it will be replaced by this session. The fn callback may be
-// run multiple times during WithTransaction due to retry attempts, so it must be idempotent. Non-retryable operation
-// errors or any operation errors that occur after the timeout expires will be returned without retrying. If the
-// callback fails, the driver will call AbortTransaction. Because this method must succeed to ensure that server-side
-// resources are properly cleaned up, context deadlines and cancellations will not be respected during this call. For a
-// usage example, see the Client.StartSession method documentation.
-//
-// ClusterTime, OperationTime, Client, and ID return the session's current cluster time, the session's current operation
-// time, the Client associated with the session, and the ID document associated with the session, respectively. The ID
-// document for a session is in the form {"id": <BSON binary value>}.
-//
-// EndSession method should abort any existing transactions and close the session.
-//
-// AdvanceClusterTime advances the cluster time for a session. This method will return an error if the session has ended.
-//
-// AdvanceOperationTime advances the operation time for a session. This method will return an error if the session has
-// ended.
 type Session interface {
-	// Functions to modify session state.
+	// StartTransaction starts a new transaction, configured with the given options, on this
+	// session. This method returns an error if there is already a transaction in-progress for this
+	// session.
 	StartTransaction(...*options.TransactionOptions) error
+
+	// AbortTransaction aborts the active transaction for this session. This method returns an error
+	// if there is no active transaction for this session or if the transaction has been committed
+	// or aborted.
 	AbortTransaction(context.Context) error
+
+	// CommitTransaction commits the active transaction for this session. This method returns an
+	// error if there is no active transaction for this session or if the transaction has been
+	// aborted.
 	CommitTransaction(context.Context) error
-	WithTransaction(ctx context.Context, fn func(sessCtx SessionContext) (interface{}, error),
+
+	// WithTransaction starts a transaction on this session and runs the fn callback. Errors with
+	// the TransientTransactionError and UnknownTransactionCommitResult labels are retried for up to
+	// 120 seconds. Inside the callback, the SessionContext must be used as the Context parameter
+	// for any operations that should be part of the transaction. If the ctx parameter already has a
+	// Session attached to it, it will be replaced by this session. The fn callback may be run
+	// multiple times during WithTransaction due to retry attempts, so it must be idempotent.
+	// Non-retryable operation errors or any operation errors that occur after the timeout expires
+	// will be returned without retrying. If the callback fails, the driver will call
+	// AbortTransaction. Because this method must succeed to ensure that server-side resources are
+	// properly cleaned up, context deadlines and cancellations will not be respected during this
+	// call. For a usage example, see the Client.StartSession method documentation.
+	WithTransaction(ctx context.Context, fn func(ctx SessionContext) (interface{}, error),
 		opts ...*options.TransactionOptions) (interface{}, error)
+
+	// EndSession aborts any existing transactions and close the session.
 	EndSession(context.Context)
 
-	// Functions to retrieve session properties.
+	// ClusterTime returns the current cluster time document associated with the session.
 	ClusterTime() bson.Raw
+
+	// OperationTime returns the current operation time document associated with the session.
 	OperationTime() *primitive.Timestamp
+
+	// Client the Client associated with the session.
 	Client() *Client
+
+	// ID returns the current ID document associated with the session. The ID document is in the
+	// form {"id": <BSON binary value>}.
 	ID() bson.Raw
 
-	// Functions to modify mutable session properties.
+	// AdvanceClusterTime advances the cluster time for a session. This method returns an error if
+	// the session has ended.
 	AdvanceClusterTime(bson.Raw) error
+
+	// AdvanceOperationTime advances the operation time for a session. This method returns an error
+	// if the session has ended.
 	AdvanceOperationTime(*primitive.Timestamp) error
 
 	session()
@@ -175,7 +180,7 @@ func (s *sessionImpl) EndSession(ctx context.Context) {
 }
 
 // WithTransaction implements the Session interface.
-func (s *sessionImpl) WithTransaction(ctx context.Context, fn func(sessCtx SessionContext) (interface{}, error),
+func (s *sessionImpl) WithTransaction(ctx context.Context, fn func(ctx SessionContext) (interface{}, error),
 	opts ...*options.TransactionOptions) (interface{}, error) {
 	timeout := time.NewTimer(withTransactionTimeout)
 	defer timeout.Stop()

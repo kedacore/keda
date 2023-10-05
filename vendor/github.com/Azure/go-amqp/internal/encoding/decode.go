@@ -1,3 +1,5 @@
+// Copyright (C) 2017 Kale Blankenship
+// Portions Copyright (c) Microsoft Corporation
 package encoding
 
 import (
@@ -28,10 +30,10 @@ type unmarshaler interface {
 // If i is a pointer to a pointer (**Type), it will be dereferenced and a new instance
 // of (*Type) is allocated via reflection.
 //
-// Common map types (map[string]string, map[Symbol]interface{}, and
-// map[interface{}]interface{}), will be decoded via conversion to the mapStringAny,
+// Common map types (map[string]string, map[Symbol]any, and
+// map[any]any), will be decoded via conversion to the mapStringAny,
 // mapSymbolAny, and mapAnyAny types.
-func Unmarshal(r *buffer.Buffer, i interface{}) error {
+func Unmarshal(r *buffer.Buffer, i any) error {
 	if tryReadNull(r) {
 		return nil
 	}
@@ -169,13 +171,13 @@ func Unmarshal(r *buffer.Buffer, i interface{}) error {
 		return (*arrayTimestamp)(t).Unmarshal(r)
 	case *[]UUID:
 		return (*arrayUUID)(t).Unmarshal(r)
-	case *[]interface{}:
+	case *[]any:
 		return (*list)(t).Unmarshal(r)
-	case *map[interface{}]interface{}:
+	case *map[any]any:
 		return (*mapAnyAny)(t).Unmarshal(r)
-	case *map[string]interface{}:
+	case *map[string]any:
 		return (*mapStringAny)(t).Unmarshal(r)
-	case *map[Symbol]interface{}:
+	case *map[Symbol]any:
 		return (*mapSymbolAny)(t).Unmarshal(r)
 	case *DeliveryState:
 		type_, _, err := PeekMessageType(r.Bytes())
@@ -199,7 +201,7 @@ func Unmarshal(r *buffer.Buffer, i interface{}) error {
 		}
 		return Unmarshal(r, *t)
 
-	case *interface{}:
+	case *any:
 		v, err := ReadAny(r)
 		if err != nil {
 			return err
@@ -286,7 +288,7 @@ func UnmarshalComposite(r *buffer.Buffer, type_ AMQPType, fields ...UnmarshalFie
 // An optional nullHandler can be set. If the composite field being unmarshaled
 // is null and handleNull is not nil, nullHandler will be called.
 type UnmarshalField struct {
-	Field      interface{}
+	Field      any
 	HandleNull NullHandler
 }
 
@@ -477,7 +479,7 @@ func readBinary(r *buffer.Buffer) ([]byte, error) {
 	return append([]byte(nil), buf...), nil
 }
 
-func ReadAny(r *buffer.Buffer) (interface{}, error) {
+func ReadAny(r *buffer.Buffer) (any, error) {
 	if tryReadNull(r) {
 		return nil, nil
 	}
@@ -578,8 +580,8 @@ func ReadAny(r *buffer.Buffer) (interface{}, error) {
 	}
 }
 
-func readAnyMap(r *buffer.Buffer) (interface{}, error) {
-	var m map[interface{}]interface{}
+func readAnyMap(r *buffer.Buffer) (any, error) {
+	var m map[any]any
 	err := (*mapAnyAny)(&m).Unmarshal(r)
 	if err != nil {
 		return nil, err
@@ -602,7 +604,7 @@ Loop:
 	}
 
 	if stringKeys {
-		mm := make(map[string]interface{}, len(m))
+		mm := make(map[string]any, len(m))
 		for key, value := range m {
 			switch key := key.(type) {
 			case string:
@@ -617,13 +619,13 @@ Loop:
 	return m, nil
 }
 
-func readAnyList(r *buffer.Buffer) (interface{}, error) {
-	var a []interface{}
+func readAnyList(r *buffer.Buffer) (any, error) {
+	var a []any
 	err := (*list)(&a).Unmarshal(r)
 	return a, err
 }
 
-func readAnyArray(r *buffer.Buffer) (interface{}, error) {
+func readAnyArray(r *buffer.Buffer) (any, error) {
 	// get the array type
 	buf := r.Bytes()
 	if len(buf) < 1 {
@@ -713,7 +715,7 @@ func readAnyArray(r *buffer.Buffer) (interface{}, error) {
 	}
 }
 
-func readComposite(r *buffer.Buffer) (interface{}, error) {
+func readComposite(r *buffer.Buffer) (any, error) {
 	buf := r.Bytes()
 
 	if len(buf) < 2 {
@@ -891,7 +893,7 @@ func readLong(r *buffer.Buffer) (int64, error) {
 	switch type_ {
 	case TypeCodeSmalllong:
 		n, err := r.ReadByte()
-		return int64(n), err
+		return int64(int8(n)), err
 	case TypeCodeLong:
 		n, err := r.ReadUint64()
 		return int64(n), err
@@ -909,7 +911,7 @@ func readInt32(r *buffer.Buffer) (int32, error) {
 	switch type_ {
 	case TypeCodeSmallint:
 		n, err := r.ReadByte()
-		return int32(n), err
+		return int32(int8(n)), err
 	case TypeCodeInt:
 		n, err := r.ReadUint32()
 		return int32(n), err

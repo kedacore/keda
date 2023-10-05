@@ -27,6 +27,10 @@ type CollectionOptions struct {
 	// the read preference of the Database used to configure the Collection will be used.
 	ReadPreference *readpref.ReadPref
 
+	// BSONOptions configures optional BSON marshaling and unmarshaling
+	// behavior.
+	BSONOptions *BSONOptions
+
 	// Registry is the BSON registry to marshal and unmarshal documents for operations executed on the Collection. The default value
 	// is nil, which means that the registry of the Database used to configure the Collection will be used.
 	Registry *bsoncodec.Registry
@@ -55,6 +59,12 @@ func (c *CollectionOptions) SetReadPreference(rp *readpref.ReadPref) *Collection
 	return c
 }
 
+// SetBSONOptions configures optional BSON marshaling and unmarshaling behavior.
+func (c *CollectionOptions) SetBSONOptions(opts *BSONOptions) *CollectionOptions {
+	c.BSONOptions = opts
+	return c
+}
+
 // SetRegistry sets the value for the Registry field.
 func (c *CollectionOptions) SetRegistry(r *bsoncodec.Registry) *CollectionOptions {
 	c.Registry = r
@@ -63,6 +73,9 @@ func (c *CollectionOptions) SetRegistry(r *bsoncodec.Registry) *CollectionOption
 
 // MergeCollectionOptions combines the given CollectionOptions instances into a single *CollectionOptions in a
 // last-one-wins fashion.
+//
+// Deprecated: Merging options structs will not be supported in Go Driver 2.0. Users should create a
+// single options struct instead.
 func MergeCollectionOptions(opts ...*CollectionOptions) *CollectionOptions {
 	c := Collection()
 

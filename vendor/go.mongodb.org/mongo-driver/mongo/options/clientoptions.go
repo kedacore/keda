@@ -92,6 +92,88 @@ type Credential struct {
 	PasswordSet             bool
 }
 
+// BSONOptions are optional BSON marshaling and unmarshaling behaviors.
+type BSONOptions struct {
+	// UseJSONStructTags causes the driver to fall back to using the "json"
+	// struct tag if a "bson" struct tag is not specified.
+	UseJSONStructTags bool
+
+	// ErrorOnInlineDuplicates causes the driver to return an error if there is
+	// a duplicate field in the marshaled BSON when the "inline" struct tag
+	// option is set.
+	ErrorOnInlineDuplicates bool
+
+	// IntMinSize causes the driver to marshal Go integer values (int, int8,
+	// int16, int32, int64, uint, uint8, uint16, uint32, or uint64) as the
+	// minimum BSON int size (either 32 or 64 bits) that can represent the
+	// integer value.
+	IntMinSize bool
+
+	// NilMapAsEmpty causes the driver to marshal nil Go maps as empty BSON
+	// documents instead of BSON null.
+	//
+	// Empty BSON documents take up slightly more space than BSON null, but
+	// preserve the ability to use document update operations like "$set" that
+	// do not work on BSON null.
+	NilMapAsEmpty bool
+
+	// NilSliceAsEmpty causes the driver to marshal nil Go slices as empty BSON
+	// arrays instead of BSON null.
+	//
+	// Empty BSON arrays take up slightly more space than BSON null, but
+	// preserve the ability to use array update operations like "$push" or
+	// "$addToSet" that do not work on BSON null.
+	NilSliceAsEmpty bool
+
+	// NilByteSliceAsEmpty causes the driver to marshal nil Go byte slices as
+	// empty BSON binary values instead of BSON null.
+	NilByteSliceAsEmpty bool
+
+	// OmitZeroStruct causes the driver to consider the zero value for a struct
+	// (e.g. MyStruct{}) as empty and omit it from the marshaled BSON when the
+	// "omitempty" struct tag option is set.
+	OmitZeroStruct bool
+
+	// StringifyMapKeysWithFmt causes the driver to convert Go map keys to BSON
+	// document field name strings using fmt.Sprint instead of the default
+	// string conversion logic.
+	StringifyMapKeysWithFmt bool
+
+	// AllowTruncatingDoubles causes the driver to truncate the fractional part
+	// of BSON "double" values when attempting to unmarshal them into a Go
+	// integer (int, int8, int16, int32, or int64) struct field. The truncation
+	// logic does not apply to BSON "decimal128" values.
+	AllowTruncatingDoubles bool
+
+	// BinaryAsSlice causes the driver to unmarshal BSON binary field values
+	// that are the "Generic" or "Old" BSON binary subtype as a Go byte slice
+	// instead of a primitive.Binary.
+	BinaryAsSlice bool
+
+	// DefaultDocumentD causes the driver to always unmarshal documents into the
+	// primitive.D type. This behavior is restricted to data typed as
+	// "interface{}" or "map[string]interface{}".
+	DefaultDocumentD bool
+
+	// DefaultDocumentM causes the driver to always unmarshal documents into the
+	// primitive.M type. This behavior is restricted to data typed as
+	// "interface{}" or "map[string]interface{}".
+	DefaultDocumentM bool
+
+	// UseLocalTimeZone causes the driver to unmarshal time.Time values in the
+	// local timezone instead of the UTC timezone.
+	UseLocalTimeZone bool
+
+	// ZeroMaps causes the driver to delete any existing values from Go maps in
+	// the destination value before unmarshaling BSON documents into them.
+	ZeroMaps bool
+
+	// ZeroStructs causes the driver to delete any existing values from Go
+	// structs in the destination value before unmarshaling BSON documents into
+	// them.
+	ZeroStructs bool
+}
+
 // ClientOptions contains options to configure a Client instance. Each option can be set through setter functions. See
 // documentation for each setter function for an explanation of the option.
 type ClientOptions struct {
@@ -108,6 +190,7 @@ type ClientOptions struct {
 	HTTPClient               *http.Client
 	LoadBalanced             *bool
 	LocalThreshold           *time.Duration
+	LoggerOptions            *LoggerOptions
 	MaxConnIdleTime          *time.Duration
 	MaxPoolSize              *uint64
 	MinPoolSize              *uint64
@@ -117,6 +200,7 @@ type ClientOptions struct {
 	ServerMonitor            *event.ServerMonitor
 	ReadConcern              *readconcern.ReadConcern
 	ReadPreference           *readpref.ReadPref
+	BSONOptions              *BSONOptions
 	Registry                 *bsoncodec.Registry
 	ReplicaSet               *string
 	RetryReads               *bool
@@ -580,6 +664,14 @@ func (c *ClientOptions) SetLocalThreshold(d time.Duration) *ClientOptions {
 	return c
 }
 
+// SetLoggerOptions specifies a LoggerOptions containing options for
+// configuring a logger.
+func (c *ClientOptions) SetLoggerOptions(opts *LoggerOptions) *ClientOptions {
+	c.LoggerOptions = opts
+
+	return c
+}
+
 // SetMaxConnIdleTime specifies the maximum amount of time that a connection will remain idle in a connection pool
 // before it is removed from the pool and closed. This can also be set through the "maxIdleTimeMS" URI option (e.g.
 // "maxIdleTimeMS=10000"). The default is 0, meaning a connection can remain unused indefinitely.
@@ -657,6 +749,12 @@ func (c *ClientOptions) SetReadConcern(rc *readconcern.ReadConcern) *ClientOptio
 func (c *ClientOptions) SetReadPreference(rp *readpref.ReadPref) *ClientOptions {
 	c.ReadPreference = rp
 
+	return c
+}
+
+// SetBSONOptions configures optional BSON marshaling and unmarshaling behavior.
+func (c *ClientOptions) SetBSONOptions(opts *BSONOptions) *ClientOptions {
+	c.BSONOptions = opts
 	return c
 }
 
@@ -752,7 +850,8 @@ func (c *ClientOptions) SetTimeout(d time.Duration) *ClientOptions {
 // "tlsPrivateKeyFile". The "tlsCertificateKeyFile" option specifies a path to the client certificate and private key,
 // which must be concatenated into one file. The "tlsCertificateFile" and "tlsPrivateKey" combination specifies separate
 // paths to the client certificate and private key, respectively. Note that if "tlsCertificateKeyFile" is used, the
-// other two options must not be specified.
+// other two options must not be specified. Only the subject name of the first certificate is honored as the username
+// for X509 auth in a file with multiple certs.
 //
 // 3. "tlsCertificateKeyFilePassword" (or "sslClientCertificateKeyPassword"): Specify the password to decrypt the client
 // private key file (e.g. "tlsCertificateKeyFilePassword=password").
@@ -866,6 +965,9 @@ func (c *ClientOptions) SetSRVServiceName(srvName string) *ClientOptions {
 // MergeClientOptions combines the given *ClientOptions into a single *ClientOptions in a last one wins fashion.
 // The specified options are merged with the existing options on the client, with the specified options taking
 // precedence.
+//
+// Deprecated: Merging options structs will not be supported in Go Driver 2.0. Users should create a
+// single options struct instead.
 func MergeClientOptions(opts ...*ClientOptions) *ClientOptions {
 	c := Client()
 
@@ -940,6 +1042,9 @@ func MergeClientOptions(opts ...*ClientOptions) *ClientOptions {
 		if opt.ReadPreference != nil {
 			c.ReadPreference = opt.ReadPreference
 		}
+		if opt.BSONOptions != nil {
+			c.BSONOptions = opt.BSONOptions
+		}
 		if opt.Registry != nil {
 			c.Registry = opt.Registry
 		}
@@ -1000,6 +1105,9 @@ func MergeClientOptions(opts ...*ClientOptions) *ClientOptions {
 		if opt.cs != nil {
 			c.cs = opt.cs
 		}
+		if opt.LoggerOptions != nil {
+			c.LoggerOptions = opt.LoggerOptions
+		}
 	}
 
 	return c
@@ -1049,8 +1157,8 @@ func addClientCertFromConcatenatedFile(cfg *tls.Config, certKeyFile, keyPassword
 	return addClientCertFromBytes(cfg, data, keyPassword)
 }
 
-// addClientCertFromBytes adds a client certificate to the configuration given a path to the
-// containing file and returns the certificate's subject name.
+// addClientCertFromBytes adds client certificates to the configuration given a path to the
+// containing file and returns the subject name in the first certificate.
 func addClientCertFromBytes(cfg *tls.Config, data []byte, keyPasswd string) (string, error) {
 	var currentBlock *pem.Block
 	var certDecodedBlock []byte
@@ -1067,7 +1175,11 @@ func addClientCertFromBytes(cfg *tls.Config, data []byte, keyPasswd string) (str
 		if currentBlock.Type == "CERTIFICATE" {
 			certBlock := data[start : len(data)-len(remaining)]
 			certBlocks = append(certBlocks, certBlock)
-			certDecodedBlock = currentBlock.Bytes
+			// Assign the certDecodedBlock when it is never set,
+			// so only the first certificate is honored in a file with multiple certs.
+			if certDecodedBlock == nil {
+				certDecodedBlock = currentBlock.Bytes
+			}
 			start += len(certBlock)
 		} else if strings.HasSuffix(currentBlock.Type, "PRIVATE KEY") {
 			isEncrypted := x509.IsEncryptedPEMBlock(currentBlock) || strings.Contains(currentBlock.Type, "ENCRYPTED PRIVATE KEY")

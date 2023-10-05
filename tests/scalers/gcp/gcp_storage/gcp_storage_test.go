@@ -173,7 +173,7 @@ func TestScaler(t *testing.T) {
 	// cleanup
 	t.Log("--- cleanup ---")
 	cleanupBucket(t)
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func createBucket(t *testing.T) error {

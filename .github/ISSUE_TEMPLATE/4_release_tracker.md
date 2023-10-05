@@ -25,7 +25,7 @@ We aim to release this release in the week of <week range, example March 27-31>.
 - [ ] Add the new version to GitHub Bug report template
 - [ ] Create KEDA release
 - [ ] Publish new documentation version
-- [ ] Setup continous container scanning with Snyk
+- [ ] Setup continuous container scanning with Snyk
 - [ ] Prepare & ship Helm chart
 - [ ] Prepare next release
 - [ ] Provide update in Slack

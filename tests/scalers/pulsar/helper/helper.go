@@ -319,7 +319,7 @@ func TestScalerWithConfig(t *testing.T, testName string, numPartitions int) {
 	helper.KubectlDeleteWithTemplate(t, data, "publishJobTemplate", topicPublishJobTemplate)
 	helper.KubectlDeleteWithTemplate(t, data, "topicInitJobTemplate", topicInitJobTemplate)
 
-	helper.DeleteKubernetesResources(t, kc, testName, data, templates)
+	helper.DeleteKubernetesResources(t, testName, data, templates)
 }
 
 func getTemplateData(testName string, numPartitions int) (templateData, []helper.Template) {

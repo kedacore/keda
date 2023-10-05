@@ -57,7 +57,7 @@ make build
 
 This project is using [Operator SDK framework](https://github.com/operator-framework/operator-sdk), make sure you
 have installed the right version. To check the current version used for KEDA check the `RELEASE_VERSION` in file
-[tools/build-tools.Dockerfile](https://github.com/kedacore/keda/blob/main/tools/build-tools.Dockerfile).
+[github.com/test-tools/tools/Dockerfile](https://github.com/kedacore/test-tools/blob/main/tools/Dockerfile).
 
 ```bash
 git clone git@github.com:kedacore/keda.git
@@ -268,7 +268,7 @@ Follow these instructions if you want to debug the KEDA webhook using VS Code.
    Refer to [this](https://code.visualstudio.com/docs/editor/debugging) for more information about debugging with VS Code.
 2. Expose your local instance to internet. If you can't expose it directly, you can use something like [localtunnel](https://theboroer.github.io/localtunnel-www/) using the command `lt --port 9443 --local-https --allow-invalid-cert` after installing the tool.
 
-3. Update the `admissing_webhooks.yaml` in `config/webhooks`, replacing the section (but not commiting this change)
+3. Update the `admissing_webhooks.yaml` in `config/webhooks`, replacing the section (but not committing this change)
    ```yaml
    webhooks:
    - admissionReviewVersions:

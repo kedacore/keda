@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	pb "github.com/kedacore/keda/v2/pkg/scalers/externalscaler"
+	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 type externalScaler struct {
@@ -35,6 +37,10 @@ type externalScalerMetadata struct {
 	tlsCertFile      string
 	originalMetadata map[string]string
 	scalerIndex      int
+	caCert           string
+	tlsClientCert    string
+	tlsClientKey     string
+	unsafeSsl        bool
 }
 
 type connectionGroup struct {
@@ -112,7 +118,26 @@ func parseExternalScalerMetadata(config *ScalerConfig) (externalScalerMetadata, 
 	}
 
 	meta.originalMetadata = make(map[string]string)
+	if val, ok := config.AuthParams["caCert"]; ok {
+		meta.caCert = val
+	}
 
+	if val, ok := config.AuthParams["tlsClientCert"]; ok {
+		meta.tlsClientCert = val
+	}
+
+	if val, ok := config.AuthParams["tlsClientKey"]; ok {
+		meta.tlsClientKey = val
+	}
+
+	meta.unsafeSsl = false
+	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok && val != "" {
+		boolVal, err := strconv.ParseBool(val)
+		if err != nil {
+			return meta, fmt.Errorf("failed to parse insecureSkipVerify value. Must be either true or false")
+		}
+		meta.unsafeSsl = boolVal
+	}
 	// Add elements to metadata
 	for key, value := range config.TriggerMetadata {
 		// Check if key is in resolved environment and resolve
@@ -136,7 +161,7 @@ func (s *externalScaler) Close(context.Context) error {
 func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
 	var result []v2.MetricSpec
 
-	grpcClient, err := getClientForConnectionPool(s.metadata)
+	grpcClient, err := getClientForConnectionPool(s.metadata, s.logger)
 	if err != nil {
 		s.logger.Error(err, "error building grpc connection")
 		return result
@@ -171,7 +196,7 @@ func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2.Metri
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *externalScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	var metrics []external_metrics.ExternalMetricValue
-	grpcClient, err := getClientForConnectionPool(s.metadata)
+	grpcClient, err := getClientForConnectionPool(s.metadata, s.logger)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
@@ -212,7 +237,7 @@ func (s *externalPushScaler) Run(ctx context.Context, active chan<- bool) {
 	defer close(active)
 	// It's possible for the connection to get terminated anytime, we need to run this in a retry loop
 	runWithLog := func() {
-		grpcClient, err := getClientForConnectionPool(s.metadata)
+		grpcClient, err := getClientForConnectionPool(s.metadata, s.logger)
 		if err != nil {
 			s.logger.Error(err, "error running internalRun")
 			return
@@ -223,7 +248,7 @@ func (s *externalPushScaler) Run(ctx context.Context, active chan<- bool) {
 		}
 	}
 
-	// retry on error from runWithLog() starting by 2 sec backing off * 2 with a max of 1 minute
+	// retry on error from runWithLog() starting by 2 sec backing off * 2 with a max of 2 minute
 	retryDuration := time.Second * 2
 	// the caller of this function needs to ensure that they call Stop() on the resulting
 	// timer, to release background resources.
@@ -273,17 +298,30 @@ var connectionPoolMutex sync.Mutex
 
 // getClientForConnectionPool returns a grpcClient and a done() Func. The done() function must be called once the client is no longer
 // in use to clean up the shared grpc.ClientConn
-func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalScalerClient, error) {
+func getClientForConnectionPool(metadata externalScalerMetadata, logger logr.Logger) (pb.ExternalScalerClient, error) {
 	connectionPoolMutex.Lock()
 	defer connectionPoolMutex.Unlock()
 
 	buildGRPCConnection := func(metadata externalScalerMetadata) (*grpc.ClientConn, error) {
+		// FIXME: DEPRECATED to be removed in v2.13 https://github.com/kedacore/keda/issues/4549
 		if metadata.tlsCertFile != "" {
+			logger.V(1).Info("tlsCertFile in ScaleObject metadata will be deprecated in v2.12. Please use" +
+				"tlsClientCert, tlsClientKey and caCert in TriggerAuthentication instead.")
 			creds, err := credentials.NewClientTLSFromFile(metadata.tlsCertFile, "")
 			if err != nil {
 				return nil, err
 			}
 			return grpc.Dial(metadata.scalerAddress, grpc.WithTransportCredentials(creds))
+		}
+
+		tlsConfig, err := util.NewTLSConfig(metadata.tlsClientCert, metadata.tlsClientKey, metadata.caCert, metadata.unsafeSsl)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(tlsConfig.Certificates) > 0 || metadata.caCert != "" {
+			// nosemgrep: go.grpc.ssrf.grpc-tainted-url-host.grpc-tainted-url-host
+			return grpc.Dial(metadata.scalerAddress, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 		}
 
 		return grpc.Dial(metadata.scalerAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))

@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	Version = "v50.1.0"
+	Version = "v50.2.0"
 
 	defaultAPIVersion = "2022-11-28"
 	defaultBaseURL    = "https://api.github.com/"
@@ -346,6 +346,11 @@ func NewClient(httpClient *http.Client) *Client {
 	c.Teams = (*TeamsService)(&c.common)
 	c.Users = (*UsersService)(&c.common)
 	return c
+}
+
+// NewClientWithEnvProxy enhances NewClient with the HttpProxy env.
+func NewClientWithEnvProxy() *Client {
+	return NewClient(&http.Client{Transport: &http.Transport{Proxy: http.ProxyFromEnvironment}})
 }
 
 // NewTokenClient returns a new GitHub API client authenticated with the provided token.

@@ -1,5 +1,51 @@
 # Release History
 
+## 1.3.1 (2023-08-16)
+
+### Other Changes
+* Upgraded dependencies
+
+## 1.3.0 (2023-05-09)
+
+### Breaking Changes
+> These changes affect only code written against a beta version such as v1.3.0-beta.5
+* Renamed `NewOnBehalfOfCredentialFromCertificate` to `NewOnBehalfOfCredentialWithCertificate`
+* Renamed `NewOnBehalfOfCredentialFromSecret` to `NewOnBehalfOfCredentialWithSecret`
+
+### Other Changes
+* Upgraded to MSAL v1.0.0
+
+## 1.3.0-beta.5 (2023-04-11)
+
+### Breaking Changes
+> These changes affect only code written against a beta version such as v1.3.0-beta.4
+* Moved `NewWorkloadIdentityCredential()` parameters into `WorkloadIdentityCredentialOptions`.
+  The constructor now reads default configuration from environment variables set by the Azure
+  workload identity webhook by default.
+  ([#20478](https://github.com/Azure/azure-sdk-for-go/pull/20478))
+* Removed CAE support. It will return in v1.4.0-beta.1
+  ([#20479](https://github.com/Azure/azure-sdk-for-go/pull/20479))
+
+### Bugs Fixed
+* Fixed an issue in `DefaultAzureCredential` that could cause the managed identity endpoint check to fail in rare circumstances.
+
+## 1.3.0-beta.4 (2023-03-08)
+
+### Features Added
+* Added `WorkloadIdentityCredentialOptions.AdditionallyAllowedTenants` and `.DisableInstanceDiscovery`
+
+### Bugs Fixed
+* Credentials now synchronize within `GetToken()` so a single instance can be shared among goroutines
+  ([#20044](https://github.com/Azure/azure-sdk-for-go/issues/20044))
+
+### Other Changes
+* Upgraded dependencies
+
+## 1.2.2 (2023-03-07)
+
+### Other Changes
+* Upgraded dependencies
+
 ## 1.3.0-beta.3 (2023-02-07)
 
 ### Features Added

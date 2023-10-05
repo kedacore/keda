@@ -9,10 +9,12 @@ Here is the recommended workflow:
 1. Run Static Checks
 1. Run integration tests (see below)
 1. **Implement tests**
-1. Implement fixs
-1. Commit your changes (`git commit -am 'Add some feature'`)
+1. Implement fixes
+1. Commit your changes. Use a [good, descriptive, commit message][good-commit].
 1. Push to a branch (`git push -u origin my-new-feature`)
 1. Submit a pull request
+
+[good-commit]: https://cbea.ms/git-commit/
 
 ## Running Static Checks
 
@@ -42,6 +44,18 @@ The integration tests can be run via:
 ```shell
 make tests
 ```
+
+Some tests require access to `rabbitmqctl` CLI. Use the environment variable
+`RABBITMQ_RABBITMQCTL_PATH=/some/path/to/rabbitmqctl` to run those tests. 
+
+If you have Docker available in your machine, you can run:
+
+```shell
+make tests-docker
+```
+
+This target will start a RabbitMQ container, run the test suite with the environment
+variable setup, and stop RabbitMQ container after a successful run.
 
 All integration tests should use the `integrationConnection(...)` test
 helpers defined in `integration_test.go` to setup the integration environment

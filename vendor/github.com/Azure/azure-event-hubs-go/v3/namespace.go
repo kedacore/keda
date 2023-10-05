@@ -27,10 +27,10 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/Azure/azure-amqp-common-go/v3/auth"
-	"github.com/Azure/azure-amqp-common-go/v3/cbs"
-	"github.com/Azure/azure-amqp-common-go/v3/conn"
-	"github.com/Azure/azure-amqp-common-go/v3/sas"
+	"github.com/Azure/azure-amqp-common-go/v4/auth"
+	"github.com/Azure/azure-amqp-common-go/v4/cbs"
+	"github.com/Azure/azure-amqp-common-go/v4/conn"
+	"github.com/Azure/azure-amqp-common-go/v4/sas"
 	"github.com/Azure/go-amqp"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"golang.org/x/net/websocket"
@@ -89,16 +89,18 @@ func newNamespace(opts ...namespaceOption) (*namespace, error) {
 	return ns, nil
 }
 
-func (ns *namespace) newConnection() (*amqp.Client, error) {
+func (ns *namespace) newConnection(ctx context.Context) (*amqp.Conn, error) {
 	host := ns.getAmqpsHostURI()
 
-	defaultConnOptions := []amqp.ConnOption{
-		amqp.ConnSASLAnonymous(),
-		amqp.ConnProperty("product", "MSGolangClient"),
-		amqp.ConnProperty("version", Version),
-		amqp.ConnProperty("platform", runtime.GOOS),
-		amqp.ConnProperty("framework", runtime.Version()),
-		amqp.ConnProperty("user-agent", rootUserAgent),
+	defaultConnOptions := amqp.ConnOptions{
+		Properties: map[string]any{
+			"product":    "MSGolangClient",
+			"version":    Version,
+			"platform":   runtime.GOOS,
+			"framework":  runtime.Version(),
+			"user-agent": rootUserAgent,
+		},
+		SASLType: amqp.SASLTypeAnonymous(),
 	}
 
 	if ns.useWebSocket {
@@ -109,13 +111,14 @@ func (ns *namespace) newConnection() (*amqp.Client, error) {
 		}
 
 		wssConn.PayloadType = websocket.BinaryFrame
-		return amqp.New(wssConn, append(defaultConnOptions, amqp.ConnServerHostname(trimmedHost))...)
+		defaultConnOptions.HostName = trimmedHost
+		return amqp.NewConn(ctx, wssConn, &defaultConnOptions)
 	}
 
-	return amqp.Dial(host, defaultConnOptions...)
+	return amqp.Dial(ctx, host, &defaultConnOptions)
 }
 
-func (ns *namespace) negotiateClaim(ctx context.Context, conn *amqp.Client, entityPath string) error {
+func (ns *namespace) negotiateClaim(ctx context.Context, conn *amqp.Conn, entityPath string) error {
 	span, ctx := ns.startSpanFromContext(ctx, "eh.namespace.negotiateClaim")
 	defer span.End()
 

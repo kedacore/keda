@@ -24,7 +24,6 @@ import (
 	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -35,9 +34,9 @@ type FakeClusterTriggerAuthentications struct {
 	Fake *FakeKedaV1alpha1
 }
 
-var clustertriggerauthenticationsResource = schema.GroupVersionResource{Group: "keda", Version: "v1alpha1", Resource: "clustertriggerauthentications"}
+var clustertriggerauthenticationsResource = v1alpha1.SchemeGroupVersion.WithResource("clustertriggerauthentications")
 
-var clustertriggerauthenticationsKind = schema.GroupVersionKind{Group: "keda", Version: "v1alpha1", Kind: "ClusterTriggerAuthentication"}
+var clustertriggerauthenticationsKind = v1alpha1.SchemeGroupVersion.WithKind("ClusterTriggerAuthentication")
 
 // Get takes name of the clusterTriggerAuthentication, and returns the corresponding clusterTriggerAuthentication object, and an error if there is any.
 func (c *FakeClusterTriggerAuthentications) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ClusterTriggerAuthentication, err error) {
@@ -90,6 +89,17 @@ func (c *FakeClusterTriggerAuthentications) Create(ctx context.Context, clusterT
 func (c *FakeClusterTriggerAuthentications) Update(ctx context.Context, clusterTriggerAuthentication *v1alpha1.ClusterTriggerAuthentication, opts v1.UpdateOptions) (result *v1alpha1.ClusterTriggerAuthentication, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateAction(clustertriggerauthenticationsResource, clusterTriggerAuthentication), &v1alpha1.ClusterTriggerAuthentication{})
+	if obj == nil {
+		return nil, err
+	}
+	return obj.(*v1alpha1.ClusterTriggerAuthentication), err
+}
+
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+func (c *FakeClusterTriggerAuthentications) UpdateStatus(ctx context.Context, clusterTriggerAuthentication *v1alpha1.ClusterTriggerAuthentication, opts v1.UpdateOptions) (*v1alpha1.ClusterTriggerAuthentication, error) {
+	obj, err := c.Fake.
+		Invokes(testing.NewRootUpdateSubresourceAction(clustertriggerauthenticationsResource, "status", clusterTriggerAuthentication), &v1alpha1.ClusterTriggerAuthentication{})
 	if obj == nil {
 		return nil, err
 	}

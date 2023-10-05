@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/kinesis"
-	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/kinesis"
+	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 )
@@ -45,17 +45,16 @@ type awsKinesisMetricIdentifier struct {
 }
 
 type mockKinesis struct {
-	kinesisiface.KinesisAPI
 }
 
-func (m *mockKinesis) DescribeStreamSummary(input *kinesis.DescribeStreamSummaryInput) (*kinesis.DescribeStreamSummaryOutput, error) {
+func (m *mockKinesis) DescribeStreamSummary(_ context.Context, input *kinesis.DescribeStreamSummaryInput, _ ...func(*kinesis.Options)) (*kinesis.DescribeStreamSummaryOutput, error) {
 	if *input.StreamName == "Error" {
 		return nil, errors.New("some error")
 	}
 
 	return &kinesis.DescribeStreamSummaryOutput{
-		StreamDescriptionSummary: &kinesis.StreamDescriptionSummary{
-			OpenShardCount: aws.Int64(100),
+		StreamDescriptionSummary: &types.StreamDescriptionSummary{
+			OpenShardCount: aws.Int32(100),
 		},
 	}, nil
 }

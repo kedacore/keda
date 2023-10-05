@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -18,34 +19,47 @@ import (
 const (
 	solaceExtMetricType = "External"
 	solaceScalerID      = "solace"
+
 	// REST ENDPOINT String Patterns
-	solaceSempEndpointURLTemplate = "%s/%s/%s/monitor/msgVpns/%s/%ss/%s"
+	solaceSempQueryFieldURLSuffix = "?select=msgs,msgSpoolUsage,averageRxMsgRate"
+	solaceSempEndpointURLTemplate = "%s/%s/%s/monitor/msgVpns/%s/%ss/%s" + solaceSempQueryFieldURLSuffix
+
 	// SEMP REST API Context
 	solaceAPIName            = "SEMP"
 	solaceAPIVersion         = "v2"
 	solaceAPIObjectTypeQueue = "queue"
+
 	// Log Message Templates
 	solaceFoundMetaFalse = "required Field %s NOT FOUND in Solace Metadata"
+
 	// YAML Configuration Metadata Field Names
 	// Broker Identifiers
 	solaceMetaSempBaseURL = "solaceSempBaseURL"
+
 	// Credential Identifiers
 	solaceMetaUsername        = "username"
 	solaceMetaPassword        = "password"
 	solaceMetaUsernameFromEnv = "usernameFromEnv"
 	solaceMetaPasswordFromEnv = "passwordFromEnv"
+
 	// Target Object Identifiers
 	solaceMetaMsgVpn    = "messageVpn"
 	solaceMetaQueueName = "queueName"
+
 	// Metric Targets
 	solaceMetaMsgCountTarget      = "messageCountTarget"
 	solaceMetaMsgSpoolUsageTarget = "messageSpoolUsageTarget"
+	solaceMetaMsgRxRateTarget     = "messageReceiveRateTarget"
+
 	// Metric Activation Targets
 	solaceMetaActivationMsgCountTarget      = "activationMessageCountTarget"
 	solaceMetaActivationMsgSpoolUsageTarget = "activationMessageSpoolUsageTarget"
+	solaceMetaActivationMsgRxRateTarget     = "activationMessageReceiveRateTarget"
+
 	// Trigger type identifiers
 	solaceTriggermsgcount      = "msgcount"
 	solaceTriggermsgspoolusage = "msgspoolusage"
+	solaceTriggermsgrxrate     = "msgrcvrate"
 )
 
 // Struct for Observed Metric Values
@@ -54,6 +68,8 @@ type SolaceMetricValues struct {
 	msgCount int
 	//	Observed Message Spool Usage
 	msgSpoolUsage int
+	//  Observed Message Received Rate
+	msgRcvRate int
 }
 
 type SolaceScaler struct {
@@ -67,19 +83,25 @@ type SolaceMetadata struct {
 	// Full SEMP URL to target queue (CONSTRUCTED IN CODE)
 	endpointURL   string
 	solaceSempURL string
+
 	// Solace Message VPN
 	messageVpn string
 	queueName  string
+
 	// Basic Auth Username
 	username string
 	// Basic Auth Password
 	password string
+
 	// Target Message Count
 	msgCountTarget      int64
 	msgSpoolUsageTarget int64 // Spool Use Target in Megabytes
+	msgRxRateTarget     int64 // Ingress Rate Target per consumer in msgs/second
+
 	// Activation Target Message Count
 	activationMsgCountTarget      int
 	activationMsgSpoolUsageTarget int // Spool Use Target in Megabytes
+	activationMsgRxRateTarget     int // Ingress Rate Target per consumer in msgs/second
 	// Scaler index
 	scalerIndex int
 }
@@ -99,6 +121,7 @@ type solaceSEMPCollections struct {
 // SEMP API Response Queue Data Struct
 type solaceSEMPData struct {
 	MsgSpoolUsage int `json:"msgSpoolUsage"`
+	MsgRcvRate    int `json:"averageRxMsgRate"`
 }
 
 // SEMP API Messages Struct
@@ -162,6 +185,7 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 
 	//	GET METRIC TARGET VALUES
 	//	GET msgCountTarget
+	meta.msgCountTarget = 0
 	if val, ok := config.TriggerMetadata[solaceMetaMsgCountTarget]; ok && val != "" {
 		if msgCount, err := strconv.ParseInt(val, 10, 64); err == nil {
 			meta.msgCountTarget = msgCount
@@ -170,6 +194,7 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 		}
 	}
 	//	GET msgSpoolUsageTarget
+	meta.msgSpoolUsageTarget = 0
 	if val, ok := config.TriggerMetadata[solaceMetaMsgSpoolUsageTarget]; ok && val != "" {
 		if msgSpoolUsage, err := strconv.ParseInt(val, 10, 64); err == nil {
 			meta.msgSpoolUsageTarget = msgSpoolUsage * 1024 * 1024
@@ -177,9 +202,18 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %w", solaceMetaMsgSpoolUsageTarget, err)
 		}
 	}
+	//  GET msgRcvRateTarget
+	meta.msgRxRateTarget = 0
+	if val, ok := config.TriggerMetadata[solaceMetaMsgRxRateTarget]; ok && val != "" {
+		if msgRcvRate, err := strconv.ParseInt(val, 10, 64); err == nil {
+			meta.msgRxRateTarget = msgRcvRate
+		} else {
+			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %w", solaceMetaMsgRxRateTarget, err)
+		}
+	}
 
 	//	Check that we have at least one positive target value for the scaler
-	if meta.msgCountTarget < 1 && meta.msgSpoolUsageTarget < 1 {
+	if meta.msgCountTarget < 1 && meta.msgSpoolUsageTarget < 1 && meta.msgRxRateTarget < 1 {
 		return nil, fmt.Errorf("no target value found in the scaler configuration")
 	}
 
@@ -202,6 +236,14 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %w", solaceMetaActivationMsgSpoolUsageTarget, err)
 		}
 	}
+	meta.activationMsgRxRateTarget = 0
+	if val, ok := config.TriggerMetadata[solaceMetaActivationMsgRxRateTarget]; ok && val != "" {
+		if activationMsgRxRateTarget, err := strconv.Atoi(val); err == nil {
+			meta.activationMsgRxRateTarget = activationMsgRxRateTarget
+		} else {
+			return nil, fmt.Errorf("can't parse [%s], not a valid integer: %w", solaceMetaActivationMsgRxRateTarget, err)
+		}
+	}
 
 	// Format Solace SEMP Queue Endpoint (REST URL)
 	meta.endpointURL = fmt.Sprintf(
@@ -211,7 +253,8 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 		solaceAPIVersion,
 		meta.messageVpn,
 		solaceAPIObjectTypeQueue,
-		meta.queueName)
+		url.QueryEscape(meta.queueName),
+	)
 
 	// Get Credentials
 	var e error
@@ -296,6 +339,18 @@ func (s *SolaceScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec 
 		metricSpec := v2.MetricSpec{External: externalMetric, Type: solaceExtMetricType}
 		metricSpecList = append(metricSpecList, metricSpec)
 	}
+	// Message Receive Rate Target Spec
+	if s.metadata.msgRxRateTarget > 0 {
+		metricName := kedautil.NormalizeString(fmt.Sprintf("solace-%s-%s", s.metadata.queueName, solaceTriggermsgrxrate))
+		externalMetric := &v2.ExternalMetricSource{
+			Metric: v2.MetricIdentifier{
+				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
+			},
+			Target: GetMetricTarget(s.metricType, s.metadata.msgRxRateTarget),
+		}
+		metricSpec := v2.MetricSpec{External: externalMetric, Type: solaceExtMetricType}
+		metricSpecList = append(metricSpecList, metricSpec)
+	}
 	return metricSpecList
 }
 
@@ -341,6 +396,7 @@ func (s *SolaceScaler) getSolaceQueueMetricsFromSEMP(ctx context.Context) (Solac
 	// Set Return Values
 	metricValues.msgCount = sempResponse.Collections.Msgs.Count
 	metricValues.msgSpoolUsage = sempResponse.Data.MsgSpoolUsage
+	metricValues.msgRcvRate = sempResponse.Data.MsgRcvRate
 	return metricValues, nil
 }
 
@@ -363,13 +419,19 @@ func (s *SolaceScaler) GetMetricsAndActivity(ctx context.Context, metricName str
 		metric = GenerateMetricInMili(metricName, float64(metricValues.msgCount))
 	case strings.HasSuffix(metricName, solaceTriggermsgspoolusage):
 		metric = GenerateMetricInMili(metricName, float64(metricValues.msgSpoolUsage))
+	case strings.HasSuffix(metricName, solaceTriggermsgrxrate):
+		metric = GenerateMetricInMili(metricName, float64(metricValues.msgRcvRate))
 	default:
 		// Should never end up here
 		err := fmt.Errorf("unidentified metric: %s", metricName)
 		s.logger.Error(err, "returning error to calling app")
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
-	return []external_metrics.ExternalMetricValue{metric}, (metricValues.msgCount > s.metadata.activationMsgCountTarget || metricValues.msgSpoolUsage > s.metadata.activationMsgSpoolUsageTarget), nil
+	return []external_metrics.ExternalMetricValue{metric},
+		(metricValues.msgCount > s.metadata.activationMsgCountTarget ||
+			metricValues.msgSpoolUsage > s.metadata.activationMsgSpoolUsageTarget ||
+			metricValues.msgRcvRate > s.metadata.activationMsgRxRateTarget),
+		nil
 }
 
 // Do Nothing - Satisfies Interface

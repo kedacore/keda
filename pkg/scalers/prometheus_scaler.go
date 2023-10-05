@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -15,17 +16,14 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
-	promServerAddress = "serverAddress"
-
-	// FIXME: DEPRECATED to be removed in v2.12
-	promMetricName = "metricName"
-
+	promServerAddress       = "serverAddress"
 	promQuery               = "query"
 	promThreshold           = "threshold"
 	promActivationThreshold = "activationThreshold"
@@ -49,7 +47,6 @@ type prometheusScaler struct {
 
 type prometheusMetadata struct {
 	serverAddress       string
-	metricName          string
 	query               string
 	threshold           float64
 	activationThreshold float64
@@ -67,12 +64,12 @@ type prometheusMetadata struct {
 
 type promQueryResult struct {
 	Status string `json:"status"`
-	Data   struct {
+
+	Data struct {
 		ResultType string `json:"resultType"`
 		Result     []struct {
-			Metric struct {
-			} `json:"metric"`
-			Value []interface{} `json:"value"`
+			Metric struct{}      `json:"metric"`
+			Value  []interface{} `json:"value"`
 		} `json:"result"`
 	} `json:"data"`
 }
@@ -107,18 +104,27 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 			httpClient.Transport = transport
 		}
 	} else {
-		// could be the case of azure managed prometheus. Try and get the roundtripper.
-		// If its not the case of azure managed prometheus, we will get both transport and err as nil and proceed assuming no auth.
-		transport, err := azure.TryAndGetAzureManagedPrometheusHTTPRoundTripper(config.PodIdentity, config.TriggerMetadata)
-
+		// could be the case of azure managed prometheus. Try and get the round-tripper.
+		// If it's not the case of azure managed prometheus, we will get both transport and err as nil and proceed assuming no auth.
+		azureTransport, err := azure.TryAndGetAzureManagedPrometheusHTTPRoundTripper(logger, config.PodIdentity, config.TriggerMetadata)
 		if err != nil {
 			logger.V(1).Error(err, "error while init Azure Managed Prometheus client http transport")
 			return nil, err
 		}
 
 		// transport should not be nil if its a case of azure managed prometheus
-		if transport != nil {
-			httpClient.Transport = transport
+		if azureTransport != nil {
+			httpClient.Transport = azureTransport
+		}
+
+		gcpTransport, err := getGCPOAuth2HTTPTransport(config, httpClient.Transport, gcpScopeMonitoringRead)
+		if err != nil && !errors.Is(err, errGoogleApplicationCrendentialsNotFound) {
+			logger.V(1).Error(err, "failed to get GCP client HTTP transport (either using Google application credentials or workload identity)")
+			return nil, err
+		}
+
+		if err == nil && gcpTransport != nil {
+			httpClient.Transport = gcpTransport
 		}
 	}
 
@@ -145,13 +151,6 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 		return nil, fmt.Errorf("no %s given", promQuery)
 	}
 
-	// FIXME: DEPRECATED to be removed in v2.12
-	if val, ok := config.TriggerMetadata[promMetricName]; ok && val != "" {
-		meta.metricName = val
-	} else {
-		meta.metricName = "prometheus"
-	}
-
 	if val, ok := config.TriggerMetadata[promThreshold]; ok && val != "" {
 		t, err := strconv.ParseFloat(val, 64)
 		if err != nil {
@@ -160,7 +159,11 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 
 		meta.threshold = t
 	} else {
-		return nil, fmt.Errorf("no %s given", promThreshold)
+		if config.AsMetricSource {
+			meta.threshold = 0
+		} else {
+			return nil, fmt.Errorf("no %s given", promThreshold)
+		}
 	}
 
 	meta.activationThreshold = 0
@@ -227,7 +230,7 @@ func parseAuthConfig(config *ScalerConfig, meta *prometheusMetadata) error {
 		return err
 	}
 
-	if auth != nil && config.PodIdentity.Provider != "" {
+	if auth != nil && !(config.PodIdentity.Provider == kedav1alpha1.PodIdentityProviderNone || config.PodIdentity.Provider == "") {
 		return fmt.Errorf("pod identity cannot be enabled with other auth types")
 	}
 	meta.prometheusAuth = auth
@@ -240,7 +243,7 @@ func (s *prometheusScaler) Close(context.Context) error {
 }
 
 func (s *prometheusScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
-	metricName := kedautil.NormalizeString(fmt.Sprintf("prometheus-%s", s.metadata.metricName))
+	metricName := kedautil.NormalizeString("prometheus")
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
@@ -258,7 +261,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	queryEscaped := url_pkg.QueryEscape(s.metadata.query)
 	url := fmt.Sprintf("%s/api/v1/query?query=%s&time=%s", s.metadata.serverAddress, queryEscaped, t)
 
-	// set 'namespace' parameter for namespaced Prometheus requests (eg. for Thanos Querier)
+	// set 'namespace' parameter for namespaced Prometheus requests (e.g. for Thanos Querier)
 	if s.metadata.namespace != "" {
 		url = fmt.Sprintf("%s&namespace=%s", url, s.metadata.namespace)
 	}
@@ -292,7 +295,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	if err != nil {
 		return -1, err
 	}
-	_ = r.Body.Close()
+	defer r.Body.Close()
 
 	if !(r.StatusCode >= 200 && r.StatusCode <= 299) {
 		err := fmt.Errorf("prometheus query api returned error. status: %d response: %s", r.StatusCode, string(b))
@@ -313,7 +316,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		if s.metadata.ignoreNullValues {
 			return 0, nil
 		}
-		return -1, fmt.Errorf("prometheus metrics %s target may be lost, the result is empty", s.metadata.metricName)
+		return -1, fmt.Errorf("prometheus metrics 'prometheus' target may be lost, the result is empty")
 	} else if len(result.Data.Result) > 1 {
 		return -1, fmt.Errorf("prometheus query %s returned multiple elements", s.metadata.query)
 	}
@@ -323,7 +326,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		if s.metadata.ignoreNullValues {
 			return 0, nil
 		}
-		return -1, fmt.Errorf("prometheus metrics %s target may be lost, the value list is empty", s.metadata.metricName)
+		return -1, fmt.Errorf("prometheus metrics 'prometheus' target may be lost, the value list is empty")
 	} else if valueLen < 2 {
 		return -1, fmt.Errorf("prometheus query %s didn't return enough values", s.metadata.query)
 	}

@@ -4,9 +4,9 @@ package kusto
 // it clogs up the main kusto.go file.
 
 import (
+	"github.com/Azure/azure-kusto-go/kusto/kql"
 	"time"
 
-	"github.com/Azure/azure-kusto-go/kusto/data/errors"
 	"github.com/Azure/azure-kusto-go/kusto/data/value"
 )
 
@@ -14,16 +14,20 @@ import (
 // For more information please look at: https://docs.microsoft.com/en-us/azure/kusto/api/netfx/request-properties
 // Not all of the documented options are implemented.
 type requestProperties struct {
-	Options     map[string]interface{}
-	Parameters  map[string]string
-	Application string
-	User        string
+	Options         map[string]interface{}
+	Parameters      map[string]string
+	Application     string         `json:"-"`
+	User            string         `json:"-"`
+	QueryParameters kql.Parameters `json:"-"`
+	ClientRequestID string         `json:"-"`
 }
 
 type queryOptions struct {
 	requestProperties *requestProperties
+	queryIngestion    bool
 }
 
+const RequestProgressiveEnabledValue = "results_progressive_enabled"
 const NoRequestTimeoutValue = "norequesttimeout"
 const NoTruncationValue = "notruncation"
 const ServerTimeoutValue = "servertimeout"
@@ -75,10 +79,27 @@ const TruncationMaxRecordsValue = "truncation_max_records"
 const TruncationMaxSizeValue = "truncation_max_size"
 const ValidatePermissionsValue = "validate_permissions"
 
+// ClientRequestID sets the x-ms-client-request-id header, and can be used to identify the request in the `.show queries` output.
+func ClientRequestID(clientRequestID string) QueryOption {
+	return func(q *queryOptions) error {
+		q.requestProperties.ClientRequestID = clientRequestID
+		return nil
+	}
+}
+
 // Application sets the x-ms-app header, and can be used to identify the application making the request in the `.show queries` output.
 func Application(appName string) QueryOption {
 	return func(q *queryOptions) error {
 		q.requestProperties.Application = appName
+		return nil
+	}
+}
+
+// QueryParameters sets the parameters to be used in the query.
+func QueryParameters(queryParameters *kql.Parameters) QueryOption {
+	return func(q *queryOptions) error {
+		q.requestProperties.QueryParameters = *queryParameters
+		q.requestProperties.Parameters = queryParameters.ToParameterCollection()
 		return nil
 	}
 }
@@ -110,19 +131,14 @@ func NoTruncation() QueryOption {
 // ResultsProgressiveDisable disables the progressive query stream.
 func ResultsProgressiveDisable() QueryOption {
 	return func(q *queryOptions) error {
-		delete(q.requestProperties.Options, "results_progressive_enabled")
+		delete(q.requestProperties.Options, RequestProgressiveEnabledValue)
 		return nil
 	}
 }
 
-// queryServerTimeout is the amount of time the server will allow a query to take.
-// NOTE: I have made the serverTimeout private. For the moment, I'm going to use the context.Context timer
-// to set timeouts via this private method.
-func queryServerTimeout(d time.Duration) QueryOption {
+// ServerTimeout overrides the default request timeout.
+func ServerTimeout(d time.Duration) QueryOption {
 	return func(q *queryOptions) error {
-		if d > 1*time.Hour {
-			return errors.ES(errors.OpQuery, errors.KClientArgs, "ServerTimeout option was set to %v, but can't be more than 1 hour", d)
-		}
 		q.requestProperties.Options[ServerTimeoutValue] = value.Timespan{Valid: true, Value: d}.Marshal()
 		return nil
 	}
@@ -547,6 +563,15 @@ func TruncationMaxSize(i int64) QueryOption {
 func ValidatePermissions() QueryOption {
 	return func(q *queryOptions) error {
 		q.requestProperties.Options[ValidatePermissionsValue] = true
+		return nil
+	}
+}
+
+// IngestionEndpoint will instruct the Mgmt call to connect to the ingest-[endpoint] instead of [endpoint].
+// This is not often used by end users and can only be used with a Mgmt() call.
+func IngestionEndpoint() QueryOption {
+	return func(m *queryOptions) error {
+		m.queryIngestion = true
 		return nil
 	}
 }

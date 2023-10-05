@@ -16,6 +16,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/streaming"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/auth"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/conn"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/sbauth"
@@ -29,8 +30,8 @@ const (
 
 type (
 	EntityManager interface {
-		Get(ctx context.Context, entityPath string, respObj interface{}) (*http.Response, error)
-		Put(ctx context.Context, entityPath string, body interface{}, respObj interface{}, options *ExecuteOptions) (*http.Response, error)
+		Get(ctx context.Context, entityPath string, respObj any) (*http.Response, error)
+		Put(ctx context.Context, entityPath string, body any, respObj any, options *ExecuteOptions) (*http.Response, error)
 		Delete(ctx context.Context, entityPath string) (*http.Response, error)
 		TokenProvider() auth.TokenProvider
 	}
@@ -120,8 +121,8 @@ func NewEntityManager(ns string, tokenCredential azcore.TokenCredential, version
 }
 
 // Get performs an HTTP Get for a given entity path, deserializing the returned XML into `respObj`
-func (em *entityManager) Get(ctx context.Context, entityPath string, respObj interface{}) (*http.Response, error) {
-	resp, err := em.execute(ctx, http.MethodGet, entityPath, http.NoBody, nil)
+func (em *entityManager) Get(ctx context.Context, entityPath string, respObj any) (*http.Response, error) {
+	resp, err := em.execute(ctx, http.MethodGet, entityPath, nil, nil)
 	defer CloseRes(ctx, resp)
 
 	if err != nil {
@@ -132,7 +133,7 @@ func (em *entityManager) Get(ctx context.Context, entityPath string, respObj int
 }
 
 // Put performs an HTTP PUT for a given entity path and body, deserializing the returned XML into `respObj`
-func (em *entityManager) Put(ctx context.Context, entityPath string, body interface{}, respObj interface{}, options *ExecuteOptions) (*http.Response, error) {
+func (em *entityManager) Put(ctx context.Context, entityPath string, body any, respObj any, options *ExecuteOptions) (*http.Response, error) {
 	bodyBytes, err := xml.Marshal(body)
 
 	if err != nil {
@@ -151,7 +152,7 @@ func (em *entityManager) Put(ctx context.Context, entityPath string, body interf
 
 // Delete performs an HTTP DELETE for a given entity path
 func (em *entityManager) Delete(ctx context.Context, entityPath string) (*http.Response, error) {
-	return em.execute(ctx, http.MethodDelete, entityPath, http.NoBody, nil)
+	return em.execute(ctx, http.MethodDelete, entityPath, nil, nil)
 }
 
 type ExecuteOptions struct {
@@ -159,7 +160,7 @@ type ExecuteOptions struct {
 	ForwardToDeadLetter *string
 }
 
-func (em *entityManager) execute(ctx context.Context, method string, entityPath string, body io.Reader, options *ExecuteOptions) (*http.Response, error) {
+func (em *entityManager) execute(ctx context.Context, method string, entityPath string, body io.ReadSeeker, options *ExecuteOptions) (*http.Response, error) {
 	url := em.Host + strings.TrimPrefix(entityPath, "/")
 
 	ctx = context.WithValue(ctx, ctxWithAuthKey{}, options)
@@ -174,9 +175,10 @@ func (em *entityManager) execute(ctx context.Context, method string, entityPath 
 	q.Add("api-version", "2021-05")
 	req.Raw().URL.RawQuery = q.Encode()
 
-	if body != nil && body != http.NoBody {
-		req.Raw().Body = io.NopCloser(body)
-		req.Raw().Header.Add("Content-Type", "application/atom+xml;type=entry;charset=utf-8")
+	if body != nil {
+		if err := req.SetBody(streaming.NopCloser(body), "application/atom+xml;type=entry;charset=utf-8"); err != nil {
+			return nil, err
+		}
 	}
 
 	resp, err := em.pl.Do(req)
@@ -212,7 +214,7 @@ var ErrFeedEmpty = errors.New("entity does not exist")
 // deserializeBody deserializes the body of the response into the type specified by respObj
 // (similar to xml.Unmarshal, which this func is calling).
 // If an empty feed is found, it returns nil.
-func deserializeBody(resp *http.Response, respObj interface{}) (*http.Response, error) {
+func deserializeBody(resp *http.Response, respObj any) (*http.Response, error) {
 	bytes, err := io.ReadAll(resp.Body)
 
 	if err != nil {

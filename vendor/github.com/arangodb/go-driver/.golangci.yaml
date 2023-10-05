@@ -42,7 +42,7 @@ linters:
     - gocognit
     - gofumpt
     - gocyclo
-
+    - musttag # seems to be broken
 linters-settings:
   gci:
     sections:

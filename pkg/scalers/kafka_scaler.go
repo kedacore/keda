@@ -1,3 +1,22 @@
+/*
+Copyright 2023 The KEDA Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+// This scaler is based on sarama library.
+// It lacks support for AWS MSK. For AWS MSK please see: apache-kafka scaler.
+
 package scalers
 
 import (
@@ -8,7 +27,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -55,6 +74,7 @@ type kafkaMetadata struct {
 	// OAUTHBEARER
 	scopes                []string
 	oauthTokenEndpointURI string
+	oauthExtensions       map[string]string
 
 	// TLS
 	enableTLS   bool
@@ -62,6 +82,7 @@ type kafkaMetadata struct {
 	key         string
 	keyPassword string
 	ca          string
+	unsafeSsl   bool
 
 	scalerIndex int
 }
@@ -134,7 +155,6 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	default:
 		saslAuthType = ""
 	}
-
 	if val, ok := config.AuthParams["sasl"]; ok {
 		if saslAuthType != "" {
 			return errors.New("unable to set `sasl` in both ScaledObject and TriggerAuthentication together")
@@ -143,6 +163,7 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	}
 
 	if saslAuthType != "" {
+		saslAuthType = strings.TrimSpace(saslAuthType)
 		mode := kafkaSaslType(saslAuthType)
 
 		if mode == KafkaSASLTypePlaintext || mode == KafkaSASLTypeSCRAMSHA256 || mode == KafkaSASLTypeSCRAMSHA512 || mode == KafkaSASLTypeOAuthbearer {
@@ -164,6 +185,18 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 					return errors.New("no oauth token endpoint uri given")
 				}
 				meta.oauthTokenEndpointURI = strings.TrimSpace(config.AuthParams["oauthTokenEndpointUri"])
+
+				meta.oauthExtensions = make(map[string]string)
+				oauthExtensionsRaw := config.AuthParams["oauthExtensions"]
+				if oauthExtensionsRaw != "" {
+					for _, extension := range strings.Split(oauthExtensionsRaw, ",") {
+						splittedExtension := strings.Split(extension, "=")
+						if len(splittedExtension) != 2 {
+							return errors.New("invalid OAuthBearer extension, must be of format key=value")
+						}
+						meta.oauthExtensions[splittedExtension[0]] = splittedExtension[1]
+					}
+				}
 			}
 		} else {
 			return fmt.Errorf("err SASL mode %s given", mode)
@@ -199,24 +232,40 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	}
 
 	if enableTLS {
-		certGiven := config.AuthParams["cert"] != ""
-		keyGiven := config.AuthParams["key"] != ""
-		if certGiven && !keyGiven {
-			return errors.New("key must be provided with cert")
-		}
-		if keyGiven && !certGiven {
-			return errors.New("cert must be provided with key")
-		}
-		meta.ca = config.AuthParams["ca"]
-		meta.cert = config.AuthParams["cert"]
-		meta.key = config.AuthParams["key"]
-		if value, found := config.AuthParams["keyPassword"]; found {
-			meta.keyPassword = value
-		} else {
-			meta.keyPassword = ""
-		}
-		meta.enableTLS = true
+		return parseTLS(config, meta)
 	}
+
+	return nil
+}
+
+func parseTLS(config *ScalerConfig, meta *kafkaMetadata) error {
+	certGiven := config.AuthParams["cert"] != ""
+	keyGiven := config.AuthParams["key"] != ""
+	if certGiven && !keyGiven {
+		return errors.New("key must be provided with cert")
+	}
+	if keyGiven && !certGiven {
+		return errors.New("cert must be provided with key")
+	}
+	meta.ca = config.AuthParams["ca"]
+	meta.cert = config.AuthParams["cert"]
+	meta.key = config.AuthParams["key"]
+	meta.unsafeSsl = defaultUnsafeSsl
+
+	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
+		unsafeSsl, err := strconv.ParseBool(val)
+		if err != nil {
+			return fmt.Errorf("error parsing unsafeSsl: %w", err)
+		}
+		meta.unsafeSsl = unsafeSsl
+	}
+
+	if value, found := config.AuthParams["keyPassword"]; found {
+		meta.keyPassword = value
+	} else {
+		meta.keyPassword = ""
+	}
+	meta.enableTLS = true
 
 	return nil
 }
@@ -376,7 +425,7 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 
 	if metadata.enableTLS {
 		config.Net.TLS.Enable = true
-		tlsConfig, err := kedautil.NewTLSConfigWithPassword(metadata.cert, metadata.key, metadata.keyPassword, metadata.ca, false)
+		tlsConfig, err := kedautil.NewTLSConfigWithPassword(metadata.cert, metadata.key, metadata.keyPassword, metadata.ca, metadata.unsafeSsl)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -399,7 +448,7 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 
 	if metadata.saslType == KafkaSASLTypeOAuthbearer {
 		config.Net.SASL.Mechanism = sarama.SASLTypeOAuth
-		config.Net.SASL.TokenProvider = OAuthBearerTokenProvider(metadata.username, metadata.password, metadata.oauthTokenEndpointURI, metadata.scopes)
+		config.Net.SASL.TokenProvider = OAuthBearerTokenProvider(metadata.username, metadata.password, metadata.oauthTokenEndpointURI, metadata.scopes, metadata.oauthExtensions)
 	}
 
 	client, err := sarama.NewClient(metadata.bootstrapServers, config)
@@ -620,7 +669,7 @@ func (s *kafkaScaler) getConsumerAndProducerOffsets(topicPartitions map[string][
 }
 
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
-func (s *kafkaScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+func (s *kafkaScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	totalLag, totalLagWithPersistent, err := s.getTotalLag()
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, false, err

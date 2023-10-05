@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -13,99 +12,27 @@ import (
 	"github.com/Azure/azure-kusto-go/kusto/data/errors"
 	"github.com/Azure/azure-kusto-go/kusto/internal/frames"
 	v2 "github.com/Azure/azure-kusto-go/kusto/internal/frames/v2"
-
-	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
 )
 
 // queryer provides for getting a stream of Kusto frames. Exists to allow fake Kusto streams in tests.
 type queryer interface {
 	io.Closer
-	query(ctx context.Context, db string, query Stmt, options *queryOptions) (execResp, error)
-	mgmt(ctx context.Context, db string, query Stmt, options *mgmtOptions) (execResp, error)
-	queryToJson(ctx context.Context, db string, query Stmt, options *queryOptions) (string, error)
+	query(ctx context.Context, db string, query Statement, options *queryOptions) (execResp, error)
+	mgmt(ctx context.Context, db string, query Statement, options *queryOptions) (execResp, error)
+	queryToJson(ctx context.Context, db string, query Statement, options *queryOptions) (string, error)
 }
 
-// Authorization provides the ADAL authorizer needed to access the resource. You can set Authorizer or
-// Config, but not both.
+// Authorization provides the TokenProvider needed to acquire the auth token.
 type Authorization struct {
-	// Authorizer provides an authorizer to use when talking to Kusto. If this is set, the
-	// Authorizer must have its Resource (also called Resource ID) set to the endpoint passed
-	// to the New() constructor. This will be something like "https://somename.westus.kusto.windows.net".
-	// This package will try to set that automatically for you.
-	Authorizer autorest.Authorizer
-	// Config provides the authorizer's config that can create the authorizer. We recommending setting
-	// this instead of Authorizer, as we will automatically set the Resource ID with the endpoint passed.
-	Config auth.AuthorizerConfig
+	// Token provider that can be used to get the access token.
+	TokenProvider *TokenProvider
 }
 
-// Validate validates the Authorization object against the endpoint an preps it for use.
-// For internal use only.
-func (a *Authorization) Validate(endpoint string) error {
-	const rescField = "Resource"
-
-	if strings.Contains(strings.ToLower(endpoint), ".azuresynapse") {
-		endpoint = "https://kusto.kusto.windows.net"
-	}
-
-	if a.Authorizer != nil && a.Config != nil {
-		return errors.ES(errors.OpServConn, errors.KClientArgs, "cannot set Authoriztion.Authorizer and Authorizer.Config")
-	}
-	if a.Authorizer == nil && a.Config == nil {
-		return errors.ES(errors.OpServConn, errors.KClientArgs, "cannot leave all Authoriztion fields as zero values")
-	}
-	if a.Authorizer != nil {
-		return nil
-	}
-
-	// This is sort of hacky, in that we are using what we know about the current auth library's internals
-	// structure to try and make this fix. But the auth library is confusing and this will stem off a bunch of
-	// support calls, so it is worth attempting.
-	v := reflect.ValueOf(a.Config)
-	switch v.Kind() {
-	// This piece of code is what I call hopeful thinking. The New*() calls in auth.go should return pointers
-	// (they did an interface which is bad). So this is hoping someone passed a pointer in the Authorizer interface.
-	case reflect.Ptr:
-		if reflect.PtrTo(v.Type()).Kind() == reflect.Struct {
-			v = v.Elem()
-			if f := v.FieldByName(rescField); !f.IsZero() {
-				if f.Kind() == reflect.String {
-					f.SetString(endpoint)
-				}
-			} else {
-				return errors.ES(errors.OpServConn, errors.KClientArgs, "the Authorization.Config passed to the Kusto client did not have an underlying .Resource field")
-			}
-		} else {
-			return errors.ES(errors.OpServConn, errors.KClientArgs, "the Authorization.Config passed to the Kusto client was a pointer to a %T, which is not a struct", a.Config)
-		}
-		// This is how we are likely to get the Authorizer. So since we can't change the fields, now we have to type assert
-		// to the underlying type and put back a new copy. Note: it seems to me that we should be get a copy of a.Config
-		// and then set the field (without using unsafe), then do the re-assignment. But I haven't been able to parse this out atm.
-	case reflect.Struct:
-		switch t := a.Config.(type) {
-		case auth.ClientCredentialsConfig:
-			t.Resource = endpoint
-			a.Config = t
-		case auth.DeviceFlowConfig:
-			t.Resource = endpoint
-			a.Config = t
-		case auth.MSIConfig:
-			t.Resource = endpoint
-			a.Config = t
-		default:
-			return errors.ES(errors.OpServConn, errors.KClientArgs, "the Authiorization.Config passed to the Kusto client is not a type we know how to deal with: %T", t)
-		}
-	default:
-		return errors.ES(errors.OpServConn, errors.KClientArgs, "the Authorization.Config passed to the Kusto client was not a Pointer to a struct or a struct, is a: %T", a.Config)
-
-	}
-	var err error
-	a.Authorizer, err = a.Config.Authorizer()
-	if err != nil {
-		return errors.E(errors.OpServConn, errors.KClientArgs, err)
-	}
-	return nil
-}
+const (
+	defaultMgmtTimeout  = time.Hour
+	defaultQueryTimeout = 4 * time.Minute
+	clientServerDelta   = 30 * time.Second
+)
 
 // Client is a client to a Kusto instance.
 type Client struct {
@@ -114,13 +41,22 @@ type Client struct {
 	auth             Authorization
 	mgmtConnMu       sync.Mutex
 	http             *http.Client
+	clientDetails    *ClientDetails
 }
 
 // Option is an optional argument type for New().
 type Option func(c *Client)
 
-// New returns a new Client. endpoint is the Kusto endpoint to use, example: https://somename.westus.kusto.windows.net .
-func New(endpoint string, auth Authorization, options ...Option) (*Client, error) {
+// New returns a new Client.
+func New(kcsb *ConnectionStringBuilder, options ...Option) (*Client, error) {
+	tkp, err := kcsb.newTokenProvider()
+	if err != nil {
+		return nil, err
+	}
+	auth := &Authorization{
+		TokenProvider: tkp,
+	}
+	endpoint := kcsb.DataSource
 	u, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, errors.ES(errors.OpServConn, errors.KClientArgs, "could not parse the endpoint(%s): %s", endpoint, err).SetNoRetry()
@@ -134,20 +70,20 @@ func New(endpoint string, auth Authorization, options ...Option) (*Client, error
 		)
 	}
 
-	client := &Client{auth: auth, endpoint: endpoint}
+	client := &Client{auth: *auth, endpoint: endpoint, clientDetails: NewClientDetails(kcsb.ApplicationForTracing, kcsb.UserForTracing)}
 	for _, o := range options {
 		o(client)
 	}
 
-	if err := auth.Validate(endpoint); err != nil {
-		return nil, err
-	}
-
 	if client.http == nil {
-		client.http = &http.Client{}
+		client.http = &http.Client{
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		}
 	}
 
-	conn, err := newConn(endpoint, auth, client.http)
+	conn, err := NewConn(endpoint, *auth, client.http, client.clientDetails)
 	if err != nil {
 		return nil, err
 	}
@@ -167,8 +103,8 @@ type QueryOption func(q *queryOptions) error
 
 // Note: QueryOption are defined in queryopts.go file
 
-// MgmtOption is an option type for a call to Mgmt().
-type MgmtOption func(m *mgmtOptions) error
+// Deprecated: MgmtOption will be removed in a future release. Use QueryOption instead.
+type MgmtOption = QueryOption
 
 // Note: MgmtOption are defined in queryopts.go file
 
@@ -194,13 +130,10 @@ const (
 // query is a injection safe Stmt object. Queries cannot take longer than 5 minutes by default and have row/size limitations.
 // Note that the server has a timeout of 4 minutes for a query by default unless the context deadline is set. Queries can
 // take a maximum of 1 hour.
-func (c *Client) Query(ctx context.Context, db string, query Stmt, options ...QueryOption) (*RowIterator, error) {
-	ctx, cancel, err := contextSetup(ctx, false) // Note: cancel is called when *RowIterator has Stop() called.
-	if err != nil {
-		return nil, err
-	}
+func (c *Client) Query(ctx context.Context, db string, query Statement, options ...QueryOption) (*RowIterator, error) {
+	ctx, cancel := contextSetup(ctx) // Note: cancel is called when *RowIterator has Stop() called.
 
-	opts, err := setQueryOptions(ctx, errors.OpQuery, query, options...)
+	opts, err := setQueryOptions(ctx, errors.OpQuery, query, queryCall, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -254,13 +187,10 @@ func (c *Client) Query(ctx context.Context, db string, query Stmt, options ...Qu
 	return iter, nil
 }
 
-func (c *Client) QueryToJson(ctx context.Context, db string, query Stmt, options ...QueryOption) (string, error) {
-	ctx, cancel, err := contextSetup(ctx, false) // Note: cancel is called when *RowIterator has Stop() called.
-	if err != nil {
-		return "", err
-	}
+func (c *Client) QueryToJson(ctx context.Context, db string, query Statement, options ...QueryOption) (string, error) {
+	ctx, cancel := contextSetup(ctx) // Note: cancel is called when *RowIterator has Stop() called.
 
-	opts, err := setQueryOptions(ctx, errors.OpQuery, query, options...)
+	opts, err := setQueryOptions(ctx, errors.OpQuery, query, queryCall, options...)
 	if err != nil {
 		return "", err
 	}
@@ -284,22 +214,21 @@ func (c *Client) QueryToJson(ctx context.Context, db string, query Stmt, options
 // Mgmt accepts a Stmt, but that Stmt cannot have any query parameters attached at this time.
 // Note that the server has a timeout of 10 minutes for a management call by default unless the context deadline is set.
 // There is a maximum of 1 hour.
-func (c *Client) Mgmt(ctx context.Context, db string, query Stmt, options ...MgmtOption) (*RowIterator, error) {
-	if !query.params.IsZero() || !query.defs.IsZero() {
-		return nil, errors.ES(errors.OpMgmt, errors.KClientArgs, "a Mgmt() call cannot accept a Stmt object that has Definitions or Parameters attached")
+func (c *Client) Mgmt(ctx context.Context, db string, query Statement, options ...QueryOption) (*RowIterator, error) {
+	if stmt, ok := query.(Stmt); ok {
+		if !stmt.params.IsZero() || !stmt.defs.IsZero() {
+			return nil, errors.ES(errors.OpMgmt, errors.KClientArgs, "a Mgmt() call cannot accept a Stmt object that has Definitions or Parameters attached")
+		}
 	}
 
-	ctx, cancel, err := contextSetup(ctx, true) // Note: cancel is called when *RowIterator has Stop() called.
+	ctx, cancel := contextSetup(ctx) // Note: cancel is called when *RowIterator has Stop() called.
+
+	opts, err := setQueryOptions(ctx, errors.OpQuery, query, mgmtCall, options...)
 	if err != nil {
 		return nil, err
 	}
 
-	opts, err := setMgmtOptions(ctx, errors.OpMgmt, query, options...)
-	if err != nil {
-		return nil, err
-	}
-
-	conn, err := c.getConn(mgmtCall, connOptions{mgmtOptions: opts})
+	conn, err := c.getConn(mgmtCall, connOptions{queryOptions: opts})
 	if err != nil {
 		return nil, err
 	}
@@ -326,75 +255,64 @@ func (c *Client) Mgmt(ctx context.Context, db string, query Stmt, options ...Mgm
 	return iter, nil
 }
 
-func setQueryOptions(ctx context.Context, op errors.Op, query Stmt, options ...QueryOption) (*queryOptions, error) {
-	params, err := query.params.toParameters(query.defs)
-	if err != nil {
-		return nil, errors.ES(op, errors.KClientArgs, "QueryValues in the the Stmt were incorrect: %s", err).SetNoRetry()
-	}
-
-	// Match our server deadline to our context.Deadline. This should be set from withing kusto.Query() to always have a value.
-	deadline, ok := ctx.Deadline()
-	if ok {
-		options = append(
-			options,
-			queryServerTimeout(deadline.Sub(nower())),
-		)
-	}
-
+func setQueryOptions(ctx context.Context, op errors.Op, query Statement, queryType int, options ...QueryOption) (*queryOptions, error) {
 	opt := &queryOptions{
 		requestProperties: &requestProperties{
-			Options:    map[string]interface{}{},
-			Parameters: params,
+			Options: map[string]interface{}{},
 		},
 	}
-	/*if op == errors.OpQuery {
+
+	if op == errors.OpQuery {
 		// We want progressive frames by default for Query(), but not Mgmt() because it uses v1 framing and ingestion endpoints
 		// do not support it.
-		opt.requestProperties.Options["results_progressive_enabled"] = true
-	}*/
-	opt.requestProperties.Options["results_progressive_enabled"] = true
+		opt.requestProperties.Options[RequestProgressiveEnabledValue] = true
+	}
 
 	for _, o := range options {
 		if err := o(opt); err != nil {
 			return nil, errors.ES(op, errors.KClientArgs, "QueryValues in the the Stmt were incorrect: %s", err).SetNoRetry()
 		}
+	}
+
+	CalculateTimeout(ctx, opt, queryType)
+
+	if query.SupportsInlineParameters() {
+		if opt.requestProperties.QueryParameters.Count() != 0 {
+			return nil, errors.ES(op, errors.KClientArgs, "kusto.Stmt does not support the QueryParameters option. Construct your query using `kql.New`").SetNoRetry()
+		}
+		params, err := query.GetParameters()
+		if err != nil {
+			return nil, errors.ES(op, errors.KClientArgs, "Parameter validation error: %s", err).SetNoRetry()
+		}
+
+		opt.requestProperties.Parameters = params
 	}
 	return opt, nil
 }
 
-func setMgmtOptions(ctx context.Context, op errors.Op, query Stmt, options ...MgmtOption) (*mgmtOptions, error) {
-	params, err := query.params.toParameters(query.defs)
-	if err != nil {
-		return nil, errors.ES(op, errors.KClientArgs, "QueryValues in the the Stmt were incorrect: %s", err).SetNoRetry()
+func CalculateTimeout(ctx context.Context, opt *queryOptions, queryType int) {
+	// If the user has specified a timeout, use that.
+	if val, ok := opt.requestProperties.Options[NoRequestTimeoutValue]; ok && val.(bool) {
+		return
+	}
+	if _, ok := opt.requestProperties.Options[ServerTimeoutValue]; ok {
+		return
 	}
 
-	// Match our server deadline to our context.Deadline. This should be set from withing kusto.Query() to always have a value.
-	deadline, ok := ctx.Deadline()
-	if ok {
-		options = append(
-			options,
-			mgmtServerTimeout(deadline.Sub(nower())),
-		)
+	// Otherwise use the context deadline, if it exists. If it doesn't, use the default timeout.
+	if deadline, ok := ctx.Deadline(); ok {
+		opt.requestProperties.Options[ServerTimeoutValue] = deadline.Sub(time.Now())
+		return
 	}
 
-	opt := &mgmtOptions{
-		requestProperties: &requestProperties{
-			Options:    map[string]interface{}{},
-			Parameters: params,
-		},
+	var timeout time.Duration
+	switch queryType {
+	case queryCall:
+		timeout = defaultQueryTimeout
+	case mgmtCall:
+		timeout = defaultMgmtTimeout
 	}
-	if op == errors.OpQuery {
-		// We want progressive frames by default for Query(), but not Mgmt() because it uses v1 framing and ingestion endpoints
-		// do not support it.
-		opt.requestProperties.Options["results_progressive_enabled"] = true
-	}
-
-	for _, o := range options {
-		if err := o(opt); err != nil {
-			return nil, errors.ES(op, errors.KClientArgs, "QueryValues in the the Stmt were incorrect: %s", err).SetNoRetry()
-		}
-	}
-	return opt, nil
+	opt.requestProperties.Options[ServerTimeoutValue] = timeout + clientServerDelta
 }
 
 func (c *Client) getConn(callType callType, options connOptions) (queryer, error) {
@@ -402,8 +320,8 @@ func (c *Client) getConn(callType callType, options connOptions) (queryer, error
 	case queryCall:
 		return c.conn, nil
 	case mgmtCall:
-		delete(options.mgmtOptions.requestProperties.Options, "results_progressive_enabled")
-		if options.mgmtOptions.queryIngestion {
+		delete(options.queryOptions.requestProperties.Options, "results_progressive_enabled")
+		if options.queryOptions.queryIngestion {
 			c.mgmtConnMu.Lock()
 			defer c.mgmtConnMu.Unlock()
 
@@ -414,10 +332,12 @@ func (c *Client) getConn(callType callType, options connOptions) (queryer, error
 			u, _ := url.Parse(c.endpoint) // Don't care about the error
 			u.Host = "ingest-" + u.Host
 			auth := c.auth
-			if err := auth.Validate(u.String()); err != nil {
-				return nil, err
+			var details *ClientDetails
+			if innerConn, ok := c.conn.(*Conn); ok {
+				details = innerConn.clientDetails
 			}
-			iconn, err := newConn(u.String(), auth, c.http)
+
+			iconn, err := NewConn(u.String(), auth, c.http, details)
 			if err != nil {
 				return nil, err
 			}
@@ -431,31 +351,16 @@ func (c *Client) getConn(callType callType, options connOptions) (queryer, error
 	}
 }
 
-var nower = time.Now
-
-func contextSetup(ctx context.Context, mgmtCall bool) (context.Context, context.CancelFunc, error) {
-	t, ok := ctx.Deadline()
-	if ok {
-		d := t.Sub(nower())
-		if d > 1*time.Hour {
-			if mgmtCall {
-				return ctx, nil, errors.ES(errors.OpMgmt, errors.KClientArgs, "cannot set a deadline greater than 1 hour(%s)", d)
-			}
-			return ctx, nil, errors.ES(errors.OpQuery, errors.KClientArgs, "cannot set a deadline greater than 1 hour(%s)", d)
-		}
-		ctx, cancel := context.WithCancel(ctx)
-		return ctx, cancel, nil
-	}
-	if mgmtCall {
-		ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
-		return ctx, cancel, nil
-	}
-	ctx, cancel := context.WithTimeout(ctx, 4*time.Minute)
-	return ctx, cancel, nil
+func contextSetup(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithCancel(ctx)
 }
 
 func (c *Client) HttpClient() *http.Client {
 	return c.http
+}
+
+func (c *Client) ClientDetails() *ClientDetails {
+	return c.clientDetails
 }
 
 func (c *Client) Close() error {

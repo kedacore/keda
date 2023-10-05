@@ -175,7 +175,7 @@ func TestCouchDBScaler(t *testing.T) {
 	testScaleDown(t, kc)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func installCouchDB(t *testing.T) {

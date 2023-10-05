@@ -19,8 +19,12 @@ package v1alpha1
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strconv"
 
+	"github.com/antonmedv/expr"
+	"github.com/antonmedv/expr/vm"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -31,8 +35,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	prommetrics "github.com/kedacore/keda/v2/pkg/prommetrics/webhook"
+	metricscollector "github.com/kedacore/keda/v2/pkg/metricscollector/webhook"
 )
 
 var scaledobjectlog = logf.Log.WithName("scaledobject-validation-webhook")
@@ -56,26 +61,26 @@ func (so *ScaledObject) SetupWebhookWithManager(mgr ctrl.Manager) error {
 var _ webhook.Validator = &ScaledObject{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (so *ScaledObject) ValidateCreate() error {
+func (so *ScaledObject) ValidateCreate() (admission.Warnings, error) {
 	val, _ := json.MarshalIndent(so, "", "  ")
 	scaledobjectlog.V(1).Info(fmt.Sprintf("validating scaledobject creation for %s", string(val)))
 	return validateWorkload(so, "create")
 }
 
-func (so *ScaledObject) ValidateUpdate(old runtime.Object) error {
+func (so *ScaledObject) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	val, _ := json.MarshalIndent(so, "", "  ")
 	scaledobjectlog.V(1).Info(fmt.Sprintf("validating scaledobject update for %s", string(val)))
 
 	if isRemovingFinalizer(so, old) {
 		scaledobjectlog.V(1).Info("finalizer removal, skipping validation")
-		return nil
+		return nil, nil
 	}
 
 	return validateWorkload(so, "update")
 }
 
-func (so *ScaledObject) ValidateDelete() error {
-	return nil
+func (so *ScaledObject) ValidateDelete() (admission.Warnings, error) {
+	return nil, nil
 }
 
 func isRemovingFinalizer(so *ScaledObject, old runtime.Object) bool {
@@ -89,23 +94,34 @@ func isRemovingFinalizer(so *ScaledObject, old runtime.Object) bool {
 	return len(so.ObjectMeta.Finalizers) == 0 && len(oldSo.ObjectMeta.Finalizers) == 1 && soSpecString == oldSoSpecString
 }
 
-func validateWorkload(so *ScaledObject, action string) error {
-	prommetrics.RecordScaledObjectValidatingTotal(so.Namespace, action)
-	err := verifyCPUMemoryScalers(so, action)
-	if err != nil {
-		return err
+func validateWorkload(so *ScaledObject, action string) (admission.Warnings, error) {
+	metricscollector.RecordScaledObjectValidatingTotal(so.Namespace, action)
+
+	verifyFunctions := []func(*ScaledObject, string) error{
+		verifyCPUMemoryScalers,
+		verifyTriggers,
+		verifyScaledObjects,
+		verifyHpas,
 	}
-	err = verifyScaledObjects(so, action)
-	if err != nil {
-		return err
-	}
-	err = verifyHpas(so, action)
-	if err != nil {
-		return err
+
+	for i := range verifyFunctions {
+		err := verifyFunctions[i](so, action)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	scaledobjectlog.V(1).Info(fmt.Sprintf("scaledobject %s is valid", so.Name))
-	return nil
+	return nil, nil
+}
+
+func verifyTriggers(incomingSo *ScaledObject, action string) error {
+	err := ValidateTriggers(incomingSo.Spec.Triggers)
+	if err != nil {
+		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
+		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "incorrect-triggers")
+	}
+	return err
 }
 
 func verifyHpas(incomingSo *ScaledObject, action string) error {
@@ -148,10 +164,15 @@ func verifyHpas(incomingSo *ScaledObject, action string) error {
 			}
 
 			if !owned {
-				err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the hpa '%s'", incomingSo.Spec.ScaleTargetRef.Name, incomingSoGckr.GVKString(), hpa.Name)
-				scaledobjectlog.Error(err, "validation error")
-				prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-hpa")
-				return err
+				if incomingSo.ObjectMeta.Annotations[ScaledObjectTransferHpaOwnershipAnnotation] == "true" &&
+					incomingSo.Spec.Advanced.HorizontalPodAutoscalerConfig.Name == hpa.Name {
+					scaledobjectlog.Info(fmt.Sprintf("%s hpa ownership being transferred to %s", hpa.Name, incomingSo.Name))
+				} else {
+					err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the hpa '%s'", incomingSo.Spec.ScaleTargetRef.Name, incomingSoGckr.GVKString(), hpa.Name)
+					scaledobjectlog.Error(err, "validation error")
+					metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-hpa")
+					return err
+				}
 			}
 		}
 	}
@@ -191,11 +212,21 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string) error {
 			so.Spec.ScaleTargetRef.Name == incomingSo.Spec.ScaleTargetRef.Name {
 			err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the ScaledObject '%s'", so.Spec.ScaleTargetRef.Name, incomingSoGckr.GVKString(), so.Name)
 			scaledobjectlog.Error(err, "validation error")
-			prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-scaled-object")
+			metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-scaled-object")
 			return err
 		}
 	}
 
+	// verify ScalingModifiers structure if defined in ScaledObject
+	if incomingSo.IsUsingModifiers() {
+		_, err = ValidateAndCompileScalingModifiers(incomingSo)
+		if err != nil {
+			scaledobjectlog.Error(err, "error validating ScalingModifiers")
+			metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "scaling-modifiers")
+
+			return err
+		}
+	}
 	return nil
 }
 
@@ -244,7 +275,7 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
 						container.Resources.Requests.Cpu().AsApproximateFloat64() == 0 {
 						err := fmt.Errorf("the scaledobject has a cpu trigger but the container %s doesn't have the cpu request defined", container.Name)
 						scaledobjectlog.Error(err, "validation error")
-						prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
+						metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
 						return err
 					}
 				} else if trigger.Type == memoryString {
@@ -253,7 +284,7 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
 						container.Resources.Requests.Memory().AsApproximateFloat64() == 0 {
 						err := fmt.Errorf("the scaledobject has a memory trigger but the container %s doesn't have the memory request defined", container.Name)
 						scaledobjectlog.Error(err, "validation error")
-						prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
+						metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
 						return err
 					}
 				}
@@ -273,10 +304,98 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
 			if (scaleToZeroErr && incomingSo.Spec.MinReplicaCount == nil) || (scaleToZeroErr && *incomingSo.Spec.MinReplicaCount == 0) {
 				err := fmt.Errorf("scaledobject has only cpu/memory triggers AND minReplica is 0 (scale to zero doesn't work in this case)")
 				scaledobjectlog.Error(err, "validation error")
-				prommetrics.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "scale-to-zero-requirements-not-met")
+				metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "scale-to-zero-requirements-not-met")
 				return err
 			}
 		}
 	}
+	return nil
+}
+
+// ValidateAndCompileScalingModifiers validates all combinations of given arguments
+// and their values. Expects the whole structure's path to be defined (like .Advanced).
+// As part of formula validation this function also compiles the formula
+// (with dummy values that determine whether all necessary triggers are defined)
+// and returns it to be stored in cache and reused.
+func ValidateAndCompileScalingModifiers(so *ScaledObject) (*vm.Program, error) {
+	sm := so.Spec.Advanced.ScalingModifiers
+
+	if sm.Formula == "" {
+		return nil, fmt.Errorf("error ScalingModifiers.Formula is mandatory")
+	}
+
+	// validate formula if not empty
+	compiledFormula, err := validateScalingModifiersFormula(so)
+	if err != nil {
+		err := errors.Join(fmt.Errorf("error validating formula in ScalingModifiers"), err)
+		return nil, err
+	}
+	// validate target if not empty
+	err = validateScalingModifiersTarget(so)
+	if err != nil {
+		err := errors.Join(fmt.Errorf("error validating target in ScalingModifiers"), err)
+		return nil, err
+	}
+	return compiledFormula, nil
+}
+
+// validateScalingModifiersFormula helps validate the ScalingModifiers struct,
+// specifically the formula.
+func validateScalingModifiersFormula(so *ScaledObject) (*vm.Program, error) {
+	sm := so.Spec.Advanced.ScalingModifiers
+
+	// if formula is empty, nothing to validate
+	if sm.Formula == "" {
+		return nil, nil
+	}
+	// formula needs target because it's always transformed to composite-scaler
+	if sm.Target == "" {
+		return nil, fmt.Errorf("formula is given but target is empty")
+	}
+
+	// dummy value for compiled map of triggers
+	dummyValue := -1.0
+
+	// Compile & Run with dummy values to determine if all triggers in formula are
+	// defined (have names)
+	triggersMap := make(map[string]float64)
+	for _, trig := range so.Spec.Triggers {
+		// if resource metrics are given, skip
+		if trig.Type == cpuString || trig.Type == memoryString {
+			continue
+		}
+		if trig.Name != "" {
+			triggersMap[trig.Name] = dummyValue
+		}
+	}
+	compiled, err := expr.Compile(sm.Formula, expr.Env(triggersMap), expr.AsFloat64())
+	if err != nil {
+		return nil, err
+	}
+	_, err = expr.Run(compiled, triggersMap)
+	if err != nil {
+		return nil, err
+	}
+	return compiled, nil
+}
+
+func validateScalingModifiersTarget(so *ScaledObject) error {
+	sm := so.Spec.Advanced.ScalingModifiers
+
+	if sm.Target == "" {
+		return nil
+	}
+
+	// convert string to float
+	num, err := strconv.ParseFloat(sm.Target, 64)
+	if err != nil || num <= 0.0 {
+		return fmt.Errorf("error converting target for scalingModifiers (string->float) to valid target: %w", err)
+	}
+
+	if so.Spec.Advanced.ScalingModifiers.MetricType == autoscalingv2.UtilizationMetricType {
+		err := fmt.Errorf("error trigger type is Utilization, but it needs to be AverageValue or Value for external metrics")
+		return err
+	}
+
 	return nil
 }

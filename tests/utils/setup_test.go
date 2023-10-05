@@ -6,6 +6,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"testing"
 
@@ -167,6 +168,34 @@ func TesVerifyPodsIdentity(t *testing.T) {
 	}
 }
 
+func TestSetupOpentelemetryComponents(t *testing.T) {
+	otlpTempFileName := "otlp.yml"
+	otlpServiceTempFileName := "otlpServicePatch.yml"
+	defer os.Remove(otlpTempFileName)
+	defer os.Remove(otlpServiceTempFileName)
+	err := os.WriteFile(otlpTempFileName, []byte(helper.OtlpConfig), 0755)
+	assert.NoErrorf(t, err, "cannot create otlp config file - %s", err)
+
+	err = os.WriteFile(otlpServiceTempFileName, []byte(helper.OtlpServicePatch), 0755)
+	assert.NoErrorf(t, err, "cannot create otlp service patch file - %s", err)
+
+	_, err = ExecuteCommand("helm version")
+	require.NoErrorf(t, err, "helm is not installed - %s", err)
+
+	_, err = ExecuteCommand("helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts")
+	require.NoErrorf(t, err, "cannot add open-telemetry helm repo - %s", err)
+
+	_, err = ExecuteCommand("helm repo update open-telemetry")
+	require.NoErrorf(t, err, "cannot update open-telemetry helm repo - %s", err)
+
+	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install opentelemetry-collector open-telemetry/opentelemetry-collector -f %s", otlpTempFileName))
+
+	require.NoErrorf(t, err, "cannot install opentelemetry - %s", err)
+
+	_, err = ExecuteCommand(fmt.Sprintf("kubectl apply -f %s", otlpServiceTempFileName))
+	require.NoErrorf(t, err, "cannot update opentelemetry ports - %s", err)
+}
+
 func TestDeployKEDA(t *testing.T) {
 	KubeClient = GetKubernetesClient(t)
 	CreateNamespace(t, KubeClient, KEDANamespace)
@@ -229,4 +258,24 @@ func TestSetupAadPodIdentityComponents(t *testing.T) {
 		"--set azureIdentities.keda.binding.name=keda",
 		AzureAdPodIdentityNamespace, AzureADMsiClientID, AzureADMsiID))
 	require.NoErrorf(t, err, "cannot install aad pod identity webhook - %s", err)
+}
+
+func TestSetUpStrimzi(t *testing.T) {
+	t.Log("--- installing kafka operator ---")
+	_, err := ExecuteCommand("helm repo add strimzi https://strimzi.io/charts/")
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	_, err = ExecuteCommand("helm repo update")
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+
+	KubeClient = GetKubernetesClient(t)
+
+	CreateNamespace(t, KubeClient, StrimziNamespace)
+
+	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --namespace %s --wait %s strimzi/strimzi-kafka-operator --version %s --set watchAnyNamespace=true`,
+		StrimziNamespace,
+		StrimziChartName,
+		StrimziVersion))
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+
+	t.Log("--- kafka operator installed ---")
 }

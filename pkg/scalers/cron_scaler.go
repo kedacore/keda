@@ -140,7 +140,7 @@ func (s *cronScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 }
 
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
-func (s *cronScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+func (s *cronScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	var defaultDesiredReplicas = int64(defaultDesiredReplicas)
 
 	location, err := time.LoadLocation(s.metadata.timezone)

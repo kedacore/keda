@@ -155,7 +155,11 @@ func parseArangoDBMetadata(config *ScalerConfig) (*arangoDBMetadata, error) {
 		}
 		meta.queryValue = queryValue
 	} else {
-		return nil, fmt.Errorf("no queryValue given")
+		if config.AsMetricSource {
+			meta.queryValue = 0
+		} else {
+			return nil, fmt.Errorf("no queryValue given")
+		}
 	}
 
 	meta.activationQueryValue = 0
@@ -202,7 +206,7 @@ func parseArangoDBMetadata(config *ScalerConfig) (*arangoDBMetadata, error) {
 }
 
 // Close disposes of arangoDB connections
-func (s *arangoDBScaler) Close(ctx context.Context) error {
+func (s *arangoDBScaler) Close(_ context.Context) error {
 	return nil
 }
 

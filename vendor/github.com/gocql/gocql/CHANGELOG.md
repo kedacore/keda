@@ -12,9 +12,84 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [1.6.0] - 2023-08-28
+
+### Added
+- Added the InstaclustrPasswordAuthenticator to the list of default approved authenticators. (#1711)
+- Added the `com.scylladb.auth.SaslauthdAuthenticator` and `com.scylladb.auth.TransitionalAuthenticator`
+  to the list of default approved authenticators. (#1712)
+- Added transferring Keyspace and Table names to the Query from the prepared response and updating
+  information about that every time this information is received. (#1714)
+
+### Changed
+- Tracer created with NewTraceWriter now includes the thread information from trace events in the output. (#1716)
+- Increased default timeouts so that they are higher than Cassandra default timeouts.
+  This should help prevent issues where a default configuration overloads a server using default timeouts
+  during retries. (#1701, #1719)
+
+## [1.5.2] - 2023-06-12
+
+Same as 1.5.0. GitHub does not like gpg signed text in the tag message (even with prefixed armor),
+so pushing a new tag.
+
+## [1.5.1] - 2023-06-12
+
+Same as 1.5.0. GitHub does not like gpg signed text in the tag message,
+so pushing a new tag.
+
+## [1.5.0] - 2023-06-12
+
+### Added
+
+- gocql now advertises the driver name and version in the STARTUP message to the server.
+  The values are taken from the Go module's path and version
+  (or from the replacement module, if used). (#1702)
+  That allows the server to track which fork of the driver is being used.
+- Query.Values() to retrieve the values bound to the Query.
+  This makes writing wrappers around Query easier. (#1700)
+
+### Fixed
+- Potential panic on deserialization (#1695)
+- Unmarshalling of dates outside of `[1677-09-22, 2262-04-11]` range. (#1692)
+
+## [1.4.0] - 2023-04-26
+
+### Added
+
+### Changed
+
+- gocql now refreshes the entire ring when it receives a topology change event and
+  when control connection is re-connected.
+  This simplifies code managing ring state. (#1680)
+- Supported versions of Cassandra that we test against are now 4.0.x and 4.1.x. (#1685)
+- Default HostDialer now uses already-resolved connect address instead of hostname when establishing TCP connections (#1683).
+
+### Fixed
+
+- Deadlock in Session.Close(). (#1688)
+- Race between Query.Release() and speculative executions (#1684)
+- Missed ring update during control connection reconnection (#1680)
+
+## [1.3.2] - 2023-03-27
+
+### Changed
+
+- Supported versions of Go that we test against are now Go 1.19 and Go 1.20.
+
+### Fixed
+
+- Node event handling now processes topology events before status events.
+  This fixes some cases where new nodes were missed. (#1682)
+- Learning a new IP address for an existing node (identified by host ID) now triggers replacement of that host.
+  This fixes some Kubernetes reconnection failures. (#1682)
+- Refresh ring when processing a node UP event for an unknown host.
+  This fixes some cases where new nodes were missed. (#1669)
+
 ## [1.3.1] - 2022-12-13
 
-- Panic in RackAwareRoundRobinPolicy caused by wrong alignment on 32-bit platforms. (#1666) 
+### Fixed
+
+- Panic in RackAwareRoundRobinPolicy caused by wrong alignment on 32-bit platforms. (#1666)
 
 ## [1.3.0] - 2022-11-29
 
@@ -81,7 +156,7 @@ This release improves support for connecting through proxies and some improvemen
 - Fixed panic when trying to unmarshal unknown/custom CQL type.
 
 ## Deprecated
-- TypeInfo.New, please use TypeInfo.NewWithError instead. 
+- TypeInfo.New, please use TypeInfo.NewWithError instead.
 
 ## [1.0.0] - 2022-03-04
 ### Changed

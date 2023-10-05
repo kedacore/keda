@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// Copyright 2023 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 // limitations under the License.
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
-//
-// Author Ewout Prangsma
 //
 
 package driver
@@ -39,8 +37,10 @@ const (
 	keyQueryOptStream                   = "arangodb-query-opt-stream"
 	keyQueryOptProfile                  = "arangodb-query-opt-profile"
 	keyQueryOptMaxRuntime               = "arangodb-query-opt-maxRuntime"
+	keyQueryOptOptimizerRules           = "arangodb-query-opt-optimizerRules"
 	keyQueryShardIds                    = "arangodb-query-opt-shardIds"
 	keyFillBlockCache                   = "arangodb-query-opt-fillBlockCache"
+	keyAllowRetry                       = "arangodb-query-opt-allowRetry"
 )
 
 // WithQueryCount is used to configure a context that will set the Count of a query request,
@@ -58,7 +58,7 @@ func WithQueryBatchSize(parent context.Context, value int) context.Context {
 	return context.WithValue(contextOrBackground(parent), keyQueryBatchSize, value)
 }
 
-// WithQuerySharIds is used to configure a context that will set the ShardIds of a query request,
+// WithQueryShardIds is used to configure a context that will set the ShardIds of a query request,
 func WithQueryShardIds(parent context.Context, value []string) context.Context {
 	return context.WithValue(contextOrBackground(parent), keyQueryShardIds, value)
 }
@@ -140,6 +140,11 @@ func WithQueryMaxRuntime(parent context.Context, value ...float64) context.Conte
 	return context.WithValue(contextOrBackground(parent), keyQueryOptMaxRuntime, v)
 }
 
+// WithQueryOptimizerRules applies optimizer rules for a query.
+func WithQueryOptimizerRules(parent context.Context, value []string) context.Context {
+	return context.WithValue(contextOrBackground(parent), keyQueryOptOptimizerRules, value)
+}
+
 // WithQueryFillBlockCache if is set to true or not specified, this will make the query store the data it reads via the RocksDB storage engine in the RocksDB block cache.
 // This is usually the desired behavior. The option can be set to false for queries that are known to either read a lot of data which would thrash the block cache,
 // or for queries that read data which are known to be outside of the hot set. By setting the option to false, data read by the query will not make it into
@@ -150,6 +155,14 @@ func WithQueryFillBlockCache(parent context.Context, value ...bool) context.Cont
 		v = value[0]
 	}
 	return context.WithValue(contextOrBackground(parent), keyFillBlockCache, v)
+}
+
+func WithQueryAllowRetry(parent context.Context, value ...bool) context.Context {
+	v := true
+	if len(value) > 0 {
+		v = value[0]
+	}
+	return context.WithValue(contextOrBackground(parent), keyAllowRetry, v)
 }
 
 type queryRequest struct {
@@ -178,13 +191,20 @@ type queryRequest struct {
 	Options  struct {
 		// ShardId query option
 		ShardIds []string `json:"shardIds,omitempty"`
-		// Profile If set to true or 1, then the additional query profiling information will be returned in the sub-attribute profile of the extra return attribute,
-		// if the query result is not served from the query cache. Set to 2 the query will include execution stats per query plan node in
-		// sub-attribute stats.nodes of the extra return attribute. Additionally the query plan is returned in the sub-attribute extra.plan.
+		// Profile If set to 1, then the additional query profiling information is returned in the profile sub-attribute
+		// of the extra return attribute, unless the query result is served from the query cache.
+		// If set to 2, the query includes execution stats per query plan node in stats.nodes
+		// sub-attribute of the extra return attribute.
+		// Additionally, the query plan is returned in the extra.plan sub-attribute.
 		Profile int `json:"profile,omitempty"`
-		// A list of to-be-included or to-be-excluded optimizer rules can be put into this attribute, telling the optimizer to include or exclude specific rules.
-		// To disable a rule, prefix its name with a -, to enable a rule, prefix it with a +. There is also a pseudo-rule all, which will match all optimizer rules.
-		OptimizerRules string `json:"optimizer.rules,omitempty"`
+		// Optimizer contains options related to the query optimizer.
+		Optimizer struct {
+			// A list of to-be-included or to-be-excluded optimizer rules can be put into this attribute,
+			// telling the optimizer to include or exclude specific rules.
+			// To disable a rule, prefix its name with a -, to enable a rule, prefix it with a +.
+			// There is also a pseudo-rule all, which will match all optimizer rules.
+			Rules []string `json:"rules,omitempty"`
+		} `json:"optimizer,omitempty"`
 		// This Enterprise Edition parameter allows to configure how long a DBServer will have time to bring the satellite collections
 		// involved in the query into sync. The default value is 60.0 (seconds). When the max time has been reached the query will be stopped.
 		SatelliteSyncWait float64 `json:"satelliteSyncWait,omitempty"`
@@ -214,6 +234,10 @@ type queryRequest struct {
 		// or for queries that read data which are known to be outside of the hot set. By setting the option to false, data read by the query will not make it into
 		// the RocksDB block cache if not already in there, thus leaving more room for the actual hot set.
 		FillBlockCache bool `json:"fillBlockCache,omitempty"`
+
+		// AllowRetry If set to `true`, ArangoDB will store cursor results in such a way
+		// that batch reads can be retried in the case of a communication error.
+		AllowRetry bool `json:"allowRetry,omitempty"`
 	} `json:"options,omitempty"`
 }
 
@@ -284,9 +308,19 @@ func (q *queryRequest) applyContextSettings(ctx context.Context) {
 			q.Options.MaxRuntime = value
 		}
 	}
+	if rawValue := ctx.Value(keyQueryOptOptimizerRules); rawValue != nil {
+		if value, ok := rawValue.([]string); ok && len(value) > 0 {
+			q.Options.Optimizer.Rules = value
+		}
+	}
 	if rawValue := ctx.Value(keyFillBlockCache); rawValue != nil {
 		if value, ok := rawValue.(bool); ok {
 			q.Options.FillBlockCache = value
+		}
+	}
+	if rawValue := ctx.Value(keyAllowRetry); rawValue != nil {
+		if value, ok := rawValue.(bool); ok {
+			q.Options.AllowRetry = value
 		}
 	}
 }

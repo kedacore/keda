@@ -63,6 +63,10 @@ var testNATSJetStreamMetadata = []parseNATSJetStreamMetadataTestData{
 	{map[string]string{"account": "$G", "stream": "mystream", "consumer": "pull_consumer", jetStreamLagThresholdMetricName: "6"}, map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222"}, false},
 	// Misconfigured lag threshold
 	{map[string]string{"account": "$G", "stream": "mystream", "consumer": "pull_consumer", jetStreamLagThresholdMetricName: "Y"}, map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222"}, true},
+	// All good + account from authParams
+	{map[string]string{"stream": "mystream", "consumer": "pull_consumer"}, map[string]string{"account": "$G", "natsServerMonitoringEndpoint": "nats.nats:8222"}, false},
+	// Misconfigured account
+	{map[string]string{"stream": "mystream", "consumer": "pull_consumer"}, map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222"}, true},
 }
 
 var natsJetStreamMetricIdentifiers = []natsJetStreamMetricIdentifier{
@@ -217,6 +221,12 @@ var testNATSJetStreamMockResponses = []parseNATSJetStreamMockResponsesTestData{
 		}, false, false},
 }
 
+var testNATSJetStreamServerMockResponses = map[string][]byte{
+	"not-leader-1.localhost:8222": []byte(`{"server_name": "not-leader-1", "cluster": {"urls": ["leader.localhost.nats.svc:8222", "not-leader-2.localhost.nats.svc:8222"]}}`),
+	"not-leader-2.localhost:8222": []byte(`{"server_name": "not-leader-2", "cluster": {"urls": ["leader.localhost.nats.svc:8222", "not-leader-1.localhost.nats.svc:8222"]}}`),
+	"leader.localhost:8222":       []byte(`{"server_name": "leader", "cluster": {"urls": ["not-leader-1.localhost.nats.svc:8222", "not-leader-2.localhost.nats.svc:8222"]}}`),
+}
+
 func TestNATSJetStreamIsActive(t *testing.T) {
 	for _, mockResponse := range testNATSJetStreamMockResponses {
 		mockResponseJSON, err := json.Marshal(mockResponse.data)
@@ -314,7 +324,7 @@ func natsMockHTTPJetStreamServer(t *testing.T, mockResponseJSON []byte) *httptes
 
 	// redirect leader.localhost for the clustered test
 	http.DefaultTransport.(*http.Transport).DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-		if addr == "leader.localhost:8222" {
+		if strings.HasSuffix(addr, ".localhost:8222") {
 			addr = "127.0.0.1:8222"
 		}
 		return dialer.DialContext(ctx, network, addr)
@@ -324,13 +334,27 @@ func natsMockHTTPJetStreamServer(t *testing.T, mockResponseJSON []byte) *httptes
 		switch r.URL.Path {
 		case "/jsz":
 			w.WriteHeader(http.StatusOK)
+			// if requesting from specific node and not a leader, which indicate clustered test
+			// send empty response
+			if strings.HasSuffix(r.Host, ".localhost:8222") && r.Host != "leader.localhost:8222" {
+				mockResponseJSON, _ = json.Marshal(&jetStreamEndpointResponse{})
+			}
 			_, err := w.Write(mockResponseJSON)
 			if err != nil {
 				t.Fatal("Could not write to the http server connection:", err)
 			}
 		case "/varz":
 			w.WriteHeader(http.StatusOK)
-			_, err := w.Write([]byte(`{"cluster": {"urls": ["leader.localhost.nats.svc:8222"]}}`))
+			res, ok := testNATSJetStreamServerMockResponses[r.Host]
+			if !ok {
+				// if given host is not a specific node (e.g. loadbalancer)
+				// get response from random node
+				for _, v := range testNATSJetStreamServerMockResponses {
+					res = v
+					break
+				}
+			}
+			_, err := w.Write(res)
 			if err != nil {
 				t.Fatal("Could not write to the http server connection:", err)
 			}

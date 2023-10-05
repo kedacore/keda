@@ -1,3 +1,7 @@
+## 2.12.3 [2023-03-29]
+### Bug fixes
+- Update golang.org/x/net from 0.0.0-20210119194325-5f4716e94777 to 0.7.0
+
 ## 2.12.2 [2023-01-26]
 ### Bug fixes
 - [#368](https://github.com/influxdata/influxdb-client-go/pull/368) Allowing proxy from environment variable

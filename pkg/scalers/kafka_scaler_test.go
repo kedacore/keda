@@ -3,10 +3,11 @@ package scalers
 import (
 	"context"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/go-logr/logr"
 )
 
@@ -192,6 +193,8 @@ var parseAuthParamsTestDataset = []parseAuthParamsTestDataSecondAuthMethod{
 	{map[string]string{"tls": "enable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"cert": "ceert", "key": "keey", "keyPassword": "keeyPassword"}, false, true},
 	// success, TLS CA only
 	{map[string]string{"tls": "enable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"ca": "caaa"}, false, true},
+	// success, TLS CA only and unsafeSSL
+	{map[string]string{"tls": "enable", "unsafeSsl": "true", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"ca": "caaa"}, false, true},
 	// success, SASL + TLS
 	{map[string]string{"sasl": "plaintext", "tls": "enable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, true},
 	// success, SASL + TLS explicitly disabled
@@ -233,6 +236,18 @@ var parseAuthParamsTestDataset = []parseAuthParamsTestDataSecondAuthMethod{
 	{map[string]string{"sasl": "scram_sha512", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"sasl": "scram_sha512", "username": "admin", "password": "admin"}, true, false},
 	// failure, setting TLS values in both places
 	{map[string]string{"tls": "enable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, true},
+	// success, setting SASL plaintext value with extra \n in TriggerAuthentication
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"sasl": "plaintext\n", "username": "admin", "password": "admin"}, false, true},
+	// success, setting SASL plaintext value with extra space in TriggerAuthentication
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"sasl": "plaintext ", "username": "admin", "password": "admin"}, false, true},
+	// success, setting SASL scram_sha256 value with extra \n in TriggerAuthentication
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"sasl": "scram_sha256\n", "username": "admin", "password": "admin"}, false, true},
+	// success, setting SASL scram_sha256 value with extra space in TriggerAuthentication
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"sasl": "scram_sha256 ", "username": "admin", "password": "admin"}, false, true},
+	// success, setting SASL scram_sha512 value with extra \n in TriggerAuthentication
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"sasl": "scram_sha512\n", "username": "admin", "password": "admin"}, false, true},
+	// success, setting SASL scram_sha512 value with extra space in TriggerAuthentication
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"sasl": "scram_sha512 ", "username": "admin", "password": "admin"}, false, true},
 }
 
 var parseKafkaOAuthbrearerAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
@@ -246,6 +261,12 @@ var parseKafkaOAuthbrearerAuthParamsTestDataset = []parseKafkaAuthParamsTestData
 	{map[string]string{"sasl": "foo", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, true, false},
 	// failure, SASL OAUTHBEARER + TLS missing oauthTokenEndpointUri
 	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "", "tls": "disable"}, true, false},
+	// success, SASL OAUTHBEARER + extension
+	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable", "oauthExtensions": "extension_foo=bar"}, false, false},
+	// success, SASL OAUTHBEARER + multiple extensions
+	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable", "oauthExtensions": "extension_foo=bar,extension_baz=baz"}, false, false},
+	// failure, SASL OAUTHBEARER + bad extension
+	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable", "oauthExtensions": "extension_foo=bar,extension_bazbaz"}, true, false},
 }
 
 var kafkaMetricIdentifiers = []kafkaMetricIdentifier{
@@ -378,6 +399,15 @@ func TestKafkaAuthParams(t *testing.T) {
 				if meta.keyPassword != testData.authParams["keyPassword"] {
 					t.Errorf("Test case: %v. Expected key to be set to %v but got %v\n", id, testData.authParams["keyPassword"], meta.keyPassword)
 				}
+				if val, ok := testData.authParams["unsafeSsl"]; ok && err == nil {
+					boolVal, err := strconv.ParseBool(val)
+					if err != nil && !testData.isError {
+						t.Errorf("Expect error but got success in test case %s", meta.key)
+					}
+					if boolVal != meta.unsafeSsl {
+						t.Errorf("Expected unsafeSsl key to be set to %v but got %v\n", boolVal, meta.unsafeSsl)
+					}
+				}
 			}
 		}
 	}
@@ -396,6 +426,11 @@ func TestKafkaOAuthbrearerAuthParams(t *testing.T) {
 		if testData.authParams["scopes"] == "" {
 			if len(meta.scopes) != strings.Count(testData.authParams["scopes"], ",")+1 {
 				t.Errorf("Expected scopes to be set to %v but got %v\n", strings.Count(testData.authParams["scopes"], ","), len(meta.scopes))
+			}
+		}
+		if err == nil && testData.authParams["oauthExtensions"] != "" {
+			if len(meta.oauthExtensions) != strings.Count(testData.authParams["oauthExtensions"], ",")+1 {
+				t.Errorf("Expected number of extensions to be set to %v but got %v\n", strings.Count(testData.authParams["oauthExtensions"], ",")+1, len(meta.oauthExtensions))
 			}
 		}
 	}
@@ -454,7 +489,7 @@ type MockClusterAdmin struct {
 	partitionIds []int32
 }
 
-func (m *MockClusterAdmin) CreateTopic(topic string, detail *sarama.TopicDetail, validateOnly bool) error {
+func (m *MockClusterAdmin) CreateTopic(_ string, _ *sarama.TopicDetail, _ bool) error {
 	return nil
 }
 func (m *MockClusterAdmin) ListTopics() (map[string]sarama.TopicDetail, error) {
@@ -475,39 +510,39 @@ func (m *MockClusterAdmin) DescribeTopics(topics []string) (metadata []*sarama.T
 	return metadatas, nil
 }
 
-func (m *MockClusterAdmin) DeleteTopic(topic string) error {
+func (m *MockClusterAdmin) DeleteTopic(_ string) error {
 	return nil
 }
 
-func (m *MockClusterAdmin) CreatePartitions(topic string, count int32, assignment [][]int32, validateOnly bool) error {
+func (m *MockClusterAdmin) CreatePartitions(_ string, _ int32, _ [][]int32, _ bool) error {
 	return nil
 }
 
-func (m *MockClusterAdmin) AlterPartitionReassignments(topic string, assignment [][]int32) error {
+func (m *MockClusterAdmin) AlterPartitionReassignments(_ string, _ [][]int32) error {
 	return nil
 }
 
-func (m *MockClusterAdmin) ListPartitionReassignments(topics string, partitions []int32) (topicStatus map[string]map[int32]*sarama.PartitionReplicaReassignmentsStatus, err error) {
+func (m *MockClusterAdmin) ListPartitionReassignments(_ string, _ []int32) (topicStatus map[string]map[int32]*sarama.PartitionReplicaReassignmentsStatus, err error) {
 	return nil, nil
 }
 
-func (m *MockClusterAdmin) DeleteRecords(topic string, partitionOffsets map[int32]int64) error {
+func (m *MockClusterAdmin) DeleteRecords(_ string, _ map[int32]int64) error {
 	return nil
 }
 
-func (m *MockClusterAdmin) DescribeConfig(resource sarama.ConfigResource) ([]sarama.ConfigEntry, error) {
+func (m *MockClusterAdmin) DescribeConfig(_ sarama.ConfigResource) ([]sarama.ConfigEntry, error) {
 	return nil, nil
 }
 
-func (m *MockClusterAdmin) AlterConfig(resourceType sarama.ConfigResourceType, name string, entries map[string]*string, validateOnly bool) error {
+func (m *MockClusterAdmin) AlterConfig(_ sarama.ConfigResourceType, _ string, _ map[string]*string, _ bool) error {
 	return nil
 }
 
-func (m *MockClusterAdmin) IncrementalAlterConfig(resourceType sarama.ConfigResourceType, name string, entries map[string]sarama.IncrementalAlterConfigsEntry, validateOnly bool) error {
+func (m *MockClusterAdmin) IncrementalAlterConfig(_ sarama.ConfigResourceType, _ string, _ map[string]sarama.IncrementalAlterConfigsEntry, _ bool) error {
 	return nil
 }
 
-func (m *MockClusterAdmin) CreateACL(resource sarama.Resource, acl sarama.Acl) error {
+func (m *MockClusterAdmin) CreateACL(_ sarama.Resource, _ sarama.Acl) error {
 	return nil
 }
 
@@ -515,11 +550,11 @@ func (m *MockClusterAdmin) CreateACLs([]*sarama.ResourceAcls) error {
 	return nil
 }
 
-func (m *MockClusterAdmin) ListAcls(filter sarama.AclFilter) ([]sarama.ResourceAcls, error) {
+func (m *MockClusterAdmin) ListAcls(_ sarama.AclFilter) ([]sarama.ResourceAcls, error) {
 	return nil, nil
 }
 
-func (m *MockClusterAdmin) DeleteACL(filter sarama.AclFilter, validateOnly bool) ([]sarama.MatchingAcl, error) {
+func (m *MockClusterAdmin) DeleteACL(_ sarama.AclFilter, _ bool) ([]sarama.MatchingAcl, error) {
 	return nil, nil
 }
 
@@ -527,19 +562,19 @@ func (m *MockClusterAdmin) ListConsumerGroups() (map[string]string, error) {
 	return nil, nil
 }
 
-func (m *MockClusterAdmin) DescribeConsumerGroups(groups []string) ([]*sarama.GroupDescription, error) {
+func (m *MockClusterAdmin) DescribeConsumerGroups(_ []string) ([]*sarama.GroupDescription, error) {
 	return nil, nil
 }
 
-func (m *MockClusterAdmin) ListConsumerGroupOffsets(group string, topicPartitions map[string][]int32) (*sarama.OffsetFetchResponse, error) {
+func (m *MockClusterAdmin) ListConsumerGroupOffsets(_ string, _ map[string][]int32) (*sarama.OffsetFetchResponse, error) {
 	return nil, nil
 }
 
-func (m *MockClusterAdmin) DeleteConsumerGroupOffset(group string, topic string, partition int32) error {
+func (m *MockClusterAdmin) DeleteConsumerGroupOffset(_ string, _ string, _ int32) error {
 	return nil
 }
 
-func (m *MockClusterAdmin) DeleteConsumerGroup(group string) error {
+func (m *MockClusterAdmin) DeleteConsumerGroup(_ string) error {
 	return nil
 }
 
@@ -547,27 +582,27 @@ func (m *MockClusterAdmin) DescribeCluster() (brokers []*sarama.Broker, controll
 	return nil, 0, nil
 }
 
-func (m *MockClusterAdmin) DescribeLogDirs(brokers []int32) (map[int32][]sarama.DescribeLogDirsResponseDirMetadata, error) {
+func (m *MockClusterAdmin) DescribeLogDirs(_ []int32) (map[int32][]sarama.DescribeLogDirsResponseDirMetadata, error) {
 	return nil, nil
 }
 
-func (m *MockClusterAdmin) DescribeUserScramCredentials(users []string) ([]*sarama.DescribeUserScramCredentialsResult, error) {
+func (m *MockClusterAdmin) DescribeUserScramCredentials(_ []string) ([]*sarama.DescribeUserScramCredentialsResult, error) {
 	return nil, nil
 }
 
-func (m *MockClusterAdmin) DeleteUserScramCredentials(delete []sarama.AlterUserScramCredentialsDelete) ([]*sarama.AlterUserScramCredentialsResult, error) {
+func (m *MockClusterAdmin) DeleteUserScramCredentials(_ []sarama.AlterUserScramCredentialsDelete) ([]*sarama.AlterUserScramCredentialsResult, error) {
 	return nil, nil
 }
 
-func (m *MockClusterAdmin) UpsertUserScramCredentials(upsert []sarama.AlterUserScramCredentialsUpsert) ([]*sarama.AlterUserScramCredentialsResult, error) {
+func (m *MockClusterAdmin) UpsertUserScramCredentials(_ []sarama.AlterUserScramCredentialsUpsert) ([]*sarama.AlterUserScramCredentialsResult, error) {
 	return nil, nil
 }
 
-func (m *MockClusterAdmin) DescribeClientQuotas(components []sarama.QuotaFilterComponent, strict bool) ([]sarama.DescribeClientQuotasEntry, error) {
+func (m *MockClusterAdmin) DescribeClientQuotas(_ []sarama.QuotaFilterComponent, _ bool) ([]sarama.DescribeClientQuotasEntry, error) {
 	return nil, nil
 }
 
-func (m *MockClusterAdmin) AlterClientQuotas(entity []sarama.QuotaEntityComponent, op sarama.ClientQuotasOp, validateOnly bool) error {
+func (m *MockClusterAdmin) AlterClientQuotas(_ []sarama.QuotaEntityComponent, _ sarama.ClientQuotasOp, _ bool) error {
 	return nil
 }
 
@@ -575,7 +610,7 @@ func (m *MockClusterAdmin) Controller() (*sarama.Broker, error) {
 	return nil, nil
 }
 
-func (m *MockClusterAdmin) RemoveMemberFromConsumerGroup(groupID string, groupInstanceIds []string) (*sarama.LeaveGroupResponse, error) {
+func (m *MockClusterAdmin) RemoveMemberFromConsumerGroup(_ string, _ []string) (*sarama.LeaveGroupResponse, error) {
 	return nil, nil
 }
 

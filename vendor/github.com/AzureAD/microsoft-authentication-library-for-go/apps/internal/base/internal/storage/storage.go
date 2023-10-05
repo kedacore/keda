@@ -83,12 +83,14 @@ func isMatchingScopes(scopesOne []string, scopesTwo string) bool {
 }
 
 // Read reads a storage token from the cache if it exists.
-func (m *Manager) Read(ctx context.Context, authParameters authority.AuthParams, account shared.Account) (TokenResponse, error) {
+func (m *Manager) Read(ctx context.Context, authParameters authority.AuthParams) (TokenResponse, error) {
 	tr := TokenResponse{}
 	homeAccountID := authParameters.HomeAccountID
 	realm := authParameters.AuthorityInfo.Tenant
 	clientID := authParameters.ClientID
 	scopes := authParameters.Scopes
+	authnSchemeKeyID := authParameters.AuthnScheme.KeyID()
+	tokenType := authParameters.AuthnScheme.AccessTokenType()
 
 	// fetch metadata if instanceDiscovery is enabled
 	aliases := []string{authParameters.AuthorityInfo.Host}
@@ -100,10 +102,11 @@ func (m *Manager) Read(ctx context.Context, authParameters authority.AuthParams,
 		aliases = metadata.Aliases
 	}
 
-	accessToken := m.readAccessToken(homeAccountID, aliases, realm, clientID, scopes)
+	accessToken := m.readAccessToken(homeAccountID, aliases, realm, clientID, scopes, tokenType, authnSchemeKeyID)
 	tr.AccessToken = accessToken
 
-	if account.IsZero() {
+	if homeAccountID == "" {
+		// caller didn't specify a user, so there's no reason to search for an ID or refresh token
 		return tr, nil
 	}
 	// errors returned by read* methods indicate a cache miss and are therefore non-fatal. We continue populating
@@ -122,7 +125,7 @@ func (m *Manager) Read(ctx context.Context, authParameters authority.AuthParams,
 		}
 	}
 
-	account, err = m.readAccount(homeAccountID, aliases, realm)
+	account, err := m.readAccount(homeAccountID, aliases, realm)
 	if err == nil {
 		tr.Account = account
 	}
@@ -133,13 +136,13 @@ const scopeSeparator = " "
 
 // Write writes a token response to the cache and returns the account information the token is stored with.
 func (m *Manager) Write(authParameters authority.AuthParams, tokenResponse accesstokens.TokenResponse) (shared.Account, error) {
-	authParameters.HomeAccountID = tokenResponse.ClientInfo.HomeAccountID()
-	homeAccountID := authParameters.HomeAccountID
+	homeAccountID := tokenResponse.HomeAccountID()
 	environment := authParameters.AuthorityInfo.Host
 	realm := authParameters.AuthorityInfo.Tenant
 	clientID := authParameters.ClientID
 	target := strings.Join(tokenResponse.GrantedScopes.Slice, scopeSeparator)
 	cachedAt := time.Now()
+	authnSchemeKeyID := authParameters.AuthnScheme.KeyID()
 
 	var account shared.Account
 
@@ -161,6 +164,8 @@ func (m *Manager) Write(authParameters authority.AuthParams, tokenResponse acces
 			tokenResponse.ExtExpiresOn.T,
 			target,
 			tokenResponse.AccessToken,
+			tokenResponse.TokenType,
+			authnSchemeKeyID,
 		)
 
 		// Since we have a valid access token, cache it before moving on.
@@ -248,7 +253,7 @@ func (m *Manager) aadMetadata(ctx context.Context, authorityInfo authority.Info)
 	return m.aadCache[authorityInfo.Host], nil
 }
 
-func (m *Manager) readAccessToken(homeID string, envAliases []string, realm, clientID string, scopes []string) AccessToken {
+func (m *Manager) readAccessToken(homeID string, envAliases []string, realm, clientID string, scopes []string, tokenType, authnSchemeKeyID string) AccessToken {
 	m.contractMu.RLock()
 	defer m.contractMu.RUnlock()
 	// TODO: linear search (over a map no less) is slow for a large number (thousands) of tokens.
@@ -256,9 +261,11 @@ func (m *Manager) readAccessToken(homeID string, envAliases []string, realm, cli
 	// an issue, however if it does become a problem then we know where to look.
 	for _, at := range m.contract.AccessTokens {
 		if at.HomeAccountID == homeID && at.Realm == realm && at.ClientID == clientID {
-			if checkAlias(at.Environment, envAliases) {
-				if isMatchingScopes(scopes, at.Scopes) {
-					return at
+			if (at.TokenType == tokenType && at.AuthnSchemeKeyID == authnSchemeKeyID) || (at.TokenType == "" && (tokenType == "" || tokenType == "Bearer")) {
+				if checkAlias(at.Environment, envAliases) {
+					if isMatchingScopes(scopes, at.Scopes) {
+						return at
+					}
 				}
 			}
 		}
@@ -493,6 +500,8 @@ func (m *Manager) update(cache *Contract) {
 
 // Marshal implements cache.Marshaler.
 func (m *Manager) Marshal() ([]byte, error) {
+	m.contractMu.RLock()
+	defer m.contractMu.RUnlock()
 	return json.Marshal(m.contract)
 }
 

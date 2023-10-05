@@ -121,7 +121,7 @@ func parseAzureQueueMetadata(config *ScalerConfig, logger logr.Logger) (*azureQu
 
 	// before triggerAuthentication CRD, pod identity was configured using this property
 	if val, ok := config.TriggerMetadata["useAAdPodIdentity"]; ok && config.PodIdentity.Provider == "" {
-		if val == "true" {
+		if val == stringTrue {
 			config.PodIdentity = kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}
 		}
 	}
@@ -150,7 +150,7 @@ func parseAzureQueueMetadata(config *ScalerConfig, logger logr.Logger) (*azureQu
 			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no accountName given")
 		}
 	default:
-		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("pod identity %s not supported for azure storage queues", config.PodIdentity)
+		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("pod identity %s not supported for azure storage queues", config.PodIdentity.Provider)
 	}
 
 	meta.scalerIndex = config.ScalerIndex

@@ -21,11 +21,11 @@
       }
     ]
   },
-  "description": "Visualize metrics provided by Keda",
+  "description": "Visualize metrics provided by KEDA",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 9794,
+  "id": 1653,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -54,6 +54,8 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -171,7 +173,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by(job) (rate(keda_scaler_errors_total{}[5m]))",
+          "expr": "sum by(job) (rate(keda_scaler_errors{}[5m]))",
           "legendFormat": "{{ job }}",
           "range": true,
           "refId": "A"
@@ -192,6 +194,8 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -309,7 +313,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by(scaler) (rate(keda_scaler_errors{namespace=~\"$namespace\", scaledObject=~\"$scaledObject\", scaler=~\"$scaler\"}[5m]))",
+          "expr": "sum by(scaler) (rate(keda_scaler_errors{exported_namespace=~\"$namespace\", scaledObject=~\"$scaledObject\", scaler=~\"$scaler\"}[5m]))",
           "legendFormat": "{{ scaler }}",
           "range": true,
           "refId": "A"
@@ -330,6 +334,8 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -417,7 +423,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by(scaledObject) (rate(keda_scaled_object_errors{namespace=~\"$namespace\", scaledObject=~\"$scaledObject\"}[5m]))",
+          "expr": "sum by(scaledObject) (rate(keda_scaled_object_errors{exported_namespace=~\"$namespace\", scaledObject=~\"$scaledObject\"}[5m]))",
           "legendFormat": "{{ scaledObject }}",
           "range": true,
           "refId": "A"
@@ -425,6 +431,19 @@
       ],
       "title": "Scaled Object Errors",
       "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "id": 10,
+      "panels": [],
+      "title": "Scale Target",
+      "type": "row"
     },
     {
       "datasource": {
@@ -438,6 +457,8 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -503,7 +524,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 10
+        "y": 11
       },
       "id": 5,
       "options": {
@@ -525,7 +546,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by(metric) (rate(keda_scaler_metrics_value{namespace=~\"$namespace\", metric=~\"$metric\"}[5m]))",
+          "expr": "sum by(metric) (rate(keda_scaler_metrics_value{exported_namespace=~\"$namespace\", metric=~\"$metric\", scaledObject=\"$scaledObject\"}[5m]))",
           "legendFormat": "{{ metric }}",
           "range": true,
           "refId": "A"
@@ -533,195 +554,6 @@
       ],
       "title": "Scaler Metric Value",
       "type": "timeseries"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 19
-      },
-      "id": 10,
-      "panels": [],
-      "title": "Scale Target",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "Visualizes changes in replicasets of deployments and statefulsets over time.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "continuous-GrYlRd"
-          },
-          "custom": {
-            "fillOpacity": 70,
-            "lineWidth": 5,
-            "spanNulls": true
-          },
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "index": 0,
-                  "text": "No Scaling"
-                },
-                "1": {
-                  "index": 1,
-                  "text": "Scaling"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "yellow",
-                "value": null
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 10,
-        "w": 23,
-        "x": 0,
-        "y": 20
-      },
-      "id": 11,
-      "options": {
-        "alignValue": "left",
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "mergeValues": true,
-        "rowHeight": 1,
-        "showValue": "never",
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "changes(kube_deployment_spec_replicas{deployment=~\"$scaledObject\"}[1m])",
-          "legendFormat": "{{ deployment }}",
-          "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "changes(kube_statefulset_replicas{statefulset=~\"$scaledObject\"}[1m])",
-          "hide": false,
-          "legendFormat": "{{ statefulset }}",
-          "range": true,
-          "refId": "B"
-        }
-      ],
-      "title": "Changes in Replicas",
-      "type": "state-timeline"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "shows current replicas against max ones",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "min": 0,
-          "thresholds": {
-            "mode": "percentage",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 30
-      },
-      "id": 15,
-      "options": {
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "/^current_replicas$/",
-          "values": false
-        },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true
-      },
-      "pluginVersion": "9.0.5",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "exemplar": false,
-          "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"$namespace\",horizontalpodautoscaler=\"keda-hpa-$scaledObject\"}",
-          "instant": true,
-          "legendFormat": "current_replicas",
-          "range": false,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "exemplar": false,
-          "expr": "kube_horizontalpodautoscaler_spec_max_replicas{namespace=\"$namespace\",horizontalpodautoscaler=\"keda-hpa-$scaledObject\"}",
-          "hide": false,
-          "instant": true,
-          "legendFormat": "max_replicas",
-          "range": false,
-          "refId": "B"
-        }
-      ],
-      "title": "HPA current/max replicas",
-      "type": "gauge"
     },
     {
       "datasource": {
@@ -735,18 +567,23 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "drawStyle": "bars",
-            "fillOpacity": 100,
-            "gradientMode": "hue",
+            "drawStyle": "line",
+            "fillOpacity": 21,
+            "gradientMode": "opacity",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
             },
             "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
             "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": {
@@ -756,7 +593,7 @@
             "spanNulls": false,
             "stacking": {
               "group": "A",
-              "mode": "normal"
+              "mode": "none"
             },
             "thresholdsStyle": {
               "mode": "off"
@@ -778,16 +615,17 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 11,
-        "x": 12,
-        "y": 30
+        "w": 24,
+        "x": 0,
+        "y": 20
       },
       "id": 13,
       "options": {
         "legend": {
           "calcs": [],
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "single",
@@ -804,10 +642,10 @@
           "exemplar": false,
           "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"$namespace\",horizontalpodautoscaler=\"keda-hpa-$scaledObject\"}",
           "format": "time_series",
-          "instant": true,
+          "instant": false,
           "interval": "",
           "legendFormat": "current_replicas",
-          "range": false,
+          "range": true,
           "refId": "A"
         },
         {
@@ -820,29 +658,216 @@
           "expr": "kube_horizontalpodautoscaler_spec_max_replicas{namespace=\"$namespace\",horizontalpodautoscaler=\"keda-hpa-$scaledObject\"}",
           "format": "time_series",
           "hide": false,
+          "instant": false,
+          "legendFormat": "max_replicas",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Current/max replicas (time based)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "shows current replicas against max ones based on time difference",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "continuous-GrYlRd"
+          },
+          "custom": {
+            "fillOpacity": 70,
+            "lineWidth": 0,
+            "spanNulls": false
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "No scaling"
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "from": -200,
+                "result": {
+                  "color": "light-red",
+                  "index": 1,
+                  "text": "Scaling down"
+                },
+                "to": 0
+              },
+              "type": "range"
+            },
+            {
+              "options": {
+                "from": 0,
+                "result": {
+                  "color": "semi-dark-red",
+                  "index": 2,
+                  "text": "Scaling up"
+                },
+                "to": 200
+              },
+              "type": "range"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 28
+      },
+      "id": 16,
+      "options": {
+        "alignValue": "left",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false,
+          "width": 0
+        },
+        "mergeValues": true,
+        "rowHeight": 1,
+        "showValue": "never",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "delta(kube_horizontalpodautoscaler_status_current_replicas{namespace=\"$namespace\",horizontalpodautoscaler=\"keda-hpa-$scaledObject\"}[1m])",
+          "format": "time_series",
+          "instant": false,
+          "interval": "",
+          "legendFormat": ".",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Changes in replicas",
+      "type": "state-timeline"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "shows current replicas against max ones",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 36
+      },
+      "id": 15,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^current_replicas$/",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "pluginVersion": "9.5.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"$namespace\",horizontalpodautoscaler=\"keda-hpa-$scaledObject\"}",
+          "instant": true,
+          "legendFormat": "current_replicas",
+          "range": false,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "kube_horizontalpodautoscaler_spec_max_replicas{namespace=\"$namespace\",horizontalpodautoscaler=\"keda-hpa-$scaledObject\"}",
+          "hide": false,
           "instant": true,
           "legendFormat": "max_replicas",
           "range": false,
           "refId": "B"
         }
       ],
-      "title": "HPA current/max replicas (time based)",
-      "type": "timeseries"
+      "title": "Current/max replicas",
+      "type": "gauge"
     }
   ],
   "refresh": "1m",
-  "schemaVersion": 36,
+  "schemaVersion": 38,
   "style": "dark",
-  "tags": [
-    "keda"
-  ],
+  "tags": [],
   "templating": {
     "list": [
       {
         "current": {
           "selected": false,
-          "text": "ecp-stage-system",
-          "value": "ecp-stage-system"
+          "text": "Prometheus",
+          "value": "Prometheus"
         },
         "hide": 0,
         "includeAll": false,
@@ -859,22 +884,22 @@
       {
         "current": {
           "selected": false,
-          "text": "keda",
-          "value": "keda"
+          "text": "bhe-test",
+          "value": "bhe-test"
         },
         "datasource": {
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(keda_scaled_object_errors, namespace)",
+        "definition": "label_values(keda_scaler_active,exported_namespace)",
         "hide": 0,
         "includeAll": false,
         "multi": false,
         "name": "namespace",
         "options": [],
         "query": {
-          "query": "label_values(keda_scaled_object_errors, namespace)",
-          "refId": "StandardVariableQuery"
+          "query": "label_values(keda_scaler_active,exported_namespace)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
         "regex": "",
@@ -884,27 +909,23 @@
       },
       {
         "current": {
-          "selected": true,
-          "text": [
-            "keda-demo"
-          ],
-          "value": [
-            "keda-demo"
-          ]
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
         },
         "datasource": {
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(keda_scaled_object_errors{namespace=\"$namespace\"}, scaledObject)",
+        "definition": "label_values(keda_scaler_active{exported_namespace=\"$namespace\"},scaledObject)",
         "hide": 0,
         "includeAll": true,
         "multi": true,
         "name": "scaledObject",
         "options": [],
         "query": {
-          "query": "label_values(keda_scaled_object_errors{namespace=\"$namespace\"}, scaledObject)",
-          "refId": "StandardVariableQuery"
+          "query": "label_values(keda_scaler_active{exported_namespace=\"$namespace\"},scaledObject)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
         "regex": "",
@@ -915,22 +936,22 @@
       {
         "current": {
           "selected": false,
-          "text": "prometheusScaler",
-          "value": "prometheusScaler"
+          "text": "cronScaler",
+          "value": "cronScaler"
         },
         "datasource": {
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(keda_scaler_errors{namespace=\"$namespace\"}, scaler)",
+        "definition": "label_values(keda_scaler_active{exported_namespace=\"$namespace\"},scaler)",
         "hide": 0,
         "includeAll": false,
         "multi": false,
         "name": "scaler",
         "options": [],
         "query": {
-          "query": "label_values(keda_scaler_errors{namespace=\"$namespace\"}, scaler)",
-          "refId": "StandardVariableQuery"
+          "query": "label_values(keda_scaler_active{exported_namespace=\"$namespace\"},scaler)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
         "regex": "",
@@ -941,22 +962,22 @@
       {
         "current": {
           "selected": false,
-          "text": "s0-prometheus-container_cpu_usage_seconds_total",
-          "value": "s0-prometheus-container_cpu_usage_seconds_total"
+          "text": "s0-cron-Etc-UTC-40xxxx-55xxxx",
+          "value": "s0-cron-Etc-UTC-40xxxx-55xxxx"
         },
         "datasource": {
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(keda_scaler_errors{namespace=\"$namespace\"}, metric)",
+        "definition": "label_values(keda_scaler_active{exported_namespace=\"$namespace\"},metric)",
         "hide": 0,
         "includeAll": false,
         "multi": false,
         "name": "metric",
         "options": [],
         "query": {
-          "query": "label_values(keda_scaler_errors{namespace=\"$namespace\"}, metric)",
-          "refId": "StandardVariableQuery"
+          "query": "label_values(keda_scaler_active{exported_namespace=\"$namespace\"},metric)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
         "regex": "",
@@ -972,8 +993,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Keda",
+  "title": "KEDA",
   "uid": "asdasd8rvmMxdVk",
-  "version": 4,
+  "version": 8,
   "weekStart": ""
 }

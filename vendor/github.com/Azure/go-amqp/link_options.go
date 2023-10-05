@@ -1,200 +1,185 @@
 package amqp
 
 import (
-	"errors"
-	"fmt"
-	"time"
-
 	"github.com/Azure/go-amqp/internal/encoding"
-	"github.com/Azure/go-amqp/internal/frames"
 )
 
-// LinkOption is a function for configuring an AMQP link.
-//
-// A link may be a Sender or a Receiver.
-type LinkOption func(*link) error
+type SenderOptions struct {
+	// Capabilities is the list of extension capabilities the sender supports.
+	Capabilities []string
 
-// LinkProperty sets an entry in the link properties map sent to the server.
-//
-// This option can be used multiple times.
-func LinkProperty(key, value string) LinkOption {
-	return linkProperty(key, value)
+	// Durability indicates what state of the sender will be retained durably.
+	//
+	// Default: DurabilityNone.
+	Durability Durability
+
+	// DynamicAddress indicates a dynamic address is to be used.
+	// Any specified address will be ignored.
+	//
+	// Default: false.
+	DynamicAddress bool
+
+	// ExpiryPolicy determines when the expiry timer of the sender starts counting
+	// down from the timeout value.  If the link is subsequently re-attached before
+	// the timeout is reached, the count down is aborted.
+	//
+	// Default: ExpirySessionEnd.
+	ExpiryPolicy ExpiryPolicy
+
+	// ExpiryTimeout is the duration in seconds that the sender will be retained.
+	//
+	// Default: 0.
+	ExpiryTimeout uint32
+
+	// Name sets the name of the link.
+	//
+	// Link names must be unique per-connection and direction.
+	//
+	// Default: randomly generated.
+	Name string
+
+	// Properties sets an entry in the link properties map sent to the server.
+	Properties map[string]any
+
+	// RequestedReceiverSettleMode sets the requested receiver settlement mode.
+	//
+	// If a settlement mode is explicitly set and the server does not
+	// honor it an error will be returned during link attachment.
+	//
+	// Default: Accept the settlement mode set by the server, commonly ModeFirst.
+	RequestedReceiverSettleMode *ReceiverSettleMode
+
+	// SettlementMode sets the settlement mode in use by this sender.
+	//
+	// Default: ModeMixed.
+	SettlementMode *SenderSettleMode
+
+	// SourceAddress specifies the source address for this sender.
+	SourceAddress string
+
+	// TargetCapabilities is the list of extension capabilities the sender desires.
+	TargetCapabilities []string
+
+	// TargetDurability indicates what state of the peer will be retained durably.
+	//
+	// Default: DurabilityNone.
+	TargetDurability Durability
+
+	// TargetExpiryPolicy determines when the expiry timer of the peer starts counting
+	// down from the timeout value.  If the link is subsequently re-attached before
+	// the timeout is reached, the count down is aborted.
+	//
+	// Default: ExpirySessionEnd.
+	TargetExpiryPolicy ExpiryPolicy
+
+	// TargetExpiryTimeout is the duration in seconds that the peer will be retained.
+	//
+	// Default: 0.
+	TargetExpiryTimeout uint32
 }
 
-// LinkPropertyInt64 sets an entry in the link properties map sent to the server.
-//
-// This option can be used multiple times.
-func LinkPropertyInt64(key string, value int64) LinkOption {
-	return linkProperty(key, value)
+type ReceiverOptions struct {
+	// Capabilities is the list of extension capabilities the receiver supports.
+	Capabilities []string
+
+	// Credit specifies the maximum number of unacknowledged messages
+	// the sender can transmit.  Once this limit is reached, no more messages
+	// will arrive until messages are acknowledged and settled.
+	//
+	// As messages are settled, any available credit will automatically be issued.
+	//
+	// Setting this to -1 requires manual management of link credit.
+	// Credits can be added with IssueCredit(), and links can also be
+	// drained with DrainCredit().
+	// This should only be enabled when complete control of the link's
+	// flow control is required.
+	//
+	// Default: 1.
+	Credit int32
+
+	// Durability indicates what state of the receiver will be retained durably.
+	//
+	// Default: DurabilityNone.
+	Durability Durability
+
+	// DynamicAddress indicates a dynamic address is to be used.
+	// Any specified address will be ignored.
+	//
+	// Default: false.
+	DynamicAddress bool
+
+	// ExpiryPolicy determines when the expiry timer of the sender starts counting
+	// down from the timeout value.  If the link is subsequently re-attached before
+	// the timeout is reached, the count down is aborted.
+	//
+	// Default: ExpirySessionEnd.
+	ExpiryPolicy ExpiryPolicy
+
+	// ExpiryTimeout is the duration in seconds that the sender will be retained.
+	//
+	// Default: 0.
+	ExpiryTimeout uint32
+
+	// Filters contains the desired filters for this receiver.
+	// If the peer cannot fulfill the filters the link will be detached.
+	Filters []LinkFilter
+
+	// MaxMessageSize sets the maximum message size that can
+	// be received on the link.
+	//
+	// A size of zero indicates no limit.
+	//
+	// Default: 0.
+	MaxMessageSize uint64
+
+	// Name sets the name of the link.
+	//
+	// Link names must be unique per-connection and direction.
+	//
+	// Default: randomly generated.
+	Name string
+
+	// Properties sets an entry in the link properties map sent to the server.
+	Properties map[string]any
+
+	// RequestedSenderSettleMode sets the requested sender settlement mode.
+	//
+	// If a settlement mode is explicitly set and the server does not
+	// honor it an error will be returned during link attachment.
+	//
+	// Default: Accept the settlement mode set by the server, commonly ModeMixed.
+	RequestedSenderSettleMode *SenderSettleMode
+
+	// SettlementMode sets the settlement mode in use by this receiver.
+	//
+	// Default: ModeFirst.
+	SettlementMode *ReceiverSettleMode
+
+	// TargetAddress specifies the target address for this receiver.
+	TargetAddress string
+
+	// SourceCapabilities is the list of extension capabilities the receiver desires.
+	SourceCapabilities []string
+
+	// SourceDurability indicates what state of the peer will be retained durably.
+	//
+	// Default: DurabilityNone.
+	SourceDurability Durability
+
+	// SourceExpiryPolicy determines when the expiry timer of the peer starts counting
+	// down from the timeout value.  If the link is subsequently re-attached before
+	// the timeout is reached, the count down is aborted.
+	//
+	// Default: ExpirySessionEnd.
+	SourceExpiryPolicy ExpiryPolicy
+
+	// SourceExpiryTimeout is the duration in seconds that the peer will be retained.
+	//
+	// Default: 0.
+	SourceExpiryTimeout uint32
 }
 
-// LinkPropertyInt32 sets an entry in the link properties map sent to the server.
-//
-// This option can be set multiple times.
-func LinkPropertyInt32(key string, value int32) LinkOption {
-	return linkProperty(key, value)
-}
-
-func linkProperty(key string, value interface{}) LinkOption {
-	return func(l *link) error {
-		if key == "" {
-			return errors.New("link property key must not be empty")
-		}
-		if l.properties == nil {
-			l.properties = make(map[encoding.Symbol]interface{})
-		}
-		l.properties[encoding.Symbol(key)] = value
-		return nil
-	}
-}
-
-// LinkName sets the name of the link.
-//
-// The link names must be unique per-connection and direction.
-//
-// Default: randomly generated.
-func LinkName(name string) LinkOption {
-	return func(l *link) error {
-		l.Key.name = name
-		return nil
-	}
-}
-
-// LinkSourceCapabilities sets the source capabilities.
-func LinkSourceCapabilities(capabilities ...string) LinkOption {
-	return func(l *link) error {
-		if l.Source == nil {
-			l.Source = new(frames.Source)
-		}
-
-		// Convert string to symbol
-		symbolCapabilities := make([]encoding.Symbol, len(capabilities))
-		for i, v := range capabilities {
-			symbolCapabilities[i] = encoding.Symbol(v)
-		}
-
-		l.Source.Capabilities = append(l.Source.Capabilities, symbolCapabilities...)
-		return nil
-	}
-}
-
-// LinkSourceAddress sets the source address.
-func LinkSourceAddress(addr string) LinkOption {
-	return func(l *link) error {
-		if l.Source == nil {
-			l.Source = new(frames.Source)
-		}
-		l.Source.Address = addr
-		return nil
-	}
-}
-
-// LinkTargetAddress sets the target address.
-func LinkTargetAddress(addr string) LinkOption {
-	return func(l *link) error {
-		if l.Target == nil {
-			l.Target = new(frames.Target)
-		}
-		l.Target.Address = addr
-		return nil
-	}
-}
-
-// LinkAddressDynamic requests a dynamically created address from the server.
-func LinkAddressDynamic() LinkOption {
-	return func(l *link) error {
-		l.dynamicAddr = true
-		return nil
-	}
-}
-
-// LinkCredit specifies the maximum number of unacknowledged messages
-// the sender can transmit.
-func LinkCredit(credit uint32) LinkOption {
-	return func(l *link) error {
-		if l.receiver == nil {
-			return errors.New("LinkCredit is not valid for Sender")
-		}
-
-		l.receiver.maxCredit = credit
-		return nil
-	}
-}
-
-// LinkWithManualCredits enables manual credit management for this link.
-// Credits can be added with IssueCredit(), and links can also be drained
-// with DrainCredit().
-func LinkWithManualCredits() LinkOption {
-	return func(l *link) error {
-		if l.receiver == nil {
-			return errors.New("LinkWithManualCredits is not valid for Sender")
-		}
-
-		l.receiver.manualCreditor = &manualCreditor{}
-		return nil
-	}
-}
-
-// LinkBatching toggles batching of message disposition.
-//
-// When enabled, accepting a message does not send the disposition
-// to the server until the batch is equal to link credit or the
-// batch max age expires.
-func LinkBatching(enable bool) LinkOption {
-	return func(l *link) error {
-		l.receiver.batching = enable
-		return nil
-	}
-}
-
-// LinkBatchMaxAge sets the maximum time between the start
-// of a disposition batch and sending the batch to the server.
-func LinkBatchMaxAge(d time.Duration) LinkOption {
-	return func(l *link) error {
-		l.receiver.batchMaxAge = d
-		return nil
-	}
-}
-
-// LinkSenderSettle sets the requested sender settlement mode.
-//
-// If a settlement mode is explicitly set and the server does not
-// honor it an error will be returned during link attachment.
-//
-// Default: Accept the settlement mode set by the server, commonly ModeMixed.
-func LinkSenderSettle(mode SenderSettleMode) LinkOption {
-	return func(l *link) error {
-		if mode > ModeMixed {
-			return fmt.Errorf("invalid SenderSettlementMode %d", mode)
-		}
-		l.SenderSettleMode = &mode
-		return nil
-	}
-}
-
-// LinkReceiverSettle sets the requested receiver settlement mode.
-//
-// If a settlement mode is explicitly set and the server does not
-// honor it an error will be returned during link attachment.
-//
-// Default: Accept the settlement mode set by the server, commonly ModeFirst.
-func LinkReceiverSettle(mode ReceiverSettleMode) LinkOption {
-	return func(l *link) error {
-		if mode > ModeSecond {
-			return fmt.Errorf("invalid ReceiverSettlementMode %d", mode)
-		}
-		l.ReceiverSettleMode = &mode
-		return nil
-	}
-}
-
-// LinkSelectorFilter sets a selector filter (apache.org:selector-filter:string) on the link source.
-func LinkSelectorFilter(filter string) LinkOption {
-	// <descriptor name="apache.org:selector-filter:string" code="0x0000468C:0x00000004"/>
-	return LinkSourceFilter("apache.org:selector-filter:string", 0x0000468C00000004, filter)
-}
-
-// LinkSourceFilter is an advanced API for setting non-standard source filters.
+// LinkFilter is an advanced API for setting non-standard source filters.
 // Please file an issue or open a PR if a standard filter is missing from this
 // library.
 //
@@ -210,160 +195,44 @@ func LinkSelectorFilter(filter string) LinkOption {
 // Example:
 //
 // The standard selector-filter is defined as:
-//  <descriptor name="apache.org:selector-filter:string" code="0x0000468C:0x00000004"/>
+//
+//	<descriptor name="apache.org:selector-filter:string" code="0x0000468C:0x00000004"/>
+//
 // In this case the name is "apache.org:selector-filter:string" and the code is
 // 0x0000468C00000004.
-//  LinkSourceFilter("apache.org:selector-filter:string", 0x0000468C00000004, exampleValue)
+//
+//	LinkSourceFilter("apache.org:selector-filter:string", 0x0000468C00000004, exampleValue)
 //
 // References:
-//  http://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html#type-filter-set
-//  http://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-types-v1.0-os.html#section-descriptor-values
-func LinkSourceFilter(name string, code uint64, value interface{}) LinkOption {
-	return func(l *link) error {
-		if l.Source == nil {
-			l.Source = new(frames.Source)
-		}
-		if l.Source.Filter == nil {
-			l.Source.Filter = make(map[encoding.Symbol]*encoding.DescribedType)
-		}
+//
+//	http://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html#type-filter-set
+//	http://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-types-v1.0-os.html#section-descriptor-values
+type LinkFilter func(encoding.Filter)
 
-		var descriptor interface{}
+// NewLinkFilter creates a new LinkFilter with the specified values.
+// Any preexisting link filter with the same name will be updated with the new code and value.
+func NewLinkFilter(name string, code uint64, value any) LinkFilter {
+	return func(f encoding.Filter) {
+		var descriptor any
 		if code != 0 {
 			descriptor = code
 		} else {
 			descriptor = encoding.Symbol(name)
 		}
-
-		l.Source.Filter[encoding.Symbol(name)] = &encoding.DescribedType{
+		f[encoding.Symbol(name)] = &encoding.DescribedType{
 			Descriptor: descriptor,
 			Value:      value,
 		}
-		return nil
 	}
 }
 
-// LinkMaxMessageSize sets the maximum message size that can
-// be sent or received on the link.
-//
-// A size of zero indicates no limit.
-//
-// Default: 0.
-func LinkMaxMessageSize(size uint64) LinkOption {
-	return func(l *link) error {
-		l.MaxMessageSize = size
-		return nil
-	}
+// NewSelectorFilter creates a new selector filter (apache.org:selector-filter:string) with the specified filter value.
+// Any preexisting selector filter will be updated with the new filter value.
+func NewSelectorFilter(filter string) LinkFilter {
+	return NewLinkFilter(selectorFilter, selectorFilterCode, filter)
 }
 
-// LinkTargetDurability sets the target durability policy.
-//
-// Default: DurabilityNone.
-func LinkTargetDurability(d Durability) LinkOption {
-	return func(l *link) error {
-		if d > DurabilityUnsettledState {
-			return fmt.Errorf("invalid Durability %d", d)
-		}
-
-		if l.Target == nil {
-			l.Target = new(frames.Target)
-		}
-		l.Target.Durable = d
-
-		return nil
-	}
-}
-
-// LinkTargetExpiryPolicy sets the link expiration policy.
-//
-// Default: ExpirySessionEnd.
-func LinkTargetExpiryPolicy(p ExpiryPolicy) LinkOption {
-	return func(l *link) error {
-		err := encoding.ValidateExpiryPolicy(p)
-		if err != nil {
-			return err
-		}
-
-		if l.Target == nil {
-			l.Target = new(frames.Target)
-		}
-		l.Target.ExpiryPolicy = p
-
-		return nil
-	}
-}
-
-// LinkTargetTimeout sets the duration that an expiring target will be retained.
-//
-// Default: 0.
-func LinkTargetTimeout(timeout uint32) LinkOption {
-	return func(l *link) error {
-		if l.Target == nil {
-			l.Target = new(frames.Target)
-		}
-		l.Target.Timeout = timeout
-
-		return nil
-	}
-}
-
-// LinkSourceDurability sets the source durability policy.
-//
-// Default: DurabilityNone.
-func LinkSourceDurability(d Durability) LinkOption {
-	return func(l *link) error {
-		if d > DurabilityUnsettledState {
-			return fmt.Errorf("invalid Durability %d", d)
-		}
-
-		if l.Source == nil {
-			l.Source = new(frames.Source)
-		}
-		l.Source.Durable = d
-
-		return nil
-	}
-}
-
-// LinkSourceExpiryPolicy sets the link expiration policy.
-//
-// Default: ExpirySessionEnd.
-func LinkSourceExpiryPolicy(p ExpiryPolicy) LinkOption {
-	return func(l *link) error {
-		err := encoding.ValidateExpiryPolicy(p)
-		if err != nil {
-			return err
-		}
-
-		if l.Source == nil {
-			l.Source = new(frames.Source)
-		}
-		l.Source.ExpiryPolicy = p
-
-		return nil
-	}
-}
-
-// LinkSourceTimeout sets the duration that an expiring source will be retained.
-//
-// Default: 0.
-func LinkSourceTimeout(timeout uint32) LinkOption {
-	return func(l *link) error {
-		if l.Source == nil {
-			l.Source = new(frames.Source)
-		}
-		l.Source.Timeout = timeout
-
-		return nil
-	}
-}
-
-// LinkDetachOnDispositionError controls whether you detach on disposition
-// errors (subject to some simple logic) or do NOT detach at all on disposition
-// errors.
-// Defaults to true.
-func LinkDetachOnDispositionError(detachOnDispositionError bool) LinkOption {
-	return func(l *link) error {
-		l.detachOnDispositionError = detachOnDispositionError
-		return nil
-	}
-}
+const (
+	selectorFilter     = "apache.org:selector-filter:string"
+	selectorFilterCode = uint64(0x0000468C00000004)
+)

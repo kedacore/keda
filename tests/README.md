@@ -16,16 +16,23 @@ go test -v -tags e2e ./scalers/...
 go test -v -tags e2e ./utils/cleanup_test.go      # Skip if you want to keep testing.
 ```
 
+> **Note**
+> As default, `go test -v -tags e2e ./utils/setup_test.go` deploys KEDA from upstream's main branch,
+> if you are adding an e2e test to your own code, this is not useful as you need your own version.
+> Like for [building and deploying your own image](../BUILD.md#custom-keda-as-an-image), you can use
+> the Makefile environment variables to customize KEDA deployment.
+> eg. `IMAGE_REGISTRY=docker.io IMAGE_REPO=johndoe go test -v -tags e2e ./utils/setup_test.go`
+
 ### Specific test
 
 ```bash
-go test -v -tags e2e ./scalers/azure_queue/azure_queue_test.go # Assumes that setup has been run before
+go test -v -tags e2e ./scalers/azure/azure_queue/azure_queue_test.go # Assumes that setup has been run before
 ```
 
 > **Note**
 > On macOS you might need to set following environment variable in order to run the tests: `GOOS="darwin"`
 >
-> eg. `GOOS="darwin" go test -v tags e2e ...`
+> eg. `GOOS="darwin" go test -v -tags e2e ...`
 
 Refer to [this](https://pkg.go.dev/testing) for more information about testing in `Go`.
 
@@ -59,13 +66,14 @@ in parallel, but tests within a file can be run in parallel or in series. More a
 ## Adding tests
 
 - Tests are written using `Go`'s default [`testing`](https://pkg.go.dev/testing) framework, and [`testify`](https://pkg.go.dev/github.com/stretchr/testify).
-- Each e2e test should be in its own package, **ex -** `scalers/azure_queue/azure_queue_test.go`, or `scalers/kafka/kafka_test.go`, etc
+- Each e2e test should be in its own package, **ex -** `scalers/azure/azure_queue/azure_queue_test.go`, or `scalers/kafka/kafka_test.go`, etc
 - Each test file is expected to do its own setup and clean for resources.
 
 Test are split in different folders based on what it's testing:
 - `internals`: KEDA internals (ie: HPA related stuff).
 - `scalers`: Anything related with scalers.
 - `secret-providers`: Anything related with how KEDA gets the secrets for working (ie: pod-identity, vault, etc).
+- `sequential`: Tests that can't be run in parallel with other tests (eg. the test modifies KEDA installation or configuration, etc.).
 
 #### ⚠⚠ Important: ⚠⚠
 >
@@ -154,7 +162,7 @@ func TestScaler(t *testing.T) {
     testScaleOut(t)
 
     // Ensure that this gets run. Using defer is necessary
-    DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+    DeleteKubernetesResources(t, testNamespace, data, templates)
     cleanupTest(t)
 }
 
@@ -198,7 +206,7 @@ func cleanupTest(t *testing.T) {
 
 #### Notes
 
-- You can see [`azure_queue_test.go`](scalers/azure_queue/azure_queue_test.go) for a full example.
+- You can see [`azure_queue_test.go`](scalers/azure/azure_queue/azure_queue_test.go) for a full example.
 - All tests must have the `// +build e2e` build tag.
 - Refer [`helper.go`](helper.go) for various helper methods available to use in your tests.
 - Prefer using helper methods or `k8s` libraries in `Go` over manually executing `shell` commands. Only if the task
@@ -216,3 +224,25 @@ In order to manage these e2e resources, there are 2 different repositories:
 - [kedacore/testing-infrastructure](https://github.com/kedacore/testing-infrastructure) for cloud resources.
 
 If any change is needed in e2e test infrastructure, please open a PR in those repositories and use kedacore resources for e2e tests.
+
+## How to execute e2e tests during a PR
+
+As e2e tests are executed using real infrastructure we don't execute them directly on the PRs. A member of [@keda-e2e-test-executors team](https://github.com/orgs/kedacore/teams/keda-e2e-test-executors) has to write a comment in the PR where the e2e tests should be executed:
+
+```
+/run-e2e
+```
+
+This comment will trigger a [workflow](https://github.com/kedacore/keda/blob/main/.github/workflows/pr-e2e.yml) that generates the docker images using the last commit (at the moment of the comment) and tests them. The commit will have an extra check (which can block the PR) and the member message will be updated with a link to the workflow execution.
+
+There are cases where it isn't needed the whole e2e test suite. In order to reduce the time and required resources in those cases, the command can be appended with a regex which matches the desired e2e tests:
+
+```
+/run-e2e desired-regex
+# e.g:
+/run-e2e azure
+```
+
+This regex will be evaluated by the golang script, so it has to be written in a golang compliance way.
+
+This new check is mandatory on every PR, the CI checks expect to execute the e2e tests. As not always the e2e tests are useful (for instance, when the changes apply only to documentation), it can be skipped labeling the PR with `skip-e2e`

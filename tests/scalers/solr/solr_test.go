@@ -194,7 +194,7 @@ func TestSolrScaler(t *testing.T) {
 	testScaleIn(t, kc)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func setupSolr(t *testing.T, kc *kubernetes.Clientset) {
@@ -227,7 +227,7 @@ func checkIfSolrStatusIsReady(t *testing.T, name string) error {
 
 	time.Sleep(time.Second * 10)
 	for i := 0; i < 60; i++ {
-		out, errOut, _ := ExecCommandOnSpecificPod(t, name, testNamespace, fmt.Sprintf("%s status –", solrPath))
+		out, errOut, _ := ExecCommandOnSpecificPod(t, name, testNamespace, fmt.Sprintf("%s status", solrPath))
 		t.Logf("Output: %s, Error: %s", out, errOut)
 		if !strings.Contains(out, "running on port") {
 			time.Sleep(time.Second * 10)

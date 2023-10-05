@@ -3,11 +3,10 @@ package scalers
 import (
 	"context"
 	"errors"
+	"strconv"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/sqs"
-	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 )
@@ -25,6 +24,10 @@ const (
 
 	testAWSSQSErrorQueueURL   = "https://sqs.eu-west-1.amazonaws.com/account_id/Error"
 	testAWSSQSBadDataQueueURL = "https://sqs.eu-west-1.amazonaws.com/account_id/BadData"
+
+	testAWSSQSApproximateNumberOfMessagesVisible    = 200
+	testAWSSQSApproximateNumberOfMessagesNotVisible = 100
+	testAWSSQSApproximateNumberOfMessagesDelayed    = 50
 )
 
 var testAWSSQSEmptyResolvedEnv = map[string]string{}
@@ -53,26 +56,26 @@ type awsSQSMetricIdentifier struct {
 }
 
 type mockSqs struct {
-	sqsiface.SQSAPI
 }
 
-func (m *mockSqs) GetQueueAttributes(input *sqs.GetQueueAttributesInput) (*sqs.GetQueueAttributesOutput, error) {
+func (m *mockSqs) GetQueueAttributes(_ context.Context, input *sqs.GetQueueAttributesInput, _ ...func(*sqs.Options)) (*sqs.GetQueueAttributesOutput, error) {
 	switch *input.QueueUrl {
 	case testAWSSQSErrorQueueURL:
 		return nil, errors.New("some error")
 	case testAWSSQSBadDataQueueURL:
 		return &sqs.GetQueueAttributesOutput{
-			Attributes: map[string]*string{
-				"ApproximateNumberOfMessages":           aws.String("NotInt"),
-				"ApproximateNumberOfMessagesNotVisible": aws.String("NotInt"),
+			Attributes: map[string]string{
+				"ApproximateNumberOfMessages":           "NotInt",
+				"ApproximateNumberOfMessagesNotVisible": "NotInt",
 			},
 		}, nil
 	}
 
 	return &sqs.GetQueueAttributesOutput{
-		Attributes: map[string]*string{
-			"ApproximateNumberOfMessages":           aws.String("200"),
-			"ApproximateNumberOfMessagesNotVisible": aws.String("100"),
+		Attributes: map[string]string{
+			"ApproximateNumberOfMessages":           strconv.Itoa(testAWSSQSApproximateNumberOfMessagesVisible),
+			"ApproximateNumberOfMessagesNotVisible": strconv.Itoa(testAWSSQSApproximateNumberOfMessagesNotVisible),
+			"ApproximateNumberOfMessagesDelayed":    strconv.Itoa(testAWSSQSApproximateNumberOfMessagesDelayed),
 		},
 	}, nil
 }
@@ -327,6 +330,44 @@ var awsSQSGetMetricTestData = []*parseAWSSQSMetadataTestData{
 		false,
 		"not error with scaleOnInFlight enabled"},
 	{map[string]string{
+		"queueURL":       testAWSSQSProperQueueURL,
+		"queueLength":    "1",
+		"awsRegion":      "eu-west-1",
+		"scaleOnDelayed": "false"},
+		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
+		false,
+		"not error with scaleOnDelayed disabled"},
+	{map[string]string{
+		"queueURL":       testAWSSQSProperQueueURL,
+		"queueLength":    "1",
+		"awsRegion":      "eu-west-1",
+		"scaleOnDelayed": "true"},
+		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
+		false,
+		"not error with scaleOnDelayed enabled"},
+	{map[string]string{
+		"queueURL":        testAWSSQSProperQueueURL,
+		"queueLength":     "1",
+		"awsRegion":       "eu-west-1",
+		"scaleOnInFlight": "false",
+		"scaleOnDelayed":  "false"},
+		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
+		false,
+		"not error with scaledOnInFlight and scaleOnDelayed disabled"},
+	{map[string]string{
+		"queueURL":        testAWSSQSProperQueueURL,
+		"queueLength":     "1",
+		"awsRegion":       "eu-west-1",
+		"scaleOnInFlight": "true",
+		"scaleOnDelayed":  "true"},
+		testAWSSQSAuthentication,
+		testAWSSQSEmptyResolvedEnv,
+		false,
+		"not error with scaledOnInFlight and scaleOnDelayed enabled"},
+	{map[string]string{
 		"queueURL":        testAWSSQSErrorQueueURL,
 		"queueLength":     "1",
 		"awsRegion":       "eu-west-1",
@@ -390,11 +431,14 @@ func TestAWSSQSScalerGetMetrics(t *testing.T) {
 		case testAWSSQSBadDataQueueURL:
 			assert.Error(t, err, "expect error because of bad data return from sqs")
 		default:
+			expectedMessages := testAWSSQSApproximateNumberOfMessagesVisible
 			if meta.scaleOnInFlight {
-				assert.EqualValues(t, int64(300.0), value[0].Value.Value())
-			} else {
-				assert.EqualValues(t, int64(200.0), value[0].Value.Value())
+				expectedMessages += testAWSSQSApproximateNumberOfMessagesNotVisible
 			}
+			if meta.scaleOnDelayed {
+				expectedMessages += testAWSSQSApproximateNumberOfMessagesDelayed
+			}
+			assert.EqualValues(t, int64(expectedMessages), value[0].Value.Value())
 		}
 	}
 }

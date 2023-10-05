@@ -8,14 +8,21 @@ jobs:
 
     strategy:
       matrix:
-        Linux_Go116:
-          vm.image: 'ubuntu-18.04'
-          go.version: '1.16.11'
-        Linux_Go117:
-          vm.image: 'ubuntu-18.04'
-          go.version: '1.17.4'
+        Linux_Go118:
+          pool.name: 'azsdk-pool-mms-ubuntu-2004-general'
+          vm.image: 'ubuntu-20.04'
+          go.version: '1.18.10'
+        Linux_Go120:
+          pool.name: 'azsdk-pool-mms-ubuntu-2004-general'
+          vm.image: 'ubuntu-20.04'
+          go.version: '1.20.7'
+        Linux_Go121:
+          pool.name: 'azsdk-pool-mms-ubuntu-2004-general'
+          vm.image: 'ubuntu-20.04'
+          go.version: '1.21.0'
 
     pool:
+      name: '$(pool.name)'
       vmImage: '$(vm.image)'
 
     steps:
@@ -28,14 +35,14 @@ jobs:
           set -e
           export gopathbin=$(go env GOPATH)/bin
           echo "##vso[task.prependpath]$gopathbin"
-          go get github.com/jstemmer/go-junit-report
-          go get github.com/axw/gocov/gocov
-          go get github.com/AlekSi/gocov-xml
-          go get github.com/matm/gocov-html
+          go install github.com/jstemmer/go-junit-report@v0.9.1
+          go install github.com/axw/gocov/gocov@v1.1.0
+          go install github.com/AlekSi/gocov-xml@v1.0.0
+          go install github.com/matm/gocov-html/cmd/gocov-html@v1.2.0
         displayName: 'Install Dependencies'
 
       - script: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.42.0
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.54.2
           golangci-lint --version
           golangci-lint run
         displayName: 'Install and Run GoLintCLI.'
@@ -52,24 +59,26 @@ jobs:
         displayName: 'Use .NET sdk'
         inputs:
           packageType: sdk
-          version: 5.0.x
+          version: 6.0.x
           installationPath: $(Agent.ToolsDirectory)/dotnet
 
       - script: |
-          git clone https://github.com/jhendrixMSFT/azure-amqp $(Pipeline.Workspace)/azure-amqp
+          git clone https://github.com/Azure/azure-amqp $(Pipeline.Workspace)/azure-amqp
+          git checkout v2.6.0
           pushd $(Pipeline.Workspace)/azure-amqp/test/TestAmqpBroker
           dotnet restore
           dotnet build
-          chmod +x $(Pipeline.Workspace)/azure-amqp/bin/Debug/TestAmqpBroker/net461/TestAmqpBroker.exe
+          chmod +x $(Pipeline.Workspace)/azure-amqp/bin/Debug/TestAmqpBroker/net462/TestAmqpBroker.exe
         displayName: 'Clone and Build Broker'
 
       - script: |
           set -e
+          export TEST_CORPUS=1
           echo '##[command]Starting broker at $(AMQP_BROKER_ADDR)'
-          $(Pipeline.Workspace)/azure-amqp/bin/Debug/TestAmqpBroker/net461/TestAmqpBroker.exe $AMQP_BROKER_ADDR /headless &
+          $(Pipeline.Workspace)/azure-amqp/bin/Debug/TestAmqpBroker/net462/TestAmqpBroker.exe $AMQP_BROKER_ADDR /headless &
           brokerPID=$!
           echo '##[section]Starting tests'
-          go test -tags -race -v -coverprofile=coverage.txt -covermode atomic ./... 2>&1 | tee gotestoutput.log 
+          go test -race -v -coverprofile=coverage.txt -covermode atomic ./... 2>&1 | tee gotestoutput.log 
           go-junit-report < gotestoutput.log > report.xml
           kill $brokerPID
           gocov convert coverage.txt > coverage.json

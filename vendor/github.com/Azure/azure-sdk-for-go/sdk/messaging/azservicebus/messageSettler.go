@@ -8,8 +8,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/amqpwrap"
-	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/go-amqp"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/utils"
+	"github.com/Azure/go-amqp"
 )
 
 type settler interface {
@@ -75,7 +75,7 @@ func (s *messageSettler) CompleteMessage(ctx context.Context, message *ReceivedM
 // AbandonMessageOptions contains optional parameters for Client.AbandonMessage
 type AbandonMessageOptions struct {
 	// PropertiesToModify specifies properties to modify in the message when it is abandoned.
-	PropertiesToModify map[string]interface{}
+	PropertiesToModify map[string]any
 }
 
 // AbandonMessage will cause a message to be returned to the queue or subscription.
@@ -88,7 +88,7 @@ func (s *messageSettler) AbandonMessage(ctx context.Context, message *ReceivedMe
 				Status: internal.AbandonedDisposition,
 			}
 
-			var propertiesToModify map[string]interface{}
+			var propertiesToModify map[string]any
 
 			if options != nil && options.PropertiesToModify != nil {
 				propertiesToModify = options.PropertiesToModify
@@ -114,7 +114,7 @@ func (s *messageSettler) AbandonMessage(ctx context.Context, message *ReceivedMe
 // DeferMessageOptions contains optional parameters for Client.DeferMessage
 type DeferMessageOptions struct {
 	// PropertiesToModify specifies properties to modify in the message when it is deferred
-	PropertiesToModify map[string]interface{}
+	PropertiesToModify map[string]any
 }
 
 // DeferMessage will cause a message to be deferred. Deferred messages
@@ -126,7 +126,7 @@ func (s *messageSettler) DeferMessage(ctx context.Context, message *ReceivedMess
 				Status: internal.DeferredDisposition,
 			}
 
-			var propertiesToModify map[string]interface{}
+			var propertiesToModify map[string]any
 
 			if options != nil && options.PropertiesToModify != nil {
 				propertiesToModify = options.PropertiesToModify
@@ -160,7 +160,7 @@ type DeadLetterOptions struct {
 	Reason *string
 
 	// PropertiesToModify specifies properties to modify in the message when it is dead lettered.
-	PropertiesToModify map[string]interface{}
+	PropertiesToModify map[string]any
 }
 
 // DeadLetterMessage settles a message by moving it to the dead letter queue for a
@@ -188,7 +188,7 @@ func (s *messageSettler) DeadLetterMessage(ctx context.Context, message *Receive
 				DeadLetterReason:      &reason,
 			}
 
-			var propertiesToModify map[string]interface{}
+			var propertiesToModify map[string]any
 
 			if options != nil && options.PropertiesToModify != nil {
 				propertiesToModify = options.PropertiesToModify
@@ -197,7 +197,7 @@ func (s *messageSettler) DeadLetterMessage(ctx context.Context, message *Receive
 			return internal.SendDisposition(ctx, rpcLink, receiver.LinkName(), bytesToAMQPUUID(message.LockToken), d, propertiesToModify)
 		}
 
-		info := map[string]interface{}{
+		info := map[string]any{
 			"DeadLetterReason":           reason,
 			"DeadLetterErrorDescription": description,
 		}
@@ -222,7 +222,7 @@ func bytesToAMQPUUID(bytes [16]byte) *amqp.UUID {
 	return &uuid
 }
 
-func newAnnotations(propertiesToModify map[string]interface{}) amqp.Annotations {
+func newAnnotations(propertiesToModify map[string]any) amqp.Annotations {
 	var annotations amqp.Annotations
 
 	for k, v := range propertiesToModify {

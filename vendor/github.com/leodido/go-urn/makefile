@@ -17,7 +17,7 @@ images: docs/urn.png
 
 .PHONY: removecomments
 removecomments:
-	@go build ./tools/removecomments
+	@cd ./tools/removecomments; go build -o ../../removecomments .
 
 machine.go: machine.go.rl
 

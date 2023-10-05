@@ -234,7 +234,7 @@ func TestAzureManagedPrometheusScaler(t *testing.T, data TemplateData) {
 
 	// cleanup
 	helper.KubectlDeleteMultipleWithTemplate(t, data, templates)
-	helper.DeleteNamespace(t, kc, data.TestNamespace)
+	helper.DeleteNamespace(t, data.TestNamespace)
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data TemplateData) {

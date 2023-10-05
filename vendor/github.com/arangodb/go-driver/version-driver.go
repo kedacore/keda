@@ -2,4 +2,4 @@
 package driver
 
 //go:generate bash ./scripts/update-version.sh
-var driverVersion = "1.5.2"
+var driverVersion = "1.6.0"

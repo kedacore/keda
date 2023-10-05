@@ -11,10 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/kinesis"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/kinesis"
+	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
@@ -69,7 +70,6 @@ spec:
       labels:
         app: {{.DeploymentName}}
     spec:
-      serviceAccountName: default
       containers:
       - name: nginx
         image: nginxinc/nginx-unprivileged
@@ -141,24 +141,24 @@ func TestKiensisScaler(t *testing.T) {
 	testScaleIn(t, kc, kinesisClient)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 	cleanupStream(t, kinesisClient)
 }
 
-func testActivation(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kinesis.Kinesis) {
+func testActivation(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kinesis.Client) {
 	t.Log("--- testing activation ---")
 	updateShardCount(t, kinesisClient, 3)
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kinesis.Kinesis) {
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kinesis.Client) {
 	t.Log("--- testing scale out ---")
 	updateShardCount(t, kinesisClient, 6)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kinesis.Kinesis) {
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kinesis.Client) {
 	t.Log("--- testing scale in ---")
 	updateShardCount(t, kinesisClient, 3)
 
@@ -166,23 +166,23 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kinesis.
 		"replica count should be %d after 3 minutes", minReplicaCount)
 }
 
-func updateShardCount(t *testing.T, kinesisClient *kinesis.Kinesis, shardCount int64) {
+func updateShardCount(t *testing.T, kinesisClient *kinesis.Client, shardCount int64) {
 	done := waitForStreamActiveStatus(t, kinesisClient)
 	if done {
-		_, err := kinesisClient.UpdateShardCountWithContext(context.Background(), &kinesis.UpdateShardCountInput{
+		_, err := kinesisClient.UpdateShardCount(context.Background(), &kinesis.UpdateShardCountInput{
 			StreamName:       &kinesisStreamName,
-			TargetShardCount: aws.Int64(shardCount),
-			ScalingType:      aws.String("UNIFORM_SCALING"),
+			TargetShardCount: aws.Int32(int32(shardCount)),
+			ScalingType:      types.ScalingTypeUniformScaling,
 		})
 		assert.NoErrorf(t, err, "cannot update shard count - %s", err)
 	}
 	assert.True(t, true, "failed to update shard count")
 }
 
-func createKinesisStream(t *testing.T, kinesisClient *kinesis.Kinesis) {
-	_, err := kinesisClient.CreateStreamWithContext(context.Background(), &kinesis.CreateStreamInput{
+func createKinesisStream(t *testing.T, kinesisClient *kinesis.Client) {
+	_, err := kinesisClient.CreateStream(context.Background(), &kinesis.CreateStreamInput{
 		StreamName: &kinesisStreamName,
-		ShardCount: aws.Int64(2),
+		ShardCount: aws.Int32(2),
 	})
 	assert.NoErrorf(t, err, "failed to create stream - %s", err)
 	done := waitForStreamActiveStatus(t, kinesisClient)
@@ -191,13 +191,13 @@ func createKinesisStream(t *testing.T, kinesisClient *kinesis.Kinesis) {
 	}
 }
 
-func waitForStreamActiveStatus(t *testing.T, kinesisClient *kinesis.Kinesis) bool {
+func waitForStreamActiveStatus(t *testing.T, kinesisClient *kinesis.Client) bool {
 	for i := 0; i < 30; i++ {
-		describe, _ := kinesisClient.DescribeStreamWithContext(context.Background(), &kinesis.DescribeStreamInput{
+		describe, _ := kinesisClient.DescribeStream(context.Background(), &kinesis.DescribeStreamInput{
 			StreamName: &kinesisStreamName,
 		})
-		t.Logf("Waiting for stream ACTIVE status. current status - %s", *describe.StreamDescription.StreamStatus)
-		if *describe.StreamDescription.StreamStatus == "ACTIVE" {
+		t.Logf("Waiting for stream ACTIVE status. current status - %s", describe.StreamDescription.StreamStatus)
+		if describe.StreamDescription.StreamStatus == "ACTIVE" {
 			return true
 		}
 		time.Sleep(time.Second * 2)
@@ -205,23 +205,20 @@ func waitForStreamActiveStatus(t *testing.T, kinesisClient *kinesis.Kinesis) boo
 	return false
 }
 
-func cleanupStream(t *testing.T, kinesisClient *kinesis.Kinesis) {
+func cleanupStream(t *testing.T, kinesisClient *kinesis.Client) {
 	t.Log("--- cleaning up ---")
-	_, err := kinesisClient.DeleteStreamWithContext(context.Background(), &kinesis.DeleteStreamInput{
+	_, err := kinesisClient.DeleteStream(context.Background(), &kinesis.DeleteStreamInput{
 		StreamName: &kinesisStreamName,
 	})
 	assert.NoErrorf(t, err, "cannot delete stream - %s", err)
 }
 
-func createKinesisClient() *kinesis.Kinesis {
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(awsRegion),
-	}))
-
-	return kinesis.New(sess, &aws.Config{
-		Region:      aws.String(awsRegion),
-		Credentials: credentials.NewStaticCredentials(awsAccessKeyID, awsSecretAccessKey, ""),
-	})
+func createKinesisClient() *kinesis.Client {
+	configOptions := make([]func(*config.LoadOptions) error, 0)
+	configOptions = append(configOptions, config.WithRegion(awsRegion))
+	cfg, _ := config.LoadDefaultConfig(context.TODO(), configOptions...)
+	cfg.Credentials = credentials.NewStaticCredentialsProvider(awsAccessKeyID, awsSecretAccessKey, "")
+	return kinesis.NewFromConfig(cfg)
 }
 
 func getTemplateData() (templateData, []Template) {

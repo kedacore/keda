@@ -16,6 +16,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	"golang.org/x/oauth2/internal"
 )
@@ -57,6 +58,10 @@ type Config struct {
 
 	// Scope specifies optional requested permissions.
 	Scopes []string
+
+	// authStyleCache caches which auth style to use when Endpoint.AuthStyle is
+	// the zero value (AuthStyleAutoDetect).
+	authStyleCache internal.LazyAuthStyleCache
 }
 
 // A TokenSource is anything that can return a token.
@@ -140,7 +145,7 @@ func SetAuthURLParam(key, value string) AuthCodeOption {
 //
 // State is a token to protect the user from CSRF attacks. You must
 // always provide a non-empty string and validate that it matches the
-// the state query parameter on your redirect callback.
+// state query parameter on your redirect callback.
 // See http://tools.ietf.org/html/rfc6749#section-10.12 for more info.
 //
 // Opts may include AccessTypeOnline or AccessTypeOffline, as well
@@ -290,6 +295,8 @@ type reuseTokenSource struct {
 
 	mu sync.Mutex // guards t
 	t  *Token
+
+	expiryDelta time.Duration
 }
 
 // Token returns the current token if it's still valid, else will
@@ -305,6 +312,7 @@ func (s *reuseTokenSource) Token() (*Token, error) {
 	if err != nil {
 		return nil, err
 	}
+	t.expiryDelta = s.expiryDelta
 	s.t = t
 	return t, nil
 }
@@ -377,5 +385,32 @@ func ReuseTokenSource(t *Token, src TokenSource) TokenSource {
 	return &reuseTokenSource{
 		t:   t,
 		new: src,
+	}
+}
+
+// ReuseTokenSource returns a TokenSource that acts in the same manner as the
+// TokenSource returned by ReuseTokenSource, except the expiry buffer is
+// configurable. The expiration time of a token is calculated as
+// t.Expiry.Add(-earlyExpiry).
+func ReuseTokenSourceWithExpiry(t *Token, src TokenSource, earlyExpiry time.Duration) TokenSource {
+	// Don't wrap a reuseTokenSource in itself. That would work,
+	// but cause an unnecessary number of mutex operations.
+	// Just build the equivalent one.
+	if rt, ok := src.(*reuseTokenSource); ok {
+		if t == nil {
+			// Just use it directly, but set the expiryDelta to earlyExpiry,
+			// so the behavior matches what the user expects.
+			rt.expiryDelta = earlyExpiry
+			return rt
+		}
+		src = rt.new
+	}
+	if t != nil {
+		t.expiryDelta = earlyExpiry
+	}
+	return &reuseTokenSource{
+		t:           t,
+		new:         src,
+		expiryDelta: earlyExpiry,
 	}
 }

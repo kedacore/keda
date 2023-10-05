@@ -8,7 +8,6 @@ package azidentity
 
 import (
 	"context"
-	"errors"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
@@ -25,15 +24,17 @@ type ClientSecretCredentialOptions struct {
 	// Add the wildcard value "*" to allow the credential to acquire tokens for any tenant in which the
 	// application is registered.
 	AdditionallyAllowedTenants []string
-	// DisableInstanceDiscovery allows disconnected cloud solutions to skip instance discovery for unknown authority hosts.
+	// DisableInstanceDiscovery should be set true only by applications authenticating in disconnected clouds, or
+	// private clouds such as Azure Stack. It determines whether the credential requests Azure AD instance metadata
+	// from https://login.microsoft.com before authenticating. Setting this to true will skip this request, making
+	// the application responsible for ensuring the configured authority is valid and trustworthy.
 	DisableInstanceDiscovery bool
 }
 
 // ClientSecretCredential authenticates an application with a client secret.
 type ClientSecretCredential struct {
-	additionallyAllowedTenants []string
-	client                     confidentialClient
-	tenant                     string
+	client confidentialClient
+	s      *syncer
 }
 
 // NewClientSecretCredential constructs a ClientSecretCredential. Pass nil for options to accept defaults.
@@ -45,37 +46,29 @@ func NewClientSecretCredential(tenantID string, clientID string, clientSecret st
 	if err != nil {
 		return nil, err
 	}
-	c, err := getConfidentialClient(clientID, tenantID, cred, &options.ClientOptions, confidential.WithInstanceDiscovery(!options.DisableInstanceDiscovery))
+	c, err := getConfidentialClient(
+		clientID, tenantID, cred, &options.ClientOptions, confidential.WithInstanceDiscovery(!options.DisableInstanceDiscovery),
+	)
 	if err != nil {
 		return nil, err
 	}
-	return &ClientSecretCredential{
-		additionallyAllowedTenants: resolveAdditionallyAllowedTenants(options.AdditionallyAllowedTenants),
-		client:                     c,
-		tenant:                     tenantID,
-	}, nil
+	csc := ClientSecretCredential{client: c}
+	csc.s = newSyncer(credNameSecret, tenantID, options.AdditionallyAllowedTenants, csc.requestToken, csc.silentAuth)
+	return &csc, nil
 }
 
 // GetToken requests an access token from Azure Active Directory. This method is called automatically by Azure SDK clients.
 func (c *ClientSecretCredential) GetToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
-	if len(opts.Scopes) == 0 {
-		return azcore.AccessToken{}, errors.New(credNameSecret + ": GetToken() requires at least one scope")
-	}
-	tenant, err := resolveTenant(c.tenant, opts.TenantID, c.additionallyAllowedTenants)
-	if err != nil {
-		return azcore.AccessToken{}, err
-	}
-	ar, err := c.client.AcquireTokenSilent(ctx, opts.Scopes, confidential.WithClaims(opts.Claims), confidential.WithTenantID(tenant))
-	if err == nil {
-		logGetTokenSuccess(c, opts)
-		return azcore.AccessToken{Token: ar.AccessToken, ExpiresOn: ar.ExpiresOn.UTC()}, err
-	}
+	return c.s.GetToken(ctx, opts)
+}
 
-	ar, err = c.client.AcquireTokenByCredential(ctx, opts.Scopes, confidential.WithClaims(opts.Claims), confidential.WithTenantID(tenant))
-	if err != nil {
-		return azcore.AccessToken{}, newAuthenticationFailedErrorFromMSALError(credNameSecret, err)
-	}
-	logGetTokenSuccess(c, opts)
+func (c *ClientSecretCredential) silentAuth(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
+	ar, err := c.client.AcquireTokenSilent(ctx, opts.Scopes, confidential.WithTenantID(opts.TenantID))
+	return azcore.AccessToken{Token: ar.AccessToken, ExpiresOn: ar.ExpiresOn.UTC()}, err
+}
+
+func (c *ClientSecretCredential) requestToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
+	ar, err := c.client.AcquireTokenByCredential(ctx, opts.Scopes, confidential.WithTenantID(opts.TenantID))
 	return azcore.AccessToken{Token: ar.AccessToken, ExpiresOn: ar.ExpiresOn.UTC()}, err
 }
 

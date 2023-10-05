@@ -36,11 +36,19 @@ var (
 )
 
 func TestNATSJetStreamScalerClusterWithStreamReplicas(t *testing.T) {
+	testNATSJetStreamScalerClusterWithStreamReplicas(t, false)
+}
+
+func TestNATSJetStreamScalerClusterWithStreamReplicasWithNoAdvertise(t *testing.T) {
+	testNATSJetStreamScalerClusterWithStreamReplicas(t, true)
+}
+
+func testNATSJetStreamScalerClusterWithStreamReplicas(t *testing.T, noAdvertise bool) {
 	// Create k8s resources.
 	kc := GetKubernetesClient(t)
 
 	// Deploy NATS server.
-	installClusterWithJetStream(t, kc)
+	installClusterWithJetStream(t, kc, noAdvertise)
 	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, nats.NatsJetStreamName, natsNamespace, natsServerReplicas, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
 
@@ -93,12 +101,12 @@ func TestNATSJetStreamScalerClusterWithStreamReplicas(t *testing.T) {
 
 	// Cleanup test namespace
 	removeStreamAndConsumer(t, 1, testData.NatsStream, testNamespace, natsAddress)
-	DeleteKubernetesResources(t, kc, testNamespace, testData, testTemplates)
+	DeleteKubernetesResources(t, testNamespace, testData, testTemplates)
 
 	// Cleanup nats namespace
 	removeClusterWithJetStream(t)
-	DeleteNamespace(t, kc, natsNamespace)
-	deleted := WaitForNamespaceDeletion(t, kc, natsNamespace)
+	DeleteNamespace(t, natsNamespace)
+	deleted := WaitForNamespaceDeletion(t, natsNamespace)
 	assert.Truef(t, deleted, "%s namespace not deleted", natsNamespace)
 }
 
@@ -129,18 +137,19 @@ func removeStreamAndConsumer(t *testing.T, streamReplicas int, stream, namespace
 }
 
 // installClusterWithJetStream install the nats helm chart with clustered jetstream enabled
-func installClusterWithJetStream(t *testing.T, kc *k8s.Clientset) {
+func installClusterWithJetStream(t *testing.T, kc *k8s.Clientset, noAdvertise bool) {
 	CreateNamespace(t, kc, natsNamespace)
 	_, err := ExecuteCommand(fmt.Sprintf("helm repo add %s %s", nats.NatsJetStreamName, natsHelmRepo))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("helm repo update")
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --version %s --set %s --set %s --set %s --set %s --wait --namespace %s %s nats/nats`,
+	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --version %s --set %s --set %s --set %s --set %s --set %s --wait --namespace %s %s nats/nats`,
 		nats.NatsJetStreamChartVersion,
 		"nats.jetstream.enabled=true",
 		"nats.jetstream.fileStorage.enabled=false",
 		"cluster.enabled=true",
 		fmt.Sprintf("replicas=%d", natsServerReplicas),
+		fmt.Sprintf("cluster.noAdvertise=%t", noAdvertise),
 		natsNamespace,
 		nats.NatsJetStreamName))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)

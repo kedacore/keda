@@ -1,8 +1,10 @@
 package amqp
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/Azure/go-amqp/internal/debug"
 	"github.com/Azure/go-amqp/internal/encoding"
 	"github.com/Azure/go-amqp/internal/frames"
 )
@@ -15,72 +17,78 @@ const (
 	saslMechanismXOAUTH2   encoding.Symbol = "XOAUTH2"
 )
 
-const (
-	frameTypeAMQP = 0x0
-	frameTypeSASL = 0x1
-)
+// SASLType represents a SASL configuration to use during authentication.
+type SASLType func(c *Conn) error
 
 // ConnSASLPlain enables SASL PLAIN authentication for the connection.
 //
 // SASL PLAIN transmits credentials in plain text and should only be used
 // on TLS/SSL enabled connection.
-func ConnSASLPlain(username, password string) ConnOption {
+func SASLTypePlain(username, password string) SASLType {
 	// TODO: how widely used is hostname? should it be supported
-	return func(c *conn) error {
+	return func(c *Conn) error {
 		// make handlers map if no other mechanism has
 		if c.saslHandlers == nil {
 			c.saslHandlers = make(map[encoding.Symbol]stateFunc)
 		}
 
 		// add the handler the the map
-		c.saslHandlers[saslMechanismPLAIN] = func() stateFunc {
+		c.saslHandlers[saslMechanismPLAIN] = func(ctx context.Context) (stateFunc, error) {
 			// send saslInit with PLAIN payload
 			init := &frames.SASLInit{
 				Mechanism:       "PLAIN",
 				InitialResponse: []byte("\x00" + username + "\x00" + password),
 				Hostname:        "",
 			}
-			debug(1, "TX (ConnSASLPlain): %s", init)
-			c.err = c.writeFrame(frames.Frame{
-				Type: frameTypeSASL,
+			fr := frames.Frame{
+				Type: frames.TypeSASL,
 				Body: init,
-			})
-			if c.err != nil {
-				return nil
+			}
+			debug.Log(1, "TX (ConnSASLPlain %p): %s", c, fr)
+			timeout, err := c.getWriteTimeout(ctx)
+			if err != nil {
+				return nil, err
+			}
+			if err = c.writeFrame(timeout, fr); err != nil {
+				return nil, err
 			}
 
 			// go to c.saslOutcome to handle the server response
-			return c.saslOutcome
+			return c.saslOutcome, nil
 		}
 		return nil
 	}
 }
 
 // ConnSASLAnonymous enables SASL ANONYMOUS authentication for the connection.
-func ConnSASLAnonymous() ConnOption {
-	return func(c *conn) error {
+func SASLTypeAnonymous() SASLType {
+	return func(c *Conn) error {
 		// make handlers map if no other mechanism has
 		if c.saslHandlers == nil {
 			c.saslHandlers = make(map[encoding.Symbol]stateFunc)
 		}
 
 		// add the handler the the map
-		c.saslHandlers[saslMechanismANONYMOUS] = func() stateFunc {
+		c.saslHandlers[saslMechanismANONYMOUS] = func(ctx context.Context) (stateFunc, error) {
 			init := &frames.SASLInit{
 				Mechanism:       saslMechanismANONYMOUS,
 				InitialResponse: []byte("anonymous"),
 			}
-			debug(1, "TX (ConnSASLAnonymous): %s", init)
-			c.err = c.writeFrame(frames.Frame{
-				Type: frameTypeSASL,
+			fr := frames.Frame{
+				Type: frames.TypeSASL,
 				Body: init,
-			})
-			if c.err != nil {
-				return nil
+			}
+			debug.Log(1, "TX (ConnSASLAnonymous %p): %s", c, fr)
+			timeout, err := c.getWriteTimeout(ctx)
+			if err != nil {
+				return nil, err
+			}
+			if err = c.writeFrame(timeout, fr); err != nil {
+				return nil, err
 			}
 
 			// go to c.saslOutcome to handle the server response
-			return c.saslOutcome
+			return c.saslOutcome, nil
 		}
 		return nil
 	}
@@ -89,30 +97,34 @@ func ConnSASLAnonymous() ConnOption {
 // ConnSASLExternal enables SASL EXTERNAL authentication for the connection.
 // The value for resp is dependent on the type of authentication (empty string is common for TLS).
 // See https://datatracker.ietf.org/doc/html/rfc4422#appendix-A for additional info.
-func ConnSASLExternal(resp string) ConnOption {
-	return func(c *conn) error {
+func SASLTypeExternal(resp string) SASLType {
+	return func(c *Conn) error {
 		// make handlers map if no other mechanism has
 		if c.saslHandlers == nil {
 			c.saslHandlers = make(map[encoding.Symbol]stateFunc)
 		}
 
 		// add the handler the the map
-		c.saslHandlers[saslMechanismEXTERNAL] = func() stateFunc {
+		c.saslHandlers[saslMechanismEXTERNAL] = func(ctx context.Context) (stateFunc, error) {
 			init := &frames.SASLInit{
 				Mechanism:       saslMechanismEXTERNAL,
 				InitialResponse: []byte(resp),
 			}
-			debug(1, "TX (ConnSASLExternal): %s", init)
-			c.err = c.writeFrame(frames.Frame{
-				Type: frameTypeSASL,
+			fr := frames.Frame{
+				Type: frames.TypeSASL,
 				Body: init,
-			})
-			if c.err != nil {
-				return nil
+			}
+			debug.Log(1, "TX (ConnSASLExternal %p): %s", c, fr)
+			timeout, err := c.getWriteTimeout(ctx)
+			if err != nil {
+				return nil, err
+			}
+			if err = c.writeFrame(timeout, fr); err != nil {
+				return nil, err
 			}
 
 			// go to c.saslOutcome to handle the server response
-			return c.saslOutcome
+			return c.saslOutcome, nil
 		}
 		return nil
 	}
@@ -128,8 +140,8 @@ func ConnSASLExternal(resp string) ConnOption {
 //
 // SASL XOAUTH2 transmits the bearer in plain text and should only be used
 // on TLS/SSL enabled connection.
-func ConnSASLXOAUTH2(username, bearer string, saslMaxFrameSizeOverride uint32) ConnOption {
-	return func(c *conn) error {
+func SASLTypeXOAUTH2(username, bearer string, saslMaxFrameSizeOverride uint32) SASLType {
+	return func(c *Conn) error {
 		// make handlers map if no other mechanism has
 		if c.saslHandlers == nil {
 			c.saslHandlers = make(map[encoding.Symbol]stateFunc)
@@ -152,72 +164,80 @@ func ConnSASLXOAUTH2(username, bearer string, saslMaxFrameSizeOverride uint32) C
 }
 
 type saslXOAUTH2Handler struct {
-	conn                 *conn
+	conn                 *Conn
 	maxFrameSizeOverride uint32
 	response             []byte
 	errorResponse        []byte // https://developers.google.com/gmail/imap/xoauth2-protocol#error_response
 }
 
-func (s saslXOAUTH2Handler) init() stateFunc {
-	originalPeerMaxFrameSize := s.conn.PeerMaxFrameSize
-	if s.maxFrameSizeOverride > s.conn.PeerMaxFrameSize {
-		s.conn.PeerMaxFrameSize = s.maxFrameSizeOverride
+func (s saslXOAUTH2Handler) init(ctx context.Context) (stateFunc, error) {
+	originalPeerMaxFrameSize := s.conn.peerMaxFrameSize
+	if s.maxFrameSizeOverride > s.conn.peerMaxFrameSize {
+		s.conn.peerMaxFrameSize = s.maxFrameSizeOverride
 	}
-	s.conn.err = s.conn.writeFrame(frames.Frame{
-		Type: frameTypeSASL,
+	timeout, err := s.conn.getWriteTimeout(ctx)
+	if err != nil {
+		return nil, err
+	}
+	err = s.conn.writeFrame(timeout, frames.Frame{
+		Type: frames.TypeSASL,
 		Body: &frames.SASLInit{
 			Mechanism:       saslMechanismXOAUTH2,
 			InitialResponse: s.response,
 		},
 	})
-	s.conn.PeerMaxFrameSize = originalPeerMaxFrameSize
-	if s.conn.err != nil {
-		return nil
+	s.conn.peerMaxFrameSize = originalPeerMaxFrameSize
+	if err != nil {
+		return nil, err
 	}
 
-	return s.step
+	return s.step, nil
 }
 
-func (s saslXOAUTH2Handler) step() stateFunc {
+func (s saslXOAUTH2Handler) step(ctx context.Context) (stateFunc, error) {
 	// read challenge or outcome frame
 	fr, err := s.conn.readFrame()
 	if err != nil {
-		s.conn.err = err
-		return nil
+		return nil, err
 	}
 
 	switch v := fr.Body.(type) {
 	case *frames.SASLOutcome:
 		// check if auth succeeded
 		if v.Code != encoding.CodeSASLOK {
-			s.conn.err = fmt.Errorf("SASL XOAUTH2 auth failed with code %#00x: %s : %s",
+			return nil, fmt.Errorf("SASL XOAUTH2 auth failed with code %#00x: %s : %s",
 				v.Code, v.AdditionalData, s.errorResponse)
-			return nil
 		}
 
 		// return to c.negotiateProto
 		s.conn.saslComplete = true
-		return s.conn.negotiateProto
+		return s.conn.negotiateProto, nil
 	case *frames.SASLChallenge:
 		if s.errorResponse == nil {
 			s.errorResponse = v.Challenge
 
+			timeout, err := s.conn.getWriteTimeout(ctx)
+			if err != nil {
+				return nil, err
+			}
+
 			// The SASL protocol requires clients to send an empty response to this challenge.
-			s.conn.err = s.conn.writeFrame(frames.Frame{
-				Type: frameTypeSASL,
+			err = s.conn.writeFrame(timeout, frames.Frame{
+				Type: frames.TypeSASL,
 				Body: &frames.SASLResponse{
 					Response: []byte{},
 				},
 			})
-			return s.step
+			if err != nil {
+				return nil, err
+			}
+			return s.step, nil
 		} else {
-			s.conn.err = fmt.Errorf("SASL XOAUTH2 unexpected additional error response received during "+
+			return nil, fmt.Errorf("SASL XOAUTH2 unexpected additional error response received during "+
 				"exchange. Initial error response: %s, additional response: %s", s.errorResponse, v.Challenge)
-			return nil
 		}
 	default:
-		s.conn.err = fmt.Errorf("sasl: unexpected frame type %T", fr.Body)
-		return nil
+		return nil, fmt.Errorf("sasl: unexpected frame type %T", fr.Body)
 	}
 }
 

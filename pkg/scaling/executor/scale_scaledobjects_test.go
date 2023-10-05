@@ -18,6 +18,7 @@ package executor
 
 import (
 	"context"
+	"strconv"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -409,12 +410,15 @@ func TestScaleToPausedReplicasCount(t *testing.T) {
 
 	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
 
+	pausedReplicaCount := int32(0)
+	replicaCount := int32(2)
+
 	scaledObject := v1alpha1.ScaledObject{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "name",
 			Namespace: "namespace",
 			Annotations: map[string]string{
-				"autoscaling.keda.sh/paused-replicas": "0",
+				"autoscaling.keda.sh/paused-replicas": strconv.Itoa(int(pausedReplicaCount)),
 			},
 		},
 		Spec: v1alpha1.ScaledObjectSpec{
@@ -431,9 +435,6 @@ func TestScaleToPausedReplicasCount(t *testing.T) {
 	}
 
 	scaledObject.Status.Conditions = *v1alpha1.GetInitializedConditions()
-
-	pausedReplicaCount := int32(0)
-	replicaCount := int32(2)
 
 	client.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, appsv1.Deployment{
 		Spec: appsv1.DeploymentSpec{

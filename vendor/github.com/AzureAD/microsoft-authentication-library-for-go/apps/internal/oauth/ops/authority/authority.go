@@ -28,10 +28,20 @@ const (
 	regionName                        = "REGION_NAME"
 	defaultAPIVersion                 = "2021-10-01"
 	imdsEndpoint                      = "http://169.254.169.254/metadata/instance/compute/location?format=text&api-version=" + defaultAPIVersion
-	defaultHost                       = "login.microsoftonline.com"
 	autoDetectRegion                  = "TryAutoDetect"
+	AccessTokenTypeBearer             = "Bearer"
 )
 
+// These are various hosts that host AAD Instance discovery endpoints.
+const (
+	defaultHost          = "login.microsoftonline.com"
+	loginMicrosoft       = "login.microsoft.com"
+	loginWindows         = "login.windows.net"
+	loginSTSWindows      = "sts.windows.net"
+	loginMicrosoftOnline = defaultHost
+)
+
+// jsonCaller is an interface that allows us to mock the JSONCall method.
 type jsonCaller interface {
 	JSONCall(ctx context.Context, endpoint string, headers http.Header, qv url.Values, body, resp interface{}) error
 }
@@ -54,6 +64,8 @@ func TrustedHost(host string) bool {
 	return false
 }
 
+// OAuthResponseBase is the base JSON return message for an OAuth call.
+// This is embedded in other calls to get the base fields from every response.
 type OAuthResponseBase struct {
 	Error            string `json:"error"`
 	SubError         string `json:"suberror"`
@@ -127,6 +139,39 @@ const (
 	ADFS = "ADFS"
 )
 
+// AuthenticationScheme is an extensibility mechanism designed to be used only by Azure Arc for proof of possession access tokens.
+type AuthenticationScheme interface {
+	// Extra parameters that are added to the request to the /token endpoint.
+	TokenRequestParams() map[string]string
+	// Key ID of the public / private key pair used by the encryption algorithm, if any.
+	// Tokens obtained by authentication schemes that use this are bound to the KeyId, i.e.
+	// if a different kid is presented, the access token cannot be used.
+	KeyID() string
+	// Creates the access token that goes into an Authorization HTTP header.
+	FormatAccessToken(accessToken string) (string, error)
+	//Expected to match the token_type parameter returned by ESTS. Used to disambiguate
+	// between ATs of different types (e.g. Bearer and PoP) when loading from cache etc.
+	AccessTokenType() string
+}
+
+// default authn scheme realizing AuthenticationScheme for "Bearer" tokens
+type BearerAuthenticationScheme struct{}
+
+var bearerAuthnScheme BearerAuthenticationScheme
+
+func (ba *BearerAuthenticationScheme) TokenRequestParams() map[string]string {
+	return nil
+}
+func (ba *BearerAuthenticationScheme) KeyID() string {
+	return ""
+}
+func (ba *BearerAuthenticationScheme) FormatAccessToken(accessToken string) (string, error) {
+	return accessToken, nil
+}
+func (ba *BearerAuthenticationScheme) AccessTokenType() string {
+	return AccessTokenTypeBearer
+}
+
 // AuthParams represents the parameters used for authorization for token acquisition.
 type AuthParams struct {
 	AuthorityInfo Info
@@ -169,6 +214,8 @@ type AuthParams struct {
 	LoginHint string
 	// DomainHint is a directive that can be used to accelerate the user to their federated IdP sign-in page
 	DomainHint string
+	// AuthnScheme is an optional scheme for formatting access tokens
+	AuthnScheme AuthenticationScheme
 }
 
 // NewAuthParams creates an authorization parameters object.
@@ -177,6 +224,7 @@ func NewAuthParams(clientID string, authorityInfo Info) AuthParams {
 		ClientID:      clientID,
 		AuthorityInfo: authorityInfo,
 		CorrelationID: uuid.New().String(),
+		AuthnScheme:   &bearerAuthnScheme,
 	}
 }
 
@@ -309,30 +357,23 @@ func firstPathSegment(u *url.URL) (string, error) {
 		return pathParts[1], nil
 	}
 
-	return "", errors.New("authority does not have two segments")
+	return "", errors.New(`authority must be an https URL such as "https://login.microsoftonline.com/<your tenant>"`)
 }
 
 // NewInfoFromAuthorityURI creates an AuthorityInfo instance from the authority URL provided.
-func NewInfoFromAuthorityURI(authorityURI string, validateAuthority bool, instanceDiscoveryDisabled bool) (Info, error) {
-	authorityURI = strings.ToLower(authorityURI)
-	var authorityType string
-	u, err := url.Parse(authorityURI)
-	if err != nil {
-		return Info{}, fmt.Errorf("authorityURI passed could not be parsed: %w", err)
-	}
-	if u.Scheme != "https" {
-		return Info{}, fmt.Errorf("authorityURI(%s) must have scheme https", authorityURI)
+func NewInfoFromAuthorityURI(authority string, validateAuthority bool, instanceDiscoveryDisabled bool) (Info, error) {
+	u, err := url.Parse(strings.ToLower(authority))
+	if err != nil || u.Scheme != "https" {
+		return Info{}, errors.New(`authority must be an https URL such as "https://login.microsoftonline.com/<your tenant>"`)
 	}
 
 	tenant, err := firstPathSegment(u)
-	if tenant == "adfs" {
-		authorityType = ADFS
-	} else {
-		authorityType = AAD
-	}
-
 	if err != nil {
 		return Info{}, err
+	}
+	authorityType := AAD
+	if tenant == "adfs" {
+		authorityType = ADFS
 	}
 
 	// u.Host includes the port, if any, which is required for private cloud deployments
@@ -449,6 +490,8 @@ func (c Client) GetTenantDiscoveryResponse(ctx context.Context, openIDConfigurat
 	return resp, err
 }
 
+// AADInstanceDiscovery attempts to discover a tenant endpoint (used in OIDC auth with an authorization endpoint).
+// This is done by AAD which allows for aliasing of tenants (windows.sts.net is the same as login.windows.com).
 func (c Client) AADInstanceDiscovery(ctx context.Context, authorityInfo Info) (InstanceDiscoveryResponse, error) {
 	region := ""
 	var err error
@@ -461,9 +504,10 @@ func (c Client) AADInstanceDiscovery(ctx context.Context, authorityInfo Info) (I
 	if region != "" {
 		environment := authorityInfo.Host
 		switch environment {
-		case "login.microsoft.com", "login.windows.net", "sts.windows.net", defaultHost:
-			environment = "r." + defaultHost
+		case loginMicrosoft, loginWindows, loginSTSWindows, defaultHost:
+			environment = loginMicrosoft
 		}
+
 		resp.TenantDiscoveryEndpoint = fmt.Sprintf(tenantDiscoveryEndpointWithRegion, region, environment, authorityInfo.Tenant)
 		metadata := InstanceDiscoveryMetadata{
 			PreferredNetwork: fmt.Sprintf("%v.%v", region, authorityInfo.Host),

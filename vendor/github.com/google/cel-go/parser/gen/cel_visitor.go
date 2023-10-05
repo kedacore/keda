@@ -1,7 +1,7 @@
-// Code generated from /Users/tswadell/go/src/github.com/google/cel-go/parser/gen/CEL.g4 by ANTLR 4.10.1. DO NOT EDIT.
+// Code generated from /Users/tswadell/go/src/github.com/google/cel-go/parser/gen/CEL.g4 by ANTLR 4.12.0. DO NOT EDIT.
 
 package gen // CEL
-import "github.com/antlr/antlr4/runtime/Go/antlr"
+import "github.com/antlr/antlr4/runtime/Go/antlr/v4"
 
 // A complete Visitor for a parse tree produced by CELParser.
 type CELVisitor interface {
@@ -67,6 +67,9 @@ type CELVisitor interface {
 	// Visit a parse tree produced by CELParser#exprList.
 	VisitExprList(ctx *ExprListContext) interface{}
 
+	// Visit a parse tree produced by CELParser#listInit.
+	VisitListInit(ctx *ListInitContext) interface{}
+
 	// Visit a parse tree produced by CELParser#fieldInitializerList.
 	VisitFieldInitializerList(ctx *FieldInitializerListContext) interface{}
 
@@ -76,8 +79,8 @@ type CELVisitor interface {
 	// Visit a parse tree produced by CELParser#mapInitializerList.
 	VisitMapInitializerList(ctx *MapInitializerListContext) interface{}
 
-	// Visit a parse tree produced by CELParser#optKey.
-	VisitOptKey(ctx *OptKeyContext) interface{}
+	// Visit a parse tree produced by CELParser#optExpr.
+	VisitOptExpr(ctx *OptExprContext) interface{}
 
 	// Visit a parse tree produced by CELParser#Int.
 	VisitInt(ctx *IntContext) interface{}

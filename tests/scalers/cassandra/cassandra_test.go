@@ -191,7 +191,7 @@ func TestCassandraScaler(t *testing.T) {
 
 	// cleanup
 	uninstallCassandra(t)
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func installCassandra(t *testing.T) {

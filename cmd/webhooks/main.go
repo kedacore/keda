@@ -17,10 +17,12 @@ limitations under the License.
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"os"
 
 	"github.com/spf13/pflag"
+	_ "go.uber.org/automaxprocs"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -29,6 +31,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/k8s"
@@ -54,13 +58,14 @@ func main() {
 	var webhooksClientRequestQPS float32
 	var webhooksClientRequestBurst int
 	var certDir string
-	var tlsMinVersion string
+	var webhooksPort int
+
 	pflag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	pflag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	pflag.Float32Var(&webhooksClientRequestQPS, "kube-api-qps", 20.0, "Set the QPS rate for throttling requests sent to the apiserver")
 	pflag.IntVar(&webhooksClientRequestBurst, "kube-api-burst", 30, "Set the burst for throttling requests sent to the apiserver")
 	pflag.StringVar(&certDir, "cert-dir", "/certs", "Webhook certificates dir to use. Defaults to /certs")
-	pflag.StringVar(&tlsMinVersion, "tls-min-version", "1.3", "Minimum TLS version")
+	pflag.IntVar(&webhooksPort, "port", 9443, "Port number to serve webhooks. Defaults to 9443")
 
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
@@ -76,12 +81,21 @@ func main() {
 	cfg.Burst = webhooksClientRequestBurst
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-		Scheme:                 scheme,
-		LeaderElection:         false,
-		MetricsBindAddress:     metricsAddr,
-		Port:                   9443,
+		Scheme:         scheme,
+		LeaderElection: false,
+		Metrics: server.Options{
+			BindAddress: metricsAddr,
+		},
+		WebhookServer: webhook.NewServer(webhook.Options{
+			Port:    webhooksPort,
+			CertDir: certDir,
+			TLSOpts: []func(tlsConfig *tls.Config){
+				func(tlsConfig *tls.Config) {
+					tlsConfig.MinVersion = kedautil.GetMinTLSVersion()
+				},
+			},
+		}),
 		HealthProbeBindAddress: probeAddr,
-		CertDir:                certDir,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start admission webhooks")
@@ -98,7 +112,7 @@ func main() {
 
 	kedautil.PrintWelcome(setupLog, kubeVersion, "admission webhooks")
 
-	setupWebhook(mgr, tlsMinVersion)
+	setupWebhook(mgr)
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
@@ -115,14 +129,18 @@ func main() {
 	}
 }
 
-func setupWebhook(mgr manager.Manager, tlsMinVersion string) {
+func setupWebhook(mgr manager.Manager) {
 	// setup webhooks
 	if err := (&kedav1alpha1.ScaledObject{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "ScaledObject")
 		os.Exit(1)
 	}
-
-	setupLog.V(1).Info("setting up webhook server")
-	hookServer := mgr.GetWebhookServer()
-	hookServer.TLSMinVersion = tlsMinVersion
+	if err := (&kedav1alpha1.TriggerAuthentication{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "TriggerAuthentication")
+		os.Exit(1)
+	}
+	if err := (&kedav1alpha1.ClusterTriggerAuthentication{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "ClusterTriggerAuthentication")
+		os.Exit(1)
+	}
 }

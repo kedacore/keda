@@ -9,7 +9,6 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	api "github.com/kedacore/keda/v2/pkg/metricsservice/api"
 	cache "github.com/kedacore/keda/v2/pkg/scaling/cache"
 	external_metrics "k8s.io/metrics/pkg/apis/external_metrics"
 )
@@ -66,13 +65,12 @@ func (mr *MockScaleHandlerMockRecorder) DeleteScalableObject(ctx, scalableObject
 }
 
 // GetScaledObjectMetrics mocks base method.
-func (m *MockScaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, *api.PromMetricsMsg, error) {
+func (m *MockScaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetScaledObjectMetrics", ctx, scaledObjectName, scaledObjectNamespace, metricName)
 	ret0, _ := ret[0].(*external_metrics.ExternalMetricValueList)
-	ret1, _ := ret[1].(*api.PromMetricsMsg)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // GetScaledObjectMetrics indicates an expected call of GetScaledObjectMetrics.

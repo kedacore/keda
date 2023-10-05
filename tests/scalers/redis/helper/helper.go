@@ -76,13 +76,13 @@ func InstallStandalone(t *testing.T, kc *kubernetes.Clientset, name, namespace, 
 	helper.KubectlApplyMultipleWithTemplate(t, data, redisStandaloneTemplates)
 }
 
-func RemoveStandalone(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
+func RemoveStandalone(t *testing.T, name, namespace string) {
 	var data = templateData{
 		Namespace: namespace,
 		RedisName: name,
 	}
 	helper.KubectlApplyMultipleWithTemplate(t, data, redisStandaloneTemplates)
-	helper.DeleteNamespace(t, kc, namespace)
+	helper.DeleteNamespace(t, namespace)
 }
 
 func InstallSentinel(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {
@@ -98,12 +98,12 @@ func InstallSentinel(t *testing.T, kc *kubernetes.Clientset, name, namespace, pa
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
-func RemoveSentinel(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
+func RemoveSentinel(t *testing.T, name, namespace string) {
 	_, err := helper.ExecuteCommand(fmt.Sprintf(`helm uninstall --wait --timeout 900s %s --namespace %s`,
 		name,
 		namespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	helper.DeleteNamespace(t, kc, namespace)
+	helper.DeleteNamespace(t, namespace)
 }
 
 func InstallCluster(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {
@@ -119,10 +119,10 @@ func InstallCluster(t *testing.T, kc *kubernetes.Clientset, name, namespace, pas
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
-func RemoveCluster(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
+func RemoveCluster(t *testing.T, name, namespace string) {
 	_, err := helper.ExecuteCommand(fmt.Sprintf(`helm uninstall --wait --timeout 900s %s --namespace %s`,
 		name,
 		namespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	helper.DeleteNamespace(t, kc, namespace)
+	helper.DeleteNamespace(t, namespace)
 }

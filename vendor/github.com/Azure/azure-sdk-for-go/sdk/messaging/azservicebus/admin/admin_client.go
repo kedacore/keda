@@ -120,14 +120,14 @@ func (ac *Client) GetNamespaceProperties(ctx context.Context, options *GetNamesp
 	return props, nil
 }
 
-type pagerFunc func(ctx context.Context, pv interface{}) (*http.Response, error)
+type pagerFunc func(ctx context.Context, pv any) (*http.Response, error)
 
 // newPagerFunc gets a function that can be used to page sequentially through an ATOM resource
-func (ac *Client) newPagerFunc(baseFragment string, maxPageSize int32, lenV func(pv interface{}) int) pagerFunc {
+func (ac *Client) newPagerFunc(baseFragment string, maxPageSize int32, lenV func(pv any) int) pagerFunc {
 	eof := false
 	skip := int32(0)
 
-	return func(ctx context.Context, pv interface{}) (*http.Response, error) {
+	return func(ctx context.Context, pv any) (*http.Response, error) {
 		if eof {
 			return nil, nil
 		}

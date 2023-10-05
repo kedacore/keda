@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -17,6 +18,8 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -59,6 +62,7 @@ type rabbitMQScaler struct {
 	connection *amqp.Connection
 	channel    *amqp.Channel
 	httpClient *http.Client
+	azureOAuth *azure.ADWorkloadIdentityTokenProvider
 	logger     logr.Logger
 }
 
@@ -74,7 +78,6 @@ type rabbitMQMetadata struct {
 	excludeUnacknowledged bool          // specify if the QueueLength value should exclude Unacknowledged messages (Ready messages only)
 	pageSize              int64         // specify the page size if useRegex is enabled
 	operation             string        // specify the operation to apply in case of multiples queues
-	metricName            string        // custom metric name for trigger
 	timeout               time.Duration // custom http timeout for a specific trigger
 	scalerIndex           int           // scaler index
 
@@ -84,6 +87,11 @@ type rabbitMQMetadata struct {
 	key         string
 	keyPassword string
 	enableTLS   bool
+	unsafeSsl   bool
+
+	// token provider for azure AD
+	workloadIdentityClientID string
+	workloadIdentityResource string
 }
 
 type queueInfo struct {
@@ -124,7 +132,7 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing rabbitmq metadata: %w", err)
 	}
 	s.metadata = meta
-	s.httpClient = kedautil.CreateHTTPClient(meta.timeout, false)
+	s.httpClient = kedautil.CreateHTTPClient(meta.timeout, meta.unsafeSsl)
 
 	if meta.protocol == amqpProtocol {
 		// Override vhost if requested.
@@ -149,10 +157,7 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 	return s, nil
 }
 
-func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
-	meta := rabbitMQMetadata{}
-
-	// Resolve protocol type
+func resolveProtocol(config *ScalerConfig, meta *rabbitMQMetadata) error {
 	meta.protocol = defaultProtocol
 	if val, ok := config.AuthParams["protocol"]; ok {
 		meta.protocol = val
@@ -161,10 +166,12 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		meta.protocol = val
 	}
 	if meta.protocol != amqpProtocol && meta.protocol != httpProtocol && meta.protocol != autoProtocol {
-		return nil, fmt.Errorf("the protocol has to be either `%s`, `%s`, or `%s` but is `%s`", amqpProtocol, httpProtocol, autoProtocol, meta.protocol)
+		return fmt.Errorf("the protocol has to be either `%s`, `%s`, or `%s` but is `%s`", amqpProtocol, httpProtocol, autoProtocol, meta.protocol)
 	}
+	return nil
+}
 
-	// Resolve host value
+func resolveHostValue(config *ScalerConfig, meta *rabbitMQMetadata) error {
 	switch {
 	case config.AuthParams["host"] != "":
 		meta.host = config.AuthParams["host"]
@@ -173,10 +180,31 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	case config.TriggerMetadata["hostFromEnv"] != "":
 		meta.host = config.ResolvedEnv[config.TriggerMetadata["hostFromEnv"]]
 	default:
-		return nil, fmt.Errorf("no host setting given")
+		return fmt.Errorf("no host setting given")
 	}
+	return nil
+}
 
-	// Resolve TLS authentication parameters
+func resolveTimeout(config *ScalerConfig, meta *rabbitMQMetadata) error {
+	if val, ok := config.TriggerMetadata["timeout"]; ok {
+		timeoutMS, err := strconv.Atoi(val)
+		if err != nil {
+			return fmt.Errorf("unable to parse timeout: %w", err)
+		}
+		if meta.protocol == amqpProtocol {
+			return fmt.Errorf("amqp protocol doesn't support custom timeouts: %w", err)
+		}
+		if timeoutMS <= 0 {
+			return fmt.Errorf("timeout must be greater than 0: %w", err)
+		}
+		meta.timeout = time.Duration(timeoutMS) * time.Millisecond
+	} else {
+		meta.timeout = config.GlobalHTTPTimeout
+	}
+	return nil
+}
+
+func resolveTLSAuthParams(config *ScalerConfig, meta *rabbitMQMetadata) error {
 	meta.enableTLS = false
 	if val, ok := config.AuthParams["tls"]; ok {
 		val = strings.TrimSpace(val)
@@ -186,16 +214,52 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 			meta.key = config.AuthParams["key"]
 			meta.enableTLS = true
 		} else if val != "disable" {
-			return nil, fmt.Errorf("err incorrect value for TLS given: %s", val)
+			return fmt.Errorf("err incorrect value for TLS given: %s", val)
 		}
+	}
+	return nil
+}
+
+func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
+	meta := rabbitMQMetadata{}
+
+	// Resolve protocol type
+	if err := resolveProtocol(config, &meta); err != nil {
+		return nil, err
+	}
+
+	// Resolve host value
+	if err := resolveHostValue(config, &meta); err != nil {
+		return nil, err
+	}
+
+	// Resolve TLS authentication parameters
+	if err := resolveTLSAuthParams(config, &meta); err != nil {
+		return nil, err
 	}
 
 	meta.keyPassword = config.AuthParams["keyPassword"]
+
+	if config.PodIdentity.Provider == v1alpha1.PodIdentityProviderAzureWorkload {
+		if config.AuthParams["workloadIdentityResource"] != "" {
+			meta.workloadIdentityClientID = config.PodIdentity.GetIdentityID()
+			meta.workloadIdentityResource = config.AuthParams["workloadIdentityResource"]
+		}
+	}
 
 	certGiven := meta.cert != ""
 	keyGiven := meta.key != ""
 	if certGiven != keyGiven {
 		return nil, fmt.Errorf("both key and cert must be provided")
+	}
+
+	meta.unsafeSsl = false
+	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
+		boolVal, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse unsafeSsl value. Must be either true or false")
+		}
+		meta.unsafeSsl = boolVal
 	}
 
 	// If the protocol is auto, check the host scheme.
@@ -212,6 +276,10 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 		default:
 			return nil, fmt.Errorf("unknown host URL scheme `%s`", parsedURL.Scheme)
 		}
+	}
+
+	if meta.protocol == amqpProtocol && config.AuthParams["workloadIdentityResource"] != "" {
+		return nil, fmt.Errorf("workload identity is not supported for amqp protocol currently")
 	}
 
 	// Resolve queueName
@@ -243,33 +311,10 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse trigger: %w", err)
 	}
-
-	// Resolve metricName
-
-	// FIXME: DEPRECATED to be removed in v2.12
-	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("rabbitmq-%s", url.QueryEscape(val)))
-	} else {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("rabbitmq-%s", url.QueryEscape(meta.queueName)))
-	}
-
 	// Resolve timeout
-	if val, ok := config.TriggerMetadata["timeout"]; ok {
-		timeoutMS, err := strconv.Atoi(val)
-		if err != nil {
-			return nil, fmt.Errorf("unable to parse timeout: %w", err)
-		}
-		if meta.protocol == amqpProtocol {
-			return nil, fmt.Errorf("amqp protocol doesn't support custom timeouts: %w", err)
-		}
-		if timeoutMS <= 0 {
-			return nil, fmt.Errorf("timeout must be greater than 0: %w", err)
-		}
-		meta.timeout = time.Duration(timeoutMS) * time.Millisecond
-	} else {
-		meta.timeout = config.GlobalHTTPTimeout
+	if err := resolveTimeout(config, &meta); err != nil {
+		return nil, err
 	}
-
 	meta.scalerIndex = config.ScalerIndex
 
 	return &meta, nil
@@ -396,7 +441,7 @@ func getConnectionAndChannel(host string, meta *rabbitMQMetadata) (*amqp.Connect
 	var conn *amqp.Connection
 	var err error
 	if meta.enableTLS {
-		tlsConfig, configErr := kedautil.NewTLSConfigWithPassword(meta.cert, meta.key, meta.keyPassword, meta.ca, false)
+		tlsConfig, configErr := kedautil.NewTLSConfigWithPassword(meta.cert, meta.key, meta.keyPassword, meta.ca, meta.unsafeSsl)
 		if configErr == nil {
 			conn, err = amqp.DialTLS(host, tlsConfig)
 		}
@@ -427,9 +472,9 @@ func (s *rabbitMQScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *rabbitMQScaler) getQueueStatus() (int64, float64, error) {
+func (s *rabbitMQScaler) getQueueStatus(ctx context.Context) (int64, float64, error) {
 	if s.metadata.protocol == httpProtocol {
-		info, err := s.getQueueInfoViaHTTP()
+		info, err := s.getQueueInfoViaHTTP(ctx)
 		if err != nil {
 			return -1, -1, err
 		}
@@ -442,7 +487,8 @@ func (s *rabbitMQScaler) getQueueStatus() (int64, float64, error) {
 		return int64(info.Messages), info.MessageStat.PublishDetail.Rate, nil
 	}
 
-	items, err := s.channel.QueueInspect(s.metadata.queueName)
+	// QueueDeclarePassive assumes that the queue exists and fails if it doesn't
+	items, err := s.channel.QueueDeclarePassive(s.metadata.queueName, false, false, false, false, amqp.Table{})
 	if err != nil {
 		return -1, -1, err
 	}
@@ -450,12 +496,32 @@ func (s *rabbitMQScaler) getQueueStatus() (int64, float64, error) {
 	return int64(items.Messages), 0, nil
 }
 
-func getJSON(s *rabbitMQScaler, url string) (queueInfo, error) {
+func getJSON(ctx context.Context, s *rabbitMQScaler, url string) (queueInfo, error) {
 	var result queueInfo
-	r, err := s.httpClient.Get(url)
+
+	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return result, err
 	}
+
+	if s.metadata.workloadIdentityResource != "" {
+		if s.azureOAuth == nil {
+			s.azureOAuth = azure.NewAzureADWorkloadIdentityTokenProvider(ctx, s.metadata.workloadIdentityClientID, s.metadata.workloadIdentityResource)
+		}
+
+		err = s.azureOAuth.Refresh()
+		if err != nil {
+			return result, err
+		}
+
+		request.Header.Set("Authorization", "Bearer "+s.azureOAuth.OAuthToken())
+	}
+
+	r, err := s.httpClient.Do(request)
+	if err != nil {
+		return result, err
+	}
+
 	defer r.Body.Close()
 
 	if r.StatusCode == 200 {
@@ -480,26 +546,33 @@ func getJSON(s *rabbitMQScaler, url string) (queueInfo, error) {
 	return result, fmt.Errorf("error requesting rabbitMQ API status: %s, response: %s, from: %s", r.Status, body, url)
 }
 
-func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
+func getVhostAndPathFromURL(rawPath, vhostName string) (resolvedVhostPath, resolvedPath string) {
+	pathParts := strings.Split(rawPath, "/")
+	resolvedVhostPath = "/" + pathParts[len(pathParts)-1]
+	resolvedPath = path.Join(pathParts[:len(pathParts)-1]...)
+
+	if len(resolvedPath) > 0 {
+		resolvedPath = "/" + resolvedPath
+	}
+	if vhostName != "" {
+		resolvedVhostPath = "/" + url.QueryEscape(vhostName)
+	}
+	if resolvedVhostPath == "" || resolvedVhostPath == "/" || resolvedVhostPath == "//" {
+		resolvedVhostPath = rabbitRootVhostPath
+	}
+
+	return
+}
+
+func (s *rabbitMQScaler) getQueueInfoViaHTTP(ctx context.Context) (*queueInfo, error) {
 	parsedURL, err := url.Parse(s.metadata.host)
 
 	if err != nil {
 		return nil, err
 	}
 
-	// Extract vhost from URL's path.
-	vhost := parsedURL.Path
-
-	if s.metadata.vhostName != "" {
-		vhost = "/" + url.QueryEscape(s.metadata.vhostName)
-	}
-
-	if vhost == "" || vhost == "/" || vhost == "//" {
-		vhost = rabbitRootVhostPath
-	}
-
-	// Clear URL path to get the correct host.
-	parsedURL.Path = ""
+	vhost, subpaths := getVhostAndPathFromURL(parsedURL.Path, s.metadata.vhostName)
+	parsedURL.Path = subpaths
 
 	var getQueueInfoManagementURI string
 	if s.metadata.useRegex {
@@ -509,7 +582,7 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 	}
 
 	var info queueInfo
-	info, err = getJSON(s, getQueueInfoManagementURI)
+	info, err = getJSON(ctx, s, getQueueInfoManagementURI)
 
 	if err != nil {
 		return nil, err
@@ -522,7 +595,7 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP() (*queueInfo, error) {
 func (s *rabbitMQScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("rabbitmq-%s", url.QueryEscape(s.metadata.queueName)))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.value),
 	}
@@ -535,9 +608,9 @@ func (s *rabbitMQScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpe
 
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *rabbitMQScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	messages, publishRate, err := s.getQueueStatus()
+	messages, publishRate, err := s.getQueueStatus(ctx)
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, s.anonimizeRabbitMQError(err)
+		return []external_metrics.ExternalMetricValue{}, false, s.anonymizeRabbitMQError(err)
 	}
 
 	var metric external_metrics.ExternalMetricValue
@@ -599,8 +672,8 @@ func getSum(q []queueInfo) (int, int, float64) {
 
 func getAverage(q []queueInfo) (int, int, float64) {
 	sumMessages, sumReady, sumRate := getSum(q)
-	len := len(q)
-	return sumMessages / len, sumReady / len, sumRate / float64(len)
+	length := len(q)
+	return sumMessages / length, sumReady / length, sumRate / float64(length)
 }
 
 func getMaximum(q []queueInfo) (int, int, float64) {
@@ -622,7 +695,7 @@ func getMaximum(q []queueInfo) (int, int, float64) {
 }
 
 // Mask host for log purposes
-func (s *rabbitMQScaler) anonimizeRabbitMQError(err error) error {
+func (s *rabbitMQScaler) anonymizeRabbitMQError(err error) error {
 	errorMessage := fmt.Sprintf("error inspecting rabbitMQ: %s", err)
 	return fmt.Errorf(rabbitMQAnonymizePattern.ReplaceAllString(errorMessage, "user:password@"))
 }

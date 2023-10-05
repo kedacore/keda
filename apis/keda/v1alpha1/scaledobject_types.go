@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"reflect"
+
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -34,6 +36,7 @@ import (
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status"
 // +kubebuilder:printcolumn:name="Active",type="string",JSONPath=".status.conditions[?(@.type==\"Active\")].status"
 // +kubebuilder:printcolumn:name="Fallback",type="string",JSONPath=".status.conditions[?(@.type==\"Fallback\")].status"
+// +kubebuilder:printcolumn:name="Paused",type="string",JSONPath=".status.conditions[?(@.type==\"Paused\")].status"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // ScaledObject is a specification for a ScaledObject resource
@@ -47,6 +50,9 @@ type ScaledObject struct {
 }
 
 const ScaledObjectOwnerAnnotation = "scaledobject.keda.sh/name"
+const ScaledObjectTransferHpaOwnershipAnnotation = "scaledobject.keda.sh/transfer-hpa-ownership"
+const PausedReplicasAnnotation = "autoscaling.keda.sh/paused-replicas"
+const PausedAnnotation = "autoscaling.keda.sh/paused"
 
 // HealthStatus is the status for a ScaledObject's health
 type HealthStatus struct {
@@ -65,6 +71,9 @@ const (
 
 	// HealthStatusFailing means the status of the health object is failing
 	HealthStatusFailing HealthStatusType = "Failing"
+
+	// Composite metric name used for scalingModifiers composite metric
+	CompositeMetricName string = "composite-metric"
 )
 
 // ScaledObjectSpec is the spec for a ScaledObject resource
@@ -100,6 +109,18 @@ type AdvancedConfig struct {
 	HorizontalPodAutoscalerConfig *HorizontalPodAutoscalerConfig `json:"horizontalPodAutoscalerConfig,omitempty"`
 	// +optional
 	RestoreToOriginalReplicaCount bool `json:"restoreToOriginalReplicaCount,omitempty"`
+	// +optional
+	ScalingModifiers ScalingModifiers `json:"scalingModifiers,omitempty"`
+}
+
+// ScalingModifiers describes advanced scaling logic options like formula
+type ScalingModifiers struct {
+	Formula string `json:"formula,omitempty"`
+	Target  string `json:"target,omitempty"`
+	// +optional
+	ActivationTarget string `json:"activationTarget,omitempty"`
+	// +optional
+	MetricType autoscalingv2.MetricTargetType `json:"metricType,omitempty"`
 }
 
 // HorizontalPodAutoscalerConfig specifies horizontal scale config
@@ -110,7 +131,7 @@ type HorizontalPodAutoscalerConfig struct {
 	Name string `json:"name,omitempty"`
 }
 
-// ScaleTarget holds the a reference to the scale target Object
+// ScaleTarget holds the reference to the scale target Object
 type ScaleTarget struct {
 	Name string `json:"name"`
 	// +optional
@@ -119,21 +140,6 @@ type ScaleTarget struct {
 	Kind string `json:"kind,omitempty"`
 	// +optional
 	EnvSourceContainerName string `json:"envSourceContainerName,omitempty"`
-}
-
-// ScaleTriggers reference the scaler that will be used
-type ScaleTriggers struct {
-	Type string `json:"type"`
-	// +optional
-	Name string `json:"name,omitempty"`
-
-	UseCachedMetrics bool `json:"useCachedMetrics,omitempty"`
-
-	Metadata map[string]string `json:"metadata"`
-	// +optional
-	AuthenticationRef *ScaledObjectAuthRef `json:"authenticationRef,omitempty"`
-	// +optional
-	MetricType autoscalingv2.MetricTargetType `json:"metricType,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -154,6 +160,8 @@ type ScaledObjectStatus struct {
 	// +optional
 	ResourceMetricNames []string `json:"resourceMetricNames,omitempty"`
 	// +optional
+	CompositeScalerName string `json:"compositeScalerName,omitempty"`
+	// +optional
 	Conditions Conditions `json:"conditions,omitempty"`
 	// +optional
 	Health map[string]HealthStatus `json:"health,omitempty"`
@@ -172,15 +180,6 @@ type ScaledObjectList struct {
 	Items           []ScaledObject `json:"items"`
 }
 
-// ScaledObjectAuthRef points to the TriggerAuthentication or ClusterTriggerAuthentication object that
-// is used to authenticate the scaler with the environment
-type ScaledObjectAuthRef struct {
-	Name string `json:"name"`
-	// Kind of the resource being referred to. Defaults to TriggerAuthentication.
-	// +optional
-	Kind string `json:"kind,omitempty"`
-}
-
 func init() {
 	SchemeBuilder.Register(&ScaledObject{}, &ScaledObjectList{})
 }
@@ -188,4 +187,27 @@ func init() {
 // GenerateIdentifier returns identifier for the object in for "kind.namespace.name"
 func (so *ScaledObject) GenerateIdentifier() string {
 	return GenerateIdentifier("ScaledObject", so.Namespace, so.Name)
+}
+
+// HasPausedAnnotition returns whether this ScaledObject has PausedAnnotation or PausedReplicasAnnotation
+func (so *ScaledObject) HasPausedAnnotation() bool {
+	_, pausedAnnotationFound := so.GetAnnotations()[PausedAnnotation]
+	_, pausedReplicasAnnotationFound := so.GetAnnotations()[PausedReplicasAnnotation]
+	return pausedAnnotationFound || pausedReplicasAnnotationFound
+}
+
+// NeedToBePausedByAnnotation will check whether ScaledObject needs to be paused based on PausedAnnotation or PausedReplicaCount
+func (so *ScaledObject) NeedToBePausedByAnnotation() bool {
+	_, pausedReplicasAnnotationFound := so.GetAnnotations()[PausedReplicasAnnotation]
+	if pausedReplicasAnnotationFound {
+		return so.Status.PausedReplicaCount != nil
+	}
+
+	_, pausedAnnotationFound := so.GetAnnotations()[PausedAnnotation]
+	return pausedAnnotationFound
+}
+
+// IsUsingModifiers determines whether scalingModifiers are defined or not
+func (so *ScaledObject) IsUsingModifiers() bool {
+	return so.Spec.Advanced != nil && !reflect.DeepEqual(so.Spec.Advanced.ScalingModifiers, ScalingModifiers{})
 }

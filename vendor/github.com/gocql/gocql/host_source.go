@@ -11,6 +11,9 @@ import (
 	"time"
 )
 
+var ErrCannotFindHost = errors.New("cannot find host")
+var ErrHostAlreadyExists = errors.New("host already exists")
+
 type nodeState int32
 
 func (n nodeState) String() string {
@@ -398,6 +401,13 @@ func (h *HostInfo) HostnameAndPort() string {
 	return net.JoinHostPort(h.hostname, strconv.Itoa(h.port))
 }
 
+func (h *HostInfo) ConnectAddressAndPort() string {
+        h.mu.Lock()
+        defer h.mu.Unlock()
+        addr, _ := h.connectAddressLocked()
+        return net.JoinHostPort(addr.String(), strconv.Itoa(h.port))
+}
+
 func (h *HostInfo) String() string {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
@@ -556,12 +566,54 @@ func (s *Session) hostInfoFromMap(row map[string]interface{}, host *HostInfo) (*
 	return host, nil
 }
 
-// Ask the control node for host info on all it's known peers
-func (r *ringDescriber) getClusterPeerInfo() ([]*HostInfo, error) {
-	var hosts []*HostInfo
+func (s *Session) hostInfoFromIter(iter *Iter, connectAddress net.IP, defaultPort int) (*HostInfo, error) {
+	rows, err := iter.SliceMap()
+	if err != nil {
+		// TODO(zariel): make typed error
+		return nil, err
+	}
+
+	if len(rows) == 0 {
+		return nil, errors.New("query returned 0 rows")
+	}
+
+	host, err := s.hostInfoFromMap(rows[0], &HostInfo{connectAddress: connectAddress, port: defaultPort})
+	if err != nil {
+		return nil, err
+	}
+	return host, nil
+}
+
+// Ask the control node for the local host info
+func (r *ringDescriber) getLocalHostInfo() (*HostInfo, error) {
+	if r.session.control == nil {
+		return nil, errNoControl
+	}
+
 	iter := r.session.control.withConnHost(func(ch *connHost) *Iter {
-		hosts = append(hosts, ch.host)
-		return ch.conn.querySystemPeers(context.TODO(), ch.host.version)
+		return ch.conn.querySystemLocal(context.TODO())
+	})
+
+	if iter == nil {
+		return nil, errNoControl
+	}
+
+	host, err := r.session.hostInfoFromIter(iter, nil, r.session.cfg.Port)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve local host info: %w", err)
+	}
+	return host, nil
+}
+
+// Ask the control node for host info on all it's known peers
+func (r *ringDescriber) getClusterPeerInfo(localHost *HostInfo) ([]*HostInfo, error) {
+	if r.session.control == nil {
+		return nil, errNoControl
+	}
+
+	var peers []*HostInfo
+	iter := r.session.control.withConnHost(func(ch *connHost) *Iter {
+		return ch.conn.querySystemPeers(context.TODO(), localHost.version)
 	})
 
 	if iter == nil {
@@ -586,10 +638,10 @@ func (r *ringDescriber) getClusterPeerInfo() ([]*HostInfo, error) {
 			continue
 		}
 
-		hosts = append(hosts, host)
+		peers = append(peers, host)
 	}
 
-	return hosts, nil
+	return peers, nil
 }
 
 // Return true if the host is a valid peer
@@ -601,16 +653,22 @@ func isValidPeer(host *HostInfo) bool {
 		len(host.tokens) == 0)
 }
 
-// Return a list of hosts the cluster knows about
+// GetHosts returns a list of hosts found via queries to system.local and system.peers
 func (r *ringDescriber) GetHosts() ([]*HostInfo, string, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	hosts, err := r.getClusterPeerInfo()
+	localHost, err := r.getLocalHostInfo()
 	if err != nil {
 		return r.prevHosts, r.prevPartitioner, err
 	}
 
+	peerHosts, err := r.getClusterPeerInfo(localHost)
+	if err != nil {
+		return r.prevHosts, r.prevPartitioner, err
+	}
+
+	hosts := append([]*HostInfo{localHost}, peerHosts...)
 	var partitioner string
 	if len(hosts) > 0 {
 		partitioner = hosts[0].Partitioner()
@@ -619,55 +677,22 @@ func (r *ringDescriber) GetHosts() ([]*HostInfo, string, error) {
 	return hosts, partitioner, nil
 }
 
-// Given an ip/port return HostInfo for the specified ip/port
-func (r *ringDescriber) getHostInfo(hostID UUID) (*HostInfo, error) {
-	var host *HostInfo
-	for _, table := range []string{"system.peers", "system.local"} {
-		iter := r.session.control.withConnHost(func(ch *connHost) *Iter {
-			if ch.host.HostID() == hostID.String() {
-				host = ch.host
-				return nil
-			}
-
-			if table == "system.peers" {
-				return ch.conn.querySystemPeers(context.TODO(), ch.host.version)
-			} else {
-				return ch.conn.query(context.TODO(), fmt.Sprintf("SELECT * FROM %s", table))
-			}
-		})
-
-		if iter != nil {
-			rows, err := iter.SliceMap()
-			if err != nil {
-				return nil, err
-			}
-
-			for _, row := range rows {
-				h, err := r.session.hostInfoFromMap(row, &HostInfo{port: r.session.cfg.Port})
-				if err != nil {
-					return nil, err
-				}
-
-				if h.HostID() == hostID.String() {
-					host = h
-					break
-				}
-			}
-		}
-	}
-
-	if host == nil {
-		return nil, errors.New("unable to fetch host info: invalid control connection")
-	}
-
-	return host, nil
+// debounceRingRefresh submits a ring refresh request to the ring refresh debouncer.
+func (s *Session) debounceRingRefresh() {
+	s.ringRefresher.debounce()
 }
 
-func (r *ringDescriber) refreshRing() error {
-	// if we have 0 hosts this will return the previous list of hosts to
-	// attempt to reconnect to the cluster otherwise we would never find
-	// downed hosts again, could possibly have an optimisation to only
-	// try to add new hosts if GetHosts didnt error and the hosts didnt change.
+// refreshRing executes a ring refresh immediately and cancels pending debounce ring refresh requests.
+func (s *Session) refreshRing() error {
+	err, ok := <-s.ringRefresher.refreshNow()
+	if !ok {
+		return errors.New("could not refresh ring because stop was requested")
+	}
+
+	return err
+}
+
+func refreshRing(r *ringDescriber) error {
 	hosts, partitioner, err := r.GetHosts()
 	if err != nil {
 		return err
@@ -675,7 +700,6 @@ func (r *ringDescriber) refreshRing() error {
 
 	prevHosts := r.session.ring.currentHosts()
 
-	// TODO: move this to session
 	for _, h := range hosts {
 		if r.session.cfg.filterHost(h) {
 			continue
@@ -684,14 +708,29 @@ func (r *ringDescriber) refreshRing() error {
 		if host, ok := r.session.ring.addHostIfMissing(h); !ok {
 			r.session.startPoolFill(h)
 		} else {
-			host.update(h)
+			// host (by hostID) already exists; determine if IP has changed
+			newHostID := h.HostID()
+			existing, ok := prevHosts[newHostID]
+			if !ok {
+				return fmt.Errorf("get existing host=%s from prevHosts: %w", h, ErrCannotFindHost)
+			}
+			if h.connectAddress.Equal(existing.connectAddress) && h.nodeToNodeAddress().Equal(existing.nodeToNodeAddress()) {
+				// no host IP change
+				host.update(h)
+			} else {
+				// host IP has changed
+				// remove old HostInfo (w/old IP)
+				r.session.removeHost(existing)
+				if _, alreadyExists := r.session.ring.addHostIfMissing(h); alreadyExists {
+					return fmt.Errorf("add new host=%s after removal: %w", h, ErrHostAlreadyExists)
+				}
+				// add new HostInfo (same hostID, new IP)
+				r.session.startPoolFill(h)
+			}
 		}
 		delete(prevHosts, h.HostID())
 	}
 
-	// TODO(zariel): it may be worth having a mutex covering the overall ring state
-	// in a session so that everything sees a consistent state. Becuase as is today
-	// events can come in and due to ordering an UP host could be removed from the cluster
 	for _, host := range prevHosts {
 		r.session.removeHost(host)
 	}
@@ -699,4 +738,162 @@ func (r *ringDescriber) refreshRing() error {
 	r.session.metadata.setPartitioner(partitioner)
 	r.session.policy.SetPartitioner(partitioner)
 	return nil
+}
+
+const (
+	ringRefreshDebounceTime = 1 * time.Second
+)
+
+// debounces requests to call a refresh function (currently used for ring refresh). It also supports triggering a refresh immediately.
+type refreshDebouncer struct {
+	mu           sync.Mutex
+	stopped      bool
+	broadcaster  *errorBroadcaster
+	interval     time.Duration
+	timer        *time.Timer
+	refreshNowCh chan struct{}
+	quit         chan struct{}
+	refreshFn    func() error
+}
+
+func newRefreshDebouncer(interval time.Duration, refreshFn func() error) *refreshDebouncer {
+	d := &refreshDebouncer{
+		stopped:      false,
+		broadcaster:  nil,
+		refreshNowCh: make(chan struct{}, 1),
+		quit:         make(chan struct{}),
+		interval:     interval,
+		timer:        time.NewTimer(interval),
+		refreshFn:    refreshFn,
+	}
+	d.timer.Stop()
+	go d.flusher()
+	return d
+}
+
+// debounces a request to call the refresh function
+func (d *refreshDebouncer) debounce() {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.stopped {
+		return
+	}
+	d.timer.Reset(d.interval)
+}
+
+// requests an immediate refresh which will cancel pending refresh requests
+func (d *refreshDebouncer) refreshNow() <-chan error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.broadcaster == nil {
+		d.broadcaster = newErrorBroadcaster()
+		select {
+		case d.refreshNowCh <- struct{}{}:
+		default:
+			// already a refresh pending
+		}
+	}
+	return d.broadcaster.newListener()
+}
+
+func (d *refreshDebouncer) flusher() {
+	for {
+		select {
+		case <-d.refreshNowCh:
+		case <-d.timer.C:
+		case <-d.quit:
+		}
+		d.mu.Lock()
+		if d.stopped {
+			if d.broadcaster != nil {
+				d.broadcaster.stop()
+				d.broadcaster = nil
+			}
+			d.timer.Stop()
+			d.mu.Unlock()
+			return
+		}
+
+		// make sure both request channels are cleared before we refresh
+		select {
+		case <-d.refreshNowCh:
+		default:
+		}
+
+		d.timer.Stop()
+		select {
+		case <-d.timer.C:
+		default:
+		}
+
+		curBroadcaster := d.broadcaster
+		d.broadcaster = nil
+		d.mu.Unlock()
+
+		err := d.refreshFn()
+		if curBroadcaster != nil {
+			curBroadcaster.broadcast(err)
+		}
+	}
+}
+
+func (d *refreshDebouncer) stop() {
+	d.mu.Lock()
+	if d.stopped {
+		d.mu.Unlock()
+		return
+	}
+	d.stopped = true
+	d.mu.Unlock()
+	d.quit <- struct{}{} // sync with flusher
+	close(d.quit)
+}
+
+// broadcasts an error to multiple channels (listeners)
+type errorBroadcaster struct {
+	listeners []chan<- error
+	mu        sync.Mutex
+}
+
+func newErrorBroadcaster() *errorBroadcaster {
+	return &errorBroadcaster{
+		listeners: nil,
+		mu:        sync.Mutex{},
+	}
+}
+
+func (b *errorBroadcaster) newListener() <-chan error {
+	ch := make(chan error, 1)
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.listeners = append(b.listeners, ch)
+	return ch
+}
+
+func (b *errorBroadcaster) broadcast(err error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	curListeners := b.listeners
+	if len(curListeners) > 0 {
+		b.listeners = nil
+	} else {
+		return
+	}
+
+	for _, listener := range curListeners {
+		listener <- err
+		close(listener)
+	}
+}
+
+func (b *errorBroadcaster) stop() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if len(b.listeners) == 0 {
+		return
+	}
+	for _, listener := range b.listeners {
+		close(listener)
+	}
+	b.listeners = nil
 }

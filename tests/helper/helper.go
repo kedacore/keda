@@ -45,6 +45,7 @@ const (
 	AzureWorkloadIdentityNamespace = "azure-workload-identity-system"
 	AwsIdentityNamespace           = "aws-identity-system"
 	GcpIdentityNamespace           = "gcp-identity-system"
+	OpentelemetryNamespace         = "open-telemetry-system"
 	CertManagerNamespace           = "cert-manager"
 	KEDANamespace                  = "keda"
 	KEDAOperator                   = "keda-operator"
@@ -55,6 +56,10 @@ const (
 
 	StringFalse = "false"
 	StringTrue  = "true"
+
+	StrimziVersion   = "0.35.0"
+	StrimziChartName = "strimzi"
+	StrimziNamespace = "strimzi"
 )
 
 const (
@@ -220,8 +225,8 @@ func GetKedaKubernetesClient(t *testing.T) *v1alpha1.KedaV1alpha1Client {
 
 // Creates a new namespace. If it already exists, make sure it is deleted first.
 func CreateNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
-	DeleteNamespace(t, kc, nsName)
-	WaitForNamespaceDeletion(t, kc, nsName)
+	DeleteNamespace(t, nsName)
+	WaitForNamespaceDeletion(t, nsName)
 
 	t.Logf("Creating namespace - %s", nsName)
 	namespace := &corev1.Namespace{
@@ -235,7 +240,7 @@ func CreateNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
 	assert.NoErrorf(t, err, "cannot create kubernetes namespace - %s", err)
 }
 
-func DeleteNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
+func DeleteNamespace(t *testing.T, nsName string) {
 	t.Logf("deleting namespace %s", nsName)
 	period := int64(0)
 	err := KubeClient.CoreV1().Namespaces().Delete(context.Background(), nsName, metav1.DeleteOptions{
@@ -287,7 +292,7 @@ func WaitForAllJobsSuccess(t *testing.T, kc *kubernetes.Clientset, namespace str
 	return false
 }
 
-func WaitForNamespaceDeletion(t *testing.T, kc *kubernetes.Clientset, nsName string) bool {
+func WaitForNamespaceDeletion(t *testing.T, nsName string) bool {
 	for i := 0; i < 120; i++ {
 		t.Logf("waiting for namespace %s deletion", nsName)
 		_, err := KubeClient.CoreV1().Namespaces().Get(context.Background(), nsName, metav1.GetOptions{})
@@ -299,10 +304,22 @@ func WaitForNamespaceDeletion(t *testing.T, kc *kubernetes.Clientset, nsName str
 	return false
 }
 
+func WaitForScaledJobCount(t *testing.T, kc *kubernetes.Clientset, scaledJobName, namespace string,
+	target, iterations, intervalSeconds int) bool {
+	return waitForJobCount(t, kc, fmt.Sprintf("scaledjob.keda.sh/name=%s", scaledJobName), namespace, target, iterations, intervalSeconds)
+}
+
 func WaitForJobCount(t *testing.T, kc *kubernetes.Clientset, namespace string,
 	target, iterations, intervalSeconds int) bool {
+	return waitForJobCount(t, kc, "", namespace, target, iterations, intervalSeconds)
+}
+
+func waitForJobCount(t *testing.T, kc *kubernetes.Clientset, selector, namespace string,
+	target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
-		jobList, _ := kc.BatchV1().Jobs(namespace).List(context.Background(), metav1.ListOptions{})
+		jobList, _ := kc.BatchV1().Jobs(namespace).List(context.Background(), metav1.ListOptions{
+			LabelSelector: selector,
+		})
 		count := len(jobList.Items)
 
 		t.Logf("Waiting for job count to hit target. Namespace - %s, Current  - %d, Target - %d",
@@ -580,10 +597,10 @@ func CreateKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName st
 	KubectlApplyMultipleWithTemplate(t, data, templates)
 }
 
-func DeleteKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName string, data interface{}, templates []Template) {
+func DeleteKubernetesResources(t *testing.T, nsName string, data interface{}, templates []Template) {
 	KubectlDeleteMultipleWithTemplate(t, data, templates)
-	DeleteNamespace(t, kc, nsName)
-	deleted := WaitForNamespaceDeletion(t, kc, nsName)
+	DeleteNamespace(t, nsName)
+	deleted := WaitForNamespaceDeletion(t, nsName)
 	assert.Truef(t, deleted, "%s namespace not deleted", nsName)
 }
 
@@ -783,4 +800,16 @@ func generateCA(t *testing.T) {
 	if err := keyFile.Close(); err != nil {
 		require.NoErrorf(t, err, "error closing custom CA key file- %s", err)
 	}
+}
+
+// CheckKubectlGetResult runs `kubectl get` with parameters and compares output with expected value
+func CheckKubectlGetResult(t *testing.T, kind string, name string, namespace string, otherparameter string, expected string) {
+	time.Sleep(1 * time.Second) // wait a second for recource deployment finished
+	kctlGetCmd := fmt.Sprintf(`kubectl get %s/%s -n %s %s"`, kind, name, namespace, otherparameter)
+	t.Log("Running kubectl cmd:", kctlGetCmd)
+	output, err := ExecuteCommand(kctlGetCmd)
+	assert.NoErrorf(t, err, "cannot get rollout info - %s", err)
+
+	unqoutedOutput := strings.ReplaceAll(string(output), "\"", "")
+	assert.Equal(t, expected, unqoutedOutput)
 }

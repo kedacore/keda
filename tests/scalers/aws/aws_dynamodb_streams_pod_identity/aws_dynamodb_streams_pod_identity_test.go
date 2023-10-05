@@ -12,13 +12,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
-	"github.com/aws/aws-sdk-go/service/dynamodbstreams"
-	"github.com/aws/aws-sdk-go/service/dynamodbstreams/dynamodbstreamsiface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	dynamodbTypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodbstreams"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -79,7 +78,6 @@ spec:
       labels:
         app: {{.DeploymentName}}
     spec:
-      serviceAccountName: default
       containers:
       - name: nginx
         image: nginxinc/nginx-unprivileged
@@ -156,20 +154,21 @@ func TestScaler(t *testing.T) {
 	testScaleIn(t, kc, data, shardCount)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 	cleanupDynamoDBTable(t, dbClient)
 }
 
-func setupDynamoDBStreams(t *testing.T) (*dynamodb.DynamoDB, *dynamodbstreams.DynamoDBStreams) {
-	sess := session.Must(session.NewSession())
+func setupDynamoDBStreams(t *testing.T) (*dynamodb.Client, *dynamodbstreams.Client) {
+	var dbClient *dynamodb.Client
+	var dbStreamClient *dynamodbstreams.Client
 
-	var dbClient *dynamodb.DynamoDB
-	var dbStreamClient *dynamodbstreams.DynamoDBStreams
+	configOptions := make([]func(*config.LoadOptions) error, 0)
+	configOptions = append(configOptions, config.WithRegion(awsRegion))
+	cfg, _ := config.LoadDefaultConfig(context.TODO(), configOptions...)
+	cfg.Credentials = credentials.NewStaticCredentialsProvider(awsAccessKey, awsSecretKey, "")
 
-	creds := credentials.NewStaticCredentials(awsAccessKey, awsSecretKey, "")
-	cfg := aws.NewConfig().WithRegion(awsRegion).WithCredentials(creds)
-	dbClient = dynamodb.New(sess, cfg)
-	dbStreamClient = dynamodbstreams.New(sess, cfg)
+	dbClient = dynamodb.NewFromConfig(cfg)
+	dbStreamClient = dynamodbstreams.NewFromConfig(cfg)
 
 	err := createTable(dbClient)
 	assert.NoErrorf(t, err, "cannot create dynamodb table - %s", err)
@@ -177,38 +176,38 @@ func setupDynamoDBStreams(t *testing.T) (*dynamodb.DynamoDB, *dynamodbstreams.Dy
 	return dbClient, dbStreamClient
 }
 
-func createTable(db dynamodbiface.DynamoDBAPI) error {
-	keySchema := []*dynamodb.KeySchemaElement{
+func createTable(db *dynamodb.Client) error {
+	keySchema := []dynamodbTypes.KeySchemaElement{
 		{
 			AttributeName: aws.String("id"),
-			KeyType:       aws.String("HASH"),
+			KeyType:       dynamodbTypes.KeyTypeHash,
 		},
 	}
-	attributeDefinitions := []*dynamodb.AttributeDefinition{
+	attributeDefinitions := []dynamodbTypes.AttributeDefinition{
 		{
 			AttributeName: aws.String("id"),
-			AttributeType: aws.String("S"),
+			AttributeType: dynamodbTypes.ScalarAttributeTypeS,
 		},
 	}
-	streamSpecification := &dynamodb.StreamSpecification{
+	streamSpecification := &dynamodbTypes.StreamSpecification{
 		StreamEnabled:  aws.Bool(true),
-		StreamViewType: aws.String("NEW_IMAGE"),
+		StreamViewType: dynamodbTypes.StreamViewTypeNewImage,
 	}
-	_, err := db.CreateTableWithContext(context.Background(), &dynamodb.CreateTableInput{
+	_, err := db.CreateTable(context.Background(), &dynamodb.CreateTableInput{
 		TableName:            &tableName,
 		KeySchema:            keySchema,
 		AttributeDefinitions: attributeDefinitions,
-		BillingMode:          aws.String("PAY_PER_REQUEST"),
+		BillingMode:          dynamodbTypes.BillingModePayPerRequest,
 		StreamSpecification:  streamSpecification,
 	})
 	return err
 }
 
-func getLatestStreamArn(db dynamodbiface.DynamoDBAPI) (*string, error) {
+func getLatestStreamArn(db *dynamodb.Client) (*string, error) {
 	input := dynamodb.DescribeTableInput{
 		TableName: &tableName,
 	}
-	tableInfo, err := db.DescribeTableWithContext(context.Background(), &input)
+	tableInfo, err := db.DescribeTable(context.Background(), &input)
 	if err != nil {
 		return nil, err
 	}
@@ -218,11 +217,11 @@ func getLatestStreamArn(db dynamodbiface.DynamoDBAPI) (*string, error) {
 	return tableInfo.Table.LatestStreamArn, nil
 }
 
-func getDynamoDBStreamShardCount(dbs dynamodbstreamsiface.DynamoDBStreamsAPI, streamArn *string) (int64, error) {
+func getDynamoDBStreamShardCount(dbs *dynamodbstreams.Client, streamArn *string) (int64, error) {
 	input := dynamodbstreams.DescribeStreamInput{
 		StreamArn: streamArn,
 	}
-	des, err := dbs.DescribeStreamWithContext(context.Background(), &input)
+	des, err := dbs.DescribeStream(context.Background(), &input)
 	if err != nil {
 		return -1, err
 	}
@@ -285,9 +284,9 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData, shar
 		"replica count should decrease to 1 in 330 seconds")
 }
 
-func cleanupDynamoDBTable(t *testing.T, db dynamodbiface.DynamoDBAPI) {
+func cleanupDynamoDBTable(t *testing.T, db *dynamodb.Client) {
 	t.Log("--- cleaning up ---")
-	_, err := db.DeleteTableWithContext(context.Background(),
+	_, err := db.DeleteTable(context.Background(),
 		&dynamodb.DeleteTableInput{
 			TableName: &tableName,
 		})

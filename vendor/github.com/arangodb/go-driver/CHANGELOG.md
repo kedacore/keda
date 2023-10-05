@@ -2,6 +2,26 @@
 
 ## [master](https://github.com/arangodb/go-driver/tree/master) (N/A)
 
+## [1.6.0](https://github.com/arangodb/go-driver/tree/v1.6.0) (2023-05-30)
+- Add ErrArangoDatabaseNotFound and IsExternalStorageError helper to v2
+- [V2] Support for Collection Documents removal
+- [V2] Fix: Plain Connection doesn't work with JWT authentication
+- Support for new error codes if write concern is not fulfilled
+- Support for geo_s2 analyzers
+- Add replication V2 option for database creation
+- Use Go 1.20.3 for testing. Add govulncheck to pipeline
+- Fix test for extended names
+- Fix potential bug with DB name escaping for URL when requesting replication-related API
+- Retriable batch reads in AQL cursors
+- Add support for explain API ([v1] and [V2])
+- Search optimisation for inverted index and ArangoSearch
+- [V2] Fix AF mode in tests
+- Support for optimizer rules in AQL query
+- Add support for refilling index caches
+- [V2] Retriable batch reads in AQL cursors
+- Add log level support for a specific server
+- Allow for VPACK encoding in _api/gharial API
+
 ## [1.5.2](https://github.com/arangodb/go-driver/tree/v1.5.2) (2023-03-01)
 - Bump `DRIVER_VERSION`
 

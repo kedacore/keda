@@ -31,7 +31,7 @@ func TestRemoveAadPodIdentityComponents(t *testing.T) {
 
 	KubeClient = GetKubernetesClient(t)
 
-	DeleteNamespace(t, KubeClient, AzureAdPodIdentityNamespace)
+	DeleteNamespace(t, AzureAdPodIdentityNamespace)
 }
 
 func TestRemoveWorkloadIdentityComponents(t *testing.T) {
@@ -44,7 +44,7 @@ func TestRemoveWorkloadIdentityComponents(t *testing.T) {
 
 	KubeClient = GetKubernetesClient(t)
 
-	DeleteNamespace(t, KubeClient, AzureWorkloadIdentityNamespace)
+	DeleteNamespace(t, AzureWorkloadIdentityNamespace)
 }
 
 func TestRemoveAwsIdentityComponents(t *testing.T) {
@@ -57,7 +57,7 @@ func TestRemoveAwsIdentityComponents(t *testing.T) {
 
 	KubeClient = GetKubernetesClient(t)
 
-	DeleteNamespace(t, KubeClient, AwsIdentityNamespace)
+	DeleteNamespace(t, AwsIdentityNamespace)
 }
 
 func TestRemoveGcpIdentityComponents(t *testing.T) {
@@ -70,7 +70,12 @@ func TestRemoveGcpIdentityComponents(t *testing.T) {
 
 	KubeClient = GetKubernetesClient(t)
 
-	DeleteNamespace(t, KubeClient, GcpIdentityNamespace)
+	DeleteNamespace(t, GcpIdentityNamespace)
+}
+
+func TestRemoveOpentelemetryComponents(t *testing.T) {
+	_, err := ExecuteCommand("helm uninstall opentelemetry-collector")
+	require.NoErrorf(t, err, "cannot uninstall opentelemetry-collector - %s", err)
 }
 
 func TestRemoveCertManager(t *testing.T) {
@@ -83,9 +88,20 @@ func TestRemoveCertManager(t *testing.T) {
 
 	KubeClient = GetKubernetesClient(t)
 
-	DeleteNamespace(t, KubeClient, CertManagerNamespace)
+	DeleteNamespace(t, CertManagerNamespace)
 }
 
 func TestRemoveAzureManagedPrometheusComponents(t *testing.T) {
 	KubectlDeleteWithTemplate(t, helper.EmptyTemplateData{}, "azureManagedPrometheusConfigMapTemplate", helper.AzureManagedPrometheusConfigMapTemplate)
+}
+
+func TestRemoveStrimzi(t *testing.T) {
+	_, err := ExecuteCommand(fmt.Sprintf(`helm uninstall --namespace %s %s`,
+		StrimziNamespace,
+		StrimziChartName))
+	require.NoErrorf(t, err, "cannot uninstall strimzi - %s", err)
+
+	KubeClient = GetKubernetesClient(t)
+
+	DeleteNamespace(t, StrimziNamespace)
 }

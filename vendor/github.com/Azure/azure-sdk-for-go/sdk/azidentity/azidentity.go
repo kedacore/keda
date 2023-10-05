@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -47,8 +46,9 @@ const (
 
 var (
 	// capability CP1 indicates the client application is capable of handling CAE claims challenges
-	cp1        = []string{"CP1"}
-	disableCP1 = strings.ToLower(os.Getenv("AZURE_IDENTITY_DISABLE_CP1")) == "true"
+	cp1 = []string{"CP1"}
+	// CP1 is disabled until CAE support is added back
+	disableCP1 = true
 )
 
 var getConfidentialClient = func(clientID, tenantID string, cred confidential.Credential, co *azcore.ClientOptions, additionalOpts ...confidential.Option) (confidentialClient, error) {
@@ -59,8 +59,8 @@ var getConfidentialClient = func(clientID, tenantID string, cred confidential.Cr
 	if err != nil {
 		return confidential.Client{}, err
 	}
+	authority := runtime.JoinPaths(authorityHost, tenantID)
 	o := []confidential.Option{
-		confidential.WithAuthority(runtime.JoinPaths(authorityHost, tenantID)),
 		confidential.WithAzureRegion(os.Getenv(azureRegionalAuthorityName)),
 		confidential.WithHTTPClient(newPipelineAdapter(co)),
 	}
@@ -71,7 +71,7 @@ var getConfidentialClient = func(clientID, tenantID string, cred confidential.Cr
 	if strings.ToLower(tenantID) == "adfs" {
 		o = append(o, confidential.WithInstanceDiscovery(false))
 	}
-	return confidential.New(clientID, cred, o...)
+	return confidential.New(authority, clientID, cred, o...)
 }
 
 var getPublicClient = func(clientID, tenantID string, co *azcore.ClientOptions, additionalOpts ...public.Option) (public.Client, error) {
@@ -93,44 +93,7 @@ var getPublicClient = func(clientID, tenantID string, co *azcore.ClientOptions, 
 	if strings.ToLower(tenantID) == "adfs" {
 		o = append(o, public.WithInstanceDiscovery(false))
 	}
-	return public.New(clientID,
-		o...,
-	)
-}
-
-// resolveAdditionallyAllowedTenants returns a copy of tenants, simplified when tenants contains a wildcard
-func resolveAdditionallyAllowedTenants(tenants []string) []string {
-	if len(tenants) == 0 {
-		return nil
-	}
-	for _, t := range tenants {
-		// a wildcard makes all other values redundant
-		if t == "*" {
-			return []string{"*"}
-		}
-	}
-	cp := make([]string, len(tenants))
-	copy(cp, tenants)
-	return cp
-}
-
-// resolveTenant returns the correct tenant for a token request given a credential's configuration
-func resolveTenant(defaultTenant, reqTenant string, allowedTenants []string) (string, error) {
-	if reqTenant == "" || reqTenant == defaultTenant {
-		return defaultTenant, nil
-	}
-	if defaultTenant == "adfs" {
-		return "", errors.New("ADFS doesn't support tenants")
-	}
-	if !validTenantID(reqTenant) {
-		return "", errors.New(tenantIDValidationErr)
-	}
-	for _, tenant := range allowedTenants {
-		if tenant == "*" || tenant == reqTenant {
-			return reqTenant, nil
-		}
-	}
-	return "", fmt.Errorf(`this credential isn't configured to acquire tokens for tenant "%s". To enable acquiring tokens for this tenant add it to the AdditionallyAllowedTenants on the credential options, or add "*" to allow acquiring tokens for any tenant`, reqTenant)
+	return public.New(clientID, o...)
 }
 
 // setAuthorityHost initializes the authority host for credentials. Precedence is:

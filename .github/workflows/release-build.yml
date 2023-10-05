@@ -12,11 +12,11 @@ jobs:
       packages: write
       id-token: write # needed for signing the images with GitHub OIDC Token **not production ready**
 
-    # build-tools is built from ../../tools/build-tools.Dockerfile
-    container: ghcr.io/kedacore/build-tools:1.19.7
+    # keda-tools is built from github.com/test-tools/tools/Dockerfile
+    container: ghcr.io/kedacore/keda-tools:1.20.8
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
         with:
           fetch-depth: 1
 
@@ -25,23 +25,23 @@ jobs:
 
       - id: go-paths
         run: |
-          echo ::set-output name=mod_cache::$(go env GOMODCACHE)
-          echo ::set-output name=build_cache::$(go env GOCACHE)
+          echo "mod_cache=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+          echo "build_cache=$(go env GOCACHE)" >> $GITHUB_OUTPUT
 
       - name: Go modules cache
-        uses: actions/cache@v3.3.1
+        uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3.3.2
         with:
           path: ${{ steps.go-paths.outputs.mod_cache }}
           key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
 
       - name: Go build cache
-        uses: actions/cache@v3.3.1
+        uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3.3.2
         with:
           path: ${{ steps.go-paths.outputs.build_cache }}
           key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
 
       - name: Go modules sync
-        run: go mod tidy -compat=1.19
+        run: go mod tidy -compat=1.20
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
@@ -55,7 +55,7 @@ jobs:
 
       - name: Get the version
         id: get_version
-        run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/v}
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Release Deployment YAML file
         run: make release
@@ -72,7 +72,7 @@ jobs:
 
       # https://github.com/sigstore/cosign-installer
       - name: Install Cosign
-        uses: sigstore/cosign-installer@v2
+        uses: sigstore/cosign-installer@v3
 
       - name: Check Cosign install!
         run: cosign version
@@ -94,7 +94,7 @@ jobs:
       # Upload deployment YAML file to GitHub release
       - name: Upload Deployment YAML file
         id: upload-deployment-yaml
-        uses: actions/upload-release-asset@v1
+        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -106,11 +106,23 @@ jobs:
       # Upload core deployment YAML file to GitHub release (TO BE DELETED FOR v2.12)
       - name: Upload Deployment YAML file
         id: upload-core-deployment-yaml
-        uses: actions/upload-release-asset@v1
+        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: https://uploads.github.com/repos/kedacore/keda/releases/${{ steps.get-release-info.outputs.id }}/assets?name=keda-${{ steps.get_version.outputs.VERSION }}-core.yaml
           asset_path: keda-${{ steps.get_version.outputs.VERSION }}-core.yaml
           asset_name: keda-${{ steps.get_version.outputs.VERSION }}-core.yaml
+          asset_content_type: application/x-yaml
+
+      # Upload CRD deployment YAML file to GitHub release
+      - name: Upload Deployment YAML file
+        id: upload-crd-deployment-yaml
+        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: https://uploads.github.com/repos/kedacore/keda/releases/${{ steps.get-release-info.outputs.id }}/assets?name=keda-${{ steps.get_version.outputs.VERSION }}-crds.yaml
+          asset_path: keda-${{ steps.get_version.outputs.VERSION }}-crds.yaml
+          asset_name: keda-${{ steps.get_version.outputs.VERSION }}-crds.yaml
           asset_content_type: application/x-yaml

@@ -31,22 +31,22 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Azure/azure-amqp-common-go/v3/uuid"
+	"github.com/Azure/azure-amqp-common-go/v4/uuid"
 	"github.com/Azure/go-amqp"
 	"github.com/devigned/tab"
 	"github.com/jpillora/backoff"
 )
 
 const (
-	errorServerBusy amqp.ErrorCondition = "com.microsoft:server-busy"
-	errorTimeout    amqp.ErrorCondition = "com.microsoft:timeout"
+	errorServerBusy amqp.ErrCond = "com.microsoft:server-busy"
+	errorTimeout    amqp.ErrCond = "com.microsoft:timeout"
 )
 
 // sender provides session and link handling for an sending entity path
 type (
 	sender struct {
 		hub          *Hub
-		connection   *amqp.Client
+		connection   *amqp.Conn
 		session      *session
 		sender       atomic.Value // holds a *amqp.Sender
 		partitionID  *string
@@ -70,7 +70,7 @@ type (
 	// Implemented by *amqp.Sender
 	amqpSender interface {
 		LinkName() string
-		Send(ctx context.Context, msg *amqp.Message) error
+		Send(ctx context.Context, msg *amqp.Message, opts *amqp.SendOptions) error
 		Close(ctx context.Context) error
 	}
 
@@ -126,9 +126,9 @@ func (s *sender) Recover(ctx context.Context) error {
 }
 
 // recoverWithExpectedLinkID attemps to recover the link as cheaply as possible.
-// - It does not recover the link if expectedLinkID is not "" and does NOT match
-//   the current link ID, as this would indicate that the previous bad link has
-//   already been closed and removed.
+//   - It does not recover the link if expectedLinkID is not "" and does NOT match
+//     the current link ID, as this would indicate that the previous bad link has
+//     already been closed and removed.
 func (s *sender) recoverWithExpectedLinkID(ctx context.Context, expectedLinkID string) error {
 	span, ctx := s.startProducerSpanFromContext(ctx, "eh.sender.Recover")
 	defer span.End()
@@ -297,7 +297,7 @@ func sendMessage(ctx context.Context, getAmqpSender getAmqpSender, maxRetries in
 			return ctx.Err()
 		default:
 			sender := getAmqpSender()
-			err := sender.Send(ctx, msg)
+			err := sender.Send(ctx, msg, nil)
 			if err == nil {
 				return err
 			}
@@ -309,9 +309,11 @@ func sendMessage(ctx context.Context, getAmqpSender getAmqpSender, maxRetries in
 				if e.Condition == errorServerBusy || e.Condition == errorTimeout {
 					recoverLink(sender.LinkName(), err, false)
 					break
+				} else if e.Condition == amqp.ErrCondMessageSizeExceeded || e.Condition == amqp.ErrCondTransferLimitExceeded {
+					return e
 				}
 				recoverLink(sender.LinkName(), err, true)
-			case *amqp.DetachError, net.Error:
+			case net.Error:
 				recoverLink(sender.LinkName(), err, true)
 			default:
 				if !isRecoverableCloseError(err) {
@@ -346,7 +348,7 @@ func (s *sender) newSessionAndLink(ctx context.Context) error {
 	span, ctx := s.startProducerSpanFromContext(ctx, "eh.sender.newSessionAndLink")
 	defer span.End()
 
-	connection, err := s.hub.namespace.newConnection()
+	connection, err := s.hub.namespace.newConnection(ctx)
 	if err != nil {
 		tab.For(ctx).Error(err)
 		return err
@@ -359,18 +361,16 @@ func (s *sender) newSessionAndLink(ctx context.Context) error {
 		return err
 	}
 
-	amqpSession, err := connection.NewSession()
+	amqpSession, err := connection.NewSession(ctx, nil)
 	if err != nil {
 		tab.For(ctx).Error(err)
 		return err
 	}
 
-	amqpSender, err := amqpSession.NewSender(
-		amqp.LinkSenderSettle(amqp.ModeMixed),
-		amqp.LinkReceiverSettle(amqp.ModeFirst),
-		amqp.LinkTargetAddress(s.getAddress()),
-		amqp.LinkDetachOnDispositionError(false),
-	)
+	amqpSender, err := amqpSession.NewSender(ctx, s.getAddress(), &amqp.SenderOptions{
+		SettlementMode:              amqp.SenderSettleModeMixed.Ptr(),
+		RequestedReceiverSettleMode: amqp.ReceiverSettleModeFirst.Ptr(),
+	})
 	if err != nil {
 		tab.For(ctx).Error(err)
 		return err

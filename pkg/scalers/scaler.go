@@ -36,7 +36,7 @@ import (
 
 func init() {
 	// Disable metrics for kafka client (sarama)
-	// https://github.com/Shopify/sarama/issues/1321
+	// https://github.com/IBM/sarama/issues/1321
 	metrics.UseNilMetrics = true
 }
 
@@ -99,6 +99,9 @@ type ScalerConfig struct {
 
 	// MetricType
 	MetricType v2.MetricTargetType
+
+	// When we use the scaler for composite scaler, we shouldn't require the value because it'll be ignored
+	AsMetricSource bool
 }
 
 var (
@@ -110,7 +113,7 @@ var (
 	ErrScalerConfigMissingField = errors.New("missing required field in scaler config")
 )
 
-// GetFromAuthOrMeta helps getting a field from Auth or Meta sections
+// GetFromAuthOrMeta helps to get a field from Auth or Meta sections
 func GetFromAuthOrMeta(config *ScalerConfig, field string) (string, error) {
 	var result string
 	var err error
@@ -125,7 +128,7 @@ func GetFromAuthOrMeta(config *ScalerConfig, field string) (string, error) {
 	return result, err
 }
 
-// GenerateMetricNameWithIndex helps adding the index prefix to the metric name
+// GenerateMetricNameWithIndex helps to add the index prefix to the metric name
 func GenerateMetricNameWithIndex(scalerIndex int, metricName string) string {
 	return fmt.Sprintf("s%d-%s", scalerIndex, metricName)
 }
@@ -149,7 +152,7 @@ func InitializeLogger(config *ScalerConfig, scalerName string) logr.Logger {
 	return logf.Log.WithName(scalerName).WithValues("type", config.ScalableObjectType, "namespace", config.ScalableObjectNamespace, "name", config.ScalableObjectName)
 }
 
-// GetMetricTargetType helps getting the metric target type of the scaler
+// GetMetricTargetType helps get the metric target type of the scaler
 func GetMetricTargetType(config *ScalerConfig) (v2.MetricTargetType, error) {
 	switch config.MetricType {
 	case v2.UtilizationMetricType:

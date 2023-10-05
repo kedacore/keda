@@ -17,7 +17,6 @@ limitations under the License.
 package azure
 
 import (
-	"context"
 	"testing"
 
 	"github.com/Azure/azure-kusto-go/kusto/data/errors"
@@ -64,19 +63,19 @@ var testExtractDataExplorerMetricValues = []testExtractDataExplorerMetricValue{
 
 var testGetDataExplorerAuthConfigs = []testGetDataExplorerAuthConfig{
 	// Auth with aad app - pass
-	{testMetadata: &DataExplorerMetadata{ClientID: clientID, ClientSecret: secret, TenantID: tenantID}, isError: false},
+	{testMetadata: &DataExplorerMetadata{ClientID: clientID, ClientSecret: secret, TenantID: tenantID, Endpoint: "https://test.kusto.windows.net", ActiveDirectoryEndpoint: "https://test.kusto.windows.net"}, isError: false},
 	// Auth with podIdentity - pass
-	{testMetadata: &DataExplorerMetadata{PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}}, isError: false},
+	{testMetadata: &DataExplorerMetadata{PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}, Endpoint: "https://test.kusto.windows.net", ActiveDirectoryEndpoint: "https://test.kusto.windows.net"}, isError: false},
 	// Auth with workload identity - pass
-	{testMetadata: &DataExplorerMetadata{PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload}}, isError: false},
+	{testMetadata: &DataExplorerMetadata{PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload}, Endpoint: "https://test.kusto.windows.net", ActiveDirectoryEndpoint: "https://test.kusto.windows.net"}, isError: false},
 	// Empty metadata - fail
-	{testMetadata: &DataExplorerMetadata{}, isError: true},
+	{testMetadata: &DataExplorerMetadata{Endpoint: "https://test.kusto.windows.net", ActiveDirectoryEndpoint: "https://test.kusto.windows.net"}, isError: true},
 	// Empty tenantID - fail
-	{testMetadata: &DataExplorerMetadata{ClientID: clientID, ClientSecret: secret}, isError: true},
+	{testMetadata: &DataExplorerMetadata{ClientID: clientID, ClientSecret: secret, Endpoint: "https://test.kusto.windows.net", ActiveDirectoryEndpoint: "https://test.kusto.windows.net"}, isError: true},
 	// Empty clientID - fail
-	{testMetadata: &DataExplorerMetadata{ClientSecret: secret, TenantID: tenantID}, isError: true},
+	{testMetadata: &DataExplorerMetadata{ClientSecret: secret, TenantID: tenantID, Endpoint: "https://test.kusto.windows.net", ActiveDirectoryEndpoint: "https://test.kusto.windows.net"}, isError: true},
 	// Empty clientSecret - fail
-	{testMetadata: &DataExplorerMetadata{ClientID: clientID, TenantID: tenantID}, isError: true},
+	{testMetadata: &DataExplorerMetadata{ClientID: clientID, TenantID: tenantID, Endpoint: "https://test.kusto.windows.net", ActiveDirectoryEndpoint: "https://test.kusto.windows.net"}, isError: true},
 }
 
 func TestExtractDataExplorerMetricValue(t *testing.T) {
@@ -93,7 +92,7 @@ func TestExtractDataExplorerMetricValue(t *testing.T) {
 
 func TestGetDataExplorerAuthConfig(t *testing.T) {
 	for _, testData := range testGetDataExplorerAuthConfigs {
-		_, err := getDataExplorerAuthConfig(context.TODO(), testData.testMetadata)
+		_, err := getDataExplorerAuthConfig(testData.testMetadata)
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}

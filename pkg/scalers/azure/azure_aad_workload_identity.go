@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	amqpAuth "github.com/Azure/azure-amqp-common-go/v3/auth"
+	amqpAuth "github.com/Azure/azure-amqp-common-go/v4/auth"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
@@ -76,11 +76,10 @@ func GetAzureADWorkloadIdentityToken(ctx context.Context, identityID, resource s
 		return signedAssertion, nil
 	})
 
-	authorityOption := confidential.WithAuthority(fmt.Sprintf("%s%s/oauth2/token", AuthorityHost, TenantID))
 	confidentialClient, err := confidential.New(
+		fmt.Sprintf("%s%s/oauth2/token", AuthorityHost, TenantID),
 		clientID,
 		cred,
-		authorityOption,
 	)
 	if err != nil {
 		return AADToken{}, fmt.Errorf("error creating confidential client - %w", err)
@@ -134,11 +133,11 @@ func (aadWiConfig ADWorkloadIdentityConfig) Authorizer() (autorest.Authorizer, e
 }
 
 func NewADWorkloadIdentityCredential(identityID string) (*azidentity.WorkloadIdentityCredential, error) {
-	clientID := DefaultClientID
+	options := &azidentity.WorkloadIdentityCredentialOptions{}
 	if identityID != "" {
-		clientID = identityID
+		options.ClientID = identityID
 	}
-	return azidentity.NewWorkloadIdentityCredential(TenantID, clientID, TokenFilePath, &azidentity.WorkloadIdentityCredentialOptions{})
+	return azidentity.NewWorkloadIdentityCredential(options)
 }
 
 // ADWorkloadIdentityTokenProvider is a type that implements the adal.OAuthTokenProvider and adal.Refresher interfaces.
@@ -187,7 +186,7 @@ func (wiTokenProvider *ADWorkloadIdentityTokenProvider) EnsureFresh() error {
 }
 
 // GetToken is for implementing the auth.TokenProvider interface
-func (wiTokenProvider *ADWorkloadIdentityTokenProvider) GetToken(uri string) (*amqpAuth.Token, error) {
+func (wiTokenProvider *ADWorkloadIdentityTokenProvider) GetToken(_ string) (*amqpAuth.Token, error) {
 	err := wiTokenProvider.Refresh()
 	if err != nil {
 		return nil, err

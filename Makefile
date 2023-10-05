@@ -22,9 +22,6 @@ IMAGE_CONTROLLER = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda$(SUFFIX):$(VERSION)
 IMAGE_ADAPTER    = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-metrics-apiserver$(SUFFIX):$(VERSION)
 IMAGE_WEBHOOKS   = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/keda-admission-webhooks$(SUFFIX):$(VERSION)
 
-BUILD_TOOLS_GO_VERSION = 1.19.7
-IMAGE_BUILD_TOOLS = $(IMAGE_REGISTRY)/$(IMAGE_REPO)/build-tools:$(BUILD_TOOLS_GO_VERSION)
-
 ARCH       ?=amd64
 CGO        ?=0
 TARGET_OS  ?=linux
@@ -36,7 +33,8 @@ GIT_VERSION ?= $(shell git describe --always --abbrev=7)
 GIT_COMMIT  ?= $(shell git rev-list -1 HEAD)
 DATE        = $(shell date -u +"%Y.%m.%d.%H.%M.%S")
 
-TEST_CLUSTER_NAME ?= keda-nightly-run-3
+TEST_CLUSTER_NAME ?= keda-e2e-cluster-nightly
+NODE_POOL_SIZE ?= 1
 NON_ROOT_USER_ID ?= 1000
 
 GCP_WI_PROVIDER ?= projects/${TF_GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${TEST_CLUSTER_NAME}/providers/${TEST_CLUSTER_NAME}
@@ -51,10 +49,10 @@ endif
 GO_BUILD_VARS= GO111MODULE=on CGO_ENABLED=$(CGO) GOOS=$(TARGET_OS) GOARCH=$(ARCH)
 GO_LDFLAGS="-X=github.com/kedacore/keda/v2/version.GitCommit=$(GIT_COMMIT) -X=github.com/kedacore/keda/v2/version.Version=$(VERSION)"
 
-COSIGN_FLAGS ?= -a GIT_HASH=${GIT_COMMIT} -a GIT_VERSION=${VERSION} -a BUILD_DATE=${DATE}
+COSIGN_FLAGS ?= -y -a GIT_HASH=${GIT_COMMIT} -a GIT_VERSION=${VERSION} -a BUILD_DATE=${DATE}
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.26
+ENVTEST_K8S_VERSION = 1.28
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
@@ -81,13 +79,24 @@ install-test-deps:
 test: manifests generate fmt vet envtest install-test-deps ## Run tests and export the result to junit format.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test -v 2>&1 ./... -coverprofile cover.out | go-junit-report -iocopy -set-exit-code -out report.xml
 
-.PHONY: get-cluster-context
-get-cluster-context: ## Get Azure cluster context.
+.PHONY:
+az-login:
 	@az login --service-principal -u $(TF_AZURE_SP_APP_ID) -p "$(AZURE_SP_KEY)" --tenant $(TF_AZURE_SP_TENANT)
+
+.PHONY: get-cluster-context
+get-cluster-context: az-login ## Get Azure cluster context.
 	@az aks get-credentials \
 		--name $(TEST_CLUSTER_NAME) \
 		--subscription $(TF_AZURE_SUBSCRIPTION) \
 		--resource-group $(TF_AZURE_RESOURCE_GROUP)
+
+.PHONY: scale-node-pool
+scale-node-pool: az-login ## Scale nodepool.
+	@az aks scale \
+		--name $(TEST_CLUSTER_NAME) \
+		--subscription $(TF_AZURE_SUBSCRIPTION) \
+		--resource-group $(TF_AZURE_RESOURCE_GROUP) \
+		--node-count $(NODE_POOL_SIZE)
 
 .PHONY: e2e-test
 e2e-test: get-cluster-context ## Run e2e tests against Azure cluster.
@@ -136,6 +145,9 @@ vet: ## Run go vet against code.
 golangci: ## Run golangci against code.
 	golangci-lint run
 
+verify-manifests: ## Verify manifests are up to date.
+	./hack/verify-manifests.sh
+
 clientset-verify: ## Verify that generated client-go clientset, listers and informers are up to date.
 	./hack/verify-codegen.sh
 
@@ -148,7 +160,7 @@ proto-gen: protoc-gen ## Generate Liiklus, ExternalScaler and MetricsService pro
 	PATH="$(LOCALBIN):$(PATH)" protoc -I vendor --proto_path=pkg/metricsservice/api metrics.proto --go_out=pkg/metricsservice/api --go-grpc_out=pkg/metricsservice/api
 
 .PHONY: mockgen-gen
-mockgen-gen: mockgen pkg/mock/mock_scaling/mock_interface.go pkg/mock/mock_scaling/mock_executor/mock_interface.go pkg/mock/mock_scaler/mock_scaler.go pkg/mock/mock_scale/mock_interfaces.go pkg/mock/mock_client/mock_interfaces.go pkg/scalers/liiklus/mocks/mock_liiklus.go
+mockgen-gen: mockgen pkg/mock/mock_scaling/mock_interface.go pkg/mock/mock_scaling/mock_executor/mock_interface.go pkg/mock/mock_scaler/mock_scaler.go pkg/mock/mock_scale/mock_interfaces.go pkg/mock/mock_client/mock_interfaces.go pkg/scalers/liiklus/mocks/mock_liiklus.go pkg/mock/mock_secretlister/mock_interfaces.go
 
 pkg/mock/mock_scaling/mock_interface.go: pkg/scaling/scale_handler.go
 	$(MOCKGEN) -destination=$@ -package=mock_scaling -source=$^
@@ -156,6 +168,9 @@ pkg/mock/mock_scaling/mock_executor/mock_interface.go: pkg/scaling/executor/scal
 	$(MOCKGEN) -destination=$@ -package=mock_executor -source=$^
 pkg/mock/mock_scaler/mock_scaler.go: pkg/scalers/scaler.go
 	$(MOCKGEN) -destination=$@ -package=mock_scalers -source=$^
+pkg/mock/mock_secretlister/mock_interfaces.go: vendor/k8s.io/client-go/listers/core/v1/secret.go
+	mkdir -p pkg/mock/mock_secretlister
+	$(MOCKGEN) k8s.io/client-go/listers/core/v1 SecretLister,SecretNamespaceLister > $@
 pkg/mock/mock_scale/mock_interfaces.go: vendor/k8s.io/client-go/scale/interfaces.go
 	mkdir -p pkg/mock/mock_scale
 	$(MOCKGEN) k8s.io/client-go/scale ScalesGetter,ScaleInterface > $@
@@ -219,6 +234,7 @@ release: manifests kustomize set-version ## Produce new KEDA release in keda-$(V
 	rm -rf config/default/kustomize-config/metadataLabelTransformer.yaml.out
 	$(KUSTOMIZE) build config/default > keda-$(VERSION).yaml
 	$(KUSTOMIZE) build config/minimal > keda-$(VERSION)-core.yaml
+	$(KUSTOMIZE) build config/crd     > keda-$(VERSION)-crds.yaml
 
 sign-images: ## Sign KEDA images published on GitHub Container Registry
 	COSIGN_EXPERIMENTAL=1 cosign sign ${COSIGN_FLAGS} $(IMAGE_CONTROLLER)
@@ -236,13 +252,13 @@ set-version:
 
 ##@ Deployment
 
-install: kustomize manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/crd | kubectl apply -f -
+install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+	$(KUSTOMIZE) build config/crd | kubectl apply --server-side -f -
 
-uninstall: kustomize manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
+uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/crd | kubectl delete -f -
 
-deploy: kustomize manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+deploy: install ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && \
 	$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda=${IMAGE_CONTROLLER} && \
 	if [ "$(AZURE_RUN_AAD_POD_IDENTITY_TESTS)" = true ]; then \
@@ -281,6 +297,7 @@ deploy: kustomize manifests kustomize ## Deploy controller to the K8s cluster sp
 
 undeploy: kustomize e2e-test-clean-crds ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/e2e | kubectl delete -f -
+	make uninstall
 
 ## Location to install dependencies to
 LOCALBIN ?= $(shell pwd)/bin
@@ -303,7 +320,7 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Install kustomize from vendor dir if necessary.
 $(KUSTOMIZE): $(LOCALBIN)
-	test -s $(LOCALBIN)/kustomize || GOBIN=$(LOCALBIN) go install sigs.k8s.io/kustomize/kustomize/v4
+	test -s $(LOCALBIN)/kustomize || GOBIN=$(LOCALBIN) go install sigs.k8s.io/kustomize/kustomize/v5
 
 .PHONY: envtest
 envtest: $(ENVTEST) ## Install envtest-setup from vendor dir if necessary.
@@ -343,14 +360,10 @@ $(PROTOCGEN_GRPC): $(LOCALBIN)
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
-.PHONY: docker-build-tools
-docker-build-tools: ## Build build-tools image
-	docker build -f tools/build-tools.Dockerfile -t $(IMAGE_BUILD_TOOLS) --build-arg GO_VERSION=$(BUILD_TOOLS_GO_VERSION) .
-
-.PHONY: publish-build-tools
-publish-build-tools: ## Build and push multi-arch Docker image for build-tools.
-	docker buildx build --push --platform=${BUILD_PLATFORMS} -f tools/build-tools.Dockerfile -t ${IMAGE_BUILD_TOOLS} --build-arg GO_VERSION=$(BUILD_TOOLS_GO_VERSION) .
-
 .PHONY: docker-build-dev-containers
 docker-build-dev-containers: ## Build dev-containers image
 	docker build -f .devcontainer/Dockerfile .
+
+.PHONY: validate-changelog
+validate-changelog: ## Validate changelog
+	./hack/validate-changelog.sh

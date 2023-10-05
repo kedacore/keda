@@ -24,8 +24,10 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/url"
+	"reflect"
 	"strconv"
 
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/cache"
@@ -45,29 +47,23 @@ import (
 // For details see https://aka.ms/msal-net-authenticationresult
 type AuthResult = base.AuthResult
 
+type AuthenticationScheme = authority.AuthenticationScheme
+
 type Account = shared.Account
 
-// Options configures the Client's behavior.
-type Options struct {
-	// Accessor controls cache persistence. By default there is no cache persistence.
-	// This can be set with the WithCache() option.
-	Accessor cache.ExportReplace
+var errNoAccount = errors.New("no account was specified with public.WithAccount(), or the specified account is invalid")
 
-	// The host of the Azure Active Directory authority. The default is https://login.microsoftonline.com/common.
-	// This can be changed with the WithAuthority() option.
-	Authority string
-
-	// The HTTP client used for making requests.
-	// It defaults to a shared http.Client.
-	HTTPClient ops.HTTPClient
-
-	capabilities []string
-
+// clientOptions configures the Client's behavior.
+type clientOptions struct {
+	accessor                 cache.ExportReplace
+	authority                string
+	capabilities             []string
 	disableInstanceDiscovery bool
+	httpClient               ops.HTTPClient
 }
 
-func (p *Options) validate() error {
-	u, err := url.Parse(p.Authority)
+func (p *clientOptions) validate() error {
+	u, err := url.Parse(p.authority)
 	if err != nil {
 		return fmt.Errorf("Authority options cannot be URL parsed: %w", err)
 	}
@@ -78,25 +74,25 @@ func (p *Options) validate() error {
 }
 
 // Option is an optional argument to the New constructor.
-type Option func(o *Options)
+type Option func(o *clientOptions)
 
 // WithAuthority allows for a custom authority to be set. This must be a valid https url.
 func WithAuthority(authority string) Option {
-	return func(o *Options) {
-		o.Authority = authority
+	return func(o *clientOptions) {
+		o.authority = authority
 	}
 }
 
-// WithCache allows you to set some type of cache for storing authentication tokens.
+// WithCache provides an accessor that will read and write authentication data to an externally managed cache.
 func WithCache(accessor cache.ExportReplace) Option {
-	return func(o *Options) {
-		o.Accessor = accessor
+	return func(o *clientOptions) {
+		o.accessor = accessor
 	}
 }
 
 // WithClientCapabilities allows configuring one or more client capabilities such as "CP1"
 func WithClientCapabilities(capabilities []string) Option {
-	return func(o *Options) {
+	return func(o *clientOptions) {
 		// there's no danger of sharing the slice's underlying memory with the application because
 		// this slice is simply passed to base.WithClientCapabilities, which copies its data
 		o.capabilities = capabilities
@@ -105,14 +101,14 @@ func WithClientCapabilities(capabilities []string) Option {
 
 // WithHTTPClient allows for a custom HTTP client to be set.
 func WithHTTPClient(httpClient ops.HTTPClient) Option {
-	return func(o *Options) {
-		o.HTTPClient = httpClient
+	return func(o *clientOptions) {
+		o.httpClient = httpClient
 	}
 }
 
 // WithInstanceDiscovery set to false to disable authority validation (to support private cloud scenarios)
 func WithInstanceDiscovery(enabled bool) Option {
-	return func(o *Options) {
+	return func(o *clientOptions) {
 		o.disableInstanceDiscovery = !enabled
 	}
 }
@@ -125,9 +121,9 @@ type Client struct {
 
 // New is the constructor for Client.
 func New(clientID string, options ...Option) (Client, error) {
-	opts := Options{
-		Authority:  base.AuthorityPublicCloud,
-		HTTPClient: shared.DefaultClient,
+	opts := clientOptions{
+		authority:  base.AuthorityPublicCloud,
+		httpClient: shared.DefaultClient,
 	}
 
 	for _, o := range options {
@@ -137,28 +133,28 @@ func New(clientID string, options ...Option) (Client, error) {
 		return Client{}, err
 	}
 
-	base, err := base.New(clientID, opts.Authority, oauth.New(opts.HTTPClient), base.WithCacheAccessor(opts.Accessor), base.WithClientCapabilities(opts.capabilities), base.WithInstanceDiscovery(!opts.disableInstanceDiscovery))
+	base, err := base.New(clientID, opts.authority, oauth.New(opts.httpClient), base.WithCacheAccessor(opts.accessor), base.WithClientCapabilities(opts.capabilities), base.WithInstanceDiscovery(!opts.disableInstanceDiscovery))
 	if err != nil {
 		return Client{}, err
 	}
 	return Client{base}, nil
 }
 
-// createAuthCodeURLOptions contains options for CreateAuthCodeURL
-type createAuthCodeURLOptions struct {
+// authCodeURLOptions contains options for AuthCodeURL
+type authCodeURLOptions struct {
 	claims, loginHint, tenantID, domainHint string
 }
 
-// CreateAuthCodeURLOption is implemented by options for CreateAuthCodeURL
-type CreateAuthCodeURLOption interface {
-	createAuthCodeURLOption()
+// AuthCodeURLOption is implemented by options for AuthCodeURL
+type AuthCodeURLOption interface {
+	authCodeURLOption()
 }
 
-// CreateAuthCodeURL creates a URL used to acquire an authorization code.
+// AuthCodeURL creates a URL used to acquire an authorization code.
 //
 // Options: [WithClaims], [WithDomainHint], [WithLoginHint], [WithTenantID]
-func (pca Client) CreateAuthCodeURL(ctx context.Context, clientID, redirectURI string, scopes []string, opts ...CreateAuthCodeURLOption) (string, error) {
-	o := createAuthCodeURLOptions{}
+func (pca Client) AuthCodeURL(ctx context.Context, clientID, redirectURI string, scopes []string, opts ...AuthCodeURLOption) (string, error) {
+	o := authCodeURLOptions{}
 	if err := options.ApplyOptions(&o, opts); err != nil {
 		return "", err
 	}
@@ -181,7 +177,7 @@ func WithClaims(claims string) interface {
 	AcquireByUsernamePasswordOption
 	AcquireInteractiveOption
 	AcquireSilentOption
-	CreateAuthCodeURLOption
+	AuthCodeURLOption
 	options.CallOption
 } {
 	return struct {
@@ -190,24 +186,51 @@ func WithClaims(claims string) interface {
 		AcquireByUsernamePasswordOption
 		AcquireInteractiveOption
 		AcquireSilentOption
-		CreateAuthCodeURLOption
+		AuthCodeURLOption
 		options.CallOption
 	}{
 		CallOption: options.NewCallOption(
 			func(a any) error {
 				switch t := a.(type) {
-				case *AcquireTokenByAuthCodeOptions:
+				case *acquireTokenByAuthCodeOptions:
 					t.claims = claims
 				case *acquireTokenByDeviceCodeOptions:
 					t.claims = claims
 				case *acquireTokenByUsernamePasswordOptions:
 					t.claims = claims
-				case *AcquireTokenSilentOptions:
+				case *acquireTokenSilentOptions:
 					t.claims = claims
-				case *createAuthCodeURLOptions:
+				case *authCodeURLOptions:
 					t.claims = claims
-				case *InteractiveAuthOptions:
+				case *interactiveAuthOptions:
 					t.claims = claims
+				default:
+					return fmt.Errorf("unexpected options type %T", a)
+				}
+				return nil
+			},
+		),
+	}
+}
+
+// WithAuthenticationScheme is an extensibility mechanism designed to be used only by Azure Arc for proof of possession access tokens.
+func WithAuthenticationScheme(authnScheme AuthenticationScheme) interface {
+	AcquireSilentOption
+	AcquireInteractiveOption
+	options.CallOption
+} {
+	return struct {
+		AcquireSilentOption
+		AcquireInteractiveOption
+		options.CallOption
+	}{
+		CallOption: options.NewCallOption(
+			func(a any) error {
+				switch t := a.(type) {
+				case *acquireTokenSilentOptions:
+					t.authnScheme = authnScheme
+				case *interactiveAuthOptions:
+					t.authnScheme = authnScheme
 				default:
 					return fmt.Errorf("unexpected options type %T", a)
 				}
@@ -225,7 +248,7 @@ func WithTenantID(tenantID string) interface {
 	AcquireByUsernamePasswordOption
 	AcquireInteractiveOption
 	AcquireSilentOption
-	CreateAuthCodeURLOption
+	AuthCodeURLOption
 	options.CallOption
 } {
 	return struct {
@@ -234,23 +257,23 @@ func WithTenantID(tenantID string) interface {
 		AcquireByUsernamePasswordOption
 		AcquireInteractiveOption
 		AcquireSilentOption
-		CreateAuthCodeURLOption
+		AuthCodeURLOption
 		options.CallOption
 	}{
 		CallOption: options.NewCallOption(
 			func(a any) error {
 				switch t := a.(type) {
-				case *AcquireTokenByAuthCodeOptions:
+				case *acquireTokenByAuthCodeOptions:
 					t.tenantID = tenantID
 				case *acquireTokenByDeviceCodeOptions:
 					t.tenantID = tenantID
 				case *acquireTokenByUsernamePasswordOptions:
 					t.tenantID = tenantID
-				case *AcquireTokenSilentOptions:
+				case *acquireTokenSilentOptions:
 					t.tenantID = tenantID
-				case *createAuthCodeURLOptions:
+				case *authCodeURLOptions:
 					t.tenantID = tenantID
-				case *InteractiveAuthOptions:
+				case *interactiveAuthOptions:
 					t.tenantID = tenantID
 				default:
 					return fmt.Errorf("unexpected options type %T", a)
@@ -261,24 +284,18 @@ func WithTenantID(tenantID string) interface {
 	}
 }
 
-// AcquireTokenSilentOptions are all the optional settings to an AcquireTokenSilent() call.
+// acquireTokenSilentOptions are all the optional settings to an AcquireTokenSilent() call.
 // These are set by using various AcquireTokenSilentOption functions.
-type AcquireTokenSilentOptions struct {
-	// Account represents the account to use. To set, use the WithSilentAccount() option.
-	Account Account
-
+type acquireTokenSilentOptions struct {
+	account          Account
 	claims, tenantID string
+	authnScheme      AuthenticationScheme
 }
 
 // AcquireSilentOption is implemented by options for AcquireTokenSilent
 type AcquireSilentOption interface {
 	acquireSilentOption()
 }
-
-// AcquireTokenSilentOption changes options inside AcquireTokenSilentOptions used in .AcquireTokenSilent().
-type AcquireTokenSilentOption func(a *AcquireTokenSilentOptions)
-
-func (AcquireTokenSilentOption) acquireSilentOption() {}
 
 // WithSilentAccount uses the passed account during an AcquireTokenSilent() call.
 func WithSilentAccount(account Account) interface {
@@ -292,8 +309,8 @@ func WithSilentAccount(account Account) interface {
 		CallOption: options.NewCallOption(
 			func(a any) error {
 				switch t := a.(type) {
-				case *AcquireTokenSilentOptions:
-					t.Account = account
+				case *acquireTokenSilentOptions:
+					t.account = account
 				default:
 					return fmt.Errorf("unexpected options type %T", a)
 				}
@@ -307,18 +324,23 @@ func WithSilentAccount(account Account) interface {
 //
 // Options: [WithClaims], [WithSilentAccount], [WithTenantID]
 func (pca Client) AcquireTokenSilent(ctx context.Context, scopes []string, opts ...AcquireSilentOption) (AuthResult, error) {
-	o := AcquireTokenSilentOptions{}
+	o := acquireTokenSilentOptions{}
 	if err := options.ApplyOptions(&o, opts); err != nil {
 		return AuthResult{}, err
+	}
+	// an account is required to find user tokens in the cache
+	if reflect.ValueOf(o.account).IsZero() {
+		return AuthResult{}, errNoAccount
 	}
 
 	silentParameters := base.AcquireTokenSilentParameters{
 		Scopes:      scopes,
-		Account:     o.Account,
+		Account:     o.account,
 		Claims:      o.claims,
 		RequestType: accesstokens.ATPublic,
 		IsAppCache:  false,
 		TenantID:    o.tenantID,
+		AuthnScheme: o.authnScheme,
 	}
 
 	return pca.base.AcquireTokenSilent(ctx, silentParameters)
@@ -420,22 +442,15 @@ func (pca Client) AcquireTokenByDeviceCode(ctx context.Context, scopes []string,
 	return DeviceCode{Result: dc.Result, authParams: authParams, client: pca, dc: dc}, nil
 }
 
-// AcquireTokenByAuthCodeOptions contains the optional parameters used to acquire an access token using the authorization code flow.
-type AcquireTokenByAuthCodeOptions struct {
-	Challenge string
-
-	claims, tenantID string
+// acquireTokenByAuthCodeOptions contains the optional parameters used to acquire an access token using the authorization code flow.
+type acquireTokenByAuthCodeOptions struct {
+	challenge, claims, tenantID string
 }
 
 // AcquireByAuthCodeOption is implemented by options for AcquireTokenByAuthCode
 type AcquireByAuthCodeOption interface {
 	acquireByAuthCodeOption()
 }
-
-// AcquireTokenByAuthCodeOption changes options inside AcquireTokenByAuthCodeOptions used in .AcquireTokenByAuthCode().
-type AcquireTokenByAuthCodeOption func(a *AcquireTokenByAuthCodeOptions)
-
-func (AcquireTokenByAuthCodeOption) acquireByAuthCodeOption() {}
 
 // WithChallenge allows you to provide a code for the .AcquireTokenByAuthCode() call.
 func WithChallenge(challenge string) interface {
@@ -449,8 +464,8 @@ func WithChallenge(challenge string) interface {
 		CallOption: options.NewCallOption(
 			func(a any) error {
 				switch t := a.(type) {
-				case *AcquireTokenByAuthCodeOptions:
-					t.Challenge = challenge
+				case *acquireTokenByAuthCodeOptions:
+					t.challenge = challenge
 				default:
 					return fmt.Errorf("unexpected options type %T", a)
 				}
@@ -465,7 +480,7 @@ func WithChallenge(challenge string) interface {
 //
 // Options: [WithChallenge], [WithClaims], [WithTenantID]
 func (pca Client) AcquireTokenByAuthCode(ctx context.Context, code string, redirectURI string, scopes []string, opts ...AcquireByAuthCodeOption) (AuthResult, error) {
-	o := AcquireTokenByAuthCodeOptions{}
+	o := acquireTokenByAuthCodeOptions{}
 	if err := options.ApplyOptions(&o, opts); err != nil {
 		return AuthResult{}, err
 	}
@@ -473,7 +488,7 @@ func (pca Client) AcquireTokenByAuthCode(ctx context.Context, code string, redir
 	params := base.AcquireTokenAuthCodeParameters{
 		Scopes:      scopes,
 		Code:        code,
-		Challenge:   o.Challenge,
+		Challenge:   o.challenge,
 		Claims:      o.claims,
 		AppType:     accesstokens.ATPublic,
 		RedirectURI: redirectURI,
@@ -485,23 +500,20 @@ func (pca Client) AcquireTokenByAuthCode(ctx context.Context, code string, redir
 
 // Accounts gets all the accounts in the token cache.
 // If there are no accounts in the cache the returned slice is empty.
-func (pca Client) Accounts() []Account {
-	return pca.base.AllAccounts()
+func (pca Client) Accounts(ctx context.Context) ([]Account, error) {
+	return pca.base.AllAccounts(ctx)
 }
 
 // RemoveAccount signs the account out and forgets account from token cache.
-func (pca Client) RemoveAccount(account Account) error {
-	pca.base.RemoveAccount(account)
-	return nil
+func (pca Client) RemoveAccount(ctx context.Context, account Account) error {
+	return pca.base.RemoveAccount(ctx, account)
 }
 
-// InteractiveAuthOptions contains the optional parameters used to acquire an access token for interactive auth code flow.
-type InteractiveAuthOptions struct {
-	// Used to specify a custom port for the local server.  http://localhost:portnumber
-	// All other URI components are ignored.
-	RedirectURI string
-
-	claims, loginHint, tenantID, domainHint string
+// interactiveAuthOptions contains the optional parameters used to acquire an access token for interactive auth code flow.
+type interactiveAuthOptions struct {
+	claims, domainHint, loginHint, redirectURI, tenantID string
+	openURL                                              func(url string) error
+	authnScheme                                          AuthenticationScheme
 }
 
 // AcquireInteractiveOption is implemented by options for AcquireTokenInteractive
@@ -509,28 +521,23 @@ type AcquireInteractiveOption interface {
 	acquireInteractiveOption()
 }
 
-// InteractiveAuthOption changes options inside InteractiveAuthOptions used in .AcquireTokenInteractive().
-type InteractiveAuthOption func(*InteractiveAuthOptions)
-
-func (InteractiveAuthOption) acquireInteractiveOption() {}
-
 // WithLoginHint pre-populates the login prompt with a username.
 func WithLoginHint(username string) interface {
 	AcquireInteractiveOption
-	CreateAuthCodeURLOption
+	AuthCodeURLOption
 	options.CallOption
 } {
 	return struct {
 		AcquireInteractiveOption
-		CreateAuthCodeURLOption
+		AuthCodeURLOption
 		options.CallOption
 	}{
 		CallOption: options.NewCallOption(
 			func(a any) error {
 				switch t := a.(type) {
-				case *createAuthCodeURLOptions:
+				case *authCodeURLOptions:
 					t.loginHint = username
-				case *InteractiveAuthOptions:
+				case *interactiveAuthOptions:
 					t.loginHint = username
 				default:
 					return fmt.Errorf("unexpected options type %T", a)
@@ -544,20 +551,20 @@ func WithLoginHint(username string) interface {
 // WithDomainHint adds the IdP domain as domain_hint query parameter in the auth url.
 func WithDomainHint(domain string) interface {
 	AcquireInteractiveOption
-	CreateAuthCodeURLOption
+	AuthCodeURLOption
 	options.CallOption
 } {
 	return struct {
 		AcquireInteractiveOption
-		CreateAuthCodeURLOption
+		AuthCodeURLOption
 		options.CallOption
 	}{
 		CallOption: options.NewCallOption(
 			func(a any) error {
 				switch t := a.(type) {
-				case *createAuthCodeURLOptions:
+				case *authCodeURLOptions:
 					t.domainHint = domain
-				case *InteractiveAuthOptions:
+				case *interactiveAuthOptions:
 					t.domainHint = domain
 				default:
 					return fmt.Errorf("unexpected options type %T", a)
@@ -568,7 +575,8 @@ func WithDomainHint(domain string) interface {
 	}
 }
 
-// WithRedirectURI uses the specified redirect URI for interactive auth.
+// WithRedirectURI sets a port for the local server used in interactive authentication, for
+// example http://localhost:port. All URI components other than the port are ignored.
 func WithRedirectURI(redirectURI string) interface {
 	AcquireInteractiveOption
 	options.CallOption
@@ -580,8 +588,31 @@ func WithRedirectURI(redirectURI string) interface {
 		CallOption: options.NewCallOption(
 			func(a any) error {
 				switch t := a.(type) {
-				case *InteractiveAuthOptions:
-					t.RedirectURI = redirectURI
+				case *interactiveAuthOptions:
+					t.redirectURI = redirectURI
+				default:
+					return fmt.Errorf("unexpected options type %T", a)
+				}
+				return nil
+			},
+		),
+	}
+}
+
+// WithOpenURL allows you to provide a function to open the browser to complete the interactive login, instead of launching the system default browser.
+func WithOpenURL(openURL func(url string) error) interface {
+	AcquireInteractiveOption
+	options.CallOption
+} {
+	return struct {
+		AcquireInteractiveOption
+		options.CallOption
+	}{
+		CallOption: options.NewCallOption(
+			func(a any) error {
+				switch t := a.(type) {
+				case *interactiveAuthOptions:
+					t.openURL = openURL
 				default:
 					return fmt.Errorf("unexpected options type %T", a)
 				}
@@ -594,9 +625,9 @@ func WithRedirectURI(redirectURI string) interface {
 // AcquireTokenInteractive acquires a security token from the authority using the default web browser to select the account.
 // https://docs.microsoft.com/en-us/azure/active-directory/develop/msal-authentication-flows#interactive-and-non-interactive-authentication
 //
-// Options: [WithDomainHint], [WithLoginHint], [WithRedirectURI], [WithTenantID]
+// Options: [WithDomainHint], [WithLoginHint], [WithOpenURL], [WithRedirectURI], [WithTenantID]
 func (pca Client) AcquireTokenInteractive(ctx context.Context, scopes []string, opts ...AcquireInteractiveOption) (AuthResult, error) {
-	o := InteractiveAuthOptions{}
+	o := interactiveAuthOptions{}
 	if err := options.ApplyOptions(&o, opts); err != nil {
 		return AuthResult{}, err
 	}
@@ -607,11 +638,14 @@ func (pca Client) AcquireTokenInteractive(ctx context.Context, scopes []string, 
 		return AuthResult{}, err
 	}
 	var redirectURL *url.URL
-	if o.RedirectURI != "" {
-		redirectURL, err = url.Parse(o.RedirectURI)
+	if o.redirectURI != "" {
+		redirectURL, err = url.Parse(o.redirectURI)
 		if err != nil {
 			return AuthResult{}, err
 		}
+	}
+	if o.openURL == nil {
+		o.openURL = browser.OpenURL
 	}
 	authParams, err := pca.base.AuthParams.WithTenant(o.tenantID)
 	if err != nil {
@@ -626,7 +660,10 @@ func (pca Client) AcquireTokenInteractive(ctx context.Context, scopes []string, 
 	authParams.DomainHint = o.domainHint
 	authParams.State = uuid.New().String()
 	authParams.Prompt = "select_account"
-	res, err := pca.browserLogin(ctx, redirectURL, authParams)
+	if o.authnScheme != nil {
+		authParams.AuthnScheme = o.authnScheme
+	}
+	res, err := pca.browserLogin(ctx, redirectURL, authParams, o.openURL)
 	if err != nil {
 		return AuthResult{}, err
 	}
@@ -650,11 +687,6 @@ type interactiveAuthResult struct {
 	redirectURI string
 }
 
-// provides a test hook to simulate opening a browser
-var browserOpenURL = func(authURL string) error {
-	return browser.OpenURL(authURL)
-}
-
 // parses the port number from the provided URL.
 // returns 0 if nil or no port is specified.
 func parsePort(u *url.URL) (int, error) {
@@ -668,8 +700,8 @@ func parsePort(u *url.URL) (int, error) {
 	return strconv.Atoi(p)
 }
 
-// browserLogin launches the system browser for interactive login
-func (pca Client) browserLogin(ctx context.Context, redirectURI *url.URL, params authority.AuthParams) (interactiveAuthResult, error) {
+// browserLogin calls openURL and waits for a user to log in
+func (pca Client) browserLogin(ctx context.Context, redirectURI *url.URL, params authority.AuthParams, openURL func(string) error) (interactiveAuthResult, error) {
 	// start local redirect server so login can call us back
 	port, err := parsePort(redirectURI)
 	if err != nil {
@@ -686,7 +718,7 @@ func (pca Client) browserLogin(ctx context.Context, redirectURI *url.URL, params
 		return interactiveAuthResult{}, err
 	}
 	// open browser window so user can select credentials
-	if err := browserOpenURL(authURL); err != nil {
+	if err := openURL(authURL); err != nil {
 		return interactiveAuthResult{}, err
 	}
 	// now wait until the logic calls us back

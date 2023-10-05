@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-logr/logr"
 	// PostreSQL drive required for this scaler
-	_ "github.com/lib/pq"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -28,7 +28,6 @@ type postgreSQLMetadata struct {
 	activationTargetQueryValue float64
 	connection                 string
 	query                      string
-	metricName                 string
 	scalerIndex                int
 }
 
@@ -74,7 +73,11 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 		}
 		meta.targetQueryValue = targetQueryValue
 	} else {
-		return nil, fmt.Errorf("no targetQueryValue given")
+		if config.AsMetricSource {
+			meta.targetQueryValue = 0
+		} else {
+			return nil, fmt.Errorf("no targetQueryValue given")
+		}
 	}
 
 	meta.activationTargetQueryValue = 0
@@ -134,19 +137,12 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 		params = append(params, "password="+escapePostgreConnectionParameter(password))
 		meta.connection = strings.Join(params, " ")
 	}
-
-	// FIXME: DEPRECATED to be removed in v2.12
-	if val, ok := config.TriggerMetadata["metricName"]; ok {
-		meta.metricName = kedautil.NormalizeString(fmt.Sprintf("postgresql-%s", val))
-	} else {
-		meta.metricName = kedautil.NormalizeString("postgresql")
-	}
 	meta.scalerIndex = config.ScalerIndex
 	return &meta, nil
 }
 
 func getConnection(meta *postgreSQLMetadata, logger logr.Logger) (*sql.DB, error) {
-	db, err := sql.Open("postgres", meta.connection)
+	db, err := sql.Open("pgx", meta.connection)
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Found error opening postgreSQL: %s", err))
 		return nil, err
@@ -183,7 +179,7 @@ func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (float64, error)
 func (s *postgreSQLScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, s.metadata.metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString("postgresql")),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.targetQueryValue),
 	}

@@ -118,7 +118,7 @@ func TestScaler(t *testing.T) {
 	mongoPod := setupMongo(t, kc)
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	assert.True(t, WaitForJobCount(t, kc, testNamespace, 0, 60, 1),
+	assert.True(t, WaitForScaledJobCount(t, kc, scaledJobName, testNamespace, 0, 60, 1),
 		"job count should be 0 after 1 minute")
 
 	// test scaling
@@ -126,8 +126,8 @@ func TestScaler(t *testing.T) {
 	testScaleOut(t, kc, mongoPod)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
-	cleanupMongo(t, kc)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
+	cleanupMongo(t)
 }
 
 func getTemplateData() (templateData, []Template) {
@@ -194,7 +194,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, mongoPod string) {
 	_, err := ExecuteCommand(fmt.Sprintf("kubectl exec %s -n %s -- mongosh --eval '%s'", mongoPod, mongoNamespace, insertCmd))
 	assert.NoErrorf(t, err, "cannot insert mongo records - %s", err)
 	time.Sleep(time.Second * 60)
-	assert.True(t, WaitForJobCount(t, kc, testNamespace, 0, 60, 1),
+	assert.True(t, WaitForScaledJobCount(t, kc, scaledJobName, testNamespace, 0, 60, 1),
 		"job count should be 0 after 1 minute")
 }
 
@@ -210,12 +210,12 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, mongoPod string) {
 	_, err := ExecuteCommand(fmt.Sprintf("kubectl exec %s -n %s -- mongosh --eval '%s'", mongoPod, mongoNamespace, insertCmd))
 	assert.NoErrorf(t, err, "cannot insert mongo records - %s", err)
 
-	assert.True(t, WaitForJobCount(t, kc, testNamespace, 5, 60, 1),
+	assert.True(t, WaitForScaledJobCount(t, kc, scaledJobName, testNamespace, 5, 60, 1),
 		"job count should be 5 after 1 minute")
 }
 
-func cleanupMongo(t *testing.T, kc *kubernetes.Clientset) {
+func cleanupMongo(t *testing.T) {
 	_, err := ExecuteCommand(fmt.Sprintf("helm uninstall mongodb --namespace %s", mongoNamespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	DeleteNamespace(t, kc, mongoNamespace)
+	DeleteNamespace(t, mongoNamespace)
 }

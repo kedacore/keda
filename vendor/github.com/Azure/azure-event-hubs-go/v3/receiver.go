@@ -24,10 +24,11 @@ package eventhub
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
-	common "github.com/Azure/azure-amqp-common-go/v3"
+	common "github.com/Azure/azure-amqp-common-go/v4"
 	"github.com/Azure/go-amqp"
 	"github.com/devigned/tab"
 
@@ -52,7 +53,7 @@ const (
 type (
 	receiver struct {
 		hub           *Hub
-		connection    *amqp.Client
+		connection    *amqp.Conn
 		session       *session
 		receiver      *amqp.Receiver
 		consumerGroup string
@@ -265,7 +266,9 @@ func (r *receiver) handleMessage(ctx context.Context, msg *amqp.Message, handler
 
 	err = handler(ctx, event)
 	if err != nil {
-		err = r.receiver.ModifyMessage(ctx, msg, true, false, nil)
+		err = r.receiver.ModifyMessage(ctx, msg, &amqp.ModifyMessageOptions{
+			DeliveryFailed: true,
+		})
 		if err != nil {
 			tab.For(ctx).Error(err)
 		}
@@ -306,7 +309,8 @@ func (r *receiver) listenForMessages(ctx context.Context, msgChan chan *amqp.Mes
 			tab.For(ctx).Debug("context done")
 			return
 		default:
-			if amqpErr, ok := err.(*amqp.DetachError); ok && amqpErr.RemoteError != nil && amqpErr.RemoteError.Condition == "amqp:link:stolen" {
+			var linkError *amqp.LinkError
+			if errors.As(err, &linkError) && linkError.RemoteErr != nil && linkError.RemoteErr.Condition == "amqp:link:stolen" {
 				tab.For(ctx).Debug("link has been stolen by a higher epoch")
 				_ = r.Close(ctx)
 				return
@@ -345,7 +349,7 @@ func (r *receiver) listenForMessage(ctx context.Context) (*amqp.Message, error) 
 	span, ctx := r.startConsumerSpanFromContext(ctx, "eh.receiver.listenForMessage")
 	defer span.End()
 
-	msg, err := r.receiver.Receive(ctx)
+	msg, err := r.receiver.Receive(ctx, nil)
 	if err != nil {
 		tab.For(ctx).Debug(err.Error())
 		return nil, err
@@ -363,7 +367,7 @@ func (r *receiver) newSessionAndLink(ctx context.Context) error {
 	span, ctx := r.startConsumerSpanFromContext(ctx, "eh.receiver.newSessionAndLink")
 	defer span.End()
 
-	connection, err := r.hub.namespace.newConnection()
+	connection, err := r.hub.namespace.newConnection(ctx)
 	if err != nil {
 		return err
 	}
@@ -376,7 +380,7 @@ func (r *receiver) newSessionAndLink(ctx context.Context) error {
 		return err
 	}
 
-	amqpSession, err := connection.NewSession()
+	amqpSession, err := connection.NewSession(ctx, nil)
 	if err != nil {
 		tab.For(ctx).Error(err)
 		return err
@@ -397,18 +401,19 @@ func (r *receiver) newSessionAndLink(ctx context.Context) error {
 		return err
 	}
 
-	opts := []amqp.LinkOption{
-		amqp.LinkSourceAddress(address),
-		amqp.LinkCredit(r.prefetchCount),
-		amqp.LinkReceiverSettle(amqp.ModeFirst),
-		amqp.LinkSelectorFilter(offsetExpression),
+	opts := amqp.ReceiverOptions{
+		Credit:         int32(r.prefetchCount),
+		SettlementMode: amqp.ReceiverSettleModeFirst.Ptr(),
+		Filters:        []amqp.LinkFilter{amqp.NewSelectorFilter(offsetExpression)},
 	}
 
 	if r.epoch != nil {
-		opts = append(opts, amqp.LinkPropertyInt64(epochKey, *r.epoch))
+		opts.Properties = map[string]any{
+			epochKey: *r.epoch,
+		}
 	}
 
-	amqpReceiver, err := amqpSession.NewReceiver(opts...)
+	amqpReceiver, err := amqpSession.NewReceiver(ctx, address, &opts)
 	if err != nil {
 		tab.For(ctx).Error(err)
 		return err

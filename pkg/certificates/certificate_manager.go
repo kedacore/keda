@@ -42,6 +42,7 @@ type CertManager struct {
 	OperatorService       string
 	MetricsServerService  string
 	WebhookService        string
+	K8sClusterDomain      string
 	CAName                string
 	CAOrganization        string
 	ValidatingWebhookName string
@@ -68,12 +69,12 @@ func (cm CertManager) AddCertificateRotation(ctx context.Context, mgr manager.Ma
 		return err
 	}
 	extraDNSNames := []string{}
-	extraDNSNames = append(extraDNSNames, getDNSNames(cm.OperatorService)...)
-	extraDNSNames = append(extraDNSNames, getDNSNames(cm.WebhookService)...)
-	extraDNSNames = append(extraDNSNames, getDNSNames(cm.MetricsServerService)...)
+	extraDNSNames = append(extraDNSNames, getDNSNames(cm.OperatorService, cm.K8sClusterDomain)...)
+	extraDNSNames = append(extraDNSNames, getDNSNames(cm.WebhookService, cm.K8sClusterDomain)...)
+	extraDNSNames = append(extraDNSNames, getDNSNames(cm.MetricsServerService, cm.K8sClusterDomain)...)
 
 	cm.Logger.V(1).Info("setting up cert rotation")
-	if err := rotator.AddRotator(mgr, &rotator.CertRotator{
+	err = rotator.AddRotator(mgr, &rotator.CertRotator{
 		SecretKey: types.NamespacedName{
 			Namespace: kedautil.GetPodNamespace(),
 			Name:      cm.SecretName,
@@ -91,21 +92,18 @@ func (cm CertManager) AddCertificateRotation(ctx context.Context, mgr manager.Ma
 			x509.ExtKeyUsageServerAuth,
 			x509.ExtKeyUsageClientAuth,
 		},
-	}); err != nil {
-		return err
-	}
-	return nil
+	})
+	return err
 }
 
 // getDNSNames  creates all the possible DNS names for a given service
-func getDNSNames(service string) []string {
+func getDNSNames(service, k8sClusterDomain string) []string {
 	namespace := kedautil.GetPodNamespace()
 	return []string{
 		service,
 		fmt.Sprintf("%s.%s", service, namespace),
 		fmt.Sprintf("%s.%s.svc", service, namespace),
-		fmt.Sprintf("%s.%s.svc.local", service, namespace),
-		fmt.Sprintf("%s.%s.svc.cluster.local", service, namespace),
+		fmt.Sprintf("%s.%s.svc.%s", service, namespace, k8sClusterDomain),
 	}
 }
 

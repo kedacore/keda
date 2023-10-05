@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -38,9 +39,12 @@ import (
 )
 
 const (
-	referenceOperator = '$'
-	referenceOpener   = '('
-	referenceCloser   = ')'
+	referenceOperator     = '$'
+	referenceOpener       = '('
+	referenceCloser       = ')'
+	boolTrue              = true
+	boolFalse             = false
+	defaultServiceAccount = "default"
 )
 
 var (
@@ -52,13 +56,13 @@ var (
 // isSecretAccessRestricted returns whether secret access need to be restricted in KEDA namespace
 func isSecretAccessRestricted(logger logr.Logger) bool {
 	if restrictSecretAccess == "" {
-		return false
+		return boolFalse
 	}
-	if strings.ToLower(restrictSecretAccess) == "true" {
+	if strings.ToLower(restrictSecretAccess) == strconv.FormatBool(boolTrue) {
 		logger.V(1).Info("Secret Access is restricted to be in Cluster Object Namespace, please use ClusterTriggerAuthentication instead of TriggerAuthentication", "Cluster Object Namespace", kedaNamespace, "Env Var", util.RestrictSecretAccessEnvVar, "Env Value", strings.ToLower(restrictSecretAccess))
-		return true
+		return boolTrue
 	}
-	return false
+	return boolFalse
 }
 
 // ResolveScaleTargetPodSpec for given scalableObject inspects the scale target workload,
@@ -70,6 +74,25 @@ func ResolveScaleTargetPodSpec(ctx context.Context, kubeClient client.Client, sc
 	case *kedav1alpha1.ScaledObject:
 		// Try to get a real object instance for better cache usage, but fall back to an Unstructured if needed.
 		podTemplateSpec := corev1.PodTemplateSpec{}
+
+		// trying to prevent operator crashes, due to some race condition, sometimes obj.Status.ScaleTargetGVKR is nil
+		// see https://github.com/kedacore/keda/issues/4389
+		// Tracking issue: https://github.com/kedacore/keda/issues/4955
+		if obj.Status.ScaleTargetGVKR == nil {
+			scaledObject := &kedav1alpha1.ScaledObject{}
+			err := kubeClient.Get(ctx, types.NamespacedName{Name: obj.Name, Namespace: obj.Namespace}, scaledObject)
+			if err != nil {
+				log.Error(err, "failed to get ScaledObject", "name", obj.Name, "namespace", obj.Namespace)
+				return nil, "", err
+			}
+			obj = scaledObject
+		}
+		if obj.Status.ScaleTargetGVKR == nil {
+			err := fmt.Errorf("failed to get ScaledObject.Status.ScaleTargetGVKR, probably invalid ScaledObject cache")
+			log.Error(err, "failed to get ScaledObject.Status.ScaleTargetGVKR, probably invalid ScaledObject cache", "scaledObject.Name", obj.Name, "scaledObject.Namespace", obj.Namespace)
+			return nil, "", err
+		}
+
 		gvk := obj.Status.ScaleTargetGVKR.GroupVersionKind()
 		objKey := client.ObjectKey{Namespace: obj.Namespace, Name: obj.Spec.ScaleTargetRef.Name}
 
@@ -90,7 +113,7 @@ func ResolveScaleTargetPodSpec(ctx context.Context, kubeClient client.Client, sc
 			statefulSet := &appsv1.StatefulSet{}
 			if err := kubeClient.Get(ctx, objKey, statefulSet); err != nil {
 				// resource doesn't exist
-				logger.Error(err, "target deployment doesn't exist")
+				logger.Error(err, "target statefulset doesn't exist")
 				return nil, "", err
 			}
 			podTemplateSpec.ObjectMeta = statefulSet.ObjectMeta
@@ -133,11 +156,11 @@ func ResolveContainerEnv(ctx context.Context, client client.Client, logger logr.
 
 	var container corev1.Container
 	if containerName != "" {
-		containerWithNameFound := false
+		containerWithNameFound := boolFalse
 		for _, c := range podSpec.Containers {
 			if c.Name == containerName {
 				container = c
-				containerWithNameFound = true
+				containerWithNameFound = boolTrue
 				break
 			}
 		}
@@ -154,13 +177,17 @@ func ResolveContainerEnv(ctx context.Context, client client.Client, logger logr.
 
 // ResolveAuthRefAndPodIdentity provides authentication parameters and pod identity needed authenticate scaler with the environment.
 func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, logger logr.Logger,
-	triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, podTemplateSpec *corev1.PodTemplateSpec,
+	triggerAuthRef *kedav1alpha1.AuthenticationRef, podTemplateSpec *corev1.PodTemplateSpec,
 	namespace string, secretsLister corev1listers.SecretLister) (map[string]string, kedav1alpha1.AuthPodIdentity, error) {
 	if podTemplateSpec != nil {
 		authParams, podIdentity := resolveAuthRef(ctx, client, logger, triggerAuthRef, &podTemplateSpec.Spec, namespace, secretsLister)
 
-		if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAwsEKS {
-			serviceAccountName := podTemplateSpec.Spec.ServiceAccountName
+		switch podIdentity.Provider {
+		case kedav1alpha1.PodIdentityProviderAwsEKS:
+			serviceAccountName := defaultServiceAccount
+			if podTemplateSpec.Spec.ServiceAccountName != "" {
+				serviceAccountName = podTemplateSpec.Spec.ServiceAccountName
+			}
 			serviceAccount := &corev1.ServiceAccount{}
 			err := client.Get(ctx, types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, serviceAccount)
 			if err != nil {
@@ -168,8 +195,13 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 					fmt.Errorf("error getting service account: '%s', error: %w", serviceAccountName, err)
 			}
 			authParams["awsRoleArn"] = serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS]
-		} else if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAwsKiam {
+		case kedav1alpha1.PodIdentityProviderAwsKiam:
 			authParams["awsRoleArn"] = podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
+		case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+			if podIdentity.IdentityID != nil && *podIdentity.IdentityID == "" {
+				return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, fmt.Errorf("IdentityID of PodIdentity should not be empty")
+			}
+		default:
 		}
 		return authParams, podIdentity, nil
 	}
@@ -181,7 +213,7 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 // resolveAuthRef provides authentication parameters needed authenticate scaler with the environment.
 // based on authentication method defined in TriggerAuthentication, authParams and podIdentity is returned
 func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logger,
-	triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, podSpec *corev1.PodSpec,
+	triggerAuthRef *kedav1alpha1.AuthenticationRef, podSpec *corev1.PodSpec,
 	namespace string, secretsLister corev1listers.SecretLister) (map[string]string, kedav1alpha1.AuthPodIdentity) {
 	result := make(map[string]string)
 	var podIdentity kedav1alpha1.AuthPodIdentity
@@ -261,7 +293,7 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 	return result, podIdentity
 }
 
-func getTriggerAuthSpec(ctx context.Context, client client.Client, triggerAuthRef *kedav1alpha1.ScaledObjectAuthRef, namespace string) (*kedav1alpha1.TriggerAuthenticationSpec, string, error) {
+func getTriggerAuthSpec(ctx context.Context, client client.Client, triggerAuthRef *kedav1alpha1.AuthenticationRef, namespace string) (*kedav1alpha1.TriggerAuthenticationSpec, string, error) {
 	if triggerAuthRef.Kind == "" || triggerAuthRef.Kind == "TriggerAuthentication" {
 		triggerAuth := &kedav1alpha1.TriggerAuthentication{}
 		err := client.Get(ctx, types.NamespacedName{Name: triggerAuthRef.Name, Namespace: namespace}, triggerAuth)
@@ -286,7 +318,8 @@ func getTriggerAuthSpec(ctx context.Context, client client.Client, triggerAuthRe
 
 func resolveEnv(ctx context.Context, client client.Client, logger logr.Logger, container *corev1.Container, namespace string, secretsLister corev1listers.SecretLister) (map[string]string, error) {
 	resolved := make(map[string]string)
-
+	secretAccessRestricted := isSecretAccessRestricted(logger)
+	accessSecrets := readSecrets(secretAccessRestricted, namespace)
 	if container.EnvFrom != nil {
 		for _, source := range container.EnvFrom {
 			if source.ConfigMapRef != nil {
@@ -302,7 +335,7 @@ func resolveEnv(ctx context.Context, client client.Client, logger logr.Logger, c
 				default:
 					return nil, fmt.Errorf("error reading config ref %s on namespace %s/: %w", source.ConfigMapRef, namespace, err)
 				}
-			} else if source.SecretRef != nil {
+			} else if source.SecretRef != nil && accessSecrets {
 				secretsMap, err := resolveSecretMap(ctx, client, logger, source.SecretRef, namespace, secretsLister)
 				switch {
 				case err == nil:
@@ -331,7 +364,7 @@ func resolveEnv(ctx context.Context, client client.Client, logger logr.Logger, c
 			} else if envVar.ValueFrom != nil {
 				// env is an EnvVarSource, that can be on of the 4 below
 				switch {
-				case envVar.ValueFrom.SecretKeyRef != nil:
+				case envVar.ValueFrom.SecretKeyRef != nil && accessSecrets:
 					// env is a secret selector
 					value, err = resolveSecretValue(ctx, client, logger, envVar.ValueFrom.SecretKeyRef, envVar.ValueFrom.SecretKeyRef.Key, namespace, secretsLister)
 					if err != nil {
@@ -364,6 +397,13 @@ func resolveEnv(ctx context.Context, client client.Client, logger logr.Logger, c
 		}
 	}
 	return resolved, nil
+}
+
+func readSecrets(secretAccessRestricted bool, namespace string) bool {
+	if secretAccessRestricted && (namespace != kedaNamespace) {
+		return boolFalse
+	}
+	return boolTrue
 }
 
 func resolveEnvValue(value string, env map[string]string) string {

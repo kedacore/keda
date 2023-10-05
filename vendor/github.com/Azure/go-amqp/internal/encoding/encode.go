@@ -15,7 +15,7 @@ type marshaler interface {
 	Marshal(*buffer.Buffer) error
 }
 
-func Marshal(wr *buffer.Buffer, i interface{}) error {
+func Marshal(wr *buffer.Buffer, i any) error {
 	switch t := i.(type) {
 	case nil:
 		wr.AppendByte(byte(TypeCodeNull))
@@ -103,17 +103,17 @@ func Marshal(wr *buffer.Buffer, i interface{}) error {
 		return WriteBinary(wr, t)
 	case *[]byte:
 		return WriteBinary(wr, *t)
-	case map[interface{}]interface{}:
+	case map[any]any:
 		return writeMap(wr, t)
-	case *map[interface{}]interface{}:
+	case *map[any]any:
 		return writeMap(wr, *t)
-	case map[string]interface{}:
+	case map[string]any:
 		return writeMap(wr, t)
-	case *map[string]interface{}:
+	case *map[string]any:
 		return writeMap(wr, *t)
-	case map[Symbol]interface{}:
+	case map[Symbol]any:
 		return writeMap(wr, t)
-	case *map[Symbol]interface{}:
+	case *map[Symbol]any:
 		return writeMap(wr, *t)
 	case Unsettled:
 		return writeMap(wr, t)
@@ -183,9 +183,9 @@ func Marshal(wr *buffer.Buffer, i interface{}) error {
 		return arrayUUID(t).Marshal(wr)
 	case *[]UUID:
 		return arrayUUID(*t).Marshal(wr)
-	case []interface{}:
+	case []any:
 		return list(t).Marshal(wr)
-	case *[]interface{}:
+	case *[]any:
 		return list(*t).Marshal(wr)
 	case marshaler:
 		return t.Marshal(wr)
@@ -275,8 +275,8 @@ func writeTimestamp(wr *buffer.Buffer, t time.Time) {
 
 // marshalField is a field to be marshaled
 type MarshalField struct {
-	Value interface{} // value to be marshaled, use pointers to avoid interface conversion overhead
-	Omit  bool        // indicates that this field should be omitted (set to null)
+	Value any  // value to be marshaled, use pointers to avoid interface conversion overhead
+	Omit  bool // indicates that this field should be omitted (set to null)
 }
 
 // marshalComposite is a helper for us in a composite's marshal() function.
@@ -404,7 +404,7 @@ func WriteBinary(wr *buffer.Buffer, bin []byte) error {
 	}
 }
 
-func writeMap(wr *buffer.Buffer, m interface{}) error {
+func writeMap(wr *buffer.Buffer, m any) error {
 	startIdx := wr.Len()
 	wr.Append([]byte{
 		byte(TypeCodeMap32), // type
@@ -414,7 +414,7 @@ func writeMap(wr *buffer.Buffer, m interface{}) error {
 
 	var pairs int
 	switch m := m.(type) {
-	case map[interface{}]interface{}:
+	case map[any]any:
 		pairs = len(m) * 2
 		for key, val := range m {
 			err := Marshal(wr, key)
@@ -426,7 +426,7 @@ func writeMap(wr *buffer.Buffer, m interface{}) error {
 				return err
 			}
 		}
-	case map[string]interface{}:
+	case map[string]any:
 		pairs = len(m) * 2
 		for key, val := range m {
 			err := writeString(wr, key)
@@ -438,7 +438,7 @@ func writeMap(wr *buffer.Buffer, m interface{}) error {
 				return err
 			}
 		}
-	case map[Symbol]interface{}:
+	case map[Symbol]any:
 		pairs = len(m) * 2
 		for key, val := range m {
 			err := key.Marshal(wr)

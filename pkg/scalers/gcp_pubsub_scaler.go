@@ -114,7 +114,7 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 		meta.activationValue = activationValue
 	}
 
-	auth, err := getGcpAuthorization(config, config.ResolvedEnv)
+	auth, err := getGCPAuthorization(config)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +167,7 @@ func (s *pubsubScaler) GetMetricsAndActivity(ctx context.Context, metricName str
 
 	value, err := s.getMetrics(ctx, metricType)
 	if err != nil {
-		s.logger.Error(err, "error getting metric", metricType)
+		s.logger.Error(err, "error getting metric", "metricType", metricType)
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 

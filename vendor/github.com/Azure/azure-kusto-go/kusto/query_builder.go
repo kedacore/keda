@@ -473,6 +473,13 @@ func (q Parameters) validate(p Definitions) (Parameters, error) {
 	return q, nil
 }
 
+// Statement is an interface designated to generalize query/management objects - both Stmt, and kql.StatementBuilder
+type Statement interface {
+	fmt.Stringer
+	GetParameters() (map[string]string, error)
+	SupportsInlineParameters() bool
+}
+
 // Stmt is a Kusto Query statement. A Stmt is thread-safe, but methods on the Stmt are not.
 // All methods on a Stmt do not alter the statement, they return a new Stmt object with the changes.
 // This includes a copy of the Definitions and Parameters objects, if provided.  This allows a
@@ -487,6 +494,13 @@ type Stmt struct {
 // StmtOption is an optional argument to NewStmt().
 type StmtOption func(s *Stmt)
 
+func (s Stmt) GetParameters() (map[string]string, error) {
+	return s.params.toParameters(s.defs)
+}
+func (s Stmt) SupportsInlineParameters() bool {
+	return true
+}
+
 // UnsafeStmt enables unsafe actions on a Stmt and all Stmts derived from that Stmt.
 // This turns off safety features that could allow a service client to compromise your data store.
 // USE AT YOUR OWN RISK!
@@ -497,6 +511,7 @@ func UnsafeStmt(options unsafe.Stmt) StmtOption {
 	}
 }
 
+// Deprecated: Use kql.New and kql.NewParameters instead.
 // NewStmt creates a Stmt from a string constant.
 func NewStmt(query stringConstant, options ...StmtOption) Stmt {
 	s := Stmt{queryStr: query.String()}

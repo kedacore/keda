@@ -42,7 +42,7 @@ type azureDataExplorerScaler struct {
 
 const adxName = "azure-data-explorer"
 
-func NewAzureDataExplorerScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+func NewAzureDataExplorerScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -55,7 +55,8 @@ func NewAzureDataExplorerScaler(ctx context.Context, config *ScalerConfig) (Scal
 		return nil, fmt.Errorf("failed to parse azure data explorer metadata: %w", err)
 	}
 
-	client, err := azure.CreateAzureDataExplorerClient(ctx, metadata)
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
+	client, err := azure.CreateAzureDataExplorerClient(metadata, httpClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create azure data explorer client: %w", err)
 	}
@@ -158,10 +159,17 @@ func parseAzureDataExplorerAuthParams(config *ScalerConfig, logger logr.Logger) 
 		}
 		metadata.ClientID = clientID
 
+		// FIXME: DEPRECATED to be removed in v2.13
+		// We should get the secret only from AuthConfig or env
 		clientSecret, err := getParameterFromConfig(config, "clientSecret", true)
 		if err != nil {
 			return nil, err
 		}
+		if val, ok := config.TriggerMetadata["clientSecret"]; ok && val != "" {
+			logger.Info("getting 'clientSecret' from metadata is deprecated, use 'clientSecretFromEnv' or TriggerAuthentication instead")
+		}
+		// FIXME: DEPRECATED to be removed in v2.13
+
 		metadata.ClientSecret = clientSecret
 	default:
 		return nil, fmt.Errorf("error parsing auth params")

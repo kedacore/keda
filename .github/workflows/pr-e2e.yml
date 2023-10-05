@@ -16,7 +16,7 @@ jobs:
       image_tag: "pr-${{ steps.parser.outputs.pr_num }}-${{ steps.parser.outputs.commit_sha }}"
       commit_sha: ${{ steps.parser.outputs.commit_sha }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
 
       - uses: tspascoal/get-user-teams-membership@v2
         id: checkUserMember
@@ -34,6 +34,19 @@ jobs:
             **Update:** You can check the progress [here](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}})
           reactions: rocket
 
+      - name: Add label to skip e2e test
+        if: ${{ startsWith(github.event.comment.body,'/skip-e2e') && steps.checkUserMember.outputs.isTeamMember == 'true' }}
+        uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6
+        with:
+          github-token: ${{ secrets.GH_AUTOMATION_PAT }}
+          script: |
+            github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ["skip-e2e"]
+            })
+
       - name: Parse git info
         if: ${{ startsWith(github.event.comment.body,'/run-e2e') && steps.checkUserMember.outputs.isTeamMember == 'true' }}
         id: parser
@@ -44,22 +57,22 @@ jobs:
           PR_URL="${{ github.event.issue.pull_request.url }}"
           PR_NUM=${PR_URL##*/}
           echo "Checking out from PR #$PR_NUM based on URL: $PR_URL"
-          echo "::set-output name=pr_num::$PR_NUM"
+          echo "pr_num=$PR_NUM" >> $GITHUB_OUTPUT
           # Get commit SHA
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           gh pr checkout $PR_NUM
           SHA=$(git log -n 1 --pretty=format:"%H")
-          echo "::set-output name=commit_sha::$SHA"
+          echo "commit_sha=$SHA" >> $GITHUB_OUTPUT
 
   build-test-images:
     needs: triage
     runs-on: ubuntu-latest
     name: Build images
-    container: ghcr.io/kedacore/build-tools:1.19.7
+    container: ghcr.io/kedacore/keda-tools:1.20.8
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
-        uses: LouisBrunner/checks-action@v1.6.0
+        uses: LouisBrunner/checks-action@v1.6.2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
@@ -67,7 +80,7 @@ jobs:
           status: in_progress
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
 
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -98,11 +111,11 @@ jobs:
     needs: [triage, build-test-images]
     runs-on: e2e
     name: Execute e2e tests
-    container: ghcr.io/kedacore/build-tools:1.19.7
+    container: ghcr.io/kedacore/keda-tools:1.20.8
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
-        uses: LouisBrunner/checks-action@v1.6.0
+        uses: LouisBrunner/checks-action@v1.6.2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
@@ -110,7 +123,7 @@ jobs:
           status: in_progress
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
 
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -126,6 +139,12 @@ jobs:
         with:
           secrets: ${{ toJSON(secrets) }}
 
+      - name: Scale cluster
+        run: make scale-node-pool
+        env:
+          NODE_POOL_SIZE: 4
+          TEST_CLUSTER_NAME: keda-e2e-cluster-pr
+
       - name: Run end to end tests
         continue-on-error: true
         id: test
@@ -135,9 +154,10 @@ jobs:
           AZURE_RUN_WORKLOAD_IDENTITY_TESTS: true
           GCP_RUN_IDENTITY_TESTS: true
           E2E_IMAGE_TAG: ${{ needs.triage.outputs.image_tag }}
-          TEST_CLUSTER_NAME: keda-pr-run
+          TEST_CLUSTER_NAME: keda-e2e-cluster-pr
+          COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
-          MESSAGE="${{ github.event.comment.body }}"
+          MESSAGE="$COMMENT_BODY"
           REGEX='/run-e2e (.+)'
           if [[ "$MESSAGE" =~ $REGEX ]]
           then
@@ -150,7 +170,14 @@ jobs:
         if: ${{ always() }}
         run: make e2e-test-clean
         env:
-          TEST_CLUSTER_NAME: keda-pr-run
+          TEST_CLUSTER_NAME: keda-e2e-cluster-pr
+
+      - name: Scale cluster
+        if: ${{ always() }}
+        run: make scale-node-pool
+        env:
+          NODE_POOL_SIZE: 1
+          TEST_CLUSTER_NAME: keda-e2e-cluster-pr
 
       - name: React to comment with success
         uses: dkershner6/reaction-action@v1
@@ -161,7 +188,7 @@ jobs:
           reaction: "+1"
 
       - name: Set status success
-        uses: LouisBrunner/checks-action@v1.6.0
+        uses: LouisBrunner/checks-action@v1.6.2
         if: steps.test.outcome == 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -179,7 +206,7 @@ jobs:
           reaction: "-1"
 
       - name: Set status failure
-        uses: LouisBrunner/checks-action@v1.6.0
+        uses: LouisBrunner/checks-action@v1.6.2
         if: steps.test.outcome != 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -189,7 +216,7 @@ jobs:
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
       - name: Upload test logs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3
         with:
           name: e2e-test-logs
           path: '${{ github.workspace }}/tests/**/*.log'

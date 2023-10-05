@@ -8,7 +8,6 @@ package azidentity
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
@@ -28,7 +27,10 @@ type DeviceCodeCredentialOptions struct {
 	// ClientID is the ID of the application users will authenticate to.
 	// Defaults to the ID of an Azure development application.
 	ClientID string
-	// DisableInstanceDiscovery allows disconnected cloud solutions to skip instance discovery for unknown authority hosts.
+	// DisableInstanceDiscovery should be set true only by applications authenticating in disconnected clouds, or
+	// private clouds such as Azure Stack. It determines whether the credential requests Azure AD instance metadata
+	// from https://login.microsoft.com before authenticating. Setting this to true will skip this request, making
+	// the application responsible for ensuring the configured authority is valid and trustworthy.
 	DisableInstanceDiscovery bool
 	// TenantID is the Azure Active Directory tenant the credential authenticates in. Defaults to the
 	// "organizations" tenant, which can authenticate work and school accounts. Required for single-tenant
@@ -72,11 +74,10 @@ type DeviceCodeMessage struct {
 // If a web browser is available, InteractiveBrowserCredential is more convenient because it
 // automatically opens a browser to the login page.
 type DeviceCodeCredential struct {
-	account                    public.Account
-	additionallyAllowedTenants []string
-	client                     publicClient
-	tenant                     string
-	userPrompt                 func(context.Context, DeviceCodeMessage) error
+	account public.Account
+	client  publicClient
+	s       *syncer
+	prompt  func(context.Context, DeviceCodeMessage) error
 }
 
 // NewDeviceCodeCredential creates a DeviceCodeCredential. Pass nil to accept default options.
@@ -86,54 +87,49 @@ func NewDeviceCodeCredential(options *DeviceCodeCredentialOptions) (*DeviceCodeC
 		cp = *options
 	}
 	cp.init()
-	c, err := getPublicClient(cp.ClientID, cp.TenantID, &cp.ClientOptions, public.WithInstanceDiscovery(!cp.DisableInstanceDiscovery))
+	c, err := getPublicClient(
+		cp.ClientID, cp.TenantID, &cp.ClientOptions, public.WithInstanceDiscovery(!cp.DisableInstanceDiscovery),
+	)
 	if err != nil {
 		return nil, err
 	}
-	return &DeviceCodeCredential{
-		additionallyAllowedTenants: resolveAdditionallyAllowedTenants(cp.AdditionallyAllowedTenants),
-		client:                     c,
-		tenant:                     cp.TenantID,
-		userPrompt:                 cp.UserPrompt,
-	}, nil
+	cred := DeviceCodeCredential{client: c, prompt: cp.UserPrompt}
+	cred.s = newSyncer(credNameDeviceCode, cp.TenantID, cp.AdditionallyAllowedTenants, cred.requestToken, cred.silentAuth)
+	return &cred, nil
 }
 
 // GetToken requests an access token from Azure Active Directory. It will begin the device code flow and poll until the user completes authentication.
 // This method is called automatically by Azure SDK clients.
 func (c *DeviceCodeCredential) GetToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
-	if len(opts.Scopes) == 0 {
-		return azcore.AccessToken{}, errors.New(credNameDeviceCode + ": GetToken() requires at least one scope")
-	}
-	tenant, err := resolveTenant(c.tenant, opts.TenantID, c.additionallyAllowedTenants)
+	return c.s.GetToken(ctx, opts)
+}
+
+func (c *DeviceCodeCredential) requestToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
+	dc, err := c.client.AcquireTokenByDeviceCode(ctx, opts.Scopes, public.WithTenantID(opts.TenantID))
 	if err != nil {
 		return azcore.AccessToken{}, err
 	}
-	ar, err := c.client.AcquireTokenSilent(ctx, opts.Scopes,
-		public.WithClaims(opts.Claims),
-		public.WithSilentAccount(c.account),
-		public.WithTenantID(tenant),
-	)
-	if err == nil {
-		return azcore.AccessToken{Token: ar.AccessToken, ExpiresOn: ar.ExpiresOn.UTC()}, err
-	}
-	dc, err := c.client.AcquireTokenByDeviceCode(ctx, opts.Scopes, public.WithClaims(opts.Claims), public.WithTenantID(tenant))
-	if err != nil {
-		return azcore.AccessToken{}, newAuthenticationFailedErrorFromMSALError(credNameDeviceCode, err)
-	}
-	err = c.userPrompt(ctx, DeviceCodeMessage{
+	err = c.prompt(ctx, DeviceCodeMessage{
+		Message:         dc.Result.Message,
 		UserCode:        dc.Result.UserCode,
 		VerificationURL: dc.Result.VerificationURL,
-		Message:         dc.Result.Message,
 	})
 	if err != nil {
 		return azcore.AccessToken{}, err
 	}
-	ar, err = dc.AuthenticationResult(ctx)
+	ar, err := dc.AuthenticationResult(ctx)
 	if err != nil {
-		return azcore.AccessToken{}, newAuthenticationFailedErrorFromMSALError(credNameDeviceCode, err)
+		return azcore.AccessToken{}, err
 	}
 	c.account = ar.Account
-	logGetTokenSuccess(c, opts)
+	return azcore.AccessToken{Token: ar.AccessToken, ExpiresOn: ar.ExpiresOn.UTC()}, err
+}
+
+func (c *DeviceCodeCredential) silentAuth(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
+	ar, err := c.client.AcquireTokenSilent(ctx, opts.Scopes,
+		public.WithSilentAccount(c.account),
+		public.WithTenantID(opts.TenantID),
+	)
 	return azcore.AccessToken{Token: ar.AccessToken, ExpiresOn: ar.ExpiresOn.UTC()}, err
 }
 

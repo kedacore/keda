@@ -24,7 +24,6 @@ import (
 	"go.uber.org/zap/zapcore"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // KubeAwareEncoder is a Kubernetes-aware Zap Encoder.
@@ -39,21 +38,6 @@ type KubeAwareEncoder struct {
 	// If false, only name, namespace, api version, and kind are printed.
 	// Otherwise, the full object is logged.
 	Verbose bool
-}
-
-// namespacedNameWrapper is a zapcore.ObjectMarshaler for Kubernetes NamespacedName.
-type namespacedNameWrapper struct {
-	types.NamespacedName
-}
-
-func (w namespacedNameWrapper) MarshalLogObject(enc zapcore.ObjectEncoder) error {
-	if w.Namespace != "" {
-		enc.AddString("namespace", w.Namespace)
-	}
-
-	enc.AddString("name", w.Name)
-
-	return nil
 }
 
 // kubeObjectWrapper is a zapcore.ObjectMarshaler for Kubernetes objects.
@@ -118,12 +102,6 @@ func (k *KubeAwareEncoder) EncodeEntry(entry zapcore.Entry, fields []zapcore.Fie
 					Type:      zapcore.ObjectMarshalerType,
 					Key:       field.Key,
 					Interface: kubeObjectWrapper{obj: val},
-				}
-			case types.NamespacedName:
-				fields[i] = zapcore.Field{
-					Type:      zapcore.ObjectMarshalerType,
-					Key:       field.Key,
-					Interface: namespacedNameWrapper{NamespacedName: val},
 				}
 			}
 		}

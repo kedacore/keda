@@ -876,6 +876,8 @@ declared with specific parameters.
 
 If a queue by this name does not exist, an error will be returned and the
 channel will be closed.
+
+Deprecated: Use QueueDeclare with "Passive: true" instead.
 */
 func (ch *Channel) QueueInspect(name string) (Queue, error) {
 	req := &queueDeclare{
@@ -1433,6 +1435,11 @@ func (ch *Channel) PublishWithDeferredConfirmWithContext(ctx context.Context, ex
 	ch.m.Lock()
 	defer ch.m.Unlock()
 
+	var dc *DeferredConfirmation
+	if ch.confirming {
+		dc = ch.confirms.publish()
+	}
+
 	if err := ch.send(&basicPublish{
 		Exchange:   exchange,
 		RoutingKey: key,
@@ -1455,14 +1462,13 @@ func (ch *Channel) PublishWithDeferredConfirmWithContext(ctx context.Context, ex
 			AppId:           msg.AppId,
 		},
 	}); err != nil {
+		if ch.confirming {
+			ch.confirms.unpublish()
+		}
 		return nil, err
 	}
 
-	if ch.confirming {
-		return ch.confirms.Publish(), nil
-	}
-
-	return nil, nil
+	return dc, nil
 }
 
 /*

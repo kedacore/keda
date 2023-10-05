@@ -22,8 +22,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-
-	"github.com/go-logr/logr"
 )
 
 var randomCACert = `-----BEGIN CERTIFICATE-----
@@ -187,6 +185,7 @@ func TestNewTLSConfig_WithPassword(t *testing.T) {
 		password string
 		issuer   string
 		CACert   string
+		isError  bool
 	}{
 		{
 			name:     "rsaCert_WithCACert",
@@ -195,6 +194,7 @@ func TestNewTLSConfig_WithPassword(t *testing.T) {
 			password: "keypass",
 			issuer:   "O=Internet Widgits Pty Ltd,ST=Some-State,C=AU",
 			CACert:   randomCACert,
+			isError:  false,
 		},
 		{
 			name:     "Cert_WithCACert",
@@ -203,6 +203,7 @@ func TestNewTLSConfig_WithPassword(t *testing.T) {
 			password: "keypass",
 			issuer:   "O=Internet Widgits Pty Ltd,ST=Some-State,C=AU",
 			CACert:   randomCACert,
+			isError:  false,
 		},
 		{
 			name:     "rsaCert_WithoutCACert",
@@ -211,6 +212,7 @@ func TestNewTLSConfig_WithPassword(t *testing.T) {
 			password: "keypass",
 			issuer:   "O=Internet Widgits Pty Ltd,ST=Some-State,C=AU",
 			CACert:   "",
+			isError:  false,
 		},
 		{
 			name:     "Cert_WithoutCACert",
@@ -219,28 +221,33 @@ func TestNewTLSConfig_WithPassword(t *testing.T) {
 			password: "keypass",
 			issuer:   "O=Internet Widgits Pty Ltd,ST=Some-State,C=AU",
 			CACert:   "",
+			isError:  false,
 		},
 	}
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
 			config, err := NewTLSConfigWithPassword(test.cert, test.key, test.password, test.CACert, false)
-			if err != nil {
-				t.Errorf("Should have no error: %s", err)
-			}
-			cert, err := x509.ParseCertificate(config.Certificates[0].Certificate[0])
-			if err != nil {
-				t.Errorf("Bad certificate")
-			}
-
-			if test.CACert != "" {
-				caCertPool := getRootCAs()
-				caCertPool.AppendCertsFromPEM([]byte(randomCACert))
-				if !config.RootCAs.Equal(caCertPool) {
-					t.Errorf("TLS config return different CA cert")
+			switch {
+			case err != nil && !test.isError:
+				t.Errorf("Expected success but got error: %s", err)
+			case test.isError && err == nil:
+				t.Errorf("Expect error but got success")
+			case err == nil:
+				cert, err := x509.ParseCertificate(config.Certificates[0].Certificate[0])
+				if err != nil {
+					t.Errorf("Bad certificate")
 				}
-			}
-			if cert.Issuer.String() != test.issuer {
-				t.Errorf("Expected Issuer %s but got %s\n", test.issuer, cert.Issuer.String())
+
+				if test.CACert != "" {
+					caCertPool := getRootCAs()
+					caCertPool.AppendCertsFromPEM([]byte(randomCACert))
+					if !config.RootCAs.Equal(caCertPool) {
+						t.Errorf("TLS config return different CA cert")
+					}
+				}
+				if cert.Issuer.String() != test.issuer {
+					t.Errorf("Expected Issuer %s but got %s\n", test.issuer, cert.Issuer.String())
+				}
 			}
 		})
 	}
@@ -286,7 +293,7 @@ func TestResolveMinTLSVersion(t *testing.T) {
 		if testData.envSet {
 			os.Setenv("KEDA_HTTP_MIN_TLS_VERSION", testData.envValue)
 		}
-		minVersion := initMinTLSVersion(logr.Discard())
+		minVersion, _ := initMinTLSVersion()
 
 		if testData.expectedVersion != minVersion {
 			t.Error("Failed to resolve minTLSVersion correctly", "wants", testData.expectedVersion, "got", minVersion)

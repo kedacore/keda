@@ -18,6 +18,8 @@ package v1
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/pem"
 
 	"knative.dev/pkg/apis"
 )
@@ -31,6 +33,21 @@ type Destination struct {
 	// URI can be an absolute URL(non-empty scheme and non-empty host) pointing to the target or a relative URI. Relative URIs will be resolved using the base URI retrieved from Ref.
 	// +optional
 	URI *apis.URL `json:"uri,omitempty"`
+
+	// CACerts are Certification Authority (CA) certificates in PEM format
+	// according to https://www.rfc-editor.org/rfc/rfc7468.
+	// If set, these CAs are appended to the set of CAs provided
+	// by the Addressable target, if any.
+	// +optional
+	CACerts *string `json:"CACerts,omitempty"`
+
+	// Audience is the OIDC audience.
+	// This need only be set, if the target is not an Addressable
+	// and thus the Audience can't be received from the Addressable itself.
+	// In case the Addressable specifies an Audience too, the Destinations
+	// Audience takes preference.
+	// +optional
+	Audience *string `json:"audience,omitempty"`
 }
 
 // Validate the Destination has all the necessary fields and check the
@@ -46,6 +63,7 @@ func (d *Destination) Validate(ctx context.Context) *apis.FieldError {
 func ValidateDestination(ctx context.Context, dest Destination) *apis.FieldError {
 	ref := dest.Ref
 	uri := dest.URI
+	caCerts := dest.CACerts
 	if ref == nil && uri == nil {
 		return apis.ErrGeneric("expected at least one, got none", "ref", "uri")
 	}
@@ -59,6 +77,9 @@ func ValidateDestination(ctx context.Context, dest Destination) *apis.FieldError
 	}
 	if ref != nil && uri == nil {
 		return ref.Validate(ctx).ViaField("ref")
+	}
+	if caCerts != nil {
+		return validateCACerts(caCerts)
 	}
 	return nil
 }
@@ -80,4 +101,21 @@ func (d *Destination) SetDefaults(ctx context.Context) {
 	if d.Ref != nil && d.Ref.Namespace == "" {
 		d.Ref.Namespace = apis.ParentMeta(ctx).Namespace
 	}
+}
+
+func validateCACerts(CACert *string) *apis.FieldError {
+	// Check the object.
+	var errs *apis.FieldError
+
+	block, err := pem.Decode([]byte(*CACert))
+	if err != nil && block == nil {
+		errs = errs.Also(apis.ErrInvalidValue("CA Cert provided is invalid", "caCert"))
+		return errs
+	}
+	if block.Type != "CERTIFICATE" {
+		errs = errs.Also(apis.ErrInvalidValue("CA Cert provided is not a certificate", "caCert"))
+	} else if _, err := x509.ParseCertificate(block.Bytes); err != nil {
+		errs = errs.Also(apis.ErrInvalidValue("CA Cert provided is invalid", "caCert"))
+	}
+	return errs
 }

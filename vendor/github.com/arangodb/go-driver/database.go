@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017-2023 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 // limitations under the License.
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
-//
-// Author Ewout Prangsma
 //
 
 package driver
@@ -43,22 +41,22 @@ type Database interface {
 	// If the database does not exist, a NotFoundError is returned.
 	Remove(ctx context.Context) error
 
-	// Collection functions
+	// DatabaseCollections - Collection functions
 	DatabaseCollections
 
-	// View functions
+	// DatabaseViews - View functions
 	DatabaseViews
 
-	// Graph functions
+	// DatabaseGraphs - Graph functions
 	DatabaseGraphs
 
-	// Pregel functions
+	// DatabasePregels - Pregel functions
 	DatabasePregels
 
-	// Streaming Transactions functions
+	// DatabaseStreamingTransactions - Streaming Transactions functions
 	DatabaseStreamingTransactions
 
-	// ArangoSearch Analyzers API
+	// DatabaseArangoSearchAnalyzers - ArangoSearch Analyzers API
 	DatabaseArangoSearchAnalyzers
 
 	// Query performs an AQL query, returning a cursor used to iterate over the returned documents.
@@ -69,6 +67,9 @@ type Database interface {
 	// When the query is valid, nil returned, otherwise an error is returned.
 	// The query is not executed.
 	ValidateQuery(ctx context.Context, query string) error
+
+	// ExplainQuery explains an AQL query and return information about it.
+	ExplainQuery(ctx context.Context, query string, bindVars map[string]interface{}, opts *ExplainQueryOptions) (ExplainQueryResult, error)
 
 	// OptimizerRulesForQueries returns the available optimizer rules for AQL queries
 	// returns an array of objects that contain the name of each available rule and its respective flags.
@@ -94,6 +95,8 @@ type DatabaseInfo struct {
 	WriteConcern int `json:"writeConcern,omitempty"`
 	// Default sharding for collections in database
 	Sharding DatabaseSharding `json:"sharding,omitempty"`
+	// Replication version used for this database
+	ReplicationVersion DatabaseReplicationVersion `json:"replicationVersion,omitempty"`
 }
 
 // EngineType indicates type of database engine being used.

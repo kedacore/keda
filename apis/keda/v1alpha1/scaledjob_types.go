@@ -21,6 +21,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	defaultScaledJobMaxReplicaCount = 100
+	defaultScaledJobMinReplicaCount = 0
+)
+
 // +genclient
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
@@ -31,6 +36,7 @@ import (
 // +kubebuilder:printcolumn:name="Authentication",type="string",JSONPath=".spec.triggers[*].authenticationRef.name"
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status"
 // +kubebuilder:printcolumn:name="Active",type="string",JSONPath=".status.conditions[?(@.type==\"Active\")].status"
+// +kubebuilder:printcolumn:name="Paused",type="string",JSONPath=".status.conditions[?(@.type==\"Paused\")].status"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // ScaledJob is the Schema for the scaledjobs API
@@ -73,6 +79,8 @@ type ScaledJobStatus struct {
 	LastActiveTime *metav1.Time `json:"lastActiveTime,omitempty"`
 	// +optional
 	Conditions Conditions `json:"conditions,omitempty"`
+	// +optional
+	Paused string `json:"Paused,omitempty"`
 }
 
 // ScaledJobList contains a list of ScaledJob
@@ -114,19 +122,27 @@ func init() {
 // MaxReplicaCount returns MaxReplicaCount
 func (s ScaledJob) MaxReplicaCount() int64 {
 	if s.Spec.MaxReplicaCount != nil {
+		if s.Spec.MinReplicaCount != nil && *s.Spec.MinReplicaCount > *s.Spec.MaxReplicaCount {
+			return int64(*s.Spec.MaxReplicaCount)
+		}
 		return int64(*s.Spec.MaxReplicaCount) - s.MinReplicaCount()
 	}
 
-	return 100
+	return defaultScaledJobMaxReplicaCount
 }
 
 // MinReplicaCount returns MinReplicaCount
 func (s ScaledJob) MinReplicaCount() int64 {
 	if s.Spec.MinReplicaCount != nil {
-		if *s.Spec.MinReplicaCount > *s.Spec.MaxReplicaCount {
+		if s.Spec.MaxReplicaCount != nil &&
+			*s.Spec.MinReplicaCount > *s.Spec.MaxReplicaCount {
 			return int64(*s.Spec.MaxReplicaCount)
 		}
 		return int64(*s.Spec.MinReplicaCount)
 	}
-	return 0
+	return defaultScaledJobMinReplicaCount
+}
+
+func (s *ScaledJob) GenerateIdentifier() string {
+	return GenerateIdentifier("ScaledJob", s.Namespace, s.Name)
 }

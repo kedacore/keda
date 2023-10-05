@@ -24,7 +24,6 @@ import (
 	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -36,9 +35,9 @@ type FakeTriggerAuthentications struct {
 	ns   string
 }
 
-var triggerauthenticationsResource = schema.GroupVersionResource{Group: "keda", Version: "v1alpha1", Resource: "triggerauthentications"}
+var triggerauthenticationsResource = v1alpha1.SchemeGroupVersion.WithResource("triggerauthentications")
 
-var triggerauthenticationsKind = schema.GroupVersionKind{Group: "keda", Version: "v1alpha1", Kind: "TriggerAuthentication"}
+var triggerauthenticationsKind = v1alpha1.SchemeGroupVersion.WithKind("TriggerAuthentication")
 
 // Get takes name of the triggerAuthentication, and returns the corresponding triggerAuthentication object, and an error if there is any.
 func (c *FakeTriggerAuthentications) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.TriggerAuthentication, err error) {
@@ -95,6 +94,18 @@ func (c *FakeTriggerAuthentications) Create(ctx context.Context, triggerAuthenti
 func (c *FakeTriggerAuthentications) Update(ctx context.Context, triggerAuthentication *v1alpha1.TriggerAuthentication, opts v1.UpdateOptions) (result *v1alpha1.TriggerAuthentication, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateAction(triggerauthenticationsResource, c.ns, triggerAuthentication), &v1alpha1.TriggerAuthentication{})
+
+	if obj == nil {
+		return nil, err
+	}
+	return obj.(*v1alpha1.TriggerAuthentication), err
+}
+
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+func (c *FakeTriggerAuthentications) UpdateStatus(ctx context.Context, triggerAuthentication *v1alpha1.TriggerAuthentication, opts v1.UpdateOptions) (*v1alpha1.TriggerAuthentication, error) {
+	obj, err := c.Fake.
+		Invokes(testing.NewUpdateSubresourceAction(triggerauthenticationsResource, "status", c.ns, triggerAuthentication), &v1alpha1.TriggerAuthentication{})
 
 	if obj == nil {
 		return nil, err

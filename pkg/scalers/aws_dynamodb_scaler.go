@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/go-logr/logr"
 	"go.mongodb.org/mongo-driver/bson"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -21,7 +21,7 @@ import (
 type awsDynamoDBScaler struct {
 	metricType v2.MetricTargetType
 	metadata   *awsDynamoDBMetadata
-	dbClient   dynamodbiface.DynamoDBAPI
+	dbClient   dynamodb.QueryAPIClient
 	logger     logr.Logger
 }
 
@@ -30,8 +30,9 @@ type awsDynamoDBMetadata struct {
 	awsRegion                 string
 	awsEndpoint               string
 	keyConditionExpression    string
-	expressionAttributeNames  map[string]*string
-	expressionAttributeValues map[string]*dynamodb.AttributeValue
+	expressionAttributeNames  map[string]string
+	expressionAttributeValues map[string]types.AttributeValue
+	indexName                 string
 	targetValue               int64
 	activationTargetValue     int64
 	awsAuthorization          awsAuthorizationMetadata
@@ -39,7 +40,7 @@ type awsDynamoDBMetadata struct {
 	metricName                string
 }
 
-func NewAwsDynamoDBScaler(config *ScalerConfig) (Scaler, error) {
+func NewAwsDynamoDBScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -49,11 +50,14 @@ func NewAwsDynamoDBScaler(config *ScalerConfig) (Scaler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error parsing DynamoDb metadata: %w", err)
 	}
-
+	dbClient, err := createDynamoDBClient(ctx, meta)
+	if err != nil {
+		return nil, fmt.Errorf("error when creating dynamodb client: %w", err)
+	}
 	return &awsDynamoDBScaler{
 		metricType: metricType,
 		metadata:   meta,
-		dbClient:   createDynamoDBClient(meta),
+		dbClient:   dbClient,
 		logger:     InitializeLogger(config, "aws_dynamodb_scaler"),
 	}, nil
 }
@@ -106,6 +110,10 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 		meta.awsEndpoint = val
 	}
 
+	if val, ok := config.TriggerMetadata["indexName"]; ok {
+		meta.indexName = val
+	}
+
 	if val, ok := config.TriggerMetadata["keyConditionExpression"]; ok && val != "" {
 		meta.keyConditionExpression = val
 	} else {
@@ -144,7 +152,11 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 
 		meta.targetValue = n
 	} else {
-		return nil, ErrAwsDynamoNoTargetValue
+		if config.AsMetricSource {
+			meta.targetValue = 0
+		} else {
+			return nil, ErrAwsDynamoNoTargetValue
+		}
 	}
 
 	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok && val != "" {
@@ -172,16 +184,21 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 	return &meta, nil
 }
 
-func createDynamoDBClient(metadata *awsDynamoDBMetadata) *dynamodb.DynamoDB {
-	sess, config := getAwsConfig(metadata.awsRegion,
-		metadata.awsEndpoint,
-		metadata.awsAuthorization)
+func createDynamoDBClient(ctx context.Context, metadata *awsDynamoDBMetadata) (*dynamodb.Client, error) {
+	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+	if err != nil {
+		return nil, err
+	}
 
-	return dynamodb.New(sess, config)
+	return dynamodb.NewFromConfig(*cfg, func(options *dynamodb.Options) {
+		if metadata.awsEndpoint != "" {
+			options.BaseEndpoint = aws.String(metadata.awsEndpoint)
+		}
+	}), nil
 }
 
 func (s *awsDynamoDBScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	metricValue, err := s.GetQueryMetrics()
+	metricValue, err := s.GetQueryMetrics(ctx)
 	if err != nil {
 		s.logger.Error(err, "Error getting metric value")
 		return []external_metrics.ExternalMetricValue{}, false, err
@@ -210,7 +227,7 @@ func (s *awsDynamoDBScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *awsDynamoDBScaler) GetQueryMetrics() (float64, error) {
+func (s *awsDynamoDBScaler) GetQueryMetrics(ctx context.Context) (float64, error) {
 	dimensions := dynamodb.QueryInput{
 		TableName:                 aws.String(s.metadata.tableName),
 		KeyConditionExpression:    aws.String(s.metadata.keyConditionExpression),
@@ -218,17 +235,21 @@ func (s *awsDynamoDBScaler) GetQueryMetrics() (float64, error) {
 		ExpressionAttributeValues: s.metadata.expressionAttributeValues,
 	}
 
-	res, err := s.dbClient.Query(&dimensions)
+	if s.metadata.indexName != "" {
+		dimensions.IndexName = aws.String(s.metadata.indexName)
+	}
+
+	res, err := s.dbClient.Query(ctx, &dimensions)
 	if err != nil {
 		s.logger.Error(err, "Failed to get output")
 		return 0, err
 	}
 
-	return float64(*res.Count), nil
+	return float64(res.Count), nil
 }
 
 // json2Map convert Json to map[string]string
-func json2Map(js string) (m map[string]*string, err error) {
+func json2Map(js string) (m map[string]string, err error) {
 	err = bson.UnmarshalExtJSON([]byte(js), true, &m)
 	if err != nil {
 		return nil, fmt.Errorf("%v: %w", ErrAwsDynamoInvalidExpressionAttributeNames, err)
@@ -240,12 +261,75 @@ func json2Map(js string) (m map[string]*string, err error) {
 	return m, err
 }
 
-// json2DynamoMap converts Json to map[string]*dynamoDb.AttributeValue
-func json2DynamoMap(js string) (m map[string]*dynamodb.AttributeValue, err error) {
-	err = json.Unmarshal([]byte(js), &m)
-
+// json2DynamoMap converts Json to map[string]types.AttributeValue
+func json2DynamoMap(js string) (map[string]types.AttributeValue, error) {
+	var valueMap map[string]interface{}
+	err := json.Unmarshal([]byte(js), &valueMap)
 	if err != nil {
-		return nil, fmt.Errorf("%v: %w", ErrAwsDynamoInvalidExpressionAttributeValues, err)
+		return nil, err
 	}
-	return m, err
+	attributeValues := make(map[string]types.AttributeValue)
+
+	// Iterate through the input map and convert values to AttributeValues
+	for k, v := range valueMap {
+		av, err := attributeValueFromInterface(v)
+		if err != nil {
+			return nil, err
+		}
+		attributeValues[k] = av
+	}
+	return attributeValues, nil
+}
+
+func attributeValueFromInterface(value interface{}) (types.AttributeValue, error) {
+	var err error
+	switch v := value.(type) {
+	case map[string]interface{}:
+		// Check the nested map to determine the data type
+		for dataType, val := range v {
+			switch dataType {
+			case "S":
+				return &types.AttributeValueMemberS{Value: val.(string)}, nil
+			case "N":
+				switch av := val.(type) {
+				case string:
+					return &types.AttributeValueMemberN{Value: av}, nil
+				default:
+					return nil, ErrAwsDynamoInvalidExpressionAttributeValues
+				}
+			case "BOOL":
+				return &types.AttributeValueMemberBOOL{Value: val.(bool)}, nil
+			case "B":
+				return &types.AttributeValueMemberB{Value: []byte(val.(string))}, nil
+			case "L":
+				listValues := val.([]interface{})
+				list := make([]types.AttributeValue, len(listValues))
+				for i, listVal := range listValues {
+					list[i], err = attributeValueFromInterface(listVal)
+					if err != nil {
+						return nil, err
+					}
+				}
+				return &types.AttributeValueMemberL{Value: list}, nil
+			case "M":
+				mapValues := val.(map[string]interface{})
+				m := make(map[string]types.AttributeValue)
+				for mapKey, mapVal := range mapValues {
+					mapAttr, err := attributeValueFromInterface(mapVal)
+					if err != nil {
+						return nil, err
+					}
+					m[mapKey] = mapAttr
+				}
+				return &types.AttributeValueMemberM{Value: m}, nil
+			case "NULL":
+				return &types.AttributeValueMemberNULL{Value: true}, nil
+			default:
+				return nil, fmt.Errorf("unsupported data type for attribute value: %s", dataType)
+			}
+		}
+	default:
+		return nil, fmt.Errorf("unsupported data type for attribute value")
+	}
+	return nil, nil
 }

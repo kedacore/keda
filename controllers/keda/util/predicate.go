@@ -7,8 +7,6 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
-const PausedReplicasAnnotation = "autoscaling.keda.sh/paused-replicas"
-
 type PausedReplicasPredicate struct {
 	predicate.Funcs
 }
@@ -20,15 +18,19 @@ func (PausedReplicasPredicate) Update(e event.UpdateEvent) bool {
 
 	newAnnotations := e.ObjectNew.GetAnnotations()
 	oldAnnotations := e.ObjectOld.GetAnnotations()
-	if newAnnotations != nil && oldAnnotations != nil {
-		if newVal, ok1 := newAnnotations[PausedReplicasAnnotation]; ok1 {
-			if oldVal, ok2 := oldAnnotations[PausedReplicasAnnotation]; ok2 {
-				return newVal != oldVal
-			}
-			return true
-		}
+
+	newPausedValue := ""
+	oldPausedValue := ""
+
+	if newAnnotations != nil {
+		newPausedValue = newAnnotations[kedav1alpha1.PausedReplicasAnnotation]
 	}
-	return false
+
+	if oldAnnotations != nil {
+		oldPausedValue = oldAnnotations[kedav1alpha1.PausedReplicasAnnotation]
+	}
+
+	return newPausedValue != oldPausedValue
 }
 
 type ScaleObjectReadyConditionPredicate struct {
@@ -60,4 +62,30 @@ func (ScaleObjectReadyConditionPredicate) Update(e event.UpdateEvent) bool {
 	}
 
 	return false
+}
+
+type PausedPredicate struct {
+	predicate.Funcs
+}
+
+func (PausedPredicate) Update(e event.UpdateEvent) bool {
+	if e.ObjectOld == nil || e.ObjectNew == nil {
+		return false
+	}
+
+	newAnnotations := e.ObjectNew.GetAnnotations()
+	oldAnnotations := e.ObjectOld.GetAnnotations()
+
+	newPausedValue := ""
+	oldPausedValue := ""
+
+	if newAnnotations != nil {
+		newPausedValue = newAnnotations[kedav1alpha1.PausedAnnotation]
+	}
+
+	if oldAnnotations != nil {
+		oldPausedValue = oldAnnotations[kedav1alpha1.PausedAnnotation]
+	}
+
+	return newPausedValue != oldPausedValue
 }

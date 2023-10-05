@@ -171,7 +171,7 @@ func TestScaler(t *testing.T) {
 	testScaleIn(t, kc, messageURL)
 
 	// cleanup
-	DeleteKubernetesResources(t, kc, testNamespace, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, templates)
 	cleanupQueue(t, queueURL)
 }
 

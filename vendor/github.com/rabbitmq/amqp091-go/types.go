@@ -63,6 +63,11 @@ var (
 	ErrFieldType = &Error{Code: SyntaxError, Reason: "unsupported table field type"}
 )
 
+// internal errors used inside the library
+var (
+	errInvalidTypeAssertion = &Error{Code: InternalError, Reason: "type assertion unsuccessful", Server: false, Recover: true}
+)
+
 // Error captures the code and reason a channel or connection has been closed
 // by the server.
 type Error struct {

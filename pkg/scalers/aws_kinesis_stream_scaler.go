@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/aws/aws-sdk-go/service/kinesis"
-	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -20,10 +20,22 @@ const (
 )
 
 type awsKinesisStreamScaler struct {
-	metricType    v2.MetricTargetType
-	metadata      *awsKinesisStreamMetadata
-	kinesisClient kinesisiface.KinesisAPI
-	logger        logr.Logger
+	metricType           v2.MetricTargetType
+	metadata             *awsKinesisStreamMetadata
+	kinesisWrapperClient KinesisWrapperClient
+	logger               logr.Logger
+}
+
+type KinesisWrapperClient interface {
+	DescribeStreamSummary(context.Context, *kinesis.DescribeStreamSummaryInput, ...func(*kinesis.Options)) (*kinesis.DescribeStreamSummaryOutput, error)
+}
+
+type kinesisWrapperClient struct {
+	kinesisClient *kinesis.Client
+}
+
+func (w kinesisWrapperClient) DescribeStreamSummary(ctx context.Context, params *kinesis.DescribeStreamSummaryInput, optFns ...func(*kinesis.Options)) (*kinesis.DescribeStreamSummaryOutput, error) {
+	return w.kinesisClient.DescribeStreamSummary(ctx, params, optFns...)
 }
 
 type awsKinesisStreamMetadata struct {
@@ -37,7 +49,7 @@ type awsKinesisStreamMetadata struct {
 }
 
 // NewAwsKinesisStreamScaler creates a new awsKinesisStreamScaler
-func NewAwsKinesisStreamScaler(config *ScalerConfig) (Scaler, error) {
+func NewAwsKinesisStreamScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -49,12 +61,18 @@ func NewAwsKinesisStreamScaler(config *ScalerConfig) (Scaler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error parsing Kinesis stream metadata: %w", err)
 	}
+	awsKinesisClient, err := createKinesisClient(ctx, meta)
+	if err != nil {
+		return nil, fmt.Errorf("error creating kinesis client: %w", err)
+	}
 
 	return &awsKinesisStreamScaler{
-		metricType:    metricType,
-		metadata:      meta,
-		kinesisClient: createKinesisClient(meta),
-		logger:        logger,
+		metricType: metricType,
+		metadata:   meta,
+		kinesisWrapperClient: &kinesisWrapperClient{
+			kinesisClient: awsKinesisClient,
+		},
+		logger: logger,
 	}, nil
 }
 
@@ -110,12 +128,16 @@ func parseAwsKinesisStreamMetadata(config *ScalerConfig, logger logr.Logger) (*a
 	return &meta, nil
 }
 
-func createKinesisClient(metadata *awsKinesisStreamMetadata) *kinesis.Kinesis {
-	sess, config := getAwsConfig(metadata.awsRegion,
-		metadata.awsEndpoint,
-		metadata.awsAuthorization)
-
-	return kinesis.New(sess, config)
+func createKinesisClient(ctx context.Context, metadata *awsKinesisStreamMetadata) (*kinesis.Client, error) {
+	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+	if err != nil {
+		return nil, err
+	}
+	return kinesis.NewFromConfig(*cfg, func(options *kinesis.Options) {
+		if metadata.awsEndpoint != "" {
+			options.BaseEndpoint = aws.String(metadata.awsEndpoint)
+		}
+	}), nil
 }
 
 func (s *awsKinesisStreamScaler) Close(context.Context) error {
@@ -135,7 +157,7 @@ func (s *awsKinesisStreamScaler) GetMetricSpecForScaling(context.Context) []v2.M
 
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *awsKinesisStreamScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	shardCount, err := s.GetAwsKinesisOpenShardCount()
+	shardCount, err := s.GetAwsKinesisOpenShardCount(ctx)
 
 	if err != nil {
 		s.logger.Error(err, "Error getting shard count")
@@ -147,16 +169,16 @@ func (s *awsKinesisStreamScaler) GetMetricsAndActivity(ctx context.Context, metr
 	return []external_metrics.ExternalMetricValue{metric}, shardCount > s.metadata.activationTargetShardCount, nil
 }
 
-// Get Kinesis open shard count
-func (s *awsKinesisStreamScaler) GetAwsKinesisOpenShardCount() (int64, error) {
+// GetAwsKinesisOpenShardCount Get Kinesis open shard count
+func (s *awsKinesisStreamScaler) GetAwsKinesisOpenShardCount(ctx context.Context) (int64, error) {
 	input := &kinesis.DescribeStreamSummaryInput{
 		StreamName: &s.metadata.streamName,
 	}
 
-	output, err := s.kinesisClient.DescribeStreamSummary(input)
+	output, err := s.kinesisWrapperClient.DescribeStreamSummary(ctx, input)
 	if err != nil {
 		return -1, err
 	}
 
-	return *output.StreamDescriptionSummary.OpenShardCount, nil
+	return int64(*output.StreamDescriptionSummary.OpenShardCount), nil
 }

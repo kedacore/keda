@@ -40,6 +40,7 @@ type ClusterTriggerAuthenticationsGetter interface {
 type ClusterTriggerAuthenticationInterface interface {
 	Create(ctx context.Context, clusterTriggerAuthentication *v1alpha1.ClusterTriggerAuthentication, opts v1.CreateOptions) (*v1alpha1.ClusterTriggerAuthentication, error)
 	Update(ctx context.Context, clusterTriggerAuthentication *v1alpha1.ClusterTriggerAuthentication, opts v1.UpdateOptions) (*v1alpha1.ClusterTriggerAuthentication, error)
+	UpdateStatus(ctx context.Context, clusterTriggerAuthentication *v1alpha1.ClusterTriggerAuthentication, opts v1.UpdateOptions) (*v1alpha1.ClusterTriggerAuthentication, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
 	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.ClusterTriggerAuthentication, error)
@@ -121,6 +122,21 @@ func (c *clusterTriggerAuthentications) Update(ctx context.Context, clusterTrigg
 	err = c.client.Put().
 		Resource("clustertriggerauthentications").
 		Name(clusterTriggerAuthentication.Name).
+		VersionedParams(&opts, scheme.ParameterCodec).
+		Body(clusterTriggerAuthentication).
+		Do(ctx).
+		Into(result)
+	return
+}
+
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+func (c *clusterTriggerAuthentications) UpdateStatus(ctx context.Context, clusterTriggerAuthentication *v1alpha1.ClusterTriggerAuthentication, opts v1.UpdateOptions) (result *v1alpha1.ClusterTriggerAuthentication, err error) {
+	result = &v1alpha1.ClusterTriggerAuthentication{}
+	err = c.client.Put().
+		Resource("clustertriggerauthentications").
+		Name(clusterTriggerAuthentication.Name).
+		SubResource("status").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(clusterTriggerAuthentication).
 		Do(ctx).

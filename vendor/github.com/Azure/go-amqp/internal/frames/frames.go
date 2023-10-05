@@ -10,20 +10,38 @@ import (
 	"github.com/Azure/go-amqp/internal/encoding"
 )
 
+// Type contains the values for a frame's type.
+type Type uint8
+
+const (
+	TypeAMQP Type = 0x0
+	TypeSASL Type = 0x1
+)
+
+// String implements the fmt.Stringer interface for type Type.
+func (t Type) String() string {
+	if t == 0 {
+		return "AMQP"
+	}
+	return "SASL"
+}
+
 /*
 <type name="source" class="composite" source="list" provides="source">
-    <descriptor name="amqp:source:list" code="0x00000000:0x00000028"/>
-    <field name="address" type="*" requires="address"/>
-    <field name="durable" type="terminus-durability" default="none"/>
-    <field name="expiry-policy" type="terminus-expiry-policy" default="session-end"/>
-    <field name="timeout" type="seconds" default="0"/>
-    <field name="dynamic" type="boolean" default="false"/>
-    <field name="dynamic-node-properties" type="node-properties"/>
-    <field name="distribution-mode" type="symbol" requires="distribution-mode"/>
-    <field name="filter" type="filter-set"/>
-    <field name="default-outcome" type="*" requires="outcome"/>
-    <field name="outcomes" type="symbol" multiple="true"/>
-    <field name="capabilities" type="symbol" multiple="true"/>
+
+	<descriptor name="amqp:source:list" code="0x00000000:0x00000028"/>
+	<field name="address" type="*" requires="address"/>
+	<field name="durable" type="terminus-durability" default="none"/>
+	<field name="expiry-policy" type="terminus-expiry-policy" default="session-end"/>
+	<field name="timeout" type="seconds" default="0"/>
+	<field name="dynamic" type="boolean" default="false"/>
+	<field name="dynamic-node-properties" type="node-properties"/>
+	<field name="distribution-mode" type="symbol" requires="distribution-mode"/>
+	<field name="filter" type="filter-set"/>
+	<field name="default-outcome" type="*" requires="outcome"/>
+	<field name="outcomes" type="symbol" multiple="true"/>
+	<field name="capabilities" type="symbol" multiple="true"/>
+
 </type>
 */
 type Source struct {
@@ -103,7 +121,7 @@ type Source struct {
 	//					distribution-modes. That is, the value MUST be of the same type as
 	//					would be valid in a field defined with the following attributes:
 	//						type="symbol" multiple="true" requires="distribution-mode"
-	DynamicNodeProperties map[encoding.Symbol]interface{} // TODO: implement custom type with validation
+	DynamicNodeProperties map[encoding.Symbol]any // TODO: implement custom type with validation
 
 	// the distribution mode of the link
 	//
@@ -125,7 +143,7 @@ type Source struct {
 	// Indicates the outcome to be used for transfers that have not reached a terminal
 	// state at the receiver when the transfer is settled, including when the source
 	// is destroyed. The value MUST be a valid outcome (e.g., released or rejected).
-	DefaultOutcome interface{}
+	DefaultOutcome any
 
 	// descriptors for the outcomes that can be chosen on this link
 	//
@@ -178,7 +196,7 @@ func (s *Source) Unmarshal(r *buffer.Buffer) error {
 
 func (s Source) String() string {
 	return fmt.Sprintf("source{Address: %s, Durable: %d, ExpiryPolicy: %s, Timeout: %d, "+
-		"Dynamic: %t, DynamicNodeProperties: %v, DistributionMode: %s, Filter: %v, DefaultOutcome: %v"+
+		"Dynamic: %t, DynamicNodeProperties: %v, DistributionMode: %s, Filter: %v, DefaultOutcome: %v "+
 		"Outcomes: %v, Capabilities: %v}",
 		s.Address,
 		s.Durable,
@@ -196,14 +214,16 @@ func (s Source) String() string {
 
 /*
 <type name="target" class="composite" source="list" provides="target">
-    <descriptor name="amqp:target:list" code="0x00000000:0x00000029"/>
-    <field name="address" type="*" requires="address"/>
-    <field name="durable" type="terminus-durability" default="none"/>
-    <field name="expiry-policy" type="terminus-expiry-policy" default="session-end"/>
-    <field name="timeout" type="seconds" default="0"/>
-    <field name="dynamic" type="boolean" default="false"/>
-    <field name="dynamic-node-properties" type="node-properties"/>
-    <field name="capabilities" type="symbol" multiple="true"/>
+
+	<descriptor name="amqp:target:list" code="0x00000000:0x00000029"/>
+	<field name="address" type="*" requires="address"/>
+	<field name="durable" type="terminus-durability" default="none"/>
+	<field name="expiry-policy" type="terminus-expiry-policy" default="session-end"/>
+	<field name="timeout" type="seconds" default="0"/>
+	<field name="dynamic" type="boolean" default="false"/>
+	<field name="dynamic-node-properties" type="node-properties"/>
+	<field name="capabilities" type="symbol" multiple="true"/>
+
 </type>
 */
 type Target struct {
@@ -283,7 +303,7 @@ type Target struct {
 	//					distribution-modes. That is, the value MUST be of the same type as
 	//					would be valid in a field defined with the following attributes:
 	//						type="symbol" multiple="true" requires="distribution-mode"
-	DynamicNodeProperties map[encoding.Symbol]interface{} // TODO: implement custom type with validation
+	DynamicNodeProperties map[encoding.Symbol]any // TODO: implement custom type with validation
 
 	// the extension capabilities the sender supports/desires
 	//
@@ -330,12 +350,14 @@ func (t Target) String() string {
 
 // frame is the decoded representation of a frame
 type Frame struct {
-	Type    uint8     // AMQP/SASL
+	Type    Type      // AMQP/SASL
 	Channel uint16    // channel this frame is for
 	Body    FrameBody // body of the frame
+}
 
-	// optional channel which will be closed after net transmit
-	Done chan encoding.DeliveryState
+// String implements the fmt.Stringer interface for type Frame.
+func (f Frame) String() string {
+	return fmt.Sprintf("Frame{Type: %s, Channel: %d, Body: %s}", f.Type, f.Channel, f.Body)
 }
 
 // frameBody adds some type safety to frame encoding
@@ -369,7 +391,7 @@ type PerformOpen struct {
 	IncomingLocales     encoding.MultiSymbol
 	OfferedCapabilities encoding.MultiSymbol
 	DesiredCapabilities encoding.MultiSymbol
-	Properties          map[encoding.Symbol]interface{}
+	Properties          map[encoding.Symbol]any
 }
 
 func (o *PerformOpen) frameBody() {}
@@ -425,15 +447,17 @@ func (o *PerformOpen) String() string {
 
 /*
 <type name="begin" class="composite" source="list" provides="frame">
-    <descriptor name="amqp:begin:list" code="0x00000000:0x00000011"/>
-    <field name="remote-channel" type="ushort"/>
-    <field name="next-outgoing-id" type="transfer-number" mandatory="true"/>
-    <field name="incoming-window" type="uint" mandatory="true"/>
-    <field name="outgoing-window" type="uint" mandatory="true"/>
-    <field name="handle-max" type="handle" default="4294967295"/>
-    <field name="offered-capabilities" type="symbol" multiple="true"/>
-    <field name="desired-capabilities" type="symbol" multiple="true"/>
-    <field name="properties" type="fields"/>
+
+	<descriptor name="amqp:begin:list" code="0x00000000:0x00000011"/>
+	<field name="remote-channel" type="ushort"/>
+	<field name="next-outgoing-id" type="transfer-number" mandatory="true"/>
+	<field name="incoming-window" type="uint" mandatory="true"/>
+	<field name="outgoing-window" type="uint" mandatory="true"/>
+	<field name="handle-max" type="handle" default="4294967295"/>
+	<field name="offered-capabilities" type="symbol" multiple="true"/>
+	<field name="desired-capabilities" type="symbol" multiple="true"/>
+	<field name="properties" type="fields"/>
+
 </type>
 */
 type PerformBegin struct {
@@ -471,7 +495,7 @@ type PerformBegin struct {
 
 	// session properties
 	// http://www.amqp.org/specification/1.0/session-properties
-	Properties map[encoding.Symbol]interface{}
+	Properties map[encoding.Symbol]any
 }
 
 func (b *PerformBegin) frameBody() {}
@@ -526,21 +550,23 @@ func (b *PerformBegin) Unmarshal(r *buffer.Buffer) error {
 
 /*
 <type name="attach" class="composite" source="list" provides="frame">
-    <descriptor name="amqp:attach:list" code="0x00000000:0x00000012"/>
-    <field name="name" type="string" mandatory="true"/>
-    <field name="handle" type="handle" mandatory="true"/>
-    <field name="role" type="role" mandatory="true"/>
-    <field name="snd-settle-mode" type="sender-settle-mode" default="mixed"/>
-    <field name="rcv-settle-mode" type="receiver-settle-mode" default="first"/>
-    <field name="source" type="*" requires="source"/>
-    <field name="target" type="*" requires="target"/>
-    <field name="unsettled" type="map"/>
-    <field name="incomplete-unsettled" type="boolean" default="false"/>
-    <field name="initial-delivery-count" type="sequence-no"/>
-    <field name="max-message-size" type="ulong"/>
-    <field name="offered-capabilities" type="symbol" multiple="true"/>
-    <field name="desired-capabilities" type="symbol" multiple="true"/>
-    <field name="properties" type="fields"/>
+
+	<descriptor name="amqp:attach:list" code="0x00000000:0x00000012"/>
+	<field name="name" type="string" mandatory="true"/>
+	<field name="handle" type="handle" mandatory="true"/>
+	<field name="role" type="role" mandatory="true"/>
+	<field name="snd-settle-mode" type="sender-settle-mode" default="mixed"/>
+	<field name="rcv-settle-mode" type="receiver-settle-mode" default="first"/>
+	<field name="source" type="*" requires="source"/>
+	<field name="target" type="*" requires="target"/>
+	<field name="unsettled" type="map"/>
+	<field name="incomplete-unsettled" type="boolean" default="false"/>
+	<field name="initial-delivery-count" type="sequence-no"/>
+	<field name="max-message-size" type="ulong"/>
+	<field name="offered-capabilities" type="symbol" multiple="true"/>
+	<field name="desired-capabilities" type="symbol" multiple="true"/>
+	<field name="properties" type="fields"/>
+
 </type>
 */
 type PerformAttach struct {
@@ -671,7 +697,7 @@ type PerformAttach struct {
 
 	// link properties
 	// http://www.amqp.org/specification/1.0/link-properties
-	Properties map[encoding.Symbol]interface{}
+	Properties map[encoding.Symbol]any
 }
 
 func (a *PerformAttach) frameBody() {}
@@ -737,18 +763,20 @@ func (a *PerformAttach) Unmarshal(r *buffer.Buffer) error {
 
 /*
 <type name="flow" class="composite" source="list" provides="frame">
-    <descriptor name="amqp:flow:list" code="0x00000000:0x00000013"/>
-    <field name="next-incoming-id" type="transfer-number"/>
-    <field name="incoming-window" type="uint" mandatory="true"/>
-    <field name="next-outgoing-id" type="transfer-number" mandatory="true"/>
-    <field name="outgoing-window" type="uint" mandatory="true"/>
-    <field name="handle" type="handle"/>
-    <field name="delivery-count" type="sequence-no"/>
-    <field name="link-credit" type="uint"/>
-    <field name="available" type="uint"/>
-    <field name="drain" type="boolean" default="false"/>
-    <field name="echo" type="boolean" default="false"/>
-    <field name="properties" type="fields"/>
+
+	<descriptor name="amqp:flow:list" code="0x00000000:0x00000013"/>
+	<field name="next-incoming-id" type="transfer-number"/>
+	<field name="incoming-window" type="uint" mandatory="true"/>
+	<field name="next-outgoing-id" type="transfer-number" mandatory="true"/>
+	<field name="outgoing-window" type="uint" mandatory="true"/>
+	<field name="handle" type="handle"/>
+	<field name="delivery-count" type="sequence-no"/>
+	<field name="link-credit" type="uint"/>
+	<field name="available" type="uint"/>
+	<field name="drain" type="boolean" default="false"/>
+	<field name="echo" type="boolean" default="false"/>
+	<field name="properties" type="fields"/>
+
 </type>
 */
 type PerformFlow struct {
@@ -847,7 +875,7 @@ type PerformFlow struct {
 
 	// link state properties
 	// http://www.amqp.org/specification/1.0/link-state-properties
-	Properties map[encoding.Symbol]interface{}
+	Properties map[encoding.Symbol]any
 }
 
 func (f *PerformFlow) frameBody() {}
@@ -910,18 +938,20 @@ func (f *PerformFlow) Unmarshal(r *buffer.Buffer) error {
 
 /*
 <type name="transfer" class="composite" source="list" provides="frame">
-    <descriptor name="amqp:transfer:list" code="0x00000000:0x00000014"/>
-    <field name="handle" type="handle" mandatory="true"/>
-    <field name="delivery-id" type="delivery-number"/>
-    <field name="delivery-tag" type="delivery-tag"/>
-    <field name="message-format" type="message-format"/>
-    <field name="settled" type="boolean"/>
-    <field name="more" type="boolean" default="false"/>
-    <field name="rcv-settle-mode" type="receiver-settle-mode"/>
-    <field name="state" type="*" requires="delivery-state"/>
-    <field name="resume" type="boolean" default="false"/>
-    <field name="aborted" type="boolean" default="false"/>
-    <field name="batchable" type="boolean" default="false"/>
+
+	<descriptor name="amqp:transfer:list" code="0x00000000:0x00000014"/>
+	<field name="handle" type="handle" mandatory="true"/>
+	<field name="delivery-id" type="delivery-number"/>
+	<field name="delivery-tag" type="delivery-tag"/>
+	<field name="message-format" type="message-format"/>
+	<field name="settled" type="boolean"/>
+	<field name="more" type="boolean" default="false"/>
+	<field name="rcv-settle-mode" type="receiver-settle-mode"/>
+	<field name="state" type="*" requires="delivery-state"/>
+	<field name="resume" type="boolean" default="false"/>
+	<field name="aborted" type="boolean" default="false"/>
+	<field name="batchable" type="boolean" default="false"/>
+
 </type>
 */
 type PerformTransfer struct {
@@ -1073,7 +1103,7 @@ func (t *PerformTransfer) frameBody() {}
 func (t PerformTransfer) String() string {
 	deliveryTag := "<nil>"
 	if t.DeliveryTag != nil {
-		deliveryTag = fmt.Sprintf("%q", t.DeliveryTag)
+		deliveryTag = fmt.Sprintf("%X", t.DeliveryTag)
 	}
 
 	return fmt.Sprintf("Transfer{Handle: %d, DeliveryID: %s, DeliveryTag: %s, MessageFormat: %s, "+
@@ -1141,13 +1171,15 @@ func (t *PerformTransfer) Unmarshal(r *buffer.Buffer) error {
 
 /*
 <type name="disposition" class="composite" source="list" provides="frame">
-    <descriptor name="amqp:disposition:list" code="0x00000000:0x00000015"/>
-    <field name="role" type="role" mandatory="true"/>
-    <field name="first" type="delivery-number" mandatory="true"/>
-    <field name="last" type="delivery-number"/>
-    <field name="settled" type="boolean" default="false"/>
-    <field name="state" type="*" requires="delivery-state"/>
-    <field name="batchable" type="boolean" default="false"/>
+
+	<descriptor name="amqp:disposition:list" code="0x00000000:0x00000015"/>
+	<field name="role" type="role" mandatory="true"/>
+	<field name="first" type="delivery-number" mandatory="true"/>
+	<field name="last" type="delivery-number"/>
+	<field name="settled" type="boolean" default="false"/>
+	<field name="state" type="*" requires="delivery-state"/>
+	<field name="batchable" type="boolean" default="false"/>
+
 </type>
 */
 type PerformDisposition struct {
@@ -1191,7 +1223,7 @@ type PerformDisposition struct {
 func (d *PerformDisposition) frameBody() {}
 
 func (d PerformDisposition) String() string {
-	return fmt.Sprintf("Disposition{Role: %s, First: %d, Last: %s, Settled: %t, State: %s, Batchable: %t}",
+	return fmt.Sprintf("Disposition{Role: %s, First: %d, Last: %s, Settled: %t, State: %v, Batchable: %t}",
 		d.Role,
 		d.First,
 		formatUint32Ptr(d.Last),
@@ -1225,10 +1257,12 @@ func (d *PerformDisposition) Unmarshal(r *buffer.Buffer) error {
 
 /*
 <type name="detach" class="composite" source="list" provides="frame">
-    <descriptor name="amqp:detach:list" code="0x00000000:0x00000016"/>
-    <field name="handle" type="handle" mandatory="true"/>
-    <field name="closed" type="boolean" default="false"/>
-    <field name="error" type="error"/>
+
+	<descriptor name="amqp:detach:list" code="0x00000000:0x00000016"/>
+	<field name="handle" type="handle" mandatory="true"/>
+	<field name="closed" type="boolean" default="false"/>
+	<field name="error" type="error"/>
+
 </type>
 */
 type PerformDetach struct {
@@ -1273,8 +1307,10 @@ func (d *PerformDetach) Unmarshal(r *buffer.Buffer) error {
 
 /*
 <type name="end" class="composite" source="list" provides="frame">
-    <descriptor name="amqp:end:list" code="0x00000000:0x00000017"/>
-    <field name="error" type="error"/>
+
+	<descriptor name="amqp:end:list" code="0x00000000:0x00000017"/>
+	<field name="error" type="error"/>
+
 </type>
 */
 type PerformEnd struct {
@@ -1286,6 +1322,10 @@ type PerformEnd struct {
 }
 
 func (e *PerformEnd) frameBody() {}
+
+func (d PerformEnd) String() string {
+	return fmt.Sprintf("End{Error: %v}", d.Error)
+}
 
 func (e *PerformEnd) Marshal(wr *buffer.Buffer) error {
 	return encoding.MarshalComposite(wr, encoding.TypeCodeEnd, []encoding.MarshalField{
@@ -1301,8 +1341,10 @@ func (e *PerformEnd) Unmarshal(r *buffer.Buffer) error {
 
 /*
 <type name="close" class="composite" source="list" provides="frame">
-    <descriptor name="amqp:close:list" code="0x00000000:0x00000018"/>
-    <field name="error" type="error"/>
+
+	<descriptor name="amqp:close:list" code="0x00000000:0x00000018"/>
+	<field name="error" type="error"/>
+
 </type>
 */
 type PerformClose struct {

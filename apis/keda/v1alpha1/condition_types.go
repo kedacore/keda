@@ -32,6 +32,8 @@ const (
 	ConditionActive ConditionType = "Active"
 	// ConditionFallback specifies that the resource has a fallback active.
 	ConditionFallback ConditionType = "Fallback"
+	// ConditionPaused specifies that the resource is paused.
+	ConditionPaused ConditionType = "Paused"
 )
 
 const (
@@ -39,6 +41,21 @@ const (
 	ScaledObjectConditionReadySucccesReason = "ScaledObjectReady"
 	// ScaledObjectConditionReadySuccessMessage defines the default Message for correct ScaledObject
 	ScaledObjectConditionReadySuccessMessage = "ScaledObject is defined correctly and is ready for scaling"
+	// ScaledObjectConditionPausedReason defines the default Reason for paused ScaledObject
+	ScaledObjectConditionPausedReason = "ScaledObjectPaused"
+	// ScaledObjectConditionPausedMessage defines the default Message for paused ScaledObject
+	ScaledObjectConditionPausedMessage = "ScaledObject is paused"
+)
+
+const (
+	// ScaledJobConditionPausedReason defines the default Reason for paused ScaledJob
+	ScaledJobConditionPausedReason = "ScaledJobPaused"
+	// ScaledJobConditionPausedReason defines the default Reason for paused ScaledJob
+	ScaledJobConditionUnpausedReason = "ScaledJobUnpaused"
+	// ScaledJobConditionPausedMessage defines the default Message for paused ScaledJob
+	ScaledJobConditionPausedMessage = "ScaledJob is paused"
+	// ScaledJobConditionPausedMessage defines the default Message for paused ScaledJob
+	ScaledJobConditionUnpausedMessage = "ScaledJob is unpaused"
 )
 
 // Condition to store the condition state
@@ -70,6 +87,7 @@ func (c *Conditions) AreInitialized() bool {
 	foundReady := false
 	foundActive := false
 	foundFallback := false
+	foundPaused := false
 	if *c != nil {
 		for _, condition := range *c {
 			if condition.Type == ConditionReady {
@@ -89,14 +107,20 @@ func (c *Conditions) AreInitialized() bool {
 				break
 			}
 		}
+		for _, condition := range *c {
+			if condition.Type == ConditionPaused {
+				foundPaused = true
+				break
+			}
+		}
 	}
 
-	return foundReady && foundActive && foundFallback
+	return foundReady && foundActive && foundFallback && foundPaused
 }
 
 // GetInitializedConditions returns Conditions initialized to the default -> Status: Unknown
 func GetInitializedConditions() *Conditions {
-	return &Conditions{{Type: ConditionReady, Status: metav1.ConditionUnknown}, {Type: ConditionActive, Status: metav1.ConditionUnknown}, {Type: ConditionFallback, Status: metav1.ConditionUnknown}}
+	return &Conditions{{Type: ConditionReady, Status: metav1.ConditionUnknown}, {Type: ConditionActive, Status: metav1.ConditionUnknown}, {Type: ConditionFallback, Status: metav1.ConditionUnknown}, {Type: ConditionPaused, Status: metav1.ConditionUnknown}}
 }
 
 // IsTrue is true if the condition is True
@@ -147,6 +171,14 @@ func (c *Conditions) SetFallbackCondition(status metav1.ConditionStatus, reason 
 	c.setCondition(ConditionFallback, status, reason, message)
 }
 
+// SetPausedCondition modifies Paused Condition according to input parameters
+func (c *Conditions) SetPausedCondition(status metav1.ConditionStatus, reason string, message string) {
+	if *c == nil {
+		c = GetInitializedConditions()
+	}
+	c.setCondition(ConditionPaused, status, reason, message)
+}
+
 // GetActiveCondition returns Condition of type Active
 func (c *Conditions) GetActiveCondition() Condition {
 	if *c == nil {
@@ -163,12 +195,20 @@ func (c *Conditions) GetReadyCondition() Condition {
 	return c.getCondition(ConditionReady)
 }
 
-// GetFallbackCondition returns Condition of type Ready
+// GetFallbackCondition returns Condition of type Fallback
 func (c *Conditions) GetFallbackCondition() Condition {
 	if *c == nil {
 		c = GetInitializedConditions()
 	}
 	return c.getCondition(ConditionFallback)
+}
+
+// GetPausedCondition returns Condition of type Paused
+func (c *Conditions) GetPausedCondition() Condition {
+	if *c == nil {
+		c = GetInitializedConditions()
+	}
+	return c.getCondition(ConditionPaused)
 }
 
 func (c Conditions) getCondition(conditionType ConditionType) Condition {

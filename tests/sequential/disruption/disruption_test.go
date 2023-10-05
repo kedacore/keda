@@ -73,16 +73,16 @@ metadata:
   name: {{.SutDeploymentName}}
   namespace: {{.TestNamespace}}
   labels:
-    deploy: workload-sut
+    deploy: {{.SutDeploymentName}}
 spec:
   replicas: 0
   selector:
     matchLabels:
-      pod: workload-sut
+      pod: {{.SutDeploymentName}}
   template:
     metadata:
       labels:
-        pod: workload-sut
+        pod: {{.SutDeploymentName}}
     spec:
       containers:
       - name: nginx
@@ -144,7 +144,7 @@ func TestScaler(t *testing.T) {
 		KubectlDeleteMultipleWithTemplate(t, data, sutDeployment)
 		KubectlDeleteMultipleWithTemplate(t, data, scaledObject)
 	}
-	DeleteNamespace(t, kc, testNamespace)
+	DeleteNamespace(t, testNamespace)
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {

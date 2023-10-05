@@ -28,7 +28,7 @@ const (
 	defaultHeartbeat         = 10 * time.Second
 	defaultConnectionTimeout = 30 * time.Second
 	defaultProduct           = "AMQP 0.9.1 Client"
-	buildVersion             = "1.6.0"
+	buildVersion             = "1.8.1"
 	platform                 = "golang"
 	// Safer default that makes channel leaks a lot easier to spot
 	// before they create operational headaches. See https://github.com/rabbitmq/rabbitmq-server/issues/1593.
@@ -399,12 +399,47 @@ func (c *Connection) Close() error {
 	)
 }
 
+// CloseDeadline requests and waits for the response to close this AMQP connection.
+//
+// Accepts a deadline for waiting the server response. The deadline is passed
+// to the low-level connection i.e. network socket.
+//
+// Regardless of the error returned, the connection is considered closed, and it
+// should not be used after calling this function.
+//
+// In the event of an I/O timeout, connection-closed listeners are NOT informed.
+//
+// After returning from this call, all resources associated with this connection,
+// including the underlying io, Channels, Notify listeners and Channel consumers
+// will also be closed.
+func (c *Connection) CloseDeadline(deadline time.Time) error {
+	if c.IsClosed() {
+		return ErrClosed
+	}
+
+	defer c.shutdown(nil)
+
+	err := c.setDeadline(deadline)
+	if err != nil {
+		return err
+	}
+
+	return c.call(
+		&connectionClose{
+			ReplyCode: replySuccess,
+			ReplyText: "kthxbai",
+		},
+		&connectionCloseOk{},
+	)
+}
+
 func (c *Connection) closeWith(err *Error) error {
 	if c.IsClosed() {
 		return ErrClosed
 	}
 
 	defer c.shutdown(err)
+
 	return c.call(
 		&connectionClose{
 			ReplyCode: uint16(err.Code),
@@ -418,6 +453,18 @@ func (c *Connection) closeWith(err *Error) error {
 // is returned.
 func (c *Connection) IsClosed() bool {
 	return atomic.LoadInt32(&c.closed) == 1
+}
+
+// setDeadline is a wrapper to type assert Connection.conn and set an I/O
+// deadline in the underlying TCP connection socket, by calling
+// net.Conn.SetDeadline(). It returns an error, in case the type assertion fails,
+// although this should never happen.
+func (c *Connection) setDeadline(t time.Time) error {
+	con, ok := c.conn.(net.Conn)
+	if !ok {
+		return errInvalidTypeAssertion
+	}
+	return con.SetDeadline(t)
 }
 
 func (c *Connection) send(f frame) error {
@@ -551,8 +598,8 @@ func (c *Connection) shutdown(err *Error) {
 
 		c.conn.Close()
 
-		c.channels = map[uint16]*Channel{}
-		c.allocator = newAllocator(1, c.Config.ChannelMax)
+		c.channels = nil
+		c.allocator = nil
 		c.noNotify = true
 	})
 }
@@ -601,13 +648,17 @@ func (c *Connection) dispatch0(f frame) {
 
 func (c *Connection) dispatchN(f frame) {
 	c.m.Lock()
-	channel := c.channels[f.channel()]
-	updateChannel(f, channel)
+	channel, ok := c.channels[f.channel()]
+	if ok {
+		updateChannel(f, channel)
+	} else {
+		Logger.Printf("[debug] dropping frame, channel %d does not exist", f.channel())
+	}
 	c.m.Unlock()
 
 	// Note: this could result in concurrent dispatch depending on
 	// how channels are managed in an application
-	if channel != nil {
+	if ok {
 		channel.recv(channel, f)
 	} else {
 		c.dispatchClosed(f)
@@ -766,8 +817,10 @@ func (c *Connection) releaseChannel(id uint16) {
 	c.m.Lock()
 	defer c.m.Unlock()
 
-	delete(c.channels, id)
-	c.allocator.release(int(id))
+	if !c.IsClosed() {
+		delete(c.channels, id)
+		c.allocator.release(int(id))
+	}
 }
 
 // openChannel allocates and opens a channel, must be paired with closeChannel
@@ -912,6 +965,10 @@ func (c *Connection) openTune(config Config, auth Authentication) error {
 		return ErrCredentials
 	}
 
+	// Edge case that may race with c.shutdown()
+	// https://github.com/rabbitmq/amqp091-go/issues/170
+	c.m.Lock()
+
 	// When the server and client both use default 0, then the max channel is
 	// only limited by uint16.
 	c.Config.ChannelMax = pick(config.ChannelMax, int(tune.ChannelMax))
@@ -919,6 +976,10 @@ func (c *Connection) openTune(config Config, auth Authentication) error {
 		c.Config.ChannelMax = defaultChannelMax
 	}
 	c.Config.ChannelMax = min(c.Config.ChannelMax, maxChannelMax)
+
+	c.allocator = newAllocator(1, c.Config.ChannelMax)
+
+	c.m.Unlock()
 
 	// Frame size includes headers and end byte (len(payload)+8), even if
 	// this is less than FrameMinSize, use what the server sends because the
@@ -974,7 +1035,6 @@ func (c *Connection) openComplete() error {
 		_ = deadliner.SetDeadline(time.Time{})
 	}
 
-	c.allocator = newAllocator(1, c.Config.ChannelMax)
 	return nil
 }
 
