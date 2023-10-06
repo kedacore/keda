@@ -647,7 +647,7 @@ func testScalingOnlyPartitionsWithLag(t *testing.T, kc *kubernetes.Clientset, da
 	// because we only have lag on 1 partition
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 1, 60)
 
-	// publish new messages on a seperate partition
+	// publish new messages on a separate partition
 	secondPartitionKey := "my-second-key"
 	for i := 0; i < messages; i++ {
 		publishMessagePartitionKey(t, limitToPartitionsWithLagTopic, secondPartitionKey)
