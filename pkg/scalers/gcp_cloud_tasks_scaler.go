@@ -35,7 +35,7 @@ type gcpCloudTaskMetadata struct {
 	scalerIndex      int
 }
 
-// NewCloudTaskScaler creates a new cloudTaskScaler
+// NewGcpCloudTasksScaler creates a new cloudTaskScaler
 func NewGcpCloudTasksScaler(config *ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {

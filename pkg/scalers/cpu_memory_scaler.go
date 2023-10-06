@@ -118,7 +118,7 @@ func (s *cpuMemoryScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSp
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetrics no need for cpu/memory scaler and always active for cpu/memory scaler
+// GetMetricsAndActivity no need for cpu/memory scaler and always active for cpu/memory scaler
 func (s *cpuMemoryScaler) GetMetricsAndActivity(_ context.Context, _ string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	return nil, true, nil
 }

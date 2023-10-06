@@ -35,7 +35,7 @@ type MetricsCollector interface {
 	// RecordScalerLatency create a measurement of the latency to external metric
 	RecordScalerLatency(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64)
 
-	// RecordScaledObjectLatency create a measurement of the latency executing scalable object loop
+	// RecordScalableObjectLatency create a measurement of the latency executing scalable object loop
 	RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value float64)
 
 	// RecordScalerActive create a measurement of the activity of the scaler
@@ -44,7 +44,7 @@ type MetricsCollector interface {
 	// RecordScalerError counts the number of errors occurred in trying get an external metric used by the HPA
 	RecordScalerError(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, err error)
 
-	// RecordScaleObjectError counts the number of errors with the scaled object
+	// RecordScaledObjectError counts the number of errors with the scaled object
 	RecordScaledObjectError(namespace string, scaledObject string, err error)
 
 	IncrementTriggerTotal(triggerType string)
@@ -82,7 +82,7 @@ func RecordScalerLatency(namespace string, scaledObject string, scaler string, s
 	}
 }
 
-// RecordScaledObjectLatency create a measurement of the latency executing scalable object loop
+// RecordScalableObjectLatency create a measurement of the latency executing scalable object loop
 func RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value float64) {
 	for _, element := range collectors {
 		element.RecordScalableObjectLatency(namespace, name, isScaledObject, value)
@@ -103,7 +103,7 @@ func RecordScalerError(namespace string, scaledObject string, scaler string, sca
 	}
 }
 
-// RecordScaleObjectError counts the number of errors with the scaled object
+// RecordScaledObjectError counts the number of errors with the scaled object
 func RecordScaledObjectError(namespace string, scaledObject string, err error) {
 	for _, element := range collectors {
 		element.RecordScaledObjectError(namespace, scaledObject, err)
