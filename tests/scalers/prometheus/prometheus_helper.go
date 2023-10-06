@@ -426,8 +426,6 @@ spec:
           args:
             - --volume-dir=/etc/config
             - --webhook-url=http://127.0.0.1:9090/-/reload
-          resources:
-            {}
 
           volumeMounts:
             - name: config-volume
@@ -462,8 +460,6 @@ spec:
             timeoutSeconds: 30
             failureThreshold: 3
             successThreshold: 1
-          resources:
-            {}
 
           volumeMounts:
             - name: config-volume

@@ -133,7 +133,6 @@ spec:
         volumeMounts:
         - name: dshm
           mountPath: /dev/shm
-        resources: {}
       volumes:
       - name: dshm
         emptyDir:
@@ -222,7 +221,6 @@ spec:
         volumeMounts:
         - name: dshm
           mountPath: /dev/shm
-        resources: {}
       volumes:
       - name: dshm
         emptyDir:
@@ -312,7 +310,6 @@ spec:
         volumeMounts:
         - name: dshm
           mountPath: /dev/shm
-        resources: {}
       volumes:
       - name: dshm
         emptyDir:

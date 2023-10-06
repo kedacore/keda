@@ -46,11 +46,6 @@ spec:
         image: registry.k8s.io/hpa-example
         ports:
         - containerPort: 80
-        resources:
-          limits:
-            cpu: 500m
-          requests:
-            cpu: 200m
         imagePullPolicy: IfNotPresent
 `
 
