@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
@@ -388,18 +389,22 @@ func TestPrometheusScalerExecutePromQueryParameters(t *testing.T) {
 		"second": "bar",
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		time := time.Now().UTC().Format(time.RFC3339)
+		expectedPath := fmt.Sprintf("/api/v1/query?query=&time=%s&first=foo&second=bar", time)
 		for queryParameterName, queryParameterValue := range queryParametersValue {
 			queryParameter := request.URL.Query()
 			queryParameter.Add(queryParameterName, queryParameterValue)
 		}
-
 		
+		if request.RequestURI != expectedPath {
+			t.Error("Expect request path to =", expectedPath, "but it is", request.RequestURI)
+		}
+
 		writer.WriteHeader(testData.responseStatus)
 		if _, err := writer.Write([]byte(testData.bodyStr)); err != nil {
 			t.Fatal(err)
 		}
 	}))
-
 	scaler := prometheusScaler{
 		metadata: &prometheusMetadata{
 			serverAddress:    server.URL,
@@ -408,7 +413,6 @@ func TestPrometheusScalerExecutePromQueryParameters(t *testing.T) {
 		},
 		httpClient: http.DefaultClient,
 	}
-
 	_, err := scaler.ExecutePromQuery(context.TODO())
 
 	assert.NoError(t, err)
