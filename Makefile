@@ -92,21 +92,11 @@ get-cluster-context: az-login ## Get Azure cluster context.
 
 .PHONY: scale-node-pool
 scale-node-pool: az-login ## Scale nodepool.
-	if [ "$(NODE_POOL_SIZE)" = "4" ]; then \
-		az aks scale \
+	@az aks scale \
 		--name $(TEST_CLUSTER_NAME) \
 		--subscription $(TF_AZURE_SUBSCRIPTION) \
 		--resource-group $(TF_AZURE_RESOURCE_GROUP) \
-		--node-count 2; \
-	fi
-	
-	if [ "$(NODE_POOL_SIZE)" != "4" ]; then \
-		az aks scale \
-		--name $(TEST_CLUSTER_NAME) \
-		--subscription $(TF_AZURE_SUBSCRIPTION) \
-		--resource-group $(TF_AZURE_RESOURCE_GROUP) \
-		--node-count $(NODE_POOL_SIZE); \
-	fi
+		--node-count $(NODE_POOL_SIZE)
 
 .PHONY: e2e-test
 e2e-test: get-cluster-context ## Run e2e tests against Azure cluster.
