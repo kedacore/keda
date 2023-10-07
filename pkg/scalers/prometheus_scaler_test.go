@@ -395,7 +395,7 @@ func TestPrometheusScalerExecutePromQueryParameters(t *testing.T) {
 			queryParameter := request.URL.Query()
 			queryParameter.Add(queryParameterName, queryParameterValue)
 		}
-		
+
 		if request.RequestURI != expectedPath {
 			t.Error("Expect request path to =", expectedPath, "but it is", request.RequestURI)
 		}
