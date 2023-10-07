@@ -144,7 +144,7 @@ jobs:
       - name: Scale cluster
         run: make scale-node-pool
         env:
-          NODE_POOL_SIZE: 4
+          NODE_POOL_SIZE: 2
           TEST_CLUSTER_NAME: keda-e2e-cluster-pr
 
       - name: Run end to end tests
