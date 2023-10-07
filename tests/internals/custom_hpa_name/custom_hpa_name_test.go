@@ -63,10 +63,12 @@ spec:
   maxReplicaCount: 1
   cooldownPeriod: 10
   triggers:
-    - type: cpu
-      metadata:
-        type: Utilization
-        value: "50"
+  - type: metrics-api
+    metadata:
+      targetValue: "2"
+      url: "invalid-invalid"
+      valueLocation: 'value'
+      method: "query"
 `
 
 	scaledObjectTemplateWithCustomName = `
@@ -85,10 +87,12 @@ spec:
     horizontalPodAutoscalerConfig:
       name: {{.CustomHpaName}}
   triggers:
-      - type: cpu
-        metadata:
-          type: Utilization
-          value: "50"
+  - type: metrics-api
+    metadata:
+      targetValue: "2"
+      url: "invalid-invalid"
+      valueLocation: 'value'
+      method: "query"
 `
 )
 

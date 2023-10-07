@@ -265,10 +265,12 @@ spec:
     metadata:
       podSelector: 'pod={{.WorkloadDeploymentName}}'
       value: '1'
-  - type: cpu
-    metricType: Utilization
+  - type: metrics-api
     metadata:
-      value: "50"
+      targetValue: "2"
+      url: "invalid-invalid"
+      valueLocation: 'value'
+      method: "query"
 `
 
 	updateMetricTemplate = `
