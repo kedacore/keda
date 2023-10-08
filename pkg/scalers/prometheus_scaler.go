@@ -10,7 +10,6 @@ import (
 	"net/http"
 	url_pkg "net/url"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -279,11 +278,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	}
 
 	for queryParameterKey, queryParameterValue := range s.metadata.queryParameters {
-		test := queryParameterValue[len(queryParameterValue)-1:]
-		if test == "?" || test == "&" {
-			queryParameterValue = strings.TrimSuffix(queryParameterValue, test)
-		}
-		url = fmt.Sprintf("%s&%s=%s", url, queryParameterKey, queryParameterValue)
+		url = url_pkg.QueryEscape(fmt.Sprintf("%s&%s=%s", url, queryParameterKey, queryParameterValue))
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
