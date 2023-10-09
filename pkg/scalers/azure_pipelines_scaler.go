@@ -378,7 +378,7 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 func stripDeadJobs(jobs []JobRequest) []JobRequest {
 	var filtered []JobRequest
 	for _, job := range jobs {
-		if job.Result == nil {
+		if job.ReservedAgent == nil {
 			filtered = append(filtered, job)
 		}
 	}
