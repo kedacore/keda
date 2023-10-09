@@ -50,8 +50,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 - **General**: Add parameter queryParameters in prometheus-scaler ([#4962](https://github.com/kedacore/keda/issues/4962))
+- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 #### Experimental
 
