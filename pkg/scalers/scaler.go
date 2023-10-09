@@ -42,10 +42,10 @@ func init() {
 
 // Scaler interface
 type Scaler interface {
-	// The scaler returns the metric values and activity for a metric Name
+	// GetMetricsAndActivity returns the metric values and activity for a metric Name
 	GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error)
 
-	// Returns the metrics based on which this scaler determines that the ScaleTarget scales. This is used to construct the HPA spec that is created for
+	// GetMetricSpecForScaling returns the metrics based on which this scaler determines that the ScaleTarget scales. This is used to construct the HPA spec that is created for
 	// this scaled object. The labels used should match the selectors used in GetMetrics
 	GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec
 
@@ -99,6 +99,9 @@ type ScalerConfig struct {
 
 	// MetricType
 	MetricType v2.MetricTargetType
+
+	// When we use the scaler for composite scaler, we shouldn't require the value because it'll be ignored
+	AsMetricSource bool
 }
 
 var (

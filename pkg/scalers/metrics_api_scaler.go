@@ -114,7 +114,11 @@ func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, e
 		}
 		meta.targetValue = targetValue
 	} else {
-		return nil, fmt.Errorf("no targetValue given in metadata")
+		if config.AsMetricSource {
+			meta.targetValue = 0
+		} else {
+			return nil, fmt.Errorf("no targetValue given in metadata")
+		}
 	}
 
 	meta.activationTargetValue = 0

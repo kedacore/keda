@@ -123,14 +123,12 @@ spec:
           image: daprio/daprd:1.9.5-mariner
           imagePullPolicy: Always
           command: ["./daprd", "-app-id", "azure-eventhub-dapr", "-app-port", "3000", "-components-path", "/components", "-log-level", "debug"]
-          resources:
           volumeMounts:
           - mountPath: "/components"
             name: {{.SecretName}}
             readOnly: true
         - name: {{.DeploymentName}}
           image: ghcr.io/kedacore/tests-azure-eventhub-dapr
-          resources:
           env:
             - name: APP_PORT
               value: "3000"

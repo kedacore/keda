@@ -29,7 +29,7 @@ spec:
   architectures:
     - arm64
     - amd64
-  mode: Cluster
+  mode: Single
   image: "arangodb/arangodb:3.10.1"
 `
 
@@ -90,12 +90,12 @@ func InstallArangoDB(t *testing.T, kc *kubernetes.Clientset, testNamespace strin
 	assert.NoErrorf(t, err, "cannot install crds - %s", err)
 
 	t.Log("installing arangodb operator")
-	_, err = helper.ExecuteCommand(fmt.Sprintf("helm install arangodb https://github.com/arangodb/kube-arangodb/releases/download/1.2.20/kube-arangodb-1.2.20.tgz --set 'operator.architectures={arm64,amd64}' --namespace=%s --wait", testNamespace))
+	_, err = helper.ExecuteCommand(fmt.Sprintf("helm install arangodb https://github.com/arangodb/kube-arangodb/releases/download/1.2.20/kube-arangodb-1.2.20.tgz --set 'operator.architectures={arm64,amd64}' --set 'operator.resources.requests.cpu=1m' --set 'operator.resources.requests.memory=1Mi' --namespace=%s --wait", testNamespace))
 	assert.NoErrorf(t, err, "cannot create operator deployment - %s", err)
 
 	t.Log("creating arangodeployment resource")
 	helper.KubectlApplyWithTemplate(t, templateData{Namespace: testNamespace}, "arangoDeploymentTemplate", arangoDeploymentTemplate)
-	assert.True(t, helper.WaitForPodCountInNamespace(t, kc, testNamespace, 11, 5, 20), "pod count should be 11")
+	assert.True(t, helper.WaitForPodCountInNamespace(t, kc, testNamespace, 3, 5, 20), "pod count should be 3")
 	assert.True(t, helper.WaitForAllPodRunningInNamespace(t, kc, testNamespace, 5, 20), "all pods should be running")
 }
 

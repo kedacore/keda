@@ -265,22 +265,9 @@ func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser)
 		connectionInfo: connInfo,
 	}
 
-	meta.connectionInfo.enableTLS = defaultEnableTLS
-	if val, ok := config.TriggerMetadata["enableTLS"]; ok {
-		tls, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, fmt.Errorf("enableTLS parsing error %w", err)
-		}
-		meta.connectionInfo.enableTLS = tls
-	}
-
-	meta.connectionInfo.unsafeSsl = false
-	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
-		parsedVal, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing unsafeSsl: %w", err)
-		}
-		meta.connectionInfo.unsafeSsl = parsedVal
+	err = parseTLSConfigIntoConnectionInfo(config, &meta.connectionInfo)
+	if err != nil {
+		return nil, err
 	}
 
 	if val, ok := config.TriggerMetadata[streamNameMetadata]; ok {

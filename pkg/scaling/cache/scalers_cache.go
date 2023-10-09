@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/antonmedv/expr/vm"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -37,6 +38,7 @@ type ScalersCache struct {
 	Scalers                  []ScalerBuilder
 	ScalableObjectGeneration int64
 	Recorder                 record.EventRecorder
+	CompiledFormula          *vm.Program
 }
 
 type ScalerBuilder struct {
@@ -57,7 +59,7 @@ func (c *ScalersCache) GetScalers() ([]scalers.Scaler, []scalers.ScalerConfig) {
 	return scalersList, configsList
 }
 
-// GetPushScaler returns array of push scalers stored in the cache
+// GetPushScalers returns array of push scalers stored in the cache
 func (c *ScalersCache) GetPushScalers() []scalers.PushScaler {
 	var result []scalers.PushScaler
 	for _, s := range c.Scalers {

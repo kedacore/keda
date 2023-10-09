@@ -28,6 +28,7 @@ We are a Cloud Native Computing Foundation (CNCF) graduated project.
 - [Community](#community)
 - [Adopters - Become a listed KEDA user!](#adopters---become-a-listed-keda-user)
 - [Governance & Policies](#governance--policies)
+- [Support](#support)
 - [Roadmap](#roadmap)
 - [Releases](#releases)
 - [Contributing](#contributing)
@@ -67,6 +68,10 @@ We are always happy to [list users](https://keda.sh/community/#users) who run KE
 ## Governance & Policies
 
 You can learn about the governance of KEDA [here](https://github.com/kedacore/governance).
+
+## Support
+
+Details on the KEDA support policy can found [here](https://keda.sh/support/).
 
 ## Roadmap
 

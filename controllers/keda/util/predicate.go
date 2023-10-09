@@ -7,10 +7,6 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
-const PausedReplicasAnnotation = "autoscaling.keda.sh/paused-replicas"
-
-const PausedAnnotation = "autoscaling.keda.sh/paused"
-
 type PausedReplicasPredicate struct {
 	predicate.Funcs
 }
@@ -27,11 +23,11 @@ func (PausedReplicasPredicate) Update(e event.UpdateEvent) bool {
 	oldPausedValue := ""
 
 	if newAnnotations != nil {
-		newPausedValue = newAnnotations[PausedReplicasAnnotation]
+		newPausedValue = newAnnotations[kedav1alpha1.PausedReplicasAnnotation]
 	}
 
 	if oldAnnotations != nil {
-		oldPausedValue = oldAnnotations[PausedReplicasAnnotation]
+		oldPausedValue = oldAnnotations[kedav1alpha1.PausedReplicasAnnotation]
 	}
 
 	return newPausedValue != oldPausedValue
@@ -84,11 +80,11 @@ func (PausedPredicate) Update(e event.UpdateEvent) bool {
 	oldPausedValue := ""
 
 	if newAnnotations != nil {
-		newPausedValue = newAnnotations[PausedAnnotation]
+		newPausedValue = newAnnotations[kedav1alpha1.PausedAnnotation]
 	}
 
 	if oldAnnotations != nil {
-		oldPausedValue = oldAnnotations[PausedAnnotation]
+		oldPausedValue = oldAnnotations[kedav1alpha1.PausedAnnotation]
 	}
 
 	return newPausedValue != oldPausedValue
