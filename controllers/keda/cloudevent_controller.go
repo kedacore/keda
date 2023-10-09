@@ -31,7 +31,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventemitter"
-	"github.com/kedacore/keda/v2/pkg/prommetrics"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 )
 
 // CloudEventsReconciler reconciles a CloudEvents object
@@ -170,10 +170,10 @@ func (r *CloudEventsReconciler) updatePromMetrics(cloudEvent *kedav1alpha1.Cloud
 	defer cloudEventPromMetricsLock.Unlock()
 
 	if metricsData, ok := cloudEventPromMetricsMap[namespacedName]; ok {
-		prommetrics.DecrementCRDTotal(prommetrics.CloudEventsResource, metricsData.namespace)
+		metricscollector.DecrementCRDTotal(metricscollector.CloudEventsResource, metricsData.namespace)
 	}
 
-	prommetrics.IncrementCRDTotal(prommetrics.CloudEventsResource, cloudEvent.Namespace)
+	metricscollector.IncrementCRDTotal(metricscollector.CloudEventsResource, cloudEvent.Namespace)
 	cloudEventPromMetricsMap[namespacedName] = cloudEventsMetricsData{namespace: cloudEvent.Namespace}
 }
 
@@ -183,7 +183,7 @@ func (r *CloudEventsReconciler) UpdatePromMetricsOnDelete(namespacedName string)
 	defer cloudEventPromMetricsLock.Unlock()
 
 	if metricsData, ok := cloudEventPromMetricsMap[namespacedName]; ok {
-		prommetrics.DecrementCRDTotal(prommetrics.CloudEventsResource, metricsData.namespace)
+		metricscollector.DecrementCRDTotal(metricscollector.CloudEventsResource, metricsData.namespace)
 	}
 
 	delete(cloudEventPromMetricsMap, namespacedName)
