@@ -170,7 +170,6 @@ spec:
         - containerPort: 9300
           name: transport
           protocol: TCP
-        resources:
         readinessProbe:
           exec:
             command:
