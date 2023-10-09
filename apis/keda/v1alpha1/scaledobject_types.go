@@ -51,6 +51,8 @@ type ScaledObject struct {
 
 const ScaledObjectOwnerAnnotation = "scaledobject.keda.sh/name"
 const ScaledObjectTransferHpaOwnershipAnnotation = "scaledobject.keda.sh/transfer-hpa-ownership"
+const PausedReplicasAnnotation = "autoscaling.keda.sh/paused-replicas"
+const PausedAnnotation = "autoscaling.keda.sh/paused"
 
 // HealthStatus is the status for a ScaledObject's health
 type HealthStatus struct {
@@ -115,6 +117,10 @@ type AdvancedConfig struct {
 type ScalingModifiers struct {
 	Formula string `json:"formula,omitempty"`
 	Target  string `json:"target,omitempty"`
+	// +optional
+	ActivationTarget string `json:"activationTarget,omitempty"`
+	// +optional
+	MetricType autoscalingv2.MetricTargetType `json:"metricType,omitempty"`
 }
 
 // HorizontalPodAutoscalerConfig specifies horizontal scale config
@@ -181,6 +187,24 @@ func init() {
 // GenerateIdentifier returns identifier for the object in for "kind.namespace.name"
 func (so *ScaledObject) GenerateIdentifier() string {
 	return GenerateIdentifier("ScaledObject", so.Namespace, so.Name)
+}
+
+// HasPausedAnnotition returns whether this ScaledObject has PausedAnnotation or PausedReplicasAnnotation
+func (so *ScaledObject) HasPausedAnnotation() bool {
+	_, pausedAnnotationFound := so.GetAnnotations()[PausedAnnotation]
+	_, pausedReplicasAnnotationFound := so.GetAnnotations()[PausedReplicasAnnotation]
+	return pausedAnnotationFound || pausedReplicasAnnotationFound
+}
+
+// NeedToBePausedByAnnotation will check whether ScaledObject needs to be paused based on PausedAnnotation or PausedReplicaCount
+func (so *ScaledObject) NeedToBePausedByAnnotation() bool {
+	_, pausedReplicasAnnotationFound := so.GetAnnotations()[PausedReplicasAnnotation]
+	if pausedReplicasAnnotationFound {
+		return so.Status.PausedReplicaCount != nil
+	}
+
+	_, pausedAnnotationFound := so.GetAnnotations()[PausedAnnotation]
+	return pausedAnnotationFound
 }
 
 // IsUsingModifiers determines whether scalingModifiers are defined or not

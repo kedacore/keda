@@ -290,8 +290,8 @@ func (e *scaleExecutor) cleanUp(ctx context.Context, scaledJob *kedav1alpha1.Sca
 		return err
 	}
 
-	completedJobs := []batchv1.Job{}
-	failedJobs := []batchv1.Job{}
+	var completedJobs []batchv1.Job
+	var failedJobs []batchv1.Job
 	for _, job := range jobs.Items {
 		job := job
 		finishedJobConditionType := e.getFinishedJobConditionType(&job)

@@ -152,7 +152,11 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 
 		meta.targetValue = n
 	} else {
-		return nil, ErrAwsDynamoNoTargetValue
+		if config.AsMetricSource {
+			meta.targetValue = 0
+		} else {
+			return nil, ErrAwsDynamoNoTargetValue
+		}
 	}
 
 	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok && val != "" {

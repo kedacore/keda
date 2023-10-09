@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -416,7 +417,9 @@ var _ = It("shouldn't create so when stabilizationWindowSeconds exceeds 3600", f
 
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), so)
-	}).Should(HaveOccurred())
+	}).
+		WithTimeout(5 * time.Second).
+		Should(HaveOccurred())
 })
 
 var _ = It("should validate the so creation with ScalingModifiers.Formula", func() {

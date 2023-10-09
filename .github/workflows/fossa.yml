@@ -9,6 +9,10 @@ on:
 env:
   fossa-key: 9e722f2c8904586d61f97f0bf05a99e4 # This is a public key only for pushing, it's safe here
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest

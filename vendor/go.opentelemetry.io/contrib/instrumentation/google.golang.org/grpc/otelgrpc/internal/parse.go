@@ -26,17 +26,17 @@ import (
 // on a gRPC's FullMethod.
 func ParseFullMethod(fullMethod string) (string, []attribute.KeyValue) {
 	name := strings.TrimLeft(fullMethod, "/")
-	parts := strings.SplitN(name, "/", 2)
-	if len(parts) != 2 {
+	service, method, found := strings.Cut(name, "/")
+	if !found {
 		// Invalid format, does not follow `/package.service/method`.
-		return name, []attribute.KeyValue(nil)
+		return name, nil
 	}
 
 	var attrs []attribute.KeyValue
-	if service := parts[0]; service != "" {
+	if service != "" {
 		attrs = append(attrs, semconv.RPCService(service))
 	}
-	if method := parts[1]; method != "" {
+	if method != "" {
 		attrs = append(attrs, semconv.RPCMethod(method))
 	}
 	return name, attrs

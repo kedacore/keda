@@ -227,7 +227,7 @@ func (s *azureServiceBusScaler) Close(context.Context) error {
 	return nil
 }
 
-// Returns the metric spec to be used by the HPA
+// GetMetricSpecForScaling returns the metric spec to be used by the HPA
 func (s *azureServiceBusScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	metricName := ""
 
@@ -297,7 +297,7 @@ func (s *azureServiceBusScaler) getServiceBusAdminClient() (*admin.Client, error
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		client, err = admin.NewClientFromConnectionString(s.metadata.connection, nil)
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
-		creds, chainedErr := azure.NewChainedCredential(s.podIdentity.GetIdentityID(), s.podIdentity.Provider)
+		creds, chainedErr := azure.NewChainedCredential(s.logger, s.podIdentity.GetIdentityID(), s.podIdentity.Provider)
 		if chainedErr != nil {
 			return nil, chainedErr
 		}

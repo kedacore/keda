@@ -79,7 +79,11 @@ func parseAzureAppInsightsMetadata(config *ScalerConfig, logger logr.Logger) (*a
 
 	val, err := getParameterFromConfig(config, azureAppInsightsTargetValueName, false)
 	if err != nil {
-		return nil, err
+		if config.AsMetricSource {
+			meta.targetValue = 0
+		} else {
+			return nil, err
+		}
 	}
 	targetValue, err := strconv.ParseFloat(val, 64)
 	if err != nil {

@@ -9,6 +9,10 @@ env:
   SKIP_E2E_TAG: skip-e2e
   E2E_CHECK_NAME: e2e tests
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   e2e-checker:
     name: label checker

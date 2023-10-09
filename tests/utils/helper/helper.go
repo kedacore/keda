@@ -46,4 +46,55 @@ data:
         - __meta_kubernetes_pod_name
         target_label: kubernetes_pod_name
 `
+	OtlpConfig = `mode: deployment
+config:
+  exporters:
+    logging:
+      loglevel: debug
+    prometheus:
+      endpoint: 0.0.0.0:8889
+  receivers:
+    jaeger: null
+    prometheus: null
+    zipkin: null
+  service:
+    pipelines:
+      traces: null
+      metrics:
+        receivers:
+          - otlp
+        exporters:
+          - logging
+          - prometheus
+      logs: null
+`
+	OtlpServicePatch = `apiVersion: v1
+kind: Service
+metadata:
+  name: opentelemetry-collector
+spec:
+  selector:
+    app.kubernetes.io/name: opentelemetry-collector
+  ports:
+    - protocol: TCP
+      port: 8889
+      targetPort: 8889
+      name: prometheus
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opentelemetry-collector
+spec:
+  template:
+    spec:
+      containers:
+      - name: opentelemetry-collector
+        ports:
+        - containerPort: 8889
+          name: prometheus
+          protocol: TCP
+`
 )

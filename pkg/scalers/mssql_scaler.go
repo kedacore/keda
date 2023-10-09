@@ -113,7 +113,11 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 		}
 		meta.targetValue = targetValue
 	} else {
-		return nil, ErrMsSQLNoTargetValue
+		if config.AsMetricSource {
+			meta.targetValue = 0
+		} else {
+			return nil, ErrMsSQLNoTargetValue
+		}
 	}
 
 	// Activation target value

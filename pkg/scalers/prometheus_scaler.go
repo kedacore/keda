@@ -106,7 +106,7 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 	} else {
 		// could be the case of azure managed prometheus. Try and get the round-tripper.
 		// If it's not the case of azure managed prometheus, we will get both transport and err as nil and proceed assuming no auth.
-		azureTransport, err := azure.TryAndGetAzureManagedPrometheusHTTPRoundTripper(config.PodIdentity, config.TriggerMetadata)
+		azureTransport, err := azure.TryAndGetAzureManagedPrometheusHTTPRoundTripper(logger, config.PodIdentity, config.TriggerMetadata)
 		if err != nil {
 			logger.V(1).Error(err, "error while init Azure Managed Prometheus client http transport")
 			return nil, err
@@ -159,7 +159,11 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 
 		meta.threshold = t
 	} else {
-		return nil, fmt.Errorf("no %s given", promThreshold)
+		if config.AsMetricSource {
+			meta.threshold = 0
+		} else {
+			return nil, fmt.Errorf("no %s given", promThreshold)
+		}
 	}
 
 	meta.activationThreshold = 0

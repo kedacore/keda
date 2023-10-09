@@ -26,10 +26,10 @@ function extract_and_check() {
   fi
 
   # Separate and sort the **General**: lines
-  local sorted_general_lines=$(echo "$content" | grep '^- \*\*General\*\*:' | sort --ignore-case --dictionary-order)
+  local sorted_general_lines=$(echo "$content" | grep '^- \*\*General\*\*:' | LC_ALL=en_US sort --ignore-case --dictionary-order)
 
   # Sort the remaining lines
-  local sorted_content=$(echo "$content" | grep -v '^- \*\*General\*\*:' | sort --ignore-case --dictionary-order)
+  local sorted_content=$(echo "$content" | grep -v '^- \*\*General\*\*:' | LC_ALL=en_US sort --ignore-case --dictionary-order)
 
   # Check if sorted_general_lines is not empty, then concatenate
   if [[ -n "$sorted_general_lines" ]]; then
@@ -40,7 +40,7 @@ function extract_and_check() {
   while IFS= read -r line; do
       echo "Error: Wrong pattern found in section: $section , line: $line"
       exit 1
-  done < <(grep -Ev '^(-\s\*\*[^*]+\*\*: .*\(\[#(\d+)\]\(https:\/\/github\.com\/kedacore\/(keda|charts|governance)\/(pull|issues|discussions)\/\2\)(?:\|\[#(\d+)\]\(https:\/\/github\.com\/kedacore\/(keda|charts|governance)\/(pull|issues|discussions)\/\5\)){0,}\))$' <<< "$content")
+  done < <(grep -Pv '^(-\s\*\*[^*]+\*\*: .*\(\[#(\d+|XXX)\]\(https:\/\/github\.com\/kedacore\/(keda|charts|governance)\/(pull|issues|discussions)\/\2\)(?:\|\[#(\w+)\]\(https:\/\/github\.com\/kedacore\/(keda|charts|governance)\/(pull|issues|discussions)\/(?:\5)\)){0,}\))$' <<< "$content")
 
   if [ "$content" != "$sorted_content" ]; then
       echo "Error: Section: $section is not sorted correctly. Correct order:"

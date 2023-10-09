@@ -41,7 +41,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
-	"github.com/kedacore/keda/v2/pkg/prommetrics"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 )
@@ -216,7 +216,7 @@ func (r *ScaledJobReconciler) reconcileScaledJob(ctx context.Context, logger log
 
 // checkIfPaused checks the presence of "autoscaling.keda.sh/paused" annotation on the scaledJob and stop the scale loop.
 func (r *ScaledJobReconciler) checkIfPaused(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob, conditions *kedav1alpha1.Conditions) (bool, error) {
-	_, pausedAnnotation := scaledJob.GetAnnotations()[kedacontrollerutil.PausedAnnotation]
+	_, pausedAnnotation := scaledJob.GetAnnotations()[kedav1alpha1.PausedAnnotation]
 	pausedStatus := conditions.GetPausedCondition().Status == metav1.ConditionTrue
 	if pausedAnnotation {
 		if !pausedStatus {
@@ -327,18 +327,18 @@ func (r *ScaledJobReconciler) updatePromMetrics(scaledJob *kedav1alpha1.ScaledJo
 	metricsData, ok := scaledJobPromMetricsMap[namespacedName]
 
 	if ok {
-		prommetrics.DecrementCRDTotal(prommetrics.ScaledJobResource, metricsData.namespace)
+		metricscollector.DecrementCRDTotal(metricscollector.ScaledJobResource, metricsData.namespace)
 		for _, triggerType := range metricsData.triggerTypes {
-			prommetrics.DecrementTriggerTotal(triggerType)
+			metricscollector.DecrementTriggerTotal(triggerType)
 		}
 	}
 
-	prommetrics.IncrementCRDTotal(prommetrics.ScaledJobResource, scaledJob.Namespace)
+	metricscollector.IncrementCRDTotal(metricscollector.ScaledJobResource, scaledJob.Namespace)
 	metricsData.namespace = scaledJob.Namespace
 
 	triggerTypes := make([]string, len(scaledJob.Spec.Triggers))
 	for _, trigger := range scaledJob.Spec.Triggers {
-		prommetrics.IncrementTriggerTotal(trigger.Type)
+		metricscollector.IncrementTriggerTotal(trigger.Type)
 		triggerTypes = append(triggerTypes, trigger.Type)
 	}
 	metricsData.triggerTypes = triggerTypes
@@ -351,9 +351,9 @@ func (r *ScaledJobReconciler) updatePromMetricsOnDelete(namespacedName string) {
 	defer scaledJobPromMetricsLock.Unlock()
 
 	if metricsData, ok := scaledJobPromMetricsMap[namespacedName]; ok {
-		prommetrics.DecrementCRDTotal(prommetrics.ScaledJobResource, metricsData.namespace)
+		metricscollector.DecrementCRDTotal(metricscollector.ScaledJobResource, metricsData.namespace)
 		for _, triggerType := range metricsData.triggerTypes {
-			prommetrics.DecrementTriggerTotal(triggerType)
+			metricscollector.DecrementTriggerTotal(triggerType)
 		}
 	}
 
