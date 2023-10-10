@@ -189,6 +189,26 @@ spec:
                           type: string
                         path:
                           type: string
+                        pki_data:
+                          properties:
+                            alt_names:
+                              type: string
+                            common_name:
+                              type: string
+                            format:
+                              type: string
+                            ip_sans:
+                              type: string
+                            other_sans:
+                              type: string
+                            ttl:
+                              type: string
+                            uri_sans:
+                              type: string
+                          type: object
+                        type:
+                          description: VaultSecretType defines the type of vault secret
+                          type: string
                       required:
                       - key
                       - parameter

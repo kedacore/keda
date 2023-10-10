@@ -17,15 +17,20 @@ limitations under the License.
 package resolver
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/go-logr/logr"
 	vaultapi "github.com/hashicorp/vault/api"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
+
+type VaultClient interface {
+}
 
 // HashicorpVaultHandler is specification of Hashi Corp Vault
 type HashicorpVaultHandler struct {
@@ -170,9 +175,163 @@ func (vh *HashicorpVaultHandler) Read(path string) (*vaultapi.Secret, error) {
 	return vh.client.Logical().Read(path)
 }
 
+func (vh *HashicorpVaultHandler) Write(path string, data map[string]interface{}) (*vaultapi.Secret, error) {
+	return vh.client.Logical().Write(path, data)
+}
+
 // Stop is responsible for stoping the renew token process
 func (vh *HashicorpVaultHandler) Stop() {
 	if vh.stopCh != nil {
 		vh.stopCh <- struct{}{}
 	}
+}
+
+func (vh *HashicorpVaultHandler) getPkiRequest(pkiData *kedav1alpha1.VaultPkiData) (map[string]interface{}, error) {
+	var data map[string]interface{}
+	a, err := json.Marshal(pkiData)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(a, &data)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func (vh *HashicorpVaultHandler) getSecretValue(secret *kedav1alpha1.VaultSecret, vaultSecret *vaultapi.Secret) (string, error) {
+	if secret.Type == kedav1alpha1.VaultSecretTypeGeneric {
+		if _, ok := vaultSecret.Data["data"]; ok {
+			// Probably a v2 secret
+			secret.Type = kedav1alpha1.VaultSecretTypeSecretV2
+		} else {
+			secret.Type = kedav1alpha1.VaultSecretTypeSecret
+		}
+	}
+	switch secret.Type {
+	case kedav1alpha1.VaultSecretTypePki:
+		if vData, ok := vaultSecret.Data[secret.Key]; ok {
+			if secret.Key == "ca_chain" {
+				// Cast the secret to []interface{}
+				if ai, ok := vData.([]interface{}); ok {
+					// Cast the secret to []string
+					stringSlice := make([]string, len(ai))
+					for i, v := range ai {
+						stringSlice[i] = v.(string)
+					}
+					return strings.Join(stringSlice, "\n"), nil
+				}
+				err := fmt.Errorf("key '%s' is not castable to []interface{}", secret.Key)
+				return "", err
+			}
+			if s, ok := vData.(string); ok {
+				return s, nil
+			}
+			// If this happens, bad data from vault
+			err := fmt.Errorf("key '%s' is not castable to string", secret.Key)
+			return "", err
+		}
+		err := fmt.Errorf("key '%s' not found", secret.Key)
+		return "", err
+	case kedav1alpha1.VaultSecretTypeSecret:
+		if vData, ok := vaultSecret.Data[secret.Key]; ok {
+			if s, ok := vData.(string); ok {
+				return s, nil
+			}
+			err := fmt.Errorf("key '%s' is not castable to string", secret.Key)
+			return "", err
+		}
+		err := fmt.Errorf("key '%s' not found", secret.Key)
+		return "", err
+	case kedav1alpha1.VaultSecretTypeSecretV2:
+		if v2Data, ok := vaultSecret.Data["data"].(map[string]interface{}); ok {
+			if value, ok := v2Data[secret.Key]; ok {
+				if s, ok := value.(string); ok {
+					return s, nil
+				}
+				err := fmt.Errorf("key '%s' is not castable to string", secret.Key)
+				return "", err
+			}
+			err := fmt.Errorf("key '%s' not found", secret.Key)
+			return "", err
+		}
+		// Unreachable
+		return "", nil
+	default:
+		err := fmt.Errorf("unsupported vault secret type %s", secret.Type)
+		return "", err
+	}
+}
+
+type SecretGroup struct {
+	path         string
+	secretType   kedav1alpha1.VaultSecretType
+	vaultPkiData *kedav1alpha1.VaultPkiData
+}
+
+func (vh *HashicorpVaultHandler) fetchSecret(secretType kedav1alpha1.VaultSecretType, path string, vaultPkiData *kedav1alpha1.VaultPkiData) (*vaultapi.Secret, error) {
+	var vaultSecret *vaultapi.Secret
+	var err error
+	switch secretType {
+	case kedav1alpha1.VaultSecretTypePki:
+		data, err := vh.getPkiRequest(vaultPkiData)
+		if err != nil {
+			return nil, err
+		}
+		vaultSecret, err = vh.Write(path, data)
+		if err != nil {
+			return nil, err
+		}
+	case kedav1alpha1.VaultSecretTypeSecret, kedav1alpha1.VaultSecretTypeSecretV2, kedav1alpha1.VaultSecretTypeGeneric:
+		vaultSecret, err = vh.Read(path)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		err = fmt.Errorf("unsupported vault secret type %s", secretType)
+		return nil, err
+	}
+	return vaultSecret, nil
+}
+
+func (vh *HashicorpVaultHandler) ResolveSecrets(secrets []kedav1alpha1.VaultSecret) ([]kedav1alpha1.VaultSecret, error) {
+	// Group secret by path and type, this allows to fetch a path only one. This is useful for dynamic credentials
+	grouped := make(map[SecretGroup][]kedav1alpha1.VaultSecret)
+	vaultSecrets := make(map[SecretGroup]*vaultapi.Secret)
+	for _, e := range secrets {
+		group := SecretGroup{secretType: e.Type, path: e.Path, vaultPkiData: &e.PkiData}
+		if _, ok := grouped[group]; !ok {
+			grouped[group] = make([]kedav1alpha1.VaultSecret, 0)
+		}
+		grouped[group] = append(grouped[group], e)
+	}
+	// For each group fetch the secret from vault
+	for group := range grouped {
+		vaultSecret, err := vh.fetchSecret(group.secretType, group.path, group.vaultPkiData)
+		if err != nil {
+			// could not fetch secret, skipping group
+			continue
+		}
+		vaultSecrets[group] = vaultSecret
+	}
+	// For each secret in each group, fetch the value and add to out
+	out := make([]kedav1alpha1.VaultSecret, 0)
+	for group, unFetchedSecrets := range grouped {
+		vaultSecret := vaultSecrets[group]
+		for _, secret := range unFetchedSecrets {
+			if vaultSecret == nil {
+				// This happens if we were not able to fetch the secret from vault
+				secret.Value = ""
+			} else {
+				value, err := vh.getSecretValue(&secret, vaultSecret)
+				if err != nil {
+					secret.Value = ""
+				} else {
+					secret.Value = value
+				}
+			}
+			out = append(out, secret)
+		}
+	}
+	return out, nil
 }
