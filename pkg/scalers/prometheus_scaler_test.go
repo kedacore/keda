@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
@@ -60,6 +61,10 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "customHeaders": "key1=value1,key2"}, true},
 	// deprecated cortexOrgID
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "cortexOrgID": "my-org"}, true},
+	// queryParameters
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "queryParameters": "key1=value1,key2=value2"}, false},
+	// queryParameters with wrong format
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "queryParameters": "key1=value1,key2"}, true},
 }
 
 var prometheusMetricIdentifiers = []prometheusMetricIdentifier{
@@ -367,6 +372,49 @@ func TestPrometheusScalerCustomHeaders(t *testing.T) {
 		httpClient: http.DefaultClient,
 	}
 
+	_, err := scaler.ExecutePromQuery(context.TODO())
+
+	assert.NoError(t, err)
+}
+
+func TestPrometheusScalerExecutePromQueryParameters(t *testing.T) {
+	testData := prometheusQromQueryResultTestData{
+		name:             "no values",
+		bodyStr:          `{"data":{"result":[]}}`,
+		responseStatus:   http.StatusOK,
+		expectedValue:    0,
+		isError:          false,
+		ignoreNullValues: true,
+	}
+	queryParametersValue := map[string]string{
+		"first":  "foo",
+		"second": "bar",
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		time := time.Now().UTC().Format(time.RFC3339)
+		expectedPath := fmt.Sprintf("/api/v1/query?query=&time=%s&first=foo&second=bar", time)
+		for queryParameterName, queryParameterValue := range queryParametersValue {
+			queryParameter := request.URL.Query()
+			queryParameter.Add(queryParameterName, queryParameterValue)
+		}
+
+		if request.RequestURI != expectedPath {
+			t.Error("Expect request path to =", expectedPath, "but it is", request.RequestURI)
+		}
+
+		writer.WriteHeader(testData.responseStatus)
+		if _, err := writer.Write([]byte(testData.bodyStr)); err != nil {
+			t.Fatal(err)
+		}
+	}))
+	scaler := prometheusScaler{
+		metadata: &prometheusMetadata{
+			serverAddress:    server.URL,
+			queryParameters:  queryParametersValue,
+			ignoreNullValues: testData.ignoreNullValues,
+		},
+		httpClient: http.DefaultClient,
+	}
 	_, err := scaler.ExecutePromQuery(context.TODO())
 
 	assert.NoError(t, err)

@@ -2,6 +2,8 @@ package scalers
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -147,6 +149,14 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "disable"}, false, false},
 	// success, SASL OAUTHBEARER + TLS
 	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, false, false},
+	// success, SASL GSSAPI/password
+	{map[string]string{"sasl": "gssapi", "username": "admin", "password": "admin", "kerberosConfig": "<config>", "realm": "tst.com"}, false, false},
+	// success, SASL GSSAPI/keytab
+	{map[string]string{"sasl": "gssapi", "username": "admin", "keytab": "/path/to/keytab", "kerberosConfig": "<config>", "realm": "tst.com"}, false, false},
+	// success, SASL GSSAPI/password + TLS
+	{map[string]string{"sasl": "gssapi", "username": "admin", "password": "admin", "kerberosConfig": "<config>", "realm": "tst.com", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, true},
+	// success, SASL GSSAPI/keytab + TLS
+	{map[string]string{"sasl": "gssapi", "username": "admin", "keytab": "/path/to/keytab", "kerberosConfig": "<config>", "realm": "tst.com", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, true},
 	// failure, SASL OAUTHBEARER + TLS bad sasl type
 	{map[string]string{"sasl": "foo", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, true, false},
 	// success, SASL OAUTHBEARER + TLS missing scope
@@ -177,6 +187,14 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "key": "keey"}, true, false},
 	// failure, SASL + TLS, missing key
 	{map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "tls": "enable", "ca": "caaa", "cert": "ceert"}, true, false},
+	// failure, SASL GSSAPI missing password and keytab
+	{map[string]string{"sasl": "gssapi", "username": "admin", "kerberosConfig": "<config>", "realm": "tst.com"}, true, false},
+	// failure, SASL GSSAPI provided both password and keytab
+	{map[string]string{"sasl": "gssapi", "username": "admin", "password": "admin", "keytab": "/path/to/keytab", "kerberosConfig": "<config>", "realm": "tst.com"}, true, false},
+	// failure, SASL GSSAPI/password + TLS missing realm
+	{map[string]string{"sasl": "gssapi", "username": "admin", "password": "admin", "kerberosConfig": "<config>", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
+	// failure, SASL GSSAPI/keytab + TLS missing username
+	{map[string]string{"sasl": "gssapi", "keytab": "/path/to/keytab", "kerberosConfig": "<config>", "realm": "tst.com", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
 }
 var parseAuthParamsTestDataset = []parseAuthParamsTestDataSecondAuthMethod{
 	// success, SASL plaintext
@@ -201,6 +219,18 @@ var parseAuthParamsTestDataset = []parseAuthParamsTestDataSecondAuthMethod{
 	{map[string]string{"sasl": "plaintext", "tls": "disable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin"}, false, false},
 	// success, SASL OAUTHBEARER + TLS explicitly disabled
 	{map[string]string{"sasl": "oauthbearer", "tls": "disable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com"}, false, false},
+	// success, SASL GSSAPI/password
+	{map[string]string{"sasl": "gssapi", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin", "kerberosConfig": "<config>", "realm": "test.com"}, false, false},
+	// success, SASL GSSAPI/password + TLS explicitly disabled
+	{map[string]string{"sasl": "gssapi", "tls": "disable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin", "kerberosConfig": "<config>", "realm": "test.com"}, false, false},
+	// success, SASL GSSAPI/password + TLS
+	{map[string]string{"sasl": "gssapi", "tls": "disable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin", "kerberosConfig": "<config>", "realm": "test.com", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, false},
+	// success, SASL GSSAPI/keytab
+	{map[string]string{"sasl": "gssapi", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "keytab": "/path/to/keytab", "kerberosConfig": "<config>", "realm": "test.com"}, false, false},
+	// success, SASL GSSAPI/keytab + TLS explicitly disabled
+	{map[string]string{"sasl": "gssapi", "tls": "disable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "keytab": "/path/to/keytab", "kerberosConfig": "<config>", "realm": "test.com"}, false, false},
+	// success, SASL GSSAPI/keytab + TLS
+	{map[string]string{"sasl": "gssapi", "tls": "disable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "keytab": "/path/to/keytab", "kerberosConfig": "<config>", "realm": "test.com", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, false},
 	// failure, SASL OAUTHBEARER + TLS explicitly disable +  bad SASL type
 	{map[string]string{"sasl": "foo", "tls": "disable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com"}, true, false},
 	// success, SASL OAUTHBEARER + TLS missing scope
@@ -230,8 +260,17 @@ var parseAuthParamsTestDataset = []parseAuthParamsTestDataSecondAuthMethod{
 	// failure, SASL + TLS, missing cert
 	{map[string]string{"sasl": "plaintext", "tls": "enable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin", "ca": "caaa", "key": "keey"}, true, false},
 	// failure, SASL + TLS, missing key
-	{map[string]string{"sasl": "plaintext", "tls": "enable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "ca": "caaa", "cert": "ceert"}, true, false},
-
+	{map[string]string{"sasl": "plaintext", "tls": "enable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "ca": "caaa", "cert": "ceert"}, true, true},
+	// failure, SASL GSSAPI missing keytab and password
+	{map[string]string{"sasl": "gssapi", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "realm": "test.com"}, true, false},
+	// failure, SASL GSSAPI values in both keytab and password
+	{map[string]string{"sasl": "gssapi", "tls": "disable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin", "keytab": "/path/to/keytab", "realm": "test.com"}, true, false},
+	// failure, SASL GSSAPI + TLS missing realm
+	{map[string]string{"sasl": "gssapi", "tls": "enable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "keytab": "/path/to/keytab", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, true},
+	// failure, SASL GSSAPI + TLS missing username
+	{map[string]string{"sasl": "gssapi", "tls": "enable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"realm": "test.com", "keytab": "/path/to/keytab", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, true},
+	// failure, SASL GSSAPI + TLS missing kerberosConfig
+	{map[string]string{"sasl": "gssapi", "tls": "enable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "realm": "test.com", "keytab": "/path/to/keytab", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, true},
 	// failure, setting SASL values in both places
 	{map[string]string{"sasl": "scram_sha512", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"sasl": "scram_sha512", "username": "admin", "password": "admin"}, true, false},
 	// failure, setting TLS values in both places
@@ -342,8 +381,7 @@ func TestGetBrokers(t *testing.T) {
 	}
 }
 
-func TestKafkaAuthParams(t *testing.T) {
-	// Testing tls and sasl value in TriggerAuthentication
+func TestKafkaAuthParamsInTriggerAuthentication(t *testing.T) {
 	for _, testData := range parseKafkaAuthParamsTestDataset {
 		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: validKafkaMetadata, AuthParams: testData.authParams}, logr.Discard())
 
@@ -370,9 +408,24 @@ func TestKafkaAuthParams(t *testing.T) {
 				t.Errorf("Expected key to be set to %v but got %v\n", testData.authParams["keyPassword"], meta.key)
 			}
 		}
+		if meta.saslType == KafkaSASLTypeGSSAPI && !testData.isError {
+			if testData.authParams["keytab"] != "" {
+				err := testFileContents(testData, meta, "keytab")
+				if err != nil {
+					t.Errorf(err.Error())
+				}
+			}
+			if !testData.isError {
+				err := testFileContents(testData, meta, "kerberosConfig")
+				if err != nil {
+					t.Errorf(err.Error())
+				}
+			}
+		}
 	}
+}
 
-	// Testing tls and sasl value in scaledObject
+func TestKafkaAuthParamsInScaledObject(t *testing.T) {
 	for id, testData := range parseAuthParamsTestDataset {
 		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
 
@@ -411,6 +464,27 @@ func TestKafkaAuthParams(t *testing.T) {
 			}
 		}
 	}
+}
+
+func testFileContents(testData parseKafkaAuthParamsTestData, meta kafkaMetadata, prop string) error {
+	if testData.authParams[prop] != "" {
+		var path string
+		switch prop {
+		case "keytab":
+			path = meta.keytabPath
+		case "kerberosConfig":
+			path = meta.kerberosConfigPath
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("expected to find '%v' file at %v", prop, path)
+		}
+		contents := string(data)
+		if contents != testData.authParams[prop] {
+			return fmt.Errorf("expected keytab value: '%v' but got '%v'", testData.authParams[prop], contents)
+		}
+	}
+	return nil
 }
 
 func TestKafkaOAuthbrearerAuthParams(t *testing.T) {

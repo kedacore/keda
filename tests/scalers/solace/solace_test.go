@@ -234,7 +234,7 @@ func installSolace(t *testing.T) {
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("helm repo update")
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --set solace.usernameAdminPassword=KedaLabAdminPwd1 --set storage.persistent=false,solace.size=dev,nameOverride=pubsubplus-dev --namespace %s kedalab solacecharts/pubsubplus`,
+	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --set solace.usernameAdminPassword=KedaLabAdminPwd1 --set storage.persistent=false,solace.size=dev,nameOverride=pubsubplus-dev,service.type=ClusterIP --namespace %s kedalab solacecharts/pubsubplus`,
 		testNamespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("sleep 60") // there is a bug in the solace helm chart where it is looking for the wrong number of replicas on --wait

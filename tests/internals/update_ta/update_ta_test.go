@@ -100,11 +100,6 @@ spec:
         image: nginxinc/nginx-unprivileged
         ports:
         - containerPort: 80
-        resources:
-          requests:
-            cpu: "200m"
-          limits:
-            cpu: "500m"
 `
 
 	deployment2Template = `
@@ -130,11 +125,6 @@ spec:
         image: nginxinc/nginx-unprivileged
         ports:
         - containerPort: 80
-        resources:
-          requests:
-            cpu: "200m"
-          limits:
-            cpu: "500m"
 `
 
 	scaledObjectTriggerTemplate = `
@@ -158,10 +148,12 @@ spec:
   maxReplicaCount: {{.MaxReplicas}}
   cooldownPeriod: 1
   triggers:
-  - type: cpu
-    metricType: Utilization
+  - type: metrics-api
     metadata:
-      value: "50"
+      targetValue: "2"
+      url: "invalid-invalid"
+      valueLocation: 'value'
+      method: "query"
     authenticationRef:
       name: {{.TriggerAuthName}}
       kind: {{.TriggerAuthKind}}
@@ -188,10 +180,12 @@ spec:
   maxReplicaCount: {{.MaxReplicas}}
   cooldownPeriod: 1
   triggers:
-  - type: cpu
-    metricType: Utilization
+  - type: metrics-api
     metadata:
-      value: "50"
+      targetValue: "2"
+      url: "invalid-invalid"
+      valueLocation: 'value'
+      method: "query"
     authenticationRef:
       name: {{.TriggerAuthName}}
       kind: {{.TriggerAuthKind}}
@@ -222,10 +216,12 @@ spec:
   successfulJobsHistoryLimit: 0
   failedJobsHistoryLimit: 0
   triggers:
-  - type: cpu
+  - type: metrics-api
     metadata:
-      type: Utilization
-      value: "50"
+      targetValue: "2"
+      url: "invalid-invalid"
+      valueLocation: 'value'
+      method: "query"
     authenticationRef:
       name: {{.TriggerAuthName}}
       kind: {{.TriggerAuthKind}}
@@ -256,10 +252,12 @@ spec:
   successfulJobsHistoryLimit: 0
   failedJobsHistoryLimit: 0
   triggers:
-  - type: cpu
+  - type: metrics-api
     metadata:
-      type: Utilization
-      value: "50"
+      targetValue: "2"
+      url: "invalid-invalid"
+      valueLocation: 'value'
+      method: "query"
     authenticationRef:
       name: {{.TriggerAuthName}}
       kind: {{.TriggerAuthKind}}
