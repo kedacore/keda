@@ -61,6 +61,7 @@ Here is an overview of all new **experimental** features:
 ### Improvements
 
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Kafka Scaler**: Add support for Kerberos authentication (SASL / GSSAPI) ([#4836](https://github.com/kedacore/keda/issues/4836))
 
 ### Fixes
 
@@ -77,7 +78,6 @@ New deprecation(s):
 ### Breaking Changes
 
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-- **Kafka Scaler**: Add support for Kerberos authentication (SASL / GSSAPI) ([#4836](https://github.com/kedacore/keda/issues/4836))
 ### Other
 
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
