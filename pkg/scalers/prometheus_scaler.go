@@ -278,7 +278,9 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	}
 
 	for queryParameterKey, queryParameterValue := range s.metadata.queryParameters {
-		url = url_pkg.QueryEscape(fmt.Sprintf("%s&%s=%s", url, queryParameterKey, queryParameterValue))
+		queryParameterKeyEscaped := url_pkg.QueryEscape(queryParameterKey)
+		queryParameterValueEscaped := url_pkg.QueryEscape(queryParameterValue)
+		url = fmt.Sprintf("%s&%s=%s", url, queryParameterKeyEscaped, queryParameterValueEscaped)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
