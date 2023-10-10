@@ -77,7 +77,7 @@ New deprecation(s):
 ### Breaking Changes
 
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-- **Kafka**: Add support for Kerberos authentication (SASL / GSSAPI) ([#4836](https://github.com/kedacore/keda/issues/4836))
+- **Kafka Scaler**: Add support for Kerberos authentication (SASL / GSSAPI) ([#4836](https://github.com/kedacore/keda/issues/4836))
 ### Other
 
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
