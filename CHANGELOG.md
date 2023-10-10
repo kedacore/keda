@@ -60,7 +60,7 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 
-- **General**: Add parameter queryParameters in prometheus-scaler ([#4962](https://github.com/kedacore/keda/issues/4962))
+- **General**: Add parameter queryParameters to prometheus-scaler ([#4962](https://github.com/kedacore/keda/issues/4962))
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ### Fixes
