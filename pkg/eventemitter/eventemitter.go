@@ -159,7 +159,7 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEvents *ked
 
 	if cloudEvents.Spec.Destination.CloudEventHTTP != nil {
 		var eventHandler EventDataHandler
-		eventHandler, err := NewCloudEventHTTPHandler(ctx, clusterName, cloudEvents.Spec.Destination.CloudEventHTTP.Uri, initializeLogger(cloudEvents, "cloudevent_http"))
+		eventHandler, err := NewCloudEventHTTPHandler(ctx, clusterName, cloudEvents.Spec.Destination.CloudEventHTTP.URI, initializeLogger(cloudEvents, "cloudevent_http"))
 
 		if err != nil {
 			log.Error(err, "create cloudevent handler failed")

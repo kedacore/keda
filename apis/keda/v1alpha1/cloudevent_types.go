@@ -55,7 +55,7 @@ type Destination struct {
 }
 
 type CloudEventHTTP struct {
-	Uri string `json:"uri"`
+	URI string `json:"uri"`
 }
 
 func init() {
