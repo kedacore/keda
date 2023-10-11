@@ -65,6 +65,7 @@ type kafkaMetadata struct {
 	// If an invalid offset is found, whether to scale to 1 (false - the default) so consumption can
 	// occur or scale to 0 (true). See discussion in https://github.com/kedacore/keda/issues/2612
 	scaleToZeroOnInvalidOffset bool
+	limitToPartitionsWithLag   bool
 
 	// SASL
 	saslType kafkaSaslType
@@ -468,6 +469,22 @@ func parseKafkaMetadata(config *ScalerConfig, logger logr.Logger) (kafkaMetadata
 		meta.scaleToZeroOnInvalidOffset = t
 	}
 
+	meta.limitToPartitionsWithLag = false
+	if val, ok := config.TriggerMetadata["limitToPartitionsWithLag"]; ok {
+		t, err := strconv.ParseBool(val)
+		if err != nil {
+			return meta, fmt.Errorf("error parsing limitToPartitionsWithLag: %w", err)
+		}
+		meta.limitToPartitionsWithLag = t
+
+		if meta.allowIdleConsumers && meta.limitToPartitionsWithLag {
+			return meta, fmt.Errorf("allowIdleConsumers and limitToPartitionsWithLag cannot be set simultaneously")
+		}
+		if len(meta.topic) == 0 && meta.limitToPartitionsWithLag {
+			return meta, fmt.Errorf("topic must be specified when using limitToPartitionsWithLag")
+		}
+	}
+
 	meta.version = sarama.V1_0_0_0
 	if val, ok := config.TriggerMetadata["version"]; ok {
 		val = strings.TrimSpace(val)
@@ -797,6 +814,7 @@ func (s *kafkaScaler) getTotalLag() (int64, int64, error) {
 	totalLag := int64(0)
 	totalLagWithPersistent := int64(0)
 	totalTopicPartitions := int64(0)
+	partitionsWithLag := int64(0)
 
 	for topic, partitionsOffsets := range producerOffsets {
 		for partition := range partitionsOffsets {
@@ -806,15 +824,24 @@ func (s *kafkaScaler) getTotalLag() (int64, int64, error) {
 			}
 			totalLag += lag
 			totalLagWithPersistent += lagWithPersistent
+
+			if lag > 0 {
+				partitionsWithLag++
+			}
 		}
 		totalTopicPartitions += (int64)(len(partitionsOffsets))
 	}
 	s.logger.V(1).Info(fmt.Sprintf("Kafka scaler: Providing metrics based on totalLag %v, topicPartitions %v, threshold %v", totalLag, len(topicPartitions), s.metadata.lagThreshold))
 
-	if !s.metadata.allowIdleConsumers {
-		// don't scale out beyond the number of topicPartitions
-		if (totalLag / s.metadata.lagThreshold) > totalTopicPartitions {
-			totalLag = totalTopicPartitions * s.metadata.lagThreshold
+	if !s.metadata.allowIdleConsumers || s.metadata.limitToPartitionsWithLag {
+		// don't scale out beyond the number of topicPartitions or partitionsWithLag depending on settings
+		upperBound := totalTopicPartitions
+		if s.metadata.limitToPartitionsWithLag {
+			upperBound = partitionsWithLag
+		}
+
+		if (totalLag / s.metadata.lagThreshold) > upperBound {
+			totalLag = upperBound * s.metadata.lagThreshold
 		}
 	}
 	return totalLag, totalLagWithPersistent, nil

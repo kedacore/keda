@@ -62,6 +62,7 @@ Here is an overview of all new **experimental** features:
 
 - **General**: Add parameter queryParameters to prometheus-scaler ([#4962](https://github.com/kedacore/keda/issues/4962))
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Kafka Scaler**: Ability to set upper bound to the number of partitions with lag ([#3997](https://github.com/kedacore/keda/issues/3997))
 - **Kafka Scaler**: Add support for Kerberos authentication (SASL / GSSAPI) ([#4836](https://github.com/kedacore/keda/issues/4836))
 
 ### Fixes
