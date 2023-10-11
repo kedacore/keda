@@ -50,13 +50,13 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- **General**: Introduce CloudEvents CRD to KEDA ([#3533](https://github.com/kedacore/keda/issues/3533))
+- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 #### Experimental
 
 Here is an overview of all new **experimental** features:
 
-- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Introduce CloudEvents CRD to KEDA ([#3533](https://github.com/kedacore/keda/issues/3533))
 
 ### Improvements
 
