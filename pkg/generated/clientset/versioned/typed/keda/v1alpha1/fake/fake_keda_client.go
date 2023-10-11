@@ -28,10 +28,6 @@ type FakeKedaV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeKedaV1alpha1) CloudEvents(namespace string) v1alpha1.CloudEventInterface {
-	return &FakeCloudEvents{c, namespace}
-}
-
 func (c *FakeKedaV1alpha1) ClusterTriggerAuthentications() v1alpha1.ClusterTriggerAuthenticationInterface {
 	return &FakeClusterTriggerAuthentications{c}
 }

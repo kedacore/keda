@@ -21,7 +21,7 @@ const (
 	TriggerAuthenticationResource        = "trigger_authentication"
 	ScaledObjectResource                 = "scaled_object"
 	ScaledJobResource                    = "scaled_job"
-	CloudEventsResource                  = "cloudevent_resource"
+	EventSourceResource                  = "event_source"
 
 	DefaultPromMetricsNamespace = "keda"
 )

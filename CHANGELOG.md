@@ -56,7 +56,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 Here is an overview of all new **experimental** features:
 
-- **General**: Introduce CloudEvents CRD to KEDA ([#3533](https://github.com/kedacore/keda/issues/3533))
+- **General**: Introduce EventSource CRD to KEDA ([#3533](https://github.com/kedacore/keda/issues/3533))
 
 ### Improvements
 

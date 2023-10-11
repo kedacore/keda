@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	testName = "cloudevent-test"
+	testName = "eventsource-test"
 )
 
 // Load environment variables from .env file
@@ -27,7 +27,7 @@ var (
 	namespace                  = fmt.Sprintf("%s-ns", testName)
 	scaledObjectName           = fmt.Sprintf("%s-so", testName)
 	clientName                 = fmt.Sprintf("%s-client", testName)
-	cloudEventName             = fmt.Sprintf("%s-ce", testName)
+	eventSourceName            = fmt.Sprintf("%s-ce", testName)
 	cloudEventHTTPReceiverName = fmt.Sprintf("%s-cloudevent-http-receiver", testName)
 	cloudEventHTTPServiceName  = fmt.Sprintf("%s-cloudevent-http-service", testName)
 	cloudEventHTTPServiceURL   = fmt.Sprintf("http://%s.%s.svc.cluster.local:8899", cloudEventHTTPServiceName, namespace)
@@ -37,18 +37,18 @@ type templateData struct {
 	TestNamespace              string
 	ScaledObject               string
 	ClientName                 string
-	CloudEventName             string
+	EventSourceName            string
 	CloudEventHTTPReceiverName string
 	CloudEventHTTPServiceName  string
 	CloudEventHTTPServiceURL   string
 }
 
 const (
-	cloudEventTemplate = `
+	eventSourceTemplate = `
   apiVersion: keda.sh/v1alpha1
-  kind: CloudEvent
+  kind: EventSource
   metadata:
-    name: {{.CloudEventName}}
+    name: {{.EventSourceName}}
     namespace: {{.TestNamespace}}
   spec:
     clusterName: cluster-sample
@@ -147,14 +147,14 @@ func TestScaledObjectGeneral(t *testing.T) {
 	time.Sleep(15 * time.Second)
 	assert.True(t, WaitForAllPodRunningInNamespace(t, kc, namespace, 5, 20), "all pods should be running")
 
-	testErrCloudEventEmitValue(t, kc, data)
+	testErrEventSourceEmitValue(t, kc, data)
 
 	DeleteKubernetesResources(t, namespace, data, templates)
 }
 
 // tests basic scaling with one trigger based on metrics
-func testErrCloudEventEmitValue(t *testing.T, _ *kubernetes.Clientset, data templateData) {
-	t.Log("--- test emitting cloudevent about scaledobject err---")
+func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data templateData) {
+	t.Log("--- test emitting eventsource about scaledobject err---")
 	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
 
 	// recreate database to clear it
@@ -174,14 +174,14 @@ func getTemplateData() (templateData, []Template) {
 			TestNamespace:              namespace,
 			ScaledObject:               scaledObjectName,
 			ClientName:                 clientName,
-			CloudEventName:             cloudEventName,
+			EventSourceName:            eventSourceName,
 			CloudEventHTTPReceiverName: cloudEventHTTPReceiverName,
 			CloudEventHTTPServiceName:  cloudEventHTTPServiceName,
 			CloudEventHTTPServiceURL:   cloudEventHTTPServiceURL,
 		}, []Template{
-			{Name: "cloudEventTemplate", Config: cloudEventTemplate},
 			{Name: "cloudEventHTTPReceiverTemplate", Config: cloudEventHTTPReceiverTemplate},
 			{Name: "cloudEventHTTPServiceTemplate", Config: cloudEventHTTPServiceTemplate},
 			{Name: "clientTemplate", Config: clientTemplate},
+			{Name: "eventSourceTemplate", Config: eventSourceTemplate},
 		}
 }

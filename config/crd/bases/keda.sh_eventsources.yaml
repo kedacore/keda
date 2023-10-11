@@ -4,20 +4,20 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.13.0
-  name: cloudevents.keda.sh
+  name: eventsources.keda.sh
 spec:
   group: keda.sh
   names:
-    kind: CloudEvent
-    listKind: CloudEventList
-    plural: cloudevents
-    singular: cloudevent
+    kind: EventSource
+    listKind: EventSourceList
+    plural: eventsources
+    singular: eventsource
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: CloudEvent defines how a keda event will be sent to event sink
+        description: EventSource defines how a keda event will be sent to event sink
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -32,7 +32,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: CloudEvent
+            description: EventSource
             properties:
               clusterName:
                 type: string

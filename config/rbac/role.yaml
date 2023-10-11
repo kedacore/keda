@@ -89,17 +89,17 @@ rules:
   verbs:
   - '*'
 - apiGroups:
-  - eventing.keda.sh
+  - keda.sh
   resources:
-  - cloudevents
-  - cloudevents/status
+  - clustertriggerauthentications
+  - clustertriggerauthentications/status
   verbs:
   - '*'
 - apiGroups:
   - keda.sh
   resources:
-  - clustertriggerauthentications
-  - clustertriggerauthentications/status
+  - eventsources
+  - eventsources/status
   verbs:
   - '*'
 - apiGroups:

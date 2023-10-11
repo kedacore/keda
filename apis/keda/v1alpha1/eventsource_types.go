@@ -22,27 +22,27 @@ import (
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// CloudEvent defines how a keda event will be sent to event sink
-// +kubebuilder:resource:path=cloudevents,scope=Namespaced
+// EventSource defines how a keda event will be sent to event sink
+// +kubebuilder:resource:path=eventsources,scope=Namespaced
 // +kubebuilder:subresource:status
-type CloudEvent struct {
+type EventSource struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec CloudEventSpec `json:"spec"`
+	Spec EventSourceSpec `json:"spec"`
 }
 
 // +kubebuilder:object:root=true
 
-// CloudEventList is a list of CloudEvent resources
-type CloudEventList struct {
+// EventSourceList is a list of EventSource resources
+type EventSourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
-	Items           []CloudEvent `json:"items"`
+	Items           []EventSource `json:"items"`
 }
 
-// CloudEvent
-type CloudEventSpec struct {
+// EventSource
+type EventSourceSpec struct {
 	// +optional
 	ClusterName string `json:"clusterName,omitempty"`
 
@@ -51,7 +51,7 @@ type CloudEventSpec struct {
 }
 
 type Destination struct {
-	CloudEventHTTP *CloudEventHTTP `json:"http"`
+	HTTP *CloudEventHTTP `json:"http"`
 }
 
 type CloudEventHTTP struct {
@@ -59,10 +59,10 @@ type CloudEventHTTP struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&CloudEvent{}, &CloudEventList{})
+	SchemeBuilder.Register(&EventSource{}, &EventSourceList{})
 }
 
 // GenerateIdentifier returns identifier for the object in for "kind.namespace.name"
-func (t *CloudEvent) GenerateIdentifier() string {
-	return GenerateIdentifier("CloudEvent", t.Namespace, t.Name)
+func (t *EventSource) GenerateIdentifier() string {
+	return GenerateIdentifier("EventSource", t.Namespace, t.Name)
 }

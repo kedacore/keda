@@ -249,11 +249,11 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterTriggerAuthentication")
 		os.Exit(1)
 	}
-	if err = (&kedacontrollers.CloudEventsReconciler{
+	if err = (&kedacontrollers.EventSourceReconciler{
 		Client:       mgr.GetClient(),
 		EventEmitter: *eventEmitter,
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "CloudEvents")
+		setupLog.Error(err, "unable to create controller", "controller", "EventSource")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

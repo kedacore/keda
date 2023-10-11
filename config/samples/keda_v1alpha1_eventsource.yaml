@@ -1,7 +1,7 @@
 apiVersion: keda.sh/v1alpha1
-kind: CloudEvent
+kind: EventSource
 metadata:
-  name: cloudevents-sample
+  name: eventsource-sample
   namespace: keda
 spec:
   clusterName: cluster-sample
