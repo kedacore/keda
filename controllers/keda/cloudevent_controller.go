@@ -56,7 +56,7 @@ func init() {
 	cloudEventPromMetricsLock = &sync.Mutex{}
 }
 
-// +kubebuilder:rbac:groups=keda.sh,resources=cloudevents;cloudevents/status,verbs="*"
+// +kubebuilder:rbac:groups=eventing.keda.sh,resources=cloudevents;cloudevents/status,verbs="*"
 
 // Reconcile performs reconciliation on the identified CloudEvents resource based on the request information passed, returns the result and an error (if any).
 func (r *CloudEventsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {

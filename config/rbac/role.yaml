@@ -89,7 +89,7 @@ rules:
   verbs:
   - '*'
 - apiGroups:
-  - keda.sh
+  - eventing.keda.sh
   resources:
   - cloudevents
   - cloudevents/status

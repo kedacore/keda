@@ -17,7 +17,7 @@ spec:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: CloudEvent defines how a trigger can authenticate globally
+        description: CloudEvent defines how a keda event will be sent to event sink
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
