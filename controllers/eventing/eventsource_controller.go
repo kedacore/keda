@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package keda
+package eventing
 
 import (
 	"context"
@@ -29,7 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventemitter"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 )
@@ -56,14 +56,14 @@ func init() {
 	eventSourcePromMetricsLock = &sync.Mutex{}
 }
 
-// +kubebuilder:rbac:groups=keda.sh,resources=eventsources;eventsources/status,verbs="*"
+// +kubebuilder:rbac:groups=eventing.keda.sh,resources=eventsources;eventsources/status,verbs="*"
 
 // Reconcile performs reconciliation on the identified EventSource resource based on the request information passed, returns the result and an error (if any).
 func (r *EventSourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := log.FromContext(ctx)
 
 	// Fetch the EventSource instance
-	eventSource := &kedav1alpha1.EventSource{}
+	eventSource := &eventingv1alpha1.EventSource{}
 	err := r.Client.Get(ctx, req.NamespacedName, eventSource)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -107,12 +107,12 @@ func (r *EventSourceReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 func (r *EventSourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.eventSourceGenerations = &sync.Map{}
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&kedav1alpha1.EventSource{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&eventingv1alpha1.EventSource{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
 }
 
 // requestEventLoop tries to start EventLoop handler for the respective EventSource
-func (r *EventSourceReconciler) requestEventLoop(ctx context.Context, logger logr.Logger, eventSource *kedav1alpha1.EventSource) error {
+func (r *EventSourceReconciler) requestEventLoop(ctx context.Context, logger logr.Logger, eventSource *eventingv1alpha1.EventSource) error {
 	logger.V(1).Info("Notify eventHandler of an update in eventSource")
 
 	key, err := cache.MetaNamespaceKeyFunc(eventSource)
@@ -132,7 +132,7 @@ func (r *EventSourceReconciler) requestEventLoop(ctx context.Context, logger log
 }
 
 // stopEventLoop stops EventLoop handler for the respective EventSource
-func (r *EventSourceReconciler) stopEventLoop(logger logr.Logger, eventSource *kedav1alpha1.EventSource) error {
+func (r *EventSourceReconciler) stopEventLoop(logger logr.Logger, eventSource *eventingv1alpha1.EventSource) error {
 	key, err := cache.MetaNamespaceKeyFunc(eventSource)
 	if err != nil {
 		logger.Error(err, "error getting key for eventSource")
@@ -148,7 +148,7 @@ func (r *EventSourceReconciler) stopEventLoop(logger logr.Logger, eventSource *k
 }
 
 // eventSourceGenerationChanged returns true if EventSource's Generation was changed, ie. EventSource.Spec was changed
-func (r *EventSourceReconciler) eventSourceGenerationChanged(logger logr.Logger, eventSource *kedav1alpha1.EventSource) (bool, error) {
+func (r *EventSourceReconciler) eventSourceGenerationChanged(logger logr.Logger, eventSource *eventingv1alpha1.EventSource) (bool, error) {
 	key, err := cache.MetaNamespaceKeyFunc(eventSource)
 	if err != nil {
 		logger.Error(err, "error getting key for eventSource")
@@ -165,7 +165,7 @@ func (r *EventSourceReconciler) eventSourceGenerationChanged(logger logr.Logger,
 	return true, nil
 }
 
-func (r *EventSourceReconciler) updatePromMetrics(eventSource *kedav1alpha1.EventSource, namespacedName string) {
+func (r *EventSourceReconciler) updatePromMetrics(eventSource *eventingv1alpha1.EventSource, namespacedName string) {
 	eventSourcePromMetricsLock.Lock()
 	defer eventSourcePromMetricsLock.Unlock()
 

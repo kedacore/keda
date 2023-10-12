@@ -38,7 +38,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
+	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	eventingcontrollers "github.com/kedacore/keda/v2/controllers/eventing"
 	kedacontrollers "github.com/kedacore/keda/v2/controllers/keda"
 	"github.com/kedacore/keda/v2/pkg/certificates"
 	"github.com/kedacore/keda/v2/pkg/eventemitter"
@@ -59,6 +61,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(kedav1alpha1.AddToScheme(scheme))
+	utilruntime.Must(eventingv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -249,7 +252,7 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterTriggerAuthentication")
 		os.Exit(1)
 	}
-	if err = (&kedacontrollers.EventSourceReconciler{
+	if err = (&eventingcontrollers.EventSourceReconciler{
 		Client:       mgr.GetClient(),
 		EventEmitter: *eventEmitter,
 	}).SetupWithManager(mgr); err != nil {

@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -64,5 +65,5 @@ func init() {
 
 // GenerateIdentifier returns identifier for the object in for "kind.namespace.name"
 func (t *EventSource) GenerateIdentifier() string {
-	return GenerateIdentifier("EventSource", t.Namespace, t.Name)
+	return v1alpha1.GenerateIdentifier("EventSource", t.Namespace, t.Name)
 }

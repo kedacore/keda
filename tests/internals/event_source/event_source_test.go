@@ -45,7 +45,7 @@ type templateData struct {
 
 const (
 	eventSourceTemplate = `
-  apiVersion: keda.sh/v1alpha1
+  apiVersion: eventing.keda.sh/v1alpha1
   kind: EventSource
   metadata:
     name: {{.EventSourceName}}

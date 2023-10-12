@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package keda
+package eventing
 
 import (
 	"context"
@@ -22,7 +22,7 @@ import (
 
 	"github.com/go-logr/logr"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	"github.com/kedacore/keda/v2/controllers/keda/util"
 )
 
@@ -30,7 +30,7 @@ const (
 	eventSourceFinalizer = "finalizer.keda.sh"
 )
 
-func (r *EventSourceReconciler) EnsureEventSourceResourceFinalizer(ctx context.Context, logger logr.Logger, eventSource *kedav1alpha1.EventSource) error {
+func (r *EventSourceReconciler) EnsureEventSourceResourceFinalizer(ctx context.Context, logger logr.Logger, eventSource *eventingv1alpha1.EventSource) error {
 	//TODO: Add switch when adding clustereventsource
 	eventSourceResourceType := "eventSource"
 
@@ -48,7 +48,7 @@ func (r *EventSourceReconciler) EnsureEventSourceResourceFinalizer(ctx context.C
 	return nil
 }
 
-func (r *EventSourceReconciler) FinalizeEventSourceResource(ctx context.Context, logger logr.Logger, eventSource *kedav1alpha1.EventSource, namespacedName string) error {
+func (r *EventSourceReconciler) FinalizeEventSourceResource(ctx context.Context, logger logr.Logger, eventSource *eventingv1alpha1.EventSource, namespacedName string) error {
 	eventSourceResourceType := "eventSource"
 
 	if util.Contains(eventSource.GetFinalizers(), eventSourceFinalizer) {

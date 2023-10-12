@@ -1,0 +1,12 @@
+apiVersion: eventing.keda.sh/v1alpha1
+kind: EventSource
+metadata:
+  labels:
+    app.kubernetes.io/name: eventsource
+    app.kubernetes.io/instance: eventsource-sample
+    app.kubernetes.io/part-of: keda
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: keda
+  name: eventsource-sample
+spec:
+  # TODO(user): Add fields here

@@ -39,7 +39,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 )
 
 var log = logf.Log.WithName("event_emitter")
@@ -94,13 +94,13 @@ func NewEventEmitter(client client.Client, recorder record.EventRecorder) *Event
 	}
 }
 
-func initializeLogger(eventSource *kedav1alpha1.EventSource, eventSourceEmitterName string) logr.Logger {
+func initializeLogger(eventSource *eventingv1alpha1.EventSource, eventSourceEmitterName string) logr.Logger {
 	return logf.Log.WithName(eventSourceEmitterName).WithValues("type", eventSource.Kind, "namespace", eventSource.Namespace, "name", eventSource.Name)
 }
 
 // HandleEventSource will create EventSource handlers that defined in spec and start an event loop once handlers
 // are created successfully.
-func (e *EventEmitter) HandleEventSource(ctx context.Context, eventSource *kedav1alpha1.EventSource) error {
+func (e *EventEmitter) HandleEventSource(ctx context.Context, eventSource *eventingv1alpha1.EventSource) error {
 	e.createEventHandlers(ctx, eventSource)
 
 	if !e.checkIfEventHandlersExist(eventSource) {
@@ -127,7 +127,7 @@ func (e *EventEmitter) HandleEventSource(ctx context.Context, eventSource *kedav
 }
 
 // DeleteEventSource will stop the event loop and clean event handlers in cache.
-func (e *EventEmitter) DeleteEventSource(eventSource *kedav1alpha1.EventSource) error {
+func (e *EventEmitter) DeleteEventSource(eventSource *eventingv1alpha1.EventSource) error {
 	key := eventSource.GenerateIdentifier()
 	result, ok := e.eventLoopContexts.Load(key)
 	if ok {
@@ -146,7 +146,7 @@ func (e *EventEmitter) DeleteEventSource(eventSource *kedav1alpha1.EventSource) 
 
 // createEventHandlers will create different handler as defined in EventSource, and store them in cache for repeated
 // use in the loop.
-func (e *EventEmitter) createEventHandlers(ctx context.Context, eventSource *kedav1alpha1.EventSource) {
+func (e *EventEmitter) createEventHandlers(ctx context.Context, eventSource *eventingv1alpha1.EventSource) {
 	e.eventHandlersCachesLock.Lock()
 	defer e.eventHandlersCachesLock.Unlock()
 
@@ -170,7 +170,7 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, eventSource *ked
 }
 
 // clearEventHandlersCache will clear all event handlers that created by the passing EventSource
-func (e *EventEmitter) clearEventHandlersCache(eventSource *kedav1alpha1.EventSource) {
+func (e *EventEmitter) clearEventHandlersCache(eventSource *eventingv1alpha1.EventSource) {
 	e.eventHandlersCachesLock.Lock()
 	defer e.eventHandlersCachesLock.Unlock()
 
@@ -186,7 +186,7 @@ func (e *EventEmitter) clearEventHandlersCache(eventSource *kedav1alpha1.EventSo
 }
 
 // clearEventHandlersCache will check if the event handlers that were created by passing EventSource exist
-func (e *EventEmitter) checkIfEventHandlersExist(eventSource *kedav1alpha1.EventSource) bool {
+func (e *EventEmitter) checkIfEventHandlersExist(eventSource *eventingv1alpha1.EventSource) bool {
 	e.eventHandlersCachesLock.RLock()
 	defer e.eventHandlersCachesLock.RUnlock()
 
