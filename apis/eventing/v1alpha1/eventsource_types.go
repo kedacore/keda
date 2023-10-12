@@ -17,8 +17,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
