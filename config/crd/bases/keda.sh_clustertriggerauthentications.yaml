@@ -189,21 +189,21 @@ spec:
                           type: string
                         path:
                           type: string
-                        pki_data:
+                        pkiData:
                           properties:
-                            alt_names:
+                            altNames:
                               type: string
-                            common_name:
+                            commonName:
                               type: string
                             format:
                               type: string
-                            ip_sans:
+                            ipSans:
                               type: string
-                            other_sans:
+                            otherSans:
                               type: string
                             ttl:
                               type: string
-                            uri_sans:
+                            uriSans:
                               type: string
                           type: object
                         type:

@@ -202,17 +202,17 @@ type VaultSecretType string
 
 const (
 	VaultSecretTypeGeneric  VaultSecretType = ""
-	VaultSecretTypeSecretV2 VaultSecretType = "secret_v2"
+	VaultSecretTypeSecretV2 VaultSecretType = "secretV2"
 	VaultSecretTypeSecret   VaultSecretType = "secret"
 	VaultSecretTypePki      VaultSecretType = "pki"
 )
 
 type VaultPkiData struct {
-	CommonName string `json:"common_name,omitempty"`
-	AltNames   string `json:"alt_names,omitempty"`
-	IPSans     string `json:"ip_sans,omitempty"`
-	URISans    string `json:"uri_sans,omitempty"`
-	OtherSans  string `json:"other_sans,omitempty"`
+	CommonName string `json:"commonName,omitempty"`
+	AltNames   string `json:"altNames,omitempty"`
+	IPSans     string `json:"ipSans,omitempty"`
+	URISans    string `json:"uriSans,omitempty"`
+	OtherSans  string `json:"otherSans,omitempty"`
 	TTL        string `json:"ttl,omitempty"`
 	Format     string `json:"format,omitempty"`
 }
@@ -223,7 +223,7 @@ type VaultSecret struct {
 	Path      string          `json:"path"`
 	Key       string          `json:"key"`
 	Type      VaultSecretType `json:"type,omitempty"`
-	PkiData   VaultPkiData    `json:"pki_data,omitempty"`
+	PkiData   VaultPkiData    `json:"pkiData,omitempty"`
 	Value     string          `json:"-"`
 }
 

@@ -29,9 +29,6 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
-type VaultClient interface {
-}
-
 // HashicorpVaultHandler is specification of Hashi Corp Vault
 type HashicorpVaultHandler struct {
 	vault  *kedav1alpha1.HashiCorpVault
@@ -89,6 +86,7 @@ func (vh *HashicorpVaultHandler) Initialize(logger logr.Logger) error {
 	return nil
 }
 
+// token Extract a vault token from the Authentication method
 func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) {
 	var token string
 
@@ -136,6 +134,7 @@ func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) 
 	return token, nil
 }
 
+// renewToken takes charge of renewing the vault token
 func (vh *HashicorpVaultHandler) renewToken(logger logr.Logger) {
 	secret, err := vh.client.Auth().Token().RenewSelf(0)
 	if err != nil {
@@ -171,21 +170,24 @@ RenewWatcherLoop:
 	}
 }
 
+// Read is used to get a secret from vault Read api. (e.g. secret)
 func (vh *HashicorpVaultHandler) Read(path string) (*vaultapi.Secret, error) {
 	return vh.client.Logical().Read(path)
 }
 
+// Write is used to get a secret from vault that needs to pass along data and uses the vault Write api. (e.g. pki)
 func (vh *HashicorpVaultHandler) Write(path string, data map[string]interface{}) (*vaultapi.Secret, error) {
 	return vh.client.Logical().Write(path, data)
 }
 
-// Stop is responsible for stoping the renew token process
+// Stop is responsible for stopping the renewal token process
 func (vh *HashicorpVaultHandler) Stop() {
 	if vh.stopCh != nil {
 		vh.stopCh <- struct{}{}
 	}
 }
 
+// getPkiRequest format the pkiData in a format that the vault sdk understands.
 func (vh *HashicorpVaultHandler) getPkiRequest(pkiData *kedav1alpha1.VaultPkiData) (map[string]interface{}, error) {
 	var data map[string]interface{}
 	a, err := json.Marshal(pkiData)
@@ -199,6 +201,8 @@ func (vh *HashicorpVaultHandler) getPkiRequest(pkiData *kedav1alpha1.VaultPkiDat
 	return data, nil
 }
 
+// getSecretValue extract the secret value from the vault api response. As the vault api returns us a map[string]interface{},
+// specific handling might be needed for some secret type.
 func (vh *HashicorpVaultHandler) getSecretValue(secret *kedav1alpha1.VaultSecret, vaultSecret *vaultapi.Secret) (string, error) {
 	if secret.Type == kedav1alpha1.VaultSecretTypeGeneric {
 		if _, ok := vaultSecret.Data["data"]; ok {
@@ -263,12 +267,15 @@ func (vh *HashicorpVaultHandler) getSecretValue(secret *kedav1alpha1.VaultSecret
 	}
 }
 
+// SecretGroup is used to group secret together by path, secretType and vaultPkiData.
 type SecretGroup struct {
 	path         string
 	secretType   kedav1alpha1.VaultSecretType
 	vaultPkiData *kedav1alpha1.VaultPkiData
 }
 
+// fetchSecret returns the vaultSecret at a given vault path. If the secret is a pki, then the secret will use the
+// vault Write method and will send the pkiData along
 func (vh *HashicorpVaultHandler) fetchSecret(secretType kedav1alpha1.VaultSecretType, path string, vaultPkiData *kedav1alpha1.VaultPkiData) (*vaultapi.Secret, error) {
 	var vaultSecret *vaultapi.Secret
 	var err error
@@ -294,6 +301,8 @@ func (vh *HashicorpVaultHandler) fetchSecret(secretType kedav1alpha1.VaultSecret
 	return vaultSecret, nil
 }
 
+// ResolveSecrets allows to resolve a slice of secrets by vault. The function returns the list of secrets with the value updated.
+// If multiple secret refers to the same SecretGroup, the secret will be fetched only once.
 func (vh *HashicorpVaultHandler) ResolveSecrets(secrets []kedav1alpha1.VaultSecret) ([]kedav1alpha1.VaultSecret, error) {
 	// Group secret by path and type, this allows to fetch a path only one. This is useful for dynamic credentials
 	grouped := make(map[SecretGroup][]kedav1alpha1.VaultSecret)
