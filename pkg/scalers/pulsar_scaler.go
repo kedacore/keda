@@ -229,6 +229,13 @@ func parsePulsarMetadata(config *ScalerConfig, logger logr.Logger) (pulsarMetada
 		if auth.ClientSecret == "" {
 			auth.ClientSecret = time.Now().String()
 		}
+		if auth.EndpointParams == nil {
+			v, err := authentication.ParseEndpointParams(config.TriggerMetadata["EndpointParams"])
+			if err != nil {
+				return meta, fmt.Errorf("error parsing EndpointParams: %s", config.TriggerMetadata["EndpointParams"])
+			}
+			auth.EndpointParams = v
+		}
 	}
 	meta.pulsarAuth = auth
 	meta.scalerIndex = config.ScalerIndex
@@ -250,6 +257,7 @@ func (s *pulsarScaler) GetStats(ctx context.Context) (*pulsarStats, error) {
 			ClientSecret: s.metadata.pulsarAuth.ClientSecret,
 			TokenURL:     s.metadata.pulsarAuth.OauthTokenURI,
 			Scopes:       s.metadata.pulsarAuth.Scopes,
+			EndpointParams: s.metadata.pulsarAuth.EndpointParams,
 		}
 		client = config.Client(context.Background())
 	}
