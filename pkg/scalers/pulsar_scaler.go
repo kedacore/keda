@@ -253,10 +253,10 @@ func (s *pulsarScaler) GetStats(ctx context.Context) (*pulsarStats, error) {
 	client := s.client
 	if s.metadata.pulsarAuth.EnableOAuth {
 		config := clientcredentials.Config{
-			ClientID:     s.metadata.pulsarAuth.ClientID,
-			ClientSecret: s.metadata.pulsarAuth.ClientSecret,
-			TokenURL:     s.metadata.pulsarAuth.OauthTokenURI,
-			Scopes:       s.metadata.pulsarAuth.Scopes,
+			ClientID:       s.metadata.pulsarAuth.ClientID,
+			ClientSecret:   s.metadata.pulsarAuth.ClientSecret,
+			TokenURL:       s.metadata.pulsarAuth.OauthTokenURI,
+			Scopes:         s.metadata.pulsarAuth.Scopes,
 			EndpointParams: s.metadata.pulsarAuth.EndpointParams,
 		}
 		client = config.Client(context.Background())

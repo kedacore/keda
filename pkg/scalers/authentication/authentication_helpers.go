@@ -145,9 +145,8 @@ func ParseEndpointParams(inputStr string) (url.Values, error) {
 	}
 	if len(v) == 0 {
 		return nil, nil
-	} else {
-		return v, nil
 	}
+	return v, nil
 }
 
 func GetBearerToken(auth *AuthMeta) string {

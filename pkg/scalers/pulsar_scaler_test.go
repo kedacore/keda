@@ -3,9 +3,9 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"reflect"	
 	"strconv"
 	"strings"
-	"reflect"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -37,7 +37,7 @@ type parsePulsarAuthParamsTestData struct {
 	scope                  string
 	clientID               string
 	clientSecret           string
-	endpointParams	       string
+	endpointParams         string
 	expectedEndpointParams map[string][]string
 }
 
