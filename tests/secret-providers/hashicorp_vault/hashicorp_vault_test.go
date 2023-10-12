@@ -378,20 +378,20 @@ spec:
         parameter: "ca"
         path: {{ .VaultSecretPath }}
         type: pki
-        pki_data:
-          common_name: {{ .VaultPkiCommonName }}
+        pkiData:
+          commonName: {{ .VaultPkiCommonName }}
       - key: "private_key"
         parameter: "key"
         path: {{ .VaultSecretPath }}
         type: pki
-        pki_data:
-          common_name: {{ .VaultPkiCommonName }}
+        pkiData:
+          commonName: {{ .VaultPkiCommonName }}
       - key: "certificate"
         parameter: "cert"
         path: {{ .VaultSecretPath }}
         type: pki
-        pki_data:
-          common_name: {{ .VaultPkiCommonName }}`
+        pkiData:
+          commonName: {{ .VaultPkiCommonName }}`
 	prometheusScaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
