@@ -152,7 +152,7 @@ func TestScaledObjectGeneral(t *testing.T) {
 	DeleteKubernetesResources(t, namespace, data, templates)
 }
 
-// tests basic scaling with one trigger based on metrics
+// tests error events emitted
 func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data templateData) {
 	t.Log("--- test emitting eventsource about scaledobject err---")
 	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
