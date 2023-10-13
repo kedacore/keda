@@ -4,6 +4,7 @@
 package prometheus
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,19 +18,58 @@ type templateData struct {
 	PrometheusServerName string
 }
 
-var (
-	prometheusTemplates = []helper.Template{
+type VaultPkiData struct {
+	CaCertificate     string
+	ServerKey         string
+	ServerCertificate string
+}
+
+func getPrometheusTemplates(pki *VaultPkiData) []helper.Template {
+	return []helper.Template{
 		{Name: "prometheusServerServiceAccountTemplate", Config: prometheusServerServiceAccountTemplate},
-		{Name: "standaloneRedisServiceTemplate", Config: prometheusServerConfigMapTemplate},
+		{Name: "prometheusServerConfigMapTemplate", Config: getPrometheusServerConfigMapTemplate(pki)},
+		{Name: "prometheusServerCertificateSecretTemplate", Config: getPrometheusServerCertificateSecretTemplate(pki)},
 		{Name: "prometheusServerClusterRoleTemplate", Config: prometheusServerClusterRoleTemplate},
 		{Name: "prometheusServerClusterRoleBindingTemplate", Config: prometheusServerClusterRoleBindingTemplate},
-		{Name: "prometheusServerDeploymentTemplate", Config: prometheusServerDeploymentTemplate},
+		{Name: "prometheusServerDeploymentTemplate", Config: getPrometheusServerDeploymentTemplate(pki)},
 		{Name: "prometheusServerServiceTemplate", Config: prometheusServerServiceTemplate},
 	}
-)
+}
 
-const (
-	prometheusServerConfigMapTemplate = `apiVersion: v1
+func getPrometheusServerCertificateSecretTemplate(pki *VaultPkiData) string {
+	template := `apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    component: "server"
+    app: prometheus
+    release: prometheus
+  name: {{.PrometheusServerName}}-certificates
+  namespace: {{.Namespace}}
+data:`
+	if pki == nil {
+		template += " {}"
+		return template
+	}
+	template += fmt.Sprintf(`
+  cert.pem: %s
+  key.pem: %s
+  ca.pem: %s`, pki.ServerCertificate, pki.ServerKey, pki.CaCertificate)
+	return template
+}
+
+func getPrometheusServerConfigMapTemplate(pki *VaultPkiData) string {
+	var webConfig string
+	if pki != nil {
+		webConfig = `tls_server_config:
+      client_auth_type: VerifyClientCertIfGiven # Force to use this as k8s probe does not support mtls yet
+      cert_file: /etc/tls/cert.pem
+      key_file: /etc/tls/key.pem
+      client_ca_file: /etc/tls/ca.pem`
+	} else {
+		webConfig = "{}"
+	}
+	return fmt.Sprintf(`apiVersion: v1
 kind: ConfigMap
 metadata:
   labels:
@@ -44,6 +84,9 @@ data:
 
   alerts: |
     {}
+
+  web-config.yml: |
+    %s
 
   prometheus.yml: |
     global:
@@ -295,9 +338,115 @@ data:
     {}
 
   rules: |
-    {}
-`
+    {}`, webConfig)
+}
 
+func getPrometheusServerDeploymentTemplate(pki *VaultPkiData) string {
+	var probeScheme string
+	if pki != nil {
+		probeScheme = "HTTPS"
+	} else {
+		probeScheme = "HTTP"
+	}
+	return fmt.Sprintf(`apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: "server"
+    app: prometheus
+    release: prometheus
+    chart: prometheus-11.1.0
+  name: {{.PrometheusServerName}}
+  namespace: {{.Namespace}}
+spec:
+  selector:
+    matchLabels:
+      component: "server"
+      app: prometheus
+      release: prometheus
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        component: "server"
+        app: prometheus
+        release: prometheus
+        chart: prometheus-11.1.0
+    spec:
+      serviceAccountName: {{.PrometheusServerName}}
+      containers:
+        - name: prometheus-server-configmap-reload
+          image: "jimmidyson/configmap-reload:v0.3.0"
+          imagePullPolicy: "IfNotPresent"
+          args:
+            - --volume-dir=/etc/config
+            - --webhook-url=http://127.0.0.1:9090/-/reload
+
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/config
+              readOnly: true
+
+        - name: prometheus-server
+          image: "prom/prometheus:v2.47.1"
+          imagePullPolicy: "IfNotPresent"
+          args:
+            - --storage.tsdb.retention.time=15d
+            - --config.file=/etc/config/prometheus.yml
+            - --storage.tsdb.path=/data
+            - --web.console.libraries=/etc/prometheus/console_libraries
+            - --web.console.templates=/etc/prometheus/consoles
+            - --web.config.file=/etc/config/web-config.yml
+            - --web.enable-lifecycle
+          ports:
+            - containerPort: 9090
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9090
+              scheme: %s
+            initialDelaySeconds: 30
+            timeoutSeconds: 30
+            failureThreshold: 3
+            successThreshold: 1
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9090
+              scheme: %s
+            initialDelaySeconds: 30
+            timeoutSeconds: 30
+            failureThreshold: 3
+            successThreshold: 1
+
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/config
+            - name: certificates
+              mountPath: /etc/tls
+            - name: storage-volume
+              mountPath: /data
+              subPath: ""
+      securityContext:
+        fsGroup: 65534
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+
+      terminationGracePeriodSeconds: 300
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{.PrometheusServerName}}
+        - name: certificates
+          secret:
+            secretName: {{.PrometheusServerName}}-certificates
+        - name: storage-volume
+          emptyDir: {}`, probeScheme, probeScheme,
+	)
+}
+
+const (
 	prometheusServerServiceAccountTemplate = `apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -393,112 +542,24 @@ spec:
   sessionAffinity: None
   type: "ClusterIP"
 `
-	prometheusServerDeploymentTemplate = `apiVersion: apps/v1
-kind: Deployment
-metadata:
-  labels:
-    component: "server"
-    app: prometheus
-    release: prometheus
-    chart: prometheus-11.1.0
-  name: {{.PrometheusServerName}}
-  namespace: {{.Namespace}}
-spec:
-  selector:
-    matchLabels:
-      component: "server"
-      app: prometheus
-      release: prometheus
-  replicas: 1
-  template:
-    metadata:
-      labels:
-        component: "server"
-        app: prometheus
-        release: prometheus
-        chart: prometheus-11.1.0
-    spec:
-      serviceAccountName: {{.PrometheusServerName}}
-      containers:
-        - name: prometheus-server-configmap-reload
-          image: "jimmidyson/configmap-reload:v0.3.0"
-          imagePullPolicy: "IfNotPresent"
-          args:
-            - --volume-dir=/etc/config
-            - --webhook-url=http://127.0.0.1:9090/-/reload
-
-          volumeMounts:
-            - name: config-volume
-              mountPath: /etc/config
-              readOnly: true
-
-        - name: prometheus-server
-          image: "prom/prometheus:v2.16.0"
-          imagePullPolicy: "IfNotPresent"
-          args:
-            - --storage.tsdb.retention.time=15d
-            - --config.file=/etc/config/prometheus.yml
-            - --storage.tsdb.path=/data
-            - --web.console.libraries=/etc/prometheus/console_libraries
-            - --web.console.templates=/etc/prometheus/consoles
-            - --web.enable-lifecycle
-          ports:
-            - containerPort: 9090
-          readinessProbe:
-            httpGet:
-              path: /-/ready
-              port: 9090
-            initialDelaySeconds: 30
-            timeoutSeconds: 30
-            failureThreshold: 3
-            successThreshold: 1
-          livenessProbe:
-            httpGet:
-              path: /-/healthy
-              port: 9090
-            initialDelaySeconds: 30
-            timeoutSeconds: 30
-            failureThreshold: 3
-            successThreshold: 1
-
-          volumeMounts:
-            - name: config-volume
-              mountPath: /etc/config
-            - name: storage-volume
-              mountPath: /data
-              subPath: ""
-      securityContext:
-        fsGroup: 65534
-        runAsGroup: 65534
-        runAsNonRoot: true
-        runAsUser: 65534
-
-      terminationGracePeriodSeconds: 300
-      volumes:
-        - name: config-volume
-          configMap:
-            name: {{.PrometheusServerName}}
-        - name: storage-volume
-          emptyDir: {}
-`
 )
 
-func Install(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
+func Install(t *testing.T, kc *kubernetes.Clientset, name, namespace string, pki *VaultPkiData) {
 	helper.CreateNamespace(t, kc, namespace)
 	var data = templateData{
 		Namespace:            namespace,
 		PrometheusServerName: name,
 	}
-	helper.KubectlApplyMultipleWithTemplate(t, data, prometheusTemplates)
+	helper.KubectlApplyMultipleWithTemplate(t, data, getPrometheusTemplates(pki))
 	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, name, namespace, 1, 60, 3),
 		"replica count should be 1 after 3 minutes")
 }
 
-func Uninstall(t *testing.T, name, namespace string) {
+func Uninstall(t *testing.T, name, namespace string, pki *VaultPkiData) {
 	var data = templateData{
 		Namespace:            namespace,
 		PrometheusServerName: name,
 	}
-	helper.KubectlDeleteMultipleWithTemplate(t, data, prometheusTemplates)
+	helper.KubectlDeleteMultipleWithTemplate(t, data, getPrometheusTemplates(pki))
 	helper.DeleteNamespace(t, namespace)
 }
