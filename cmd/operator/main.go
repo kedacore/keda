@@ -252,11 +252,11 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterTriggerAuthentication")
 		os.Exit(1)
 	}
-	if err = (&eventingcontrollers.EventSourceReconciler{
+	if err = (&eventingcontrollers.CloudEventSourceReconciler{
 		Client:       mgr.GetClient(),
 		EventEmitter: *eventEmitter,
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "EventSource")
+		setupLog.Error(err, "unable to create controller", "controller", "CloudEventSource")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

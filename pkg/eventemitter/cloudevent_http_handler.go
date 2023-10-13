@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 // ******************************* DESCRIPTION ****************************** \\
-// CloudEventHTTPHandler focus on emitting the EventSource to CloudEvent HTTP
-// URI. URI can be defined in EventSourceSpec.
+// CloudEventHTTPHandler focus on emitting the CloudEventSource to CloudEvent HTTP
+// URI. URI can be defined in CloudEventSourceSpec.
 // ************************************************************************** \\
 
 package eventemitter
@@ -70,7 +70,7 @@ func (c *CloudEventHTTPHandler) EmitEvent(eventData EventData, failureFunc func(
 	event := cloudevents.NewEvent()
 	event.SetSource(source)
 	event.SetSubject(subject)
-	event.SetType(EventSourceType)
+	event.SetType(CloudEventSourceType)
 
 	if err := event.SetData(cloudevents.ApplicationJSON, EmitData{Reason: eventData.reason, Message: eventData.message}); err != nil {
 		c.logger.Error(err, "Failed to set data to cloudevent")

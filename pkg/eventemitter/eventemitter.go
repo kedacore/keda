@@ -15,10 +15,10 @@ limitations under the License.
 */
 
 // ******************************* DESCRIPTION ****************************** \\
-// eventemitter package describes functions that manage different EventSource
-// handlers and emit KEDA events to different EventSource destinations through
+// eventemitter package describes functions that manage different CloudEventSource
+// handlers and emit KEDA events to different CloudEventSource destinations through
 // these handlers. A loop will be launched to monitor whether there is a new
-// KEDA event once a valid EventSource CRD is created. And then the eventemitter
+// KEDA event once a valid CloudEventSource CRD is created. And then the eventemitter
 // will send the event data to all event handlers when a new KEDA event reached.
 // ************************************************************************** \\
 
@@ -45,7 +45,7 @@ import (
 var log = logf.Log.WithName("event_emitter")
 var ch chan EventData
 
-const EventSourceType = "com.eventsource.keda"
+const CloudEventSourceType = "com.cloudeventsource.keda"
 const MaxRetryTimes = 5
 const MaxChannelBuffer = 10
 
@@ -94,23 +94,23 @@ func NewEventEmitter(client client.Client, recorder record.EventRecorder) *Event
 	}
 }
 
-func initializeLogger(eventSource *eventingv1alpha1.EventSource, eventSourceEmitterName string) logr.Logger {
-	return logf.Log.WithName(eventSourceEmitterName).WithValues("type", eventSource.Kind, "namespace", eventSource.Namespace, "name", eventSource.Name)
+func initializeLogger(cloudEventSource *eventingv1alpha1.CloudEventSource, cloudEventSourceEmitterName string) logr.Logger {
+	return logf.Log.WithName(cloudEventSourceEmitterName).WithValues("type", cloudEventSource.Kind, "namespace", cloudEventSource.Namespace, "name", cloudEventSource.Name)
 }
 
-// HandleEventSource will create EventSource handlers that defined in spec and start an event loop once handlers
+// HandleCloudEventSource will create CloudEventSource handlers that defined in spec and start an event loop once handlers
 // are created successfully.
-func (e *EventEmitter) HandleEventSource(ctx context.Context, eventSource *eventingv1alpha1.EventSource) error {
-	e.createEventHandlers(ctx, eventSource)
+func (e *EventEmitter) HandleCloudEventSource(ctx context.Context, cloudEventSource *eventingv1alpha1.CloudEventSource) error {
+	e.createEventHandlers(ctx, cloudEventSource)
 
-	if !e.checkIfEventHandlersExist(eventSource) {
-		return fmt.Errorf("no EventSource handler is created for %s", eventSource.Name)
+	if !e.checkIfEventHandlersExist(cloudEventSource) {
+		return fmt.Errorf("no CloudEventSource handler is created for %s", cloudEventSource.Name)
 	}
 
-	key := eventSource.GenerateIdentifier()
+	key := cloudEventSource.GenerateIdentifier()
 	ctx, cancel := context.WithCancel(ctx)
 
-	// cancel the outdated EventLoop for the same EventSource (if exists)
+	// cancel the outdated EventLoop for the same CloudEventSource (if exists)
 	value, loaded := e.eventLoopContexts.LoadOrStore(key, cancel)
 	if loaded {
 		cancelValue, ok := value.(context.CancelFunc)
@@ -120,15 +120,15 @@ func (e *EventEmitter) HandleEventSource(ctx context.Context, eventSource *event
 		e.eventLoopContexts.Store(key, cancel)
 	}
 
-	// passing deep copy of EventSource to the eventLoop go routines, it's a precaution to not have global objects shared between threads
-	log.V(1).Info("Start EventSource loop.")
+	// passing deep copy of CloudEventSource to the eventLoop go routines, it's a precaution to not have global objects shared between threads
+	log.V(1).Info("Start CloudEventSource loop.")
 	go e.startEventLoop(ctx)
 	return nil
 }
 
-// DeleteEventSource will stop the event loop and clean event handlers in cache.
-func (e *EventEmitter) DeleteEventSource(eventSource *eventingv1alpha1.EventSource) error {
-	key := eventSource.GenerateIdentifier()
+// DeleteCloudEventSource will stop the event loop and clean event handlers in cache.
+func (e *EventEmitter) DeleteCloudEventSource(cloudEventSource *eventingv1alpha1.CloudEventSource) error {
+	key := cloudEventSource.GenerateIdentifier()
 	result, ok := e.eventLoopContexts.Load(key)
 	if ok {
 		cancel, ok := result.(context.CancelFunc)
@@ -136,30 +136,30 @@ func (e *EventEmitter) DeleteEventSource(eventSource *eventingv1alpha1.EventSour
 			cancel()
 		}
 		e.eventLoopContexts.Delete(key)
-		e.clearEventHandlersCache(eventSource)
+		e.clearEventHandlersCache(cloudEventSource)
 	} else {
-		log.V(1).Info("EventSource was not found in controller cache", "key", key)
+		log.V(1).Info("CloudEventSource was not found in controller cache", "key", key)
 	}
 
 	return nil
 }
 
-// createEventHandlers will create different handler as defined in EventSource, and store them in cache for repeated
+// createEventHandlers will create different handler as defined in CloudEventSource, and store them in cache for repeated
 // use in the loop.
-func (e *EventEmitter) createEventHandlers(ctx context.Context, eventSource *eventingv1alpha1.EventSource) {
+func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEventSource *eventingv1alpha1.CloudEventSource) {
 	e.eventHandlersCachesLock.Lock()
 	defer e.eventHandlersCachesLock.Unlock()
 
-	key := eventSource.GenerateIdentifier()
+	key := cloudEventSource.GenerateIdentifier()
 
-	clusterName := eventSource.Spec.ClusterName
+	clusterName := cloudEventSource.Spec.ClusterName
 	if clusterName == "" {
 		clusterName = "default"
 	}
 
-	if eventSource.Spec.Destination.HTTP != nil {
+	if cloudEventSource.Spec.Destination.HTTP != nil {
 		var eventHandler EventDataHandler
-		eventHandler, err := NewCloudEventHTTPHandler(ctx, clusterName, eventSource.Spec.Destination.HTTP.URI, initializeLogger(eventSource, "cloudevent_http"))
+		eventHandler, err := NewCloudEventHTTPHandler(ctx, clusterName, cloudEventSource.Spec.Destination.HTTP.URI, initializeLogger(cloudEventSource, "cloudevent_http"))
 
 		if err != nil {
 			log.Error(err, "create CloudEvent HTTP handler failed")
@@ -169,14 +169,14 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, eventSource *eve
 	}
 }
 
-// clearEventHandlersCache will clear all event handlers that created by the passing EventSource
-func (e *EventEmitter) clearEventHandlersCache(eventSource *eventingv1alpha1.EventSource) {
+// clearEventHandlersCache will clear all event handlers that created by the passing CloudEventSource
+func (e *EventEmitter) clearEventHandlersCache(cloudEventSource *eventingv1alpha1.CloudEventSource) {
 	e.eventHandlersCachesLock.Lock()
 	defer e.eventHandlersCachesLock.Unlock()
 
-	key := eventSource.GenerateIdentifier()
+	key := cloudEventSource.GenerateIdentifier()
 
-	if eventSource.Spec.Destination.HTTP != nil {
+	if cloudEventSource.Spec.Destination.HTTP != nil {
 		eventHandlerKey := key + CloudEventHTTP
 		if eventHandler, found := e.eventHandlersCache[eventHandlerKey]; found {
 			eventHandler.CloseHandler()
@@ -185,12 +185,12 @@ func (e *EventEmitter) clearEventHandlersCache(eventSource *eventingv1alpha1.Eve
 	}
 }
 
-// clearEventHandlersCache will check if the event handlers that were created by passing EventSource exist
-func (e *EventEmitter) checkIfEventHandlersExist(eventSource *eventingv1alpha1.EventSource) bool {
+// clearEventHandlersCache will check if the event handlers that were created by passing CloudEventSource exist
+func (e *EventEmitter) checkIfEventHandlersExist(cloudEventSource *eventingv1alpha1.CloudEventSource) bool {
 	e.eventHandlersCachesLock.RLock()
 	defer e.eventHandlersCachesLock.RUnlock()
 
-	key := eventSource.GenerateIdentifier()
+	key := cloudEventSource.GenerateIdentifier()
 
 	for k := range e.eventHandlersCache {
 		if strings.Contains(k, key) {
@@ -223,7 +223,7 @@ func (e *EventEmitter) startEventLoop(ctx context.Context) {
 	}
 }
 
-// Emit is emitting event to both local kubernetes and custom EventSource handler. After emit event to local kubernetes, event will inqueue and waitng for handler's consuming.
+// Emit is emitting event to both local kubernetes and custom CloudEventSource handler. After emit event to local kubernetes, event will inqueue and waitng for handler's consuming.
 func (e *EventEmitter) Emit(object runtime.Object, namesapce types.NamespacedName, eventtype, reason, message string) {
 	e.EventRecorder.Event(object, eventtype, reason, message)
 	name, _ := meta.NewAccessor().Name(object)
@@ -242,7 +242,7 @@ func (e *EventEmitter) inqueueEventData(eventData EventData) {
 	count := 0
 	for {
 		if count > MaxChannelBuffer {
-			log.Error(nil, "EventSource channel is full and need to be check if handler cannot emit events")
+			log.Error(nil, "CloudEventSource channel is full and need to be check if handler cannot emit events")
 			return
 		}
 		select {
