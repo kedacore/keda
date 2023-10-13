@@ -590,12 +590,55 @@ var _ = It("should validate the so creation with ScalingModifiers when formula t
 	}).ShouldNot(HaveOccurred())
 })
 
+var _ = It("should validate the so creation with ScalingModifiers.Formula - casting float in formula", func() {
+	namespaceName := "scaling-modifiers-formula-casting-float-good"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, false, false)
+
+	sm := ScalingModifiers{Target: "2", Formula: "float(workload_trig < 5 ? cron_trig + workload_trig : 5)"}
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Name: "cron_trig",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Name: "workload_trig",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+
+	so := createScaledObjectScalingModifiers(namespaceName, sm, triggers)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
 var _ = AfterSuite(func() {
 	cancel()
 	By("tearing down the test environment")
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
 })
+
+// -------------------------------------------------------------------------- //
+// ----------------------------- HELP FUNCTIONS ----------------------------- //
+// -------------------------------------------------------------------------- //
 
 func createNamespace(name string) *v1.Namespace {
 	return &v1.Namespace{
