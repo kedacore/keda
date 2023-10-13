@@ -211,7 +211,7 @@ spec:
 func TestPrometheusScaler(t *testing.T) {
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
-	prometheus.Install(t, kc, prometheusServerName, testNamespace)
+	prometheus.Install(t, kc, prometheusServerName, testNamespace, nil)
 
 	// Create kubernetes resources for testing
 	data, templates := getTemplateData()
@@ -227,7 +227,7 @@ func TestPrometheusScaler(t *testing.T) {
 
 	// cleanup
 	KubectlDeleteMultipleWithTemplate(t, data, templates)
-	prometheus.Uninstall(t, prometheusServerName, testNamespace)
+	prometheus.Uninstall(t, prometheusServerName, testNamespace, nil)
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {

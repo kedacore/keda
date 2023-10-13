@@ -73,13 +73,6 @@ spec:
           - containerPort: 2379
             name: client
             protocol: TCP
-          resources:
-            requests:
-              memory: "0.5Gi"
-              cpu: "500m"
-            limits:
-              memory: "1Gi"
-              cpu: "1000m"
           volumeMounts:
           - mountPath: /etcd-data
             name: cache-volume
