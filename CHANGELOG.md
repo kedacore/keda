@@ -69,7 +69,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
-- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Prevented stuck status due to timeouts during scalers generation ([#XXX](https://github.com/kedacore/keda/issues/5083))
 
 ### Deprecations
 

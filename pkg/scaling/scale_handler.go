@@ -291,6 +291,7 @@ func (h *scaleHandler) getScalersCacheForScaledObject(ctx context.Context, scale
 // performGetScalersCache returns cache for input scalableObject, it is common code used by GetScalersCache() and getScalersCacheForScaledObject() methods
 func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, scalableObject interface{}, scalableObjectGeneration *int64, scalableObjectKind, scalableObjectNamespace, scalableObjectName string) (*cache.ScalersCache, error) {
 	h.scalerCachesLock.RLock()
+	regenerateCache := false
 	if cache, ok := h.scalerCaches[key]; ok {
 		// generation was specified -> let's include it in the check as well
 		if scalableObjectGeneration != nil {
@@ -298,28 +299,16 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 				h.scalerCachesLock.RUnlock()
 				return cache, nil
 			}
+			// object was found in cache, but the generation is not correct,
+			// we'll need to close scalers in the cache and
+			// proceed further to recreate the cache
+			regenerateCache = false
 		} else {
 			h.scalerCachesLock.RUnlock()
 			return cache, nil
 		}
 	}
 	h.scalerCachesLock.RUnlock()
-
-	h.scalerCachesLock.Lock()
-	defer h.scalerCachesLock.Unlock()
-	if cache, ok := h.scalerCaches[key]; ok {
-		// generation was specified -> let's include it in the check as well
-		if scalableObjectGeneration != nil {
-			if cache.ScalableObjectGeneration == *scalableObjectGeneration {
-				return cache, nil
-			}
-			// object was found in cache, but the generation is not correct,
-			// let's close scalers in the cache and proceed further to recreate the cache
-			cache.Close(ctx)
-		} else {
-			return cache, nil
-		}
-	}
 
 	if scalableObject == nil {
 		switch scalableObjectKind {
@@ -388,6 +377,12 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 	default:
 	}
 
+	h.scalerCachesLock.Lock()
+	defer h.scalerCachesLock.Unlock()
+
+	if regenerateCache {
+		h.scalerCaches[key].Close(ctx)
+	}
 	h.scalerCaches[key] = newCache
 	return h.scalerCaches[key], nil
 }
