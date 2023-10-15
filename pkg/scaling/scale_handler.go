@@ -377,13 +377,18 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 	default:
 	}
 
-	h.scalerCachesLock.Lock()
-	defer h.scalerCachesLock.Unlock()
-
+	// Scalers Close() could be impacted by timeouts, blocking the mutex
+	// until the timeout happens. Instead of locking the mutex, we take
+	// the old cache item and we close it in another goroutine, not locking
+	// the cache: https://github.com/kedacore/keda/issues/5083
 	if regenerateCache {
-		h.scalerCaches[key].Close(ctx)
+		oldCache := h.scalerCaches[key]
+		go oldCache.Close(ctx)
 	}
+
+	h.scalerCachesLock.Lock()
 	h.scalerCaches[key] = newCache
+	h.scalerCachesLock.Unlock()
 	return h.scalerCaches[key], nil
 }
 
