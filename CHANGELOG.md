@@ -71,7 +71,7 @@ You can find all deprecations in [this overview](https://github.com/kedacore/ked
 
 New deprecation(s):
 
-- Remove support for AAD Pod Identity-based authentication ([#5035](https://github.com/kedacore/keda/issues/5035))
+- Remove support for Azure AD Pod Identity-based authentication ([#5035](https://github.com/kedacore/keda/issues/5035))
 
 ### Breaking Changes
 
