@@ -125,7 +125,7 @@ spec:
 // to other ScaledObjects https://github.com/kedacore/keda/issues/5083,
 // this test deploys a broken ScaledObject pointing to missing endpoint
 // which produces timeouts. In the meantime, we deploy another ScaledObject
-// and validate that it works although the broken ScaledObject produces timeouts. 
+// and validate that it works although the broken ScaledObject produces timeouts.
 // all the time. This prevents us for introducing deadlocks on internal scalers cache
 func TestBrokenScaledObjectTolerance(t *testing.T) {
 	// setup
