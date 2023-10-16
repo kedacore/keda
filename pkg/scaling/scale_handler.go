@@ -388,7 +388,7 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 
 	h.scalerCachesLock.Lock()
 	defer h.scalerCachesLock.Unlock()
-	h.scalerCaches[key] = newCache	
+	h.scalerCaches[key] = newCache
 	return h.scalerCaches[key], nil
 }
 
