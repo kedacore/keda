@@ -82,9 +82,10 @@ New deprecation(s):
 ### Breaking Changes
 
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
 ### Other
 
-- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Fix CVE-2023-45142 in Opentelemetry ([#5089](https://github.com/kedacore/keda/issues/5089))
 
 ## v2.12.0
 
