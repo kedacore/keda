@@ -9,4 +9,7 @@ metadata:
     app.kubernetes.io/created-by: keda
   name: cloudeventsource-sample
 spec:
-  # TODO(user): Add fields here
+  clusterName: cluster-sample
+  destination:
+    http:
+      uri: http://foo.bar
