@@ -14,7 +14,11 @@ spec:
     singular: cloudeventsource
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .status.conditions[?(@.type=="Active")].status
+      name: Active
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: CloudEventSource defines how a keda event will be sent to event
@@ -33,11 +37,12 @@ spec:
           metadata:
             type: object
           spec:
-            description: CloudEventSource
+            description: CloudEventSourceSpec defines the spec of CloudEventSource
             properties:
               clusterName:
                 type: string
               destination:
+                description: Destination defines the various ways to emit events
                 properties:
                   http:
                     properties:
@@ -49,6 +54,34 @@ spec:
                 required:
                 - http
                 type: object
+            type: object
+          status:
+            description: CloudEventSourceStatus defines the observed state of CloudEventSource
+            properties:
+              conditions:
+                description: Conditions an array representation to store multiple
+                  Conditions
+                items:
+                  description: Condition to store the condition state
+                  properties:
+                    message:
+                      description: A human readable message indicating details about
+                        the transition.
+                      type: string
+                    reason:
+                      description: The reason for the condition's last transition.
+                      type: string
+                    status:
+                      description: Status of the condition, one of True, False, Unknown.
+                      type: string
+                    type:
+                      description: Type of condition
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
             type: object
         required:
         - spec

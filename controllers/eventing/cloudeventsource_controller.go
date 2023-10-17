@@ -32,6 +32,7 @@ import (
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventemitter"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
+	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 )
 
 // CloudEventSourceReconciler reconciles a EventSource object
@@ -56,7 +57,7 @@ func init() {
 	eventSourcePromMetricsLock = &sync.Mutex{}
 }
 
-// +kubebuilder:rbac:groups=eventing.keda.sh,resources=eventsources;eventsources/status,verbs="*"
+// +kubebuilder:rbac:groups=eventing.keda.sh,resources=cloudeventsources;cloudeventsources/status,verbs="*"
 
 // Reconcile performs reconciliation on the identified EventSource resource based on the request information passed, returns the result and an error (if any).
 func (r *CloudEventSourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -87,6 +88,14 @@ func (r *CloudEventSourceReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	// ensure finalizer is set on this CR
 	if err := r.EnsureEventSourceResourceFinalizer(ctx, reqLogger, cloudEventSource); err != nil {
 		return ctrl.Result{}, err
+	}
+
+	// ensure Status Conditions are initialized
+	if !cloudEventSource.Status.Conditions.AreInitialized() {
+		conditions := eventingv1alpha1.GetCloudEventSourceInitializedConditions()
+		if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, cloudEventSource, conditions); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	eventSourceChanged, err := r.cloudEventSourceGenerationChanged(reqLogger, cloudEventSource)

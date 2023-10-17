@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
@@ -40,6 +41,8 @@ func SetStatusConditions(ctx context.Context, client runtimeclient.StatusClient,
 		case *kedav1alpha1.ScaledObject:
 			obj.Status.Conditions = *conditions
 		case *kedav1alpha1.ScaledJob:
+			obj.Status.Conditions = *conditions
+		case *eventingv1alpha1.CloudEventSource:
 			obj.Status.Conditions = *conditions
 		default:
 		}
@@ -173,6 +176,12 @@ func TransformObject(ctx context.Context, client runtimeclient.StatusClient, log
 		patch = runtimeclient.MergeFrom(obj.DeepCopy())
 		if err := transform(obj, target); err != nil {
 			logger.Error(err, "failed to patch ClusterTriggerAuthentication")
+			return err
+		}
+	case *eventingv1alpha1.CloudEventSource:
+		patch = runtimeclient.MergeFrom(obj.DeepCopy())
+		if err := transform(obj, target); err != nil {
+			logger.Error(err, "failed to patch CloudEventSource")
 			return err
 		}
 	default:

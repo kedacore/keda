@@ -27,7 +27,7 @@ var (
 	namespace                  = fmt.Sprintf("%s-ns", testName)
 	scaledObjectName           = fmt.Sprintf("%s-so", testName)
 	clientName                 = fmt.Sprintf("%s-client", testName)
-	eventSourceName            = fmt.Sprintf("%s-ce", testName)
+	cloudeventSourceName       = fmt.Sprintf("%s-ce", testName)
 	cloudEventHTTPReceiverName = fmt.Sprintf("%s-cloudevent-http-receiver", testName)
 	cloudEventHTTPServiceName  = fmt.Sprintf("%s-cloudevent-http-service", testName)
 	cloudEventHTTPServiceURL   = fmt.Sprintf("http://%s.%s.svc.cluster.local:8899", cloudEventHTTPServiceName, namespace)
@@ -37,18 +37,18 @@ type templateData struct {
 	TestNamespace              string
 	ScaledObject               string
 	ClientName                 string
-	EventSourceName            string
+	CloudEventSourceName       string
 	CloudEventHTTPReceiverName string
 	CloudEventHTTPServiceName  string
 	CloudEventHTTPServiceURL   string
 }
 
 const (
-	eventSourceTemplate = `
+	cloudEventSourceTemplate = `
   apiVersion: eventing.keda.sh/v1alpha1
-  kind: EventSource
+  kind: CloudEventSource
   metadata:
-    name: {{.EventSourceName}}
+    name: {{.CloudEventSourceName}}
     namespace: {{.TestNamespace}}
   spec:
     clusterName: cluster-sample
@@ -164,6 +164,7 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 
 	cloudEvent := make(map[string]interface{})
 	err := json.Unmarshal([]byte(out), &cloudEvent)
+
 	assert.Nil(t, err)
 	assert.Equal(t, cloudEvent["data"].(map[string]interface{})["message"], "ScaledObject doesn't have correct scaleTargetRef specification")
 }
@@ -174,7 +175,7 @@ func getTemplateData() (templateData, []Template) {
 			TestNamespace:              namespace,
 			ScaledObject:               scaledObjectName,
 			ClientName:                 clientName,
-			EventSourceName:            eventSourceName,
+			CloudEventSourceName:       cloudeventSourceName,
 			CloudEventHTTPReceiverName: cloudEventHTTPReceiverName,
 			CloudEventHTTPServiceName:  cloudEventHTTPServiceName,
 			CloudEventHTTPServiceURL:   cloudEventHTTPServiceURL,
@@ -182,6 +183,6 @@ func getTemplateData() (templateData, []Template) {
 			{Name: "cloudEventHTTPReceiverTemplate", Config: cloudEventHTTPReceiverTemplate},
 			{Name: "cloudEventHTTPServiceTemplate", Config: cloudEventHTTPServiceTemplate},
 			{Name: "clientTemplate", Config: clientTemplate},
-			{Name: "eventSourceTemplate", Config: eventSourceTemplate},
+			{Name: "cloudEventSourceTemplate", Config: cloudEventSourceTemplate},
 		}
 }

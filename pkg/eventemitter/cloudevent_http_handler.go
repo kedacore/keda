@@ -28,14 +28,16 @@ import (
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/cloudevents/sdk-go/v2/protocol"
 	"github.com/go-logr/logr"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type CloudEventHTTPHandler struct {
-	Endpoint    string
-	Client      cloudevents.Client
-	ClusterName string
-	ctx         context.Context
-	logger      logr.Logger
+	Endpoint     string
+	Client       cloudevents.Client
+	ClusterName  string
+	ActiveStatus metav1.ConditionStatus
+	ctx          context.Context
+	logger       logr.Logger
 }
 
 func NewCloudEventHTTPHandler(context context.Context, clusterName string, uri string, logger logr.Logger) (*CloudEventHTTPHandler, error) {
@@ -51,12 +53,21 @@ func NewCloudEventHTTPHandler(context context.Context, clusterName string, uri s
 
 	logger.Info("Create new cloudevents http handler with endPoint: " + uri)
 	return &CloudEventHTTPHandler{
-		Client:      client,
-		Endpoint:    uri,
-		ClusterName: clusterName,
-		ctx:         ctx,
-		logger:      logger,
+		Client:       client,
+		Endpoint:     uri,
+		ClusterName:  clusterName,
+		ActiveStatus: metav1.ConditionTrue,
+		ctx:          ctx,
+		logger:       logger,
 	}, nil
+}
+
+func (c *CloudEventHTTPHandler) SetActiveStatus(status metav1.ConditionStatus) {
+	c.ActiveStatus = status
+}
+
+func (c *CloudEventHTTPHandler) GetActiveStatus() metav1.ConditionStatus {
+	return c.ActiveStatus
 }
 
 func (c *CloudEventHTTPHandler) CloseHandler() {

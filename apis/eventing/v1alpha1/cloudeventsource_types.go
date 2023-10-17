@@ -27,23 +27,25 @@ import (
 // CloudEventSource defines how a keda event will be sent to event sink
 // +kubebuilder:resource:path=cloudeventsources,scope=Namespaced
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Active",type="string",JSONPath=".status.conditions[?(@.type==\"Active\")].status"
 type CloudEventSource struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec CloudEventSourceSpec `json:"spec"`
+	Spec   CloudEventSourceSpec   `json:"spec"`
+	Status CloudEventSourceStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// CloudEventSourceList is a list of EventSource resources
+// CloudEventSourceList is a list of CloudEventSource resources
 type CloudEventSourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 	Items           []CloudEventSource `json:"items"`
 }
 
-// CloudEventSource
+// CloudEventSourceSpec defines the spec of CloudEventSource
 type CloudEventSourceSpec struct {
 	// +optional
 	ClusterName string `json:"clusterName,omitempty"`
@@ -52,6 +54,14 @@ type CloudEventSourceSpec struct {
 	Destination Destination `json:"destination"`
 }
 
+// CloudEventSourceStatus defines the observed state of CloudEventSource
+// +optional
+type CloudEventSourceStatus struct {
+	// +optional
+	Conditions v1alpha1.Conditions `json:"conditions,omitempty"`
+}
+
+// Destination defines the various ways to emit events
 type Destination struct {
 	HTTP *CloudEventHTTP `json:"http"`
 }
@@ -67,4 +77,9 @@ func init() {
 // GenerateIdentifier returns identifier for the object in for "kind.namespace.name"
 func (t *CloudEventSource) GenerateIdentifier() string {
 	return v1alpha1.GenerateIdentifier("CloudEventSource", t.Namespace, t.Name)
+}
+
+// GetCloudEventSourceInitializedConditions returns CloudEventSource Conditions initialized to the default -> Status: Unknown
+func GetCloudEventSourceInitializedConditions() *v1alpha1.Conditions {
+	return &v1alpha1.Conditions{{Type: v1alpha1.ConditionActive, Status: metav1.ConditionUnknown}}
 }
