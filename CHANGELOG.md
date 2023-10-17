@@ -60,6 +60,7 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 
+- **General:** Support profiling for keda components ([#4789](https://github.com/kedacore/keda/issues/4789)
 - **General**: Add parameter queryParameters to prometheus-scaler ([#4962](https://github.com/kedacore/keda/issues/4962))
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 - **Hashicorp Vault**: Add support to get secret that needs write operation (e.g. pki) ([#5067](https://github.com/kedacore/keda/issues/5067))
