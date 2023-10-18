@@ -1,10 +1,3 @@
-patchesJson6902:
-- target:
-    group: apps
-    version: v1
-    kind: Deployment
-    name: keda-operator
-  path: patch_operator.yml
 
 resources:
 - ../general
@@ -13,3 +6,12 @@ resources:
 - ../metrics-server
 - ../service_account
 - ../webhooks
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+patches:
+- path: patch_operator.yml
+  target:
+    group: apps
+    kind: Deployment
+    name: keda-operator
+    version: v1
