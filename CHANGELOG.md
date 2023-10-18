@@ -87,6 +87,7 @@ New deprecation(s):
 ### Other
 
 - **General**: Fix CVE-2023-45142 in Opentelemetry ([#5089](https://github.com/kedacore/keda/issues/5089))
+- **General**: Fix logger in Opentelemetry collector ([#5094](https://github.com/kedacore/keda/issues/5094))
 
 ## v2.12.0
 
