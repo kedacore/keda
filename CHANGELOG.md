@@ -129,6 +129,7 @@ Here is an overview of all new **experimental** features:
 - **RabbitMQ Scaler**: Allow subpaths along with vhost in connection string ([#2634](https://github.com/kedacore/keda/issues/2634))
 - **Selenium Grid Scaler**: Fix scaling based on latest browser version ([#4858](https://github.com/kedacore/keda/issues/4858))
 - **Solace Scaler**: Fix a bug where `queueName` is not properly escaped during URL encode ([#4936](https://github.com/kedacore/keda/issues/4936))
+- **ScaledJobs** Copy ScaledJob annotations to child Jobs ([#4594](https://github.com/kedacore/keda/issues/4594))
 
 ### Deprecations
 
