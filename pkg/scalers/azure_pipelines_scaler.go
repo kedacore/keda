@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -265,7 +266,7 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 }
 
 func getPoolIDFromName(ctx context.Context, poolName string, metadata *azurePipelinesMetadata, httpClient *http.Client) (int, error) {
-	url := fmt.Sprintf("%s/_apis/distributedtask/pools?poolName=%s", metadata.organizationURL, poolName)
+	url := fmt.Sprintf("%s/_apis/distributedtask/pools?poolName=%s", metadata.organizationURL, url.QueryEscape(poolName))
 	body, err := getAzurePipelineRequest(ctx, url, metadata, httpClient)
 	if err != nil {
 		return -1, err
