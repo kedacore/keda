@@ -111,7 +111,7 @@ func TestValidateAzurePipelinesPool(t *testing.T) {
 			var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				_, ok := r.URL.Query()[testData.queryParam]
 				if !ok {
-					t.Error("Worng QueryParam")
+					t.Error("Wrong QueryParam")
 				}
 				w.WriteHeader(testData.httpCode)
 				_, _ = w.Write([]byte(testData.response))
