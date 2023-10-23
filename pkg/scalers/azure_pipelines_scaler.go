@@ -266,8 +266,8 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 }
 
 func getPoolIDFromName(ctx context.Context, poolName string, metadata *azurePipelinesMetadata, httpClient *http.Client) (int, error) {
-	url := fmt.Sprintf("%s/_apis/distributedtask/pools?poolName=%s", metadata.organizationURL, url.QueryEscape(poolName))
-	body, err := getAzurePipelineRequest(ctx, url, metadata, httpClient)
+	urlString := fmt.Sprintf("%s/_apis/distributedtask/pools?poolName=%s", metadata.organizationURL, url.QueryEscape(poolName))
+	body, err := getAzurePipelineRequest(ctx, urlString, metadata, httpClient)
 	if err != nil {
 		return -1, err
 	}
@@ -291,8 +291,8 @@ func getPoolIDFromName(ctx context.Context, poolName string, metadata *azurePipe
 }
 
 func validatePoolID(ctx context.Context, poolID string, metadata *azurePipelinesMetadata, httpClient *http.Client) (int, error) {
-	url := fmt.Sprintf("%s/_apis/distributedtask/pools?poolID=%s", metadata.organizationURL, poolID)
-	body, err := getAzurePipelineRequest(ctx, url, metadata, httpClient)
+	urlString := fmt.Sprintf("%s/_apis/distributedtask/pools?poolID=%s", metadata.organizationURL, poolID)
+	body, err := getAzurePipelineRequest(ctx, urlString, metadata, httpClient)
 	if err != nil {
 		return -1, fmt.Errorf("agent pool with id `%s` not found: %w", poolID, err)
 	}
@@ -306,8 +306,8 @@ func validatePoolID(ctx context.Context, poolID string, metadata *azurePipelines
 	return result.ID, nil
 }
 
-func getAzurePipelineRequest(ctx context.Context, url string, metadata *azurePipelinesMetadata, httpClient *http.Client) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+func getAzurePipelineRequest(ctx context.Context, urlString string, metadata *azurePipelinesMetadata, httpClient *http.Client) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", urlString, nil)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -326,7 +326,7 @@ func getAzurePipelineRequest(ctx context.Context, url string, metadata *azurePip
 	r.Body.Close()
 
 	if !(r.StatusCode >= 200 && r.StatusCode <= 299) {
-		return []byte{}, fmt.Errorf("the Azure DevOps REST API returned error. url: %s status: %d response: %s", url, r.StatusCode, string(b))
+		return []byte{}, fmt.Errorf("the Azure DevOps REST API returned error. urlString: %s status: %d response: %s", urlString, r.StatusCode, string(b))
 	}
 
 	return b, nil
@@ -334,13 +334,13 @@ func getAzurePipelineRequest(ctx context.Context, url string, metadata *azurePip
 
 func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context) (int64, error) {
 	// HotFix Issue (#4387), $top changes the format of the returned JSON
-	var url string
+	var urlString string
 	if s.metadata.parent != "" {
-		url = fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests", s.metadata.organizationURL, s.metadata.poolID)
+		urlString = fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests", s.metadata.organizationURL, s.metadata.poolID)
 	} else {
-		url = fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests?$top=%d", s.metadata.organizationURL, s.metadata.poolID, s.metadata.jobsToFetch)
+		urlString = fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests?$top=%d", s.metadata.organizationURL, s.metadata.poolID, s.metadata.jobsToFetch)
 	}
-	body, err := getAzurePipelineRequest(ctx, url, s.metadata, s.httpClient)
+	body, err := getAzurePipelineRequest(ctx, urlString, s.metadata, s.httpClient)
 	if err != nil {
 		return -1, err
 	}
