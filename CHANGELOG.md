@@ -70,7 +70,7 @@ Here is an overview of all new **experimental** features:
 ### Fixes
 
 - **General**: Prevented stuck status due to timeouts during scalers generation ([#5083](https://github.com/kedacore/keda/issues/5083))
-- **Azure Pipelines**: Stop pool names with spaces causing HTTP 400 errors([#5107](https://github.com/kedacore/keda/issues/5107))
+- **Azure Pipelines**: No more HTTP 400 errors produced by poolName with spaces ([#5107](https://github.com/kedacore/keda/issues/5107))
 
 ### Deprecations
 
