@@ -16,7 +16,7 @@ import (
 	"github.com/kedacore/keda/v2/version"
 )
 
-var otLog = logf.Log.WithName("prometheus_server")
+var otLog = logf.Log.WithName("otel_collector")
 
 const meterName = "keda-open-telemetry-metrics"
 const defaultNamespace = "default"
