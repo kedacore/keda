@@ -297,12 +297,12 @@ func (s *azureEventHubScaler) GetUnprocessedEventCountInPartition(ctx context.Co
 		return -1, azure.Checkpoint{}, fmt.Errorf("unable to get checkpoint from storage: %w", err)
 	}
 
-	unprocessedEventCountInPartition := calculateUnprocessedEvents(ctx, partitionInfo, checkpoint, s.metadata.stalePartitionInfoThreshold)
+	unprocessedEventCountInPartition := calculateUnprocessedEvents(partitionInfo, checkpoint, s.metadata.stalePartitionInfoThreshold)
 
 	return unprocessedEventCountInPartition, checkpoint, nil
 }
 
-func calculateUnprocessedEvents(ctx context.Context, partitionInfo *eventhub.HubPartitionRuntimeInformation, checkpoint azure.Checkpoint, stalePartitionInfoThreshold int64) int64 {
+func calculateUnprocessedEvents(partitionInfo *eventhub.HubPartitionRuntimeInformation, checkpoint azure.Checkpoint, stalePartitionInfoThreshold int64) int64 {
 	unprocessedEventCount := int64(0)
 
 	// If checkpoint.Offset is empty that means no messages has been processed from an event hub partition

@@ -666,7 +666,7 @@ func TestEventHubGetMetricSpecForScaling(t *testing.T) {
 
 func TestCalculateUnprocessedEvents(t *testing.T) {
 	for _, testData := range calculateUnprocessedEventsDataset {
-		v := calculateUnprocessedEvents(context.Background(), testData.partitionInfo, testData.checkpoint, defaultStalePartitionInfoThreshold)
+		v := calculateUnprocessedEvents(testData.partitionInfo, testData.checkpoint, defaultStalePartitionInfoThreshold)
 		if v != testData.unprocessedEvents {
 			t.Errorf("Wrong calculation: expected %d, got %d", testData.unprocessedEvents, v)
 		}
