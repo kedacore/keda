@@ -69,6 +69,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
+- **General**: Fix CVE-2023-39325 in golang.org/x/net ([#5121](https://github.com/kedacore/keda/issues/5121))
 - **General**: Prevented stuck status due to timeouts during scalers generation ([#5083](https://github.com/kedacore/keda/issues/5083))
 - **Azure Pipelines**: No more HTTP 400 errors produced by poolName with spaces ([#5107](https://github.com/kedacore/keda/issues/5107))
 
