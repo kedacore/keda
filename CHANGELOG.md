@@ -61,7 +61,6 @@ Here is an overview of all new **experimental** features:
 ### Improvements
 
 - **General**: Add parameter queryParameters to prometheus-scaler ([#4962](https://github.com/kedacore/keda/issues/4962))
-- **General**: Improve the implementation of OpenTelemetry integration ([#5101](https://github.com/kedacore/keda/issues/5101))
 - **Hashicorp Vault**: Add support to get secret that needs write operation (e.g. pki) ([#5067](https://github.com/kedacore/keda/issues/5067))
 - **Kafka Scaler**: Ability to set upper bound to the number of partitions with lag ([#3997](https://github.com/kedacore/keda/issues/3997))
 - **Kafka Scaler**: Add support for Kerberos authentication (SASL / GSSAPI) ([#4836](https://github.com/kedacore/keda/issues/4836))
@@ -87,6 +86,7 @@ New deprecation(s):
 
 - **General**: Fix CVE-2023-45142 in Opentelemetry ([#5089](https://github.com/kedacore/keda/issues/5089))
 - **General**: Fix logger in Opentelemetry collector ([#5094](https://github.com/kedacore/keda/issues/5094))
+- **General**: Refactor opentelemetry.go to reduce gauge creation of OpenTelemetry metric ([#5101](https://github.com/kedacore/keda/issues/5101))
 
 ## v2.12.0
 
