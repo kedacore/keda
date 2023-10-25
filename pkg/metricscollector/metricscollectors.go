@@ -41,6 +41,9 @@ type MetricsCollector interface {
 	// RecordScalerActive create a measurement of the activity of the scaler
 	RecordScalerActive(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, active bool)
 
+	// RecordScaledObjectPaused marks whether the current ScaledObject is paused.
+	RecordScaledObjectPaused(namespace string, scaledObject string, active bool)
+
 	// RecordScalerError counts the number of errors occurred in trying get an external metric used by the HPA
 	RecordScalerError(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, err error)
 
@@ -93,6 +96,13 @@ func RecordScalableObjectLatency(namespace string, name string, isScaledObject b
 func RecordScalerActive(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, active bool) {
 	for _, element := range collectors {
 		element.RecordScalerActive(namespace, scaledObject, scaler, scalerIndex, metric, active)
+	}
+}
+
+// RecordScaledObjectPaused marks whether the current ScaledObject is paused.
+func RecordScaledObjectPaused(namespace string, scaledObject string, active bool) {
+	for _, element := range collectors {
+		element.RecordScaledObjectPaused(namespace, scaledObject, active)
 	}
 }
 

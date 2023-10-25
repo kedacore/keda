@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     name: Push Release
-    runs-on: ubuntu-latest
+    runs-on: ARM64
     permissions:
       contents: write
       packages: write
@@ -16,7 +16,7 @@ jobs:
     container: ghcr.io/kedacore/keda-tools:1.20.8
     steps:
       - name: Check out code
-        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
         with:
           fetch-depth: 1
 

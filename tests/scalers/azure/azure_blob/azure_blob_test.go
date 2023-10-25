@@ -82,7 +82,6 @@ spec:
       containers:
         - name: {{.DeploymentName}}
           image: slurplk/blob-consumer:latest
-          resources:
           env:
             - name: FUNCTIONS_WORKER_RUNTIME
               value: dotnet

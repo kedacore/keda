@@ -197,11 +197,34 @@ const (
 	// VaultAuthenticationAWS                            = "aws"
 )
 
+// VaultSecretType defines the type of vault secret
+type VaultSecretType string
+
+const (
+	VaultSecretTypeGeneric  VaultSecretType = ""
+	VaultSecretTypeSecretV2 VaultSecretType = "secretV2"
+	VaultSecretTypeSecret   VaultSecretType = "secret"
+	VaultSecretTypePki      VaultSecretType = "pki"
+)
+
+type VaultPkiData struct {
+	CommonName string `json:"commonName,omitempty"`
+	AltNames   string `json:"altNames,omitempty"`
+	IPSans     string `json:"ipSans,omitempty"`
+	URISans    string `json:"uriSans,omitempty"`
+	OtherSans  string `json:"otherSans,omitempty"`
+	TTL        string `json:"ttl,omitempty"`
+	Format     string `json:"format,omitempty"`
+}
+
 // VaultSecret defines the mapping between the path of the secret in Vault to the parameter
 type VaultSecret struct {
-	Parameter string `json:"parameter"`
-	Path      string `json:"path"`
-	Key       string `json:"key"`
+	Parameter string          `json:"parameter"`
+	Path      string          `json:"path"`
+	Key       string          `json:"key"`
+	Type      VaultSecretType `json:"type,omitempty"`
+	PkiData   VaultPkiData    `json:"pkiData,omitempty"`
+	Value     string          `json:"-"`
 }
 
 // AzureKeyVault is used to authenticate using Azure Key Vault

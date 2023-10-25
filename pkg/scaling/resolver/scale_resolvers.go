@@ -198,6 +198,10 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 		case kedav1alpha1.PodIdentityProviderAwsKiam:
 			authParams["awsRoleArn"] = podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
 		case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+			if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzure {
+				// FIXME: Delete this for v2.15
+				logger.Info("WARNING: Azure AD Pod Identity has been archived (https://github.com/Azure/aad-pod-identity#-announcement) and will be removed from KEDA on v2.15")
+			}
 			if podIdentity.IdentityID != nil && *podIdentity.IdentityID == "" {
 				return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, fmt.Errorf("IdentityID of PodIdentity should not be empty")
 			}
@@ -251,22 +255,16 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 				if err != nil {
 					logger.Error(err, "error authenticate to Vault", "triggerAuthRef.Name", triggerAuthRef.Name)
 				} else {
-					for _, e := range triggerAuthSpec.HashiCorpVault.Secrets {
-						secret, err := vault.Read(e.Path)
-						if err != nil {
-							logger.Error(err, "error trying to read secret from Vault", "triggerAuthRef.Name", triggerAuthRef.Name,
-								"secret.path", e.Path)
-						} else {
-							if secret == nil {
-								// sometimes there is no error, but `vault.Read(e.Path)` is not being able to parse the secret and returns nil
-								logger.Error(fmt.Errorf("unable to parse secret, is the provided path correct?"), "Error trying to read secret from Vault",
-									"triggerAuthRef.Name", triggerAuthRef.Name, "secret.path", e.Path)
-							} else {
-								result[e.Parameter] = resolveVaultSecret(logger, secret.Data, e.Key)
-							}
+					secrets, err := vault.ResolveSecrets(triggerAuthSpec.HashiCorpVault.Secrets)
+					if err != nil {
+						logger.Error(err, "could not get secrets from vault",
+							"triggerAuthRef.Name", triggerAuthRef.Name,
+						)
+					} else {
+						for _, e := range secrets {
+							result[e.Parameter] = e.Value
 						}
 					}
-
 					vault.Stop()
 				}
 			}
@@ -529,24 +527,4 @@ func resolveAuthSecret(ctx context.Context, client client.Client, logger logr.Lo
 	}
 
 	return string(result)
-}
-
-func resolveVaultSecret(logger logr.Logger, data map[string]interface{}, key string) string {
-	if v2Data, ok := data["data"].(map[string]interface{}); ok {
-		if value, ok := v2Data[key]; ok {
-			if s, ok := value.(string); ok {
-				return s
-			}
-		} else {
-			logger.Error(fmt.Errorf("key '%s' not found", key), "error trying to get key from Vault secret")
-			return ""
-		}
-	} else if vData, ok := data[key]; ok {
-		if s, ok := vData.(string); ok {
-			return s
-		}
-	}
-
-	logger.Error(fmt.Errorf("unable to convert Vault Data value"), "error trying to convert Data secret vaule")
-	return ""
 }

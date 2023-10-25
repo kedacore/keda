@@ -30,27 +30,13 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/internal"
-	"go.opentelemetry.io/otel/exporters/otlp/internal/retry"
-	ominternal "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/internal"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/internal/oconf"
-	"go.opentelemetry.io/otel/sdk/metric"
-	"go.opentelemetry.io/otel/sdk/metric/aggregation"
-	"go.opentelemetry.io/otel/sdk/metric/metricdata"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp/internal"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp/internal/oconf"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp/internal/retry"
 	colmetricpb "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	metricpb "go.opentelemetry.io/proto/otlp/metrics/v1"
 )
-
-// New returns an OpenTelemetry metric Exporter. The Exporter can be used with
-// a PeriodicReader to export OpenTelemetry metric data to an OTLP receiving
-// endpoint using protobufs over HTTP.
-func New(_ context.Context, opts ...Option) (metric.Exporter, error) {
-	c, err := newClient(opts...)
-	if err != nil {
-		return nil, err
-	}
-	return ominternal.New(c), nil
-}
 
 type client struct {
 	// req is cloned for every upload the client makes.
@@ -58,9 +44,6 @@ type client struct {
 	compression Compression
 	requestFunc retry.RequestFunc
 	httpClient  *http.Client
-
-	temporalitySelector metric.TemporalitySelector
-	aggregationSelector metric.AggregationSelector
 }
 
 // Keep it in sync with golang's DefaultTransport from net/http! We
@@ -81,9 +64,7 @@ var ourTransport = &http.Transport{
 }
 
 // newClient creates a new HTTP metric client.
-func newClient(opts ...Option) (ominternal.Client, error) {
-	cfg := oconf.NewHTTPConfig(asHTTPOptions(opts)...)
-
+func newClient(cfg oconf.Config) (*client, error) {
 	httpClient := &http.Client{
 		Transport: ourTransport,
 		Timeout:   cfg.Metrics.Timeout,
@@ -108,7 +89,8 @@ func newClient(opts ...Option) (ominternal.Client, error) {
 		return nil, err
 	}
 
-	req.Header.Set("User-Agent", ominternal.GetUserAgentHeader())
+	userAgent := "OTel OTLP Exporter Go/" + otlpmetric.Version()
+	req.Header.Set("User-Agent", userAgent)
 
 	if n := len(cfg.Metrics.Headers); n > 0 {
 		for k, v := range cfg.Metrics.Headers {
@@ -122,24 +104,8 @@ func newClient(opts ...Option) (ominternal.Client, error) {
 		req:         req,
 		requestFunc: cfg.RetryConfig.RequestFunc(evaluate),
 		httpClient:  httpClient,
-
-		temporalitySelector: cfg.Metrics.TemporalitySelector,
-		aggregationSelector: cfg.Metrics.AggregationSelector,
 	}, nil
 }
-
-// Temporality returns the Temporality to use for an instrument kind.
-func (c *client) Temporality(k metric.InstrumentKind) metricdata.Temporality {
-	return c.temporalitySelector(k)
-}
-
-// Aggregation returns the Aggregation to use for an instrument kind.
-func (c *client) Aggregation(k metric.InstrumentKind) aggregation.Aggregation {
-	return c.aggregationSelector(k)
-}
-
-// ForceFlush does nothing, the client holds no state.
-func (c *client) ForceFlush(ctx context.Context) error { return ctx.Err() }
 
 // Shutdown shuts down the client, freeing all resources.
 func (c *client) Shutdown(ctx context.Context) error {
@@ -187,8 +153,8 @@ func (c *client) UploadMetrics(ctx context.Context, protoMetrics *metricpb.Resou
 		}
 
 		var rErr error
-		switch resp.StatusCode {
-		case http.StatusOK:
+		switch sc := resp.StatusCode; {
+		case sc >= 200 && sc <= 299:
 			// Success, do not retry.
 
 			// Read the partial success message, if any.
@@ -213,8 +179,7 @@ func (c *client) UploadMetrics(ctx context.Context, protoMetrics *metricpb.Resou
 				}
 			}
 			return nil
-		case http.StatusTooManyRequests,
-			http.StatusServiceUnavailable:
+		case sc == http.StatusTooManyRequests, sc == http.StatusServiceUnavailable:
 			// Retry-able failure.
 			rErr = newResponseError(resp.Header)
 
