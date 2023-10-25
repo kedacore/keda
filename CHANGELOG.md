@@ -72,6 +72,7 @@ Here is an overview of all new **experimental** features:
 - **General**: Fix CVE-2023-39325 in golang.org/x/net ([#5122](https://github.com/kedacore/keda/issues/5122))
 - **General**: Prevented stuck status due to timeouts during scalers generation ([#5083](https://github.com/kedacore/keda/issues/5083))
 - **Azure Pipelines**: No more HTTP 400 errors produced by poolName with spaces ([#5107](https://github.com/kedacore/keda/issues/5107))
+- **ScaledJobs** Copy ScaledJob annotations to child Jobs ([#4594](https://github.com/kedacore/keda/issues/4594))
 
 ### Deprecations
 
@@ -129,7 +130,6 @@ Here is an overview of all new **experimental** features:
 - **RabbitMQ Scaler**: Allow subpaths along with vhost in connection string ([#2634](https://github.com/kedacore/keda/issues/2634))
 - **Selenium Grid Scaler**: Fix scaling based on latest browser version ([#4858](https://github.com/kedacore/keda/issues/4858))
 - **Solace Scaler**: Fix a bug where `queueName` is not properly escaped during URL encode ([#4936](https://github.com/kedacore/keda/issues/4936))
-- **ScaledJobs** Copy ScaledJob annotations to child Jobs ([#4594](https://github.com/kedacore/keda/issues/4594))
 
 ### Deprecations
 

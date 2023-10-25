@@ -28,6 +28,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -340,7 +341,6 @@ func TestGenerateJobs(t *testing.T) {
 		assert.Equal(t, expectedAnnotations, j.ObjectMeta.Annotations)
 		assert.Equal(t, expectedLabels, j.ObjectMeta.Labels)
 		assert.Equal(t, v1.RestartPolicyOnFailure, j.Spec.Template.Spec.RestartPolicy)
-		assert.Equal(t, v1.RestartPolicyOnFailure, j.Spec.Template.Spec.RestartPolicy)
 	}
 }
 
@@ -358,8 +358,8 @@ type pendingJobTestData struct {
 
 func getMockScaleExecutor(client *mock_client.MockClient) *scaleExecutor {
 	scheme := runtime.NewScheme()
-	kedav1alpha1.AddToScheme(scheme)
-	clientgoscheme.AddToScheme(scheme)
+	utilruntime.Must(kedav1alpha1.AddToScheme(scheme))
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	return &scaleExecutor{
 		client:           client,
 		scaleClient:      nil,
