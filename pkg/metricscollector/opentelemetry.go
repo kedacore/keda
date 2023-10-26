@@ -65,14 +65,14 @@ func NewOtelMetrics(options ...metric.Option) *OtelMetrics {
 	otel.SetMeterProvider(meterProvider)
 
 	meter = meterProvider.Meter(meterName)
-	initCounter()
+	initMeters()
 
 	otel := &OtelMetrics{}
 	otel.RecordBuildInfo()
 	return otel
 }
 
-func initCounter() {
+func initMeters() {
 	var err error
 	msg := "create opentelemetry counter failed"
 
