@@ -24,7 +24,7 @@ import (
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// CloudEventSource defines how a keda event will be sent to event sink
+// CloudEventSource defines how a KEDA event will be sent to event sink
 // +kubebuilder:resource:path=cloudeventsources,scope=Namespaced
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Active",type="string",JSONPath=".status.conditions[?(@.type==\"Active\")].status"
