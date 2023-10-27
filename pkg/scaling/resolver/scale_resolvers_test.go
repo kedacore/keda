@@ -42,6 +42,9 @@ var (
 	secretName                = "supersecret"
 	secretKey                 = "mysecretkey"
 	secretData                = "secretDataHere"
+	cmName                    = "supercm"
+	cmKey                     = "mycmkey"
+	cmData                    = "cmDataHere"
 	trueValue                 = true
 	falseValue                = false
 	envKey                    = "test-env-key"
@@ -321,6 +324,86 @@ func TestResolveAuthRef(t *testing.T) {
 			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		},
 		{
+			name: "triggerauth exists and config map",
+			existing: []runtime.Object{
+				&kedav1alpha1.TriggerAuthentication{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      triggerAuthenticationName,
+					},
+					Spec: kedav1alpha1.TriggerAuthenticationSpec{
+						PodIdentity: &kedav1alpha1.AuthPodIdentity{
+							Provider: kedav1alpha1.PodIdentityProviderNone,
+						},
+						ConfigMapTargetRef: []kedav1alpha1.AuthConfigMapTargetRef{
+							{
+								Parameter: "host",
+								Name:      cmName,
+								Key:       cmKey,
+							},
+						},
+					},
+				},
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      cmName,
+					},
+					Data: map[string]string{cmKey: cmData},
+				},
+			},
+			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName},
+			expected:            map[string]string{"host": cmData},
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+		},
+		{
+			name: "triggerauth exists secret + config map",
+			existing: []runtime.Object{
+				&kedav1alpha1.TriggerAuthentication{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      triggerAuthenticationName,
+					},
+					Spec: kedav1alpha1.TriggerAuthenticationSpec{
+						PodIdentity: &kedav1alpha1.AuthPodIdentity{
+							Provider: kedav1alpha1.PodIdentityProviderNone,
+						},
+						SecretTargetRef: []kedav1alpha1.AuthSecretTargetRef{
+							{
+								Parameter: "host-secret",
+								Name:      secretName,
+								Key:       secretKey,
+							},
+						},
+						ConfigMapTargetRef: []kedav1alpha1.AuthConfigMapTargetRef{
+							{
+								Parameter: "host-configmap",
+								Name:      cmName,
+								Key:       cmKey,
+							},
+						},
+					},
+				},
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      cmName,
+					},
+					Data: map[string]string{cmKey: cmData},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      secretName,
+					},
+					Data: map[string][]byte{secretKey: []byte(secretData)},
+				},
+			},
+			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName},
+			expected:            map[string]string{"host-secret": secretData, "host-configmap": cmData},
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+		},
+		{
 			name: "clustertriggerauth exists, podidentity nil",
 			existing: []runtime.Object{
 				&kedav1alpha1.ClusterTriggerAuthentication{
@@ -367,6 +450,45 @@ func TestResolveAuthRef(t *testing.T) {
 						Name:      secretName,
 					},
 					Data: map[string][]byte{secretKey: []byte(secretData)}},
+			},
+			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName, Kind: "ClusterTriggerAuthentication"},
+			expected:            map[string]string{"host": secretData},
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+		},
+		{
+			name: "clustertriggerauth exists and secret + config map",
+			existing: []runtime.Object{
+				&kedav1alpha1.ClusterTriggerAuthentication{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: triggerAuthenticationName,
+					},
+					Spec: kedav1alpha1.TriggerAuthenticationSpec{
+						PodIdentity: &kedav1alpha1.AuthPodIdentity{
+							Provider: kedav1alpha1.PodIdentityProviderNone,
+						},
+						SecretTargetRef: []kedav1alpha1.AuthSecretTargetRef{
+							{
+								Parameter: "host",
+								Name:      secretName,
+								Key:       secretKey,
+							},
+						},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: clusterNamespace,
+						Name:      secretName,
+					},
+					Data: map[string][]byte{secretKey: []byte(secretData)},
+				},
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: clusterNamespace,
+						Name:      secretName,
+					},
+					Data: map[string]string{secretKey: secretData},
+				},
 			},
 			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName, Kind: "ClusterTriggerAuthentication"},
 			expected:            map[string]string{"host": secretData},
