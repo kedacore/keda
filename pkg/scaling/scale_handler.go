@@ -785,6 +785,11 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 			isActive = true
 		}
 
+		for _, metric := range metrics {
+			metricValue := metric.Value.AsApproximateFloat64()
+			metricscollector.RecordScalerMetric(scaledJob.Namespace, scaledJob.Name, scalerType, i, metric.MetricName, metricValue)
+		}
+
 		queueLength, maxValue, targetAverageValue := scaledjob.CalculateQueueLengthAndMaxValue(metrics, metricSpecs, scaledJob.MaxReplicaCount())
 
 		scalerLogger.V(1).Info("Scaler Metric value", "isTriggerActive", isTriggerActive, metricSpecs[0].External.Metric.Name, queueLength, "targetAverageValue", targetAverageValue)
