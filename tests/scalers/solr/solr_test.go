@@ -288,7 +288,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
 
-	_, _, err := ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("bin/post -u %s:%s -c %s -d \"<delete><query>*:*</query></delete>\"", solrUsername, solrPassword, solrCollection))
+	_, _, err := ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("curl -u %s:%s -X POST 'http://localhost:8983/solr/%s/update' --data '<delete><query>*:*</query></delete>' -H 'Content-type:text/xml; charset=utf-8'", solrUsername, solrPassword, solrCollection))
 	assert.NoErrorf(t, err, "cannot enqueue messages - %s", err)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
