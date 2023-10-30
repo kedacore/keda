@@ -56,6 +56,7 @@ const MaxWaitingInqueueTIme = 10
 type EventEmitter struct {
 	client.Client
 	record.EventRecorder
+	clustername             string
 	eventHandlersCache      map[string]EventDataHandler
 	eventHandlersCachesLock *sync.RWMutex
 	eventLoopContexts       *sync.Map
@@ -90,10 +91,11 @@ const (
 	CloudEventHTTP = "CloudEventHTTP"
 )
 
-func NewEventEmitter(client client.Client, recorder record.EventRecorder) *EventEmitter {
+func NewEventEmitter(client client.Client, recorder record.EventRecorder, clustername string) *EventEmitter {
 	return &EventEmitter{
 		Client:                  client,
 		EventRecorder:           recorder,
+		clustername:             clustername,
 		eventHandlersCache:      map[string]EventDataHandler{},
 		eventHandlersCachesLock: &sync.RWMutex{},
 		eventLoopContexts:       &sync.Map{},
@@ -163,7 +165,7 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEventSource
 
 	clusterName := cloudEventSource.Spec.ClusterName
 	if clusterName == "" {
-		clusterName = "default"
+		clusterName = e.clustername
 	}
 
 	// Create different event destination here.
