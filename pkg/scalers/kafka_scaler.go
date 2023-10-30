@@ -594,6 +594,9 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error describing topics: %w", err)
 	}
+	s.logger.Info(
+		fmt.Sprintf("with topic name %s the list of topic metadata is %v", topicsToDescribe, topicsMetadata),
+	)
 
 	if s.metadata.topic != "" && len(topicsMetadata) != 1 {
 		return nil, fmt.Errorf("expected only 1 topic metadata, got %d", len(topicsMetadata))
