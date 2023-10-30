@@ -21,7 +21,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: CloudEventSource defines how a keda event will be sent to event
+        description: CloudEventSource defines how a KEDA event will be sent to event
           sink
         properties:
           apiVersion:
