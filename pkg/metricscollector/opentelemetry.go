@@ -158,6 +158,32 @@ func (o *OtelMetrics) RecordScalerActive(namespace string, scaledObject string, 
 	}
 }
 
+// RecordScaledObjectPaused marks whether the current ScaledObject is paused.
+func (o *OtelMetrics) RecordScaledObjectPaused(namespace string, scaledObject string, active bool) {
+	activeVal := 0
+	if active {
+		activeVal = 1
+	}
+
+	opt := api.WithAttributes(
+		attribute.Key("namespace").String(namespace),
+		attribute.Key("scaledObject").String(scaledObject),
+	)
+
+	cback := func(ctx context.Context, obsrv api.Float64Observer) error {
+		obsrv.Observe(float64(activeVal), opt)
+		return nil
+	}
+	_, err := meter.Float64ObservableGauge(
+		"keda.scaled.object.paused",
+		api.WithDescription("Indicates whether a ScaledObject is paused"),
+		api.WithFloat64Callback(cback),
+	)
+	if err != nil {
+		otLog.Error(err, "failed to register scaled object paused metric", "namespace", namespace, "scaledObject", scaledObject)
+	}
+}
+
 // RecordScalerError counts the number of errors occurred in trying get an external metric used by the HPA
 func (o *OtelMetrics) RecordScalerError(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, err error) {
 	if err != nil {
