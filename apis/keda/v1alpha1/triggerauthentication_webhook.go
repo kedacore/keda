@@ -107,11 +107,11 @@ func isTriggerAuthenticationRemovingFinalizer(om metav1.ObjectMeta, oldOm metav1
 }
 
 func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
-	err := validatePodIdentityId(spec.PodIdentity)
+	err := validatePodIdentityID(spec.PodIdentity)
 	return nil, err
 }
 
-func validatePodIdentityId(podIdentity *AuthPodIdentity) error {
+func validatePodIdentityID(podIdentity *AuthPodIdentity) error {
 	if podIdentity != nil {
 		switch podIdentity.Provider {
 		case PodIdentityProviderAzure, PodIdentityProviderAzureWorkload:
