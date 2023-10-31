@@ -33,7 +33,7 @@ const (
 
 func (r *CloudEventSourceReconciler) EnsureEventSourceResourceFinalizer(ctx context.Context, logger logr.Logger, cloudEventSource *eventingv1alpha1.CloudEventSource) error {
 	if !util.Contains(cloudEventSource.GetFinalizers(), cloudEventSourceFinalizer) {
-		logger.Info(fmt.Sprintf("Adding Finalizer for the %s", cloudEventSourceResourceType))
+		logger.Info(fmt.Sprintf("Adding Finalizer to %s %s/%s", cloudEventSourceResourceType, cloudEventSource.Namespace, cloudEventSource.Name))
 		cloudEventSource.SetFinalizers(append(cloudEventSource.GetFinalizers(), cloudEventSourceFinalizer))
 
 		// Update CR
