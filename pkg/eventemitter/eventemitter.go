@@ -112,7 +112,7 @@ func (e *EventEmitter) HandleCloudEventSource(ctx context.Context, cloudEventSou
 	e.createEventHandlers(ctx, cloudEventSource)
 
 	if !e.checkIfEventHandlersExist(cloudEventSource) {
-		return fmt.Errorf("no CloudEventSource handler is created for %s", cloudEventSource.Name)
+		return fmt.Errorf("no CloudEventSource handler is created for %s/%s", cloudEventSource.Namespace, cloudEventSource.Name)
 	}
 
 	key := cloudEventSource.GenerateIdentifier()
