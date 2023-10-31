@@ -24,7 +24,6 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/internal/global"
-	"go.opentelemetry.io/otel/sdk/metric/aggregation"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
 
@@ -36,8 +35,9 @@ const (
 
 // periodicReaderConfig contains configuration options for a PeriodicReader.
 type periodicReaderConfig struct {
-	interval time.Duration
-	timeout  time.Duration
+	interval  time.Duration
+	timeout   time.Duration
+	producers []Producer
 }
 
 // newPeriodicReaderConfig returns a periodicReaderConfig configured with
@@ -67,7 +67,10 @@ func (o periodicReaderOptionFunc) applyPeriodic(conf periodicReaderConfig) perio
 }
 
 // WithTimeout configures the time a PeriodicReader waits for an export to
-// complete before canceling it.
+// complete before canceling it. This includes an export which occurs as part
+// of Shutdown or ForceFlush if the user passed context does not have a
+// deadline. If the user passed context does have a deadline, it will be used
+// instead.
 //
 // This option overrides any value set for the
 // OTEL_METRIC_EXPORT_TIMEOUT environment variable.
@@ -104,17 +107,18 @@ func WithInterval(d time.Duration) PeriodicReaderOption {
 
 // NewPeriodicReader returns a Reader that collects and exports metric data to
 // the exporter at a defined interval. By default, the returned Reader will
-// collect and export data every 60 seconds, and will cancel export attempts
-// that exceed 30 seconds. The export time is not counted towards the interval
-// between attempts.
+// collect and export data every 60 seconds, and will cancel any attempts that
+// exceed 30 seconds, collect and export combined. The collect and export time
+// are not counted towards the interval between attempts.
 //
 // The Collect method of the returned Reader continues to gather and return
 // metric data to the user. It will not automatically send that data to the
 // exporter. That is left to the user to accomplish.
-func NewPeriodicReader(exporter Exporter, options ...PeriodicReaderOption) Reader {
+func NewPeriodicReader(exporter Exporter, options ...PeriodicReaderOption) *PeriodicReader {
 	conf := newPeriodicReaderConfig(options)
 	ctx, cancel := context.WithCancel(context.Background())
-	r := &periodicReader{
+	r := &PeriodicReader{
+		interval: conf.interval,
 		timeout:  conf.timeout,
 		exporter: exporter,
 		flushCh:  make(chan chan error),
@@ -125,7 +129,7 @@ func NewPeriodicReader(exporter Exporter, options ...PeriodicReaderOption) Reade
 				return &metricdata.ResourceMetrics{}
 			}},
 	}
-	r.externalProducers.Store([]Producer{})
+	r.externalProducers.Store(conf.producers)
 
 	go func() {
 		defer func() { close(r.done) }()
@@ -135,15 +139,16 @@ func NewPeriodicReader(exporter Exporter, options ...PeriodicReaderOption) Reade
 	return r
 }
 
-// periodicReader is a Reader that continuously collects and exports metric
+// PeriodicReader is a Reader that continuously collects and exports metric
 // data at a set interval.
-type periodicReader struct {
+type PeriodicReader struct {
 	sdkProducer atomic.Value
 
 	mu                sync.Mutex
 	isShutdown        bool
 	externalProducers atomic.Value
 
+	interval time.Duration
 	timeout  time.Duration
 	exporter Exporter
 	flushCh  chan chan error
@@ -156,14 +161,14 @@ type periodicReader struct {
 }
 
 // Compile time check the periodicReader implements Reader and is comparable.
-var _ = map[Reader]struct{}{&periodicReader{}: {}}
+var _ = map[Reader]struct{}{&PeriodicReader{}: {}}
 
 // newTicker allows testing override.
 var newTicker = time.NewTicker
 
 // run continuously collects and exports metric data at the specified
 // interval. This will run until ctx is canceled or times out.
-func (r *periodicReader) run(ctx context.Context, interval time.Duration) {
+func (r *PeriodicReader) run(ctx context.Context, interval time.Duration) {
 	ticker := newTicker(interval)
 	defer ticker.Stop()
 
@@ -184,7 +189,7 @@ func (r *periodicReader) run(ctx context.Context, interval time.Duration) {
 }
 
 // register registers p as the producer of this reader.
-func (r *periodicReader) register(p sdkProducer) {
+func (r *PeriodicReader) register(p sdkProducer) {
 	// Only register once. If producer is already set, do nothing.
 	if !r.sdkProducer.CompareAndSwap(nil, produceHolder{produce: p.produce}) {
 		msg := "did not register periodic reader"
@@ -192,33 +197,22 @@ func (r *periodicReader) register(p sdkProducer) {
 	}
 }
 
-// RegisterProducer registers p as an external Producer of this reader.
-func (r *periodicReader) RegisterProducer(p Producer) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if r.isShutdown {
-		return
-	}
-	currentProducers := r.externalProducers.Load().([]Producer)
-	newProducers := []Producer{}
-	newProducers = append(newProducers, currentProducers...)
-	newProducers = append(newProducers, p)
-	r.externalProducers.Store(newProducers)
-}
-
 // temporality reports the Temporality for the instrument kind provided.
-func (r *periodicReader) temporality(kind InstrumentKind) metricdata.Temporality {
+func (r *PeriodicReader) temporality(kind InstrumentKind) metricdata.Temporality {
 	return r.exporter.Temporality(kind)
 }
 
 // aggregation returns what Aggregation to use for kind.
-func (r *periodicReader) aggregation(kind InstrumentKind) aggregation.Aggregation { // nolint:revive  // import-shadow for method scoped by type.
+func (r *PeriodicReader) aggregation(kind InstrumentKind) Aggregation { // nolint:revive  // import-shadow for method scoped by type.
 	return r.exporter.Aggregation(kind)
 }
 
 // collectAndExport gather all metric data related to the periodicReader r from
 // the SDK and exports it with r's exporter.
-func (r *periodicReader) collectAndExport(ctx context.Context) error {
+func (r *PeriodicReader) collectAndExport(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, r.timeout)
+	defer cancel()
+
 	// TODO (#3047): Use a sync.Pool or persistent pointer instead of allocating rm every Collect.
 	rm := r.rmPool.Get().(*metricdata.ResourceMetrics)
 	err := r.Collect(ctx, rm)
@@ -229,13 +223,17 @@ func (r *periodicReader) collectAndExport(ctx context.Context) error {
 	return err
 }
 
-// Collect gathers and returns all metric data related to the Reader from
-// the SDK and other Producers and stores the result in rm. The returned metric
+// Collect gathers all metric data related to the Reader from
+// the SDK and other Producers and stores the result in rm. The metric
 // data is not exported to the configured exporter, it is left to the caller to
 // handle that if desired.
 //
-// An error is returned if this is called after Shutdown. An error is return if rm is nil.
-func (r *periodicReader) Collect(ctx context.Context, rm *metricdata.ResourceMetrics) error {
+// Collect will return an error if called after shutdown.
+// Collect will return an error if rm is a nil ResourceMetrics.
+// Collect will return an error if the context's Done channel is closed.
+//
+// This method is safe to call concurrently.
+func (r *PeriodicReader) Collect(ctx context.Context, rm *metricdata.ResourceMetrics) error {
 	if rm == nil {
 		return errors.New("periodic reader: *metricdata.ResourceMetrics is nil")
 	}
@@ -244,7 +242,7 @@ func (r *periodicReader) Collect(ctx context.Context, rm *metricdata.ResourceMet
 }
 
 // collect unwraps p as a produceHolder and returns its produce results.
-func (r *periodicReader) collect(ctx context.Context, p interface{}, rm *metricdata.ResourceMetrics) error {
+func (r *PeriodicReader) collect(ctx context.Context, p interface{}, rm *metricdata.ResourceMetrics) error {
 	if p == nil {
 		return ErrReaderNotRegistered
 	}
@@ -271,18 +269,28 @@ func (r *periodicReader) collect(ctx context.Context, p interface{}, rm *metricd
 		}
 		rm.ScopeMetrics = append(rm.ScopeMetrics, externalMetrics...)
 	}
+
+	global.Debug("PeriodicReader collection", "Data", rm)
+
 	return unifyErrors(errs)
 }
 
 // export exports metric data m using r's exporter.
-func (r *periodicReader) export(ctx context.Context, m *metricdata.ResourceMetrics) error {
-	c, cancel := context.WithTimeout(ctx, r.timeout)
-	defer cancel()
-	return r.exporter.Export(c, m)
+func (r *PeriodicReader) export(ctx context.Context, m *metricdata.ResourceMetrics) error {
+	return r.exporter.Export(ctx, m)
 }
 
 // ForceFlush flushes pending telemetry.
-func (r *periodicReader) ForceFlush(ctx context.Context) error {
+//
+// This method is safe to call concurrently.
+func (r *PeriodicReader) ForceFlush(ctx context.Context) error {
+	// Prioritize the ctx timeout if it is set.
+	if _, ok := ctx.Deadline(); !ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, r.timeout)
+		defer cancel()
+	}
+
 	errCh := make(chan error, 1)
 	select {
 	case r.flushCh <- errCh:
@@ -304,9 +312,18 @@ func (r *periodicReader) ForceFlush(ctx context.Context) error {
 }
 
 // Shutdown flushes pending telemetry and then stops the export pipeline.
-func (r *periodicReader) Shutdown(ctx context.Context) error {
+//
+// This method is safe to call concurrently.
+func (r *PeriodicReader) Shutdown(ctx context.Context) error {
 	err := ErrReaderShutdown
 	r.shutdownOnce.Do(func() {
+		// Prioritize the ctx timeout if it is set.
+		if _, ok := ctx.Deadline(); !ok {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(ctx, r.timeout)
+			defer cancel()
+		}
+
 		// Stop the run loop.
 		r.cancel()
 		<-r.done
@@ -338,4 +355,26 @@ func (r *periodicReader) Shutdown(ctx context.Context) error {
 		r.externalProducers.Store([]Producer{})
 	})
 	return err
+}
+
+// MarshalLog returns logging data about the PeriodicReader.
+func (r *PeriodicReader) MarshalLog() interface{} {
+	r.mu.Lock()
+	down := r.isShutdown
+	r.mu.Unlock()
+	return struct {
+		Type       string
+		Exporter   Exporter
+		Registered bool
+		Shutdown   bool
+		Interval   time.Duration
+		Timeout    time.Duration
+	}{
+		Type:       "PeriodicReader",
+		Exporter:   r.exporter,
+		Registered: r.sdkProducer.Load() != nil,
+		Shutdown:   down,
+		Interval:   r.interval,
+		Timeout:    r.timeout,
+	}
 }

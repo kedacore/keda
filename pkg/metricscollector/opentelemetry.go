@@ -16,7 +16,7 @@ import (
 	"github.com/kedacore/keda/v2/version"
 )
 
-var otLog = logf.Log.WithName("prometheus_server")
+var otLog = logf.Log.WithName("otel_collector")
 
 const meterName = "keda-open-telemetry-metrics"
 const defaultNamespace = "default"
@@ -91,7 +91,7 @@ func (o *OtelMetrics) RecordScalerMetric(namespace string, scaledObject string, 
 		api.WithFloat64Callback(cback),
 	)
 	if err != nil {
-		fmt.Println("failed to register scaler metrics value")
+		otLog.Error(err, "failed to register scaler metrics value", "namespace", namespace, "scaledObject", scaledObject, "scaler", scaler, "scalerIndex", scalerIndex, "metric", metric)
 	}
 }
 
@@ -107,7 +107,7 @@ func (o *OtelMetrics) RecordScalerLatency(namespace string, scaledObject string,
 		api.WithFloat64Callback(cback),
 	)
 	if err != nil {
-		fmt.Println("failed to register scaler metrics latency")
+		otLog.Error(err, "failed to register scaler metrics latency", "namespace", namespace, "scaledObject", scaledObject, "scaler", scaler, "scalerIndex", scalerIndex, "metric", metric)
 	}
 }
 
@@ -133,7 +133,7 @@ func (o *OtelMetrics) RecordScalableObjectLatency(namespace string, name string,
 		api.WithFloat64Callback(cback),
 	)
 	if err != nil {
-		fmt.Println("failed to register internal scale loop latency")
+		otLog.Error(err, "failed to register internal scale loop latency", "namespace", namespace, resourceType, name)
 	}
 }
 
@@ -154,7 +154,33 @@ func (o *OtelMetrics) RecordScalerActive(namespace string, scaledObject string, 
 		api.WithFloat64Callback(cback),
 	)
 	if err != nil {
-		fmt.Println("failed to register internal scale loop latency")
+		otLog.Error(err, "failed to register scaler activity", "namespace", namespace, "scaledObject", scaledObject, "scaler", scaler, "scalerIndex", scalerIndex, "metric", metric)
+	}
+}
+
+// RecordScaledObjectPaused marks whether the current ScaledObject is paused.
+func (o *OtelMetrics) RecordScaledObjectPaused(namespace string, scaledObject string, active bool) {
+	activeVal := 0
+	if active {
+		activeVal = 1
+	}
+
+	opt := api.WithAttributes(
+		attribute.Key("namespace").String(namespace),
+		attribute.Key("scaledObject").String(scaledObject),
+	)
+
+	cback := func(ctx context.Context, obsrv api.Float64Observer) error {
+		obsrv.Observe(float64(activeVal), opt)
+		return nil
+	}
+	_, err := meter.Float64ObservableGauge(
+		"keda.scaled.object.paused",
+		api.WithDescription("Indicates whether a ScaledObject is paused"),
+		api.WithFloat64Callback(cback),
+	)
+	if err != nil {
+		otLog.Error(err, "failed to register scaled object paused metric", "namespace", namespace, "scaledObject", scaledObject)
 	}
 }
 
@@ -197,7 +223,7 @@ func (o *OtelMetrics) RecordBuildInfo() {
 		api.WithInt64Callback(cback),
 	)
 	if err != nil {
-		fmt.Println("failed to register scaler metrics value")
+		otLog.Error(err, "failed to register build info")
 	}
 }
 

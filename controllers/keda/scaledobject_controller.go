@@ -231,10 +231,12 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 				return msg, err
 			}
 			conditions.SetPausedCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionPausedReason, msg)
+			metricscollector.RecordScaledObjectPaused(scaledObject.Namespace, scaledObject.Name, true)
 			return msg, nil
 		}
 	} else if conditions.GetPausedCondition().Status == metav1.ConditionTrue {
 		conditions.SetPausedCondition(metav1.ConditionFalse, "ScaledObjectUnpaused", "pause annotation removed for ScaledObject")
+		metricscollector.RecordScaledObjectPaused(scaledObject.Namespace, scaledObject.Name, false)
 	}
 
 	// Check scale target Name is specified

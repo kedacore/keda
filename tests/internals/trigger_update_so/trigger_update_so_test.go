@@ -114,11 +114,6 @@ spec:
         image: nginxinc/nginx-unprivileged
         ports:
         - containerPort: 80
-        resources:
-          requests:
-            cpu: "200m"
-          limits:
-            cpu: "500m"
 `
 
 	workloadDeploymentTemplate = `apiVersion: apps/v1
@@ -270,10 +265,12 @@ spec:
     metadata:
       podSelector: 'pod={{.WorkloadDeploymentName}}'
       value: '1'
-  - type: cpu
-    metricType: Utilization
+  - type: metrics-api
     metadata:
-      value: "50"
+      targetValue: "2"
+      url: "invalid-invalid"
+      valueLocation: 'value'
+      method: "query"
 `
 
 	updateMetricTemplate = `

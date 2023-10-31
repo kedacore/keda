@@ -25,6 +25,7 @@ import (
 const (
 	promServerAddress       = "serverAddress"
 	promQuery               = "query"
+	promQueryParameters     = "queryParameters"
 	promThreshold           = "threshold"
 	promActivationThreshold = "activationThreshold"
 	promNamespace           = "namespace"
@@ -48,6 +49,7 @@ type prometheusScaler struct {
 type prometheusMetadata struct {
 	serverAddress       string
 	query               string
+	queryParameters     map[string]string
 	threshold           float64
 	activationThreshold float64
 	prometheusAuth      *authentication.AuthMeta
@@ -149,6 +151,15 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 		meta.query = val
 	} else {
 		return nil, fmt.Errorf("no %s given", promQuery)
+	}
+
+	if val, ok := config.TriggerMetadata[promQueryParameters]; ok && val != "" {
+		queryParameters, err := kedautil.ParseStringList(val)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing %s: %w", promQueryParameters, err)
+		}
+
+		meta.queryParameters = queryParameters
 	}
 
 	if val, ok := config.TriggerMetadata[promThreshold]; ok && val != "" {
@@ -264,6 +275,12 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	// set 'namespace' parameter for namespaced Prometheus requests (e.g. for Thanos Querier)
 	if s.metadata.namespace != "" {
 		url = fmt.Sprintf("%s&namespace=%s", url, s.metadata.namespace)
+	}
+
+	for queryParameterKey, queryParameterValue := range s.metadata.queryParameters {
+		queryParameterKeyEscaped := url_pkg.QueryEscape(queryParameterKey)
+		queryParameterValueEscaped := url_pkg.QueryEscape(queryParameterValue)
+		url = fmt.Sprintf("%s&%s=%s", url, queryParameterKeyEscaped, queryParameterValueEscaped)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)

@@ -405,8 +405,7 @@ spec:
           httpGet:
             path: /
             port: graphite-gui
-        resources:
-          {}
+
         volumeMounts:
           - name: graphite-configmap
             mountPath: /opt/graphite/conf/
