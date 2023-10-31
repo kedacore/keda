@@ -80,7 +80,7 @@ func (r *CloudEventSourceReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	reqLogger.Info("Reconciling EventSource")
 
-	if cloudEventSource.GetDeletionTimestamp() != nil {
+	if !cloudEventSource.GetDeletionTimestamp().IsZero() {
 		return ctrl.Result{}, r.FinalizeEventSourceResource(ctx, reqLogger, cloudEventSource, req.NamespacedName.String())
 	}
 	r.updatePromMetrics(cloudEventSource, req.NamespacedName.String())
