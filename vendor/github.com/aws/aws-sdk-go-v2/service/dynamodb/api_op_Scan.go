@@ -143,7 +143,7 @@ type ScanInput struct {
 	// operation, but before the data is returned to you. Items that do not satisfy the
 	// FilterExpression criteria are not returned. A FilterExpression is applied after
 	// the items have already been read; the process of filtering does not consume any
-	// additional read capacity units. For more information, see Filter Expressions (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/QueryAndScan.html#Query.FilterExpression)
+	// additional read capacity units. For more information, see Filter Expressions (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Scan.html#Scan.FilterExpression)
 	// in the Amazon DynamoDB Developer Guide.
 	FilterExpression *string
 
