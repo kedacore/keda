@@ -50,8 +50,8 @@ var ch chan EventData
 
 const CloudEventSourceType = "com.cloudeventsource.keda"
 const MaxRetryTimes = 5
-const MaxChannelBuffer = 10
-const MaxWaitingInqueueTIme = 10
+const MaxChannelBuffer = 1024
+const MaxWaitingEnqueueTime = 10
 
 type EventEmitter struct {
 	client.Client
@@ -297,24 +297,15 @@ func (e *EventEmitter) Emit(object runtime.Object, namesapce types.NamespacedNam
 		message:    message,
 		time:       time.Now().UTC(),
 	}
-	go e.inqueueEventData(eventData)
+	go e.enqueueEventData(eventData)
 }
 
-func (e *EventEmitter) inqueueEventData(eventData EventData) {
-	count := 0
-	for {
-		if count > MaxWaitingInqueueTIme {
-			log.Error(nil, "CloudEventSource channel is full and need to be check if handler can emit events")
-			return
-		}
-		select {
-		case ch <- eventData:
-			return
-		default:
-			log.V(1).Info("Event cannot inqueue. Wait for next round.")
-			count++
-		}
-		time.Sleep(time.Millisecond * 1000)
+func (e *EventEmitter) enqueueEventData(eventData EventData) {
+	select {
+	case ch <- eventData:
+		log.V(1).Info("Event enqueued successfully.")
+	case <-time.After(MaxWaitingEnqueueTime * time.Second):
+		log.Error(nil, "Event cannot enqueue. Need to be check if handler can emit events.")
 	}
 }
 
@@ -361,5 +352,5 @@ func (e *EventEmitter) emitErrorHandle(eventData EventData, err error) {
 	requeueData.handlerKey = eventData.handlerKey
 	requeueData.retryTimes++
 	requeueData.err = err
-	e.inqueueEventData(requeueData)
+	e.enqueueEventData(requeueData)
 }
