@@ -123,6 +123,9 @@ type CreateQueueOptions struct {
 
 // CreateQueueResponse contains the response fields for Client.CreateQueue
 type CreateQueueResponse struct {
+	// QueueName is the name of the queue.
+	QueueName string
+
 	QueueProperties
 }
 
@@ -141,12 +144,16 @@ func (ac *Client) CreateQueue(ctx context.Context, queueName string, options *Cr
 	}
 
 	return CreateQueueResponse{
+		QueueName:       queueName,
 		QueueProperties: *newProps,
 	}, nil
 }
 
 // UpdateQueueResponse contains the response fields for Client.UpdateQueue
 type UpdateQueueResponse struct {
+	// QueueName is the name of the queue.
+	QueueName string
+
 	QueueProperties
 }
 
@@ -164,12 +171,16 @@ func (ac *Client) UpdateQueue(ctx context.Context, queueName string, properties 
 	}
 
 	return UpdateQueueResponse{
+		QueueName:       queueName,
 		QueueProperties: *newProps,
 	}, err
 }
 
 // GetQueueResponse contains the response fields for Client.GetQueue
 type GetQueueResponse struct {
+	// QueueName is the name of the queue.
+	QueueName string
+
 	QueueProperties
 }
 
@@ -195,12 +206,16 @@ func (ac *Client) GetQueue(ctx context.Context, queueName string, options *GetQu
 	}
 
 	return &GetQueueResponse{
+		QueueName:       queueName,
 		QueueProperties: queueItem.QueueProperties,
 	}, nil
 }
 
 // GetQueueRuntimePropertiesResponse contains response fields for Client.GetQueueRuntimeProperties
 type GetQueueRuntimePropertiesResponse struct {
+	// QueueName is the name of the queue.
+	QueueName string
+
 	QueueRuntimeProperties
 }
 
@@ -226,6 +241,7 @@ func (ac *Client) GetQueueRuntimeProperties(ctx context.Context, queueName strin
 	}
 
 	return &GetQueueRuntimePropertiesResponse{
+		QueueName:              queueName,
 		QueueRuntimeProperties: item.QueueRuntimeProperties,
 	}, nil
 }
@@ -309,7 +325,9 @@ type ListQueuesRuntimePropertiesResponse struct {
 
 // QueueRuntimePropertiesItem contains a single item in the page response for QueueRuntimePropertiesPager.PageResponse
 type QueueRuntimePropertiesItem struct {
+	// QueueName is the name of the queue.
 	QueueName string
+
 	QueueRuntimeProperties
 }
 

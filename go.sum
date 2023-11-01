@@ -786,8 +786,8 @@ github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.3.1/go.mod h1:uE9zaUfEQT/nbQ
 github.com/Azure/azure-sdk-for-go/sdk/internal v0.7.0/go.mod h1:yqy467j36fJxcRV2TzfVZ1pCb5vxm4BtZPUdYWe/Xo8=
 github.com/Azure/azure-sdk-for-go/sdk/internal v1.3.0 h1:sXr+ck84g/ZlZUOZiNELInmMgOsuGwdjjVkEIde0OtY=
 github.com/Azure/azure-sdk-for-go/sdk/internal v1.3.0/go.mod h1:okt5dMMTOFjX/aovMlrjvvXoPMBVSPzk9185BT0+eZM=
-github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.4.1 h1:bljK6TN1z/3n8pWMRAga/Ic5Y/FQcjdSP0EJGApAG4k=
-github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.4.1/go.mod h1:4BbKA+mRmmTP8VaLfDPNF5nOdhRm5upG3AXVWfv1dxc=
+github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.5.0 h1:HKHkea1fdm18LT8VAxTVZgJpPsLgv+0NZhmtus1UqJQ=
+github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.5.0/go.mod h1:4BbKA+mRmmTP8VaLfDPNF5nOdhRm5upG3AXVWfv1dxc=
 github.com/Azure/azure-storage-blob-go v0.15.0 h1:rXtgp8tN1p29GvpGgfJetavIG0V7OgcSXPpwp3tx6qk=
 github.com/Azure/azure-storage-blob-go v0.15.0/go.mod h1:vbjsVbX0dlxnRc4FFMPsS9BsJWPcne7GB7onqlPvz58=
 github.com/Azure/azure-storage-queue-go v0.0.0-20230531184854-c06a8eff66fe h1:HGuouUM1533rBXmMtR7qh5pYNSSjUZG90b/MgJAnb/A=
