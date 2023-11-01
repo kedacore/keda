@@ -409,7 +409,7 @@ github.com/beorn7/perks/quantile
 # github.com/blang/semver/v4 v4.0.0
 ## explicit; go 1.14
 github.com/blang/semver/v4
-# github.com/bradleyfalzon/ghinstallation/v2 v2.7.0
+# github.com/bradleyfalzon/ghinstallation/v2 v2.8.0
 ## explicit; go 1.13
 github.com/bradleyfalzon/ghinstallation/v2
 # github.com/cenkalti/backoff/v3 v3.2.2
@@ -674,9 +674,9 @@ github.com/google/go-cmp/cmp/internal/value
 # github.com/google/go-github/v50 v50.2.0
 ## explicit; go 1.17
 github.com/google/go-github/v50/github
-# github.com/google/go-github/v55 v55.0.0
+# github.com/google/go-github/v56 v56.0.0
 ## explicit; go 1.17
-github.com/google/go-github/v55/github
+github.com/google/go-github/v56/github
 # github.com/google/go-querystring v1.1.0
 ## explicit; go 1.10
 github.com/google/go-querystring/query

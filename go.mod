@@ -33,7 +33,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/kinesis v1.19.0
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.24.5
 	github.com/aws/aws-sdk-go-v2/service/sts v1.22.0
-	github.com/bradleyfalzon/ghinstallation/v2 v2.7.0
+	github.com/bradleyfalzon/ghinstallation/v2 v2.8.0
 	github.com/denisenkom/go-mssqldb v0.12.3
 	github.com/dysnix/predictkube-libs v0.0.4-0.20230109175007-5a82fccd31c7
 	github.com/dysnix/predictkube-proto v0.0.0-20220713123213-7135dce1e9c9
@@ -106,6 +106,8 @@ require (
 	sigs.k8s.io/custom-metrics-apiserver v1.28.0
 	sigs.k8s.io/kustomize/kustomize/v5 v5.1.1
 )
+
+require github.com/google/go-github/v56 v56.0.0 // indirect
 
 replace (
 	// we need a version with license
@@ -211,7 +213,6 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/cel-go v0.16.1 // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
-	github.com/google/go-github/v55 v55.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/pprof v0.0.0-20230228050547-1710fef4ab10 // indirect
