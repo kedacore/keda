@@ -91,6 +91,7 @@ New deprecation(s):
 
 - **General**: Fix CVE-2023-45142 in Opentelemetry ([#5089](https://github.com/kedacore/keda/issues/5089))
 - **General**: Fix logger in Opentelemetry collector ([#5094](https://github.com/kedacore/keda/issues/5094))
+- **General**: Reduce amount of gauge creations for OpenTelemetry metrics ([#5101](https://github.com/kedacore/keda/issues/5101))
 - **General**: Support profiling for KEDA components ([#4789](https://github.com/kedacore/keda/issues/4789))
 
 ## v2.12.0
