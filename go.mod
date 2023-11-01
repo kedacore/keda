@@ -11,8 +11,8 @@ require (
 	github.com/Azure/azure-event-hubs-go/v3 v3.6.1
 	github.com/Azure/azure-kusto-go v0.14.0
 	github.com/Azure/azure-sdk-for-go v68.0.0+incompatible
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.7.2
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.3.1
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.8.0
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.4.0
 	github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.4.1
 	github.com/Azure/azure-storage-blob-go v0.15.0
 	github.com/Azure/azure-storage-queue-go v0.0.0-20230531184854-c06a8eff66fe

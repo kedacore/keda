@@ -76,7 +76,7 @@ github.com/Azure/azure-sdk-for-go/services/eventhub/mgmt/2017-04-01/eventhub
 github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault
 github.com/Azure/azure-sdk-for-go/services/preview/monitor/mgmt/2018-03-01/insights
 github.com/Azure/azure-sdk-for-go/version
-# github.com/Azure/azure-sdk-for-go/sdk/azcore v1.7.2
+# github.com/Azure/azure-sdk-for-go/sdk/azcore v1.8.0
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/azcore
 github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud
@@ -94,7 +94,7 @@ github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime
 github.com/Azure/azure-sdk-for-go/sdk/azcore/streaming
 github.com/Azure/azure-sdk-for-go/sdk/azcore/to
 github.com/Azure/azure-sdk-for-go/sdk/azcore/tracing
-# github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.3.1
+# github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.4.0
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/azidentity
 # github.com/Azure/azure-sdk-for-go/sdk/internal v1.3.0
