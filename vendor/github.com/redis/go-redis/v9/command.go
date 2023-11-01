@@ -1,9 +1,11 @@
 package redis
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"net"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -1348,6 +1350,65 @@ func (cmd *MapStringIntCmd) readReply(rd *proto.Reader) error {
 		}
 		cmd.val[key] = nn
 	}
+	return nil
+}
+
+// ------------------------------------------------------------------------------
+type MapStringSliceInterfaceCmd struct {
+	baseCmd
+	val map[string][]interface{}
+}
+
+func NewMapStringSliceInterfaceCmd(ctx context.Context, args ...interface{}) *MapStringSliceInterfaceCmd {
+	return &MapStringSliceInterfaceCmd{
+		baseCmd: baseCmd{
+			ctx:  ctx,
+			args: args,
+		},
+	}
+}
+
+func (cmd *MapStringSliceInterfaceCmd) String() string {
+	return cmdString(cmd, cmd.val)
+}
+
+func (cmd *MapStringSliceInterfaceCmd) SetVal(val map[string][]interface{}) {
+	cmd.val = val
+}
+
+func (cmd *MapStringSliceInterfaceCmd) Result() (map[string][]interface{}, error) {
+	return cmd.val, cmd.err
+}
+
+func (cmd *MapStringSliceInterfaceCmd) Val() map[string][]interface{} {
+	return cmd.val
+}
+
+func (cmd *MapStringSliceInterfaceCmd) readReply(rd *proto.Reader) (err error) {
+	n, err := rd.ReadMapLen()
+	if err != nil {
+		return err
+	}
+	cmd.val = make(map[string][]interface{}, n)
+	for i := 0; i < n; i++ {
+		k, err := rd.ReadString()
+		if err != nil {
+			return err
+		}
+		nn, err := rd.ReadArrayLen()
+		if err != nil {
+			return err
+		}
+		cmd.val[k] = make([]interface{}, nn)
+		for j := 0; j < nn; j++ {
+			value, err := rd.ReadReply()
+			if err != nil {
+				return err
+			}
+			cmd.val[k][j] = value
+		}
+	}
+
 	return nil
 }
 
@@ -4265,7 +4326,6 @@ func (cmd *FunctionStatsCmd) readDuration(rd *proto.Reader) (time.Duration, erro
 }
 
 func (cmd *FunctionStatsCmd) readCommand(rd *proto.Reader) ([]string, error) {
-
 	n, err := rd.ReadArrayLen()
 	if err != nil {
 		return nil, err
@@ -4282,6 +4342,7 @@ func (cmd *FunctionStatsCmd) readCommand(rd *proto.Reader) ([]string, error) {
 
 	return command, nil
 }
+
 func (cmd *FunctionStatsCmd) readRunningScripts(rd *proto.Reader) ([]RunningScript, bool, error) {
 	n, err := rd.ReadArrayLen()
 	if err != nil {
@@ -5232,4 +5293,91 @@ func (cmd *ACLLogCmd) readReply(rd *proto.Reader) error {
 	}
 
 	return nil
+}
+
+// LibraryInfo holds the library info.
+type LibraryInfo struct {
+	LibName *string
+	LibVer  *string
+}
+
+// -------------------------------------------
+
+type InfoCmd struct {
+	baseCmd
+	val map[string]map[string]string
+}
+
+var _ Cmder = (*InfoCmd)(nil)
+
+func NewInfoCmd(ctx context.Context, args ...interface{}) *InfoCmd {
+	return &InfoCmd{
+		baseCmd: baseCmd{
+			ctx:  ctx,
+			args: args,
+		},
+	}
+}
+
+func (cmd *InfoCmd) SetVal(val map[string]map[string]string) {
+	cmd.val = val
+}
+
+func (cmd *InfoCmd) Val() map[string]map[string]string {
+	return cmd.val
+}
+
+func (cmd *InfoCmd) Result() (map[string]map[string]string, error) {
+	return cmd.Val(), cmd.Err()
+}
+
+func (cmd *InfoCmd) String() string {
+	return cmdString(cmd, cmd.val)
+}
+
+func (cmd *InfoCmd) readReply(rd *proto.Reader) error {
+	val, err := rd.ReadString()
+	if err != nil {
+		return err
+	}
+
+	section := ""
+	scanner := bufio.NewScanner(strings.NewReader(val))
+	moduleRe := regexp.MustCompile(`module:name=(.+?),(.+)$`)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "#") {
+			if cmd.val == nil {
+				cmd.val = make(map[string]map[string]string)
+			}
+			section = strings.TrimPrefix(line, "# ")
+			cmd.val[section] = make(map[string]string)
+		} else if line != "" {
+			if section == "Modules" {
+				kv := moduleRe.FindStringSubmatch(line)
+				if len(kv) == 3 {
+					cmd.val[section][kv[1]] = kv[2]
+				}
+			} else {
+				kv := strings.SplitN(line, ":", 2)
+				if len(kv) == 2 {
+					cmd.val[section][kv[0]] = kv[1]
+				}
+			}
+		}
+	}
+
+	return nil
+
+}
+
+func (cmd *InfoCmd) Item(section, key string) string {
+	if cmd.val == nil {
+		return ""
+	} else if cmd.val[section] == nil {
+		return ""
+	} else {
+		return cmd.val[section][key]
+	}
 }
