@@ -55,6 +55,7 @@ func init() {
 func main() {
 	var metricsAddr string
 	var probeAddr string
+	var profilingAddr string
 	var webhooksClientRequestQPS float32
 	var webhooksClientRequestBurst int
 	var certDir string
@@ -62,6 +63,7 @@ func main() {
 
 	pflag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	pflag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	pflag.StringVar(&profilingAddr, "profiling-bind-address", "", "The address the profiling would be exposed on.")
 	pflag.Float32Var(&webhooksClientRequestQPS, "kube-api-qps", 20.0, "Set the QPS rate for throttling requests sent to the apiserver")
 	pflag.IntVar(&webhooksClientRequestBurst, "kube-api-burst", 30, "Set the burst for throttling requests sent to the apiserver")
 	pflag.StringVar(&certDir, "cert-dir", "/certs", "Webhook certificates dir to use. Defaults to /certs")
@@ -96,6 +98,7 @@ func main() {
 			},
 		}),
 		HealthProbeBindAddress: probeAddr,
+		PprofBindAddress:       profilingAddr,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start admission webhooks")
