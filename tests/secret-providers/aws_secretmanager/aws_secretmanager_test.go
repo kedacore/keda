@@ -71,8 +71,8 @@ spec:
             name:{{.SecretName}}
             key: AWS_SECRET_ACCESS_KEY
     secrets:
-      - parameter: your-parameter-name
-        name:{{.SecretName}}
+      - parameter: connection
+        name: E2E-Storage-ConnectionString
 `
 
 	deploymentTemplate = `

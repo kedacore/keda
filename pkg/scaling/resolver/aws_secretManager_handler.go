@@ -46,23 +46,17 @@ func (ash *AwsSecretManagerHandler) Read(secretName, versionID, versionStage str
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case secretsmanager.ErrCodeResourceNotFoundException:
-				err = fmt.Errorf(secretsmanager.ErrCodeResourceNotFoundException+": %s", aerr.Error())
-				return "", err
+				return "", fmt.Errorf(secretsmanager.ErrCodeResourceNotFoundException+": %s", aerr.Error())
 			case secretsmanager.ErrCodeInvalidParameterException:
-				err = fmt.Errorf(secretsmanager.ErrCodeInvalidParameterException+": %s", aerr.Error())
-				return "", err
+				return "", fmt.Errorf(secretsmanager.ErrCodeInvalidParameterException+": %s", aerr.Error())
 			case secretsmanager.ErrCodeInvalidRequestException:
-				err = fmt.Errorf(secretsmanager.ErrCodeInvalidRequestException+": %s", aerr.Error())
-				return "", err
+				return "", fmt.Errorf(secretsmanager.ErrCodeInvalidRequestException+": %s", aerr.Error())
 			case secretsmanager.ErrCodeDecryptionFailure:
-				err = fmt.Errorf(secretsmanager.ErrCodeDecryptionFailure+": %s", aerr.Error())
-				return "", err
+				return "", fmt.Errorf(secretsmanager.ErrCodeDecryptionFailure+": %s", aerr.Error())
 			case secretsmanager.ErrCodeInternalServiceError:
-				err = fmt.Errorf(secretsmanager.ErrCodeInternalServiceError+": %s", aerr.Error())
-				return "", err
+				return "", fmt.Errorf(secretsmanager.ErrCodeInternalServiceError+": %s", aerr.Error())
 			default:
-				err = fmt.Errorf(aerr.Error())
-				return "", err
+				return "", fmt.Errorf(aerr.Error())
 			}
 		} else {
 			err = fmt.Errorf(err.Error())
@@ -109,7 +103,7 @@ func (ash *AwsSecretManagerHandler) getcredentials(ctx context.Context, client c
 	case kedav1alpha1.PodIdentityProviderAwsEKS:
 		awsRoleArn, err := ash.getRoleArnAwsEKS(ctx, client, logger, triggerNamespace, podTemplateSpec)
 		if err != nil {
-			return nil, fmt.Errorf("error resolving role arn for AwsEKS pod identity: %s", err)
+			return nil, err
 		}
 		config.WithCredentials(stscreds.NewCredentials(ash.session, awsRoleArn))
 		return config, nil
