@@ -315,6 +315,23 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 					result[secret.Parameter] = res
 				}
 			}
+			if triggerAuthSpec.AwsSecretManager != nil && len(triggerAuthSpec.AwsSecretManager.Secrets) > 0 {
+				AwsSecretManagerHandler := NewAwsSecretManagerHandler(triggerAuthSpec.AwsSecretManager)
+				err := AwsSecretManagerHandler.Initialize(ctx, client, logger, triggerNamespace, secretsLister)
+				if err != nil {
+					logger.Error(err, "error authenticating to Aws Secret Manager", "triggerAuthRef.Name", triggerAuthRef.Name)
+				} else {
+					for _, secret := range triggerAuthSpec.AwsSecretManager.Secrets {
+						res, err := AwsSecretManagerHandler.Read(secret.Name, secret.VersionID, secret.VersionStage)
+						if err != nil {
+							logger.Error(err, "error trying to read secret from Aws Secret Manager", "triggerAuthRef.Name", triggerAuthRef.Name,
+								"secret.Name", secret.Name, "secret.Version", secret.VersionID, "secret.VersionStage", secret.VersionStage)
+						} else {
+							result[secret.Parameter] = res
+						}
+					}
+				}
+			}
 		}
 	}
 
