@@ -38,10 +38,10 @@ import (
 )
 
 const (
-	referenceOperator      = '$'
-	referenceOpener        = '('
-	referenceCloser        = ')'
-	isrestrictSecretAccess = "true"
+	referenceOperator = '$'
+	referenceOpener   = '('
+	referenceCloser   = ')'
+	trueString        = "true"
 )
 
 var (
@@ -55,7 +55,7 @@ func isSecretAccessRestricted(logger logr.Logger) bool {
 	if restrictSecretAccess == "" {
 		return false
 	}
-	if strings.ToLower(restrictSecretAccess) == isrestrictSecretAccess {
+	if strings.ToLower(restrictSecretAccess) == trueString {
 		logger.V(1).Info("Secret Access is restricted to be in Cluster Object Namespace, please use ClusterTriggerAuthentication instead of TriggerAuthentication", "Cluster Object Namespace", kedaNamespace, "Env Var", util.RestrictSecretAccessEnvVar, "Env Value", strings.ToLower(restrictSecretAccess))
 		return true
 	}
