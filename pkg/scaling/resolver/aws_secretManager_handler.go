@@ -46,17 +46,23 @@ func (ash *AwsSecretManagerHandler) Read(secretName, versionID, versionStage str
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case secretsmanager.ErrCodeResourceNotFoundException:
-				return "", fmt.Errorf(secretsmanager.ErrCodeResourceNotFoundException+": %s", aerr.Error())
+				err = fmt.Errorf(secretsmanager.ErrCodeResourceNotFoundException+": %s", aerr.Error())
+				return "", err
 			case secretsmanager.ErrCodeInvalidParameterException:
-				return "", fmt.Errorf(secretsmanager.ErrCodeInvalidParameterException+": %s", aerr.Error())
+				err = fmt.Errorf(secretsmanager.ErrCodeInvalidParameterException+": %s", aerr.Error())
+				return "", err
 			case secretsmanager.ErrCodeInvalidRequestException:
-				return "", fmt.Errorf(secretsmanager.ErrCodeInvalidRequestException+": %s", aerr.Error())
+				err = fmt.Errorf(secretsmanager.ErrCodeInvalidRequestException+": %s", aerr.Error())
+				return "", err
 			case secretsmanager.ErrCodeDecryptionFailure:
-				return "", fmt.Errorf(secretsmanager.ErrCodeDecryptionFailure+": %s", aerr.Error())
+				err = fmt.Errorf(secretsmanager.ErrCodeDecryptionFailure+": %s", aerr.Error())
+				return "", err
 			case secretsmanager.ErrCodeInternalServiceError:
-				return "", fmt.Errorf(secretsmanager.ErrCodeInternalServiceError+": %s", aerr.Error())
+				err = fmt.Errorf(secretsmanager.ErrCodeInternalServiceError+": %s", aerr.Error())
+				return "", err
 			default:
-				return "", fmt.Errorf(aerr.Error())
+				err = fmt.Errorf(aerr.Error())
+				return "", err
 			}
 		} else {
 			err = fmt.Errorf(err.Error())
