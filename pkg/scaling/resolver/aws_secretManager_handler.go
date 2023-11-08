@@ -98,8 +98,8 @@ func (ash *AwsSecretManagerHandler) getcredentials(ctx context.Context, client c
 
 	switch podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		accessKeyID := resolveAuthSecret(ctx, client, logger, ash.secretManager.Credentials.AccessKey.SecretKeyRef.Name, triggerNamespace, ash.secretManager.Credentials.AccessKey.SecretKeyRef.Key, secretsLister)
-		accessSecretKey := resolveAuthSecret(ctx, client, logger, ash.secretManager.Credentials.AccessSecretKey.SecretKeyRef.Name, triggerNamespace, ash.secretManager.Credentials.AccessSecretKey.SecretKeyRef.Key, secretsLister)
+		accessKeyID := resolveAuthSecret(ctx, client, logger, ash.secretManager.Credentials.AccessKey.ValueFrom.SecretKeyRef.Name, triggerNamespace, ash.secretManager.Credentials.AccessKey.ValueFrom.SecretKeyRef.Key, secretsLister)
+		accessSecretKey := resolveAuthSecret(ctx, client, logger, ash.secretManager.Credentials.AccessSecretKey.ValueFrom.SecretKeyRef.Name, triggerNamespace, ash.secretManager.Credentials.AccessSecretKey.ValueFrom.SecretKeyRef.Key, secretsLister)
 		if accessKeyID == "" || accessSecretKey == "" {
 			return nil, fmt.Errorf("AccessKeyID and AccessSecretKey are expected when not using a pod identity provider")
 		}

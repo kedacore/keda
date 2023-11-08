@@ -73,48 +73,63 @@ spec:
                     properties:
                       accessKey:
                         properties:
-                          secretKeyRef:
+                          valueFrom:
                             properties:
-                              key:
-                                type: string
-                              name:
-                                type: string
+                              secretKeyRef:
+                                properties:
+                                  key:
+                                    type: string
+                                  name:
+                                    type: string
+                                required:
+                                - key
+                                - name
+                                type: object
                             required:
-                            - key
-                            - name
+                            - secretKeyRef
                             type: object
                         required:
-                        - secretKeyRef
+                        - valueFrom
                         type: object
                       accessSecretKey:
                         properties:
-                          secretKeyRef:
+                          valueFrom:
                             properties:
-                              key:
-                                type: string
-                              name:
-                                type: string
+                              secretKeyRef:
+                                properties:
+                                  key:
+                                    type: string
+                                  name:
+                                    type: string
+                                required:
+                                - key
+                                - name
+                                type: object
                             required:
-                            - key
-                            - name
+                            - secretKeyRef
                             type: object
                         required:
-                        - secretKeyRef
+                        - valueFrom
                         type: object
                       accessToken:
                         properties:
-                          secretKeyRef:
+                          valueFrom:
                             properties:
-                              key:
-                                type: string
-                              name:
-                                type: string
+                              secretKeyRef:
+                                properties:
+                                  key:
+                                    type: string
+                                  name:
+                                    type: string
+                                required:
+                                - key
+                                - name
+                                type: object
                             required:
-                            - key
-                            - name
+                            - secretKeyRef
                             type: object
                         required:
-                        - secretKeyRef
+                        - valueFrom
                         type: object
                     required:
                     - accessKey
@@ -149,7 +164,6 @@ spec:
                       type: object
                     type: array
                 required:
-                - cloud
                 - credentials
                 - secrets
                 type: object

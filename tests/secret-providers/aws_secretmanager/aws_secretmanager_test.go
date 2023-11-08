@@ -22,7 +22,7 @@ import (
 )
 
 // Load environment variables from .env file
-var _ = godotenv.Load("../../../.env")
+var _ = godotenv.Load("../../.env")
 
 const (
 	testName = "aws-sqs-queue-test"
@@ -63,12 +63,12 @@ spec:
       accessKey:
         valueFrom:
           secretKeyRef:
-            name:{{.SecretName}}
+            name: {{.SecretName}}
             key: AWS_ACCESS_KEY_ID
       accessSecretKey:
         valueFrom:
           secretKeyRef:
-            name:{{.SecretName}}
+            name: {{.SecretName}}
             key: AWS_SECRET_ACCESS_KEY
     secrets:
       - parameter: connection
@@ -236,9 +236,9 @@ func getTemplateData(sqsQueue string) (templateData, []Template) {
 			AwsRegion:          awsRegion,
 			SqsQueue:           sqsQueue,
 		}, []Template{
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
 			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }

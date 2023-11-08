@@ -304,18 +304,21 @@ type AzureKeyVaultCloudInfo struct {
 type AwsSecretManager struct {
 	Credentials *AwsSecretManagerCredentials `json:"credentials"`
 	Secrets     []AwsSecretManagerSecret     `json:"secrets"`
-
 	// +optional
 	PodIdentity *AuthPodIdentity `json:"podIdentity"`
-
+	// +optional
 	Cloud *AwsSecretMangerCloudInfo `json:"cloud"`
 }
 
 type AwsSecretManagerCredentials struct {
-	AccessKey       ValueFromSecret `json:"accessKey"`
-	AccessSecretKey ValueFromSecret `json:"accessSecretKey"`
+	AccessKey       *AwsSecretManagerValue `json:"accessKey"`
+	AccessSecretKey *AwsSecretManagerValue `json:"accessSecretKey"`
 	// +optional
-	AccessToken ValueFromSecret `json:"accessToken,omitempty"`
+	AccessToken *AwsSecretManagerValue `json:"accessToken,omitempty"`
+}
+
+type AwsSecretManagerValue struct {
+	ValueFrom ValueFromSecret `json:"valueFrom"`
 }
 
 type AwsSecretManagerSecret struct {
