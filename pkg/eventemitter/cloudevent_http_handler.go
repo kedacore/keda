@@ -29,6 +29,8 @@ import (
 	"github.com/cloudevents/sdk-go/v2/protocol"
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/kedacore/keda/v2/pkg/eventemitter/eventdata"
 )
 
 type CloudEventHTTPHandler struct {
@@ -74,16 +76,16 @@ func (c *CloudEventHTTPHandler) CloseHandler() {
 
 }
 
-func (c *CloudEventHTTPHandler) EmitEvent(eventData EventData, failureFunc func(eventData EventData, err error)) {
-	source := "/" + c.ClusterName + "/" + eventData.namespace + "/keda"
-	subject := "/" + c.ClusterName + "/" + eventData.namespace + "/workload/" + eventData.objectName
+func (c *CloudEventHTTPHandler) EmitEvent(eventData eventdata.EventData, failureFunc func(eventData eventdata.EventData, err error)) {
+	source := "/" + c.ClusterName + "/" + eventData.Namespace + "/keda"
+	subject := "/" + c.ClusterName + "/" + eventData.Namespace + "/workload/" + eventData.ObjectName
 
 	event := cloudevents.NewEvent()
 	event.SetSource(source)
 	event.SetSubject(subject)
 	event.SetType(CloudEventSourceType)
 
-	if err := event.SetData(cloudevents.ApplicationJSON, EmitData{Reason: eventData.reason, Message: eventData.message}); err != nil {
+	if err := event.SetData(cloudevents.ApplicationJSON, EmitData{Reason: eventData.Reason, Message: eventData.Message}); err != nil {
 		c.logger.Error(err, "Failed to set data to cloudevent")
 		return
 	}

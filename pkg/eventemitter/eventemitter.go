@@ -42,16 +42,17 @@ import (
 
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/eventemitter/eventdata"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 )
 
 var log = logf.Log.WithName("event_emitter")
-var ch chan EventData
+var ch chan eventdata.EventData
 
 const CloudEventSourceType = "com.cloudeventsource.keda"
 const MaxRetryTimes = 5
 const MaxChannelBuffer = 1024
-const MaxWaitingEnqueueTime = 10
+const MaxWaitingEnqueueTime = 20
 
 type EventEmitter struct {
 	client.Client
@@ -62,21 +63,8 @@ type EventEmitter struct {
 	eventLoopContexts       *sync.Map
 }
 
-// EventData will save all event info and handler info for retry.
-type EventData struct {
-	namespace  string
-	objectName string
-	eventtype  string
-	reason     string
-	message    string
-	time       time.Time
-	handlerKey string
-	retryTimes int
-	err        error
-}
-
 type EventDataHandler interface {
-	EmitEvent(eventData EventData, failureFunc func(eventData EventData, err error))
+	EmitEvent(eventData eventdata.EventData, failureFunc func(eventData eventdata.EventData, err error))
 	SetActiveStatus(status metav1.ConditionStatus)
 	GetActiveStatus() metav1.ConditionStatus
 	CloseHandler()
@@ -215,9 +203,8 @@ func (e *EventEmitter) checkIfEventHandlersExist(cloudEventSource *eventingv1alp
 
 func (e *EventEmitter) startEventLoop(ctx context.Context, cloudEventSource *eventingv1alpha1.CloudEventSource, cloudEventSourceMutex sync.Locker) {
 	consumingInterval := 500 * time.Millisecond
-
 	if ch == nil {
-		ch = make(chan EventData, MaxChannelBuffer)
+		ch = make(chan eventdata.EventData, MaxChannelBuffer)
 	}
 
 	for {
@@ -242,6 +229,7 @@ func (e *EventEmitter) startEventLoop(ctx context.Context, cloudEventSource *eve
 func (e *EventEmitter) checkEventHandlers(ctx context.Context, cloudEventSource *eventingv1alpha1.CloudEventSource, cloudEventSourceMutex sync.Locker) {
 	cloudEventSourceMutex.Lock()
 	defer cloudEventSourceMutex.Unlock()
+	// Get the latest object
 	err := e.Client.Get(ctx, types.NamespacedName{Name: cloudEventSource.Name, Namespace: cloudEventSource.Namespace}, cloudEventSource)
 	if err != nil {
 		log.Error(err, "error getting cloudEventSource", "cloudEventSource", cloudEventSource)
@@ -289,18 +277,18 @@ func (e *EventEmitter) Emit(object runtime.Object, namesapce types.NamespacedNam
 	}
 
 	name, _ := meta.NewAccessor().Name(object)
-	eventData := EventData{
-		namespace:  namesapce.Namespace,
-		objectName: name,
-		eventtype:  eventtype,
-		reason:     reason,
-		message:    message,
-		time:       time.Now().UTC(),
+	eventData := eventdata.EventData{
+		Namespace:  namesapce.Namespace,
+		ObjectName: name,
+		Eventtype:  eventtype,
+		Reason:     reason,
+		Message:    message,
+		Time:       time.Now().UTC(),
 	}
 	go e.enqueueEventData(eventData)
 }
 
-func (e *EventEmitter) enqueueEventData(eventData EventData) {
+func (e *EventEmitter) enqueueEventData(eventData eventdata.EventData) {
 	select {
 	case ch <- eventData:
 		log.V(1).Info("Event enqueued successfully.")
@@ -313,35 +301,35 @@ func (e *EventEmitter) enqueueEventData(eventData EventData) {
 // 1. If there is a new EventData, call all handlers for emitting.
 // 2. Once there is an error when emitting event, record the handler's key and reqeueu this EventData.
 // 3. If the maximum number of retries has been exceeded, discard this event.
-func (e *EventEmitter) emitEventByHandler(eventData EventData) {
-	if eventData.retryTimes >= MaxRetryTimes {
-		log.Error(eventData.err, "Failed to emit Event multiple times. Will drop this event and need to check if event endpoint works well", "CloudEventSource", eventData.objectName)
-		e.emitErrorHandle(eventData, eventData.err)
+func (e *EventEmitter) emitEventByHandler(eventData eventdata.EventData) {
+	if eventData.RetryTimes >= MaxRetryTimes {
+		log.Error(eventData.Err, "Failed to emit Event multiple times. Will drop this event and need to check if event endpoint works well", "CloudEventSource", eventData.ObjectName)
+		e.emitErrorHandle(eventData, eventData.Err)
 		return
 	}
 
-	if eventData.handlerKey == "" {
+	if eventData.HandlerKey == "" {
 		for key, handler := range e.eventHandlersCache {
-			eventData.handlerKey = key
+			eventData.HandlerKey = key
 			if handler.GetActiveStatus() == metav1.ConditionTrue {
 				go handler.EmitEvent(eventData, e.emitErrorHandle)
 			} else {
-				log.V(1).Info("EventHandler's status is not active. Please check if event endpoint works well", "CloudEventSource", eventData.objectName)
+				log.V(1).Info("EventHandler's status is not active. Please check if event endpoint works well", "CloudEventSource", eventData.ObjectName)
 			}
 		}
 	} else {
-		log.Info("Reemit event failed", "handler", eventData.handlerKey, "retry times", eventData.retryTimes)
-		handler, found := e.eventHandlersCache[eventData.handlerKey]
+		log.Info("Reemit event failed", "handler", eventData.HandlerKey, "retry times", eventData.RetryTimes)
+		handler, found := e.eventHandlersCache[eventData.HandlerKey]
 		if found && handler.GetActiveStatus() == metav1.ConditionTrue {
 			go handler.EmitEvent(eventData, e.emitErrorHandle)
 		}
 	}
 }
 
-func (e *EventEmitter) emitErrorHandle(eventData EventData, err error) {
-	if eventData.retryTimes >= MaxRetryTimes {
-		log.V(1).Info("Failed to emit Event multiple times. Will set handler failure status.", "handler", eventData.handlerKey, "retry times", eventData.retryTimes)
-		handler, found := e.eventHandlersCache[eventData.handlerKey]
+func (e *EventEmitter) emitErrorHandle(eventData eventdata.EventData, err error) {
+	if eventData.RetryTimes >= MaxRetryTimes {
+		log.V(1).Info("Failed to emit Event multiple times. Will set handler failure status.", "handler", eventData.HandlerKey, "retry times", eventData.RetryTimes)
+		handler, found := e.eventHandlersCache[eventData.HandlerKey]
 		if found {
 			handler.SetActiveStatus(metav1.ConditionFalse)
 		}
@@ -349,8 +337,8 @@ func (e *EventEmitter) emitErrorHandle(eventData EventData, err error) {
 	}
 
 	requeueData := eventData
-	requeueData.handlerKey = eventData.handlerKey
-	requeueData.retryTimes++
-	requeueData.err = err
+	requeueData.HandlerKey = eventData.HandlerKey
+	requeueData.RetryTimes++
+	requeueData.Err = err
 	e.enqueueEventData(requeueData)
 }
