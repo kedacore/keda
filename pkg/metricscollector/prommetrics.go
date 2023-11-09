@@ -36,7 +36,7 @@ var (
 		prometheus.GaugeOpts{
 			Namespace: DefaultPromMetricsNamespace,
 			Name:      "build_info",
-			Help:      "A metric with a constant '1' value labeled by version, git_commit and goversion from which KEDA was built.",
+			Help:      "Info metric, with static information about KEDA build like: version, git commit and Golang runtime info.",
 		},
 		[]string{"version", "git_commit", "goversion", "goos", "goarch"},
 	)
@@ -54,7 +54,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaler",
 			Name:      "metrics_value",
-			Help:      "Current value of the metric obtained from the scaler that the Horizontal Pod Autoscaler (HPA) uses to make scaling decisions.",
+			Help:      "The current value for each scaler's metric that would be used by the HPA in computing the target average.",
 		},
 		metricLabels,
 	)
@@ -72,7 +72,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaler",
 			Name:      "metrics_latency_seconds",
-			Help:      "Latency observed by a scaler in getting the metric from the source, in seconds.",
+			Help:      "The latency of retrieving current metric from each scaler, in seconds.",
 		},
 		metricLabels,
 	)
@@ -108,7 +108,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaler",
 			Name:      "errors_total",
-			Help:      "Total number of errors observed by a scaler.",
+			Help:      "The total number of errors encountered for each scaler.",
 		},
 		metricLabels,
 	)
@@ -126,7 +126,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaled_object",
 			Name:      "errors_total",
-			Help:      "Total number of errors observed by a scaled object.",
+			Help:      "The number of errors that have occurred for each ScaledObject.",
 		},
 		[]string{"namespace", "scaledObject"},
 	)
@@ -144,7 +144,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "trigger",
 			Name:      "handled_total",
-			Help:      "Total number of triggers currently handled.",
+			Help:      "Total number of triggers per trigger type handled.",
 		},
 		[]string{"type"},
 	)
@@ -162,7 +162,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "resource",
 			Name:      "handled_total",
-			Help:      "Total number of ScaledObjects/ScaledJobs currently handled.",
+			Help:      "Total number of KEDA custom resources per namespace for each custom resource type (CRD) handled.",
 		},
 		[]string{"type", "namespace"},
 	)
@@ -180,7 +180,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "internal_scale_loop",
 			Name:      "latency_seconds",
-			Help:      "Internal latency of ScaledObject/ScaledJob loop execution in seconds.",
+			Help:      "Total deviation (in seconds) between the expected execution time and the actual execution time for the scaling loop.",
 		},
 		[]string{"namespace", "type", "resource"},
 	)
