@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 // ******************************* DESCRIPTION ****************************** \\
-// CloudEventHTTPHandler focus on emitting the CloudEventSource to CloudEvent HTTP
-// URI. URI can be defined in CloudEventSourceSpec.
+// CloudEventHTTPHandler focuses on emitting the CloudEventSource to CloudEvent
+// HTTP URI. URI can be defined in CloudEventSourceSpec.
 // ************************************************************************** \\
 
 package eventemitter
