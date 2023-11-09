@@ -121,14 +121,14 @@ func (c *ScalersCache) GetMetricSpecForScalingForScaler(ctx context.Context, ind
 
 // GetMetricsAndActivityForScaler returns metric value, activity and latency for a scaler identified by the metric name
 // and by the input index (from the list of scalers in this ScaledObject)
-func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index int, metricName string) ([]external_metrics.ExternalMetricValue, bool, int64, error) {
+func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index int, metricName string) ([]external_metrics.ExternalMetricValue, bool, time.Duration, error) {
 	if index < 0 || index >= len(c.Scalers) {
 		return nil, false, -1, fmt.Errorf("scaler with id %d not found. Len = %d", index, len(c.Scalers))
 	}
 	startTime := time.Now()
 	metric, activity, err := c.Scalers[index].Scaler.GetMetricsAndActivity(ctx, metricName)
 	if err == nil {
-		return metric, activity, time.Since(startTime).Milliseconds(), nil
+		return metric, activity, time.Since(startTime), nil
 	}
 
 	ns, err := c.refreshScaler(ctx, index)
@@ -137,7 +137,7 @@ func (c *ScalersCache) GetMetricsAndActivityForScaler(ctx context.Context, index
 	}
 	startTime = time.Now()
 	metric, activity, err = ns.GetMetricsAndActivity(ctx, metricName)
-	return metric, activity, time.Since(startTime).Milliseconds(), err
+	return metric, activity, time.Since(startTime), err
 }
 
 func (c *ScalersCache) refreshScaler(ctx context.Context, id int) (scalers.Scaler, error) {

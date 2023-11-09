@@ -67,6 +67,7 @@ Here is an overview of all new **experimental** features:
 - **Kafka Scaler**: Add support for Kerberos authentication (SASL / GSSAPI) ([#4836](https://github.com/kedacore/keda/issues/4836))
 - **Prometheus Metrics**: Introduce paused ScaledObjects in Prometheus metrics ([#4430](https://github.com/kedacore/keda/issues/4430))
 - **Pulsar Scaler**: support endpointParams in pulsar oauth ([#5069](https://github.com/kedacore/keda/issues/5069))
+- **General**: Renamed Prometheus metrics to include units and `total` where approriate ([#4854](https://github.com/kedacore/keda/issues/4854))
 
 ### Fixes
 
@@ -82,6 +83,7 @@ You can find all deprecations in [this overview](https://github.com/kedacore/ked
 New deprecation(s):
 
 - Remove support for Azure AD Pod Identity-based authentication ([#5035](https://github.com/kedacore/keda/issues/5035))
+- Various Prometheus metrics have been renamed to follow the preferred naming conventions. The old ones are still available, but will be removed in the future ([#4854](https://github.com/kedacore/keda/issues/4854)).
 
 ### Breaking Changes
 

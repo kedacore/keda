@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"runtime"
 	"strconv"
+	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -185,8 +186,8 @@ func ScalerMetricsLatencyCallback(_ context.Context, obsrv api.Float64Observer) 
 }
 
 // RecordScalerLatency create a measurement of the latency to external metric
-func (o *OtelMetrics) RecordScalerLatency(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64) {
-	otelScalerMetricsLatencyVal.val = value
+func (o *OtelMetrics) RecordScalerLatency(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value time.Duration) {
+	otelScalerMetricsLatencyVal.val = value.Seconds()
 	otelScalerMetricsLatencyVal.measurementOption = getScalerMeasurementOption(namespace, scaledObject, scaler, scalerIndex, metric)
 }
 
@@ -199,7 +200,7 @@ func ScalableObjectLatencyCallback(_ context.Context, obsrv api.Float64Observer)
 }
 
 // RecordScalableObjectLatency create a measurement of the latency executing scalable object loop
-func (o *OtelMetrics) RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value float64) {
+func (o *OtelMetrics) RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value time.Duration) {
 	resourceType := "scaledjob"
 	if isScaledObject {
 		resourceType = "scaledobject"
@@ -210,7 +211,7 @@ func (o *OtelMetrics) RecordScalableObjectLatency(namespace string, name string,
 		attribute.Key("type").String(resourceType),
 		attribute.Key("name").String(name))
 
-	otelInternalLoopLatencyVal.val = value
+	otelInternalLoopLatencyVal.val = value.Seconds()
 	otelInternalLoopLatencyVal.measurementOption = opt
 }
 

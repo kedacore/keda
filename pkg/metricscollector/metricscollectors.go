@@ -16,6 +16,8 @@ limitations under the License.
 
 package metricscollector
 
+import "time"
+
 const (
 	ClusterTriggerAuthenticationResource = "cluster_trigger_authentication"
 	TriggerAuthenticationResource        = "trigger_authentication"
@@ -33,10 +35,10 @@ type MetricsCollector interface {
 	RecordScalerMetric(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64)
 
 	// RecordScalerLatency create a measurement of the latency to external metric
-	RecordScalerLatency(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64)
+	RecordScalerLatency(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value time.Duration)
 
 	// RecordScalableObjectLatency create a measurement of the latency executing scalable object loop
-	RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value float64)
+	RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value time.Duration)
 
 	// RecordScalerActive create a measurement of the activity of the scaler
 	RecordScalerActive(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, active bool)
@@ -79,14 +81,14 @@ func RecordScalerMetric(namespace string, scaledObject string, scaler string, sc
 }
 
 // RecordScalerLatency create a measurement of the latency to external metric
-func RecordScalerLatency(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64) {
+func RecordScalerLatency(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value time.Duration) {
 	for _, element := range collectors {
 		element.RecordScalerLatency(namespace, scaledObject, scaler, scalerIndex, metric, value)
 	}
 }
 
 // RecordScalableObjectLatency create a measurement of the latency executing scalable object loop
-func RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value float64) {
+func RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value time.Duration) {
 	for _, element := range collectors {
 		element.RecordScalableObjectLatency(namespace, name, isScaledObject, value)
 	}
