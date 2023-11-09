@@ -37,7 +37,7 @@ import (
 const testNamespaceGlobal = "testNamespace"
 const testNameGlobal = "testName"
 
-func TestEventHandler_GenerateEventData(t *testing.T) {
+func TestEventHandler_FailedEmitEvent(t *testing.T) {
 	cloudEventSourceName := testNameGlobal
 	cloudEventSourceNamespace := testNamespaceGlobal
 
@@ -156,63 +156,4 @@ func TestEventHandler_DirectCall(t *testing.T) {
 	})
 	eventEmitter.enqueueEventData(eventData)
 	wg.Wait()
-}
-
-func TestEventHandler_FailedEmitEvent(t *testing.T) {
-	cloudEventSourceName := testNameGlobal
-	cloudEventSourceNamespace := testNamespaceGlobal
-
-	ctrl := gomock.NewController(t)
-	recorder := record.NewFakeRecorder(1)
-	mockClient := mock_client.NewMockClient(ctrl)
-	eventHandler := mock_eventemitter.NewMockEventDataHandler(ctrl)
-	cloudEventSource := eventingv1alpha1.CloudEventSource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cloudEventSourceName,
-			Namespace: cloudEventSourceNamespace,
-		},
-		Spec: eventingv1alpha1.CloudEventSourceSpec{
-			Destination: eventingv1alpha1.Destination{
-				HTTP: &eventingv1alpha1.CloudEventHTTP{
-					URI: "http://fo.wo",
-				},
-			},
-		},
-		Status: eventingv1alpha1.CloudEventSourceStatus{
-			Conditions: kedav1alpha1.Conditions{{Type: kedav1alpha1.ConditionActive, Status: metav1.ConditionTrue}},
-		},
-	}
-
-	caches := map[string]EventDataHandler{}
-	caches[cloudEventSource.GenerateIdentifier()+CloudEventHTTP] = eventHandler
-
-	eventEmitter := EventEmitter{
-		Client:                  mockClient,
-		EventRecorder:           recorder,
-		clustername:             "cluster-name",
-		eventHandlersCache:      caches,
-		eventHandlersCachesLock: &sync.RWMutex{},
-		eventLoopContexts:       &sync.Map{},
-	}
-
-	eventData := eventdata.EventData{
-		Namespace:  "aaa",
-		ObjectName: "bbb",
-		Eventtype:  "ccc",
-		Reason:     "ddd",
-		Message:    "eee",
-		Time:       time.Now().UTC(),
-	}
-
-	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	eventHandler.EXPECT().GetActiveStatus().Return(metav1.ConditionTrue).AnyTimes()
-	go eventEmitter.startEventLoop(context.TODO(), &cloudEventSource, &sync.Mutex{})
-
-	time.Sleep(1 * time.Second)
-	eventHandler.EXPECT().SetActiveStatus(metav1.ConditionFalse).MinTimes(1)
-	eventHandler.EXPECT().EmitEvent(gomock.Any(), gomock.Any()).AnyTimes().Do(func(data eventdata.EventData, failedfunc func(eventData eventdata.EventData, err error)) {
-		failedfunc(data, fmt.Errorf("testing error"))
-	})
-	eventEmitter.enqueueEventData(eventData)
-	time.Sleep(2 * time.Second)
 }
