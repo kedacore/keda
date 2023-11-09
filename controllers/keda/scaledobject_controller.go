@@ -188,7 +188,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	} else {
 		wasReady := conditions.GetReadyCondition()
 		if wasReady.IsFalse() || wasReady.IsUnknown() {
-			r.EventEmitter.Emit(scaledObject, req.NamespacedName, corev1.EventTypeNormal, eventreason.ScaledObjectReady, "ScaledObject is ready for scaling")
+			r.EventEmitter.Emit(scaledObject, req.NamespacedName, corev1.EventTypeNormal, eventreason.ScaledObjectReady, message.ScalerReadyMsg)
 		}
 		reqLogger.V(1).Info(msg)
 		conditions.SetReadyCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionReadySucccesReason, msg)
