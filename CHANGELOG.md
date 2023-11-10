@@ -67,6 +67,7 @@ Here is an overview of all new **experimental** features:
 - **Kafka Scaler**: Add support for Kerberos authentication (SASL / GSSAPI) ([#4836](https://github.com/kedacore/keda/issues/4836))
 - **Prometheus Metrics**: Introduce paused ScaledObjects in Prometheus metrics ([#4430](https://github.com/kedacore/keda/issues/4430))
 - **Pulsar Scaler**: support endpointParams in pulsar oauth ([#5069](https://github.com/kedacore/keda/issues/5069))
+- **General**: Enhance podIdentity Role Assumption in AWS by Direct Integration with OIDC/Federation ([#5178](https://github.com/kedacore/keda/issues/5178))
 
 ### Fixes
 
