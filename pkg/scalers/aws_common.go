@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -52,8 +53,24 @@ func getAwsConfig(ctx context.Context, awsRegion string, awsAuthorization awsAut
 
 	if metadata.awsAuthorization.awsRoleArn != "" {
 		stsSvc := sts.NewFromConfig(cfg)
-		stsCredentialProvider := stscreds.NewAssumeRoleProvider(stsSvc, metadata.awsAuthorization.awsRoleArn, func(options *stscreds.AssumeRoleOptions) {})
-		cfg.Credentials = aws.NewCredentialsCache(stsCredentialProvider)
+
+		// Create the web identity role provider
+		stsCredentialProvider := stscreds.NewWebIdentityRoleProvider(
+			stsSvc,
+			metadata.awsAuthorization.awsRoleArn,
+			stscreds.IdentityTokenFile(os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE")),
+		)
+
+		// Attempt to retrieve credentials
+		_, err := stsCredentialProvider.Retrieve(context.Background())
+		if err != nil {
+			// Setup AssumeRoleProvider as a fallback
+			assumeRoleCredentialProvider := stscreds.NewAssumeRoleProvider(stsSvc, metadata.awsAuthorization.awsRoleArn, func(options *stscreds.AssumeRoleOptions) {})
+			cfg.Credentials = aws.NewCredentialsCache(assumeRoleCredentialProvider)
+		} else {
+			// If the retrieval is successful, use the web identity credentials
+			cfg.Credentials = aws.NewCredentialsCache(stsCredentialProvider)
+		}
 	}
 
 	return &cfg, err
