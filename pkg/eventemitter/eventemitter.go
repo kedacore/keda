@@ -41,28 +41,36 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
-	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventemitter/eventdata"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 )
 
-var log = logf.Log.WithName("event_emitter")
-var ch chan eventdata.EventData
+const (
+	maxRetryTimes         = 5
+	maxChannelBuffer      = 1024
+	maxWaitingEnqueueTime = 10
+)
 
-const CloudEventSourceType = "com.cloudeventsource.keda"
-const MaxRetryTimes = 5
-const MaxChannelBuffer = 1024
-const MaxWaitingEnqueueTime = 20
-
+// EventEmitter is the main struct for eventemitter package
 type EventEmitter struct {
-	client.Client
-	record.EventRecorder
-	clustername             string
-	eventHandlersCache      map[string]EventDataHandler
-	eventHandlersCachesLock *sync.RWMutex
-	eventLoopContexts       *sync.Map
+	log                      logr.Logger
+	client                   client.Client
+	recorder                 record.EventRecorder
+	clusterName              string
+	eventHandlersCache       map[string]EventDataHandler
+	eventHandlersCacheLock   *sync.RWMutex
+	eventLoopContexts        *sync.Map
+	cloudEventProcessingChan chan eventdata.EventData
 }
 
+// EventHandler defines the behavior for EventEmitter clients
+type EventHandler interface {
+	DeleteCloudEventSource(cloudEventSource *eventingv1alpha1.CloudEventSource) error
+	HandleCloudEventSource(ctx context.Context, cloudEventSource *eventingv1alpha1.CloudEventSource) error
+	Emit(object runtime.Object, namesapce types.NamespacedName, eventType, reason, message string)
+}
+
+// EventDataHandler defines the behavior for different event handlers
 type EventDataHandler interface {
 	EmitEvent(eventData eventdata.EventData, failureFunc func(eventData eventdata.EventData, err error))
 	SetActiveStatus(status metav1.ConditionStatus)
@@ -70,23 +78,27 @@ type EventDataHandler interface {
 	CloseHandler()
 }
 
+// EmitData defines the data structure for emitting event
 type EmitData struct {
 	Reason  string `json:"reason"`
 	Message string `json:"message"`
 }
 
 const (
-	CloudEventHTTP = "CloudEventHTTP"
+	cloudEventHandlerTypeHTTP = "http"
 )
 
-func NewEventEmitter(client client.Client, recorder record.EventRecorder, clustername string) *EventEmitter {
+// NewEventEmitter creates a new EventEmitter
+func NewEventEmitter(client client.Client, recorder record.EventRecorder, clusterName string) EventHandler {
 	return &EventEmitter{
-		Client:                  client,
-		EventRecorder:           recorder,
-		clustername:             clustername,
-		eventHandlersCache:      map[string]EventDataHandler{},
-		eventHandlersCachesLock: &sync.RWMutex{},
-		eventLoopContexts:       &sync.Map{},
+		log:                      logf.Log.WithName("event_emitter"),
+		client:                   client,
+		recorder:                 recorder,
+		clusterName:              clusterName,
+		eventHandlersCache:       map[string]EventDataHandler{},
+		eventHandlersCacheLock:   &sync.RWMutex{},
+		eventLoopContexts:        &sync.Map{},
+		cloudEventProcessingChan: make(chan eventdata.EventData, maxChannelBuffer),
 	}
 }
 
@@ -104,7 +116,7 @@ func (e *EventEmitter) HandleCloudEventSource(ctx context.Context, cloudEventSou
 	}
 
 	key := cloudEventSource.GenerateIdentifier()
-	ctx, cancel := context.WithCancel(ctx)
+	cancelCtx, cancel := context.WithCancel(ctx)
 
 	// cancel the outdated EventLoop for the same CloudEventSource (if exists)
 	value, loaded := e.eventLoopContexts.LoadOrStore(key, cancel)
@@ -114,14 +126,19 @@ func (e *EventEmitter) HandleCloudEventSource(ctx context.Context, cloudEventSou
 			cancelValue()
 		}
 		e.eventLoopContexts.Store(key, cancel)
+	} else {
+		if updateErr := e.setCloudEventSourceStatusActive(ctx, cloudEventSource); updateErr != nil {
+			e.log.Error(updateErr, "Failed to update CloudEventSource status")
+			return updateErr
+		}
 	}
 
 	// a mutex is used to synchronize handler per cloudEventSource
 	eventingMutex := &sync.Mutex{}
 
 	// passing deep copy of CloudEventSource to the eventLoop go routines, it's a precaution to not have global objects shared between threads
-	log.V(1).Info("Start CloudEventSource loop.")
-	go e.startEventLoop(ctx, cloudEventSource, eventingMutex)
+	e.log.V(1).Info("Start CloudEventSource loop.")
+	go e.startEventLoop(cancelCtx, cloudEventSource.DeepCopy(), eventingMutex)
 	return nil
 }
 
@@ -137,7 +154,7 @@ func (e *EventEmitter) DeleteCloudEventSource(cloudEventSource *eventingv1alpha1
 		e.eventLoopContexts.Delete(key)
 		e.clearEventHandlersCache(cloudEventSource)
 	} else {
-		log.V(1).Info("CloudEventSource was not found in controller cache", "key", key)
+		e.log.V(1).Info("CloudEventSource was not found in controller cache", "key", key)
 	}
 
 	return nil
@@ -146,39 +163,42 @@ func (e *EventEmitter) DeleteCloudEventSource(cloudEventSource *eventingv1alpha1
 // createEventHandlers will create different handler as defined in CloudEventSource, and store them in cache for repeated
 // use in the loop.
 func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEventSource *eventingv1alpha1.CloudEventSource) {
-	e.eventHandlersCachesLock.Lock()
-	defer e.eventHandlersCachesLock.Unlock()
+	e.eventHandlersCacheLock.Lock()
+	defer e.eventHandlersCacheLock.Unlock()
 
 	key := cloudEventSource.GenerateIdentifier()
 
 	clusterName := cloudEventSource.Spec.ClusterName
 	if clusterName == "" {
-		clusterName = e.clustername
+		clusterName = e.clusterName
 	}
 
-	// Create different event destination here.
+	// Create different event destinations here
 	if cloudEventSource.Spec.Destination.HTTP != nil {
-		var eventHandler EventDataHandler
 		eventHandler, err := NewCloudEventHTTPHandler(ctx, clusterName, cloudEventSource.Spec.Destination.HTTP.URI, initializeLogger(cloudEventSource, "cloudevent_http"))
-
 		if err != nil {
-			log.Error(err, "create CloudEvent HTTP handler failed")
-		} else {
-			e.eventHandlersCache[key+CloudEventHTTP] = eventHandler
+			e.log.Error(err, "create CloudEvent HTTP handler failed")
+			return
 		}
+
+		eventHandlerKey := newEventHandlerKey(key, cloudEventHandlerTypeHTTP)
+		if h, ok := e.eventHandlersCache[eventHandlerKey]; ok {
+			h.CloseHandler()
+		}
+		e.eventHandlersCache[eventHandlerKey] = eventHandler
 	}
 }
 
 // clearEventHandlersCache will clear all event handlers that created by the passing CloudEventSource
 func (e *EventEmitter) clearEventHandlersCache(cloudEventSource *eventingv1alpha1.CloudEventSource) {
-	e.eventHandlersCachesLock.Lock()
-	defer e.eventHandlersCachesLock.Unlock()
+	e.eventHandlersCacheLock.Lock()
+	defer e.eventHandlersCacheLock.Unlock()
 
 	key := cloudEventSource.GenerateIdentifier()
 
 	// Clear different event destination here.
 	if cloudEventSource.Spec.Destination.HTTP != nil {
-		eventHandlerKey := key + CloudEventHTTP
+		eventHandlerKey := newEventHandlerKey(key, cloudEventHandlerTypeHTTP)
 		if eventHandler, found := e.eventHandlersCache[eventHandlerKey]; found {
 			eventHandler.CloseHandler()
 			delete(e.eventHandlersCache, key)
@@ -188,8 +208,8 @@ func (e *EventEmitter) clearEventHandlersCache(cloudEventSource *eventingv1alpha
 
 // clearEventHandlersCache will check if the event handlers that were created by passing CloudEventSource exist
 func (e *EventEmitter) checkIfEventHandlersExist(cloudEventSource *eventingv1alpha1.CloudEventSource) bool {
-	e.eventHandlersCachesLock.RLock()
-	defer e.eventHandlersCachesLock.RUnlock()
+	e.eventHandlersCacheLock.RLock()
+	defer e.eventHandlersCacheLock.RUnlock()
 
 	key := cloudEventSource.GenerateIdentifier()
 
@@ -202,24 +222,14 @@ func (e *EventEmitter) checkIfEventHandlersExist(cloudEventSource *eventingv1alp
 }
 
 func (e *EventEmitter) startEventLoop(ctx context.Context, cloudEventSource *eventingv1alpha1.CloudEventSource, cloudEventSourceMutex sync.Locker) {
-	consumingInterval := 500 * time.Millisecond
-	if ch == nil {
-		ch = make(chan eventdata.EventData, MaxChannelBuffer)
-	}
-
 	for {
-		tmr := time.NewTimer(consumingInterval)
-
-		e.checkEventHandlers(ctx, cloudEventSource, cloudEventSourceMutex)
-
 		select {
-		case <-tmr.C:
-			tmr.Stop()
-		case eventData := <-ch:
-			log.V(1).Info("Consuming events in queue.")
+		case eventData := <-e.cloudEventProcessingChan:
+			e.log.V(1).Info("Consuming events from CloudEventSource.")
 			e.emitEventByHandler(eventData)
+			e.checkEventHandlers(ctx, cloudEventSource, cloudEventSourceMutex)
 		case <-ctx.Done():
-			tmr.Stop()
+			e.log.V(1).Info("CloudEventSource loop has stopped.")
 			return
 		}
 	}
@@ -227,51 +237,45 @@ func (e *EventEmitter) startEventLoop(ctx context.Context, cloudEventSource *eve
 
 // checkEventHandlers will check each eventhandler active status
 func (e *EventEmitter) checkEventHandlers(ctx context.Context, cloudEventSource *eventingv1alpha1.CloudEventSource, cloudEventSourceMutex sync.Locker) {
+	e.log.V(1).Info("Checking event handlers status.")
 	cloudEventSourceMutex.Lock()
 	defer cloudEventSourceMutex.Unlock()
 	// Get the latest object
-	err := e.Client.Get(ctx, types.NamespacedName{Name: cloudEventSource.Name, Namespace: cloudEventSource.Namespace}, cloudEventSource)
+	err := e.client.Get(ctx, types.NamespacedName{Name: cloudEventSource.Name, Namespace: cloudEventSource.Namespace}, cloudEventSource)
 	if err != nil {
-		log.Error(err, "error getting cloudEventSource", "cloudEventSource", cloudEventSource)
+		e.log.Error(err, "error getting cloudEventSource", "cloudEventSource", cloudEventSource)
 		return
 	}
-	keyprefix := cloudEventSource.GenerateIdentifier()
+	keyPrefix := cloudEventSource.GenerateIdentifier()
 	needUpdate := false
+	cloudEventSourceStatus := cloudEventSource.Status.DeepCopy()
 	for k, v := range e.eventHandlersCache {
-		if strings.Contains(k, keyprefix) {
+		e.log.V(1).Info("Checking event handler status.", "handler", k, "status", cloudEventSource.Status.Conditions.GetActiveCondition().Status)
+		if strings.Contains(k, keyPrefix) {
 			if v.GetActiveStatus() != cloudEventSource.Status.Conditions.GetActiveCondition().Status {
 				needUpdate = true
-				cloudEventSource.Status.Conditions.SetActiveCondition(metav1.ConditionFalse, v1alpha1.ScaledObjectConditionReadySucccesReason, v1alpha1.ScaledObjectConditionReadySuccessMessage)
+				cloudEventSourceStatus.Conditions.SetActiveCondition(
+					metav1.ConditionFalse,
+					eventingv1alpha1.CloudEventSourceConditionFailedReason,
+					eventingv1alpha1.CloudEventSourceConditionFailedMessage,
+				)
 			}
 		}
 	}
 
 	if needUpdate {
-		cloudEventSourceStatus := cloudEventSource.Status.DeepCopy()
-
-		transform := func(runtimeObj client.Object, target interface{}) error {
-			status, ok := target.(*eventingv1alpha1.CloudEventSourceStatus)
-			if !ok {
-				return fmt.Errorf("transform target is not eventingv1alpha1.CloudEventSourceStatus type %v", target)
-			}
-			switch obj := runtimeObj.(type) {
-			case *eventingv1alpha1.CloudEventSource:
-				obj.Status = *status
-			default:
-			}
-			return nil
-		}
-
-		if err := kedastatus.TransformObject(ctx, e.Client, log, cloudEventSource, cloudEventSourceStatus, transform); err != nil {
-			log.Error(err, "Failed to update CloudEventSourceStatus")
+		if updateErr := e.updateCloudEventSourceStatus(ctx, cloudEventSource, cloudEventSourceStatus); updateErr != nil {
+			e.log.Error(updateErr, "Failed to update CloudEventSource status")
 		}
 	}
 }
 
 // Emit is emitting event to both local kubernetes and custom CloudEventSource handler. After emit event to local kubernetes, event will inqueue and waitng for handler's consuming.
-func (e *EventEmitter) Emit(object runtime.Object, namesapce types.NamespacedName, eventtype, reason, message string) {
-	e.EventRecorder.Event(object, eventtype, reason, message)
+func (e *EventEmitter) Emit(object runtime.Object, namesapce types.NamespacedName, eventType, reason, message string) {
+	e.recorder.Event(object, eventType, reason, message)
 
+	e.eventHandlersCacheLock.RLock()
+	defer e.eventHandlersCacheLock.RUnlock()
 	if len(e.eventHandlersCache) == 0 {
 		return
 	}
@@ -280,7 +284,7 @@ func (e *EventEmitter) Emit(object runtime.Object, namesapce types.NamespacedNam
 	eventData := eventdata.EventData{
 		Namespace:  namesapce.Namespace,
 		ObjectName: name,
-		Eventtype:  eventtype,
+		EventType:  eventType,
 		Reason:     reason,
 		Message:    message,
 		Time:       time.Now().UTC(),
@@ -290,10 +294,10 @@ func (e *EventEmitter) Emit(object runtime.Object, namesapce types.NamespacedNam
 
 func (e *EventEmitter) enqueueEventData(eventData eventdata.EventData) {
 	select {
-	case ch <- eventData:
-		log.V(1).Info("Event enqueued successfully.")
-	case <-time.After(MaxWaitingEnqueueTime * time.Second):
-		log.Error(nil, "Event cannot enqueue. Need to be check if handler can emit events.")
+	case e.cloudEventProcessingChan <- eventData:
+		e.log.V(1).Info("Event enqueued successfully.")
+	case <-time.After(maxWaitingEnqueueTime * time.Second):
+		e.log.Error(nil, "Failed to enqueue CloudEvent. Need to be check if handler can emit events.")
 	}
 }
 
@@ -302,9 +306,13 @@ func (e *EventEmitter) enqueueEventData(eventData eventdata.EventData) {
 // 2. Once there is an error when emitting event, record the handler's key and reqeueu this EventData.
 // 3. If the maximum number of retries has been exceeded, discard this event.
 func (e *EventEmitter) emitEventByHandler(eventData eventdata.EventData) {
-	if eventData.RetryTimes >= MaxRetryTimes {
-		log.Error(eventData.Err, "Failed to emit Event multiple times. Will drop this event and need to check if event endpoint works well", "CloudEventSource", eventData.ObjectName)
-		e.emitErrorHandle(eventData, eventData.Err)
+	if eventData.RetryTimes >= maxRetryTimes {
+		e.log.Error(eventData.Err, "Failed to emit Event multiple times. Will drop this event and need to check if event endpoint works well", "CloudEventSource", eventData.ObjectName)
+		handler, found := e.eventHandlersCache[eventData.HandlerKey]
+		if found {
+			e.log.V(1).Info("Set handler failure status. 1", "handler", eventData.HandlerKey)
+			handler.SetActiveStatus(metav1.ConditionFalse)
+		}
 		return
 	}
 
@@ -314,11 +322,11 @@ func (e *EventEmitter) emitEventByHandler(eventData eventdata.EventData) {
 			if handler.GetActiveStatus() == metav1.ConditionTrue {
 				go handler.EmitEvent(eventData, e.emitErrorHandle)
 			} else {
-				log.V(1).Info("EventHandler's status is not active. Please check if event endpoint works well", "CloudEventSource", eventData.ObjectName)
+				e.log.V(1).Info("EventHandler's status is not active. Please check if event endpoint works well", "CloudEventSource", eventData.ObjectName)
 			}
 		}
 	} else {
-		log.Info("Reemit event failed", "handler", eventData.HandlerKey, "retry times", eventData.RetryTimes)
+		e.log.Info("Failed to emit event", "handler", eventData.HandlerKey, "retry times", fmt.Sprintf("%d/%d", eventData.RetryTimes, maxRetryTimes), "error", eventData.Err)
 		handler, found := e.eventHandlersCache[eventData.HandlerKey]
 		if found && handler.GetActiveStatus() == metav1.ConditionTrue {
 			go handler.EmitEvent(eventData, e.emitErrorHandle)
@@ -327,8 +335,8 @@ func (e *EventEmitter) emitEventByHandler(eventData eventdata.EventData) {
 }
 
 func (e *EventEmitter) emitErrorHandle(eventData eventdata.EventData, err error) {
-	if eventData.RetryTimes >= MaxRetryTimes {
-		log.V(1).Info("Failed to emit Event multiple times. Will set handler failure status.", "handler", eventData.HandlerKey, "retry times", eventData.RetryTimes)
+	if eventData.RetryTimes >= maxRetryTimes {
+		e.log.V(1).Info("Failed to emit Event multiple times. Will set handler failure status.", "handler", eventData.HandlerKey, "retry times", eventData.RetryTimes)
 		handler, found := e.eventHandlersCache[eventData.HandlerKey]
 		if found {
 			handler.SetActiveStatus(metav1.ConditionFalse)
@@ -341,4 +349,42 @@ func (e *EventEmitter) emitErrorHandle(eventData eventdata.EventData, err error)
 	requeueData.RetryTimes++
 	requeueData.Err = err
 	e.enqueueEventData(requeueData)
+}
+
+func (e *EventEmitter) setCloudEventSourceStatusActive(ctx context.Context, cloudEventSource *eventingv1alpha1.CloudEventSource) error {
+	cloudEventSourceStatus := cloudEventSource.Status.DeepCopy()
+	cloudEventSourceStatus.Conditions.SetActiveCondition(
+		metav1.ConditionTrue,
+		eventingv1alpha1.CloudEventSourceConditionActiveReason,
+		eventingv1alpha1.CloudEventSourceConditionActiveMessage,
+	)
+	return e.updateCloudEventSourceStatus(ctx, cloudEventSource, cloudEventSourceStatus)
+}
+
+func (e *EventEmitter) updateCloudEventSourceStatus(ctx context.Context, cloudEventSource *eventingv1alpha1.CloudEventSource, cloudEventSourceStatus *eventingv1alpha1.CloudEventSourceStatus) error {
+	e.log.V(1).Info("Updating CloudEventSource status", "CloudEventSource", cloudEventSource.Name)
+	transform := func(runtimeObj client.Object, target interface{}) error {
+		status, ok := target.(*eventingv1alpha1.CloudEventSourceStatus)
+		if !ok {
+			return fmt.Errorf("transform target is not eventingv1alpha1.CloudEventSourceStatus type %v", target)
+		}
+		switch obj := runtimeObj.(type) {
+		case *eventingv1alpha1.CloudEventSource:
+			e.log.V(1).Info("New CloudEventSource status", "status", *status)
+			obj.Status = *status
+		default:
+		}
+		return nil
+	}
+
+	if err := kedastatus.TransformObject(ctx, e.client, e.log, cloudEventSource, cloudEventSourceStatus, transform); err != nil {
+		e.log.Error(err, "Failed to update CloudEventSourceStatus")
+		return err
+	}
+
+	return nil
+}
+
+func newEventHandlerKey(kindNamespaceName string, handlerType string) string {
+	return fmt.Sprintf("%s.%s", kindNamespaceName, handlerType)
 }

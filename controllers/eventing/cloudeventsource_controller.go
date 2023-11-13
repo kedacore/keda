@@ -38,23 +38,22 @@ import (
 // CloudEventSourceReconciler reconciles a EventSource object
 type CloudEventSourceReconciler struct {
 	client.Client
-	EventEmitter eventemitter.EventEmitter
+	eventEmitter eventemitter.EventHandler
 
 	cloudEventSourceGenerations *sync.Map
+	eventSourcePromMetricsMap   map[string]string
+	eventSourcePromMetricsLock  *sync.Mutex
 }
 
-type cloudEventSourceMetricsData struct {
-	namespace string
-}
-
-var (
-	eventSourcePromMetricsMap  map[string]cloudEventSourceMetricsData
-	eventSourcePromMetricsLock *sync.Mutex
-)
-
-func init() {
-	eventSourcePromMetricsMap = make(map[string]cloudEventSourceMetricsData)
-	eventSourcePromMetricsLock = &sync.Mutex{}
+// NewCloudEventSourceReconciler creates a new CloudEventSourceReconciler
+func NewCloudEventSourceReconciler(c client.Client, e eventemitter.EventHandler) *CloudEventSourceReconciler {
+	return &CloudEventSourceReconciler{
+		Client:                      c,
+		eventEmitter:                e,
+		cloudEventSourceGenerations: &sync.Map{},
+		eventSourcePromMetricsMap:   make(map[string]string),
+		eventSourcePromMetricsLock:  &sync.Mutex{},
+	}
 }
 
 // +kubebuilder:rbac:groups=eventing.keda.sh,resources=cloudeventsources;cloudeventsources/status,verbs="*"
@@ -114,7 +113,6 @@ func (r *CloudEventSourceReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *CloudEventSourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	r.cloudEventSourceGenerations = &sync.Map{}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&eventingv1alpha1.CloudEventSource{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
@@ -130,7 +128,7 @@ func (r *CloudEventSourceReconciler) requestEventLoop(ctx context.Context, logge
 		return err
 	}
 
-	if err = r.EventEmitter.HandleCloudEventSource(ctx, eventSource); err != nil {
+	if err = r.eventEmitter.HandleCloudEventSource(ctx, eventSource); err != nil {
 		return err
 	}
 
@@ -148,7 +146,7 @@ func (r *CloudEventSourceReconciler) stopEventLoop(logger logr.Logger, eventSour
 		return err
 	}
 
-	if err := r.EventEmitter.DeleteCloudEventSource(eventSource); err != nil {
+	if err := r.eventEmitter.DeleteCloudEventSource(eventSource); err != nil {
 		return err
 	}
 	// delete CloudEventSource's current Generation
@@ -175,25 +173,25 @@ func (r *CloudEventSourceReconciler) cloudEventSourceGenerationChanged(logger lo
 }
 
 func (r *CloudEventSourceReconciler) updatePromMetrics(eventSource *eventingv1alpha1.CloudEventSource, namespacedName string) {
-	eventSourcePromMetricsLock.Lock()
-	defer eventSourcePromMetricsLock.Unlock()
+	r.eventSourcePromMetricsLock.Lock()
+	defer r.eventSourcePromMetricsLock.Unlock()
 
-	if metricsData, ok := eventSourcePromMetricsMap[namespacedName]; ok {
-		metricscollector.DecrementCRDTotal(metricscollector.CloudEventSourceResource, metricsData.namespace)
+	if ns, ok := r.eventSourcePromMetricsMap[namespacedName]; ok {
+		metricscollector.DecrementCRDTotal(metricscollector.CloudEventSourceResource, ns)
 	}
 
 	metricscollector.IncrementCRDTotal(metricscollector.CloudEventSourceResource, eventSource.Namespace)
-	eventSourcePromMetricsMap[namespacedName] = cloudEventSourceMetricsData{namespace: eventSource.Namespace}
+	r.eventSourcePromMetricsMap[namespacedName] = eventSource.Namespace
 }
 
 // UpdatePromMetricsOnDelete is idempotent, so it can be called multiple times without side-effects
 func (r *CloudEventSourceReconciler) UpdatePromMetricsOnDelete(namespacedName string) {
-	eventSourcePromMetricsLock.Lock()
-	defer eventSourcePromMetricsLock.Unlock()
+	r.eventSourcePromMetricsLock.Lock()
+	defer r.eventSourcePromMetricsLock.Unlock()
 
-	if metricsData, ok := eventSourcePromMetricsMap[namespacedName]; ok {
-		metricscollector.DecrementCRDTotal(metricscollector.CloudEventSourceResource, metricsData.namespace)
+	if ns, ok := r.eventSourcePromMetricsMap[namespacedName]; ok {
+		metricscollector.DecrementCRDTotal(metricscollector.CloudEventSourceResource, ns)
 	}
 
-	delete(eventSourcePromMetricsMap, namespacedName)
+	delete(r.eventSourcePromMetricsMap, namespacedName)
 }

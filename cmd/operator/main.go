@@ -220,7 +220,7 @@ func main() {
 		Recorder:     eventRecorder,
 		ScaleClient:  scaleClient,
 		ScaleHandler: scaledHandler,
-		EventEmitter: *eventEmitter,
+		EventEmitter: eventEmitter,
 	}).SetupWithManager(mgr, controller.Options{
 		MaxConcurrentReconciles: scaledObjectMaxReconciles,
 	}); err != nil {
@@ -254,10 +254,10 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterTriggerAuthentication")
 		os.Exit(1)
 	}
-	if err = (&eventingcontrollers.CloudEventSourceReconciler{
-		Client:       mgr.GetClient(),
-		EventEmitter: *eventEmitter,
-	}).SetupWithManager(mgr); err != nil {
+	if err = (eventingcontrollers.NewCloudEventSourceReconciler(
+		mgr.GetClient(),
+		eventEmitter,
+	)).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CloudEventSource")
 		os.Exit(1)
 	}

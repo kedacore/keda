@@ -69,7 +69,7 @@ type ScaledObjectReconciler struct {
 	Recorder     record.EventRecorder
 	ScaleClient  scale.ScalesGetter
 	ScaleHandler scaling.ScaleHandler
-	EventEmitter eventemitter.EventEmitter
+	EventEmitter eventemitter.EventHandler
 
 	restMapper               meta.RESTMapper
 	scaledObjectsGenerations *sync.Map
@@ -191,7 +191,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			r.EventEmitter.Emit(scaledObject, req.NamespacedName, corev1.EventTypeNormal, eventreason.ScaledObjectReady, message.ScalerReadyMsg)
 		}
 		reqLogger.V(1).Info(msg)
-		conditions.SetReadyCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionReadySucccesReason, msg)
+		conditions.SetReadyCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionReadySuccessReason, msg)
 	}
 
 	if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledObject, &conditions); err != nil {

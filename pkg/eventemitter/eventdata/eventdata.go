@@ -24,7 +24,7 @@ import (
 type EventData struct {
 	Namespace  string
 	ObjectName string
-	Eventtype  string
+	EventType  string
 	Reason     string
 	Message    string
 	Time       time.Time

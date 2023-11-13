@@ -33,13 +33,17 @@ import (
 	"github.com/kedacore/keda/v2/pkg/eventemitter/eventdata"
 )
 
+const (
+	cloudEventSourceType = "com.cloudeventsource.keda"
+)
+
 type CloudEventHTTPHandler struct {
-	Endpoint     string
-	Client       cloudevents.Client
-	ClusterName  string
-	ActiveStatus metav1.ConditionStatus
 	ctx          context.Context
 	logger       logr.Logger
+	endpoint     string
+	client       cloudevents.Client
+	clusterName  string
+	activeStatus metav1.ConditionStatus
 }
 
 func NewCloudEventHTTPHandler(context context.Context, clusterName string, uri string, logger logr.Logger) (*CloudEventHTTPHandler, error) {
@@ -55,47 +59,47 @@ func NewCloudEventHTTPHandler(context context.Context, clusterName string, uri s
 
 	logger.Info("Create new cloudevents http handler with endPoint: " + uri)
 	return &CloudEventHTTPHandler{
-		Client:       client,
-		Endpoint:     uri,
-		ClusterName:  clusterName,
-		ActiveStatus: metav1.ConditionTrue,
+		client:       client,
+		endpoint:     uri,
+		clusterName:  clusterName,
+		activeStatus: metav1.ConditionTrue,
 		ctx:          ctx,
 		logger:       logger,
 	}, nil
 }
 
 func (c *CloudEventHTTPHandler) SetActiveStatus(status metav1.ConditionStatus) {
-	c.ActiveStatus = status
+	c.activeStatus = status
 }
 
 func (c *CloudEventHTTPHandler) GetActiveStatus() metav1.ConditionStatus {
-	return c.ActiveStatus
+	return c.activeStatus
 }
 
 func (c *CloudEventHTTPHandler) CloseHandler() {
-
+	c.logger.V(1).Info("Closing CloudEvent HTTP handler")
 }
 
 func (c *CloudEventHTTPHandler) EmitEvent(eventData eventdata.EventData, failureFunc func(eventData eventdata.EventData, err error)) {
-	source := "/" + c.ClusterName + "/" + eventData.Namespace + "/keda"
-	subject := "/" + c.ClusterName + "/" + eventData.Namespace + "/workload/" + eventData.ObjectName
+	source := "/" + c.clusterName + "/" + eventData.Namespace + "/keda"
+	subject := "/" + c.clusterName + "/" + eventData.Namespace + "/workload/" + eventData.ObjectName
 
 	event := cloudevents.NewEvent()
 	event.SetSource(source)
 	event.SetSubject(subject)
-	event.SetType(CloudEventSourceType)
+	event.SetType(cloudEventSourceType)
 
 	if err := event.SetData(cloudevents.ApplicationJSON, EmitData{Reason: eventData.Reason, Message: eventData.Message}); err != nil {
-		c.logger.Error(err, "Failed to set data to cloudevent")
+		c.logger.Error(err, "Failed to set data to CloudEvents receiver")
 		return
 	}
 
-	err := c.Client.Send(c.ctx, event)
+	err := c.client.Send(c.ctx, event)
 	if protocol.IsNACK(err) || protocol.IsUndelivered(err) {
-		c.logger.Error(err, "Failed to send event to cloudevent")
+		c.logger.Error(err, "Failed to send event to CloudEvents receiver")
 		failureFunc(eventData, err)
 		return
 	}
 
-	c.logger.V(1).Info("Publish Event to CloudEvents receiver Successfully")
+	c.logger.V(1).Info("Successfully published event to CloudEvents receiver")
 }

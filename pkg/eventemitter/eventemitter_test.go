@@ -63,21 +63,23 @@ func TestEventHandler_FailedEmitEvent(t *testing.T) {
 	}
 
 	caches := map[string]EventDataHandler{}
-	caches[cloudEventSource.GenerateIdentifier()+CloudEventHTTP] = eventHandler
+	key := newEventHandlerKey(cloudEventSource.GenerateIdentifier(), cloudEventHandlerTypeHTTP)
+	caches[key] = eventHandler
 
 	eventEmitter := EventEmitter{
-		Client:                  mockClient,
-		EventRecorder:           recorder,
-		clustername:             "cluster-name",
-		eventHandlersCache:      caches,
-		eventHandlersCachesLock: &sync.RWMutex{},
-		eventLoopContexts:       &sync.Map{},
+		client:                   mockClient,
+		recorder:                 recorder,
+		clusterName:              "cluster-name",
+		eventHandlersCache:       caches,
+		eventHandlersCacheLock:   &sync.RWMutex{},
+		eventLoopContexts:        &sync.Map{},
+		cloudEventProcessingChan: make(chan eventdata.EventData, 1),
 	}
 
 	eventData := eventdata.EventData{
 		Namespace:  "aaa",
 		ObjectName: "bbb",
-		Eventtype:  "ccc",
+		EventType:  "ccc",
 		Reason:     "ddd",
 		Message:    "eee",
 		Time:       time.Now().UTC(),
@@ -123,21 +125,23 @@ func TestEventHandler_DirectCall(t *testing.T) {
 	}
 
 	caches := map[string]EventDataHandler{}
-	caches[cloudEventSource.GenerateIdentifier()+CloudEventHTTP] = eventHandler
+	key := newEventHandlerKey(cloudEventSource.GenerateIdentifier(), cloudEventHandlerTypeHTTP)
+	caches[key] = eventHandler
 
 	eventEmitter := EventEmitter{
-		Client:                  mockClient,
-		EventRecorder:           recorder,
-		clustername:             "cluster-name",
-		eventHandlersCache:      caches,
-		eventHandlersCachesLock: &sync.RWMutex{},
-		eventLoopContexts:       &sync.Map{},
+		client:                   mockClient,
+		recorder:                 recorder,
+		clusterName:              "cluster-name",
+		eventHandlersCache:       caches,
+		eventHandlersCacheLock:   &sync.RWMutex{},
+		eventLoopContexts:        &sync.Map{},
+		cloudEventProcessingChan: make(chan eventdata.EventData, 1),
 	}
 
 	eventData := eventdata.EventData{
 		Namespace:  "aaa",
 		ObjectName: "bbb",
-		Eventtype:  "ccc",
+		EventType:  "ccc",
 		Reason:     "ddd",
 		Message:    "eee",
 		Time:       time.Now().UTC(),
