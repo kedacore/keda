@@ -385,6 +385,7 @@ func (e *EventEmitter) updateCloudEventSourceStatus(ctx context.Context, cloudEv
 	return nil
 }
 
-func newEventHandlerKey(kindNamespaceName string, handlerType string) string {
+// TODO: nolint:unparam should be remove after added more than one cloudevent handler
+func newEventHandlerKey(kindNamespaceName string, handlerType string) string { //nolint:unparam
 	return fmt.Sprintf("%s.%s", kindNamespaceName, handlerType)
 }
