@@ -283,7 +283,7 @@ deploy: install ## Deploy controller to the K8s cluster specified in ~/.kube/con
 	fi
 	if [ "$(GCP_RUN_IDENTITY_TESTS)" = true ]; then \
 		cd config/service_account && \
-		$(KUSTOMIZE) edit add annotation --force cloud.google.com/workload-identity-provider:${GCP_WI_PROVIDER} cloud.google.com/service-account-email:${TF_GCP_SA_EMAIL} cloud.google.com/gcloud-run-as-user:${NON_ROOT_USER_ID} cloud.google.com/injection-mode: "direct"; \
+		$(KUSTOMIZE) edit add annotation --force cloud.google.com/workload-identity-provider:${GCP_WI_PROVIDER} cloud.google.com/service-account-email:${TF_GCP_SA_EMAIL} cloud.google.com/gcloud-run-as-user:${NON_ROOT_USER_ID} cloud.google.com/injection-mode:direct; \
 	fi
 
 	cd config/webhooks && \
