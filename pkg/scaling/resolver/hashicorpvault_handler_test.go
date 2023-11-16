@@ -435,3 +435,69 @@ func TestHashicorpVaultHandler_ResolveSecrets_SameCertAndKey(t *testing.T) {
 	assert.Len(t, secrets, 2, "Supposed to get back two secrets")
 	assert.Equalf(t, secrets[0].Value, secrets[1].Value, "Refetching same path should yield same value")
 }
+
+var fetchSecretTestDataSet = []resolveRequestTestData{
+	{
+		name:          "existing_secret_v2",
+		path:          "kv_v2/data/keda",
+		key:           "test",
+		isError:       false,
+		expectedValue: kedaSecretValue,
+	},
+	{
+		name:          "existing_secret_v1",
+		path:          "kv/keda",
+		key:           "test",
+		isError:       false,
+		expectedValue: kedaSecretValue,
+	},
+	{
+		name:          "existing_pki",
+		path:          "pki/issue/default",
+		key:           "private_key_type",
+		isError:       false,
+		secretType:    kedav1alpha1.VaultSecretTypePki,
+		pkiData:       kedav1alpha1.VaultPkiData{CommonName: "test"},
+		expectedValue: "rsa",
+	},
+	{
+		name:          "existing_pki_ca_chain",
+		path:          "pki/issue/default",
+		key:           "ca_chain",
+		isError:       false,
+		secretType:    kedav1alpha1.VaultSecretTypePki,
+		pkiData:       kedav1alpha1.VaultPkiData{CommonName: "test"},
+		expectedValue: pkiCaChain,
+	},
+}
+
+func TestHashicorpVaultHandler_fetchSecret(t *testing.T) {
+	server := mockVault(t)
+	defer server.Close()
+
+	vault := kedav1alpha1.HashiCorpVault{
+		Address:        server.URL,
+		Authentication: kedav1alpha1.VaultAuthenticationToken,
+		Credential: &kedav1alpha1.Credential{
+			Token: vaultTestToken,
+		},
+	}
+	vaultHandler := NewHashicorpVaultHandler(&vault)
+	err := vaultHandler.Initialize(logf.Log.WithName("test"))
+	defer vaultHandler.Stop()
+	assert.Nil(t, err)
+
+	for _, testData := range fetchSecretTestDataSet {
+		secretResponse, err := vaultHandler.fetchSecret(testData.secretType, testData.path, &testData.pkiData)
+		assert.Nil(t, err)
+
+		if testData.isError {
+			assert.NotNilf(t, err, "test %s: expected error but got success, testData - %+v", testData.name, testData)
+		}
+		secretStruct := kedav1alpha1.VaultSecret{Parameter: "test", Path: testData.path, Key: testData.key, Type: testData.secretType, PkiData: testData.pkiData}
+		secret, err := vaultHandler.getSecretValue(&secretStruct, secretResponse)
+
+		assert.Nil(t, err)
+		assert.Equalf(t, testData.expectedValue, secret, "test %s: expected data does not match given secret", testData.name)
+	}
+}
