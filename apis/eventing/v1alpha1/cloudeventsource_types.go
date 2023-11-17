@@ -50,7 +50,6 @@ type CloudEventSourceSpec struct {
 	// +optional
 	ClusterName string `json:"clusterName,omitempty"`
 
-	// +optional
 	Destination Destination `json:"destination"`
 }
 
@@ -63,6 +62,7 @@ type CloudEventSourceStatus struct {
 
 // Destination defines the various ways to emit events
 type Destination struct {
+	// +optional
 	HTTP *CloudEventHTTP `json:"http"`
 }
 

@@ -24,6 +24,7 @@ package eventemitter
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/cloudevents/sdk-go/v2/protocol"
@@ -49,6 +50,10 @@ type CloudEventHTTPHandler struct {
 func NewCloudEventHTTPHandler(context context.Context, clusterName string, uri string, logger logr.Logger) (*CloudEventHTTPHandler, error) {
 	if uri == "" {
 		return nil, fmt.Errorf("uri cannot be empty")
+	}
+
+	if _, err := url.ParseRequestURI(uri); err != nil {
+		return nil, err
 	}
 
 	client, err := cloudevents.NewClientHTTP()
