@@ -243,6 +243,28 @@ spec:
     key: key
 ---
 `
+	scaledObjectPausedTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectName}}
+  namespace: {{.TestNamespace}}
+  annotations:
+    autoscaling.keda.sh/paused-replicas: "2"
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  pollingInterval: 5
+  idleReplicaCount: 0
+  minReplicaCount: 1
+  maxReplicaCount: 2
+  cooldownPeriod: 10
+  triggers:
+    - type: kubernetes-workload
+      metadata:
+        podSelector: 'app={{.MonitoredDeploymentName}}'
+        value: '1'
+`
 )
 
 func TestPrometheusMetrics(t *testing.T) {
@@ -266,6 +288,7 @@ func TestPrometheusMetrics(t *testing.T) {
 	testScalerErrors(t, data)
 	testOperatorMetrics(t, kc, data)
 	testScalableObjectMetrics(t)
+	testScaledObjectPausedMetric(t, data)
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
@@ -499,6 +522,26 @@ func testScalerActiveMetric(t *testing.T) {
 	}
 }
 
+func testScaledObjectPausedMetric(t *testing.T, data templateData) {
+	t.Log("--- testing scaleobject pause metric ---")
+
+	// Pause the ScaledObject
+	KubectlApplyWithTemplate(t, data, "scaledObjectPausedTemplate", scaledObjectPausedTemplate)
+
+	time.Sleep(20 * time.Second)
+	// Check that the paused metric is now true
+	families := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
+	assertScaledObjectPausedMetric(t, families, scaledObjectName, true)
+
+	// Unpause the ScaledObject
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+
+	time.Sleep(20 * time.Second)
+	// Check that the paused metric is back to false
+	families = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
+	assertScaledObjectPausedMetric(t, families, scaledObjectName, false)
+}
+
 func testOperatorMetrics(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing operator metrics ---")
 	testOperatorMetricValues(t, kc)
@@ -675,4 +718,28 @@ func checkCRTotalValues(t *testing.T, families map[string]*prommodel.MetricFamil
 		assert.Equalf(t, expectedMetricValue, metricValue, "expected %f got %f for cr type %s & namespace %s",
 			expectedMetricValue, metricValue, crType, namespace)
 	}
+}
+
+func assertScaledObjectPausedMetric(t *testing.T, families map[string]*prommodel.MetricFamily, scaledObjectName string, expected bool) {
+	family, ok := families["keda_scaled_object_paused"]
+	if !ok {
+		t.Errorf("keda_scaled_object_paused metric not available")
+		return
+	}
+
+	metricValue := 0.0
+	metrics := family.GetMetric()
+	for _, metric := range metrics {
+		labels := metric.GetLabel()
+		for _, label := range labels {
+			if *label.Name == labelScaledObject && *label.Value == scaledObjectName {
+				metricValue = *metric.Gauge.Value
+			}
+		}
+	}
+	expectedMetricValue := 0
+	if expected {
+		expectedMetricValue = 1
+	}
+	assert.Equal(t, float64(expectedMetricValue), metricValue)
 }

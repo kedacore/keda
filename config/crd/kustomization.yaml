@@ -9,22 +9,8 @@ resources:
 # +kubebuilder:scaffold:crdkustomizeresource
 
 ## ScaledJob CRD needs to be patched because for some usecases (details in the patch file)
-patchesJson6902:
-- target:
-    version: v1
-    group: apiextensions.k8s.io
-    kind: CustomResourceDefinition
-    name: scaledjobs.keda.sh
-  path: patches/scaledjob_patch.yaml
 
-- target:
-    version: v1
-    group: apiextensions.k8s.io
-    kind: CustomResourceDefinition
-    name: scaledobjects.keda.sh
-  path: patches/scaledobject_patch.yaml
 
-patchesStrategicMerge:
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix.
 # patches here are for enabling the conversion webhook for each CRD
 #- patches/webhook_in_scaledobjects.yaml
@@ -38,5 +24,18 @@ patchesStrategicMerge:
 # +kubebuilder:scaffold:crdkustomizecainjectionpatch
 
 # the following config is for teaching kustomize how to do kustomization for CRDs.
-configurations:
-#- kustomizeconfig.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+patches:
+- path: patches/scaledjob_patch.yaml
+  target:
+    group: apiextensions.k8s.io
+    kind: CustomResourceDefinition
+    name: scaledjobs.keda.sh
+    version: v1
+- path: patches/scaledobject_patch.yaml
+  target:
+    group: apiextensions.k8s.io
+    kind: CustomResourceDefinition
+    name: scaledobjects.keda.sh
+    version: v1

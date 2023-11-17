@@ -198,6 +198,10 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 		case kedav1alpha1.PodIdentityProviderAwsKiam:
 			authParams["awsRoleArn"] = podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
 		case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+			if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzure {
+				// FIXME: Delete this for v2.15
+				logger.Info("WARNING: Azure AD Pod Identity has been archived (https://github.com/Azure/aad-pod-identity#-announcement) and will be removed from KEDA on v2.15")
+			}
 			if podIdentity.IdentityID != nil && *podIdentity.IdentityID == "" {
 				return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, fmt.Errorf("IdentityID of PodIdentity should not be empty")
 			}
@@ -238,6 +242,11 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 					} else {
 						result[e.Parameter] = env[e.Name]
 					}
+				}
+			}
+			if triggerAuthSpec.ConfigMapTargetRef != nil {
+				for _, e := range triggerAuthSpec.ConfigMapTargetRef {
+					result[e.Parameter] = resolveAuthConfigMap(ctx, client, logger, e.Name, triggerNamespace, e.Key)
 				}
 			}
 			if triggerAuthSpec.SecretTargetRef != nil {
@@ -518,6 +527,16 @@ func resolveConfigValue(ctx context.Context, client client.Client, configKeyRef 
 		return "", err
 	}
 	return configMap.Data[keyName], nil
+}
+
+func resolveAuthConfigMap(ctx context.Context, client client.Client, logger logr.Logger, name, namespace, key string) string {
+	ref := &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: name}, Key: key}
+	val, err := resolveConfigValue(ctx, client, ref, key, namespace)
+	if err != nil {
+		logger.Error(err, "error trying to get config map from namespace", "ConfigMap.Namespace", namespace, "ConfigMap.Name", name)
+		return ""
+	}
+	return val
 }
 
 func resolveAuthSecret(ctx context.Context, client client.Client, logger logr.Logger, name, namespace, key string, secretsLister corev1listers.SecretLister) string {

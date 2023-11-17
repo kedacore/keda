@@ -67,6 +67,7 @@ func main() {
 	var metricsAddr string
 	var probeAddr string
 	var metricsServiceAddr string
+	var profilingAddr string
 	var enableLeaderElection bool
 	var adapterClientRequestQPS float32
 	var adapterClientRequestBurst int
@@ -84,6 +85,7 @@ func main() {
 	pflag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the prometheus metric endpoint binds to.")
 	pflag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	pflag.StringVar(&metricsServiceAddr, "metrics-service-bind-address", ":9666", "The address the gRPRC Metrics Service endpoint binds to.")
+	pflag.StringVar(&profilingAddr, "profiling-bind-address", "", "The address the profiling would be exposed on.")
 	pflag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -151,6 +153,7 @@ func main() {
 			DefaultNamespaces: namespaces,
 		},
 		HealthProbeBindAddress: probeAddr,
+		PprofBindAddress:       profilingAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "operator.keda.sh",
 		LeaseDuration:          leaseDuration,

@@ -61,15 +61,20 @@ Here is an overview of all new **experimental** features:
 ### Improvements
 
 - **General**: Add parameter queryParameters to prometheus-scaler ([#4962](https://github.com/kedacore/keda/issues/4962))
-- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Support TriggerAuthentication properties from ConfigMap ([#4830](https://github.com/kedacore/keda/issues/4830))
 - **Hashicorp Vault**: Add support to get secret that needs write operation (e.g. pki) ([#5067](https://github.com/kedacore/keda/issues/5067))
 - **Kafka Scaler**: Ability to set upper bound to the number of partitions with lag ([#3997](https://github.com/kedacore/keda/issues/3997))
+- **Kafka Scaler**: Add more logging to check Sarama DescribeTopics method ([#5102](https://github.com/kedacore/keda/issues/5102))
 - **Kafka Scaler**: Add support for Kerberos authentication (SASL / GSSAPI) ([#4836](https://github.com/kedacore/keda/issues/4836))
+- **Prometheus Metrics**: Introduce paused ScaledObjects in Prometheus metrics ([#4430](https://github.com/kedacore/keda/issues/4430))
 - **Pulsar Scaler**: support endpointParams in pulsar oauth ([#5069](https://github.com/kedacore/keda/issues/5069))
 
 ### Fixes
 
-- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Fix CVE-2023-39325 in golang.org/x/net ([#5122](https://github.com/kedacore/keda/issues/5122))
+- **General**: Prevented stuck status due to timeouts during scalers generation ([#5083](https://github.com/kedacore/keda/issues/5083))
+- **Azure Pipelines**: No more HTTP 400 errors produced by poolName with spaces ([#5107](https://github.com/kedacore/keda/issues/5107))
+- **ScaledJobs**: Copy ScaledJob annotations to child Jobs ([#4594](https://github.com/kedacore/keda/issues/4594))
 
 ### Deprecations
 
@@ -77,14 +82,18 @@ You can find all deprecations in [this overview](https://github.com/kedacore/ked
 
 New deprecation(s):
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- Remove support for Azure AD Pod Identity-based authentication ([#5035](https://github.com/kedacore/keda/issues/5035))
 
 ### Breaking Changes
 
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
 ### Other
 
-- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Fix CVE-2023-45142 in Opentelemetry ([#5089](https://github.com/kedacore/keda/issues/5089))
+- **General**: Fix logger in Opentelemetry collector ([#5094](https://github.com/kedacore/keda/issues/5094))
+- **General**: Reduce amount of gauge creations for OpenTelemetry metrics ([#5101](https://github.com/kedacore/keda/issues/5101))
+- **General**: Support profiling for KEDA components ([#4789](https://github.com/kedacore/keda/issues/4789))
 
 ## v2.12.0
 
