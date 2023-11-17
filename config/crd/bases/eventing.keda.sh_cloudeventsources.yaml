@@ -51,9 +51,9 @@ spec:
                     required:
                     - uri
                     type: object
-                required:
-                - http
                 type: object
+            required:
+            - destination
             type: object
           status:
             description: CloudEventSourceStatus defines the observed state of CloudEventSource
