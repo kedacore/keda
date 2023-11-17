@@ -21,9 +21,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kedacore/keda/v2/pkg/eventemitter/eventdata"
 	"github.com/stretchr/testify/assert"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/kedacore/keda/v2/pkg/eventemitter/eventdata"
 )
 
 var logger = logf.Log.WithName("cloudeventhandler_test")
