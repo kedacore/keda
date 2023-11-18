@@ -501,3 +501,117 @@ func TestHashicorpVaultHandler_fetchSecret(t *testing.T) {
 		assert.Equalf(t, testData.expectedValue, secret, "test %s: expected data does not match given secret", testData.name)
 	}
 }
+
+type initializeTestData struct {
+	name      string
+	namespace string
+	token     string
+	isError   bool
+}
+
+var initialiseTestDataSet = []initializeTestData{
+	{
+		name:      "Namespace and Token",
+		namespace: "testNamespace",
+		token:     "testToken",
+		isError:   false,
+	},
+	{
+		name:      "No Namespace",
+		namespace: "",
+		token:     "testToken",
+		isError:   false,
+	},
+}
+
+func TestHashicorpVaultHandler_Initialize(t *testing.T) {
+	server := mockVault(t)
+	defer server.Close()
+
+	for _, testData := range initialiseTestDataSet {
+		func() {
+			vault := kedav1alpha1.HashiCorpVault{
+				Address:        server.URL,
+				Authentication: kedav1alpha1.VaultAuthenticationToken,
+				Credential: &kedav1alpha1.Credential{
+					Token: testData.token,
+				},
+				Namespace: testData.namespace,
+			}
+			vaultHandler := NewHashicorpVaultHandler(&vault)
+			err := vaultHandler.Initialize(logf.Log.WithName("test"))
+			defer vaultHandler.Stop()
+			assert.Nil(t, err)
+
+			if testData.isError {
+				assert.NotNilf(t, err, "test %s: expected error but got success, testData - %+v", testData.name, testData)
+			} else {
+				assert.Equalf(t, vaultHandler.client.Address(), server.URL, "test case %s", testData.name)
+				assert.Equalf(t, vaultHandler.client.Token(), testData.token, "test case %s", testData.name)
+				assert.Equalf(t, vaultHandler.client.Namespace(), testData.namespace, "test case %s", testData.name)
+			}
+		}()
+	}
+}
+
+type tokenTestData struct {
+	name           string
+	isError        bool
+	authentication kedav1alpha1.VaultAuthentication
+	credential     kedav1alpha1.Credential
+	mount          string
+	role           string
+}
+
+var tokenTestDataSet = []tokenTestData{
+	{
+		name:           "Vault Authentication",
+		isError:        false,
+		authentication: kedav1alpha1.VaultAuthenticationToken,
+		credential: kedav1alpha1.Credential{
+			Token: vaultTestToken,
+		},
+		role:  "my-role",
+		mount: "my-mount",
+	},
+	{
+		name:           "Kubernetes Authentication",
+		isError:        true, // Because the service account path is non-existent
+		authentication: kedav1alpha1.VaultAuthenticationKubernetes,
+		credential: kedav1alpha1.Credential{
+			ServiceAccount: "random/path",
+		},
+		role:  "my-role",
+		mount: "my-mount",
+	},
+	// TODO: test wrong authentication
+}
+
+func TestHashicorpVaultHandler_Token_VaultTokenAuth(t *testing.T) {
+	server := mockVault(t)
+	defer server.Close()
+
+	for _, testData := range tokenTestDataSet {
+		func() {
+			vault := kedav1alpha1.HashiCorpVault{
+				Address:        server.URL,
+				Authentication: testData.authentication,
+				Credential:     &testData.credential,
+				Role:           testData.role,
+				Mount:          testData.mount,
+			}
+			vaultHandler := NewHashicorpVaultHandler(&vault)
+			defer vaultHandler.Stop()
+
+			config := vaultapi.DefaultConfig()
+			client, err := vaultapi.NewClient(config)
+			token, err := vaultHandler.token(client)
+			if testData.isError {
+				assert.Equalf(t, vaultHandler.vault.Credential.ServiceAccount, "random/path", "test %s: expected %s but found %s", testData.name, "random/path", vaultHandler.vault.Credential.ServiceAccount)
+				assert.NotNilf(t, err, "test %s: expected error but got success, testData - %+v", testData.name, testData)
+			} else {
+				assert.Equalf(t, token, vaultTestToken, "expected %s but got %s", vaultTestToken, token)
+			}
+		}()
+	}
+}
