@@ -75,8 +75,7 @@ func (vh *HashicorpVaultHandler) Initialize(logger logr.Logger) error {
 		return err
 	}
 
-	renew := lookup.Data["renewable"].(bool)
-	if renew {
+	if renew, ok := lookup.Data["renewable"].(bool); ok && renew {
 		vh.stopCh = make(chan struct{})
 		go vh.renewToken(logger)
 	}
