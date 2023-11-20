@@ -290,7 +290,7 @@ var resolveRequestTestDataSet = []resolveRequestTestData{
 		key:           "array",
 		isError:       false,
 		expectedValue: "",
-		secretType:    "inexisting_type",
+		secretType:    "non_existing_type",
 	},
 	{
 		name:          "existing_pki",
@@ -472,7 +472,7 @@ var fetchSecretTestDataSet = []resolveRequestTestData{
 }
 
 func TestHashicorpVaultHandler_fetchSecret(t *testing.T) {
-	server := mockVault(t)
+	server := mockVault(t, false)
 	defer server.Close()
 
 	vault := kedav1alpha1.HashiCorpVault{
@@ -525,7 +525,7 @@ var initialiseTestDataSet = []initializeTestData{
 }
 
 func TestHashicorpVaultHandler_Initialize(t *testing.T) {
-	server := mockVault(t)
+	server := mockVault(t, false)
 	defer server.Close()
 
 	for _, testData := range initialiseTestDataSet {
@@ -557,6 +557,7 @@ func TestHashicorpVaultHandler_Initialize(t *testing.T) {
 type tokenTestData struct {
 	name           string
 	isError        bool
+	errorMessage   string
 	authentication kedav1alpha1.VaultAuthentication
 	credential     kedav1alpha1.Credential
 	mount          string
@@ -581,14 +582,25 @@ var tokenTestDataSet = []tokenTestData{
 		credential: kedav1alpha1.Credential{
 			ServiceAccount: "random/path",
 		},
-		role:  "my-role",
-		mount: "my-mount",
+		role:         "my-role",
+		mount:        "my-mount",
+		errorMessage: "open random/path: no such file or directory",
 	},
-	// TODO: test wrong authentication
+	{
+		name:           "Wrong Authentication Method",
+		isError:        true,
+		authentication: "random",
+		credential: kedav1alpha1.Credential{
+			ServiceAccount: "random/path",
+		},
+		role:         "my-role",
+		mount:        "my-mount",
+		errorMessage: "vault auth method random is not supported",
+	},
 }
 
 func TestHashicorpVaultHandler_Token_VaultTokenAuth(t *testing.T) {
-	server := mockVault(t)
+	server := mockVault(t, false)
 	defer server.Close()
 
 	for _, testData := range tokenTestDataSet {
@@ -605,10 +617,12 @@ func TestHashicorpVaultHandler_Token_VaultTokenAuth(t *testing.T) {
 
 			config := vaultapi.DefaultConfig()
 			client, err := vaultapi.NewClient(config)
+			assert.Nil(t, err)
 			token, err := vaultHandler.token(client)
 			if testData.isError {
-				assert.Equalf(t, vaultHandler.vault.Credential.ServiceAccount, "random/path", "test %s: expected %s but found %s", testData.name, "random/path", vaultHandler.vault.Credential.ServiceAccount)
+				assert.Equalf(t, vaultHandler.vault.Credential.ServiceAccount, testData.credential.ServiceAccount, "test %s: expected %s but found %s", testData.name, "random/path", vaultHandler.vault.Credential.ServiceAccount)
 				assert.NotNilf(t, err, "test %s: expected error but got success, testData - %+v", testData.name, testData)
+				assert.Contains(t, err.Error(), testData.errorMessage)
 			} else {
 				assert.Equalf(t, token, vaultTestToken, "expected %s but got %s", vaultTestToken, token)
 			}
