@@ -345,6 +345,25 @@ func TestHashicorpVaultHandler_ResolveSecret(t *testing.T) {
 	}
 }
 
+func TestHashicorpVaultHandler_DefaultKubernetesVaultRole(t *testing.T) {
+	defaultServiceAccountPath := "/var/run/secrets/kubernetes.io/serviceaccount/token"
+	server := mockVault(t)
+	defer server.Close()
+
+	vault := kedav1alpha1.HashiCorpVault{
+		Address:        server.URL,
+		Authentication: kedav1alpha1.VaultAuthenticationKubernetes,
+		Mount:          "my-mount",
+		Role:           "my-role",
+	}
+
+	vaultHandler := NewHashicorpVaultHandler(&vault)
+	err := vaultHandler.Initialize(logf.Log.WithName("test"))
+	defer vaultHandler.Stop()
+	assert.Errorf(t, err, "open %s : no such file or directory", defaultServiceAccountPath)
+	assert.Equal(t, vaultHandler.vault.Credential.ServiceAccount, defaultServiceAccountPath)
+}
+
 func TestHashicorpVaultHandler_ResolveSecrets_SameCertAndKey(t *testing.T) {
 	server := mockVault(t)
 	defer server.Close()

@@ -110,6 +110,13 @@ func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) 
 			return token, errors.New("k8s role not in config")
 		}
 
+		if vh.vault.Credential == nil {
+			defaultCred := kedav1alpha1.Credential{
+				ServiceAccount: "/var/run/secrets/kubernetes.io/serviceaccount/token",
+			}
+			vh.vault.Credential = &defaultCred
+		}
+
 		if len(vh.vault.Credential.ServiceAccount) == 0 {
 			return token, errors.New("k8s SA file not in config")
 		}
