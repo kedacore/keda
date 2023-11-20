@@ -194,7 +194,7 @@ func TestHashicorpVaultHandler_getSecretValue_specify_secret_type(t *testing.T) 
 	}}
 	assert.Equalf(t, kedav1alpha1.VaultSecretTypeGeneric, secrets[0].Type, "Expected secret to not have a vlue")
 	secrets, _ = vaultHandler.ResolveSecrets(secrets)
-	assert.Len(t, secrets, 1, "Supposed to got back one secret")
+	assert.Len(t, secrets, 1, "Supposed to get back one secret")
 	secret := secrets[0]
 	assert.Equalf(t, kedav1alpha1.VaultSecretTypeSecretV2, secret.Type, "Expexted secret type be %s", kedav1alpha1.VaultSecretTypeSecretV2)
 	assert.Equalf(t, kedaSecretValue, secret.Value, "Expexted secret to be %s", kedaSecretValue)
@@ -205,7 +205,7 @@ func TestHashicorpVaultHandler_getSecretValue_specify_secret_type(t *testing.T) 
 	}}
 	assert.Equalf(t, kedav1alpha1.VaultSecretTypeGeneric, secrets[0].Type, "Expected secret to not have a vlue")
 	secrets, _ = vaultHandler.ResolveSecrets(secrets)
-	assert.Len(t, secrets, 1, "Supposed to got back one secret")
+	assert.Len(t, secrets, 1, "Supposed to get back one secret")
 	secret = secrets[0]
 	assert.Equalf(t, kedav1alpha1.VaultSecretTypeSecret, secret.Type, "Expexted secret type be %s", kedav1alpha1.VaultSecretTypeSecret)
 	assert.Equalf(t, kedaSecretValue, secret.Value, "Expexted secret to be %s", kedaSecretValue)
@@ -337,7 +337,7 @@ func TestHashicorpVaultHandler_ResolveSecret(t *testing.T) {
 			PkiData:   testData.pkiData,
 		}}
 		secrets, err := vaultHandler.ResolveSecrets(secrets)
-		assert.Len(t, secrets, 1, "Supposed to got back one secret")
+		assert.Len(t, secrets, 1, "Supposed to get back one secret")
 		secret := secrets[0]
 		if testData.isError {
 			assert.NotNilf(t, err, "test %s: expected error but got success, testData - %+v", testData.name, testData)
@@ -373,7 +373,7 @@ func TestHashicorpVaultHandler_ResolveSecret_UsingRootToken(t *testing.T) {
 			PkiData:   testData.pkiData,
 		}}
 		secrets, err := vaultHandler.ResolveSecrets(secrets)
-		assert.Len(t, secrets, 1, "Supposed to got back one secret")
+		assert.Len(t, secrets, 1, "Supposed to get back one secret")
 		secret := secrets[0]
 		if testData.isError {
 			assert.NotNilf(t, err, "test %s: expected error but got success, testData - %+v", testData.name, testData)
@@ -432,6 +432,6 @@ func TestHashicorpVaultHandler_ResolveSecrets_SameCertAndKey(t *testing.T) {
 		PkiData:   kedav1alpha1.VaultPkiData{CommonName: "test"},
 	}}
 	secrets, _ = vaultHandler.ResolveSecrets(secrets)
-	assert.Len(t, secrets, 2, "Supposed to got back two secret")
+	assert.Len(t, secrets, 2, "Supposed to get back two secrets")
 	assert.Equalf(t, secrets[0].Value, secrets[1].Value, "Refetching same path should yield same value")
 }
