@@ -24,6 +24,7 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	vaultapi "github.com/hashicorp/vault/api"
@@ -120,9 +121,13 @@ func TestGetPkiRequest(t *testing.T) {
 func mockVault(t *testing.T) *httptest.Server {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var data map[string]interface{}
+		var auth *vaultapi.SecretAuth
 		switch r.URL.Path {
+		case "/v1/auth/kubernetes/login":
+			auth = &vaultapi.SecretAuth{
+				ClientToken: "38fe9691-e623-7238-f618-c94d4e7bc674",
+			}
 		case "/v1/auth/token/lookup-self":
-
 			data = vaultTokenSelf
 		case "/v1/kv_v2/data/keda": //todo: more generic
 			data = kvV2SecretDataKeda
@@ -160,13 +165,56 @@ func mockVault(t *testing.T) *httptest.Server {
 			Data:          data,
 			Renewable:     false,
 			Warnings:      nil,
-			Auth:          nil,
+			Auth:          auth,
 			WrapInfo:      nil,
 		}
 		var out, _ = json.Marshal(secret)
 		_, _ = w.Write(out)
 	}))
 	return server
+}
+
+func TestHashicorpVaultLoadFromENVVariablesToken(t *testing.T) {
+	server := mockVault(t)
+	defer server.Close()
+
+	t.Setenv("VAULT_ADDR", server.URL)
+	t.Setenv("VAULT_MOUNT", "kubernetes")
+	t.Setenv("VAULT_AUTH", "token")
+	t.Setenv("VAULT_ROLE", "my-role")
+	t.Setenv("VAULT_NAMESPACE", "")
+	t.Setenv("VAULT_TOKEN", vaultTestToken)
+
+	vault := kedav1alpha1.HashiCorpVault{}
+	vaultHandler := NewHashicorpVaultHandler(&vault)
+
+	err := vaultHandler.Initialize(logf.Log.WithName("test"))
+	defer vaultHandler.Stop()
+	assert.Nil(t, err)
+}
+
+func TestHashicorpVaultLoadFromENVVariablesKubernetes(t *testing.T) {
+	server := mockVault(t)
+	defer server.Close()
+
+	t.Setenv("VAULT_ADDR", server.URL)
+	t.Setenv("VAULT_MOUNT", "kubernetes")
+	t.Setenv("VAULT_AUTH", "kubernetes")
+	t.Setenv("VAULT_ROLE", "my-role")
+	t.Setenv("VAULT_NAMESPACE", "")
+
+	tmpServiceToken, err := os.CreateTemp("", "token")
+	assert.Nil(t, err)
+	defer tmpServiceToken.Close()
+
+	t.Setenv("VAULT_JWT_PATH", tmpServiceToken.Name())
+
+	vault := kedav1alpha1.HashiCorpVault{}
+	vaultHandler := NewHashicorpVaultHandler(&vault)
+
+	err = vaultHandler.Initialize(logf.Log.WithName("test"))
+	defer vaultHandler.Stop()
+	assert.Nil(t, err)
 }
 
 func TestHashicorpVaultHandler_getSecretValue_specify_secret_type(t *testing.T) {

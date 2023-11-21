@@ -170,9 +170,13 @@ type AuthEnvironment struct {
 
 // HashiCorpVault is used to authenticate using Hashicorp Vault
 type HashiCorpVault struct {
-	Address        string              `json:"address"`
+	Secrets []VaultSecret `json:"secrets"`
+
+	// +optional
+	Address string `json:"address"`
+
+	// +optional
 	Authentication VaultAuthentication `json:"authentication"`
-	Secrets        []VaultSecret       `json:"secrets"`
 
 	// +optional
 	Namespace string `json:"namespace,omitempty"`

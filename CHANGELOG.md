@@ -64,6 +64,7 @@ Here is an overview of all new **experimental** features:
 - **General**: Support TriggerAuthentication properties from ConfigMap ([#4830](https://github.com/kedacore/keda/issues/4830))
 - **Hashicorp Vault**: Add support to get secret that needs write operation (e.g. pki) ([#5067](https://github.com/kedacore/keda/issues/5067))
 - **Hashicorp Vault**: Fix operator panic when spec.hashiCorpVault.credential.serviceAccount is not set ([#4964](https://github.com/kedacore/keda/issues/4964))
+- **Hashicorp Vault**: Allow setting vault TriggerAuthentication defaults via ENV variables ([#4965](https://github.com/kedacore/keda/issues/4965))
 - **Kafka Scaler**: Ability to set upper bound to the number of partitions with lag ([#3997](https://github.com/kedacore/keda/issues/3997))
 - **Kafka Scaler**: Add more logging to check Sarama DescribeTopics method ([#5102](https://github.com/kedacore/keda/issues/5102))
 - **Kafka Scaler**: Add support for Kerberos authentication (SASL / GSSAPI) ([#4836](https://github.com/kedacore/keda/issues/4836))

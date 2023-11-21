@@ -57,6 +57,16 @@ func ResolveOsEnvDuration(envName string) (*time.Duration, error) {
 	return nil, nil
 }
 
+func ResolveOsString(envName string, defaultvalue string) string {
+	valueStr, found := os.LookupEnv(envName)
+
+	if found && valueStr != "" {
+		return valueStr
+	}
+
+	return defaultvalue
+}
+
 // GetClusterObjectNamespace retrieves the cluster object namespace of KEDA, default is the namespace of KEDA Operator & Metrics Server
 func GetClusterObjectNamespace() (string, error) {
 	// Check if a cached value is available.

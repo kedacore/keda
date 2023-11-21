@@ -27,6 +27,7 @@ import (
 	vaultapi "github.com/hashicorp/vault/api"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 // HashicorpVaultHandler is specification of Hashi Corp Vault
@@ -43,9 +44,46 @@ func NewHashicorpVaultHandler(v *kedav1alpha1.HashiCorpVault) *HashicorpVaultHan
 	}
 }
 
+func (vh *HashicorpVaultHandler) SetFromEnvironment() {
+	if vh.vault.Address == "" {
+		vh.vault.Address = util.ResolveOsString("VAULT_ADDR", "")
+	}
+
+	if vh.vault.Authentication == "" {
+		vh.vault.Authentication = kedav1alpha1.VaultAuthentication(util.ResolveOsString("VAULT_AUTH", ""))
+	}
+
+	if vh.vault.Role == "" {
+		vh.vault.Role = util.ResolveOsString("VAULT_ROLE", "")
+	}
+
+	if vh.vault.Mount == "" {
+		vh.vault.Mount = util.ResolveOsString("VAULT_MOUNT", "")
+	}
+
+	if vh.vault.Credential == nil {
+		serviceAccount := util.ResolveOsString("VAULT_JWT_PATH", "")
+		vaultToken := util.ResolveOsString("VAULT_TOKEN", "")
+		if vaultToken != "" {
+			vh.vault.Credential = &kedav1alpha1.Credential{}
+			vh.vault.Credential.Token = vaultToken
+		}
+		if serviceAccount != "" {
+			vh.vault.Credential = &kedav1alpha1.Credential{}
+			vh.vault.Credential.ServiceAccount = serviceAccount
+		}
+	}
+
+	if vh.vault.Namespace == "" {
+		vh.vault.Namespace = util.ResolveOsString("VAULT_NAMESPACE", "")
+	}
+}
+
 // Initialize the Vault client
 func (vh *HashicorpVaultHandler) Initialize(logger logr.Logger) error {
 	config := vaultapi.DefaultConfig()
+	vh.SetFromEnvironment()
+
 	client, err := vaultapi.NewClient(config)
 	if err != nil {
 		return err
