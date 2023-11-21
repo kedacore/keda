@@ -58,6 +58,10 @@ var testPubSubMetadata = []parsePubSubMetadataTestData{
 	{nil, map[string]string{"subscriptionName": "projects/myproject/mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// properly formed float value and activationTargetValue
 	{nil, map[string]string{"subscriptionName": "mysubscription", "value": "7.1", "credentialsFromEnv": "SAMPLE_CREDS", "activationValue": "2.1"}, false},
+	// All optional omitted
+	{nil, map[string]string{"subscriptionName": "mysubscription", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	// value omittted when mode present
+	{nil, map[string]string{"subscriptionName": "mysubscription", "mode": "SubscriptionSize", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 }
 
 var gcpPubSubMetricIdentifiers = []gcpPubSubMetricIdentifier{
@@ -70,6 +74,11 @@ var gcpSubscriptionNameTests = []gcpPubSubSubscription{
 	{&testPubSubMetadata[12], 1, "projects/myproject/mysubscription", ""},
 }
 
+var gcpSubscriptionDefaults = []gcpPubSubSubscription{
+	{&testPubSubMetadata[14], 0, "", ""},
+	{&testPubSubMetadata[15], 0, "", ""},
+}
+
 func TestPubSubParseMetadata(t *testing.T) {
 	for _, testData := range testPubSubMetadata {
 		_, err := parsePubSubMetadata(&ScalerConfig{AuthParams: testData.authParams, TriggerMetadata: testData.metadata, ResolvedEnv: testPubSubResolvedEnv}, logr.Discard())
@@ -78,6 +87,21 @@ func TestPubSubParseMetadata(t *testing.T) {
 		}
 		if testData.isError && err == nil {
 			t.Error("Expected error but got success")
+		}
+	}
+}
+
+func TestPubSubMetadataDefaultValues(t *testing.T) {
+	for _, testData := range gcpSubscriptionDefaults {
+		metaData, err := parsePubSubMetadata(&ScalerConfig{AuthParams: testData.metadataTestData.authParams, TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv}, logr.Discard())
+		if err != nil {
+			t.Error("Expected success but got error", err)
+		}
+		if pubSubModeSubscriptionSize != metaData.mode {
+			t.Errorf(`Expected mode "%s" but got "%s"`, pubSubModeSubscriptionSize, metaData.mode)
+		}
+		if pubSubDefaultValue != metaData.value {
+			t.Errorf(`Expected value "%d" but got "%f"`, pubSubDefaultValue, metaData.value)
 		}
 	}
 }
