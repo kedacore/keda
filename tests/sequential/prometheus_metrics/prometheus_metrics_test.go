@@ -288,7 +288,6 @@ func TestPrometheusMetrics(t *testing.T) {
 	testScalerActiveMetric(t)
 	testScaledObjectErrors(t, data)
 	testScalerErrors(t, data)
-	testScalerErrorsTotal(t, data)
 	testOperatorMetrics(t, kc, data)
 	testMetricServerMetrics(t)
 	testWebhookMetrics(t, data)
@@ -417,11 +416,6 @@ func testScalerErrors(t *testing.T, data templateData) {
 
 func getErrorMetricsValue(val *prommodel.MetricFamily) float64 {
 	switch val.GetName() {
-	case "keda_scaler_errors_total":
-		metrics := val.GetMetric()
-		for _, metric := range metrics {
-			return metric.GetCounter().GetValue()
-		}
 	case "keda_scaled_object_errors_total":
 		metrics := val.GetMetric()
 		for _, metric := range metrics {
