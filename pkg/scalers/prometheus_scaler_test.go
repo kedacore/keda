@@ -393,7 +393,7 @@ func TestPrometheusScalerExecutePromQueryParameters(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		queryParameter := request.URL.Query()
 		time := time.Now().UTC().Format(time.RFC3339)
-		require.Equal(t, queryParameter.Get("time"), fmt.Sprintf("%s", time))
+		require.Equal(t, queryParameter.Get("time"), time)
 
 		for queryParameterName, queryParameterValue := range queryParametersValue {
 			require.Equal(t, queryParameter.Get(queryParameterName), queryParameterValue)
