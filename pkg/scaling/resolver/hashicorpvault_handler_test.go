@@ -117,13 +117,16 @@ func TestGetPkiRequest(t *testing.T) {
 	}
 }
 
-func mockVault(t *testing.T) *httptest.Server {
+func mockVault(t *testing.T, useRootToken bool) *httptest.Server {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var data map[string]interface{}
 		switch r.URL.Path {
 		case "/v1/auth/token/lookup-self":
-
 			data = vaultTokenSelf
+			if useRootToken {
+				// remove renewable field
+				delete(data, "renewable")
+			}
 		case "/v1/kv_v2/data/keda": //todo: more generic
 			data = kvV2SecretDataKeda
 		case "/v1/kv/keda": //todo: more generic
@@ -170,7 +173,7 @@ func mockVault(t *testing.T) *httptest.Server {
 }
 
 func TestHashicorpVaultHandler_getSecretValue_specify_secret_type(t *testing.T) {
-	server := mockVault(t)
+	server := mockVault(t, false)
 	defer server.Close()
 
 	vault := kedav1alpha1.HashiCorpVault{
@@ -191,7 +194,7 @@ func TestHashicorpVaultHandler_getSecretValue_specify_secret_type(t *testing.T) 
 	}}
 	assert.Equalf(t, kedav1alpha1.VaultSecretTypeGeneric, secrets[0].Type, "Expected secret to not have a vlue")
 	secrets, _ = vaultHandler.ResolveSecrets(secrets)
-	assert.Len(t, secrets, 1, "Supposed to got back one secret")
+	assert.Len(t, secrets, 1, "Supposed to get back one secret")
 	secret := secrets[0]
 	assert.Equalf(t, kedav1alpha1.VaultSecretTypeSecretV2, secret.Type, "Expexted secret type be %s", kedav1alpha1.VaultSecretTypeSecretV2)
 	assert.Equalf(t, kedaSecretValue, secret.Value, "Expexted secret to be %s", kedaSecretValue)
@@ -202,7 +205,7 @@ func TestHashicorpVaultHandler_getSecretValue_specify_secret_type(t *testing.T) 
 	}}
 	assert.Equalf(t, kedav1alpha1.VaultSecretTypeGeneric, secrets[0].Type, "Expected secret to not have a vlue")
 	secrets, _ = vaultHandler.ResolveSecrets(secrets)
-	assert.Len(t, secrets, 1, "Supposed to got back one secret")
+	assert.Len(t, secrets, 1, "Supposed to get back one secret")
 	secret = secrets[0]
 	assert.Equalf(t, kedav1alpha1.VaultSecretTypeSecret, secret.Type, "Expexted secret type be %s", kedav1alpha1.VaultSecretTypeSecret)
 	assert.Equalf(t, kedaSecretValue, secret.Value, "Expexted secret to be %s", kedaSecretValue)
@@ -310,7 +313,7 @@ var resolveRequestTestDataSet = []resolveRequestTestData{
 }
 
 func TestHashicorpVaultHandler_ResolveSecret(t *testing.T) {
-	server := mockVault(t)
+	server := mockVault(t, false)
 	defer server.Close()
 
 	vault := kedav1alpha1.HashiCorpVault{
@@ -334,7 +337,43 @@ func TestHashicorpVaultHandler_ResolveSecret(t *testing.T) {
 			PkiData:   testData.pkiData,
 		}}
 		secrets, err := vaultHandler.ResolveSecrets(secrets)
-		assert.Len(t, secrets, 1, "Supposed to got back one secret")
+		assert.Len(t, secrets, 1, "Supposed to get back one secret")
+		secret := secrets[0]
+		if testData.isError {
+			assert.NotNilf(t, err, "test %s: expected error but got success, testData - %+v", testData.name, testData)
+			continue
+		}
+		assert.Nilf(t, err, "test %s: expected success but got error - %s", testData.name, err)
+		assert.Equalf(t, testData.expectedValue, secret.Value, "test %s: expected data does not match given secret", testData.name)
+	}
+}
+
+func TestHashicorpVaultHandler_ResolveSecret_UsingRootToken(t *testing.T) {
+	server := mockVault(t, true)
+	defer server.Close()
+
+	vault := kedav1alpha1.HashiCorpVault{
+		Address:        server.URL,
+		Authentication: kedav1alpha1.VaultAuthenticationToken,
+		Credential: &kedav1alpha1.Credential{
+			Token: vaultTestToken,
+		},
+	}
+	vaultHandler := NewHashicorpVaultHandler(&vault)
+	err := vaultHandler.Initialize(logf.Log.WithName("test"))
+	defer vaultHandler.Stop()
+	assert.Nil(t, err)
+
+	for _, testData := range resolveRequestTestDataSet {
+		secrets := []kedav1alpha1.VaultSecret{{
+			Parameter: "test",
+			Path:      testData.path,
+			Key:       testData.key,
+			Type:      testData.secretType,
+			PkiData:   testData.pkiData,
+		}}
+		secrets, err := vaultHandler.ResolveSecrets(secrets)
+		assert.Len(t, secrets, 1, "Supposed to get back one secret")
 		secret := secrets[0]
 		if testData.isError {
 			assert.NotNilf(t, err, "test %s: expected error but got success, testData - %+v", testData.name, testData)
@@ -347,7 +386,7 @@ func TestHashicorpVaultHandler_ResolveSecret(t *testing.T) {
 
 func TestHashicorpVaultHandler_DefaultKubernetesVaultRole(t *testing.T) {
 	defaultServiceAccountPath := "/var/run/secrets/kubernetes.io/serviceaccount/token"
-	server := mockVault(t)
+	server := mockVault(t, false)
 	defer server.Close()
 
 	vault := kedav1alpha1.HashiCorpVault{
@@ -365,7 +404,7 @@ func TestHashicorpVaultHandler_DefaultKubernetesVaultRole(t *testing.T) {
 }
 
 func TestHashicorpVaultHandler_ResolveSecrets_SameCertAndKey(t *testing.T) {
-	server := mockVault(t)
+	server := mockVault(t, false)
 	defer server.Close()
 
 	vault := kedav1alpha1.HashiCorpVault{
@@ -393,6 +432,6 @@ func TestHashicorpVaultHandler_ResolveSecrets_SameCertAndKey(t *testing.T) {
 		PkiData:   kedav1alpha1.VaultPkiData{CommonName: "test"},
 	}}
 	secrets, _ = vaultHandler.ResolveSecrets(secrets)
-	assert.Len(t, secrets, 2, "Supposed to got back two secret")
+	assert.Len(t, secrets, 2, "Supposed to get back two secrets")
 	assert.Equalf(t, secrets[0].Value, secrets[1].Value, "Refetching same path should yield same value")
 }
