@@ -244,6 +244,11 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 					}
 				}
 			}
+			if triggerAuthSpec.ConfigMapTargetRef != nil {
+				for _, e := range triggerAuthSpec.ConfigMapTargetRef {
+					result[e.Parameter] = resolveAuthConfigMap(ctx, client, logger, e.Name, triggerNamespace, e.Key)
+				}
+			}
 			if triggerAuthSpec.SecretTargetRef != nil {
 				for _, e := range triggerAuthSpec.SecretTargetRef {
 					result[e.Parameter] = resolveAuthSecret(ctx, client, logger, e.Name, triggerNamespace, e.Key, secretsLister)
@@ -501,6 +506,16 @@ func resolveConfigValue(ctx context.Context, client client.Client, configKeyRef 
 		return "", err
 	}
 	return configMap.Data[keyName], nil
+}
+
+func resolveAuthConfigMap(ctx context.Context, client client.Client, logger logr.Logger, name, namespace, key string) string {
+	ref := &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: name}, Key: key}
+	val, err := resolveConfigValue(ctx, client, ref, key, namespace)
+	if err != nil {
+		logger.Error(err, "error trying to get config map from namespace", "ConfigMap.Namespace", namespace, "ConfigMap.Name", name)
+		return ""
+	}
+	return val
 }
 
 func resolveAuthSecret(ctx context.Context, client client.Client, logger logr.Logger, name, namespace, key string, secretsLister corev1listers.SecretLister) string {

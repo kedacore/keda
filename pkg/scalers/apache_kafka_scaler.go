@@ -426,7 +426,7 @@ func (s *apacheKafkaScaler) getTopicPartitions(ctx context.Context) (map[string]
 	if err != nil {
 		return nil, fmt.Errorf("error getting metadata: %w", err)
 	}
-	s.logger.V(4).Info(fmt.Sprintf("Listed topics %v", metadata.Topics))
+	s.logger.V(1).Info(fmt.Sprintf("Listed topics %v", metadata.Topics))
 
 	if len(s.metadata.topic) == 0 {
 		// in case of empty topic name, we will get all topics that the consumer group is subscribed to

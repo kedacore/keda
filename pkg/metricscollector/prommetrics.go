@@ -75,6 +75,15 @@ var (
 		},
 		metricLabels,
 	)
+	scaledObjectPaused = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "scaled_object",
+			Name:      "paused",
+			Help:      "Indicates whether a ScaledObject is paused",
+		},
+		[]string{"namespace", "scaledObject"},
+	)
 	scalerErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: DefaultPromMetricsNamespace,
@@ -134,6 +143,7 @@ func NewPromMetrics() *PromMetrics {
 	metrics.Registry.MustRegister(scalerActive)
 	metrics.Registry.MustRegister(scalerErrors)
 	metrics.Registry.MustRegister(scaledObjectErrors)
+	metrics.Registry.MustRegister(scaledObjectPaused)
 
 	metrics.Registry.MustRegister(triggerTotalsGaugeVec)
 	metrics.Registry.MustRegister(crdTotalsGaugeVec)
@@ -175,6 +185,18 @@ func (p *PromMetrics) RecordScalerActive(namespace string, scaledObject string, 
 	}
 
 	scalerActive.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Set(float64(activeVal))
+}
+
+// RecordScaledObjectPaused marks whether the current ScaledObject is paused.
+func (p *PromMetrics) RecordScaledObjectPaused(namespace string, scaledObject string, active bool) {
+	labels := prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject}
+
+	activeVal := 0
+	if active {
+		activeVal = 1
+	}
+
+	scaledObjectPaused.With(labels).Set(float64(activeVal))
 }
 
 // RecordScalerError counts the number of errors occurred in trying get an external metric used by the HPA

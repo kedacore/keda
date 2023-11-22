@@ -79,6 +79,9 @@ type TriggerAuthenticationSpec struct {
 	SecretTargetRef []AuthSecretTargetRef `json:"secretTargetRef,omitempty"`
 
 	// +optional
+	ConfigMapTargetRef []AuthConfigMapTargetRef `json:"configMapTargetRef,omitempty"`
+
+	// +optional
 	Env []AuthEnvironment `json:"env,omitempty"`
 
 	// +optional
@@ -142,8 +145,14 @@ func (a *AuthPodIdentity) GetIdentityID() string {
 	return *a.IdentityID
 }
 
+// AuthConfigMapTargetRef is used to authenticate using a reference to a config map
+type AuthConfigMapTargetRef AuthTargetRef
+
 // AuthSecretTargetRef is used to authenticate using a reference to a secret
-type AuthSecretTargetRef struct {
+type AuthSecretTargetRef AuthTargetRef
+
+// AuthTargetRef is used to authenticate using a reference to a resource
+type AuthTargetRef struct {
 	Parameter string `json:"parameter"`
 	Name      string `json:"name"`
 	Key       string `json:"key"`

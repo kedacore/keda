@@ -28,6 +28,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/record"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -286,6 +289,61 @@ func TestGetPendingJobCount(t *testing.T) {
 	}
 }
 
+func TestCreateJobs(t *testing.T) {
+	ctx := context.Background()
+	logger := logf.Log.WithName("CreateJobsTest")
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	client := mock_client.NewMockClient(ctrl)
+	scaleExecutor := getMockScaleExecutor(client)
+
+	client.EXPECT().
+		Create(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, obj runtime.Object, _ ...runtimeclient.CreateOption) {
+		j, ok := obj.(*batchv1.Job)
+		if !ok {
+			t.Error("Cast failed on batchv1.Job at mocking client.Create()")
+		}
+		if ok {
+			assert.Equal(t, "test-", j.ObjectMeta.GenerateName)
+			assert.Equal(t, "test", j.ObjectMeta.Namespace)
+		}
+	}).Times(2).
+		Return(nil)
+
+	scaledJob := getMockScaledJobWithDefaultStrategyAndMeta("test")
+	scaleExecutor.createJobs(ctx, logger, scaledJob, 2, 2)
+}
+
+func TestGenerateJobs(t *testing.T) {
+	var (
+		expectedAnnotations = map[string]string{"test": "test"}
+		expectedLabels      = map[string]string{
+			"app.kubernetes.io/managed-by": "keda-operator",
+			"app.kubernetes.io/name":       "test",
+			"app.kubernetes.io/part-of":    "test",
+			"app.kubernetes.io/version":    "main",
+			"scaledjob.keda.sh/name":       "test",
+			"test":                         "test",
+		}
+	)
+
+	logger := logf.Log.WithName("GenerateJobsTest")
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	client := mock_client.NewMockClient(ctrl)
+	scaleExecutor := getMockScaleExecutor(client)
+	scaledJob := getMockScaledJobWithDefaultStrategyAndMeta("test")
+
+	jobs := scaleExecutor.generateJobs(logger, scaledJob, 2)
+
+	assert.Equal(t, 2, len(jobs))
+	for _, j := range jobs {
+		assert.Equal(t, expectedAnnotations, j.ObjectMeta.Annotations)
+		assert.Equal(t, expectedLabels, j.ObjectMeta.Labels)
+		assert.Equal(t, v1.RestartPolicyOnFailure, j.Spec.Template.Spec.RestartPolicy)
+	}
+}
+
 type mockJobParameter struct {
 	Name             string
 	CompletionTime   string
@@ -299,11 +357,15 @@ type pendingJobTestData struct {
 }
 
 func getMockScaleExecutor(client *mock_client.MockClient) *scaleExecutor {
+	scheme := runtime.NewScheme()
+	utilruntime.Must(kedav1alpha1.AddToScheme(scheme))
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	return &scaleExecutor{
 		client:           client,
 		scaleClient:      nil,
-		reconcilerScheme: nil,
+		reconcilerScheme: scheme,
 		logger:           logf.Log.WithName("scaleexecutor"),
+		recorder:         record.NewFakeRecorder(1),
 	}
 }
 
@@ -367,10 +429,20 @@ func getMockScaledJobWithCustomStrategyWithNilParameter(name, scalingStrategy st
 
 func getMockScaledJobWithDefaultStrategy(name string) *kedav1alpha1.ScaledJob {
 	scaledJob := &kedav1alpha1.ScaledJob{
-		Spec: kedav1alpha1.ScaledJobSpec{},
+		Spec: kedav1alpha1.ScaledJobSpec{
+			JobTargetRef: &batchv1.JobSpec{},
+		},
 	}
 	scaledJob.ObjectMeta.Name = name
 	return scaledJob
+}
+
+func getMockScaledJobWithDefaultStrategyAndMeta(name string) *kedav1alpha1.ScaledJob {
+	sc := getMockScaledJobWithDefaultStrategy(name)
+	sc.ObjectMeta.Namespace = "test"
+	sc.ObjectMeta.Labels = map[string]string{"test": "test"}
+	sc.ObjectMeta.Annotations = map[string]string{"test": "test"}
+	return sc
 }
 
 func getMockScaledJobWithPendingPodConditions(pendingPodConditions []string) *kedav1alpha1.ScaledJob {
