@@ -310,7 +310,7 @@ func (vh *HashicorpVaultHandler) fetchSecret(secretType kedav1alpha1.VaultSecret
 // ResolveSecrets allows to resolve a slice of secrets by vault. The function returns the list of secrets with the value updated.
 // If multiple secret refers to the same SecretGroup, the secret will be fetched only once.
 func (vh *HashicorpVaultHandler) ResolveSecrets(secrets []kedav1alpha1.VaultSecret) ([]kedav1alpha1.VaultSecret, error) {
-	// Group secret by path and type, this allows to fetch a path only one. This is useful for dynamic credentials
+	// Group secret by path and type, this allows to fetch a path only once. This is useful for dynamic credentials
 	grouped := make(map[SecretGroup][]kedav1alpha1.VaultSecret)
 	vaultSecrets := make(map[SecretGroup]*vaultapi.Secret)
 	for _, e := range secrets {
