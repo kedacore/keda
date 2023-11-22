@@ -313,6 +313,7 @@ func getClientForConnectionPool(metadata externalScalerMetadata, logger logr.Log
 			}
 			return grpc.Dial(metadata.scalerAddress, grpc.WithTransportCredentials(creds))
 		}
+
 		tlsConfig, err := util.NewTLSConfig(metadata.tlsClientCert, metadata.tlsClientKey, metadata.caCert, metadata.unsafeSsl)
 		if err != nil {
 			return nil, err
