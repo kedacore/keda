@@ -350,7 +350,7 @@ func testScalerMetricValue(t *testing.T) {
 		}
 		assert.Equal(t, true, found)
 	} else {
-		t.Errorf("metric not available")
+		t.Errorf("metric keda_scaler_metrics_value not available")
 	}
 }
 
@@ -364,22 +364,22 @@ func testScaledObjectErrors(t *testing.T, data templateData) {
 	time.Sleep(20 * time.Second)
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
-	if val, ok := family["keda_scaled_object_errors"]; ok {
+	if val, ok := family["keda_scaled_object_errors_total"]; ok {
 		errCounterVal1 := getErrorMetricsValue(val)
 
 		// wait for 2 seconds as pollinginterval is 2
 		time.Sleep(2 * time.Second)
 
 		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
-		if val, ok := family["keda_scaled_object_errors"]; ok {
+		if val, ok := family["keda_scaled_object_errors_total"]; ok {
 			errCounterVal2 := getErrorMetricsValue(val)
 			assert.NotEqual(t, errCounterVal2, float64(0))
 			assert.GreaterOrEqual(t, errCounterVal2, errCounterVal1)
 		} else {
-			t.Errorf("metric not available")
+			t.Errorf("metric keda_scaled_object_errors_total not available")
 		}
 	} else {
-		t.Errorf("metric not available")
+		t.Errorf("metric keda_scaled_object_errors_total not available")
 	}
 
 	KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
@@ -393,40 +393,11 @@ func testScalerErrors(t *testing.T, data templateData) {
 	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
-	if val, ok := family["keda_scaler_errors"]; ok {
+	if val, ok := family["keda_scaler_errors_total"]; ok {
 		errCounterVal1 := getErrorMetricsValue(val)
 
 		// wait for 20 seconds to correctly fetch metrics.
 		time.Sleep(20 * time.Second)
-
-		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
-		if val, ok := family["keda_scaler_errors"]; ok {
-			errCounterVal2 := getErrorMetricsValue(val)
-			assert.NotEqual(t, errCounterVal2, float64(0))
-			assert.GreaterOrEqual(t, errCounterVal2, errCounterVal1)
-		} else {
-			t.Errorf("metric not available")
-		}
-	} else {
-		t.Errorf("metric not available")
-	}
-
-	KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
-	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-}
-
-func testScalerErrorsTotal(t *testing.T, data templateData) {
-	t.Log("--- testing scaler errors total ---")
-
-	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
-
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
-	if val, ok := family["keda_scaler_errors_total"]; ok {
-		errCounterVal1 := getErrorMetricsValue(val)
-
-		// wait for 2 seconds as pollinginterval is 2
-		time.Sleep(2 * time.Second)
 
 		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 		if val, ok := family["keda_scaler_errors_total"]; ok {
@@ -434,10 +405,10 @@ func testScalerErrorsTotal(t *testing.T, data templateData) {
 			assert.NotEqual(t, errCounterVal2, float64(0))
 			assert.GreaterOrEqual(t, errCounterVal2, errCounterVal1)
 		} else {
-			t.Errorf("metric not available")
+			t.Errorf("metric keda_scaler_errors_total not available")
 		}
 	} else {
-		t.Errorf("metric not available")
+		t.Errorf("metric keda_scaler_errors_total not available")
 	}
 
 	KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
@@ -451,7 +422,7 @@ func getErrorMetricsValue(val *prommodel.MetricFamily) float64 {
 		for _, metric := range metrics {
 			return metric.GetCounter().GetValue()
 		}
-	case "keda_scaled_object_errors":
+	case "keda_scaled_object_errors_total":
 		metrics := val.GetMetric()
 		for _, metric := range metrics {
 			labels := metric.GetLabel()
@@ -461,7 +432,7 @@ func getErrorMetricsValue(val *prommodel.MetricFamily) float64 {
 				}
 			}
 		}
-	case "keda_scaler_errors":
+	case "keda_scaler_errors_total":
 		metrics := val.GetMetric()
 		for _, metric := range metrics {
 			labels := metric.GetLabel()
@@ -505,7 +476,7 @@ func testScalerMetricLatency(t *testing.T) {
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 
-	if val, ok := family["keda_scaler_metrics_latency"]; ok {
+	if val, ok := family["keda_scaler_metrics_latency_seconds"]; ok {
 		var found bool
 		metrics := val.GetMetric()
 		for _, metric := range metrics {
@@ -519,7 +490,7 @@ func testScalerMetricLatency(t *testing.T) {
 		}
 		assert.Equal(t, true, found)
 	} else {
-		t.Errorf("metric not available")
+		t.Errorf("metric keda_scaler_metrics_latency_seconds not available")
 	}
 }
 
@@ -528,7 +499,7 @@ func testScalableObjectMetrics(t *testing.T) {
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 
-	if val, ok := family["keda_internal_scale_loop_latency"]; ok {
+	if val, ok := family["keda_internal_scale_loop_latency_seconds"]; ok {
 		var found bool
 		metrics := val.GetMetric()
 
@@ -556,7 +527,7 @@ func testScalableObjectMetrics(t *testing.T) {
 		}
 		assert.Equal(t, true, found)
 	} else {
-		t.Errorf("scaledobject metric not available")
+		t.Errorf("keda_internal_scale_loop_latency_seconds metric not available")
 	}
 }
 
@@ -579,7 +550,7 @@ func testScalerActiveMetric(t *testing.T) {
 		}
 		assert.Equal(t, true, found)
 	} else {
-		t.Errorf("metric not available")
+		t.Errorf("metric keda_scaler_active not available")
 	}
 }
 
@@ -708,7 +679,7 @@ func checkBuildInfo(t *testing.T, families map[string]*prommodel.MetricFamily) {
 
 	family, ok := families["keda_build_info"]
 	if !ok {
-		t.Errorf("metric not available")
+		t.Errorf("metric keda_build_info not available")
 		return
 	}
 
@@ -743,9 +714,9 @@ func getLatestCommit(t *testing.T) string {
 func checkTriggerTotalValues(t *testing.T, families map[string]*prommodel.MetricFamily, expected map[string]int) {
 	t.Log("--- testing trigger total metrics ---")
 
-	family, ok := families["keda_trigger_totals"]
+	family, ok := families["keda_trigger_handled_total"]
 	if !ok {
-		t.Errorf("metric not available")
+		t.Errorf("metric keda_trigger_handled_total not available")
 		return
 	}
 
@@ -772,9 +743,9 @@ func checkTriggerTotalValues(t *testing.T, families map[string]*prommodel.Metric
 func checkCRTotalValues(t *testing.T, families map[string]*prommodel.MetricFamily, expected map[string]map[string]int) {
 	t.Log("--- testing resource total metrics ---")
 
-	family, ok := families["keda_resource_totals"]
+	family, ok := families["keda_resource_handled_total"]
 	if !ok {
-		t.Errorf("metric not available")
+		t.Errorf("metric keda_resource_handled_total not available")
 		return
 	}
 
@@ -801,9 +772,9 @@ func checkCRTotalValues(t *testing.T, families map[string]*prommodel.MetricFamil
 func checkWebhookValues(t *testing.T, families map[string]*prommodel.MetricFamily) {
 	t.Log("--- testing webhook metrics ---")
 
-	family, ok := families["keda_webhook_scaled_object_validation_errors"]
+	family, ok := families["keda_webhook_scaled_object_validation_errors_total"]
 	if !ok {
-		t.Errorf("metric keda_webhook_scaled_object_validation_errors not available")
+		t.Errorf("metric keda_webhook_scaled_object_validation_errors_total not available")
 		return
 	}
 
@@ -820,9 +791,9 @@ func checkWebhookValues(t *testing.T, families map[string]*prommodel.MetricFamil
 	}
 	assert.GreaterOrEqual(t, metricValue, 1.0, "keda_webhook_scaled_object_validation_errors has to be greater than 0")
 
-	family, ok = families["keda_webhook_scaled_object_validation_total"]
+	family, ok = families["keda_webhook_scaled_object_validations_total"]
 	if !ok {
-		t.Errorf("metric keda_webhook_scaled_object_validation_total not available")
+		t.Errorf("metric keda_webhook_scaled_object_validations_total not available")
 		return
 	}
 
