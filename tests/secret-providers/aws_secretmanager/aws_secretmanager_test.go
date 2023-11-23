@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package aws_secretmanager_test
+package aws_secret_manager_test
 
 import (
 	"context"
@@ -10,12 +10,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -25,37 +26,111 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "aws-sqs-queue-test"
+	testName = "aws-secret-manager-test"
+)
+
+var (
+	testNamespace              = fmt.Sprintf("%s-ns", testName)
+	deploymentName             = fmt.Sprintf("%s-deployment", testName)
+	scaledObjectName           = fmt.Sprintf("%s-so", testName)
+	triggerAuthenticationName  = fmt.Sprintf("%s-ta", testName)
+	secretName                 = fmt.Sprintf("%s-secret", testName)
+	postgreSQLStatefulSetName  = "postgresql"
+	postgresqlPodName          = fmt.Sprintf("%s-0", postgreSQLStatefulSetName)
+	postgreSQLUsername         = "test-user"
+	postgreSQLPassword         = "test-password"
+	postgreSQLDatabase         = "test_db"
+	postgreSQLConnectionString = fmt.Sprintf("postgresql://%s:%s@postgresql.%s.svc.cluster.local:5432/%s?sslmode=disable",
+		postgreSQLUsername, postgreSQLPassword, testNamespace, postgreSQLDatabase)
+	minReplicaCount = 0
+	maxReplicaCount = 2
+
+	awsRegion                = os.Getenv("TF_AWS_REGION")
+	awsAccessKeyID           = os.Getenv("TF_AWS_ACCESS_KEY")
+	awsSecretAccessKey       = os.Getenv("TF_AWS_SECRET_KEY")
+	awsCredentialsSecretName = fmt.Sprintf("%s-credentials-secret", testName)
+	secretManagerSecretName  = "connectionString"
 )
 
 type templateData struct {
-	TestNamespace      string
-	DeploymentName     string
-	ScaledObjectName   string
-	SecretName         string
-	AwsAccessKeyID     string
-	AwsSecretAccessKey string
-	AwsRegion          string
-	SqsQueue           string
+	TestNamespace                    string
+	DeploymentName                   string
+	ScaledObjectName                 string
+	TriggerAuthenticationName        string
+	SecretName                       string
+	PostgreSQLStatefulSetName        string
+	PostgreSQLConnectionStringBase64 string
+	PostgreSQLUsername               string
+	PostgreSQLPassword               string
+	PostgreSQLDatabase               string
+	MinReplicaCount                  int
+	MaxReplicaCount                  int
+	AwsRegion                        string
+	AwsCredentialsSecretName         string
+	SecretManagerSecretName          string
+	AwsAccessKeyID                   string
+	AwsSecretAccessKey               string
 }
 
 const (
-	secretTemplate = `
-apiVersion: v1
+	deploymentTemplate = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: postgresql-update-worker
+  name: {{.DeploymentName}}
+  namespace: {{.TestNamespace}}
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: postgresql-update-worker
+  template:
+    metadata:
+      labels:
+        app: postgresql-update-worker
+    spec:
+      containers:
+      - image: ghcr.io/kedacore/tests-postgresql
+        imagePullPolicy: Always
+        name: postgresql-processor-test
+        command:
+          - /app
+          - update
+        env:
+          - name: TASK_INSTANCES_COUNT
+            value: "6000"
+          - name: CONNECTION_STRING
+            valueFrom:
+              secretKeyRef:
+                name: {{.SecretName}}
+                key: postgresql_conn_str
+`
+
+	secretTemplate = `apiVersion: v1
 kind: Secret
 metadata:
   name: {{.SecretName}}
   namespace: {{.TestNamespace}}
+type: Opaque
+data:
+  postgresql_conn_str: {{.PostgreSQLConnectionStringBase64}}
+`
+	awsCredentialsSecretTemplate = `apiVersion: v1
+kind: Secret
+metadata:
+  name: {{.AwsCredentialsSecretName}}
+  namespace: {{.TestNamespace}}
+type: Opaque
 data:
   AWS_ACCESS_KEY_ID: {{.AwsAccessKeyID}}
   AWS_SECRET_ACCESS_KEY: {{.AwsSecretAccessKey}}
 `
 
-	triggerAuthenticationTemplate = `
-apiVersion: keda.sh/v1alpha1
+	triggerAuthenticationTemplate = `apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
-  name: keda-trigger-auth-aws-credentials
+  name: {{.TriggerAuthenticationName}}
   namespace: {{.TestNamespace}}
 spec:
   awsSecretManager:
@@ -63,182 +138,313 @@ spec:
       accessKey:
         valueFrom:
           secretKeyRef:
-            name: {{.SecretName}}
+            name: {{.AwsCredentialsSecretName}}
             key: AWS_ACCESS_KEY_ID
       accessSecretKey:
         valueFrom:
           secretKeyRef:
-            name: {{.SecretName}}
+            name: {{.AwsCredentialsSecretName}}
             key: AWS_SECRET_ACCESS_KEY
     secrets:
-      - parameter: connection
-        name: E2E-Storage-ConnectionString
+    - parameter: connection
+      name: {{.SecretManagerSecretName}}
 `
 
-	deploymentTemplate = `
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{.DeploymentName}}
-  namespace: {{.TestNamespace}}
-  labels:
-    app: {{.DeploymentName}}
-spec:
-  replicas: 0
-  selector:
-    matchLabels:
-      app: {{.DeploymentName}}
-  template:
-    metadata:
-      labels:
-        app: {{.DeploymentName}}
-    spec:
-      containers:
-      - name: nginx
-        image: nginxinc/nginx-unprivileged
-        ports:
-        - containerPort: 80
-`
-
-	scaledObjectTemplate = `
-apiVersion: keda.sh/v1alpha1
+	scaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: {{.ScaledObjectName}}
   namespace: {{.TestNamespace}}
-  labels:
-    app: {{.DeploymentName}}
 spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
-  maxReplicaCount: 2
-  minReplicaCount: 0
-  cooldownPeriod: 1
+  pollingInterval: 5
+  cooldownPeriod:  10
+  minReplicaCount: {{.MinReplicaCount}}
+  maxReplicaCount: {{.MaxReplicaCount}}
   triggers:
-    - type: aws-sqs-queue
-      authenticationRef:
-        name: keda-trigger-auth-aws-credentials
-      metadata:
-        awsRegion: {{.AwsRegion}}
-        queueURL: {{.SqsQueue}}
-        queueLength: "1"
-        activationQueueLength: "5"
+  - type: postgresql
+    metadata:
+      targetQueryValue: "4"
+      activationTargetQueryValue: "5"
+      query: "SELECT CEIL(COUNT(*) / 5) FROM task_instance WHERE state='running' OR state='queued'"
+    authenticationRef:
+      name: {{.TriggerAuthenticationName}}
+`
+
+	postgreSQLStatefulSetTemplate = `apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: {{.PostgreSQLStatefulSetName}}
+  name: {{.PostgreSQLStatefulSetName}}
+  namespace: {{.TestNamespace}}
+spec:
+  replicas: 1
+  serviceName: {{.PostgreSQLStatefulSetName}}
+  selector:
+    matchLabels:
+      app: {{.PostgreSQLStatefulSetName}}
+  template:
+    metadata:
+      labels:
+        app: {{.PostgreSQLStatefulSetName}}
+    spec:
+      containers:
+      - image: postgres:10.5
+        name: postgresql
+        env:
+          - name: POSTGRES_USER
+            value: {{.PostgreSQLUsername}}
+          - name: POSTGRES_PASSWORD
+            value: {{.PostgreSQLPassword}}
+          - name: POSTGRES_DB
+            value: {{.PostgreSQLDatabase}}
+        ports:
+          - name: postgresql
+            protocol: TCP
+            containerPort: 5432
+`
+
+	postgreSQLServiceTemplate = `apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: {{.PostgreSQLStatefulSetName}}
+  name: {{.PostgreSQLStatefulSetName}}
+  namespace: {{.TestNamespace}}
+spec:
+  ports:
+  - port: 5432
+    protocol: TCP
+    targetPort: 5432
+  selector:
+    app: {{.PostgreSQLStatefulSetName}}
+  type: ClusterIP
+`
+
+	lowLevelRecordsJobTemplate = `apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app: postgresql-insert-low-level-job
+  name: postgresql-insert-low-level-job
+  namespace: {{.TestNamespace}}
+spec:
+  template:
+    metadata:
+      labels:
+        app: postgresql-insert-low-level-job
+    spec:
+      containers:
+      - image: ghcr.io/kedacore/tests-postgresql
+        imagePullPolicy: Always
+        name: postgresql-processor-test
+        command:
+          - /app
+          - insert
+        env:
+          - name: TASK_INSTANCES_COUNT
+            value: "20"
+          - name: CONNECTION_STRING
+            valueFrom:
+              secretKeyRef:
+                name: {{.SecretName}}
+                key: postgresql_conn_str
+      restartPolicy: Never
+  backoffLimit: 4
+`
+
+	insertRecordsJobTemplate = `apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app: postgresql-insert-job
+  name: postgresql-insert-job
+  namespace: {{.TestNamespace}}
+spec:
+  template:
+    metadata:
+      labels:
+        app: postgresql-insert-job
+    spec:
+      containers:
+      - image: ghcr.io/kedacore/tests-postgresql
+        imagePullPolicy: Always
+        name: postgresql-processor-test
+        command:
+          - /app
+          - insert
+        env:
+          - name: TASK_INSTANCES_COUNT
+            value: "10000"
+          - name: CONNECTION_STRING
+            valueFrom:
+              secretKeyRef:
+                name: {{.SecretName}}
+                key: postgresql_conn_str
+      restartPolicy: Never
+  backoffLimit: 4
 `
 )
 
-var (
-	testNamespace      = fmt.Sprintf("%s-ns", testName)
-	deploymentName     = fmt.Sprintf("%s-deployment", testName)
-	scaledObjectName   = fmt.Sprintf("%s-so", testName)
-	secretName         = fmt.Sprintf("%s-secret", testName)
-	sqsQueueName       = fmt.Sprintf("queue-%d", GetRandomNumber())
-	awsAccessKeyID     = os.Getenv("TF_AWS_ACCESS_KEY")
-	awsSecretAccessKey = os.Getenv("TF_AWS_SECRET_KEY")
-	awsRegion          = os.Getenv("TF_AWS_REGION")
-	maxReplicaCount    = 2
-	minReplicaCount    = 0
-)
+func TestPostgreSQLScaler(t *testing.T) {
+	require.NotEmpty(t, awsAccessKeyID, "TF_AWS_ACCESS_KEY env variable is required for AWS Secret Manager test")
+	require.NotEmpty(t, awsSecretAccessKey, "TF_AWS_SECRET_KEY env variable is required for AWS Secret Manager test")
 
-func TestSqsScaler(t *testing.T) {
-	// setup SQS
-	sqsClient := createSqsClient()
-	queue := createSqsQueue(t, sqsClient)
+	// Create the secret in GCP
+	err := createAWSSecret(t)
+	assert.NoErrorf(t, err, "cannot create GCP Secret Manager secret - %s", err)
 
-	// Create kubernetes resources
+	// Create kubernetes resources for PostgreSQL server
 	kc := GetKubernetesClient(t)
-	data, templates := getTemplateData(*queue.QueueUrl)
-	CreateKubernetesResources(t, kc, testNamespace, data, templates)
+	data, postgreSQLtemplates := getPostgreSQLTemplateData()
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
-		"replica count should be 0 after 1 minute")
+	CreateKubernetesResources(t, kc, testNamespace, data, postgreSQLtemplates)
 
-	// test scaling
-	testActivation(t, kc, sqsClient, queue.QueueUrl)
-	testScaleOut(t, kc, sqsClient, queue.QueueUrl)
-	testScaleIn(t, kc, sqsClient, queue.QueueUrl)
+	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, postgreSQLStatefulSetName, testNamespace, 1, 60, 3),
+		"replica count should be %d after 3 minutes", 1)
+
+	createTableSQL := "CREATE TABLE task_instance (id serial PRIMARY KEY,state VARCHAR(10));"
+	psqlCreateTableCmd := fmt.Sprintf("psql -U %s -d %s -c \"%s\"", postgreSQLUsername, postgreSQLDatabase, createTableSQL)
+
+	ok, out, errOut, err := WaitForSuccessfulExecCommandOnSpecificPod(t, postgresqlPodName, testNamespace, psqlCreateTableCmd, 60, 3)
+	assert.True(t, ok, "executing a command on PostreSQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", out, errOut, err)
+
+	// Create kubernetes resources for testing
+	data, templates := getTemplateData()
+
+	KubectlApplyMultipleWithTemplate(t, data, templates)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
+		"replica count should be %d after 3 minutes", minReplicaCount)
+
+	testActivation(t, kc, data)
+	testScaleOut(t, kc, data)
+	testScaleIn(t, kc)
 
 	// cleanup
-	DeleteKubernetesResources(t, testNamespace, data, templates)
-	cleanupQueue(t, sqsClient, queue.QueueUrl)
+	KubectlDeleteMultipleWithTemplate(t, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, postgreSQLtemplates)
+
+	// Delete the secret in GCP
+	err = deleteAWSSecret(t)
+	assert.NoErrorf(t, err, "cannot delete GCP Secret Manager secret - %s", err)
 }
 
-func testActivation(t *testing.T, kc *kubernetes.Clientset, sqsClient *sqs.Client, queueURL *string) {
-	t.Log("--- testing activation ---")
-	addMessages(t, sqsClient, queueURL, 4)
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
+var data = templateData{
+	TestNamespace:                    testNamespace,
+	PostgreSQLStatefulSetName:        postgreSQLStatefulSetName,
+	DeploymentName:                   deploymentName,
+	ScaledObjectName:                 scaledObjectName,
+	MinReplicaCount:                  minReplicaCount,
+	MaxReplicaCount:                  maxReplicaCount,
+	TriggerAuthenticationName:        triggerAuthenticationName,
+	SecretName:                       secretName,
+	PostgreSQLUsername:               postgreSQLUsername,
+	PostgreSQLPassword:               postgreSQLPassword,
+	PostgreSQLDatabase:               postgreSQLDatabase,
+	PostgreSQLConnectionStringBase64: base64.StdEncoding.EncodeToString([]byte(postgreSQLConnectionString)),
+	SecretManagerSecretName:          secretManagerSecretName,
+	AwsAccessKeyID:                   base64.StdEncoding.EncodeToString([]byte(awsAccessKeyID)),
+	AwsSecretAccessKey:               base64.StdEncoding.EncodeToString([]byte(awsSecretAccessKey)),
+	AwsRegion:                        awsRegion,
+	AwsCredentialsSecretName:         awsCredentialsSecretName,
 }
 
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset, sqsClient *sqs.Client, queueURL *string) {
-	t.Log("--- testing scale out ---")
-	addMessages(t, sqsClient, queueURL, 6)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 180, 1),
-		"replica count should be 2 after 3 minutes")
-}
-
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset, sqsClient *sqs.Client, queueURL *string) {
-	t.Log("--- testing scale in ---")
-	_, err := sqsClient.PurgeQueue(context.Background(), &sqs.PurgeQueueInput{
-		QueueUrl: queueURL,
-	})
-	assert.NoErrorf(t, err, "cannot clear queue - %s", err)
-
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 180, 1),
-		"replica count should be 0 after 3 minutes")
-}
-
-func addMessages(t *testing.T, sqsClient *sqs.Client, queueURL *string, messages int) {
-	for i := 0; i < messages; i++ {
-		msg := fmt.Sprintf("Message - %d", i)
-		_, err := sqsClient.SendMessage(context.Background(), &sqs.SendMessageInput{
-			QueueUrl:     queueURL,
-			MessageBody:  aws.String(msg),
-			DelaySeconds: 10,
-		})
-		assert.NoErrorf(t, err, "cannot send message - %s", err)
+func getPostgreSQLTemplateData() (templateData, []Template) {
+	return data, []Template{
+		{Name: "postgreSQLStatefulSetTemplate", Config: postgreSQLStatefulSetTemplate},
+		{Name: "postgreSQLServiceTemplate", Config: postgreSQLServiceTemplate},
 	}
 }
 
-func createSqsQueue(t *testing.T, sqsClient *sqs.Client) *sqs.CreateQueueOutput {
-	queue, err := sqsClient.CreateQueue(context.Background(), &sqs.CreateQueueInput{
-		QueueName: &sqsQueueName,
-		Attributes: map[string]string{
-			"DelaySeconds":           "60",
-			"MessageRetentionPeriod": "86400",
-		}})
-	assert.NoErrorf(t, err, "failed to create queue - %s", err)
-	return queue
+func getTemplateData() (templateData, []Template) {
+	return data, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		{Name: "awsCredentialsSecretTemplate", Config: awsCredentialsSecretTemplate},
+	}
 }
 
-func cleanupQueue(t *testing.T, sqsClient *sqs.Client, queueURL *string) {
-	t.Log("--- cleaning up ---")
-	_, err := sqsClient.DeleteQueue(context.Background(), &sqs.DeleteQueueInput{
-		QueueUrl: queueURL,
+func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing activation ---")
+	KubectlApplyWithTemplate(t, data, "lowLevelRecordsJobTemplate", lowLevelRecordsJobTemplate)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
+}
+
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing scale out ---")
+	KubectlApplyWithTemplate(t, data, "insertRecordsJobTemplate", insertRecordsJobTemplate)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
+		"replica count should be %d after 3 minutes", maxReplicaCount)
+}
+
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale in ---")
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
+		"replica count should be %d after 3 minutes", minReplicaCount)
+}
+
+func createAWSSecret(t *testing.T) error {
+	ctx := context.Background()
+
+	// Create an AWS session
+	awsSession, err := session.NewSession(&aws.Config{
+		Region:      &awsRegion,
+		Credentials: credentials.NewStaticCredentials(awsAccessKeyID, awsSecretAccessKey, ""),
 	})
-	assert.NoErrorf(t, err, "cannot delete queue - %s", err)
+	if err != nil {
+		return fmt.Errorf("failed to create AWS session: %w", err)
+	}
+
+	// Create a Secrets Manager client
+	client := secretsmanager.New(awsSession)
+
+	// Create the secret value
+	secretValue := []byte(postgreSQLConnectionString)
+	_, err = client.CreateSecretWithContext(ctx, &secretsmanager.CreateSecretInput{
+		Name:         aws.String(secretManagerSecretName),
+		SecretBinary: secretValue,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create AWS Secret Manager secret: %w", err)
+	}
+
+	t.Log("Created secret in AWS Secret Manager.")
+
+	return nil
 }
 
-func createSqsClient() *sqs.Client {
-	configOptions := make([]func(*config.LoadOptions) error, 0)
-	configOptions = append(configOptions, config.WithRegion(awsRegion))
-	cfg, _ := config.LoadDefaultConfig(context.TODO(), configOptions...)
-	cfg.Credentials = credentials.NewStaticCredentialsProvider(awsAccessKeyID, awsSecretAccessKey, "")
-	return sqs.NewFromConfig(cfg)
-}
+func deleteAWSSecret(t *testing.T) error {
+	ctx := context.Background()
 
-func getTemplateData(sqsQueue string) (templateData, []Template) {
-	return templateData{
-			TestNamespace:      testNamespace,
-			DeploymentName:     deploymentName,
-			ScaledObjectName:   scaledObjectName,
-			SecretName:         secretName,
-			AwsAccessKeyID:     base64.StdEncoding.EncodeToString([]byte(awsAccessKeyID)),
-			AwsSecretAccessKey: base64.StdEncoding.EncodeToString([]byte(awsSecretAccessKey)),
-			AwsRegion:          awsRegion,
-			SqsQueue:           sqsQueue,
-		}, []Template{
-			{Name: "secretTemplate", Config: secretTemplate},
-			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		}
+	// Create an AWS session
+	awsSession, err := session.NewSession(&aws.Config{
+		Region:      &awsRegion,
+		Credentials: credentials.NewStaticCredentials(awsAccessKeyID, awsSecretAccessKey, ""),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create AWS session: %w", err)
+	}
+
+	// Create a Secrets Manager client
+	client := secretsmanager.New(awsSession)
+
+	// Delete the secret
+	_, err = client.DeleteSecretWithContext(ctx, &secretsmanager.DeleteSecretInput{
+		SecretId:                   aws.String(secretManagerSecretName),
+		ForceDeleteWithoutRecovery: aws.Bool(true),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete AWS Secret Manager secret: %w", err)
+	}
+
+	t.Log("Deleted secret from AWS Secret Manager.")
+
+	return nil
 }
