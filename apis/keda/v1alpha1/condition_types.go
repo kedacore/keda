@@ -37,8 +37,8 @@ const (
 )
 
 const (
-	// ScaledObjectConditionReadySucccesReason defines the default Reason for correct ScaledObject
-	ScaledObjectConditionReadySucccesReason = "ScaledObjectReady"
+	// ScaledObjectConditionReadySuccessReason defines the default Reason for correct ScaledObject
+	ScaledObjectConditionReadySuccessReason = "ScaledObjectReady"
 	// ScaledObjectConditionReadySuccessMessage defines the default Message for correct ScaledObject
 	ScaledObjectConditionReadySuccessMessage = "ScaledObject is defined correctly and is ready for scaling"
 	// ScaledObjectConditionPausedReason defines the default Reason for paused ScaledObject
