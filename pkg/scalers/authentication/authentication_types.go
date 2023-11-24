@@ -1,6 +1,9 @@
 package authentication
 
-import "time"
+import (
+	"net/url"
+	"time"
+)
 
 // Type describes the authentication type used in a scaler
 type Type string
@@ -45,11 +48,12 @@ type AuthMeta struct {
 	CA        string
 
 	// oAuth2
-	EnableOAuth   bool
-	OauthTokenURI string
-	Scopes        []string
-	ClientID      string
-	ClientSecret  string
+	EnableOAuth    bool
+	OauthTokenURI  string
+	Scopes         []string
+	ClientID       string
+	ClientSecret   string
+	EndpointParams url.Values
 
 	// custom auth header
 	EnableCustomAuth bool

@@ -137,6 +137,23 @@ spec:
                 - secrets
                 - vaultUri
                 type: object
+              configMapTargetRef:
+                items:
+                  description: AuthConfigMapTargetRef is used to authenticate using
+                    a reference to a config map
+                  properties:
+                    key:
+                      type: string
+                    name:
+                      type: string
+                    parameter:
+                      type: string
+                  required:
+                  - key
+                  - name
+                  - parameter
+                  type: object
+                type: array
               env:
                 items:
                   description: AuthEnvironment is used to authenticate using environment
@@ -188,6 +205,26 @@ spec:
                         parameter:
                           type: string
                         path:
+                          type: string
+                        pkiData:
+                          properties:
+                            altNames:
+                              type: string
+                            commonName:
+                              type: string
+                            format:
+                              type: string
+                            ipSans:
+                              type: string
+                            otherSans:
+                              type: string
+                            ttl:
+                              type: string
+                            uriSans:
+                              type: string
+                          type: object
+                        type:
+                          description: VaultSecretType defines the type of vault secret
                           type: string
                       required:
                       - key

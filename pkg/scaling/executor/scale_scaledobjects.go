@@ -74,7 +74,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	readyCondition := scaledObject.Status.Conditions.GetReadyCondition()
 	if !isError && !readyCondition.IsTrue() {
 		if err := e.setReadyCondition(ctx, logger, scaledObject, metav1.ConditionTrue,
-			kedav1alpha1.ScaledObjectConditionReadySucccesReason, kedav1alpha1.ScaledObjectConditionReadySuccessMessage); err != nil {
+			kedav1alpha1.ScaledObjectConditionReadySuccessReason, kedav1alpha1.ScaledObjectConditionReadySuccessMessage); err != nil {
 			logger.Error(err, "error setting ready condition")
 		}
 	}
@@ -83,7 +83,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	pausedCount, err := GetPausedReplicaCount(scaledObject)
 	if err != nil {
 		if err := e.setReadyCondition(ctx, logger, scaledObject, metav1.ConditionFalse,
-			kedav1alpha1.ScaledObjectConditionReadySucccesReason, kedav1alpha1.ScaledObjectConditionReadySuccessMessage); err != nil {
+			kedav1alpha1.ScaledObjectConditionReadySuccessReason, kedav1alpha1.ScaledObjectConditionReadySuccessMessage); err != nil {
 			logger.Error(err, "error setting ready condition")
 		}
 		logger.Error(err, "error getting the paused replica count on the current ScaledObject.")
@@ -97,7 +97,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 			if err != nil {
 				logger.Error(err, "error scaling target to paused replicas count", "paused replicas", *pausedCount)
 				if err := e.setReadyCondition(ctx, logger, scaledObject, metav1.ConditionUnknown,
-					kedav1alpha1.ScaledObjectConditionReadySucccesReason, kedav1alpha1.ScaledObjectConditionReadySuccessMessage); err != nil {
+					kedav1alpha1.ScaledObjectConditionReadySuccessReason, kedav1alpha1.ScaledObjectConditionReadySuccessMessage); err != nil {
 					logger.Error(err, "error setting ready condition")
 				}
 				return

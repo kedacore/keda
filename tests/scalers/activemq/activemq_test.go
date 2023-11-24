@@ -145,7 +145,6 @@ spec:
         - containerPort: 1883
           name: mqtt
           protocol: TCP
-        resources:
         volumeMounts:
         - name: remote-access-cm
           mountPath: /opt/apache-activemq-5.16.3/webapps/api/WEB-INF/classes/jolokia-access.xml

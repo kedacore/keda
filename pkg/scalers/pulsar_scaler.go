@@ -229,6 +229,13 @@ func parsePulsarMetadata(config *ScalerConfig, logger logr.Logger) (pulsarMetada
 		if auth.ClientSecret == "" {
 			auth.ClientSecret = time.Now().String()
 		}
+		if auth.EndpointParams == nil {
+			v, err := authentication.ParseEndpointParams(config.TriggerMetadata["EndpointParams"])
+			if err != nil {
+				return meta, fmt.Errorf("error parsing EndpointParams: %s", config.TriggerMetadata["EndpointParams"])
+			}
+			auth.EndpointParams = v
+		}
 	}
 	meta.pulsarAuth = auth
 	meta.scalerIndex = config.ScalerIndex
@@ -246,10 +253,11 @@ func (s *pulsarScaler) GetStats(ctx context.Context) (*pulsarStats, error) {
 	client := s.client
 	if s.metadata.pulsarAuth.EnableOAuth {
 		config := clientcredentials.Config{
-			ClientID:     s.metadata.pulsarAuth.ClientID,
-			ClientSecret: s.metadata.pulsarAuth.ClientSecret,
-			TokenURL:     s.metadata.pulsarAuth.OauthTokenURI,
-			Scopes:       s.metadata.pulsarAuth.Scopes,
+			ClientID:       s.metadata.pulsarAuth.ClientID,
+			ClientSecret:   s.metadata.pulsarAuth.ClientSecret,
+			TokenURL:       s.metadata.pulsarAuth.OauthTokenURI,
+			Scopes:         s.metadata.pulsarAuth.Scopes,
+			EndpointParams: s.metadata.pulsarAuth.EndpointParams,
 		}
 		client = config.Client(context.Background())
 	}
@@ -298,7 +306,7 @@ func (s *pulsarScaler) getMsgBackLog(ctx context.Context) (int64, bool, error) {
 	return v.Msgbacklog, found, nil
 }
 
-// GetGetMetricsAndActivityMetrics returns value for a supported metric and an error if there is a problem getting the metric
+// GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *pulsarScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	msgBacklog, found, err := s.getMsgBackLog(ctx)
 	if err != nil {

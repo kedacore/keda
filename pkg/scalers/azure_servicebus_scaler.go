@@ -227,7 +227,7 @@ func (s *azureServiceBusScaler) Close(context.Context) error {
 	return nil
 }
 
-// Returns the metric spec to be used by the HPA
+// GetMetricSpecForScaling returns the metric spec to be used by the HPA
 func (s *azureServiceBusScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	metricName := ""
 

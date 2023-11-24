@@ -82,7 +82,6 @@ spec:
       containers:
         - name: {{.DeploymentName}}
           image: ghcr.io/kedacore/tests-azure-queue
-          resources:
           env:
             - name: FUNCTIONS_WORKER_RUNTIME
               value: node

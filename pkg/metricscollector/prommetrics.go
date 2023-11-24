@@ -75,6 +75,15 @@ var (
 		},
 		metricLabels,
 	)
+	scaledObjectPaused = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "scaled_object",
+			Name:      "paused",
+			Help:      "Indicates whether a ScaledObject is paused",
+		},
+		[]string{"namespace", "scaledObject"},
+	)
 	scalerErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: DefaultPromMetricsNamespace,
@@ -134,6 +143,7 @@ func NewPromMetrics() *PromMetrics {
 	metrics.Registry.MustRegister(scalerActive)
 	metrics.Registry.MustRegister(scalerErrors)
 	metrics.Registry.MustRegister(scaledObjectErrors)
+	metrics.Registry.MustRegister(scaledObjectPaused)
 
 	metrics.Registry.MustRegister(triggerTotalsGaugeVec)
 	metrics.Registry.MustRegister(crdTotalsGaugeVec)
@@ -158,7 +168,7 @@ func (p *PromMetrics) RecordScalerLatency(namespace string, scaledObject string,
 	scalerMetricsLatency.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Set(value)
 }
 
-// RecordScaledObjectLatency create a measurement of the latency executing scalable object loop
+// RecordScalableObjectLatency create a measurement of the latency executing scalable object loop
 func (p *PromMetrics) RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value float64) {
 	resourceType := "scaledjob"
 	if isScaledObject {
@@ -177,6 +187,18 @@ func (p *PromMetrics) RecordScalerActive(namespace string, scaledObject string, 
 	scalerActive.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Set(float64(activeVal))
 }
 
+// RecordScaledObjectPaused marks whether the current ScaledObject is paused.
+func (p *PromMetrics) RecordScaledObjectPaused(namespace string, scaledObject string, active bool) {
+	labels := prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject}
+
+	activeVal := 0
+	if active {
+		activeVal = 1
+	}
+
+	scaledObjectPaused.With(labels).Set(float64(activeVal))
+}
+
 // RecordScalerError counts the number of errors occurred in trying get an external metric used by the HPA
 func (p *PromMetrics) RecordScalerError(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, err error) {
 	if err != nil {
@@ -192,7 +214,7 @@ func (p *PromMetrics) RecordScalerError(namespace string, scaledObject string, s
 	}
 }
 
-// RecordScaleObjectError counts the number of errors with the scaled object
+// RecordScaledObjectError counts the number of errors with the scaled object
 func (p *PromMetrics) RecordScaledObjectError(namespace string, scaledObject string, err error) {
 	labels := prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject}
 	if err != nil {

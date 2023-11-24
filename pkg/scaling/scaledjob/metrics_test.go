@@ -10,7 +10,7 @@ import (
 
 func TestTargetAverageValue(t *testing.T) {
 	// count = 0
-	specs := []v2.MetricSpec{}
+	var specs []v2.MetricSpec
 	metricName := "s0-messageCount"
 	targetAverageValue := getTargetAverageValue(specs)
 	assert.Equal(t, float64(0), targetAverageValue)

@@ -60,6 +60,7 @@ type apacheKafkaMetadata struct {
 	// If an invalid offset is found, whether to scale to 1 (false - the default) so consumption can
 	// occur or scale to 0 (true). See discussion in https://github.com/kedacore/keda/issues/2612
 	scaleToZeroOnInvalidOffset bool
+	limitToPartitionsWithLag   bool
 
 	// SASL
 	saslType kafkaSaslType
@@ -339,6 +340,22 @@ func parseApacheKafkaMetadata(config *ScalerConfig, logger logr.Logger) (apacheK
 		meta.scaleToZeroOnInvalidOffset = t
 	}
 
+	meta.limitToPartitionsWithLag = false
+	if val, ok := config.TriggerMetadata["limitToPartitionsWithLag"]; ok {
+		t, err := strconv.ParseBool(val)
+		if err != nil {
+			return meta, fmt.Errorf("error parsing limitToPartitionsWithLag: %w", err)
+		}
+		meta.limitToPartitionsWithLag = t
+
+		if meta.allowIdleConsumers && meta.limitToPartitionsWithLag {
+			return meta, fmt.Errorf("allowIdleConsumers and limitToPartitionsWithLag cannot be set simultaneously")
+		}
+		if len(meta.topic) == 0 && meta.limitToPartitionsWithLag {
+			return meta, fmt.Errorf("topic must be specified when using limitToPartitionsWithLag")
+		}
+	}
+
 	meta.scalerIndex = config.ScalerIndex
 	return meta, nil
 }
@@ -409,7 +426,7 @@ func (s *apacheKafkaScaler) getTopicPartitions(ctx context.Context) (map[string]
 	if err != nil {
 		return nil, fmt.Errorf("error getting metadata: %w", err)
 	}
-	s.logger.V(4).Info(fmt.Sprintf("Listed topics %v", metadata.Topics))
+	s.logger.V(1).Info(fmt.Sprintf("Listed topics %v", metadata.Topics))
 
 	if len(s.metadata.topic) == 0 {
 		// in case of empty topic name, we will get all topics that the consumer group is subscribed to
@@ -639,6 +656,7 @@ func (s *apacheKafkaScaler) getTotalLag(ctx context.Context) (int64, int64, erro
 	totalLag := int64(0)
 	totalLagWithPersistent := int64(0)
 	totalTopicPartitions := int64(0)
+	partitionsWithLag := int64(0)
 
 	for topic, partitionsOffsets := range producerOffsets {
 		for partition := range partitionsOffsets {
@@ -648,6 +666,10 @@ func (s *apacheKafkaScaler) getTotalLag(ctx context.Context) (int64, int64, erro
 			}
 			totalLag += lag
 			totalLagWithPersistent += lagWithPersistent
+
+			if lag > 0 {
+				partitionsWithLag++
+			}
 		}
 		totalTopicPartitions += (int64)(len(partitionsOffsets))
 	}
@@ -655,10 +677,15 @@ func (s *apacheKafkaScaler) getTotalLag(ctx context.Context) (int64, int64, erro
 
 	s.logger.V(1).Info(fmt.Sprintf("Kafka scaler: Consumer offsets %v, producer offsets %v", consumerOffsets, producerOffsets))
 
-	if !s.metadata.allowIdleConsumers {
-		// don't scale out beyond the number of topicPartitions
-		if (totalLag / s.metadata.lagThreshold) > totalTopicPartitions {
-			totalLag = totalTopicPartitions * s.metadata.lagThreshold
+	if !s.metadata.allowIdleConsumers || s.metadata.limitToPartitionsWithLag {
+		// don't scale out beyond the number of topicPartitions or partitionsWithLag depending on settings
+		upperBound := totalTopicPartitions
+		if s.metadata.limitToPartitionsWithLag {
+			upperBound = partitionsWithLag
+		}
+
+		if (totalLag / s.metadata.lagThreshold) > upperBound {
+			totalLag = upperBound * s.metadata.lagThreshold
 		}
 	}
 	return totalLag, totalLagWithPersistent, nil

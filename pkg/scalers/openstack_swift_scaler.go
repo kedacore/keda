@@ -3,18 +3,15 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
-	"path"
 	"strconv"
-	"strings"
 
 	"github.com/go-logr/logr"
+	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/openstack"
+	"github.com/gophercloud/gophercloud/openstack/objectstorage/v1/containers"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
-	"github.com/kedacore/keda/v2/pkg/scalers/openstack"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -54,132 +51,13 @@ type openstackSwiftAuthenticationMetadata struct {
 type openstackSwiftScaler struct {
 	metricType  v2.MetricTargetType
 	metadata    *openstackSwiftMetadata
-	swiftClient openstack.Client
+	swiftClient *gophercloud.ServiceClient
 	logger      logr.Logger
 }
 
-func (s *openstackSwiftScaler) getOpenstackSwiftContainerObjectCount(ctx context.Context) (int64, error) {
-	var containerName = s.metadata.containerName
-	var swiftURL = s.metadata.swiftURL
-
-	isValid, err := s.swiftClient.IsTokenValid(ctx)
-
-	if err != nil {
-		s.logger.Error(err, "scaler could not validate the token for authentication")
-		return 0, err
-	}
-
-	if !isValid {
-		err := s.swiftClient.RenewToken(ctx)
-
-		if err != nil {
-			s.logger.Error(err, "error requesting token for authentication")
-			return 0, err
-		}
-	}
-
-	token := s.swiftClient.Token
-
-	swiftContainerURL, err := url.Parse(swiftURL)
-
-	if err != nil {
-		s.logger.Error(err, fmt.Sprintf("the swiftURL is invalid: %s. You might have forgotten to provide the either 'http' or 'https' in the URL. Check our documentation to see if you missed something", swiftURL))
-		return 0, fmt.Errorf("the swiftURL is invalid: %w", err)
-	}
-
-	swiftContainerURL.Path = path.Join(swiftContainerURL.Path, containerName)
-
-	swiftRequest, _ := http.NewRequestWithContext(ctx, "GET", swiftContainerURL.String(), nil)
-
-	swiftRequest.Header.Set("X-Auth-Token", token)
-
-	query := swiftRequest.URL.Query()
-	query.Add("prefix", s.metadata.objectPrefix)
-	query.Add("delimiter", s.metadata.objectDelimiter)
-
-	// If scaler wants to scale based on only files, we first need to query all objects, then filter files and finally limit the result to the specified query limit
-	if !s.metadata.onlyFiles {
-		query.Add("limit", s.metadata.objectLimit)
-	}
-
-	swiftRequest.URL.RawQuery = query.Encode()
-
-	resp, requestError := s.swiftClient.HTTPClient.Do(swiftRequest)
-
-	if requestError != nil {
-		s.logger.Error(requestError, fmt.Sprintf("error getting metrics for container '%s'. You probably specified the wrong swift URL or the URL is not reachable", containerName))
-		return 0, requestError
-	}
-
-	defer resp.Body.Close()
-
-	body, readError := io.ReadAll(resp.Body)
-
-	if readError != nil {
-		s.logger.Error(readError, "could not read response body from Swift API")
-		return 0, readError
-	}
-	if resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices {
-		var objectsList = strings.Split(strings.TrimSpace(string(body)), "\n")
-
-		// If onlyFiles is set to "true", return the total amount of files (excluding empty objects/folders)
-		if s.metadata.onlyFiles {
-			var count int64
-			for i := 0; i < len(objectsList); i++ {
-				if !strings.HasSuffix(objectsList[i], "/") {
-					count++
-				}
-			}
-
-			if s.metadata.objectLimit != defaultObjectLimit {
-				objectLimit, conversionError := strconv.ParseInt(s.metadata.objectLimit, 10, 64)
-
-				if conversionError != nil {
-					s.logger.Error(err, fmt.Sprintf("the objectLimit value provided is invalid: %v", s.metadata.objectLimit))
-					return 0, conversionError
-				}
-
-				if objectLimit <= count && s.metadata.objectLimit != defaultObjectLimit {
-					return objectLimit, nil
-				}
-			}
-
-			return count, nil
-		}
-
-		// Otherwise, if either prefix and/or delimiter are provided, return the total amount of objects
-		if s.metadata.objectPrefix != defaultObjectPrefix || s.metadata.objectDelimiter != defaultObjectDelimiter {
-			return int64(len(objectsList)), nil
-		}
-
-		// Finally, if nothing is set, return the standard total amount of objects inside the container
-		objectCount, conversionError := strconv.ParseInt(resp.Header["X-Container-Object-Count"][0], 10, 64)
-		return objectCount, conversionError
-	}
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		s.logger.Error(nil, "the retrieved token is not a valid token. Provide the correct auth credentials so the scaler can retrieve a valid access token (Unauthorized)")
-		return 0, fmt.Errorf("the retrieved token is not a valid token. Provide the correct auth credentials so the scaler can retrieve a valid access token (Unauthorized)")
-	}
-
-	if resp.StatusCode == http.StatusForbidden {
-		s.logger.Error(nil, "the retrieved token is a valid token, but it does not have sufficient permission to retrieve Swift and/or container metadata (Forbidden)")
-		return 0, fmt.Errorf("the retrieved token is a valid token, but it does not have sufficient permission to retrieve Swift and/or container metadata (Forbidden)")
-	}
-
-	if resp.StatusCode == http.StatusNotFound {
-		s.logger.Error(nil, fmt.Sprintf("the container '%s' does not exist (Not Found)", containerName))
-		return 0, fmt.Errorf("the container '%s' does not exist (Not Found)", containerName)
-	}
-
-	return 0, fmt.Errorf(string(body))
-}
-
 // NewOpenstackSwiftScaler creates a new OpenStack Swift scaler
-func NewOpenstackSwiftScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
-	var authRequest *openstack.KeystoneAuthRequest
-
-	var swiftClient openstack.Client
+func NewOpenstackSwiftScaler(config *ScalerConfig) (Scaler, error) {
+	var swiftClient *gophercloud.ServiceClient
 
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
@@ -200,42 +78,42 @@ func NewOpenstackSwiftScaler(ctx context.Context, config *ScalerConfig) (Scaler,
 		return nil, fmt.Errorf("error parsing swift authentication metadata: %w", err)
 	}
 
+	// Initialize Gophercloud client
+	var authOpts *gophercloud.AuthOptions
+
 	// User chose the "application_credentials" authentication method
 	if authMetadata.appCredentialID != "" {
-		authRequest, err = openstack.NewAppCredentialsAuth(authMetadata.authURL, authMetadata.appCredentialID, authMetadata.appCredentialSecret, openstackSwiftMetadata.httpClientTimeout)
-		if err != nil {
-			return nil, fmt.Errorf("error getting openstack credentials for application credentials method: %w", err)
+		authOpts = &gophercloud.AuthOptions{
+			IdentityEndpoint:            authMetadata.authURL,
+			ApplicationCredentialID:     authMetadata.appCredentialID,
+			ApplicationCredentialSecret: authMetadata.appCredentialSecret,
 		}
-	} else {
+	} else if authMetadata.userID != "" {
 		// User chose the "password" authentication method
-		if authMetadata.userID != "" {
-			authRequest, err = openstack.NewPasswordAuth(authMetadata.authURL, authMetadata.userID, authMetadata.password, authMetadata.projectID, openstackSwiftMetadata.httpClientTimeout)
-			if err != nil {
-				return nil, fmt.Errorf("error getting openstack credentials for password method: %w", err)
-			}
-		} else {
-			return nil, fmt.Errorf("no authentication method was provided for OpenStack")
+		authOpts = &gophercloud.AuthOptions{
+			IdentityEndpoint: authMetadata.authURL,
+			UserID:           authMetadata.userID,
+			Password:         authMetadata.password,
+			Scope: &gophercloud.AuthScope{
+				ProjectID: authMetadata.projectID,
+			},
 		}
 	}
 
+	provider, err := openstack.AuthenticatedClient(*authOpts)
+	if err != nil {
+		return nil, fmt.Errorf("error getting openstack client: %w", err)
+	}
+
+	swiftClient, err = openstack.NewObjectStorageV1(provider, gophercloud.EndpointOpts{Region: authMetadata.regionName})
+	if err != nil {
+		return nil, fmt.Errorf("error getting openstack swift client: %w", err)
+	}
+
 	if openstackSwiftMetadata.swiftURL == "" {
-		// Request a Client with a token and the Swift API endpoint
-		swiftClient, err = authRequest.RequestClient(ctx, "swift", authMetadata.regionName)
-
-		if err != nil {
-			return nil, fmt.Errorf("swiftURL was not provided and the scaler could not retrieve it dinamically using the OpenStack catalog: %w", err)
-		}
-
-		openstackSwiftMetadata.swiftURL = swiftClient.URL
+		openstackSwiftMetadata.swiftURL = swiftClient.Endpoint
 	} else {
-		// Request a Client with a token, but not the Swift API endpoint
-		swiftClient, err = authRequest.RequestClient(ctx)
-
-		if err != nil {
-			return nil, err
-		}
-
-		swiftClient.URL = openstackSwiftMetadata.swiftURL
+		swiftClient.Endpoint = openstackSwiftMetadata.swiftURL
 	}
 
 	return &openstackSwiftScaler{
@@ -372,14 +250,14 @@ func (s *openstackSwiftScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *openstackSwiftScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	objectCount, err := s.getOpenstackSwiftContainerObjectCount(ctx)
-
+func (s *openstackSwiftScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	containerName := s.metadata.containerName
+	container, err := containers.Get(s.swiftClient, containerName, containers.GetOpts{}).Extract()
 	if err != nil {
-		s.logger.Error(err, "error getting objectCount")
+		s.logger.Error(err, "error getting container details")
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
-
+	objectCount := container.ObjectCount
 	metric := GenerateMetricInMili(metricName, float64(objectCount))
 
 	return []external_metrics.ExternalMetricValue{metric}, objectCount > s.metadata.activationObjectCount, nil

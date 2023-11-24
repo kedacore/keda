@@ -47,7 +47,7 @@ func NewStackDriverClient(ctx context.Context, credentials string) (*StackDriver
 	}, nil
 }
 
-// NewStackDriverClient creates a new stackdriver client with the credentials underlying
+// NewStackDriverClientPodIdentity creates a new stackdriver client with the credentials underlying
 func NewStackDriverClientPodIdentity(ctx context.Context) (*StackDriverClient, error) {
 	client, err := monitoring.NewMetricClient(ctx)
 	if err != nil {

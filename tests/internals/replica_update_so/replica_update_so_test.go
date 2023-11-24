@@ -112,11 +112,6 @@ spec:
         image: nginxinc/nginx-unprivileged
         ports:
         - containerPort: 80
-        resources:
-          requests:
-            cpu: "200m"
-          limits:
-            cpu: "500m"
 `
 
 	metricsServerDeploymentTemplate = `

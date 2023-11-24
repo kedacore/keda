@@ -139,7 +139,6 @@ spec:
         - name: artemis-activemq-artemis
           image: docker.io/vromero/activemq-artemis:2.6.2
           imagePullPolicy:
-          resources:
           env:
             - name: ARTEMIS_PASSWORD
               valueFrom:

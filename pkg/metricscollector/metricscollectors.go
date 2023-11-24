@@ -21,6 +21,7 @@ const (
 	TriggerAuthenticationResource        = "trigger_authentication"
 	ScaledObjectResource                 = "scaled_object"
 	ScaledJobResource                    = "scaled_job"
+	CloudEventSourceResource             = "cloudevent_source"
 
 	DefaultPromMetricsNamespace = "keda"
 )
@@ -35,16 +36,19 @@ type MetricsCollector interface {
 	// RecordScalerLatency create a measurement of the latency to external metric
 	RecordScalerLatency(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64)
 
-	// RecordScaledObjectLatency create a measurement of the latency executing scalable object loop
+	// RecordScalableObjectLatency create a measurement of the latency executing scalable object loop
 	RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value float64)
 
 	// RecordScalerActive create a measurement of the activity of the scaler
 	RecordScalerActive(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, active bool)
 
+	// RecordScaledObjectPaused marks whether the current ScaledObject is paused.
+	RecordScaledObjectPaused(namespace string, scaledObject string, active bool)
+
 	// RecordScalerError counts the number of errors occurred in trying get an external metric used by the HPA
 	RecordScalerError(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, err error)
 
-	// RecordScaleObjectError counts the number of errors with the scaled object
+	// RecordScaledObjectError counts the number of errors with the scaled object
 	RecordScaledObjectError(namespace string, scaledObject string, err error)
 
 	IncrementTriggerTotal(triggerType string)
@@ -82,7 +86,7 @@ func RecordScalerLatency(namespace string, scaledObject string, scaler string, s
 	}
 }
 
-// RecordScaledObjectLatency create a measurement of the latency executing scalable object loop
+// RecordScalableObjectLatency create a measurement of the latency executing scalable object loop
 func RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value float64) {
 	for _, element := range collectors {
 		element.RecordScalableObjectLatency(namespace, name, isScaledObject, value)
@@ -96,6 +100,13 @@ func RecordScalerActive(namespace string, scaledObject string, scaler string, sc
 	}
 }
 
+// RecordScaledObjectPaused marks whether the current ScaledObject is paused.
+func RecordScaledObjectPaused(namespace string, scaledObject string, active bool) {
+	for _, element := range collectors {
+		element.RecordScaledObjectPaused(namespace, scaledObject, active)
+	}
+}
+
 // RecordScalerError counts the number of errors occurred in trying get an external metric used by the HPA
 func RecordScalerError(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, err error) {
 	for _, element := range collectors {
@@ -103,7 +114,7 @@ func RecordScalerError(namespace string, scaledObject string, scaler string, sca
 	}
 }
 
-// RecordScaleObjectError counts the number of errors with the scaled object
+// RecordScaledObjectError counts the number of errors with the scaled object
 func RecordScaledObjectError(namespace string, scaledObject string, err error) {
 	for _, element := range collectors {
 		element.RecordScaledObjectError(namespace, scaledObject, err)
