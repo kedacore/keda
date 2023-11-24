@@ -208,6 +208,22 @@ func GetKubernetesClient(t *testing.T) *kubernetes.Clientset {
 	return KubeClient
 }
 
+func GetKubernetesClientOrError() (*kubernetes.Clientset, error) {
+	if KubeClient != nil && KubeConfig != nil {
+		return KubeClient, nil
+	}
+	var err error
+	KubeConfig, err = config.GetConfig()
+	if err != nil {
+		return nil, err
+	}
+	KubeClient, err = kubernetes.NewForConfig(KubeConfig)
+	if err != nil {
+		return nil, err
+	}
+	return KubeClient, nil
+}
+
 func GetKedaKubernetesClient(t *testing.T) *v1alpha1.KedaV1alpha1Client {
 	if KedaKubeClient != nil && KubeConfig != nil {
 		return KedaKubeClient

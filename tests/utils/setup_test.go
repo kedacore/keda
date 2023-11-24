@@ -27,10 +27,6 @@ func TestVerifyCommands(t *testing.T) {
 	}
 }
 
-func TestKubernetesConnection(t *testing.T) {
-	KubeClient = GetKubernetesClient(t)
-}
-
 func TestKubernetesVersion(t *testing.T) {
 	out, err := ExecuteCommand("kubectl version")
 	require.NoErrorf(t, err, "error getting kubernetes version - %s", err)
@@ -77,7 +73,6 @@ func TestSetupCertManager(t *testing.T) {
 	_, err = ExecuteCommand("helm repo update jetstack")
 	require.NoErrorf(t, err, "cannot update jetstack helm repo - %s", err)
 
-	KubeClient = GetKubernetesClient(t)
 	CreateNamespace(t, KubeClient, CertManagerNamespace)
 
 	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install cert-manager jetstack/cert-manager --namespace %s --set installCRDs=true",
@@ -99,7 +94,6 @@ func TestSetupWorkloadIdentityComponents(t *testing.T) {
 	_, err = ExecuteCommand("helm repo update azure-workload-identity")
 	require.NoErrorf(t, err, "cannot update workload identity helm repo - %s", err)
 
-	KubeClient = GetKubernetesClient(t)
 	CreateNamespace(t, KubeClient, AzureWorkloadIdentityNamespace)
 
 	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace %s --set azureTenantID=%s",
@@ -121,7 +115,6 @@ func TestSetupAwsIdentityComponents(t *testing.T) {
 	_, err = ExecuteCommand("helm repo update jkroepke")
 	require.NoErrorf(t, err, "cannot update jkroepke helm repo - %s", err)
 
-	KubeClient = GetKubernetesClient(t)
 	CreateNamespace(t, KubeClient, AwsIdentityNamespace)
 
 	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install aws-identity-webhook jkroepke/amazon-eks-pod-identity-webhook --namespace %s --set fullnameOverride=aws-identity-webhook",
@@ -143,7 +136,6 @@ func TestSetupGcpIdentityComponents(t *testing.T) {
 	_, err = ExecuteCommand("helm repo update gcp-workload-identity-federation-webhook")
 	require.NoErrorf(t, err, "cannot update gcp-workload-identity-federation-webhook helm repo - %s", err)
 
-	KubeClient = GetKubernetesClient(t)
 	CreateNamespace(t, KubeClient, GcpIdentityNamespace)
 
 	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install gcp-identity-webhook gcp-workload-identity-federation-webhook/gcp-workload-identity-federation-webhook --namespace %s --set fullnameOverride=gcp-identity-webhook --set controllerManager.manager.args[0]=--token-default-mode=0444",
@@ -197,7 +189,6 @@ func TestSetupOpentelemetryComponents(t *testing.T) {
 }
 
 func TestDeployKEDA(t *testing.T) {
-	KubeClient = GetKubernetesClient(t)
 	CreateNamespace(t, KubeClient, KEDANamespace)
 
 	caCtr, _ := GetTestCA(t)
@@ -244,7 +235,6 @@ func TestSetupAadPodIdentityComponents(t *testing.T) {
 	_, err = ExecuteCommand("helm repo update aad-pod-identity")
 	require.NoErrorf(t, err, "cannot update aad pod identity helm repo - %s", err)
 
-	KubeClient = GetKubernetesClient(t)
 	CreateNamespace(t, KubeClient, AzureAdPodIdentityNamespace)
 
 	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install "+
@@ -266,8 +256,6 @@ func TestSetUpStrimzi(t *testing.T) {
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("helm repo update")
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-
-	KubeClient = GetKubernetesClient(t)
 
 	CreateNamespace(t, KubeClient, StrimziNamespace)
 
