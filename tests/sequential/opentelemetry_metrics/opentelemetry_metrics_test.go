@@ -267,7 +267,7 @@ spec:
 `
 )
 
-func TestPrometheusMetrics(t *testing.T) {
+func TestOpentelemetryMetrics(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
 
