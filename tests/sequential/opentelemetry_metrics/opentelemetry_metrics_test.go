@@ -665,7 +665,7 @@ func getLatestCommit(t *testing.T) string {
 func checkTriggerTotalValues(t *testing.T, families map[string]*prommodel.MetricFamily, expected map[string]int) {
 	t.Log("--- testing trigger total metrics ---")
 
-	family, ok := families["keda_trigger_totals"]
+	family, ok := families["keda_triggers_count"]
 	if !ok {
 		t.Errorf("metric not available")
 		return
@@ -694,7 +694,7 @@ func checkTriggerTotalValues(t *testing.T, families map[string]*prommodel.Metric
 func checkCRTotalValues(t *testing.T, families map[string]*prommodel.MetricFamily, expected map[string]map[string]int) {
 	t.Log("--- testing resource total metrics ---")
 
-	family, ok := families["keda_resource_totals"]
+	family, ok := families["keda_resources_count"]
 	if !ok {
 		t.Errorf("metric not available")
 		return
