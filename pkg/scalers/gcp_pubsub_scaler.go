@@ -65,7 +65,7 @@ func NewPubSubScaler(config *ScalerConfig) (Scaler, error) {
 
 func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetadata, error) {
 	// set subscription size to the default mode
-	meta := pubsubMetadata{mode: pubSubModeSubscriptionSize}
+	meta := pubsubMetadata{mode: pubSubModeSubscriptionSize, value: pubSubDefaultValue}
 
 	mode, modePresent := config.TriggerMetadata["mode"]
 	value, valuePresent := config.TriggerMetadata["value"]
@@ -83,7 +83,6 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 	} else {
 		if modePresent {
 			meta.mode = mode
-			meta.value = pubSubDefaultValue
 		}
 
 		if valuePresent {

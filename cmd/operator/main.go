@@ -38,9 +38,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
+	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	eventingcontrollers "github.com/kedacore/keda/v2/controllers/eventing"
 	kedacontrollers "github.com/kedacore/keda/v2/controllers/keda"
 	"github.com/kedacore/keda/v2/pkg/certificates"
+	"github.com/kedacore/keda/v2/pkg/eventemitter"
 	"github.com/kedacore/keda/v2/pkg/k8s"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
@@ -58,6 +61,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(kedav1alpha1.AddToScheme(scheme))
+	utilruntime.Must(eventingv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -77,6 +81,7 @@ func main() {
 	var operatorServiceName string
 	var metricsServerServiceName string
 	var webhooksServiceName string
+	var k8sClusterName string
 	var k8sClusterDomain string
 	var enableCertRotation bool
 	var validatingWebhookName string
@@ -97,6 +102,7 @@ func main() {
 	pflag.StringVar(&operatorServiceName, "operator-service-name", "keda-operator", "Operator service name. Defaults to keda-operator")
 	pflag.StringVar(&metricsServerServiceName, "metrics-server-service-name", "keda-metrics-apiserver", "Metrics server service name. Defaults to keda-metrics-apiserver")
 	pflag.StringVar(&webhooksServiceName, "webhooks-service-name", "keda-admission-webhooks", "Webhook service name. Defaults to keda-admission-webhooks")
+	pflag.StringVar(&k8sClusterName, "k8s-cluster-name", "kubernetes-default", "k8s cluster name. Defaults to kubernetes-default")
 	pflag.StringVar(&k8sClusterDomain, "k8s-cluster-domain", "cluster.local", "Kubernetes cluster domain. Defaults to cluster.local")
 	pflag.BoolVar(&enableCertRotation, "enable-cert-rotation", false, "enable automatic generation and rotation of TLS certificates/keys")
 	pflag.StringVar(&validatingWebhookName, "validating-webhook-name", "keda-admission", "ValidatingWebhookConfiguration name. Defaults to keda-admission")
@@ -186,6 +192,7 @@ func main() {
 
 	globalHTTPTimeout := time.Duration(globalHTTPTimeoutMS) * time.Millisecond
 	eventRecorder := mgr.GetEventRecorderFor("keda-operator")
+	eventEmitter := eventemitter.NewEventEmitter(mgr.GetClient(), eventRecorder, k8sClusterName)
 
 	kubeClientset, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
@@ -216,6 +223,7 @@ func main() {
 		Recorder:     eventRecorder,
 		ScaleClient:  scaleClient,
 		ScaleHandler: scaledHandler,
+		EventEmitter: eventEmitter,
 	}).SetupWithManager(mgr, controller.Options{
 		MaxConcurrentReconciles: scaledObjectMaxReconciles,
 	}); err != nil {
@@ -247,6 +255,13 @@ func main() {
 		EventRecorder: eventRecorder,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterTriggerAuthentication")
+		os.Exit(1)
+	}
+	if err = (eventingcontrollers.NewCloudEventSourceReconciler(
+		mgr.GetClient(),
+		eventEmitter,
+	)).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "CloudEventSource")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
