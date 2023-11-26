@@ -19,7 +19,6 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -86,6 +85,8 @@ var testDataExplorerMetadataWithClientAndSecret = []parseDataExplorerMetadataTes
 		"cloud": "private"}, true},
 	// All parameters set - pass
 	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecretFromEnv": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, false},
+	// False because we should not get clientSecret from TriggerMetadata
+	{map[string]string{"tenantId": azureTenantID, "clientId": aadAppClientID, "clientSecret": aadAppSecret, "endpoint": dataExplorerEndpoint, "databaseName": databaseName, "query": dataExplorerQuery, "threshold": dataExplorerThreshold}, true},
 }
 
 var testDataExplorerMetadataWithPodIdentity = []parseDataExplorerMetadataTestData{
@@ -102,16 +103,14 @@ var testDataExplorerMetadataWithPodIdentity = []parseDataExplorerMetadataTestDat
 }
 
 var testDataExplorerMetricIdentifiers = []dataExplorerMetricIdentifier{
-	{&testDataExplorerMetadataWithClientAndSecret[len(testDataExplorerMetadataWithClientAndSecret)-1], 0, GenerateMetricNameWithIndex(0, kedautil.NormalizeString(fmt.Sprintf("%s-%s", adxName, databaseName)))},
+	{&testDataExplorerMetadataWithClientAndSecret[len(testDataExplorerMetadataWithClientAndSecret)-2], 0, GenerateMetricNameWithIndex(0, kedautil.NormalizeString(fmt.Sprintf("%s-%s", adxName, databaseName)))},
 	{&testDataExplorerMetadataWithPodIdentity[len(testDataExplorerMetadataWithPodIdentity)-1], 1, GenerateMetricNameWithIndex(1, kedautil.NormalizeString(fmt.Sprintf("%s-%s", adxName, databaseName)))},
 }
 
 func TestDataExplorerParseMetadata(t *testing.T) {
 	// Auth through clientId, clientSecret and tenantId
-	for _, testData := range testDataExplorerMetadataWithClientAndSecret {
-		// Setting the key and value of the environment variable to be the same
-		_ = os.Setenv(testData.metadata["clientSecretFromEnv"], testData.metadata["clientSecretFromEnv"])
-		meta, err := parseAzureDataExplorerMetadata(
+	for id, testData := range testDataExplorerMetadataWithClientAndSecret {
+		_, err := parseAzureDataExplorerMetadata(
 			&ScalerConfig{
 				ResolvedEnv:     dataExplorerResolvedEnv,
 				TriggerMetadata: testData.metadata,
@@ -120,13 +119,10 @@ func TestDataExplorerParseMetadata(t *testing.T) {
 			logr.Discard())
 
 		if err != nil && !testData.isError {
-			t.Error("Expected success but got error", err)
+			t.Errorf("Test case %d: expected success but got error %v", id, err)
 		}
 		if testData.isError && err == nil {
-			t.Error("Expected error but got success")
-		}
-		if !testData.isError && err == nil && meta.ClientSecret != testData.metadata["clientSecretFromEnv"] {
-			t.Errorf("Expected clientSecret to be %s but got %s", testData.metadata["clientSecretFromEnv"], meta.ClientSecret)
+			t.Errorf("Test case %d: expected error but got success", id)
 		}
 	}
 
@@ -166,7 +162,7 @@ func TestDataExplorerParseMetadata(t *testing.T) {
 }
 
 func TestDataExplorerGetMetricSpecForScaling(t *testing.T) {
-	for _, testData := range testDataExplorerMetricIdentifiers {
+	for id, testData := range testDataExplorerMetricIdentifiers {
 		meta, err := parseAzureDataExplorerMetadata(
 			&ScalerConfig{
 				ResolvedEnv:     dataExplorerResolvedEnv,
@@ -176,7 +172,7 @@ func TestDataExplorerGetMetricSpecForScaling(t *testing.T) {
 				ScalerIndex:     testData.scalerIndex},
 			logr.Discard())
 		if err != nil {
-			t.Error("Failed to parse metadata:", err)
+			t.Errorf("Test case %d: failed to parse metadata: %v", id, err)
 		}
 
 		mockDataExplorerScaler := azureDataExplorerScaler{
@@ -190,7 +186,7 @@ func TestDataExplorerGetMetricSpecForScaling(t *testing.T) {
 		metricSpec := mockDataExplorerScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
-			t.Error("Wrong External metric source name:", metricName)
+			t.Errorf("Test case %d: wrong External metric source name: %v", id, metricName)
 		}
 	}
 }

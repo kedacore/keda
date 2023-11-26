@@ -19,7 +19,6 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"os"
 	"strconv"
 
 	"github.com/Azure/azure-kusto-go/kusto"
@@ -160,22 +159,16 @@ func parseAzureDataExplorerAuthParams(config *ScalerConfig, logger logr.Logger) 
 		}
 		metadata.ClientID = clientID
 
-		clientSecretEnVar, err := getParameterFromConfig(config, "clientSecretFromEnv", true)
-		if err != nil {
-			return nil, err
+		var clientSecret string
+		if val, ok := config.AuthParams["clientSecret"]; ok && val != "" {
+			clientSecret = val
+		} else if val, ok = config.TriggerMetadata["clientSecretFromEnv"]; ok && val != "" {
+			clientSecret = val
+		} else {
+			return nil, fmt.Errorf("error parsing metadata. Details: clientSecret was not found in metadata. Check your ScaledObject configuration")
 		}
-		clientSecretFromEnv := os.Getenv(clientSecretEnVar)
+		metadata.ClientSecret = clientSecret
 
-		var clientSecretFromTrigger string
-		if val, ok := config.TriggerMetadata["clientSecret"]; ok {
-			clientSecretFromTrigger = val
-		}
-
-		if clientSecretFromTrigger != "" {
-			metadata.ClientSecret = clientSecretFromTrigger
-		} else if clientSecretFromEnv != "" {
-			metadata.ClientSecret = clientSecretFromEnv
-		}
 	default:
 		return nil, fmt.Errorf("error parsing auth params")
 	}

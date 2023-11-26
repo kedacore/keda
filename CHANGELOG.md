@@ -83,7 +83,6 @@ Here is an overview of all new **experimental** features:
 
 ### Deprecations
 
-- **General**: Clean up previously deprecated code for 2.13 release ([#5051](https://github.com/kedacore/keda/issues/5051))
 
 You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
 
@@ -94,6 +93,7 @@ New deprecation(s):
 ### Breaking Changes
 
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Clean up previously deprecated code in Azure Data Explorer Scaler about clientSecret for 2.13 release ([#5051](https://github.com/kedacore/keda/issues/5051))
 
 ### Other
 
