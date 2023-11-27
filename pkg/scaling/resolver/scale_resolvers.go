@@ -181,7 +181,7 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 	namespace string, secretsLister corev1listers.SecretLister) (map[string]string, kedav1alpha1.AuthPodIdentity, error) {
 	if podTemplateSpec != nil {
 		authParams, podIdentity, err := resolveAuthRef(ctx, client, logger, triggerAuthRef, &podTemplateSpec.Spec, namespace, secretsLister)
-		
+
 		if err != nil {
 			return authParams, podIdentity, err
 		}
