@@ -16,6 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.12.1](#v2121)
 - [v2.12.0](#v2120)
 - [v2.11.2](#v2112)
 - [v2.11.1](#v2111)
@@ -100,6 +101,17 @@ New deprecation(s):
 - **General**: Support profiling for KEDA components ([#4789](https://github.com/kedacore/keda/issues/4789))
 - **Hashicorp Vault**: Improve test coverage in `pkg/scaling/resolver/hashicorpvault_handler`  ([#5195](https://github.com/kedacore/keda/issues/5195))
 - **Openstack Scaler**: Use Gophercloud SDK ([#3439](https://github.com/kedacore/keda/issues/3439))
+
+## v2.12.1
+
+### Fixes
+
+- **General**: Fix CVE-2023-39325 in golang.org/x/net ([#5122](https://github.com/kedacore/keda/issues/5122))
+- **General**: Fix CVE-2023-45142 in Opentelemetry ([#5089](https://github.com/kedacore/keda/issues/5089))
+- **General**: Fix logger in Opentelemetry collector ([#5094](https://github.com/kedacore/keda/issues/5094))
+- **General**: Fix otelgrpc DoS vulnerability ([#5208](https://github.com/kedacore/keda/issues/5208))
+- **General**: Prevented stuck status due to timeouts during scalers generation ([#5083](https://github.com/kedacore/keda/issues/5083))
+- **Azure Pipelines**: No more HTTP 400 errors produced by poolName with spaces ([#5107](https://github.com/kedacore/keda/issues/5107))
 
 ## v2.12.0
 
