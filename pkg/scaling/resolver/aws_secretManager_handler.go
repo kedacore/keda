@@ -7,12 +7,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/go-logr/logr"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -72,8 +69,8 @@ func (ash *AwsSecretManagerHandler) Read(secretName, versionID, versionStage str
 	return *result.SecretString, nil
 }
 
-func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client client.Client, logger logr.Logger, triggerNamespace string, secretsLister corev1listers.SecretLister, podTemplateSpec *corev1.PodTemplateSpec) error {
-	config, err := ash.getcredentials(ctx, client, logger, triggerNamespace, secretsLister, podTemplateSpec)
+func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client client.Client, logger logr.Logger, triggerNamespace string, secretsLister corev1listers.SecretLister) error {
+	config, err := ash.getcredentials(ctx, client, logger, triggerNamespace, secretsLister)
 	if err != nil {
 		return err
 	}
@@ -88,7 +85,7 @@ func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client clien
 	return err
 }
 
-func (ash *AwsSecretManagerHandler) getcredentials(ctx context.Context, client client.Client, logger logr.Logger, triggerNamespace string, secretsLister corev1listers.SecretLister, podTemplateSpec *corev1.PodTemplateSpec) (*aws.Config, error) {
+func (ash *AwsSecretManagerHandler) getcredentials(ctx context.Context, client client.Client, logger logr.Logger, triggerNamespace string, secretsLister corev1listers.SecretLister) (*aws.Config, error) {
 	config := aws.NewConfig()
 
 	podIdentity := ash.secretManager.PodIdentity
@@ -106,28 +103,28 @@ func (ash *AwsSecretManagerHandler) getcredentials(ctx context.Context, client c
 		config.WithCredentials(credentials.NewStaticCredentials(accessKeyID, accessSecretKey, ""))
 		return config, nil
 
-	case kedav1alpha1.PodIdentityProviderAwsEKS:
-		awsRoleArn, err := ash.getRoleArnAwsEKS(ctx, client, logger, triggerNamespace, podTemplateSpec)
-		if err != nil {
-			return nil, err
-		}
-		config.WithCredentials(stscreds.NewCredentials(ash.session, awsRoleArn))
-		return config, nil
-	case kedav1alpha1.PodIdentityProviderAwsKiam:
-		awsRoleArn := podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
-		config.WithCredentials(stscreds.NewCredentials(ash.session, awsRoleArn))
-		return config, nil
+	// case kedav1alpha1.PodIdentityProviderAwsEKS:
+	// 	awsRoleArn, err := ash.getRoleArnAwsEKS(ctx, client, logger, triggerNamespace, podTemplateSpec)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	config.WithCredentials(stscreds.NewCredentials(ash.session, awsRoleArn))
+	// 	return config, nil
+	// case kedav1alpha1.PodIdentityProviderAwsKiam:
+	// 	awsRoleArn := podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
+	// 	config.WithCredentials(stscreds.NewCredentials(ash.session, awsRoleArn))
+	// 	return config, nil
 	default:
 		return nil, fmt.Errorf("pod identity provider %s not supported", podIdentity.Provider)
 	}
 }
 
-func (ash *AwsSecretManagerHandler) getRoleArnAwsEKS(ctx context.Context, client client.Client, _ logr.Logger, triggerNamespace string, podTemplateSpec *corev1.PodTemplateSpec) (string, error) {
-	serviceAccountName := podTemplateSpec.Spec.ServiceAccountName
-	serviceAccount := &corev1.ServiceAccount{}
-	err := client.Get(ctx, types.NamespacedName{Name: serviceAccountName, Namespace: triggerNamespace}, serviceAccount)
-	if err != nil {
-		return "", err
-	}
-	return serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS], nil
-}
+// func (ash *AwsSecretManagerHandler) getRoleArnAwsEKS(ctx context.Context, client client.Client, _ logr.Logger, triggerNamespace string, podTemplateSpec *corev1.PodTemplateSpec) (string, error) {
+// 	serviceAccountName := podTemplateSpec.Spec.ServiceAccountName
+// 	serviceAccount := &corev1.ServiceAccount{}
+// 	err := client.Get(ctx, types.NamespacedName{Name: serviceAccountName, Namespace: triggerNamespace}, serviceAccount)
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	return serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS], nil
+// }

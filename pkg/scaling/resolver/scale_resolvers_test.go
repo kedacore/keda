@@ -251,7 +251,7 @@ func TestResolveAuthRef(t *testing.T) {
 		name                string
 		existing            []runtime.Object
 		soar                *kedav1alpha1.AuthenticationRef
-		podTemplateSpec     *corev1.PodTemplateSpec
+		podSpec             *corev1.PodSpec
 		expected            map[string]string
 		expectedPodIdentity kedav1alpha1.AuthPodIdentity
 		isError             bool
@@ -620,7 +620,7 @@ func TestResolveAuthRef(t *testing.T) {
 				fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(test.existing...).Build(),
 				logf.Log.WithName("test"),
 				test.soar,
-				test.podTemplateSpec,
+				test.podSpec,
 				namespace,
 				secretsLister)
 
