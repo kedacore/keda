@@ -16,8 +16,10 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
-- [v2.11.2](#v2110)
-- [v2.11.1](#v2110)
+- [v2.12.1](#v2121)
+- [v2.12.0](#v2210)
+- [v2.11.2](#v2112)
+- [v2.11.1](#v2111)
 - [v2.11.0](#v2110)
 - [v2.10.1](#v2101)
 - [v2.10.0](#v2100)
@@ -63,8 +65,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
-- **General**: Prevented stuck status due to timeouts during scalers generation ([#5083](https://github.com/kedacore/keda/issues/5083))
-- **Azure Pipelines**: No more HTTP 400 errors produced by poolName with spaces ([#5107](https://github.com/kedacore/keda/issues/5107))
+- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ### Deprecations
 
@@ -80,9 +81,18 @@ New deprecation(s):
 
 ### Other
 
+- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+## v2.12.1
+
+### Fixes
+
+- **General**: Fix CVE-2023-39325 in golang.org/x/net ([#5122](https://github.com/kedacore/keda/issues/5122))
 - **General**: Fix CVE-2023-45142 in Opentelemetry ([#5089](https://github.com/kedacore/keda/issues/5089))
 - **General**: Fix logger in Opentelemetry collector ([#5094](https://github.com/kedacore/keda/issues/5094))
 - **General**: Fix otelgrpc DoS vulnerability ([#5208](https://github.com/kedacore/keda/issues/5208))
+- **General**: Prevented stuck status due to timeouts during scalers generation ([#5083](https://github.com/kedacore/keda/issues/5083))
+- **Azure Pipelines**: No more HTTP 400 errors produced by poolName with spaces ([#5107](https://github.com/kedacore/keda/issues/5107))
 
 ## v2.12.0
 
@@ -96,9 +106,9 @@ New deprecation(s):
 
 Here is an overview of all new **experimental** features:
 
+- **General**: Introduce pushing operational metrics to an OpenTelemetry Collector ([#3078](https://github.com/kedacore/keda/issues/3078))
 - **General**: New `apache-kafka` scaler based on kafka-go library ([#4692](https://github.com/kedacore/keda/issues/4692))
 - **General**: Support for formula-based evaluation of metric values ([#2440](https://github.com/kedacore/keda/issues/2440)|[#4998](https://github.com/kedacore/keda/pull/4998))
-- **General**: Introduce pushing operational metrics to an OpenTelemetry Collector ([#3078](https://github.com/kedacore/keda/issues/3078))
 
 ### Improvements
 
