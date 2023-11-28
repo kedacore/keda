@@ -50,6 +50,8 @@ type connectionGroup struct {
 // a pool of connectionGroup per metadata hash
 var connectionPool sync.Map
 
+const grpcConfig = `{"loadBalancingConfig": [{"round_robin":{}}]}`
+
 // NewExternalScaler creates a new external scaler - calls the GRPC interface
 // to create a new scaler
 func NewExternalScaler(config *ScalerConfig) (Scaler, error) {
@@ -302,7 +304,6 @@ func getClientForConnectionPool(metadata externalScalerMetadata, logger logr.Log
 	connectionPoolMutex.Lock()
 	defer connectionPoolMutex.Unlock()
 
-	defaultConfig := `{"loadBalancingConfig": [{"round_robin":{}}]}`
 	buildGRPCConnection := func(metadata externalScalerMetadata) (*grpc.ClientConn, error) {
 		// FIXME: DEPRECATED to be removed in v2.13 https://github.com/kedacore/keda/issues/4549
 		if metadata.tlsCertFile != "" {
@@ -313,7 +314,7 @@ func getClientForConnectionPool(metadata externalScalerMetadata, logger logr.Log
 				return nil, err
 			}
 			return grpc.Dial(metadata.scalerAddress,
-				grpc.WithDefaultServiceConfig(defaultConfig),
+				grpc.WithDefaultServiceConfig(grpcConfig),
 				grpc.WithTransportCredentials(creds))
 		}
 
@@ -325,12 +326,12 @@ func getClientForConnectionPool(metadata externalScalerMetadata, logger logr.Log
 		if len(tlsConfig.Certificates) > 0 || metadata.caCert != "" {
 			// nosemgrep: go.grpc.ssrf.grpc-tainted-url-host.grpc-tainted-url-host
 			return grpc.Dial(metadata.scalerAddress,
-				grpc.WithDefaultServiceConfig(defaultConfig),
+				grpc.WithDefaultServiceConfig(grpcConfig),
 				grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 		}
 
 		return grpc.Dial(metadata.scalerAddress,
-			grpc.WithDefaultServiceConfig(defaultConfig),
+			grpc.WithDefaultServiceConfig(grpcConfig),
 			grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 

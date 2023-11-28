@@ -246,9 +246,8 @@ func TestWaitForState(t *testing.T) {
 	}()
 
 	// build client connect to server
-	defaultConfig := `{"loadBalancingConfig": [{"round_robin":{}}]}`
 	grpcClient, err := grpc.Dial(address,
-		grpc.WithDefaultServiceConfig(defaultConfig),
+		grpc.WithDefaultServiceConfig(grpcConfig),
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Errorf("connect grpc server %s failed:%s", address, err)
