@@ -212,7 +212,7 @@ func runWriteJob(t *testing.T, kc *kubernetes.Clientset) templateData {
 	assert.True(t, WaitForJobSuccess(t, kc, influxdbJobName, testNamespace, 30, 2), "Job should run successfully")
 
 	// get pod logs
-	log, err := FindPodLogs(kc, testNamespace, label)
+	log, err := FindPodLogs(kc, testNamespace, label, false)
 	assert.NoErrorf(t, err, "cannotget logs - %s", err)
 
 	var lines []string

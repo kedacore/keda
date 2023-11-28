@@ -348,7 +348,7 @@ func printKedaLogs() {
 	kubeConfig, _ := config.GetConfig()
 	kubeClient, _ := kubernetes.NewForConfig(kubeConfig)
 
-	operatorLogs, err := helper.FindPodLogs(kubeClient, "keda", "app=keda-operator")
+	operatorLogs, err := helper.FindPodLogs(kubeClient, "keda", "app=keda-operator", true)
 	if err == nil {
 		fmt.Println(">>> KEDA Operator log <<<")
 		fmt.Println(operatorLogs)
@@ -356,7 +356,7 @@ func printKedaLogs() {
 		fmt.Println("##############################################")
 	}
 
-	msLogs, err := helper.FindPodLogs(kubeClient, "keda", "app=keda-metrics-apiserver")
+	msLogs, err := helper.FindPodLogs(kubeClient, "keda", "app=keda-metrics-apiserver", true)
 	if err == nil {
 		fmt.Println(">>> KEDA Metrics Server log <<<")
 		fmt.Println(msLogs)
@@ -364,7 +364,7 @@ func printKedaLogs() {
 		fmt.Println("##############################################")
 	}
 
-	hooksLogs, err := helper.FindPodLogs(kubeClient, "keda", "app=keda-admission-webhooks")
+	hooksLogs, err := helper.FindPodLogs(kubeClient, "keda", "app=keda-admission-webhooks", true)
 	if err == nil {
 		fmt.Println(">>> KEDA Admission Webhooks log <<<")
 		fmt.Println(hooksLogs)

@@ -38,7 +38,7 @@ var (
 	wrongScalerName                          = fmt.Sprintf("%s-wrong-scaler", testName)
 	cronScaledJobName                        = fmt.Sprintf("%s-cron-sj", testName)
 	clientName                               = fmt.Sprintf("%s-client", testName)
-	kedaOperatorCollectorPrometheusExportURL = "http://opentelemetry-collector.default.svc.cluster.local:8889/metrics"
+	kedaOperatorCollectorPrometheusExportURL = "http://opentelemetry-collector.open-telemetry-system.svc.cluster.local:8889/metrics"
 	namespaceString                          = "namespace"
 )
 

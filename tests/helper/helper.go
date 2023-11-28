@@ -613,21 +613,22 @@ func RemoveANSI(input string) string {
 	return reg.ReplaceAllString(input, "")
 }
 
-func FindPodLogs(kc *kubernetes.Clientset, namespace, label string) ([]string, error) {
-	var podLogs []string
+func FindPodLogs(kc *kubernetes.Clientset, namespace, label string, includePrevious bool) ([]string, error) {
 	pods, err := kc.CoreV1().Pods(namespace).List(context.TODO(),
 		metav1.ListOptions{LabelSelector: label})
 	if err != nil {
 		return []string{}, err
 	}
-	var podLogRequest *rest.Request
-	for _, v := range pods.Items {
-		podLogRequest = kc.CoreV1().Pods(namespace).GetLogs(v.Name, &corev1.PodLogOptions{})
+	getPodLogs := func(pod *corev1.Pod, previous bool) ([]string, error) {
+		podLogRequest := kc.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &corev1.PodLogOptions{
+			Previous: previous,
+		})
 		stream, err := podLogRequest.Stream(context.TODO())
 		if err != nil {
 			return []string{}, err
 		}
 		defer stream.Close()
+		logs := []string{}
 		for {
 			buf := make([]byte, 2000)
 			numBytes, err := stream.Read(buf)
@@ -640,10 +641,39 @@ func FindPodLogs(kc *kubernetes.Clientset, namespace, label string) ([]string, e
 			if err != nil {
 				return []string{}, err
 			}
-			podLogs = append(podLogs, string(buf[:numBytes]))
+			logs = append(logs, string(buf[:numBytes]))
 		}
+		return logs, nil
 	}
-	return podLogs, nil
+
+	var outputLogs []string
+	for _, pod := range pods.Items {
+
+		getPrevious := false
+		if includePrevious {
+			for _, container := range pod.Status.ContainerStatuses {
+				if container.RestartCount > 0 {
+					getPrevious = true
+				}
+			}
+		}
+
+		if getPrevious {
+			podLogs, err := getPodLogs(&pod, true)
+			if err != nil {
+				return []string{}, err
+			}
+			outputLogs = append(outputLogs, podLogs...)
+			outputLogs = append(outputLogs, "=====================RESTART=====================\n")
+		}
+
+		podLogs, err := getPodLogs(&pod, false)
+		if err != nil {
+			return []string{}, err
+		}
+		outputLogs = append(outputLogs, podLogs...)
+	}
+	return outputLogs, nil
 }
 
 // Delete all pods in namespace by selector
