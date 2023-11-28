@@ -361,10 +361,10 @@ func getPostgreSQLTemplateData() (templateData, []Template) {
 func getTemplateData() (templateData, []Template) {
 	return data, []Template{
 		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "awsCredentialsSecretTemplate", Config: awsCredentialsSecretTemplate},
 		{Name: "deploymentTemplate", Config: deploymentTemplate},
 		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
 		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-		{Name: "awsCredentialsSecretTemplate", Config: awsCredentialsSecretTemplate},
 	}
 }
 
