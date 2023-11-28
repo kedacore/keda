@@ -94,7 +94,7 @@ func initMeters() {
 		otLog.Error(err, msg)
 	}
 
-	otTriggerRegisteredTotalsCounter, err = meter.Int64UpDownCounter("keda.triggers.registered.count", api.WithDescription("Total number of triggers per trigger type registered"))
+	otTriggerRegisteredTotalsCounter, err = meter.Int64UpDownCounter("keda.trigger.registered.count", api.WithDescription("Total number of triggers per trigger type registered"))
 	if err != nil {
 		otLog.Error(err, msg)
 	}
@@ -104,7 +104,7 @@ func initMeters() {
 		otLog.Error(err, msg)
 	}
 
-	otCrdRegisteredTotalsCounter, err = meter.Int64UpDownCounter("keda.resources.registered.count", api.WithDescription("Total number of KEDA custom resources per namespace for each custom resource type (CRD) registered"))
+	otCrdRegisteredTotalsCounter, err = meter.Int64UpDownCounter("keda.resource.registered.count", api.WithDescription("Total number of KEDA custom resources per namespace for each custom resource type (CRD) registered"))
 	if err != nil {
 		otLog.Error(err, msg)
 	}
