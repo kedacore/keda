@@ -72,8 +72,12 @@ func (ash *AwsSecretManagerHandler) Read(secretName, versionID, versionStage str
 func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client client.Client, logger logr.Logger, triggerNamespace string, secretsLister corev1listers.SecretLister) error {
 	config, err := ash.getcredentials(ctx, client, logger, triggerNamespace, secretsLister)
 	if err != nil {
+		logger.Error(err, "Error getting credentials")
 		return err
 	}
+
+	logger.Info("Config value", "config", config)
+
 	if ash.secretManager.Cloud.Region != "" {
 		config.WithRegion(ash.secretManager.Cloud.Region)
 	}
