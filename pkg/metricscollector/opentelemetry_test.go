@@ -60,7 +60,7 @@ func TestIncrementTriggerTotal(t *testing.T) {
 	assert.Nil(t, err)
 	scopeMetrics := got.ScopeMetrics[0]
 	assert.NotEqual(t, len(scopeMetrics.Metrics), 0)
-	triggercount := retrieveMetric(scopeMetrics.Metrics, "keda.triggers.registered.count")
+	triggercount := retrieveMetric(scopeMetrics.Metrics, "keda.trigger.registered.count")
 
 	assert.NotNil(t, triggercount)
 
@@ -73,7 +73,7 @@ func TestIncrementTriggerTotal(t *testing.T) {
 	assert.Nil(t, err)
 	scopeMetrics = got.ScopeMetrics[0]
 	assert.NotEqual(t, len(scopeMetrics.Metrics), 0)
-	triggercount = retrieveMetric(scopeMetrics.Metrics, "keda.triggers.registered.count")
+	triggercount = retrieveMetric(scopeMetrics.Metrics, "keda.trigger.registered.count")
 
 	assert.NotNil(t, triggercount)
 
