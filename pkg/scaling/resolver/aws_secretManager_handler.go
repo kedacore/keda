@@ -78,12 +78,15 @@ func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client clien
 
 	logger.Info("Config value", "config", config)
 
-	if ash.secretManager.Cloud.Region != "" {
-		config.WithRegion(ash.secretManager.Cloud.Region)
+	if ash.secretManager.Cloud != nil {
+		if ash.secretManager.Cloud.Region != "" {
+			config.WithRegion(ash.secretManager.Cloud.Region)
+		}
+		if ash.secretManager.Cloud.Endpoint != "" {
+			config.WithEndpoint(ash.secretManager.Cloud.Endpoint)
+		}
 	}
-	if ash.secretManager.Cloud.Endpoint != "" {
-		config.WithEndpoint(ash.secretManager.Cloud.Endpoint)
-	}
+
 	ash.session = session.Must(session.NewSession())
 	ash.secretclient = secretsmanager.New(ash.session, config)
 	return err
