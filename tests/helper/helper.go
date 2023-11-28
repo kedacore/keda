@@ -648,7 +648,6 @@ func FindPodLogs(kc *kubernetes.Clientset, namespace, label string, includePrevi
 
 	var outputLogs []string
 	for _, pod := range pods.Items {
-
 		getPrevious := false
 		if includePrevious {
 			for _, container := range pod.Status.ContainerStatuses {
