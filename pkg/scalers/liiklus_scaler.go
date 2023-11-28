@@ -68,8 +68,11 @@ func NewLiiklusScaler(config *ScalerConfig) (Scaler, error) {
 	if err != nil {
 		return nil, err
 	}
+	defaultConfig := `{"loadBalancingConfig": [{"round_robin":{}}]}`
 
-	conn, err := grpc.Dial(lm.address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(lm.address,
+		grpc.WithDefaultServiceConfig(defaultConfig),
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
