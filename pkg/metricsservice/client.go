@@ -38,7 +38,6 @@ type GrpcClient struct {
 
 func NewGrpcClient(url, certDir string) (*GrpcClient, error) {
 	defaultConfig := `{
-		"loadBalancingConfig": [{"round_robin":{}}],
 		"methodConfig": [{
 		  "timeout": "3s",
 		  "waitForReady": true,
