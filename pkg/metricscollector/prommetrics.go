@@ -139,12 +139,12 @@ var (
 		},
 		[]string{"type"},
 	)
-	triggerHandled = prometheus.NewGaugeVec(
+	triggerRegistered = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "trigger",
-			Name:      "handled_total",
-			Help:      "Total number of triggers per trigger type handled.",
+			Name:      "registered_total",
+			Help:      "Total number of triggers per trigger type registered.",
 		},
 		[]string{"type"},
 	)
@@ -157,12 +157,12 @@ var (
 		},
 		[]string{"type", "namespace"},
 	)
-	crdHandled = prometheus.NewGaugeVec(
+	crdRegistered = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "resource",
-			Name:      "handled_total",
-			Help:      "Total number of KEDA custom resources per namespace for each custom resource type (CRD) handled.",
+			Name:      "registered_total",
+			Help:      "Total number of KEDA custom resources per namespace for each custom resource type (CRD) registered.",
 		},
 		[]string{"type", "namespace"},
 	)
@@ -203,9 +203,9 @@ func NewPromMetrics() *PromMetrics {
 	metrics.Registry.MustRegister(scaledObjectErrors)
 	metrics.Registry.MustRegister(scaledObjectPaused)
 	metrics.Registry.MustRegister(triggerTotalsGaugeVecDeprecated)
-	metrics.Registry.MustRegister(triggerHandled)
+	metrics.Registry.MustRegister(triggerRegistered)
 	metrics.Registry.MustRegister(crdTotalsGaugeVecDeprecated)
-	metrics.Registry.MustRegister(crdHandled)
+	metrics.Registry.MustRegister(crdRegistered)
 	metrics.Registry.MustRegister(buildInfo)
 
 	RecordBuildInfo()
@@ -307,14 +307,14 @@ func getLabels(namespace string, scaledObject string, scaler string, scalerIndex
 
 func (p *PromMetrics) IncrementTriggerTotal(triggerType string) {
 	if triggerType != "" {
-		triggerHandled.WithLabelValues(triggerType).Inc()
+		triggerRegistered.WithLabelValues(triggerType).Inc()
 		triggerTotalsGaugeVecDeprecated.WithLabelValues(triggerType).Inc()
 	}
 }
 
 func (p *PromMetrics) DecrementTriggerTotal(triggerType string) {
 	if triggerType != "" {
-		triggerHandled.WithLabelValues(triggerType).Dec()
+		triggerRegistered.WithLabelValues(triggerType).Dec()
 		triggerTotalsGaugeVecDeprecated.WithLabelValues(triggerType).Dec()
 	}
 }
@@ -324,7 +324,7 @@ func (p *PromMetrics) IncrementCRDTotal(crdType, namespace string) {
 		namespace = defaultNamespace
 	}
 
-	crdHandled.WithLabelValues(crdType, namespace).Inc()
+	crdRegistered.WithLabelValues(crdType, namespace).Inc()
 	crdTotalsGaugeVecDeprecated.WithLabelValues(crdType, namespace).Inc()
 }
 
@@ -333,6 +333,6 @@ func (p *PromMetrics) DecrementCRDTotal(crdType, namespace string) {
 		namespace = defaultNamespace
 	}
 
-	crdHandled.WithLabelValues(crdType, namespace).Dec()
+	crdRegistered.WithLabelValues(crdType, namespace).Dec()
 	crdTotalsGaugeVecDeprecated.WithLabelValues(crdType, namespace).Dec()
 }

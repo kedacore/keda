@@ -29,8 +29,8 @@ var (
 	otScaledObjectErrorsCounter      api.Int64Counter
 	otTriggerTotalsCounterDeprecated api.Int64UpDownCounter
 	otCrdTotalsCounterDeprecated     api.Int64UpDownCounter
-	otTriggerTotalsCounter           api.Int64UpDownCounter
-	otCrdTotalsCounter               api.Int64UpDownCounter
+	otTriggerRegisteredTotalsCounter api.Int64UpDownCounter
+	otCrdRegisteredTotalsCounter     api.Int64UpDownCounter
 
 	otelScalerMetricVal         OtelMetricFloat64Val
 	otelScalerMetricsLatencyVal OtelMetricFloat64Val
@@ -94,7 +94,7 @@ func initMeters() {
 		otLog.Error(err, msg)
 	}
 
-	otTriggerTotalsCounter, err = meter.Int64UpDownCounter("keda.triggers.count", api.WithDescription("Total number of triggers per trigger type handled"))
+	otTriggerRegisteredTotalsCounter, err = meter.Int64UpDownCounter("keda.triggers.registered.count", api.WithDescription("Total number of triggers per trigger type registered"))
 	if err != nil {
 		otLog.Error(err, msg)
 	}
@@ -104,7 +104,7 @@ func initMeters() {
 		otLog.Error(err, msg)
 	}
 
-	otCrdTotalsCounter, err = meter.Int64UpDownCounter("keda.resources.count", api.WithDescription("Total number of KEDA custom resources per namespace for each custom resource type (CRD) handled"))
+	otCrdRegisteredTotalsCounter, err = meter.Int64UpDownCounter("keda.resources.registered.count", api.WithDescription("Total number of KEDA custom resources per namespace for each custom resource type (CRD) registered"))
 	if err != nil {
 		otLog.Error(err, msg)
 	}
@@ -297,14 +297,14 @@ func (o *OtelMetrics) RecordScaledObjectError(namespace string, scaledObject str
 func (o *OtelMetrics) IncrementTriggerTotal(triggerType string) {
 	if triggerType != "" {
 		otTriggerTotalsCounterDeprecated.Add(context.Background(), 1, api.WithAttributes(attribute.Key("type").String(triggerType)))
-		otTriggerTotalsCounter.Add(context.Background(), 1, api.WithAttributes(attribute.Key("type").String(triggerType)))
+		otTriggerRegisteredTotalsCounter.Add(context.Background(), 1, api.WithAttributes(attribute.Key("type").String(triggerType)))
 	}
 }
 
 func (o *OtelMetrics) DecrementTriggerTotal(triggerType string) {
 	if triggerType != "" {
 		otTriggerTotalsCounterDeprecated.Add(context.Background(), -1, api.WithAttributes(attribute.Key("type").String(triggerType)))
-		otTriggerTotalsCounter.Add(context.Background(), -1, api.WithAttributes(attribute.Key("type").String(triggerType)))
+		otTriggerRegisteredTotalsCounter.Add(context.Background(), -1, api.WithAttributes(attribute.Key("type").String(triggerType)))
 	}
 }
 
@@ -318,7 +318,7 @@ func (o *OtelMetrics) IncrementCRDTotal(crdType, namespace string) {
 	)
 
 	otCrdTotalsCounterDeprecated.Add(context.Background(), 1, opt)
-	otCrdTotalsCounter.Add(context.Background(), 1, opt)
+	otCrdRegisteredTotalsCounter.Add(context.Background(), 1, opt)
 }
 
 func (o *OtelMetrics) DecrementCRDTotal(crdType, namespace string) {
@@ -331,7 +331,7 @@ func (o *OtelMetrics) DecrementCRDTotal(crdType, namespace string) {
 		attribute.Key("type").String(crdType),
 	)
 	otCrdTotalsCounterDeprecated.Add(context.Background(), -1, opt)
-	otCrdTotalsCounter.Add(context.Background(), -1, opt)
+	otCrdRegisteredTotalsCounter.Add(context.Background(), -1, opt)
 }
 
 func getScalerMeasurementOption(namespace string, scaledObject string, scaler string, scalerIndex int, metric string) api.MeasurementOption {
