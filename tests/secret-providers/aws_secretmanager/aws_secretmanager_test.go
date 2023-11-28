@@ -294,7 +294,7 @@ func TestPostgreSQLScaler(t *testing.T) {
 
 	// Create the secret in GCP
 	err := createAWSSecret(t)
-	assert.NoErrorf(t, err, "cannot create GCP Secret Manager secret - %s", err)
+	assert.NoErrorf(t, err, "cannot create AWS Secret Manager secret - %s", err)
 
 	// Create kubernetes resources for PostgreSQL server
 	kc := GetKubernetesClient(t)
