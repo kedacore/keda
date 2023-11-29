@@ -153,7 +153,7 @@ func ExecCommandOnSpecificPod(t *testing.T, podName string, namespace string, co
 	}
 	buf := &bytes.Buffer{}
 	errBuf := &bytes.Buffer{}
-	request := KubeClient.CoreV1().RESTClient().Post().
+	request := GetKubernetesClient(t).CoreV1().RESTClient().Post().
 		Resource("pods").Name(podName).Namespace(namespace).
 		SubResource("exec").Timeout(time.Second*20).
 		VersionedParams(&corev1.PodExecOptions{
@@ -243,7 +243,7 @@ func CreateNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
 func DeleteNamespace(t *testing.T, nsName string) {
 	t.Logf("deleting namespace %s", nsName)
 	period := int64(0)
-	err := KubeClient.CoreV1().Namespaces().Delete(context.Background(), nsName, metav1.DeleteOptions{
+	err := GetKubernetesClient(t).CoreV1().Namespaces().Delete(context.Background(), nsName, metav1.DeleteOptions{
 		GracePeriodSeconds: &period,
 	})
 	if errors.IsNotFound(err) {
@@ -295,7 +295,7 @@ func WaitForAllJobsSuccess(t *testing.T, kc *kubernetes.Clientset, namespace str
 func WaitForNamespaceDeletion(t *testing.T, nsName string) bool {
 	for i := 0; i < 120; i++ {
 		t.Logf("waiting for namespace %s deletion", nsName)
-		_, err := KubeClient.CoreV1().Namespaces().Get(context.Background(), nsName, metav1.GetOptions{})
+		_, err := GetKubernetesClient(t).CoreV1().Namespaces().Get(context.Background(), nsName, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
 			return true
 		}
