@@ -37,6 +37,9 @@ apiserver.local.config/
 # VSCode specific files
 .vscode
 
+# certs  folder
+certs/
+
 cover.out
 
 # GO debug binaries

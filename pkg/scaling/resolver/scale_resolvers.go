@@ -306,6 +306,7 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 							logger.Error(err, "error trying to read secret from Aws Secret Manager", "triggerAuthRef.Name", triggerAuthRef.Name,
 								"secret.Name", secret.Name, "secret.Version", secret.VersionID, "secret.VersionStage", secret.VersionStage)
 						} else {
+							logger.Info("Secret Response value", "res", res)
 							result[secret.Parameter] = res
 						}
 					}

@@ -88,6 +88,7 @@ func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client clien
 	}
 
 	ash.session = session.Must(session.NewSession())
+	logger.Info("Session value", "ash.session", ash.session)
 	ash.secretclient = secretsmanager.New(ash.session, config)
 	return err
 }

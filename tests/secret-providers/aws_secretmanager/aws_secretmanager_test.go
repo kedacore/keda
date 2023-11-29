@@ -49,7 +49,7 @@ var (
 	awsAccessKeyID           = os.Getenv("TF_AWS_ACCESS_KEY")
 	awsSecretAccessKey       = os.Getenv("TF_AWS_SECRET_KEY")
 	awsCredentialsSecretName = fmt.Sprintf("%s-credentials-secret", testName)
-	secretManagerSecretName  = "connectionString2"
+	secretManagerSecretName  = "connectionString"
 )
 
 type templateData struct {
@@ -145,6 +145,8 @@ spec:
           secretKeyRef:
             name: {{.AwsCredentialsSecretName}}
             key: AWS_SECRET_ACCESS_KEY
+    cloud:
+      region: {{.AwsRegion}}
     secrets:
     - parameter: connection
       name: {{.SecretManagerSecretName}}
@@ -328,7 +330,7 @@ func TestPostgreSQLScaler(t *testing.T) {
 
 	// Delete the secret in GCP
 	err = deleteAWSSecret(t)
-	assert.NoErrorf(t, err, "cannot delete GCP Secret Manager secret - %s", err)
+	assert.NoErrorf(t, err, "cannot delete AWS Secret Manager secret - %s", err)
 }
 
 var data = templateData{
@@ -406,10 +408,10 @@ func createAWSSecret(t *testing.T) error {
 	client := secretsmanager.New(awsSession)
 
 	// Create the secret value
-	secretValue := []byte(postgreSQLConnectionString)
+	secretString := postgreSQLConnectionString
 	_, err = client.CreateSecretWithContext(ctx, &secretsmanager.CreateSecretInput{
 		Name:         aws.String(secretManagerSecretName),
-		SecretBinary: secretValue,
+		SecretString: &secretString,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create AWS Secret Manager secret: %w", err)
