@@ -19,9 +19,11 @@ package scalers
 import (
 	"context"
 	"net/http"
+	"reflect"
 	"testing"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -244,6 +246,158 @@ func TestLogAnalyticsParseMetadataUnsafeSsl(t *testing.T) {
 			if meta.unsafeSsl != testData.unsafeSsl {
 				t.Errorf("Expected unsafeSsl to be %v but got %v", testData.unsafeSsl, meta.unsafeSsl)
 			}
+		}
+	}
+}
+
+type getParameterFromConfigTestData struct {
+	name              string
+	authParams        map[string]string
+	metadata          map[string]string
+	parameter         string
+	useAuthentication bool
+	useMetadata       bool
+	useResolvedEnv    bool
+	isOptional        bool
+	defaultVal        string
+	targetType        reflect.Type
+	expectedResult    interface{}
+	isError           bool
+	errorMessage      string
+}
+
+var getParameterFromConfigTestDataset = []getParameterFromConfigTestData{
+	{
+		name:              "test_authParam_only",
+		authParams:        map[string]string{"key1": "value1"},
+		parameter:         "key1",
+		useAuthentication: true,
+		targetType:        reflect.TypeOf(string("")),
+		expectedResult:    "value1",
+		isError:           false,
+	},
+	{
+		name:           "test_trigger_metadata_only",
+		metadata:       map[string]string{"key1": "value1"},
+		parameter:      "key1",
+		useMetadata:    true,
+		targetType:     reflect.TypeOf(string("")),
+		expectedResult: "value1",
+		isError:        false,
+	},
+	{
+		name:           "test_resolved_env_only",
+		metadata:       map[string]string{"key1FromEnv": "value1"},
+		parameter:      "key1",
+		useResolvedEnv: true,
+		targetType:     reflect.TypeOf(string("")),
+		expectedResult: "value1",
+		isError:        false,
+	},
+	{
+		name:              "test_authParam_and_resolved_env_only",
+		authParams:        map[string]string{"key1": "value1"},
+		metadata:          map[string]string{"key1FromEnv": "value2"},
+		parameter:         "key1",
+		useAuthentication: true,
+		useResolvedEnv:    true,
+		targetType:        reflect.TypeOf(string("")),
+		expectedResult:    "value1", // Should get from Auth
+		isError:           false,
+	},
+	{
+		name:              "test_authParam_and_trigger_metadata_only",
+		authParams:        map[string]string{"key1": "value1"},
+		metadata:          map[string]string{"key1": "value2"},
+		parameter:         "key1",
+		useMetadata:       true,
+		useAuthentication: true,
+		targetType:        reflect.TypeOf(string("")),
+		expectedResult:    "value1", // Should get from auth
+		isError:           false,
+	},
+	{
+		name:           "test_trigger_metadata_and_resolved_env_only",
+		metadata:       map[string]string{"key1": "value1", "key1FromEnv": "value2"},
+		parameter:      "key1",
+		useResolvedEnv: true,
+		useMetadata:    true,
+		targetType:     reflect.TypeOf(string("")),
+		expectedResult: "value1", // Should get from trigger metadata
+		isError:        false,
+	},
+	{
+		name:           "test_isOptional_key_not_found",
+		metadata:       map[string]string{"key1": "value1"},
+		parameter:      "key2",
+		useResolvedEnv: true,
+		useMetadata:    true,
+		isOptional:     true,
+		targetType:     reflect.TypeOf(string("")),
+		expectedResult: "", // Should return empty string
+		isError:        false,
+	},
+	{
+		name:           "test_isOptional_key_not_found",
+		metadata:       map[string]string{"key1": "value1"},
+		parameter:      "key2",
+		useResolvedEnv: true,
+		useMetadata:    true,
+		isOptional:     true,
+		targetType:     reflect.TypeOf(string("")),
+		expectedResult: "", // Should return empty string
+		isError:        false,
+	},
+	{
+		name:           "test_default_value",
+		metadata:       map[string]string{"key1": "value1"},
+		parameter:      "key2",
+		useResolvedEnv: true,
+		useMetadata:    true,
+		defaultVal:     "default",
+		targetType:     reflect.TypeOf(string("")),
+		expectedResult: "default", // Should return empty string
+		isError:        false,
+	},
+	{
+		name:           "test_error",
+		metadata:       map[string]string{"key1": "value1"},
+		parameter:      "key2",
+		useResolvedEnv: true,
+		useMetadata:    true,
+		targetType:     reflect.TypeOf(string("")),
+		expectedResult: "default", // Should return empty string
+		isError:        true,
+		errorMessage:   "key not found. Either set the correct key, set isOptional to true or set defaultVal",
+	},
+	{
+		name:              "test_authParam_bool",
+		authParams:        map[string]string{"key1": "true"},
+		parameter:         "key1",
+		useAuthentication: true,
+		targetType:        reflect.TypeOf(true),
+		expectedResult:    true,
+	},
+}
+
+func TestGetParameterFromConfigV2(t *testing.T) {
+	for _, testData := range getParameterFromConfigTestDataset {
+		val, err := getParameterFromConfigV2(
+			&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams},
+			testData.parameter,
+			testData.useMetadata,
+			testData.useAuthentication,
+			testData.useResolvedEnv,
+			testData.isOptional,
+			testData.defaultVal,
+			testData.targetType,
+		)
+		if testData.isError {
+			assert.NotNilf(t, err, "test %s: expected error but got success, testData - %+v", testData.name, testData)
+			assert.Contains(t, err.Error(), testData.errorMessage)
+		} else {
+			assert.Nil(t, err)
+			assert.Equalf(t, testData.expectedResult, val, "expected %s but got %s", testData.expectedResult, val)
 		}
 	}
 }
