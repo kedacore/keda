@@ -43,7 +43,7 @@ var (
 	postgreSQLConnectionString = fmt.Sprintf("postgresql://%s:%s@postgresql.%s.svc.cluster.local:5432/%s?sslmode=disable",
 		postgreSQLUsername, postgreSQLPassword, testNamespace, postgreSQLDatabase)
 	minReplicaCount = 0
-	maxReplicaCount = 1
+	maxReplicaCount = 2
 
 	awsRegion                = os.Getenv("TF_AWS_REGION")
 	awsAccessKeyID           = os.Getenv("TF_AWS_ACCESS_KEY")
