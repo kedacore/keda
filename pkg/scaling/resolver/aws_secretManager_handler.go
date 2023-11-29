@@ -110,29 +110,7 @@ func (ash *AwsSecretManagerHandler) getcredentials(ctx context.Context, client c
 		}
 		config.WithCredentials(credentials.NewStaticCredentials(accessKeyID, accessSecretKey, ""))
 		return config, nil
-
-	// case kedav1alpha1.PodIdentityProviderAwsEKS:
-	// 	awsRoleArn, err := ash.getRoleArnAwsEKS(ctx, client, logger, triggerNamespace, podTemplateSpec)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	config.WithCredentials(stscreds.NewCredentials(ash.session, awsRoleArn))
-	// 	return config, nil
-	// case kedav1alpha1.PodIdentityProviderAwsKiam:
-	// 	awsRoleArn := podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
-	// 	config.WithCredentials(stscreds.NewCredentials(ash.session, awsRoleArn))
-	// 	return config, nil
 	default:
 		return nil, fmt.Errorf("pod identity provider %s not supported", podIdentity.Provider)
 	}
 }
-
-// func (ash *AwsSecretManagerHandler) getRoleArnAwsEKS(ctx context.Context, client client.Client, _ logr.Logger, triggerNamespace string, podTemplateSpec *corev1.PodTemplateSpec) (string, error) {
-// 	serviceAccountName := podTemplateSpec.Spec.ServiceAccountName
-// 	serviceAccount := &corev1.ServiceAccount{}
-// 	err := client.Get(ctx, types.NamespacedName{Name: serviceAccountName, Namespace: triggerNamespace}, serviceAccount)
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	return serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS], nil
-// }
