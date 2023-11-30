@@ -58,6 +58,18 @@ type MetricsCollector interface {
 	IncrementCRDTotal(crdType, namespace string)
 
 	DecrementCRDTotal(crdType, namespace string)
+
+	// RecordCloudEventEmitted counts the number of cloudevent that emitted to user's sink
+	RecordCloudEventEmitted(namespace string, cloudeventsource string, eventsink string)
+
+	// RecordCloudEventEmittedError counts the number of errors occurred in trying emit cloudevent
+	RecordCloudEventEmittedError(namespace string, cloudeventsource string, eventsink string)
+
+	// RecordCloudEventSink records user's eventsink
+	RecordCloudEventSink(namespace string, eventsink string, eventsinktype string, isactive bool)
+
+	// RecordCloudEventQueueStatus record the number of cloudevents that are waiting for emitting
+	RecordCloudEventQueueStatus(value int, isActive bool)
 }
 
 func NewMetricsCollectors(enablePrometheusMetrics bool, enableOpenTelemetryMetrics bool) {
@@ -142,5 +154,33 @@ func IncrementCRDTotal(crdType, namespace string) {
 func DecrementCRDTotal(crdType, namespace string) {
 	for _, element := range collectors {
 		element.DecrementCRDTotal(crdType, namespace)
+	}
+}
+
+// RecordCloudEventEmitted counts the number of cloudevent that emitted to user's sink
+func RecordCloudEventEmitted(namespace string, cloudeventsource string, eventsink string) {
+	for _, element := range collectors {
+		element.RecordCloudEventEmitted(namespace, cloudeventsource, eventsink)
+	}
+}
+
+// RecordCloudEventEmittedError counts the number of errors occurred in trying emit cloudevent
+func RecordCloudEventEmittedError(namespace string, cloudeventsource string, eventsink string) {
+	for _, element := range collectors {
+		element.RecordCloudEventEmittedError(namespace, cloudeventsource, eventsink)
+	}
+}
+
+// RecordCloudEventSink records user's eventsink
+func RecordCloudEventSink(namespace string, eventsink string, eventsinktype string, isactive bool) {
+	for _, element := range collectors {
+		element.RecordCloudEventSink(namespace, eventsink, eventsinktype, isactive)
+	}
+}
+
+// RecordCloudEventQueueStatus record the number of cloudevents that are waiting for emitting
+func RecordCloudEventQueueStatus(value int, isActive bool) {
+	for _, element := range collectors {
+		element.RecordCloudEventQueueStatus(value, isActive)
 	}
 }

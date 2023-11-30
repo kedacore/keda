@@ -130,6 +130,46 @@ var (
 		},
 		[]string{"namespace", "type", "resource"},
 	)
+
+	cloudeventEmitted = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "cloudeventsource",
+			Name:      "emitted_total",
+			Help:      "Total emitted cloudevents",
+		},
+		[]string{"namespace", "cloudevent", "eventsink"},
+	)
+
+	cloudeventEmittedErrors = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "cloudeventsource",
+			Name:      "errors_total",
+			Help:      "Total cloudevent emitted errors",
+		},
+		[]string{"namespace", "cloudevent", "eventsink"},
+	)
+
+	cloudeventSink = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "cloudeventsource",
+			Name:      "sink",
+			Help:      "Indicates the created event sinks",
+		},
+		[]string{"namespace", "eventsink", "eventsinktype"},
+	)
+
+	cloudeventQueueStatus = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "cloudeventsource",
+			Name:      "sink",
+			Help:      "Indicates how many events are still queue",
+		},
+		[]string{"namespace"},
+	)
 )
 
 type PromMetrics struct {
@@ -148,6 +188,11 @@ func NewPromMetrics() *PromMetrics {
 	metrics.Registry.MustRegister(triggerTotalsGaugeVec)
 	metrics.Registry.MustRegister(crdTotalsGaugeVec)
 	metrics.Registry.MustRegister(buildInfo)
+
+	metrics.Registry.MustRegister(cloudeventEmitted)
+	metrics.Registry.MustRegister(cloudeventEmittedErrors)
+	metrics.Registry.MustRegister(cloudeventSink)
+	metrics.Registry.MustRegister(cloudeventQueueStatus)
 
 	RecordBuildInfo()
 	return &PromMetrics{}
@@ -259,4 +304,38 @@ func (p *PromMetrics) DecrementCRDTotal(crdType, namespace string) {
 	}
 
 	crdTotalsGaugeVec.WithLabelValues(crdType, namespace).Dec()
+}
+
+// RecordCloudEventEmitted counts the number of cloudevent that emitted to user's sink
+func (p *PromMetrics) RecordCloudEventEmitted(namespace string, cloudeventsource string, eventsink string) {
+	labels := prometheus.Labels{"namespace": namespace, "cloudEventSource": cloudeventsource, "eventsink": eventsink}
+	cloudeventEmitted.With(labels).Inc()
+}
+
+// RecordCloudEventEmittedError counts the number of errors occurred in trying emit cloudevent
+func (p *PromMetrics) RecordCloudEventEmittedError(namespace string, cloudeventsource string, eventsink string) {
+	labels := prometheus.Labels{"namespace": namespace, "cloudEventSource": cloudeventsource, "eventsink": eventsink}
+	cloudeventEmittedErrors.With(labels).Inc()
+}
+
+// RecordCloudEventSink records user's eventsink
+func (p *PromMetrics) RecordCloudEventSink(namespace string, eventsink string, eventsinktype string, isactive bool) {
+	labels := prometheus.Labels{"namespace": namespace, "eventsink": eventsink, "eventsinktype": eventsinktype}
+
+	activeVal := 0
+	if isactive {
+		activeVal = 1
+	}
+
+	cloudeventSink.With(labels).Set(float64(activeVal))
+}
+
+// RecordCloudEventSourceQueueStatus record the number of cloudevents that are waiting for emitting
+func (p *PromMetrics) RecordCloudEventQueueStatus(value int, isactive bool) {
+	activeVal := "0"
+	if isactive {
+		activeVal = "1"
+	}
+
+	cloudeventQueueStatus.With(prometheus.Labels{"isQueueActive": activeVal}).Set(float64(value))
 }
