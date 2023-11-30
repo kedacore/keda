@@ -2,7 +2,6 @@ package scalers
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -12,13 +11,17 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
+	"github.com/tidwall/gjson"
 	v2 "k8s.io/api/autoscaling/v2"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 )
 
 type datadogExternalScaler struct {
-	metadata *datadogExternalMetadata
-	logger   logr.Logger
+	metadata   *datadogExternalMetadata
+	httpClient *http.Client
+	logger     logr.Logger
 }
 
 type datadogExternalMetadata struct {
@@ -30,12 +33,14 @@ type datadogExternalMetadata struct {
 	unsafeSsl                 bool
 
 	// TriggerMetadata
-	datadogMetricName     string
-	targetValue           float64
-	activationTargetValue float64
-	fillValue             float64
-	useFiller             bool
-	vType                 v2.MetricTargetType
+	datadogMetricServiceUrl string
+	datadogMetricName       string
+	datadogMetricNamespace  string
+	targetValue             float64
+	activationTargetValue   float64
+	fillValue               float64
+	useFiller               bool
+	vType                   v2.MetricTargetType
 
 	// client certification
 	enableTLS bool
@@ -57,13 +62,20 @@ func NewDatadogExternalScaler(ctx context.Context, config *ScalerConfig) (Scaler
 		return nil, fmt.Errorf("error parsing Datadog metadata: %w", err)
 	}
 
-	_, err = newDatadogExternalConnection(ctx, meta, config, logger)
-	if err != nil {
-		return nil, fmt.Errorf("error establishing connection with Datadog Cluster Agent: %w", err)
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsl)
+
+	if meta.enableTLS || len(meta.ca) > 0 {
+		config, err := kedautil.NewTLSConfig(meta.cert, meta.key, meta.ca, meta.unsafeSsl)
+		if err != nil {
+			return nil, err
+		}
+		httpClient.Transport = kedautil.CreateHTTPTransportWithTLSConfig(config)
 	}
+
 	return &datadogExternalScaler{
-		metadata: meta,
-		logger:   logger,
+		metadata:   meta,
+		httpClient: httpClient,
+		logger:     logger,
 	}, nil
 }
 
@@ -92,6 +104,8 @@ func parseDatadogExternalMetadata(config *ScalerConfig, logger logr.Logger) (*da
 		meta.datadogMetricsServicePort = 8443
 	}
 
+	meta.datadogMetricServiceUrl = buildClusterAgentURL(meta.datadogMetricsService, meta.datadogNamespace, meta.datadogMetricsServicePort)
+
 	meta.unsafeSsl = false
 	if val, ok := config.AuthParams["unsafeSsl"]; ok {
 		unsafeSsl, err := strconv.ParseBool(val)
@@ -105,6 +119,12 @@ func parseDatadogExternalMetadata(config *ScalerConfig, logger logr.Logger) (*da
 		meta.datadogMetricName = val
 	} else {
 		return nil, fmt.Errorf("no datadogMetricName key given")
+	}
+
+	if val, ok := config.TriggerMetadata["datadogMetricNamespace"]; ok {
+		meta.datadogMetricNamespace = val
+	} else {
+		return nil, fmt.Errorf("no datadogMetricNamespace key given")
 	}
 
 	if val, ok := config.TriggerMetadata["targetValue"]; ok {
@@ -203,65 +223,86 @@ func parseDatadogExternalMetadata(config *ScalerConfig, logger logr.Logger) (*da
 	return &meta, nil
 }
 
+// buildClusterAgentURL builds the URL for the Cluster Agent Metrics API service
 func buildClusterAgentURL(datadogMetricsService, datadogNamespace string, datadogMetricsServicePort int) string {
 
-	return fmt.Sprintf("https://%s.%s:%d/apis/external.metrics.k8s.io/v1beta1/", datadogMetricsService, datadogNamespace, datadogMetricsServicePort)
+	return fmt.Sprintf("https://%s.%s:%d/apis/external.metrics.k8s.io/v1beta1", datadogMetricsService, datadogNamespace, datadogMetricsServicePort)
 }
 
-// newDatadogConnection tests a connection to the Datadog Cluster Agent
-func newDatadogExternalConnection(ctx context.Context, meta *datadogExternalMetadata, config *ScalerConfig, logger logr.Logger) (bool, error) {
+// buildMetricURL builds the URL for the Datadog metric
+func buildMetricURL(datadogClusterAgentURL, datadogMetricNamespace, datadogMetricName string) string {
+	return fmt.Sprintf("%s/namespaces/%s/%s", datadogClusterAgentURL, datadogMetricNamespace, datadogMetricName)
+}
+
+func (s *datadogExternalScaler) getDatadogMetricValue(req *http.Request) (float64, error) {
+	resp, err := s.httpClient.Do(req)
+
+	if err != nil {
+		return 0, fmt.Errorf("error getting metric value: %w", err)
+	}
+
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+
+	s.logger.Info(fmt.Sprintf("Response: %s", body))
+
+	if resp.StatusCode != http.StatusOK {
+		r := gjson.GetBytes(body, "message")
+		if r.Type == gjson.String {
+			return 0, fmt.Errorf("error getting metric value: %s", r.String())
+		}
+	}
+
+	valueLocation := "items.0.value"
+	r := gjson.GetBytes(body, valueLocation)
+	errorMsg := "the metric value must be of type number or a string representing a Quantity got: '%s'"
+
+	if r.Type == gjson.String {
+		v, err := resource.ParseQuantity(r.String())
+		if err != nil {
+			return 0, fmt.Errorf(errorMsg, r.String())
+		}
+		return v.AsApproximateFloat64(), nil
+	}
+	if r.Type != gjson.Number {
+		return 0, fmt.Errorf(errorMsg, r.Type.String())
+	}
+	return r.Num, nil
+}
+
+func (s *datadogExternalScaler) getDatadogExternalHTTPRequest(ctx context.Context, url string) (*http.Request, error) {
 
 	var req *http.Request
 	var err error
 
-	url := buildClusterAgentURL(meta.datadogMetricsService, meta.datadogNamespace, meta.datadogMetricsServicePort)
-
-	logger.Info(fmt.Sprintf("URL: %s", url))
-
-	tr := &http.Transport{}
-
-	if meta.unsafeSsl {
-		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	}
-
-	client := &http.Client{Transport: tr}
-
 	// TODO: add TLS support
 	switch {
-	case meta.enableBearerAuth:
+	case s.metadata.enableBearerAuth:
 		req, err = http.NewRequestWithContext(ctx, "GET", url, nil)
 		if err != nil {
-			return false, err
+			return nil, err
 		}
-		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", meta.bearerToken))
-		resp, err := client.Do(req)
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.metadata.bearerToken))
 		if err != nil {
-			return false, err
+			return nil, err
 		}
-		logger.Info("Datadog Cluster Agent connection successful")
-		defer resp.Body.Close()
-		body, err := io.ReadAll(resp.Body)
 
-		logger.Info(fmt.Sprintf("Response: %s", body))
+		s.logger.Info(fmt.Sprintf("Request correctly created"))
+		return req, nil
+
 	default:
 		req, err = http.NewRequestWithContext(ctx, "GET", url, nil)
 		if err != nil {
-			return false, err
+			return req, err
 		}
 	}
 
-	return true, nil
+	return nil, nil
 }
 
 // No need to close connections
 func (s *datadogExternalScaler) Close(context.Context) error {
 	return nil
-}
-
-// getQueryResult returns result of the scaler query
-func (s *datadogExternalScaler) getQueryResult(ctx context.Context) (float64, error) {
-
-	return 0, nil
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
@@ -281,5 +322,20 @@ func (s *datadogExternalScaler) GetMetricSpecForScaling(context.Context) []v2.Me
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *datadogExternalScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 
-	return []external_metrics.ExternalMetricValue{}, false, nil
+	url := buildMetricURL(s.metadata.datadogMetricServiceUrl, s.metadata.datadogMetricNamespace, s.metadata.datadogMetricName)
+
+	s.logger.Info(fmt.Sprintf("URL: %s", url))
+
+	req, err := s.getDatadogExternalHTTPRequest(ctx, url)
+	if (err != nil) || (req == nil) {
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error generating http request: %w", err)
+	}
+
+	num, err := s.getDatadogMetricValue(req)
+	if err != nil {
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting metric value: %w", err)
+	}
+
+	metric := GenerateMetricInMili(metricName, num)
+	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.activationTargetValue, nil
 }
