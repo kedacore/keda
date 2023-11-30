@@ -49,7 +49,7 @@ var (
 	awsAccessKeyID           = os.Getenv("TF_AWS_ACCESS_KEY")
 	awsSecretAccessKey       = os.Getenv("TF_AWS_SECRET_KEY")
 	awsCredentialsSecretName = fmt.Sprintf("%s-credentials-secret", testName)
-	secretManagerSecretName  = "connectionString"
+	secretManagerSecretName = fmt.Sprintf("connectionString-%d", GetRandomNumber())
 )
 
 type templateData struct {
