@@ -193,7 +193,7 @@ type DashboardEntry struct {
 	LastModified *time.Time
 
 	// The size of the dashboard, in bytes.
-	Size int64
+	Size *int64
 
 	noSmithyDocumentSerde
 }
@@ -314,7 +314,7 @@ type InsightRule struct {
 	State *string
 
 	// An optional built-in rule that Amazon Web Services manages.
-	ManagedRule bool
+	ManagedRule *bool
 
 	noSmithyDocumentSerde
 }

@@ -3815,9 +3815,9 @@ func awsAwsquery_serializeOpDocumentListMetricsInput(v *ListMetricsInput, value 
 		}
 	}
 
-	if v.IncludeLinkedAccounts {
+	if v.IncludeLinkedAccounts != nil {
 		objectKey := object.Key("IncludeLinkedAccounts")
-		objectKey.Boolean(v.IncludeLinkedAccounts)
+		objectKey.Boolean(*v.IncludeLinkedAccounts)
 	}
 
 	if v.MetricName != nil {
