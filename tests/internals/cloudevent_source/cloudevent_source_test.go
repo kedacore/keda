@@ -163,12 +163,12 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 	out, outErr, err := ExecCommandOnSpecificPod(t, clientName, namespace, fmt.Sprintf("curl -X GET %s/getCloudEvent/%s", cloudEventHTTPServiceURL, "ScaledObjectCheckFailed"))
 	assert.NotEmpty(t, out)
 	assert.Empty(t, outErr)
-	assert.NoError(t, err)
+	assert.NoError(t, err, "dont expect error requesting ")
 
 	cloudEvent := make(map[string]interface{})
 	err = json.Unmarshal([]byte(out), &cloudEvent)
 
-	assert.NoError(t, err)
+	assert.NoError(t, err, "dont expect error unmarshaling the cloudEvent")
 
 	// check the cloud event content
 	cloudEventData, ok := cloudEvent["data"]
