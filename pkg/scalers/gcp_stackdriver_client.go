@@ -18,10 +18,16 @@ import (
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
+const (
+	defaultTimeWindow     = "1m"
+	aggregationTimeWindow = "5m"
+)
+
 // StackDriverClient is a generic client to fetch metrics from Stackdriver. Can be used
 // for a stackdriver scaler in the future
 type StackDriverClient struct {
 	metricsClient *monitoring.MetricClient
+	queryClient   *monitoring.QueryClient
 	credentials   GoogleApplicationCredentials
 	projectID     string
 }
@@ -36,20 +42,30 @@ func NewStackDriverClient(ctx context.Context, credentials string) (*StackDriver
 
 	clientOption := option.WithCredentialsJSON([]byte(credentials))
 
-	client, err := monitoring.NewMetricClient(ctx, clientOption)
+	metricsClient, err := monitoring.NewMetricClient(ctx, clientOption)
+	if err != nil {
+		return nil, err
+	}
+
+	queryClient, err := monitoring.NewQueryClient(ctx, clientOption)
 	if err != nil {
 		return nil, err
 	}
 
 	return &StackDriverClient{
-		metricsClient: client,
+		metricsClient: metricsClient,
+		queryClient:   queryClient,
 		credentials:   gcpCredentials,
 	}, nil
 }
 
 // NewStackDriverClientPodIdentity creates a new stackdriver client with the credentials underlying
 func NewStackDriverClientPodIdentity(ctx context.Context) (*StackDriverClient, error) {
-	client, err := monitoring.NewMetricClient(ctx)
+	metricsClient, err := monitoring.NewMetricClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+	queryClient, err := monitoring.NewQueryClient(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +81,8 @@ func NewStackDriverClientPodIdentity(ctx context.Context) (*StackDriverClient, e
 	}
 
 	return &StackDriverClient{
-		metricsClient: client,
+		metricsClient: metricsClient,
+		queryClient:   queryClient,
 		projectID:     project,
 	}, nil
 }
@@ -192,16 +209,7 @@ func (s StackDriverClient) GetMetrics(
 		Aggregation: aggregation,
 	}
 
-	switch projectID {
-	case "":
-		if len(s.projectID) > 0 {
-			req.Name = "projects/" + s.projectID
-		} else {
-			req.Name = "projects/" + s.credentials.ProjectID
-		}
-	default:
-		req.Name = "projects/" + projectID
-	}
+	req.Name = getRequestName(&s, projectID)
 
 	// Get an iterator with the list of time series
 	it := s.metricsClient.ListTimeSeries(ctx, req)
@@ -231,9 +239,98 @@ func (s StackDriverClient) GetMetrics(
 	return value, nil
 }
 
+// QueryMetrics fetches metrics from the Cloud Monitoring API
+// for a specific Monitoring Query Language (MQL) query.
+//
+// MQL provides a more expressive query language than
+// the current filtering options of GetMetrics
+func (s StackDriverClient) QueryMetrics(ctx context.Context, projectID, query string) (float64, error) {
+	req := &monitoringpb.QueryTimeSeriesRequest{
+		Query:    query,
+		PageSize: 1,
+	}
+	req.Name = getRequestName(&s, projectID)
+
+	it := s.queryClient.QueryTimeSeries(ctx, req)
+
+	var value float64 = -1
+
+	// Get the value from the first metric returned
+	resp, err := it.Next()
+
+	if err == iterator.Done {
+		return value, fmt.Errorf("could not find stackdriver metric with filter %s", filter)
+	}
+
+	if err != nil {
+		return value, err
+	}
+
+	if len(resp.GetPointData()) > 0 {
+		point := resp.GetPointData()[0]
+		value, err = extractValueFromPointData(point)
+
+		if err != nil {
+			return -1, err
+		}
+	}
+
+	return value, nil
+}
+
+func getRequestName(s *StackDriverClient, projectID string) string {
+	switch projectID {
+	case "":
+		if len(s.projectID) > 0 {
+			return "projects/" + s.projectID
+		} else {
+			return "projects/" + s.credentials.ProjectID
+		}
+	default:
+		return "projects/" + projectID
+	}
+}
+
+// buildMQLQuery builds a Monitoring Query Language (MQL) query for the last minute (five for queries with aggregation),
+// given a resource type, metric, resource name, and an optional aggregation
+//
+// example:
+// fetch pubsub_topic
+// | metric 'pubsub.googleapis.com/topic/message_sizes'
+// | filter (resource.topic_id == 'mytopic')
+// | within 5m
+// | group_by [], sum(value)
+func buildMQLQuery(resourceType, metric, resourceName, aggregate string) string {
+	tw := defaultTimeWindow
+	if aggregate != "" {
+		tw = aggregationTimeWindow
+	}
+
+	q := fmt.Sprintf(
+		"fetch pubsub_%s | metric '%s' | filter (resource.%s_id == '%s') | within %s",
+		resourceType, metric, resourceType, resourceName, tw,
+	)
+	if aggregate != "" {
+		q += fmt.Sprintf(" | group_by [], %s(value)", aggregate)
+	}
+	return q
+}
+
 // extractValueFromPoint attempts to extract a float64 by asserting the point's value type
 func extractValueFromPoint(point *monitoringpb.Point) (float64, error) {
 	typedValue := point.GetValue()
+	switch typedValue.Value.(type) {
+	case *monitoringpb.TypedValue_DoubleValue:
+		return typedValue.GetDoubleValue(), nil
+	case *monitoringpb.TypedValue_Int64Value:
+		return float64(typedValue.GetInt64Value()), nil
+	}
+	return -1, fmt.Errorf("could not extract value from metric of type %T", typedValue)
+}
+
+// extractValueFromPointData is similar to extractValueFromPoint, but for type *TimeSeriesData_PointData
+func extractValueFromPointData(point *monitoringpb.TimeSeriesData_PointData) (float64, error) {
+	typedValue := point.GetValues()[0]
 	switch typedValue.Value.(type) {
 	case *monitoringpb.TypedValue_DoubleValue:
 		return typedValue.GetDoubleValue(), nil
