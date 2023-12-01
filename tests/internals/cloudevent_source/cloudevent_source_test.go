@@ -157,17 +157,18 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 	t.Log("--- test emitting eventsource about scaledobject err---")
 	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
 
-	// wait 5 seconds to ensure event propagation
-	time.Sleep(5 * time.Second)
+	// wait 15 seconds to ensure event propagation
+	time.Sleep(15 * time.Second)
 
-	out, _, _ := ExecCommandOnSpecificPod(t, clientName, namespace, fmt.Sprintf("curl -X GET %s/getCloudEvent/%s", cloudEventHTTPServiceURL, "ScaledObjectCheckFailed"))
-
-	assert.NotNil(t, out)
+	out, outErr, err := ExecCommandOnSpecificPod(t, clientName, namespace, fmt.Sprintf("curl -X GET %s/getCloudEvent/%s", cloudEventHTTPServiceURL, "ScaledObjectCheckFailed"))
+	assert.NotEmpty(t, out)
+	assert.Empty(t, outErr)
+	assert.NoError(t, err)
 
 	cloudEvent := make(map[string]interface{})
-	err := json.Unmarshal([]byte(out), &cloudEvent)
+	err = json.Unmarshal([]byte(out), &cloudEvent)
 
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	// check the cloud event content
 	cloudEventData, ok := cloudEvent["data"]
