@@ -208,7 +208,7 @@ func TestInfluxScaler(t *testing.T) {
 func runWriteJob(t *testing.T, kc *kubernetes.Clientset) templateData {
 	// run writeJob
 	data, _ := getTemplateData()
-	KubectlApplyWithTemplate(t, data, "influxdbWriteJobTemplate", influxdbWriteJobTemplate)
+	KubectlReplaceWithTemplate(t, data, "influxdbWriteJobTemplate", influxdbWriteJobTemplate)
 	assert.True(t, WaitForJobSuccess(t, kc, influxdbJobName, testNamespace, 30, 2), "Job should run successfully")
 
 	// get pod logs
