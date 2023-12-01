@@ -401,7 +401,7 @@ for i := 0; i < retries; i++ {
     
     // attempt to create topic prior to publishing the message
     err = w.WriteMessages(ctx, messages...)
-    if errors.Is(err, LeaderNotAvailable) || errors.Is(err, context.DeadlineExceeded) {
+    if errors.Is(err, kafka.LeaderNotAvailable) || errors.Is(err, context.DeadlineExceeded) {
         time.Sleep(time.Millisecond * 250)
         continue
     }

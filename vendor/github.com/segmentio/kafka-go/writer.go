@@ -29,7 +29,7 @@ import (
 //
 //		// Construct a synchronous writer (the default mode).
 //		w := &kafka.Writer{
-//			Addr:         Addr: kafka.TCP("localhost:9092", "localhost:9093", "localhost:9094"),
+//			Addr:         kafka.TCP("localhost:9092", "localhost:9093", "localhost:9094"),
 //			Topic:        "topic-A",
 //			RequiredAcks: kafka.RequireAll,
 //		}
@@ -55,7 +55,7 @@ import (
 // writer to receive notifications of messages being written to kafka:
 //
 //	w := &kafka.Writer{
-//		Addr:         Addr: kafka.TCP("localhost:9092", "localhost:9093", "localhost:9094"),
+//		Addr:         kafka.TCP("localhost:9092", "localhost:9093", "localhost:9094"),
 //		Topic:        "topic-A",
 //		RequiredAcks: kafka.RequireAll,
 //		Async:        true, // make the writer asynchronous
@@ -891,13 +891,13 @@ func (w *Writer) Stats() WriterStats {
 		Retries:         stats.retries.snapshot(),
 		BatchSize:       stats.batchSize.snapshot(),
 		BatchBytes:      stats.batchSizeBytes.snapshot(),
-		MaxAttempts:     int64(w.MaxAttempts),
-		WriteBackoffMin: w.WriteBackoffMin,
-		WriteBackoffMax: w.WriteBackoffMax,
-		MaxBatchSize:    int64(w.BatchSize),
-		BatchTimeout:    w.BatchTimeout,
-		ReadTimeout:     w.ReadTimeout,
-		WriteTimeout:    w.WriteTimeout,
+		MaxAttempts:     int64(w.maxAttempts()),
+		WriteBackoffMin: w.writeBackoffMin(),
+		WriteBackoffMax: w.writeBackoffMax(),
+		MaxBatchSize:    int64(w.batchSize()),
+		BatchTimeout:    w.batchTimeout(),
+		ReadTimeout:     w.readTimeout(),
+		WriteTimeout:    w.writeTimeout(),
 		RequiredAcks:    int64(w.RequiredAcks),
 		Async:           w.Async,
 		Topic:           w.Topic,

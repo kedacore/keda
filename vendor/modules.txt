@@ -1159,7 +1159,7 @@ github.com/ryanuber/go-glob
 # github.com/samber/lo v1.37.0
 ## explicit; go 1.18
 github.com/samber/lo
-# github.com/segmentio/kafka-go v0.4.43
+# github.com/segmentio/kafka-go v0.4.46
 ## explicit; go 1.15
 github.com/segmentio/kafka-go
 github.com/segmentio/kafka-go/compress
@@ -1198,6 +1198,7 @@ github.com/segmentio/kafka-go/protocol/joingroup
 github.com/segmentio/kafka-go/protocol/leavegroup
 github.com/segmentio/kafka-go/protocol/listgroups
 github.com/segmentio/kafka-go/protocol/listoffsets
+github.com/segmentio/kafka-go/protocol/listpartitionreassignments
 github.com/segmentio/kafka-go/protocol/metadata
 github.com/segmentio/kafka-go/protocol/offsetcommit
 github.com/segmentio/kafka-go/protocol/offsetdelete
