@@ -34,6 +34,7 @@ var (
 	cloudEventHTTPServiceURL   = fmt.Sprintf("http://%s.%s.svc.cluster.local:8899", cloudEventHTTPServiceName, namespace)
 	clusterName                = "test-cluster"
 	expectedSubject            = fmt.Sprintf("/%s/%s/workload/%s", clusterName, namespace, scaledObjectName)
+	expectedSource             = fmt.Sprintf("/%s/%s/keda/", clusterName, namespace)
 )
 
 type templateData struct {
@@ -185,6 +186,7 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 			assert.NoError(t, err)
 			assert.Equal(t, data["message"], "ScaledObject doesn't have correct scaleTargetRef specification")
 			assert.Equal(t, cloudEvent.Type(), "com.cloudeventsource.keda")
+			assert.Equal(t, cloudEvent.Source(), expectedSource)
 			assert.Equal(t, cloudEvent.DataContentType(), "application/json")
 		}
 	}
