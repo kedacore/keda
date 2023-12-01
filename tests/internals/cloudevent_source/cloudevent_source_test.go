@@ -157,6 +157,9 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 	t.Log("--- test emitting eventsource about scaledobject err---")
 	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
 
+	// wait 5 seconds to ensure event propagation
+	time.Sleep(5 * time.Second)
+
 	out, _, _ := ExecCommandOnSpecificPod(t, clientName, namespace, fmt.Sprintf("curl -X GET %s/getCloudEvent/%s", cloudEventHTTPServiceURL, "ScaledObjectCheckFailed"))
 
 	assert.NotNil(t, out)
@@ -168,10 +171,10 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 
 	// check the cloud event content
 	cloudEventData, ok := cloudEvent["data"]
-	assert.True(t, ok, "cloudEvent contains data")
+	assert.True(t, ok, "cloudEvent should contain data")
 	if ok {
 		message, ok := cloudEventData.(map[string]interface{})["message"]
-		assert.True(t, ok, "cloudEvent contains message")
+		assert.True(t, ok, "cloudEvent should contain message")
 		if ok {
 			assert.Equal(t, message, "ScaledObject doesn't have correct scaleTargetRef specification")
 		}
