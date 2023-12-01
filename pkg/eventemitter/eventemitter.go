@@ -329,7 +329,7 @@ func (e *EventEmitter) emitEventByHandler(eventData eventdata.EventData) {
 			if handler.GetActiveStatus() == metav1.ConditionTrue {
 				go handler.EmitEvent(eventData, e.emitErrorHandle)
 
-				metricscollector.RecordCloudEventEmitted(eventData.Namespace, eventData.ObjectName, getHandlerTypeFromKey(key))
+				metricscollector.RecordCloudEventEmitted(eventData.Namespace, getSourceNameFromKey(eventData.HandlerKey), getHandlerTypeFromKey(key))
 			} else {
 				e.log.V(1).Info("EventHandler's status is not active. Please check if event endpoint works well", "CloudEventSource", eventData.ObjectName)
 			}
@@ -344,7 +344,7 @@ func (e *EventEmitter) emitEventByHandler(eventData eventdata.EventData) {
 }
 
 func (e *EventEmitter) emitErrorHandle(eventData eventdata.EventData, err error) {
-	metricscollector.RecordCloudEventEmittedError(eventData.Namespace, eventData.EventType, getHandlerTypeFromKey(eventData.HandlerKey))
+	metricscollector.RecordCloudEventEmittedError(eventData.Namespace, getSourceNameFromKey(eventData.HandlerKey), getHandlerTypeFromKey(eventData.HandlerKey))
 
 	if eventData.RetryTimes >= maxRetryTimes {
 		e.log.V(1).Info("Failed to emit Event multiple times. Will set handler failure status.", "handler", eventData.HandlerKey, "retry times", eventData.RetryTimes)
@@ -402,5 +402,17 @@ func newEventHandlerKey(kindNamespaceName string, handlerType string) string { /
 }
 
 func getHandlerTypeFromKey(handlerKey string) string {
-	return strings.Split(handlerKey, ".")[1]
+	keys := strings.Split(handlerKey, ".")
+	if len(keys) >= 4 {
+		return keys[3]
+	}
+	return ""
+}
+
+func getSourceNameFromKey(handlerKey string) string {
+	keys := strings.Split(handlerKey, ".")
+	if len(keys) >= 4 {
+		return keys[2]
+	}
+	return ""
 }

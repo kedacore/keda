@@ -138,7 +138,7 @@ var (
 			Name:      "emitted_total",
 			Help:      "Total emitted cloudevents",
 		},
-		[]string{"namespace", "cloudevent", "eventsink"},
+		[]string{"namespace", "cloudeventsource", "eventsink"},
 	)
 
 	cloudeventEmittedErrors = prometheus.NewCounterVec(
@@ -148,7 +148,7 @@ var (
 			Name:      "errors_total",
 			Help:      "Total cloudevent emitted errors",
 		},
-		[]string{"namespace", "cloudevent", "eventsink"},
+		[]string{"namespace", "cloudeventsource", "eventsink"},
 	)
 
 	cloudeventSink = prometheus.NewGaugeVec(
@@ -165,10 +165,10 @@ var (
 		prometheus.GaugeOpts{
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "cloudeventsource",
-			Name:      "sink",
+			Name:      "queue",
 			Help:      "Indicates how many events are still queue",
 		},
-		[]string{"namespace"},
+		[]string{"namespace", "isQueueActive"},
 	)
 )
 
@@ -308,13 +308,13 @@ func (p *PromMetrics) DecrementCRDTotal(crdType, namespace string) {
 
 // RecordCloudEventEmitted counts the number of cloudevent that emitted to user's sink
 func (p *PromMetrics) RecordCloudEventEmitted(namespace string, cloudeventsource string, eventsink string) {
-	labels := prometheus.Labels{"namespace": namespace, "cloudEventSource": cloudeventsource, "eventsink": eventsink}
+	labels := prometheus.Labels{"namespace": namespace, "cloudeventsource": cloudeventsource, "eventsink": eventsink}
 	cloudeventEmitted.With(labels).Inc()
 }
 
 // RecordCloudEventEmittedError counts the number of errors occurred in trying emit cloudevent
 func (p *PromMetrics) RecordCloudEventEmittedError(namespace string, cloudeventsource string, eventsink string) {
-	labels := prometheus.Labels{"namespace": namespace, "cloudEventSource": cloudeventsource, "eventsink": eventsink}
+	labels := prometheus.Labels{"namespace": namespace, "cloudeventsource": cloudeventsource, "eventsink": eventsink}
 	cloudeventEmittedErrors.With(labels).Inc()
 }
 
@@ -337,5 +337,5 @@ func (p *PromMetrics) RecordCloudEventQueueStatus(value int, isactive bool) {
 		activeVal = "1"
 	}
 
-	cloudeventQueueStatus.With(prometheus.Labels{"isQueueActive": activeVal}).Set(float64(value))
+	cloudeventQueueStatus.With(prometheus.Labels{"namespace": DefaultPromMetricsNamespace, "isQueueActive": activeVal}).Set(float64(value))
 }
