@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
@@ -31,6 +32,8 @@ var (
 	cloudEventHTTPReceiverName = fmt.Sprintf("%s-cloudevent-http-receiver", testName)
 	cloudEventHTTPServiceName  = fmt.Sprintf("%s-cloudevent-http-service", testName)
 	cloudEventHTTPServiceURL   = fmt.Sprintf("http://%s.%s.svc.cluster.local:8899", cloudEventHTTPServiceName, namespace)
+	clusterName                = "test-cluster"
+	expectedSubject            = fmt.Sprintf("/%s/%s/workload/%s", clusterName, namespace, scaledObjectName)
 )
 
 type templateData struct {
@@ -41,6 +44,7 @@ type templateData struct {
 	CloudEventHTTPReceiverName string
 	CloudEventHTTPServiceName  string
 	CloudEventHTTPServiceURL   string
+	ClusterName                string
 }
 
 const (
@@ -51,7 +55,7 @@ const (
     name: {{.CloudEventSourceName}}
     namespace: {{.TestNamespace}}
   spec:
-    clusterName: cluster-sample
+    clusterName: {{.ClusterName}}
     destination:
       http:
         uri: {{.CloudEventHTTPServiceURL}}
@@ -165,21 +169,26 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 	assert.Empty(t, outErr)
 	assert.NoError(t, err, "dont expect error requesting ")
 
-	cloudEvent := make(map[string]interface{})
-	err = json.Unmarshal([]byte(out), &cloudEvent)
+	cloudEvents := []cloudevents.Event{}
+	err = json.Unmarshal([]byte(out), &cloudEvents)
 
-	assert.NoError(t, err, "dont expect error unmarshaling the cloudEvent")
+	assert.NoError(t, err, "dont expect error unmarshaling the cloudEvents")
+	assert.Greater(t, len(cloudEvents), 0, "cloudEvents should have at least 1 item")
 
-	// check the cloud event content
-	cloudEventData, ok := cloudEvent["data"]
-	assert.True(t, ok, "cloudEvent should contain data")
-	if ok {
-		message, ok := cloudEventData.(map[string]interface{})["message"]
-		assert.True(t, ok, "cloudEvent should contain message")
-		if ok {
-			assert.Equal(t, message, "ScaledObject doesn't have correct scaleTargetRef specification")
+	foundEvents := []cloudevents.Event{}
+
+	for _, cloudEvent := range cloudEvents {
+		if cloudEvent.Subject() == expectedSubject {
+			foundEvents = append(foundEvents, cloudEvent)
+			data := map[string]string{}
+			err := cloudEvent.DataAs(&data)
+			assert.NoError(t, err)
+			assert.Equal(t, data["message"], "ScaledObject doesn't have correct scaleTargetRef specification")
+			assert.Equal(t, cloudEvent.Type(), "com.cloudeventsource.keda")
+			assert.Equal(t, cloudEvent.DataContentType(), "application/json")
 		}
 	}
+	assert.NotEmpty(t, foundEvents)
 }
 
 // help function to load template data
@@ -192,6 +201,7 @@ func getTemplateData() (templateData, []Template) {
 			CloudEventHTTPReceiverName: cloudEventHTTPReceiverName,
 			CloudEventHTTPServiceName:  cloudEventHTTPServiceName,
 			CloudEventHTTPServiceURL:   cloudEventHTTPServiceURL,
+			ClusterName:                clusterName,
 		}, []Template{
 			{Name: "cloudEventHTTPReceiverTemplate", Config: cloudEventHTTPReceiverTemplate},
 			{Name: "cloudEventHTTPServiceTemplate", Config: cloudEventHTTPServiceTemplate},
