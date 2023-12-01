@@ -34,7 +34,7 @@ var (
 	cloudEventHTTPServiceURL   = fmt.Sprintf("http://%s.%s.svc.cluster.local:8899", cloudEventHTTPServiceName, namespace)
 	clusterName                = "test-cluster"
 	expectedSubject            = fmt.Sprintf("/%s/%s/workload/%s", clusterName, namespace, scaledObjectName)
-	expectedSource             = fmt.Sprintf("/%s/%s/keda/", clusterName, namespace)
+	expectedSource             = fmt.Sprintf("/%s/%s/keda", clusterName, namespace)
 )
 
 type templateData struct {
