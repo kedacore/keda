@@ -60,7 +60,7 @@ var testPubSubMetadata = []parsePubSubMetadataTestData{
 	{nil, map[string]string{"subscriptionName": "mysubscription", "value": "7.1", "credentialsFromEnv": "SAMPLE_CREDS", "activationValue": "2.1"}, false},
 	// All optional omitted
 	{nil, map[string]string{"subscriptionName": "mysubscription", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
-	// value omittted when mode present
+	// value omitted when mode present
 	{nil, map[string]string{"subscriptionName": "mysubscription", "mode": "SubscriptionSize", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// all properly formed with topicName
 	{nil, map[string]string{"topicName": "mytopic", "mode": "MessageSizes", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},

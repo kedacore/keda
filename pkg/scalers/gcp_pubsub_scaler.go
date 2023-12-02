@@ -222,7 +222,10 @@ func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (float
 		}
 	}
 	resourceID, projectID := getResourceData(s)
-	query := buildMQLQuery(s.metadata.resourceType, metricType, resourceID, s.metadata.aggregation)
+	query, err := buildMQLQuery(s.metadata.resourceType, metricType, resourceID, s.metadata.aggregation)
+	if err != nil {
+		return -1, err
+	}
 
 	// Pubsub metrics are collected every 60 seconds so no need to aggregate them.
 	// See: https://cloud.google.com/monitoring/api/metrics_gcp#gcp-pubsub

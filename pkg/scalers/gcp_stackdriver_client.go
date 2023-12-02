@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,8 +20,21 @@ import (
 )
 
 const (
-	defaultTimeWindow     = "1m"
-	aggregationTimeWindow = "5m"
+	defaultTimeHorizon = "1m"
+	// For aggregation, a shorter time horizon does not return any data
+	aggregationTimeHorizon = "5m"
+	alignmentPeriod        = "1m"
+
+	// Not all aggregations are meaningful for distribution metrics,
+	// so we only support a subset of them.
+	// https://cloud.google.com/monitoring/mql/reference#aggr-function-group
+	aggregationMean       = "mean"
+	aggregationMedian     = "median"
+	aggregationVariance   = "variance"
+	aggregationStddev     = "stddev"
+	aggregationSum        = "sum"
+	aggregationCount      = "count"
+	aggregationPercentile = "percentile"
 )
 
 // StackDriverClient is a generic client to fetch metrics from Stackdriver. Can be used
@@ -266,8 +280,9 @@ func (s StackDriverClient) QueryMetrics(ctx context.Context, projectID, query st
 		return value, err
 	}
 
-	if len(resp.GetPointData()) > 0 {
-		point := resp.GetPointData()[0]
+	if l := len(resp.GetPointData()); l > 0 {
+		// For aggregations, the first entry might only give a partial result.
+		point := resp.GetPointData()[l-1]
 		value, err = extractValueFromPointData(point)
 
 		if err != nil {
@@ -279,19 +294,16 @@ func (s StackDriverClient) QueryMetrics(ctx context.Context, projectID, query st
 }
 
 func getRequestName(s *StackDriverClient, projectID string) string {
-	switch projectID {
-	case "":
-		if len(s.projectID) > 0 {
-			return "projects/" + s.projectID
-		} else {
-			return "projects/" + s.credentials.ProjectID
-		}
-	default:
+	if len(projectID) > 0 {
 		return "projects/" + projectID
 	}
+	if len(s.projectID) > 0 {
+		return "projects/" + s.projectID
+	}
+	return "projects/" + s.credentials.ProjectID
 }
 
-// buildMQLQuery builds a Monitoring Query Language (MQL) query for the last minute (five for queries with aggregation),
+// buildMQLQuery builds a Monitoring Query Language (MQL) query for the last minute,
 // given a resource type, metric, resource name, and an optional aggregation
 //
 // example:
@@ -299,21 +311,61 @@ func getRequestName(s *StackDriverClient, projectID string) string {
 // | metric 'pubsub.googleapis.com/topic/message_sizes'
 // | filter (resource.topic_id == 'mytopic')
 // | within 5m
-// | group_by [], sum(value)
-func buildMQLQuery(resourceType, metric, resourceName, aggregate string) string {
-	tw := defaultTimeWindow
-	if aggregate != "" {
-		tw = aggregationTimeWindow
+// | align delta(1m)
+// | every 1m
+// | group_by [], count(value)
+func buildMQLQuery(resourceType, metric, resourceName, aggregation string) (string, error) {
+	th := defaultTimeHorizon
+	if aggregation != "" {
+		th = aggregationTimeHorizon
 	}
 
 	q := fmt.Sprintf(
 		"fetch pubsub_%s | metric '%s' | filter (resource.%s_id == '%s') | within %s",
-		resourceType, metric, resourceType, resourceName, tw,
+		resourceType, metric, resourceType, resourceName, th,
 	)
-	if aggregate != "" {
-		q += fmt.Sprintf(" | group_by [], %s(value)", aggregate)
+
+	if aggregation != "" {
+		agg, err := buildAggregation(aggregation)
+		if err != nil {
+			return "", err
+		}
+		q += fmt.Sprintf(
+			" | align delta(%s) | every %s | group_by [], %s",
+			alignmentPeriod, alignmentPeriod, agg,
+		)
 	}
-	return q
+
+	return q, nil
+}
+
+// buildAggregation builds the aggregation part of a Monitoring Query Language (MQL) query
+func buildAggregation(aggregation string) (string, error) {
+	// Match against "percentileX"
+	if strings.HasPrefix(aggregation, aggregationPercentile) {
+		p, err := parsePercentile(aggregation)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%s(value, %d)", aggregationPercentile, p), nil
+	}
+
+	switch aggregation {
+	case aggregationMedian, aggregationMean, aggregationVariance, aggregationStddev, aggregationSum, aggregationCount:
+		return fmt.Sprintf("%s(value)", aggregation), nil
+	default:
+		return "", fmt.Errorf("unsupported aggregation function: %s", aggregation)
+	}
+}
+
+// parsePercentile returns the percentile value from a string of the form "percentileX"
+func parsePercentile(str string) (int, error) {
+	ps := strings.TrimPrefix(str, "percentile")
+	p, err := strconv.Atoi(ps)
+	if err != nil || p < 0 || p > 100 {
+		return -1, fmt.Errorf("invalid percentile value: %s", ps)
+	}
+	return p, nil
 }
 
 // extractValueFromPoint attempts to extract a float64 by asserting the point's value type
