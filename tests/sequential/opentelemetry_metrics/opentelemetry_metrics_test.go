@@ -361,6 +361,7 @@ func testScaledObjectErrors(t *testing.T, data templateData) {
 	t.Log("--- testing scaled object errors ---")
 
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
 
 	time.Sleep(20 * time.Second)
@@ -385,6 +386,7 @@ func testScaledObjectErrors(t *testing.T, data templateData) {
 	}
 
 	KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
+	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	// wait for 10 seconds to correctly fetch metrics.
 	time.Sleep(10 * time.Second)
@@ -394,6 +396,7 @@ func testScalerErrors(t *testing.T, data templateData) {
 	t.Log("--- testing scaler errors ---")
 
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
 
 	time.Sleep(15 * time.Second)
@@ -418,6 +421,7 @@ func testScalerErrors(t *testing.T, data templateData) {
 	}
 
 	KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
+	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 }
 
