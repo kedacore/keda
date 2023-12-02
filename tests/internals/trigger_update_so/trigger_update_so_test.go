@@ -317,21 +317,21 @@ func testTargetValue(t *testing.T, kc *kubernetes.Clientset, data templateData) 
 	KubectlApplyWithTemplate(t, data, "scaledObjectTriggerTemplate", scaledObjectTriggerTemplate)
 
 	data.MetricValue = 1
-	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 1, 180, 3),
 		"replica count should be %d after 3 minutes", 1)
 
 	t.Log("--- test target value 10 ---")
 	data.MetricValue = 10
-	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, maxReplicas, 180, 3),
 		"replica count should be %d after 3 minutes", maxReplicas)
 
 	t.Log("--- test target value 0 ---")
 	data.MetricValue = 0
-	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
 		"replica count should be %d after 3 minutes", minReplicas)
@@ -343,7 +343,7 @@ func testTwoTriggers(t *testing.T, kc *kubernetes.Clientset, data templateData) 
 	KubectlApplyWithTemplate(t, data, "scaledObjectTriggerTemplate", scaledObjectTriggerTemplate)
 
 	data.MetricValue = 1
-	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 1, 180, 3),
 		"replica count should be %d after 3 minutes", 1)
@@ -362,7 +362,7 @@ func testRemoveTrigger(t *testing.T, kc *kubernetes.Clientset, data templateData
 	t.Log("--- test remove trigger 2 -> 1 ---")
 	KubectlApplyWithTemplate(t, data, "scaledObjectTwoTriggerTemplate", scaledObjectTwoTriggerTemplate)
 	data.MetricValue = 5 // 3 replicas (midReplicas)
-	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	KubernetesScaleDeployment(t, kc, workloadDeploymentName, int64(maxReplicas), namespace)
 
@@ -385,7 +385,7 @@ func testThreeTriggersWithCPU(t *testing.T, kc *kubernetes.Clientset, data templ
 
 	// scaling might take longer because of fetching of the cpu metrics (possibly increase iterations if needed)
 	data.MetricValue = 10
-	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, maxReplicas, 180, 3),
 		"replica count should be %d after 3 minutes", maxReplicas)
 }
