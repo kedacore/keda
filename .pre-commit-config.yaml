@@ -38,14 +38,14 @@ repos:
       language: system
       entry: "bash tools/sort_scalers.sh"
       files: .*scale_handler\.go$
+    - id: validate-changelog
+      name: Validate Changelog
+      language: system
+      entry: "bash hack/validate-changelog.sh"
+      pass_filenames: false
     - id: golangci-lint
       language: golang
       name: Run golangci against the code
       entry: golangci-lint run
       types: [go]
-      pass_filenames: false
-    - id: validate-changelog
-      name: Validate Changelog
-      language: system
-      entry: "bash hack/validate-changelog.sh"
       pass_filenames: false

@@ -22,7 +22,7 @@ We aim to release this release in the week of <week range, example March 27-31>.
 
 - [ ] Prepare changelog
 - [ ] [Welcome message supported versions](https://github.com/kedacore/keda/blob/main/pkg/util/welcome.go#L29-L30) are up-to-date
-- [ ] Add the new version to GitHub Bug report template
+- [ ] Add the new version to [GitHub Bug report](https://github.com/kedacore/keda/blob/main/.github/ISSUE_TEMPLATE/3_bug_report.yml) template
 - [ ] Create KEDA release
 - [ ] Publish new documentation version
 - [ ] Setup continuous container scanning with Snyk
