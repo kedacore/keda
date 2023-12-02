@@ -148,9 +148,6 @@ spec:
   cooldownPeriod: 5
   minReplicaCount: 0
   maxReplicaCount: 10
-  fallback:
-    replicas: 5
-    failureThreshold: 1
   triggers:
   - type: metrics-api
     name: metrics_api
