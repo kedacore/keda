@@ -148,6 +148,9 @@ spec:
   cooldownPeriod: 5
   minReplicaCount: 0
   maxReplicaCount: 10
+  fallback:
+    replicas: 5
+    failureThreshold: 3
   triggers:
   - type: metrics-api
     name: metrics_api
@@ -253,7 +256,7 @@ func testFormula(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 3, 12, 10),
 		"replica count should be %d after 2 minutes", 3)
 
-	// apply fallback fallback
+	// apply fallback
 	_, err = ExecuteCommand(fmt.Sprintf("kubectl scale deployment/%s --replicas=0 -n %s", metricsServerDeploymentName, namespace))
 	assert.NoErrorf(t, err, "cannot scale metricsServer deployment - %s", err)
 
