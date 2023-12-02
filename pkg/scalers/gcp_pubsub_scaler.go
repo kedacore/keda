@@ -177,7 +177,6 @@ func (s *pubsubScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec 
 // GetMetricsAndActivity connects to Stack Driver and finds the size of the pub sub subscription
 func (s *pubsubScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	mode := s.metadata.mode
-	prefix := prefixPubSubResource + s.metadata.resourceType + "/"
 
 	// SubscriptionSize is actually NumUndeliveredMessages in GCP PubSub.
 	// Considering backward compatibility, fallback "SubscriptionSize" to "NumUndeliveredMessages"
@@ -185,8 +184,8 @@ func (s *pubsubScaler) GetMetricsAndActivity(ctx context.Context, metricName str
 		mode = "NumUndeliveredMessages"
 	}
 
+	prefix := prefixPubSubResource + s.metadata.resourceType + "/"
 	metricType := prefix + snakeCase(mode)
-
 	value, err := s.getMetrics(ctx, metricType)
 	if err != nil {
 		s.logger.Error(err, "error getting metric", "metricType", metricType)

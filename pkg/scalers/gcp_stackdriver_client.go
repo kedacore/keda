@@ -26,7 +26,7 @@ const (
 	alignmentPeriod        = "1m"
 
 	// Not all aggregations are meaningful for distribution metrics,
-	// so we only support a subset of them.
+	// so we only support a subset of them
 	// https://cloud.google.com/monitoring/mql/reference#aggr-function-group
 	aggregationMean       = "mean"
 	aggregationMedian     = "median"
@@ -254,7 +254,7 @@ func (s StackDriverClient) GetMetrics(
 }
 
 // QueryMetrics fetches metrics from the Cloud Monitoring API
-// for a specific Monitoring Query Language (MQL) query.
+// for a specific Monitoring Query Language (MQL) query
 //
 // MQL provides a more expressive query language than
 // the current filtering options of GetMetrics
@@ -281,7 +281,7 @@ func (s StackDriverClient) QueryMetrics(ctx context.Context, projectID, query st
 	}
 
 	if l := len(resp.GetPointData()); l > 0 {
-		// For aggregations, the first entry might only give a partial result.
+		// For aggregations, the first entry might only give a partial result
 		point := resp.GetPointData()[l-1]
 		value, err = extractValueFromPointData(point)
 
@@ -360,7 +360,7 @@ func buildAggregation(aggregation string) (string, error) {
 
 // parsePercentile returns the percentile value from a string of the form "percentileX"
 func parsePercentile(str string) (int, error) {
-	ps := strings.TrimPrefix(str, "percentile")
+	ps := strings.TrimPrefix(str, aggregationPercentile)
 	p, err := strconv.Atoi(ps)
 	if err != nil || p < 0 || p > 100 {
 		return -1, fmt.Errorf("invalid percentile value: %s", ps)
