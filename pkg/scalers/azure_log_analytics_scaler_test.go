@@ -22,8 +22,9 @@ import (
 	"reflect"
 	"testing"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/stretchr/testify/assert"
+
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 const (
@@ -397,7 +398,107 @@ func TestGetParameterFromConfigV2(t *testing.T) {
 			assert.Contains(t, err.Error(), testData.errorMessage)
 		} else {
 			assert.Nil(t, err)
-			assert.Equalf(t, testData.expectedResult, val, "expected %s but got %s", testData.expectedResult, val)
+			assert.Equalf(t, testData.expectedResult, val, "test %s: expected %s but got %s", testData.name, testData.expectedResult, val)
+		}
+	}
+}
+
+type convertStringToTypeTestData struct {
+	name           string
+	input          string
+	targetType     reflect.Type
+	expectedOutput interface{}
+	isError        bool
+	errorMessage   string
+}
+
+var convertStringToTypeDataset = []convertStringToTypeTestData{
+	{
+		name:           "test string",
+		input:          "test",
+		targetType:     reflect.TypeOf(string("")),
+		expectedOutput: "test",
+	},
+	{
+		name:           "test int",
+		input:          "6",
+		targetType:     reflect.TypeOf(int(6)),
+		expectedOutput: 6,
+	},
+	{
+		name:           "test int64 max",
+		input:          "9223372036854775807", // int64 max
+		targetType:     reflect.TypeOf(int64(6)),
+		expectedOutput: int64(9223372036854775807),
+	},
+	{
+		name:           "test int64 min",
+		input:          "-9223372036854775808", // int64 min
+		targetType:     reflect.TypeOf(int64(6)),
+		expectedOutput: int64(-9223372036854775808),
+	},
+	{
+		name:           "test uint64 max",
+		input:          "18446744073709551615", // uint64 max
+		targetType:     reflect.TypeOf(uint64(6)),
+		expectedOutput: uint64(18446744073709551615),
+	},
+	{
+		name:           "test float32",
+		input:          "3.14",
+		targetType:     reflect.TypeOf(float32(3.14)),
+		expectedOutput: float32(3.14),
+	},
+	{
+		name:           "test float64",
+		input:          "0.123456789121212121212",
+		targetType:     reflect.TypeOf(float64(0.123456789121212121212)),
+		expectedOutput: float64(0.123456789121212121212),
+	},
+	{
+		name:           "test bool",
+		input:          "true",
+		targetType:     reflect.TypeOf(true),
+		expectedOutput: true,
+	},
+	{
+		name:           "test bool 2",
+		input:          "True",
+		targetType:     reflect.TypeOf(true),
+		expectedOutput: true,
+	},
+	{
+		name:           "test bool 3",
+		input:          "false",
+		targetType:     reflect.TypeOf(false),
+		expectedOutput: false,
+	},
+	{
+		name:           "test bool 4",
+		input:          "False",
+		targetType:     reflect.TypeOf(false),
+		expectedOutput: false,
+	},
+	{
+		name:           "unsupported type",
+		input:          "Unsupported Type",
+		targetType:     reflect.TypeOf([]int{}),
+		expectedOutput: "error",
+		isError:        true,
+		errorMessage:   "unsupported type: []int",
+	},
+}
+
+func TestConvertStringToType(t *testing.T) {
+	for _, testData := range convertStringToTypeDataset {
+		val, err := convertStringToType(testData.input, testData.targetType)
+
+		if testData.isError {
+			assert.NotNilf(t, err, "test %s: expected error but got success, testData - %+v", testData.name, testData)
+			assert.Contains(t, err.Error(), testData.errorMessage)
+		} else {
+			assert.Nil(t, err)
+			assert.Equalf(t, testData.expectedOutput, val, "test %s: expected %s but got %s", testData.name, testData.expectedOutput, val)
 		}
 	}
 }
