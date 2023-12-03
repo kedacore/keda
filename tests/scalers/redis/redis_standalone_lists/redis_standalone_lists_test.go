@@ -185,7 +185,7 @@ func TestScaler(t *testing.T) {
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
 	data.ItemsToWrite = 5
-	KubectlApplyWithTemplate(t, data, "insertJobTemplate", insertJobTemplate)
+	KubectlReplaceWithTemplate(t, data, "insertJobTemplate", insertJobTemplate)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
@@ -193,7 +193,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
 	data.ItemsToWrite = 400
-	KubectlApplyWithTemplate(t, data, "insertJobTemplate", insertJobTemplate)
+	KubectlReplaceWithTemplate(t, data, "insertJobTemplate", insertJobTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)

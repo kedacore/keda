@@ -20,7 +20,7 @@ import (
 var _ = godotenv.Load("../../../.env")
 
 const (
-	testName = "azure-aad-pod-identity-test"
+	testName = "trigger-authentication-validation-test"
 )
 
 var (
