@@ -153,7 +153,7 @@ func ExecCommandOnSpecificPod(t *testing.T, podName string, namespace string, co
 	}
 	buf := &bytes.Buffer{}
 	errBuf := &bytes.Buffer{}
-	request := KubeClient.CoreV1().RESTClient().Post().
+	request := GetKubernetesClient(t).CoreV1().RESTClient().Post().
 		Resource("pods").Name(podName).Namespace(namespace).
 		SubResource("exec").Timeout(time.Second*20).
 		VersionedParams(&corev1.PodExecOptions{
@@ -243,7 +243,7 @@ func CreateNamespace(t *testing.T, kc *kubernetes.Clientset, nsName string) {
 func DeleteNamespace(t *testing.T, nsName string) {
 	t.Logf("deleting namespace %s", nsName)
 	period := int64(0)
-	err := KubeClient.CoreV1().Namespaces().Delete(context.Background(), nsName, metav1.DeleteOptions{
+	err := GetKubernetesClient(t).CoreV1().Namespaces().Delete(context.Background(), nsName, metav1.DeleteOptions{
 		GracePeriodSeconds: &period,
 	})
 	if errors.IsNotFound(err) {
@@ -295,7 +295,7 @@ func WaitForAllJobsSuccess(t *testing.T, kc *kubernetes.Clientset, namespace str
 func WaitForNamespaceDeletion(t *testing.T, nsName string) bool {
 	for i := 0; i < 120; i++ {
 		t.Logf("waiting for namespace %s deletion", nsName)
-		_, err := KubeClient.CoreV1().Namespaces().Get(context.Background(), nsName, metav1.GetOptions{})
+		_, err := GetKubernetesClient(t).CoreV1().Namespaces().Get(context.Background(), nsName, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
 			return true
 		}
@@ -563,6 +563,27 @@ func KubectlApplyMultipleWithTemplate(t *testing.T, data interface{}, templates 
 	}
 }
 
+func KubectlReplaceWithTemplate(t *testing.T, data interface{}, templateName string, config string) {
+	t.Logf("Applying template: %s", templateName)
+
+	tmpl, err := template.New("kubernetes resource template").Parse(config)
+	assert.NoErrorf(t, err, "cannot parse template - %s", err)
+
+	tempFile, err := os.CreateTemp("", templateName)
+	assert.NoErrorf(t, err, "cannot create temp file - %s", err)
+
+	defer os.Remove(tempFile.Name())
+
+	err = tmpl.Execute(tempFile, data)
+	assert.NoErrorf(t, err, "cannot insert data into template - %s", err)
+
+	_, err = ExecuteCommand(fmt.Sprintf("kubectl replace -f %s --force", tempFile.Name()))
+	assert.NoErrorf(t, err, "cannot replace file - %s", err)
+
+	err = tempFile.Close()
+	assert.NoErrorf(t, err, "cannot close temp file - %s", err)
+}
+
 func KubectlDeleteWithTemplate(t *testing.T, data interface{}, templateName, config string) {
 	t.Logf("Deleting template: %s", templateName)
 
@@ -613,21 +634,22 @@ func RemoveANSI(input string) string {
 	return reg.ReplaceAllString(input, "")
 }
 
-func FindPodLogs(kc *kubernetes.Clientset, namespace, label string) ([]string, error) {
-	var podLogs []string
+func FindPodLogs(kc *kubernetes.Clientset, namespace, label string, includePrevious bool) ([]string, error) {
 	pods, err := kc.CoreV1().Pods(namespace).List(context.TODO(),
 		metav1.ListOptions{LabelSelector: label})
 	if err != nil {
 		return []string{}, err
 	}
-	var podLogRequest *rest.Request
-	for _, v := range pods.Items {
-		podLogRequest = kc.CoreV1().Pods(namespace).GetLogs(v.Name, &corev1.PodLogOptions{})
+	getPodLogs := func(pod *corev1.Pod, previous bool) ([]string, error) {
+		podLogRequest := kc.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &corev1.PodLogOptions{
+			Previous: previous,
+		})
 		stream, err := podLogRequest.Stream(context.TODO())
 		if err != nil {
 			return []string{}, err
 		}
 		defer stream.Close()
+		logs := []string{}
 		for {
 			buf := make([]byte, 2000)
 			numBytes, err := stream.Read(buf)
@@ -640,10 +662,38 @@ func FindPodLogs(kc *kubernetes.Clientset, namespace, label string) ([]string, e
 			if err != nil {
 				return []string{}, err
 			}
-			podLogs = append(podLogs, string(buf[:numBytes]))
+			logs = append(logs, string(buf[:numBytes]))
 		}
+		return logs, nil
 	}
-	return podLogs, nil
+
+	var outputLogs []string
+	for _, pod := range pods.Items {
+		getPrevious := false
+		if includePrevious {
+			for _, container := range pod.Status.ContainerStatuses {
+				if container.RestartCount > 0 {
+					getPrevious = true
+				}
+			}
+		}
+
+		if getPrevious {
+			podLogs, err := getPodLogs(&pod, true)
+			if err != nil {
+				return []string{}, err
+			}
+			outputLogs = append(outputLogs, podLogs...)
+			outputLogs = append(outputLogs, "=====================RESTART=====================\n")
+		}
+
+		podLogs, err := getPodLogs(&pod, false)
+		if err != nil {
+			return []string{}, err
+		}
+		outputLogs = append(outputLogs, podLogs...)
+	}
+	return outputLogs, nil
 }
 
 // Delete all pods in namespace by selector

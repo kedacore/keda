@@ -188,11 +188,14 @@ func TestSetupOpentelemetryComponents(t *testing.T) {
 	_, err = ExecuteCommand("helm repo update open-telemetry")
 	require.NoErrorf(t, err, "cannot update open-telemetry helm repo - %s", err)
 
-	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install opentelemetry-collector open-telemetry/opentelemetry-collector -f %s", otlpTempFileName))
+	KubeClient = GetKubernetesClient(t)
+	CreateNamespace(t, KubeClient, OpentelemetryNamespace)
+
+	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install opentelemetry-collector open-telemetry/opentelemetry-collector -f %s --namespace %s", otlpTempFileName, OpentelemetryNamespace))
 
 	require.NoErrorf(t, err, "cannot install opentelemetry - %s", err)
 
-	_, err = ExecuteCommand(fmt.Sprintf("kubectl apply -f %s", otlpServiceTempFileName))
+	_, err = ExecuteCommand(fmt.Sprintf("kubectl apply -f %s -n %s", otlpServiceTempFileName, OpentelemetryNamespace))
 	require.NoErrorf(t, err, "cannot update opentelemetry ports - %s", err)
 }
 
