@@ -73,10 +73,11 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
-- **GCP PubSub**: Fix GCP PodIdentity not considered with WorkloadIdentity ([#5021](https://github.com/kedacore/keda/issues/5021))
 - **General**: Fix CVE-2023-39325 in golang.org/x/net ([#5122](https://github.com/kedacore/keda/issues/5122))
+- **General**: Fix otelgrpc DoS vulnerability ([#5208](https://github.com/kedacore/keda/issues/5208))
 - **General**: Prevented stuck status due to timeouts during scalers generation ([#5083](https://github.com/kedacore/keda/issues/5083))
 - **Azure Pipelines**: No more HTTP 400 errors produced by poolName with spaces ([#5107](https://github.com/kedacore/keda/issues/5107))
+- **GCP PubSub**: Fix GCP PodIdentity not considered with WorkloadIdentity ([#5021](https://github.com/kedacore/keda/issues/5021))
 - **GCP pubsub scaler**: Missing use of default value of `value` added ([#5093](https://github.com/kedacore/keda/issues/5093))
 - **ScaledJobs**: Copy ScaledJob annotations to child Jobs ([#4594](https://github.com/kedacore/keda/issues/4594))
 
