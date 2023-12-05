@@ -240,6 +240,56 @@ func TestResolveNonExistingConfigMapsOrSecretsEnv(t *testing.T) {
 	}
 }
 
+func TestResolveAuthRefAndPodIdentity(t *testing.T) {
+	if err := corev1.AddToScheme(scheme.Scheme); err != nil {
+		t.Errorf("Expected Error because: %v", err)
+	}
+	if err := kedav1alpha1.AddToScheme(scheme.Scheme); err != nil {
+		t.Errorf("Expected Error because: %v", err)
+	}
+	tests := []struct {
+		name                string
+		existing            []runtime.Object
+		soar                *kedav1alpha1.AuthenticationRef
+		podTemplateSpec     *corev1.PodTemplateSpec
+		expected            map[string]string
+		expectedPodIdentity kedav1alpha1.AuthPodIdentity
+		expectedError       error
+	}{
+		// ensure podIdentity is returned
+		{
+			name:                "foo",
+			expected:            make(map[string]string),
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+		},
+	}
+	var secretsLister corev1listers.SecretLister
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
+			os.Setenv("KEDA_CLUSTER_OBJECT_NAMESPACE", clusterNamespace) // Inject test cluster namespace.
+			gotMap, gotPodIdentity, err := ResolveAuthRefAndPodIdentity(
+				ctx,
+				fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(test.existing...).Build(),
+				logf.Log.WithName("test"),
+				test.soar,
+				test.podTemplateSpec,
+				namespace,
+				secretsLister)
+			if diff := cmp.Diff(gotMap, test.expected); diff != "" {
+				t.Errorf("Returned authParams are different: %s", diff)
+			}
+			if gotPodIdentity != test.expectedPodIdentity {
+				t.Errorf("Unexpected podidentity, wanted: %q got: %q", test.expectedPodIdentity.Provider, gotPodIdentity.Provider)
+			}
+			if diff := cmp.Diff(err, test.expectedError); diff != "" {
+				t.Errorf("Returned error is different: %s", diff)
+			}
+		})
+	}
+}
+
 func TestResolveAuthRef(t *testing.T) {
 	if err := corev1.AddToScheme(scheme.Scheme); err != nil {
 		t.Errorf("Expected Error because: %v", err)
