@@ -146,12 +146,12 @@ func initMeters() {
 		otLog.Error(err, msg)
 	}
 
-	otCloudEventEmittedCounter, err = meter.Int64Counter("keda.cloudevent.emitted.totals", api.WithDescription("Total emitted cloudevents"))
+	otCloudEventEmittedCounter, err = meter.Int64Counter("keda.cloudevent.emitted", api.WithDescription("Total emitted cloudevents"))
 	if err != nil {
 		otLog.Error(err, msg)
 	}
 
-	otCloudEventEmittedErrorCounter, err = meter.Int64Counter("keda.cloudevent.emitted.error.totals", api.WithDescription("Total cloudevent emitted errors"))
+	otCloudEventEmittedErrorCounter, err = meter.Int64Counter("keda.cloudevent.emitted.error", api.WithDescription("Total cloudevent emitted errors"))
 	if err != nil {
 		otLog.Error(err, msg)
 	}
