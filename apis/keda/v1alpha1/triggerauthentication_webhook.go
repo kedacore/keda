@@ -107,15 +107,24 @@ func isTriggerAuthenticationRemovingFinalizer(om metav1.ObjectMeta, oldOm metav1
 }
 
 func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
-	if spec.PodIdentity != nil {
-		switch spec.PodIdentity.Provider {
+	err := validatePodIdentityID(spec.PodIdentity)
+	return nil, err
+}
+
+func validatePodIdentityID(podIdentity *AuthPodIdentity) error {
+	if podIdentity != nil {
+		switch podIdentity.Provider {
 		case PodIdentityProviderAzure, PodIdentityProviderAzureWorkload:
-			if spec.PodIdentity.IdentityID != nil && *spec.PodIdentity.IdentityID == "" {
-				return nil, fmt.Errorf("identityid of PodIdentity should not be empty. If it's set, identityId has to be different than \"\"")
+			if isEmptyString(podIdentity.IdentityID) {
+				return fmt.Errorf("identityid of PodIdentity should not be empty. If it's set, identityId has to be different than \"\"")
 			}
 		default:
-			return nil, nil
+			return nil
 		}
 	}
-	return nil, nil
+	return nil
+}
+
+func isEmptyString(str *string) bool {
+	return str != nil && *str == ""
 }
