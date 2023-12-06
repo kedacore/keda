@@ -237,7 +237,6 @@ func getTemplateData() (templateData, []Template) {
 func fetchAndParsePrometheusMetrics(t *testing.T, cmd string) map[string]*prommodel.MetricFamily {
 	out, _, err := ExecCommandOnSpecificPod(t, clientName, testNamespace, cmd)
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	// t.Log(fmt.Sprintf("--- vvvvvvvvvvvvvv --- %s", out))
 	parser := expfmt.TextParser{}
 	// Ensure EOL
 	reader := strings.NewReader(strings.ReplaceAll(out, "\r\n", "\n"))
