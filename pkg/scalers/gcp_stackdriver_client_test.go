@@ -22,7 +22,7 @@ var testMQLQueries = []parseMQLQueryTestCase{
 		"topic with aggregation",
 		"topic", "pubsub.googleapis.com/topic/x", "mytopic", "count",
 		"fetch pubsub_topic | metric 'pubsub.googleapis.com/topic/x' | filter (resource.topic_id == 'mytopic')" +
-			" | within 5m | align delta(1m) | every 1m | group_by [], count(value)",
+			" | within 5m | align delta(3m) | every 3m | group_by [], count(value)",
 		false,
 	},
 	{
@@ -36,7 +36,7 @@ var testMQLQueries = []parseMQLQueryTestCase{
 		"subscription with aggregation",
 		"subscription", "pubsub.googleapis.com/subscription/x", "mysubscription", "percentile99",
 		"fetch pubsub_subscription | metric 'pubsub.googleapis.com/subscription/x' | filter (resource.subscription_id == 'mysubscription')" +
-			" | within 5m | align delta(1m) | every 1m | group_by [], percentile(value, 99)",
+			" | within 5m | align delta(3m) | every 3m | group_by [], percentile(value, 99)",
 		false,
 	},
 	{
