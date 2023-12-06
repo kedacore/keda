@@ -78,6 +78,7 @@ Here is an overview of all new **experimental** features:
 - **General**: Fix otelgrpc DoS vulnerability ([#5208](https://github.com/kedacore/keda/issues/5208))
 - **General**: Prevented stuck status due to timeouts during scalers generation ([#5083](https://github.com/kedacore/keda/issues/5083))
 - **Azure Pipelines**: No more HTTP 400 errors produced by poolName with spaces ([#5107](https://github.com/kedacore/keda/issues/5107))
+- **GCP pubsub scaler**: Added `project_id` to filter for metrics queries ([#5256](https://github.com/kedacore/keda/issues/5256))
 - **GCP pubsub scaler**: Missing use of default value of `value` added ([#5093](https://github.com/kedacore/keda/issues/5093))
 - **ScaledJobs**: Copy ScaledJob annotations to child Jobs ([#4594](https://github.com/kedacore/keda/issues/4594))
 
