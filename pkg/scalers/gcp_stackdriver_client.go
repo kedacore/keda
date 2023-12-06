@@ -184,7 +184,6 @@ func (s StackDriverClient) GetMetrics(
 
 	// Create a request with the filter and the GCP project ID
 	var req = &monitoringpb.ListTimeSeriesRequest{
-		Filter: filter,
 		Interval: &monitoringpb.TimeInterval{
 			StartTime: &timestamppb.Timestamp{Seconds: startTime.Unix()},
 			EndTime:   &timestamppb.Timestamp{Seconds: endTime.Unix()},
@@ -192,19 +191,23 @@ func (s StackDriverClient) GetMetrics(
 		Aggregation: aggregation,
 	}
 
+	// Set project to perform request in and update filter with project_id
 	switch projectID {
 	case "":
 		if len(s.projectID) > 0 {
 			req.Name = "projects/" + s.projectID
-			req.Filter += ` AND resource.labels.project_id="` + s.projectID + `"`
+			filter += ` AND resource.labels.project_id="` + s.projectID + `"`
 		} else {
 			req.Name = "projects/" + s.credentials.ProjectID
-			req.Filter += ` AND resource.labels.project_id="` + s.credentials.ProjectID + `"`
+			filter += ` AND resource.labels.project_id="` + s.credentials.ProjectID + `"`
 		}
 	default:
 		req.Name = "projects/" + projectID
-		req.Filter += ` AND resource.labels.project_id="` + projectID + `"`
+		filter += ` AND resource.labels.project_id="` + projectID + `"`
 	}
+
+	// Set filter on request
+	req.Filter = filter
 
 	// Get an iterator with the list of time series
 	it := s.metricsClient.ListTimeSeries(ctx, req)
