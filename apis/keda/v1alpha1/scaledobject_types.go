@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"reflect"
+	"strconv"
 
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -203,8 +204,16 @@ func (so *ScaledObject) NeedToBePausedByAnnotation() bool {
 		return so.Status.PausedReplicaCount != nil
 	}
 
-	_, pausedAnnotationFound := so.GetAnnotations()[PausedAnnotation]
-	return pausedAnnotationFound
+	pausedAnnotationValue, pausedAnnotationFound := so.GetAnnotations()[PausedAnnotation]
+	if !pausedAnnotationFound {
+		return false
+	}
+	shouldPause, err := strconv.ParseBool(pausedAnnotationValue)
+	if err != nil {
+		// if annotation value is not a boolean, we assume user wants to pause the ScaledObject
+		return true
+	}
+	return shouldPause
 }
 
 // IsUsingModifiers determines whether scalingModifiers are defined or not
