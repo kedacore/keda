@@ -196,11 +196,14 @@ func (s StackDriverClient) GetMetrics(
 	case "":
 		if len(s.projectID) > 0 {
 			req.Name = "projects/" + s.projectID
+			req.Filter += ` AND resource.labels.project_id="` + s.projectID + `"`
 		} else {
 			req.Name = "projects/" + s.credentials.ProjectID
+			req.Filter += ` AND resource.labels.project_id="` + s.credentials.ProjectID + `"`
 		}
 	default:
 		req.Name = "projects/" + projectID
+		req.Filter += ` AND resource.labels.project_id="` + projectID + `"`
 	}
 
 	// Get an iterator with the list of time series
