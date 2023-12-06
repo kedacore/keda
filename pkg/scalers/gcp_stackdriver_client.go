@@ -21,9 +21,16 @@ import (
 
 const (
 	defaultTimeHorizon = "1m"
-	// For aggregation, a shorter time horizon does not return any data
+
+	// Visualization of aggregation window:
+	// aggregationTimeHorizon: [- - - - -]
+	// alignmentPeriod:         [- - -][- - -] (may shift slightly left or right arbitrarily)
+
+	// For aggregations, a shorter time horizon may not return any data
 	aggregationTimeHorizon = "5m"
-	alignmentPeriod        = "1m"
+	// To prevent the aggregation window from being too big,
+	// which may result in the data being stale for too long
+	alignmentPeriod = "3m"
 
 	// Not all aggregations are meaningful for distribution metrics,
 	// so we only support a subset of them
@@ -280,9 +287,8 @@ func (s StackDriverClient) QueryMetrics(ctx context.Context, projectID, query st
 		return value, err
 	}
 
-	if l := len(resp.GetPointData()); l > 0 {
-		// For aggregations, the first entry might only give a partial result
-		point := resp.GetPointData()[l-1]
+	if len(resp.GetPointData()) > 0 {
+		point := resp.GetPointData()[0]
 		value, err = extractValueFromPointData(point)
 
 		if err != nil {
@@ -303,7 +309,7 @@ func getRequestName(s *StackDriverClient, projectID string) string {
 	return "projects/" + s.credentials.ProjectID
 }
 
-// buildMQLQuery builds a Monitoring Query Language (MQL) query for the last minute,
+// buildMQLQuery builds a Monitoring Query Language (MQL) query for the last minute (five for aggregations),
 // given a resource type, metric, resource name, and an optional aggregation
 //
 // example:
@@ -311,8 +317,8 @@ func getRequestName(s *StackDriverClient, projectID string) string {
 // | metric 'pubsub.googleapis.com/topic/message_sizes'
 // | filter (resource.topic_id == 'mytopic')
 // | within 5m
-// | align delta(1m)
-// | every 1m
+// | align delta(3m)
+// | every 3m
 // | group_by [], count(value)
 func buildMQLQuery(resourceType, metric, resourceName, aggregation string) (string, error) {
 	th := defaultTimeHorizon
@@ -324,12 +330,12 @@ func buildMQLQuery(resourceType, metric, resourceName, aggregation string) (stri
 		"fetch pubsub_%s | metric '%s' | filter (resource.%s_id == '%s') | within %s",
 		resourceType, metric, resourceType, resourceName, th,
 	)
-
 	if aggregation != "" {
 		agg, err := buildAggregation(aggregation)
 		if err != nil {
 			return "", err
 		}
+		// Aggregate for every `alignmentPeriod` minutes
 		q += fmt.Sprintf(
 			" | align delta(%s) | every %s | group_by [], %s",
 			alignmentPeriod, alignmentPeriod, agg,
