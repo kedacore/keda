@@ -3,7 +3,7 @@
 echo "Cleaning up CRDs before undeploying KEDA"
 while read -r namespace
 do
-    resources=$(kubectl get so,sj,ta,cta -n $namespace -o name)
+    resources=$(kubectl get so,sj,ta,cta,cloudeventsource -n $namespace -o name)
     if [[ -n  "$resources" ]]
     then
         kubectl delete $resources -n $namespace

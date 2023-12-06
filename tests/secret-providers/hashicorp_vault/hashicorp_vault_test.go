@@ -639,14 +639,14 @@ func cleanupHashiCorpVault(t *testing.T) {
 
 func testPromActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
-	KubectlApplyWithTemplate(t, data, "generateLowLevelLoadJobTemplate", generatePromLowLevelLoadJobTemplate)
+	KubectlReplaceWithTemplate(t, data, "generateLowLevelLoadJobTemplate", generatePromLowLevelLoadJobTemplate)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testPromScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
-	KubectlApplyWithTemplate(t, data, "generateLoadJobTemplate", generatePromLoadJobTemplate)
+	KubectlReplaceWithTemplate(t, data, "generateLoadJobTemplate", generatePromLoadJobTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
@@ -654,14 +654,14 @@ func testPromScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData)
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
-	KubectlApplyWithTemplate(t, data, "lowLevelRecordsJobTemplate", lowLevelRecordsJobTemplate)
+	KubectlReplaceWithTemplate(t, data, "lowLevelRecordsJobTemplate", lowLevelRecordsJobTemplate)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
-	KubectlApplyWithTemplate(t, data, "insertRecordsJobTemplate", insertRecordsJobTemplate)
+	KubectlReplaceWithTemplate(t, data, "insertRecordsJobTemplate", insertRecordsJobTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 5),
 		"replica count should be %d after 5 minutes", maxReplicaCount)
