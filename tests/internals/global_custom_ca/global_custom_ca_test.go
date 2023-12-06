@@ -240,7 +240,7 @@ func TestCustomCa(t *testing.T) {
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
 	data.MetricValue = 50
-	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
@@ -249,7 +249,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale in ---")
 	data.MetricValue = 0
-	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)

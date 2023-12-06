@@ -150,7 +150,7 @@ spec:
   maxReplicaCount: 10
   fallback:
     replicas: 5
-    failureThreshold: 1
+    failureThreshold: 3
   triggers:
   - type: metrics-api
     name: metrics_api
@@ -241,12 +241,12 @@ func testFormula(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	// formula simply adds 2 metrics together (0+2=2; activationTarget = 2 -> replicas should be 0)
 	KubectlApplyWithTemplate(t, data, "soFallbackTemplate", soFallbackTemplate)
 	data.MetricValue = 0
-	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 0, 60)
 
 	// formula simply adds 2 metrics together (3+2=5; target = 2 -> 5/2 replicas should be 3)
 	data.MetricValue = 3
-	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
 	_, err := ExecuteCommand(fmt.Sprintf("kubectl scale deployment/depl-workload-base --replicas=2 -n %s", namespace))
 	assert.NoErrorf(t, err, "cannot scale workload deployment - %s", err)
@@ -256,7 +256,7 @@ func testFormula(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 3, 12, 10),
 		"replica count should be %d after 2 minutes", 3)
 
-	// apply fallback fallback
+	// apply fallback
 	_, err = ExecuteCommand(fmt.Sprintf("kubectl scale deployment/%s --replicas=0 -n %s", metricsServerDeploymentName, namespace))
 	assert.NoErrorf(t, err, "cannot scale metricsServer deployment - %s", err)
 
@@ -268,7 +268,7 @@ func testFormula(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	assert.NoErrorf(t, err, "cannot scale metricsServer deployment - %s", err)
 
 	data.MetricValue = 2
-	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 	// 2+2=4; target = 2 -> 4/2 replicas should be 2
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 2, 12, 10),
 		"replica count should be %d after 2 minutes", 2)

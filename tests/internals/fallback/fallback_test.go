@@ -247,7 +247,7 @@ func TestFallback(t *testing.T) {
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
 	data.MetricValue = 50
-	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, maxReplicas, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicas)
@@ -269,7 +269,7 @@ func testRestoreAfterFallback(t *testing.T, kc *kubernetes.Clientset, data templ
 	t.Log("--- testing after fallback ---")
 	KubectlApplyWithTemplate(t, data, "metricsServerDeploymentTemplate", metricsServerDeploymentTemplate)
 	data.MetricValue = 50
-	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, maxReplicas, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicas)

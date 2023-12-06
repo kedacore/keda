@@ -147,7 +147,7 @@ metadata:
   name: {{.JobName}}
   namespace: {{.TestNamespace}}
 spec:
-  ttlSecondsAfterFinished: 0
+  ttlSecondsAfterFinished: 30
   template:
     spec:
       containers:
@@ -205,7 +205,7 @@ func TestScaler(t *testing.T) {
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData, numMessages int, maxReplicas int) {
 	data.ItemsToWrite = numMessages
-	KubectlApplyWithTemplate(t, data, "insertJobTemplate", insertJobTemplate)
+	KubectlReplaceWithTemplate(t, data, "insertJobTemplate", insertJobTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicas, 60, 1),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
@@ -218,7 +218,7 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, minReplicas int) {
 
 func testActivationValue(t *testing.T, kc *kubernetes.Clientset, data templateData, numMessages int) {
 	data.ItemsToWrite = numMessages
-	KubectlApplyWithTemplate(t, data, "insertJobTemplate", insertJobTemplate)
+	KubectlReplaceWithTemplate(t, data, "insertJobTemplate", insertJobTemplate)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
 }
