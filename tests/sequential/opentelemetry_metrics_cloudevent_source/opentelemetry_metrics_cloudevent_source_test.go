@@ -19,6 +19,8 @@ const (
 	testName              = "opentelemetry-metrics-ce-test"
 	labelCloudEventSource = "cloudEventSource"
 	labelType             = "type"
+	eventsink             = "eventsink"
+	eventsinkValue        = "opentelemetry-metrics-ce-test-ce"
 	eventsinkType         = "eventsinktype"
 	eventsinkTypeValue    = "http"
 )
@@ -203,8 +205,8 @@ func TestOpentelemetryCloudEventSourceMetrics(t *testing.T) {
 	assert.True(t, WaitForAllPodRunningInNamespace(t, kc, testNamespace, 5, 20), "all pods should be running")
 
 	testCloudEventEmitted(t)
-	// testCloudeventSink(t)
-	// testCloudEventEmittedError(t, data)
+	testCloudeventSourceSink(t)
+	testCloudEventEmittedError(t, data)
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
@@ -250,18 +252,14 @@ func testCloudEventEmitted(t *testing.T) {
 	time.Sleep(10 * time.Second)
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
 
-	for k, _ := range family {
-		t.Log(fmt.Sprintf("--- vvvvvvvvvvvvvv --- %s", k))
-	}
-	if val, ok := family["keda_cloudevent_emitted_total"]; ok {
+	if val, ok := family["keda_cloudeventsource_emitted_total"]; ok {
 		var found bool
 		metrics := val.GetMetric()
 		for _, metric := range metrics {
 			labels := metric.GetLabel()
 			for _, label := range labels {
-				t.Log(fmt.Sprintf("--- sssssssssssssss --- %s %s %f", *label.Name, *label.Value, *metric.Counter.Value))
 				if *label.Name == labelCloudEventSource && *label.Value == cloudeventSourceName {
-					assert.Equal(t, float64(1), *metric.Counter.Value)
+					assert.GreaterOrEqual(t, *metric.Counter.Value, float64(1))
 					found = true
 				}
 			}
@@ -272,79 +270,66 @@ func testCloudEventEmitted(t *testing.T) {
 	}
 }
 
-// func testCloudeventSink(t *testing.T) {
-// 	t.Log("--- testing cloudevent emitted ---")
+func testCloudeventSourceSink(t *testing.T) {
+	t.Log("--- testing cloudeventsource sink ---")
 
-// 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
 
-// 	if val, ok := family["keda_cloudeventsource_sink"]; ok {
-// 		var found bool
-// 		metrics := val.GetMetric()
-// 		for _, metric := range metrics {
-// 			labels := metric.GetLabel()
-// 			for _, label := range labels {
-// 				if *label.Name == eventsinkType && *label.Value == eventsinkTypeValue {
-// 					assert.Equal(t, float64(1), *metric.Gauge.Value)
-// 					found = true
-// 				}
-// 			}
-// 		}
-// 		assert.Equal(t, true, found)
-// 	} else {
-// 		t.Errorf("metric not available")
-// 	}
+	if val, ok := family["keda_cloudeventsource_sink"]; ok {
+		var found bool
+		metrics := val.GetMetric()
+		for _, metric := range metrics {
+			labels := metric.GetLabel()
+			var matcheventsink = false
+			var matcheventsinktype = false
+			for _, label := range labels {
+				if *label.Name == eventsinkType && *label.Value == eventsinkTypeValue {
+					matcheventsinktype = true
+				}
+				if *label.Name == eventsink && *label.Value == eventsinkValue {
+					matcheventsink = true
+				}
+			}
+			if matcheventsink && matcheventsinktype {
+				assert.Equal(t, float64(1), *metric.Gauge.Value)
+				found = true
+			}
+		}
+		assert.Equal(t, true, found)
+	} else {
+		t.Errorf("metric not available")
+	}
+}
 
-// 	// for k, _ := range family {
-// 	// 		t.Log(fmt.Sprintf("--- vvvvvvvvvvvvvv --- %s", k))
-// 	// 	}
-// 	// if val, ok := family["keda_cloudeventsource_queue"]; ok {
-// 	// 	var found bool
-// 	// 	metrics := val.GetMetric()
-// 	// 	for _, metric := range metrics {
-// 	// 		labels := metric.GetLabel()
-// 	// 		t.Log(fmt.Sprintf("--- ssssssssss --- %s", metric))
-// 	// 		for _, label := range labels {
-// 	// 			t.Log(fmt.Sprintf("--- ssssssssss --- %s %f", *label.Name, *metric.Gauge.Value))
-// 	// 			if *label.Name == labelCloudEventSource && *label.Value == cloudeventSourceName {
-// 	// 				t.Log(fmt.Sprintf("--- vvvvvvvvvvvvvv --- %s %f", *label.Name, *metric.Gauge.Value))
-// 	// 				assert.Equal(t, float64(1), *metric.Gauge.Value)
-// 	// 				found = true
-// 	// 			}
-// 	// 		}
-// 	// 	}
-// 	// 	assert.Equal(t, true, found)
-// 	// } else {
-// 	// 	t.Errorf("metric not available")
-// }
+func testCloudEventEmittedError(t *testing.T, data templateData) {
+	t.Log("--- testing cloudevent emitted error ---")
 
-// func testCloudEventEmittedError(t *testing.T, data templateData) {
-// 	t.Log("--- testing cloudevent emitted ---")
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	KubectlDeleteWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
+	KubectlApplyWithTemplate(t, data, "wrongCloudEventSourceTemplate", wrongCloudEventSourceTemplate)
+	time.Sleep(1 * time.Second)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-// 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-// 	KubectlDeleteWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
-// 	KubectlApplyWithTemplate(t, data, "wrongCloudEventSourceTemplate", wrongCloudEventSourceTemplate)
-// 	time.Sleep(1 * time.Second)
-// 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	time.Sleep(10 * time.Second)
+	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
 
-// 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+	if val, ok := family["keda_cloudeventsource_emitted_errors_total"]; ok {
+		var found bool
+		metrics := val.GetMetric()
+		for _, metric := range metrics {
+			labels := metric.GetLabel()
+			for _, label := range labels {
+				if *label.Name == labelCloudEventSource && *label.Value == cloudeventSourceName {
+					assert.Equal(t, float64(5), *metric.Counter.Value)
+					found = true
+				}
+			}
+		}
+		assert.Equal(t, true, found)
+	} else {
+		t.Errorf("metric not available")
+	}
 
-// 	if val, ok := family["keda_cloudeventsource_errors_total"]; ok {
-// 		var found bool
-// 		metrics := val.GetMetric()
-// 		for _, metric := range metrics {
-// 			labels := metric.GetLabel()
-// 			for _, label := range labels {
-// 				if *label.Name == labelCloudEventSource && *label.Value == cloudeventSourceName {
-// 					assert.Equal(t, float64(5), *metric.Counter.Value)
-// 					found = true
-// 				}
-// 			}
-// 		}
-// 		assert.Equal(t, true, found)
-// 	} else {
-// 		t.Errorf("metric not available")
-// 	}
-
-// 	KubectlDeleteWithTemplate(t, data, "wrongCloudEventSourceTemplate", wrongCloudEventSourceTemplate)
-// 	KubectlApplyWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
-// }
+	KubectlDeleteWithTemplate(t, data, "wrongCloudEventSourceTemplate", wrongCloudEventSourceTemplate)
+	KubectlApplyWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
+}

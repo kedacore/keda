@@ -146,27 +146,27 @@ func initMeters() {
 		otLog.Error(err, msg)
 	}
 
-	otCloudEventEmittedCounter, err = meter.Int64Counter("keda.cloudevent.emitted", api.WithDescription("Total emitted cloudevents"))
+	otCloudEventEmittedCounter, err = meter.Int64Counter("keda.cloudeventsource.emitted", api.WithDescription("Total emitted cloudevents"))
 	if err != nil {
 		otLog.Error(err, msg)
 	}
 
-	otCloudEventEmittedErrorCounter, err = meter.Int64Counter("keda.cloudevent.emitted.error", api.WithDescription("Total cloudevent emitted errors"))
+	otCloudEventEmittedErrorCounter, err = meter.Int64Counter("keda.cloudeventsource.emitted.errors", api.WithDescription("Total cloudevent emitted errors"))
 	if err != nil {
 		otLog.Error(err, msg)
 	}
 
 	_, err = meter.Float64ObservableGauge(
-		"keda.cloudevent.sink",
+		"keda.cloudeventsource.sink",
 		api.WithDescription("Indicates the created event sinks"),
-		api.WithFloat64Callback(CreatedEventSinkCallback),
+		api.WithFloat64Callback(EventSinkCreatedCallback),
 	)
 	if err != nil {
 		otLog.Error(err, msg)
 	}
 
 	_, err = meter.Float64ObservableGauge(
-		"keda.cloudevent.queue.status",
+		"keda.cloudeventsource.queue.status",
 		api.WithDescription("Indicates how many events are still queue"),
 		api.WithFloat64Callback(CloudeventQueueStatusCallback),
 	)
@@ -378,11 +378,11 @@ func (o *OtelMetrics) RecordCloudEventEmittedError(namespace string, cloudevents
 	otCloudEventEmittedErrorCounter.Add(context.Background(), 1, opt)
 }
 
-func CreatedEventSinkCallback(_ context.Context, obsrv api.Float64Observer) error {
+func EventSinkCreatedCallback(_ context.Context, obsrv api.Float64Observer) error {
 	if otCloudEventSinkVal.measurementOption != nil {
 		obsrv.Observe(otCloudEventSinkVal.val, otCloudEventSinkVal.measurementOption)
 	}
-	otelScalerActiveVal = OtelMetricFloat64Val{}
+	otCloudEventSinkVal = OtelMetricFloat64Val{}
 	return nil
 }
 
@@ -422,6 +422,6 @@ func (o *OtelMetrics) RecordCloudEventQueueStatus(value int, isactive bool) {
 		attribute.Key("isQueueActive").String(activeVal),
 	)
 
-	otCloudEventSinkVal.val = float64(value)
-	otCloudEventSinkVal.measurementOption = opt
+	otCloudEventQueueStatusVal.val = float64(value)
+	otCloudEventQueueStatusVal.measurementOption = opt
 }

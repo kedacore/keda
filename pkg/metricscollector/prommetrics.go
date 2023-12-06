@@ -145,7 +145,7 @@ var (
 		prometheus.CounterOpts{
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "cloudeventsource",
-			Name:      "errors_total",
+			Name:      "emitted_errors_total",
 			Help:      "Total cloudevent emitted errors",
 		},
 		[]string{"namespace", "cloudeventsource", "eventsink"},
