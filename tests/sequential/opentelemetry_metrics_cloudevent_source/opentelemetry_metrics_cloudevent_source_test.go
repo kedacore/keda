@@ -9,10 +9,11 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/kedacore/keda/v2/tests/helper"
 	prommodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"github.com/stretchr/testify/assert"
+
+	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 const (
@@ -36,7 +37,6 @@ var (
 	cloudEventHTTPServiceName                = fmt.Sprintf("%s-cloudevent-http-service", testName)
 	cloudEventHTTPServiceURL                 = fmt.Sprintf("http://%s.%s.svc.cluster.local:8899", cloudEventHTTPServiceName, testNamespace)
 	kedaOperatorCollectorPrometheusExportURL = "http://opentelemetry-collector.default.svc.cluster.local:8889/metrics"
-	namespaceString                          = "namespace"
 )
 
 type templateData struct {

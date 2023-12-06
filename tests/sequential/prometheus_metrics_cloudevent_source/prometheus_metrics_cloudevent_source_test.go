@@ -9,10 +9,11 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/kedacore/keda/v2/tests/helper"
 	prommodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"github.com/stretchr/testify/assert"
+
+	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 const (
