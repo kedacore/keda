@@ -20,6 +20,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -207,5 +209,66 @@ func GenerateMetricInMili(metricName string, value float64) external_metrics.Ext
 		MetricName: metricName,
 		Value:      *resource.NewMilliQuantity(valueMili, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
+	}
+}
+
+// getParameterFromConfigV2 returns the value of the parameter from the config
+func getParameterFromConfigV2(config *ScalerConfig, parameter string, useMetadata bool, useAuthentication bool, useResolvedEnv bool, isOptional bool, defaultVal string, targetType reflect.Type) (interface{}, error) {
+	if val, ok := config.AuthParams[parameter]; useAuthentication && ok && val != "" {
+		returnedVal, err := convertStringToType(val, targetType)
+		if err != nil {
+			return defaultVal, err
+		}
+		return returnedVal, nil
+	} else if val, ok := config.TriggerMetadata[parameter]; ok && useMetadata && val != "" {
+		returnedVal, err := convertStringToType(val, targetType)
+		if err != nil {
+			return defaultVal, err
+		}
+		return returnedVal, nil
+	} else if val, ok := config.TriggerMetadata[fmt.Sprintf("%sFromEnv", parameter)]; ok && useResolvedEnv && val != "" {
+		returnedVal, err := convertStringToType(val, targetType)
+		if err != nil {
+			return defaultVal, err
+		}
+		return returnedVal, nil
+	}
+
+	if isOptional {
+		return defaultVal, nil
+	}
+	return "", fmt.Errorf("key not found. Either set the correct key or set isOptional to true and set defaultVal")
+}
+
+func convertStringToType(input string, targetType reflect.Type) (interface{}, error) {
+	switch targetType.Kind() {
+	case reflect.String:
+		return input, nil
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		result, err := strconv.ParseInt(input, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		return reflect.ValueOf(result).Convert(targetType).Interface(), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		result, err := strconv.ParseUint(input, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		return reflect.ValueOf(result).Convert(targetType).Interface(), nil
+	case reflect.Float32, reflect.Float64:
+		result, err := strconv.ParseFloat(input, 64)
+		if err != nil {
+			return nil, err
+		}
+		return reflect.ValueOf(result).Convert(targetType).Interface(), nil
+	case reflect.Bool:
+		result, err := strconv.ParseBool(input)
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
+	default:
+		return nil, fmt.Errorf("unsupported type: %v", targetType)
 	}
 }
