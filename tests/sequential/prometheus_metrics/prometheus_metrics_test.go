@@ -336,7 +336,9 @@ func testScalerMetricValue(t *testing.T) {
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 
-	if val, ok := family["keda_scaler_metrics_value"]; ok {
+	val, ok := family["keda_scaler_metrics_value"]
+	assert.True(t, ok, "keda_scaler_metrics_value not available")
+	if ok {
 		var found bool
 		metrics := val.GetMetric()
 		for _, metric := range metrics {
@@ -349,8 +351,6 @@ func testScalerMetricValue(t *testing.T) {
 			}
 		}
 		assert.Equal(t, true, found)
-	} else {
-		t.Errorf("metric not available")
 	}
 }
 
@@ -365,22 +365,22 @@ func testScaledObjectErrors(t *testing.T, data templateData) {
 	time.Sleep(20 * time.Second)
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
-	if val, ok := family["keda_scaled_object_errors"]; ok {
+	val, ok := family["keda_scaled_object_errors"]
+	assert.True(t, ok, "keda_scaled_object_errors not available")
+	if ok {
 		errCounterVal1 := getErrorMetricsValue(val)
 
 		// wait for 2 seconds as pollinginterval is 2
 		time.Sleep(2 * time.Second)
 
 		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
-		if val, ok := family["keda_scaled_object_errors"]; ok {
+		val, ok := family["keda_scaled_object_errors"]
+		assert.True(t, ok, "keda_scaled_object_errors not available")
+		if ok {
 			errCounterVal2 := getErrorMetricsValue(val)
 			assert.NotEqual(t, errCounterVal2, float64(0))
 			assert.GreaterOrEqual(t, errCounterVal2, errCounterVal1)
-		} else {
-			t.Errorf("metric not available")
 		}
-	} else {
-		t.Errorf("metric not available")
 	}
 
 	KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
@@ -396,22 +396,22 @@ func testScalerErrors(t *testing.T, data templateData) {
 	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
-	if val, ok := family["keda_scaler_errors"]; ok {
+	val, ok := family["keda_scaler_errors"]
+	assert.True(t, ok, "keda_scaler_errors not available")
+	if ok {
 		errCounterVal1 := getErrorMetricsValue(val)
 
 		// wait for 20 seconds to correctly fetch metrics.
 		time.Sleep(20 * time.Second)
 
 		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
-		if val, ok := family["keda_scaler_errors"]; ok {
+		val, ok := family["keda_scaler_errors"]
+		assert.True(t, ok, "keda_scaler_errors not available")
+		if ok {
 			errCounterVal2 := getErrorMetricsValue(val)
 			assert.NotEqual(t, errCounterVal2, float64(0))
 			assert.GreaterOrEqual(t, errCounterVal2, errCounterVal1)
-		} else {
-			t.Errorf("metric not available")
 		}
-	} else {
-		t.Errorf("metric not available")
 	}
 
 	KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
@@ -426,22 +426,22 @@ func testScalerErrorsTotal(t *testing.T, data templateData) {
 	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
-	if val, ok := family["keda_scaler_errors_total"]; ok {
+	val, ok := family["keda_scaler_errors_total"]
+	assert.True(t, ok, "keda_scaler_errors_total not available")
+	if ok {
 		errCounterVal1 := getErrorMetricsValue(val)
 
 		// wait for 2 seconds as pollinginterval is 2
 		time.Sleep(2 * time.Second)
 
 		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
-		if val, ok := family["keda_scaler_errors_total"]; ok {
+		val, ok := family["keda_scaler_errors_total"]
+		assert.True(t, ok, "keda_scaler_errors_total not available")
+		if ok {
 			errCounterVal2 := getErrorMetricsValue(val)
 			assert.NotEqual(t, errCounterVal2, float64(0))
 			assert.GreaterOrEqual(t, errCounterVal2, errCounterVal1)
-		} else {
-			t.Errorf("metric not available")
 		}
-	} else {
-		t.Errorf("metric not available")
 	}
 
 	KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
@@ -510,7 +510,9 @@ func testScalerMetricLatency(t *testing.T) {
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 
-	if val, ok := family["keda_scaler_metrics_latency"]; ok {
+	val, ok := family["keda_scaler_metrics_latency"]
+	assert.True(t, ok, "keda_scaler_metrics_latency not available")
+	if ok {
 		var found bool
 		metrics := val.GetMetric()
 		for _, metric := range metrics {
@@ -523,8 +525,6 @@ func testScalerMetricLatency(t *testing.T) {
 			}
 		}
 		assert.Equal(t, true, found)
-	} else {
-		t.Errorf("metric not available")
 	}
 }
 
@@ -570,7 +570,9 @@ func testScalerActiveMetric(t *testing.T) {
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 
-	if val, ok := family["keda_scaler_active"]; ok {
+	val, ok := family["keda_scaler_active"]
+	assert.True(t, ok, "keda_scaler_active not available")
+	if ok {
 		var found bool
 		metrics := val.GetMetric()
 		for _, metric := range metrics {
@@ -583,8 +585,6 @@ func testScalerActiveMetric(t *testing.T) {
 			}
 		}
 		assert.Equal(t, true, found)
-	} else {
-		t.Errorf("metric not available")
 	}
 }
 
@@ -712,8 +712,8 @@ func checkBuildInfo(t *testing.T, families map[string]*prommodel.MetricFamily) {
 	t.Log("--- testing build info metric ---")
 
 	family, ok := families["keda_build_info"]
+	assert.True(t, ok, "keda_build_info not available")
 	if !ok {
-		t.Errorf("metric not available")
 		return
 	}
 
@@ -749,8 +749,8 @@ func checkTriggerTotalValues(t *testing.T, families map[string]*prommodel.Metric
 	t.Log("--- testing trigger total metrics ---")
 
 	family, ok := families["keda_trigger_totals"]
+	assert.True(t, ok, "keda_trigger_totals not available")
 	if !ok {
-		t.Errorf("metric not available")
 		return
 	}
 
@@ -778,8 +778,8 @@ func checkCRTotalValues(t *testing.T, families map[string]*prommodel.MetricFamil
 	t.Log("--- testing resource total metrics ---")
 
 	family, ok := families["keda_resource_totals"]
+	assert.True(t, ok, "keda_resource_totals not available")
 	if !ok {
-		t.Errorf("metric not available")
 		return
 	}
 
