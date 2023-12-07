@@ -222,7 +222,6 @@ func (s StackDriverClient) GetMetrics(
 
 	// Create a request with the filter and the GCP project ID
 	var req = &monitoringpb.ListTimeSeriesRequest{
-		Filter: filter,
 		Interval: &monitoringpb.TimeInterval{
 			StartTime: &timestamppb.Timestamp{Seconds: startTime.Unix()},
 			EndTime:   &timestamppb.Timestamp{Seconds: endTime.Unix()},
@@ -230,7 +229,13 @@ func (s StackDriverClient) GetMetrics(
 		Aggregation: aggregation,
 	}
 
-	req.Name = getRequestName(&s, projectID)
+	// Set project to perform request in and update filter with project_id
+	pid := getActualProjectID(&s, projectID)
+	req.Name = "projects/" + pid
+	filter += ` AND resource.labels.project_id="` + pid + `"`
+
+	// Set filter on request
+	req.Filter = filter
 
 	// Get an iterator with the list of time series
 	it := s.metricsClient.ListTimeSeries(ctx, req)
@@ -270,7 +275,7 @@ func (s StackDriverClient) QueryMetrics(ctx context.Context, projectID, query st
 		Query:    query,
 		PageSize: 1,
 	}
-	req.Name = getRequestName(&s, projectID)
+	req.Name = "projects/" + getActualProjectID(&s, projectID)
 
 	it := s.queryClient.QueryTimeSeries(ctx, req)
 
@@ -299,14 +304,14 @@ func (s StackDriverClient) QueryMetrics(ctx context.Context, projectID, query st
 	return value, nil
 }
 
-func getRequestName(s *StackDriverClient, projectID string) string {
+func getActualProjectID(s *StackDriverClient, projectID string) string {
 	if len(projectID) > 0 {
-		return "projects/" + projectID
+		return projectID
 	}
 	if len(s.projectID) > 0 {
-		return "projects/" + s.projectID
+		return s.projectID
 	}
-	return "projects/" + s.credentials.ProjectID
+	return s.credentials.ProjectID
 }
 
 // buildMQLQuery builds a Monitoring Query Language (MQL) query for the last minute (five for aggregations),
@@ -315,20 +320,21 @@ func getRequestName(s *StackDriverClient, projectID string) string {
 // example:
 // fetch pubsub_topic
 // | metric 'pubsub.googleapis.com/topic/message_sizes'
-// | filter (resource.topic_id == 'mytopic')
+// | filter (resource.project_id == 'myproject' && resource.topic_id == 'mytopic')
 // | within 5m
 // | align delta(3m)
 // | every 3m
 // | group_by [], count(value)
-func buildMQLQuery(resourceType, metric, resourceName, aggregation string) (string, error) {
+func (s StackDriverClient) buildMQLQuery(projectID, resourceType, metric, resourceName, aggregation string) (string, error) {
 	th := defaultTimeHorizon
 	if aggregation != "" {
 		th = aggregationTimeHorizon
 	}
 
+	pid := getActualProjectID(&s, projectID)
 	q := fmt.Sprintf(
-		"fetch pubsub_%s | metric '%s' | filter (resource.%s_id == '%s') | within %s",
-		resourceType, metric, resourceType, resourceName, th,
+		"fetch pubsub_%s | metric '%s' | filter (resource.project_id == '%s' && resource.%s_id == '%s') | within %s",
+		resourceType, metric, pid, resourceType, resourceName, th,
 	)
 	if aggregation != "" {
 		agg, err := buildAggregation(aggregation)

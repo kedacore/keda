@@ -221,7 +221,9 @@ func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (float
 		}
 	}
 	resourceID, projectID := getResourceData(s)
-	query, err := buildMQLQuery(s.metadata.resourceType, metricType, resourceID, s.metadata.aggregation)
+	query, err := s.client.buildMQLQuery(
+		projectID, s.metadata.resourceType, metricType, resourceID, s.metadata.aggregation,
+	)
 	if err != nil {
 		return -1, err
 	}
