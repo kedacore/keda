@@ -455,6 +455,7 @@ func testScaledObjectErrors(t *testing.T, data templateData) {
 	t.Log("--- testing scaled object errors ---")
 
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
 
 	// wait for 2 seconds as pollinginterval is 2
@@ -480,6 +481,7 @@ func testScaledObjectErrors(t *testing.T, data templateData) {
 	}
 
 	KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
+	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 }
 
@@ -487,6 +489,7 @@ func testScalerErrors(t *testing.T, data templateData) {
 	t.Log("--- testing scaler errors ---")
 
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
@@ -509,6 +512,7 @@ func testScalerErrors(t *testing.T, data templateData) {
 	}
 
 	KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
+	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 }
 
@@ -538,6 +542,7 @@ func testScalerErrorsTotal(t *testing.T, data templateData) {
 	}
 
 	KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
+	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 }
 

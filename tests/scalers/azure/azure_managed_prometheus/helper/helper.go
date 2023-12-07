@@ -239,14 +239,14 @@ func TestAzureManagedPrometheusScaler(t *testing.T, data TemplateData) {
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data TemplateData) {
 	t.Log("--- testing activation ---")
-	helper.KubectlApplyWithTemplate(t, data, "generateLowLevelLoadJobTemplate", generateLowLevelLoadJobTemplate)
+	helper.KubectlReplaceWithTemplate(t, data, "generateLowLevelLoadJobTemplate", generateLowLevelLoadJobTemplate)
 
 	helper.AssertReplicaCountNotChangeDuringTimePeriod(t, kc, data.DeploymentName, data.TestNamespace, MinReplicaCount, 60)
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data TemplateData) {
 	t.Log("--- testing scale out ---")
-	helper.KubectlApplyWithTemplate(t, data, "generateLoadJobTemplate", generateLoadJobTemplate)
+	helper.KubectlReplaceWithTemplate(t, data, "generateLoadJobTemplate", generateLoadJobTemplate)
 
 	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, data.DeploymentName, data.TestNamespace, MaxReplicaCount, 144, 5),
 		"replica count should be %d after 12 minutes", MaxReplicaCount)

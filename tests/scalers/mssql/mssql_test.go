@@ -282,7 +282,7 @@ func TestMssqlScaler(t *testing.T) {
 // insert 10 records in the table -> activation should not happen (activationTargetValue = 15)
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
-	KubectlApplyWithTemplate(t, data, "insertRecordsJobTemplate1", insertRecordsJobTemplate1)
+	KubectlReplaceWithTemplate(t, data, "insertRecordsJobTemplate1", insertRecordsJobTemplate1)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
@@ -290,7 +290,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 // insert another 10 records in the table, which in total is 20 -> should be scaled up
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
-	KubectlApplyWithTemplate(t, data, "insertRecordsJobTemplate2", insertRecordsJobTemplate2)
+	KubectlReplaceWithTemplate(t, data, "insertRecordsJobTemplate2", insertRecordsJobTemplate2)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
