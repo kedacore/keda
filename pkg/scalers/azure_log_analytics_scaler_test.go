@@ -339,25 +339,15 @@ var getParameterFromConfigTestDataset = []getParameterFromConfigTestData{
 		isError:        false,
 	},
 	{
-		name:           "test_isOptional_key_not_found",
+		name:           "test_default_value_key_not_found",
 		metadata:       map[string]string{"key1": "value1"},
 		parameter:      "key2",
 		useResolvedEnv: true,
 		useMetadata:    true,
 		isOptional:     true,
-		targetType:     reflect.TypeOf(string("")),
-		expectedResult: "", // Should return empty string
-		isError:        false,
-	},
-	{
-		name:           "test_default_value",
-		metadata:       map[string]string{"key1": "value1"},
-		parameter:      "key2",
-		useResolvedEnv: true,
-		useMetadata:    true,
 		defaultVal:     "default",
 		targetType:     reflect.TypeOf(string("")),
-		expectedResult: "default", // Should return empty string
+		expectedResult: "default",
 		isError:        false,
 	},
 	{
@@ -369,7 +359,7 @@ var getParameterFromConfigTestDataset = []getParameterFromConfigTestData{
 		targetType:     reflect.TypeOf(string("")),
 		expectedResult: "default", // Should return empty string
 		isError:        true,
-		errorMessage:   "key not found. Either set the correct key, set isOptional to true or set defaultVal",
+		errorMessage:   "key not found. Either set the correct key or set isOptional to true and set defaultValx",
 	},
 	{
 		name:              "test_authParam_bool",
@@ -395,9 +385,9 @@ func TestGetParameterFromConfigV2(t *testing.T) {
 		)
 		if testData.isError {
 			assert.NotNilf(t, err, "test %s: expected error but got success, testData - %+v", testData.name, testData)
-			assert.Contains(t, err.Error(), testData.errorMessage)
+			assert.Containsf(t, err.Error(), testData.errorMessage, "test %s: %v", testData.name, err.Error())
 		} else {
-			assert.Nil(t, err)
+			assert.Nilf(t, err, "test %s:%v", testData.name, err)
 			assert.Equalf(t, testData.expectedResult, val, "test %s: expected %s but got %s", testData.name, testData.expectedResult, val)
 		}
 	}

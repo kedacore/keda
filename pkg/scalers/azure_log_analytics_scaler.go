@@ -277,12 +277,9 @@ func getParameterFromConfigV2(config *ScalerConfig, parameter string, useMetadat
 	}
 
 	if isOptional {
-		return "", nil
-		// Not sure what should we return in this case. Should we return empty string or defaultVal
-	} else if defaultVal != "" {
 		return defaultVal, nil
 	}
-	return "", fmt.Errorf("key not found. Either set the correct key, set isOptional to true or set defaultVal")
+	return "", fmt.Errorf("key not found. Either set the correct key or set isOptional to true and set defaultVal")
 }
 
 func convertStringToType(input string, targetType reflect.Type) (interface{}, error) {
