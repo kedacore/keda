@@ -50,6 +50,8 @@ type connectionGroup struct {
 // a pool of connectionGroup per metadata hash
 var connectionPool sync.Map
 
+const grpcConfig = `{"loadBalancingConfig": [{"round_robin":{}}]}`
+
 // NewExternalScaler creates a new external scaler - calls the GRPC interface
 // to create a new scaler
 func NewExternalScaler(config *ScalerConfig) (Scaler, error) {
@@ -311,7 +313,9 @@ func getClientForConnectionPool(metadata externalScalerMetadata, logger logr.Log
 			if err != nil {
 				return nil, err
 			}
-			return grpc.Dial(metadata.scalerAddress, grpc.WithTransportCredentials(creds))
+			return grpc.Dial(metadata.scalerAddress,
+				grpc.WithDefaultServiceConfig(grpcConfig),
+				grpc.WithTransportCredentials(creds))
 		}
 
 		tlsConfig, err := util.NewTLSConfig(metadata.tlsClientCert, metadata.tlsClientKey, metadata.caCert, metadata.unsafeSsl)
@@ -321,10 +325,14 @@ func getClientForConnectionPool(metadata externalScalerMetadata, logger logr.Log
 
 		if len(tlsConfig.Certificates) > 0 || metadata.caCert != "" {
 			// nosemgrep: go.grpc.ssrf.grpc-tainted-url-host.grpc-tainted-url-host
-			return grpc.Dial(metadata.scalerAddress, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+			return grpc.Dial(metadata.scalerAddress,
+				grpc.WithDefaultServiceConfig(grpcConfig),
+				grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 		}
 
-		return grpc.Dial(metadata.scalerAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		return grpc.Dial(metadata.scalerAddress,
+			grpc.WithDefaultServiceConfig(grpcConfig),
+			grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
 	// create a unique key per-metadata. If scaledObjects share the same connection properties
