@@ -56,6 +56,34 @@ check the [test documentation](./tests/README.md). Those tests are run nightly o
 
 Another easy way to contribute is improving the validations to avoid misconfigurations. New rules can be added in the proper type's webhooks file (`apis/keda/v1alpha1/*_webhook.go`).
 
+
+## Metrics and Logging
+
+### Metrics
+
+Incorporating Prometheus and OpenTelemetry metrics is essential in our project. When creating metrics, please consider the following guidelines:
+
+- Always specify the unit in the metric name using standard units (e.g., use seconds instead of milliseconds, bytes instead of megabytes, etc.).
+- Choose descriptive metric names. Instead of vague names like `message_number` or `triggers`, opt for more specific ones like `queued_messages` and `trigger_registered`.
+- Ensure consistency in metric naming. Review existing metrics for their naming patterns and try to align new metrics accordingly.
+- Utilize labels for differentiating metric states. Instead of creating separate metrics like `messages_sent_successfully` and `messages_sent_failed`, create a single metric `messages_sent` and differentiate using a label `state` with values `success` or `failed`.
+- Avoid overly detailed metrics. Refrain from using labels with high cardinality (such as _email_, _message-id_, or _time_), as this can burden the system.
+- Favor metrics that are cumulative counters. Users can then apply functions like `rate()` to calculate changes over time. Append `total` for Prometheus and `count` for OpenTelemetry metrics.
+- Provide clear descriptions.
+
+For further guidance on metric naming and labeling, refer to the recommendations in the [Prometheus](https://prometheus.io/docs/practices/naming/) and [OpenTelemetry](https://opentelemetry.io/docs/specs/semconv/general/metrics/) documentation.
+
+### Logging and Log Messages
+
+When adding log messages to the project, it's crucial to set the appropriate log level and tailor the message for its intended audience:
+- Use `debug` level for Keda project developers, who possess deep knowledge of the system's inner workings. Messages should be data-rich and detailed.
+- Set to `info` level for engineers familiar with Keda's components but not its intricate details. These messages should serve as updates or milestones regarding the system's sub-components, essentially acting as a status report.
+- `Warning` level and above is aimed at operational teams. Messages should be clear, concise, and either indicate consequences or be actionable, with suggestions for next steps. Include links to further documentation where possible. A `warning` should indicate a problem which should be adressed in the near future, if it persists. An `error` indicates a failure, and a part of the system is not capable of fulfilling it's intended purpose. A warning should contain at least the consequence, an error should contain what part failed, why, and possible solutions.
+
+### Legacy
+
+Some of the metrics and log messages in the project don't follow the above practices, but are there for historical reasons. When refactoring pieces of code, please try to apply the best practices to any log message or metric which is impacted.  
+
 ## Changelog
 
 Every change should be added to our changelog under `Unreleased` which is located in `CHANGELOG.md`. This helps us keep track of all changes in a given release.
