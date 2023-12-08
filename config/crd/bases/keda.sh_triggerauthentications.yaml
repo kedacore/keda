@@ -163,7 +163,6 @@ spec:
                       type: object
                     type: array
                 required:
-                - credentials
                 - secrets
                 type: object
               azureKeyVault:
