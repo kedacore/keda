@@ -302,8 +302,9 @@ type AzureKeyVaultCloudInfo struct {
 
 // AwsSecretManager is used to authenticate using AwsSecretManager
 type AwsSecretManager struct {
+	Secrets []AwsSecretManagerSecret `json:"secrets"`
+	// +optional
 	Credentials *AwsSecretManagerCredentials `json:"credentials"`
-	Secrets     []AwsSecretManagerSecret     `json:"secrets"`
 	// +optional
 	PodIdentity *AuthPodIdentity `json:"podIdentity"`
 	// +optional

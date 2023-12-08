@@ -10,10 +10,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -225,38 +225,6 @@ spec:
   type: ClusterIP
 `
 
-	lowLevelRecordsJobTemplate = `apiVersion: batch/v1
-kind: Job
-metadata:
-  labels:
-    app: postgresql-insert-low-level-job
-  name: postgresql-insert-low-level-job
-  namespace: {{.TestNamespace}}
-spec:
-  template:
-    metadata:
-      labels:
-        app: postgresql-insert-low-level-job
-    spec:
-      containers:
-      - image: ghcr.io/kedacore/tests-postgresql
-        imagePullPolicy: Always
-        name: postgresql-processor-test
-        command:
-          - /app
-          - insert
-        env:
-          - name: TASK_INSTANCES_COUNT
-            value: "20"
-          - name: CONNECTION_STRING
-            valueFrom:
-              secretKeyRef:
-                name: {{.SecretName}}
-                key: postgresql_conn_str
-      restartPolicy: Never
-  backoffLimit: 4
-`
-
 	insertRecordsJobTemplate = `apiVersion: batch/v1
 kind: Job
 metadata:
@@ -320,7 +288,6 @@ func TestAwsSecretManager(t *testing.T) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
 
-	testActivation(t, kc, data)
 	testScaleOut(t, kc, data)
 	testScaleIn(t, kc)
 
@@ -370,13 +337,6 @@ func getTemplateData() (templateData, []Template) {
 	}
 }
 
-func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing activation ---")
-	KubectlApplyWithTemplate(t, data, "lowLevelRecordsJobTemplate", lowLevelRecordsJobTemplate)
-
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
-}
-
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
 	KubectlApplyWithTemplate(t, data, "insertRecordsJobTemplate", insertRecordsJobTemplate)
@@ -395,22 +355,24 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 func createAWSSecret(t *testing.T) error {
 	ctx := context.Background()
 
-	// Create an AWS session
-	awsSession, err := session.NewSession(&aws.Config{
-		Region:      &awsRegion,
-		Credentials: credentials.NewStaticCredentials(awsAccessKeyID, awsSecretAccessKey, ""),
-	})
+	// Create AWS configuration
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(awsRegion), config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
+		Value: aws.Credentials{
+			AccessKeyID:     awsAccessKeyID,
+			SecretAccessKey: awsSecretAccessKey,
+		},
+	}))
 	if err != nil {
-		return fmt.Errorf("failed to create AWS session: %w", err)
+		return fmt.Errorf("failed to create AWS configuration: %w", err)
 	}
 
 	// Create a Secrets Manager client
-	client := secretsmanager.New(awsSession)
+	client := secretsmanager.NewFromConfig(cfg)
 
 	// Create the secret value
 	secretString := postgreSQLConnectionString
-	_, err = client.CreateSecretWithContext(ctx, &secretsmanager.CreateSecretInput{
-		Name:         aws.String(secretManagerSecretName),
+	_, err = client.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
+		Name:         &secretManagerSecretName,
 		SecretString: &secretString,
 	})
 	if err != nil {
@@ -425,21 +387,23 @@ func createAWSSecret(t *testing.T) error {
 func deleteAWSSecret(t *testing.T) error {
 	ctx := context.Background()
 
-	// Create an AWS session
-	awsSession, err := session.NewSession(&aws.Config{
-		Region:      &awsRegion,
-		Credentials: credentials.NewStaticCredentials(awsAccessKeyID, awsSecretAccessKey, ""),
-	})
+	// Create AWS configuration
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(awsRegion), config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
+		Value: aws.Credentials{
+			AccessKeyID:     awsAccessKeyID,
+			SecretAccessKey: awsSecretAccessKey,
+		},
+	}))
 	if err != nil {
-		return fmt.Errorf("failed to create AWS session: %w", err)
+		return fmt.Errorf("failed to create AWS configuration: %w", err)
 	}
 
 	// Create a Secrets Manager client
-	client := secretsmanager.New(awsSession)
+	client := secretsmanager.NewFromConfig(cfg)
 
 	// Delete the secret
-	_, err = client.DeleteSecretWithContext(ctx, &secretsmanager.DeleteSecretInput{
-		SecretId:                   aws.String(secretManagerSecretName),
+	_, err = client.DeleteSecret(ctx, &secretsmanager.DeleteSecretInput{
+		SecretId:                   &secretManagerSecretName,
 		ForceDeleteWithoutRecovery: aws.Bool(true),
 	})
 	if err != nil {

@@ -4,11 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/go-logr/logr"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -18,8 +16,7 @@ import (
 
 type AwsSecretManagerHandler struct {
 	secretManager *kedav1alpha1.AwsSecretManager
-	session       *session.Session
-	secretclient  *secretsmanager.SecretsManager
+	session       *secretsmanager.Client
 }
 
 func NewAwsSecretManagerHandler(a *kedav1alpha1.AwsSecretManager) *AwsSecretManagerHandler {
@@ -28,7 +25,7 @@ func NewAwsSecretManagerHandler(a *kedav1alpha1.AwsSecretManager) *AwsSecretMana
 	}
 }
 
-func (ash *AwsSecretManagerHandler) Read(secretName, versionID, versionStage string) (string, error) {
+func (ash *AwsSecretManagerHandler) Read(logger logr.Logger, secretName, versionID, versionStage string) (string, error) {
 	input := &secretsmanager.GetSecretValueInput{
 		SecretId: aws.String(secretName),
 	}
@@ -38,33 +35,10 @@ func (ash *AwsSecretManagerHandler) Read(secretName, versionID, versionStage str
 	if versionStage != "" {
 		input.VersionStage = aws.String(versionStage)
 	}
-	result, err := ash.secretclient.GetSecretValue(input)
+	result, err := ash.session.GetSecretValue(context.TODO(), input)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case secretsmanager.ErrCodeResourceNotFoundException:
-				err = fmt.Errorf(secretsmanager.ErrCodeResourceNotFoundException + ": " + aerr.Error())
-				return "", err
-			case secretsmanager.ErrCodeInvalidParameterException:
-				err = fmt.Errorf(secretsmanager.ErrCodeInvalidParameterException + ": " + aerr.Error())
-				return "", err
-			case secretsmanager.ErrCodeInvalidRequestException:
-				err = fmt.Errorf(secretsmanager.ErrCodeInvalidRequestException + ": " + aerr.Error())
-				return "", err
-			case secretsmanager.ErrCodeDecryptionFailure:
-				err = fmt.Errorf(secretsmanager.ErrCodeDecryptionFailure + ": " + aerr.Error())
-				return "", err
-			case secretsmanager.ErrCodeInternalServiceError:
-				err = fmt.Errorf(secretsmanager.ErrCodeInternalServiceError + ": " + aerr.Error())
-				return "", err
-			default:
-				err = fmt.Errorf(aerr.Error())
-				return "", err
-			}
-		} else {
-			err = fmt.Errorf(err.Error())
-			return "", err
-		}
+		logger.Error(err, "Error getting credentials")
+		return "", err
 	}
 	return *result.SecretString, nil
 }
@@ -80,21 +54,19 @@ func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client clien
 
 	if ash.secretManager.Cloud != nil {
 		if ash.secretManager.Cloud.Region != "" {
-			config.WithRegion(ash.secretManager.Cloud.Region)
+			config.Region = ash.secretManager.Cloud.Region
 		}
 		if ash.secretManager.Cloud.Endpoint != "" {
-			config.WithEndpoint(ash.secretManager.Cloud.Endpoint)
+			logger.Info("Endpoint value", "Endpoint", ash.secretManager.Cloud.Endpoint)
 		}
 	}
 
-	ash.session = session.Must(session.NewSession())
-	logger.Info("Session value", "ash.session", ash.session)
-	ash.secretclient = secretsmanager.New(ash.session, config)
-	return err
+	ash.session = secretsmanager.NewFromConfig(*config)
+	return nil
 }
 
 func (ash *AwsSecretManagerHandler) getcredentials(ctx context.Context, client client.Client, logger logr.Logger, triggerNamespace string, secretsLister corev1listers.SecretLister) (*aws.Config, error) {
-	config := aws.NewConfig()
+	config := &aws.Config{}
 
 	podIdentity := ash.secretManager.PodIdentity
 	if podIdentity == nil {
@@ -108,7 +80,12 @@ func (ash *AwsSecretManagerHandler) getcredentials(ctx context.Context, client c
 		if accessKeyID == "" || accessSecretKey == "" {
 			return nil, fmt.Errorf("AccessKeyID and AccessSecretKey are expected when not using a pod identity provider")
 		}
-		config.WithCredentials(credentials.NewStaticCredentials(accessKeyID, accessSecretKey, ""))
+		config.Credentials = credentials.NewStaticCredentialsProvider(
+			accessKeyID,
+			accessSecretKey,
+			"",
+		)
+
 		return config, nil
 	default:
 		return nil, fmt.Errorf("pod identity provider %s not supported", podIdentity.Provider)
