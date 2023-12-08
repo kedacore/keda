@@ -290,7 +290,7 @@ spec:
 `
 )
 
-func TestPostgreSQLScaler(t *testing.T) {
+func TestAwsSecretManager(t *testing.T) {
 	require.NotEmpty(t, awsAccessKeyID, "TF_AWS_ACCESS_KEY env variable is required for AWS Secret Manager test")
 	require.NotEmpty(t, awsSecretAccessKey, "TF_AWS_SECRET_KEY env variable is required for AWS Secret Manager test")
 
