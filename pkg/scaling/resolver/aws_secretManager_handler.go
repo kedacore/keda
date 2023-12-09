@@ -25,7 +25,7 @@ func NewAwsSecretManagerHandler(a *kedav1alpha1.AwsSecretManager) *AwsSecretMana
 	}
 }
 
-func (ash *AwsSecretManagerHandler) Read(logger logr.Logger, secretName, versionID, versionStage string) (string, error) {
+func (ash *AwsSecretManagerHandler) Read(ctx context.Context, logger logr.Logger, secretName, versionID, versionStage string) (string, error) {
 	input := &secretsmanager.GetSecretValueInput{
 		SecretId: aws.String(secretName),
 	}
@@ -35,7 +35,7 @@ func (ash *AwsSecretManagerHandler) Read(logger logr.Logger, secretName, version
 	if versionStage != "" {
 		input.VersionStage = aws.String(versionStage)
 	}
-	result, err := ash.session.GetSecretValue(context.TODO(), input)
+	result, err := ash.session.GetSecretValue(ctx, input)
 	if err != nil {
 		logger.Error(err, "Error getting credentials")
 		return "", err
