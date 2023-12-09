@@ -40,6 +40,7 @@ func (ash *AwsSecretManagerHandler) Read(logger logr.Logger, secretName, version
 		logger.Error(err, "Error getting credentials")
 		return "", err
 	}
+	logger.Info("Result value", "result", *result.SecretString)
 	return *result.SecretString, nil
 }
 

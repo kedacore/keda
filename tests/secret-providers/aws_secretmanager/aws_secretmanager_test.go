@@ -224,7 +224,37 @@ spec:
     app: {{.PostgreSQLStatefulSetName}}
   type: ClusterIP
 `
-
+	lowLevelRecordsJobTemplate = `apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app: postgresql-insert-low-level-job
+  name: postgresql-insert-low-level-job
+  namespace: {{.TestNamespace}}
+spec:
+  template:
+    metadata:
+      labels:
+        app: postgresql-insert-low-level-job
+    spec:
+      containers:
+      - image: ghcr.io/kedacore/tests-postgresql
+        imagePullPolicy: Always
+        name: postgresql-processor-test
+        command:
+          - /app
+          - insert
+        env:
+          - name: TASK_INSTANCES_COUNT
+            value: "20"
+          - name: CONNECTION_STRING
+            valueFrom:
+              secretKeyRef:
+                name: {{.SecretName}}
+                key: postgresql_conn_str
+      restartPolicy: Never
+  backoffLimit: 4
+`
 	insertRecordsJobTemplate = `apiVersion: batch/v1
 kind: Job
 metadata:
@@ -288,6 +318,7 @@ func TestAwsSecretManager(t *testing.T) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
 
+	testActivation(t, kc, data)
 	testScaleOut(t, kc, data)
 	testScaleIn(t, kc)
 
@@ -335,6 +366,13 @@ func getTemplateData() (templateData, []Template) {
 		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
 		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 	}
+}
+
+func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing activation ---")
+	KubectlApplyWithTemplate(t, data, "lowLevelRecordsJobTemplate", lowLevelRecordsJobTemplate)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
