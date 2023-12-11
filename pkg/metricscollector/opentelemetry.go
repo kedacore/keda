@@ -34,10 +34,8 @@ var (
 	otelInternalLoopLatencyVal  OtelMetricFloat64Val
 	otelBuildInfoVal            OtelMetricInt64Val
 
-	otCloudEventEmittedCounter      api.Int64Counter
-	otCloudEventEmittedErrorCounter api.Int64Counter
-	otCloudEventSinkVal             OtelMetricFloat64Val
-	otCloudEventQueueStatusVal      OtelMetricFloat64Val
+	otCloudEventEmittedCounter api.Int64Counter
+	otCloudEventQueueStatusVal OtelMetricFloat64Val
 
 	otelScalerActiveVal OtelMetricFloat64Val
 )
@@ -146,27 +144,13 @@ func initMeters() {
 		otLog.Error(err, msg)
 	}
 
-	otCloudEventEmittedCounter, err = meter.Int64Counter("keda.cloudeventsource.emitted", api.WithDescription("Total emitted cloudevents"))
-	if err != nil {
-		otLog.Error(err, msg)
-	}
-
-	otCloudEventEmittedErrorCounter, err = meter.Int64Counter("keda.cloudeventsource.emitted.errors", api.WithDescription("Total cloudevent emitted errors"))
+	otCloudEventEmittedCounter, err = meter.Int64Counter("keda.cloudeventsource.events.emitted.count", api.WithDescription("Measured the total number of emitted cloudevents. 'namespace': namespace of CloudEventSource 'cloudeventsource': name of CloudEventSource object. 'eventsink': destination of this emitted event 'state':indicated events emitted successfully or not"))
 	if err != nil {
 		otLog.Error(err, msg)
 	}
 
 	_, err = meter.Float64ObservableGauge(
-		"keda.cloudeventsource.sink",
-		api.WithDescription("Indicates the created event sinks"),
-		api.WithFloat64Callback(EventSinkCreatedCallback),
-	)
-	if err != nil {
-		otLog.Error(err, msg)
-	}
-
-	_, err = meter.Float64ObservableGauge(
-		"keda.cloudeventsource.queue.status",
+		"keda.cloudeventsource.events.queued",
 		api.WithDescription("Indicates how many events are still queue"),
 		api.WithFloat64Callback(CloudeventQueueStatusCallback),
 	)
@@ -364,43 +348,20 @@ func (o *OtelMetrics) RecordCloudEventEmitted(namespace string, cloudeventsource
 		attribute.Key("namespace").String(namespace),
 		attribute.Key("cloudEventSource").String(cloudeventsource),
 		attribute.Key("eventsink").String(eventsink),
+		attribute.Key("state").String("emitted"),
 	)
 	otCloudEventEmittedCounter.Add(context.Background(), 1, opt)
 }
 
-// RecordCloudEventEmittedError counts the number of errors occurred in trying emit cloudevent
+// RecordCloudEventEmitted counts the number of errors occurred in trying emit cloudevent
 func (o *OtelMetrics) RecordCloudEventEmittedError(namespace string, cloudeventsource string, eventsink string) {
 	opt := api.WithAttributes(
 		attribute.Key("namespace").String(namespace),
 		attribute.Key("cloudEventSource").String(cloudeventsource),
 		attribute.Key("eventsink").String(eventsink),
+		attribute.Key("state").String("failed"),
 	)
-	otCloudEventEmittedErrorCounter.Add(context.Background(), 1, opt)
-}
-
-func EventSinkCreatedCallback(_ context.Context, obsrv api.Float64Observer) error {
-	if otCloudEventSinkVal.measurementOption != nil {
-		obsrv.Observe(otCloudEventSinkVal.val, otCloudEventSinkVal.measurementOption)
-	}
-	otCloudEventSinkVal = OtelMetricFloat64Val{}
-	return nil
-}
-
-// RecordCloudEventSink records user's eventsink
-func (o *OtelMetrics) RecordCloudEventSink(namespace string, eventsink string, eventsinktype string, isactive bool) {
-	activeVal := float64(0)
-	if isactive {
-		activeVal = 1
-	}
-
-	opt := api.WithAttributes(
-		attribute.Key("namespace").String(namespace),
-		attribute.Key("eventsink").String(eventsink),
-		attribute.Key("eventsinktype").String(eventsinktype),
-	)
-
-	otCloudEventSinkVal.val = activeVal
-	otCloudEventSinkVal.measurementOption = opt
+	otCloudEventEmittedCounter.Add(context.Background(), 1, opt)
 }
 
 func CloudeventQueueStatusCallback(_ context.Context, obsrv api.Float64Observer) error {
@@ -412,14 +373,9 @@ func CloudeventQueueStatusCallback(_ context.Context, obsrv api.Float64Observer)
 }
 
 // RecordCloudEventSourceQueueStatus record the number of cloudevents that are waiting for emitting
-func (o *OtelMetrics) RecordCloudEventQueueStatus(value int, isactive bool) {
-	activeVal := "0"
-	if isactive {
-		activeVal = "1"
-	}
-
+func (o *OtelMetrics) RecordCloudEventQueueStatus(namespace string, value int) {
 	opt := api.WithAttributes(
-		attribute.Key("isQueueActive").String(activeVal),
+		attribute.Key("namespace").String(namespace),
 	)
 
 	otCloudEventQueueStatusVal.val = float64(value)

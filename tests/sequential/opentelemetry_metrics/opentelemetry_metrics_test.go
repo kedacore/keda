@@ -384,7 +384,6 @@ func TestOpenTelemetryMetrics(t *testing.T) {
 	testScalableObjectMetrics(t)
 	testScaledObjectPausedMetric(t, data)
 	testCloudEventEmitted(t, data)
-	testCloudeventSourceSink(t)
 	testCloudEventEmittedError(t, data)
 
 	// cleanup
@@ -862,46 +861,17 @@ func testCloudEventEmitted(t *testing.T, data templateData) {
 	time.Sleep(10 * time.Second)
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
 
-	if val, ok := family["keda_cloudeventsource_emitted_total"]; ok {
+	if val, ok := family["keda_cloudeventsource_events_emitted_count_total"]; ok {
 		var found bool
 		metrics := val.GetMetric()
 		for _, metric := range metrics {
 			labels := metric.GetLabel()
-			for _, label := range labels {
-				if *label.Name == labelCloudEventSource && *label.Value == cloudEventSourceName {
-					assert.GreaterOrEqual(t, *metric.Counter.Value, float64(1))
-					found = true
-				}
-			}
-		}
-		assert.Equal(t, true, found)
-	} else {
-		t.Errorf("metric not available")
-	}
-}
-
-func testCloudeventSourceSink(t *testing.T) {
-	t.Log("--- testing cloudeventsource sink ---")
-
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
-
-	if val, ok := family["keda_cloudeventsource_sink"]; ok {
-		var found bool
-		metrics := val.GetMetric()
-		for _, metric := range metrics {
-			labels := metric.GetLabel()
-			var matcheventsink = false
-			var matcheventsinktype = false
-			for _, label := range labels {
-				if *label.Name == eventsinkType && *label.Value == eventsinkTypeValue {
-					matcheventsinktype = true
-				}
-				if *label.Name == eventsink && *label.Value == eventsinkValue {
-					matcheventsink = true
-				}
-			}
-			if matcheventsink && matcheventsinktype {
-				assert.Equal(t, float64(1), *metric.Gauge.Value)
+			if len(labels) >= 5 &&
+				*labels[0].Value == "opentelemetry-metrics-test-ce" &&
+				*labels[1].Value == "http" &&
+				*labels[3].Value == "opentelemetry-metrics-test-ns" &&
+				*labels[4].Value == "emitted" {
+				assert.GreaterOrEqual(t, *metric.Counter.Value, float64(1))
 				found = true
 			}
 		}
@@ -923,16 +893,18 @@ func testCloudEventEmittedError(t *testing.T, data templateData) {
 	time.Sleep(10 * time.Second)
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
 
-	if val, ok := family["keda_cloudeventsource_emitted_errors_total"]; ok {
+	if val, ok := family["keda_cloudeventsource_events_emitted_count_total"]; ok {
 		var found bool
 		metrics := val.GetMetric()
 		for _, metric := range metrics {
 			labels := metric.GetLabel()
-			for _, label := range labels {
-				if *label.Name == labelCloudEventSource && *label.Value == cloudEventSourceName {
-					assert.Equal(t, float64(5), *metric.Counter.Value)
-					found = true
-				}
+			if len(labels) >= 5 &&
+				*labels[0].Value == "opentelemetry-metrics-test-ce-w" &&
+				*labels[1].Value == "http" &&
+				*labels[3].Value == "opentelemetry-metrics-test-ns" &&
+				*labels[4].Value == "failed" {
+				assert.GreaterOrEqual(t, *metric.Counter.Value, float64(5))
+				found = true
 			}
 		}
 		assert.Equal(t, true, found)

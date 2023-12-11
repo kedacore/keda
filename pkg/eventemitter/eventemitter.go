@@ -182,7 +182,6 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEventSource
 			return
 		}
 
-		metricscollector.RecordCloudEventSink(cloudEventSource.Namespace, cloudEventSource.Name, cloudEventHandlerTypeHTTP, true)
 		eventHandlerKey := newEventHandlerKey(key, cloudEventHandlerTypeHTTP)
 		if h, ok := e.eventHandlersCache[eventHandlerKey]; ok {
 			h.CloseHandler()
@@ -204,8 +203,6 @@ func (e *EventEmitter) clearEventHandlersCache(cloudEventSource *eventingv1alpha
 		if eventHandler, found := e.eventHandlersCache[eventHandlerKey]; found {
 			eventHandler.CloseHandler()
 			delete(e.eventHandlersCache, key)
-
-			metricscollector.RecordCloudEventSink(cloudEventSource.Namespace, cloudEventSource.Name, cloudEventHandlerTypeHTTP, false)
 		}
 	}
 }
@@ -232,10 +229,10 @@ func (e *EventEmitter) startEventLoop(ctx context.Context, cloudEventSource *eve
 			e.log.V(1).Info("Consuming events from CloudEventSource.")
 			e.emitEventByHandler(eventData)
 			e.checkEventHandlers(ctx, cloudEventSource, cloudEventSourceMutex)
-			metricscollector.RecordCloudEventQueueStatus(len(e.cloudEventProcessingChan), true)
+			metricscollector.RecordCloudEventQueueStatus(cloudEventSource.Namespace, len(e.cloudEventProcessingChan))
 		case <-ctx.Done():
 			e.log.V(1).Info("CloudEventSource loop has stopped.")
-			metricscollector.RecordCloudEventQueueStatus(len(e.cloudEventProcessingChan), false)
+			metricscollector.RecordCloudEventQueueStatus(cloudEventSource.Namespace, len(e.cloudEventProcessingChan))
 			return
 		}
 	}
@@ -299,7 +296,7 @@ func (e *EventEmitter) Emit(object runtime.Object, namesapce types.NamespacedNam
 }
 
 func (e *EventEmitter) enqueueEventData(eventData eventdata.EventData) {
-	metricscollector.RecordCloudEventQueueStatus(len(e.cloudEventProcessingChan), true)
+	metricscollector.RecordCloudEventQueueStatus(eventData.Namespace, len(e.cloudEventProcessingChan))
 	select {
 	case e.cloudEventProcessingChan <- eventData:
 		e.log.V(1).Info("Event enqueued successfully.")

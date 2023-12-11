@@ -131,44 +131,25 @@ var (
 		[]string{"namespace", "type", "resource"},
 	)
 
+	// Total emitted cloudevents.
 	cloudeventEmitted = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "cloudeventsource",
-			Name:      "emitted_total",
-			Help:      "Total emitted cloudevents",
+			Name:      "events_emitted_total",
+			Help:      "Measured the total number of emitted cloudevents. 'namespace': namespace of CloudEventSource 'cloudeventsource': name of CloudEventSource object. 'eventsink': destination of this emitted event 'state':indicated events emitted successfully or not",
 		},
-		[]string{"namespace", "cloudeventsource", "eventsink"},
-	)
-
-	cloudeventEmittedErrors = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: DefaultPromMetricsNamespace,
-			Subsystem: "cloudeventsource",
-			Name:      "emitted_errors_total",
-			Help:      "Total cloudevent emitted errors",
-		},
-		[]string{"namespace", "cloudeventsource", "eventsink"},
-	)
-
-	cloudeventSink = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: DefaultPromMetricsNamespace,
-			Subsystem: "cloudeventsource",
-			Name:      "sink",
-			Help:      "Indicates the created event sinks",
-		},
-		[]string{"namespace", "eventsink", "eventsinktype"},
+		[]string{"namespace", "cloudeventsource", "eventsink", "state"},
 	)
 
 	cloudeventQueueStatus = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "cloudeventsource",
-			Name:      "queue",
+			Name:      "queue_queued",
 			Help:      "Indicates how many events are still queue",
 		},
-		[]string{"namespace", "isQueueActive"},
+		[]string{"namespace"},
 	)
 )
 
@@ -190,8 +171,6 @@ func NewPromMetrics() *PromMetrics {
 	metrics.Registry.MustRegister(buildInfo)
 
 	metrics.Registry.MustRegister(cloudeventEmitted)
-	metrics.Registry.MustRegister(cloudeventEmittedErrors)
-	metrics.Registry.MustRegister(cloudeventSink)
 	metrics.Registry.MustRegister(cloudeventQueueStatus)
 
 	RecordBuildInfo()
@@ -308,34 +287,17 @@ func (p *PromMetrics) DecrementCRDTotal(crdType, namespace string) {
 
 // RecordCloudEventEmitted counts the number of cloudevent that emitted to user's sink
 func (p *PromMetrics) RecordCloudEventEmitted(namespace string, cloudeventsource string, eventsink string) {
-	labels := prometheus.Labels{"namespace": namespace, "cloudeventsource": cloudeventsource, "eventsink": eventsink}
+	labels := prometheus.Labels{"namespace": namespace, "cloudeventsource": cloudeventsource, "eventsink": eventsink, "state": "emitted"}
 	cloudeventEmitted.With(labels).Inc()
 }
 
 // RecordCloudEventEmittedError counts the number of errors occurred in trying emit cloudevent
 func (p *PromMetrics) RecordCloudEventEmittedError(namespace string, cloudeventsource string, eventsink string) {
-	labels := prometheus.Labels{"namespace": namespace, "cloudeventsource": cloudeventsource, "eventsink": eventsink}
-	cloudeventEmittedErrors.With(labels).Inc()
-}
-
-// RecordCloudEventSink records user's eventsink
-func (p *PromMetrics) RecordCloudEventSink(namespace string, eventsink string, eventsinktype string, isactive bool) {
-	labels := prometheus.Labels{"namespace": namespace, "eventsink": eventsink, "eventsinktype": eventsinktype}
-
-	activeVal := 0
-	if isactive {
-		activeVal = 1
-	}
-
-	cloudeventSink.With(labels).Set(float64(activeVal))
+	labels := prometheus.Labels{"namespace": namespace, "cloudeventsource": cloudeventsource, "eventsink": eventsink, "state": "failed"}
+	cloudeventEmitted.With(labels).Inc()
 }
 
 // RecordCloudEventSourceQueueStatus record the number of cloudevents that are waiting for emitting
-func (p *PromMetrics) RecordCloudEventQueueStatus(value int, isactive bool) {
-	activeVal := "0"
-	if isactive {
-		activeVal = "1"
-	}
-
-	cloudeventQueueStatus.With(prometheus.Labels{"namespace": DefaultPromMetricsNamespace, "isQueueActive": activeVal}).Set(float64(value))
+func (p *PromMetrics) RecordCloudEventQueueStatus(namespace string, value int) {
+	cloudeventQueueStatus.With(prometheus.Labels{"namespace": namespace}).Set(float64(value))
 }

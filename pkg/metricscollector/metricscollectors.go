@@ -65,11 +65,8 @@ type MetricsCollector interface {
 	// RecordCloudEventEmittedError counts the number of errors occurred in trying emit cloudevent
 	RecordCloudEventEmittedError(namespace string, cloudeventsource string, eventsink string)
 
-	// RecordCloudEventSink records user's eventsink
-	RecordCloudEventSink(namespace string, eventsink string, eventsinktype string, isactive bool)
-
 	// RecordCloudEventQueueStatus record the number of cloudevents that are waiting for emitting
-	RecordCloudEventQueueStatus(value int, isActive bool)
+	RecordCloudEventQueueStatus(namespace string, value int)
 }
 
 func NewMetricsCollectors(enablePrometheusMetrics bool, enableOpenTelemetryMetrics bool) {
@@ -171,16 +168,9 @@ func RecordCloudEventEmittedError(namespace string, cloudeventsource string, eve
 	}
 }
 
-// RecordCloudEventSink records user's eventsink
-func RecordCloudEventSink(namespace string, eventsink string, eventsinktype string, isactive bool) {
-	for _, element := range collectors {
-		element.RecordCloudEventSink(namespace, eventsink, eventsinktype, isactive)
-	}
-}
-
 // RecordCloudEventQueueStatus record the number of cloudevents that are waiting for emitting
-func RecordCloudEventQueueStatus(value int, isActive bool) {
+func RecordCloudEventQueueStatus(namespace string, value int) {
 	for _, element := range collectors {
-		element.RecordCloudEventQueueStatus(value, isActive)
+		element.RecordCloudEventQueueStatus(namespace, value)
 	}
 }
