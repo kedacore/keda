@@ -32,10 +32,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/kedacore/keda/v2/pkg/eventemitter/eventdata"
+	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
 	cloudEventSourceType = "com.cloudeventsource.keda"
+)
+
+var (
+	kedaNamespace, _ = util.GetClusterObjectNamespace()
 )
 
 type CloudEventHTTPHandler struct {
@@ -86,8 +91,8 @@ func (c *CloudEventHTTPHandler) CloseHandler() {
 }
 
 func (c *CloudEventHTTPHandler) EmitEvent(eventData eventdata.EventData, failureFunc func(eventData eventdata.EventData, err error)) {
-	source := "/" + c.clusterName + "/" + eventData.Namespace + "/keda"
-	subject := "/" + c.clusterName + "/" + eventData.Namespace + "/workload/" + eventData.ObjectName
+	source := fmt.Sprintf("/%s/%s/keda", c.clusterName, kedaNamespace)
+	subject := fmt.Sprintf("/%s/%s/%s/%s", c.clusterName, eventData.Namespace, eventData.ObjectType, eventData.ObjectName)
 
 	event := cloudevents.NewEvent()
 	event.SetSource(source)

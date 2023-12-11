@@ -24,6 +24,7 @@ import (
 type EventData struct {
 	Namespace  string
 	ObjectName string
+	ObjectType string
 	EventType  string
 	Reason     string
 	Message    string
