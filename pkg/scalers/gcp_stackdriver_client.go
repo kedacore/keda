@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,10 +19,36 @@ import (
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
+const (
+	defaultTimeHorizon = "1m"
+
+	// Visualization of aggregation window:
+	// aggregationTimeHorizon: [- - - - -]
+	// alignmentPeriod:         [- - -][- - -] (may shift slightly left or right arbitrarily)
+
+	// For aggregations, a shorter time horizon may not return any data
+	aggregationTimeHorizon = "5m"
+	// To prevent the aggregation window from being too big,
+	// which may result in the data being stale for too long
+	alignmentPeriod = "3m"
+
+	// Not all aggregations are meaningful for distribution metrics,
+	// so we only support a subset of them
+	// https://cloud.google.com/monitoring/mql/reference#aggr-function-group
+	aggregationMean       = "mean"
+	aggregationMedian     = "median"
+	aggregationVariance   = "variance"
+	aggregationStddev     = "stddev"
+	aggregationSum        = "sum"
+	aggregationCount      = "count"
+	aggregationPercentile = "percentile"
+)
+
 // StackDriverClient is a generic client to fetch metrics from Stackdriver. Can be used
 // for a stackdriver scaler in the future
 type StackDriverClient struct {
 	metricsClient *monitoring.MetricClient
+	queryClient   *monitoring.QueryClient
 	credentials   GoogleApplicationCredentials
 	projectID     string
 }
@@ -36,20 +63,30 @@ func NewStackDriverClient(ctx context.Context, credentials string) (*StackDriver
 
 	clientOption := option.WithCredentialsJSON([]byte(credentials))
 
-	client, err := monitoring.NewMetricClient(ctx, clientOption)
+	metricsClient, err := monitoring.NewMetricClient(ctx, clientOption)
+	if err != nil {
+		return nil, err
+	}
+
+	queryClient, err := monitoring.NewQueryClient(ctx, clientOption)
 	if err != nil {
 		return nil, err
 	}
 
 	return &StackDriverClient{
-		metricsClient: client,
+		metricsClient: metricsClient,
+		queryClient:   queryClient,
 		credentials:   gcpCredentials,
 	}, nil
 }
 
 // NewStackDriverClientPodIdentity creates a new stackdriver client with the credentials underlying
 func NewStackDriverClientPodIdentity(ctx context.Context) (*StackDriverClient, error) {
-	client, err := monitoring.NewMetricClient(ctx)
+	metricsClient, err := monitoring.NewMetricClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+	queryClient, err := monitoring.NewQueryClient(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +102,8 @@ func NewStackDriverClientPodIdentity(ctx context.Context) (*StackDriverClient, e
 	}
 
 	return &StackDriverClient{
-		metricsClient: client,
+		metricsClient: metricsClient,
+		queryClient:   queryClient,
 		projectID:     project,
 	}, nil
 }
@@ -192,19 +230,9 @@ func (s StackDriverClient) GetMetrics(
 	}
 
 	// Set project to perform request in and update filter with project_id
-	switch projectID {
-	case "":
-		if len(s.projectID) > 0 {
-			req.Name = "projects/" + s.projectID
-			filter += ` AND resource.labels.project_id="` + s.projectID + `"`
-		} else {
-			req.Name = "projects/" + s.credentials.ProjectID
-			filter += ` AND resource.labels.project_id="` + s.credentials.ProjectID + `"`
-		}
-	default:
-		req.Name = "projects/" + projectID
-		filter += ` AND resource.labels.project_id="` + projectID + `"`
-	}
+	pid := getActualProjectID(&s, projectID)
+	req.Name = "projects/" + pid
+	filter += ` AND resource.labels.project_id="` + pid + `"`
 
 	// Set filter on request
 	req.Filter = filter
@@ -237,9 +265,136 @@ func (s StackDriverClient) GetMetrics(
 	return value, nil
 }
 
+// QueryMetrics fetches metrics from the Cloud Monitoring API
+// for a specific Monitoring Query Language (MQL) query
+//
+// MQL provides a more expressive query language than
+// the current filtering options of GetMetrics
+func (s StackDriverClient) QueryMetrics(ctx context.Context, projectID, query string) (float64, error) {
+	req := &monitoringpb.QueryTimeSeriesRequest{
+		Query:    query,
+		PageSize: 1,
+	}
+	req.Name = "projects/" + getActualProjectID(&s, projectID)
+
+	it := s.queryClient.QueryTimeSeries(ctx, req)
+
+	var value float64 = -1
+
+	// Get the value from the first metric returned
+	resp, err := it.Next()
+
+	if err == iterator.Done {
+		return value, fmt.Errorf("could not find stackdriver metric with filter %s", filter)
+	}
+
+	if err != nil {
+		return value, err
+	}
+
+	if len(resp.GetPointData()) > 0 {
+		point := resp.GetPointData()[0]
+		value, err = extractValueFromPointData(point)
+
+		if err != nil {
+			return -1, err
+		}
+	}
+
+	return value, nil
+}
+
+func getActualProjectID(s *StackDriverClient, projectID string) string {
+	if len(projectID) > 0 {
+		return projectID
+	}
+	if len(s.projectID) > 0 {
+		return s.projectID
+	}
+	return s.credentials.ProjectID
+}
+
+// buildMQLQuery builds a Monitoring Query Language (MQL) query for the last minute (five for aggregations),
+// given a resource type, metric, resource name, and an optional aggregation
+//
+// example:
+// fetch pubsub_topic
+// | metric 'pubsub.googleapis.com/topic/message_sizes'
+// | filter (resource.project_id == 'myproject' && resource.topic_id == 'mytopic')
+// | within 5m
+// | align delta(3m)
+// | every 3m
+// | group_by [], count(value)
+func (s StackDriverClient) buildMQLQuery(projectID, resourceType, metric, resourceName, aggregation string) (string, error) {
+	th := defaultTimeHorizon
+	if aggregation != "" {
+		th = aggregationTimeHorizon
+	}
+
+	pid := getActualProjectID(&s, projectID)
+	q := fmt.Sprintf(
+		"fetch pubsub_%s | metric '%s' | filter (resource.project_id == '%s' && resource.%s_id == '%s') | within %s",
+		resourceType, metric, pid, resourceType, resourceName, th,
+	)
+	if aggregation != "" {
+		agg, err := buildAggregation(aggregation)
+		if err != nil {
+			return "", err
+		}
+		// Aggregate for every `alignmentPeriod` minutes
+		q += fmt.Sprintf(
+			" | align delta(%s) | every %s | group_by [], %s",
+			alignmentPeriod, alignmentPeriod, agg,
+		)
+	}
+
+	return q, nil
+}
+
+// buildAggregation builds the aggregation part of a Monitoring Query Language (MQL) query
+func buildAggregation(aggregation string) (string, error) {
+	// Match against "percentileX"
+	if strings.HasPrefix(aggregation, aggregationPercentile) {
+		p, err := parsePercentile(aggregation)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%s(value, %d)", aggregationPercentile, p), nil
+	}
+
+	switch aggregation {
+	case aggregationMedian, aggregationMean, aggregationVariance, aggregationStddev, aggregationSum, aggregationCount:
+		return fmt.Sprintf("%s(value)", aggregation), nil
+	default:
+		return "", fmt.Errorf("unsupported aggregation function: %s", aggregation)
+	}
+}
+
+// parsePercentile returns the percentile value from a string of the form "percentileX"
+func parsePercentile(str string) (int, error) {
+	ps := strings.TrimPrefix(str, aggregationPercentile)
+	p, err := strconv.Atoi(ps)
+	if err != nil || p < 0 || p > 100 {
+		return -1, fmt.Errorf("invalid percentile value: %s", ps)
+	}
+	return p, nil
+}
+
 // extractValueFromPoint attempts to extract a float64 by asserting the point's value type
 func extractValueFromPoint(point *monitoringpb.Point) (float64, error) {
 	typedValue := point.GetValue()
+	switch typedValue.Value.(type) {
+	case *monitoringpb.TypedValue_DoubleValue:
+		return typedValue.GetDoubleValue(), nil
+	case *monitoringpb.TypedValue_Int64Value:
+		return float64(typedValue.GetInt64Value()), nil
+	}
+	return -1, fmt.Errorf("could not extract value from metric of type %T", typedValue)
+}
+
+// extractValueFromPointData is similar to extractValueFromPoint, but for type *TimeSeriesData_PointData
+func extractValueFromPointData(point *monitoringpb.TimeSeriesData_PointData) (float64, error) {
+	typedValue := point.GetValues()[0]
 	switch typedValue.Value.(type) {
 	case *monitoringpb.TypedValue_DoubleValue:
 		return typedValue.GetDoubleValue(), nil

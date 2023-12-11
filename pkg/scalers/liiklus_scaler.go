@@ -69,7 +69,9 @@ func NewLiiklusScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, err
 	}
 
-	conn, err := grpc.Dial(lm.address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(lm.address,
+		grpc.WithDefaultServiceConfig(grpcConfig),
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
