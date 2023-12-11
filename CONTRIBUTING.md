@@ -82,7 +82,7 @@ When adding log messages to the project, it's crucial to set the appropriate log
 
 ### Legacy
 
-Some of the metrics and log messages in the project don't follow the above practices, but are there for historical reasons. When refactoring pieces of code, please try to apply the best practices to any log message or metric which is impacted.  
+Some of the metrics and log messages in the project don't follow the above practices, but are there for historical reasons. When refactoring pieces of code, please try to apply the best practices to any log message or metric which is impacted.
 
 ## Changelog
 
