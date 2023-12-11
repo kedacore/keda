@@ -56,20 +56,19 @@ check the [test documentation](./tests/README.md). Those tests are run nightly o
 
 Another easy way to contribute is improving the validations to avoid misconfigurations. New rules can be added in the proper type's webhooks file (`apis/keda/v1alpha1/*_webhook.go`).
 
-
 ## Metrics and Logging
 
 ### Metrics
 
 Incorporating Prometheus and OpenTelemetry metrics is essential in our project. When creating metrics, please consider the following guidelines:
 
-- Always specify the unit in the metric name using standard units (e.g., use seconds instead of milliseconds, bytes instead of megabytes, etc.).
-- Choose descriptive metric names. Instead of vague names like `message_number` or `triggers`, opt for more specific ones like `queued_messages` and `trigger_registered`.
-- Ensure consistency in metric naming. Review existing metrics for their naming patterns and try to align new metrics accordingly.
-- Utilize labels for differentiating metric states. Instead of creating separate metrics like `messages_sent_successfully` and `messages_sent_failed`, create a single metric `messages_sent` and differentiate using a label `state` with values `success` or `failed`.
-- Avoid overly detailed metrics. Refrain from using labels with high cardinality (such as _email_, _message-id_, or _time_), as this can burden the system.
-- Favor metrics that are cumulative counters. Users can then apply functions like `rate()` to calculate changes over time. Append `total` for Prometheus and `count` for OpenTelemetry metrics.
-- Provide clear descriptions.
+- **Always specify the unit in the metric name using standard units** (e.g., use seconds instead of milliseconds, bytes instead of megabytes, etc.).
+- **Choose descriptive metric names**. Instead of vague names like `message_number` or `triggers`, opt for more specific ones like `queued_messages` and `trigger_registered`.
+- **Ensure consistency in metric naming**. Review existing metrics for their naming patterns and try to align new metrics accordingly.
+- **Utilize labels for differentiating metric states**. Instead of creating separate metrics like `messages_sent_successfully` and `messages_sent_failed`, create a single metric `messages_sent` and differentiate using a label `state` with values `success` or `failed`.
+- **Avoid overly detailed metrics**. Refrain from using labels with high cardinality (such as _email_, _message-id_, or _time_), as this can burden the system.
+- **Favor metrics that are cumulative counters**. Users can then apply functions like `rate()` to calculate changes over time. Append `total` for Prometheus and `count` for OpenTelemetry metrics.
+- **Provide clear descriptions**. This should tell end-users what the metrics represent, without being a KEDA expert nor technical person.
 
 For further guidance on metric naming and labeling, refer to the recommendations in the [Prometheus](https://prometheus.io/docs/practices/naming/) and [OpenTelemetry](https://opentelemetry.io/docs/specs/semconv/general/metrics/) documentation.
 
