@@ -101,5 +101,5 @@ func (HPAUpdatePredicate) Update(e event.UpdateEvent) bool {
 	newObj := e.ObjectNew.(*autoscalingv2.HorizontalPodAutoscaler)
 	oldObj := e.ObjectOld.(*autoscalingv2.HorizontalPodAutoscaler)
 
-	return !reflect.DeepEqual(newObj.Spec, oldObj.Spec) || !reflect.DeepEqual(newObj.OwnerReferences, oldObj.OwnerReferences)
+	return !reflect.DeepEqual(newObj.Spec, oldObj.Spec)
 }
