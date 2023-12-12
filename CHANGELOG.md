@@ -57,7 +57,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 Here is an overview of all new **experimental** features:
 
-- **General**:  Emit CloudEvents on major KEDA events ([#3533](https://github.com/kedacore/keda/issues/3533))
+- **General**:  Emit CloudEvents on major KEDA events ([#3533](https://github.com/kedacore/keda/issues/3533)|[#5278](https://github.com/kedacore/keda/issues/5278))
 
 ### Improvements
 
