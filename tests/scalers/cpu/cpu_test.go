@@ -200,8 +200,7 @@ func scaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
 	t.Log("--- applying job ---")
 
-	templateTriggerJob := []Template{{Name: "triggerJobTemplate", Config: triggerJob}}
-	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
+	KubectlReplaceWithTemplate(t, data, "triggerJobTemplate", triggerJob)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 180, 1),
 		"Replica count should scale out in next 3 minutes")
@@ -209,7 +208,7 @@ func scaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale in ---")
 	t.Log("--- deleting job ---")
 
-	KubectlDeleteMultipleWithTemplate(t, data, templateTriggerJob)
+	KubectlDeleteWithTemplate(t, data, "triggerJobTemplate", triggerJob)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 180, 1),
 		"Replica count should be 1 in next 3 minutes")

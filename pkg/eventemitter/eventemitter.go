@@ -280,10 +280,12 @@ func (e *EventEmitter) Emit(object runtime.Object, namesapce types.NamespacedNam
 		return
 	}
 
-	name, _ := meta.NewAccessor().Name(object)
+	objectName, _ := meta.NewAccessor().Name(object)
+	objectType, _ := meta.NewAccessor().Kind(object)
 	eventData := eventdata.EventData{
 		Namespace:  namesapce.Namespace,
-		ObjectName: name,
+		ObjectName: strings.ToLower(objectName),
+		ObjectType: strings.ToLower(objectType),
 		EventType:  eventType,
 		Reason:     reason,
 		Message:    message,

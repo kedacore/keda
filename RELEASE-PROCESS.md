@@ -100,6 +100,8 @@ For details, see [Publishing a new version](https://github.com/kedacore/keda-doc
 
 In order to continuously scan our new container image, they must be imported in our [Snyk project](https://app.snyk.io/org/keda/projects) for all newly introduced tags.
 
+Prune old versions of images. Keep only one version for a 3 last minor releases (eg. keep only 2.10.1, 2.11.1 and 2.12.0).
+
 Learn more on how to do this through the [Snyk documentation](https://docs.snyk.io/products/snyk-container/image-scanning-library/github-container-registry-image-scanning/scan-container-images-from-github-container-registry-in-snyk).
 
 > Note: Remember to enable the check `Without issues` in order to get the new version listed since probably it hasn't got any issue.

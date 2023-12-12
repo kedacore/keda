@@ -231,7 +231,7 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 }
 
 func saveLogs(t *testing.T, kc *kubernetes.Clientset, logName, selector, namespace string) {
-	logs, err := FindPodLogs(kc, namespace, selector)
+	logs, err := FindPodLogs(kc, namespace, selector, false)
 	assert.NoErrorf(t, err, "cannotget logs - %s", err)
 	f, err := os.Create(fmt.Sprintf("%s-%s.log", logName, time.Now().Format("20060102150405")))
 	assert.NoErrorf(t, err, "cannot create log file - %s", err)
