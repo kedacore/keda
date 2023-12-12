@@ -85,7 +85,7 @@ func (vh *GCPSecretManagerHandler) Initialize(ctx context.Context, client client
 		}
 
 	default:
-		return fmt.Errorf("gcp secret manager does not support pod identity provider - %v", podIdentity)
+		return fmt.Errorf("gcp secret manager does not support pod identity provider - %v", podIdentity.Provider)
 	}
 
 	return nil
