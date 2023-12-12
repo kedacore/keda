@@ -132,7 +132,13 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options cont
 				predicate.GenerationChangedPredicate{},
 			),
 		)).
-		Owns(&autoscalingv2.HorizontalPodAutoscaler{}).
+		// Trigger a reconcile only when the HPA spec,label or ownerReference changes. 
+		// Ignore updates to HPA status
+		Owns(&autoscalingv2.HorizontalPodAutoscaler{}, builder.WithPredicates(
+			predicate.Or(
+				predicate.LabelChangedPredicate{},
+				kedacontrollerutil.HPAUpdatePredicate{},
+			))).
 		Complete(r)
 }
 
