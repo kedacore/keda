@@ -138,7 +138,7 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options cont
 			predicate.Or(
 				predicate.LabelChangedPredicate{},
 				predicate.AnnotationChangedPredicate{},
-				kedacontrollerutil.HPAUpdatePredicate{},
+				kedacontrollerutil.HPASpecChangedPredicate{},
 			))).
 		Complete(r)
 }

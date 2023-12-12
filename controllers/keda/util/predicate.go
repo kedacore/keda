@@ -1,13 +1,12 @@
 package util
 
 import (
-	"reflect"
-
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
+	"k8s.io/apimachinery/pkg/api/equality"
 )
 
 type PausedReplicasPredicate struct {
@@ -93,13 +92,13 @@ func (PausedPredicate) Update(e event.UpdateEvent) bool {
 	return newPausedValue != oldPausedValue
 }
 
-type HPAUpdatePredicate struct {
+type HPASpecChangedPredicate struct {
 	predicate.Funcs
 }
 
-func (HPAUpdatePredicate) Update(e event.UpdateEvent) bool {
+func (HPASpecChangedPredicate) Update(e event.UpdateEvent) bool {
 	newObj := e.ObjectNew.(*autoscalingv2.HorizontalPodAutoscaler)
 	oldObj := e.ObjectOld.(*autoscalingv2.HorizontalPodAutoscaler)
 
-	return !reflect.DeepEqual(newObj.Spec, oldObj.Spec)
+	return len(newObj.Spec.Metrics) != len(oldObj.Spec.Metrics) || !equality.Semantic.DeepDerivative(newObj.Spec, oldObj.Spec)
 }
