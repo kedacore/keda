@@ -137,6 +137,7 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options cont
 		Owns(&autoscalingv2.HorizontalPodAutoscaler{}, builder.WithPredicates(
 			predicate.Or(
 				predicate.LabelChangedPredicate{},
+				predicate.AnnotationChangedPredicate{},
 				kedacontrollerutil.HPASpecChangedPredicate{},
 			))).
 		Complete(r)
