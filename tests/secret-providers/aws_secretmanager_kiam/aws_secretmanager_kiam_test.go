@@ -26,7 +26,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "aws-secret-manager-test"
+	testName = "aws-secret-manage-pod-identity-test"
 )
 
 var (
