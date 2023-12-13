@@ -32,8 +32,8 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
-// +kubebuilder:rbac:groups=apiregistration.k8s.io,resources=apiservices,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=validatingwebhookconfigurations,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=apiregistration.k8s.io,namespace=keda,resources=apiservices,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=admissionregistration.k8s.io,namespace=keda,resources=validatingwebhookconfigurations,verbs=get;list;watch;update;patch
 // +kubebuilder:rbac:groups="",namespace=keda,resources=secrets,verbs=get;list;watch;create;update;patch;delete
 
 type CertManager struct {

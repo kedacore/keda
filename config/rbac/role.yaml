@@ -9,6 +9,13 @@ rules:
   resources:
   - configmaps
   - configmaps/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - events
   verbs:
   - '*'
@@ -41,22 +48,6 @@ rules:
   resources:
   - '*/scale'
   verbs:
-  - '*'
-- apiGroups:
-  - admissionregistration.k8s.io
-  resources:
-  - validatingwebhookconfigurations
-  verbs:
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apiregistration.k8s.io
-  resources:
-  - apiservices
-  verbs:
   - get
   - list
   - patch
@@ -80,12 +71,6 @@ rules:
   - batch
   resources:
   - jobs
-  verbs:
-  - '*'
-- apiGroups:
-  - coordination.k8s.io
-  resources:
-  - leases
   verbs:
   - '*'
 - apiGroups:
@@ -144,3 +129,29 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - validatingwebhookconfigurations
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apiregistration.k8s.io
+  resources:
+  - apiservices
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - '*'
