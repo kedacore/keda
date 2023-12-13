@@ -94,7 +94,7 @@ func (ash *AwsSecretManagerHandler) getcredentials(ctx context.Context, client c
 	case kedav1alpha1.PodIdentityProviderAwsEKS:
 		awsRoleArn, err := ash.getRoleArnAwsEKS(ctx, client, logger, triggerNamespace, podTemplateSpec)
 		if err != nil {
-			return nil, fmt.Errorf("error resolving role arn for AwsEKS pod identity: %s", err)
+			return nil, fmt.Errorf("error resolving role arn for AwsEKS pod identity: %w", err)
 		}
 		config.Credentials = stscreds.NewAssumeRoleProvider(sts.NewFromConfig(*config), awsRoleArn)
 		return config, nil
