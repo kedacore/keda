@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package aws_secretmanager_kiam_test
+package aws_secretmanager_eks_test
 
 import (
 	"context"
@@ -135,7 +135,7 @@ metadata:
 spec:
   awsSecretManager:
  	podIdentity:
-  	  provider: aws-kiam
+  	  provider: aws-eks
     secrets:
     - parameter: connection
       name: {{.SecretManagerSecretName}}
