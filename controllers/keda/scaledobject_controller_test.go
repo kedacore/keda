@@ -1028,6 +1028,137 @@ var _ = Describe("ScaledObjectController", func() {
 			return k8sClient.Get(context.Background(), types.NamespacedName{Name: fmt.Sprintf("keda-hpa-%s", soName), Namespace: "default"}, hpa)
 		}).Should(HaveOccurred())
 	})
+
+	// Fix issue 5281
+	It("reconciles scaledobject when hpa spec is changed", func() {
+		var (
+			deploymentName        = "hpa-spec-change"
+			soName                = "so-" + deploymentName
+			min             int32 = 1
+			max             int32 = 5
+			newMin          int32 = 2
+			newMax          int32 = 6
+			pollingInterVal int32 = 1
+		)
+
+		err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
+		Expect(err).ToNot(HaveOccurred())
+
+		// Create the ScaledObject without specifying name.
+		so := &kedav1alpha1.ScaledObject{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      soName,
+				Namespace: "default",
+			},
+			Spec: kedav1alpha1.ScaledObjectSpec{
+				ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+					Name: deploymentName,
+				},
+				MinReplicaCount: &min,
+				MaxReplicaCount: &max,
+				PollingInterval: &pollingInterVal,
+				Advanced: &kedav1alpha1.AdvancedConfig{
+					HorizontalPodAutoscalerConfig: &kedav1alpha1.HorizontalPodAutoscalerConfig{},
+				},
+				Triggers: []kedav1alpha1.ScaleTriggers{
+					{
+						Type: "cron",
+						Metadata: map[string]string{
+							"timezone":        "UTC",
+							"start":           "0 * * * *",
+							"end":             "1 * * * *",
+							"desiredReplicas": "1",
+						},
+					},
+				},
+			},
+		}
+		err = k8sClient.Create(context.Background(), so)
+		Expect(err).ToNot(HaveOccurred())
+
+		// And validate that hpa is created.
+		hpa := &autoscalingv2.HorizontalPodAutoscaler{}
+		Eventually(func() error {
+			return k8sClient.Get(context.Background(), types.NamespacedName{Name: fmt.Sprintf("keda-hpa-%s", soName), Namespace: "default"}, hpa)
+		}).ShouldNot(HaveOccurred())
+
+		// Change hpa spec and update
+		hpa.Spec.MinReplicas = &newMin
+		hpa.Spec.MaxReplicas = newMax
+		err = k8sClient.Update(context.Background(), hpa)
+		Expect(err).ToNot(HaveOccurred())
+
+		// scaledobject should be reconciled and hpa spec should match with scaledobject spec
+		Eventually(func() bool {
+			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: fmt.Sprintf("keda-hpa-%s", soName), Namespace: "default"}, hpa)
+			if err != nil {
+				return false
+			}
+			return *hpa.Spec.MinReplicas == min && hpa.Spec.MaxReplicas == max
+		}).Should(BeTrue())
+	})
+
+	It("reconciles scaledobject and creates hpa when child hpa is deleted", func() {
+		var (
+			deploymentName        = "hpa-deleted"
+			soName                = "so-" + deploymentName
+			min             int32 = 1
+			max             int32 = 5
+			pollingInterVal int32 = 1
+		)
+
+		err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
+		Expect(err).ToNot(HaveOccurred())
+
+		// Create the ScaledObject without specifying name.
+		so := &kedav1alpha1.ScaledObject{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      soName,
+				Namespace: "default",
+			},
+			Spec: kedav1alpha1.ScaledObjectSpec{
+				ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+					Name: deploymentName,
+				},
+				MinReplicaCount: &min,
+				MaxReplicaCount: &max,
+				PollingInterval: &pollingInterVal,
+				Advanced: &kedav1alpha1.AdvancedConfig{
+					HorizontalPodAutoscalerConfig: &kedav1alpha1.HorizontalPodAutoscalerConfig{},
+				},
+				Triggers: []kedav1alpha1.ScaleTriggers{
+					{
+						Type: "cron",
+						Metadata: map[string]string{
+							"timezone":        "UTC",
+							"start":           "0 * * * *",
+							"end":             "1 * * * *",
+							"desiredReplicas": "1",
+						},
+					},
+				},
+			},
+		}
+		err = k8sClient.Create(context.Background(), so)
+		Expect(err).ToNot(HaveOccurred())
+
+		// And validate that hpa is created.
+		hpa := &autoscalingv2.HorizontalPodAutoscaler{}
+		Eventually(func() error {
+			return k8sClient.Get(context.Background(), types.NamespacedName{Name: fmt.Sprintf("keda-hpa-%s", soName), Namespace: "default"}, hpa)
+		}).ShouldNot(HaveOccurred())
+
+		// Delete the child hpa
+		err = k8sClient.Delete(context.Background(), hpa)
+		Expect(err).ToNot(HaveOccurred())
+
+		// scaledobject should be reconciled and again the corresponding hpa should be created
+		Eventually(func() error {
+			return k8sClient.Get(context.Background(), types.NamespacedName{Name: fmt.Sprintf("keda-hpa-%s", soName), Namespace: "default"}, hpa)
+
+		}).Should(BeNil())
+	})
+
 })
 
 func generateDeployment(name string) *appsv1.Deployment {
