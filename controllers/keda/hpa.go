@@ -180,7 +180,8 @@ func (r *ScaledObjectReconciler) updateHPAIfNeeded(ctx context.Context, logger l
 		logger.Info("Updated HPA according to ScaledObject", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
 	}
 
-	if !equality.Semantic.DeepDerivative(hpa.ObjectMeta.Annotations, foundHpa.ObjectMeta.Annotations) {
+	if (hpa.ObjectMeta.Annotations == nil && foundHpa.ObjectMeta.Annotations != nil) ||
+		!equality.Semantic.DeepDerivative(hpa.ObjectMeta.Annotations, foundHpa.ObjectMeta.Annotations) {
 		logger.V(1).Info("Found difference in the HPA annotations according to ScaledObject", "currentHPA", foundHpa.ObjectMeta.Annotations, "newHPA", hpa.ObjectMeta.Annotations)
 		if err = r.Client.Update(ctx, hpa); err != nil {
 			foundHpa.ObjectMeta.Annotations = hpa.ObjectMeta.Annotations
