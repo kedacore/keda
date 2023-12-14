@@ -257,7 +257,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 		return message.ScaleTargetErrMsg, err
 	}
 
-	err = r.checkReplicaCountBoundsAreValid(scaledObject)
+	err = kedav1alpha1.CheckReplicaCountBoundsAreValid(scaledObject)
 	if err != nil {
 		return "ScaledObject doesn't have correct Idle/Min/Max Replica Counts specification", err
 	}
@@ -409,26 +409,6 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 	}
 
 	return gvkr, nil
-}
-
-// checkReplicaCountBoundsAreValid checks that Idle/Min/Max ReplicaCount defined in ScaledObject are correctly specified
-// i.e. that Min is not greater than Max or Idle greater or equal to Min
-func (r *ScaledObjectReconciler) checkReplicaCountBoundsAreValid(scaledObject *kedav1alpha1.ScaledObject) error {
-	min := int32(0)
-	if scaledObject.Spec.MinReplicaCount != nil {
-		min = *getHPAMinReplicas(scaledObject)
-	}
-	max := getHPAMaxReplicas(scaledObject)
-
-	if min > max {
-		return fmt.Errorf("MinReplicaCount=%d must be less than MaxReplicaCount=%d", min, max)
-	}
-
-	if scaledObject.Spec.IdleReplicaCount != nil && *scaledObject.Spec.IdleReplicaCount >= min {
-		return fmt.Errorf("IdleReplicaCount=%d must be less than MinReplicaCount=%d", *scaledObject.Spec.IdleReplicaCount, min)
-	}
-
-	return nil
 }
 
 // ensureHPAForScaledObjectExists ensures that in cluster exist up-to-date HPA for specified ScaledObject, returns true if a new HPA was created
