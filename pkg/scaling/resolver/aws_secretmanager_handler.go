@@ -60,9 +60,6 @@ func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client clien
 		if ash.secretManager.Cloud.Region != "" {
 			config.Region = ash.secretManager.Cloud.Region
 		}
-		if ash.secretManager.Cloud.Endpoint != "" {
-			logger.Info("Endpoint value", "Endpoint", ash.secretManager.Cloud.Endpoint)
-		}
 	}
 
 	ash.session = secretsmanager.NewFromConfig(*config)
@@ -98,10 +95,17 @@ func (ash *AwsSecretManagerHandler) getcredentials(ctx context.Context, client c
 		}
 		config.Credentials = stscreds.NewAssumeRoleProvider(sts.NewFromConfig(*config), awsRoleArn)
 		return config, nil
-
-	case kedav1alpha1.PodIdentityProviderAwsKiam:
-		awsRoleArn := podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
-		config.Credentials = stscreds.NewAssumeRoleProvider(sts.NewFromConfig(*config), awsRoleArn)
+	case kedav1alpha1.PodIdentityProviderAwsEKSWorkload:
+		accessKeyID := resolveAuthSecret(ctx, client, logger, ash.secretManager.Credentials.AccessKey.ValueFrom.SecretKeyRef.Name, triggerNamespace, ash.secretManager.Credentials.AccessKey.ValueFrom.SecretKeyRef.Key, secretsLister)
+		accessSecretKey := resolveAuthSecret(ctx, client, logger, ash.secretManager.Credentials.AccessSecretKey.ValueFrom.SecretKeyRef.Name, triggerNamespace, ash.secretManager.Credentials.AccessSecretKey.ValueFrom.SecretKeyRef.Key, secretsLister)
+		if accessKeyID == "" || accessSecretKey == "" {
+			return nil, fmt.Errorf("AccessKeyID and AccessSecretKey are expected when using operator identity")
+		}
+		config.Credentials = credentials.NewStaticCredentialsProvider(
+			accessKeyID,
+			accessSecretKey,
+			"",
+		)
 		return config, nil
 	default:
 		return nil, fmt.Errorf("pod identity provider %s not supported", podIdentity.Provider)
@@ -116,5 +120,6 @@ func (ash *AwsSecretManagerHandler) getRoleArnAwsEKS(ctx context.Context, client
 	if err != nil {
 		return "", err
 	}
+
 	return serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS], nil
 }

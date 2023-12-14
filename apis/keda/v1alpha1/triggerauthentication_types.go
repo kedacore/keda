@@ -117,13 +117,14 @@ type PodIdentityProvider string
 // PodIdentityProviderNone specifies the default state when there is no Identity Provider
 // PodIdentityProvider<IDENTITY_PROVIDER> specifies other available Identity providers
 const (
-	PodIdentityProviderNone          PodIdentityProvider = "none"
-	PodIdentityProviderAzure         PodIdentityProvider = "azure"
-	PodIdentityProviderAzureWorkload PodIdentityProvider = "azure-workload"
-	PodIdentityProviderGCP           PodIdentityProvider = "gcp"
-	PodIdentityProviderAwsEKS        PodIdentityProvider = "aws-eks"
-	PodIdentityProviderAwsKiam       PodIdentityProvider = "aws-kiam"
-	PodIdentityProviderAws           PodIdentityProvider = "aws"
+	PodIdentityProviderNone           PodIdentityProvider = "none"
+	PodIdentityProviderAzure          PodIdentityProvider = "azure"
+	PodIdentityProviderAzureWorkload  PodIdentityProvider = "azure-workload"
+	PodIdentityProviderGCP            PodIdentityProvider = "gcp"
+	PodIdentityProviderSpiffe         PodIdentityProvider = "spiffe"
+	PodIdentityProviderAwsEKS         PodIdentityProvider = "aws-eks"
+	PodIdentityProviderAwsEKSWorkload PodIdentityProvider = "aws-eks-workload"
+	PodIdentityProviderAwsKiam        PodIdentityProvider = "aws-kiam"
 )
 
 // PodIdentityAnnotationEKS specifies aws role arn for aws-eks Identity Provider
@@ -334,8 +335,6 @@ type AwsSecretManagerSecret struct {
 type AwsSecretMangerCloudInfo struct {
 	// +optional
 	Region string `json:"region,omitempty"`
-	// +optional
-	Endpoint string `json:"endpoint,omitempty"`
 }
 
 func init() {
