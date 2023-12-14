@@ -63,8 +63,6 @@ spec:
                 properties:
                   cloud:
                     properties:
-                      endpoint:
-                        type: string
                       region:
                         type: string
                     type: object
