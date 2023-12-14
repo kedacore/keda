@@ -1224,6 +1224,7 @@ var _ = Describe("ScaledObjectController", func() {
 		}, 5*time.Second).Should(BeTrue())
 	})
 
+	// Fix issue 5281
 	It("reconciles scaledobject and creates hpa when child hpa is deleted", func() {
 		var (
 			deploymentName        = "hpa-deleted"
