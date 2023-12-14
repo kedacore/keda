@@ -51,7 +51,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 - **General**: Fix issue where paused annotation being set to false still leads to scaled objects/jobs being paused ([#5215](https://github.com/kedacore/keda/issues/5215))
 
 #### Experimental
