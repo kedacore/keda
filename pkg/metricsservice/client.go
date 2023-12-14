@@ -37,7 +37,7 @@ type GrpcClient struct {
 }
 
 func NewGrpcClient(url, certDir string) (*GrpcClient, error) {
-	retryPolicy := `{
+	defaultConfig := `{
 		"methodConfig": [{
 		  "timeout": "3s",
 		  "waitForReady": true,
@@ -55,7 +55,7 @@ func NewGrpcClient(url, certDir string) (*GrpcClient, error) {
 	}
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(creds),
-		grpc.WithDefaultServiceConfig(retryPolicy),
+		grpc.WithDefaultServiceConfig(defaultConfig),
 	}
 	conn, err := grpc.Dial(url, opts...)
 	if err != nil {
