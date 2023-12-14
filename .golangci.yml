@@ -31,7 +31,7 @@ linters:
     - ineffassign
     - staticcheck
     - exportloopref
-    #- depguard #https://github.com/kedacore/keda/issues/4980
+    - depguard
     - dogsled
     - errcheck
     #- funlen
@@ -136,6 +136,19 @@ issues:
     - path: azure_pipelines_scaler.go
       linters:
         - gocritic
+  # Following 3 depguard exceptions are for disabling sync/atomic package where
+  # denying the rule doesnt help (bottom of this file) but this keeps the depguard
+  # linter enabled
+  # https://github.com/kedacore/keda/issues/4980
+    - path: pkg/scalers/external_mock_scaler.go
+      linters:
+        - depguard
+    - path: controllers/keda/scaledobject_controller_test.go
+      linters:
+        - depguard
+    - path: pkg/scalers/external_scaler_test.go
+      linters:
+        - depguard
 
 
 linters-settings:
@@ -147,3 +160,9 @@ linters-settings:
       - standard
       - default
       - prefix(github.com/kedacore/keda)
+  depguard: #https://github.com/kedacore/keda/issues/4980
+    rules:
+      main:
+        deny:
+          - pkg: sync/atomic
+            desc: "use type-safe atomics from go.uber.org/atomic"
