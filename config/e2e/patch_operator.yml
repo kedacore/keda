@@ -26,7 +26,7 @@
   path: /spec/template/spec/containers/0/env/-
   value:
     name: OTEL_EXPORTER_OTLP_ENDPOINT
-    value: "http://opentelemetry-collector.default.svc.cluster.local:4318"
+    value: "http://opentelemetry-collector.open-telemetry-system.svc.cluster.local:4318"
 
 - op: add
   path: /spec/template/spec/containers/0/env/-

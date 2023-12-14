@@ -251,14 +251,14 @@ func removeServerWithJetStream(t *testing.T, namespace string) {
 func testActivation(t *testing.T, kc *k8s.Clientset, data nats.JetStreamDeploymentTemplateData) {
 	t.Log("--- testing activation ---")
 	data.NumberOfMessages = 10
-	KubectlApplyWithTemplate(t, data, "activationPublishJobTemplate", nats.ActivationPublishJobTemplate)
+	KubectlReplaceWithTemplate(t, data, "activationPublishJobTemplate", nats.ActivationPublishJobTemplate)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleOut(t *testing.T, kc *k8s.Clientset, data nats.JetStreamDeploymentTemplateData) {
 	t.Log("--- testing scale out ---")
-	KubectlApplyWithTemplate(t, data, "publishJobTemplate", nats.PublishJobTemplate)
+	KubectlReplaceWithTemplate(t, data, "publishJobTemplate", nats.PublishJobTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)

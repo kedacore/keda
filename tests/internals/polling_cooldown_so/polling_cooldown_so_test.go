@@ -215,7 +215,7 @@ func testPollingIntervalUp(t *testing.T, kc *kubernetes.Clientset, data template
 	t.Log("--- test Polling Interval up ---")
 
 	data.MetricValue = 0
-	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
 	// wait some seconds to finish the job
 	WaitForJobCount(t, kc, namespace, 0, 15, 2)
@@ -232,7 +232,7 @@ func testPollingIntervalUp(t *testing.T, kc *kubernetes.Clientset, data template
 	assert.NoError(t, err)
 
 	data.MetricValue = maxReplicas
-	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, minReplicas, 60)
 
@@ -246,7 +246,7 @@ func testPollingIntervalDown(t *testing.T, kc *kubernetes.Clientset, data templa
 	t.Log("--- test Polling Interval down ---")
 
 	data.MetricValue = 1
-	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
 	// wait some seconds to finish the job
 	WaitForJobCount(t, kc, namespace, 0, 15, 2)
@@ -264,7 +264,7 @@ func testPollingIntervalDown(t *testing.T, kc *kubernetes.Clientset, data templa
 	assert.NoError(t, err)
 
 	data.MetricValue = minReplicas
-	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, maxReplicas, 60)
 
@@ -282,7 +282,7 @@ func testCooldownPeriod(t *testing.T, kc *kubernetes.Clientset, data templateDat
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
 	data.MetricValue = 1
-	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
 	// wait some seconds to finish the job
 	WaitForJobCount(t, kc, namespace, 0, 15, 2)
@@ -299,7 +299,7 @@ func testCooldownPeriod(t *testing.T, kc *kubernetes.Clientset, data templateDat
 	assert.NoError(t, err)
 
 	data.MetricValue = 0
-	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, maxReplicas, 60)
 

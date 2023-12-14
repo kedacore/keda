@@ -170,7 +170,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 	t.Log("scaling to max replicas")
 	data.MetricValue = data.MetricThreshold * 3
-	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	assert.True(t, WaitForScaledJobCount(t, kc, scaledJobName, testNamespace, 3, 60, 1),
 		"job count should be 3 after 1 minute")
@@ -182,7 +182,7 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 	t.Log("scaling to idle replicas")
 	data.MetricValue = 0
-	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	assert.True(t, WaitForScaledJobCount(t, kc, scaledJobName, testNamespace, 0, 60, 1),
 		"job count should be 0 after 1 minute")

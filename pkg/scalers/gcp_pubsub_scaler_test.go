@@ -34,7 +34,7 @@ var testPubSubMetadata = []parsePubSubMetadataTestData{
 	{map[string]string{}, map[string]string{}, true},
 	// all properly formed with deprecated field
 	{nil, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
-	// all properly formed
+	// all properly formed with subscriptionName
 	{nil, map[string]string{"subscriptionName": "mysubscription", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS", "activationValue": "5"}, false},
 	// all properly formed with oldest unacked message age mode
 	{nil, map[string]string{"subscriptionName": "mysubscription", "mode": "OldestUnackedMessageAge", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
@@ -60,18 +60,34 @@ var testPubSubMetadata = []parsePubSubMetadataTestData{
 	{nil, map[string]string{"subscriptionName": "mysubscription", "value": "7.1", "credentialsFromEnv": "SAMPLE_CREDS", "activationValue": "2.1"}, false},
 	// All optional omitted
 	{nil, map[string]string{"subscriptionName": "mysubscription", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
-	// value omittted when mode present
+	// value omitted when mode present
 	{nil, map[string]string{"subscriptionName": "mysubscription", "mode": "SubscriptionSize", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	// all properly formed with topicName
+	{nil, map[string]string{"topicName": "mytopic", "mode": "MessageSizes", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	// with full link to topic
+	{nil, map[string]string{"topicName": "projects/myproject/topics/mytopic", "mode": "MessageSizes", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	// with full (bad) link to topic
+	{nil, map[string]string{"topicName": "projects/myproject/mytopic", "mode": "MessageSizes", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	// both subscriptionName and topicName present
+	{nil, map[string]string{"subscriptionName": "mysubscription", "topicName": "mytopic", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	// both subscriptionName and topicName missing
+	{nil, map[string]string{"value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	// both subscriptionSize and topicName present
+	{nil, map[string]string{"subscriptionSize": "7", "topicName": "mytopic", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 }
 
 var gcpPubSubMetricIdentifiers = []gcpPubSubMetricIdentifier{
 	{&testPubSubMetadata[1], 0, "s0-gcp-ps-mysubscription"},
 	{&testPubSubMetadata[1], 1, "s1-gcp-ps-mysubscription"},
+	{&testPubSubMetadata[16], 0, "s0-gcp-ps-mytopic"},
+	{&testPubSubMetadata[16], 1, "s1-gcp-ps-mytopic"},
 }
 
-var gcpSubscriptionNameTests = []gcpPubSubSubscription{
+var gcpResourceNameTests = []gcpPubSubSubscription{
 	{&testPubSubMetadata[11], 1, "mysubscription", "myproject"},
 	{&testPubSubMetadata[12], 1, "projects/myproject/mysubscription", ""},
+	{&testPubSubMetadata[17], 1, "mytopic", "myproject"},
+	{&testPubSubMetadata[18], 1, "projects/myproject/mytopic", ""},
 }
 
 var gcpSubscriptionDefaults = []gcpPubSubSubscription{
@@ -123,16 +139,16 @@ func TestGcpPubSubGetMetricSpecForScaling(t *testing.T) {
 }
 
 func TestGcpPubSubSubscriptionName(t *testing.T) {
-	for _, testData := range gcpSubscriptionNameTests {
+	for _, testData := range gcpResourceNameTests {
 		meta, err := parsePubSubMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv, ScalerIndex: testData.scalerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		mockGcpPubSubScaler := pubsubScaler{nil, "", meta, logr.Discard()}
-		subscriptionID, projectID := getSubscriptionData(&mockGcpPubSubScaler)
+		resourceID, projectID := getResourceData(&mockGcpPubSubScaler)
 
-		if subscriptionID != testData.name || projectID != testData.projectID {
-			t.Error("Wrong Subscription parsing:", subscriptionID, projectID)
+		if resourceID != testData.name || projectID != testData.projectID {
+			t.Error("Wrong Subscription parsing:", resourceID, projectID)
 		}
 	}
 }
