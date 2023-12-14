@@ -46,7 +46,7 @@ func getAwsConfig(ctx context.Context, awsRegion string, awsAuthorization awsAut
 		return &cfg, nil
 	}
 	if metadata.awsAuthorization.awsAccessKeyID != "" && metadata.awsAuthorization.awsSecretAccessKey != "" {
-		staticCredentialsProvider := aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(metadata.awsAuthorization.awsAccessKeyID, metadata.awsAuthorization.awsSecretAccessKey, ""))
+		staticCredentialsProvider := aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(metadata.awsAuthorization.awsAccessKeyID, metadata.awsAuthorization.awsSecretAccessKey, metadata.awsAuthorization.awsSessionToken))
 		cfg.Credentials = staticCredentialsProvider
 	}
 

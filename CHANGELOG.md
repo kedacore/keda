@@ -58,12 +58,14 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 Here is an overview of all new **experimental** features:
 
-- **General**:  Emit CloudEvents on major KEDA events ([#3533](https://github.com/kedacore/keda/issues/3533))
+- **General**:  Emit CloudEvents on major KEDA events ([#3533](https://github.com/kedacore/keda/issues/3533)|[#5278](https://github.com/kedacore/keda/issues/5278))
 
 ### Improvements
 
 - **General**: Add parameter queryParameters to prometheus-scaler ([#4962](https://github.com/kedacore/keda/issues/4962))
 - **General**: Support TriggerAuthentication properties from ConfigMap ([#4830](https://github.com/kedacore/keda/issues/4830))
+- **General**: Use client-side round-robin load balancing for grpc calls ([#5224](https://github.com/kedacore/keda/issues/5224))
+- **GCP pubsub scaler**: Support distribution-valued metrics and metrics from topics ([#5070](https://github.com/kedacore/keda/issues/5070))
 - **Hashicorp Vault**: Add support to get secret that needs write operation (e.g. pki) ([#5067](https://github.com/kedacore/keda/issues/5067))
 - **Hashicorp Vault**: Fix operator panic when spec.hashiCorpVault.credential.serviceAccount is not set ([#4964](https://github.com/kedacore/keda/issues/4964))
 - **Hashicorp Vault**: Fix operator panic when using root token to authenticate to vault server ([#5192](https://github.com/kedacore/keda/issues/5192))
@@ -78,11 +80,15 @@ Here is an overview of all new **experimental** features:
 - **General**: Fix CVE-2023-39325 in golang.org/x/net ([#5122](https://github.com/kedacore/keda/issues/5122))
 - **General**: Fix otelgrpc DoS vulnerability ([#5208](https://github.com/kedacore/keda/issues/5208))
 - **General**: Prevented stuck status due to timeouts during scalers generation ([#5083](https://github.com/kedacore/keda/issues/5083))
+- **AWS Scalers**: Ensure session tokens are included when instantiating AWS credentials ([#5156](https://github.com/kedacore/keda/issues/5156))
 - **Azure Pipelines**: No more HTTP 400 errors produced by poolName with spaces ([#5107](https://github.com/kedacore/keda/issues/5107))
+- **GCP pubsub scaler**: Added `project_id` to filter for metrics queries ([#5256](https://github.com/kedacore/keda/issues/5256))
 - **GCP pubsub scaler**: Missing use of default value of `value` added ([#5093](https://github.com/kedacore/keda/issues/5093))
+- **Pulsar scaler**: Fix panic when auth is not used ([#5271](https://github.com/kedacore/keda/issues/5271))
 - **ScaledJobs**: Copy ScaledJob annotations to child Jobs ([#4594](https://github.com/kedacore/keda/issues/4594))
 
 ### Deprecations
+
 
 You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
 
@@ -93,6 +99,7 @@ New deprecation(s):
 ### Breaking Changes
 
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Clean up previously deprecated code in Azure Data Explorer Scaler about clientSecret for 2.13 release ([#5051](https://github.com/kedacore/keda/issues/5051))
 
 ### Other
 
