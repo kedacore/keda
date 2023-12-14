@@ -218,7 +218,7 @@ func testUnpause(t *testing.T, kc *kubernetes.Clientset, data templateData, list
 func testUnpauseWithBool(t *testing.T, kc *kubernetes.Clientset, data templateData, listOptions metav1.ListOptions) {
 	t.Log("--- test setting Paused annotation to false ---")
 
-	_, err := ExecuteCommand(fmt.Sprintf("kubectl annotate scaledjob %s autoscaling.keda.sh/paused=false --namespace %s", scaledJobName, testNamespace))
+	_, err := ExecuteCommand(fmt.Sprintf("kubectl annotate scaledjob %s autoscaling.keda.sh/paused=false --namespace %s --overwrite=true", scaledJobName, testNamespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 
 	t.Log("job count increases from zero as job is no longer paused")

@@ -210,7 +210,6 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, conditions *kedav1alpha1.Conditions) (string, error) {
 	// Check the presence of "autoscaling.keda.sh/paused" annotation on the scaledObject (since the presence of this annotation will pause
 	// autoscaling no matter what number of replicas is provided), and if so, stop the scale loop and delete the HPA on the scaled object.
-	pausedAnnotationFound := scaledObject.HasPausedAnnotation()
 	needsToPause := scaledObject.NeedToBePausedByAnnotation()
 	if needsToPause {
 		scaledToPausedCount := true
@@ -291,7 +290,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 		}
 		logger.Info("Initializing Scaling logic according to ScaledObject Specification")
 	}
-	if pausedAnnotationFound && conditions.GetPausedCondition().Status != metav1.ConditionTrue {
+	if needsToPause && conditions.GetPausedCondition().Status != metav1.ConditionTrue {
 		return "ScaledObject paused replicas are being scaled", fmt.Errorf("ScaledObject paused replicas are being scaled")
 	}
 	return kedav1alpha1.ScaledObjectConditionReadySuccessMessage, nil
