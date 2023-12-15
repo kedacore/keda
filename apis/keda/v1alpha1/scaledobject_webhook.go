@@ -102,6 +102,7 @@ func validateWorkload(so *ScaledObject, action string) (admission.Warnings, erro
 		verifyTriggers,
 		verifyScaledObjects,
 		verifyHpas,
+		verifyReplicaCount,
 	}
 
 	for i := range verifyFunctions {
@@ -113,6 +114,15 @@ func validateWorkload(so *ScaledObject, action string) (admission.Warnings, erro
 
 	scaledobjectlog.V(1).Info(fmt.Sprintf("scaledobject %s is valid", so.Name))
 	return nil, nil
+}
+
+func verifyReplicaCount(incomingSo *ScaledObject, action string) error {
+	err := CheckReplicaCountBoundsAreValid(incomingSo)
+	if err != nil {
+		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
+		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "incorrect-replicas")
+	}
+	return nil
 }
 
 func verifyTriggers(incomingSo *ScaledObject, action string) error {
