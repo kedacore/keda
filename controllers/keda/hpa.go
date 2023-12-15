@@ -38,11 +38,6 @@ import (
 	version "github.com/kedacore/keda/v2/version"
 )
 
-const (
-	defaultHPAMinReplicas int32 = 1
-	defaultHPAMaxReplicas int32 = 100
-)
-
 // createAndDeployNewHPA creates and deploy HPA in the cluster for specified ScaledObject
 func (r *ScaledObjectReconciler) createAndDeployNewHPA(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedav1alpha1.GroupVersionKindResource) error {
 	hpaName := getHPAName(scaledObject)
@@ -104,8 +99,8 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 		labels[key] = value
 	}
 
-	minReplicas := getHPAMinReplicas(scaledObject)
-	maxReplicas := getHPAMaxReplicas(scaledObject)
+	minReplicas := scaledObject.GetHPAMinReplicas()
+	maxReplicas := scaledObject.GetHPAMaxReplicas()
 
 	pausedCount, err := executor.GetPausedReplicaCount(scaledObject)
 	if err != nil {
@@ -174,6 +169,17 @@ func (r *ScaledObjectReconciler) updateHPAIfNeeded(ctx context.Context, logger l
 		logger.V(1).Info("Found difference in the HPA labels accordint to ScaledObject", "currentHPA", foundHpa.ObjectMeta.Labels, "newHPA", hpa.ObjectMeta.Labels)
 		if err = r.Client.Update(ctx, hpa); err != nil {
 			foundHpa.ObjectMeta.Labels = hpa.ObjectMeta.Labels
+			logger.Error(err, "Failed to update HPA", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
+			return err
+		}
+		logger.Info("Updated HPA according to ScaledObject", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
+	}
+
+	if (hpa.ObjectMeta.Annotations == nil && foundHpa.ObjectMeta.Annotations != nil) ||
+		!equality.Semantic.DeepDerivative(hpa.ObjectMeta.Annotations, foundHpa.ObjectMeta.Annotations) {
+		logger.V(1).Info("Found difference in the HPA annotations according to ScaledObject", "currentHPA", foundHpa.ObjectMeta.Annotations, "newHPA", hpa.ObjectMeta.Annotations)
+		if err = r.Client.Update(ctx, hpa); err != nil {
+			foundHpa.ObjectMeta.Annotations = hpa.ObjectMeta.Annotations
 			logger.Error(err, "Failed to update HPA", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
 			return err
 		}
@@ -339,21 +345,4 @@ func getHPAName(scaledObject *kedav1alpha1.ScaledObject) string {
 
 func getDefaultHpaName(scaledObject *kedav1alpha1.ScaledObject) string {
 	return fmt.Sprintf("keda-hpa-%s", scaledObject.Name)
-}
-
-// getHPAMinReplicas returns MinReplicas based on definition in ScaledObject or default value if not defined
-func getHPAMinReplicas(scaledObject *kedav1alpha1.ScaledObject) *int32 {
-	if scaledObject.Spec.MinReplicaCount != nil && *scaledObject.Spec.MinReplicaCount > 0 {
-		return scaledObject.Spec.MinReplicaCount
-	}
-	tmp := defaultHPAMinReplicas
-	return &tmp
-}
-
-// getHPAMaxReplicas returns MaxReplicas based on definition in ScaledObject or default value if not defined
-func getHPAMaxReplicas(scaledObject *kedav1alpha1.ScaledObject) int32 {
-	if scaledObject.Spec.MaxReplicaCount != nil {
-		return *scaledObject.Spec.MaxReplicaCount
-	}
-	return defaultHPAMaxReplicas
 }

@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
 	"reflect"
 
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -74,6 +75,9 @@ const (
 
 	// Composite metric name used for scalingModifiers composite metric
 	CompositeMetricName string = "composite-metric"
+
+	defaultHPAMinReplicas int32 = 1
+	defaultHPAMaxReplicas int32 = 100
 )
 
 // ScaledObjectSpec is the spec for a ScaledObject resource
@@ -210,4 +214,41 @@ func (so *ScaledObject) NeedToBePausedByAnnotation() bool {
 // IsUsingModifiers determines whether scalingModifiers are defined or not
 func (so *ScaledObject) IsUsingModifiers() bool {
 	return so.Spec.Advanced != nil && !reflect.DeepEqual(so.Spec.Advanced.ScalingModifiers, ScalingModifiers{})
+}
+
+// getHPAMinReplicas returns MinReplicas based on definition in ScaledObject or default value if not defined
+func (so *ScaledObject) GetHPAMinReplicas() *int32 {
+	if so.Spec.MinReplicaCount != nil && *so.Spec.MinReplicaCount > 0 {
+		return so.Spec.MinReplicaCount
+	}
+	tmp := defaultHPAMinReplicas
+	return &tmp
+}
+
+// getHPAMaxReplicas returns MaxReplicas based on definition in ScaledObject or default value if not defined
+func (so *ScaledObject) GetHPAMaxReplicas() int32 {
+	if so.Spec.MaxReplicaCount != nil {
+		return *so.Spec.MaxReplicaCount
+	}
+	return defaultHPAMaxReplicas
+}
+
+// checkReplicaCountBoundsAreValid checks that Idle/Min/Max ReplicaCount defined in ScaledObject are correctly specified
+// i.e. that Min is not greater than Max or Idle greater or equal to Min
+func CheckReplicaCountBoundsAreValid(scaledObject *ScaledObject) error {
+	min := int32(0)
+	if scaledObject.Spec.MinReplicaCount != nil {
+		min = *scaledObject.GetHPAMinReplicas()
+	}
+	max := scaledObject.GetHPAMaxReplicas()
+
+	if min > max {
+		return fmt.Errorf("MinReplicaCount=%d must be less than MaxReplicaCount=%d", min, max)
+	}
+
+	if scaledObject.Spec.IdleReplicaCount != nil && *scaledObject.Spec.IdleReplicaCount >= min {
+		return fmt.Errorf("IdleReplicaCount=%d must be less than MinReplicaCount=%d", *scaledObject.Spec.IdleReplicaCount, min)
+	}
+
+	return nil
 }

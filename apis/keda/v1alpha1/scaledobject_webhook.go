@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
@@ -102,6 +103,7 @@ func validateWorkload(so *ScaledObject, action string) (admission.Warnings, erro
 		verifyTriggers,
 		verifyScaledObjects,
 		verifyHpas,
+		verifyReplicaCount,
 	}
 
 	for i := range verifyFunctions {
@@ -113,6 +115,15 @@ func validateWorkload(so *ScaledObject, action string) (admission.Warnings, erro
 
 	scaledobjectlog.V(1).Info(fmt.Sprintf("scaledobject %s is valid", so.Name))
 	return nil, nil
+}
+
+func verifyReplicaCount(incomingSo *ScaledObject, action string) error {
+	err := CheckReplicaCountBoundsAreValid(incomingSo)
+	if err != nil {
+		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
+		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "incorrect-replicas")
+	}
+	return nil
 }
 
 func verifyTriggers(incomingSo *ScaledObject, action string) error {
@@ -324,6 +335,10 @@ func ValidateAndCompileScalingModifiers(so *ScaledObject) (*vm.Program, error) {
 		return nil, fmt.Errorf("error ScalingModifiers.Formula is mandatory")
 	}
 
+	// cast return value of formula to float if necessary to avoid wrong value return
+	// type (ternary operator doesnt return float)
+	so.Spec.Advanced.ScalingModifiers.Formula = castToFloatIfNecessary(sm.Formula)
+
 	// validate formula if not empty
 	compiledFormula, err := validateScalingModifiersFormula(so)
 	if err != nil {
@@ -398,4 +413,14 @@ func validateScalingModifiersTarget(so *ScaledObject) error {
 	}
 
 	return nil
+}
+
+// castToFloatIfNecessary takes input formula and casts its return value to float
+// if necessary to avoid wrong return value type like ternary operator has and/or
+// to relief user of having to add it to the formula themselves.
+func castToFloatIfNecessary(formula string) string {
+	if strings.HasPrefix(formula, "float(") {
+		return formula
+	}
+	return "float(" + formula + ")"
 }

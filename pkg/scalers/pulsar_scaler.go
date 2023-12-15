@@ -251,7 +251,7 @@ func (s *pulsarScaler) GetStats(ctx context.Context) (*pulsarStats, error) {
 	}
 
 	client := s.httpClient
-	if s.metadata.pulsarAuth.EnableOAuth {
+	if s.metadata.pulsarAuth != nil && s.metadata.pulsarAuth.EnableOAuth {
 		config := clientcredentials.Config{
 			ClientID:       s.metadata.pulsarAuth.ClientID,
 			ClientSecret:   s.metadata.pulsarAuth.ClientSecret,
