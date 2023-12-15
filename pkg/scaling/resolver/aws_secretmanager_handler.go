@@ -96,16 +96,11 @@ func (ash *AwsSecretManagerHandler) getcredentials(ctx context.Context, client c
 		config.Credentials = stscreds.NewAssumeRoleProvider(sts.NewFromConfig(*config), awsRoleArn)
 		return config, nil
 	case kedav1alpha1.PodIdentityProviderAwsEKSWorkload:
-		accessKeyID := resolveAuthSecret(ctx, client, logger, ash.secretManager.Credentials.AccessKey.ValueFrom.SecretKeyRef.Name, triggerNamespace, ash.secretManager.Credentials.AccessKey.ValueFrom.SecretKeyRef.Key, secretsLister)
-		accessSecretKey := resolveAuthSecret(ctx, client, logger, ash.secretManager.Credentials.AccessSecretKey.ValueFrom.SecretKeyRef.Name, triggerNamespace, ash.secretManager.Credentials.AccessSecretKey.ValueFrom.SecretKeyRef.Key, secretsLister)
-		if accessKeyID == "" || accessSecretKey == "" {
-			return nil, fmt.Errorf("AccessKeyID and AccessSecretKey are expected when using operator identity")
+		awsRoleArn, err := ash.getRoleArnAwsEKS(ctx, client, logger, triggerNamespace, podTemplateSpec)
+		if err != nil {
+			return nil, fmt.Errorf("error resolving role arn for AwsEKS workload identity: %w", err)
 		}
-		config.Credentials = credentials.NewStaticCredentialsProvider(
-			accessKeyID,
-			accessSecretKey,
-			"",
-		)
+		config.Credentials = stscreds.NewAssumeRoleProvider(sts.NewFromConfig(*config), awsRoleArn)
 		return config, nil
 	default:
 		return nil, fmt.Errorf("pod identity provider %s not supported", podIdentity.Provider)
