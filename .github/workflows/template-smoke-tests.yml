@@ -47,6 +47,6 @@ jobs:
         uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3
         if: ${{ always() }}
         with:
-          name: smoke-test-logs ${{ inputs.kubernetesVersion }}
-          path: '${{ github.workspace }}/tests/**/*.log'
+          name: smoke-test-logs ${{ inputs.runs-on }}-${{ inputs.kubernetesVersion }}
+          path: "${{ github.workspace }}/tests/**/*.log"
           if-no-files-found: ignore
