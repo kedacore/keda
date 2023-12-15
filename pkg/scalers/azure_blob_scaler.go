@@ -174,6 +174,9 @@ func parseAzureBlobMetadata(config *ScalerConfig, logger logr.Logger) (*azure.Bl
 }
 
 func (s *azureBlobScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 

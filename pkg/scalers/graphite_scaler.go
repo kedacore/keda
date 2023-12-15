@@ -141,6 +141,9 @@ func parseGraphiteMetadata(config *ScalerConfig) (*graphiteMetadata, error) {
 }
 
 func (s *graphiteScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 

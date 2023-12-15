@@ -248,5 +248,8 @@ func (s *stanScaler) GetMetricsAndActivity(ctx context.Context, metricName strin
 
 // Nothing to close here.
 func (s *stanScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }

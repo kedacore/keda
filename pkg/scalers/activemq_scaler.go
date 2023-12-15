@@ -280,5 +280,8 @@ func (s *activeMQScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 }
 
 func (s *activeMQScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }

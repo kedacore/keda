@@ -165,6 +165,9 @@ func parseLokiMetadata(config *ScalerConfig) (meta *lokiMetadata, err error) {
 
 // Close returns a nil error
 func (s *lokiScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 
