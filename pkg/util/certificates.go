@@ -36,7 +36,7 @@ var rootCAs *x509.CertPool
 
 func getRootCAs() *x509.CertPool {
 	if rootCAs != nil {
-		return rootCAs.Clone()
+		return rootCAs
 	}
 
 	rootCAs, _ = x509.SystemCertPool()
@@ -46,13 +46,13 @@ func getRootCAs() *x509.CertPool {
 
 	if _, err := os.Stat(customCAPath); errors.Is(err, fs.ErrNotExist) {
 		logger.V(1).Info(fmt.Sprintf("the path %s doesn't exist, skipping custom CA registrations", customCAPath))
-		return rootCAs.Clone()
+		return rootCAs
 	}
 
 	files, err := os.ReadDir(customCAPath)
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("unable to read %s", customCAPath))
-		return rootCAs.Clone()
+		return rootCAs
 	}
 
 	for _, file := range files {
@@ -74,5 +74,5 @@ func getRootCAs() *x509.CertPool {
 		logger.V(1).Info(fmt.Sprintf("the certificate %s has been added to the pool", file.Name()))
 	}
 
-	return rootCAs.Clone()
+	return rootCAs
 }
