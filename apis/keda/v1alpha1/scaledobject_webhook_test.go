@@ -437,6 +437,9 @@ var _ = It("shouldn't create so when stabilizationWindowSeconds exceeds 3600", f
 		Should(HaveOccurred())
 })
 
+// ============================ SCALING MODIFIERS ============================ \\
+// =========================================================================== \\
+
 var _ = It("should validate the so creation with ScalingModifiers.Formula", func() {
 	namespaceName := "scaling-modifiers-formula-good"
 	namespace := createNamespace(namespaceName)
@@ -590,12 +593,243 @@ var _ = It("should validate the so creation with ScalingModifiers when formula t
 	}).ShouldNot(HaveOccurred())
 })
 
+var _ = It("should validate the so creation with ScalingModifiers when formula casts to float already", func() {
+	namespaceName := "scaling-modifiers-cast-to-float-good"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, true, true)
+
+	sm := ScalingModifiers{Target: "2", Formula: "float(workload_trig + 1)"}
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "kubernetes-workload",
+			Name: "workload_trig",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+
+	so := createScaledObjectScalingModifiers(namespaceName, sm, triggers)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("should validate the so creation with ScalingModifiers.Formula - casting float from ternary operator", func() {
+	namespaceName := "scaling-modifiers-formula-casting-float-good"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, false, false)
+
+	sm := ScalingModifiers{Target: "2", Formula: "float(workload_trig < 5 ? cron_trig + workload_trig : 5)"}
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Name: "cron_trig",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Name: "workload_trig",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+
+	so := createScaledObjectScalingModifiers(namespaceName, sm, triggers)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
+// this test checks that internally, the casting to float happened successfully
+// to override the return value of ternary operator '?' - because it tries to compile
+// in webhook validator or during hpa setup and wouldnt compile without float return
+// value
+var _ = It("should validate the so creation with ScalingModifiers.Formula - ternary operator without casting float", func() {
+	namespaceName := "scaling-modifiers-formula-ternary-no-casting-float-good"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, false, false)
+
+	sm := ScalingModifiers{Target: "2", Formula: "workload_trig < 5 ? cron_trig + workload_trig : 5"}
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Name: "cron_trig",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Name: "workload_trig",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+
+	so := createScaledObjectScalingModifiers(namespaceName, sm, triggers)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("should validate the so creation with ScalingModifiers.Formula - count operator", func() {
+	namespaceName := "scaling-modifiers-formula-count-function-good"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, false, false)
+
+	sm := ScalingModifiers{Target: "2", Formula: "count([trig_one,trig_two],{#>1}) > 1 ? 5 : 0"}
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Name: "trig_one",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Name: "trig_two",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+
+	so := createScaledObjectScalingModifiers(namespaceName, sm, triggers)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("should validate the so creation with ScalingModifiers.Formula - complex ternary", func() {
+	namespaceName := "scaling-modifiers-formula-complex-ternary-good"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, false, false)
+
+	sm := ScalingModifiers{Target: "2", Formula: "float(trig_one < 2 ? trig_one+trig_two >= 2 ? 5 : 10 : 0)"}
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Name: "trig_one",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Name: "trig_two",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+
+	so := createScaledObjectScalingModifiers(namespaceName, sm, triggers)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("should validate the so creation with ScalingModifiers.Formula - double float cast", func() {
+	namespaceName := "scaling-modifiers-formula-double-float-cast-good"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, false, false)
+
+	sm := ScalingModifiers{Target: "2", Formula: "float(float(trig_two < 5 ? trig_one + trig_two : 5))"}
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Name: "trig_one",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Name: "trig_two",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+
+	so := createScaledObjectScalingModifiers(namespaceName, sm, triggers)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
 var _ = AfterSuite(func() {
 	cancel()
 	By("tearing down the test environment")
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
 })
+
+// -------------------------------------------------------------------------- //
+// ----------------------------- HELP FUNCTIONS ----------------------------- //
+// -------------------------------------------------------------------------- //
 
 func createNamespace(name string) *v1.Namespace {
 	return &v1.Namespace{
