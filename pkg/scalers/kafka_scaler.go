@@ -727,11 +727,7 @@ func (s *kafkaScaler) Close(context.Context) error {
 		return nil
 	}
 
-	err := s.admin.Close()
-	if err != nil {
-		return err
-	}
-	return nil
+	return s.admin.Close()
 }
 
 func (s *kafkaScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
