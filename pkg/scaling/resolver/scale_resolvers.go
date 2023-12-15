@@ -262,6 +262,7 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 			if triggerAuthSpec.HashiCorpVault != nil && len(triggerAuthSpec.HashiCorpVault.Secrets) > 0 {
 				vault := NewHashicorpVaultHandler(triggerAuthSpec.HashiCorpVault)
 				err := vault.Initialize(logger)
+				defer vault.Stop()
 				if err != nil {
 					logger.Error(err, "error authenticating to Vault", "triggerAuthRef.Name", triggerAuthRef.Name)
 					return result, podIdentity, err
@@ -278,7 +279,6 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 				for _, e := range secrets {
 					result[e.Parameter] = e.Value
 				}
-				vault.Stop()
 			}
 			if triggerAuthSpec.AzureKeyVault != nil && len(triggerAuthSpec.AzureKeyVault.Secrets) > 0 {
 				vaultHandler := NewAzureKeyVaultHandler(triggerAuthSpec.AzureKeyVault)
