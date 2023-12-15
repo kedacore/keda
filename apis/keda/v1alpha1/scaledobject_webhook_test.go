@@ -787,7 +787,7 @@ var _ = It("should validate the so creation with ScalingModifiers.Formula - doub
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, false, false)
 
-	sm := ScalingModifiers{Target: "2", Formula: "float(float(workload_trig < 5 ? cron_trig + workload_trig : 5))"}
+	sm := ScalingModifiers{Target: "2", Formula: "float(float(trig_two < 5 ? trig_one + trig_two : 5))"}
 	triggers := []ScaleTriggers{
 		{
 			Type: "cron",
