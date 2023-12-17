@@ -68,6 +68,7 @@ Here is an overview of all new **experimental** features:
 - **Prometheus Metrics**: Introduce paused ScaledObjects in Prometheus metrics ([#4430](https://github.com/kedacore/keda/issues/4430))
 - **Pulsar Scaler**: support endpointParams in pulsar oauth ([#5069](https://github.com/kedacore/keda/issues/5069))
 - **General**: Enhance podIdentity Role Assumption in AWS by Direct Integration with OIDC/Federation ([#5178](https://github.com/kedacore/keda/issues/5178))
+- **General**: Implement Credentials Cache for AWS Roles to reduce AWS API calls ([#5297](https://github.com/kedacore/keda/issues/5297))
 
 ### Fixes
 
