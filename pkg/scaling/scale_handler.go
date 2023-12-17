@@ -618,20 +618,19 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	wg := sync.WaitGroup{}
 	for scalerIndex := 0; scalerIndex < len(allScalers); scalerIndex++ {
 		wg.Add(1)
-		go func(scaler scalers.Scaler, index int, scalerConfig scalers.ScalerConfig, wg *sync.WaitGroup) {
+		go func(scaler scalers.Scaler, index int, scalerConfig scalers.ScalerConfig, results chan scalerState, wg *sync.WaitGroup) {
 			results <- h.getScalerState(ctx, scaler, index, scalerConfig, cache, logger, scaledObject)
 			wg.Done()
-		}(allScalers[scalerIndex], scalerIndex, scalerConfigs[scalerIndex], &wg)
+		}(allScalers[scalerIndex], scalerIndex, scalerConfigs[scalerIndex], results, &wg)
 	}
-
 	wg.Wait()
 	close(results)
 	for result := range results {
-		if !isScaledObjectActive {
-			isScaledObjectActive = result.IsActive
+		if result.IsActive {
+			isScaledObjectActive = true
 		}
-		if !isScaledObjectError {
-			isScaledObjectError = result.IsError
+		if result.IsError {
+			isScaledObjectError = true
 		}
 		matchingMetrics = append(matchingMetrics, result.Metrics...)
 		for k, v := range result.Pairs {
