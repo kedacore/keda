@@ -36,6 +36,7 @@ type awsDynamoDBStreamsMetadata struct {
 	awsEndpoint                string
 	awsAuthorization           awsAuthorizationMetadata
 	scalerIndex                int
+	scalerUniqueKey            string
 }
 
 // NewAwsDynamoDBStreamsScaler creates a new awsDynamoDBStreamsScaler
@@ -118,12 +119,13 @@ func parseAwsDynamoDBStreamsMetadata(config *ScalerConfig, logger logr.Logger) (
 
 	meta.awsAuthorization = auth
 	meta.scalerIndex = config.ScalerIndex
+	meta.scalerUniqueKey = config.ScalerUniqueKey
 
 	return &meta, nil
 }
 
 func createClientsForDynamoDBStreamsScaler(ctx context.Context, metadata *awsDynamoDBStreamsMetadata) (*dynamodb.Client, *dynamodbstreams.Client, error) {
-	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization, metadata.scalerUniqueKey)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -167,6 +169,12 @@ func getDynamoDBStreamsArn(ctx context.Context, db dynamodb.DescribeTableAPIClie
 }
 
 func (s *awsDynamoDBStreamsScaler) Close(_ context.Context) error {
+	if s.metadata.awsAuthorization.awsRoleArn != "" {
+		err := removeCachedEntry(s.metadata.scalerUniqueKey, s.metadata.awsAuthorization.awsRoleArn)
+		if err != nil {
+			s.logger.Error(err, "Failed to delete cache entry for ", "scalerUniqueKey", s.metadata.scalerUniqueKey)
+		}
+	}
 	return nil
 }
 

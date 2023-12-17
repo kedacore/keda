@@ -79,7 +79,8 @@ type apacheKafkaMetadata struct {
 	keyPassword string
 	ca          string
 
-	scalerIndex int
+	scalerIndex     int
+	scalerUniqueKey string
 }
 
 const (
@@ -222,6 +223,8 @@ func parseApacheKafkaAuthParams(config *ScalerConfig, meta *apacheKafkaMetadata)
 			return fmt.Errorf("err sasl type %q given", mode)
 		}
 	}
+
+	meta.scalerUniqueKey = config.ScalerUniqueKey
 
 	return nil
 }
@@ -394,7 +397,7 @@ func getApacheKafkaClient(ctx context.Context, metadata apacheKafkaMetadata, log
 	case KafkaSASLTypeOAuthbearer:
 		return nil, errors.New("SASL/OAUTHBEARER is not implemented yet")
 	case KafkaSASLTypeMskIam:
-		cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+		cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization, metadata.scalerUniqueKey)
 		if err != nil {
 			return nil, err
 		}
@@ -567,6 +570,12 @@ func (s *apacheKafkaScaler) Close(context.Context) error {
 	transport := s.client.Transport.(*kafka.Transport)
 	if transport != nil {
 		transport.CloseIdleConnections()
+	}
+	if s.metadata.awsAuthorization.awsRoleArn != "" {
+		err := removeCachedEntry(s.metadata.scalerUniqueKey, s.metadata.awsAuthorization.awsRoleArn)
+		if err != nil {
+			s.logger.Error(err, "Failed to delete cache entry for ", "scalerUniqueKey", s.metadata.scalerUniqueKey)
+		}
 	}
 	return nil
 }

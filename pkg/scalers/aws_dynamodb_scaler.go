@@ -38,6 +38,7 @@ type awsDynamoDBMetadata struct {
 	awsAuthorization          awsAuthorizationMetadata
 	scalerIndex               int
 	metricName                string
+	scalerUniqueKey           string
 }
 
 func NewAwsDynamoDBScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
@@ -177,6 +178,7 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 
 	meta.awsAuthorization = auth
 	meta.scalerIndex = config.ScalerIndex
+	meta.scalerUniqueKey = config.ScalerUniqueKey
 
 	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex,
 		kedautil.NormalizeString(fmt.Sprintf("aws-dynamodb-%s", meta.tableName)))
@@ -185,7 +187,7 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 }
 
 func createDynamoDBClient(ctx context.Context, metadata *awsDynamoDBMetadata) (*dynamodb.Client, error) {
-	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization, metadata.scalerUniqueKey)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +225,13 @@ func (s *awsDynamoDBScaler) GetMetricSpecForScaling(context.Context) []v2.Metric
 	}
 }
 
-func (s *awsDynamoDBScaler) Close(context.Context) error {
+func (s *awsDynamoDBScaler) Close(ctx context.Context) error {
+	if s.metadata.awsAuthorization.awsRoleArn != "" {
+		err := removeCachedEntry(s.metadata.scalerUniqueKey, s.metadata.awsAuthorization.awsRoleArn)
+		if err != nil {
+			s.logger.Error(err, "Failed to delete cache entry for ", "scalerUniqueKey", s.metadata.scalerUniqueKey)
+		}
+	}
 	return nil
 }
 

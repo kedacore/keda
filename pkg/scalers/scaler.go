@@ -102,6 +102,9 @@ type ScalerConfig struct {
 
 	// When we use the scaler for composite scaler, we shouldn't require the value because it'll be ignored
 	AsMetricSource bool
+
+	// UniqueName for the scaler to track things like caching, required for AWS scalers
+	ScalerUniqueKey string
 }
 
 var (

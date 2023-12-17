@@ -65,6 +65,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 				ScalerIndex:             triggerIndex,
 				MetricType:              trigger.MetricType,
 				AsMetricSource:          asMetricSource,
+				ScalerUniqueKey:         trigger.Name + "-" + withTriggers.Name + "-" + withTriggers.Namespace + "-" + withTriggers.Kind,
 			}
 
 			authParams, podIdentity, err := resolver.ResolveAuthRefAndPodIdentity(ctx, h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace, h.secretsLister)

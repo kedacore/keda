@@ -43,6 +43,7 @@ type awsSqsQueueMetadata struct {
 	scaleOnInFlight             bool
 	scaleOnDelayed              bool
 	awsSqsQueueMetricNames      []types.QueueAttributeName
+	scalerUniqueKey             string
 }
 
 // NewAwsSqsQueueScaler creates a new awsSqsQueueScaler
@@ -183,12 +184,13 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig, logger logr.Logger) (*awsSqs
 	meta.awsAuthorization = auth
 
 	meta.scalerIndex = config.ScalerIndex
+	meta.scalerUniqueKey = config.ScalerUniqueKey
 
 	return &meta, nil
 }
 
 func createSqsClient(ctx context.Context, metadata *awsSqsQueueMetadata) (*sqs.Client, error) {
-	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization, metadata.scalerUniqueKey)
 	if err != nil {
 		return nil, err
 	}
@@ -200,6 +202,12 @@ func createSqsClient(ctx context.Context, metadata *awsSqsQueueMetadata) (*sqs.C
 }
 
 func (s *awsSqsQueueScaler) Close(context.Context) error {
+	if s.metadata.awsAuthorization.awsRoleArn != "" {
+		err := removeCachedEntry(s.metadata.scalerUniqueKey, s.metadata.awsAuthorization.awsRoleArn)
+		if err != nil {
+			s.logger.Error(err, "Failed to delete cache entry for ", "scalerUniqueKey", s.metadata.scalerUniqueKey)
+		}
+	}
 	return nil
 }
 

@@ -51,7 +51,8 @@ type awsCloudwatchMetadata struct {
 
 	awsAuthorization awsAuthorizationMetadata
 
-	scalerIndex int
+	scalerIndex     int
+	scalerUniqueKey string
 }
 
 // NewAwsCloudwatchScaler creates a new awsCloudwatchScaler
@@ -111,7 +112,7 @@ func getFloatMetadataValue(metadata map[string]string, key string, required bool
 }
 
 func createCloudwatchClient(ctx context.Context, metadata *awsCloudwatchMetadata) (*cloudwatch.Client, error) {
-	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization, metadata.scalerUniqueKey)
 
 	if err != nil {
 		return nil, err
@@ -238,6 +239,8 @@ func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, e
 
 	meta.scalerIndex = config.ScalerIndex
 
+	meta.scalerUniqueKey = config.ScalerUniqueKey
+
 	return &meta, nil
 }
 
@@ -312,6 +315,12 @@ func (s *awsCloudwatchScaler) GetMetricSpecForScaling(context.Context) []v2.Metr
 }
 
 func (s *awsCloudwatchScaler) Close(context.Context) error {
+	if s.metadata.awsAuthorization.awsRoleArn != "" {
+		err := removeCachedEntry(s.metadata.scalerUniqueKey, s.metadata.awsAuthorization.awsRoleArn)
+		if err != nil {
+			s.logger.Error(err, "Failed to delete cache entry for ", "scalerUniqueKey", s.metadata.scalerUniqueKey)
+		}
+	}
 	return nil
 }
 

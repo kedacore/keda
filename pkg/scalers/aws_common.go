@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -31,7 +32,85 @@ type awsConfigMetadata struct {
 	awsAuthorization awsAuthorizationMetadata
 }
 
-func getAwsConfig(ctx context.Context, awsRegion string, awsAuthorization awsAuthorizationMetadata) (*aws.Config, error) {
+type CacheEntry struct {
+	credentials *aws.CredentialsCache
+	usages      map[string]bool // Tracks the scaledObjects requested the cache
+}
+
+var (
+	roleCredentialsCache = make(map[string]CacheEntry)
+	mu                   sync.Mutex
+)
+
+func getCredentialsForRole(cfg aws.Config, roleArn string, scalerUniqueKey string) (*aws.CredentialsCache, error) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if cachedEntry, exists := roleCredentialsCache[roleArn]; exists {
+		cachedEntry.usages[scalerUniqueKey] = true
+		roleCredentialsCache[roleArn] = cachedEntry
+		return cachedEntry.credentials, nil
+	}
+
+	cachedProvider, err := retrieveCredentials(cfg, roleArn)
+	if err != nil {
+		return nil, err
+	}
+
+	newCacheEntry := CacheEntry{
+		credentials: cachedProvider,
+		usages:      map[string]bool{scalerUniqueKey: true},
+	}
+
+	roleCredentialsCache[roleArn] = newCacheEntry
+
+	return cachedProvider, nil
+
+}
+
+func retrieveCredentials(cfg aws.Config, roleArn string) (*aws.CredentialsCache, error) {
+	stsSvc := sts.NewFromConfig(cfg)
+	webIdentityTokenFile := os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE")
+
+	webIdentityCredentialProvider := stscreds.NewWebIdentityRoleProvider(stsSvc, roleArn, stscreds.IdentityTokenFile(webIdentityTokenFile), func(options *stscreds.WebIdentityRoleOptions) {
+		options.RoleSessionName = "KEDA"
+	})
+	var cachedProvider *aws.CredentialsCache
+
+	_, err := webIdentityCredentialProvider.Retrieve(context.Background())
+	if err != nil {
+		// Fallback to Assume Role
+		assumeRoleCredentialProvider := stscreds.NewAssumeRoleProvider(stsSvc, roleArn, func(options *stscreds.AssumeRoleOptions) {
+			options.RoleSessionName = "KEDA"
+		})
+		cachedProvider = aws.NewCredentialsCache(assumeRoleCredentialProvider)
+	} else {
+		cachedProvider = aws.NewCredentialsCache(webIdentityCredentialProvider)
+	}
+	return cachedProvider, nil
+}
+
+func removeCachedEntry(scalerUniqueKey string, roleArn string) error {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if cachedEntry, exists := roleCredentialsCache[roleArn]; exists {
+		// Delete the scalerUniqueKey from usages
+		delete(cachedEntry.usages, scalerUniqueKey)
+
+		// If no more usages, delete the entire entry from the cache
+		if len(cachedEntry.usages) == 0 {
+			delete(roleCredentialsCache, roleArn)
+		} else {
+			roleCredentialsCache[roleArn] = cachedEntry
+		}
+	}
+
+	return nil
+
+}
+
+func getAwsConfig(ctx context.Context, awsRegion string, awsAuthorization awsAuthorizationMetadata, scalerUniqueKey string) (*aws.Config, error) {
 	metadata := &awsConfigMetadata{
 		awsRegion:        awsRegion,
 		awsAuthorization: awsAuthorization,
@@ -52,25 +131,7 @@ func getAwsConfig(ctx context.Context, awsRegion string, awsAuthorization awsAut
 	}
 
 	if metadata.awsAuthorization.awsRoleArn != "" {
-		stsSvc := sts.NewFromConfig(cfg)
-
-		// Create the web identity role provider
-		stsCredentialProvider := stscreds.NewWebIdentityRoleProvider(
-			stsSvc,
-			metadata.awsAuthorization.awsRoleArn,
-			stscreds.IdentityTokenFile(os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE")),
-		)
-
-		// Attempt to retrieve credentials
-		_, err := stsCredentialProvider.Retrieve(context.Background())
-		if err != nil {
-			// Setup AssumeRoleProvider as a fallback
-			assumeRoleCredentialProvider := stscreds.NewAssumeRoleProvider(stsSvc, metadata.awsAuthorization.awsRoleArn, func(options *stscreds.AssumeRoleOptions) {})
-			cfg.Credentials = aws.NewCredentialsCache(assumeRoleCredentialProvider)
-		} else {
-			// If the retrieval is successful, use the web identity credentials
-			cfg.Credentials = aws.NewCredentialsCache(stsCredentialProvider)
-		}
+		cfg.Credentials, err = getCredentialsForRole(cfg, metadata.awsAuthorization.awsRoleArn, scalerUniqueKey)
 	}
 
 	return &cfg, err
