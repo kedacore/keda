@@ -36,6 +36,7 @@ type datadogExternalMetadata struct {
 	datadogMetricServiceUrl string
 	datadogMetricName       string
 	datadogMetricNamespace  string
+	hpaMetricName           string
 	targetValue             float64
 	activationTargetValue   float64
 	fillValue               float64
@@ -126,6 +127,8 @@ func parseDatadogExternalMetadata(config *ScalerConfig, logger logr.Logger) (*da
 	} else {
 		return nil, fmt.Errorf("no datadogMetricNamespace key given")
 	}
+
+	meta.hpaMetricName = "datadogmetric@" + meta.datadogMetricNamespace + ":" + meta.datadogMetricName
 
 	if val, ok := config.TriggerMetadata["targetValue"]; ok {
 		targetValue, err := strconv.ParseFloat(val, 64)
@@ -307,9 +310,10 @@ func (s *datadogExternalScaler) Close(context.Context) error {
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *datadogExternalScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: s.metadata.datadogMetricName,
+			Name: s.metadata.hpaMetricName,
 		},
 		Target: GetMetricTargetMili(s.metadata.vType, s.metadata.targetValue),
 	}
@@ -322,7 +326,7 @@ func (s *datadogExternalScaler) GetMetricSpecForScaling(context.Context) []v2.Me
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *datadogExternalScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 
-	url := buildMetricURL(s.metadata.datadogMetricServiceUrl, s.metadata.datadogMetricNamespace, s.metadata.datadogMetricName)
+	url := buildMetricURL(s.metadata.datadogMetricServiceUrl, s.metadata.datadogMetricNamespace, s.metadata.hpaMetricName)
 
 	s.logger.Info(fmt.Sprintf("URL: %s", url))
 
