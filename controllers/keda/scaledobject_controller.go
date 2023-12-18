@@ -353,9 +353,12 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 	gvkString := gvkr.GVKString()
 	logger.V(1).Info("Parsed Group, Version, Kind, Resource", "GVK", gvkString, "Resource", gvkr.Resource)
 
-	statusGvkr, _ := kedav1alpha1.ParseGVKR(r.restMapper, scaledObject.Status.ScaleTargetGVKR.Version, scaledObject.Status.ScaleTargetGVKR.Kind)
-	statusGvkString := statusGvkr.GVKString()
-	logger.V(1).Info("Status Group, Version, Kind, Resource", "GVK", statusGvkString, "Resource", statusGvkr.Resource)
+	statusGvkString := ""
+	if scaledObject.Status.ScaleTargetGVKR != nil {
+		statusGvkr, _ := kedav1alpha1.ParseGVKR(r.restMapper, scaledObject.Status.ScaleTargetGVKR.Version, scaledObject.Status.ScaleTargetGVKR.Kind)
+		statusGvkString = statusGvkr.GVKString()
+		logger.V(1).Info("Status Group, Version, Kind, Resource", "GVK", statusGvkString, "Resource", statusGvkr.Resource)
+	}
 
 	// do we need the scale to update the status later?
 	present := scaledObject.HasPausedAnnotation()
