@@ -569,8 +569,8 @@ func testScaledJobErrors(t *testing.T, data templateData) {
 	time.Sleep(20 * time.Second)
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
-	val, ok := family["keda_scaledjob_errors"]
-	assert.True(t, ok, "keda_scaledjob_errors not available")
+	val, ok := family["keda_scaled_job_errors"]
+	assert.True(t, ok, "keda_scaled_job_errors not available")
 	if ok {
 		errCounterVal1 := getErrorMetricsValue(val)
 
