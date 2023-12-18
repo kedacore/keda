@@ -141,6 +141,8 @@ spec:
                       provider:
                         description: PodIdentityProvider contains the list of providers
                         type: string
+                      roleArn:
+                        type: string
                     required:
                     - provider
                     type: object
@@ -236,6 +238,8 @@ spec:
                       roleArn:
                         description: RoleArn sets the AWS RoleArn to be used. Mutually
                           exclusive with IdentityOwner
+                        type: string
+                      roleArn:
                         type: string
                     required:
                     - provider
@@ -387,6 +391,8 @@ spec:
                   roleArn:
                     description: RoleArn sets the AWS RoleArn to be used. Mutually
                       exclusive with IdentityOwner
+                    type: string
+                  roleArn:
                     type: string
                 required:
                 - provider

@@ -91,14 +91,7 @@ func (ash *AwsSecretManagerHandler) getcredentials(ctx context.Context, client c
 	case kedav1alpha1.PodIdentityProviderAwsEKS:
 		awsRoleArn, err := ash.getRoleArnAwsEKS(ctx, client, logger, triggerNamespace, podTemplateSpec)
 		if err != nil {
-			return nil, fmt.Errorf("error resolving role arn for AwsEKS pod identity: %w", err)
-		}
-		config.Credentials = stscreds.NewAssumeRoleProvider(sts.NewFromConfig(*config), awsRoleArn)
-		return config, nil
-	case kedav1alpha1.PodIdentityProviderAwsEKSWorkload:
-		awsRoleArn, err := ash.getRoleArnAwsEKS(ctx, client, logger, triggerNamespace, podTemplateSpec)
-		if err != nil {
-			return nil, fmt.Errorf("error resolving role arn for AwsEKS workload identity: %w", err)
+			return nil, fmt.Errorf("error resolving role arn for AwsEKS: %w", err)
 		}
 		config.Credentials = stscreds.NewAssumeRoleProvider(sts.NewFromConfig(*config), awsRoleArn)
 		return config, nil
@@ -108,13 +101,22 @@ func (ash *AwsSecretManagerHandler) getcredentials(ctx context.Context, client c
 }
 
 func (ash *AwsSecretManagerHandler) getRoleArnAwsEKS(ctx context.Context, client client.Client, logger logr.Logger, triggerNamespace string, podTemplateSpec *corev1.PodTemplateSpec) (string, error) {
-	serviceAccountName := podTemplateSpec.Spec.ServiceAccountName
-	serviceAccount := &corev1.ServiceAccount{}
-	logger.Info("serviceAccount value", "serviceAccount", serviceAccount)
-	err := client.Get(ctx, types.NamespacedName{Name: serviceAccountName, Namespace: triggerNamespace}, serviceAccount)
-	if err != nil {
-		return "", err
+	podIdentity := &kedav1alpha1.AuthPodIdentity{}
+	if podIdentity.RoleArn != "" {
+		if podIdentity.RoleArn == "workload" {
+			serviceAccountName := defaultServiceAccount
+			if podTemplateSpec.Spec.ServiceAccountName != "" {
+				serviceAccountName = podTemplateSpec.Spec.ServiceAccountName
+			}
+			serviceAccount := &corev1.ServiceAccount{}
+			logger.Info("serviceAccount value", "serviceAccount", serviceAccount)
+			err := client.Get(ctx, types.NamespacedName{Name: serviceAccountName, Namespace: triggerNamespace}, serviceAccount)
+			if err != nil {
+				return "", fmt.Errorf("error getting service account: '%s', error: %w", serviceAccountName, err)
+			}
+			return serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS], nil
+		}
+		return podIdentity.RoleArn, nil
 	}
-
-	return serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS], nil
+	return "", fmt.Errorf("no valid RoleArn found")
 }

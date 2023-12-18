@@ -117,14 +117,13 @@ type PodIdentityProvider string
 // PodIdentityProviderNone specifies the default state when there is no Identity Provider
 // PodIdentityProvider<IDENTITY_PROVIDER> specifies other available Identity providers
 const (
-	PodIdentityProviderNone           PodIdentityProvider = "none"
-	PodIdentityProviderAzure          PodIdentityProvider = "azure"
-	PodIdentityProviderAzureWorkload  PodIdentityProvider = "azure-workload"
-	PodIdentityProviderGCP            PodIdentityProvider = "gcp"
-	PodIdentityProviderSpiffe         PodIdentityProvider = "spiffe"
-	PodIdentityProviderAwsEKS         PodIdentityProvider = "aws-eks"
-	PodIdentityProviderAwsEKSWorkload PodIdentityProvider = "aws-eks-workload"
-	PodIdentityProviderAwsKiam        PodIdentityProvider = "aws-kiam"
+	PodIdentityProviderNone          PodIdentityProvider = "none"
+	PodIdentityProviderAzure         PodIdentityProvider = "azure"
+	PodIdentityProviderAzureWorkload PodIdentityProvider = "azure-workload"
+	PodIdentityProviderGCP           PodIdentityProvider = "gcp"
+	PodIdentityProviderSpiffe        PodIdentityProvider = "spiffe"
+	PodIdentityProviderAwsEKS        PodIdentityProvider = "aws-eks"
+	PodIdentityProviderAwsKiam       PodIdentityProvider = "aws-kiam"
 )
 
 // PodIdentityAnnotationEKS specifies aws role arn for aws-eks Identity Provider
@@ -142,12 +141,7 @@ type AuthPodIdentity struct {
 	// +optional
 	IdentityID *string `json:"identityId"`
 	// +optional
-	// RoleArn sets the AWS RoleArn to be used. Mutually exclusive with IdentityOwner
 	RoleArn string `json:"roleArn"`
-	// +kubebuilder:validation:Enum=keda;workload
-	// +optional
-	// IdentityOwner configures which identity has to be used during auto discovery, keda or the scaled workload. Mutually exclusive with roleArn
-	IdentityOwner *string `json:"identityOwner"`
 }
 
 func (a *AuthPodIdentity) GetIdentityID() string {
