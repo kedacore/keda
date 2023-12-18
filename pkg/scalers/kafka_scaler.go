@@ -711,16 +711,6 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 
 // Close closes the kafka admin and client
 func (s *kafkaScaler) Close(context.Context) error {
-	// underlying client will also be closed on admin's Close() call
-	if s.admin == nil {
-		return nil
-	}
-
-	err := s.admin.Close()
-	if err != nil {
-		return err
-	}
-
 	// clean up any temporary files
 	if strings.TrimSpace(s.metadata.kerberosConfigPath) != "" {
 		if err := os.Remove(s.metadata.kerberosConfigPath); err != nil {
@@ -732,7 +722,12 @@ func (s *kafkaScaler) Close(context.Context) error {
 			return err
 		}
 	}
-	return nil
+	// underlying client will also be closed on admin's Close() call
+	if s.admin == nil {
+		return nil
+	}
+
+	return s.admin.Close()
 }
 
 func (s *kafkaScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {

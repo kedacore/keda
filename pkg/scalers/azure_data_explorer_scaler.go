@@ -198,5 +198,8 @@ func (s azureDataExplorerScaler) GetMetricSpecForScaling(context.Context) []v2.M
 }
 
 func (s azureDataExplorerScaler) Close(context.Context) error {
+	if s.client != nil && s.client.HttpClient() != nil {
+		s.client.HttpClient().CloseIdleConnections()
+	}
 	return nil
 }

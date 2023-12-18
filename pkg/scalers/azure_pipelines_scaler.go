@@ -458,5 +458,8 @@ func (s *azurePipelinesScaler) GetMetricsAndActivity(ctx context.Context, metric
 }
 
 func (s *azurePipelinesScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
