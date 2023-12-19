@@ -279,6 +279,9 @@ func (s *azureLogAnalyticsScaler) GetMetricsAndActivity(ctx context.Context, met
 }
 
 func (s *azureLogAnalyticsScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 

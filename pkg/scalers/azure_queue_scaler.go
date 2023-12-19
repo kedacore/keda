@@ -159,6 +159,9 @@ func parseAzureQueueMetadata(config *ScalerConfig, logger logr.Logger) (*azureQu
 }
 
 func (s *azureQueueScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 

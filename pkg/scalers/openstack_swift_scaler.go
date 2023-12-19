@@ -247,6 +247,9 @@ func parseOpenstackSwiftAuthenticationMetadata(config *ScalerConfig) (*openstack
 }
 
 func (s *openstackSwiftScaler) Close(context.Context) error {
+	if s.swiftClient != nil {
+		s.swiftClient.HTTPClient.CloseIdleConnections()
+	}
 	return nil
 }
 

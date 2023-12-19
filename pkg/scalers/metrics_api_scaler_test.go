@@ -243,8 +243,8 @@ func TestGetMetricValueErrorMessage(t *testing.T) {
 
 	httpClient := http.Client{Transport: &mockHTTPRoundTripper}
 	s := metricsAPIScaler{
-		metadata: &metricsAPIScalerMetadata{url: "http://dummy:1230/api/v1/"},
-		client:   &httpClient,
+		metadata:   &metricsAPIScalerMetadata{url: "http://dummy:1230/api/v1/"},
+		httpClient: &httpClient,
 	}
 
 	_, err := s.getMetricValue(context.TODO())

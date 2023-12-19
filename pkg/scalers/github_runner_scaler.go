@@ -670,5 +670,8 @@ func (s *githubRunnerScaler) GetMetricSpecForScaling(_ context.Context) []v2.Met
 }
 
 func (s *githubRunnerScaler) Close(_ context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
