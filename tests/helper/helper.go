@@ -641,6 +641,21 @@ func KubectlDeleteMultipleWithTemplate(t *testing.T, data interface{}, templates
 	}
 }
 
+func KubectlCopyToPod(t *testing.T, content string, remotePath, pod, namespace string) {
+	tempFile, err := os.CreateTemp("", "copy-to-pod")
+	defer os.Remove(tempFile.Name())
+
+	_, err = tempFile.WriteString(content)
+	assert.NoErrorf(t, err, "cannot write temp file - %s", err)
+
+	commnand := fmt.Sprintf("kubectl cp %s %s:/%s -n %s", tempFile.Name(), pod, remotePath, namespace)
+	_, err = ExecuteCommand(commnand)
+	assert.NoErrorf(t, err, "cannot copy file - %s", err)
+
+	err = tempFile.Close()
+	assert.NoErrorf(t, err, "cannot close temp file - %s", err)
+}
+
 func CreateKubernetesResources(t *testing.T, kc *kubernetes.Clientset, nsName string, data interface{}, templates []Template) {
 	CreateNamespace(t, kc, nsName)
 	KubectlApplyMultipleWithTemplate(t, data, templates)
