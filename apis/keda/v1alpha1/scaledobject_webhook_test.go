@@ -29,6 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = It("should validate the so creation when there isn't any hpa", func() {
@@ -229,6 +230,34 @@ var _ = It("should validate the so creation with cpu and memory when deployment 
 
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("shouldn't validate the creation with cpu and memory when deployment is missing", func() {
+
+	namespaceName := "deployment-missing"
+	namespace := createNamespace(namespaceName)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true, map[string]string{}, "")
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
+})
+
+var _ = It("should validate the creation with cpu and memory when deployment is missing and dry-run is true", func() {
+
+	namespaceName := "deployment-missing-dry-run"
+	namespace := createNamespace(namespaceName)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true, map[string]string{}, "")
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so, client.DryRunAll)
 	}).ShouldNot(HaveOccurred())
 })
 
