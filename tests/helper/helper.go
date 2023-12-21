@@ -643,6 +643,7 @@ func KubectlDeleteMultipleWithTemplate(t *testing.T, data interface{}, templates
 
 func KubectlCopyToPod(t *testing.T, content string, remotePath, pod, namespace string) {
 	tempFile, err := os.CreateTemp("", "copy-to-pod")
+	assert.NoErrorf(t, err, "cannot create temp file - %s", err)
 	defer os.Remove(tempFile.Name())
 
 	_, err = tempFile.WriteString(content)
