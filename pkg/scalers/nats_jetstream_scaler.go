@@ -486,5 +486,8 @@ func (s *natsJetStreamScaler) GetMetricsAndActivity(ctx context.Context, metricN
 }
 
 func (s *natsJetStreamScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }

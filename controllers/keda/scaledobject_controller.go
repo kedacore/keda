@@ -54,13 +54,14 @@ import (
 
 // +kubebuilder:rbac:groups=keda.sh,resources=scaledobjects;scaledobjects/finalizers;scaledobjects/status,verbs="*"
 // +kubebuilder:rbac:groups=autoscaling,resources=horizontalpodautoscalers,verbs="*"
-// +kubebuilder:rbac:groups="",resources=configmaps;configmaps/status;events,verbs="*"
+// +kubebuilder:rbac:groups="",resources=configmaps;configmaps/status,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=events,verbs="*"
 // +kubebuilder:rbac:groups="",resources=pods;services;services;secrets;external,verbs=get;list;watch
-// +kubebuilder:rbac:groups="*",resources="*/scale",verbs="*"
+// +kubebuilder:rbac:groups="*",resources="*/scale",verbs=get;list;watch;update;patch
 // +kubebuilder:rbac:groups="",resources="serviceaccounts",verbs=list;watch
 // +kubebuilder:rbac:groups="*",resources="*",verbs=get
 // +kubebuilder:rbac:groups="apps",resources=deployments;statefulsets,verbs=list;watch
-// +kubebuilder:rbac:groups="coordination.k8s.io",resources=leases,verbs="*"
+// +kubebuilder:rbac:groups="coordination.k8s.io",namespace=keda,resources=leases,verbs="*"
 
 // ScaledObjectReconciler reconciles a ScaledObject object
 type ScaledObjectReconciler struct {
@@ -132,7 +133,14 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options cont
 				predicate.GenerationChangedPredicate{},
 			),
 		)).
-		Owns(&autoscalingv2.HorizontalPodAutoscaler{}).
+		// Trigger a reconcile only when the HPA spec,label or annotation changes.
+		// Ignore updates to HPA status
+		Owns(&autoscalingv2.HorizontalPodAutoscaler{}, builder.WithPredicates(
+			predicate.Or(
+				predicate.LabelChangedPredicate{},
+				predicate.AnnotationChangedPredicate{},
+				kedacontrollerutil.HPASpecChangedPredicate{},
+			))).
 		Complete(r)
 }
 
@@ -257,7 +265,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 		return message.ScaleTargetErrMsg, err
 	}
 
-	err = r.checkReplicaCountBoundsAreValid(scaledObject)
+	err = kedav1alpha1.CheckReplicaCountBoundsAreValid(scaledObject)
 	if err != nil {
 		return "ScaledObject doesn't have correct Idle/Min/Max Replica Counts specification", err
 	}
@@ -409,26 +417,6 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 	}
 
 	return gvkr, nil
-}
-
-// checkReplicaCountBoundsAreValid checks that Idle/Min/Max ReplicaCount defined in ScaledObject are correctly specified
-// i.e. that Min is not greater than Max or Idle greater or equal to Min
-func (r *ScaledObjectReconciler) checkReplicaCountBoundsAreValid(scaledObject *kedav1alpha1.ScaledObject) error {
-	min := int32(0)
-	if scaledObject.Spec.MinReplicaCount != nil {
-		min = *getHPAMinReplicas(scaledObject)
-	}
-	max := getHPAMaxReplicas(scaledObject)
-
-	if min > max {
-		return fmt.Errorf("MinReplicaCount=%d must be less than MaxReplicaCount=%d", min, max)
-	}
-
-	if scaledObject.Spec.IdleReplicaCount != nil && *scaledObject.Spec.IdleReplicaCount >= min {
-		return fmt.Errorf("IdleReplicaCount=%d must be less than MinReplicaCount=%d", *scaledObject.Spec.IdleReplicaCount, min)
-	}
-
-	return nil
 }
 
 // ensureHPAForScaledObjectExists ensures that in cluster exist up-to-date HPA for specified ScaledObject, returns true if a new HPA was created

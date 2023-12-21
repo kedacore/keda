@@ -1,6 +1,8 @@
 package util
 
 import (
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
@@ -88,4 +90,15 @@ func (PausedPredicate) Update(e event.UpdateEvent) bool {
 	}
 
 	return newPausedValue != oldPausedValue
+}
+
+type HPASpecChangedPredicate struct {
+	predicate.Funcs
+}
+
+func (HPASpecChangedPredicate) Update(e event.UpdateEvent) bool {
+	newObj := e.ObjectNew.(*autoscalingv2.HorizontalPodAutoscaler)
+	oldObj := e.ObjectOld.(*autoscalingv2.HorizontalPodAutoscaler)
+
+	return len(newObj.Spec.Metrics) != len(oldObj.Spec.Metrics) || !equality.Semantic.DeepDerivative(newObj.Spec, oldObj.Spec)
 }

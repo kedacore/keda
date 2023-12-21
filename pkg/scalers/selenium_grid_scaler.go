@@ -22,7 +22,7 @@ import (
 type seleniumGridScaler struct {
 	metricType v2.MetricTargetType
 	metadata   *seleniumGridScalerMetadata
-	client     *http.Client
+	httpClient *http.Client
 	logger     logr.Logger
 }
 
@@ -93,7 +93,7 @@ func NewSeleniumGridScaler(config *ScalerConfig) (Scaler, error) {
 	return &seleniumGridScaler{
 		metricType: metricType,
 		metadata:   meta,
-		client:     httpClient,
+		httpClient: httpClient,
 		logger:     logger,
 	}, nil
 }
@@ -158,6 +158,9 @@ func parseSeleniumGridScalerMetadata(config *ScalerConfig) (*seleniumGridScalerM
 
 // No cleanup required for selenium grid scaler
 func (s *seleniumGridScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 
@@ -200,7 +203,7 @@ func (s *seleniumGridScaler) getSessionsCount(ctx context.Context, logger logr.L
 		return -1, err
 	}
 
-	res, err := s.client.Do(req)
+	res, err := s.httpClient.Do(req)
 	if err != nil {
 		return -1, err
 	}

@@ -246,6 +246,7 @@ func (s *openstackMetricScaler) GetMetricsAndActivity(ctx context.Context, metri
 }
 
 func (s *openstackMetricScaler) Close(context.Context) error {
+	s.metricClient.HTTPClient.CloseIdleConnections()
 	return nil
 }
 

@@ -23,7 +23,7 @@ import (
 type metricsAPIScaler struct {
 	metricType v2.MetricTargetType
 	metadata   *metricsAPIScalerMetadata
-	client     *http.Client
+	httpClient *http.Client
 	logger     logr.Logger
 }
 
@@ -89,7 +89,7 @@ func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
 	return &metricsAPIScaler{
 		metricType: metricType,
 		metadata:   meta,
-		client:     httpClient,
+		httpClient: httpClient,
 		logger:     InitializeLogger(config, "metrics_api_scaler"),
 	}, nil
 }
@@ -233,7 +233,7 @@ func (s *metricsAPIScaler) getMetricValue(ctx context.Context) (float64, error) 
 		return 0, err
 	}
 
-	r, err := s.client.Do(request)
+	r, err := s.httpClient.Do(request)
 	if err != nil {
 		return 0, err
 	}
@@ -257,6 +257,9 @@ func (s *metricsAPIScaler) getMetricValue(ctx context.Context) (float64, error) 
 
 // Close does nothing in case of metricsAPIScaler
 func (s *metricsAPIScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 

@@ -436,5 +436,8 @@ func (s *SolaceScaler) GetMetricsAndActivity(ctx context.Context, metricName str
 
 // Do Nothing - Satisfies Interface
 func (s *SolaceScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
