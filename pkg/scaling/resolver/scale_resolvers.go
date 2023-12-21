@@ -180,7 +180,11 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 	triggerAuthRef *kedav1alpha1.AuthenticationRef, podTemplateSpec *corev1.PodTemplateSpec,
 	namespace string, secretsLister corev1listers.SecretLister) (map[string]string, kedav1alpha1.AuthPodIdentity, error) {
 	if podTemplateSpec != nil {
-		authParams, podIdentity := resolveAuthRef(ctx, client, logger, triggerAuthRef, &podTemplateSpec.Spec, namespace, secretsLister)
+		authParams, podIdentity, err := resolveAuthRef(ctx, client, logger, triggerAuthRef, &podTemplateSpec.Spec, namespace, secretsLister)
+
+		if err != nil {
+			return authParams, podIdentity, err
+		}
 
 		switch podIdentity.Provider {
 		case kedav1alpha1.PodIdentityProviderAwsEKS:
@@ -189,7 +193,7 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 				serviceAccountName = podTemplateSpec.Spec.ServiceAccountName
 			}
 			serviceAccount := &corev1.ServiceAccount{}
-			err := client.Get(ctx, types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, serviceAccount)
+			err = client.Get(ctx, types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, serviceAccount)
 			if err != nil {
 				return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 					fmt.Errorf("error getting service account: '%s', error: %w", serviceAccountName, err)
@@ -210,17 +214,18 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 		return authParams, podIdentity, nil
 	}
 
-	authParams, _ := resolveAuthRef(ctx, client, logger, triggerAuthRef, nil, namespace, secretsLister)
-	return authParams, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, nil
+	authParams, _, err := resolveAuthRef(ctx, client, logger, triggerAuthRef, nil, namespace, secretsLister)
+	return authParams, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, err
 }
 
 // resolveAuthRef provides authentication parameters needed authenticate scaler with the environment.
 // based on authentication method defined in TriggerAuthentication, authParams and podIdentity is returned
 func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logger,
 	triggerAuthRef *kedav1alpha1.AuthenticationRef, podSpec *corev1.PodSpec,
-	namespace string, secretsLister corev1listers.SecretLister) (map[string]string, kedav1alpha1.AuthPodIdentity) {
+	namespace string, secretsLister corev1listers.SecretLister) (map[string]string, kedav1alpha1.AuthPodIdentity, error) {
 	result := make(map[string]string)
 	var podIdentity kedav1alpha1.AuthPodIdentity
+	var err error
 
 	if namespace != "" && triggerAuthRef != nil && triggerAuthRef.Name != "" {
 		triggerAuthSpec, triggerNamespace, err := getTriggerAuthSpec(ctx, client, triggerAuthRef, namespace)
@@ -257,20 +262,22 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 			if triggerAuthSpec.HashiCorpVault != nil && len(triggerAuthSpec.HashiCorpVault.Secrets) > 0 {
 				vault := NewHashicorpVaultHandler(triggerAuthSpec.HashiCorpVault)
 				err := vault.Initialize(logger)
+				defer vault.Stop()
 				if err != nil {
-					logger.Error(err, "error authenticate to Vault", "triggerAuthRef.Name", triggerAuthRef.Name)
-				} else {
-					secrets, err := vault.ResolveSecrets(triggerAuthSpec.HashiCorpVault.Secrets)
-					if err != nil {
-						logger.Error(err, "could not get secrets from vault",
-							"triggerAuthRef.Name", triggerAuthRef.Name,
-						)
-					} else {
-						for _, e := range secrets {
-							result[e.Parameter] = e.Value
-						}
-					}
-					vault.Stop()
+					logger.Error(err, "error authenticating to Vault", "triggerAuthRef.Name", triggerAuthRef.Name)
+					return result, podIdentity, err
+				}
+
+				secrets, err := vault.ResolveSecrets(triggerAuthSpec.HashiCorpVault.Secrets)
+				if err != nil {
+					logger.Error(err, "could not get secrets from vault",
+						"triggerAuthRef.Name", triggerAuthRef.Name,
+					)
+					return result, podIdentity, err
+				}
+
+				for _, e := range secrets {
+					result[e.Parameter] = e.Value
 				}
 			}
 			if triggerAuthSpec.AzureKeyVault != nil && len(triggerAuthSpec.AzureKeyVault.Secrets) > 0 {
@@ -278,22 +285,24 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 				err := vaultHandler.Initialize(ctx, client, logger, triggerNamespace, secretsLister)
 				if err != nil {
 					logger.Error(err, "error authenticating to Azure Key Vault", "triggerAuthRef.Name", triggerAuthRef.Name)
-				} else {
-					for _, secret := range triggerAuthSpec.AzureKeyVault.Secrets {
-						res, err := vaultHandler.Read(ctx, secret.Name, secret.Version)
-						if err != nil {
-							logger.Error(err, "error trying to read secret from Azure Key Vault", "triggerAuthRef.Name", triggerAuthRef.Name,
-								"secret.Name", secret.Name, "secret.Version", secret.Version)
-						} else {
-							result[secret.Parameter] = res
-						}
+					return result, podIdentity, err
+				}
+
+				for _, secret := range triggerAuthSpec.AzureKeyVault.Secrets {
+					res, err := vaultHandler.Read(ctx, secret.Name, secret.Version)
+					if err != nil {
+						logger.Error(err, "error trying to read secret from Azure Key Vault", "triggerAuthRef.Name", triggerAuthRef.Name,
+							"secret.Name", secret.Name, "secret.Version", secret.Version)
+						return result, podIdentity, err
 					}
+
+					result[secret.Parameter] = res
 				}
 			}
 		}
 	}
 
-	return result, podIdentity
+	return result, podIdentity, err
 }
 
 func getTriggerAuthSpec(ctx context.Context, client client.Client, triggerAuthRef *kedav1alpha1.AuthenticationRef, namespace string) (*kedav1alpha1.TriggerAuthenticationSpec, string, error) {

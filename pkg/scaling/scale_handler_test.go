@@ -27,11 +27,13 @@ import (
 	"github.com/antonmedv/expr"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	appsv1 "k8s.io/api/apps/v1"
 	v2 "k8s.io/api/autoscaling/v2"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -288,6 +290,126 @@ func TestCheckScaledObjectScalersWithError(t *testing.T) {
 
 	assert.Equal(t, false, isActive)
 	assert.Equal(t, true, isError)
+}
+
+func TestCheckScaledObjectScalersWithTriggerAuthError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
+	recorder := record.NewFakeRecorder(1)
+
+	scaler := mock_scalers.NewMockScaler(ctrl)
+	scaler.EXPECT().Close(gomock.Any())
+
+	factory := func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+		scaler := mock_scalers.NewMockScaler(ctrl)
+		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{}, false, errors.New("some error"))
+		scaler.EXPECT().Close(gomock.Any())
+		return scaler, &scalers.ScalerConfig{}, nil
+	}
+
+	deployment := appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "deployment-test",
+			Namespace: "test",
+		},
+		Spec: appsv1.DeploymentSpec{
+			Template: v1.PodTemplateSpec{
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Name: "container",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	scaledObject := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "scaledobject-test",
+			Namespace: "test",
+		},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+				Name: deployment.Name,
+			},
+			Triggers: []kedav1alpha1.ScaleTriggers{
+				{
+					Name: triggerName1,
+					Type: "fake_trig1",
+					AuthenticationRef: &kedav1alpha1.AuthenticationRef{
+						Name: "triggerauth-test",
+					},
+				},
+			},
+		},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			ScaleTargetGVKR: &kedav1alpha1.GroupVersionKindResource{
+				Group: "apps",
+				Kind:  "Deployment",
+			},
+			ExternalMetricNames: []string{metricName1, metricName2},
+		},
+	}
+
+	triggerAuth := kedav1alpha1.TriggerAuthentication{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "triggerauth-test",
+			Namespace: "test",
+		},
+		Spec: kedav1alpha1.TriggerAuthenticationSpec{
+			HashiCorpVault: &kedav1alpha1.HashiCorpVault{
+				Address:        "invalid-vault-address",
+				Authentication: "token",
+				Credential: &kedav1alpha1.Credential{
+					Token: "my-token",
+				},
+				Mount: "kubernetes",
+				Role:  "my-role",
+				Secrets: []kedav1alpha1.VaultSecret{
+					{
+						Parameter: "username",
+						Key:       "username",
+						Path:      "secret_v2/data/my-username-path",
+					},
+				},
+			},
+		},
+	}
+
+	scalerCache := cache.ScalersCache{
+		Scalers: []cache.ScalerBuilder{{
+			Scaler:  scaler,
+			Factory: factory,
+		}},
+		Recorder: recorder,
+	}
+
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: deployment.Name, Namespace: deployment.Namespace}, gomock.Any()).SetArg(2, deployment)
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: triggerAuth.Name, Namespace: triggerAuth.Namespace}, gomock.Any()).SetArg(2, triggerAuth)
+
+	sh := scaleHandler{
+		client:                   mockClient,
+		scaleLoopContexts:        &sync.Map{},
+		scaleExecutor:            mockExecutor,
+		globalHTTPTimeout:        time.Duration(1000),
+		recorder:                 recorder,
+		scalerCaches:             map[string]*cache.ScalersCache{},
+		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+	}
+
+	isActive, isError, _, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
+	scalerCache.Close(context.Background())
+
+	assert.Equal(t, false, isActive)
+	assert.Equal(t, true, isError)
+
+	failureEvent := <-recorder.Events
+	assert.Contains(t, failureEvent, "KEDAScalerFailed")
+	assert.Contains(t, failureEvent, "unsupported protocol scheme")
 }
 
 func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {

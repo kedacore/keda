@@ -54,13 +54,14 @@ import (
 
 // +kubebuilder:rbac:groups=keda.sh,resources=scaledobjects;scaledobjects/finalizers;scaledobjects/status,verbs="*"
 // +kubebuilder:rbac:groups=autoscaling,resources=horizontalpodautoscalers,verbs="*"
-// +kubebuilder:rbac:groups="",resources=configmaps;configmaps/status;events,verbs="*"
+// +kubebuilder:rbac:groups="",resources=configmaps;configmaps/status,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=events,verbs="*"
 // +kubebuilder:rbac:groups="",resources=pods;services;services;secrets;external,verbs=get;list;watch
-// +kubebuilder:rbac:groups="*",resources="*/scale",verbs="*"
+// +kubebuilder:rbac:groups="*",resources="*/scale",verbs=get;list;watch;update;patch
 // +kubebuilder:rbac:groups="",resources="serviceaccounts",verbs=list;watch
 // +kubebuilder:rbac:groups="*",resources="*",verbs=get
 // +kubebuilder:rbac:groups="apps",resources=deployments;statefulsets,verbs=list;watch
-// +kubebuilder:rbac:groups="coordination.k8s.io",resources=leases,verbs="*"
+// +kubebuilder:rbac:groups="coordination.k8s.io",namespace=keda,resources=leases,verbs="*"
 
 // ScaledObjectReconciler reconciles a ScaledObject object
 type ScaledObjectReconciler struct {
