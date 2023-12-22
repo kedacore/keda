@@ -19,6 +19,7 @@ package keda
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -216,9 +217,17 @@ func (r *ScaledJobReconciler) reconcileScaledJob(ctx context.Context, logger log
 
 // checkIfPaused checks the presence of "autoscaling.keda.sh/paused" annotation on the scaledJob and stop the scale loop.
 func (r *ScaledJobReconciler) checkIfPaused(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob, conditions *kedav1alpha1.Conditions) (bool, error) {
-	_, pausedAnnotation := scaledJob.GetAnnotations()[kedav1alpha1.PausedAnnotation]
+	pausedAnnotationValue, pausedAnnotation := scaledJob.GetAnnotations()[kedav1alpha1.PausedAnnotation]
 	pausedStatus := conditions.GetPausedCondition().Status == metav1.ConditionTrue
+	shouldPause := false
 	if pausedAnnotation {
+		var err error
+		shouldPause, err = strconv.ParseBool(pausedAnnotationValue)
+		if err != nil {
+			shouldPause = true
+		}
+	}
+	if shouldPause {
 		if !pausedStatus {
 			logger.Info("ScaledJob is paused, stopping scaling loop.")
 			msg := kedav1alpha1.ScaledJobConditionPausedMessage
@@ -286,7 +295,6 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(ctx context.Context
 // requestScaleLoop request ScaleLoop handler for the respective ScaledJob
 func (r *ScaledJobReconciler) requestScaleLoop(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
 	logger.V(1).Info("Starting a new ScaleLoop")
-
 	key, err := cache.MetaNamespaceKeyFunc(scaledJob)
 	if err != nil {
 		logger.Error(err, "Error getting key for scaledJob")

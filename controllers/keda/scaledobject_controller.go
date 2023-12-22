@@ -216,10 +216,10 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 // reconcileScaledObject implements reconciler logic for ScaledObject
 func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, conditions *kedav1alpha1.Conditions) (string, error) {
-	// Check the presence of "autoscaling.keda.sh/paused-replicas" annotation on the scaledObject (since the presence of this annotation will pause
+	// Check the presence of "autoscaling.keda.sh/paused" annotation on the scaledObject (since the presence of this annotation will pause
 	// autoscaling no matter what number of replicas is provided), and if so, stop the scale loop and delete the HPA on the scaled object.
-	pausedAnnotationFound := scaledObject.HasPausedAnnotation()
-	if pausedAnnotationFound {
+	needsToPause := scaledObject.NeedToBePausedByAnnotation()
+	if needsToPause {
 		scaledToPausedCount := true
 		if conditions.GetPausedCondition().Status == metav1.ConditionTrue {
 			// If scaledobject is in paused condition but replica count is not equal to paused replica count, the following scaling logic needs to be trigger again.
@@ -228,7 +228,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 				return kedav1alpha1.ScaledObjectConditionReadySuccessMessage, nil
 			}
 		}
-		if scaledObject.NeedToBePausedByAnnotation() && scaledToPausedCount {
+		if scaledToPausedCount {
 			msg := kedav1alpha1.ScaledObjectConditionPausedMessage
 			if err := r.stopScaleLoop(ctx, logger, scaledObject); err != nil {
 				msg = "failed to stop the scale loop for paused ScaledObject"
@@ -298,7 +298,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 		}
 		logger.Info("Initializing Scaling logic according to ScaledObject Specification")
 	}
-	if pausedAnnotationFound && conditions.GetPausedCondition().Status != metav1.ConditionTrue {
+	if scaledObject.HasPausedReplicaAnnotation() && conditions.GetPausedCondition().Status != metav1.ConditionTrue {
 		return "ScaledObject paused replicas are being scaled", fmt.Errorf("ScaledObject paused replicas are being scaled")
 	}
 	return kedav1alpha1.ScaledObjectConditionReadySuccessMessage, nil
