@@ -105,7 +105,7 @@ New deprecation(s):
 - **General**: Clean up previously deprecated code in Azure Data Explorer Scaler about clientSecret for 2.13 release ([#5051](https://github.com/kedacore/keda/issues/5051))
 
 ### Other
-
+- **General**: Create a common utility function to get parameter value from config ([#5037](https://github.com/kedacore/keda/issues/5037))
 - **General**: Fix CVE-2023-45142 in Opentelemetry ([#5089](https://github.com/kedacore/keda/issues/5089))
 - **General**: Fix logger in Opentelemetry collector ([#5094](https://github.com/kedacore/keda/issues/5094))
 - **General**: Reduce amount of gauge creations for OpenTelemetry metrics ([#5101](https://github.com/kedacore/keda/issues/5101))
