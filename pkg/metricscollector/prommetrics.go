@@ -146,7 +146,7 @@ var (
 		prometheus.GaugeOpts{
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "cloudeventsource",
-			Name:      "queue_queued",
+			Name:      "events_queued",
 			Help:      "Indicates how many events are still queue",
 		},
 		[]string{"namespace"},
