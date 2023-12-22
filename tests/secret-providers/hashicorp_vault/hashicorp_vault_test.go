@@ -394,7 +394,7 @@ spec:
   template:
     spec:
       containers:
-      - image: quay.io/zroubalik/hey
+      - image: ghcr.io/kedacore/tests-hey:latest
         name: test
         command: ["/bin/sh"]
         args: ["-c", "for i in $(seq 1 60);do echo $i;/hey -c 15 -n 240 http://{{.MonitoredAppName}}.{{.TestNamespace}}.svc;sleep 1;done"]
