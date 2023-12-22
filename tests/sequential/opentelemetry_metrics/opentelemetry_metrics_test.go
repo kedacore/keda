@@ -24,9 +24,14 @@ import (
 )
 
 const (
-	testName          = "opentelemetry-metrics-test"
-	labelScaledObject = "scaledObject"
-	labelType         = "type"
+	testName              = "opentelemetry-metrics-test"
+	labelScaledObject     = "scaledObject"
+	labelType             = "type"
+	labelCloudEventSource = "cloudEventSource"
+	eventsink             = "eventsink"
+	eventsinkValue        = "opentelemetry-metrics-test-ce"
+	eventsinkType         = "eventsinktype"
+	eventsinkTypeValue    = "http"
 )
 
 var (
@@ -38,6 +43,11 @@ var (
 	wrongScalerName                          = fmt.Sprintf("%s-wrong-scaler", testName)
 	cronScaledJobName                        = fmt.Sprintf("%s-cron-sj", testName)
 	clientName                               = fmt.Sprintf("%s-client", testName)
+	cloudEventSourceName                     = fmt.Sprintf("%s-ce", testName)
+	wrongCloudEventSourceName                = fmt.Sprintf("%s-ce-w", testName)
+	cloudEventHTTPReceiverName               = fmt.Sprintf("%s-cloudevent-http-receiver", testName)
+	cloudEventHTTPServiceName                = fmt.Sprintf("%s-cloudevent-http-service", testName)
+	cloudEventHTTPServiceURL                 = fmt.Sprintf("http://%s.%s.svc.cluster.local:8899", cloudEventHTTPServiceName, testNamespace)
 	kedaOperatorCollectorPrometheusExportURL = "http://opentelemetry-collector.open-telemetry-system.svc.cluster.local:8889/metrics"
 	namespaceString                          = "namespace"
 	kedaNamespace                            = "keda"
@@ -46,15 +56,20 @@ var (
 )
 
 type templateData struct {
-	TestName                string
-	TestNamespace           string
-	DeploymentName          string
-	ScaledObjectName        string
-	WrongScaledObjectName   string
-	WrongScalerName         string
-	CronScaledJobName       string
-	MonitoredDeploymentName string
-	ClientName              string
+	TestName                   string
+	TestNamespace              string
+	DeploymentName             string
+	ScaledObjectName           string
+	WrongScaledObjectName      string
+	WrongScalerName            string
+	CronScaledJobName          string
+	MonitoredDeploymentName    string
+	ClientName                 string
+	CloudEventSourceName       string
+	WrongCloudEventSourceName  string
+	CloudEventHTTPReceiverName string
+	CloudEventHTTPServiceName  string
+	CloudEventHTTPServiceURL   string
 }
 
 const (
@@ -268,6 +283,77 @@ spec:
         podSelector: 'app={{.MonitoredDeploymentName}}'
         value: '1'
 `
+
+	cloudEventSourceTemplate = `
+apiVersion: eventing.keda.sh/v1alpha1
+kind: CloudEventSource
+metadata:
+  name: {{.CloudEventSourceName}}
+  namespace: {{.TestNamespace}}
+spec:
+  clusterName: cluster-sample
+  destination:
+    http:
+      uri: {{.CloudEventHTTPServiceURL}}
+`
+	wrongCloudEventSourceTemplate = `
+apiVersion: eventing.keda.sh/v1alpha1
+kind: CloudEventSource
+metadata:
+  name: {{.WrongCloudEventSourceName}}
+  namespace: {{.TestNamespace}}
+spec:
+  clusterName: cluster-sample
+  destination:
+    http:
+      uri: http://fo.wo
+`
+
+	cloudEventHTTPServiceTemplate = `
+  apiVersion: v1
+  kind: Service
+  metadata:
+    name: {{.CloudEventHTTPServiceName}}
+    namespace: {{.TestNamespace}}
+  spec:
+    type: ClusterIP
+    ports:
+    - protocol: TCP
+      port: 8899
+      targetPort: 8899
+    selector:
+      app: {{.CloudEventHTTPReceiverName}}
+  `
+
+	cloudEventHTTPReceiverTemplate = `
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    labels:
+      deploy: {{.CloudEventHTTPReceiverName}}
+    name: {{.CloudEventHTTPReceiverName}}
+    namespace: {{.TestNamespace}}
+  spec:
+    selector:
+      matchLabels:
+        app: {{.CloudEventHTTPReceiverName}}
+    replicas: 1
+    template:
+      metadata:
+        labels:
+          app: {{.CloudEventHTTPReceiverName}}
+      spec:
+        containers:
+        - name: httpreceiver
+          image: ghcr.io/kedacore/tests-cloudevents-http:latest
+          ports:
+          - containerPort: 8899
+          resources:
+            requests:
+              cpu: "200m"
+            limits:
+              cpu: "500m"
+  `
 )
 
 func TestOpenTelemetryMetrics(t *testing.T) {
@@ -297,6 +383,8 @@ func TestOpenTelemetryMetrics(t *testing.T) {
 	testOperatorMetrics(t, kc, data)
 	testScalableObjectMetrics(t)
 	testScaledObjectPausedMetric(t, data)
+	testCloudEventEmitted(t, data)
+	testCloudEventEmittedError(t, data)
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
@@ -304,21 +392,28 @@ func TestOpenTelemetryMetrics(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestName:                testName,
-			TestNamespace:           testNamespace,
-			DeploymentName:          deploymentName,
-			ScaledObjectName:        scaledObjectName,
-			WrongScaledObjectName:   wrongScaledObjectName,
-			WrongScalerName:         wrongScalerName,
-			MonitoredDeploymentName: monitoredDeploymentName,
-			ClientName:              clientName,
-			CronScaledJobName:       cronScaledJobName,
+			TestName:                   testName,
+			TestNamespace:              testNamespace,
+			DeploymentName:             deploymentName,
+			ScaledObjectName:           scaledObjectName,
+			WrongScaledObjectName:      wrongScaledObjectName,
+			WrongScalerName:            wrongScalerName,
+			MonitoredDeploymentName:    monitoredDeploymentName,
+			ClientName:                 clientName,
+			CronScaledJobName:          cronScaledJobName,
+			CloudEventSourceName:       cloudEventSourceName,
+			WrongCloudEventSourceName:  wrongCloudEventSourceName,
+			CloudEventHTTPReceiverName: cloudEventHTTPReceiverName,
+			CloudEventHTTPServiceName:  cloudEventHTTPServiceName,
+			CloudEventHTTPServiceURL:   cloudEventHTTPServiceURL,
 		}, []Template{
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 			{Name: "clientTemplate", Config: clientTemplate},
 			{Name: "authenticatioNTemplate", Config: authenticationTemplate},
+			{Name: "cloudEventHTTPReceiverTemplate", Config: cloudEventHTTPReceiverTemplate},
+			{Name: "cloudEventHTTPServiceTemplate", Config: cloudEventHTTPServiceTemplate},
 		}
 }
 
@@ -754,4 +849,69 @@ func assertScaledObjectPausedMetric(t *testing.T, families map[string]*prommodel
 		expectedMetricValue = 1
 	}
 	assert.Equal(t, float64(expectedMetricValue), metricValue)
+}
+
+func testCloudEventEmitted(t *testing.T, data templateData) {
+	t.Log("--- testing cloudevent emitted ---")
+
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	KubectlApplyWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+
+	time.Sleep(10 * time.Second)
+	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
+
+	if val, ok := family["keda_cloudeventsource_events_emitted_count_total"]; ok {
+		var found bool
+		metrics := val.GetMetric()
+		for _, metric := range metrics {
+			labels := metric.GetLabel()
+			if len(labels) >= 5 &&
+				*labels[0].Value == "opentelemetry-metrics-test-ce" &&
+				*labels[1].Value == "http" &&
+				*labels[3].Value == "opentelemetry-metrics-test-ns" &&
+				*labels[4].Value == "emitted" {
+				assert.GreaterOrEqual(t, *metric.Counter.Value, float64(1))
+				found = true
+			}
+		}
+		assert.Equal(t, true, found)
+	} else {
+		t.Errorf("metric not available")
+	}
+}
+
+func testCloudEventEmittedError(t *testing.T, data templateData) {
+	t.Log("--- testing cloudevent emitted error ---")
+
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	KubectlDeleteWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
+	KubectlApplyWithTemplate(t, data, "wrongCloudEventSourceTemplate", wrongCloudEventSourceTemplate)
+	time.Sleep(1 * time.Second)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+
+	time.Sleep(10 * time.Second)
+	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
+
+	if val, ok := family["keda_cloudeventsource_events_emitted_count_total"]; ok {
+		var found bool
+		metrics := val.GetMetric()
+		for _, metric := range metrics {
+			labels := metric.GetLabel()
+			if len(labels) >= 5 &&
+				*labels[0].Value == "opentelemetry-metrics-test-ce-w" &&
+				*labels[1].Value == "http" &&
+				*labels[3].Value == "opentelemetry-metrics-test-ns" &&
+				*labels[4].Value == "failed" {
+				assert.GreaterOrEqual(t, *metric.Counter.Value, float64(5))
+				found = true
+			}
+		}
+		assert.Equal(t, true, found)
+	} else {
+		t.Errorf("metric not available")
+	}
+
+	KubectlDeleteWithTemplate(t, data, "wrongCloudEventSourceTemplate", wrongCloudEventSourceTemplate)
+	KubectlApplyWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
 }

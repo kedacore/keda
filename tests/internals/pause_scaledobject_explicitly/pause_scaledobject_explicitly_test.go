@@ -113,21 +113,24 @@ func TestScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 
-	CreateKubernetesResources(t, kc, testNamespace, data, templates)
+	unpausedMethods := [](func(assert.TestingT)){removeScaledObjectPausedAnnotation, setScaledObjectPausedAnnotationFalse}
 
-	// scaling to paused replica count
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after 1 minute")
+	for _, unpauseMethod := range unpausedMethods {
+		CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	// test scaling
-	testPauseWhenScaleOut(t, kc)
-	testScaleOut(t, kc)
-	testPauseWhenScaleIn(t, kc)
-	testScaleIn(t, kc)
-	testBothPauseAnnotationActive(t, kc)
+		// scaling to paused replica count
+		assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+			"replica count should be 0 after 1 minute")
+		// test scaling
+		testPauseWhenScaleOut(t, kc)
+		testScaleOut(t, kc, unpauseMethod)
+		testPauseWhenScaleIn(t, kc)
+		testScaleIn(t, kc, unpauseMethod)
+		testBothPauseAnnotationActive(t, kc)
 
-	// cleanup
-	DeleteKubernetesResources(t, testNamespace, data, templates)
+		// cleanup
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+	}
 }
 
 func getTemplateData() (templateData, []Template) {
@@ -144,7 +147,7 @@ func getTemplateData() (templateData, []Template) {
 }
 
 func upsertScaledObjectPausedAnnotation(t assert.TestingT) {
-	_, err := ExecuteCommand(fmt.Sprintf("kubectl annotate scaledobject/%s -n %s autoscaling.keda.sh/paused='true' --overwrite", scaledObjectName, testNamespace))
+	_, err := ExecuteCommand(fmt.Sprintf("kubectl annotate scaledobject/%s -n %s autoscaling.keda.sh/paused=true --overwrite", scaledObjectName, testNamespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
@@ -152,6 +155,12 @@ func removeScaledObjectPausedAnnotation(t assert.TestingT) {
 	_, err := ExecuteCommand(fmt.Sprintf("kubectl annotate scaledobject/%s -n %s autoscaling.keda.sh/paused- --overwrite", scaledObjectName, testNamespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
+
+func setScaledObjectPausedAnnotationFalse(t assert.TestingT) {
+	_, err := ExecuteCommand(fmt.Sprintf("kubectl annotate scaledobject/%s -n %s autoscaling.keda.sh/paused=false --overwrite", scaledObjectName, testNamespace))
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+}
+
 func upsertScaledObjectPausedReplicasAnnotation(t assert.TestingT, value int) {
 	_, err := ExecuteCommand(fmt.Sprintf("kubectl annotate scaledobject/%s -n %s autoscaling.keda.sh/paused-replicas=%d --overwrite", scaledObjectName, testNamespace, value))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
@@ -178,10 +187,10 @@ func testPauseWhenScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
 
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, unpauseMethod func(assert.TestingT)) {
 	t.Log("--- testing scale out ---")
 
-	removeScaledObjectPausedAnnotation(t)
+	unpauseMethod(t)
 
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 5, testNamespace)
 	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, monitoredDeploymentName, testNamespace, 5, 60, testScaleOutWaitMin),
@@ -209,10 +218,10 @@ func testPauseWhenScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 		"replica count should be 5 after %d minute(s)", testPauseAtNWaitMin)
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, unpauseMethod func(assert.TestingT)) {
 	t.Log("--- testing scale in ---")
 
-	removeScaledObjectPausedAnnotation(t)
+	unpauseMethod(t)
 	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, testScaleInWaitMin),
 		"replica count should be 0 after %d minutes", testScaleInWaitMin)
 }
