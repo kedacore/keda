@@ -42,6 +42,7 @@ import (
 
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventemitter/eventdata"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 )
 
@@ -228,8 +229,10 @@ func (e *EventEmitter) startEventLoop(ctx context.Context, cloudEventSource *eve
 			e.log.V(1).Info("Consuming events from CloudEventSource.")
 			e.emitEventByHandler(eventData)
 			e.checkEventHandlers(ctx, cloudEventSource, cloudEventSourceMutex)
+			metricscollector.RecordCloudEventQueueStatus(cloudEventSource.Namespace, len(e.cloudEventProcessingChan))
 		case <-ctx.Done():
 			e.log.V(1).Info("CloudEventSource loop has stopped.")
+			metricscollector.RecordCloudEventQueueStatus(cloudEventSource.Namespace, len(e.cloudEventProcessingChan))
 			return
 		}
 	}
@@ -295,6 +298,7 @@ func (e *EventEmitter) Emit(object runtime.Object, namesapce types.NamespacedNam
 }
 
 func (e *EventEmitter) enqueueEventData(eventData eventdata.EventData) {
+	metricscollector.RecordCloudEventQueueStatus(eventData.Namespace, len(e.cloudEventProcessingChan))
 	select {
 	case e.cloudEventProcessingChan <- eventData:
 		e.log.V(1).Info("Event enqueued successfully.")
@@ -323,6 +327,8 @@ func (e *EventEmitter) emitEventByHandler(eventData eventdata.EventData) {
 			eventData.HandlerKey = key
 			if handler.GetActiveStatus() == metav1.ConditionTrue {
 				go handler.EmitEvent(eventData, e.emitErrorHandle)
+
+				metricscollector.RecordCloudEventEmitted(eventData.Namespace, getSourceNameFromKey(eventData.HandlerKey), getHandlerTypeFromKey(key))
 			} else {
 				e.log.V(1).Info("EventHandler's status is not active. Please check if event endpoint works well", "CloudEventSource", eventData.ObjectName)
 			}
@@ -337,6 +343,8 @@ func (e *EventEmitter) emitEventByHandler(eventData eventdata.EventData) {
 }
 
 func (e *EventEmitter) emitErrorHandle(eventData eventdata.EventData, err error) {
+	metricscollector.RecordCloudEventEmittedError(eventData.Namespace, getSourceNameFromKey(eventData.HandlerKey), getHandlerTypeFromKey(eventData.HandlerKey))
+
 	if eventData.RetryTimes >= maxRetryTimes {
 		e.log.V(1).Info("Failed to emit Event multiple times. Will set handler failure status.", "handler", eventData.HandlerKey, "retry times", eventData.RetryTimes)
 		handler, found := e.eventHandlersCache[eventData.HandlerKey]
@@ -390,4 +398,20 @@ func (e *EventEmitter) updateCloudEventSourceStatus(ctx context.Context, cloudEv
 // TODO: nolint:unparam should be remove after added more than one cloudevent handler
 func newEventHandlerKey(kindNamespaceName string, handlerType string) string { //nolint:unparam
 	return fmt.Sprintf("%s.%s", kindNamespaceName, handlerType)
+}
+
+func getHandlerTypeFromKey(handlerKey string) string {
+	keys := strings.Split(handlerKey, ".")
+	if len(keys) >= 4 {
+		return keys[3]
+	}
+	return ""
+}
+
+func getSourceNameFromKey(handlerKey string) string {
+	keys := strings.Split(handlerKey, ".")
+	if len(keys) >= 4 {
+		return keys[2]
+	}
+	return ""
 }

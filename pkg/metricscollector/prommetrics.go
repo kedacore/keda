@@ -130,6 +130,27 @@ var (
 		},
 		[]string{"namespace", "type", "resource"},
 	)
+
+	// Total emitted cloudevents.
+	cloudeventEmitted = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "cloudeventsource",
+			Name:      "events_emitted_total",
+			Help:      "Measured the total number of emitted cloudevents. 'namespace': namespace of CloudEventSource 'cloudeventsource': name of CloudEventSource object. 'eventsink': destination of this emitted event 'state':indicated events emitted successfully or not",
+		},
+		[]string{"namespace", "cloudeventsource", "eventsink", "state"},
+	)
+
+	cloudeventQueueStatus = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "cloudeventsource",
+			Name:      "events_queued",
+			Help:      "Indicates how many events are still queue",
+		},
+		[]string{"namespace"},
+	)
 )
 
 type PromMetrics struct {
@@ -148,6 +169,9 @@ func NewPromMetrics() *PromMetrics {
 	metrics.Registry.MustRegister(triggerTotalsGaugeVec)
 	metrics.Registry.MustRegister(crdTotalsGaugeVec)
 	metrics.Registry.MustRegister(buildInfo)
+
+	metrics.Registry.MustRegister(cloudeventEmitted)
+	metrics.Registry.MustRegister(cloudeventQueueStatus)
 
 	RecordBuildInfo()
 	return &PromMetrics{}
@@ -259,4 +283,21 @@ func (p *PromMetrics) DecrementCRDTotal(crdType, namespace string) {
 	}
 
 	crdTotalsGaugeVec.WithLabelValues(crdType, namespace).Dec()
+}
+
+// RecordCloudEventEmitted counts the number of cloudevent that emitted to user's sink
+func (p *PromMetrics) RecordCloudEventEmitted(namespace string, cloudeventsource string, eventsink string) {
+	labels := prometheus.Labels{"namespace": namespace, "cloudeventsource": cloudeventsource, "eventsink": eventsink, "state": "emitted"}
+	cloudeventEmitted.With(labels).Inc()
+}
+
+// RecordCloudEventEmittedError counts the number of errors occurred in trying emit cloudevent
+func (p *PromMetrics) RecordCloudEventEmittedError(namespace string, cloudeventsource string, eventsink string) {
+	labels := prometheus.Labels{"namespace": namespace, "cloudeventsource": cloudeventsource, "eventsink": eventsink, "state": "failed"}
+	cloudeventEmitted.With(labels).Inc()
+}
+
+// RecordCloudEventSourceQueueStatus record the number of cloudevents that are waiting for emitting
+func (p *PromMetrics) RecordCloudEventQueueStatus(namespace string, value int) {
+	cloudeventQueueStatus.With(prometheus.Labels{"namespace": namespace}).Set(float64(value))
 }

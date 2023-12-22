@@ -34,6 +34,9 @@ var (
 	otelInternalLoopLatencyVal  OtelMetricFloat64Val
 	otelBuildInfoVal            OtelMetricInt64Val
 
+	otCloudEventEmittedCounter api.Int64Counter
+	otCloudEventQueueStatusVal OtelMetricFloat64Val
+
 	otelScalerActiveVal OtelMetricFloat64Val
 )
 
@@ -136,6 +139,20 @@ func initMeters() {
 		"keda.build.info",
 		api.WithDescription("A metric with a constant '1' value labeled by version, git_commit and goversion from which KEDA was built."),
 		api.WithInt64Callback(BuildInfoCallback),
+	)
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+
+	otCloudEventEmittedCounter, err = meter.Int64Counter("keda.cloudeventsource.events.emitted.count", api.WithDescription("Measured the total number of emitted cloudevents. 'namespace': namespace of CloudEventSource 'cloudeventsource': name of CloudEventSource object. 'eventsink': destination of this emitted event 'state':indicated events emitted successfully or not"))
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+
+	_, err = meter.Float64ObservableGauge(
+		"keda.cloudeventsource.events.queued",
+		api.WithDescription("Indicates how many events are still queue"),
+		api.WithFloat64Callback(CloudeventQueueStatusCallback),
 	)
 	if err != nil {
 		otLog.Error(err, msg)
@@ -323,4 +340,44 @@ func getScalerMeasurementOption(namespace string, scaledObject string, scaler st
 		attribute.Key("scalerIndex").String(strconv.Itoa(scalerIndex)),
 		attribute.Key("metric").String(metric),
 	)
+}
+
+// RecordCloudEventEmitted counts the number of cloudevent that emitted to user's sink
+func (o *OtelMetrics) RecordCloudEventEmitted(namespace string, cloudeventsource string, eventsink string) {
+	opt := api.WithAttributes(
+		attribute.Key("namespace").String(namespace),
+		attribute.Key("cloudEventSource").String(cloudeventsource),
+		attribute.Key("eventsink").String(eventsink),
+		attribute.Key("state").String("emitted"),
+	)
+	otCloudEventEmittedCounter.Add(context.Background(), 1, opt)
+}
+
+// RecordCloudEventEmitted counts the number of errors occurred in trying emit cloudevent
+func (o *OtelMetrics) RecordCloudEventEmittedError(namespace string, cloudeventsource string, eventsink string) {
+	opt := api.WithAttributes(
+		attribute.Key("namespace").String(namespace),
+		attribute.Key("cloudEventSource").String(cloudeventsource),
+		attribute.Key("eventsink").String(eventsink),
+		attribute.Key("state").String("failed"),
+	)
+	otCloudEventEmittedCounter.Add(context.Background(), 1, opt)
+}
+
+func CloudeventQueueStatusCallback(_ context.Context, obsrv api.Float64Observer) error {
+	if otCloudEventQueueStatusVal.measurementOption != nil {
+		obsrv.Observe(otCloudEventQueueStatusVal.val, otCloudEventQueueStatusVal.measurementOption)
+	}
+	otCloudEventQueueStatusVal = OtelMetricFloat64Val{}
+	return nil
+}
+
+// RecordCloudEventSourceQueueStatus record the number of cloudevents that are waiting for emitting
+func (o *OtelMetrics) RecordCloudEventQueueStatus(namespace string, value int) {
+	opt := api.WithAttributes(
+		attribute.Key("namespace").String(namespace),
+	)
+
+	otCloudEventQueueStatusVal.val = float64(value)
+	otCloudEventQueueStatusVal.measurementOption = opt
 }
