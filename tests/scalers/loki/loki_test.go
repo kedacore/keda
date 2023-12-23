@@ -97,7 +97,7 @@ spec:
   template:
     spec:
       containers:
-      - image: quay.io/zroubalik/hey
+      - image: ghcr.io/kedacore/tests-hey
         name: test
         command: ["/bin/sh"]
         args: ["-c", "for i in $(seq 1 30);do echo \"keda-scaler $i\";sleep 1;done"]
@@ -123,7 +123,7 @@ spec:
   template:
     spec:
       containers:
-      - image: quay.io/zroubalik/hey
+      - image: ghcr.io/kedacore/tests-hey
         name: test
         command: ["/bin/sh"]
         args: ["-c", "for i in $(seq 1 30);do echo \"keda-scaler $i\";echo \"keda-scaler $((i*2))\";sleep 1;done"]
