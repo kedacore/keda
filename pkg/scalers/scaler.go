@@ -257,6 +257,10 @@ func getParameterFromConfigV2(config *ScalerConfig, parameter string, useMetadat
 	default:
 		return "", fmt.Errorf("key not found. Either set the correct key or set isOptional to true and set defaultVal")
 	}
+<<<<<<< HEAD
+=======
+	return "", fmt.Errorf("key %s not found. Either set the correct key or set isOptional to true and set defaultVal", parameter)
+>>>>>>> f1c0e241 (First commit)
 }
 
 func convertToType(input interface{}, targetType reflect.Type) (interface{}, error) {
