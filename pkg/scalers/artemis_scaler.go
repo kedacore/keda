@@ -279,7 +279,9 @@ func (s *artemisScaler) GetMetricsAndActivity(ctx context.Context, metricName st
 	return []external_metrics.ExternalMetricValue{metric}, messages > s.metadata.activationQueueLength, nil
 }
 
-// Nothing to close here.
 func (s *artemisScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }

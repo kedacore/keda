@@ -222,7 +222,8 @@ func (s *cassandraScaler) GetQueryResult(ctx context.Context) (int64, error) {
 
 // Close closes the Cassandra session connection.
 func (s *cassandraScaler) Close(_ context.Context) error {
-	s.session.Close()
-
+	if s.session != nil {
+		s.session.Close()
+	}
 	return nil
 }

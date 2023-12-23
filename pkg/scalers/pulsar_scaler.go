@@ -22,9 +22,9 @@ import (
 )
 
 type pulsarScaler struct {
-	metadata pulsarMetadata
-	client   *http.Client
-	logger   logr.Logger
+	metadata   pulsarMetadata
+	httpClient *http.Client
+	logger     logr.Logger
 }
 
 type pulsarMetadata struct {
@@ -126,9 +126,9 @@ func NewPulsarScaler(config *ScalerConfig) (Scaler, error) {
 	}
 
 	return &pulsarScaler{
-		client:   client,
-		metadata: pulsarMetadata,
-		logger:   logger,
+		httpClient: client,
+		metadata:   pulsarMetadata,
+		logger:     logger,
 	}, nil
 }
 
@@ -250,7 +250,7 @@ func (s *pulsarScaler) GetStats(ctx context.Context) (*pulsarStats, error) {
 		return nil, fmt.Errorf("error requesting stats from admin url: %w", err)
 	}
 
-	client := s.client
+	client := s.httpClient
 	if s.metadata.pulsarAuth != nil && s.metadata.pulsarAuth.EnableOAuth {
 		config := clientcredentials.Config{
 			ClientID:       s.metadata.pulsarAuth.ClientID,
@@ -339,7 +339,9 @@ func (s *pulsarScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec 
 }
 
 func (s *pulsarScaler) Close(context.Context) error {
-	s.client = nil
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 

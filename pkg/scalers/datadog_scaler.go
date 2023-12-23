@@ -263,6 +263,9 @@ func newDatadogConnection(ctx context.Context, meta *datadogMetadata, config *Sc
 
 // No need to close connections
 func (s *datadogScaler) Close(context.Context) error {
+	if s.apiClient != nil {
+		s.apiClient.GetConfig().HTTPClient.CloseIdleConnections()
+	}
 	return nil
 }
 

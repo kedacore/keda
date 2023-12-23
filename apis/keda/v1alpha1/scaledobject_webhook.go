@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
@@ -52,22 +53,54 @@ func (so *ScaledObject) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	kc = mgr.GetClient()
 	restMapper = mgr.GetRESTMapper()
 	return ctrl.NewWebhookManagedBy(mgr).
+		WithValidator(&ScaledObjectCustomValidator{}).
 		For(so).
 		Complete()
 }
 
 // +kubebuilder:webhook:path=/validate-keda-sh-v1alpha1-scaledobject,mutating=false,failurePolicy=ignore,sideEffects=None,groups=keda.sh,resources=scaledobjects,verbs=create;update,versions=v1alpha1,name=vscaledobject.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Validator = &ScaledObject{}
+// ScaledObjectCustomValidator is a custom validator for ScaledObject objects
+type ScaledObjectCustomValidator struct{}
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (so *ScaledObject) ValidateCreate() (admission.Warnings, error) {
-	val, _ := json.MarshalIndent(so, "", "  ")
-	scaledobjectlog.V(1).Info(fmt.Sprintf("validating scaledobject creation for %s", string(val)))
-	return validateWorkload(so, "create")
+func (socv ScaledObjectCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+	request, err := admission.RequestFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	so := obj.(*ScaledObject)
+	return so.ValidateCreate(request.DryRun)
 }
 
-func (so *ScaledObject) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+func (socv ScaledObjectCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (warnings admission.Warnings, err error) {
+	request, err := admission.RequestFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	so := newObj.(*ScaledObject)
+	old := oldObj.(*ScaledObject)
+	return so.ValidateUpdate(old, request.DryRun)
+}
+
+func (socv ScaledObjectCustomValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+	request, err := admission.RequestFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	so := obj.(*ScaledObject)
+	return so.ValidateDelete(request.DryRun)
+}
+
+var _ webhook.CustomValidator = &ScaledObjectCustomValidator{}
+
+// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
+func (so *ScaledObject) ValidateCreate(dryRun *bool) (admission.Warnings, error) {
+	val, _ := json.MarshalIndent(so, "", "  ")
+	scaledobjectlog.V(1).Info(fmt.Sprintf("validating scaledobject creation for %s", string(val)))
+	return validateWorkload(so, "create", *dryRun)
+}
+
+func (so *ScaledObject) ValidateUpdate(old runtime.Object, dryRun *bool) (admission.Warnings, error) {
 	val, _ := json.MarshalIndent(so, "", "  ")
 	scaledobjectlog.V(1).Info(fmt.Sprintf("validating scaledobject update for %s", string(val)))
 
@@ -76,10 +109,10 @@ func (so *ScaledObject) ValidateUpdate(old runtime.Object) (admission.Warnings, 
 		return nil, nil
 	}
 
-	return validateWorkload(so, "update")
+	return validateWorkload(so, "update", *dryRun)
 }
 
-func (so *ScaledObject) ValidateDelete() (admission.Warnings, error) {
+func (so *ScaledObject) ValidateDelete(_ *bool) (admission.Warnings, error) {
 	return nil, nil
 }
 
@@ -94,18 +127,19 @@ func isRemovingFinalizer(so *ScaledObject, old runtime.Object) bool {
 	return len(so.ObjectMeta.Finalizers) == 0 && len(oldSo.ObjectMeta.Finalizers) == 1 && soSpecString == oldSoSpecString
 }
 
-func validateWorkload(so *ScaledObject, action string) (admission.Warnings, error) {
+func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.Warnings, error) {
 	metricscollector.RecordScaledObjectValidatingTotal(so.Namespace, action)
 
-	verifyFunctions := []func(*ScaledObject, string) error{
+	verifyFunctions := []func(*ScaledObject, string, bool) error{
 		verifyCPUMemoryScalers,
 		verifyTriggers,
 		verifyScaledObjects,
 		verifyHpas,
+		verifyReplicaCount,
 	}
 
 	for i := range verifyFunctions {
-		err := verifyFunctions[i](so, action)
+		err := verifyFunctions[i](so, action, dryRun)
 		if err != nil {
 			return nil, err
 		}
@@ -115,7 +149,16 @@ func validateWorkload(so *ScaledObject, action string) (admission.Warnings, erro
 	return nil, nil
 }
 
-func verifyTriggers(incomingSo *ScaledObject, action string) error {
+func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) error {
+	err := CheckReplicaCountBoundsAreValid(incomingSo)
+	if err != nil {
+		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
+		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "incorrect-replicas")
+	}
+	return nil
+}
+
+func verifyTriggers(incomingSo *ScaledObject, action string, _ bool) error {
 	err := ValidateTriggers(incomingSo.Spec.Triggers)
 	if err != nil {
 		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
@@ -124,7 +167,7 @@ func verifyTriggers(incomingSo *ScaledObject, action string) error {
 	return err
 }
 
-func verifyHpas(incomingSo *ScaledObject, action string) error {
+func verifyHpas(incomingSo *ScaledObject, action string, _ bool) error {
 	hpaList := &autoscalingv2.HorizontalPodAutoscalerList{}
 	opt := &client.ListOptions{
 		Namespace: incomingSo.Namespace,
@@ -179,7 +222,7 @@ func verifyHpas(incomingSo *ScaledObject, action string) error {
 	return nil
 }
 
-func verifyScaledObjects(incomingSo *ScaledObject, action string) error {
+func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) error {
 	soList := &ScaledObjectList{}
 	opt := &client.ListOptions{
 		Namespace: incomingSo.Namespace,
@@ -230,7 +273,11 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string) error {
 	return nil
 }
 
-func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
+func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string, dryRun bool) error {
+	if dryRun {
+		return nil
+	}
+
 	var podSpec *corev1.PodSpec
 	for _, trigger := range incomingSo.Spec.Triggers {
 		if trigger.Type == cpuString || trigger.Type == memoryString {
@@ -324,6 +371,10 @@ func ValidateAndCompileScalingModifiers(so *ScaledObject) (*vm.Program, error) {
 		return nil, fmt.Errorf("error ScalingModifiers.Formula is mandatory")
 	}
 
+	// cast return value of formula to float if necessary to avoid wrong value return
+	// type (ternary operator doesnt return float)
+	so.Spec.Advanced.ScalingModifiers.Formula = castToFloatIfNecessary(sm.Formula)
+
 	// validate formula if not empty
 	compiledFormula, err := validateScalingModifiersFormula(so)
 	if err != nil {
@@ -398,4 +449,14 @@ func validateScalingModifiersTarget(so *ScaledObject) error {
 	}
 
 	return nil
+}
+
+// castToFloatIfNecessary takes input formula and casts its return value to float
+// if necessary to avoid wrong return value type like ternary operator has and/or
+// to relief user of having to add it to the formula themselves.
+func castToFloatIfNecessary(formula string) string {
+	if strings.HasPrefix(formula, "float(") {
+		return formula
+	}
+	return "float(" + formula + ")"
 }

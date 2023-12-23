@@ -469,6 +469,9 @@ func (s *rabbitMQScaler) Close(context.Context) error {
 			return err
 		}
 	}
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 

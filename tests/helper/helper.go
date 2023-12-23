@@ -10,6 +10,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io"
@@ -400,6 +401,33 @@ func WaitForAllPodRunningInNamespace(t *testing.T, kc *kubernetes.Clientset, nam
 		time.Sleep(time.Duration(intervalSeconds) * time.Second)
 	}
 
+	return false
+}
+
+// Waits until the Horizontal Pod Autoscaler for the scaledObject reports that it has metrics available
+// to calculate, or until the number of iterations are done, whichever happens first.
+func WaitForHPAMetricsToPopulate(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
+	iterations, intervalSeconds int) bool {
+	totalWaitDuration := time.Duration(iterations) * time.Duration(intervalSeconds) * time.Second
+	startedWaiting := time.Now()
+	for i := 0; i < iterations; i++ {
+		t.Logf("Waiting up to %s for HPA to populate metrics - %s so far", totalWaitDuration, time.Since(startedWaiting).Round(time.Second))
+
+		hpa, _ := kc.AutoscalingV2().HorizontalPodAutoscalers(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		if hpa.Status.CurrentMetrics != nil {
+			for _, currentMetric := range hpa.Status.CurrentMetrics {
+				// When testing on a kind cluster at least, an empty metricStatus object with a blank type shows up first,
+				// so we need to make sure we have *actual* resource metrics before we return
+				if currentMetric.Type != "" {
+					j, _ := json.MarshalIndent(hpa.Status.CurrentMetrics, "  ", "    ")
+					t.Logf("HPA has metrics after %s: %s", time.Since(startedWaiting), j)
+					return true
+				}
+			}
+		}
+
+		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+	}
 	return false
 }
 

@@ -58,6 +58,15 @@ type MetricsCollector interface {
 	IncrementCRDTotal(crdType, namespace string)
 
 	DecrementCRDTotal(crdType, namespace string)
+
+	// RecordCloudEventEmitted counts the number of cloudevent that emitted to user's sink
+	RecordCloudEventEmitted(namespace string, cloudeventsource string, eventsink string)
+
+	// RecordCloudEventEmittedError counts the number of errors occurred in trying emit cloudevent
+	RecordCloudEventEmittedError(namespace string, cloudeventsource string, eventsink string)
+
+	// RecordCloudEventQueueStatus record the number of cloudevents that are waiting for emitting
+	RecordCloudEventQueueStatus(namespace string, value int)
 }
 
 func NewMetricsCollectors(enablePrometheusMetrics bool, enableOpenTelemetryMetrics bool) {
@@ -142,5 +151,26 @@ func IncrementCRDTotal(crdType, namespace string) {
 func DecrementCRDTotal(crdType, namespace string) {
 	for _, element := range collectors {
 		element.DecrementCRDTotal(crdType, namespace)
+	}
+}
+
+// RecordCloudEventEmitted counts the number of cloudevent that emitted to user's sink
+func RecordCloudEventEmitted(namespace string, cloudeventsource string, eventsink string) {
+	for _, element := range collectors {
+		element.RecordCloudEventEmitted(namespace, cloudeventsource, eventsink)
+	}
+}
+
+// RecordCloudEventEmittedError counts the number of errors occurred in trying emit cloudevent
+func RecordCloudEventEmittedError(namespace string, cloudeventsource string, eventsink string) {
+	for _, element := range collectors {
+		element.RecordCloudEventEmittedError(namespace, cloudeventsource, eventsink)
+	}
+}
+
+// RecordCloudEventQueueStatus record the number of cloudevents that are waiting for emitting
+func RecordCloudEventQueueStatus(namespace string, value int) {
+	for _, element := range collectors {
+		element.RecordCloudEventQueueStatus(namespace, value)
 	}
 }

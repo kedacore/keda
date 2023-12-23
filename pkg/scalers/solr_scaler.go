@@ -186,5 +186,8 @@ func (s *solrScaler) GetMetricsAndActivity(ctx context.Context, metricName strin
 
 // Close closes the http client connection.
 func (s *solrScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
