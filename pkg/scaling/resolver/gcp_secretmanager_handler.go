@@ -18,10 +18,13 @@ package resolver
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"hash/crc32"
+	"net/http"
 
+	"cloud.google.com/go/compute/metadata"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
 	"github.com/go-logr/logr"
@@ -36,6 +39,7 @@ import (
 type GCPSecretManagerHandler struct {
 	gcpSecretsManager       *kedav1alpha1.GCPSecretManager
 	gcpSecretsManagerClient *secretmanager.Client
+	gcpProjectID            string
 }
 
 // NewGCPSecretManagerHandler creates a GCPSecretManagerHandler object
@@ -79,9 +83,20 @@ func (vh *GCPSecretManagerHandler) Initialize(ctx context.Context, client client
 			return fmt.Errorf("failed to create secretmanager client, %w", err)
 		}
 
+		gcpCedentialsMap := make(map[string]interface{})
+		if err := json.Unmarshal([]byte(clientSecret), &gcpCedentialsMap); err != nil {
+			return fmt.Errorf("failed to unmarshal gcp credentials key into a map, %w", err)
+		}
+
+		vh.gcpProjectID = gcpCedentialsMap["project_id"].(string)
+
 	case kedav1alpha1.PodIdentityProviderGCP:
 		if vh.gcpSecretsManagerClient, err = secretmanager.NewClient(ctx); err != nil {
 			return fmt.Errorf("failed to create secretmanager client: %w", err)
+		}
+
+		if vh.gcpProjectID, err = metadata.NewClient(&http.Client{}).ProjectID(); err != nil {
+			return fmt.Errorf("failed to fetch gcp project id: %w", err)
 		}
 
 	default:
@@ -93,7 +108,7 @@ func (vh *GCPSecretManagerHandler) Initialize(ctx context.Context, client client
 
 func (vh *GCPSecretManagerHandler) Read(ctx context.Context, secretID, secretVersion string) (string, error) {
 	req := &secretmanagerpb.AccessSecretVersionRequest{
-		Name: fmt.Sprintf("projects/%s/secrets/%s/versions/%s", vh.gcpSecretsManager.GCPProjectID, secretID, secretVersion),
+		Name: fmt.Sprintf("projects/%s/secrets/%s/versions/%s", vh.gcpProjectID, secretID, secretVersion),
 	}
 
 	result, err := vh.gcpSecretsManagerClient.AccessSecretVersion(ctx, req)

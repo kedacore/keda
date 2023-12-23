@@ -68,7 +68,6 @@ type templateData struct {
 	PostgreSQLDatabase               string
 	MinReplicaCount                  int
 	MaxReplicaCount                  int
-	GCPProjectID                     string
 	SecretManagerSecretID            string
 }
 
@@ -124,7 +123,6 @@ metadata:
   namespace: {{.TestNamespace}}
 spec:
   gcpSecretManager:
-    gcpProjectID: {{.GCPProjectID}}
     secrets:
       - parameter: connection
         id: {{.SecretManagerSecretID}}
@@ -327,7 +325,6 @@ var data = templateData{
 	PostgreSQLPassword:               postgreSQLPassword,
 	PostgreSQLDatabase:               postgreSQLDatabase,
 	PostgreSQLConnectionStringBase64: base64.StdEncoding.EncodeToString([]byte(postgreSQLConnectionString)),
-	GCPProjectID:                     projectID.(string),
 	SecretManagerSecretID:            secretManagerSecretID,
 }
 

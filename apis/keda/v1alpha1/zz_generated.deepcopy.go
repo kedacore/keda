@@ -398,7 +398,7 @@ func (in *GCPSecretManager) DeepCopyInto(out *GCPSecretManager) {
 	if in.PodIdentity != nil {
 		in, out := &in.PodIdentity, &out.PodIdentity
 		*out = new(AuthPodIdentity)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 }
 

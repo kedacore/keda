@@ -197,8 +197,6 @@ spec:
                     required:
                     - clientSecret
                     type: object
-                  gcpProjectID:
-                    type: string
                   podIdentity:
                     description: AuthPodIdentity allows users to select the platform
                       native identity mechanism
@@ -226,7 +224,6 @@ spec:
                       type: object
                     type: array
                 required:
-                - gcpProjectID
                 - secrets
                 type: object
               hashiCorpVault:

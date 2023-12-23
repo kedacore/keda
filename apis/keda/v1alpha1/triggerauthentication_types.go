@@ -290,8 +290,7 @@ type GCPSecretManager struct {
 	// +optional
 	Credentials *GCPCredentials `json:"gcpCredentials"`
 	// +optional
-	PodIdentity  *AuthPodIdentity `json:"podIdentity"`
-	GCPProjectID string           `json:"gcpProjectID"`
+	PodIdentity *AuthPodIdentity `json:"podIdentity"`
 }
 
 type GCPCredentials struct {
