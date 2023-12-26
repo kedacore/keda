@@ -124,7 +124,7 @@ func isRemovingFinalizer(so *ScaledObject, old runtime.Object) bool {
 	soSpecString := string(soSpec)
 	oldSoSpecString := string(oldSoSpec)
 
-	return len(so.ObjectMeta.Finalizers) == 0 && len(oldSo.ObjectMeta.Finalizers) == 1 && soSpecString == oldSoSpecString
+	return len(so.ObjectMeta.Finalizers) < len(oldSo.ObjectMeta.Finalizers) && soSpecString == oldSoSpecString
 }
 
 func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.Warnings, error) {
