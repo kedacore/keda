@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"net/http"
+	"os"
 
 	"cloud.google.com/go/compute/metadata"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
@@ -88,16 +89,28 @@ func (vh *GCPSecretManagerHandler) Initialize(ctx context.Context, client client
 			return fmt.Errorf("failed to unmarshal gcp credentials key into a map, %w", err)
 		}
 
-		vh.gcpProjectID = gcpCedentialsMap["project_id"].(string)
+		project, ok := gcpCedentialsMap["project_id"]
+		if !ok {
+			return fmt.Errorf("project_id field is missing in the json credentials")
+		}
+
+		vh.gcpProjectID = project.(string)
 
 	case kedav1alpha1.PodIdentityProviderGCP:
 		if vh.gcpSecretsManagerClient, err = secretmanager.NewClient(ctx); err != nil {
 			return fmt.Errorf("failed to create secretmanager client: %w", err)
 		}
 
-		if vh.gcpProjectID, err = metadata.NewClient(&http.Client{}).ProjectID(); err != nil {
-			return fmt.Errorf("failed to fetch gcp project id: %w", err)
+		// Running workload identity outside GKE, we can't use the metadata api
+		// and we need to use the env that it's provided from the hook
+		project, found := os.LookupEnv("CLOUDSDK_CORE_PROJECT")
+		if !found {
+			if project, err = metadata.NewClient(&http.Client{}).ProjectID(); err != nil {
+				return fmt.Errorf("failed to fetch gcp project id: %w", err)
+			}
 		}
+
+		vh.gcpProjectID = project
 
 	default:
 		return fmt.Errorf("gcp secret manager does not support pod identity provider - %v", podIdentity.Provider)
