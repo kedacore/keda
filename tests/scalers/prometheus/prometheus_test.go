@@ -161,7 +161,7 @@ spec:
   template:
     spec:
       containers:
-      - image: quay.io/zroubalik/hey
+      - image: ghcr.io/kedacore/tests-hey
         name: test
         command: ["/bin/sh"]
         args: ["-c", "for i in $(seq 1 60);do echo $i;/hey -c 5 -n 30 http://{{.MonitoredAppName}}.{{.TestNamespace}}.svc;sleep 1;done"]
@@ -187,7 +187,7 @@ spec:
   template:
     spec:
       containers:
-      - image: quay.io/zroubalik/hey
+      - image: ghcr.io/kedacore/tests-hey
         name: test
         command: ["/bin/sh"]
         args: ["-c", "for i in $(seq 1 60);do echo $i;/hey -c 5 -n 80 http://{{.MonitoredAppName}}.{{.TestNamespace}}.svc;sleep 1;done"]
