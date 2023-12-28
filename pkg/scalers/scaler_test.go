@@ -127,6 +127,7 @@ type getParameterFromConfigTestData struct {
 	name              string
 	authParams        map[string]string
 	metadata          map[string]string
+	resolvedEnv       map[string]string
 	parameter         string
 	useAuthentication bool
 	useMetadata       bool
@@ -160,7 +161,8 @@ var getParameterFromConfigTestDataset = []getParameterFromConfigTestData{
 	},
 	{
 		name:           "test_resolved_env_only",
-		metadata:       map[string]string{"key1FromEnv": "value1"},
+		metadata:       map[string]string{"key1FromEnv": "key1"},
+		resolvedEnv:    map[string]string{"key1": "value1"},
 		parameter:      "key1",
 		useResolvedEnv: true,
 		targetType:     reflect.TypeOf(string("")),
@@ -170,13 +172,15 @@ var getParameterFromConfigTestDataset = []getParameterFromConfigTestData{
 	{
 		name:              "test_authParam_and_resolved_env_only",
 		authParams:        map[string]string{"key1": "value1"},
-		metadata:          map[string]string{"key1FromEnv": "value2"},
+		metadata:          map[string]string{"key1FromEnv": "key1"},
+		resolvedEnv:       map[string]string{"key1": "value1"},
 		parameter:         "key1",
 		useAuthentication: true,
 		useResolvedEnv:    true,
 		targetType:        reflect.TypeOf(string("")),
-		expectedResult:    "value1", // Should get from Auth
-		isError:           false,
+		expectedResult:    "",
+		isError:           true,
+		errorMessage:      "value for parameter 'key1' found in more than one place",
 	},
 	{
 		name:              "test_authParam_and_trigger_metadata_only",
@@ -186,18 +190,21 @@ var getParameterFromConfigTestDataset = []getParameterFromConfigTestData{
 		useMetadata:       true,
 		useAuthentication: true,
 		targetType:        reflect.TypeOf(string("")),
-		expectedResult:    "value1", // Should get from auth
-		isError:           false,
+		expectedResult:    "",
+		isError:           true,
+		errorMessage:      "value for parameter 'key1' found in more than one place",
 	},
 	{
 		name:           "test_trigger_metadata_and_resolved_env_only",
-		metadata:       map[string]string{"key1": "value1", "key1FromEnv": "value2"},
+		metadata:       map[string]string{"key1": "value1", "key1FromEnv": "key1"},
+		resolvedEnv:    map[string]string{"key1": "value1"},
 		parameter:      "key1",
 		useResolvedEnv: true,
 		useMetadata:    true,
 		targetType:     reflect.TypeOf(string("")),
-		expectedResult: "value1", // Should get from trigger metadata
-		isError:        false,
+		expectedResult: "",
+		isError:        true,
+		errorMessage:   "value for parameter 'key1' found in more than one place",
 	},
 	{
 		name:           "test_isOptional_key_not_found",
@@ -246,7 +253,7 @@ var getParameterFromConfigTestDataset = []getParameterFromConfigTestData{
 func TestGetParameterFromConfigV2(t *testing.T) {
 	for _, testData := range getParameterFromConfigTestDataset {
 		val, err := getParameterFromConfigV2(
-			&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams},
+			&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams, ResolvedEnv: testData.resolvedEnv},
 			testData.parameter,
 			testData.useMetadata,
 			testData.useAuthentication,
@@ -267,7 +274,7 @@ func TestGetParameterFromConfigV2(t *testing.T) {
 
 type convertStringToTypeTestData struct {
 	name           string
-	input          string
+	input          interface{}
 	targetType     reflect.Type
 	expectedOutput interface{}
 	isError        bool
@@ -275,71 +282,171 @@ type convertStringToTypeTestData struct {
 }
 
 var convertStringToTypeDataset = []convertStringToTypeTestData{
+	// int64 source
 	{
-		name:           "test string",
-		input:          "test",
-		targetType:     reflect.TypeOf(string("")),
-		expectedOutput: "test",
+		name:           "int64 to float64",
+		input:          int64(1234),
+		targetType:     reflect.TypeOf(float64(1234)),
+		expectedOutput: float64(1234),
+		isError:        false,
 	},
 	{
-		name:           "test int",
-		input:          "6",
-		targetType:     reflect.TypeOf(int(6)),
-		expectedOutput: 6,
+		name:           "int64 to float32",
+		input:          int64(1234),
+		targetType:     reflect.TypeOf(float32(1234)),
+		expectedOutput: float32(1234),
+		isError:        false,
 	},
 	{
-		name:           "test int64 max",
-		input:          "9223372036854775807", // int64 max
-		targetType:     reflect.TypeOf(int64(6)),
-		expectedOutput: int64(9223372036854775807),
+		name:           "int64 to uint64",
+		input:          int64(1234),
+		targetType:     reflect.TypeOf(uint64(1234)),
+		expectedOutput: uint64(1234),
+		isError:        false,
 	},
 	{
-		name:           "test int64 min",
-		input:          "-9223372036854775808", // int64 min
-		targetType:     reflect.TypeOf(int64(6)),
-		expectedOutput: int64(-9223372036854775808),
+		name:           "int64 to uint32",
+		input:          int64(1234),
+		targetType:     reflect.TypeOf(uint32(1234)),
+		expectedOutput: uint32(1234),
+		isError:        false,
+	},
+	// int32 source
+	{
+		name:           "int32 to float64",
+		input:          int32(1234),
+		targetType:     reflect.TypeOf(float64(1234)),
+		expectedOutput: float64(1234),
+		isError:        false,
 	},
 	{
-		name:           "test uint64 max",
-		input:          "18446744073709551615", // uint64 max
-		targetType:     reflect.TypeOf(uint64(6)),
-		expectedOutput: uint64(18446744073709551615),
+		name:           "int32 to float32",
+		input:          int32(1234),
+		targetType:     reflect.TypeOf(float32(1234)),
+		expectedOutput: float32(1234),
+		isError:        false,
 	},
 	{
-		name:           "test float32",
-		input:          "3.14",
-		targetType:     reflect.TypeOf(float32(3.14)),
-		expectedOutput: float32(3.14),
+		name:           "int32 to uint64",
+		input:          int32(1234),
+		targetType:     reflect.TypeOf(uint64(1234)),
+		expectedOutput: uint64(1234),
+		isError:        false,
 	},
 	{
-		name:           "test float64",
-		input:          "0.123456789121212121212",
-		targetType:     reflect.TypeOf(float64(0.123456789121212121212)),
-		expectedOutput: float64(0.123456789121212121212),
+		name:           "int32 to uint32",
+		input:          int32(1234),
+		targetType:     reflect.TypeOf(uint32(1234)),
+		expectedOutput: uint32(1234),
+		isError:        false,
+	},
+	// float64 source
+	{
+		name:           "float64 to int64",
+		input:          float64(1234),
+		targetType:     reflect.TypeOf(int64(1234)),
+		expectedOutput: int64(1234),
+		isError:        false,
 	},
 	{
-		name:           "test bool",
+		name:           "float64 to int32",
+		input:          float64(1234),
+		targetType:     reflect.TypeOf(int32(1234)),
+		expectedOutput: int32(1234),
+		isError:        false,
+	},
+	{
+		name:           "float64 to uint64",
+		input:          float64(1234),
+		targetType:     reflect.TypeOf(uint64(1234)),
+		expectedOutput: uint64(1234),
+		isError:        false,
+	},
+	{
+		name:           "float64 to uint32",
+		input:          float64(1234),
+		targetType:     reflect.TypeOf(uint32(1234)),
+		expectedOutput: uint32(1234),
+		isError:        false,
+	},
+	// float32 source
+	{
+		name:           "float32 to int64",
+		input:          float32(1234),
+		targetType:     reflect.TypeOf(int64(1234)),
+		expectedOutput: int64(1234),
+		isError:        false,
+	},
+	{
+		name:           "float32 to int32",
+		input:          float32(1234),
+		targetType:     reflect.TypeOf(int32(1234)),
+		expectedOutput: int32(1234),
+		isError:        false,
+	},
+	{
+		name:           "float32 to uint64",
+		input:          float32(1234),
+		targetType:     reflect.TypeOf(uint64(1234)),
+		expectedOutput: uint64(1234),
+		isError:        false,
+	},
+	{
+		name:           "float32 to uint32",
+		input:          float32(1234),
+		targetType:     reflect.TypeOf(uint32(1234)),
+		expectedOutput: uint32(1234),
+		isError:        false,
+	},
+	// string source
+	{
+		name:           "string to float64",
+		input:          "1234",
+		targetType:     reflect.TypeOf(float64(1234)),
+		expectedOutput: float64(1234),
+		isError:        false,
+	},
+	{
+		name:           "string to float32",
+		input:          "1234",
+		targetType:     reflect.TypeOf(float32(1234)),
+		expectedOutput: float32(1234),
+		isError:        false,
+	},
+	{
+		name:           "string to int64",
+		input:          "1234",
+		targetType:     reflect.TypeOf(int64(1234)),
+		expectedOutput: int64(1234),
+		isError:        false,
+	},
+	{
+		name:           "string to int32",
+		input:          "1234",
+		targetType:     reflect.TypeOf(int32(1234)),
+		expectedOutput: int32(1234),
+		isError:        false,
+	},
+	{
+		name:           "string to uint64",
+		input:          "1234",
+		targetType:     reflect.TypeOf(uint64(1234)),
+		expectedOutput: uint64(1234),
+		isError:        false,
+	},
+	{
+		name:           "string to uint32",
+		input:          "1234",
+		targetType:     reflect.TypeOf(uint32(1234)),
+		expectedOutput: uint32(1234),
+		isError:        false,
+	},
+	{
+		name:           "string to bool",
 		input:          "true",
 		targetType:     reflect.TypeOf(true),
 		expectedOutput: true,
-	},
-	{
-		name:           "test bool 2",
-		input:          "True",
-		targetType:     reflect.TypeOf(true),
-		expectedOutput: true,
-	},
-	{
-		name:           "test bool 3",
-		input:          "false",
-		targetType:     reflect.TypeOf(false),
-		expectedOutput: false,
-	},
-	{
-		name:           "test bool 4",
-		input:          "False",
-		targetType:     reflect.TypeOf(false),
-		expectedOutput: false,
+		isError:        false,
 	},
 	{
 		name:           "unsupported type",
@@ -347,17 +454,17 @@ var convertStringToTypeDataset = []convertStringToTypeTestData{
 		targetType:     reflect.TypeOf([]int{}),
 		expectedOutput: "error",
 		isError:        true,
-		errorMessage:   "unsupported type: []int",
+		errorMessage:   "unsupported target type: []int",
 	},
 }
 
 func TestConvertStringToType(t *testing.T) {
 	for _, testData := range convertStringToTypeDataset {
-		val, err := convertStringToType(testData.input, testData.targetType)
+		val, err := convertToType(testData.input, testData.targetType)
 
 		if testData.isError {
 			assert.NotNilf(t, err, "test %s: expected error but got success, testData - %+v", testData.name, testData)
-			assert.Contains(t, err.Error(), testData.errorMessage)
+			assert.Containsf(t, err.Error(), testData.errorMessage, "test %s", testData.name, testData.errorMessage)
 		} else {
 			assert.Nil(t, err)
 			assert.Equalf(t, testData.expectedOutput, val, "test %s: expected %s but got %s", testData.name, testData.expectedOutput, val)

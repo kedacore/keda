@@ -21,12 +21,12 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
 	metrics "github.com/rcrowley/go-metrics"
+	cast "github.com/spf13/cast"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -214,61 +214,131 @@ func GenerateMetricInMili(metricName string, value float64) external_metrics.Ext
 
 // getParameterFromConfigV2 returns the value of the parameter from the config
 func getParameterFromConfigV2(config *ScalerConfig, parameter string, useMetadata bool, useAuthentication bool, useResolvedEnv bool, isOptional bool, defaultVal string, targetType reflect.Type) (interface{}, error) {
-	if val, ok := config.AuthParams[parameter]; useAuthentication && ok && val != "" {
-		returnedVal, err := convertStringToType(val, targetType)
-		if err != nil {
-			return defaultVal, err
+	foundCount := 0
+	var foundVal string
+	var convertedVal interface{}
+	var foundErr error
+
+	if val, ok := config.AuthParams[parameter]; ok && val != "" {
+		foundCount++
+		if useAuthentication {
+			foundVal = val
 		}
-		return returnedVal, nil
-	} else if val, ok := config.TriggerMetadata[parameter]; ok && useMetadata && val != "" {
-		returnedVal, err := convertStringToType(val, targetType)
-		if err != nil {
-			return defaultVal, err
+	}
+	if val, ok := config.TriggerMetadata[parameter]; ok && val != "" {
+		foundCount++
+		if useMetadata {
+			foundVal = val
 		}
-		return returnedVal, nil
-	} else if val, ok := config.TriggerMetadata[fmt.Sprintf("%sFromEnv", parameter)]; ok && useResolvedEnv && val != "" {
-		returnedVal, err := convertStringToType(val, targetType)
-		if err != nil {
-			return defaultVal, err
+	}
+	if envFromVal, envFromOk := config.TriggerMetadata[fmt.Sprintf("%sFromEnv", parameter)]; envFromOk {
+		if val, ok := config.ResolvedEnv[envFromVal]; ok && val != "" {
+			foundCount++
+			if useResolvedEnv {
+				foundVal = val
+			}
 		}
-		return returnedVal, nil
 	}
 
-	if isOptional {
+	convertedVal, foundErr = convertToType(foundVal, targetType)
+	switch {
+	case foundCount > 1:
+		return "", fmt.Errorf("value for parameter '%s' found in more than one place", parameter)
+	case foundCount == 1:
+		if foundErr != nil {
+			return defaultVal, foundErr
+		}
+		return convertedVal, nil
+	case isOptional:
 		return defaultVal, nil
+	default:
+		return "", fmt.Errorf("key not found. Either set the correct key or set isOptional to true and set defaultVal")
 	}
-	return "", fmt.Errorf("key not found. Either set the correct key or set isOptional to true and set defaultVal")
 }
 
-func convertStringToType(input string, targetType reflect.Type) (interface{}, error) {
+func convertToType(input interface{}, targetType reflect.Type) (interface{}, error) {
 	switch targetType.Kind() {
 	case reflect.String:
-		return input, nil
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		result, err := strconv.ParseInt(input, 10, 64)
+		return fmt.Sprintf("%v", input), nil
+	case reflect.Int:
+		val, err := cast.ToIntE(input)
 		if err != nil {
 			return nil, err
 		}
-		return reflect.ValueOf(result).Convert(targetType).Interface(), nil
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		result, err := strconv.ParseUint(input, 10, 64)
+		return val, nil
+	case reflect.Int8:
+		val, err := cast.ToInt8E(input)
 		if err != nil {
 			return nil, err
 		}
-		return reflect.ValueOf(result).Convert(targetType).Interface(), nil
-	case reflect.Float32, reflect.Float64:
-		result, err := strconv.ParseFloat(input, 64)
+		return val, nil
+	case reflect.Int16:
+		val, err := cast.ToInt16E(input)
 		if err != nil {
 			return nil, err
 		}
-		return reflect.ValueOf(result).Convert(targetType).Interface(), nil
+		return val, nil
+	case reflect.Int32:
+		val, err := cast.ToInt32E(input)
+		if err != nil {
+			return nil, err
+		}
+		return val, nil
+	case reflect.Int64:
+		val, err := cast.ToInt64E(input)
+		if err != nil {
+			return nil, err
+		}
+		return val, nil
+	case reflect.Uint:
+		val, err := cast.ToUintE(input)
+		if err != nil {
+			return nil, err
+		}
+		return val, nil
+	case reflect.Uint8:
+		val, err := cast.ToUint8E(input)
+		if err != nil {
+			return nil, err
+		}
+		return val, nil
+	case reflect.Uint16:
+		val, err := cast.ToUint16E(input)
+		if err != nil {
+			return nil, err
+		}
+		return val, nil
+	case reflect.Uint32:
+		val, err := cast.ToUint32E(input)
+		if err != nil {
+			return nil, err
+		}
+		return val, nil
+	case reflect.Uint64:
+		val, err := cast.ToUint64E(input)
+		if err != nil {
+			return nil, err
+		}
+		return val, nil
+	case reflect.Float32:
+		val, err := cast.ToFloat32E(input)
+		if err != nil {
+			return nil, err
+		}
+		return val, nil
+	case reflect.Float64:
+		val, err := cast.ToFloat64E(input)
+		if err != nil {
+			return nil, err
+		}
+		return val, nil
 	case reflect.Bool:
-		result, err := strconv.ParseBool(input)
+		val, err := cast.ToBoolE(input)
 		if err != nil {
 			return nil, err
 		}
-		return result, nil
+		return val, nil
 	default:
-		return nil, fmt.Errorf("unsupported type: %v", targetType)
+		return nil, fmt.Errorf("unsupported target type: %v", targetType)
 	}
 }
