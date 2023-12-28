@@ -361,10 +361,20 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 	gvkString := gvkr.GVKString()
 	logger.V(1).Info("Parsed Group, Version, Kind, Resource", "GVK", gvkString, "Resource", gvkr.Resource)
 
+	statusGvkString := ""
+	if scaledObject.Status.ScaleTargetGVKR != nil {
+		statusGvkr, _ := kedav1alpha1.ParseGVKR(r.restMapper, scaledObject.Status.ScaleTargetGVKR.Version, scaledObject.Status.ScaleTargetGVKR.Kind)
+		statusGvkString = statusGvkr.GVKString()
+		logger.V(1).Info("Status Group, Version, Kind, Resource", "GVK", statusGvkString, "Resource", statusGvkr.Resource)
+	}
+
 	// do we need the scale to update the status later?
 	present := scaledObject.HasPausedAnnotation()
 	removePausedStatus := scaledObject.Status.PausedReplicaCount != nil && !present
-	wantStatusUpdate := scaledObject.Status.ScaleTargetKind != gvkString || scaledObject.Status.OriginalReplicaCount == nil || removePausedStatus
+	wantStatusUpdate := scaledObject.Status.ScaleTargetKind != gvkString ||
+		statusGvkString != gvkString ||
+		scaledObject.Status.OriginalReplicaCount == nil ||
+		removePausedStatus
 
 	// check if we already know.
 	var scale *autoscalingv1.Scale
@@ -398,7 +408,7 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 	// - store original scaleTarget's replica count (before scaling with KEDA)
 	if wantStatusUpdate {
 		status := scaledObject.Status.DeepCopy()
-		if scaledObject.Status.ScaleTargetKind != gvkString {
+		if scaledObject.Status.ScaleTargetKind != gvkString || gvkString != statusGvkString {
 			status.ScaleTargetKind = gvkString
 			status.ScaleTargetGVKR = &gvkr
 		}
