@@ -184,8 +184,8 @@ func parseKafkaAuthParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadat
 	}
 
 	meta.enableTLS = false
-	enableTLS := false
-	tlsString, err := getParameterFromConfigV2(config, "tls", true, false, false, true, "", reflect.TypeOf(""))
+	var enableTLS bool
+	tlsString, err := getParameterFromConfigV2(config, "tls", true, true, false, true, "disable", reflect.TypeOf(""))
 	if err != nil {
 		return fmt.Errorf("error incorrect TLS value given. %s", err.Error())
 	}
@@ -207,14 +207,17 @@ func parseKafkaAuthParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadat
 }
 
 func parseTLS(config *ScalerConfig, meta *kafkaMetadata) error {
-	certGiven, err := getParameterFromConfigV2(config, "cert", false, true, false, false, "", reflect.TypeOf(""))
+	certGiven, err := getParameterFromConfigV2(config, "cert", false, true, false, true, "", reflect.TypeOf(""))
 	if err != nil {
 		return err
 	}
-	keyGiven, err := getParameterFromConfigV2(config, "key", false, true, false, false, "", reflect.TypeOf(""))
+	meta.cert = certGiven.(string)
+
+	keyGiven, err := getParameterFromConfigV2(config, "key", false, true, false, true, "", reflect.TypeOf(""))
 	if err != nil {
 		return err
 	}
+	meta.key = keyGiven.(string)
 
 	if certGiven != "" && keyGiven == "" {
 		return errors.New("key must be provided with cert")
@@ -223,23 +226,13 @@ func parseTLS(config *ScalerConfig, meta *kafkaMetadata) error {
 		return errors.New("cert must be provided with key")
 	}
 
-	ca, err := getParameterFromConfigV2(config, "ca", false, true, false, false, "", reflect.TypeOf(""))
+	ca, err := getParameterFromConfigV2(config, "ca", false, true, false, true, "", reflect.TypeOf(""))
 	if err != nil {
 		return err
 	}
 	meta.ca = ca.(string)
-	cert, err := getParameterFromConfigV2(config, "cert", false, true, false, false, "", reflect.TypeOf(""))
-	if err != nil {
-		return err
-	}
-	meta.cert = cert.(string)
-	key, err := getParameterFromConfigV2(config, "key", false, true, false, false, "", reflect.TypeOf(""))
-	if err != nil {
-		return err
-	}
-	meta.key = key.(string)
 
-	unsafeSslRaw, err := getParameterFromConfigV2(config, "unsafeSsl", false, true, false, true, defaultUnsafeSsl, reflect.TypeOf(true))
+	unsafeSslRaw, err := getParameterFromConfigV2(config, "unsafeSsl", true, false, false, true, defaultUnsafeSsl, reflect.TypeOf(true))
 	if err != nil {
 		return errors.New(fmt.Sprintf("error parsing unsafeSsl: %s", err.Error()))
 	}
@@ -324,7 +317,7 @@ func parseSaslParams(config *ScalerConfig, meta *kafkaMetadata, mode kafkaSaslTy
 	meta.saslType = mode
 
 	if mode == KafkaSASLTypeOAuthbearer {
-		scopes, err := getParameterFromConfigV2(config, "scopes", false, true, false, false, "", reflect.TypeOf(""))
+		scopes, err := getParameterFromConfigV2(config, "scopes", false, true, false, true, "", reflect.TypeOf(""))
 		if err != nil {
 			return errors.New(fmt.Sprintf("no scopes given. %s", err.Error()))
 		}
@@ -427,10 +420,11 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 		return meta, err
 	}
 	if offsetResetPolicyRaw != "" {
-		if offsetResetPolicyRaw != earliest && offsetResetPolicyRaw != latest {
+		policy := offsetResetPolicy(offsetResetPolicyRaw.(string))
+		if policy != earliest && policy != latest {
 			return meta, fmt.Errorf("err offsetResetPolicy policy %q given", offsetResetPolicyRaw)
 		}
-		meta.offsetResetPolicy = offsetResetPolicy(offsetResetPolicyRaw.(string))
+		meta.offsetResetPolicy = policy
 	}
 
 	lagThreshold, err := getParameterFromConfigV2(config, lagThresholdMetricName, true, false, false, true, defaultKafkaLagThreshold, reflect.TypeOf(64))
@@ -443,15 +437,14 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 	meta.lagThreshold = int64(lagThreshold.(int))
 
 	meta.activationLagThreshold = defaultKafkaActivationLagThreshold
-	activationLagThreshold, err := getParameterFromConfigV2(config, activationLagThresholdMetricName, true, false, false, true, defaultKafkaActivationLagThreshold, reflect.TypeOf(int64(64)))
+	activationLagThreshold, err := getParameterFromConfigV2(config, activationLagThresholdMetricName, true, false, false, true, int64(defaultKafkaActivationLagThreshold), reflect.TypeOf(int64(64)))
 	if err != nil {
 		return meta, err
 	}
-	fmt.Println(activationLagThreshold)
-	if int64(activationLagThreshold.(int)) < 0 {
+	if activationLagThreshold.(int64) < 0 {
 		return meta, fmt.Errorf("%q must be positive number", activationLagThresholdMetricName)
 	}
-	meta.activationLagThreshold = int64(activationLagThreshold.(int))
+	meta.activationLagThreshold = activationLagThreshold.(int64)
 
 	if err := parseKafkaAuthParams(config, &meta); err != nil {
 		return meta, err
@@ -487,11 +480,10 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 	if len(meta.topic) == 0 && meta.limitToPartitionsWithLag {
 		return meta, fmt.Errorf("topic must be specified when using limitToPartitionsWithLag")
 	}
-	saramaVer, err := getParameterFromConfigV2(config, "version", true, false, false, true, "", reflect.TypeOf(""))
+	saramaVer, err := getParameterFromConfigV2(config, "version", true, false, false, true, "1.0.0", reflect.TypeOf(""))
 	if err != nil {
 		return meta, err
 	}
-	meta.version = sarama.V1_0_0_0
 	saramaVer = strings.TrimSpace(saramaVer.(string))
 	version, err := sarama.ParseKafkaVersion(saramaVer.(string))
 	if err != nil {
