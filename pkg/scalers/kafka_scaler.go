@@ -234,7 +234,7 @@ func parseTLS(config *ScalerConfig, meta *kafkaMetadata) error {
 
 	unsafeSslRaw, err := getParameterFromConfigV2(config, "unsafeSsl", true, false, false, true, defaultUnsafeSsl, reflect.TypeOf(true))
 	if err != nil {
-		return errors.New(fmt.Sprintf("error parsing unsafeSsl: %s", err.Error()))
+		return fmt.Errorf("error parsing unsafeSsl: %w", err)
 	}
 	meta.unsafeSsl = unsafeSslRaw.(bool)
 
@@ -251,7 +251,7 @@ func parseTLS(config *ScalerConfig, meta *kafkaMetadata) error {
 func parseKerberosParams(config *ScalerConfig, meta *kafkaMetadata, mode kafkaSaslType) error {
 	username, err := getParameterFromConfigV2(config, "username", false, true, false, false, "", reflect.TypeOf(""))
 	if err != nil {
-		return errors.New(fmt.Sprintf("no username given. %s", err.Error()))
+		return fmt.Errorf("no username given. %w", err)
 	}
 	meta.username = strings.TrimSpace(username.(string))
 
@@ -280,13 +280,13 @@ func parseKerberosParams(config *ScalerConfig, meta *kafkaMetadata, mode kafkaSa
 
 	realm, err := getParameterFromConfigV2(config, "realm", false, true, false, false, "", reflect.TypeOf(""))
 	if err != nil {
-		return errors.New(fmt.Sprintf("no realm given. %s", err.Error()))
+		return fmt.Errorf("no realm given. %w", err)
 	}
 	meta.realm = strings.TrimSpace(realm.(string))
 
 	kerberosConfig, err := getParameterFromConfigV2(config, "kerberosConfig", false, true, false, false, "", reflect.TypeOf(""))
 	if err != nil {
-		return errors.New(fmt.Sprintf("no Kerberos configuration file (kerberosConfig) given. %s", err.Error()))
+		return fmt.Errorf("no Kerberos configuration file (kerberosConfig) given. %w", err)
 	}
 	path, err := saveToFile(kerberosConfig.(string))
 	if err != nil {
@@ -305,13 +305,13 @@ func parseKerberosParams(config *ScalerConfig, meta *kafkaMetadata, mode kafkaSa
 func parseSaslParams(config *ScalerConfig, meta *kafkaMetadata, mode kafkaSaslType) error {
 	username, err := getParameterFromConfigV2(config, "username", false, true, false, false, "", reflect.TypeOf(""))
 	if err != nil {
-		return errors.New(fmt.Sprintf("no username given. %s", err.Error()))
+		return fmt.Errorf("no username given. %w", err)
 	}
 	meta.username = strings.TrimSpace(username.(string))
 
 	password, err := getParameterFromConfigV2(config, "password", false, true, false, false, "", reflect.TypeOf(""))
 	if err != nil {
-		return errors.New(fmt.Sprintf("no password given. %s", err.Error()))
+		return fmt.Errorf("no password given. %w", err)
 	}
 	meta.password = strings.TrimSpace(password.(string))
 	meta.saslType = mode
@@ -319,13 +319,13 @@ func parseSaslParams(config *ScalerConfig, meta *kafkaMetadata, mode kafkaSaslTy
 	if mode == KafkaSASLTypeOAuthbearer {
 		scopes, err := getParameterFromConfigV2(config, "scopes", false, true, false, true, "", reflect.TypeOf(""))
 		if err != nil {
-			return errors.New(fmt.Sprintf("no scopes given. %s", err.Error()))
+			return fmt.Errorf("no scopes given. %w", err)
 		}
 		meta.scopes = strings.Split(scopes.(string), ",")
 
 		oauthTokenEndpointsURI, err := getParameterFromConfigV2(config, "oauthTokenEndpointUri", false, true, false, false, "", reflect.TypeOf(""))
 		if err != nil {
-			return errors.New(fmt.Sprintf("no oauth token endpoint uri given. %s", err.Error()))
+			return fmt.Errorf("no oauth token endpoint uri given. %w", err)
 		}
 		meta.oauthTokenEndpointURI = strings.TrimSpace(oauthTokenEndpointsURI.(string))
 
@@ -375,13 +375,13 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 	meta := kafkaMetadata{}
 	bootstrapServers, err := getParameterFromConfigV2(config, "bootstrapServers", true, false, true, false, "", reflect.TypeOf(""))
 	if err != nil {
-		return meta, errors.New(fmt.Sprintf("no bootstrapServers given. %s", err.Error()))
+		return meta, fmt.Errorf("no bootstrapServers given. %w", err)
 	}
 	meta.bootstrapServers = strings.Split(bootstrapServers.(string), ",")
 
 	consumerGroup, err := getParameterFromConfigV2(config, "consumerGroup", true, false, true, false, "", reflect.TypeOf(""))
 	if err != nil {
-		return meta, errors.New(fmt.Sprintf("no consumer group given. %s", err.Error()))
+		return meta, fmt.Errorf("no consumer group given. %w", err)
 	}
 	meta.group = consumerGroup.(string)
 
@@ -450,21 +450,21 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 		return meta, err
 	}
 
-	allowIdConsumers, err := getParameterFromConfigV2(config, "allowIdleConsumers", true, false, false, true, false, reflect.TypeOf(true))
+	allowIDConsumers, err := getParameterFromConfigV2(config, "allowIdleConsumers", true, false, false, true, false, reflect.TypeOf(true))
 	if err != nil {
-		return meta, errors.New(fmt.Sprintf("error parsing allowIdleConsumers: %s", err.Error()))
+		return meta, fmt.Errorf("error parsing allowIdleConsumers: %w", err)
 	}
-	meta.allowIdleConsumers = allowIdConsumers.(bool)
+	meta.allowIdleConsumers = allowIDConsumers.(bool)
 
 	excludePersistentLag, err := getParameterFromConfigV2(config, "excludePersistentLag", true, false, false, true, false, reflect.TypeOf(true))
 	if err != nil {
-		return meta, errors.New(fmt.Sprintf("error parsing excludePersistentLag: %s", err.Error()))
+		return meta, fmt.Errorf("error parsing excludePersistentLag: %w", err)
 	}
 	meta.excludePersistentLag = excludePersistentLag.(bool)
 
 	scaleToZeroOnInvalidOffset, err := getParameterFromConfigV2(config, "scaleToZeroOnInvalidOffset", true, false, false, true, false, reflect.TypeOf(true))
 	if err != nil {
-		return meta, errors.New(fmt.Sprintf("error parsing scaleToZeroOnInvalidOffset: %s", err.Error()))
+		return meta, fmt.Errorf("error parsing scaleToZeroOnInvalidOffset: %w", err)
 	}
 	meta.scaleToZeroOnInvalidOffset = scaleToZeroOnInvalidOffset.(bool)
 
