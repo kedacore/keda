@@ -184,7 +184,7 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	var enableTLS bool
 	tlsString, err := getParameterFromConfigV2(config, "tls", true, true, false, true, "disable", reflect.TypeOf(""))
 	if err != nil {
-		return fmt.Errorf("error incorrect TLS value given. %s", err.Error())
+		return fmt.Errorf("error incorrect TLS value given. %w", err)
 	}
 	tlsString = strings.TrimSpace(tlsString.(string))
 	switch tlsString.(string) {
