@@ -317,7 +317,7 @@ var kafkaMetricIdentifiers = []kafkaMetricIdentifier{
 }
 
 func TestGetBrokers(t *testing.T) {
-	for _, testData := range parseKafkaMetadataTestDataset {
+	for idx, testData := range parseKafkaMetadataTestDataset {
 		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validWithAuthParams}, logr.Discard())
 		getBrokerTestBase(t, meta, testData, err)
 
@@ -371,30 +371,30 @@ func getBrokerTestBase(t *testing.T, meta kafkaMetadata, testData parseKafkaMeta
 }
 
 func TestKafkaAuthParamsInTriggerAuthentication(t *testing.T) {
-	for _, testData := range parseKafkaAuthParamsTestDataset {
+	for idx, testData := range parseKafkaAuthParamsTestDataset {
 		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: validKafkaMetadata, AuthParams: testData.authParams}, logr.Discard())
 
 		if err != nil && !testData.isError {
-			t.Error("Expected success but got error", err)
+			t.Errorf("Test %v: expected success but got error %v", idx, err)
 		}
 		if testData.isError && err == nil {
-			t.Error("Expected error but got success")
+			t.Errorf("Test %v: expected error but got success", idx)
 		}
 		if meta.enableTLS != testData.enableTLS {
-			t.Errorf("Expected enableTLS to be set to %v but got %v\n", testData.enableTLS, meta.enableTLS)
+			t.Errorf("Test %v: expected enableTLS to be set to %v but got %v\n", idx, testData.enableTLS, meta.enableTLS)
 		}
 		if meta.enableTLS {
 			if meta.ca != testData.authParams["ca"] {
-				t.Errorf("Expected ca to be set to %v but got %v\n", testData.authParams["ca"], meta.enableTLS)
+				t.Errorf("Test %v: expected ca to be set to %v but got %v\n", idx, testData.authParams["ca"], meta.enableTLS)
 			}
 			if meta.cert != testData.authParams["cert"] {
-				t.Errorf("Expected cert to be set to %v but got %v\n", testData.authParams["cert"], meta.cert)
+				t.Errorf("Test %v: expected cert to be set to %v but got %v\n", idx, testData.authParams["cert"], meta.cert)
 			}
 			if meta.key != testData.authParams["key"] {
-				t.Errorf("Expected key to be set to %v but got %v\n", testData.authParams["key"], meta.key)
+				t.Errorf("Test %v: expected key to be set to %v but got %v\n", idx, testData.authParams["key"], meta.key)
 			}
 			if meta.keyPassword != testData.authParams["keyPassword"] {
-				t.Errorf("Expected key to be set to %v but got %v\n", testData.authParams["keyPassword"], meta.key)
+				t.Errorf("Test %v: expected key to be set to %v but got %v\n", idx, testData.authParams["keyPassword"], meta.key)
 			}
 		}
 		if meta.saslType == KafkaSASLTypeGSSAPI && !testData.isError {
