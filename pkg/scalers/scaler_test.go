@@ -240,7 +240,7 @@ var getParameterFromConfigTestDataset = []getParameterFromConfigTestData{
 		targetType:     reflect.TypeOf(string("")),
 		expectedResult: "default", // Should return empty string
 		isError:        true,
-		errorMessage:   "key key2 not found. Either set the correct key or set isOptional to true and set defaultVal",
+		errorMessage:   "key not found. Either set the correct key or set isOptional to true and set defaultVal",
 	},
 	{
 		name:              "test_authParam_bool",
