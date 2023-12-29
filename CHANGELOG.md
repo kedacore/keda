@@ -111,6 +111,7 @@ New deprecation(s):
 - **General**: Fix CVE-2023-45142 in Opentelemetry ([#5089](https://github.com/kedacore/keda/issues/5089))
 - **General**: Fix logger in Opentelemetry collector ([#5094](https://github.com/kedacore/keda/issues/5094))
 - **General**: Fix lost commit from the newly created utility function ([#5037](https://github.com/kedacore/keda/issues/5037))
+- **General**: Improve docker image build time through caches ([#5316](https://github.com/kedacore/keda/issues/5316))
 - **General**: Reduce amount of gauge creations for OpenTelemetry metrics ([#5101](https://github.com/kedacore/keda/issues/5101))
 - **General**: Removed not required RBAC permissions ([#5261](https://github.com/kedacore/keda/issues/5261))
 - **General**: Support profiling for KEDA components ([#4789](https://github.com/kedacore/keda/issues/4789))

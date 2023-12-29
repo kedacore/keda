@@ -24,7 +24,11 @@ COPY go.sum go.sum
 # https://www.docker.com/blog/faster-multi-platform-builds-dockerfile-cross-compilation-guide/
 ARG TARGETOS
 ARG TARGETARCH
-RUN VERSION=${BUILD_VERSION} GIT_COMMIT=${GIT_COMMIT} GIT_VERSION=${GIT_VERSION} TARGET_OS=$TARGETOS ARCH=$TARGETARCH make webhooks
+ARG GOCACHE=/root/.cache/go-build
+RUN  go env -w GOCACHE=${GOCACHE}
+RUN --mount=type=cache,target=${GOCACHE} \
+    VERSION=${BUILD_VERSION} GIT_COMMIT=${GIT_COMMIT} GIT_VERSION=${GIT_VERSION} TARGET_OS=$TARGETOS ARCH=$TARGETARCH \
+    make webhooks
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
