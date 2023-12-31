@@ -144,6 +144,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewAzureServiceBusScaler(ctx, config)
 	case "cassandra":
 		return scalers.NewCassandraScaler(config)
+	case "coralogix":
+		return scalers.NewCoralogixScaler(config)
 	case "couchdb":
 		return scalers.NewCouchDBScaler(ctx, config)
 	case "cpu":
