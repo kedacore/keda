@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package aws_dynamodb_streams_pod_identity_test
+package aws_dynamodb_streams_pod_identity_eks_test
 
 import (
 	"context"
@@ -30,7 +30,7 @@ import (
 var _ = godotenv.Load("../../../.env")
 
 const (
-	testName = "aws-dynamodb-streams-pod-identity-test"
+	testName = "aws-dynamodb-streams-pod-identity-eks-test"
 )
 
 var (
@@ -91,7 +91,7 @@ metadata:
   namespace: {{.TestNamespace}}
 spec:
   podIdentity:
-    provider: aws
+    provider: aws-eks
 `
 
 	scaledObjectTemplate = `

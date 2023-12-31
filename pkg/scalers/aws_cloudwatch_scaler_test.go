@@ -10,6 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
+
+	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
 )
 
 const (
@@ -375,7 +377,7 @@ var awsCloudwatchGetMetricTestData = []awsCloudwatchMetadata{
 		metricStatPeriod:     60,
 		metricEndTimeOffset:  60,
 		awsRegion:            "us-west-2",
-		awsAuthorization:     awsAuthorizationMetadata{podIdentityOwner: false},
+		awsAuthorization:     awsutils.AuthorizationMetadata{PodIdentityOwner: false},
 		scalerIndex:          0,
 	},
 	{
@@ -391,7 +393,7 @@ var awsCloudwatchGetMetricTestData = []awsCloudwatchMetadata{
 		metricStatPeriod:     60,
 		metricEndTimeOffset:  60,
 		awsRegion:            "us-west-2",
-		awsAuthorization:     awsAuthorizationMetadata{podIdentityOwner: false},
+		awsAuthorization:     awsutils.AuthorizationMetadata{PodIdentityOwner: false},
 		scalerIndex:          0,
 	},
 	{
@@ -407,7 +409,7 @@ var awsCloudwatchGetMetricTestData = []awsCloudwatchMetadata{
 		metricStatPeriod:     60,
 		metricEndTimeOffset:  60,
 		awsRegion:            "us-west-2",
-		awsAuthorization:     awsAuthorizationMetadata{podIdentityOwner: false},
+		awsAuthorization:     awsutils.AuthorizationMetadata{PodIdentityOwner: false},
 		scalerIndex:          0,
 	},
 	{
@@ -423,7 +425,7 @@ var awsCloudwatchGetMetricTestData = []awsCloudwatchMetadata{
 		metricStatPeriod:     60,
 		metricEndTimeOffset:  60,
 		awsRegion:            "us-west-2",
-		awsAuthorization:     awsAuthorizationMetadata{podIdentityOwner: false},
+		awsAuthorization:     awsutils.AuthorizationMetadata{PodIdentityOwner: false},
 		scalerIndex:          0,
 	},
 	{
@@ -438,7 +440,7 @@ var awsCloudwatchGetMetricTestData = []awsCloudwatchMetadata{
 		metricStatPeriod:     60,
 		metricEndTimeOffset:  60,
 		awsRegion:            "us-west-2",
-		awsAuthorization:     awsAuthorizationMetadata{podIdentityOwner: false},
+		awsAuthorization:     awsutils.AuthorizationMetadata{PodIdentityOwner: false},
 		scalerIndex:          0,
 	},
 }

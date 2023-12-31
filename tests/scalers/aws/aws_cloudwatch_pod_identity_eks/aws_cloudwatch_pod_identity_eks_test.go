@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package aws_cloudwatch_pod_identity_test
+package aws_cloudwatch_pod_identity_eks_test
 
 import (
 	"context"
@@ -26,7 +26,7 @@ import (
 var _ = godotenv.Load("../../../.env")
 
 const (
-	testName = "aws-cloudwatch-pod-identity-test"
+	testName = "aws-cloudwatch-pod-identity-eks-test"
 )
 
 type templateData struct {
@@ -51,7 +51,7 @@ metadata:
   namespace: {{.TestNamespace}}
 spec:
   podIdentity:
-    provider: aws
+    provider: aws-eks
 `
 
 	deploymentTemplate = `

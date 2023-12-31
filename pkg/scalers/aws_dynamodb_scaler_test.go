@@ -11,6 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
+
+	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
 )
 
 const (
@@ -167,7 +169,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			"targetValue":               "3",
 		},
 		authParams:    map[string]string{},
-		expectedError: ErrAwsNoAccessKey,
+		expectedError: awsutils.ErrAwsNoAccessKey,
 	},
 	{
 		name: "authentication provided",
@@ -190,10 +192,10 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			targetValue:               3,
 			scalerIndex:               1,
 			metricName:                "s1-aws-dynamodb-test",
-			awsAuthorization: awsAuthorizationMetadata{
-				awsAccessKeyID:     "none",
-				awsSecretAccessKey: "none",
-				podIdentityOwner:   true,
+			awsAuthorization: awsutils.AuthorizationMetadata{
+				AwsAccessKeyID:     "none",
+				AwsSecretAccessKey: "none",
+				PodIdentityOwner:   true,
 			},
 		},
 	},
@@ -220,10 +222,10 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			targetValue:               3,
 			scalerIndex:               1,
 			metricName:                "s1-aws-dynamodb-test",
-			awsAuthorization: awsAuthorizationMetadata{
-				awsAccessKeyID:     "none",
-				awsSecretAccessKey: "none",
-				podIdentityOwner:   true,
+			awsAuthorization: awsutils.AuthorizationMetadata{
+				AwsAccessKeyID:     "none",
+				AwsSecretAccessKey: "none",
+				PodIdentityOwner:   true,
 			},
 		},
 	},
@@ -250,10 +252,10 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			targetValue:               3,
 			scalerIndex:               1,
 			metricName:                "s1-aws-dynamodb-test",
-			awsAuthorization: awsAuthorizationMetadata{
-				awsAccessKeyID:     "none",
-				awsSecretAccessKey: "none",
-				podIdentityOwner:   true,
+			awsAuthorization: awsutils.AuthorizationMetadata{
+				AwsAccessKeyID:     "none",
+				AwsSecretAccessKey: "none",
+				PodIdentityOwner:   true,
 			},
 		},
 	},
@@ -280,10 +282,10 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			targetValue:               3,
 			scalerIndex:               1,
 			metricName:                "s1-aws-dynamodb-test",
-			awsAuthorization: awsAuthorizationMetadata{
-				awsAccessKeyID:     "none",
-				awsSecretAccessKey: "none",
-				podIdentityOwner:   true,
+			awsAuthorization: awsutils.AuthorizationMetadata{
+				AwsAccessKeyID:     "none",
+				AwsSecretAccessKey: "none",
+				PodIdentityOwner:   true,
 			},
 		},
 	},

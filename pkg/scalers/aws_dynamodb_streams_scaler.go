@@ -12,6 +12,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -34,7 +35,7 @@ type awsDynamoDBStreamsMetadata struct {
 	tableName                  string
 	awsRegion                  string
 	awsEndpoint                string
-	awsAuthorization           awsAuthorizationMetadata
+	awsAuthorization           awsutils.AuthorizationMetadata
 	scalerIndex                int
 }
 
@@ -111,7 +112,7 @@ func parseAwsDynamoDBStreamsMetadata(config *ScalerConfig, logger logr.Logger) (
 		}
 	}
 
-	auth, err := getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
+	auth, err := awsutils.GetAwsAuthorization(config.ScalerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +124,7 @@ func parseAwsDynamoDBStreamsMetadata(config *ScalerConfig, logger logr.Logger) (
 }
 
 func createClientsForDynamoDBStreamsScaler(ctx context.Context, metadata *awsDynamoDBStreamsMetadata) (*dynamodb.Client, *dynamodbstreams.Client, error) {
-	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -167,6 +168,7 @@ func getDynamoDBStreamsArn(ctx context.Context, db dynamodb.DescribeTableAPIClie
 }
 
 func (s *awsDynamoDBStreamsScaler) Close(_ context.Context) error {
+	awsutils.ClearAwsConfig(s.metadata.awsAuthorization)
 	return nil
 }
 

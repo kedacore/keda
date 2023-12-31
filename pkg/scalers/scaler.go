@@ -99,6 +99,9 @@ type ScalerConfig struct {
 	// ScalerIndex
 	ScalerIndex int
 
+	// ScalerUniqueKey for the scaler across KEDA. Useful to identify uniquely the scaler, eg: AWS credentials cache
+	ScalerUniqueKey string
+
 	// MetricType
 	MetricType v2.MetricTargetType
 

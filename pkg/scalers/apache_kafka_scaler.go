@@ -35,6 +35,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -70,7 +71,7 @@ type apacheKafkaMetadata struct {
 	// MSK
 	awsRegion        string
 	awsEndpoint      string
-	awsAuthorization awsAuthorizationMetadata
+	awsAuthorization awsutils.AuthorizationMetadata
 
 	// TLS
 	enableTLS   bool
@@ -196,7 +197,7 @@ func parseApacheKafkaAuthParams(config *ScalerConfig, meta *apacheKafkaMetadata)
 			} else {
 				return errors.New("no awsRegion given")
 			}
-			auth, err := getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
+			auth, err := awsutils.GetAwsAuthorization(config.ScalerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 			if err != nil {
 				return err
 			}
@@ -394,7 +395,7 @@ func getApacheKafkaClient(ctx context.Context, metadata apacheKafkaMetadata, log
 	case KafkaSASLTypeOAuthbearer:
 		return nil, errors.New("SASL/OAUTHBEARER is not implemented yet")
 	case KafkaSASLTypeMskIam:
-		cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+		cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
 		if err != nil {
 			return nil, err
 		}

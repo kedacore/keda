@@ -15,6 +15,8 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+
+	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
 )
 
 const (
@@ -136,10 +138,10 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 			activationTargetShardCount: 1,
 			tableName:                  testAWSDynamoDBSmallTable,
 			awsRegion:                  testAWSDynamoDBStreamsRegion,
-			awsAuthorization: awsAuthorizationMetadata{
-				awsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
-				awsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
-				podIdentityOwner:   true,
+			awsAuthorization: awsutils.AuthorizationMetadata{
+				AwsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
+				AwsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
+				PodIdentityOwner:   true,
 			},
 			scalerIndex: 0,
 		},
@@ -161,10 +163,10 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 			tableName:                  testAWSDynamoDBSmallTable,
 			awsRegion:                  testAWSDynamoDBStreamsRegion,
 			awsEndpoint:                testAWSDynamoDBStreamsEndpoint,
-			awsAuthorization: awsAuthorizationMetadata{
-				awsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
-				awsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
-				podIdentityOwner:   true,
+			awsAuthorization: awsutils.AuthorizationMetadata{
+				AwsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
+				AwsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
+				PodIdentityOwner:   true,
 			},
 			scalerIndex: 0,
 		},
@@ -205,10 +207,10 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 			activationTargetShardCount: defaultActivationTargetDBStreamsShardCount,
 			tableName:                  testAWSDynamoDBSmallTable,
 			awsRegion:                  testAWSDynamoDBStreamsRegion,
-			awsAuthorization: awsAuthorizationMetadata{
-				awsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
-				awsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
-				podIdentityOwner:   true,
+			awsAuthorization: awsutils.AuthorizationMetadata{
+				AwsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
+				AwsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
+				PodIdentityOwner:   true,
 			},
 			scalerIndex: 3,
 		},
@@ -226,10 +228,10 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 			targetShardCount: defaultTargetDBStreamsShardCount,
 			tableName:        testAWSDynamoDBSmallTable,
 			awsRegion:        testAWSDynamoDBStreamsRegion,
-			awsAuthorization: awsAuthorizationMetadata{
-				awsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
-				awsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
-				podIdentityOwner:   true,
+			awsAuthorization: awsutils.AuthorizationMetadata{
+				AwsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
+				AwsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
+				PodIdentityOwner:   true,
 			},
 			scalerIndex: 4,
 		},
@@ -278,11 +280,11 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 			targetShardCount: 2,
 			tableName:        testAWSDynamoDBSmallTable,
 			awsRegion:        testAWSDynamoDBStreamsRegion,
-			awsAuthorization: awsAuthorizationMetadata{
-				awsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
-				awsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
-				awsSessionToken:    testAWSDynamoDBStreamsSessionToken,
-				podIdentityOwner:   true,
+			awsAuthorization: awsutils.AuthorizationMetadata{
+				AwsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
+				AwsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
+				AwsSessionToken:    testAWSDynamoDBStreamsSessionToken,
+				PodIdentityOwner:   true,
 			},
 			scalerIndex: 5,
 		},
@@ -330,9 +332,9 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 			targetShardCount: 2,
 			tableName:        testAWSDynamoDBSmallTable,
 			awsRegion:        testAWSDynamoDBStreamsRegion,
-			awsAuthorization: awsAuthorizationMetadata{
-				awsRoleArn:       testAWSDynamoDBStreamsRoleArn,
-				podIdentityOwner: true,
+			awsAuthorization: awsutils.AuthorizationMetadata{
+				AwsRoleArn:       testAWSDynamoDBStreamsRoleArn,
+				PodIdentityOwner: true,
 			},
 			scalerIndex: 7,
 		},
@@ -350,8 +352,8 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 			targetShardCount: 2,
 			tableName:        testAWSDynamoDBSmallTable,
 			awsRegion:        testAWSDynamoDBStreamsRegion,
-			awsAuthorization: awsAuthorizationMetadata{
-				podIdentityOwner: false,
+			awsAuthorization: awsutils.AuthorizationMetadata{
+				PodIdentityOwner: false,
 			},
 			scalerIndex: 8,
 		},

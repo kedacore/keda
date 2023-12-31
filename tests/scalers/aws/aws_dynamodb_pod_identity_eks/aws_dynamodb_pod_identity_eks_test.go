@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package aws_dynamodb_pod_identity_test
+package aws_dynamodb_pod_identity_eks_test
 
 import (
 	"context"
@@ -28,7 +28,7 @@ import (
 var _ = godotenv.Load("../../../.env")
 
 const (
-	testName = "aws-dynamodb-pod-identity-test"
+	testName = "aws-dynamodb-pod-identity-eks-test"
 )
 
 type templateData struct {
@@ -53,7 +53,7 @@ metadata:
   namespace: {{.TestNamespace}}
 spec:
   podIdentity:
-    provider: aws
+    provider: aws-eks
 `
 
 	deploymentTemplate = `

@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package aws_kinesis_stream_pod_identity_test
+package aws_sqs_queue_pod_identity_eks_test
 
 import (
 	"context"
@@ -9,13 +9,11 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/kinesis"
-	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
@@ -27,7 +25,7 @@ import (
 var _ = godotenv.Load("../../../.env")
 
 const (
-	testName = "aws-kinesis-stream-pod-identity-test"
+	testName = "aws-sqs-queue-pod-identity-eks-test"
 )
 
 type templateData struct {
@@ -38,7 +36,7 @@ type templateData struct {
 	AwsAccessKeyID     string
 	AwsSecretAccessKey string
 	AwsRegion          string
-	KinesisStream      string
+	SqsQueue           string
 }
 
 const (
@@ -49,7 +47,7 @@ metadata:
   namespace: {{.TestNamespace}}
 spec:
   podIdentity:
-    provider: aws
+    provider: aws-eks
 `
 
 	deploymentTemplate = `
@@ -91,20 +89,15 @@ spec:
   maxReplicaCount: 2
   minReplicaCount: 0
   cooldownPeriod: 1
-  advanced:
-    horizontalPodAutoscalerConfig:
-      behavior:
-        scaleDown:
-          stabilizationWindowSeconds: 15
   triggers:
-    - type: aws-kinesis-stream
+    - type: aws-sqs-queue
       authenticationRef:
         name: keda-trigger-auth-aws-credentials
       metadata:
         awsRegion: {{.AwsRegion}}
-        streamName: {{.KinesisStream}}
-        shardCount: "3"
-        activationShardCount: "4"
+        queueURL: {{.SqsQueue}}
+        queueLength: "1"
+        activationQueueLength: "5"
         identityOwner: operator
 `
 )
@@ -114,7 +107,7 @@ var (
 	deploymentName     = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName   = fmt.Sprintf("%s-so", testName)
 	secretName         = fmt.Sprintf("%s-secret", testName)
-	kinesisStreamName  = fmt.Sprintf("kinesis-identity-%d", GetRandomNumber())
+	sqsQueueName       = fmt.Sprintf("queue-identity-%d", GetRandomNumber())
 	awsAccessKeyID     = os.Getenv("TF_AWS_ACCESS_KEY")
 	awsSecretAccessKey = os.Getenv("TF_AWS_SECRET_KEY")
 	awsRegion          = os.Getenv("TF_AWS_REGION")
@@ -122,106 +115,93 @@ var (
 	minReplicaCount    = 0
 )
 
-func TestKiensisScaler(t *testing.T) {
-	// setup kinesis
-	kinesisClient := createKinesisClient()
-	createKinesisStream(t, kinesisClient)
+func TestSqsScaler(t *testing.T) {
+	// setup SQS
+	sqsClient := createSqsClient()
+	queue := createSqsQueue(t, sqsClient)
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
-	data, templates := getTemplateData()
+	data, templates := getTemplateData(*queue.QueueUrl)
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
-		"replica count should be %d after 1 minute", minReplicaCount)
+		"replica count should be 0 after 1 minute")
 
 	// test scaling
-	testActivation(t, kc, kinesisClient)
-	testScaleOut(t, kc, kinesisClient)
-	testScaleIn(t, kc, kinesisClient)
+	testActivation(t, kc, sqsClient, queue.QueueUrl)
+	testScaleOut(t, kc, sqsClient, queue.QueueUrl)
+	testScaleIn(t, kc, sqsClient, queue.QueueUrl)
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
-	cleanupStream(t, kinesisClient)
+	cleanupQueue(t, sqsClient, queue.QueueUrl)
 }
 
-func testActivation(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kinesis.Client) {
+func testActivation(t *testing.T, kc *kubernetes.Clientset, sqsClient *sqs.Client, queueURL *string) {
 	t.Log("--- testing activation ---")
-	updateShardCount(t, kinesisClient, 3)
+	addMessages(t, sqsClient, queueURL, 4)
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kinesis.Client) {
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, sqsClient *sqs.Client, queueURL *string) {
 	t.Log("--- testing scale out ---")
-	updateShardCount(t, kinesisClient, 6)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
-		"replica count should be %d after 3 minutes", maxReplicaCount)
+	addMessages(t, sqsClient, queueURL, 6)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 180, 1),
+		"replica count should be 2 after 3 minutes")
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset, kinesisClient *kinesis.Client) {
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, sqsClient *sqs.Client, queueURL *string) {
 	t.Log("--- testing scale in ---")
-	updateShardCount(t, kinesisClient, 3)
-
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %d after 3 minutes", minReplicaCount)
-}
-
-func updateShardCount(t *testing.T, kinesisClient *kinesis.Client, shardCount int64) {
-	done := waitForStreamActiveStatus(t, kinesisClient)
-	if done {
-		_, err := kinesisClient.UpdateShardCount(context.Background(), &kinesis.UpdateShardCountInput{
-			StreamName:       &kinesisStreamName,
-			TargetShardCount: aws.Int32(int32(shardCount)),
-			ScalingType:      types.ScalingTypeUniformScaling,
-		})
-		assert.NoErrorf(t, err, "cannot update shard count - %s", err)
-	}
-	assert.True(t, true, "failed to update shard count")
-}
-
-func createKinesisStream(t *testing.T, kinesisClient *kinesis.Client) {
-	_, err := kinesisClient.CreateStream(context.Background(), &kinesis.CreateStreamInput{
-		StreamName: &kinesisStreamName,
-		ShardCount: aws.Int32(2),
+	_, err := sqsClient.PurgeQueue(context.Background(), &sqs.PurgeQueueInput{
+		QueueUrl: queueURL,
 	})
-	assert.NoErrorf(t, err, "failed to create stream - %s", err)
-	done := waitForStreamActiveStatus(t, kinesisClient)
-	if !done {
-		assert.True(t, true, "failed to create kinesis")
-	}
+	assert.NoErrorf(t, err, "cannot clear queue - %s", err)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 180, 1),
+		"replica count should be 0 after 3 minutes")
 }
 
-func waitForStreamActiveStatus(t *testing.T, kinesisClient *kinesis.Client) bool {
-	for i := 0; i < 30; i++ {
-		describe, _ := kinesisClient.DescribeStream(context.Background(), &kinesis.DescribeStreamInput{
-			StreamName: &kinesisStreamName,
+func addMessages(t *testing.T, sqsClient *sqs.Client, queueURL *string, messages int) {
+	for i := 0; i < messages; i++ {
+		msg := fmt.Sprintf("Message - %d", i)
+		_, err := sqsClient.SendMessage(context.Background(), &sqs.SendMessageInput{
+			QueueUrl:     queueURL,
+			MessageBody:  aws.String(msg),
+			DelaySeconds: 10,
 		})
-		t.Logf("Waiting for stream ACTIVE status. current status - %s", describe.StreamDescription.StreamStatus)
-		if describe.StreamDescription.StreamStatus == "ACTIVE" {
-			return true
-		}
-		time.Sleep(time.Second * 2)
+		assert.NoErrorf(t, err, "cannot send message - %s", err)
 	}
-	return false
 }
 
-func cleanupStream(t *testing.T, kinesisClient *kinesis.Client) {
+func createSqsQueue(t *testing.T, sqsClient *sqs.Client) *sqs.CreateQueueOutput {
+	queue, err := sqsClient.CreateQueue(context.Background(), &sqs.CreateQueueInput{
+		QueueName: &sqsQueueName,
+		Attributes: map[string]string{
+			"DelaySeconds":           "60",
+			"MessageRetentionPeriod": "86400",
+		}})
+	assert.NoErrorf(t, err, "failed to create queue - %s", err)
+	return queue
+}
+
+func cleanupQueue(t *testing.T, sqsClient *sqs.Client, queueURL *string) {
 	t.Log("--- cleaning up ---")
-	_, err := kinesisClient.DeleteStream(context.Background(), &kinesis.DeleteStreamInput{
-		StreamName: &kinesisStreamName,
+	_, err := sqsClient.DeleteQueue(context.Background(), &sqs.DeleteQueueInput{
+		QueueUrl: queueURL,
 	})
-	assert.NoErrorf(t, err, "cannot delete stream - %s", err)
+	assert.NoErrorf(t, err, "cannot delete queue - %s", err)
 }
 
-func createKinesisClient() *kinesis.Client {
+func createSqsClient() *sqs.Client {
 	configOptions := make([]func(*config.LoadOptions) error, 0)
 	configOptions = append(configOptions, config.WithRegion(awsRegion))
 	cfg, _ := config.LoadDefaultConfig(context.TODO(), configOptions...)
 	cfg.Credentials = credentials.NewStaticCredentialsProvider(awsAccessKeyID, awsSecretAccessKey, "")
-	return kinesis.NewFromConfig(cfg)
+	return sqs.NewFromConfig(cfg)
 }
 
-func getTemplateData() (templateData, []Template) {
+func getTemplateData(sqsQueue string) (templateData, []Template) {
 	return templateData{
 			TestNamespace:      testNamespace,
 			DeploymentName:     deploymentName,
@@ -230,7 +210,7 @@ func getTemplateData() (templateData, []Template) {
 			AwsAccessKeyID:     base64.StdEncoding.EncodeToString([]byte(awsAccessKeyID)),
 			AwsSecretAccessKey: base64.StdEncoding.EncodeToString([]byte(awsSecretAccessKey)),
 			AwsRegion:          awsRegion,
-			KinesisStream:      kinesisStreamName,
+			SqsQueue:           sqsQueue,
 		}, []Template{
 			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},

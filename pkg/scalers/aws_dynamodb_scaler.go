@@ -15,6 +15,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -35,7 +36,7 @@ type awsDynamoDBMetadata struct {
 	indexName                 string
 	targetValue               int64
 	activationTargetValue     int64
-	awsAuthorization          awsAuthorizationMetadata
+	awsAuthorization          awsutils.AuthorizationMetadata
 	scalerIndex               int
 	metricName                string
 }
@@ -170,7 +171,7 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 		meta.activationTargetValue = 0
 	}
 
-	auth, err := getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
+	auth, err := awsutils.GetAwsAuthorization(config.ScalerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +186,7 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 }
 
 func createDynamoDBClient(ctx context.Context, metadata *awsDynamoDBMetadata) (*dynamodb.Client, error) {
-	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
 	if err != nil {
 		return nil, err
 	}
@@ -224,6 +225,7 @@ func (s *awsDynamoDBScaler) GetMetricSpecForScaling(context.Context) []v2.Metric
 }
 
 func (s *awsDynamoDBScaler) Close(context.Context) error {
+	awsutils.ClearAwsConfig(s.metadata.awsAuthorization)
 	return nil
 }
 

@@ -11,6 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
+
+	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
 )
 
 const (
@@ -78,10 +80,10 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 			activationTargetShardCount: 1,
 			streamName:                 testAWSKinesisStreamName,
 			awsRegion:                  testAWSRegion,
-			awsAuthorization: awsAuthorizationMetadata{
-				awsAccessKeyID:     testAWSKinesisAccessKeyID,
-				awsSecretAccessKey: testAWSKinesisSecretAccessKey,
-				podIdentityOwner:   true,
+			awsAuthorization: awsutils.AuthorizationMetadata{
+				AwsAccessKeyID:     testAWSKinesisAccessKeyID,
+				AwsSecretAccessKey: testAWSKinesisSecretAccessKey,
+				PodIdentityOwner:   true,
 			},
 			scalerIndex: 0,
 		},
@@ -103,10 +105,10 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 			streamName:                 testAWSKinesisStreamName,
 			awsRegion:                  testAWSRegion,
 			awsEndpoint:                testAWSEndpoint,
-			awsAuthorization: awsAuthorizationMetadata{
-				awsAccessKeyID:     testAWSKinesisAccessKeyID,
-				awsSecretAccessKey: testAWSKinesisSecretAccessKey,
-				podIdentityOwner:   true,
+			awsAuthorization: awsutils.AuthorizationMetadata{
+				AwsAccessKeyID:     testAWSKinesisAccessKeyID,
+				AwsSecretAccessKey: testAWSKinesisSecretAccessKey,
+				PodIdentityOwner:   true,
 			},
 			scalerIndex: 0,
 		},
@@ -148,10 +150,10 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 			activationTargetShardCount: activationTargetShardCountDefault,
 			streamName:                 testAWSKinesisStreamName,
 			awsRegion:                  testAWSRegion,
-			awsAuthorization: awsAuthorizationMetadata{
-				awsAccessKeyID:     testAWSKinesisAccessKeyID,
-				awsSecretAccessKey: testAWSKinesisSecretAccessKey,
-				podIdentityOwner:   true,
+			awsAuthorization: awsutils.AuthorizationMetadata{
+				AwsAccessKeyID:     testAWSKinesisAccessKeyID,
+				AwsSecretAccessKey: testAWSKinesisSecretAccessKey,
+				PodIdentityOwner:   true,
 			},
 			scalerIndex: 3,
 		},
@@ -169,10 +171,10 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 			targetShardCount: 2,
 			streamName:       testAWSKinesisStreamName,
 			awsRegion:        testAWSRegion,
-			awsAuthorization: awsAuthorizationMetadata{
-				awsAccessKeyID:     testAWSKinesisAccessKeyID,
-				awsSecretAccessKey: testAWSKinesisSecretAccessKey,
-				podIdentityOwner:   true,
+			awsAuthorization: awsutils.AuthorizationMetadata{
+				AwsAccessKeyID:     testAWSKinesisAccessKeyID,
+				AwsSecretAccessKey: testAWSKinesisSecretAccessKey,
+				PodIdentityOwner:   true,
 			},
 			scalerIndex: 4,
 		},
@@ -221,11 +223,11 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 			targetShardCount: 2,
 			streamName:       testAWSKinesisStreamName,
 			awsRegion:        testAWSRegion,
-			awsAuthorization: awsAuthorizationMetadata{
-				awsAccessKeyID:     testAWSKinesisAccessKeyID,
-				awsSecretAccessKey: testAWSKinesisSecretAccessKey,
-				awsSessionToken:    testAWSKinesisSessionToken,
-				podIdentityOwner:   true,
+			awsAuthorization: awsutils.AuthorizationMetadata{
+				AwsAccessKeyID:     testAWSKinesisAccessKeyID,
+				AwsSecretAccessKey: testAWSKinesisSecretAccessKey,
+				AwsSessionToken:    testAWSKinesisSessionToken,
+				PodIdentityOwner:   true,
 			},
 			scalerIndex: 5,
 		},
@@ -273,9 +275,9 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 			targetShardCount: 2,
 			streamName:       testAWSKinesisStreamName,
 			awsRegion:        testAWSRegion,
-			awsAuthorization: awsAuthorizationMetadata{
-				awsRoleArn:       testAWSKinesisRoleArn,
-				podIdentityOwner: true,
+			awsAuthorization: awsutils.AuthorizationMetadata{
+				AwsRoleArn:       testAWSKinesisRoleArn,
+				PodIdentityOwner: true,
 			},
 			scalerIndex: 7,
 		},
@@ -293,8 +295,8 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 			targetShardCount: 2,
 			streamName:       testAWSKinesisStreamName,
 			awsRegion:        testAWSRegion,
-			awsAuthorization: awsAuthorizationMetadata{
-				podIdentityOwner: false,
+			awsAuthorization: awsutils.AuthorizationMetadata{
+				PodIdentityOwner: false,
 			},
 			scalerIndex: 8,
 		},

@@ -11,6 +11,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -44,7 +45,7 @@ type awsKinesisStreamMetadata struct {
 	streamName                 string
 	awsRegion                  string
 	awsEndpoint                string
-	awsAuthorization           awsAuthorizationMetadata
+	awsAuthorization           awsutils.AuthorizationMetadata
 	scalerIndex                int
 }
 
@@ -116,7 +117,7 @@ func parseAwsKinesisStreamMetadata(config *ScalerConfig, logger logr.Logger) (*a
 		meta.awsEndpoint = val
 	}
 
-	auth, err := getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
+	auth, err := awsutils.GetAwsAuthorization(config.ScalerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +130,7 @@ func parseAwsKinesisStreamMetadata(config *ScalerConfig, logger logr.Logger) (*a
 }
 
 func createKinesisClient(ctx context.Context, metadata *awsKinesisStreamMetadata) (*kinesis.Client, error) {
-	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
 	if err != nil {
 		return nil, err
 	}
@@ -141,6 +142,7 @@ func createKinesisClient(ctx context.Context, metadata *awsKinesisStreamMetadata
 }
 
 func (s *awsKinesisStreamScaler) Close(context.Context) error {
+	awsutils.ClearAwsConfig(s.metadata.awsAuthorization)
 	return nil
 }
 
