@@ -36,6 +36,8 @@ type CassandraMetadata struct {
 	targetQueryValue           int64
 	activationTargetQueryValue int64
 	scalerIndex                int
+	sslCertPath                string
+	sslKeyPath                 string
 }
 
 // NewCassandraScaler creates a new Cassandra scaler.
@@ -169,6 +171,12 @@ func newCassandraSession(meta *CassandraMetadata, logger logr.Logger) (*gocql.Se
 	cluster.Authenticator = gocql.PasswordAuthenticator{
 		Username: meta.username,
 		Password: meta.password,
+	}
+	if meta.sslCertPath != "" && meta.sslKeyPath != "" {
+		cluster.SslOpts = &gocql.SslOptions{
+			CertPath: meta.sslCertPath,
+			KeyPath:  meta.sslKeyPath,
+		}
 	}
 
 	session, err := cluster.CreateSession()
