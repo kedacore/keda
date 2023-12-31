@@ -1,0 +1,6 @@
+name: keda
+deployable_type: image
+lifecycle_status: development
+cx_metadata:
+  cx_feature_id: cap
+  cx_service_rnd_owner_id: cap
