@@ -281,7 +281,7 @@ deploy: install ## Deploy controller to the K8s cluster specified in ~/.kube/con
 	fi
 	if [ "$(AWS_RUN_IDENTITY_TESTS)" = true ]; then \
 		cd config/service_account && \
-		$(KUSTOMIZE) edit add annotation --force eks.amazonaws.com/role-arn:arn:aws:iam::${TF_AWS_ACCOUNT_ID}:role/${TEST_CLUSTER_NAME}-role; \
+		$(KUSTOMIZE) edit add annotation --force eks.amazonaws.com/role-arn:${TF_AWS_KEDA_ROLE}; \
 	fi
 	if [ "$(GCP_RUN_IDENTITY_TESTS)" = true ]; then \
 		cd config/service_account && \

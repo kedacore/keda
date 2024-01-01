@@ -144,7 +144,7 @@ var (
 	awsSecretAccessKey    = os.Getenv("TF_AWS_SECRET_KEY")
 	awsRegion             = os.Getenv("TF_AWS_REGION")
 	awsWorkload1RoleArn   = os.Getenv("TF_AWS_WORKLOAD1_ROLE")
-	awsWorkload2RoleArn   = fmt.Sprintf("arn:aws:iam::%s:role/workload-2-%s-role", os.Getenv("TF_AWS_ACCOUNT_ID"), os.Getenv("TEST_CLUSTER_NAME"))
+	awsWorkload2RoleArn   = os.Getenv("TF_AWS_WORKLOAD2_ROLE")
 	maxReplicaCount       = 1
 	minReplicaCount       = 0
 	sqsMessageCount       = 2
