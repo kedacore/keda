@@ -53,7 +53,7 @@ require (
 	github.com/gophercloud/gophercloud v1.6.0
 	github.com/hashicorp/vault/api v1.10.0
 	github.com/influxdata/influxdb-client-go/v2 v2.12.3
-	github.com/jackc/pgx/v5 v5.4.3
+	github.com/jackc/pgx/v5 v5.5.1
 	github.com/joho/godotenv v1.5.1
 	github.com/microsoft/ApplicationInsights-Go v0.4.4
 	github.com/microsoft/azure-devops-go-api/azuredevops v1.0.0-b5
@@ -108,6 +108,8 @@ require (
 	sigs.k8s.io/custom-metrics-apiserver v1.28.0
 	sigs.k8s.io/kustomize/kustomize/v5 v5.1.1
 )
+
+require github.com/jackc/puddle/v2 v2.2.1 // indirect
 
 replace (
 	// we need a version with license
