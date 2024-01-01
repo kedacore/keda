@@ -86,7 +86,7 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v0.44.0
 	go.opentelemetry.io/otel/metric v1.21.0
 	golang.org/x/oauth2 v0.12.0
-	golang.org/x/sync v0.3.0
+	golang.org/x/sync v0.4.0
 	google.golang.org/api v0.142.0
 	google.golang.org/grpc v1.59.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.3.0
@@ -106,8 +106,10 @@ require (
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20230924163057-bb09db8522fe
 	sigs.k8s.io/controller-tools v0.13.0
 	sigs.k8s.io/custom-metrics-apiserver v1.28.0
-	sigs.k8s.io/kustomize/kustomize/v5 v5.1.1
+	sigs.k8s.io/kustomize/kustomize/v5 v5.3.0
 )
+
+require gopkg.in/evanphx/json-patch.v5 v5.6.0 // indirect
 
 replace (
 	// we need a version with license
@@ -236,7 +238,7 @@ require (
 	github.com/hashicorp/go-sockaddr v1.0.2 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/imdario/mergo v0.3.12 // indirect
+	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/influxdata/line-protocol v0.0.0-20210922203350-b1ad95c89adf // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -312,14 +314,14 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/crypto v0.14.0 // indirect
-	golang.org/x/exp v0.0.0-20220827204233-334a2380cb91 // indirect
-	golang.org/x/mod v0.12.0 // indirect
+	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
+	golang.org/x/mod v0.13.0 // indirect
 	golang.org/x/net v0.18.0 // indirect
 	golang.org/x/sys v0.14.0 // indirect
 	golang.org/x/term v0.13.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.13.0 // indirect
+	golang.org/x/tools v0.14.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
@@ -335,9 +337,9 @@ require (
 	k8s.io/kms v0.28.2 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.1.2 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
-	sigs.k8s.io/kustomize/api v0.14.0 // indirect
-	sigs.k8s.io/kustomize/cmd/config v0.11.3 // indirect
-	sigs.k8s.io/kustomize/kyaml v0.14.3 // indirect
+	sigs.k8s.io/kustomize/api v0.16.0 // indirect
+	sigs.k8s.io/kustomize/cmd/config v0.13.0 // indirect
+	sigs.k8s.io/kustomize/kyaml v0.16.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
-	sigs.k8s.io/yaml v1.3.0 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
 )

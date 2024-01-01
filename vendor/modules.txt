@@ -814,7 +814,7 @@ github.com/hashicorp/hcl/json/token
 # github.com/hashicorp/vault/api v1.10.0
 ## explicit; go 1.19
 github.com/hashicorp/vault/api
-# github.com/imdario/mergo v0.3.12
+# github.com/imdario/mergo v0.3.13
 ## explicit; go 1.13
 github.com/imdario/mergo
 # github.com/inconshreveable/mousetrap v1.1.0
@@ -1506,13 +1506,13 @@ golang.org/x/crypto/pkcs12/internal/rc2
 golang.org/x/crypto/salsa20/salsa
 golang.org/x/crypto/scrypt
 golang.org/x/crypto/sha3
-# golang.org/x/exp v0.0.0-20220827204233-334a2380cb91
-## explicit; go 1.18
+# golang.org/x/exp v0.0.0-20231006140011-7918f672742d
+## explicit; go 1.20
 golang.org/x/exp/constraints
 golang.org/x/exp/maps
 golang.org/x/exp/slices
-# golang.org/x/mod v0.12.0
-## explicit; go 1.17
+# golang.org/x/mod v0.13.0
+## explicit; go 1.18
 golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/modfile
 golang.org/x/mod/module
@@ -1544,7 +1544,7 @@ golang.org/x/oauth2/google/internal/externalaccount
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
-# golang.org/x/sync v0.3.0
+# golang.org/x/sync v0.4.0
 ## explicit; go 1.17
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
@@ -1596,7 +1596,7 @@ golang.org/x/text/width
 # golang.org/x/time v0.3.0
 ## explicit
 golang.org/x/time/rate
-# golang.org/x/tools v0.13.0
+# golang.org/x/tools v0.14.0
 ## explicit; go 1.18
 golang.org/x/tools/go/ast/astutil
 golang.org/x/tools/go/ast/inspector
@@ -1793,6 +1793,9 @@ google.golang.org/protobuf/types/known/structpb
 google.golang.org/protobuf/types/known/timestamppb
 google.golang.org/protobuf/types/known/wrapperspb
 google.golang.org/protobuf/types/pluginpb
+# gopkg.in/evanphx/json-patch.v5 v5.6.0
+## explicit
+gopkg.in/evanphx/json-patch.v5
 # gopkg.in/inf.v0 v0.9.1
 ## explicit
 gopkg.in/inf.v0
@@ -2599,7 +2602,7 @@ sigs.k8s.io/custom-metrics-apiserver/pkg/registry/external_metrics
 ## explicit; go 1.18
 sigs.k8s.io/json
 sigs.k8s.io/json/internal/golang/encoding/json
-# sigs.k8s.io/kustomize/api v0.14.0
+# sigs.k8s.io/kustomize/api v0.16.0
 ## explicit; go 1.20
 sigs.k8s.io/kustomize/api/filters/annotations
 sigs.k8s.io/kustomize/api/filters/fieldspec
@@ -2620,12 +2623,14 @@ sigs.k8s.io/kustomize/api/filters/suffix
 sigs.k8s.io/kustomize/api/filters/valueadd
 sigs.k8s.io/kustomize/api/hasher
 sigs.k8s.io/kustomize/api/ifc
-sigs.k8s.io/kustomize/api/image
 sigs.k8s.io/kustomize/api/internal/accumulator
 sigs.k8s.io/kustomize/api/internal/builtins
 sigs.k8s.io/kustomize/api/internal/generators
 sigs.k8s.io/kustomize/api/internal/git
+sigs.k8s.io/kustomize/api/internal/image
+sigs.k8s.io/kustomize/api/internal/konfig/builtinpluginconsts
 sigs.k8s.io/kustomize/api/internal/kusterr
+sigs.k8s.io/kustomize/api/internal/loader
 sigs.k8s.io/kustomize/api/internal/localizer
 sigs.k8s.io/kustomize/api/internal/plugins/builtinconfig
 sigs.k8s.io/kustomize/api/internal/plugins/builtinhelpers
@@ -2637,17 +2642,16 @@ sigs.k8s.io/kustomize/api/internal/target
 sigs.k8s.io/kustomize/api/internal/utils
 sigs.k8s.io/kustomize/api/internal/validate
 sigs.k8s.io/kustomize/api/konfig
-sigs.k8s.io/kustomize/api/konfig/builtinpluginconsts
 sigs.k8s.io/kustomize/api/krusty
 sigs.k8s.io/kustomize/api/krusty/localizer
 sigs.k8s.io/kustomize/api/kv
-sigs.k8s.io/kustomize/api/loader
+sigs.k8s.io/kustomize/api/pkg/loader
 sigs.k8s.io/kustomize/api/provenance
 sigs.k8s.io/kustomize/api/provider
 sigs.k8s.io/kustomize/api/resmap
 sigs.k8s.io/kustomize/api/resource
 sigs.k8s.io/kustomize/api/types
-# sigs.k8s.io/kustomize/cmd/config v0.11.3
+# sigs.k8s.io/kustomize/cmd/config v0.13.0
 ## explicit; go 1.20
 sigs.k8s.io/kustomize/cmd/config/completion
 sigs.k8s.io/kustomize/cmd/config/configcobra
@@ -2658,7 +2662,7 @@ sigs.k8s.io/kustomize/cmd/config/internal/generateddocs/api
 sigs.k8s.io/kustomize/cmd/config/internal/generateddocs/commands
 sigs.k8s.io/kustomize/cmd/config/internal/generateddocs/tutorials
 sigs.k8s.io/kustomize/cmd/config/runner
-# sigs.k8s.io/kustomize/kustomize/v5 v5.1.1
+# sigs.k8s.io/kustomize/kustomize/v5 v5.3.0
 ## explicit; go 1.20
 sigs.k8s.io/kustomize/kustomize/v5
 sigs.k8s.io/kustomize/kustomize/v5/commands
@@ -2677,7 +2681,7 @@ sigs.k8s.io/kustomize/kustomize/v5/commands/openapi
 sigs.k8s.io/kustomize/kustomize/v5/commands/openapi/fetch
 sigs.k8s.io/kustomize/kustomize/v5/commands/openapi/info
 sigs.k8s.io/kustomize/kustomize/v5/commands/version
-# sigs.k8s.io/kustomize/kyaml v0.14.3
+# sigs.k8s.io/kustomize/kyaml v0.16.0
 ## explicit; go 1.20
 sigs.k8s.io/kustomize/kyaml/comments
 sigs.k8s.io/kustomize/kyaml/errors
@@ -2688,7 +2692,6 @@ sigs.k8s.io/kustomize/kyaml/fn/runtime/container
 sigs.k8s.io/kustomize/kyaml/fn/runtime/exec
 sigs.k8s.io/kustomize/kyaml/fn/runtime/runtimeutil
 sigs.k8s.io/kustomize/kyaml/fn/runtime/starlark
-sigs.k8s.io/kustomize/kyaml/internal/forked/github.com/go-yaml/yaml
 sigs.k8s.io/kustomize/kyaml/internal/forked/github.com/qri-io/starlib/util
 sigs.k8s.io/kustomize/kyaml/kio
 sigs.k8s.io/kustomize/kyaml/kio/filters
@@ -2722,9 +2725,11 @@ sigs.k8s.io/structured-merge-diff/v4/merge
 sigs.k8s.io/structured-merge-diff/v4/schema
 sigs.k8s.io/structured-merge-diff/v4/typed
 sigs.k8s.io/structured-merge-diff/v4/value
-# sigs.k8s.io/yaml v1.3.0
+# sigs.k8s.io/yaml v1.4.0
 ## explicit; go 1.12
 sigs.k8s.io/yaml
+sigs.k8s.io/yaml/goyaml.v2
+sigs.k8s.io/yaml/goyaml.v3
 # github.com/chzyer/logex => github.com/chzyer/logex v1.2.1
 # github.com/dgrijalva/jwt-go => github.com/golang-jwt/jwt/v4 v4.1.0
 # golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
