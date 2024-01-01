@@ -955,9 +955,9 @@ github.com/mattn/go-isatty
 # github.com/mattn/go-runewidth v0.0.14
 ## explicit; go 1.9
 github.com/mattn/go-runewidth
-# github.com/matttproud/golang_protobuf_extensions v1.0.4
-## explicit; go 1.9
-github.com/matttproud/golang_protobuf_extensions/pbutil
+# github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0
+## explicit; go 1.19
+github.com/matttproud/golang_protobuf_extensions/v2/pbutil
 # github.com/microsoft/ApplicationInsights-Go v0.4.4
 ## explicit; go 1.12
 github.com/microsoft/ApplicationInsights-Go/appinsights
@@ -1107,8 +1107,8 @@ github.com/pkg/errors
 # github.com/pmezard/go-difflib v1.0.0
 ## explicit
 github.com/pmezard/go-difflib/difflib
-# github.com/prometheus/client_golang v1.16.0
-## explicit; go 1.17
+# github.com/prometheus/client_golang v1.18.0
+## explicit; go 1.19
 github.com/prometheus/client_golang/api
 github.com/prometheus/client_golang/api/prometheus/v1
 github.com/prometheus/client_golang/prometheus
@@ -1117,16 +1117,17 @@ github.com/prometheus/client_golang/prometheus/internal
 github.com/prometheus/client_golang/prometheus/promhttp
 github.com/prometheus/client_golang/prometheus/testutil
 github.com/prometheus/client_golang/prometheus/testutil/promlint
-# github.com/prometheus/client_model v0.4.0
-## explicit; go 1.18
+github.com/prometheus/client_golang/prometheus/testutil/promlint/validations
+# github.com/prometheus/client_model v0.5.0
+## explicit; go 1.19
 github.com/prometheus/client_model/go
-# github.com/prometheus/common v0.44.0
-## explicit; go 1.18
+# github.com/prometheus/common v0.45.0
+## explicit; go 1.20
 github.com/prometheus/common/config
 github.com/prometheus/common/expfmt
 github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg
 github.com/prometheus/common/model
-# github.com/prometheus/procfs v0.10.1
+# github.com/prometheus/procfs v0.12.0
 ## explicit; go 1.19
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
@@ -1549,7 +1550,7 @@ golang.org/x/oauth2/jwt
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.14.0
+# golang.org/x/sys v0.15.0
 ## explicit; go 1.18
 golang.org/x/sys/cpu
 golang.org/x/sys/execabs
