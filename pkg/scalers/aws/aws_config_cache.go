@@ -94,16 +94,16 @@ func (a *sharedConfigCache) retrievePodIdentityCredentials(cfg aws.Config, roleA
 	defer cancel()
 	_, err := webIdentityCredentialProvider.Retrieve(ctx)
 	if err != nil {
-		a.logger.V(1).Error(err, "error retreiving arnRole %s via WebIdentity", roleArn)
+		a.logger.V(1).Error(err, fmt.Sprintf("error retreiving arnRole %s via WebIdentity", roleArn))
 		// Fallback to Assume Role
 		assumeRoleCredentialProvider := stscreds.NewAssumeRoleProvider(stsSvc, roleArn, func(options *stscreds.AssumeRoleOptions) {
 			options.RoleSessionName = "KEDA"
 		})
 		cachedProvider = aws.NewCredentialsCache(assumeRoleCredentialProvider)
-		a.logger.V(1).Info("using assume role to retrieve token for arnRole %s", roleArn)
+		a.logger.V(1).Info(fmt.Sprintf("using assume role to retrieve token for arnRole %s", roleArn))
 	} else {
 		cachedProvider = aws.NewCredentialsCache(webIdentityCredentialProvider)
-		a.logger.V(1).Info("using assume web identity role to retrieve token for arnRole %s", roleArn)
+		a.logger.V(1).Info(fmt.Sprintf("using assume web identity role to retrieve token for arnRole %s", roleArn))
 	}
 	return cachedProvider
 }
