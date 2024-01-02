@@ -23,6 +23,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -120,83 +121,75 @@ func NewApacheKafkaScaler(ctx context.Context, config *scalersconfig.ScalerConfi
 
 func parseApacheKafkaAuthParams(config *scalersconfig.ScalerConfig, meta *apacheKafkaMetadata) error {
 	meta.enableTLS = false
-	enableTLS := false
-	if val, ok := config.TriggerMetadata["tls"]; ok {
-		switch val {
-		case stringEnable:
-			enableTLS = true
-		case stringDisable:
-			enableTLS = false
-		default:
-			return fmt.Errorf("error incorrect TLS value given, got %s", val)
-		}
+	var enableTLS bool
+	tlsString, err := getParameterFromConfigV2(config, "tls", true, true, false, true, "disable", reflect.TypeOf(""))
+	if err != nil {
+		return fmt.Errorf("error incorrect TLS value given. %w", err)
 	}
-
-	if val, ok := config.AuthParams["tls"]; ok {
-		val = strings.TrimSpace(val)
-		if enableTLS {
-			return errors.New("unable to set `tls` in both ScaledObject and TriggerAuthentication together")
-		}
-		switch val {
-		case stringEnable:
-			enableTLS = true
-		case stringDisable:
-			enableTLS = false
-		default:
-			return fmt.Errorf("error incorrect TLS value given, got %s", val)
-		}
+	tlsString = strings.TrimSpace(tlsString.(string))
+	switch tlsString.(string) {
+	case stringEnable:
+		enableTLS = true
+	case stringDisable:
+		enableTLS = false
+	default:
+		return fmt.Errorf("error incorrect TLS value given, got %s", tlsString.(string))
 	}
 
 	if enableTLS {
-		certGiven := config.AuthParams["cert"] != ""
-		keyGiven := config.AuthParams["key"] != ""
-		if certGiven && !keyGiven {
+		certGiven, err := getParameterFromConfigV2(config, "cert", false, true, false, true, "", reflect.TypeOf(""))
+		if err != nil {
+			return err
+		}
+		keyGiven, err := getParameterFromConfigV2(config, "key", false, true, false, true, "", reflect.TypeOf(""))
+		if err != nil {
+			return err
+		}
+		if certGiven == "" && keyGiven != "" {
 			return errors.New("key must be provided with cert")
 		}
-		if keyGiven && !certGiven {
+		if keyGiven == "" && certGiven != "" {
 			return errors.New("cert must be provided with key")
 		}
-		meta.ca = config.AuthParams["ca"]
-		meta.cert = config.AuthParams["cert"]
-		meta.key = config.AuthParams["key"]
-		if value, found := config.AuthParams["keyPassword"]; found {
-			meta.keyPassword = value
-		} else {
-			meta.keyPassword = ""
+		ca, err := getParameterFromConfigV2(config, "ca", false, true, false, true, "", reflect.TypeOf(""))
+		if err != nil {
+			return err
 		}
+		meta.ca = ca.(string)
+		meta.cert = certGiven.(string)
+		meta.key = keyGiven.(string)
+		keyPassword, err := getParameterFromConfigV2(config, "keyPassword", false, true, false, true, "", reflect.TypeOf(""))
+		if err != nil {
+			return err
+		}
+		meta.keyPassword = keyPassword.(string)
 		meta.enableTLS = true
 	}
 
 	meta.saslType = KafkaSASLTypeNone
-	var saslAuthType string
-	switch {
-	case config.TriggerMetadata["sasl"] != "":
-		saslAuthType = config.TriggerMetadata["sasl"]
-	default:
-		saslAuthType = ""
-	}
-	if val, ok := config.AuthParams["sasl"]; ok {
-		if saslAuthType != "" {
-			return errors.New("unable to set `sasl` in both ScaledObject and TriggerAuthentication together")
-		}
-		saslAuthType = val
+	saslAuthType, err := getParameterFromConfigV2(config, "sasl", true, true, false, true, "", reflect.TypeOf(""))
+	if err != nil {
+		return err
 	}
 
 	if saslAuthType != "" {
-		saslAuthType = strings.TrimSpace(saslAuthType)
-		switch mode := kafkaSaslType(saslAuthType); mode {
+		saslAuthType = strings.TrimSpace(saslAuthType.(string))
+		switch mode := kafkaSaslType(saslAuthType.(string)); mode {
 		case KafkaSASLTypeMskIam:
 			meta.saslType = mode
-			if val, ok := config.TriggerMetadata["awsEndpoint"]; ok {
-				meta.awsEndpoint = val
+			awsEndpoint, err := getParameterFromConfigV2(config, "awsEndpoint", true, false, false, true, "", reflect.TypeOf(""))
+			if err != nil {
+				return err
+			}
+			if awsEndpoint != "" {
+				meta.awsEndpoint = awsEndpoint.(string)
 			}
 			if !meta.enableTLS {
 				return errors.New("TLS is required for MSK")
 			}
-			if val, ok := config.TriggerMetadata["awsRegion"]; ok && val != "" {
-				meta.awsRegion = val
-			} else {
-				return errors.New("no awsRegion given")
+			awsRegion, err := getParameterFromConfigV2(config, "awsRegion", true, false, false, false, "", reflect.TypeOf(""))
+			if err != nil {
+				return fmt.Errorf("%w. No awsRegion given", err)
 			}
 			auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 			if err != nil {
@@ -208,16 +201,17 @@ func parseApacheKafkaAuthParams(config *scalersconfig.ScalerConfig, meta *apache
 		case KafkaSASLTypeSCRAMSHA256:
 			fallthrough
 		case KafkaSASLTypeSCRAMSHA512:
-			if val, ok := config.AuthParams["username"]; ok {
-				meta.username = strings.TrimSpace(val)
-			} else {
-				return errors.New("no username given")
+			username, err := getParameterFromConfigV2(config, "username", false, true, false, false, "", reflect.TypeOf(""))
+			if err != nil {
+				return fmt.Errorf("%w. No username given", err)
 			}
-			if val, ok := config.AuthParams["password"]; ok {
-				meta.password = strings.TrimSpace(val)
-			} else {
-				return errors.New("no password given")
+			meta.username = strings.TrimSpace(username.(string))
+
+			password, err := getParameterFromConfigV2(config, "password", false, true, false, false, "", reflect.TypeOf(""))
+			if err != nil {
+				return fmt.Errorf("%w. No password given", err)
 			}
+			meta.password = strings.TrimSpace(password.(string))
 		case KafkaSASLTypeOAuthbearer:
 			return errors.New("SASL/OAUTHBEARER is not implemented yet")
 		default:
@@ -230,42 +224,40 @@ func parseApacheKafkaAuthParams(config *scalersconfig.ScalerConfig, meta *apache
 
 func parseApacheKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (apacheKafkaMetadata, error) {
 	meta := apacheKafkaMetadata{}
-	switch {
-	case config.TriggerMetadata["bootstrapServersFromEnv"] != "":
-		meta.bootstrapServers = strings.Split(config.ResolvedEnv[config.TriggerMetadata["bootstrapServersFromEnv"]], ",")
-	case config.TriggerMetadata["bootstrapServers"] != "":
-		meta.bootstrapServers = strings.Split(config.TriggerMetadata["bootstrapServers"], ",")
-	default:
-		return meta, errors.New("no bootstrapServers given")
+	bootstrapServers, err := getParameterFromConfigV2(config, "bootstrapServers", true, false, true, false, "", reflect.TypeOf(""))
+	if err != nil {
+		return meta, fmt.Errorf("no bootstrapServers given. %w", err)
 	}
+	meta.bootstrapServers = strings.Split(bootstrapServers.(string), ",")
 
-	switch {
-	case config.TriggerMetadata["consumerGroupFromEnv"] != "":
-		meta.group = config.ResolvedEnv[config.TriggerMetadata["consumerGroupFromEnv"]]
-	case config.TriggerMetadata["consumerGroup"] != "":
-		meta.group = config.TriggerMetadata["consumerGroup"]
-	default:
-		return meta, errors.New("no consumer group given")
+	consumerGroup, err := getParameterFromConfigV2(config, "consumerGroup", true, false, true, false, "", reflect.TypeOf(""))
+	if err != nil {
+		return meta, fmt.Errorf("no consumer group given. %w", err)
 	}
+	meta.group = consumerGroup.(string)
 
-	switch {
-	case config.TriggerMetadata["topicFromEnv"] != "":
-		meta.topic = strings.Split(config.ResolvedEnv[config.TriggerMetadata["topicFromEnv"]], ",")
-	case config.TriggerMetadata["topic"] != "":
-		meta.topic = strings.Split(config.TriggerMetadata["topic"], ",")
-	default:
+	topic, err := getParameterFromConfigV2(config, "topic", true, false, true, true, "", reflect.TypeOf(""))
+	if err != nil {
+		return meta, err
+	}
+	if topic == "" {
 		meta.topic = []string{}
 		logger.V(1).Info(fmt.Sprintf("consumer group %q has no topics specified, "+
 			"will use all topics subscribed by the consumer group for scaling", meta.group))
+	} else {
+		meta.topic = strings.Split(topic.(string), ",")
 	}
 
 	meta.partitionLimitation = nil
-	partitionLimitationMetadata := strings.TrimSpace(config.TriggerMetadata["partitionLimitation"])
+	partitionLimitationMetadata, err := getParameterFromConfigV2(config, "partitionLimitation", true, false, false, true, "", reflect.TypeOf(""))
+	if err != nil {
+		return meta, err
+	}
 	if partitionLimitationMetadata != "" {
 		if meta.topic == nil || len(meta.topic) == 0 {
 			logger.V(1).Info("no specific topics set, ignoring partitionLimitation setting")
 		} else {
-			pattern := config.TriggerMetadata["partitionLimitation"]
+			pattern := strings.TrimSpace(partitionLimitationMetadata.(string))
 			parsed, err := kedautil.ParseInt32List(pattern)
 			if err != nil {
 				return meta, fmt.Errorf("error parsing in partitionLimitation '%s': %w", pattern, err)
@@ -276,27 +268,27 @@ func parseApacheKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Lo
 	}
 
 	meta.offsetResetPolicy = defaultOffsetResetPolicy
-
-	if config.TriggerMetadata["offsetResetPolicy"] != "" {
-		policy := offsetResetPolicy(config.TriggerMetadata["offsetResetPolicy"])
+	offsetResetPolicyRaw, err := getParameterFromConfigV2(config, "offsetResetPolicy", true, false, false, true, "", reflect.TypeOf(""))
+	if err != nil {
+		return meta, err
+	}
+	if offsetResetPolicyRaw != "" {
+		policy := offsetResetPolicy(offsetResetPolicyRaw.(string))
 		if policy != earliest && policy != latest {
-			return meta, fmt.Errorf("err offsetResetPolicy policy %q given", policy)
+			return meta, fmt.Errorf("err offsetResetPolicy policy %q given", offsetResetPolicyRaw)
 		}
 		meta.offsetResetPolicy = policy
 	}
 
 	meta.lagThreshold = defaultKafkaLagThreshold
-
-	if val, ok := config.TriggerMetadata[lagThresholdMetricName]; ok {
-		t, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return meta, fmt.Errorf("error parsing %q: %w", lagThresholdMetricName, err)
-		}
-		if t <= 0 {
-			return meta, fmt.Errorf("%q must be positive number", lagThresholdMetricName)
-		}
-		meta.lagThreshold = t
+	lagThreshold, err := getParameterFromConfigV2(config, lagThresholdMetricName, true, false, false, true, defaultKafkaLagThreshold, reflect.TypeOf(64))
+	if err != nil {
+		return meta, err
 	}
+	if lagThreshold.(int) <= 0 {
+		return meta, fmt.Errorf("%q must be positive number", lagThresholdMetricName)
+	}
+	meta.lagThreshold = int64(lagThreshold.(int))
 
 	meta.activationLagThreshold = defaultKafkaActivationLagThreshold
 
