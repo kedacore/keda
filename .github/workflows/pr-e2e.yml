@@ -182,7 +182,7 @@ jobs:
           TEST_CLUSTER_NAME: keda-e2e-cluster-pr
 
       - name: React to comment with success
-        uses: dkershner6/reaction-action@v1
+        uses: dkershner6/reaction-action@v2
         if: steps.test.outcome == 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -200,7 +200,7 @@ jobs:
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
       - name: React to comment with failure
-        uses: dkershner6/reaction-action@v1
+        uses: dkershner6/reaction-action@v2
         if: steps.test.outcome != 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

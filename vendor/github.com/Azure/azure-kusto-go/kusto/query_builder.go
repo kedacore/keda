@@ -8,6 +8,7 @@ These provide injection safe querying for data retrieval and insertion.
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Azure/azure-kusto-go/kusto/kql"
 	"math/big"
 	"sort"
 	"strings"
@@ -183,7 +184,7 @@ func (p ParamType) string() string {
 			return p.name + ":string"
 		}
 		v := p.Default.(string)
-		return fmt.Sprintf(`%s:string = "%s"`, p.name, v) // TODO - escape the string when we have the functionaity
+		return fmt.Sprintf(`%s:string = %s`, p.name, kql.QuoteString(v, false))
 	case types.Timespan:
 		if p.Default == nil {
 			return p.name + ":timespan"

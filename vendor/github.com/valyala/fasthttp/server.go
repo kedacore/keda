@@ -19,11 +19,8 @@ import (
 
 var errNoCertOrKeyProvided = errors.New("cert or key has not provided")
 
-var (
-	// ErrAlreadyServing is returned when calling Serve on a Server
-	// that is already serving connections.
-	ErrAlreadyServing = errors.New("Server is already serving connections")
-)
+// Deprecated: ErrAlreadyServing is never returned from Serve. See issue #633.
+var ErrAlreadyServing = errors.New("Server is already serving connections")
 
 // ServeConn serves HTTP requests from the given connection
 // using the given handler.
@@ -130,7 +127,7 @@ func ListenAndServeTLSEmbed(addr string, certData, keyData []byte, handler Reque
 // RequestHandler must process incoming requests.
 //
 // RequestHandler must call ctx.TimeoutError() before returning
-// if it keeps references to ctx and/or its' members after the return.
+// if it keeps references to ctx and/or its members after the return.
 // Consider wrapping RequestHandler into TimeoutHandler if response time
 // must be limited.
 type RequestHandler func(ctx *RequestCtx)
@@ -148,7 +145,7 @@ type ServeHandler func(c net.Conn) error
 //
 // It is safe to call Server methods from concurrently running goroutines.
 type Server struct {
-	noCopy noCopy //nolint:unused,structcheck
+	noCopy noCopy
 
 	// Handler for processing incoming requests.
 	//
@@ -377,12 +374,12 @@ type Server struct {
 	// which will close it when needed.
 	KeepHijackedConns bool
 
-	// CloseOnShutdown when true adds a `Connection: close` header when when the server is shutting down.
+	// CloseOnShutdown when true adds a `Connection: close` header when the server is shutting down.
 	CloseOnShutdown bool
 
 	// StreamRequestBody enables request body streaming,
 	// and calls the handler sooner when given body is
-	// larger then the current limit.
+	// larger than the current limit.
 	StreamRequestBody bool
 
 	// ConnState specifies an optional callback function that is
@@ -406,7 +403,7 @@ type Server struct {
 	// instead.
 	TLSConfig *tls.Config
 
-	// FormValueFunc, which is used by RequestCtx.FormValue and support for customising
+	// FormValueFunc, which is used by RequestCtx.FormValue and support for customizing
 	// the behaviour of the RequestCtx.FormValue function.
 	//
 	// NetHttpFormValueFunc gives a FormValueFunc func implementation that is consistent with net/http.
@@ -552,11 +549,12 @@ func CompressHandlerLevel(h RequestHandler, level int) RequestHandler {
 func CompressHandlerBrotliLevel(h RequestHandler, brotliLevel, otherLevel int) RequestHandler {
 	return func(ctx *RequestCtx) {
 		h(ctx)
-		if ctx.Request.Header.HasAcceptEncodingBytes(strBr) {
+		switch {
+		case ctx.Request.Header.HasAcceptEncodingBytes(strBr):
 			ctx.Response.brotliBody(brotliLevel) //nolint:errcheck
-		} else if ctx.Request.Header.HasAcceptEncodingBytes(strGzip) {
+		case ctx.Request.Header.HasAcceptEncodingBytes(strGzip):
 			ctx.Response.gzipBody(otherLevel) //nolint:errcheck
-		} else if ctx.Request.Header.HasAcceptEncodingBytes(strDeflate) {
+		case ctx.Request.Header.HasAcceptEncodingBytes(strDeflate):
 			ctx.Response.deflateBody(otherLevel) //nolint:errcheck
 		}
 	}
@@ -567,7 +565,7 @@ func CompressHandlerBrotliLevel(h RequestHandler, brotliLevel, otherLevel int) R
 // It is forbidden copying RequestCtx instances.
 //
 // RequestHandler should avoid holding references to incoming RequestCtx and/or
-// its' members after the return.
+// its members after the return.
 // If holding RequestCtx references after the return is unavoidable
 // (for instance, ctx is passed to a separate goroutine and ctx lifetime cannot
 // be controlled), then the RequestHandler MUST call ctx.TimeoutError()
@@ -577,7 +575,7 @@ func CompressHandlerBrotliLevel(h RequestHandler, brotliLevel, otherLevel int) R
 // running goroutines. The only exception is TimeoutError*, which may be called
 // while other goroutines accessing RequestCtx.
 type RequestCtx struct {
-	noCopy noCopy //nolint:unused,structcheck
+	noCopy noCopy
 
 	// Incoming request.
 	//
@@ -1003,7 +1001,7 @@ func (ctx *RequestCtx) PostArgs() *Args {
 	return ctx.Request.PostArgs()
 }
 
-// MultipartForm returns requests's multipart form.
+// MultipartForm returns request's multipart form.
 //
 // Returns ErrNoMultipartForm if request's content-type
 // isn't 'multipart/form-data'.
@@ -1234,7 +1232,7 @@ func (ctx *RequestCtx) RemoteAddr() net.Addr {
 
 // SetRemoteAddr sets remote address to the given value.
 //
-// Set nil value to resore default behaviour for using
+// Set nil value to restore default behaviour for using
 // connection remote address.
 func (ctx *RequestCtx) SetRemoteAddr(remoteAddr net.Addr) {
 	ctx.remoteAddr = remoteAddr
@@ -1480,7 +1478,7 @@ func (ctx *RequestCtx) SetBodyStream(bodyStream io.Reader, bodySize int) {
 // SetBodyStreamWriter registers the given stream writer for populating
 // response body.
 //
-// Access to RequestCtx and/or its' members is forbidden from sw.
+// Access to RequestCtx and/or its members is forbidden from sw.
 //
 // This function may be used in the following cases:
 //
@@ -1680,14 +1678,13 @@ func (s *Server) ListenAndServeTLSEmbed(addr string, certData, keyData []byte) e
 // the function will use previously added TLS configuration.
 func (s *Server) ServeTLS(ln net.Listener, certFile, keyFile string) error {
 	s.mu.Lock()
-	err := s.AppendCert(certFile, keyFile)
-	if err != nil && err != errNoCertOrKeyProvided {
-		s.mu.Unlock()
-		return err
-	}
-	if s.TLSConfig == nil {
-		s.mu.Unlock()
-		return errNoCertOrKeyProvided
+	s.configTLS()
+	configHasCert := len(s.TLSConfig.Certificates) > 0 || s.TLSConfig.GetCertificate != nil
+	if !configHasCert || certFile != "" || keyFile != "" {
+		if err := s.AppendCert(certFile, keyFile); err != nil {
+			s.mu.Unlock()
+			return err
+		}
 	}
 
 	// BuildNameToCertificate has been deprecated since 1.14.
@@ -1709,15 +1706,13 @@ func (s *Server) ServeTLS(ln net.Listener, certFile, keyFile string) error {
 // the function will use previously added TLS configuration.
 func (s *Server) ServeTLSEmbed(ln net.Listener, certData, keyData []byte) error {
 	s.mu.Lock()
-
-	err := s.AppendCertEmbed(certData, keyData)
-	if err != nil && err != errNoCertOrKeyProvided {
-		s.mu.Unlock()
-		return err
-	}
-	if s.TLSConfig == nil {
-		s.mu.Unlock()
-		return errNoCertOrKeyProvided
+	s.configTLS()
+	configHasCert := len(s.TLSConfig.Certificates) > 0 || s.TLSConfig.GetCertificate != nil
+	if !configHasCert || len(certData) != 0 || len(keyData) != 0 {
+		if err := s.AppendCertEmbed(certData, keyData); err != nil {
+			s.mu.Unlock()
+			return err
+		}
 	}
 
 	// BuildNameToCertificate has been deprecated since 1.14.
@@ -1791,15 +1786,12 @@ func (s *Server) Serve(ln net.Listener) error {
 	maxWorkersCount := s.getConcurrency()
 
 	s.mu.Lock()
-	{
-		s.ln = append(s.ln, ln)
-		if s.done == nil {
-			s.done = make(chan struct{})
-		}
-
-		if s.concurrencyCh == nil {
-			s.concurrencyCh = make(chan struct{}, maxWorkersCount)
-		}
+	s.ln = append(s.ln, ln)
+	if s.done == nil {
+		s.done = make(chan struct{})
+	}
+	if s.concurrencyCh == nil {
+		s.concurrencyCh = make(chan struct{}, maxWorkersCount)
 	}
 	s.mu.Unlock()
 
@@ -1864,7 +1856,7 @@ func (s *Server) Serve(ln net.Listener) error {
 // When Shutdown is called, Serve, ListenAndServe, and ListenAndServeTLS immediately return nil.
 // Make sure the program doesn't exit and waits instead for Shutdown to return.
 //
-// Shutdown does not close keepalive connections so its recommended to set ReadTimeout and IdleTimeout to something else than 0.
+// Shutdown does not close keepalive connections so it's recommended to set ReadTimeout and IdleTimeout to something else than 0.
 func (s *Server) Shutdown() error {
 	return s.ShutdownWithContext(context.Background())
 }
@@ -1875,7 +1867,7 @@ func (s *Server) Shutdown() error {
 // When ShutdownWithContext is called, Serve, ListenAndServe, and ListenAndServeTLS immediately return nil.
 // Make sure the program doesn't exit and waits instead for Shutdown to return.
 //
-// ShutdownWithContext does not close keepalive connections so its recommended to set ReadTimeout and IdleTimeout to something else than 0.
+// ShutdownWithContext does not close keepalive connections so it's recommended to set ReadTimeout and IdleTimeout to something else than 0.
 func (s *Server) ShutdownWithContext(ctx context.Context) (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -1930,9 +1922,6 @@ func acceptConn(s *Server, ln net.Listener, lastPerIPErrorTime *time.Time) (net.
 	for {
 		c, err := ln.Accept()
 		if err != nil {
-			if c != nil {
-				panic("BUG: net.Listener returned non-nil conn and non-nil error")
-			}
 			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 				s.logger().Printf("Timeout error when accepting new connections: %v", netErr)
 				time.Sleep(time.Second)
@@ -1944,18 +1933,15 @@ func acceptConn(s *Server, ln net.Listener, lastPerIPErrorTime *time.Time) (net.
 			}
 			return nil, io.EOF
 		}
-		if c == nil {
-			panic("BUG: net.Listener returned (nil, nil)")
-		}
 
 		if tc, ok := c.(*net.TCPConn); ok && s.TCPKeepalive {
 			if err := tc.SetKeepAlive(s.TCPKeepalive); err != nil {
-				tc.Close() //nolint:errcheck
+				_ = tc.Close()
 				return nil, err
 			}
 			if s.TCPKeepalivePeriod > 0 {
 				if err := tc.SetKeepAlivePeriod(s.TCPKeepalivePeriod); err != nil {
-					tc.Close() //nolint:errcheck
+					_ = tc.Close()
 					return nil, err
 				}
 			}
@@ -2226,7 +2212,7 @@ func (s *Server) serveConn(c net.Conn) (err error) {
 
 			// Reading Headers.
 			//
-			// If we have pipline response in the outgoing buffer,
+			// If we have pipeline response in the outgoing buffer,
 			// we only want to try and read the next headers once.
 			// If we have to wait for the next request we flush the
 			// outgoing buffer first so it doesn't have to wait.
@@ -2253,11 +2239,12 @@ func (s *Server) serveConn(c net.Conn) (err error) {
 							panic(fmt.Sprintf("BUG: error in SetReadDeadline(%v): %v", deadline, err))
 						}
 					}
-					if reqConf.MaxRequestBodySize > 0 {
+					switch {
+					case reqConf.MaxRequestBodySize > 0:
 						maxRequestBodySize = reqConf.MaxRequestBodySize
-					} else if s.MaxRequestBodySize > 0 {
+					case s.MaxRequestBodySize > 0:
 						maxRequestBodySize = s.MaxRequestBodySize
-					} else {
+					default:
 						maxRequestBodySize = DefaultMaxRequestBodySize
 					}
 					if reqConf.WriteTimeout > 0 {
@@ -2564,9 +2551,7 @@ func (c *hijackConn) Close() error {
 		return nil
 	}
 
-	conn := c.Conn
-	c.s.releaseHijackConn(c)
-	return conn.Close()
+	return c.Conn.Close()
 }
 
 // LastTimeoutErrorResponse returns the last timeout response set
@@ -2579,7 +2564,7 @@ func (ctx *RequestCtx) LastTimeoutErrorResponse() *Response {
 
 func writeResponse(ctx *RequestCtx, w *bufio.Writer) error {
 	if ctx.timeoutResponse != nil {
-		panic("BUG: cannot write timed out response")
+		return errors.New("cannot write timed out response")
 	}
 	err := ctx.Response.Write(w)
 
@@ -2597,8 +2582,8 @@ func acquireByteReader(ctxP **RequestCtx) (*bufio.Reader, error) {
 	c := ctx.c
 	s.releaseCtx(ctx)
 
-	// Make GC happy, so it could garbage collect ctx
-	// while we waiting for the next request.
+	// Make GC happy, so it could garbage collect ctx while we wait for the
+	// next request.
 	ctx = nil
 	*ctxP = nil
 
@@ -2613,6 +2598,7 @@ func acquireByteReader(ctxP **RequestCtx) (*bufio.Reader, error) {
 		return nil, io.EOF
 	}
 	if n != 1 {
+		// developer sanity-check
 		panic("BUG: Reader must return at least one byte")
 	}
 
@@ -2788,19 +2774,23 @@ func (fa *fakeAddrer) LocalAddr() net.Addr {
 }
 
 func (fa *fakeAddrer) Read(p []byte) (int, error) {
+	// developer sanity-check
 	panic("BUG: unexpected Read call")
 }
 
 func (fa *fakeAddrer) Write(p []byte) (int, error) {
+	// developer sanity-check
 	panic("BUG: unexpected Write call")
 }
 
 func (fa *fakeAddrer) Close() error {
+	// developer sanity-check
 	panic("BUG: unexpected Close call")
 }
 
 func (s *Server) releaseCtx(ctx *RequestCtx) {
 	if ctx.timeoutResponse != nil {
+		// developer sanity-check
 		panic("BUG: cannot release timed out RequestCtx")
 	}
 

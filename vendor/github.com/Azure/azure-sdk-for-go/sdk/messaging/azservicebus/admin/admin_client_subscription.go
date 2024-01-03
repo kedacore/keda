@@ -97,6 +97,12 @@ type SubscriptionRuntimeProperties struct {
 
 // CreateSubscriptionResponse contains response fields for Client.CreateSubscription
 type CreateSubscriptionResponse struct {
+	// SubscriptionName is the name of the subscription.
+	SubscriptionName string
+
+	// TopicName is the name of the topic for this subscription.
+	TopicName string
+
 	SubscriptionProperties
 }
 
@@ -121,12 +127,20 @@ func (ac *Client) CreateSubscription(ctx context.Context, topicName string, subs
 	}
 
 	return CreateSubscriptionResponse{
+		SubscriptionName:       subscriptionName,
+		TopicName:              topicName,
 		SubscriptionProperties: *newProps,
 	}, nil
 }
 
 // GetSubscriptionResponse contains response fields for Client.GetSubscription
 type GetSubscriptionResponse struct {
+	// SubscriptionName is the name of the subscription.
+	SubscriptionName string
+
+	// TopicName is the name of the topic for this subscription.
+	TopicName string
+
 	SubscriptionProperties
 }
 
@@ -152,12 +166,20 @@ func (ac *Client) GetSubscription(ctx context.Context, topicName string, subscri
 	}
 
 	return &GetSubscriptionResponse{
+		SubscriptionName:       subscriptionName,
+		TopicName:              topicName,
 		SubscriptionProperties: item.SubscriptionProperties,
 	}, nil
 }
 
 // GetSubscriptionRuntimePropertiesResponse contains response fields for Client.GetSubscriptionRuntimeProperties
 type GetSubscriptionRuntimePropertiesResponse struct {
+	// TopicName is the name of the topic.
+	TopicName string
+
+	// SubscriptionName is the name of the subscription.
+	SubscriptionName string
+
 	SubscriptionRuntimeProperties
 }
 
@@ -183,6 +205,8 @@ func (ac *Client) GetSubscriptionRuntimeProperties(ctx context.Context, topicNam
 	}
 
 	return &GetSubscriptionRuntimePropertiesResponse{
+		TopicName:                     topicName,
+		SubscriptionName:              subscriptionName,
 		SubscriptionRuntimeProperties: item.SubscriptionRuntimeProperties,
 	}, nil
 }
@@ -197,7 +221,10 @@ type ListSubscriptionsOptions struct {
 type SubscriptionPropertiesItem struct {
 	SubscriptionProperties
 
-	TopicName        string
+	// TopicName is the name of the topic.
+	TopicName string
+
+	// SubscriptionName is the name of the subscription.
 	SubscriptionName string
 }
 
@@ -252,7 +279,10 @@ type ListSubscriptionsRuntimePropertiesOptions struct {
 type SubscriptionRuntimePropertiesItem struct {
 	SubscriptionRuntimeProperties
 
-	TopicName        string
+	// TopicName is the name of the topic.
+	TopicName string
+
+	// SubscriptionName is the name of the subscription.
 	SubscriptionName string
 }
 
@@ -299,6 +329,12 @@ func (ac *Client) NewListSubscriptionsRuntimePropertiesPager(topicName string, o
 
 // UpdateSubscriptionResponse contains the response fields for Client.UpdateSubscription
 type UpdateSubscriptionResponse struct {
+	// TopicName is the name of the topic.
+	TopicName string
+
+	// SubscriptionName is the name of the subscription.
+	SubscriptionName string
+
 	SubscriptionProperties
 }
 
@@ -316,6 +352,8 @@ func (ac *Client) UpdateSubscription(ctx context.Context, topicName string, subs
 	}
 
 	return UpdateSubscriptionResponse{
+		TopicName:              topicName,
+		SubscriptionName:       subscriptionName,
 		SubscriptionProperties: *newProps,
 	}, nil
 }

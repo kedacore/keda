@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"go.mongodb.org/mongo-driver/internal"
+	"go.mongodb.org/mongo-driver/internal/httputil"
 	"golang.org/x/crypto/ocsp"
 )
 
@@ -33,7 +33,7 @@ func newConfig(certChain []*x509.Certificate, opts *VerifyOptions) (config, erro
 	}
 
 	if cfg.httpClient == nil {
-		cfg.httpClient = internal.DefaultHTTPClient
+		cfg.httpClient = httputil.DefaultHTTPClient
 	}
 
 	if len(certChain) == 0 {

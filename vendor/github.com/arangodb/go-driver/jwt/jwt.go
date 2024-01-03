@@ -57,6 +57,30 @@ func CreateArangodJwtAuthorizationHeader(jwtSecret, serverID string) (string, er
 	return "bearer " + signedToken, nil
 }
 
+// CreateArangodJwtAuthorizationHeader calculates a JWT authorization header, for authorization
+// of a request to an arangod server, based on the given secret.
+// If the secret is empty, nothing is done.
+// Use the result of this function as input for driver.RawAuthentication.
+func CreateArangodJwtAuthorizationToken(jwtSecret, serverID string) (string, error) {
+	if jwtSecret == "" || serverID == "" {
+		return "", nil
+	}
+	// Create a new token object, specifying signing method and the claims
+	// you would like it to contain.
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"iss":       issArangod,
+		"server_id": serverID,
+	})
+
+	// Sign and get the complete encoded token as a string using the secret
+	signedToken, err := token.SignedString([]byte(jwtSecret))
+	if err != nil {
+		return "", driver.WithStack(err)
+	}
+
+	return signedToken, nil
+}
+
 // CreateArangodJwtAuthorizationHeaderAllowedPaths calculates a JWT authorization header, for authorization
 // of a request to an arangod server, based on the given secret.
 // If the secret is empty, nothing is done.

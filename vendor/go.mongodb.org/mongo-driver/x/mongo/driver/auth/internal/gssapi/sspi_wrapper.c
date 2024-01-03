@@ -69,7 +69,7 @@ int sspi_client_init(
     if (username) {
         if (password) {
             SEC_WINNT_AUTH_IDENTITY auth_identity;
-            
+
         #ifdef _UNICODE
             auth_identity.Flags = SEC_WINNT_AUTH_IDENTITY_UNICODE;
         #else
@@ -186,7 +186,7 @@ int sspi_client_wrap_msg(
     PVOID input,
     ULONG input_length,
     PVOID* output,
-    ULONG* output_length 
+    ULONG* output_length
 )
 {
     SecPkgContext_Sizes sizes;

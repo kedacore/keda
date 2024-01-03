@@ -103,7 +103,7 @@ type ListMessageMoveTasksResultEntry struct {
 
 	// The number of messages to be moved from the source queue. This number is
 	// obtained at the time of starting the message movement task.
-	ApproximateNumberOfMessagesToMove int64
+	ApproximateNumberOfMessagesToMove *int64
 
 	// The ARN of the destination queue if it has been specified in the
 	// StartMessageMoveTask request. If a DestinationArn has not been specified in the
@@ -117,7 +117,7 @@ type ListMessageMoveTasksResultEntry struct {
 	// it has been specified in the StartMessageMoveTask request. If a
 	// MaxNumberOfMessagesPerSecond has not been specified in the StartMessageMoveTask
 	// request, this field value will be NULL.
-	MaxNumberOfMessagesPerSecond int32
+	MaxNumberOfMessagesPerSecond *int32
 
 	// The ARN of the queue that contains the messages to be moved to another queue.
 	SourceArn *string

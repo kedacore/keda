@@ -179,5 +179,5 @@ func (s *gcpCloudTasksScaler) getMetrics(ctx context.Context, metricType string)
 
 	// Cloud Tasks metrics are collected every 60 seconds so no need to aggregate them.
 	// See: https://cloud.google.com/monitoring/api/metrics_gcp#gcp-cloudtasks
-	return s.client.GetMetrics(ctx, filter, s.metadata.projectID, nil)
+	return s.client.GetMetrics(ctx, filter, s.metadata.projectID, nil, nil)
 }

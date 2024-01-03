@@ -10,10 +10,8 @@ import (
 	"io"
 	"math"
 	"net"
-	"reflect"
 	"sync"
 	"time"
-	"unsafe"
 )
 
 // AppendHTMLEscape appends html-escaped s to dst and returns the extended dst.
@@ -81,6 +79,7 @@ func ParseIPv4(dst net.IP, ipStr []byte) (net.IP, error) {
 	copy(dst, net.IPv4zero)
 	dst = dst.To4()
 	if dst == nil {
+		// developer sanity-check
 		panic("BUG: dst must not be nil")
 	}
 
@@ -128,6 +127,7 @@ func ParseHTTPDate(date []byte) (time.Time, error) {
 // AppendUint appends n to dst and returns the extended dst.
 func AppendUint(dst []byte, n int) []byte {
 	if n < 0 {
+		// developer sanity-check
 		panic("BUG: int must be positive")
 	}
 
@@ -204,7 +204,7 @@ func ParseUfloat(buf []byte) (float64, error) {
 	}
 	b := buf
 	var v uint64
-	var offset = 1.0
+	offset := 1.0
 	var pointFound bool
 	for i, c := range b {
 		if c < '0' || c > '9' {
@@ -283,6 +283,7 @@ var hexIntBufPool sync.Pool
 
 func writeHexInt(w *bufio.Writer, n int) error {
 	if n < 0 {
+		// developer sanity-check
 		panic("BUG: int must be positive")
 	}
 
@@ -315,31 +316,6 @@ func lowercaseBytes(b []byte) {
 		p := &b[i]
 		*p = toLowerTable[*p]
 	}
-}
-
-// b2s converts byte slice to a string without memory allocation.
-// See https://groups.google.com/forum/#!msg/Golang-Nuts/ENgbUzYvCuU/90yGx7GUAgAJ .
-//
-// Note it may break if string and/or slice header will change
-// in the future go versions.
-func b2s(b []byte) string {
-	/* #nosec G103 */
-	return *(*string)(unsafe.Pointer(&b))
-}
-
-// s2b converts string to a byte slice without memory allocation.
-//
-// Note it may break if string and/or slice header will change
-// in the future go versions.
-func s2b(s string) (b []byte) {
-	/* #nosec G103 */
-	bh := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-	/* #nosec G103 */
-	sh := (*reflect.StringHeader)(unsafe.Pointer(&s))
-	bh.Data = sh.Data
-	bh.Cap = sh.Len
-	bh.Len = sh.Len
-	return b
 }
 
 // AppendUnquotedArg appends url-decoded src to dst and returns appended dst.

@@ -666,6 +666,11 @@ func (in *SourceStatus) DeepCopyInto(out *SourceStatus) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.SinkAudience != nil {
+		in, out := &in.SinkAudience, &out.SinkAudience
+		*out = new(string)
+		**out = **in
+	}
 	if in.Auth != nil {
 		in, out := &in.Auth, &out.Auth
 		*out = new(AuthStatus)

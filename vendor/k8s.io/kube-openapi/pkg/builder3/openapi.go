@@ -156,9 +156,7 @@ func (o *openAPI) buildRequestBody(parameters []common.Parameter, consumes []str
 			}
 			r := &spec3.RequestBody{
 				RequestBodyProps: spec3.RequestBodyProps{
-					Content:     map[string]*spec3.MediaType{},
-					Description: param.Description(),
-					Required:    param.Required(),
+					Content: map[string]*spec3.MediaType{},
 				},
 			}
 			for _, consume := range consumes {

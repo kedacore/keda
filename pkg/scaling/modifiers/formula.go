@@ -29,7 +29,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/antonmedv/expr"
+	"github.com/expr-lang/expr"
 	"github.com/go-logr/logr"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/metrics/pkg/apis/external_metrics"
