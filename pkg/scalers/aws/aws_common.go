@@ -39,6 +39,10 @@ type awsConfigMetadata struct {
 
 var awsSharedCredentialsCache = newSharedConfigsCache()
 
+// GetAwsConfig returns an *aws.Config for a given AuthorizationMetadata
+// If AuthorizationMetadata uses static credentials or `aws` auth,
+// we recover the *aws.Config from the shared cache. If not, we generate
+// a new entry on each request
 func GetAwsConfig(ctx context.Context, awsRegion string, awsAuthorization AuthorizationMetadata) (*aws.Config, error) {
 	metadata := &awsConfigMetadata{
 		awsRegion:        awsRegion,
@@ -71,6 +75,7 @@ func GetAwsConfig(ctx context.Context, awsRegion string, awsAuthorization Author
 	// END remove when aws-kiam and aws-eks are removed
 }
 
+// GetAwsAuthorization returns an AuthorizationMetadata based on trigger information
 func GetAwsAuthorization(uniqueKey string, podIdentity kedav1alpha1.AuthPodIdentity, triggerMetadata, authParams, resolvedEnv map[string]string) (AuthorizationMetadata, error) {
 	meta := AuthorizationMetadata{
 		TriggerUniqueKey: uniqueKey,
@@ -124,6 +129,7 @@ func GetAwsAuthorization(uniqueKey string, podIdentity kedav1alpha1.AuthPodIdent
 	return meta, nil
 }
 
+// ClearAwsConfig wraps the removal of the config from the cache
 func ClearAwsConfig(awsAuthorization AuthorizationMetadata) {
 	awsSharedCredentialsCache.RemoveCachedEntry(awsAuthorization)
 }

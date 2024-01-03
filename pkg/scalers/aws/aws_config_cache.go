@@ -34,10 +34,14 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+// cacheEntry stores *aws.Config and where is used
 type cacheEntry struct {
 	config *aws.Config
 	usages map[string]bool // Tracks the resources which have requested the cache
 }
+
+// sharedConfigCache is a shared cache for storing all *aws.Config
+// accross all (AWS) triggers
 type sharedConfigCache struct {
 	sync.Mutex
 	items  map[string]cacheEntry
@@ -48,6 +52,8 @@ func newSharedConfigsCache() sharedConfigCache {
 	return sharedConfigCache{items: map[string]cacheEntry{}, logger: logf.Log.WithName("aws_credentials_cache")}
 }
 
+// getCacheKey returns a unique key based on given AuthorizationMetadata.
+// As it can contain sensitive data, the key is hashed to not expose secrets
 func (a *sharedConfigCache) getCacheKey(awsAuthorization AuthorizationMetadata) string {
 	key := "keda"
 	if awsAuthorization.AwsAccessKeyID != "" {
@@ -61,6 +67,11 @@ func (a *sharedConfigCache) getCacheKey(awsAuthorization AuthorizationMetadata) 
 	return hex.EncodeToString(hash[:])
 }
 
+// GetCredentials returns *aws.Config for a given AuthorizationMetadata.
+// The *aws.Config is also cached for next requests with same AuthorizationMetadata,
+// sharing it between all the requests. To track if the *aws.Config is used by whom,
+// every time when an scaler requests *aws.Config we register it inside
+// the cached item.
 func (a *sharedConfigCache) GetCredentials(ctx context.Context, awsRegion string, awsAuthorization AuthorizationMetadata) (*aws.Config, error) {
 	a.Lock()
 	defer a.Unlock()
@@ -97,6 +108,29 @@ func (a *sharedConfigCache) GetCredentials(ctx context.Context, awsRegion string
 	return &cfg, nil
 }
 
+// RemoveCachedEntry removes the usage of an AuthorizationMetadata from the cached item.
+// If there isn't any usage of a given cached item (because there isn't any trigger using the aws.Config),
+// we also remove it from the cache
+func (a *sharedConfigCache) RemoveCachedEntry(awsAuthorization AuthorizationMetadata) {
+	a.Lock()
+	defer a.Unlock()
+	key := a.getCacheKey(awsAuthorization)
+	if cachedEntry, exists := a.items[key]; exists {
+		// Delete the TriggerUniqueKey from usages
+		delete(cachedEntry.usages, awsAuthorization.TriggerUniqueKey)
+
+		// If no more usages, delete the entire entry from the cache
+		if len(cachedEntry.usages) == 0 {
+			delete(a.items, key)
+		} else {
+			a.items[awsAuthorization.AwsRoleArn] = cachedEntry
+		}
+	}
+}
+
+// retrievePodIdentityCredentials returns an *aws.CredentialsCache to assume given roleArn.
+// It tries first to assume the role using WebIdentity (OIDC federation) and if this method fails,
+// it tries to assume the role using KEDA's role (AssumeRole)
 func (a *sharedConfigCache) retrievePodIdentityCredentials(ctx context.Context, cfg aws.Config, roleArn string) *aws.CredentialsCache {
 	stsSvc := sts.NewFromConfig(cfg)
 	webIdentityTokenFile := os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE")
@@ -124,24 +158,10 @@ func (a *sharedConfigCache) retrievePodIdentityCredentials(ctx context.Context, 
 	return cachedProvider
 }
 
+// retrieveStaticCredentials returns an *aws.CredentialsCache for given
+// AuthorizationMetadata (using static credentials). This is used for static
+// authenticatyion via AwsAccessKeyID & AwsAccessKeySecret
 func (*sharedConfigCache) retrieveStaticCredentials(awsAuthorization AuthorizationMetadata) *aws.CredentialsCache {
 	staticCredentialsProvider := aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(awsAuthorization.AwsAccessKeyID, awsAuthorization.AwsSecretAccessKey, awsAuthorization.AwsSessionToken))
 	return staticCredentialsProvider
-}
-
-func (a *sharedConfigCache) RemoveCachedEntry(awsAuthorization AuthorizationMetadata) {
-	a.Lock()
-	defer a.Unlock()
-	key := a.getCacheKey(awsAuthorization)
-	if cachedEntry, exists := a.items[key]; exists {
-		// Delete the TriggerUniqueKey from usages
-		delete(cachedEntry.usages, awsAuthorization.TriggerUniqueKey)
-
-		// If no more usages, delete the entire entry from the cache
-		if len(cachedEntry.usages) == 0 {
-			delete(a.items, key)
-		} else {
-			a.items[awsAuthorization.AwsRoleArn] = cachedEntry
-		}
-	}
 }
