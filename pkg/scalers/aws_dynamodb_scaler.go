@@ -37,7 +37,7 @@ type awsDynamoDBMetadata struct {
 	targetValue               int64
 	activationTargetValue     int64
 	awsAuthorization          awsutils.AuthorizationMetadata
-	scalerIndex               int
+	triggerIndex              int
 	metricName                string
 }
 
@@ -171,15 +171,15 @@ func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error
 		meta.activationTargetValue = 0
 	}
 
-	auth, err := awsutils.GetAwsAuthorization(config.ScalerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
+	auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
 	}
 
 	meta.awsAuthorization = auth
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
-	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex,
+	meta.metricName = GenerateMetricNameWithIndex(config.TriggerIndex,
 		kedautil.NormalizeString(fmt.Sprintf("aws-dynamodb-%s", meta.tableName)))
 
 	return &meta, nil

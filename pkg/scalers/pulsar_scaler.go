@@ -36,9 +36,9 @@ type pulsarMetadata struct {
 
 	pulsarAuth *authentication.AuthMeta
 
-	statsURL    string
-	metricName  string
-	scalerIndex int
+	statsURL     string
+	metricName   string
+	triggerIndex int
 }
 
 const (
@@ -238,7 +238,7 @@ func parsePulsarMetadata(config *ScalerConfig, logger logr.Logger) (pulsarMetada
 		}
 	}
 	meta.pulsarAuth = auth
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return meta, nil
 }
 
@@ -327,7 +327,7 @@ func (s *pulsarScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec 
 
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(s.metadata.metricName)),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(s.metadata.metricName)),
 		},
 		Target: v2.MetricTarget{
 			Type:         v2.AverageValueMetricType,

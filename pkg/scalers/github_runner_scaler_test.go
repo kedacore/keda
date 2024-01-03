@@ -555,7 +555,7 @@ func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_PulledRepos_NoRate(t *testi
 
 type githubRunnerMetricIdentifier struct {
 	metadataTestData *map[string]string
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -567,7 +567,7 @@ var githubRunnerMetricIdentifiers = []githubRunnerMetricIdentifier{
 func TestGithubRunnerGetMetricSpecForScaling(t *testing.T) {
 	for i, testData := range githubRunnerMetricIdentifiers {
 		ctx := context.Background()
-		meta, err := parseGitHubRunnerMetadata(&ScalerConfig{ResolvedEnv: testGitHubRunnerResolvedEnv, TriggerMetadata: *testData.metadataTestData, AuthParams: testAuthParams, ScalerIndex: testData.scalerIndex})
+		meta, err := parseGitHubRunnerMetadata(&ScalerConfig{ResolvedEnv: testGitHubRunnerResolvedEnv, TriggerMetadata: *testData.metadataTestData, AuthParams: testAuthParams, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

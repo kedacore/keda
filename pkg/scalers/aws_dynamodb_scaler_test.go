@@ -190,7 +190,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			expressionAttributeNames:  map[string]string{"#yr": year},
 			expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 			targetValue:               3,
-			scalerIndex:               1,
+			triggerIndex:              1,
 			metricName:                "s1-aws-dynamodb-test",
 			awsAuthorization: awsutils.AuthorizationMetadata{
 				AwsAccessKeyID:     "none",
@@ -220,7 +220,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			expressionAttributeNames:  map[string]string{"#yr": year},
 			expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 			targetValue:               3,
-			scalerIndex:               1,
+			triggerIndex:              1,
 			metricName:                "s1-aws-dynamodb-test",
 			awsAuthorization: awsutils.AuthorizationMetadata{
 				AwsAccessKeyID:     "none",
@@ -250,7 +250,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 			activationTargetValue:     1,
 			targetValue:               3,
-			scalerIndex:               1,
+			triggerIndex:              1,
 			metricName:                "s1-aws-dynamodb-test",
 			awsAuthorization: awsutils.AuthorizationMetadata{
 				AwsAccessKeyID:     "none",
@@ -280,7 +280,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			expressionAttributeNames:  map[string]string{"#yr": year},
 			expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 			targetValue:               3,
-			scalerIndex:               1,
+			triggerIndex:              1,
 			metricName:                "s1-aws-dynamodb-test",
 			awsAuthorization: awsutils.AuthorizationMetadata{
 				AwsAccessKeyID:     "none",
@@ -298,7 +298,7 @@ func TestParseDynamoMetadata(t *testing.T) {
 				TriggerMetadata: tc.metadata,
 				AuthParams:      tc.authParams,
 				ResolvedEnv:     tc.resolvedEnv,
-				ScalerIndex:     1,
+				TriggerIndex:    1,
 			})
 			if tc.expectedError != nil {
 				assert.ErrorContains(t, err, tc.expectedError.Error())

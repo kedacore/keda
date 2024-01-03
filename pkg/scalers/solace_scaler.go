@@ -103,7 +103,7 @@ type SolaceMetadata struct {
 	activationMsgSpoolUsageTarget int // Spool Use Target in Megabytes
 	activationMsgRxRateTarget     int // Ingress Rate Target per consumer in msgs/second
 	// Scaler index
-	scalerIndex int
+	triggerIndex int
 }
 
 // SEMP API Response Root Struct
@@ -262,7 +262,7 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 		return nil, e
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	return &meta, nil
 }
@@ -320,7 +320,7 @@ func (s *SolaceScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec 
 		metricName := kedautil.NormalizeString(fmt.Sprintf("solace-%s-%s", s.metadata.queueName, solaceTriggermsgcount))
 		externalMetric := &v2.ExternalMetricSource{
 			Metric: v2.MetricIdentifier{
-				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
+				Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 			},
 			Target: GetMetricTarget(s.metricType, s.metadata.msgCountTarget),
 		}
@@ -332,7 +332,7 @@ func (s *SolaceScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec 
 		metricName := kedautil.NormalizeString(fmt.Sprintf("solace-%s-%s", s.metadata.queueName, solaceTriggermsgspoolusage))
 		externalMetric := &v2.ExternalMetricSource{
 			Metric: v2.MetricIdentifier{
-				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
+				Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 			},
 			Target: GetMetricTarget(s.metricType, s.metadata.msgSpoolUsageTarget),
 		}
@@ -344,7 +344,7 @@ func (s *SolaceScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec 
 		metricName := kedautil.NormalizeString(fmt.Sprintf("solace-%s-%s", s.metadata.queueName, solaceTriggermsgrxrate))
 		externalMetric := &v2.ExternalMetricSource{
 			Metric: v2.MetricIdentifier{
-				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
+				Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 			},
 			Target: GetMetricTarget(s.metricType, s.metadata.msgRxRateTarget),
 		}

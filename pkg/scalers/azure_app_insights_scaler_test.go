@@ -257,11 +257,11 @@ func TestNewAzureAppInsightsScaler(t *testing.T) {
 }
 
 func TestAzureAppInsightsGetMetricSpecForScaling(t *testing.T) {
-	scalerIndex := 0
+	triggerIndex := 0
 	for _, testData := range azureAppInsightsScalerData {
 		ctx := context.Background()
 		if !testData.isError {
-			testData.config.ScalerIndex = scalerIndex
+			testData.config.TriggerIndex = triggerIndex
 			meta, err := parseAzureAppInsightsMetadata(&testData.config, logr.Discard())
 			if err != nil {
 				t.Fatal("Could not parse metadata:", err)
@@ -273,11 +273,11 @@ func TestAzureAppInsightsGetMetricSpecForScaling(t *testing.T) {
 
 			metricSpec := mockAzureAppInsightsScaler.GetMetricSpecForScaling(ctx)
 			metricName := metricSpec[0].External.Metric.Name
-			expectedName := fmt.Sprintf("s%d-azure-app-insights-%s", scalerIndex, strings.ReplaceAll(testData.config.TriggerMetadata["metricId"], "/", "-"))
+			expectedName := fmt.Sprintf("s%d-azure-app-insights-%s", triggerIndex, strings.ReplaceAll(testData.config.TriggerMetadata["metricId"], "/", "-"))
 			if metricName != expectedName {
 				t.Errorf("Wrong External metric name. expected: %s, actual: %s", expectedName, metricName)
 			}
-			scalerIndex++
+			triggerIndex++
 		}
 	}
 }

@@ -62,10 +62,10 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 				ResolvedEnv:             resolvedEnv,
 				AuthParams:              make(map[string]string),
 				GlobalHTTPTimeout:       h.globalHTTPTimeout,
-				ScalerIndex:             triggerIndex,
+				TriggerIndex:            triggerIndex,
 				MetricType:              trigger.MetricType,
 				AsMetricSource:          asMetricSource,
-				ScalerUniqueKey:         fmt.Sprintf("%s-%s-%s-%d", withTriggers.Kind, withTriggers.Namespace, withTriggers.Name, triggerIndex),
+				TriggerUniqueKey:        fmt.Sprintf("%s-%s-%s-%d", withTriggers.Kind, withTriggers.Namespace, withTriggers.Name, triggerIndex),
 			}
 
 			authParams, podIdentity, err := resolver.ResolveAuthRefAndPodIdentity(ctx, h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace, h.secretsLister)
@@ -94,7 +94,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 		scaler, config, err := factory()
 		if err != nil {
 			h.recorder.Event(withTriggers, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
-			logger.Error(err, "error resolving auth params", "scalerIndex", triggerIndex)
+			logger.Error(err, "error resolving auth params", "triggerIndex", triggerIndex)
 			if scaler != nil {
 				scaler.Close(ctx)
 			}

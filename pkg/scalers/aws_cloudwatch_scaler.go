@@ -53,7 +53,7 @@ type awsCloudwatchMetadata struct {
 
 	awsAuthorization awsutils.AuthorizationMetadata
 
-	scalerIndex int
+	triggerIndex int
 }
 
 // NewAwsCloudwatchScaler creates a new awsCloudwatchScaler
@@ -232,13 +232,13 @@ func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, e
 		meta.awsEndpoint = val
 	}
 
-	awsAuthorization, err := awsutils.GetAwsAuthorization(config.ScalerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
+	awsAuthorization, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
 	}
 	meta.awsAuthorization = awsAuthorization
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	return &meta, nil
 }
@@ -305,7 +305,7 @@ func (s *awsCloudwatchScaler) GetMetricsAndActivity(ctx context.Context, metricN
 func (s *awsCloudwatchScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, "aws-cloudwatch"),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, "aws-cloudwatch"),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.targetMetricValue),
 	}

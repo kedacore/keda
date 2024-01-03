@@ -57,7 +57,7 @@ func GetAwsConfig(ctx context.Context, awsRegion string, awsAuthorization Author
 
 func GetAwsAuthorization(uniqueKey string, podIdentity kedav1alpha1.AuthPodIdentity, triggerMetadata, authParams, resolvedEnv map[string]string) (AuthorizationMetadata, error) {
 	meta := AuthorizationMetadata{
-		ScalerUniqueKey: uniqueKey,
+		TriggerUniqueKey: uniqueKey,
 	}
 
 	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAws {

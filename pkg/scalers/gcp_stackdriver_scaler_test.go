@@ -19,7 +19,7 @@ type parseStackdriverMetadataTestData struct {
 
 type gcpStackdriverMetricIdentifier struct {
 	metadataTestData *parseStackdriverMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -76,7 +76,7 @@ func TestStackdriverParseMetadata(t *testing.T) {
 
 func TestGcpStackdriverGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range gcpStackdriverMetricIdentifiers {
-		meta, err := parseStackdriverMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testStackdriverResolvedEnv, ScalerIndex: testData.scalerIndex}, logr.Discard())
+		meta, err := parseStackdriverMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testStackdriverResolvedEnv, TriggerIndex: testData.triggerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

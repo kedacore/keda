@@ -50,7 +50,7 @@ func (a *sharedConfigCache) GetCredentials(ctx context.Context, awsRegion string
 	defer a.Unlock()
 	key := a.getCacheKey(awsAuthorization)
 	if cachedEntry, exists := a.items[key]; exists {
-		cachedEntry.usages[awsAuthorization.ScalerUniqueKey] = true
+		cachedEntry.usages[awsAuthorization.TriggerUniqueKey] = true
 		a.items[key] = cachedEntry
 		return cachedEntry.config, nil
 	}
@@ -73,7 +73,7 @@ func (a *sharedConfigCache) GetCredentials(ctx context.Context, awsRegion string
 	newCacheEntry := cacheEntry{
 		config: &cfg,
 		usages: map[string]bool{
-			awsAuthorization.ScalerUniqueKey: true,
+			awsAuthorization.TriggerUniqueKey: true,
 		},
 	}
 	a.items[key] = newCacheEntry
@@ -118,8 +118,8 @@ func (a *sharedConfigCache) RemoveCachedEntry(awsAuthorization AuthorizationMeta
 	defer a.Unlock()
 	key := a.getCacheKey(awsAuthorization)
 	if cachedEntry, exists := a.items[key]; exists {
-		// Delete the scalerUniqueKey from usages
-		delete(cachedEntry.usages, awsAuthorization.ScalerUniqueKey)
+		// Delete the TriggerUniqueKey from usages
+		delete(cachedEntry.usages, awsAuthorization.TriggerUniqueKey)
 
 		// If no more usages, delete the entire entry from the cache
 		if len(cachedEntry.usages) == 0 {

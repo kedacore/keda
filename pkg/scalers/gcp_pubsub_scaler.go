@@ -44,7 +44,7 @@ type pubsubMetadata struct {
 	resourceType     string
 	resourceName     string
 	gcpAuthorization *gcpAuthorizationMetadata
-	scalerIndex      int
+	triggerIndex     int
 	aggregation      string
 }
 
@@ -140,7 +140,7 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 		return nil, err
 	}
 	meta.gcpAuthorization = auth
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
@@ -160,7 +160,7 @@ func (s *pubsubScaler) Close(context.Context) error {
 func (s *pubsubScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("gcp-ps-%s", s.metadata.resourceName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("gcp-ps-%s", s.metadata.resourceName))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.value),
 	}

@@ -80,7 +80,7 @@ type apacheKafkaMetadata struct {
 	keyPassword string
 	ca          string
 
-	scalerIndex int
+	triggerIndex int
 }
 
 const (
@@ -197,7 +197,7 @@ func parseApacheKafkaAuthParams(config *ScalerConfig, meta *apacheKafkaMetadata)
 			} else {
 				return errors.New("no awsRegion given")
 			}
-			auth, err := awsutils.GetAwsAuthorization(config.ScalerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
+			auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 			if err != nil {
 				return err
 			}
@@ -357,7 +357,7 @@ func parseApacheKafkaMetadata(config *ScalerConfig, logger logr.Logger) (apacheK
 		}
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return meta, nil
 }
 
@@ -582,7 +582,7 @@ func (s *apacheKafkaScaler) GetMetricSpecForScaling(context.Context) []v2.Metric
 
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(metricName)),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(metricName)),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.lagThreshold),
 	}

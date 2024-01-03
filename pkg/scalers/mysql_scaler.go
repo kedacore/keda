@@ -140,7 +140,7 @@ func parseMySQLMetadata(config *ScalerConfig) (*mySQLMetadata, error) {
 	if meta.connectionString != "" {
 		meta.dbName = parseMySQLDbNameFromConnectionStr(meta.connectionString)
 	}
-	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("mysql-%s", meta.dbName)))
+	meta.metricName = GenerateMetricNameWithIndex(config.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("mysql-%s", meta.dbName)))
 
 	return &meta, nil
 }

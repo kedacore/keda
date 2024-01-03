@@ -45,7 +45,7 @@ type lokiMetadata struct {
 	threshold           float64
 	activationThreshold float64
 	lokiAuth            *authentication.AuthMeta
-	scalerIndex         int
+	triggerIndex        int
 	tenantName          string
 	ignoreNullValues    bool
 	unsafeSsl           bool
@@ -151,7 +151,7 @@ func parseLokiMetadata(config *ScalerConfig) (meta *lokiMetadata, err error) {
 		meta.unsafeSsl = unsafeSslValue
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	// parse auth configs from ScalerConfig
 	auth, err := authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
@@ -175,7 +175,7 @@ func (s *lokiScaler) Close(context.Context) error {
 func (s *lokiScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, "loki"),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, "loki"),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}

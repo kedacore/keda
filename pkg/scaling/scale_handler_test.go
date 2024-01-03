@@ -771,8 +771,8 @@ func TestScalingModifiersFormula(t *testing.T) {
 	scaler1 := mock_scalers.NewMockScaler(ctrl)
 	scaler2 := mock_scalers.NewMockScaler(ctrl)
 	// dont use cached metrics
-	scalerConfig1 := scalers.ScalerConfig{TriggerUseCachedMetrics: false, TriggerName: triggerName1, ScalerIndex: 0}
-	scalerConfig2 := scalers.ScalerConfig{TriggerUseCachedMetrics: false, TriggerName: triggerName2, ScalerIndex: 1}
+	scalerConfig1 := scalers.ScalerConfig{TriggerUseCachedMetrics: false, TriggerName: triggerName1, TriggerIndex: 0}
+	scalerConfig2 := scalers.ScalerConfig{TriggerUseCachedMetrics: false, TriggerName: triggerName2, TriggerIndex: 1}
 	factory1 := func() (scalers.Scaler, *scalers.ScalerConfig, error) {
 		return scaler1, &scalerConfig1, nil
 	}

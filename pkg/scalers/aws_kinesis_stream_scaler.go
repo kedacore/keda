@@ -46,7 +46,7 @@ type awsKinesisStreamMetadata struct {
 	awsRegion                  string
 	awsEndpoint                string
 	awsAuthorization           awsutils.AuthorizationMetadata
-	scalerIndex                int
+	triggerIndex               int
 }
 
 // NewAwsKinesisStreamScaler creates a new awsKinesisStreamScaler
@@ -117,14 +117,14 @@ func parseAwsKinesisStreamMetadata(config *ScalerConfig, logger logr.Logger) (*a
 		meta.awsEndpoint = val
 	}
 
-	auth, err := awsutils.GetAwsAuthorization(config.ScalerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
+	auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
 	}
 
 	meta.awsAuthorization = auth
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	return &meta, nil
 }
@@ -149,7 +149,7 @@ func (s *awsKinesisStreamScaler) Close(context.Context) error {
 func (s *awsKinesisStreamScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-kinesis-%s", s.metadata.streamName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-kinesis-%s", s.metadata.streamName))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.targetShardCount),
 	}

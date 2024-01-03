@@ -57,7 +57,7 @@ type metricsAPIScalerMetadata struct {
 	enableBearerAuth bool
 	bearerToken      string
 
-	scalerIndex int
+	triggerIndex int
 }
 
 const (
@@ -96,7 +96,7 @@ func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
 
 func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, error) {
 	meta := metricsAPIScalerMetadata{}
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	meta.unsafeSsl = false
 	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
@@ -267,7 +267,7 @@ func (s *metricsAPIScaler) Close(context.Context) error {
 func (s *metricsAPIScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("metric-api-%s", s.metadata.valueLocation))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("metric-api-%s", s.metadata.valueLocation))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.targetValue),
 	}

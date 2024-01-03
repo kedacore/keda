@@ -13,5 +13,5 @@ type AuthorizationMetadata struct {
 	// rid of the old aws podIdentities
 	UsingPodIdentity bool
 
-	ScalerUniqueKey string
+	TriggerUniqueKey string
 }

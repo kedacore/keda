@@ -20,7 +20,7 @@ type mssqlTestData struct {
 
 type mssqlMetricIdentifier struct {
 	metadataTestData *mssqlTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -163,7 +163,7 @@ func TestMSSQLGetMetricSpecForScaling(t *testing.T) {
 			ResolvedEnv:     testData.metadataTestData.resolvedEnv,
 			TriggerMetadata: testData.metadataTestData.metadata,
 			AuthParams:      testData.metadataTestData.authParams,
-			ScalerIndex:     testData.scalerIndex,
+			TriggerIndex:    testData.triggerIndex,
 		}
 		meta, err := parseMSSQLMetadata(&config)
 		if err != nil {
