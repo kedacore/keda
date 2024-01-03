@@ -80,7 +80,7 @@ func (a *sharedConfigCache) GetCredentials(ctx context.Context, awsRegion string
 
 	if awsAuthorization.UsingPodIdentity {
 		if awsAuthorization.AwsRoleArn != "" {
-			cfg.Credentials = a.retrievePodIdentityCredentials(cfg, awsAuthorization.AwsRoleArn)
+			cfg.Credentials = a.retrievePodIdentityCredentials(ctx, cfg, awsAuthorization.AwsRoleArn)
 		}
 	} else {
 		cfg.Credentials = a.retrieveStaticCredentials(awsAuthorization)
@@ -97,7 +97,7 @@ func (a *sharedConfigCache) GetCredentials(ctx context.Context, awsRegion string
 	return &cfg, nil
 }
 
-func (a *sharedConfigCache) retrievePodIdentityCredentials(cfg aws.Config, roleArn string) *aws.CredentialsCache {
+func (a *sharedConfigCache) retrievePodIdentityCredentials(ctx context.Context, cfg aws.Config, roleArn string) *aws.CredentialsCache {
 	stsSvc := sts.NewFromConfig(cfg)
 	webIdentityTokenFile := os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE")
 
@@ -106,7 +106,7 @@ func (a *sharedConfigCache) retrievePodIdentityCredentials(cfg aws.Config, roleA
 	})
 	var cachedProvider *aws.CredentialsCache
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 	_, err := webIdentityCredentialProvider.Retrieve(ctx)
 	if err != nil {
