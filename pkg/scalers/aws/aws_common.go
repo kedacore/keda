@@ -14,6 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+/*
+This file contains the logic for parsing trigger information into
+a common AuthorizationMetadata. This also contains the logic for
+getting *aws.Config from a given AuthorizationMetadata, recovering
+from the cache if it's a method which supports caching.
+*/
+
 package aws
 
 import (

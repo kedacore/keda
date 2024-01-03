@@ -14,6 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+/*
+This file contains all the logic for caching aws.Config across all the (AWS)
+triggers. The first time when an aws.Config is requested, it's cached based on
+the authentication info (roleArn, Key&Secret, keda itself) and it's returned
+every time when an aws.Config is requested for the same authentication info.
+This is required because if we don't cache and share them, each scaler
+generates and refresh it's own token although all the tokens grants the same
+permissions
+*/
+
 package aws
 
 import (
@@ -41,7 +51,7 @@ type cacheEntry struct {
 }
 
 // sharedConfigCache is a shared cache for storing all *aws.Config
-// accross all (AWS) triggers
+// across all (AWS) triggers
 type sharedConfigCache struct {
 	sync.Mutex
 	items  map[string]cacheEntry
