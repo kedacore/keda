@@ -69,6 +69,7 @@ Here is an overview of all new **experimental** features:
 - **General**: Support TriggerAuthentication properties from ConfigMap ([#4830](https://github.com/kedacore/keda/issues/4830))
 - **General**: Use client-side round-robin load balancing for grpc calls ([#5224](https://github.com/kedacore/keda/issues/5224))
 - **GCP pubsub scaler**: Support distribution-valued metrics and metrics from topics ([#5070](https://github.com/kedacore/keda/issues/5070))
+- **GCP stackdriver scaler**: Support valueIfNull parameter ([#5345](https://github.com/kedacore/keda/pull/5345))
 - **Hashicorp Vault**: Add support to get secret that needs write operation (e.g. pki) ([#5067](https://github.com/kedacore/keda/issues/5067))
 - **Hashicorp Vault**: Fix operator panic when spec.hashiCorpVault.credential.serviceAccount is not set ([#4964](https://github.com/kedacore/keda/issues/4964))
 - **Hashicorp Vault**: Fix operator panic when using root token to authenticate to vault server ([#5192](https://github.com/kedacore/keda/issues/5192))
