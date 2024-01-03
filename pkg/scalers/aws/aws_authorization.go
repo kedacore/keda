@@ -23,10 +23,12 @@ type AuthorizationMetadata struct {
 	AwsSecretAccessKey string
 	AwsSessionToken    string
 
+	// Deprecated
 	PodIdentityOwner bool
-	// Pod identity owner is confusing
-	// and it'll be removed when we get
-	// rid of the old aws podIdentities
+	// Pod identity owner is confusing and it'll be removed when we get
+	// rid of the old aws podIdentities (aws-eks and aws-kiam) as UsingPodIdentity
+	// replaces it. For more context:
+	// https://github.com/kedacore/keda/pull/5061/#discussion_r1441016441
 	UsingPodIdentity bool
 
 	TriggerUniqueKey string
