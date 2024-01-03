@@ -790,12 +790,12 @@ func (r *Reader) Close() error {
 func (r *Reader) ReadMessage(ctx context.Context) (Message, error) {
 	m, err := r.FetchMessage(ctx)
 	if err != nil {
-		return Message{}, err
+		return Message{}, fmt.Errorf("fetching message: %w", err)
 	}
 
 	if r.useConsumerGroup() {
 		if err := r.CommitMessages(ctx, m); err != nil {
-			return Message{}, err
+			return Message{}, fmt.Errorf("committing message: %w", err)
 		}
 	}
 

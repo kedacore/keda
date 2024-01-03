@@ -1,12 +1,10 @@
-DRIVER_VERSION := 1.6.0
-
 PROJECT := go-driver
 SCRIPTDIR := $(shell pwd)
 
 CURR=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 ROOTDIR:=$(CURR)
 
-GOVERSION ?= 1.20.3
+GOVERSION ?= 1.20.7
 GOIMAGE ?= golang:$(GOVERSION)
 GOV2IMAGE ?= $(GOIMAGE)
 ALPINE_IMAGE ?= alpine:3.17
@@ -175,7 +173,7 @@ run-unit-tests: run-v2-unit-tests
 		-e CGO_ENABLED=$(CGO_ENABLED) \
 		-w /usr/code/ \
 		$(GOIMAGE) \
-		go test $(TESTOPTIONS) $(REPOPATH)/http $(REPOPATH)/agency $(REPOPATH)/vst/protocol
+		go test $(TESTOPTIONS) $(REPOPATH) $(REPOPATH)/http $(REPOPATH)/agency $(REPOPATH)/vst/protocol
 
 run-v2-unit-tests:
 	@$(DOCKER_CMD) \
@@ -491,6 +489,8 @@ tools: __dir_setup
 	@GOBIN=$(TMPDIR)/bin go install github.com/google/addlicense@v1.0.0
 	@echo ">> Fetching govulncheck"
 	@GOBIN=$(TMPDIR)/bin go install golang.org/x/vuln/cmd/govulncheck@v0.1.0
+	@echo ">> Fetching github-release"
+	@GOBIN=$(TMPDIR)/bin go install github.com/github-release/github-release@v0.10.0
 
 .PHONY: license
 license:
@@ -561,7 +561,24 @@ run-v2-tests-resilientsingle-with-auth:
 	@echo "Resilient Single, with authentication, v2"
 	@${MAKE} TEST_MODE="resilientsingle" TEST_AUTH="rootpw" __run_v2_tests
 
-apply-version:
-	@echo "Updating version to: $(DRIVER_VERSION)"
-	@VERSION=$(DRIVER_VERSION) go generate version-driver.go
-	@VERSION=$(DRIVER_VERSION) go generate ./v2/connection/version-driver.go
+GH_RELEASE := $(TMPDIR)/bin/github-release
+RELEASE := $(SCRIPTDIR)/tools/release
+V2_VERSION := ./v2/version/VERSION
+
+release-patch:
+	go run $(RELEASE) -type=patch -github-release=$(GH_RELEASE)
+
+release-minor:
+	go run $(RELEASE) -type=minor -github-release=$(GH_RELEASE)
+
+release-major:
+	go run $(RELEASE) -type=major -github-release=$(GH_RELEASE)
+
+release-v2-patch:
+	go run $(RELEASE) -type=patch -github-release=$(GH_RELEASE) -versionfile=$(V2_VERSION)
+
+release-v2-minor:
+	go run $(RELEASE) -type=minor -github-release=$(GH_RELEASE) -versionfile=$(V2_VERSION)
+
+release-v2-major:
+	go run $(RELEASE) -type=major -github-release=$(GH_RELEASE) -versionfile=$(V2_VERSION)

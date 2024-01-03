@@ -28,7 +28,7 @@ const (
 	defaultHeartbeat         = 10 * time.Second
 	defaultConnectionTimeout = 30 * time.Second
 	defaultProduct           = "AMQP 0.9.1 Client"
-	buildVersion             = "1.8.1"
+	buildVersion             = "1.9.0"
 	platform                 = "golang"
 	// Safer default that makes channel leaks a lot easier to spot
 	// before they create operational headaches. See https://github.com/rabbitmq/rabbitmq-server/issues/1593.
@@ -112,6 +112,8 @@ type Connection struct {
 	blocks   []chan Blocking
 
 	errors chan *Error
+	// if connection is closed should close this chan
+	close chan struct{}
 
 	Config Config // The negotiated Config after connection.open
 
@@ -263,6 +265,7 @@ func Open(conn io.ReadWriteCloser, config Config) (*Connection, error) {
 		rpc:       make(chan message),
 		sends:     make(chan time.Time),
 		errors:    make(chan *Error, 1),
+		close:     make(chan struct{}),
 		deadlines: make(chan readDeadliner, 1),
 	}
 	go c.reader(conn)
@@ -597,6 +600,8 @@ func (c *Connection) shutdown(err *Error) {
 		}
 
 		c.conn.Close()
+		// reader exit
+		close(c.close)
 
 		c.channels = nil
 		c.allocator = nil
@@ -634,15 +639,23 @@ func (c *Connection) dispatch0(f frame) {
 				c <- Blocking{Active: false}
 			}
 		default:
-			c.rpc <- m
+			select {
+			case <-c.close:
+				return
+			case c.rpc <- m:
+			}
+
 		}
 	case *heartbeatFrame:
 		// kthx - all reads reset our deadline.  so we can drop this
 	default:
 		// lolwat - channel0 only responds to methods and heartbeats
-		if err := c.closeWith(ErrUnexpectedFrame); err != nil {
-			Logger.Printf("error sending connectionCloseOk with ErrUnexpectedFrame, error: %+v", err)
-		}
+		// closeWith use call don't block reader
+		go func() {
+			if err := c.closeWith(ErrUnexpectedFrame); err != nil {
+				Logger.Printf("error sending connectionCloseOk with ErrUnexpectedFrame, error: %+v", err)
+			}
+		}()
 	}
 }
 
@@ -689,9 +702,12 @@ func (c *Connection) dispatchClosed(f frame) {
 			// we are already closed, so do nothing
 		default:
 			// unexpected method on closed channel
-			if err := c.closeWith(ErrClosed); err != nil {
-				Logger.Printf("error sending connectionCloseOk with ErrClosed, error: %+v", err)
-			}
+			// closeWith use call don't block reader
+			go func() {
+				if err := c.closeWith(ErrClosed); err != nil {
+					Logger.Printf("error sending connectionCloseOk with ErrClosed, error: %+v", err)
+				}
+			}()
 		}
 	}
 }
@@ -813,13 +829,16 @@ func (c *Connection) allocateChannel() (*Channel, error) {
 
 // releaseChannel removes a channel from the registry as the final part of the
 // channel lifecycle
-func (c *Connection) releaseChannel(id uint16) {
+func (c *Connection) releaseChannel(ch *Channel) {
 	c.m.Lock()
 	defer c.m.Unlock()
 
 	if !c.IsClosed() {
-		delete(c.channels, id)
-		c.allocator.release(int(id))
+		got, ok := c.channels[ch.id]
+		if ok && got == ch {
+			delete(c.channels, ch.id)
+			c.allocator.release(int(ch.id))
+		}
 	}
 }
 
@@ -831,7 +850,7 @@ func (c *Connection) openChannel() (*Channel, error) {
 	}
 
 	if err := ch.open(); err != nil {
-		c.releaseChannel(ch.id)
+		c.releaseChannel(ch)
 		return nil, err
 	}
 	return ch, nil
@@ -842,7 +861,7 @@ func (c *Connection) openChannel() (*Channel, error) {
 // this connection.
 func (c *Connection) closeChannel(ch *Channel, e *Error) {
 	ch.shutdown(e)
-	c.releaseChannel(ch.id)
+	c.releaseChannel(ch)
 }
 
 /*
@@ -863,13 +882,14 @@ func (c *Connection) call(req message, res ...message) error {
 		}
 	}
 
-	msg, ok := <-c.rpc
-	if !ok {
-		err, errorsChanIsOpen := <-c.errors
-		if !errorsChanIsOpen {
-			return ErrClosed
+	var msg message
+	select {
+	case e, ok := <-c.errors:
+		if ok {
+			return e
 		}
-		return err
+		return ErrClosed
+	case msg = <-c.rpc:
 	}
 
 	// Try to match one of the result types

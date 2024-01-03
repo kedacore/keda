@@ -14,7 +14,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsoncodec"
-	"go.mongodb.org/mongo-driver/internal"
+	"go.mongodb.org/mongo-driver/internal/csfle"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
@@ -177,23 +177,29 @@ func (db *Database) processRunCommand(ctx context.Context, cmd interface{},
 	switch cursorCommand {
 	case true:
 		cursorOpts := db.client.createBaseCursorOptions()
+
+		cursorOpts.MarshalValueEncoderFn = newEncoderFn(db.bsonOpts, db.registry)
+
 		op = operation.NewCursorCommand(runCmdDoc, cursorOpts)
 	default:
 		op = operation.NewCommand(runCmdDoc)
 	}
 
-	// TODO(GODRIVER-2649): ReadConcern(db.readConcern) will not actually pass the database's
-	// read concern. Remove this note once readConcern is correctly passed to the operation
-	// level.
 	return op.Session(sess).CommandMonitor(db.client.monitor).
 		ServerSelector(readSelect).ClusterClock(db.client.clock).
-		Database(db.name).Deployment(db.client.deployment).ReadConcern(db.readConcern).
+		Database(db.name).Deployment(db.client.deployment).
 		Crypt(db.client.cryptFLE).ReadPreference(ro.ReadPreference).ServerAPI(db.client.serverAPI).
 		Timeout(db.client.timeout).Logger(db.client.logger), sess, nil
 }
 
-// RunCommand executes the given command against the database. This function does not obey the Database's read
-// preference. To specify a read preference, the RunCmdOptions.ReadPreference option must be used.
+// RunCommand executes the given command against the database.
+//
+// This function does not obey the Database's readPreference. To specify a read
+// preference, the RunCmdOptions.ReadPreference option must be used.
+//
+// This function does not obey the Database's readConcern or writeConcern. A
+// user must supply these values manually in the user-provided runCommand
+// parameter.
 //
 // The runCommand parameter must be a document for the command to be executed. It cannot be nil.
 // This must be an order-preserving type such as bson.D. Map types such as bson.M are not valid.
@@ -254,6 +260,10 @@ func (db *Database) RunCommandCursor(ctx context.Context, runCommand interface{}
 
 	if err = op.Execute(ctx); err != nil {
 		closeImplicitSession(sess)
+		if errors.Is(err, driver.ErrNoCursor) {
+			return nil, errors.New(
+				"database response does not contain a cursor; try using RunCommand instead")
+		}
 		return nil, replaceErrors(err)
 	}
 
@@ -395,6 +405,9 @@ func (db *Database) ListCollections(ctx context.Context, filter interface{}, opt
 		ServerAPI(db.client.serverAPI).Timeout(db.client.timeout)
 
 	cursorOpts := db.client.createBaseCursorOptions()
+
+	cursorOpts.MarshalValueEncoderFn = newEncoderFn(db.bsonOpts, db.registry)
+
 	if lco.NameOnly != nil {
 		op = op.NameOnly(*lco.NameOnly)
 	}
@@ -617,7 +630,7 @@ func (db *Database) createCollectionWithEncryptedFields(ctx context.Context, nam
 	stateCollectionOpts := options.CreateCollection().
 		SetClusteredIndex(bson.D{{"key", bson.D{{"_id", 1}}}, {"unique", true}})
 	// Create ESCCollection.
-	escCollection, err := internal.GetEncryptedStateCollectionName(efBSON, name, internal.EncryptedStateCollection)
+	escCollection, err := csfle.GetEncryptedStateCollectionName(efBSON, name, csfle.EncryptedStateCollection)
 	if err != nil {
 		return err
 	}
@@ -627,7 +640,7 @@ func (db *Database) createCollectionWithEncryptedFields(ctx context.Context, nam
 	}
 
 	// Create ECOCCollection.
-	ecocCollection, err := internal.GetEncryptedStateCollectionName(efBSON, name, internal.EncryptedCompactionCollection)
+	ecocCollection, err := csfle.GetEncryptedStateCollectionName(efBSON, name, csfle.EncryptedCompactionCollection)
 	if err != nil {
 		return err
 	}

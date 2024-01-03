@@ -14,6 +14,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/internal/driverutil"
 	"go.mongodb.org/mongo-driver/internal/logger"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
@@ -113,6 +114,7 @@ func (i *Insert) Execute(ctx context.Context) error {
 		ServerAPI:         i.serverAPI,
 		Timeout:           i.timeout,
 		Logger:            i.logger,
+		Name:              driverutil.InsertOp,
 	}.Execute(ctx)
 
 }

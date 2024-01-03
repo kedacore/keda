@@ -39,7 +39,12 @@ type rttConfig struct {
 }
 
 type rttMonitor struct {
-	mu            sync.RWMutex // mu guards samples, offset, minRTT, averageRTT, and averageRTTSet
+	mu sync.RWMutex // mu guards samples, offset, minRTT, averageRTT, and averageRTTSet
+
+	// connMu guards connecting and disconnecting. This is necessary since
+	// disconnecting will await the cancellation of a started connection. The
+	// use case for rttMonitor.connect needs to be goroutine safe.
+	connMu        sync.Mutex
 	samples       []time.Duration
 	offset        int
 	minRTT        time.Duration
@@ -51,6 +56,7 @@ type rttMonitor struct {
 	cfg      *rttConfig
 	ctx      context.Context
 	cancelFn context.CancelFunc
+	started  bool
 }
 
 var _ driver.RTTMonitor = &rttMonitor{}
@@ -74,19 +80,34 @@ func newRTTMonitor(cfg *rttConfig) *rttMonitor {
 }
 
 func (r *rttMonitor) connect() {
+	r.connMu.Lock()
+	defer r.connMu.Unlock()
+
+	r.started = true
 	r.closeWg.Add(1)
-	go r.start()
+
+	go func() {
+		defer r.closeWg.Done()
+
+		r.start()
+	}()
 }
 
 func (r *rttMonitor) disconnect() {
-	// Signal for the routine to stop.
+	r.connMu.Lock()
+	defer r.connMu.Unlock()
+
+	if !r.started {
+		return
+	}
+
 	r.cancelFn()
+
+	// Wait for the existing connection to complete.
 	r.closeWg.Wait()
 }
 
 func (r *rttMonitor) start() {
-	defer r.closeWg.Done()
-
 	var conn *connection
 	defer func() {
 		if conn != nil {

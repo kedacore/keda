@@ -31,11 +31,11 @@ func (ss *Server) expired(topoDesc topologyDescription) bool {
 		return false
 	}
 
-	if topoDesc.timeoutMinutes <= 0 {
+	if topoDesc.timeoutMinutes == nil || *topoDesc.timeoutMinutes <= 0 {
 		return true
 	}
 	timeUnused := time.Since(ss.LastUsed).Minutes()
-	return timeUnused > float64(topoDesc.timeoutMinutes-1)
+	return timeUnused > float64(*topoDesc.timeoutMinutes-1)
 }
 
 // update the last used time for this session.
