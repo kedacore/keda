@@ -5,12 +5,79 @@
 package mock_eventemitter
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	v1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	eventdata "github.com/kedacore/keda/v2/pkg/eventemitter/eventdata"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	runtime "k8s.io/apimachinery/pkg/runtime"
+	types "k8s.io/apimachinery/pkg/types"
 )
+
+// MockEventHandler is a mock of EventHandler interface.
+type MockEventHandler struct {
+	ctrl     *gomock.Controller
+	recorder *MockEventHandlerMockRecorder
+}
+
+// MockEventHandlerMockRecorder is the mock recorder for MockEventHandler.
+type MockEventHandlerMockRecorder struct {
+	mock *MockEventHandler
+}
+
+// NewMockEventHandler creates a new mock instance.
+func NewMockEventHandler(ctrl *gomock.Controller) *MockEventHandler {
+	mock := &MockEventHandler{ctrl: ctrl}
+	mock.recorder = &MockEventHandlerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockEventHandler) EXPECT() *MockEventHandlerMockRecorder {
+	return m.recorder
+}
+
+// DeleteCloudEventSource mocks base method.
+func (m *MockEventHandler) DeleteCloudEventSource(cloudEventSource *v1alpha1.CloudEventSource) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteCloudEventSource", cloudEventSource)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteCloudEventSource indicates an expected call of DeleteCloudEventSource.
+func (mr *MockEventHandlerMockRecorder) DeleteCloudEventSource(cloudEventSource interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCloudEventSource", reflect.TypeOf((*MockEventHandler)(nil).DeleteCloudEventSource), cloudEventSource)
+}
+
+// Emit mocks base method.
+func (m *MockEventHandler) Emit(object runtime.Object, namesapce types.NamespacedName, eventType, reason, message string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Emit", object, namesapce, eventType, reason, message)
+}
+
+// Emit indicates an expected call of Emit.
+func (mr *MockEventHandlerMockRecorder) Emit(object, namesapce, eventType, reason, message interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Emit", reflect.TypeOf((*MockEventHandler)(nil).Emit), object, namesapce, eventType, reason, message)
+}
+
+// HandleCloudEventSource mocks base method.
+func (m *MockEventHandler) HandleCloudEventSource(ctx context.Context, cloudEventSource *v1alpha1.CloudEventSource) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "HandleCloudEventSource", ctx, cloudEventSource)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// HandleCloudEventSource indicates an expected call of HandleCloudEventSource.
+func (mr *MockEventHandlerMockRecorder) HandleCloudEventSource(ctx, cloudEventSource interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleCloudEventSource", reflect.TypeOf((*MockEventHandler)(nil).HandleCloudEventSource), ctx, cloudEventSource)
+}
 
 // MockEventDataHandler is a mock of EventDataHandler interface.
 type MockEventDataHandler struct {

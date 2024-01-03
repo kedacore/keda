@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/kustomize/api/ifc"
 	"sigs.k8s.io/kustomize/api/kv"
-	"sigs.k8s.io/kustomize/api/loader"
+	ldrhelper "sigs.k8s.io/kustomize/api/pkg/loader"
 	"sigs.k8s.io/kustomize/api/resource"
 	"sigs.k8s.io/kustomize/kustomize/v5/commands/edit/add"
 	"sigs.k8s.io/kustomize/kustomize/v5/commands/edit/fix"
@@ -43,12 +43,13 @@ func NewCmdEdit(
 	c.AddCommand(
 		add.NewCmdAdd(
 			fSys,
-			kv.NewLoader(loader.NewFileLoaderAtCwd(fSys), v),
+			kv.NewLoader(ldrhelper.NewFileLoaderAtCwd(fSys), v),
 			rf),
 		set.NewCmdSet(
 			fSys,
-			kv.NewLoader(loader.NewFileLoaderAtCwd(fSys), v),
-			v),
+			kv.NewLoader(ldrhelper.NewFileLoaderAtCwd(fSys), v),
+			v,
+			rf),
 		fix.NewCmdFix(fSys, w),
 		remove.NewCmdRemove(fSys, v),
 		listbuiltin.NewCmdListBuiltinPlugin(),

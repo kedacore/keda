@@ -24,8 +24,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/vm"
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"

@@ -25,3 +25,11 @@ To attach DLV debugger run tests with `DEBUG=true` flag e.g.:
 ```shell
 DEBUG=true TESTOPTIONS="-test.run TestResponseHeader -test.v" make run-tests-single-json-with-auth
 ```
+
+# Release Instructions
+
+1. Update CHANGELOG.md
+2. Make sure that GitHub access token exist in `~/.arangodb/github-token` and has read/write access for this repo.
+3. Run `make release-patch|minor|major` to create a release.
+   - To release v2 version, use `make release-v2-patch|minor|major`.
+4. Go To GitHub and fill the description with the content of CHANGELOG.md

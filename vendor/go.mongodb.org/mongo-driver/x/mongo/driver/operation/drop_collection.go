@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/internal/driverutil"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
@@ -102,6 +103,7 @@ func (dc *DropCollection) Execute(ctx context.Context) error {
 		WriteConcern:      dc.writeConcern,
 		ServerAPI:         dc.serverAPI,
 		Timeout:           dc.timeout,
+		Name:              driverutil.DropOp,
 	}.Execute(ctx)
 
 }

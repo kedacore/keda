@@ -9900,6 +9900,15 @@ func awsAwsjson10_deserializeDocumentExportDescription(v **types.ExportDescripti
 				}
 			}
 
+		case "ExportType":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected ExportType to be of type string, got %T instead", value)
+				}
+				sv.ExportType = types.ExportType(jtv)
+			}
+
 		case "FailureCode":
 			if value != nil {
 				jtv, ok := value.(string)
@@ -9916,6 +9925,11 @@ func awsAwsjson10_deserializeDocumentExportDescription(v **types.ExportDescripti
 					return fmt.Errorf("expected FailureMessage to be of type string, got %T instead", value)
 				}
 				sv.FailureMessage = ptr.String(jtv)
+			}
+
+		case "IncrementalExportSpecification":
+			if err := awsAwsjson10_deserializeDocumentIncrementalExportSpecification(&sv.IncrementalExportSpecification, value); err != nil {
+				return err
 			}
 
 		case "ItemCount":
@@ -10131,6 +10145,15 @@ func awsAwsjson10_deserializeDocumentExportSummary(v **types.ExportSummary, valu
 					return fmt.Errorf("expected ExportStatus to be of type string, got %T instead", value)
 				}
 				sv.ExportStatus = types.ExportStatus(jtv)
+			}
+
+		case "ExportType":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected ExportType to be of type string, got %T instead", value)
+				}
+				sv.ExportType = types.ExportType(jtv)
 			}
 
 		default:
@@ -11261,6 +11284,78 @@ func awsAwsjson10_deserializeDocumentImportTableDescription(v **types.ImportTabl
 					return fmt.Errorf("expected TableId to be of type string, got %T instead", value)
 				}
 				sv.TableId = ptr.String(jtv)
+			}
+
+		default:
+			_, _ = key, value
+
+		}
+	}
+	*v = sv
+	return nil
+}
+
+func awsAwsjson10_deserializeDocumentIncrementalExportSpecification(v **types.IncrementalExportSpecification, value interface{}) error {
+	if v == nil {
+		return fmt.Errorf("unexpected nil of type %T", v)
+	}
+	if value == nil {
+		return nil
+	}
+
+	shape, ok := value.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("unexpected JSON type %v", value)
+	}
+
+	var sv *types.IncrementalExportSpecification
+	if *v == nil {
+		sv = &types.IncrementalExportSpecification{}
+	} else {
+		sv = *v
+	}
+
+	for key, value := range shape {
+		switch key {
+		case "ExportFromTime":
+			if value != nil {
+				switch jtv := value.(type) {
+				case json.Number:
+					f64, err := jtv.Float64()
+					if err != nil {
+						return err
+					}
+					sv.ExportFromTime = ptr.Time(smithytime.ParseEpochSeconds(f64))
+
+				default:
+					return fmt.Errorf("expected ExportFromTime to be a JSON Number, got %T instead", value)
+
+				}
+			}
+
+		case "ExportToTime":
+			if value != nil {
+				switch jtv := value.(type) {
+				case json.Number:
+					f64, err := jtv.Float64()
+					if err != nil {
+						return err
+					}
+					sv.ExportToTime = ptr.Time(smithytime.ParseEpochSeconds(f64))
+
+				default:
+					return fmt.Errorf("expected ExportToTime to be a JSON Number, got %T instead", value)
+
+				}
+			}
+
+		case "ExportViewType":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected ExportViewType to be of type string, got %T instead", value)
+				}
+				sv.ExportViewType = types.ExportViewType(jtv)
 			}
 
 		default:

@@ -83,6 +83,9 @@ type TopicRuntimeProperties struct {
 
 // CreateTopicResponse contains response fields for Client.CreateTopic
 type CreateTopicResponse struct {
+	// TopicName is the name of the topic.
+	TopicName string
+
 	TopicProperties
 }
 
@@ -107,12 +110,16 @@ func (ac *Client) CreateTopic(ctx context.Context, topicName string, options *Cr
 	}
 
 	return CreateTopicResponse{
+		TopicName:       topicName,
 		TopicProperties: *newProps,
 	}, nil
 }
 
 // GetTopicResponse contains response fields for Client.GetTopic
 type GetTopicResponse struct {
+	// TopicName is the name of the topic.
+	TopicName string
+
 	TopicProperties
 }
 
@@ -138,12 +145,16 @@ func (ac *Client) GetTopic(ctx context.Context, topicName string, options *GetTo
 	}
 
 	return &GetTopicResponse{
+		TopicName:       topicName,
 		TopicProperties: topicItem.TopicProperties,
 	}, nil
 }
 
 // GetTopicRuntimePropertiesResponse contains the result for Client.GetTopicRuntimeProperties
 type GetTopicRuntimePropertiesResponse struct {
+	// TopicName is the name of the topic.
+	TopicName string
+
 	// Value is the result of the request.
 	TopicRuntimeProperties
 }
@@ -170,6 +181,7 @@ func (ac *Client) GetTopicRuntimeProperties(ctx context.Context, topicName strin
 	}
 
 	return &GetTopicRuntimePropertiesResponse{
+		TopicName:              topicName,
 		TopicRuntimeProperties: item.TopicRuntimeProperties,
 	}, nil
 }
@@ -280,6 +292,9 @@ func (ac *Client) NewListTopicsRuntimePropertiesPager(options *ListTopicsRuntime
 
 // UpdateTopicResponse contains response fields for Client.UpdateTopic
 type UpdateTopicResponse struct {
+	// TopicName is the name of the topic.
+	TopicName string
+
 	TopicProperties
 }
 
@@ -297,6 +312,7 @@ func (ac *Client) UpdateTopic(ctx context.Context, topicName string, properties 
 	}
 
 	return UpdateTopicResponse{
+		TopicName:       topicName,
 		TopicProperties: *newProps,
 	}, nil
 }

@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/internal/ptrutil"
 	"go.mongodb.org/mongo-driver/mongo/address"
 	"go.mongodb.org/mongo-driver/mongo/description"
 )
@@ -38,6 +39,63 @@ func newFSM() *fsm {
 	return &f
 }
 
+// selectFSMSessionTimeout selects the timeout to return for the topology's
+// finite state machine. If the logicalSessionTimeoutMinutes on the FSM exists
+// and the server is data-bearing, then we determine this value by returning
+//
+//	min{server timeout, FSM timeout}
+//
+// where a "nil" value is considered less than 0.
+//
+// Otherwise, if the FSM's logicalSessionTimeoutMinutes exist, then this
+// function returns the FSM timeout.
+//
+// In the case where the FSM timeout DNE, we check all servers to see if any
+// still do not have a timeout. This function chooses the lowest of the existing
+// timeouts.
+func selectFSMSessionTimeout(f *fsm, s description.Server) *int64 {
+	oldMinutes := f.SessionTimeoutMinutesPtr
+	comp := ptrutil.CompareInt64(oldMinutes, s.SessionTimeoutMinutesPtr)
+
+	// If the server is data-bearing and the current timeout exists and is
+	// either:
+	//
+	// 1. larger than the server timeout, or
+	// 2. non-nil while the server timeout is nil
+	//
+	// then return the server timeout.
+	if s.DataBearing() && (comp == 1 || comp == 2) {
+		return s.SessionTimeoutMinutesPtr
+	}
+
+	// If the current timeout exists and the server is not data-bearing OR
+	// min{server timeout, current timeout} = current timeout, then return
+	// the current timeout.
+	if oldMinutes != nil {
+		return oldMinutes
+	}
+
+	timeout := s.SessionTimeoutMinutesPtr
+	for _, server := range f.Servers {
+		// If the server is not data-bearing, then we do not consider
+		// it's timeout whether set or not.
+		if !server.DataBearing() {
+			continue
+		}
+
+		srvTimeout := server.SessionTimeoutMinutesPtr
+		comp := ptrutil.CompareInt64(timeout, srvTimeout)
+
+		if comp <= 0 { // timeout <= srvTimout
+			continue
+		}
+
+		timeout = server.SessionTimeoutMinutesPtr
+	}
+
+	return timeout
+}
+
 // apply takes a new server description and modifies the FSM's topology description based on it. It returns the
 // updated topology description as well as a server description. The returned server description is either the same
 // one that was passed in, or a new one in the case that it had to be changed.
@@ -48,30 +106,20 @@ func (f *fsm) apply(s description.Server) (description.Topology, description.Ser
 	newServers := make([]description.Server, len(f.Servers))
 	copy(newServers, f.Servers)
 
-	oldMinutes := f.SessionTimeoutMinutes
+	// Reset the logicalSessionTimeoutMinutes to the minimum of the FSM
+	// and the description.server/f.servers.
+	serverTimeoutMinutes := selectFSMSessionTimeout(f, s)
+
 	f.Topology = description.Topology{
 		Kind:    f.Kind,
 		Servers: newServers,
 		SetName: f.SetName,
 	}
 
-	// For data bearing servers, set SessionTimeoutMinutes to the lowest among them
-	if oldMinutes == 0 {
-		// If timeout currently 0, check all servers to see if any still don't have a timeout
-		// If they all have timeout, pick the lowest.
-		timeout := s.SessionTimeoutMinutes
-		for _, server := range f.Servers {
-			if server.DataBearing() && server.SessionTimeoutMinutes < timeout {
-				timeout = server.SessionTimeoutMinutes
-			}
-		}
-		f.SessionTimeoutMinutes = timeout
-	} else {
-		if s.DataBearing() && oldMinutes > s.SessionTimeoutMinutes {
-			f.SessionTimeoutMinutes = s.SessionTimeoutMinutes
-		} else {
-			f.SessionTimeoutMinutes = oldMinutes
-		}
+	f.Topology.SessionTimeoutMinutesPtr = serverTimeoutMinutes
+
+	if serverTimeoutMinutes != nil {
+		f.SessionTimeoutMinutes = uint32(*serverTimeoutMinutes)
 	}
 
 	if _, ok := f.findServer(s.Addr); !ok {
@@ -124,6 +172,7 @@ func (f *fsm) apply(s description.Server) (description.Topology, description.Ser
 
 	f.compatible.Store(true)
 	f.compatibilityErr = nil
+
 	return f.Topology, updatedDesc
 }
 
@@ -234,7 +283,7 @@ func hasStalePrimary(fsm fsm, srv description.Server) bool {
 	compRes := bytes.Compare(srv.ElectionID[:], fsm.maxElectionID[:])
 
 	if wireVersion := srv.WireVersion; wireVersion != nil && wireVersion.Max >= 17 {
-		// In the Post-6.0 case, a primary is considered "stale" if the server's election ID is greather than the
+		// In the Post-6.0 case, a primary is considered "stale" if the server's election ID is greater than the
 		// topology's max election ID. In these versions, the primary is also considered "stale" if the server's
 		// election ID is LTE to the topologies election ID and the server's "setVersion" is less than the topology's
 		// max "setVersion".

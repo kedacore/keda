@@ -4,6 +4,8 @@
 // not use this file except in compliance with the License. You may obtain
 // a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
 
+// Package logger provides the internal logging solution for the MongoDB Go
+// Driver.
 package logger
 
 import (
@@ -17,7 +19,7 @@ import (
 // logged for a stringified BSON document.
 const DefaultMaxDocumentLength = 1000
 
-// TruncationSuffix are trailling ellipsis "..." appended to a message to
+// TruncationSuffix are trailing ellipsis "..." appended to a message to
 // indicate to the user that truncation occurred. This constant does not count
 // toward the max document length.
 const TruncationSuffix = "..."
@@ -99,6 +101,13 @@ func (logger *Logger) LevelComponentEnabled(level Level, component Component) bo
 // Print will synchronously print the given message to the configured LogSink.
 // If the LogSink is nil, then this method will do nothing. Future work could be done to make
 // this method asynchronous, see buffer management in libraries such as log4j.
+//
+// It's worth noting that many structured logs defined by DBX-wide
+// specifications include a "message" field, which is often shared with the
+// message arguments passed to this print function. The "Info" method used by
+// this function is implemented based on the go-logr/logr LogSink interface,
+// which is why "Print" has a message parameter. Any duplication in code is
+// intentional to adhere to the logr pattern.
 func (logger *Logger) Print(level Level, component Component, msg string, keysAndValues ...interface{}) {
 	// If the level is not enabled for the component, then
 	// skip the message.

@@ -148,6 +148,7 @@ type MetricStreamOutputFormat string
 const (
 	MetricStreamOutputFormatJson            MetricStreamOutputFormat = "json"
 	MetricStreamOutputFormatOpenTelemetry07 MetricStreamOutputFormat = "opentelemetry0.7"
+	MetricStreamOutputFormatOpenTelemetry10 MetricStreamOutputFormat = "opentelemetry1.0"
 )
 
 // Values returns all known values for MetricStreamOutputFormat. Note that this
@@ -157,6 +158,7 @@ func (MetricStreamOutputFormat) Values() []MetricStreamOutputFormat {
 	return []MetricStreamOutputFormat{
 		"json",
 		"opentelemetry0.7",
+		"opentelemetry1.0",
 	}
 }
 

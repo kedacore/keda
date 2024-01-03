@@ -318,6 +318,42 @@ func (ExportStatus) Values() []ExportStatus {
 	}
 }
 
+type ExportType string
+
+// Enum values for ExportType
+const (
+	ExportTypeFullExport        ExportType = "FULL_EXPORT"
+	ExportTypeIncrementalExport ExportType = "INCREMENTAL_EXPORT"
+)
+
+// Values returns all known values for ExportType. Note that this can be expanded
+// in the future, and so it is only as up to date as the client. The ordering of
+// this slice is not guaranteed to be stable across updates.
+func (ExportType) Values() []ExportType {
+	return []ExportType{
+		"FULL_EXPORT",
+		"INCREMENTAL_EXPORT",
+	}
+}
+
+type ExportViewType string
+
+// Enum values for ExportViewType
+const (
+	ExportViewTypeNewImage        ExportViewType = "NEW_IMAGE"
+	ExportViewTypeNewAndOldImages ExportViewType = "NEW_AND_OLD_IMAGES"
+)
+
+// Values returns all known values for ExportViewType. Note that this can be
+// expanded in the future, and so it is only as up to date as the client. The
+// ordering of this slice is not guaranteed to be stable across updates.
+func (ExportViewType) Values() []ExportViewType {
+	return []ExportViewType{
+		"NEW_IMAGE",
+		"NEW_AND_OLD_IMAGES",
+	}
+}
+
 type GlobalTableStatus string
 
 // Enum values for GlobalTableStatus

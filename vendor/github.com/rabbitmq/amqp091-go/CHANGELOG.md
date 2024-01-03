@@ -1,5 +1,17 @@
 # Changelog
 
+## [v1.8.1](https://github.com/rabbitmq/amqp091-go/tree/v1.8.1) (2023-05-04)
+
+[Full Changelog](https://github.com/rabbitmq/amqp091-go/compare/v1.8.0...v1.8.1)
+
+**Fixed bugs:**
+
+- Fixed incorrect version reported in client properties [52ce2efd03c53dcf77d5496977da46840e9abd24](https://github.com/rabbitmq/amqp091-go/commit/52ce2efd03c53dcf77d5496977da46840e9abd24)
+
+**Merged pull requests:**
+
+- Fix Example Client not reconnecting [\#186](https://github.com/rabbitmq/amqp091-go/pull/186) ([frankfil](https://github.com/frankfil))
+
 ## [v1.8.0](https://github.com/rabbitmq/amqp091-go/tree/v1.8.0) (2023-03-21)
 
 [Full Changelog](https://github.com/rabbitmq/amqp091-go/compare/v1.7.0...v1.8.0)

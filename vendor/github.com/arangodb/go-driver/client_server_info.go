@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// Copyright 2018=2023 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 // limitations under the License.
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
-//
-// Author Ewout Prangsma
 //
 
 package driver
@@ -35,7 +33,7 @@ type ClientServerInfo interface {
 	// ServerRole returns the role of the server that answers the request.
 	ServerRole(ctx context.Context) (ServerRole, error)
 
-	// Gets the ID of this server in the cluster.
+	// ServerID Gets the ID of this server in the cluster.
 	// An error is returned when calling this to a server that is not part of a cluster.
 	ServerID(ctx context.Context) (string, error)
 }

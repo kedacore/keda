@@ -91,7 +91,7 @@ func (mc *mongocryptdClient) markCommand(ctx context.Context, dbName string, cmd
 	ctx = NewSessionContext(ctx, nil)
 	db := mc.client.Database(dbName, databaseOpts)
 
-	res, err := db.RunCommand(ctx, cmd).DecodeBytes()
+	res, err := db.RunCommand(ctx, cmd).Raw()
 	// propagate original result
 	if err == nil {
 		return bsoncore.Document(res), nil
@@ -105,7 +105,7 @@ func (mc *mongocryptdClient) markCommand(ctx context.Context, dbName string, cmd
 	if err = mc.spawnProcess(); err != nil {
 		return nil, err
 	}
-	res, err = db.RunCommand(ctx, cmd).DecodeBytes()
+	res, err = db.RunCommand(ctx, cmd).Raw()
 	if err != nil {
 		return nil, MongocryptdError{Wrapped: err}
 	}

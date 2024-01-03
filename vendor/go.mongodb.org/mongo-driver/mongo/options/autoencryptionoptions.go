@@ -10,7 +10,7 @@ import (
 	"crypto/tls"
 	"net/http"
 
-	"go.mongodb.org/mongo-driver/internal"
+	"go.mongodb.org/mongo-driver/internal/httputil"
 )
 
 // AutoEncryptionOptions represents options used to configure auto encryption/decryption behavior for a mongo.Client
@@ -43,7 +43,7 @@ type AutoEncryptionOptions struct {
 // AutoEncryption creates a new AutoEncryptionOptions configured with default values.
 func AutoEncryption() *AutoEncryptionOptions {
 	return &AutoEncryptionOptions{
-		HTTPClient: internal.DefaultHTTPClient,
+		HTTPClient: httputil.DefaultHTTPClient,
 	}
 }
 

@@ -9,14 +9,14 @@
 //
 // Service can be obtained from client using HTTPService() method.
 // It can be also created directly. To instantiate a Service use NewService(). Remember, the authorization param is in form "Token your-auth-token". e.g. "Token DXnd7annkGteV5Wqx9G3YjO9Ezkw87nHk8OabcyHCxF5451kdBV0Ag2cG7OmZZgCUTHroagUPdxbuoyen6TSPw==".
-//     srv := http.NewService("http://localhost:8086", "Token my-token", http.DefaultOptions())
+//
+//	srv := http.NewService("http://localhost:8086", "Token my-token", http.DefaultOptions())
 package http
 
 import (
 	"context"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"mime"
 	"net/http"
 	"net/url"
@@ -145,7 +145,7 @@ func (s *service) parseHTTPError(r *http.Response) *Error {
 	}
 	defer func() {
 		// discard body so connection can be reused
-		_, _ = io.Copy(ioutil.Discard, r.Body)
+		_, _ = io.Copy(io.Discard, r.Body)
 		_ = r.Body.Close()
 	}()
 
@@ -164,7 +164,7 @@ func (s *service) parseHTTPError(r *http.Response) *Error {
 	if ctype == "application/json" {
 		perror.Err = json.NewDecoder(r.Body).Decode(perror)
 	} else {
-		body, err := ioutil.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			perror.Err = err
 			return perror
