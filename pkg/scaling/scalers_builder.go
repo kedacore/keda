@@ -91,6 +91,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 			return scaler, config, err
 		}
 
+		// nosemgrep: invalid-usage-of-modified-variable
 		scaler, config, err := factory()
 		if err != nil {
 			h.recorder.Event(withTriggers, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
