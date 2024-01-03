@@ -316,19 +316,16 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string, dryRun bool
 				if conainerName != "" && container.Name != conainerName {
 					continue
 				}
+
 				if trigger.Type == cpuString {
-					if container.Resources.Requests == nil ||
-						container.Resources.Requests.Cpu() == nil ||
-						container.Resources.Requests.Cpu().AsApproximateFloat64() == 0 {
+					if !isWorkloadResourceSet(container.Resources, corev1.ResourceCPU) {
 						err := fmt.Errorf("the scaledobject has a cpu trigger but the container %s doesn't have the cpu request defined", container.Name)
 						scaledobjectlog.Error(err, "validation error")
 						metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
 						return err
 					}
 				} else if trigger.Type == memoryString {
-					if container.Resources.Requests == nil ||
-						container.Resources.Requests.Memory() == nil ||
-						container.Resources.Requests.Memory().AsApproximateFloat64() == 0 {
+					if !isWorkloadResourceSet(container.Resources, corev1.ResourceMemory) {
 						err := fmt.Errorf("the scaledobject has a memory trigger but the container %s doesn't have the memory request defined", container.Name)
 						scaledobjectlog.Error(err, "validation error")
 						metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
@@ -459,4 +456,10 @@ func castToFloatIfNecessary(formula string) string {
 		return formula
 	}
 	return "float(" + formula + ")"
+}
+
+func isWorkloadResourceSet(rr corev1.ResourceRequirements, name corev1.ResourceName) bool {
+	requests, requestsSet := rr.Requests[name]
+	limits, limitsSet := rr.Limits[name]
+	return (requestsSet || limitsSet) && (requests.AsApproximateFloat64() > 0 || limits.AsApproximateFloat64() > 0)
 }
