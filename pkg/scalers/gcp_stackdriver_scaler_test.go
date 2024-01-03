@@ -55,6 +55,10 @@ var testStackdriverMetadata = []parseStackdriverMetadataTestData{
 	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "credentialsFromEnv": "SAMPLE_CREDS", "alignmentPeriodSeconds": "a"}, true},
 	// properly formed float targetValue and activationTargetValue
 	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "credentialsFromEnv": "SAMPLE_CREDS", "targetValue": "1.1", "activationTargetValue": "2.1"}, false},
+	//properly formed float valueIfNull
+	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "credentialsFromEnv": "SAMPLE_CREDS", "targetValue": "1.1", "activationTargetValue": "2.1", "valueIfNull": "1.0"}, false},
+	// With bad valueIfNull
+	{nil, map[string]string{"projectId": "myProject", "filter": sdFilter, "credentialsFromEnv": "SAMPLE_CREDS", "targetValue": "1.1", "activationTargetValue": "2.1", "valueIfNull": "toto"}, true},
 }
 
 var gcpStackdriverMetricIdentifiers = []gcpStackdriverMetricIdentifier{

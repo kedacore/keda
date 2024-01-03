@@ -30,6 +30,7 @@ type stackdriverMetadata struct {
 	targetValue           float64
 	activationTargetValue float64
 	metricName            string
+	valueIfNull           *float64
 
 	gcpAuthorization *gcpAuthorizationMetadata
 	aggregation      *monitoringpb.Aggregation
@@ -107,6 +108,18 @@ func parseStackdriverMetadata(config *ScalerConfig, logger logr.Logger) (*stackd
 			return nil, fmt.Errorf("activationTargetValue parsing error %w", err)
 		}
 		meta.activationTargetValue = activationTargetValue
+	}
+
+	if val, ok := config.TriggerMetadata["valueIfNull"]; ok {
+		if val == "" {
+			meta.valueIfNull = nil
+		} else {
+			valueIfNull, err := strconv.ParseFloat(val, 64)
+			if err != nil {
+				return nil, fmt.Errorf("valueIfNull parsing error %w", err)
+			}
+			meta.valueIfNull = &valueIfNull
+		}
 	}
 
 	auth, err := getGCPAuthorization(config)
@@ -207,7 +220,7 @@ func (s *stackdriverScaler) GetMetricsAndActivity(ctx context.Context, metricNam
 
 // getMetrics gets metric type value from stackdriver api
 func (s *stackdriverScaler) getMetrics(ctx context.Context) (float64, error) {
-	val, err := s.client.GetMetrics(ctx, s.metadata.filter, s.metadata.projectID, s.metadata.aggregation)
+	val, err := s.client.GetMetrics(ctx, s.metadata.filter, s.metadata.projectID, s.metadata.aggregation, s.metadata.valueIfNull)
 	if err == nil {
 		s.logger.V(1).Info(
 			fmt.Sprintf("Getting metrics for project %s, filter %s and aggregation %v. Result: %f",
