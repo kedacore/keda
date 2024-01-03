@@ -110,16 +110,12 @@ func parseStackdriverMetadata(config *ScalerConfig, logger logr.Logger) (*stackd
 		meta.activationTargetValue = activationTargetValue
 	}
 
-	if val, ok := config.TriggerMetadata["valueIfNull"]; ok {
-		if val == "" {
-			meta.valueIfNull = nil
-		} else {
-			valueIfNull, err := strconv.ParseFloat(val, 64)
-			if err != nil {
-				return nil, fmt.Errorf("valueIfNull parsing error %w", err)
-			}
-			meta.valueIfNull = &valueIfNull
+	if val, ok := config.TriggerMetadata["valueIfNull"]; ok && val != "" {
+		valueIfNull, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("valueIfNull parsing error %w", err)
 		}
+		meta.valueIfNull = &valueIfNull
 	}
 
 	auth, err := getGCPAuthorization(config)
