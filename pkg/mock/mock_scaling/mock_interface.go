@@ -64,6 +64,21 @@ func (mr *MockScaleHandlerMockRecorder) DeleteScalableObject(ctx, scalableObject
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteScalableObject", reflect.TypeOf((*MockScaleHandler)(nil).DeleteScalableObject), ctx, scalableObject)
 }
 
+// GetScaledJobMetrics mocks base method.
+func (m *MockScaleHandler) GetScaledJobMetrics(ctx context.Context, scaledJobName, scaleJobNamespace, metricName string) (*external_metrics.ExternalMetricValueList, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetScaledJobMetrics", ctx, scaledJobName, scaleJobNamespace, metricName)
+	ret0, _ := ret[0].(*external_metrics.ExternalMetricValueList)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetScaledJobMetrics indicates an expected call of GetScaledJobMetrics.
+func (mr *MockScaleHandlerMockRecorder) GetScaledJobMetrics(ctx, scaledJobName, scaleJobNamespace, metricName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScaledJobMetrics", reflect.TypeOf((*MockScaleHandler)(nil).GetScaledJobMetrics), ctx, scaledJobName, scaleJobNamespace, metricName)
+}
+
 // GetScaledObjectMetrics mocks base method.
 func (m *MockScaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, error) {
 	m.ctrl.T.Helper()

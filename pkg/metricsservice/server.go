@@ -22,6 +22,7 @@ import (
 	"net"
 
 	"google.golang.org/grpc"
+	"k8s.io/metrics/pkg/apis/external_metrics"
 	"k8s.io/metrics/pkg/apis/external_metrics/v1beta1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -41,13 +42,22 @@ type GrpcServer struct {
 	api.UnimplementedMetricsServiceServer
 }
 
-// GetMetrics returns metrics values in form of ExternalMetricValueList for specified ScaledObject reference
+// GetMetrics returns metrics values in form of ExternalMetricValueList for specified ScaledObject and ScaledJob reference
 func (s *GrpcServer) GetMetrics(ctx context.Context, in *api.ScaledObjectRef) (*v1beta1.ExternalMetricValueList, error) {
 	v1beta1ExtMetrics := &v1beta1.ExternalMetricValueList{}
-	extMetrics, err := (*s.scalerHandler).GetScaledObjectMetrics(ctx, in.Name, in.Namespace, in.MetricName)
+	var extMetrics *external_metrics.ExternalMetricValueList
+
+	scaledObjectExtMetrics, err := (*s.scalerHandler).GetScaledObjectMetrics(ctx, in.Name, in.Namespace, in.MetricName)
 	if err != nil {
 		return v1beta1ExtMetrics, fmt.Errorf("error when getting metric values %w", err)
 	}
+	extMetrics.Items = append(extMetrics.Items, scaledObjectExtMetrics.Items...)
+
+	scaledJobExtMetrics, err := (*s.scalerHandler).GetScaledJobMetrics(ctx, in.Name, in.Namespace, in.MetricName)
+	if err != nil {
+		return v1beta1ExtMetrics, fmt.Errorf("error when getting metric values %w", err)
+	}
+	extMetrics.Items = append(extMetrics.Items, scaledJobExtMetrics.Items...)
 
 	err = v1beta1.Convert_external_metrics_ExternalMetricValueList_To_v1beta1_ExternalMetricValueList(extMetrics, v1beta1ExtMetrics, nil)
 	if err != nil {

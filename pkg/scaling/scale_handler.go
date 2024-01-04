@@ -60,6 +60,7 @@ type ScaleHandler interface {
 	ClearScalersCache(ctx context.Context, scalableObject interface{}) error
 
 	GetScaledObjectMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, error)
+	GetScaledJobMetrics(ctx context.Context, scaledJobName, scaleJobNamespace, metricName string) (*external_metrics.ExternalMetricValueList, error)
 }
 
 type scaleHandler struct {
@@ -281,11 +282,19 @@ func (h *scaleHandler) GetScalersCache(ctx context.Context, scalableObject inter
 }
 
 // getScalersCacheForScaledObject returns cache for input ScaledObject, referenced by name and namespace
-// we don't need to compare the Generation, because this method should be called only inside scale loop, where we have up to date object.
+// we don't need to compare the Generation, because this method should be called only inside scale loop, where we have up-to date object.
 func (h *scaleHandler) getScalersCacheForScaledObject(ctx context.Context, scaledObjectName, scaledObjectNamespace string) (*cache.ScalersCache, error) {
 	key := kedav1alpha1.GenerateIdentifier("ScaledObject", scaledObjectNamespace, scaledObjectName)
 
 	return h.performGetScalersCache(ctx, key, nil, nil, "ScaledObject", scaledObjectNamespace, scaledObjectName)
+}
+
+// getScalersCacheForScaledJob returns cache for input ScaledJob, referenced by name and namespace
+// we don't need to compare the Generation, because this method should be called only inside scale loop, where we have up-to date object.
+func (h *scaleHandler) getScalersCacheForScaledJob(ctx context.Context, scaledObjectName, scaledObjectNamespace string) (*cache.ScalersCache, error) {
+	key := kedav1alpha1.GenerateIdentifier("ScaledJob", scaledObjectNamespace, scaledObjectName)
+
+	return h.performGetScalersCache(ctx, key, nil, nil, "ScaledJob", scaledObjectNamespace, scaledObjectName)
 }
 
 // performGetScalersCache returns cache for input scalableObject, it is common code used by GetScalersCache() and getScalersCacheForScaledObject() methods
@@ -374,6 +383,8 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 			newCache.CompiledFormula = program
 		}
 		newCache.ScaledObject = obj
+	case *kedav1alpha1.ScaledJob:
+		newCache.ScaledJob = obj
 	default:
 	}
 
@@ -748,18 +759,39 @@ func (*scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler, 
 }
 
 // / --------------------------------------------------------------------------- ///
-// / ----------             ScaledJob related methods               --------- ///
+// / ----------             ScaledJob related methods                  --------- ///
 // / --------------------------------------------------------------------------- ///
 
-// getScaledJobMetrics returns metrics for specified metric name for a ScaledJob identified by its name and namespace.
+// GetScaledJobMetrics returns metrics for specified metric name for a ScaledJob identified by its name and namespace.
 // It could either query the metric value directly from the scaler or from a cache, that's being stored for the scaler.
-func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob) []scaledjob.ScalerMetrics {
+func (h *scaleHandler) GetScaledJobMetrics(ctx context.Context, scaledJobName, scaledJobNamespace, metricsName string) (*external_metrics.ExternalMetricValueList, error) {
+	cache, err := h.getScalersCacheForScaledJob(ctx, scaledJobName, scaledJobNamespace)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scalers %w", err)
+	}
+
+	var scaledJob *kedav1alpha1.ScaledJob
+	if cache.ScaledJob != nil {
+		scaledJob = cache.ScaledJob
+	} else {
+		err := fmt.Errorf("scaledJob not found in the cache")
+		return nil, err
+	}
+	_, externalMetricValueList := h.getScaledJobMetrics(ctx, scaledJob, metricsName)
+	return externalMetricValueList, nil
+}
+
+// getScaledJobMetrics returns metrics for the input ScaledJob:
+// the first return internal metrics to decide the scaledJob is active
+// the second return external metrics for specified metric name for a ScaledJob
+func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob, metricsName string) ([]scaledjob.ScalerMetrics, *external_metrics.ExternalMetricValueList) {
 	cache, err := h.GetScalersCache(ctx, scaledJob)
 	if err != nil {
 		log.Error(err, "error getting scalers cache", "scaledJob.Namespace", scaledJob.Namespace, "scaledJob.Name", scaledJob.Name)
-		return nil
+		return nil, nil
 	}
 	var scalersMetrics []scaledjob.ScalerMetrics
+	var matchingMetrics []external_metrics.ExternalMetricValue
 	scalers, _ := cache.GetScalers()
 	for i, s := range scalers {
 		isActive := false
@@ -784,6 +816,9 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 		if isTriggerActive {
 			isActive = true
 		}
+		if metricSpecs[0].External.Metric.Name == metricsName {
+			matchingMetrics = append(matchingMetrics, metrics...)
+		}
 
 		queueLength, maxValue, targetAverageValue := scaledjob.CalculateQueueLengthAndMaxValue(metrics, metricSpecs, scaledJob.MaxReplicaCount())
 
@@ -795,7 +830,9 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 			IsActive:    isActive,
 		})
 	}
-	return scalersMetrics
+	return scalersMetrics, &external_metrics.ExternalMetricValueList{
+		Items: matchingMetrics,
+	}
 }
 
 // isScaledJobActive returns whether the input ScaledJob:
@@ -804,7 +841,7 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 func (h *scaleHandler) isScaledJobActive(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob) (bool, int64, int64) {
 	logger := logf.Log.WithName("scalemetrics")
 
-	scalersMetrics := h.getScaledJobMetrics(ctx, scaledJob)
+	scalersMetrics, _ := h.getScaledJobMetrics(ctx, scaledJob, "")
 	isActive, queueLength, maxValue, maxFloatValue :=
 		scaledjob.IsScaledJobActive(scalersMetrics, scaledJob.Spec.ScalingStrategy.MultipleScalersCalculation, scaledJob.MinReplicaCount(), scaledJob.MaxReplicaCount())
 

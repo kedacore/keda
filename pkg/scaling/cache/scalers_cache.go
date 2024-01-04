@@ -35,6 +35,7 @@ var log = logf.Log.WithName("scalers_cache")
 
 type ScalersCache struct {
 	ScaledObject             *kedav1alpha1.ScaledObject
+	ScaledJob                *kedav1alpha1.ScaledJob
 	Scalers                  []ScalerBuilder
 	ScalableObjectGeneration int64
 	Recorder                 record.EventRecorder
