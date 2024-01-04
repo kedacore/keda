@@ -24,7 +24,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -291,63 +290,46 @@ func parseApacheKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Lo
 	meta.lagThreshold = int64(lagThreshold.(int))
 
 	meta.activationLagThreshold = defaultKafkaActivationLagThreshold
-
-	if val, ok := config.TriggerMetadata[activationLagThresholdMetricName]; ok {
-		t, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return meta, fmt.Errorf("error parsing %q: %w", activationLagThresholdMetricName, err)
-		}
-		if t < 0 {
-			return meta, fmt.Errorf("%q must be positive number", activationLagThresholdMetricName)
-		}
-		meta.activationLagThreshold = t
+	activationLagThreshold, err := getParameterFromConfigV2(config, activationLagThresholdMetricName, true, false, false, true, int64(defaultKafkaActivationLagThreshold), reflect.TypeOf(int64(64)))
+	if err != nil {
+		return meta, err
+	}
+	if activationLagThreshold.(int64) < 0 {
+		return meta, fmt.Errorf("%q must be positive number", activationLagThresholdMetricName)
 	}
 
 	if err := parseApacheKafkaAuthParams(config, &meta); err != nil {
 		return meta, err
 	}
 
-	meta.allowIdleConsumers = false
-	if val, ok := config.TriggerMetadata["allowIdleConsumers"]; ok {
-		t, err := strconv.ParseBool(val)
-		if err != nil {
-			return meta, fmt.Errorf("error parsing allowIdleConsumers: %w", err)
-		}
-		meta.allowIdleConsumers = t
+	allowIDConsumers, err := getParameterFromConfigV2(config, "allowIdleConsumers", true, false, false, true, false, reflect.TypeOf(true))
+	if err != nil {
+		return meta, fmt.Errorf("error parsing allowIdleConsumers: %w", err)
 	}
+	meta.allowIdleConsumers = allowIDConsumers.(bool)
 
-	meta.excludePersistentLag = false
-	if val, ok := config.TriggerMetadata["excludePersistentLag"]; ok {
-		t, err := strconv.ParseBool(val)
-		if err != nil {
-			return meta, fmt.Errorf("error parsing excludePersistentLag: %w", err)
-		}
-		meta.excludePersistentLag = t
+	excludePersistentLag, err := getParameterFromConfigV2(config, "excludePersistentLag", true, false, false, true, false, reflect.TypeOf(true))
+	if err != nil {
+		return meta, fmt.Errorf("error parsing excludePersistentLag: %w", err)
 	}
+	meta.excludePersistentLag = excludePersistentLag.(bool)
 
-	meta.scaleToZeroOnInvalidOffset = false
-	if val, ok := config.TriggerMetadata["scaleToZeroOnInvalidOffset"]; ok {
-		t, err := strconv.ParseBool(val)
-		if err != nil {
-			return meta, fmt.Errorf("error parsing scaleToZeroOnInvalidOffset: %w", err)
-		}
-		meta.scaleToZeroOnInvalidOffset = t
+	scaleToZeroOnInvalidOffset, err := getParameterFromConfigV2(config, "scaleToZeroOnInvalidOffset", true, false, false, true, false, reflect.TypeOf(true))
+	if err != nil {
+		return meta, fmt.Errorf("error parsing scaleToZeroOnInvalidOffset: %w", err)
 	}
+	meta.scaleToZeroOnInvalidOffset = scaleToZeroOnInvalidOffset.(bool)
 
-	meta.limitToPartitionsWithLag = false
-	if val, ok := config.TriggerMetadata["limitToPartitionsWithLag"]; ok {
-		t, err := strconv.ParseBool(val)
-		if err != nil {
-			return meta, fmt.Errorf("error parsing limitToPartitionsWithLag: %w", err)
-		}
-		meta.limitToPartitionsWithLag = t
-
-		if meta.allowIdleConsumers && meta.limitToPartitionsWithLag {
-			return meta, fmt.Errorf("allowIdleConsumers and limitToPartitionsWithLag cannot be set simultaneously")
-		}
-		if len(meta.topic) == 0 && meta.limitToPartitionsWithLag {
-			return meta, fmt.Errorf("topic must be specified when using limitToPartitionsWithLag")
-		}
+	limitToPartitionsWithLag, err := getParameterFromConfigV2(config, "limitToPartitionsWithLag", true, false, false, true, false, reflect.TypeOf(true))
+	if err != nil {
+		return meta, err
+	}
+	meta.limitToPartitionsWithLag = limitToPartitionsWithLag.(bool)
+	if meta.allowIdleConsumers && meta.limitToPartitionsWithLag {
+		return meta, fmt.Errorf("allowIdleConsumers and limitToPartitionsWithLag cannot be set simultaneously")
+	}
+	if len(meta.topic) == 0 && meta.limitToPartitionsWithLag {
+		return meta, fmt.Errorf("topic must be specified when using limitToPartitionsWithLag")
 	}
 
 	meta.triggerIndex = config.TriggerIndex
