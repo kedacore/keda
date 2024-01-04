@@ -162,8 +162,6 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewCronScaler(config)
 	case "datadog":
 		return scalers.NewDatadogScaler(ctx, config)
-	case "datadog-external":
-		return scalers.NewDatadogExternalScaler(ctx, config)
 	case "elasticsearch":
 		return scalers.NewElasticsearchScaler(config)
 	case "etcd":
