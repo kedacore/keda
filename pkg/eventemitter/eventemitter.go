@@ -67,7 +67,7 @@ type EventEmitter struct {
 type EventHandler interface {
 	DeleteCloudEventSource(cloudEventSource *eventingv1alpha1.CloudEventSource) error
 	HandleCloudEventSource(ctx context.Context, cloudEventSource *eventingv1alpha1.CloudEventSource) error
-	Emit(object runtime.Object, namesapce types.NamespacedName, eventType, reason, message string)
+	Emit(object runtime.Object, namesapce types.NamespacedName, eventType string, cloudeventType string, reason string, message string)
 }
 
 // EventDataHandler defines the behavior for different event handlers
@@ -271,7 +271,7 @@ func (e *EventEmitter) checkEventHandlers(ctx context.Context, cloudEventSource 
 }
 
 // Emit is emitting event to both local kubernetes and custom CloudEventSource handler. After emit event to local kubernetes, event will inqueue and waitng for handler's consuming.
-func (e *EventEmitter) Emit(object runtime.Object, namesapce types.NamespacedName, eventType, reason, message string) {
+func (e *EventEmitter) Emit(object runtime.Object, namesapce types.NamespacedName, eventType, cloudeventType, reason, message string) {
 	e.recorder.Event(object, eventType, reason, message)
 
 	e.eventHandlersCacheLock.RLock()
@@ -284,9 +284,9 @@ func (e *EventEmitter) Emit(object runtime.Object, namesapce types.NamespacedNam
 	objectType, _ := meta.NewAccessor().Kind(object)
 	eventData := eventdata.EventData{
 		Namespace:  namesapce.Namespace,
+		EventType:  cloudeventType,
 		ObjectName: strings.ToLower(objectName),
 		ObjectType: strings.ToLower(objectType),
-		EventType:  eventType,
 		Reason:     reason,
 		Message:    message,
 		Time:       time.Now().UTC(),
