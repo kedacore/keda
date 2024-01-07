@@ -35,10 +35,6 @@ import (
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
-const (
-	cloudEventSourceType = "com.cloudeventsource.keda"
-)
-
 var (
 	kedaNamespace, _ = util.GetClusterObjectNamespace()
 )
@@ -97,7 +93,7 @@ func (c *CloudEventHTTPHandler) EmitEvent(eventData eventdata.EventData, failure
 	event := cloudevents.NewEvent()
 	event.SetSource(source)
 	event.SetSubject(subject)
-	event.SetType(cloudEventSourceType)
+	event.SetType(eventData.EventType)
 
 	if err := event.SetData(cloudevents.ApplicationJSON, EmitData{Reason: eventData.Reason, Message: eventData.Message}); err != nil {
 		c.logger.Error(err, "Failed to set data to CloudEvents receiver")

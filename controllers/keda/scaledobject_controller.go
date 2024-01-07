@@ -180,7 +180,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if !scaledObject.Status.Conditions.AreInitialized() {
 		conditions := kedav1alpha1.GetInitializedConditions()
 		if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledObject, conditions); err != nil {
-			r.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.ScaledObjectUpdateFailed, err.Error())
+			r.EventEmitter.Emit(scaledObject, req.NamespacedName, corev1.EventTypeWarning, eventemitter.ScaledObjectFailedType, eventreason.ScaledObjectUpdateFailed, err.Error())
 			return ctrl.Result{}, err
 		}
 	}
@@ -192,18 +192,18 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		reqLogger.Error(err, msg)
 		conditions.SetReadyCondition(metav1.ConditionFalse, "ScaledObjectCheckFailed", msg)
 		conditions.SetActiveCondition(metav1.ConditionUnknown, "UnknownState", "ScaledObject check failed")
-		r.EventEmitter.Emit(scaledObject, req.NamespacedName, corev1.EventTypeWarning, eventreason.ScaledObjectCheckFailed, msg)
+		r.EventEmitter.Emit(scaledObject, req.NamespacedName, corev1.EventTypeWarning, eventemitter.ScaledObjectFailedType, eventreason.ScaledObjectCheckFailed, msg)
 	} else {
 		wasReady := conditions.GetReadyCondition()
 		if wasReady.IsFalse() || wasReady.IsUnknown() {
-			r.EventEmitter.Emit(scaledObject, req.NamespacedName, corev1.EventTypeNormal, eventreason.ScaledObjectReady, message.ScalerReadyMsg)
+			r.EventEmitter.Emit(scaledObject, req.NamespacedName, corev1.EventTypeNormal, eventemitter.ScaledObjectReadyType, eventreason.ScaledObjectReady, message.ScalerReadyMsg)
 		}
 		reqLogger.V(1).Info(msg)
 		conditions.SetReadyCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionReadySuccessReason, msg)
 	}
 
 	if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledObject, &conditions); err != nil {
-		r.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.ScaledObjectUpdateFailed, err.Error())
+		r.EventEmitter.Emit(scaledObject, req.NamespacedName, corev1.EventTypeWarning, eventemitter.ScaledObjectFailedType, eventreason.ScaledObjectUpdateFailed, err.Error())
 		return ctrl.Result{}, err
 	}
 
