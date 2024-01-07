@@ -44,6 +44,10 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+var (
+	webIdentityTokenFile = os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE")
+)
+
 // cacheEntry stores *aws.Config and where is used
 type cacheEntry struct {
 	config *aws.Config
@@ -143,29 +147,28 @@ func (a *sharedConfigCache) RemoveCachedEntry(awsAuthorization AuthorizationMeta
 // it tries to assume the role using KEDA's role (AssumeRole)
 func (a *sharedConfigCache) retrievePodIdentityCredentials(ctx context.Context, cfg aws.Config, roleArn string) *aws.CredentialsCache {
 	stsSvc := sts.NewFromConfig(cfg)
-	webIdentityTokenFile := os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE")
 
-	webIdentityCredentialProvider := stscreds.NewWebIdentityRoleProvider(stsSvc, roleArn, stscreds.IdentityTokenFile(webIdentityTokenFile), func(options *stscreds.WebIdentityRoleOptions) {
-		options.RoleSessionName = "KEDA"
-	})
-	var cachedProvider *aws.CredentialsCache
-
-	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
-	defer cancel()
-	_, err := webIdentityCredentialProvider.Retrieve(ctx)
-	if err != nil {
-		a.logger.V(1).Error(err, fmt.Sprintf("error retreiving arnRole %s via WebIdentity", roleArn))
-		// Fallback to Assume Role
-		assumeRoleCredentialProvider := stscreds.NewAssumeRoleProvider(stsSvc, roleArn, func(options *stscreds.AssumeRoleOptions) {
+	if webIdentityTokenFile != "" {
+		webIdentityCredentialProvider := stscreds.NewWebIdentityRoleProvider(stsSvc, roleArn, stscreds.IdentityTokenFile(webIdentityTokenFile), func(options *stscreds.WebIdentityRoleOptions) {
 			options.RoleSessionName = "KEDA"
 		})
-		cachedProvider = aws.NewCredentialsCache(assumeRoleCredentialProvider)
-		a.logger.V(1).Info(fmt.Sprintf("using assume role to retrieve token for arnRole %s", roleArn))
-	} else {
-		cachedProvider = aws.NewCredentialsCache(webIdentityCredentialProvider)
-		a.logger.V(1).Info(fmt.Sprintf("using assume web identity role to retrieve token for arnRole %s", roleArn))
+
+		ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+		defer cancel()
+		_, err := webIdentityCredentialProvider.Retrieve(ctx)
+		if err == nil {
+			a.logger.V(1).Info(fmt.Sprintf("using assume web identity role to retrieve token for arnRole %s", roleArn))
+			return aws.NewCredentialsCache(webIdentityCredentialProvider)
+		}
+		a.logger.V(1).Error(err, fmt.Sprintf("error retreiving arnRole %s via WebIdentity", roleArn))
 	}
-	return cachedProvider
+
+	// Fallback to Assume Role
+	a.logger.V(1).Info(fmt.Sprintf("using assume role to retrieve token for arnRole %s", roleArn))
+	assumeRoleCredentialProvider := stscreds.NewAssumeRoleProvider(stsSvc, roleArn, func(options *stscreds.AssumeRoleOptions) {
+		options.RoleSessionName = "KEDA"
+	})
+	return aws.NewCredentialsCache(assumeRoleCredentialProvider)
 }
 
 // retrieveStaticCredentials returns an *aws.CredentialsCache for given
