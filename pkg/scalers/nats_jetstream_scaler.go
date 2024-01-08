@@ -308,6 +308,7 @@ func (s *natsJetStreamScaler) getNATSJetstreamMonitoringData(ctx context.Context
 				}
 			}
 		}
+		return fmt.Errorf("leader node not found for consumer %s", s.metadata.consumer)
 	}
 	return nil
 }
