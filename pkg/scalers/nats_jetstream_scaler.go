@@ -245,10 +245,7 @@ func (s *natsJetStreamScaler) getNATSJetstreamMonitoringData(ctx context.Context
 		clusterUrls := jetStreamServerResp.ConnectUrls
 		if len(clusterUrls) == 0 {
 			isNodeAdvertised = false
-			// append current node's `server_name` to check if it is a leader
-			// even though `server_name` is not an url, it will be split by first . (dot)
-			// to get the node's name anyway
-			clusterUrls = append(clusterUrls, jetStreamServerResp.ServerName)
+			// jetStreamServerResp.Cluster.HostUrls contains all the cluster nodes
 			clusterUrls = append(clusterUrls, jetStreamServerResp.Cluster.HostUrls...)
 		}
 
