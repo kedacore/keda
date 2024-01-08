@@ -418,7 +418,7 @@ func parseDatadogClusterAgentMetadata(config *ScalerConfig, logger logr.Logger) 
 		meta.vType = metricType
 	}
 
-	authMode, ok := config.TriggerMetadata["authMode"]
+	authMode, ok := config.AuthParams["authMode"]
 	// no authMode specified
 	if !ok {
 		return &meta, nil
