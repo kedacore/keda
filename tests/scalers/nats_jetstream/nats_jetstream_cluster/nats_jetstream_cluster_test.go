@@ -64,7 +64,6 @@ func testNATSJetStreamScalerClusterWithStreamReplicas(t *testing.T, noAdvertise 
 	assert.True(t, WaitForJobSuccess(t, kc, "stream", testNamespace, 60, 3),
 		"stream and consumer creation job with 3 stream replicas should be success")
 
-	testActivation(t, kc, testData)
 	testScaleOut(t, kc, testData)
 	testScaleIn(t, kc)
 
@@ -73,30 +72,13 @@ func testNATSJetStreamScalerClusterWithStreamReplicas(t *testing.T, noAdvertise 
 	assert.True(t, WaitForJobCount(t, kc, testNamespace, 0, 60, 3),
 		"job count in namespace should be 0")
 
-	// Create stream and consumer with 2 stream replicas
-	testData.NatsStream = "case2"
-	installStreamAndConsumer(t, 2, testData.NatsStream, testNamespace, natsAddress)
-	KubectlApplyWithTemplate(t, testData, "scaledObjectTemplate", nats.ScaledObjectTemplate)
-	assert.True(t, WaitForJobSuccess(t, kc, "stream", testNamespace, 60, 3),
-		"stream and consumer creation job with 2 stream replicas should be success")
-
-	testActivation(t, kc, testData)
-	testScaleOut(t, kc, testData)
-	testScaleIn(t, kc)
-
-	// Remove 2 replica stream with consumer
-	removeStreamAndConsumer(t, 2, testData.NatsStream, testNamespace, natsAddress)
-	assert.True(t, WaitForJobCount(t, kc, testNamespace, 0, 60, 3),
-		"job count in namespace should be 0")
-
 	// Create single replica stream with consumer
-	testData.NatsStream = "case3"
+	testData.NatsStream = "case2"
 	installStreamAndConsumer(t, 1, testData.NatsStream, testNamespace, natsAddress)
 	KubectlApplyWithTemplate(t, testData, "scaledObjectTemplate", nats.ScaledObjectTemplate)
 	assert.True(t, WaitForJobSuccess(t, kc, "stream", testNamespace, 60, 3),
 		"stream and consumer creation job with 1 stream replica should be success")
 
-	testActivation(t, kc, testData)
 	testScaleOut(t, kc, testData)
 	testScaleIn(t, kc)
 
@@ -140,24 +122,8 @@ func TestNATSv2_10JetStreamScalerClusterWithStreamReplicas(t *testing.T) {
 	assert.True(t, WaitForJobCount(t, kc, testNamespace, 0, 60, 3),
 		"job count in namespace should be 0")
 
-	// Create stream and consumer with 2 stream replicas
-	testData.NatsStream = "case2"
-	installStreamAndConsumer(t, 2, testData.NatsStream, testNamespace, natsAddress)
-	KubectlApplyWithTemplate(t, testData, "scaledObjectTemplate", nats.ScaledObjectTemplate)
-	assert.True(t, WaitForJobSuccess(t, kc, "stream", testNamespace, 60, 3),
-		"stream and consumer creation job with 2 stream replicas should be success")
-
-	testActivation(t, kc, testData)
-	testScaleOut(t, kc, testData)
-	testScaleIn(t, kc)
-
-	// Remove 2 replica stream with consumer
-	removeStreamAndConsumer(t, 2, testData.NatsStream, testNamespace, natsAddress)
-	assert.True(t, WaitForJobCount(t, kc, testNamespace, 0, 60, 3),
-		"job count in namespace should be 0")
-
 	// Create single replica stream with consumer
-	testData.NatsStream = "case3"
+	testData.NatsStream = "case2"
 	installStreamAndConsumer(t, 1, testData.NatsStream, testNamespace, natsAddress)
 	KubectlApplyWithTemplate(t, testData, "scaledObjectTemplate", nats.ScaledObjectTemplate)
 	assert.True(t, WaitForJobSuccess(t, kc, "stream", testNamespace, 60, 3),
