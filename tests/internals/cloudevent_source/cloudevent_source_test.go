@@ -185,7 +185,7 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 			err := cloudEvent.DataAs(&data)
 			assert.NoError(t, err)
 			assert.Equal(t, data["message"], "ScaledObject doesn't have correct scaleTargetRef specification")
-			assert.Equal(t, cloudEvent.Type(), "com.cloudeventsource.keda")
+			assert.Equal(t, cloudEvent.Type(), "keda.scaledobject.failed.v1")
 			assert.Equal(t, cloudEvent.Source(), expectedSource)
 			assert.Equal(t, cloudEvent.DataContentType(), "application/json")
 		}

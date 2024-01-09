@@ -78,7 +78,6 @@ func (c *Create) Execute(ctx context.Context) error {
 		WriteConcern:      c.writeConcern,
 		ServerAPI:         c.serverAPI,
 	}.Execute(ctx)
-
 }
 
 func (c *Create) command(dst []byte, desc description.SelectedServer) ([]byte, error) {

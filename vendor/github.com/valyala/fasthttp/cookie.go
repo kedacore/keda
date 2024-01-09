@@ -65,7 +65,7 @@ var cookiePool = &sync.Pool{
 //
 // Cookie instance MUST NOT be used from concurrently running goroutines.
 type Cookie struct {
-	noCopy noCopy //nolint:unused,structcheck
+	noCopy noCopy
 
 	key    []byte
 	value  []byte
@@ -411,7 +411,6 @@ func (c *Cookie) ParseBytes(src []byte) error {
 					}
 				}
 			}
-
 		} else if len(kv.value) != 0 {
 			// Case insensitive switch on first char
 			switch kv.value[0] | 0x20 {

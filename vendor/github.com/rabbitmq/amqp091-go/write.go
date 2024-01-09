@@ -72,7 +72,6 @@ func (f *heartbeatFrame) write(w io.Writer) (err error) {
 //	short     short    long long       short        remainder...
 func (f *headerFrame) write(w io.Writer) (err error) {
 	var payload bytes.Buffer
-	var zeroTime time.Time
 
 	if err = binary.Write(&payload, binary.BigEndian, f.ClassId); err != nil {
 		return
@@ -118,7 +117,7 @@ func (f *headerFrame) write(w io.Writer) (err error) {
 	if len(f.Properties.MessageId) > 0 {
 		mask = mask | flagMessageId
 	}
-	if f.Properties.Timestamp != zeroTime {
+	if !f.Properties.Timestamp.IsZero() {
 		mask = mask | flagTimestamp
 	}
 	if len(f.Properties.Type) > 0 {

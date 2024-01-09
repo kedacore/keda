@@ -8,15 +8,19 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
+	internalConfig "github.com/aws/aws-sdk-go-v2/internal/configsources"
+	"github.com/aws/aws-sdk-go-v2/internal/endpoints"
 	"github.com/aws/aws-sdk-go-v2/internal/endpoints/awsrulesfn"
 	internalendpoints "github.com/aws/aws-sdk-go-v2/service/dynamodb/internal/endpoints"
 	smithy "github.com/aws/smithy-go"
+	smithyauth "github.com/aws/smithy-go/auth"
 	smithyendpoints "github.com/aws/smithy-go/endpoints"
 	"github.com/aws/smithy-go/middleware"
 	"github.com/aws/smithy-go/ptr"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 )
 
@@ -195,70 +199,22 @@ func resolveEndpointResolverV2(options *Options) {
 	}
 }
 
-// Utility function to aid with translating pseudo-regions to classical regions
-// with the appropriate setting indicated by the pseudo-region
-func mapPseudoRegion(pr string) (region string, fips aws.FIPSEndpointState) {
-	const fipsInfix = "-fips-"
-	const fipsPrefix = "fips-"
-	const fipsSuffix = "-fips"
-
-	if strings.Contains(pr, fipsInfix) ||
-		strings.Contains(pr, fipsPrefix) ||
-		strings.Contains(pr, fipsSuffix) {
-		region = strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(
-			pr, fipsInfix, "-"), fipsPrefix, ""), fipsSuffix, "")
-		fips = aws.FIPSEndpointStateEnabled
-	} else {
-		region = pr
+func resolveBaseEndpoint(cfg aws.Config, o *Options) {
+	if cfg.BaseEndpoint != nil {
+		o.BaseEndpoint = cfg.BaseEndpoint
 	}
 
-	return region, fips
-}
+	_, g := os.LookupEnv("AWS_ENDPOINT_URL")
+	_, s := os.LookupEnv("AWS_ENDPOINT_URL_DYNAMODB")
 
-// builtInParameterResolver is the interface responsible for resolving BuiltIn
-// values during the sourcing of EndpointParameters
-type builtInParameterResolver interface {
-	ResolveBuiltIns(*EndpointParameters) error
-}
-
-// builtInResolver resolves modeled BuiltIn values using only the members defined
-// below.
-type builtInResolver struct {
-	// The AWS region used to dispatch the request.
-	Region string
-
-	// Sourced BuiltIn value in a historical enabled or disabled state.
-	UseDualStack aws.DualStackEndpointState
-
-	// Sourced BuiltIn value in a historical enabled or disabled state.
-	UseFIPS aws.FIPSEndpointState
-
-	// Base endpoint that can potentially be modified during Endpoint resolution.
-	Endpoint *string
-}
-
-// Invoked at runtime to resolve BuiltIn Values. Only resolution code specific to
-// each BuiltIn value is generated.
-func (b *builtInResolver) ResolveBuiltIns(params *EndpointParameters) error {
-
-	region, _ := mapPseudoRegion(b.Region)
-	if len(region) == 0 {
-		return fmt.Errorf("Could not resolve AWS::Region")
-	} else {
-		params.Region = aws.String(region)
+	if g && !s {
+		return
 	}
-	if b.UseDualStack == aws.DualStackEndpointStateEnabled {
-		params.UseDualStack = aws.Bool(true)
-	} else {
-		params.UseDualStack = aws.Bool(false)
+
+	value, found, err := internalConfig.ResolveServiceBaseEndpoint(context.Background(), "DynamoDB", cfg.ConfigSources)
+	if found && err == nil {
+		o.BaseEndpoint = &value
 	}
-	if b.UseFIPS == aws.FIPSEndpointStateEnabled {
-		params.UseFIPS = aws.Bool(true)
-	} else {
-		params.UseFIPS = aws.Bool(false)
-	}
-	params.Endpoint = b.Endpoint
-	return nil
 }
 
 // EndpointParameters provides the parameters that influence how endpoints are
@@ -411,8 +367,8 @@ func (r *resolver) ResolveEndpoint(
 				}
 			}
 			if _UseFIPS == true {
-				if true == _PartitionResult.SupportsFIPS {
-					if "aws-us-gov" == _PartitionResult.Name {
+				if _PartitionResult.SupportsFIPS == true {
+					if _PartitionResult.Name == "aws-us-gov" {
 						uriString := func() string {
 							var out strings.Builder
 							out.WriteString("https://dynamodb.")
@@ -488,11 +444,17 @@ func (r *resolver) ResolveEndpoint(
 					Headers: http.Header{},
 					Properties: func() smithy.Properties {
 						var out smithy.Properties
-						out.Set("authSchemes", []interface{}{
-							map[string]interface{}{
-								"name":          "sigv4",
-								"signingName":   "dynamodb",
-								"signingRegion": "us-east-1",
+						smithyauth.SetAuthOptions(&out, []*smithyauth.Option{
+							{
+								SchemeID: "aws.auth#sigv4",
+								SignerProperties: func() smithy.Properties {
+									var sp smithy.Properties
+									smithyhttp.SetSigV4SigningName(&sp, "dynamodb")
+									smithyhttp.SetSigV4ASigningName(&sp, "dynamodb")
+
+									smithyhttp.SetSigV4SigningRegion(&sp, "us-east-1")
+									return sp
+								}(),
 							},
 						})
 						return out
@@ -521,4 +483,77 @@ func (r *resolver) ResolveEndpoint(
 		return endpoint, fmt.Errorf("Endpoint resolution failed. Invalid operation or environment input.")
 	}
 	return endpoint, fmt.Errorf("endpoint rule error, %s", "Invalid Configuration: Missing Region")
+}
+
+type endpointParamsBinder interface {
+	bindEndpointParams(*EndpointParameters)
+}
+
+func bindEndpointParams(input interface{}, options Options) *EndpointParameters {
+	params := &EndpointParameters{}
+
+	params.Region = aws.String(endpoints.MapFIPSRegion(options.Region))
+	params.UseDualStack = aws.Bool(options.EndpointOptions.UseDualStackEndpoint == aws.DualStackEndpointStateEnabled)
+	params.UseFIPS = aws.Bool(options.EndpointOptions.UseFIPSEndpoint == aws.FIPSEndpointStateEnabled)
+	params.Endpoint = options.BaseEndpoint
+
+	if b, ok := input.(endpointParamsBinder); ok {
+		b.bindEndpointParams(params)
+	}
+
+	return params
+}
+
+type resolveEndpointV2Middleware struct {
+	options Options
+}
+
+func (*resolveEndpointV2Middleware) ID() string {
+	return "ResolveEndpointV2"
+}
+
+func (m *resolveEndpointV2Middleware) HandleFinalize(ctx context.Context, in middleware.FinalizeInput, next middleware.FinalizeHandler) (
+	out middleware.FinalizeOutput, metadata middleware.Metadata, err error,
+) {
+	if awsmiddleware.GetRequiresLegacyEndpoints(ctx) {
+		return next.HandleFinalize(ctx, in)
+	}
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown transport type %T", in.Request)
+	}
+
+	if m.options.EndpointResolverV2 == nil {
+		return out, metadata, fmt.Errorf("expected endpoint resolver to not be nil")
+	}
+
+	params := bindEndpointParams(getOperationInput(ctx), m.options)
+	endpt, err := m.options.EndpointResolverV2.ResolveEndpoint(ctx, *params)
+	if err != nil {
+		return out, metadata, fmt.Errorf("failed to resolve service endpoint, %w", err)
+	}
+
+	if endpt.URI.RawPath == "" && req.URL.RawPath != "" {
+		endpt.URI.RawPath = endpt.URI.Path
+	}
+	req.URL.Scheme = endpt.URI.Scheme
+	req.URL.Host = endpt.URI.Host
+	req.URL.Path = smithyhttp.JoinPath(endpt.URI.Path, req.URL.Path)
+	req.URL.RawPath = smithyhttp.JoinPath(endpt.URI.RawPath, req.URL.RawPath)
+	for k := range endpt.Headers {
+		req.Header.Set(k, endpt.Headers.Get(k))
+	}
+
+	rscheme := getResolvedAuthScheme(ctx)
+	if rscheme == nil {
+		return out, metadata, fmt.Errorf("no resolved auth scheme")
+	}
+
+	opts, _ := smithyauth.GetAuthOptions(&endpt.Properties)
+	for _, o := range opts {
+		rscheme.SignerProperties.SetAll(&o.SignerProperties)
+	}
+
+	return next.HandleFinalize(ctx, in)
 }

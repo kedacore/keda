@@ -26,48 +26,72 @@ type CompressionOpts struct {
 	UncompressedSize int32
 }
 
-var zstdEncoders sync.Map // map[zstd.EncoderLevel]*zstd.Encoder
-
-func getZstdEncoder(level zstd.EncoderLevel) (*zstd.Encoder, error) {
-	if v, ok := zstdEncoders.Load(level); ok {
-		return v.(*zstd.Encoder), nil
-	}
-	encoder, err := zstd.NewWriter(nil, zstd.WithEncoderLevel(level))
+// mustZstdNewWriter creates a zstd.Encoder with the given level and a nil
+// destination writer. It panics on any errors and should only be used at
+// package initialization time.
+func mustZstdNewWriter(lvl zstd.EncoderLevel) *zstd.Encoder {
+	enc, err := zstd.NewWriter(nil, zstd.WithEncoderLevel(lvl))
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
-	zstdEncoders.Store(level, encoder)
-	return encoder, nil
+	return enc
 }
 
-var zlibEncoders sync.Map // map[int /*level*/]*zlibEncoder
+var zstdEncoders = [zstd.SpeedBestCompression + 1]*zstd.Encoder{
+	0:                           nil, // zstd.speedNotSet
+	zstd.SpeedFastest:           mustZstdNewWriter(zstd.SpeedFastest),
+	zstd.SpeedDefault:           mustZstdNewWriter(zstd.SpeedDefault),
+	zstd.SpeedBetterCompression: mustZstdNewWriter(zstd.SpeedBetterCompression),
+	zstd.SpeedBestCompression:   mustZstdNewWriter(zstd.SpeedBestCompression),
+}
+
+func getZstdEncoder(level zstd.EncoderLevel) (*zstd.Encoder, error) {
+	if zstd.SpeedFastest <= level && level <= zstd.SpeedBestCompression {
+		return zstdEncoders[level], nil
+	}
+	// The level is outside the expected range, return an error.
+	return nil, fmt.Errorf("invalid zstd compression level: %d", level)
+}
+
+// zlibEncodersOffset is the offset into the zlibEncoders array for a given
+// compression level.
+const zlibEncodersOffset = -zlib.HuffmanOnly // HuffmanOnly == -2
+
+var zlibEncoders [zlib.BestCompression + zlibEncodersOffset + 1]sync.Pool
 
 func getZlibEncoder(level int) (*zlibEncoder, error) {
-	if v, ok := zlibEncoders.Load(level); ok {
-		return v.(*zlibEncoder), nil
+	if zlib.HuffmanOnly <= level && level <= zlib.BestCompression {
+		if enc, _ := zlibEncoders[level+zlibEncodersOffset].Get().(*zlibEncoder); enc != nil {
+			return enc, nil
+		}
+		writer, err := zlib.NewWriterLevel(nil, level)
+		if err != nil {
+			return nil, err
+		}
+		enc := &zlibEncoder{writer: writer, level: level}
+		return enc, nil
 	}
-	writer, err := zlib.NewWriterLevel(nil, level)
-	if err != nil {
-		return nil, err
-	}
-	encoder := &zlibEncoder{writer: writer, buf: new(bytes.Buffer)}
-	zlibEncoders.Store(level, encoder)
+	// The level is outside the expected range, return an error.
+	return nil, fmt.Errorf("invalid zlib compression level: %d", level)
+}
 
-	return encoder, nil
+func putZlibEncoder(enc *zlibEncoder) {
+	if enc != nil {
+		zlibEncoders[enc.level+zlibEncodersOffset].Put(enc)
+	}
 }
 
 type zlibEncoder struct {
-	mu     sync.Mutex
 	writer *zlib.Writer
-	buf    *bytes.Buffer
+	buf    bytes.Buffer
+	level  int
 }
 
 func (e *zlibEncoder) Encode(dst, src []byte) ([]byte, error) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
+	defer putZlibEncoder(e)
 
 	e.buf.Reset()
-	e.writer.Reset(e.buf)
+	e.writer.Reset(&e.buf)
 
 	_, err := e.writer.Write(src)
 	if err != nil {
@@ -105,8 +129,15 @@ func CompressPayload(in []byte, opts CompressionOpts) ([]byte, error) {
 	}
 }
 
+var zstdReaderPool = sync.Pool{
+	New: func() interface{} {
+		r, _ := zstd.NewReader(nil)
+		return r
+	},
+}
+
 // DecompressPayload takes a byte slice that has been compressed and undoes it according to the options passed
-func DecompressPayload(in []byte, opts CompressionOpts) (uncompressed []byte, err error) {
+func DecompressPayload(in []byte, opts CompressionOpts) ([]byte, error) {
 	switch opts.Compressor {
 	case wiremessage.CompressorNoOp:
 		return in, nil
@@ -117,34 +148,29 @@ func DecompressPayload(in []byte, opts CompressionOpts) (uncompressed []byte, er
 		} else if int32(l) != opts.UncompressedSize {
 			return nil, fmt.Errorf("unexpected decompression size, expected %v but got %v", opts.UncompressedSize, l)
 		}
-		uncompressed = make([]byte, opts.UncompressedSize)
-		return snappy.Decode(uncompressed, in)
+		out := make([]byte, opts.UncompressedSize)
+		return snappy.Decode(out, in)
 	case wiremessage.CompressorZLib:
 		r, err := zlib.NewReader(bytes.NewReader(in))
 		if err != nil {
 			return nil, err
 		}
-		defer func() {
-			err = r.Close()
-		}()
-		uncompressed = make([]byte, opts.UncompressedSize)
-		_, err = io.ReadFull(r, uncompressed)
-		if err != nil {
+		out := make([]byte, opts.UncompressedSize)
+		if _, err := io.ReadFull(r, out); err != nil {
 			return nil, err
 		}
-		return uncompressed, nil
+		if err := r.Close(); err != nil {
+			return nil, err
+		}
+		return out, nil
 	case wiremessage.CompressorZstd:
-		r, err := zstd.NewReader(bytes.NewBuffer(in))
-		if err != nil {
-			return nil, err
-		}
-		defer r.Close()
-		uncompressed = make([]byte, opts.UncompressedSize)
-		_, err = io.ReadFull(r, uncompressed)
-		if err != nil {
-			return nil, err
-		}
-		return uncompressed, nil
+		buf := make([]byte, 0, opts.UncompressedSize)
+		// Using a pool here is about ~20% faster
+		// than using a single global zstd.Reader
+		r := zstdReaderPool.Get().(*zstd.Decoder)
+		out, err := r.DecodeAll(in, buf)
+		zstdReaderPool.Put(r)
+		return out, err
 	default:
 		return nil, fmt.Errorf("unknown compressor ID %v", opts.Compressor)
 	}

@@ -15,11 +15,57 @@ import (
 	"strings"
 	"time"
 
-	"go.mongodb.org/mongo-driver/internal"
 	"go.mongodb.org/mongo-driver/internal/randutil"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/dns"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/wiremessage"
+)
+
+const (
+	// ServerMonitoringModeAuto indicates that the client will behave like "poll"
+	// mode when running on a FaaS (Function as a Service) platform, or like
+	// "stream" mode otherwise. The client detects its execution environment by
+	// following the rules for generating the "client.env" handshake metadata field
+	// as specified in the MongoDB Handshake specification. This is the default
+	// mode.
+	ServerMonitoringModeAuto = "auto"
+
+	// ServerMonitoringModePoll indicates that the client will periodically check
+	// the server using a hello or legacy hello command and then sleep for
+	// heartbeatFrequencyMS milliseconds before running another check.
+	ServerMonitoringModePoll = "poll"
+
+	// ServerMonitoringModeStream indicates that the client will use a streaming
+	// protocol when the server supports it. The streaming protocol optimally
+	// reduces the time it takes for a client to discover server state changes.
+	ServerMonitoringModeStream = "stream"
+)
+
+var (
+	// ErrLoadBalancedWithMultipleHosts is returned when loadBalanced=true is
+	// specified in a URI with multiple hosts.
+	ErrLoadBalancedWithMultipleHosts = errors.New(
+		"loadBalanced cannot be set to true if multiple hosts are specified")
+
+	// ErrLoadBalancedWithReplicaSet is returned when loadBalanced=true is
+	// specified in a URI with the replicaSet option.
+	ErrLoadBalancedWithReplicaSet = errors.New(
+		"loadBalanced cannot be set to true if a replica set name is specified")
+
+	// ErrLoadBalancedWithDirectConnection is returned when loadBalanced=true is
+	// specified in a URI with the directConnection option.
+	ErrLoadBalancedWithDirectConnection = errors.New(
+		"loadBalanced cannot be set to true if the direct connection option is specified")
+
+	// ErrSRVMaxHostsWithReplicaSet is returned when srvMaxHosts > 0 is
+	// specified in a URI with the replicaSet option.
+	ErrSRVMaxHostsWithReplicaSet = errors.New(
+		"srvMaxHosts cannot be a positive value if a replica set name is specified")
+
+	// ErrSRVMaxHostsWithLoadBalanced is returned when srvMaxHosts > 0 is
+	// specified in a URI with loadBalanced=true.
+	ErrSRVMaxHostsWithLoadBalanced = errors.New(
+		"srvMaxHosts cannot be a positive value if loadBalanced is set to true")
 )
 
 // random is a package-global pseudo-random number generator.
@@ -31,11 +77,11 @@ func ParseAndValidate(s string) (ConnString, error) {
 	p := parser{dnsResolver: dns.DefaultResolver}
 	err := p.parse(s)
 	if err != nil {
-		return p.ConnString, internal.WrapErrorf(err, "error parsing uri")
+		return p.ConnString, fmt.Errorf("error parsing uri: %w", err)
 	}
 	err = p.ConnString.Validate()
 	if err != nil {
-		return p.ConnString, internal.WrapErrorf(err, "error validating uri")
+		return p.ConnString, fmt.Errorf("error validating uri: %w", err)
 	}
 	return p.ConnString, nil
 }
@@ -47,7 +93,7 @@ func Parse(s string) (ConnString, error) {
 	p := parser{dnsResolver: dns.DefaultResolver}
 	err := p.parse(s)
 	if err != nil {
-		err = internal.WrapErrorf(err, "error parsing uri")
+		err = fmt.Errorf("error parsing uri: %w", err)
 	}
 	return p.ConnString, err
 }
@@ -99,6 +145,7 @@ type ConnString struct {
 	MaxStalenessSet                    bool
 	ReplicaSet                         string
 	Scheme                             string
+	ServerMonitoringMode               string
 	ServerSelectionTimeout             time.Duration
 	ServerSelectionTimeoutSet          bool
 	SocketTimeout                      time.Duration
@@ -213,7 +260,7 @@ func (p *parser) parse(original string) error {
 		// remove the scheme
 		uri = uri[len(SchemeMongoDB)+3:]
 	} else {
-		return fmt.Errorf("scheme must be \"mongodb\" or \"mongodb+srv\"")
+		return errors.New(`scheme must be "mongodb" or "mongodb+srv"`)
 	}
 
 	if idx := strings.Index(uri, "@"); idx != -1 {
@@ -235,7 +282,7 @@ func (p *parser) parse(original string) error {
 		}
 		p.Username, err = url.PathUnescape(username)
 		if err != nil {
-			return internal.WrapErrorf(err, "invalid username")
+			return fmt.Errorf("invalid username: %w", err)
 		}
 		p.UsernameSet = true
 
@@ -248,7 +295,7 @@ func (p *parser) parse(original string) error {
 		}
 		p.Password, err = url.PathUnescape(password)
 		if err != nil {
-			return internal.WrapErrorf(err, "invalid password")
+			return fmt.Errorf("invalid password: %w", err)
 		}
 	}
 
@@ -325,7 +372,7 @@ func (p *parser) parse(original string) error {
 	for _, host := range parsedHosts {
 		err = p.addHost(host)
 		if err != nil {
-			return internal.WrapErrorf(err, "invalid host %q", host)
+			return fmt.Errorf("invalid host %q: %w", host, err)
 		}
 	}
 	if len(p.Hosts) == 0 {
@@ -371,27 +418,27 @@ func (p *parser) validate() error {
 			return errors.New("a direct connection cannot be made if an SRV URI is used")
 		}
 		if p.LoadBalancedSet && p.LoadBalanced {
-			return internal.ErrLoadBalancedWithDirectConnection
+			return ErrLoadBalancedWithDirectConnection
 		}
 	}
 
 	// Validation for load-balanced mode.
 	if p.LoadBalancedSet && p.LoadBalanced {
 		if len(p.Hosts) > 1 {
-			return internal.ErrLoadBalancedWithMultipleHosts
+			return ErrLoadBalancedWithMultipleHosts
 		}
 		if p.ReplicaSet != "" {
-			return internal.ErrLoadBalancedWithReplicaSet
+			return ErrLoadBalancedWithReplicaSet
 		}
 	}
 
 	// Check for invalid use of SRVMaxHosts.
 	if p.SRVMaxHosts > 0 {
 		if p.ReplicaSet != "" {
-			return internal.ErrSRVMaxHostsWithReplicaSet
+			return ErrSRVMaxHostsWithReplicaSet
 		}
 		if p.LoadBalanced {
-			return internal.ErrSRVMaxHostsWithLoadBalanced
+			return ErrSRVMaxHostsWithLoadBalanced
 		}
 	}
 
@@ -570,7 +617,7 @@ func (p *parser) addHost(host string) error {
 	}
 	host, err := url.QueryUnescape(host)
 	if err != nil {
-		return internal.WrapErrorf(err, "invalid host %q", host)
+		return fmt.Errorf("invalid host %q: %w", host, err)
 	}
 
 	_, port, err := net.SplitHostPort(host)
@@ -585,7 +632,7 @@ func (p *parser) addHost(host string) error {
 	if port != "" {
 		d, err := strconv.Atoi(port)
 		if err != nil {
-			return internal.WrapErrorf(err, "port must be an integer")
+			return fmt.Errorf("port must be an integer: %w", err)
 		}
 		if d <= 0 || d >= 65536 {
 			return fmt.Errorf("port must be in the range [1, 65535]")
@@ -593,6 +640,14 @@ func (p *parser) addHost(host string) error {
 	}
 	p.Hosts = append(p.Hosts, host)
 	return nil
+}
+
+// IsValidServerMonitoringMode will return true if the given string matches a
+// valid server monitoring mode.
+func IsValidServerMonitoringMode(mode string) bool {
+	return mode == ServerMonitoringModeAuto ||
+		mode == ServerMonitoringModeStream ||
+		mode == ServerMonitoringModePoll
 }
 
 func (p *parser) addOption(pair string) error {
@@ -603,12 +658,12 @@ func (p *parser) addOption(pair string) error {
 
 	key, err := url.QueryUnescape(kv[0])
 	if err != nil {
-		return internal.WrapErrorf(err, "invalid option key %q", kv[0])
+		return fmt.Errorf("invalid option key %q: %w", kv[0], err)
 	}
 
 	value, err := url.QueryUnescape(kv[1])
 	if err != nil {
-		return internal.WrapErrorf(err, "invalid option value %q", kv[1])
+		return fmt.Errorf("invalid option value %q: %w", kv[1], err)
 	}
 
 	lowerKey := strings.ToLower(key)
@@ -797,6 +852,12 @@ func (p *parser) addOption(pair string) error {
 		}
 
 		p.RetryReadsSet = true
+	case "servermonitoringmode":
+		if !IsValidServerMonitoringMode(value) {
+			return fmt.Errorf("invalid value for %q: %q", key, value)
+		}
+
+		p.ServerMonitoringMode = value
 	case "serverselectiontimeoutms":
 		n, err := strconv.Atoi(value)
 		if err != nil || n < 0 {
@@ -1024,7 +1085,7 @@ func extractDatabaseFromURI(uri string) (extractedDatabase, error) {
 
 	escapedDatabase, err := url.QueryUnescape(database)
 	if err != nil {
-		return extractedDatabase{}, internal.WrapErrorf(err, "invalid database %q", database)
+		return extractedDatabase{}, fmt.Errorf("invalid database %q: %w", database, err)
 	}
 
 	uri = uri[len(database):]

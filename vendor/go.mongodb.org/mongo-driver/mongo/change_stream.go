@@ -17,7 +17,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsoncodec"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/internal"
+	"go.mongodb.org/mongo-driver/internal/csot"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
@@ -107,6 +107,10 @@ func newChangeStream(ctx context.Context, config changeStreamConfig, pipeline in
 		ctx = context.Background()
 	}
 
+	cursorOpts := config.client.createBaseCursorOptions()
+
+	cursorOpts.MarshalValueEncoderFn = newEncoderFn(config.bsonOpts, config.registry)
+
 	cs := &ChangeStream{
 		client:     config.client,
 		bsonOpts:   config.bsonOpts,
@@ -117,7 +121,7 @@ func newChangeStream(ctx context.Context, config changeStreamConfig, pipeline in
 			description.ReadPrefSelector(config.readPreference),
 			description.LatencySelector(config.client.localThreshold),
 		}),
-		cursorOptions: config.client.createBaseCursorOptions(),
+		cursorOptions: cursorOpts,
 	}
 
 	cs.sess = sessionFromContext(ctx)
@@ -276,8 +280,8 @@ func (cs *ChangeStream) executeOperation(ctx context.Context, resuming bool) err
 	// If no deadline is set on the passed-in context, cs.client.timeout is set, and context is not already
 	// a Timeout context, honor cs.client.timeout in new Timeout context for change stream operation execution
 	// and potential retry.
-	if _, deadlineSet := ctx.Deadline(); !deadlineSet && cs.client.timeout != nil && !internal.IsTimeoutContext(ctx) {
-		newCtx, cancelFunc := internal.MakeTimeoutContext(ctx, *cs.client.timeout)
+	if _, deadlineSet := ctx.Deadline(); !deadlineSet && cs.client.timeout != nil && !csot.IsTimeoutContext(ctx) {
+		newCtx, cancelFunc := csot.MakeTimeoutContext(ctx, *cs.client.timeout)
 		// Redefine ctx to be the new timeout-derived context.
 		ctx = newCtx
 		// Cancel the timeout-derived context at the end of executeOperation to avoid a context leak.
@@ -290,7 +294,7 @@ func (cs *ChangeStream) executeOperation(ctx context.Context, resuming bool) err
 	if cs.client.retryReads {
 		retries = 1
 	}
-	if internal.IsTimeoutContext(ctx) {
+	if csot.IsTimeoutContext(ctx) {
 		retries = -1
 	}
 

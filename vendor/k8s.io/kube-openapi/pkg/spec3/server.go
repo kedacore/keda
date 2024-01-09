@@ -41,9 +41,6 @@ type ServerProps struct {
 
 // MarshalJSON is a custom marshal function that knows how to encode Responses as JSON
 func (s *Server) MarshalJSON() ([]byte, error) {
-	if internal.UseOptimizedJSONMarshalingV3 {
-		return internal.DeterministicMarshal(s)
-	}
 	b1, err := json.Marshal(s.ServerProps)
 	if err != nil {
 		return nil, err
@@ -53,16 +50,6 @@ func (s *Server) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	return swag.ConcatJSON(b1, b2), nil
-}
-
-func (s *Server) MarshalNextJSON(opts jsonv2.MarshalOptions, enc *jsonv2.Encoder) error {
-	var x struct {
-		ServerProps `json:",inline"`
-		spec.Extensions
-	}
-	x.Extensions = internal.SanitizeExtensions(s.Extensions)
-	x.ServerProps = s.ServerProps
-	return opts.MarshalNext(enc, x)
 }
 
 func (s *Server) UnmarshalJSON(data []byte) error {
@@ -109,9 +96,6 @@ type ServerVariableProps struct {
 
 // MarshalJSON is a custom marshal function that knows how to encode Responses as JSON
 func (s *ServerVariable) MarshalJSON() ([]byte, error) {
-	if internal.UseOptimizedJSONMarshalingV3 {
-		return internal.DeterministicMarshal(s)
-	}
 	b1, err := json.Marshal(s.ServerVariableProps)
 	if err != nil {
 		return nil, err
@@ -121,16 +105,6 @@ func (s *ServerVariable) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	return swag.ConcatJSON(b1, b2), nil
-}
-
-func (s *ServerVariable) MarshalNextJSON(opts jsonv2.MarshalOptions, enc *jsonv2.Encoder) error {
-	var x struct {
-		ServerVariableProps `json:",inline"`
-		spec.Extensions
-	}
-	x.Extensions = internal.SanitizeExtensions(s.Extensions)
-	x.ServerVariableProps = s.ServerVariableProps
-	return opts.MarshalNext(enc, x)
 }
 
 func (s *ServerVariable) UnmarshalJSON(data []byte) error {

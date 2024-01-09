@@ -17,4 +17,4 @@ spec:
   triggers:
     - type: example-trigger
       metadata:
-        property: examle-property
+        property: example-property

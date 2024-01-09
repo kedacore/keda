@@ -62,16 +62,19 @@ func ManhattanDistance(dataPointX, dataPointY Float64Data) (distance float64, er
 // MinkowskiDistance computes the Minkowski distance between two data sets
 //
 // Arguments:
-//    dataPointX: First set of data points
-//    dataPointY: Second set of data points. Length of both data
-//                sets must be equal.
-//    lambda:     aka p or city blocks; With lambda = 1
-//                returned distance is manhattan distance and
-//                lambda = 2; it is euclidean distance. Lambda
-//                reaching to infinite - distance would be chebysev
-//                distance.
+//
+//	dataPointX: First set of data points
+//	dataPointY: Second set of data points. Length of both data
+//	            sets must be equal.
+//	lambda:     aka p or city blocks; With lambda = 1
+//	            returned distance is manhattan distance and
+//	            lambda = 2; it is euclidean distance. Lambda
+//	            reaching to infinite - distance would be chebysev
+//	            distance.
+//
 // Return:
-//     Distance or error
+//
+//	Distance or error
 func MinkowskiDistance(dataPointX, dataPointY Float64Data, lambda float64) (distance float64, err error) {
 	err = validateData(dataPointX, dataPointY)
 	if err != nil {

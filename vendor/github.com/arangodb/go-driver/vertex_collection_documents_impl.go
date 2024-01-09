@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017-2023 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 // limitations under the License.
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
-//
-// Author Ewout Prangsma
 //
 
 package driver
@@ -484,9 +482,6 @@ func (c *vertexCollection) removeDocument(ctx context.Context, key string) (Docu
 		return DocumentMeta{}, contextSettings{}, WithStack(err)
 	}
 	cs := applyContextSettings(ctx, req)
-	if cs.ReturnOld != nil {
-		return DocumentMeta{}, contextSettings{}, WithStack(InvalidArgumentError{Message: "ReturnOld is not support when removing vertices"})
-	}
 	resp, err := c.conn.Do(ctx, req)
 	if err != nil {
 		return DocumentMeta{}, cs, WithStack(err)

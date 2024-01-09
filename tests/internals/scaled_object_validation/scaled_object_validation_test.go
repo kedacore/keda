@@ -173,6 +173,8 @@ func TestScaledObjectValidations(t *testing.T) {
 
 	testMissingMemory(t, data)
 
+	testWorkloadWithOnlyLimits(t, data)
+
 	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
@@ -247,6 +249,66 @@ func testMissingMemory(t *testing.T, data templateData) {
 	err := KubectlApplyWithErrors(t, data, "scaledObjectTemplate", memoryScaledObjectTemplate)
 	assert.Errorf(t, err, "can deploy the scaledObject - %s", err)
 	assert.Contains(t, err.Error(), fmt.Sprintf("the scaledobject has a memory trigger but the container %s doesn't have the memory request defined", deploymentName))
+}
+
+func testWorkloadWithOnlyLimits(t *testing.T, data templateData) {
+	t.Log("--- workload with only resource limits set ---")
+
+	data.DeploymentName = fmt.Sprintf("%s-deploy-only-limits", testName)
+
+	customDeploymentTemplate := `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.DeploymentName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.DeploymentName}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{.DeploymentName}}
+  template:
+    metadata:
+      labels:
+        app: {{.DeploymentName}}
+    spec:
+      containers:
+        - name: {{.DeploymentName}}
+          image: nginxinc/nginx-unprivileged
+          resources:
+            limits:
+              cpu: 50m
+`
+
+	KubectlApplyWithTemplate(t, data, "deploymentTemplate", customDeploymentTemplate)
+	WaitForDeploymentReplicaReadyCount(t, GetKubernetesClient(t), data.DeploymentName, data.TestNamespace, 1, 10, 5)
+
+	t.Log("deployment was updated with resource limits")
+
+	data.ScaledObjectName = fmt.Sprintf("%s-so-only-limits", testName)
+
+	customScaledObjectTemplate := `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectName}}
+  namespace: {{.TestNamespace}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  minReplicaCount: 1
+  maxReplicaCount: 1
+  triggers:
+    - type: cpu
+      metadata:
+        type: Utilization
+        value: "50"
+`
+
+	err := KubectlApplyWithErrors(t, data, "scaledObjectTemplate", customScaledObjectTemplate)
+	assert.NoError(t, err, "Deployment with only resource limits set should be validated")
 }
 
 func getTemplateData() (templateData, []Template) {

@@ -71,12 +71,12 @@ keyUsage = keyCertSign, cRLSign
 
 [ client_ca_extensions ]
 basicConstraints = CA:false
-keyUsage = digitalSignature
+keyUsage = keyEncipherment,digitalSignature
 extendedKeyUsage = 1.3.6.1.5.5.7.3.2
 
 [ server_ca_extensions ]
 basicConstraints = CA:false
-keyUsage = keyEncipherment
+keyUsage = keyEncipherment,digitalSignature
 extendedKeyUsage = 1.3.6.1.5.5.7.3.1
 subjectAltName = @alt_names
 
@@ -106,7 +106,7 @@ openssl req \
   -new \
   -nodes \
   -config openssl.cnf \
-  -subj "/CN=127.0.0.1/O=server/" \
+  -subj "/CN=localhost/O=server/" \
   -key $root/server/key.pem \
   -out $root/server/req.pem \
   -outform PEM
@@ -115,7 +115,7 @@ openssl req \
   -new \
   -nodes \
   -config openssl.cnf \
-  -subj "/CN=127.0.0.1/O=client/" \
+  -subj "/CN=localhost/O=client/" \
   -key $root/client/key.pem \
   -out $root/client/req.pem \
   -outform PEM

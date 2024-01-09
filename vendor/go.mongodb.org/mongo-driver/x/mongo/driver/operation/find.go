@@ -13,6 +13,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/internal/driverutil"
 	"go.mongodb.org/mongo-driver/internal/logger"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
@@ -108,6 +109,7 @@ func (f *Find) Execute(ctx context.Context) error {
 		ServerAPI:         f.serverAPI,
 		Timeout:           f.timeout,
 		Logger:            f.logger,
+		Name:              driverutil.FindOp,
 	}.Execute(ctx)
 
 }
