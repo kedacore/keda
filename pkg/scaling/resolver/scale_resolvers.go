@@ -214,8 +214,7 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 		return authParams, podIdentity, nil
 	}
 
-	authParams, _, err := resolveAuthRef(ctx, client, logger, triggerAuthRef, nil, namespace, secretsLister)
-	return authParams, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, err
+	return resolveAuthRef(ctx, client, logger, triggerAuthRef, nil, namespace, secretsLister)
 }
 
 // resolveAuthRef provides authentication parameters needed authenticate scaler with the environment.
@@ -224,7 +223,7 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 	triggerAuthRef *kedav1alpha1.AuthenticationRef, podSpec *corev1.PodSpec,
 	namespace string, secretsLister corev1listers.SecretLister) (map[string]string, kedav1alpha1.AuthPodIdentity, error) {
 	result := make(map[string]string)
-	var podIdentity kedav1alpha1.AuthPodIdentity
+	podIdentity := kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}
 	var err error
 
 	if namespace != "" && triggerAuthRef != nil && triggerAuthRef.Name != "" {

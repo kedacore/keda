@@ -15,6 +15,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/internal/driverutil"
 	"go.mongodb.org/mongo-driver/internal/logger"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
@@ -165,6 +166,7 @@ func (u *Update) Execute(ctx context.Context) error {
 		ServerAPI:         u.serverAPI,
 		Timeout:           u.timeout,
 		Logger:            u.logger,
+		Name:              driverutil.UpdateOp,
 	}.Execute(ctx)
 
 }

@@ -12,9 +12,9 @@
 #include "gss_wrapper.h"
 
 OM_uint32 gssapi_canonicalize_name(
-    OM_uint32* minor_status, 
-    char *input_name, 
-    gss_OID input_name_type, 
+    OM_uint32* minor_status,
+    char *input_name,
+    gss_OID input_name_type,
     gss_name_t *output_name
 )
 {
@@ -39,8 +39,8 @@ OM_uint32 gssapi_canonicalize_name(
 }
 
 int gssapi_error_desc(
-    OM_uint32 maj_stat, 
-    OM_uint32 min_stat, 
+    OM_uint32 maj_stat,
+    OM_uint32 min_stat,
     char **desc
 )
 {
@@ -207,7 +207,7 @@ int gssapi_client_wrap_msg(
     void* input,
     size_t input_length,
     void** output,
-    size_t* output_length 
+    size_t* output_length
 )
 {
     gss_buffer_desc input_buffer = GSS_C_EMPTY_BUFFER;

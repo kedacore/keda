@@ -1,6 +1,6 @@
 # Stats - Golang Statistics Package
 
-[![][travis-svg]][travis-url] [![][coveralls-svg]][coveralls-url] [![][goreport-svg]][goreport-url] [![][godoc-svg]][godoc-url] [![][pkggodev-svg]][pkggodev-url] [![][license-svg]][license-url]
+[![][action-svg]][action-url] [![][codecov-svg]][codecov-url] [![][goreport-svg]][goreport-url] [![][godoc-svg]][godoc-url] [![][pkggodev-svg]][pkggodev-url] [![][license-svg]][license-url]
 
 A well tested and comprehensive Golang statistics library / package / module with no dependencies.
 
@@ -76,6 +76,8 @@ func Correlation(data1, data2 Float64Data) (float64, error) {}
 func Covariance(data1, data2 Float64Data) (float64, error) {}
 func CovariancePopulation(data1, data2 Float64Data) (float64, error) {}
 func CumulativeSum(input Float64Data) ([]float64, error) {}
+func Describe(input Float64Data, allowNaN bool, percentiles *[]float64) (*Description, error) {}
+func DescribePercentileFunc(input Float64Data, allowNaN bool, percentiles *[]float64, percentileFunc func(Float64Data, float64) (float64, error)) (*Description, error) {}
 func Entropy(input Float64Data) (float64, error) {}
 func EuclideanDistance(dataPointX, dataPointY Float64Data) (distance float64, err error) {}
 func GeometricMean(input Float64Data) (float64, error) {}
@@ -180,13 +182,15 @@ To make things as seamless as possible please also consider the following steps:
 
 ## Releasing
 
-To release a new version we should update the [CHANGELOG.md](/CHANGELOG.md) and [DOCUMENTATION.md](/DOCUMENTATION.md).
+This is not required by contributors and mostly here as a reminder to myself as the maintainer of this repo. To release a new version we should update the [CHANGELOG.md](/CHANGELOG.md) and [DOCUMENTATION.md](/DOCUMENTATION.md).
 
-First install the tools used to generate the markdown files:
+First install the tools used to generate the markdown files and release:
 
 ```
-go get github.com/davecheney/godoc2md
-go get github.com/golangci/golangci-lint/cmd/golangci-lint
+go install github.com/davecheney/godoc2md@latest
+go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+brew tap git-chglog/git-chglog
+brew install gnu-sed hub git-chglog
 ```
 
 Then you can run these `make` directives:
@@ -202,9 +206,11 @@ Then we can create a [CHANGELOG.md](/CHANGELOG.md) a new git tag and a github re
 make release TAG=v0.x.x
 ```
 
+To authenticate `hub` for the release you will need to create a personal access token and use it as the password when it's requested.
+
 ## MIT License
 
-Copyright (c) 2014-2021 Montana Flynn (https://montanaflynn.com)
+Copyright (c) 2014-2023 Montana Flynn (https://montanaflynn.com)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -212,11 +218,11 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORpublicS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-[travis-url]: https://travis-ci.org/montanaflynn/stats
-[travis-svg]: https://img.shields.io/travis/montanaflynn/stats.svg
+[action-url]: https://github.com/montanaflynn/stats/actions
+[action-svg]: https://img.shields.io/github/actions/workflow/status/montanaflynn/stats/go.yml
 
-[coveralls-url]: https://coveralls.io/r/montanaflynn/stats?branch=master
-[coveralls-svg]: https://img.shields.io/coveralls/montanaflynn/stats.svg
+[codecov-url]: https://app.codecov.io/gh/montanaflynn/stats
+[codecov-svg]: https://img.shields.io/codecov/c/github/montanaflynn/stats?token=wnw8dActnH
 
 [goreport-url]: https://goreportcard.com/report/github.com/montanaflynn/stats
 [goreport-svg]: https://goreportcard.com/badge/github.com/montanaflynn/stats

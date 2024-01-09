@@ -59,22 +59,18 @@ func (a *analyzer) Properties() ArangoSearchAnalyzerProperties {
 	return a.definition.Properties
 }
 
-// Removes the analyzers
+// Remove the analyzers
 func (a *analyzer) Remove(ctx context.Context, force bool) error {
 	req, err := a.db.conn.NewRequest("DELETE", path.Join(a.db.relPath(), "_api/analyzer/", a.Name()))
 	if err != nil {
 		return WithStack(err)
 	}
 	applyContextSettings(ctx, req)
-	payload := struct {
-		Force bool `json:"force,omitempty"`
-	}{
-		Force: force,
+
+	if force {
+		req.SetQuery("force", "true")
 	}
-	req, err = req.SetBody(payload)
-	if err != nil {
-		return WithStack(err)
-	}
+
 	resp, err := a.db.conn.Do(ctx, req)
 	if err != nil {
 		return WithStack(err)

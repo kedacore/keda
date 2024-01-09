@@ -8,6 +8,7 @@ package mongo
 
 import (
 	"context"
+	"time"
 
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
@@ -35,9 +36,21 @@ type batchCursor interface {
 	// Close closes the cursor.
 	Close(context.Context) error
 
-	// The SetBatchSize method is a modifier function used to adjust the
-	// batch size of the cursor that implements it.
+	// SetBatchSize is a modifier function used to adjust the batch size of
+	// the cursor that implements it.
 	SetBatchSize(int32)
+
+	// SetMaxTime will set the maximum amount of time the server will allow
+	// the operations to execute. The server will error if this field is set
+	// but the cursor is not configured with awaitData=true.
+	//
+	// The time.Duration value passed by this setter will be converted and
+	// rounded down to the nearest millisecond.
+	SetMaxTime(time.Duration)
+
+	// SetComment will set a user-configurable comment that can be used to
+	// identify the operation in server logs.
+	SetComment(interface{})
 }
 
 // changeStreamCursor is the interface implemented by batch cursors that also provide the functionality for retrieving

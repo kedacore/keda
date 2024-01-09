@@ -26,7 +26,6 @@ import (
 	"crypto/rand"
 	"crypto/sha1"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"hash"
 	"io"
@@ -39,7 +38,8 @@ import (
 // UUID epoch (October 15, 1582) and Unix epoch (January 1, 1970).
 const epochStart = 122192928000000000
 
-type epochFunc func() time.Time
+// EpochFunc is the function type used to provide the current time.
+type EpochFunc func() time.Time
 
 // HWAddrFunc is the function type used to provide hardware (MAC) addresses.
 type HWAddrFunc func() (net.HardwareAddr, error)
@@ -71,7 +71,7 @@ func NewV5(ns UUID, name string) UUID {
 // pseudorandom data. The timestamp in a V6 UUID is the same as V1, with the bit
 // order being adjusted to allow the UUID to be k-sortable.
 //
-// This is implemented based on revision 02 of the Peabody UUID draft, and may
+// This is implemented based on revision 03 of the Peabody UUID draft, and may
 // be subject to change pending further revisions. Until the final specification
 // revision is finished, changes required to implement updates to the spec will
 // not be considered a breaking change. They will happen as a minor version
@@ -80,22 +80,16 @@ func NewV6() (UUID, error) {
 	return DefaultGenerator.NewV6()
 }
 
-// NewV7 returns a k-sortable UUID based on the current UNIX epoch, with the
-// ability to configure the timestamp's precision from millisecond all the way
-// to nanosecond. The additional precision is supported by reducing the amount
-// of pseudorandom data that makes up the rest of the UUID.
+// NewV7 returns a k-sortable UUID based on the current millisecond precision
+// UNIX epoch and 74 bits of pseudorandom data. It supports single-node batch generation (multiple UUIDs in the same timestamp) with a Monotonic Random counter.
 //
-// If an unknown Precision argument is passed to this method it will panic. As
-// such it's strongly encouraged to use the package-provided constants for this
-// value.
-//
-// This is implemented based on revision 02 of the Peabody UUID draft, and may
+// This is implemented based on revision 04 of the Peabody UUID draft, and may
 // be subject to change pending further revisions. Until the final specification
 // revision is finished, changes required to implement updates to the spec will
 // not be considered a breaking change. They will happen as a minor version
 // releases until the spec is final.
-func NewV7(p Precision) (UUID, error) {
-	return DefaultGenerator.NewV7(p)
+func NewV7() (UUID, error) {
+	return DefaultGenerator.NewV7()
 }
 
 // Generator provides an interface for generating UUIDs.
@@ -105,7 +99,7 @@ type Generator interface {
 	NewV4() (UUID, error)
 	NewV5(ns UUID, name string) UUID
 	NewV6() (UUID, error)
-	NewV7(Precision) (UUID, error)
+	NewV7() (UUID, error)
 }
 
 // Gen is a reference UUID generator based on the specifications laid out in
@@ -126,16 +120,15 @@ type Gen struct {
 
 	rand io.Reader
 
-	epochFunc     epochFunc
+	epochFunc     EpochFunc
 	hwAddrFunc    HWAddrFunc
 	lastTime      uint64
 	clockSequence uint16
 	hardwareAddr  [6]byte
-
-	v7LastTime      uint64
-	v7LastSubsec    uint64
-	v7ClockSequence uint16
 }
+
+// GenOption is a function type that can be used to configure a Gen generator.
+type GenOption func(*Gen)
 
 // interface check -- build will fail if *Gen doesn't satisfy Generator
 var _ Generator = (*Gen)(nil)
@@ -158,10 +151,74 @@ func NewGen() *Gen {
 // MAC address being used, you'll need to create a new generator using this
 // function.
 func NewGenWithHWAF(hwaf HWAddrFunc) *Gen {
-	return &Gen{
+	return NewGenWithOptions(WithHWAddrFunc(hwaf))
+}
+
+// NewGenWithOptions returns a new instance of Gen with the options provided.
+// Most people should use NewGen() or NewGenWithHWAF() instead.
+//
+// To customize the generator, you can pass in one or more GenOption functions.
+// For example:
+//
+//	gen := NewGenWithOptions(
+//	    WithHWAddrFunc(myHWAddrFunc),
+//	    WithEpochFunc(myEpochFunc),
+//	    WithRandomReader(myRandomReader),
+//	)
+//
+// NewGenWithOptions(WithHWAddrFunc(myHWAddrFunc)) is equivalent to calling
+// NewGenWithHWAF(myHWAddrFunc)
+// NewGenWithOptions() is equivalent to calling NewGen()
+func NewGenWithOptions(opts ...GenOption) *Gen {
+	gen := &Gen{
 		epochFunc:  time.Now,
-		hwAddrFunc: hwaf,
+		hwAddrFunc: defaultHWAddrFunc,
 		rand:       rand.Reader,
+	}
+
+	for _, opt := range opts {
+		opt(gen)
+	}
+
+	return gen
+}
+
+// WithHWAddrFunc is a GenOption that allows you to provide your own HWAddrFunc
+// function.
+// When this option is nil, the defaultHWAddrFunc is used.
+func WithHWAddrFunc(hwaf HWAddrFunc) GenOption {
+	return func(gen *Gen) {
+		if hwaf == nil {
+			hwaf = defaultHWAddrFunc
+		}
+
+		gen.hwAddrFunc = hwaf
+	}
+}
+
+// WithEpochFunc is a GenOption that allows you to provide your own EpochFunc
+// function.
+// When this option is nil, time.Now is used.
+func WithEpochFunc(epochf EpochFunc) GenOption {
+	return func(gen *Gen) {
+		if epochf == nil {
+			epochf = time.Now
+		}
+
+		gen.epochFunc = epochf
+	}
+}
+
+// WithRandomReader is a GenOption that allows you to provide your own random
+// reader.
+// When this option is nil, the default rand.Reader is used.
+func WithRandomReader(reader io.Reader) GenOption {
+	return func(gen *Gen) {
+		if reader == nil {
+			reader = rand.Reader
+		}
+
+		gen.rand = reader
 	}
 }
 
@@ -169,7 +226,7 @@ func NewGenWithHWAF(hwaf HWAddrFunc) *Gen {
 func (g *Gen) NewV1() (UUID, error) {
 	u := UUID{}
 
-	timeNow, clockSeq, err := g.getClockSequence()
+	timeNow, clockSeq, err := g.getClockSequence(false)
 	if err != nil {
 		return Nil, err
 	}
@@ -224,7 +281,7 @@ func (g *Gen) NewV5(ns UUID, name string) UUID {
 // pseudorandom data. The timestamp in a V6 UUID is the same as V1, with the bit
 // order being adjusted to allow the UUID to be k-sortable.
 //
-// This is implemented based on revision 02 of the Peabody UUID draft, and may
+// This is implemented based on revision 03 of the Peabody UUID draft, and may
 // be subject to change pending further revisions. Until the final specification
 // revision is finished, changes required to implement updates to the spec will
 // not be considered a breaking change. They will happen as a minor version
@@ -236,7 +293,7 @@ func (g *Gen) NewV6() (UUID, error) {
 		return Nil, err
 	}
 
-	timeNow, clockSeq, err := g.getClockSequence()
+	timeNow, clockSeq, err := g.getClockSequence(false)
 	if err != nil {
 		return Nil, err
 	}
@@ -252,8 +309,12 @@ func (g *Gen) NewV6() (UUID, error) {
 	return u, nil
 }
 
-// getClockSequence returns the epoch and clock sequence for V1 and V6 UUIDs.
-func (g *Gen) getClockSequence() (uint64, uint16, error) {
+// getClockSequence returns the epoch and clock sequence for V1,V6 and V7 UUIDs.
+//
+//	When useUnixTSMs is false, it uses the Coordinated Universal Time (UTC) as a count of 100-
+//
+// nanosecond intervals since 00:00:00.00, 15 October 1582 (the date of Gregorian reform to the Christian calendar).
+func (g *Gen) getClockSequence(useUnixTSMs bool) (uint64, uint16, error) {
 	var err error
 	g.clockSequenceOnce.Do(func() {
 		buf := make([]byte, 2)
@@ -269,7 +330,12 @@ func (g *Gen) getClockSequence() (uint64, uint16, error) {
 	g.storageMutex.Lock()
 	defer g.storageMutex.Unlock()
 
-	timeNow := g.getEpoch()
+	var timeNow uint64
+	if useUnixTSMs {
+		timeNow = uint64(g.epochFunc().UnixMilli())
+	} else {
+		timeNow = g.getEpoch()
+	}
 	// Clock didn't change since last UUID generation.
 	// Should increase clock sequence.
 	if timeNow <= g.lastTime {
@@ -280,242 +346,57 @@ func (g *Gen) getClockSequence() (uint64, uint16, error) {
 	return timeNow, g.clockSequence, nil
 }
 
-// Precision is used to configure the V7 generator, to specify how precise the
-// timestamp within the UUID should be.
-type Precision byte
-
-const (
-	NanosecondPrecision Precision = iota
-	MicrosecondPrecision
-	MillisecondPrecision
-)
-
-func (p Precision) String() string {
-	switch p {
-	case NanosecondPrecision:
-		return "nanosecond"
-
-	case MicrosecondPrecision:
-		return "microsecond"
-
-	case MillisecondPrecision:
-		return "millisecond"
-
-	default:
-		return "unknown"
-	}
-}
-
-// Duration returns the time.Duration for a specific precision. If the Precision
-// value is not known, this returns 0.
-func (p Precision) Duration() time.Duration {
-	switch p {
-	case NanosecondPrecision:
-		return time.Nanosecond
-
-	case MicrosecondPrecision:
-		return time.Microsecond
-
-	case MillisecondPrecision:
-		return time.Millisecond
-
-	default:
-		return 0
-	}
-}
-
-// NewV7 returns a k-sortable UUID based on the current UNIX epoch, with the
-// ability to configure the timestamp's precision from millisecond all the way
-// to nanosecond. The additional precision is supported by reducing the amount
-// of pseudorandom data that makes up the rest of the UUID.
+// NewV7 returns a k-sortable UUID based on the current millisecond precision
+// UNIX epoch and 74 bits of pseudorandom data.
 //
-// If an unknown Precision argument is passed to this method it will panic. As
-// such it's strongly encouraged to use the package-provided constants for this
-// value.
-//
-// This is implemented based on revision 02 of the Peabody UUID draft, and may
+// This is implemented based on revision 04 of the Peabody UUID draft, and may
 // be subject to change pending further revisions. Until the final specification
 // revision is finished, changes required to implement updates to the spec will
 // not be considered a breaking change. They will happen as a minor version
 // releases until the spec is final.
-func (g *Gen) NewV7(p Precision) (UUID, error) {
+func (g *Gen) NewV7() (UUID, error) {
 	var u UUID
-	var err error
+	/* https://www.ietf.org/archive/id/draft-peabody-dispatch-new-uuid-format-04.html#name-uuid-version-7
+		0                   1                   2                   3
+	    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	   |                           unix_ts_ms                          |
+	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	   |          unix_ts_ms           |  ver  |       rand_a          |
+	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	   |var|                        rand_b                             |
+	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	   |                            rand_b                             |
+	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ */
 
-	switch p {
-	case NanosecondPrecision:
-		u, err = g.newV7Nano()
-
-	case MicrosecondPrecision:
-		u, err = g.newV7Micro()
-
-	case MillisecondPrecision:
-		u, err = g.newV7Milli()
-
-	default:
-		panic(fmt.Sprintf("unknown precision value %d", p))
-	}
-
+	ms, clockSeq, err := g.getClockSequence(true)
 	if err != nil {
 		return Nil, err
 	}
+	//UUIDv7 features a 48 bit timestamp. First 32bit (4bytes) represents seconds since 1970, followed by 2 bytes for the ms granularity.
+	u[0] = byte(ms >> 40) //1-6 bytes: big-endian unsigned number of Unix epoch timestamp
+	u[1] = byte(ms >> 32)
+	u[2] = byte(ms >> 24)
+	u[3] = byte(ms >> 16)
+	u[4] = byte(ms >> 8)
+	u[5] = byte(ms)
 
+	//support batching by using a monotonic pseudo-random sequence
+	//The 6th byte contains the version and partially rand_a data.
+	//We will lose the most significant bites from the clockSeq (with SetVersion), but it is ok, we need the least significant that contains the counter to ensure the monotonic property
+	binary.BigEndian.PutUint16(u[6:8], clockSeq) // set rand_a with clock seq which is random and monotonic
+
+	//override first 4bits of u[6].
 	u.SetVersion(V7)
+
+	//set rand_b 64bits of pseudo-random bits (first 2 will be overridden)
+	if _, err = io.ReadFull(g.rand, u[8:16]); err != nil {
+		return Nil, err
+	}
+	//override first 2 bits of byte[8] for the variant
 	u.SetVariant(VariantRFC4122)
 
 	return u, nil
-}
-
-func (g *Gen) newV7Milli() (UUID, error) {
-	var u UUID
-
-	if _, err := io.ReadFull(g.rand, u[8:]); err != nil {
-		return Nil, err
-	}
-
-	sec, nano, seq, err := g.getV7ClockSequence(MillisecondPrecision)
-	if err != nil {
-		return Nil, err
-	}
-
-	msec := (nano / 1000000) & 0xfff
-
-	d := (sec << 28)           // set unixts field
-	d |= (msec << 16)          // set msec field
-	d |= (uint64(seq) & 0xfff) // set seq field
-
-	binary.BigEndian.PutUint64(u[:], d)
-
-	return u, nil
-}
-
-func (g *Gen) newV7Micro() (UUID, error) {
-	var u UUID
-
-	if _, err := io.ReadFull(g.rand, u[10:]); err != nil {
-		return Nil, err
-	}
-
-	sec, nano, seq, err := g.getV7ClockSequence(MicrosecondPrecision)
-	if err != nil {
-		return Nil, err
-	}
-
-	usec := nano / 1000
-	usech := (usec << 4) & 0xfff0000
-	usecl := usec & 0xfff
-
-	d := (sec << 28)   // set unixts field
-	d |= usech | usecl // set usec fields
-
-	binary.BigEndian.PutUint64(u[:], d)
-	binary.BigEndian.PutUint16(u[8:], seq)
-
-	return u, nil
-}
-
-func (g *Gen) newV7Nano() (UUID, error) {
-	var u UUID
-
-	if _, err := io.ReadFull(g.rand, u[11:]); err != nil {
-		return Nil, err
-	}
-
-	sec, nano, seq, err := g.getV7ClockSequence(NanosecondPrecision)
-	if err != nil {
-		return Nil, err
-	}
-
-	nano &= 0x3fffffffff
-	nanoh := nano >> 26
-	nanom := (nano >> 14) & 0xfff
-	nanol := uint16(nano & 0x3fff)
-
-	d := (sec << 28)           // set unixts field
-	d |= (nanoh << 16) | nanom // set nsec high and med fields
-
-	binary.BigEndian.PutUint64(u[:], d)
-	binary.BigEndian.PutUint16(u[8:], nanol) // set nsec low field
-
-	u[10] = byte(seq) // set seq field
-
-	return u, nil
-}
-
-const (
-	maxSeq14 = (1 << 14) - 1
-	maxSeq12 = (1 << 12) - 1
-	maxSeq8  = (1 << 8) - 1
-)
-
-// getV7ClockSequence returns the unix epoch, nanoseconds of current second, and
-// the sequence for V7 UUIDs.
-func (g *Gen) getV7ClockSequence(p Precision) (epoch uint64, nano uint64, seq uint16, err error) {
-	g.storageMutex.Lock()
-	defer g.storageMutex.Unlock()
-
-	tn := g.epochFunc()
-	unix := uint64(tn.Unix())
-	nsec := uint64(tn.Nanosecond())
-
-	// V7 UUIDs have more precise requirements around how the clock sequence
-	// value is generated and used. Specifically they require that the sequence
-	// be zero, unless we've already generated a UUID within this unit of time
-	// (millisecond, microsecond, or nanosecond) at which point you should
-	// increment the sequence. Likewise if time has warped backwards for some reason (NTP
-	// adjustment?), we also increment the clock sequence to reduce the risk of a
-	// collision.
-	switch {
-	case unix < g.v7LastTime:
-		g.v7ClockSequence++
-
-	case unix > g.v7LastTime:
-		g.v7ClockSequence = 0
-
-	case unix == g.v7LastTime:
-		switch p {
-		case NanosecondPrecision:
-			if nsec <= g.v7LastSubsec {
-				if g.v7ClockSequence >= maxSeq8 {
-					return 0, 0, 0, errors.New("generating nanosecond precision UUIDv7s too fast: internal clock sequence would roll over")
-				}
-
-				g.v7ClockSequence++
-			} else {
-				g.v7ClockSequence = 0
-			}
-
-		case MicrosecondPrecision:
-			if nsec/1000 <= g.v7LastSubsec/1000 {
-				if g.v7ClockSequence >= maxSeq14 {
-					return 0, 0, 0, errors.New("generating microsecond precision UUIDv7s too fast: internal clock sequence would roll over")
-				}
-
-				g.v7ClockSequence++
-			} else {
-				g.v7ClockSequence = 0
-			}
-
-		case MillisecondPrecision:
-			if nsec/1000000 <= g.v7LastSubsec/1000000 {
-				if g.v7ClockSequence >= maxSeq12 {
-					return 0, 0, 0, errors.New("generating millisecond precision UUIDv7s too fast: internal clock sequence would roll over")
-				}
-
-				g.v7ClockSequence++
-			} else {
-				g.v7ClockSequence = 0
-			}
-
-		default:
-			panic(fmt.Sprintf("unknown precision value %d", p))
-		}
-	}
-
-	g.v7LastTime = unix
-	g.v7LastSubsec = nsec
-
-	return unix, nsec, g.v7ClockSequence, nil
 }
 
 // Returns the hardware address.
@@ -558,9 +439,11 @@ func newFromHash(h hash.Hash, ns UUID, name string) UUID {
 	return u
 }
 
+var netInterfaces = net.Interfaces
+
 // Returns the hardware address.
 func defaultHWAddrFunc() (net.HardwareAddr, error) {
-	ifaces, err := net.Interfaces()
+	ifaces, err := netInterfaces()
 	if err != nil {
 		return []byte{}, err
 	}

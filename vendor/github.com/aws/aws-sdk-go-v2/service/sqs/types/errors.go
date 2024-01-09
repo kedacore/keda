@@ -27,7 +27,7 @@ func (e *BatchEntryIdsNotDistinct) ErrorMessage() string {
 }
 func (e *BatchEntryIdsNotDistinct) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "AWS.SimpleQueueService.BatchEntryIdsNotDistinct"
+		return "BatchEntryIdsNotDistinct"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -53,7 +53,7 @@ func (e *BatchRequestTooLong) ErrorMessage() string {
 }
 func (e *BatchRequestTooLong) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "AWS.SimpleQueueService.BatchRequestTooLong"
+		return "BatchRequestTooLong"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -79,11 +79,37 @@ func (e *EmptyBatchRequest) ErrorMessage() string {
 }
 func (e *EmptyBatchRequest) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "AWS.SimpleQueueService.EmptyBatchRequest"
+		return "EmptyBatchRequest"
 	}
 	return *e.ErrorCodeOverride
 }
 func (e *EmptyBatchRequest) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+
+// The accountId is invalid.
+type InvalidAddress struct {
+	Message *string
+
+	ErrorCodeOverride *string
+
+	noSmithyDocumentSerde
+}
+
+func (e *InvalidAddress) Error() string {
+	return fmt.Sprintf("%s: %s", e.ErrorCode(), e.ErrorMessage())
+}
+func (e *InvalidAddress) ErrorMessage() string {
+	if e.Message == nil {
+		return ""
+	}
+	return *e.Message
+}
+func (e *InvalidAddress) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "InvalidAddress"
+	}
+	return *e.ErrorCodeOverride
+}
+func (e *InvalidAddress) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The specified attribute doesn't exist.
 type InvalidAttributeName struct {
@@ -111,6 +137,32 @@ func (e *InvalidAttributeName) ErrorCode() string {
 }
 func (e *InvalidAttributeName) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
+// A queue attribute value is invalid.
+type InvalidAttributeValue struct {
+	Message *string
+
+	ErrorCodeOverride *string
+
+	noSmithyDocumentSerde
+}
+
+func (e *InvalidAttributeValue) Error() string {
+	return fmt.Sprintf("%s: %s", e.ErrorCode(), e.ErrorMessage())
+}
+func (e *InvalidAttributeValue) ErrorMessage() string {
+	if e.Message == nil {
+		return ""
+	}
+	return *e.Message
+}
+func (e *InvalidAttributeValue) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "InvalidAttributeValue"
+	}
+	return *e.ErrorCodeOverride
+}
+func (e *InvalidAttributeValue) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+
 // The Id of a batch entry in a batch request doesn't abide by the specification.
 type InvalidBatchEntryId struct {
 	Message *string
@@ -131,7 +183,7 @@ func (e *InvalidBatchEntryId) ErrorMessage() string {
 }
 func (e *InvalidBatchEntryId) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "AWS.SimpleQueueService.InvalidBatchEntryId"
+		return "InvalidBatchEntryId"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -189,6 +241,220 @@ func (e *InvalidMessageContents) ErrorCode() string {
 }
 func (e *InvalidMessageContents) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
+// When the request to a queue is not HTTPS and SigV4.
+type InvalidSecurity struct {
+	Message *string
+
+	ErrorCodeOverride *string
+
+	noSmithyDocumentSerde
+}
+
+func (e *InvalidSecurity) Error() string {
+	return fmt.Sprintf("%s: %s", e.ErrorCode(), e.ErrorMessage())
+}
+func (e *InvalidSecurity) ErrorMessage() string {
+	if e.Message == nil {
+		return ""
+	}
+	return *e.Message
+}
+func (e *InvalidSecurity) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "InvalidSecurity"
+	}
+	return *e.ErrorCodeOverride
+}
+func (e *InvalidSecurity) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+
+// The caller doesn't have the required KMS access.
+type KmsAccessDenied struct {
+	Message *string
+
+	ErrorCodeOverride *string
+
+	noSmithyDocumentSerde
+}
+
+func (e *KmsAccessDenied) Error() string {
+	return fmt.Sprintf("%s: %s", e.ErrorCode(), e.ErrorMessage())
+}
+func (e *KmsAccessDenied) ErrorMessage() string {
+	if e.Message == nil {
+		return ""
+	}
+	return *e.Message
+}
+func (e *KmsAccessDenied) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "KmsAccessDenied"
+	}
+	return *e.ErrorCodeOverride
+}
+func (e *KmsAccessDenied) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+
+// The request was denied due to request throttling.
+type KmsDisabled struct {
+	Message *string
+
+	ErrorCodeOverride *string
+
+	noSmithyDocumentSerde
+}
+
+func (e *KmsDisabled) Error() string {
+	return fmt.Sprintf("%s: %s", e.ErrorCode(), e.ErrorMessage())
+}
+func (e *KmsDisabled) ErrorMessage() string {
+	if e.Message == nil {
+		return ""
+	}
+	return *e.Message
+}
+func (e *KmsDisabled) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "KmsDisabled"
+	}
+	return *e.ErrorCodeOverride
+}
+func (e *KmsDisabled) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+
+// The request was rejected for one of the following reasons:
+//   - The KeyUsage value of the KMS key is incompatible with the API operation.
+//   - The encryption algorithm or signing algorithm specified for the operation
+//     is incompatible with the type of key material in the KMS key (KeySpec).
+type KmsInvalidKeyUsage struct {
+	Message *string
+
+	ErrorCodeOverride *string
+
+	noSmithyDocumentSerde
+}
+
+func (e *KmsInvalidKeyUsage) Error() string {
+	return fmt.Sprintf("%s: %s", e.ErrorCode(), e.ErrorMessage())
+}
+func (e *KmsInvalidKeyUsage) ErrorMessage() string {
+	if e.Message == nil {
+		return ""
+	}
+	return *e.Message
+}
+func (e *KmsInvalidKeyUsage) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "KmsInvalidKeyUsage"
+	}
+	return *e.ErrorCodeOverride
+}
+func (e *KmsInvalidKeyUsage) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+
+// The request was rejected because the state of the specified resource is not
+// valid for this request.
+type KmsInvalidState struct {
+	Message *string
+
+	ErrorCodeOverride *string
+
+	noSmithyDocumentSerde
+}
+
+func (e *KmsInvalidState) Error() string {
+	return fmt.Sprintf("%s: %s", e.ErrorCode(), e.ErrorMessage())
+}
+func (e *KmsInvalidState) ErrorMessage() string {
+	if e.Message == nil {
+		return ""
+	}
+	return *e.Message
+}
+func (e *KmsInvalidState) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "KmsInvalidState"
+	}
+	return *e.ErrorCodeOverride
+}
+func (e *KmsInvalidState) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+
+// The request was rejected because the specified entity or resource could not be
+// found.
+type KmsNotFound struct {
+	Message *string
+
+	ErrorCodeOverride *string
+
+	noSmithyDocumentSerde
+}
+
+func (e *KmsNotFound) Error() string {
+	return fmt.Sprintf("%s: %s", e.ErrorCode(), e.ErrorMessage())
+}
+func (e *KmsNotFound) ErrorMessage() string {
+	if e.Message == nil {
+		return ""
+	}
+	return *e.Message
+}
+func (e *KmsNotFound) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "KmsNotFound"
+	}
+	return *e.ErrorCodeOverride
+}
+func (e *KmsNotFound) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+
+// The request was rejected because the specified key policy isn't syntactically
+// or semantically correct.
+type KmsOptInRequired struct {
+	Message *string
+
+	ErrorCodeOverride *string
+
+	noSmithyDocumentSerde
+}
+
+func (e *KmsOptInRequired) Error() string {
+	return fmt.Sprintf("%s: %s", e.ErrorCode(), e.ErrorMessage())
+}
+func (e *KmsOptInRequired) ErrorMessage() string {
+	if e.Message == nil {
+		return ""
+	}
+	return *e.Message
+}
+func (e *KmsOptInRequired) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "KmsOptInRequired"
+	}
+	return *e.ErrorCodeOverride
+}
+func (e *KmsOptInRequired) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+
+// Amazon Web Services KMS throttles requests for the following conditions.
+type KmsThrottled struct {
+	Message *string
+
+	ErrorCodeOverride *string
+
+	noSmithyDocumentSerde
+}
+
+func (e *KmsThrottled) Error() string {
+	return fmt.Sprintf("%s: %s", e.ErrorCode(), e.ErrorMessage())
+}
+func (e *KmsThrottled) ErrorMessage() string {
+	if e.Message == nil {
+		return ""
+	}
+	return *e.Message
+}
+func (e *KmsThrottled) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "KmsThrottled"
+	}
+	return *e.ErrorCodeOverride
+}
+func (e *KmsThrottled) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+
 // The specified message isn't in flight.
 type MessageNotInflight struct {
 	Message *string
@@ -209,7 +475,7 @@ func (e *MessageNotInflight) ErrorMessage() string {
 }
 func (e *MessageNotInflight) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "AWS.SimpleQueueService.MessageNotInflight"
+		return "MessageNotInflight"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -266,7 +532,7 @@ func (e *PurgeQueueInProgress) ErrorMessage() string {
 }
 func (e *PurgeQueueInProgress) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "AWS.SimpleQueueService.PurgeQueueInProgress"
+		return "PurgeQueueInProgress"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -293,7 +559,7 @@ func (e *QueueDeletedRecently) ErrorMessage() string {
 }
 func (e *QueueDeletedRecently) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "AWS.SimpleQueueService.QueueDeletedRecently"
+		return "QueueDeletedRecently"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -319,7 +585,7 @@ func (e *QueueDoesNotExist) ErrorMessage() string {
 }
 func (e *QueueDoesNotExist) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "AWS.SimpleQueueService.NonExistentQueue"
+		return "QueueDoesNotExist"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -347,7 +613,7 @@ func (e *QueueNameExists) ErrorMessage() string {
 }
 func (e *QueueNameExists) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "QueueAlreadyExists"
+		return "QueueNameExists"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -378,6 +644,41 @@ func (e *ReceiptHandleIsInvalid) ErrorCode() string {
 	return *e.ErrorCodeOverride
 }
 func (e *ReceiptHandleIsInvalid) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+
+// The request was denied due to request throttling.
+//   - The rate of requests per second exceeds the Amazon Web Services KMS request
+//     quota for an account and Region.
+//   - A burst or sustained high rate of requests to change the state of the same
+//     KMS key. This condition is often known as a "hot key."
+//   - Requests for operations on KMS keys in a Amazon Web Services CloudHSM key
+//     store might be throttled at a lower-than-expected rate when the Amazon Web
+//     Services CloudHSM cluster associated with the Amazon Web Services CloudHSM key
+//     store is processing numerous commands, including those unrelated to the Amazon
+//     Web Services CloudHSM key store.
+type RequestThrottled struct {
+	Message *string
+
+	ErrorCodeOverride *string
+
+	noSmithyDocumentSerde
+}
+
+func (e *RequestThrottled) Error() string {
+	return fmt.Sprintf("%s: %s", e.ErrorCode(), e.ErrorMessage())
+}
+func (e *RequestThrottled) ErrorMessage() string {
+	if e.Message == nil {
+		return ""
+	}
+	return *e.Message
+}
+func (e *RequestThrottled) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "RequestThrottled"
+	}
+	return *e.ErrorCodeOverride
+}
+func (e *RequestThrottled) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // One or more specified resources don't exist.
 type ResourceNotFoundException struct {
@@ -425,7 +726,7 @@ func (e *TooManyEntriesInBatchRequest) ErrorMessage() string {
 }
 func (e *TooManyEntriesInBatchRequest) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "AWS.SimpleQueueService.TooManyEntriesInBatchRequest"
+		return "TooManyEntriesInBatchRequest"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -451,7 +752,7 @@ func (e *UnsupportedOperation) ErrorMessage() string {
 }
 func (e *UnsupportedOperation) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "AWS.SimpleQueueService.UnsupportedOperation"
+		return "UnsupportedOperation"
 	}
 	return *e.ErrorCodeOverride
 }

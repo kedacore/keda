@@ -3788,6 +3788,28 @@ func awsAwsjson10_serializeDocumentGlobalTableGlobalSecondaryIndexSettingsUpdate
 	return nil
 }
 
+func awsAwsjson10_serializeDocumentIncrementalExportSpecification(v *types.IncrementalExportSpecification, value smithyjson.Value) error {
+	object := value.Object()
+	defer object.Close()
+
+	if v.ExportFromTime != nil {
+		ok := object.Key("ExportFromTime")
+		ok.Double(smithytime.FormatEpochSeconds(*v.ExportFromTime))
+	}
+
+	if v.ExportToTime != nil {
+		ok := object.Key("ExportToTime")
+		ok.Double(smithytime.FormatEpochSeconds(*v.ExportToTime))
+	}
+
+	if len(v.ExportViewType) > 0 {
+		ok := object.Key("ExportViewType")
+		ok.String(string(v.ExportViewType))
+	}
+
+	return nil
+}
+
 func awsAwsjson10_serializeDocumentInputFormatOptions(v *types.InputFormatOptions, value smithyjson.Value) error {
 	object := value.Object()
 	defer object.Close()
@@ -5436,6 +5458,18 @@ func awsAwsjson10_serializeOpDocumentExportTableToPointInTimeInput(v *ExportTabl
 	if v.ExportTime != nil {
 		ok := object.Key("ExportTime")
 		ok.Double(smithytime.FormatEpochSeconds(*v.ExportTime))
+	}
+
+	if len(v.ExportType) > 0 {
+		ok := object.Key("ExportType")
+		ok.String(string(v.ExportType))
+	}
+
+	if v.IncrementalExportSpecification != nil {
+		ok := object.Key("IncrementalExportSpecification")
+		if err := awsAwsjson10_serializeDocumentIncrementalExportSpecification(v.IncrementalExportSpecification, ok); err != nil {
+			return err
+		}
 	}
 
 	if v.S3Bucket != nil {

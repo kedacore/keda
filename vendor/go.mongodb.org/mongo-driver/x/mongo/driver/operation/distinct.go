@@ -13,6 +13,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/internal/driverutil"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -105,6 +106,7 @@ func (d *Distinct) Execute(ctx context.Context) error {
 		Selector:          d.selector,
 		ServerAPI:         d.serverAPI,
 		Timeout:           d.timeout,
+		Name:              driverutil.DistinctOp,
 	}.Execute(ctx)
 
 }

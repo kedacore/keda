@@ -18,7 +18,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/bsoncodec"
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/internal"
+	"go.mongodb.org/mongo-driver/internal/csfle"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
@@ -841,7 +841,10 @@ func aggregate(a aggregateParams) (cur *Cursor, err error) {
 	}
 
 	ao := options.MergeAggregateOptions(a.opts...)
+
 	cursorOpts := a.client.createBaseCursorOptions()
+
+	cursorOpts.MarshalValueEncoderFn = newEncoderFn(a.bsonOpts, a.registry)
 
 	op := operation.NewAggregate(pipelineArr).
 		Session(sess).
@@ -1230,6 +1233,9 @@ func (coll *Collection) Find(ctx context.Context, filter interface{},
 		Timeout(coll.client.timeout).MaxTime(fo.MaxTime).Logger(coll.client.logger)
 
 	cursorOpts := coll.client.createBaseCursorOptions()
+
+	cursorOpts.MarshalValueEncoderFn = newEncoderFn(coll.bsonOpts, coll.registry)
+
 	if fo.AllowDiskUse != nil {
 		op.AllowDiskUse(*fo.AllowDiskUse)
 	}
@@ -1767,6 +1773,13 @@ func (coll *Collection) Indexes() IndexView {
 	return IndexView{coll: coll}
 }
 
+// SearchIndexes returns a SearchIndexView instance that can be used to perform operations on the search indexes for the collection.
+func (coll *Collection) SearchIndexes() SearchIndexView {
+	return SearchIndexView{
+		coll: coll,
+	}
+}
+
 // Drop drops the collection on the server. This method ignores "namespace not found" errors so it is safe to drop
 // a collection that does not exist on the server.
 func (coll *Collection) Drop(ctx context.Context) error {
@@ -1798,7 +1811,7 @@ func (coll *Collection) dropEncryptedCollection(ctx context.Context, ef interfac
 
 	// Drop the two encryption-related, associated collections: `escCollection` and `ecocCollection`.
 	// Drop ESCCollection.
-	escCollection, err := internal.GetEncryptedStateCollectionName(efBSON, coll.name, internal.EncryptedStateCollection)
+	escCollection, err := csfle.GetEncryptedStateCollectionName(efBSON, coll.name, csfle.EncryptedStateCollection)
 	if err != nil {
 		return err
 	}
@@ -1807,7 +1820,7 @@ func (coll *Collection) dropEncryptedCollection(ctx context.Context, ef interfac
 	}
 
 	// Drop ECOCCollection.
-	ecocCollection, err := internal.GetEncryptedStateCollectionName(efBSON, coll.name, internal.EncryptedCompactionCollection)
+	ecocCollection, err := csfle.GetEncryptedStateCollectionName(efBSON, coll.name, csfle.EncryptedCompactionCollection)
 	if err != nil {
 		return err
 	}
@@ -1854,7 +1867,7 @@ func (coll *Collection) drop(ctx context.Context) error {
 		ServerAPI(coll.client.serverAPI).Timeout(coll.client.timeout)
 	err = op.Execute(ctx)
 
-	// ignore namespace not found erorrs
+	// ignore namespace not found errors
 	driverErr, ok := err.(driver.Error)
 	if !ok || (ok && !driverErr.NamespaceNotFound()) {
 		return replaceErrors(err)
@@ -1862,26 +1875,52 @@ func (coll *Collection) drop(ctx context.Context) error {
 	return nil
 }
 
-// makePinnedSelector makes a selector for a pinned session with a pinned server. Will attempt to do server selection on
-// the pinned server but if that fails it will go through a list of default selectors
-func makePinnedSelector(sess *session.Client, defaultSelector description.ServerSelector) description.ServerSelectorFunc {
-	return func(t description.Topology, svrs []description.Server) ([]description.Server, error) {
-		if sess != nil && sess.PinnedServer != nil {
-			// If there is a pinned server, try to find it in the list of candidates.
-			for _, candidate := range svrs {
-				if candidate.Addr == sess.PinnedServer.Addr {
-					return []description.Server{candidate}, nil
-				}
-			}
-
-			return nil, nil
-		}
-
-		return defaultSelector.SelectServer(t, svrs)
-	}
+type pinnedServerSelector struct {
+	stringer fmt.Stringer
+	fallback description.ServerSelector
+	session  *session.Client
 }
 
-func makeReadPrefSelector(sess *session.Client, selector description.ServerSelector, localThreshold time.Duration) description.ServerSelectorFunc {
+func (pss pinnedServerSelector) String() string {
+	if pss.stringer == nil {
+		return ""
+	}
+
+	return pss.stringer.String()
+}
+
+func (pss pinnedServerSelector) SelectServer(
+	t description.Topology,
+	svrs []description.Server,
+) ([]description.Server, error) {
+	if pss.session != nil && pss.session.PinnedServer != nil {
+		// If there is a pinned server, try to find it in the list of candidates.
+		for _, candidate := range svrs {
+			if candidate.Addr == pss.session.PinnedServer.Addr {
+				return []description.Server{candidate}, nil
+			}
+		}
+
+		return nil, nil
+	}
+
+	return pss.fallback.SelectServer(t, svrs)
+}
+
+func makePinnedSelector(sess *session.Client, fallback description.ServerSelector) description.ServerSelector {
+	pss := pinnedServerSelector{
+		session:  sess,
+		fallback: fallback,
+	}
+
+	if srvSelectorStringer, ok := fallback.(fmt.Stringer); ok {
+		pss.stringer = srvSelectorStringer
+	}
+
+	return pss
+}
+
+func makeReadPrefSelector(sess *session.Client, selector description.ServerSelector, localThreshold time.Duration) description.ServerSelector {
 	if sess != nil && sess.TransactionRunning() {
 		selector = description.CompositeSelector([]description.ServerSelector{
 			description.ReadPrefSelector(sess.CurrentRp),
@@ -1892,7 +1931,7 @@ func makeReadPrefSelector(sess *session.Client, selector description.ServerSelec
 	return makePinnedSelector(sess, selector)
 }
 
-func makeOutputAggregateSelector(sess *session.Client, rp *readpref.ReadPref, localThreshold time.Duration) description.ServerSelectorFunc {
+func makeOutputAggregateSelector(sess *session.Client, rp *readpref.ReadPref, localThreshold time.Duration) description.ServerSelector {
 	if sess != nil && sess.TransactionRunning() {
 		// Use current transaction's read preference if available
 		rp = sess.CurrentRp

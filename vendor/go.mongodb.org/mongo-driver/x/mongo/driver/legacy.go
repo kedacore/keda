@@ -19,4 +19,5 @@ const (
 	LegacyKillCursors
 	LegacyListCollections
 	LegacyListIndexes
+	LegacyHandshake
 )

@@ -24,7 +24,7 @@ import (
 
 var (
 	defaultValueDecoders DefaultValueDecoders
-	errCannotTruncate    = errors.New("float64 can only be truncated to an integer type when truncation is enabled")
+	errCannotTruncate    = errors.New("float64 can only be truncated to a lower precision type when truncation is enabled")
 )
 
 type decodeBinaryError struct {
