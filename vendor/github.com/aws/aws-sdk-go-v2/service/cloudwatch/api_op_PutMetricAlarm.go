@@ -4,10 +4,14 @@ package cloudwatch
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
+	internalauth "github.com/aws/aws-sdk-go-v2/internal/auth"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
+	smithyendpoints "github.com/aws/smithy-go/endpoints"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
@@ -189,9 +193,8 @@ type PutMetricAlarmInput struct {
 	// The name for the metric associated with the alarm. For each PutMetricAlarm
 	// operation, you must specify either MetricName or a Metrics array. If you are
 	// creating an alarm based on a math expression, you cannot specify this parameter,
-	// or any of the Namespace , Dimensions , Period , Unit , Statistic , or
-	// ExtendedStatistic parameters. Instead, you specify all this information in the
-	// Metrics array.
+	// or any of the Dimensions , Period , Namespace , Statistic , or ExtendedStatistic
+	// parameters. Instead, you specify all this information in the Metrics array.
 	MetricName *string
 
 	// An array of MetricDataQuery structures that enable you to create an alarm based
@@ -201,10 +204,10 @@ type PutMetricAlarmInput struct {
 	// Metrics array is the expression that the alarm watches. You designate this
 	// expression by setting ReturnData to true for this object in the array. For more
 	// information, see MetricDataQuery (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_MetricDataQuery.html)
-	// . If you use the Metrics parameter, you cannot include the Namespace ,
-	// MetricName , Dimensions , Period , Unit , Statistic , or ExtendedStatistic
-	// parameters of PutMetricAlarm in the same operation. Instead, you retrieve the
-	// metrics you are using in your math expression as part of the Metrics array.
+	// . If you use the Metrics parameter, you cannot include the MetricName ,
+	// Dimensions , Period , Namespace , Statistic , or ExtendedStatistic parameters
+	// of PutMetricAlarm in the same operation. Instead, you retrieve the metrics you
+	// are using in your math expression as part of the Metrics array.
 	Metrics []types.MetricDataQuery
 
 	// The namespace for the metric associated specified in MetricName .
@@ -296,13 +299,11 @@ type PutMetricAlarmInput struct {
 	// an instance receives on all network interfaces. You can also specify a unit when
 	// you create a custom metric. Units help provide conceptual meaning to your data.
 	// Metric data points that specify a unit of measure, such as Percent, are
-	// aggregated separately. If you are creating an alarm based on a metric math
-	// expression, you can specify the unit for each metric (if needed) within the
-	// objects in the Metrics array. If you don't specify Unit , CloudWatch retrieves
-	// all unit types that have been published for the metric and attempts to evaluate
-	// the alarm. Usually, metrics are published with only one unit, so the alarm works
-	// as intended. However, if the metric is published with multiple types of units
-	// and you don't specify a unit, the alarm's behavior is not defined and it behaves
+	// aggregated separately. If you don't specify Unit , CloudWatch retrieves all unit
+	// types that have been published for the metric and attempts to evaluate the
+	// alarm. Usually, metrics are published with only one unit, so the alarm works as
+	// intended. However, if the metric is published with multiple types of units and
+	// you don't specify a unit, the alarm's behavior is not defined and it behaves
 	// unpredictably. We recommend omitting Unit so that you don't inadvertently
 	// specify an incorrect unit that is not published for this metric. Doing so causes
 	// the alarm to be stuck in the INSUFFICIENT DATA state.
@@ -319,9 +320,6 @@ type PutMetricAlarmOutput struct {
 }
 
 func (c *Client) addOperationPutMetricAlarmMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsAwsquery_serializeOpPutMetricAlarm{}, middleware.After)
 	if err != nil {
 		return err
@@ -330,10 +328,6 @@ func (c *Client) addOperationPutMetricAlarmMiddlewares(stack *middleware.Stack, 
 	if err != nil {
 		return err
 	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "PutMetricAlarm"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
-
 	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
@@ -355,6 +349,9 @@ func (c *Client) addOperationPutMetricAlarmMiddlewares(stack *middleware.Stack, 
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
+	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+		return err
+	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
@@ -370,7 +367,7 @@ func (c *Client) addOperationPutMetricAlarmMiddlewares(stack *middleware.Stack, 
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+	if err = addPutMetricAlarmResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addOpPutMetricAlarmValidationMiddleware(stack); err != nil {
@@ -391,7 +388,7 @@ func (c *Client) addOperationPutMetricAlarmMiddlewares(stack *middleware.Stack, 
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
-	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+	if err = addendpointDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
 	return nil
@@ -401,6 +398,130 @@ func newServiceMetadataMiddleware_opPutMetricAlarm(region string) *awsmiddleware
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
+		SigningName:   "monitoring",
 		OperationName: "PutMetricAlarm",
 	}
+}
+
+type opPutMetricAlarmResolveEndpointMiddleware struct {
+	EndpointResolver EndpointResolverV2
+	BuiltInResolver  builtInParameterResolver
+}
+
+func (*opPutMetricAlarmResolveEndpointMiddleware) ID() string {
+	return "ResolveEndpointV2"
+}
+
+func (m *opPutMetricAlarmResolveEndpointMiddleware) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
+) {
+	if awsmiddleware.GetRequiresLegacyEndpoints(ctx) {
+		return next.HandleSerialize(ctx, in)
+	}
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown transport type %T", in.Request)
+	}
+
+	if m.EndpointResolver == nil {
+		return out, metadata, fmt.Errorf("expected endpoint resolver to not be nil")
+	}
+
+	params := EndpointParameters{}
+
+	m.BuiltInResolver.ResolveBuiltIns(&params)
+
+	var resolvedEndpoint smithyendpoints.Endpoint
+	resolvedEndpoint, err = m.EndpointResolver.ResolveEndpoint(ctx, params)
+	if err != nil {
+		return out, metadata, fmt.Errorf("failed to resolve service endpoint, %w", err)
+	}
+
+	req.URL = &resolvedEndpoint.URI
+
+	for k := range resolvedEndpoint.Headers {
+		req.Header.Set(
+			k,
+			resolvedEndpoint.Headers.Get(k),
+		)
+	}
+
+	authSchemes, err := internalauth.GetAuthenticationSchemes(&resolvedEndpoint.Properties)
+	if err != nil {
+		var nfe *internalauth.NoAuthenticationSchemesFoundError
+		if errors.As(err, &nfe) {
+			// if no auth scheme is found, default to sigv4
+			signingName := "monitoring"
+			signingRegion := m.BuiltInResolver.(*builtInResolver).Region
+			ctx = awsmiddleware.SetSigningName(ctx, signingName)
+			ctx = awsmiddleware.SetSigningRegion(ctx, signingRegion)
+
+		}
+		var ue *internalauth.UnSupportedAuthenticationSchemeSpecifiedError
+		if errors.As(err, &ue) {
+			return out, metadata, fmt.Errorf(
+				"This operation requests signer version(s) %v but the client only supports %v",
+				ue.UnsupportedSchemes,
+				internalauth.SupportedSchemes,
+			)
+		}
+	}
+
+	for _, authScheme := range authSchemes {
+		switch authScheme.(type) {
+		case *internalauth.AuthenticationSchemeV4:
+			v4Scheme, _ := authScheme.(*internalauth.AuthenticationSchemeV4)
+			var signingName, signingRegion string
+			if v4Scheme.SigningName == nil {
+				signingName = "monitoring"
+			} else {
+				signingName = *v4Scheme.SigningName
+			}
+			if v4Scheme.SigningRegion == nil {
+				signingRegion = m.BuiltInResolver.(*builtInResolver).Region
+			} else {
+				signingRegion = *v4Scheme.SigningRegion
+			}
+			if v4Scheme.DisableDoubleEncoding != nil {
+				// The signer sets an equivalent value at client initialization time.
+				// Setting this context value will cause the signer to extract it
+				// and override the value set at client initialization time.
+				ctx = internalauth.SetDisableDoubleEncoding(ctx, *v4Scheme.DisableDoubleEncoding)
+			}
+			ctx = awsmiddleware.SetSigningName(ctx, signingName)
+			ctx = awsmiddleware.SetSigningRegion(ctx, signingRegion)
+			break
+		case *internalauth.AuthenticationSchemeV4A:
+			v4aScheme, _ := authScheme.(*internalauth.AuthenticationSchemeV4A)
+			if v4aScheme.SigningName == nil {
+				v4aScheme.SigningName = aws.String("monitoring")
+			}
+			if v4aScheme.DisableDoubleEncoding != nil {
+				// The signer sets an equivalent value at client initialization time.
+				// Setting this context value will cause the signer to extract it
+				// and override the value set at client initialization time.
+				ctx = internalauth.SetDisableDoubleEncoding(ctx, *v4aScheme.DisableDoubleEncoding)
+			}
+			ctx = awsmiddleware.SetSigningName(ctx, *v4aScheme.SigningName)
+			ctx = awsmiddleware.SetSigningRegion(ctx, v4aScheme.SigningRegionSet[0])
+			break
+		case *internalauth.AuthenticationSchemeNone:
+			break
+		}
+	}
+
+	return next.HandleSerialize(ctx, in)
+}
+
+func addPutMetricAlarmResolveEndpointMiddleware(stack *middleware.Stack, options Options) error {
+	return stack.Serialize.Insert(&opPutMetricAlarmResolveEndpointMiddleware{
+		EndpointResolver: options.EndpointResolverV2,
+		BuiltInResolver: &builtInResolver{
+			Region:       options.Region,
+			UseDualStack: options.EndpointOptions.UseDualStackEndpoint,
+			UseFIPS:      options.EndpointOptions.UseFIPSEndpoint,
+			Endpoint:     options.BaseEndpoint,
+		},
+	}, "ResolveEndpoint", middleware.After)
 }

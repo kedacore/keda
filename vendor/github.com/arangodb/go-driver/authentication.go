@@ -29,7 +29,7 @@ const (
 	AuthenticationTypeBasic AuthenticationType = iota
 	// AuthenticationTypeJWT uses username+password JWT token based authentication
 	AuthenticationTypeJWT
-	// AuthenticationTypeRaw uses a raw value for the Authorization header, only JWT is supported in VST and the value must be the response of calling /_open/auth, or your own signed jwt based on the same secret as the server has
+	// AuthenticationTypeRaw uses a raw value for the Authorization header
 	AuthenticationTypeRaw
 )
 

@@ -1,7 +1,5 @@
 package sarama
 
-import "fmt"
-
 type fetchRequestBlock struct {
 	Version int16
 	// currentLeaderEpoch contains the current leader epoch of the partition.
@@ -242,9 +240,6 @@ func (r *FetchRequest) decode(pd packetDecoder, version int16) (err error) {
 			partitionCount, err := pd.getArrayLength()
 			if err != nil {
 				return err
-			}
-			if partitionCount < 0 {
-				return fmt.Errorf("partitionCount %d is invalid", partitionCount)
 			}
 			r.forgotten[topic] = make([]int32, partitionCount)
 

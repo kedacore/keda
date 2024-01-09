@@ -193,7 +193,7 @@ type DashboardEntry struct {
 	LastModified *time.Time
 
 	// The size of the dashboard, in bytes.
-	Size *int64
+	Size int64
 
 	noSmithyDocumentSerde
 }
@@ -314,7 +314,7 @@ type InsightRule struct {
 	State *string
 
 	// An optional built-in rule that Amazon Web Services manages.
-	ManagedRule *bool
+	ManagedRule bool
 
 	noSmithyDocumentSerde
 }
@@ -910,8 +910,8 @@ type MetricStreamEntry struct {
 	// The name of the metric stream.
 	Name *string
 
-	// The output format of this metric stream. Valid values are json ,
-	// opentelemetry1.0 , and opentelemetry0.7 .
+	// The output format of this metric stream. Valid values are json and
+	// opentelemetry0.7 .
 	OutputFormat MetricStreamOutputFormat
 
 	// The current state of this stream. Valid values are running and stopped .
@@ -954,11 +954,11 @@ type MetricStreamStatisticsConfiguration struct {
 
 	// The list of additional statistics that are to be streamed for the metrics
 	// listed in the IncludeMetrics array in this structure. This list can include as
-	// many as 20 statistics. If the OutputFormat for the stream is opentelemetry1.0
-	// or opentelemetry0.7 , the only valid values are p??  percentile statistics such
-	// as p90 , p99 and so on. If the OutputFormat for the stream is json , the valid
-	// values include the abbreviations for all of the statistics listed in CloudWatch
-	// statistics definitions (https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Statistics-definitions.html.html)
+	// many as 20 statistics. If the OutputFormat for the stream is opentelemetry0.7 ,
+	// the only valid values are p??  percentile statistics such as p90 , p99 and so
+	// on. If the OutputFormat for the stream is json , the valid values include the
+	// abbreviations for all of the statistics listed in CloudWatch statistics
+	// definitions (https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Statistics-definitions.html.html)
 	// . For example, this includes tm98, wm90 , PR(:300) , and so on.
 	//
 	// This member is required.

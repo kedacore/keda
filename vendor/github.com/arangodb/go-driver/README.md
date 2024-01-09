@@ -5,7 +5,7 @@
 
 This project contains the official Go driver for the [ArangoDB database](https://arangodb.com).
 
-[![CircleCI](https://dl.circleci.com/status-badge/img/gh/arangodb/go-driver/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/arangodb/go-driver/tree/master)
+[![Build Status](https://travis-ci.org/arangodb/go-driver.svg?branch=master)](https://travis-ci.org/arangodb/go-driver)
 [![GoDoc](https://godoc.org/github.com/arangodb/go-driver?status.svg)](http://godoc.org/github.com/arangodb/go-driver)
 
 
@@ -16,22 +16,21 @@ This project contains the official Go driver for the [ArangoDB database](https:/
 
 # Supported Go Versions
 
-|               | Go 1.17 | Go 1.19 |
-|---------------|---------|---------|
-| `1.0.0-1.4.0` | ✓       | -       |
-| `1.5.0-1.6.0` | ✓       | ✓       |
-| `master`      | ✓       | ✓       |
+|               | Go 1.13 | Go 1.14 | Go 1.16 | Go 1.17 |
+|---------------|---------|---------|---------|---------|
+| `1.0.0-1.4.0` | ✓       | ✓       | ✓       | ✓       |
+| `master`      | ✓       | ✓       | ✓       | ✓       |
 
 # Supported Versions
 
-|          | ArangoDB 3.8 | ArangoDB 3.9 | ArangoDB 3.10 | ArangoDB 3.11 |
-|----------|--------------|--------------|---------------|---------------|
-| `1.2.1`  | ✓            | -            | -             | -             |
-| `1.3.0`  | ✓            | ✓            | -             | -             |
-| `1.4.0`  | ✓            | ✓            | -             | -             |
-| `1.5.0`  | +            | ✓            | ✓             | -             |
-| `1.6.0`  | +            | ✓            | ✓             | ✓             |
-| `master` | +            | +            | +             | +             |
+|          | < ArangoDB 3.6 | ArangoDB 3.6 | ArangoDB 3.7 | ArangoDB 3.8 | ArangoDB 3.9 | ArangoDB 3.10 |
+|----------|----------------|--------------|--------------|--------------|--------------|---------------|
+| `1.0.0`  | ✓              | ✓            | -            | -            | -            | -             |
+| `1.1.0`  | +              | +            | ✓            | -            | -            | -             |
+| `1.2.1`  | +              | +            | ✓            | ✓            | -            | -             |
+| `1.3.0`  | +              | +            | ✓            | ✓            | ✓            | -             |
+| `1.4.0`  | +              | +            | ✓            | ✓            | ✓            | ✓             |
+| `master` | +              | +            | +            | +            | +            | +             |
 
 Key:
 

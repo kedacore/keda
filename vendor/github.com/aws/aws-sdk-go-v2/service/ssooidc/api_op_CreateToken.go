@@ -4,16 +4,19 @@ package ssooidc
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
+	internalauth "github.com/aws/aws-sdk-go-v2/internal/auth"
+	smithyendpoints "github.com/aws/smithy-go/endpoints"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Creates and returns access and refresh tokens for clients that are
-// authenticated using client secrets. The access token can be used to fetch
-// short-term credentials for the assigned AWS accounts or to access application
-// APIs using bearer authentication.
+// Creates and returns an access token for the authorized client. The access token
+// issued will be used to fetch short-term credentials for the assigned roles in
+// the AWS account.
 func (c *Client) CreateToken(ctx context.Context, params *CreateTokenInput, optFns ...func(*Options)) (*CreateTokenOutput, error) {
 	if params == nil {
 		params = &CreateTokenInput{}
@@ -31,8 +34,8 @@ func (c *Client) CreateToken(ctx context.Context, params *CreateTokenInput, optF
 
 type CreateTokenInput struct {
 
-	// The unique identifier string for the client or application. This value comes
-	// from the result of the RegisterClient API.
+	// The unique identifier string for each client. This value should come from the
+	// persisted result of the RegisterClient API.
 	//
 	// This member is required.
 	ClientId *string
@@ -43,42 +46,37 @@ type CreateTokenInput struct {
 	// This member is required.
 	ClientSecret *string
 
-	// Supports the following OAuth grant types: Device Code and Refresh Token.
-	// Specify either of the following values, depending on the grant type that you
-	// want: * Device Code - urn:ietf:params:oauth:grant-type:device_code * Refresh
-	// Token - refresh_token For information about how to obtain the device code, see
-	// the StartDeviceAuthorization topic.
+	// Supports grant types for the authorization code, refresh token, and device code
+	// request. For device code requests, specify the following value:
+	// urn:ietf:params:oauth:grant-type:device_code For information about how to
+	// obtain the device code, see the StartDeviceAuthorization topic.
 	//
 	// This member is required.
 	GrantType *string
 
-	// Used only when calling this API for the Authorization Code grant type. The
-	// short-term code is used to identify this authorization request. This grant type
-	// is currently unsupported for the CreateToken API.
+	// The authorization code received from the authorization service. This parameter
+	// is required to perform an authorization grant request to get access to a token.
 	Code *string
 
-	// Used only when calling this API for the Device Code grant type. This short-term
-	// code is used to identify this authorization request. This comes from the result
-	// of the StartDeviceAuthorization API.
+	// Used only when calling this API for the device code grant type. This short-term
+	// code is used to identify this authentication attempt. This should come from an
+	// in-memory reference to the result of the StartDeviceAuthorization API.
 	DeviceCode *string
 
-	// Used only when calling this API for the Authorization Code grant type. This
-	// value specifies the location of the client or application that has registered to
-	// receive the authorization code.
+	// The location of the application that will receive the authorization code. Users
+	// authorize the service to send the request to this location.
 	RedirectUri *string
 
-	// Used only when calling this API for the Refresh Token grant type. This token is
-	// used to refresh short-term tokens, such as the access token, that might expire.
-	// For more information about the features and limitations of the current IAM
-	// Identity Center OIDC implementation, see Considerations for Using this Guide in
-	// the IAM Identity Center OIDC API Reference (https://docs.aws.amazon.com/singlesignon/latest/OIDCAPIReference/Welcome.html)
-	// .
+	// Currently, refreshToken is not yet implemented and is not supported. For more
+	// information about the features and limitations of the current IAM Identity
+	// Center OIDC implementation, see Considerations for Using this Guide in the IAM
+	// Identity Center OIDC API Reference (https://docs.aws.amazon.com/singlesignon/latest/OIDCAPIReference/Welcome.html)
+	// . The token used to obtain an access token in the event that the access token is
+	// invalid or expired.
 	RefreshToken *string
 
-	// The list of scopes for which authorization is requested. The access token that
-	// is issued is limited to the scopes that are granted. If this value is not
-	// specified, IAM Identity Center authorizes all scopes that are configured for the
-	// client during the call to RegisterClient .
+	// The list of scopes that is defined by the client. Upon authorization, this list
+	// is used to restrict permissions when granting an access token.
 	Scope []string
 
 	noSmithyDocumentSerde
@@ -86,30 +84,29 @@ type CreateTokenInput struct {
 
 type CreateTokenOutput struct {
 
-	// A bearer token to access AWS accounts and applications assigned to a user.
+	// An opaque token to access IAM Identity Center resources assigned to a user.
 	AccessToken *string
 
 	// Indicates the time in seconds when an access token will expire.
 	ExpiresIn int32
 
-	// The idToken is not implemented or supported. For more information about the
-	// features and limitations of the current IAM Identity Center OIDC implementation,
-	// see Considerations for Using this Guide in the IAM Identity Center OIDC API
-	// Reference (https://docs.aws.amazon.com/singlesignon/latest/OIDCAPIReference/Welcome.html)
-	// . A JSON Web Token (JWT) that identifies who is associated with the issued
-	// access token.
+	// Currently, idToken is not yet implemented and is not supported. For more
+	// information about the features and limitations of the current IAM Identity
+	// Center OIDC implementation, see Considerations for Using this Guide in the IAM
+	// Identity Center OIDC API Reference (https://docs.aws.amazon.com/singlesignon/latest/OIDCAPIReference/Welcome.html)
+	// . The identifier of the user that associated with the access token, if present.
 	IdToken *string
 
-	// A token that, if present, can be used to refresh a previously issued access
-	// token that might have expired. For more information about the features and
-	// limitations of the current IAM Identity Center OIDC implementation, see
-	// Considerations for Using this Guide in the IAM Identity Center OIDC API
-	// Reference (https://docs.aws.amazon.com/singlesignon/latest/OIDCAPIReference/Welcome.html)
-	// .
+	// Currently, refreshToken is not yet implemented and is not supported. For more
+	// information about the features and limitations of the current IAM Identity
+	// Center OIDC implementation, see Considerations for Using this Guide in the IAM
+	// Identity Center OIDC API Reference (https://docs.aws.amazon.com/singlesignon/latest/OIDCAPIReference/Welcome.html)
+	// . A token that, if present, can be used to refresh a previously issued access
+	// token that might have expired.
 	RefreshToken *string
 
 	// Used to notify the client that the returned token is an access token. The
-	// supported token type is Bearer .
+	// supported type is BearerToken .
 	TokenType *string
 
 	// Metadata pertaining to the operation's result.
@@ -119,9 +116,6 @@ type CreateTokenOutput struct {
 }
 
 func (c *Client) addOperationCreateTokenMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsRestjson1_serializeOpCreateToken{}, middleware.After)
 	if err != nil {
 		return err
@@ -130,10 +124,6 @@ func (c *Client) addOperationCreateTokenMiddlewares(stack *middleware.Stack, opt
 	if err != nil {
 		return err
 	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "CreateToken"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
-
 	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
@@ -167,7 +157,7 @@ func (c *Client) addOperationCreateTokenMiddlewares(stack *middleware.Stack, opt
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+	if err = addCreateTokenResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateTokenValidationMiddleware(stack); err != nil {
@@ -188,7 +178,7 @@ func (c *Client) addOperationCreateTokenMiddlewares(stack *middleware.Stack, opt
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
-	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+	if err = addendpointDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
 	return nil
@@ -200,4 +190,127 @@ func newServiceMetadataMiddleware_opCreateToken(region string) *awsmiddleware.Re
 		ServiceID:     ServiceID,
 		OperationName: "CreateToken",
 	}
+}
+
+type opCreateTokenResolveEndpointMiddleware struct {
+	EndpointResolver EndpointResolverV2
+	BuiltInResolver  builtInParameterResolver
+}
+
+func (*opCreateTokenResolveEndpointMiddleware) ID() string {
+	return "ResolveEndpointV2"
+}
+
+func (m *opCreateTokenResolveEndpointMiddleware) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
+) {
+	if awsmiddleware.GetRequiresLegacyEndpoints(ctx) {
+		return next.HandleSerialize(ctx, in)
+	}
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown transport type %T", in.Request)
+	}
+
+	if m.EndpointResolver == nil {
+		return out, metadata, fmt.Errorf("expected endpoint resolver to not be nil")
+	}
+
+	params := EndpointParameters{}
+
+	m.BuiltInResolver.ResolveBuiltIns(&params)
+
+	var resolvedEndpoint smithyendpoints.Endpoint
+	resolvedEndpoint, err = m.EndpointResolver.ResolveEndpoint(ctx, params)
+	if err != nil {
+		return out, metadata, fmt.Errorf("failed to resolve service endpoint, %w", err)
+	}
+
+	req.URL = &resolvedEndpoint.URI
+
+	for k := range resolvedEndpoint.Headers {
+		req.Header.Set(
+			k,
+			resolvedEndpoint.Headers.Get(k),
+		)
+	}
+
+	authSchemes, err := internalauth.GetAuthenticationSchemes(&resolvedEndpoint.Properties)
+	if err != nil {
+		var nfe *internalauth.NoAuthenticationSchemesFoundError
+		if errors.As(err, &nfe) {
+			// if no auth scheme is found, default to sigv4
+			signingName := "awsssooidc"
+			signingRegion := m.BuiltInResolver.(*builtInResolver).Region
+			ctx = awsmiddleware.SetSigningName(ctx, signingName)
+			ctx = awsmiddleware.SetSigningRegion(ctx, signingRegion)
+
+		}
+		var ue *internalauth.UnSupportedAuthenticationSchemeSpecifiedError
+		if errors.As(err, &ue) {
+			return out, metadata, fmt.Errorf(
+				"This operation requests signer version(s) %v but the client only supports %v",
+				ue.UnsupportedSchemes,
+				internalauth.SupportedSchemes,
+			)
+		}
+	}
+
+	for _, authScheme := range authSchemes {
+		switch authScheme.(type) {
+		case *internalauth.AuthenticationSchemeV4:
+			v4Scheme, _ := authScheme.(*internalauth.AuthenticationSchemeV4)
+			var signingName, signingRegion string
+			if v4Scheme.SigningName == nil {
+				signingName = "awsssooidc"
+			} else {
+				signingName = *v4Scheme.SigningName
+			}
+			if v4Scheme.SigningRegion == nil {
+				signingRegion = m.BuiltInResolver.(*builtInResolver).Region
+			} else {
+				signingRegion = *v4Scheme.SigningRegion
+			}
+			if v4Scheme.DisableDoubleEncoding != nil {
+				// The signer sets an equivalent value at client initialization time.
+				// Setting this context value will cause the signer to extract it
+				// and override the value set at client initialization time.
+				ctx = internalauth.SetDisableDoubleEncoding(ctx, *v4Scheme.DisableDoubleEncoding)
+			}
+			ctx = awsmiddleware.SetSigningName(ctx, signingName)
+			ctx = awsmiddleware.SetSigningRegion(ctx, signingRegion)
+			break
+		case *internalauth.AuthenticationSchemeV4A:
+			v4aScheme, _ := authScheme.(*internalauth.AuthenticationSchemeV4A)
+			if v4aScheme.SigningName == nil {
+				v4aScheme.SigningName = aws.String("awsssooidc")
+			}
+			if v4aScheme.DisableDoubleEncoding != nil {
+				// The signer sets an equivalent value at client initialization time.
+				// Setting this context value will cause the signer to extract it
+				// and override the value set at client initialization time.
+				ctx = internalauth.SetDisableDoubleEncoding(ctx, *v4aScheme.DisableDoubleEncoding)
+			}
+			ctx = awsmiddleware.SetSigningName(ctx, *v4aScheme.SigningName)
+			ctx = awsmiddleware.SetSigningRegion(ctx, v4aScheme.SigningRegionSet[0])
+			break
+		case *internalauth.AuthenticationSchemeNone:
+			break
+		}
+	}
+
+	return next.HandleSerialize(ctx, in)
+}
+
+func addCreateTokenResolveEndpointMiddleware(stack *middleware.Stack, options Options) error {
+	return stack.Serialize.Insert(&opCreateTokenResolveEndpointMiddleware{
+		EndpointResolver: options.EndpointResolverV2,
+		BuiltInResolver: &builtInResolver{
+			Region:       options.Region,
+			UseDualStack: options.EndpointOptions.UseDualStackEndpoint,
+			UseFIPS:      options.EndpointOptions.UseFIPSEndpoint,
+			Endpoint:     options.BaseEndpoint,
+		},
+	}, "ResolveEndpoint", middleware.After)
 }

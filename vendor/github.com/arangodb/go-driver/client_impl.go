@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017-2023 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 // limitations under the License.
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
+//
+// Author Ewout Prangsma
 //
 
 package driver
@@ -42,7 +44,6 @@ func NewClient(config ClientConfig) (Client, error) {
 			return nil, WithStack(err)
 		}
 	}
-
 	c := &client{
 		conn: conn,
 	}
@@ -106,7 +107,6 @@ func (c *client) SynchronizeEndpoints2(ctx context.Context, dbname string) error
 	return nil
 }
 
-// Deprecated: should not be called in new code.
 // autoSynchronizeEndpoints performs automatic endpoint synchronization.
 func (c *client) autoSynchronizeEndpoints(interval time.Duration) {
 	for {
@@ -210,28 +210,4 @@ func (c *client) SetLogLevels(ctx context.Context, logLevels LogLevels, opts *Lo
 	}
 
 	return nil
-}
-
-// GetLicense returns license of an ArangoDB deployment.
-func (c *client) GetLicense(ctx context.Context) (License, error) {
-	result := License{}
-	req, err := c.conn.NewRequest(http.MethodGet, "_admin/license")
-	if err != nil {
-		return result, WithStack(err)
-	}
-
-	applyContextSettings(ctx, req)
-	resp, err := c.conn.Do(ctx, req)
-	if err != nil {
-		return result, WithStack(err)
-	}
-	if err := resp.CheckStatus(http.StatusOK); err != nil {
-		return result, WithStack(err)
-	}
-
-	if err := resp.ParseBody("", &result); err != nil {
-		return result, WithStack(err)
-	}
-
-	return result, nil
 }

@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017-2023 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 // limitations under the License.
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
+//
+// Author Ewout Prangsma
 //
 
 package driver
@@ -52,32 +54,28 @@ type Client interface {
 	// Connection returns the connection used by this client
 	Connection() Connection
 
-	// ClientDatabases - Database functions
+	// Database functions
 	ClientDatabases
 
-	// ClientUsers - User functions
+	// User functions
 	ClientUsers
 
-	// ClientCluster - Cluster functions
+	// Cluster functions
 	ClientCluster
 
-	// ClientServerInfo - Individual server information functions
+	// Individual server information functions
 	ClientServerInfo
 
-	// ClientServerAdmin - Server/cluster administration functions
+	// Server/cluster administration functions
 	ClientServerAdmin
 
-	// ClientReplication - Replication functions
+	// Replication functions
 	ClientReplication
 
-	// ClientAdminBackup - Backup functions
+	// Backup functions
 	ClientAdminBackup
 
-	// ClientFoxx - Foxx functions
 	ClientFoxx
-
-	// ClientAsyncJob - Asynchronous job functions
-	ClientAsyncJob
 
 	ClientLog
 }
@@ -112,8 +110,6 @@ type ClientConfig struct {
 	Connection Connection
 	// Authentication implements authentication on the server.
 	Authentication Authentication
-
-	// Deprecated: using non-zero duration causes routine leak. Please create your own implementation using Client.SynchronizeEndpoints2
 	// SynchronizeEndpointsInterval is the interval between automatic synchronization of endpoints.
 	// If this value is 0, no automatic synchronization is performed.
 	// If this value is > 0, automatic synchronization is started on a go routine.
@@ -150,36 +146,4 @@ func (v VersionInfo) String() string {
 		result = result + "\n" + strings.Join(lines, "\n")
 	}
 	return result
-}
-
-// LicenseFeatures describes license's features.
-type LicenseFeatures struct {
-	// Expires is expiry date as Unix timestamp (seconds since January 1st, 1970 UTC).
-	Expires int `json:"expires"`
-}
-
-// LicenseStatus describes license's status.
-type LicenseStatus string
-
-const (
-	// LicenseStatusGood - The license is valid for more than 2 weeks.
-	LicenseStatusGood LicenseStatus = "good"
-	// LicenseStatusExpired - The license has expired. In this situation, no new Enterprise Edition features can be utilized.
-	LicenseStatusExpired LicenseStatus = "expired"
-	// LicenseStatusExpiring - The license is valid for less than 2 weeks.
-	LicenseStatusExpiring LicenseStatus = "expiring"
-	// LicenseStatusReadOnly - The license is expired over 2 weeks. The instance is now restricted to read-only mode.
-	LicenseStatusReadOnly LicenseStatus = "read-only"
-)
-
-// License describes license information.
-type License struct {
-	// Features describes properties of the license.
-	Features LicenseFeatures `json:"features"`
-	// License is an encrypted license key in Base64 encoding.
-	License string `json:"license"`
-	// Status is a status of a license.
-	Status LicenseStatus `json:"status"`
-	// Version is a version of a license.
-	Version int `json:"version"`
 }

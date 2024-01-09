@@ -185,12 +185,3 @@ func (c *vertexCollection) Truncate(ctx context.Context) error {
 	}
 	return nil
 }
-
-// Rename renames the collection (SINGLE server only).
-// If the collection does not exist, a NotFoundError is returned.
-func (c *vertexCollection) Rename(ctx context.Context, newName string) error {
-	if err := c.rawCollection().Rename(ctx, newName); err != nil {
-		return WithStack(err)
-	}
-	return nil
-}

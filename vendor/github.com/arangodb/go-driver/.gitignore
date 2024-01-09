@@ -16,6 +16,3 @@ debug/
 
 # direnv files
 .envrc
-
-# vim files
-.DS_Store

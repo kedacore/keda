@@ -22,7 +22,6 @@ require (
 	github.com/DataDog/datadog-api-client-go v1.16.0
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/IBM/sarama v1.41.2
-	github.com/antonmedv/expr v1.15.3
 	github.com/arangodb/go-driver v1.6.0
 	github.com/aws/aws-sdk-go-v2 v1.24.0
 	github.com/aws/aws-sdk-go-v2/config v1.18.42
@@ -111,6 +110,8 @@ require (
 )
 
 require github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.25.5
+
+require github.com/google/go-github/v55 v55.0.0 // indirect
 
 replace (
 	// pin k8s.io to v0.28.5
@@ -230,7 +231,6 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/cel-go v0.18.2 // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
-	github.com/google/go-github/v56 v56.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/pprof v0.0.0-20231229205709-960ae82b1e42 // indirect

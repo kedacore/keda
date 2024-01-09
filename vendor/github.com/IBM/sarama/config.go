@@ -15,9 +15,7 @@ import (
 
 const defaultClientID = "sarama"
 
-// validClientID specifies the permitted characters for a client.id when
-// connecting to Kafka versions before 1.0.0 (KIP-190)
-var validClientID = regexp.MustCompile(`\A[A-Za-z0-9._-]+\z`)
+var validID = regexp.MustCompile(`\A[A-Za-z0-9._-]+\z`)
 
 // Config is used to pass multiple configuration options to Sarama's constructors.
 type Config struct {
@@ -848,11 +846,8 @@ func (c *Config) Validate() error {
 	switch {
 	case c.ChannelBufferSize < 0:
 		return ConfigurationError("ChannelBufferSize must be >= 0")
-	}
-
-	// only validate clientID locally for Kafka versions before KIP-190 was implemented
-	if !c.Version.IsAtLeast(V1_0_0_0) && !validClientID.MatchString(c.ClientID) {
-		return ConfigurationError(fmt.Sprintf("ClientID value %q is not valid for Kafka versions before 1.0.0", c.ClientID))
+	case !validID.MatchString(c.ClientID):
+		return ConfigurationError("ClientID is invalid")
 	}
 
 	return nil

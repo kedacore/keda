@@ -5733,7 +5733,7 @@ func awsAwsquery_deserializeDocumentDashboardEntry(v **types.DashboardEntry, dec
 				if err != nil {
 					return err
 				}
-				sv.Size = ptr.Int64(i64)
+				sv.Size = i64
 			}
 
 		default:
@@ -6577,7 +6577,7 @@ func awsAwsquery_deserializeDocumentInsightRule(v **types.InsightRule, decoder s
 				if err != nil {
 					return fmt.Errorf("expected InsightRuleIsManaged to be of type *bool, got %T instead", val)
 				}
-				sv.ManagedRule = ptr.Bool(xtv)
+				sv.ManagedRule = xtv
 			}
 
 		case strings.EqualFold("Name", t.Name.Local):

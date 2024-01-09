@@ -121,9 +121,9 @@ const (
 	PodIdentityProviderAzure         PodIdentityProvider = "azure"
 	PodIdentityProviderAzureWorkload PodIdentityProvider = "azure-workload"
 	PodIdentityProviderGCP           PodIdentityProvider = "gcp"
-	PodIdentityProviderSpiffe        PodIdentityProvider = "spiffe"
 	PodIdentityProviderAwsEKS        PodIdentityProvider = "aws-eks"
 	PodIdentityProviderAwsKiam       PodIdentityProvider = "aws-kiam"
+	PodIdentityProviderAws           PodIdentityProvider = "aws"
 )
 
 // PodIdentityAnnotationEKS specifies aws role arn for aws-eks Identity Provider
@@ -141,7 +141,12 @@ type AuthPodIdentity struct {
 	// +optional
 	IdentityID *string `json:"identityId"`
 	// +optional
+	// RoleArn sets the AWS RoleArn to be used. Mutually exclusive with IdentityOwner
 	RoleArn string `json:"roleArn"`
+	// +kubebuilder:validation:Enum=keda;workload
+	// +optional
+	// IdentityOwner configures which identity has to be used during auto discovery, keda or the scaled workload. Mutually exclusive with roleArn
+	IdentityOwner *string `json:"identityOwner"`
 }
 
 func (a *AuthPodIdentity) GetIdentityID() string {

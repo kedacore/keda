@@ -334,26 +334,6 @@ func (c *collection) Truncate(ctx context.Context) error {
 	return nil
 }
 
-// Rename renames the collection. (SINGLE server only).
-// If the collection does not exist, a NotFoundError is returned.
-func (c *collection) Rename(ctx context.Context, newName string) error {
-	req, err := c.conn.NewRequest("PUT", path.Join(c.relPath("collection"), "rename"))
-	if err != nil {
-		return WithStack(err)
-	}
-
-	req.SetBody(map[string]string{"name": newName})
-
-	resp, err := c.conn.Do(ctx, req)
-	if err != nil {
-		return WithStack(err)
-	}
-	if err := resp.CheckStatus(200); err != nil {
-		return WithStack(err)
-	}
-	return nil
-}
-
 type setCollectionPropertiesOptionsInternal struct {
 	WaitForSync       *bool             `json:"waitForSync,omitempty"`
 	JournalSize       int64             `json:"journalSize,omitempty"`

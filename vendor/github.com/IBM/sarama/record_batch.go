@@ -58,7 +58,7 @@ func (b *RecordBatch) LastOffset() int64 {
 
 func (b *RecordBatch) encode(pe packetEncoder) error {
 	if b.Version != 2 {
-		return PacketEncodingError{fmt.Sprintf("unsupported record batch version (%d)", b.Version)}
+		return PacketEncodingError{fmt.Sprintf("unsupported compression codec (%d)", b.Codec)}
 	}
 	pe.putInt64(b.FirstOffset)
 	pe.push(&lengthField{})

@@ -1,9 +1,6 @@
 #!/bin/bash
 
-set -eu
-set -o pipefail
-
-KAFKA_VERSION="${KAFKA_VERSION:-3.6.0}"
+KAFKA_VERSION="${KAFKA_VERSION:-3.5.1}"
 KAFKA_HOME="/opt/kafka-${KAFKA_VERSION}"
 
 if [ ! -d "${KAFKA_HOME}" ]; then
@@ -13,19 +10,19 @@ fi
 
 cd "${KAFKA_HOME}" || exit 1
 
-# discard all empty/commented lines from default config and copy to /tmp
-sed -e '/^#/d' -e '/^$/d' config/server.properties >/tmp/server.properties
+# discard all empty/commented lines
+sed -e '/^#/d' -e '/^$/d' -i".orig" config/server.properties
 
-echo "########################################################################" >>/tmp/server.properties
+echo "########################################################################" >>config/server.properties
 
 # emulate kafka_configure_from_environment_variables from bitnami/bitnami-docker-kafka
 for var in "${!KAFKA_CFG_@}"; do
     key="$(echo "$var" | sed -e 's/^KAFKA_CFG_//g' -e 's/_/\./g' -e 's/.*/\L&/')"
-    sed -e '/^'$key'/d' -i"" /tmp/server.properties
+    sed -e '/^'$key'/d' -i"" config/server.properties
     value="${!var}"
-    echo "$key=$value" >>/tmp/server.properties
+    echo "$key=$value" >>config/server.properties
 done
 
-sort /tmp/server.properties
+sort config/server.properties
 
-exec bin/kafka-server-start.sh /tmp/server.properties
+exec bin/kafka-server-start.sh config/server.properties

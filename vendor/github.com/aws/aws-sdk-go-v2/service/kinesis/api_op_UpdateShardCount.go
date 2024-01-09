@@ -4,10 +4,14 @@ package kinesis
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
+	internalauth "github.com/aws/aws-sdk-go-v2/internal/auth"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
+	smithyendpoints "github.com/aws/smithy-go/endpoints"
 	"github.com/aws/smithy-go/middleware"
 	"github.com/aws/smithy-go/ptr"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -15,23 +19,23 @@ import (
 
 // Updates the shard count of the specified stream to the specified number of
 // shards. This API is only supported for the data streams with the provisioned
-// capacity mode. When invoking this API, you must use either the StreamARN or the
-// StreamName parameter, or both. It is recommended that you use the StreamARN
-// input parameter when you invoke this API. Updating the shard count is an
-// asynchronous operation. Upon receiving the request, Kinesis Data Streams returns
-// immediately and sets the status of the stream to UPDATING . After the update is
-// complete, Kinesis Data Streams sets the status of the stream back to ACTIVE .
-// Depending on the size of the stream, the scaling action could take a few minutes
-// to complete. You can continue to read and write data to your stream while its
-// status is UPDATING . To update the shard count, Kinesis Data Streams performs
-// splits or merges on individual shards. This can cause short-lived shards to be
-// created, in addition to the final shards. These short-lived shards count towards
-// your total shard limit for your account in the Region. When using this
-// operation, we recommend that you specify a target shard count that is a multiple
-// of 25% (25%, 50%, 75%, 100%). You can specify any target value within your shard
-// limit. However, if you specify a target that isn't a multiple of 25%, the
-// scaling action might take longer to complete. This operation has the following
-// default limits. By default, you cannot do the following:
+// capacity mode. When invoking this API, it is recommended you use the StreamARN
+// input parameter rather than the StreamName input parameter. Updating the shard
+// count is an asynchronous operation. Upon receiving the request, Kinesis Data
+// Streams returns immediately and sets the status of the stream to UPDATING .
+// After the update is complete, Kinesis Data Streams sets the status of the stream
+// back to ACTIVE . Depending on the size of the stream, the scaling action could
+// take a few minutes to complete. You can continue to read and write data to your
+// stream while its status is UPDATING . To update the shard count, Kinesis Data
+// Streams performs splits or merges on individual shards. This can cause
+// short-lived shards to be created, in addition to the final shards. These
+// short-lived shards count towards your total shard limit for your account in the
+// Region. When using this operation, we recommend that you specify a target shard
+// count that is a multiple of 25% (25%, 50%, 75%, 100%). You can specify any
+// target value within your shard limit. However, if you specify a target that
+// isn't a multiple of 25%, the scaling action might take longer to complete. This
+// operation has the following default limits. By default, you cannot do the
+// following:
 //   - Scale more than ten times per rolling 24-hour period per stream
 //   - Scale up to more than double your current shard count for a stream
 //   - Scale down below half your current shard count for a stream
@@ -39,7 +43,6 @@ import (
 //   - Scale a stream with more than 10000 shards down unless the result is less
 //     than 10000 shards
 //   - Scale up to more than the shard limit for your account
-//   - Make over 10 TPS. TPS over 10 will trigger the LimitExceededException
 //
 // For the default limits for an Amazon Web Services account, see Streams Limits (https://docs.aws.amazon.com/kinesis/latest/dev/service-sizes-and-limits.html)
 // in the Amazon Kinesis Data Streams Developer Guide. To request an increase in
@@ -90,11 +93,6 @@ type UpdateShardCountInput struct {
 	noSmithyDocumentSerde
 }
 
-func (in *UpdateShardCountInput) bindEndpointParams(p *EndpointParameters) {
-	p.StreamARN = in.StreamARN
-	p.OperationType = ptr.String("control")
-}
-
 type UpdateShardCountOutput struct {
 
 	// The current number of shards.
@@ -116,9 +114,6 @@ type UpdateShardCountOutput struct {
 }
 
 func (c *Client) addOperationUpdateShardCountMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpUpdateShardCount{}, middleware.After)
 	if err != nil {
 		return err
@@ -127,10 +122,6 @@ func (c *Client) addOperationUpdateShardCountMiddlewares(stack *middleware.Stack
 	if err != nil {
 		return err
 	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "UpdateShardCount"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
-
 	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
@@ -152,6 +143,9 @@ func (c *Client) addOperationUpdateShardCountMiddlewares(stack *middleware.Stack
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
+	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+		return err
+	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
@@ -167,7 +161,7 @@ func (c *Client) addOperationUpdateShardCountMiddlewares(stack *middleware.Stack
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+	if err = addUpdateShardCountResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addOpUpdateShardCountValidationMiddleware(stack); err != nil {
@@ -188,7 +182,7 @@ func (c *Client) addOperationUpdateShardCountMiddlewares(stack *middleware.Stack
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
-	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+	if err = addendpointDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
 	return nil
@@ -198,6 +192,139 @@ func newServiceMetadataMiddleware_opUpdateShardCount(region string) *awsmiddlewa
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
+		SigningName:   "kinesis",
 		OperationName: "UpdateShardCount",
 	}
+}
+
+type opUpdateShardCountResolveEndpointMiddleware struct {
+	EndpointResolver EndpointResolverV2
+	BuiltInResolver  builtInParameterResolver
+}
+
+func (*opUpdateShardCountResolveEndpointMiddleware) ID() string {
+	return "ResolveEndpointV2"
+}
+
+func (m *opUpdateShardCountResolveEndpointMiddleware) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
+) {
+	if awsmiddleware.GetRequiresLegacyEndpoints(ctx) {
+		return next.HandleSerialize(ctx, in)
+	}
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown transport type %T", in.Request)
+	}
+
+	input, ok := in.Parameters.(*UpdateShardCountInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown transport type %T", in.Request)
+	}
+
+	if m.EndpointResolver == nil {
+		return out, metadata, fmt.Errorf("expected endpoint resolver to not be nil")
+	}
+
+	params := EndpointParameters{}
+
+	m.BuiltInResolver.ResolveBuiltIns(&params)
+
+	params.StreamARN = input.StreamARN
+
+	params.OperationType = ptr.String("control")
+
+	var resolvedEndpoint smithyendpoints.Endpoint
+	resolvedEndpoint, err = m.EndpointResolver.ResolveEndpoint(ctx, params)
+	if err != nil {
+		return out, metadata, fmt.Errorf("failed to resolve service endpoint, %w", err)
+	}
+
+	req.URL = &resolvedEndpoint.URI
+
+	for k := range resolvedEndpoint.Headers {
+		req.Header.Set(
+			k,
+			resolvedEndpoint.Headers.Get(k),
+		)
+	}
+
+	authSchemes, err := internalauth.GetAuthenticationSchemes(&resolvedEndpoint.Properties)
+	if err != nil {
+		var nfe *internalauth.NoAuthenticationSchemesFoundError
+		if errors.As(err, &nfe) {
+			// if no auth scheme is found, default to sigv4
+			signingName := "kinesis"
+			signingRegion := m.BuiltInResolver.(*builtInResolver).Region
+			ctx = awsmiddleware.SetSigningName(ctx, signingName)
+			ctx = awsmiddleware.SetSigningRegion(ctx, signingRegion)
+
+		}
+		var ue *internalauth.UnSupportedAuthenticationSchemeSpecifiedError
+		if errors.As(err, &ue) {
+			return out, metadata, fmt.Errorf(
+				"This operation requests signer version(s) %v but the client only supports %v",
+				ue.UnsupportedSchemes,
+				internalauth.SupportedSchemes,
+			)
+		}
+	}
+
+	for _, authScheme := range authSchemes {
+		switch authScheme.(type) {
+		case *internalauth.AuthenticationSchemeV4:
+			v4Scheme, _ := authScheme.(*internalauth.AuthenticationSchemeV4)
+			var signingName, signingRegion string
+			if v4Scheme.SigningName == nil {
+				signingName = "kinesis"
+			} else {
+				signingName = *v4Scheme.SigningName
+			}
+			if v4Scheme.SigningRegion == nil {
+				signingRegion = m.BuiltInResolver.(*builtInResolver).Region
+			} else {
+				signingRegion = *v4Scheme.SigningRegion
+			}
+			if v4Scheme.DisableDoubleEncoding != nil {
+				// The signer sets an equivalent value at client initialization time.
+				// Setting this context value will cause the signer to extract it
+				// and override the value set at client initialization time.
+				ctx = internalauth.SetDisableDoubleEncoding(ctx, *v4Scheme.DisableDoubleEncoding)
+			}
+			ctx = awsmiddleware.SetSigningName(ctx, signingName)
+			ctx = awsmiddleware.SetSigningRegion(ctx, signingRegion)
+			break
+		case *internalauth.AuthenticationSchemeV4A:
+			v4aScheme, _ := authScheme.(*internalauth.AuthenticationSchemeV4A)
+			if v4aScheme.SigningName == nil {
+				v4aScheme.SigningName = aws.String("kinesis")
+			}
+			if v4aScheme.DisableDoubleEncoding != nil {
+				// The signer sets an equivalent value at client initialization time.
+				// Setting this context value will cause the signer to extract it
+				// and override the value set at client initialization time.
+				ctx = internalauth.SetDisableDoubleEncoding(ctx, *v4aScheme.DisableDoubleEncoding)
+			}
+			ctx = awsmiddleware.SetSigningName(ctx, *v4aScheme.SigningName)
+			ctx = awsmiddleware.SetSigningRegion(ctx, v4aScheme.SigningRegionSet[0])
+			break
+		case *internalauth.AuthenticationSchemeNone:
+			break
+		}
+	}
+
+	return next.HandleSerialize(ctx, in)
+}
+
+func addUpdateShardCountResolveEndpointMiddleware(stack *middleware.Stack, options Options) error {
+	return stack.Serialize.Insert(&opUpdateShardCountResolveEndpointMiddleware{
+		EndpointResolver: options.EndpointResolverV2,
+		BuiltInResolver: &builtInResolver{
+			Region:       options.Region,
+			UseDualStack: options.EndpointOptions.UseDualStackEndpoint,
+			UseFIPS:      options.EndpointOptions.UseFIPSEndpoint,
+			Endpoint:     options.BaseEndpoint,
+		},
+	}, "ResolveEndpoint", middleware.After)
 }

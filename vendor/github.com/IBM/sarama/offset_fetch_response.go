@@ -22,8 +22,6 @@ func (b *OffsetFetchResponseBlock) decode(pd packetDecoder, version int16) (err 
 		if err != nil {
 			return err
 		}
-	} else {
-		b.LeaderEpoch = -1
 	}
 
 	if isFlexible {

@@ -62,16 +62,7 @@ func New(options Options, optFns ...func(*Options)) *Client {
 	}
 
 	if options.Retryer == nil {
-		// Amazon-owned implementations of this endpoint are known to sometimes
-		// return plaintext responses (i.e. no Code) like normal, add a few
-		// additional status codes
-		options.Retryer = retry.NewStandard(func(o *retry.StandardOptions) {
-			o.Retryables = append(o.Retryables, retry.RetryableHTTPStatusCode{
-				Codes: map[int]struct{}{
-					http.StatusTooManyRequests: {},
-				},
-			})
-		})
+		options.Retryer = retry.NewStandard()
 	}
 
 	for _, fn := range optFns {
@@ -131,10 +122,9 @@ type GetCredentialsOutput struct {
 
 // EndpointError is an error returned from the endpoint service
 type EndpointError struct {
-	Code       string            `json:"code"`
-	Message    string            `json:"message"`
-	Fault      smithy.ErrorFault `json:"-"`
-	statusCode int               `json:"-"`
+	Code    string            `json:"code"`
+	Message string            `json:"message"`
+	Fault   smithy.ErrorFault `json:"-"`
 }
 
 // Error is the error mesage string
@@ -155,9 +145,4 @@ func (e *EndpointError) ErrorMessage() string {
 // ErrorFault indicates error fault classification
 func (e *EndpointError) ErrorFault() smithy.ErrorFault {
 	return e.Fault
-}
-
-// HTTPStatusCode implements retry.HTTPStatusCode.
-func (e *EndpointError) HTTPStatusCode() int {
-	return e.statusCode
 }

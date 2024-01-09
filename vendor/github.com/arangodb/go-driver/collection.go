@@ -77,10 +77,6 @@ type Collection interface {
 	// Truncate removes all documents from the collection, but leaves the indexes intact.
 	Truncate(ctx context.Context) error
 
-	// Rename renames the collection (SINGLE server only).
-	// If the collection does not exist, a NotFoundError is returned.
-	Rename(ctx context.Context, newName string) error
-
 	// All index functions
 	CollectionIndexes
 
