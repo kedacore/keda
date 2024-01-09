@@ -5,8 +5,8 @@ go 1.21
 require (
 	cloud.google.com/go/compute/metadata v0.2.3
 	cloud.google.com/go/monitoring v1.17.0
+	cloud.google.com/go/secretmanager v1.11.4
 	cloud.google.com/go/storage v1.36.0
-	cloud.google.com/go/secretmanager v1.11.1
 	dario.cat/mergo v1.0.0
 	github.com/Azure/azure-amqp-common-go/v4 v4.2.0
 	github.com/Azure/azure-event-hubs-go/v3 v3.6.1
