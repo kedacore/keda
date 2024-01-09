@@ -16,8 +16,16 @@ type datadogQueries struct {
 	isError bool
 }
 
+type datadogScalerType int64
+
+const (
+	apiType datadogScalerType = iota
+	clusterAgentType
+)
+
 type datadogMetricIdentifier struct {
 	metadataTestData *datadogAuthMetadataTestData
+	typeOfScaler     datadogScalerType
 	triggerIndex     int
 	name             string
 }
@@ -90,7 +98,29 @@ func TestDatadogScalerParseQueries(t *testing.T) {
 	}
 }
 
-var testDatadogMetadata = []datadogAuthMetadataTestData{
+var testDatadogClusterAgentMetadata = []datadogAuthMetadataTestData{
+	{"", map[string]string{}, map[string]string{}, true},
+
+	// all properly formed
+	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "type": "global"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "datadogMetricsServicePort": "8080", "unsafeSsl": "true", "authMode": "bearer"}, false},
+	// Default Datadog service name and port
+	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "type": "global"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "unsafeSsl": "true", "authMode": "bearer"}, false},
+
+	// both metadata type and trigger type
+	{v2.AverageValueMetricType, map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "type": "global"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "unsafeSsl": "true", "authMode": "bearer"}, true},
+	// missing DatadogMetric name
+	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricNamespace": "default", "targetValue": "2", "type": "global"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "unsafeSsl": "true", "authMode": "bearer"}, true},
+	// missing DatadogMetric namespace
+	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "targetValue": "2", "type": "global"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "unsafeSsl": "true", "authMode": "bearer"}, true},
+	// wrong port type
+	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "type": "global"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "datadogMetricsServicePort": "notanint", "unsafeSsl": "true", "authMode": "bearer"}, true},
+	// wrong targetValue type
+	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "notanint", "type": "global"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "datadogMetricsServicePort": "8080", "unsafeSsl": "true", "authMode": "bearer"}, true},
+	// wrong type
+	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "type": "notatype"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "datadogMetricsServicePort": "8080", "unsafeSsl": "true", "authMode": "bearer"}, true},
+}
+
+var testDatadogAPIMetadata = []datadogAuthMetadataTestData{
 	{"", map[string]string{}, map[string]string{}, true},
 
 	// all properly formed
@@ -135,9 +165,22 @@ var testDatadogMetadata = []datadogAuthMetadataTestData{
 	{"", map[string]string{"query": "sum:trace.redis.command.hits.as_count()", "queryValue": "7"}, map[string]string{}, true},
 }
 
-func TestDatadogScalerAuthParams(t *testing.T) {
-	for _, testData := range testDatadogMetadata {
-		_, err := parseDatadogMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams, MetricType: testData.metricType}, logr.Discard())
+func TestDatadogScalerAPIAuthParams(t *testing.T) {
+	for _, testData := range testDatadogAPIMetadata {
+		_, err := parseDatadogAPIMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams, MetricType: testData.metricType}, logr.Discard())
+
+		if err != nil && !testData.isError {
+			t.Error("Expected success but got error", err)
+		}
+		if testData.isError && err == nil {
+			t.Error("Expected error but got success")
+		}
+	}
+}
+
+func TestDatadogScalerClusterAgentAuthParams(t *testing.T) {
+	for _, testData := range testDatadogClusterAgentMetadata {
+		_, err := parseDatadogClusterAgentMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams, MetricType: testData.metricType}, logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -149,19 +192,30 @@ func TestDatadogScalerAuthParams(t *testing.T) {
 }
 
 var datadogMetricIdentifiers = []datadogMetricIdentifier{
-	{&testDatadogMetadata[1], 0, "s0-datadog-sum-trace-redis-command-hits"},
-	{&testDatadogMetadata[1], 1, "s1-datadog-sum-trace-redis-command-hits"},
+	{&testDatadogAPIMetadata[1], apiType, 0, "s0-datadog-sum-trace-redis-command-hits"},
+	{&testDatadogAPIMetadata[1], apiType, 1, "s1-datadog-sum-trace-redis-command-hits"},
+	{&testDatadogClusterAgentMetadata[1], clusterAgentType, 0, "datadogmetric@default:nginx-hits"},
 }
 
 func TestDatadogGetMetricSpecForScaling(t *testing.T) {
+
+	var err error
+	var meta *datadogMetadata
+
 	for _, testData := range datadogMetricIdentifiers {
-		meta, err := parseDatadogMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex, MetricType: testData.metadataTestData.metricType}, logr.Discard())
+		if testData.typeOfScaler == apiType {
+			meta, err = parseDatadogAPIMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex, MetricType: testData.metadataTestData.metricType}, logr.Discard())
+		} else {
+			meta, err = parseDatadogClusterAgentMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex, MetricType: testData.metadataTestData.metricType}, logr.Discard())
+		}
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
+
 		mockDatadogScaler := datadogScaler{
-			metadata:  meta,
-			apiClient: nil,
+			metadata:   meta,
+			apiClient:  nil,
+			httpClient: nil,
 		}
 
 		metricSpec := mockDatadogScaler.GetMetricSpecForScaling(context.Background())
@@ -169,5 +223,21 @@ func TestDatadogGetMetricSpecForScaling(t *testing.T) {
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)
 		}
+	}
+}
+
+func TestBuildClusterAgentURL(t *testing.T) {
+	// Test valid inputs
+	url := buildClusterAgentURL("datadogMetricsService", "datadogNamespace", 8080)
+	if url != "https://datadogMetricsService.datadogNamespace:8080/apis/external.metrics.k8s.io/v1beta1" {
+		t.Error("Expected https://datadogMetricsService.datadogNamespace:8080/apis/external.metrics.k8s.io/v1beta1, got ", url)
+	}
+}
+
+func TestBuildMetricURL(t *testing.T) {
+	// Test valid inputs
+	url := buildMetricURL("https://localhost:8080/apis/datadoghq.com/v1alpha1", "datadogMetricNamespace", "datadogMetricName")
+	if url != "https://localhost:8080/apis/datadoghq.com/v1alpha1/namespaces/datadogMetricNamespace/datadogMetricName" {
+		t.Error("Expected https://localhost:8080/apis/datadoghq.com/v1alpha1/namespaces/datadogMetricNamespace/datadogMetricName, got ", url)
 	}
 }
