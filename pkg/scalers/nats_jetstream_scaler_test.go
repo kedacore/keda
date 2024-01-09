@@ -218,7 +218,7 @@ var testNATSJetStreamMockResponses = []parseNATSJetStreamMockResponsesTestData{
 			Accounts: []accountDetail{{Name: "$G",
 				Streams: []*streamDetail{{Name: "mystream"}},
 			}},
-		}, false, false},
+		}, false, true},
 }
 
 var testNATSJetStreamServerMockResponses = map[string][]byte{
