@@ -54,7 +54,7 @@ type prometheusMetadata struct {
 	activationThreshold float64
 	prometheusAuth      *authentication.AuthMeta
 	namespace           string
-	scalerIndex         int
+	triggerIndex        int
 	customHeaders       map[string]string
 	// sometimes should consider there is an error we can accept
 	// default value is true/t, to ignore the null value return from prometheus
@@ -224,7 +224,7 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 		meta.unsafeSsl = unsafeSslValue
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	err = parseAuthConfig(config, meta)
 	if err != nil {
@@ -260,7 +260,7 @@ func (s *prometheusScaler) GetMetricSpecForScaling(context.Context) []v2.MetricS
 	metricName := kedautil.NormalizeString("prometheus")
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}

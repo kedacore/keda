@@ -10,6 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
+
+	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
 )
 
 const (
@@ -40,7 +42,7 @@ type parseAWSCloudwatchMetadataTestData struct {
 
 type awsCloudwatchMetricIdentifier struct {
 	metadataTestData *parseAWSCloudwatchMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -375,8 +377,8 @@ var awsCloudwatchGetMetricTestData = []awsCloudwatchMetadata{
 		metricStatPeriod:     60,
 		metricEndTimeOffset:  60,
 		awsRegion:            "us-west-2",
-		awsAuthorization:     awsAuthorizationMetadata{podIdentityOwner: false},
-		scalerIndex:          0,
+		awsAuthorization:     awsutils.AuthorizationMetadata{PodIdentityOwner: false},
+		triggerIndex:         0,
 	},
 	{
 		namespace:            "Custom",
@@ -391,8 +393,8 @@ var awsCloudwatchGetMetricTestData = []awsCloudwatchMetadata{
 		metricStatPeriod:     60,
 		metricEndTimeOffset:  60,
 		awsRegion:            "us-west-2",
-		awsAuthorization:     awsAuthorizationMetadata{podIdentityOwner: false},
-		scalerIndex:          0,
+		awsAuthorization:     awsutils.AuthorizationMetadata{PodIdentityOwner: false},
+		triggerIndex:         0,
 	},
 	{
 		namespace:            "Custom",
@@ -407,8 +409,8 @@ var awsCloudwatchGetMetricTestData = []awsCloudwatchMetadata{
 		metricStatPeriod:     60,
 		metricEndTimeOffset:  60,
 		awsRegion:            "us-west-2",
-		awsAuthorization:     awsAuthorizationMetadata{podIdentityOwner: false},
-		scalerIndex:          0,
+		awsAuthorization:     awsutils.AuthorizationMetadata{PodIdentityOwner: false},
+		triggerIndex:         0,
 	},
 	{
 		namespace:            "Custom",
@@ -423,8 +425,8 @@ var awsCloudwatchGetMetricTestData = []awsCloudwatchMetadata{
 		metricStatPeriod:     60,
 		metricEndTimeOffset:  60,
 		awsRegion:            "us-west-2",
-		awsAuthorization:     awsAuthorizationMetadata{podIdentityOwner: false},
-		scalerIndex:          0,
+		awsAuthorization:     awsutils.AuthorizationMetadata{PodIdentityOwner: false},
+		triggerIndex:         0,
 	},
 	{
 		namespace:            "Custom",
@@ -438,8 +440,8 @@ var awsCloudwatchGetMetricTestData = []awsCloudwatchMetadata{
 		metricStatPeriod:     60,
 		metricEndTimeOffset:  60,
 		awsRegion:            "us-west-2",
-		awsAuthorization:     awsAuthorizationMetadata{podIdentityOwner: false},
-		scalerIndex:          0,
+		awsAuthorization:     awsutils.AuthorizationMetadata{PodIdentityOwner: false},
+		triggerIndex:         0,
 	},
 }
 
@@ -482,7 +484,7 @@ func TestCloudwatchParseMetadata(t *testing.T) {
 func TestAWSCloudwatchGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range awsCloudwatchMetricIdentifiers {
 		ctx := context.Background()
-		meta, err := parseAwsCloudwatchMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAWSCloudwatchResolvedEnv, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex})
+		meta, err := parseAwsCloudwatchMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAWSCloudwatchResolvedEnv, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

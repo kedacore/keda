@@ -31,7 +31,7 @@ type cronMetadata struct {
 	end             string
 	timezone        string
 	desiredReplicas int64
-	scalerIndex     int
+	triggerIndex    int
 }
 
 // NewCronScaler creates a new cronScaler
@@ -110,7 +110,7 @@ func parseCronMetadata(config *ScalerConfig) (*cronMetadata, error) {
 	} else {
 		return nil, fmt.Errorf("no DesiredReplicas specified. %s", config.TriggerMetadata)
 	}
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
@@ -131,7 +131,7 @@ func (s *cronScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	var specReplicas int64 = 1
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("cron-%s-%s-%s", s.metadata.timezone, parseCronTimeFormat(s.metadata.start), parseCronTimeFormat(s.metadata.end)))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("cron-%s-%s-%s", s.metadata.timezone, parseCronTimeFormat(s.metadata.start), parseCronTimeFormat(s.metadata.end)))),
 		},
 		Target: GetMetricTarget(s.metricType, specReplicas),
 	}

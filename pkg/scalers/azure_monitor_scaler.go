@@ -49,7 +49,7 @@ type azureMonitorMetadata struct {
 	azureMonitorInfo      azure.MonitorInfo
 	targetValue           float64
 	activationTargetValue float64
-	scalerIndex           int
+	triggerIndex          int
 }
 
 // NewAzureMonitorScaler creates a new AzureMonitorScaler
@@ -170,7 +170,7 @@ func parseAzureMonitorMetadata(config *ScalerConfig, logger logr.Logger) (*azure
 	meta.azureMonitorInfo.ClientID = clientID
 	meta.azureMonitorInfo.ClientPassword = clientPassword
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	azureResourceManagerEndpointProvider := func(env az.Environment) (string, error) {
 		return env.ResourceManagerEndpoint, nil
@@ -224,7 +224,7 @@ func (s *azureMonitorScaler) Close(context.Context) error {
 func (s *azureMonitorScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-monitor-%s", s.metadata.azureMonitorInfo.Name))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-monitor-%s", s.metadata.azureMonitorInfo.Name))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.targetValue),
 	}

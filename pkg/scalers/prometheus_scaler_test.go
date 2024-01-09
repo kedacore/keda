@@ -27,7 +27,7 @@ type parsePrometheusMetadataTestData struct {
 
 type prometheusMetricIdentifier struct {
 	metadataTestData *parsePrometheusMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -132,7 +132,7 @@ func TestPrometheusParseMetadata(t *testing.T) {
 
 func TestPrometheusGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range prometheusMetricIdentifiers {
-		meta, err := parsePrometheusMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ScalerIndex: testData.scalerIndex})
+		meta, err := parsePrometheusMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

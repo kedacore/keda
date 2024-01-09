@@ -48,5 +48,5 @@ jobs:
         if: ${{ always() }}
         with:
           name: smoke-test-logs ${{ inputs.runs-on }}-${{ inputs.kubernetesVersion }}
-          path: "${{ github.workspace }}/tests/**/*.log"
+          path: "${{ github.workspace }}/**/*.log"
           if-no-files-found: ignore

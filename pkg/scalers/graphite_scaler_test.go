@@ -17,7 +17,7 @@ type parseGraphiteMetadataTestData struct {
 
 type graphiteMetricIdentifier struct {
 	metadataTestData *parseGraphiteMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -125,7 +125,7 @@ func TestGraphiteParseMetadata(t *testing.T) {
 func TestGraphiteGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range graphiteMetricIdentifiers {
 		ctx := context.Background()
-		meta, err := parseGraphiteMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ScalerIndex: testData.scalerIndex})
+		meta, err := parseGraphiteMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

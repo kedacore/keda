@@ -51,5 +51,5 @@ jobs:
         if: ${{ always() }}
         with:
           name: e2e-test-logs
-          path: '${{ github.workspace }}/tests/**/*.log'
+          path: "${{ github.workspace }}/**/*.log"
           if-no-files-found: ignore

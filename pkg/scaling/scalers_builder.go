@@ -62,12 +62,26 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 				ResolvedEnv:             resolvedEnv,
 				AuthParams:              make(map[string]string),
 				GlobalHTTPTimeout:       h.globalHTTPTimeout,
-				ScalerIndex:             triggerIndex,
+				TriggerIndex:            triggerIndex,
 				MetricType:              trigger.MetricType,
 				AsMetricSource:          asMetricSource,
+				TriggerUniqueKey:        fmt.Sprintf("%s-%s-%s-%d", withTriggers.Kind, withTriggers.Namespace, withTriggers.Name, triggerIndex),
 			}
 
 			authParams, podIdentity, err := resolver.ResolveAuthRefAndPodIdentity(ctx, h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace, h.secretsLister)
+			switch podIdentity.Provider {
+			case kedav1alpha1.PodIdentityProviderAzure:
+				// FIXME: Delete this for v2.15
+				logger.Info("WARNING: Azure AD Pod Identity has been archived (https://github.com/Azure/aad-pod-identity#-announcement) and will be removed from KEDA on v2.15")
+			case kedav1alpha1.PodIdentityProviderAwsKiam:
+				// FIXME: Delete this for v2.15
+				logger.Info("WARNING: AWS Kiam Identity has been abandoned (https://github.com/uswitch/kiam) and will be removed from KEDA on v2.15")
+			case kedav1alpha1.PodIdentityProviderAwsEKS:
+				// FIXME: Delete this for v3
+				logger.Info("WARNING: AWS EKS Identity has been deprecated in favor of AWS Identity and will be removed from KEDA on v3")
+			default:
+			}
+
 			if err != nil {
 				return nil, nil, err
 			}
@@ -77,10 +91,11 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 			return scaler, config, err
 		}
 
+		// nosemgrep: invalid-usage-of-modified-variable
 		scaler, config, err := factory()
 		if err != nil {
 			h.recorder.Event(withTriggers, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
-			logger.Error(err, "error resolving auth params", "scalerIndex", triggerIndex)
+			logger.Error(err, "error resolving auth params", "triggerIndex", triggerIndex)
 			if scaler != nil {
 				scaler.Close(ctx)
 			}

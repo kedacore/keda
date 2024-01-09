@@ -32,7 +32,7 @@ type liiklusMetadata struct {
 	topic                  string
 	group                  string
 	groupVersion           uint32
-	scalerIndex            int
+	triggerIndex           int
 }
 
 const (
@@ -105,7 +105,7 @@ func (s *liiklusScaler) GetMetricsAndActivity(ctx context.Context, metricName st
 func (s *liiklusScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("liiklus-%s", s.metadata.topic))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("liiklus-%s", s.metadata.topic))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.lagThreshold),
 	}
@@ -202,6 +202,6 @@ func parseLiiklusMetadata(config *ScalerConfig) (*liiklusMetadata, error) {
 		groupVersion:           groupVersion,
 		lagThreshold:           lagThreshold,
 		activationLagThreshold: activationLagThreshold,
-		scalerIndex:            config.ScalerIndex,
+		triggerIndex:           config.TriggerIndex,
 	}, nil
 }

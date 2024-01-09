@@ -89,7 +89,7 @@ func parseStackdriverMetadata(config *ScalerConfig, logger logr.Logger) (*stackd
 	}
 
 	name := kedautil.NormalizeString(fmt.Sprintf("gcp-stackdriver-%s", meta.projectID))
-	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, name)
+	meta.metricName = GenerateMetricNameWithIndex(config.TriggerIndex, name)
 
 	if val, ok := config.TriggerMetadata["targetValue"]; ok {
 		targetValue, err := strconv.ParseFloat(val, 64)

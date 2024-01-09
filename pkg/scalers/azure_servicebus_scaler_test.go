@@ -49,7 +49,7 @@ type parseServiceBusMetadataTestData struct {
 
 type azServiceBusMetricIdentifier struct {
 	metadataTestData *parseServiceBusMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -169,7 +169,7 @@ func TestParseServiceBusMetadata(t *testing.T) {
 	for index, testData := range parseServiceBusMetadataDataset {
 		meta, err := parseAzureServiceBusMetadata(&ScalerConfig{ResolvedEnv: sampleResolvedEnv,
 			TriggerMetadata: testData.metadata, AuthParams: testData.authParams,
-			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentity}, ScalerIndex: 0},
+			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentity}, TriggerIndex: 0},
 			logr.Discard())
 
 		if err != nil && !testData.isError {
@@ -194,7 +194,7 @@ func TestGetServiceBusAdminClientIsCached(t *testing.T) {
 	testData := azServiceBusMetricIdentifiers[0]
 	meta, err := parseAzureServiceBusMetadata(&ScalerConfig{ResolvedEnv: connectionResolvedEnv,
 		TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams,
-		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.metadataTestData.podIdentity}, ScalerIndex: testData.scalerIndex},
+		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.metadataTestData.podIdentity}, TriggerIndex: testData.triggerIndex},
 		logr.Discard())
 	if err != nil {
 		t.Fatal("Could not parse metadata:", err)
@@ -244,7 +244,7 @@ func TestAzServiceBusGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azServiceBusMetricIdentifiers {
 		meta, err := parseAzureServiceBusMetadata(&ScalerConfig{ResolvedEnv: connectionResolvedEnv,
 			TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams,
-			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.metadataTestData.podIdentity}, ScalerIndex: testData.scalerIndex},
+			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.metadataTestData.podIdentity}, TriggerIndex: testData.triggerIndex},
 			logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)

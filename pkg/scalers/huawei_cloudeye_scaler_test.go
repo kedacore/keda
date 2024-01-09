@@ -27,7 +27,7 @@ type parseHuaweiCloudeyeMetadataTestData struct {
 
 type huaweiCloudeyeMetricIdentifier struct {
 	metadataTestData *parseHuaweiCloudeyeMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -172,7 +172,7 @@ func TestHuaweiCloudeyeParseMetadata(t *testing.T) {
 
 func TestHuaweiCloudeyeGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range huaweiCloudeyeMetricIdentifiers {
-		meta, err := parseHuaweiCloudeyeMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex}, logr.Discard())
+		meta, err := parseHuaweiCloudeyeMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

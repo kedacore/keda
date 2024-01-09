@@ -91,7 +91,7 @@ type predictKubeMetadata struct {
 	query               string
 	threshold           float64
 	activationThreshold float64
-	scalerIndex         int
+	triggerIndex        int
 }
 
 func (s *PredictKubeScaler) setupClientConn() error {
@@ -183,7 +183,7 @@ func (s *PredictKubeScaler) GetMetricSpecForScaling(context.Context) []v2.Metric
 	metricName := kedautil.NormalizeString(fmt.Sprintf("predictkube-%s", predictKubeMetricPrefix))
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}
@@ -271,7 +271,7 @@ func (s *PredictKubeScaler) doQuery(ctx context.Context) ([]*commonproto.Item, e
 
 // parsePrometheusResult parsing response from prometheus server.
 func (s *PredictKubeScaler) parsePrometheusResult(result model.Value) (out []*commonproto.Item, err error) {
-	metricName := GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("predictkube-%s", predictKubeMetricPrefix)))
+	metricName := GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("predictkube-%s", predictKubeMetricPrefix)))
 	switch result.Type() {
 	case model.ValVector:
 		if res, ok := result.(model.Vector); ok {
@@ -421,7 +421,7 @@ func parsePredictKubeMetadata(config *ScalerConfig) (result *predictKubeMetadata
 		meta.activationThreshold = activationThreshold
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	if val, ok := config.AuthParams["apiKey"]; ok {
 		err = validate.Var(val, "jwt")

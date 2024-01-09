@@ -46,7 +46,7 @@ type huaweiCloudeyeMetadata struct {
 
 	huaweiAuthorization huaweiAuthorizationMetadata
 
-	scalerIndex int
+	triggerIndex int
 }
 
 type huaweiAuthorizationMetadata struct {
@@ -182,7 +182,7 @@ func parseHuaweiCloudeyeMetadata(config *ScalerConfig, logger logr.Logger) (*hua
 	}
 
 	meta.huaweiAuthorization = auth
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
@@ -255,7 +255,7 @@ func (s *huaweiCloudeyeScaler) GetMetricsAndActivity(_ context.Context, metricNa
 func (s *huaweiCloudeyeScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("huawei-cloudeye-%s", s.metadata.metricsName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("huawei-cloudeye-%s", s.metadata.metricsName))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.targetMetricValue),
 	}

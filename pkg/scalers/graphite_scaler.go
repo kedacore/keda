@@ -44,7 +44,7 @@ type graphiteMetadata struct {
 	enableBasicAuth bool
 	username        string
 	password        string // +optional
-	scalerIndex     int
+	triggerIndex    int
 }
 
 type grapQueryResult []struct {
@@ -116,7 +116,7 @@ func parseGraphiteMetadata(config *ScalerConfig) (*graphiteMetadata, error) {
 		meta.activationThreshold = t
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	val, ok := config.TriggerMetadata["authMode"]
 	// no authMode specified
@@ -150,7 +150,7 @@ func (s *graphiteScaler) Close(context.Context) error {
 func (s *graphiteScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, "graphite"),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, "graphite"),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}

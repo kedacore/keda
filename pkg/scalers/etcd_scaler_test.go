@@ -22,7 +22,7 @@ type parseEtcdAuthParamsTestData struct {
 
 type etcdMetricIdentifier struct {
 	metadataTestData *parseEtcdMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -121,7 +121,7 @@ func TestParseEtcdAuthParams(t *testing.T) {
 
 func TestEtcdGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range etcdMetricIdentifiers {
-		meta, err := parseEtcdMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ScalerIndex: testData.scalerIndex})
+		meta, err := parseEtcdMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

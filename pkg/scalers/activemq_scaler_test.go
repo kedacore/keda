@@ -20,7 +20,7 @@ type parseActiveMQMetadataTestData struct {
 
 type activeMQMetricIdentifier struct {
 	metadataTestData *parseActiveMQMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -296,7 +296,7 @@ func TestParseDefaultTargetQueueSize(t *testing.T) {
 func TestActiveMQGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range activeMQMetricIdentifiers {
 		ctx := context.Background()
-		metadata, err := parseActiveMQMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex})
+		metadata, err := parseActiveMQMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -343,7 +343,7 @@ func TestActiveMQGetMonitoringEndpoint(t *testing.T) {
 		"password": "pass123",
 	}
 	for _, testData := range getMonitoringEndpointData {
-		metadata, err := parseActiveMQMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: authParams, ScalerIndex: 0})
+		metadata, err := parseActiveMQMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: authParams, TriggerIndex: 0})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

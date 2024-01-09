@@ -45,3 +45,6 @@ __debug_bin
 
 # GO Test result
 report.xml
+
+# KEDA Certs
+certs/*

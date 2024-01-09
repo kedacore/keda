@@ -22,7 +22,7 @@ jobs:
         id: checkUserMember
         with:
           username: ${{ github.actor }}
-          team: 'keda-e2e-test-executors'
+          team: "keda-e2e-test-executors"
           GITHUB_TOKEN: ${{ secrets.GH_CHECKING_USER_AUTH }}
 
       - name: Update comment with the execution url
@@ -221,5 +221,5 @@ jobs:
         uses: actions/upload-artifact@c7d193f32edcb7bfad88892161225aeda64e9392 # v4
         with:
           name: e2e-test-logs
-          path: '${{ github.workspace }}/tests/**/*.log'
+          path: "${{ github.workspace }}/**/*.log"
           if-no-files-found: ignore

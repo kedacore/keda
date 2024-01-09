@@ -61,7 +61,7 @@ type eventHubMetadata struct {
 	threshold                   int64
 	activationThreshold         int64
 	stalePartitionInfoThreshold int64
-	scalerIndex                 int
+	triggerIndex                int
 }
 
 // NewAzureEventHubScaler creates a new scaler for eventHub
@@ -189,7 +189,7 @@ func parseCommonAzureEventHubMetadata(config *ScalerConfig, meta *eventHubMetada
 		meta.stalePartitionInfoThreshold = stalePartitionInfoThreshold
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	return nil
 }
@@ -352,7 +352,7 @@ func GetUnprocessedEventCountWithoutCheckpoint(partitionInfo *eventhub.HubPartit
 func (s *azureEventHubScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-eventhub-%s", s.metadata.eventHubInfo.EventHubConsumerGroup))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-eventhub-%s", s.metadata.eventHubInfo.EventHubConsumerGroup))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.threshold),
 	}

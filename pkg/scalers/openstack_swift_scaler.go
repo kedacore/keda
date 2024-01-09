@@ -35,7 +35,7 @@ type openstackSwiftMetadata struct {
 	objectLimit           string
 	httpClientTimeout     int
 	onlyFiles             bool
-	scalerIndex           int
+	triggerIndex          int
 }
 
 type openstackSwiftAuthenticationMetadata struct {
@@ -196,7 +196,7 @@ func parseOpenstackSwiftMetadata(config *ScalerConfig) (*openstackSwiftMetadata,
 	} else {
 		meta.objectLimit = defaultObjectLimit
 	}
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
@@ -279,7 +279,7 @@ func (s *openstackSwiftScaler) GetMetricSpecForScaling(context.Context) []v2.Met
 
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.objectCount),
 	}
