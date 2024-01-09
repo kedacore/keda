@@ -276,7 +276,7 @@ func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
 	scalerConfigFn := func(index int) *scalers.ScalerConfig {
 		return &scalers.ScalerConfig{
 			TriggerUseCachedMetrics: false,
-			ScalerIndex:             index,
+			TriggerIndex:            index,
 		}
 	}
 
