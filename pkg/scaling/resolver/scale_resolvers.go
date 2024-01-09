@@ -321,7 +321,6 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 				if err != nil {
 					logger.Error(err, "error authenticating to Aws Secret Manager", "triggerAuthRef.Name", triggerAuthRef.Name)
 				} else {
-
 					for _, secret := range triggerAuthSpec.AwsSecretManager.Secrets {
 						res, err := awsSecretManagerHandler.Read(ctx, logger, secret.Name, secret.VersionID, secret.VersionStage)
 						if err != nil {
