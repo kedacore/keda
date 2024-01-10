@@ -139,6 +139,8 @@ spec:
  	podIdentity:
   	  provider: aws-eks-workload
 	  roleArn: {{.RoleArn}}
+	cloud:
+	  region: {{.AwsRegion}}
     secrets:
     - parameter: connection
       name: {{.SecretManagerSecretName}}

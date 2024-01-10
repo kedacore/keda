@@ -136,6 +136,8 @@ spec:
   awsSecretManager:
  	podIdentity:
   	  provider: aws-eks
+	cloud:
+	  region: {{.AwsRegion}}
     secrets:
     - parameter: connection
       name: {{.SecretManagerSecretName}}
