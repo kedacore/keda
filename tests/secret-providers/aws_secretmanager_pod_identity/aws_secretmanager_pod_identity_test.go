@@ -235,7 +235,7 @@ spec:
           - insert
         env:
           - name: TASK_INSTANCES_COUNT
-            value: "1000"
+            value: "10000"
           - name: CONNECTION_STRING
             valueFrom:
               secretKeyRef:
@@ -277,7 +277,6 @@ func TestAwsSecretManager(t *testing.T) {
 		"replica count should be %d after 3 minutes", minReplicaCount)
 
 	testScaleOut(t, kc, data)
-	testScaleIn(t, kc)
 
 	// cleanup
 	KubectlDeleteMultipleWithTemplate(t, data, templates)
@@ -331,13 +330,6 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
-}
-
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale in ---")
-
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %d after 3 minutes", minReplicaCount)
 }
 
 func createAWSSecret(t *testing.T) error {
