@@ -103,7 +103,6 @@ func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client clien
 		logger.Error(err, "Error getting credentials")
 		return err
 	}
-	logger.Info("Config value", "config", config)
 	ash.session = secretsmanager.NewFromConfig(*config)
 	return nil
 }
