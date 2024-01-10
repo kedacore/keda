@@ -61,11 +61,6 @@ spec:
               awsSecretManager:
                 description: AwsSecretManager is used to authenticate using AwsSecretManager
                 properties:
-                  cloud:
-                    properties:
-                      region:
-                        type: string
-                    type: object
                   credentials:
                     properties:
                       accessKey:
@@ -163,6 +158,8 @@ spec:
                     required:
                     - provider
                     type: object
+                  region:
+                    type: string
                   secrets:
                     items:
                       properties:
