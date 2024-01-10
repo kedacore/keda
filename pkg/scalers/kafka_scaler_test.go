@@ -311,8 +311,8 @@ var parseKafkaOAuthbrearerAuthParamsTestDataset = []parseKafkaAuthParamsTestData
 }
 
 var kafkaMetricIdentifiers = []kafkaMetricIdentifier{
-	{&parseKafkaMetadataTestDataset[10], 0, "s0-kafka-my-topic"},
-	{&parseKafkaMetadataTestDataset[10], 1, "s1-kafka-my-topic"},
+	{&parseKafkaMetadataTestDataset[11], 0, "s0-kafka-my-topic"},
+	{&parseKafkaMetadataTestDataset[11], 1, "s1-kafka-my-topic"},
 	{&parseKafkaMetadataTestDataset[2], 1, "s1-kafka-my-group-topics"},
 }
 
