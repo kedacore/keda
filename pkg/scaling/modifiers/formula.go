@@ -107,10 +107,11 @@ func calculateScalingModifiersFormula(list []external_metrics.ExternalMetricValu
 	return []external_metrics.ExternalMetricValue{ret}, nil
 }
 
-// AddPairTriggerAndMetric adds new pair of trigger-metric to the list for
+// GetPairTriggerAndMetric adds new pair of trigger-metric to the list for
 // scalingModifiers formula list thats needed to map the metric value to
 // trigger name. This is only ran if scalingModifiers.Formula is defined in SO.
-func AddPairTriggerAndMetric(list map[string]string, so *kedav1alpha1.ScaledObject, metric string, trigger string) (map[string]string, error) {
+func GetPairTriggerAndMetric(so *kedav1alpha1.ScaledObject, metric string, trigger string) (map[string]string, error) {
+	list := map[string]string{}
 	if so.Spec.Advanced != nil && so.Spec.Advanced.ScalingModifiers.Formula != "" {
 		if trigger == "" {
 			return list, fmt.Errorf("trigger name not given with compositeScaler for metric %s", metric)

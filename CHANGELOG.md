@@ -69,6 +69,7 @@ Here is an overview of all new **experimental** features:
 - **General**: Enhance podIdentity Role Assumption in AWS by Direct Integration with OIDC/Federation ([#5178](https://github.com/kedacore/keda/issues/5178))
 - **General**: Fix issue where paused annotation being set to false still leads to scaled objects/jobs being paused ([#5215](https://github.com/kedacore/keda/issues/5215))
 - **General**: Implement Credentials Cache for AWS Roles to reduce AWS API calls ([#5297](https://github.com/kedacore/keda/issues/5297))
+- **General**: Request all ScaledObject/ScaledJob triggers in parallel ([#5276](https://github.com/kedacore/keda/issues/5276))
 - **General**: Support TriggerAuthentication properties from ConfigMap ([#4830](https://github.com/kedacore/keda/issues/4830))
 - **General**: Use client-side round-robin load balancing for grpc calls ([#5224](https://github.com/kedacore/keda/issues/5224))
 - **GCP pubsub scaler**: Support distribution-valued metrics and metrics from topics ([#5070](https://github.com/kedacore/keda/issues/5070))
