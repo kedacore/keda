@@ -345,14 +345,11 @@ func TestGetBrokers(t *testing.T) {
 			t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.offsetResetPolicy)
 		}
 
-		var expectedLagThreshold int64
-		if val, ok := testData.metadata["lagThreshold"]; ok {
-			var er error
-			expectedLagThreshold, er = strconv.ParseInt(val, 10, 64)
-			if er != nil {
-				t.Errorf("Unable to convert test data lagThreshold %s to string", testData.metadata["lagThreshold"])
-			}
+		expectedLagThreshold, er := parseExpectedLagThreshold(testData.metadata)
+		if er != nil {
+			t.Errorf("Unable to convert test data lagThreshold %s to string", testData.metadata["lagThreshold"])
 		}
+
 		if meta.lagThreshold != expectedLagThreshold && meta.lagThreshold != defaultKafkaLagThreshold {
 			t.Errorf("Expected lagThreshold to be either %v or %v got %v ", meta.lagThreshold, defaultKafkaLagThreshold, expectedLagThreshold)
 		}
@@ -393,12 +390,9 @@ func TestGetBrokers(t *testing.T) {
 			t.Errorf("Expected limitToPartitionsWithLag %t but got %t\n", testData.limitToPartitionsWithLag, meta.limitToPartitionsWithLag)
 		}
 
-		if val, ok := testData.metadata["lagThreshold"]; ok {
-			var er error
-			expectedLagThreshold, er = strconv.ParseInt(val, 10, 64)
-			if er != nil {
-				t.Errorf("Unable to convert test data lagThreshold %s to string", testData.metadata["lagThreshold"])
-			}
+		expectedLagThreshold, er = parseExpectedLagThreshold(testData.metadata)
+		if er != nil {
+			t.Errorf("Unable to convert test data lagThreshold %s to string", testData.metadata["lagThreshold"])
 		}
 
 		if meta.lagThreshold != expectedLagThreshold && meta.lagThreshold != defaultKafkaLagThreshold {
