@@ -51,8 +51,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- **General**: Introduce new AWS Authentication ([#4134](https://github.com/kedacore/keda/issues/4134))
 - **General**: Adds support for AWS Secret Manager as a source for TriggerAuthentication ([#4628](https://github.com/kedacore/keda/issues/4628))
+- **General**: Introduce new AWS Authentication ([#4134](https://github.com/kedacore/keda/issues/4134))
 
 #### Experimental
 
