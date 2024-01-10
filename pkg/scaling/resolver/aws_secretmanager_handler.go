@@ -66,12 +66,10 @@ func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client clien
 		TriggerUniqueKey: fmt.Sprintf("aws-secret-manager-%s", triggerNamespace),
 	}
 	awsRegion := ""
-	if ash.secretManager.Cloud != nil {
-		if ash.secretManager.Cloud.Region != "" {
-			awsRegion = ash.secretManager.Cloud.Region
-		}
+	if ash.secretManager.Region != "" {
+		awsRegion = ash.secretManager.Region
 	}
-
+	
 	podIdentity := ash.secretManager.PodIdentity
 	if podIdentity == nil {
 		podIdentity = &kedav1alpha1.AuthPodIdentity{}
