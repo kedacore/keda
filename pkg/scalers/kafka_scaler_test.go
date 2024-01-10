@@ -84,8 +84,8 @@ var parseKafkaMetadataTestDataset = []parseKafkaMetadataTestData{
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "-1"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false},
 	// failure, lagThreshold is 0
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "0"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false},
-	// failure, lagThreshold is 1000000
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "1000000"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false},
+	// success, lagThreshold is 1000000
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "1000000", "activationLagThreshold": "0"}, false, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false},
 	// failure, activationLagThreshold is not int
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "lagThreshold": "10", "activationLagThreshold": "AA"}, true, 1, []string{"foobar:9092"}, "my-group", "my-topic", nil, offsetResetPolicy("latest"), false, false, false},
 	// success, activationLagThreshold is 0
@@ -345,6 +345,18 @@ func TestGetBrokers(t *testing.T) {
 			t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.offsetResetPolicy)
 		}
 
+		var expectedLagThreshold int64
+		if val, ok := testData.metadata["lagThreshold"]; ok {
+			var er error
+			expectedLagThreshold, er = strconv.ParseInt(val, 10, 64)
+			if er != nil {
+				t.Errorf("Unable to convert test data lagThreshold %s to string", testData.metadata["lagThreshold"])
+			}
+		}
+		if meta.lagThreshold != expectedLagThreshold && meta.lagThreshold != defaultKafkaLagThreshold {
+			t.Errorf("Expected lagThreshold to be either %v or %v got %v ", meta.lagThreshold, defaultKafkaLagThreshold, expectedLagThreshold)
+		}
+
 		meta, err = parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validWithoutAuthParams}, logr.Discard())
 
 		if err != nil && !testData.isError {
@@ -379,6 +391,18 @@ func TestGetBrokers(t *testing.T) {
 		}
 		if err == nil && meta.limitToPartitionsWithLag != testData.limitToPartitionsWithLag {
 			t.Errorf("Expected limitToPartitionsWithLag %t but got %t\n", testData.limitToPartitionsWithLag, meta.limitToPartitionsWithLag)
+		}
+
+		if val, ok := testData.metadata["lagThreshold"]; ok {
+			var er error
+			expectedLagThreshold, er = strconv.ParseInt(val, 10, 64)
+			if er != nil {
+				t.Errorf("Unable to convert test data lagThreshold %s to string", testData.metadata["lagThreshold"])
+			}
+		}
+
+		if meta.lagThreshold != expectedLagThreshold && meta.lagThreshold != defaultKafkaLagThreshold {
+			t.Errorf("Expected lagThreshold to be either %v or %v got %v ", meta.lagThreshold, defaultKafkaLagThreshold, expectedLagThreshold)
 		}
 	}
 }

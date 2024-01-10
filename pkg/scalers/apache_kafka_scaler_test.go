@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strconv"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -77,7 +78,7 @@ var parseApacheKafkaMetadataTestDataset = []parseApacheKafkaMetadataTestData{
 	// failure, lagThreshold is 0
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "lagThreshold": "0"}, true, 1, []string{"foobar:9092"}, "my-group", []string{"my-topics"}, nil, offsetResetPolicy("latest"), false, false, false},
 	// success, LagThreshold is 1000000
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "lagThreshold": "1000000"}, true, 1, []string{"foobar:9092"}, "my-group", []string{"my-topics"}, nil, offsetResetPolicy("latest"), false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "lagThreshold": "1000000", "activationLagThreshold": "0"}, false, 1, []string{"foobar:9092"}, "my-group", []string{"my-topics"}, nil, offsetResetPolicy("latest"), false, false, false},
 	// success, activationLagThreshold is 0
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "lagThreshold": "10", "activationLagThreshold": "0"}, false, 1, []string{"foobar:9092"}, "my-group", []string{"my-topics"}, nil, offsetResetPolicy("latest"), false, false, false},
 	// success
@@ -267,6 +268,19 @@ func TestApacheKafkaGetBrokers(t *testing.T) {
 			t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.offsetResetPolicy)
 		}
 
+		var expectedLagThreshold int64
+		if val, ok := testData.metadata["lagThreshold"]; ok {
+			var er error
+			expectedLagThreshold, er = strconv.ParseInt(val, 10, 64)
+			if er != nil {
+				t.Errorf("Unable to convert test data lagThreshold %s to string", testData.metadata["lagThreshold"])
+			}
+		}
+
+		if meta.lagThreshold != expectedLagThreshold && meta.lagThreshold != defaultKafkaLagThreshold {
+			t.Errorf("Expected lagThreshold to be either %v or %v got %v ", meta.lagThreshold, defaultKafkaLagThreshold, expectedLagThreshold)
+		}
+
 		meta, err = parseApacheKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validApacheKafkaWithoutAuthParams}, logr.Discard())
 
 		if err != nil && !testData.isError {
@@ -301,6 +315,18 @@ func TestApacheKafkaGetBrokers(t *testing.T) {
 		}
 		if err == nil && meta.limitToPartitionsWithLag != testData.limitToPartitionsWithLag {
 			t.Errorf("Expected limitToPartitionsWithLag %t but got %t\n", testData.limitToPartitionsWithLag, meta.limitToPartitionsWithLag)
+		}
+
+		if val, ok := testData.metadata["lagThreshold"]; ok {
+			var er error
+			expectedLagThreshold, er = strconv.ParseInt(val, 10, 64)
+			if er != nil {
+				t.Errorf("Unable to convert test data lagThreshold %s to string", testData.metadata["lagThreshold"])
+			}
+		}
+
+		if meta.lagThreshold != expectedLagThreshold && meta.lagThreshold != defaultKafkaLagThreshold {
+			t.Errorf("Expected lagThreshold to be either %v or %v got %v ", meta.lagThreshold, defaultKafkaLagThreshold, expectedLagThreshold)
 		}
 	}
 }
