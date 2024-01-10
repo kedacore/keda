@@ -134,8 +134,8 @@ metadata:
   namespace: {{.TestNamespace}}
 spec:
   awsSecretManager:
- 	podIdentity:
-  	  provider: aws
+    podIdentity:
+      provider: aws
     secrets:
     - parameter: connection
       name: {{.SecretManagerSecretName}}
