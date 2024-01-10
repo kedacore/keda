@@ -308,7 +308,7 @@ type AwsSecretManager struct {
 	// +optional
 	PodIdentity *AuthPodIdentity `json:"podIdentity"`
 	// +optional
-	Cloud *AwsSecretMangerCloudInfo `json:"cloud"`
+	Region string `json:"region,omitempty"`
 }
 
 type AwsSecretManagerCredentials struct {
@@ -329,11 +329,6 @@ type AwsSecretManagerSecret struct {
 	VersionID string `json:"versionId,omitempty"`
 	// +optional
 	VersionStage string `json:"versionStage,omitempty"`
-}
-
-type AwsSecretMangerCloudInfo struct {
-	// +optional
-	Region string `json:"region,omitempty"`
 }
 
 func init() {
