@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package aws_secretmanager_eks_workload_identity_test
+package aws_secretmanager_pod_identity_test
 
 import (
 	"context"
@@ -48,7 +48,6 @@ var (
 	awsRegion                = os.Getenv("TF_AWS_REGION")
 	awsAccessKeyID           = os.Getenv("TF_AWS_ACCESS_KEY")
 	awsSecretAccessKey       = os.Getenv("TF_AWS_SECRET_KEY")
-	awsRoleArn               = os.Getenv("TF_AWS_WORKLOAD_ROLE")
 	awsCredentialsSecretName = fmt.Sprintf("%s-credentials-secret", testName)
 	secretManagerSecretName  = fmt.Sprintf("connectionString-%d", GetRandomNumber())
 )
@@ -67,7 +66,6 @@ type templateData struct {
 	MinReplicaCount                  int
 	MaxReplicaCount                  int
 	AwsRegion                        string
-	RoleArn                          string
 	AwsCredentialsSecretName         string
 	SecretManagerSecretName          string
 	AwsAccessKeyID                   string
@@ -137,21 +135,10 @@ metadata:
 spec:
   awsSecretManager:
  	podIdentity:
-  	  provider: aws-eks-workload
-	  roleArn: {{.RoleArn}}
-	cloud:
-	  region: {{.AwsRegion}}
+  	  provider: aws
     secrets:
     - parameter: connection
       name: {{.SecretManagerSecretName}}
-`
-	serviceAccountTemplate = `apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: workload
-  namespace: {{.TestNamespace}}
-  annotations:
-    eks.amazonaws.com/role-arn: {{.RoleArn}}
 `
 
 	scaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
@@ -350,7 +337,6 @@ var data = templateData{
 	AwsAccessKeyID:                   base64.StdEncoding.EncodeToString([]byte(awsAccessKeyID)),
 	AwsSecretAccessKey:               base64.StdEncoding.EncodeToString([]byte(awsSecretAccessKey)),
 	AwsRegion:                        awsRegion,
-	RoleArn:                          awsRoleArn,
 	AwsCredentialsSecretName:         awsCredentialsSecretName,
 }
 
@@ -367,7 +353,6 @@ func getTemplateData() (templateData, []Template) {
 		{Name: "awsCredentialsSecretTemplate", Config: awsCredentialsSecretTemplate},
 		{Name: "deploymentTemplate", Config: deploymentTemplate},
 		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-		{Name: "serviceAccountTemplate", Config: serviceAccountTemplate},
 		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 	}
 }
