@@ -145,8 +145,7 @@ spec:
           secretKeyRef:
             name: {{.AwsCredentialsSecretName}}
             key: AWS_SECRET_ACCESS_KEY
-    cloud:
-      region: {{.AwsRegion}}
+    region: {{.AwsRegion}}
     secrets:
     - parameter: connection
       name: {{.SecretManagerSecretName}}
