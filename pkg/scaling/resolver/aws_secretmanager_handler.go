@@ -69,7 +69,6 @@ func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client clien
 	if ash.secretManager.Region != "" {
 		awsRegion = ash.secretManager.Region
 	}
-	
 	podIdentity := ash.secretManager.PodIdentity
 	if podIdentity == nil {
 		podIdentity = &kedav1alpha1.AuthPodIdentity{}
