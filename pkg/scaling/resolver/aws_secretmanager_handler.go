@@ -61,7 +61,7 @@ func (ash *AwsSecretManagerHandler) Read(ctx context.Context, logger logr.Logger
 	return *result.SecretString, nil
 }
 
-func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client client.Client, logger logr.Logger, triggerNamespace string, secretsLister corev1listers.SecretLister, podTemplateSpec *corev1.PodTemplateSpec) error {
+func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client client.Client, logger logr.Logger, triggerNamespace string, secretsLister corev1listers.SecretLister, podSpec *corev1.PodSpec) error {
 	ash.awsMetadata = awsutils.AuthorizationMetadata{
 		TriggerUniqueKey: fmt.Sprintf("aws-secret-manager-%s", triggerNamespace),
 	}
@@ -86,7 +86,7 @@ func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client clien
 		}
 	case kedav1alpha1.PodIdentityProviderAws:
 		if ash.secretManager.PodIdentity.IsWorkloadIdentityOwner() {
-			awsRoleArn, err := resolveServiceAccountAnnotation(ctx, client, podTemplateSpec.Spec.ServiceAccountName, triggerNamespace, kedav1alpha1.PodIdentityAnnotationEKS)
+			awsRoleArn, err := resolveServiceAccountAnnotation(ctx, client, podSpec.ServiceAccountName, triggerNamespace, kedav1alpha1.PodIdentityAnnotationEKS)
 			if err != nil {
 				return fmt.Errorf("error resolving role arn for aws: %w", err)
 			}

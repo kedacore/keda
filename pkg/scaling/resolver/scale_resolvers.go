@@ -239,7 +239,6 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 	result := make(map[string]string)
 	podIdentity := kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}
 	var err error
-	podTemplateSpec := corev1.PodTemplateSpec{}
 
 	if namespace != "" && triggerAuthRef != nil && triggerAuthRef.Name != "" {
 		triggerAuthSpec, triggerNamespace, err := getTriggerAuthSpec(ctx, client, triggerAuthRef, namespace)
@@ -316,7 +315,7 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 
 			if triggerAuthSpec.AwsSecretManager != nil && len(triggerAuthSpec.AwsSecretManager.Secrets) > 0 {
 				awsSecretManagerHandler := NewAwsSecretManagerHandler(triggerAuthSpec.AwsSecretManager)
-				err := awsSecretManagerHandler.Initialize(ctx, client, logger, triggerNamespace, secretsLister, &podTemplateSpec)
+				err := awsSecretManagerHandler.Initialize(ctx, client, logger, triggerNamespace, secretsLister, podSpec)
 				defer awsSecretManagerHandler.Stop()
 				if err != nil {
 					logger.Error(err, "error authenticating to Aws Secret Manager", "triggerAuthRef.Name", triggerAuthRef.Name)
