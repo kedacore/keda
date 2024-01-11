@@ -154,7 +154,7 @@ func TestPredictKubeParseMetadata(t *testing.T) {
 
 type predictKubeMetricIdentifier struct {
 	metadataTestData *predictKubeMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -178,7 +178,7 @@ func TestPredictKubeGetMetricSpecForScaling(t *testing.T) {
 			context.Background(), &ScalerConfig{
 				TriggerMetadata: testData.metadataTestData.metadata,
 				AuthParams:      testData.metadataTestData.authParams,
-				ScalerIndex:     testData.scalerIndex,
+				TriggerIndex:    testData.triggerIndex,
 			},
 		)
 		assert.NoError(t, err)
@@ -212,7 +212,7 @@ func TestPredictKubeGetMetrics(t *testing.T) {
 			context.Background(), &ScalerConfig{
 				TriggerMetadata: testData.metadataTestData.metadata,
 				AuthParams:      testData.metadataTestData.authParams,
-				ScalerIndex:     testData.scalerIndex,
+				TriggerIndex:    testData.triggerIndex,
 			},
 		)
 		assert.NoError(t, err)

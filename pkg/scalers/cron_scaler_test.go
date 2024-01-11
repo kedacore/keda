@@ -16,7 +16,7 @@ type parseCronMetadataTestData struct {
 
 type cronMetricIdentifier struct {
 	metadataTestData *parseCronMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -115,7 +115,7 @@ func TestGetMetricsRange(t *testing.T) {
 
 func TestCronGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range cronMetricIdentifiers {
-		meta, err := parseCronMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ScalerIndex: testData.scalerIndex})
+		meta, err := parseCronMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

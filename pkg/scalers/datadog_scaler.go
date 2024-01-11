@@ -223,7 +223,7 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 	meta.datadogSite = siteVal
 
 	metricName := meta.query[0:strings.Index(meta.query, "{")]
-	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("datadog-%s", metricName)))
+	meta.metricName = GenerateMetricNameWithIndex(config.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("datadog-%s", metricName)))
 
 	return &meta, nil
 }

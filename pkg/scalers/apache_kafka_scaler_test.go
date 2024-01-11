@@ -39,7 +39,7 @@ type parseApacheKafkaAuthParamsTestDataSecondAuthMethod struct {
 
 type apacheKafkaMetricIdentifier struct {
 	metadataTestData *parseApacheKafkaMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -368,7 +368,7 @@ func TestApacheKafkaAuthParams(t *testing.T) {
 
 func TestApacheKafkaGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range apacheKafkaMetricIdentifiers {
-		meta, err := parseApacheKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validApacheKafkaWithAuthParams, ScalerIndex: testData.scalerIndex}, logr.Discard())
+		meta, err := parseApacheKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validApacheKafkaWithAuthParams, TriggerIndex: testData.triggerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

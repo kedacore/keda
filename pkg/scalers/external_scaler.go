@@ -36,7 +36,7 @@ type externalScalerMetadata struct {
 	scalerAddress    string
 	tlsCertFile      string
 	originalMetadata map[string]string
-	scalerIndex      int
+	triggerIndex     int
 	caCert           string
 	tlsClientCert    string
 	tlsClientKey     string
@@ -151,7 +151,7 @@ func parseExternalScalerMetadata(config *ScalerConfig) (externalScalerMetadata, 
 			meta.originalMetadata[key] = value
 		}
 	}
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return meta, nil
 }
 
@@ -178,7 +178,7 @@ func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2.Metri
 	for _, spec := range response.MetricSpecs {
 		externalMetric := &v2.ExternalMetricSource{
 			Metric: v2.MetricIdentifier{
-				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, spec.MetricName),
+				Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, spec.MetricName),
 			},
 			Target: GetMetricTarget(s.metricType, spec.TargetSize),
 		}
@@ -204,7 +204,7 @@ func (s *externalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 	}
 
 	// Remove the sX- prefix as the external scaler shouldn't have to know about it
-	metricNameWithoutIndex, err := RemoveIndexFromMetricName(s.metadata.scalerIndex, metricName)
+	metricNameWithoutIndex, err := RemoveIndexFromMetricName(s.metadata.triggerIndex, metricName)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}

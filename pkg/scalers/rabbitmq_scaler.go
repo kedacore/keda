@@ -79,7 +79,7 @@ type rabbitMQMetadata struct {
 	pageSize              int64         // specify the page size if useRegex is enabled
 	operation             string        // specify the operation to apply in case of multiples queues
 	timeout               time.Duration // custom http timeout for a specific trigger
-	scalerIndex           int           // scaler index
+	triggerIndex          int           // scaler index
 
 	// TLS
 	ca          string
@@ -315,7 +315,7 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	if err := resolveTimeout(config, &meta); err != nil {
 		return nil, err
 	}
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	return &meta, nil
 }
@@ -598,7 +598,7 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP(ctx context.Context) (*queueInfo, e
 func (s *rabbitMQScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("rabbitmq-%s", url.QueryEscape(s.metadata.queueName)))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("rabbitmq-%s", url.QueryEscape(s.metadata.queueName)))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.value),
 	}

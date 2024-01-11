@@ -60,7 +60,7 @@ type redisStreamsMetadata struct {
 	consumerGroupName         string
 	databaseIndex             int
 	connectionInfo            redisConnectionInfo
-	scalerIndex               int
+	triggerIndex              int
 	activationLagCount        int64
 }
 
@@ -330,7 +330,7 @@ func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser)
 		meta.databaseIndex = int(dbIndex)
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
@@ -353,7 +353,7 @@ func (s *redisStreamsScaler) GetMetricSpecForScaling(context.Context) []v2.Metri
 
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("redis-streams-%s", s.metadata.streamName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("redis-streams-%s", s.metadata.streamName))),
 		},
 		Target: GetMetricTarget(s.metricType, metricValue),
 	}

@@ -32,7 +32,7 @@ type gcpCloudTaskMetadata struct {
 	queueName        string
 	projectID        string
 	gcpAuthorization *gcpAuthorizationMetadata
-	scalerIndex      int
+	triggerIndex     int
 }
 
 // NewGcpCloudTasksScaler creates a new cloudTaskScaler
@@ -102,7 +102,7 @@ func parseGcpCloudTasksMetadata(config *ScalerConfig) (*gcpCloudTaskMetadata, er
 		return nil, err
 	}
 	meta.gcpAuthorization = auth
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
@@ -122,7 +122,7 @@ func (s *gcpCloudTasksScaler) Close(context.Context) error {
 func (s *gcpCloudTasksScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("gcp-ct-%s", s.metadata.queueName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("gcp-ct-%s", s.metadata.queueName))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.value),
 	}

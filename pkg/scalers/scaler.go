@@ -96,8 +96,11 @@ type ScalerConfig struct {
 	// PodIdentity
 	PodIdentity kedav1alpha1.AuthPodIdentity
 
-	// ScalerIndex
-	ScalerIndex int
+	// TriggerIndex
+	TriggerIndex int
+
+	// TriggerUniqueKey for the scaler across KEDA. Useful to identify uniquely the scaler, eg: AWS credentials cache
+	TriggerUniqueKey string
 
 	// MetricType
 	MetricType v2.MetricTargetType
@@ -131,19 +134,19 @@ func GetFromAuthOrMeta(config *ScalerConfig, field string) (string, error) {
 }
 
 // GenerateMetricNameWithIndex helps to add the index prefix to the metric name
-func GenerateMetricNameWithIndex(scalerIndex int, metricName string) string {
-	return fmt.Sprintf("s%d-%s", scalerIndex, metricName)
+func GenerateMetricNameWithIndex(triggerIndex int, metricName string) string {
+	return fmt.Sprintf("s%d-%s", triggerIndex, metricName)
 }
 
 // RemoveIndexFromMetricName removes the index prefix from the metric name
-func RemoveIndexFromMetricName(scalerIndex int, metricName string) (string, error) {
+func RemoveIndexFromMetricName(triggerIndex int, metricName string) (string, error) {
 	metricNameSplit := strings.SplitN(metricName, "-", 2)
 	if len(metricNameSplit) != 2 {
 		return "", fmt.Errorf("metric name without index prefix")
 	}
 
 	indexPrefix, metricNameWithoutIndex := metricNameSplit[0], metricNameSplit[1]
-	if indexPrefix != fmt.Sprintf("s%d", scalerIndex) {
+	if indexPrefix != fmt.Sprintf("s%d", triggerIndex) {
 		return "", fmt.Errorf("metric name contains incorrect index prefix")
 	}
 

@@ -37,7 +37,7 @@ type activeMQMetadata struct {
 	activationTargetQueueSize int64
 	corsHeader                string
 	metricName                string
-	scalerIndex               int
+	triggerIndex              int
 }
 
 type activeMQMonitoring struct {
@@ -159,9 +159,9 @@ func parseActiveMQMetadata(config *ScalerConfig) (*activeMQMetadata, error) {
 		return nil, fmt.Errorf("password cannot be empty")
 	}
 
-	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("activemq-%s", meta.destinationName)))
+	meta.metricName = GenerateMetricNameWithIndex(config.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("activemq-%s", meta.destinationName)))
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	return &meta, nil
 }

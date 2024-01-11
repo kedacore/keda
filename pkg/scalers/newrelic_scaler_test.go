@@ -16,7 +16,7 @@ type parseNewRelicMetadataTestData struct {
 
 type newrelicMetricIdentifier struct {
 	metadataTestData *parseNewRelicMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -73,7 +73,7 @@ func TestNewRelicParseMetadata(t *testing.T) {
 }
 func TestNewRelicGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range newrelicMetricIdentifiers {
-		meta, err := parseNewRelicMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex}, logr.Discard())
+		meta, err := parseNewRelicMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

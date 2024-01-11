@@ -152,7 +152,7 @@ func parseGcsMetadata(config *ScalerConfig, logger logr.Logger) (*gcsMetadata, e
 	meta.gcpAuthorization = auth
 
 	var metricName = kedautil.NormalizeString(fmt.Sprintf("gcp-storage-%s", meta.bucketName))
-	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, metricName)
+	meta.metricName = GenerateMetricNameWithIndex(config.TriggerIndex, metricName)
 
 	return &meta, nil
 }

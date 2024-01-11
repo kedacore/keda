@@ -18,7 +18,7 @@ type parseMySQLMetadataTestData struct {
 
 type mySQLMetricIdentifier struct {
 	metadataTestData *parseMySQLMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	metricName       string
 }
 
@@ -61,8 +61,8 @@ var testMySQLMetadata = []parseMySQLMetadataTestData{
 }
 
 var mySQLMetricIdentifiers = []mySQLMetricIdentifier{
-	{metadataTestData: &testMySQLMetadata[1], scalerIndex: 0, metricName: "s0-mysql-stats_db"},
-	{metadataTestData: &testMySQLMetadata[2], scalerIndex: 1, metricName: "s1-mysql-test_dbname"},
+	{metadataTestData: &testMySQLMetadata[1], triggerIndex: 0, metricName: "s0-mysql-stats_db"},
+	{metadataTestData: &testMySQLMetadata[2], triggerIndex: 1, metricName: "s1-mysql-test_dbname"},
 }
 
 func TestParseMySQLMetadata(t *testing.T) {
@@ -100,7 +100,7 @@ func TestMetadataToConnectionStrBuildNew(t *testing.T) {
 
 func TestMySQLGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range mySQLMetricIdentifiers {
-		meta, err := parseMySQLMetadata(&ScalerConfig{ResolvedEnv: testData.metadataTestData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil, ScalerIndex: testData.scalerIndex})
+		meta, err := parseMySQLMetadata(&ScalerConfig{ResolvedEnv: testData.metadataTestData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

@@ -354,6 +354,7 @@ func printKedaLogs() {
 		fmt.Println(operatorLogs)
 		fmt.Println("##############################################")
 		fmt.Println("##############################################")
+		saveLogToFile("keda-operator.log", operatorLogs)
 	}
 
 	msLogs, err := helper.FindPodLogs(kubeClient, "keda", "app=keda-metrics-apiserver", true)
@@ -362,6 +363,7 @@ func printKedaLogs() {
 		fmt.Println(msLogs)
 		fmt.Println("##############################################")
 		fmt.Println("##############################################")
+		saveLogToFile("keda-metrics-server.log", msLogs)
 	}
 
 	hooksLogs, err := helper.FindPodLogs(kubeClient, "keda", "app=keda-admission-webhooks", true)
@@ -370,5 +372,20 @@ func printKedaLogs() {
 		fmt.Println(hooksLogs)
 		fmt.Println("##############################################")
 		fmt.Println("##############################################")
+		saveLogToFile("keda-webhooks.log", hooksLogs)
+	}
+}
+
+func saveLogToFile(file string, lines []string) {
+	f, err := os.Create(file)
+	if err != nil {
+		fmt.Print(err)
+	}
+	defer f.Close()
+	for _, line := range lines {
+		_, err := f.WriteString(line + "\n")
+		if err != nil {
+			fmt.Print(err)
+		}
 	}
 }

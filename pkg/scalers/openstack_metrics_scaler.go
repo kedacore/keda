@@ -34,7 +34,7 @@ type openstackMetricMetadata struct {
 	threshold           float64
 	activationThreshold float64
 	timeout             int
-	scalerIndex         int
+	triggerIndex        int
 }
 
 type openstackMetricAuthenticationMetadata struct {
@@ -183,7 +183,7 @@ func parseOpenstackMetricMetadata(config *ScalerConfig, logger logr.Logger) (*op
 	} else {
 		meta.timeout = metricDefaultHTTPClientTimeout
 	}
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
@@ -219,7 +219,7 @@ func (s *openstackMetricScaler) GetMetricSpecForScaling(context.Context) []v2.Me
 
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}

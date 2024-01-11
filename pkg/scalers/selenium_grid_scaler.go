@@ -34,7 +34,7 @@ type seleniumGridScalerMetadata struct {
 	activationThreshold int64
 	browserVersion      string
 	unsafeSsl           bool
-	scalerIndex         int
+	triggerIndex        int
 	platformName        string
 }
 
@@ -152,7 +152,7 @@ func parseSeleniumGridScalerMetadata(config *ScalerConfig) (*seleniumGridScalerM
 		meta.platformName = DefaultPlatformName
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
@@ -179,7 +179,7 @@ func (s *seleniumGridScaler) GetMetricSpecForScaling(context.Context) []v2.Metri
 	metricName := kedautil.NormalizeString(fmt.Sprintf("seleniumgrid-%s", s.metadata.browserName))
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.targetValue),
 	}

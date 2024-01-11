@@ -19,7 +19,7 @@ type parseGcsMetadataTestData struct {
 
 type gcpGcsMetricIdentifier struct {
 	metadataTestData *parseGcsMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -64,7 +64,7 @@ func TestGcsParseMetadata(t *testing.T) {
 
 func TestGcsGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range gcpGcsMetricIdentifiers {
-		meta, err := parseGcsMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testGcsResolvedEnv, ScalerIndex: testData.scalerIndex}, logr.Discard())
+		meta, err := parseGcsMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testGcsResolvedEnv, TriggerIndex: testData.triggerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

@@ -88,25 +88,25 @@ func TestGetMetricTarget(t *testing.T) {
 
 func TestRemoveIndexFromMetricName(t *testing.T) {
 	cases := []struct {
-		scalerIndex                          int
+		triggerIndex                         int
 		metricName                           string
 		expectedMetricNameWithoutIndexPrefix string
 		isError                              bool
 	}{
 		// Proper input
-		{scalerIndex: 0, metricName: "s0-metricName", expectedMetricNameWithoutIndexPrefix: "metricName", isError: false},
-		// Proper input with scalerIndex > 9
-		{scalerIndex: 123, metricName: "s123-metricName", expectedMetricNameWithoutIndexPrefix: "metricName", isError: false},
+		{triggerIndex: 0, metricName: "s0-metricName", expectedMetricNameWithoutIndexPrefix: "metricName", isError: false},
+		// Proper input with triggerIndex > 9
+		{triggerIndex: 123, metricName: "s123-metricName", expectedMetricNameWithoutIndexPrefix: "metricName", isError: false},
 		// Incorrect index prefix
-		{scalerIndex: 1, metricName: "s0-metricName", expectedMetricNameWithoutIndexPrefix: "", isError: true},
+		{triggerIndex: 1, metricName: "s0-metricName", expectedMetricNameWithoutIndexPrefix: "", isError: true},
 		// Incorrect index prefix
-		{scalerIndex: 0, metricName: "0-metricName", expectedMetricNameWithoutIndexPrefix: "", isError: true},
+		{triggerIndex: 0, metricName: "0-metricName", expectedMetricNameWithoutIndexPrefix: "", isError: true},
 		// No index prefix
-		{scalerIndex: 0, metricName: "metricName", expectedMetricNameWithoutIndexPrefix: "", isError: true},
+		{triggerIndex: 0, metricName: "metricName", expectedMetricNameWithoutIndexPrefix: "", isError: true},
 	}
 
 	for _, testCase := range cases {
-		metricName, err := RemoveIndexFromMetricName(testCase.scalerIndex, testCase.metricName)
+		metricName, err := RemoveIndexFromMetricName(testCase.triggerIndex, testCase.metricName)
 		if err != nil && !testCase.isError {
 			t.Error("Expected success but got error", err)
 		}

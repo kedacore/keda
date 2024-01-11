@@ -19,13 +19,13 @@ type parsePubSubMetadataTestData struct {
 
 type gcpPubSubMetricIdentifier struct {
 	metadataTestData *parsePubSubMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
 type gcpPubSubSubscription struct {
 	metadataTestData *parsePubSubMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 	projectID        string
 }
@@ -124,7 +124,7 @@ func TestPubSubMetadataDefaultValues(t *testing.T) {
 
 func TestGcpPubSubGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range gcpPubSubMetricIdentifiers {
-		meta, err := parsePubSubMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv, ScalerIndex: testData.scalerIndex}, logr.Discard())
+		meta, err := parsePubSubMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv, TriggerIndex: testData.triggerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -140,7 +140,7 @@ func TestGcpPubSubGetMetricSpecForScaling(t *testing.T) {
 
 func TestGcpPubSubSubscriptionName(t *testing.T) {
 	for _, testData := range gcpResourceNameTests {
-		meta, err := parsePubSubMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv, ScalerIndex: testData.scalerIndex}, logr.Discard())
+		meta, err := parsePubSubMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv, TriggerIndex: testData.triggerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
