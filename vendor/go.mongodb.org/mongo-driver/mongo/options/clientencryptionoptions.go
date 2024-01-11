@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"go.mongodb.org/mongo-driver/internal"
+	"go.mongodb.org/mongo-driver/internal/httputil"
 )
 
 // ClientEncryptionOptions represents all possible options used to configure a ClientEncryption instance.
@@ -25,7 +25,7 @@ type ClientEncryptionOptions struct {
 // ClientEncryption creates a new ClientEncryptionOptions instance.
 func ClientEncryption() *ClientEncryptionOptions {
 	return &ClientEncryptionOptions{
-		HTTPClient: internal.DefaultHTTPClient,
+		HTTPClient: httputil.DefaultHTTPClient,
 	}
 }
 

@@ -188,9 +188,9 @@ func ScalerMetricValueCallback(_ context.Context, obsrv api.Float64Observer) err
 	return nil
 }
 
-func (o *OtelMetrics) RecordScalerMetric(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64) {
+func (o *OtelMetrics) RecordScalerMetric(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, value float64) {
 	otelScalerMetricVal.val = value
-	otelScalerMetricVal.measurementOption = getScalerMeasurementOption(namespace, scaledObject, scaler, scalerIndex, metric)
+	otelScalerMetricVal.measurementOption = getScalerMeasurementOption(namespace, scaledObject, scaler, triggerIndex, metric)
 }
 
 func ScalerMetricsLatencyCallback(_ context.Context, obsrv api.Float64Observer) error {
@@ -202,9 +202,9 @@ func ScalerMetricsLatencyCallback(_ context.Context, obsrv api.Float64Observer) 
 }
 
 // RecordScalerLatency create a measurement of the latency to external metric
-func (o *OtelMetrics) RecordScalerLatency(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64) {
+func (o *OtelMetrics) RecordScalerLatency(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, value float64) {
 	otelScalerMetricsLatencyVal.val = value
-	otelScalerMetricsLatencyVal.measurementOption = getScalerMeasurementOption(namespace, scaledObject, scaler, scalerIndex, metric)
+	otelScalerMetricsLatencyVal.measurementOption = getScalerMeasurementOption(namespace, scaledObject, scaler, triggerIndex, metric)
 }
 
 func ScalableObjectLatencyCallback(_ context.Context, obsrv api.Float64Observer) error {
@@ -240,14 +240,14 @@ func ScalerActiveCallback(_ context.Context, obsrv api.Float64Observer) error {
 }
 
 // RecordScalerActive create a measurement of the activity of the scaler
-func (o *OtelMetrics) RecordScalerActive(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, active bool) {
+func (o *OtelMetrics) RecordScalerActive(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, active bool) {
 	activeVal := -1
 	if active {
 		activeVal = 1
 	}
 
 	otelScalerActiveVal.val = float64(activeVal)
-	otelScalerActiveVal.measurementOption = getScalerMeasurementOption(namespace, scaledObject, scaler, scalerIndex, metric)
+	otelScalerActiveVal.measurementOption = getScalerMeasurementOption(namespace, scaledObject, scaler, triggerIndex, metric)
 }
 
 // RecordScaledObjectPaused marks whether the current ScaledObject is paused.
@@ -277,9 +277,9 @@ func (o *OtelMetrics) RecordScaledObjectPaused(namespace string, scaledObject st
 }
 
 // RecordScalerError counts the number of errors occurred in trying get an external metric used by the HPA
-func (o *OtelMetrics) RecordScalerError(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, err error) {
+func (o *OtelMetrics) RecordScalerError(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, err error) {
 	if err != nil {
-		otScalerErrorsCounter.Add(context.Background(), 1, getScalerMeasurementOption(namespace, scaledObject, scaler, scalerIndex, metric))
+		otScalerErrorsCounter.Add(context.Background(), 1, getScalerMeasurementOption(namespace, scaledObject, scaler, triggerIndex, metric))
 		o.RecordScaledObjectError(namespace, scaledObject, err)
 		return
 	}
@@ -332,12 +332,12 @@ func (o *OtelMetrics) DecrementCRDTotal(crdType, namespace string) {
 	otCrdTotalsCounter.Add(context.Background(), -1, opt)
 }
 
-func getScalerMeasurementOption(namespace string, scaledObject string, scaler string, scalerIndex int, metric string) api.MeasurementOption {
+func getScalerMeasurementOption(namespace string, scaledObject string, scaler string, triggerIndex int, metric string) api.MeasurementOption {
 	return api.WithAttributes(
 		attribute.Key("namespace").String(namespace),
 		attribute.Key("scaledObject").String(scaledObject),
 		attribute.Key("scaler").String(scaler),
-		attribute.Key("scalerIndex").String(strconv.Itoa(scalerIndex)),
+		attribute.Key("triggerIndex").String(strconv.Itoa(triggerIndex)),
 		attribute.Key("metric").String(metric),
 	)
 }

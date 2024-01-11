@@ -67,7 +67,7 @@ type redisMetadata struct {
 	listName             string
 	databaseIndex        int
 	connectionInfo       redisConnectionInfo
-	scalerIndex          int
+	triggerIndex         int
 }
 
 // NewRedisScaler creates a new redisScaler
@@ -294,7 +294,7 @@ func parseRedisMetadata(config *ScalerConfig, parserFn redisAddressParser) (*red
 		}
 		meta.databaseIndex = int(dbIndex)
 	}
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
@@ -307,7 +307,7 @@ func (s *redisScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	metricName := util.NormalizeString(fmt.Sprintf("redis-%s", s.metadata.listName))
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.listLength),
 	}

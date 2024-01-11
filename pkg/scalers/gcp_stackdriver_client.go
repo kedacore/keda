@@ -213,7 +213,8 @@ func (s StackDriverClient) GetMetrics(
 	ctx context.Context,
 	filter string,
 	projectID string,
-	aggregation *monitoringpb.Aggregation) (float64, error) {
+	aggregation *monitoringpb.Aggregation,
+	valueIfNull *float64) (float64, error) {
 	// Set the start time to 1 minute ago
 	startTime := time.Now().UTC().Add(time.Minute * -2)
 
@@ -246,7 +247,10 @@ func (s StackDriverClient) GetMetrics(
 	resp, err := it.Next()
 
 	if err == iterator.Done {
-		return value, fmt.Errorf("could not find stackdriver metric with filter %s", filter)
+		if valueIfNull == nil {
+			return value, fmt.Errorf("could not find stackdriver metric with filter %s", filter)
+		}
+		return *valueIfNull, nil
 	}
 
 	if err != nil {

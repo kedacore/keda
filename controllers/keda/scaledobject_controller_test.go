@@ -96,7 +96,7 @@ var _ = Describe("ScaledObjectController", func() {
 						TriggerMetadata:         tm,
 						ResolvedEnv:             nil,
 						AuthParams:              nil,
-						ScalerIndex:             i,
+						TriggerIndex:            i,
 					}
 
 					s, err := scalers.NewPrometheusScaler(config)

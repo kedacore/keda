@@ -24,7 +24,7 @@ type parseLiiklusMetadataTestData struct {
 
 type liiklusMetricIdentifier struct {
 	metadataTestData *parseLiiklusMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -171,7 +171,7 @@ func TestLiiklusScalerGetMetricsBehavior(t *testing.T) {
 
 func TestLiiklusGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range liiklusMetricIdentifiers {
-		meta, err := parseLiiklusMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ScalerIndex: testData.scalerIndex})
+		meta, err := parseLiiklusMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

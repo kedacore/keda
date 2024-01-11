@@ -92,6 +92,10 @@ type defaultCheckpointer struct {
 	containerName string
 }
 
+func NewCheckpoint(offset string, sequenceNumber int64) Checkpoint {
+	return Checkpoint{baseCheckpoint: baseCheckpoint{Offset: offset}, SequenceNumber: sequenceNumber}
+}
+
 // GetCheckpointFromBlobStorage reads depending of the CheckpointStrategy the checkpoint from a azure storage
 func GetCheckpointFromBlobStorage(ctx context.Context, httpClient util.HTTPDoer, info EventHubInfo, partitionID string) (Checkpoint, error) {
 	checkpointer := newCheckpointer(info, partitionID)

@@ -16,7 +16,7 @@ type datadogQueries struct {
 
 type datadogMetricIdentifier struct {
 	metadataTestData *datadogAuthMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -153,7 +153,7 @@ var datadogMetricIdentifiers = []datadogMetricIdentifier{
 
 func TestDatadogGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range datadogMetricIdentifiers {
-		meta, err := parseDatadogMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex, MetricType: testData.metadataTestData.metricType}, logr.Discard())
+		meta, err := parseDatadogMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex, MetricType: testData.metadataTestData.metricType}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

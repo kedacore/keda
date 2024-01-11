@@ -168,7 +168,7 @@ func parseAzureBlobMetadata(config *ScalerConfig, logger logr.Logger) (*azure.Bl
 		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("pod identity %s not supported for azure storage blobs", config.PodIdentity.Provider)
 	}
 
-	meta.ScalerIndex = config.ScalerIndex
+	meta.TriggerIndex = config.TriggerIndex
 
 	return &meta, config.PodIdentity, nil
 }
@@ -183,7 +183,7 @@ func (s *azureBlobScaler) Close(context.Context) error {
 func (s *azureBlobScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-blob-%s", s.metadata.BlobContainerName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-blob-%s", s.metadata.BlobContainerName))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.TargetBlobCount),
 	}

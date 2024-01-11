@@ -87,7 +87,7 @@ func newListDatabasesResultFromOperation(res operation.ListDatabasesResult) List
 type DatabaseSpecification struct {
 	Name       string // The name of the database.
 	SizeOnDisk int64  // The total size of the database files on disk in bytes.
-	Empty      bool   // Specfies whether or not the database is empty.
+	Empty      bool   // Specifies whether or not the database is empty.
 }
 
 // UpdateResult is the result type returned from UpdateOne, UpdateMany, and ReplaceOne operations.

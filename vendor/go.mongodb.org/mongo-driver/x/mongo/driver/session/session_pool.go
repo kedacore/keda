@@ -25,7 +25,7 @@ type Node struct {
 // relevant for determining session expiration.
 type topologyDescription struct {
 	kind           description.TopologyKind
-	timeoutMinutes uint32
+	timeoutMinutes *int64
 }
 
 // Pool is a pool of server sessions that can be reused.
@@ -65,7 +65,7 @@ func (p *Pool) updateTimeout() {
 	case newDesc := <-p.descChan:
 		p.latestTopology = topologyDescription{
 			kind:           newDesc.Kind,
-			timeoutMinutes: newDesc.SessionTimeoutMinutes,
+			timeoutMinutes: newDesc.SessionTimeoutMinutesPtr,
 		}
 	default:
 		// no new description waiting

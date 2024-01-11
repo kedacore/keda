@@ -19,7 +19,7 @@ import (
 // It doesn't implicitly create batches of points by default. Batches are created from array of points/records.
 //
 // Implicit batching is enabled with EnableBatching(). In this mode, each call to WritePoint or WriteRecord adds a line
-// to internal buffer. If length ot the buffer is equal to the batch-size (set in write.Options), the buffer is sent to the server
+// to internal buffer. If length of the buffer is equal to the batch-size (set in write.Options), the buffer is sent to the server
 // and the result of the operation is returned.
 // When a point is written to the buffer, nil error is always returned.
 // Flush() can be used to trigger sending of batch when it doesn't have the batch-size.

@@ -7,16 +7,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime"
 	"net/http"
 	"net/url"
 	"strings"
 
-	"github.com/deepmap/oapi-codegen/pkg/runtime"
-	"github.com/pkg/errors"
+	"github.com/oapi-codegen/runtime"
 )
 
 // Doer performs HTTP requests.
@@ -213,7 +212,7 @@ func (c *Client) GetAuthorizations(ctx context.Context, params *GetAuthorization
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -280,7 +279,7 @@ func (c *Client) PostAuthorizations(ctx context.Context, params *PostAuthorizati
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -350,7 +349,7 @@ func (c *Client) DeleteAuthorizationsID(ctx context.Context, params *DeleteAutho
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -405,7 +404,7 @@ func (c *Client) GetAuthorizationsID(ctx context.Context, params *GetAuthorizati
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -479,7 +478,7 @@ func (c *Client) PatchAuthorizationsID(ctx context.Context, params *PatchAuthori
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -654,7 +653,7 @@ func (c *Client) GetBuckets(ctx context.Context, params *GetBucketsParams) (*Buc
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -721,7 +720,7 @@ func (c *Client) PostBuckets(ctx context.Context, params *PostBucketsAllParams) 
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -791,7 +790,7 @@ func (c *Client) DeleteBucketsID(ctx context.Context, params *DeleteBucketsIDAll
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -846,7 +845,7 @@ func (c *Client) GetBucketsID(ctx context.Context, params *GetBucketsIDAllParams
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -920,7 +919,7 @@ func (c *Client) PatchBucketsID(ctx context.Context, params *PatchBucketsIDAllPa
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -986,7 +985,7 @@ func (c *Client) GetBucketsIDLabels(ctx context.Context, params *GetBucketsIDLab
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -1060,7 +1059,7 @@ func (c *Client) PostBucketsIDLabels(ctx context.Context, params *PostBucketsIDL
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -1137,7 +1136,7 @@ func (c *Client) DeleteBucketsIDLabelsID(ctx context.Context, params *DeleteBuck
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -1192,7 +1191,7 @@ func (c *Client) GetBucketsIDMembers(ctx context.Context, params *GetBucketsIDMe
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -1266,7 +1265,7 @@ func (c *Client) PostBucketsIDMembers(ctx context.Context, params *PostBucketsID
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -1343,7 +1342,7 @@ func (c *Client) DeleteBucketsIDMembersID(ctx context.Context, params *DeleteBuc
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -1398,7 +1397,7 @@ func (c *Client) GetBucketsIDOwners(ctx context.Context, params *GetBucketsIDOwn
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -1472,7 +1471,7 @@ func (c *Client) PostBucketsIDOwners(ctx context.Context, params *PostBucketsIDO
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -1549,7 +1548,7 @@ func (c *Client) DeleteBucketsIDOwnersID(ctx context.Context, params *DeleteBuck
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -1645,7 +1644,7 @@ func (c *Client) GetChecks(ctx context.Context, params *GetChecksParams) (*Check
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -1701,7 +1700,7 @@ func (c *Client) CreateCheck(ctx context.Context, params *CreateCheckAllParams) 
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -1771,7 +1770,7 @@ func (c *Client) DeleteChecksID(ctx context.Context, params *DeleteChecksIDAllPa
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -1826,7 +1825,7 @@ func (c *Client) GetChecksID(ctx context.Context, params *GetChecksIDAllParams) 
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -1900,7 +1899,7 @@ func (c *Client) PatchChecksID(ctx context.Context, params *PatchChecksIDAllPara
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -1974,7 +1973,7 @@ func (c *Client) PutChecksID(ctx context.Context, params *PutChecksIDAllParams) 
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -2040,7 +2039,7 @@ func (c *Client) GetChecksIDLabels(ctx context.Context, params *GetChecksIDLabel
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -2114,7 +2113,7 @@ func (c *Client) PostChecksIDLabels(ctx context.Context, params *PostChecksIDLab
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -2191,7 +2190,7 @@ func (c *Client) DeleteChecksIDLabelsID(ctx context.Context, params *DeleteCheck
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -2246,7 +2245,7 @@ func (c *Client) GetChecksIDQuery(ctx context.Context, params *GetChecksIDQueryA
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -2305,7 +2304,7 @@ func (c *Client) GetConfig(ctx context.Context, params *GetConfigParams) (*Confi
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -2496,7 +2495,7 @@ func (c *Client) GetDashboards(ctx context.Context, params *GetDashboardsParams)
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -2566,7 +2565,7 @@ func (c *Client) DeleteDashboardsID(ctx context.Context, params *DeleteDashboard
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -2629,7 +2628,7 @@ func (c *Client) PatchDashboardsID(ctx context.Context, params *PatchDashboardsI
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -2703,7 +2702,7 @@ func (c *Client) PostDashboardsIDCells(ctx context.Context, params *PostDashboar
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -2777,7 +2776,7 @@ func (c *Client) PutDashboardsIDCells(ctx context.Context, params *PutDashboards
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -2854,7 +2853,7 @@ func (c *Client) DeleteDashboardsIDCellsID(ctx context.Context, params *DeleteDa
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -2924,7 +2923,7 @@ func (c *Client) PatchDashboardsIDCellsID(ctx context.Context, params *PatchDash
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -2997,7 +2996,7 @@ func (c *Client) GetDashboardsIDCellsIDView(ctx context.Context, params *GetDash
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -3078,7 +3077,7 @@ func (c *Client) PatchDashboardsIDCellsIDView(ctx context.Context, params *Patch
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -3144,7 +3143,7 @@ func (c *Client) GetDashboardsIDLabels(ctx context.Context, params *GetDashboard
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -3218,7 +3217,7 @@ func (c *Client) PostDashboardsIDLabels(ctx context.Context, params *PostDashboa
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -3295,7 +3294,7 @@ func (c *Client) DeleteDashboardsIDLabelsID(ctx context.Context, params *DeleteD
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -3350,7 +3349,7 @@ func (c *Client) GetDashboardsIDMembers(ctx context.Context, params *GetDashboar
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -3424,7 +3423,7 @@ func (c *Client) PostDashboardsIDMembers(ctx context.Context, params *PostDashbo
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -3501,7 +3500,7 @@ func (c *Client) DeleteDashboardsIDMembersID(ctx context.Context, params *Delete
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -3556,7 +3555,7 @@ func (c *Client) GetDashboardsIDOwners(ctx context.Context, params *GetDashboard
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -3630,7 +3629,7 @@ func (c *Client) PostDashboardsIDOwners(ctx context.Context, params *PostDashboa
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -3707,7 +3706,7 @@ func (c *Client) DeleteDashboardsIDOwnersID(ctx context.Context, params *DeleteD
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -3871,7 +3870,7 @@ func (c *Client) GetDBRPs(ctx context.Context, params *GetDBRPsParams) (*DBRPs, 
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -3938,7 +3937,7 @@ func (c *Client) PostDBRP(ctx context.Context, params *PostDBRPAllParams) (*DBRP
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -4044,7 +4043,7 @@ func (c *Client) DeleteDBRPID(ctx context.Context, params *DeleteDBRPIDAllParams
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -4135,7 +4134,7 @@ func (c *Client) GetDBRPsID(ctx context.Context, params *GetDBRPsIDAllParams) (*
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -4245,7 +4244,7 @@ func (c *Client) PatchDBRPID(ctx context.Context, params *PatchDBRPIDAllParams) 
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -4384,7 +4383,7 @@ func (c *Client) PostDelete(ctx context.Context, params *PostDeleteAllParams) er
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -4432,7 +4431,7 @@ func (c *Client) GetFlags(ctx context.Context, params *GetFlagsParams) (*Flags, 
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -4491,7 +4490,7 @@ func (c *Client) GetHealth(ctx context.Context, params *GetHealthParams) (*Healt
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -4570,7 +4569,7 @@ func (c *Client) GetLabels(ctx context.Context, params *GetLabelsParams) (*Label
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -4626,7 +4625,7 @@ func (c *Client) PostLabels(ctx context.Context, params *PostLabelsAllParams) (*
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -4696,7 +4695,7 @@ func (c *Client) DeleteLabelsID(ctx context.Context, params *DeleteLabelsIDAllPa
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -4751,7 +4750,7 @@ func (c *Client) GetLabelsID(ctx context.Context, params *GetLabelsIDAllParams) 
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -4825,7 +4824,7 @@ func (c *Client) PatchLabelsID(ctx context.Context, params *PatchLabelsIDAllPara
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -4884,7 +4883,7 @@ func (c *Client) GetMe(ctx context.Context, params *GetMeParams) (*UserResponse,
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -4955,7 +4954,7 @@ func (c *Client) PutMePassword(ctx context.Context, params *PutMePasswordAllPara
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -5051,7 +5050,7 @@ func (c *Client) GetNotificationEndpoints(ctx context.Context, params *GetNotifi
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -5107,7 +5106,7 @@ func (c *Client) CreateNotificationEndpoint(ctx context.Context, params *CreateN
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -5177,7 +5176,7 @@ func (c *Client) DeleteNotificationEndpointsID(ctx context.Context, params *Dele
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -5232,7 +5231,7 @@ func (c *Client) GetNotificationEndpointsID(ctx context.Context, params *GetNoti
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -5306,7 +5305,7 @@ func (c *Client) PatchNotificationEndpointsID(ctx context.Context, params *Patch
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -5380,7 +5379,7 @@ func (c *Client) PutNotificationEndpointsID(ctx context.Context, params *PutNoti
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -5446,7 +5445,7 @@ func (c *Client) GetNotificationEndpointsIDLabels(ctx context.Context, params *G
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -5520,7 +5519,7 @@ func (c *Client) PostNotificationEndpointIDLabels(ctx context.Context, params *P
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -5597,7 +5596,7 @@ func (c *Client) DeleteNotificationEndpointsIDLabelsID(ctx context.Context, para
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -5725,7 +5724,7 @@ func (c *Client) GetNotificationRules(ctx context.Context, params *GetNotificati
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -5781,7 +5780,7 @@ func (c *Client) CreateNotificationRule(ctx context.Context, params *CreateNotif
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -5851,7 +5850,7 @@ func (c *Client) DeleteNotificationRulesID(ctx context.Context, params *DeleteNo
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -5906,7 +5905,7 @@ func (c *Client) GetNotificationRulesID(ctx context.Context, params *GetNotifica
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -5980,7 +5979,7 @@ func (c *Client) PatchNotificationRulesID(ctx context.Context, params *PatchNoti
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -6054,7 +6053,7 @@ func (c *Client) PutNotificationRulesID(ctx context.Context, params *PutNotifica
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -6120,7 +6119,7 @@ func (c *Client) GetNotificationRulesIDLabels(ctx context.Context, params *GetNo
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -6194,7 +6193,7 @@ func (c *Client) PostNotificationRuleIDLabels(ctx context.Context, params *PostN
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -6271,7 +6270,7 @@ func (c *Client) DeleteNotificationRulesIDLabelsID(ctx context.Context, params *
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -6326,7 +6325,7 @@ func (c *Client) GetNotificationRulesIDQuery(ctx context.Context, params *GetNot
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -6485,7 +6484,7 @@ func (c *Client) GetOrgs(ctx context.Context, params *GetOrgsParams) (*Organizat
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -6552,7 +6551,7 @@ func (c *Client) PostOrgs(ctx context.Context, params *PostOrgsAllParams) (*Orga
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -6622,7 +6621,7 @@ func (c *Client) DeleteOrgsID(ctx context.Context, params *DeleteOrgsIDAllParams
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -6677,7 +6676,7 @@ func (c *Client) GetOrgsID(ctx context.Context, params *GetOrgsIDAllParams) (*Or
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -6751,7 +6750,7 @@ func (c *Client) PatchOrgsID(ctx context.Context, params *PatchOrgsIDAllParams) 
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -6817,7 +6816,7 @@ func (c *Client) GetOrgsIDMembers(ctx context.Context, params *GetOrgsIDMembersA
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -6891,7 +6890,7 @@ func (c *Client) PostOrgsIDMembers(ctx context.Context, params *PostOrgsIDMember
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -6968,7 +6967,7 @@ func (c *Client) DeleteOrgsIDMembersID(ctx context.Context, params *DeleteOrgsID
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -7023,7 +7022,7 @@ func (c *Client) GetOrgsIDOwners(ctx context.Context, params *GetOrgsIDOwnersAll
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -7097,7 +7096,7 @@ func (c *Client) PostOrgsIDOwners(ctx context.Context, params *PostOrgsIDOwnersA
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -7174,7 +7173,7 @@ func (c *Client) DeleteOrgsIDOwnersID(ctx context.Context, params *DeleteOrgsIDO
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -7229,7 +7228,7 @@ func (c *Client) GetOrgsIDSecrets(ctx context.Context, params *GetOrgsIDSecretsA
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -7307,7 +7306,7 @@ func (c *Client) PatchOrgsIDSecrets(ctx context.Context, params *PatchOrgsIDSecr
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -7374,7 +7373,7 @@ func (c *Client) PostOrgsIDSecrets(ctx context.Context, params *PostOrgsIDSecret
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -7440,7 +7439,7 @@ func (c *Client) DeleteOrgsIDSecretsID(ctx context.Context, params *DeleteOrgsID
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -7481,7 +7480,7 @@ func (c *Client) GetPing(ctx context.Context) error {
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -7522,7 +7521,7 @@ func (c *Client) HeadPing(ctx context.Context) error {
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -7589,7 +7588,7 @@ func (c *Client) PostQueryAnalyze(ctx context.Context, params *PostQueryAnalyzeA
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -7667,7 +7666,7 @@ func (c *Client) PostQueryAst(ctx context.Context, params *PostQueryAstAllParams
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -7726,7 +7725,7 @@ func (c *Client) GetQuerySuggestions(ctx context.Context, params *GetQuerySugges
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -7792,7 +7791,7 @@ func (c *Client) GetQuerySuggestionsName(ctx context.Context, params *GetQuerySu
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -7851,7 +7850,7 @@ func (c *Client) GetReady(ctx context.Context, params *GetReadyParams) (*Ready, 
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -7958,7 +7957,7 @@ func (c *Client) GetRemoteConnections(ctx context.Context, params *GetRemoteConn
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -8014,7 +8013,7 @@ func (c *Client) PostRemoteConnection(ctx context.Context, params *PostRemoteCon
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -8084,7 +8083,7 @@ func (c *Client) DeleteRemoteConnectionByID(ctx context.Context, params *DeleteR
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -8139,7 +8138,7 @@ func (c *Client) GetRemoteConnectionByID(ctx context.Context, params *GetRemoteC
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -8213,7 +8212,7 @@ func (c *Client) PatchRemoteConnectionByID(ctx context.Context, params *PatchRem
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -8336,7 +8335,7 @@ func (c *Client) GetReplications(ctx context.Context, params *GetReplicationsPar
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -8423,7 +8422,7 @@ func (c *Client) PostReplication(ctx context.Context, params *PostReplicationAll
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -8493,7 +8492,7 @@ func (c *Client) DeleteReplicationByID(ctx context.Context, params *DeleteReplic
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -8548,7 +8547,7 @@ func (c *Client) GetReplicationByID(ctx context.Context, params *GetReplicationB
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -8642,7 +8641,7 @@ func (c *Client) PatchReplicationByID(ctx context.Context, params *PatchReplicat
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -8712,7 +8711,7 @@ func (c *Client) PostValidateReplicationByID(ctx context.Context, params *PostVa
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -8760,7 +8759,7 @@ func (c *Client) GetResources(ctx context.Context, params *GetResourcesParams) (
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -8827,7 +8826,7 @@ func (c *Client) PostRestoreBucketMetadata(ctx context.Context, params *PostRest
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -8954,7 +8953,7 @@ func (c *Client) GetScrapers(ctx context.Context, params *GetScrapersParams) (*S
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -9021,7 +9020,7 @@ func (c *Client) PostScrapers(ctx context.Context, params *PostScrapersAllParams
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -9091,7 +9090,7 @@ func (c *Client) DeleteScrapersID(ctx context.Context, params *DeleteScrapersIDA
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -9146,7 +9145,7 @@ func (c *Client) GetScrapersID(ctx context.Context, params *GetScrapersIDAllPara
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -9220,7 +9219,7 @@ func (c *Client) PatchScrapersID(ctx context.Context, params *PatchScrapersIDAll
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -9286,7 +9285,7 @@ func (c *Client) GetScrapersIDLabels(ctx context.Context, params *GetScrapersIDL
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -9360,7 +9359,7 @@ func (c *Client) PostScrapersIDLabels(ctx context.Context, params *PostScrapersI
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -9437,7 +9436,7 @@ func (c *Client) DeleteScrapersIDLabelsID(ctx context.Context, params *DeleteScr
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -9492,7 +9491,7 @@ func (c *Client) GetScrapersIDMembers(ctx context.Context, params *GetScrapersID
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -9566,7 +9565,7 @@ func (c *Client) PostScrapersIDMembers(ctx context.Context, params *PostScrapers
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -9643,7 +9642,7 @@ func (c *Client) DeleteScrapersIDMembersID(ctx context.Context, params *DeleteSc
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -9698,7 +9697,7 @@ func (c *Client) GetScrapersIDOwners(ctx context.Context, params *GetScrapersIDO
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -9772,7 +9771,7 @@ func (c *Client) PostScrapersIDOwners(ctx context.Context, params *PostScrapersI
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -9849,7 +9848,7 @@ func (c *Client) DeleteScrapersIDOwnersID(ctx context.Context, params *DeleteScr
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -9897,7 +9896,7 @@ func (c *Client) GetSetup(ctx context.Context, params *GetSetupParams) (*IsOnboa
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -9964,7 +9963,7 @@ func (c *Client) PostSetup(ctx context.Context, params *PostSetupAllParams) (*On
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -10027,7 +10026,7 @@ func (c *Client) PostSignin(ctx context.Context, params *PostSigninParams) error
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -10079,7 +10078,7 @@ func (c *Client) PostSignout(ctx context.Context, params *PostSignoutParams) err
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -10147,7 +10146,7 @@ func (c *Client) GetSources(ctx context.Context, params *GetSourcesParams) (*Sou
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -10214,7 +10213,7 @@ func (c *Client) PostSources(ctx context.Context, params *PostSourcesAllParams) 
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -10284,7 +10283,7 @@ func (c *Client) DeleteSourcesID(ctx context.Context, params *DeleteSourcesIDAll
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -10339,7 +10338,7 @@ func (c *Client) GetSourcesID(ctx context.Context, params *GetSourcesIDAllParams
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -10413,7 +10412,7 @@ func (c *Client) PatchSourcesID(ctx context.Context, params *PatchSourcesIDAllPa
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -10499,7 +10498,7 @@ func (c *Client) GetSourcesIDBuckets(ctx context.Context, params *GetSourcesIDBu
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -10565,7 +10564,7 @@ func (c *Client) GetSourcesIDHealth(ctx context.Context, params *GetSourcesIDHea
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -10663,7 +10662,7 @@ func (c *Client) ListStacks(ctx context.Context, params *ListStacksParams) (*str
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -10721,7 +10720,7 @@ func (c *Client) CreateStack(ctx context.Context, params *CreateStackAllParams) 
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -10796,7 +10795,7 @@ func (c *Client) DeleteStack(ctx context.Context, params *DeleteStackAllParams) 
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -10840,7 +10839,7 @@ func (c *Client) ReadStack(ctx context.Context, params *ReadStackAllParams) (*St
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -10903,7 +10902,7 @@ func (c *Client) UpdateStack(ctx context.Context, params *UpdateStackAllParams) 
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -10958,7 +10957,7 @@ func (c *Client) UninstallStack(ctx context.Context, params *UninstallStackAllPa
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -11149,7 +11148,7 @@ func (c *Client) GetTasks(ctx context.Context, params *GetTasksParams) (*Tasks, 
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -11216,7 +11215,7 @@ func (c *Client) PostTasks(ctx context.Context, params *PostTasksAllParams) (*Ta
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -11286,7 +11285,7 @@ func (c *Client) DeleteTasksID(ctx context.Context, params *DeleteTasksIDAllPara
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -11341,7 +11340,7 @@ func (c *Client) GetTasksID(ctx context.Context, params *GetTasksIDAllParams) (*
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -11415,7 +11414,7 @@ func (c *Client) PatchTasksID(ctx context.Context, params *PatchTasksIDAllParams
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -11481,7 +11480,7 @@ func (c *Client) GetTasksIDLabels(ctx context.Context, params *GetTasksIDLabelsA
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -11555,7 +11554,7 @@ func (c *Client) PostTasksIDLabels(ctx context.Context, params *PostTasksIDLabel
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -11632,7 +11631,7 @@ func (c *Client) DeleteTasksIDLabelsID(ctx context.Context, params *DeleteTasksI
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -11687,7 +11686,7 @@ func (c *Client) GetTasksIDLogs(ctx context.Context, params *GetTasksIDLogsAllPa
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -11753,7 +11752,7 @@ func (c *Client) GetTasksIDMembers(ctx context.Context, params *GetTasksIDMember
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -11827,7 +11826,7 @@ func (c *Client) PostTasksIDMembers(ctx context.Context, params *PostTasksIDMemb
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -11904,7 +11903,7 @@ func (c *Client) DeleteTasksIDMembersID(ctx context.Context, params *DeleteTasks
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -11959,7 +11958,7 @@ func (c *Client) GetTasksIDOwners(ctx context.Context, params *GetTasksIDOwnersA
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -12033,7 +12032,7 @@ func (c *Client) PostTasksIDOwners(ctx context.Context, params *PostTasksIDOwner
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -12110,7 +12109,7 @@ func (c *Client) DeleteTasksIDOwnersID(ctx context.Context, params *DeleteTasksI
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -12233,7 +12232,7 @@ func (c *Client) GetTasksIDRuns(ctx context.Context, params *GetTasksIDRunsAllPa
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -12307,7 +12306,7 @@ func (c *Client) PostTasksIDRuns(ctx context.Context, params *PostTasksIDRunsAll
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -12384,7 +12383,7 @@ func (c *Client) DeleteTasksIDRunsID(ctx context.Context, params *DeleteTasksIDR
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -12446,7 +12445,7 @@ func (c *Client) GetTasksIDRunsID(ctx context.Context, params *GetTasksIDRunsIDA
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -12519,7 +12518,7 @@ func (c *Client) GetTasksIDRunsIDLogs(ctx context.Context, params *GetTasksIDRun
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -12600,7 +12599,7 @@ func (c *Client) PostTasksIDRunsIDRetry(ctx context.Context, params *PostTasksID
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -12679,7 +12678,7 @@ func (c *Client) GetTelegrafPlugins(ctx context.Context, params *GetTelegrafPlug
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -12758,7 +12757,7 @@ func (c *Client) GetTelegrafs(ctx context.Context, params *GetTelegrafsParams) (
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -12825,7 +12824,7 @@ func (c *Client) PostTelegrafs(ctx context.Context, params *PostTelegrafsAllPara
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -12895,7 +12894,7 @@ func (c *Client) DeleteTelegrafsID(ctx context.Context, params *DeleteTelegrafsI
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -12961,7 +12960,7 @@ func (c *Client) GetTelegrafsID(ctx context.Context, params *GetTelegrafsIDAllPa
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -13035,7 +13034,7 @@ func (c *Client) PutTelegrafsID(ctx context.Context, params *PutTelegrafsIDAllPa
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -13101,7 +13100,7 @@ func (c *Client) GetTelegrafsIDLabels(ctx context.Context, params *GetTelegrafsI
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -13175,7 +13174,7 @@ func (c *Client) PostTelegrafsIDLabels(ctx context.Context, params *PostTelegraf
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -13252,7 +13251,7 @@ func (c *Client) DeleteTelegrafsIDLabelsID(ctx context.Context, params *DeleteTe
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -13307,7 +13306,7 @@ func (c *Client) GetTelegrafsIDMembers(ctx context.Context, params *GetTelegrafs
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -13381,7 +13380,7 @@ func (c *Client) PostTelegrafsIDMembers(ctx context.Context, params *PostTelegra
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -13458,7 +13457,7 @@ func (c *Client) DeleteTelegrafsIDMembersID(ctx context.Context, params *DeleteT
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -13513,7 +13512,7 @@ func (c *Client) GetTelegrafsIDOwners(ctx context.Context, params *GetTelegrafsI
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -13587,7 +13586,7 @@ func (c *Client) PostTelegrafsIDOwners(ctx context.Context, params *PostTelegraf
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -13664,7 +13663,7 @@ func (c *Client) DeleteTelegrafsIDOwnersID(ctx context.Context, params *DeleteTe
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -13709,7 +13708,7 @@ func (c *Client) ExportTemplate(ctx context.Context, params *ExportTemplateAllPa
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -13852,7 +13851,7 @@ func (c *Client) GetUsers(ctx context.Context, params *GetUsersParams) (*Users, 
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -13919,7 +13918,7 @@ func (c *Client) PostUsers(ctx context.Context, params *PostUsersAllParams) (*Us
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -13989,7 +13988,7 @@ func (c *Client) DeleteUsersID(ctx context.Context, params *DeleteUsersIDAllPara
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -14044,7 +14043,7 @@ func (c *Client) GetUsersID(ctx context.Context, params *GetUsersIDAllParams) (*
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -14118,7 +14117,7 @@ func (c *Client) PatchUsersID(ctx context.Context, params *PatchUsersIDAllParams
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -14196,7 +14195,7 @@ func (c *Client) PostUsersIDPassword(ctx context.Context, params *PostUsersIDPas
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -14280,7 +14279,7 @@ func (c *Client) GetVariables(ctx context.Context, params *GetVariablesParams) (
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -14347,7 +14346,7 @@ func (c *Client) PostVariables(ctx context.Context, params *PostVariablesAllPara
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -14417,7 +14416,7 @@ func (c *Client) DeleteVariablesID(ctx context.Context, params *DeleteVariablesI
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
@@ -14472,7 +14471,7 @@ func (c *Client) GetVariablesID(ctx context.Context, params *GetVariablesIDAllPa
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -14546,7 +14545,7 @@ func (c *Client) PatchVariablesID(ctx context.Context, params *PatchVariablesIDA
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -14620,7 +14619,7 @@ func (c *Client) PutVariablesID(ctx context.Context, params *PutVariablesIDAllPa
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -14686,7 +14685,7 @@ func (c *Client) GetVariablesIDLabels(ctx context.Context, params *GetVariablesI
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -14760,7 +14759,7 @@ func (c *Client) PostVariablesIDLabels(ctx context.Context, params *PostVariable
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
@@ -14837,7 +14836,7 @@ func (c *Client) DeleteVariablesIDLabelsID(ctx context.Context, params *DeleteVa
 	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode > 299 {
-		bodyBytes, err := ioutil.ReadAll(rsp.Body)
+		bodyBytes, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}

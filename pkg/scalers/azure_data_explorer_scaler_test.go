@@ -34,7 +34,7 @@ type parseDataExplorerMetadataTestData struct {
 
 type dataExplorerMetricIdentifier struct {
 	metadataTestData *parseDataExplorerMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -169,7 +169,7 @@ func TestDataExplorerGetMetricSpecForScaling(t *testing.T) {
 				TriggerMetadata: testData.metadataTestData.metadata,
 				AuthParams:      map[string]string{},
 				PodIdentity:     kedav1alpha1.AuthPodIdentity{},
-				ScalerIndex:     testData.scalerIndex},
+				TriggerIndex:    testData.triggerIndex},
 			logr.Discard())
 		if err != nil {
 			t.Errorf("Test case %d: failed to parse metadata: %v", id, err)

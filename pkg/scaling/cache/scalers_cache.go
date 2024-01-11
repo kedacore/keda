@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/antonmedv/expr/vm"
+	"github.com/expr-lang/expr/vm"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/metrics/pkg/apis/external_metrics"

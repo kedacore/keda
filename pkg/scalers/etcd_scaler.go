@@ -42,7 +42,7 @@ type etcdMetadata struct {
 	value                       float64
 	activationValue             float64
 	watchProgressNotifyInterval int
-	scalerIndex                 int
+	triggerIndex                int
 	// TLS
 	enableTLS   bool
 	cert        string
@@ -146,7 +146,7 @@ func parseEtcdMetadata(config *ScalerConfig) (*etcdMetadata, error) {
 		return meta, err
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return meta, nil
 }
 
@@ -195,7 +195,7 @@ func (s *etcdScaler) GetMetricsAndActivity(ctx context.Context, metricName strin
 func (s *etcdScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("etcd-%s", s.metadata.watchKey))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("etcd-%s", s.metadata.watchKey))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.value),
 	}

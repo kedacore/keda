@@ -134,8 +134,8 @@ func TestValidateAzurePipelinesPool(t *testing.T) {
 }
 
 type azurePipelinesMetricIdentifier struct {
-	scalerIndex int
-	name        string
+	triggerIndex int
+	name         string
 }
 
 var azurePipelinesMetricIdentifiers = []azurePipelinesMetricIdentifier{
@@ -160,7 +160,7 @@ func TestAzurePipelinesGetMetricSpecForScaling(t *testing.T) {
 			"targetPipelinesQueueLength": "1",
 		}
 
-		meta, err := parseAzurePipelinesMetadata(context.TODO(), &ScalerConfig{TriggerMetadata: metadata, ResolvedEnv: nil, AuthParams: authParams, ScalerIndex: testData.scalerIndex}, http.DefaultClient)
+		meta, err := parseAzurePipelinesMetadata(context.TODO(), &ScalerConfig{TriggerMetadata: metadata, ResolvedEnv: nil, AuthParams: authParams, TriggerIndex: testData.triggerIndex}, http.DefaultClient)
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

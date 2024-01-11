@@ -38,6 +38,7 @@ type Config struct {
 	SRVMaxHosts            int
 	SRVServiceName         string
 	LoadBalanced           bool
+	logger                 *logger.Logger
 }
 
 // ConvertToDriverAPIOptions converts a options.ServerAPIOptions instance to a driver.ServerAPIOptions.
@@ -52,8 +53,26 @@ func ConvertToDriverAPIOptions(s *options.ServerAPIOptions) *driver.ServerAPIOpt
 	return driverOpts
 }
 
+func newLogger(opts *options.LoggerOptions) (*logger.Logger, error) {
+	if opts == nil {
+		opts = options.Logger()
+	}
+
+	componentLevels := make(map[logger.Component]logger.Level)
+	for component, level := range opts.ComponentLevels {
+		componentLevels[logger.Component(component)] = logger.Level(level)
+	}
+
+	log, err := logger.New(opts.Sink, opts.MaxDocumentLength, componentLevels)
+	if err != nil {
+		return nil, fmt.Errorf("error creating logger: %w", err)
+	}
+
+	return log, nil
+}
+
 // NewConfig will translate data from client options into a topology config for building non-default deployments.
-// Server and topoplogy options are not honored if a custom deployment is used.
+// Server and topology options are not honored if a custom deployment is used.
 func NewConfig(co *options.ClientOptions, clock *session.ClusterClock) (*Config, error) {
 	var serverAPI *driver.ServerAPIOptions
 
@@ -335,23 +354,18 @@ func NewConfig(co *options.ClientOptions, clock *session.ClusterClock) (*Config,
 		)
 	}
 
-	if opts := co.LoggerOptions; opts != nil {
-		// Build an internal component-level mapping.
-		componentLevels := make(map[logger.Component]logger.Level)
-		for component, level := range opts.ComponentLevels {
-			componentLevels[logger.Component(component)] = logger.Level(level)
-		}
-
-		log, err := logger.New(opts.Sink, opts.MaxDocumentLength, componentLevels)
-		if err != nil {
-			return nil, fmt.Errorf("error creating logger: %w", err)
-		}
-
-		serverOpts = append(
-			serverOpts,
-			withLogger(func() *logger.Logger { return log }),
-		)
+	lgr, err := newLogger(co.LoggerOptions)
+	if err != nil {
+		return nil, err
 	}
+
+	serverOpts = append(
+		serverOpts,
+		withLogger(func() *logger.Logger { return lgr }),
+		withServerMonitoringMode(co.ServerMonitoringMode),
+	)
+
+	cfgp.logger = lgr
 
 	serverOpts = append(
 		serverOpts,

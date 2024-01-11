@@ -64,7 +64,7 @@ type mongoDBMetadata struct {
 
 	// The index of the scaler inside the ScaledObject
 	// +internal
-	scalerIndex int
+	triggerIndex int
 }
 
 // Default variables and settings
@@ -197,7 +197,7 @@ func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error
 		// nosemgrep: db-connection-string
 		connStr = fmt.Sprintf("mongodb://%s:%s@%s/%s", url.QueryEscape(meta.username), url.QueryEscape(meta.password), addr, meta.dbName)
 	}
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, connStr, nil
 }
 
@@ -250,7 +250,7 @@ func (s *mongoDBScaler) GetMetricsAndActivity(ctx context.Context, metricName st
 func (s *mongoDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("mongodb-%s", s.metadata.collection))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("mongodb-%s", s.metadata.collection))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.queryValue),
 	}

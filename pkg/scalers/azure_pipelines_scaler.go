@@ -135,7 +135,7 @@ type azurePipelinesMetadata struct {
 	targetPipelinesQueueLength           int64
 	activationTargetPipelinesQueueLength int64
 	jobsToFetch                          int64
-	scalerIndex                          int
+	triggerIndex                         int
 	requireAllDemands                    bool
 }
 
@@ -260,7 +260,7 @@ func parseAzurePipelinesMetadata(ctx context.Context, config *ScalerConfig, http
 
 	// Trim any trailing new lines from the Azure Pipelines PAT
 	meta.personalAccessToken = strings.TrimSuffix(meta.personalAccessToken, "\n")
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	return &meta, nil
 }
@@ -436,7 +436,7 @@ func getCanAgentParentFulfilJob(jr JobRequest, metadata *azurePipelinesMetadata)
 func (s *azurePipelinesScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-pipelines-%d", s.metadata.poolID))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-pipelines-%d", s.metadata.poolID))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.targetPipelinesQueueLength),
 	}

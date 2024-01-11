@@ -23,7 +23,7 @@ type RequestTopic struct {
 
 type RequestPartition struct {
 	PartitionIndex int32   `kafka:"min=v0,max=v0"`
-	Replicas       []int32 `kafka:"min=v0,max=v0"`
+	Replicas       []int32 `kafka:"min=v0,max=v0,nullable"`
 }
 
 func (r *Request) ApiKey() protocol.ApiKey {

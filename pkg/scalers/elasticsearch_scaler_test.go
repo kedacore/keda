@@ -27,7 +27,7 @@ type paramsTestData struct {
 
 type elasticsearchMetricIdentifier struct {
 	metadataTestData *parseElasticsearchMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -457,7 +457,7 @@ func TestElasticsearchGetMetricSpecForScaling(t *testing.T) {
 		meta, err := parseElasticsearchMetadata(&ScalerConfig{
 			TriggerMetadata: testData.metadataTestData.metadata,
 			AuthParams:      testData.metadataTestData.authParams,
-			ScalerIndex:     testData.scalerIndex,
+			TriggerIndex:    testData.triggerIndex,
 		})
 		if testData.metadataTestData.expectedError != nil {
 			assert.ErrorIs(t, err, testData.metadataTestData.expectedError)

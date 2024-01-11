@@ -68,13 +68,13 @@ var testArangoDBAuthMetadata = []arangoDBAuthMetadataTestData{
 
 type arangoDBMetricIdentifier struct {
 	metadataTestData *parseArangoDBMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
 var arangoDBMetricIdentifiers = []arangoDBMetricIdentifier{
-	{metadataTestData: &testArangoDBMetadata[2], scalerIndex: 0, name: "s0-arangodb"},
-	{metadataTestData: &testArangoDBMetadata[2], scalerIndex: 1, name: "s1-arangodb"},
+	{metadataTestData: &testArangoDBMetadata[2], triggerIndex: 0, name: "s0-arangodb"},
+	{metadataTestData: &testArangoDBMetadata[2], triggerIndex: 1, name: "s1-arangodb"},
 }
 
 func TestParseArangoDBMetadata(t *testing.T) {
@@ -113,7 +113,7 @@ func TestArangoDBGetMetricSpecForScaling(t *testing.T) {
 		meta, err := parseArangoDBMetadata(&ScalerConfig{
 			AuthParams:      testData.metadataTestData.authParams,
 			TriggerMetadata: testData.metadataTestData.metadata,
-			ScalerIndex:     testData.scalerIndex,
+			TriggerIndex:    testData.triggerIndex,
 		})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)

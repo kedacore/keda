@@ -25,7 +25,7 @@ type BalancingClient interface {
 //
 // It is safe calling LBClient methods from concurrently running goroutines.
 type LBClient struct {
-	noCopy noCopy //nolint:unused,structcheck
+	noCopy noCopy
 
 	// Clients must contain non-zero clients list.
 	// Incoming requests are balanced among these clients.
@@ -70,7 +70,7 @@ func (cc *LBClient) DoTimeout(req *Request, resp *Response, timeout time.Duratio
 	return cc.get().DoDeadline(req, resp, deadline)
 }
 
-// Do calls calculates deadline using LBClient.Timeout and calls DoDeadline
+// Do calculates timeout using LBClient.Timeout and calls DoTimeout
 // on the least loaded client.
 func (cc *LBClient) Do(req *Request, resp *Response) error {
 	timeout := cc.Timeout
@@ -84,6 +84,7 @@ func (cc *LBClient) init() {
 	cc.mu.Lock()
 	defer cc.mu.Unlock()
 	if len(cc.Clients) == 0 {
+		// developer sanity-check
 		panic("BUG: LBClient.Clients cannot be empty")
 	}
 	for _, c := range cc.Clients {
@@ -112,15 +113,13 @@ func (cc *LBClient) AddClient(c BalancingClient) int {
 func (cc *LBClient) RemoveClients(rc func(BalancingClient) bool) int {
 	cc.mu.Lock()
 	n := 0
-	for _, cs := range cc.cs {
+	for idx, cs := range cc.cs {
+		cc.cs[idx] = nil
 		if rc(cs.c) {
 			continue
 		}
 		cc.cs[n] = cs
 		n++
-	}
-	for i := n; i < len(cc.cs); i++ {
-		cc.cs[i] = nil
 	}
 	cc.cs = cc.cs[:n]
 
@@ -139,7 +138,7 @@ func (cc *LBClient) get() *lbClient {
 	minT := atomic.LoadUint64(&minC.total)
 	for _, c := range cs[1:] {
 		n := c.PendingRequests()
-		t := atomic.LoadUint64(&c.total)
+		t := atomic.LoadUint64(&c.total) /* #nosec G601 */
 		if n < minN || (n == minN && t < minT) {
 			minC = c
 			minN = n

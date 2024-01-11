@@ -28,7 +28,7 @@ type parseRedisMetadataTestData struct {
 
 type redisMetricIdentifier struct {
 	metadataTestData *parseRedisMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -113,7 +113,7 @@ func TestRedisParseMetadata(t *testing.T) {
 
 func TestRedisGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range redisMetricIdentifiers {
-		meta, err := parseRedisMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testRedisResolvedEnv, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex}, parseRedisAddress)
+		meta, err := parseRedisMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testRedisResolvedEnv, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex}, parseRedisAddress)
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

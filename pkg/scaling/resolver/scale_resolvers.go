@@ -187,6 +187,27 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 		}
 
 		switch podIdentity.Provider {
+		case kedav1alpha1.PodIdentityProviderAws:
+			if podIdentity.RoleArn != "" {
+				if podIdentity.IsWorkloadIdentityOwner() {
+					return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+						fmt.Errorf("roleArn can't be set if KEDA isn't identity owner, current value: '%s'", *podIdentity.IdentityOwner)
+				}
+				authParams["awsRoleArn"] = podIdentity.RoleArn
+			}
+			if podIdentity.IsWorkloadIdentityOwner() {
+				serviceAccountName := defaultServiceAccount
+				if podTemplateSpec.Spec.ServiceAccountName != "" {
+					serviceAccountName = podTemplateSpec.Spec.ServiceAccountName
+				}
+				serviceAccount := &corev1.ServiceAccount{}
+				err := client.Get(ctx, types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, serviceAccount)
+				if err != nil {
+					return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+						fmt.Errorf("error getting service account: '%s', error: %w", serviceAccountName, err)
+				}
+				authParams["awsRoleArn"] = serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS]
+			}
 		case kedav1alpha1.PodIdentityProviderAwsEKS:
 			serviceAccountName := defaultServiceAccount
 			if podTemplateSpec.Spec.ServiceAccountName != "" {
@@ -202,10 +223,6 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 		case kedav1alpha1.PodIdentityProviderAwsKiam:
 			authParams["awsRoleArn"] = podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
 		case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
-			if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzure {
-				// FIXME: Delete this for v2.15
-				logger.Info("WARNING: Azure AD Pod Identity has been archived (https://github.com/Azure/aad-pod-identity#-announcement) and will be removed from KEDA on v2.15")
-			}
 			if podIdentity.IdentityID != nil && *podIdentity.IdentityID == "" {
 				return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, fmt.Errorf("IdentityID of PodIdentity should not be empty")
 			}
@@ -214,8 +231,7 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 		return authParams, podIdentity, nil
 	}
 
-	authParams, _, err := resolveAuthRef(ctx, client, logger, triggerAuthRef, nil, namespace, secretsLister)
-	return authParams, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, err
+	return resolveAuthRef(ctx, client, logger, triggerAuthRef, nil, namespace, secretsLister)
 }
 
 // resolveAuthRef provides authentication parameters needed authenticate scaler with the environment.
@@ -224,7 +240,7 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 	triggerAuthRef *kedav1alpha1.AuthenticationRef, podSpec *corev1.PodSpec,
 	namespace string, secretsLister corev1listers.SecretLister) (map[string]string, kedav1alpha1.AuthPodIdentity, error) {
 	result := make(map[string]string)
-	var podIdentity kedav1alpha1.AuthPodIdentity
+	podIdentity := kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}
 	var err error
 
 	if namespace != "" && triggerAuthRef != nil && triggerAuthRef.Name != "" {

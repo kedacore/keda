@@ -143,8 +143,13 @@ func (c *Conn) execute(ctx context.Context, execType int, db string, query State
 
 func (c *Conn) doRequest(ctx context.Context, execType int, db string, query Statement, properties requestProperties) (errors.Op, http.Header, http.Header,
 	io.ReadCloser, error) {
-	err := c.validateEndpoint()
 	var op errors.Op
+	err := c.validateEndpoint()
+	if err != nil {
+		op = errors.OpQuery
+		return 0, nil, nil, nil, errors.E(op, errors.KInternal, fmt.Errorf("could not validate endpoint: %w", err))
+	}
+
 	if execType == execQuery {
 		op = errors.OpQuery
 	} else if execType == execMgmt {
