@@ -54,15 +54,15 @@ func (mr *MockEventHandlerMockRecorder) DeleteCloudEventSource(cloudEventSource 
 }
 
 // Emit mocks base method.
-func (m *MockEventHandler) Emit(object runtime.Object, namesapce types.NamespacedName, eventType, reason, message string) {
+func (m *MockEventHandler) Emit(object runtime.Object, namesapce types.NamespacedName, eventType, cloudeventType, reason, message string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Emit", object, namesapce, eventType, reason, message)
+	m.ctrl.Call(m, "Emit", object, namesapce, eventType, cloudeventType, reason, message)
 }
 
 // Emit indicates an expected call of Emit.
-func (mr *MockEventHandlerMockRecorder) Emit(object, namesapce, eventType, reason, message interface{}) *gomock.Call {
+func (mr *MockEventHandlerMockRecorder) Emit(object, namesapce, eventType, cloudeventType, reason, message interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Emit", reflect.TypeOf((*MockEventHandler)(nil).Emit), object, namesapce, eventType, reason, message)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Emit", reflect.TypeOf((*MockEventHandler)(nil).Emit), object, namesapce, eventType, cloudeventType, reason, message)
 }
 
 // HandleCloudEventSource mocks base method.

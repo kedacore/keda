@@ -301,7 +301,7 @@ type AzureKeyVaultCloudInfo struct {
 }
 
 type GCPSecretManager struct {
-	Secrets []Secrets `json:"secrets"`
+	Secrets []GCPSecretManagerSecret `json:"secrets"`
 	// +optional
 	Credentials *GCPCredentials `json:"gcpCredentials"`
 	// +optional
@@ -316,7 +316,7 @@ type GCPSecretmanagerClientSecret struct {
 	ValueFrom ValueFromSecret `json:"valueFrom"`
 }
 
-type Secrets struct {
+type GCPSecretManagerSecret struct {
 	Parameter string `json:"parameter"`
 	ID        string `json:"id"`
 	// +optional

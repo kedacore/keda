@@ -129,9 +129,13 @@ func (vh *GCPSecretManagerHandler) Read(ctx context.Context, secretID, secretVer
 		return "", fmt.Errorf("failed to access the secret %s version %s, %w", secretID, secretVersion, err)
 	}
 
+	if result == nil || result.Payload == nil {
+		return "", errors.New("received empty result payload upon fetching the secret version")
+	}
+
 	crc32c := crc32.MakeTable(crc32.Castagnoli)
 	checksum := int64(crc32.Checksum(result.Payload.Data, crc32c))
-	if checksum != *result.Payload.DataCrc32C {
+	if result.Payload.DataCrc32C != nil && checksum != *result.Payload.DataCrc32C {
 		return "", errors.New("secret payload data corruption detected")
 	}
 

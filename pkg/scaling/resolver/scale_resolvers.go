@@ -316,8 +316,8 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 				}
 			}
 			if triggerAuthSpec.GCPSecretManager != nil && len(triggerAuthSpec.GCPSecretManager.Secrets) > 0 {
-				vaultHandler := NewGCPSecretManagerHandler(triggerAuthSpec.GCPSecretManager)
-				err := vaultHandler.Initialize(ctx, client, logger, triggerNamespace, secretsLister)
+				secretManagerHandler := NewGCPSecretManagerHandler(triggerAuthSpec.GCPSecretManager)
+				err := secretManagerHandler.Initialize(ctx, client, logger, triggerNamespace, secretsLister)
 				if err != nil {
 					logger.Error(err, "error authenticating to GCP Secret Manager", "triggerAuthRef.Name", triggerAuthRef.Name)
 				} else {
@@ -326,7 +326,7 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 						if secret.Version != "" {
 							version = secret.Version
 						}
-						res, err := vaultHandler.Read(ctx, secret.ID, version)
+						res, err := secretManagerHandler.Read(ctx, secret.ID, version)
 						if err != nil {
 							logger.Error(err, "error trying to read secret from GCP Secret Manager", "triggerAuthRef.Name", triggerAuthRef.Name,
 								"secret.Name", secret.ID, "secret.Version", secret.Version)
