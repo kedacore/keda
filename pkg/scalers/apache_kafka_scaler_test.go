@@ -242,88 +242,57 @@ var apacheKafkaMetricIdentifiers = []apacheKafkaMetricIdentifier{
 func TestApacheKafkaGetBrokers(t *testing.T) {
 	for _, testData := range parseApacheKafkaMetadataTestDataset {
 		meta, err := parseApacheKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validApacheKafkaWithAuthParams}, logr.Discard())
-
-		if err != nil && !testData.isError {
-			t.Error("Expected success but got error", err)
-		}
-		if testData.isError && err == nil {
-			t.Error("Expected error but got success")
-		}
-		if len(meta.bootstrapServers) != testData.numBrokers {
-			t.Errorf("Expected %d bootstrap servers but got %d\n", testData.numBrokers, len(meta.bootstrapServers))
-		}
-		if !reflect.DeepEqual(testData.brokers, meta.bootstrapServers) {
-			t.Errorf("Expected %#v but got %#v\n", testData.brokers, meta.bootstrapServers)
-		}
-		if meta.group != testData.group {
-			t.Errorf("Expected group %s but got %s\n", testData.group, meta.group)
-		}
-		if !reflect.DeepEqual(testData.topic, meta.topic) {
-			t.Errorf("Expected topics %#v but got %#v\n", testData.topic, meta.topic)
-		}
-		if !reflect.DeepEqual(testData.partitionLimitation, meta.partitionLimitation) {
-			t.Errorf("Expected %#v but got %#v\n", testData.partitionLimitation, meta.partitionLimitation)
-		}
-		if err == nil && meta.offsetResetPolicy != testData.offsetResetPolicy {
-			t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.offsetResetPolicy)
-		}
-
-		expectedLagThreshold, er := parseExpectedLagThreshold(testData.metadata)
-		if er != nil {
-			t.Errorf("Unable to convert test data lagThreshold %s to string", testData.metadata["lagThreshold"])
-		}
-
-		if meta.lagThreshold != expectedLagThreshold && meta.lagThreshold != defaultKafkaLagThreshold {
-			t.Errorf("Expected lagThreshold to be either %v or %v got %v ", meta.lagThreshold, defaultKafkaLagThreshold, expectedLagThreshold)
-		}
+		getBrokerApacheKafkaTestBase(t, meta, testData, err)
 
 		meta, err = parseApacheKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validApacheKafkaWithoutAuthParams}, logr.Discard())
-
-		if err != nil && !testData.isError {
-			t.Error("Expected success but got error", err)
-		}
-		if testData.isError && err == nil {
-			t.Error("Expected error but got success")
-		}
-		if len(meta.bootstrapServers) != testData.numBrokers {
-			t.Errorf("Expected %d bootstrap servers but got %d\n", testData.numBrokers, len(meta.bootstrapServers))
-		}
-		if !reflect.DeepEqual(testData.brokers, meta.bootstrapServers) {
-			t.Errorf("Expected %#v but got %#v\n", testData.brokers, meta.bootstrapServers)
-		}
-		if meta.group != testData.group {
-			t.Errorf("Expected group %s but got %s\n", testData.group, meta.group)
-		}
-		if !reflect.DeepEqual(testData.topic, meta.topic) {
-			t.Errorf("Expected topics %#v but got %#v\n", testData.topic, meta.topic)
-		}
-		if !reflect.DeepEqual(testData.partitionLimitation, meta.partitionLimitation) {
-			t.Errorf("Expected %#v but got %#v\n", testData.partitionLimitation, meta.partitionLimitation)
-		}
-		if err == nil && meta.offsetResetPolicy != testData.offsetResetPolicy {
-			t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.offsetResetPolicy)
-		}
-		if err == nil && meta.allowIdleConsumers != testData.allowIdleConsumers {
-			t.Errorf("Expected allowIdleConsumers %t but got %t\n", testData.allowIdleConsumers, meta.allowIdleConsumers)
-		}
-		if err == nil && meta.excludePersistentLag != testData.excludePersistentLag {
-			t.Errorf("Expected excludePersistentLag %t but got %t\n", testData.excludePersistentLag, meta.excludePersistentLag)
-		}
-		if err == nil && meta.limitToPartitionsWithLag != testData.limitToPartitionsWithLag {
-			t.Errorf("Expected limitToPartitionsWithLag %t but got %t\n", testData.limitToPartitionsWithLag, meta.limitToPartitionsWithLag)
-		}
-
-		expectedLagThreshold, er = parseExpectedLagThreshold(testData.metadata)
-		if er != nil {
-			t.Errorf("Unable to convert test data lagThreshold %s to string", testData.metadata["lagThreshold"])
-		}
-
-		if meta.lagThreshold != expectedLagThreshold && meta.lagThreshold != defaultKafkaLagThreshold {
-			t.Errorf("Expected lagThreshold to be either %v or %v got %v ", meta.lagThreshold, defaultKafkaLagThreshold, expectedLagThreshold)
-		}
+		getBrokerApacheKafkaTestBase(t, meta, testData, err)
 	}
 }
 
+func getBrokerApacheKafkaTestBase(t *testing.T, meta apacheKafkaMetadata, testData parseApacheKafkaMetadataTestData, err error) {
+	if err != nil && !testData.isError {
+		t.Error("Expected success but got error", err)
+	}
+	if testData.isError && err == nil {
+		t.Error("Expected error but got success")
+	}
+	if len(meta.bootstrapServers) != testData.numBrokers {
+		t.Errorf("Expected %d bootstrap servers but got %d\n", testData.numBrokers, len(meta.bootstrapServers))
+	}
+	if !reflect.DeepEqual(testData.brokers, meta.bootstrapServers) {
+		t.Errorf("Expected %#v but got %#v\n", testData.brokers, meta.bootstrapServers)
+	}
+	if meta.group != testData.group {
+		t.Errorf("Expected group %s but got %s\n", testData.group, meta.group)
+	}
+	if !reflect.DeepEqual(testData.topic, meta.topic) {
+		t.Errorf("Expected topics %#v but got %#v\n", testData.topic, meta.topic)
+	}
+	if !reflect.DeepEqual(testData.partitionLimitation, meta.partitionLimitation) {
+		t.Errorf("Expected %#v but got %#v\n", testData.partitionLimitation, meta.partitionLimitation)
+	}
+	if err == nil && meta.offsetResetPolicy != testData.offsetResetPolicy {
+		t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.offsetResetPolicy)
+	}
+	if err == nil && meta.allowIdleConsumers != testData.allowIdleConsumers {
+		t.Errorf("Expected allowIdleConsumers %t but got %t\n", testData.allowIdleConsumers, meta.allowIdleConsumers)
+	}
+	if err == nil && meta.excludePersistentLag != testData.excludePersistentLag {
+		t.Errorf("Expected excludePersistentLag %t but got %t\n", testData.excludePersistentLag, meta.excludePersistentLag)
+	}
+	if err == nil && meta.limitToPartitionsWithLag != testData.limitToPartitionsWithLag {
+		t.Errorf("Expected limitToPartitionsWithLag %t but got %t\n", testData.limitToPartitionsWithLag, meta.limitToPartitionsWithLag)
+	}
+
+	expectedLagThreshold, er := parseExpectedLagThreshold(testData.metadata)
+	if er != nil {
+		t.Errorf("Unable to convert test data lagThreshold %s to string", testData.metadata["lagThreshold"])
+	}
+
+	if meta.lagThreshold != expectedLagThreshold && meta.lagThreshold != defaultKafkaLagThreshold {
+		t.Errorf("Expected lagThreshold to be either %v or %v got %v ", meta.lagThreshold, defaultKafkaLagThreshold, expectedLagThreshold)
+	}
+}
 func TestApacheKafkaAuthParams(t *testing.T) {
 	// Testing tls and sasl value in TriggerAuthentication
 	for _, testData := range parseApacheKafkaAuthParamsTestDataset {
