@@ -39,7 +39,7 @@ type kubernetesWorkloadMetadata struct {
 	namespace       string
 	value           float64
 	activationValue float64
-	scalerIndex     int
+	triggerIndex    int
 }
 
 // NewKubernetesWorkloadScaler creates a new kubernetesWorkloadScaler
@@ -90,7 +90,7 @@ func parseWorkloadMetadata(config *ScalerConfig) (*kubernetesWorkloadMetadata, e
 		meta.activationValue = activationValue
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return meta, nil
 }
 
@@ -103,7 +103,7 @@ func (s *kubernetesWorkloadScaler) Close(context.Context) error {
 func (s *kubernetesWorkloadScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("workload-%s", s.metadata.namespace))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("workload-%s", s.metadata.namespace))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.value),
 	}

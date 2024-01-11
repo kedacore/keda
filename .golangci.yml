@@ -31,7 +31,7 @@ linters:
     - ineffassign
     - staticcheck
     - exportloopref
-    #- depguard #https://github.com/kedacore/keda/issues/4980
+    - depguard
     - dogsled
     - errcheck
     #- funlen
@@ -97,6 +97,16 @@ issues:
     - path: datadog_scaler.go
       linters:
         - gocyclo
+  # Exclude for kafka_scaler, reason:
+  # Introduce new parameters to set number of partitions w/lag issue #3997 (PR #5060)
+    - path: kafka_scaler.go
+      linters:
+        - gocyclo
+  # Exclude for apache_kafka_scaler, reason:
+  # Introduce new parameters to set number of partitions w/lag issue #3997 (PR #5060)
+    - path: apache_kafka_scaler.go
+      linters:
+        - gocyclo
   # Exclude for mongo_scaler and couchdb_scaler, reason:
   # pkg/scalers/couchdb_scaler.go:144: 144-174 lines are duplicate of `pkg/scalers/mongo_scaler.go:155-185` (dupl)
     - path: couchdb_scaler.go
@@ -126,6 +136,19 @@ issues:
     - path: azure_pipelines_scaler.go
       linters:
         - gocritic
+  # Following 3 depguard exceptions are for disabling sync/atomic package where
+  # denying the rule doesnt help (bottom of this file) but this keeps the depguard
+  # linter enabled
+  # https://github.com/kedacore/keda/issues/4980
+    - path: pkg/scalers/external_mock_scaler.go
+      linters:
+        - depguard
+    - path: controllers/keda/scaledobject_controller_test.go
+      linters:
+        - depguard
+    - path: pkg/scalers/external_scaler_test.go
+      linters:
+        - depguard
 
 
 linters-settings:
@@ -137,3 +160,9 @@ linters-settings:
       - standard
       - default
       - prefix(github.com/kedacore/keda)
+  depguard: #https://github.com/kedacore/keda/issues/4980
+    rules:
+      main:
+        deny:
+          - pkg: sync/atomic
+            desc: "use type-safe atomics from go.uber.org/atomic"

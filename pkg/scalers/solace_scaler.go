@@ -62,7 +62,7 @@ const (
 	solaceTriggermsgrxrate     = "msgrcvrate"
 )
 
-// Struct for Observed Metric Values
+// SolaceMetricValues is the struct for Observed Metric Values
 type SolaceMetricValues struct {
 	//	Observed Message Count
 	msgCount int
@@ -103,7 +103,7 @@ type SolaceMetadata struct {
 	activationMsgSpoolUsageTarget int // Spool Use Target in Megabytes
 	activationMsgRxRateTarget     int // Ingress Rate Target per consumer in msgs/second
 	// Scaler index
-	scalerIndex int
+	triggerIndex int
 }
 
 // SEMP API Response Root Struct
@@ -134,7 +134,7 @@ type solaceSEMPMetadata struct {
 	ResponseCode int `json:"responseCode"`
 }
 
-// Constructor for SolaceScaler
+// NewSolaceScaler is the constructor for SolaceScaler
 func NewSolaceScaler(config *ScalerConfig) (Scaler, error) {
 	// Create HTTP Client
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
@@ -262,7 +262,7 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 		return nil, e
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	return &meta, nil
 }
@@ -320,7 +320,7 @@ func (s *SolaceScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec 
 		metricName := kedautil.NormalizeString(fmt.Sprintf("solace-%s-%s", s.metadata.queueName, solaceTriggermsgcount))
 		externalMetric := &v2.ExternalMetricSource{
 			Metric: v2.MetricIdentifier{
-				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
+				Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 			},
 			Target: GetMetricTarget(s.metricType, s.metadata.msgCountTarget),
 		}
@@ -332,7 +332,7 @@ func (s *SolaceScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec 
 		metricName := kedautil.NormalizeString(fmt.Sprintf("solace-%s-%s", s.metadata.queueName, solaceTriggermsgspoolusage))
 		externalMetric := &v2.ExternalMetricSource{
 			Metric: v2.MetricIdentifier{
-				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
+				Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 			},
 			Target: GetMetricTarget(s.metricType, s.metadata.msgSpoolUsageTarget),
 		}
@@ -344,7 +344,7 @@ func (s *SolaceScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec 
 		metricName := kedautil.NormalizeString(fmt.Sprintf("solace-%s-%s", s.metadata.queueName, solaceTriggermsgrxrate))
 		externalMetric := &v2.ExternalMetricSource{
 			Metric: v2.MetricIdentifier{
-				Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
+				Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 			},
 			Target: GetMetricTarget(s.metricType, s.metadata.msgRxRateTarget),
 		}
@@ -428,13 +428,16 @@ func (s *SolaceScaler) GetMetricsAndActivity(ctx context.Context, metricName str
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 	return []external_metrics.ExternalMetricValue{metric},
-		(metricValues.msgCount > s.metadata.activationMsgCountTarget ||
+		metricValues.msgCount > s.metadata.activationMsgCountTarget ||
 			metricValues.msgSpoolUsage > s.metadata.activationMsgSpoolUsageTarget ||
-			metricValues.msgRcvRate > s.metadata.activationMsgRxRateTarget),
+			metricValues.msgRcvRate > s.metadata.activationMsgRxRateTarget,
 		nil
 }
 
 // Do Nothing - Satisfies Interface
 func (s *SolaceScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }

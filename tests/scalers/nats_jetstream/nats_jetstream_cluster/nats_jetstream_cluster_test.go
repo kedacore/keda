@@ -23,16 +23,17 @@ const (
 )
 
 var (
-	testNamespace                = fmt.Sprintf("%s-test-ns", testName)
-	natsNamespace                = fmt.Sprintf("%s-nats-ns", testName)
-	natsAddress                  = fmt.Sprintf("nats://%s.%s.svc.cluster.local:4222", nats.NatsJetStreamName, natsNamespace)
-	natsServerMonitoringEndpoint = fmt.Sprintf("%s.%s.svc.cluster.local:8222", nats.NatsJetStreamName, natsNamespace)
-	natsHelmRepo                 = "https://nats-io.github.io/k8s/helm/charts/"
-	natsServerReplicas           = 3
-	messagePublishCount          = 300
-	deploymentName               = "sub"
-	minReplicaCount              = 0
-	maxReplicaCount              = 2
+	testNamespace                        = fmt.Sprintf("%s-test-ns", testName)
+	natsNamespace                        = fmt.Sprintf("%s-nats-ns", testName)
+	natsAddress                          = fmt.Sprintf("nats://%s.%s.svc.cluster.local:4222", nats.NatsJetStreamName, natsNamespace)
+	natsServerMonitoringEndpoint         = fmt.Sprintf("%s.%s.svc.cluster.local:8222", nats.NatsJetStreamName, natsNamespace)
+	natsServerHeadlessMonitoringEndpoint = fmt.Sprintf("%s-headless.%s.svc.cluster.local:8222", nats.NatsJetStreamName, natsNamespace)
+	natsHelmRepo                         = "https://nats-io.github.io/k8s/helm/charts/"
+	natsServerReplicas                   = 3
+	messagePublishCount                  = 300
+	deploymentName                       = "sub"
+	minReplicaCount                      = 0
+	maxReplicaCount                      = 2
 )
 
 func TestNATSJetStreamScalerClusterWithStreamReplicas(t *testing.T) {
@@ -63,6 +64,55 @@ func testNATSJetStreamScalerClusterWithStreamReplicas(t *testing.T, noAdvertise 
 	assert.True(t, WaitForJobSuccess(t, kc, "stream", testNamespace, 60, 3),
 		"stream and consumer creation job with 3 stream replicas should be success")
 
+	testScaleOut(t, kc, testData)
+	testScaleIn(t, kc)
+
+	// Remove 3 replica stream with consumer
+	removeStreamAndConsumer(t, 3, testData.NatsStream, testNamespace, natsAddress)
+	assert.True(t, WaitForJobCount(t, kc, testNamespace, 0, 60, 3),
+		"job count in namespace should be 0")
+
+	// Create single replica stream with consumer
+	testData.NatsStream = "case2"
+	installStreamAndConsumer(t, 1, testData.NatsStream, testNamespace, natsAddress)
+	KubectlApplyWithTemplate(t, testData, "scaledObjectTemplate", nats.ScaledObjectTemplate)
+	assert.True(t, WaitForJobSuccess(t, kc, "stream", testNamespace, 60, 3),
+		"stream and consumer creation job with 1 stream replica should be success")
+
+	testScaleOut(t, kc, testData)
+	testScaleIn(t, kc)
+
+	// Cleanup test namespace
+	removeStreamAndConsumer(t, 1, testData.NatsStream, testNamespace, natsAddress)
+	DeleteKubernetesResources(t, testNamespace, testData, testTemplates)
+
+	// Cleanup nats namespace
+	removeClusterWithJetStream(t)
+	DeleteNamespace(t, natsNamespace)
+	deleted := WaitForNamespaceDeletion(t, natsNamespace)
+	assert.Truef(t, deleted, "%s namespace not deleted", natsNamespace)
+}
+
+func TestNATSv2_10JetStreamScalerClusterWithStreamReplicas(t *testing.T) {
+	// Create k8s resources.
+	kc := GetKubernetesClient(t)
+
+	// Deploy NATS server.
+	installClusterWithJetStreaV2_10(t, kc)
+	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, nats.NatsJetStreamName, natsNamespace, natsServerReplicas, 60, 3),
+		"replica count should be %d after 3 minutes", minReplicaCount)
+
+	// Create k8s resources for testing.
+	testData, testTemplates := nats.GetJetStreamDeploymentTemplateData(testNamespace, natsAddress, natsServerHeadlessMonitoringEndpoint, messagePublishCount)
+	CreateKubernetesResources(t, kc, testNamespace, testData, testTemplates)
+
+	// Create 3 replica stream with consumer
+	testData.NatsStream = "case1"
+	installStreamAndConsumer(t, 3, testData.NatsStream, testNamespace, natsAddress)
+	KubectlApplyWithTemplate(t, testData, "scaledObjectTemplate", nats.ScaledObjectTemplate)
+	assert.True(t, WaitForJobSuccess(t, kc, "stream", testNamespace, 60, 3),
+		"stream and consumer creation job with 3 stream replicas should be success")
+
 	testActivation(t, kc, testData)
 	testScaleOut(t, kc, testData)
 	testScaleIn(t, kc)
@@ -72,24 +122,8 @@ func testNATSJetStreamScalerClusterWithStreamReplicas(t *testing.T, noAdvertise 
 	assert.True(t, WaitForJobCount(t, kc, testNamespace, 0, 60, 3),
 		"job count in namespace should be 0")
 
-	// Create stream and consumer with 2 stream replicas
-	testData.NatsStream = "case2"
-	installStreamAndConsumer(t, 2, testData.NatsStream, testNamespace, natsAddress)
-	KubectlApplyWithTemplate(t, testData, "scaledObjectTemplate", nats.ScaledObjectTemplate)
-	assert.True(t, WaitForJobSuccess(t, kc, "stream", testNamespace, 60, 3),
-		"stream and consumer creation job with 2 stream replicas should be success")
-
-	testActivation(t, kc, testData)
-	testScaleOut(t, kc, testData)
-	testScaleIn(t, kc)
-
-	// Remove 2 replica stream with consumer
-	removeStreamAndConsumer(t, 2, testData.NatsStream, testNamespace, natsAddress)
-	assert.True(t, WaitForJobCount(t, kc, testNamespace, 0, 60, 3),
-		"job count in namespace should be 0")
-
 	// Create single replica stream with consumer
-	testData.NatsStream = "case3"
+	testData.NatsStream = "case2"
 	installStreamAndConsumer(t, 1, testData.NatsStream, testNamespace, natsAddress)
 	KubectlApplyWithTemplate(t, testData, "scaledObjectTemplate", nats.ScaledObjectTemplate)
 	assert.True(t, WaitForJobSuccess(t, kc, "stream", testNamespace, 60, 3),
@@ -150,6 +184,27 @@ func installClusterWithJetStream(t *testing.T, kc *k8s.Clientset, noAdvertise bo
 		"cluster.enabled=true",
 		fmt.Sprintf("replicas=%d", natsServerReplicas),
 		fmt.Sprintf("cluster.noAdvertise=%t", noAdvertise),
+		natsNamespace,
+		nats.NatsJetStreamName))
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+}
+
+// installClusterWithJetStreaV2_10 install the nats helm chart with clustered jetstream enabled using v2.10
+func installClusterWithJetStreaV2_10(t *testing.T, kc *k8s.Clientset) {
+	CreateNamespace(t, kc, natsNamespace)
+	_, err := ExecuteCommand(fmt.Sprintf("helm repo add %s %s", nats.NatsJetStreamName, natsHelmRepo))
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	_, err = ExecuteCommand("helm repo update")
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --version %s --set %s --set %s --set %s --set %s --set %s --set %s --set %s --wait --namespace %s %s nats/nats`,
+		nats.Natsv2_10JetStreamChartVersion,
+		"config.jetstream.enabled=true",
+		"config.jetstream.fileStorage.enabled=false",
+		"config.jetstream.memoryStore.enabled=true",
+		"config.cluster.enabled=true",
+		"service.enabled=true",
+		"service.ports.monitor.enabled=true",
+		fmt.Sprintf("config.cluster.replicas=%d", natsServerReplicas),
 		natsNamespace,
 		nats.NatsJetStreamName))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)

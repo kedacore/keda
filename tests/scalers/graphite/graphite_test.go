@@ -405,8 +405,7 @@ spec:
           httpGet:
             path: /
             port: graphite-gui
-        resources:
-          {}
+
         volumeMounts:
           - name: graphite-configmap
             mountPath: /opt/graphite/conf/
@@ -537,14 +536,14 @@ func TestGraphiteScaler(t *testing.T) {
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
-	KubectlApplyWithTemplate(t, data, "lowLevelRequestsJobTemplate", lowLevelRequestsJobTemplate)
+	KubectlReplaceWithTemplate(t, data, "lowLevelRequestsJobTemplate", lowLevelRequestsJobTemplate)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
-	KubectlApplyWithTemplate(t, data, "requestsJobTemplate", requestsJobTemplate)
+	KubectlReplaceWithTemplate(t, data, "requestsJobTemplate", requestsJobTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
@@ -552,7 +551,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale in ---")
-	KubectlApplyWithTemplate(t, data, "emptyRequestsJobTemplate", emptyRequestsJobTemplate)
+	KubectlReplaceWithTemplate(t, data, "emptyRequestsJobTemplate", emptyRequestsJobTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)

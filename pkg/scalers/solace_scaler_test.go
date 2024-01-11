@@ -12,10 +12,10 @@ import (
 )
 
 type testSolaceMetadata struct {
-	testID      string
-	metadata    map[string]string
-	scalerIndex int
-	isError     bool
+	testID       string
+	metadata     map[string]string
+	triggerIndex int
+	isError      bool
 }
 
 var (
@@ -532,7 +532,7 @@ var testSolaceExpectedMetricNames = map[string]string{
 func TestSolaceParseSolaceMetadata(t *testing.T) {
 	for _, testData := range testParseSolaceMetadata {
 		fmt.Print(testData.testID)
-		meta, err := parseSolaceMetadata(&ScalerConfig{ResolvedEnv: nil, TriggerMetadata: testData.metadata, AuthParams: nil, ScalerIndex: testData.scalerIndex})
+		meta, err := parseSolaceMetadata(&ScalerConfig{ResolvedEnv: nil, TriggerMetadata: testData.metadata, AuthParams: nil, TriggerIndex: testData.triggerIndex})
 		switch {
 		case err != nil && !testData.isError:
 			t.Error("expected success but got error: ", err)
@@ -550,7 +550,7 @@ func TestSolaceParseSolaceMetadata(t *testing.T) {
 	}
 	for _, testData := range testSolaceEnvCreds {
 		fmt.Print(testData.testID)
-		_, err := parseSolaceMetadata(&ScalerConfig{ResolvedEnv: testDataSolaceResolvedEnvVALID, TriggerMetadata: testData.metadata, AuthParams: nil, ScalerIndex: testData.scalerIndex})
+		_, err := parseSolaceMetadata(&ScalerConfig{ResolvedEnv: testDataSolaceResolvedEnvVALID, TriggerMetadata: testData.metadata, AuthParams: nil, TriggerIndex: testData.triggerIndex})
 		switch {
 		case err != nil && !testData.isError:
 			t.Error("expected success but got error: ", err)
@@ -564,7 +564,7 @@ func TestSolaceParseSolaceMetadata(t *testing.T) {
 	}
 	for _, testData := range testSolaceK8sSecretCreds {
 		fmt.Print(testData.testID)
-		_, err := parseSolaceMetadata(&ScalerConfig{ResolvedEnv: nil, TriggerMetadata: testData.metadata, AuthParams: testDataSolaceAuthParamsVALID, ScalerIndex: testData.scalerIndex})
+		_, err := parseSolaceMetadata(&ScalerConfig{ResolvedEnv: nil, TriggerMetadata: testData.metadata, AuthParams: testDataSolaceAuthParamsVALID, TriggerIndex: testData.triggerIndex})
 		switch {
 		case err != nil && !testData.isError:
 			t.Error("expected success but got error: ", err)
@@ -584,7 +584,7 @@ func TestSolaceGetMetricSpec(t *testing.T) {
 		fmt.Print(testData.testID)
 		var err error
 		var solaceMeta *SolaceMetadata
-		solaceMeta, err = parseSolaceMetadata(&ScalerConfig{ResolvedEnv: testDataSolaceResolvedEnvVALID, TriggerMetadata: testData.metadata, AuthParams: testDataSolaceAuthParamsVALID, ScalerIndex: testData.scalerIndex})
+		solaceMeta, err = parseSolaceMetadata(&ScalerConfig{ResolvedEnv: testDataSolaceResolvedEnvVALID, TriggerMetadata: testData.metadata, AuthParams: testDataSolaceAuthParamsVALID, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			fmt.Printf("\n       Failed to parse metadata: %v", err)
 		} else {

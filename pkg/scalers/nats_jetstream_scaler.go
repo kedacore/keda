@@ -44,7 +44,7 @@ type natsJetStreamMetadata struct {
 	lagThreshold           int64
 	activationLagThreshold int64
 	clusterSize            int
-	scalerIndex            int
+	triggerIndex           int
 }
 
 type jetStreamEndpointResponse struct {
@@ -171,7 +171,7 @@ func parseNATSJetStreamMetadata(config *ScalerConfig) (natsJetStreamMetadata, er
 		meta.activationLagThreshold = activationTargetQueryValue
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	natsServerEndpoint, err := GetFromAuthOrMeta(config, "natsServerMonitoringEndpoint")
 	if err != nil {
@@ -245,10 +245,7 @@ func (s *natsJetStreamScaler) getNATSJetstreamMonitoringData(ctx context.Context
 		clusterUrls := jetStreamServerResp.ConnectUrls
 		if len(clusterUrls) == 0 {
 			isNodeAdvertised = false
-			// append current node's `server_name` to check if it is a leader
-			// even though `server_name` is not an url, it will be split by first . (dot)
-			// to get the node's name anyway
-			clusterUrls = append(clusterUrls, jetStreamServerResp.ServerName)
+			// jetStreamServerResp.Cluster.HostUrls contains all the cluster nodes
 			clusterUrls = append(clusterUrls, jetStreamServerResp.Cluster.HostUrls...)
 		}
 
@@ -311,6 +308,7 @@ func (s *natsJetStreamScaler) getNATSJetstreamMonitoringData(ctx context.Context
 				}
 			}
 		}
+		return fmt.Errorf("leader node not found for consumer %s", s.metadata.consumer)
 	}
 	return nil
 }
@@ -456,7 +454,7 @@ func (s *natsJetStreamScaler) GetMetricSpecForScaling(context.Context) []v2.Metr
 	metricName := kedautil.NormalizeString(fmt.Sprintf("nats-jetstream-%s", s.metadata.stream))
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.lagThreshold),
 	}
@@ -486,5 +484,8 @@ func (s *natsJetStreamScaler) GetMetricsAndActivity(ctx context.Context, metricN
 }
 
 func (s *natsJetStreamScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }

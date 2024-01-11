@@ -35,7 +35,7 @@ type CassandraMetadata struct {
 	query                      string
 	targetQueryValue           int64
 	activationTargetQueryValue int64
-	scalerIndex                int
+	triggerIndex               int
 }
 
 // NewCassandraScaler creates a new Cassandra scaler.
@@ -156,7 +156,7 @@ func parseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 		return nil, fmt.Errorf("no password given")
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	return &meta, nil
 }
@@ -184,7 +184,7 @@ func newCassandraSession(meta *CassandraMetadata, logger logr.Logger) (*gocql.Se
 func (s *cassandraScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("cassandra-%s", s.metadata.keyspace))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("cassandra-%s", s.metadata.keyspace))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.targetQueryValue),
 	}
@@ -222,7 +222,8 @@ func (s *cassandraScaler) GetQueryResult(ctx context.Context) (int64, error) {
 
 // Close closes the Cassandra session connection.
 func (s *cassandraScaler) Close(_ context.Context) error {
-	s.session.Close()
-
+	if s.session != nil {
+		s.session.Close()
+	}
 	return nil
 }

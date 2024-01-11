@@ -39,8 +39,14 @@ type parseEventHubMetadataTestData struct {
 
 type eventHubMetricIdentifier struct {
 	metadataTestData *parseEventHubMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
+}
+
+type calculateUnprocessedEventsTestData struct {
+	partitionInfo     *eventhub.HubPartitionRuntimeInformation
+	checkpoint        azure.Checkpoint
+	unprocessedEvents int64
 }
 
 var sampleEventHubResolvedEnv = map[string]string{eventHubConnectionSetting: eventHubsConnection, storageConnectionSetting: "none"}
@@ -199,6 +205,57 @@ var parseEventHubMetadataDatasetWithPodIdentity = []parseEventHubMetadataTestDat
 		metadata:    map[string]string{"cloud": "private", "endpointSuffix": serviceBusEndpointSuffix, "activeDirectoryEndpoint": activeDirectoryEndpoint, "eventHubResourceURL": eventHubResourceURL, "storageAccountName": "aStorageAccount", "storageEndpointSuffix": storageEndpointSuffix, "consumerGroup": eventHubConsumerGroup, "unprocessedEventThreshold": "15", "eventHubName": testEventHubName, "eventHubNamespace": testEventHubNamespace},
 		resolvedEnv: sampleEventHubResolvedEnv,
 		isError:     false,
+	},
+}
+
+var calculateUnprocessedEventsDataset = []calculateUnprocessedEventsTestData{
+	{
+		checkpoint:        azure.NewCheckpoint("1", 5),
+		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 10, LastEnqueuedOffset: "2"},
+		unprocessedEvents: 5,
+	},
+	{
+		checkpoint:        azure.NewCheckpoint("1002", 4611686018427387903),
+		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 4611686018427387905, LastEnqueuedOffset: "1000"},
+		unprocessedEvents: 2,
+	},
+	{
+		checkpoint:        azure.NewCheckpoint("900", 4611686018427387900),
+		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 4611686018427387905, LastEnqueuedOffset: "1000"},
+		unprocessedEvents: 5,
+	},
+	{
+		checkpoint:        azure.NewCheckpoint("800", 4000000000000200000),
+		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 4000000000000000000, LastEnqueuedOffset: "750"},
+		unprocessedEvents: 9223372036854575807,
+	},
+	// Empty checkpoint
+	{
+		checkpoint:        azure.NewCheckpoint("", 0),
+		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 1, LastEnqueuedOffset: "1"},
+		unprocessedEvents: 2,
+	},
+	// Stale PartitionInfo
+	{
+		checkpoint:        azure.NewCheckpoint("5", 15),
+		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 10, LastEnqueuedOffset: "2"},
+		unprocessedEvents: 0,
+	},
+	{
+		checkpoint:        azure.NewCheckpoint("1000", 4611686018427387910),
+		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 4611686018427387905, LastEnqueuedOffset: "900"},
+		unprocessedEvents: 0,
+	},
+	{
+		checkpoint:        azure.NewCheckpoint("1", 5),
+		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 9223372036854775797, LastEnqueuedOffset: "10000"},
+		unprocessedEvents: 0,
+	},
+	// Circular buffer reset
+	{
+		checkpoint:        azure.NewCheckpoint("100000", 9223372036854775797),
+		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 5, LastEnqueuedOffset: "1"},
+		unprocessedEvents: 15,
 	},
 }
 
@@ -589,7 +646,7 @@ func DeleteContainerInStorage(ctx context.Context, endpoint *url.URL, credential
 
 func TestEventHubGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range eventHubMetricIdentifiers {
-		meta, err := parseAzureEventHubMetadata(logr.Discard(), &ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: sampleEventHubResolvedEnv, AuthParams: map[string]string{}, ScalerIndex: testData.scalerIndex})
+		meta, err := parseAzureEventHubMetadata(logr.Discard(), &ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: sampleEventHubResolvedEnv, AuthParams: map[string]string{}, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -603,6 +660,15 @@ func TestEventHubGetMetricSpecForScaling(t *testing.T) {
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)
+		}
+	}
+}
+
+func TestCalculateUnprocessedEvents(t *testing.T) {
+	for _, testData := range calculateUnprocessedEventsDataset {
+		v := calculateUnprocessedEvents(testData.partitionInfo, testData.checkpoint, defaultStalePartitionInfoThreshold)
+		if v != testData.unprocessedEvents {
+			t.Errorf("Wrong calculation: expected %d, got %d", testData.unprocessedEvents, v)
 		}
 	}
 }

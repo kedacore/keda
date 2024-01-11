@@ -25,6 +25,7 @@ import (
 const (
 	promServerAddress       = "serverAddress"
 	promQuery               = "query"
+	promQueryParameters     = "queryParameters"
 	promThreshold           = "threshold"
 	promActivationThreshold = "activationThreshold"
 	promNamespace           = "namespace"
@@ -48,11 +49,12 @@ type prometheusScaler struct {
 type prometheusMetadata struct {
 	serverAddress       string
 	query               string
+	queryParameters     map[string]string
 	threshold           float64
 	activationThreshold float64
 	prometheusAuth      *authentication.AuthMeta
 	namespace           string
-	scalerIndex         int
+	triggerIndex        int
 	customHeaders       map[string]string
 	// sometimes should consider there is an error we can accept
 	// default value is true/t, to ignore the null value return from prometheus
@@ -151,6 +153,15 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 		return nil, fmt.Errorf("no %s given", promQuery)
 	}
 
+	if val, ok := config.TriggerMetadata[promQueryParameters]; ok && val != "" {
+		queryParameters, err := kedautil.ParseStringList(val)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing %s: %w", promQueryParameters, err)
+		}
+
+		meta.queryParameters = queryParameters
+	}
+
 	if val, ok := config.TriggerMetadata[promThreshold]; ok && val != "" {
 		t, err := strconv.ParseFloat(val, 64)
 		if err != nil {
@@ -213,7 +224,7 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 		meta.unsafeSsl = unsafeSslValue
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	err = parseAuthConfig(config, meta)
 	if err != nil {
@@ -239,6 +250,9 @@ func parseAuthConfig(config *ScalerConfig, meta *prometheusMetadata) error {
 }
 
 func (s *prometheusScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 
@@ -246,7 +260,7 @@ func (s *prometheusScaler) GetMetricSpecForScaling(context.Context) []v2.MetricS
 	metricName := kedautil.NormalizeString("prometheus")
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}
@@ -264,6 +278,12 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	// set 'namespace' parameter for namespaced Prometheus requests (e.g. for Thanos Querier)
 	if s.metadata.namespace != "" {
 		url = fmt.Sprintf("%s&namespace=%s", url, s.metadata.namespace)
+	}
+
+	for queryParameterKey, queryParameterValue := range s.metadata.queryParameters {
+		queryParameterKeyEscaped := url_pkg.QueryEscape(queryParameterKey)
+		queryParameterValueEscaped := url_pkg.QueryEscape(queryParameterValue)
+		url = fmt.Sprintf("%s&%s=%s", url, queryParameterKeyEscaped, queryParameterValueEscaped)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)

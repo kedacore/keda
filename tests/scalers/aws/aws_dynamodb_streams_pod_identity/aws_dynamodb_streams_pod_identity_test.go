@@ -91,7 +91,7 @@ metadata:
   namespace: {{.TestNamespace}}
 spec:
   podIdentity:
-    provider: aws-eks
+    provider: aws
 `
 
 	scaledObjectTemplate = `

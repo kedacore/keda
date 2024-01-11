@@ -2,6 +2,17 @@
 ## [Unreleased]
 
 
+<a name="v0.7.1"></a>
+## [v0.7.1] - 2023-05-11
+### Add
+- Add describe functions ([#77](https://github.com/montanaflynn/stats/issues/77))
+
+### Update
+- Update .gitignore
+- Update README.md, LICENSE and DOCUMENTATION.md files
+- Update github action go workflow to run on push
+
+
 <a name="v0.7.0"></a>
 ## [v0.7.0] - 2023-01-08
 ### Add
@@ -12,6 +23,7 @@
 - Remove travis CI config
 
 ### Update
+- Update changelog with v0.7.0 changes
 - Update changelog with v0.7.0 changes
 - Update github action go workflow
 - Update geometric distribution tests
@@ -505,7 +517,8 @@
 - Merge pull request [#4](https://github.com/montanaflynn/stats/issues/4) from saromanov/sample
 
 
-[Unreleased]: https://github.com/montanaflynn/stats/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/montanaflynn/stats/compare/v0.7.1...HEAD
+[v0.7.1]: https://github.com/montanaflynn/stats/compare/v0.7.0...v0.7.1
 [v0.7.0]: https://github.com/montanaflynn/stats/compare/v0.6.6...v0.7.0
 [v0.6.6]: https://github.com/montanaflynn/stats/compare/v0.6.5...v0.6.6
 [v0.6.5]: https://github.com/montanaflynn/stats/compare/v0.6.4...v0.6.5

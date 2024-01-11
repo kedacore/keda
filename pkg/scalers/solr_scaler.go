@@ -28,7 +28,7 @@ type solrMetadata struct {
 	targetQueryValue           float64
 	activationTargetQueryValue float64
 	query                      string
-	scalerIndex                int
+	triggerIndex               int
 
 	// Authentication
 	username string
@@ -121,7 +121,7 @@ func parseSolrMetadata(config *ScalerConfig) (*solrMetadata, error) {
 		return nil, fmt.Errorf("no password given")
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
@@ -162,7 +162,7 @@ func (s *solrScaler) getItemCount(ctx context.Context) (float64, error) {
 func (s *solrScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString("solr")),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString("solr")),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.targetQueryValue),
 	}
@@ -186,5 +186,8 @@ func (s *solrScaler) GetMetricsAndActivity(ctx context.Context, metricName strin
 
 // Close closes the http client connection.
 func (s *solrScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }

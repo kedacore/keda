@@ -79,6 +79,9 @@ type TriggerAuthenticationSpec struct {
 	SecretTargetRef []AuthSecretTargetRef `json:"secretTargetRef,omitempty"`
 
 	// +optional
+	ConfigMapTargetRef []AuthConfigMapTargetRef `json:"configMapTargetRef,omitempty"`
+
+	// +optional
 	Env []AuthEnvironment `json:"env,omitempty"`
 
 	// +optional
@@ -115,9 +118,9 @@ const (
 	PodIdentityProviderAzure         PodIdentityProvider = "azure"
 	PodIdentityProviderAzureWorkload PodIdentityProvider = "azure-workload"
 	PodIdentityProviderGCP           PodIdentityProvider = "gcp"
-	PodIdentityProviderSpiffe        PodIdentityProvider = "spiffe"
 	PodIdentityProviderAwsEKS        PodIdentityProvider = "aws-eks"
 	PodIdentityProviderAwsKiam       PodIdentityProvider = "aws-kiam"
+	PodIdentityProviderAws           PodIdentityProvider = "aws"
 )
 
 // PodIdentityAnnotationEKS specifies aws role arn for aws-eks Identity Provider
@@ -130,9 +133,17 @@ const (
 // AuthPodIdentity allows users to select the platform native identity
 // mechanism
 type AuthPodIdentity struct {
+	// +kubebuilder:validation:Enum=azure;azure-workload;gcp;aws;aws-eks;aws-kiam
 	Provider PodIdentityProvider `json:"provider"`
 	// +optional
 	IdentityID *string `json:"identityId"`
+	// +optional
+	// RoleArn sets the AWS RoleArn to be used. Mutually exclusive with IdentityOwner
+	RoleArn string `json:"roleArn"`
+	// +kubebuilder:validation:Enum=keda;workload
+	// +optional
+	// IdentityOwner configures which identity has to be used during auto discovery, keda or the scaled workload. Mutually exclusive with roleArn
+	IdentityOwner *string `json:"identityOwner"`
 }
 
 func (a *AuthPodIdentity) GetIdentityID() string {
@@ -142,8 +153,21 @@ func (a *AuthPodIdentity) GetIdentityID() string {
 	return *a.IdentityID
 }
 
+func (a *AuthPodIdentity) IsWorkloadIdentityOwner() bool {
+	if a.IdentityOwner == nil {
+		return false
+	}
+	return *a.IdentityOwner == workloadString
+}
+
+// AuthConfigMapTargetRef is used to authenticate using a reference to a config map
+type AuthConfigMapTargetRef AuthTargetRef
+
 // AuthSecretTargetRef is used to authenticate using a reference to a secret
-type AuthSecretTargetRef struct {
+type AuthSecretTargetRef AuthTargetRef
+
+// AuthTargetRef is used to authenticate using a reference to a resource
+type AuthTargetRef struct {
 	Parameter string `json:"parameter"`
 	Name      string `json:"name"`
 	Key       string `json:"key"`
@@ -197,11 +221,34 @@ const (
 	// VaultAuthenticationAWS                            = "aws"
 )
 
+// VaultSecretType defines the type of vault secret
+type VaultSecretType string
+
+const (
+	VaultSecretTypeGeneric  VaultSecretType = ""
+	VaultSecretTypeSecretV2 VaultSecretType = "secretV2"
+	VaultSecretTypeSecret   VaultSecretType = "secret"
+	VaultSecretTypePki      VaultSecretType = "pki"
+)
+
+type VaultPkiData struct {
+	CommonName string `json:"commonName,omitempty"`
+	AltNames   string `json:"altNames,omitempty"`
+	IPSans     string `json:"ipSans,omitempty"`
+	URISans    string `json:"uriSans,omitempty"`
+	OtherSans  string `json:"otherSans,omitempty"`
+	TTL        string `json:"ttl,omitempty"`
+	Format     string `json:"format,omitempty"`
+}
+
 // VaultSecret defines the mapping between the path of the secret in Vault to the parameter
 type VaultSecret struct {
-	Parameter string `json:"parameter"`
-	Path      string `json:"path"`
-	Key       string `json:"key"`
+	Parameter string          `json:"parameter"`
+	Path      string          `json:"path"`
+	Key       string          `json:"key"`
+	Type      VaultSecretType `json:"type,omitempty"`
+	PkiData   VaultPkiData    `json:"pkiData,omitempty"`
+	Value     string          `json:"-"`
 }
 
 // AzureKeyVault is used to authenticate using Azure Key Vault

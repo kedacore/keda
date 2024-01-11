@@ -29,7 +29,7 @@ type influxDBMetadata struct {
 	unsafeSsl                bool
 	thresholdValue           float64
 	activationThresholdValue float64
-	scalerIndex              int
+	triggerIndex             int
 }
 
 // NewInfluxDBScaler creates a new influx db scaler
@@ -154,7 +154,7 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 		thresholdValue:           thresholdValue,
 		activationThresholdValue: activationThresholdValue,
 		unsafeSsl:                unsafeSsl,
-		scalerIndex:              config.ScalerIndex,
+		triggerIndex:             config.TriggerIndex,
 	}, nil
 }
 
@@ -207,7 +207,7 @@ func (s *influxDBScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 func (s *influxDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, util.NormalizeString(fmt.Sprintf("influxdb-%s", s.metadata.organizationName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, util.NormalizeString(fmt.Sprintf("influxdb-%s", s.metadata.organizationName))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.thresholdValue),
 	}

@@ -16,7 +16,7 @@ limitations under the License.
 
 package util
 
-// String returns a pointer to the string value passed in.
+// StringPointer returns a pointer to the string value passed in.
 func StringPointer(v string) *string {
 	return &v
 }

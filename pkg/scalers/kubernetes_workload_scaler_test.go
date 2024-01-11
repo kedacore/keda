@@ -86,10 +86,10 @@ func TestWorkloadIsActive(t *testing.T) {
 }
 
 type workloadGetMetricSpecForScalingTestData struct {
-	metadata    map[string]string
-	namespace   string
-	scalerIndex int
-	name        string
+	metadata     map[string]string
+	namespace    string
+	triggerIndex int
+	name         string
 }
 
 var getMetricSpecForScalingTestDataset = []workloadGetMetricSpecForScalingTestData{
@@ -112,7 +112,7 @@ func TestWorkloadGetMetricSpecForScaling(t *testing.T) {
 				AuthParams:              map[string]string{},
 				GlobalHTTPTimeout:       1000 * time.Millisecond,
 				ScalableObjectNamespace: testData.namespace,
-				ScalerIndex:             testData.scalerIndex,
+				TriggerIndex:            testData.triggerIndex,
 			},
 		)
 		metric := s.GetMetricSpecForScaling(context.Background())

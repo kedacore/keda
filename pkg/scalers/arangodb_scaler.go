@@ -64,7 +64,7 @@ type arangoDBMetadata struct {
 
 	// The index of the scaler inside the ScaledObject
 	// +internal
-	scalerIndex int
+	triggerIndex int
 }
 
 // NewArangoDBScaler creates a new arangodbScaler
@@ -201,7 +201,7 @@ func parseArangoDBMetadata(config *ScalerConfig) (*arangoDBMetadata, error) {
 	}
 	meta.arangoDBAuth = arangoDBAuth
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
@@ -271,7 +271,7 @@ func (s *arangoDBScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 func (s *arangoDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, "arangodb"),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, "arangodb"),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.queryValue),
 	}

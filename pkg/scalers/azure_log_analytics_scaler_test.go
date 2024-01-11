@@ -40,7 +40,7 @@ type parseLogAnalyticsMetadataTestData struct {
 
 type LogAnalyticsMetricIdentifier struct {
 	metadataTestData *parseLogAnalyticsMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -194,7 +194,7 @@ func TestLogAnalyticsGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range LogAnalyticsMetricIdentifiers {
 		meta, err := parseAzureLogAnalyticsMetadata(&ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv,
 			TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil,
-			PodIdentity: kedav1alpha1.AuthPodIdentity{}, ScalerIndex: testData.scalerIndex})
+			PodIdentity: kedav1alpha1.AuthPodIdentity{}, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

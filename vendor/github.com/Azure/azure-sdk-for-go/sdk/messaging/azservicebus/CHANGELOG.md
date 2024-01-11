@@ -1,5 +1,11 @@
 # Release History
 
+## 1.5.0 (2023-10-10)
+
+### Features Added
+
+- Added `(Queue|Subscription|Topic)Name` fields to appropriate responses in the `admin.Client`. PR#21632
+
 ## 1.4.1 (2023-09-12)
 
 ### Features Added

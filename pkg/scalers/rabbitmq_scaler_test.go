@@ -335,7 +335,7 @@ func Test_getVhostAndPathFromURL(t *testing.T) {
 }
 
 func TestGetQueueInfo(t *testing.T) {
-	allTestData := []getQueueInfoTestData{}
+	var allTestData []getQueueInfoTestData
 	allTestData = append(allTestData, testQueueInfoTestDataSingleVhost...)
 	for _, testData := range testQueueInfoTestData {
 		for _, vhostAnsSubpathsData := range getVhostAndPathFromURLTestData {
@@ -477,7 +477,7 @@ var testRegexQueueInfoTestData = []getQueueInfoTestData{
 }
 
 func TestGetQueueInfoWithRegex(t *testing.T) {
-	allTestData := []getQueueInfoTestData{}
+	var allTestData []getQueueInfoTestData
 	for _, testData := range testRegexQueueInfoTestData {
 		for _, vhostAndSubpathsData := range getVhostAndPathFromURLTestData {
 			testData := testData
@@ -563,7 +563,7 @@ var testRegexPageSizeTestData = []getRegexPageSizeTestData{
 }
 
 func TestGetPageSizeWithRegex(t *testing.T) {
-	allTestData := []getRegexPageSizeTestData{}
+	var allTestData []getRegexPageSizeTestData
 	for _, testData := range testRegexPageSizeTestData {
 		for _, vhostAndSubpathsData := range getVhostAndPathFromURLTestData {
 			testData := testData
@@ -629,7 +629,7 @@ func TestGetPageSizeWithRegex(t *testing.T) {
 
 func TestRabbitMQGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range rabbitMQMetricIdentifiers {
-		meta, err := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil, ScalerIndex: testData.index})
+		meta, err := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil, TriggerIndex: testData.index})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

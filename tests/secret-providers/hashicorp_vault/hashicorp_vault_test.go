@@ -4,16 +4,19 @@
 package hashicorp_vault_test
 
 import (
-	"encoding/base64"
+	b64 "encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
 
+	vaultapi "github.com/hashicorp/vault/api"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
+	"github.com/kedacore/keda/v2/tests/scalers/prometheus"
 )
 
 // Load environment variables from .env file
@@ -26,8 +29,11 @@ const (
 var (
 	testNamespace              = fmt.Sprintf("%s-ns", testName)
 	vaultNamespace             = "hashicorp-ns"
+	vaultPromDomain            = "e2e.vault.keda.sh"
 	deploymentName             = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName           = fmt.Sprintf("%s-so", testName)
+	publishDeploymentName      = fmt.Sprintf("%s-publish", testName)
+	monitoredAppName           = fmt.Sprintf("%s-monitored-app", testName)
 	triggerAuthenticationName  = fmt.Sprintf("%s-ta", testName)
 	secretName                 = fmt.Sprintf("%s-secret", testName)
 	postgreSQLStatefulSetName  = "postgresql"
@@ -37,8 +43,9 @@ var (
 	postgreSQLDatabase         = "test_db"
 	postgreSQLConnectionString = fmt.Sprintf("postgresql://%s:%s@postgresql.%s.svc.cluster.local:5432/%s?sslmode=disable",
 		postgreSQLUsername, postgreSQLPassword, testNamespace, postgreSQLDatabase)
-	minReplicaCount = 0
-	maxReplicaCount = 2
+	prometheusServerName = fmt.Sprintf("%s-prom-server", testName)
+	minReplicaCount      = 0
+	maxReplicaCount      = 1
 )
 
 type templateData struct {
@@ -48,7 +55,9 @@ type templateData struct {
 	ScaledObjectName                 string
 	TriggerAuthenticationName        string
 	VaultSecretPath                  string
+	VaultPromDomain                  string
 	SecretName                       string
+	HashiCorpAuthentication          string
 	HashiCorpToken                   string
 	PostgreSQLStatefulSetName        string
 	PostgreSQLConnectionStringBase64 string
@@ -57,6 +66,10 @@ type templateData struct {
 	PostgreSQLDatabase               string
 	MinReplicaCount                  int
 	MaxReplicaCount                  int
+	PublishDeploymentName            string
+	MonitoredAppName                 string
+	PrometheusServerName             string
+	VaultPkiCommonName               string
 }
 
 const (
@@ -141,7 +154,6 @@ spec:
   - type: postgresql
     metadata:
       targetQueryValue: "4"
-      activationTargetQueryValue: "5"
       query: "SELECT CEIL(COUNT(*) / 5) FROM task_instance WHERE state='running' OR state='queued'"
     authenticationRef:
       name: {{.TriggerAuthenticationName}}
@@ -200,39 +212,6 @@ spec:
   type: ClusterIP
 `
 
-	lowLevelRecordsJobTemplate = `
-apiVersion: batch/v1
-kind: Job
-metadata:
-  labels:
-    app: postgresql-insert-low-level-job
-  name: postgresql-insert-low-level-job
-  namespace: {{.TestNamespace}}
-spec:
-  template:
-    metadata:
-      labels:
-        app: postgresql-insert-low-level-job
-    spec:
-      containers:
-      - image: ghcr.io/kedacore/tests-postgresql
-        imagePullPolicy: Always
-        name: postgresql-processor-test
-        command:
-          - /app
-          - insert
-        env:
-          - name: TASK_INSTANCES_COUNT
-            value: "20"
-          - name: CONNECTION_STRING
-            valueFrom:
-              secretKeyRef:
-                name: {{.SecretName}}
-                key: postgresql_conn_str
-      restartPolicy: Never
-  backoffLimit: 4
-`
-
 	insertRecordsJobTemplate = `
 apiVersion: batch/v1
 kind: Job
@@ -265,9 +244,218 @@ spec:
       restartPolicy: Never
   backoffLimit: 4
 `
+
+	prometheusDeploymentTemplate = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: test-app
+  name: {{.DeploymentName}}
+  namespace: {{.TestNamespace}}
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: test-app
+  template:
+    metadata:
+      labels:
+        app: test-app
+        type: keda-testing
+    spec:
+      containers:
+      - name: prom-test-app
+        image: ghcr.io/kedacore/tests-prometheus:latest
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+          seccompProfile:
+            type: RuntimeDefault
+---
+`
+	monitoredAppDeploymentTemplate = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{.MonitoredAppName}}
+  name: {{.MonitoredAppName}}
+  namespace: {{.TestNamespace}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{.MonitoredAppName}}
+  template:
+    metadata:
+      labels:
+        app: {{.MonitoredAppName}}
+        type: {{.MonitoredAppName}}
+    spec:
+      containers:
+      - name: prom-test-app
+        image: ghcr.io/kedacore/tests-prometheus:latest
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+          seccompProfile:
+            type: RuntimeDefault
+---
+`
+	monitoredAppServiceTemplate = `apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: {{.MonitoredAppName}}
+  name: {{.MonitoredAppName}}
+  namespace: {{.TestNamespace}}
+  annotations:
+    prometheus.io/scrape: "true"
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    type: {{.MonitoredAppName}}
+`
+
+	prometheusTriggerAuthenticationTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{.TriggerAuthenticationName}}
+  namespace: {{.TestNamespace}}
+spec:
+  hashiCorpVault:
+    address: http://vault.{{.VaultNamespace}}:8200
+    authentication: {{.HashiCorpAuthentication}}
+    role: keda
+    mount: kubernetes
+    credential:
+      token: {{.HashiCorpToken}}
+      serviceAccount: /var/run/secrets/kubernetes.io/serviceaccount/token
+    secrets:
+      - key: "ca_chain"
+        parameter: "ca"
+        path: {{ .VaultSecretPath }}
+        type: pki
+        pkiData:
+          commonName: {{ .VaultPkiCommonName }}
+      - key: "private_key"
+        parameter: "key"
+        path: {{ .VaultSecretPath }}
+        type: pki
+        pkiData:
+          commonName: {{ .VaultPkiCommonName }}
+      - key: "certificate"
+        parameter: "cert"
+        path: {{ .VaultSecretPath }}
+        type: pki
+        pkiData:
+          commonName: {{ .VaultPkiCommonName }}`
+	prometheusScaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectName}}
+  namespace: {{.TestNamespace}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  minReplicaCount: {{.MinReplicaCount}}
+  maxReplicaCount: {{.MaxReplicaCount}}
+  pollingInterval: 3
+  cooldownPeriod:  1
+  triggers:
+  - type: prometheus
+    metadata:
+      serverAddress: https://{{.PrometheusServerName}}.{{.TestNamespace}}.svc:80
+      authModes: "tls"
+      threshold: '20'
+      query: http_requests_total{app="{{.MonitoredAppName}}"}
+    authenticationRef:
+      name: {{.TriggerAuthenticationName}}
+`
+
+	generatePromLoadJobTemplate = `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: generate-requests-job
+  namespace: {{.TestNamespace}}
+spec:
+  template:
+    spec:
+      containers:
+      - image: ghcr.io/kedacore/tests-hey:latest
+        name: test
+        command: ["/bin/sh"]
+        args: ["-c", "for i in $(seq 1 60);do echo $i;/hey -c 15 -n 240 http://{{.MonitoredAppName}}.{{.TestNamespace}}.svc;sleep 1;done"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+          seccompProfile:
+            type: RuntimeDefault
+      restartPolicy: Never
+  activeDeadlineSeconds: 100
+  backoffLimit: 2
+`
+	pkiPolicyTemplate = `path "pki*" {
+  capabilities = [ "create", "read", "update", "delete", "list", "sudo" ]
+}`
 )
 
-func TestPostreSQLScaler(t *testing.T) {
+func TestPkiSecretsEngine(t *testing.T) {
+	tests := []struct {
+		authentication string
+	}{
+		{
+			authentication: "kubernetes",
+		},
+		{
+			authentication: "token",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.authentication, func(t *testing.T) {
+			// Create kubernetes resources
+			kc := GetKubernetesClient(t)
+			useKubernetesAuth := test.authentication == "kubernetes"
+			hashiCorpToken, promPkiData := setupHashiCorpVault(t, kc, 2, useKubernetesAuth, true)
+			prometheus.Install(t, kc, prometheusServerName, testNamespace, promPkiData)
+
+			// Create kubernetes resources for testing
+			data, templates := getPrometheusTemplateData()
+			data.HashiCorpAuthentication = test.authentication
+			data.HashiCorpToken = RemoveANSI(hashiCorpToken)
+			data.VaultSecretPath = fmt.Sprintf("pki/issue/%s", testNamespace)
+			KubectlApplyMultipleWithTemplate(t, data, templates)
+			assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, monitoredAppName, testNamespace, 1, 60, 3),
+				"replica count should be %d after 3 minutes", minReplicaCount)
+			assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
+				"replica count should be %d after 3 minutes", minReplicaCount)
+
+			testPromScaleOut(t, kc, data)
+
+			// cleanup
+			KubectlDeleteMultipleWithTemplate(t, data, templates)
+			prometheus.Uninstall(t, prometheusServerName, testNamespace, nil)
+		})
+	}
+}
+
+func TestSecretsEngine(t *testing.T) {
 	tests := []struct {
 		name               string
 		vaultEngineVersion uint
@@ -292,7 +480,7 @@ func TestPostreSQLScaler(t *testing.T) {
 			data, postgreSQLtemplates := getPostgreSQLTemplateData()
 
 			CreateKubernetesResources(t, kc, testNamespace, data, postgreSQLtemplates)
-			hashiCorpToken := setupHashiCorpVault(t, kc, test.vaultEngineVersion)
+			hashiCorpToken, _ := setupHashiCorpVault(t, kc, test.vaultEngineVersion, false, false)
 
 			assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, postgreSQLStatefulSetName, testNamespace, 1, 60, 3),
 				"replica count should be %d after 3 minutes", 1)
@@ -312,9 +500,7 @@ func TestPostreSQLScaler(t *testing.T) {
 			assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 				"replica count should be %d after 3 minutes", minReplicaCount)
 
-			testActivation(t, kc, data)
 			testScaleOut(t, kc, data)
-			testScaleIn(t, kc)
 
 			// cleanup
 			KubectlDeleteMultipleWithTemplate(t, data, templates)
@@ -324,7 +510,45 @@ func TestPostreSQLScaler(t *testing.T) {
 	}
 }
 
-func setupHashiCorpVault(t *testing.T, kc *kubernetes.Clientset, kvVersion uint) string {
+func setupHashiCorpVaultPki(t *testing.T, podName string, nameSpace string) *prometheus.VaultPkiData {
+	vaultCommands := []string{
+		"vault secrets enable pki",
+		"vault secrets tune -max-lease-ttl=8760h pki",
+		fmt.Sprintf("vault write pki/root/generate/internal common_name=%s.svc ttl=8760h", testNamespace),
+		"vault write pki/config/urls issuing_certificates=\"http://127.0.0.1:8200/v1/pki/ca\" crl_distribution_points=\"http://127.0.0.1:8200/v1/pki/crl\"",
+		fmt.Sprintf("vault write pki/roles/%s require_cn=false allowed_domains=%s.svc allow_subdomains=true max_ttl=72h", testNamespace, testNamespace),
+	}
+	for _, vaultCommand := range vaultCommands {
+		_, _, err := ExecCommandOnSpecificPod(
+			t,
+			podName,
+			nameSpace,
+			vaultCommand,
+		)
+		assert.NoErrorf(t, err, "cannot set vault pki command %s - %s", vaultCommand, err)
+	}
+	rawPkiSecret, _, err := ExecCommandOnSpecificPod(
+		t,
+		podName,
+		nameSpace,
+		fmt.Sprintf("vault write pki/issue/%s common_name=%s.%s.svc -format=json", testNamespace, prometheusServerName, testNamespace),
+	)
+	assert.NoErrorf(t, err, "cannot issue certificate - %s", err)
+	var pkiSecret vaultapi.Secret
+	err = json.Unmarshal([]byte(rawPkiSecret), &pkiSecret)
+	assert.NoErrorf(t, err, "cannot read certificate raw secret - %s", err)
+	serverKey := b64.StdEncoding.EncodeToString([]byte(pkiSecret.Data["private_key"].(string)))
+	serverCertificate := b64.StdEncoding.EncodeToString([]byte(pkiSecret.Data["certificate"].(string)))
+	caCertificate := b64.StdEncoding.EncodeToString([]byte((pkiSecret.Data["ca_chain"].([]interface{}))[0].(string)))
+	pkiData := prometheus.VaultPkiData{
+		ServerKey:         serverKey,
+		ServerCertificate: serverCertificate,
+		CaCertificate:     caCertificate,
+	}
+	return &pkiData
+}
+
+func setupHashiCorpVault(t *testing.T, kc *kubernetes.Clientset, kvVersion uint, useKubernetesAuth, pki bool) (string, *prometheus.VaultPkiData) {
 	CreateNamespace(t, kc, vaultNamespace)
 
 	_, err := ExecuteCommand("helm repo add hashicorp https://helm.releases.hashicorp.com")
@@ -345,13 +569,41 @@ func setupHashiCorpVault(t *testing.T, kc *kubernetes.Clientset, kvVersion uint)
 
 	podName := "vault-0"
 
-	_, _, err = ExecCommandOnSpecificPod(t, podName, vaultNamespace, fmt.Sprintf("vault kv put secret/keda connectionString=%s", postgreSQLConnectionString))
-	assert.NoErrorf(t, err, "cannot put connection string in hashicorp vault - %s", err)
+	// Enable Kubernetes auth
+	if useKubernetesAuth {
+		if pki {
+			remoteFile := "/tmp/policy.hcl"
+			KubectlCopyToPod(t, pkiPolicyTemplate, remoteFile, podName, vaultNamespace)
+			assert.NoErrorf(t, err, "cannot create policy file in hashicorp vault - %s", err)
+			_, _, err = ExecCommandOnSpecificPod(t, podName, vaultNamespace, fmt.Sprintf("vault policy write pkiPolicy %s", remoteFile))
+			assert.NoErrorf(t, err, "cannot create policy in hashicorp vault - %s", err)
+		}
+		_, _, err = ExecCommandOnSpecificPod(t, podName, vaultNamespace, "vault auth enable kubernetes")
+		assert.NoErrorf(t, err, "cannot enable kubernetes in hashicorp vault - %s", err)
+		_, _, err = ExecCommandOnSpecificPod(t, podName, vaultNamespace, "vault write auth/kubernetes/config kubernetes_host=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT")
+		assert.NoErrorf(t, err, "cannot set kubernetes host in hashicorp vault - %s", err)
+		_, _, err = ExecCommandOnSpecificPod(t, podName, vaultNamespace, "vault write auth/kubernetes/role/keda bound_service_account_names=keda-operator bound_service_account_namespaces=keda policies=pkiPolicy ttl=1h")
+		assert.NoErrorf(t, err, "cannot cerate keda role in hashicorp vault - %s", err)
+	}
+	// Create kv secret
+	if !pki {
+		_, _, err = ExecCommandOnSpecificPod(t, podName, vaultNamespace, fmt.Sprintf("vault kv put secret/keda connectionString=%s", postgreSQLConnectionString))
+		assert.NoErrorf(t, err, "cannot put connection string in hashicorp vault - %s", err)
+	}
 
-	out, _, err := ExecCommandOnSpecificPod(t, podName, vaultNamespace, "vault token create -field token")
-	assert.NoErrorf(t, err, "cannot create hashicorp vault token - %s", err)
+	// Create PKI Backend
+	var pkiData *prometheus.VaultPkiData
+	if pki {
+		pkiData = setupHashiCorpVaultPki(t, podName, vaultNamespace)
+	}
 
-	return out
+	// Generate Hashicorp Token
+	token := "INVALID"
+	if !useKubernetesAuth {
+		token, _, err = ExecCommandOnSpecificPod(t, podName, vaultNamespace, "vault token create -field token")
+		assert.NoErrorf(t, err, "cannot create hashicorp vault token - %s", err)
+	}
+	return token, pkiData
 }
 
 func cleanupHashiCorpVault(t *testing.T) {
@@ -364,26 +616,20 @@ func cleanupHashiCorpVault(t *testing.T) {
 	DeleteNamespace(t, vaultNamespace)
 }
 
-func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing activation ---")
-	KubectlApplyWithTemplate(t, data, "lowLevelRecordsJobTemplate", lowLevelRecordsJobTemplate)
-
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
-}
-
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testPromScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
-	KubectlApplyWithTemplate(t, data, "insertRecordsJobTemplate", insertRecordsJobTemplate)
+	KubectlReplaceWithTemplate(t, data, "generateLoadJobTemplate", generatePromLoadJobTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale in ---")
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing scale out ---")
+	KubectlReplaceWithTemplate(t, data, "insertRecordsJobTemplate", insertRecordsJobTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %d after 3 minutes", minReplicaCount)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 5),
+		"replica count should be %d after 5 minutes", maxReplicaCount)
 }
 
 var data = templateData{
@@ -398,14 +644,29 @@ var data = templateData{
 	PostgreSQLUsername:               postgreSQLUsername,
 	PostgreSQLPassword:               postgreSQLPassword,
 	PostgreSQLDatabase:               postgreSQLDatabase,
-	PostgreSQLConnectionStringBase64: base64.StdEncoding.EncodeToString([]byte(postgreSQLConnectionString)),
+	PostgreSQLConnectionStringBase64: b64.StdEncoding.EncodeToString([]byte(postgreSQLConnectionString)),
+	PrometheusServerName:             prometheusServerName,
+	MonitoredAppName:                 monitoredAppName,
+	PublishDeploymentName:            publishDeploymentName,
 	VaultNamespace:                   vaultNamespace,
+	VaultPromDomain:                  vaultPromDomain,
+	VaultPkiCommonName:               fmt.Sprintf("keda.%s.svc", testNamespace),
 }
 
 func getPostgreSQLTemplateData() (templateData, []Template) {
 	return data, []Template{
 		{Name: "postgreSQLStatefulSetTemplate", Config: postgreSQLStatefulSetTemplate},
 		{Name: "postgreSQLServiceTemplate", Config: postgreSQLServiceTemplate},
+	}
+}
+
+func getPrometheusTemplateData() (templateData, []Template) {
+	return data, []Template{
+		{Name: "triggerAuthenticationTemplate", Config: prometheusTriggerAuthenticationTemplate},
+		{Name: "deploymentTemplate", Config: prometheusDeploymentTemplate},
+		{Name: "monitoredAppDeploymentTemplate", Config: monitoredAppDeploymentTemplate},
+		{Name: "monitoredAppServiceTemplate", Config: monitoredAppServiceTemplate},
+		{Name: "scaledObjectTemplate", Config: prometheusScaledObjectTemplate},
 	}
 }
 

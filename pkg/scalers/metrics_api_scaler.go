@@ -23,7 +23,7 @@ import (
 type metricsAPIScaler struct {
 	metricType v2.MetricTargetType
 	metadata   *metricsAPIScalerMetadata
-	client     *http.Client
+	httpClient *http.Client
 	logger     logr.Logger
 }
 
@@ -57,7 +57,7 @@ type metricsAPIScalerMetadata struct {
 	enableBearerAuth bool
 	bearerToken      string
 
-	scalerIndex int
+	triggerIndex int
 }
 
 const (
@@ -89,14 +89,14 @@ func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
 	return &metricsAPIScaler{
 		metricType: metricType,
 		metadata:   meta,
-		client:     httpClient,
+		httpClient: httpClient,
 		logger:     InitializeLogger(config, "metrics_api_scaler"),
 	}, nil
 }
 
 func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, error) {
 	meta := metricsAPIScalerMetadata{}
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	meta.unsafeSsl = false
 	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
@@ -233,7 +233,7 @@ func (s *metricsAPIScaler) getMetricValue(ctx context.Context) (float64, error) 
 		return 0, err
 	}
 
-	r, err := s.client.Do(request)
+	r, err := s.httpClient.Do(request)
 	if err != nil {
 		return 0, err
 	}
@@ -257,6 +257,9 @@ func (s *metricsAPIScaler) getMetricValue(ctx context.Context) (float64, error) 
 
 // Close does nothing in case of metricsAPIScaler
 func (s *metricsAPIScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 
@@ -264,7 +267,7 @@ func (s *metricsAPIScaler) Close(context.Context) error {
 func (s *metricsAPIScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("metric-api-%s", s.metadata.valueLocation))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("metric-api-%s", s.metadata.valueLocation))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.targetValue),
 	}

@@ -43,7 +43,7 @@ type githubRunnerMetadata struct {
 	repos                     []string
 	labels                    []string
 	targetWorkflowQueueLength int64
-	scalerIndex               int
+	triggerIndex              int
 	applicationID             *int64
 	installationID            *int64
 	applicationKey            *string
@@ -432,7 +432,7 @@ func parseGitHubRunnerMetadata(config *ScalerConfig) (*githubRunnerMetadata, err
 		return nil, fmt.Errorf("no personalAccessToken or appKey given")
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	return meta, nil
 }
@@ -661,7 +661,7 @@ func (s *githubRunnerScaler) GetMetricsAndActivity(ctx context.Context, metricNa
 func (s *githubRunnerScaler) GetMetricSpecForScaling(_ context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("github-runner-%s", s.metadata.owner))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("github-runner-%s", s.metadata.owner))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.targetWorkflowQueueLength),
 	}
@@ -670,5 +670,8 @@ func (s *githubRunnerScaler) GetMetricSpecForScaling(_ context.Context) []v2.Met
 }
 
 func (s *githubRunnerScaler) Close(_ context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }

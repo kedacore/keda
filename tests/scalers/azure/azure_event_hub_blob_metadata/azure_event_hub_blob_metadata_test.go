@@ -90,7 +90,6 @@ spec:
       containers:
         - name: {{.DeploymentName}}
           image: ghcr.io/kedacore/tests-azure-eventhub-dotnet
-          resources:
           env:
             - name: EVENTHUB_CONNECTION_STRING
               valueFrom:

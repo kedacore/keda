@@ -5,6 +5,10 @@ on:
     branches: [ "main" ]
   pull_request_target: {}
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   semgrep:
     name: Analyze Semgrep
@@ -12,7 +16,7 @@ jobs:
     container: returntocorp/semgrep
     if: (github.actor != 'dependabot[bot]')
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
       - name: Register workspace path
         if: ${{ github.event.number > 0 }}
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -31,7 +35,7 @@ jobs:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
 
       - name: Upload SARIF file for GitHub Advanced Security Dashboard
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: semgrep.sarif
         if: ${{ github.event.number == '' && !cancelled() }}

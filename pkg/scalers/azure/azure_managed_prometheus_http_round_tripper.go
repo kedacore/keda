@@ -26,7 +26,7 @@ type azureManagedPrometheusHTTPRoundTripper struct {
 	resourceURL       string
 }
 
-// Tries to get a round tripper.
+// TryAndGetAzureManagedPrometheusHTTPRoundTripper tries to get a round tripper.
 // If the pod identity represents azure auth, it creates a round tripper and returns that. Returns error if fails to create one.
 // If its not azure auth, then this becomes a no-op. Neither returns round tripper nor error.
 func TryAndGetAzureManagedPrometheusHTTPRoundTripper(logger logr.Logger, podIdentity kedav1alpha1.AuthPodIdentity, triggerMetadata map[string]string) (http.RoundTripper, error) {
@@ -68,7 +68,7 @@ func TryAndGetAzureManagedPrometheusHTTPRoundTripper(logger logr.Logger, podIden
 	return nil, nil
 }
 
-// Sets Auhtorization header for requests
+// RoundTrip sets authorization header for requests
 func (rt *azureManagedPrometheusHTTPRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	token, err := rt.chainedCredential.GetToken(req.Context(), policy.TokenRequestOptions{Scopes: []string{rt.resourceURL}})
 

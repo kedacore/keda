@@ -92,6 +92,10 @@ type defaultCheckpointer struct {
 	containerName string
 }
 
+func NewCheckpoint(offset string, sequenceNumber int64) Checkpoint {
+	return Checkpoint{baseCheckpoint: baseCheckpoint{Offset: offset}, SequenceNumber: sequenceNumber}
+}
+
 // GetCheckpointFromBlobStorage reads depending of the CheckpointStrategy the checkpoint from a azure storage
 func GetCheckpointFromBlobStorage(ctx context.Context, httpClient util.HTTPDoer, info EventHubInfo, partitionID string) (Checkpoint, error) {
 	checkpointer := newCheckpointer(info, partitionID)
@@ -100,22 +104,22 @@ func GetCheckpointFromBlobStorage(ctx context.Context, httpClient util.HTTPDoer,
 
 func newCheckpointer(info EventHubInfo, partitionID string) checkpointer {
 	switch {
-	case (info.CheckpointStrategy == "goSdk"):
+	case info.CheckpointStrategy == "goSdk":
 		return &goSdkCheckpointer{
 			containerName: info.BlobContainer,
 			partitionID:   partitionID,
 		}
-	case (info.CheckpointStrategy == "dapr"):
+	case info.CheckpointStrategy == "dapr":
 		return &daprCheckpointer{
 			containerName: info.BlobContainer,
 			partitionID:   partitionID,
 		}
-	case (info.CheckpointStrategy == "blobMetadata"):
+	case info.CheckpointStrategy == "blobMetadata":
 		return &blobMetadataCheckpointer{
 			containerName: info.BlobContainer,
 			partitionID:   partitionID,
 		}
-	case (info.CheckpointStrategy == "azureFunction" || info.BlobContainer == ""):
+	case info.CheckpointStrategy == "azureFunction" || info.BlobContainer == "":
 		return &azureFunctionCheckpointer{
 			containerName: "azure-webjobs-eventhub",
 			partitionID:   partitionID,

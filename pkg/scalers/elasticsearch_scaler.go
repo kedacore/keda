@@ -220,7 +220,7 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 		meta.activationTargetValue = activationTargetValue
 	}
 
-	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, util.NormalizeString(fmt.Sprintf("elasticsearch-%s", meta.searchTemplateName)))
+	meta.metricName = GenerateMetricNameWithIndex(config.TriggerIndex, util.NormalizeString(fmt.Sprintf("elasticsearch-%s", meta.searchTemplateName)))
 	return &meta, nil
 }
 

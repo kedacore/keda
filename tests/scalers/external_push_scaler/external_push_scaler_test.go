@@ -191,7 +191,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 	t.Log("scaling to min replicas")
 	data.MetricValue = data.MetricThreshold
-	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"replica count should be 1 after 1 minute")
@@ -199,7 +199,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 	t.Log("scaling to max replicas")
 	data.MetricValue = data.MetricThreshold * 2
-	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 2),
 		"replica count should be 2 after 2 minutes")
@@ -211,7 +211,7 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 	t.Log("scaling to idle replicas")
 	data.MetricValue = 0
-	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 2),
 		"replica count should be 0 after 2 minutes")

@@ -20,18 +20,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/antonmedv/expr"
+	"github.com/expr-lang/expr"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	appsv1 "k8s.io/api/apps/v1"
 	v2 "k8s.io/api/autoscaling/v2"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -229,6 +232,147 @@ func TestGetScaledObjectMetrics_FromCache(t *testing.T) {
 	scalerCache.Close(context.Background())
 }
 
+// TestGetScaledObjectMetrics_InParallel executes
+// a request to multiple scalers with a delay.
+// The sum off all the scalers is more than the timeout
+// but all of them in parallel are recovered in time
+func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
+	scaledObjectName := testNameGlobal
+	scaledObjectNamespace := testNamespaceGlobal
+	metricNames := []string{
+		"test-metric-name-1",
+		"test-metric-name-2",
+		"test-metric-name-3",
+		"test-metric-name-4",
+		"test-metric-name-5",
+		"test-metric-name-6",
+		"test-metric-name-7",
+		"test-metric-name-8",
+		"test-metric-name-9",
+		"test-metric-name-10",
+	}
+	metricsName := strings.Join(metricNames, ";")
+	longPollingInterval := int32(300)
+
+	ctrl := gomock.NewController(t)
+	recorder := record.NewFakeRecorder(1)
+	mockClient := mock_client.NewMockClient(ctrl)
+	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
+	mockStatusWriter := mock_client.NewMockStatusWriter(ctrl)
+
+	scalerCollection := []*mock_scalers.MockScaler{}
+
+	for i := 0; i < len(metricNames); i++ {
+		scalerCollection = append(scalerCollection, mock_scalers.NewMockScaler(ctrl))
+	}
+
+	metricsSpecFn := func(index int) []v2.MetricSpec {
+		return []v2.MetricSpec{createMetricSpec(10, metricNames[index])}
+	}
+	metricsValueFn := func(index int) []external_metrics.ExternalMetricValue {
+		time.Sleep(200 * time.Millisecond)
+		return []external_metrics.ExternalMetricValue{scalers.GenerateMetricInMili(metricNames[index], float64(10))}
+	}
+	scalerConfigFn := func(index int) *scalers.ScalerConfig {
+		return &scalers.ScalerConfig{
+			TriggerUseCachedMetrics: false,
+			TriggerIndex:            index,
+		}
+	}
+
+	scalerFactoryFn := func(index int) func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+		return func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+			return scalerCollection[index], scalerConfigFn(index), nil
+		}
+	}
+
+	scaledObject := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      scaledObjectName,
+			Namespace: scaledObjectNamespace,
+		},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+				Name: "test",
+			},
+			PollingInterval: &longPollingInterval,
+			Advanced: &kedav1alpha1.AdvancedConfig{
+				ScalingModifiers: kedav1alpha1.ScalingModifiers{
+					Target: "1",
+				},
+			},
+		},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			ScaleTargetGVKR: &kedav1alpha1.GroupVersionKindResource{
+				Group: "apps",
+				Kind:  "Deployment",
+			},
+			ExternalMetricNames: metricNames,
+		},
+	}
+
+	scalerCache := cache.ScalersCache{
+		ScaledObject: &scaledObject,
+		Scalers:      []cache.ScalerBuilder{},
+		Recorder:     recorder,
+	}
+	for i := 0; i < len(metricNames); i++ {
+		scalerCache.Scalers = append(scalerCache.Scalers, cache.ScalerBuilder{
+			Scaler:       scalerCollection[i],
+			ScalerConfig: *scalerConfigFn(i),
+			Factory:      scalerFactoryFn(i),
+		})
+	}
+
+	caches := map[string]*cache.ScalersCache{}
+	caches[scaledObject.GenerateIdentifier()] = &scalerCache
+
+	sh := scaleHandler{
+		client:                   mockClient,
+		scaleLoopContexts:        &sync.Map{},
+		scaleExecutor:            mockExecutor,
+		globalHTTPTimeout:        time.Duration(1000),
+		recorder:                 recorder,
+		scalerCaches:             caches,
+		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+	}
+
+	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+	for i := 0; i < len(metricNames); i++ {
+		i := i
+		scalerCollection[i].EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecFn(i))
+		scalerCollection[i].EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+			return metricsValueFn(i), true, nil
+		})
+	}
+	mockExecutor.EXPECT().RequestScale(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
+	assert.Eventually(t, func() bool {
+		sh.checkScalers(context.TODO(), &scaledObject, &sync.RWMutex{})
+		return true
+	}, 1*time.Second, 400*time.Millisecond, "timeout exceeded: scalers not processed in parallel during `checkScalers`")
+
+	mockClient.EXPECT().Status().Times(len(metricNames)).Return(mockStatusWriter)
+	mockStatusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(len(metricNames)).Return(nil)
+	for i := 0; i < len(metricNames); i++ {
+		i := i
+		scalerCollection[i].EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecFn(i))
+		scalerCollection[i].EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+			return metricsValueFn(i), true, nil
+		})
+	}
+	assert.EventuallyWithT(t, func(c *assert.CollectT) {
+		metrics, err := sh.GetScaledObjectMetrics(context.TODO(), scaledObjectName, scaledObjectNamespace, metricsName)
+		assert.NotNil(c, metrics)
+		assert.Nil(c, err)
+	}, 1*time.Second, 400*time.Millisecond, "timeout exceeded: scalers not processed in parallel during `GetScaledObjectMetrics`")
+
+	for i := 0; i < len(metricNames); i++ {
+		scalerCollection[i].EXPECT().Close(gomock.Any())
+	}
+	scalerCache.Close(context.Background())
+}
+
 func TestCheckScaledObjectScalersWithError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockClient := mock_client.NewMockClient(ctrl)
@@ -288,6 +432,126 @@ func TestCheckScaledObjectScalersWithError(t *testing.T) {
 
 	assert.Equal(t, false, isActive)
 	assert.Equal(t, true, isError)
+}
+
+func TestCheckScaledObjectScalersWithTriggerAuthError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
+	recorder := record.NewFakeRecorder(1)
+
+	scaler := mock_scalers.NewMockScaler(ctrl)
+	scaler.EXPECT().Close(gomock.Any())
+
+	factory := func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+		scaler := mock_scalers.NewMockScaler(ctrl)
+		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{}, false, errors.New("some error"))
+		scaler.EXPECT().Close(gomock.Any())
+		return scaler, &scalers.ScalerConfig{}, nil
+	}
+
+	deployment := appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "deployment-test",
+			Namespace: "test",
+		},
+		Spec: appsv1.DeploymentSpec{
+			Template: v1.PodTemplateSpec{
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Name: "container",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	scaledObject := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "scaledobject-test",
+			Namespace: "test",
+		},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+				Name: deployment.Name,
+			},
+			Triggers: []kedav1alpha1.ScaleTriggers{
+				{
+					Name: triggerName1,
+					Type: "fake_trig1",
+					AuthenticationRef: &kedav1alpha1.AuthenticationRef{
+						Name: "triggerauth-test",
+					},
+				},
+			},
+		},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			ScaleTargetGVKR: &kedav1alpha1.GroupVersionKindResource{
+				Group: "apps",
+				Kind:  "Deployment",
+			},
+			ExternalMetricNames: []string{metricName1, metricName2},
+		},
+	}
+
+	triggerAuth := kedav1alpha1.TriggerAuthentication{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "triggerauth-test",
+			Namespace: "test",
+		},
+		Spec: kedav1alpha1.TriggerAuthenticationSpec{
+			HashiCorpVault: &kedav1alpha1.HashiCorpVault{
+				Address:        "invalid-vault-address",
+				Authentication: "token",
+				Credential: &kedav1alpha1.Credential{
+					Token: "my-token",
+				},
+				Mount: "kubernetes",
+				Role:  "my-role",
+				Secrets: []kedav1alpha1.VaultSecret{
+					{
+						Parameter: "username",
+						Key:       "username",
+						Path:      "secret_v2/data/my-username-path",
+					},
+				},
+			},
+		},
+	}
+
+	scalerCache := cache.ScalersCache{
+		Scalers: []cache.ScalerBuilder{{
+			Scaler:  scaler,
+			Factory: factory,
+		}},
+		Recorder: recorder,
+	}
+
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: deployment.Name, Namespace: deployment.Namespace}, gomock.Any()).SetArg(2, deployment)
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: triggerAuth.Name, Namespace: triggerAuth.Namespace}, gomock.Any()).SetArg(2, triggerAuth)
+
+	sh := scaleHandler{
+		client:                   mockClient,
+		scaleLoopContexts:        &sync.Map{},
+		scaleExecutor:            mockExecutor,
+		globalHTTPTimeout:        time.Duration(1000),
+		recorder:                 recorder,
+		scalerCaches:             map[string]*cache.ScalersCache{},
+		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+	}
+
+	isActive, isError, _, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
+	scalerCache.Close(context.Background())
+
+	assert.Equal(t, false, isActive)
+	assert.Equal(t, true, isError)
+
+	failureEvent := <-recorder.Events
+	assert.Contains(t, failureEvent, "KEDAScalerFailed")
+	assert.Contains(t, failureEvent, "unsupported protocol scheme")
 }
 
 func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
@@ -649,8 +913,8 @@ func TestScalingModifiersFormula(t *testing.T) {
 	scaler1 := mock_scalers.NewMockScaler(ctrl)
 	scaler2 := mock_scalers.NewMockScaler(ctrl)
 	// dont use cached metrics
-	scalerConfig1 := scalers.ScalerConfig{TriggerUseCachedMetrics: false, TriggerName: triggerName1, ScalerIndex: 0}
-	scalerConfig2 := scalers.ScalerConfig{TriggerUseCachedMetrics: false, TriggerName: triggerName2, ScalerIndex: 1}
+	scalerConfig1 := scalers.ScalerConfig{TriggerUseCachedMetrics: false, TriggerName: triggerName1, TriggerIndex: 0}
+	scalerConfig2 := scalers.ScalerConfig{TriggerUseCachedMetrics: false, TriggerName: triggerName2, TriggerIndex: 1}
 	factory1 := func() (scalers.Scaler, *scalers.ScalerConfig, error) {
 		return scaler1, &scalerConfig1, nil
 	}

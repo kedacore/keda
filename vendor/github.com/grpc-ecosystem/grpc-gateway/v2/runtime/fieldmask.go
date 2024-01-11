@@ -7,9 +7,9 @@ import (
 	"io"
 	"sort"
 
-	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	field_mask "google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
 func getFieldByName(fields protoreflect.FieldDescriptors, name string) protoreflect.FieldDescriptor {
@@ -27,7 +27,7 @@ func FieldMaskFromRequestBody(r io.Reader, msg proto.Message) (*field_mask.Field
 	var root interface{}
 
 	if err := json.NewDecoder(r).Decode(&root); err != nil {
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return fm, nil
 		}
 		return nil, err

@@ -118,7 +118,7 @@ func parseAzureDataExplorerMetadata(config *ScalerConfig, logger logr.Logger) (*
 	}
 
 	// Generate metricName.
-	metadata.MetricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s", adxName, metadata.DatabaseName)))
+	metadata.MetricName = GenerateMetricNameWithIndex(config.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s", adxName, metadata.DatabaseName)))
 
 	activeDirectoryEndpoint, err := azure.ParseActiveDirectoryEndpoint(config.TriggerMetadata)
 	if err != nil {
@@ -159,18 +159,16 @@ func parseAzureDataExplorerAuthParams(config *ScalerConfig, logger logr.Logger) 
 		}
 		metadata.ClientID = clientID
 
-		// FIXME: DEPRECATED to be removed in v2.13
-		// We should get the secret only from AuthConfig or env
-		clientSecret, err := getParameterFromConfig(config, "clientSecret", true)
-		if err != nil {
-			return nil, err
+		var clientSecret string
+		if val, ok := config.AuthParams["clientSecret"]; ok && val != "" {
+			clientSecret = val
+		} else if val, ok = config.TriggerMetadata["clientSecretFromEnv"]; ok && val != "" {
+			clientSecret = val
+		} else {
+			return nil, fmt.Errorf("error parsing metadata. Details: clientSecret was not found in metadata. Check your ScaledObject configuration")
 		}
-		if val, ok := config.TriggerMetadata["clientSecret"]; ok && val != "" {
-			logger.Info("getting 'clientSecret' from metadata is deprecated, use 'clientSecretFromEnv' or TriggerAuthentication instead")
-		}
-		// FIXME: DEPRECATED to be removed in v2.13
-
 		metadata.ClientSecret = clientSecret
+
 	default:
 		return nil, fmt.Errorf("error parsing auth params")
 	}
@@ -200,5 +198,8 @@ func (s azureDataExplorerScaler) GetMetricSpecForScaling(context.Context) []v2.M
 }
 
 func (s azureDataExplorerScaler) Close(context.Context) error {
+	if s.client != nil && s.client.HttpClient() != nil {
+		s.client.HttpClient().CloseIdleConnections()
+	}
 	return nil
 }

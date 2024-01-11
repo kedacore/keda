@@ -38,7 +38,7 @@ type couchDBMetadata struct {
 	query                string
 	queryValue           int64
 	activationQueryValue int64
-	scalerIndex          int
+	triggerIndex         int
 }
 
 type Res struct {
@@ -50,7 +50,7 @@ type Res struct {
 func (s *couchDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("coucdb-%s", s.metadata.dbName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("coucdb-%s", s.metadata.dbName))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.queryValue),
 	}
@@ -179,7 +179,7 @@ func parseCouchDBMetadata(config *ScalerConfig) (*couchDBMetadata, string, error
 		// nosemgrep: db-connection-string
 		connStr = "http://" + addr
 	}
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, connStr, nil
 }
 

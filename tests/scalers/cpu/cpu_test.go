@@ -9,6 +9,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -28,6 +29,7 @@ var (
 	testNamespace          = fmt.Sprintf("%s-ns", testName)
 	deploymentName         = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName       = fmt.Sprintf("%s-so", testName)
+	hpaName                = fmt.Sprintf("keda-hpa-%s-so", testName)
 )
 
 type templateData struct {
@@ -197,11 +199,18 @@ func scaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"Replica count should start out as 1")
 
+	// The default metrics-server window is 30s, and that's what keda is used to, but some platforms use things like
+	// prometheus-adapter, and have the window tuned to a larger window of say 5m. In that case it takes 5 minutes before
+	// the HPA can even start scaling, and as a result we'll fail this test unless we wait for the metrics before we start.
+	// We'd read the window straight from the metrics-server config, but we'd have to know too much about unusual configurations,
+	// so we just wait up to 10 minutes for the metrics (wherever they're coming from) before we proceed with the test.
+	require.True(t, WaitForHPAMetricsToPopulate(t, kc, hpaName, testNamespace, 120, 5),
+		"HPA should populate metrics within 10 minutes")
+
 	t.Log("--- testing scale out ---")
 	t.Log("--- applying job ---")
 
-	templateTriggerJob := []Template{{Name: "triggerJobTemplate", Config: triggerJob}}
-	KubectlApplyMultipleWithTemplate(t, data, templateTriggerJob)
+	KubectlReplaceWithTemplate(t, data, "triggerJobTemplate", triggerJob)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 180, 1),
 		"Replica count should scale out in next 3 minutes")
@@ -209,7 +218,7 @@ func scaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale in ---")
 	t.Log("--- deleting job ---")
 
-	KubectlDeleteMultipleWithTemplate(t, data, templateTriggerJob)
+	KubectlDeleteWithTemplate(t, data, "triggerJobTemplate", triggerJob)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 180, 1),
 		"Replica count should be 1 in next 3 minutes")

@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017-2023 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 // limitations under the License.
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
-//
-// Author Ewout Prangsma
 //
 
 package driver
@@ -69,6 +67,9 @@ type ClientServerAdmin interface {
 
 	// Logs retrieve logs from server in ArangoDB 3.8.0+ format
 	Logs(ctx context.Context) (ServerLogs, error)
+
+	// GetLicense returns license of an ArangoDB deployment.
+	GetLicense(ctx context.Context) (License, error)
 }
 
 type ServerLogs struct {

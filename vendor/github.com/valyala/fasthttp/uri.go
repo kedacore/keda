@@ -40,7 +40,7 @@ var uriPool = &sync.Pool{
 //
 // URI instance MUST NOT be used from concurrently running goroutines.
 type URI struct {
-	noCopy noCopy //nolint:unused,structcheck
+	noCopy noCopy
 
 	pathOriginal []byte
 	scheme       []byte
@@ -217,11 +217,11 @@ func (u *URI) SetSchemeBytes(scheme []byte) {
 	lowercaseBytes(u.scheme)
 }
 
-func (u *URI) isHttps() bool {
+func (u *URI) isHTTPS() bool {
 	return bytes.Equal(u.scheme, strHTTPS)
 }
 
-func (u *URI) isHttp() bool {
+func (u *URI) isHTTP() bool {
 	return len(u.scheme) == 0 || bytes.Equal(u.scheme, strHTTP)
 }
 
@@ -268,9 +268,7 @@ func (u *URI) SetHostBytes(host []byte) {
 	lowercaseBytes(u.host)
 }
 
-var (
-	ErrorInvalidURI = errors.New("invalid uri")
-)
+var ErrorInvalidURI = errors.New("invalid uri")
 
 // Parse initializes URI from the given host and uri.
 //
@@ -504,7 +502,7 @@ func unescape(s []byte, mode encoding) ([]byte, error) {
 // appearing in a URL string, according to RFC 3986.
 //
 // Please be informed that for now shouldEscape does not check all
-// reserved characters correctly. See golang.org/issue/5684.
+// reserved characters correctly. See https://github.com/golang/go/issues/5684.
 //
 // Based on https://github.com/golang/go/blob/8ac5cbe05d61df0a7a7c9a38ff33305d4dcfea32/src/net/url/url.go#L100
 func shouldEscape(c byte, mode encoding) bool {
@@ -631,7 +629,6 @@ func normalizePath(dst, src []byte) []byte {
 
 	if filepath.Separator == '\\' {
 		// remove \.\ parts
-		b = dst
 		for {
 			n := bytes.Index(b, strBackSlashDotBackSlash)
 			if n < 0 {
@@ -652,7 +649,8 @@ func normalizePath(dst, src []byte) []byte {
 			if nn < 0 {
 				nn = 0
 			}
-			n += len(strSlashDotDotBackSlash) - 1
+			nn++
+			n += len(strSlashDotDotBackSlash)
 			copy(b[nn:], b[n:])
 			b = b[:len(b)-n+nn]
 		}
@@ -690,7 +688,8 @@ func normalizePath(dst, src []byte) []byte {
 func (u *URI) RequestURI() []byte {
 	var dst []byte
 	if u.DisablePathNormalizing {
-		dst = append(u.requestURI[:0], u.PathOriginal()...)
+		dst = u.requestURI[:0]
+		dst = append(dst, u.PathOriginal()...)
 	} else {
 		dst = appendQuotedPath(u.requestURI[:0], u.Path())
 	}

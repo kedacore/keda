@@ -51,7 +51,7 @@ type stanMetadata struct {
 	subject                string
 	lagThreshold           int64
 	activationLagThreshold int64
-	scalerIndex            int
+	triggerIndex           int
 }
 
 const (
@@ -119,7 +119,7 @@ func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
 		meta.activationLagThreshold = activationTargetQueryValue
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	var err error
 	useHTTPS := false
@@ -191,7 +191,7 @@ func (s *stanScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	metricName := kedautil.NormalizeString(fmt.Sprintf("stan-%s", s.metadata.subject))
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.lagThreshold),
 	}
@@ -248,5 +248,8 @@ func (s *stanScaler) GetMetricsAndActivity(ctx context.Context, metricName strin
 
 // Nothing to close here.
 func (s *stanScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }

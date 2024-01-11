@@ -165,6 +165,9 @@ func TestScaler(t *testing.T) {
 	testPause(t, kc, listOptions)
 	testUnpause(t, kc, data, listOptions)
 
+	testPause(t, kc, listOptions)
+	testUnpauseWithBool(t, kc, data, listOptions)
+
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
@@ -203,6 +206,19 @@ func testUnpause(t *testing.T, kc *kubernetes.Clientset, data templateData, list
 	t.Log("--- testing removing Paused annotation ---")
 
 	_, err := ExecuteCommand(fmt.Sprintf("kubectl annotate scaledjob %s autoscaling.keda.sh/paused- --namespace %s", scaledJobName, testNamespace))
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+
+	t.Log("job count increases from zero as job is no longer paused")
+
+	expectedTarget := data.MetricThreshold
+	assert.True(t, WaitForJobByFilterCountUntilIteration(t, kc, testNamespace, expectedTarget, iterationCountLatter, 1, listOptions),
+		"job count should be %d after %d iterations", expectedTarget, iterationCountLatter)
+}
+
+func testUnpauseWithBool(t *testing.T, kc *kubernetes.Clientset, data templateData, listOptions metav1.ListOptions) {
+	t.Log("--- test setting Paused annotation to false ---")
+
+	_, err := ExecuteCommand(fmt.Sprintf("kubectl annotate scaledjob %s autoscaling.keda.sh/paused=false --namespace %s --overwrite=true", scaledJobName, testNamespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 
 	t.Log("job count increases from zero as job is no longer paused")

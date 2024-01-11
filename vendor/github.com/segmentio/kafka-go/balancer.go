@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"sort"
 	"sync"
-	"sync/atomic"
 )
 
 // The Balancer interface provides an abstraction of the message distribution
@@ -36,11 +35,16 @@ func (f BalancerFunc) Balance(msg Message, partitions ...int) int {
 }
 
 // RoundRobin is an Balancer implementation that equally distributes messages
-// across all available partitions.
+// across all available partitions.  It can take an optional chunk size to send
+// ChunkSize messages to the same partition before moving to the next partition.
+// This can be used to improve batch sizes.
 type RoundRobin struct {
+	ChunkSize int
 	// Use a 32 bits integer so RoundRobin values don't need to be aligned to
-	// apply atomic increments.
-	offset uint32
+	// apply increments.
+	counter uint32
+
+	mutex sync.Mutex
 }
 
 // Balance satisfies the Balancer interface.
@@ -49,8 +53,17 @@ func (rr *RoundRobin) Balance(msg Message, partitions ...int) int {
 }
 
 func (rr *RoundRobin) balance(partitions []int) int {
-	length := uint32(len(partitions))
-	offset := atomic.AddUint32(&rr.offset, 1) - 1
+	rr.mutex.Lock()
+	defer rr.mutex.Unlock()
+
+	if rr.ChunkSize < 1 {
+		rr.ChunkSize = 1
+	}
+
+	length := len(partitions)
+	counterNow := rr.counter
+	offset := int(counterNow / uint32(rr.ChunkSize))
+	rr.counter++
 	return partitions[offset%length]
 }
 
@@ -122,7 +135,7 @@ var (
 //
 // The logic to calculate the partition is:
 //
-// 		hasher.Sum32() % len(partitions) => partition
+//	hasher.Sum32() % len(partitions) => partition
 //
 // By default, Hash uses the FNV-1a algorithm.  This is the same algorithm used
 // by the Sarama Producer and ensures that messages produced by kafka-go will
@@ -173,7 +186,7 @@ func (h *Hash) Balance(msg Message, partitions ...int) int {
 //
 // The logic to calculate the partition is:
 //
-//      (int32(hasher.Sum32()) & 0x7fffffff) % len(partitions) => partition
+//	(int32(hasher.Sum32()) & 0x7fffffff) % len(partitions) => partition
 //
 // By default, ReferenceHash uses the FNV-1a algorithm. This is the same algorithm as
 // the Sarama NewReferenceHashPartitioner and ensures that messages produced by kafka-go will

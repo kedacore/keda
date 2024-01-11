@@ -101,18 +101,30 @@ func (e *scaleExecutor) getScalingDecision(scaledJob *kedav1alpha1.ScaledJob, ru
 }
 
 func (e *scaleExecutor) createJobs(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob, scaleTo int64, maxScale int64) {
+	logger.Info("Creating jobs", "Effective number of max jobs", maxScale)
+	if scaleTo > maxScale {
+		scaleTo = maxScale
+	}
+	logger.Info("Creating jobs", "Number of jobs", scaleTo)
+
+	jobs := e.generateJobs(logger, scaledJob, scaleTo)
+	for _, job := range jobs {
+		err := e.client.Create(ctx, job)
+		if err != nil {
+			logger.Error(err, "Failed to create a new Job")
+		}
+	}
+
+	logger.Info("Created jobs", "Number of jobs", scaleTo)
+	e.recorder.Eventf(scaledJob, corev1.EventTypeNormal, eventreason.KEDAJobsCreated, "Created %d jobs", scaleTo)
+}
+
+func (e *scaleExecutor) generateJobs(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob, scaleTo int64) []*batchv1.Job {
 	scaledJob.Spec.JobTargetRef.Template.GenerateName = scaledJob.GetName() + "-"
 	if scaledJob.Spec.JobTargetRef.Template.Labels == nil {
 		scaledJob.Spec.JobTargetRef.Template.Labels = map[string]string{}
 	}
 	scaledJob.Spec.JobTargetRef.Template.Labels["scaledjob.keda.sh/name"] = scaledJob.GetName()
-
-	logger.Info("Creating jobs", "Effective number of max jobs", maxScale)
-
-	if scaleTo > maxScale {
-		scaleTo = maxScale
-	}
-	logger.Info("Creating jobs", "Number of jobs", scaleTo)
 
 	labels := map[string]string{
 		"app.kubernetes.io/name":       scaledJob.GetName(),
@@ -125,12 +137,14 @@ func (e *scaleExecutor) createJobs(ctx context.Context, logger logr.Logger, scal
 		labels[key] = value
 	}
 
+	jobs := make([]*batchv1.Job, int(scaleTo))
 	for i := 0; i < int(scaleTo); i++ {
 		job := &batchv1.Job{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: scaledJob.GetName() + "-",
 				Namespace:    scaledJob.GetNamespace(),
 				Labels:       labels,
+				Annotations:  scaledJob.ObjectMeta.Annotations,
 			},
 			Spec: *scaledJob.Spec.JobTargetRef.DeepCopy(),
 		}
@@ -148,13 +162,9 @@ func (e *scaleExecutor) createJobs(ctx context.Context, logger logr.Logger, scal
 			logger.Error(err, "Failed to set ScaledJob as the owner of the new Job")
 		}
 
-		err = e.client.Create(ctx, job)
-		if err != nil {
-			logger.Error(err, "Failed to create a new Job")
-		}
+		jobs[i] = job
 	}
-	logger.Info("Created jobs", "Number of jobs", scaleTo)
-	e.recorder.Eventf(scaledJob, corev1.EventTypeNormal, eventreason.KEDAJobsCreated, "Created %d jobs", scaleTo)
+	return jobs
 }
 
 func (e *scaleExecutor) isJobFinished(j *batchv1.Job) bool {
@@ -290,8 +300,8 @@ func (e *scaleExecutor) cleanUp(ctx context.Context, scaledJob *kedav1alpha1.Sca
 		return err
 	}
 
-	completedJobs := []batchv1.Job{}
-	failedJobs := []batchv1.Job{}
+	var completedJobs []batchv1.Job
+	var failedJobs []batchv1.Job
 	for _, job := range jobs.Items {
 		job := job
 		finishedJobConditionType := e.getFinishedJobConditionType(&job)

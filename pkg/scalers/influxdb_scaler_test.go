@@ -21,7 +21,7 @@ type parseInfluxDBMetadataTestData struct {
 
 type influxDBMetricIdentifier struct {
 	metadataTestData *parseInfluxDBMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -71,7 +71,7 @@ func TestInfluxDBParseMetadata(t *testing.T) {
 
 func TestInfluxDBGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range influxDBMetricIdentifiers {
-		meta, err := parseInfluxDBMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testInfluxDBResolvedEnv, ScalerIndex: testData.scalerIndex})
+		meta, err := parseInfluxDBMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testInfluxDBResolvedEnv, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

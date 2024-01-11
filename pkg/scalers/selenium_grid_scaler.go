@@ -22,7 +22,7 @@ import (
 type seleniumGridScaler struct {
 	metricType v2.MetricTargetType
 	metadata   *seleniumGridScalerMetadata
-	client     *http.Client
+	httpClient *http.Client
 	logger     logr.Logger
 }
 
@@ -34,7 +34,7 @@ type seleniumGridScalerMetadata struct {
 	activationThreshold int64
 	browserVersion      string
 	unsafeSsl           bool
-	scalerIndex         int
+	triggerIndex        int
 	platformName        string
 }
 
@@ -93,7 +93,7 @@ func NewSeleniumGridScaler(config *ScalerConfig) (Scaler, error) {
 	return &seleniumGridScaler{
 		metricType: metricType,
 		metadata:   meta,
-		client:     httpClient,
+		httpClient: httpClient,
 		logger:     logger,
 	}, nil
 }
@@ -152,12 +152,15 @@ func parseSeleniumGridScalerMetadata(config *ScalerConfig) (*seleniumGridScalerM
 		meta.platformName = DefaultPlatformName
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
 // No cleanup required for selenium grid scaler
 func (s *seleniumGridScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 
@@ -176,7 +179,7 @@ func (s *seleniumGridScaler) GetMetricSpecForScaling(context.Context) []v2.Metri
 	metricName := kedautil.NormalizeString(fmt.Sprintf("seleniumgrid-%s", s.metadata.browserName))
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.targetValue),
 	}
@@ -200,7 +203,7 @@ func (s *seleniumGridScaler) getSessionsCount(ctx context.Context, logger logr.L
 		return -1, err
 	}
 
-	res, err := s.client.Do(req)
+	res, err := s.httpClient.Do(req)
 	if err != nil {
 		return -1, err
 	}

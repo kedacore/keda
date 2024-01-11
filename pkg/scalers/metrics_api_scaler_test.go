@@ -89,12 +89,12 @@ func TestParseMetricsAPIMetadata(t *testing.T) {
 
 type metricsAPIMetricIdentifier struct {
 	metadataTestData *metricsAPIMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
 var metricsAPIMetricIdentifiers = []metricsAPIMetricIdentifier{
-	{metadataTestData: &testMetricsAPIMetadata[1], scalerIndex: 1, name: "s1-metric-api-metric-test"},
+	{metadataTestData: &testMetricsAPIMetadata[1], triggerIndex: 1, name: "s1-metric-api-metric-test"},
 }
 
 func TestMetricsAPIGetMetricSpecForScaling(t *testing.T) {
@@ -105,7 +105,7 @@ func TestMetricsAPIGetMetricSpecForScaling(t *testing.T) {
 				TriggerMetadata:   testData.metadataTestData.metadata,
 				AuthParams:        map[string]string{},
 				GlobalHTTPTimeout: 3000 * time.Millisecond,
-				ScalerIndex:       testData.scalerIndex,
+				TriggerIndex:      testData.triggerIndex,
 			},
 		)
 		if err != nil {
@@ -243,8 +243,8 @@ func TestGetMetricValueErrorMessage(t *testing.T) {
 
 	httpClient := http.Client{Transport: &mockHTTPRoundTripper}
 	s := metricsAPIScaler{
-		metadata: &metricsAPIScalerMetadata{url: "http://dummy:1230/api/v1/"},
-		client:   &httpClient,
+		metadata:   &metricsAPIScalerMetadata{url: "http://dummy:1230/api/v1/"},
+		httpClient: &httpClient,
 	}
 
 	_, err := s.getMetricValue(context.TODO())

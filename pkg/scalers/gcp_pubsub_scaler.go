@@ -16,8 +16,11 @@ import (
 )
 
 const (
-	compositeSubscriptionIDPrefix       = "projects/[a-z][a-zA-Z0-9-]*[a-zA-Z0-9]/subscriptions/[a-zA-Z][a-zA-Z0-9-_~%\\+\\.]*"
-	prefixPubSubStackDriverSubscription = "pubsub.googleapis.com/subscription/"
+	compositeSubscriptionIDPrefix = "projects/[a-z][a-zA-Z0-9-]*[a-zA-Z0-9]/(subscriptions|topics)/[a-zA-Z][a-zA-Z0-9-_~%\\+\\.]*"
+	prefixPubSubResource          = "pubsub.googleapis.com/"
+
+	resourceTypePubSubSubscription = "subscription"
+	resourceTypePubSubTopic        = "topic"
 
 	pubSubModeSubscriptionSize = "SubscriptionSize"
 	pubSubDefaultValue         = 10
@@ -37,9 +40,12 @@ type pubsubMetadata struct {
 	value           float64
 	activationValue float64
 
-	subscriptionName string
+	// a resource is one of subscription or topic
+	resourceType     string
+	resourceName     string
 	gcpAuthorization *gcpAuthorizationMetadata
-	scalerIndex      int
+	triggerIndex     int
+	aggregation      string
 }
 
 // NewPubSubScaler creates a new pubsubScaler
@@ -64,8 +70,7 @@ func NewPubSubScaler(config *ScalerConfig) (Scaler, error) {
 }
 
 func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetadata, error) {
-	// set subscription size to the default mode
-	meta := pubsubMetadata{mode: pubSubModeSubscriptionSize}
+	meta := pubsubMetadata{mode: pubSubModeSubscriptionSize, value: pubSubDefaultValue}
 
 	mode, modePresent := config.TriggerMetadata["mode"]
 	value, valuePresent := config.TriggerMetadata["value"]
@@ -73,6 +78,9 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 	if subSize, subSizePresent := config.TriggerMetadata["subscriptionSize"]; subSizePresent {
 		if modePresent || valuePresent {
 			return nil, errors.New("you can use either mode and value fields or subscriptionSize field")
+		}
+		if _, topicPresent := config.TriggerMetadata["topicName"]; topicPresent {
+			return nil, errors.New("you cannot use subscriptionSize field together with topicName field. Use subscriptionName field instead")
 		}
 		logger.Info("subscriptionSize field is deprecated. Use mode and value fields instead")
 		subSizeValue, err := strconv.ParseFloat(subSize, 64)
@@ -83,7 +91,6 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 	} else {
 		if modePresent {
 			meta.mode = mode
-			meta.value = pubSubDefaultValue
 		}
 
 		if valuePresent {
@@ -95,14 +102,28 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 		}
 	}
 
-	if val, ok := config.TriggerMetadata["subscriptionName"]; ok {
-		if val == "" {
+	meta.aggregation = config.TriggerMetadata["aggregation"]
+
+	sub, subPresent := config.TriggerMetadata["subscriptionName"]
+	topic, topicPresent := config.TriggerMetadata["topicName"]
+	if (!subPresent && !topicPresent) || (subPresent && topicPresent) {
+		return nil, fmt.Errorf("exactly one of subscription or topic name must be given")
+	}
+
+	if subPresent {
+		if sub == "" {
 			return nil, fmt.Errorf("no subscription name given")
 		}
 
-		meta.subscriptionName = val
+		meta.resourceName = sub
+		meta.resourceType = resourceTypePubSubSubscription
 	} else {
-		return nil, fmt.Errorf("no subscription name given")
+		if topic == "" {
+			return nil, fmt.Errorf("no topic name given")
+		}
+
+		meta.resourceName = topic
+		meta.resourceType = resourceTypePubSubTopic
 	}
 
 	meta.activationValue = 0
@@ -119,7 +140,7 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 		return nil, err
 	}
 	meta.gcpAuthorization = auth
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
@@ -139,7 +160,7 @@ func (s *pubsubScaler) Close(context.Context) error {
 func (s *pubsubScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("gcp-ps-%s", s.metadata.subscriptionName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("gcp-ps-%s", s.metadata.resourceName))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.value),
 	}
@@ -163,8 +184,8 @@ func (s *pubsubScaler) GetMetricsAndActivity(ctx context.Context, metricName str
 		mode = "NumUndeliveredMessages"
 	}
 
-	metricType := prefixPubSubStackDriverSubscription + snakeCase(mode)
-
+	prefix := prefixPubSubResource + s.metadata.resourceType + "/"
+	metricType := prefix + snakeCase(mode)
 	value, err := s.getMetrics(ctx, metricType)
 	if err != nil {
 		s.logger.Error(err, "error getting metric", "metricType", metricType)
@@ -195,30 +216,34 @@ func (s *pubsubScaler) setStackdriverClient(ctx context.Context) error {
 // getMetrics gets metric type value from stackdriver api
 func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (float64, error) {
 	if s.client == nil {
-		err := s.setStackdriverClient(ctx)
-		if err != nil {
+		if err := s.setStackdriverClient(ctx); err != nil {
 			return -1, err
 		}
 	}
-	subscriptionID, projectID := getSubscriptionData(s)
-	filter := `metric.type="` + metricType + `" AND resource.labels.subscription_id="` + subscriptionID + `"`
+	resourceID, projectID := getResourceData(s)
+	query, err := s.client.buildMQLQuery(
+		projectID, s.metadata.resourceType, metricType, resourceID, s.metadata.aggregation,
+	)
+	if err != nil {
+		return -1, err
+	}
 
 	// Pubsub metrics are collected every 60 seconds so no need to aggregate them.
 	// See: https://cloud.google.com/monitoring/api/metrics_gcp#gcp-pubsub
-	return s.client.GetMetrics(ctx, filter, projectID, nil)
+	return s.client.QueryMetrics(ctx, projectID, query)
 }
 
-func getSubscriptionData(s *pubsubScaler) (string, string) {
-	var subscriptionID string
+func getResourceData(s *pubsubScaler) (string, string) {
+	var resourceID string
 	var projectID string
 
-	if regexpCompositeSubscriptionIDPrefix.MatchString(s.metadata.subscriptionName) {
-		subscriptionID = strings.Split(s.metadata.subscriptionName, "/")[3]
-		projectID = strings.Split(s.metadata.subscriptionName, "/")[1]
+	if regexpCompositeSubscriptionIDPrefix.MatchString(s.metadata.resourceName) {
+		resourceID = strings.Split(s.metadata.resourceName, "/")[3]
+		projectID = strings.Split(s.metadata.resourceName, "/")[1]
 	} else {
-		subscriptionID = s.metadata.subscriptionName
+		resourceID = s.metadata.resourceName
 	}
-	return subscriptionID, projectID
+	return resourceID, projectID
 }
 
 var (

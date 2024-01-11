@@ -17,7 +17,7 @@ import (
 var ErrDocumentTooLarge = errors.New("an inserted document is too large")
 
 // Batches contains the necessary information to batch split an operation. This is only used for write
-// oeprations.
+// operations.
 type Batches struct {
 	Identifier string
 	Documents  []bsoncore.Document

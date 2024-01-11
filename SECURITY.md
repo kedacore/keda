@@ -1,17 +1,5 @@
 # Security Policy
 
-## Supported Versions
-
-KEDA commits to supporting the n-2 version minor version of the current major release; as well as the last minor version of the previous major release.
-
-Here's an overview:
-
-| Version | Supported          |
-| ------- | ------------------ |
-| 2.0.x   | :white_check_mark: |
-| 1.5.x   | :white_check_mark: |
-| < 1.5   | :x:                |
-
 ## Prevention
 
 We have a few preventive measures in place to detect security vulnerabilities:

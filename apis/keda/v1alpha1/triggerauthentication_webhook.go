@@ -28,6 +28,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
+const (
+	kedaString     = "keda"
+	workloadString = "workload"
+)
+
 var triggerauthenticationlog = logf.Log.WithName("triggerauthentication-validation-webhook")
 
 func (ta *TriggerAuthentication) SetupWebhookWithManager(mgr ctrl.Manager) error {
@@ -112,6 +117,10 @@ func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
 		case PodIdentityProviderAzure, PodIdentityProviderAzureWorkload:
 			if spec.PodIdentity.IdentityID != nil && *spec.PodIdentity.IdentityID == "" {
 				return nil, fmt.Errorf("identityid of PodIdentity should not be empty. If it's set, identityId has to be different than \"\"")
+			}
+		case PodIdentityProviderAws:
+			if spec.PodIdentity.RoleArn != "" && spec.PodIdentity.IsWorkloadIdentityOwner() {
+				return nil, fmt.Errorf("roleArn of PodIdentity can't be set if KEDA isn't identityOwner")
 			}
 		default:
 			return nil, nil

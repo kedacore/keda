@@ -65,7 +65,7 @@ type azureLogAnalyticsMetadata struct {
 	query                   string
 	threshold               float64
 	activationThreshold     float64
-	scalerIndex             int
+	triggerIndex            int
 	logAnalyticsResourceURL string
 	activeDirectoryEndpoint string
 	unsafeSsl               bool
@@ -204,7 +204,7 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 		}
 		meta.activationThreshold = activationThreshold
 	}
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	meta.logAnalyticsResourceURL = defaultLogAnalyticsResourceURL
 	if cloud, ok := config.TriggerMetadata["cloud"]; ok {
@@ -257,7 +257,7 @@ func getParameterFromConfig(config *ScalerConfig, parameter string, checkAuthPar
 func (s *azureLogAnalyticsScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-log-analytics", s.metadata.workspaceID))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-log-analytics", s.metadata.workspaceID))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}
@@ -279,6 +279,9 @@ func (s *azureLogAnalyticsScaler) GetMetricsAndActivity(ctx context.Context, met
 }
 
 func (s *azureLogAnalyticsScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 

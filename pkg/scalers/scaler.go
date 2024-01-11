@@ -20,11 +20,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
 	metrics "github.com/rcrowley/go-metrics"
+	cast "github.com/spf13/cast"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,10 +44,10 @@ func init() {
 
 // Scaler interface
 type Scaler interface {
-	// The scaler returns the metric values and activity for a metric Name
+	// GetMetricsAndActivity returns the metric values and activity for a metric Name
 	GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error)
 
-	// Returns the metrics based on which this scaler determines that the ScaleTarget scales. This is used to construct the HPA spec that is created for
+	// GetMetricSpecForScaling returns the metrics based on which this scaler determines that the ScaleTarget scales. This is used to construct the HPA spec that is created for
 	// this scaled object. The labels used should match the selectors used in GetMetrics
 	GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec
 
@@ -94,8 +96,11 @@ type ScalerConfig struct {
 	// PodIdentity
 	PodIdentity kedav1alpha1.AuthPodIdentity
 
-	// ScalerIndex
-	ScalerIndex int
+	// TriggerIndex
+	TriggerIndex int
+
+	// TriggerUniqueKey for the scaler across KEDA. Useful to identify uniquely the scaler, eg: AWS credentials cache
+	TriggerUniqueKey string
 
 	// MetricType
 	MetricType v2.MetricTargetType
@@ -129,19 +134,19 @@ func GetFromAuthOrMeta(config *ScalerConfig, field string) (string, error) {
 }
 
 // GenerateMetricNameWithIndex helps to add the index prefix to the metric name
-func GenerateMetricNameWithIndex(scalerIndex int, metricName string) string {
-	return fmt.Sprintf("s%d-%s", scalerIndex, metricName)
+func GenerateMetricNameWithIndex(triggerIndex int, metricName string) string {
+	return fmt.Sprintf("s%d-%s", triggerIndex, metricName)
 }
 
 // RemoveIndexFromMetricName removes the index prefix from the metric name
-func RemoveIndexFromMetricName(scalerIndex int, metricName string) (string, error) {
+func RemoveIndexFromMetricName(triggerIndex int, metricName string) (string, error) {
 	metricNameSplit := strings.SplitN(metricName, "-", 2)
 	if len(metricNameSplit) != 2 {
 		return "", fmt.Errorf("metric name without index prefix")
 	}
 
 	indexPrefix, metricNameWithoutIndex := metricNameSplit[0], metricNameSplit[1]
-	if indexPrefix != fmt.Sprintf("s%d", scalerIndex) {
+	if indexPrefix != fmt.Sprintf("s%d", triggerIndex) {
 		return "", fmt.Errorf("metric name contains incorrect index prefix")
 	}
 
@@ -207,5 +212,136 @@ func GenerateMetricInMili(metricName string, value float64) external_metrics.Ext
 		MetricName: metricName,
 		Value:      *resource.NewMilliQuantity(valueMili, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
+	}
+}
+
+// getParameterFromConfigV2 returns the value of the parameter from the config
+func getParameterFromConfigV2(config *ScalerConfig, parameter string, useMetadata bool, useAuthentication bool, useResolvedEnv bool, isOptional bool, defaultVal string, targetType reflect.Type) (interface{}, error) {
+	foundCount := 0
+	var foundVal string
+	var convertedVal interface{}
+	var foundErr error
+
+	if val, ok := config.AuthParams[parameter]; ok && val != "" {
+		foundCount++
+		if useAuthentication {
+			foundVal = val
+		}
+	}
+	if val, ok := config.TriggerMetadata[parameter]; ok && val != "" {
+		foundCount++
+		if useMetadata {
+			foundVal = val
+		}
+	}
+	if envFromVal, envFromOk := config.TriggerMetadata[fmt.Sprintf("%sFromEnv", parameter)]; envFromOk {
+		if val, ok := config.ResolvedEnv[envFromVal]; ok && val != "" {
+			foundCount++
+			if useResolvedEnv {
+				foundVal = val
+			}
+		}
+	}
+
+	convertedVal, foundErr = convertToType(foundVal, targetType)
+	switch {
+	case foundCount > 1:
+		return "", fmt.Errorf("value for parameter '%s' found in more than one place", parameter)
+	case foundCount == 1:
+		if foundErr != nil {
+			return defaultVal, foundErr
+		}
+		return convertedVal, nil
+	case isOptional:
+		return defaultVal, nil
+	default:
+		return "", fmt.Errorf("key not found. Either set the correct key or set isOptional to true and set defaultVal")
+	}
+}
+
+func convertToType(input interface{}, targetType reflect.Type) (interface{}, error) {
+	switch targetType.Kind() {
+	case reflect.String:
+		return fmt.Sprintf("%v", input), nil
+	case reflect.Int:
+		val, err := cast.ToIntE(input)
+		if err != nil {
+			return nil, err
+		}
+		return val, nil
+	case reflect.Int8:
+		val, err := cast.ToInt8E(input)
+		if err != nil {
+			return nil, err
+		}
+		return val, nil
+	case reflect.Int16:
+		val, err := cast.ToInt16E(input)
+		if err != nil {
+			return nil, err
+		}
+		return val, nil
+	case reflect.Int32:
+		val, err := cast.ToInt32E(input)
+		if err != nil {
+			return nil, err
+		}
+		return val, nil
+	case reflect.Int64:
+		val, err := cast.ToInt64E(input)
+		if err != nil {
+			return nil, err
+		}
+		return val, nil
+	case reflect.Uint:
+		val, err := cast.ToUintE(input)
+		if err != nil {
+			return nil, err
+		}
+		return val, nil
+	case reflect.Uint8:
+		val, err := cast.ToUint8E(input)
+		if err != nil {
+			return nil, err
+		}
+		return val, nil
+	case reflect.Uint16:
+		val, err := cast.ToUint16E(input)
+		if err != nil {
+			return nil, err
+		}
+		return val, nil
+	case reflect.Uint32:
+		val, err := cast.ToUint32E(input)
+		if err != nil {
+			return nil, err
+		}
+		return val, nil
+	case reflect.Uint64:
+		val, err := cast.ToUint64E(input)
+		if err != nil {
+			return nil, err
+		}
+		return val, nil
+	case reflect.Float32:
+		val, err := cast.ToFloat32E(input)
+		if err != nil {
+			return nil, err
+		}
+		return val, nil
+	case reflect.Float64:
+		val, err := cast.ToFloat64E(input)
+		if err != nil {
+			return nil, err
+		}
+		return val, nil
+	case reflect.Bool:
+		val, err := cast.ToBoolE(input)
+		if err != nil {
+			return nil, err
+		}
+		return val, nil
+	default:
+		return nil, fmt.Errorf("unsupported target type: %v", targetType)
 	}
 }

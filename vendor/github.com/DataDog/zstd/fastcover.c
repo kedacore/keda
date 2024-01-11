@@ -1,6 +1,6 @@
 #ifndef USE_EXTERNAL_ZSTD
 /*
- * Copyright (c) Facebook, Inc.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
  *
  * This source code is licensed under both the BSD-style license (found in the
@@ -305,7 +305,7 @@ FASTCOVER_computeFrequency(U32* freqs, const FASTCOVER_ctx_t* ctx)
 
 /**
  * Prepare a context for dictionary building.
- * The context is only dependent on the parameter `d` and can used multiple
+ * The context is only dependent on the parameter `d` and can be used multiple
  * times.
  * Returns 0 on success or error code on error.
  * The context must be destroyed with `FASTCOVER_ctx_destroy()`.

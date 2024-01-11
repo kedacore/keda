@@ -54,7 +54,7 @@ int sspi_client_wrap_msg(
     PVOID input,
     ULONG input_length,
     PVOID* output,
-    ULONG* output_length 
+    ULONG* output_length
 );
 
 int sspi_client_destroy(

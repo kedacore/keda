@@ -110,8 +110,27 @@ spec:
                     properties:
                       identityId:
                         type: string
+                      identityOwner:
+                        description: IdentityOwner configures which identity has to
+                          be used during auto discovery, keda or the scaled workload.
+                          Mutually exclusive with roleArn
+                        enum:
+                        - keda
+                        - workload
+                        type: string
                       provider:
                         description: PodIdentityProvider contains the list of providers
+                        enum:
+                        - azure
+                        - azure-workload
+                        - gcp
+                        - aws
+                        - aws-eks
+                        - aws-kiam
+                        type: string
+                      roleArn:
+                        description: RoleArn sets the AWS RoleArn to be used. Mutually
+                          exclusive with IdentityOwner
                         type: string
                     required:
                     - provider
@@ -136,6 +155,23 @@ spec:
                 - secrets
                 - vaultUri
                 type: object
+              configMapTargetRef:
+                items:
+                  description: AuthConfigMapTargetRef is used to authenticate using
+                    a reference to a config map
+                  properties:
+                    key:
+                      type: string
+                    name:
+                      type: string
+                    parameter:
+                      type: string
+                  required:
+                  - key
+                  - name
+                  - parameter
+                  type: object
+                type: array
               env:
                 items:
                   description: AuthEnvironment is used to authenticate using environment
@@ -188,6 +224,26 @@ spec:
                           type: string
                         path:
                           type: string
+                        pkiData:
+                          properties:
+                            altNames:
+                              type: string
+                            commonName:
+                              type: string
+                            format:
+                              type: string
+                            ipSans:
+                              type: string
+                            otherSans:
+                              type: string
+                            ttl:
+                              type: string
+                            uriSans:
+                              type: string
+                          type: object
+                        type:
+                          description: VaultSecretType defines the type of vault secret
+                          type: string
                       required:
                       - key
                       - parameter
@@ -205,8 +261,27 @@ spec:
                 properties:
                   identityId:
                     type: string
+                  identityOwner:
+                    description: IdentityOwner configures which identity has to be
+                      used during auto discovery, keda or the scaled workload. Mutually
+                      exclusive with roleArn
+                    enum:
+                    - keda
+                    - workload
+                    type: string
                   provider:
                     description: PodIdentityProvider contains the list of providers
+                    enum:
+                    - azure
+                    - azure-workload
+                    - gcp
+                    - aws
+                    - aws-eks
+                    - aws-kiam
+                    type: string
+                  roleArn:
+                    description: RoleArn sets the AWS RoleArn to be used. Mutually
+                      exclusive with IdentityOwner
                     type: string
                 required:
                 - provider

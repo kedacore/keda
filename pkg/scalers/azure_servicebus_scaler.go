@@ -65,7 +65,7 @@ type azureServiceBusMetadata struct {
 	useRegex                bool
 	entityNameRegex         *regexp.Regexp
 	operation               string
-	scalerIndex             int
+	triggerIndex            int
 }
 
 // NewAzureServiceBusScaler creates a new AzureServiceBusScaler
@@ -217,7 +217,7 @@ func parseAzureServiceBusMetadata(config *ScalerConfig, logger logr.Logger) (*az
 		return nil, fmt.Errorf("azure service bus doesn't support pod identity %s", config.PodIdentity.Provider)
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	return &meta, nil
 }
@@ -227,7 +227,7 @@ func (s *azureServiceBusScaler) Close(context.Context) error {
 	return nil
 }
 
-// Returns the metric spec to be used by the HPA
+// GetMetricSpecForScaling returns the metric spec to be used by the HPA
 func (s *azureServiceBusScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	metricName := ""
 
@@ -246,7 +246,7 @@ func (s *azureServiceBusScaler) GetMetricSpecForScaling(context.Context) []v2.Me
 
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-servicebus-%s", metricName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-servicebus-%s", metricName))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.targetLength),
 	}

@@ -132,7 +132,7 @@ spec:
       containers:
       - name: github-runner
         image: myoung34/github-runner
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         env:
           - name: EPHEMERAL
             value: "true"

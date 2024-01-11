@@ -40,7 +40,7 @@ type newrelicMetadata struct {
 	nrql                string
 	threshold           float64
 	activationThreshold float64
-	scalerIndex         int
+	triggerIndex        int
 }
 
 func NewNewRelicScaler(config *ScalerConfig) (Scaler, error) {
@@ -143,7 +143,7 @@ func parseNewRelicMetadata(config *ScalerConfig, logger logr.Logger) (*newrelicM
 	} else {
 		meta.noDataError = false
 	}
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
@@ -187,7 +187,7 @@ func (s *newrelicScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpe
 
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}

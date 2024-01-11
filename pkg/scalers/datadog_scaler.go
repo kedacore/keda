@@ -223,7 +223,7 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 	meta.datadogSite = siteVal
 
 	metricName := meta.query[0:strings.Index(meta.query, "{")]
-	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("datadog-%s", metricName)))
+	meta.metricName = GenerateMetricNameWithIndex(config.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("datadog-%s", metricName)))
 
 	return &meta, nil
 }
@@ -263,6 +263,9 @@ func newDatadogConnection(ctx context.Context, meta *datadogMetadata, config *Sc
 
 // No need to close connections
 func (s *datadogScaler) Close(context.Context) error {
+	if s.apiClient != nil {
+		s.apiClient.GetConfig().HTTPClient.CloseIdleConnections()
+	}
 	return nil
 }
 
@@ -396,7 +399,7 @@ func (s *datadogScaler) GetMetricsAndActivity(ctx context.Context, metricName st
 	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.activationQueryValue, nil
 }
 
-// Find the largest value in a slice of floats
+// MaxFloatFromSlice finds the largest value in a slice of floats
 func MaxFloatFromSlice(results []float64) float64 {
 	max := results[0]
 	for _, result := range results {
@@ -407,7 +410,7 @@ func MaxFloatFromSlice(results []float64) float64 {
 	return max
 }
 
-// Find the average value in a slice of floats
+// AvgFloatFromSlice finds the average value in a slice of floats
 func AvgFloatFromSlice(results []float64) float64 {
 	total := 0.0
 	for _, result := range results {

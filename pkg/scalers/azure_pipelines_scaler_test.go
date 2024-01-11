@@ -101,6 +101,8 @@ var testValidateAzurePipelinesPoolData = []validateAzurePipelinesPoolTestData{
 	{"poolName doesn't exist", map[string]string{"poolName": "sample"}, true, "poolName", http.StatusOK, `{"count":0,"value":[]}`},
 	// poolName is used if poolName and poolID are defined
 	{"poolName is used if poolName and poolID are defined", map[string]string{"poolName": "sample", "poolID": "1"}, false, "poolName", http.StatusOK, `{"count":1,"value":[{"id":1}]}`},
+	// poolName can have a space in it
+	{"poolName can have a space in it", map[string]string{"poolName": "sample pool name"}, false, "poolName", http.StatusOK, `{"count":1,"value":[{"id":1}]}`},
 }
 
 func TestValidateAzurePipelinesPool(t *testing.T) {
@@ -109,7 +111,7 @@ func TestValidateAzurePipelinesPool(t *testing.T) {
 			var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				_, ok := r.URL.Query()[testData.queryParam]
 				if !ok {
-					t.Error("Worng QueryParam")
+					t.Error("Wrong QueryParam")
 				}
 				w.WriteHeader(testData.httpCode)
 				_, _ = w.Write([]byte(testData.response))
@@ -132,8 +134,8 @@ func TestValidateAzurePipelinesPool(t *testing.T) {
 }
 
 type azurePipelinesMetricIdentifier struct {
-	scalerIndex int
-	name        string
+	triggerIndex int
+	name         string
 }
 
 var azurePipelinesMetricIdentifiers = []azurePipelinesMetricIdentifier{
@@ -158,7 +160,7 @@ func TestAzurePipelinesGetMetricSpecForScaling(t *testing.T) {
 			"targetPipelinesQueueLength": "1",
 		}
 
-		meta, err := parseAzurePipelinesMetadata(context.TODO(), &ScalerConfig{TriggerMetadata: metadata, ResolvedEnv: nil, AuthParams: authParams, ScalerIndex: testData.scalerIndex}, http.DefaultClient)
+		meta, err := parseAzurePipelinesMetadata(context.TODO(), &ScalerConfig{TriggerMetadata: metadata, ResolvedEnv: nil, AuthParams: authParams, TriggerIndex: testData.triggerIndex}, http.DefaultClient)
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

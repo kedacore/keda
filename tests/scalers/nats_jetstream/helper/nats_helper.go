@@ -18,10 +18,11 @@ type JetStreamTemplateData struct {
 }
 
 const (
-	NatsJetStreamName          = "nats"
-	NatsJetStreamConsumerName  = "PULL_CONSUMER"
-	NatsJetStreamChartVersion  = "0.18.2"
-	NatsJetStreamServerVersion = "2.9.3"
+	NatsJetStreamName              = "nats"
+	NatsJetStreamConsumerName      = "PULL_CONSUMER"
+	Natsv2_10JetStreamChartVersion = "1.1.2"
+	NatsJetStreamChartVersion      = "0.18.2"
+	NatsJetStreamServerVersion     = "2.9.3"
 )
 
 type JetStreamDeploymentTemplateData struct {

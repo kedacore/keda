@@ -64,7 +64,7 @@ type mssqlMetadata struct {
 	activationTargetValue float64
 	// The index of the scaler inside the ScaledObject
 	// +internal
-	scalerIndex int
+	triggerIndex int
 }
 
 // NewMSSQLScaler creates a new mssql scaler
@@ -167,7 +167,7 @@ func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
 			meta.password = config.ResolvedEnv[config.TriggerMetadata["passwordFromEnv"]]
 		}
 	}
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
@@ -227,7 +227,7 @@ func getMSSQLConnectionString(meta *mssqlMetadata) string {
 func (s *mssqlScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, "mssql"),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, "mssql"),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.targetValue),
 	}
