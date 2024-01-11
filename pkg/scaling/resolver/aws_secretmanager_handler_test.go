@@ -15,120 +15,89 @@ limitations under the License.
 */
 package resolver
 
-// import (
-// 	"context"
-// 	"testing"
+import (
+	"context"
+	"testing"
 
-// 	"github.com/aws/aws-sdk-go-v2/aws"
-// 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
-// 	"github.com/stretchr/testify/assert"
-// 	corev1 "k8s.io/api/core/v1"
-// 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/go-logr/logr"
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 
-// 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-// )
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
+	"github.com/kedacore/keda/v2/pkg/util"
+)
 
-// type MockSecretManagerClient struct {
-// 	GetSecretValueFn func(ctx context.Context, params *secretsmanager.GetSecretValueInput, optFns ...func(*secretsmanager.Options)) (*secretsmanager.GetSecretValueOutput, error)
-// }
+func TestAwsSecretManagerHandler_InitializeUsingStaticCredentials(t *testing.T) {
+	expectedAwsRegion := "mocked-region"
+	ctrl := gomock.NewController(util.GinkgoTestReporter{})
+	mockClient := mock_client.NewMockClient(ctrl)
+	secret := corev1.Secret{
+		Data: map[string][]byte{
+			"mocked-access-key-key": []byte("secret"),
+		},
+	}
+	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, secret).Times(2).Return(nil)
 
-// func (m *MockSecretManagerClient) GetSecretValue(ctx context.Context, params *secretsmanager.GetSecretValueInput, optFns ...func(*secretsmanager.Options)) (*secretsmanager.GetSecretValueOutput, error) {
-// 	return m.GetSecretValueFn(ctx, params, optFns...)
-// }
+	awsSecretManagerHandler := &AwsSecretManagerHandler{
+		secretManager: &kedav1alpha1.AwsSecretManager{
+			Region: expectedAwsRegion,
+			Credentials: &kedav1alpha1.AwsSecretManagerCredentials{
+				AccessKey: &kedav1alpha1.AwsSecretManagerValue{
+					ValueFrom: kedav1alpha1.ValueFromSecret{
+						SecretKeyRef: kedav1alpha1.SecretKeyRef{
+							Name: "mocked-access-key-secret",
+							Key:  "mocked-access-key-key",
+						},
+					},
+				},
+				AccessSecretKey: &kedav1alpha1.AwsSecretManagerValue{
+					ValueFrom: kedav1alpha1.ValueFromSecret{
+						SecretKeyRef: kedav1alpha1.SecretKeyRef{
+							Name: "mocked-access-key-secret",
+							Key:  "mocked-access-key-key",
+						},
+					},
+				},
+			},
+		},
+	}
 
-// type MockLogger struct {
-// 	ErrorFn func(err error, msg string, keysAndValues ...interface{})
-// }
+	err := awsSecretManagerHandler.Initialize(context.Background(), mockClient, logr.Discard(), "mocked-trigger-namespace", nil, &corev1.PodSpec{})
 
-// // Error method for MockLogger
-// func (m *MockLogger) Error(err error, msg string, keysAndValues ...interface{}) {
-// 	m.ErrorFn(err, msg, keysAndValues...)
-// }
+	assert.NoError(t, err)
+	assert.Equal(t, expectedAwsRegion, awsSecretManagerHandler.secretManager.Region)
+}
+func TestAwsSecretManagerHandler_InitializeUsingPodIdentity(t *testing.T) {
+	tests := []struct {
+		provider kedav1alpha1.PodIdentityProvider
+		isError  bool
+	}{
+		{provider: kedav1alpha1.PodIdentityProviderAws, isError: false},
+		{provider: kedav1alpha1.PodIdentityProviderAwsEKS, isError: true},
+		{provider: kedav1alpha1.PodIdentityProviderAwsKiam, isError: true},
+		{provider: kedav1alpha1.PodIdentityProviderAzure, isError: true},
+		{provider: kedav1alpha1.PodIdentityProviderAzureWorkload, isError: true},
+		{provider: kedav1alpha1.PodIdentityProviderGCP, isError: true},
+	}
 
-// type MockSecretLister struct {
-// 	GetFn func(name, namespace string) (*corev1.Secret, error)
-// }
+	for _, tc := range tests {
+		awsSecretManagerHandler := &AwsSecretManagerHandler{
+			secretManager: &kedav1alpha1.AwsSecretManager{
+				Region: "expectedAwsRegion",
+				PodIdentity: &kedav1alpha1.AuthPodIdentity{
+					Provider: tc.provider,
+				},
+			},
+		}
 
-// func (m *MockSecretLister) Get(name, namespace string) (*corev1.Secret, error) {
-// 	return m.GetFn(name, namespace)
-// }
+		err := awsSecretManagerHandler.Initialize(context.Background(), nil, logr.Discard(), "mocked-trigger-namespace", nil, &corev1.PodSpec{})
 
-// func TestAwsSecretManagerHandler_Read(t *testing.T) {
-// 	expectedSecretValue := "mocked-secret-value"
-
-// 	mockLogger := &MockLogger{
-// 		ErrorFn: func(err error, msg string, keysAndValues ...interface{}) {
-// 			t.Errorf("Unexpected error in logger: %v", err)
-// 		},
-// 	}
-
-// 	mockSecretManagerClient := &MockSecretManagerClient{
-// 		GetSecretValueFn: func(ctx context.Context, params *secretsmanager.GetSecretValueInput, optFns ...func(*secretsmanager.Options)) (*secretsmanager.GetSecretValueOutput, error) {
-// 			assert.Equal(t, "mocked-secret-name", aws.ToString(params.SecretId))
-// 			return &secretsmanager.GetSecretValueOutput{
-// 				SecretString: aws.String(expectedSecretValue),
-// 			}, nil
-// 		},
-// 	}
-
-// 	awsSecretManagerHandler := &AwsSecretManagerHandler{
-// 		session: mockSecretManagerClient,
-// 	}
-
-// 	secretValue, err := awsSecretManagerHandler.Read(context.Background(), mockLogger, "mocked-secret-name", "", "")
-
-// 	assert.NoError(t, err)
-// 	assert.Equal(t, expectedSecretValue, secretValue)
-// }
-
-// func TestAwsSecretManagerHandler_Initialize(t *testing.T) {
-// 	expectedAwsRegion := "mocked-region"
-
-// 	mockLogger := &MockLogger{
-// 		ErrorFn: func(err error, msg string, keysAndValues ...interface{}) {
-// 			t.Errorf("Unexpected error in logger: %v", err)
-// 		},
-// 	}
-
-// 	// Create a mock client
-// 	mockClient := &MockSecretLister{
-// 		GetFn: func(name, namespace string) (*corev1.Secret, error) {
-// 			assert.Equal(t, "mocked-secret-name", name)
-// 			assert.Equal(t, "mocked-namespace", namespace)
-// 			return &corev1.Secret{
-// 				ObjectMeta: metav1.ObjectMeta{Name: "mocked-secret-name", Namespace: "mocked-namespace"},
-// 				Data:       map[string][]byte{"key": []byte("mocked-value")},
-// 			}, nil
-// 		},
-// 	}
-
-// 	// Create an AwsSecretManagerHandler with the mock client
-// 	awsSecretManagerHandler := &AwsSecretManagerHandler{
-// 		secretManager: &kedav1alpha1.AwsSecretManager{
-// 			Region: "mocked-region",
-// 			Credentials: &kedav1alpha1.AwsSecretManagerCredentials{
-// 				AccessKey: &kedav1alpha1.AwsSecretManagerValue{
-// 					ValueFrom: kedav1alpha1.ValueFromSecret{
-// 						SecretKeyRef: kedav1alpha1.SecretKeyRef{
-// 							Name: "mocked-access-key-secret",
-// 							Key:  "mocked-access-key-key",
-// 						},
-// 					},
-// 				},
-// 				AccessSecretKey: &kedav1alpha1.AwsSecretManagerValue{
-// 					ValueFrom: kedav1alpha1.ValueFromSecret{
-// 						SecretKeyRef: kedav1alpha1.SecretKeyRef{
-// 							Name: "mocked-access-key-secret",
-// 							Key:  "mocked-access-key-key",
-// 						},
-// 					},
-// 				},
-// 			},
-// 		},
-// 	}
-
-// 	err := awsSecretManagerHandler.Initialize(context.Background(), mockClient, mockLogger, "mocked-trigger-namespace", mockClient, &corev1.PodSpec{})
-
-// 	assert.NoError(t, err)
-// 	assert.Equal(t, mocked-secret-name, awsSecretManagerHandler.awsMetadata.AwsRegion)
-// }
+		if tc.isError {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+		}
+	}
+}
