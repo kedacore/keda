@@ -30,6 +30,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.26.7
 	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.18.6
 	github.com/aws/aws-sdk-go-v2/service/kinesis v1.24.6
+	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.25.5
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.29.6
 	github.com/aws/aws-sdk-go-v2/service/sts v1.26.6
 	github.com/bradleyfalzon/ghinstallation/v2 v2.8.0

@@ -185,7 +185,6 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 		if err != nil {
 			return authParams, podIdentity, err
 		}
-
 		switch podIdentity.Provider {
 		case kedav1alpha1.PodIdentityProviderAws:
 			if podIdentity.RoleArn != "" {
@@ -196,33 +195,31 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 				authParams["awsRoleArn"] = podIdentity.RoleArn
 			}
 			if podIdentity.IsWorkloadIdentityOwner() {
-				serviceAccountName := defaultServiceAccount
-				if podTemplateSpec.Spec.ServiceAccountName != "" {
-					serviceAccountName = podTemplateSpec.Spec.ServiceAccountName
-				}
-				serviceAccount := &corev1.ServiceAccount{}
-				err := client.Get(ctx, types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, serviceAccount)
+				value, err := resolveServiceAccountAnnotation(ctx, client, podTemplateSpec.Spec.ServiceAccountName, namespace, kedav1alpha1.PodIdentityAnnotationEKS)
 				if err != nil {
 					return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
-						fmt.Errorf("error getting service account: '%s', error: %w", serviceAccountName, err)
+						fmt.Errorf("error getting service account: '%s', error: %w", podTemplateSpec.Spec.ServiceAccountName, err)
 				}
-				authParams["awsRoleArn"] = serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS]
+				authParams["awsRoleArn"] = value
 			}
 		case kedav1alpha1.PodIdentityProviderAwsEKS:
-			serviceAccountName := defaultServiceAccount
-			if podTemplateSpec.Spec.ServiceAccountName != "" {
-				serviceAccountName = podTemplateSpec.Spec.ServiceAccountName
-			}
-			serviceAccount := &corev1.ServiceAccount{}
-			err = client.Get(ctx, types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, serviceAccount)
+			value, err := resolveServiceAccountAnnotation(ctx, client, podTemplateSpec.Spec.ServiceAccountName, namespace, kedav1alpha1.PodIdentityAnnotationEKS)
 			if err != nil {
 				return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
-					fmt.Errorf("error getting service account: '%s', error: %w", serviceAccountName, err)
+					fmt.Errorf("error getting service account: '%s', error: %w", podTemplateSpec.Spec.ServiceAccountName, err)
 			}
-			authParams["awsRoleArn"] = serviceAccount.Annotations[kedav1alpha1.PodIdentityAnnotationEKS]
+			authParams["awsRoleArn"] = value
+			// FIXME: Delete this for v3
+			logger.Info("WARNING: AWS EKS Identity has been deprecated (https://github.com/kedacore/keda/discussions/5343) and will be removed from KEDA on v3")
 		case kedav1alpha1.PodIdentityProviderAwsKiam:
 			authParams["awsRoleArn"] = podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
+			// FIXME: Delete this for v2.15
+			logger.Info("WARNING: AWS Kiam Identity has been abandoned (https://github.com/uswitch/kiam/commit/29504044e67cb432db03c71a2c3ada56a3c3046d) and will be removed from KEDA on v2.15")
 		case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+			if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzure {
+				// FIXME: Delete this for v2.15
+				logger.Info("WARNING: Azure AD Pod Identity has been archived (https://github.com/Azure/aad-pod-identity#-announcement) and will be removed from KEDA on v2.15")
+			}
 			if podIdentity.IdentityID != nil && *podIdentity.IdentityID == "" {
 				return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, fmt.Errorf("IdentityID of PodIdentity should not be empty")
 			}
@@ -313,6 +310,25 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 					}
 
 					result[secret.Parameter] = res
+				}
+			}
+
+			if triggerAuthSpec.AwsSecretManager != nil && len(triggerAuthSpec.AwsSecretManager.Secrets) > 0 {
+				awsSecretManagerHandler := NewAwsSecretManagerHandler(triggerAuthSpec.AwsSecretManager)
+				err := awsSecretManagerHandler.Initialize(ctx, client, logger, triggerNamespace, secretsLister, podSpec)
+				defer awsSecretManagerHandler.Stop()
+				if err != nil {
+					logger.Error(err, "error authenticating to Aws Secret Manager", "triggerAuthRef.Name", triggerAuthRef.Name)
+				} else {
+					for _, secret := range triggerAuthSpec.AwsSecretManager.Secrets {
+						res, err := awsSecretManagerHandler.Read(ctx, logger, secret.Name, secret.VersionID, secret.VersionStage)
+						if err != nil {
+							logger.Error(err, "error trying to read secret from Aws Secret Manager", "triggerAuthRef.Name", triggerAuthRef.Name,
+								"secret.Name", secret.Name, "secret.Version", secret.VersionID, "secret.VersionStage", secret.VersionStage)
+						} else {
+							result[secret.Parameter] = res
+						}
+					}
 				}
 			}
 		}
@@ -567,4 +583,23 @@ func resolveAuthSecret(ctx context.Context, client client.Client, logger logr.Lo
 	}
 
 	return string(result)
+}
+
+// resolveServiceAccountAnnotation retrieves the value of a specific annotation
+// from the annotations of a given Kubernetes ServiceAccount.
+func resolveServiceAccountAnnotation(ctx context.Context, client client.Client, name, namespace, annotation string) (string, error) {
+	serviceAccountName := defaultServiceAccount
+	if name != "" {
+		serviceAccountName = name
+	}
+	serviceAccount := &corev1.ServiceAccount{}
+	err := client.Get(ctx, types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, serviceAccount)
+	if err != nil {
+		return "", fmt.Errorf("error getting service account: '%s', error: %w", serviceAccountName, err)
+	}
+	value, ok := serviceAccount.Annotations[annotation]
+	if !ok {
+		return "", fmt.Errorf("annotation '%s' not found", annotation)
+	}
+	return value, nil
 }
