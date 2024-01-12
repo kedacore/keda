@@ -21,8 +21,8 @@ require (
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.2.0
 	github.com/DataDog/datadog-api-client-go v1.16.0
 	github.com/Huawei/gophercloud v1.0.21
-	github.com/IBM/sarama v1.41.2
-	github.com/arangodb/go-driver v1.6.0
+	github.com/IBM/sarama v1.42.1
+	github.com/arangodb/go-driver v1.6.1
 	github.com/aws/aws-sdk-go-v2 v1.24.0
 	github.com/aws/aws-sdk-go-v2/config v1.26.2
 	github.com/aws/aws-sdk-go-v2/credentials v1.16.13

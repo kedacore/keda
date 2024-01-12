@@ -2,6 +2,22 @@
 
 ## [master](https://github.com/arangodb/go-driver/tree/master) (N/A)
 
+## [1.6.1](https://github.com/arangodb/go-driver/tree/v1.6.1) (2023-10-31)
+- Add support for getting license
+- Add support for Raw Authentication in VST (support external jwt token as raw element)
+- Fix race when using WithRawResponse/WithResponse context with agencyConnection 
+- Async Client
+- Expose getters for Context values
+- Deprecate `AllowInconsistent` in HotBackup
+- Revert ReturnOld for edge/vertex operations
+- Agency: Deprecate TTL and observe features
+- Bugfix: Force analyzer removal
+- Move examples to separate package
+- Deprecate ClientConfig.SynchronizeEndpointsInterval due to bug in implementation
+- Add Rename function for collections (single server only).
+- Fix using VST for database with non-ANSI characters
+- Automate release process
+
 ## [1.6.0](https://github.com/arangodb/go-driver/tree/v1.6.0) (2023-05-30)
 - Add ErrArangoDatabaseNotFound and IsExternalStorageError helper to v2
 - [V2] Support for Collection Documents removal
