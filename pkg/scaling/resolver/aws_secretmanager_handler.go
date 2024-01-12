@@ -43,6 +43,8 @@ func NewAwsSecretManagerHandler(a *kedav1alpha1.AwsSecretManager) *AwsSecretMana
 	}
 }
 
+// Read fetches the secret value from AWS Secret Manager using the provided secret name, version ID(optional), and version stage(optional).
+// It returns the secret value as a string.
 func (ash *AwsSecretManagerHandler) Read(ctx context.Context, logger logr.Logger, secretName, versionID, versionStage string) (string, error) {
 	input := &secretsmanager.GetSecretValueInput{
 		SecretId: aws.String(secretName),
@@ -61,6 +63,8 @@ func (ash *AwsSecretManagerHandler) Read(ctx context.Context, logger logr.Logger
 	return *result.SecretString, nil
 }
 
+// Initialize sets up the AWS Secret Manager handler by configuring AWS credentials, AWS region, or using pod identity.
+// It initializes the AWS Secret Manager session and metadata.
 func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client client.Client, logger logr.Logger, triggerNamespace string, secretsLister corev1listers.SecretLister, podSpec *corev1.PodSpec) error {
 	ash.awsMetadata = awsutils.AuthorizationMetadata{
 		TriggerUniqueKey: fmt.Sprintf("aws-secret-manager-%s", triggerNamespace),

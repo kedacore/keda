@@ -30,6 +30,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.21.5
 	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.15.5
 	github.com/aws/aws-sdk-go-v2/service/kinesis v1.19.0
+	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.25.5
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.24.5
 	github.com/aws/aws-sdk-go-v2/service/sts v1.22.0
 	github.com/bradleyfalzon/ghinstallation/v2 v2.7.0
@@ -108,8 +109,6 @@ require (
 	sigs.k8s.io/custom-metrics-apiserver v1.28.1-0.20240103150633-c0d09c9b6dd1
 	sigs.k8s.io/kustomize/kustomize/v5 v5.3.0
 )
-
-require github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.25.5
 
 require github.com/google/go-github/v55 v55.0.0 // indirect
 

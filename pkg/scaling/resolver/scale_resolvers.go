@@ -585,6 +585,8 @@ func resolveAuthSecret(ctx context.Context, client client.Client, logger logr.Lo
 	return string(result)
 }
 
+// resolveServiceAccountAnnotation retrieves the value of a specific annotation
+// from the annotations of a given Kubernetes ServiceAccount.
 func resolveServiceAccountAnnotation(ctx context.Context, client client.Client, name, namespace, annotation string) (string, error) {
 	serviceAccountName := defaultServiceAccount
 	if name != "" {
