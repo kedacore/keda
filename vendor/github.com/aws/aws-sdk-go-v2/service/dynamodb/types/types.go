@@ -1173,11 +1173,18 @@ type ExportDescription struct {
 	// Point in time from which table data was exported.
 	ExportTime *time.Time
 
+	// The type of export that was performed. Valid values are FULL_EXPORT or
+	// INCREMENTAL_EXPORT .
+	ExportType ExportType
+
 	// Status code for the result of the failed export.
 	FailureCode *string
 
 	// Export failure reason description.
 	FailureMessage *string
+
+	// Optional object containing the parameters specific to an incremental export.
+	IncrementalExportSpecification *IncrementalExportSpecification
 
 	// The number of items exported.
 	ItemCount *int64
@@ -1223,6 +1230,10 @@ type ExportSummary struct {
 
 	// Export can be in one of the following states: IN_PROGRESS, COMPLETED, or FAILED.
 	ExportStatus ExportStatus
+
+	// The type of export that was performed. Valid values are FULL_EXPORT or
+	// INCREMENTAL_EXPORT .
+	ExportType ExportType
 
 	noSmithyDocumentSerde
 }
@@ -1603,6 +1614,28 @@ type ImportTableDescription struct {
 
 	// The table id corresponding to the table created by import table process.
 	TableId *string
+
+	noSmithyDocumentSerde
+}
+
+// Optional object containing the parameters specific to an incremental export.
+type IncrementalExportSpecification struct {
+
+	// Time in the past which provides the inclusive start range for the export
+	// table's data, counted in seconds from the start of the Unix epoch. The
+	// incremental export will reflect the table's state including and after this point
+	// in time.
+	ExportFromTime *time.Time
+
+	// Time in the past which provides the exclusive end range for the export table's
+	// data, counted in seconds from the start of the Unix epoch. The incremental
+	// export will reflect the table's state just prior to this point in time. If this
+	// is not provided, the latest time with data available will be used.
+	ExportToTime *time.Time
+
+	// The view type that was chosen for the export. Valid values are
+	// NEW_AND_OLD_IMAGES and NEW_IMAGES . The default value is NEW_AND_OLD_IMAGES .
+	ExportViewType ExportViewType
 
 	noSmithyDocumentSerde
 }

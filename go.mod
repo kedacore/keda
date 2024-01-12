@@ -24,16 +24,16 @@ require (
 	github.com/IBM/sarama v1.41.2
 	github.com/arangodb/go-driver v1.6.0
 	github.com/aws/aws-sdk-go-v2 v1.24.0
-	github.com/aws/aws-sdk-go-v2/config v1.18.42
-	github.com/aws/aws-sdk-go-v2/credentials v1.13.40
-	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.27.7
-	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.21.5
-	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.15.5
-	github.com/aws/aws-sdk-go-v2/service/kinesis v1.19.0
+	github.com/aws/aws-sdk-go-v2/config v1.26.2
+	github.com/aws/aws-sdk-go-v2/credentials v1.16.13
+	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.32.1
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.26.7
+	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.18.6
+	github.com/aws/aws-sdk-go-v2/service/kinesis v1.24.6
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.25.5
-	github.com/aws/aws-sdk-go-v2/service/sqs v1.24.5
-	github.com/aws/aws-sdk-go-v2/service/sts v1.22.0
-	github.com/bradleyfalzon/ghinstallation/v2 v2.7.0
+	github.com/aws/aws-sdk-go-v2/service/sqs v1.29.6
+	github.com/aws/aws-sdk-go-v2/service/sts v1.26.6
+	github.com/bradleyfalzon/ghinstallation/v2 v2.8.0
 	github.com/cloudevents/sdk-go/v2 v2.14.0
 	github.com/denisenkom/go-mssqldb v0.12.3
 	github.com/dysnix/predictkube-libs v0.0.4-0.20230109175007-5a82fccd31c7
@@ -110,7 +110,7 @@ require (
 	sigs.k8s.io/kustomize/kustomize/v5 v5.3.0
 )
 
-require github.com/google/go-github/v55 v55.0.0 // indirect
+require github.com/google/go-github/v56 v56.0.0 // indirect
 
 replace (
 	// pin k8s.io to v0.28.5
@@ -174,8 +174,8 @@ require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/arangodb/go-velocypack v0.0.0-20200318135517-5af53c29c67e // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
-	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.13 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.13.11 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.5.4 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.14.10 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.2.9 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.5.9 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.7.2 // indirect
