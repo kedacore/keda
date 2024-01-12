@@ -174,6 +174,7 @@ func NewPromMetrics() *PromMetrics {
 	metrics.Registry.MustRegister(scalerErrors)
 	metrics.Registry.MustRegister(scaledObjectErrors)
 	metrics.Registry.MustRegister(scaledObjectPaused)
+	metrics.Registry.MustRegister(scaledJobErrors)
 
 	metrics.Registry.MustRegister(triggerTotalsGaugeVec)
 	metrics.Registry.MustRegister(crdTotalsGaugeVec)

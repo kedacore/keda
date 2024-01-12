@@ -827,6 +827,7 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 			}
 			metricName := spec.External.Metric.Name
 			metrics, isTriggerActive, latency, err := cache.GetMetricsAndActivityForScaler(ctx, scalerIndex, metricName)
+			metricscollector.RecordScaledJobError(scaledJob.Namespace, scaledJob.Name, err)
 			if latency != -1 {
 				metricscollector.RecordScalerLatency(scaledJob.Namespace, scaledJob.Name, scalerName, scalerIndex, metricName, false, float64(latency))
 			}
