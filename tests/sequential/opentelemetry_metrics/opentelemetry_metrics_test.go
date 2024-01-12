@@ -26,7 +26,7 @@ import (
 const (
 	testName              = "opentelemetry-metrics-test"
 	labelScaledObject     = "scaledObject"
-	labelScaledObject     = "scaledJob"
+	labelScaledJob        = "scaledJob"
 	labelType             = "type"
 	labelCloudEventSource = "cloudEventSource"
 	eventsink             = "eventsink"
