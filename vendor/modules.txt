@@ -353,6 +353,11 @@ github.com/aws/aws-sdk-go-v2/service/kinesis
 github.com/aws/aws-sdk-go-v2/service/kinesis/internal/customizations
 github.com/aws/aws-sdk-go-v2/service/kinesis/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/kinesis/types
+# github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.25.5
+## explicit; go 1.19
+github.com/aws/aws-sdk-go-v2/service/secretsmanager
+github.com/aws/aws-sdk-go-v2/service/secretsmanager/internal/endpoints
+github.com/aws/aws-sdk-go-v2/service/secretsmanager/types
 # github.com/aws/aws-sdk-go-v2/service/sqs v1.29.6
 ## explicit; go 1.19
 github.com/aws/aws-sdk-go-v2/service/sqs

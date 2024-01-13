@@ -92,6 +92,9 @@ type TriggerAuthenticationSpec struct {
 
 	// +optional
 	GCPSecretManager *GCPSecretManager `json:"gcpSecretManager,omitempty"`
+
+	// +optional
+	AwsSecretManager *AwsSecretManager `json:"awsSecretManager,omitempty"`
 }
 
 // TriggerAuthenticationStatus defines the observed state of TriggerAuthentication
@@ -321,6 +324,37 @@ type GCPSecretManagerSecret struct {
 	ID        string `json:"id"`
 	// +optional
 	Version string `json:"version,omitempty"`
+}
+
+// AwsSecretManager is used to authenticate using AwsSecretManager
+type AwsSecretManager struct {
+	Secrets []AwsSecretManagerSecret `json:"secrets"`
+	// +optional
+	Credentials *AwsSecretManagerCredentials `json:"credentials"`
+	// +optional
+	PodIdentity *AuthPodIdentity `json:"podIdentity"`
+	// +optional
+	Region string `json:"region,omitempty"`
+}
+
+type AwsSecretManagerCredentials struct {
+	AccessKey       *AwsSecretManagerValue `json:"accessKey"`
+	AccessSecretKey *AwsSecretManagerValue `json:"accessSecretKey"`
+	// +optional
+	AccessToken *AwsSecretManagerValue `json:"accessToken,omitempty"`
+}
+
+type AwsSecretManagerValue struct {
+	ValueFrom ValueFromSecret `json:"valueFrom"`
+}
+
+type AwsSecretManagerSecret struct {
+	Parameter string `json:"parameter"`
+	Name      string `json:"name"`
+	// +optional
+	VersionID string `json:"versionId,omitempty"`
+	// +optional
+	VersionStage string `json:"versionStage,omitempty"`
 }
 
 func init() {

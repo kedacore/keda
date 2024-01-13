@@ -39,17 +39,8 @@ import (
 	"github.com/kedacore/keda/v2/pkg/mock/mock_scaling"
 	"github.com/kedacore/keda/v2/pkg/scalers"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache"
+	"github.com/kedacore/keda/v2/pkg/util"
 )
-
-type GinkgoTestReporter struct{}
-
-func (g GinkgoTestReporter) Errorf(format string, args ...interface{}) {
-	Fail(fmt.Sprintf(format, args...))
-}
-
-func (g GinkgoTestReporter) Fatalf(format string, args ...interface{}) {
-	Fail(fmt.Sprintf(format, args...))
-}
 
 var _ = Describe("ScaledObjectController", func() {
 	var (
@@ -70,7 +61,7 @@ var _ = Describe("ScaledObjectController", func() {
 		}
 
 		BeforeEach(func() {
-			ctrl := gomock.NewController(GinkgoTestReporter{})
+			ctrl := gomock.NewController(util.GinkgoTestReporter{})
 			mockScaleHandler = mock_scaling.NewMockScaleHandler(ctrl)
 			mockClient = mock_client.NewMockClient(ctrl)
 			mockStatusWriter = mock_client.NewMockStatusWriter(ctrl)
