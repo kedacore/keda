@@ -287,10 +287,6 @@ func TestNATSJetStreamGetMetrics(t *testing.T) {
 
 		tr := http.DefaultTransport.(*http.Transport).Clone()
 		srv := natsMockHTTPJetStreamServer(t, mockResponseJSON)
-		defer func() {
-			srv.Close()
-			http.DefaultTransport = tr
-		}()
 
 		ctx := context.Background()
 		meta, err := parseNATSJetStreamMetadata(&ScalerConfig{TriggerMetadata: mockResponse.metadata.metadataTestData.metadata, TriggerIndex: mockResponse.metadata.triggerIndex})
@@ -313,6 +309,7 @@ func TestNATSJetStreamGetMetrics(t *testing.T) {
 			t.Errorf("Expected error for '%s' but got success %s", mockResponse.name, mockResponse.metadata.metadataTestData.authParams["natsServerMonitoringEndpoint"])
 		}
 		srv.Close()
+		http.DefaultTransport = tr
 	}
 }
 
