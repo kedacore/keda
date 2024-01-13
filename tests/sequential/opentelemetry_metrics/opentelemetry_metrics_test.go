@@ -564,6 +564,7 @@ func testScaledJobErrors(t *testing.T, data templateData) {
 	t.Log("--- testing scaled job errors ---")
 
 	KubectlDeleteWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
+	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "wrongScaledJobTemplate", wrongScaledJobTemplate)
 
 	time.Sleep(20 * time.Second)
@@ -588,6 +589,7 @@ func testScaledJobErrors(t *testing.T, data templateData) {
 	}
 
 	KubectlDeleteWithTemplate(t, data, "wrongScaledJobTemplate", wrongScaledJobTemplate)
+	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
 	// wait for 10 seconds to correctly fetch metrics.
 	time.Sleep(10 * time.Second)
@@ -601,6 +603,7 @@ func testScalerErrors(t *testing.T, data templateData) {
 	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
 
 	KubectlDeleteWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
+	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "wrongScaledJobTemplate", wrongScaledJobTemplate)
 
 	time.Sleep(15 * time.Second)
@@ -625,6 +628,7 @@ func testScalerErrors(t *testing.T, data templateData) {
 	}
 
 	KubectlDeleteWithTemplate(t, data, "wrongScaledJobTemplate", wrongScaledJobTemplate)
+	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
 
 	KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)

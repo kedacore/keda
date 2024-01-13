@@ -560,6 +560,7 @@ func testScaledJobErrors(t *testing.T, data templateData) {
 	t.Log("--- testing scaled job errors ---")
 
 	KubectlDeleteWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
+	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "wrongScaledJobTemplate", wrongScaledJobTemplate)
 
 	// wait for 2 seconds as pollinginterval is 2
@@ -585,6 +586,7 @@ func testScaledJobErrors(t *testing.T, data templateData) {
 	}
 
 	KubectlDeleteWithTemplate(t, data, "wrongScaledJobTemplate", wrongScaledJobTemplate)
+	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
 }
 
@@ -596,6 +598,7 @@ func testScalerErrors(t *testing.T, data templateData) {
 	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
 
 	KubectlDeleteWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
+	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "wrongScaledJobTemplate", wrongScaledJobTemplate)
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
@@ -617,6 +620,7 @@ func testScalerErrors(t *testing.T, data templateData) {
 		}
 	}
 	KubectlDeleteWithTemplate(t, data, "wrongScaledJobTemplate", wrongScaledJobTemplate)
+	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
 
 	KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
