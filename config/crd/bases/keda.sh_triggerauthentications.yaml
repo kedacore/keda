@@ -311,7 +311,7 @@ spec:
                 type: array
               gcpSecretManager:
                 properties:
-                  gcpCredentials:
+                  credentials:
                     properties:
                       clientSecret:
                         properties:

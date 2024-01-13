@@ -142,7 +142,7 @@ spec:
       - parameter: connection
         id: {{.SecretManagerSecretID}}
         version: "1"
-    gcpCredentials:
+    credentials:
       clientSecret:
         valueFrom:
           secretKeyRef:
