@@ -222,9 +222,7 @@ var testNATSJetStreamMockResponses = []parseNATSJetStreamMockResponsesTestData{
 }
 
 var testNATSJetStreamServerMockResponses = map[string][]byte{
-	"not-leader-1.localhost:8222": []byte(`{"server_name": "not-leader-1", "cluster": {"urls": ["leader.localhost.nats.svc:8222", "not-leader-2.localhost.nats.svc:8222"]}}`),
-	"not-leader-2.localhost:8222": []byte(`{"server_name": "not-leader-2", "cluster": {"urls": ["leader.localhost.nats.svc:8222", "not-leader-1.localhost.nats.svc:8222"]}}`),
-	"leader.localhost:8222":       []byte(`{"server_name": "leader", "cluster": {"urls": ["not-leader-1.localhost.nats.svc:8222", "not-leader-2.localhost.nats.svc:8222"]}}`),
+	"localhost:8222": []byte(`{"server_name": "leader", "cluster": {"urls": ["leader.localhost.nats.svc:8222","not-leader-1.localhost.nats.svc:8222", "not-leader-2.localhost.nats.svc:8222"]}}`),
 }
 
 func TestNATSJetStreamIsActive(t *testing.T) {
