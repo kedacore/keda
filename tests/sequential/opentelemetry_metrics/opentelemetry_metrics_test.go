@@ -648,6 +648,16 @@ func getErrorMetricsValue(val *prommodel.MetricFamily) float64 {
 				}
 			}
 		}
+	case "keda_scaledjob_errors_total":
+		metrics := val.GetMetric()
+		for _, metric := range metrics {
+			labels := metric.GetLabel()
+			for _, label := range labels {
+				if *label.Name == "scaledJob" && *label.Value == wrongScaledJobName {
+					return *metric.Counter.Value
+				}
+			}
+		}
 	case "keda_scaled_job_errors":
 		metrics := val.GetMetric()
 		for _, metric := range metrics {
