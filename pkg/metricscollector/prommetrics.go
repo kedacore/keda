@@ -30,7 +30,7 @@ import (
 var log = logf.Log.WithName("prometheus_server")
 
 var (
-	metricLabels = []string{"namespace", "metric", "scaledObject", "scaler", "triggerIndex"}
+	metricLabels = []string{"namespace", "metric", "scaledObject", "scaler", "triggerIndex", "type"}
 	buildInfo    = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: DefaultPromMetricsNamespace,
@@ -102,6 +102,15 @@ var (
 		},
 		[]string{"namespace", "scaledObject"},
 	)
+	scaledJobErrors = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "scaled_job",
+			Name:      "errors",
+			Help:      "Number of scaled job errors",
+		},
+		[]string{"namespace", "scaledJob"},
+	)
 
 	triggerTotalsGaugeVec = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -165,6 +174,7 @@ func NewPromMetrics() *PromMetrics {
 	metrics.Registry.MustRegister(scalerErrors)
 	metrics.Registry.MustRegister(scaledObjectErrors)
 	metrics.Registry.MustRegister(scaledObjectPaused)
+	metrics.Registry.MustRegister(scaledJobErrors)
 
 	metrics.Registry.MustRegister(triggerTotalsGaugeVec)
 	metrics.Registry.MustRegister(crdTotalsGaugeVec)
@@ -183,32 +193,28 @@ func RecordBuildInfo() {
 }
 
 // RecordScalerMetric create a measurement of the external metric used by the HPA
-func (p *PromMetrics) RecordScalerMetric(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, value float64) {
-	scalerMetricsValue.With(getLabels(namespace, scaledObject, scaler, triggerIndex, metric)).Set(value)
+func (p *PromMetrics) RecordScalerMetric(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value float64) {
+	scalerMetricsValue.With(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)).Set(value)
 }
 
 // RecordScalerLatency create a measurement of the latency to external metric
-func (p *PromMetrics) RecordScalerLatency(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, value float64) {
-	scalerMetricsLatency.With(getLabels(namespace, scaledObject, scaler, triggerIndex, metric)).Set(value)
+func (p *PromMetrics) RecordScalerLatency(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value float64) {
+	scalerMetricsLatency.With(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)).Set(value)
 }
 
 // RecordScalableObjectLatency create a measurement of the latency executing scalable object loop
 func (p *PromMetrics) RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value float64) {
-	resourceType := "scaledjob"
-	if isScaledObject {
-		resourceType = "scaledobject"
-	}
-	internalLoopLatency.WithLabelValues(namespace, resourceType, name).Set(value)
+	internalLoopLatency.WithLabelValues(namespace, getResourceType(isScaledObject), name).Set(value)
 }
 
 // RecordScalerActive create a measurement of the activity of the scaler
-func (p *PromMetrics) RecordScalerActive(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, active bool) {
+func (p *PromMetrics) RecordScalerActive(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, active bool) {
 	activeVal := 0
 	if active {
 		activeVal = 1
 	}
 
-	scalerActive.With(getLabels(namespace, scaledObject, scaler, triggerIndex, metric)).Set(float64(activeVal))
+	scalerActive.With(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)).Set(float64(activeVal))
 }
 
 // RecordScaledObjectPaused marks whether the current ScaledObject is paused.
@@ -223,16 +229,16 @@ func (p *PromMetrics) RecordScaledObjectPaused(namespace string, scaledObject st
 	scaledObjectPaused.With(labels).Set(float64(activeVal))
 }
 
-// RecordScalerError counts the number of errors occurred in trying get an external metric used by the HPA
-func (p *PromMetrics) RecordScalerError(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, err error) {
+// RecordScalerError counts the number of errors occurred in trying to get an external metric used by the HPA
+func (p *PromMetrics) RecordScalerError(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, err error) {
 	if err != nil {
-		scalerErrors.With(getLabels(namespace, scaledObject, scaler, triggerIndex, metric)).Inc()
-		p.RecordScaledObjectError(namespace, scaledObject, err)
+		scalerErrors.With(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)).Inc()
+		p.RecordScaledObjectError(namespace, scaledResource, err)
 		scalerErrorsTotal.With(prometheus.Labels{}).Inc()
 		return
 	}
 	// initialize metric with 0 if not already set
-	_, errscaler := scalerErrors.GetMetricWith(getLabels(namespace, scaledObject, scaler, triggerIndex, metric))
+	_, errscaler := scalerErrors.GetMetricWith(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject))
 	if errscaler != nil {
 		log.Error(errscaler, "Unable to write to metrics to Prometheus Server: %v")
 	}
@@ -253,8 +259,30 @@ func (p *PromMetrics) RecordScaledObjectError(namespace string, scaledObject str
 	}
 }
 
-func getLabels(namespace string, scaledObject string, scaler string, triggerIndex int, metric string) prometheus.Labels {
-	return prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject, "scaler": scaler, "triggerIndex": strconv.Itoa(triggerIndex), "metric": metric}
+// RecordScaledJobError counts the number of errors with the scaled job
+func (p *PromMetrics) RecordScaledJobError(namespace string, scaledJob string, err error) {
+	labels := prometheus.Labels{"namespace": namespace, "scaledJob": scaledJob}
+	if err != nil {
+		scaledJobErrors.With(labels).Inc()
+		return
+	}
+	// initialize metric with 0 if not already set
+	_, errscaledjob := scaledJobErrors.GetMetricWith(labels)
+	if errscaledjob != nil {
+		log.Error(err, "Unable to write to metrics to Prometheus Server: %v")
+		return
+	}
+}
+
+func getLabels(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, isScaledObject bool) prometheus.Labels {
+	return prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject, "scaler": scaler, "triggerIndex": strconv.Itoa(triggerIndex), "metric": metric, "type": getResourceType(isScaledObject)}
+}
+
+func getResourceType(isScaledObject bool) string {
+	if isScaledObject {
+		return "scaledobject"
+	}
+	return "scaledjob"
 }
 
 func (p *PromMetrics) IncrementTriggerTotal(triggerType string) {
