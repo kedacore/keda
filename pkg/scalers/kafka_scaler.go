@@ -426,7 +426,7 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 		}
 		meta.offsetResetPolicy = policy
 	}
-
+	meta.lagThreshold = defaultKafkaLagThreshold
 	lagThreshold, err := getParameterFromConfigV2(config, lagThresholdMetricName, true, false, false, true, defaultKafkaLagThreshold, reflect.TypeOf(64))
 	if err != nil {
 		return meta, err
@@ -489,6 +489,7 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 	if err != nil {
 		return meta, fmt.Errorf("error parsing kafka version: %w", err)
 	}
+	meta.version = version
 	meta.triggerIndex = config.TriggerIndex
 	return meta, nil
 }

@@ -321,7 +321,7 @@ var kafkaMetricIdentifiers = []kafkaMetricIdentifier{
 }
 
 func TestGetBrokers(t *testing.T) {
-	for idx, testData := range parseKafkaMetadataTestDataset {
+	for _, testData := range parseKafkaMetadataTestDataset {
 		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validWithAuthParams}, logr.Discard())
 		getBrokerTestBase(t, meta, testData, err)
 
