@@ -279,6 +279,61 @@ var _ = It("shouldn't validate the so creation with cpu and memory when deployme
 	}).Should(HaveOccurred())
 })
 
+// This test checks whether the validation fails when the CPU and memory resource limits are missing in pod spec (in
+// deployment) and there are CPU and memory triggers in ScaledObject. This is a test for already existing behavior.
+// See github.com/kedacore/keda/issues/5348
+var _ = It("shouldn't validate the SO creation with CPU and memory when deployment doesn't have CPU and memory", func() {
+	namespaceName := "resource-default-limits-missing"
+	namespace := createNamespace(namespaceName)
+	deployment := createDeployment(namespaceName, false, false)
+	scaledObject := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true, map[string]string{}, "")
+
+	// Create namespace
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	// Create deployment
+	err = k8sClient.Create(context.Background(), deployment)
+	Expect(err).ToNot(HaveOccurred())
+
+	// Create scaled object, asynchronously
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), scaledObject)
+	}).Should(HaveOccurred())
+})
+
+// This test checks whether the validation fails when the CPU and memory resource limits are missing in pod spec (in
+// deployment), but there are default limits specified in LimitRange in the same namespace, and there are CPU and
+// memory triggers in ScaledObject. This a test for newly added behavior after fixing the following issue.
+// See github.com/kedacore/keda/issues/5348
+var _ = It("should validate the SO creation with CPU and memory when deployment doesn't have CPU and memory, but LimitRange has the limits specified", func() {
+	namespaceName := "resource-default-limits-in-limitrange"
+	limitRangeName := "test-limit-range"
+	cpuLimit := resource.NewMilliQuantity(100, resource.DecimalSI)
+	memoryLimit := resource.NewMilliQuantity(100, resource.DecimalSI)
+	namespace := createNamespace(namespaceName)
+	deployment := createDeployment(namespaceName, false, false)
+	limitRange := createLimitRange(limitRangeName, namespaceName, v1.LimitTypeContainer, cpuLimit, memoryLimit)
+	scaledObject := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true, map[string]string{}, "")
+
+	// Create namespace
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	// Create limit range
+	err = k8sClient.Create(context.Background(), limitRange)
+	Expect(err).ToNot(HaveOccurred())
+
+	// Create deployment
+	err = k8sClient.Create(context.Background(), deployment)
+	Expect(err).ToNot(HaveOccurred())
+
+	// Create scaled object, asynchronously
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), scaledObject)
+	}).ShouldNot(HaveOccurred())
+})
+
 var _ = It("shouldn't validate the so creation with cpu and memory when deployment hasn't got cpu request", func() {
 
 	namespaceName := "deployment-no-cpu-request"
@@ -1186,6 +1241,28 @@ func createScaledObjectScalingModifiers(namespace string, sm ScalingModifiers, t
 			Triggers:        triggers,
 			Advanced: &AdvancedConfig{
 				ScalingModifiers: sm,
+			},
+		},
+	}
+}
+
+// createLimitRange creates a LimitRange resource in the specified namespace. The CPU and memory are pointers for easy
+// use of constructor methods like NewQuantity, NewMilliQuantity, etc. directly at the caller.
+func createLimitRange(name, namespace string, limitType v1.LimitType, cpu, memory *resource.Quantity) *v1.LimitRange {
+	return &v1.LimitRange{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: v1.LimitRangeSpec{
+			Limits: []v1.LimitRangeItem{
+				{
+					Type: limitType,
+					Default: v1.ResourceList{
+						v1.ResourceCPU:    *cpu,
+						v1.ResourceMemory: *memory,
+					},
+				},
 			},
 		},
 	}
