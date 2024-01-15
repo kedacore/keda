@@ -63,7 +63,6 @@ Here is an overview of all new **experimental** features:
 ### Improvements
 
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-- **Azure pipeline Scaler**: Add support for workload identity authentication ([#5013](https://github.com/kedacore/keda/issues/5013))
 
 ### Fixes
 
@@ -110,6 +109,7 @@ Here is an overview of all new **experimental** features:
 - **General**: Request all ScaledObject/ScaledJob triggers in parallel ([#5276](https://github.com/kedacore/keda/issues/5276))
 - **General**: Support TriggerAuthentication properties from ConfigMap ([#4830](https://github.com/kedacore/keda/issues/4830))
 - **General**: Use client-side round-robin load balancing for grpc calls ([#5224](https://github.com/kedacore/keda/issues/5224))
+- **Azure pipeline Scaler**: Add support for workload identity authentication ([#5013](https://github.com/kedacore/keda/issues/5013))
 - **GCP pubsub scaler**: Support distribution-valued metrics and metrics from topics ([#5070](https://github.com/kedacore/keda/issues/5070))
 - **GCP stackdriver scaler**: Support valueIfNull parameter ([#5345](https://github.com/kedacore/keda/pull/5345))
 - **Hashicorp Vault**: Add support to get secret that needs write operation (e.g. pki) ([#5067](https://github.com/kedacore/keda/issues/5067))
