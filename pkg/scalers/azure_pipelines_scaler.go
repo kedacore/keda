@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/go-logr/logr"
@@ -32,7 +33,6 @@ type JobRequests struct {
 }
 
 const (
-	// Azure storage resource is "https://storage.azure.com/" in all cloud environments
 	devopsResource = "499b84ac-1321-427f-aa17-267ca6975798/.default"
 )
 
@@ -150,8 +150,9 @@ type azurePipelinesMetadata struct {
 }
 
 type authContext struct {
-	cred *azidentity.ChainedTokenCredential
-	pat  string
+	cred  *azidentity.ChainedTokenCredential
+	pat   string
+	token *azcore.AccessToken
 }
 
 // NewAzurePipelinesScaler creates a new AzurePipelinesScaler
@@ -246,8 +247,9 @@ func parseAzurePipelinesMetadata(ctx context.Context, logger logr.Logger, config
 	}
 	// Trim any trailing new lines from the Azure Pipelines PAT
 	meta.authContext = authContext{
-		pat:  strings.TrimSuffix(pat, "\n"),
-		cred: cred,
+		pat:   strings.TrimSuffix(pat, "\n"),
+		cred:  cred,
+		token: nil,
 	}
 
 	if val, ok := config.TriggerMetadata["parent"]; ok && val != "" {
@@ -349,6 +351,12 @@ func validatePoolID(ctx context.Context, logger logr.Logger, poolID string, meta
 }
 
 func getToken(ctx context.Context, metadata *azurePipelinesMetadata, scope string) (string, error) {
+	if metadata.authContext.token != nil {
+		//if token expires after more then minute from now let's reuse
+		if metadata.authContext.token.ExpiresOn.After(time.Now().Add(time.Second * 60)) {
+			return metadata.authContext.token.Token, nil
+		}
+	}
 	token, err := metadata.authContext.cred.GetToken(ctx, policy.TokenRequestOptions{
 		Scopes: []string{
 			scope,
@@ -358,7 +366,10 @@ func getToken(ctx context.Context, metadata *azurePipelinesMetadata, scope strin
 	if err != nil {
 		return "", err
 	}
-	return token.Token, nil
+
+	metadata.authContext.token = &token
+
+	return metadata.authContext.token.Token, nil
 }
 
 func getAzurePipelineRequest(ctx context.Context, logger logr.Logger, urlString string, metadata *azurePipelinesMetadata, podIdentity kedav1alpha1.AuthPodIdentity, httpClient *http.Client) ([]byte, error) {
