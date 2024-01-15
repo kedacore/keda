@@ -189,6 +189,7 @@ func parseApacheKafkaAuthParams(config *ScalerConfig, meta *apacheKafkaMetadata)
 			if err != nil {
 				return fmt.Errorf("%w. No awsRegion given", err)
 			}
+			meta.awsRegion = awsRegion.(string)
 			auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 			if err != nil {
 				return err
