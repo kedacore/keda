@@ -63,6 +63,7 @@ Here is an overview of all new **experimental** features:
 ### Improvements
 
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Azure pipeline Scaler**: Add support for workload identity authentication ([#5013](https://github.com/kedacore/keda/issues/5013))
 
 ### Fixes
 
@@ -165,7 +166,6 @@ New deprecation(s):
 - **General**: Support profiling for KEDA components ([#4789](https://github.com/kedacore/keda/issues/4789))
 - **CPU scaler**: Wait for metrics window during CPU scaler tests ([#5294](https://github.com/kedacore/keda/pull/5294))
 - **Hashicorp Vault**: Improve test coverage in `pkg/scaling/resolver/hashicorpvault_handler`  ([#5195](https://github.com/kedacore/keda/issues/5195))
-- **Kafka Scaler**: Add more test cases for large value of LagThreshold ([#5354](https://github.com/kedacore/keda/issues/5354))
 - **Openstack Scaler**: Use Gophercloud SDK ([#3439](https://github.com/kedacore/keda/issues/3439))
 
 ## v2.12.1
