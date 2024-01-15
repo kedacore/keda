@@ -152,7 +152,7 @@ func TestScaler(t *testing.T) {
 
 	t.Log("--- cleaning up ---")
 	deleteWSInput := amp.DeleteWorkspaceInput{
-		WorkspaceId: &workspaceId,
+		WorkspaceId: &workspaceID,
 	}
 	input := &deleteWSInput
 	_, err := ampClient.DeleteWorkspace(context.Background(), input)
@@ -171,7 +171,7 @@ func getTemplateData() (templateData, []Template) {
 			AwsRegion:          awsRegion,
 			DeploymentName:     deploymentName,
 			ScaledObjectName:   scaledObjectName,
-			WorkspaceID:        workspaceId,
+			WorkspaceID:        workspaceID,
 		}, []Template{
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
