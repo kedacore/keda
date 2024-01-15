@@ -5,15 +5,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kedacore/keda/v2/pkg/util"
 	"github.com/stretchr/testify/require"
+
+	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 func TestSigV4RoundTripper(t *testing.T) {
-	// rt := &roundTripper{
-	// 	client: amp.New(nil),
-	// 	region: "us-west-2",
-	// }
 
 	transport := util.CreateHTTPTransport(false)
 
