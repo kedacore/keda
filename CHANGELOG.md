@@ -16,6 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.13.0](#v2130)
 - [v2.12.1](#v2121)
 - [v2.12.0](#v2120)
 - [v2.11.2](#v2112)
@@ -51,7 +52,43 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- **General**: Adds support for AWS Secret Manager as a source for TriggerAuthentication ([#4628](https://github.com/kedacore/keda/issues/4628))
+- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+#### Experimental
+
+Here is an overview of all new **experimental** features:
+
+- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Improvements
+
+- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Fixes
+
+- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Deprecations
+
+You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
+
+New deprecation(s):
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Breaking Changes
+
+- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Other
+
+- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+## v2.13.0
+
+### New
+
+- **General**: Adds support for GCP Secret Manager as a source for TriggerAuthentication ([#4831](https://github.com/kedacore/keda/issues/4831))
 - **General**: Introduce new AWS Authentication ([#4134](https://github.com/kedacore/keda/issues/4134))
 
 #### Experimental
