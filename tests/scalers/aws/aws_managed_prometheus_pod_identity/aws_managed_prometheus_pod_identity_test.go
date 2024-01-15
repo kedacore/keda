@@ -46,7 +46,7 @@ metadata:
   namespace: {{.TestNamespace}}
 spec:
   podIdentity:
-    provider: aws-eks
+    provider: aws
 `
 	deploymentTemplate = `
 apiVersion: apps/v1
