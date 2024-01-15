@@ -310,6 +310,81 @@ spec:
                   - parameter
                   type: object
                 type: array
+              gcpSecretManager:
+                properties:
+                  credentials:
+                    properties:
+                      clientSecret:
+                        properties:
+                          valueFrom:
+                            properties:
+                              secretKeyRef:
+                                properties:
+                                  key:
+                                    type: string
+                                  name:
+                                    type: string
+                                required:
+                                - key
+                                - name
+                                type: object
+                            required:
+                            - secretKeyRef
+                            type: object
+                        required:
+                        - valueFrom
+                        type: object
+                    required:
+                    - clientSecret
+                    type: object
+                  podIdentity:
+                    description: AuthPodIdentity allows users to select the platform
+                      native identity mechanism
+                    properties:
+                      identityId:
+                        type: string
+                      identityOwner:
+                        description: IdentityOwner configures which identity has to
+                          be used during auto discovery, keda or the scaled workload.
+                          Mutually exclusive with roleArn
+                        enum:
+                        - keda
+                        - workload
+                        type: string
+                      provider:
+                        description: PodIdentityProvider contains the list of providers
+                        enum:
+                        - azure
+                        - azure-workload
+                        - gcp
+                        - aws
+                        - aws-eks
+                        - aws-kiam
+                        type: string
+                      roleArn:
+                        description: RoleArn sets the AWS RoleArn to be used. Mutually
+                          exclusive with IdentityOwner
+                        type: string
+                    required:
+                    - provider
+                    type: object
+                  secrets:
+                    items:
+                      properties:
+                        id:
+                          type: string
+                        parameter:
+                          type: string
+                        version:
+                          type: string
+                      required:
+                      - id
+                      - parameter
+                      type: object
+                    type: array
+                required:
+                - secrets
+                type: object
               hashiCorpVault:
                 description: HashiCorpVault is used to authenticate using Hashicorp
                   Vault

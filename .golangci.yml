@@ -149,6 +149,11 @@ issues:
     - path: pkg/scalers/external_scaler_test.go
       linters:
         - depguard
+  # Exclude for scale_resolvers, reason:
+  # pkg/scaling/resolver/scale_resolvers.go:236:1: cyclomatic complexity 35 of func `resolveAuthRef` is high (> 30) (gocyclo)
+    - path: pkg/scaling/resolver/scale_resolvers.go
+      linters:
+        - gocyclo
 
 
 linters-settings:

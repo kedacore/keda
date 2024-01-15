@@ -91,6 +91,9 @@ type TriggerAuthenticationSpec struct {
 	AzureKeyVault *AzureKeyVault `json:"azureKeyVault,omitempty"`
 
 	// +optional
+	GCPSecretManager *GCPSecretManager `json:"gcpSecretManager,omitempty"`
+
+	// +optional
 	AwsSecretManager *AwsSecretManager `json:"awsSecretManager,omitempty"`
 }
 
@@ -298,6 +301,29 @@ type AzureKeyVaultCloudInfo struct {
 	KeyVaultResourceURL string `json:"keyVaultResourceURL"`
 	// +optional
 	ActiveDirectoryEndpoint string `json:"activeDirectoryEndpoint"`
+}
+
+type GCPSecretManager struct {
+	Secrets []GCPSecretManagerSecret `json:"secrets"`
+	// +optional
+	Credentials *GCPCredentials `json:"credentials"`
+	// +optional
+	PodIdentity *AuthPodIdentity `json:"podIdentity"`
+}
+
+type GCPCredentials struct {
+	ClientSecret GCPSecretmanagerClientSecret `json:"clientSecret"`
+}
+
+type GCPSecretmanagerClientSecret struct {
+	ValueFrom ValueFromSecret `json:"valueFrom"`
+}
+
+type GCPSecretManagerSecret struct {
+	Parameter string `json:"parameter"`
+	ID        string `json:"id"`
+	// +optional
+	Version string `json:"version,omitempty"`
 }
 
 // AwsSecretManager is used to authenticate using AwsSecretManager

@@ -312,7 +312,27 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 					result[secret.Parameter] = res
 				}
 			}
-
+			if triggerAuthSpec.GCPSecretManager != nil && len(triggerAuthSpec.GCPSecretManager.Secrets) > 0 {
+				secretManagerHandler := NewGCPSecretManagerHandler(triggerAuthSpec.GCPSecretManager)
+				err := secretManagerHandler.Initialize(ctx, client, logger, triggerNamespace, secretsLister)
+				if err != nil {
+					logger.Error(err, "error authenticating to GCP Secret Manager", "triggerAuthRef.Name", triggerAuthRef.Name)
+				} else {
+					for _, secret := range triggerAuthSpec.GCPSecretManager.Secrets {
+						version := "latest"
+						if secret.Version != "" {
+							version = secret.Version
+						}
+						res, err := secretManagerHandler.Read(ctx, secret.ID, version)
+						if err != nil {
+							logger.Error(err, "error trying to read secret from GCP Secret Manager", "triggerAuthRef.Name", triggerAuthRef.Name,
+								"secret.Name", secret.ID, "secret.Version", secret.Version)
+						} else {
+							result[secret.Parameter] = res
+						}
+					}
+				}
+			}
 			if triggerAuthSpec.AwsSecretManager != nil && len(triggerAuthSpec.AwsSecretManager.Secrets) > 0 {
 				awsSecretManagerHandler := NewAwsSecretManagerHandler(triggerAuthSpec.AwsSecretManager)
 				err := awsSecretManagerHandler.Initialize(ctx, client, logger, triggerNamespace, secretsLister, podSpec)
