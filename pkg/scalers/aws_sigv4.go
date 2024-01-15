@@ -33,7 +33,6 @@ var (
 )
 
 func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-
 	cred, err := rt.client.Options().Credentials.Retrieve(req.Context())
 	if err != nil {
 		return nil, err
