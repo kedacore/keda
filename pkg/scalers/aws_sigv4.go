@@ -81,11 +81,6 @@ func NewSigV4RoundTripper(config *ScalerConfig) (http.RoundTripper, error) {
 		return nil, err
 	}
 
-	triggerMetadata := config.TriggerMetadata
-	if triggerMetadata == nil {
-		return nil, fmt.Errorf("trigger metadata cannot be nil")
-	}
-
 	client := amp.NewFromConfig(*awsCfg, func(o *amp.Options) {})
 	rt := &roundTripper{
 		client: client,
