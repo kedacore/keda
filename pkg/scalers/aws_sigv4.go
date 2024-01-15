@@ -11,14 +11,10 @@ import (
 
 	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/amp"
-	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
-)
 
-// SigV4Config configures signing requests with SigV4.
-type SigV4Config struct {
-	Enabled bool   `yaml:"enabled,omitempty"`
-	Region  string `yaml:"region,omitempty"`
-}
+	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
+	httputils "github.com/kedacore/keda/v2/pkg/util"
+)
 
 type awsConfigMetadata struct {
 	awsRegion        string
@@ -51,7 +47,7 @@ func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 	// Create default transport
-	transport := &http.Transport{}
+	transport := httputils.CreateHTTPTransport(false)
 
 	// Send signed request
 	return transport.RoundTrip(req)
@@ -59,12 +55,6 @@ func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 
 func parseAwsAMPMetadata(config *ScalerConfig) (*awsConfigMetadata, error) {
 	meta := awsConfigMetadata{}
-
-	if val, ok := config.TriggerMetadata["awsRegion"]; ok && val != "" {
-		meta.awsRegion = val
-	} else {
-		return nil, ErrAwsAMPNoAwsRegion
-	}
 
 	auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 	if err != nil {
@@ -97,14 +87,10 @@ func NewSigV4RoundTripper(config *ScalerConfig) (http.RoundTripper, error) {
 		return nil, fmt.Errorf("trigger metadata cannot be nil")
 	}
 
-	awsRegion := triggerMetadata["awsRegion"]
-	if awsRegion == "" {
-		return nil, fmt.Errorf("awsRegion not configured in trigger metadata")
-	}
 	client := amp.NewFromConfig(*awsCfg, func(o *amp.Options) {})
 	rt := &roundTripper{
 		client: client,
-		region: awsRegion,
+		region: metadata.awsRegion,
 	}
 
 	return rt, nil
