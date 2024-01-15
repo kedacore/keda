@@ -19,7 +19,7 @@ jobs:
     steps:
       - name: 'Add welcome comment on PR #${{ github.event.number }} (draft)'
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
-        if: github.event_name == 'pull_request_target' && github.event.pull_request.draft
+        if: github.event_name == 'pull_request_target' && github.event.pull_request.action == "opened" && github.event.pull_request.draft
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -31,7 +31,7 @@ jobs:
             });
       - name: 'Add welcome comment on PR #${{ github.event.number }}'
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
-        if: github.event_name == 'pull_request_target' && !github.event.pull_request.draft
+        if: github.event_name == 'pull_request_target' && (github.event.pull_request.action == "opened" || github.event.pull_request.action == "ready_for_review")
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -43,7 +43,7 @@ jobs:
             });
       - name: 'Apply review required label'
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
-        if: github.event_name == 'pull_request_review' && (github.event.review.state != 'submitted' || github.event.review.state != 'edited')
+        if: github.event_name == 'pull_request_target' && (github.event.pull_request.action == "opened" || github.event.pull_request.action == "ready_for_review") 
         with:
           script: |
             github.rest.issues.addLabels({
