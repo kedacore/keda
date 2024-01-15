@@ -17,9 +17,9 @@ jobs:
     name: PR Bot
     runs-on: ubuntu-latest
     steps:
-      - name: 'Add welcome comment on PR (draft)'
+      - name: 'Add welcome comment on PR #${{ github.event.number }} (draft)'
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
-        if: "github.event.pull_request.draft"
+        if: github.event_name == 'pull_request_target' && github.event.pull_request.draft
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -29,9 +29,9 @@ jobs:
               issue_number: ${{ github.event.number }},
               body: 'Thank you for your contribution! 🙏 Let us know when you are ready for a review by publishing the PR.'
             });
-      - name: 'Add welcome comment on PR'
+      - name: 'Add welcome comment on PR #${{ github.event.number }}'
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
-        if: "!github.event.pull_request.draft"
+        if: github.event_name == 'pull_request_target' && !github.event.pull_request.draft
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -43,7 +43,7 @@ jobs:
             });
       - name: 'Apply review required label'
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
-        if: "!github.event.pull_request.draft"
+        if: github.event_name == 'pull_request_review' && (github.event.review.state != 'submitted' || github.event.review.state != 'edited')
         with:
           script: |
             github.rest.issues.addLabels({
