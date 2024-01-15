@@ -31,25 +31,28 @@ var (
 )
 
 type MetricsCollector interface {
-	RecordScalerMetric(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, value float64)
+	RecordScalerMetric(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value float64)
 
 	// RecordScalerLatency create a measurement of the latency to external metric
-	RecordScalerLatency(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, value float64)
+	RecordScalerLatency(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value float64)
 
 	// RecordScalableObjectLatency create a measurement of the latency executing scalable object loop
 	RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value float64)
 
 	// RecordScalerActive create a measurement of the activity of the scaler
-	RecordScalerActive(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, active bool)
+	RecordScalerActive(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, active bool)
 
 	// RecordScaledObjectPaused marks whether the current ScaledObject is paused.
 	RecordScaledObjectPaused(namespace string, scaledObject string, active bool)
 
-	// RecordScalerError counts the number of errors occurred in trying get an external metric used by the HPA
-	RecordScalerError(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, err error)
+	// RecordScalerError counts the number of errors occurred in trying to get an external metric used by the HPA
+	RecordScalerError(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, err error)
 
 	// RecordScaledObjectError counts the number of errors with the scaled object
 	RecordScaledObjectError(namespace string, scaledObject string, err error)
+
+	// RecordScaledJobError counts the number of errors with the scaled job
+	RecordScaledJobError(namespace string, scaledJob string, err error)
 
 	IncrementTriggerTotal(triggerType string)
 
@@ -82,16 +85,16 @@ func NewMetricsCollectors(enablePrometheusMetrics bool, enableOpenTelemetryMetri
 }
 
 // RecordScalerMetric create a measurement of the external metric used by the HPA
-func RecordScalerMetric(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, value float64) {
+func RecordScalerMetric(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, isScaledObject bool, value float64) {
 	for _, element := range collectors {
-		element.RecordScalerMetric(namespace, scaledObject, scaler, triggerIndex, metric, value)
+		element.RecordScalerMetric(namespace, scaledObject, scaler, triggerIndex, metric, isScaledObject, value)
 	}
 }
 
 // RecordScalerLatency create a measurement of the latency to external metric
-func RecordScalerLatency(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, value float64) {
+func RecordScalerLatency(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, isScaledObject bool, value float64) {
 	for _, element := range collectors {
-		element.RecordScalerLatency(namespace, scaledObject, scaler, triggerIndex, metric, value)
+		element.RecordScalerLatency(namespace, scaledObject, scaler, triggerIndex, metric, isScaledObject, value)
 	}
 }
 
@@ -103,9 +106,9 @@ func RecordScalableObjectLatency(namespace string, name string, isScaledObject b
 }
 
 // RecordScalerActive create a measurement of the activity of the scaler
-func RecordScalerActive(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, active bool) {
+func RecordScalerActive(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, isScaledObject bool, active bool) {
 	for _, element := range collectors {
-		element.RecordScalerActive(namespace, scaledObject, scaler, triggerIndex, metric, active)
+		element.RecordScalerActive(namespace, scaledObject, scaler, triggerIndex, metric, isScaledObject, active)
 	}
 }
 
@@ -116,10 +119,10 @@ func RecordScaledObjectPaused(namespace string, scaledObject string, active bool
 	}
 }
 
-// RecordScalerError counts the number of errors occurred in trying get an external metric used by the HPA
-func RecordScalerError(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, err error) {
+// RecordScalerError counts the number of errors occurred in trying to get an external metric used by the HPA
+func RecordScalerError(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, isScaledObject bool, err error) {
 	for _, element := range collectors {
-		element.RecordScalerError(namespace, scaledObject, scaler, triggerIndex, metric, err)
+		element.RecordScalerError(namespace, scaledObject, scaler, triggerIndex, metric, isScaledObject, err)
 	}
 }
 
@@ -127,6 +130,13 @@ func RecordScalerError(namespace string, scaledObject string, scaler string, tri
 func RecordScaledObjectError(namespace string, scaledObject string, err error) {
 	for _, element := range collectors {
 		element.RecordScaledObjectError(namespace, scaledObject, err)
+	}
+}
+
+// RecordScaledJobError counts the number of errors with the scaled job
+func RecordScaledJobError(namespace string, scaledJob string, err error) {
+	for _, element := range collectors {
+		element.RecordScaledJobError(namespace, scaledJob, err)
 	}
 }
 
