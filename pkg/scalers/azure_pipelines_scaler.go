@@ -245,7 +245,7 @@ func parseAzurePipelinesMetadata(ctx context.Context, logger logr.Logger, config
 	if err != nil {
 		return nil, kedav1alpha1.AuthPodIdentity{}, err
 	}
-	// // Trim any trailing new lines from the Azure Pipelines PAT
+	// Trim any trailing new lines from the Azure Pipelines PAT
 	meta.authContext = authContext{
 		pat:  strings.TrimSuffix(pat, "\n"),
 		cred: cred,
