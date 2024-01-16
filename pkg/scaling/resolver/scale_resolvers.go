@@ -195,7 +195,7 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 				authParams["awsRoleArn"] = podIdentity.RoleArn
 			}
 			if podIdentity.IsWorkloadIdentityOwner() {
-				value, err := resolveServiceAccountAnnotation(ctx, client, podTemplateSpec.Spec.ServiceAccountName, namespace, kedav1alpha1.PodIdentityAnnotationEKS)
+				value, err := resolveServiceAccountAnnotation(ctx, client, podTemplateSpec.Spec.ServiceAccountName, namespace, kedav1alpha1.PodIdentityAnnotationEKS, true)
 				if err != nil {
 					return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 						fmt.Errorf("error getting service account: '%s', error: %w", podTemplateSpec.Spec.ServiceAccountName, err)
@@ -203,7 +203,7 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 				authParams["awsRoleArn"] = value
 			}
 		case kedav1alpha1.PodIdentityProviderAwsEKS:
-			value, err := resolveServiceAccountAnnotation(ctx, client, podTemplateSpec.Spec.ServiceAccountName, namespace, kedav1alpha1.PodIdentityAnnotationEKS)
+			value, err := resolveServiceAccountAnnotation(ctx, client, podTemplateSpec.Spec.ServiceAccountName, namespace, kedav1alpha1.PodIdentityAnnotationEKS, false)
 			if err != nil {
 				return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 					fmt.Errorf("error getting service account: '%s', error: %w", podTemplateSpec.Spec.ServiceAccountName, err)
@@ -607,7 +607,7 @@ func resolveAuthSecret(ctx context.Context, client client.Client, logger logr.Lo
 
 // resolveServiceAccountAnnotation retrieves the value of a specific annotation
 // from the annotations of a given Kubernetes ServiceAccount.
-func resolveServiceAccountAnnotation(ctx context.Context, client client.Client, name, namespace, annotation string) (string, error) {
+func resolveServiceAccountAnnotation(ctx context.Context, client client.Client, name, namespace, annotation string, required bool) (string, error) {
 	serviceAccountName := defaultServiceAccount
 	if name != "" {
 		serviceAccountName = name
@@ -618,7 +618,7 @@ func resolveServiceAccountAnnotation(ctx context.Context, client client.Client, 
 		return "", fmt.Errorf("error getting service account: '%s', error: %w", serviceAccountName, err)
 	}
 	value, ok := serviceAccount.Annotations[annotation]
-	if !ok {
+	if !ok && required {
 		return "", fmt.Errorf("annotation '%s' not found", annotation)
 	}
 	return value, nil

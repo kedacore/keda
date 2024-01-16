@@ -87,7 +87,7 @@ func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client clien
 		}
 	case kedav1alpha1.PodIdentityProviderAws:
 		if ash.secretManager.PodIdentity.IsWorkloadIdentityOwner() {
-			awsRoleArn, err := resolveServiceAccountAnnotation(ctx, client, podSpec.ServiceAccountName, triggerNamespace, kedav1alpha1.PodIdentityAnnotationEKS)
+			awsRoleArn, err := resolveServiceAccountAnnotation(ctx, client, podSpec.ServiceAccountName, triggerNamespace, kedav1alpha1.PodIdentityAnnotationEKS, true)
 			if err != nil {
 				return fmt.Errorf("error resolving role arn for aws: %w", err)
 			}
