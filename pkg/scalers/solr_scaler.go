@@ -12,6 +12,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -42,7 +43,7 @@ type solrResponse struct {
 }
 
 // NewSolrScaler creates a new solr Scaler
-func NewSolrScaler(config *ScalerConfig) (Scaler, error) {
+func NewSolrScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -65,7 +66,7 @@ func NewSolrScaler(config *ScalerConfig) (Scaler, error) {
 }
 
 // parseSolrMetadata parses the metadata and returns a solrMetadata or an error if the ScalerConfig is invalid.
-func parseSolrMetadata(config *ScalerConfig) (*solrMetadata, error) {
+func parseSolrMetadata(config *scalersconfig.ScalerConfig) (*solrMetadata, error) {
 	meta := solrMetadata{}
 
 	if val, ok := config.TriggerMetadata["host"]; ok {

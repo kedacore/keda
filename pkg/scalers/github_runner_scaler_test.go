@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 const ghLoadCount = 2 // the size of the pretend pool completed of job requests
@@ -111,9 +113,9 @@ func TestGitHubRunnerParseMetadata(t *testing.T) {
 		t.Run(testData.testName, func(t *testing.T) {
 			var err error
 			if testData.hasEnvs {
-				_, err = parseGitHubRunnerMetadata(&ScalerConfig{ResolvedEnv: testGitHubRunnerResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testAuthParams})
+				_, err = parseGitHubRunnerMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testGitHubRunnerResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testAuthParams})
 			} else {
-				_, err = parseGitHubRunnerMetadata(&ScalerConfig{ResolvedEnv: testGitHubRunnerTokenEnv, TriggerMetadata: testData.metadata, AuthParams: testAuthParams})
+				_, err = parseGitHubRunnerMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testGitHubRunnerTokenEnv, TriggerMetadata: testData.metadata, AuthParams: testAuthParams})
 			}
 			if testData.isError && err == nil {
 				t.Fatal("expected error but got none")
@@ -567,7 +569,7 @@ var githubRunnerMetricIdentifiers = []githubRunnerMetricIdentifier{
 func TestGithubRunnerGetMetricSpecForScaling(t *testing.T) {
 	for i, testData := range githubRunnerMetricIdentifiers {
 		ctx := context.Background()
-		meta, err := parseGitHubRunnerMetadata(&ScalerConfig{ResolvedEnv: testGitHubRunnerResolvedEnv, TriggerMetadata: *testData.metadataTestData, AuthParams: testAuthParams, TriggerIndex: testData.triggerIndex})
+		meta, err := parseGitHubRunnerMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testGitHubRunnerResolvedEnv, TriggerMetadata: *testData.metadataTestData, AuthParams: testAuthParams, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

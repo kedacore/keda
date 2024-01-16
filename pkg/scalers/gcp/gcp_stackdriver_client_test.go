@@ -1,4 +1,4 @@
-package scalers
+package gcp
 
 import (
 	"testing"
@@ -60,7 +60,7 @@ func TestBuildMQLQuery(t *testing.T) {
 	} {
 		s := &StackDriverClient{}
 		t.Run(tc.name, func(t *testing.T) {
-			q, err := s.buildMQLQuery("myproject", tc.resourceType, tc.metric, tc.resourceName, tc.aggregation)
+			q, err := s.BuildMQLQuery("myproject", tc.resourceType, tc.metric, tc.resourceName, tc.aggregation)
 			if tc.isError {
 				assert.Error(t, err)
 				assert.Equal(t, tc.expected, err.Error())

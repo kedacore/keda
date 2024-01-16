@@ -7,6 +7,8 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/mongo"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 var testMongoDBResolvedEnv = map[string]string{
@@ -90,7 +92,7 @@ var mongoDBMetricIdentifiers = []mongoDBMetricIdentifier{
 
 func TestParseMongoDBMetadata(t *testing.T) {
 	for _, testData := range testMONGODBMetadata {
-		_, _, err := parseMongoDBMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		_, _, err := parseMongoDBMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.raisesError {
 			t.Error("Expected success but got error:", err)
 		}
@@ -102,7 +104,7 @@ func TestParseMongoDBMetadata(t *testing.T) {
 
 func TestParseMongoDBConnectionString(t *testing.T) {
 	for _, testData := range mongoDBConnectionStringTestDatas {
-		_, connStr, err := parseMongoDBMetadata(&ScalerConfig{ResolvedEnv: testData.metadataTestData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams})
+		_, connStr, err := parseMongoDBMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.metadataTestData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams})
 		if err != nil {
 			t.Error("Expected success but got error:", err)
 		}
@@ -112,7 +114,7 @@ func TestParseMongoDBConnectionString(t *testing.T) {
 
 func TestMongoDBGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range mongoDBMetricIdentifiers {
-		meta, _, err := parseMongoDBMetadata(&ScalerConfig{ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, TriggerMetadata: testData.metadataTestData.metadata, TriggerIndex: testData.triggerIndex})
+		meta, _, err := parseMongoDBMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, TriggerMetadata: testData.metadataTestData.metadata, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

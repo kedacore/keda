@@ -29,6 +29,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 var log = logf.Log.WithName("scalers_cache")
@@ -43,14 +44,14 @@ type ScalersCache struct {
 
 type ScalerBuilder struct {
 	Scaler       scalers.Scaler
-	ScalerConfig scalers.ScalerConfig
-	Factory      func() (scalers.Scaler, *scalers.ScalerConfig, error)
+	ScalerConfig scalersconfig.ScalerConfig
+	Factory      func() (scalers.Scaler, *scalersconfig.ScalerConfig, error)
 }
 
 // GetScalers returns array of scalers and scaler config stored in the cache
-func (c *ScalersCache) GetScalers() ([]scalers.Scaler, []scalers.ScalerConfig) {
+func (c *ScalersCache) GetScalers() ([]scalers.Scaler, []scalersconfig.ScalerConfig) {
 	scalersList := make([]scalers.Scaler, 0, len(c.Scalers))
-	configsList := make([]scalers.ScalerConfig, 0, len(c.Scalers))
+	configsList := make([]scalersconfig.ScalerConfig, 0, len(c.Scalers))
 	for _, s := range c.Scalers {
 		scalersList = append(scalersList, s.Scaler)
 		configsList = append(configsList, s.ScalerConfig)

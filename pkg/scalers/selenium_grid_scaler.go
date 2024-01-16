@@ -16,6 +16,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -74,7 +75,7 @@ const (
 	DefaultPlatformName   string = "linux"
 )
 
-func NewSeleniumGridScaler(config *ScalerConfig) (Scaler, error) {
+func NewSeleniumGridScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -98,7 +99,7 @@ func NewSeleniumGridScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseSeleniumGridScalerMetadata(config *ScalerConfig) (*seleniumGridScalerMetadata, error) {
+func parseSeleniumGridScalerMetadata(config *scalersconfig.ScalerConfig) (*seleniumGridScalerMetadata, error) {
 	meta := seleniumGridScalerMetadata{
 		targetValue: 1,
 	}

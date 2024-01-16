@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 type parsePulsarMetadataTestData struct {
@@ -119,8 +121,8 @@ var pulsarMetricIdentifiers = []pulsarMetricIdentifier{
 
 func TestParsePulsarMetadata(t *testing.T) {
 	for _, testData := range parsePulsarMetadataTestDataset {
-		logger := InitializeLogger(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validPulsarWithAuthParams}, "test_pulsar_scaler")
-		meta, err := parsePulsarMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validPulsarWithAuthParams}, logger)
+		logger := InitializeLogger(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validPulsarWithAuthParams}, "test_pulsar_scaler")
+		meta, err := parsePulsarMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validPulsarWithAuthParams}, logger)
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -178,7 +180,7 @@ func TestParsePulsarMetadata(t *testing.T) {
 			authParams = validPulsarWithAuthParams
 		}
 
-		meta, err = parsePulsarMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: authParams}, logger)
+		meta, err = parsePulsarMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: authParams}, logger)
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -217,8 +219,8 @@ func compareScope(scopes []string, scopeStr string) bool {
 
 func TestPulsarAuthParams(t *testing.T) {
 	for _, testData := range parsePulsarMetadataTestAuthTLSDataset {
-		logger := InitializeLogger(&ScalerConfig{TriggerMetadata: testData.triggerMetadata, AuthParams: testData.authParams}, "test_pulsar_scaler")
-		meta, err := parsePulsarMetadata(&ScalerConfig{TriggerMetadata: testData.triggerMetadata, AuthParams: testData.authParams}, logger)
+		logger := InitializeLogger(&scalersconfig.ScalerConfig{TriggerMetadata: testData.triggerMetadata, AuthParams: testData.authParams}, "test_pulsar_scaler")
+		meta, err := parsePulsarMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.triggerMetadata, AuthParams: testData.authParams}, logger)
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", testData.authParams, err)
@@ -277,8 +279,8 @@ func TestPulsarAuthParams(t *testing.T) {
 
 func TestPulsarOAuthParams(t *testing.T) {
 	for _, testData := range parsePulsarMetadataTestAuthTLSDataset {
-		logger := InitializeLogger(&ScalerConfig{TriggerMetadata: testData.triggerMetadata, AuthParams: testData.authParams}, "test_pulsar_scaler")
-		meta, err := parsePulsarMetadata(&ScalerConfig{TriggerMetadata: testData.triggerMetadata, AuthParams: testData.authParams}, logger)
+		logger := InitializeLogger(&scalersconfig.ScalerConfig{TriggerMetadata: testData.triggerMetadata, AuthParams: testData.authParams}, "test_pulsar_scaler")
+		meta, err := parsePulsarMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.triggerMetadata, AuthParams: testData.authParams}, logger)
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", testData.authParams, err)
@@ -332,8 +334,8 @@ func TestPulsarOAuthParams(t *testing.T) {
 
 func TestPulsarGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range pulsarMetricIdentifiers {
-		logger := InitializeLogger(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validWithAuthParams}, "test_pulsar_scaler")
-		meta, err := parsePulsarMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validWithAuthParams}, logger)
+		logger := InitializeLogger(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validWithAuthParams}, "test_pulsar_scaler")
+		meta, err := parsePulsarMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validWithAuthParams}, logger)
 		if err != nil {
 			if testData.metadataTestData.isError {
 				continue
@@ -352,7 +354,7 @@ func TestPulsarGetMetricSpecForScaling(t *testing.T) {
 
 func TestPulsarIsActive(t *testing.T) {
 	for _, testData := range pulsarMetricIdentifiers {
-		mockPulsarScaler, err := NewPulsarScaler(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validPulsarWithoutAuthParams})
+		mockPulsarScaler, err := NewPulsarScaler(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validPulsarWithoutAuthParams})
 		if err != nil {
 			if testData.metadataTestData.isError {
 				continue
@@ -376,7 +378,7 @@ func TestPulsarIsActive(t *testing.T) {
 
 func TestPulsarIsActiveWithAuthParams(t *testing.T) {
 	for _, testData := range pulsarMetricIdentifiers {
-		mockPulsarScaler, err := NewPulsarScaler(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validPulsarWithAuthParams})
+		mockPulsarScaler, err := NewPulsarScaler(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validPulsarWithAuthParams})
 		if err != nil {
 			if testData.metadataTestData.isError {
 				continue
@@ -400,7 +402,7 @@ func TestPulsarIsActiveWithAuthParams(t *testing.T) {
 
 func TestPulsarGetMetric(t *testing.T) {
 	for _, testData := range pulsarMetricIdentifiers {
-		mockPulsarScaler, err := NewPulsarScaler(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validPulsarWithoutAuthParams})
+		mockPulsarScaler, err := NewPulsarScaler(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validPulsarWithoutAuthParams})
 		if err != nil {
 			if testData.metadataTestData.isError {
 				continue

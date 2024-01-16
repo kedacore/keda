@@ -12,6 +12,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -50,7 +51,7 @@ type awsKinesisStreamMetadata struct {
 }
 
 // NewAwsKinesisStreamScaler creates a new awsKinesisStreamScaler
-func NewAwsKinesisStreamScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+func NewAwsKinesisStreamScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -77,7 +78,7 @@ func NewAwsKinesisStreamScaler(ctx context.Context, config *ScalerConfig) (Scale
 	}, nil
 }
 
-func parseAwsKinesisStreamMetadata(config *ScalerConfig, logger logr.Logger) (*awsKinesisStreamMetadata, error) {
+func parseAwsKinesisStreamMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*awsKinesisStreamMetadata, error) {
 	meta := awsKinesisStreamMetadata{}
 	meta.targetShardCount = targetShardCountDefault
 

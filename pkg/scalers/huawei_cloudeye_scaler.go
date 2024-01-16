@@ -14,6 +14,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -71,7 +72,7 @@ type huaweiAuthorizationMetadata struct {
 }
 
 // NewHuaweiCloudeyeScaler creates a new huaweiCloudeyeScaler
-func NewHuaweiCloudeyeScaler(config *ScalerConfig) (Scaler, error) {
+func NewHuaweiCloudeyeScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -91,7 +92,7 @@ func NewHuaweiCloudeyeScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseHuaweiCloudeyeMetadata(config *ScalerConfig, logger logr.Logger) (*huaweiCloudeyeMetadata, error) {
+func parseHuaweiCloudeyeMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*huaweiCloudeyeMetadata, error) {
 	meta := huaweiCloudeyeMetadata{}
 
 	meta.metricCollectionTime = defaultCloudeyeMetricCollectionTime

@@ -10,6 +10,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 type workloadMetadataTestData struct {
@@ -36,7 +38,7 @@ var parseWorkloadMetadataTestDataset = []workloadMetadataTestData{
 
 func TestParseWorkloadMetadata(t *testing.T) {
 	for _, testData := range parseWorkloadMetadataTestDataset {
-		_, err := parseWorkloadMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ScalableObjectNamespace: testData.namespace})
+		_, err := parseWorkloadMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ScalableObjectNamespace: testData.namespace})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -68,7 +70,7 @@ func TestWorkloadIsActive(t *testing.T) {
 	for _, testData := range isActiveWorkloadTestDataset {
 		s, _ := NewKubernetesWorkloadScaler(
 			fake.NewClientBuilder().WithRuntimeObjects(createPodlist(testData.podCount)).Build(),
-			&ScalerConfig{
+			&scalersconfig.ScalerConfig{
 				TriggerMetadata:         testData.metadata,
 				AuthParams:              map[string]string{},
 				GlobalHTTPTimeout:       1000 * time.Millisecond,
@@ -107,7 +109,7 @@ func TestWorkloadGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range getMetricSpecForScalingTestDataset {
 		s, _ := NewKubernetesWorkloadScaler(
 			fake.NewClientBuilder().Build(),
-			&ScalerConfig{
+			&scalersconfig.ScalerConfig{
 				TriggerMetadata:         testData.metadata,
 				AuthParams:              map[string]string{},
 				GlobalHTTPTimeout:       1000 * time.Millisecond,
@@ -170,7 +172,7 @@ func TestWorkloadPhase(t *testing.T) {
 		list.Items = append(list.Items, *pod)
 		s, err := NewKubernetesWorkloadScaler(
 			fake.NewClientBuilder().WithRuntimeObjects(list).Build(),
-			&ScalerConfig{
+			&scalersconfig.ScalerConfig{
 				TriggerMetadata: map[string]string{
 					"podSelector": "app=testphases",
 					"value":       "1",

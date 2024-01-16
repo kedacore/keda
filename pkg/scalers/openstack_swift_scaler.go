@@ -12,6 +12,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -56,7 +57,7 @@ type openstackSwiftScaler struct {
 }
 
 // NewOpenstackSwiftScaler creates a new OpenStack Swift scaler
-func NewOpenstackSwiftScaler(config *ScalerConfig) (Scaler, error) {
+func NewOpenstackSwiftScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	var swiftClient *gophercloud.ServiceClient
 
 	metricType, err := GetMetricTargetType(config)
@@ -124,7 +125,7 @@ func NewOpenstackSwiftScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseOpenstackSwiftMetadata(config *ScalerConfig) (*openstackSwiftMetadata, error) {
+func parseOpenstackSwiftMetadata(config *scalersconfig.ScalerConfig) (*openstackSwiftMetadata, error) {
 	meta := openstackSwiftMetadata{}
 
 	if val, ok := config.TriggerMetadata["swiftURL"]; ok {
@@ -200,7 +201,7 @@ func parseOpenstackSwiftMetadata(config *ScalerConfig) (*openstackSwiftMetadata,
 	return &meta, nil
 }
 
-func parseOpenstackSwiftAuthenticationMetadata(config *ScalerConfig) (*openstackSwiftAuthenticationMetadata, error) {
+func parseOpenstackSwiftAuthenticationMetadata(config *scalersconfig.ScalerConfig) (*openstackSwiftAuthenticationMetadata, error) {
 	authMeta := openstackSwiftAuthenticationMetadata{}
 
 	if config.AuthParams["authURL"] != "" {

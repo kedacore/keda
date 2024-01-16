@@ -20,6 +20,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -156,7 +157,7 @@ type authContext struct {
 }
 
 // NewAzurePipelinesScaler creates a new AzurePipelinesScaler
-func NewAzurePipelinesScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+func NewAzurePipelinesScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
 	logger := InitializeLogger(config, "azure_pipelines_scaler")
@@ -179,7 +180,7 @@ func NewAzurePipelinesScaler(ctx context.Context, config *ScalerConfig) (Scaler,
 	}, nil
 }
 
-func getAuthMethod(logger logr.Logger, config *ScalerConfig) (string, *azidentity.ChainedTokenCredential, kedav1alpha1.AuthPodIdentity, error) {
+func getAuthMethod(logger logr.Logger, config *scalersconfig.ScalerConfig) (string, *azidentity.ChainedTokenCredential, kedav1alpha1.AuthPodIdentity, error) {
 	pat := ""
 	if val, ok := config.AuthParams["personalAccessToken"]; ok && val != "" {
 		// Found the personalAccessToken in a parameter from TriggerAuthentication
@@ -203,7 +204,7 @@ func getAuthMethod(logger logr.Logger, config *ScalerConfig) (string, *azidentit
 	return pat, nil, kedav1alpha1.AuthPodIdentity{}, nil
 }
 
-func parseAzurePipelinesMetadata(ctx context.Context, logger logr.Logger, config *ScalerConfig, httpClient *http.Client) (*azurePipelinesMetadata, kedav1alpha1.AuthPodIdentity, error) {
+func parseAzurePipelinesMetadata(ctx context.Context, logger logr.Logger, config *scalersconfig.ScalerConfig, httpClient *http.Client) (*azurePipelinesMetadata, kedav1alpha1.AuthPodIdentity, error) {
 	meta := azurePipelinesMetadata{}
 	meta.targetPipelinesQueueLength = defaultTargetPipelinesQueueLength
 
@@ -391,7 +392,7 @@ func getAzurePipelineRequest(ctx context.Context, logger logr.Logger, urlString 
 			return []byte{}, fmt.Errorf("cannot create workload identity credentials: %w", err)
 		}
 		logger.V(1).Info("token acquired setting auth header as 'bearer XXXXXX'")
-		req.Header.Set("Authorization", "Bearer "+aadToken)
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", aadToken))
 	}
 
 	r, err := httpClient.Do(req)

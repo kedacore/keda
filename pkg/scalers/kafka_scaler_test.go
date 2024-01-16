@@ -11,6 +11,8 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/go-logr/logr"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 type parseKafkaMetadataTestData struct {
@@ -318,10 +320,10 @@ var kafkaMetricIdentifiers = []kafkaMetricIdentifier{
 
 func TestGetBrokers(t *testing.T) {
 	for _, testData := range parseKafkaMetadataTestDataset {
-		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validWithAuthParams}, logr.Discard())
+		meta, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validWithAuthParams}, logr.Discard())
 		getBrokerTestBase(t, meta, testData, err)
 
-		meta, err = parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validWithoutAuthParams}, logr.Discard())
+		meta, err = parseKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validWithoutAuthParams}, logr.Discard())
 		getBrokerTestBase(t, meta, testData, err)
 	}
 }
@@ -372,7 +374,7 @@ func getBrokerTestBase(t *testing.T, meta kafkaMetadata, testData parseKafkaMeta
 
 func TestKafkaAuthParamsInTriggerAuthentication(t *testing.T) {
 	for _, testData := range parseKafkaAuthParamsTestDataset {
-		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: validKafkaMetadata, AuthParams: testData.authParams}, logr.Discard())
+		meta, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: validKafkaMetadata, AuthParams: testData.authParams}, logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -416,7 +418,7 @@ func TestKafkaAuthParamsInTriggerAuthentication(t *testing.T) {
 
 func TestKafkaAuthParamsInScaledObject(t *testing.T) {
 	for id, testData := range parseAuthParamsTestDataset {
-		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
+		meta, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Errorf("Test case: %v. Expected success but got error %v", id, err)
@@ -478,7 +480,7 @@ func testFileContents(testData parseKafkaAuthParamsTestData, meta kafkaMetadata,
 
 func TestKafkaOAuthbrearerAuthParams(t *testing.T) {
 	for _, testData := range parseKafkaOAuthbrearerAuthParamsTestDataset {
-		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: validKafkaMetadata, AuthParams: testData.authParams}, logr.Discard())
+		meta, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: validKafkaMetadata, AuthParams: testData.authParams}, logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -501,7 +503,7 @@ func TestKafkaOAuthbrearerAuthParams(t *testing.T) {
 
 func TestKafkaGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range kafkaMetricIdentifiers {
-		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validWithAuthParams, TriggerIndex: testData.triggerIndex}, logr.Discard())
+		meta, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validWithAuthParams, TriggerIndex: testData.triggerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -529,7 +531,7 @@ func TestGetTopicPartitions(t *testing.T) {
 
 	for _, tt := range testData {
 		t.Run(tt.name, func(t *testing.T) {
-			meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: tt.metadata, AuthParams: validWithAuthParams}, logr.Discard())
+			meta, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: tt.metadata, AuthParams: validWithAuthParams}, logr.Discard())
 			if err != nil {
 				t.Fatal("Could not parse metadata:", err)
 			}

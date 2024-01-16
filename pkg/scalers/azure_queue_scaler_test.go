@@ -24,6 +24,7 @@ import (
 	"github.com/go-logr/logr"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 var testAzQueueResolvedEnv = map[string]string{
@@ -104,7 +105,7 @@ var azQueueMetricIdentifiers = []azQueueMetricIdentifier{
 
 func TestAzQueueParseMetadata(t *testing.T) {
 	for _, testData := range testAzQueueMetadata {
-		_, podIdentity, err := parseAzureQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadata,
+		_, podIdentity, err := parseAzureQueueMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata,
 			ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams,
 			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentity}},
 			logr.Discard())
@@ -122,7 +123,7 @@ func TestAzQueueParseMetadata(t *testing.T) {
 
 func TestAzQueueGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azQueueMetricIdentifiers {
-		meta, podIdentity, err := parseAzureQueueMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata,
+		meta, podIdentity, err := parseAzureQueueMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata,
 			ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams,
 			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.metadataTestData.podIdentity}, TriggerIndex: testData.triggerIndex},
 			logr.Discard())

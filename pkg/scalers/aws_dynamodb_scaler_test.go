@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 const (
@@ -294,7 +295,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 func TestParseDynamoMetadata(t *testing.T) {
 	for _, tc := range dynamoTestCases {
 		t.Run(tc.name, func(t *testing.T) {
-			metadata, err := parseAwsDynamoDBMetadata(&ScalerConfig{
+			metadata, err := parseAwsDynamoDBMetadata(&scalersconfig.ScalerConfig{
 				TriggerMetadata: tc.metadata,
 				AuthParams:      tc.authParams,
 				ResolvedEnv:     tc.resolvedEnv,

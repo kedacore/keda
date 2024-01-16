@@ -28,6 +28,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -136,7 +137,7 @@ func (s *PredictKubeScaler) setupClientConn() error {
 }
 
 // NewPredictKubeScaler creates a new PredictKube scaler
-func NewPredictKubeScaler(ctx context.Context, config *ScalerConfig) (*PredictKubeScaler, error) {
+func NewPredictKubeScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (*PredictKubeScaler, error) {
 	s := &PredictKubeScaler{}
 
 	logger := InitializeLogger(config, "predictkube_scaler")
@@ -343,7 +344,7 @@ func (s *PredictKubeScaler) parsePrometheusResult(result model.Value) (out []*co
 	return out, nil
 }
 
-func parsePredictKubeMetadata(config *ScalerConfig) (result *predictKubeMetadata, err error) {
+func parsePredictKubeMetadata(config *scalersconfig.ScalerConfig) (result *predictKubeMetadata, err error) {
 	validate := validator.New()
 	meta := predictKubeMetadata{}
 

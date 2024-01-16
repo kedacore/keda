@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -162,7 +163,7 @@ var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
 
 func TestRabbitMQParseMetadata(t *testing.T) {
 	for idx, testData := range testRabbitMQMetadata {
-		meta, err := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		meta, err := parseRabbitMQMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -183,7 +184,7 @@ func TestRabbitMQParseMetadata(t *testing.T) {
 
 func TestRabbitMQParseAuthParamData(t *testing.T) {
 	for _, testData := range testRabbitMQAuthParamData {
-		metadata, err := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams, PodIdentity: testData.podIdentity})
+		metadata, err := parseRabbitMQMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams, PodIdentity: testData.podIdentity})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -225,7 +226,7 @@ var testDefaultQueueLength = []parseRabbitMQMetadataTestData{
 
 func TestParseDefaultQueueLength(t *testing.T) {
 	for _, testData := range testDefaultQueueLength {
-		metadata, err := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		metadata, err := parseRabbitMQMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		switch {
 		case err != nil && !testData.isError:
 			t.Error("Expected success but got error", err)
@@ -377,7 +378,7 @@ func TestGetQueueInfo(t *testing.T) {
 		}
 
 		s, err := NewRabbitMQScaler(
-			&ScalerConfig{
+			&scalersconfig.ScalerConfig{
 				ResolvedEnv:       resolvedEnv,
 				TriggerMetadata:   metadata,
 				AuthParams:        map[string]string{},
@@ -518,7 +519,7 @@ func TestGetQueueInfoWithRegex(t *testing.T) {
 		}
 
 		s, err := NewRabbitMQScaler(
-			&ScalerConfig{
+			&scalersconfig.ScalerConfig{
 				ResolvedEnv:       resolvedEnv,
 				TriggerMetadata:   metadata,
 				AuthParams:        map[string]string{},
@@ -602,7 +603,7 @@ func TestGetPageSizeWithRegex(t *testing.T) {
 		}
 
 		s, err := NewRabbitMQScaler(
-			&ScalerConfig{
+			&scalersconfig.ScalerConfig{
 				ResolvedEnv:       resolvedEnv,
 				TriggerMetadata:   metadata,
 				AuthParams:        map[string]string{},
@@ -629,7 +630,7 @@ func TestGetPageSizeWithRegex(t *testing.T) {
 
 func TestRabbitMQGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range rabbitMQMetricIdentifiers {
-		meta, err := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil, TriggerIndex: testData.index})
+		meta, err := parseRabbitMQMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil, TriggerIndex: testData.index})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -671,7 +672,7 @@ func TestRabbitMQAnonymizeRabbitMQError(t *testing.T) {
 		"hostFromEnv": host,
 		"protocol":    "http",
 	}
-	meta, err := parseRabbitMQMetadata(&ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: metadata, AuthParams: nil})
+	meta, err := parseRabbitMQMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: metadata, AuthParams: nil})
 
 	if err != nil {
 		t.Fatalf("Error parsing metadata (%s)", err)
@@ -723,7 +724,7 @@ func TestRegexQueueMissingError(t *testing.T) {
 		}
 
 		s, err := NewRabbitMQScaler(
-			&ScalerConfig{
+			&scalersconfig.ScalerConfig{
 				ResolvedEnv:       resolvedEnv,
 				TriggerMetadata:   metadata,
 				AuthParams:        map[string]string{},
