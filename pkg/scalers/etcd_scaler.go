@@ -14,6 +14,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -52,7 +53,7 @@ type etcdMetadata struct {
 }
 
 // NewEtcdScaler creates a new etcdScaler
-func NewEtcdScaler(config *ScalerConfig) (Scaler, error) {
+func NewEtcdScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -75,7 +76,7 @@ func NewEtcdScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseEtcdAuthParams(config *ScalerConfig, meta *etcdMetadata) error {
+func parseEtcdAuthParams(config *scalersconfig.ScalerConfig, meta *etcdMetadata) error {
 	meta.enableTLS = false
 	if val, ok := config.AuthParams["tls"]; ok {
 		val = strings.TrimSpace(val)
@@ -105,7 +106,7 @@ func parseEtcdAuthParams(config *ScalerConfig, meta *etcdMetadata) error {
 	return nil
 }
 
-func parseEtcdMetadata(config *ScalerConfig) (*etcdMetadata, error) {
+func parseEtcdMetadata(config *scalersconfig.ScalerConfig) (*etcdMetadata, error) {
 	meta := &etcdMetadata{}
 	var err error
 	meta.endpoints = strings.Split(config.TriggerMetadata[endpoints], ",")

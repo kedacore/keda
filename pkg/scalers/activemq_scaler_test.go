@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 const (
@@ -221,7 +223,7 @@ var testActiveMQMetadata = []parseActiveMQMetadataTestData{
 
 func TestActiveMQDefaultCorsHeader(t *testing.T) {
 	metadata := map[string]string{"managementEndpoint": "localhost:8161", "destinationName": "queue1", "brokerName": "broker-activemq", "username": "myUserName", "password": "myPassword"}
-	meta, err := parseActiveMQMetadata(&ScalerConfig{TriggerMetadata: metadata, AuthParams: nil})
+	meta, err := parseActiveMQMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: metadata, AuthParams: nil})
 
 	if err != nil {
 		t.Error("Expected success but got error", err)
@@ -233,7 +235,7 @@ func TestActiveMQDefaultCorsHeader(t *testing.T) {
 
 func TestActiveMQCorsHeader(t *testing.T) {
 	metadata := map[string]string{"managementEndpoint": "localhost:8161", "destinationName": "queue1", "brokerName": "broker-activemq", "username": "myUserName", "password": "myPassword", "corsHeader": "test"}
-	meta, err := parseActiveMQMetadata(&ScalerConfig{TriggerMetadata: metadata, AuthParams: nil})
+	meta, err := parseActiveMQMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: metadata, AuthParams: nil})
 
 	if err != nil {
 		t.Error("Expected success but got error", err)
@@ -246,7 +248,7 @@ func TestActiveMQCorsHeader(t *testing.T) {
 func TestParseActiveMQMetadata(t *testing.T) {
 	for _, testData := range testActiveMQMetadata {
 		t.Run(testData.name, func(t *testing.T) {
-			metadata, err := parseActiveMQMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+			metadata, err := parseActiveMQMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 			if err != nil && !testData.isError {
 				t.Error("Expected success but got error", err)
 			}
@@ -280,7 +282,7 @@ var testDefaultTargetQueueSize = []parseActiveMQMetadataTestData{
 func TestParseDefaultTargetQueueSize(t *testing.T) {
 	for _, testData := range testDefaultTargetQueueSize {
 		t.Run(testData.name, func(t *testing.T) {
-			metadata, err := parseActiveMQMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+			metadata, err := parseActiveMQMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 			switch {
 			case err != nil && !testData.isError:
 				t.Error("Expected success but got error", err)
@@ -296,7 +298,7 @@ func TestParseDefaultTargetQueueSize(t *testing.T) {
 func TestActiveMQGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range activeMQMetricIdentifiers {
 		ctx := context.Background()
-		metadata, err := parseActiveMQMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex})
+		metadata, err := parseActiveMQMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -343,7 +345,7 @@ func TestActiveMQGetMonitoringEndpoint(t *testing.T) {
 		"password": "pass123",
 	}
 	for _, testData := range getMonitoringEndpointData {
-		metadata, err := parseActiveMQMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: authParams, TriggerIndex: 0})
+		metadata, err := parseActiveMQMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: authParams, TriggerIndex: 0})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

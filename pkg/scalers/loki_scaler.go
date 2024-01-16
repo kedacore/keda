@@ -14,6 +14,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -64,7 +65,7 @@ type lokiQueryResult struct {
 }
 
 // NewLokiScaler returns a new lokiScaler
-func NewLokiScaler(config *ScalerConfig) (Scaler, error) {
+func NewLokiScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -87,7 +88,7 @@ func NewLokiScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseLokiMetadata(config *ScalerConfig) (meta *lokiMetadata, err error) {
+func parseLokiMetadata(config *scalersconfig.ScalerConfig) (meta *lokiMetadata, err error) {
 	meta = &lokiMetadata{}
 
 	if val, ok := config.TriggerMetadata[lokiServerAddress]; ok && val != "" {
@@ -135,8 +136,7 @@ func parseLokiMetadata(config *ScalerConfig) (meta *lokiMetadata, err error) {
 	if val, ok := config.TriggerMetadata[lokiIgnoreNullValues]; ok && val != "" {
 		ignoreNullValues, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("err incorrect value for ignoreNullValues given: %s, "+
-				"please use true or false", val)
+			return nil, fmt.Errorf("err incorrect value for ignoreNullValues given: %s please use true or false", val)
 		}
 		meta.ignoreNullValues = ignoreNullValues
 	}

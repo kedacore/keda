@@ -29,6 +29,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -49,7 +50,7 @@ type azureBlobScaler struct {
 }
 
 // NewAzureBlobScaler creates a new azureBlobScaler
-func NewAzureBlobScaler(config *ScalerConfig) (Scaler, error) {
+func NewAzureBlobScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -71,7 +72,7 @@ func NewAzureBlobScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseAzureBlobMetadata(config *ScalerConfig, logger logr.Logger) (*azure.BlobMetadata, kedav1alpha1.AuthPodIdentity, error) {
+func parseAzureBlobMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*azure.BlobMetadata, kedav1alpha1.AuthPodIdentity, error) {
 	meta := azure.BlobMetadata{}
 	meta.TargetBlobCount = defaultTargetBlobCount
 	meta.BlobDelimiter = defaultBlobDelimiter

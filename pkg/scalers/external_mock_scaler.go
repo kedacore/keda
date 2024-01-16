@@ -9,6 +9,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 const (
@@ -26,7 +28,7 @@ var (
 
 type externalMockScaler struct{}
 
-func NewExternalMockScaler(_ *ScalerConfig) (Scaler, error) {
+func NewExternalMockScaler(_ *scalersconfig.ScalerConfig) (Scaler, error) {
 	return &externalMockScaler{}, nil
 }
 

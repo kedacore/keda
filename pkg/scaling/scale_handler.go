@@ -42,6 +42,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/fallback"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scalers"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache/metricscache"
 	"github.com/kedacore/keda/v2/pkg/scaling/executor"
@@ -498,7 +499,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 				// if compositeScaler is used, override with current metric, otherwise do nothing
 				metricName := spec.External.Metric.Name
 				wg.Add(1)
-				go func(results chan metricResult, wg *sync.WaitGroup, metricName string, triggerIndex int, scalerConfig scalers.ScalerConfig, spec v2.MetricSpec) {
+				go func(results chan metricResult, wg *sync.WaitGroup, metricName string, triggerIndex int, scalerConfig scalersconfig.ScalerConfig, spec v2.MetricSpec) {
 					result := metricResult{}
 
 					// Pair metric values with their trigger names. This is applied only when
@@ -623,7 +624,7 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	wg := sync.WaitGroup{}
 	for scalerIndex := 0; scalerIndex < len(allScalers); scalerIndex++ {
 		wg.Add(1)
-		go func(scaler scalers.Scaler, index int, scalerConfig scalers.ScalerConfig, results chan scalerState, wg *sync.WaitGroup) {
+		go func(scaler scalers.Scaler, index int, scalerConfig scalersconfig.ScalerConfig, results chan scalerState, wg *sync.WaitGroup) {
 			results <- h.getScalerState(ctx, scaler, index, scalerConfig, cache, logger, scaledObject)
 			wg.Done()
 		}(allScalers[scalerIndex], scalerIndex, scalerConfigs[scalerIndex], results, &wg)
@@ -709,7 +710,7 @@ type scalerState struct {
 // for an specific scaler. The state contains if it's active or
 // with erros, but also the records for the cache and he metrics
 // for the custom formulas
-func (*scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler, triggerIndex int, scalerConfig scalers.ScalerConfig,
+func (*scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler, triggerIndex int, scalerConfig scalersconfig.ScalerConfig,
 	cache *cache.ScalersCache, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) scalerState {
 	result := scalerState{
 		IsActive: false,

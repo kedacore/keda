@@ -27,6 +27,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/common/message"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/scalers"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache"
 	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
 )
@@ -45,14 +46,14 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 	for i, t := range withTriggers.Spec.Triggers {
 		triggerIndex, trigger := i, t
 
-		factory := func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+		factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 			if podTemplateSpec != nil {
 				resolvedEnv, err = resolver.ResolveContainerEnv(ctx, h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace, h.secretsLister)
 				if err != nil {
 					return nil, nil, fmt.Errorf("error resolving secrets for ScaleTarget: %w", err)
 				}
 			}
-			config := &scalers.ScalerConfig{
+			config := &scalersconfig.ScalerConfig{
 				ScalableObjectName:      withTriggers.Name,
 				ScalableObjectNamespace: withTriggers.Namespace,
 				ScalableObjectType:      withTriggers.Kind,
@@ -118,7 +119,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 }
 
 // buildScaler builds a scaler form input config and trigger type
-func buildScaler(ctx context.Context, client client.Client, triggerType string, config *scalers.ScalerConfig) (scalers.Scaler, error) {
+func buildScaler(ctx context.Context, client client.Client, triggerType string, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 	// TRIGGERS-START
 	switch triggerType {
 	case "activemq":

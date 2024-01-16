@@ -7,6 +7,8 @@ import (
 	_ "github.com/go-kivik/couchdb/v3"
 	"github.com/go-kivik/kivik/v3"
 	"github.com/go-logr/logr"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 var testCouchDBResolvedEnv = map[string]string{
@@ -72,7 +74,7 @@ var couchDBMetricIdentifiers = []couchDBMetricIdentifier{
 
 func TestParseCouchDBMetadata(t *testing.T) {
 	for _, testData := range testCOUCHDBMetadata {
-		_, _, err := parseCouchDBMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		_, _, err := parseCouchDBMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.raisesError {
 			t.Error("Expected success but got error:", err)
 		}
@@ -81,7 +83,7 @@ func TestParseCouchDBMetadata(t *testing.T) {
 
 func TestCouchDBGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range couchDBMetricIdentifiers {
-		meta, _, err := parseCouchDBMetadata(&ScalerConfig{ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, TriggerMetadata: testData.metadataTestData.metadata, TriggerIndex: testData.triggerIndex})
+		meta, _, err := parseCouchDBMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, TriggerMetadata: testData.metadataTestData.metadata, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

@@ -12,6 +12,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -35,7 +36,7 @@ type cronMetadata struct {
 }
 
 // NewCronScaler creates a new cronScaler
-func NewCronScaler(config *ScalerConfig) (Scaler, error) {
+func NewCronScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -67,7 +68,7 @@ func getCronTime(location *time.Location, spec string) (int64, error) {
 	return cronTime, nil
 }
 
-func parseCronMetadata(config *ScalerConfig) (*cronMetadata, error) {
+func parseCronMetadata(config *scalersconfig.ScalerConfig) (*cronMetadata, error) {
 	if len(config.TriggerMetadata) == 0 {
 		return nil, fmt.Errorf("invalid Input Metadata. %s", config.TriggerMetadata)
 	}

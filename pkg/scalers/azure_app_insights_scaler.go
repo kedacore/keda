@@ -12,6 +12,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -51,7 +52,7 @@ type azureAppInsightsScaler struct {
 }
 
 // NewAzureAppInsightsScaler creates a new AzureAppInsightsScaler
-func NewAzureAppInsightsScaler(config *ScalerConfig) (Scaler, error) {
+func NewAzureAppInsightsScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -72,7 +73,7 @@ func NewAzureAppInsightsScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseAzureAppInsightsMetadata(config *ScalerConfig, logger logr.Logger) (*azureAppInsightsMetadata, error) {
+func parseAzureAppInsightsMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*azureAppInsightsMetadata, error) {
 	meta := azureAppInsightsMetadata{
 		azureAppInsightsInfo: azure.AppInsightsInfo{},
 	}
@@ -157,8 +158,7 @@ func parseAzureAppInsightsMetadata(config *ScalerConfig, logger logr.Logger) (*a
 	if val, ok := config.TriggerMetadata[azureAppInsightsIgnoreNullValues]; ok && val != "" {
 		azureAppInsightsIgnoreNullValues, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("err incorrect value for azureAppInsightsIgnoreNullValues given: %s, "+
-				"please use true or false", val)
+			return nil, fmt.Errorf("err incorrect value for azureAppInsightsIgnoreNullValues given: %s, please use true or false", val)
 		}
 		meta.ignoreNullValues = azureAppInsightsIgnoreNullValues
 	}

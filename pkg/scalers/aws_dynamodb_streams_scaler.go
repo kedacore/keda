@@ -13,6 +13,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -40,7 +41,7 @@ type awsDynamoDBStreamsMetadata struct {
 }
 
 // NewAwsDynamoDBStreamsScaler creates a new awsDynamoDBStreamsScaler
-func NewAwsDynamoDBStreamsScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+func NewAwsDynamoDBStreamsScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -73,7 +74,7 @@ func NewAwsDynamoDBStreamsScaler(ctx context.Context, config *ScalerConfig) (Sca
 	}, nil
 }
 
-func parseAwsDynamoDBStreamsMetadata(config *ScalerConfig, logger logr.Logger) (*awsDynamoDBStreamsMetadata, error) {
+func parseAwsDynamoDBStreamsMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*awsDynamoDBStreamsMetadata, error) {
 	meta := awsDynamoDBStreamsMetadata{}
 	meta.targetShardCount = defaultTargetDBStreamsShardCount
 

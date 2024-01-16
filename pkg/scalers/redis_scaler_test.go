@@ -7,6 +7,8 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 var testRedisResolvedEnv = map[string]string{
@@ -81,7 +83,7 @@ func TestRedisParseMetadata(t *testing.T) {
 	testCaseNum := 0
 	for _, testData := range testRedisMetadata {
 		testCaseNum++
-		meta, err := parseRedisMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testRedisResolvedEnv, AuthParams: testData.authParams}, parseRedisAddress)
+		meta, err := parseRedisMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testRedisResolvedEnv, AuthParams: testData.authParams}, parseRedisAddress)
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success but got error for unit test # %v", testCaseNum)
 		}
@@ -113,7 +115,7 @@ func TestRedisParseMetadata(t *testing.T) {
 
 func TestRedisGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range redisMetricIdentifiers {
-		meta, err := parseRedisMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testRedisResolvedEnv, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex}, parseRedisAddress)
+		meta, err := parseRedisMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testRedisResolvedEnv, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex}, parseRedisAddress)
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -371,7 +373,7 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 	for _, testCase := range cases {
 		c := testCase
 		t.Run(c.name, func(t *testing.T) {
-			config := &ScalerConfig{
+			config := &scalersconfig.ScalerConfig{
 				TriggerMetadata: c.metadata,
 				ResolvedEnv:     c.resolvedEnv,
 				AuthParams:      c.authParams,
@@ -817,7 +819,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 	for _, testCase := range cases {
 		c := testCase
 		t.Run(c.name, func(t *testing.T) {
-			config := &ScalerConfig{
+			config := &scalersconfig.ScalerConfig{
 				TriggerMetadata: c.metadata,
 				ResolvedEnv:     c.resolvedEnv,
 				AuthParams:      c.authParams,

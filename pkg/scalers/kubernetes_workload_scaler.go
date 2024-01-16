@@ -12,6 +12,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -43,7 +44,7 @@ type kubernetesWorkloadMetadata struct {
 }
 
 // NewKubernetesWorkloadScaler creates a new kubernetesWorkloadScaler
-func NewKubernetesWorkloadScaler(kubeClient client.Client, config *ScalerConfig) (Scaler, error) {
+func NewKubernetesWorkloadScaler(kubeClient client.Client, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -62,7 +63,7 @@ func NewKubernetesWorkloadScaler(kubeClient client.Client, config *ScalerConfig)
 	}, nil
 }
 
-func parseWorkloadMetadata(config *ScalerConfig) (*kubernetesWorkloadMetadata, error) {
+func parseWorkloadMetadata(config *scalersconfig.ScalerConfig) (*kubernetesWorkloadMetadata, error) {
 	meta := &kubernetesWorkloadMetadata{}
 	var err error
 	meta.namespace = config.ScalableObjectNamespace

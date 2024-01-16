@@ -7,6 +7,8 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 func TestParseRedisStreamsMetadata(t *testing.T) {
@@ -47,7 +49,7 @@ func TestParseRedisStreamsMetadata(t *testing.T) {
 	for _, tc := range testCasesPending {
 		tc := tc
 		t.Run(tc.name, func(te *testing.T) {
-			m, err := parseRedisStreamsMetadata(&ScalerConfig{TriggerMetadata: tc.metadata, ResolvedEnv: tc.resolvedEnv, AuthParams: tc.authParams}, parseRedisAddress)
+			m, err := parseRedisStreamsMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: tc.metadata, ResolvedEnv: tc.resolvedEnv, AuthParams: tc.authParams}, parseRedisAddress)
 			assert.Nil(t, err)
 			assert.Equal(t, tc.metadata[streamNameMetadata], m.streamName)
 			assert.Equal(t, tc.metadata[consumerGroupNameMetadata], m.consumerGroupName)
@@ -97,7 +99,7 @@ func TestParseRedisStreamsMetadata(t *testing.T) {
 	for _, tc := range testCasesLag {
 		tc := tc
 		t.Run(tc.name, func(te *testing.T) {
-			m, err := parseRedisStreamsMetadata(&ScalerConfig{TriggerMetadata: tc.metadata, ResolvedEnv: tc.resolvedEnv, AuthParams: tc.authParams}, parseRedisAddress)
+			m, err := parseRedisStreamsMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: tc.metadata, ResolvedEnv: tc.resolvedEnv, AuthParams: tc.authParams}, parseRedisAddress)
 			assert.Nil(t, err)
 			assert.Equal(t, m.streamName, tc.metadata[streamNameMetadata])
 			assert.Equal(t, m.consumerGroupName, tc.metadata[consumerGroupNameMetadata])
@@ -158,7 +160,7 @@ func TestParseRedisStreamsMetadataForInvalidCases(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(te *testing.T) {
-			_, err := parseRedisStreamsMetadata(&ScalerConfig{TriggerMetadata: tc.metadata, ResolvedEnv: tc.resolvedEnv, AuthParams: map[string]string{}}, parseRedisAddress)
+			_, err := parseRedisStreamsMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: tc.metadata, ResolvedEnv: tc.resolvedEnv, AuthParams: map[string]string{}}, parseRedisAddress)
 			assert.NotNil(t, err)
 		})
 	}
@@ -189,7 +191,7 @@ func TestRedisStreamsGetMetricSpecForScaling(t *testing.T) {
 	}
 
 	for _, testData := range redisStreamMetricIdentifiers {
-		meta, err := parseRedisStreamsMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: map[string]string{"REDIS_SERVICE": "my-address"}, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex}, parseRedisAddress)
+		meta, err := parseRedisStreamsMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: map[string]string{"REDIS_SERVICE": "my-address"}, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex}, parseRedisAddress)
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -819,7 +821,7 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 	for _, testCase := range cases {
 		c := testCase
 		t.Run(c.name, func(t *testing.T) {
-			config := &ScalerConfig{
+			config := &scalersconfig.ScalerConfig{
 				TriggerMetadata: c.metadata,
 				ResolvedEnv:     c.resolvedEnv,
 				AuthParams:      c.authParams,
@@ -1939,7 +1941,7 @@ func TestParseRedisSentinelStreamsMetadata(t *testing.T) {
 	for _, testCase := range cases {
 		c := testCase
 		t.Run(c.name, func(t *testing.T) {
-			config := &ScalerConfig{
+			config := &scalersconfig.ScalerConfig{
 				TriggerMetadata: c.metadata,
 				ResolvedEnv:     c.resolvedEnv,
 				AuthParams:      c.authParams,
@@ -1995,7 +1997,7 @@ func TestActivityCount(t *testing.T) {
 		wantErr: nil,
 	}
 	t.Run(c.name, func(t *testing.T) {
-		config := &ScalerConfig{
+		config := &scalersconfig.ScalerConfig{
 			TriggerMetadata: c.metadata,
 			ResolvedEnv:     c.resolvedEnv,
 			AuthParams:      c.authParams,

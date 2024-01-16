@@ -7,36 +7,38 @@ import (
 	"github.com/stretchr/testify/assert"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
+
+	scalersconfig "github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 func TestGetMetricTargetType(t *testing.T) {
 	cases := []struct {
 		name           string
-		config         *ScalerConfig
+		config         *scalersconfig.ScalerConfig
 		wantmetricType v2.MetricTargetType
 		wantErr        error
 	}{
 		{
 			name:           "utilization metric type",
-			config:         &ScalerConfig{MetricType: v2.UtilizationMetricType},
+			config:         &scalersconfig.ScalerConfig{MetricType: v2.UtilizationMetricType},
 			wantmetricType: "",
 			wantErr:        ErrScalerUnsupportedUtilizationMetricType,
 		},
 		{
 			name:           "average value metric type",
-			config:         &ScalerConfig{MetricType: v2.AverageValueMetricType},
+			config:         &scalersconfig.ScalerConfig{MetricType: v2.AverageValueMetricType},
 			wantmetricType: v2.AverageValueMetricType,
 			wantErr:        nil,
 		},
 		{
 			name:           "value metric type",
-			config:         &ScalerConfig{MetricType: v2.ValueMetricType},
+			config:         &scalersconfig.ScalerConfig{MetricType: v2.ValueMetricType},
 			wantmetricType: v2.ValueMetricType,
 			wantErr:        nil,
 		},
 		{
 			name:           "no metric type",
-			config:         &ScalerConfig{},
+			config:         &scalersconfig.ScalerConfig{},
 			wantmetricType: v2.AverageValueMetricType,
 			wantErr:        nil,
 		},
@@ -253,7 +255,7 @@ var getParameterFromConfigTestDataset = []getParameterFromConfigTestData{
 func TestGetParameterFromConfigV2(t *testing.T) {
 	for _, testData := range getParameterFromConfigTestDataset {
 		val, err := getParameterFromConfigV2(
-			&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams, ResolvedEnv: testData.resolvedEnv},
+			&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams, ResolvedEnv: testData.resolvedEnv},
 			testData.parameter,
 			testData.useMetadata,
 			testData.useAuthentication,

@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 const (
@@ -471,7 +472,7 @@ func (m *mockCloudwatch) GetMetricData(_ context.Context, input *cloudwatch.GetM
 
 func TestCloudwatchParseMetadata(t *testing.T) {
 	for _, testData := range testAWSCloudwatchMetadata {
-		_, err := parseAwsCloudwatchMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testAWSCloudwatchResolvedEnv, AuthParams: testData.authParams})
+		_, err := parseAwsCloudwatchMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testAWSCloudwatchResolvedEnv, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Errorf("%s: Expected success but got error %s", testData.comment, err)
 		}
@@ -484,7 +485,7 @@ func TestCloudwatchParseMetadata(t *testing.T) {
 func TestAWSCloudwatchGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range awsCloudwatchMetricIdentifiers {
 		ctx := context.Background()
-		meta, err := parseAwsCloudwatchMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAWSCloudwatchResolvedEnv, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex})
+		meta, err := parseAwsCloudwatchMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAWSCloudwatchResolvedEnv, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
