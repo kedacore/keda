@@ -66,9 +66,14 @@ func parseAwsAMPMetadata(config *scalersconfig.ScalerConfig) (*awsConfigMetadata
 // Credentials for signing are retrieving used the default AWS credential chain.
 // If credentials could not be found, an error will be returned.
 func NewSigV4RoundTripper(config *scalersconfig.ScalerConfig) (http.RoundTripper, error) {
-	metadata, err := parseAwsAMPMetadata(config)
-	if err != nil {
-		return nil, err
+	// parseAwsAMPMetadata can return an error if AWS info is missing
+	// but this can happen if we check for them on not AWS scalers
+	// which is probably the reason to create a SigV4RoundTripper.
+	// To prevent failures we check if the metadata is nil
+	// (missing AWS info) and we hide the error
+	metadata, _ := parseAwsAMPMetadata(config)
+	if metadata == nil {
+		return nil, nil
 	}
 	awsCfg, err := GetAwsConfig(context.Background(), metadata.awsRegion, metadata.awsAuthorization)
 	if err != nil {
