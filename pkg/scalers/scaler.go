@@ -216,11 +216,9 @@ func GenerateMetricInMili(metricName string, value float64) external_metrics.Ext
 }
 
 // getParameterFromConfigV2 returns the value of the parameter from the config
-func getParameterFromConfigV2(config *ScalerConfig, parameter string, useMetadata bool, useAuthentication bool, useResolvedEnv bool, isOptional bool, defaultVal interface{}, targetType reflect.Type) (interface{}, error) {
+func getParameterFromConfigV2[T convertible](config *ScalerConfig, parameter string, useMetadata bool, useAuthentication bool, useResolvedEnv bool, isOptional bool, defaultVal T) (T, error) {
 	foundCount := 0
 	var foundVal string
-	var convertedVal interface{}
-	var foundErr error
 
 	if val, ok := config.AuthParams[parameter]; ok && val != "" {
 		foundCount++
@@ -243,23 +241,36 @@ func getParameterFromConfigV2(config *ScalerConfig, parameter string, useMetadat
 		}
 	}
 
-	convertedVal, foundErr = convertToType(foundVal, targetType)
 	switch {
 	case foundCount > 1:
-		return "", fmt.Errorf("value for parameter '%s' found in more than one place", parameter)
+		return defaultVal, fmt.Errorf("value for parameter '%s' found in more than one place", parameter)
 	case foundCount == 1:
+		targetType := reflect.TypeOf(defaultVal)
+		if targetType == nil {
+			return defaultVal, fmt.Errorf("default value type for parameter '%s' is nil", parameter)
+		}
+		val, foundErr := convertToType(foundVal, targetType)
 		if foundErr != nil {
 			return defaultVal, foundErr
+		}
+		convertedVal, ok := val.(T)
+		if !ok {
+			return defaultVal, fmt.Errorf("could not convert value of type %T for parameter '%s' to type %v", foundVal, parameter, targetType)
 		}
 		return convertedVal, nil
 	case isOptional:
 		return defaultVal, nil
 	default:
-		return "", fmt.Errorf("key not found. Either set the correct key or set isOptional to true and set defaultVal")
+		return defaultVal, fmt.Errorf("key not found. Either set the correct key or set isOptional to true and set defaultVal for parameter '%s'", parameter)
 	}
 }
 
-func convertToType(input interface{}, targetType reflect.Type) (interface{}, error) {
+// type constraint to catch convertToType bugs at compile time
+type convertible interface {
+	~string | ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~float32 | ~float64 | ~bool
+}
+
+func convertToType(input any, targetType reflect.Type) (any, error) {
 	switch targetType.Kind() {
 	case reflect.String:
 		return fmt.Sprintf("%v", input), nil

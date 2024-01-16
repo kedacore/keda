@@ -123,7 +123,7 @@ func TestRemoveIndexFromMetricName(t *testing.T) {
 	}
 }
 
-type getParameterFromConfigTestData struct {
+type getParameterFromConfigTestData[T convertible] struct {
 	name              string
 	authParams        map[string]string
 	metadata          map[string]string
@@ -133,20 +133,18 @@ type getParameterFromConfigTestData struct {
 	useMetadata       bool
 	useResolvedEnv    bool
 	isOptional        bool
-	defaultVal        string
-	targetType        reflect.Type
-	expectedResult    interface{}
+	defaultVal        T
+	expectedResult    T
 	isError           bool
 	errorMessage      string
 }
 
-var getParameterFromConfigTestDataset = []getParameterFromConfigTestData{
+var getParameterFromConfigTestDatasetString = []getParameterFromConfigTestData[string]{
 	{
 		name:              "test_authParam_only",
 		authParams:        map[string]string{"key1": "value1"},
 		parameter:         "key1",
 		useAuthentication: true,
-		targetType:        reflect.TypeOf(string("")),
 		expectedResult:    "value1",
 		isError:           false,
 	},
@@ -155,7 +153,7 @@ var getParameterFromConfigTestDataset = []getParameterFromConfigTestData{
 		metadata:       map[string]string{"key1": "value1"},
 		parameter:      "key1",
 		useMetadata:    true,
-		targetType:     reflect.TypeOf(string("")),
+		defaultVal:     "",
 		expectedResult: "value1",
 		isError:        false,
 	},
@@ -165,7 +163,7 @@ var getParameterFromConfigTestDataset = []getParameterFromConfigTestData{
 		resolvedEnv:    map[string]string{"key1": "value1"},
 		parameter:      "key1",
 		useResolvedEnv: true,
-		targetType:     reflect.TypeOf(string("")),
+		defaultVal:     "",
 		expectedResult: "value1",
 		isError:        false,
 	},
@@ -177,7 +175,6 @@ var getParameterFromConfigTestDataset = []getParameterFromConfigTestData{
 		parameter:         "key1",
 		useAuthentication: true,
 		useResolvedEnv:    true,
-		targetType:        reflect.TypeOf(string("")),
 		expectedResult:    "",
 		isError:           true,
 		errorMessage:      "value for parameter 'key1' found in more than one place",
@@ -189,7 +186,6 @@ var getParameterFromConfigTestDataset = []getParameterFromConfigTestData{
 		parameter:         "key1",
 		useMetadata:       true,
 		useAuthentication: true,
-		targetType:        reflect.TypeOf(string("")),
 		expectedResult:    "",
 		isError:           true,
 		errorMessage:      "value for parameter 'key1' found in more than one place",
@@ -201,7 +197,6 @@ var getParameterFromConfigTestDataset = []getParameterFromConfigTestData{
 		parameter:      "key1",
 		useResolvedEnv: true,
 		useMetadata:    true,
-		targetType:     reflect.TypeOf(string("")),
 		expectedResult: "",
 		isError:        true,
 		errorMessage:   "value for parameter 'key1' found in more than one place",
@@ -213,7 +208,7 @@ var getParameterFromConfigTestDataset = []getParameterFromConfigTestData{
 		useResolvedEnv: true,
 		useMetadata:    true,
 		isOptional:     true,
-		targetType:     reflect.TypeOf(string("")),
+		defaultVal:     "",
 		expectedResult: "", // Should return empty string
 		isError:        false,
 	},
@@ -225,7 +220,6 @@ var getParameterFromConfigTestDataset = []getParameterFromConfigTestData{
 		useMetadata:    true,
 		isOptional:     true,
 		defaultVal:     "default",
-		targetType:     reflect.TypeOf(string("")),
 		expectedResult: "default",
 		isError:        false,
 	},
@@ -235,23 +229,36 @@ var getParameterFromConfigTestDataset = []getParameterFromConfigTestData{
 		parameter:      "key2",
 		useResolvedEnv: true,
 		useMetadata:    true,
-		targetType:     reflect.TypeOf(string("")),
 		expectedResult: "default", // Should return empty string
 		isError:        true,
 		errorMessage:   "key not found. Either set the correct key or set isOptional to true and set defaultVal",
 	},
+}
+
+var getParameterFromConfigTestDatasetBool = []getParameterFromConfigTestData[bool]{
 	{
 		name:              "test_authParam_bool",
 		authParams:        map[string]string{"key1": "true"},
 		parameter:         "key1",
 		useAuthentication: true,
-		targetType:        reflect.TypeOf(true),
+		defaultVal:        false,
 		expectedResult:    true,
 	},
 }
 
-func TestGetParameterFromConfigV2(t *testing.T) {
-	for _, testData := range getParameterFromConfigTestDataset {
+var getParameterFromConfigTestDatasetInt = []getParameterFromConfigTestData[int]{
+	{
+		name:              "test_authParam_int",
+		authParams:        map[string]string{"key1": "2"},
+		parameter:         "key1",
+		useAuthentication: true,
+		defaultVal:        0,
+		expectedResult:    2,
+	},
+}
+
+func getParameterFromConfigV2TestHelper[T convertible](t *testing.T, testData []getParameterFromConfigTestData[T]) {
+	for _, testData := range testData {
 		val, err := getParameterFromConfigV2(
 			&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams, ResolvedEnv: testData.resolvedEnv},
 			testData.parameter,
@@ -260,7 +267,6 @@ func TestGetParameterFromConfigV2(t *testing.T) {
 			testData.useResolvedEnv,
 			testData.isOptional,
 			testData.defaultVal,
-			testData.targetType,
 		)
 		if testData.isError {
 			assert.NotNilf(t, err, "test %s: expected error but got success, testData - %+v", testData.name, testData)
@@ -272,11 +278,16 @@ func TestGetParameterFromConfigV2(t *testing.T) {
 	}
 }
 
+func TestGetParameterFromConfigV2(t *testing.T) {
+	getParameterFromConfigV2TestHelper(t, getParameterFromConfigTestDatasetString)
+	getParameterFromConfigV2TestHelper(t, getParameterFromConfigTestDatasetBool)
+	getParameterFromConfigV2TestHelper(t, getParameterFromConfigTestDatasetInt)
+}
+
 type convertStringToTypeTestData struct {
 	name           string
-	input          interface{}
-	targetType     reflect.Type
-	expectedOutput interface{}
+	input          any
+	expectedOutput any
 	isError        bool
 	errorMessage   string
 }
@@ -286,28 +297,24 @@ var convertStringToTypeDataset = []convertStringToTypeTestData{
 	{
 		name:           "int64 to float64",
 		input:          int64(1234),
-		targetType:     reflect.TypeOf(float64(1234)),
 		expectedOutput: float64(1234),
 		isError:        false,
 	},
 	{
 		name:           "int64 to float32",
 		input:          int64(1234),
-		targetType:     reflect.TypeOf(float32(1234)),
 		expectedOutput: float32(1234),
 		isError:        false,
 	},
 	{
 		name:           "int64 to uint64",
 		input:          int64(1234),
-		targetType:     reflect.TypeOf(uint64(1234)),
 		expectedOutput: uint64(1234),
 		isError:        false,
 	},
 	{
 		name:           "int64 to uint32",
 		input:          int64(1234),
-		targetType:     reflect.TypeOf(uint32(1234)),
 		expectedOutput: uint32(1234),
 		isError:        false,
 	},
@@ -315,28 +322,24 @@ var convertStringToTypeDataset = []convertStringToTypeTestData{
 	{
 		name:           "int32 to float64",
 		input:          int32(1234),
-		targetType:     reflect.TypeOf(float64(1234)),
 		expectedOutput: float64(1234),
 		isError:        false,
 	},
 	{
 		name:           "int32 to float32",
 		input:          int32(1234),
-		targetType:     reflect.TypeOf(float32(1234)),
 		expectedOutput: float32(1234),
 		isError:        false,
 	},
 	{
 		name:           "int32 to uint64",
 		input:          int32(1234),
-		targetType:     reflect.TypeOf(uint64(1234)),
 		expectedOutput: uint64(1234),
 		isError:        false,
 	},
 	{
 		name:           "int32 to uint32",
 		input:          int32(1234),
-		targetType:     reflect.TypeOf(uint32(1234)),
 		expectedOutput: uint32(1234),
 		isError:        false,
 	},
@@ -344,28 +347,24 @@ var convertStringToTypeDataset = []convertStringToTypeTestData{
 	{
 		name:           "float64 to int64",
 		input:          float64(1234),
-		targetType:     reflect.TypeOf(int64(1234)),
 		expectedOutput: int64(1234),
 		isError:        false,
 	},
 	{
 		name:           "float64 to int32",
 		input:          float64(1234),
-		targetType:     reflect.TypeOf(int32(1234)),
 		expectedOutput: int32(1234),
 		isError:        false,
 	},
 	{
 		name:           "float64 to uint64",
 		input:          float64(1234),
-		targetType:     reflect.TypeOf(uint64(1234)),
 		expectedOutput: uint64(1234),
 		isError:        false,
 	},
 	{
 		name:           "float64 to uint32",
 		input:          float64(1234),
-		targetType:     reflect.TypeOf(uint32(1234)),
 		expectedOutput: uint32(1234),
 		isError:        false,
 	},
@@ -373,28 +372,24 @@ var convertStringToTypeDataset = []convertStringToTypeTestData{
 	{
 		name:           "float32 to int64",
 		input:          float32(1234),
-		targetType:     reflect.TypeOf(int64(1234)),
 		expectedOutput: int64(1234),
 		isError:        false,
 	},
 	{
 		name:           "float32 to int32",
 		input:          float32(1234),
-		targetType:     reflect.TypeOf(int32(1234)),
 		expectedOutput: int32(1234),
 		isError:        false,
 	},
 	{
 		name:           "float32 to uint64",
 		input:          float32(1234),
-		targetType:     reflect.TypeOf(uint64(1234)),
 		expectedOutput: uint64(1234),
 		isError:        false,
 	},
 	{
 		name:           "float32 to uint32",
 		input:          float32(1234),
-		targetType:     reflect.TypeOf(uint32(1234)),
 		expectedOutput: uint32(1234),
 		isError:        false,
 	},
@@ -402,57 +397,49 @@ var convertStringToTypeDataset = []convertStringToTypeTestData{
 	{
 		name:           "string to float64",
 		input:          "1234",
-		targetType:     reflect.TypeOf(float64(1234)),
 		expectedOutput: float64(1234),
 		isError:        false,
 	},
 	{
 		name:           "string to float32",
 		input:          "1234",
-		targetType:     reflect.TypeOf(float32(1234)),
 		expectedOutput: float32(1234),
 		isError:        false,
 	},
 	{
 		name:           "string to int64",
 		input:          "1234",
-		targetType:     reflect.TypeOf(int64(1234)),
 		expectedOutput: int64(1234),
 		isError:        false,
 	},
 	{
 		name:           "string to int32",
 		input:          "1234",
-		targetType:     reflect.TypeOf(int32(1234)),
 		expectedOutput: int32(1234),
 		isError:        false,
 	},
 	{
 		name:           "string to uint64",
 		input:          "1234",
-		targetType:     reflect.TypeOf(uint64(1234)),
 		expectedOutput: uint64(1234),
 		isError:        false,
 	},
 	{
 		name:           "string to uint32",
 		input:          "1234",
-		targetType:     reflect.TypeOf(uint32(1234)),
 		expectedOutput: uint32(1234),
 		isError:        false,
 	},
 	{
 		name:           "string to bool",
 		input:          "true",
-		targetType:     reflect.TypeOf(true),
 		expectedOutput: true,
 		isError:        false,
 	},
 	{
 		name:           "unsupported type",
 		input:          "Unsupported Type",
-		targetType:     reflect.TypeOf([]int{}),
-		expectedOutput: "error",
+		expectedOutput: []int{},
 		isError:        true,
 		errorMessage:   "unsupported target type: []int",
 	},
@@ -460,7 +447,8 @@ var convertStringToTypeDataset = []convertStringToTypeTestData{
 
 func TestConvertStringToType(t *testing.T) {
 	for _, testData := range convertStringToTypeDataset {
-		val, err := convertToType(testData.input, testData.targetType)
+		targetType := reflect.TypeOf(testData.expectedOutput)
+		val, err := convertToType(testData.input, targetType)
 
 		if testData.isError {
 			assert.NotNilf(t, err, "test %s: expected error but got success, testData - %+v", testData.name, testData)
