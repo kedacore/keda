@@ -345,6 +345,7 @@ func NewGitHubRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error creating GitHub App client: %w, \n appID: %d, instID: %d", err, meta.applicationID, meta.installationID)
 		}
+		hc.BaseURL = meta.githubAPIURL
 		httpClient = &http.Client{Transport: hc}
 	}
 
