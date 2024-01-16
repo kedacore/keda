@@ -128,7 +128,7 @@ func parsePubSubMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger)
 		meta.resourceType = resourceTypePubSubTopic
 	}
 
-	meta.activationValue = 0
+	meta.activationValue = 1
 	if val, ok := config.TriggerMetadata["activationValue"]; ok {
 		activationValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
