@@ -196,7 +196,7 @@ func (s *pubsubScaler) GetMetricsAndActivity(ctx context.Context, metricName str
 
 	metric := GenerateMetricInMili(metricName, value)
 
-	return []external_metrics.ExternalMetricValue{metric}, value > s.metadata.activationValue, nil
+	return []external_metrics.ExternalMetricValue{metric}, value >= s.metadata.activationValue, nil
 }
 
 func (s *pubsubScaler) setStackdriverClient(ctx context.Context) error {
