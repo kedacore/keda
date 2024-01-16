@@ -2,13 +2,10 @@ package aws
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"net/http"
 	"time"
 
-	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/amp"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -31,10 +28,11 @@ func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Sign request
-	hasher := sha256.New()
-	reqCxt := v4.SetPayloadHash(req.Context(), hex.EncodeToString(hasher.Sum([]byte{})))
-	reqHash := v4.GetPayloadHash(reqCxt)
+
+	// This is to avoid the semgrp issue of odd hash.Sum call flow when using hasher.sum(nil)
+	// "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" is the sha256 of ""
+	const reqHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
 	err = rt.client.Options().HTTPSignerV4.SignHTTP(req.Context(), cred, req, reqHash, "aps", rt.region, time.Now())
 	if err != nil {
 		return nil, err
