@@ -1,4 +1,4 @@
-package scalers
+package aws
 
 import (
 	"net/http"
@@ -11,7 +11,6 @@ import (
 )
 
 func TestSigV4RoundTripper(t *testing.T) {
-
 	transport := util.CreateHTTPTransport(false)
 
 	cli := &http.Client{Transport: transport}

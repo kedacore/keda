@@ -18,6 +18,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
+	"github.com/kedacore/keda/v2/pkg/scalers/aws"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	"github.com/kedacore/keda/v2/pkg/scalers/gcp"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -131,7 +132,7 @@ func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 			httpClient.Transport = gcpTransport
 		}
 
-		awsTransport, err := NewSigV4RoundTripper(config)
+		awsTransport, err := aws.NewSigV4RoundTripper(config)
 		if err != nil {
 			logger.V(1).Error(err, "failed to get AWS client HTTP transport ")
 			return nil, err

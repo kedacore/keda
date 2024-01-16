@@ -1,4 +1,4 @@
-package scalers
+package aws
 
 import (
 	"context"
@@ -11,14 +11,9 @@ import (
 	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/amp"
 
-	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	httputils "github.com/kedacore/keda/v2/pkg/util"
 )
-
-type awsConfigMetadata struct {
-	awsRegion        string
-	awsAuthorization awsutils.AuthorizationMetadata
-}
 
 // Custom round tripper to sign requests
 type roundTripper struct {
@@ -51,10 +46,10 @@ func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	return transport.RoundTrip(req)
 }
 
-func parseAwsAMPMetadata(config *ScalerConfig) (*awsConfigMetadata, error) {
+func parseAwsAMPMetadata(config *scalersconfig.ScalerConfig) (*awsConfigMetadata, error) {
 	meta := awsConfigMetadata{}
 
-	auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
+	auth, err := GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
 	}
@@ -70,12 +65,12 @@ func parseAwsAMPMetadata(config *ScalerConfig) (*awsConfigMetadata, error) {
 //
 // Credentials for signing are retrieving used the default AWS credential chain.
 // If credentials could not be found, an error will be returned.
-func NewSigV4RoundTripper(config *ScalerConfig) (http.RoundTripper, error) {
+func NewSigV4RoundTripper(config *scalersconfig.ScalerConfig) (http.RoundTripper, error) {
 	metadata, err := parseAwsAMPMetadata(config)
 	if err != nil {
 		return nil, err
 	}
-	awsCfg, err := awsutils.GetAwsConfig(context.Background(), metadata.awsRegion, metadata.awsAuthorization)
+	awsCfg, err := GetAwsConfig(context.Background(), metadata.awsRegion, metadata.awsAuthorization)
 	if err != nil {
 		return nil, err
 	}
