@@ -55,6 +55,8 @@ issues:
       linters:
         - gomnd
         - dupl
+        - revive
+        - goconst
     - path: scalers_builder.go
       linters:
         - gocyclo
@@ -146,6 +148,7 @@ issues:
     - path: controllers/keda/scaledobject_controller_test.go
       linters:
         - depguard
+        - goconst
     - path: pkg/scalers/external_scaler_test.go
       linters:
         - depguard

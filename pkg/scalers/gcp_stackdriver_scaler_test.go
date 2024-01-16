@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 var testStackdriverResolvedEnv = map[string]string{
@@ -68,7 +70,7 @@ var gcpStackdriverMetricIdentifiers = []gcpStackdriverMetricIdentifier{
 
 func TestStackdriverParseMetadata(t *testing.T) {
 	for _, testData := range testStackdriverMetadata {
-		_, err := parseStackdriverMetadata(&ScalerConfig{AuthParams: testData.authParams, TriggerMetadata: testData.metadata, ResolvedEnv: testStackdriverResolvedEnv}, logr.Discard())
+		_, err := parseStackdriverMetadata(&scalersconfig.ScalerConfig{AuthParams: testData.authParams, TriggerMetadata: testData.metadata, ResolvedEnv: testStackdriverResolvedEnv}, logr.Discard())
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -80,7 +82,7 @@ func TestStackdriverParseMetadata(t *testing.T) {
 
 func TestGcpStackdriverGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range gcpStackdriverMetricIdentifiers {
-		meta, err := parseStackdriverMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testStackdriverResolvedEnv, TriggerIndex: testData.triggerIndex}, logr.Discard())
+		meta, err := parseStackdriverMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testStackdriverResolvedEnv, TriggerIndex: testData.triggerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

@@ -163,6 +163,7 @@ New deprecation(s):
 - **General**: Fix lost commit from the newly created utility function ([#5037](https://github.com/kedacore/keda/issues/5037))
 - **General**: Improve docker image build time through caches ([#5316](https://github.com/kedacore/keda/issues/5316))
 - **General**: Reduce amount of gauge creations for OpenTelemetry metrics ([#5101](https://github.com/kedacore/keda/issues/5101))
+- **General**: Refactor `scalers` package ([#5379](https://github.com/kedacore/keda/issues/5379))
 - **General**: Removed not required RBAC permissions ([#5261](https://github.com/kedacore/keda/issues/5261))
 - **General**: Support profiling for KEDA components ([#4789](https://github.com/kedacore/keda/issues/4789))
 - **CPU scaler**: Wait for metrics window during CPU scaler tests ([#5294](https://github.com/kedacore/keda/pull/5294))

@@ -24,6 +24,7 @@ import (
 	"github.com/go-logr/logr"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -111,7 +112,7 @@ func TestDataExplorerParseMetadata(t *testing.T) {
 	// Auth through clientId, clientSecret and tenantId
 	for id, testData := range testDataExplorerMetadataWithClientAndSecret {
 		_, err := parseAzureDataExplorerMetadata(
-			&ScalerConfig{
+			&scalersconfig.ScalerConfig{
 				ResolvedEnv:     dataExplorerResolvedEnv,
 				TriggerMetadata: testData.metadata,
 				AuthParams:      map[string]string{},
@@ -129,7 +130,7 @@ func TestDataExplorerParseMetadata(t *testing.T) {
 	// Auth through Pod Identity
 	for _, testData := range testDataExplorerMetadataWithPodIdentity {
 		_, err := parseAzureDataExplorerMetadata(
-			&ScalerConfig{
+			&scalersconfig.ScalerConfig{
 				ResolvedEnv:     dataExplorerResolvedEnv,
 				TriggerMetadata: testData.metadata,
 				AuthParams:      map[string]string{},
@@ -146,7 +147,7 @@ func TestDataExplorerParseMetadata(t *testing.T) {
 	// Auth through Workload Identity
 	for _, testData := range testDataExplorerMetadataWithPodIdentity {
 		_, err := parseAzureDataExplorerMetadata(
-			&ScalerConfig{
+			&scalersconfig.ScalerConfig{
 				ResolvedEnv:     dataExplorerResolvedEnv,
 				TriggerMetadata: testData.metadata,
 				AuthParams:      map[string]string{},
@@ -164,7 +165,7 @@ func TestDataExplorerParseMetadata(t *testing.T) {
 func TestDataExplorerGetMetricSpecForScaling(t *testing.T) {
 	for id, testData := range testDataExplorerMetricIdentifiers {
 		meta, err := parseAzureDataExplorerMetadata(
-			&ScalerConfig{
+			&scalersconfig.ScalerConfig{
 				ResolvedEnv:     dataExplorerResolvedEnv,
 				TriggerMetadata: testData.metadataTestData.metadata,
 				AuthParams:      map[string]string{},

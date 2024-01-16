@@ -17,6 +17,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -65,7 +66,7 @@ const (
 )
 
 // NewMetricsAPIScaler creates a new HTTP scaler
-func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
+func NewMetricsAPIScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -94,7 +95,7 @@ func NewMetricsAPIScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseMetricsAPIMetadata(config *ScalerConfig) (*metricsAPIScalerMetadata, error) {
+func parseMetricsAPIMetadata(config *scalersconfig.ScalerConfig) (*metricsAPIScalerMetadata, error) {
 	meta := metricsAPIScalerMetadata{}
 	meta.triggerIndex = config.TriggerIndex
 

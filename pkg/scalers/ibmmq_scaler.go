@@ -15,6 +15,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -61,7 +62,7 @@ type Parameters struct {
 }
 
 // NewIBMMQScaler creates a new IBM MQ scaler
-func NewIBMMQScaler(config *ScalerConfig) (Scaler, error) {
+func NewIBMMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -86,7 +87,7 @@ func (s *IBMMQScaler) Close(context.Context) error {
 }
 
 // parseIBMMQMetadata checks the existence of and validates the MQ connection data provided
-func parseIBMMQMetadata(config *ScalerConfig) (*IBMMQMetadata, error) {
+func parseIBMMQMetadata(config *scalersconfig.ScalerConfig) (*IBMMQMetadata, error) {
 	meta := IBMMQMetadata{}
 
 	if val, ok := config.TriggerMetadata["host"]; ok {

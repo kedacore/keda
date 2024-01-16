@@ -15,6 +15,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -112,7 +113,7 @@ type consumerDeliveryStatus struct {
 	StreamSequence   int64 `json:"stream_seq"`
 }
 
-func NewNATSJetStreamScaler(config *ScalerConfig) (Scaler, error) {
+func NewNATSJetStreamScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -132,7 +133,7 @@ func NewNATSJetStreamScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseNATSJetStreamMetadata(config *ScalerConfig) (natsJetStreamMetadata, error) {
+func parseNATSJetStreamMetadata(config *scalersconfig.ScalerConfig) (natsJetStreamMetadata, error) {
 	meta := natsJetStreamMetadata{}
 
 	account, err := GetFromAuthOrMeta(config, "account")

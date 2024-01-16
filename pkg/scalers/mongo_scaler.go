@@ -17,6 +17,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -73,7 +74,7 @@ const (
 )
 
 // NewMongoDBScaler creates a new mongoDB scaler
-func NewMongoDBScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+func NewMongoDBScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -105,7 +106,7 @@ func NewMongoDBScaler(ctx context.Context, config *ScalerConfig) (Scaler, error)
 	}, nil
 }
 
-func parseMongoDBMetadata(config *ScalerConfig) (*mongoDBMetadata, string, error) {
+func parseMongoDBMetadata(config *scalersconfig.ScalerConfig) (*mongoDBMetadata, string, error) {
 	var connStr string
 	var err error
 	// setting default metadata

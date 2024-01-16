@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 type parseEtcdMetadataTestData struct {
@@ -76,7 +78,7 @@ var etcdMetricIdentifiers = []etcdMetricIdentifier{
 
 func TestParseEtcdMetadata(t *testing.T) {
 	for _, testData := range parseEtcdMetadataTestDataset {
-		meta, err := parseEtcdMetadata(&ScalerConfig{TriggerMetadata: testData.metadata})
+		meta, err := parseEtcdMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -91,7 +93,7 @@ func TestParseEtcdMetadata(t *testing.T) {
 
 func TestParseEtcdAuthParams(t *testing.T) {
 	for _, testData := range parseEtcdAuthParamsTestDataset {
-		meta, err := parseEtcdMetadata(&ScalerConfig{TriggerMetadata: validEtcdMetadata, AuthParams: testData.authParams})
+		meta, err := parseEtcdMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: validEtcdMetadata, AuthParams: testData.authParams})
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -121,7 +123,7 @@ func TestParseEtcdAuthParams(t *testing.T) {
 
 func TestEtcdGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range etcdMetricIdentifiers {
-		meta, err := parseEtcdMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, TriggerIndex: testData.triggerIndex})
+		meta, err := parseEtcdMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

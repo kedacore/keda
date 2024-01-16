@@ -36,6 +36,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -88,7 +89,7 @@ const (
 )
 
 // NewApacheKafkaScaler creates a new apacheKafkaScaler
-func NewApacheKafkaScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+func NewApacheKafkaScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -117,7 +118,7 @@ func NewApacheKafkaScaler(ctx context.Context, config *ScalerConfig) (Scaler, er
 	}, nil
 }
 
-func parseApacheKafkaAuthParams(config *ScalerConfig, meta *apacheKafkaMetadata) error {
+func parseApacheKafkaAuthParams(config *scalersconfig.ScalerConfig, meta *apacheKafkaMetadata) error {
 	meta.enableTLS = false
 	enableTLS := false
 	if val, ok := config.TriggerMetadata["tls"]; ok {
@@ -227,7 +228,7 @@ func parseApacheKafkaAuthParams(config *ScalerConfig, meta *apacheKafkaMetadata)
 	return nil
 }
 
-func parseApacheKafkaMetadata(config *ScalerConfig, logger logr.Logger) (apacheKafkaMetadata, error) {
+func parseApacheKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (apacheKafkaMetadata, error) {
 	meta := apacheKafkaMetadata{}
 	switch {
 	case config.TriggerMetadata["bootstrapServersFromEnv"] != "":

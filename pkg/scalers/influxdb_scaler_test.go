@@ -6,6 +6,8 @@ import (
 
 	"github.com/go-logr/logr"
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 var testInfluxDBResolvedEnv = map[string]string{
@@ -58,7 +60,7 @@ var influxDBMetricIdentifiers = []influxDBMetricIdentifier{
 func TestInfluxDBParseMetadata(t *testing.T) {
 	testCaseNum := 1
 	for _, testData := range testInfluxDBMetadata {
-		_, err := parseInfluxDBMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testInfluxDBResolvedEnv, AuthParams: testData.authParams})
+		_, err := parseInfluxDBMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testInfluxDBResolvedEnv, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success but got error for unit test # %v", testCaseNum)
 		}
@@ -71,7 +73,7 @@ func TestInfluxDBParseMetadata(t *testing.T) {
 
 func TestInfluxDBGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range influxDBMetricIdentifiers {
-		meta, err := parseInfluxDBMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testInfluxDBResolvedEnv, TriggerIndex: testData.triggerIndex})
+		meta, err := parseInfluxDBMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testInfluxDBResolvedEnv, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

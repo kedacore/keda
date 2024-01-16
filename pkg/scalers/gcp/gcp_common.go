@@ -1,4 +1,4 @@
-package scalers
+package gcp
 
 import (
 	"context"
@@ -10,22 +10,23 @@ import (
 	"golang.org/x/oauth2/google"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 var (
-	gcpScopeMonitoringRead = "https://www.googleapis.com/auth/monitoring.read"
+	GcpScopeMonitoringRead = "https://www.googleapis.com/auth/monitoring.read"
 
-	errGoogleApplicationCrendentialsNotFound = errors.New("google application credentials not found")
+	ErrGoogleApplicationCrendentialsNotFound = errors.New("google application credentials not found")
 )
 
-type gcpAuthorizationMetadata struct {
+type AuthorizationMetadata struct {
 	GoogleApplicationCredentials     string
 	GoogleApplicationCredentialsFile string
-	podIdentityProviderEnabled       bool
+	PodIdentityProviderEnabled       bool
 }
 
-func (a *gcpAuthorizationMetadata) tokenSource(ctx context.Context, scopes ...string) (oauth2.TokenSource, error) {
-	if a.podIdentityProviderEnabled {
+func (a *AuthorizationMetadata) tokenSource(ctx context.Context, scopes ...string) (oauth2.TokenSource, error) {
+	if a.PodIdentityProviderEnabled {
 		return google.DefaultTokenSource(ctx, scopes...)
 	}
 
@@ -52,31 +53,31 @@ func (a *gcpAuthorizationMetadata) tokenSource(ctx context.Context, scopes ...st
 		return creds.TokenSource, nil
 	}
 
-	return nil, errGoogleApplicationCrendentialsNotFound
+	return nil, ErrGoogleApplicationCrendentialsNotFound
 }
 
-func getGCPAuthorization(config *ScalerConfig) (*gcpAuthorizationMetadata, error) {
+func GetGCPAuthorization(config *scalersconfig.ScalerConfig) (*AuthorizationMetadata, error) {
 	if config.PodIdentity.Provider == kedav1alpha1.PodIdentityProviderGCP {
-		return &gcpAuthorizationMetadata{podIdentityProviderEnabled: true}, nil
+		return &AuthorizationMetadata{PodIdentityProviderEnabled: true}, nil
 	}
 
 	if creds := config.AuthParams["GoogleApplicationCredentials"]; creds != "" {
-		return &gcpAuthorizationMetadata{GoogleApplicationCredentials: creds}, nil
+		return &AuthorizationMetadata{GoogleApplicationCredentials: creds}, nil
 	}
 
 	if creds := config.TriggerMetadata["credentialsFromEnv"]; creds != "" {
-		return &gcpAuthorizationMetadata{GoogleApplicationCredentials: config.ResolvedEnv[creds]}, nil
+		return &AuthorizationMetadata{GoogleApplicationCredentials: config.ResolvedEnv[creds]}, nil
 	}
 
 	if credsFile := config.TriggerMetadata["credentialsFromEnvFile"]; credsFile != "" {
-		return &gcpAuthorizationMetadata{GoogleApplicationCredentialsFile: config.ResolvedEnv[credsFile]}, nil
+		return &AuthorizationMetadata{GoogleApplicationCredentialsFile: config.ResolvedEnv[credsFile]}, nil
 	}
 
-	return nil, errGoogleApplicationCrendentialsNotFound
+	return nil, ErrGoogleApplicationCrendentialsNotFound
 }
 
-func getGCPOAuth2HTTPTransport(config *ScalerConfig, base http.RoundTripper, scopes ...string) (http.RoundTripper, error) {
-	a, err := getGCPAuthorization(config)
+func GetGCPOAuth2HTTPTransport(config *scalersconfig.ScalerConfig, base http.RoundTripper, scopes ...string) (http.RoundTripper, error) {
+	a, err := GetGCPAuthorization(config)
 	if err != nil {
 		return nil, err
 	}

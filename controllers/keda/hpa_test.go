@@ -31,6 +31,7 @@ import (
 	mock_scalers "github.com/kedacore/keda/v2/pkg/mock/mock_scaler"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_scaling"
 	"github.com/kedacore/keda/v2/pkg/scalers"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache"
 )
 
@@ -133,8 +134,8 @@ func setupTest(health map[string]v1alpha1.HealthStatus, scaler *mock_scalers.Moc
 	scalersCache := cache.ScalersCache{
 		Scalers: []cache.ScalerBuilder{{
 			Scaler: scaler,
-			Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
-				return scaler, &scalers.ScalerConfig{}, nil
+			Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+				return scaler, &scalersconfig.ScalerConfig{}, nil
 			},
 		}},
 		Recorder: nil,

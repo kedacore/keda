@@ -13,6 +13,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -37,7 +38,7 @@ type mySQLMetadata struct {
 }
 
 // NewMySQLScaler creates a new MySQL scaler
-func NewMySQLScaler(config *ScalerConfig) (Scaler, error) {
+func NewMySQLScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -62,7 +63,7 @@ func NewMySQLScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseMySQLMetadata(config *ScalerConfig) (*mySQLMetadata, error) {
+func parseMySQLMetadata(config *scalersconfig.ScalerConfig) (*mySQLMetadata, error) {
 	meta := mySQLMetadata{}
 
 	if val, ok := config.TriggerMetadata["query"]; ok {
