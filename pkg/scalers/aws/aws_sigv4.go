@@ -33,7 +33,7 @@ func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 	// Sign request
 	hasher := sha256.New()
-	reqCxt := v4.SetPayloadHash(req.Context(), hex.EncodeToString(hasher.Sum(nil)))
+	reqCxt := v4.SetPayloadHash(req.Context(), hex.EncodeToString(hasher.Sum([]byte{})))
 	reqHash := v4.GetPayloadHash(reqCxt)
 	err = rt.client.Options().HTTPSignerV4.SignHTTP(req.Context(), cred, req, reqHash, "aps", rt.region, time.Now())
 	if err != nil {
