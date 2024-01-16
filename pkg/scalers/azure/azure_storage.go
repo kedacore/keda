@@ -104,6 +104,10 @@ func ParseAzureStorageQueueConnection(ctx context.Context, httpClient util.HTTPD
 			return nil, nil, err
 		}
 
+		if accountName == "" && accountKey == "" {
+			return azqueue.NewAnonymousCredential(), endpoint, nil
+		}
+
 		credential, err := azqueue.NewSharedKeyCredential(accountName, accountKey)
 		if err != nil {
 			return nil, nil, err
@@ -132,6 +136,10 @@ func ParseAzureStorageBlobConnection(ctx context.Context, httpClient util.HTTPDo
 			return nil, nil, err
 		}
 
+		if accountName == "" && accountKey == "" {
+			return azblob.NewAnonymousCredential(), endpoint, nil
+		}
+
 		credential, err := azblob.NewSharedKeyCredential(accountName, accountKey)
 		if err != nil {
 			return nil, nil, err
@@ -154,7 +162,7 @@ func parseAzureStorageConnectionString(connectionString string, endpointType Sto
 		return ""
 	}
 
-	var endpointProtocol, name, key, endpointSuffix, endpoint string
+	var endpointProtocol, name, key, sas, endpointSuffix, endpoint string
 	for _, v := range parts {
 		switch {
 		case strings.HasPrefix(v, "DefaultEndpointsProtocol"):
@@ -163,6 +171,8 @@ func parseAzureStorageConnectionString(connectionString string, endpointType Sto
 			name = getValue(v)
 		case strings.HasPrefix(v, "AccountKey"):
 			key = getValue(v)
+		case strings.HasPrefix(v, "SharedAccessSignature"):
+			sas = getValue(v)
 		case strings.HasPrefix(v, "EndpointSuffix"):
 			endpointSuffix = getValue(v)
 		case endpointType == BlobEndpoint && strings.HasPrefix(v, endpointType.Prefix()):
@@ -174,6 +184,14 @@ func parseAzureStorageConnectionString(connectionString string, endpointType Sto
 		case endpointType == FileEndpoint && strings.HasPrefix(v, endpointType.Prefix()):
 			endpoint = getValue(v)
 		}
+	}
+
+	if sas != "" && endpoint != "" {
+		u, err := url.Parse(fmt.Sprintf("%s?%s", endpoint, sas))
+		if err != nil {
+			return nil, "", "", err
+		}
+		return u, "", "", nil
 	}
 
 	if name == "" || key == "" {
