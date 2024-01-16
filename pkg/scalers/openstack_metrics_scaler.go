@@ -16,6 +16,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/openstack"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -59,7 +60,7 @@ type measureResult struct {
 /*  end of declarations */
 
 // NewOpenstackMetricScaler creates new openstack metrics scaler instance
-func NewOpenstackMetricScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+func NewOpenstackMetricScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	var keystoneAuth *openstack.KeystoneAuthRequest
 	var metricsClient openstack.Client
 
@@ -116,7 +117,7 @@ func NewOpenstackMetricScaler(ctx context.Context, config *ScalerConfig) (Scaler
 	}, nil
 }
 
-func parseOpenstackMetricMetadata(config *ScalerConfig, logger logr.Logger) (*openstackMetricMetadata, error) {
+func parseOpenstackMetricMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*openstackMetricMetadata, error) {
 	meta := openstackMetricMetadata{}
 	triggerMetadata := config.TriggerMetadata
 
@@ -187,7 +188,7 @@ func parseOpenstackMetricMetadata(config *ScalerConfig, logger logr.Logger) (*op
 	return &meta, nil
 }
 
-func parseOpenstackMetricAuthenticationMetadata(config *ScalerConfig) (openstackMetricAuthenticationMetadata, error) {
+func parseOpenstackMetricAuthenticationMetadata(config *scalersconfig.ScalerConfig) (openstackMetricAuthenticationMetadata, error) {
 	authMeta := openstackMetricAuthenticationMetadata{}
 	authParams := config.AuthParams
 

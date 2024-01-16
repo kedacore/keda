@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 type parseStanMetadataTestData struct {
@@ -49,7 +51,7 @@ var stanMetricIdentifiers = []stanMetricIdentifier{
 
 func TestStanParseMetadata(t *testing.T) {
 	for _, testData := range testStanMetadata {
-		_, err := parseStanMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		_, err := parseStanMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		} else if testData.isError && err == nil {
@@ -61,7 +63,7 @@ func TestStanParseMetadata(t *testing.T) {
 func TestStanGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range stanMetricIdentifiers {
 		ctx := context.Background()
-		meta, err := parseStanMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, TriggerIndex: testData.triggerIndex})
+		meta, err := parseStanMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 type parseGraphiteMetadataTestData struct {
@@ -112,7 +114,7 @@ var testGrapQueryResults = []grapQueryResultTestData{
 
 func TestGraphiteParseMetadata(t *testing.T) {
 	for _, testData := range testGrapMetadata {
-		_, err := parseGraphiteMetadata(&ScalerConfig{TriggerMetadata: testData.metadata})
+		_, err := parseGraphiteMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -125,7 +127,7 @@ func TestGraphiteParseMetadata(t *testing.T) {
 func TestGraphiteGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range graphiteMetricIdentifiers {
 		ctx := context.Background()
-		meta, err := parseGraphiteMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, TriggerIndex: testData.triggerIndex})
+		meta, err := parseGraphiteMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -143,7 +145,7 @@ func TestGraphiteGetMetricSpecForScaling(t *testing.T) {
 
 func TestGraphiteScalerAuthParams(t *testing.T) {
 	for _, testData := range testGraphiteAuthMetadata {
-		meta, err := parseGraphiteMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		meta, err := parseGraphiteMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)

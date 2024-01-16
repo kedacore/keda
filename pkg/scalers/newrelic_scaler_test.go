@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 type parseNewRelicMetadataTestData struct {
@@ -60,7 +62,7 @@ var newrelicMetricIdentifiers = []newrelicMetricIdentifier{
 
 func TestNewRelicParseMetadata(t *testing.T) {
 	for _, testData := range testNewRelicMetadata {
-		_, err := parseNewRelicMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
+		_, err := parseNewRelicMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
 		if err != nil && !testData.isError {
 			fmt.Printf("X: %s", testData.metadata)
 			t.Error("Expected success but got error", err)
@@ -73,7 +75,7 @@ func TestNewRelicParseMetadata(t *testing.T) {
 }
 func TestNewRelicGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range newrelicMetricIdentifiers {
-		meta, err := parseNewRelicMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex}, logr.Discard())
+		meta, err := parseNewRelicMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

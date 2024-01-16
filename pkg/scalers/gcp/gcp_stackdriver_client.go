@@ -1,4 +1,4 @@
-package scalers
+package gcp
 
 import (
 	"context"
@@ -47,7 +47,7 @@ const (
 // StackDriverClient is a generic client to fetch metrics from Stackdriver. Can be used
 // for a stackdriver scaler in the future
 type StackDriverClient struct {
-	metricsClient *monitoring.MetricClient
+	MetricsClient *monitoring.MetricClient
 	queryClient   *monitoring.QueryClient
 	credentials   GoogleApplicationCredentials
 	projectID     string
@@ -74,7 +74,7 @@ func NewStackDriverClient(ctx context.Context, credentials string) (*StackDriver
 	}
 
 	return &StackDriverClient{
-		metricsClient: metricsClient,
+		MetricsClient: metricsClient,
 		queryClient:   queryClient,
 		credentials:   gcpCredentials,
 	}, nil
@@ -102,7 +102,7 @@ func NewStackDriverClientPodIdentity(ctx context.Context) (*StackDriverClient, e
 	}
 
 	return &StackDriverClient{
-		metricsClient: metricsClient,
+		MetricsClient: metricsClient,
 		queryClient:   queryClient,
 		projectID:     project,
 	}, nil
@@ -239,7 +239,7 @@ func (s StackDriverClient) GetMetrics(
 	req.Filter = filter
 
 	// Get an iterator with the list of time series
-	it := s.metricsClient.ListTimeSeries(ctx, req)
+	it := s.MetricsClient.ListTimeSeries(ctx, req)
 
 	var value float64 = -1
 
@@ -289,7 +289,7 @@ func (s StackDriverClient) QueryMetrics(ctx context.Context, projectID, query st
 	resp, err := it.Next()
 
 	if err == iterator.Done {
-		return value, fmt.Errorf("could not find stackdriver metric with filter %s", filter)
+		return value, fmt.Errorf("could not find stackdriver metric with query %s", req.Query)
 	}
 
 	if err != nil {
@@ -318,7 +318,7 @@ func getActualProjectID(s *StackDriverClient, projectID string) string {
 	return s.credentials.ProjectID
 }
 
-// buildMQLQuery builds a Monitoring Query Language (MQL) query for the last minute (five for aggregations),
+// BuildMQLQuery builds a Monitoring Query Language (MQL) query for the last minute (five for aggregations),
 // given a resource type, metric, resource name, and an optional aggregation
 //
 // example:
@@ -329,7 +329,7 @@ func getActualProjectID(s *StackDriverClient, projectID string) string {
 // | align delta(3m)
 // | every 3m
 // | group_by [], count(value)
-func (s StackDriverClient) buildMQLQuery(projectID, resourceType, metric, resourceName, aggregation string) (string, error) {
+func (s StackDriverClient) BuildMQLQuery(projectID, resourceType, metric, resourceName, aggregation string) (string, error) {
 	th := defaultTimeHorizon
 	if aggregation != "" {
 		th = aggregationTimeHorizon

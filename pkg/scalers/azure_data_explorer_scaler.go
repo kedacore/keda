@@ -28,6 +28,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -42,7 +43,7 @@ type azureDataExplorerScaler struct {
 
 const adxName = "azure-data-explorer"
 
-func NewAzureDataExplorerScaler(config *ScalerConfig) (Scaler, error) {
+func NewAzureDataExplorerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -71,7 +72,7 @@ func NewAzureDataExplorerScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseAzureDataExplorerMetadata(config *ScalerConfig, logger logr.Logger) (*azure.DataExplorerMetadata, error) {
+func parseAzureDataExplorerMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*azure.DataExplorerMetadata, error) {
 	metadata, err := parseAzureDataExplorerAuthParams(config, logger)
 	if err != nil {
 		return nil, err
@@ -138,7 +139,7 @@ func parseAzureDataExplorerMetadata(config *ScalerConfig, logger logr.Logger) (*
 	return metadata, nil
 }
 
-func parseAzureDataExplorerAuthParams(config *ScalerConfig, logger logr.Logger) (*azure.DataExplorerMetadata, error) {
+func parseAzureDataExplorerAuthParams(config *scalersconfig.ScalerConfig, logger logr.Logger) (*azure.DataExplorerMetadata, error) {
 	metadata := azure.DataExplorerMetadata{}
 
 	switch config.PodIdentity.Provider {

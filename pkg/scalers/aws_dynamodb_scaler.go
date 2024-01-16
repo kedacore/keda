@@ -16,6 +16,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -41,7 +42,7 @@ type awsDynamoDBMetadata struct {
 	metricName                string
 }
 
-func NewAwsDynamoDBScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+func NewAwsDynamoDBScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -92,7 +93,7 @@ var (
 	ErrAwsDynamoNoTargetValue = errors.New("no targetValue given")
 )
 
-func parseAwsDynamoDBMetadata(config *ScalerConfig) (*awsDynamoDBMetadata, error) {
+func parseAwsDynamoDBMetadata(config *scalersconfig.ScalerConfig) (*awsDynamoDBMetadata, error) {
 	meta := awsDynamoDBMetadata{}
 
 	if val, ok := config.TriggerMetadata["tableName"]; ok && val != "" {

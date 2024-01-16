@@ -16,6 +16,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -53,7 +54,7 @@ const (
 )
 
 // NewActiveMQScaler creates a new activeMQ Scaler
-func NewActiveMQScaler(config *ScalerConfig) (Scaler, error) {
+func NewActiveMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -73,7 +74,7 @@ func NewActiveMQScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseActiveMQMetadata(config *ScalerConfig) (*activeMQMetadata, error) {
+func parseActiveMQMetadata(config *scalersconfig.ScalerConfig) (*activeMQMetadata, error) {
 	meta := activeMQMetadata{}
 
 	if val, ok := config.TriggerMetadata["restAPITemplate"]; ok && val != "" {

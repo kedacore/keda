@@ -12,6 +12,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -65,7 +66,7 @@ type redisStreamsMetadata struct {
 }
 
 // NewRedisStreamsScaler creates a new redisStreamsScaler
-func NewRedisStreamsScaler(ctx context.Context, isClustered, isSentinel bool, config *ScalerConfig) (Scaler, error) {
+func NewRedisStreamsScaler(ctx context.Context, isClustered, isSentinel bool, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -256,7 +257,7 @@ var (
 	ErrRedisMissingStreamName = errors.New("missing redis stream name")
 )
 
-func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser) (*redisStreamsMetadata, error) {
+func parseRedisStreamsMetadata(config *scalersconfig.ScalerConfig, parseFn redisAddressParser) (*redisStreamsMetadata, error) {
 	connInfo, err := parseFn(config.TriggerMetadata, config.ResolvedEnv, config.AuthParams)
 	if err != nil {
 		return nil, err

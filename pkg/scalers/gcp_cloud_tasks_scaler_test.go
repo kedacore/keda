@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 var testGcpCloudTasksResolvedEnv = map[string]string{
@@ -52,7 +54,7 @@ var gcpCloudTasksMetricIdentifiers = []gcpCloudTasksMetricIdentifier{
 
 func TestGcpCloudTasksParseMetadata(t *testing.T) {
 	for _, testData := range testGcpCloudTasksMetadata {
-		_, err := parseGcpCloudTasksMetadata(&ScalerConfig{AuthParams: testData.authParams, TriggerMetadata: testData.metadata, ResolvedEnv: testGcpCloudTasksResolvedEnv})
+		_, err := parseGcpCloudTasksMetadata(&scalersconfig.ScalerConfig{AuthParams: testData.authParams, TriggerMetadata: testData.metadata, ResolvedEnv: testGcpCloudTasksResolvedEnv})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -64,7 +66,7 @@ func TestGcpCloudTasksParseMetadata(t *testing.T) {
 
 func TestGcpCloudTasksGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range gcpCloudTasksMetricIdentifiers {
-		meta, err := parseGcpCloudTasksMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testGcpCloudTasksResolvedEnv, TriggerIndex: testData.triggerIndex})
+		meta, err := parseGcpCloudTasksMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testGcpCloudTasksResolvedEnv, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

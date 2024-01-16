@@ -26,6 +26,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 const (
@@ -167,7 +168,7 @@ var getServiceBusLengthTestScalers = []azureServiceBusScaler{
 
 func TestParseServiceBusMetadata(t *testing.T) {
 	for index, testData := range parseServiceBusMetadataDataset {
-		meta, err := parseAzureServiceBusMetadata(&ScalerConfig{ResolvedEnv: sampleResolvedEnv,
+		meta, err := parseAzureServiceBusMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleResolvedEnv,
 			TriggerMetadata: testData.metadata, AuthParams: testData.authParams,
 			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentity}, TriggerIndex: 0},
 			logr.Discard())
@@ -192,7 +193,7 @@ func TestParseServiceBusMetadata(t *testing.T) {
 
 func TestGetServiceBusAdminClientIsCached(t *testing.T) {
 	testData := azServiceBusMetricIdentifiers[0]
-	meta, err := parseAzureServiceBusMetadata(&ScalerConfig{ResolvedEnv: connectionResolvedEnv,
+	meta, err := parseAzureServiceBusMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: connectionResolvedEnv,
 		TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams,
 		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.metadataTestData.podIdentity}, TriggerIndex: testData.triggerIndex},
 		logr.Discard())
@@ -242,7 +243,7 @@ func TestGetServiceBusLength(t *testing.T) {
 
 func TestAzServiceBusGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azServiceBusMetricIdentifiers {
-		meta, err := parseAzureServiceBusMetadata(&ScalerConfig{ResolvedEnv: connectionResolvedEnv,
+		meta, err := parseAzureServiceBusMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: connectionResolvedEnv,
 			TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams,
 			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.metadataTestData.podIdentity}, TriggerIndex: testData.triggerIndex},
 			logr.Discard())

@@ -6,6 +6,8 @@ import (
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 type datadogQueries struct {
@@ -135,7 +137,7 @@ var testDatadogMetadata = []datadogAuthMetadataTestData{
 
 func TestDatadogScalerAuthParams(t *testing.T) {
 	for _, testData := range testDatadogMetadata {
-		_, err := parseDatadogMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams, MetricType: testData.metricType}, logr.Discard())
+		_, err := parseDatadogMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams, MetricType: testData.metricType}, logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -153,7 +155,7 @@ var datadogMetricIdentifiers = []datadogMetricIdentifier{
 
 func TestDatadogGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range datadogMetricIdentifiers {
-		meta, err := parseDatadogMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex, MetricType: testData.metadataTestData.metricType}, logr.Discard())
+		meta, err := parseDatadogMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex, MetricType: testData.metadataTestData.metricType}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

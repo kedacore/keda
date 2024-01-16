@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"time"
 
 	"github.com/go-logr/logr"
 	metrics "github.com/rcrowley/go-metrics"
@@ -33,7 +32,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 func init() {
@@ -63,52 +62,6 @@ type PushScaler interface {
 	Run(ctx context.Context, active chan<- bool)
 }
 
-// ScalerConfig contains config fields common for all scalers
-type ScalerConfig struct {
-	// ScalableObjectName specifies name of the ScaledObject/ScaledJob that owns this scaler
-	ScalableObjectName string
-
-	// ScalableObjectNamespace specifies name of the ScaledObject/ScaledJob that owns this scaler
-	ScalableObjectNamespace string
-
-	// ScalableObjectType specifies whether this Scaler is owned by ScaledObject or ScaledJob
-	ScalableObjectType string
-
-	// The timeout to be used on all HTTP requests from the controller
-	GlobalHTTPTimeout time.Duration
-
-	// Name of the trigger
-	TriggerName string
-
-	// Marks whether we should query metrics only during the polling interval
-	// Any requests for metrics in between are read from the cache
-	TriggerUseCachedMetrics bool
-
-	// TriggerMetadata
-	TriggerMetadata map[string]string
-
-	// ResolvedEnv
-	ResolvedEnv map[string]string
-
-	// AuthParams
-	AuthParams map[string]string
-
-	// PodIdentity
-	PodIdentity kedav1alpha1.AuthPodIdentity
-
-	// TriggerIndex
-	TriggerIndex int
-
-	// TriggerUniqueKey for the scaler across KEDA. Useful to identify uniquely the scaler, eg: AWS credentials cache
-	TriggerUniqueKey string
-
-	// MetricType
-	MetricType v2.MetricTargetType
-
-	// When we use the scaler for composite scaler, we shouldn't require the value because it'll be ignored
-	AsMetricSource bool
-}
-
 var (
 	// ErrScalerUnsupportedUtilizationMetricType is returned when v2.UtilizationMetricType
 	// is provided as the metric target type for scaler.
@@ -119,7 +72,7 @@ var (
 )
 
 // GetFromAuthOrMeta helps to get a field from Auth or Meta sections
-func GetFromAuthOrMeta(config *ScalerConfig, field string) (string, error) {
+func GetFromAuthOrMeta(config *scalersconfig.ScalerConfig, field string) (string, error) {
 	var result string
 	var err error
 	if config.AuthParams[field] != "" {
@@ -153,12 +106,12 @@ func RemoveIndexFromMetricName(triggerIndex int, metricName string) (string, err
 	return metricNameWithoutIndex, nil
 }
 
-func InitializeLogger(config *ScalerConfig, scalerName string) logr.Logger {
+func InitializeLogger(config *scalersconfig.ScalerConfig, scalerName string) logr.Logger {
 	return logf.Log.WithName(scalerName).WithValues("type", config.ScalableObjectType, "namespace", config.ScalableObjectNamespace, "name", config.ScalableObjectName)
 }
 
 // GetMetricTargetType helps get the metric target type of the scaler
-func GetMetricTargetType(config *ScalerConfig) (v2.MetricTargetType, error) {
+func GetMetricTargetType(config *scalersconfig.ScalerConfig) (v2.MetricTargetType, error) {
 	switch config.MetricType {
 	case v2.UtilizationMetricType:
 		return "", ErrScalerUnsupportedUtilizationMetricType
@@ -216,7 +169,7 @@ func GenerateMetricInMili(metricName string, value float64) external_metrics.Ext
 }
 
 // getParameterFromConfigV2 returns the value of the parameter from the config
-func getParameterFromConfigV2(config *ScalerConfig, parameter string, useMetadata bool, useAuthentication bool, useResolvedEnv bool, isOptional bool, defaultVal string, targetType reflect.Type) (interface{}, error) {
+func getParameterFromConfigV2(config *scalersconfig.ScalerConfig, parameter string, useMetadata bool, useAuthentication bool, useResolvedEnv bool, isOptional bool, defaultVal string, targetType reflect.Type) (interface{}, error) {
 	foundCount := 0
 	var foundVal string
 	var convertedVal interface{}

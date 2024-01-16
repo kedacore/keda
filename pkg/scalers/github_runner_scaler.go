@@ -15,6 +15,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -325,7 +326,7 @@ type Job struct {
 }
 
 // NewGitHubRunnerScaler creates a new GitHub Runner Scaler
-func NewGitHubRunnerScaler(config *ScalerConfig) (Scaler, error) {
+func NewGitHubRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
 	metricType, err := GetMetricTargetType(config)
@@ -367,7 +368,7 @@ func getValueFromMetaOrEnv(key string, metadata map[string]string, env map[strin
 }
 
 // getInt64ValueFromMetaOrEnv returns the value of the given key from the metadata or the environment variables
-func getInt64ValueFromMetaOrEnv(key string, config *ScalerConfig) (int64, error) {
+func getInt64ValueFromMetaOrEnv(key string, config *scalersconfig.ScalerConfig) (int64, error) {
 	sInt, err := getValueFromMetaOrEnv(key, config.TriggerMetadata, config.ResolvedEnv)
 	if err != nil {
 		return -1, fmt.Errorf("error parsing %s: %w", key, err)
@@ -380,7 +381,7 @@ func getInt64ValueFromMetaOrEnv(key string, config *ScalerConfig) (int64, error)
 	return goodInt, nil
 }
 
-func parseGitHubRunnerMetadata(config *ScalerConfig) (*githubRunnerMetadata, error) {
+func parseGitHubRunnerMetadata(config *scalersconfig.ScalerConfig) (*githubRunnerMetadata, error) {
 	meta := &githubRunnerMetadata{}
 	meta.targetWorkflowQueueLength = defaultTargetWorkflowQueueLength
 
@@ -438,7 +439,7 @@ func parseGitHubRunnerMetadata(config *ScalerConfig) (*githubRunnerMetadata, err
 	return meta, nil
 }
 
-func setupGitHubApp(config *ScalerConfig) (*int64, *int64, *string, error) {
+func setupGitHubApp(config *scalersconfig.ScalerConfig) (*int64, *int64, *string, error) {
 	var appID *int64
 	var instID *int64
 	var appKey *string

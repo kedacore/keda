@@ -12,6 +12,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -39,7 +40,7 @@ type CassandraMetadata struct {
 }
 
 // NewCassandraScaler creates a new Cassandra scaler.
-func NewCassandraScaler(config *ScalerConfig) (Scaler, error) {
+func NewCassandraScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -66,7 +67,7 @@ func NewCassandraScaler(config *ScalerConfig) (Scaler, error) {
 }
 
 // parseCassandraMetadata parses the metadata and returns a CassandraMetadata or an error if the ScalerConfig is invalid.
-func parseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
+func parseCassandraMetadata(config *scalersconfig.ScalerConfig) (*CassandraMetadata, error) {
 	meta := CassandraMetadata{}
 
 	if val, ok := config.TriggerMetadata["query"]; ok {

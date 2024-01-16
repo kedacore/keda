@@ -18,6 +18,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	pb "github.com/kedacore/keda/v2/pkg/scalers/externalscaler"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -54,7 +55,7 @@ const grpcConfig = `{"loadBalancingConfig": [{"round_robin":{}}]}`
 
 // NewExternalScaler creates a new external scaler - calls the GRPC interface
 // to create a new scaler
-func NewExternalScaler(config *ScalerConfig) (Scaler, error) {
+func NewExternalScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting external scaler metric type: %w", err)
@@ -78,7 +79,7 @@ func NewExternalScaler(config *ScalerConfig) (Scaler, error) {
 }
 
 // NewExternalPushScaler creates a new externalPushScaler push scaler
-func NewExternalPushScaler(config *ScalerConfig) (PushScaler, error) {
+func NewExternalPushScaler(config *scalersconfig.ScalerConfig) (PushScaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting external scaler metric type: %w", err)
@@ -103,7 +104,7 @@ func NewExternalPushScaler(config *ScalerConfig) (PushScaler, error) {
 	}, nil
 }
 
-func parseExternalScalerMetadata(config *ScalerConfig) (externalScalerMetadata, error) {
+func parseExternalScalerMetadata(config *scalersconfig.ScalerConfig) (externalScalerMetadata, error) {
 	meta := externalScalerMetadata{
 		originalMetadata: config.TriggerMetadata,
 	}

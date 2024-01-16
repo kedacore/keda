@@ -13,6 +13,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -96,7 +97,7 @@ func (s *couchDBScaler) getQueryResult(ctx context.Context) (int64, error) {
 	return count, nil
 }
 
-func parseCouchDBMetadata(config *ScalerConfig) (*couchDBMetadata, string, error) {
+func parseCouchDBMetadata(config *scalersconfig.ScalerConfig) (*couchDBMetadata, string, error) {
 	var connStr string
 	var err error
 	meta := couchDBMetadata{}
@@ -183,7 +184,7 @@ func parseCouchDBMetadata(config *ScalerConfig) (*couchDBMetadata, string, error
 	return &meta, connStr, nil
 }
 
-func NewCouchDBScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+func NewCouchDBScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)

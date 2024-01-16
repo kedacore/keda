@@ -13,6 +13,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -32,7 +33,7 @@ type postgreSQLMetadata struct {
 }
 
 // NewPostgreSQLScaler creates a new postgreSQL scaler
-func NewPostgreSQLScaler(config *ScalerConfig) (Scaler, error) {
+func NewPostgreSQLScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -57,7 +58,7 @@ func NewPostgreSQLScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) {
+func parsePostgreSQLMetadata(config *scalersconfig.ScalerConfig) (*postgreSQLMetadata, error) {
 	meta := postgreSQLMetadata{}
 
 	if val, ok := config.TriggerMetadata["query"]; ok {

@@ -18,6 +18,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -96,7 +97,7 @@ type pulsarStats struct {
 }
 
 // NewPulsarScaler creates a new PulsarScaler
-func NewPulsarScaler(config *ScalerConfig) (Scaler, error) {
+func NewPulsarScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	logger := InitializeLogger(config, "pulsar_scaler")
 	pulsarMetadata, err := parsePulsarMetadata(config, logger)
 	if err != nil {
@@ -132,7 +133,7 @@ func NewPulsarScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parsePulsarMetadata(config *ScalerConfig, logger logr.Logger) (pulsarMetadata, error) {
+func parsePulsarMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (pulsarMetadata, error) {
 	meta := pulsarMetadata{}
 	switch {
 	case config.TriggerMetadata["adminURLFromEnv"] != "":

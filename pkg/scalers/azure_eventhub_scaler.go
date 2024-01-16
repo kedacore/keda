@@ -34,6 +34,7 @@ import (
 
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -65,7 +66,7 @@ type eventHubMetadata struct {
 }
 
 // NewAzureEventHubScaler creates a new scaler for eventHub
-func NewAzureEventHubScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+func NewAzureEventHubScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -93,7 +94,7 @@ func NewAzureEventHubScaler(ctx context.Context, config *ScalerConfig) (Scaler, 
 }
 
 // parseAzureEventHubMetadata parses metadata
-func parseAzureEventHubMetadata(logger logr.Logger, config *ScalerConfig) (*eventHubMetadata, error) {
+func parseAzureEventHubMetadata(logger logr.Logger, config *scalersconfig.ScalerConfig) (*eventHubMetadata, error) {
 	meta := eventHubMetadata{
 		eventHubInfo: azure.EventHubInfo{},
 	}
@@ -111,7 +112,7 @@ func parseAzureEventHubMetadata(logger logr.Logger, config *ScalerConfig) (*even
 	return &meta, nil
 }
 
-func parseCommonAzureEventHubMetadata(config *ScalerConfig, meta *eventHubMetadata) error {
+func parseCommonAzureEventHubMetadata(config *scalersconfig.ScalerConfig, meta *eventHubMetadata) error {
 	meta.threshold = defaultEventHubMessageThreshold
 
 	if val, ok := config.TriggerMetadata[thresholdMetricName]; ok {
@@ -194,7 +195,7 @@ func parseCommonAzureEventHubMetadata(config *ScalerConfig, meta *eventHubMetada
 	return nil
 }
 
-func parseAzureEventHubAuthenticationMetadata(logger logr.Logger, config *ScalerConfig, meta *eventHubMetadata) error {
+func parseAzureEventHubAuthenticationMetadata(logger logr.Logger, config *scalersconfig.ScalerConfig, meta *eventHubMetadata) error {
 	meta.eventHubInfo.PodIdentity = config.PodIdentity
 
 	switch config.PodIdentity.Provider {

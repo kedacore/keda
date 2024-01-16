@@ -15,6 +15,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -47,7 +48,7 @@ type awsSqsQueueMetadata struct {
 }
 
 // NewAwsSqsQueueScaler creates a new awsSqsQueueScaler
-func NewAwsSqsQueueScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+func NewAwsSqsQueueScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -85,7 +86,7 @@ func (w sqsWrapperClient) GetQueueAttributes(ctx context.Context, params *sqs.Ge
 	return w.sqsClient.GetQueueAttributes(ctx, params, optFns...)
 }
 
-func parseAwsSqsQueueMetadata(config *ScalerConfig, logger logr.Logger) (*awsSqsQueueMetadata, error) {
+func parseAwsSqsQueueMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*awsSqsQueueMetadata, error) {
 	meta := awsSqsQueueMetadata{}
 	meta.targetQueueLength = defaultTargetQueueLength
 	meta.scaleOnInFlight = defaultScaleOnInFlight

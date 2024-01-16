@@ -9,6 +9,8 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/gcp"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -19,7 +21,7 @@ const (
 )
 
 type gcpCloudTasksScaler struct {
-	client     *StackDriverClient
+	client     *gcp.StackDriverClient
 	metricType v2.MetricTargetType
 	metadata   *gcpCloudTaskMetadata
 	logger     logr.Logger
@@ -31,12 +33,12 @@ type gcpCloudTaskMetadata struct {
 
 	queueName        string
 	projectID        string
-	gcpAuthorization *gcpAuthorizationMetadata
+	gcpAuthorization *gcp.AuthorizationMetadata
 	triggerIndex     int
 }
 
 // NewGcpCloudTasksScaler creates a new cloudTaskScaler
-func NewGcpCloudTasksScaler(config *ScalerConfig) (Scaler, error) {
+func NewGcpCloudTasksScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -56,7 +58,7 @@ func NewGcpCloudTasksScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseGcpCloudTasksMetadata(config *ScalerConfig) (*gcpCloudTaskMetadata, error) {
+func parseGcpCloudTasksMetadata(config *scalersconfig.ScalerConfig) (*gcpCloudTaskMetadata, error) {
 	meta := gcpCloudTaskMetadata{value: cloudTaskDefaultValue}
 
 	value, valuePresent := config.TriggerMetadata["value"]
@@ -97,7 +99,7 @@ func parseGcpCloudTasksMetadata(config *ScalerConfig) (*gcpCloudTaskMetadata, er
 		return nil, fmt.Errorf("no project id given")
 	}
 
-	auth, err := getGCPAuthorization(config)
+	auth, err := gcp.GetGCPAuthorization(config)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +110,7 @@ func parseGcpCloudTasksMetadata(config *ScalerConfig) (*gcpCloudTaskMetadata, er
 
 func (s *gcpCloudTasksScaler) Close(context.Context) error {
 	if s.client != nil {
-		err := s.client.metricsClient.Close()
+		err := s.client.MetricsClient.Close()
 		s.client = nil
 		if err != nil {
 			s.logger.Error(err, "error closing StackDriver client")
@@ -152,12 +154,12 @@ func (s *gcpCloudTasksScaler) GetMetricsAndActivity(ctx context.Context, metricN
 }
 
 func (s *gcpCloudTasksScaler) setStackdriverClient(ctx context.Context) error {
-	var client *StackDriverClient
+	var client *gcp.StackDriverClient
 	var err error
-	if s.metadata.gcpAuthorization.podIdentityProviderEnabled {
-		client, err = NewStackDriverClientPodIdentity(ctx)
+	if s.metadata.gcpAuthorization.PodIdentityProviderEnabled {
+		client, err = gcp.NewStackDriverClientPodIdentity(ctx)
 	} else {
-		client, err = NewStackDriverClient(ctx, s.metadata.gcpAuthorization.GoogleApplicationCredentials)
+		client, err = gcp.NewStackDriverClient(ctx, s.metadata.gcpAuthorization.GoogleApplicationCredentials)
 	}
 
 	if err != nil {

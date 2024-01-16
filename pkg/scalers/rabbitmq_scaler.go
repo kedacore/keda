@@ -20,6 +20,7 @@ import (
 
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -116,7 +117,7 @@ type publishDetail struct {
 }
 
 // NewRabbitMQScaler creates a new rabbitMQ scaler
-func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
+func NewRabbitMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	s := &rabbitMQScaler{}
 
 	metricType, err := GetMetricTargetType(config)
@@ -157,7 +158,7 @@ func NewRabbitMQScaler(config *ScalerConfig) (Scaler, error) {
 	return s, nil
 }
 
-func resolveProtocol(config *ScalerConfig, meta *rabbitMQMetadata) error {
+func resolveProtocol(config *scalersconfig.ScalerConfig, meta *rabbitMQMetadata) error {
 	meta.protocol = defaultProtocol
 	if val, ok := config.AuthParams["protocol"]; ok {
 		meta.protocol = val
@@ -171,7 +172,7 @@ func resolveProtocol(config *ScalerConfig, meta *rabbitMQMetadata) error {
 	return nil
 }
 
-func resolveHostValue(config *ScalerConfig, meta *rabbitMQMetadata) error {
+func resolveHostValue(config *scalersconfig.ScalerConfig, meta *rabbitMQMetadata) error {
 	switch {
 	case config.AuthParams["host"] != "":
 		meta.host = config.AuthParams["host"]
@@ -185,7 +186,7 @@ func resolveHostValue(config *ScalerConfig, meta *rabbitMQMetadata) error {
 	return nil
 }
 
-func resolveTimeout(config *ScalerConfig, meta *rabbitMQMetadata) error {
+func resolveTimeout(config *scalersconfig.ScalerConfig, meta *rabbitMQMetadata) error {
 	if val, ok := config.TriggerMetadata["timeout"]; ok {
 		timeoutMS, err := strconv.Atoi(val)
 		if err != nil {
@@ -204,7 +205,7 @@ func resolveTimeout(config *ScalerConfig, meta *rabbitMQMetadata) error {
 	return nil
 }
 
-func resolveTLSAuthParams(config *ScalerConfig, meta *rabbitMQMetadata) error {
+func resolveTLSAuthParams(config *scalersconfig.ScalerConfig, meta *rabbitMQMetadata) error {
 	meta.enableTLS = false
 	if val, ok := config.AuthParams["tls"]; ok {
 		val = strings.TrimSpace(val)
@@ -220,7 +221,7 @@ func resolveTLSAuthParams(config *ScalerConfig, meta *rabbitMQMetadata) error {
 	return nil
 }
 
-func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
+func parseRabbitMQMetadata(config *scalersconfig.ScalerConfig) (*rabbitMQMetadata, error) {
 	meta := rabbitMQMetadata{}
 
 	// Resolve protocol type
@@ -320,7 +321,7 @@ func parseRabbitMQMetadata(config *ScalerConfig) (*rabbitMQMetadata, error) {
 	return &meta, nil
 }
 
-func parseRabbitMQHttpProtocolMetadata(config *ScalerConfig, meta *rabbitMQMetadata) error {
+func parseRabbitMQHttpProtocolMetadata(config *scalersconfig.ScalerConfig, meta *rabbitMQMetadata) error {
 	// Resolve useRegex
 	if val, ok := config.TriggerMetadata["useRegex"]; ok {
 		useRegex, err := strconv.ParseBool(val)
@@ -362,7 +363,7 @@ func parseRabbitMQHttpProtocolMetadata(config *ScalerConfig, meta *rabbitMQMetad
 	return nil
 }
 
-func parseTrigger(meta *rabbitMQMetadata, config *ScalerConfig) (*rabbitMQMetadata, error) {
+func parseTrigger(meta *rabbitMQMetadata, config *scalersconfig.ScalerConfig) (*rabbitMQMetadata, error) {
 	deprecatedQueueLengthValue, deprecatedQueueLengthPresent := config.TriggerMetadata[rabbitQueueLengthMetricName]
 	mode, modePresent := config.TriggerMetadata[rabbitModeTriggerConfigName]
 	value, valuePresent := config.TriggerMetadata[rabbitValueTriggerConfigName]

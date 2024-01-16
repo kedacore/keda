@@ -14,6 +14,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -56,7 +57,7 @@ const (
 )
 
 // NewArtemisQueueScaler creates a new artemis queue Scaler
-func NewArtemisQueueScaler(config *ScalerConfig) (Scaler, error) {
+func NewArtemisQueueScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	// do we need to guarantee this timeout for a specific
 	// reason? if not, we can have buildScaler pass in
 	// the global client
@@ -80,7 +81,7 @@ func NewArtemisQueueScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseArtemisMetadata(config *ScalerConfig) (*artemisMetadata, error) {
+func parseArtemisMetadata(config *scalersconfig.ScalerConfig) (*artemisMetadata, error) {
 	meta := artemisMetadata{}
 
 	meta.queueLength = defaultArtemisQueueLength

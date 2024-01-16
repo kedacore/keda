@@ -28,6 +28,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -57,7 +58,7 @@ type azureQueueMetadata struct {
 }
 
 // NewAzureQueueScaler creates a new scaler for queue
-func NewAzureQueueScaler(config *ScalerConfig) (Scaler, error) {
+func NewAzureQueueScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -79,7 +80,7 @@ func NewAzureQueueScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseAzureQueueMetadata(config *ScalerConfig, logger logr.Logger) (*azureQueueMetadata, kedav1alpha1.AuthPodIdentity, error) {
+func parseAzureQueueMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*azureQueueMetadata, kedav1alpha1.AuthPodIdentity, error) {
 	meta := azureQueueMetadata{}
 	meta.targetQueueLength = defaultTargetQueueLength
 

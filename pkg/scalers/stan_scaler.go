@@ -12,6 +12,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -62,7 +63,7 @@ const (
 )
 
 // NewStanScaler creates a new stanScaler
-func NewStanScaler(config *ScalerConfig) (Scaler, error) {
+func NewStanScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -82,7 +83,7 @@ func NewStanScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
+func parseStanMetadata(config *scalersconfig.ScalerConfig) (stanMetadata, error) {
 	meta := stanMetadata{}
 
 	if config.TriggerMetadata["queueGroup"] == "" {
