@@ -123,7 +123,8 @@ func TestScaler(t *testing.T) {
 	t.Log("--- setting up ---")
 
 	ampClient := createAMPClient()
-	workspaceOutput, _ := ampClient.CreateWorkspace(context.Background(), nil)
+	workspaceOutput, err := ampClient.CreateWorkspace(context.Background(), nil)
+	assert.Error(t, err, "aws prometheus workspace creation has failed")
 	workspaceID = *workspaceOutput.WorkspaceId
 
 	kc := GetKubernetesClient(t)
@@ -141,7 +142,7 @@ func TestScaler(t *testing.T) {
 		WorkspaceId: &workspaceID,
 	}
 	input := &deleteWSInput
-	_, err := ampClient.DeleteWorkspace(context.Background(), input)
+	_, err = ampClient.DeleteWorkspace(context.Background(), input)
 	if err != nil {
 		t.Log("Unable to delete AMP workspace", err)
 	}
