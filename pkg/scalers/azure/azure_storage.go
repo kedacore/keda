@@ -147,7 +147,7 @@ func ParseAzureStorageBlobConnection(ctx context.Context, httpClient util.HTTPDo
 
 		return credential, endpoint, nil
 	default:
-		return nil, nil, fmt.Errorf("azure queues doesn't support %s pod identity type", podIdentity.Provider)
+		return nil, nil, fmt.Errorf("azure storage doesn't support %s pod identity type", podIdentity.Provider)
 	}
 }
 
