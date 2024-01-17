@@ -38,6 +38,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_scaling"
 	"github.com/kedacore/keda/v2/pkg/scalers"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache"
 	"github.com/kedacore/keda/v2/pkg/util"
 )
@@ -81,7 +82,7 @@ var _ = Describe("ScaledObjectController", func() {
 				expectedExternalMetricNames := make([]string, 0)
 
 				for i, tm := range triggerMeta {
-					config := &scalers.ScalerConfig{
+					config := &scalersconfig.ScalerConfig{
 						ScalableObjectName:      fmt.Sprintf("test.%d", i),
 						ScalableObjectNamespace: "test",
 						TriggerMetadata:         tm,
@@ -97,7 +98,7 @@ var _ = Describe("ScaledObjectController", func() {
 
 					testScalers = append(testScalers, cache.ScalerBuilder{
 						Scaler: s,
-						Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+						Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 							scaler, err := scalers.NewPrometheusScaler(config)
 							return scaler, config, err
 						},
@@ -133,7 +134,7 @@ var _ = Describe("ScaledObjectController", func() {
 				// Generate test data
 				expectedExternalMetricNames := make([]string, 0)
 
-				config := &scalers.ScalerConfig{
+				config := &scalersconfig.ScalerConfig{
 					ScalableObjectName:      "test",
 					ScalableObjectNamespace: "test",
 					TriggerMetadata:         triggerMeta[0],
@@ -154,7 +155,7 @@ var _ = Describe("ScaledObjectController", func() {
 				scalersCache := cache.ScalersCache{
 					Scalers: []cache.ScalerBuilder{{
 						Scaler: s,
-						Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+						Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 							return s, config, nil
 						},
 					}},
@@ -183,7 +184,7 @@ var _ = Describe("ScaledObjectController", func() {
 				// Generate test data
 				testScalers := make([]cache.ScalerBuilder, 0)
 				for i := 0; i < 4; i++ {
-					config := &scalers.ScalerConfig{
+					config := &scalersconfig.ScalerConfig{
 						ScalableObjectName:      fmt.Sprintf("test.%d", i),
 						ScalableObjectNamespace: "test",
 						TriggerMetadata:         triggerMeta[0],
@@ -198,7 +199,7 @@ var _ = Describe("ScaledObjectController", func() {
 
 					testScalers = append(testScalers, cache.ScalerBuilder{
 						Scaler: s,
-						Factory: func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+						Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 							return s, config, nil
 						},
 					})

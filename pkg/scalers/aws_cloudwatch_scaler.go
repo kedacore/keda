@@ -15,6 +15,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 const (
@@ -57,7 +58,7 @@ type awsCloudwatchMetadata struct {
 }
 
 // NewAwsCloudwatchScaler creates a new awsCloudwatchScaler
-func NewAwsCloudwatchScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+func NewAwsCloudwatchScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -125,7 +126,7 @@ func createCloudwatchClient(ctx context.Context, metadata *awsCloudwatchMetadata
 	}), nil
 }
 
-func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, error) {
+func parseAwsCloudwatchMetadata(config *scalersconfig.ScalerConfig) (*awsCloudwatchMetadata, error) {
 	var err error
 	meta := awsCloudwatchMetadata{}
 

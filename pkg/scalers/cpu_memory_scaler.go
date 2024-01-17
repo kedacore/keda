@@ -10,6 +10,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 type cpuMemoryScaler struct {
@@ -26,7 +28,7 @@ type cpuMemoryMetadata struct {
 }
 
 // NewCPUMemoryScaler creates a new cpuMemoryScaler
-func NewCPUMemoryScaler(resourceName v1.ResourceName, config *ScalerConfig) (Scaler, error) {
+func NewCPUMemoryScaler(resourceName v1.ResourceName, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	logger := InitializeLogger(config, "cpu_memory_scaler")
 
 	meta, parseErr := parseResourceMetadata(config, logger)
@@ -41,7 +43,7 @@ func NewCPUMemoryScaler(resourceName v1.ResourceName, config *ScalerConfig) (Sca
 	}, nil
 }
 
-func parseResourceMetadata(config *ScalerConfig, logger logr.Logger) (*cpuMemoryMetadata, error) {
+func parseResourceMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*cpuMemoryMetadata, error) {
 	meta := &cpuMemoryMetadata{}
 	var value string
 	var ok bool

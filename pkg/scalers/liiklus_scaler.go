@@ -14,6 +14,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	liiklus_service "github.com/kedacore/keda/v2/pkg/scalers/liiklus"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -58,7 +59,7 @@ var (
 )
 
 // NewLiiklusScaler creates a new liiklusScaler scaler
-func NewLiiklusScaler(config *ScalerConfig) (Scaler, error) {
+func NewLiiklusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -157,7 +158,7 @@ func (s *liiklusScaler) getLag(ctx context.Context) (uint64, map[uint32]uint64, 
 	return totalLag, lags, nil
 }
 
-func parseLiiklusMetadata(config *ScalerConfig) (*liiklusMetadata, error) {
+func parseLiiklusMetadata(config *scalersconfig.ScalerConfig) (*liiklusMetadata, error) {
 	lagThreshold := defaultLiiklusLagThreshold
 	activationLagThreshold := defaultLiiklusActivationLagThreshold
 

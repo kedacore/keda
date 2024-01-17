@@ -12,6 +12,8 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/gcp"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -29,7 +31,7 @@ const (
 var regexpCompositeSubscriptionIDPrefix = regexp.MustCompile(compositeSubscriptionIDPrefix)
 
 type pubsubScaler struct {
-	client     *StackDriverClient
+	client     *gcp.StackDriverClient
 	metricType v2.MetricTargetType
 	metadata   *pubsubMetadata
 	logger     logr.Logger
@@ -43,13 +45,13 @@ type pubsubMetadata struct {
 	// a resource is one of subscription or topic
 	resourceType     string
 	resourceName     string
-	gcpAuthorization *gcpAuthorizationMetadata
+	gcpAuthorization *gcp.AuthorizationMetadata
 	triggerIndex     int
 	aggregation      string
 }
 
 // NewPubSubScaler creates a new pubsubScaler
-func NewPubSubScaler(config *ScalerConfig) (Scaler, error) {
+func NewPubSubScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -69,7 +71,7 @@ func NewPubSubScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetadata, error) {
+func parsePubSubMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*pubsubMetadata, error) {
 	meta := pubsubMetadata{mode: pubSubModeSubscriptionSize, value: pubSubDefaultValue}
 
 	mode, modePresent := config.TriggerMetadata["mode"]
@@ -135,7 +137,7 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 		meta.activationValue = activationValue
 	}
 
-	auth, err := getGCPAuthorization(config)
+	auth, err := gcp.GetGCPAuthorization(config)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +148,7 @@ func parsePubSubMetadata(config *ScalerConfig, logger logr.Logger) (*pubsubMetad
 
 func (s *pubsubScaler) Close(context.Context) error {
 	if s.client != nil {
-		err := s.client.metricsClient.Close()
+		err := s.client.MetricsClient.Close()
 		s.client = nil
 		if err != nil {
 			s.logger.Error(err, "error closing StackDriver client")
@@ -198,12 +200,12 @@ func (s *pubsubScaler) GetMetricsAndActivity(ctx context.Context, metricName str
 }
 
 func (s *pubsubScaler) setStackdriverClient(ctx context.Context) error {
-	var client *StackDriverClient
+	var client *gcp.StackDriverClient
 	var err error
-	if s.metadata.gcpAuthorization.podIdentityProviderEnabled {
-		client, err = NewStackDriverClientPodIdentity(ctx)
+	if s.metadata.gcpAuthorization.PodIdentityProviderEnabled {
+		client, err = gcp.NewStackDriverClientPodIdentity(ctx)
 	} else {
-		client, err = NewStackDriverClient(ctx, s.metadata.gcpAuthorization.GoogleApplicationCredentials)
+		client, err = gcp.NewStackDriverClient(ctx, s.metadata.gcpAuthorization.GoogleApplicationCredentials)
 	}
 
 	if err != nil {
@@ -221,7 +223,7 @@ func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (float
 		}
 	}
 	resourceID, projectID := getResourceData(s)
-	query, err := s.client.buildMQLQuery(
+	query, err := s.client.BuildMQLQuery(
 		projectID, s.metadata.resourceType, metricType, resourceID, s.metadata.aggregation,
 	)
 	if err != nil {

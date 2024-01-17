@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 type parseArangoDBMetadataTestData struct {
@@ -79,7 +81,7 @@ var arangoDBMetricIdentifiers = []arangoDBMetricIdentifier{
 
 func TestParseArangoDBMetadata(t *testing.T) {
 	for _, testData := range testArangoDBMetadata {
-		_, err := parseArangoDBMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		_, err := parseArangoDBMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.raisesError {
 			t.Error("Expected success but got error:", err)
 		}
@@ -91,7 +93,7 @@ func TestParseArangoDBMetadata(t *testing.T) {
 
 func TestArangoDBScalerAuthParams(t *testing.T) {
 	for _, testData := range testArangoDBAuthMetadata {
-		meta, err := parseArangoDBMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		meta, err := parseArangoDBMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 
 		if err != nil && !testData.raisesError {
 			t.Error("Expected success but got error", err)
@@ -110,7 +112,7 @@ func TestArangoDBScalerAuthParams(t *testing.T) {
 
 func TestArangoDBGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range arangoDBMetricIdentifiers {
-		meta, err := parseArangoDBMetadata(&ScalerConfig{
+		meta, err := parseArangoDBMetadata(&scalersconfig.ScalerConfig{
 			AuthParams:      testData.metadataTestData.authParams,
 			TriggerMetadata: testData.metadataTestData.metadata,
 			TriggerIndex:    testData.triggerIndex,

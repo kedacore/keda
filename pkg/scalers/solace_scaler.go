@@ -13,6 +13,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -135,7 +136,7 @@ type solaceSEMPMetadata struct {
 }
 
 // NewSolaceScaler is the constructor for SolaceScaler
-func NewSolaceScaler(config *ScalerConfig) (Scaler, error) {
+func NewSolaceScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	// Create HTTP Client
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
@@ -162,7 +163,7 @@ func NewSolaceScaler(config *ScalerConfig) (Scaler, error) {
 }
 
 // Called by constructor
-func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
+func parseSolaceMetadata(config *scalersconfig.ScalerConfig) (*SolaceMetadata, error) {
 	meta := SolaceMetadata{}
 	//	GET THE SEMP API ENDPOINT
 	if val, ok := config.TriggerMetadata[solaceMetaSempBaseURL]; ok && val != "" {
@@ -267,7 +268,7 @@ func parseSolaceMetadata(config *ScalerConfig) (*SolaceMetadata, error) {
 	return &meta, nil
 }
 
-func getSolaceSempCredentials(config *ScalerConfig) (u string, p string, err error) {
+func getSolaceSempCredentials(config *scalersconfig.ScalerConfig) (u string, p string, err error) {
 	//	GET CREDENTIALS
 	//	The username must be a valid broker ADMIN user identifier with read access to SEMP for the broker, VPN, and relevant objects
 	//	The scaler will attempt to acquire username and then password independently. For each:

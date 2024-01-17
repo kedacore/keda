@@ -14,6 +14,8 @@ import (
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 var (
@@ -68,7 +70,7 @@ type mssqlMetadata struct {
 }
 
 // NewMSSQLScaler creates a new mssql scaler
-func NewMSSQLScaler(config *ScalerConfig) (Scaler, error) {
+func NewMSSQLScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -95,7 +97,7 @@ func NewMSSQLScaler(config *ScalerConfig) (Scaler, error) {
 }
 
 // parseMSSQLMetadata takes a ScalerConfig and returns a mssqlMetadata or an error if the config is invalid
-func parseMSSQLMetadata(config *ScalerConfig) (*mssqlMetadata, error) {
+func parseMSSQLMetadata(config *scalersconfig.ScalerConfig) (*mssqlMetadata, error) {
 	meta := mssqlMetadata{}
 
 	// Query
