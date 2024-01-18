@@ -189,6 +189,8 @@ In `azservicebus`:
 ```go
 // import "github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 
+// `DefaultAzureCredential` tries several common credential types. For more credential types
+// see this link: https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/azidentity#readme-credential-types.
 credential, err := azidentity.NewDefaultAzureCredential(nil)
 client, err := azservicebus.NewClient("<ex: myservicebus.servicebus.windows.net>", credential, nil)
 ```

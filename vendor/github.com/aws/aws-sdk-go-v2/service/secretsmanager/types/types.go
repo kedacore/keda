@@ -178,7 +178,8 @@ type SecretListEntry struct {
 	Name *string
 
 	// The next rotation is scheduled to occur on or before this date. If the secret
-	// isn't configured for rotation, Secrets Manager returns null.
+	// isn't configured for rotation or rotation has been disabled, Secrets Manager
+	// returns null.
 	NextRotationDate *time.Time
 
 	// Returns the name of the service that created the secret.

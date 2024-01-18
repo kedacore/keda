@@ -23,6 +23,8 @@ func root(l *lexer) stateFn {
 			l.error("%v", err)
 		}
 		l.emitValue(String, str)
+	case r == '`':
+		l.scanRawString(r)
 	case '0' <= r && r <= '9':
 		l.backup()
 		return number

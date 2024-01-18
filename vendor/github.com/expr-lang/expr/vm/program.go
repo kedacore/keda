@@ -137,7 +137,7 @@ func (program *Program) DisassembleWriter(w io.Writer) {
 			constant("OpLoadMethod")
 
 		case OpLoadFunc:
-			argument("OpLoadFunc")
+			argumentWithInfo("OpLoadFunc", "func")
 
 		case OpLoadEnv:
 			code("OpLoadEnv")
@@ -277,6 +277,9 @@ func (program *Program) DisassembleWriter(w io.Writer) {
 
 		case OpCallBuiltin1:
 			builtinArg("OpCallBuiltin1")
+
+		case OpValidateArgs:
+			argument("OpValidateArgs")
 
 		case OpArray:
 			code("OpArray")

@@ -6,3 +6,4 @@
 *.test
 *.out
 *.html
+custom_tests.json

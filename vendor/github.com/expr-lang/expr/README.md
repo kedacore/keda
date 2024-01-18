@@ -1,4 +1,4 @@
-# Expr
+<h1><a href="https://expr-lang.org"><img src="https://expr-lang.org/img/logo.png" alt="Zx logo" height="48"align="right"></a> Expr</h1>
 
 > [!IMPORTANT]
 > The repository [github.com/antonmedv/expr](https://github.com/antonmedv/expr) moved to [github.com/**expr-lang**/expr](https://github.com/expr-lang/expr).
@@ -8,9 +8,8 @@
 [![Fuzzing Status](https://oss-fuzz-build-logs.storage.googleapis.com/badges/expr.svg)](https://bugs.chromium.org/p/oss-fuzz/issues/list?sort=-opened&can=1&q=proj:expr)
 [![GoDoc](https://godoc.org/github.com/expr-lang/expr?status.svg)](https://godoc.org/github.com/expr-lang/expr)
 
-**Expr** is a Go-centric expression language designed to deliver dynamic configurations with unparalleled accuracy, safety, and speed.
-
-<img src="https://expr.medv.io/img/logo-small.png" width="150" alt="expr logo" align="right"/>
+**Expr** is a Go-centric expression language designed to deliver dynamic configurations with unparalleled accuracy, safety, and speed. 
+**Expr** combines simple [syntax](https://expr-lang.org/docs/language-definition) with powerful features for ease of use:
 
 ```js
 // Allow only admins and moderators to moderate comments.
@@ -18,8 +17,13 @@ user.Group in ["admin", "moderator"] || user.Id == comment.UserId
 ```
 
 ```js
+// Determine whether the request is in the permitted time window.
+request.Time - resource.Age < duration("24h")
+```
+
+```js
 // Ensure all tweets are less than 240 characters.
-all(Tweets, .Size <= 240)
+all(tweets, len(.Content) <= 240)
 ```
 
 ## Features
@@ -62,22 +66,12 @@ go get github.com/expr-lang/expr
 
 ## Documentation
 
-* See [Getting Started](https://expr.medv.io/docs/Getting-Started) page for developer documentation.
-* See [Language Definition](https://expr.medv.io/docs/Language-Definition) page to learn the syntax.
-
-## Expr Code Editor
-
-<a href="https://bit.ly/expr-code-editor">
-  <img src="https://expr-lang.github.io/expr/ogimage.png" align="center" alt="Expr Code Editor" width="1200"/>
-</a>
-
-Also, I have an embeddable code editor written in JavaScript which allows editing expressions with syntax highlighting and autocomplete based on your types declaration.
-
-[Learn more →](https://expr-lang.github.io/expr/)
+* See [Getting Started](https://expr-lang.org/docs/Getting-Started) page for developer documentation.
+* See [Language Definition](https://expr-lang.org/docs/language-definition) page to learn the syntax.
 
 ## Examples
 
-[Play Online](https://play.golang.org/p/z7T8ytJ1T1d)
+[Play Online](https://go.dev/play/p/XCoNXEjm3TS)
 
 ```go
 package main
@@ -110,7 +104,7 @@ func main() {
 }
 ```
 
-[Play Online](https://play.golang.org/p/4S4brsIvU4i)
+[Play Online](https://go.dev/play/p/tz-ZneBfSuw)
 
 ```go
 package main
@@ -157,20 +151,22 @@ func main() {
 * [Aviasales](https://aviasales.ru) utilizes Expr as a business rule engine for its flight search engine.
 * [Wish.com](https://www.wish.com) employs Expr in its decision-making rule engine for the Wish Assistant.
 * [Argo](https://argoproj.github.io) integrates Expr into Argo Rollouts and Argo Workflows for Kubernetes.
-* [Crowdsec](https://crowdsec.net) incorporates Expr into its security automation tool.
-* [FACEIT](https://www.faceit.com) uses Expr to enhance customization of its eSports matchmaking algorithm.
-* [qiniu](https://www.qiniu.com) implements Expr in its trade systems.
-* [Junglee Games](https://www.jungleegames.com/) uses Expr for its in-house marketing retention tool, Project Audience.
 * [OpenTelemetry](https://opentelemetry.io) integrates Expr into the OpenTelemetry Collector.
 * [Philips Labs](https://github.com/philips-labs/tabia) employs Expr in Tabia, a tool designed to collect insights on their code bases.
+* [CrowdSec](https://crowdsec.net) incorporates Expr into its security automation tool.
 * [CoreDNS](https://coredns.io) uses Expr in CoreDNS, which is a DNS server.
+* [qiniu](https://www.qiniu.com) implements Expr in its trade systems.
+* [Junglee Games](https://www.jungleegames.com/) uses Expr for its in-house marketing retention tool, Project Audience.
+* [Faceit](https://www.faceit.com) uses Expr to enhance customization of its eSports matchmaking algorithm.
 * [Chaos Mesh](https://chaos-mesh.org) incorporates Expr into Chaos Mesh, a cloud-native Chaos Engineering platform.
-* [Milvus](https://milvus.io) integrates Expr into Milvus, an open-source vector database.
 * [Visually.io](https://visually.io) employs Expr as a business rule engine for its personalization targeting algorithm.
 * [Akvorado](https://github.com/akvorado/akvorado) utilizes Expr to classify exporters and interfaces in network flows.
+* [keda.sh](https://keda.sh) uses Expr to allow customization of its Kubernetes-based event-driven autoscaling.
 
 [Add your company too](https://github.com/expr-lang/expr/edit/master/README.md)
 
 ## License
 
 [MIT](https://github.com/expr-lang/expr/blob/master/LICENSE)
+
+<p align="center"><img src="https://expr-lang.org/img/gopher-small.png" width="150" /></p>

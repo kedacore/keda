@@ -13,10 +13,12 @@ import (
 
 // Generates a random password. We recommend that you specify the maximum length
 // and include every character type that the system you are generating a password
-// for can support. Secrets Manager generates a CloudTrail log entry when you call
-// this action. Do not include sensitive information in request parameters because
-// it might be logged. For more information, see Logging Secrets Manager events
-// with CloudTrail (https://docs.aws.amazon.com/secretsmanager/latest/userguide/retrieve-ct-entries.html)
+// for can support. By default, Secrets Manager uses uppercase and lowercase
+// letters, numbers, and the following characters in passwords:
+// !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ Secrets Manager generates a CloudTrail log
+// entry when you call this action. Do not include sensitive information in request
+// parameters because it might be logged. For more information, see Logging
+// Secrets Manager events with CloudTrail (https://docs.aws.amazon.com/secretsmanager/latest/userguide/retrieve-ct-entries.html)
 // . Required permissions: secretsmanager:GetRandomPassword . For more information,
 // see IAM policy actions for Secrets Manager (https://docs.aws.amazon.com/secretsmanager/latest/userguide/reference_iam-permissions.html#reference_iam-permissions_actions)
 // and Authentication and access control in Secrets Manager (https://docs.aws.amazon.com/secretsmanager/latest/userguide/auth-and-access.html)

@@ -9,9 +9,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/expr-lang/expr/ast"
 	"github.com/expr-lang/expr/vm/runtime"
 )
+
+type Function struct {
+	Name         string
+	Func         func(args ...any) (any, error)
+	Fast         func(arg any) any
+	ValidateArgs func(args ...any) (any, error)
+	Types        []reflect.Type
+	Validate     func(args []reflect.Type) (reflect.Type, error)
+	Predicate    bool
+}
 
 var (
 	Index map[string]int
@@ -27,7 +36,7 @@ func init() {
 	}
 }
 
-var Builtins = []*ast.Function{
+var Builtins = []*Function{
 	{
 		Name:      "all",
 		Predicate: true,
@@ -317,12 +326,15 @@ var Builtins = []*ast.Function{
 	},
 	{
 		Name: "repeat",
-		Func: func(args ...any) (any, error) {
+		ValidateArgs: func(args ...any) (any, error) {
 			n := runtime.ToInt(args[1])
-			if n > 1e6 {
-				panic("memory budget exceeded")
+			if n < 0 {
+				panic(fmt.Errorf("invalid argument for repeat (expected positive integer, got %d)", n))
 			}
-			return strings.Repeat(args[0].(string), n), nil
+			return uint(n), nil
+		},
+		Func: func(args ...any) (any, error) {
+			return strings.Repeat(args[0].(string), runtime.ToInt(args[1])), nil
 		},
 		Types: types(strings.Repeat),
 	},
@@ -971,5 +983,49 @@ var Builtins = []*ast.Function{
 			}
 			return arrayType, nil
 		},
+	},
+	bitFunc("bitand", func(x, y int) (any, error) {
+		return x & y, nil
+	}),
+	bitFunc("bitor", func(x, y int) (any, error) {
+		return x | y, nil
+	}),
+	bitFunc("bitxor", func(x, y int) (any, error) {
+		return x ^ y, nil
+	}),
+	bitFunc("bitnand", func(x, y int) (any, error) {
+		return x &^ y, nil
+	}),
+	bitFunc("bitshl", func(x, y int) (any, error) {
+		if y < 0 {
+			return nil, fmt.Errorf("invalid operation: negative shift count %d (type int)", y)
+		}
+		return x << y, nil
+	}),
+	bitFunc("bitshr", func(x, y int) (any, error) {
+		if y < 0 {
+			return nil, fmt.Errorf("invalid operation: negative shift count %d (type int)", y)
+		}
+		return x >> y, nil
+	}),
+	bitFunc("bitushr", func(x, y int) (any, error) {
+		if y < 0 {
+			return nil, fmt.Errorf("invalid operation: negative shift count %d (type int)", y)
+		}
+		return int(uint(x) >> y), nil
+	}),
+	{
+		Name: "bitnot",
+		Func: func(args ...any) (any, error) {
+			if len(args) != 1 {
+				return nil, fmt.Errorf("invalid number of arguments for bitnot (expected 1, got %d)", len(args))
+			}
+			x, err := toInt(args[0])
+			if err != nil {
+				return nil, fmt.Errorf("%v to call bitnot", err)
+			}
+			return ^x, nil
+		},
+		Types: types(new(func(int) int)),
 	},
 }

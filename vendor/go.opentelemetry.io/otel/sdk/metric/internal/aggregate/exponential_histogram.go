@@ -288,13 +288,14 @@ func (b *expoBuckets) downscale(delta int) {
 // newExponentialHistogram returns an Aggregator that summarizes a set of
 // measurements as an exponential histogram. Each histogram is scoped by attributes
 // and the aggregation cycle the measurements were made in.
-func newExponentialHistogram[N int64 | float64](maxSize, maxScale int32, noMinMax, noSum bool) *expoHistogram[N] {
+func newExponentialHistogram[N int64 | float64](maxSize, maxScale int32, noMinMax, noSum bool, limit int) *expoHistogram[N] {
 	return &expoHistogram[N]{
 		noSum:    noSum,
 		noMinMax: noMinMax,
 		maxSize:  int(maxSize),
 		maxScale: int(maxScale),
 
+		limit:  newLimiter[*expoHistogramDataPoint[N]](limit),
 		values: make(map[attribute.Set]*expoHistogramDataPoint[N]),
 
 		start: now(),
@@ -309,6 +310,7 @@ type expoHistogram[N int64 | float64] struct {
 	maxSize  int
 	maxScale int
 
+	limit    limiter[*expoHistogramDataPoint[N]]
 	values   map[attribute.Set]*expoHistogramDataPoint[N]
 	valuesMu sync.Mutex
 
@@ -324,6 +326,7 @@ func (e *expoHistogram[N]) measure(_ context.Context, value N, attr attribute.Se
 	e.valuesMu.Lock()
 	defer e.valuesMu.Unlock()
 
+	attr = e.limit.Attributes(attr, e.values)
 	v, ok := e.values[attr]
 	if !ok {
 		v = newExpoHistogramDataPoint[N](e.maxSize, e.maxScale, e.noMinMax, e.noSum)

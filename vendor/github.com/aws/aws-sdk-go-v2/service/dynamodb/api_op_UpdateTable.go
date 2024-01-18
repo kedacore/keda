@@ -94,9 +94,8 @@ type UpdateTableInput struct {
 	SSESpecification *types.SSESpecification
 
 	// Represents the DynamoDB Streams configuration for the table. You receive a
-	// ResourceInUseException if you try to enable a stream on a table that already has
-	// a stream, or if you try to disable a stream on a table that doesn't have a
-	// stream.
+	// ValidationException if you try to enable a stream on a table that already has a
+	// stream, or if you try to disable a stream on a table that doesn't have a stream.
 	StreamSpecification *types.StreamSpecification
 
 	// The table class of the table to be updated. Valid values are STANDARD and

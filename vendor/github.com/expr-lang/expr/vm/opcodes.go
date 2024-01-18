@@ -60,6 +60,7 @@ const (
 	OpCallFast
 	OpCallTyped
 	OpCallBuiltin1
+	OpValidateArgs
 	OpArray
 	OpMap
 	OpLen
