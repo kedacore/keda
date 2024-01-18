@@ -67,7 +67,7 @@ Here is an overview of all new **experimental** features:
 ### Fixes
 
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-- **General**: Set LeaderElectionNamespace to PodNamespace ([#5405](https://github.com/kedacore/keda/issues/5404))
+- **General**: Set LeaderElectionNamespace to PodNamespace ([#5404](https://github.com/kedacore/keda/issues/5404))
 
 ### Deprecations
 
