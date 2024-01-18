@@ -397,6 +397,14 @@ func (vm *VM) Run(program *Program, env any) (_ any, err error) {
 		case OpCallBuiltin1:
 			vm.push(builtin.Builtins[arg].Fast(vm.pop()))
 
+		case OpValidateArgs:
+			fn := vm.pop().(Function)
+			mem, err := fn(vm.stack[len(vm.stack)-arg:]...)
+			if err != nil {
+				panic(err)
+			}
+			vm.memGrow(mem.(uint))
+
 		case OpArray:
 			size := vm.pop().(int)
 			vm.memGrow(uint(size))

@@ -1,10 +1,12 @@
 package expr
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 
 	"github.com/expr-lang/expr/ast"
+	"github.com/expr-lang/expr/builtin"
 	"github.com/expr-lang/expr/checker"
 	"github.com/expr-lang/expr/compiler"
 	"github.com/expr-lang/expr/conf"
@@ -122,7 +124,7 @@ func Function(name string, fn func(params ...any) (any, error), types ...any) Op
 			}
 			ts[i] = t
 		}
-		c.Functions[name] = &ast.Function{
+		c.Functions[name] = &builtin.Function{
 			Name:  name,
 			Func:  fn,
 			Types: ts,
@@ -199,7 +201,8 @@ func Compile(input string, ops ...Option) (*vm.Program, error) {
 	if config.Optimize {
 		err = optimizer.Optimize(&tree.Node, config)
 		if err != nil {
-			if fileError, ok := err.(*file.Error); ok {
+			var fileError *file.Error
+			if errors.As(err, &fileError) {
 				return nil, fileError.Bind(tree.Source)
 			}
 			return nil, err

@@ -83,14 +83,16 @@ type DescribeSecretOutput struct {
 	LastChangedDate *time.Time
 
 	// The last date and time that Secrets Manager rotated the secret. If the secret
-	// isn't configured for rotation, Secrets Manager returns null.
+	// isn't configured for rotation or rotation has been disabled, Secrets Manager
+	// returns null.
 	LastRotatedDate *time.Time
 
 	// The name of the secret.
 	Name *string
 
 	// The next rotation is scheduled to occur on or before this date. If the secret
-	// isn't configured for rotation, Secrets Manager returns null.
+	// isn't configured for rotation or rotation has been disabled, Secrets Manager
+	// returns null.
 	NextRotationDate *time.Time
 
 	// The ID of the service that created this secret. For more information, see

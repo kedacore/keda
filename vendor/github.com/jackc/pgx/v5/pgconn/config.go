@@ -60,6 +60,11 @@ type Config struct {
 	// OnNotification is a callback function called when a notification from the LISTEN/NOTIFY system is received.
 	OnNotification NotificationHandler
 
+	// OnPgError is a callback function called when a Postgres error is received by the server. The default handler will close
+	// the connection on any FATAL errors. If you override this handler you should call the previously set handler or ensure
+	// that you close on FATAL errors by returning false.
+	OnPgError PgErrorHandler
+
 	createdByParseConfig bool // Used to enforce created by ParseConfig rule.
 }
 
@@ -232,12 +237,12 @@ func ParseConfigWithOptions(connString string, options ParseConfigOptions) (*Con
 		if strings.HasPrefix(connString, "postgres://") || strings.HasPrefix(connString, "postgresql://") {
 			connStringSettings, err = parseURLSettings(connString)
 			if err != nil {
-				return nil, &parseConfigError{connString: connString, msg: "failed to parse as URL", err: err}
+				return nil, &ParseConfigError{ConnString: connString, msg: "failed to parse as URL", err: err}
 			}
 		} else {
 			connStringSettings, err = parseDSNSettings(connString)
 			if err != nil {
-				return nil, &parseConfigError{connString: connString, msg: "failed to parse as DSN", err: err}
+				return nil, &ParseConfigError{ConnString: connString, msg: "failed to parse as DSN", err: err}
 			}
 		}
 	}
@@ -246,7 +251,7 @@ func ParseConfigWithOptions(connString string, options ParseConfigOptions) (*Con
 	if service, present := settings["service"]; present {
 		serviceSettings, err := parseServiceSettings(settings["servicefile"], service)
 		if err != nil {
-			return nil, &parseConfigError{connString: connString, msg: "failed to read service", err: err}
+			return nil, &ParseConfigError{ConnString: connString, msg: "failed to read service", err: err}
 		}
 
 		settings = mergeSettings(defaultSettings, envSettings, serviceSettings, connStringSettings)
@@ -261,12 +266,19 @@ func ParseConfigWithOptions(connString string, options ParseConfigOptions) (*Con
 		BuildFrontend: func(r io.Reader, w io.Writer) *pgproto3.Frontend {
 			return pgproto3.NewFrontend(r, w)
 		},
+		OnPgError: func(_ *PgConn, pgErr *PgError) bool {
+			// we want to automatically close any fatal errors
+			if strings.EqualFold(pgErr.Severity, "FATAL") {
+				return false
+			}
+			return true
+		},
 	}
 
 	if connectTimeoutSetting, present := settings["connect_timeout"]; present {
 		connectTimeout, err := parseConnectTimeoutSetting(connectTimeoutSetting)
 		if err != nil {
-			return nil, &parseConfigError{connString: connString, msg: "invalid connect_timeout", err: err}
+			return nil, &ParseConfigError{ConnString: connString, msg: "invalid connect_timeout", err: err}
 		}
 		config.ConnectTimeout = connectTimeout
 		config.DialFunc = makeConnectTimeoutDialFunc(connectTimeout)
@@ -328,7 +340,7 @@ func ParseConfigWithOptions(connString string, options ParseConfigOptions) (*Con
 
 		port, err := parsePort(portStr)
 		if err != nil {
-			return nil, &parseConfigError{connString: connString, msg: "invalid port", err: err}
+			return nil, &ParseConfigError{ConnString: connString, msg: "invalid port", err: err}
 		}
 
 		var tlsConfigs []*tls.Config
@@ -340,7 +352,7 @@ func ParseConfigWithOptions(connString string, options ParseConfigOptions) (*Con
 			var err error
 			tlsConfigs, err = configTLS(settings, host, options)
 			if err != nil {
-				return nil, &parseConfigError{connString: connString, msg: "failed to configure TLS", err: err}
+				return nil, &ParseConfigError{ConnString: connString, msg: "failed to configure TLS", err: err}
 			}
 		}
 
@@ -384,7 +396,7 @@ func ParseConfigWithOptions(connString string, options ParseConfigOptions) (*Con
 	case "any":
 		// do nothing
 	default:
-		return nil, &parseConfigError{connString: connString, msg: fmt.Sprintf("unknown target_session_attrs value: %v", tsa)}
+		return nil, &ParseConfigError{ConnString: connString, msg: fmt.Sprintf("unknown target_session_attrs value: %v", tsa)}
 	}
 
 	return config, nil

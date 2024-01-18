@@ -134,22 +134,29 @@ func (r *SessionReceiver) newLink(ctx context.Context, session amqpwrap.AMQPSess
 
 // ReceiveMessages receives a fixed number of messages, up to maxMessages.
 // This function will block until at least one message is received or until the ctx is cancelled.
-// If the operation fails it can return an *azservicebus.Error type if the failure is actionable.
+// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
 func (r *SessionReceiver) ReceiveMessages(ctx context.Context, maxMessages int, options *ReceiveMessagesOptions) ([]*ReceivedMessage, error) {
 	return r.inner.ReceiveMessages(ctx, maxMessages, options)
 }
 
 // ReceiveDeferredMessages receives messages that were deferred using `Receiver.DeferMessage`.
-// If the operation fails it can return an *azservicebus.Error type if the failure is actionable.
+// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
 func (r *SessionReceiver) ReceiveDeferredMessages(ctx context.Context, sequenceNumbers []int64, options *ReceiveDeferredMessagesOptions) ([]*ReceivedMessage, error) {
 	return r.inner.ReceiveDeferredMessages(ctx, sequenceNumbers, options)
 }
 
 // PeekMessages will peek messages without locking or deleting messages.
-// Messages that are peeked do not have lock tokens, so settlement methods
-// like CompleteMessage, AbandonMessage, DeferMessage or DeadLetterMessage
-// will not work with them.
-// If the operation fails it can return an *azservicebus.Error type if the failure is actionable.
+//
+// The SessionReceiver stores the last peeked sequence number internally, and will use it as the
+// start location for the next PeekMessages() call. You can override this behavior by passing an
+// explicit sequence number in [azservicebus.PeekMessagesOptions.FromSequenceNumber].
+//
+// Messages that are peeked are not locked, so settlement methods like [SessionReceiver.CompleteMessage],
+// [SessionReceiver.AbandonMessage], [SessionReceiver.DeferMessage] or [SessionReceiver.DeadLetterMessage] will not work with them.
+//
+// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
+//
+// For more information about peeking/message-browsing see https://aka.ms/azsdk/servicebus/message-browsing
 func (r *SessionReceiver) PeekMessages(ctx context.Context, maxMessageCount int, options *PeekMessagesOptions) ([]*ReceivedMessage, error) {
 	return r.inner.PeekMessages(ctx, maxMessageCount, options)
 }
@@ -160,7 +167,7 @@ func (r *SessionReceiver) Close(ctx context.Context) error {
 }
 
 // CompleteMessage completes a message, deleting it from the queue or subscription.
-// If the operation fails it can return an *azservicebus.Error type if the failure is actionable.
+// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
 func (r *SessionReceiver) CompleteMessage(ctx context.Context, message *ReceivedMessage, options *CompleteMessageOptions) error {
 	return r.inner.CompleteMessage(ctx, message, options)
 }
@@ -168,14 +175,14 @@ func (r *SessionReceiver) CompleteMessage(ctx context.Context, message *Received
 // AbandonMessage will cause a message to be returned to the queue or subscription.
 // This will increment its delivery count, and potentially cause it to be dead lettered
 // depending on your queue or subscription's configuration.
-// If the operation fails it can return an *azservicebus.Error type if the failure is actionable.
+// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
 func (r *SessionReceiver) AbandonMessage(ctx context.Context, message *ReceivedMessage, options *AbandonMessageOptions) error {
 	return r.inner.AbandonMessage(ctx, message, options)
 }
 
 // DeferMessage will cause a message to be deferred. Deferred messages
 // can be received using `Receiver.ReceiveDeferredMessages`.
-// If the operation fails it can return an *azservicebus.Error type if the failure is actionable.
+// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
 func (r *SessionReceiver) DeferMessage(ctx context.Context, message *ReceivedMessage, options *DeferMessageOptions) error {
 	return r.inner.DeferMessage(ctx, message, options)
 }
@@ -183,7 +190,7 @@ func (r *SessionReceiver) DeferMessage(ctx context.Context, message *ReceivedMes
 // DeadLetterMessage settles a message by moving it to the dead letter queue for a
 // queue or subscription. To receive these messages create a receiver with `Client.NewReceiverForQueue()`
 // or `Client.NewReceiverForSubscription()` using the `ReceiverOptions.SubQueue` option.
-// If the operation fails it can return an *azservicebus.Error type if the failure is actionable.
+// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
 func (r *SessionReceiver) DeadLetterMessage(ctx context.Context, message *ReceivedMessage, options *DeadLetterOptions) error {
 	return r.inner.DeadLetterMessage(ctx, message, options)
 }
@@ -207,7 +214,7 @@ type GetSessionStateOptions struct {
 }
 
 // GetSessionState retrieves state associated with the session.
-// If the operation fails it can return an *azservicebus.Error type if the failure is actionable.
+// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
 func (sr *SessionReceiver) GetSessionState(ctx context.Context, options *GetSessionStateOptions) ([]byte, error) {
 	var sessionState []byte
 
@@ -232,7 +239,7 @@ type SetSessionStateOptions struct {
 
 // SetSessionState sets the state associated with the session.
 // Pass nil for the state parameter to clear the stored session state.
-// If the operation fails it can return an *azservicebus.Error type if the failure is actionable.
+// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
 func (sr *SessionReceiver) SetSessionState(ctx context.Context, state []byte, options *SetSessionStateOptions) error {
 	err := sr.inner.amqpLinks.Retry(ctx, EventReceiver, "SetSessionState", func(ctx context.Context, lwv *internal.LinksWithID, args *utils.RetryFnArgs) error {
 		return internal.SetSessionState(ctx, lwv.RPC, lwv.Receiver.LinkName(), sr.SessionID(), state)
@@ -248,7 +255,7 @@ type RenewSessionLockOptions struct {
 
 // RenewSessionLock renews this session's lock. The new expiration time is available
 // using `LockedUntil`.
-// If the operation fails it can return an *azservicebus.Error type if the failure is actionable.
+// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
 func (sr *SessionReceiver) RenewSessionLock(ctx context.Context, options *RenewSessionLockOptions) error {
 	err := sr.inner.amqpLinks.Retry(ctx, EventReceiver, "RenewSessionLock", func(ctx context.Context, lwv *internal.LinksWithID, args *utils.RetryFnArgs) error {
 		newLockedUntil, err := internal.RenewSessionLock(ctx, lwv.RPC, lwv.Receiver.LinkName(), *sr.sessionID)
