@@ -48,7 +48,7 @@ var (
 	ErrAwsAMPNoAwsRegion = errors.New("no awsRegion given")
 )
 
-// add the roundTrip logic so that the request is SigV4 signed
+// RoundTrip adds the roundTrip logic so that the request is SigV4 signed
 func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	cred, err := rt.client.Options().Credentials.Retrieve(req.Context())
 	if err != nil {
