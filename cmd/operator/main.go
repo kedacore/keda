@@ -158,13 +158,14 @@ func main() {
 		Cache: ctrlcache.Options{
 			DefaultNamespaces: namespaces,
 		},
-		HealthProbeBindAddress: probeAddr,
-		PprofBindAddress:       profilingAddr,
-		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "operator.keda.sh",
-		LeaseDuration:          leaseDuration,
-		RenewDeadline:          renewDeadline,
-		RetryPeriod:            retryPeriod,
+		HealthProbeBindAddress:  probeAddr,
+		PprofBindAddress:        profilingAddr,
+		LeaderElection:          enableLeaderElection,
+		LeaderElectionID:        "operator.keda.sh",
+		LeaderElectionNamespace: kedautil.GetPodNamespace(),
+		LeaseDuration:           leaseDuration,
+		RenewDeadline:           renewDeadline,
+		RetryPeriod:             retryPeriod,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
