@@ -318,14 +318,20 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string, dryRun bool
 				}
 
 				if trigger.Type == cpuString {
-					if !isWorkloadResourceSet(container.Resources, corev1.ResourceCPU) {
+					// Fail if neither pod's container spec has a CPU limit specified, nor a default CPU limit is
+					// specified in LimitRange in the same namespace as the deployment
+					if !isWorkloadResourceSet(container.Resources, corev1.ResourceCPU) &&
+						!isContainerResourceLimitSet(context.Background(), incomingSo.Namespace, corev1.ResourceCPU) {
 						err := fmt.Errorf("the scaledobject has a cpu trigger but the container %s doesn't have the cpu request defined", container.Name)
 						scaledobjectlog.Error(err, "validation error")
 						metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
 						return err
 					}
 				} else if trigger.Type == memoryString {
-					if !isWorkloadResourceSet(container.Resources, corev1.ResourceMemory) {
+					// Fail if neither pod's container spec has a memory limit specified, nor a default memory limit is
+					// specified in LimitRange in the same namespace as the deployment
+					if !isWorkloadResourceSet(container.Resources, corev1.ResourceMemory) &&
+						!isContainerResourceLimitSet(context.Background(), incomingSo.Namespace, corev1.ResourceMemory) {
 						err := fmt.Errorf("the scaledobject has a memory trigger but the container %s doesn't have the memory request defined", container.Name)
 						scaledobjectlog.Error(err, "validation error")
 						metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
@@ -462,4 +468,49 @@ func isWorkloadResourceSet(rr corev1.ResourceRequirements, name corev1.ResourceN
 	requests, requestsSet := rr.Requests[name]
 	limits, limitsSet := rr.Limits[name]
 	return (requestsSet || limitsSet) && (requests.AsApproximateFloat64() > 0 || limits.AsApproximateFloat64() > 0)
+}
+
+// isContainerResourceSetInLimitRangeObject checks if the LimitRange item has the default limits and requests
+// specified for the container type. Returns false if the default limit/request value is not set, or if set to zero,
+// for the container.
+func isContainerResourceSetInLimitRangeObject(item corev1.LimitRangeItem, resourceName corev1.ResourceName) bool {
+	request, isRequestSet := item.DefaultRequest[resourceName]
+	limit, isLimitSet := item.Default[resourceName]
+
+	return (isRequestSet || isLimitSet) &&
+		(request.AsApproximateFloat64() > 0 || limit.AsApproximateFloat64() > 0) &&
+		item.Type == corev1.LimitTypeContainer
+}
+
+// isContainerResourceLimitSet checks if the default limit/request is set for the container type in LimitRanges,
+// in the namespace.
+func isContainerResourceLimitSet(ctx context.Context, namespace string, triggerType corev1.ResourceName) bool {
+	limitRangeList := &corev1.LimitRangeList{}
+	listOps := &client.ListOptions{
+		Namespace: namespace,
+	}
+
+	// List limit ranges in the namespace
+	if err := kc.List(ctx, limitRangeList, listOps); err != nil {
+		scaledobjectlog.WithValues("namespace", namespace).
+			Error(err, "failed to list limitRanges in namespace")
+
+		return false
+	}
+
+	// Check in the LimitRange's list if at least one item has the default limit/request set
+	for _, limitRange := range limitRangeList.Items {
+		for _, limit := range limitRange.Spec.Limits {
+			if isContainerResourceSetInLimitRangeObject(limit, triggerType) {
+				return true
+			}
+		}
+	}
+
+	// When no LimitRanges are found in the namespace, or if the default limit/request is not set for container type
+	// in all of the LimitRanges, return false
+	scaledobjectlog.WithValues("namespace", namespace).
+		Error(nil, "no container limit range found in namespace")
+
+	return false
 }

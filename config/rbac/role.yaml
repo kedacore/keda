@@ -33,6 +33,13 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - limitranges
+  verbs:
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - serviceaccounts
   verbs:
   - list
