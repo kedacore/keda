@@ -101,6 +101,7 @@ Here is an overview of all new **experimental** features:
 ### Improvements
 
 - **General**: Add CloudEventSource metrics in Prometheus & OpenTelemetry ([#3531](https://github.com/kedacore/keda/issues/3531))
+- **General**: Add command-line flag in Adapter and Operator to disable TLS in GRPC ([#5408](https://github.com/kedacore/keda/issues/5408))
 - **General**: Add RBAC permissions for list & watch LimitRange, and check default limits from LimitRange for validations ([#5377](https://github.com/kedacore/keda/pull/5377))
 - **General**: Add validations for replica counts when creating ScaledObjects ([#5288](https://github.com/kedacore/keda/issues/5288))
 - **General**: Bubble up AuthRef TriggerAuthentication errors as ScaledObject events ([#5190](https://github.com/kedacore/keda/issues/5190))
@@ -160,7 +161,6 @@ New deprecation(s):
 
 ### Other
 
-- **General**: Add command-line flag in Adapter and Operator to disable TLS in GRPC ([#5408](https://github.com/kedacore/keda/issues/5408))
 - **General**: Bump K8s deps to 0.28.5 ([#5346](https://github.com/kedacore/keda/pull/5346))
 - **General**: Create a common utility function to get parameter value from config ([#5037](https://github.com/kedacore/keda/issues/5037))
 - **General**: Fix CVE-2023-45142 in OpenTelemetry ([#5089](https://github.com/kedacore/keda/issues/5089))

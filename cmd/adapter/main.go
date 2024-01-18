@@ -62,7 +62,7 @@ var (
 	disableCompression                  bool
 	metricsServiceAddr                  string
 	profilingAddr                       string
-	insecureMetricsServiceSkipTLSVerify bool
+	metricsServiceInsecureSkipTLSVerify bool
 )
 
 func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsProvider, <-chan struct{}, error) {
@@ -124,7 +124,7 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 	}
 
 	logger.Info("Connecting Metrics Service gRPC client to the server", "address", metricsServiceAddr)
-	grpcClient, err := metricsservice.NewGrpcClient(metricsServiceAddr, a.SecureServing.ServerCert.CertDirectory, insecureMetricsServiceSkipTLSVerify)
+	grpcClient, err := metricsservice.NewGrpcClient(metricsServiceAddr, a.SecureServing.ServerCert.CertDirectory, metricsServiceInsecureSkipTLSVerify)
 	if err != nil {
 		logger.Error(err, "error connecting Metrics Service gRPC client to the server", "address", metricsServiceAddr)
 		return nil, nil, err
@@ -238,7 +238,7 @@ func main() {
 	cmd.Flags().Float32Var(&adapterClientRequestQPS, "kube-api-qps", 20.0, "Set the QPS rate for throttling requests sent to the apiserver")
 	cmd.Flags().IntVar(&adapterClientRequestBurst, "kube-api-burst", 30, "Set the burst for throttling requests sent to the apiserver")
 	cmd.Flags().BoolVar(&disableCompression, "disable-compression", true, "Disable response compression for k8s restAPI in client-go. ")
-	cmd.Flags().BoolVar(&insecureMetricsServiceSkipTLSVerify, "insecure-metrics-service-skip-tls-verify", false, "Skip TLS verification on the GRPC connection to the metrics service")
+	cmd.Flags().BoolVar(&metricsServiceInsecureSkipTLSVerify, "metrics-service-insecure-skip-tls-verify", false, "Skip TLS verification on the GRPC connection to the metrics service")
 
 	if err := cmd.Flags().Parse(os.Args); err != nil {
 		return

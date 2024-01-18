@@ -85,12 +85,13 @@ func main() {
 	var k8sClusterDomain string
 	var enableCertRotation bool
 	var validatingWebhookName string
-	var insecureMetricsServiceSkipTLSVerify bool
+	var metricsServiceInsecureSkipTLSVerify bool
 	pflag.BoolVar(&enablePrometheusMetrics, "enable-prometheus-metrics", true, "Enable the prometheus metric of keda-operator.")
 	pflag.BoolVar(&enableOpenTelemetryMetrics, "enable-opentelemetry-metrics", false, "Enable the opentelemetry metric of keda-operator.")
 	pflag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the prometheus metric endpoint binds to.")
 	pflag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	pflag.StringVar(&metricsServiceAddr, "metrics-service-bind-address", ":9666", "The address the gRPRC Metrics Service endpoint binds to.")
+	pflag.BoolVar(&metricsServiceInsecureSkipTLSVerify, "metrics-service-insecure-skip-tls-verify", false, "Skip TLS verification on the GRPC server")
 	pflag.StringVar(&profilingAddr, "profiling-bind-address", "", "The address the profiling would be exposed on.")
 	pflag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
@@ -107,7 +108,6 @@ func main() {
 	pflag.StringVar(&k8sClusterDomain, "k8s-cluster-domain", "cluster.local", "Kubernetes cluster domain. Defaults to cluster.local")
 	pflag.BoolVar(&enableCertRotation, "enable-cert-rotation", false, "enable automatic generation and rotation of TLS certificates/keys")
 	pflag.StringVar(&validatingWebhookName, "validating-webhook-name", "keda-admission", "ValidatingWebhookConfiguration name. Defaults to keda-admission")
-	pflag.BoolVar(&insecureMetricsServiceSkipTLSVerify, "insecure-metrics-service-skip-tls-verify", false, "Skip TLS verification on the GRPC server")
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
@@ -301,7 +301,7 @@ func main() {
 		close(certReady)
 	}
 
-	grpcServer := metricsservice.NewGrpcServer(&scaledHandler, metricsServiceAddr, certDir, insecureMetricsServiceSkipTLSVerify, certReady)
+	grpcServer := metricsservice.NewGrpcServer(&scaledHandler, metricsServiceAddr, certDir, metricsServiceInsecureSkipTLSVerify, certReady)
 	if err := mgr.Add(&grpcServer); err != nil {
 		setupLog.Error(err, "unable to set up Metrics Service gRPC server")
 		os.Exit(1)
