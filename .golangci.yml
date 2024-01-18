@@ -157,7 +157,12 @@ issues:
     - path: pkg/scaling/resolver/scale_resolvers.go
       linters:
         - gocyclo
-
+  # Exclude for azure_storage, reason:
+  # pkg/scalers/azure/azure_storage.go:91: 91-120 lines are duplicate of `pkg/scalers/azure/azure_storage.go:123-152` (dupl)
+  # pkg/scalers/azure/azure_storage.go:123: 123-152 lines are duplicate of `pkg/scalers/azure/azure_storage.go:91-120` (dupl)
+    - path: pkg/scalers/azure/azure_storage.go
+      linters:
+        - dupl
 
 linters-settings:
   funlen:
