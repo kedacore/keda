@@ -24,6 +24,7 @@ import (
 	"github.com/go-logr/logr"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/credentials/insecure"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	"k8s.io/metrics/pkg/apis/external_metrics/v1beta1"
 
@@ -36,7 +37,7 @@ type GrpcClient struct {
 	connection *grpc.ClientConn
 }
 
-func NewGrpcClient(url, certDir string) (*GrpcClient, error) {
+func NewGrpcClient(url, certDir, grpcAuthority string, skipTLSverify bool) (*GrpcClient, error) {
 	defaultConfig := `{
 		"methodConfig": [{
 		  "timeout": "3s",
@@ -49,14 +50,24 @@ func NewGrpcClient(url, certDir string) (*GrpcClient, error) {
 		  }
 		}]}`
 
-	creds, err := utils.LoadGrpcTLSCredentials(certDir, false)
-	if err != nil {
-		return nil, err
-	}
 	opts := []grpc.DialOption{
-		grpc.WithTransportCredentials(creds),
 		grpc.WithDefaultServiceConfig(defaultConfig),
 	}
+
+	if skipTLSverify {
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	} else {
+		creds, err := utils.LoadGrpcTLSCredentials(certDir, false)
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, grpc.WithTransportCredentials(creds))
+	}
+
+	if grpcAuthority != "" {
+		opts = append(opts, grpc.WithAuthority(grpcAuthority))
+	}
+
 	conn, err := grpc.Dial(url, opts...)
 	if err != nil {
 		return nil, err

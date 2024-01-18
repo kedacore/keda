@@ -33,11 +33,12 @@ import (
 var log = logf.Log.WithName("grpc_server")
 
 type GrpcServer struct {
-	server        *grpc.Server
-	address       string
-	certDir       string
-	certsReady    chan struct{}
-	scalerHandler *scaling.ScaleHandler
+	server                *grpc.Server
+	address               string
+	certDir               string
+	insecureSkipTLSVerify bool
+	certsReady            chan struct{}
+	scalerHandler         *scaling.ScaleHandler
 	api.UnimplementedMetricsServiceServer
 }
 
@@ -60,12 +61,13 @@ func (s *GrpcServer) GetMetrics(ctx context.Context, in *api.ScaledObjectRef) (*
 }
 
 // NewGrpcServer creates a new instance of GrpcServer
-func NewGrpcServer(scaleHandler *scaling.ScaleHandler, address, certDir string, certsReady chan struct{}) GrpcServer {
+func NewGrpcServer(scaleHandler *scaling.ScaleHandler, address, certDir string, insecureSkipTLSVerify bool, certsReady chan struct{}) GrpcServer {
 	return GrpcServer{
-		address:       address,
-		scalerHandler: scaleHandler,
-		certDir:       certDir,
-		certsReady:    certsReady,
+		address:               address,
+		scalerHandler:         scaleHandler,
+		certDir:               certDir,
+		insecureSkipTLSVerify: insecureSkipTLSVerify,
+		certsReady:            certsReady,
 	}
 }
 
@@ -87,11 +89,17 @@ func (s *GrpcServer) startServer() error {
 func (s *GrpcServer) Start(ctx context.Context) error {
 	<-s.certsReady
 	if s.server == nil {
-		creds, err := utils.LoadGrpcTLSCredentials(s.certDir, true)
-		if err != nil {
-			return err
+		opts := []grpc.ServerOption{}
+
+		if !s.insecureSkipTLSVerify {
+			creds, err := utils.LoadGrpcTLSCredentials(s.certDir, true)
+			if err != nil {
+				return err
+			}
+			opts = append(opts, grpc.Creds(creds))
 		}
-		s.server = grpc.NewServer(grpc.Creds(creds))
+
+		s.server = grpc.NewServer(opts...)
 		api.RegisterMetricsServiceServer(s.server, s)
 	}
 
