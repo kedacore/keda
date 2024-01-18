@@ -55,7 +55,8 @@ func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	// This is to avoid the semgrp issue of odd hash.Sum call flow when using hasher.sum(nil)
+	// We need to sign the request because giving an empty string (not a hashed empty string)
+	// fails in the backend as not signed request hence the following value is used
 	// "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" is the sha256 of ""
 	const reqHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
