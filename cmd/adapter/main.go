@@ -234,11 +234,11 @@ func main() {
 	cmd.Flags().AddGoFlagSet(flag.CommandLine) // make sure we get the klog flags
 	cmd.Flags().IntVar(&metricsAPIServerPort, "port", 8080, "Set the port for the metrics API server")
 	cmd.Flags().StringVar(&metricsServiceAddr, "metrics-service-address", generateDefaultMetricsServiceAddr(), "The address of the gRPRC Metrics Service Server.")
+	cmd.Flags().BoolVar(&metricsServiceInsecureSkipTLSVerify, "metrics-service-insecure-skip-tls-verify", false, "Skip TLS verification on the GRPC connection to the metrics service")
 	cmd.Flags().StringVar(&profilingAddr, "profiling-bind-address", "", "The address the profiling would be exposed on.")
 	cmd.Flags().Float32Var(&adapterClientRequestQPS, "kube-api-qps", 20.0, "Set the QPS rate for throttling requests sent to the apiserver")
 	cmd.Flags().IntVar(&adapterClientRequestBurst, "kube-api-burst", 30, "Set the burst for throttling requests sent to the apiserver")
 	cmd.Flags().BoolVar(&disableCompression, "disable-compression", true, "Disable response compression for k8s restAPI in client-go. ")
-	cmd.Flags().BoolVar(&metricsServiceInsecureSkipTLSVerify, "metrics-service-insecure-skip-tls-verify", false, "Skip TLS verification on the GRPC connection to the metrics service")
 
 	if err := cmd.Flags().Parse(os.Args); err != nil {
 		return
