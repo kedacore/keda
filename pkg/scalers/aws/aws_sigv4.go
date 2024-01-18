@@ -37,7 +37,7 @@ import (
 	httputils "github.com/kedacore/keda/v2/pkg/util"
 )
 
-// Custom round tripper to sign requests
+// roundTripper adds custom round tripper to sign requests
 type roundTripper struct {
 	client *amp.Client
 	region string
