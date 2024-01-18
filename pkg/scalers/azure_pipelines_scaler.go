@@ -34,6 +34,8 @@ type JobRequests struct {
 }
 
 const (
+	// "499b84ac-1321-427f-aa17-267ca6975798" is the azure id for DevOps resource
+	// https://learn.microsoft.com/en-gb/azure/devops/integrate/get-started/authentication/service-principal-managed-identity?view=azure-devops
 	devopsResource = "499b84ac-1321-427f-aa17-267ca6975798/.default"
 )
 
