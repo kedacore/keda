@@ -160,6 +160,7 @@ New deprecation(s):
 
 ### Other
 
+- **General**: Add command-line flag in Adapter and Operator to disable TLS in GRPC ([#5408](https://github.com/kedacore/keda/issues/5408))
 - **General**: Bump K8s deps to 0.28.5 ([#5346](https://github.com/kedacore/keda/pull/5346))
 - **General**: Create a common utility function to get parameter value from config ([#5037](https://github.com/kedacore/keda/issues/5037))
 - **General**: Fix CVE-2023-45142 in OpenTelemetry ([#5089](https://github.com/kedacore/keda/issues/5089))
