@@ -89,8 +89,8 @@ New deprecation(s):
 ### New
 
 - **General**: Adds support for GCP Secret Manager as a source for TriggerAuthentication ([#4831](https://github.com/kedacore/keda/issues/4831))
-- **General**: Support TriggerAuthentication properties from ConfigMap ([#4830](https://github.com/kedacore/keda/issues/4830))
 - **General**: Introduce new AWS Authentication ([#4134](https://github.com/kedacore/keda/issues/4134))
+- **General**: Support TriggerAuthentication properties from ConfigMap ([#4830](https://github.com/kedacore/keda/issues/4830))
 - **Azure Blob Storage Scaler**: Allow to authenticate to Azure Storage using SAS tokens ([#5393](https://github.com/kedacore/keda/issues/5393))
 - **Azure Pipelines Scaler**: Add support for workload identity authentication ([#5013](https://github.com/kedacore/keda/issues/5013))
 - **Azure Storage Queue Scaler**: Allow to authenticate to Azure Storage using SAS tokens ([#5393](https://github.com/kedacore/keda/issues/5393))
