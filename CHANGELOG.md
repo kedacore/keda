@@ -89,8 +89,15 @@ New deprecation(s):
 ### New
 
 - **General**: Adds support for GCP Secret Manager as a source for TriggerAuthentication ([#4831](https://github.com/kedacore/keda/issues/4831))
+- **General**: Support TriggerAuthentication properties from ConfigMap ([#4830](https://github.com/kedacore/keda/issues/4830))
 - **General**: Introduce new AWS Authentication ([#4134](https://github.com/kedacore/keda/issues/4134))
+- **Azure Blob Storage Scaler**: Allow to authenticate to Azure Storage using SAS tokens ([#5393](https://github.com/kedacore/keda/issues/5393))
+- **Azure Pipelines Scaler**: Add support for workload identity authentication ([#5013](https://github.com/kedacore/keda/issues/5013))
+- **Azure Storage Queue Scaler**: Allow to authenticate to Azure Storage using SAS tokens ([#5393](https://github.com/kedacore/keda/issues/5393))
+- **Kafka Scaler**: Add support for Kerberos authentication (SASL / GSSAPI) ([#4836](https://github.com/kedacore/keda/issues/4836))
 - **Prometheus Metrics**: Expose prometheus metrics for ScaledJob resources ([#4798](https://github.com/kedacore/keda/issues/4798))
+- **Prometheus Metrics**: Introduce paused ScaledObjects in Prometheus metrics ([#4430](https://github.com/kedacore/keda/issues/4430))
+- **Prometheus Scaler**: Provide scaler for Amazon managed service for Prometheus ([#2214](https://github.com/kedacore/keda/issues/2214))
 
 #### Experimental
 
@@ -108,22 +115,15 @@ Here is an overview of all new **experimental** features:
 - **General**: Fix issue where paused annotation being set to false still leads to ScaledObjects/ScaledJobs being paused ([#5215](https://github.com/kedacore/keda/issues/5215))
 - **General**: Implement credentials cache for AWS Roles to reduce AWS API calls ([#5297](https://github.com/kedacore/keda/issues/5297))
 - **General**: Request all ScaledObject/ScaledJob triggers in parallel ([#5276](https://github.com/kedacore/keda/issues/5276))
-- **General**: Support TriggerAuthentication properties from ConfigMap ([#4830](https://github.com/kedacore/keda/issues/4830))
 - **General**: Use client-side round-robin load balancing for gRPC calls ([#5224](https://github.com/kedacore/keda/issues/5224))
-- **Azure Blob Storage Scaler**: Allow to authenticate to Azure Storage using SAS tokens ([#5393](https://github.com/kedacore/keda/issues/5393))
-- **Azure Pipelines Scaler**: Add support for workload identity authentication ([#5013](https://github.com/kedacore/keda/issues/5013))
-- **Azure Storage Queue Scaler**: Allow to authenticate to Azure Storage using SAS tokens ([#5393](https://github.com/kedacore/keda/issues/5393))
 - **GCP PubSub Scaler**: Support distribution-valued metrics and metrics from topics ([#5070](https://github.com/kedacore/keda/issues/5070))
 - **GCP Stackdriver Scaler**: Support valueIfNull parameter ([#5345](https://github.com/kedacore/keda/pull/5345))
 - **Hashicorp Vault**: Add support to get secret that needs write operation (eg. `pki`) ([#5067](https://github.com/kedacore/keda/issues/5067))
 - **Hashicorp Vault**: Fix operator panic when `spec.hashiCorpVault.credential.serviceAccount` is not set ([#4964](https://github.com/kedacore/keda/issues/4964))
 - **Hashicorp Vault**: Fix operator panic when using root token to authenticate to vault server ([#5192](https://github.com/kedacore/keda/issues/5192))
 - **Kafka Scaler**: Ability to set upper bound to the number of partitions with lag ([#3997](https://github.com/kedacore/keda/issues/3997))
-- **Kafka Scaler**: Add support for Kerberos authentication (SASL / GSSAPI) ([#4836](https://github.com/kedacore/keda/issues/4836))
 - **Kafka Scaler**: Improve logging for Sarama client ([#5102](https://github.com/kedacore/keda/issues/5102))
-- **Prometheus Metrics**: Introduce paused ScaledObjects in Prometheus metrics ([#4430](https://github.com/kedacore/keda/issues/4430))
 - **Prometheus Scaler**: Add `queryParameters` parameter ([#4962](https://github.com/kedacore/keda/issues/4962))
-- **Prometheus Scaler**: Provide scaler for Amazon managed service for Prometheus ([#2214](https://github.com/kedacore/keda/issues/2214))
 - **Pulsar Scaler**: Support `endpointParams`` in Pulsar OAuth ([#5069](https://github.com/kedacore/keda/issues/5069))
 
 ### Fixes
