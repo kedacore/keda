@@ -40,7 +40,6 @@ import (
 // roundTripper adds custom round tripper to sign requests
 type roundTripper struct {
 	client *amp.Client
-	region string
 }
 
 var (
@@ -60,7 +59,7 @@ func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	// "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" is the sha256 of ""
 	const reqHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
-	err = rt.client.Options().HTTPSignerV4.SignHTTP(req.Context(), cred, req, reqHash, "aps", rt.region, time.Now())
+	err = rt.client.Options().HTTPSignerV4.SignHTTP(req.Context(), cred, req, reqHash, "aps", rt.client.Options().Region, time.Now())
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +112,6 @@ func NewSigV4RoundTripper(config *scalersconfig.ScalerConfig) (http.RoundTripper
 	client := amp.NewFromConfig(*awsCfg, func(o *amp.Options) {})
 	rt := &roundTripper{
 		client: client,
-		region: metadata.awsRegion,
 	}
 
 	return rt, nil
