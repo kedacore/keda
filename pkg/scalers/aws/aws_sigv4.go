@@ -77,8 +77,6 @@ func parseAwsAMPMetadata(config *scalersconfig.ScalerConfig) (*awsConfigMetadata
 
 	if val, ok := config.TriggerMetadata["awsRegion"]; ok && val != "" {
 		meta.awsRegion = val
-	} else {
-		return nil, ErrAwsAMPNoAwsRegion
 	}
 
 	auth, err := GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)

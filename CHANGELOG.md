@@ -66,8 +66,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
-- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-- **AWS AMP Prometheus scaler**: Fix for missing awsRegion from metadata ([#5419](https://github.com/kedacore/keda/issues/5419))
+- **Prometheus Scaler**: Fix for missing AWS region from metadata ([#5419](https://github.com/kedacore/keda/issues/5419))
 
 ### Deprecations
 
