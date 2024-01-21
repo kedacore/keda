@@ -231,7 +231,7 @@ var data = templateData{
 	RedisPasswordBase64:       base64.StdEncoding.EncodeToString([]byte(redisPassword)),
 	RedisList:                 redisList,
 	RedisHost:                 redisHost,
-	ItemsToWrite:              0,
+	ItemsToWrite:              2,
 }
 
 func getTemplateData() (templateData, []Template) {

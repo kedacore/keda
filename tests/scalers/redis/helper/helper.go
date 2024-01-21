@@ -91,10 +91,15 @@ func InstallSentinel(t *testing.T, kc *kubernetes.Clientset, name, namespace, pa
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = helper.ExecuteCommand("helm repo update")
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	_, err = helper.ExecuteCommand(fmt.Sprintf(`helm install --wait --timeout 900s %s --namespace %s --set sentinel.enabled=true --set master.persistence.enabled=false --set replica.persistence.enabled=false --set global.redis.password=%s bitnami/redis`,
+	_, err = helper.ExecuteCommand(fmt.Sprintf(`helm install --wait --timeout 900s %s --namespace %s --set %s --set %s --set %s --set %s --set %s --set %s bitnami/redis`,
 		name,
 		namespace,
-		password))
+		"sentinel.enabled=true",
+		"master.persistence.enabled=false",
+		"replica.persistence.enabled=false",
+		"master.serviceAccount.create=false",
+		"replica.serviceAccount.create=false",
+		fmt.Sprintf("global.redis.password=%s", password)))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
