@@ -52,6 +52,18 @@ spec:
                     - uri
                     type: object
                 type: object
+              eventSubscription:
+                description: EventSubscription defines filters for events
+                properties:
+                  excludedEventTypes:
+                    items:
+                      type: string
+                    type: array
+                  includedEventTypes:
+                    items:
+                      type: string
+                    type: array
+                type: object
             required:
             - destination
             type: object

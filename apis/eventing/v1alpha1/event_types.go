@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package eventemitter
+package v1alpha1
 
 const (
 	// ScaledObjectReadyType is for event when a new ScaledObject is ready
@@ -23,3 +23,5 @@ const (
 	// ScaledObjectFailedType is for event when creating ScaledObject failed
 	ScaledObjectFailedType = "keda.scaledobject.failed.v1"
 )
+
+var AllEventTypes = []string{ScaledObjectFailedType, ScaledObjectReadyType}

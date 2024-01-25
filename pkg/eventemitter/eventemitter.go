@@ -59,6 +59,7 @@ type EventEmitter struct {
 	recorder                 record.EventRecorder
 	clusterName              string
 	eventHandlersCache       map[string]EventDataHandler
+	eventFilterCache         map[string]*EventFilter
 	eventHandlersCacheLock   *sync.RWMutex
 	eventLoopContexts        *sync.Map
 	cloudEventProcessingChan chan eventdata.EventData
@@ -97,6 +98,7 @@ func NewEventEmitter(client client.Client, recorder record.EventRecorder, cluste
 		recorder:                 recorder,
 		clusterName:              clusterName,
 		eventHandlersCache:       map[string]EventDataHandler{},
+		eventFilterCache:         map[string]*EventFilter{},
 		eventHandlersCacheLock:   &sync.RWMutex{},
 		eventLoopContexts:        &sync.Map{},
 		cloudEventProcessingChan: make(chan eventdata.EventData, maxChannelBuffer),
@@ -188,6 +190,9 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEventSource
 		}
 		e.eventHandlersCache[eventHandlerKey] = eventHandler
 	}
+
+	// Create EventFilter from CloudEventSource
+	e.eventFilterCache[key] = NewEventFilter(cloudEventSource.Spec.EventSubscription.IncludedEventTypes, cloudEventSource.Spec.EventSubscription.ExcludedEventTypes)
 }
 
 // clearEventHandlersCache will clear all event handlers that created by the passing CloudEventSource
@@ -205,6 +210,8 @@ func (e *EventEmitter) clearEventHandlersCache(cloudEventSource *eventingv1alpha
 			delete(e.eventHandlersCache, key)
 		}
 	}
+
+	delete(e.eventFilterCache, key)
 }
 
 // clearEventHandlersCache will check if the event handlers that were created by passing CloudEventSource exist
@@ -324,6 +331,14 @@ func (e *EventEmitter) emitEventByHandler(eventData eventdata.EventData) {
 
 	if eventData.HandlerKey == "" {
 		for key, handler := range e.eventHandlersCache {
+			// Filter Event
+			identifierKey := getPrefixIdentifierFromKey(key)
+
+			if e.eventFilterCache[identifierKey] != nil && !e.eventFilterCache[identifierKey].FilterEvent(eventData.EventType) {
+				e.log.Info("Event is filtered", "eventType", eventData.EventType)
+				return
+			}
+
 			eventData.HandlerKey = key
 			if handler.GetActiveStatus() == metav1.ConditionTrue {
 				go handler.EmitEvent(eventData, e.emitErrorHandle)
@@ -398,6 +413,14 @@ func (e *EventEmitter) updateCloudEventSourceStatus(ctx context.Context, cloudEv
 // TODO: nolint:unparam should be remove after added more than one cloudevent handler
 func newEventHandlerKey(kindNamespaceName string, handlerType string) string { //nolint:unparam
 	return fmt.Sprintf("%s.%s", kindNamespaceName, handlerType)
+}
+
+func getPrefixIdentifierFromKey(handlerKey string) string {
+	keys := strings.Split(handlerKey, ".")
+	if len(keys) >= 3 {
+		return keys[0] + "." + keys[1] + "." + keys[2]
+	}
+	return ""
 }
 
 func getHandlerTypeFromKey(handlerKey string) string {

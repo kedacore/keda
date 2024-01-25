@@ -81,3 +81,27 @@ webhooks:
     - clustertriggerauthentications
   sideEffects: None
   timeoutSeconds: 10
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: keda-admission-webhooks
+      namespace: keda
+      path: /validate-eventing-keda-sh-v1alpha1-cloudeventsource
+  failurePolicy: Ignore
+  matchPolicy: Equivalent
+  name: vcloudeventsource.kb.io
+  namespaceSelector: {}
+  objectSelector: {}
+  rules:
+  - apiGroups:
+    - eventing.keda.sh
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - cloudeventsources
+  sideEffects: None
+  timeoutSeconds: 10
