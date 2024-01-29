@@ -155,6 +155,7 @@ jobs:
           AZURE_RUN_AAD_POD_IDENTITY_TESTS: true
           AZURE_RUN_WORKLOAD_IDENTITY_TESTS: true
           GCP_RUN_IDENTITY_TESTS: true
+          ENABLE_OPENTELEMETRY : true
           E2E_IMAGE_TAG: ${{ needs.triage.outputs.image_tag }}
           TEST_CLUSTER_NAME: keda-e2e-cluster-pr
           COMMENT_BODY: ${{ github.event.comment.body }}
