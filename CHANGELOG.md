@@ -82,6 +82,7 @@ New deprecation(s):
 
 ### Other
 
+- **General**: Create a common utility function to get parameter value from config ([#5037](https://github.com/kedacore/keda/issues/5037))
 - **General**: Minor refactor to reduce copy/paste code in ScaledObject webhook ([#5397](https://github.com/kedacore/keda/issues/5397))
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
@@ -163,7 +164,6 @@ New deprecation(s):
 ### Other
 
 - **General**: Bump K8s deps to 0.28.5 ([#5346](https://github.com/kedacore/keda/pull/5346))
-- **General**: Create a common utility function to get parameter value from config ([#5037](https://github.com/kedacore/keda/issues/5037))
 - **General**: Fix CVE-2023-45142 in OpenTelemetry ([#5089](https://github.com/kedacore/keda/issues/5089))
 - **General**: Fix logger in OpenTelemetry collector ([#5094](https://github.com/kedacore/keda/issues/5094))
 - **General**: Fix lost commit from the newly created utility function ([#5037](https://github.com/kedacore/keda/issues/5037))
@@ -175,6 +175,7 @@ New deprecation(s):
 - **CPU scaler**: Wait for metrics window during CPU scaler tests ([#5294](https://github.com/kedacore/keda/pull/5294))
 - **Hashicorp Vault**: Improve test coverage in `pkg/scaling/resolver/hashicorpvault_handler`  ([#5195](https://github.com/kedacore/keda/issues/5195))
 - **Kafka Scaler**: Add more test cases for large value of LagThreshold ([#5354](https://github.com/kedacore/keda/issues/5354))
+- **Kafka Scaler**: Improve readability of utility function getParameterFromConfigV2 ([#5037](https://github.com/kedacore/keda/issues/5037))
 - **Openstack Scaler**: Use Gophercloud SDK ([#3439](https://github.com/kedacore/keda/issues/3439))
 
 ## v2.12.1

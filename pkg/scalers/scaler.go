@@ -168,8 +168,53 @@ func GenerateMetricInMili(metricName string, value float64) external_metrics.Ext
 	}
 }
 
+type Option func(*configOptions)
+
+type configOptions struct {
+	useMetadata       bool
+	useAuthentication bool
+	useResolvedEnv    bool
+	isOptional        bool
+	defaultVal        interface{}
+}
+
+func UseMetadata(metadata bool) Option {
+	return func(opt *configOptions) {
+		opt.useMetadata = metadata
+	}
+}
+
+func UseAuthentication(auth bool) Option {
+	return func(opt *configOptions) {
+		opt.useAuthentication = auth
+	}
+}
+
+func UseResolvedEnv(resolvedEnv bool) Option {
+	return func(opt *configOptions) {
+		opt.useResolvedEnv = resolvedEnv
+	}
+}
+
+func IsOptional(optional bool) Option {
+	return func(opt *configOptions) {
+		opt.isOptional = optional
+	}
+}
+
+func WithDefaultVal(defaultVal interface{}) Option {
+	return func(opt *configOptions) {
+		opt.defaultVal = defaultVal
+	}
+}
+
 // getParameterFromConfigV2 returns the value of the parameter from the config
-func getParameterFromConfigV2(config *scalersconfig.ScalerConfig, parameter string, useMetadata bool, useAuthentication bool, useResolvedEnv bool, isOptional bool, defaultVal string, targetType reflect.Type) (interface{}, error) {
+func getParameterFromConfigV2(config *scalersconfig.ScalerConfig, parameter string, targetType reflect.Type, options ...Option) (interface{}, error) {
+	opt := &configOptions{defaultVal: ""}
+	for _, option := range options {
+		option(opt)
+	}
+
 	foundCount := 0
 	var foundVal string
 	var convertedVal interface{}
@@ -177,20 +222,20 @@ func getParameterFromConfigV2(config *scalersconfig.ScalerConfig, parameter stri
 
 	if val, ok := config.AuthParams[parameter]; ok && val != "" {
 		foundCount++
-		if useAuthentication {
+		if opt.useAuthentication {
 			foundVal = val
 		}
 	}
 	if val, ok := config.TriggerMetadata[parameter]; ok && val != "" {
 		foundCount++
-		if useMetadata {
+		if opt.useMetadata {
 			foundVal = val
 		}
 	}
 	if envFromVal, envFromOk := config.TriggerMetadata[fmt.Sprintf("%sFromEnv", parameter)]; envFromOk {
 		if val, ok := config.ResolvedEnv[envFromVal]; ok && val != "" {
 			foundCount++
-			if useResolvedEnv {
+			if opt.useResolvedEnv {
 				foundVal = val
 			}
 		}
@@ -199,16 +244,16 @@ func getParameterFromConfigV2(config *scalersconfig.ScalerConfig, parameter stri
 	convertedVal, foundErr = convertToType(foundVal, targetType)
 	switch {
 	case foundCount > 1:
-		return "", fmt.Errorf("value for parameter '%s' found in more than one place", parameter)
+		return opt.defaultVal, fmt.Errorf("value for parameter '%s' found in more than one place", parameter)
 	case foundCount == 1:
 		if foundErr != nil {
-			return defaultVal, foundErr
+			return opt.defaultVal, foundErr
 		}
 		return convertedVal, nil
-	case isOptional:
-		return defaultVal, nil
+	case opt.isOptional:
+		return opt.defaultVal, nil
 	default:
-		return "", fmt.Errorf("key not found. Either set the correct key or set isOptional to true and set defaultVal")
+		return opt.defaultVal, fmt.Errorf("key not found. Either set the correct key or set isOptional to true and set defaultVal")
 	}
 }
 
