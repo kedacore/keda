@@ -6023,6 +6023,129 @@ func awsAwsjson10_deserializeOpErrorUpdateItem(response *smithyhttp.Response, me
 	}
 }
 
+type awsAwsjson10_deserializeOpUpdateKinesisStreamingDestination struct {
+}
+
+func (*awsAwsjson10_deserializeOpUpdateKinesisStreamingDestination) ID() string {
+	return "OperationDeserializer"
+}
+
+func (m *awsAwsjson10_deserializeOpUpdateKinesisStreamingDestination) HandleDeserialize(ctx context.Context, in middleware.DeserializeInput, next middleware.DeserializeHandler) (
+	out middleware.DeserializeOutput, metadata middleware.Metadata, err error,
+) {
+	out, metadata, err = next.HandleDeserialize(ctx, in)
+	if err != nil {
+		return out, metadata, err
+	}
+
+	response, ok := out.RawResponse.(*smithyhttp.Response)
+	if !ok {
+		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
+	}
+
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return out, metadata, awsAwsjson10_deserializeOpErrorUpdateKinesisStreamingDestination(response, &metadata)
+	}
+	output := &UpdateKinesisStreamingDestinationOutput{}
+	out.Result = output
+
+	var buff [1024]byte
+	ringBuffer := smithyio.NewRingBuffer(buff[:])
+
+	body := io.TeeReader(response.Body, ringBuffer)
+	decoder := json.NewDecoder(body)
+	decoder.UseNumber()
+	var shape interface{}
+	if err := decoder.Decode(&shape); err != nil && err != io.EOF {
+		var snapshot bytes.Buffer
+		io.Copy(&snapshot, ringBuffer)
+		err = &smithy.DeserializationError{
+			Err:      fmt.Errorf("failed to decode response body, %w", err),
+			Snapshot: snapshot.Bytes(),
+		}
+		return out, metadata, err
+	}
+
+	err = awsAwsjson10_deserializeOpDocumentUpdateKinesisStreamingDestinationOutput(&output, shape)
+	if err != nil {
+		var snapshot bytes.Buffer
+		io.Copy(&snapshot, ringBuffer)
+		err = &smithy.DeserializationError{
+			Err:      fmt.Errorf("failed to decode response body, %w", err),
+			Snapshot: snapshot.Bytes(),
+		}
+		return out, metadata, err
+	}
+
+	return out, metadata, err
+}
+
+func awsAwsjson10_deserializeOpErrorUpdateKinesisStreamingDestination(response *smithyhttp.Response, metadata *middleware.Metadata) error {
+	var errorBuffer bytes.Buffer
+	if _, err := io.Copy(&errorBuffer, response.Body); err != nil {
+		return &smithy.DeserializationError{Err: fmt.Errorf("failed to copy error response body, %w", err)}
+	}
+	errorBody := bytes.NewReader(errorBuffer.Bytes())
+
+	errorCode := "UnknownError"
+	errorMessage := errorCode
+
+	headerCode := response.Header.Get("X-Amzn-ErrorType")
+	if len(headerCode) != 0 {
+		errorCode = restjson.SanitizeErrorCode(headerCode)
+	}
+
+	var buff [1024]byte
+	ringBuffer := smithyio.NewRingBuffer(buff[:])
+
+	body := io.TeeReader(errorBody, ringBuffer)
+	decoder := json.NewDecoder(body)
+	decoder.UseNumber()
+	jsonCode, message, err := restjson.GetErrorInfo(decoder)
+	if err != nil {
+		var snapshot bytes.Buffer
+		io.Copy(&snapshot, ringBuffer)
+		err = &smithy.DeserializationError{
+			Err:      fmt.Errorf("failed to decode response body, %w", err),
+			Snapshot: snapshot.Bytes(),
+		}
+		return err
+	}
+
+	errorBody.Seek(0, io.SeekStart)
+	if len(headerCode) == 0 && len(jsonCode) != 0 {
+		errorCode = restjson.SanitizeErrorCode(jsonCode)
+	}
+	if len(message) != 0 {
+		errorMessage = message
+	}
+
+	switch {
+	case strings.EqualFold("InternalServerError", errorCode):
+		return awsAwsjson10_deserializeErrorInternalServerError(response, errorBody)
+
+	case strings.EqualFold("InvalidEndpointException", errorCode):
+		return awsAwsjson10_deserializeErrorInvalidEndpointException(response, errorBody)
+
+	case strings.EqualFold("LimitExceededException", errorCode):
+		return awsAwsjson10_deserializeErrorLimitExceededException(response, errorBody)
+
+	case strings.EqualFold("ResourceInUseException", errorCode):
+		return awsAwsjson10_deserializeErrorResourceInUseException(response, errorBody)
+
+	case strings.EqualFold("ResourceNotFoundException", errorCode):
+		return awsAwsjson10_deserializeErrorResourceNotFoundException(response, errorBody)
+
+	default:
+		genericError := &smithy.GenericAPIError{
+			Code:    errorCode,
+			Message: errorMessage,
+		}
+		return genericError
+
+	}
+}
+
 type awsAwsjson10_deserializeOpUpdateTable struct {
 }
 
@@ -9661,6 +9784,46 @@ func awsAwsjson10_deserializeDocumentDuplicateItemException(v **types.DuplicateI
 	return nil
 }
 
+func awsAwsjson10_deserializeDocumentEnableKinesisStreamingConfiguration(v **types.EnableKinesisStreamingConfiguration, value interface{}) error {
+	if v == nil {
+		return fmt.Errorf("unexpected nil of type %T", v)
+	}
+	if value == nil {
+		return nil
+	}
+
+	shape, ok := value.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("unexpected JSON type %v", value)
+	}
+
+	var sv *types.EnableKinesisStreamingConfiguration
+	if *v == nil {
+		sv = &types.EnableKinesisStreamingConfiguration{}
+	} else {
+		sv = *v
+	}
+
+	for key, value := range shape {
+		switch key {
+		case "ApproximateCreationDateTimePrecision":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected ApproximateCreationDateTimePrecision to be of type string, got %T instead", value)
+				}
+				sv.ApproximateCreationDateTimePrecision = types.ApproximateCreationDateTimePrecision(jtv)
+			}
+
+		default:
+			_, _ = key, value
+
+		}
+	}
+	*v = sv
+	return nil
+}
+
 func awsAwsjson10_deserializeDocumentEndpoint(v **types.Endpoint, value interface{}) error {
 	if v == nil {
 		return fmt.Errorf("unexpected nil of type %T", v)
@@ -12184,6 +12347,15 @@ func awsAwsjson10_deserializeDocumentKinesisDataStreamDestination(v **types.Kine
 
 	for key, value := range shape {
 		switch key {
+		case "ApproximateCreationDateTimePrecision":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected ApproximateCreationDateTimePrecision to be of type string, got %T instead", value)
+				}
+				sv.ApproximateCreationDateTimePrecision = types.ApproximateCreationDateTimePrecision(jtv)
+			}
+
 		case "DestinationStatus":
 			if value != nil {
 				jtv, ok := value.(string)
@@ -15487,6 +15659,46 @@ func awsAwsjson10_deserializeDocumentTransactionInProgressException(v **types.Tr
 	return nil
 }
 
+func awsAwsjson10_deserializeDocumentUpdateKinesisStreamingConfiguration(v **types.UpdateKinesisStreamingConfiguration, value interface{}) error {
+	if v == nil {
+		return fmt.Errorf("unexpected nil of type %T", v)
+	}
+	if value == nil {
+		return nil
+	}
+
+	shape, ok := value.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("unexpected JSON type %v", value)
+	}
+
+	var sv *types.UpdateKinesisStreamingConfiguration
+	if *v == nil {
+		sv = &types.UpdateKinesisStreamingConfiguration{}
+	} else {
+		sv = *v
+	}
+
+	for key, value := range shape {
+		switch key {
+		case "ApproximateCreationDateTimePrecision":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected ApproximateCreationDateTimePrecision to be of type string, got %T instead", value)
+				}
+				sv.ApproximateCreationDateTimePrecision = types.ApproximateCreationDateTimePrecision(jtv)
+			}
+
+		default:
+			_, _ = key, value
+
+		}
+	}
+	*v = sv
+	return nil
+}
+
 func awsAwsjson10_deserializeDocumentWriteRequest(v **types.WriteRequest, value interface{}) error {
 	if v == nil {
 		return fmt.Errorf("unexpected nil of type %T", v)
@@ -16533,6 +16745,11 @@ func awsAwsjson10_deserializeOpDocumentDisableKinesisStreamingDestinationOutput(
 				sv.DestinationStatus = types.DestinationStatus(jtv)
 			}
 
+		case "EnableKinesisStreamingConfiguration":
+			if err := awsAwsjson10_deserializeDocumentEnableKinesisStreamingConfiguration(&sv.EnableKinesisStreamingConfiguration, value); err != nil {
+				return err
+			}
+
 		case "StreamArn":
 			if value != nil {
 				jtv, ok := value.(string)
@@ -16589,6 +16806,11 @@ func awsAwsjson10_deserializeOpDocumentEnableKinesisStreamingDestinationOutput(v
 					return fmt.Errorf("expected DestinationStatus to be of type string, got %T instead", value)
 				}
 				sv.DestinationStatus = types.DestinationStatus(jtv)
+			}
+
+		case "EnableKinesisStreamingConfiguration":
+			if err := awsAwsjson10_deserializeDocumentEnableKinesisStreamingConfiguration(&sv.EnableKinesisStreamingConfiguration, value); err != nil {
+				return err
 			}
 
 		case "StreamArn":
@@ -17695,6 +17917,69 @@ func awsAwsjson10_deserializeOpDocumentUpdateItemOutput(v **UpdateItemOutput, va
 
 		case "ItemCollectionMetrics":
 			if err := awsAwsjson10_deserializeDocumentItemCollectionMetrics(&sv.ItemCollectionMetrics, value); err != nil {
+				return err
+			}
+
+		default:
+			_, _ = key, value
+
+		}
+	}
+	*v = sv
+	return nil
+}
+
+func awsAwsjson10_deserializeOpDocumentUpdateKinesisStreamingDestinationOutput(v **UpdateKinesisStreamingDestinationOutput, value interface{}) error {
+	if v == nil {
+		return fmt.Errorf("unexpected nil of type %T", v)
+	}
+	if value == nil {
+		return nil
+	}
+
+	shape, ok := value.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("unexpected JSON type %v", value)
+	}
+
+	var sv *UpdateKinesisStreamingDestinationOutput
+	if *v == nil {
+		sv = &UpdateKinesisStreamingDestinationOutput{}
+	} else {
+		sv = *v
+	}
+
+	for key, value := range shape {
+		switch key {
+		case "DestinationStatus":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected DestinationStatus to be of type string, got %T instead", value)
+				}
+				sv.DestinationStatus = types.DestinationStatus(jtv)
+			}
+
+		case "StreamArn":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected StreamArn to be of type string, got %T instead", value)
+				}
+				sv.StreamArn = ptr.String(jtv)
+			}
+
+		case "TableName":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected TableName to be of type string, got %T instead", value)
+				}
+				sv.TableName = ptr.String(jtv)
+			}
+
+		case "UpdateKinesisStreamingConfiguration":
+			if err := awsAwsjson10_deserializeDocumentUpdateKinesisStreamingConfiguration(&sv.UpdateKinesisStreamingConfiguration, value); err != nil {
 				return err
 			}
 

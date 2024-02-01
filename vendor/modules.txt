@@ -337,7 +337,7 @@ github.com/aws/aws-sdk-go-v2/service/amp/types
 github.com/aws/aws-sdk-go-v2/service/cloudwatch
 github.com/aws/aws-sdk-go-v2/service/cloudwatch/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/cloudwatch/types
-# github.com/aws/aws-sdk-go-v2/service/dynamodb v1.26.9
+# github.com/aws/aws-sdk-go-v2/service/dynamodb v1.27.0
 ## explicit; go 1.19
 github.com/aws/aws-sdk-go-v2/service/dynamodb
 github.com/aws/aws-sdk-go-v2/service/dynamodb/internal/customizations

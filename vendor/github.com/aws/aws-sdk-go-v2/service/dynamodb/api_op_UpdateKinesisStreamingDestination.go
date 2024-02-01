@@ -13,54 +13,53 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Stops replication from the DynamoDB table to the Kinesis data stream. This is
-// done without deleting either of the resources.
-func (c *Client) DisableKinesisStreamingDestination(ctx context.Context, params *DisableKinesisStreamingDestinationInput, optFns ...func(*Options)) (*DisableKinesisStreamingDestinationOutput, error) {
+// The command to update the Kinesis stream destination.
+func (c *Client) UpdateKinesisStreamingDestination(ctx context.Context, params *UpdateKinesisStreamingDestinationInput, optFns ...func(*Options)) (*UpdateKinesisStreamingDestinationOutput, error) {
 	if params == nil {
-		params = &DisableKinesisStreamingDestinationInput{}
+		params = &UpdateKinesisStreamingDestinationInput{}
 	}
 
-	result, metadata, err := c.invokeOperation(ctx, "DisableKinesisStreamingDestination", params, optFns, c.addOperationDisableKinesisStreamingDestinationMiddlewares)
+	result, metadata, err := c.invokeOperation(ctx, "UpdateKinesisStreamingDestination", params, optFns, c.addOperationUpdateKinesisStreamingDestinationMiddlewares)
 	if err != nil {
 		return nil, err
 	}
 
-	out := result.(*DisableKinesisStreamingDestinationOutput)
+	out := result.(*UpdateKinesisStreamingDestinationOutput)
 	out.ResultMetadata = metadata
 	return out, nil
 }
 
-type DisableKinesisStreamingDestinationInput struct {
+type UpdateKinesisStreamingDestinationInput struct {
 
-	// The ARN for a Kinesis data stream.
+	// The ARN for the Kinesis stream input.
 	//
 	// This member is required.
 	StreamArn *string
 
-	// The name of the DynamoDB table.
+	// The table name for the Kinesis streaming destination input.
 	//
 	// This member is required.
 	TableName *string
 
-	// The source for the Kinesis streaming information that is being enabled.
-	EnableKinesisStreamingConfiguration *types.EnableKinesisStreamingConfiguration
+	// The command to update the Kinesis stream configuration.
+	UpdateKinesisStreamingConfiguration *types.UpdateKinesisStreamingConfiguration
 
 	noSmithyDocumentSerde
 }
 
-type DisableKinesisStreamingDestinationOutput struct {
+type UpdateKinesisStreamingDestinationOutput struct {
 
-	// The current status of the replication.
+	// The status of the attempt to update the Kinesis streaming destination output.
 	DestinationStatus types.DestinationStatus
 
-	// The destination for the Kinesis streaming information that is being enabled.
-	EnableKinesisStreamingConfiguration *types.EnableKinesisStreamingConfiguration
-
-	// The ARN for the specific Kinesis data stream.
+	// The ARN for the Kinesis stream input.
 	StreamArn *string
 
-	// The name of the table being modified.
+	// The table name for the Kinesis streaming destination output.
 	TableName *string
+
+	// The command to update the Kinesis streaming destination configuration.
+	UpdateKinesisStreamingConfiguration *types.UpdateKinesisStreamingConfiguration
 
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
@@ -68,19 +67,19 @@ type DisableKinesisStreamingDestinationOutput struct {
 	noSmithyDocumentSerde
 }
 
-func (c *Client) addOperationDisableKinesisStreamingDestinationMiddlewares(stack *middleware.Stack, options Options) (err error) {
+func (c *Client) addOperationUpdateKinesisStreamingDestinationMiddlewares(stack *middleware.Stack, options Options) (err error) {
 	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Serialize.Add(&awsAwsjson10_serializeOpDisableKinesisStreamingDestination{}, middleware.After)
+	err = stack.Serialize.Add(&awsAwsjson10_serializeOpUpdateKinesisStreamingDestination{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson10_deserializeOpDisableKinesisStreamingDestination{}, middleware.After)
+	err = stack.Deserialize.Add(&awsAwsjson10_deserializeOpUpdateKinesisStreamingDestination{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "DisableKinesisStreamingDestination"); err != nil {
+	if err := addProtocolFinalizerMiddlewares(stack, options, "UpdateKinesisStreamingDestination"); err != nil {
 		return fmt.Errorf("add protocol finalizers: %v", err)
 	}
 
@@ -120,16 +119,16 @@ func (c *Client) addOperationDisableKinesisStreamingDestinationMiddlewares(stack
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addOpDisableKinesisStreamingDestinationDiscoverEndpointMiddleware(stack, options, c); err != nil {
+	if err = addOpUpdateKinesisStreamingDestinationDiscoverEndpointMiddleware(stack, options, c); err != nil {
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addOpDisableKinesisStreamingDestinationValidationMiddleware(stack); err != nil {
+	if err = addOpUpdateKinesisStreamingDestinationValidationMiddleware(stack); err != nil {
 		return err
 	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDisableKinesisStreamingDestination(options.Region), middleware.Before); err != nil {
+	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opUpdateKinesisStreamingDestination(options.Region), middleware.Before); err != nil {
 		return err
 	}
 	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
@@ -156,7 +155,7 @@ func (c *Client) addOperationDisableKinesisStreamingDestinationMiddlewares(stack
 	return nil
 }
 
-func addOpDisableKinesisStreamingDestinationDiscoverEndpointMiddleware(stack *middleware.Stack, o Options, c *Client) error {
+func addOpUpdateKinesisStreamingDestinationDiscoverEndpointMiddleware(stack *middleware.Stack, o Options, c *Client) error {
 	return stack.Finalize.Insert(&internalEndpointDiscovery.DiscoverEndpoint{
 		Options: []func(*internalEndpointDiscovery.DiscoverEndpointOptions){
 			func(opt *internalEndpointDiscovery.DiscoverEndpointOptions) {
@@ -164,16 +163,16 @@ func addOpDisableKinesisStreamingDestinationDiscoverEndpointMiddleware(stack *mi
 				opt.Logger = o.Logger
 			},
 		},
-		DiscoverOperation:            c.fetchOpDisableKinesisStreamingDestinationDiscoverEndpoint,
+		DiscoverOperation:            c.fetchOpUpdateKinesisStreamingDestinationDiscoverEndpoint,
 		EndpointDiscoveryEnableState: o.EndpointDiscovery.EnableEndpointDiscovery,
 		EndpointDiscoveryRequired:    false,
 		Region:                       o.Region,
 	}, "ResolveEndpointV2", middleware.After)
 }
 
-func (c *Client) fetchOpDisableKinesisStreamingDestinationDiscoverEndpoint(ctx context.Context, region string, optFns ...func(*internalEndpointDiscovery.DiscoverEndpointOptions)) (internalEndpointDiscovery.WeightedAddress, error) {
+func (c *Client) fetchOpUpdateKinesisStreamingDestinationDiscoverEndpoint(ctx context.Context, region string, optFns ...func(*internalEndpointDiscovery.DiscoverEndpointOptions)) (internalEndpointDiscovery.WeightedAddress, error) {
 	input := getOperationInput(ctx)
-	in, ok := input.(*DisableKinesisStreamingDestinationInput)
+	in, ok := input.(*UpdateKinesisStreamingDestinationInput)
 	if !ok {
 		return internalEndpointDiscovery.WeightedAddress{}, fmt.Errorf("unknown input type %T", input)
 	}
@@ -199,10 +198,10 @@ func (c *Client) fetchOpDisableKinesisStreamingDestinationDiscoverEndpoint(ctx c
 	return internalEndpointDiscovery.WeightedAddress{}, nil
 }
 
-func newServiceMetadataMiddleware_opDisableKinesisStreamingDestination(region string) *awsmiddleware.RegisterServiceMetadata {
+func newServiceMetadataMiddleware_opUpdateKinesisStreamingDestination(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		OperationName: "DisableKinesisStreamingDestination",
+		OperationName: "UpdateKinesisStreamingDestination",
 	}
 }
