@@ -63,7 +63,6 @@ Here is an overview of all new **experimental** features:
 ### Improvements
 
 - **General**: Add OPENTELEMETRY flag in e2e test YAML ([#5375](https://github.com/kedacore/keda/issues/5375))
-- **General**: Migrate away from unmaintained golang/mock and use uber/gomock ([#5440](https://github.com/kedacore/keda/issues/5440))
 
 ### Fixes
 
@@ -85,6 +84,7 @@ New deprecation(s):
 
 - **General**: Improve readability of utility function getParameterFromConfigV2 ([#5037](https://github.com/kedacore/keda/issues/5037))
 - **General**: Minor refactor to reduce copy/paste code in ScaledObject webhook ([#5397](https://github.com/kedacore/keda/issues/5397))
+- **General**: Migrate away from unmaintained golang/mock and use uber/gomock ([#5440](https://github.com/kedacore/keda/issues/5440))
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ## v2.13.0
