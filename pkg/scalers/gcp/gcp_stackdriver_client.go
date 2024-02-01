@@ -20,7 +20,12 @@ import (
 )
 
 const (
-	defaultTimeHorizon = "1m"
+	// Although the "common" value could be 1m
+	// before v2.13 it was 2m, so we need to
+	// keep that value to not break the behaviour
+	// We need to revisit this in KEDA v3
+	// https://github.com/kedacore/keda/issues/5429
+	defaultTimeHorizon = "2m"
 
 	// Visualization of aggregation window:
 	// aggregationTimeHorizon: [- - - - -]
