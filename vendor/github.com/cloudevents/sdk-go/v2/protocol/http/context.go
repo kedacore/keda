@@ -24,7 +24,7 @@ type RequestData struct {
 }
 
 // WithRequestDataAtContext uses the http.Request to add RequestData
-//  information to the Context.
+// information to the Context.
 func WithRequestDataAtContext(ctx context.Context, r *nethttp.Request) context.Context {
 	if r == nil {
 		return ctx

@@ -22,7 +22,9 @@ const (
 
 // EventMessage type-converts a event.Event object to implement Message.
 // This allows local event.Event objects to be sent directly via Sender.Send()
-//     s.Send(ctx, binding.EventMessage(e))
+//
+//	s.Send(ctx, binding.EventMessage(e))
+//
 // When an event is wrapped into a EventMessage, the original event could be
 // potentially mutated. If you need to use the Event again, after wrapping it into
 // an Event message, you should copy it before
