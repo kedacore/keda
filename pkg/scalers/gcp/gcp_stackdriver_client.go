@@ -3,6 +3,7 @@ package gcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -52,7 +53,7 @@ const (
 // StackDriverClient is a generic client to fetch metrics from Stackdriver. Can be used
 // for a stackdriver scaler in the future
 type StackDriverClient struct {
-	MetricsClient *monitoring.MetricClient
+	metricsClient *monitoring.MetricClient
 	queryClient   *monitoring.QueryClient
 	credentials   GoogleApplicationCredentials
 	projectID     string
@@ -79,7 +80,7 @@ func NewStackDriverClient(ctx context.Context, credentials string) (*StackDriver
 	}
 
 	return &StackDriverClient{
-		MetricsClient: metricsClient,
+		metricsClient: metricsClient,
 		queryClient:   queryClient,
 		credentials:   gcpCredentials,
 	}, nil
@@ -107,7 +108,7 @@ func NewStackDriverClientPodIdentity(ctx context.Context) (*StackDriverClient, e
 	}
 
 	return &StackDriverClient{
-		MetricsClient: metricsClient,
+		metricsClient: metricsClient,
 		queryClient:   queryClient,
 		projectID:     project,
 	}, nil
@@ -244,7 +245,7 @@ func (s StackDriverClient) GetMetrics(
 	req.Filter = filter
 
 	// Get an iterator with the list of time series
-	it := s.MetricsClient.ListTimeSeries(ctx, req)
+	it := s.metricsClient.ListTimeSeries(ctx, req)
 
 	var value float64 = -1
 
@@ -358,6 +359,19 @@ func (s StackDriverClient) BuildMQLQuery(projectID, resourceType, metric, resour
 	}
 
 	return q, nil
+}
+
+func (s *StackDriverClient) Close() error {
+	var queryClientError error
+	var metricsClientError error
+	if s.queryClient != nil {
+		queryClientError = s.queryClient.Close()
+	}
+	if s.metricsClient != nil {
+		metricsClientError = s.metricsClient.Close()
+	}
+	return errors.Join(queryClientError, metricsClientError)
+
 }
 
 // buildAggregation builds the aggregation part of a Monitoring Query Language (MQL) query

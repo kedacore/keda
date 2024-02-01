@@ -66,6 +66,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
+- **GCP Scalers**: Properly close the connection during the scaler cleaning process ([#5448](https://github.com/kedacore/keda/issues/5448))
 - **GCP Scalers**: Restore previous time horizon to prevent querying issues ([#5429](https://github.com/kedacore/keda/issues/5429))
 - **Prometheus Scaler**: Fix for missing AWS region from metadata ([#5419](https://github.com/kedacore/keda/issues/5419))
 
