@@ -65,6 +65,7 @@ func AsAny() Option {
 func AsKind(kind reflect.Kind) Option {
 	return func(c *conf.Config) {
 		c.Expect = kind
+		c.ExpectAny = true
 	}
 }
 
@@ -72,6 +73,7 @@ func AsKind(kind reflect.Kind) Option {
 func AsBool() Option {
 	return func(c *conf.Config) {
 		c.Expect = reflect.Bool
+		c.ExpectAny = true
 	}
 }
 
@@ -79,6 +81,7 @@ func AsBool() Option {
 func AsInt() Option {
 	return func(c *conf.Config) {
 		c.Expect = reflect.Int
+		c.ExpectAny = true
 	}
 }
 
@@ -86,6 +89,7 @@ func AsInt() Option {
 func AsInt64() Option {
 	return func(c *conf.Config) {
 		c.Expect = reflect.Int64
+		c.ExpectAny = true
 	}
 }
 
@@ -93,6 +97,17 @@ func AsInt64() Option {
 func AsFloat64() Option {
 	return func(c *conf.Config) {
 		c.Expect = reflect.Float64
+		c.ExpectAny = true
+	}
+}
+
+// WarnOnAny tells the compiler to warn if expression return any type.
+func WarnOnAny() Option {
+	return func(c *conf.Config) {
+		if c.Expect == reflect.Invalid {
+			panic("WarnOnAny() works only with combination with AsInt(), AsBool(), etc. options")
+		}
+		c.ExpectAny = false
 	}
 }
 

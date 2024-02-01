@@ -13,10 +13,12 @@ type WithContext struct {
 
 // Visit adds WithContext.Name argument to all functions calls with a context.Context argument.
 func (w WithContext) Visit(node *ast.Node) {
-	switch (*node).(type) {
+	switch call := (*node).(type) {
 	case *ast.CallNode:
-		call := (*node).(*ast.CallNode)
 		fn := call.Callee.Type()
+		if fn == nil {
+			return
+		}
 		if fn.Kind() != reflect.Func {
 			return
 		}
