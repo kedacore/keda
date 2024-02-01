@@ -371,7 +371,6 @@ func (s *StackDriverClient) Close() error {
 		metricsClientError = s.metricsClient.Close()
 	}
 	return errors.Join(queryClientError, metricsClientError)
-
 }
 
 // buildAggregation builds the aggregation part of a Monitoring Query Language (MQL) query
