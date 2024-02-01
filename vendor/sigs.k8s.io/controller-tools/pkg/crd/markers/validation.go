@@ -477,6 +477,9 @@ func (m Default) ApplyToSchema(schema *apiext.JSONSchemaProps) error {
 	if err != nil {
 		return err
 	}
+	if schema.Type == "array" && string(marshalledDefault) == "{}" {
+		marshalledDefault = []byte("[]")
+	}
 	schema.Default = &apiext.JSON{Raw: marshalledDefault}
 	return nil
 }

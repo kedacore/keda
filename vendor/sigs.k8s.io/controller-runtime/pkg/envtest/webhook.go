@@ -49,6 +49,11 @@ type WebhookInstallOptions struct {
 	// ValidatingWebhooks is a list of ValidatingWebhookConfigurations to install
 	ValidatingWebhooks []*admissionv1.ValidatingWebhookConfiguration
 
+	// IgnoreSchemeConvertible, will modify any CRD conversion webhook to use the local serving host and port,
+	// bypassing the need to have the types registered in the Scheme. This is useful for testing CRD conversion webhooks
+	// with unregistered or unstructured types.
+	IgnoreSchemeConvertible bool
+
 	// IgnoreErrorIfPathMissing will ignore an error if a DirectoryPath does not exist when set to true
 	IgnoreErrorIfPathMissing bool
 
@@ -184,7 +189,8 @@ func defaultWebhookOptions(o *WebhookInstallOptions) {
 func WaitForWebhooks(config *rest.Config,
 	mutatingWebhooks []*admissionv1.MutatingWebhookConfiguration,
 	validatingWebhooks []*admissionv1.ValidatingWebhookConfiguration,
-	options WebhookInstallOptions) error {
+	options WebhookInstallOptions,
+) error {
 	waitingFor := map[schema.GroupVersionKind]*sets.Set[string]{}
 
 	for _, hook := range mutatingWebhooks {
@@ -242,7 +248,7 @@ func (p *webhookPoller) poll(ctx context.Context) (done bool, err error) {
 			continue
 		}
 		for _, name := range names.UnsortedList() {
-			var obj = &unstructured.Unstructured{}
+			obj := &unstructured.Unstructured{}
 			obj.SetGroupVersionKind(gvk)
 			err := c.Get(context.Background(), client.ObjectKey{
 				Namespace: "",

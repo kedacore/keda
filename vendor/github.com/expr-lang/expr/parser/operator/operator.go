@@ -16,6 +16,10 @@ func Less(a, b string) bool {
 	return Binary[a].Precedence < Binary[b].Precedence
 }
 
+func IsBoolean(op string) bool {
+	return op == "and" || op == "or" || op == "&&" || op == "||"
+}
+
 var Unary = map[string]Operator{
 	"not": {50, Left},
 	"!":   {50, Left},

@@ -66,7 +66,7 @@ type MessageMetadataReader interface {
 
 // Message is the interface to a binding-specific message containing an event.
 //
-// Reliable Delivery
+// # Reliable Delivery
 //
 // There are 3 reliable qualities of service for messages:
 //

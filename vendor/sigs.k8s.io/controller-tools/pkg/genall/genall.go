@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 
 	"golang.org/x/tools/go/packages"
@@ -214,7 +213,7 @@ func (g GenerationContext) ReadFile(path string) ([]byte, error) {
 		return nil, err
 	}
 	defer file.Close()
-	return ioutil.ReadAll(file)
+	return io.ReadAll(file)
 }
 
 // ForRoots produces a Runtime to run the given generators against the

@@ -62,76 +62,76 @@ func Type(arg any) any {
 }
 
 func Abs(x any) any {
-	switch x.(type) {
+	switch x := x.(type) {
 	case float32:
-		if x.(float32) < 0 {
-			return -x.(float32)
+		if x < 0 {
+			return -x
 		} else {
 			return x
 		}
 	case float64:
-		if x.(float64) < 0 {
-			return -x.(float64)
+		if x < 0 {
+			return -x
 		} else {
 			return x
 		}
 	case int:
-		if x.(int) < 0 {
-			return -x.(int)
+		if x < 0 {
+			return -x
 		} else {
 			return x
 		}
 	case int8:
-		if x.(int8) < 0 {
-			return -x.(int8)
+		if x < 0 {
+			return -x
 		} else {
 			return x
 		}
 	case int16:
-		if x.(int16) < 0 {
-			return -x.(int16)
+		if x < 0 {
+			return -x
 		} else {
 			return x
 		}
 	case int32:
-		if x.(int32) < 0 {
-			return -x.(int32)
+		if x < 0 {
+			return -x
 		} else {
 			return x
 		}
 	case int64:
-		if x.(int64) < 0 {
-			return -x.(int64)
+		if x < 0 {
+			return -x
 		} else {
 			return x
 		}
 	case uint:
-		if x.(uint) < 0 {
-			return -x.(uint)
+		if x < 0 {
+			return -x
 		} else {
 			return x
 		}
 	case uint8:
-		if x.(uint8) < 0 {
-			return -x.(uint8)
+		if x < 0 {
+			return -x
 		} else {
 			return x
 		}
 	case uint16:
-		if x.(uint16) < 0 {
-			return -x.(uint16)
+		if x < 0 {
+			return -x
 		} else {
 			return x
 		}
 	case uint32:
-		if x.(uint32) < 0 {
-			return -x.(uint32)
+		if x < 0 {
+			return -x
 		} else {
 			return x
 		}
 	case uint64:
-		if x.(uint64) < 0 {
-			return -x.(uint64)
+		if x < 0 {
+			return -x
 		} else {
 			return x
 		}

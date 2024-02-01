@@ -1,6 +1,6 @@
 package vm
 
-//go:generate sh -c "go run ./func_types > ./generated.go"
+//go:generate sh -c "go run ./func_types > ./func_types[generated].go"
 
 import (
 	"fmt"
@@ -13,11 +13,6 @@ import (
 	"github.com/expr-lang/expr/vm/runtime"
 )
 
-var MemoryBudget uint = 1e6
-var errorType = reflect.TypeOf((*error)(nil)).Elem()
-
-type Function = func(params ...any) (any, error)
-
 func Run(program *Program, env any) (any, error) {
 	if program == nil {
 		return nil, fmt.Errorf("program is nil")
@@ -27,15 +22,25 @@ func Run(program *Program, env any) (any, error) {
 	return vm.Run(program, env)
 }
 
+func Debug() *VM {
+	vm := &VM{
+		debug: true,
+		step:  make(chan struct{}, 0),
+		curr:  make(chan int, 0),
+	}
+	return vm
+}
+
 type VM struct {
-	stack        []any
+	Stack        []any
+	Scopes       []*Scope
+	Variables    []any
 	ip           int
-	scopes       []*Scope
+	memory       uint
+	memoryBudget uint
 	debug        bool
 	step         chan struct{}
 	curr         chan int
-	memory       uint
-	memoryBudget uint
 }
 
 type Scope struct {
@@ -45,15 +50,6 @@ type Scope struct {
 	Count   int
 	GroupBy map[any][]any
 	Acc     any
-}
-
-func Debug() *VM {
-	vm := &VM{
-		debug: true,
-		step:  make(chan struct{}, 0),
-		curr:  make(chan int, 0),
-	}
-	return vm
 }
 
 func (vm *VM) Run(program *Program, env any) (_ any, err error) {
@@ -74,14 +70,16 @@ func (vm *VM) Run(program *Program, env any) (_ any, err error) {
 		}
 	}()
 
-	if vm.stack == nil {
-		vm.stack = make([]any, 0, 2)
+	if vm.Stack == nil {
+		vm.Stack = make([]any, 0, 2)
 	} else {
-		vm.stack = vm.stack[0:0]
+		vm.Stack = vm.Stack[0:0]
 	}
-
-	if vm.scopes != nil {
-		vm.scopes = vm.scopes[0:0]
+	if vm.Scopes != nil {
+		vm.Scopes = vm.Scopes[0:0]
+	}
+	if len(vm.Variables) < program.variables {
+		vm.Variables = make([]any, program.variables)
 	}
 
 	vm.memoryBudget = MemoryBudget
@@ -89,7 +87,7 @@ func (vm *VM) Run(program *Program, env any) (_ any, err error) {
 	vm.ip = 0
 
 	for vm.ip < len(program.Bytecode) {
-		if vm.debug {
+		if debug && vm.debug {
 			<-vm.step
 		}
 
@@ -112,10 +110,10 @@ func (vm *VM) Run(program *Program, env any) (_ any, err error) {
 			vm.pop()
 
 		case OpStore:
-			program.variables[arg] = vm.pop()
+			vm.Variables[arg] = vm.pop()
 
 		case OpLoadVar:
-			vm.push(program.variables[arg])
+			vm.push(vm.Variables[arg])
 
 		case OpLoadConst:
 			vm.push(runtime.Fetch(env, program.Constants[arg]))
@@ -204,7 +202,7 @@ func (vm *VM) Run(program *Program, env any) (_ any, err error) {
 			}
 
 		case OpJumpIfEnd:
-			scope := vm.Scope()
+			scope := vm.scope()
 			if scope.Index >= scope.Len {
 				vm.ip += arg
 			}
@@ -399,7 +397,7 @@ func (vm *VM) Run(program *Program, env any) (_ any, err error) {
 
 		case OpValidateArgs:
 			fn := vm.pop().(Function)
-			mem, err := fn(vm.stack[len(vm.stack)-arg:]...)
+			mem, err := fn(vm.Stack[len(vm.Stack)-arg:]...)
 			if err != nil {
 				panic(err)
 			}
@@ -443,49 +441,49 @@ func (vm *VM) Run(program *Program, env any) (_ any, err error) {
 			vm.push(runtime.Deref(a))
 
 		case OpIncrementIndex:
-			vm.Scope().Index++
+			vm.scope().Index++
 
 		case OpDecrementIndex:
-			scope := vm.Scope()
+			scope := vm.scope()
 			scope.Index--
 
 		case OpIncrementCount:
-			scope := vm.Scope()
+			scope := vm.scope()
 			scope.Count++
 
 		case OpGetIndex:
-			vm.push(vm.Scope().Index)
+			vm.push(vm.scope().Index)
 
 		case OpSetIndex:
-			scope := vm.Scope()
+			scope := vm.scope()
 			scope.Index = vm.pop().(int)
 
 		case OpGetCount:
-			scope := vm.Scope()
+			scope := vm.scope()
 			vm.push(scope.Count)
 
 		case OpGetLen:
-			scope := vm.Scope()
+			scope := vm.scope()
 			vm.push(scope.Len)
 
 		case OpGetGroupBy:
-			vm.push(vm.Scope().GroupBy)
+			vm.push(vm.scope().GroupBy)
 
 		case OpGetAcc:
-			vm.push(vm.Scope().Acc)
+			vm.push(vm.scope().Acc)
 
 		case OpSetAcc:
-			vm.Scope().Acc = vm.pop()
+			vm.scope().Acc = vm.pop()
 
 		case OpPointer:
-			scope := vm.Scope()
+			scope := vm.scope()
 			vm.push(scope.Array.Index(scope.Index).Interface())
 
 		case OpThrow:
 			panic(vm.pop().(error))
 
 		case OpGroupBy:
-			scope := vm.Scope()
+			scope := vm.scope()
 			if scope.GroupBy == nil {
 				scope.GroupBy = make(map[any][]any)
 			}
@@ -496,29 +494,29 @@ func (vm *VM) Run(program *Program, env any) (_ any, err error) {
 		case OpBegin:
 			a := vm.pop()
 			array := reflect.ValueOf(a)
-			vm.scopes = append(vm.scopes, &Scope{
+			vm.Scopes = append(vm.Scopes, &Scope{
 				Array: array,
 				Len:   array.Len(),
 			})
 
 		case OpEnd:
-			vm.scopes = vm.scopes[:len(vm.scopes)-1]
+			vm.Scopes = vm.Scopes[:len(vm.Scopes)-1]
 
 		default:
 			panic(fmt.Sprintf("unknown bytecode %#x", op))
 		}
 
-		if vm.debug {
+		if debug && vm.debug {
 			vm.curr <- vm.ip
 		}
 	}
 
-	if vm.debug {
+	if debug && vm.debug {
 		close(vm.curr)
 		close(vm.step)
 	}
 
-	if len(vm.stack) > 0 {
+	if len(vm.Stack) > 0 {
 		return vm.pop(), nil
 	}
 
@@ -526,16 +524,16 @@ func (vm *VM) Run(program *Program, env any) (_ any, err error) {
 }
 
 func (vm *VM) push(value any) {
-	vm.stack = append(vm.stack, value)
+	vm.Stack = append(vm.Stack, value)
 }
 
 func (vm *VM) current() any {
-	return vm.stack[len(vm.stack)-1]
+	return vm.Stack[len(vm.Stack)-1]
 }
 
 func (vm *VM) pop() any {
-	value := vm.stack[len(vm.stack)-1]
-	vm.stack = vm.stack[:len(vm.stack)-1]
+	value := vm.Stack[len(vm.Stack)-1]
+	vm.Stack = vm.Stack[:len(vm.Stack)-1]
 	return value
 }
 
@@ -546,15 +544,8 @@ func (vm *VM) memGrow(size uint) {
 	}
 }
 
-func (vm *VM) Stack() []any {
-	return vm.stack
-}
-
-func (vm *VM) Scope() *Scope {
-	if len(vm.scopes) > 0 {
-		return vm.scopes[len(vm.scopes)-1]
-	}
-	return nil
+func (vm *VM) scope() *Scope {
+	return vm.Scopes[len(vm.Scopes)-1]
 }
 
 func (vm *VM) Step() {

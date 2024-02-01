@@ -62,6 +62,7 @@
         "api_op_UpdateGlobalTable.go",
         "api_op_UpdateGlobalTableSettings.go",
         "api_op_UpdateItem.go",
+        "api_op_UpdateKinesisStreamingDestination.go",
         "api_op_UpdateTable.go",
         "api_op_UpdateTableReplicaAutoScaling.go",
         "api_op_UpdateTimeToLive.go",

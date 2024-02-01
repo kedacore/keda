@@ -4,7 +4,6 @@
 */
 
 /*
-
 Package binding defines interfaces for protocol bindings.
 
 NOTE: Most applications that emit or consume events should use the ../client
@@ -16,11 +15,11 @@ Receiver and a Sender belonging to different bindings. This is useful for
 intermediary applications that route or forward events, but not necessary for
 most "endpoint" applications that emit or consume events.
 
-Protocol Bindings
+# Protocol Bindings
 
 A protocol binding usually implements a Message, a Sender and Receiver, a StructuredWriter and a BinaryWriter (depending on the supported encodings of the protocol) and an Write[ProtocolMessage] method.
 
-Read and write events
+# Read and write events
 
 The core of this package is the binding.Message interface.
 Through binding.MessageReader It defines how to read a protocol specific message for an
@@ -49,7 +48,7 @@ The binding.Write method tries to preserve the structured/binary encoding, in or
 Messages can be eventually wrapped to change their behaviours and binding their lifecycle, like the binding.FinishMessage.
 Every Message wrapper implements the MessageWrapper interface
 
-Sender and Receiver
+# Sender and Receiver
 
 A Receiver receives protocol specific messages and wraps them to into binding.Message implementations.
 
@@ -60,9 +59,8 @@ Message and ExactlyOnceMessage provide methods to allow acknowledgments to
 propagate when a reliable messages is forwarded from a Receiver to a Sender.
 QoS 0 (unreliable), 1 (at-least-once) and 2 (exactly-once) are supported.
 
-Transport
+# Transport
 
 A binding implementation providing Sender and Receiver implementations can be used as a Transport through the BindingTransport adapter.
-
 */
 package binding
