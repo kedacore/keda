@@ -7,13 +7,11 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"net/url"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	eventhub "github.com/Azure/azure-event-hubs-go/v3"
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -23,6 +21,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	. "github.com/kedacore/keda/v2/tests/helper"
+	azurehelper "github.com/kedacore/keda/v2/tests/scalers/azure/helper"
 )
 
 // Load environment variables from .env file
@@ -34,18 +33,14 @@ const (
 )
 
 var (
-	eventHubName              = fmt.Sprintf("keda-eh-%d", GetRandomNumber())
-	namespaceConnectionString = os.Getenv("TF_AZURE_EVENTHBUS_MANAGEMENT_CONNECTION_STRING")
-	eventhubConnectionString  = fmt.Sprintf("%s;EntityPath=%s", namespaceConnectionString, eventHubName)
-	storageConnectionString   = os.Getenv("TF_AZURE_STORAGE_CONNECTION_STRING")
-	checkpointContainerName   = fmt.Sprintf("go-checkpoint-%d", GetRandomNumber())
-	testNamespace             = fmt.Sprintf("%s-ns", testName)
-	secretName                = fmt.Sprintf("%s-secret", testName)
-	deploymentName            = fmt.Sprintf("%s-deployment", testName)
-	triggerAuthName           = fmt.Sprintf("%s-ta", testName)
-	scaledObjectName          = fmt.Sprintf("%s-so", testName)
-	eventHubNamespaceName     = ""
-	accountName               = ""
+	storageConnectionString = os.Getenv("TF_AZURE_STORAGE_CONNECTION_STRING")
+	checkpointContainerName = fmt.Sprintf("go-checkpoint-%d", GetRandomNumber())
+	testNamespace           = fmt.Sprintf("%s-ns", testName)
+	secretName              = fmt.Sprintf("%s-secret", testName)
+	deploymentName          = fmt.Sprintf("%s-deployment", testName)
+	triggerAuthName         = fmt.Sprintf("%s-ta", testName)
+	scaledObjectName        = fmt.Sprintf("%s-so", testName)
+	accountName             = ""
 )
 
 type templateData struct {
@@ -155,21 +150,22 @@ spec:
 
 func TestScaler(t *testing.T) {
 	// setup
+	ctx := context.Background()
 	t.Log("--- setting up ---")
-	require.NotEmpty(t, namespaceConnectionString, "TF_AZURE_EVENTHBUS_MANAGEMENT_CONNECTION_STRING env variable is required for azure eventhub test")
 	require.NotEmpty(t, storageConnectionString, "TF_AZURE_STORAGE_CONNECTION_STRING env variable is required for azure eventhub test")
 
-	adminClient, client := createEventHub(t)
+	eventHubHelper := azurehelper.NewEventHubHelper(t)
+	eventHubHelper.CreateEventHub(ctx, t)
 	container := createContainer(t)
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
-	data, templates := getTemplateData()
+	data, templates := getTemplateData(eventHubHelper)
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	// We need to wait till consumer creates the checkpoint
-	addEvents(t, client, 1)
+	eventHubHelper.PublishEventHubdEvents(ctx, t, 1)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"replica count should be 1 after 1 minute")
 	time.Sleep(time.Duration(60) * time.Second)
@@ -179,40 +175,14 @@ func TestScaler(t *testing.T) {
 		"replica count should be 0 after 1 minute")
 
 	// test scaling
-	testActivation(t, kc, client)
-	testScaleOut(t, kc, client)
+	testActivation(ctx, t, kc, eventHubHelper)
+	testScaleOut(ctx, t, kc, eventHubHelper)
 	testScaleIn(t, kc)
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
-	deleteEventHub(t, adminClient)
+	eventHubHelper.DeleteEventHub(ctx, t)
 	deleteContainer(t, container)
-}
-
-func createEventHub(t *testing.T) (*eventhub.HubManager, *eventhub.Hub) {
-	eventhubManager, err := eventhub.NewHubManagerFromConnectionString(namespaceConnectionString)
-	assert.NoErrorf(t, err, "cannot create eventhubManager client - %s", err)
-
-	eventHubNamespaceURL, err := url.Parse(eventhubManager.Host)
-	assert.NoErrorf(t, err, "cannot parse event hub namespace url - %s", err)
-	domains := strings.Split(eventHubNamespaceURL.Hostname(), ".")
-	eventHubNamespaceName = domains[0]
-
-	opts := []eventhub.HubManagementOption{
-		eventhub.HubWithPartitionCount(1),
-		eventhub.HubWithMessageRetentionInDays(1),
-	}
-	_, err = eventhubManager.Put(context.Background(), eventHubName, opts...)
-	assert.NoErrorf(t, err, "cannot create event hub - %s", err)
-
-	eventhub, err := eventhub.NewHubFromConnectionString(eventhubConnectionString)
-	assert.NoErrorf(t, err, "cannot create eventhub client - %s", err)
-	return eventhubManager, eventhub
-}
-
-func deleteEventHub(t *testing.T, adminClient *eventhub.HubManager) {
-	err := adminClient.Delete(context.Background(), eventHubName)
-	assert.NoErrorf(t, err, "cannot delete event hub - %s", err)
 }
 
 func createContainer(t *testing.T) azblob.ContainerURL {
@@ -226,7 +196,7 @@ func createContainer(t *testing.T) azblob.ContainerURL {
 	serviceURL := azblob.NewServiceURL(*endpoint, p)
 	containerURL := serviceURL.NewContainerURL(checkpointContainerName)
 
-	_, err = containerURL.Create(context.Background(), azblob.Metadata{}, azblob.PublicAccessContainer)
+	_, err = containerURL.Create(context.Background(), azblob.Metadata{}, azblob.PublicAccessNone)
 	assert.NoErrorf(t, err, "cannot create blob container - %s", err)
 
 	domains := strings.Split(endpoint.Hostname(), ".")
@@ -240,8 +210,8 @@ func deleteContainer(t *testing.T, containerURL azblob.ContainerURL) {
 	assert.NoErrorf(t, err, "cannot delete storage container - %s", err)
 }
 
-func getTemplateData() (templateData, []Template) {
-	base64EventhubConnection := base64.StdEncoding.EncodeToString([]byte(eventhubConnectionString))
+func getTemplateData(eventHubHelper azurehelper.EventHubHelper) (templateData, []Template) {
+	base64EventhubConnection := base64.StdEncoding.EncodeToString([]byte(eventHubHelper.ConnectionString()))
 	base64StorageConnection := base64.StdEncoding.EncodeToString([]byte(storageConnectionString))
 
 	return templateData{
@@ -255,8 +225,8 @@ func getTemplateData() (templateData, []Template) {
 			TriggerAuthName:         triggerAuthName,
 			ConsumerGroup:           eventhubConsumerGroup,
 			AccountName:             accountName,
-			EventHubName:            eventHubName,
-			EventHubNamespaceName:   eventHubNamespaceName,
+			EventHubName:            eventHubHelper.EventHub(),
+			EventHubNamespaceName:   eventHubHelper.EventHubNamespace(),
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
@@ -264,16 +234,16 @@ func getTemplateData() (templateData, []Template) {
 		}
 }
 
-func testActivation(t *testing.T, kc *kubernetes.Clientset, client *eventhub.Hub) {
+func testActivation(ctx context.Context, t *testing.T, kc *kubernetes.Clientset, eventHubHelper azurehelper.EventHubHelper) {
 	t.Log("--- testing activation ---")
-	addEvents(t, client, 8)
+	eventHubHelper.PublishEventHubdEvents(ctx, t, 8)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
 
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset, client *eventhub.Hub) {
+func testScaleOut(ctx context.Context, t *testing.T, kc *kubernetes.Clientset, eventHubHelper azurehelper.EventHubHelper) {
 	t.Log("--- testing scale out ---")
-	addEvents(t, client, 8)
+	eventHubHelper.PublishEventHubdEvents(ctx, t, 8)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"replica count should be 1 after 1 minute")
@@ -284,17 +254,4 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")
-}
-
-func addEvents(t *testing.T, client *eventhub.Hub, count int) {
-	for i := 0; i < count; i++ {
-		now := time.Now()
-		formatted := fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d",
-			now.Year(), now.Month(), now.Day(),
-			now.Hour(), now.Minute(), now.Second())
-		msg := fmt.Sprintf("Message - %s", formatted)
-		err := client.Send(context.Background(), eventhub.NewEventFromString(msg))
-		assert.NoErrorf(t, err, "cannot enqueue event - %s", err)
-		t.Logf("event queued")
-	}
 }
