@@ -41,7 +41,7 @@ func GetEventHubClient(info EventHubInfo, logger logr.Logger) (*azeventhubs.Prod
 			return nil, chainedErr
 		}
 
-		return azeventhubs.NewProducerClient(info.Namespace, info.EventHubName, creds, nil)
+		return azeventhubs.NewProducerClient(fmt.Sprintf("%s.%s", info.Namespace, info.ServiceBusEndpointSuffix), info.EventHubName, creds, nil)
 	}
 
 	return nil, fmt.Errorf("event hub does not support pod identity %v", info.PodIdentity.Provider)
