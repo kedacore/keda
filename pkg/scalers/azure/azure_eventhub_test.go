@@ -42,7 +42,7 @@ func TestCheckpointFromBlobStorageAzureFunction(t *testing.T) {
 		EventHubName:          "hub",
 	}
 
-	client, err := GetStorageBlobClient(ctx, logr.Discard(), eventHubInfo.PodIdentity, eventHubInfo.StorageConnection, eventHubInfo.StorageAccountName, eventHubInfo.BlobStorageEndpoint)
+	client, err := GetStorageBlobClient(logr.Discard(), eventHubInfo.PodIdentity, eventHubInfo.StorageConnection, eventHubInfo.StorageAccountName, eventHubInfo.BlobStorageEndpoint)
 	assert.NoError(t, err, "error creting the blob client")
 
 	err = createNewCheckpointInStorage(ctx, client, containerName, urlPath, checkpoint, nil)
@@ -86,7 +86,7 @@ func TestCheckpointFromBlobStorageDefault(t *testing.T) {
 		EventHubName:          "hub",
 		BlobContainer:         containerName,
 	}
-	client, err := GetStorageBlobClient(ctx, logr.Discard(), eventHubInfo.PodIdentity, eventHubInfo.StorageConnection, eventHubInfo.StorageAccountName, eventHubInfo.BlobStorageEndpoint)
+	client, err := GetStorageBlobClient(logr.Discard(), eventHubInfo.PodIdentity, eventHubInfo.StorageConnection, eventHubInfo.StorageAccountName, eventHubInfo.BlobStorageEndpoint)
 	assert.NoError(t, err, "error creting the blob client")
 
 	err = createNewCheckpointInStorage(ctx, client, containerName, urlPath, checkpoint, nil)
@@ -131,7 +131,7 @@ func TestCheckpointFromBlobStorageDefaultDeprecatedPythonCheckpoint(t *testing.T
 		BlobContainer:         containerName,
 	}
 
-	client, err := GetStorageBlobClient(ctx, logr.Discard(), eventHubInfo.PodIdentity, eventHubInfo.StorageConnection, eventHubInfo.StorageAccountName, eventHubInfo.BlobStorageEndpoint)
+	client, err := GetStorageBlobClient(logr.Discard(), eventHubInfo.PodIdentity, eventHubInfo.StorageConnection, eventHubInfo.StorageAccountName, eventHubInfo.BlobStorageEndpoint)
 	assert.NoError(t, err, "error creting the blob client")
 
 	err = createNewCheckpointInStorage(ctx, client, containerName, urlPath, checkpoint, nil)
@@ -180,7 +180,7 @@ func TestCheckpointFromBlobStorageWithBlobMetadata(t *testing.T) {
 		CheckpointStrategy:    "blobMetadata",
 	}
 
-	client, err := GetStorageBlobClient(ctx, logr.Discard(), eventHubInfo.PodIdentity, eventHubInfo.StorageConnection, eventHubInfo.StorageAccountName, eventHubInfo.BlobStorageEndpoint)
+	client, err := GetStorageBlobClient(logr.Discard(), eventHubInfo.PodIdentity, eventHubInfo.StorageConnection, eventHubInfo.StorageAccountName, eventHubInfo.BlobStorageEndpoint)
 	assert.NoError(t, err, "error creting the blob client")
 
 	err = createNewCheckpointInStorage(ctx, client, containerName, urlPath, "", metadata)
@@ -225,7 +225,7 @@ func TestCheckpointFromBlobStorageGoSdk(t *testing.T) {
 		CheckpointStrategy: "goSdk",
 	}
 
-	client, err := GetStorageBlobClient(ctx, logr.Discard(), eventHubInfo.PodIdentity, eventHubInfo.StorageConnection, eventHubInfo.StorageAccountName, eventHubInfo.BlobStorageEndpoint)
+	client, err := GetStorageBlobClient(logr.Discard(), eventHubInfo.PodIdentity, eventHubInfo.StorageConnection, eventHubInfo.StorageAccountName, eventHubInfo.BlobStorageEndpoint)
 	assert.NoError(t, err, "error creting the blob client")
 
 	err = createNewCheckpointInStorage(ctx, client, containerName, urlPath, checkpoint, nil)
@@ -273,7 +273,7 @@ func TestCheckpointFromBlobStorageDapr(t *testing.T) {
 		CheckpointStrategy:    "dapr",
 	}
 
-	client, err := GetStorageBlobClient(ctx, logr.Discard(), eventHubInfo.PodIdentity, eventHubInfo.StorageConnection, eventHubInfo.StorageAccountName, eventHubInfo.BlobStorageEndpoint)
+	client, err := GetStorageBlobClient(logr.Discard(), eventHubInfo.PodIdentity, eventHubInfo.StorageConnection, eventHubInfo.StorageAccountName, eventHubInfo.BlobStorageEndpoint)
 	assert.NoError(t, err, "error creting the blob client")
 
 	err = createNewCheckpointInStorage(ctx, client, containerName, urlPath, checkpoint, nil)

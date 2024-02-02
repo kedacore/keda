@@ -83,7 +83,9 @@ New deprecation(s):
 ### Other
 
 - **General**: Minor refactor to reduce copy/paste code in ScaledObject webhook ([#5397](https://github.com/kedacore/keda/issues/5397))
-- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Azure Event Hub Scaler**: Migrated to `github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs` ([#5470](https://github.com/kedacore/keda/issues/5470))
+- **Azure Queue Scaler**: Migrated to `github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue` ([#5470](https://github.com/kedacore/keda/issues/5470))
+- **Azure Storage Scaler**: Migrated to `github.com/Azure/azure-sdk-for-go/sdk/storage/azblob` ([#5470](https://github.com/kedacore/keda/issues/5470))
 
 ## v2.13.0
 

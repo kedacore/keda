@@ -1,7 +1,6 @@
 package azure
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -28,7 +27,7 @@ type EventHubInfo struct {
 }
 
 // GetEventHubClient returns eventhub client
-func GetEventHubClient(ctx context.Context, info EventHubInfo, logger logr.Logger) (*azeventhubs.ProducerClient, error) {
+func GetEventHubClient(info EventHubInfo, logger logr.Logger) (*azeventhubs.ProducerClient, error) {
 	switch info.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		hub, err := azeventhubs.NewProducerClientFromConnectionString(info.EventHubConnection, info.EventHubName, nil)

@@ -162,7 +162,9 @@ func getTemplateData() (templateData, []Template) {
 			SecretName:       secretName,
 			Connection:       base64ConnectionString,
 			DeploymentName:   deploymentName,
+			TriggerAuthName:  triggerAuthName,
 			ScaledObjectName: scaledObjectName,
+			AccountName:      accountName,
 			QueueName:        queueName,
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
