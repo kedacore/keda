@@ -19,9 +19,9 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"strconv"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/go-logr/logr"
 	"github.com/gobwas/glob"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -45,12 +45,12 @@ type azureBlobScaler struct {
 	metricType  v2.MetricTargetType
 	metadata    *azure.BlobMetadata
 	podIdentity kedav1alpha1.AuthPodIdentity
-	httpClient  *http.Client
+	blobClient  *azblob.Client
 	logger      logr.Logger
 }
 
 // NewAzureBlobScaler creates a new azureBlobScaler
-func NewAzureBlobScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
+func NewAzureBlobScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -63,11 +63,16 @@ func NewAzureBlobScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing azure blob metadata: %w", err)
 	}
 
+	blobClient, err := azure.GetStorageBlobClient(ctx, logger, podIdentity, meta.Connection, meta.AccountName, meta.EndpointSuffix)
+	if err != nil {
+		return nil, fmt.Errorf("error creating azure blob client: %w", err)
+	}
+
 	return &azureBlobScaler{
 		metricType:  metricType,
 		metadata:    meta,
+		blobClient:  blobClient,
 		podIdentity: podIdentity,
-		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
 		logger:      logger,
 	}, nil
 }
@@ -76,7 +81,6 @@ func parseAzureBlobMetadata(config *scalersconfig.ScalerConfig, logger logr.Logg
 	meta := azure.BlobMetadata{}
 	meta.TargetBlobCount = defaultTargetBlobCount
 	meta.BlobDelimiter = defaultBlobDelimiter
-	meta.BlobPrefix = defaultBlobPrefix
 
 	if val, ok := config.TriggerMetadata[blobCountMetricName]; ok {
 		blobCount, err := strconv.ParseInt(val, 10, 64)
@@ -129,7 +133,8 @@ func parseAzureBlobMetadata(config *scalersconfig.ScalerConfig, logger logr.Logg
 	}
 
 	if val, ok := config.TriggerMetadata["blobPrefix"]; ok && val != "" {
-		meta.BlobPrefix = val + meta.BlobDelimiter
+		prefix := val + meta.BlobDelimiter
+		meta.BlobPrefix = &prefix
 	}
 
 	endpointSuffix, err := azure.ParseAzureStorageEndpointSuffix(config.TriggerMetadata, azure.BlobEndpoint)
@@ -175,9 +180,6 @@ func parseAzureBlobMetadata(config *scalersconfig.ScalerConfig, logger logr.Logg
 }
 
 func (s *azureBlobScaler) Close(context.Context) error {
-	if s.httpClient != nil {
-		s.httpClient.CloseIdleConnections()
-	}
 	return nil
 }
 
@@ -196,8 +198,7 @@ func (s *azureBlobScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSp
 func (s *azureBlobScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	bloblen, err := azure.GetAzureBlobListLength(
 		ctx,
-		s.httpClient,
-		s.podIdentity,
+		s.blobClient,
 		s.metadata,
 	)
 

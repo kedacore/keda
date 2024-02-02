@@ -9,17 +9,13 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
-	"github.com/Azure/azure-storage-queue-go/azqueue"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/scalers/azure"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
@@ -134,11 +130,15 @@ spec:
 
 func TestScaler(t *testing.T) {
 	// setup
+	ctx := context.Background()
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, connectionString, "TF_AZURE_STORAGE_CONNECTION_STRING env variable is required for key vault tests")
 	require.NotEmpty(t, keyvaultURI, "TF_AZURE_KEYVAULT_URI env variable is required for key vault tests")
 
-	queueURL, messageURL := createQueue(t)
+	queueClient, err := azqueue.NewQueueClientFromConnectionString(connectionString, queueName, nil)
+	assert.NoErrorf(t, err, "cannot create the queue client - %s", err)
+	_, err = queueClient.Create(ctx, nil)
+	assert.NoErrorf(t, err, "cannot create the queue - %s", err)
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
@@ -150,32 +150,13 @@ func TestScaler(t *testing.T) {
 		"replica count should be 0 after 1 minute")
 
 	// test scaling
-	testScaleOut(t, kc, messageURL)
-	testScaleIn(t, kc, messageURL)
+	testScaleOut(ctx, t, kc, queueClient)
+	testScaleIn(ctx, t, kc, queueClient)
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
-	cleanupQueue(t, queueURL)
-}
-
-func createQueue(t *testing.T) (azqueue.QueueURL, azqueue.MessagesURL) {
-	// Create Queue
-	httpClient := kedautil.CreateHTTPClient(DefaultHTTPTimeOut, false)
-	credential, endpoint, err := azure.ParseAzureStorageQueueConnection(
-		context.Background(), httpClient, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
-		connectionString, "", "")
-	assert.NoErrorf(t, err, "cannot parse storage connection string - %s", err)
-
-	p := azqueue.NewPipeline(credential, azqueue.PipelineOptions{})
-	serviceURL := azqueue.NewServiceURL(*endpoint, p)
-	queueURL := serviceURL.NewQueueURL(queueName)
-
-	_, err = queueURL.Create(context.Background(), azqueue.Metadata{})
-	assert.NoErrorf(t, err, "cannot create storage queue - %s", err)
-
-	messageURL := queueURL.NewMessagesURL()
-
-	return queueURL, messageURL
+	_, err = queueClient.Delete(ctx, nil)
+	assert.NoErrorf(t, err, "cannot create the queue - %s", err)
 }
 
 func getTemplateData() (templateData, []Template) {
@@ -198,29 +179,24 @@ func getTemplateData() (templateData, []Template) {
 		}
 }
 
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
+func testScaleOut(ctx context.Context, t *testing.T, kc *kubernetes.Clientset, client *azqueue.QueueClient) {
 	t.Log("--- testing scale out ---")
 	for i := 0; i < 5; i++ {
 		msg := fmt.Sprintf("Message - %d", i)
-		_, err := messageURL.Enqueue(context.Background(), msg, 0*time.Second, time.Hour)
+		_, err := client.EnqueueMessage(ctx, msg, nil)
 		assert.NoErrorf(t, err, "cannot enqueue message - %s", err)
+		t.Logf("Message queued")
 	}
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
-		"replica count should be 0 after 1 minute")
+		"replica count should be 1 after 1 minute")
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset, messageURL azqueue.MessagesURL) {
+func testScaleIn(ctx context.Context, t *testing.T, kc *kubernetes.Clientset, client *azqueue.QueueClient) {
 	t.Log("--- testing scale in ---")
-	_, err := messageURL.Clear(context.Background())
+	_, err := client.ClearMessages(ctx, nil)
 	assert.NoErrorf(t, err, "cannot clear queue - %s", err)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")
-}
-
-func cleanupQueue(t *testing.T, queueURL azqueue.QueueURL) {
-	t.Log("--- cleaning up ---")
-	_, err := queueURL.Delete(context.Background())
-	assert.NoErrorf(t, err, "cannot create storage queue - %s", err)
 }
