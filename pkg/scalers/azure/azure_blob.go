@@ -68,8 +68,7 @@ func GetAzureBlobListLength(ctx context.Context, blobClient *azblob.Client, meta
 		if err != nil {
 			return -1, err
 		}
-		count = count + int64(len(resp.Segment.BlobItems))
-
+		count += int64(len(resp.Segment.BlobItems))
 	}
 	return count, nil
 }
