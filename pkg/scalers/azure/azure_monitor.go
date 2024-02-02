@@ -23,8 +23,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/preview/monitor/mgmt/2018-03-01/insights"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/monitor/armmonitor"
+	"github.com/go-logr/logr"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -48,52 +50,55 @@ type azureExternalMetricRequest struct {
 
 // MonitorInfo to create metric request
 type MonitorInfo struct {
-	ResourceURI                  string
-	TenantID                     string
-	SubscriptionID               string
-	ResourceGroupName            string
-	Name                         string
-	Namespace                    string
-	Filter                       string
-	AggregationInterval          string
-	AggregationType              string
-	ClientID                     string
-	ClientPassword               string
-	AzureResourceManagerEndpoint string
-	ActiveDirectoryEndpoint      string
+	ResourceURI         string
+	TenantID            string
+	SubscriptionID      string
+	ResourceGroupName   string
+	Name                string
+	Namespace           string
+	Filter              string
+	AggregationInterval string
+	AggregationType     string
+	ClientID            string
+	ClientPassword      string
 }
 
 var azureMonitorLog = logf.Log.WithName("azure_monitor_scaler")
 
 // GetAzureMetricValue returns the value of an Azure Monitor metric, rounded to the nearest int
-func GetAzureMetricValue(ctx context.Context, info MonitorInfo, podIdentity kedav1alpha1.AuthPodIdentity) (float64, error) {
-	client := createMetricsClient(ctx, info, podIdentity)
+func GetAzureMetricValue(ctx context.Context, logger logr.Logger, info MonitorInfo, podIdentity kedav1alpha1.AuthPodIdentity) (float64, error) {
+	client, err := createMetricsClient(ctx, logger, info, podIdentity)
+	if err != nil {
+		return -1, err
+	}
 	requestPtr, err := createMetricsRequest(info)
 	if err != nil {
 		return -1, err
 	}
-
 	return executeRequest(ctx, client, requestPtr)
 }
 
-func createMetricsClient(ctx context.Context, info MonitorInfo, podIdentity kedav1alpha1.AuthPodIdentity) insights.MetricsClient {
-	client := insights.NewMetricsClientWithBaseURI(info.AzureResourceManagerEndpoint, info.SubscriptionID)
-	var authConfig auth.AuthorizerConfig
+func createMetricsClient(ctx context.Context, logger logr.Logger, info MonitorInfo, podIdentity kedav1alpha1.AuthPodIdentity) (*armmonitor.MetricsClient, error) {
+	var creds azcore.TokenCredential
+	var err error
 	switch podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		config := auth.NewClientCredentialsConfig(info.ClientID, info.ClientPassword, info.TenantID)
-		config.Resource = info.AzureResourceManagerEndpoint
-		config.AADEndpoint = info.ActiveDirectoryEndpoint
-
-		authConfig = config
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		authConfig = NewAzureADWorkloadIdentityConfig(ctx, podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID(), podIdentity.GetIdentityAuthorityHost(), info.AzureResourceManagerEndpoint)
+		// TODO (jorturfer) podIdentity.GetIdentityTenantID(), podIdentity.GetIdentityAuthorityHost()
+		creds, err = azidentity.NewClientSecretCredential(info.TenantID, info.ClientID, info.ClientPassword, nil)
+	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+		creds, err = NewChainedCredential(logger, podIdentity.GetIdentityID(), podIdentity.Provider)
+	default:
+		return nil, fmt.Errorf("azure monitor does not support pod identity provider - %s", podIdentity.Provider)
+	}
+	if err != nil {
+		return nil, err
+	}
+	clientFactory, err := armmonitor.NewClientFactory(info.SubscriptionID, creds, nil)
+	if err != nil {
+		return nil, err
 	}
 
-	authorizer, _ := authConfig.Authorizer()
-	client.Authorizer = authorizer
-
-	return client
+	return clientFactory.NewMetricsClient(), nil
 }
 
 func createMetricsRequest(info MonitorInfo) (*azureExternalMetricRequest, error) {
@@ -122,7 +127,7 @@ func createMetricsRequest(info MonitorInfo) (*azureExternalMetricRequest, error)
 	return &metricRequest, nil
 }
 
-func executeRequest(ctx context.Context, client insights.MetricsClient, request *azureExternalMetricRequest) (float64, error) {
+func executeRequest(ctx context.Context, client *armmonitor.MetricsClient, request *azureExternalMetricRequest) (float64, error) {
 	metricResponse, err := getAzureMetric(ctx, client, *request)
 	if err != nil {
 		return -1, fmt.Errorf("error getting azure monitor metric %s: %w", request.MetricName, err)
@@ -131,7 +136,7 @@ func executeRequest(ctx context.Context, client insights.MetricsClient, request 
 	return metricResponse, nil
 }
 
-func getAzureMetric(ctx context.Context, client insights.MetricsClient, azMetricRequest azureExternalMetricRequest) (float64, error) {
+func getAzureMetric(ctx context.Context, client *armmonitor.MetricsClient, azMetricRequest azureExternalMetricRequest) (float64, error) {
 	err := azMetricRequest.validate()
 	if err != nil {
 		return -1, err
@@ -140,10 +145,29 @@ func getAzureMetric(ctx context.Context, client insights.MetricsClient, azMetric
 	metricResourceURI := azMetricRequest.metricResourceURI()
 	azureMonitorLog.V(2).Info("metric request", "resource uri", metricResourceURI)
 
-	metricResult, err := client.List(ctx, metricResourceURI,
-		azMetricRequest.Timespan, nil,
-		azMetricRequest.MetricName, azMetricRequest.Aggregation, nil,
-		"", azMetricRequest.Filter, "", azMetricRequest.MetricNamespace)
+	opts := &armmonitor.MetricsClientListOptions{
+		Interval:   nil,
+		Top:        nil,
+		Orderby:    nil,
+		ResultType: nil,
+	}
+	if azMetricRequest.Timespan != "" {
+		opts.Timespan = &azMetricRequest.Timespan
+	}
+	if azMetricRequest.MetricName != "" {
+		opts.Metricnames = &azMetricRequest.MetricName
+	}
+	if azMetricRequest.MetricNamespace != "" {
+		opts.Metricnamespace = &azMetricRequest.MetricNamespace
+	}
+	if azMetricRequest.Aggregation != "" {
+		opts.Aggregation = &azMetricRequest.Aggregation
+	}
+	if azMetricRequest.Filter != "" {
+		opts.Filter = &azMetricRequest.Filter
+	}
+
+	metricResult, err := client.List(ctx, metricResourceURI, opts)
 	if err != nil {
 		return -1, err
 	}
@@ -153,27 +177,26 @@ func getAzureMetric(ctx context.Context, client insights.MetricsClient, azMetric
 	return value, err
 }
 
-func extractValue(azMetricRequest azureExternalMetricRequest, metricResult insights.Response) (float64, error) {
-	metricVals := *metricResult.Value
-
+func extractValue(azMetricRequest azureExternalMetricRequest, metricResult armmonitor.MetricsClientListResponse) (float64, error) {
+	metricVals := metricResult.Value
 	if len(metricVals) == 0 {
-		err := fmt.Errorf("got an empty response for metric %s/%s and aggregate type %s", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)))
+		err := fmt.Errorf("got an empty response for metric %s/%s and aggregate type %s", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, azMetricRequest.Aggregation)
 		return -1, err
 	}
 
 	timeseriesPtr := metricVals[0].Timeseries
-	if timeseriesPtr == nil || len(*timeseriesPtr) == 0 {
-		err := fmt.Errorf("got metric result for %s/%s and aggregate type %s without timeseries", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)))
+	if timeseriesPtr == nil || len(timeseriesPtr) == 0 {
+		err := fmt.Errorf("got metric result for %s/%s and aggregate type %s without timeseries", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, azMetricRequest.Aggregation)
 		return -1, err
 	}
 
-	dataPtr := (*timeseriesPtr)[0].Data
-	if dataPtr == nil || len(*dataPtr) == 0 {
-		err := fmt.Errorf("got metric result for %s/%s and aggregate type %s without any metric values", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, insights.AggregationType(strings.ToTitle(azMetricRequest.Aggregation)))
+	dataPtr := (timeseriesPtr)[0].Data
+	if dataPtr == nil || len(dataPtr) == 0 {
+		err := fmt.Errorf("got metric result for %s/%s and aggregate type %s without any metric values", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, azMetricRequest.Aggregation)
 		return -1, err
 	}
 
-	valuePtr, err := verifyAggregationTypeIsSupported(azMetricRequest.Aggregation, *dataPtr)
+	valuePtr, err := verifyAggregationTypeIsSupported(azMetricRequest.Aggregation, dataPtr)
 	if err != nil {
 		return -1, fmt.Errorf("unable to get value for metric %s/%s with aggregation %s. No value returned by Azure Monitor", azMetricRequest.ResourceProviderNamespace, azMetricRequest.MetricName, azMetricRequest.Aggregation)
 	}
@@ -224,21 +247,25 @@ func formatTimeSpan(timeSpan string) (string, error) {
 	return fmt.Sprintf("%s/%s", starttime, endtime), nil
 }
 
-func verifyAggregationTypeIsSupported(aggregationType string, data []insights.MetricValue) (*float64, error) {
+func verifyAggregationTypeIsSupported(aggregationType string, data []*armmonitor.MetricValue) (*float64, error) {
+	if data == nil {
+		err := fmt.Errorf("invalid response")
+		return nil, err
+	}
 	var valuePtr *float64
 	switch {
-	case strings.EqualFold(string(insights.Average), aggregationType) && data[len(data)-1].Average != nil:
+	case strings.EqualFold(string(armmonitor.AggregationTypeAverage), aggregationType) && data[len(data)-1].Average != nil:
 		valuePtr = data[len(data)-1].Average
-	case strings.EqualFold(string(insights.Total), aggregationType) && data[len(data)-1].Total != nil:
+	case strings.EqualFold(string(armmonitor.AggregationTypeTotal), aggregationType) && data[len(data)-1].Total != nil:
 		valuePtr = data[len(data)-1].Total
-	case strings.EqualFold(string(insights.Maximum), aggregationType) && data[len(data)-1].Maximum != nil:
+	case strings.EqualFold(string(armmonitor.AggregationTypeMaximum), aggregationType) && data[len(data)-1].Maximum != nil:
 		valuePtr = data[len(data)-1].Maximum
-	case strings.EqualFold(string(insights.Minimum), aggregationType) && data[len(data)-1].Minimum != nil:
+	case strings.EqualFold(string(armmonitor.AggregationTypeMinimum), aggregationType) && data[len(data)-1].Minimum != nil:
 		valuePtr = data[len(data)-1].Minimum
-	case strings.EqualFold(string(insights.Count), aggregationType) && data[len(data)-1].Count != nil:
+	case strings.EqualFold(string(armmonitor.AggregationTypeCount), aggregationType) && data[len(data)-1].Count != nil:
 		valuePtr = data[len(data)-1].Count
 	default:
-		err := fmt.Errorf("unsupported aggregation type %s", insights.AggregationType(strings.ToTitle(aggregationType)))
+		err := fmt.Errorf("unsupported aggregation type %s", aggregationType)
 		return nil, err
 	}
 	return valuePtr, nil

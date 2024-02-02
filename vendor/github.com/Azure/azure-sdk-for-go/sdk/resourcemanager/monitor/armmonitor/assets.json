@@ -1,0 +1,6 @@
+{
+  "AssetsRepo": "Azure/azure-sdk-assets",
+  "AssetsRepoPrefixPath": "go",
+  "TagPrefix": "go/resourcemanager/monitor/armmonitor",
+  "Tag": "go/resourcemanager/monitor/armmonitor_9e08720799"
+}
