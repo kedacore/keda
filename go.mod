@@ -112,6 +112,10 @@ require (
 	sigs.k8s.io/kustomize/kustomize/v5 v5.3.0
 )
 
+require github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs v1.0.3
+
+require github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/eventhub/armeventhub v1.2.0
+
 replace (
 	// pin k8s.io to v0.28.5
 	github.com/google/cel-go => github.com/google/cel-go v0.16.1
