@@ -17,6 +17,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
+	azurehelper "github.com/kedacore/keda/v2/tests/scalers/azure/helper"
 )
 
 // Load environment variables from .env file
@@ -128,6 +129,7 @@ func TestScaler(t *testing.T) {
 	ctx := context.Background()
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, connectionString, "TF_AZURE_STORAGE_CONNECTION_STRING env variable is required for azure queue test")
+	accountName = azurehelper.GetAccountFromStorageConnectionString(connectionString)
 
 	queueClient, err := azqueue.NewQueueClientFromConnectionString(connectionString, queueName, nil)
 	assert.NoErrorf(t, err, "cannot create the queue client - %s", err)
