@@ -165,6 +165,12 @@ github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/utils
 # github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/eventhub/armeventhub v1.2.0
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/eventhub/armeventhub
+# github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.0.1
+## explicit; go 1.18
+github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets
+# github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal v1.0.0
+## explicit; go 1.18
+github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal
 # github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.2.1
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/storage/azblob

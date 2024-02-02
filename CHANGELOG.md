@@ -99,6 +99,7 @@ New deprecation(s):
 
 - **General**: Added Pre Regex check before building image in e2e test ([#5783](https://github.com/kedacore/keda/issues/5783))
 - **General**: Reduce the number of ScaledObject.Status updates in the fallback ([#5624](https://github.com/kedacore/keda/issues/5624))
+- **Azure Services**: Migrated to `github.com/Azure/azure-sdk-for-go` ([#5470](https://github.com/kedacore/keda/issues/5470))
 - **IBM MQ Scaler**: Adding e2e test ([#1287](https://github.com/kedacore/keda/issues/1287))
 
 ## v2.14.0
@@ -168,9 +169,6 @@ New deprecation(s):
 - **General**: Minor refactor to reduce copy/paste code in ScaledObject webhook ([#5397](https://github.com/kedacore/keda/issues/5397))
 - **General**: No need to list all secret in the namespace to find just one ([#5669](https://github.com/kedacore/keda/pull/5669))
 - **Kafka**: Expose GSSAPI service name  ([#5474](https://github.com/kedacore/keda/issues/5474))
-- **Azure Event Hub Scaler**: Migrated to `github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs` ([#5470](https://github.com/kedacore/keda/issues/5470))
-- **Azure Queue Scaler**: Migrated to `github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue` ([#5470](https://github.com/kedacore/keda/issues/5470))
-- **Azure Storage Scaler**: Migrated to `github.com/Azure/azure-sdk-for-go/sdk/storage/azblob` ([#5470](https://github.com/kedacore/keda/issues/5470))
 
 ## v2.13.1
 

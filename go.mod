@@ -17,6 +17,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs v1.0.3
 	github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.7.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/eventhub/armeventhub v1.2.0
+	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.0.1
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.2.1
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue v1.0.0
 	github.com/Azure/go-autorest/autorest v0.11.29
@@ -170,6 +171,7 @@ require (
 	cloud.google.com/go/iam v1.1.7 // indirect
 	code.cloudfoundry.org/clock v1.1.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.5.1 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal v1.0.0 // indirect
 	github.com/Azure/go-amqp v1.0.4 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.9.23 // indirect
