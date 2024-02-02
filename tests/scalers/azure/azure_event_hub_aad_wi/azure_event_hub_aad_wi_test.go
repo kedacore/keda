@@ -150,6 +150,7 @@ func TestScaler(t *testing.T) {
 	ctx := context.Background()
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, storageConnectionString, "TF_AZURE_STORAGE_CONNECTION_STRING env variable is required for azure eventhub test")
+	accountName = azurehelper.GetAccountFromStorageConnectionString(storageConnectionString)
 
 	eventHubHelper := azurehelper.NewEventHubHelper(t)
 	eventHubHelper.CreateEventHub(ctx, t)
