@@ -26,7 +26,7 @@ type EventHubHelper struct {
 	resourceGroup     string
 	eventHubNamespace string
 	eventHubName      string
-	clientId          string
+	clientID          string
 	clientSecret      string
 	policyName        string
 	connectionString  string
@@ -47,16 +47,15 @@ func NewEventHubHelper(t *testing.T) EventHubHelper {
 		subscription:      os.Getenv("TF_AZURE_SUBSCRIPTION"),
 		resourceGroup:     os.Getenv("TF_AZURE_RESOURCE_GROUP"),
 		eventHubNamespace: os.Getenv("TF_AZURE_EVENTHUB_NAMESPACE"),
-		clientId:          os.Getenv("TF_AZURE_SP_APP_ID"),
+		clientID:          os.Getenv("TF_AZURE_SP_APP_ID"),
 		clientSecret:      os.Getenv("AZURE_SP_KEY"),
 		policyName:        "e2e-tests",
 		eventHubName:      fmt.Sprintf("keda-eh-%d", randomNumber),
 	}
-
 }
 
 func (e *EventHubHelper) CreateEventHub(ctx context.Context, t *testing.T) {
-	cred, err := azidentity.NewClientSecretCredential(e.tenant, e.clientId, e.clientSecret, nil)
+	cred, err := azidentity.NewClientSecretCredential(e.tenant, e.clientID, e.clientSecret, nil)
 	assert.NoErrorf(t, err, "cannot create azure credentials - %s", err)
 
 	hubFactory, err := armeventhub.NewClientFactory(e.subscription, cred, nil)
@@ -94,7 +93,7 @@ func (e *EventHubHelper) CreateEventHub(ctx context.Context, t *testing.T) {
 }
 
 func (e *EventHubHelper) DeleteEventHub(ctx context.Context, t *testing.T) {
-	cred, err := azidentity.NewClientSecretCredential(e.tenant, e.clientId, e.clientSecret, nil)
+	cred, err := azidentity.NewClientSecretCredential(e.tenant, e.clientID, e.clientSecret, nil)
 	assert.NoErrorf(t, err, "cannot create azure credentials - %s", err)
 	hubFactory, err := armeventhub.NewClientFactory(e.subscription, cred, nil)
 	assert.NoErrorf(t, err, "cannot create azure arm factory - %s", err)

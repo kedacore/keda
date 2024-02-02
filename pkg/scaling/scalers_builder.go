@@ -137,11 +137,11 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "azure-app-insights":
 		return scalers.NewAzureAppInsightsScaler(config)
 	case "azure-blob":
-		return scalers.NewAzureBlobScaler(ctx, config)
+		return scalers.NewAzureBlobScaler(config)
 	case "azure-data-explorer":
 		return scalers.NewAzureDataExplorerScaler(config)
 	case "azure-eventhub":
-		return scalers.NewAzureEventHubScaler(ctx, config)
+		return scalers.NewAzureEventHubScaler(config)
 	case "azure-log-analytics":
 		return scalers.NewAzureLogAnalyticsScaler(config)
 	case "azure-monitor":
@@ -149,7 +149,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "azure-pipelines":
 		return scalers.NewAzurePipelinesScaler(ctx, config)
 	case "azure-queue":
-		return scalers.NewAzureQueueScaler(ctx, config)
+		return scalers.NewAzureQueueScaler(config)
 	case "azure-servicebus":
 		return scalers.NewAzureServiceBusScaler(ctx, config)
 	case "cassandra":

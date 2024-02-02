@@ -66,7 +66,7 @@ type eventHubMetadata struct {
 }
 
 // NewAzureEventHubScaler creates a new scaler for eventHub
-func NewAzureEventHubScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
+func NewAzureEventHubScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -79,12 +79,12 @@ func NewAzureEventHubScaler(ctx context.Context, config *scalersconfig.ScalerCon
 		return nil, fmt.Errorf("unable to get eventhub metadata: %w", err)
 	}
 
-	eventHubClient, err := azure.GetEventHubClient(ctx, parsedMetadata.eventHubInfo, logger)
+	eventHubClient, err := azure.GetEventHubClient(parsedMetadata.eventHubInfo, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get eventhub client: %w", err)
 	}
 
-	blobStorageClient, err := azure.GetStorageBlobClient(ctx, logger, config.PodIdentity, parsedMetadata.eventHubInfo.StorageConnection, parsedMetadata.eventHubInfo.StorageAccountName, parsedMetadata.eventHubInfo.BlobStorageEndpoint)
+	blobStorageClient, err := azure.GetStorageBlobClient(logger, config.PodIdentity, parsedMetadata.eventHubInfo.StorageConnection, parsedMetadata.eventHubInfo.StorageAccountName, parsedMetadata.eventHubInfo.BlobStorageEndpoint)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get eventhub client: %w", err)
 	}

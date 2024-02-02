@@ -57,7 +57,7 @@ type azureQueueMetadata struct {
 }
 
 // NewAzureQueueScaler creates a new scaler for queue
-func NewAzureQueueScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
+func NewAzureQueueScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -70,7 +70,7 @@ func NewAzureQueueScaler(ctx context.Context, config *scalersconfig.ScalerConfig
 		return nil, fmt.Errorf("error parsing azure queue metadata: %w", err)
 	}
 
-	queueClient, err := azure.GetStorageQueueClient(ctx, logger, podIdentity, meta.connection, meta.accountName, meta.endpointSuffix, meta.queueName)
+	queueClient, err := azure.GetStorageQueueClient(logger, podIdentity, meta.connection, meta.accountName, meta.endpointSuffix, meta.queueName)
 	if err != nil {
 		return nil, fmt.Errorf("error creating azure blob client: %w", err)
 	}

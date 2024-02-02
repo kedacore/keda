@@ -17,7 +17,6 @@ limitations under the License.
 package azure
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -46,11 +45,6 @@ const (
 	TableEndpoint
 	// FileEndpoint storage type
 	FileEndpoint
-)
-
-const (
-	// Azure storage resource is "https://storage.azure.com/" in all cloud environments
-	storageResource = "https://storage.azure.com/"
 )
 
 var (
@@ -86,7 +80,7 @@ func ParseAzureStorageEndpointSuffix(metadata map[string]string, endpointType St
 }
 
 // GetStorageBlobClient returns storage blob client
-func GetStorageBlobClient(ctx context.Context, logger logr.Logger, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix string) (*azblob.Client, error) {
+func GetStorageBlobClient(logger logr.Logger, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix string) (*azblob.Client, error) {
 	switch podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		blobClient, err := azblob.NewClientFromConnectionString(connectionString, nil)
@@ -99,15 +93,15 @@ func GetStorageBlobClient(ctx context.Context, logger logr.Logger, podIdentity k
 		if chainedErr != nil {
 			return nil, chainedErr
 		}
-		srvUrl := fmt.Sprintf("https://%s.%s", accountName, endpointSuffix)
-		return azblob.NewClient(srvUrl, creds, nil)
+		srvURL := fmt.Sprintf("https://%s.%s", accountName, endpointSuffix)
+		return azblob.NewClient(srvURL, creds, nil)
 	}
 
 	return nil, fmt.Errorf("event hub does not support pod identity %v", podIdentity.Provider)
 }
 
 // GetStorageQueueClient returns storage queue client
-func GetStorageQueueClient(ctx context.Context, logger logr.Logger, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix, queueName string) (*azqueue.QueueClient, error) {
+func GetStorageQueueClient(logger logr.Logger, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix, queueName string) (*azqueue.QueueClient, error) {
 	switch podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		queueClient, err := azqueue.NewQueueClientFromConnectionString(connectionString, queueName, nil)
@@ -120,8 +114,8 @@ func GetStorageQueueClient(ctx context.Context, logger logr.Logger, podIdentity 
 		if chainedErr != nil {
 			return nil, chainedErr
 		}
-		srvUrl := fmt.Sprintf("https://%s.%s/%s", accountName, endpointSuffix, queueName)
-		return azqueue.NewQueueClient(srvUrl, creds, nil)
+		srvURL := fmt.Sprintf("https://%s.%s/%s", accountName, endpointSuffix, queueName)
+		return azqueue.NewQueueClient(srvURL, creds, nil)
 	}
 
 	return nil, fmt.Errorf("event hub does not support pod identity %v", podIdentity.Provider)

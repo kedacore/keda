@@ -50,7 +50,7 @@ type azureBlobScaler struct {
 }
 
 // NewAzureBlobScaler creates a new azureBlobScaler
-func NewAzureBlobScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
+func NewAzureBlobScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -63,7 +63,7 @@ func NewAzureBlobScaler(ctx context.Context, config *scalersconfig.ScalerConfig)
 		return nil, fmt.Errorf("error parsing azure blob metadata: %w", err)
 	}
 
-	blobClient, err := azure.GetStorageBlobClient(ctx, logger, podIdentity, meta.Connection, meta.AccountName, meta.EndpointSuffix)
+	blobClient, err := azure.GetStorageBlobClient(logger, podIdentity, meta.Connection, meta.AccountName, meta.EndpointSuffix)
 	if err != nil {
 		return nil, fmt.Errorf("error creating azure blob client: %w", err)
 	}
