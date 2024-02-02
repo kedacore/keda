@@ -27,7 +27,7 @@ jobs:
 
       - name: Update comment with the execution url
         if: ${{ startsWith(github.event.comment.body,'/run-e2e') && steps.checkUserMember.outputs.isTeamMember == 'true' }}
-        uses: peter-evans/create-or-update-comment@v2
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4
         with:
           comment-id: ${{ github.event.comment.id }}
           body: |
@@ -72,7 +72,7 @@ jobs:
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
-        uses: LouisBrunner/checks-action@v1.6.2
+        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
@@ -116,7 +116,7 @@ jobs:
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
-        uses: LouisBrunner/checks-action@v1.6.2
+        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
@@ -155,6 +155,7 @@ jobs:
           AZURE_RUN_AAD_POD_IDENTITY_TESTS: true
           AZURE_RUN_WORKLOAD_IDENTITY_TESTS: true
           GCP_RUN_IDENTITY_TESTS: true
+          ENABLE_OPENTELEMETRY : true
           E2E_IMAGE_TAG: ${{ needs.triage.outputs.image_tag }}
           TEST_CLUSTER_NAME: keda-e2e-cluster-pr
           COMMENT_BODY: ${{ github.event.comment.body }}
@@ -190,7 +191,7 @@ jobs:
           reaction: "+1"
 
       - name: Set status success
-        uses: LouisBrunner/checks-action@v1.6.2
+        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
         if: steps.test.outcome == 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -208,7 +209,7 @@ jobs:
           reaction: "-1"
 
       - name: Set status failure
-        uses: LouisBrunner/checks-action@v1.6.2
+        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
         if: steps.test.outcome != 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

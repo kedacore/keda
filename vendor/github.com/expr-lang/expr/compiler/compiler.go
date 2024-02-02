@@ -49,6 +49,7 @@ func Compile(tree *parser.Tree, config *conf.Config) (program *Program, err erro
 
 	program = NewProgram(
 		tree.Source,
+		tree.Node,
 		c.locations,
 		c.variables,
 		c.constants,
@@ -64,7 +65,7 @@ type compiler struct {
 	config         *conf.Config
 	locations      []file.Location
 	bytecode       []Opcode
-	variables      []any
+	variables      int
 	scopes         []scope
 	constants      []any
 	constantsIndex map[any]int
@@ -137,10 +138,9 @@ func (c *compiler) addConstant(constant any) int {
 }
 
 func (c *compiler) addVariable(name string) int {
-	c.variables = append(c.variables, nil)
-	p := len(c.variables) - 1
-	c.debugInfo[fmt.Sprintf("var_%d", p)] = name
-	return p
+	c.variables++
+	c.debugInfo[fmt.Sprintf("var_%d", c.variables-1)] = name
+	return c.variables - 1
 }
 
 // emitFunction adds builtin.Function.Func to the program.functions and emits call opcode.

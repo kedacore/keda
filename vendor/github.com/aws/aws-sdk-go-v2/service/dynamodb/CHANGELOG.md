@@ -1,3 +1,7 @@
+# v1.27.0 (2024-01-19)
+
+* **Feature**: This release adds support for including ApproximateCreationDateTimePrecision configurations in EnableKinesisStreamingDestination API, adds the same as an optional field in the response of DescribeKinesisStreamingDestination, and adds support for a new UpdateKinesisStreamingDestination API.
+
 # v1.26.9 (2024-01-17)
 
 * **Documentation**: Updating note for enabling streams for UpdateTable.

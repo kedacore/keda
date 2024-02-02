@@ -62,7 +62,7 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 
-- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Add OPENTELEMETRY flag in e2e test YAML ([#5375](https://github.com/kedacore/keda/issues/5375))
 
 ### Fixes
 

@@ -98,20 +98,14 @@ func (c *Config) Check() {
 			}
 		}
 	}
-	for fnName, t := range c.Types {
-		if kind(t.Type) == reflect.Func {
-			for _, b := range c.Builtins {
-				if b.Name == fnName {
-					panic(fmt.Errorf(`cannot override builtin %s(): use expr.DisableBuiltin("%s") to override`, b.Name, b.Name))
-				}
-			}
-		}
+}
+
+func (c *Config) IsOverridden(name string) bool {
+	if _, ok := c.Functions[name]; ok {
+		return true
 	}
-	for _, f := range c.Functions {
-		for _, b := range c.Builtins {
-			if b.Name == f.Name {
-				panic(fmt.Errorf(`cannot override builtin %s(); use expr.DisableBuiltin("%s") to override`, f.Name, f.Name))
-			}
-		}
+	if _, ok := c.Types[name]; ok {
+		return true
 	}
+	return false
 }
