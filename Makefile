@@ -6,7 +6,7 @@ SHELL           = /bin/bash
 # If E2E_IMAGE_TAG is defined, we are on pr e2e test and we have to use the new tag and append -test to the repository
 ifeq '${E2E_IMAGE_TAG}' ''
 VERSION ?= main
-# SUFIX here is intentional empty to not append nothing to the repository
+# SUFFIX here is intentional empty to not append nothing to the repository
 SUFFIX =
 endif
 
@@ -286,6 +286,10 @@ deploy: install ## Deploy controller to the K8s cluster specified in ~/.kube/con
 	if [ "$(GCP_RUN_IDENTITY_TESTS)" = true ]; then \
 		cd config/service_account && \
 		$(KUSTOMIZE) edit add annotation --force cloud.google.com/workload-identity-provider:${GCP_WI_PROVIDER} cloud.google.com/service-account-email:${TF_GCP_SA_EMAIL} cloud.google.com/gcloud-run-as-user:${NON_ROOT_USER_ID} cloud.google.com/injection-mode:direct; \
+	fi
+	if [ "$(ENABLE_OPENTELEMETRY)" = true ]; then \
+		cd config/e2e && \
+		$(KUSTOMIZE) edit add patch --path opentelemetry/patch_operator.yml --group apps --kind Deployment --name keda-operator --version v1; \
 	fi
 
 	cd config/webhooks && \

@@ -82,6 +82,8 @@ New deprecation(s):
 
 ### Other
 
+- **General**: Introduce ENABLE_OPENTELEMETRY in deploying/testing process  ([#5375](https://github.com/kedacore/keda/issues/5375))
+- **General**: Minor refactor to reduce copy/paste code in ScaledObject webhook ([#5397](https://github.com/kedacore/keda/issues/5397))
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ## v2.13.0

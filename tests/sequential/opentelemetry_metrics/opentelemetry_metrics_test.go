@@ -428,6 +428,11 @@ func TestOpenTelemetryMetrics(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
 
+	// If opentelemetry is not enabled, skip the test
+	if EnableOpentelemetry == "" || EnableOpentelemetry == StringFalse {
+		t.Skip("skipping opentelemetry test as EnableOpentelemetry is not set to true")
+	}
+
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
@@ -693,6 +698,7 @@ func testScalerMetricLatency(t *testing.T) {
 		var found bool
 		metrics := val.GetMetric()
 		for _, metric := range metrics {
+			t.Log("--- latency metric detail info ---", "metric", metric)
 			labels := metric.GetLabel()
 			for _, label := range labels {
 				if (*label.Name == labelScaledObject && *label.Value == scaledObjectName) ||
