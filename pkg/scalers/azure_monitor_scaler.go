@@ -22,7 +22,6 @@ import (
 	"strconv"
 	"strings"
 
-	az "github.com/Azure/go-autorest/autorest/azure"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -172,22 +171,6 @@ func parseAzureMonitorMetadata(config *scalersconfig.ScalerConfig, logger logr.L
 	meta.azureMonitorInfo.ClientPassword = clientPassword
 
 	meta.triggerIndex = config.TriggerIndex
-
-	azureResourceManagerEndpointProvider := func(env az.Environment) (string, error) {
-		return env.ResourceManagerEndpoint, nil
-	}
-	azureResourceManagerEndpoint, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, "azureResourceManagerEndpoint", azureResourceManagerEndpointProvider)
-	if err != nil {
-		return nil, err
-	}
-	meta.azureMonitorInfo.AzureResourceManagerEndpoint = azureResourceManagerEndpoint
-
-	activeDirectoryEndpoint, err := azure.ParseActiveDirectoryEndpoint(config.TriggerMetadata)
-	if err != nil {
-		return nil, err
-	}
-	meta.azureMonitorInfo.ActiveDirectoryEndpoint = activeDirectoryEndpoint
-
 	return &meta, nil
 }
 
@@ -235,7 +218,7 @@ func (s *azureMonitorScaler) GetMetricSpecForScaling(context.Context) []v2.Metri
 
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *azureMonitorScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	val, err := azure.GetAzureMetricValue(ctx, s.metadata.azureMonitorInfo, s.podIdentity)
+	val, err := azure.GetAzureMetricValue(ctx, s.logger, s.metadata.azureMonitorInfo, s.podIdentity)
 	if err != nil {
 		s.logger.Error(err, "error getting azure monitor metric")
 		return []external_metrics.ExternalMetricValue{}, false, err
