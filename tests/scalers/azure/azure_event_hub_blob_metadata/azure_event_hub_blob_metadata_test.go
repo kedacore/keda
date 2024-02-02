@@ -11,14 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	. "github.com/kedacore/keda/v2/tests/helper"
 	azurehelper "github.com/kedacore/keda/v2/tests/scalers/azure/helper"
 )
@@ -152,7 +150,10 @@ func TestScaler(t *testing.T) {
 
 	eventHubHelper := azurehelper.NewEventHubHelper(t)
 	eventHubHelper.CreateEventHub(ctx, t)
-	container := createContainer(t)
+	blobClient, err := azblob.NewClientFromConnectionString(storageConnectionString, nil)
+	assert.NoErrorf(t, err, "cannot create the queue client - %s", err)
+	_, err = blobClient.CreateContainer(ctx, checkpointContainerName, nil)
+	assert.NoErrorf(t, err, "cannot create the container - %s", err)
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
@@ -178,30 +179,8 @@ func TestScaler(t *testing.T) {
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
 	eventHubHelper.DeleteEventHub(ctx, t)
-	deleteContainer(t, container)
-}
-
-func createContainer(t *testing.T) azblob.ContainerURL {
-	// Create Blob Container
-	credential, endpoint, err := azure.ParseAzureStorageBlobConnection(
-		context.Background(), kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
-		storageConnectionString, "", "")
-	assert.NoErrorf(t, err, "cannot parse storage connection string - %s", err)
-
-	p := azblob.NewPipeline(credential, azblob.PipelineOptions{})
-	serviceURL := azblob.NewServiceURL(*endpoint, p)
-	containerURL := serviceURL.NewContainerURL(checkpointContainerName)
-
-	_, err = containerURL.Create(context.Background(), azblob.Metadata{}, azblob.PublicAccessNone)
-	assert.NoErrorf(t, err, "cannot create blob container - %s", err)
-
-	return containerURL
-}
-
-func deleteContainer(t *testing.T, containerURL azblob.ContainerURL) {
-	t.Log("--- cleaning up ---")
-	_, err := containerURL.Delete(context.Background(), azblob.ContainerAccessConditions{})
-	assert.NoErrorf(t, err, "cannot delete storage container - %s", err)
+	_, err = blobClient.DeleteContainer(ctx, checkpointContainerName, nil)
+	assert.NoErrorf(t, err, "cannot delete the container - %s", err)
 }
 
 func getTemplateData(eventHubHelper azurehelper.EventHubHelper) (templateData, []Template) {

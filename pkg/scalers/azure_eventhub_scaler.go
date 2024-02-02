@@ -21,12 +21,12 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
-	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"
 	az "github.com/Azure/go-autorest/autorest/azure"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -50,11 +50,11 @@ const (
 )
 
 type azureEventHubScaler struct {
-	metricType v2.MetricTargetType
-	metadata   *eventHubMetadata
-	client     *azeventhubs.ProducerClient
-	httpClient *http.Client
-	logger     logr.Logger
+	metricType        v2.MetricTargetType
+	metadata          *eventHubMetadata
+	eventHubClient    *azeventhubs.ProducerClient
+	blobStorageClient *azblob.Client
+	logger            logr.Logger
 }
 
 type eventHubMetadata struct {
@@ -79,16 +79,22 @@ func NewAzureEventHubScaler(ctx context.Context, config *scalersconfig.ScalerCon
 		return nil, fmt.Errorf("unable to get eventhub metadata: %w", err)
 	}
 
-	hub, err := azure.GetEventHubClient(ctx, parsedMetadata.eventHubInfo, logger)
+	eventHubClient, err := azure.GetEventHubClient(ctx, parsedMetadata.eventHubInfo, logger)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get eventhub client: %w", err)
+	}
+
+	blobStorageClient, err := azure.GetStorageBlobClient(ctx, logger, config.PodIdentity, parsedMetadata.eventHubInfo.StorageConnection, parsedMetadata.eventHubInfo.StorageAccountName, parsedMetadata.eventHubInfo.BlobStorageEndpoint)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get eventhub client: %w", err)
 	}
 
 	return &azureEventHubScaler{
-		metricType: metricType,
-		metadata:   parsedMetadata,
-		client:     hub,
-		logger:     logger,
+		metricType:        metricType,
+		metadata:          parsedMetadata,
+		eventHubClient:    eventHubClient,
+		blobStorageClient: blobStorageClient,
+		logger:            logger,
 	}, nil
 }
 
@@ -267,15 +273,13 @@ func (s *azureEventHubScaler) GetUnprocessedEventCountInPartition(ctx context.Co
 		return 0, azure.Checkpoint{}, nil
 	}
 
-	checkpoint, err = azure.GetCheckpointFromBlobStorage(ctx, s.metadata.eventHubInfo, partitionInfo.PartitionID)
+	checkpoint, err = azure.GetCheckpointFromBlobStorage(ctx, s.blobStorageClient, s.metadata.eventHubInfo, partitionInfo.PartitionID)
 	if err != nil {
 		// if blob not found return the total partition event count
 		err = errors.Unwrap(err)
-		if stErr, ok := err.(azblob.StorageError); ok {
-			if stErr.ServiceCode() == azblob.ServiceCodeBlobNotFound || stErr.ServiceCode() == azblob.ServiceCodeContainerNotFound {
-				s.logger.V(1).Error(err, fmt.Sprintf("Blob container : %s not found to use checkpoint strategy, getting unprocessed event count without checkpoint", s.metadata.eventHubInfo.BlobContainer))
-				return GetUnprocessedEventCountWithoutCheckpoint(partitionInfo), azure.Checkpoint{}, nil
-			}
+		if bloberror.HasCode(err, bloberror.BlobNotFound, bloberror.ContainerNotFound) {
+			s.logger.V(1).Error(err, fmt.Sprintf("Blob container : %s not found to use checkpoint strategy, getting unprocessed event count without checkpoint", s.metadata.eventHubInfo.BlobContainer))
+			return GetUnprocessedEventCountWithoutCheckpoint(partitionInfo), azure.Checkpoint{}, nil
 		}
 		return -1, azure.Checkpoint{}, fmt.Errorf("unable to get checkpoint from storage: %w", err)
 	}
@@ -345,8 +349,8 @@ func getTotalLagRelatedToPartitionAmount(unprocessedEventsCount int64, partition
 
 // Close closes Azure Event Hub Scaler
 func (s *azureEventHubScaler) Close(ctx context.Context) error {
-	if s.client != nil {
-		err := s.client.Close(ctx)
+	if s.eventHubClient != nil {
+		err := s.eventHubClient.Close(ctx)
 		if err != nil {
 			s.logger.Error(err, "error closing azure event hub client")
 			return err
@@ -359,7 +363,7 @@ func (s *azureEventHubScaler) Close(ctx context.Context) error {
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *azureEventHubScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	totalUnprocessedEventCount := int64(0)
-	runtimeInfo, err := s.client.GetEventHubProperties(ctx, nil)
+	runtimeInfo, err := s.eventHubClient.GetEventHubProperties(ctx, nil)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("unable to get runtimeInfo for metrics: %w", err)
 	}
@@ -368,7 +372,7 @@ func (s *azureEventHubScaler) GetMetricsAndActivity(ctx context.Context, metricN
 
 	for i := 0; i < len(partitionIDs); i++ {
 		partitionID := partitionIDs[i]
-		partitionRuntimeInfo, err := s.client.GetPartitionProperties(ctx, partitionID, nil)
+		partitionRuntimeInfo, err := s.eventHubClient.GetPartitionProperties(ctx, partitionID, nil)
 		if err != nil {
 			return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("unable to get partitionRuntimeInfo for metrics: %w", err)
 		}

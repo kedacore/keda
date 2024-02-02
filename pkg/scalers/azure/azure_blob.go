@@ -19,10 +19,9 @@ package azure
 import (
 	"context"
 
-	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
 	"github.com/gobwas/glob"
-
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 type BlobMetadata struct {
@@ -30,7 +29,7 @@ type BlobMetadata struct {
 	ActivationTargetBlobCount int64
 	BlobContainerName         string
 	BlobDelimiter             string
-	BlobPrefix                string
+	BlobPrefix                *string
 	Connection                string
 	AccountName               string
 	EndpointSuffix            string
@@ -39,39 +38,38 @@ type BlobMetadata struct {
 }
 
 // GetAzureBlobListLength returns the count of the blobs in blob container in int
-func GetAzureBlobListLength(ctx context.Context, podIdentity kedav1alpha1.AuthPodIdentity, meta *BlobMetadata) (int64, error) {
-	credential, endpoint, err := ParseAzureStorageBlobConnection(ctx, podIdentity, meta.Connection, meta.AccountName, meta.EndpointSuffix)
-	if err != nil {
-		return -1, err
-	}
-
-	listBlobsSegmentOptions := azblob.ListBlobsSegmentOptions{
-		Prefix: meta.BlobPrefix,
-	}
-	p := azblob.NewPipeline(credential, azblob.PipelineOptions{})
-	serviceURL := azblob.NewServiceURL(*endpoint, p)
-	containerURL := serviceURL.NewContainerURL(meta.BlobContainerName)
-
+func GetAzureBlobListLength(ctx context.Context, blobClient *azblob.Client, meta *BlobMetadata) (int64, error) {
+	containerClient := blobClient.ServiceClient().NewContainerClient(meta.BlobContainerName)
 	if meta.GlobPattern != nil {
-		props, err := containerURL.ListBlobsFlatSegment(ctx, azblob.Marker{}, azblob.ListBlobsSegmentOptions{})
-		if err != nil {
-			return -1, err
-		}
-
-		var count int64
 		globPattern := *meta.GlobPattern
-		for _, blobItem := range props.Segment.BlobItems {
-			if globPattern.Match(blobItem.Name) {
-				count++
+		var count int64
+		flatPager := containerClient.NewListBlobsFlatPager(&azblob.ListBlobsFlatOptions{
+			Prefix: meta.BlobPrefix,
+		})
+		for flatPager.More() {
+			resp, err := flatPager.NextPage(ctx)
+			if err != nil {
+				return -1, err
+			}
+			for _, blobItem := range resp.Segment.BlobItems {
+				if blobItem.Name != nil && globPattern.Match(*blobItem.Name) {
+					count++
+				}
 			}
 		}
 		return count, nil
 	}
+	hierarchyPager := containerClient.NewListBlobsHierarchyPager(meta.BlobDelimiter, &container.ListBlobsHierarchyOptions{
+		Prefix: meta.BlobPrefix,
+	})
+	var count int64
+	for hierarchyPager.More() {
+		resp, err := hierarchyPager.NextPage(ctx)
+		if err != nil {
+			return -1, err
+		}
+		count = count + int64(len(resp.Segment.BlobItems))
 
-	props, err := containerURL.ListBlobsHierarchySegment(ctx, azblob.Marker{}, meta.BlobDelimiter, listBlobsSegmentOptions)
-	if err != nil {
-		return -1, err
 	}
-
-	return int64(len(props.Segment.BlobItems)), nil
+	return count, nil
 }

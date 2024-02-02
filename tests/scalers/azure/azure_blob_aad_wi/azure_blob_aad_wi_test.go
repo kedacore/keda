@@ -11,14 +11,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
@@ -138,10 +136,14 @@ spec:
 
 func TestScaler(t *testing.T) {
 	// setup
+	ctx := context.Background()
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, connectionString, "TF_AZURE_STORAGE_CONNECTION_STRING env variable is required for azure blob test")
 
-	containerURL := createContainer(t)
+	blobClient, err := azblob.NewClientFromConnectionString(connectionString, nil)
+	assert.NoErrorf(t, err, "cannot create the queue client - %s", err)
+	_, err = blobClient.CreateContainer(ctx, containerName, nil)
+	assert.NoErrorf(t, err, "cannot create the container - %s", err)
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
@@ -153,32 +155,14 @@ func TestScaler(t *testing.T) {
 		"replica count should be 0 after 1 minute")
 
 	// test scaling
-	testActivation(t, kc, containerURL)
-	testScaleOut(t, kc, containerURL)
-	testScaleIn(t, kc, containerURL)
+	testActivation(ctx, t, kc, blobClient)
+	testScaleOut(ctx, t, kc, blobClient)
+	testScaleIn(ctx, t, kc, blobClient)
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
-	cleanupContainer(t, containerURL)
-}
-
-func createContainer(t *testing.T) azblob.ContainerURL {
-	// Create Blob Container
-	credential, endpoint, err := azure.ParseAzureStorageBlobConnection(
-		context.Background(), kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
-		connectionString, "", "")
-	assert.NoErrorf(t, err, "cannot parse storage connection string - %s", err)
-
-	p := azblob.NewPipeline(credential, azblob.PipelineOptions{})
-	serviceURL := azblob.NewServiceURL(*endpoint, p)
-	containerURL := serviceURL.NewContainerURL(containerName)
-
-	_, err = containerURL.Create(context.Background(), azblob.Metadata{}, azblob.PublicAccessContainer)
-	assert.NoErrorf(t, err, "cannot create blob container - %s", err)
-
-	domains := strings.Split(endpoint.Hostname(), ".")
-	accountName = domains[0]
-	return containerURL
+	_, err = blobClient.DeleteContainer(ctx, containerName, nil)
+	assert.NoErrorf(t, err, "cannot delete the container - %s", err)
 }
 
 func getTemplateData() (templateData, []Template) {
@@ -189,41 +173,34 @@ func getTemplateData() (templateData, []Template) {
 			SecretName:       secretName,
 			Connection:       base64ConnectionString,
 			DeploymentName:   deploymentName,
-			TriggerAuthName:  triggerAuthName,
 			ScaledObjectName: scaledObjectName,
 			ContainerName:    containerName,
-			AccountName:      accountName,
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
-			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }
 
-func testActivation(t *testing.T, kc *kubernetes.Clientset, containerURL azblob.ContainerURL) {
+func testActivation(ctx context.Context, t *testing.T, kc *kubernetes.Clientset, blobClient *azblob.Client) {
 	t.Log("--- testing activation ---")
-	addFiles(t, containerURL, 4)
+	addFiles(ctx, t, blobClient, 4)
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
 
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset, containerURL azblob.ContainerURL) {
+func testScaleOut(ctx context.Context, t *testing.T, kc *kubernetes.Clientset, blobClient *azblob.Client) {
 	t.Log("--- testing scale out ---")
-	addFiles(t, containerURL, 10)
+	addFiles(ctx, t, blobClient, 10)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
 		"replica count should be 2 after 1 minute")
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset, containerURL azblob.ContainerURL) {
+func testScaleIn(ctx context.Context, t *testing.T, kc *kubernetes.Clientset, blobClient *azblob.Client) {
 	t.Log("--- testing scale in ---")
 
 	for i := 0; i < 10; i++ {
 		blobName := fmt.Sprintf("blob-%d", i)
-		blobURL := containerURL.NewBlockBlobURL(blobName)
-
-		_, err := blobURL.Delete(context.Background(), azblob.DeleteSnapshotsOptionInclude,
-			azblob.BlobAccessConditions{})
-
+		_, err := blobClient.DeleteBlob(ctx, containerName, blobName, nil)
 		assert.NoErrorf(t, err, "cannot delete blob - %s", err)
 	}
 
@@ -231,23 +208,12 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, containerURL azblob.Con
 		"replica count should be 0 after 1 minute")
 }
 
-func addFiles(t *testing.T, containerURL azblob.ContainerURL, count int) {
+func addFiles(ctx context.Context, t *testing.T, blobClient *azblob.Client, count int) {
 	data := "Hello World!"
 
 	for i := 0; i < count; i++ {
 		blobName := fmt.Sprintf("blob-%d", i)
-		blobURL := containerURL.NewBlockBlobURL(blobName)
-
-		_, err := blobURL.Upload(context.Background(), strings.NewReader(data),
-			azblob.BlobHTTPHeaders{ContentType: "text/plain"}, azblob.Metadata{}, azblob.BlobAccessConditions{},
-			azblob.DefaultAccessTier, nil, azblob.ClientProvidedKeyOptions{}, azblob.ImmutabilityPolicyOptions{})
-
+		_, err := blobClient.UploadStream(ctx, containerName, blobName, strings.NewReader(data), nil)
 		assert.NoErrorf(t, err, "cannot upload blob - %s", err)
 	}
-}
-
-func cleanupContainer(t *testing.T, containerURL azblob.ContainerURL) {
-	t.Log("--- cleaning up ---")
-	_, err := containerURL.Delete(context.Background(), azblob.ContainerAccessConditions{})
-	assert.NoErrorf(t, err, "cannot delete storage container - %s", err)
 }
