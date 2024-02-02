@@ -10,9 +10,7 @@ import (
 	"context"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/http"
-	"net/url"
 	"time"
 
 	"go.uber.org/zap"
@@ -52,7 +50,7 @@ func (p *Protocol) doOnce(req *http.Request) (binding.Message, protocol.Result) 
 }
 
 func (p *Protocol) doWithRetry(ctx context.Context, params *cecontext.RetryParams, req *http.Request) (binding.Message, error) {
-	then := time.Now()
+	start := time.Now()
 	retry := 0
 	results := make([]protocol.Result, 0)
 
@@ -67,7 +65,7 @@ func (p *Protocol) doWithRetry(ctx context.Context, params *cecontext.RetryParam
 				cecontext.LoggerFrom(ctx).Warnw("could not close request body", zap.Error(err))
 			}
 		}()
-		body, err = ioutil.ReadAll(req.Body)
+		body, err = io.ReadAll(req.Body)
 		if err != nil {
 			panic(err)
 		}
@@ -79,51 +77,34 @@ func (p *Protocol) doWithRetry(ctx context.Context, params *cecontext.RetryParam
 
 		// Fast track common case.
 		if protocol.IsACK(result) {
-			return msg, NewRetriesResult(result, retry, then, results)
+			return msg, NewRetriesResult(result, retry, start, results)
 		}
 
-		// Try again?
-		//
-		// Make sure the error was something we should retry.
-
-		{
-			var uErr *url.Error
-			if errors.As(result, &uErr) {
-				goto DoBackoff
+		var httpResult *Result
+		if errors.As(result, &httpResult) {
+			sc := httpResult.StatusCode
+			if !p.isRetriableFunc(sc) {
+				cecontext.LoggerFrom(ctx).Debugw("status code not retryable, will not try again",
+					zap.Error(httpResult),
+					zap.Int("statusCode", sc))
+				return msg, NewRetriesResult(result, retry, start, results)
 			}
 		}
-
-		{
-			var httpResult *Result
-			if errors.As(result, &httpResult) {
-				sc := httpResult.StatusCode
-				if p.isRetriableFunc(sc) {
-					// retry!
-					goto DoBackoff
-				} else {
-					// Permanent error
-					cecontext.LoggerFrom(ctx).Debugw("status code not retryable, will not try again",
-						zap.Error(httpResult),
-						zap.Int("statusCode", sc))
-					return msg, NewRetriesResult(result, retry, then, results)
-				}
-			}
-		}
-
-	DoBackoff:
-		resetBody(req, body)
-
-		// Wait for the correct amount of backoff time.
 
 		// total tries = retry + 1
-		if err := params.Backoff(ctx, retry+1); err != nil {
+		if err = params.Backoff(ctx, retry+1); err != nil {
 			// do not try again.
 			cecontext.LoggerFrom(ctx).Debugw("backoff error, will not try again", zap.Error(err))
-			return msg, NewRetriesResult(result, retry, then, results)
+			return msg, NewRetriesResult(result, retry, start, results)
 		}
 
 		retry++
+		resetBody(req, body)
 		results = append(results, result)
+		if msg != nil {
+			// avoid leak, forget message, ignore error
+			_ = msg.Finish(nil)
+		}
 	}
 }
 
@@ -134,12 +115,12 @@ func resetBody(req *http.Request, body []byte) {
 		return
 	}
 
-	req.Body = ioutil.NopCloser(bytes.NewReader(body))
+	req.Body = io.NopCloser(bytes.NewReader(body))
 
 	// do not modify existing GetBody function
 	if req.GetBody == nil {
 		req.GetBody = func() (io.ReadCloser, error) {
-			return ioutil.NopCloser(bytes.NewReader(body)), nil
+			return io.NopCloser(bytes.NewReader(body)), nil
 		}
 	}
 }

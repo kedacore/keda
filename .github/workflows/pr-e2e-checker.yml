@@ -18,7 +18,7 @@ jobs:
     name: label checker
     runs-on: ubuntu-latest
     steps:
-      - uses: LouisBrunner/checks-action@v1.6.2
+      - uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
         name: Enqueue e2e
         id: create
         with:
@@ -27,7 +27,7 @@ jobs:
           name: ${{ env.E2E_CHECK_NAME }}
           status: queued
 
-      - uses: LouisBrunner/checks-action@v1.6.2
+      - uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
         name: Skip e2e
         if:  ${{ contains(github.event.pull_request.labels.*.name, env.SKIP_E2E_TAG )}}
         with:
