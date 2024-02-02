@@ -13,7 +13,9 @@ require (
 	github.com/Azure/azure-sdk-for-go v68.0.0+incompatible
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.9.1
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.5.1
+	github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs v1.0.3
 	github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.6.0
+	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/eventhub/armeventhub v1.2.0
 	github.com/Azure/azure-storage-blob-go v0.15.0
 	github.com/Azure/azure-storage-queue-go v0.0.0-20230927153703-648530c9aaf2
 	github.com/Azure/go-autorest/autorest v0.11.29
@@ -110,10 +112,6 @@ require (
 	sigs.k8s.io/custom-metrics-apiserver v1.28.1-0.20240103150633-c0d09c9b6dd1
 	sigs.k8s.io/kustomize/kustomize/v5 v5.3.0
 )
-
-require github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs v1.0.3
-
-require github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/eventhub/armeventhub v1.2.0
 
 replace (
 	// pin k8s.io to v0.28.5
