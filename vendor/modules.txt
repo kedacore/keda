@@ -90,9 +90,6 @@ github.com/Azure/azure-kusto-go/kusto/kql
 github.com/Azure/azure-kusto-go/kusto/trustedendpoints
 github.com/Azure/azure-kusto-go/kusto/unsafe
 github.com/Azure/azure-kusto-go/kusto/utils
-# github.com/Azure/azure-pipeline-go v0.2.3
-## explicit; go 1.14
-github.com/Azure/azure-pipeline-go/pipeline
 # github.com/Azure/azure-sdk-for-go v68.0.0+incompatible
 ## explicit
 github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault
@@ -168,13 +165,31 @@ github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/utils
 # github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/eventhub/armeventhub v1.2.0
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/eventhub/armeventhub
-# github.com/Azure/azure-storage-blob-go v0.15.0
-## explicit; go 1.15
-github.com/Azure/azure-storage-blob-go/azblob
-# github.com/Azure/azure-storage-queue-go v0.0.0-20230927153703-648530c9aaf2
-## explicit
-github.com/Azure/azure-storage-queue-go/azqueue
-# github.com/Azure/go-amqp v1.0.5
+# github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.2.1
+## explicit; go 1.18
+github.com/Azure/azure-sdk-for-go/sdk/storage/azblob
+github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/appendblob
+github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blob
+github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror
+github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blockblob
+github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container
+github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/internal/base
+github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/internal/exported
+github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/internal/generated
+github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/internal/shared
+github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/pageblob
+github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/sas
+github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/service
+# github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue v1.0.0
+## explicit; go 1.18
+github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue
+github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/internal/base
+github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/internal/exported
+github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/internal/generated
+github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/internal/shared
+github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/queueerror
+github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/sas
+# github.com/Azure/go-amqp v1.0.4
 ## explicit; go 1.18
 github.com/Azure/go-amqp
 github.com/Azure/go-amqp/internal/bitmap
@@ -1031,9 +1046,6 @@ github.com/mailru/easyjson/jwriter
 # github.com/mattn/go-colorable v0.1.13
 ## explicit; go 1.15
 github.com/mattn/go-colorable
-# github.com/mattn/go-ieproxy v0.0.11
-## explicit; go 1.17
-github.com/mattn/go-ieproxy
 # github.com/mattn/go-isatty v0.0.20
 ## explicit; go 1.15
 github.com/mattn/go-isatty

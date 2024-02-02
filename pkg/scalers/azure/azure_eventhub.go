@@ -45,7 +45,7 @@ func GetEventHubClient(ctx context.Context, info EventHubInfo, logger logr.Logge
 		return azeventhubs.NewProducerClient(info.Namespace, info.EventHubName, creds, nil)
 	}
 
-	return nil, fmt.Errorf("event hub does not support pod identity %v", info.PodIdentity)
+	return nil, fmt.Errorf("event hub does not support pod identity %v", info.PodIdentity.Provider)
 }
 
 // parseAzureEventHubConnectionString parses Event Hub connection string into (namespace, name)
