@@ -150,12 +150,11 @@ func TestScaler(t *testing.T) {
 	ctx := context.Background()
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, storageConnectionString, "TF_AZURE_STORAGE_CONNECTION_STRING env variable is required for azure eventhub test")
-	accountName = azurehelper.GetAccountFromStorageConnectionString(connectionString)
+	accountName = azurehelper.GetAccountFromStorageConnectionString(storageConnectionString)
 
 	eventHubHelper := azurehelper.NewEventHubHelper(t)
 	eventHubHelper.CreateEventHub(ctx, t)
 	blobClient, err := azblob.NewClientFromConnectionString(storageConnectionString, nil)
-	blobClient.ServiceClient().GetAccountInfo(ctx, nil)
 	assert.NoErrorf(t, err, "cannot create the queue client - %s", err)
 	_, err = blobClient.CreateContainer(ctx, checkpointContainerName, nil)
 	assert.NoErrorf(t, err, "cannot create the container - %s", err)
