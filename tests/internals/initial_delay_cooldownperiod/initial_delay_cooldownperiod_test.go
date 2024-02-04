@@ -1,0 +1,128 @@
+//go:build e2e
+// +build e2e
+
+package initial_delay_cooldownperiod_test
+
+import (
+	"fmt"
+	"strconv"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"k8s.io/client-go/kubernetes"
+
+	. "github.com/kedacore/keda/v2/tests/helper"
+)
+
+const (
+	testName = "initial-delay-cooldownperiod-test"
+)
+
+var (
+	testNamespace    = fmt.Sprintf("%s-ns", testName)
+	deploymentName   = fmt.Sprintf("%s-deployment", testName)
+	scaledObjectName = fmt.Sprintf("%s-so", testName)
+
+	now   = time.Now().Local()
+	start = (now.Minute() + 10) % 60
+	end   = (start + 1) % 60
+)
+
+type templateData struct {
+	TestNamespace    string
+	DeploymentName   string
+	ScaledObjectName string
+	StartMin         string
+	EndMin           string
+}
+
+const (
+	deploymentTemplate = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.DeploymentName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    deploy: {{.DeploymentName}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      pod: {{.DeploymentName}}
+  template:
+    metadata:
+      labels:
+        pod: {{.DeploymentName}}
+    spec:
+      containers:
+        - name: nginx
+          image: 'nginxinc/nginx-unprivileged'
+`
+
+	scaledObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectName}}
+  namespace: {{.TestNamespace}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  cooldownPeriod: 5
+  minReplicaCount: 0
+  initialDelayCooldownPeriod: 120
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 15
+  triggers:
+  - type: cron
+    metadata:
+      timezone: Etc/UTC
+      start: {{.StartMin}} * * * *
+      end: {{.EndMin}} * * * *
+      desiredReplicas: '10'
+`
+)
+
+func TestScaler(t *testing.T) {
+	// setup
+	t.Log("--- setting up ---")
+
+	// Create kubernetes resources
+	kc := GetKubernetesClient(t)
+	data, templates := getTemplateData()
+
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
+		"replica count should be 1 after 1 minute")
+
+	// test scaling
+	testScaleIn(t, kc)
+
+	// cleanup
+	DeleteKubernetesResources(t, testNamespace, data, templates)
+}
+
+func getTemplateData() (templateData, []Template) {
+	return templateData{
+			TestNamespace:    testNamespace,
+			DeploymentName:   deploymentName,
+			ScaledObjectName: scaledObjectName,
+			StartMin:         strconv.Itoa(start),
+			EndMin:           strconv.Itoa(end),
+		}, []Template{
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		}
+}
+
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+	t.Log("--- testing scale in ---")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 180, 1),
+		"replica count should be 0 after  2 minutes")
+}

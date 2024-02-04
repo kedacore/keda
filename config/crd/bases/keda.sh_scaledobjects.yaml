@@ -238,6 +238,9 @@ spec:
               idleReplicaCount:
                 format: int32
                 type: integer
+              initialDelayCooldownPeriod:
+                format: int32
+                type: integer
               maxReplicaCount:
                 format: int32
                 type: integer

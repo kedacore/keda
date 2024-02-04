@@ -100,6 +100,8 @@ type ScaledObjectSpec struct {
 	Triggers []ScaleTriggers `json:"triggers"`
 	// +optional
 	Fallback *Fallback `json:"fallback,omitempty"`
+	// +optional
+	InitialDelayCooldownPeriod int32 `json:"initialDelayCooldownPeriod,omitempty"`
 }
 
 // Fallback is the spec for fallback options
