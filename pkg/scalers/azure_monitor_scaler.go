@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery"
 	"github.com/go-logr/logr"
@@ -125,7 +126,9 @@ func CreateMetricsClient(config *scalersconfig.ScalerConfig, meta *azureMonitorM
 	if err != nil {
 		return nil, err
 	}
-	client, err := azquery.NewMetricsClient(creds, nil)
+	client, err := azquery.NewMetricsClient(creds, &azquery.MetricsClientOptions{
+		ClientOptions: policy.ClientOptions{Transport: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, true)},
+	})
 	if err != nil {
 		return nil, err
 	}
