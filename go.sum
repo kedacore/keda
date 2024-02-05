@@ -825,12 +825,12 @@ github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs v1.0.3 h1:zkAs5JZZm1
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs v1.0.3/go.mod h1:P39PnDHXbDhUV+BVw/8Nb7wQnM76jKUA7qx5T7eS+BU=
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.6.0 h1:Fhg/LkAagiLv9Xpw6r2knr19tn9t1TiQoJu5bOMzflc=
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.6.0/go.mod h1:7xwz/6tTwO9zMKni8/EozIMi0DTexFSm7YNE9HdD3cQ=
+github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery v1.1.0 h1:l+LIDHsZkFBiipIKhOn3m5/2MX4bwNwHYWyNulPaTis=
+github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery v1.1.0/go.mod h1:BjVVBLUiZ/qR2a4PAhjs8uGXNfStD0tSxgxCMfcVRT8=
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/eventhub/armeventhub v1.2.0 h1:+dggnR89/BIIlRlQ6d19dkhhdd/mQUiQbXhyHUFiB4w=
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/eventhub/armeventhub v1.2.0/go.mod h1:tI9M2Q/ueFi287QRkdrhb9LHm6ZnXgkVYLRC3FhYkPw=
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/internal/v2 v2.0.0 h1:PTFGRSlMKCQelWwxUyYVEUqseBJVemLyqWJjvMyt0do=
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/internal/v2 v2.0.0/go.mod h1:LRr2FzBTQlONPPa5HREE5+RjSCTXl7BwOvYOaWTqCaI=
-github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/monitor/armmonitor v0.11.0 h1:Ds0KRF8ggpEGg4Vo42oX1cIt/IfOhHWJBikksZbVxeg=
-github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/monitor/armmonitor v0.11.0/go.mod h1:jj6P8ybImR+5topJ+eH6fgcemSFBmU6/6bFF8KkwuDI=
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources v1.1.1 h1:7CBQ+Ei8SP2c6ydQTGCCrS35bDxgTMfoP2miAwK++OU=
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources v1.1.1/go.mod h1:c/wcGeGx5FUPbM/JltUYHZcKmigwyVLJlDq+4HdtXaw=
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage v1.5.0 h1:AifHbc4mg0x9zW52WOpKbsHaDKuRhlI7TVl47thgQ70=
