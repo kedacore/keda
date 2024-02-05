@@ -157,12 +157,12 @@ github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/exported
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/sas
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/sbauth
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/utils
+# github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery v1.1.0
+## explicit; go 1.18
+github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery
 # github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/eventhub/armeventhub v1.2.0
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/eventhub/armeventhub
-# github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/monitor/armmonitor v0.11.0
-## explicit; go 1.18
-github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/monitor/armmonitor
 # github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.0.1
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets
