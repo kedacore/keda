@@ -215,7 +215,7 @@ func TestScaler(t *testing.T) {
 func scaleMaxReplicasUp(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- scale up after MaxReplicas change ---")
 	data.MetricValue = 100
-	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	KubectlApplyWithTemplate(t, data, "scaledObjectTriggerTemplate", scaledObjectTriggerTemplate)
 
@@ -234,7 +234,7 @@ func scaleMaxReplicasUp(t *testing.T, kc *kubernetes.Clientset, data templateDat
 func scaleMaxReplicasDown(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- scale max replicas down ---")
 	data.MetricValue = 100
-	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	updatedMaxReplicas := maxReplicas + 10
 	data.MaxReplicas = strconv.Itoa(updatedMaxReplicas)
@@ -254,7 +254,7 @@ func scaleMaxReplicasDown(t *testing.T, kc *kubernetes.Clientset, data templateD
 func scaleMinReplicasUpFromZero(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- scale min replicas up from zero ---")
 	data.MetricValue = 0
-	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	KubectlApplyWithTemplate(t, data, "scaledObjectTriggerTemplate", scaledObjectTriggerTemplate)
 
@@ -273,7 +273,7 @@ func scaleMinReplicasUpFromZero(t *testing.T, kc *kubernetes.Clientset, data tem
 func scaleMinReplicasDownToZero(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- scale min replicas down to zero ---")
 	data.MetricValue = 0
-	KubectlApplyWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	// set minReplicas to higher number at first
 	updatedMinReplicas := minReplicas + 5

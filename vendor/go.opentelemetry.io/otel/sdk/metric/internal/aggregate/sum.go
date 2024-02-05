@@ -26,15 +26,20 @@ import (
 // valueMap is the storage for sums.
 type valueMap[N int64 | float64] struct {
 	sync.Mutex
+	limit  limiter[N]
 	values map[attribute.Set]N
 }
 
-func newValueMap[N int64 | float64]() *valueMap[N] {
-	return &valueMap[N]{values: make(map[attribute.Set]N)}
+func newValueMap[N int64 | float64](limit int) *valueMap[N] {
+	return &valueMap[N]{
+		limit:  newLimiter[N](limit),
+		values: make(map[attribute.Set]N),
+	}
 }
 
 func (s *valueMap[N]) measure(_ context.Context, value N, attr attribute.Set) {
 	s.Lock()
+	attr = s.limit.Attributes(attr, s.values)
 	s.values[attr] += value
 	s.Unlock()
 }
@@ -42,9 +47,9 @@ func (s *valueMap[N]) measure(_ context.Context, value N, attr attribute.Set) {
 // newSum returns an aggregator that summarizes a set of measurements as their
 // arithmetic sum. Each sum is scoped by attributes and the aggregation cycle
 // the measurements were made in.
-func newSum[N int64 | float64](monotonic bool) *sum[N] {
+func newSum[N int64 | float64](monotonic bool, limit int) *sum[N] {
 	return &sum[N]{
-		valueMap:  newValueMap[N](),
+		valueMap:  newValueMap[N](limit),
 		monotonic: monotonic,
 		start:     now(),
 	}
@@ -129,9 +134,9 @@ func (s *sum[N]) cumulative(dest *metricdata.Aggregation) int {
 // newPrecomputedSum returns an aggregator that summarizes a set of
 // observatrions as their arithmetic sum. Each sum is scoped by attributes and
 // the aggregation cycle the measurements were made in.
-func newPrecomputedSum[N int64 | float64](monotonic bool) *precomputedSum[N] {
+func newPrecomputedSum[N int64 | float64](monotonic bool, limit int) *precomputedSum[N] {
 	return &precomputedSum[N]{
-		valueMap:  newValueMap[N](),
+		valueMap:  newValueMap[N](limit),
 		monotonic: monotonic,
 		start:     now(),
 	}

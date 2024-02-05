@@ -150,7 +150,49 @@ spec:
   maxReplicaCount: 10
   fallback:
     replicas: 5
-    failureThreshold: 1
+    failureThreshold: 3
+  triggers:
+  - type: metrics-api
+    name: metrics_api
+    metadata:
+      url: "{{.MetricsServerEndpoint}}"
+      valueLocation: 'value'
+      method: "query"
+    authenticationRef:
+      name: {{.TriggerAuthName}}
+  - type: kubernetes-workload
+    name: kw_trig
+    metadata:
+      podSelector: pod=workload-test
+`
+
+	soComplexFormula = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObject}}
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.DeploymentName}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 5
+    scalingModifiers:
+      formula: "count([kw_trig,metrics_api],{#>1}) > 1 ? 5 : 0"
+      target: '2'
+      activationTarget: '2'
+  pollingInterval: 5
+  cooldownPeriod: 5
+  minReplicaCount: 0
+  maxReplicaCount: 10
+  fallback:
+    replicas: 5
+    failureThreshold: 3
   triggers:
   - type: metrics-api
     name: metrics_api
@@ -231,7 +273,7 @@ func TestScalingModifiers(t *testing.T) {
 
 	testFormula(t, kc, data)
 
-	templates = append(templates, Template{Name: "soFallbackTemplate", Config: soFallbackTemplate})
+	templates = append(templates, Template{Name: "soComplexFormula", Config: soComplexFormula})
 	DeleteKubernetesResources(t, namespace, data, templates)
 }
 
@@ -241,12 +283,12 @@ func testFormula(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	// formula simply adds 2 metrics together (0+2=2; activationTarget = 2 -> replicas should be 0)
 	KubectlApplyWithTemplate(t, data, "soFallbackTemplate", soFallbackTemplate)
 	data.MetricValue = 0
-	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 0, 60)
 
 	// formula simply adds 2 metrics together (3+2=5; target = 2 -> 5/2 replicas should be 3)
 	data.MetricValue = 3
-	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 
 	_, err := ExecuteCommand(fmt.Sprintf("kubectl scale deployment/depl-workload-base --replicas=2 -n %s", namespace))
 	assert.NoErrorf(t, err, "cannot scale workload deployment - %s", err)
@@ -256,7 +298,7 @@ func testFormula(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 3, 12, 10),
 		"replica count should be %d after 2 minutes", 3)
 
-	// apply fallback fallback
+	// apply fallback
 	_, err = ExecuteCommand(fmt.Sprintf("kubectl scale deployment/%s --replicas=0 -n %s", metricsServerDeploymentName, namespace))
 	assert.NoErrorf(t, err, "cannot scale metricsServer deployment - %s", err)
 
@@ -268,10 +310,28 @@ func testFormula(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	assert.NoErrorf(t, err, "cannot scale metricsServer deployment - %s", err)
 
 	data.MetricValue = 2
-	KubectlApplyWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
 	// 2+2=4; target = 2 -> 4/2 replicas should be 2
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 2, 12, 10),
 		"replica count should be %d after 2 minutes", 2)
+
+	data.MetricValue = 0
+	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+
+	// apply new SO
+	KubectlApplyWithTemplate(t, data, "soComplexFormula", soComplexFormula)
+
+	// formula has count() which needs atleast 2 metrics to have value over 1 to scale up
+	// now should be 0
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 0, 12, 10),
+		"replica count should be %d after 2 minutes", 0)
+
+	data.MetricValue = 2
+	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+
+	// 5//2 = 3
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 3, 12, 10),
+		"replica count should be %d after 2 minutes", 3)
 }
 
 func getTemplateData() (templateData, []Template) {

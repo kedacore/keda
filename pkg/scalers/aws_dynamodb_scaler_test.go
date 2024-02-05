@@ -11,6 +11,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
+
+	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 const (
@@ -167,7 +170,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			"targetValue":               "3",
 		},
 		authParams:    map[string]string{},
-		expectedError: ErrAwsNoAccessKey,
+		expectedError: awsutils.ErrAwsNoAccessKey,
 	},
 	{
 		name: "authentication provided",
@@ -188,12 +191,12 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			expressionAttributeNames:  map[string]string{"#yr": year},
 			expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 			targetValue:               3,
-			scalerIndex:               1,
+			triggerIndex:              1,
 			metricName:                "s1-aws-dynamodb-test",
-			awsAuthorization: awsAuthorizationMetadata{
-				awsAccessKeyID:     "none",
-				awsSecretAccessKey: "none",
-				podIdentityOwner:   true,
+			awsAuthorization: awsutils.AuthorizationMetadata{
+				AwsAccessKeyID:     "none",
+				AwsSecretAccessKey: "none",
+				PodIdentityOwner:   true,
 			},
 		},
 	},
@@ -218,12 +221,12 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			expressionAttributeNames:  map[string]string{"#yr": year},
 			expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 			targetValue:               3,
-			scalerIndex:               1,
+			triggerIndex:              1,
 			metricName:                "s1-aws-dynamodb-test",
-			awsAuthorization: awsAuthorizationMetadata{
-				awsAccessKeyID:     "none",
-				awsSecretAccessKey: "none",
-				podIdentityOwner:   true,
+			awsAuthorization: awsutils.AuthorizationMetadata{
+				AwsAccessKeyID:     "none",
+				AwsSecretAccessKey: "none",
+				PodIdentityOwner:   true,
 			},
 		},
 	},
@@ -248,12 +251,12 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 			activationTargetValue:     1,
 			targetValue:               3,
-			scalerIndex:               1,
+			triggerIndex:              1,
 			metricName:                "s1-aws-dynamodb-test",
-			awsAuthorization: awsAuthorizationMetadata{
-				awsAccessKeyID:     "none",
-				awsSecretAccessKey: "none",
-				podIdentityOwner:   true,
+			awsAuthorization: awsutils.AuthorizationMetadata{
+				AwsAccessKeyID:     "none",
+				AwsSecretAccessKey: "none",
+				PodIdentityOwner:   true,
 			},
 		},
 	},
@@ -278,12 +281,12 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			expressionAttributeNames:  map[string]string{"#yr": year},
 			expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 			targetValue:               3,
-			scalerIndex:               1,
+			triggerIndex:              1,
 			metricName:                "s1-aws-dynamodb-test",
-			awsAuthorization: awsAuthorizationMetadata{
-				awsAccessKeyID:     "none",
-				awsSecretAccessKey: "none",
-				podIdentityOwner:   true,
+			awsAuthorization: awsutils.AuthorizationMetadata{
+				AwsAccessKeyID:     "none",
+				AwsSecretAccessKey: "none",
+				PodIdentityOwner:   true,
 			},
 		},
 	},
@@ -292,11 +295,11 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 func TestParseDynamoMetadata(t *testing.T) {
 	for _, tc := range dynamoTestCases {
 		t.Run(tc.name, func(t *testing.T) {
-			metadata, err := parseAwsDynamoDBMetadata(&ScalerConfig{
+			metadata, err := parseAwsDynamoDBMetadata(&scalersconfig.ScalerConfig{
 				TriggerMetadata: tc.metadata,
 				AuthParams:      tc.authParams,
 				ResolvedEnv:     tc.resolvedEnv,
-				ScalerIndex:     1,
+				TriggerIndex:    1,
 			})
 			if tc.expectedError != nil {
 				assert.ErrorContains(t, err, tc.expectedError.Error())

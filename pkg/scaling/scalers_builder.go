@@ -27,6 +27,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/common/message"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/scalers"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache"
 	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
 )
@@ -45,14 +46,14 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 	for i, t := range withTriggers.Spec.Triggers {
 		triggerIndex, trigger := i, t
 
-		factory := func() (scalers.Scaler, *scalers.ScalerConfig, error) {
+		factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 			if podTemplateSpec != nil {
 				resolvedEnv, err = resolver.ResolveContainerEnv(ctx, h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace, h.secretsLister)
 				if err != nil {
 					return nil, nil, fmt.Errorf("error resolving secrets for ScaleTarget: %w", err)
 				}
 			}
-			config := &scalers.ScalerConfig{
+			config := &scalersconfig.ScalerConfig{
 				ScalableObjectName:      withTriggers.Name,
 				ScalableObjectNamespace: withTriggers.Namespace,
 				ScalableObjectType:      withTriggers.Kind,
@@ -62,12 +63,26 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 				ResolvedEnv:             resolvedEnv,
 				AuthParams:              make(map[string]string),
 				GlobalHTTPTimeout:       h.globalHTTPTimeout,
-				ScalerIndex:             triggerIndex,
+				TriggerIndex:            triggerIndex,
 				MetricType:              trigger.MetricType,
 				AsMetricSource:          asMetricSource,
+				TriggerUniqueKey:        fmt.Sprintf("%s-%s-%s-%d", withTriggers.Kind, withTriggers.Namespace, withTriggers.Name, triggerIndex),
 			}
 
 			authParams, podIdentity, err := resolver.ResolveAuthRefAndPodIdentity(ctx, h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace, h.secretsLister)
+			switch podIdentity.Provider {
+			case kedav1alpha1.PodIdentityProviderAzure:
+				// FIXME: Delete this for v2.15
+				logger.Info("WARNING: Azure AD Pod Identity has been archived (https://github.com/Azure/aad-pod-identity#-announcement) and will be removed from KEDA on v2.15")
+			case kedav1alpha1.PodIdentityProviderAwsKiam:
+				// FIXME: Delete this for v2.15
+				logger.Info("WARNING: AWS Kiam Identity has been abandoned (https://github.com/uswitch/kiam) and will be removed from KEDA on v2.15")
+			case kedav1alpha1.PodIdentityProviderAwsEKS:
+				// FIXME: Delete this for v3
+				logger.Info("WARNING: AWS EKS Identity has been deprecated in favor of AWS Identity and will be removed from KEDA on v3")
+			default:
+			}
+
 			if err != nil {
 				return nil, nil, err
 			}
@@ -77,10 +92,11 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 			return scaler, config, err
 		}
 
+		// nosemgrep: invalid-usage-of-modified-variable
 		scaler, config, err := factory()
 		if err != nil {
 			h.recorder.Event(withTriggers, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
-			logger.Error(err, "error resolving auth params", "scalerIndex", triggerIndex)
+			logger.Error(err, "error resolving auth params", "triggerIndex", triggerIndex)
 			if scaler != nil {
 				scaler.Close(ctx)
 			}
@@ -103,7 +119,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 }
 
 // buildScaler builds a scaler form input config and trigger type
-func buildScaler(ctx context.Context, client client.Client, triggerType string, config *scalers.ScalerConfig) (scalers.Scaler, error) {
+func buildScaler(ctx context.Context, client client.Client, triggerType string, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 	// TRIGGERS-START
 	switch triggerType {
 	case "activemq":
@@ -206,7 +222,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "openstack-metric":
 		return scalers.NewOpenstackMetricScaler(ctx, config)
 	case "openstack-swift":
-		return scalers.NewOpenstackSwiftScaler(ctx, config)
+		return scalers.NewOpenstackSwiftScaler(config)
 	case "postgresql":
 		return scalers.NewPostgreSQLScaler(config)
 	case "predictkube":

@@ -35,6 +35,8 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -70,7 +72,7 @@ type apacheKafkaMetadata struct {
 	// MSK
 	awsRegion        string
 	awsEndpoint      string
-	awsAuthorization awsAuthorizationMetadata
+	awsAuthorization awsutils.AuthorizationMetadata
 
 	// TLS
 	enableTLS   bool
@@ -79,7 +81,7 @@ type apacheKafkaMetadata struct {
 	keyPassword string
 	ca          string
 
-	scalerIndex int
+	triggerIndex int
 }
 
 const (
@@ -87,7 +89,7 @@ const (
 )
 
 // NewApacheKafkaScaler creates a new apacheKafkaScaler
-func NewApacheKafkaScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+func NewApacheKafkaScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -116,7 +118,7 @@ func NewApacheKafkaScaler(ctx context.Context, config *ScalerConfig) (Scaler, er
 	}, nil
 }
 
-func parseApacheKafkaAuthParams(config *ScalerConfig, meta *apacheKafkaMetadata) error {
+func parseApacheKafkaAuthParams(config *scalersconfig.ScalerConfig, meta *apacheKafkaMetadata) error {
 	meta.enableTLS = false
 	enableTLS := false
 	if val, ok := config.TriggerMetadata["tls"]; ok {
@@ -196,7 +198,7 @@ func parseApacheKafkaAuthParams(config *ScalerConfig, meta *apacheKafkaMetadata)
 			} else {
 				return errors.New("no awsRegion given")
 			}
-			auth, err := getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
+			auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 			if err != nil {
 				return err
 			}
@@ -226,7 +228,7 @@ func parseApacheKafkaAuthParams(config *ScalerConfig, meta *apacheKafkaMetadata)
 	return nil
 }
 
-func parseApacheKafkaMetadata(config *ScalerConfig, logger logr.Logger) (apacheKafkaMetadata, error) {
+func parseApacheKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (apacheKafkaMetadata, error) {
 	meta := apacheKafkaMetadata{}
 	switch {
 	case config.TriggerMetadata["bootstrapServersFromEnv"] != "":
@@ -356,7 +358,7 @@ func parseApacheKafkaMetadata(config *ScalerConfig, logger logr.Logger) (apacheK
 		}
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return meta, nil
 }
 
@@ -394,7 +396,7 @@ func getApacheKafkaClient(ctx context.Context, metadata apacheKafkaMetadata, log
 	case KafkaSASLTypeOAuthbearer:
 		return nil, errors.New("SASL/OAUTHBEARER is not implemented yet")
 	case KafkaSASLTypeMskIam:
-		cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+		cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
 		if err != nil {
 			return nil, err
 		}
@@ -426,7 +428,7 @@ func (s *apacheKafkaScaler) getTopicPartitions(ctx context.Context) (map[string]
 	if err != nil {
 		return nil, fmt.Errorf("error getting metadata: %w", err)
 	}
-	s.logger.V(4).Info(fmt.Sprintf("Listed topics %v", metadata.Topics))
+	s.logger.V(1).Info(fmt.Sprintf("Listed topics %v", metadata.Topics))
 
 	if len(s.metadata.topic) == 0 {
 		// in case of empty topic name, we will get all topics that the consumer group is subscribed to
@@ -581,7 +583,7 @@ func (s *apacheKafkaScaler) GetMetricSpecForScaling(context.Context) []v2.Metric
 
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(metricName)),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(metricName)),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.lagThreshold),
 	}

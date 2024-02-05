@@ -310,6 +310,7 @@ func guessType(scanner *sc.Scanner, raw string, allowSlice bool) *Argument {
 		// We'll cross that bridge when we get there.
 
 		// look ahead till we can figure out if this is a map or a slice
+		hint = peekNoSpace(subScanner)
 		firstElemType := guessType(subScanner, subRaw, false)
 		if firstElemType.Type == StringType {
 			// might be a map or slice, parse the string and check for colon
@@ -317,8 +318,9 @@ func guessType(scanner *sc.Scanner, raw string, allowSlice bool) *Argument {
 			var keyVal string // just ignore this
 			(&Argument{Type: StringType}).parseString(subScanner, raw, reflect.Indirect(reflect.ValueOf(&keyVal)))
 
-			if subScanner.Scan() == ':' {
+			if token := subScanner.Scan(); token == ':' || hint == '}' {
 				// it's got a string followed by a colon -- it's a map
+				// or an empty map in case of {}
 				return &Argument{
 					Type:     MapType,
 					ItemType: &Argument{Type: AnyType},

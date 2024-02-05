@@ -12,6 +12,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -51,7 +52,7 @@ type stanMetadata struct {
 	subject                string
 	lagThreshold           int64
 	activationLagThreshold int64
-	scalerIndex            int
+	triggerIndex           int
 }
 
 const (
@@ -62,7 +63,7 @@ const (
 )
 
 // NewStanScaler creates a new stanScaler
-func NewStanScaler(config *ScalerConfig) (Scaler, error) {
+func NewStanScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -82,7 +83,7 @@ func NewStanScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
+func parseStanMetadata(config *scalersconfig.ScalerConfig) (stanMetadata, error) {
 	meta := stanMetadata{}
 
 	if config.TriggerMetadata["queueGroup"] == "" {
@@ -119,7 +120,7 @@ func parseStanMetadata(config *ScalerConfig) (stanMetadata, error) {
 		meta.activationLagThreshold = activationTargetQueryValue
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	var err error
 	useHTTPS := false
@@ -191,7 +192,7 @@ func (s *stanScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	metricName := kedautil.NormalizeString(fmt.Sprintf("stan-%s", s.metadata.subject))
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.lagThreshold),
 	}
@@ -248,5 +249,8 @@ func (s *stanScaler) GetMetricsAndActivity(ctx context.Context, metricName strin
 
 // Nothing to close here.
 func (s *stanScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }

@@ -14,6 +14,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -46,7 +47,7 @@ type huaweiCloudeyeMetadata struct {
 
 	huaweiAuthorization huaweiAuthorizationMetadata
 
-	scalerIndex int
+	triggerIndex int
 }
 
 type huaweiAuthorizationMetadata struct {
@@ -71,7 +72,7 @@ type huaweiAuthorizationMetadata struct {
 }
 
 // NewHuaweiCloudeyeScaler creates a new huaweiCloudeyeScaler
-func NewHuaweiCloudeyeScaler(config *ScalerConfig) (Scaler, error) {
+func NewHuaweiCloudeyeScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -91,7 +92,7 @@ func NewHuaweiCloudeyeScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseHuaweiCloudeyeMetadata(config *ScalerConfig, logger logr.Logger) (*huaweiCloudeyeMetadata, error) {
+func parseHuaweiCloudeyeMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*huaweiCloudeyeMetadata, error) {
 	meta := huaweiCloudeyeMetadata{}
 
 	meta.metricCollectionTime = defaultCloudeyeMetricCollectionTime
@@ -182,7 +183,7 @@ func parseHuaweiCloudeyeMetadata(config *ScalerConfig, logger logr.Logger) (*hua
 	}
 
 	meta.huaweiAuthorization = auth
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
@@ -255,7 +256,7 @@ func (s *huaweiCloudeyeScaler) GetMetricsAndActivity(_ context.Context, metricNa
 func (s *huaweiCloudeyeScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("huawei-cloudeye-%s", s.metadata.metricsName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("huawei-cloudeye-%s", s.metadata.metricsName))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.targetMetricValue),
 	}

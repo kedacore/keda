@@ -2,6 +2,8 @@ package scalers
 
 import (
 	"testing"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 var testMySQLResolvedEnv = map[string]string{
@@ -18,7 +20,7 @@ type parseMySQLMetadataTestData struct {
 
 type mySQLMetricIdentifier struct {
 	metadataTestData *parseMySQLMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	metricName       string
 }
 
@@ -61,13 +63,13 @@ var testMySQLMetadata = []parseMySQLMetadataTestData{
 }
 
 var mySQLMetricIdentifiers = []mySQLMetricIdentifier{
-	{metadataTestData: &testMySQLMetadata[1], scalerIndex: 0, metricName: "s0-mysql-stats_db"},
-	{metadataTestData: &testMySQLMetadata[2], scalerIndex: 1, metricName: "s1-mysql-test_dbname"},
+	{metadataTestData: &testMySQLMetadata[1], triggerIndex: 0, metricName: "s0-mysql-stats_db"},
+	{metadataTestData: &testMySQLMetadata[2], triggerIndex: 1, metricName: "s1-mysql-test_dbname"},
 }
 
 func TestParseMySQLMetadata(t *testing.T) {
 	for _, testData := range testMySQLMetadata {
-		_, err := parseMySQLMetadata(&ScalerConfig{ResolvedEnv: testMySQLResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		_, err := parseMySQLMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testMySQLResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.raisesError {
 			t.Error("Expected success but got error", err)
 		}
@@ -80,7 +82,7 @@ func TestParseMySQLMetadata(t *testing.T) {
 func TestMetadataToConnectionStrUseConnStr(t *testing.T) {
 	// Use existing ConnStr
 	testMeta := map[string]string{"query": "query", "queryValue": "12", "connectionStringFromEnv": "MYSQL_CONN_STR"}
-	meta, _ := parseMySQLMetadata(&ScalerConfig{ResolvedEnv: testMySQLResolvedEnv, TriggerMetadata: testMeta, AuthParams: map[string]string{}})
+	meta, _ := parseMySQLMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testMySQLResolvedEnv, TriggerMetadata: testMeta, AuthParams: map[string]string{}})
 	connStr := metadataToConnectionStr(meta)
 	if connStr != testMySQLResolvedEnv["MYSQL_CONN_STR"] {
 		t.Error("Expected success")
@@ -91,7 +93,7 @@ func TestMetadataToConnectionStrBuildNew(t *testing.T) {
 	// Build new ConnStr
 	expected := "test_username:pass@tcp(test_host:test_port)/test_dbname"
 	testMeta := map[string]string{"query": "query", "queryValue": "12", "host": "test_host", "port": "test_port", "username": "test_username", "passwordFromEnv": "MYSQL_PASSWORD", "dbName": "test_dbname"}
-	meta, _ := parseMySQLMetadata(&ScalerConfig{ResolvedEnv: testMySQLResolvedEnv, TriggerMetadata: testMeta, AuthParams: map[string]string{}})
+	meta, _ := parseMySQLMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testMySQLResolvedEnv, TriggerMetadata: testMeta, AuthParams: map[string]string{}})
 	connStr := metadataToConnectionStr(meta)
 	if connStr != expected {
 		t.Errorf("%s != %s", expected, connStr)
@@ -100,7 +102,7 @@ func TestMetadataToConnectionStrBuildNew(t *testing.T) {
 
 func TestMySQLGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range mySQLMetricIdentifiers {
-		meta, err := parseMySQLMetadata(&ScalerConfig{ResolvedEnv: testData.metadataTestData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil, ScalerIndex: testData.scalerIndex})
+		meta, err := parseMySQLMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.metadataTestData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

@@ -18,9 +18,9 @@ jobs:
     runs-on: ${{ inputs.runs-on }}
     steps:
       - name: Setup Go
-        uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4
+        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5
         with:
-          go-version: "1.20"
+          go-version: "1.21"
 
       - name: Install prerequisites
         run: |
@@ -44,9 +44,9 @@ jobs:
         run: make smoke-test
 
       - name: Upload test logs
-        uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3
+        uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4
         if: ${{ always() }}
         with:
-          name: smoke-test-logs ${{ inputs.kubernetesVersion }}
-          path: '${{ github.workspace }}/tests/**/*.log'
+          name: smoke-test-logs ${{ inputs.runs-on }}-${{ inputs.kubernetesVersion }}
+          path: "${{ github.workspace }}/**/*.log"
           if-no-files-found: ignore

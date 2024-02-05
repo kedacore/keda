@@ -16,6 +16,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -37,7 +38,7 @@ type activeMQMetadata struct {
 	activationTargetQueueSize int64
 	corsHeader                string
 	metricName                string
-	scalerIndex               int
+	triggerIndex              int
 }
 
 type activeMQMonitoring struct {
@@ -53,7 +54,7 @@ const (
 )
 
 // NewActiveMQScaler creates a new activeMQ Scaler
-func NewActiveMQScaler(config *ScalerConfig) (Scaler, error) {
+func NewActiveMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -73,7 +74,7 @@ func NewActiveMQScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseActiveMQMetadata(config *ScalerConfig) (*activeMQMetadata, error) {
+func parseActiveMQMetadata(config *scalersconfig.ScalerConfig) (*activeMQMetadata, error) {
 	meta := activeMQMetadata{}
 
 	if val, ok := config.TriggerMetadata["restAPITemplate"]; ok && val != "" {
@@ -159,9 +160,9 @@ func parseActiveMQMetadata(config *ScalerConfig) (*activeMQMetadata, error) {
 		return nil, fmt.Errorf("password cannot be empty")
 	}
 
-	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("activemq-%s", meta.destinationName)))
+	meta.metricName = GenerateMetricNameWithIndex(config.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("activemq-%s", meta.destinationName)))
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	return &meta, nil
 }
@@ -280,5 +281,8 @@ func (s *activeMQScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 }
 
 func (s *activeMQScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }

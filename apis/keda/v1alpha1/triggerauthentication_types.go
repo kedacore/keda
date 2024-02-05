@@ -89,6 +89,12 @@ type TriggerAuthenticationSpec struct {
 
 	// +optional
 	AzureKeyVault *AzureKeyVault `json:"azureKeyVault,omitempty"`
+
+	// +optional
+	GCPSecretManager *GCPSecretManager `json:"gcpSecretManager,omitempty"`
+
+	// +optional
+	AwsSecretManager *AwsSecretManager `json:"awsSecretManager,omitempty"`
 }
 
 // TriggerAuthenticationStatus defines the observed state of TriggerAuthentication
@@ -118,9 +124,9 @@ const (
 	PodIdentityProviderAzure         PodIdentityProvider = "azure"
 	PodIdentityProviderAzureWorkload PodIdentityProvider = "azure-workload"
 	PodIdentityProviderGCP           PodIdentityProvider = "gcp"
-	PodIdentityProviderSpiffe        PodIdentityProvider = "spiffe"
 	PodIdentityProviderAwsEKS        PodIdentityProvider = "aws-eks"
 	PodIdentityProviderAwsKiam       PodIdentityProvider = "aws-kiam"
+	PodIdentityProviderAws           PodIdentityProvider = "aws"
 )
 
 // PodIdentityAnnotationEKS specifies aws role arn for aws-eks Identity Provider
@@ -133,9 +139,17 @@ const (
 // AuthPodIdentity allows users to select the platform native identity
 // mechanism
 type AuthPodIdentity struct {
+	// +kubebuilder:validation:Enum=azure;azure-workload;gcp;aws;aws-eks;aws-kiam
 	Provider PodIdentityProvider `json:"provider"`
 	// +optional
 	IdentityID *string `json:"identityId"`
+	// +optional
+	// RoleArn sets the AWS RoleArn to be used. Mutually exclusive with IdentityOwner
+	RoleArn string `json:"roleArn"`
+	// +kubebuilder:validation:Enum=keda;workload
+	// +optional
+	// IdentityOwner configures which identity has to be used during auto discovery, keda or the scaled workload. Mutually exclusive with roleArn
+	IdentityOwner *string `json:"identityOwner"`
 }
 
 func (a *AuthPodIdentity) GetIdentityID() string {
@@ -143,6 +157,13 @@ func (a *AuthPodIdentity) GetIdentityID() string {
 		return ""
 	}
 	return *a.IdentityID
+}
+
+func (a *AuthPodIdentity) IsWorkloadIdentityOwner() bool {
+	if a.IdentityOwner == nil {
+		return false
+	}
+	return *a.IdentityOwner == workloadString
 }
 
 // AuthConfigMapTargetRef is used to authenticate using a reference to a config map
@@ -280,6 +301,60 @@ type AzureKeyVaultCloudInfo struct {
 	KeyVaultResourceURL string `json:"keyVaultResourceURL"`
 	// +optional
 	ActiveDirectoryEndpoint string `json:"activeDirectoryEndpoint"`
+}
+
+type GCPSecretManager struct {
+	Secrets []GCPSecretManagerSecret `json:"secrets"`
+	// +optional
+	Credentials *GCPCredentials `json:"credentials"`
+	// +optional
+	PodIdentity *AuthPodIdentity `json:"podIdentity"`
+}
+
+type GCPCredentials struct {
+	ClientSecret GCPSecretmanagerClientSecret `json:"clientSecret"`
+}
+
+type GCPSecretmanagerClientSecret struct {
+	ValueFrom ValueFromSecret `json:"valueFrom"`
+}
+
+type GCPSecretManagerSecret struct {
+	Parameter string `json:"parameter"`
+	ID        string `json:"id"`
+	// +optional
+	Version string `json:"version,omitempty"`
+}
+
+// AwsSecretManager is used to authenticate using AwsSecretManager
+type AwsSecretManager struct {
+	Secrets []AwsSecretManagerSecret `json:"secrets"`
+	// +optional
+	Credentials *AwsSecretManagerCredentials `json:"credentials"`
+	// +optional
+	PodIdentity *AuthPodIdentity `json:"podIdentity"`
+	// +optional
+	Region string `json:"region,omitempty"`
+}
+
+type AwsSecretManagerCredentials struct {
+	AccessKey       *AwsSecretManagerValue `json:"accessKey"`
+	AccessSecretKey *AwsSecretManagerValue `json:"accessSecretKey"`
+	// +optional
+	AccessToken *AwsSecretManagerValue `json:"accessToken,omitempty"`
+}
+
+type AwsSecretManagerValue struct {
+	ValueFrom ValueFromSecret `json:"valueFrom"`
+}
+
+type AwsSecretManagerSecret struct {
+	Parameter string `json:"parameter"`
+	Name      string `json:"name"`
+	// +optional
+	VersionID string `json:"versionId,omitempty"`
+	// +optional
+	VersionStage string `json:"versionStage,omitempty"`
 }
 
 func init() {

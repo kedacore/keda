@@ -10,6 +10,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 type metricsAPIMetadataTestData struct {
@@ -77,7 +79,7 @@ var testMetricsAPIAuthMetadata = []metricAPIAuthMetadataTestData{
 
 func TestParseMetricsAPIMetadata(t *testing.T) {
 	for _, testData := range testMetricsAPIMetadata {
-		_, err := parseMetricsAPIMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: map[string]string{}})
+		_, err := parseMetricsAPIMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: map[string]string{}})
 		if err != nil && !testData.raisesError {
 			t.Error("Expected success but got error", err)
 		}
@@ -89,23 +91,23 @@ func TestParseMetricsAPIMetadata(t *testing.T) {
 
 type metricsAPIMetricIdentifier struct {
 	metadataTestData *metricsAPIMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
 var metricsAPIMetricIdentifiers = []metricsAPIMetricIdentifier{
-	{metadataTestData: &testMetricsAPIMetadata[1], scalerIndex: 1, name: "s1-metric-api-metric-test"},
+	{metadataTestData: &testMetricsAPIMetadata[1], triggerIndex: 1, name: "s1-metric-api-metric-test"},
 }
 
 func TestMetricsAPIGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range metricsAPIMetricIdentifiers {
 		s, err := NewMetricsAPIScaler(
-			&ScalerConfig{
+			&scalersconfig.ScalerConfig{
 				ResolvedEnv:       map[string]string{},
 				TriggerMetadata:   testData.metadataTestData.metadata,
 				AuthParams:        map[string]string{},
 				GlobalHTTPTimeout: 3000 * time.Millisecond,
-				ScalerIndex:       testData.scalerIndex,
+				TriggerIndex:      testData.triggerIndex,
 			},
 		)
 		if err != nil {
@@ -162,7 +164,7 @@ func TestGetValueFromResponse(t *testing.T) {
 
 func TestMetricAPIScalerAuthParams(t *testing.T) {
 	for _, testData := range testMetricsAPIAuthMetadata {
-		meta, err := parseMetricsAPIMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		meta, err := parseMetricsAPIMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -208,7 +210,7 @@ func TestBearerAuth(t *testing.T) {
 	}
 
 	s, err := NewMetricsAPIScaler(
-		&ScalerConfig{
+		&scalersconfig.ScalerConfig{
 			ResolvedEnv:       map[string]string{},
 			TriggerMetadata:   metadata,
 			AuthParams:        authentication,
@@ -243,8 +245,8 @@ func TestGetMetricValueErrorMessage(t *testing.T) {
 
 	httpClient := http.Client{Transport: &mockHTTPRoundTripper}
 	s := metricsAPIScaler{
-		metadata: &metricsAPIScalerMetadata{url: "http://dummy:1230/api/v1/"},
-		client:   &httpClient,
+		metadata:   &metricsAPIScalerMetadata{url: "http://dummy:1230/api/v1/"},
+		httpClient: &httpClient,
 	}
 
 	_, err := s.getMetricValue(context.TODO())

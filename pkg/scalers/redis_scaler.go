@@ -13,6 +13,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -67,11 +68,11 @@ type redisMetadata struct {
 	listName             string
 	databaseIndex        int
 	connectionInfo       redisConnectionInfo
-	scalerIndex          int
+	triggerIndex         int
 }
 
 // NewRedisScaler creates a new redisScaler
-func NewRedisScaler(ctx context.Context, isClustered, isSentinel bool, config *ScalerConfig) (Scaler, error) {
+func NewRedisScaler(ctx context.Context, isClustered, isSentinel bool, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	luaScript := `
 		local listName = KEYS[1]
 		local listType = redis.call('type', listName).ok
@@ -192,7 +193,7 @@ func createRedisScalerWithClient(client *redis.Client, meta *redisMetadata, scri
 	}
 }
 
-func parseTLSConfigIntoConnectionInfo(config *ScalerConfig, connInfo *redisConnectionInfo) error {
+func parseTLSConfigIntoConnectionInfo(config *scalersconfig.ScalerConfig, connInfo *redisConnectionInfo) error {
 	enableTLS := defaultEnableTLS
 	if val, ok := config.TriggerMetadata["enableTLS"]; ok {
 		tls, err := strconv.ParseBool(val)
@@ -248,7 +249,7 @@ func parseTLSConfigIntoConnectionInfo(config *ScalerConfig, connInfo *redisConne
 	return nil
 }
 
-func parseRedisMetadata(config *ScalerConfig, parserFn redisAddressParser) (*redisMetadata, error) {
+func parseRedisMetadata(config *scalersconfig.ScalerConfig, parserFn redisAddressParser) (*redisMetadata, error) {
 	connInfo, err := parserFn(config.TriggerMetadata, config.ResolvedEnv, config.AuthParams)
 	if err != nil {
 		return nil, err
@@ -294,7 +295,7 @@ func parseRedisMetadata(config *ScalerConfig, parserFn redisAddressParser) (*red
 		}
 		meta.databaseIndex = int(dbIndex)
 	}
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
@@ -307,7 +308,7 @@ func (s *redisScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	metricName := util.NormalizeString(fmt.Sprintf("redis-%s", s.metadata.listName))
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.listLength),
 	}

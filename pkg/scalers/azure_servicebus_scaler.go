@@ -30,6 +30,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -65,11 +66,11 @@ type azureServiceBusMetadata struct {
 	useRegex                bool
 	entityNameRegex         *regexp.Regexp
 	operation               string
-	scalerIndex             int
+	triggerIndex            int
 }
 
 // NewAzureServiceBusScaler creates a new AzureServiceBusScaler
-func NewAzureServiceBusScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+func NewAzureServiceBusScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -92,7 +93,7 @@ func NewAzureServiceBusScaler(ctx context.Context, config *ScalerConfig) (Scaler
 }
 
 // Creates an azureServiceBusMetadata struct from input metadata/env variables
-func parseAzureServiceBusMetadata(config *ScalerConfig, logger logr.Logger) (*azureServiceBusMetadata, error) {
+func parseAzureServiceBusMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*azureServiceBusMetadata, error) {
 	meta := azureServiceBusMetadata{}
 	meta.entityType = none
 	meta.targetLength = defaultTargetMessageCount
@@ -217,7 +218,7 @@ func parseAzureServiceBusMetadata(config *ScalerConfig, logger logr.Logger) (*az
 		return nil, fmt.Errorf("azure service bus doesn't support pod identity %s", config.PodIdentity.Provider)
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	return &meta, nil
 }
@@ -246,7 +247,7 @@ func (s *azureServiceBusScaler) GetMetricSpecForScaling(context.Context) []v2.Me
 
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-servicebus-%s", metricName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-servicebus-%s", metricName))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.targetLength),
 	}

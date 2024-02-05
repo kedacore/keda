@@ -11,6 +11,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -29,11 +30,11 @@ type influxDBMetadata struct {
 	unsafeSsl                bool
 	thresholdValue           float64
 	activationThresholdValue float64
-	scalerIndex              int
+	triggerIndex             int
 }
 
 // NewInfluxDBScaler creates a new influx db scaler
-func NewInfluxDBScaler(config *ScalerConfig) (Scaler, error) {
+func NewInfluxDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -61,7 +62,7 @@ func NewInfluxDBScaler(config *ScalerConfig) (Scaler, error) {
 }
 
 // parseInfluxDBMetadata parses the metadata passed in from the ScaledObject config
-func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
+func parseInfluxDBMetadata(config *scalersconfig.ScalerConfig) (*influxDBMetadata, error) {
 	var authToken string
 	var organizationName string
 	var query string
@@ -154,7 +155,7 @@ func parseInfluxDBMetadata(config *ScalerConfig) (*influxDBMetadata, error) {
 		thresholdValue:           thresholdValue,
 		activationThresholdValue: activationThresholdValue,
 		unsafeSsl:                unsafeSsl,
-		scalerIndex:              config.ScalerIndex,
+		triggerIndex:             config.TriggerIndex,
 	}, nil
 }
 
@@ -207,7 +208,7 @@ func (s *influxDBScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 func (s *influxDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, util.NormalizeString(fmt.Sprintf("influxdb-%s", s.metadata.organizationName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, util.NormalizeString(fmt.Sprintf("influxdb-%s", s.metadata.organizationName))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.thresholdValue),
 	}

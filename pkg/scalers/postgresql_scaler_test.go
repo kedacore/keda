@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 type parsePostgreSQLMetadataTestData struct {
@@ -43,7 +45,7 @@ var postgreSQLMetricIdentifiers = []postgreSQLMetricIdentifier{
 
 func TestPosgresSQLGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range postgreSQLMetricIdentifiers {
-		meta, err := parsePostgreSQLMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authParam, ScalerIndex: testData.scaleIndex})
+		meta, err := parsePostgreSQLMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authParam, TriggerIndex: testData.scaleIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -77,7 +79,7 @@ var testPostgreSQLConnectionstring = []postgreSQLConnectionStringTestData{
 
 func TestPosgresSQLConnectionStringGeneration(t *testing.T) {
 	for _, testData := range testPostgreSQLConnectionstring {
-		meta, err := parsePostgreSQLMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParam, ScalerIndex: 0})
+		meta, err := parsePostgreSQLMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParam, TriggerIndex: 0})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -133,7 +135,7 @@ var testPostgresMetadata = []parsePostgresMetadataTestData{
 
 func TestParsePosgresSQLMetadata(t *testing.T) {
 	for _, testData := range testPostgresMetadata {
-		_, err := parsePostgreSQLMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		_, err := parsePostgreSQLMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.raisesError {
 			t.Error("Expected success but got error", err)
 		}

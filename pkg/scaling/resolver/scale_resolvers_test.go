@@ -254,20 +254,25 @@ func TestResolveAuthRef(t *testing.T) {
 		podSpec             *corev1.PodSpec
 		expected            map[string]string
 		expectedPodIdentity kedav1alpha1.AuthPodIdentity
+		isError             bool
+		comment             string
 	}{
 		{
-			name:     "foo",
-			expected: make(map[string]string),
+			name:                "foo",
+			expected:            make(map[string]string),
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		},
 		{
-			name:     "no triggerauth exists",
-			soar:     &kedav1alpha1.AuthenticationRef{Name: "notthere"},
-			expected: make(map[string]string),
+			name:                "no triggerauth exists",
+			soar:                &kedav1alpha1.AuthenticationRef{Name: "notthere"},
+			expected:            make(map[string]string),
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		},
 		{
-			name:     "no triggerauth exists",
-			soar:     &kedav1alpha1.AuthenticationRef{Name: "notthere"},
-			expected: make(map[string]string),
+			name:                "no triggerauth exists",
+			soar:                &kedav1alpha1.AuthenticationRef{Name: "notthere"},
+			expected:            make(map[string]string),
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		},
 		{
 			name: "triggerauth exists, podidentity nil",
@@ -288,8 +293,9 @@ func TestResolveAuthRef(t *testing.T) {
 					},
 				},
 			},
-			soar:     &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName},
-			expected: map[string]string{"host": ""},
+			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName},
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+			expected:            map[string]string{"host": ""},
 		},
 		{
 			name: "triggerauth exists and secret",
@@ -321,6 +327,45 @@ func TestResolveAuthRef(t *testing.T) {
 			},
 			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName},
 			expected:            map[string]string{"host": secretData},
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+		},
+		{
+			name: "triggerauth exists but hashicorp vault can't resolve",
+			existing: []runtime.Object{
+				&kedav1alpha1.TriggerAuthentication{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      triggerAuthenticationName,
+					},
+					Spec: kedav1alpha1.TriggerAuthenticationSpec{
+						HashiCorpVault: &kedav1alpha1.HashiCorpVault{
+							Address:        "invalid-vault-address",
+							Authentication: "token",
+							Credential: &kedav1alpha1.Credential{
+								Token: "my-token",
+							},
+							Mount: "kubernetes",
+							Role:  "my-role",
+							Secrets: []kedav1alpha1.VaultSecret{
+								{
+									Key:       "password",
+									Parameter: "password",
+									Path:      "secret_v2/data/my-password-path",
+								},
+								{
+									Key:       "username",
+									Parameter: "username",
+									Path:      "secret_v2/data/my-username-path",
+								},
+							},
+						},
+					},
+				},
+			},
+			isError:             true,
+			comment:             "\"my-vault-address-doesnt-exist/v1/auth/token/lookup-self\": unsupported protocol scheme \"\"",
+			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName},
+			expected:            map[string]string{},
 			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		},
 		{
@@ -421,8 +466,9 @@ func TestResolveAuthRef(t *testing.T) {
 					},
 				},
 			},
-			soar:     &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName, Kind: "ClusterTriggerAuthentication"},
-			expected: map[string]string{"host": ""},
+			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName, Kind: "ClusterTriggerAuthentication"},
+			expected:            map[string]string{"host": ""},
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		},
 		{
 			name: "clustertriggerauth exists and secret",
@@ -525,6 +571,43 @@ func TestResolveAuthRef(t *testing.T) {
 			expected:            map[string]string{"host": ""},
 			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		},
+		{
+			name: "clustertriggerauth exists and contains podIdentity configuration but no podSpec (target is a CRD)",
+			existing: []runtime.Object{
+				&kedav1alpha1.ClusterTriggerAuthentication{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: triggerAuthenticationName,
+					},
+					Spec: kedav1alpha1.TriggerAuthenticationSpec{
+						PodIdentity: &kedav1alpha1.AuthPodIdentity{
+							Provider: kedav1alpha1.PodIdentityProviderGCP,
+						},
+					},
+				},
+			},
+			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName, Kind: "ClusterTriggerAuthentication"},
+			expected:            map[string]string{},
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderGCP},
+		},
+		{
+			name: "clustertriggerauth exists and contains podIdentity configuration as well as dummy podSpec",
+			existing: []runtime.Object{
+				&kedav1alpha1.ClusterTriggerAuthentication{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: triggerAuthenticationName,
+					},
+					Spec: kedav1alpha1.TriggerAuthenticationSpec{
+						PodIdentity: &kedav1alpha1.AuthPodIdentity{
+							Provider: kedav1alpha1.PodIdentityProviderGCP,
+						},
+					},
+				},
+			},
+			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName, Kind: "ClusterTriggerAuthentication"},
+			podSpec:             &corev1.PodSpec{},
+			expected:            map[string]string{},
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderGCP},
+		},
 	}
 	var secretsLister corev1listers.SecretLister
 	for _, test := range tests {
@@ -532,7 +615,7 @@ func TestResolveAuthRef(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ctx := context.Background()
 			os.Setenv("KEDA_CLUSTER_OBJECT_NAMESPACE", clusterNamespace) // Inject test cluster namespace.
-			gotMap, gotPodIdentity := resolveAuthRef(
+			gotMap, gotPodIdentity, err := resolveAuthRef(
 				ctx,
 				fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(test.existing...).Build(),
 				logf.Log.WithName("test"),
@@ -540,6 +623,15 @@ func TestResolveAuthRef(t *testing.T) {
 				test.podSpec,
 				namespace,
 				secretsLister)
+
+			if err != nil && !test.isError {
+				t.Errorf("Expected success because %s got error, %s", test.comment, err)
+			}
+
+			if test.isError && err == nil {
+				t.Errorf("Expected error because %s but got success, %#v", test.comment, test)
+			}
+
 			if diff := cmp.Diff(gotMap, test.expected); diff != "" {
 				t.Errorf("Returned authParams are different: %s", diff)
 			}

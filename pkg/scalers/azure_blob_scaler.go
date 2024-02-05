@@ -29,6 +29,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -49,7 +50,7 @@ type azureBlobScaler struct {
 }
 
 // NewAzureBlobScaler creates a new azureBlobScaler
-func NewAzureBlobScaler(config *ScalerConfig) (Scaler, error) {
+func NewAzureBlobScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -71,7 +72,7 @@ func NewAzureBlobScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseAzureBlobMetadata(config *ScalerConfig, logger logr.Logger) (*azure.BlobMetadata, kedav1alpha1.AuthPodIdentity, error) {
+func parseAzureBlobMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*azure.BlobMetadata, kedav1alpha1.AuthPodIdentity, error) {
 	meta := azure.BlobMetadata{}
 	meta.TargetBlobCount = defaultTargetBlobCount
 	meta.BlobDelimiter = defaultBlobDelimiter
@@ -168,19 +169,22 @@ func parseAzureBlobMetadata(config *ScalerConfig, logger logr.Logger) (*azure.Bl
 		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("pod identity %s not supported for azure storage blobs", config.PodIdentity.Provider)
 	}
 
-	meta.ScalerIndex = config.ScalerIndex
+	meta.TriggerIndex = config.TriggerIndex
 
 	return &meta, config.PodIdentity, nil
 }
 
 func (s *azureBlobScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 
 func (s *azureBlobScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-blob-%s", s.metadata.BlobContainerName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-blob-%s", s.metadata.BlobContainerName))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.TargetBlobCount),
 	}

@@ -12,6 +12,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -35,11 +36,11 @@ type CassandraMetadata struct {
 	query                      string
 	targetQueryValue           int64
 	activationTargetQueryValue int64
-	scalerIndex                int
+	triggerIndex               int
 }
 
 // NewCassandraScaler creates a new Cassandra scaler.
-func NewCassandraScaler(config *ScalerConfig) (Scaler, error) {
+func NewCassandraScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -66,7 +67,7 @@ func NewCassandraScaler(config *ScalerConfig) (Scaler, error) {
 }
 
 // parseCassandraMetadata parses the metadata and returns a CassandraMetadata or an error if the ScalerConfig is invalid.
-func parseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
+func parseCassandraMetadata(config *scalersconfig.ScalerConfig) (*CassandraMetadata, error) {
 	meta := CassandraMetadata{}
 
 	if val, ok := config.TriggerMetadata["query"]; ok {
@@ -156,7 +157,7 @@ func parseCassandraMetadata(config *ScalerConfig) (*CassandraMetadata, error) {
 		return nil, fmt.Errorf("no password given")
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	return &meta, nil
 }
@@ -184,7 +185,7 @@ func newCassandraSession(meta *CassandraMetadata, logger logr.Logger) (*gocql.Se
 func (s *cassandraScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("cassandra-%s", s.metadata.keyspace))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("cassandra-%s", s.metadata.keyspace))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.targetQueryValue),
 	}
@@ -222,7 +223,8 @@ func (s *cassandraScaler) GetQueryResult(ctx context.Context) (int64, error) {
 
 // Close closes the Cassandra session connection.
 func (s *cassandraScaler) Close(_ context.Context) error {
-	s.session.Close()
-
+	if s.session != nil {
+		s.session.Close()
+	}
 	return nil
 }

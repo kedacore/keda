@@ -101,8 +101,9 @@ type Message struct {
 	// encryption details).
 	Footer Annotations
 
-	deliveryID uint32 // used when sending disposition
-	settled    bool   // whether transfer was settled by sender
+	deliveryID uint32    // used when sending disposition
+	settled    bool      // whether transfer was settled by sender
+	rcv        *Receiver // used to settle message on the corresponding Receiver (nil if settled == true)
 }
 
 // NewMessage returns a *Message with data as the first payload in the Data field.
@@ -297,6 +298,11 @@ func (m *Message) Unmarshal(r *buffer.Buffer) error {
 		}
 	}
 	return nil
+}
+
+func (m *Message) onSettlement() {
+	m.settled = true
+	m.rcv = nil
 }
 
 /*

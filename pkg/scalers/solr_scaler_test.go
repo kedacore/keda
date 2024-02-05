@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 	"testing"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 type parseSolrMetadataTestData struct {
@@ -14,7 +16,7 @@ type parseSolrMetadataTestData struct {
 
 type solrMetricIdentifier struct {
 	metadataTestData *parseSolrMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -45,7 +47,7 @@ var solrMetricIdentifiers = []solrMetricIdentifier{
 func TestSolrParseMetadata(t *testing.T) {
 	testCaseNum := 1
 	for _, testData := range testSolrMetadata {
-		_, err := parseSolrMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		_, err := parseSolrMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success but got error for unit test # %v", testCaseNum)
 		}
@@ -59,7 +61,7 @@ func TestSolrParseMetadata(t *testing.T) {
 func TestSolrGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range solrMetricIdentifiers {
 		ctx := context.Background()
-		meta, err := parseSolrMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ScalerIndex: testData.scalerIndex, AuthParams: testData.metadataTestData.authParams})
+		meta, err := parseSolrMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, TriggerIndex: testData.triggerIndex, AuthParams: testData.metadataTestData.authParams})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

@@ -14,6 +14,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	liiklus_service "github.com/kedacore/keda/v2/pkg/scalers/liiklus"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -32,7 +33,7 @@ type liiklusMetadata struct {
 	topic                  string
 	group                  string
 	groupVersion           uint32
-	scalerIndex            int
+	triggerIndex           int
 }
 
 const (
@@ -58,7 +59,7 @@ var (
 )
 
 // NewLiiklusScaler creates a new liiklusScaler scaler
-func NewLiiklusScaler(config *ScalerConfig) (Scaler, error) {
+func NewLiiklusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -69,7 +70,9 @@ func NewLiiklusScaler(config *ScalerConfig) (Scaler, error) {
 		return nil, err
 	}
 
-	conn, err := grpc.Dial(lm.address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(lm.address,
+		grpc.WithDefaultServiceConfig(grpcConfig),
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +106,7 @@ func (s *liiklusScaler) GetMetricsAndActivity(ctx context.Context, metricName st
 func (s *liiklusScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("liiklus-%s", s.metadata.topic))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("liiklus-%s", s.metadata.topic))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.lagThreshold),
 	}
@@ -155,7 +158,7 @@ func (s *liiklusScaler) getLag(ctx context.Context) (uint64, map[uint32]uint64, 
 	return totalLag, lags, nil
 }
 
-func parseLiiklusMetadata(config *ScalerConfig) (*liiklusMetadata, error) {
+func parseLiiklusMetadata(config *scalersconfig.ScalerConfig) (*liiklusMetadata, error) {
 	lagThreshold := defaultLiiklusLagThreshold
 	activationLagThreshold := defaultLiiklusActivationLagThreshold
 
@@ -200,6 +203,6 @@ func parseLiiklusMetadata(config *ScalerConfig) (*liiklusMetadata, error) {
 		groupVersion:           groupVersion,
 		lagThreshold:           lagThreshold,
 		activationLagThreshold: activationLagThreshold,
-		scalerIndex:            config.ScalerIndex,
+		triggerIndex:           config.TriggerIndex,
 	}, nil
 }

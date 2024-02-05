@@ -1,3 +1,66 @@
+## 1.31.1
+
+### Fixes
+- Inverted arguments order of FailureMessage of BeComparableToMatcher [e0dd999]
+- Update test in case keeping msg is desired [ad1a367]
+
+### Maintenance
+- Show how to import the format sub package [24e958d]
+- tidy up go.sum [26661b8]
+- bump dependencies [bde8f7a]
+
+## 1.31.0
+
+### Features
+- Async assertions include context cancellation cause if present [121c37f]
+
+### Maintenance
+- Bump minimum go version [dee1e3c]
+- docs: fix typo in example usage "occured" -> "occurred" [49005fe]
+- Bump actions/setup-go from 4 to 5 (#714) [f1c8757]
+- Bump github/codeql-action from 2 to 3 (#715) [9836e76]
+- Bump github.com/onsi/ginkgo/v2 from 2.13.0 to 2.13.2 (#713) [54726f0]
+- Bump golang.org/x/net from 0.17.0 to 0.19.0 (#711) [df97ecc]
+- docs: fix `HaveExactElement` typo (#712) [a672c86]
+
+## 1.30.0
+
+### Features
+- BeTrueBecause and BeFalseBecause allow for better failure messages [4da4c7f]
+
+### Maintenance
+- Bump actions/checkout from 3 to 4 (#694) [6ca6e97]
+- doc: fix type on gleak go doc [f1b8343]
+
+## 1.29.0
+
+### Features
+- MatchError can now take an optional func(error) bool + description [2b39142]
+
+## 1.28.1
+
+### Maintenance
+- Bump github.com/onsi/ginkgo/v2 from 2.12.0 to 2.13.0 [635d196]
+- Bump github.com/google/go-cmp from 0.5.9 to 0.6.0 [14f8859]
+- Bump golang.org/x/net from 0.14.0 to 0.17.0 [d8a6508]
+- #703 doc(matchers): HaveEach() doc comment updated [2705bdb]
+- Minor typos (#699) [375648c]
+
+## 1.28.0
+
+### Features
+- Add VerifyHost handler to ghttp (#698) [0b03b36]
+
+### Fixes
+- Read Body for Newer Responses in HaveHTTPBodyMatcher (#686) [18d6673]
+
+### Maintenance
+- Bump github.com/onsi/ginkgo/v2 from 2.11.0 to 2.12.0 (#693) [55a33f3]
+- Typo in matchers.go (#691) [de68e8f]
+- Bump commonmarker from 0.23.9 to 0.23.10 in /docs (#690) [ab17f5e]
+- chore: update test matrix for Go 1.21 (#689) [5069017]
+- Bump golang.org/x/net from 0.12.0 to 0.14.0 (#688) [babe25f]
+
 ## 1.27.10
 
 ### Fixes

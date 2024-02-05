@@ -4,7 +4,7 @@ package zstd
 // support decoding of "legacy" zstd payloads from versions [0.4, 0.8], matching the
 // default configuration of the zstd command line tool:
 // https://github.com/facebook/zstd/blob/dev/programs/README.md
-#cgo CFLAGS: -DZSTD_LEGACY_SUPPORT=4
+#cgo CFLAGS: -DZSTD_LEGACY_SUPPORT=4 -DZSTD_MULTITHREAD=1
 
 #include "zstd.h"
 */
@@ -36,7 +36,7 @@ const (
 	// decompressed, err := zstd.Decompress(dst, src)
 	decompressSizeBufferLimit = 1000 * 1000
 
-	zstdFrameHeaderSizeMax = 18 // From zstd.h. Since it's experimental API, hardcoding it
+	zstdFrameHeaderSizeMin = 2 // From zstd.h. Since it's experimental API, hardcoding it
 )
 
 // CompressBound returns the worst case size needed for a destination buffer,
@@ -67,10 +67,13 @@ func decompressSizeHint(src []byte) int {
 	}
 
 	hint := upperBound
-	if len(src) >= zstdFrameHeaderSizeMax {
+	if len(src) >= zstdFrameHeaderSizeMin {
 		hint = int(C.ZSTD_getFrameContentSize(unsafe.Pointer(&src[0]), C.size_t(len(src))))
 		if hint < 0 { // On error, just use upperBound
 			hint = upperBound
+		}
+		if hint == 0 { // When compressing the empty slice, we need an output of at least 1 to pass down to the C lib
+			hint = 1
 		}
 	}
 

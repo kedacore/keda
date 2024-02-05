@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017-2023 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,9 +16,6 @@
 // limitations under the License.
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
-//
-// Author Ewout Prangsma
-// Author Tomasz Mielech <tomasz@arangodb.com>
 //
 
 package driver
@@ -70,6 +67,8 @@ const (
 	keyDropCollections          ContextKey = "arangodb-drop-collections"
 	keyDriverFlags              ContextKey = "arangodb-driver-flags"
 	keyRefillIndexCaches        ContextKey = "arangodb-driver-refill-index-caches"
+	keyAsyncRequest             ContextKey = "arangodb-async-request"
+	keyAsyncID                  ContextKey = "arangodb-async-id"
 )
 
 type OverwriteMode string
@@ -298,6 +297,16 @@ func WithRefillIndexCaches(parent context.Context, value bool) context.Context {
 	return context.WithValue(contextOrBackground(parent), keyRefillIndexCaches, value)
 }
 
+// WithAsync is used to configure a context to make an async operation - requires Connection with Async wrapper!
+func WithAsync(parent context.Context) context.Context {
+	return context.WithValue(contextOrBackground(parent), keyAsyncRequest, true)
+}
+
+// WithAsyncID is used to check an async operation result - requires Connection with Async wrapper!
+func WithAsyncID(parent context.Context, asyncID string) context.Context {
+	return context.WithValue(contextOrBackground(parent), keyAsyncID, asyncID)
+}
+
 type contextSettings struct {
 	Silent                   bool
 	WaitForSync              bool
@@ -350,7 +359,7 @@ func setDirtyReadFlagIfRequired(ctx context.Context, wasDirty bool) {
 
 // ApplyVersionHeader adds the driver version to the request.
 func ApplyVersionHeader(ctx context.Context, req Request) {
-	val := fmt.Sprintf("go-driver-v1/%s", driverVersion)
+	val := fmt.Sprintf("go-driver-v1/%s", DriverVersion())
 	if ctx != nil {
 		if v := ctx.Value(keyDriverFlags); v != nil {
 			if flags, ok := v.([]string); ok {
@@ -368,6 +377,7 @@ func applyContextSettings(ctx context.Context, req Request) contextSettings {
 	if ctx == nil {
 		return result
 	}
+
 	// Details
 	if v := ctx.Value(keyDetails); v != nil {
 		if details, ok := v.(bool); ok {
@@ -547,6 +557,13 @@ func applyContextSettings(ctx context.Context, req Request) contextSettings {
 		if overwrite, ok := v.(bool); ok && overwrite {
 			req.SetQuery("overwrite", "true")
 			result.Overwrite = true
+		}
+	}
+
+	// AsyncID
+	if v := ctx.Value(keyAsyncID); v != nil {
+		if asyncID, ok := v.(string); ok {
+			req.SetHeader("x-arango-async-id", asyncID)
 		}
 	}
 

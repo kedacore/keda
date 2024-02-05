@@ -22,8 +22,10 @@ import (
 	"net/http"
 	"time"
 
+	"golang.org/x/exp/maps"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -31,7 +33,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	toolscache "k8s.io/client-go/tools/cache"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	"sigs.k8s.io/controller-runtime/pkg/cache/internal"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -81,6 +83,9 @@ type Informers interface {
 	// of the underlying object.
 	GetInformerForKind(ctx context.Context, gvk schema.GroupVersionKind, opts ...InformerGetOption) (Informer, error)
 
+	// RemoveInformer removes an informer entry and stops it if it was running.
+	RemoveInformer(ctx context.Context, obj client.Object) error
+
 	// Start runs all the informers known to this cache until the context is closed.
 	// It blocks.
 	Start(ctx context.Context) error
@@ -119,7 +124,13 @@ type Informer interface {
 
 	// HasSynced return true if the informers underlying store has synced.
 	HasSynced() bool
+	// IsStopped returns true if the informer has been stopped.
+	IsStopped() bool
 }
+
+// AllNamespaces should be used as the map key to deliminate namespace settings
+// that apply to all namespaces that themselves do not have explicit settings.
+const AllNamespaces = metav1.NamespaceAll
 
 // Options are the optional arguments for creating a new Cache object.
 type Options struct {
@@ -172,6 +183,11 @@ type Options struct {
 	// the namespaces in here will be watched and it will by used to default
 	// ByObject.Namespaces for all objects if that is nil.
 	//
+	// It is possible to have specific Config for just some namespaces
+	// but cache all namespaces by using the AllNamespaces const as the map key.
+	// This will then include all namespaces that do not have a more specific
+	// setting.
+	//
 	// The options in the Config that are nil will be defaulted from
 	// the respective Default* settings.
 	DefaultNamespaces map[string]Config
@@ -187,6 +203,12 @@ type Options struct {
 	// DefaultTransform will be used as transform for all object types
 	// unless there is already one set in ByObject or DefaultNamespaces.
 	DefaultTransform toolscache.TransformFunc
+
+	// DefaultWatchErrorHandler will be used to the WatchErrorHandler which is called
+	// whenever ListAndWatch drops the connection with an error.
+	//
+	// After calling this handler, the informer will backoff and retry.
+	DefaultWatchErrorHandler toolscache.WatchErrorHandler
 
 	// DefaultUnsafeDisableDeepCopy is the default for UnsafeDisableDeepCopy
 	// for everything that doesn't specify this.
@@ -213,6 +235,11 @@ type ByObject struct {
 	//
 	// Settings in the map value that are unset will be defaulted.
 	// Use an empty value for the specific setting to prevent that.
+	//
+	// It is possible to have specific Config for just some namespaces
+	// but cache all namespaces by using the AllNamespaces const as the map key.
+	// This will then include all namespaces that do not have a more specific
+	// setting.
 	//
 	// A nil map allows to default this to the cache's DefaultNamespaces setting.
 	// An empty map prevents this and means that all namespaces will be cached.
@@ -353,7 +380,8 @@ func newCache(restConfig *rest.Config, opts Options) newCacheFunc {
 					Field: config.FieldSelector,
 				},
 				Transform:             config.Transform,
-				UnsafeDisableDeepCopy: pointer.BoolDeref(config.UnsafeDisableDeepCopy, false),
+				WatchErrorHandler:     opts.DefaultWatchErrorHandler,
+				UnsafeDisableDeepCopy: ptr.Deref(config.UnsafeDisableDeepCopy, false),
 				NewInformer:           opts.newInformer,
 			}),
 			readerFailOnMissingInformer: opts.ReaderFailOnMissingInformer,
@@ -384,7 +412,7 @@ func defaultOpts(config *rest.Config, opts Options) (Options, error) {
 	// Construct a new Mapper if unset
 	if opts.Mapper == nil {
 		var err error
-		opts.Mapper, err = apiutil.NewDiscoveryRESTMapper(config, opts.HTTPClient)
+		opts.Mapper, err = apiutil.NewDynamicRESTMapper(config, opts.HTTPClient)
 		if err != nil {
 			return Options{}, fmt.Errorf("could not create RESTMapper from config: %w", err)
 		}
@@ -392,6 +420,9 @@ func defaultOpts(config *rest.Config, opts Options) (Options, error) {
 
 	for namespace, cfg := range opts.DefaultNamespaces {
 		cfg = defaultConfig(cfg, optionDefaultsToConfig(&opts))
+		if namespace == metav1.NamespaceAll {
+			cfg.FieldSelector = fields.AndSelectors(appendIfNotNil(namespaceAllSelector(maps.Keys(opts.DefaultNamespaces)), cfg.FieldSelector)...)
+		}
 		opts.DefaultNamespaces[namespace] = cfg
 	}
 
@@ -417,6 +448,15 @@ func defaultOpts(config *rest.Config, opts Options) (Options, error) {
 
 			// 3. Default from the global defaults
 			config = defaultConfig(config, optionDefaultsToConfig(&opts))
+
+			if namespace == metav1.NamespaceAll {
+				config.FieldSelector = fields.AndSelectors(
+					appendIfNotNil(
+						namespaceAllSelector(maps.Keys(byObject.Namespaces)),
+						config.FieldSelector,
+					)...,
+				)
+			}
 
 			byObject.Namespaces[namespace] = config
 		}
@@ -456,4 +496,22 @@ func defaultConfig(toDefault, defaultFrom Config) Config {
 	}
 
 	return toDefault
+}
+
+func namespaceAllSelector(namespaces []string) fields.Selector {
+	selectors := make([]fields.Selector, 0, len(namespaces)-1)
+	for _, namespace := range namespaces {
+		if namespace != metav1.NamespaceAll {
+			selectors = append(selectors, fields.OneTermNotEqualSelector("metadata.namespace", namespace))
+		}
+	}
+
+	return fields.AndSelectors(selectors...)
+}
+
+func appendIfNotNil[T comparable](a, b T) []T {
+	if b != *new(T) {
+		return []T{a, b}
+	}
+	return []T{a}
 }

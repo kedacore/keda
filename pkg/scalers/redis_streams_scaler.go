@@ -12,6 +12,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -60,12 +61,12 @@ type redisStreamsMetadata struct {
 	consumerGroupName         string
 	databaseIndex             int
 	connectionInfo            redisConnectionInfo
-	scalerIndex               int
+	triggerIndex              int
 	activationLagCount        int64
 }
 
 // NewRedisStreamsScaler creates a new redisStreamsScaler
-func NewRedisStreamsScaler(ctx context.Context, isClustered, isSentinel bool, config *ScalerConfig) (Scaler, error) {
+func NewRedisStreamsScaler(ctx context.Context, isClustered, isSentinel bool, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -256,7 +257,7 @@ var (
 	ErrRedisMissingStreamName = errors.New("missing redis stream name")
 )
 
-func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser) (*redisStreamsMetadata, error) {
+func parseRedisStreamsMetadata(config *scalersconfig.ScalerConfig, parseFn redisAddressParser) (*redisStreamsMetadata, error) {
 	connInfo, err := parseFn(config.TriggerMetadata, config.ResolvedEnv, config.AuthParams)
 	if err != nil {
 		return nil, err
@@ -330,7 +331,7 @@ func parseRedisStreamsMetadata(config *ScalerConfig, parseFn redisAddressParser)
 		meta.databaseIndex = int(dbIndex)
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
@@ -353,7 +354,7 @@ func (s *redisStreamsScaler) GetMetricSpecForScaling(context.Context) []v2.Metri
 
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("redis-streams-%s", s.metadata.streamName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("redis-streams-%s", s.metadata.streamName))),
 		},
 		Target: GetMetricTarget(s.metricType, metricValue),
 	}

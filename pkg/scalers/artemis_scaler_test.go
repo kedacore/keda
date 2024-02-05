@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 	"testing"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 const (
@@ -18,7 +20,7 @@ type parseArtemisMetadataTestData struct {
 
 type artemisMetricIdentifier struct {
 	metadataTestData *parseArtemisMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -86,7 +88,7 @@ var testArtemisMetadataWithAuthParams = []parseArtemisMetadataTestData{
 
 func TestArtemisDefaultCorsHeader(t *testing.T) {
 	metadata := map[string]string{"managementEndpoint": "localhost:8161", "queueName": "queue1", "brokerName": "broker-activemq", "brokerAddress": "test", "username": "myUserName", "password": "myPassword"}
-	meta, err := parseArtemisMetadata(&ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: metadata, AuthParams: nil})
+	meta, err := parseArtemisMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: metadata, AuthParams: nil})
 
 	if err != nil {
 		t.Error("Expected success but got error", err)
@@ -98,7 +100,7 @@ func TestArtemisDefaultCorsHeader(t *testing.T) {
 
 func TestArtemisCorsHeader(t *testing.T) {
 	metadata := map[string]string{"managementEndpoint": "localhost:8161", "queueName": "queue1", "brokerName": "broker-activemq", "brokerAddress": "test", "username": "myUserName", "password": "myPassword", "corsHeader": "test"}
-	meta, err := parseArtemisMetadata(&ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: metadata, AuthParams: nil})
+	meta, err := parseArtemisMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: metadata, AuthParams: nil})
 
 	if err != nil {
 		t.Error("Expected success but got error", err)
@@ -110,7 +112,7 @@ func TestArtemisCorsHeader(t *testing.T) {
 
 func TestArtemisParseMetadata(t *testing.T) {
 	for _, testData := range testArtemisMetadata {
-		_, err := parseArtemisMetadata(&ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: nil})
+		_, err := parseArtemisMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: nil})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -121,7 +123,7 @@ func TestArtemisParseMetadata(t *testing.T) {
 
 	// test with missing auth params should all fail
 	for _, testData := range testArtemisMetadataWithEmptyAuthParams {
-		_, err := parseArtemisMetadata(&ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: emptyArtemisAuthParams})
+		_, err := parseArtemisMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: emptyArtemisAuthParams})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -132,7 +134,7 @@ func TestArtemisParseMetadata(t *testing.T) {
 
 	// test with complete auth params should not fail
 	for _, testData := range testArtemisMetadataWithAuthParams {
-		_, err := parseArtemisMetadata(&ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: artemisAuthParams})
+		_, err := parseArtemisMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: artemisAuthParams})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -145,7 +147,7 @@ func TestArtemisParseMetadata(t *testing.T) {
 func TestArtemisGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range artemisMetricIdentifiers {
 		ctx := context.Background()
-		meta, err := parseArtemisMetadata(&ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil, ScalerIndex: testData.scalerIndex})
+		meta, err := parseArtemisMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: nil, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

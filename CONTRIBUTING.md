@@ -14,6 +14,10 @@ There are many areas we can use contributions - ranging from code, documentation
 - [Contributing Scalers](#contributing-scalers)
   - [Testing](#testing)
 - [Contributing webhooks](#contributing-webhooks)
+- [Metrics and Logging](#metrics-and-logging)
+  - [Metrics](#metrics)
+  - [Logging and Log Messages](#logging-and-log-messages)
+  - [Legacy](#legacy)
 - [Changelog](#changelog)
 - [Including Documentation Changes](#including-documentation-changes)
 - [Creating and building a local environment](#creating-and-building-a-local-environment)
@@ -55,6 +59,34 @@ check the [test documentation](./tests/README.md). Those tests are run nightly o
 ## Contributing webhooks
 
 Another easy way to contribute is improving the validations to avoid misconfigurations. New rules can be added in the proper type's webhooks file (`apis/keda/v1alpha1/*_webhook.go`).
+
+## Metrics and Logging
+
+### Metrics
+
+Incorporating Prometheus and OpenTelemetry metrics is essential in our project. When creating metrics, please consider the following guidelines:
+
+- **Always specify the unit in the metric name using standard units** (e.g., use seconds instead of milliseconds, bytes instead of megabytes, etc.).
+- **Choose descriptive metric names**. Instead of vague names like `message_number` or `triggers`, opt for more specific ones like `queued_messages` and `trigger_registered`.
+- **Ensure consistency in metric naming**. Review existing metrics for their naming patterns and try to align new metrics accordingly.
+- **Utilize labels for differentiating metric states**. Instead of creating separate metrics like `messages_sent_successfully` and `messages_sent_failed`, create a single metric `messages_sent` and differentiate using a label `state` with values `success` or `failed`.
+- **Avoid overly detailed metrics**. Refrain from using labels with high cardinality (such as _email_, _message-id_, or _time_), as this can burden the system.
+- **Favor metrics that are cumulative counters**. Users can then apply functions like `rate()` to calculate changes over time. Append `total` for Prometheus and `count` for OpenTelemetry metrics.
+- **Provide clear descriptions**. This should tell end-users what the metrics represent, without being a KEDA expert nor technical person.
+
+For further guidance on metric naming and labeling, refer to the recommendations in the [Prometheus](https://prometheus.io/docs/practices/naming/) and [OpenTelemetry](https://opentelemetry.io/docs/specs/semconv/general/metrics/) documentation.
+
+### Logging and Log Messages
+
+When adding log messages to the project, it's crucial to set the appropriate log level and tailor the message for its intended audience:
+- Use `debug` level for KEDA project developers, who possess deep knowledge of the system's inner workings. Messages should be data-rich and detailed. In the code a debug message is written via verbosity level 1 on the `Info()` method on the logger, eg. `logger.V(1).Info(msg)`.
+- Set to `info` level for engineers familiar with KEDA's components but not its intricate details. These messages should serve as updates or milestones regarding the system's sub-components, essentially acting as a status report. In the code an info message is written via `Info()` method on the logger, eg. `logger.Info(msg)`.
+- `Warning` level and above is aimed at operational teams. Messages should be clear, concise, and either indicate consequences or be actionable, with suggestions for next steps. It indicates a problem which should be addressed in the near future if it persists. The message should contain at least the consequence. Include links to further documentation where possible. In the code a warning is written via the `Info()` method on the logger with a `"Warning:"` prefix in the message, eg. `logger.Info("Warning: ...msg")`.
+- An `error` indicates a failure, and a part of the system is not capable of fulfilling its intended purpose. An error should contain what part failed, why, and possible solutions. In the code an error is usually written via the `Error()` method on the logger, eg. `logger.Error(err, msg)`.
+
+### Legacy
+
+Some of the metrics and log messages in the project don't follow the above practices, but are there for historical reasons. When refactoring pieces of code, please try to apply the best practices to any log message or metric which is impacted.
 
 ## Changelog
 
@@ -132,7 +164,7 @@ For more installation options visit the [pre-commits](https://pre-commit.com).
 
 Before running pre-commit, you must install the [golangci-lint](https://golangci-lint.run/) tool as a static check tool for golang code (contains a series of linter)
 ```shell script
-curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.54.2
+curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
 # or
 brew install golangci/tap/golangci-lint
 ```

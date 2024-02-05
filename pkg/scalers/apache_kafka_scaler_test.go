@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strconv"
 	"testing"
 
 	"github.com/go-logr/logr"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 type parseApacheKafkaMetadataTestData struct {
@@ -39,7 +42,7 @@ type parseApacheKafkaAuthParamsTestDataSecondAuthMethod struct {
 
 type apacheKafkaMetricIdentifier struct {
 	metadataTestData *parseApacheKafkaMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -76,6 +79,8 @@ var parseApacheKafkaMetadataTestDataset = []parseApacheKafkaMetadataTestData{
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "lagThreshold": "-1"}, true, 1, []string{"foobar:9092"}, "my-group", []string{"my-topics"}, nil, offsetResetPolicy("latest"), false, false, false},
 	// failure, lagThreshold is 0
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "lagThreshold": "0"}, true, 1, []string{"foobar:9092"}, "my-group", []string{"my-topics"}, nil, offsetResetPolicy("latest"), false, false, false},
+	// success, LagThreshold is 1000000
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "lagThreshold": "1000000", "activationLagThreshold": "0"}, false, 1, []string{"foobar:9092"}, "my-group", []string{"my-topics"}, nil, offsetResetPolicy("latest"), false, false, false},
 	// success, activationLagThreshold is 0
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "lagThreshold": "10", "activationLagThreshold": "0"}, false, 1, []string{"foobar:9092"}, "my-group", []string{"my-topics"}, nil, offsetResetPolicy("latest"), false, false, false},
 	// success
@@ -231,82 +236,69 @@ var parseApacheKafkaAuthParamsTestDataset2 = []parseApacheKafkaAuthParamsTestDat
 }
 
 var apacheKafkaMetricIdentifiers = []apacheKafkaMetricIdentifier{
-	{&parseApacheKafkaMetadataTestDataset[10], 0, "s0-kafka-my-topics"},
-	{&parseApacheKafkaMetadataTestDataset[10], 1, "s1-kafka-my-topics"},
+	{&parseApacheKafkaMetadataTestDataset[11], 0, "s0-kafka-my-topics"},
+	{&parseApacheKafkaMetadataTestDataset[11], 1, "s1-kafka-my-topics"},
 	{&parseApacheKafkaMetadataTestDataset[2], 1, "s1-kafka-my-group-topics"},
 }
 
 func TestApacheKafkaGetBrokers(t *testing.T) {
 	for _, testData := range parseApacheKafkaMetadataTestDataset {
-		meta, err := parseApacheKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validApacheKafkaWithAuthParams}, logr.Discard())
+		meta, err := parseApacheKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validApacheKafkaWithAuthParams}, logr.Discard())
+		getBrokerApacheKafkaTestBase(t, meta, testData, err)
 
-		if err != nil && !testData.isError {
-			t.Error("Expected success but got error", err)
-		}
-		if testData.isError && err == nil {
-			t.Error("Expected error but got success")
-		}
-		if len(meta.bootstrapServers) != testData.numBrokers {
-			t.Errorf("Expected %d bootstrap servers but got %d\n", testData.numBrokers, len(meta.bootstrapServers))
-		}
-		if !reflect.DeepEqual(testData.brokers, meta.bootstrapServers) {
-			t.Errorf("Expected %#v but got %#v\n", testData.brokers, meta.bootstrapServers)
-		}
-		if meta.group != testData.group {
-			t.Errorf("Expected group %s but got %s\n", testData.group, meta.group)
-		}
-		if !reflect.DeepEqual(testData.topic, meta.topic) {
-			t.Errorf("Expected topics %#v but got %#v\n", testData.topic, meta.topic)
-		}
-		if !reflect.DeepEqual(testData.partitionLimitation, meta.partitionLimitation) {
-			t.Errorf("Expected %#v but got %#v\n", testData.partitionLimitation, meta.partitionLimitation)
-		}
-		if err == nil && meta.offsetResetPolicy != testData.offsetResetPolicy {
-			t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.offsetResetPolicy)
-		}
-
-		meta, err = parseApacheKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validApacheKafkaWithoutAuthParams}, logr.Discard())
-
-		if err != nil && !testData.isError {
-			t.Error("Expected success but got error", err)
-		}
-		if testData.isError && err == nil {
-			t.Error("Expected error but got success")
-		}
-		if len(meta.bootstrapServers) != testData.numBrokers {
-			t.Errorf("Expected %d bootstrap servers but got %d\n", testData.numBrokers, len(meta.bootstrapServers))
-		}
-		if !reflect.DeepEqual(testData.brokers, meta.bootstrapServers) {
-			t.Errorf("Expected %#v but got %#v\n", testData.brokers, meta.bootstrapServers)
-		}
-		if meta.group != testData.group {
-			t.Errorf("Expected group %s but got %s\n", testData.group, meta.group)
-		}
-		if !reflect.DeepEqual(testData.topic, meta.topic) {
-			t.Errorf("Expected topics %#v but got %#v\n", testData.topic, meta.topic)
-		}
-		if !reflect.DeepEqual(testData.partitionLimitation, meta.partitionLimitation) {
-			t.Errorf("Expected %#v but got %#v\n", testData.partitionLimitation, meta.partitionLimitation)
-		}
-		if err == nil && meta.offsetResetPolicy != testData.offsetResetPolicy {
-			t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.offsetResetPolicy)
-		}
-		if err == nil && meta.allowIdleConsumers != testData.allowIdleConsumers {
-			t.Errorf("Expected allowIdleConsumers %t but got %t\n", testData.allowIdleConsumers, meta.allowIdleConsumers)
-		}
-		if err == nil && meta.excludePersistentLag != testData.excludePersistentLag {
-			t.Errorf("Expected excludePersistentLag %t but got %t\n", testData.excludePersistentLag, meta.excludePersistentLag)
-		}
-		if err == nil && meta.limitToPartitionsWithLag != testData.limitToPartitionsWithLag {
-			t.Errorf("Expected limitToPartitionsWithLag %t but got %t\n", testData.limitToPartitionsWithLag, meta.limitToPartitionsWithLag)
-		}
+		meta, err = parseApacheKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validApacheKafkaWithoutAuthParams}, logr.Discard())
+		getBrokerApacheKafkaTestBase(t, meta, testData, err)
 	}
 }
 
+func getBrokerApacheKafkaTestBase(t *testing.T, meta apacheKafkaMetadata, testData parseApacheKafkaMetadataTestData, err error) {
+	if err != nil && !testData.isError {
+		t.Error("Expected success but got error", err)
+	}
+	if testData.isError && err == nil {
+		t.Error("Expected error but got success")
+	}
+	if len(meta.bootstrapServers) != testData.numBrokers {
+		t.Errorf("Expected %d bootstrap servers but got %d\n", testData.numBrokers, len(meta.bootstrapServers))
+	}
+	if !reflect.DeepEqual(testData.brokers, meta.bootstrapServers) {
+		t.Errorf("Expected %#v but got %#v\n", testData.brokers, meta.bootstrapServers)
+	}
+	if meta.group != testData.group {
+		t.Errorf("Expected group %s but got %s\n", testData.group, meta.group)
+	}
+	if !reflect.DeepEqual(testData.topic, meta.topic) {
+		t.Errorf("Expected topics %#v but got %#v\n", testData.topic, meta.topic)
+	}
+	if !reflect.DeepEqual(testData.partitionLimitation, meta.partitionLimitation) {
+		t.Errorf("Expected %#v but got %#v\n", testData.partitionLimitation, meta.partitionLimitation)
+	}
+	if err == nil && meta.offsetResetPolicy != testData.offsetResetPolicy {
+		t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.offsetResetPolicy)
+	}
+	if err == nil && meta.allowIdleConsumers != testData.allowIdleConsumers {
+		t.Errorf("Expected allowIdleConsumers %t but got %t\n", testData.allowIdleConsumers, meta.allowIdleConsumers)
+	}
+	if err == nil && meta.excludePersistentLag != testData.excludePersistentLag {
+		t.Errorf("Expected excludePersistentLag %t but got %t\n", testData.excludePersistentLag, meta.excludePersistentLag)
+	}
+	if err == nil && meta.limitToPartitionsWithLag != testData.limitToPartitionsWithLag {
+		t.Errorf("Expected limitToPartitionsWithLag %t but got %t\n", testData.limitToPartitionsWithLag, meta.limitToPartitionsWithLag)
+	}
+
+	expectedLagThreshold, er := parseExpectedLagThreshold(testData.metadata)
+	if er != nil {
+		t.Errorf("Unable to convert test data lagThreshold %s to string", testData.metadata["lagThreshold"])
+	}
+
+	if meta.lagThreshold != expectedLagThreshold && meta.lagThreshold != defaultKafkaLagThreshold {
+		t.Errorf("Expected lagThreshold to be either %v or %v got %v ", meta.lagThreshold, defaultKafkaLagThreshold, expectedLagThreshold)
+	}
+}
 func TestApacheKafkaAuthParams(t *testing.T) {
 	// Testing tls and sasl value in TriggerAuthentication
 	for _, testData := range parseApacheKafkaAuthParamsTestDataset {
-		meta, err := parseApacheKafkaMetadata(&ScalerConfig{TriggerMetadata: validApacheKafkaMetadata, AuthParams: testData.authParams}, logr.Discard())
+		meta, err := parseApacheKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: validApacheKafkaMetadata, AuthParams: testData.authParams}, logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -336,7 +328,7 @@ func TestApacheKafkaAuthParams(t *testing.T) {
 
 	// Testing tls and sasl value in scaledObject
 	for id, testData := range parseApacheKafkaAuthParamsTestDataset2 {
-		meta, err := parseApacheKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
+		meta, err := parseApacheKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Errorf("Test case: %#v. Expected success but got error %#v", id, err)
@@ -368,7 +360,7 @@ func TestApacheKafkaAuthParams(t *testing.T) {
 
 func TestApacheKafkaGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range apacheKafkaMetricIdentifiers {
-		meta, err := parseApacheKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validApacheKafkaWithAuthParams, ScalerIndex: testData.scalerIndex}, logr.Discard())
+		meta, err := parseApacheKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validApacheKafkaWithAuthParams, TriggerIndex: testData.triggerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -381,4 +373,12 @@ func TestApacheKafkaGetMetricSpecForScaling(t *testing.T) {
 			t.Error("Wrong External metric source name:", metricName, str)
 		}
 	}
+}
+
+func parseExpectedLagThreshold(metadata map[string]string) (int64, error) {
+	val, ok := metadata["lagThreshold"]
+	if !ok {
+		return 0, nil
+	}
+	return strconv.ParseInt(val, 10, 64)
 }

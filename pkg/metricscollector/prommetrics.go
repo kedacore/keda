@@ -31,7 +31,7 @@ import (
 var log = logf.Log.WithName("prometheus_server")
 
 var (
-	metricLabels = []string{"namespace", "metric", "scaledObject", "scaler", "scalerIndex"}
+	metricLabels = []string{"namespace", "metric", "scaledObject", "scaler", "triggerIndex", "type"}
 	buildInfo    = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: DefaultPromMetricsNamespace,
@@ -130,12 +130,23 @@ var (
 		},
 		[]string{"namespace", "scaledObject"},
 	)
+
+	scaledJobErrors = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "scaled_job",
+			Name:      "errors_total",
+			Help:      "Number of scaled job errors",
+		},
+		[]string{"namespace", "scaledJob"},
+	)
+
 	triggerTotalsGaugeVecDeprecated = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "trigger",
 			Name:      "totals",
-			Help:      "DEPRECATED - will be removed in 2.15 - use 'trigger_handled_total' instead.",
+			Help:      "DEPRECATED - will be removed in 2.15 - use 'trigger_registered_total' instead.",
 		},
 		[]string{"type"},
 	)
@@ -184,6 +195,27 @@ var (
 		},
 		[]string{"namespace", "type", "resource"},
 	)
+
+	// Total emitted cloudevents.
+	cloudeventEmitted = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "cloudeventsource",
+			Name:      "events_emitted_total",
+			Help:      "Measured the total number of emitted cloudevents. 'namespace': namespace of CloudEventSource 'cloudeventsource': name of CloudEventSource object. 'eventsink': destination of this emitted event 'state':indicated events emitted successfully or not",
+		},
+		[]string{"namespace", "cloudeventsource", "eventsink", "state"},
+	)
+
+	cloudeventQueueStatus = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "cloudeventsource",
+			Name:      "events_queued",
+			Help:      "Indicates how many events are still queue",
+		},
+		[]string{"namespace"},
+	)
 )
 
 type PromMetrics struct {
@@ -206,7 +238,14 @@ func NewPromMetrics() *PromMetrics {
 	metrics.Registry.MustRegister(triggerRegistered)
 	metrics.Registry.MustRegister(crdTotalsGaugeVecDeprecated)
 	metrics.Registry.MustRegister(crdRegistered)
+	metrics.Registry.MustRegister(scaledJobErrors)
+
+	// metrics.Registry.MustRegister(triggerTotalsGaugeVec)
+	// metrics.Registry.MustRegister(crdTotalsGaugeVec)
 	metrics.Registry.MustRegister(buildInfo)
+
+	metrics.Registry.MustRegister(cloudeventEmitted)
+	metrics.Registry.MustRegister(cloudeventQueueStatus)
 
 	RecordBuildInfo()
 	return &PromMetrics{}
@@ -218,34 +257,30 @@ func RecordBuildInfo() {
 }
 
 // RecordScalerMetric create a measurement of the external metric used by the HPA
-func (p *PromMetrics) RecordScalerMetric(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value float64) {
-	scalerMetricsValue.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Set(value)
+func (p *PromMetrics) RecordScalerMetric(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value float64) {
+	scalerMetricsValue.With(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)).Set(value)
 }
 
 // RecordScalerLatency create a measurement of the latency to external metric
-func (p *PromMetrics) RecordScalerLatency(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, value time.Duration) {
-	scalerMetricsLatency.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Set(value.Seconds())
-	scalerMetricsLatencyDeprecated.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Set(float64(value.Milliseconds()))
+func (p *PromMetrics) RecordScalerLatency(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value time.Duration) {
+	scalerMetricsLatency.With(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)).Set(float64(value.Seconds()))
+	scalerMetricsLatencyDeprecated.With(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)).Set(float64(value.Milliseconds()))
 }
 
 // RecordScalableObjectLatency create a measurement of the latency executing scalable object loop
 func (p *PromMetrics) RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value time.Duration) {
-	resourceType := "scaledjob"
-	if isScaledObject {
-		resourceType = "scaledobject"
-	}
-	internalLoopLatency.WithLabelValues(namespace, resourceType, name).Set(value.Seconds())
-	internalLoopLatencyDeprecated.WithLabelValues(namespace, resourceType, name).Set(float64(value.Milliseconds()))
+	internalLoopLatency.WithLabelValues(namespace, getResourceType(isScaledObject), name).Set(value.Seconds())
+	internalLoopLatencyDeprecated.WithLabelValues(namespace, getResourceType(isScaledObject), name).Set(float64(value.Milliseconds()))
 }
 
 // RecordScalerActive create a measurement of the activity of the scaler
-func (p *PromMetrics) RecordScalerActive(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, active bool) {
+func (p *PromMetrics) RecordScalerActive(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, active bool) {
 	activeVal := 0
 	if active {
 		activeVal = 1
 	}
 
-	scalerActive.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Set(float64(activeVal))
+	scalerActive.With(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)).Set(float64(activeVal))
 }
 
 // RecordScaledObjectPaused marks whether the current ScaledObject is paused.
@@ -260,21 +295,21 @@ func (p *PromMetrics) RecordScaledObjectPaused(namespace string, scaledObject st
 	scaledObjectPaused.With(labels).Set(float64(activeVal))
 }
 
-// RecordScalerError counts the number of errors occurred in trying get an external metric used by the HPA
-func (p *PromMetrics) RecordScalerError(namespace string, scaledObject string, scaler string, scalerIndex int, metric string, err error) {
+// RecordScalerError counts the number of errors occurred in trying to get an external metric used by the HPA
+func (p *PromMetrics) RecordScalerError(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, err error) {
 	if err != nil {
-		scalerErrors.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Inc()
-		scalerErrorsDeprecated.With(getLabels(namespace, scaledObject, scaler, scalerIndex, metric)).Inc()
-		p.RecordScaledObjectError(namespace, scaledObject, err)
+		scalerErrors.With(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)).Inc()
+		scalerErrorsDeprecated.With(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)).Inc()
+		p.RecordScaledObjectError(namespace, scaledResource, err)
 		scalerErrorsTotalDeprecated.With(prometheus.Labels{}).Inc()
 		return
 	}
 	// initialize metric with 0 if not already set
-	_, errscaler := scalerErrors.GetMetricWith(getLabels(namespace, scaledObject, scaler, scalerIndex, metric))
+	_, errscaler := scalerErrors.GetMetricWith(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject))
 	if errscaler != nil {
 		log.Error(errscaler, "Unable to record metrics: %v")
 	}
-	_, errscalerdep := scalerErrorsDeprecated.GetMetricWith(getLabels(namespace, scaledObject, scaler, scalerIndex, metric))
+	_, errscalerdep := scalerErrorsDeprecated.GetMetricWith(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject))
 	if errscalerdep != nil {
 		log.Error(errscaler, "Unable to record (deprecated) metrics: %v")
 	}
@@ -301,8 +336,30 @@ func (p *PromMetrics) RecordScaledObjectError(namespace string, scaledObject str
 	}
 }
 
-func getLabels(namespace string, scaledObject string, scaler string, scalerIndex int, metric string) prometheus.Labels {
-	return prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject, "scaler": scaler, "scalerIndex": strconv.Itoa(scalerIndex), "metric": metric}
+// RecordScaledJobError counts the number of errors with the scaled job
+func (p *PromMetrics) RecordScaledJobError(namespace string, scaledJob string, err error) {
+	labels := prometheus.Labels{"namespace": namespace, "scaledJob": scaledJob}
+	if err != nil {
+		scaledJobErrors.With(labels).Inc()
+		return
+	}
+	// initialize metric with 0 if not already set
+	_, errscaledjob := scaledJobErrors.GetMetricWith(labels)
+	if errscaledjob != nil {
+		log.Error(err, "Unable to write to metrics to Prometheus Server: %v")
+		return
+	}
+}
+
+func getLabels(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, isScaledObject bool) prometheus.Labels {
+	return prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject, "scaler": scaler, "triggerIndex": strconv.Itoa(triggerIndex), "metric": metric, "type": getResourceType(isScaledObject)}
+}
+
+func getResourceType(isScaledObject bool) string {
+	if isScaledObject {
+		return "scaledobject"
+	}
+	return "scaledjob"
 }
 
 func (p *PromMetrics) IncrementTriggerTotal(triggerType string) {
@@ -335,4 +392,21 @@ func (p *PromMetrics) DecrementCRDTotal(crdType, namespace string) {
 
 	crdRegistered.WithLabelValues(crdType, namespace).Dec()
 	crdTotalsGaugeVecDeprecated.WithLabelValues(crdType, namespace).Dec()
+}
+
+// RecordCloudEventEmitted counts the number of cloudevent that emitted to user's sink
+func (p *PromMetrics) RecordCloudEventEmitted(namespace string, cloudeventsource string, eventsink string) {
+	labels := prometheus.Labels{"namespace": namespace, "cloudeventsource": cloudeventsource, "eventsink": eventsink, "state": "emitted"}
+	cloudeventEmitted.With(labels).Inc()
+}
+
+// RecordCloudEventEmittedError counts the number of errors occurred in trying emit cloudevent
+func (p *PromMetrics) RecordCloudEventEmittedError(namespace string, cloudeventsource string, eventsink string) {
+	labels := prometheus.Labels{"namespace": namespace, "cloudeventsource": cloudeventsource, "eventsink": eventsink, "state": "failed"}
+	cloudeventEmitted.With(labels).Inc()
+}
+
+// RecordCloudEventSourceQueueStatus record the number of cloudevents that are waiting for emitting
+func (p *PromMetrics) RecordCloudEventQueueStatus(namespace string, value int) {
+	cloudeventQueueStatus.With(prometheus.Labels{"namespace": namespace}).Set(float64(value))
 }

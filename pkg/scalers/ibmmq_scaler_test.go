@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 // Test host URLs for validation
@@ -28,7 +30,7 @@ var sampleIBMMQResolvedEnv = map[string]string{
 // Test metric identifier with test MQ data and it's name
 type IBMMQMetricIdentifier struct {
 	metadataTestData *parseIBMMQMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -69,7 +71,7 @@ var testIBMMQMetadata = []parseIBMMQMetadataTestData{
 // and verify that the password field is handled correctly.
 func TestIBMMQParseMetadata(t *testing.T) {
 	for _, testData := range testIBMMQMetadata {
-		metadata, err := parseIBMMQMetadata(&ScalerConfig{ResolvedEnv: sampleIBMMQResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		metadata, err := parseIBMMQMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleIBMMQResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 			fmt.Println(testData)
@@ -93,7 +95,7 @@ var testDefaultQueueDepth = []parseIBMMQMetadataTestData{
 // Test that DefaultQueueDepth is set when queueDepth is not provided
 func TestParseDefaultQueueDepth(t *testing.T) {
 	for _, testData := range testDefaultQueueDepth {
-		metadata, err := parseIBMMQMetadata(&ScalerConfig{ResolvedEnv: sampleIBMMQResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		metadata, err := parseIBMMQMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleIBMMQResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		switch {
 		case err != nil && !testData.isError:
 			t.Error("Expected success but got error", err)
@@ -108,7 +110,7 @@ func TestParseDefaultQueueDepth(t *testing.T) {
 // Create a scaler and check if metrics method is available
 func TestIBMMQGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range IBMMQMetricIdentifiers {
-		metadata, err := parseIBMMQMetadata(&ScalerConfig{ResolvedEnv: sampleIBMMQResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex})
+		metadata, err := parseIBMMQMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleIBMMQResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex})
 		httpTimeout := 100 * time.Millisecond
 
 		if err != nil {

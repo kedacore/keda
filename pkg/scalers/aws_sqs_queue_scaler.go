@@ -14,6 +14,8 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -38,15 +40,15 @@ type awsSqsQueueMetadata struct {
 	queueName                   string
 	awsRegion                   string
 	awsEndpoint                 string
-	awsAuthorization            awsAuthorizationMetadata
-	scalerIndex                 int
+	awsAuthorization            awsutils.AuthorizationMetadata
+	triggerIndex                int
 	scaleOnInFlight             bool
 	scaleOnDelayed              bool
 	awsSqsQueueMetricNames      []types.QueueAttributeName
 }
 
 // NewAwsSqsQueueScaler creates a new awsSqsQueueScaler
-func NewAwsSqsQueueScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+func NewAwsSqsQueueScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -84,7 +86,7 @@ func (w sqsWrapperClient) GetQueueAttributes(ctx context.Context, params *sqs.Ge
 	return w.sqsClient.GetQueueAttributes(ctx, params, optFns...)
 }
 
-func parseAwsSqsQueueMetadata(config *ScalerConfig, logger logr.Logger) (*awsSqsQueueMetadata, error) {
+func parseAwsSqsQueueMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*awsSqsQueueMetadata, error) {
 	meta := awsSqsQueueMetadata{}
 	meta.targetQueueLength = defaultTargetQueueLength
 	meta.scaleOnInFlight = defaultScaleOnInFlight
@@ -175,20 +177,20 @@ func parseAwsSqsQueueMetadata(config *ScalerConfig, logger logr.Logger) (*awsSqs
 		meta.awsEndpoint = val
 	}
 
-	auth, err := getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
+	auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
 	}
 
 	meta.awsAuthorization = auth
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	return &meta, nil
 }
 
 func createSqsClient(ctx context.Context, metadata *awsSqsQueueMetadata) (*sqs.Client, error) {
-	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
 	if err != nil {
 		return nil, err
 	}
@@ -200,13 +202,14 @@ func createSqsClient(ctx context.Context, metadata *awsSqsQueueMetadata) (*sqs.C
 }
 
 func (s *awsSqsQueueScaler) Close(context.Context) error {
+	awsutils.ClearAwsConfig(s.metadata.awsAuthorization)
 	return nil
 }
 
 func (s *awsSqsQueueScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-sqs-%s", s.metadata.queueName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-sqs-%s", s.metadata.queueName))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.targetQueueLength),
 	}

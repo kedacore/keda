@@ -13,6 +13,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -28,11 +29,11 @@ type postgreSQLMetadata struct {
 	activationTargetQueryValue float64
 	connection                 string
 	query                      string
-	scalerIndex                int
+	triggerIndex               int
 }
 
 // NewPostgreSQLScaler creates a new postgreSQL scaler
-func NewPostgreSQLScaler(config *ScalerConfig) (Scaler, error) {
+func NewPostgreSQLScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -57,7 +58,7 @@ func NewPostgreSQLScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) {
+func parsePostgreSQLMetadata(config *scalersconfig.ScalerConfig) (*postgreSQLMetadata, error) {
 	meta := postgreSQLMetadata{}
 
 	if val, ok := config.TriggerMetadata["query"]; ok {
@@ -137,7 +138,7 @@ func parsePostgreSQLMetadata(config *ScalerConfig) (*postgreSQLMetadata, error) 
 		params = append(params, "password="+escapePostgreConnectionParameter(password))
 		meta.connection = strings.Join(params, " ")
 	}
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
@@ -179,7 +180,7 @@ func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (float64, error)
 func (s *postgreSQLScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString("postgresql")),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString("postgresql")),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.targetQueryValue),
 	}

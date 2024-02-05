@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"testing"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 type mssqlTestData struct {
@@ -20,7 +22,7 @@ type mssqlTestData struct {
 
 type mssqlMetricIdentifier struct {
 	metadataTestData *mssqlTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -122,7 +124,7 @@ var mssqlMetricIdentifiers = []mssqlMetricIdentifier{
 
 func TestMSSQLMetadataParsing(t *testing.T) {
 	for _, testData := range testMssqlMetadata {
-		var config = ScalerConfig{
+		var config = scalersconfig.ScalerConfig{
 			ResolvedEnv:     testData.resolvedEnv,
 			TriggerMetadata: testData.metadata,
 			AuthParams:      testData.authParams,
@@ -159,11 +161,11 @@ func TestMSSQLMetadataParsing(t *testing.T) {
 func TestMSSQLGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range mssqlMetricIdentifiers {
 		ctx := context.Background()
-		var config = ScalerConfig{
+		var config = scalersconfig.ScalerConfig{
 			ResolvedEnv:     testData.metadataTestData.resolvedEnv,
 			TriggerMetadata: testData.metadataTestData.metadata,
 			AuthParams:      testData.metadataTestData.authParams,
-			ScalerIndex:     testData.scalerIndex,
+			TriggerIndex:    testData.triggerIndex,
 		}
 		meta, err := parseMSSQLMetadata(&config)
 		if err != nil {

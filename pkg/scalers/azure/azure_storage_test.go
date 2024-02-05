@@ -22,6 +22,8 @@ var parseConnectionStringTestDataset = []parseConnectionStringTestData{
 	{"DefaultEndpointsProtocol=https;AccountName=testing;AccountKey=key==;EndpointSuffix=core.windows.net;BlobEndpoint=https://blob.net", "testing", "key==", "https://blob.net", BlobEndpoint, false},
 	{"DefaultEndpointsProtocol=https;AccountName=testing;AccountKey=key==;EndpointSuffix=core.windows.net;TableEndpoint=https://table.net", "testing", "key==", "https://table.net", TableEndpoint, false},
 	{"DefaultEndpointsProtocol=https;AccountName=testing;AccountKey=key==;EndpointSuffix=core.windows.net;FileEndpoint=https://file.net", "testing", "key==", "https://file.net", FileEndpoint, false},
+	{"QueueEndpoint=https://queue.net;SharedAccessSignature=sv=2012-02-12&st=2009-02-09&se=2009-02-10&sr=c&sp=r&si=YWJjZGVmZw%3d%3d&sig=dD80ihBh5jfNpymO5Hg1IdiJIEvHcJpCMiCMnN%2fRnbI%3d", "", "", "https://queue.net?sv=2012-02-12&st=2009-02-09&se=2009-02-10&sr=c&sp=r&si=YWJjZGVmZw%3d%3d&sig=dD80ihBh5jfNpymO5Hg1IdiJIEvHcJpCMiCMnN%2fRnbI%3d", QueueEndpoint, false},
+	{"BlobEndpoint=https://blob.net;SharedAccessSignature=sv=2012-02-12&st=2009-02-09&se=2009-02-10&sr=c&sp=r&si=YWJjZGVmZw%3d%3d&sig=dD80ihBh5jfNpymO5Hg1IdiJIEvHcJpCMiCMnN%2fRnbI%3d", "", "", "https://blob.net?sv=2012-02-12&st=2009-02-09&se=2009-02-10&sr=c&sp=r&si=YWJjZGVmZw%3d%3d&sig=dD80ihBh5jfNpymO5Hg1IdiJIEvHcJpCMiCMnN%2fRnbI%3d", BlobEndpoint, false},
 }
 
 func TestParseStorageConnectionString(t *testing.T) {

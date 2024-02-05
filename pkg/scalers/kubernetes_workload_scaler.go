@@ -12,6 +12,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -39,11 +40,11 @@ type kubernetesWorkloadMetadata struct {
 	namespace       string
 	value           float64
 	activationValue float64
-	scalerIndex     int
+	triggerIndex    int
 }
 
 // NewKubernetesWorkloadScaler creates a new kubernetesWorkloadScaler
-func NewKubernetesWorkloadScaler(kubeClient client.Client, config *ScalerConfig) (Scaler, error) {
+func NewKubernetesWorkloadScaler(kubeClient client.Client, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -62,7 +63,7 @@ func NewKubernetesWorkloadScaler(kubeClient client.Client, config *ScalerConfig)
 	}, nil
 }
 
-func parseWorkloadMetadata(config *ScalerConfig) (*kubernetesWorkloadMetadata, error) {
+func parseWorkloadMetadata(config *scalersconfig.ScalerConfig) (*kubernetesWorkloadMetadata, error) {
 	meta := &kubernetesWorkloadMetadata{}
 	var err error
 	meta.namespace = config.ScalableObjectNamespace
@@ -90,7 +91,7 @@ func parseWorkloadMetadata(config *ScalerConfig) (*kubernetesWorkloadMetadata, e
 		meta.activationValue = activationValue
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return meta, nil
 }
 
@@ -103,7 +104,7 @@ func (s *kubernetesWorkloadScaler) Close(context.Context) error {
 func (s *kubernetesWorkloadScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("workload-%s", s.metadata.namespace))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("workload-%s", s.metadata.namespace))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.value),
 	}

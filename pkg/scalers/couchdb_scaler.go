@@ -13,6 +13,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -38,7 +39,7 @@ type couchDBMetadata struct {
 	query                string
 	queryValue           int64
 	activationQueryValue int64
-	scalerIndex          int
+	triggerIndex         int
 }
 
 type Res struct {
@@ -50,7 +51,7 @@ type Res struct {
 func (s *couchDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("coucdb-%s", s.metadata.dbName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("coucdb-%s", s.metadata.dbName))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.queryValue),
 	}
@@ -96,7 +97,7 @@ func (s *couchDBScaler) getQueryResult(ctx context.Context) (int64, error) {
 	return count, nil
 }
 
-func parseCouchDBMetadata(config *ScalerConfig) (*couchDBMetadata, string, error) {
+func parseCouchDBMetadata(config *scalersconfig.ScalerConfig) (*couchDBMetadata, string, error) {
 	var connStr string
 	var err error
 	meta := couchDBMetadata{}
@@ -179,11 +180,11 @@ func parseCouchDBMetadata(config *ScalerConfig) (*couchDBMetadata, string, error
 		// nosemgrep: db-connection-string
 		connStr = "http://" + addr
 	}
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, connStr, nil
 }
 
-func NewCouchDBScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+func NewCouchDBScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)

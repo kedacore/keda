@@ -31,7 +31,7 @@ linters:
     - ineffassign
     - staticcheck
     - exportloopref
-    #- depguard #https://github.com/kedacore/keda/issues/4980
+    - depguard
     - dogsled
     - errcheck
     #- funlen
@@ -55,6 +55,8 @@ issues:
       linters:
         - gomnd
         - dupl
+        - revive
+        - goconst
     - path: scalers_builder.go
       linters:
         - gocyclo
@@ -136,7 +138,31 @@ issues:
     - path: azure_pipelines_scaler.go
       linters:
         - gocritic
-
+  # Following 3 depguard exceptions are for disabling sync/atomic package where
+  # denying the rule doesnt help (bottom of this file) but this keeps the depguard
+  # linter enabled
+  # https://github.com/kedacore/keda/issues/4980
+    - path: pkg/scalers/external_mock_scaler.go
+      linters:
+        - depguard
+    - path: controllers/keda/scaledobject_controller_test.go
+      linters:
+        - depguard
+        - goconst
+    - path: pkg/scalers/external_scaler_test.go
+      linters:
+        - depguard
+  # Exclude for scale_resolvers, reason:
+  # pkg/scaling/resolver/scale_resolvers.go:236:1: cyclomatic complexity 35 of func `resolveAuthRef` is high (> 30) (gocyclo)
+    - path: pkg/scaling/resolver/scale_resolvers.go
+      linters:
+        - gocyclo
+  # Exclude for azure_storage, reason:
+  # pkg/scalers/azure/azure_storage.go:91: 91-120 lines are duplicate of `pkg/scalers/azure/azure_storage.go:123-152` (dupl)
+  # pkg/scalers/azure/azure_storage.go:123: 123-152 lines are duplicate of `pkg/scalers/azure/azure_storage.go:91-120` (dupl)
+    - path: pkg/scalers/azure/azure_storage.go
+      linters:
+        - dupl
 
 linters-settings:
   funlen:
@@ -147,3 +173,9 @@ linters-settings:
       - standard
       - default
       - prefix(github.com/kedacore/keda)
+  depguard: #https://github.com/kedacore/keda/issues/4980
+    rules:
+      main:
+        deny:
+          - pkg: sync/atomic
+            desc: "use type-safe atomics from go.uber.org/atomic"

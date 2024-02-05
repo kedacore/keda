@@ -33,6 +33,8 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/kafka"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -90,7 +92,7 @@ type kafkaMetadata struct {
 	ca          string
 	unsafeSsl   bool
 
-	scalerIndex int
+	triggerIndex int
 }
 
 type offsetResetPolicy string
@@ -123,7 +125,7 @@ const (
 )
 
 // NewKafkaScaler creates a new kafkaScaler
-func NewKafkaScaler(config *ScalerConfig) (Scaler, error) {
+func NewKafkaScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -153,7 +155,7 @@ func NewKafkaScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
+func parseKafkaAuthParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadata) error {
 	meta.saslType = KafkaSASLTypeNone
 	var saslAuthType string
 	switch {
@@ -224,7 +226,7 @@ func parseKafkaAuthParams(config *ScalerConfig, meta *kafkaMetadata) error {
 	return nil
 }
 
-func parseTLS(config *ScalerConfig, meta *kafkaMetadata) error {
+func parseTLS(config *scalersconfig.ScalerConfig, meta *kafkaMetadata) error {
 	certGiven := config.AuthParams["cert"] != ""
 	keyGiven := config.AuthParams["key"] != ""
 	if certGiven && !keyGiven {
@@ -255,7 +257,7 @@ func parseTLS(config *ScalerConfig, meta *kafkaMetadata) error {
 	return nil
 }
 
-func parseKerberosParams(config *ScalerConfig, meta *kafkaMetadata, mode kafkaSaslType) error {
+func parseKerberosParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadata, mode kafkaSaslType) error {
 	if config.AuthParams["username"] == "" {
 		return errors.New("no username given")
 	}
@@ -293,7 +295,7 @@ func parseKerberosParams(config *ScalerConfig, meta *kafkaMetadata, mode kafkaSa
 	return nil
 }
 
-func parseSaslParams(config *ScalerConfig, meta *kafkaMetadata, mode kafkaSaslType) error {
+func parseSaslParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadata, mode kafkaSaslType) error {
 	if config.AuthParams["username"] == "" {
 		return errors.New("no username given")
 	}
@@ -355,7 +357,7 @@ func saveToFile(content string) (string, error) {
 	return tempFilename, nil
 }
 
-func parseKafkaMetadata(config *ScalerConfig, logger logr.Logger) (kafkaMetadata, error) {
+func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (kafkaMetadata, error) {
 	meta := kafkaMetadata{}
 	switch {
 	case config.TriggerMetadata["bootstrapServersFromEnv"] != "":
@@ -494,7 +496,7 @@ func parseKafkaMetadata(config *ScalerConfig, logger logr.Logger) (kafkaMetadata
 		}
 		meta.version = version
 	}
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return meta, nil
 }
 
@@ -522,18 +524,18 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 	}
 
 	if metadata.saslType == KafkaSASLTypeSCRAMSHA256 {
-		config.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient { return &XDGSCRAMClient{HashGeneratorFcn: SHA256} }
+		config.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient { return &kafka.XDGSCRAMClient{HashGeneratorFcn: kafka.SHA256} }
 		config.Net.SASL.Mechanism = sarama.SASLTypeSCRAMSHA256
 	}
 
 	if metadata.saslType == KafkaSASLTypeSCRAMSHA512 {
-		config.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient { return &XDGSCRAMClient{HashGeneratorFcn: SHA512} }
+		config.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient { return &kafka.XDGSCRAMClient{HashGeneratorFcn: kafka.SHA512} }
 		config.Net.SASL.Mechanism = sarama.SASLTypeSCRAMSHA512
 	}
 
 	if metadata.saslType == KafkaSASLTypeOAuthbearer {
 		config.Net.SASL.Mechanism = sarama.SASLTypeOAuth
-		config.Net.SASL.TokenProvider = OAuthBearerTokenProvider(metadata.username, metadata.password, metadata.oauthTokenEndpointURI, metadata.scopes, metadata.oauthExtensions)
+		config.Net.SASL.TokenProvider = kafka.OAuthBearerTokenProvider(metadata.username, metadata.password, metadata.oauthTokenEndpointURI, metadata.scopes, metadata.oauthExtensions)
 	}
 
 	if metadata.saslType == KafkaSASLTypeGSSAPI {
@@ -594,6 +596,9 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error describing topics: %w", err)
 	}
+	s.logger.V(1).Info(
+		fmt.Sprintf("with topic name %s the list of topic metadata is %v", topicsToDescribe, topicsMetadata),
+	)
 
 	if s.metadata.topic != "" && len(topicsMetadata) != 1 {
 		return nil, fmt.Errorf("expected only 1 topic metadata, got %d", len(topicsMetadata))
@@ -708,16 +713,6 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 
 // Close closes the kafka admin and client
 func (s *kafkaScaler) Close(context.Context) error {
-	// underlying client will also be closed on admin's Close() call
-	if s.admin == nil {
-		return nil
-	}
-
-	err := s.admin.Close()
-	if err != nil {
-		return err
-	}
-
 	// clean up any temporary files
 	if strings.TrimSpace(s.metadata.kerberosConfigPath) != "" {
 		if err := os.Remove(s.metadata.kerberosConfigPath); err != nil {
@@ -729,7 +724,12 @@ func (s *kafkaScaler) Close(context.Context) error {
 			return err
 		}
 	}
-	return nil
+	// underlying client will also be closed on admin's Close() call
+	if s.admin == nil {
+		return nil
+	}
+
+	return s.admin.Close()
 }
 
 func (s *kafkaScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
@@ -742,7 +742,7 @@ func (s *kafkaScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(metricName)),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(metricName)),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.lagThreshold),
 	}

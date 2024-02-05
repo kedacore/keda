@@ -12,6 +12,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -35,7 +36,7 @@ type azureAppInsightsMetadata struct {
 	azureAppInsightsInfo  azure.AppInsightsInfo
 	targetValue           float64
 	activationTargetValue float64
-	scalerIndex           int
+	triggerIndex          int
 	// sometimes we should consider there is an error we can accept
 	// default value is true/t, to ignore the null value returned from prometheus
 	// change to false/f if you can not accept prometheus returning null values
@@ -51,7 +52,7 @@ type azureAppInsightsScaler struct {
 }
 
 // NewAzureAppInsightsScaler creates a new AzureAppInsightsScaler
-func NewAzureAppInsightsScaler(config *ScalerConfig) (Scaler, error) {
+func NewAzureAppInsightsScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -72,7 +73,7 @@ func NewAzureAppInsightsScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseAzureAppInsightsMetadata(config *ScalerConfig, logger logr.Logger) (*azureAppInsightsMetadata, error) {
+func parseAzureAppInsightsMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*azureAppInsightsMetadata, error) {
 	meta := azureAppInsightsMetadata{
 		azureAppInsightsInfo: azure.AppInsightsInfo{},
 	}
@@ -157,8 +158,7 @@ func parseAzureAppInsightsMetadata(config *ScalerConfig, logger logr.Logger) (*a
 	if val, ok := config.TriggerMetadata[azureAppInsightsIgnoreNullValues]; ok && val != "" {
 		azureAppInsightsIgnoreNullValues, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("err incorrect value for azureAppInsightsIgnoreNullValues given: %s, "+
-				"please use true or false", val)
+			return nil, fmt.Errorf("err incorrect value for azureAppInsightsIgnoreNullValues given: %s, please use true or false", val)
 		}
 		meta.ignoreNullValues = azureAppInsightsIgnoreNullValues
 	}
@@ -184,7 +184,7 @@ func parseAzureAppInsightsMetadata(config *ScalerConfig, logger logr.Logger) (*a
 	meta.azureAppInsightsInfo.ClientID = clientID
 	meta.azureAppInsightsInfo.ClientPassword = clientPassword
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	return &meta, nil
 }
@@ -196,7 +196,7 @@ func (s *azureAppInsightsScaler) Close(context.Context) error {
 func (s *azureAppInsightsScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-app-insights-%s", s.metadata.azureAppInsightsInfo.MetricID))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-app-insights-%s", s.metadata.azureAppInsightsInfo.MetricID))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.targetValue),
 	}

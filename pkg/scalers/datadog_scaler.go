@@ -13,6 +13,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -49,7 +50,7 @@ func init() {
 }
 
 // NewDatadogScaler creates a new Datadog scaler
-func NewDatadogScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+func NewDatadogScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	logger := InitializeLogger(config, "datadog_scaler")
 
 	meta, err := parseDatadogMetadata(config, logger)
@@ -78,7 +79,7 @@ func parseDatadogQuery(q string) (bool, error) {
 	return true, nil
 }
 
-func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMetadata, error) {
+func parseDatadogMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*datadogMetadata, error) {
 	meta := datadogMetadata{}
 
 	if val, ok := config.TriggerMetadata["age"]; ok {
@@ -223,13 +224,13 @@ func parseDatadogMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMet
 	meta.datadogSite = siteVal
 
 	metricName := meta.query[0:strings.Index(meta.query, "{")]
-	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("datadog-%s", metricName)))
+	meta.metricName = GenerateMetricNameWithIndex(config.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("datadog-%s", metricName)))
 
 	return &meta, nil
 }
 
 // newDatddogConnection tests a connection to the Datadog API
-func newDatadogConnection(ctx context.Context, meta *datadogMetadata, config *ScalerConfig) (*datadog.APIClient, error) {
+func newDatadogConnection(ctx context.Context, meta *datadogMetadata, config *scalersconfig.ScalerConfig) (*datadog.APIClient, error) {
 	ctx = context.WithValue(
 		ctx,
 		datadog.ContextAPIKeys,
@@ -263,6 +264,9 @@ func newDatadogConnection(ctx context.Context, meta *datadogMetadata, config *Sc
 
 // No need to close connections
 func (s *datadogScaler) Close(context.Context) error {
+	if s.apiClient != nil {
+		s.apiClient.GetConfig().HTTPClient.CloseIdleConnections()
+	}
 	return nil
 }
 

@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017-2023 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 // limitations under the License.
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
-//
-// Author Lars Maier
 //
 
 package driver
@@ -60,9 +58,12 @@ type BackupListOptions struct {
 
 // BackupCreateOptions provides options for Create
 type BackupCreateOptions struct {
-	Label             string        `json:"label,omitempty"`
-	AllowInconsistent bool          `json:"allowInconsistent,omitempty"`
-	Timeout           time.Duration `json:"timeout,omitempty"`
+	Label string `json:"label,omitempty"`
+
+	Timeout time.Duration `json:"timeout,omitempty"`
+
+	// @deprecated - since 3.10.10 it exists only for backwards compatibility
+	AllowInconsistent bool `json:"allowInconsistent,omitempty"`
 }
 
 // BackupTransferStatus represents all possible states a transfer job can be in

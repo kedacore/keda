@@ -4,35 +4,32 @@ package kinesis
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/aws"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
-	internalauth "github.com/aws/aws-sdk-go-v2/internal/auth"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
-	smithyendpoints "github.com/aws/smithy-go/endpoints"
 	"github.com/aws/smithy-go/middleware"
 	"github.com/aws/smithy-go/ptr"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Enables or updates server-side encryption using an Amazon Web Services KMS key
-// for a specified stream. Starting encryption is an asynchronous operation. Upon
-// receiving the request, Kinesis Data Streams returns immediately and sets the
-// status of the stream to UPDATING . After the update is complete, Kinesis Data
-// Streams sets the status of the stream back to ACTIVE . Updating or applying
-// encryption normally takes a few seconds to complete, but it can take minutes.
-// You can continue to read and write data to your stream while its status is
-// UPDATING . Once the status of the stream is ACTIVE , encryption begins for
-// records written to the stream. API Limits: You can successfully apply a new
-// Amazon Web Services KMS key for server-side encryption 25 times in a rolling
-// 24-hour period. Note: It can take up to 5 seconds after the stream is in an
-// ACTIVE status before all records written to the stream are encrypted. After you
-// enable encryption, you can verify that encryption is applied by inspecting the
-// API response from PutRecord or PutRecords . When invoking this API, it is
-// recommended you use the StreamARN input parameter rather than the StreamName
-// input parameter.
+// for a specified stream. When invoking this API, you must use either the
+// StreamARN or the StreamName parameter, or both. It is recommended that you use
+// the StreamARN input parameter when you invoke this API. Starting encryption is
+// an asynchronous operation. Upon receiving the request, Kinesis Data Streams
+// returns immediately and sets the status of the stream to UPDATING . After the
+// update is complete, Kinesis Data Streams sets the status of the stream back to
+// ACTIVE . Updating or applying encryption normally takes a few seconds to
+// complete, but it can take minutes. You can continue to read and write data to
+// your stream while its status is UPDATING . Once the status of the stream is
+// ACTIVE , encryption begins for records written to the stream. API Limits: You
+// can successfully apply a new Amazon Web Services KMS key for server-side
+// encryption 25 times in a rolling 24-hour period. Note: It can take up to 5
+// seconds after the stream is in an ACTIVE status before all records written to
+// the stream are encrypted. After you enable encryption, you can verify that
+// encryption is applied by inspecting the API response from PutRecord or
+// PutRecords .
 func (c *Client) StartStreamEncryption(ctx context.Context, params *StartStreamEncryptionInput, optFns ...func(*Options)) (*StartStreamEncryptionOutput, error) {
 	if params == nil {
 		params = &StartStreamEncryptionInput{}
@@ -79,6 +76,11 @@ type StartStreamEncryptionInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *StartStreamEncryptionInput) bindEndpointParams(p *EndpointParameters) {
+	p.StreamARN = in.StreamARN
+	p.OperationType = ptr.String("control")
+}
+
 type StartStreamEncryptionOutput struct {
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
@@ -87,6 +89,9 @@ type StartStreamEncryptionOutput struct {
 }
 
 func (c *Client) addOperationStartStreamEncryptionMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpStartStreamEncryption{}, middleware.After)
 	if err != nil {
 		return err
@@ -95,6 +100,10 @@ func (c *Client) addOperationStartStreamEncryptionMiddlewares(stack *middleware.
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "StartStreamEncryption"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
 	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
@@ -116,9 +125,6 @@ func (c *Client) addOperationStartStreamEncryptionMiddlewares(stack *middleware.
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
-		return err
-	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
@@ -134,7 +140,7 @@ func (c *Client) addOperationStartStreamEncryptionMiddlewares(stack *middleware.
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addStartStreamEncryptionResolveEndpointMiddleware(stack, options); err != nil {
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
 	if err = addOpStartStreamEncryptionValidationMiddleware(stack); err != nil {
@@ -155,7 +161,7 @@ func (c *Client) addOperationStartStreamEncryptionMiddlewares(stack *middleware.
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
-	if err = addendpointDisableHTTPSMiddleware(stack, options); err != nil {
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
 	return nil
@@ -165,139 +171,6 @@ func newServiceMetadataMiddleware_opStartStreamEncryption(region string) *awsmid
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "kinesis",
 		OperationName: "StartStreamEncryption",
 	}
-}
-
-type opStartStreamEncryptionResolveEndpointMiddleware struct {
-	EndpointResolver EndpointResolverV2
-	BuiltInResolver  builtInParameterResolver
-}
-
-func (*opStartStreamEncryptionResolveEndpointMiddleware) ID() string {
-	return "ResolveEndpointV2"
-}
-
-func (m *opStartStreamEncryptionResolveEndpointMiddleware) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
-	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
-) {
-	if awsmiddleware.GetRequiresLegacyEndpoints(ctx) {
-		return next.HandleSerialize(ctx, in)
-	}
-
-	req, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, fmt.Errorf("unknown transport type %T", in.Request)
-	}
-
-	input, ok := in.Parameters.(*StartStreamEncryptionInput)
-	if !ok {
-		return out, metadata, fmt.Errorf("unknown transport type %T", in.Request)
-	}
-
-	if m.EndpointResolver == nil {
-		return out, metadata, fmt.Errorf("expected endpoint resolver to not be nil")
-	}
-
-	params := EndpointParameters{}
-
-	m.BuiltInResolver.ResolveBuiltIns(&params)
-
-	params.StreamARN = input.StreamARN
-
-	params.OperationType = ptr.String("control")
-
-	var resolvedEndpoint smithyendpoints.Endpoint
-	resolvedEndpoint, err = m.EndpointResolver.ResolveEndpoint(ctx, params)
-	if err != nil {
-		return out, metadata, fmt.Errorf("failed to resolve service endpoint, %w", err)
-	}
-
-	req.URL = &resolvedEndpoint.URI
-
-	for k := range resolvedEndpoint.Headers {
-		req.Header.Set(
-			k,
-			resolvedEndpoint.Headers.Get(k),
-		)
-	}
-
-	authSchemes, err := internalauth.GetAuthenticationSchemes(&resolvedEndpoint.Properties)
-	if err != nil {
-		var nfe *internalauth.NoAuthenticationSchemesFoundError
-		if errors.As(err, &nfe) {
-			// if no auth scheme is found, default to sigv4
-			signingName := "kinesis"
-			signingRegion := m.BuiltInResolver.(*builtInResolver).Region
-			ctx = awsmiddleware.SetSigningName(ctx, signingName)
-			ctx = awsmiddleware.SetSigningRegion(ctx, signingRegion)
-
-		}
-		var ue *internalauth.UnSupportedAuthenticationSchemeSpecifiedError
-		if errors.As(err, &ue) {
-			return out, metadata, fmt.Errorf(
-				"This operation requests signer version(s) %v but the client only supports %v",
-				ue.UnsupportedSchemes,
-				internalauth.SupportedSchemes,
-			)
-		}
-	}
-
-	for _, authScheme := range authSchemes {
-		switch authScheme.(type) {
-		case *internalauth.AuthenticationSchemeV4:
-			v4Scheme, _ := authScheme.(*internalauth.AuthenticationSchemeV4)
-			var signingName, signingRegion string
-			if v4Scheme.SigningName == nil {
-				signingName = "kinesis"
-			} else {
-				signingName = *v4Scheme.SigningName
-			}
-			if v4Scheme.SigningRegion == nil {
-				signingRegion = m.BuiltInResolver.(*builtInResolver).Region
-			} else {
-				signingRegion = *v4Scheme.SigningRegion
-			}
-			if v4Scheme.DisableDoubleEncoding != nil {
-				// The signer sets an equivalent value at client initialization time.
-				// Setting this context value will cause the signer to extract it
-				// and override the value set at client initialization time.
-				ctx = internalauth.SetDisableDoubleEncoding(ctx, *v4Scheme.DisableDoubleEncoding)
-			}
-			ctx = awsmiddleware.SetSigningName(ctx, signingName)
-			ctx = awsmiddleware.SetSigningRegion(ctx, signingRegion)
-			break
-		case *internalauth.AuthenticationSchemeV4A:
-			v4aScheme, _ := authScheme.(*internalauth.AuthenticationSchemeV4A)
-			if v4aScheme.SigningName == nil {
-				v4aScheme.SigningName = aws.String("kinesis")
-			}
-			if v4aScheme.DisableDoubleEncoding != nil {
-				// The signer sets an equivalent value at client initialization time.
-				// Setting this context value will cause the signer to extract it
-				// and override the value set at client initialization time.
-				ctx = internalauth.SetDisableDoubleEncoding(ctx, *v4aScheme.DisableDoubleEncoding)
-			}
-			ctx = awsmiddleware.SetSigningName(ctx, *v4aScheme.SigningName)
-			ctx = awsmiddleware.SetSigningRegion(ctx, v4aScheme.SigningRegionSet[0])
-			break
-		case *internalauth.AuthenticationSchemeNone:
-			break
-		}
-	}
-
-	return next.HandleSerialize(ctx, in)
-}
-
-func addStartStreamEncryptionResolveEndpointMiddleware(stack *middleware.Stack, options Options) error {
-	return stack.Serialize.Insert(&opStartStreamEncryptionResolveEndpointMiddleware{
-		EndpointResolver: options.EndpointResolverV2,
-		BuiltInResolver: &builtInResolver{
-			Region:       options.Region,
-			UseDualStack: options.EndpointOptions.UseDualStackEndpoint,
-			UseFIPS:      options.EndpointOptions.UseFIPSEndpoint,
-			Endpoint:     options.BaseEndpoint,
-		},
-	}, "ResolveEndpoint", middleware.After)
 }

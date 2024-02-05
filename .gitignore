@@ -37,6 +37,9 @@ apiserver.local.config/
 # VSCode specific files
 .vscode
 
+# certs  folder
+certs/
+
 cover.out
 
 # GO debug binaries
@@ -45,3 +48,6 @@ __debug_bin
 
 # GO Test result
 report.xml
+
+# KEDA Certs
+certs/*

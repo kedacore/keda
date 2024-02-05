@@ -35,7 +35,7 @@ type BlobMetadata struct {
 	Connection                string
 	AccountName               string
 	EndpointSuffix            string
-	ScalerIndex               int
+	TriggerIndex              int
 	GlobPattern               *glob.Glob
 }
 

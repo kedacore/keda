@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 type parseElasticsearchMetadataTestData struct {
@@ -27,7 +29,7 @@ type paramsTestData struct {
 
 type elasticsearchMetricIdentifier struct {
 	metadataTestData *parseElasticsearchMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -295,7 +297,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 func TestParseElasticsearchMetadata(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			metadata, err := parseElasticsearchMetadata(&ScalerConfig{
+			metadata, err := parseElasticsearchMetadata(&scalersconfig.ScalerConfig{
 				TriggerMetadata: tc.metadata,
 				AuthParams:      tc.authParams,
 				ResolvedEnv:     tc.resolvedEnv,
@@ -340,7 +342,7 @@ func TestUnsafeSslDefaultValue(t *testing.T) {
 		},
 		expectedError: nil,
 	}
-	metadata, err := parseElasticsearchMetadata(&ScalerConfig{
+	metadata, err := parseElasticsearchMetadata(&scalersconfig.ScalerConfig{
 		TriggerMetadata: tc.metadata,
 		AuthParams:      tc.authParams,
 	})
@@ -436,7 +438,7 @@ func TestBuildQuery(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			metadata, err := parseElasticsearchMetadata(&ScalerConfig{
+			metadata, err := parseElasticsearchMetadata(&scalersconfig.ScalerConfig{
 				TriggerMetadata: tc.metadata,
 				AuthParams:      tc.authParams,
 			})
@@ -454,10 +456,10 @@ func TestElasticsearchGetMetricSpecForScaling(t *testing.T) {
 
 	for _, testData := range elasticsearchMetricIdentifiers {
 		ctx := context.Background()
-		meta, err := parseElasticsearchMetadata(&ScalerConfig{
+		meta, err := parseElasticsearchMetadata(&scalersconfig.ScalerConfig{
 			TriggerMetadata: testData.metadataTestData.metadata,
 			AuthParams:      testData.metadataTestData.authParams,
-			ScalerIndex:     testData.scalerIndex,
+			TriggerIndex:    testData.triggerIndex,
 		})
 		if testData.metadataTestData.expectedError != nil {
 			assert.ErrorIs(t, err, testData.metadataTestData.expectedError)

@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 func Test_getCountFromSeleniumResponse(t *testing.T) {
@@ -516,7 +518,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 
 func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 	type args struct {
-		config *ScalerConfig
+		config *scalersconfig.ScalerConfig
 	}
 	tests := []struct {
 		name    string
@@ -527,7 +529,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 		{
 			name: "invalid url string should throw error",
 			args: args{
-				config: &ScalerConfig{
+				config: &scalersconfig.ScalerConfig{
 					TriggerMetadata: map[string]string{},
 				},
 			},
@@ -536,7 +538,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 		{
 			name: "invalid browsername string should throw error",
 			args: args{
-				config: &ScalerConfig{
+				config: &scalersconfig.ScalerConfig{
 					TriggerMetadata: map[string]string{
 						"url": "",
 					},
@@ -547,7 +549,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 		{
 			name: "valid url and browsername should return metadata",
 			args: args{
-				config: &ScalerConfig{
+				config: &scalersconfig.ScalerConfig{
 					TriggerMetadata: map[string]string{
 						"url":         "http://selenium-hub:4444/graphql",
 						"browserName": "chrome",
@@ -567,7 +569,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 		{
 			name: "valid url, browsername, and sessionbrowsername should return metadata",
 			args: args{
-				config: &ScalerConfig{
+				config: &scalersconfig.ScalerConfig{
 					TriggerMetadata: map[string]string{
 						"url":                "http://selenium-hub:4444/graphql",
 						"browserName":        "MicrosoftEdge",
@@ -588,7 +590,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 		{
 			name: "valid url in AuthParams, browsername, and sessionbrowsername should return metadata",
 			args: args{
-				config: &ScalerConfig{
+				config: &scalersconfig.ScalerConfig{
 					AuthParams: map[string]string{
 						"url": "http://user:password@selenium-hub:4444/graphql",
 					},
@@ -611,7 +613,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 		{
 			name: "valid url and browsername should return metadata",
 			args: args{
-				config: &ScalerConfig{
+				config: &scalersconfig.ScalerConfig{
 					TriggerMetadata: map[string]string{
 						"url":            "http://selenium-hub:4444/graphql",
 						"browserName":    "chrome",
@@ -634,7 +636,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 		{
 			name: "valid url, browsername, unsafeSsl and activationThreshold should return metadata",
 			args: args{
-				config: &ScalerConfig{
+				config: &scalersconfig.ScalerConfig{
 					TriggerMetadata: map[string]string{
 						"url":                 "http://selenium-hub:4444/graphql",
 						"browserName":         "chrome",
@@ -659,7 +661,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 		{
 			name: "valid url, browsername and unsafeSsl but invalid activationThreshold should throw an error",
 			args: args{
-				config: &ScalerConfig{
+				config: &scalersconfig.ScalerConfig{
 					TriggerMetadata: map[string]string{
 						"url":                 "http://selenium-hub:4444/graphql",
 						"browserName":         "chrome",
@@ -674,7 +676,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 		{
 			name: "valid url, browsername, unsafeSsl and activationThreshold with default platformName should return metadata",
 			args: args{
-				config: &ScalerConfig{
+				config: &scalersconfig.ScalerConfig{
 					TriggerMetadata: map[string]string{
 						"url":                 "http://selenium-hub:4444/graphql",
 						"browserName":         "chrome",
@@ -699,7 +701,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 		{
 			name: "valid url, browsername, unsafeSsl, activationThreshold and platformName should return metadata",
 			args: args{
-				config: &ScalerConfig{
+				config: &scalersconfig.ScalerConfig{
 					TriggerMetadata: map[string]string{
 						"url":                 "http://selenium-hub:4444/graphql",
 						"browserName":         "chrome",

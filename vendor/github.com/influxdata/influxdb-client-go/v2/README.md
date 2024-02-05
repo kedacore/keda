@@ -5,9 +5,9 @@
 [![License](https://img.shields.io/github/license/influxdata/influxdb-client-go.svg)](https://github.com/influxdata/influxdb-client-go/blob/master/LICENSE)
 [![Slack Status](https://img.shields.io/badge/slack-join_chat-white.svg?logo=slack&style=social)](https://www.influxdata.com/slack)
 
-This repository contains the reference Go client for InfluxDB 2.
+This repository contains the Go client library for use with InfluxDB 2.x and Flux. InfluxDB 3.x users should instead use the lightweight [v3 client library](https://github.com/InfluxCommunity/influxdb3-go). InfluxDB 1.x users should use the [v1 client library](https://github.com/influxdata/influxdb/tree/1.8/client).
 
-#### Note: Use this client library with InfluxDB 2.x and InfluxDB 1.8+ ([see details](#influxdb-18-api-compatibility)). For connecting to InfluxDB 1.7 or earlier instances, use the [influxdb1-go](https://github.com/influxdata/influxdb1-client) client library.
+For ease of migration and a consistent query and write experience, v2 users should consider using InfluxQL and the [v1 client library](https://github.com/influxdata/influxdb/tree/1.8/client).
 
 - [Features](#features)
 - [Documentation](#documentation)

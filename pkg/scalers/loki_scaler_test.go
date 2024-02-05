@@ -9,6 +9,8 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 type parseLokiMetadataTestData struct {
@@ -59,7 +61,7 @@ var testLokiAuthMetadata = []lokiAuthMetadataTestData{
 
 func TestLokiParseMetadata(t *testing.T) {
 	for _, testData := range testLokiMetadata {
-		_, err := parseLokiMetadata(&ScalerConfig{TriggerMetadata: testData.metadata})
+		_, err := parseLokiMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -71,7 +73,7 @@ func TestLokiParseMetadata(t *testing.T) {
 
 func TestLokiScalerAuthParams(t *testing.T) {
 	for _, testData := range testLokiAuthMetadata {
-		meta, err := parseLokiMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		meta, err := parseLokiMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)

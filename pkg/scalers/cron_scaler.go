@@ -12,6 +12,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -31,11 +32,11 @@ type cronMetadata struct {
 	end             string
 	timezone        string
 	desiredReplicas int64
-	scalerIndex     int
+	triggerIndex    int
 }
 
 // NewCronScaler creates a new cronScaler
-func NewCronScaler(config *ScalerConfig) (Scaler, error) {
+func NewCronScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -67,7 +68,7 @@ func getCronTime(location *time.Location, spec string) (int64, error) {
 	return cronTime, nil
 }
 
-func parseCronMetadata(config *ScalerConfig) (*cronMetadata, error) {
+func parseCronMetadata(config *scalersconfig.ScalerConfig) (*cronMetadata, error) {
 	if len(config.TriggerMetadata) == 0 {
 		return nil, fmt.Errorf("invalid Input Metadata. %s", config.TriggerMetadata)
 	}
@@ -110,7 +111,7 @@ func parseCronMetadata(config *ScalerConfig) (*cronMetadata, error) {
 	} else {
 		return nil, fmt.Errorf("no DesiredReplicas specified. %s", config.TriggerMetadata)
 	}
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
@@ -131,7 +132,7 @@ func (s *cronScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	var specReplicas int64 = 1
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("cron-%s-%s-%s", s.metadata.timezone, parseCronTimeFormat(s.metadata.start), parseCronTimeFormat(s.metadata.end)))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("cron-%s-%s-%s", s.metadata.timezone, parseCronTimeFormat(s.metadata.start), parseCronTimeFormat(s.metadata.end)))),
 		},
 		Target: GetMetricTarget(s.metricType, specReplicas),
 	}

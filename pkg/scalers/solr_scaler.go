@@ -12,6 +12,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -28,7 +29,7 @@ type solrMetadata struct {
 	targetQueryValue           float64
 	activationTargetQueryValue float64
 	query                      string
-	scalerIndex                int
+	triggerIndex               int
 
 	// Authentication
 	username string
@@ -42,7 +43,7 @@ type solrResponse struct {
 }
 
 // NewSolrScaler creates a new solr Scaler
-func NewSolrScaler(config *ScalerConfig) (Scaler, error) {
+func NewSolrScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -65,7 +66,7 @@ func NewSolrScaler(config *ScalerConfig) (Scaler, error) {
 }
 
 // parseSolrMetadata parses the metadata and returns a solrMetadata or an error if the ScalerConfig is invalid.
-func parseSolrMetadata(config *ScalerConfig) (*solrMetadata, error) {
+func parseSolrMetadata(config *scalersconfig.ScalerConfig) (*solrMetadata, error) {
 	meta := solrMetadata{}
 
 	if val, ok := config.TriggerMetadata["host"]; ok {
@@ -121,7 +122,7 @@ func parseSolrMetadata(config *ScalerConfig) (*solrMetadata, error) {
 		return nil, fmt.Errorf("no password given")
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
@@ -162,7 +163,7 @@ func (s *solrScaler) getItemCount(ctx context.Context) (float64, error) {
 func (s *solrScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString("solr")),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString("solr")),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.targetQueryValue),
 	}
@@ -186,5 +187,8 @@ func (s *solrScaler) GetMetricsAndActivity(ctx context.Context, metricName strin
 
 // Close closes the http client connection.
 func (s *solrScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }

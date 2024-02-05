@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"github.com/Azure/go-amqp/internal/buffer"
 	"github.com/Azure/go-amqp/internal/debug"
@@ -28,11 +29,13 @@ type Receiver struct {
 	messagesQ     *queue.Holder[Message] // used to send completed messages to receiver
 	txDisposition chan frameBodyEnvelope // used to funnel disposition frames through the mux
 
-	unsettledMessages     map[string]struct{} // used to keep track of messages being handled downstream
-	unsettledMessagesLock sync.RWMutex        // lock to protect concurrent access to unsettledMessages
-	msgBuf                buffer.Buffer       // buffered bytes for current message
-	more                  bool                // if true, buf contains a partial message
-	msg                   Message             // current message being decoded
+	// NOTE: this will need to be retooled if/when we need to support resuming links.
+	// at present, this is only used for debug tracing purposes so it's safe to change it to a count.
+	unsettledMessages int32 // count of unsettled messages for this receiver; MUST be atomically accessed
+
+	msgBuf buffer.Buffer // buffered bytes for current message
+	more   bool          // if true, buf contains a partial message
+	msg    Message       // current message being decoded
 
 	settlementCount   uint32     // the count of settled messages
 	settlementCountMu sync.Mutex // must be held when accessing settlementCount
@@ -144,7 +147,7 @@ func (r *Receiver) Receive(ctx context.Context, opts *ReceiveOptions) (*Message,
 // If the context's deadline expires or is cancelled before the operation
 // completes, the message's disposition is in an unknown state.
 func (r *Receiver) AcceptMessage(ctx context.Context, msg *Message) error {
-	return r.messageDisposition(ctx, msg, &encoding.StateAccepted{})
+	return msg.rcv.messageDisposition(ctx, msg, &encoding.StateAccepted{})
 }
 
 // Reject notifies the server that the message is invalid.
@@ -155,7 +158,7 @@ func (r *Receiver) AcceptMessage(ctx context.Context, msg *Message) error {
 // If the context's deadline expires or is cancelled before the operation
 // completes, the message's disposition is in an unknown state.
 func (r *Receiver) RejectMessage(ctx context.Context, msg *Message, e *Error) error {
-	return r.messageDisposition(ctx, msg, &encoding.StateRejected{Error: e})
+	return msg.rcv.messageDisposition(ctx, msg, &encoding.StateRejected{Error: e})
 }
 
 // Release releases the message back to the server. The message may be redelivered to this or another consumer.
@@ -165,7 +168,7 @@ func (r *Receiver) RejectMessage(ctx context.Context, msg *Message, e *Error) er
 // If the context's deadline expires or is cancelled before the operation
 // completes, the message's disposition is in an unknown state.
 func (r *Receiver) ReleaseMessage(ctx context.Context, msg *Message) error {
-	return r.messageDisposition(ctx, msg, &encoding.StateReleased{})
+	return msg.rcv.messageDisposition(ctx, msg, &encoding.StateReleased{})
 }
 
 // Modify notifies the server that the message was not acted upon and should be modifed.
@@ -179,7 +182,7 @@ func (r *Receiver) ModifyMessage(ctx context.Context, msg *Message, options *Mod
 	if options == nil {
 		options = &ModifyMessageOptions{}
 	}
-	return r.messageDisposition(ctx,
+	return msg.rcv.messageDisposition(ctx,
 		msg, &encoding.StateModified{
 			DeliveryFailed:     options.DeliveryFailed,
 			UndeliverableHere:  options.UndeliverableHere,
@@ -269,10 +272,17 @@ func (r *Receiver) sendDisposition(ctx context.Context, first uint32, last *uint
 	}
 }
 
+// messageDisposition is called via the *Receiver associated with a *Message.
+// this allows messages to be settled across Receiver instances.
+// note that only unsettled messsages will have their rcv field set.
 func (r *Receiver) messageDisposition(ctx context.Context, msg *Message, state encoding.DeliveryState) error {
+	// settling a message that's already settled (sender-settled or otherwise) will have a nil rcv.
+	// which means that r will be nil. you MUST NOT dereference r if msg.settled == true
 	if msg.settled {
 		return nil
 	}
+
+	debug.Assert(r != nil)
 
 	// NOTE: we MUST add to the in-flight map before sending the disposition. if not, it's possible
 	// to receive the ack'ing disposition frame *before* the in-flight map has been updated which
@@ -290,7 +300,8 @@ func (r *Receiver) messageDisposition(ctx context.Context, msg *Message, state e
 
 	if wait == nil {
 		// mode first, there will be no settlement ack
-		r.deleteUnsettled(msg)
+		msg.onSettlement()
+		r.deleteUnsettled()
 		r.onSettlement(1)
 		return nil
 	}
@@ -338,23 +349,23 @@ func (r *Receiver) onSettlement(count uint32) {
 	}
 }
 
-func (r *Receiver) addUnsettled(msg *Message) {
-	r.unsettledMessagesLock.Lock()
-	r.unsettledMessages[string(msg.DeliveryTag)] = struct{}{}
-	r.unsettledMessagesLock.Unlock()
+// increments the count of unsettled messages.
+// this is only called from our mux.
+func (r *Receiver) addUnsettled() {
+	atomic.AddInt32(&r.unsettledMessages, 1)
 }
 
-func (r *Receiver) deleteUnsettled(msg *Message) {
-	r.unsettledMessagesLock.Lock()
-	delete(r.unsettledMessages, string(msg.DeliveryTag))
-	r.unsettledMessagesLock.Unlock()
+// decrements the count of unsettled messages.
+// this is called inside _or_ outside the mux.
+// it's called outside when RSM is mode first.
+func (r *Receiver) deleteUnsettled() {
+	atomic.AddInt32(&r.unsettledMessages, -1)
 }
 
-func (r *Receiver) countUnsettled() int {
-	r.unsettledMessagesLock.RLock()
-	count := len(r.unsettledMessages)
-	r.unsettledMessagesLock.RUnlock()
-	return count
+// returns the count of unsettled messages.
+// this is only called from our mux for diagnostic purposes.
+func (r *Receiver) countUnsettled() int32 {
+	return atomic.LoadInt32(&r.unsettledMessages)
 }
 
 func newReceiver(source string, session *Session, opts *ReceiverOptions) (*Receiver, error) {
@@ -467,7 +478,6 @@ func (r *Receiver) attach(ctx context.Context) error {
 		}
 		// deliveryCount is a sequence number, must initialize to sender's initial sequence number
 		r.l.deliveryCount = pa.InitialDeliveryCount
-		r.unsettledMessages = map[string]struct{}{}
 		// copy the received filter values
 		if pa.Source != nil {
 			r.l.source.Filter = pa.Source.Filter
@@ -702,8 +712,8 @@ func (r *Receiver) muxHandleFrame(fr frames.FrameBody) error {
 		}
 		// removal from the in-flight map will also remove the message from the unsettled map
 		count := r.inFlight.remove(fr.First, fr.Last, dispositionError, func(msg *Message) {
-			r.deleteUnsettled(msg)
-			msg.settled = true
+			r.deleteUnsettled()
+			msg.onSettlement()
 		})
 		r.onSettlement(count)
 
@@ -808,7 +818,8 @@ func (r *Receiver) muxReceive(fr frames.PerformTransfer) {
 
 	// send to receiver
 	if !r.msg.settled {
-		r.addUnsettled(&r.msg)
+		r.addUnsettled()
+		r.msg.rcv = r
 		debug.Log(3, "RX (Receiver %p): add unsettled delivery ID %d", r, r.msg.deliveryID)
 	}
 

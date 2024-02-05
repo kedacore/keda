@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	v2 "k8s.io/api/autoscaling/v2"
 	v1 "k8s.io/api/core/v1"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 type parseCPUMemoryMetadataTestData struct {
@@ -43,7 +45,7 @@ var testCPUMemoryMetadata = []parseCPUMemoryMetadataTestData{
 
 func TestCPUMemoryParseMetadata(t *testing.T) {
 	for _, testData := range testCPUMemoryMetadata {
-		config := &ScalerConfig{
+		config := &scalersconfig.ScalerConfig{
 			TriggerMetadata: testData.metadata,
 			MetricType:      testData.metricType,
 		}
@@ -59,7 +61,7 @@ func TestCPUMemoryParseMetadata(t *testing.T) {
 
 func TestGetMetricSpecForScaling(t *testing.T) {
 	// Using trigger.metadata.type field for type
-	config := &ScalerConfig{
+	config := &scalersconfig.ScalerConfig{
 		TriggerMetadata: validCPUMemoryMetadata,
 	}
 	scaler, _ := NewCPUMemoryScaler(v1.ResourceCPU, config)
@@ -70,7 +72,7 @@ func TestGetMetricSpecForScaling(t *testing.T) {
 	assert.Equal(t, metricSpec[0].Resource.Target.Type, v2.UtilizationMetricType)
 
 	// Using trigger.metricType field for type
-	config = &ScalerConfig{
+	config = &scalersconfig.ScalerConfig{
 		TriggerMetadata: map[string]string{"value": "50"},
 		MetricType:      v2.UtilizationMetricType,
 	}
@@ -84,7 +86,7 @@ func TestGetMetricSpecForScaling(t *testing.T) {
 
 func TestGetContainerMetricSpecForScaling(t *testing.T) {
 	// Using trigger.metadata.type field for type
-	config := &ScalerConfig{
+	config := &scalersconfig.ScalerConfig{
 		TriggerMetadata: validContainerCPUMemoryMetadata,
 	}
 	scaler, _ := NewCPUMemoryScaler(v1.ResourceCPU, config)
@@ -96,7 +98,7 @@ func TestGetContainerMetricSpecForScaling(t *testing.T) {
 	assert.Equal(t, metricSpec[0].ContainerResource.Container, validContainerCPUMemoryMetadata["containerName"])
 
 	// Using trigger.metricType field for type
-	config = &ScalerConfig{
+	config = &scalersconfig.ScalerConfig{
 		TriggerMetadata: map[string]string{"value": "50", "containerName": "bar"},
 		MetricType:      v2.UtilizationMetricType,
 	}

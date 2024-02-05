@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	pb "github.com/kedacore/keda/v2/pkg/scalers/externalscaler"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 var serverRootCA = `-----BEGIN CERTIFICATE-----
@@ -74,7 +75,7 @@ var testExternalScalerMetadata = []parseExternalScalerMetadataTestData{
 
 func TestExternalScalerParseMetadata(t *testing.T) {
 	for _, testData := range testExternalScalerMetadata {
-		metadata, err := parseExternalScalerMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: map[string]string{}, AuthParams: testData.authParams})
+		metadata, err := parseExternalScalerMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: map[string]string{}, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -101,7 +102,7 @@ func TestExternalPushScaler_Run(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	for i := 0; i < serverCount*iterationCount; i++ {
 		id := i % serverCount
-		pushScaler, _ := NewExternalPushScaler(&ScalerConfig{ScalableObjectName: "app", ScalableObjectNamespace: "namespace", TriggerMetadata: map[string]string{"scalerAddress": servers[id].address}, ResolvedEnv: map[string]string{}})
+		pushScaler, _ := NewExternalPushScaler(&scalersconfig.ScalerConfig{ScalableObjectName: "app", ScalableObjectNamespace: "namespace", TriggerMetadata: map[string]string{"scalerAddress": servers[id].address}, ResolvedEnv: map[string]string{}})
 		go pushScaler.Run(ctx, replyCh[i])
 	}
 
@@ -246,7 +247,9 @@ func TestWaitForState(t *testing.T) {
 	}()
 
 	// build client connect to server
-	grpcClient, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	grpcClient, err := grpc.Dial(address,
+		grpc.WithDefaultServiceConfig(grpcConfig),
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Errorf("connect grpc server %s failed:%s", address, err)
 		return

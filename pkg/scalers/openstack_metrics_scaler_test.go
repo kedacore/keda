@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/openstack"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 type parseOpenstackMetricMetadataTestData struct {
@@ -22,7 +23,7 @@ type openstackMetricScalerMetricIdentifier struct {
 	resolvedEnv          map[string]string
 	metadataTestData     *parseOpenstackMetricMetadataTestData
 	authMetadataTestData *parseOpenstackMetricAuthMetadataTestData
-	scalerIndex          int
+	triggerIndex         int
 	name                 string
 }
 
@@ -107,13 +108,13 @@ func TestOpenstackMetricsGetMetricsForSpecScaling(t *testing.T) {
 
 	for _, testData := range testCases {
 		testData := testData
-		meta, err := parseOpenstackMetricMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, ScalerIndex: testData.scalerIndex}, logr.Discard())
+		meta, err := parseOpenstackMetricMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, TriggerIndex: testData.triggerIndex}, logr.Discard())
 
 		if err != nil {
 			t.Fatal("Could not parse metadata from openstack metrics scaler")
 		}
 
-		_, err = parseOpenstackMetricAuthenticationMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, ScalerIndex: testData.scalerIndex})
+		_, err = parseOpenstackMetricAuthenticationMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, TriggerIndex: testData.triggerIndex})
 
 		if err != nil {
 			t.Fatal("could not parse openstack metric authentication metadata")
@@ -145,7 +146,7 @@ func TestOpenstackMetricsGetMetricsForSpecScalingInvalidMetaData(t *testing.T) {
 	for _, testData := range testCases {
 		testData := testData
 		t.Run(testData.name, func(pt *testing.T) {
-			_, err := parseOpenstackMetricMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, ScalerIndex: testData.scalerIndex}, logr.Discard())
+			_, err := parseOpenstackMetricMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, TriggerIndex: testData.triggerIndex}, logr.Discard())
 			assert.NotNil(t, err)
 		})
 	}
@@ -164,7 +165,7 @@ func TestOpenstackMetricAuthenticationInvalidAuthMetadata(t *testing.T) {
 	for _, testData := range testCases {
 		testData := testData
 		t.Run(testData.name, func(ptr *testing.T) {
-			_, err := parseOpenstackMetricAuthenticationMetadata(&ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, ScalerIndex: testData.scalerIndex})
+			_, err := parseOpenstackMetricAuthenticationMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, TriggerIndex: testData.triggerIndex})
 			assert.NotNil(t, err)
 		})
 	}

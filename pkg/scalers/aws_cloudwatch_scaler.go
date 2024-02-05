@@ -13,6 +13,9 @@ import (
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+
+	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 const (
@@ -49,13 +52,13 @@ type awsCloudwatchMetadata struct {
 	awsRegion   string
 	awsEndpoint string
 
-	awsAuthorization awsAuthorizationMetadata
+	awsAuthorization awsutils.AuthorizationMetadata
 
-	scalerIndex int
+	triggerIndex int
 }
 
 // NewAwsCloudwatchScaler creates a new awsCloudwatchScaler
-func NewAwsCloudwatchScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+func NewAwsCloudwatchScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -111,7 +114,7 @@ func getFloatMetadataValue(metadata map[string]string, key string, required bool
 }
 
 func createCloudwatchClient(ctx context.Context, metadata *awsCloudwatchMetadata) (*cloudwatch.Client, error) {
-	cfg, err := getAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
 
 	if err != nil {
 		return nil, err
@@ -123,7 +126,7 @@ func createCloudwatchClient(ctx context.Context, metadata *awsCloudwatchMetadata
 	}), nil
 }
 
-func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, error) {
+func parseAwsCloudwatchMetadata(config *scalersconfig.ScalerConfig) (*awsCloudwatchMetadata, error) {
 	var err error
 	meta := awsCloudwatchMetadata{}
 
@@ -230,13 +233,13 @@ func parseAwsCloudwatchMetadata(config *ScalerConfig) (*awsCloudwatchMetadata, e
 		meta.awsEndpoint = val
 	}
 
-	awsAuthorization, err := getAwsAuthorization(config.AuthParams, config.TriggerMetadata, config.ResolvedEnv)
+	awsAuthorization, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
 	}
 	meta.awsAuthorization = awsAuthorization
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	return &meta, nil
 }
@@ -303,7 +306,7 @@ func (s *awsCloudwatchScaler) GetMetricsAndActivity(ctx context.Context, metricN
 func (s *awsCloudwatchScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, "aws-cloudwatch"),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, "aws-cloudwatch"),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.targetMetricValue),
 	}
@@ -312,6 +315,7 @@ func (s *awsCloudwatchScaler) GetMetricSpecForScaling(context.Context) []v2.Metr
 }
 
 func (s *awsCloudwatchScaler) Close(context.Context) error {
+	awsutils.ClearAwsConfig(s.metadata.awsAuthorization)
 	return nil
 }
 

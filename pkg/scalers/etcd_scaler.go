@@ -14,6 +14,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -42,7 +43,7 @@ type etcdMetadata struct {
 	value                       float64
 	activationValue             float64
 	watchProgressNotifyInterval int
-	scalerIndex                 int
+	triggerIndex                int
 	// TLS
 	enableTLS   bool
 	cert        string
@@ -52,7 +53,7 @@ type etcdMetadata struct {
 }
 
 // NewEtcdScaler creates a new etcdScaler
-func NewEtcdScaler(config *ScalerConfig) (Scaler, error) {
+func NewEtcdScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -75,7 +76,7 @@ func NewEtcdScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseEtcdAuthParams(config *ScalerConfig, meta *etcdMetadata) error {
+func parseEtcdAuthParams(config *scalersconfig.ScalerConfig, meta *etcdMetadata) error {
 	meta.enableTLS = false
 	if val, ok := config.AuthParams["tls"]; ok {
 		val = strings.TrimSpace(val)
@@ -105,7 +106,7 @@ func parseEtcdAuthParams(config *ScalerConfig, meta *etcdMetadata) error {
 	return nil
 }
 
-func parseEtcdMetadata(config *ScalerConfig) (*etcdMetadata, error) {
+func parseEtcdMetadata(config *scalersconfig.ScalerConfig) (*etcdMetadata, error) {
 	meta := &etcdMetadata{}
 	var err error
 	meta.endpoints = strings.Split(config.TriggerMetadata[endpoints], ",")
@@ -146,7 +147,7 @@ func parseEtcdMetadata(config *ScalerConfig) (*etcdMetadata, error) {
 		return meta, err
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return meta, nil
 }
 
@@ -195,7 +196,7 @@ func (s *etcdScaler) GetMetricsAndActivity(ctx context.Context, metricName strin
 func (s *etcdScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("etcd-%s", s.metadata.watchKey))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("etcd-%s", s.metadata.watchKey))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.value),
 	}

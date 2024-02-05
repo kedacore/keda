@@ -38,6 +38,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -65,7 +66,7 @@ type azureLogAnalyticsMetadata struct {
 	query                   string
 	threshold               float64
 	activationThreshold     float64
-	scalerIndex             int
+	triggerIndex            int
 	logAnalyticsResourceURL string
 	activeDirectoryEndpoint string
 	unsafeSsl               bool
@@ -110,7 +111,7 @@ var logAnalyticsResourceURLInCloud = map[string]string{
 }
 
 // NewAzureLogAnalyticsScaler creates a new Azure Log Analytics Scaler
-func NewAzureLogAnalyticsScaler(config *ScalerConfig) (Scaler, error) {
+func NewAzureLogAnalyticsScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -133,7 +134,7 @@ func NewAzureLogAnalyticsScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMetadata, error) {
+func parseAzureLogAnalyticsMetadata(config *scalersconfig.ScalerConfig) (*azureLogAnalyticsMetadata, error) {
 	meta := azureLogAnalyticsMetadata{}
 	switch config.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
@@ -204,7 +205,7 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 		}
 		meta.activationThreshold = activationThreshold
 	}
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	meta.logAnalyticsResourceURL = defaultLogAnalyticsResourceURL
 	if cloud, ok := config.TriggerMetadata["cloud"]; ok {
@@ -243,7 +244,7 @@ func parseAzureLogAnalyticsMetadata(config *ScalerConfig) (*azureLogAnalyticsMet
 
 // getParameterFromConfig gets the parameter from the configs, if checkAuthParams is true
 // then AuthParams is also check for the parameter
-func getParameterFromConfig(config *ScalerConfig, parameter string, checkAuthParams bool) (string, error) {
+func getParameterFromConfig(config *scalersconfig.ScalerConfig, parameter string, checkAuthParams bool) (string, error) {
 	if val, ok := config.AuthParams[parameter]; checkAuthParams && ok && val != "" {
 		return val, nil
 	} else if val, ok := config.TriggerMetadata[parameter]; ok && val != "" {
@@ -257,7 +258,7 @@ func getParameterFromConfig(config *ScalerConfig, parameter string, checkAuthPar
 func (s *azureLogAnalyticsScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-log-analytics", s.metadata.workspaceID))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-log-analytics", s.metadata.workspaceID))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}
@@ -279,6 +280,9 @@ func (s *azureLogAnalyticsScaler) GetMetricsAndActivity(ctx context.Context, met
 }
 
 func (s *azureLogAnalyticsScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 

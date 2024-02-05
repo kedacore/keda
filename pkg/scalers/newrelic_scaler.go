@@ -12,6 +12,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -40,10 +41,10 @@ type newrelicMetadata struct {
 	nrql                string
 	threshold           float64
 	activationThreshold float64
-	scalerIndex         int
+	triggerIndex        int
 }
 
-func NewNewRelicScaler(config *ScalerConfig) (Scaler, error) {
+func NewNewRelicScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -75,7 +76,7 @@ func NewNewRelicScaler(config *ScalerConfig) (Scaler, error) {
 		logger:     logger}, nil
 }
 
-func parseNewRelicMetadata(config *ScalerConfig, logger logr.Logger) (*newrelicMetadata, error) {
+func parseNewRelicMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*newrelicMetadata, error) {
 	meta := newrelicMetadata{}
 	var err error
 
@@ -143,7 +144,7 @@ func parseNewRelicMetadata(config *ScalerConfig, logger logr.Logger) (*newrelicM
 	} else {
 		meta.noDataError = false
 	}
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
@@ -187,7 +188,7 @@ func (s *newrelicScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpe
 
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}

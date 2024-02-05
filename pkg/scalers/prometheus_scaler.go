@@ -18,7 +18,10 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
+	"github.com/kedacore/keda/v2/pkg/scalers/aws"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
+	"github.com/kedacore/keda/v2/pkg/scalers/gcp"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -54,7 +57,7 @@ type prometheusMetadata struct {
 	activationThreshold float64
 	prometheusAuth      *authentication.AuthMeta
 	namespace           string
-	scalerIndex         int
+	triggerIndex        int
 	customHeaders       map[string]string
 	// sometimes should consider there is an error we can accept
 	// default value is true/t, to ignore the null value return from prometheus
@@ -77,7 +80,7 @@ type promQueryResult struct {
 }
 
 // NewPrometheusScaler creates a new prometheusScaler
-func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
+func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -119,14 +122,24 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 			httpClient.Transport = azureTransport
 		}
 
-		gcpTransport, err := getGCPOAuth2HTTPTransport(config, httpClient.Transport, gcpScopeMonitoringRead)
-		if err != nil && !errors.Is(err, errGoogleApplicationCrendentialsNotFound) {
+		gcpTransport, err := gcp.GetGCPOAuth2HTTPTransport(config, httpClient.Transport, gcp.GcpScopeMonitoringRead)
+		if err != nil && !errors.Is(err, gcp.ErrGoogleApplicationCrendentialsNotFound) {
 			logger.V(1).Error(err, "failed to get GCP client HTTP transport (either using Google application credentials or workload identity)")
 			return nil, err
 		}
 
 		if err == nil && gcpTransport != nil {
 			httpClient.Transport = gcpTransport
+		}
+
+		awsTransport, err := aws.NewSigV4RoundTripper(config)
+		if err != nil {
+			logger.V(1).Error(err, "failed to get AWS client HTTP transport ")
+			return nil, err
+		}
+
+		if err == nil && awsTransport != nil {
+			httpClient.Transport = awsTransport
 		}
 	}
 
@@ -138,7 +151,7 @@ func NewPrometheusScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, err error) {
+func parsePrometheusMetadata(config *scalersconfig.ScalerConfig) (meta *prometheusMetadata, err error) {
 	meta = &prometheusMetadata{}
 
 	if val, ok := config.TriggerMetadata[promServerAddress]; ok && val != "" {
@@ -208,8 +221,7 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 	if val, ok := config.TriggerMetadata[ignoreNullValues]; ok && val != "" {
 		ignoreNullValues, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("err incorrect value for ignoreNullValues given: %s, "+
-				"please use true or false", val)
+			return nil, fmt.Errorf("err incorrect value for ignoreNullValues given: %s, please use true or false", val)
 		}
 		meta.ignoreNullValues = ignoreNullValues
 	}
@@ -224,7 +236,7 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 		meta.unsafeSsl = unsafeSslValue
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	err = parseAuthConfig(config, meta)
 	if err != nil {
@@ -234,7 +246,7 @@ func parsePrometheusMetadata(config *ScalerConfig) (meta *prometheusMetadata, er
 	return meta, nil
 }
 
-func parseAuthConfig(config *ScalerConfig, meta *prometheusMetadata) error {
+func parseAuthConfig(config *scalersconfig.ScalerConfig, meta *prometheusMetadata) error {
 	// parse auth configs from ScalerConfig
 	auth, err := authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
 	if err != nil {
@@ -250,6 +262,9 @@ func parseAuthConfig(config *ScalerConfig, meta *prometheusMetadata) error {
 }
 
 func (s *prometheusScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 
@@ -257,7 +272,7 @@ func (s *prometheusScaler) GetMetricSpecForScaling(context.Context) []v2.MetricS
 	metricName := kedautil.NormalizeString("prometheus")
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}

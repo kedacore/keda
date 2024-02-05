@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 
+	"go.mongodb.org/mongo-driver/internal/codecutil"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 
@@ -130,6 +131,14 @@ func getEncoder(
 	}
 
 	return enc, nil
+}
+
+// newEncoderFn will return a function for constructing an encoder based on the
+// provided codec options.
+func newEncoderFn(opts *options.BSONOptions, registry *bsoncodec.Registry) codecutil.EncoderFn {
+	return func(w io.Writer) (*bson.Encoder, error) {
+		return getEncoder(w, opts, registry)
+	}
 }
 
 // marshal marshals the given value as a BSON document. Byte slices are always converted to a
@@ -421,26 +430,7 @@ func marshalValue(
 	bsonOpts *options.BSONOptions,
 	registry *bsoncodec.Registry,
 ) (bsoncore.Value, error) {
-	if registry == nil {
-		registry = bson.DefaultRegistry
-	}
-	if val == nil {
-		return bsoncore.Value{}, ErrNilValue
-	}
-
-	buf := new(bytes.Buffer)
-	enc, err := getEncoder(buf, bsonOpts, registry)
-	if err != nil {
-		return bsoncore.Value{}, fmt.Errorf("error configuring BSON encoder: %w", err)
-	}
-
-	// Encode the value in a single-element document with an empty key. Use bsoncore to extract the
-	// first element and return the BSON value.
-	err = enc.Encode(bson.D{{Key: "", Value: val}})
-	if err != nil {
-		return bsoncore.Value{}, MarshalError{Value: val, Err: err}
-	}
-	return bsoncore.Document(buf.Bytes()).Index(0).Value(), nil
+	return codecutil.MarshalValue(val, newEncoderFn(bsonOpts, registry))
 }
 
 // Build the aggregation pipeline for the CountDocument command.

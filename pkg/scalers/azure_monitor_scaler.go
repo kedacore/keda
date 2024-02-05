@@ -29,6 +29,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -49,11 +50,11 @@ type azureMonitorMetadata struct {
 	azureMonitorInfo      azure.MonitorInfo
 	targetValue           float64
 	activationTargetValue float64
-	scalerIndex           int
+	triggerIndex          int
 }
 
 // NewAzureMonitorScaler creates a new AzureMonitorScaler
-func NewAzureMonitorScaler(config *ScalerConfig) (Scaler, error) {
+func NewAzureMonitorScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -74,7 +75,7 @@ func NewAzureMonitorScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseAzureMonitorMetadata(config *ScalerConfig, logger logr.Logger) (*azureMonitorMetadata, error) {
+func parseAzureMonitorMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*azureMonitorMetadata, error) {
 	meta := azureMonitorMetadata{
 		azureMonitorInfo: azure.MonitorInfo{},
 	}
@@ -170,7 +171,7 @@ func parseAzureMonitorMetadata(config *ScalerConfig, logger logr.Logger) (*azure
 	meta.azureMonitorInfo.ClientID = clientID
 	meta.azureMonitorInfo.ClientPassword = clientPassword
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	azureResourceManagerEndpointProvider := func(env az.Environment) (string, error) {
 		return env.ResourceManagerEndpoint, nil
@@ -191,7 +192,7 @@ func parseAzureMonitorMetadata(config *ScalerConfig, logger logr.Logger) (*azure
 }
 
 // parseAzurePodIdentityParams gets the activeDirectory clientID and password
-func parseAzurePodIdentityParams(config *ScalerConfig) (clientID string, clientPassword string, err error) {
+func parseAzurePodIdentityParams(config *scalersconfig.ScalerConfig) (clientID string, clientPassword string, err error) {
 	switch config.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		clientID, err = getParameterFromConfig(config, "activeDirectoryClientId", true)
@@ -224,7 +225,7 @@ func (s *azureMonitorScaler) Close(context.Context) error {
 func (s *azureMonitorScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-monitor-%s", s.metadata.azureMonitorInfo.Name))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-monitor-%s", s.metadata.azureMonitorInfo.Name))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.targetValue),
 	}

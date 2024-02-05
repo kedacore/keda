@@ -14,6 +14,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -64,11 +65,11 @@ type arangoDBMetadata struct {
 
 	// The index of the scaler inside the ScaledObject
 	// +internal
-	scalerIndex int
+	triggerIndex int
 }
 
 // NewArangoDBScaler creates a new arangodbScaler
-func NewArangoDBScaler(config *ScalerConfig) (Scaler, error) {
+func NewArangoDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -125,7 +126,7 @@ func getNewArangoDBClient(meta *arangoDBMetadata) (driver.Client, error) {
 	return client, nil
 }
 
-func parseArangoDBMetadata(config *ScalerConfig) (*arangoDBMetadata, error) {
+func parseArangoDBMetadata(config *scalersconfig.ScalerConfig) (*arangoDBMetadata, error) {
 	// setting default metadata
 	meta := arangoDBMetadata{}
 
@@ -201,7 +202,7 @@ func parseArangoDBMetadata(config *ScalerConfig) (*arangoDBMetadata, error) {
 	}
 	meta.arangoDBAuth = arangoDBAuth
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
@@ -271,7 +272,7 @@ func (s *arangoDBScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 func (s *arangoDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, "arangodb"),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, "arangodb"),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.queryValue),
 	}

@@ -14,6 +14,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -45,7 +46,7 @@ type lokiMetadata struct {
 	threshold           float64
 	activationThreshold float64
 	lokiAuth            *authentication.AuthMeta
-	scalerIndex         int
+	triggerIndex        int
 	tenantName          string
 	ignoreNullValues    bool
 	unsafeSsl           bool
@@ -64,7 +65,7 @@ type lokiQueryResult struct {
 }
 
 // NewLokiScaler returns a new lokiScaler
-func NewLokiScaler(config *ScalerConfig) (Scaler, error) {
+func NewLokiScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -87,7 +88,7 @@ func NewLokiScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseLokiMetadata(config *ScalerConfig) (meta *lokiMetadata, err error) {
+func parseLokiMetadata(config *scalersconfig.ScalerConfig) (meta *lokiMetadata, err error) {
 	meta = &lokiMetadata{}
 
 	if val, ok := config.TriggerMetadata[lokiServerAddress]; ok && val != "" {
@@ -135,8 +136,7 @@ func parseLokiMetadata(config *ScalerConfig) (meta *lokiMetadata, err error) {
 	if val, ok := config.TriggerMetadata[lokiIgnoreNullValues]; ok && val != "" {
 		ignoreNullValues, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, fmt.Errorf("err incorrect value for ignoreNullValues given: %s, "+
-				"please use true or false", val)
+			return nil, fmt.Errorf("err incorrect value for ignoreNullValues given: %s please use true or false", val)
 		}
 		meta.ignoreNullValues = ignoreNullValues
 	}
@@ -151,7 +151,7 @@ func parseLokiMetadata(config *ScalerConfig) (meta *lokiMetadata, err error) {
 		meta.unsafeSsl = unsafeSslValue
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	// parse auth configs from ScalerConfig
 	auth, err := authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
@@ -165,6 +165,9 @@ func parseLokiMetadata(config *ScalerConfig) (meta *lokiMetadata, err error) {
 
 // Close returns a nil error
 func (s *lokiScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 
@@ -172,7 +175,7 @@ func (s *lokiScaler) Close(context.Context) error {
 func (s *lokiScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, "loki"),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, "loki"),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}

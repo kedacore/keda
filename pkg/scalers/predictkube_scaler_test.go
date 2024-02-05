@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"k8s.io/apimachinery/pkg/api/resource"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 type server struct {
@@ -142,7 +144,7 @@ var testPredictKubeMetadata = []predictKubeMetadataTestData{
 
 func TestPredictKubeParseMetadata(t *testing.T) {
 	for _, testData := range testPredictKubeMetadata {
-		_, err := parsePredictKubeMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		_, err := parsePredictKubeMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -154,7 +156,7 @@ func TestPredictKubeParseMetadata(t *testing.T) {
 
 type predictKubeMetricIdentifier struct {
 	metadataTestData *predictKubeMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -175,10 +177,10 @@ func TestPredictKubeGetMetricSpecForScaling(t *testing.T) {
 
 	for _, testData := range predictKubeMetricIdentifiers {
 		mockPredictKubeScaler, err := NewPredictKubeScaler(
-			context.Background(), &ScalerConfig{
+			context.Background(), &scalersconfig.ScalerConfig{
 				TriggerMetadata: testData.metadataTestData.metadata,
 				AuthParams:      testData.metadataTestData.authParams,
-				ScalerIndex:     testData.scalerIndex,
+				TriggerIndex:    testData.triggerIndex,
 			},
 		)
 		assert.NoError(t, err)
@@ -209,10 +211,10 @@ func TestPredictKubeGetMetrics(t *testing.T) {
 
 	for _, testData := range predictKubeMetricIdentifiers {
 		mockPredictKubeScaler, err := NewPredictKubeScaler(
-			context.Background(), &ScalerConfig{
+			context.Background(), &scalersconfig.ScalerConfig{
 				TriggerMetadata: testData.metadataTestData.metadata,
 				AuthParams:      testData.metadataTestData.authParams,
-				ScalerIndex:     testData.scalerIndex,
+				TriggerIndex:    testData.triggerIndex,
 			},
 		)
 		assert.NoError(t, err)

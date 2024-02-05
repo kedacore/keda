@@ -34,17 +34,19 @@ import (
 
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
-	defaultEventHubMessageThreshold = 64
-	eventHubMetricType              = "External"
-	thresholdMetricName             = "unprocessedEventThreshold"
-	activationThresholdMetricName   = "activationUnprocessedEventThreshold"
-	defaultEventHubConsumerGroup    = "$Default"
-	defaultBlobContainer            = ""
-	defaultCheckpointStrategy       = ""
+	defaultEventHubMessageThreshold    = 64
+	eventHubMetricType                 = "External"
+	thresholdMetricName                = "unprocessedEventThreshold"
+	activationThresholdMetricName      = "activationUnprocessedEventThreshold"
+	defaultEventHubConsumerGroup       = "$Default"
+	defaultBlobContainer               = ""
+	defaultCheckpointStrategy          = ""
+	defaultStalePartitionInfoThreshold = 10000
 )
 
 type azureEventHubScaler struct {
@@ -56,14 +58,15 @@ type azureEventHubScaler struct {
 }
 
 type eventHubMetadata struct {
-	eventHubInfo        azure.EventHubInfo
-	threshold           int64
-	activationThreshold int64
-	scalerIndex         int
+	eventHubInfo                azure.EventHubInfo
+	threshold                   int64
+	activationThreshold         int64
+	stalePartitionInfoThreshold int64
+	triggerIndex                int
 }
 
 // NewAzureEventHubScaler creates a new scaler for eventHub
-func NewAzureEventHubScaler(ctx context.Context, config *ScalerConfig) (Scaler, error) {
+func NewAzureEventHubScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -91,7 +94,7 @@ func NewAzureEventHubScaler(ctx context.Context, config *ScalerConfig) (Scaler, 
 }
 
 // parseAzureEventHubMetadata parses metadata
-func parseAzureEventHubMetadata(logger logr.Logger, config *ScalerConfig) (*eventHubMetadata, error) {
+func parseAzureEventHubMetadata(logger logr.Logger, config *scalersconfig.ScalerConfig) (*eventHubMetadata, error) {
 	meta := eventHubMetadata{
 		eventHubInfo: azure.EventHubInfo{},
 	}
@@ -109,7 +112,7 @@ func parseAzureEventHubMetadata(logger logr.Logger, config *ScalerConfig) (*even
 	return &meta, nil
 }
 
-func parseCommonAzureEventHubMetadata(config *ScalerConfig, meta *eventHubMetadata) error {
+func parseCommonAzureEventHubMetadata(config *scalersconfig.ScalerConfig, meta *eventHubMetadata) error {
 	meta.threshold = defaultEventHubMessageThreshold
 
 	if val, ok := config.TriggerMetadata[thresholdMetricName]; ok {
@@ -178,12 +181,21 @@ func parseCommonAzureEventHubMetadata(config *ScalerConfig, meta *eventHubMetada
 	}
 	meta.eventHubInfo.ActiveDirectoryEndpoint = activeDirectoryEndpoint
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.stalePartitionInfoThreshold = defaultStalePartitionInfoThreshold
+	if val, ok := config.TriggerMetadata["stalePartitionInfoThreshold"]; ok {
+		stalePartitionInfoThreshold, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return fmt.Errorf("error parsing azure eventhub metadata stalePartitionInfoThreshold: %w", err)
+		}
+		meta.stalePartitionInfoThreshold = stalePartitionInfoThreshold
+	}
+
+	meta.triggerIndex = config.TriggerIndex
 
 	return nil
 }
 
-func parseAzureEventHubAuthenticationMetadata(logger logr.Logger, config *ScalerConfig, meta *eventHubMetadata) error {
+func parseAzureEventHubAuthenticationMetadata(logger logr.Logger, config *scalersconfig.ScalerConfig, meta *eventHubMetadata) error {
 	meta.eventHubInfo.PodIdentity = config.PodIdentity
 
 	switch config.PodIdentity.Provider {
@@ -286,35 +298,45 @@ func (s *azureEventHubScaler) GetUnprocessedEventCountInPartition(ctx context.Co
 		return -1, azure.Checkpoint{}, fmt.Errorf("unable to get checkpoint from storage: %w", err)
 	}
 
-	unprocessedEventCountInPartition := int64(0)
+	unprocessedEventCountInPartition := calculateUnprocessedEvents(partitionInfo, checkpoint, s.metadata.stalePartitionInfoThreshold)
+
+	return unprocessedEventCountInPartition, checkpoint, nil
+}
+
+func calculateUnprocessedEvents(partitionInfo *eventhub.HubPartitionRuntimeInformation, checkpoint azure.Checkpoint, stalePartitionInfoThreshold int64) int64 {
+	unprocessedEventCount := int64(0)
 
 	// If checkpoint.Offset is empty that means no messages has been processed from an event hub partition
 	// And since partitionInfo.LastSequenceNumber = 0 for the very first message hence
 	// total unprocessed message will be partitionInfo.LastSequenceNumber + 1
 	if checkpoint.Offset == "" {
-		unprocessedEventCountInPartition = partitionInfo.LastSequenceNumber + 1
-		return unprocessedEventCountInPartition, checkpoint, nil
+		unprocessedEventCount = partitionInfo.LastSequenceNumber + 1
+		return unprocessedEventCount
 	}
 
 	if partitionInfo.LastSequenceNumber >= checkpoint.SequenceNumber {
-		unprocessedEventCountInPartition = partitionInfo.LastSequenceNumber - checkpoint.SequenceNumber
-		return unprocessedEventCountInPartition, checkpoint, nil
+		unprocessedEventCount = partitionInfo.LastSequenceNumber - checkpoint.SequenceNumber
+	} else {
+		// Partition is a circular buffer, so it is possible that
+		// partitionInfo.LastSequenceNumber < blob checkpoint's SequenceNumber
+
+		// Checkpointing may or may not be always behind partition's LastSequenceNumber.
+		// The partition information read could be stale compared to checkpoint,
+		// especially when load is very small and checkpointing is happening often.
+		// This also results in partitionInfo.LastSequenceNumber < blob checkpoint's SequenceNumber
+		// e.g., (9223372036854775807 - 15) + 10 = 9223372036854775802
+
+		// Calculate the unprocessed events
+		unprocessedEventCount = (math.MaxInt64 - checkpoint.SequenceNumber) + partitionInfo.LastSequenceNumber
 	}
 
-	// Partition is a circular buffer, so it is possible that
-	// partitionInfo.LastSequenceNumber < blob checkpoint's SequenceNumber
-	unprocessedEventCountInPartition = (math.MaxInt64 - checkpoint.SequenceNumber) + partitionInfo.LastSequenceNumber
-
-	// Checkpointing may or may not be always behind partition's LastSequenceNumber.
-	// The partition information read could be stale compared to checkpoint,
-	// especially when load is very small and checkpointing is happening often.
-	// e.g., (9223372036854775807 - 10) + 11 = -9223372036854775808
-	// If unprocessedEventCountInPartition is negative that means there are 0 unprocessed messages in the partition
-	if unprocessedEventCountInPartition < 0 {
-		unprocessedEventCountInPartition = 0
+	// If the result is greater than the buffer size - stale partition threshold
+	// we assume the partition info is stale.
+	if unprocessedEventCount > (math.MaxInt64 - stalePartitionInfoThreshold) {
+		return 0
 	}
 
-	return unprocessedEventCountInPartition, checkpoint, nil
+	return unprocessedEventCount
 }
 
 // GetUnprocessedEventCountWithoutCheckpoint returns the number of messages on the without a checkoutpoint info
@@ -331,7 +353,7 @@ func GetUnprocessedEventCountWithoutCheckpoint(partitionInfo *eventhub.HubPartit
 func (s *azureEventHubScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-eventhub-%s", s.metadata.eventHubInfo.EventHubConsumerGroup))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-eventhub-%s", s.metadata.eventHubInfo.EventHubConsumerGroup))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.threshold),
 	}
@@ -386,8 +408,14 @@ func (s *azureEventHubScaler) GetMetricsAndActivity(ctx context.Context, metricN
 
 		totalUnprocessedEventCount += unprocessedEventCount
 
-		s.logger.V(1).Info(fmt.Sprintf("Partition ID: %s, Last Enqueued Offset: %s, Checkpoint Offset: %s, Total new events in partition: %d",
-			partitionRuntimeInfo.PartitionID, partitionRuntimeInfo.LastEnqueuedOffset, checkpoint.Offset, unprocessedEventCount))
+		s.logger.V(1).Info(fmt.Sprintf("Partition ID: %s, Last SequenceNumber: %d, Checkpoint SequenceNumber: %d, Total new events in partition: %d",
+			partitionRuntimeInfo.PartitionID, partitionRuntimeInfo.LastSequenceNumber, checkpoint.SequenceNumber, unprocessedEventCount))
+	}
+
+	// set count to max if the sum is negative (Int64 overflow) to prevent negative metric values
+	// e.g., 9223372036854775797 (Partition 1) + 20 (Partition 2) = -9223372036854775799
+	if totalUnprocessedEventCount < 0 {
+		totalUnprocessedEventCount = math.MaxInt64
 	}
 
 	// don't scale out beyond the number of partitions

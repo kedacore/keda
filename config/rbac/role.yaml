@@ -9,6 +9,13 @@ rules:
   resources:
   - configmaps
   - configmaps/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - events
   verbs:
   - '*'
@@ -21,6 +28,13 @@ rules:
   - services
   verbs:
   - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - limitranges
+  verbs:
   - list
   - watch
 - apiGroups:
@@ -41,7 +55,11 @@ rules:
   resources:
   - '*/scale'
   verbs:
-  - '*'
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - admissionregistration.k8s.io
   resources:
@@ -83,9 +101,10 @@ rules:
   verbs:
   - '*'
 - apiGroups:
-  - coordination.k8s.io
+  - eventing.keda.sh
   resources:
-  - leases
+  - cloudeventsources
+  - cloudeventsources/status
   verbs:
   - '*'
 - apiGroups:
@@ -137,3 +156,9 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - '*'

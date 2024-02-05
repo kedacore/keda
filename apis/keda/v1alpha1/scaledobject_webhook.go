@@ -22,9 +22,10 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
-	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/vm"
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -52,22 +53,54 @@ func (so *ScaledObject) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	kc = mgr.GetClient()
 	restMapper = mgr.GetRESTMapper()
 	return ctrl.NewWebhookManagedBy(mgr).
+		WithValidator(&ScaledObjectCustomValidator{}).
 		For(so).
 		Complete()
 }
 
 // +kubebuilder:webhook:path=/validate-keda-sh-v1alpha1-scaledobject,mutating=false,failurePolicy=ignore,sideEffects=None,groups=keda.sh,resources=scaledobjects,verbs=create;update,versions=v1alpha1,name=vscaledobject.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Validator = &ScaledObject{}
+// ScaledObjectCustomValidator is a custom validator for ScaledObject objects
+type ScaledObjectCustomValidator struct{}
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (so *ScaledObject) ValidateCreate() (admission.Warnings, error) {
-	val, _ := json.MarshalIndent(so, "", "  ")
-	scaledobjectlog.V(1).Info(fmt.Sprintf("validating scaledobject creation for %s", string(val)))
-	return validateWorkload(so, "create")
+func (socv ScaledObjectCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+	request, err := admission.RequestFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	so := obj.(*ScaledObject)
+	return so.ValidateCreate(request.DryRun)
 }
 
-func (so *ScaledObject) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+func (socv ScaledObjectCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (warnings admission.Warnings, err error) {
+	request, err := admission.RequestFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	so := newObj.(*ScaledObject)
+	old := oldObj.(*ScaledObject)
+	return so.ValidateUpdate(old, request.DryRun)
+}
+
+func (socv ScaledObjectCustomValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+	request, err := admission.RequestFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	so := obj.(*ScaledObject)
+	return so.ValidateDelete(request.DryRun)
+}
+
+var _ webhook.CustomValidator = &ScaledObjectCustomValidator{}
+
+// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
+func (so *ScaledObject) ValidateCreate(dryRun *bool) (admission.Warnings, error) {
+	val, _ := json.MarshalIndent(so, "", "  ")
+	scaledobjectlog.V(1).Info(fmt.Sprintf("validating scaledobject creation for %s", string(val)))
+	return validateWorkload(so, "create", *dryRun)
+}
+
+func (so *ScaledObject) ValidateUpdate(old runtime.Object, dryRun *bool) (admission.Warnings, error) {
 	val, _ := json.MarshalIndent(so, "", "  ")
 	scaledobjectlog.V(1).Info(fmt.Sprintf("validating scaledobject update for %s", string(val)))
 
@@ -76,10 +109,10 @@ func (so *ScaledObject) ValidateUpdate(old runtime.Object) (admission.Warnings, 
 		return nil, nil
 	}
 
-	return validateWorkload(so, "update")
+	return validateWorkload(so, "update", *dryRun)
 }
 
-func (so *ScaledObject) ValidateDelete() (admission.Warnings, error) {
+func (so *ScaledObject) ValidateDelete(_ *bool) (admission.Warnings, error) {
 	return nil, nil
 }
 
@@ -91,21 +124,22 @@ func isRemovingFinalizer(so *ScaledObject, old runtime.Object) bool {
 	soSpecString := string(soSpec)
 	oldSoSpecString := string(oldSoSpec)
 
-	return len(so.ObjectMeta.Finalizers) == 0 && len(oldSo.ObjectMeta.Finalizers) == 1 && soSpecString == oldSoSpecString
+	return len(so.ObjectMeta.Finalizers) < len(oldSo.ObjectMeta.Finalizers) && soSpecString == oldSoSpecString
 }
 
-func validateWorkload(so *ScaledObject, action string) (admission.Warnings, error) {
+func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.Warnings, error) {
 	metricscollector.RecordScaledObjectValidatingTotal(so.Namespace, action)
 
-	verifyFunctions := []func(*ScaledObject, string) error{
+	verifyFunctions := []func(*ScaledObject, string, bool) error{
 		verifyCPUMemoryScalers,
 		verifyTriggers,
 		verifyScaledObjects,
 		verifyHpas,
+		verifyReplicaCount,
 	}
 
 	for i := range verifyFunctions {
-		err := verifyFunctions[i](so, action)
+		err := verifyFunctions[i](so, action, dryRun)
 		if err != nil {
 			return nil, err
 		}
@@ -115,7 +149,16 @@ func validateWorkload(so *ScaledObject, action string) (admission.Warnings, erro
 	return nil, nil
 }
 
-func verifyTriggers(incomingSo *ScaledObject, action string) error {
+func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) error {
+	err := CheckReplicaCountBoundsAreValid(incomingSo)
+	if err != nil {
+		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
+		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "incorrect-replicas")
+	}
+	return nil
+}
+
+func verifyTriggers(incomingSo *ScaledObject, action string, _ bool) error {
 	err := ValidateTriggers(incomingSo.Spec.Triggers)
 	if err != nil {
 		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
@@ -124,7 +167,7 @@ func verifyTriggers(incomingSo *ScaledObject, action string) error {
 	return err
 }
 
-func verifyHpas(incomingSo *ScaledObject, action string) error {
+func verifyHpas(incomingSo *ScaledObject, action string, _ bool) error {
 	hpaList := &autoscalingv2.HorizontalPodAutoscalerList{}
 	opt := &client.ListOptions{
 		Namespace: incomingSo.Namespace,
@@ -179,7 +222,7 @@ func verifyHpas(incomingSo *ScaledObject, action string) error {
 	return nil
 }
 
-func verifyScaledObjects(incomingSo *ScaledObject, action string) error {
+func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) error {
 	soList := &ScaledObjectList{}
 	opt := &client.ListOptions{
 		Namespace: incomingSo.Namespace,
@@ -230,7 +273,11 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string) error {
 	return nil
 }
 
-func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
+func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string, dryRun bool) error {
+	if dryRun {
+		return nil
+	}
+
 	var podSpec *corev1.PodSpec
 	for _, trigger := range incomingSo.Spec.Triggers {
 		if trigger.Type == cpuString || trigger.Type == memoryString {
@@ -269,20 +316,14 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string) error {
 				if conainerName != "" && container.Name != conainerName {
 					continue
 				}
-				if trigger.Type == cpuString {
-					if container.Resources.Requests == nil ||
-						container.Resources.Requests.Cpu() == nil ||
-						container.Resources.Requests.Cpu().AsApproximateFloat64() == 0 {
-						err := fmt.Errorf("the scaledobject has a cpu trigger but the container %s doesn't have the cpu request defined", container.Name)
-						scaledobjectlog.Error(err, "validation error")
-						metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
-						return err
-					}
-				} else if trigger.Type == memoryString {
-					if container.Resources.Requests == nil ||
-						container.Resources.Requests.Memory() == nil ||
-						container.Resources.Requests.Memory().AsApproximateFloat64() == 0 {
-						err := fmt.Errorf("the scaledobject has a memory trigger but the container %s doesn't have the memory request defined", container.Name)
+
+				if trigger.Type == cpuString || trigger.Type == memoryString {
+					// Fail if neither pod's container spec has particular resource limit specified, nor a default limit is
+					// specified in LimitRange in the same namespace as the deployment
+					resourceType := corev1.ResourceName(trigger.Type)
+					if !isWorkloadResourceSet(container.Resources, resourceType) &&
+						!isContainerResourceLimitSet(context.Background(), incomingSo.Namespace, resourceType) {
+						err := fmt.Errorf("the scaledobject has a %v trigger but the container %s doesn't have the %v request defined", resourceType, container.Name, resourceType)
 						scaledobjectlog.Error(err, "validation error")
 						metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
 						return err
@@ -323,6 +364,10 @@ func ValidateAndCompileScalingModifiers(so *ScaledObject) (*vm.Program, error) {
 	if sm.Formula == "" {
 		return nil, fmt.Errorf("error ScalingModifiers.Formula is mandatory")
 	}
+
+	// cast return value of formula to float if necessary to avoid wrong value return
+	// type (ternary operator doesnt return float)
+	so.Spec.Advanced.ScalingModifiers.Formula = castToFloatIfNecessary(sm.Formula)
 
 	// validate formula if not empty
 	compiledFormula, err := validateScalingModifiersFormula(so)
@@ -398,4 +443,65 @@ func validateScalingModifiersTarget(so *ScaledObject) error {
 	}
 
 	return nil
+}
+
+// castToFloatIfNecessary takes input formula and casts its return value to float
+// if necessary to avoid wrong return value type like ternary operator has and/or
+// to relief user of having to add it to the formula themselves.
+func castToFloatIfNecessary(formula string) string {
+	if strings.HasPrefix(formula, "float(") {
+		return formula
+	}
+	return "float(" + formula + ")"
+}
+
+func isWorkloadResourceSet(rr corev1.ResourceRequirements, name corev1.ResourceName) bool {
+	requests, requestsSet := rr.Requests[name]
+	limits, limitsSet := rr.Limits[name]
+	return (requestsSet || limitsSet) && (requests.AsApproximateFloat64() > 0 || limits.AsApproximateFloat64() > 0)
+}
+
+// isContainerResourceSetInLimitRangeObject checks if the LimitRange item has the default limits and requests
+// specified for the container type. Returns false if the default limit/request value is not set, or if set to zero,
+// for the container.
+func isContainerResourceSetInLimitRangeObject(item corev1.LimitRangeItem, resourceName corev1.ResourceName) bool {
+	request, isRequestSet := item.DefaultRequest[resourceName]
+	limit, isLimitSet := item.Default[resourceName]
+
+	return (isRequestSet || isLimitSet) &&
+		(request.AsApproximateFloat64() > 0 || limit.AsApproximateFloat64() > 0) &&
+		item.Type == corev1.LimitTypeContainer
+}
+
+// isContainerResourceLimitSet checks if the default limit/request is set for the container type in LimitRanges,
+// in the namespace.
+func isContainerResourceLimitSet(ctx context.Context, namespace string, triggerType corev1.ResourceName) bool {
+	limitRangeList := &corev1.LimitRangeList{}
+	listOps := &client.ListOptions{
+		Namespace: namespace,
+	}
+
+	// List limit ranges in the namespace
+	if err := kc.List(ctx, limitRangeList, listOps); err != nil {
+		scaledobjectlog.WithValues("namespace", namespace).
+			Error(err, "failed to list limitRanges in namespace")
+
+		return false
+	}
+
+	// Check in the LimitRange's list if at least one item has the default limit/request set
+	for _, limitRange := range limitRangeList.Items {
+		for _, limit := range limitRange.Spec.Limits {
+			if isContainerResourceSetInLimitRangeObject(limit, triggerType) {
+				return true
+			}
+		}
+	}
+
+	// When no LimitRanges are found in the namespace, or if the default limit/request is not set for container type
+	// in all of the LimitRanges, return false
+	scaledobjectlog.WithValues("namespace", namespace).
+		Error(nil, "no container limit range found in namespace")
+
+	return false
 }

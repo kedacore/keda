@@ -43,6 +43,7 @@ type CommandFinishedEvent struct {
 	DurationNanos int64
 	Duration      time.Duration
 	CommandName   string
+	DatabaseName  string
 	RequestID     int64
 	ConnectionID  string
 	// ServerConnectionID contains the connection ID from the server of the operation. If the server does not return

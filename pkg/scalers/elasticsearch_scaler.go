@@ -16,6 +16,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -43,7 +44,7 @@ type elasticsearchMetadata struct {
 }
 
 // NewElasticsearchScaler creates a new elasticsearch scaler
-func NewElasticsearchScaler(config *ScalerConfig) (Scaler, error) {
+func NewElasticsearchScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -93,7 +94,7 @@ func hasEndpointsConfig(meta *elasticsearchMetadata) bool {
 	return false
 }
 
-func extractEndpointsConfig(config *ScalerConfig, meta *elasticsearchMetadata) error {
+func extractEndpointsConfig(config *scalersconfig.ScalerConfig, meta *elasticsearchMetadata) error {
 	addresses, err := GetFromAuthOrMeta(config, "addresses")
 	if err != nil {
 		return err
@@ -115,7 +116,7 @@ func extractEndpointsConfig(config *ScalerConfig, meta *elasticsearchMetadata) e
 	return nil
 }
 
-func extractCloudConfig(config *ScalerConfig, meta *elasticsearchMetadata) error {
+func extractCloudConfig(config *scalersconfig.ScalerConfig, meta *elasticsearchMetadata) error {
 	cloudID, err := GetFromAuthOrMeta(config, "cloudID")
 	if err != nil {
 		return err
@@ -138,7 +139,7 @@ var (
 	ErrElasticsearchConfigConflict = errors.New("can't provide endpoint addresses and cloud config at the same time")
 )
 
-func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, error) {
+func parseElasticsearchMetadata(config *scalersconfig.ScalerConfig) (*elasticsearchMetadata, error) {
 	meta := elasticsearchMetadata{}
 
 	var err error
@@ -220,7 +221,7 @@ func parseElasticsearchMetadata(config *ScalerConfig) (*elasticsearchMetadata, e
 		meta.activationTargetValue = activationTargetValue
 	}
 
-	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, util.NormalizeString(fmt.Sprintf("elasticsearch-%s", meta.searchTemplateName)))
+	meta.metricName = GenerateMetricNameWithIndex(config.TriggerIndex, util.NormalizeString(fmt.Sprintf("elasticsearch-%s", meta.searchTemplateName)))
 	return &meta, nil
 }
 

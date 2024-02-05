@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 var (
@@ -27,7 +29,7 @@ type parseHuaweiCloudeyeMetadataTestData struct {
 
 type huaweiCloudeyeMetricIdentifier struct {
 	metadataTestData *parseHuaweiCloudeyeMetadataTestData
-	scalerIndex      int
+	triggerIndex     int
 	name             string
 }
 
@@ -160,7 +162,7 @@ var huaweiCloudeyeMetricIdentifiers = []huaweiCloudeyeMetricIdentifier{
 
 func TestHuaweiCloudeyeParseMetadata(t *testing.T) {
 	for _, testData := range testHuaweiCloudeyeMetadata {
-		_, err := parseHuaweiCloudeyeMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
+		_, err := parseHuaweiCloudeyeMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
 		if err != nil && !testData.isError {
 			t.Errorf("%s: Expected success but got error %s", testData.comment, err)
 		}
@@ -172,7 +174,7 @@ func TestHuaweiCloudeyeParseMetadata(t *testing.T) {
 
 func TestHuaweiCloudeyeGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range huaweiCloudeyeMetricIdentifiers {
-		meta, err := parseHuaweiCloudeyeMetadata(&ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, ScalerIndex: testData.scalerIndex}, logr.Discard())
+		meta, err := parseHuaweiCloudeyeMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex}, logr.Discard())
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

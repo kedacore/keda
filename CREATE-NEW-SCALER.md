@@ -31,7 +31,7 @@ This is the key function of a scaler; it returns:
     - `Value`: A numerical value that represents the state of the metric. It could be the length of a queue, or it can be the amount of lag in a stream, but it can also be a simple representation of the state.
 2. A value that represents an activity of the scaler. The return type is `bool`.
 
-    KEDA polls ScaledObject object according to the `pollingInterval` configured in the ScaledObject; it checks the last time it was polled, it checks if the number of replicas is greater than 0, and if the scaler itself is active. So if the scaler returns false for `IsActive`, and if current number of replicas is greater than 0, and there is no configured minimum pods, then KEDA scales down to 0.
+   KEDA will check each trigger source on every ScaledObject every `pollingInterval` configured in the ScaledObject; it checks the last time it was polled, it checks if the number of replicas is greater than 0, and if the scaler itself is active. So if the scaler returns false for `IsActive`, and if current number of replicas is greater than 0, and there is no configured minimum pods, then KEDA scales down to 0.
 
 Kubernetes HPA (Horizontal Pod Autoscaler) will poll `GetMetricsAndActivity` regularly through KEDA's metric server (as long as there is at least one pod), and compare the returned value to a configured value in the ScaledObject configuration. Kubernetes will use the following formula to decide whether to scale the pods up and down:
 
@@ -65,18 +65,18 @@ The return type of this function is `MetricSpec`, but in KEDA's case we will mos
 - `TargetValue`: is the value of the metric we want to reach at all times at all costs. As long as the current metric doesn't match TargetValue, HPA will increase the number of the pods until it reaches the maximum number of pods allowed to scale to.
 - `TargetAverageValue`: the value of the metric for which we require one pod to handle. e.g. if we have a scaler based on the length of a message queue, and we specificy 10 for `TargetAverageValue`, we are saying that each pod will handle 10 messages. So if the length of the queue becomes 30, we expect that we have 3 pods in our cluster. (`TargetAverage` and `TargetValue` are mutually exclusive).
 
-All scalers receive a parameter named `scalerIndex` as part of `ScalerConfig`. This value is the index of the current scaler in a ScaledObject. All metric names have to start with `sX-` (where `X` is `scalerIndex`). This convention makes the metric name unique in the ScaledObject and brings the option to have more than 1 "similar metric name" defined in a ScaledObject.
+All scalers receive a parameter named `triggerIndex` as part of `ScalerConfig`. This value is the index of the current scaler in a ScaledObject. All metric names have to start with `sX-` (where `X` is `triggerIndex`). This convention makes the metric name unique in the ScaledObject and brings the option to have more than 1 "similar metric name" defined in a ScaledObject.
 
 For example:
 - s0-redis-mylist
 - s1-redis-mylist
 
->**Note:** There is a naming helper function `GenerateMetricNameWithIndex(scalerIndex int, metricName string)`, that receives the current index and the original metric name (without the prefix) and returns the concatenated string using the convention (please use this function).<br>Next lines are an example about how to use it:
+>**Note:** There is a naming helper function `GenerateMetricNameWithIndex(triggerIndex int, metricName string)`, that receives the current index and the original metric name (without the prefix) and returns the concatenated string using the convention (please use this function).<br>Next lines are an example about how to use it:
 >```golang
 >func (s *artemisScaler) GetMetricSpecForScaling() []v2.MetricSpec {
 >	externalMetric := &v2.ExternalMetricSource{
 >		Metric: v2.MetricIdentifier{
->			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "artemis", s.metadata.brokerName, s.metadata.queueName))),
+>			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s-%s", "artemis", s.metadata.brokerName, s.metadata.queueName))),
 >		},
 >		Target: GetMetricTarget(s.metricType, s.metadata.queueLength),
 >	}

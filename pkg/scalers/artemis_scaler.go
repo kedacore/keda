@@ -14,6 +14,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -36,7 +37,7 @@ type artemisMetadata struct {
 	queueLength           int64
 	activationQueueLength int64
 	corsHeader            string
-	scalerIndex           int
+	triggerIndex          int
 }
 
 //revive:enable:var-naming
@@ -56,7 +57,7 @@ const (
 )
 
 // NewArtemisQueueScaler creates a new artemis queue Scaler
-func NewArtemisQueueScaler(config *ScalerConfig) (Scaler, error) {
+func NewArtemisQueueScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	// do we need to guarantee this timeout for a specific
 	// reason? if not, we can have buildScaler pass in
 	// the global client
@@ -80,7 +81,7 @@ func NewArtemisQueueScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseArtemisMetadata(config *ScalerConfig) (*artemisMetadata, error) {
+func parseArtemisMetadata(config *scalersconfig.ScalerConfig) (*artemisMetadata, error) {
 	meta := artemisMetadata{}
 
 	meta.queueLength = defaultArtemisQueueLength
@@ -171,7 +172,7 @@ func parseArtemisMetadata(config *ScalerConfig) (*artemisMetadata, error) {
 		return nil, fmt.Errorf("password cannot be empty")
 	}
 
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 
 	return &meta, nil
 }
@@ -257,7 +258,7 @@ func (s *artemisScaler) getQueueMessageCount(ctx context.Context) (int64, error)
 func (s *artemisScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("artemis-%s", s.metadata.queueName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("artemis-%s", s.metadata.queueName))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.queueLength),
 	}
@@ -279,7 +280,9 @@ func (s *artemisScaler) GetMetricsAndActivity(ctx context.Context, metricName st
 	return []external_metrics.ExternalMetricValue{metric}, messages > s.metadata.activationQueueLength, nil
 }
 
-// Nothing to close here.
 func (s *artemisScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }

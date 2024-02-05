@@ -13,6 +13,8 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/gcp"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -33,7 +35,7 @@ type gcsScaler struct {
 
 type gcsMetadata struct {
 	bucketName                  string
-	gcpAuthorization            *gcpAuthorizationMetadata
+	gcpAuthorization            *gcp.AuthorizationMetadata
 	maxBucketItemsToScan        int64
 	metricName                  string
 	targetObjectCount           int64
@@ -43,7 +45,7 @@ type gcsMetadata struct {
 }
 
 // NewGcsScaler creates a new gcsScaler
-func NewGcsScaler(config *ScalerConfig) (Scaler, error) {
+func NewGcsScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -61,7 +63,7 @@ func NewGcsScaler(config *ScalerConfig) (Scaler, error) {
 	var client *storage.Client
 
 	switch {
-	case meta.gcpAuthorization.podIdentityProviderEnabled:
+	case meta.gcpAuthorization.PodIdentityProviderEnabled:
 		client, err = storage.NewClient(ctx)
 	case meta.gcpAuthorization.GoogleApplicationCredentialsFile != "":
 		client, err = storage.NewClient(
@@ -91,7 +93,7 @@ func NewGcsScaler(config *ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseGcsMetadata(config *ScalerConfig, logger logr.Logger) (*gcsMetadata, error) {
+func parseGcsMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*gcsMetadata, error) {
 	meta := gcsMetadata{}
 	meta.targetObjectCount = defaultTargetObjectCount
 	meta.maxBucketItemsToScan = defaultMaxBucketItemsToScan
@@ -145,14 +147,14 @@ func parseGcsMetadata(config *ScalerConfig, logger logr.Logger) (*gcsMetadata, e
 		meta.blobPrefix = val
 	}
 
-	auth, err := getGCPAuthorization(config)
+	auth, err := gcp.GetGCPAuthorization(config)
 	if err != nil {
 		return nil, err
 	}
 	meta.gcpAuthorization = auth
 
 	var metricName = kedautil.NormalizeString(fmt.Sprintf("gcp-storage-%s", meta.bucketName))
-	meta.metricName = GenerateMetricNameWithIndex(config.ScalerIndex, metricName)
+	meta.metricName = GenerateMetricNameWithIndex(config.TriggerIndex, metricName)
 
 	return &meta, nil
 }

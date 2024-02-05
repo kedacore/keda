@@ -11,6 +11,7 @@ import (
 	"errors"
 
 	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/internal/driverutil"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
@@ -64,6 +65,7 @@ func (at *AbortTransaction) Execute(ctx context.Context) error {
 		Selector:          at.selector,
 		WriteConcern:      at.writeConcern,
 		ServerAPI:         at.serverAPI,
+		Name:              driverutil.AbortTransactionOp,
 	}.Execute(ctx)
 
 }

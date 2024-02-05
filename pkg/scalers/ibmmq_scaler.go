@@ -15,6 +15,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -42,7 +43,7 @@ type IBMMQMetadata struct {
 	queueDepth           int64
 	activationQueueDepth int64
 	tlsDisabled          bool
-	scalerIndex          int
+	triggerIndex         int
 }
 
 // CommandResponse Full structured response from MQ admin REST query
@@ -61,7 +62,7 @@ type Parameters struct {
 }
 
 // NewIBMMQScaler creates a new IBM MQ scaler
-func NewIBMMQScaler(config *ScalerConfig) (Scaler, error) {
+func NewIBMMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -86,7 +87,7 @@ func (s *IBMMQScaler) Close(context.Context) error {
 }
 
 // parseIBMMQMetadata checks the existence of and validates the MQ connection data provided
-func parseIBMMQMetadata(config *ScalerConfig) (*IBMMQMetadata, error) {
+func parseIBMMQMetadata(config *scalersconfig.ScalerConfig) (*IBMMQMetadata, error) {
 	meta := IBMMQMetadata{}
 
 	if val, ok := config.TriggerMetadata["host"]; ok {
@@ -159,7 +160,7 @@ func parseIBMMQMetadata(config *ScalerConfig) (*IBMMQMetadata, error) {
 	default:
 		return nil, fmt.Errorf("no password given")
 	}
-	meta.scalerIndex = config.ScalerIndex
+	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
@@ -206,7 +207,7 @@ func (s *IBMMQScaler) getQueueDepthViaHTTP(ctx context.Context) (int64, error) {
 func (s *IBMMQScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.scalerIndex, kedautil.NormalizeString(fmt.Sprintf("ibmmq-%s", s.metadata.queueName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("ibmmq-%s", s.metadata.queueName))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.queueDepth),
 	}
