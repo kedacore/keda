@@ -208,7 +208,31 @@ func WithDefaultVal(defaultVal interface{}) Option {
 	}
 }
 
-// getParameterFromConfigV2 returns the value of the parameter from the config
+// getParameterFromConfigV2 retrieves a parameter value from the provided ScalerConfig object based on the specified parameter name, target type, and optional configuration options.
+//
+// This method searches for the parameter value in different places within the ScalerConfig object, such as authentication parameters, trigger metadata, and resolved environment variables, based on the provided options.
+// It then attempts to convert the found value to the specified target type and returns it.
+//
+// Parameters:
+//
+//	config: A pointer to a ScalerConfig object from which to retrieve the parameter value.
+//	parameter: A string representing the name of the parameter to retrieve.
+//	targetType: A reflect.Type representing the target type to which the parameter value should be converted.
+//	options: An optional variadic parameter that allows configuring the behavior of the method through Option functions.
+//
+// Returns:
+//   - An interface{} representing the retrieved parameter value, converted to the specified target type.
+//   - An error, if any occurred during the retrieval or conversion process.
+//
+// Example Usage:
+//
+//	To retrieve a parameter value from a ScalerConfig object, you can call this function with the necessary parameters and options
+//
+//	```
+//	val, err := getParameterFromConfigV2(scalerConfig, "parameterName", reflect.TypeOf(int64(0)), UseMetadata(true), UseAuthentication(true))
+//	if err != nil {
+//	    // Handle error
+//	}
 func getParameterFromConfigV2(config *scalersconfig.ScalerConfig, parameter string, targetType reflect.Type, options ...Option) (interface{}, error) {
 	opt := &configOptions{defaultVal: ""}
 	for _, option := range options {
