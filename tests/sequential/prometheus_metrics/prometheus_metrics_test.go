@@ -630,36 +630,6 @@ func testScalerErrors(t *testing.T, data templateData) {
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 }
 
-func testScalerErrorsTotal(t *testing.T, data templateData) {
-	t.Log("--- testing scaler errors total ---")
-
-	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
-
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
-	val, ok := family["keda_scaler_errors_total"]
-	assert.True(t, ok, "keda_scaler_errors_total not available")
-	if ok {
-		errCounterVal1 := getErrorMetricsValue(val)
-
-		// wait for 2 seconds as pollinginterval is 2
-		time.Sleep(2 * time.Second)
-
-		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
-		val, ok := family["keda_scaler_errors_total"]
-		assert.True(t, ok, "keda_scaler_errors_total not available")
-		if ok {
-			errCounterVal2 := getErrorMetricsValue(val)
-			assert.NotEqual(t, errCounterVal2, float64(0))
-			assert.GreaterOrEqual(t, errCounterVal2, errCounterVal1)
-		}
-	}
-
-	KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
-	time.Sleep(2 * time.Second)
-	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-}
-
 func getErrorMetricsValue(val *prommodel.MetricFamily) float64 {
 	switch val.GetName() {
 	case "keda_scaled_object_errors_total":

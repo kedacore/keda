@@ -261,7 +261,7 @@ func (p *PromMetrics) RecordScalerMetric(namespace string, scaledResource string
 
 // RecordScalerLatency create a measurement of the latency to external metric
 func (p *PromMetrics) RecordScalerLatency(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value time.Duration) {
-	scalerMetricsLatency.With(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)).Set(float64(value.Seconds()))
+	scalerMetricsLatency.With(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)).Set(value.Seconds())
 	scalerMetricsLatencyDeprecated.With(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)).Set(float64(value.Milliseconds()))
 }
 
