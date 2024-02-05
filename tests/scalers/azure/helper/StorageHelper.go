@@ -18,8 +18,7 @@ func GetAccountFromStorageConnectionString(connection string) string {
 		return ""
 	}
 	for _, v := range parts {
-		switch {
-		case strings.HasPrefix(v, "AccountName"):
+		if strings.HasPrefix(v, "AccountName") {
 			return getValue(v)
 		}
 	}

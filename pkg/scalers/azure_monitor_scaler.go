@@ -102,7 +102,6 @@ func NewAzureMonitorScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	client, err := CreateMetricsClient(config, meta, logger)
 	if err != nil {
 		return nil, err
-
 	}
 	return &azureMonitorScaler{
 		metricType: metricType,
