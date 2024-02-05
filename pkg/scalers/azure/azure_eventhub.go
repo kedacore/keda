@@ -9,6 +9,7 @@ import (
 	"github.com/go-logr/logr"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 // EventHubInfo to keep event hub connection and resources
@@ -28,9 +29,11 @@ type EventHubInfo struct {
 
 // GetEventHubClient returns eventhub client
 func GetEventHubClient(info EventHubInfo, logger logr.Logger) (*azeventhubs.ProducerClient, error) {
+	opts := &azeventhubs.ProducerClientOptions{TLSConfig: kedautil.CreateTLSClientConfig(false)}
+
 	switch info.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		hub, err := azeventhubs.NewProducerClientFromConnectionString(info.EventHubConnection, info.EventHubName, nil)
+		hub, err := azeventhubs.NewProducerClientFromConnectionString(info.EventHubConnection, info.EventHubName, opts)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create hub client: %w", err)
 		}
@@ -41,7 +44,7 @@ func GetEventHubClient(info EventHubInfo, logger logr.Logger) (*azeventhubs.Prod
 			return nil, chainedErr
 		}
 
-		return azeventhubs.NewProducerClient(fmt.Sprintf("%s.%s", info.Namespace, info.ServiceBusEndpointSuffix), info.EventHubName, creds, nil)
+		return azeventhubs.NewProducerClient(fmt.Sprintf("%s.%s", info.Namespace, info.ServiceBusEndpointSuffix), info.EventHubName, creds, opts)
 	}
 
 	return nil, fmt.Errorf("event hub does not support pod identity %v", info.PodIdentity.Provider)

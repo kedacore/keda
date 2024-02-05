@@ -63,7 +63,7 @@ func NewAzureBlobScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing azure blob metadata: %w", err)
 	}
 
-	blobClient, err := azure.GetStorageBlobClient(logger, podIdentity, meta.Connection, meta.AccountName, meta.EndpointSuffix)
+	blobClient, err := azure.GetStorageBlobClient(logger, podIdentity, meta.Connection, meta.AccountName, meta.EndpointSuffix, config.GlobalHTTPTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("error creating azure blob client: %w", err)
 	}

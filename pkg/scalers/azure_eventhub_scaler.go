@@ -84,7 +84,7 @@ func NewAzureEventHubScaler(config *scalersconfig.ScalerConfig) (Scaler, error) 
 		return nil, fmt.Errorf("unable to get eventhub client: %w", err)
 	}
 
-	blobStorageClient, err := azure.GetStorageBlobClient(logger, config.PodIdentity, parsedMetadata.eventHubInfo.StorageConnection, parsedMetadata.eventHubInfo.StorageAccountName, parsedMetadata.eventHubInfo.BlobStorageEndpoint)
+	blobStorageClient, err := azure.GetStorageBlobClient(logger, config.PodIdentity, parsedMetadata.eventHubInfo.StorageConnection, parsedMetadata.eventHubInfo.StorageAccountName, parsedMetadata.eventHubInfo.BlobStorageEndpoint, config.GlobalHTTPTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get eventhub client: %w", err)
 	}

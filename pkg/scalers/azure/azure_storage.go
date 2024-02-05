@@ -19,13 +19,16 @@ package azure
 import (
 	"errors"
 	"fmt"
+	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue"
 	az "github.com/Azure/go-autorest/autorest/azure"
 	"github.com/go-logr/logr"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 /* ParseAzureStorageConnectionString parses a storage account connection string into (endpointProtocol, accountName, key, endpointSuffix)
@@ -80,10 +83,16 @@ func ParseAzureStorageEndpointSuffix(metadata map[string]string, endpointType St
 }
 
 // GetStorageBlobClient returns storage blob client
-func GetStorageBlobClient(logger logr.Logger, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix string) (*azblob.Client, error) {
+func GetStorageBlobClient(logger logr.Logger, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix string, timeout time.Duration) (*azblob.Client, error) {
+	opts := &azblob.ClientOptions{
+		ClientOptions: policy.ClientOptions{
+			Transport: kedautil.CreateHTTPClient(timeout, false),
+		},
+	}
+
 	switch podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		blobClient, err := azblob.NewClientFromConnectionString(connectionString, nil)
+		blobClient, err := azblob.NewClientFromConnectionString(connectionString, opts)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create hub client: %w", err)
 		}
@@ -94,17 +103,23 @@ func GetStorageBlobClient(logger logr.Logger, podIdentity kedav1alpha1.AuthPodId
 			return nil, chainedErr
 		}
 		srvURL := fmt.Sprintf("https://%s.%s", accountName, endpointSuffix)
-		return azblob.NewClient(srvURL, creds, nil)
+		return azblob.NewClient(srvURL, creds, opts)
 	}
 
 	return nil, fmt.Errorf("event hub does not support pod identity %v", podIdentity.Provider)
 }
 
 // GetStorageQueueClient returns storage queue client
-func GetStorageQueueClient(logger logr.Logger, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix, queueName string) (*azqueue.QueueClient, error) {
+func GetStorageQueueClient(logger logr.Logger, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix, queueName string, timeout time.Duration) (*azqueue.QueueClient, error) {
+	opts := &azqueue.ClientOptions{
+		ClientOptions: policy.ClientOptions{
+			Transport: kedautil.CreateHTTPClient(timeout, false),
+		},
+	}
+
 	switch podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		queueClient, err := azqueue.NewQueueClientFromConnectionString(connectionString, queueName, nil)
+		queueClient, err := azqueue.NewQueueClientFromConnectionString(connectionString, queueName, opts)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create hub client: %w", err)
 		}
@@ -115,7 +130,7 @@ func GetStorageQueueClient(logger logr.Logger, podIdentity kedav1alpha1.AuthPodI
 			return nil, chainedErr
 		}
 		srvURL := fmt.Sprintf("https://%s.%s/%s", accountName, endpointSuffix, queueName)
-		return azqueue.NewQueueClient(srvURL, creds, nil)
+		return azqueue.NewQueueClient(srvURL, creds, opts)
 	}
 
 	return nil, fmt.Errorf("event hub does not support pod identity %v", podIdentity.Provider)
