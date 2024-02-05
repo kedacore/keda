@@ -82,6 +82,13 @@ spec:
                     description: HorizontalPodAutoscalerConfig specifies horizontal
                       scale config
                     properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          Those annotations are added to the HorizontalPodAutoscaler created by KEDA
+                          and reconciled by KEDA on change
+                        type: object
                       behavior:
                         description: |-
                           HorizontalPodAutoscalerBehavior configures the scaling behavior of the target
@@ -196,6 +203,13 @@ spec:
                                 format: int32
                                 type: integer
                             type: object
+                        type: object
+                      labels:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          Those labels are added to the HorizontalPodAutoscaler created by KEDA
+                          and reconciled by KEDA on change
                         type: object
                       name:
                         type: string

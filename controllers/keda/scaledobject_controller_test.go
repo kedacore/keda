@@ -1441,6 +1441,155 @@ var _ = Describe("ScaledObjectController", func() {
 		}).Should(Equal(metav1.ConditionFalse))
 	})
 
+	// Fix issue 5468
+	It("reconciles hpa when scaledobject annotation is changed", func() {
+		var (
+			deploymentName = "scaledobject-annotation-change"
+			soName         = "so-" + deploymentName
+		)
+
+		err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
+		Expect(err).ToNot(HaveOccurred())
+
+		// Create the ScaledObject without specifying name.
+		so := &kedav1alpha1.ScaledObject{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        soName,
+				Namespace:   "default",
+				Annotations: map[string]string{},
+			},
+			Spec: kedav1alpha1.ScaledObjectSpec{
+				ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+					Name: deploymentName,
+				},
+				Advanced: &kedav1alpha1.AdvancedConfig{
+					HorizontalPodAutoscalerConfig: &kedav1alpha1.HorizontalPodAutoscalerConfig{
+						Annotations: map[string]string{
+							"annotation-email": "email@example.com",
+							"annotation-url":   "https://example.com",
+						},
+					},
+				},
+				Triggers: []kedav1alpha1.ScaleTriggers{
+					{
+						Type: "cron",
+						Metadata: map[string]string{
+							"timezone":        "UTC",
+							"start":           "0 * * * *",
+							"end":             "1 * * * *",
+							"desiredReplicas": "1",
+						},
+					},
+				},
+			},
+		}
+		err = k8sClient.Create(context.Background(), so)
+		Expect(err).ToNot(HaveOccurred())
+
+		// And validate that hpa is created.
+		hpa := &autoscalingv2.HorizontalPodAutoscaler{}
+		Eventually(func() error {
+			return k8sClient.Get(context.Background(), types.NamespacedName{Name: fmt.Sprintf("keda-hpa-%s", soName), Namespace: "default"}, hpa)
+		}).ShouldNot(HaveOccurred())
+
+		Eventually(func() error {
+			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+			Expect(err).ToNot(HaveOccurred())
+
+			so.Spec.Advanced.HorizontalPodAutoscalerConfig.Annotations = map[string]string{"new-annotation": "new-annotation-value"}
+			return k8sClient.Update(context.Background(), so)
+		}).WithTimeout(1 * time.Minute).WithPolling(10 * time.Second).ShouldNot(HaveOccurred())
+		testLogger.Info("annotation is set")
+
+		// hpa should be reconciled and should contain this new annotation
+		Eventually(func() bool {
+			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: fmt.Sprintf("keda-hpa-%s", soName), Namespace: "default"}, hpa)
+			if err != nil {
+				return false
+			}
+			// Check if the annotation is present
+			if _, ok := hpa.ObjectMeta.Annotations["new-annotation"]; ok {
+				return true
+			}
+			return false
+		}, 5*time.Second).Should(BeTrue())
+	})
+
+	It("reconciles hpa when scaledobject labels is changed", func() {
+		var (
+			deploymentName = "scaledobject-label-change"
+			soName         = "so-" + deploymentName
+		)
+
+		err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
+		Expect(err).ToNot(HaveOccurred())
+
+		// Create the ScaledObject without specifying name.
+		so := &kedav1alpha1.ScaledObject{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      soName,
+				Namespace: "default",
+				Labels: map[string]string{
+					"awesome-label": "my-label",
+				},
+			},
+			Spec: kedav1alpha1.ScaledObjectSpec{
+				ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+					Name: deploymentName,
+				},
+				Advanced: &kedav1alpha1.AdvancedConfig{
+					HorizontalPodAutoscalerConfig: &kedav1alpha1.HorizontalPodAutoscalerConfig{
+						Labels: map[string]string{
+							"label-key": "label-value",
+						},
+					},
+				},
+				Triggers: []kedav1alpha1.ScaleTriggers{
+					{
+						Type: "cron",
+						Metadata: map[string]string{
+							"timezone":        "UTC",
+							"start":           "0 * * * *",
+							"end":             "1 * * * *",
+							"desiredReplicas": "1",
+						},
+					},
+				},
+			},
+		}
+		err = k8sClient.Create(context.Background(), so)
+		Expect(err).ToNot(HaveOccurred())
+
+		// And validate that hpa is created.
+		hpa := &autoscalingv2.HorizontalPodAutoscaler{}
+		Eventually(func() error {
+			return k8sClient.Get(context.Background(), types.NamespacedName{Name: fmt.Sprintf("keda-hpa-%s", soName), Namespace: "default"}, hpa)
+		}).ShouldNot(HaveOccurred())
+
+		Eventually(func() error {
+			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+			Expect(err).ToNot(HaveOccurred())
+
+			so.Spec.Advanced.HorizontalPodAutoscalerConfig.Labels = map[string]string{"new-label": "new-label-value"}
+
+			return k8sClient.Update(context.Background(), so)
+		}).WithTimeout(1 * time.Minute).WithPolling(10 * time.Second).ShouldNot(HaveOccurred())
+		testLogger.Info("label is set")
+
+		// hpa should be reconciled and should contain this new label
+		Eventually(func() bool {
+			err = k8sClient.Get(context.Background(), types.NamespacedName{Name: fmt.Sprintf("keda-hpa-%s", soName), Namespace: "default"}, hpa)
+			if err != nil {
+				return false
+			}
+			// Check if the label is present
+			if _, ok := hpa.ObjectMeta.Labels["new-label"]; ok {
+				return true
+			}
+			return false
+		}, 5*time.Second).Should(BeTrue())
+	})
+
 })
 
 func generateDeployment(name string) *appsv1.Deployment {
