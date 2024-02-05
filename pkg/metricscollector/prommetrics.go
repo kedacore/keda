@@ -45,7 +45,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaler",
 			Name:      "errors_total",
-			Help:      "DEPRECATED - will be removed in 2.15 - use a `sum(scaler_errors_total{scaler!=\"\"})` over all scalers",
+			Help:      "DEPRECATED - will be removed in 2.16 - use a `sum(scaler_errors_total{scaler!=\"\"})` over all scalers",
 		},
 		[]string{},
 	)
@@ -63,7 +63,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaler",
 			Name:      "metrics_latency",
-			Help:      "DEPRECATED - will be removed in 2.15  use 'scaler_metrics_latency_seconds' instead.",
+			Help:      "DEPRECATED - will be removed in 2.16  use 'scaler_metrics_latency_seconds' instead.",
 		},
 		metricLabels,
 	)
@@ -99,7 +99,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaler",
 			Name:      "errors",
-			Help:      "DEPRECATED - will be removed in 2.15 - use 'scaler_errors_total' instead.",
+			Help:      "DEPRECATED - will be removed in 2.16 - use 'scaler_errors_total' instead.",
 		},
 		metricLabels,
 	)
@@ -117,7 +117,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaled_object",
 			Name:      "errors",
-			Help:      "DEPRECATED - will be removed in 2.15 - use 'scaled_object_errors_total' instead.",
+			Help:      "DEPRECATED - will be removed in 2.16 - use 'scaled_object_errors_total' instead.",
 		},
 		[]string{"namespace", "scaledObject"},
 	)
@@ -146,7 +146,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "trigger",
 			Name:      "totals",
-			Help:      "DEPRECATED - will be removed in 2.15 - use 'trigger_registered_total' instead.",
+			Help:      "DEPRECATED - will be removed in 2.16 - use 'trigger_registered_total' instead.",
 		},
 		[]string{"type"},
 	)
@@ -164,7 +164,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "resource",
 			Name:      "totals",
-			Help:      "DEPRECATED - will be removed in 2.15 - use 'resource_handled_total' instead.",
+			Help:      "DEPRECATED - will be removed in 2.16 - use 'resource_handled_total' instead.",
 		},
 		[]string{"type", "namespace"},
 	)
@@ -182,7 +182,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "internal_scale_loop",
 			Name:      "latency",
-			Help:      "DEPRECATED - will be removed in 2.15 - use 'internal_scale_loop_latency_seconds' instead.",
+			Help:      "DEPRECATED - will be removed in 2.16 - use 'internal_scale_loop_latency_seconds' instead.",
 		},
 		[]string{"namespace", "type", "resource"},
 	)
@@ -240,8 +240,6 @@ func NewPromMetrics() *PromMetrics {
 	metrics.Registry.MustRegister(crdRegistered)
 	metrics.Registry.MustRegister(scaledJobErrors)
 
-	// metrics.Registry.MustRegister(triggerTotalsGaugeVec)
-	// metrics.Registry.MustRegister(crdTotalsGaugeVec)
 	metrics.Registry.MustRegister(buildInfo)
 
 	metrics.Registry.MustRegister(cloudeventEmitted)

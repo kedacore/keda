@@ -31,7 +31,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "webhook",
 			Name:      "scaled_object_validation_total",
-			Help:      "DEPRECATED - will be removed in 2.15 - Use `scaled_object_validations_total` instead.",
+			Help:      "DEPRECATED - will be removed in 2.16 - Use `scaled_object_validations_total` instead.",
 		},
 		[]string{"namespace", "action"},
 	)
@@ -49,7 +49,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "webhook",
 			Name:      "scaled_object_validation_errors",
-			Help:      "DEPRECATED - will be removed in 2.15 - Use `scaled_object_validation_errors_total` instead.",
+			Help:      "DEPRECATED - will be removed in 2.16 - Use `scaled_object_validation_errors_total` instead.",
 		},
 		[]string{"namespace", "action", "reason"},
 	)

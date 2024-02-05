@@ -98,7 +98,7 @@ func initMeters() {
 		otLog.Error(err, msg)
 	}
 
-	otTriggerTotalsCounterDeprecated, err = meter.Int64UpDownCounter("keda.trigger.totals", api.WithDescription("DEPRECATED - will be removed in 2.15 - use 'keda.triggers.count' instead"))
+	otTriggerTotalsCounterDeprecated, err = meter.Int64UpDownCounter("keda.trigger.totals", api.WithDescription("DEPRECATED - will be removed in 2.16 - use 'keda.trigger.registered.count' instead"))
 	if err != nil {
 		otLog.Error(err, msg)
 	}
@@ -108,7 +108,7 @@ func initMeters() {
 		otLog.Error(err, msg)
 	}
 
-	otCrdTotalsCounterDeprecated, err = meter.Int64UpDownCounter("keda.resource.totals", api.WithDescription("DEPRECATED - will be removed in 2.15 - use 'keda.resources.count' instead"))
+	otCrdTotalsCounterDeprecated, err = meter.Int64UpDownCounter("keda.resource.totals", api.WithDescription("DEPRECATED - will be removed in 2.16 - use 'keda.resource.registered.count' instead"))
 	if err != nil {
 		otLog.Error(err, msg)
 	}
