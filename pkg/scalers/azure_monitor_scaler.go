@@ -25,6 +25,8 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
+	azcloud "github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery"
@@ -57,6 +59,7 @@ type monitorInfo struct {
 	AggregationType     *azquery.AggregationType
 	ClientID            string
 	ClientPassword      string
+	Cloud               cloud.Configuration
 }
 
 func (m monitorInfo) MetricResourceURI() string {
@@ -100,7 +103,7 @@ func NewAzureMonitorScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing azure monitor metadata: %w", err)
 	}
 
-	client, err := CreateMetricsClient(config, meta, logger)
+	client, err := CreateAzureMetricsClient(config, meta, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +115,7 @@ func NewAzureMonitorScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func CreateMetricsClient(config *scalersconfig.ScalerConfig, meta *azureMonitorMetadata, logger logr.Logger) (*azquery.MetricsClient, error) {
+func CreateAzureMetricsClient(config *scalersconfig.ScalerConfig, meta *azureMonitorMetadata, logger logr.Logger) (*azquery.MetricsClient, error) {
 	var creds azcore.TokenCredential
 	var err error
 	switch config.PodIdentity.Provider {
@@ -127,7 +130,10 @@ func CreateMetricsClient(config *scalersconfig.ScalerConfig, meta *azureMonitorM
 		return nil, err
 	}
 	client, err := azquery.NewMetricsClient(creds, &azquery.MetricsClientOptions{
-		ClientOptions: policy.ClientOptions{Transport: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, true)},
+		ClientOptions: policy.ClientOptions{
+			Transport: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
+			Cloud:     meta.azureMonitorInfo.Cloud,
+		},
 	})
 	if err != nil {
 		return nil, err
@@ -227,6 +233,24 @@ func parseAzureMonitorMetadata(config *scalersconfig.ScalerConfig, logger logr.L
 
 	if val, ok := config.TriggerMetadata["metricNamespace"]; ok {
 		meta.azureMonitorInfo.Namespace = &val
+	}
+
+	meta.azureMonitorInfo.Cloud = azcloud.AzurePublic
+	if cloud, ok := config.TriggerMetadata["cloud"]; ok {
+		if strings.EqualFold(cloud, azure.PrivateCloud) {
+			if resource, ok := config.TriggerMetadata["azureResourceManagerEndpoint"]; ok && resource != "" {
+				meta.azureMonitorInfo.Cloud.Services[azquery.ServiceNameLogs] = azcloud.ServiceConfiguration{
+					Endpoint: resource,
+					Audience: resource,
+				}
+			} else {
+				return nil, fmt.Errorf("logAnalyticsResourceURL must be provided for %s cloud type", azure.PrivateCloud)
+			}
+		} else if resource, ok := azure.AzureClouds[strings.ToUpper(cloud)]; ok {
+			meta.azureMonitorInfo.Cloud = resource
+		} else {
+			return nil, fmt.Errorf("there is no cloud environment matching the name %s", cloud)
+		}
 	}
 
 	clientID, clientPassword, err := parseAzurePodIdentityParams(config)

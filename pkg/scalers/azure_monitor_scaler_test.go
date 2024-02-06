@@ -94,7 +94,7 @@ var testParseAzMonitorMetadata = []parseAzMonitorMetadataTestData{
 	{map[string]string{"resourceURI": "test/resource/uri", "tenantId": "123", "subscriptionId": "456", "resourceGroupName": "test", "metricName": "metric", "metricAggregationInterval": "0:15:0", "metricAggregationType": "Average", "activeDirectoryClientId": "CLIENT_ID", "activeDirectoryClientPasswordFromEnv": "CLIENT_PASSWORD", "targetValue": "5", "metricNamespace": "namespace", "cloud": "azureChinaCloud"}, false, testAzMonitorResolvedEnv, map[string]string{}, ""},
 	// private cloud
 	{map[string]string{"resourceURI": "test/resource/uri", "tenantId": "123", "subscriptionId": "456", "resourceGroupName": "test", "metricName": "metric", "metricAggregationInterval": "0:15:0", "metricAggregationType": "Average", "activeDirectoryClientId": "CLIENT_ID", "activeDirectoryClientPasswordFromEnv": "CLIENT_PASSWORD", "targetValue": "5", "metricNamespace": "namespace", "cloud": "private",
-		"azureResourceManagerEndpoint": testAzureResourceManagerEndpoint, "activeDirectoryEndpoint": testActiveDirectoryEndpoint}, false, testAzMonitorResolvedEnv, map[string]string{}, ""},
+		"azureResourceManagerEndpoint": testAzureResourceManagerEndpoint}, false, testAzMonitorResolvedEnv, map[string]string{}, ""},
 }
 
 var azMonitorMetricIdentifiers = []azMonitorMetricIdentifier{
