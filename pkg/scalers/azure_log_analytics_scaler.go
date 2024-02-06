@@ -282,7 +282,7 @@ func (s *azureLogAnalyticsScaler) getMetricData(ctx context.Context) (float64, e
 	if len(response.Tables[0].Rows[0]) > 0 {
 		metricDataType := response.Tables[0].Columns[0].Type
 		metricVal := response.Tables[0].Rows[0][0]
-		if metricDataType != nil || metricVal == nil {
+		if metricDataType == nil || metricVal == nil {
 			return -1, fmt.Errorf("error parsing the response %w", err)
 		}
 		parsedMetricVal, err := parseTableValueToFloat64(metricVal, *metricDataType)
