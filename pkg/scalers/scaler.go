@@ -168,40 +168,46 @@ func GenerateMetricInMili(metricName string, value float64) external_metrics.Ext
 	}
 }
 
+// Option represents a function type that modifies a configOptions instance.
 type Option func(*configOptions)
 
 type configOptions struct {
-	useMetadata       bool
-	useAuthentication bool
-	useResolvedEnv    bool
-	isOptional        bool
-	defaultVal        interface{}
+	useMetadata       bool        // Indicates whether to use metadata.
+	useAuthentication bool        // Indicates whether to use authentication.
+	useResolvedEnv    bool        // Indicates whether to use resolved environment variables.
+	isOptional        bool        // Indicates whether the configuration is optional.
+	defaultVal        interface{} // Default value for the configuration.
 }
 
+// UseMetadata is an Option function that sets the useMetadata field of configOptions.
 func UseMetadata(metadata bool) Option {
 	return func(opt *configOptions) {
 		opt.useMetadata = metadata
 	}
 }
 
+// UseAuthentication is an Option function that sets the useAuthentication field of configOptions.
 func UseAuthentication(auth bool) Option {
 	return func(opt *configOptions) {
 		opt.useAuthentication = auth
 	}
 }
 
+// UseResolvedEnv is an Option function that sets the useResolvedEnv field of configOptions.
 func UseResolvedEnv(resolvedEnv bool) Option {
 	return func(opt *configOptions) {
 		opt.useResolvedEnv = resolvedEnv
 	}
 }
 
+// IsOptional is an Option function that sets the isOptional field of configOptions.
 func IsOptional(optional bool) Option {
 	return func(opt *configOptions) {
 		opt.isOptional = optional
 	}
 }
 
+// WithDefaultVal is an Option function that sets the defaultVal field of configOptions.
 func WithDefaultVal(defaultVal interface{}) Option {
 	return func(opt *configOptions) {
 		opt.defaultVal = defaultVal
