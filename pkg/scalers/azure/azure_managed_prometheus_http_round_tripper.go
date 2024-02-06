@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	az "github.com/Azure/go-autorest/autorest/azure"
@@ -22,6 +24,7 @@ var azureManagedPrometheusResourceURLInCloud = map[string]string{
 
 type azureManagedPrometheusHTTPRoundTripper struct {
 	chainedCredential *azidentity.ChainedTokenCredential
+	token             azcore.AccessToken
 	next              http.RoundTripper
 	resourceURL       string
 }
@@ -68,13 +71,15 @@ func TryAndGetAzureManagedPrometheusHTTPRoundTripper(logger logr.Logger, podIden
 
 // RoundTrip sets authorization header for requests
 func (rt *azureManagedPrometheusHTTPRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	token, err := rt.chainedCredential.GetToken(req.Context(), policy.TokenRequestOptions{Scopes: []string{rt.resourceURL}})
-
-	if err != nil {
-		return nil, err
+	if rt.token.ExpiresOn.Before(time.Now().Add(time.Second * 60)) {
+		token, err := rt.chainedCredential.GetToken(req.Context(), policy.TokenRequestOptions{Scopes: []string{rt.resourceURL}})
+		if err != nil {
+			return nil, err
+		}
+		rt.token = token
 	}
 
-	bearerAccessToken := "Bearer " + token.Token
+	bearerAccessToken := "Bearer " + rt.token.Token
 	req.Header.Set("Authorization", bearerAccessToken)
 
 	return rt.next.RoundTrip(req)
