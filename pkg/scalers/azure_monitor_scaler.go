@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	azcloud "github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -59,7 +58,7 @@ type monitorInfo struct {
 	AggregationType     *azquery.AggregationType
 	ClientID            string
 	ClientPassword      string
-	Cloud               cloud.Configuration
+	Cloud               azcloud.Configuration
 }
 
 func (m monitorInfo) MetricResourceURI() string {
@@ -235,24 +234,6 @@ func parseAzureMonitorMetadata(config *scalersconfig.ScalerConfig, logger logr.L
 		meta.azureMonitorInfo.Namespace = &val
 	}
 
-	meta.azureMonitorInfo.Cloud = azcloud.AzurePublic
-	if cloud, ok := config.TriggerMetadata["cloud"]; ok {
-		if strings.EqualFold(cloud, azure.PrivateCloud) {
-			if resource, ok := config.TriggerMetadata["azureResourceManagerEndpoint"]; ok && resource != "" {
-				meta.azureMonitorInfo.Cloud.Services[azquery.ServiceNameLogs] = azcloud.ServiceConfiguration{
-					Endpoint: resource,
-					Audience: resource,
-				}
-			} else {
-				return nil, fmt.Errorf("logAnalyticsResourceURL must be provided for %s cloud type", azure.PrivateCloud)
-			}
-		} else if resource, ok := azure.AzureClouds[strings.ToUpper(cloud)]; ok {
-			meta.azureMonitorInfo.Cloud = resource
-		} else {
-			return nil, fmt.Errorf("there is no cloud environment matching the name %s", cloud)
-		}
-	}
-
 	clientID, clientPassword, err := parseAzurePodIdentityParams(config)
 	if err != nil {
 		return nil, err
@@ -260,8 +241,35 @@ func parseAzureMonitorMetadata(config *scalersconfig.ScalerConfig, logger logr.L
 	meta.azureMonitorInfo.ClientID = clientID
 	meta.azureMonitorInfo.ClientPassword = clientPassword
 
+	cloud, err := parseCloud(config.TriggerMetadata)
+	if err != nil {
+		return nil, err
+	}
+	meta.azureMonitorInfo.Cloud = cloud
+
 	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
+}
+
+func parseCloud(metadata map[string]string) (azcloud.Configuration, error) {
+	foundCloud := azcloud.AzurePublic
+	if cloud, ok := metadata["cloud"]; ok {
+		if strings.EqualFold(cloud, azure.PrivateCloud) {
+			if resource, ok := metadata["azureResourceManagerEndpoint"]; ok && resource != "" {
+				foundCloud.Services[azquery.ServiceNameLogs] = azcloud.ServiceConfiguration{
+					Endpoint: resource,
+					Audience: resource,
+				}
+			} else {
+				return azcloud.Configuration{}, fmt.Errorf("logAnalyticsResourceURL must be provided for %s cloud type", azure.PrivateCloud)
+			}
+		} else if resource, ok := azure.AzureClouds[strings.ToUpper(cloud)]; ok {
+			foundCloud = resource
+		} else {
+			return azcloud.Configuration{}, fmt.Errorf("there is no cloud environment matching the name %s", cloud)
+		}
+	}
+	return foundCloud, nil
 }
 
 // parseAzurePodIdentityParams gets the activeDirectory clientID and password

@@ -274,9 +274,9 @@ func (s *azureLogAnalyticsScaler) getMetricData(ctx context.Context) (float64, e
 	case len(response.Tables) == 0 || len(response.Tables[0].Columns) == 0 || len(response.Tables[0].Rows) == 0:
 		return -1, fmt.Errorf("error validating Log Analytics request. Details: there is no results after running your query")
 	case len(response.Tables) > 1:
-		return -1, fmt.Errorf("error validating Log Analytics request. Details: too many tables in query result: %d, expected: 1.", len(response.Tables))
+		return -1, fmt.Errorf("error validating Log Analytics request. Details: too many tables in query result: %d, expected: 1", len(response.Tables))
 	case len(response.Tables[0].Rows) > 1:
-		return -1, fmt.Errorf("error validating Log Analytics request. Details: too many rows in query result: %d, expected: 1.", len(response.Tables[0].Rows))
+		return -1, fmt.Errorf("error validating Log Analytics request. Details: too many rows in query result: %d, expected: 1", len(response.Tables[0].Rows))
 	}
 
 	if len(response.Tables[0].Rows[0]) > 0 {

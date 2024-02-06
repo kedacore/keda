@@ -1,7 +1,9 @@
 package azure
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
 	"github.com/go-logr/logr"
@@ -48,17 +50,44 @@ func GetEventHubClient(info EventHubInfo, logger logr.Logger) (*azeventhubs.Prod
 	return nil, fmt.Errorf("event hub does not support pod identity %v", info.PodIdentity.Provider)
 }
 
+// parseAzureEventHubConnectionString parses Event Hub connection string into (namespace, name)
+// Connection string should be in following format:
+// Endpoint=sb://eventhub-namespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=secretKey123;EntityPath=eventhub-name
+func parseAzureEventHubConnectionString(connectionString string) (string, string, error) {
+	parts := strings.Split(connectionString, ";")
+
+	var eventHubNamespace, eventHubName string
+	for _, v := range parts {
+		if strings.HasPrefix(v, "Endpoint") {
+			endpointParts := strings.SplitN(v, "=", 2)
+			if len(endpointParts) == 2 {
+				endpointParts[1] = strings.TrimPrefix(endpointParts[1], "sb://")
+				endpointParts[1] = strings.TrimSuffix(endpointParts[1], "/")
+				eventHubNamespace = endpointParts[1]
+			}
+		} else if strings.HasPrefix(v, "EntityPath") {
+			entityPathParts := strings.SplitN(v, "=", 2)
+			if len(entityPathParts) == 2 {
+				eventHubName = entityPathParts[1]
+			}
+		}
+	}
+
+	if eventHubNamespace == "" || eventHubName == "" {
+		return "", "", errors.New("can't parse event hub connection string. Missing eventHubNamespace or eventHubName")
+	}
+
+	return eventHubNamespace, eventHubName, nil
+}
+
 func getHubAndNamespace(info EventHubInfo) (string, string, error) {
 	var eventHubNamespace string
 	var eventHubName string
+	var err error
 	if info.EventHubConnection != "" {
-		fields, err := azeventhubs.ParseConnectionString(info.EventHubConnection)
+		eventHubNamespace, eventHubName, err = parseAzureEventHubConnectionString(info.EventHubConnection)
 		if err != nil {
 			return "", "", err
-		}
-		eventHubNamespace = fields.Endpoint
-		if fields.EntityPath != nil {
-			eventHubName = *fields.EntityPath
 		}
 	} else {
 		eventHubNamespace = fmt.Sprintf("%s.%s", info.Namespace, info.ServiceBusEndpointSuffix)
