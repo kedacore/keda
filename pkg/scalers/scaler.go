@@ -168,8 +168,83 @@ func GenerateMetricInMili(metricName string, value float64) external_metrics.Ext
 	}
 }
 
-// getParameterFromConfigV2 returns the value of the parameter from the config
-func getParameterFromConfigV2(config *scalersconfig.ScalerConfig, parameter string, useMetadata bool, useAuthentication bool, useResolvedEnv bool, isOptional bool, defaultVal string, targetType reflect.Type) (interface{}, error) {
+// Option represents a function type that modifies a configOptions instance.
+type Option func(*configOptions)
+
+type configOptions struct {
+	useMetadata       bool        // Indicates whether to use metadata.
+	useAuthentication bool        // Indicates whether to use authentication.
+	useResolvedEnv    bool        // Indicates whether to use resolved environment variables.
+	isOptional        bool        // Indicates whether the configuration is optional.
+	defaultVal        interface{} // Default value for the configuration.
+}
+
+// UseMetadata is an Option function that sets the useMetadata field of configOptions.
+func UseMetadata(metadata bool) Option {
+	return func(opt *configOptions) {
+		opt.useMetadata = metadata
+	}
+}
+
+// UseAuthentication is an Option function that sets the useAuthentication field of configOptions.
+func UseAuthentication(auth bool) Option {
+	return func(opt *configOptions) {
+		opt.useAuthentication = auth
+	}
+}
+
+// UseResolvedEnv is an Option function that sets the useResolvedEnv field of configOptions.
+func UseResolvedEnv(resolvedEnv bool) Option {
+	return func(opt *configOptions) {
+		opt.useResolvedEnv = resolvedEnv
+	}
+}
+
+// IsOptional is an Option function that sets the isOptional field of configOptions.
+func IsOptional(optional bool) Option {
+	return func(opt *configOptions) {
+		opt.isOptional = optional
+	}
+}
+
+// WithDefaultVal is an Option function that sets the defaultVal field of configOptions.
+func WithDefaultVal(defaultVal interface{}) Option {
+	return func(opt *configOptions) {
+		opt.defaultVal = defaultVal
+	}
+}
+
+// getParameterFromConfigV2 retrieves a parameter value from the provided ScalerConfig object based on the specified parameter name, target type, and optional configuration options.
+//
+// This method searches for the parameter value in different places within the ScalerConfig object, such as authentication parameters, trigger metadata, and resolved environment variables, based on the provided options.
+// It then attempts to convert the found value to the specified target type and returns it.
+//
+// Parameters:
+//
+//	config: A pointer to a ScalerConfig object from which to retrieve the parameter value.
+//	parameter: A string representing the name of the parameter to retrieve.
+//	targetType: A reflect.Type representing the target type to which the parameter value should be converted.
+//	options: An optional variadic parameter that allows configuring the behavior of the method through Option functions.
+//
+// Returns:
+//   - An interface{} representing the retrieved parameter value, converted to the specified target type.
+//   - An error, if any occurred during the retrieval or conversion process.
+//
+// Example Usage:
+//
+//	To retrieve a parameter value from a ScalerConfig object, you can call this function with the necessary parameters and options
+//
+//	```
+//	val, err := getParameterFromConfigV2(scalerConfig, "parameterName", reflect.TypeOf(int64(0)), UseMetadata(true), UseAuthentication(true))
+//	if err != nil {
+//	    // Handle error
+//	}
+func getParameterFromConfigV2(config *scalersconfig.ScalerConfig, parameter string, targetType reflect.Type, options ...Option) (interface{}, error) {
+	opt := &configOptions{defaultVal: ""}
+	for _, option := range options {
+		option(opt)
+	}
+
 	foundCount := 0
 	var foundVal string
 	var convertedVal interface{}
@@ -177,20 +252,20 @@ func getParameterFromConfigV2(config *scalersconfig.ScalerConfig, parameter stri
 
 	if val, ok := config.AuthParams[parameter]; ok && val != "" {
 		foundCount++
-		if useAuthentication {
+		if opt.useAuthentication {
 			foundVal = val
 		}
 	}
 	if val, ok := config.TriggerMetadata[parameter]; ok && val != "" {
 		foundCount++
-		if useMetadata {
+		if opt.useMetadata {
 			foundVal = val
 		}
 	}
 	if envFromVal, envFromOk := config.TriggerMetadata[fmt.Sprintf("%sFromEnv", parameter)]; envFromOk {
 		if val, ok := config.ResolvedEnv[envFromVal]; ok && val != "" {
 			foundCount++
-			if useResolvedEnv {
+			if opt.useResolvedEnv {
 				foundVal = val
 			}
 		}
@@ -199,16 +274,16 @@ func getParameterFromConfigV2(config *scalersconfig.ScalerConfig, parameter stri
 	convertedVal, foundErr = convertToType(foundVal, targetType)
 	switch {
 	case foundCount > 1:
-		return "", fmt.Errorf("value for parameter '%s' found in more than one place", parameter)
+		return opt.defaultVal, fmt.Errorf("value for parameter '%s' found in more than one place", parameter)
 	case foundCount == 1:
 		if foundErr != nil {
-			return defaultVal, foundErr
+			return opt.defaultVal, foundErr
 		}
 		return convertedVal, nil
-	case isOptional:
-		return defaultVal, nil
+	case opt.isOptional:
+		return opt.defaultVal, nil
 	default:
-		return "", fmt.Errorf("key not found. Either set the correct key or set isOptional to true and set defaultVal")
+		return opt.defaultVal, fmt.Errorf("key not found. Either set the correct key or set isOptional to true and set defaultVal")
 	}
 }
 

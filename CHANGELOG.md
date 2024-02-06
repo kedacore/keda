@@ -82,6 +82,7 @@ New deprecation(s):
 
 ### Other
 
+- **General**: Improve readability of utility function getParameterFromConfigV2 ([#5037](https://github.com/kedacore/keda/issues/5037))
 - **General**: Minor refactor to reduce copy/paste code in ScaledObject webhook ([#5397](https://github.com/kedacore/keda/issues/5397))
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
@@ -163,7 +164,6 @@ New deprecation(s):
 ### Other
 
 - **General**: Bump K8s deps to 0.28.5 ([#5346](https://github.com/kedacore/keda/pull/5346))
-- **General**: Create a common utility function to get parameter value from config ([#5037](https://github.com/kedacore/keda/issues/5037))
 - **General**: Fix CVE-2023-45142 in OpenTelemetry ([#5089](https://github.com/kedacore/keda/issues/5089))
 - **General**: Fix logger in OpenTelemetry collector ([#5094](https://github.com/kedacore/keda/issues/5094))
 - **General**: Fix lost commit from the newly created utility function ([#5037](https://github.com/kedacore/keda/issues/5037))
