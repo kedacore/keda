@@ -63,6 +63,7 @@ Here is an overview of all new **experimental** features:
 ### Improvements
 
 - **General**: Add OPENTELEMETRY flag in e2e test YAML ([#5375](https://github.com/kedacore/keda/issues/5375))
+- **General**: Add startReplicaCount parameter to ScaledObject for scaling from 0 to N replicas
 
 ### Fixes
 

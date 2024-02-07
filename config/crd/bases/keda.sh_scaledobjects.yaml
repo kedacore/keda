@@ -29,6 +29,9 @@ spec:
     - jsonPath: .spec.maxReplicaCount
       name: Max
       type: integer
+    - jsonPath: .spec.startReplicaCount
+      name: Start
+      type: integer
     - jsonPath: .spec.triggers[*].type
       name: Triggers
       type: string
@@ -242,6 +245,9 @@ spec:
                 format: int32
                 type: integer
               minReplicaCount:
+                format: int32
+                type: integer
+              startReplicaCount:
                 format: int32
                 type: integer
               pollingInterval:

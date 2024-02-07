@@ -33,6 +33,7 @@ import (
 // +kubebuilder:printcolumn:name="ScaleTargetName",type="string",JSONPath=".spec.scaleTargetRef.name"
 // +kubebuilder:printcolumn:name="Min",type="integer",JSONPath=".spec.minReplicaCount"
 // +kubebuilder:printcolumn:name="Max",type="integer",JSONPath=".spec.maxReplicaCount"
+// +kubebuilder:printcolumn:name="Start",type="integer",JSONPath=".spec.startReplicaCount"
 // +kubebuilder:printcolumn:name="Triggers",type="string",JSONPath=".spec.triggers[*].type"
 // +kubebuilder:printcolumn:name="Authentication",type="string",JSONPath=".spec.triggers[*].authenticationRef.name"
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status"
@@ -95,6 +96,8 @@ type ScaledObjectSpec struct {
 	// +optional
 	MaxReplicaCount *int32 `json:"maxReplicaCount,omitempty"`
 	// +optional
+        StartReplicaCount *int32 `json:"startReplicaCount,omitempty"`
+        // +optional
 	Advanced *AdvancedConfig `json:"advanced,omitempty"`
 
 	Triggers []ScaleTriggers `json:"triggers"`
@@ -255,6 +258,10 @@ func CheckReplicaCountBoundsAreValid(scaledObject *ScaledObject) error {
 		min = *scaledObject.GetHPAMinReplicas()
 	}
 	max := scaledObject.GetHPAMaxReplicas()
+
+        if scaledObject.Spec.StartReplicaCount != nil && (*scaledObject.Spec.StartReplicaCount > max || *scaledObject.Spec.StartReplicaCount < min) {
+                return fmt.Errorf("StartReplicaCount=%d must be less than or equal to MaxReplicaCount=%d and greater than or equal to MinReplicaCount=%d", *scaledObject.Spec.StartReplicaCount, max, min)
+	}
 
 	if min > max {
 		return fmt.Errorf("MinReplicaCount=%d must be less than MaxReplicaCount=%d", min, max)
