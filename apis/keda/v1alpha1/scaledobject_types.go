@@ -96,8 +96,8 @@ type ScaledObjectSpec struct {
 	// +optional
 	MaxReplicaCount *int32 `json:"maxReplicaCount,omitempty"`
 	// +optional
-        StartReplicaCount *int32 `json:"startReplicaCount,omitempty"`
-        // +optional
+	StartReplicaCount *int32 `json:"startReplicaCount,omitempty"`
+	// +optional
 	Advanced *AdvancedConfig `json:"advanced,omitempty"`
 
 	Triggers []ScaleTriggers `json:"triggers"`
@@ -259,8 +259,8 @@ func CheckReplicaCountBoundsAreValid(scaledObject *ScaledObject) error {
 	}
 	max := scaledObject.GetHPAMaxReplicas()
 
-        if scaledObject.Spec.StartReplicaCount != nil && (*scaledObject.Spec.StartReplicaCount > max || *scaledObject.Spec.StartReplicaCount < min) {
-                return fmt.Errorf("StartReplicaCount=%d must be less than or equal to MaxReplicaCount=%d and greater than or equal to MinReplicaCount=%d", *scaledObject.Spec.StartReplicaCount, max, min)
+	if scaledObject.Spec.StartReplicaCount != nil && (*scaledObject.Spec.StartReplicaCount > max || *scaledObject.Spec.StartReplicaCount < min) {
+		return fmt.Errorf("StartReplicaCount=%d must be less than or equal to MaxReplicaCount=%d and greater than or equal to MinReplicaCount=%d", *scaledObject.Spec.StartReplicaCount, max, min)
 	}
 
 	if min > max {

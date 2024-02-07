@@ -297,8 +297,8 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 
 func (e *scaleExecutor) scaleFromZeroOrIdle(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, scale *autoscalingv1.Scale) {
 	var replicas int32
-        if scaledObject.Spec.StartReplicaCount != nil && scaledObject.Spec.MinReplicaCount != nil && *scaledObject.Spec.StartReplicaCount > *scaledObject.Spec.MinReplicaCount {
-                replicas = *scaledObject.Spec.StartReplicaCount
+	if scaledObject.Spec.StartReplicaCount != nil && scaledObject.Spec.MinReplicaCount != nil && *scaledObject.Spec.StartReplicaCount > *scaledObject.Spec.MinReplicaCount {
+		replicas = *scaledObject.Spec.StartReplicaCount
 	} else if scaledObject.Spec.MinReplicaCount != nil && *scaledObject.Spec.MinReplicaCount > 0 {
 		replicas = *scaledObject.Spec.MinReplicaCount
 	} else {
