@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package datadog_test
+package datadog_dca_test
 
 import (
 	"encoding/base64"
