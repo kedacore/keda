@@ -198,7 +198,6 @@ var datadogMetricIdentifiers = []datadogMetricIdentifier{
 }
 
 func TestDatadogGetMetricSpecForScaling(t *testing.T) {
-
 	var err error
 	var meta *datadogMetadata
 

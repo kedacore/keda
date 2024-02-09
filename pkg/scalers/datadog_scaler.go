@@ -50,7 +50,7 @@ type datadogMetadata struct {
 	bearerToken      string
 
 	// TriggerMetadata Cluster Agent Proxy
-	datadogMetricServiceUrl string
+	datadogMetricServiceURL string
 	datadogMetricName       string
 	datadogMetricNamespace  string
 	activationTargetValue   float64
@@ -116,7 +116,6 @@ func NewDatadogScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (
 			}
 			httpClient.Transport = kedautil.CreateHTTPTransportWithTLSConfig(config)
 		}
-
 	} else {
 		meta, err = parseDatadogAPIMetadata(config, logger)
 		if err != nil {
@@ -149,7 +148,6 @@ func parseDatadogQuery(q string) (bool, error) {
 
 // buildClusterAgentURL builds the URL for the Cluster Agent Metrics API service
 func buildClusterAgentURL(datadogMetricsService, datadogNamespace string, datadogMetricsServicePort int) string {
-
 	return fmt.Sprintf("https://%s.%s.svc.cluster.local:%d/apis/external.metrics.k8s.io/v1beta1", datadogMetricsService, datadogNamespace, datadogMetricsServicePort)
 }
 
@@ -339,7 +337,7 @@ func parseDatadogClusterAgentMetadata(config *scalersconfig.ScalerConfig, logger
 		meta.datadogMetricsServicePort = 8443
 	}
 
-	meta.datadogMetricServiceUrl = buildClusterAgentURL(meta.datadogMetricsService, meta.datadogNamespace, meta.datadogMetricsServicePort)
+	meta.datadogMetricServiceURL = buildClusterAgentURL(meta.datadogMetricsService, meta.datadogNamespace, meta.datadogMetricsServicePort)
 
 	meta.unsafeSsl = false
 	if val, ok := config.AuthParams["unsafeSsl"]; ok {
@@ -612,7 +610,7 @@ func (s *datadogScaler) getDatadogMetricValue(req *http.Request) (float64, error
 	}
 
 	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		r := gjson.GetBytes(body, "message")
@@ -639,7 +637,6 @@ func (s *datadogScaler) getDatadogMetricValue(req *http.Request) (float64, error
 }
 
 func (s *datadogScaler) getDatadogClusterAgentHTTPRequest(ctx context.Context, url string) (*http.Request, error) {
-
 	var req *http.Request
 	var err error
 
@@ -682,13 +679,12 @@ func (s *datadogScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec
 
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *datadogScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-
 	var metric external_metrics.ExternalMetricValue
 	var num float64
 	var err error
 
 	if s.useClusterAgentProxy {
-		url := buildMetricURL(s.metadata.datadogMetricServiceUrl, s.metadata.datadogMetricNamespace, s.metadata.hpaMetricName)
+		url := buildMetricURL(s.metadata.datadogMetricServiceURL, s.metadata.datadogMetricNamespace, s.metadata.hpaMetricName)
 
 		req, err := s.getDatadogClusterAgentHTTPRequest(ctx, url)
 		if (err != nil) || (req == nil) {
