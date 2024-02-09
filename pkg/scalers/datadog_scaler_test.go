@@ -229,8 +229,8 @@ func TestDatadogGetMetricSpecForScaling(t *testing.T) {
 func TestBuildClusterAgentURL(t *testing.T) {
 	// Test valid inputs
 	url := buildClusterAgentURL("datadogMetricsService", "datadogNamespace", 8080)
-	if url != "https://datadogMetricsService.datadogNamespace:8080/apis/external.metrics.k8s.io/v1beta1" {
-		t.Error("Expected https://datadogMetricsService.datadogNamespace:8080/apis/external.metrics.k8s.io/v1beta1, got ", url)
+	if url != "https://datadogMetricsService.datadogNamespace.svc.cluster.local:8080/apis/external.metrics.k8s.io/v1beta1" {
+		t.Error("Expected https://datadogMetricsService.datadogNamespace.svc.cluster.local:8080/apis/external.metrics.k8s.io/v1beta1, got ", url)
 	}
 }
 
