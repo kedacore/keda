@@ -150,7 +150,7 @@ func parseDatadogQuery(q string) (bool, error) {
 // buildClusterAgentURL builds the URL for the Cluster Agent Metrics API service
 func buildClusterAgentURL(datadogMetricsService, datadogNamespace string, datadogMetricsServicePort int) string {
 
-	return fmt.Sprintf("https://%s.%s:%d/apis/external.metrics.k8s.io/v1beta1", datadogMetricsService, datadogNamespace, datadogMetricsServicePort)
+	return fmt.Sprintf("https://%s.%s.svc.cluster.local:%d/apis/external.metrics.k8s.io/v1beta1", datadogMetricsService, datadogNamespace, datadogMetricsServicePort)
 }
 
 // buildMetricURL builds the URL for the Datadog metric
@@ -614,8 +614,6 @@ func (s *datadogScaler) getDatadogMetricValue(req *http.Request) (float64, error
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 
-	s.logger.Info(fmt.Sprintf("Response: %s", body))
-
 	if resp.StatusCode != http.StatusOK {
 		r := gjson.GetBytes(body, "message")
 		if r.Type == gjson.String {
@@ -656,8 +654,6 @@ func (s *datadogScaler) getDatadogClusterAgentHTTPRequest(ctx context.Context, u
 		if err != nil {
 			return nil, err
 		}
-
-		s.logger.Info(fmt.Sprintf("Request correctly created"))
 		return req, nil
 
 	default:
@@ -689,6 +685,7 @@ func (s *datadogScaler) GetMetricsAndActivity(ctx context.Context, metricName st
 
 	var metric external_metrics.ExternalMetricValue
 	var num float64
+	var err error
 
 	if s.useClusterAgentProxy {
 		url := buildMetricURL(s.metadata.datadogMetricServiceUrl, s.metadata.datadogMetricNamespace, s.metadata.hpaMetricName)
@@ -698,14 +695,14 @@ func (s *datadogScaler) GetMetricsAndActivity(ctx context.Context, metricName st
 			return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error generating http request: %w", err)
 		}
 
-		num, err := s.getDatadogMetricValue(req)
+		num, err = s.getDatadogMetricValue(req)
 		if err != nil {
 			return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting metric value: %w", err)
 		}
 
 		metric = GenerateMetricInMili(metricName, num)
 	} else {
-		num, err := s.getQueryResult(ctx)
+		num, err = s.getQueryResult(ctx)
 		if err != nil {
 			s.logger.Error(err, "error getting metrics from Datadog")
 			return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting metrics from Datadog: %w", err)
@@ -714,7 +711,7 @@ func (s *datadogScaler) GetMetricsAndActivity(ctx context.Context, metricName st
 		metric = GenerateMetricInMili(metricName, num)
 	}
 
-	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.activationQueryValue, nil
+	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.activationTargetValue, nil
 }
 
 // MaxFloatFromSlice finds the largest value in a slice of floats
