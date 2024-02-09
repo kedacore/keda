@@ -309,12 +309,12 @@ func parseDatadogAPIMetadata(config *scalersconfig.ScalerConfig, logger logr.Log
 	meta.datadogSite = siteVal
 
 	hpaMetricName := meta.query[0:strings.Index(meta.query, "{")]
-	meta.hpaMetricName = GenerateMetricNameWithIndex(config.ScalerIndex, kedautil.NormalizeString(fmt.Sprintf("datadog-%s", hpaMetricName)))
+	meta.hpaMetricName = GenerateMetricNameWithIndex(config.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("datadog-%s", hpaMetricName)))
 
 	return &meta, nil
 }
 
-func parseDatadogClusterAgentMetadata(config *ScalerConfig, logger logr.Logger) (*datadogMetadata, error) {
+func parseDatadogClusterAgentMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*datadogMetadata, error) {
 	meta := datadogMetadata{}
 
 	if val, ok := config.AuthParams["datadogNamespace"]; ok {
