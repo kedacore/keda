@@ -158,7 +158,16 @@ func NewKafkaScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 func parseKafkaAuthParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadata) error {
 	meta.saslType = KafkaSASLTypeNone
-	saslAuthType, err := getParameterFromConfigV2(config, "sasl", true, true, false, true, "", reflect.TypeOf(""))
+	saslAuthType, err := getParameterFromConfigV2(
+		config,
+		"sasl",
+		reflect.TypeOf(""),
+		UseMetadata(true),
+		UseAuthentication(true),
+		UseResolvedEnv(true),
+		IsOptional(true),
+		WithDefaultVal(""),
+	)
 	if err != nil {
 		return err
 	}
@@ -185,7 +194,16 @@ func parseKafkaAuthParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadat
 
 	meta.enableTLS = false
 	var enableTLS bool
-	tlsString, err := getParameterFromConfigV2(config, "tls", true, true, false, true, "disable", reflect.TypeOf(""))
+	tlsString, err := getParameterFromConfigV2(
+		config,
+		"tls",
+		reflect.TypeOf(""),
+		UseMetadata(true),
+		UseAuthentication(true),
+		UseResolvedEnv(false),
+		IsOptional(true),
+		WithDefaultVal("disable"),
+	)
 	if err != nil {
 		return fmt.Errorf("error incorrect TLS value given. %w", err)
 	}
@@ -206,14 +224,32 @@ func parseKafkaAuthParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadat
 	return nil
 }
 
-func parseTLS(config *ScalerConfig, meta *kafkaMetadata) error {
-	certGiven, err := getParameterFromConfigV2(config, "cert", false, true, false, true, "", reflect.TypeOf(""))
+func parseTLS(config *scalersconfig.ScalerConfig, meta *kafkaMetadata) error {
+	certGiven, err := getParameterFromConfigV2(
+		config,
+		"cert",
+		reflect.TypeOf(""),
+		UseMetadata(false),
+		UseAuthentication(true),
+		UseResolvedEnv(false),
+		IsOptional(true),
+		WithDefaultVal(""),
+	)
 	if err != nil {
 		return err
 	}
 	meta.cert = certGiven.(string)
 
-	keyGiven, err := getParameterFromConfigV2(config, "key", false, true, false, true, "", reflect.TypeOf(""))
+	keyGiven, err := getParameterFromConfigV2(
+		config,
+		"key",
+		reflect.TypeOf(""),
+		UseMetadata(false),
+		UseAuthentication(true),
+		UseResolvedEnv(false),
+		IsOptional(true),
+		WithDefaultVal(""),
+	)
 	if err != nil {
 		return err
 	}
@@ -226,19 +262,46 @@ func parseTLS(config *ScalerConfig, meta *kafkaMetadata) error {
 		return errors.New("cert must be provided with key")
 	}
 
-	ca, err := getParameterFromConfigV2(config, "ca", false, true, false, true, "", reflect.TypeOf(""))
+	ca, err := getParameterFromConfigV2(
+		config,
+		"ca",
+		reflect.TypeOf(""),
+		UseMetadata(false),
+		UseAuthentication(true),
+		UseResolvedEnv(false),
+		IsOptional(true),
+		WithDefaultVal(""),
+	)
 	if err != nil {
 		return err
 	}
 	meta.ca = ca.(string)
 
-	unsafeSslRaw, err := getParameterFromConfigV2(config, "unsafeSsl", true, false, false, true, defaultUnsafeSsl, reflect.TypeOf(true))
+	unsafeSslRaw, err := getParameterFromConfigV2(
+		config,
+		"unsafeSsl",
+		reflect.TypeOf(true),
+		UseMetadata(true),
+		UseAuthentication(false),
+		UseResolvedEnv(false),
+		IsOptional(true),
+		WithDefaultVal(defaultUnsafeSsl),
+	)
 	if err != nil {
 		return fmt.Errorf("error parsing unsafeSsl: %w", err)
 	}
 	meta.unsafeSsl = unsafeSslRaw.(bool)
 
-	keyPassword, err := getParameterFromConfigV2(config, "keyPassword", false, true, false, true, "", reflect.TypeOf(""))
+	keyPassword, err := getParameterFromConfigV2(
+		config,
+		"keyPassword",
+		reflect.TypeOf(""),
+		UseMetadata(false),
+		UseAuthentication(true),
+		UseResolvedEnv(false),
+		IsOptional(true),
+		WithDefaultVal(""),
+	)
 	if err != nil {
 		return err
 	}
@@ -248,18 +311,45 @@ func parseTLS(config *ScalerConfig, meta *kafkaMetadata) error {
 	return nil
 }
 
-func parseKerberosParams(config *ScalerConfig, meta *kafkaMetadata, mode kafkaSaslType) error {
-	username, err := getParameterFromConfigV2(config, "username", false, true, false, false, "", reflect.TypeOf(""))
+func parseKerberosParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadata, mode kafkaSaslType) error {
+	username, err := getParameterFromConfigV2(
+		config,
+		"username",
+		reflect.TypeOf(""),
+		UseMetadata(false),
+		UseAuthentication(true),
+		UseResolvedEnv(false),
+		IsOptional(false),
+		WithDefaultVal(""),
+	)
 	if err != nil {
 		return fmt.Errorf("no username given. %w", err)
 	}
 	meta.username = strings.TrimSpace(username.(string))
 
-	password, err := getParameterFromConfigV2(config, "password", false, true, false, true, "", reflect.TypeOf(""))
+	password, err := getParameterFromConfigV2(
+		config,
+		"password",
+		reflect.TypeOf(""),
+		UseMetadata(false),
+		UseAuthentication(true),
+		UseResolvedEnv(false),
+		IsOptional(true),
+		WithDefaultVal(""),
+	)
 	if err != nil {
 		return err
 	}
-	keytab, err := getParameterFromConfigV2(config, "keytab", false, true, false, true, "", reflect.TypeOf(""))
+	keytab, err := getParameterFromConfigV2(
+		config,
+		"keytab",
+		reflect.TypeOf(""),
+		UseMetadata(false),
+		UseAuthentication(true),
+		UseResolvedEnv(false),
+		IsOptional(true),
+		WithDefaultVal(""),
+	)
 	if err != nil {
 		return err
 	}
@@ -278,13 +368,31 @@ func parseKerberosParams(config *ScalerConfig, meta *kafkaMetadata, mode kafkaSa
 		meta.keytabPath = path
 	}
 
-	realm, err := getParameterFromConfigV2(config, "realm", false, true, false, false, "", reflect.TypeOf(""))
+	realm, err := getParameterFromConfigV2(
+		config,
+		"realm",
+		reflect.TypeOf(""),
+		UseMetadata(false),
+		UseAuthentication(true),
+		UseResolvedEnv(false),
+		IsOptional(false),
+		WithDefaultVal(""),
+	)
 	if err != nil {
 		return fmt.Errorf("no realm given. %w", err)
 	}
 	meta.realm = strings.TrimSpace(realm.(string))
 
-	kerberosConfig, err := getParameterFromConfigV2(config, "kerberosConfig", false, true, false, false, "", reflect.TypeOf(""))
+	kerberosConfig, err := getParameterFromConfigV2(
+		config,
+		"kerberosConfig",
+		reflect.TypeOf(""),
+		UseMetadata(false),
+		UseAuthentication(true),
+		UseResolvedEnv(false),
+		IsOptional(false),
+		WithDefaultVal(""),
+	)
 	if err != nil {
 		return fmt.Errorf("no Kerberos configuration file (kerberosConfig) given. %w", err)
 	}
@@ -302,14 +410,32 @@ func parseKerberosParams(config *ScalerConfig, meta *kafkaMetadata, mode kafkaSa
 	return nil
 }
 
-func parseSaslParams(config *ScalerConfig, meta *kafkaMetadata, mode kafkaSaslType) error {
-	username, err := getParameterFromConfigV2(config, "username", false, true, false, false, "", reflect.TypeOf(""))
+func parseSaslParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadata, mode kafkaSaslType) error {
+	username, err := getParameterFromConfigV2(
+		config,
+		"username",
+		reflect.TypeOf(""),
+		UseMetadata(false),
+		UseAuthentication(true),
+		UseResolvedEnv(false),
+		IsOptional(false),
+		WithDefaultVal(""),
+	)
 	if err != nil {
 		return fmt.Errorf("no username given. %w", err)
 	}
 	meta.username = strings.TrimSpace(username.(string))
 
-	password, err := getParameterFromConfigV2(config, "password", false, true, false, false, "", reflect.TypeOf(""))
+	password, err := getParameterFromConfigV2(
+		config,
+		"password",
+		reflect.TypeOf(""),
+		UseMetadata(true),
+		UseAuthentication(true),
+		UseResolvedEnv(false),
+		IsOptional(false),
+		WithDefaultVal(""),
+	)
 	if err != nil {
 		return fmt.Errorf("no password given. %w", err)
 	}
@@ -317,20 +443,47 @@ func parseSaslParams(config *ScalerConfig, meta *kafkaMetadata, mode kafkaSaslTy
 	meta.saslType = mode
 
 	if mode == KafkaSASLTypeOAuthbearer {
-		scopes, err := getParameterFromConfigV2(config, "scopes", false, true, false, true, "", reflect.TypeOf(""))
+		scopes, err := getParameterFromConfigV2(
+			config,
+			"scopes",
+			reflect.TypeOf(""),
+			UseMetadata(false),
+			UseAuthentication(true),
+			UseResolvedEnv(false),
+			IsOptional(true),
+			WithDefaultVal(""),
+		)
 		if err != nil {
 			return fmt.Errorf("no scopes given. %w", err)
 		}
 		meta.scopes = strings.Split(scopes.(string), ",")
 
-		oauthTokenEndpointsURI, err := getParameterFromConfigV2(config, "oauthTokenEndpointUri", false, true, false, false, "", reflect.TypeOf(""))
+		oauthTokenEndpointsURI, err := getParameterFromConfigV2(
+			config,
+			"oauthTokenEndpointUri",
+			reflect.TypeOf(""),
+			UseMetadata(false),
+			UseAuthentication(true),
+			UseResolvedEnv(false),
+			IsOptional(false),
+			WithDefaultVal(""),
+		)
 		if err != nil {
 			return fmt.Errorf("no oauth token endpoint uri given. %w", err)
 		}
 		meta.oauthTokenEndpointURI = strings.TrimSpace(oauthTokenEndpointsURI.(string))
 
 		meta.oauthExtensions = make(map[string]string)
-		oauthExtensionsRaw, _ := getParameterFromConfigV2(config, "oauthExtensions", false, true, false, true, "", reflect.TypeOf(""))
+		oauthExtensionsRaw, _ := getParameterFromConfigV2(
+			config,
+			"oauthExtensions",
+			reflect.TypeOf(""),
+			UseMetadata(false),
+			UseAuthentication(true),
+			UseResolvedEnv(false),
+			IsOptional(true),
+			WithDefaultVal(""),
+		)
 		if oauthExtensionsRaw != "" {
 			for _, extension := range strings.Split(oauthExtensionsRaw.(string), ",") {
 				splitExtension := strings.Split(extension, "=")
@@ -373,19 +526,46 @@ func saveToFile(content string) (string, error) {
 
 func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (kafkaMetadata, error) {
 	meta := kafkaMetadata{}
-	bootstrapServers, err := getParameterFromConfigV2(config, "bootstrapServers", true, false, true, false, "", reflect.TypeOf(""))
+	bootstrapServers, err := getParameterFromConfigV2(
+		config,
+		"bootstrapServers",
+		reflect.TypeOf(""),
+		UseMetadata(true),
+		UseAuthentication(false),
+		UseResolvedEnv(true),
+		IsOptional(false),
+		WithDefaultVal(""),
+	)
 	if err != nil {
 		return meta, fmt.Errorf("no bootstrapServers given. %w", err)
 	}
 	meta.bootstrapServers = strings.Split(bootstrapServers.(string), ",")
 
-	consumerGroup, err := getParameterFromConfigV2(config, "consumerGroup", true, false, true, false, "", reflect.TypeOf(""))
+	consumerGroup, err := getParameterFromConfigV2(
+		config,
+		"consumerGroup",
+		reflect.TypeOf(""),
+		UseMetadata(true),
+		UseAuthentication(false),
+		UseResolvedEnv(true),
+		IsOptional(false),
+		WithDefaultVal(""),
+	)
 	if err != nil {
 		return meta, fmt.Errorf("no consumer group given. %w", err)
 	}
 	meta.group = consumerGroup.(string)
 
-	topic, err := getParameterFromConfigV2(config, "topic", true, false, true, true, "", reflect.TypeOf(""))
+	topic, err := getParameterFromConfigV2(
+		config,
+		"topic",
+		reflect.TypeOf(""),
+		UseMetadata(true),
+		UseAuthentication(false),
+		UseResolvedEnv(true),
+		IsOptional(true),
+		WithDefaultVal(""),
+	)
 	if err != nil {
 		return meta, err
 	}
@@ -396,7 +576,16 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 	meta.topic = topic.(string)
 
 	meta.partitionLimitation = nil
-	partitionLimitationMetadata, err := getParameterFromConfigV2(config, "partitionLimitation", true, false, false, true, "", reflect.TypeOf(""))
+	partitionLimitationMetadata, err := getParameterFromConfigV2(
+		config,
+		"partitionLimitation",
+		reflect.TypeOf(""),
+		UseMetadata(true),
+		UseAuthentication(false),
+		UseResolvedEnv(false),
+		IsOptional(true),
+		WithDefaultVal(""),
+	)
 	if err != nil {
 		return meta, err
 	}
@@ -415,7 +604,16 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 	}
 
 	meta.offsetResetPolicy = defaultOffsetResetPolicy
-	offsetResetPolicyRaw, err := getParameterFromConfigV2(config, "offsetResetPolicy", true, false, false, true, "", reflect.TypeOf(""))
+	offsetResetPolicyRaw, err := getParameterFromConfigV2(
+		config,
+		"offsetResetPolicy",
+		reflect.TypeOf(""),
+		UseMetadata(true),
+		UseAuthentication(false),
+		UseResolvedEnv(false),
+		IsOptional(true),
+		WithDefaultVal(""),
+	)
 	if err != nil {
 		return meta, err
 	}
@@ -427,7 +625,16 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 		meta.offsetResetPolicy = policy
 	}
 	meta.lagThreshold = defaultKafkaLagThreshold
-	lagThreshold, err := getParameterFromConfigV2(config, lagThresholdMetricName, true, false, false, true, defaultKafkaLagThreshold, reflect.TypeOf(64))
+	lagThreshold, err := getParameterFromConfigV2(
+		config,
+		lagThresholdMetricName,
+		reflect.TypeOf(64),
+		UseMetadata(true),
+		UseAuthentication(false),
+		UseResolvedEnv(false),
+		IsOptional(true),
+		WithDefaultVal(defaultKafkaLagThreshold),
+	)
 	if err != nil {
 		return meta, err
 	}
@@ -437,7 +644,16 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 	meta.lagThreshold = int64(lagThreshold.(int))
 
 	meta.activationLagThreshold = defaultKafkaActivationLagThreshold
-	activationLagThreshold, err := getParameterFromConfigV2(config, activationLagThresholdMetricName, true, false, false, true, int64(defaultKafkaActivationLagThreshold), reflect.TypeOf(int64(64)))
+	activationLagThreshold, err := getParameterFromConfigV2(
+		config,
+		activationLagThresholdMetricName,
+		reflect.TypeOf(int64(64)),
+		UseMetadata(true),
+		UseAuthentication(false),
+		UseResolvedEnv(false),
+		IsOptional(true),
+		WithDefaultVal(int64(defaultKafkaActivationLagThreshold)),
+	)
 	if err != nil {
 		return meta, err
 	}
@@ -449,26 +665,62 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 	if err := parseKafkaAuthParams(config, &meta); err != nil {
 		return meta, err
 	}
-
-	allowIDConsumers, err := getParameterFromConfigV2(config, "allowIdleConsumers", true, false, false, true, false, reflect.TypeOf(true))
+	allowIDConsumers, err := getParameterFromConfigV2(
+		config,
+		"allowIdleConsumers",
+		reflect.TypeOf(true),
+		UseMetadata(true),
+		UseAuthentication(false),
+		UseResolvedEnv(false),
+		IsOptional(true),
+		WithDefaultVal(false),
+	)
 	if err != nil {
 		return meta, fmt.Errorf("error parsing allowIdleConsumers: %w", err)
 	}
 	meta.allowIdleConsumers = allowIDConsumers.(bool)
 
-	excludePersistentLag, err := getParameterFromConfigV2(config, "excludePersistentLag", true, false, false, true, false, reflect.TypeOf(true))
+	excludePersistentLag, err := getParameterFromConfigV2(
+		config,
+		"excludePersistentLag",
+		reflect.TypeOf(true),
+		UseMetadata(true),
+		UseAuthentication(false),
+		UseResolvedEnv(false),
+		IsOptional(true),
+		WithDefaultVal(false),
+	)
 	if err != nil {
 		return meta, fmt.Errorf("error parsing excludePersistentLag: %w", err)
 	}
 	meta.excludePersistentLag = excludePersistentLag.(bool)
 
-	scaleToZeroOnInvalidOffset, err := getParameterFromConfigV2(config, "scaleToZeroOnInvalidOffset", true, false, false, true, false, reflect.TypeOf(true))
+	scaleToZeroOnInvalidOffset, err := getParameterFromConfigV2(
+		config,
+		"scaleToZeroOnInvalidOffset",
+		reflect.TypeOf(true),
+		UseMetadata(true),
+		UseAuthentication(false),
+		UseResolvedEnv(false),
+		IsOptional(true),
+		WithDefaultVal(false),
+	)
+
 	if err != nil {
 		return meta, fmt.Errorf("error parsing scaleToZeroOnInvalidOffset: %w", err)
 	}
 	meta.scaleToZeroOnInvalidOffset = scaleToZeroOnInvalidOffset.(bool)
 
-	limitToPartitionsWithLag, err := getParameterFromConfigV2(config, "limitToPartitionsWithLag", true, false, false, true, false, reflect.TypeOf(true))
+	limitToPartitionsWithLag, err := getParameterFromConfigV2(
+		config,
+		"limitToPartitionsWithLag",
+		reflect.TypeOf(true),
+		UseMetadata(true),
+		UseAuthentication(false),
+		UseResolvedEnv(false),
+		IsOptional(true),
+		WithDefaultVal(false),
+	)
 	if err != nil {
 		return meta, err
 	}
@@ -480,7 +732,16 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 	if len(meta.topic) == 0 && meta.limitToPartitionsWithLag {
 		return meta, fmt.Errorf("topic must be specified when using limitToPartitionsWithLag")
 	}
-	saramaVer, err := getParameterFromConfigV2(config, "version", true, false, false, true, "1.0.0", reflect.TypeOf(""))
+	saramaVer, err := getParameterFromConfigV2(
+		config,
+		"version",
+		reflect.TypeOf(""),
+		UseMetadata(true),
+		UseAuthentication(false),
+		UseResolvedEnv(false),
+		IsOptional(true),
+		WithDefaultVal("1.0.0"),
+	)
 	if err != nil {
 		return meta, err
 	}

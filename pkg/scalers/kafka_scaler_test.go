@@ -322,7 +322,7 @@ var kafkaMetricIdentifiers = []kafkaMetricIdentifier{
 
 func TestGetBrokers(t *testing.T) {
 	for _, testData := range parseKafkaMetadataTestDataset {
-		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validWithAuthParams}, logr.Discard())
+		meta, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validWithAuthParams}, logr.Discard())
 		getBrokerTestBase(t, meta, testData, err)
 
 		meta, err = parseKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validWithoutAuthParams}, logr.Discard())
@@ -376,7 +376,7 @@ func getBrokerTestBase(t *testing.T, meta kafkaMetadata, testData parseKafkaMeta
 
 func TestKafkaAuthParamsInTriggerAuthentication(t *testing.T) {
 	for idx, testData := range parseKafkaAuthParamsTestDataset {
-		meta, err := parseKafkaMetadata(&ScalerConfig{TriggerMetadata: validKafkaMetadata, AuthParams: testData.authParams}, logr.Discard())
+		meta, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: validKafkaMetadata, AuthParams: testData.authParams}, logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Errorf("Test %v: expected success but got error %v", idx, err)
