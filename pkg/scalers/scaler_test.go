@@ -257,12 +257,12 @@ func TestGetParameterFromConfigV2(t *testing.T) {
 		val, err := getParameterFromConfigV2(
 			&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams, ResolvedEnv: testData.resolvedEnv},
 			testData.parameter,
-			testData.useMetadata,
-			testData.useAuthentication,
-			testData.useResolvedEnv,
-			testData.isOptional,
-			testData.defaultVal,
 			testData.targetType,
+			UseMetadata(testData.useMetadata),
+			UseAuthentication(testData.useAuthentication),
+			UseResolvedEnv(testData.useResolvedEnv),
+			IsOptional(testData.isOptional),
+			WithDefaultVal(testData.defaultVal),
 		)
 		if testData.isError {
 			assert.NotNilf(t, err, "test %s: expected error but got success, testData - %+v", testData.name, testData)
@@ -466,7 +466,7 @@ func TestConvertStringToType(t *testing.T) {
 
 		if testData.isError {
 			assert.NotNilf(t, err, "test %s: expected error but got success, testData - %+v", testData.name, testData)
-			assert.Containsf(t, err.Error(), testData.errorMessage, "test %s", testData.name, testData.errorMessage)
+			assert.Containsf(t, err.Error(), testData.errorMessage, "test %s: %s", testData.name, testData.errorMessage)
 		} else {
 			assert.Nil(t, err)
 			assert.Equalf(t, testData.expectedOutput, val, "test %s: expected %s but got %s", testData.name, testData.expectedOutput, val)

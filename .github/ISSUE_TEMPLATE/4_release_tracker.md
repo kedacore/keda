@@ -32,6 +32,7 @@ We aim to release this release in the week of <week range, example March 27-31>.
 - [ ] Publish new documentation version
 - [ ] Setup continuous container scanning with Snyk
 - [ ] Prepare & ship Helm chart
+- [ ] Create a new issue in [KEDA OLM repository](https://github.com/kedacore/keda-olm-operator/issues/new/choose)
 - [ ] Prepare next release
 - [ ] Provide update in Slack
 - [ ] Tweet about new release

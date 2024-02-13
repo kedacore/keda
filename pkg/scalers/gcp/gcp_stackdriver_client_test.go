@@ -28,7 +28,7 @@ func TestBuildMQLQuery(t *testing.T) {
 			"topic without aggregation",
 			"topic", "pubsub.googleapis.com/topic/x", "mytopic", "",
 			"fetch pubsub_topic | metric 'pubsub.googleapis.com/topic/x' | filter (resource.project_id == 'myproject' && resource.topic_id == 'mytopic')" +
-				" | within 1m",
+				" | within 2m",
 			false,
 		},
 		{
@@ -42,7 +42,7 @@ func TestBuildMQLQuery(t *testing.T) {
 			"subscription without aggregation",
 			"subscription", "pubsub.googleapis.com/subscription/x", "mysubscription", "",
 			"fetch pubsub_subscription | metric 'pubsub.googleapis.com/subscription/x' | filter (resource.project_id == 'myproject' && resource.subscription_id == 'mysubscription')" +
-				" | within 1m",
+				" | within 2m",
 			false,
 		},
 		{

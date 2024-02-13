@@ -36,7 +36,7 @@ type GrpcClient struct {
 	connection *grpc.ClientConn
 }
 
-func NewGrpcClient(url, certDir string) (*GrpcClient, error) {
+func NewGrpcClient(url, certDir, authority string) (*GrpcClient, error) {
 	defaultConfig := `{
 		"methodConfig": [{
 		  "timeout": "3s",
@@ -57,6 +57,14 @@ func NewGrpcClient(url, certDir string) (*GrpcClient, error) {
 		grpc.WithTransportCredentials(creds),
 		grpc.WithDefaultServiceConfig(defaultConfig),
 	}
+
+	if authority != "" {
+		// If an Authority header override is specified, add it to the client so it is set on every request.
+		// This is useful when the address used to dial the GRPC server does not match any hosts provided in the TLS certificate's
+		// SAN
+		opts = append(opts, grpc.WithAuthority(authority))
+	}
+
 	conn, err := grpc.Dial(url, opts...)
 	if err != nil {
 		return nil, err

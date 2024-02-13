@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/liiklus"
 	mock_liiklus "github.com/kedacore/keda/v2/pkg/scalers/liiklus/mocks"

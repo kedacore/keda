@@ -175,13 +175,12 @@ func initializeStackdriverClient(ctx context.Context, gcpAuthorization *gcp.Auth
 
 func (s *stackdriverScaler) Close(context.Context) error {
 	if s.client != nil {
-		err := s.client.MetricsClient.Close()
+		err := s.client.Close()
 		s.client = nil
 		if err != nil {
 			s.logger.Error(err, "error closing StackDriver client")
 		}
 	}
-
 	return nil
 }
 
