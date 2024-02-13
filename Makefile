@@ -188,7 +188,11 @@ pkg/scalers/liiklus/mocks/mock_liiklus.go:
 
 ##@ Build
 
-build: generate fmt vet manager adapter webhooks ## Build Operator (manager), Metrics Server (adapter) and Admision Web Hooks (webhooks) binaries.
+build: update-mod generate fmt vet manager adapter webhooks ## Build Operator (manager), Metrics Server (adapter) and Admision Web Hooks (webhooks) binaries.
+
+update-mod:
+	go mod tidy
+	go mod vendor
 
 manager: generate
 	${GO_BUILD_VARS} go build -ldflags $(GO_LDFLAGS) -mod=vendor -o bin/keda cmd/operator/main.go
