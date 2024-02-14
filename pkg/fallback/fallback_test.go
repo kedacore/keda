@@ -110,7 +110,7 @@ var _ = Describe("fallback", func() {
 	})
 
 	It("should propagate the error when fallback is disabled", func() {
-		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("Some error"))
+		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("some error"))
 
 		so := buildScaledObject(nil, nil)
 		metricSpec := createMetricSpec(3)
@@ -124,7 +124,7 @@ var _ = Describe("fallback", func() {
 	})
 
 	It("should bump the number of failures when metrics call fails", func() {
-		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("Some error"))
+		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("some error"))
 		startingNumberOfFailures := int32(0)
 
 		so := buildScaledObject(
@@ -154,7 +154,7 @@ var _ = Describe("fallback", func() {
 	})
 
 	It("should return a normalised metric when number of failures are beyond threshold", func() {
-		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("Some error"))
+		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("some error"))
 		startingNumberOfFailures := int32(3)
 		expectedMetricValue := float64(100)
 
@@ -207,7 +207,7 @@ var _ = Describe("fallback", func() {
 	})
 
 	It("should ignore error if we fail to update kubernetes status", func() {
-		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("Some error"))
+		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("some error"))
 		startingNumberOfFailures := int32(3)
 		expectedMetricValue := float64(100)
 
@@ -228,7 +228,7 @@ var _ = Describe("fallback", func() {
 		metricSpec := createMetricSpec(10)
 
 		statusWriter := mock_client.NewMockStatusWriter(ctrl)
-		statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("Some error"))
+		statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("some error"))
 		client.EXPECT().Status().Return(statusWriter)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
@@ -241,7 +241,7 @@ var _ = Describe("fallback", func() {
 	})
 
 	It("should return error when fallback is enabled but scaledobject has invalid parameter", func() {
-		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("Some error"))
+		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("some error"))
 		startingNumberOfFailures := int32(3)
 
 		so := buildScaledObject(
@@ -269,7 +269,7 @@ var _ = Describe("fallback", func() {
 	})
 
 	It("should set the fallback condition when a fallback exists in the scaled object", func() {
-		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("Some error"))
+		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("some error"))
 		startingNumberOfFailures := int32(3)
 		failingNumberOfFailures := int32(6)
 		anotherMetricName := "another metric name"
@@ -303,7 +303,7 @@ var _ = Describe("fallback", func() {
 	})
 
 	It("should set the fallback condition to false if the config is invalid", func() {
-		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("Some error"))
+		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("some error"))
 		startingNumberOfFailures := int32(3)
 		failingNumberOfFailures := int32(6)
 		anotherMetricName := "another metric name"
