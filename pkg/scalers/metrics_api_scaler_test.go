@@ -123,7 +123,6 @@ func TestMetricsAPIGetMetricSpecForScaling(t *testing.T) {
 }
 
 func TestGetValueFromResponse(t *testing.T) {
-
 	testCases := []struct {
 		name      string
 		input     []byte

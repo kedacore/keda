@@ -285,7 +285,7 @@ func getValueFromPrometheusResponse(body []byte, valueLocation string) (float64,
 		return 0, err
 	}
 
-	return 0, fmt.Errorf("Value %s not found", valueLocation)
+	return 0, fmt.Errorf("value %s not found", valueLocation)
 }
 
 // getValueFromJSONResponse uses provided valueLocation to access the numeric value in provided body using GSON
