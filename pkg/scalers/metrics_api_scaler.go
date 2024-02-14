@@ -1,7 +1,10 @@
 package scalers
 
 import (
+	"bufio"
+	"bytes"
 	"context"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
@@ -9,6 +12,8 @@ import (
 	neturl "net/url"
 	"strconv"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/go-logr/logr"
 	"github.com/tidwall/gjson"
@@ -32,6 +37,7 @@ type metricsAPIScalerMetadata struct {
 	targetValue           float64
 	activationTargetValue float64
 	url                   string
+	format                APIFormat
 	valueLocation         string
 	unsafeSsl             bool
 
@@ -62,7 +68,27 @@ type metricsAPIScalerMetadata struct {
 }
 
 const (
-	methodValueQuery = "query"
+	methodValueQuery           = "query"
+	valueLocationWrongErrorMsg = "valueLocation must point to value of type number or a string representing a Quantity got: '%s'"
+)
+
+type APIFormat string
+
+// Enum for APIFormat:
+const (
+	PrometheusFormat APIFormat = "prometheus"
+	JSONFormat       APIFormat = "json"
+	XMLFormat        APIFormat = "xml"
+	YAMLFormat       APIFormat = "yaml"
+)
+
+var (
+	supportedFormats = []APIFormat{
+		PrometheusFormat,
+		JSONFormat,
+		XMLFormat,
+		YAMLFormat,
+	}
 )
 
 // NewMetricsAPIScaler creates a new HTTP scaler
@@ -135,6 +161,16 @@ func parseMetricsAPIMetadata(config *scalersconfig.ScalerConfig) (*metricsAPISca
 		meta.url = val
 	} else {
 		return nil, fmt.Errorf("no url given in metadata")
+	}
+
+	if val, ok := config.TriggerMetadata["format"]; ok {
+		meta.format = APIFormat(strings.TrimSpace(val))
+		if !kedautil.Contains(supportedFormats, meta.format) {
+			return nil, fmt.Errorf("format %s not supported", meta.format)
+		}
+	} else {
+		// default format is JSON for backward compatibility
+		meta.format = JSONFormat
 	}
 
 	if val, ok := config.TriggerMetadata["valueLocation"]; ok {
@@ -211,21 +247,124 @@ func parseMetricsAPIMetadata(config *scalersconfig.ScalerConfig) (*metricsAPISca
 	return &meta, nil
 }
 
-// GetValueFromResponse uses provided valueLocation to access the numeric value in provided body
-func GetValueFromResponse(body []byte, valueLocation string) (float64, error) {
+// GetValueFromResponse uses provided valueLocation to access the numeric value in provided body using the format specified.
+func GetValueFromResponse(body []byte, valueLocation string, format APIFormat) (float64, error) {
+	switch format {
+	case PrometheusFormat:
+		return getValueFromPrometheusResponse(body, valueLocation)
+	case JSONFormat:
+		return getValueFromJSONResponse(body, valueLocation)
+	case XMLFormat:
+		return getValueFromXMLResponse(body, valueLocation)
+	case YAMLFormat:
+		return getValueFromYAMLResponse(body, valueLocation)
+	}
+
+	return 0, fmt.Errorf("format %s not supported", format)
+}
+
+// getValueFromPrometheusResponse uses provided valueLocation to access the numeric value in provided body
+func getValueFromPrometheusResponse(body []byte, valueLocation string) (float64, error) {
+	scanner := bufio.NewScanner(bytes.NewReader(body))
+	for scanner.Scan() {
+		line := scanner.Text()
+		fields := strings.Fields(line)
+		if len(fields) == 0 || strings.HasPrefix(fields[0], "#") {
+			continue
+		}
+		if len(fields) == 2 && strings.HasPrefix(fields[0], valueLocation) {
+			value, err := strconv.ParseFloat(fields[1], 64)
+			if err != nil {
+				return 0, err
+			}
+			return value, nil
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return 0, err
+	}
+
+	return 0, fmt.Errorf("Value %s not found", valueLocation)
+}
+
+// getValueFromJSONResponse uses provided valueLocation to access the numeric value in provided body using GSON
+func getValueFromJSONResponse(body []byte, valueLocation string) (float64, error) {
 	r := gjson.GetBytes(body, valueLocation)
-	errorMsg := "valueLocation must point to value of type number or a string representing a Quantity got: '%s'"
 	if r.Type == gjson.String {
 		v, err := resource.ParseQuantity(r.String())
 		if err != nil {
-			return 0, fmt.Errorf(errorMsg, r.String())
+			return 0, fmt.Errorf(valueLocationWrongErrorMsg, r.String())
 		}
 		return v.AsApproximateFloat64(), nil
 	}
 	if r.Type != gjson.Number {
-		return 0, fmt.Errorf(errorMsg, r.Type.String())
+		return 0, fmt.Errorf(valueLocationWrongErrorMsg, r.Type.String())
 	}
 	return r.Num, nil
+}
+
+// getValueFromXMLResponse uses provided valueLocation to access the numeric value in provided body
+func getValueFromXMLResponse(body []byte, valueLocation string) (float64, error) {
+	var xmlMap map[string]interface{}
+	err := xml.Unmarshal(body, &xmlMap)
+	if err != nil {
+		return 0, err
+	}
+
+	path, err := kedautil.GetValueByPath(xmlMap, valueLocation)
+	if err != nil {
+		return 0, err
+	}
+
+	switch v := path.(type) {
+	case int:
+		return float64(v), nil
+	case int64:
+		return float64(v), nil
+	case float64:
+		return v, nil
+	case string:
+		r, err := resource.ParseQuantity(v)
+		if err != nil {
+			return 0, fmt.Errorf(valueLocationWrongErrorMsg, v)
+		}
+		return r.AsApproximateFloat64(), nil
+	default:
+		return 0, fmt.Errorf("valueLocation must point to value of type number or a string representing a Quantity got: '%s'", v)
+	}
+}
+
+// getValueFromYAMLResponse uses provided valueLocation to access the numeric value in provided body
+// using generic ketautil.GetValueByPath
+func getValueFromYAMLResponse(body []byte, valueLocation string) (float64, error) {
+	var yamlMap map[string]interface{}
+	err := yaml.Unmarshal(body, &yamlMap)
+	if err != nil {
+		return 0, err
+	}
+
+	path, err := kedautil.GetValueByPath(yamlMap, valueLocation)
+	if err != nil {
+		return 0, err
+	}
+
+	switch v := path.(type) {
+	case int:
+		return float64(v), nil
+	case int64:
+		return float64(v), nil
+	case float64:
+		return v, nil
+	case string:
+		r, err := resource.ParseQuantity(v)
+		if err != nil {
+			return 0, fmt.Errorf(valueLocationWrongErrorMsg, v)
+		}
+		return r.AsApproximateFloat64(), nil
+	default:
+		return 0, fmt.Errorf("valueLocation must point to value of type number or a string representing a Quantity got: '%s'", v)
+	}
 }
 
 func (s *metricsAPIScaler) getMetricValue(ctx context.Context) (float64, error) {
@@ -249,7 +388,7 @@ func (s *metricsAPIScaler) getMetricValue(ctx context.Context) (float64, error) 
 	if err != nil {
 		return 0, err
 	}
-	v, err := GetValueFromResponse(b, s.metadata.valueLocation)
+	v, err := GetValueFromResponse(b, s.metadata.valueLocation, s.metadata.format)
 	if err != nil {
 		return 0, err
 	}

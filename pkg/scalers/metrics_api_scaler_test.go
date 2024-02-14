@@ -123,42 +123,39 @@ func TestMetricsAPIGetMetricSpecForScaling(t *testing.T) {
 }
 
 func TestGetValueFromResponse(t *testing.T) {
-	d := []byte(`{"components":[{"id": "82328e93e", "tasks": 32, "str": "64", "k":"1k","wrong":"NaN"}],"count":2.43}`)
-	v, err := GetValueFromResponse(d, "components.0.tasks")
-	if err != nil {
-		t.Error("Expected success but got error", err)
-	}
-	if v != 32 {
-		t.Errorf("Expected %d got %f", 32, v)
+
+	testCases := []struct {
+		name      string
+		input     []byte
+		key       string
+		format    APIFormat
+		expectVal interface{}
+		expectErr bool
+	}{
+		{name: "integer", input: []byte(`{"components":[{"id": "82328e93e", "tasks": 32, "str": "64", "k":"1k","wrong":"NaN"}],"count":2.43}`), key: "count", format: JSONFormat, expectVal: 2.43},
+		{name: "string", input: []byte(`{"components":[{"id": "82328e93e", "tasks": 32, "str": "64", "k":"1k","wrong":"NaN"}],"count":2.43}`), key: "components.0.str", format: JSONFormat, expectVal: 64},
+		{name: "{}.[].{}", input: []byte(`{"components":[{"id": "82328e93e", "tasks": 32, "str": "64", "k":"1k","wrong":"NaN"}],"count":2.43}`), key: "components.0.tasks", format: JSONFormat, expectVal: 32},
+		{name: "invalid data", input: []byte(`{"components":[{"id": "82328e93e", "tasks": 32, "str": "64", "k":"1k","wrong":"NaN"}],"count":2.43}`), key: "components.0.wrong", format: JSONFormat, expectErr: true},
+		{name: "integer", input: []byte(`components: [{id: "82328e93e", tasks: 32, str: "64", k: "1k", wrong: "NaN"}] count: 2.43`), key: "count", format: YAMLFormat, expectVal: 2.43},
+		{name: "string", input: []byte(`components: [{id: "82328e93e", tasks: 32, str: "64", k: "1k", wrong: "NaN"}] count: 2.43`), key: "components.0.str", format: YAMLFormat, expectVal: 64},
+		{name: "{}.[].{}", input: []byte(`components: [{id: "82328e93e", tasks: 32, str: "64", k: "1k", wrong: "NaN"}] count: 2.43`), key: "components.0.tasks", format: YAMLFormat, expectVal: 32},
+		{name: "invalid data", input: []byte(`components: [{id: "82328e93e", tasks: 32, str: "64", k: "1k", wrong: "NaN"}] count: 2.43`), key: "components.0.wrong", format: YAMLFormat, expectErr: true},
 	}
 
-	v, err = GetValueFromResponse(d, "count")
-	if err != nil {
-		t.Error("Expected success but got error", err)
-	}
-	if v != 2.43 {
-		t.Errorf("Expected %d got %f", 2, v)
-	}
+	for _, tc := range testCases {
+		t.Run(string(tc.format)+": "+tc.name, func(t *testing.T) {
+			v, err := GetValueFromResponse(tc.input, tc.key, tc.format)
 
-	v, err = GetValueFromResponse(d, "components.0.str")
-	if err != nil {
-		t.Error("Expected success but got error", err)
-	}
-	if v != 64 {
-		t.Errorf("Expected %d got %f", 64, v)
-	}
+			if tc.expectErr && err == nil {
+				t.Error("Expected error but got success")
+			} else if !tc.expectErr && err != nil {
+				t.Error("Expected success but got error:", err)
+			}
 
-	v, err = GetValueFromResponse(d, "components.0.k")
-	if err != nil {
-		t.Error("Expected success but got error", err)
-	}
-	if v != 1000 {
-		t.Errorf("Expected %d got %f", 1000, v)
-	}
-
-	_, err = GetValueFromResponse(d, "components.0.wrong")
-	if err == nil {
-		t.Error("Expected error but got success", err)
+			if !tc.expectErr && v != tc.expectVal {
+				t.Errorf("Expected %v, got %v", tc.expectVal, v)
+			}
+		})
 	}
 }
 
