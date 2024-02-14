@@ -116,10 +116,18 @@ func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
 		switch spec.PodIdentity.Provider {
 		case PodIdentityProviderAzure, PodIdentityProviderAzureWorkload:
 			if spec.PodIdentity.IdentityID != nil && *spec.PodIdentity.IdentityID == "" {
-				return nil, fmt.Errorf("identityid of PodIdentity should not be empty. If it's set, identityId has to be different than \"\"")
+				return nil, fmt.Errorf("identityId of PodIdentity should not be empty. If it's set, identityId has to be different than \"\"")
+			}
+
+			if spec.PodIdentity.IdentityAuthorityHost != nil && *spec.PodIdentity.IdentityAuthorityHost != "" {
+				if spec.PodIdentity.IdentityTenantID == nil || *spec.PodIdentity.IdentityTenantID == "" {
+					return nil, fmt.Errorf("identityTenantID of PodIdentity should not be nil or empty when identityAuthorityHost of PodIdentity is set")
+				}
+			} else if spec.PodIdentity.IdentityTenantID != nil && *spec.PodIdentity.IdentityTenantID == "" {
+				return nil, fmt.Errorf("identityTenantId of PodIdentity should not be empty. If it's set, identityTenantId has to be different than \"\"")
 			}
 		case PodIdentityProviderAws:
-			if spec.PodIdentity.RoleArn != "" && spec.PodIdentity.IsWorkloadIdentityOwner() {
+			if spec.PodIdentity.RoleArn != nil && spec.PodIdentity.IsWorkloadIdentityOwner() {
 				return nil, fmt.Errorf("roleArn of PodIdentity can't be set if KEDA isn't identityOwner")
 			}
 		default:
