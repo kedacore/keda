@@ -13,10 +13,9 @@ import (
 	"strconv"
 	"strings"
 
-	"gopkg.in/yaml.v3"
-
 	"github.com/go-logr/logr"
 	"github.com/tidwall/gjson"
+	"gopkg.in/yaml.v3"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/metrics/pkg/apis/external_metrics"
