@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"os"
+
+	//"os"
 	"strconv"
 	"strings"
 	"time"
@@ -87,6 +88,16 @@ func parseSplunkO11yMetadata(config *scalersconfig.ScalerConfig, logger logr.Log
 		}
 	}
 
+	// activationQueryValue
+	meta.activationQueryValue = 0
+	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
+		activationQueryValue, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("queryValue parsing error %w", err)
+		}
+		meta.activationQueryValue = activationQueryValue
+	}
+
 	// queryAggregator
 	if val, ok := config.TriggerMetadata["queryAggregator"]; ok && val != "" {
 		queryAggregator := strings.ToLower(val)
@@ -101,19 +112,42 @@ func parseSplunkO11yMetadata(config *scalersconfig.ScalerConfig, logger logr.Log
 	}
 
 	// accessToken
-	accessToken := os.Getenv("SPLUNK_ACCESS_TOKEN")
-	if accessToken != "" {
+	/*
+		accessToken := os.Getenv("SPLUNK_ACCESS_TOKEN")
+		if accessToken != "" {
+			meta.accessToken = accessToken
+		} else {
+			return nil, fmt.Errorf("No Splunk Observability Cloud Access Token found.")
+		}
+	*/
+	if accessToken, ok := config.TriggerMetadata["accessToken"]; ok {
 		meta.accessToken = accessToken
 	} else {
-		return nil, fmt.Errorf("No Splunk Observability Cloud Access Token found.")
+		return nil, fmt.Errorf("no accessToken given")
 	}
 
+	// test trigger auth
+	/*
+		if val, ok := config.AuthParams["splunkAccessToken"]; ok {
+			fmt.Sprintf("splunk_o11y_scaler found authtrigger token : %s", val)
+		} else {
+			return nil, fmt.Errorf("no trigger auth token :(")
+		}
+	*/
+
 	// realm
-	realm := os.Getenv("SPLUNK_REALM")
-	if realm != "" {
+	/*
+		realm := os.Getenv("SPLUNK_REALM")
+		if realm != "" {
+			meta.realm = realm
+		} else {
+			return nil, fmt.Errorf("No Splunk Observability Cloud Realm found.")
+		}
+	*/
+	if realm, ok := config.TriggerMetadata["realm"]; ok {
 		meta.realm = realm
 	} else {
-		return nil, fmt.Errorf("No Splunk Observability Cloud Realm found.")
+		return nil, fmt.Errorf("no realm given")
 	}
 
 	// Debug TODO check
@@ -150,8 +184,8 @@ func logMessage(logger logr.Logger, msg string, value float64) {
 }
 
 func (s *splunkO11yScaler) getQueryResult(ctx context.Context) (float64, error) {
-	// var duration time.Duration = 1000000000 // one second in nano seconds
-	var duration time.Duration = 10000000000 // ten seconds in nano seconds
+	var duration time.Duration = 1000000000 // one second in nano seconds
+	// var duration time.Duration = 10000000000 // ten seconds in nano seconds
 
 	comp, err := s.apiClient.Execute(context.Background(), &signalflow.ExecuteRequest{
 		Program: s.metadata.query,
@@ -216,6 +250,7 @@ func (s *splunkO11yScaler) getQueryResult(ctx context.Context) (float64, error) 
 }
 
 func (s *splunkO11yScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	s.logger.Info(fmt.Sprintf("splunk_o11y_scaler found authtrigger token : %s", s.metadata.accessToken))
 	num, err := s.getQueryResult(ctx)
 
 	if err != nil {
@@ -223,6 +258,9 @@ func (s *splunkO11yScaler) GetMetricsAndActivity(ctx context.Context, metricName
 		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting metrics from Splunk Observability Cloud: %w", err)
 	}
 	metric := GenerateMetricInMili(metricName, num)
+
+	logMessage(s.logger, "num", num)
+	logMessage(s.logger, "s.metadata.activationQueryValue", s.metadata.activationQueryValue)
 
 	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.activationQueryValue, nil
 }
