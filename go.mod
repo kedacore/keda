@@ -112,6 +112,11 @@ require (
 	sigs.k8s.io/kustomize/kustomize/v5 v5.3.0
 )
 
+require (
+	github.com/gorilla/websocket v1.5.1 // indirect
+	github.com/signalfx/signalfx-go v1.31.0 // indirect
+)
+
 replace (
 	// pin k8s.io to v0.28.5
 	github.com/google/cel-go => github.com/google/cel-go v0.16.1
@@ -295,6 +300,7 @@ require (
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/samber/lo v1.39.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
+	github.com/signalfx/signalfx-go/signalflow/v2 v2.2.0
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cobra v1.8.0 // indirect

@@ -777,6 +777,9 @@ github.com/gophercloud/gophercloud/openstack/objectstorage/v1/containers
 github.com/gophercloud/gophercloud/openstack/objectstorage/v1/objects
 github.com/gophercloud/gophercloud/openstack/utils
 github.com/gophercloud/gophercloud/pagination
+# github.com/gorilla/websocket v1.5.1
+## explicit; go 1.20
+github.com/gorilla/websocket
 # github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 ## explicit; go 1.14
 github.com/grpc-ecosystem/go-grpc-middleware
@@ -1245,6 +1248,13 @@ github.com/segmentio/kafka-go/sasl/aws_msk_iam_v2
 # github.com/shopspring/decimal v1.3.1
 ## explicit; go 1.13
 github.com/shopspring/decimal
+# github.com/signalfx/signalfx-go v1.31.0
+## explicit; go 1.17
+github.com/signalfx/signalfx-go/idtool
+# github.com/signalfx/signalfx-go/signalflow/v2 v2.2.0
+## explicit; go 1.19
+github.com/signalfx/signalfx-go/signalflow/v2
+github.com/signalfx/signalfx-go/signalflow/v2/messages
 # github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus
