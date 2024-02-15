@@ -4,6 +4,6 @@ metadata:
   name: example-triggerauthentication
 spec:
   secretTargetRef:
-    - parameter: exmaple-secret-parameter
+    - parameter: example-secret-parameter
       name: example-secret-name
       key: example-role-key

@@ -332,7 +332,7 @@ $(ENVTEST): $(LOCALBIN)
 .PHONY: mockgen
 mockgen: $(MOCKGEN) ## Install mockgen from vendor dir if necessary.
 $(MOCKGEN): $(LOCALBIN)
-	test -s $(LOCALBIN)/mockgen || GOBIN=$(LOCALBIN) go install github.com/golang/mock/mockgen
+	test -s $(LOCALBIN)/mockgen || GOBIN=$(LOCALBIN) go install go.uber.org/mock/mockgen
 
 .PHONY: protoc-gen
 protoc-gen: $(PROTOCGEN) $(PROTOCGEN_GRPC) ## Install protoc-gen from vendor dir if necessary.
