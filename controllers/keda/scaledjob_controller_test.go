@@ -56,7 +56,7 @@ var _ = Describe("ScaledJobController", func() {
 			Eventually(func() bool {
 				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: sjName, Namespace: "default"}, sj)
 				return err == nil
-			}, 2*time.Minute, 10*time.Second).Should(BeTrue())
+			}, 1*time.Minute, 10*time.Second).Should(BeTrue())
 		})
 
 		It("should delete a ScaledJob and associated resources", func() {
@@ -93,7 +93,13 @@ var _ = Describe("ScaledJobController", func() {
 			Eventually(func() bool {
 				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: sjName, Namespace: "default"}, sj)
 				return err == nil
-			}, 2*time.Minute, 10*time.Second).Should(BeTrue())
+			}, 1*time.Minute, 10*time.Second).Should(BeTrue())
+
+			// Validate jobs are created
+			jobList := &batchv1.JobList{}
+			err = k8sClient.List(context.Background(), jobList, &client.ListOptions{Namespace: "default"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(jobList.Items)).ToNot(BeZero(), "Expected jobs to be created")
 
 			// Delete the ScaledJob
 			err = k8sClient.Delete(context.Background(), sj)
@@ -103,10 +109,9 @@ var _ = Describe("ScaledJobController", func() {
 			Eventually(func() bool {
 				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: sjName, Namespace: "default"}, sj)
 				return err != nil
-			}, 2*time.Minute, 10*time.Second).Should(BeTrue())
+			}, 1*time.Minute, 10*time.Second).Should(BeTrue())
 
 			// Verify associated resources are deleted
-			jobList := &batchv1.JobList{}
 			err = k8sClient.List(context.Background(), jobList, &client.ListOptions{Namespace: "default"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(jobList.Items)).To(BeZero())
@@ -176,7 +181,7 @@ var _ = Describe("ScaledJobController", func() {
 					return metav1.ConditionUnknown
 				}
 				return sj.Status.Conditions.GetPausedCondition().Status
-			}).WithTimeout(2 * time.Minute).WithPolling(10 * time.Second).Should(Equal(metav1.ConditionTrue))
+			}).WithTimeout(1 * time.Minute).WithPolling(10 * time.Second).Should(Equal(metav1.ConditionTrue))
 		})
 		It("scaledjob paused status stays false when annotation is set to false", func() {
 			jobName := "turn-off-paused-annotation-name"
