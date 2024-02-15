@@ -135,10 +135,11 @@ spec:
       spec:
         containers:
           - name: external-executor
-            image: busybox-wrong
+            image: busybox
             command:
-            - sleep
-            - "15"
+            - sh
+            - -c
+			- exit 1
             imagePullPolicy: IfNotPresent
         restartPolicy: Never
     backoffLimit: 1
