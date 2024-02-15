@@ -29,6 +29,7 @@ var (
 	serviceName           = fmt.Sprintf("%s-service", testName)
 	scalerName            = fmt.Sprintf("%s-scaler", testName)
 	scaledJobName         = fmt.Sprintf("%s-sj", testName)
+	failedscaledJobName   = fmt.Sprintf("%s-sj-fail", testName)
 	minReplicaCount       = 0
 	maxReplicaCount       = 3
 	iterationCountInitial = 15
@@ -40,6 +41,7 @@ type templateData struct {
 	ServiceName                      string
 	ScalerName                       string
 	ScaledJobName                    string
+	FailedScaledJobName              string
 	MinReplicaCount, MaxReplicaCount int
 	MetricThreshold, MetricValue     int
 }
@@ -116,6 +118,37 @@ spec:
         metricThreshold: "{{.MetricThreshold}}"
         metricValue: "{{.MetricValue}}"
 `
+	failedscaledJobTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledJob
+metadata:
+  name: {{.FailedScaledJobName}}
+  namespace: {{.TestNamespace}}
+spec:
+  pollingInterval: 5
+  maxReplicaCount: {{.MaxReplicaCount}}
+  minReplicaCount: {{.MinReplicaCount}}
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 5
+  jobTargetRef:
+    template:
+      spec:
+        containers:
+          - name: external-executor
+            image: busybox-wrong
+            command:
+            - sleep
+            - "15"
+            imagePullPolicy: IfNotPresent
+        restartPolicy: Never
+    backoffLimit: 1
+  triggers:
+    - type: external
+      metadata:
+        scalerAddress: {{.ServiceName}}.{{.TestNamespace}}:6000
+        metricThreshold: "{{.MetricThreshold}}"
+        metricValue: "{{.MetricValue}}"
+`
 )
 
 // Util function
@@ -171,23 +204,28 @@ func TestScaler(t *testing.T) {
 
 func getTemplateData(metricValue int) (templateData, []Template) {
 	return templateData{
-			TestNamespace:   testNamespace,
-			ScaledJobName:   scaledJobName,
-			ScalerName:      scalerName,
-			ServiceName:     serviceName,
-			MinReplicaCount: minReplicaCount,
-			MaxReplicaCount: maxReplicaCount,
-			MetricThreshold: 10,
-			MetricValue:     metricValue,
+			TestNamespace:       testNamespace,
+			ScaledJobName:       scaledJobName,
+			FailedScaledJobName: failedscaledJobName,
+			ScalerName:          scalerName,
+			ServiceName:         serviceName,
+			MinReplicaCount:     minReplicaCount,
+			MaxReplicaCount:     maxReplicaCount,
+			MetricThreshold:     10,
+			MetricValue:         metricValue,
 		}, []Template{
 			{Name: "scalerTemplate", Config: scalerTemplate},
 			{Name: "serviceTemplate", Config: serviceTemplate},
 			{Name: "scaledJobTemplate", Config: scaledJobTemplate},
+			{Name: "failedscaledJobTemplate", Config: failedscaledJobTemplate},
 		}
 }
 
 func testSuccessfulJobsHistoryLimit(t *testing.T, kc *kubernetes.Clientset, data templateData, listOptions metav1.ListOptions) {
 	t.Log("--- testing successfulJobsHistoryLimit ---")
+
+	// Update list options to filter only successful jobs
+	listOptions.FieldSelector = "status.succeeded>0"
 
 	// Wait for jobs to be created
 	expectedTarget := data.MetricThreshold
@@ -195,7 +233,7 @@ func testSuccessfulJobsHistoryLimit(t *testing.T, kc *kubernetes.Clientset, data
 		"job count should be %d after %d iterations", expectedTarget, iterationCountLatter)
 
 	// Verify that only 5 jobs are retained due to successfulJobsHistoryLimit
-	jobList, err := kc.BatchV1().Jobs(testNamespace).List(context.Background(), metav1.ListOptions{})
+	jobList, err := kc.BatchV1().Jobs(testNamespace).List(context.Background(), listOptions)
 	assert.NoError(t, err, "failed to list jobs")
 
 	var retainedJobs int
@@ -211,18 +249,22 @@ func testSuccessfulJobsHistoryLimit(t *testing.T, kc *kubernetes.Clientset, data
 func testFailedJobsHistoryLimit(t *testing.T, kc *kubernetes.Clientset, data templateData, listOptions metav1.ListOptions) {
 	t.Log("--- testing failedJobsHistoryLimit ---")
 
+	// Update list options to filter only failed jobs
+	listOptions.FieldSelector = "status.failed>0"
+
 	// Wait for jobs to be created
 	expectedTarget := data.MetricThreshold
+
 	assert.True(t, WaitForJobByFilterCountUntilIteration(t, kc, testNamespace, expectedTarget, iterationCountLatter, 1, listOptions),
 		"job count should be %d after %d iterations", expectedTarget, iterationCountLatter)
 
 	// Verify that only 5 jobs are retained due to failedJobsHistoryLimit
-	jobList, err := kc.BatchV1().Jobs(testNamespace).List(context.Background(), metav1.ListOptions{})
+	jobList, err := kc.BatchV1().Jobs(testNamespace).List(context.Background(), listOptions)
 	assert.NoError(t, err, "failed to list jobs")
 
 	var retainedJobs int
 	for _, job := range jobList.Items {
-		if job.Name != scaledJobName {
+		if job.Name != failedscaledJobName {
 			retainedJobs++
 		}
 	}
