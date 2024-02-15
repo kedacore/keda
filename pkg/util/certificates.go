@@ -29,7 +29,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-const customCAPath = "/custom/ca"
+const customCAPath = "/tmp/custom/ca"
 
 var logger = logf.Log.WithName("certificates")
 

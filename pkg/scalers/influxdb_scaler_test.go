@@ -114,6 +114,9 @@ func TestInfluxDBV3GetMetricSpecForScaling(t *testing.T) {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		client, err := influxdb3.New(influxdb3.ClientConfig{Host: "https://influxdata.com", Token: "myToken"})
+		if err != nil {
+			t.Fatal("Error connecting to influx v3:", err)
+		}
 		mockInfluxDBScaler := influxDBScalerV3{*client, "", meta, logr.Discard()}
 
 		metricSpec := mockInfluxDBScaler.GetMetricSpecForScaling(context.Background())

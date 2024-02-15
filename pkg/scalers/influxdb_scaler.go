@@ -3,15 +3,16 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strconv"
+	"strings"
+
 	"github.com/InfluxCommunity/influxdb3-go/influxdb3"
 	"github.com/go-logr/logr"
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	api "github.com/influxdata/influxdb-client-go/v2/api"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	"slices"
-	"strconv"
-	"strings"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/util"
@@ -61,7 +62,6 @@ func NewInfluxDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 
 	if meta.influxVersion == "3" {
-
 		logger.Info("starting up influxdb v3 client")
 
 		clientv3, err := influxdb3.New(influxdb3.ClientConfig{
@@ -205,8 +205,15 @@ func parseInfluxDBMetadata(config *scalersconfig.ScalerConfig) (*influxDBMetadat
 			} else {
 				return nil, fmt.Errorf("metricKey is required for influxdb v3")
 			}
-			val, ok = config.TriggerMetadata["queryType"]
-			queryType = val
+			queryTypes := []string{"", "influxql", "flightsql"}
+			if val, ok := config.TriggerMetadata["queryType"]; ok {
+				if !slices.Contains(queryTypes, strings.ToLower(val)) {
+					return nil, fmt.Errorf("unsupported queryType")
+				}
+				queryType = val
+			} else {
+				queryType = ""
+			}
 		}
 	}
 
@@ -240,8 +247,7 @@ func (s *influxDBScalerV3) Close(context.Context) error {
 
 // queryOptionsInfluxDBV3 returns influxdb QueryOptions based on the database and queryType (InfluxQL or FlightSQL)
 func queryOptionsInfluxDBV3(d string, q string) *influxdb3.QueryOptions {
-	switch strings.ToLower(q) {
-	case "influxql":
+	if strings.ToLower(q) == "influxql" {
 		return &influxdb3.QueryOptions{Database: d, QueryType: influxdb3.QueryType(1)}
 	}
 	return &influxdb3.QueryOptions{Database: d, QueryType: influxdb3.QueryType(0)}
