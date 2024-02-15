@@ -52,6 +52,17 @@ func TestGetValueByPath(t *testing.T) {
 			expected: nil,
 			wantErr:  true,
 		},
+		{
+			name: "Interface slice",
+			input: map[string]interface{}{
+				"some": []interface{}{
+					1, 2, 3,
+				},
+			},
+			path:     "some.0",
+			expected: 1,
+			wantErr:  false,
+		},
 	}
 
 	for _, tt := range tests {

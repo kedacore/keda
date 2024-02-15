@@ -16,15 +16,21 @@ func GetValueByPath(data map[string]interface{}, path string) (interface{}, erro
 			return nil, fmt.Errorf("key '%s' not found in path '%s'", key, path)
 		}
 
-		switch v := val.(type) {
+		switch typedValue := val.(type) {
 		case map[interface{}]interface{}:
 			// Convert map[interface{}]interface{} to map[string]interface{}
 			current = make(map[string]interface{})
-			for k, v := range v {
+			for k, v := range typedValue {
+				current[fmt.Sprintf("%v", k)] = v
+			}
+		case []interface{}:
+			// Convert map[interface{}]interface{} to map[string]interface{}
+			current = make(map[string]interface{})
+			for k, v := range typedValue {
 				current[fmt.Sprintf("%v", k)] = v
 			}
 		case map[string]interface{}:
-			current = v
+			current = typedValue
 		default:
 			// Reached the final value
 			return val, nil

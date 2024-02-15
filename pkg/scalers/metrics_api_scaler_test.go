@@ -128,32 +128,28 @@ func TestGetValueFromResponse(t *testing.T) {
 		input     []byte
 		key       string
 		format    APIFormat
-		expectVal interface{}
+		expectVal float64
 		expectErr bool
 	}{
 		{name: "integer", input: []byte(`{"components":[{"id": "82328e93e", "tasks": 32, "str": "64", "k":"1k","wrong":"NaN"}],"count":2.43}`), key: "count", format: JSONFormat, expectVal: 2.43},
 		{name: "string", input: []byte(`{"components":[{"id": "82328e93e", "tasks": 32, "str": "64", "k":"1k","wrong":"NaN"}],"count":2.43}`), key: "components.0.str", format: JSONFormat, expectVal: 64},
 		{name: "{}.[].{}", input: []byte(`{"components":[{"id": "82328e93e", "tasks": 32, "str": "64", "k":"1k","wrong":"NaN"}],"count":2.43}`), key: "components.0.tasks", format: JSONFormat, expectVal: 32},
 		{name: "invalid data", input: []byte(`{"components":[{"id": "82328e93e", "tasks": 32, "str": "64", "k":"1k","wrong":"NaN"}],"count":2.43}`), key: "components.0.wrong", format: JSONFormat, expectErr: true},
-		{name: "integer", input: []byte(`components: [{id: "82328e93e", tasks: 32, str: "64", k: "1k", wrong: "NaN"}] count: 2.43`), key: "count", format: YAMLFormat, expectVal: 2.43},
-		{name: "string", input: []byte(`components: [{id: "82328e93e", tasks: 32, str: "64", k: "1k", wrong: "NaN"}] count: 2.43`), key: "components.0.str", format: YAMLFormat, expectVal: 64},
-		{name: "{}.[].{}", input: []byte(`components: [{id: "82328e93e", tasks: 32, str: "64", k: "1k", wrong: "NaN"}] count: 2.43`), key: "components.0.tasks", format: YAMLFormat, expectVal: 32},
-		{name: "invalid data", input: []byte(`components: [{id: "82328e93e", tasks: 32, str: "64", k: "1k", wrong: "NaN"}] count: 2.43`), key: "components.0.wrong", format: YAMLFormat, expectErr: true},
+		{name: "integer", input: []byte(`{components: [{id: 82328e93e, tasks: 32, str: '64', k: 1k, wrong: NaN}], count: 2.43}`), key: "count", format: YAMLFormat, expectVal: 2.43},
+		{name: "string", input: []byte(`{components: [{id: 82328e93e, tasks: 32, str: '64', k: 1k, wrong: NaN}], count: 2.43}`), key: "components.0.str", format: YAMLFormat, expectVal: 64},
+		{name: "{}.[].{}", input: []byte(`{components: [{id: 82328e93e, tasks: 32, str: '64', k: 1k, wrong: NaN}], count: 2.43}`), key: "components.0.tasks", format: YAMLFormat, expectVal: 32},
+		{name: "invalid data", input: []byte(`{components: [{id: 82328e93e, tasks: 32, str: '64', k: 1k, wrong: NaN}], count: 2.43}`), key: "components.0.wrong", format: YAMLFormat, expectErr: true},
 	}
 
 	for _, tc := range testCases {
 		t.Run(string(tc.format)+": "+tc.name, func(t *testing.T) {
 			v, err := GetValueFromResponse(tc.input, tc.key, tc.format)
 
-			if tc.expectErr && err == nil {
-				t.Error("Expected error but got success")
-			} else if !tc.expectErr && err != nil {
-				t.Error("Expected success but got error:", err)
+			if tc.expectErr {
+				assert.Error(t, err)
 			}
 
-			if !tc.expectErr && v != tc.expectVal {
-				t.Errorf("Expected %v, got %v", tc.expectVal, v)
-			}
+			assert.EqualValues(t, tc.expectVal, v)
 		})
 	}
 }
