@@ -99,8 +99,7 @@ var _ = Describe("ScaledJobController", func() {
 			jobList := &batchv1.JobList{}
 			err = k8sClient.List(context.Background(), jobList, &client.ListOptions{Namespace: "default"})
 			Expect(err).ToNot(HaveOccurred())
-			// Expect(len(jobList.Items)).ToNot(BeZero(), "Expected jobs to be created")
-			Expect(len(jobList.Items)).ToNot(BeZero())
+			Expect(len(jobList.Items)).ToNot(BeZero(), "Expected jobs to be created")
 
 			// Delete the ScaledJob
 			err = k8sClient.Delete(context.Background(), sj)
