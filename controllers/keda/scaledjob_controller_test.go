@@ -97,7 +97,9 @@ var _ = Describe("ScaledJobController", func() {
 
 			// Validate jobs are created
 			jobList := &batchv1.JobList{}
-			err = k8sClient.List(context.Background(), jobList, &client.ListOptions{Namespace: "default"})
+			err = k8sClient.List(context.Background(), jobList, client.InNamespace("default"))
+			// err = k8sClient.List(context.Background(), jobList, &client.ListOptions{Namespace: "default"})
+
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(jobList.Items)).ToNot(BeZero(), "Expected jobs to be created")
 
