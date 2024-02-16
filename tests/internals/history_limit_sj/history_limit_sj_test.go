@@ -235,6 +235,7 @@ func testSuccessfulJobsHistoryLimit(t *testing.T, kc *kubernetes.Clientset, data
 
 	// Verify that only 5 jobs are retained due to successfulJobsHistoryLimit
 	jobList, err := kc.BatchV1().Jobs(testNamespace).List(context.Background(), listOptions)
+
 	assert.NoError(t, err, "failed to list jobs")
 
 	var retainedJobs int
