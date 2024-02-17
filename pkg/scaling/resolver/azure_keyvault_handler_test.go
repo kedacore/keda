@@ -17,119 +17,119 @@ limitations under the License.
 package resolver
 
 import (
+	"context"
 	"testing"
 
-	az "github.com/Azure/go-autorest/autorest/azure"
+	"github.com/stretchr/testify/assert"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
-const (
-	testResourceURL             = "testResourceURL"
-	testActiveDirectoryEndpoint = "testActiveDirectoryEndpoint"
-)
-
-type testData struct {
-	name                  string
-	isError               bool
-	vault                 kedav1alpha1.AzureKeyVault
-	expectedKVResourceURL string
-	expectedADEndpoint    string
+type AzureKeyVaultHandlerTestCase struct {
+	Name             string
+	Config           *kedav1alpha1.AzureKeyVault
+	TriggerNamespace string
+	ExpectedError    string
 }
 
-var testDataset = []testData{
-	{
-		name:    "known Azure cloud",
-		isError: false,
-		vault: kedav1alpha1.AzureKeyVault{
-			Cloud: &kedav1alpha1.AzureKeyVaultCloudInfo{
-				Type: "azurePublicCloud",
+func TestAzureKeyVaultHandlerInitialize(t *testing.T) {
+	testCases := []AzureKeyVaultHandlerTestCase{
+		{
+			Name: "Invalid Pod identity provider",
+			Config: &kedav1alpha1.AzureKeyVault{
+				PodIdentity: &kedav1alpha1.AuthPodIdentity{
+					Provider: "xyz",
+				},
 			},
+			TriggerNamespace: "testNamespace",
+			ExpectedError:    "key vault does not support pod identity provider - xyz",
 		},
-		expectedKVResourceURL: az.PublicCloud.ResourceIdentifiers.KeyVault,
-		expectedADEndpoint:    az.PublicCloud.ActiveDirectoryEndpoint,
-	},
-	{
-		name:    "private cloud",
-		isError: false,
-		vault: kedav1alpha1.AzureKeyVault{
-			Cloud: &kedav1alpha1.AzureKeyVaultCloudInfo{
-				Type:                    "private",
-				KeyVaultResourceURL:     testResourceURL,
-				ActiveDirectoryEndpoint: testActiveDirectoryEndpoint,
+		{
+			Name: "Missing credentials and pod identity provider",
+			Config: &kedav1alpha1.AzureKeyVault{
+				Credentials: nil,
+				PodIdentity: &kedav1alpha1.AuthPodIdentity{
+					Provider: "",
+				},
 			},
+			TriggerNamespace: "testNamespace",
+			ExpectedError:    "clientID, tenantID and clientSecret are expected when not using a pod identity provider",
 		},
-		expectedKVResourceURL: testResourceURL,
-		expectedADEndpoint:    testActiveDirectoryEndpoint,
-	},
-	{
-		name:    "nil cloud info",
-		isError: false,
-		vault: kedav1alpha1.AzureKeyVault{
-			Cloud: nil,
-		},
-		expectedKVResourceURL: az.PublicCloud.ResourceIdentifiers.KeyVault,
-		expectedADEndpoint:    az.PublicCloud.ActiveDirectoryEndpoint,
-	},
-	{
-		name:    "invalid cloud",
-		isError: true,
-		vault: kedav1alpha1.AzureKeyVault{
-			Cloud: &kedav1alpha1.AzureKeyVaultCloudInfo{
-				Type: "invalid cloud",
+		{
+			Name: "Empty trigger namespace",
+			Config: &kedav1alpha1.AzureKeyVault{
+				Credentials: &kedav1alpha1.AzureKeyVaultCredentials{
+					ClientSecret: &kedav1alpha1.AzureKeyVaultClientSecret{
+						ValueFrom: kedav1alpha1.ValueFromSecret{
+							SecretKeyRef: kedav1alpha1.SecretKeyRef{
+								Name: "testSecretName",
+								Key:  "testSecretKey",
+							},
+						},
+					},
+				},
+				PodIdentity: &kedav1alpha1.AuthPodIdentity{
+					Provider: kedav1alpha1.PodIdentityProviderNone,
+				},
 			},
+			TriggerNamespace: "",
+			ExpectedError:    "clientID, tenantID and clientSecret are expected when not using a pod identity provider",
 		},
-		expectedKVResourceURL: "",
-		expectedADEndpoint:    "",
-	},
-	{
-		name:    "private cloud missing keyvault resource URL",
-		isError: true,
-		vault: kedav1alpha1.AzureKeyVault{
-			Cloud: &kedav1alpha1.AzureKeyVaultCloudInfo{
-				Type:                    "private",
-				ActiveDirectoryEndpoint: testActiveDirectoryEndpoint,
+		{
+			Name: "Empty credentials secret name",
+			Config: &kedav1alpha1.AzureKeyVault{
+				Credentials: &kedav1alpha1.AzureKeyVaultCredentials{
+					ClientSecret: &kedav1alpha1.AzureKeyVaultClientSecret{
+						ValueFrom: kedav1alpha1.ValueFromSecret{
+							SecretKeyRef: kedav1alpha1.SecretKeyRef{
+								Name: "",
+								Key:  "testSecretKey",
+							},
+						},
+					},
+				},
+				PodIdentity: &kedav1alpha1.AuthPodIdentity{
+					Provider: kedav1alpha1.PodIdentityProviderNone,
+				},
 			},
+			TriggerNamespace: "testNamespace",
+			ExpectedError:    "clientID, tenantID and clientSecret are expected when not using a pod identity provider",
 		},
-		expectedKVResourceURL: "",
-		expectedADEndpoint:    "",
-	},
-	{
-		name:    "private cloud missing active directory endpoint",
-		isError: true,
-		vault: kedav1alpha1.AzureKeyVault{
-			Cloud: &kedav1alpha1.AzureKeyVaultCloudInfo{
-				Type:                "private",
-				KeyVaultResourceURL: testResourceURL,
+		{
+			Name: "Empty credentials secret key",
+			Config: &kedav1alpha1.AzureKeyVault{
+				Credentials: &kedav1alpha1.AzureKeyVaultCredentials{
+					ClientSecret: &kedav1alpha1.AzureKeyVaultClientSecret{
+						ValueFrom: kedav1alpha1.ValueFromSecret{
+							SecretKeyRef: kedav1alpha1.SecretKeyRef{
+								Name: "testSecretName",
+								Key:  "",
+							},
+						},
+					},
+				},
+				PodIdentity: &kedav1alpha1.AuthPodIdentity{
+					Provider: kedav1alpha1.PodIdentityProviderNone,
+				},
 			},
+			TriggerNamespace: "testNamespace",
+			ExpectedError:    "clientID, tenantID and clientSecret are expected when not using a pod identity provider",
 		},
-		expectedKVResourceURL: "",
-		expectedADEndpoint:    "",
-	},
-}
+	}
 
-func TestGetPropertiesForCloud(t *testing.T) {
-	for _, testData := range testDataset {
-		vh := NewAzureKeyVaultHandler(&testData.vault)
-
-		kvResourceURL, adEndpoint, err := vh.getPropertiesForCloud()
-
-		if err != nil && !testData.isError {
-			t.Fatalf("test %s: expected success but got error - %s", testData.name, err)
-		}
-
-		if err == nil && testData.isError {
-			t.Fatalf("test %s: expected error but got success, testData - %+v", testData.name, testData)
-		}
-
-		if kvResourceURL != testData.expectedKVResourceURL {
-			t.Errorf("test %s: keyvault resource URl does not match. expected - %s, got - %s",
-				testData.name, testData.expectedKVResourceURL, kvResourceURL)
-		}
-
-		if adEndpoint != testData.expectedADEndpoint {
-			t.Errorf("test %s: active directory endpoint does not match. expected - %s, got - %s",
-				testData.name, testData.expectedADEndpoint, adEndpoint)
-		}
+	for _, testCase := range testCases {
+		fake.NewClientBuilder()
+		t.Run(testCase.Name, func(t *testing.T) {
+			handler := NewAzureKeyVaultHandler(testCase.Config)
+			err := handler.Initialize(context.TODO(), nil, logf.Log.WithName("test"), "", nil)
+			if testCase.ExpectedError != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), testCase.ExpectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
 }

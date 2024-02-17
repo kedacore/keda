@@ -2,12 +2,7 @@ package azure
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
-	"net/http"
-	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -15,8 +10,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-
-	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
@@ -36,44 +29,6 @@ func init() {
 		}
 	}
 	globalHTTPTimeout = time.Duration(globalHTTPTimeoutMS) * time.Millisecond
-}
-
-// GetAzureADPodIdentityToken returns the AADToken for resource
-func GetAzureADPodIdentityToken(ctx context.Context, httpClient util.HTTPDoer, identityID, audience string) (AADToken, error) {
-	var token AADToken
-
-	var urlStr string
-	if identityID == "" {
-		urlStr = fmt.Sprintf(MSIURL, url.QueryEscape(audience))
-	} else {
-		urlStr = fmt.Sprintf(MSIURLWithClientID, url.QueryEscape(audience), url.QueryEscape(identityID))
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "GET", urlStr, nil)
-	if err != nil {
-		return token, fmt.Errorf("error getting aad-pod-identity token - %w", err)
-	}
-	req.Header = map[string][]string{
-		"Metadata": {"true"},
-	}
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return token, fmt.Errorf("error getting aad-pod-identity token - %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return token, fmt.Errorf("error getting aad-pod-identity token - %w", err)
-	}
-
-	err = json.Unmarshal(body, &token)
-	if err != nil {
-		return token, fmt.Errorf("error getting aad-pod-identity token - %w", errors.New(string(body)))
-	}
-
-	return token, nil
 }
 
 type ManagedIdentityWrapper struct {
