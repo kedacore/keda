@@ -325,7 +325,7 @@ func (p *PromMetrics) RecordCloudEventEmittedError(namespace string, cloudevents
 	cloudeventEmitted.With(labels).Inc()
 }
 
-// RecordCloudEventSourceQueueStatus record the number of cloudevents that are waiting for emitting
+// RecordCloudEventQueueStatus record the number of cloudevents that are waiting for emitting
 func (p *PromMetrics) RecordCloudEventQueueStatus(namespace string, value int) {
 	cloudeventQueueStatus.With(prometheus.Labels{"namespace": namespace}).Set(float64(value))
 }
