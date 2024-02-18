@@ -52,7 +52,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- **General**: Introduce Filter CloudEvents Feature ([#3533](https://github.com/kedacore/keda/issues/3533))
+- **General**: Provide capability to filter CloudEvents ([#3533](https://github.com/kedacore/keda/issues/3533))
 
 #### Experimental
 
