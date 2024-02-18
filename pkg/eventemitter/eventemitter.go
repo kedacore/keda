@@ -335,7 +335,7 @@ func (e *EventEmitter) emitEventByHandler(eventData eventdata.EventData) {
 			identifierKey := getPrefixIdentifierFromKey(key)
 
 			if e.eventFilterCache[identifierKey] != nil && !e.eventFilterCache[identifierKey].FilterEvent(eventData.EventType) {
-				e.log.Info("Event is filtered", "eventType", eventData.EventType)
+				e.log.Info("Event is filtered", "eventType", eventData.EventType, "event identifier", identifierKey)
 				return
 			}
 
