@@ -85,8 +85,8 @@ New deprecation(s):
 
 ### Other
 
-- **General**: Introduce ENABLE_OPENTELEMETRY in deploying/testing process  ([#5375](https://github.com/kedacore/keda/issues/5375))
 - **General**: Improve readability of utility function getParameterFromConfigV2 ([#5037](https://github.com/kedacore/keda/issues/5037))
+- **General**: Introduce ENABLE_OPENTELEMETRY in deploying/testing process  ([#5375](https://github.com/kedacore/keda/issues/5375))
 - **General**: Migrate away from unmaintained golang/mock and use uber/gomock ([#5440](https://github.com/kedacore/keda/issues/5440))
 - **General**: Minor refactor to reduce copy/paste code in ScaledObject webhook ([#5397](https://github.com/kedacore/keda/issues/5397))
 
