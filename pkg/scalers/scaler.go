@@ -182,28 +182,28 @@ type configOptions struct {
 // UseMetadata is an Option function that sets the useMetadata field of configOptions.
 func UseMetadata() Option {
 	return func(opt *configOptions) {
-		opt.useMetadata = true 
+		opt.useMetadata = true
 	}
 }
 
 // UseAuthentication is an Option function that sets the useAuthentication field of configOptions.
 func UseAuthentication() Option {
 	return func(opt *configOptions) {
-		opt.useAuthentication = true 
+		opt.useAuthentication = true
 	}
 }
 
 // UseResolvedEnv is an Option function that sets the useResolvedEnv field of configOptions.
 func UseResolvedEnv() Option {
 	return func(opt *configOptions) {
-		opt.useResolvedEnv = true 
+		opt.useResolvedEnv = true
 	}
 }
 
 // IsOptional is an Option function that sets the isOptional field of configOptions.
 func IsOptional() Option {
 	return func(opt *configOptions) {
-		opt.isOptional = true 
+		opt.isOptional = true
 	}
 }
 
