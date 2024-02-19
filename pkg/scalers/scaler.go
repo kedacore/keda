@@ -180,30 +180,30 @@ type configOptions struct {
 }
 
 // UseMetadata is an Option function that sets the useMetadata field of configOptions.
-func UseMetadata(metadata bool) Option {
+func UseMetadata() Option {
 	return func(opt *configOptions) {
-		opt.useMetadata = metadata
+		opt.useMetadata = true 
 	}
 }
 
 // UseAuthentication is an Option function that sets the useAuthentication field of configOptions.
-func UseAuthentication(auth bool) Option {
+func UseAuthentication() Option {
 	return func(opt *configOptions) {
-		opt.useAuthentication = auth
+		opt.useAuthentication = true 
 	}
 }
 
 // UseResolvedEnv is an Option function that sets the useResolvedEnv field of configOptions.
-func UseResolvedEnv(resolvedEnv bool) Option {
+func UseResolvedEnv() Option {
 	return func(opt *configOptions) {
-		opt.useResolvedEnv = resolvedEnv
+		opt.useResolvedEnv = true 
 	}
 }
 
 // IsOptional is an Option function that sets the isOptional field of configOptions.
-func IsOptional(optional bool) Option {
+func IsOptional() Option {
 	return func(opt *configOptions) {
-		opt.isOptional = optional
+		opt.isOptional = true 
 	}
 }
 
@@ -235,7 +235,7 @@ func WithDefaultVal(defaultVal interface{}) Option {
 //	To retrieve a parameter value from a ScalerConfig object, you can call this function with the necessary parameters and options
 //
 //	```
-//	val, err := getParameterFromConfigV2(scalerConfig, "parameterName", reflect.TypeOf(int64(0)), UseMetadata(true), UseAuthentication(true))
+//	val, err := getParameterFromConfigV2(scalerConfig, "parameterName", reflect.TypeOf(int64(0)), UseMetadata(), UseAuthentication())
 //	if err != nil {
 //	    // Handle error
 //	}
