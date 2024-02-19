@@ -85,11 +85,11 @@ var _ = Describe("ScaledJobController", func() {
 				},
 			}
 			pollingInterval := int32(5)
-			minReplicaCount := int32(1)
-			maxReplicaCount := int32(3)
+			// minReplicaCount := int32(1)
+			// maxReplicaCount := int32(3)
 			sj.Spec.PollingInterval = &pollingInterval
-			sj.Spec.MinReplicaCount = &minReplicaCount
-			sj.Spec.MaxReplicaCount = &maxReplicaCount
+			// sj.Spec.MinReplicaCount = &minReplicaCount
+			// sj.Spec.MaxReplicaCount = &maxReplicaCount
 			err := k8sClient.Create(context.Background(), sj)
 			Expect(err).ToNot(HaveOccurred())
 
