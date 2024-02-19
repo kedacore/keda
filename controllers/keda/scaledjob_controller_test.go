@@ -101,14 +101,13 @@ var _ = Describe("ScaledJobController", func() {
 					return false
 				}
 
-				//	jobList := &batchv1.JobList{}
-				//	err = k8sClient.List(context.Background(), jobList, &client.ListOptions{Namespace: "default"})
-				//	if err != nil {
-				//		testLogger.Info("Error listing Jobs: %v", err)
-				//		return false
-				//	}
-				//	return len(jobList.Items) > 0
-				return err == nil
+				jobList := &batchv1.JobList{}
+				err = k8sClient.List(context.Background(), jobList, &client.ListOptions{Namespace: "default"})
+				if err != nil {
+					testLogger.Info("Error listing Jobs: %v", err)
+					return false
+				}
+				return len(jobList.Items) > 0
 			}, 1*time.Minute, 10*time.Second).Should(BeTrue())
 
 			// Validate jobs are created
