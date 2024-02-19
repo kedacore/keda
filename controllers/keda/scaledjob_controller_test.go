@@ -60,7 +60,7 @@ var _ = Describe("ScaledJobController", func() {
 		})
 
 		It("should delete a ScaledJob and associated resources", func() {
-			jobName := "to-be-deleted-job"
+			jobName := "deleted-job"
 			sjName := "sj-" + jobName
 
 			// Create a ScaledJob
