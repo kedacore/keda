@@ -60,7 +60,7 @@ var _ = Describe("ScaledJobController", func() {
 		})
 
 		It("should delete a ScaledJob and associated resources", func() {
-			jobName := "deleted-job"
+			jobName := "to-be-deleted-job"
 			sjName := "sj-" + jobName
 
 			// Create a ScaledJob
@@ -98,7 +98,8 @@ var _ = Describe("ScaledJobController", func() {
 				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: sjName, Namespace: "default"}, sj)
 				if err != nil {
 					testLogger.Info("Error getting ScaledJob: %v", err)
-					return false
+					return err == nil
+					//	return false
 				}
 
 				jobList := &batchv1.JobList{}
