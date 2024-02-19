@@ -95,11 +95,14 @@ var _ = Describe("ScaledJobController", func() {
 				if err != nil {
 					return false
 				}
+				testLogger.Info("ScaledJob gotten")
+
 				jobList := &batchv1.JobList{}
 				err = k8sClient.List(context.Background(), jobList, &client.ListOptions{Namespace: "default"})
 				if err != nil {
 					return false
 				}
+				testLogger.Info("Jobs gotten")
 				return len(jobList.Items) > 0
 			}, 1*time.Minute, 10*time.Second).Should(BeTrue())
 
