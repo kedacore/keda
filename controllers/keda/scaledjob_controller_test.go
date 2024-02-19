@@ -219,7 +219,9 @@ var _ = Describe("ScaledJobController", func() {
 				},
 			}
 			pollingInterval := int32(5)
+			minReplicaCount := int32(1)
 			sj.Spec.PollingInterval = &pollingInterval
+			sj.Spec.MinReplicaCount = &minReplicaCount
 			err := k8sClient.Create(context.Background(), sj)
 			Expect(err).ToNot(HaveOccurred())
 			falseAnnotationValue := "false"
