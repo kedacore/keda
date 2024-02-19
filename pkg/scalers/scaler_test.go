@@ -254,15 +254,28 @@ var getParameterFromConfigTestDataset = []getParameterFromConfigTestData{
 
 func TestGetParameterFromConfigV2(t *testing.T) {
 	for _, testData := range getParameterFromConfigTestDataset {
+		options := []Option{
+			WithDefaultVal(testData.defaultVal),
+		}
+
+		if testData.useMetadata {
+			options = append(options, UseMetadata())
+		}
+		if testData.useAuthentication {
+			options = append(options, UseAuthentication())
+		}
+		if testData.useResolvedEnv {
+			options = append(options, UseResolvedEnv())
+		}
+		if testData.isOptional {
+			options = append(options, IsOptional())
+		}
+
 		val, err := getParameterFromConfigV2(
 			&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams, ResolvedEnv: testData.resolvedEnv},
 			testData.parameter,
 			testData.targetType,
-			UseMetadata(testData.useMetadata),
-			UseAuthentication(testData.useAuthentication),
-			UseResolvedEnv(testData.useResolvedEnv),
-			IsOptional(testData.isOptional),
-			WithDefaultVal(testData.defaultVal),
+			options...,
 		)
 		if testData.isError {
 			assert.NotNilf(t, err, "test %s: expected error but got success, testData - %+v", testData.name, testData)

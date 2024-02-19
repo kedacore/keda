@@ -162,10 +162,10 @@ func parseKafkaAuthParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadat
 		config,
 		"sasl",
 		reflect.TypeOf(""),
-		UseMetadata(true),
-		UseAuthentication(true),
-		UseResolvedEnv(true),
-		IsOptional(true),
+		UseMetadata(),
+		UseAuthentication(),
+		UseResolvedEnv(),
+		IsOptional(),
 		WithDefaultVal(""),
 	)
 	if err != nil {
@@ -198,10 +198,9 @@ func parseKafkaAuthParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadat
 		config,
 		"tls",
 		reflect.TypeOf(""),
-		UseMetadata(true),
-		UseAuthentication(true),
-		UseResolvedEnv(false),
-		IsOptional(true),
+		UseMetadata(),
+		UseAuthentication(),
+		IsOptional(),
 		WithDefaultVal("disable"),
 	)
 	if err != nil {
@@ -229,10 +228,8 @@ func parseTLS(config *scalersconfig.ScalerConfig, meta *kafkaMetadata) error {
 		config,
 		"cert",
 		reflect.TypeOf(""),
-		UseMetadata(false),
-		UseAuthentication(true),
-		UseResolvedEnv(false),
-		IsOptional(true),
+		UseAuthentication(),
+		IsOptional(),
 		WithDefaultVal(""),
 	)
 	if err != nil {
@@ -244,10 +241,8 @@ func parseTLS(config *scalersconfig.ScalerConfig, meta *kafkaMetadata) error {
 		config,
 		"key",
 		reflect.TypeOf(""),
-		UseMetadata(false),
-		UseAuthentication(true),
-		UseResolvedEnv(false),
-		IsOptional(true),
+		UseAuthentication(),
+		IsOptional(),
 		WithDefaultVal(""),
 	)
 	if err != nil {
@@ -266,10 +261,8 @@ func parseTLS(config *scalersconfig.ScalerConfig, meta *kafkaMetadata) error {
 		config,
 		"ca",
 		reflect.TypeOf(""),
-		UseMetadata(false),
-		UseAuthentication(true),
-		UseResolvedEnv(false),
-		IsOptional(true),
+		UseAuthentication(),
+		IsOptional(),
 		WithDefaultVal(""),
 	)
 	if err != nil {
@@ -281,10 +274,8 @@ func parseTLS(config *scalersconfig.ScalerConfig, meta *kafkaMetadata) error {
 		config,
 		"unsafeSsl",
 		reflect.TypeOf(true),
-		UseMetadata(true),
-		UseAuthentication(false),
-		UseResolvedEnv(false),
-		IsOptional(true),
+		UseMetadata(),
+		IsOptional(),
 		WithDefaultVal(defaultUnsafeSsl),
 	)
 	if err != nil {
@@ -296,10 +287,8 @@ func parseTLS(config *scalersconfig.ScalerConfig, meta *kafkaMetadata) error {
 		config,
 		"keyPassword",
 		reflect.TypeOf(""),
-		UseMetadata(false),
-		UseAuthentication(true),
-		UseResolvedEnv(false),
-		IsOptional(true),
+		UseAuthentication(),
+		IsOptional(),
 		WithDefaultVal(""),
 	)
 	if err != nil {
@@ -316,10 +305,7 @@ func parseKerberosParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadata
 		config,
 		"username",
 		reflect.TypeOf(""),
-		UseMetadata(false),
-		UseAuthentication(true),
-		UseResolvedEnv(false),
-		IsOptional(false),
+		UseAuthentication(),
 		WithDefaultVal(""),
 	)
 	if err != nil {
@@ -331,10 +317,8 @@ func parseKerberosParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadata
 		config,
 		"password",
 		reflect.TypeOf(""),
-		UseMetadata(false),
-		UseAuthentication(true),
-		UseResolvedEnv(false),
-		IsOptional(true),
+		UseAuthentication(),
+		IsOptional(),
 		WithDefaultVal(""),
 	)
 	if err != nil {
@@ -344,10 +328,8 @@ func parseKerberosParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadata
 		config,
 		"keytab",
 		reflect.TypeOf(""),
-		UseMetadata(false),
-		UseAuthentication(true),
-		UseResolvedEnv(false),
-		IsOptional(true),
+		UseAuthentication(),
+		IsOptional(),
 		WithDefaultVal(""),
 	)
 	if err != nil {
@@ -372,10 +354,7 @@ func parseKerberosParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadata
 		config,
 		"realm",
 		reflect.TypeOf(""),
-		UseMetadata(false),
-		UseAuthentication(true),
-		UseResolvedEnv(false),
-		IsOptional(false),
+		UseAuthentication(),
 		WithDefaultVal(""),
 	)
 	if err != nil {
@@ -387,10 +366,7 @@ func parseKerberosParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadata
 		config,
 		"kerberosConfig",
 		reflect.TypeOf(""),
-		UseMetadata(false),
-		UseAuthentication(true),
-		UseResolvedEnv(false),
-		IsOptional(false),
+		UseAuthentication(),
 		WithDefaultVal(""),
 	)
 	if err != nil {
@@ -415,10 +391,7 @@ func parseSaslParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadata, mo
 		config,
 		"username",
 		reflect.TypeOf(""),
-		UseMetadata(false),
-		UseAuthentication(true),
-		UseResolvedEnv(false),
-		IsOptional(false),
+		UseAuthentication(),
 		WithDefaultVal(""),
 	)
 	if err != nil {
@@ -430,10 +403,8 @@ func parseSaslParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadata, mo
 		config,
 		"password",
 		reflect.TypeOf(""),
-		UseMetadata(true),
-		UseAuthentication(true),
-		UseResolvedEnv(false),
-		IsOptional(false),
+		UseMetadata(),
+		UseAuthentication(),
 		WithDefaultVal(""),
 	)
 	if err != nil {
@@ -447,10 +418,8 @@ func parseSaslParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadata, mo
 			config,
 			"scopes",
 			reflect.TypeOf(""),
-			UseMetadata(false),
-			UseAuthentication(true),
-			UseResolvedEnv(false),
-			IsOptional(true),
+			UseAuthentication(),
+			IsOptional(),
 			WithDefaultVal(""),
 		)
 		if err != nil {
@@ -462,10 +431,7 @@ func parseSaslParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadata, mo
 			config,
 			"oauthTokenEndpointUri",
 			reflect.TypeOf(""),
-			UseMetadata(false),
-			UseAuthentication(true),
-			UseResolvedEnv(false),
-			IsOptional(false),
+			UseAuthentication(),
 			WithDefaultVal(""),
 		)
 		if err != nil {
@@ -478,10 +444,8 @@ func parseSaslParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadata, mo
 			config,
 			"oauthExtensions",
 			reflect.TypeOf(""),
-			UseMetadata(false),
-			UseAuthentication(true),
-			UseResolvedEnv(false),
-			IsOptional(true),
+			UseAuthentication(),
+			IsOptional(),
 			WithDefaultVal(""),
 		)
 		if oauthExtensionsRaw != "" {
@@ -530,10 +494,8 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 		config,
 		"bootstrapServers",
 		reflect.TypeOf(""),
-		UseMetadata(true),
-		UseAuthentication(false),
-		UseResolvedEnv(true),
-		IsOptional(false),
+		UseMetadata(),
+		UseResolvedEnv(),
 		WithDefaultVal(""),
 	)
 	if err != nil {
@@ -545,10 +507,8 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 		config,
 		"consumerGroup",
 		reflect.TypeOf(""),
-		UseMetadata(true),
-		UseAuthentication(false),
-		UseResolvedEnv(true),
-		IsOptional(false),
+		UseMetadata(),
+		UseResolvedEnv(),
 		WithDefaultVal(""),
 	)
 	if err != nil {
@@ -560,10 +520,9 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 		config,
 		"topic",
 		reflect.TypeOf(""),
-		UseMetadata(true),
-		UseAuthentication(false),
-		UseResolvedEnv(true),
-		IsOptional(true),
+		UseMetadata(),
+		UseResolvedEnv(),
+		IsOptional(),
 		WithDefaultVal(""),
 	)
 	if err != nil {
@@ -580,10 +539,8 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 		config,
 		"partitionLimitation",
 		reflect.TypeOf(""),
-		UseMetadata(true),
-		UseAuthentication(false),
-		UseResolvedEnv(false),
-		IsOptional(true),
+		UseMetadata(),
+		IsOptional(),
 		WithDefaultVal(""),
 	)
 	if err != nil {
@@ -608,10 +565,8 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 		config,
 		"offsetResetPolicy",
 		reflect.TypeOf(""),
-		UseMetadata(true),
-		UseAuthentication(false),
-		UseResolvedEnv(false),
-		IsOptional(true),
+		UseMetadata(),
+		IsOptional(),
 		WithDefaultVal(""),
 	)
 	if err != nil {
@@ -629,10 +584,8 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 		config,
 		lagThresholdMetricName,
 		reflect.TypeOf(64),
-		UseMetadata(true),
-		UseAuthentication(false),
-		UseResolvedEnv(false),
-		IsOptional(true),
+		UseMetadata(),
+		IsOptional(),
 		WithDefaultVal(defaultKafkaLagThreshold),
 	)
 	if err != nil {
@@ -648,10 +601,8 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 		config,
 		activationLagThresholdMetricName,
 		reflect.TypeOf(int64(64)),
-		UseMetadata(true),
-		UseAuthentication(false),
-		UseResolvedEnv(false),
-		IsOptional(true),
+		UseMetadata(),
+		IsOptional(),
 		WithDefaultVal(int64(defaultKafkaActivationLagThreshold)),
 	)
 	if err != nil {
@@ -669,10 +620,8 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 		config,
 		"allowIdleConsumers",
 		reflect.TypeOf(true),
-		UseMetadata(true),
-		UseAuthentication(false),
-		UseResolvedEnv(false),
-		IsOptional(true),
+		UseMetadata(),
+		IsOptional(),
 		WithDefaultVal(false),
 	)
 	if err != nil {
@@ -684,10 +633,8 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 		config,
 		"excludePersistentLag",
 		reflect.TypeOf(true),
-		UseMetadata(true),
-		UseAuthentication(false),
-		UseResolvedEnv(false),
-		IsOptional(true),
+		UseMetadata(),
+		IsOptional(),
 		WithDefaultVal(false),
 	)
 	if err != nil {
@@ -699,10 +646,8 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 		config,
 		"scaleToZeroOnInvalidOffset",
 		reflect.TypeOf(true),
-		UseMetadata(true),
-		UseAuthentication(false),
-		UseResolvedEnv(false),
-		IsOptional(true),
+		UseMetadata(),
+		IsOptional(),
 		WithDefaultVal(false),
 	)
 
@@ -715,10 +660,8 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 		config,
 		"limitToPartitionsWithLag",
 		reflect.TypeOf(true),
-		UseMetadata(true),
-		UseAuthentication(false),
-		UseResolvedEnv(false),
-		IsOptional(true),
+		UseMetadata(),
+		IsOptional(),
 		WithDefaultVal(false),
 	)
 	if err != nil {
@@ -736,10 +679,8 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 		config,
 		"version",
 		reflect.TypeOf(""),
-		UseMetadata(true),
-		UseAuthentication(false),
-		UseResolvedEnv(false),
-		IsOptional(true),
+		UseMetadata(),
+		IsOptional(),
 		WithDefaultVal("1.0.0"),
 	)
 	if err != nil {
