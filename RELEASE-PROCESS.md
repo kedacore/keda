@@ -117,7 +117,11 @@ Before we can release our new Helm chart version, we need to prepare it:
 
 Guidance on how to release it can be found in our [contribution guide](https://github.com/kedacore/charts/blob/master/CONTRIBUTING.md#shipping-a-new-version).
 
-## 8. Prepare next release
+## 8. Trigger KEDA OLM release
+
+Create a new issue in [KEDA OLM repository](https://github.com/kedacore/keda-olm-operator/issues/new/choose) stating that there should be a new release mirroring KEDA core release.
+
+## 9. Prepare next release
 
 As per our [release governance](https://github.com/kedacore/governance/blob/main/RELEASES.md), we need to create a new shipping cycle in our [project settings](https://github.com/orgs/kedacore/projects/2/settings/fields/1647216) with a target date in 3 months after the last cycle.
 
@@ -127,7 +131,7 @@ Lastly, the `Upcoming Release Cycles` overview in `ROADMAP.md` should be updated
 
 In case of minor releases, we need to create the version branch (`release/v2.x`) from the release tag which will be used to include any required hotfix in the future.
 
-## 9. Tweet! 🐦
+## 10. Tweet! 🐦
 
 Prepare a tweet with some highlights and send it out on [@kedaorg](https://twitter.com/kedaorg)!
 

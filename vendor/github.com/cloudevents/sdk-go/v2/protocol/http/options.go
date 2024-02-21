@@ -158,7 +158,6 @@ func WithMethod(method string) Option {
 	}
 }
 
-//
 // Middleware is a function that takes an existing http.Handler and wraps it in middleware,
 // returning the wrapped http.Handler.
 type Middleware func(next nethttp.Handler) nethttp.Handler

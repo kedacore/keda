@@ -23,11 +23,18 @@ type Invoker interface {
 
 var _ Invoker = (*receiveInvoker)(nil)
 
-func newReceiveInvoker(fn interface{}, observabilityService ObservabilityService, inboundContextDecorators []func(context.Context, binding.Message) context.Context, fns ...EventDefaulter) (Invoker, error) {
+func newReceiveInvoker(
+	fn interface{},
+	observabilityService ObservabilityService,
+	inboundContextDecorators []func(context.Context, binding.Message) context.Context,
+	fns []EventDefaulter,
+	ackMalformedEvent bool,
+) (Invoker, error) {
 	r := &receiveInvoker{
 		eventDefaulterFns:        fns,
 		observabilityService:     observabilityService,
 		inboundContextDecorators: inboundContextDecorators,
+		ackMalformedEvent:        ackMalformedEvent,
 	}
 
 	if fn, err := receiver(fn); err != nil {
@@ -44,6 +51,7 @@ type receiveInvoker struct {
 	observabilityService     ObservabilityService
 	eventDefaulterFns        []EventDefaulter
 	inboundContextDecorators []func(context.Context, binding.Message) context.Context
+	ackMalformedEvent        bool
 }
 
 func (r *receiveInvoker) Invoke(ctx context.Context, m binding.Message, respFn protocol.ResponseFn) (err error) {
@@ -58,13 +66,13 @@ func (r *receiveInvoker) Invoke(ctx context.Context, m binding.Message, respFn p
 	switch {
 	case eventErr != nil && r.fn.hasEventIn:
 		r.observabilityService.RecordReceivedMalformedEvent(ctx, eventErr)
-		return respFn(ctx, nil, protocol.NewReceipt(false, "failed to convert Message to Event: %w", eventErr))
+		return respFn(ctx, nil, protocol.NewReceipt(r.ackMalformedEvent, "failed to convert Message to Event: %w", eventErr))
 	case r.fn != nil:
 		// Check if event is valid before invoking the receiver function
 		if e != nil {
 			if validationErr := e.Validate(); validationErr != nil {
 				r.observabilityService.RecordReceivedMalformedEvent(ctx, validationErr)
-				return respFn(ctx, nil, protocol.NewReceipt(false, "validation error in incoming event: %w", validationErr))
+				return respFn(ctx, nil, protocol.NewReceipt(r.ackMalformedEvent, "validation error in incoming event: %w", validationErr))
 			}
 		}
 

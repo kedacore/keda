@@ -58,17 +58,43 @@ func (n *UnaryNode) String() string {
 }
 
 func (n *BinaryNode) String() string {
+	if n.Operator == ".." {
+		return fmt.Sprintf("%s..%s", n.Left, n.Right)
+	}
+
 	var lhs, rhs string
+	var lwrap, rwrap bool
 
 	lb, ok := n.Left.(*BinaryNode)
-	if ok && (operator.Less(lb.Operator, n.Operator) || lb.Operator == "??") {
+	if ok {
+		if operator.Less(lb.Operator, n.Operator) {
+			lwrap = true
+		}
+		if lb.Operator == "??" {
+			lwrap = true
+		}
+		if operator.IsBoolean(lb.Operator) && n.Operator != lb.Operator {
+			lwrap = true
+		}
+	}
+
+	rb, ok := n.Right.(*BinaryNode)
+	if ok {
+		if operator.Less(rb.Operator, n.Operator) {
+			rwrap = true
+		}
+		if operator.IsBoolean(rb.Operator) && n.Operator != rb.Operator {
+			rwrap = true
+		}
+	}
+
+	if lwrap {
 		lhs = fmt.Sprintf("(%s)", n.Left.String())
 	} else {
 		lhs = n.Left.String()
 	}
 
-	rb, ok := n.Right.(*BinaryNode)
-	if ok && operator.Less(rb.Operator, n.Operator) {
+	if rwrap {
 		rhs = fmt.Sprintf("(%s)", n.Right.String())
 	} else {
 		rhs = n.Right.String()
@@ -132,7 +158,7 @@ func (n *ClosureNode) String() string {
 }
 
 func (n *PointerNode) String() string {
-	return "#"
+	return fmt.Sprintf("#%s", n.Name)
 }
 
 func (n *VariableDeclaratorNode) String() string {

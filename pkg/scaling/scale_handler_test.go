@@ -26,8 +26,8 @@ import (
 	"time"
 
 	"github.com/expr-lang/expr"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 	appsv1 "k8s.io/api/apps/v1"
 	v2 "k8s.io/api/autoscaling/v2"
 	batchv1 "k8s.io/api/batch/v1"

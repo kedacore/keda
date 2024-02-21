@@ -379,7 +379,7 @@ func (o *OtelMetrics) RecordCloudEventEmitted(namespace string, cloudeventsource
 	otCloudEventEmittedCounter.Add(context.Background(), 1, opt)
 }
 
-// RecordCloudEventEmitted counts the number of errors occurred in trying emit cloudevent
+// RecordCloudEventEmittedError counts the number of errors occurred in trying emit cloudevent
 func (o *OtelMetrics) RecordCloudEventEmittedError(namespace string, cloudeventsource string, eventsink string) {
 	opt := api.WithAttributes(
 		attribute.Key("namespace").String(namespace),
@@ -398,7 +398,7 @@ func CloudeventQueueStatusCallback(_ context.Context, obsrv api.Float64Observer)
 	return nil
 }
 
-// RecordCloudEventSourceQueueStatus record the number of cloudevents that are waiting for emitting
+// RecordCloudEventQueueStatus record the number of cloudevents that are waiting for emitting
 func (o *OtelMetrics) RecordCloudEventQueueStatus(namespace string, value int) {
 	opt := api.WithAttributes(
 		attribute.Key("namespace").String(namespace),

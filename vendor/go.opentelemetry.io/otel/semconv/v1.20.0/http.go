@@ -1,4 +1,4 @@
-// Copyright 2019 Google LLC
+// Copyright The OpenTelemetry Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build !go1.12
+package semconv // import "go.opentelemetry.io/otel/semconv/v1.20.0"
 
-package main
-
-import (
-	"log"
+// HTTP scheme attributes.
+var (
+	HTTPSchemeHTTP  = HTTPSchemeKey.String("http")
+	HTTPSchemeHTTPS = HTTPSchemeKey.String("https")
 )
-
-func printModuleVersion() {
-	log.Printf("No version information is available for Mockgen compiled with " +
-		"version 1.11")
-}

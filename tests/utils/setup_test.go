@@ -169,6 +169,10 @@ func TesVerifyPodsIdentity(t *testing.T) {
 }
 
 func TestSetupOpentelemetryComponents(t *testing.T) {
+	if EnableOpentelemetry == "" || EnableOpentelemetry == StringFalse {
+		t.Skip("skipping installing opentelemetry")
+	}
+
 	otlpTempFileName := "otlp.yml"
 	otlpServiceTempFileName := "otlpServicePatch.yml"
 	defer os.Remove(otlpTempFileName)

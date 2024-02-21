@@ -317,22 +317,13 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string, dryRun bool
 					continue
 				}
 
-				if trigger.Type == cpuString {
-					// Fail if neither pod's container spec has a CPU limit specified, nor a default CPU limit is
+				if trigger.Type == cpuString || trigger.Type == memoryString {
+					// Fail if neither pod's container spec has particular resource limit specified, nor a default limit is
 					// specified in LimitRange in the same namespace as the deployment
-					if !isWorkloadResourceSet(container.Resources, corev1.ResourceCPU) &&
-						!isContainerResourceLimitSet(context.Background(), incomingSo.Namespace, corev1.ResourceCPU) {
-						err := fmt.Errorf("the scaledobject has a cpu trigger but the container %s doesn't have the cpu request defined", container.Name)
-						scaledobjectlog.Error(err, "validation error")
-						metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
-						return err
-					}
-				} else if trigger.Type == memoryString {
-					// Fail if neither pod's container spec has a memory limit specified, nor a default memory limit is
-					// specified in LimitRange in the same namespace as the deployment
-					if !isWorkloadResourceSet(container.Resources, corev1.ResourceMemory) &&
-						!isContainerResourceLimitSet(context.Background(), incomingSo.Namespace, corev1.ResourceMemory) {
-						err := fmt.Errorf("the scaledobject has a memory trigger but the container %s doesn't have the memory request defined", container.Name)
+					resourceType := corev1.ResourceName(trigger.Type)
+					if !isWorkloadResourceSet(container.Resources, resourceType) &&
+						!isContainerResourceLimitSet(context.Background(), incomingSo.Namespace, resourceType) {
+						err := fmt.Errorf("the scaledobject has a %v trigger but the container %s doesn't have the %v request defined", resourceType, container.Name, resourceType)
 						scaledobjectlog.Error(err, "validation error")
 						metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
 						return err
