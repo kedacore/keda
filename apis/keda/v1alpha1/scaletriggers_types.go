@@ -51,6 +51,11 @@ type AuthenticationRef struct {
 // - useCachedMetrics is defined only for a supported triggers
 func ValidateTriggers(triggers []ScaleTriggers) error {
 	triggersCount := len(triggers)
+
+	if triggersCount == 0 {
+		return fmt.Errorf("no triggers defined in the ScaledObject")
+	}
+
 	if triggers != nil && triggersCount > 0 {
 		triggerNames := make(map[string]bool, triggersCount)
 		for i := 0; i < triggersCount; i++ {

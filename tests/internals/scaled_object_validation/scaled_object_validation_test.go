@@ -21,16 +21,18 @@ var (
 	deploymentName                    = fmt.Sprintf("%s-deployment", testName)
 	scaledObject1Name                 = fmt.Sprintf("%s-so1", testName)
 	scaledObject2Name                 = fmt.Sprintf("%s-so2", testName)
+	emptyTriggersSoName               = fmt.Sprintf("%s-so-empty-triggers", testName)
 	hpaName                           = fmt.Sprintf("%s-hpa", testName)
 	ownershipTransferScaledObjectName = fmt.Sprintf("%s-ownership-transfer-so", testName)
 	ownershipTransferHpaName          = fmt.Sprintf("%s-ownership-transfer-hpa", testName)
 )
 
 type templateData struct {
-	TestNamespace    string
-	DeploymentName   string
-	ScaledObjectName string
-	HpaName          string
+	TestNamespace       string
+	DeploymentName      string
+	ScaledObjectName    string
+	HpaName             string
+	EmptyTriggersSoName string
 }
 
 const (
@@ -150,6 +152,18 @@ spec:
         type: Utilization
         averageUtilization: 50
 `
+
+	emptyTriggersTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.EmptyTriggersSoName}}
+  namespace: {{.TestNamespace}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  triggers: []
+`
 )
 
 func TestScaledObjectValidations(t *testing.T) {
@@ -174,6 +188,8 @@ func TestScaledObjectValidations(t *testing.T) {
 	testMissingMemory(t, data)
 
 	testWorkloadWithOnlyLimits(t, data)
+
+	testTriggersWithEmptyArray(t, data)
 
 	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
@@ -311,10 +327,19 @@ spec:
 	assert.NoError(t, err, "Deployment with only resource limits set should be validated")
 }
 
+func testTriggersWithEmptyArray(t *testing.T, data templateData) {
+	t.Log("--- triggers with empty array ---")
+
+	err := KubectlApplyWithErrors(t, data, "emptyTriggersTemplate", emptyTriggersTemplate)
+	assert.Errorf(t, err, "can deploy the scaledObject - %s", err)
+	assert.Contains(t, err.Error(), "no triggers defined in the ScaledObject")
+}
+
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:  testNamespace,
-			DeploymentName: deploymentName,
+			TestNamespace:       testNamespace,
+			DeploymentName:      deploymentName,
+			EmptyTriggersSoName: emptyTriggersSoName,
 		}, []Template{
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 		}

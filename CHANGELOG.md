@@ -136,6 +136,7 @@ Here is an overview of all new **experimental** features:
 - **General**: Prevented stuck status due to timeouts during scalers generation ([#5083](https://github.com/kedacore/keda/issues/5083))
 - **General**: ScaledObject Validating Webhook should support `dry-run=server` requests ([#5306](https://github.com/kedacore/keda/issues/5306))
 - **General**: Set `LeaderElectionNamespace` to PodNamespace so leader election works in OutOfCluster mode ([#5404](https://github.com/kedacore/keda/issues/5404))
+- **General**: Validate empty array value of triggers in ScaledObject creation ([#5520](https://github.com/kedacore/keda/issues/5520))
 - **AWS Scalers**: Ensure session tokens are included when instantiating AWS credentials ([#5156](https://github.com/kedacore/keda/issues/5156))
 - **Azure Event Hub Scaler**: Improve unprocessedEventThreshold calculation ([#4250](https://github.com/kedacore/keda/issues/4250))
 - **Azure Pipelines**: Prevent HTTP 400 errors due to `poolName` with spaces ([#5107](https://github.com/kedacore/keda/issues/5107))
