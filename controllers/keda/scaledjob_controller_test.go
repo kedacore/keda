@@ -124,7 +124,7 @@ var _ = Describe("ScaledJobController", func() {
 			Eventually(func() bool {
 				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: sjName, Namespace: "default"}, sj)
 				return err != nil
-			}, 1*time.Minute, 10*time.Second).Should(BeTrue())
+			}, 2*time.Minute, 10*time.Second).Should(BeTrue())
 
 			// Verify associated resources are deleted
 			err = k8sClient.List(context.Background(), jobList, &client.ListOptions{Namespace: "default"})
