@@ -77,7 +77,7 @@ var _ = Describe("ScaledJobController", func() {
 							Metadata: map[string]string{
 								"timezone":        "UTC",
 								"start":           "0 * * * *",
-								"end":             "1 * * * *",
+								"end":             "2 * * * *",
 								"desiredReplicas": "1",
 							},
 						},
@@ -98,16 +98,15 @@ var _ = Describe("ScaledJobController", func() {
 				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: sjName, Namespace: "default"}, sj)
 				if err != nil {
 					testLogger.Info("Error getting ScaledJob: %v", err)
-					return err == nil
-					//	return false
+					return false
 				}
 
 				jobList := &batchv1.JobList{}
-				_ = k8sClient.List(context.Background(), jobList, &client.ListOptions{Namespace: "default"})
-				// if err != nil {
-				// 	testLogger.Info("Error listing Jobs: %v", err)
-				// 	return false
-				// }
+				err = k8sClient.List(context.Background(), jobList, &client.ListOptions{Namespace: "default"})
+				if err != nil {
+					testLogger.Info("Error listing Jobs: %v", err)
+					return false
+				}
 				return len(jobList.Items) > 0
 			}, 1*time.Minute, 10*time.Second).Should(BeTrue())
 
