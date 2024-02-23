@@ -77,7 +77,7 @@ var _ = Describe("ScaledJobController", func() {
 							Metadata: map[string]string{
 								"timezone":        "UTC",
 								"start":           "0 * * * *",
-								"end":             "2 * * * *",
+								"end":             "1 * * * *",
 								"desiredReplicas": "1",
 							},
 						},
