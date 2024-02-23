@@ -267,11 +267,6 @@ var _ = Describe("ScaledJobController", func() {
 
 func generateJobSpec(name string) *batchv1.JobSpec {
 	return &batchv1.JobSpec{
-		Selector: &metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				"app": name,
-			},
-		},
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
