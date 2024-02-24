@@ -59,18 +59,20 @@ func init() {
 // GetAzureADWorkloadIdentityToken returns the AADToken for resource
 func GetAzureADWorkloadIdentityToken(ctx context.Context, identityID, identityTenantID, identityAuthorityHost, resource string) (AADToken, error) {
 	clientID := DefaultClientID
+	tenantID := DefaultTenantID
+	authorityHost := DefaultAuthorityHost
+
 	if identityID != "" {
 		clientID = identityID
 	}
 
-	tenantID := DefaultTenantID
 	if identityTenantID != "" {
 		tenantID = identityTenantID
-	}
 
-	authorityHost := DefaultAuthorityHost
-	if identityAuthorityHost != "" {
-		authorityHost = identityAuthorityHost
+		// override the authority host only if provided and tenant id is provided
+		if identityAuthorityHost != "" {
+			authorityHost = identityAuthorityHost
+		}
 	}
 
 	signedAssertion, err := readJWTFromFileSystem(TokenFilePath)
