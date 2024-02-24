@@ -17,19 +17,3 @@
 - op: replace
   path: /spec/template/spec/containers/0/resources/requests/cpu
   value: 500m
-
-- op: add
-  path: /spec/template/spec/containers/0/args/-
-  value: --enable-opentelemetry-metrics=true
-
-- op: add
-  path: /spec/template/spec/containers/0/env/-
-  value:
-    name: OTEL_EXPORTER_OTLP_ENDPOINT
-    value: "http://opentelemetry-collector.open-telemetry-system.svc.cluster.local:4318"
-
-- op: add
-  path: /spec/template/spec/containers/0/env/-
-  value:
-    name: OTEL_METRIC_EXPORT_INTERVAL
-    value: "3000"
