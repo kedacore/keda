@@ -53,6 +53,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### New
 
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Cassandra Scaler**: Add TLS support for cassandra scaler ([#5534](https://github.com/kedacore/keda/issues/5534))
 
 #### Experimental
 
@@ -64,7 +65,6 @@ Here is an overview of all new **experimental** features:
 
 - **General**: Add command-line flag in Adapter to allow override of gRPC Authority Header ([#5449](https://github.com/kedacore/keda/issues/5449))
 - **General**: Add OPENTELEMETRY flag in e2e test YAML ([#5375](https://github.com/kedacore/keda/issues/5375))
-- **Cassandra Scaler**: Add TLS support for cassandra scaler ([#5534] (https://github.com/kedacore/keda/issues/5534))
 
 ### Fixes
 
