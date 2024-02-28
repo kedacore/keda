@@ -53,7 +53,7 @@ func ValidateTriggers(triggers []ScaleTriggers) error {
 	triggersCount := len(triggers)
 
 	if triggersCount == 0 {
-		return fmt.Errorf("no triggers defined in the ScaledObject")
+		return fmt.Errorf("no triggers defined in the ScaledObject/ScaledJob")
 	}
 
 	if triggers != nil && triggersCount > 0 {
@@ -71,7 +71,7 @@ func ValidateTriggers(triggers []ScaleTriggers) error {
 			if name != "" {
 				if _, found := triggerNames[name]; found {
 					// found duplicate name
-					return fmt.Errorf("triggerName %q is defined multiple times in the ScaledObject, but it must be unique", name)
+					return fmt.Errorf("triggerName %q is defined multiple times in the ScaledObject/ScaledJob, but it must be unique", name)
 				}
 				triggerNames[name] = true
 			}
