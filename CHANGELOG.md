@@ -67,6 +67,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
+- **General**: Validate empty array value of triggers in ScaledObject/ScaledJob creation ([#5520](https://github.com/kedacore/keda/issues/5520))
 - **GCP Scalers**: Properly close the connection during the scaler cleaning process ([#5448](https://github.com/kedacore/keda/issues/5448))
 - **GCP Scalers**: Restore previous time horizon to prevent querying issues ([#5429](https://github.com/kedacore/keda/issues/5429))
 - **Prometheus Scaler**: Fix for missing AWS region from metadata ([#5419](https://github.com/kedacore/keda/issues/5419))
@@ -143,7 +144,6 @@ Here is an overview of all new **experimental** features:
 - **General**: Prevented stuck status due to timeouts during scalers generation ([#5083](https://github.com/kedacore/keda/issues/5083))
 - **General**: ScaledObject Validating Webhook should support `dry-run=server` requests ([#5306](https://github.com/kedacore/keda/issues/5306))
 - **General**: Set `LeaderElectionNamespace` to PodNamespace so leader election works in OutOfCluster mode ([#5404](https://github.com/kedacore/keda/issues/5404))
-- **General**: Validate empty array value of triggers in ScaledObject creation ([#5520](https://github.com/kedacore/keda/issues/5520))
 - **AWS Scalers**: Ensure session tokens are included when instantiating AWS credentials ([#5156](https://github.com/kedacore/keda/issues/5156))
 - **Azure Event Hub Scaler**: Improve unprocessedEventThreshold calculation ([#4250](https://github.com/kedacore/keda/issues/4250))
 - **Azure Pipelines**: Prevent HTTP 400 errors due to `poolName` with spaces ([#5107](https://github.com/kedacore/keda/issues/5107))
