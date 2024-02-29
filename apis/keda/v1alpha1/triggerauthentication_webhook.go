@@ -127,7 +127,7 @@ func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
 				return nil, fmt.Errorf("identityTenantId of PodIdentity should not be empty. If it's set, identityTenantId has to be different than \"\"")
 			}
 		case PodIdentityProviderAws:
-			if spec.PodIdentity.RoleArn != nil && spec.PodIdentity.IsWorkloadIdentityOwner() {
+			if spec.PodIdentity.RoleArn != nil && spec.PodIdentity.RoleArn != "" && spec.PodIdentity.IsWorkloadIdentityOwner() {
 				return nil, fmt.Errorf("roleArn of PodIdentity can't be set if KEDA isn't identityOwner")
 			}
 		default:
