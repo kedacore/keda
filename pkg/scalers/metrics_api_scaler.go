@@ -73,7 +73,7 @@ const (
 
 type APIFormat string
 
-// Enum for APIFormat:
+// Options for APIFormat:
 const (
 	PrometheusFormat APIFormat = "prometheus"
 	JSONFormat       APIFormat = "json"
