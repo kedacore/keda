@@ -185,7 +185,7 @@ func verifyHpas(incomingSo *ScaledObject, action string, _ bool) error {
 	}
 
 	for _, hpa := range hpaList.Items {
-		if hpa.ObjectMeta.Annotations[ValidationsSharedOwnershipAnnotation] == "false" {
+		if hpa.ObjectMeta.Annotations[ValidationsHpaOwnershipAnnotation] == "false" {
 			continue
 		}
 		val, _ := json.MarshalIndent(hpa, "", "  ")

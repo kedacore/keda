@@ -53,7 +53,7 @@ type ScaledObject struct {
 
 const ScaledObjectOwnerAnnotation = "scaledobject.keda.sh/name"
 const ScaledObjectTransferHpaOwnershipAnnotation = "scaledobject.keda.sh/transfer-hpa-ownership"
-const ValidationsSharedOwnershipAnnotation = "validations.keda.sh/shared-ownership"
+const ValidationsHpaOwnershipAnnotation = "validations.keda.sh/hpa-ownership"
 const PausedReplicasAnnotation = "autoscaling.keda.sh/paused-replicas"
 const PausedAnnotation = "autoscaling.keda.sh/paused"
 
