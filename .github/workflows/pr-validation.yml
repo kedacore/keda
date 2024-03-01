@@ -90,7 +90,7 @@ jobs:
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - uses: dorny/paths-filter@0bc4621a3135347011ad047f9ecf449bf72ce2bd # v3
+      - uses: dorny/paths-filter@ebc4d7e9ebcb0b1eb21480bb8f43113e996ac77a # v3
         id: filter
         with:
           filters: |
@@ -118,7 +118,7 @@ jobs:
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - uses: dorny/paths-filter@0bc4621a3135347011ad047f9ecf449bf72ce2bd # v3
+      - uses: dorny/paths-filter@ebc4d7e9ebcb0b1eb21480bb8f43113e996ac77a # v3
         id: filter
         with:
           filters: |
