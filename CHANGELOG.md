@@ -16,6 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.13.1](#v2131)
 - [v2.13.0](#v2130)
 - [v2.12.1](#v2121)
 - [v2.12.0](#v2120)
@@ -68,10 +69,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
-- **General**: Fix release asset should specify the version in `keda-*-core.yaml`([#5484](https://github.com/kedacore/keda/issues/5484))
-- **GCP Scalers**: Properly close the connection during the scaler cleaning process ([#5448](https://github.com/kedacore/keda/issues/5448))
-- **GCP Scalers**: Restore previous time horizon to prevent querying issues ([#5429](https://github.com/kedacore/keda/issues/5429))
-- **Prometheus Scaler**: Fix for missing AWS region from metadata ([#5419](https://github.com/kedacore/keda/issues/5419))
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ### Deprecations
 
@@ -91,6 +89,15 @@ New deprecation(s):
 - **General**: Introduce ENABLE_OPENTELEMETRY in deploying/testing process  ([#5375](https://github.com/kedacore/keda/issues/5375))
 - **General**: Migrate away from unmaintained golang/mock and use uber/gomock ([#5440](https://github.com/kedacore/keda/issues/5440))
 - **General**: Minor refactor to reduce copy/paste code in ScaledObject webhook ([#5397](https://github.com/kedacore/keda/issues/5397))
+
+## v2.13.1
+
+### Fixes
+
+- **General**: Fix release asset should specify the version in `keda-*-core.yaml`([#5484](https://github.com/kedacore/keda/issues/5484))
+- **GCP Scalers**: Properly close the connection during the scaler cleaning process ([#5448](https://github.com/kedacore/keda/issues/5448))
+- **GCP Scalers**: Restore previous time horizon to prevent querying issues ([#5429](https://github.com/kedacore/keda/issues/5429))
+- **Prometheus Scaler**: Fix for missing AWS region from metadata ([#5419](https://github.com/kedacore/keda/issues/5419))
 
 ## v2.13.0
 
