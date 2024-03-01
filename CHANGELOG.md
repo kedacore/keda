@@ -65,6 +65,7 @@ Here is an overview of all new **experimental** features:
 
 - **General**: Add command-line flag in Adapter to allow override of gRPC Authority Header ([#5449](https://github.com/kedacore/keda/issues/5449))
 - **General**: Add OPENTELEMETRY flag in e2e test YAML ([#5375](https://github.com/kedacore/keda/issues/5375))
+- **General**: Renamed Prometheus metrics to include units and `total` where approriate ([#4854](https://github.com/kedacore/keda/issues/4854))
 
 ### Fixes
 
@@ -76,7 +77,7 @@ You can find all deprecations in [this overview](https://github.com/kedacore/ked
 
 New deprecation(s):
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- Various Prometheus metrics have been renamed to follow the preferred naming conventions. The old ones are still available, but will be removed in the future ([#4854](https://github.com/kedacore/keda/issues/4854)).
 
 ### Breaking Changes
 
