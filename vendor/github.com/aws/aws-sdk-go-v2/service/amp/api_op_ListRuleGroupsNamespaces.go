@@ -6,13 +6,12 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/amp/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Lists rule groups namespaces.
+// Returns a list of rule groups namespaces in a workspace.
 func (c *Client) ListRuleGroupsNamespaces(ctx context.Context, params *ListRuleGroupsNamespacesInput, optFns ...func(*Options)) (*ListRuleGroupsNamespacesOutput, error) {
 	if params == nil {
 		params = &ListRuleGroupsNamespacesInput{}
@@ -31,20 +30,25 @@ func (c *Client) ListRuleGroupsNamespaces(ctx context.Context, params *ListRuleG
 // Represents the input of a ListRuleGroupsNamespaces operation.
 type ListRuleGroupsNamespacesInput struct {
 
-	// The ID of the workspace.
+	// The ID of the workspace containing the rule groups namespaces.
 	//
 	// This member is required.
 	WorkspaceId *string
 
-	// Maximum results to return in response (default=100, maximum=1000).
+	// The maximum number of results to return. The default is 100.
 	MaxResults *int32
 
-	// Optional filter for rule groups namespace name. Only the rule groups namespace
-	// that begin with this value will be returned.
+	// Use this parameter to filter the rule groups namespaces that are returned. Only
+	// the namespaces with names that begin with the value that you specify are
+	// returned.
 	Name *string
 
-	// Pagination token to request the next page in a paginated list. This token is
-	// obtained from the output of the previous ListRuleGroupsNamespaces request.
+	// The token for the next set of items to return. You receive this token from a
+	// previous call, and use it to get the next page of results. The other parameters
+	// must be the same as the initial call. For example, if your initial request has
+	// maxResults of 10, and there are 12 rule groups namespaces to return, then your
+	// initial request will return 10 and a nextToken . Using the next token in a
+	// subsequent call will return the remaining 2 namespaces.
 	NextToken *string
 
 	noSmithyDocumentSerde
@@ -53,12 +57,14 @@ type ListRuleGroupsNamespacesInput struct {
 // Represents the output of a ListRuleGroupsNamespaces operation.
 type ListRuleGroupsNamespacesOutput struct {
 
-	// The list of the selected rule groups namespaces.
+	// The returned list of rule groups namespaces.
 	//
 	// This member is required.
 	RuleGroupsNamespaces []types.RuleGroupsNamespaceSummary
 
-	// Pagination token to use when requesting the next page in this list.
+	// A token indicating that there are more results to retrieve. You can use this
+	// token as part of your next ListRuleGroupsNamespaces request to retrieve those
+	// results.
 	NextToken *string
 
 	// Metadata pertaining to the operation's result.
@@ -89,25 +95,25 @@ func (c *Client) addOperationListRuleGroupsNamespacesMiddlewares(stack *middlewa
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -128,7 +134,7 @@ func (c *Client) addOperationListRuleGroupsNamespacesMiddlewares(stack *middlewa
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListRuleGroupsNamespaces(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -157,7 +163,7 @@ var _ ListRuleGroupsNamespacesAPIClient = (*Client)(nil)
 // ListRuleGroupsNamespacesPaginatorOptions is the paginator options for
 // ListRuleGroupsNamespaces
 type ListRuleGroupsNamespacesPaginatorOptions struct {
-	// Maximum results to return in response (default=100, maximum=1000).
+	// The maximum number of results to return. The default is 100.
 	Limit int32
 
 	// Set to true if pagination should stop if the service returns a pagination token
