@@ -26,14 +26,14 @@ The value must contain a scheme ("http" or "https") and host.
 The value may additionally contain a port and a path.
 The value should not contain a query string or fragment.
 The configuration can be overridden by OTEL_EXPORTER_OTLP_METRICS_ENDPOINT
-environment variable and by [WithEndpoint], [WithInsecure] options.
+environment variable and by [WithEndpoint], [WithEndpointURL], and [WithInsecure] options.
 
 OTEL_EXPORTER_OTLP_METRICS_ENDPOINT (default: "https://localhost:4318/v1/metrics") -
 target URL to which the exporter sends telemetry.
 The value must contain a scheme ("http" or "https") and host.
 The value may additionally contain a port and a path.
 The value should not contain a query string or fragment.
-The configuration can be overridden by [WithEndpoint], [WitnInsecure], [WithURLPath] options.
+The configuration can be overridden by [WithEndpoint], [WithEndpointURL], [WitnInsecure], and [WithURLPath] options.
 
 OTEL_EXPORTER_OTLP_HEADERS, OTEL_EXPORTER_OTLP_METRICS_HEADERS (default: none) -
 key-value pairs used as headers associated with HTTP requests.

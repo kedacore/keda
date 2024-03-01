@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package metric // import "go.opentelemetry.io/otel/sdk/metric"
-
-// version is the current release version of the metric SDK in use.
-func version() string {
-	return "1.24.0"
-}
+// Package exemplar provides an implementation of the OpenTelemetry exemplar
+// reservoir to be used in metric collection pipelines.
+package exemplar // import "go.opentelemetry.io/otel/sdk/metric/internal/exemplar"

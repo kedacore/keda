@@ -15,6 +15,7 @@
 package metricdata // import "go.opentelemetry.io/otel/sdk/metric/metricdata"
 
 import (
+	"encoding/json"
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -209,6 +210,19 @@ type ExponentialBucket struct {
 type Extrema[N int64 | float64] struct {
 	value N
 	valid bool
+}
+
+// MarshalText converts the Extrema value to text.
+func (e Extrema[N]) MarshalText() ([]byte, error) {
+	if !e.valid {
+		return json.Marshal(nil)
+	}
+	return json.Marshal(e.value)
+}
+
+// MarshalJSON converts the Extrema value to JSON number.
+func (e *Extrema[N]) MarshalJSON() ([]byte, error) {
+	return e.MarshalText()
 }
 
 // NewExtrema returns an Extrema set to v.

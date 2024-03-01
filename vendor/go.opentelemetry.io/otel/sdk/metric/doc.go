@@ -44,4 +44,7 @@
 //
 // See [go.opentelemetry.io/otel/metric] for more information about
 // the metric API.
+//
+// See [go.opentelemetry.io/otel/sdk/metric/internal/x] for information about
+// the experimental features.
 package metric // import "go.opentelemetry.io/otel/sdk/metric"

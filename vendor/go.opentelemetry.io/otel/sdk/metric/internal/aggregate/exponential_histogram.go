@@ -23,6 +23,7 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/sdk/metric/internal/exemplar"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
 
@@ -40,6 +41,8 @@ const (
 
 // expoHistogramDataPoint is a single data point in an exponential histogram.
 type expoHistogramDataPoint[N int64 | float64] struct {
+	res exemplar.Reservoir[N]
+
 	count uint64
 	min   N
 	max   N
@@ -288,13 +291,14 @@ func (b *expoBuckets) downscale(delta int) {
 // newExponentialHistogram returns an Aggregator that summarizes a set of
 // measurements as an exponential histogram. Each histogram is scoped by attributes
 // and the aggregation cycle the measurements were made in.
-func newExponentialHistogram[N int64 | float64](maxSize, maxScale int32, noMinMax, noSum bool, limit int) *expoHistogram[N] {
+func newExponentialHistogram[N int64 | float64](maxSize, maxScale int32, noMinMax, noSum bool, limit int, r func() exemplar.Reservoir[N]) *expoHistogram[N] {
 	return &expoHistogram[N]{
 		noSum:    noSum,
 		noMinMax: noMinMax,
 		maxSize:  int(maxSize),
 		maxScale: int(maxScale),
 
+		newRes: r,
 		limit:  newLimiter[*expoHistogramDataPoint[N]](limit),
 		values: make(map[attribute.Set]*expoHistogramDataPoint[N]),
 
@@ -310,6 +314,7 @@ type expoHistogram[N int64 | float64] struct {
 	maxSize  int
 	maxScale int
 
+	newRes   func() exemplar.Reservoir[N]
 	limit    limiter[*expoHistogramDataPoint[N]]
 	values   map[attribute.Set]*expoHistogramDataPoint[N]
 	valuesMu sync.Mutex
@@ -317,22 +322,27 @@ type expoHistogram[N int64 | float64] struct {
 	start time.Time
 }
 
-func (e *expoHistogram[N]) measure(_ context.Context, value N, attr attribute.Set) {
+func (e *expoHistogram[N]) measure(ctx context.Context, value N, fltrAttr attribute.Set, droppedAttr []attribute.KeyValue) {
 	// Ignore NaN and infinity.
 	if math.IsInf(float64(value), 0) || math.IsNaN(float64(value)) {
 		return
 	}
 
+	t := now()
+
 	e.valuesMu.Lock()
 	defer e.valuesMu.Unlock()
 
-	attr = e.limit.Attributes(attr, e.values)
+	attr := e.limit.Attributes(fltrAttr, e.values)
 	v, ok := e.values[attr]
 	if !ok {
 		v = newExpoHistogramDataPoint[N](e.maxSize, e.maxScale, e.noMinMax, e.noSum)
+		v.res = e.newRes()
+
 		e.values[attr] = v
 	}
 	v.record(value)
+	v.res.Offer(ctx, t, value, droppedAttr)
 }
 
 func (e *expoHistogram[N]) delta(dest *metricdata.Aggregation) int {
@@ -365,6 +375,7 @@ func (e *expoHistogram[N]) delta(dest *metricdata.Aggregation) int {
 
 		hDPts[i].NegativeBucket.Offset = int32(b.negBuckets.startBin)
 		hDPts[i].NegativeBucket.Counts = reset(hDPts[i].NegativeBucket.Counts, len(b.negBuckets.counts), len(b.negBuckets.counts))
+		copy(hDPts[i].NegativeBucket.Counts, b.negBuckets.counts)
 
 		if !e.noSum {
 			hDPts[i].Sum = b.sum
@@ -373,6 +384,8 @@ func (e *expoHistogram[N]) delta(dest *metricdata.Aggregation) int {
 			hDPts[i].Min = metricdata.NewExtrema(b.min)
 			hDPts[i].Max = metricdata.NewExtrema(b.max)
 		}
+
+		b.res.Collect(&hDPts[i].Exemplars)
 
 		delete(e.values, a)
 		i++
@@ -413,6 +426,7 @@ func (e *expoHistogram[N]) cumulative(dest *metricdata.Aggregation) int {
 
 		hDPts[i].NegativeBucket.Offset = int32(b.negBuckets.startBin)
 		hDPts[i].NegativeBucket.Counts = reset(hDPts[i].NegativeBucket.Counts, len(b.negBuckets.counts), len(b.negBuckets.counts))
+		copy(hDPts[i].NegativeBucket.Counts, b.negBuckets.counts)
 
 		if !e.noSum {
 			hDPts[i].Sum = b.sum
@@ -421,6 +435,8 @@ func (e *expoHistogram[N]) cumulative(dest *metricdata.Aggregation) int {
 			hDPts[i].Min = metricdata.NewExtrema(b.min)
 			hDPts[i].Max = metricdata.NewExtrema(b.max)
 		}
+
+		b.res.Collect(&hDPts[i].Exemplars)
 
 		i++
 		// TODO (#3006): This will use an unbounded amount of memory if there

@@ -21,10 +21,13 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/sdk/metric/internal/exemplar"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
 
 type buckets[N int64 | float64] struct {
+	res exemplar.Reservoir[N]
+
 	counts   []uint64
 	count    uint64
 	total    N
@@ -54,12 +57,13 @@ type histValues[N int64 | float64] struct {
 	noSum  bool
 	bounds []float64
 
+	newRes   func() exemplar.Reservoir[N]
 	limit    limiter[*buckets[N]]
 	values   map[attribute.Set]*buckets[N]
 	valuesMu sync.Mutex
 }
 
-func newHistValues[N int64 | float64](bounds []float64, noSum bool, limit int) *histValues[N] {
+func newHistValues[N int64 | float64](bounds []float64, noSum bool, limit int, r func() exemplar.Reservoir[N]) *histValues[N] {
 	// The responsibility of keeping all buckets correctly associated with the
 	// passed boundaries is ultimately this type's responsibility. Make a copy
 	// here so we can always guarantee this. Or, in the case of failure, have
@@ -70,6 +74,7 @@ func newHistValues[N int64 | float64](bounds []float64, noSum bool, limit int) *
 	return &histValues[N]{
 		noSum:  noSum,
 		bounds: b,
+		newRes: r,
 		limit:  newLimiter[*buckets[N]](limit),
 		values: make(map[attribute.Set]*buckets[N]),
 	}
@@ -77,7 +82,7 @@ func newHistValues[N int64 | float64](bounds []float64, noSum bool, limit int) *
 
 // Aggregate records the measurement value, scoped by attr, and aggregates it
 // into a histogram.
-func (s *histValues[N]) measure(_ context.Context, value N, attr attribute.Set) {
+func (s *histValues[N]) measure(ctx context.Context, value N, fltrAttr attribute.Set, droppedAttr []attribute.KeyValue) {
 	// This search will return an index in the range [0, len(s.bounds)], where
 	// it will return len(s.bounds) if value is greater than the last element
 	// of s.bounds. This aligns with the buckets in that the length of buckets
@@ -85,10 +90,12 @@ func (s *histValues[N]) measure(_ context.Context, value N, attr attribute.Set) 
 	// (s.bounds[len(s.bounds)-1], +∞).
 	idx := sort.SearchFloat64s(s.bounds, float64(value))
 
+	t := now()
+
 	s.valuesMu.Lock()
 	defer s.valuesMu.Unlock()
 
-	attr = s.limit.Attributes(attr, s.values)
+	attr := s.limit.Attributes(fltrAttr, s.values)
 	b, ok := s.values[attr]
 	if !ok {
 		// N+1 buckets. For example:
@@ -99,6 +106,8 @@ func (s *histValues[N]) measure(_ context.Context, value N, attr attribute.Set) 
 		//
 		//   buckets = (-∞, 0], (0, 5.0], (5.0, 10.0], (10.0, +∞)
 		b = newBuckets[N](len(s.bounds) + 1)
+		b.res = s.newRes()
+
 		// Ensure min and max are recorded values (not zero), for new buckets.
 		b.min, b.max = value, value
 		s.values[attr] = b
@@ -107,13 +116,14 @@ func (s *histValues[N]) measure(_ context.Context, value N, attr attribute.Set) 
 	if !s.noSum {
 		b.sum(value)
 	}
+	b.res.Offer(ctx, t, value, droppedAttr)
 }
 
 // newHistogram returns an Aggregator that summarizes a set of measurements as
 // an histogram.
-func newHistogram[N int64 | float64](boundaries []float64, noMinMax, noSum bool, limit int) *histogram[N] {
+func newHistogram[N int64 | float64](boundaries []float64, noMinMax, noSum bool, limit int, r func() exemplar.Reservoir[N]) *histogram[N] {
 	return &histogram[N]{
-		histValues: newHistValues[N](boundaries, noSum, limit),
+		histValues: newHistValues[N](boundaries, noSum, limit, r),
 		noMinMax:   noMinMax,
 		start:      now(),
 	}
@@ -163,6 +173,8 @@ func (s *histogram[N]) delta(dest *metricdata.Aggregation) int {
 			hDPts[i].Min = metricdata.NewExtrema(b.min)
 			hDPts[i].Max = metricdata.NewExtrema(b.max)
 		}
+
+		b.res.Collect(&hDPts[i].Exemplars)
 
 		// Unused attribute sets do not report.
 		delete(s.values, a)
@@ -220,6 +232,9 @@ func (s *histogram[N]) cumulative(dest *metricdata.Aggregation) int {
 			hDPts[i].Min = metricdata.NewExtrema(b.min)
 			hDPts[i].Max = metricdata.NewExtrema(b.max)
 		}
+
+		b.res.Collect(&hDPts[i].Exemplars)
+
 		i++
 		// TODO (#3006): This will use an unbounded amount of memory if there
 		// are unbounded number of attribute sets being aggregated. Attribute

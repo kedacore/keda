@@ -20,6 +20,7 @@ package oconf // import "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlp
 import (
 	"crypto/tls"
 	"fmt"
+	"net/url"
 	"path"
 	"strings"
 	"time"
@@ -31,6 +32,7 @@ import (
 	"google.golang.org/grpc/encoding/gzip"
 
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp/internal/retry"
+	"go.opentelemetry.io/otel/internal/global"
 	"go.opentelemetry.io/otel/sdk/metric"
 )
 
@@ -275,6 +277,24 @@ func NewGRPCOption(fn func(cfg Config) Config) GRPCOption {
 func WithEndpoint(endpoint string) GenericOption {
 	return newGenericOption(func(cfg Config) Config {
 		cfg.Metrics.Endpoint = endpoint
+		return cfg
+	})
+}
+
+func WithEndpointURL(v string) GenericOption {
+	return newGenericOption(func(cfg Config) Config {
+		u, err := url.Parse(v)
+		if err != nil {
+			global.Error(err, "otlpmetric: parse endpoint url", "url", v)
+			return cfg
+		}
+
+		cfg.Metrics.Endpoint = u.Host
+		cfg.Metrics.URLPath = u.Path
+		if u.Scheme != "https" {
+			cfg.Metrics.Insecure = true
+		}
+
 		return cfg
 	})
 }

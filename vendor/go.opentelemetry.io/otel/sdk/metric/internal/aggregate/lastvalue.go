@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/sdk/metric/internal/exemplar"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
 
@@ -27,10 +28,12 @@ import (
 type datapoint[N int64 | float64] struct {
 	timestamp time.Time
 	value     N
+	res       exemplar.Reservoir[N]
 }
 
-func newLastValue[N int64 | float64](limit int) *lastValue[N] {
+func newLastValue[N int64 | float64](limit int, r func() exemplar.Reservoir[N]) *lastValue[N] {
 	return &lastValue[N]{
+		newRes: r,
 		limit:  newLimiter[datapoint[N]](limit),
 		values: make(map[attribute.Set]datapoint[N]),
 	}
@@ -40,16 +43,28 @@ func newLastValue[N int64 | float64](limit int) *lastValue[N] {
 type lastValue[N int64 | float64] struct {
 	sync.Mutex
 
+	newRes func() exemplar.Reservoir[N]
 	limit  limiter[datapoint[N]]
 	values map[attribute.Set]datapoint[N]
 }
 
-func (s *lastValue[N]) measure(ctx context.Context, value N, attr attribute.Set) {
-	d := datapoint[N]{timestamp: now(), value: value}
+func (s *lastValue[N]) measure(ctx context.Context, value N, fltrAttr attribute.Set, droppedAttr []attribute.KeyValue) {
+	t := now()
+
 	s.Lock()
-	attr = s.limit.Attributes(attr, s.values)
+	defer s.Unlock()
+
+	attr := s.limit.Attributes(fltrAttr, s.values)
+	d, ok := s.values[attr]
+	if !ok {
+		d.res = s.newRes()
+	}
+
+	d.timestamp = t
+	d.value = value
+	d.res.Offer(ctx, t, value, droppedAttr)
+
 	s.values[attr] = d
-	s.Unlock()
 }
 
 func (s *lastValue[N]) computeAggregation(dest *[]metricdata.DataPoint[N]) {
@@ -66,6 +81,7 @@ func (s *lastValue[N]) computeAggregation(dest *[]metricdata.DataPoint[N]) {
 		// ignored.
 		(*dest)[i].Time = v.timestamp
 		(*dest)[i].Value = v.value
+		v.res.Collect(&(*dest)[i].Exemplars)
 		// Do not report stale values.
 		delete(s.values, a)
 		i++
