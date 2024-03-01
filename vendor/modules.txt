@@ -862,7 +862,7 @@ github.com/jackc/pgpassfile
 # github.com/jackc/pgservicefile v0.0.0-20231201235250-de7065d80cb9
 ## explicit; go 1.14
 github.com/jackc/pgservicefile
-# github.com/jackc/pgx/v5 v5.5.2
+# github.com/jackc/pgx/v5 v5.5.3
 ## explicit; go 1.19
 github.com/jackc/pgx/v5
 github.com/jackc/pgx/v5/internal/anynil
