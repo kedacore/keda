@@ -57,6 +57,8 @@ spec:
                 properties:
                   excludedEventTypes:
                     items:
+                      description: CloudEventType contains the list of cloudevent
+                        types
                       enum:
                       - keda.scaledobject.ready.v1
                       - keda.scaledobject.failed.v1
@@ -64,6 +66,8 @@ spec:
                     type: array
                   includedEventTypes:
                     items:
+                      description: CloudEventType contains the list of cloudevent
+                        types
                       enum:
                       - keda.scaledobject.ready.v1
                       - keda.scaledobject.failed.v1
