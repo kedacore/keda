@@ -1,6 +1,6 @@
 package runtime
 
-//go:generate sh -c "go run ./helpers > ./generated.go"
+//go:generate sh -c "go run ./helpers > ./helpers[generated].go"
 
 import (
 	"fmt"

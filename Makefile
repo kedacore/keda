@@ -6,7 +6,7 @@ SHELL           = /bin/bash
 # If E2E_IMAGE_TAG is defined, we are on pr e2e test and we have to use the new tag and append -test to the repository
 ifeq '${E2E_IMAGE_TAG}' ''
 VERSION ?= main
-# SUFIX here is intentional empty to not append nothing to the repository
+# SUFFIX here is intentional empty to not append nothing to the repository
 SUFFIX =
 endif
 
@@ -188,7 +188,11 @@ pkg/scalers/liiklus/mocks/mock_liiklus.go:
 
 ##@ Build
 
-build: generate fmt vet manager adapter webhooks ## Build Operator (manager), Metrics Server (adapter) and Admision Web Hooks (webhooks) binaries.
+build: update-mod generate fmt vet manager adapter webhooks ## Build Operator (manager), Metrics Server (adapter) and Admision Web Hooks (webhooks) binaries.
+
+update-mod:
+	go mod tidy
+	go mod vendor
 
 manager: generate
 	${GO_BUILD_VARS} go build -ldflags $(GO_LDFLAGS) -mod=vendor -o bin/keda cmd/operator/main.go
@@ -233,6 +237,7 @@ release: manifests kustomize set-version ## Produce new KEDA release in keda-$(V
 	# Need this workaround to mitigate a problem with inserting labels into selectors,
 	# until this issue is solved: https://github.com/kubernetes-sigs/kustomize/issues/1009
 	@sed -i".out" -e 's@version:[ ].*@version: $(VERSION)@g' config/default/kustomize-config/metadataLabelTransformer.yaml
+	@sed -i".out" -e 's@version:[ ].*@version: $(VERSION)@g' config/minimal/kustomize-config/metadataLabelTransformer.yaml
 	rm -rf config/default/kustomize-config/metadataLabelTransformer.yaml.out
 	$(KUSTOMIZE) build config/default > keda-$(VERSION).yaml
 	$(KUSTOMIZE) build config/minimal > keda-$(VERSION)-core.yaml
@@ -287,6 +292,10 @@ deploy: install ## Deploy controller to the K8s cluster specified in ~/.kube/con
 		cd config/service_account && \
 		$(KUSTOMIZE) edit add annotation --force cloud.google.com/workload-identity-provider:${GCP_WI_PROVIDER} cloud.google.com/service-account-email:${TF_GCP_SA_EMAIL} cloud.google.com/gcloud-run-as-user:${NON_ROOT_USER_ID} cloud.google.com/injection-mode:direct; \
 	fi
+	if [ "$(ENABLE_OPENTELEMETRY)" = true ]; then \
+		cd config/e2e && \
+		$(KUSTOMIZE) edit add patch --path opentelemetry/patch_operator.yml --group apps --kind Deployment --name keda-operator --version v1; \
+	fi
 
 	cd config/webhooks && \
 	$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-admission-webhooks=${IMAGE_WEBHOOKS}
@@ -332,7 +341,7 @@ $(ENVTEST): $(LOCALBIN)
 .PHONY: mockgen
 mockgen: $(MOCKGEN) ## Install mockgen from vendor dir if necessary.
 $(MOCKGEN): $(LOCALBIN)
-	test -s $(LOCALBIN)/mockgen || GOBIN=$(LOCALBIN) go install github.com/golang/mock/mockgen
+	test -s $(LOCALBIN)/mockgen || GOBIN=$(LOCALBIN) go install go.uber.org/mock/mockgen
 
 .PHONY: protoc-gen
 protoc-gen: $(PROTOCGEN) $(PROTOCGEN_GRPC) ## Install protoc-gen from vendor dir if necessary.

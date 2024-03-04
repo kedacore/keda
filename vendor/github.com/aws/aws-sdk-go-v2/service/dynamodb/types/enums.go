@@ -2,6 +2,25 @@
 
 package types
 
+type ApproximateCreationDateTimePrecision string
+
+// Enum values for ApproximateCreationDateTimePrecision
+const (
+	ApproximateCreationDateTimePrecisionMillisecond ApproximateCreationDateTimePrecision = "MILLISECOND"
+	ApproximateCreationDateTimePrecisionMicrosecond ApproximateCreationDateTimePrecision = "MICROSECOND"
+)
+
+// Values returns all known values for ApproximateCreationDateTimePrecision. Note
+// that this can be expanded in the future, and so it is only as up to date as the
+// client. The ordering of this slice is not guaranteed to be stable across
+// updates.
+func (ApproximateCreationDateTimePrecision) Values() []ApproximateCreationDateTimePrecision {
+	return []ApproximateCreationDateTimePrecision{
+		"MILLISECOND",
+		"MICROSECOND",
+	}
+}
+
 type AttributeAction string
 
 // Enum values for AttributeAction
@@ -265,6 +284,7 @@ const (
 	DestinationStatusDisabling    DestinationStatus = "DISABLING"
 	DestinationStatusDisabled     DestinationStatus = "DISABLED"
 	DestinationStatusEnableFailed DestinationStatus = "ENABLE_FAILED"
+	DestinationStatusUpdating     DestinationStatus = "UPDATING"
 )
 
 // Values returns all known values for DestinationStatus. Note that this can be
@@ -277,6 +297,7 @@ func (DestinationStatus) Values() []DestinationStatus {
 		"DISABLING",
 		"DISABLED",
 		"ENABLE_FAILED",
+		"UPDATING",
 	}
 }
 

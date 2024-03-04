@@ -133,6 +133,7 @@ type MemberNode struct {
 	Node     Node // Node of the member access. Like "foo" in "foo.bar".
 	Property Node // Property of the member access. For property access it is a StringNode.
 	Optional bool // If true then the member access is optional. Like "foo?.bar".
+	Method   bool
 }
 
 // SliceNode represents access to a slice of an array.

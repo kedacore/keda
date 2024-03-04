@@ -126,3 +126,16 @@ func WithBlockingCallback() Option {
 		return nil
 	}
 }
+
+// WithAckMalformedevents causes malformed events received within StartReceiver to be acknowledged
+// rather than being permanently not-acknowledged. This can be useful when a protocol does not
+// provide a responder implementation and would otherwise cause the receiver to be partially or
+// fully stuck.
+func WithAckMalformedEvent() Option {
+	return func(i interface{}) error {
+		if c, ok := i.(*ceClient); ok {
+			c.ackMalformedEvent = true
+		}
+		return nil
+	}
+}
