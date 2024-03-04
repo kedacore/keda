@@ -57,10 +57,16 @@ spec:
                 properties:
                   excludedEventTypes:
                     items:
+                      enum:
+                      - keda.scaledobject.ready.v1
+                      - keda.scaledobject.failed.v1
                       type: string
                     type: array
                   includedEventTypes:
                     items:
+                      enum:
+                      - keda.scaledobject.ready.v1
+                      - keda.scaledobject.failed.v1
                       type: string
                     type: array
                 type: object

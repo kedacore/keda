@@ -29,6 +29,7 @@ var (
 	scaledObjectName           = fmt.Sprintf("%s-so", testName)
 	clientName                 = fmt.Sprintf("%s-client", testName)
 	cloudeventSourceName       = fmt.Sprintf("%s-ce", testName)
+	cloudeventSourceErrName    = fmt.Sprintf("%s-ce-err", testName)
 	cloudEventHTTPReceiverName = fmt.Sprintf("%s-cloudevent-http-receiver", testName)
 	cloudEventHTTPServiceName  = fmt.Sprintf("%s-cloudevent-http-service", testName)
 	cloudEventHTTPServiceURL   = fmt.Sprintf("http://%s.%s.svc.cluster.local:8899", cloudEventHTTPServiceName, namespace)
@@ -43,6 +44,7 @@ type templateData struct {
 	ScaledObject               string
 	ClientName                 string
 	CloudEventSourceName       string
+	CloudeventSourceErrName    string
 	CloudEventHTTPReceiverName string
 	CloudEventHTTPServiceName  string
 	CloudEventHTTPServiceURL   string
@@ -172,6 +174,22 @@ spec:
       - sh
       - -c
       - "exec tail -f /dev/null"`
+
+	cloudEventSourceWithErrTypeTemplate = `
+    apiVersion: eventing.keda.sh/v1alpha1
+    kind: CloudEventSource
+    metadata:
+      name: {{.CloudeventSourceErrName}}
+      namespace: {{.TestNamespace}}
+    spec:
+      clusterName: {{.ClusterName}}
+      destination:
+        http:
+          uri: {{.CloudEventHTTPServiceURL}}
+      eventSubscription:
+        includedEventTypes:
+        - keda.scaledobject.failed.v2
+    `
 )
 
 func TestScaledObjectGeneral(t *testing.T) {
@@ -187,6 +205,7 @@ func TestScaledObjectGeneral(t *testing.T) {
 	testErrEventSourceEmitValue(t, kc, data)
 	testErrEventSourceExcludeValue(t, kc, data)
 	testErrEventSourceIncludeValue(t, kc, data)
+	testErrEventSourceCreation(t, kc, data)
 
 	DeleteKubernetesResources(t, namespace, data, templates)
 }
@@ -303,6 +322,18 @@ func testErrEventSourceIncludeValue(t *testing.T, _ *kubernetes.Clientset, data 
 	KubectlApplyWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
 }
 
+// tests error event type when creation
+func testErrEventSourceCreation(t *testing.T, _ *kubernetes.Clientset, data templateData) {
+	t.Log("--- test emitting eventsource about scaledobject err with include filter---")
+
+	KubectlDeleteWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
+
+	err := KubectlApplyWithErrors(t, data, "cloudEventSourceWithErrTypeTemplate", cloudEventSourceWithErrTypeTemplate)
+	assert.ErrorContains(t, err, `The CloudEventSource "eventsource-test-ce-err" is invalid:`)
+
+	KubectlApplyWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
+}
+
 // help function to load template data
 func getTemplateData() (templateData, []Template) {
 	return templateData{
@@ -310,6 +341,7 @@ func getTemplateData() (templateData, []Template) {
 			ScaledObject:               scaledObjectName,
 			ClientName:                 clientName,
 			CloudEventSourceName:       cloudeventSourceName,
+			CloudeventSourceErrName:    cloudeventSourceErrName,
 			CloudEventHTTPReceiverName: cloudEventHTTPReceiverName,
 			CloudEventHTTPServiceName:  cloudEventHTTPServiceName,
 			CloudEventHTTPServiceURL:   cloudEventHTTPServiceURL,

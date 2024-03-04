@@ -161,12 +161,12 @@ func (in *EventSubscription) DeepCopyInto(out *EventSubscription) {
 	*out = *in
 	if in.IncludedEventTypes != nil {
 		in, out := &in.IncludedEventTypes, &out.IncludedEventTypes
-		*out = make([]string, len(*in))
+		*out = make([]CloudEventType, len(*in))
 		copy(*out, *in)
 	}
 	if in.ExcludedEventTypes != nil {
 		in, out := &in.ExcludedEventTypes, &out.ExcludedEventTypes
-		*out = make([]string, len(*in))
+		*out = make([]CloudEventType, len(*in))
 		copy(*out, *in)
 	}
 }

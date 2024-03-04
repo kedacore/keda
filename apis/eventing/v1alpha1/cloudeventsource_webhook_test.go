@@ -189,18 +189,18 @@ func createNamespace(name string) *v1.Namespace {
 	}
 }
 
-func createCloudEventSourceSpecWithExcludeEventType(eventtype string) CloudEventSourceSpec {
+func createCloudEventSourceSpecWithExcludeEventType(eventtype CloudEventType) CloudEventSourceSpec {
 	return CloudEventSourceSpec{
 		EventSubscription: EventSubscription{
-			ExcludedEventTypes: []string{eventtype},
+			ExcludedEventTypes: []CloudEventType{eventtype},
 		},
 	}
 }
 
-func createCloudEventSourceSpecWithIncludeEventType(eventtype string) CloudEventSourceSpec {
+func createCloudEventSourceSpecWithIncludeEventType(eventtype CloudEventType) CloudEventSourceSpec {
 	return CloudEventSourceSpec{
 		EventSubscription: EventSubscription{
-			IncludedEventTypes: []string{eventtype},
+			IncludedEventTypes: []CloudEventType{eventtype},
 		},
 	}
 }

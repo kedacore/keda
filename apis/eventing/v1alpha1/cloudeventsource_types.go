@@ -76,10 +76,10 @@ type CloudEventHTTP struct {
 // EventSubscription defines filters for events
 type EventSubscription struct {
 	// +optional
-	IncludedEventTypes []string `json:"includedEventTypes,omitempty"`
+	IncludedEventTypes []CloudEventType `json:"includedEventTypes,omitempty"`
 
 	// +optional
-	ExcludedEventTypes []string `json:"excludedEventTypes,omitempty"`
+	ExcludedEventTypes []CloudEventType `json:"excludedEventTypes,omitempty"`
 }
 
 func init() {

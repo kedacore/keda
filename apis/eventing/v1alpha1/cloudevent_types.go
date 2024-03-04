@@ -16,12 +16,16 @@ limitations under the License.
 
 package v1alpha1
 
+// CloudEventType contains the list of cloudevent types
+// +kubebuilder:validation:Enum=keda.scaledobject.ready.v1;keda.scaledobject.failed.v1
+type CloudEventType string
+
 const (
 	// ScaledObjectReadyType is for event when a new ScaledObject is ready
-	ScaledObjectReadyType = "keda.scaledobject.ready.v1"
+	ScaledObjectReadyType CloudEventType = "keda.scaledobject.ready.v1"
 
 	// ScaledObjectFailedType is for event when creating ScaledObject failed
-	ScaledObjectFailedType = "keda.scaledobject.failed.v1"
+	ScaledObjectFailedType CloudEventType = "keda.scaledobject.failed.v1"
 )
 
-var AllEventTypes = []string{ScaledObjectFailedType, ScaledObjectReadyType}
+var AllEventTypes = []CloudEventType{ScaledObjectFailedType, ScaledObjectReadyType}

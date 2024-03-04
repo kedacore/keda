@@ -16,15 +16,19 @@ limitations under the License.
 
 package eventemitter
 
+import (
+	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
+)
+
 // EventFilter defines the behavior for different event handlers
 type EventFilter struct {
-	IncludedEventTypes []string
+	IncludedEventTypes []eventingv1alpha1.CloudEventType
 
-	ExcludedEventTypes []string
+	ExcludedEventTypes []eventingv1alpha1.CloudEventType
 }
 
 // NewEventFilter creates a new EventFilter
-func NewEventFilter(includedEventTypes []string, excludedEventTypes []string) *EventFilter {
+func NewEventFilter(includedEventTypes []eventingv1alpha1.CloudEventType, excludedEventTypes []eventingv1alpha1.CloudEventType) *EventFilter {
 	return &EventFilter{
 		IncludedEventTypes: includedEventTypes,
 		ExcludedEventTypes: excludedEventTypes,
@@ -32,7 +36,7 @@ func NewEventFilter(includedEventTypes []string, excludedEventTypes []string) *E
 }
 
 // FilterEvent returns true if the event should be handled
-func (e *EventFilter) FilterEvent(eventType string) bool {
+func (e *EventFilter) FilterEvent(eventType eventingv1alpha1.CloudEventType) bool {
 	if len(e.IncludedEventTypes) > 0 {
 		return e.filterIncludedEventTypes(eventType)
 	}
@@ -45,7 +49,7 @@ func (e *EventFilter) FilterEvent(eventType string) bool {
 }
 
 // FilterIncludedEventTypes returns true if the event included in the includedEventTypes
-func (e *EventFilter) filterIncludedEventTypes(eventType string) bool {
+func (e *EventFilter) filterIncludedEventTypes(eventType eventingv1alpha1.CloudEventType) bool {
 	for _, includedEventType := range e.IncludedEventTypes {
 		if includedEventType == eventType {
 			return true
@@ -56,7 +60,7 @@ func (e *EventFilter) filterIncludedEventTypes(eventType string) bool {
 }
 
 // FilterExcludedEventTypes returns true if the event not included in the excludedEventTypes
-func (e *EventFilter) filterExcludedEventTypes(eventType string) bool {
+func (e *EventFilter) filterExcludedEventTypes(eventType eventingv1alpha1.CloudEventType) bool {
 	for _, excludedEventType := range e.ExcludedEventTypes {
 		if excludedEventType == eventType {
 			return false

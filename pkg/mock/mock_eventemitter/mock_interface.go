@@ -54,7 +54,7 @@ func (mr *MockEventHandlerMockRecorder) DeleteCloudEventSource(cloudEventSource 
 }
 
 // Emit mocks base method.
-func (m *MockEventHandler) Emit(object runtime.Object, namesapce types.NamespacedName, eventType, cloudeventType, reason, message string) {
+func (m *MockEventHandler) Emit(object runtime.Object, namesapce types.NamespacedName, eventType string, cloudeventType v1alpha1.CloudEventType, reason, message string) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "Emit", object, namesapce, eventType, cloudeventType, reason, message)
 }
