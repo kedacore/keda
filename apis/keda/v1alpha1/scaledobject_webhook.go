@@ -132,7 +132,6 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 
 	verifyFunctions := []func(*ScaledObject, string, bool) error{
 		verifyCPUMemoryScalers,
-		verifyTriggers,
 		verifyScaledObjects,
 		verifyHpas,
 		verifyReplicaCount,
@@ -140,6 +139,17 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 
 	for i := range verifyFunctions {
 		err := verifyFunctions[i](so, action, dryRun)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	verifyCommonFunctions := []func(interface{}, string, bool) error{
+		verifyTriggers,
+	}
+
+	for i := range verifyCommonFunctions {
+		err := verifyCommonFunctions[i](so, action, dryRun)
 		if err != nil {
 			return nil, err
 		}
@@ -158,11 +168,27 @@ func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) error {
 	return nil
 }
 
-func verifyTriggers(incomingSo *ScaledObject, action string, _ bool) error {
-	err := ValidateTriggers(incomingSo.Spec.Triggers)
+func verifyTriggers(incomingObject interface{}, action string, _ bool) error {
+	var triggers []ScaleTriggers
+	var name string
+	var namespace string
+	switch obj := incomingObject.(type) {
+	case *ScaledObject:
+		triggers = obj.Spec.Triggers
+		name = obj.Name
+		namespace = obj.Namespace
+	case *ScaledJob:
+		triggers = obj.Spec.Triggers
+		name = obj.Name
+		namespace = obj.Namespace
+	default:
+		return fmt.Errorf("unknown scalable object type %v", incomingObject)
+	}
+
+	err := ValidateTriggers(triggers)
 	if err != nil {
-		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
-		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "incorrect-triggers")
+		scaledobjectlog.WithValues("name", name).Error(err, "validation error")
+		metricscollector.RecordScaledObjectValidatingErrors(namespace, action, "incorrect-triggers")
 	}
 	return err
 }

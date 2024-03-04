@@ -41,26 +41,38 @@ const (
 	azureClientIDEnv           = "AZURE_CLIENT_ID"
 	azureTenantIDEnv           = "AZURE_TENANT_ID"
 	azureFederatedTokenFileEnv = "AZURE_FEDERATED_TOKEN_FILE"
-	azureAuthrityHostEnv       = "AZURE_AUTHORITY_HOST"
+	azureAuthorityHostEnv      = "AZURE_AUTHORITY_HOST"
 )
 
 var DefaultClientID string
-var TenantID string
+var DefaultTenantID string
 var TokenFilePath string
-var AuthorityHost string
+var DefaultAuthorityHost string
 
 func init() {
 	DefaultClientID = os.Getenv(azureClientIDEnv)
-	TenantID = os.Getenv(azureTenantIDEnv)
+	DefaultTenantID = os.Getenv(azureTenantIDEnv)
 	TokenFilePath = os.Getenv(azureFederatedTokenFileEnv)
-	AuthorityHost = os.Getenv(azureAuthrityHostEnv)
+	DefaultAuthorityHost = os.Getenv(azureAuthorityHostEnv)
 }
 
 // GetAzureADWorkloadIdentityToken returns the AADToken for resource
-func GetAzureADWorkloadIdentityToken(ctx context.Context, identityID, resource string) (AADToken, error) {
+func GetAzureADWorkloadIdentityToken(ctx context.Context, identityID, identityTenantID, identityAuthorityHost, resource string) (AADToken, error) {
 	clientID := DefaultClientID
+	tenantID := DefaultTenantID
+	authorityHost := DefaultAuthorityHost
+
 	if identityID != "" {
 		clientID = identityID
+	}
+
+	if identityTenantID != "" {
+		tenantID = identityTenantID
+
+		// override the authority host only if provided and tenant id is provided
+		if identityAuthorityHost != "" {
+			authorityHost = identityAuthorityHost
+		}
 	}
 
 	signedAssertion, err := readJWTFromFileSystem(TokenFilePath)
@@ -77,7 +89,7 @@ func GetAzureADWorkloadIdentityToken(ctx context.Context, identityID, resource s
 	})
 
 	confidentialClient, err := confidential.New(
-		fmt.Sprintf("%s%s/oauth2/token", AuthorityHost, TenantID),
+		fmt.Sprintf("%s%s/oauth2/token", authorityHost, tenantID),
 		clientID,
 		cred,
 	)
@@ -117,25 +129,30 @@ func getScopedResource(resource string) string {
 }
 
 type ADWorkloadIdentityConfig struct {
-	ctx        context.Context
-	IdentityID string
-	Resource   string
+	ctx                   context.Context
+	IdentityID            string
+	IdentityTenantID      string
+	IdentityAuthorityHost string
+	Resource              string
 }
 
-func NewAzureADWorkloadIdentityConfig(ctx context.Context, identityID, resource string) auth.AuthorizerConfig {
-	return ADWorkloadIdentityConfig{ctx: ctx, IdentityID: identityID, Resource: resource}
+func NewAzureADWorkloadIdentityConfig(ctx context.Context, identityID, identityTenantID, identityAuthorityHost, resource string) auth.AuthorizerConfig {
+	return ADWorkloadIdentityConfig{ctx: ctx, IdentityID: identityID, IdentityTenantID: identityTenantID, IdentityAuthorityHost: identityAuthorityHost, Resource: resource}
 }
 
 // Authorizer implements the auth.AuthorizerConfig interface
 func (aadWiConfig ADWorkloadIdentityConfig) Authorizer() (autorest.Authorizer, error) {
 	return autorest.NewBearerAuthorizer(NewAzureADWorkloadIdentityTokenProvider(
-		aadWiConfig.ctx, aadWiConfig.IdentityID, aadWiConfig.Resource)), nil
+		aadWiConfig.ctx, aadWiConfig.IdentityID, aadWiConfig.IdentityTenantID, aadWiConfig.IdentityAuthorityHost, aadWiConfig.Resource)), nil
 }
 
-func NewADWorkloadIdentityCredential(identityID string) (*azidentity.WorkloadIdentityCredential, error) {
+func NewADWorkloadIdentityCredential(identityID, identityTenantID string) (*azidentity.WorkloadIdentityCredential, error) {
 	options := &azidentity.WorkloadIdentityCredentialOptions{}
 	if identityID != "" {
 		options.ClientID = identityID
+	}
+	if identityTenantID != "" {
+		options.TenantID = identityTenantID
 	}
 	return azidentity.NewWorkloadIdentityCredential(options)
 }
@@ -144,14 +161,16 @@ func NewADWorkloadIdentityCredential(identityID string) (*azidentity.WorkloadIde
 // The OAuthTokenProvider interface is used by the BearerAuthorizer to get the token when preparing the HTTP Header.
 // The Refresher interface is used by the BearerAuthorizer to refresh the token.
 type ADWorkloadIdentityTokenProvider struct {
-	ctx        context.Context
-	IdentityID string
-	Resource   string
-	aadToken   AADToken
+	ctx                   context.Context
+	IdentityID            string
+	IdentityTenantID      string
+	IdentityAuthorityHost string
+	Resource              string
+	aadToken              AADToken
 }
 
-func NewAzureADWorkloadIdentityTokenProvider(ctx context.Context, identityID, resource string) *ADWorkloadIdentityTokenProvider {
-	return &ADWorkloadIdentityTokenProvider{ctx: ctx, IdentityID: identityID, Resource: resource}
+func NewAzureADWorkloadIdentityTokenProvider(ctx context.Context, identityID, identityTenantID, identityAuthorityHost, resource string) *ADWorkloadIdentityTokenProvider {
+	return &ADWorkloadIdentityTokenProvider{ctx: ctx, IdentityID: identityID, IdentityTenantID: identityTenantID, IdentityAuthorityHost: identityAuthorityHost, Resource: resource}
 }
 
 // OAuthToken is for implementing the adal.OAuthTokenProvider interface. It returns the current access token.
@@ -165,7 +184,7 @@ func (wiTokenProvider *ADWorkloadIdentityTokenProvider) Refresh() error {
 		return nil
 	}
 
-	aadToken, err := GetAzureADWorkloadIdentityToken(wiTokenProvider.ctx, wiTokenProvider.IdentityID, wiTokenProvider.Resource)
+	aadToken, err := GetAzureADWorkloadIdentityToken(wiTokenProvider.ctx, wiTokenProvider.IdentityID, wiTokenProvider.IdentityTenantID, wiTokenProvider.IdentityAuthorityHost, wiTokenProvider.Resource)
 	if err != nil {
 		return err
 	}
