@@ -99,25 +99,24 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 		labels[key] = value
 	}
 
-	minReplicas := scaledObject.GetHPAMinReplicas()
-	maxReplicas := scaledObject.GetHPAMaxReplicas()
+	// minReplicas on HPA must be > 0 without HPAScaleToZero feature.
+	minReplicas := max(scaledObject.MinReplicaCount(), 1)
+	maxReplicas := scaledObject.MaxReplicaCount()
 
 	pausedCount, err := executor.GetPausedReplicaCount(scaledObject)
 	if err != nil {
 		return nil, err
 	}
 	if pausedCount != nil {
-		// MinReplicas on HPA can't be 0
-		if *pausedCount == 0 {
-			*pausedCount = 1
-		}
-		minReplicas = pausedCount
-		maxReplicas = *pausedCount
+		// minReplicas on HPA must be > 0 without HPAScaleToZero feature.
+		replicas := max(*pausedCount, 1)
+		minReplicas = replicas
+		maxReplicas = replicas
 	}
 
 	hpa := &autoscalingv2.HorizontalPodAutoscaler{
 		Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
-			MinReplicas: minReplicas,
+			MinReplicas: &minReplicas,
 			MaxReplicas: maxReplicas,
 			Metrics:     scaledObjectMetricSpecs,
 			Behavior:    behavior,
