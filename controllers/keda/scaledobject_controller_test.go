@@ -1431,7 +1431,7 @@ var _ = Describe("ScaledObjectController", func() {
 		err = k8sClient.Create(context.Background(), so)
 		Expect(err).ToNot(HaveOccurred())
 
-		// wait so's ready condition Ready
+		// wait to check so's ready condition Not Ready
 		Eventually(func() metav1.ConditionStatus {
 			err := k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
 			if err != nil {

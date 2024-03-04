@@ -152,6 +152,35 @@ var _ = Describe("ScaledJobController", func() {
 			}).WithTimeout(1 * time.Minute).WithPolling(10 * time.Second).Should(Equal(metav1.ConditionUnknown))
 		})
 
+		// Fix issue 5520
+		It("create scaledjob with empty triggers should be blocked", func() {
+			// Create the ScaledJob without specifying name.
+			jobName := "empty-triggers-sj-name"
+			sjName := "sj-" + jobName
+			// create object already paused
+			sj := &kedav1alpha1.ScaledJob{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      sjName,
+					Namespace: "default",
+				},
+				Spec: kedav1alpha1.ScaledJobSpec{
+					JobTargetRef: generateJobSpec(jobName),
+					Triggers:     []kedav1alpha1.ScaleTriggers{},
+				},
+			}
+
+			err := k8sClient.Create(context.Background(), sj)
+			Expect(err).ToNot(HaveOccurred())
+
+			// wait to check sj's ready condition Not Ready
+			Eventually(func() metav1.ConditionStatus {
+				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: sjName, Namespace: "default"}, sj)
+				if err != nil {
+					return metav1.ConditionUnknown
+				}
+				return sj.Status.Conditions.GetReadyCondition().Status
+			}).Should(Equal(metav1.ConditionFalse))
+		})
 	})
 })
 
