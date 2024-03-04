@@ -247,6 +247,7 @@ func testScaledWorkloadByOtherHpaWithOwnershipTransfer(t *testing.T, data templa
 	assert.NoErrorf(t, err, "can deploy the scaledObject - %s", err)
 
 	KubectlDeleteWithTemplate(t, data, "hpaTemplate", hpaTemplate)
+	KubectlDeleteWithTemplate(t, data, "ownershipTransferScaledObjectTemplate", ownershipTransferScaledObjectTemplate)
 }
 
 func testMissingCPU(t *testing.T, data templateData) {
