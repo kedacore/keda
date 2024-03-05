@@ -477,7 +477,7 @@ func (s *azureLogAnalyticsScaler) getAuthorizationToken(ctx context.Context) (to
 
 	switch s.metadata.podIdentity.Provider {
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		aadToken, err := azure.GetAzureADWorkloadIdentityToken(ctx, s.metadata.podIdentity.GetIdentityID(), s.metadata.logAnalyticsResourceURL)
+		aadToken, err := azure.GetAzureADWorkloadIdentityToken(ctx, s.metadata.podIdentity.GetIdentityID(), s.metadata.podIdentity.GetIdentityTenantID(), s.metadata.podIdentity.GetIdentityAuthorityHost(), s.metadata.logAnalyticsResourceURL)
 		if err != nil {
 			return tokenData{}, nil
 		}

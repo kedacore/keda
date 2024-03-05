@@ -227,7 +227,7 @@ func parseAccessTokenAndEndpoint(ctx context.Context, httpClient util.HTTPDoer, 
 	case kedav1alpha1.PodIdentityProviderAzure:
 		token, err = GetAzureADPodIdentityToken(ctx, httpClient, podIdentity.GetIdentityID(), storageResource)
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		token, err = GetAzureADWorkloadIdentityToken(ctx, podIdentity.GetIdentityID(), storageResource)
+		token, err = GetAzureADWorkloadIdentityToken(ctx, podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID(), podIdentity.GetIdentityAuthorityHost(), storageResource)
 	}
 
 	if err != nil {

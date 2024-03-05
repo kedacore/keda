@@ -187,12 +187,12 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 		}
 		switch podIdentity.Provider {
 		case kedav1alpha1.PodIdentityProviderAws:
-			if podIdentity.RoleArn != "" {
+			if podIdentity.RoleArn != nil {
 				if podIdentity.IsWorkloadIdentityOwner() {
 					return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 						fmt.Errorf("roleArn can't be set if KEDA isn't identity owner, current value: '%s'", *podIdentity.IdentityOwner)
 				}
-				authParams["awsRoleArn"] = podIdentity.RoleArn
+				authParams["awsRoleArn"] = *podIdentity.RoleArn
 			}
 			if podIdentity.IsWorkloadIdentityOwner() {
 				value, err := resolveServiceAccountAnnotation(ctx, client, podTemplateSpec.Spec.ServiceAccountName, namespace, kedav1alpha1.PodIdentityAnnotationEKS, true)

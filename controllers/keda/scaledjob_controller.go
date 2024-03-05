@@ -182,6 +182,11 @@ func (r *ScaledJobReconciler) reconcileScaledJob(ctx context.Context, logger log
 		return "ScaledJob is paused, skipping reconcile loop", err
 	}
 
+	err = kedav1alpha1.ValidateTriggers(scaledJob.Spec.Triggers)
+	if err != nil {
+		return "ScaledJob doesn't have correct triggers specification", err
+	}
+
 	// nosemgrep: trailofbits.go.invalid-usage-of-modified-variable.invalid-usage-of-modified-variable
 	msg, err := r.deletePreviousVersionScaleJobs(ctx, logger, scaledJob)
 	if err != nil {

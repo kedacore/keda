@@ -137,6 +137,11 @@ spec:
                       AuthPodIdentity allows users to select the platform native identity
                       mechanism
                     properties:
+                      identityAuthorityHost:
+                        description: Set identityAuthorityHost to override the default
+                          Azure authority host. If this is set, then the IdentityTenantID
+                          must also be set
+                        type: string
                       identityId:
                         type: string
                       identityOwner:
@@ -146,6 +151,11 @@ spec:
                         enum:
                         - keda
                         - workload
+                        type: string
+                      identityTenantId:
+                        description: Set identityTenantId to override the default
+                          Azure tenant id. If this is set, then the IdentityID must
+                          also be set
                         type: string
                       provider:
                         description: PodIdentityProvider contains the list of providers
@@ -236,6 +246,11 @@ spec:
                       AuthPodIdentity allows users to select the platform native identity
                       mechanism
                     properties:
+                      identityAuthorityHost:
+                        description: Set identityAuthorityHost to override the default
+                          Azure authority host. If this is set, then the IdentityTenantID
+                          must also be set
+                        type: string
                       identityId:
                         type: string
                       identityOwner:
@@ -245,6 +260,11 @@ spec:
                         enum:
                         - keda
                         - workload
+                        type: string
+                      identityTenantId:
+                        description: Set identityTenantId to override the default
+                          Azure tenant id. If this is set, then the IdentityID must
+                          also be set
                         type: string
                       provider:
                         description: PodIdentityProvider contains the list of providers
@@ -349,6 +369,11 @@ spec:
                       AuthPodIdentity allows users to select the platform native identity
                       mechanism
                     properties:
+                      identityAuthorityHost:
+                        description: Set identityAuthorityHost to override the default
+                          Azure authority host. If this is set, then the IdentityTenantID
+                          must also be set
+                        type: string
                       identityId:
                         type: string
                       identityOwner:
@@ -358,6 +383,11 @@ spec:
                         enum:
                         - keda
                         - workload
+                        type: string
+                      identityTenantId:
+                        description: Set identityTenantId to override the default
+                          Azure tenant id. If this is set, then the IdentityID must
+                          also be set
                         type: string
                       provider:
                         description: PodIdentityProvider contains the list of providers
@@ -465,6 +495,11 @@ spec:
                   AuthPodIdentity allows users to select the platform native identity
                   mechanism
                 properties:
+                  identityAuthorityHost:
+                    description: Set identityAuthorityHost to override the default
+                      Azure authority host. If this is set, then the IdentityTenantID
+                      must also be set
+                    type: string
                   identityId:
                     type: string
                   identityOwner:
@@ -474,6 +509,11 @@ spec:
                     enum:
                     - keda
                     - workload
+                    type: string
+                  identityTenantId:
+                    description: Set identityTenantId to override the default Azure
+                      tenant id. If this is set, then the IdentityID must also be
+                      set
                     type: string
                   provider:
                     description: PodIdentityProvider contains the list of providers

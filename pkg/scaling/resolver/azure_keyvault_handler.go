@@ -137,7 +137,7 @@ func (vh *AzureKeyVaultHandler) getAuthConfig(ctx context.Context, client client
 
 		return config, nil
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		return azure.NewAzureADWorkloadIdentityConfig(ctx, podIdentity.GetIdentityID(), keyVaultResourceURL), nil
+		return azure.NewAzureADWorkloadIdentityConfig(ctx, podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID(), podIdentity.GetIdentityAuthorityHost(), keyVaultResourceURL), nil
 	default:
 		return nil, fmt.Errorf("key vault does not support pod identity provider - %s", podIdentity.Provider)
 	}

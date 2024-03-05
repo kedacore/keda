@@ -72,7 +72,7 @@ func getAuthConfig(ctx context.Context, info AppInsightsInfo, podIdentity kedav1
 		config.ClientID = podIdentity.GetIdentityID()
 		return config
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		return NewAzureADWorkloadIdentityConfig(ctx, podIdentity.GetIdentityID(), info.AppInsightsResourceURL)
+		return NewAzureADWorkloadIdentityConfig(ctx, podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID(), podIdentity.GetIdentityAuthorityHost(), info.AppInsightsResourceURL)
 	}
 	return nil
 }

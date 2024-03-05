@@ -10,7 +10,7 @@ import (
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
-func NewChainedCredential(logger logr.Logger, identityID string, podIdentity v1alpha1.PodIdentityProvider) (*azidentity.ChainedTokenCredential, error) {
+func NewChainedCredential(logger logr.Logger, identityID, identityTenantID string, podIdentity v1alpha1.PodIdentityProvider) (*azidentity.ChainedTokenCredential, error) {
 	var creds []azcore.TokenCredential
 
 	// Used for local debug based on az-cli user
@@ -42,7 +42,7 @@ func NewChainedCredential(logger logr.Logger, identityID string, podIdentity v1a
 			creds = append(creds, msiCred)
 		}
 	case v1alpha1.PodIdentityProviderAzureWorkload:
-		wiCred, err := NewADWorkloadIdentityCredential(identityID)
+		wiCred, err := NewADWorkloadIdentityCredential(identityID, identityTenantID)
 		if err != nil {
 			logger.Error(err, "error starting azure workload-identity token provider")
 		} else {

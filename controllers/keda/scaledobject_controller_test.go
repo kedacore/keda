@@ -1396,6 +1396,51 @@ var _ = Describe("ScaledObjectController", func() {
 		}).Should(BeNil())
 	})
 
+	// Fix issue 5520
+	It("create scaledobject with empty triggers should be blocked", func() {
+		var (
+			deploymentName        = "block-deleted"
+			soName                = "so-" + deploymentName
+			min             int32 = 1
+			max             int32 = 5
+			pollingInterVal int32 = 1
+		)
+
+		err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
+		Expect(err).ToNot(HaveOccurred())
+
+		// Create the ScaledObject without specifying name.
+		so := &kedav1alpha1.ScaledObject{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      soName,
+				Namespace: "default",
+			},
+			Spec: kedav1alpha1.ScaledObjectSpec{
+				ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+					Name: deploymentName,
+				},
+				MinReplicaCount: &min,
+				MaxReplicaCount: &max,
+				PollingInterval: &pollingInterVal,
+				Advanced: &kedav1alpha1.AdvancedConfig{
+					HorizontalPodAutoscalerConfig: &kedav1alpha1.HorizontalPodAutoscalerConfig{},
+				},
+				Triggers: []kedav1alpha1.ScaleTriggers{},
+			},
+		}
+		err = k8sClient.Create(context.Background(), so)
+		Expect(err).ToNot(HaveOccurred())
+
+		// wait to check so's ready condition Not Ready
+		Eventually(func() metav1.ConditionStatus {
+			err := k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+			if err != nil {
+				return metav1.ConditionUnknown
+			}
+			return so.Status.Conditions.GetReadyCondition().Status
+		}).Should(Equal(metav1.ConditionFalse))
+	})
+
 })
 
 func generateDeployment(name string) *appsv1.Deployment {
