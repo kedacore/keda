@@ -57,12 +57,18 @@ var testCassandraMetadata = []parseCassandraMetadataTestData{
 var tlsAuthParamsTestData = []parseCassandraTLSTestData{
 	// success, TLS cert/key
 	{map[string]string{"tls": "enable", "cert": "ceert", "key": "keey", "password": "Y2Fzc2FuZHJhCg=="}, false, true},
+	// success, TLS cert/key/CA
+	{map[string]string{"tls": "enable", "cert": "ceert", "key": "keey", "ca": "caa", "password": "Y2Fzc2FuZHJhCg=="}, false, true},
 	// failure, TLS missing cert
 	{map[string]string{"tls": "enable", "key": "keey", "password": "Y2Fzc2FuZHJhCg=="}, true, false},
 	// failure, TLS missing key
 	{map[string]string{"tls": "enable", "cert": "ceert", "password": "Y2Fzc2FuZHJhCg=="}, true, false},
+	// failure, TLS missing cert & key
+	{map[string]string{"tls": "enable", "password": "Y2Fzc2FuZHJhCg=="}, true, false},
 	// failure, TLS invalid
 	{map[string]string{"tls": "yes", "cert": "ceert", "key": "keey", "password": "Y2Fzc2FuZHJhCg=="}, true, false},
+	// failure, TLS missing cert but ca exists
+	{map[string]string{"tls": "yes", "ca": "caceert", "key": "keey", "password": "Y2Fzc2FuZHJhCg=="}, true, false},
 }
 
 var cassandraMetricIdentifiers = []cassandraMetricIdentifier{

@@ -32,6 +32,7 @@ type CassandraMetadata struct {
 	enableTLS                  bool
 	cert                       string
 	key                        string
+	ca                         string
 	clusterIPAddress           string
 	port                       int
 	consistency                gocql.Consistency
@@ -183,14 +184,23 @@ func parseCassandraTLS(config *scalersconfig.ScalerConfig, meta *CassandraMetada
 		if val == tlsEnable {
 			certGiven := config.AuthParams["cert"] != ""
 			keyGiven := config.AuthParams["key"] != ""
+			caCertGiven := config.AuthParams["ca"] != ""
 			if certGiven && !keyGiven {
 				return errors.New("no key given")
 			}
 			if keyGiven && !certGiven {
 				return errors.New("no cert given")
 			}
+			if !keyGiven && !certGiven {
+				return errors.New("no cert/key given")
+			}
+
 			meta.cert = config.AuthParams["cert"]
 			meta.key = config.AuthParams["key"]
+			meta.ca = config.AuthParams["ca"]
+			if !caCertGiven {
+				meta.ca = ""
+			}
 			meta.enableTLS = true
 		} else if val != tlsDisable {
 			return fmt.Errorf("err incorrect value for TLS given: %s", val)
@@ -213,6 +223,7 @@ func newCassandraSession(meta *CassandraMetadata, logger logr.Logger) (*gocql.Se
 		cluster.SslOpts = &gocql.SslOptions{
 			CertPath: meta.cert,
 			KeyPath:  meta.key,
+			CaPath:   meta.ca,
 		}
 	}
 
