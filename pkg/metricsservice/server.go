@@ -22,6 +22,8 @@ import (
 	"net"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 	"k8s.io/metrics/pkg/apis/external_metrics/v1beta1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -34,6 +36,7 @@ var log = logf.Log.WithName("grpc_server")
 
 type GrpcServer struct {
 	server        *grpc.Server
+	healthServer  *health.Server
 	address       string
 	certDir       string
 	certsReady    chan struct{}
@@ -82,9 +85,8 @@ func (s *GrpcServer) startServer() error {
 	return nil
 }
 
-// Start starts a new gRPC Metrics Service, this implements Runnable interface
-// of controller-runtime Manager, so we can use mgr.Add() to start this component.
-func (s *GrpcServer) Start(ctx context.Context) error {
+// StartGrpcServer starts the grpc server in non-serving mode
+func (s *GrpcServer) StartGrpcServer(ctx context.Context) error {
 	<-s.certsReady
 	if s.server == nil {
 		creds, err := utils.LoadGrpcTLSCredentials(s.certDir, true)
@@ -93,6 +95,10 @@ func (s *GrpcServer) Start(ctx context.Context) error {
 		}
 		s.server = grpc.NewServer(grpc.Creds(creds))
 		api.RegisterMetricsServiceServer(s.server, s)
+
+		s.healthServer = health.NewServer()
+		s.healthServer.SetServingStatus(api.MetricsService_ServiceDesc.ServiceName, grpc_health_v1.HealthCheckResponse_NOT_SERVING)
+		grpc_health_v1.RegisterHealthServer(s.server, health.NewServer())
 	}
 
 	errChan := make(chan error)
@@ -112,6 +118,12 @@ func (s *GrpcServer) Start(ctx context.Context) error {
 	case <-ctx.Done():
 		return nil
 	}
+}
+
+// Start sets the status of the GRPC server to SERVING after the leader election lock is acquired
+func (s *GrpcServer) Start(ctx context.Context) error {
+	s.healthServer.SetServingStatus(api.MetricsService_ServiceDesc.ServiceName, grpc_health_v1.HealthCheckResponse_SERVING)
+	return nil
 }
 
 // NeedLeaderElection is needed to implement LeaderElectionRunnable interface
