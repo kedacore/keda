@@ -65,6 +65,10 @@ func TestRemoveGcpIdentityComponents(t *testing.T) {
 }
 
 func TestRemoveOpentelemetryComponents(t *testing.T) {
+	if EnableOpentelemetry == "" || EnableOpentelemetry == StringFalse {
+		t.Skip("skipping uninstall of opentelemetry")
+	}
+
 	_, err := ExecuteCommand(fmt.Sprintf("helm uninstall opentelemetry-collector --namespace %s", OpentelemetryNamespace))
 	require.NoErrorf(t, err, "cannot uninstall opentelemetry-collector - %s", err)
 	DeleteNamespace(t, OpentelemetryNamespace)
