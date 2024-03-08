@@ -62,7 +62,7 @@ func NewInfluxDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 
 	if meta.influxVersion == "3" {
-		logger.Info("starting up influxdb v3 client")
+		logger.V(1).Info("starting up influxdb v3 client")
 
 		clientv3, err := influxdb3.New(influxdb3.ClientConfig{
 			Host:     meta.serverURL,
@@ -71,7 +71,7 @@ func NewInfluxDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		})
 
 		if err != nil {
-			panic(err)
+			return nil, fmt.Errorf("failed to establish influx v3 client %w", err)
 		}
 
 		return &influxDBScalerV3{
@@ -82,7 +82,7 @@ func NewInfluxDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		}, nil
 	}
 
-	logger.Info("starting up influxdb v2 client")
+	logger.V(1).Info("starting up influxdb v2 client")
 
 	client := influxdb2.NewClientWithOptions(
 		meta.serverURL,
