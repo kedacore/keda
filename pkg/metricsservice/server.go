@@ -37,6 +37,7 @@ var log = logf.Log.WithName("grpc_server")
 type GrpcServer struct {
 	server        *grpc.Server
 	healthServer  *health.Server
+	errChan       chan error
 	address       string
 	certDir       string
 	certsReady    chan struct{}
@@ -98,32 +99,33 @@ func (s *GrpcServer) StartGrpcServer(ctx context.Context) error {
 
 		s.healthServer = health.NewServer()
 		s.healthServer.SetServingStatus(api.MetricsService_ServiceDesc.ServiceName, grpc_health_v1.HealthCheckResponse_NOT_SERVING)
-		grpc_health_v1.RegisterHealthServer(s.server, health.NewServer())
+		grpc_health_v1.RegisterHealthServer(s.server, s.healthServer)
 	}
 
-	errChan := make(chan error)
+	s.errChan = make(chan error)
 
 	go func() {
 		log.Info("Starting Metrics Service gRPC Server", "address", s.address)
 		if err := s.startServer(); err != nil {
 			err := fmt.Errorf("unable to start Metrics Service gRPC server on address %s, error: %w", s.address, err)
 			log.Error(err, "error starting Metrics Service gRPC server")
-			errChan <- err
+			s.errChan <- err
 		}
 	}()
 
-	select {
-	case err := <-errChan:
-		return err
-	case <-ctx.Done():
-		return nil
-	}
+	return nil
 }
 
 // Start sets the status of the GRPC server to SERVING after the leader election lock is acquired
 func (s *GrpcServer) Start(ctx context.Context) error {
 	s.healthServer.SetServingStatus(api.MetricsService_ServiceDesc.ServiceName, grpc_health_v1.HealthCheckResponse_SERVING)
-	return nil
+
+	select {
+	case err := <-s.errChan:
+		return err
+	case <-ctx.Done():
+		return nil
+	}
 }
 
 // NeedLeaderElection is needed to implement LeaderElectionRunnable interface
