@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-logr/logr"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
@@ -45,11 +46,11 @@ var postgreSQLMetricIdentifiers = []postgreSQLMetricIdentifier{
 
 func TestPosgresSQLGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range postgreSQLMetricIdentifiers {
-		meta, err := parsePostgreSQLMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authParam, TriggerIndex: testData.scaleIndex})
+		meta, _, err := parsePostgreSQLMetadata(context.TODO(), logr.Discard(), &scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authParam, TriggerIndex: testData.scaleIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockPostgresSQLScaler := postgreSQLScaler{"", meta, nil, logr.Discard()}
+		mockPostgresSQLScaler := postgreSQLScaler{"", meta, nil, kedav1alpha1.AuthPodIdentity{}, logr.Discard()}
 
 		metricSpec := mockPostgresSQLScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
@@ -79,7 +80,7 @@ var testPostgreSQLConnectionstring = []postgreSQLConnectionStringTestData{
 
 func TestPosgresSQLConnectionStringGeneration(t *testing.T) {
 	for _, testData := range testPostgreSQLConnectionstring {
-		meta, err := parsePostgreSQLMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParam, TriggerIndex: 0})
+		meta, _, err := parsePostgreSQLMetadata(context.TODO(), logr.Discard(), &scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParam, TriggerIndex: 0})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -135,7 +136,7 @@ var testPostgresMetadata = []parsePostgresMetadataTestData{
 
 func TestParsePosgresSQLMetadata(t *testing.T) {
 	for _, testData := range testPostgresMetadata {
-		_, err := parsePostgreSQLMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		_, _, err := parsePostgreSQLMetadata(context.TODO(), logr.Discard(), &scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.raisesError {
 			t.Error("Expected success but got error", err)
 		}
