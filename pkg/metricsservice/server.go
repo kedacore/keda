@@ -126,6 +126,9 @@ func (s *GrpcServer) Start(ctx context.Context) error {
 	case err := <-s.errChan:
 		return err
 	case <-ctx.Done():
+		log.Info("Shutting down grpc server")
+		s.healthServer.SetServingStatus(api.MetricsService_ServiceDesc.ServiceName, grpc_health_v1.HealthCheckResponse_NOT_SERVING)
+		s.server.GracefulStop()
 		return nil
 	}
 }
