@@ -87,7 +87,7 @@ func (s *GrpcServer) startServer() error {
 }
 
 // StartGrpcServer starts the grpc server in non-serving mode
-func (s *GrpcServer) StartGrpcServer(ctx context.Context) error {
+func (s *GrpcServer) StartGrpcServer() error {
 	<-s.certsReady
 	if s.server == nil {
 		creds, err := utils.LoadGrpcTLSCredentials(s.certDir, true)

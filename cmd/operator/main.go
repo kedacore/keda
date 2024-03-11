@@ -302,7 +302,7 @@ func main() {
 
 	grpcServer := metricsservice.NewGrpcServer(&scaledHandler, metricsServiceAddr, certDir, certReady)
 
-	if err := grpcServer.StartGrpcServer(ctx); err != nil {
+	if err := grpcServer.StartGrpcServer(); err != nil {
 		setupLog.Error(err, "unable to start Metrics Service gRPC server")
 		os.Exit(1)
 	}
