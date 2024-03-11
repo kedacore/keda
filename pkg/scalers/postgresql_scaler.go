@@ -49,7 +49,7 @@ type postgreSQLMetadata struct {
 }
 
 type azureAuthContext struct {
-	cred *azidentity.ChainedTokenCredential
+	cred  *azidentity.ChainedTokenCredential
 	token *azcore.AccessToken
 }
 
