@@ -120,6 +120,8 @@ func (s *GrpcServer) StartGrpcServer(ctx context.Context) error {
 func (s *GrpcServer) Start(ctx context.Context) error {
 	s.healthServer.SetServingStatus(api.MetricsService_ServiceDesc.ServiceName, grpc_health_v1.HealthCheckResponse_SERVING)
 
+	log.Info("Setting server status to Serving")
+
 	select {
 	case err := <-s.errChan:
 		return err
