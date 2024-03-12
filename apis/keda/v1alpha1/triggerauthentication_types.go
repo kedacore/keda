@@ -139,7 +139,7 @@ const (
 // AuthPodIdentity allows users to select the platform native identity
 // mechanism
 type AuthPodIdentity struct {
-	// +kubebuilder:validation:Enum=azure;azure-workload;gcp;aws;aws-eks;aws-kiam
+	// +kubebuilder:validation:Enum=azure;azure-workload;gcp;aws;aws-eks;aws-kiam;none
 	Provider PodIdentityProvider `json:"provider"`
 	// +optional
 	IdentityID *string `json:"identityId"`

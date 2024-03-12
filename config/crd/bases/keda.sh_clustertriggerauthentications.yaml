@@ -157,6 +157,7 @@ spec:
                         - aws
                         - aws-eks
                         - aws-kiam
+                        - none
                         type: string
                       roleArn:
                         description: RoleArn sets the AWS RoleArn to be used. Mutually
@@ -256,6 +257,7 @@ spec:
                         - aws
                         - aws-eks
                         - aws-kiam
+                        - none
                         type: string
                       roleArn:
                         description: RoleArn sets the AWS RoleArn to be used. Mutually
@@ -369,6 +371,7 @@ spec:
                         - aws
                         - aws-eks
                         - aws-kiam
+                        - none
                         type: string
                       roleArn:
                         description: RoleArn sets the AWS RoleArn to be used. Mutually
@@ -485,6 +488,7 @@ spec:
                     - aws
                     - aws-eks
                     - aws-kiam
+                    - none
                     type: string
                   roleArn:
                     description: RoleArn sets the AWS RoleArn to be used. Mutually
