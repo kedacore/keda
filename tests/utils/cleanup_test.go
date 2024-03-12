@@ -14,6 +14,10 @@ import (
 )
 
 func TestRemoveKEDA(t *testing.T) {
+	// default to true
+	if InstallKeda == StringFalse {
+		t.Skip("skipping as requested -- KEDA not installed via these tests")
+	}
 	out, err := ExecuteCommandWithDir("make undeploy", "../..")
 	require.NoErrorf(t, err, "error removing KEDA - %s", err)
 
@@ -89,6 +93,10 @@ func TestRemoveAzureManagedPrometheusComponents(t *testing.T) {
 }
 
 func TestRemoveStrimzi(t *testing.T) {
+	// default to true
+	if InstallKafka == StringFalse {
+		t.Skip("skipping as requested -- Kafka not managed by E2E tests")
+	}
 	_, err := ExecuteCommand(fmt.Sprintf(`helm uninstall --namespace %s %s`,
 		StrimziNamespace,
 		StrimziChartName))
