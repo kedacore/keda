@@ -38,7 +38,7 @@ func TestValidateTriggers(t *testing.T) {
 					Type: "prometheus",
 				},
 			},
-			expectedErrMsg: "triggerName \"trigger1\" is defined multiple times in the ScaledObject, but it must be unique",
+			expectedErrMsg: "triggerName \"trigger1\" is defined multiple times in the ScaledObject/ScaledJob, but it must be unique",
 		},
 		{
 			name: "unsupported useCachedMetrics property for cpu scaler",
@@ -83,6 +83,11 @@ func TestValidateTriggers(t *testing.T) {
 				},
 			},
 			expectedErrMsg: "",
+		},
+		{
+			name:           "empty triggers array should be blocked",
+			triggers:       []ScaleTriggers{},
+			expectedErrMsg: "no triggers defined in the ScaledObject/ScaledJob",
 		},
 	}
 

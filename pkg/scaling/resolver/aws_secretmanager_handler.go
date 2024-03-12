@@ -92,8 +92,8 @@ func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client clien
 				return fmt.Errorf("error resolving role arn for aws: %w", err)
 			}
 			ash.awsMetadata.AwsRoleArn = awsRoleArn
-		} else if ash.secretManager.PodIdentity.RoleArn != "" {
-			ash.awsMetadata.AwsRoleArn = ash.secretManager.PodIdentity.RoleArn
+		} else if ash.secretManager.PodIdentity.RoleArn != nil {
+			ash.awsMetadata.AwsRoleArn = *ash.secretManager.PodIdentity.RoleArn
 		}
 	default:
 		return fmt.Errorf("pod identity provider %s not supported", podIdentity.Provider)

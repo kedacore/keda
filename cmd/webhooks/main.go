@@ -146,4 +146,8 @@ func setupWebhook(mgr manager.Manager) {
 		setupLog.Error(err, "unable to create webhook", "webhook", "ClusterTriggerAuthentication")
 		os.Exit(1)
 	}
+	if err := (&kedav1alpha1.ScaledJob{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "ScaledJob")
+		os.Exit(1)
+	}
 }

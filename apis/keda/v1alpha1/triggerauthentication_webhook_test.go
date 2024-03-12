@@ -30,7 +30,7 @@ var _ = It("validate triggerauthentication when IdentityID is nil, roleArn is em
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
 
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, "", nil, nil)
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, nil, nil, nil, nil, nil)
 	ta := createTriggerAuthentication("nilidentityidta", namespaceName, "TriggerAuthentication", spec)
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), ta)
@@ -44,7 +44,7 @@ var _ = It("validate triggerauthentication when IdentityID is empty", func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	identityID := ""
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, "", &identityID, nil)
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, nil, &identityID, nil, nil, nil)
 	ta := createTriggerAuthentication("emptyidentityidta", namespaceName, "TriggerAuthentication", spec)
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), ta)
@@ -58,11 +58,88 @@ var _ = It("validate triggerauthentication when IdentityID is not empty", func()
 	Expect(err).ToNot(HaveOccurred())
 
 	identityID := "12345"
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, "", &identityID, nil)
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, nil, &identityID, nil, nil, nil)
 	ta := createTriggerAuthentication("identityidta", namespaceName, "TriggerAuthentication", spec)
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), ta)
 	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("validate triggerauthentication when IdentityTenantID is not nil and not empty", func() {
+	namespaceName := "identitytenantidta"
+	namespace := createNamespace(namespaceName)
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	identityID := "12345"
+	identityTenantID := "12345"
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzureWorkload, nil, &identityID, &identityTenantID, nil, nil)
+	ta := createTriggerAuthentication("identitytenantidta", namespaceName, "TriggerAuthentication", spec)
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), ta)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("validate triggerauthentication when IdentityTenantID is not nil but empty", func() {
+	namespaceName := "emptyidentitytenantidta"
+	namespace := createNamespace(namespaceName)
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	identityID := "12345"
+	identityTenantID := ""
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzureWorkload, nil, &identityID, &identityTenantID, nil, nil)
+	ta := createTriggerAuthentication("emptyidentitytenantidta", namespaceName, "TriggerAuthentication", spec)
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), ta)
+	}).Should(HaveOccurred())
+})
+
+var _ = It("validate triggerauthentication when IdentityAuthorityHost is not nil and not empty and IdentityTenantID is not nil and not empty", func() {
+	namespaceName := "identityauthorityhostta"
+	namespace := createNamespace(namespaceName)
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	identityID := "12345"
+	identityTenantID := "12345"
+	identityAuthorityHost := "12345"
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzureWorkload, nil, &identityID, &identityTenantID, &identityAuthorityHost, nil)
+	ta := createTriggerAuthentication("identityauthorityhostta", namespaceName, "TriggerAuthentication", spec)
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), ta)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("validate triggerauthentication when IdentityAuthorityHost is not nil and not empty and IdentityTenantID is nil", func() {
+	namespaceName := "niltenantidentityauthorityhostta"
+	namespace := createNamespace(namespaceName)
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	identityID := "12345"
+	identityAuthorityHost := "12345"
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzureWorkload, nil, &identityID, nil, &identityAuthorityHost, nil)
+	ta := createTriggerAuthentication("niltenantidentityauthorityhostta", namespaceName, "TriggerAuthentication", spec)
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), ta)
+	}).Should(HaveOccurred())
+})
+
+var _ = It("validate triggerauthentication when IdentityAuthorityHost is not nil and not empty and IdentityTenantID is not nil but empty", func() {
+	namespaceName := "emptytenantidentityauthorityhostta"
+	namespace := createNamespace(namespaceName)
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	identityID := "12345"
+	identityTenantID := ""
+	identityAuthorityHost := "12345"
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzureWorkload, nil, &identityID, &identityTenantID, &identityAuthorityHost, nil)
+	ta := createTriggerAuthentication("emptytenantidentityauthorityhostta", namespaceName, "TriggerAuthentication", spec)
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), ta)
+	}).Should(HaveOccurred())
 })
 
 var _ = It("validate triggerauthentication when RoleArn is not empty and IdentityOwner is nil", func() {
@@ -71,7 +148,8 @@ var _ = It("validate triggerauthentication when RoleArn is not empty and Identit
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
 
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAws, "Helo", nil, nil)
+	roleArn := "Hello"
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAws, &roleArn, nil, nil, nil, nil)
 	ta := createTriggerAuthentication("identityidta", namespaceName, "TriggerAuthentication", spec)
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), ta)
@@ -84,8 +162,9 @@ var _ = It("validate triggerauthentication when RoleArn is not empty and Identit
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
 
+	roleArn := "Hello"
 	identityOwner := kedaString
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAws, "Helo", nil, &identityOwner)
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAws, &roleArn, nil, nil, nil, &identityOwner)
 	ta := createTriggerAuthentication("identityidta", namespaceName, "TriggerAuthentication", spec)
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), ta)
@@ -98,8 +177,9 @@ var _ = It("validate triggerauthentication when RoleArn is not empty and Identit
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
 
+	roleArn := "Hello"
 	identityOwner := workloadString
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAws, "Helo", nil, &identityOwner)
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAws, &roleArn, nil, nil, nil, &identityOwner)
 	ta := createTriggerAuthentication("identityidta", namespaceName, "TriggerAuthentication", spec)
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), ta)
@@ -113,7 +193,7 @@ var _ = It("validate triggerauthentication when RoleArn is empty and IdentityOwn
 	Expect(err).ToNot(HaveOccurred())
 
 	identityOwner := kedaString
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAws, "", nil, &identityOwner)
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAws, nil, nil, nil, nil, &identityOwner)
 	ta := createTriggerAuthentication("identityidta", namespaceName, "TriggerAuthentication", spec)
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), ta)
@@ -127,7 +207,7 @@ var _ = It("validate triggerauthentication when RoleArn is not empty and Identit
 	Expect(err).ToNot(HaveOccurred())
 
 	identityOwner := workloadString
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAws, "", nil, &identityOwner)
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAws, nil, nil, nil, nil, &identityOwner)
 	ta := createTriggerAuthentication("identityidta", namespaceName, "TriggerAuthentication", spec)
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), ta)
@@ -140,7 +220,7 @@ var _ = It("validate clustertriggerauthentication when IdentityID is nil", func(
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
 
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, "", nil, nil)
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, nil, nil, nil, nil, nil)
 	ta := createTriggerAuthentication("clusternilidentityidta", namespaceName, "ClusterTriggerAuthentication", spec)
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), ta)
@@ -154,7 +234,7 @@ var _ = It("validate clustertriggerauthentication when IdentityID is empty", fun
 	Expect(err).ToNot(HaveOccurred())
 
 	identityID := ""
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, "", &identityID, nil)
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, nil, &identityID, nil, nil, nil)
 	ta := createTriggerAuthentication("clusteremptyidentityidta", namespaceName, "ClusterTriggerAuthentication", spec)
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), ta)
@@ -168,7 +248,7 @@ var _ = It("validate clustertriggerauthentication when IdentityID is not empty",
 	Expect(err).ToNot(HaveOccurred())
 
 	identityID := "12345"
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, "", &identityID, nil)
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, nil, &identityID, nil, nil, nil)
 	ta := createTriggerAuthentication("clusteridentityidta", namespaceName, "ClusterTriggerAuthentication", spec)
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), ta)
@@ -181,7 +261,8 @@ var _ = It("validate clustertriggerauthentication when RoleArn is not empty and 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
 
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAws, "Helo", nil, nil)
+	roleArn := "Hello"
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAws, &roleArn, nil, nil, nil, nil)
 	ta := createTriggerAuthentication("clusteridentityidta", namespaceName, "ClusterTriggerAuthentication", spec)
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), ta)
@@ -194,8 +275,9 @@ var _ = It("validate clustertriggerauthentication when RoleArn is not empty and 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
 
+	roleArn := "Hello"
 	identityOwner := kedaString
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAws, "Helo", nil, &identityOwner)
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAws, &roleArn, nil, nil, nil, &identityOwner)
 	ta := createTriggerAuthentication("clusteridentityidta", namespaceName, "ClusterTriggerAuthentication", spec)
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), ta)
@@ -208,8 +290,9 @@ var _ = It("validate clustertriggerauthentication when RoleArn is not empty and 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
 
+	roleArn := "Hello"
 	identityOwner := workloadString
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAws, "Helo", nil, &identityOwner)
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAws, &roleArn, nil, nil, nil, &identityOwner)
 	ta := createTriggerAuthentication("clusteridentityidta", namespaceName, "ClusterTriggerAuthentication", spec)
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), ta)
@@ -223,7 +306,7 @@ var _ = It("validate clustertriggerauthentication when RoleArn is empty and Iden
 	Expect(err).ToNot(HaveOccurred())
 
 	identityOwner := kedaString
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAws, "", nil, &identityOwner)
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAws, nil, nil, nil, nil, &identityOwner)
 	ta := createTriggerAuthentication("clusteridentityidta", namespaceName, "ClusterTriggerAuthentication", spec)
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), ta)
@@ -237,20 +320,22 @@ var _ = It("validate clustertriggerauthentication when RoleArn is not empty and 
 	Expect(err).ToNot(HaveOccurred())
 
 	identityOwner := workloadString
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAws, "", nil, &identityOwner)
+	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAws, nil, nil, nil, nil, &identityOwner)
 	ta := createTriggerAuthentication("clusteridentityidta", namespaceName, "TriggerAuthentication", spec)
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), ta)
 	}).ShouldNot(HaveOccurred())
 })
 
-func createTriggerAuthenticationSpecWithPodIdentity(provider PodIdentityProvider, roleArn string, identityID, identityOwner *string) TriggerAuthenticationSpec {
+func createTriggerAuthenticationSpecWithPodIdentity(provider PodIdentityProvider, roleArn, identityID, identityTenantID, identityAuthorityHost, identityOwner *string) TriggerAuthenticationSpec {
 	return TriggerAuthenticationSpec{
 		PodIdentity: &AuthPodIdentity{
-			Provider:      provider,
-			IdentityID:    identityID,
-			RoleArn:       roleArn,
-			IdentityOwner: identityOwner,
+			Provider:              provider,
+			IdentityID:            identityID,
+			IdentityTenantID:      identityTenantID,
+			IdentityAuthorityHost: identityAuthorityHost,
+			RoleArn:               roleArn,
+			IdentityOwner:         identityOwner,
 		},
 	}
 }

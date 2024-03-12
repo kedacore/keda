@@ -52,6 +52,7 @@ var cancel context.CancelFunc
 const (
 	workloadName = "deployment-name"
 	soName       = "test-so"
+	sjName       = "test-sj"
 )
 
 func TestAPIs(t *testing.T) {
@@ -118,6 +119,8 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	err = (&ScaledObject{}).SetupWebhookWithManager(mgr)
+	Expect(err).NotTo(HaveOccurred())
+	err = (&ScaledJob{}).SetupWebhookWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
 	err = (&TriggerAuthentication{}).SetupWebhookWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
