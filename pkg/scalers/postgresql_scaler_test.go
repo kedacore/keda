@@ -46,7 +46,7 @@ var postgreSQLMetricIdentifiers = []postgreSQLMetricIdentifier{
 
 func TestPosgresSQLGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range postgreSQLMetricIdentifiers {
-		meta, _, err := parsePostgreSQLMetadata(context.TODO(), logr.Discard(), &scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authParam, TriggerIndex: testData.scaleIndex})
+		meta, _, err := parsePostgreSQLMetadata(logr.Discard(), &scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authParam, TriggerIndex: testData.scaleIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -80,7 +80,7 @@ var testPostgreSQLConnectionstring = []postgreSQLConnectionStringTestData{
 
 func TestPosgresSQLConnectionStringGeneration(t *testing.T) {
 	for _, testData := range testPostgreSQLConnectionstring {
-		meta, _, err := parsePostgreSQLMetadata(context.TODO(), logr.Discard(), &scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParam, TriggerIndex: 0})
+		meta, _, err := parsePostgreSQLMetadata(logr.Discard(), &scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParam, TriggerIndex: 0})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -136,7 +136,7 @@ var testPostgresMetadata = []parsePostgresMetadataTestData{
 
 func TestParsePosgresSQLMetadata(t *testing.T) {
 	for _, testData := range testPostgresMetadata {
-		_, _, err := parsePostgreSQLMetadata(context.TODO(), logr.Discard(), &scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		_, _, err := parsePostgreSQLMetadata(logr.Discard(), &scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.raisesError {
 			t.Error("Expected success but got error", err)
 		}

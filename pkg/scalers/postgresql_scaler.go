@@ -32,7 +32,7 @@ const (
 )
 
 var (
-	passwordConnPattern = regexp.MustCompile(`password='([^']*)'`)
+	passwordConnPattern = regexp.MustCompile(`%PASSWORD%`)
 )
 
 type postgreSQLScaler struct {
@@ -66,12 +66,12 @@ func NewPostgreSQLScaler(ctx context.Context, config *scalersconfig.ScalerConfig
 
 	logger := InitializeLogger(config, "postgresql_scaler")
 
-	meta, podIdentity, err := parsePostgreSQLMetadata(ctx, logger, config)
+	meta, podIdentity, err := parsePostgreSQLMetadata(logger, config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing postgreSQL metadata: %w", err)
 	}
 
-	conn, err := getConnection(meta, logger)
+	conn, err := getConnection(ctx, meta, podIdentity, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error establishing postgreSQL connection: %w", err)
 	}
@@ -84,7 +84,7 @@ func NewPostgreSQLScaler(ctx context.Context, config *scalersconfig.ScalerConfig
 	}, nil
 }
 
-func parsePostgreSQLMetadata(ctx context.Context, logger logr.Logger, config *scalersconfig.ScalerConfig) (*postgreSQLMetadata, kedav1alpha1.AuthPodIdentity, error) {
+func parsePostgreSQLMetadata(logger logr.Logger, config *scalersconfig.ScalerConfig) (*postgreSQLMetadata, kedav1alpha1.AuthPodIdentity, error) {
 	meta := postgreSQLMetadata{}
 
 	authPodIdentity := kedav1alpha1.AuthPodIdentity{}
@@ -152,13 +152,7 @@ func parsePostgreSQLMetadata(ctx context.Context, logger logr.Logger, config *sc
 		}
 		meta.azureAuthContext.cred = cred
 
-		authPodIdentity = kedav1alpha1.AuthPodIdentity{Provider: config.PodIdentity.Provider}
-
-		accessToken, err := getAzureAccessToken(ctx, &meta, azureDatabasePostgresResource)
-		if err != nil {
-			return nil, authPodIdentity, err
-		}
-		params = append(params, "password="+escapePostgreConnectionParameter(accessToken))
+		params = append(params, "%PASSWORD%")
 		meta.connection = strings.Join(params, " ")
 	}
 	meta.triggerIndex = config.TriggerIndex
@@ -202,8 +196,20 @@ func buildConnArray(config *scalersconfig.ScalerConfig) ([]string, error) {
 	return params, nil
 }
 
-func getConnection(meta *postgreSQLMetadata, logger logr.Logger) (*sql.DB, error) {
-	db, err := sql.Open("pgx", meta.connection)
+func getConnection(ctx context.Context, meta *postgreSQLMetadata, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger) (*sql.DB, error) {
+	connectionString := meta.connection
+
+	switch podIdentity.Provider {
+	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+		accessToken, err := getAzureAccessToken(ctx, meta, azureDatabasePostgresResource)
+		if err != nil {
+			return nil, err
+		}
+		newPasswordField := "password=" + escapePostgreConnectionParameter(accessToken)
+		connectionString = passwordConnPattern.ReplaceAllString(meta.connection, newPasswordField)
+	}
+
+	db, err := sql.Open("pgx", connectionString)
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Found error opening postgreSQL: %s", err))
 		return nil, err
@@ -233,17 +239,11 @@ func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (float64, error)
 	switch s.podIdentity.Provider {
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
 		if s.metadata.azureAuthContext.token.ExpiresOn.After(time.Now().Add(time.Second * 60)) {
-			accessToken, err := getAzureAccessToken(ctx, s.metadata, azureDatabasePostgresResource)
-			if err != nil {
-				return 0, err
-			}
-			newPasswordField := "password="+escapePostgreConnectionParameter(accessToken)
-			s.metadata.connection = passwordConnPattern.ReplaceAllString(s.metadata.connection, newPasswordField)
-
-			s.connection, err = getConnection(s.metadata, s.logger)
+			newConnection, err := getConnection(ctx, s.metadata, s.podIdentity, s.logger)
 			if err != nil {
 				return 0, fmt.Errorf("error establishing postgreSQL connection: %w", err)
 			}
+			s.connection = newConnection
 		}
 	}
 
