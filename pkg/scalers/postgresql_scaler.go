@@ -31,6 +31,10 @@ const (
 	azureDatabasePostgresResource = "https://ossrdbms-aad.database.windows.net/.default"
 )
 
+var (
+	passwordConnPattern = regexp.MustCompile(`password='([^']*)'`)
+)
+
 type postgreSQLScaler struct {
 	metricType  v2.MetricTargetType
 	metadata    *postgreSQLMetadata
@@ -233,9 +237,8 @@ func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (float64, error)
 			if err != nil {
 				return 0, err
 			}
-			pattern := regexp.MustCompile(`password='([^']*)'`)
-			newPasswordField := "password=" + escapePostgreConnectionParameter(accessToken)
-			s.metadata.connection = pattern.ReplaceAllString(s.metadata.connection, newPasswordField)
+			newPasswordField := "password="+escapePostgreConnectionParameter(accessToken)
+			s.metadata.connection = passwordConnPattern.ReplaceAllString(s.metadata.connection, newPasswordField)
 
 			s.connection, err = getConnection(s.metadata, s.logger)
 			if err != nil {
