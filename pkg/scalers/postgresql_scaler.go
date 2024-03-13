@@ -13,7 +13,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/go-logr/logr"
-
 	// PostreSQL drive required for this scaler
 	_ "github.com/jackc/pgx/v5/stdlib"
 	v2 "k8s.io/api/autoscaling/v2"
