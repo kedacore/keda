@@ -83,6 +83,8 @@ var (
 	GcpIdentityTests              = os.Getenv("GCP_RUN_IDENTITY_TESTS")
 	EnableOpentelemetry           = os.Getenv("ENABLE_OPENTELEMETRY")
 	InstallCertManager            = AwsIdentityTests == StringTrue || GcpIdentityTests == StringTrue
+	InstallKeda                   = os.Getenv("E2E_INSTALL_KEDA")
+	InstallKafka                  = os.Getenv("E2E_INSTALL_KAFKA")
 )
 
 var (

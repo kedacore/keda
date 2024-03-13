@@ -66,6 +66,7 @@ Here is an overview of all new **experimental** features:
 - **General**: Add command-line flag in Adapter to allow override of gRPC Authority Header ([#5449](https://github.com/kedacore/keda/issues/5449))
 - **General**: Add OPENTELEMETRY flag in e2e test YAML ([#5375](https://github.com/kedacore/keda/issues/5375))
 - **General**: Add support for cross tenant/cloud authentication when using Azure Workload Identity for TriggerAuthentication ([#5441](https://github.com/kedacore/keda/issues/5441))
+- **MongoDB Scaler**: Add scheme field support srv record ([#5544](https://github.com/kedacore/keda/issues/5544))
 
 ### Fixes
 
@@ -85,10 +86,12 @@ New deprecation(s):
 
 ### Other
 
+- **General**: Allow E2E tests to be run against existing KEDA and/or Kafka installation ([#5595](https://github.com/kedacore/keda/pull/5595))
 - **General**: Improve readability of utility function getParameterFromConfigV2 ([#5037](https://github.com/kedacore/keda/issues/5037))
-- **General**: Introduce ENABLE_OPENTELEMETRY in deploying/testing process  ([#5375](https://github.com/kedacore/keda/issues/5375))
+- **General**: Introduce ENABLE_OPENTELEMETRY in deploying/testing process  ([#5375](https://github.com/kedacore/keda/issues/5375)|[#5578](https://github.com/kedacore/keda/issues/5578))
 - **General**: Migrate away from unmaintained golang/mock and use uber/gomock ([#5440](https://github.com/kedacore/keda/issues/5440))
 - **General**: Minor refactor to reduce copy/paste code in ScaledObject webhook ([#5397](https://github.com/kedacore/keda/issues/5397))
+- **Kafka**: Expose GSSAPI service name  ([#5474](https://github.com/kedacore/keda/issues/5474))
 
 ## v2.13.1
 
