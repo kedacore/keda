@@ -151,6 +151,7 @@ func parsePostgreSQLMetadata(logger logr.Logger, config *scalersconfig.ScalerCon
 			return nil, authPodIdentity, err
 		}
 		meta.azureAuthContext.cred = cred
+		authPodIdentity = kedav1alpha1.AuthPodIdentity{Provider: config.PodIdentity.Provider}
 
 		params = append(params, "%PASSWORD%")
 		meta.connection = strings.Join(params, " ")
