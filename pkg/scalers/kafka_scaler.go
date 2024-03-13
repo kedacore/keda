@@ -75,9 +75,10 @@ type kafkaMetadata struct {
 	password string
 
 	// GSSAPI
-	keytabPath         string
-	realm              string
-	kerberosConfigPath string
+	keytabPath          string
+	realm               string
+	kerberosConfigPath  string
+	kerberosServiceName string
 
 	// OAUTHBEARER
 	scopes                []string
@@ -290,6 +291,10 @@ func parseKerberosParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadata
 		return fmt.Errorf("error saving kerberosConfig to file: %w", err)
 	}
 	meta.kerberosConfigPath = path
+
+	if config.AuthParams["kerberosServiceName"] != "" {
+		meta.kerberosServiceName = strings.TrimSpace(config.AuthParams["kerberosServiceName"])
+	}
 
 	meta.saslType = mode
 	return nil
@@ -541,7 +546,11 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 	if metadata.saslType == KafkaSASLTypeGSSAPI {
 		config.Net.SASL.Enable = true
 		config.Net.SASL.Mechanism = sarama.SASLTypeGSSAPI
-		config.Net.SASL.GSSAPI.ServiceName = "kafka"
+		if metadata.kerberosServiceName != "" {
+			config.Net.SASL.GSSAPI.ServiceName = metadata.kerberosServiceName
+		} else {
+			config.Net.SASL.GSSAPI.ServiceName = "kafka"
+		}
 		config.Net.SASL.GSSAPI.Username = metadata.username
 		config.Net.SASL.GSSAPI.Realm = metadata.realm
 		config.Net.SASL.GSSAPI.KerberosConfigPath = metadata.kerberosConfigPath

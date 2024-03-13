@@ -161,6 +161,8 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	{map[string]string{"sasl": "gssapi", "username": "admin", "password": "admin", "kerberosConfig": "<config>", "realm": "tst.com", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, true},
 	// success, SASL GSSAPI/keytab + TLS
 	{map[string]string{"sasl": "gssapi", "username": "admin", "keytab": "/path/to/keytab", "kerberosConfig": "<config>", "realm": "tst.com", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, true},
+	// success, SASL GSSAPI, KerberosServiceName supported
+	{map[string]string{"sasl": "gssapi", "username": "admin", "keytab": "/path/to/keytab", "kerberosConfig": "<config>", "realm": "tst.com", "kerberosServiceName": "srckafka"}, false, false},
 	// failure, SASL OAUTHBEARER + TLS bad sasl type
 	{map[string]string{"sasl": "foo", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, true, false},
 	// success, SASL OAUTHBEARER + TLS missing scope
@@ -411,6 +413,9 @@ func TestKafkaAuthParamsInTriggerAuthentication(t *testing.T) {
 				if err != nil {
 					t.Errorf(err.Error())
 				}
+			}
+			if meta.kerberosServiceName != testData.authParams["kerberosServiceName"] {
+				t.Errorf("Expected kerberos ServiceName to be set to %v but got %v\n", testData.authParams["kerberosServiceName"], meta.kerberosServiceName)
 			}
 		}
 	}
