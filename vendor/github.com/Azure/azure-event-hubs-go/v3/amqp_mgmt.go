@@ -64,12 +64,12 @@ type (
 
 	// HubPartitionRuntimeInformation provides management node information about a given Event Hub partition
 	HubPartitionRuntimeInformation struct {
-		HubPath                 string    `mapstructure:"name"`
-		PartitionID             string    `mapstructure:"partition"`
-		BeginningSequenceNumber int64     `mapstructure:"begin_sequence_number"`
-		LastSequenceNumber      int64     `mapstructure:"last_enqueued_sequence_number"`
-		LastEnqueuedOffset      string    `mapstructure:"last_enqueued_offset"`
-		LastEnqueuedTimeUtc     time.Time `mapstructure:"last_enqueued_time_utc"`
+		HubPath                    string    `mapstructure:"name"`
+		PartitionID                string    `mapstructure:"partition"`
+		BeginningSequenceNumber    int64     `mapstructure:"begin_sequence_number"`
+		LastSequenceNumber         int64     `mapstructure:"last_enqueued_sequence_number"`
+		LastEnqueuedSequenceNumber int64     `mapstructure:"last_enqueued_sequence_number"`
+		LastEnqueuedTimeUtc        time.Time `mapstructure:"last_enqueued_time_utc"`
 	}
 )
 
