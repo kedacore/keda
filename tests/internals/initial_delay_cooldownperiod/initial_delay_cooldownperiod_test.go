@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
 )
@@ -84,7 +83,7 @@ spec:
       timezone: Etc/UTC
       start: {{.StartMin}} * * * *
       end: {{.EndMin}} * * * *
-      desiredReplicas: '10'
+      desiredReplicas: '0'
 `
 )
 
@@ -97,17 +96,16 @@ func TestScaler(t *testing.T) {
 	data, templates := getTemplateData()
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
-
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
-		"replica count should be 1 after 1 minute")
+		"replica count should be %d after 1 minute", 1)
+	t.Log("--- Waiting for some time to ensure deployment replica count doesn't change ---")
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 1, 90)
+	t.Log("--- scale to 0 replicas ---")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 120, 1),
+		"replica count should be %d after 2 minute", 0) // Assert that the workload is scaled to zero after the initial cooldown period
 
-	// test scaling
-	testScaleIn(t, kc)
-
-	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
-
 func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:    testNamespace,
@@ -119,10 +117,4 @@ func getTemplateData() (templateData, []Template) {
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
-}
-
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing scale in ---")
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 180, 1),
-		"replica count should be 0 after  2 minutes")
 }
