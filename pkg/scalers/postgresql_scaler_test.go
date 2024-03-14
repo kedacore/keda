@@ -93,7 +93,7 @@ func TestPosgresSQLConnectionStringGeneration(t *testing.T) {
 
 var testPodIdentityAzureWorkloadPostgreSQLConnectionstring = []postgreSQLConnectionStringTestData{
 	// from meta
-	{metadata: map[string]string{"query": "test_query", "targetQueryValue": "5", "host": "localhost", "port": "1234", "dbName": "testDb", "userName": "user", "sslmode": "required"},  connectionString: "host=localhost port=1234 user=user dbname=testDb sslmode=required %PASSWORD%"},
+	{metadata: map[string]string{"query": "test_query", "targetQueryValue": "5", "host": "localhost", "port": "1234", "dbName": "testDb", "userName": "user", "sslmode": "required"}, connectionString: "host=localhost port=1234 user=user dbname=testDb sslmode=required %PASSWORD%"},
 }
 
 func TestPodIdentityAzureWorkloadPosgresSQLConnectionStringGeneration(t *testing.T) {
@@ -112,7 +112,7 @@ func TestPodIdentityAzureWorkloadPosgresSQLConnectionStringGeneration(t *testing
 
 var testPodIdentityAzurePostgreSQLConnectionstring = []postgreSQLConnectionStringTestData{
 	// from meta
-	{metadata: map[string]string{"query": "test_query", "targetQueryValue": "5", "host": "localhost", "port": "1234", "dbName": "testDb", "userName": "user", "sslmode": "required"},  connectionString: "host=localhost port=1234 user=user dbname=testDb sslmode=required %PASSWORD%"},
+	{metadata: map[string]string{"query": "test_query", "targetQueryValue": "5", "host": "localhost", "port": "1234", "dbName": "testDb", "userName": "user", "sslmode": "required"}, connectionString: "host=localhost port=1234 user=user dbname=testDb sslmode=required %PASSWORD%"},
 }
 
 func TestPodIdentityAzurePosgresSQLConnectionStringGeneration(t *testing.T) {
