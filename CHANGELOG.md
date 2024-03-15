@@ -70,6 +70,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
+- **General**: Prometheus metrics shows errors correctly ([#5597](https://github.com/kedacore/keda/issues/5597))
 - **General**: Validate empty array value of triggers in ScaledObject/ScaledJob creation ([#5520](https://github.com/kedacore/keda/issues/5520))
 
 ### Deprecations
