@@ -583,6 +583,30 @@ var _ = It("shouldn't create so when stabilizationWindowSeconds exceeds 3600", f
 		Should(HaveOccurred())
 })
 
+var _ = It("should validate empty triggers in ScaledObject", func() {
+
+	namespaceName := "empty-triggers-set"
+	namespace := createNamespace(namespaceName)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	workload := createDeployment(namespaceName, false, false)
+	workload.Spec.Template.Spec.Containers[0].Resources.Limits = v1.ResourceList{
+		v1.ResourceCPU: *resource.NewMilliQuantity(100, resource.DecimalSI),
+	}
+
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
+	so.Spec.Triggers = []ScaleTriggers{}
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
+})
+
 // ============================ SCALING MODIFIERS ============================ \\
 // =========================================================================== \\
 
