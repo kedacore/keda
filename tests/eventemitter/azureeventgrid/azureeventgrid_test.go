@@ -29,7 +29,7 @@ const (
 var _ = godotenv.Load("../../.env")
 
 var (
-	connectionString        = os.Getenv("TF_AZURE_SERVICE_BUS_CONNECTION_STRING")
+	connectionString        = os.Getenv("TF_AZURE_SERVICE_BUS_EVENTGRID_CONNECTION_STRING")
 	topicName               = os.Getenv("TF_AZURE_SB_EVENT_GRID_RECEIVE_TOPIC")
 	eventGridEndpoint       = os.Getenv("TF_AZURE_EVENT_GRID_ENDPOINT")
 	eventGridKey            = os.Getenv("TF_AZURE_EVENT_GRID_KEY")
