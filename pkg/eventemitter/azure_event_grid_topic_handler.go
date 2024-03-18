@@ -35,7 +35,8 @@ import (
 	"github.com/kedacore/keda/v2/pkg/eventemitter/eventdata"
 )
 
-type AzureEventGridHandler struct {
+type AzureEventGridTopicHandler struct {
+	Context      context.Context
 	Endpoint     string
 	Key          string
 	ClusterName  string
@@ -44,14 +45,15 @@ type AzureEventGridHandler struct {
 	activeStatus metav1.ConditionStatus
 }
 
-func NewAzureEventGridHandler(clusterName string, spec *eventingv1alpha1.AzureEventGridSpec, logger logr.Logger) (*AzureEventGridHandler, error) {
+func NewAzureEventGridTopicHandler(context context.Context, clusterName string, spec *eventingv1alpha1.AzureEventGridTopicSpec, logger logr.Logger) (*AzureEventGridTopicHandler, error) {
 	client, err := publisher.NewClientWithSharedKeyCredential(spec.EndPoint, azcore.NewKeyCredential(spec.Key), nil)
 	if err != nil {
 		return nil, err
 	}
 
 	logger.Info("Create new azure event grid handler")
-	return &AzureEventGridHandler{
+	return &AzureEventGridTopicHandler{
+		Context:      context,
 		Client:       client,
 		Endpoint:     spec.EndPoint,
 		Key:          spec.Key,
@@ -61,19 +63,19 @@ func NewAzureEventGridHandler(clusterName string, spec *eventingv1alpha1.AzureEv
 	}, nil
 }
 
-func (a *AzureEventGridHandler) CloseHandler() {
+func (a *AzureEventGridTopicHandler) CloseHandler() {
 
 }
 
-func (a *AzureEventGridHandler) SetActiveStatus(status metav1.ConditionStatus) {
+func (a *AzureEventGridTopicHandler) SetActiveStatus(status metav1.ConditionStatus) {
 	a.activeStatus = status
 }
 
-func (a *AzureEventGridHandler) GetActiveStatus() metav1.ConditionStatus {
+func (a *AzureEventGridTopicHandler) GetActiveStatus() metav1.ConditionStatus {
 	return a.activeStatus
 }
 
-func (a *AzureEventGridHandler) EmitEvent(eventData eventdata.EventData, failureFunc func(eventData eventdata.EventData, err error)) {
+func (a *AzureEventGridTopicHandler) EmitEvent(eventData eventdata.EventData, failureFunc func(eventData eventdata.EventData, err error)) {
 	type emitData struct {
 		Reason  string `json:"reason"`
 		Message string `json:"message"`
@@ -99,7 +101,7 @@ func (a *AzureEventGridHandler) EmitEvent(eventData eventdata.EventData, failure
 		event,
 	}
 
-	_, err = a.Client.PublishCloudEvents(context.TODO(), eventsToSend, &publisher.PublishCloudEventsOptions{})
+	_, err = a.Client.PublishCloudEvents(a.Context, eventsToSend, &publisher.PublishCloudEventsOptions{})
 
 	if err != nil {
 		a.logger.Error(err, "Failed to Publish Event to Azure Event Grid ")

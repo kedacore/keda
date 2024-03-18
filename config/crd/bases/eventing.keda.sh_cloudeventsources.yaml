@@ -49,7 +49,7 @@ spec:
               destination:
                 description: Destination defines the various ways to emit events
                 properties:
-                  azureEventGrid:
+                  azureEventGridTopic:
                     properties:
                       endPoint:
                         type: string

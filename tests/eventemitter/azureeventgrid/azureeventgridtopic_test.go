@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	testName = "eventemitter-azureeventgrid-test"
+	testName = "eventemitter-azureeventgridtopic-test"
 )
 
 // Load environment variables from .env file
@@ -70,7 +70,7 @@ const (
   spec:
     clusterName: {{.ClusterName}}
     destination:
-      azureEventGrid:
+      azureEventGridTopic:
         endPoint: {{.EventGridEndpoint}}
         key: {{.EventGridKey}}
   `

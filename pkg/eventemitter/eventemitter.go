@@ -86,8 +86,8 @@ type EmitData struct {
 }
 
 const (
-	cloudEventHandlerTypeHTTP           = "http"
-	cloudEventHandlerTypeAzureEventGrid = "azureEventGrid"
+	cloudEventHandlerTypeHTTP                = "http"
+	cloudEventHandlerTypeAzureEventGridTopic = "azureEventGridTopic"
 )
 
 // NewEventEmitter creates a new EventEmitter
@@ -190,14 +190,14 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEventSource
 		e.eventHandlersCache[eventHandlerKey] = eventHandler
 	}
 
-	if cloudEventSource.Spec.Destination.AzureEventGrid != nil {
-		eventHandler, err := NewAzureEventGridHandler(clusterName, cloudEventSource.Spec.Destination.AzureEventGrid, initializeLogger(cloudEventSource, "azure_event_grid"))
+	if cloudEventSource.Spec.Destination.AzureEventGridTopic != nil {
+		eventHandler, err := NewAzureEventGridTopicHandler(ctx, clusterName, cloudEventSource.Spec.Destination.AzureEventGridTopic, initializeLogger(cloudEventSource, "azure_event_grid_topic"))
 		if err != nil {
 			e.log.Error(err, "create Azure Event Grid handler failed")
 			return
 		}
 
-		eventHandlerKey := newEventHandlerKey(key, cloudEventHandlerTypeAzureEventGrid)
+		eventHandlerKey := newEventHandlerKey(key, cloudEventHandlerTypeAzureEventGridTopic)
 		if h, ok := e.eventHandlersCache[eventHandlerKey]; ok {
 			h.CloseHandler()
 		}
@@ -221,8 +221,8 @@ func (e *EventEmitter) clearEventHandlersCache(cloudEventSource *eventingv1alpha
 		}
 	}
 
-	if cloudEventSource.Spec.Destination.AzureEventGrid != nil {
-		eventHandlerKey := newEventHandlerKey(key, cloudEventHandlerTypeAzureEventGrid)
+	if cloudEventSource.Spec.Destination.AzureEventGridTopic != nil {
+		eventHandlerKey := newEventHandlerKey(key, cloudEventHandlerTypeAzureEventGridTopic)
 		if eventHandler, found := e.eventHandlersCache[eventHandlerKey]; found {
 			eventHandler.CloseHandler()
 			delete(e.eventHandlersCache, key)

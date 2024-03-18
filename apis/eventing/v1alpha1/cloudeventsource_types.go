@@ -66,14 +66,14 @@ type Destination struct {
 	HTTP *CloudEventHTTP `json:"http"`
 
 	// +optional
-	AzureEventGrid *AzureEventGridSpec `json:"azureEventGrid"`
+	AzureEventGridTopic *AzureEventGridTopicSpec `json:"azureEventGridTopic"`
 }
 
 type CloudEventHTTP struct {
 	URI string `json:"uri"`
 }
 
-type AzureEventGridSpec struct {
+type AzureEventGridTopicSpec struct {
 	EndPoint string `json:"endPoint"`
 
 	Key string `json:"key"`
