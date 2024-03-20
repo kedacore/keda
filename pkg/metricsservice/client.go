@@ -48,10 +48,10 @@ func NewGrpcClient(url, certDir, authority string) (*GrpcClient, error) {
 				"RetryableStatusCodes": [ "UNAVAILABLE" ]
 			}
 			}],
+			"loadBalancingPolicy": "round_robin",
 			"healthCheckConfig": {
 				"serviceName": "%s"
 			},
-			"loadBalancingPolicy": "round_robin",
 		}`,
 		api.MetricsService_ServiceDesc.ServiceName)
 
