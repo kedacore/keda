@@ -87,7 +87,8 @@ func (s *GrpcServer) startServer() error {
 	return nil
 }
 
-// StartGrpcServer starts the grpc server in non-serving mode
+// StartGrpcServer starts the grpc server in non-serving mode and when the controller is elected leader
+// sets the status of the server to Serving.
 func (s *GrpcServer) Start(ctx context.Context) error {
 	<-s.certsReady
 	if s.server == nil {
