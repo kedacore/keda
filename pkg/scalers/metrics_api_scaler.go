@@ -287,7 +287,7 @@ func getValueFromPrometheusResponse(body []byte, valueLocation string) (float64,
 	return 0, fmt.Errorf("value %s not found", valueLocation)
 }
 
-// getValueFromJSONResponse uses provided valueLocation to access the numeric value in provided body using GSON
+// getValueFromJSONResponse uses provided valueLocation to access the numeric value in provided body using GJSON
 func getValueFromJSONResponse(body []byte, valueLocation string) (float64, error) {
 	r := gjson.GetBytes(body, valueLocation)
 	if r.Type == gjson.String {
@@ -330,7 +330,7 @@ func getValueFromXMLResponse(body []byte, valueLocation string) (float64, error)
 		}
 		return r.AsApproximateFloat64(), nil
 	default:
-		return 0, fmt.Errorf("valueLocation must point to value of type number or a string representing a Quantity got: '%s'", v)
+		return 0, fmt.Errorf(valueLocationWrongErrorMsg, v)
 	}
 }
 
@@ -362,7 +362,7 @@ func getValueFromYAMLResponse(body []byte, valueLocation string) (float64, error
 		}
 		return r.AsApproximateFloat64(), nil
 	default:
-		return 0, fmt.Errorf("valueLocation must point to value of type number or a string representing a Quantity got: '%s'", v)
+		return 0, fmt.Errorf(valueLocationWrongErrorMsg, v)
 	}
 }
 
