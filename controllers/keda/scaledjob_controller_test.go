@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -22,6 +23,115 @@ var _ = Describe("ScaledJobController", func() {
 	)
 
 	Describe("functional tests", func() {
+		It("should create a ScaledJob with valid trigger and job configuration", func() {
+			jobName := "valid-trigger-job"
+			sjName := "sj-" + jobName
+
+			sj := &kedav1alpha1.ScaledJob{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      sjName,
+					Namespace: "default",
+				},
+				Spec: kedav1alpha1.ScaledJobSpec{
+					JobTargetRef: generateJobSpec(jobName),
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+			pollingInterval := int32(5)
+			sj.Spec.PollingInterval = &pollingInterval
+			err := k8sClient.Create(context.Background(), sj)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Check if ScaledJob is created successfully
+			Eventually(func() bool {
+				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: sjName, Namespace: "default"}, sj)
+				return err == nil
+			}, 1*time.Minute, 10*time.Second).Should(BeTrue())
+		})
+
+		It("should delete a ScaledJob and associated resources", func() {
+			jobName := "to-be-deleted-job"
+			sjName := "sj-" + jobName
+
+			// Create a ScaledJob
+			sj := &kedav1alpha1.ScaledJob{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      sjName,
+					Namespace: "default",
+				},
+				Spec: kedav1alpha1.ScaledJobSpec{
+					JobTargetRef: generateJobSpec(jobName),
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+			pollingInterval := int32(5)
+			minReplicaCount := int32(1)
+			maxReplicaCount := int32(3)
+			sj.Spec.PollingInterval = &pollingInterval
+			sj.Spec.MinReplicaCount = &minReplicaCount
+			sj.Spec.MaxReplicaCount = &maxReplicaCount
+			err := k8sClient.Create(context.Background(), sj)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Wait for ScaledJob creation
+			Eventually(func() bool {
+				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: sjName, Namespace: "default"}, sj)
+				if err != nil {
+					testLogger.Info("Error getting ScaledJob: %v", err)
+					return false
+				}
+
+				jobList := &batchv1.JobList{}
+				err = k8sClient.List(context.Background(), jobList, &client.ListOptions{Namespace: "default"})
+				if err != nil {
+					testLogger.Info("Error listing Jobs: %v", err)
+					return false
+				}
+				return len(jobList.Items) > 0
+			}, 1*time.Minute, 10*time.Second).Should(BeTrue())
+
+			// Validate jobs are created
+			jobList := &batchv1.JobList{}
+			err = k8sClient.List(context.Background(), jobList, &client.ListOptions{Namespace: "default"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(jobList.Items)).ToNot(BeZero(), "Expected jobs to be created")
+
+			// Delete the ScaledJob
+			err = k8sClient.Delete(context.Background(), sj)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Wait for ScaledJob deletion
+			Eventually(func() bool {
+				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: sjName, Namespace: "default"}, sj)
+				return err != nil
+			}, 2*time.Minute, 10*time.Second).Should(BeTrue())
+
+			// Verify associated resources are deleted
+			err = k8sClient.List(context.Background(), jobList, &client.ListOptions{Namespace: "default"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(jobList.Items)).To(BeZero())
+		})
+
 		It("scaledjob paused condition status changes to true on annotation", func() {
 			jobName := "toggled-to-paused-annotation-name"
 			sjName := "sj-" + jobName
@@ -86,7 +196,7 @@ var _ = Describe("ScaledJobController", func() {
 					return metav1.ConditionUnknown
 				}
 				return sj.Status.Conditions.GetPausedCondition().Status
-			}).WithTimeout(2 * time.Minute).WithPolling(10 * time.Second).Should(Equal(metav1.ConditionTrue))
+			}).WithTimeout(1 * time.Minute).WithPolling(10 * time.Second).Should(Equal(metav1.ConditionTrue))
 		})
 		It("scaledjob paused status stays false when annotation is set to false", func() {
 			jobName := "turn-off-paused-annotation-name"
@@ -186,11 +296,6 @@ var _ = Describe("ScaledJobController", func() {
 
 func generateJobSpec(name string) *batchv1.JobSpec {
 	return &batchv1.JobSpec{
-		Selector: &metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				"app": name,
-			},
-		},
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
