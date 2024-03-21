@@ -741,6 +741,7 @@ func (*scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler, 
 
 		var latency int64
 		metrics, isMetricActive, latency, err := cache.GetMetricsAndActivityForScaler(ctx, triggerIndex, metricName)
+		metricscollector.RecordScalerError(scaledObject.Namespace, scaledObject.Name, triggerName, triggerIndex, metricName, true, err)
 		if latency != -1 {
 			metricscollector.RecordScalerLatency(scaledObject.Namespace, scaledObject.Name, triggerName, triggerIndex, metricName, true, float64(latency))
 		}
