@@ -162,10 +162,9 @@ spec:
       targetValue: "5"
       activationTargetValue: "20"
       url: "{{.MetricsServerEndpoint}}"
-      valueLocation: value
-      format: json
-      authMode: basic
-      method: query
+      valueLocation: 'value'
+      authMode: "basic"
+      method: "query"
     authenticationRef:
       name: {{.TriggerAuthName}}
 `
