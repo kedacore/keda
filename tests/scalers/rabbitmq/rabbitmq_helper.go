@@ -10,6 +10,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/kedacore/keda/v2/tests/helper"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -77,7 +78,7 @@ kind: Deployment
 metadata:
   labels:
     app: rabbitmq
-  name: rabbitmq
+  name: {{.RabbitServerName}}
   namespace: {{.Namespace}}
 spec:
   replicas: 1
@@ -200,22 +201,26 @@ type templateData struct {
 	OAuthClientID       string
 	OAuthScopesKey      string
 	OAuthJwksURI        string
+	RabbitServerName    string
 }
 
 func RMQInstall(t *testing.T, kc *kubernetes.Clientset, namespace, user, password, vhost string, oauth RabbitOAuthConfig) {
 	helper.CreateNamespace(t, kc, namespace)
 	data := templateData{
-		Namespace:      namespace,
-		VHostName:      vhost,
-		Username:       user,
-		Password:       password,
-		EnableOAuth:    oauth.Enable,
-		OAuthClientID:  oauth.ClientID,
-		OAuthScopesKey: oauth.ScopesKey,
-		OAuthJwksURI:   oauth.JwksURI,
+		Namespace:        namespace,
+		VHostName:        vhost,
+		Username:         user,
+		Password:         password,
+		EnableOAuth:      oauth.Enable,
+		OAuthClientID:    oauth.ClientID,
+		OAuthScopesKey:   oauth.ScopesKey,
+		OAuthJwksURI:     oauth.JwksURI,
+		RabbitServerName: "rabbitmq",
 	}
 
 	helper.KubectlApplyWithTemplate(t, data, "rmqDeploymentTemplate", deploymentTemplate)
+	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, data.RabbitServerName, namespace, 1, 180, 1),
+		"replica count should be 1 after 3 minute")
 }
 
 func RMQUninstall(t *testing.T, namespace, user, password, vhost string, oauth RabbitOAuthConfig) {
