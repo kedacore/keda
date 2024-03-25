@@ -20,6 +20,7 @@ import (
 	"runtime"
 	"strconv"
 
+	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
@@ -328,4 +329,49 @@ func (p *PromMetrics) RecordCloudEventEmittedError(namespace string, cloudevents
 // RecordCloudEventQueueStatus record the number of cloudevents that are waiting for emitting
 func (p *PromMetrics) RecordCloudEventQueueStatus(namespace string, value int) {
 	cloudeventQueueStatus.With(prometheus.Labels{"namespace": namespace}).Set(float64(value))
+}
+
+// Returns a grpcprom Client Metrics object and registers the metrics. The object contains
+// interceptors to chain to the client so that all requests are observed.
+func NewPromClientMetrics() *grpcprom.ClientMetrics {
+	clientMetrics := grpcprom.NewClientMetrics(
+		grpcprom.WithClientHandlingTimeHistogram(
+			grpcprom.WithHistogramBuckets([]float64{0.001, 0.01, 0.1, 0.3, 0.6, 1, 3, 6, 9, 20, 30, 60, 90, 120}),
+			withDefaultHistogramNamespace(),
+		),
+		grpcprom.WithClientCounterOptions(withDefaultCounterNamespace()),
+	)
+	metrics.Registry.MustRegister(clientMetrics)
+
+	return clientMetrics
+}
+
+// Returns a grpcprom server Metrics object and registers the metrics. The object contains
+// interceptors to chain to the server so that all requests served are observed. Intended to be called
+// as part of initialization of metricscollector, hence why this function is not exported
+func newPromServerMetrics() *grpcprom.ServerMetrics {
+	serverMetrics := grpcprom.NewServerMetrics(
+		grpcprom.WithServerHandlingTimeHistogram(
+			grpcprom.WithHistogramBuckets([]float64{0.001, 0.01, 0.1, 0.3, 0.6, 1, 3, 6, 9, 20, 30, 60, 90, 120}),
+			withDefaultHistogramNamespace(),
+		),
+		grpcprom.WithServerCounterOptions(withDefaultCounterNamespace()),
+	)
+	metrics.Registry.MustRegister(serverMetrics)
+
+	return serverMetrics
+}
+
+// WithConstLabels allows you to add ConstLabels to Counter metrics.
+func withDefaultCounterNamespace() grpcprom.CounterOption {
+	return func(o *prometheus.CounterOpts) {
+		o.Namespace = DefaultPromMetricsNamespace
+	}
+}
+
+// WithConstLabels allows you to add ConstLabels to Counter metrics.
+func withDefaultHistogramNamespace() grpcprom.HistogramOption {
+	return func(o *prometheus.HistogramOpts) {
+		o.Namespace = DefaultPromMetricsNamespace
+	}
 }
