@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"os"
 
+	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	_ "go.uber.org/automaxprocs"
 	appsv1 "k8s.io/api/apps/v1"
@@ -40,6 +41,7 @@ import (
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
 	kedaprovider "github.com/kedacore/keda/v2/pkg/provider"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -63,6 +65,7 @@ var (
 	metricsServiceAddr          string
 	profilingAddr               string
 	metricsServiceGRPCAuthority string
+	enablePrometheusMetrics     bool
 )
 
 func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsProvider, <-chan struct{}, error) {
@@ -105,6 +108,12 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 	cfg.Burst = adapterClientRequestBurst
 	cfg.DisableCompression = disableCompression
 
+	// register grpc metrics
+	var clientMetrics *grpcprom.ClientMetrics
+	if enablePrometheusMetrics {
+		clientMetrics = metricscollector.NewPromClientMetrics()
+	}
+
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Metrics: server.Options{
 			BindAddress: "0", // disabled since we use our own server to serve metrics
@@ -124,7 +133,7 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 	}
 
 	logger.Info("Connecting Metrics Service gRPC client to the server", "address", metricsServiceAddr)
-	grpcClient, err := metricsservice.NewGrpcClient(metricsServiceAddr, a.SecureServing.ServerCert.CertDirectory, metricsServiceGRPCAuthority)
+	grpcClient, err := metricsservice.NewGrpcClient(metricsServiceAddr, a.SecureServing.ServerCert.CertDirectory, metricsServiceGRPCAuthority, clientMetrics)
 	if err != nil {
 		logger.Error(err, "error connecting Metrics Service gRPC client to the server", "address", metricsServiceAddr)
 		return nil, nil, err
@@ -239,6 +248,7 @@ func main() {
 	cmd.Flags().Float32Var(&adapterClientRequestQPS, "kube-api-qps", 20.0, "Set the QPS rate for throttling requests sent to the apiserver")
 	cmd.Flags().IntVar(&adapterClientRequestBurst, "kube-api-burst", 30, "Set the burst for throttling requests sent to the apiserver")
 	cmd.Flags().BoolVar(&disableCompression, "disable-compression", true, "Disable response compression for k8s restAPI in client-go. ")
+	cmd.Flags().BoolVar(&enablePrometheusMetrics, "enable-prometheus-metrics", true, "Enable the prometheus metrics of keda-api-server.")
 
 	if err := cmd.Flags().Parse(os.Args); err != nil {
 		return
