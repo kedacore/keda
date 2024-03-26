@@ -64,6 +64,7 @@ Here is an overview of all new **experimental** features:
 ### Improvements
 
 - **General**: Add command-line flag in Adapter to allow override of gRPC Authority Header ([#5449](https://github.com/kedacore/keda/issues/5449))
+- **General**: Add GRPC Healthchecks ([#5590](https://github.com/kedacore/keda/issues/5590))
 - **General**: Add OPENTELEMETRY flag in e2e test YAML ([#5375](https://github.com/kedacore/keda/issues/5375))
 - **General**: Add support for cross tenant/cloud authentication when using Azure Workload Identity for TriggerAuthentication ([#5441](https://github.com/kedacore/keda/issues/5441))
 - **Metrics API Scaler**: Add support for various formats: json, xml, yaml, prometheus ([#2633](https://github.com/kedacore/keda/issues/2633))
@@ -76,6 +77,7 @@ Here is an overview of all new **experimental** features:
 - **General**: Prometheus metrics shows errors correctly ([#5597](https://github.com/kedacore/keda/issues/5597))
 - **General**: Validate empty array value of triggers in ScaledObject/ScaledJob creation ([#5520](https://github.com/kedacore/keda/issues/5520))
 - **GitHub Runner Scaler**: Fixed `in_progress` detection on running jobs instead of just `queued` ([#5604](https://github.com/kedacore/keda/issues/5604))
+- **New Relic Scaler**: Consider empty results set from query executer ([#5619](https://github.com/kedacore/keda/pull/5619))
 
 ### Deprecations
 
