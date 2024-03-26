@@ -54,6 +54,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### New
 
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **ScaledObject**: Added initialDelayCooldownPeriod parameter ([#5478](https://github.com/kedacore/keda/pull/5478))
 
 #### Experimental
 
