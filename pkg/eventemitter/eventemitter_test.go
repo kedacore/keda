@@ -77,12 +77,12 @@ func TestEventHandler_FailedEmitEvent(t *testing.T) {
 	}
 
 	eventData := eventdata.EventData{
-		Namespace:  "aaa",
-		ObjectName: "bbb",
-		EventType:  "ccc",
-		Reason:     "ddd",
-		Message:    "eee",
-		Time:       time.Now().UTC(),
+		Namespace:      "aaa",
+		ObjectName:     "bbb",
+		CloudEventType: "ccc",
+		Reason:         "ddd",
+		Message:        "eee",
+		Time:           time.Now().UTC(),
 	}
 
 	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
@@ -139,12 +139,12 @@ func TestEventHandler_DirectCall(t *testing.T) {
 	}
 
 	eventData := eventdata.EventData{
-		Namespace:  "aaa",
-		ObjectName: "bbb",
-		EventType:  "ccc",
-		Reason:     "ddd",
-		Message:    "eee",
-		Time:       time.Now().UTC(),
+		Namespace:      "aaa",
+		ObjectName:     "bbb",
+		CloudEventType: "ccc",
+		Reason:         "ddd",
+		Message:        "eee",
+		Time:           time.Now().UTC(),
 	}
 
 	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()

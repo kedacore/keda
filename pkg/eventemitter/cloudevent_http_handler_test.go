@@ -51,12 +51,12 @@ var testErrCloudeventHTTPHandlerTestData = []parseCloudeventHTTPHandlerTestData{
 }
 
 var testErrEventData = eventdata.EventData{
-	Namespace:  "aaa",
-	ObjectName: "bbb",
-	EventType:  "ccc",
-	Reason:     "ddd",
-	Message:    "eee",
-	Time:       time.Now().UTC(),
+	Namespace:      "aaa",
+	ObjectName:     "bbb",
+	CloudEventType: "ccc",
+	Reason:         "ddd",
+	Message:        "eee",
+	Time:           time.Now().UTC(),
 }
 
 func TestCorrectCloudeventHTTPHandler(t *testing.T) {

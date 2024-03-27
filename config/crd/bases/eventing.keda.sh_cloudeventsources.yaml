@@ -57,6 +57,28 @@ spec:
                     - uri
                     type: object
                 type: object
+              eventSubscription:
+                description: EventSubscription defines filters for events
+                properties:
+                  excludedEventTypes:
+                    items:
+                      description: CloudEventType contains the list of cloudevent
+                        types
+                      enum:
+                      - keda.scaledobject.ready.v1
+                      - keda.scaledobject.failed.v1
+                      type: string
+                    type: array
+                  includedEventTypes:
+                    items:
+                      description: CloudEventType contains the list of cloudevent
+                        types
+                      enum:
+                      - keda.scaledobject.ready.v1
+                      - keda.scaledobject.failed.v1
+                      type: string
+                    type: array
+                type: object
             required:
             - destination
             type: object
