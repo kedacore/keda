@@ -29,6 +29,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/eventemitter"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 )
 
@@ -49,16 +50,18 @@ type scaleExecutor struct {
 	reconcilerScheme *runtime.Scheme
 	logger           logr.Logger
 	recorder         record.EventRecorder
+	eventEmitter     eventemitter.EventHandler
 }
 
 // NewScaleExecutor creates a ScaleExecutor object
-func NewScaleExecutor(client runtimeclient.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, recorder record.EventRecorder) ScaleExecutor {
+func NewScaleExecutor(client runtimeclient.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, recorder record.EventRecorder, eventEmitter eventemitter.EventHandler) ScaleExecutor {
 	return &scaleExecutor{
 		client:           client,
 		scaleClient:      scaleClient,
 		reconcilerScheme: reconcilerScheme,
 		logger:           logf.Log.WithName("scaleexecutor"),
 		recorder:         recorder,
+		eventEmitter:     eventEmitter,
 	}
 }
 

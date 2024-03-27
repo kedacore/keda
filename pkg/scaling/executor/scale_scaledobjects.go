@@ -26,9 +26,12 @@ import (
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/common/message"
+	"github.com/kedacore/keda/v2/pkg/eventemitter"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 )
@@ -272,6 +275,13 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 
 			e.recorder.Eventf(scaledObject, corev1.EventTypeNormal, eventreason.KEDAScaleTargetDeactivated,
 				"Deactivated %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, scaleToReplicas)
+
+			if scaleToReplicas == 0 {
+				e.eventEmitter.Emit(scaledObject, types.NamespacedName{Namespace: scaledObject.Namespace},
+					corev1.EventTypeNormal, eventemitter.ScaleFromZeroType, eventreason.KEDAScaleTargetActivated,
+					message.ScaleTargetFromZero)
+			}
+
 			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active"); err != nil {
 				logger.Error(err, "Error in setting active condition")
 				return
@@ -309,6 +319,13 @@ func (e *scaleExecutor) scaleFromZeroOrIdle(ctx context.Context, logger logr.Log
 		logger.Info("Successfully updated ScaleTarget",
 			"Original Replicas Count", currentReplicas,
 			"New Replicas Count", replicas)
+
+		if currentReplicas == 0 {
+			e.eventEmitter.Emit(scaledObject, types.NamespacedName{Namespace: scaledObject.Namespace},
+				corev1.EventTypeNormal, eventemitter.ScaleFromZeroType, eventreason.KEDAScaleTargetActivated,
+				message.ScaleTargetFromZero)
+		}
+
 		e.recorder.Eventf(scaledObject, corev1.EventTypeNormal, eventreason.KEDAScaleTargetActivated, "Scaled %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, replicas)
 
 		// Scale was successful. Update lastScaleTime and lastActiveTime on the scaledObject

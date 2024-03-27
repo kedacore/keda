@@ -28,4 +28,8 @@ const (
 	ScaleTargetNotFoundMsg = "Target resource doesn't exist"
 
 	ScaleTargetNoSubresourceMsg = "Target resource doesn't expose /scale subresource"
+
+	ScaleTargetFromZero = "Target resource is scaling up from zero number of replicas"
+
+	ScaleTargetToZero = "Target resource is scaling down to zero number of replicas"
 )

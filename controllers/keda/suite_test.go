@@ -91,13 +91,15 @@ var _ = BeforeSuite(func() {
 	scaleClient, _, err := k8s.InitScaleClient(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
+	eventEmitter := eventemitter.NewEventEmitter(k8sManager.GetClient(), k8sManager.GetEventRecorderFor("keda-operator"), "kubernetes-default")
+
 	err = (&ScaledObjectReconciler{
 		Client:       k8sManager.GetClient(),
 		Scheme:       k8sManager.GetScheme(),
 		Recorder:     k8sManager.GetEventRecorderFor("keda-operator"),
-		ScaleHandler: scaling.NewScaleHandler(k8sManager.GetClient(), scaleClient, k8sManager.GetScheme(), time.Duration(10), k8sManager.GetEventRecorderFor("keda-operator"), nil),
+		ScaleHandler: scaling.NewScaleHandler(k8sManager.GetClient(), scaleClient, k8sManager.GetScheme(), time.Duration(10), k8sManager.GetEventRecorderFor("keda-operator"), nil, eventEmitter),
 		ScaleClient:  scaleClient,
-		EventEmitter: eventemitter.NewEventEmitter(k8sManager.GetClient(), k8sManager.GetEventRecorderFor("keda-operator"), "kubernetes-default"),
+		EventEmitter: eventEmitter,
 	}).SetupWithManager(k8sManager, controller.Options{})
 	Expect(err).ToNot(HaveOccurred())
 
