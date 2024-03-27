@@ -2,6 +2,7 @@ package scalers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -28,6 +29,10 @@ type cassandraScaler struct {
 type CassandraMetadata struct {
 	username                   string
 	password                   string
+	enableTLS                  bool
+	cert                       string
+	key                        string
+	ca                         string
 	clusterIPAddress           string
 	port                       int
 	consistency                gocql.Consistency
@@ -38,6 +43,11 @@ type CassandraMetadata struct {
 	activationTargetQueryValue int64
 	triggerIndex               int
 }
+
+const (
+	tlsEnable  = "enable"
+	tlsDisable = "disable"
+)
 
 // NewCassandraScaler creates a new Cassandra scaler.
 func NewCassandraScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
@@ -68,7 +78,8 @@ func NewCassandraScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 // parseCassandraMetadata parses the metadata and returns a CassandraMetadata or an error if the ScalerConfig is invalid.
 func parseCassandraMetadata(config *scalersconfig.ScalerConfig) (*CassandraMetadata, error) {
-	meta := CassandraMetadata{}
+	meta := &CassandraMetadata{}
+	var err error
 
 	if val, ok := config.TriggerMetadata["query"]; ok {
 		meta.query = val
@@ -157,9 +168,45 @@ func parseCassandraMetadata(config *scalersconfig.ScalerConfig) (*CassandraMetad
 		return nil, fmt.Errorf("no password given")
 	}
 
+	if err = parseCassandraTLS(config, meta); err != nil {
+		return meta, err
+	}
+
 	meta.triggerIndex = config.TriggerIndex
 
-	return &meta, nil
+	return meta, nil
+}
+
+func parseCassandraTLS(config *scalersconfig.ScalerConfig, meta *CassandraMetadata) error {
+	meta.enableTLS = false
+	if val, ok := config.AuthParams["tls"]; ok {
+		val = strings.TrimSpace(val)
+		if val == tlsEnable {
+			certGiven := config.AuthParams["cert"] != ""
+			keyGiven := config.AuthParams["key"] != ""
+			caCertGiven := config.AuthParams["ca"] != ""
+			if certGiven && !keyGiven {
+				return errors.New("no key given")
+			}
+			if keyGiven && !certGiven {
+				return errors.New("no cert given")
+			}
+			if !keyGiven && !certGiven {
+				return errors.New("no cert/key given")
+			}
+
+			meta.cert = config.AuthParams["cert"]
+			meta.key = config.AuthParams["key"]
+			meta.ca = config.AuthParams["ca"]
+			if !caCertGiven {
+				meta.ca = ""
+			}
+			meta.enableTLS = true
+		} else if val != tlsDisable {
+			return fmt.Errorf("err incorrect value for TLS given: %s", val)
+		}
+	}
+	return nil
 }
 
 // newCassandraSession returns a new Cassandra session for the provided CassandraMetadata.
@@ -170,6 +217,14 @@ func newCassandraSession(meta *CassandraMetadata, logger logr.Logger) (*gocql.Se
 	cluster.Authenticator = gocql.PasswordAuthenticator{
 		Username: meta.username,
 		Password: meta.password,
+	}
+
+	if meta.enableTLS {
+		cluster.SslOpts = &gocql.SslOptions{
+			CertPath: meta.cert,
+			KeyPath:  meta.key,
+			CaPath:   meta.ca,
+		}
 	}
 
 	session, err := cluster.CreateSession()

@@ -54,6 +54,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### New
 
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Cassandra Scaler**: Add TLS support for cassandra scaler ([#5534](https://github.com/kedacore/keda/issues/5534))
 
 #### Experimental
 
