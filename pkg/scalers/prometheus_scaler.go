@@ -32,7 +32,6 @@ const (
 	promThreshold           = "threshold"
 	promActivationThreshold = "activationThreshold"
 	promNamespace           = "namespace"
-	promCortexScopeOrgID    = "cortexOrgID"
 	promCustomHeaders       = "customHeaders"
 	ignoreNullValues        = "ignoreNullValues"
 	unsafeSsl               = "unsafeSsl"
@@ -202,10 +201,6 @@ func parsePrometheusMetadata(config *scalersconfig.ScalerConfig) (meta *promethe
 
 	if val, ok := config.TriggerMetadata[promNamespace]; ok && val != "" {
 		meta.namespace = val
-	}
-
-	if val, ok := config.TriggerMetadata[promCortexScopeOrgID]; ok && val != "" {
-		return nil, fmt.Errorf("cortexOrgID is deprecated, please use customHeaders instead")
 	}
 
 	if val, ok := config.TriggerMetadata[promCustomHeaders]; ok && val != "" {
