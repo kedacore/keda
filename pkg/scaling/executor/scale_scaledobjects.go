@@ -278,8 +278,8 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 
 			if scaleToReplicas == 0 {
 				e.eventEmitter.Emit(scaledObject, types.NamespacedName{Namespace: scaledObject.Namespace},
-					corev1.EventTypeNormal, eventemitter.ScaleFromZeroType, eventreason.KEDAScaleTargetActivated,
-					message.ScaleTargetFromZero)
+					corev1.EventTypeNormal, eventemitter.ScaleToZeroType, eventreason.KEDAScaleTargetActivated,
+					message.ScaleTargetToZero)
 			}
 
 			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active"); err != nil {
