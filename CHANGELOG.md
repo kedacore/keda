@@ -72,6 +72,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
+- **General**: Allow ScaledObject.MinReplicaCount to be set to 0 ([#5570](https://github.com/kedacore/keda/issues/5570))
 - **General**: Fix CVE-2024-28180 in github.com/go-jose/go-jose/v3 ([#5617](https://github.com/kedacore/keda/pull/5617))
 - **General**: Log field `ScaledJob` no longer have conflicting types ([#5592](https://github.com/kedacore/keda/pull/5592))
 - **General**: Prometheus metrics shows errors correctly ([#5597](https://github.com/kedacore/keda/issues/5597))
