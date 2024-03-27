@@ -78,7 +78,7 @@ kind: Deployment
 metadata:
   labels:
     app: rabbitmq
-  name: {{.RabbitServerName}}
+  name: rabbitmq
   namespace: {{.Namespace}}
 spec:
   replicas: 1
@@ -168,6 +168,8 @@ spec:
 `
 )
 
+const RabbitServerName string = "rabbitmq"
+
 type RabbitOAuthConfig struct {
 	Enable    bool
 	ClientID  string
@@ -201,25 +203,23 @@ type templateData struct {
 	OAuthClientID       string
 	OAuthScopesKey      string
 	OAuthJwksURI        string
-	RabbitServerName    string
 }
 
 func RMQInstall(t *testing.T, kc *kubernetes.Clientset, namespace, user, password, vhost string, oauth RabbitOAuthConfig) {
 	helper.CreateNamespace(t, kc, namespace)
 	data := templateData{
-		Namespace:        namespace,
-		VHostName:        vhost,
-		Username:         user,
-		Password:         password,
-		EnableOAuth:      oauth.Enable,
-		OAuthClientID:    oauth.ClientID,
-		OAuthScopesKey:   oauth.ScopesKey,
-		OAuthJwksURI:     oauth.JwksURI,
-		RabbitServerName: "rabbitmq",
+		Namespace:      namespace,
+		VHostName:      vhost,
+		Username:       user,
+		Password:       password,
+		EnableOAuth:    oauth.Enable,
+		OAuthClientID:  oauth.ClientID,
+		OAuthScopesKey: oauth.ScopesKey,
+		OAuthJwksURI:   oauth.JwksURI,
 	}
 
 	helper.KubectlApplyWithTemplate(t, data, "rmqDeploymentTemplate", deploymentTemplate)
-	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, data.RabbitServerName, namespace, 1, 180, 1),
+	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, RabbitServerName, namespace, 1, 180, 1),
 		"replica count should be 1 after 3 minute")
 }
 
