@@ -3,6 +3,7 @@ package util
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 )
@@ -18,8 +19,11 @@ func GetWatchNamespaces() (map[string]cache.Config, error) {
 	if ns == "" {
 		return map[string]cache.Config{}, nil
 	}
+	nss := strings.Split(ns, ",")
+	nssMap := make(map[string]cache.Config)
+	for _, n := range nss {
+		nssMap[n] = cache.Config{}
+	}
 
-	return map[string]cache.Config{
-		ns: {},
-	}, nil
+	return nssMap, nil
 }
