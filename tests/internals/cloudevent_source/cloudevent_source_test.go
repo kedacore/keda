@@ -30,6 +30,7 @@ var (
 	clientName                 = fmt.Sprintf("%s-client", testName)
 	cloudeventSourceName       = fmt.Sprintf("%s-ce", testName)
 	cloudeventSourceErrName    = fmt.Sprintf("%s-ce-err", testName)
+	cloudeventSourceErrName2   = fmt.Sprintf("%s-ce-err2", testName)
 	cloudEventHTTPReceiverName = fmt.Sprintf("%s-cloudevent-http-receiver", testName)
 	cloudEventHTTPServiceName  = fmt.Sprintf("%s-cloudevent-http-service", testName)
 	cloudEventHTTPServiceURL   = fmt.Sprintf("http://%s.%s.svc.cluster.local:8899", cloudEventHTTPServiceName, namespace)
@@ -45,6 +46,7 @@ type templateData struct {
 	ClientName                 string
 	CloudEventSourceName       string
 	CloudeventSourceErrName    string
+	CloudeventSourceErrName2   string
 	CloudEventHTTPReceiverName string
 	CloudEventHTTPServiceName  string
 	CloudEventHTTPServiceURL   string
@@ -190,6 +192,24 @@ spec:
         includedEventTypes:
         - keda.scaledobject.failed.v2
     `
+
+	cloudEventSourceWithErrTypeTemplate2 = `
+    apiVersion: eventing.keda.sh/v1alpha1
+    kind: CloudEventSource
+    metadata:
+      name: {{.CloudeventSourceErrName2}}
+      namespace: {{.TestNamespace}}
+    spec:
+      clusterName: {{.ClusterName}}
+      destination:
+        http:
+          uri: {{.CloudEventHTTPServiceURL}}
+      eventSubscription:
+        includedEventTypes:
+        - keda.scaledobject.failed.v1
+        excludedEventTypes:
+        - keda.scaledobject.failed.v1
+    `
 )
 
 func TestScaledObjectGeneral(t *testing.T) {
@@ -331,6 +351,9 @@ func testErrEventSourceCreation(t *testing.T, _ *kubernetes.Clientset, data temp
 	err := KubectlApplyWithErrors(t, data, "cloudEventSourceWithErrTypeTemplate", cloudEventSourceWithErrTypeTemplate)
 	assert.ErrorContains(t, err, `The CloudEventSource "eventsource-test-ce-err" is invalid:`)
 
+	err = KubectlApplyWithErrors(t, data, "cloudEventSourceWithErrTypeTemplate2", cloudEventSourceWithErrTypeTemplate2)
+	assert.ErrorContains(t, err, `is in both included typs and excluded types, which is not supported`)
+
 	KubectlApplyWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
 }
 
@@ -342,6 +365,7 @@ func getTemplateData() (templateData, []Template) {
 			ClientName:                 clientName,
 			CloudEventSourceName:       cloudeventSourceName,
 			CloudeventSourceErrName:    cloudeventSourceErrName,
+			CloudeventSourceErrName2:   cloudeventSourceErrName2,
 			CloudEventHTTPReceiverName: cloudEventHTTPReceiverName,
 			CloudEventHTTPServiceName:  cloudEventHTTPServiceName,
 			CloudEventHTTPServiceURL:   cloudEventHTTPServiceURL,

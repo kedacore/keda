@@ -17,6 +17,8 @@ limitations under the License.
 package eventemitter
 
 import (
+	"fmt"
+
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 )
 
@@ -36,16 +38,20 @@ func NewEventFilter(includedEventTypes []eventingv1alpha1.CloudEventType, exclud
 }
 
 // FilterEvent returns true if the event should be handled
-func (e *EventFilter) FilterEvent(eventType eventingv1alpha1.CloudEventType) bool {
+func (e *EventFilter) FilterEvent(eventType eventingv1alpha1.CloudEventType) (bool, error) {
 	if len(e.IncludedEventTypes) > 0 {
-		return e.filterIncludedEventTypes(eventType)
+		if len(e.ExcludedEventTypes) > 0 && e.filterExcludedEventTypes(eventType) == false {
+			return false, fmt.Errorf("Eventtype: %s in both included and excluded types. Cannot be filtered.", eventType)
+		}
+
+		return e.filterIncludedEventTypes(eventType), nil
 	}
 
 	if len(e.ExcludedEventTypes) > 0 {
-		return e.filterExcludedEventTypes(eventType)
+		return e.filterExcludedEventTypes(eventType), nil
 	}
 
-	return true
+	return true, nil
 }
 
 // FilterIncludedEventTypes returns true if the event included in the includedEventTypes

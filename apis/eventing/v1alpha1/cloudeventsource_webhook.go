@@ -90,5 +90,13 @@ func validateSpec(spec *CloudEventSourceSpec) (admission.Warnings, error) {
 		}
 	}
 
+	if spec.EventSubscription.ExcludedEventTypes != nil && spec.EventSubscription.IncludedEventTypes != nil {
+		for _, excludedEventType := range spec.EventSubscription.ExcludedEventTypes {
+			if slices.Contains(spec.EventSubscription.ExcludedEventTypes, excludedEventType) {
+				return nil, fmt.Errorf("eventType: %s is in both included typs and excluded types, which is not supported", excludedEventType)
+			}
+		}
+	}
+
 	return nil, nil
 }
