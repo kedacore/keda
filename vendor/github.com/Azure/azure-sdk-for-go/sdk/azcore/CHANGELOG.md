@@ -1,5 +1,32 @@
 # Release History
 
+## 1.10.0 (2024-02-29)
+
+### Features Added
+
+* Added logging event `log.EventResponseError` that will contain the contents of `ResponseError.Error()` whenever an `azcore.ResponseError` is created.
+* Added `runtime.NewResponseErrorWithErrorCode` for creating an `azcore.ResponseError` with a caller-supplied error code.
+* Added type `MatchConditions` for use in conditional requests.
+
+### Bugs Fixed
+
+* Fixed a potential race condition between `NullValue` and `IsNullValue`.
+* `runtime.EncodeQueryParams` will escape semicolons before calling `url.ParseQuery`.
+
+### Other Changes
+
+* Update dependencies.
+
+## 1.9.2 (2024-02-06)
+
+### Bugs Fixed
+
+* `runtime.MarshalAsByteArray` and `runtime.MarshalAsJSON` will preserve the preexisting value of the `Content-Type` header.
+
+### Other Changes
+
+* Update to latest version of `internal`.
+
 ## 1.9.1 (2023-12-11)
 
 ### Bugs Fixed

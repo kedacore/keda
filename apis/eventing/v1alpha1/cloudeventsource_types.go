@@ -64,10 +64,19 @@ type CloudEventSourceStatus struct {
 type Destination struct {
 	// +optional
 	HTTP *CloudEventHTTP `json:"http"`
+
+	// +optional
+	AzureEventGridTopic *AzureEventGridTopicSpec `json:"azureEventGridTopic"`
 }
 
 type CloudEventHTTP struct {
 	URI string `json:"uri"`
+}
+
+type AzureEventGridTopicSpec struct {
+	EndPoint string `json:"endPoint"`
+
+	Key string `json:"key"`
 }
 
 func init() {

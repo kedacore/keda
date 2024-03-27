@@ -42,12 +42,19 @@ func NewRequest(ctx context.Context, httpMethod string, endpoint string) (*polic
 }
 
 // EncodeQueryParams will parse and encode any query parameters in the specified URL.
+// Any semicolons will automatically be escaped.
 func EncodeQueryParams(u string) (string, error) {
 	before, after, found := strings.Cut(u, "?")
 	if !found {
 		return u, nil
 	}
-	qp, err := url.ParseQuery(after)
+	// starting in Go 1.17, url.ParseQuery will reject semicolons in query params.
+	// so, we must escape them first. note that this assumes that semicolons aren't
+	// being used as query param separators which is per the current RFC.
+	// for more info:
+	// https://github.com/golang/go/issues/25192
+	// https://github.com/golang/go/issues/50034
+	qp, err := url.ParseQuery(strings.ReplaceAll(after, ";", "%3B"))
 	if err != nil {
 		return "", err
 	}
@@ -97,7 +104,8 @@ func EncodeByteArray(v []byte, format Base64Encoding) string {
 func MarshalAsByteArray(req *policy.Request, v []byte, format Base64Encoding) error {
 	// send as a JSON string
 	encode := fmt.Sprintf("\"%s\"", EncodeByteArray(v, format))
-	return req.SetBody(exported.NopCloser(strings.NewReader(encode)), shared.ContentTypeAppJSON)
+	// tsp generated code can set Content-Type so we must prefer that
+	return exported.SetBody(req, exported.NopCloser(strings.NewReader(encode)), shared.ContentTypeAppJSON, false)
 }
 
 // MarshalAsJSON calls json.Marshal() to get the JSON encoding of v then calls SetBody.
@@ -106,7 +114,8 @@ func MarshalAsJSON(req *policy.Request, v interface{}) error {
 	if err != nil {
 		return fmt.Errorf("error marshalling type %T: %s", v, err)
 	}
-	return req.SetBody(exported.NopCloser(bytes.NewReader(b)), shared.ContentTypeAppJSON)
+	// tsp generated code can set Content-Type so we must prefer that
+	return exported.SetBody(req, exported.NopCloser(bytes.NewReader(b)), shared.ContentTypeAppJSON, false)
 }
 
 // MarshalAsXML calls xml.Marshal() to get the XML encoding of v then calls SetBody.

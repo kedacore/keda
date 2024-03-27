@@ -86,7 +86,8 @@ type EmitData struct {
 }
 
 const (
-	cloudEventHandlerTypeHTTP = "http"
+	cloudEventHandlerTypeHTTP                = "http"
+	cloudEventHandlerTypeAzureEventGridTopic = "azureEventGridTopic"
 )
 
 // NewEventEmitter creates a new EventEmitter
@@ -188,6 +189,20 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEventSource
 		}
 		e.eventHandlersCache[eventHandlerKey] = eventHandler
 	}
+
+	if cloudEventSource.Spec.Destination.AzureEventGridTopic != nil {
+		eventHandler, err := NewAzureEventGridTopicHandler(ctx, clusterName, cloudEventSource.Spec.Destination.AzureEventGridTopic, initializeLogger(cloudEventSource, "azure_event_grid_topic"))
+		if err != nil {
+			e.log.Error(err, "create Azure Event Grid handler failed")
+			return
+		}
+
+		eventHandlerKey := newEventHandlerKey(key, cloudEventHandlerTypeAzureEventGridTopic)
+		if h, ok := e.eventHandlersCache[eventHandlerKey]; ok {
+			h.CloseHandler()
+		}
+		e.eventHandlersCache[eventHandlerKey] = eventHandler
+	}
 }
 
 // clearEventHandlersCache will clear all event handlers that created by the passing CloudEventSource
@@ -200,6 +215,14 @@ func (e *EventEmitter) clearEventHandlersCache(cloudEventSource *eventingv1alpha
 	// Clear different event destination here.
 	if cloudEventSource.Spec.Destination.HTTP != nil {
 		eventHandlerKey := newEventHandlerKey(key, cloudEventHandlerTypeHTTP)
+		if eventHandler, found := e.eventHandlersCache[eventHandlerKey]; found {
+			eventHandler.CloseHandler()
+			delete(e.eventHandlersCache, key)
+		}
+	}
+
+	if cloudEventSource.Spec.Destination.AzureEventGridTopic != nil {
+		eventHandlerKey := newEventHandlerKey(key, cloudEventHandlerTypeAzureEventGridTopic)
 		if eventHandler, found := e.eventHandlersCache[eventHandlerKey]; found {
 			eventHandler.CloseHandler()
 			delete(e.eventHandlersCache, key)
@@ -395,8 +418,7 @@ func (e *EventEmitter) updateCloudEventSourceStatus(ctx context.Context, cloudEv
 	return nil
 }
 
-// TODO: nolint:unparam should be remove after added more than one cloudevent handler
-func newEventHandlerKey(kindNamespaceName string, handlerType string) string { //nolint:unparam
+func newEventHandlerKey(kindNamespaceName string, handlerType string) string {
 	return fmt.Sprintf("%s.%s", kindNamespaceName, handlerType)
 }
 

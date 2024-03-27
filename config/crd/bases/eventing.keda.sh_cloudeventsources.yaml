@@ -49,6 +49,16 @@ spec:
               destination:
                 description: Destination defines the various ways to emit events
                 properties:
+                  azureEventGridTopic:
+                    properties:
+                      endPoint:
+                        type: string
+                      key:
+                        type: string
+                    required:
+                    - endPoint
+                    - key
+                    type: object
                   http:
                     properties:
                       uri:
