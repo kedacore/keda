@@ -12,6 +12,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -173,6 +174,11 @@ func TestCassandraScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 	CreateNamespace(t, kc, testNamespace)
+	// cleanup
+	defer func() {
+		uninstallCassandra(t)
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+	}()
 
 	// setup cassandra
 	installCassandra(t)
@@ -188,19 +194,15 @@ func TestCassandraScaler(t *testing.T) {
 	testActivation(t, kc, data)
 	testScaleOut(t, kc, data)
 	testScaleIn(t, kc, data)
-
-	// cleanup
-	uninstallCassandra(t)
-	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func installCassandra(t *testing.T) {
 	_, err := ExecuteCommand("helm repo add bitnami https://charts.bitnami.com/bitnami")
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("helm repo update")
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	_, err = ExecuteCommand(fmt.Sprintf("helm install cassandra --set persistence.enabled=false --set dbUser.user=%s --set dbUser.password=%s --namespace %s bitnami/cassandra --wait", cassandraUsername, cassandraPassword, testNamespace))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
+	_, err = ExecuteCommand(fmt.Sprintf("helm install cassandra --set resourcesPreset=none --set persistence.enabled=false --set dbUser.user=%s --set dbUser.password=%s --namespace %s bitnami/cassandra --wait", cassandraUsername, cassandraPassword, testNamespace))
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
 func uninstallCassandra(t *testing.T) {
@@ -212,12 +214,12 @@ func setupCassandra(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	// Create the key space
 	data.Command = fmt.Sprintf("cqlsh -u %s -p %s cassandra.%s --execute=\\\"%s\\\"", cassandraUsername, cassandraPassword, testNamespace, createKeyspace)
 	KubectlApplyWithTemplate(t, data, "jobTemplate", jobTemplate)
-	assert.True(t, WaitForJobSuccess(t, kc, "client", testNamespace, 6, 10), "create database job failed")
+	require.True(t, WaitForJobSuccess(t, kc, "client", testNamespace, 6, 10), "create database job failed")
 	KubectlDeleteWithTemplate(t, data, "jobTemplate", jobTemplate)
 	// Create the table
 	data.Command = fmt.Sprintf("cqlsh -u %s -p %s cassandra.%s --execute=\\\"%s\\\"", cassandraUsername, cassandraPassword, testNamespace, createTableCQL)
 	KubectlApplyWithTemplate(t, data, "jobTemplate", jobTemplate)
-	assert.True(t, WaitForJobSuccess(t, kc, "client", testNamespace, 6, 10), "create database job failed")
+	require.True(t, WaitForJobSuccess(t, kc, "client", testNamespace, 6, 10), "create database job failed")
 	KubectlDeleteWithTemplate(t, data, "jobTemplate", jobTemplate)
 
 	t.Log("--- cassandra is ready ---")
