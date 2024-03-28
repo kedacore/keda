@@ -42,6 +42,7 @@ type awsCloudwatchMetadata struct {
 	targetMetricValue           float64
 	activationTargetMetricValue float64
 	minMetricValue              float64
+	errorWhenMetricValuesEmpty  bool
 
 	metricCollectionTime int64
 	metricStat           string
@@ -108,6 +109,22 @@ func getFloatMetadataValue(metadata map[string]string, key string, required bool
 
 	if required {
 		return 0, fmt.Errorf("metadata %s not given", key)
+	}
+
+	return defaultValue, nil
+}
+
+func getBoolMetadataValue(metadata map[string]string, key string, required bool, defaultValue bool) (bool, error) {
+	if val, ok := metadata[key]; ok && val != "" {
+		value, err := strconv.ParseBool(val)
+		if err != nil {
+			return false, fmt.Errorf("error parsing %s metadata: %w", key, err)
+		}
+		return value, nil
+	}
+
+	if required {
+		return false, fmt.Errorf("metadata %s not given", key)
 	}
 
 	return defaultValue, nil
@@ -188,6 +205,12 @@ func parseAwsCloudwatchMetadata(config *scalersconfig.ScalerConfig) (*awsCloudwa
 		return nil, err
 	}
 	meta.minMetricValue = minMetricValue
+
+	errorWhenMetricValuesEmpty, err := getBoolMetadataValue(config.TriggerMetadata, "errorWhenMetricValuesEmpty", false, false)
+	if err != nil {
+		return nil, err
+	}
+	meta.errorWhenMetricValuesEmpty = errorWhenMetricValuesEmpty
 
 	meta.metricStat = defaultMetricStat
 	if val, ok := config.TriggerMetadata["metricStat"]; ok && val != "" {
@@ -383,6 +406,14 @@ func (s *awsCloudwatchScaler) GetCloudwatchMetrics(ctx context.Context) (float64
 
 	s.logger.V(1).Info("Received Metric Data", "data", output)
 	var metricValue float64
+
+	// If no metric data is received and errorWhenMetricValuesEmpty is set to true, return error,
+	// otherwise continue with either the metric value recieved, or the minMetricValue
+	if len(output.MetricDataResults) == 0 && s.metadata.errorWhenMetricValuesEmpty {
+		s.logger.Error(err, "empty metric data received and errorWhenMetricValuesEmpty is set to true")
+		return -1, fmt.Errorf("empty metric data received and errorWhenMetricValuesEmpty is set to true")
+	}
+
 	if len(output.MetricDataResults) > 0 && len(output.MetricDataResults[0].Values) > 0 {
 		metricValue = output.MetricDataResults[0].Values[0]
 	} else {

@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -356,6 +357,48 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		"awsRegion":         "eu-west-1"},
 		testAWSAuthentication, true,
 		"unsupported metricUnit"},
+	// test errorWhenMetricValuesEmpty is false
+	{map[string]string{
+		"namespace":                  "AWS/SQS",
+		"dimensionName":              "QueueName",
+		"dimensionValue":             "keda",
+		"metricName":                 "ApproximateNumberOfMessagesVisible",
+		"targetMetricValue":          "2",
+		"minMetricValue":             "0",
+		"metricStatPeriod":           "60",
+		"metricStat":                 "Average",
+		"errorWhenMetricValuesEmpty": "false",
+		"awsRegion":                  "eu-west-1"},
+		testAWSAuthentication, false,
+		"with errorWhenMetricValuesEmpty set to false"},
+	// test errorWhenMetricValuesEmpty is true
+	{map[string]string{
+		"namespace":                  "AWS/SQS",
+		"dimensionName":              "QueueName",
+		"dimensionValue":             "keda",
+		"metricName":                 "ApproximateNumberOfMessagesVisible",
+		"targetMetricValue":          "2",
+		"minMetricValue":             "0",
+		"metricStatPeriod":           "60",
+		"metricStat":                 "Average",
+		"errorWhenMetricValuesEmpty": "true",
+		"awsRegion":                  "eu-west-1"},
+		testAWSAuthentication, false,
+		"with errorWhenMetricValuesEmpty set to true"},
+	// test errorWhenMetricValuesEmpty is incorrect
+	{map[string]string{
+		"namespace":                  "AWS/SQS",
+		"dimensionName":              "QueueName",
+		"dimensionValue":             "keda",
+		"metricName":                 "ApproximateNumberOfMessagesVisible",
+		"targetMetricValue":          "2",
+		"minMetricValue":             "0",
+		"metricStatPeriod":           "60",
+		"metricStat":                 "Average",
+		"errorWhenMetricValuesEmpty": "maybe",
+		"awsRegion":                  "eu-west-1"},
+		testAWSAuthentication, true,
+		"unsupported value for errorWhenMetricValuesEmpty"},
 }
 
 var awsCloudwatchMetricIdentifiers = []awsCloudwatchMetricIdentifier{
@@ -444,6 +487,42 @@ var awsCloudwatchGetMetricTestData = []awsCloudwatchMetadata{
 		awsAuthorization:     awsutils.AuthorizationMetadata{PodIdentityOwner: false},
 		triggerIndex:         0,
 	},
+	// Test for metric with no data
+	{
+		namespace:                  "Custom",
+		metricsName:                testAWSCloudwatchNoValueMetric,
+		dimensionName:              []string{"DIM"},
+		dimensionValue:             []string{"DIM_VALUE"},
+		targetMetricValue:          100,
+		minMetricValue:             0,
+		errorWhenMetricValuesEmpty: false,
+		metricCollectionTime:       60,
+		metricStat:                 "Average",
+		metricUnit:                 "",
+		metricStatPeriod:           60,
+		metricEndTimeOffset:        60,
+		awsRegion:                  "us-west-2",
+		awsAuthorization:           awsutils.AuthorizationMetadata{PodIdentityOwner: false},
+		triggerIndex:               0,
+	},
+	// Test for metric with no data, and the scaler errors when metric data values are empty
+	{
+		namespace:                  "Custom",
+		metricsName:                testAWSCloudwatchNoValueMetric,
+		dimensionName:              []string{"DIM"},
+		dimensionValue:             []string{"DIM_VALUE"},
+		targetMetricValue:          100,
+		minMetricValue:             0,
+		errorWhenMetricValuesEmpty: true,
+		metricCollectionTime:       60,
+		metricStat:                 "Average",
+		metricUnit:                 "",
+		metricStatPeriod:           60,
+		metricEndTimeOffset:        60,
+		awsRegion:                  "us-west-2",
+		awsAuthorization:           awsutils.AuthorizationMetadata{PodIdentityOwner: false},
+		triggerIndex:               0,
+	},
 }
 
 type mockCloudwatch struct {
@@ -507,7 +586,12 @@ func TestAWSCloudwatchScalerGetMetrics(t *testing.T) {
 		case testAWSCloudwatchErrorMetric:
 			assert.Error(t, err, "expect error because of cloudwatch api error")
 		case testAWSCloudwatchNoValueMetric:
-			assert.NoError(t, err, "dont expect error when returning empty metric list from cloudwatch")
+			// if errorWhenMetricValuesEmpty is defined, then an error is expected
+			if meta.errorWhenMetricValuesEmpty {
+				assert.Error(t, err, "expected an error when returning empty metric list from cloudwatch")
+			} else {
+				assert.NoError(t, err, "dont expect error when returning empty metric list from cloudwatch")
+			}
 		default:
 			assert.EqualValues(t, int64(10.0), value[0].Value.Value())
 		}
@@ -554,5 +638,79 @@ func TestComputeQueryWindow(t *testing.T) {
 		startTime, endTime := computeQueryWindow(current, testData.metricPeriodSec, testData.metricEndTimeOffsetSec, testData.metricCollectionTimeSec)
 		assert.Equal(t, testData.expectedStartTime, startTime.UTC().Format(time.RFC3339Nano), "unexpected startTime", "name", testData.name)
 		assert.Equal(t, testData.expectedEndTime, endTime.UTC().Format(time.RFC3339Nano), "unexpected endTime", "name", testData.name)
+	}
+}
+
+func TestGetBoolMetadataValue(t *testing.T) {
+	testCases := []struct {
+		name          string
+		metadata      map[string]string
+		key           string
+		required      bool
+		defaultValue  bool
+		expectedValue bool
+		expectedError string
+	}{
+		{
+			name:          "valid true value",
+			metadata:      map[string]string{"key": "true"},
+			key:           "key",
+			required:      true,
+			defaultValue:  false,
+			expectedValue: true,
+			expectedError: "",
+		},
+		{
+			name:          "valid false value",
+			metadata:      map[string]string{"key": "false"},
+			key:           "key",
+			required:      true,
+			defaultValue:  true,
+			expectedValue: false,
+			expectedError: "",
+		},
+		{
+			name:          "invalid value",
+			metadata:      map[string]string{"key": "invalid"},
+			key:           "key",
+			required:      true,
+			defaultValue:  false,
+			expectedValue: false,
+			expectedError: "error parsing key metadata: strconv.ParseBool: parsing \"invalid\": invalid syntax",
+		},
+		{
+			name:          "key not present, required",
+			metadata:      map[string]string{},
+			key:           "key",
+			required:      true,
+			defaultValue:  false,
+			expectedValue: false,
+			expectedError: "metadata key not given",
+		},
+		{
+			name:          "key not present, not required",
+			metadata:      map[string]string{},
+			key:           "key",
+			required:      false,
+			defaultValue:  true,
+			expectedValue: true,
+			expectedError: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			value, err := getBoolMetadataValue(tc.metadata, tc.key, tc.required, tc.defaultValue)
+
+			if tc.expectedError == "" && err != nil {
+				t.Errorf("unexpected error: %v", err)
+			} else if tc.expectedError != "" && (err == nil || !strings.Contains(err.Error(), tc.expectedError)) {
+				t.Errorf("expected error containing %q, got %v", tc.expectedError, err)
+			}
+
+			if value != tc.expectedValue {
+				t.Errorf("expected value %v, got %v", tc.expectedValue, value)
+			}
+		})
 	}
 }
