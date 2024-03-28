@@ -276,7 +276,7 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 			e.recorder.Eventf(scaledObject, corev1.EventTypeNormal, eventreason.KEDAScaleTargetDeactivated,
 				"Deactivated %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, scaleToReplicas)
 
-			if scaleToReplicas == 0 {
+			if scaleToReplicas == 0 && e.eventEmitter != nil {
 				e.eventEmitter.Emit(scaledObject, types.NamespacedName{Namespace: scaledObject.Namespace},
 					corev1.EventTypeNormal, eventemitter.ScaleToZeroType, eventreason.KEDAScaleTargetActivated,
 					message.ScaleTargetToZero)
@@ -320,7 +320,7 @@ func (e *scaleExecutor) scaleFromZeroOrIdle(ctx context.Context, logger logr.Log
 			"Original Replicas Count", currentReplicas,
 			"New Replicas Count", replicas)
 
-		if currentReplicas == 0 {
+		if currentReplicas == 0 && e.eventEmitter != nil {
 			e.eventEmitter.Emit(scaledObject, types.NamespacedName{Namespace: scaledObject.Namespace},
 				corev1.EventTypeNormal, eventemitter.ScaleFromZeroType, eventreason.KEDAScaleTargetActivated,
 				message.ScaleTargetFromZero)
