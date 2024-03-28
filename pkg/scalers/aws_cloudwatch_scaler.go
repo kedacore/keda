@@ -236,8 +236,8 @@ func parseAwsCloudwatchMetadata(config *scalersconfig.ScalerConfig) (*awsCloudwa
 	}
 	meta.metricCollectionTime = metricCollectionTime
 
-	if meta.metricCollectionTime < 0 || meta.metricCollectionTime%meta.metricStatPeriod != 0 {
-		return nil, fmt.Errorf("metricCollectionTime must be greater than 0 and a multiple of metricStatPeriod(%d), %d is given", meta.metricStatPeriod, meta.metricCollectionTime)
+	if err = checkMetricCollectionTime(meta.metricCollectionTime, meta.metricStatPeriod); err != nil {
+		return nil, err
 	}
 
 	metricEndTimeOffset, err := getIntMetadataValue(config.TriggerMetadata, "metricEndTimeOffset", false, defaultMetricEndTimeOffset)
@@ -302,6 +302,14 @@ func checkMetricStatPeriod(period int64) error {
 
 	if period%60 != 0 {
 		return fmt.Errorf("metricStatPeriod >= 60 has to be a multiple of 60, however, %d is provided", period)
+	}
+
+	return nil
+}
+
+func checkMetricCollectionTime(metricCollectionTime, metricStatPeriod int64) error {
+	if metricCollectionTime < 0 || metricCollectionTime%metricStatPeriod != 0 {
+		return fmt.Errorf("metricCollectionTime must be greater than 0 and a multiple of metricStatPeriod(%d), %d is given", metricStatPeriod, metricCollectionTime)
 	}
 
 	return nil
@@ -408,7 +416,7 @@ func (s *awsCloudwatchScaler) GetCloudwatchMetrics(ctx context.Context) (float64
 	var metricValue float64
 
 	// If no metric data is received and errorWhenMetricValuesEmpty is set to true, return error,
-	// otherwise continue with either the metric value recieved, or the minMetricValue
+	// otherwise continue with either the metric value received, or the minMetricValue
 	if len(output.MetricDataResults) == 0 && s.metadata.errorWhenMetricValuesEmpty {
 		s.logger.Error(err, "empty metric data received and errorWhenMetricValuesEmpty is set to true")
 		return -1, fmt.Errorf("empty metric data received and errorWhenMetricValuesEmpty is set to true")
