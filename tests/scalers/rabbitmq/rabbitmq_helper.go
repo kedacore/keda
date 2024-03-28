@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/kedacore/keda/v2/tests/helper"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -219,7 +219,7 @@ func RMQInstall(t *testing.T, kc *kubernetes.Clientset, namespace, user, passwor
 	}
 
 	helper.KubectlApplyWithTemplate(t, data, "rmqDeploymentTemplate", deploymentTemplate)
-	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, RabbitServerName, namespace, 1, 180, 1),
+	require.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, RabbitServerName, namespace, 1, 180, 1),
 		"replica count should be 1 after 3 minute")
 }
 

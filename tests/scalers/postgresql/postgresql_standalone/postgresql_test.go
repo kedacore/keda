@@ -10,6 +10,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -70,21 +71,26 @@ data:
 )
 
 func TestPostreSQLScaler(t *testing.T) {
-	// Create kubernetes resources for PostgreSQL server
 	kc := GetKubernetesClient(t)
 	data, postgreSQLtemplates := getPostgreSQLTemplateData()
+	data, templates := getTemplateData()
+	t.Cleanup(func() {
+		KubectlDeleteMultipleWithTemplate(t, data, templates)
+		DeleteKubernetesResources(t, testNamespace, data, postgreSQLtemplates)
+	})
+
+	// Create kubernetes resources for PostgreSQL server
 	CreateKubernetesResources(t, kc, testNamespace, data, postgreSQLtemplates)
 
-	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, postgreSQLStatefulSetName, testNamespace, 1, 60, 3),
+	require.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, postgreSQLStatefulSetName, testNamespace, 1, 60, 3),
 		"replica count should be %d after 3 minutes", 1)
 
 	createTableSQL := "CREATE TABLE task_instance (id serial PRIMARY KEY,state VARCHAR(10));"
 	ok, out, errOut, err := WaitForSuccessfulExecCommandOnSpecificPod(t, postgresqlPodName, testNamespace,
 		fmt.Sprintf("psql -U %s -d %s -c \"%s\"", postgreSQLUsername, postgreSQLDatabase, createTableSQL), 60, 3)
-	assert.True(t, ok, "executing a command on PostreSQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", out, errOut, err)
+	require.True(t, ok, "executing a command on PostreSQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", out, errOut, err)
 
 	// Create kubernetes resources for testing
-	data, templates := getTemplateData()
 	KubectlApplyMultipleWithTemplate(t, data, templates)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
@@ -92,10 +98,6 @@ func TestPostreSQLScaler(t *testing.T) {
 	testActivation(t, kc, data)
 	testScaleOut(t, kc, data)
 	testScaleIn(t, kc)
-
-	// cleanup
-	KubectlDeleteMultipleWithTemplate(t, data, templates)
-	DeleteKubernetesResources(t, testNamespace, data, postgreSQLtemplates)
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {

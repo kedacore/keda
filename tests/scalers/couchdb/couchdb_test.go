@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
@@ -151,20 +152,24 @@ spec:
 )
 
 func TestCouchDBScaler(t *testing.T) {
-	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
+	data, templates := getTemplateData(kc)
+	t.Cleanup(func() {
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+	})
+
 	// setup couchdb
 	CreateNamespace(t, kc, testNamespace)
 	installCouchDB(t)
 
-	data, templates := getTemplateData(kc)
+	// Create kubernetes resources
 	KubectlApplyMultipleWithTemplate(t, data, templates)
 
 	// wait until client is ready
 	time.Sleep(10 * time.Second)
 	// create database
 	_, _, err := ExecCommandOnSpecificPod(t, clientName, testNamespace, fmt.Sprintf("curl -X PUT http://admin:%s@test-release-svc-couchdb.%s.svc.cluster.local:5984/animals", getPassword(kc), testNamespace))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
@@ -173,19 +178,16 @@ func TestCouchDBScaler(t *testing.T) {
 	testActivation(t, kc)
 	testScaleUp(t, kc)
 	testScaleDown(t, kc)
-
-	// cleanup
-	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func installCouchDB(t *testing.T) {
 	_, err := ExecuteCommand(fmt.Sprintf("helm repo add couchdb %s", couchdbHelmRepo))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("helm repo update")
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	uuid := strings.ReplaceAll(uuid.New().String(), "-", "")
 	_, err = ExecuteCommand(fmt.Sprintf("helm install test-release  --set couchdbConfig.couchdb.uuid=%s --namespace %s couchdb/couchdb --wait", uuid, testNamespace))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
 func getPassword(kc *kubernetes.Clientset) string {

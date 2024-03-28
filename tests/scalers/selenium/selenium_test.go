@@ -10,6 +10,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -455,25 +456,26 @@ spec:
 )
 
 func TestSeleniumScaler(t *testing.T) {
-	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
+	t.Cleanup(func() {
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+	})
+
+	// Create kubernetes resources
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, hubDeploymentName, testNamespace, 1, 60, 1),
+	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, hubDeploymentName, testNamespace, 1, 60, 1),
 		"replica count should be 1 after 1 minute")
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, chromeDeploymentName, testNamespace, minReplicaCount, 60, 1),
+	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, chromeDeploymentName, testNamespace, minReplicaCount, 60, 1),
 		"replica count should be 0 after 1 minute")
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, firefoxDeploymentName, testNamespace, minReplicaCount, 60, 1),
+	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, firefoxDeploymentName, testNamespace, minReplicaCount, 60, 1),
 		"replica count should be 0 after 1 minute")
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, edgeDeploymentName, testNamespace, minReplicaCount, 60, 1),
+	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, edgeDeploymentName, testNamespace, minReplicaCount, 60, 1),
 		"replica count should be 0 after 1 minute")
 
 	testActivation(t, kc, data)
 	testScaleOut(t, kc, data)
 	testScaleIn(t, kc)
-
-	// cleanup
-	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {

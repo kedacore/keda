@@ -214,9 +214,13 @@ func TestNewRelicScaler(t *testing.T) {
 		newRelicRegion = "EU"
 	}
 
-	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
+	t.Cleanup(func() {
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+	})
+
+	// Create kubernetes resources
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	installNewRelic(t)
@@ -228,9 +232,6 @@ func TestNewRelicScaler(t *testing.T) {
 	testActivation(t, kc, data)
 	testScaleOut(t, kc, data)
 	testScaleIn(t, kc, data)
-
-	// cleanup
-	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -258,9 +259,9 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 func installNewRelic(t *testing.T) {
 	_, err := ExecuteCommand(fmt.Sprintf("helm repo add new-relic %s", newRelicHelmRepoURL))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("helm repo update")
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 
 	cmd := fmt.Sprintf(`helm upgrade --install --set global.cluster=%s --set prometheus.enabled=true --set ksm.enabled=true --set global.lowDataMode=true --set global.licenseKey=%s --timeout 600s --set logging.enabled=false --set ksm.enabled=true --set logging.enabled=true --namespace %s ri-keda new-relic/nri-bundle`,
 		kuberneteClusterName,
@@ -268,7 +269,7 @@ func installNewRelic(t *testing.T) {
 		testNamespace)
 
 	_, err = ExecuteCommand(cmd)
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
 func getTemplateData() (templateData, []Template) {

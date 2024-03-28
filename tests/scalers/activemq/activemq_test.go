@@ -13,6 +13,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -446,9 +447,13 @@ spec:
 )
 
 func TestActiveMQScaler(t *testing.T) {
-	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
+	t.Cleanup(func() {
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+	})
+
+	// Create kubernetes resources
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	// setup activemq
@@ -461,16 +466,13 @@ func TestActiveMQScaler(t *testing.T) {
 	testActivation(t, kc)
 	testScaleOut(t, kc)
 	testScaleIn(t, kc)
-
-	// cleanup
-	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func setupActiveMQ(t *testing.T, kc *kubernetes.Clientset) {
-	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, "activemq", testNamespace, 1, 60, 3),
+	require.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, "activemq", testNamespace, 1, 60, 3),
 		"activemq should be up")
 	err := checkIfActiveMQStatusIsReady(t, activemqPodName)
-	assert.NoErrorf(t, err, "%s", err)
+	require.NoErrorf(t, err, "%s", err)
 }
 
 func checkIfActiveMQStatusIsReady(t *testing.T, name string) error {

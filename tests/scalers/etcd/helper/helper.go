@@ -6,7 +6,7 @@ package helper
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/kedacore/keda/v2/tests/helper"
@@ -133,6 +133,6 @@ func InstallCluster(t *testing.T, kc *kubernetes.Clientset, name, namespace stri
 		EtcdName:  name,
 	}
 	helper.KubectlApplyMultipleWithTemplate(t, data, etcdClusterTemplates)
-	assert.True(t, helper.WaitForStatefulsetReplicaReadyCount(t, kc, name, namespace, 3, 60, 5),
+	require.True(t, helper.WaitForStatefulsetReplicaReadyCount(t, kc, name, namespace, 3, 60, 5),
 		"etcd-cluster should be up")
 }

@@ -175,10 +175,10 @@ func TestCassandraScaler(t *testing.T) {
 	data, templates := getTemplateData()
 	CreateNamespace(t, kc, testNamespace)
 	// cleanup
-	defer func() {
+	t.Cleanup(func() {
 		uninstallCassandra(t)
 		DeleteKubernetesResources(t, testNamespace, data, templates)
-	}()
+	})
 
 	// setup cassandra
 	installCassandra(t)

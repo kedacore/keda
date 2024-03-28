@@ -9,6 +9,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/kedacore/keda/v2/tests/helper"
@@ -286,21 +287,28 @@ func TestScalerWithConfig(t *testing.T, testName string, numPartitions int) {
 	// Create kubernetes resources
 	kc := helper.GetKubernetesClient(t)
 	data, templates := getTemplateData(testName, numPartitions)
+	t.Cleanup(func() {
+		helper.KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+		helper.KubectlDeleteWithTemplate(t, data, "publishJobTemplate", topicPublishJobTemplate)
+		helper.KubectlDeleteWithTemplate(t, data, "topicInitJobTemplate", topicInitJobTemplate)
+
+		helper.DeleteKubernetesResources(t, testName, data, templates)
+	})
 
 	helper.CreateKubernetesResources(t, kc, testName, data, templates)
 
-	assert.True(t, helper.WaitForStatefulsetReplicaReadyCount(t, kc, testName, testName, 1, 300, 1),
+	require.True(t, helper.WaitForStatefulsetReplicaReadyCount(t, kc, testName, testName, 1, 300, 1),
 		"replica count should be 1 within 5 minutes")
 
 	helper.KubectlReplaceWithTemplate(t, data, "topicInitJobTemplate", topicInitJobTemplate)
 
-	assert.True(t, helper.WaitForJobSuccess(t, kc, getTopicInitJobName(testName), testName, 300, 1),
+	require.True(t, helper.WaitForJobSuccess(t, kc, getTopicInitJobName(testName), testName, 300, 1),
 		"job should succeed within 5 minutes")
 
 	helper.KubectlApplyWithTemplate(t, data, "consumerTemplate", consumerTemplate)
 
 	// run consumer for create subscription
-	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, getConsumerDeploymentName(testName), testName, 1, 300, 1),
+	require.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, getConsumerDeploymentName(testName), testName, 1, 300, 1),
 		"replica count should be 1 within 5 minutes")
 
 	helper.KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
@@ -313,13 +321,6 @@ func TestScalerWithConfig(t *testing.T, testName string, numPartitions int) {
 	testScaleOut(t, kc, data)
 	// scale in
 	testScaleIn(t, kc, testName)
-
-	// cleanup
-	helper.KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	helper.KubectlDeleteWithTemplate(t, data, "publishJobTemplate", topicPublishJobTemplate)
-	helper.KubectlDeleteWithTemplate(t, data, "topicInitJobTemplate", topicInitJobTemplate)
-
-	helper.DeleteKubernetesResources(t, testName, data, templates)
 }
 
 func getTemplateData(testName string, numPartitions int) (templateData, []helper.Template) {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	k8s "k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -47,14 +48,24 @@ func TestNATSJetStreamScalerClusterWithStreamReplicasWithNoAdvertise(t *testing.
 func testNATSJetStreamScalerClusterWithStreamReplicas(t *testing.T, noAdvertise bool) {
 	// Create k8s resources.
 	kc := GetKubernetesClient(t)
+	testData, testTemplates := nats.GetJetStreamDeploymentTemplateData(testNamespace, natsAddress, natsServerMonitoringEndpoint, messagePublishCount)
+	t.Cleanup(func() {
+		removeStreamAndConsumer(t, 1, testData.NatsStream, testNamespace, natsAddress)
+		DeleteKubernetesResources(t, testNamespace, testData, testTemplates)
+
+		removeClusterWithJetStream(t)
+		DeleteNamespace(t, natsNamespace)
+		deleted := WaitForNamespaceDeletion(t, natsNamespace)
+		assert.Truef(t, deleted, "%s namespace not deleted", natsNamespace)
+	})
 
 	// Deploy NATS server.
 	installClusterWithJetStream(t, kc, noAdvertise)
-	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, nats.NatsJetStreamName, natsNamespace, natsServerReplicas, 60, 3),
+	require.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, nats.NatsJetStreamName, natsNamespace, natsServerReplicas, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
 
 	// Create k8s resources for testing.
-	testData, testTemplates := nats.GetJetStreamDeploymentTemplateData(testNamespace, natsAddress, natsServerMonitoringEndpoint, messagePublishCount)
+
 	CreateKubernetesResources(t, kc, testNamespace, testData, testTemplates)
 
 	// Create 3 replica stream with consumer
@@ -81,29 +92,27 @@ func testNATSJetStreamScalerClusterWithStreamReplicas(t *testing.T, noAdvertise 
 
 	testScaleOut(t, kc, testData)
 	testScaleIn(t, kc)
-
-	// Cleanup test namespace
-	removeStreamAndConsumer(t, 1, testData.NatsStream, testNamespace, natsAddress)
-	DeleteKubernetesResources(t, testNamespace, testData, testTemplates)
-
-	// Cleanup nats namespace
-	removeClusterWithJetStream(t)
-	DeleteNamespace(t, natsNamespace)
-	deleted := WaitForNamespaceDeletion(t, natsNamespace)
-	assert.Truef(t, deleted, "%s namespace not deleted", natsNamespace)
 }
 
 func TestNATSv2_10JetStreamScalerClusterWithStreamReplicas(t *testing.T) {
 	// Create k8s resources.
 	kc := GetKubernetesClient(t)
+	testData, testTemplates := nats.GetJetStreamDeploymentTemplateData(testNamespace, natsAddress, natsServerMonitoringEndpoint, messagePublishCount)
+	t.Cleanup(func() {
+		removeStreamAndConsumer(t, 1, testData.NatsStream, testNamespace, natsAddress)
+		DeleteKubernetesResources(t, testNamespace, testData, testTemplates)
 
+		removeClusterWithJetStream(t)
+		DeleteNamespace(t, natsNamespace)
+		deleted := WaitForNamespaceDeletion(t, natsNamespace)
+		assert.Truef(t, deleted, "%s namespace not deleted", natsNamespace)
+	})
 	// Deploy NATS server.
 	installClusterWithJetStreaV2_10(t, kc)
-	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, nats.NatsJetStreamName, natsNamespace, natsServerReplicas, 60, 3),
+	require.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, nats.NatsJetStreamName, natsNamespace, natsServerReplicas, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
 
 	// Create k8s resources for testing.
-	testData, testTemplates := nats.GetJetStreamDeploymentTemplateData(testNamespace, natsAddress, natsServerHeadlessMonitoringEndpoint, messagePublishCount)
 	CreateKubernetesResources(t, kc, testNamespace, testData, testTemplates)
 
 	// Create 3 replica stream with consumer
@@ -132,16 +141,6 @@ func TestNATSv2_10JetStreamScalerClusterWithStreamReplicas(t *testing.T) {
 	testActivation(t, kc, testData)
 	testScaleOut(t, kc, testData)
 	testScaleIn(t, kc)
-
-	// Cleanup test namespace
-	removeStreamAndConsumer(t, 1, testData.NatsStream, testNamespace, natsAddress)
-	DeleteKubernetesResources(t, testNamespace, testData, testTemplates)
-
-	// Cleanup nats namespace
-	removeClusterWithJetStream(t)
-	DeleteNamespace(t, natsNamespace)
-	deleted := WaitForNamespaceDeletion(t, natsNamespace)
-	assert.Truef(t, deleted, "%s namespace not deleted", natsNamespace)
 }
 
 // installStreamAndConsumer creates stream and consumer job.
@@ -174,9 +173,9 @@ func removeStreamAndConsumer(t *testing.T, streamReplicas int, stream, namespace
 func installClusterWithJetStream(t *testing.T, kc *k8s.Clientset, noAdvertise bool) {
 	CreateNamespace(t, kc, natsNamespace)
 	_, err := ExecuteCommand(fmt.Sprintf("helm repo add %s %s", nats.NatsJetStreamName, natsHelmRepo))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("helm repo update")
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --version %s --set %s --set %s --set %s --set %s --set %s --wait --namespace %s %s nats/nats`,
 		nats.NatsJetStreamChartVersion,
 		"nats.jetstream.enabled=true",
@@ -186,16 +185,16 @@ func installClusterWithJetStream(t *testing.T, kc *k8s.Clientset, noAdvertise bo
 		fmt.Sprintf("cluster.noAdvertise=%t", noAdvertise),
 		natsNamespace,
 		nats.NatsJetStreamName))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
 // installClusterWithJetStreaV2_10 install the nats helm chart with clustered jetstream enabled using v2.10
 func installClusterWithJetStreaV2_10(t *testing.T, kc *k8s.Clientset) {
 	CreateNamespace(t, kc, natsNamespace)
 	_, err := ExecuteCommand(fmt.Sprintf("helm repo add %s %s", nats.NatsJetStreamName, natsHelmRepo))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("helm repo update")
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --version %s --set %s --set %s --set %s --set %s --set %s --set %s --set %s --wait --namespace %s %s nats/nats`,
 		nats.Natsv2_10JetStreamChartVersion,
 		"config.jetstream.enabled=true",
@@ -207,7 +206,7 @@ func installClusterWithJetStreaV2_10(t *testing.T, kc *k8s.Clientset) {
 		fmt.Sprintf("config.cluster.replicas=%d", natsServerReplicas),
 		natsNamespace,
 		nats.NatsJetStreamName))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
 // removeClusterWithJetStream uninstall the nats helm chart

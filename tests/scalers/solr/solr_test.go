@@ -13,6 +13,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper" // For helper methods
@@ -177,9 +178,13 @@ spec:
 )
 
 func TestSolrScaler(t *testing.T) {
-	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
+	t.Cleanup(func() {
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+	})
+
+	// Create kubernetes resources
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	// setup solr
@@ -192,31 +197,31 @@ func TestSolrScaler(t *testing.T) {
 	testActivation(t, kc)
 	testScaleOut(t, kc)
 	testScaleIn(t, kc)
-
-	// cleanup
-	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func setupSolr(t *testing.T, kc *kubernetes.Clientset) {
-	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, "solr", testNamespace, 1, 60, 3),
+	require.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, "solr", testNamespace, 1, 60, 3),
 		"solr should be up")
 	err := checkIfSolrStatusIsReady(t, solrPodName)
-	assert.NoErrorf(t, err, "%s", err)
+	require.NoErrorf(t, err, "%s", err)
 
 	// Create the collection
-	out, errOut, _ := ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("%s create_core -c %s", solrPath, solrCollection))
+	out, errOut, err := ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("%s create_core -c %s", solrPath, solrCollection))
+	require.NoErrorf(t, err, "%s", err)
 	t.Logf("Output: %s, Error: %s", out, errOut)
 
 	// Enable BasicAuth
-	out, errOut, _ = ExecCommandOnSpecificPod(t, solrPodName, testNamespace, "echo '{\"authentication\":{\"class\":\"solr.BasicAuthPlugin\",\"credentials\":{\"solr\":\"IV0EHq1OnNrj6gvRCwvFwTrZ1+z1oBbnQdiVC3otuq0= Ndd7LKvVBAaZIF0QAVi1ekCfAJXr1GGfLtRUXhgrF8c=\"}},\"authorization\":{\"class\":\"solr.RuleBasedAuthorizationPlugin\",\"permissions\":[{\"name\":\"security-edit\",\"role\":\"admin\"}],\"user-role\":{\"solr\":\"admin\"}}}' > /var/solr/data/security.json")
+	out, errOut, err = ExecCommandOnSpecificPod(t, solrPodName, testNamespace, "echo '{\"authentication\":{\"class\":\"solr.BasicAuthPlugin\",\"credentials\":{\"solr\":\"IV0EHq1OnNrj6gvRCwvFwTrZ1+z1oBbnQdiVC3otuq0= Ndd7LKvVBAaZIF0QAVi1ekCfAJXr1GGfLtRUXhgrF8c=\"}},\"authorization\":{\"class\":\"solr.RuleBasedAuthorizationPlugin\",\"permissions\":[{\"name\":\"security-edit\",\"role\":\"admin\"}],\"user-role\":{\"solr\":\"admin\"}}}' > /var/solr/data/security.json")
+	require.NoErrorf(t, err, "%s", err)
 	t.Logf("Output: %s, Error: %s", out, errOut)
 
 	// Restart solr to apply auth
-	out, errOut, _ = ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("%s restart", solrPath))
+	out, errOut, err = ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("%s restart", solrPath))
+	require.NoErrorf(t, err, "%s", err)
 	t.Logf("Output: %s, Error: %s", out, errOut)
 
 	err = checkIfSolrStatusIsReady(t, solrPodName)
-	assert.NoErrorf(t, err, "%s", err)
+	require.NoErrorf(t, err, "%s", err)
 	t.Log("--- BasicAuth plugin activated ---")
 
 	t.Log("--- solr is ready ---")

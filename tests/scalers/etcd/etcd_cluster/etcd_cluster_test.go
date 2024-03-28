@@ -114,14 +114,16 @@ func TestScaler(t *testing.T) {
 	t.Log("--- setting up ---")
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
-
+	data, templates := getTemplateData()
+	t.Cleanup(func() {
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+	})
 	CreateNamespace(t, kc, testNamespace)
 
 	// Create Etcd Cluster
 	etcd.InstallCluster(t, kc, testName, testNamespace)
 
 	// Create kubernetes resources for testing
-	data, templates := getTemplateData()
 	KubectlApplyMultipleWithTemplate(t, data, templates)
 
 	testActivation(t, kc, data)

@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/kedacore/keda/v2/tests/helper"
+	"github.com/stretchr/testify/require"
 )
 
 type templateData struct {
@@ -551,7 +551,7 @@ func Install(t *testing.T, kc *kubernetes.Clientset, name, namespace string, pki
 		PrometheusServerName: name,
 	}
 	helper.KubectlApplyMultipleWithTemplate(t, data, getPrometheusTemplates(pki))
-	assert.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, name, namespace, 1, 60, 3),
+	require.True(t, helper.WaitForDeploymentReplicaReadyCount(t, kc, name, namespace, 1, 60, 3),
 		"replica count should be 1 after 3 minutes")
 }
 
@@ -561,5 +561,4 @@ func Uninstall(t *testing.T, name, namespace string, pki *VaultPkiData) {
 		PrometheusServerName: name,
 	}
 	helper.KubectlDeleteMultipleWithTemplate(t, data, getPrometheusTemplates(pki))
-	helper.DeleteNamespace(t, namespace)
 }
