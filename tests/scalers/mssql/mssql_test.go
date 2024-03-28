@@ -250,8 +250,8 @@ spec:
 func TestMssqlScaler(t *testing.T) {
 	// Create kubernetes resources for MS SQL server
 	kc := GetKubernetesClient(t)
-	data, mssqlTemplates := getMssqlTemplateData()
-	data, templates := getTemplateData()
+	_, mssqlTemplates := getMssqlTemplateData()
+	_, templates := getTemplateData()
 	t.Cleanup(func() {
 		DeleteKubernetesResources(t, testNamespace, data, templates)
 	})

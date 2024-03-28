@@ -97,7 +97,7 @@ func testNATSJetStreamScalerClusterWithStreamReplicas(t *testing.T, noAdvertise 
 func TestNATSv2_10JetStreamScalerClusterWithStreamReplicas(t *testing.T) {
 	// Create k8s resources.
 	kc := GetKubernetesClient(t)
-	testData, testTemplates := nats.GetJetStreamDeploymentTemplateData(testNamespace, natsAddress, natsServerMonitoringEndpoint, messagePublishCount)
+	testData, testTemplates := nats.GetJetStreamDeploymentTemplateData(testNamespace, natsAddress, natsServerHeadlessMonitoringEndpoint, messagePublishCount)
 	t.Cleanup(func() {
 		removeStreamAndConsumer(t, 1, testData.NatsStream, testNamespace, natsAddress)
 		DeleteKubernetesResources(t, testNamespace, testData, testTemplates)
