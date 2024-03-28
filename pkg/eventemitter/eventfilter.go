@@ -40,8 +40,8 @@ func NewEventFilter(includedEventTypes []eventingv1alpha1.CloudEventType, exclud
 // FilterEvent returns true if the event should be handled
 func (e *EventFilter) FilterEvent(eventType eventingv1alpha1.CloudEventType) (bool, error) {
 	if len(e.IncludedEventTypes) > 0 {
-		if len(e.ExcludedEventTypes) > 0 && e.filterExcludedEventTypes(eventType) == false {
-			return false, fmt.Errorf("Eventtype: %s in both included and excluded types. Cannot be filtered.", eventType)
+		if len(e.ExcludedEventTypes) > 0 && !e.filterExcludedEventTypes(eventType) {
+			return false, fmt.Errorf("eventtype: %s in both included and excluded types. Cannot be filtered", eventType)
 		}
 
 		return e.filterIncludedEventTypes(eventType), nil

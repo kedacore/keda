@@ -335,7 +335,6 @@ func (e *EventEmitter) emitEventByHandler(eventData eventdata.EventData) {
 
 	if eventData.HandlerKey == "" {
 		for key, handler := range e.eventHandlersCache {
-
 			e.eventFilterCacheLock.RLock()
 			defer e.eventFilterCacheLock.RUnlock()
 			// Filter Event

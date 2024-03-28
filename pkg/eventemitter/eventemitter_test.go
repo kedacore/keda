@@ -66,12 +66,16 @@ func TestEventHandler_FailedEmitEvent(t *testing.T) {
 	key := newEventHandlerKey(cloudEventSource.GenerateIdentifier(), cloudEventHandlerTypeHTTP)
 	caches[key] = eventHandler
 
+	filtercaches := map[string]*EventFilter{}
+
 	eventEmitter := EventEmitter{
 		client:                   mockClient,
 		recorder:                 recorder,
 		clusterName:              "cluster-name",
 		eventHandlersCache:       caches,
 		eventHandlersCacheLock:   &sync.RWMutex{},
+		eventFilterCache:         filtercaches,
+		eventFilterCacheLock:     &sync.RWMutex{},
 		eventLoopContexts:        &sync.Map{},
 		cloudEventProcessingChan: make(chan eventdata.EventData, 1),
 	}
@@ -128,12 +132,16 @@ func TestEventHandler_DirectCall(t *testing.T) {
 	key := newEventHandlerKey(cloudEventSource.GenerateIdentifier(), cloudEventHandlerTypeHTTP)
 	caches[key] = eventHandler
 
+	filtercaches := map[string]*EventFilter{}
+
 	eventEmitter := EventEmitter{
 		client:                   mockClient,
 		recorder:                 recorder,
 		clusterName:              "cluster-name",
 		eventHandlersCache:       caches,
 		eventHandlersCacheLock:   &sync.RWMutex{},
+		eventFilterCache:         filtercaches,
+		eventFilterCacheLock:     &sync.RWMutex{},
 		eventLoopContexts:        &sync.Map{},
 		cloudEventProcessingChan: make(chan eventdata.EventData, 1),
 	}
