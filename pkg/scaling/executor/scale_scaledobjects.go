@@ -310,7 +310,7 @@ func (e *scaleExecutor) scaleFromZeroOrIdle(ctx context.Context, logger logr.Log
 		logger.Info("Successfully updated ScaleTarget",
 			"Original Replicas Count", currentReplicas,
 			"New Replicas Count", replicas)
-		e.recorder.Eventf(scaledObject, corev1.EventTypeNormal, eventreason.KEDAScaleTargetActivated, "Scaled %s %s/%s from %d to %d, triggered by %s", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, replicas, strings.Join(activeTriggers, "/"))
+		e.recorder.Eventf(scaledObject, corev1.EventTypeNormal, eventreason.KEDAScaleTargetActivated, "Scaled %s %s/%s from %d to %d, triggered by %s", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, replicas, strings.Join(activeTriggers, "/")) // nosemgrep
 
 		// Scale was successful. Update lastScaleTime and lastActiveTime on the scaledObject
 		if err := e.updateLastActiveTime(ctx, logger, scaledObject); err != nil {
