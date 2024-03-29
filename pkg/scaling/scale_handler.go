@@ -750,6 +750,7 @@ func (*scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler, 
 
 		var latency int64
 		metrics, isMetricActive, latency, err := cache.GetMetricsAndActivityForScaler(ctx, triggerIndex, metricName)
+		metricscollector.RecordScalerError(scaledObject.Namespace, scaledObject.Name, triggerName, triggerIndex, metricName, true, err)
 		if latency != -1 {
 			metricscollector.RecordScalerLatency(scaledObject.Namespace, scaledObject.Name, result.TriggerName, triggerIndex, metricName, true, float64(latency))
 		}
@@ -825,7 +826,7 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 		isActive := false
 		scalerType := fmt.Sprintf("%T:", scaler)
 
-		scalerLogger := log.WithValues("ScaledJob", scaledJob.Name, "Scaler", scalerType)
+		scalerLogger := log.WithValues("scaledJob.Name", scaledJob.Name, "Scaler", scalerType)
 
 		metricSpecs := scaler.GetMetricSpecForScaling(ctx)
 
@@ -889,7 +890,7 @@ func (h *scaleHandler) isScaledJobActive(ctx context.Context, scaledJob *kedav1a
 	isActive, queueLength, maxValue, maxFloatValue :=
 		scaledjob.IsScaledJobActive(scalersMetrics, scaledJob.Spec.ScalingStrategy.MultipleScalersCalculation, scaledJob.MinReplicaCount(), scaledJob.MaxReplicaCount())
 
-	logger.V(1).WithValues("ScaledJob", scaledJob.Name).Info("Checking if ScaleJob Scalers are active", "isActive", isActive, "maxValue", maxFloatValue, "MultipleScalersCalculation", scaledJob.Spec.ScalingStrategy.MultipleScalersCalculation)
+	logger.V(1).WithValues("scaledJob.Name", scaledJob.Name).Info("Checking if ScaleJob Scalers are active", "isActive", isActive, "maxValue", maxFloatValue, "MultipleScalersCalculation", scaledJob.Spec.ScalingStrategy.MultipleScalersCalculation)
 	return isActive, queueLength, maxValue
 }
 
