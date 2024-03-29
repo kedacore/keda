@@ -104,6 +104,7 @@ func RemoveSentinel(t *testing.T, name, namespace string) {
 		name,
 		namespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	helper.DeleteNamespace(t, namespace)
 }
 
 func InstallCluster(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {
