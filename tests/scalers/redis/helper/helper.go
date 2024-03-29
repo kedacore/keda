@@ -83,6 +83,7 @@ func RemoveStandalone(t *testing.T, name, namespace string) {
 		RedisName: name,
 	}
 	helper.KubectlApplyMultipleWithTemplate(t, data, redisStandaloneTemplates)
+	helper.DeleteNamespace(t, namespace)
 }
 
 func InstallSentinel(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {

@@ -201,10 +201,6 @@ func TestScaler(t *testing.T) {
 
 	t.Log("--- testing scale in ---")
 	testScaleIn(t, kc, minReplicaCount)
-
-	// cleanup
-	redis.RemoveStandalone(t, testName, redisNamespace)
-	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData, numMessages int, maxReplicas int) {
