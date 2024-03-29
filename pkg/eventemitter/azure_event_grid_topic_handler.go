@@ -32,21 +32,42 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventemitter/eventdata"
+	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 )
 
 type AzureEventGridTopicHandler struct {
 	Context      context.Context
 	Endpoint     string
-	Key          string
 	ClusterName  string
 	Client       *publisher.Client
 	logger       logr.Logger
 	activeStatus metav1.ConditionStatus
 }
 
-func NewAzureEventGridTopicHandler(context context.Context, clusterName string, spec *eventingv1alpha1.AzureEventGridTopicSpec, logger logr.Logger) (*AzureEventGridTopicHandler, error) {
-	client, err := publisher.NewClientWithSharedKeyCredential(spec.EndPoint, azcore.NewKeyCredential(spec.Key), nil)
+func NewAzureEventGridTopicHandler(context context.Context, clusterName string, spec *eventingv1alpha1.AzureEventGridTopicSpec, authParams map[string]string, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger) (*AzureEventGridTopicHandler, error) {
+	var err error
+	var client *publisher.Client
+
+	switch podIdentity.Provider {
+	case "", kedav1alpha1.PodIdentityProviderNone:
+		if authParams["key"] == "" {
+			err = fmt.Errorf("no key provided")
+			break
+		}
+		client, err = publisher.NewClientWithSharedKeyCredential(spec.EndPoint, azcore.NewKeyCredential(authParams["key"]), nil)
+	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+		creds, chainedErr := azure.NewChainedCredential(logger, podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID(), podIdentity.Provider)
+		if chainedErr != nil {
+			err = chainedErr
+			break
+		}
+		client, err = publisher.NewClient(spec.EndPoint, creds, nil)
+	default:
+		err = fmt.Errorf("incorrect auth provided")
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +77,6 @@ func NewAzureEventGridTopicHandler(context context.Context, clusterName string, 
 		Context:      context,
 		Client:       client,
 		Endpoint:     spec.EndPoint,
-		Key:          spec.Key,
 		ClusterName:  clusterName,
 		logger:       logger,
 		activeStatus: metav1.ConditionTrue,

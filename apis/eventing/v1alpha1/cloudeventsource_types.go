@@ -51,6 +51,8 @@ type CloudEventSourceSpec struct {
 	ClusterName string `json:"clusterName,omitempty"`
 
 	Destination Destination `json:"destination"`
+	// +optional
+	AuthenticationRef *v1alpha1.AuthenticationRef `json:"authenticationRef,omitempty"`
 }
 
 // CloudEventSourceStatus defines the observed state of CloudEventSource
@@ -75,8 +77,6 @@ type CloudEventHTTP struct {
 
 type AzureEventGridTopicSpec struct {
 	EndPoint string `json:"endPoint"`
-
-	Key string `json:"key"`
 }
 
 func init() {

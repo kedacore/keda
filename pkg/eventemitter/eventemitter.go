@@ -36,13 +36,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventemitter/eventdata"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
+	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 )
 
@@ -62,6 +65,7 @@ type EventEmitter struct {
 	eventHandlersCacheLock   *sync.RWMutex
 	eventLoopContexts        *sync.Map
 	cloudEventProcessingChan chan eventdata.EventData
+	secretsLister            corev1listers.SecretLister
 }
 
 // EventHandler defines the behavior for EventEmitter clients
@@ -91,7 +95,7 @@ const (
 )
 
 // NewEventEmitter creates a new EventEmitter
-func NewEventEmitter(client client.Client, recorder record.EventRecorder, clusterName string) EventHandler {
+func NewEventEmitter(client client.Client, recorder record.EventRecorder, clusterName string, secretsLister corev1listers.SecretLister) EventHandler {
 	return &EventEmitter{
 		log:                      logf.Log.WithName("event_emitter"),
 		client:                   client,
@@ -101,6 +105,7 @@ func NewEventEmitter(client client.Client, recorder record.EventRecorder, cluste
 		eventHandlersCacheLock:   &sync.RWMutex{},
 		eventLoopContexts:        &sync.Map{},
 		cloudEventProcessingChan: make(chan eventdata.EventData, maxChannelBuffer),
+		secretsLister:            secretsLister,
 	}
 }
 
@@ -175,6 +180,20 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEventSource
 		clusterName = e.clusterName
 	}
 
+	// Resolve auth related
+	authParams, podIdentity, err := resolver.ResolveAuthRefAndPodIdentity(ctx, e.client, e.log, cloudEventSource.Spec.AuthenticationRef, nil, cloudEventSource.Namespace, e.secretsLister)
+	switch podIdentity.Provider {
+	case kedav1alpha1.PodIdentityProviderAzure:
+		// FIXME: Delete this for v2.15
+		e.log.Info("WARNING: Azure AD Pod Identity has been archived (https://github.com/Azure/aad-pod-identity#-announcement) and will be removed from KEDA on v2.15")
+	default:
+	}
+
+	if err != nil {
+		e.log.Error(err, "error resolving auth params", "cloudEventSource", cloudEventSource)
+		return
+	}
+
 	// Create different event destinations here
 	if cloudEventSource.Spec.Destination.HTTP != nil {
 		eventHandler, err := NewCloudEventHTTPHandler(ctx, clusterName, cloudEventSource.Spec.Destination.HTTP.URI, initializeLogger(cloudEventSource, "cloudevent_http"))
@@ -191,7 +210,7 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEventSource
 	}
 
 	if cloudEventSource.Spec.Destination.AzureEventGridTopic != nil {
-		eventHandler, err := NewAzureEventGridTopicHandler(ctx, clusterName, cloudEventSource.Spec.Destination.AzureEventGridTopic, initializeLogger(cloudEventSource, "azure_event_grid_topic"))
+		eventHandler, err := NewAzureEventGridTopicHandler(ctx, clusterName, cloudEventSource.Spec.Destination.AzureEventGridTopic, authParams, podIdentity, initializeLogger(cloudEventSource, "azure_event_grid_topic"))
 		if err != nil {
 			e.log.Error(err, "create Azure Event Grid handler failed")
 			return

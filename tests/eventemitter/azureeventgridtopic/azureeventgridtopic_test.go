@@ -1,10 +1,11 @@
 //go:build e2e
 // +build e2e
 
-package trigger_update_so_test
+package azureeventgridtopic_test
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -38,11 +39,13 @@ var (
 	clientName              = fmt.Sprintf("%s-client", testName)
 	cloudeventSourceName    = fmt.Sprintf("%s-aeg", testName)
 	clusterName             = "test-cluster"
-	expectedSubject         = fmt.Sprintf("/%s/%s/workload/%s", clusterName, namespace, scaledObjectName)
-	expectedSource          = fmt.Sprintf("/%s/%s/keda", clusterName, namespace)
+	expectedSubject         = fmt.Sprintf("/%s/%s/scaledobject/%s", clusterName, namespace, scaledObjectName)
+	expectedSource          = fmt.Sprintf("/%s/keda/keda", clusterName)
 	monitoredDeploymentName = "monitored-deployment"
 	sutDeploymentName       = "sut-deployment"
 	scaledObjectName        = fmt.Sprintf("%s-so", testName)
+	secretName              = fmt.Sprintf("%s-secret", testName)
+	triggerAuthName         = fmt.Sprintf("%s-triggerauth", testName)
 )
 
 type templateData struct {
@@ -58,6 +61,8 @@ type templateData struct {
 	MonitoredDeploymentName    string
 	SutDeploymentName          string
 	ScaledObjectName           string
+	SecretName                 string
+	TriggerAuthName            string
 }
 
 const (
@@ -68,11 +73,12 @@ const (
     name: {{.CloudEventSourceName}}
     namespace: {{.TestNamespace}}
   spec:
+    authenticationRef:
+      name: {{.TriggerAuthName}}
     clusterName: {{.ClusterName}}
     destination:
       azureEventGridTopic:
         endPoint: {{.EventGridEndpoint}}
-        key: {{.EventGridKey}}
   `
 	monitoredDeploymentTemplate = `apiVersion: apps/v1
 kind: Deployment
@@ -94,6 +100,29 @@ spec:
         containers:
         - name: nginx
           image: 'nginxinc/nginx-unprivileged'`
+
+	secretTemplate = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{.SecretName}}
+  namespace: {{.TestNamespace}}
+data:
+  key: {{.EventGridKey}}
+`
+
+	triggerAuthTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{.TriggerAuthName}}
+  namespace: {{.TestNamespace}}
+spec:
+  secretTargetRef:
+  - parameter: key
+    name: {{.SecretName}}
+    key: key
+`
 
 	sutDeploymentTemplate = `apiVersion: apps/v1
 kind: Deployment
@@ -173,6 +202,7 @@ func testEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data templa
 
 // help function to load template data
 func getTemplateData() (templateData, []Template) {
+	base64EventGridKey := base64.StdEncoding.EncodeToString([]byte(eventGridKey))
 	return templateData{
 			TestNamespace:           namespace,
 			ClientName:              clientName,
@@ -182,8 +212,12 @@ func getTemplateData() (templateData, []Template) {
 			SutDeploymentName:       sutDeploymentName,
 			ScaledObjectName:        scaledObjectName,
 			EventGridEndpoint:       eventGridEndpoint,
-			EventGridKey:            eventGridKey,
+			EventGridKey:            base64EventGridKey,
+			TriggerAuthName:         triggerAuthName,
+			SecretName:              secretName,
 		}, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
 			{Name: "cloudEventSourceTemplate", Config: cloudEventSourceTemplate},
 			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
 			{Name: "sutDeploymentTemplate", Config: sutDeploymentTemplate},
@@ -194,10 +228,21 @@ func setupServiceBusTopicAndSubscription(t *testing.T) (*azservicebus.Client, *a
 	adminClient, err := admin.NewClientFromConnectionString(connectionString, nil)
 	assert.NoErrorf(t, err, "cannot connect to service bus namespace - %s", err)
 
-	_, err = adminClient.CreateTopic(context.Background(), topicName, nil)
-	assert.NoErrorf(t, err, "cannot create the topic - %s", err)
-	_, err = adminClient.CreateSubscription(context.Background(), topicName, subscriptionName, nil)
-	assert.NoErrorf(t, err, "cannot create the subscription - %s", err)
+	topic, err := adminClient.GetTopic(context.Background(), topicName, nil)
+	assert.NoErrorf(t, err, "cannot get the topic - %s", err)
+
+	if topic == nil {
+		_, err = adminClient.CreateTopic(context.Background(), topicName, nil)
+		assert.NoErrorf(t, err, "cannot create the topic - %s", err)
+	}
+
+	subscription, err := adminClient.GetSubscription(context.Background(), topicName, subscriptionName, nil)
+	assert.NoErrorf(t, err, "cannot get the Subscription - %s", err)
+
+	if subscription == nil {
+		_, err = adminClient.CreateSubscription(context.Background(), topicName, subscriptionName, nil)
+		assert.NoErrorf(t, err, "cannot create the subscription - %s", err)
+	}
 
 	client, err := azservicebus.NewClientFromConnectionString(connectionString, nil)
 	assert.NoErrorf(t, err, "cannot connect to service bus namespace - %s", err)

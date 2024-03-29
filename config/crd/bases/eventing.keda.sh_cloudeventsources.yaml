@@ -44,6 +44,20 @@ spec:
           spec:
             description: CloudEventSourceSpec defines the spec of CloudEventSource
             properties:
+              authenticationRef:
+                description: |-
+                  AuthenticationRef points to the TriggerAuthentication or ClusterTriggerAuthentication object that
+                  is used to authenticate the scaler with the environment
+                properties:
+                  kind:
+                    description: Kind of the resource being referred to. Defaults
+                      to TriggerAuthentication.
+                    type: string
+                  name:
+                    type: string
+                required:
+                - name
+                type: object
               clusterName:
                 type: string
               destination:
@@ -53,11 +67,8 @@ spec:
                     properties:
                       endPoint:
                         type: string
-                      key:
-                        type: string
                     required:
                     - endPoint
-                    - key
                     type: object
                   http:
                     properties:
