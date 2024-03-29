@@ -153,8 +153,8 @@ spec:
 
 func TestCouchDBScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
-	data, templates := getTemplateData(kc)
 	t.Cleanup(func() {
+		data, templates := getTemplateData(t, kc)
 		DeleteKubernetesResources(t, testNamespace, data, templates)
 	})
 
@@ -163,12 +163,13 @@ func TestCouchDBScaler(t *testing.T) {
 	installCouchDB(t)
 
 	// Create kubernetes resources
+	data, templates := getTemplateData(t, kc)
 	KubectlApplyMultipleWithTemplate(t, data, templates)
 
 	// wait until client is ready
 	time.Sleep(10 * time.Second)
 	// create database
-	_, _, err := ExecCommandOnSpecificPod(t, clientName, testNamespace, fmt.Sprintf("curl -X PUT http://admin:%s@test-release-svc-couchdb.%s.svc.cluster.local:5984/animals", getPassword(kc), testNamespace))
+	_, _, err := ExecCommandOnSpecificPod(t, clientName, testNamespace, fmt.Sprintf("curl -X PUT http://admin:%s@test-release-svc-couchdb.%s.svc.cluster.local:5984/animals", getPassword(t, kc), testNamespace))
 	require.NoErrorf(t, err, "cannot execute command - %s", err)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
@@ -190,8 +191,9 @@ func installCouchDB(t *testing.T) {
 	require.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
-func getPassword(kc *kubernetes.Clientset) string {
-	secret, _ := kc.CoreV1().Secrets(testNamespace).Get(context.Background(), "test-release-couchdb", metav1.GetOptions{})
+func getPassword(t *testing.T, kc *kubernetes.Clientset) string {
+	secret, err := kc.CoreV1().Secrets(testNamespace).Get(context.Background(), "test-release-couchdb", metav1.GetOptions{})
+	require.NoError(t, err)
 	encodedPassword := secret.Data["adminPassword"]
 	password := string(encodedPassword)
 	return password
@@ -204,7 +206,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset) {
 		"feet":4,
 		"greeting":"moo"
 	}`
-	_, _, err := ExecCommandOnSpecificPod(t, clientName, testNamespace, fmt.Sprintf("curl -X PUT http://admin:%s@test-release-svc-couchdb.%s.svc.cluster.local:5984/animals/001 -d '%s'", getPassword(kc), testNamespace, record))
+	_, _, err := ExecCommandOnSpecificPod(t, clientName, testNamespace, fmt.Sprintf("curl -X PUT http://admin:%s@test-release-svc-couchdb.%s.svc.cluster.local:5984/animals/001 -d '%s'", getPassword(t, kc), testNamespace, record))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
@@ -217,7 +219,7 @@ func testScaleUp(t *testing.T, kc *kubernetes.Clientset) {
 			"feet":4,
 			"greeting":"meow"
 		}`
-	_, _, err := ExecCommandOnSpecificPod(t, clientName, testNamespace, fmt.Sprintf("curl -X PUT http://admin:%s@test-release-svc-couchdb.%s.svc.cluster.local:5984/animals/002 -d '%s'", getPassword(kc), testNamespace, record))
+	_, _, err := ExecCommandOnSpecificPod(t, clientName, testNamespace, fmt.Sprintf("curl -X PUT http://admin:%s@test-release-svc-couchdb.%s.svc.cluster.local:5984/animals/002 -d '%s'", getPassword(t, kc), testNamespace, record))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 2),
 		"replica count should be %d after 2 minute", maxReplicaCount)
@@ -227,17 +229,17 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale down ---")
 
 	// recreate database to clear it
-	_, _, err := ExecCommandOnSpecificPod(t, clientName, testNamespace, fmt.Sprintf("curl -X DELETE http://admin:%s@test-release-svc-couchdb.%s.svc.cluster.local:5984/animals", getPassword(kc), testNamespace))
+	_, _, err := ExecCommandOnSpecificPod(t, clientName, testNamespace, fmt.Sprintf("curl -X DELETE http://admin:%s@test-release-svc-couchdb.%s.svc.cluster.local:5984/animals", getPassword(t, kc), testNamespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	_, _, err = ExecCommandOnSpecificPod(t, clientName, testNamespace, fmt.Sprintf("curl -X PUT http://admin:%s@test-release-svc-couchdb.%s.svc.cluster.local:5984/animals", getPassword(kc), testNamespace))
+	_, _, err = ExecCommandOnSpecificPod(t, clientName, testNamespace, fmt.Sprintf("curl -X PUT http://admin:%s@test-release-svc-couchdb.%s.svc.cluster.local:5984/animals", getPassword(t, kc), testNamespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 2),
 		"replica count should be %d after 2 minutes", minReplicaCount)
 }
 
-func getTemplateData(kc *kubernetes.Clientset) (templateData, []Template) {
-	password := getPassword(kc)
+func getTemplateData(t *testing.T, kc *kubernetes.Clientset) (templateData, []Template) {
+	password := getPassword(t, kc)
 	passwordEncoded := base64.StdEncoding.EncodeToString([]byte(password))
 	connectionString := fmt.Sprintf("http://test-release-svc-couchdb.%s.svc.cluster.local:5984", testNamespace)
 	hostName := fmt.Sprintf("test-release-svc-couchdb.%s.svc.cluster.local", testNamespace)

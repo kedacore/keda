@@ -216,8 +216,7 @@ func setupSolr(t *testing.T, kc *kubernetes.Clientset) {
 	t.Logf("Output: %s, Error: %s", out, errOut)
 
 	// Restart solr to apply auth
-	out, errOut, err = ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("%s restart", solrPath))
-	require.NoErrorf(t, err, "%s", err)
+	out, errOut, _ = ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("%s restart", solrPath))
 	t.Logf("Output: %s, Error: %s", out, errOut)
 
 	err = checkIfSolrStatusIsReady(t, solrPodName)

@@ -90,11 +90,6 @@ func TestScaler(t *testing.T) {
 		"replica count should be 0 after 1 minute")
 
 	testScaling(t, kc)
-
-	// cleanup
-	t.Log("--- cleaning up ---")
-	DeleteKubernetesResources(t, testNamespace, data, templates)
-	RMQUninstall(t, rmqNamespace, user, password, vhost, WithoutOAuth())
 }
 
 func getTemplateData() (templateData, []Template) {

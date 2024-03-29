@@ -301,12 +301,11 @@ func TestElasticsearchScaler(t *testing.T) {
 		DeleteKubernetesResources(t, testNamespace, data, templates)
 	})
 
-	// setup elastic
-	CreateNamespace(t, kc, testNamespace)
-	setupElasticsearch(t, kc)
-
 	// Create kubernetes resources
-	KubectlApplyMultipleWithTemplate(t, data, templates)
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
+
+	// setup elastic
+	setupElasticsearch(t, kc)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
