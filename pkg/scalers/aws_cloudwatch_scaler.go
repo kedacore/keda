@@ -418,8 +418,9 @@ func (s *awsCloudwatchScaler) GetCloudwatchMetrics(ctx context.Context) (float64
 	// If no metric data is received and errorWhenMetricValuesEmpty is set to true, return error,
 	// otherwise continue with either the metric value received, or the minMetricValue
 	if len(output.MetricDataResults) == 0 && s.metadata.errorWhenMetricValuesEmpty {
-		s.logger.Error(err, "empty metric data received and errorWhenMetricValuesEmpty is set to true")
-		return -1, fmt.Errorf("empty metric data received and errorWhenMetricValuesEmpty is set to true")
+		emptyMetricsErrMessage := "empty result of metric values received, and errorWhenMetricValuesEmpty is set to true"
+		s.logger.Error(err, emptyMetricsErrMessage)
+		return -1, fmt.Errorf(emptyMetricsErrMessage)
 	}
 
 	if len(output.MetricDataResults) > 0 && len(output.MetricDataResults[0].Values) > 0 {
