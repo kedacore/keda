@@ -13,6 +13,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -294,9 +295,13 @@ spec:
 )
 
 func TestElasticsearchScaler(t *testing.T) {
-	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
+	t.Cleanup(func() {
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+	})
+
+	// Create kubernetes resources
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	// setup elastic
@@ -309,19 +314,16 @@ func TestElasticsearchScaler(t *testing.T) {
 	testActivation(t, kc)
 	testScaleOut(t, kc)
 	testScaleIn(t, kc)
-
-	// cleanup
-	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func setupElasticsearch(t *testing.T, kc *kubernetes.Clientset) {
-	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, "elasticsearch", testNamespace, 1, 60, 3),
+	require.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, "elasticsearch", testNamespace, 1, 60, 3),
 		"elasticsearch should be up")
 	// Create the index and the search template
 	_, err := ExecuteCommand(fmt.Sprintf("%s -XPUT http://localhost:9200/%s -d '%s'", kubectlElasticExecCmd, indexName, elasticsearchCreateIndex))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand(fmt.Sprintf("%s -XPUT http://localhost:9200/_scripts/%s -d '%s'", kubectlElasticExecCmd, searchTemplateName, elasticsearchSearchTemplate))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset) {
