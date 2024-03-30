@@ -90,7 +90,7 @@ github.com/Azure/azure-kusto-go/kusto/kql
 github.com/Azure/azure-kusto-go/kusto/trustedendpoints
 github.com/Azure/azure-kusto-go/kusto/unsafe
 github.com/Azure/azure-kusto-go/kusto/utils
-# github.com/Azure/azure-sdk-for-go/sdk/azcore v1.9.1
+# github.com/Azure/azure-sdk-for-go/sdk/azcore v1.10.0
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/azcore
 github.com/Azure/azure-sdk-for-go/sdk/azcore/arm
@@ -144,7 +144,7 @@ github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/internal/exported
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/internal/sas
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/internal/sbauth
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/internal/utils
-# github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.6.0
+# github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.6.1
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/admin
@@ -163,13 +163,13 @@ github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery
 # github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/eventhub/armeventhub v1.2.0
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/eventhub/armeventhub
-# github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.0.1
+# github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.1.0
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets
 # github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal v1.0.0
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal
-# github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.2.1
+# github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.3.1
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/storage/azblob
 github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/appendblob
@@ -193,7 +193,7 @@ github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/internal/generated
 github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/internal/shared
 github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/queueerror
 github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/sas
-# github.com/Azure/go-amqp v1.0.4
+# github.com/Azure/go-amqp v1.0.5
 ## explicit; go 1.18
 github.com/Azure/go-amqp
 github.com/Azure/go-amqp/internal/bitmap

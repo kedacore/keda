@@ -1,5 +1,11 @@
 # Release History
 
+## 1.0.4 (2024-03-05)
+
+### Bugs Fixed
+
+- Fixed case where closing a Receiver/Sender after an idle period would take > 20 seconds. (PR#22509)
+
 ## 1.0.3 (2024-01-16)
 
 ### Bugs Fixed

@@ -1,5 +1,6 @@
 # Release History
 
+<<<<<<< HEAD
 ## 1.11.1 (2024-04-02)
 
 ### Bugs Fixed
@@ -24,6 +25,8 @@
 
 * Update dependencies.
 
+=======
+>>>>>>> a81a580f (bump azure deps)
 ## 1.10.0 (2024-02-29)
 
 ### Features Added

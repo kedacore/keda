@@ -1,11 +1,14 @@
 # Release History
 
+<<<<<<< HEAD
 ## 1.7.0 (2024-04-02)
 
 ### Features Added
 
 - Add in ability to handle emulator connection strings. (PR#22663)
 
+=======
+>>>>>>> a81a580f (bump azure deps)
 ## 1.6.1 (2024-03-05)
 
 ### Bugs Fixed

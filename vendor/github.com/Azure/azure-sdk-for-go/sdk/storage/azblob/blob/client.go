@@ -36,15 +36,16 @@ type Client base.Client[generated.BlobClient]
 //   - cred - an Azure AD credential, typically obtained via the azidentity module
 //   - options - client options; pass nil to accept the default values
 func NewClient(blobURL string, cred azcore.TokenCredential, options *ClientOptions) (*Client, error) {
-	authPolicy := shared.NewStorageChallengePolicy(cred)
+	audience := base.GetAudience((*base.ClientOptions)(options))
+	authPolicy := shared.NewStorageChallengePolicy(cred, audience)
 	conOptions := shared.GetClientOptions(options)
 	plOpts := runtime.PipelineOptions{PerRetry: []policy.Policy{authPolicy}}
 
-	azClient, err := azcore.NewClient(shared.BlobClient, exported.ModuleVersion, plOpts, &conOptions.ClientOptions)
+	azClient, err := azcore.NewClient(exported.ModuleName, exported.ModuleVersion, plOpts, &conOptions.ClientOptions)
 	if err != nil {
 		return nil, err
 	}
-	return (*Client)(base.NewBlobClient(blobURL, azClient, &cred)), nil
+	return (*Client)(base.NewBlobClient(blobURL, azClient, &cred, (*base.ClientOptions)(conOptions))), nil
 }
 
 // NewClientWithNoCredential creates an instance of Client with the specified values.
@@ -54,11 +55,11 @@ func NewClient(blobURL string, cred azcore.TokenCredential, options *ClientOptio
 func NewClientWithNoCredential(blobURL string, options *ClientOptions) (*Client, error) {
 	conOptions := shared.GetClientOptions(options)
 
-	azClient, err := azcore.NewClient(shared.BlobClient, exported.ModuleVersion, runtime.PipelineOptions{}, &conOptions.ClientOptions)
+	azClient, err := azcore.NewClient(exported.ModuleName, exported.ModuleVersion, runtime.PipelineOptions{}, &conOptions.ClientOptions)
 	if err != nil {
 		return nil, err
 	}
-	return (*Client)(base.NewBlobClient(blobURL, azClient, nil)), nil
+	return (*Client)(base.NewBlobClient(blobURL, azClient, nil, (*base.ClientOptions)(conOptions))), nil
 }
 
 // NewClientWithSharedKeyCredential creates an instance of Client with the specified values.
@@ -70,11 +71,11 @@ func NewClientWithSharedKeyCredential(blobURL string, cred *SharedKeyCredential,
 	conOptions := shared.GetClientOptions(options)
 	plOpts := runtime.PipelineOptions{PerRetry: []policy.Policy{authPolicy}}
 
-	azClient, err := azcore.NewClient(shared.BlobClient, exported.ModuleVersion, plOpts, &conOptions.ClientOptions)
+	azClient, err := azcore.NewClient(exported.ModuleName, exported.ModuleVersion, plOpts, &conOptions.ClientOptions)
 	if err != nil {
 		return nil, err
 	}
-	return (*Client)(base.NewBlobClient(blobURL, azClient, cred)), nil
+	return (*Client)(base.NewBlobClient(blobURL, azClient, cred, (*base.ClientOptions)(conOptions))), nil
 }
 
 // NewClientFromConnectionString creates an instance of Client with the specified values.
@@ -112,6 +113,10 @@ func (b *Client) credential() any {
 	return base.Credential((*base.Client[generated.BlobClient])(b))
 }
 
+func (b *Client) getClientOptions() *base.ClientOptions {
+	return base.GetClientOptions((*base.Client[generated.BlobClient])(b))
+}
+
 // URL returns the URL endpoint used by the Client object.
 func (b *Client) URL() string {
 	return b.generated().Endpoint()
@@ -126,7 +131,7 @@ func (b *Client) WithSnapshot(snapshot string) (*Client, error) {
 	}
 	p.Snapshot = snapshot
 
-	return (*Client)(base.NewBlobClient(p.String(), b.generated().InternalClient(), b.credential())), nil
+	return (*Client)(base.NewBlobClient(p.String(), b.generated().InternalClient(), b.credential(), b.getClientOptions())), nil
 }
 
 // WithVersionID creates a new AppendBlobURL object identical to the source but with the specified version id.
@@ -138,7 +143,7 @@ func (b *Client) WithVersionID(versionID string) (*Client, error) {
 	}
 	p.VersionID = versionID
 
-	return (*Client)(base.NewBlobClient(p.String(), b.generated().InternalClient(), b.credential())), nil
+	return (*Client)(base.NewBlobClient(p.String(), b.generated().InternalClient(), b.credential(), b.getClientOptions())), nil
 }
 
 // Delete marks the specified blob or snapshot for deletion. The blob is later deleted during garbage collection.
@@ -353,7 +358,7 @@ func (b *Client) downloadBuffer(ctx context.Context, writer io.WriterAt, o downl
 		OperationName: "downloadBlobToWriterAt",
 		TransferSize:  count,
 		ChunkSize:     o.BlockSize,
-		NumChunks:     uint16(((count - 1) / o.BlockSize) + 1),
+		NumChunks:     uint64(((count - 1) / o.BlockSize) + 1),
 		Concurrency:   o.Concurrency,
 		Operation: func(ctx context.Context, chunkStart int64, count int64) error {
 			downloadBlobOptions := o.getDownloadBlobOptions(HTTPRange{
@@ -390,170 +395,6 @@ func (b *Client) downloadBuffer(ctx context.Context, writer io.WriterAt, o downl
 		return 0, err
 	}
 	return count, nil
-}
-
-// downloadFile downloads an Azure blob to a Writer. The blocks are downloaded parallely,
-// but written to file serially
-func (b *Client) downloadFile(ctx context.Context, writer io.Writer, o downloadOptions) (int64, error) {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	if o.BlockSize == 0 {
-		o.BlockSize = DefaultDownloadBlockSize
-	}
-
-	if o.Concurrency == 0 {
-		o.Concurrency = DefaultConcurrency
-	}
-
-	count := o.Range.Count
-	if count == CountToEnd { //Calculate size if not specified
-		gr, err := b.GetProperties(ctx, o.getBlobPropertiesOptions())
-		if err != nil {
-			return 0, err
-		}
-		count = *gr.ContentLength - o.Range.Offset
-	}
-
-	if count <= 0 {
-		// The file is empty, there is nothing to download.
-		return 0, nil
-	}
-
-	progress := int64(0)
-	progressLock := &sync.Mutex{}
-
-	// helper routine to get body
-	getBodyForRange := func(ctx context.Context, chunkStart, size int64) (io.ReadCloser, error) {
-		downloadBlobOptions := o.getDownloadBlobOptions(HTTPRange{
-			Offset: chunkStart + o.Range.Offset,
-			Count:  size,
-		}, nil)
-		dr, err := b.DownloadStream(ctx, downloadBlobOptions)
-		if err != nil {
-			return nil, err
-		}
-
-		var body io.ReadCloser = dr.NewRetryReader(ctx, &o.RetryReaderOptionsPerBlock)
-		if o.Progress != nil {
-			rangeProgress := int64(0)
-			body = streaming.NewResponseProgress(
-				body,
-				func(bytesTransferred int64) {
-					diff := bytesTransferred - rangeProgress
-					rangeProgress = bytesTransferred
-					progressLock.Lock()
-					progress += diff
-					o.Progress(progress)
-					progressLock.Unlock()
-				})
-		}
-
-		return body, nil
-	}
-
-	// if file fits in a single buffer, we'll download here.
-	if count <= o.BlockSize {
-		body, err := getBodyForRange(ctx, int64(0), count)
-		if err != nil {
-			return 0, err
-		}
-		defer body.Close()
-
-		return io.Copy(writer, body)
-	}
-
-	buffers := shared.NewMMBPool(int(o.Concurrency), o.BlockSize)
-	defer buffers.Free()
-	acquireBuffer := func() ([]byte, error) {
-		select {
-		case b := <-buffers.Acquire():
-			// got a buffer
-			return b, nil
-		default:
-			// no buffer available; allocate a new buffer if possible
-			if _, err := buffers.Grow(); err != nil {
-				return nil, err
-			}
-
-			// either grab the newly allocated buffer or wait for one to become available
-			return <-buffers.Acquire(), nil
-		}
-	}
-
-	numChunks := uint16((count-1)/o.BlockSize) + 1
-	blocks := make([]chan []byte, numChunks)
-	for b := range blocks {
-		blocks[b] = make(chan []byte)
-	}
-
-	/*
-	 * We have created as many channels as the number of chunks we have.
-	 * Each downloaded block will be sent to the channel matching its
-	 * sequence number, i.e. 0th block is sent to 0th channel, 1st block
-	 * to 1st channel and likewise. The blocks are then read and written
-	 * to the file serially by below goroutine. Do note that the blocks
-	 * are still downloaded parallelly from n/w, only serialized
-	 * and written to file here.
-	 */
-	writerError := make(chan error)
-	writeSize := int64(0)
-	go func(ch chan error) {
-		for _, block := range blocks {
-			select {
-			case <-ctx.Done():
-				return
-			case block := <-block:
-				n, err := writer.Write(block)
-				writeSize += int64(n)
-				buffers.Release(block[:cap(block)])
-				if err != nil {
-					ch <- err
-					return
-				}
-			}
-		}
-		ch <- nil
-	}(writerError)
-
-	// Prepare and do parallel download.
-	err := shared.DoBatchTransfer(ctx, &shared.BatchTransferOptions{
-		OperationName: "downloadBlobToWriterAt",
-		TransferSize:  count,
-		ChunkSize:     o.BlockSize,
-		NumChunks:     numChunks,
-		Concurrency:   o.Concurrency,
-		Operation: func(ctx context.Context, chunkStart int64, count int64) error {
-			buff, err := acquireBuffer()
-			if err != nil {
-				return err
-			}
-
-			body, err := getBodyForRange(ctx, chunkStart, count)
-			if err != nil {
-				buffers.Release(buff)
-				return nil
-			}
-
-			_, err = io.ReadFull(body, buff[:count])
-			body.Close()
-			if err != nil {
-				return err
-			}
-
-			blockIndex := chunkStart / o.BlockSize
-			blocks[blockIndex] <- buff[:count]
-			return nil
-		},
-	})
-
-	if err != nil {
-		return 0, err
-	}
-	// error from writer thread.
-	if err = <-writerError; err != nil {
-		return 0, err
-	}
-	return writeSize, nil
 }
 
 // DownloadStream reads a range of bytes from a blob. The response also includes the blob's properties and metadata.
@@ -623,7 +464,7 @@ func (b *Client) DownloadFile(ctx context.Context, file *os.File, o *DownloadFil
 	}
 
 	if size > 0 {
-		return b.downloadFile(ctx, file, *do)
+		return b.downloadBuffer(ctx, file, *do)
 	} else { // if the blob's size is 0, there is no need in downloading it
 		return 0, nil
 	}
