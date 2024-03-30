@@ -92,7 +92,7 @@ spec:
       namespace: {{.Namespace}}
     spec:
       containers:
-      - image: rabbitmq:3-management
+      - image: rabbitmq:3.12-management
         name: rabbitmq
         volumeMounts:
           - mountPath: /etc/rabbitmq
