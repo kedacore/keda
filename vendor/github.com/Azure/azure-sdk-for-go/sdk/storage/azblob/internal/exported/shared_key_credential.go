@@ -195,6 +195,13 @@ func NewSharedKeyCredPolicy(cred *SharedKeyCredential) *SharedKeyCredPolicy {
 }
 
 func (s *SharedKeyCredPolicy) Do(req *policy.Request) (*http.Response, error) {
+	// skip adding the authorization header if no SharedKeyCredential was provided.
+	// this prevents a panic that might be hard to diagnose and allows testing
+	// against http endpoints that don't require authentication.
+	if s.cred == nil {
+		return req.Next()
+	}
+
 	if d := getHeader(shared.HeaderXmsDate, req.Raw().Header); d == "" {
 		req.Raw().Header.Set(shared.HeaderXmsDate, time.Now().UTC().Format(http.TimeFormat))
 	}

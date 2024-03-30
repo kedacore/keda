@@ -27,3 +27,4 @@ stages:
   parameters:
     ServiceDirectory: 'security/keyvault/azsecrets'
     RunLiveTests: true
+    UsePipelineProxy: false

@@ -30,7 +30,11 @@ func Write(cls log.Event, msg string) {
 
 // Writef invokes the underlying listener with the specified event and formatted message.
 // If the event shouldn't be logged or there is no listener then Writef does nothing.
+<<<<<<< HEAD
 func Writef(cls log.Event, format string, a ...any) {
+=======
+func Writef(cls log.Event, format string, a ...interface{}) {
+>>>>>>> a81a580f (bump azure deps)
 	log.Writef(cls, format, a...)
 }
 
