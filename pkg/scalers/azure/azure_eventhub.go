@@ -38,8 +38,9 @@ func GetEventHubClient(info EventHubInfo, logger logr.Logger) (*azeventhubs.Prod
 			return nil, fmt.Errorf("failed to create hub client: %w", err)
 		}
 		return hub, nil
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		creds, chainedErr := NewChainedCredential(logger, info.PodIdentity.GetIdentityID(), info.PodIdentity.Provider)
+	// config.PodIdentity.GetIdentityID(), config.PodIdentity.GetIdentityTenantID()
+	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+		creds, chainedErr := NewChainedCredential(logger, info.PodIdentity)
 		if chainedErr != nil {
 			return nil, chainedErr
 		}
