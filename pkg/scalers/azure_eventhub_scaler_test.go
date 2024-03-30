@@ -234,7 +234,7 @@ var calculateUnprocessedEventsDataset = []calculateUnprocessedEventsTestData{
 	{
 		checkpoint:        azure.NewCheckpoint(0),
 		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 1},
-		unprocessedEvents: 2,
+		unprocessedEvents: 1,
 	},
 	// Stale PartitionInfo
 	{
