@@ -12,6 +12,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
@@ -114,7 +115,10 @@ func TestScaler(t *testing.T) {
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
-
+	t.Cleanup(func() {
+		cleanupMongo(t)
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+	})
 	mongoPod := setupMongo(t, kc)
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
@@ -124,10 +128,6 @@ func TestScaler(t *testing.T) {
 	// test scaling
 	testActivation(t, kc, mongoPod)
 	testScaleOut(t, kc, mongoPod)
-
-	// cleanup
-	DeleteKubernetesResources(t, testNamespace, data, templates)
-	cleanupMongo(t)
 }
 
 func getTemplateData() (templateData, []Template) {
@@ -155,14 +155,14 @@ func getTemplateData() (templateData, []Template) {
 func setupMongo(t *testing.T, kc *kubernetes.Clientset) string {
 	CreateNamespace(t, kc, mongoNamespace)
 	_, err := ExecuteCommand("helm repo add bitnami https://charts.bitnami.com/bitnami")
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("helm repo update")
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand(fmt.Sprintf("helm install mongodb --set architecture=standalone --set auth.enabled=false --set persistence.enabled=false --namespace %s bitnami/mongodb --wait", mongoNamespace))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 
 	podList, err := kc.CoreV1().Pods(mongoNamespace).List(context.Background(), metav1.ListOptions{})
-	assert.NoErrorf(t, err, "cannot get mongo pod - %s", err)
+	require.NoErrorf(t, err, "cannot get mongo pod - %s", err)
 
 	if len(podList.Items) != 1 {
 		t.Error("cannot get mongo pod name")
@@ -174,11 +174,11 @@ func setupMongo(t *testing.T, kc *kubernetes.Clientset) string {
 	createUserCmd := fmt.Sprintf("db.createUser({ user:\"%s\",pwd:\"%s\",roles:[{ role:\"readWrite\", db: \"%s\"}]})",
 		mongoUser, mongoPassword, mongoDBName)
 	_, err = ExecuteCommand(fmt.Sprintf("kubectl exec %s -n %s -- mongosh --eval '%s'", mongoPod, mongoNamespace, createUserCmd))
-	assert.NoErrorf(t, err, "cannot create user - %s", err)
+	require.NoErrorf(t, err, "cannot create user - %s", err)
 
 	loginCmd := fmt.Sprintf("db.auth(\"%s\",\"%s\")", mongoUser, mongoPassword)
 	_, err = ExecuteCommand(fmt.Sprintf("kubectl exec %s -n %s -- mongosh --eval '%s'", mongoPod, mongoNamespace, loginCmd))
-	assert.NoErrorf(t, err, "cannot login - %s", err)
+	require.NoErrorf(t, err, "cannot login - %s", err)
 
 	return mongoPod
 }

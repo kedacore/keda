@@ -11,6 +11,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -231,6 +232,9 @@ func TestMySQLScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	CreateNamespace(t, kc, testNamespace)
 	data, templates := getTemplateData()
+	t.Cleanup(func() {
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+	})
 
 	// setup MySQL
 	setupMySQL(t, kc, data, templates)
@@ -239,16 +243,13 @@ func TestMySQLScaler(t *testing.T) {
 	testActivation(t, kc, data)
 	testScaleOut(t, kc, data)
 	testScaleIn(t, kc)
-
-	// cleanup
-	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func setupMySQL(t *testing.T, kc *kubernetes.Clientset, data templateData, templates []Template) {
 	// Deploy mysql
 	KubectlApplyWithTemplate(t, data, "mysqlDeploymentTemplate", mysqlDeploymentTemplate)
 	KubectlApplyWithTemplate(t, data, "mysqlServiceTemplate", mysqlServiceTemplate)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, "mysql", testNamespace, 1, 30, 2), "mysql is not in a ready state")
+	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, "mysql", testNamespace, 1, 30, 2), "mysql is not in a ready state")
 	// Wait 30 sec which would be enought for mysql to be accessible
 	time.Sleep(30 * time.Second)
 
@@ -257,14 +258,14 @@ func setupMySQL(t *testing.T, kc *kubernetes.Clientset, data templateData, templ
 	out, err := ExecuteCommand(fmt.Sprintf("kubectl get pods -n %s -o jsonpath='{.items[0].metadata.name}'", testNamespace))
 	mysqlPod := string(out)
 	if assert.NoErrorf(t, err, "cannot execute command - %s", err) {
-		assert.NotEmpty(t, mysqlPod)
+		require.NotEmpty(t, mysqlPod)
 	}
 	_, err = ExecuteCommand(fmt.Sprintf("kubectl exec -n %s %s -- mysql -u%s -p%s -e '%s'", testNamespace, mysqlPod, mySQLUsername, mySQLPassword, createTableSQL))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 
 	// Deploy mysql consumer app, scaled object and trigger auth, etc.
 	KubectlApplyMultipleWithTemplate(t, data, templates)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should start out as 0")
 }
 

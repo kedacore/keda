@@ -10,6 +10,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -386,10 +387,13 @@ spec:
 
 func TestScaler(t *testing.T) {
 	// setup
-	t.Log("--- setting up ---")
-	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
+	t.Cleanup(func() {
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+	})
+
+	// Create kubernetes resources
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 	addCluster(t, data)
 	addTopic(t, data, topic1, topicPartitions)
@@ -407,7 +411,6 @@ func TestScaler(t *testing.T) {
 	testOneOnInvalidOffset(t, kc, data)
 	testPersistentLag(t, kc, data)
 	testScalingOnlyPartitionsWithLag(t, kc, data)
-	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func testEarliestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -667,7 +670,7 @@ func addTopic(t *testing.T, data templateData, name string, partitions int) {
 	data.KafkaTopicPartitions = partitions
 	KubectlApplyWithTemplate(t, data, "kafkaTopicTemplate", kafkaTopicTemplate)
 	_, err := ExecuteCommand(fmt.Sprintf("kubectl wait kafkatopic/%s --for=condition=Ready --timeout=480s --namespace %s", name, testNamespace))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	t.Log("--- kafka topic added ---")
 }
 
@@ -675,7 +678,7 @@ func addCluster(t *testing.T, data templateData) {
 	t.Log("--- adding kafka cluster ---")
 	KubectlApplyWithTemplate(t, data, "kafkaClusterTemplate", kafkaClusterTemplate)
 	_, err := ExecuteCommand(fmt.Sprintf("kubectl wait kafka/%s --for=condition=Ready --timeout=480s --namespace %s", kafkaName, testNamespace))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	t.Log("--- kafka cluster added ---")
 }
 
