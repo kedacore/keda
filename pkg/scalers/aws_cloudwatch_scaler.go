@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -114,22 +115,6 @@ func getFloatMetadataValue(metadata map[string]string, key string, required bool
 	return defaultValue, nil
 }
 
-func getBoolMetadataValue(metadata map[string]string, key string, required bool, defaultValue bool) (bool, error) {
-	if val, ok := metadata[key]; ok && val != "" {
-		value, err := strconv.ParseBool(val)
-		if err != nil {
-			return false, fmt.Errorf("error parsing %s metadata: %w", key, err)
-		}
-		return value, nil
-	}
-
-	if required {
-		return false, fmt.Errorf("metadata %s not given", key)
-	}
-
-	return defaultValue, nil
-}
-
 func createCloudwatchClient(ctx context.Context, metadata *awsCloudwatchMetadata) (*cloudwatch.Client, error) {
 	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
 
@@ -206,11 +191,11 @@ func parseAwsCloudwatchMetadata(config *scalersconfig.ScalerConfig) (*awsCloudwa
 	}
 	meta.minMetricValue = minMetricValue
 
-	errorWhenNullValues, err := getBoolMetadataValue(config.TriggerMetadata, "errorWhenNullValues", false, false)
+	errorWhenNullValues, err := getParameterFromConfigV2(config, "errorWhenNullValues", reflect.TypeOf(false), IsOptional(true), UseMetadata(true), WithDefaultVal(false))
 	if err != nil {
 		return nil, err
 	}
-	meta.errorWhenNullValues = errorWhenNullValues
+	meta.errorWhenNullValues, _ = errorWhenNullValues.(bool)
 
 	meta.metricStat = defaultMetricStat
 	if val, ok := config.TriggerMetadata["metricStat"]; ok && val != "" {
@@ -415,7 +400,7 @@ func (s *awsCloudwatchScaler) GetCloudwatchMetrics(ctx context.Context) (float64
 	s.logger.V(1).Info("Received Metric Data", "data", output)
 	var metricValue float64
 
-	// If no metric data is received and errorWhenMetricValuesEmpty is set to true, return error,
+	// If no metric data is received and errorWhenNullValues is set to true, return error,
 	// otherwise continue with either the metric value received, or the minMetricValue
 	if len(output.MetricDataResults) == 0 && s.metadata.errorWhenNullValues {
 		emptyMetricsErrMessage := "empty result of metric values received, and errorWhenNullValues is set to true"

@@ -3,7 +3,6 @@ package scalers
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 	"time"
 
@@ -586,7 +585,7 @@ func TestAWSCloudwatchScalerGetMetrics(t *testing.T) {
 		case testAWSCloudwatchErrorMetric:
 			assert.Error(t, err, "expect error because of cloudwatch api error")
 		case testAWSCloudwatchNoValueMetric:
-			// if errorWhenMetricValuesEmpty is defined, then an error is expected
+			// if errorWhenNullValues is defined, then an error is expected
 			if meta.errorWhenNullValues {
 				assert.Error(t, err, "expected an error when returning empty metric list from cloudwatch")
 			} else {
@@ -638,79 +637,5 @@ func TestComputeQueryWindow(t *testing.T) {
 		startTime, endTime := computeQueryWindow(current, testData.metricPeriodSec, testData.metricEndTimeOffsetSec, testData.metricCollectionTimeSec)
 		assert.Equal(t, testData.expectedStartTime, startTime.UTC().Format(time.RFC3339Nano), "unexpected startTime", "name", testData.name)
 		assert.Equal(t, testData.expectedEndTime, endTime.UTC().Format(time.RFC3339Nano), "unexpected endTime", "name", testData.name)
-	}
-}
-
-func TestGetBoolMetadataValue(t *testing.T) {
-	testCases := []struct {
-		name          string
-		metadata      map[string]string
-		key           string
-		required      bool
-		defaultValue  bool
-		expectedValue bool
-		expectedError string
-	}{
-		{
-			name:          "valid true value",
-			metadata:      map[string]string{"key": "true"},
-			key:           "key",
-			required:      true,
-			defaultValue:  false,
-			expectedValue: true,
-			expectedError: "",
-		},
-		{
-			name:          "valid false value",
-			metadata:      map[string]string{"key": "false"},
-			key:           "key",
-			required:      true,
-			defaultValue:  true,
-			expectedValue: false,
-			expectedError: "",
-		},
-		{
-			name:          "invalid value",
-			metadata:      map[string]string{"key": "invalid"},
-			key:           "key",
-			required:      true,
-			defaultValue:  false,
-			expectedValue: false,
-			expectedError: "error parsing key metadata: strconv.ParseBool: parsing \"invalid\": invalid syntax",
-		},
-		{
-			name:          "key not present, required",
-			metadata:      map[string]string{},
-			key:           "key",
-			required:      true,
-			defaultValue:  false,
-			expectedValue: false,
-			expectedError: "metadata key not given",
-		},
-		{
-			name:          "key not present, not required",
-			metadata:      map[string]string{},
-			key:           "key",
-			required:      false,
-			defaultValue:  true,
-			expectedValue: true,
-			expectedError: "",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			value, err := getBoolMetadataValue(tc.metadata, tc.key, tc.required, tc.defaultValue)
-
-			if tc.expectedError == "" && err != nil {
-				t.Errorf("unexpected error: %v", err)
-			} else if tc.expectedError != "" && (err == nil || !strings.Contains(err.Error(), tc.expectedError)) {
-				t.Errorf("expected error containing %q, got %v", tc.expectedError, err)
-			}
-
-			if value != tc.expectedValue {
-				t.Errorf("expected value %v, got %v", tc.expectedValue, value)
-			}
-		})
 	}
 }
