@@ -42,7 +42,7 @@ type awsCloudwatchMetadata struct {
 	targetMetricValue           float64
 	activationTargetMetricValue float64
 	minMetricValue              float64
-	errorWhenMetricValuesEmpty  bool
+	errorWhenNullValues         bool
 
 	metricCollectionTime int64
 	metricStat           string
@@ -206,11 +206,11 @@ func parseAwsCloudwatchMetadata(config *scalersconfig.ScalerConfig) (*awsCloudwa
 	}
 	meta.minMetricValue = minMetricValue
 
-	errorWhenMetricValuesEmpty, err := getBoolMetadataValue(config.TriggerMetadata, "errorWhenMetricValuesEmpty", false, false)
+	errorWhenNullValues, err := getBoolMetadataValue(config.TriggerMetadata, "errorWhenNullValues", false, false)
 	if err != nil {
 		return nil, err
 	}
-	meta.errorWhenMetricValuesEmpty = errorWhenMetricValuesEmpty
+	meta.errorWhenNullValues = errorWhenNullValues
 
 	meta.metricStat = defaultMetricStat
 	if val, ok := config.TriggerMetadata["metricStat"]; ok && val != "" {
@@ -417,8 +417,8 @@ func (s *awsCloudwatchScaler) GetCloudwatchMetrics(ctx context.Context) (float64
 
 	// If no metric data is received and errorWhenMetricValuesEmpty is set to true, return error,
 	// otherwise continue with either the metric value received, or the minMetricValue
-	if len(output.MetricDataResults) == 0 && s.metadata.errorWhenMetricValuesEmpty {
-		emptyMetricsErrMessage := "empty result of metric values received, and errorWhenMetricValuesEmpty is set to true"
+	if len(output.MetricDataResults) == 0 && s.metadata.errorWhenNullValues {
+		emptyMetricsErrMessage := "empty result of metric values received, and errorWhenNullValues is set to true"
 		s.logger.Error(err, emptyMetricsErrMessage)
 		return -1, fmt.Errorf(emptyMetricsErrMessage)
 	}
