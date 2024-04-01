@@ -434,7 +434,7 @@ func (s *Session) mux(remoteBegin *frames.PerformBegin) {
 
 					if body.Settled && body.Role == encoding.RoleReceiver {
 						// check if settlement confirmation was requested, if so
-						// confirm by closing channel
+						// confirm by closing channel (RSM == ModeFirst)
 						if done, ok := settlementFromDeliveryID[deliveryID]; ok {
 							delete(settlementFromDeliveryID, deliveryID)
 							select {
@@ -707,7 +707,7 @@ func (s *Session) mux(remoteBegin *frames.PerformBegin) {
 					}
 					for deliveryID := start; deliveryID <= end; deliveryID++ {
 						// send delivery state to the channel and close it to signal
-						// that the delivery has completed.
+						// that the delivery has completed (RSM == ModeSecond)
 						if done, ok := settlementFromDeliveryID[deliveryID]; ok {
 							delete(settlementFromDeliveryID, deliveryID)
 							select {
