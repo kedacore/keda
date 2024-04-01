@@ -180,7 +180,7 @@ var _ = It("validate cloudeventsource when event type is support", func() {
 })
 
 var _ = It("validate invalid cloudeventsource which eventtype in both excludetypes and includetypes", func() {
-	namespaceName := "cloudeventtestns"
+	namespaceName := "cloudeventtestnsinvalid"
 	namespace := createNamespace(namespaceName)
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
