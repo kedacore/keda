@@ -65,13 +65,11 @@ func NewGrpcClient(url, certDir, authority string, clientMetrics *grpcprom.Clien
 		grpc.WithDefaultServiceConfig(defaultConfig),
 	}
 
-	if clientMetrics != nil {
-		opts = append(
-			opts,
-			grpc.WithChainUnaryInterceptor(clientMetrics.UnaryClientInterceptor()),
-			grpc.WithChainStreamInterceptor(clientMetrics.StreamClientInterceptor()),
-		)
-	}
+	opts = append(
+		opts,
+		grpc.WithChainUnaryInterceptor(clientMetrics.UnaryClientInterceptor()),
+		grpc.WithChainStreamInterceptor(clientMetrics.StreamClientInterceptor()),
+	)
 
 	if authority != "" {
 		// If an Authority header override is specified, add it to the client so it is set on every request.

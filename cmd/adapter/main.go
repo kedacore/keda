@@ -24,6 +24,7 @@ import (
 	"os"
 
 	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	_ "go.uber.org/automaxprocs"
 	appsv1 "k8s.io/api/apps/v1"
@@ -41,7 +42,6 @@ import (
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
 	kedaprovider "github.com/kedacore/keda/v2/pkg/provider"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -65,7 +65,6 @@ var (
 	metricsServiceAddr          string
 	profilingAddr               string
 	metricsServiceGRPCAuthority string
-	enablePrometheusMetrics     bool
 )
 
 func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsProvider, <-chan struct{}, error) {
@@ -108,11 +107,7 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 	cfg.Burst = adapterClientRequestBurst
 	cfg.DisableCompression = disableCompression
 
-	// register grpc metrics
-	var clientMetrics *grpcprom.ClientMetrics
-	if enablePrometheusMetrics {
-		clientMetrics = metricscollector.NewPromClientMetrics()
-	}
+	clientMetrics := getMetricInterceptor()
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Metrics: server.Options{
@@ -165,6 +160,30 @@ func getMetricHandler() http.HandlerFunc {
 
 		kubemetrics.HandlerFor(ctrlmetrics.Registry, kubemetrics.HandlerOpts{}).ServeHTTP(w, req)
 	}
+}
+
+// getMetricInterceptor returns a metrics inceptor that records metrics between the adapter and opertaor
+func getMetricInterceptor() *grpcprom.ClientMetrics {
+	metricsNamespace := "keda"
+
+	counterNamespace := func(o *prometheus.CounterOpts) {
+		o.Namespace = metricsNamespace
+	}
+
+	histogramNamespace := func(o *prometheus.HistogramOpts) {
+		o.Namespace = metricsNamespace
+	}
+
+	clientMetrics := grpcprom.NewClientMetrics(
+		grpcprom.WithClientHandlingTimeHistogram(
+			grpcprom.WithHistogramBuckets([]float64{0.001, 0.01, 0.1, 0.3, 0.6, 1, 3, 6, 9, 20, 30, 60, 90, 120}),
+			histogramNamespace,
+		),
+		grpcprom.WithClientCounterOptions(counterNamespace),
+	)
+	legacyregistry.Registerer().MustRegister(clientMetrics)
+
+	return clientMetrics
 }
 
 // RunMetricsServer runs a http listener and handles the /metrics endpoint
@@ -248,7 +267,6 @@ func main() {
 	cmd.Flags().Float32Var(&adapterClientRequestQPS, "kube-api-qps", 20.0, "Set the QPS rate for throttling requests sent to the apiserver")
 	cmd.Flags().IntVar(&adapterClientRequestBurst, "kube-api-burst", 30, "Set the burst for throttling requests sent to the apiserver")
 	cmd.Flags().BoolVar(&disableCompression, "disable-compression", true, "Disable response compression for k8s restAPI in client-go. ")
-	cmd.Flags().BoolVar(&enablePrometheusMetrics, "enable-prometheus-metrics", true, "Enable the prometheus metrics of keda-api-server.")
 
 	if err := cmd.Flags().Parse(os.Args); err != nil {
 		return
