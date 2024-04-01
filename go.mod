@@ -88,7 +88,7 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v0.45.0
 	go.opentelemetry.io/otel/metric v1.22.0
 	go.uber.org/mock v0.4.0
-	golang.org/x/oauth2 v0.16.0
+	golang.org/x/oauth2 v0.18.0
 	golang.org/x/sync v0.6.0
 	google.golang.org/api v0.161.0
 	google.golang.org/grpc v1.61.0
@@ -332,7 +332,7 @@ require (
 	golang.org/x/crypto v0.19.0
 	golang.org/x/exp v0.0.0-20240112132812-db7319d0e0e3 // indirect
 	golang.org/x/mod v0.14.0 // indirect
-	golang.org/x/net v0.20.0 // indirect
+	golang.org/x/net v0.22.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/term v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
