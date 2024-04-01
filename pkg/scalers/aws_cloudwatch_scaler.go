@@ -3,7 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"strconv"
+	"reflect"
 	"strings"
 	"time"
 
@@ -19,10 +19,10 @@ import (
 )
 
 const (
-	defaultMetricCollectionTime = 300
-	defaultMetricStat           = "Average"
-	defaultMetricStatPeriod     = 300
-	defaultMetricEndTimeOffset  = 0
+	defaultMetricCollectionTime int64 = 300
+	defaultMetricStat                 = "Average"
+	defaultMetricStatPeriod     int64 = 300
+	defaultMetricEndTimeOffset  int64 = 0
 )
 
 type awsCloudwatchScaler struct {
@@ -81,38 +81,6 @@ func NewAwsCloudwatchScaler(ctx context.Context, config *scalersconfig.ScalerCon
 	}, nil
 }
 
-func getIntMetadataValue(metadata map[string]string, key string, required bool, defaultValue int64) (int64, error) {
-	if val, ok := metadata[key]; ok && val != "" {
-		value, err := strconv.Atoi(val)
-		if err != nil {
-			return 0, fmt.Errorf("error parsing %s metadata: %w", key, err)
-		}
-		return int64(value), nil
-	}
-
-	if required {
-		return 0, fmt.Errorf("metadata %s not given", key)
-	}
-
-	return defaultValue, nil
-}
-
-func getFloatMetadataValue(metadata map[string]string, key string, required bool, defaultValue float64) (float64, error) {
-	if val, ok := metadata[key]; ok && val != "" {
-		value, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return 0, fmt.Errorf("error parsing %s metadata: %w", key, err)
-		}
-		return value, nil
-	}
-
-	if required {
-		return 0, fmt.Errorf("metadata %s not given", key)
-	}
-
-	return defaultValue, nil
-}
-
 func createCloudwatchClient(ctx context.Context, metadata *awsCloudwatchMetadata) (*cloudwatch.Client, error) {
 	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
 
@@ -126,113 +94,167 @@ func createCloudwatchClient(ctx context.Context, metadata *awsCloudwatchMetadata
 	}), nil
 }
 
+// getCloudWatchExpression lifts the metric query expression from the metadata, returning either the expression string,
+// an empty string, or an error if the expression was not parseable.
+func getCloudWatchExpression(config *scalersconfig.ScalerConfig) (string, error) {
+	expression, err := getParameterFromConfigV2(config, "expression", reflect.TypeOf(""), IsOptional(true), WithDefaultVal(""), UseMetadata(true))
+	if err != nil {
+		return "", fmt.Errorf("error parsing expression: %w", err)
+	}
+	return expression.(string), nil
+}
+
+// parseAwsCloudwatchMetadata parses the metric query parameters from the metadata, returning the namespace, metric name,
+// metric unit, dimension names, dimension values, or error if the metadata was not parseable.
+func parseCloudWatchMetricQuery(config *scalersconfig.ScalerConfig) (string, string, string, []string, []string, error) {
+	// namespace is a required parameter, that is a single string
+	namespaceUntyped, err := getParameterFromConfigV2(config, "namespace", reflect.TypeOf(""), IsOptional(false), UseMetadata(true))
+	if err != nil {
+		return "", "", "", nil, nil, fmt.Errorf("error parsing namespace: %w", err)
+	}
+	namespace := namespaceUntyped.(string)
+
+	// metricName is a required parameter, that is a single string
+	metricsNameUntyped, err := getParameterFromConfigV2(config, "metricName", reflect.TypeOf(""), IsOptional(false), UseMetadata(true))
+	if err != nil {
+		return "", "", "", nil, nil, fmt.Errorf("error parsing metric name: %w", err)
+	}
+	metricsName := metricsNameUntyped.(string)
+
+	// metricUnit is an optional parameter, if not provided, it will default to an empty string
+	// if provided, it must be one of the valid metric units
+	metricUnitUntyped, err := getParameterFromConfigV2(config, "metricUnit", reflect.TypeOf(""), IsOptional(true), UseMetadata(true), WithDefaultVal(""))
+	if err != nil {
+		return "", "", "", nil, nil, fmt.Errorf("error parsing metric unit: %w", err)
+	}
+	metricUnit := metricUnitUntyped.(string)
+	if err := checkMetricUnit(metricUnit); err != nil {
+		return "", "", "", nil, nil, err
+	}
+
+	// dimensionName is a required parameter, which is a comma separated string
+	dimensionNameUntyped, err := getParameterFromConfigV2(config, "dimensionName", reflect.TypeOf(""), IsOptional(false), UseMetadata(true))
+	if err != nil {
+		return "", "", "", nil, nil, fmt.Errorf("error parsing dimension name: %w", err)
+	}
+	dimensionNameString := dimensionNameUntyped.(string)
+	dimensionName := strings.Split(dimensionNameString, ",")
+
+	// dimensionValue is a required parameter, which is a comma separated string
+	dimensionValueUntyped, err := getParameterFromConfigV2(config, "dimensionValue", reflect.TypeOf(""), IsOptional(false), UseMetadata(true))
+	if err != nil {
+		return "", "", "", nil, nil, fmt.Errorf("error parsing dimension value: %w", err)
+	}
+	dimensionValueString := dimensionValueUntyped.(string)
+	dimensionValue := strings.Split(dimensionValueString, ",")
+
+	// dimensionName and dimensionValue must be the same length to parse into a valid GetMetricDataInput type
+	if len(dimensionName) != len(dimensionValue) {
+		return "", "", "", nil, nil, fmt.Errorf("dimension name and value must be the same length")
+	}
+
+	return namespace, metricsName, metricUnit, dimensionName, dimensionValue, nil
+}
+
+// parseAwsCloudwatchMetadata parses the input for the scaler, and returns the metadata for the scaler
 func parseAwsCloudwatchMetadata(config *scalersconfig.ScalerConfig) (*awsCloudwatchMetadata, error) {
 	var err error
 	meta := awsCloudwatchMetadata{}
 
-	if config.TriggerMetadata["expression"] != "" {
-		if val, ok := config.TriggerMetadata["expression"]; ok && val != "" {
-			meta.expression = val
-		} else {
-			return nil, fmt.Errorf("expression not given")
-		}
-	} else {
-		if val, ok := config.TriggerMetadata["namespace"]; ok && val != "" {
-			meta.namespace = val
-		} else {
-			return nil, fmt.Errorf("namespace not given")
-		}
+	// try to get the expression first, either an expression or a metric query is required
+	meta.expression, err = getCloudWatchExpression(config)
+	if err != nil {
+		return nil, err
+	}
 
-		if val, ok := config.TriggerMetadata["metricName"]; ok && val != "" {
-			meta.metricsName = val
-		} else {
-			return nil, fmt.Errorf("metric name not given")
-		}
-
-		if val, ok := config.TriggerMetadata["dimensionName"]; ok && val != "" {
-			meta.dimensionName = strings.Split(val, ";")
-		} else {
-			return nil, fmt.Errorf("dimension name not given")
-		}
-
-		if val, ok := config.TriggerMetadata["dimensionValue"]; ok && val != "" {
-			meta.dimensionValue = strings.Split(val, ";")
-		} else {
-			return nil, fmt.Errorf("dimension value not given")
-		}
-
-		if len(meta.dimensionName) != len(meta.dimensionValue) {
-			return nil, fmt.Errorf("dimensionName and dimensionValue are not matching in size")
-		}
-
-		meta.metricUnit = config.TriggerMetadata["metricUnit"]
-		if err = checkMetricUnit(meta.metricUnit); err != nil {
+	// if the expression is empty, try to get the metric query. The parameters in the query are now
+	// required, as the expression is not present.
+	if meta.expression == "" {
+		meta.namespace, meta.metricsName, meta.metricUnit, meta.dimensionName, meta.dimensionValue, err = parseCloudWatchMetricQuery(config)
+		if err != nil {
 			return nil, err
 		}
 	}
 
-	targetMetricValue, err := getFloatMetadataValue(config.TriggerMetadata, "targetMetricValue", true, 0)
+	// targetMetricValue is a required parameter, that is a float
+	targetMetricValue, err := getParameterFromConfigV2(config, "targetMetricValue", reflect.TypeOf(float64(0)), IsOptional(false), UseMetadata(true))
 	if err != nil {
 		return nil, err
 	}
-	meta.targetMetricValue = targetMetricValue
+	meta.targetMetricValue = targetMetricValue.(float64)
 
-	activationTargetMetricValue, err := getFloatMetadataValue(config.TriggerMetadata, "activationTargetMetricValue", false, 0)
+	// activationTargetMetricValue is an optional parameter, that is a float, defaults to 0
+	activationTargetMetricValue, err := getParameterFromConfigV2(config, "activationTargetMetricValue", reflect.TypeOf(float64(0)), IsOptional(true), UseMetadata(true), WithDefaultVal(float64(0)))
 	if err != nil {
 		return nil, err
 	}
-	meta.activationTargetMetricValue = activationTargetMetricValue
+	meta.activationTargetMetricValue = activationTargetMetricValue.(float64)
 
-	minMetricValue, err := getFloatMetadataValue(config.TriggerMetadata, "minMetricValue", true, 0)
+	// minMetricValue is an optional parameter, that is a float, defaults to 0
+	minMetricValue, err := getParameterFromConfigV2(config, "minMetricValue", reflect.TypeOf(float64(0)), IsOptional(true), UseMetadata(true), WithDefaultVal(float64(0)))
 	if err != nil {
 		return nil, err
 	}
-	meta.minMetricValue = minMetricValue
+	meta.minMetricValue = minMetricValue.(float64)
 
-	meta.metricStat = defaultMetricStat
-	if val, ok := config.TriggerMetadata["metricStat"]; ok && val != "" {
-		meta.metricStat = val
+	// metricStat is an optional parameter, that is a string, defaults to the average statistic
+	metricStat, err := getParameterFromConfigV2(config, "metricStat", reflect.TypeOf(""), IsOptional(true), UseMetadata(true), WithDefaultVal(defaultMetricStat))
+	if err != nil {
+		return nil, err
 	}
+	meta.metricStat = metricStat.(string)
+
+	// ensure metricStat is a valid statistic
 	if err = checkMetricStat(meta.metricStat); err != nil {
 		return nil, err
 	}
 
-	metricStatPeriod, err := getIntMetadataValue(config.TriggerMetadata, "metricStatPeriod", false, defaultMetricStatPeriod)
+	// metricStatPeriod is an optional parameter, that is an integer, defaults to 60
+	metricStatPeriod, err := getParameterFromConfigV2(config, "metricStatPeriod", reflect.TypeOf(int64(0)), IsOptional(true), UseMetadata(true), WithDefaultVal(defaultMetricStatPeriod))
 	if err != nil {
 		return nil, err
 	}
-	meta.metricStatPeriod = metricStatPeriod
+	meta.metricStatPeriod = metricStatPeriod.(int64)
 
+	// ensure metricStatPeriod is a valid period
 	if err = checkMetricStatPeriod(meta.metricStatPeriod); err != nil {
 		return nil, err
 	}
 
-	metricCollectionTime, err := getIntMetadataValue(config.TriggerMetadata, "metricCollectionTime", false, defaultMetricCollectionTime)
+	// metricCollectionTime is an optional parameter, that is an integer, defaults to 300
+	metricCollectionTime, err := getParameterFromConfigV2(config, "metricCollectionTime", reflect.TypeOf(int64(0)), IsOptional(true), UseMetadata(true), WithDefaultVal(defaultMetricCollectionTime))
 	if err != nil {
 		return nil, err
 	}
-	meta.metricCollectionTime = metricCollectionTime
+	meta.metricCollectionTime = metricCollectionTime.(int64)
 
+	// metricCollectionTime must be greater than 0 and a multiple of metricStatPeriod
 	if meta.metricCollectionTime < 0 || meta.metricCollectionTime%meta.metricStatPeriod != 0 {
 		return nil, fmt.Errorf("metricCollectionTime must be greater than 0 and a multiple of metricStatPeriod(%d), %d is given", meta.metricStatPeriod, meta.metricCollectionTime)
 	}
 
-	metricEndTimeOffset, err := getIntMetadataValue(config.TriggerMetadata, "metricEndTimeOffset", false, defaultMetricEndTimeOffset)
+	// metricEndTimeOffset is an optional parameter, that is an integer, defaults to 0
+	metricEndTimeOffset, err := getParameterFromConfigV2(config, "metricEndTimeOffset", reflect.TypeOf(int64(0)), IsOptional(true), UseMetadata(true), WithDefaultVal(defaultMetricEndTimeOffset))
 	if err != nil {
 		return nil, err
 	}
-	meta.metricEndTimeOffset = metricEndTimeOffset
+	meta.metricEndTimeOffset = metricEndTimeOffset.(int64)
 
-	if val, ok := config.TriggerMetadata["awsRegion"]; ok && val != "" {
-		meta.awsRegion = val
-	} else {
-		return nil, fmt.Errorf("no awsRegion given")
+	// awsRegion is a required parameter, that is a string
+	awsRegion, err := getParameterFromConfigV2(config, "awsRegion", reflect.TypeOf(""), IsOptional(false), UseMetadata(true))
+	if err != nil {
+		return nil, err
 	}
+	meta.awsRegion = awsRegion.(string)
 
-	if val, ok := config.TriggerMetadata["awsEndpoint"]; ok {
-		meta.awsEndpoint = val
+	// awsEndpoint is an optional parameter, that is a string
+	awsEndpoint, err := getParameterFromConfigV2(config, "awsEndpoint", reflect.TypeOf(""), IsOptional(true), UseMetadata(true))
+	if err != nil {
+		return nil, err
 	}
+	meta.awsEndpoint = awsEndpoint.(string)
 
+	// TODO: Move awsAuthorization to getParameterFromConfigV2
 	awsAuthorization, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
