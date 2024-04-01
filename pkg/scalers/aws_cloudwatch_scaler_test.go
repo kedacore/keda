@@ -50,312 +50,382 @@ type awsCloudwatchMetricIdentifier struct {
 var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 	{map[string]string{}, testAWSAuthentication, true, "Empty structures"},
 	// properly formed cloudwatch query and awsRegion
-	{map[string]string{
-		"namespace":                   "AWS/SQS",
-		"dimensionName":               "QueueName",
-		"dimensionValue":              "keda",
-		"metricName":                  "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue":           "2",
-		"activationTargetMetricValue": "0",
-		"minMetricValue":              "0",
-		"awsRegion":                   "eu-west-1"},
+	{
+		map[string]string{
+			"namespace":                   "AWS/SQS",
+			"dimensionName":               "QueueName",
+			"dimensionValue":              "keda",
+			"metricName":                  "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue":           "2",
+			"activationTargetMetricValue": "0",
+			"minMetricValue":              "0",
+			"awsRegion":                   "eu-west-1",
+		},
 		testAWSAuthentication,
 		false,
-		"properly formed cloudwatch query and awsRegion"},
+		"properly formed cloudwatch query and awsRegion",
+	},
 	// properly formed cloudwatch expression query and awsRegion
-	{map[string]string{
-		"namespace":                   "AWS/SQS",
-		"expression":                  "SELECT MIN(MessageCount) FROM \"AWS/AmazonMQ\" WHERE Broker = 'production' and Queue = 'worker'",
-		"metricName":                  "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue":           "2",
-		"activationTargetMetricValue": "0",
-		"minMetricValue":              "0",
-		"awsRegion":                   "eu-west-1"},
+	{
+		map[string]string{
+			"namespace":                   "AWS/SQS",
+			"expression":                  "SELECT MIN(MessageCount) FROM \"AWS/AmazonMQ\" WHERE Broker = 'production' and Queue = 'worker'",
+			"metricName":                  "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue":           "2",
+			"activationTargetMetricValue": "0",
+			"minMetricValue":              "0",
+			"awsRegion":                   "eu-west-1",
+		},
 		testAWSAuthentication,
 		false,
-		"properly formed cloudwatch expression query and awsRegion"},
+		"properly formed cloudwatch expression query and awsRegion",
+	},
 	// Properly formed cloudwatch query with optional parameters
-	{map[string]string{
-		"namespace":                   "AWS/SQS",
-		"dimensionName":               "QueueName",
-		"dimensionValue":              "keda",
-		"metricName":                  "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue":           "2",
-		"activationTargetMetricValue": "0",
-		"minMetricValue":              "0",
-		"metricCollectionTime":        "300",
-		"metricStat":                  "Average",
-		"metricStatPeriod":            "300",
-		"awsRegion":                   "eu-west-1",
-		"awsEndpoint":                 "http://localhost:4566"},
+	{
+		map[string]string{
+			"namespace":                   "AWS/SQS",
+			"dimensionName":               "QueueName",
+			"dimensionValue":              "keda",
+			"metricName":                  "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue":           "2",
+			"activationTargetMetricValue": "0",
+			"minMetricValue":              "0",
+			"metricCollectionTime":        "300",
+			"metricStat":                  "Average",
+			"metricStatPeriod":            "300",
+			"awsRegion":                   "eu-west-1",
+			"awsEndpoint":                 "http://localhost:4566",
+		},
 		testAWSAuthentication, false,
-		"Properly formed cloudwatch query with optional parameters"},
+		"Properly formed cloudwatch query with optional parameters",
+	},
 	// properly formed cloudwatch query but Region is empty
-	{map[string]string{
-		"namespace":                   "AWS/SQS",
-		"dimensionName":               "QueueName",
-		"dimensionValue":              "keda",
-		"metricName":                  "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue":           "2",
-		"activationTargetMetricValue": "0",
-		"minMetricValue":              "0",
-		"awsRegion":                   ""},
+	{
+		map[string]string{
+			"namespace":                   "AWS/SQS",
+			"dimensionName":               "QueueName",
+			"dimensionValue":              "keda",
+			"metricName":                  "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue":           "2",
+			"activationTargetMetricValue": "0",
+			"minMetricValue":              "0",
+			"awsRegion":                   "",
+		},
 		testAWSAuthentication,
 		true,
-		"properly formed cloudwatch query but Region is empty"},
+		"properly formed cloudwatch query but Region is empty",
+	},
 	// Missing namespace
-	{map[string]string{"dimensionName": "QueueName",
-		"dimensionValue":    "keda",
-		"metricName":        "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue": "2",
-		"minMetricValue":    "0",
-		"awsRegion":         "eu-west-1"},
+	{
+		map[string]string{
+			"dimensionName":     "QueueName",
+			"dimensionValue":    "keda",
+			"metricName":        "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue": "2",
+			"minMetricValue":    "0",
+			"awsRegion":         "eu-west-1",
+		},
 		testAWSAuthentication,
 		true,
-		"Missing namespace"},
+		"Missing namespace",
+	},
 	// Missing dimensionName
-	{map[string]string{
-		"namespace":         "AWS/SQS",
-		"dimensionValue":    "keda",
-		"metricName":        "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue": "2",
-		"minMetricValue":    "0",
-		"awsRegion":         "eu-west-1"},
+	{
+		map[string]string{
+			"namespace":         "AWS/SQS",
+			"dimensionValue":    "keda",
+			"metricName":        "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue": "2",
+			"minMetricValue":    "0",
+			"awsRegion":         "eu-west-1",
+		},
 		testAWSAuthentication,
 		true,
-		"Missing dimensionName"},
+		"Missing dimensionName",
+	},
 	// Missing dimensionValue
-	{map[string]string{
-		"namespace":         "AWS/SQS",
-		"dimensionName":     "QueueName",
-		"metricName":        "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue": "2",
-		"minMetricValue":    "0",
-		"awsRegion":         "eu-west-1"},
+	{
+		map[string]string{
+			"namespace":         "AWS/SQS",
+			"dimensionName":     "QueueName",
+			"metricName":        "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue": "2",
+			"minMetricValue":    "0",
+			"awsRegion":         "eu-west-1",
+		},
 		testAWSAuthentication,
 		true,
-		"Missing dimensionValue"},
+		"Missing dimensionValue",
+	},
 	// Missing metricName
-	{map[string]string{
-		"namespace":         "AWS/SQS",
-		"dimensionName":     "QueueName",
-		"dimensionValue":    "keda",
-		"targetMetricValue": "2",
-		"minMetricValue":    "0",
-		"awsRegion":         "eu-west-1"},
+	{
+		map[string]string{
+			"namespace":         "AWS/SQS",
+			"dimensionName":     "QueueName",
+			"dimensionValue":    "keda",
+			"targetMetricValue": "2",
+			"minMetricValue":    "0",
+			"awsRegion":         "eu-west-1",
+		},
 		testAWSAuthentication,
 		true,
-		"Missing metricName"},
+		"Missing metricName",
+	},
 	// with static "aws_credentials" from TriggerAuthentication
-	{map[string]string{
-		"namespace":            "AWS/SQS",
-		"dimensionName":        "QueueName",
-		"dimensionValue":       "keda",
-		"metricName":           "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue":    "2",
-		"minMetricValue":       "0",
-		"metricCollectionTime": "300",
-		"metricStat":           "Average",
-		"metricStatPeriod":     "300",
-		"awsRegion":            "eu-west-1"},
+	{
+		map[string]string{
+			"namespace":            "AWS/SQS",
+			"dimensionName":        "QueueName",
+			"dimensionValue":       "keda",
+			"metricName":           "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue":    "2",
+			"minMetricValue":       "0",
+			"metricCollectionTime": "300",
+			"metricStat":           "Average",
+			"metricStatPeriod":     "300",
+			"awsRegion":            "eu-west-1",
+		},
 		map[string]string{
 			"awsAccessKeyId":     testAWSCloudwatchAccessKeyID,
 			"awsSecretAccessKey": testAWSCloudwatchSecretAccessKey,
 		},
 		false,
-		"with AWS Credentials from TriggerAuthentication"},
+		"with AWS Credentials from TriggerAuthentication",
+	},
 	// with temporary "aws_credentials" from TriggerAuthentication
-	{map[string]string{
-		"namespace":            "AWS/SQS",
-		"dimensionName":        "QueueName",
-		"dimensionValue":       "keda",
-		"metricName":           "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue":    "2",
-		"minMetricValue":       "0",
-		"metricCollectionTime": "300",
-		"metricStat":           "Average",
-		"metricStatPeriod":     "300",
-		"awsRegion":            "eu-west-1"},
+	{
+		map[string]string{
+			"namespace":            "AWS/SQS",
+			"dimensionName":        "QueueName",
+			"dimensionValue":       "keda",
+			"metricName":           "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue":    "2",
+			"minMetricValue":       "0",
+			"metricCollectionTime": "300",
+			"metricStat":           "Average",
+			"metricStatPeriod":     "300",
+			"awsRegion":            "eu-west-1",
+		},
 		map[string]string{
 			"awsAccessKeyId":     testAWSCloudwatchAccessKeyID,
 			"awsSecretAccessKey": testAWSCloudwatchSecretAccessKey,
 			"awsSessionToken":    testAWSCloudwatchSessionToken,
 		},
 		false,
-		"with AWS Credentials from TriggerAuthentication"},
+		"with AWS Credentials from TriggerAuthentication",
+	},
 	// with "aws_role" from TriggerAuthentication
-	{map[string]string{
-		"namespace":            "AWS/SQS",
-		"dimensionName":        "QueueName",
-		"dimensionValue":       "keda",
-		"metricName":           "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue":    "2",
-		"minMetricValue":       "0",
-		"metricCollectionTime": "300",
-		"metricStat":           "Average",
-		"metricStatPeriod":     "300",
-		"awsRegion":            "eu-west-1"},
+	{
+		map[string]string{
+			"namespace":            "AWS/SQS",
+			"dimensionName":        "QueueName",
+			"dimensionValue":       "keda",
+			"metricName":           "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue":    "2",
+			"minMetricValue":       "0",
+			"metricCollectionTime": "300",
+			"metricStat":           "Average",
+			"metricStatPeriod":     "300",
+			"awsRegion":            "eu-west-1",
+		},
 		map[string]string{
 			"awsRoleArn": testAWSCloudwatchRoleArn,
 		},
 		false,
-		"with AWS Role from TriggerAuthentication"},
-	{map[string]string{
-		"namespace":            "AWS/SQS",
-		"dimensionName":        "QueueName",
-		"dimensionValue":       "keda",
-		"metricName":           "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue":    "2",
-		"minMetricValue":       "0",
-		"metricCollectionTime": "300",
-		"metricStat":           "Average",
-		"metricStatPeriod":     "300",
-		"awsRegion":            "eu-west-1",
-		"identityOwner":        "operator"},
+		"with AWS Role from TriggerAuthentication",
+	},
+	{
+		map[string]string{
+			"namespace":            "AWS/SQS",
+			"dimensionName":        "QueueName",
+			"dimensionValue":       "keda",
+			"metricName":           "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue":    "2",
+			"minMetricValue":       "0",
+			"metricCollectionTime": "300",
+			"metricStat":           "Average",
+			"metricStatPeriod":     "300",
+			"awsRegion":            "eu-west-1",
+			"identityOwner":        "operator",
+		},
 		map[string]string{},
 		false,
-		"with AWS Role assigned on KEDA operator itself"},
-	{map[string]string{
-		"namespace":            "AWS/SQS",
-		"dimensionName":        "QueueName",
-		"dimensionValue":       "keda",
-		"metricName":           "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue":    "2",
-		"minMetricValue":       "0",
-		"metricCollectionTime": "a",
-		"metricStat":           "Average",
-		"metricStatPeriod":     "300",
-		"awsRegion":            "eu-west-1",
-		"identityOwner":        "operator"},
+		"with AWS Role assigned on KEDA operator itself",
+	},
+	{
+		map[string]string{
+			"namespace":            "AWS/SQS",
+			"dimensionName":        "QueueName",
+			"dimensionValue":       "keda",
+			"metricName":           "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue":    "2",
+			"minMetricValue":       "0",
+			"metricCollectionTime": "a",
+			"metricStat":           "Average",
+			"metricStatPeriod":     "300",
+			"awsRegion":            "eu-west-1",
+			"identityOwner":        "operator",
+		},
 		map[string]string{},
 		true,
-		"if metricCollectionTime assigned with a string, need to be a number"},
-	{map[string]string{
-		"namespace":            "AWS/SQS",
-		"dimensionName":        "QueueName",
-		"dimensionValue":       "keda",
-		"metricName":           "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue":    "2",
-		"minMetricValue":       "0",
-		"metricCollectionTime": "300",
-		"metricStat":           "Average",
-		"metricStatPeriod":     "a",
-		"awsRegion":            "eu-west-1",
-		"identityOwner":        "operator"},
+		"if metricCollectionTime assigned with a string, need to be a number",
+	},
+	{
+		map[string]string{
+			"namespace":            "AWS/SQS",
+			"dimensionName":        "QueueName",
+			"dimensionValue":       "keda",
+			"metricName":           "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue":    "2",
+			"minMetricValue":       "0",
+			"metricCollectionTime": "300",
+			"metricStat":           "Average",
+			"metricStatPeriod":     "a",
+			"awsRegion":            "eu-west-1",
+			"identityOwner":        "operator",
+		},
 		map[string]string{},
 		true,
-		"if metricStatPeriod assigned with a string, need to be a number"},
-	{map[string]string{
-		"namespace":         "AWS/SQS",
-		"dimensionName":     "QueueName",
-		"dimensionValue":    "keda",
-		"metricName":        "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue": "2",
-		"minMetricValue":    "0",
-		"metricStat":        "Average",
-		"metricStatPeriod":  "300",
-		"awsRegion":         "eu-west-1"},
+		"if metricStatPeriod assigned with a string, need to be a number",
+	},
+	{
+		map[string]string{
+			"namespace":         "AWS/SQS",
+			"dimensionName":     "QueueName",
+			"dimensionValue":    "keda",
+			"metricName":        "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue": "2",
+			"minMetricValue":    "0",
+			"metricStat":        "Average",
+			"metricStatPeriod":  "300",
+			"awsRegion":         "eu-west-1",
+		},
 		testAWSAuthentication, false,
-		"Missing metricCollectionTime not generate error because will get the default value"},
-	{map[string]string{
-		"namespace":            "AWS/SQS",
-		"dimensionName":        "QueueName",
-		"dimensionValue":       "keda",
-		"metricName":           "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue":    "2",
-		"minMetricValue":       "0",
-		"metricCollectionTime": "300",
-		"metricStatPeriod":     "300",
-		"awsRegion":            "eu-west-1"},
+		"Missing metricCollectionTime not generate error because will get the default value",
+	},
+	{
+		map[string]string{
+			"namespace":            "AWS/SQS",
+			"dimensionName":        "QueueName",
+			"dimensionValue":       "keda",
+			"metricName":           "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue":    "2",
+			"minMetricValue":       "0",
+			"metricCollectionTime": "300",
+			"metricStatPeriod":     "300",
+			"awsRegion":            "eu-west-1",
+		},
 		testAWSAuthentication, false,
-		"Missing metricStat not generate error because will get the default value"},
-	{map[string]string{
-		"namespace":            "AWS/SQS",
-		"dimensionName":        "QueueName",
-		"dimensionValue":       "keda",
-		"metricName":           "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue":    "2",
-		"minMetricValue":       "0",
-		"metricCollectionTime": "300",
-		"metricStat":           "Average",
-		"awsRegion":            "eu-west-1"},
+		"Missing metricStat not generate error because will get the default value",
+	},
+	{
+		map[string]string{
+			"namespace":            "AWS/SQS",
+			"dimensionName":        "QueueName",
+			"dimensionValue":       "keda",
+			"metricName":           "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue":    "2",
+			"minMetricValue":       "0",
+			"metricCollectionTime": "300",
+			"metricStat":           "Average",
+			"awsRegion":            "eu-west-1",
+		},
 		testAWSAuthentication, false,
-		"Missing metricStatPeriod not generate error because will get the default value"},
-	{map[string]string{
-		"namespace":           "AWS/SQS",
-		"dimensionName":       "QueueName",
-		"dimensionValue":      "keda",
-		"metricName":          "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue":   "2",
-		"minMetricValue":      "0",
-		"metricStat":          "Average",
-		"metricUnit":          "Count",
-		"metricEndTimeOffset": "60",
-		"awsRegion":           "eu-west-1"},
+		"Missing metricStatPeriod not generate error because will get the default value",
+	},
+	{
+		map[string]string{
+			"namespace":           "AWS/SQS",
+			"dimensionName":       "QueueName",
+			"dimensionValue":      "keda",
+			"metricName":          "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue":   "2",
+			"minMetricValue":      "0",
+			"metricStat":          "Average",
+			"metricUnit":          "Count",
+			"metricEndTimeOffset": "60",
+			"awsRegion":           "eu-west-1",
+		},
 		testAWSAuthentication, false,
-		"set a supported metricUnit"},
-	{map[string]string{
-		"namespace":            "AWS/SQS",
-		"dimensionName":        "QueueName",
-		"dimensionValue":       "keda",
-		"metricName":           "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue":    "2",
-		"minMetricValue":       "0",
-		"metricCollectionTime": "300",
-		"metricStat":           "SomeStat",
-		"awsRegion":            "eu-west-1"},
+		"set a supported metricUnit",
+	},
+	{
+		map[string]string{
+			"namespace":            "AWS/SQS",
+			"dimensionName":        "QueueName",
+			"dimensionValue":       "keda",
+			"metricName":           "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue":    "2",
+			"minMetricValue":       "0",
+			"metricCollectionTime": "300",
+			"metricStat":           "SomeStat",
+			"awsRegion":            "eu-west-1",
+		},
 		testAWSAuthentication, true,
-		"metricStat is not supported"},
-	{map[string]string{
-		"namespace":            "AWS/SQS",
-		"dimensionName":        "QueueName",
-		"dimensionValue":       "keda",
-		"metricName":           "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue":    "2",
-		"minMetricValue":       "0",
-		"metricStatPeriod":     "300",
-		"metricCollectionTime": "100",
-		"metricStat":           "Average",
-		"awsRegion":            "eu-west-1"},
+		"metricStat is not supported",
+	},
+	{
+		map[string]string{
+			"namespace":            "AWS/SQS",
+			"dimensionName":        "QueueName",
+			"dimensionValue":       "keda",
+			"metricName":           "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue":    "2",
+			"minMetricValue":       "0",
+			"metricStatPeriod":     "300",
+			"metricCollectionTime": "100",
+			"metricStat":           "Average",
+			"awsRegion":            "eu-west-1",
+		},
 		testAWSAuthentication, true,
-		"metricCollectionTime smaller than metricStatPeriod"},
-	{map[string]string{
-		"namespace":         "AWS/SQS",
-		"dimensionName":     "QueueName",
-		"dimensionValue":    "keda",
-		"metricName":        "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue": "2",
-		"minMetricValue":    "0",
-		"metricStatPeriod":  "250",
-		"metricStat":        "Average",
-		"awsRegion":         "eu-west-1"},
+		"metricCollectionTime smaller than metricStatPeriod",
+	},
+	{
+		map[string]string{
+			"namespace":         "AWS/SQS",
+			"dimensionName":     "QueueName",
+			"dimensionValue":    "keda",
+			"metricName":        "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue": "2",
+			"minMetricValue":    "0",
+			"metricStatPeriod":  "250",
+			"metricStat":        "Average",
+			"awsRegion":         "eu-west-1",
+		},
 		testAWSAuthentication, true,
-		"unsupported metricStatPeriod"},
-	{map[string]string{
-		"namespace":         "AWS/SQS",
-		"dimensionName":     "QueueName",
-		"dimensionValue":    "keda",
-		"metricName":        "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue": "2",
-		"minMetricValue":    "0",
-		"metricStatPeriod":  "25",
-		"metricStat":        "Average",
-		"awsRegion":         "eu-west-1"},
+		"unsupported metricStatPeriod",
+	},
+	{
+		map[string]string{
+			"namespace":         "AWS/SQS",
+			"dimensionName":     "QueueName",
+			"dimensionValue":    "keda",
+			"metricName":        "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue": "2",
+			"minMetricValue":    "0",
+			"metricStatPeriod":  "25",
+			"metricStat":        "Average",
+			"awsRegion":         "eu-west-1",
+		},
 		testAWSAuthentication, true,
-		"unsupported metricStatPeriod"},
-	{map[string]string{
-		"namespace":         "AWS/SQS",
-		"dimensionName":     "QueueName",
-		"dimensionValue":    "keda",
-		"metricName":        "ApproximateNumberOfMessagesVisible",
-		"targetMetricValue": "2",
-		"minMetricValue":    "0",
-		"metricStatPeriod":  "25",
-		"metricStat":        "Average",
-		"metricUnit":        "Hour",
-		"awsRegion":         "eu-west-1"},
+		"unsupported metricStatPeriod",
+	},
+	{
+		map[string]string{
+			"namespace":         "AWS/SQS",
+			"dimensionName":     "QueueName",
+			"dimensionValue":    "keda",
+			"metricName":        "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue": "2",
+			"minMetricValue":    "0",
+			"metricStatPeriod":  "25",
+			"metricStat":        "Average",
+			"metricUnit":        "Hour",
+			"awsRegion":         "eu-west-1",
+		},
 		testAWSAuthentication, true,
-		"unsupported metricUnit"},
+		"unsupported metricUnit",
+	},
 }
 
 var awsCloudwatchMetricIdentifiers = []awsCloudwatchMetricIdentifier{
@@ -446,8 +516,7 @@ var awsCloudwatchGetMetricTestData = []awsCloudwatchMetadata{
 	},
 }
 
-type mockCloudwatch struct {
-}
+type mockCloudwatch struct{}
 
 func (m *mockCloudwatch) GetMetricData(_ context.Context, input *cloudwatch.GetMetricDataInput, _ ...func(*cloudwatch.Options)) (*cloudwatch.GetMetricDataOutput, error) {
 	if input.MetricDataQueries[0].MetricStat != nil {
@@ -554,5 +623,158 @@ func TestComputeQueryWindow(t *testing.T) {
 		startTime, endTime := computeQueryWindow(current, testData.metricPeriodSec, testData.metricEndTimeOffsetSec, testData.metricCollectionTimeSec)
 		assert.Equal(t, testData.expectedStartTime, startTime.UTC().Format(time.RFC3339Nano), "unexpected startTime", "name", testData.name)
 		assert.Equal(t, testData.expectedEndTime, endTime.UTC().Format(time.RFC3339Nano), "unexpected endTime", "name", testData.name)
+	}
+}
+
+func TestGetExpression(t *testing.T) {
+	tests := map[string]struct {
+		expression string
+		want       string
+	}{
+		"normal": {
+			expression: "SELECT MIN(MessageCount) FROM \"AWS/AmazonMQ\" WHERE Broker = 'production' and Queue = 'worker'",
+			want:       "SELECT MIN(MessageCount) FROM \"AWS/AmazonMQ\" WHERE Broker = 'production' and Queue = 'worker'",
+		},
+		"empty": {
+			expression: "",
+			want:       "",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			config := &scalersconfig.ScalerConfig{
+				TriggerMetadata: map[string]string{
+					"expression": tc.expression,
+				},
+			}
+			expression, err := getCloudWatchExpression(config)
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+
+			assert.Equal(t, tc.want, expression)
+		})
+	}
+}
+
+func TestGetCloudWatchMetricQuery(t *testing.T) {
+	tests := map[string]struct {
+		metadata       map[string]string
+		namespace      string
+		metricName     string
+		metricUnit     string
+		dimensionName  []string
+		dimensionValue []string
+		wantErr        bool
+	}{
+		"normal": {
+			metadata: map[string]string{
+				"namespace":      "AWS/SQS",
+				"metricName":     "ApproximateNumberOfMessagesVisible",
+				"metricUnit":     "Count",
+				"dimensionName":  "QueueName",
+				"dimensionValue": "keda",
+			},
+			namespace:      "AWS/SQS",
+			metricName:     "ApproximateNumberOfMessagesVisible",
+			metricUnit:     "Count",
+			dimensionName:  []string{"QueueName"},
+			dimensionValue: []string{"keda"},
+			wantErr:        false,
+		},
+		"missing namespace": {
+			metadata: map[string]string{
+				"metricName":     "ApproximateNumberOfMessagesVisible",
+				"metricUnit":     "Count",
+				"dimensionName":  "QueueName",
+				"dimensionValue": "keda",
+			},
+			wantErr: true,
+		},
+		"missing metricName": {
+			metadata: map[string]string{
+				"namespace":      "AWS/SQS",
+				"metricUnit":     "Count",
+				"dimensionName":  "QueueName",
+				"dimensionValue": "keda",
+			},
+			wantErr: true,
+		},
+		"missing dimensionName": {
+			metadata: map[string]string{
+				"namespace":      "AWS/SQS",
+				"metricName":     "ApproximateNumberOfMessagesVisible",
+				"metricUnit":     "Count",
+				"dimensionValue": "keda",
+			},
+			wantErr: true,
+		},
+		"missing dimensionValue": {
+			metadata: map[string]string{
+				"namespace":     "AWS/SQS",
+				"metricName":    "ApproximateNumberOfMessagesVisible",
+				"metricUnit":    "Count",
+				"dimensionName": "QueueName",
+			},
+			wantErr: true,
+		},
+		"missing metricUnit": {
+			metadata: map[string]string{
+				"namespace":      "AWS/SQS",
+				"metricName":     "ApproximateNumberOfMessagesVisible",
+				"dimensionName":  "QueueName",
+				"dimensionValue": "keda",
+			},
+			namespace:      "AWS/SQS",
+			metricName:     "ApproximateNumberOfMessagesVisible",
+			metricUnit:     "",
+			dimensionName:  []string{"QueueName"},
+			dimensionValue: []string{"keda"},
+			wantErr:        false,
+		},
+		"different length dimensions": {
+			metadata: map[string]string{
+				"namespace":      "AWS/SQS",
+				"metricName":     "ApproximateNumberOfMessagesVisible",
+				"metricUnit":     "Count",
+				"dimensionName":  "QueueName,QueueType",
+				"dimensionValue": "keda",
+			},
+			wantErr: true,
+		},
+		"invalid metricUnit": {
+			metadata: map[string]string{
+				"namespace":      "AWS/SQS",
+				"metricName":     "ApproximateNumberOfMessagesVisible",
+				"metricUnit":     "Invalid",
+				"dimensionName":  "QueueName",
+				"dimensionValue": "keda",
+			},
+			wantErr: true,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			config := &scalersconfig.ScalerConfig{
+				TriggerMetadata: tc.metadata,
+			}
+			namespace, metricName, metricUnit, dimensionNames, dimensionValues, err := getCloudWatchMetricQuery(config)
+
+			// if we expect an error, check if it's not nil
+			if tc.wantErr {
+				assert.Error(t, err)
+				return
+			}
+
+			// else, check if the values are as expected
+			assert.NoError(t, err)
+			assert.Equal(t, tc.namespace, namespace)
+			assert.Equal(t, tc.metricName, metricName)
+			assert.Equal(t, tc.metricUnit, metricUnit)
+			assert.Equal(t, tc.dimensionName, dimensionNames)
+			assert.Equal(t, tc.dimensionValue, dimensionValues)
+		})
 	}
 }

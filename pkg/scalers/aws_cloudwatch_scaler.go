@@ -83,7 +83,6 @@ func NewAwsCloudwatchScaler(ctx context.Context, config *scalersconfig.ScalerCon
 
 func createCloudwatchClient(ctx context.Context, metadata *awsCloudwatchMetadata) (*cloudwatch.Client, error) {
 	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
-
 	if err != nil {
 		return nil, err
 	}
@@ -106,8 +105,8 @@ func getCloudWatchExpression(config *scalersconfig.ScalerConfig) (string, error)
 
 // parseAwsCloudwatchMetadata parses the metric query parameters from the metadata, returning the namespace, metric name,
 // metric unit, dimension names, dimension values, or error if the metadata was not parseable.
-func parseCloudWatchMetricQuery(config *scalersconfig.ScalerConfig) (string, string, string, []string, []string, error) {
-	// namespace is a required parameter, that is a single string
+func getCloudWatchMetricQuery(config *scalersconfig.ScalerConfig) (string, string, string, []string, []string, error) {
+	// namespace isa required parameter, that is a single string
 	namespaceUntyped, err := getParameterFromConfigV2(config, "namespace", reflect.TypeOf(""), IsOptional(false), UseMetadata(true))
 	if err != nil {
 		return "", "", "", nil, nil, fmt.Errorf("error parsing namespace: %w", err)
@@ -170,7 +169,7 @@ func parseAwsCloudwatchMetadata(config *scalersconfig.ScalerConfig) (*awsCloudwa
 	// if the expression is empty, try to get the metric query. The parameters in the query are now
 	// required, as the expression is not present.
 	if meta.expression == "" {
-		meta.namespace, meta.metricsName, meta.metricUnit, meta.dimensionName, meta.dimensionValue, err = parseCloudWatchMetricQuery(config)
+		meta.namespace, meta.metricsName, meta.metricUnit, meta.dimensionName, meta.dimensionValue, err = getCloudWatchMetricQuery(config)
 		if err != nil {
 			return nil, err
 		}
@@ -314,7 +313,6 @@ func computeQueryWindow(current time.Time, metricPeriodSec, metricEndTimeOffsetS
 
 func (s *awsCloudwatchScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	metricValue, err := s.GetCloudwatchMetrics(ctx)
-
 	if err != nil {
 		s.logger.Error(err, "Error getting metric value")
 		return []external_metrics.ExternalMetricValue{}, false, err
@@ -397,7 +395,6 @@ func (s *awsCloudwatchScaler) GetCloudwatchMetrics(ctx context.Context) (float64
 	}
 
 	output, err := s.cwClient.GetMetricData(ctx, &input)
-
 	if err != nil {
 		s.logger.Error(err, "Failed to get output")
 		return -1, err
