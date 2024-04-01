@@ -30,7 +30,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mwitkow/go-conntrack"
+	conntrack "github.com/mwitkow/go-conntrack"
 	"golang.org/x/net/http/httpproxy"
 	"golang.org/x/net/http2"
 	"golang.org/x/oauth2"
@@ -378,9 +378,6 @@ func (c *HTTPClientConfig) Validate() error {
 		if len(c.OAuth2.ClientID) == 0 {
 			return fmt.Errorf("oauth2 client_id must be configured")
 		}
-		if len(c.OAuth2.ClientSecret) == 0 && len(c.OAuth2.ClientSecretFile) == 0 {
-			return fmt.Errorf("either oauth2 client_secret or client_secret_file must be configured")
-		}
 		if len(c.OAuth2.TokenURL) == 0 {
 			return fmt.Errorf("oauth2 token_url must be configured")
 		}
@@ -430,6 +427,7 @@ type httpClientOptions struct {
 	http2Enabled      bool
 	idleConnTimeout   time.Duration
 	userAgent         string
+	host              string
 }
 
 // HTTPClientOption defines an option that can be applied to the HTTP client.
@@ -467,6 +465,13 @@ func WithIdleConnTimeout(timeout time.Duration) HTTPClientOption {
 func WithUserAgent(ua string) HTTPClientOption {
 	return func(opts *httpClientOptions) {
 		opts.userAgent = ua
+	}
+}
+
+// WithHost allows setting the host header.
+func WithHost(host string) HTTPClientOption {
+	return func(opts *httpClientOptions) {
+		opts.host = host
 	}
 }
 
@@ -569,6 +574,10 @@ func NewRoundTripperFromConfig(cfg HTTPClientConfig, name string, optFuncs ...HT
 
 		if opts.userAgent != "" {
 			rt = NewUserAgentRoundTripper(opts.userAgent, rt)
+		}
+
+		if opts.host != "" {
+			rt = NewHostRoundTripper(opts.host, rt)
 		}
 
 		// Return a new configured RoundTripper.
@@ -729,13 +738,12 @@ func (rt *oauth2RoundTripper) RoundTrip(req *http.Request) (*http.Response, erro
 		rt.mtx.RLock()
 		changed = secret != rt.secret
 		rt.mtx.RUnlock()
+	} else {
+		// Either an inline secret or nothing (use an empty string) was provided.
+		secret = string(rt.config.ClientSecret)
 	}
 
 	if changed || rt.rt == nil {
-		if rt.config.ClientSecret != "" {
-			secret = string(rt.config.ClientSecret)
-		}
-
 		config := &clientcredentials.Config{
 			ClientID:       rt.config.ClientID,
 			ClientSecret:   secret,
@@ -1168,9 +1176,19 @@ type userAgentRoundTripper struct {
 	rt        http.RoundTripper
 }
 
+type hostRoundTripper struct {
+	host string
+	rt   http.RoundTripper
+}
+
 // NewUserAgentRoundTripper adds the user agent every request header.
 func NewUserAgentRoundTripper(userAgent string, rt http.RoundTripper) http.RoundTripper {
 	return &userAgentRoundTripper{userAgent, rt}
+}
+
+// NewHostRoundTripper sets the [http.Request.Host] of every request.
+func NewHostRoundTripper(host string, rt http.RoundTripper) http.RoundTripper {
+	return &hostRoundTripper{host, rt}
 }
 
 func (rt *userAgentRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -1180,6 +1198,19 @@ func (rt *userAgentRoundTripper) RoundTrip(req *http.Request) (*http.Response, e
 }
 
 func (rt *userAgentRoundTripper) CloseIdleConnections() {
+	if ci, ok := rt.rt.(closeIdler); ok {
+		ci.CloseIdleConnections()
+	}
+}
+
+func (rt *hostRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	req = cloneRequest(req)
+	req.Host = rt.host
+	req.Header.Set("Host", rt.host)
+	return rt.rt.RoundTrip(req)
+}
+
+func (rt *hostRoundTripper) CloseIdleConnections() {
 	if ci, ok := rt.rt.(closeIdler); ok {
 		ci.CloseIdleConnections()
 	}
