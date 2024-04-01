@@ -179,6 +179,19 @@ var _ = It("validate cloudeventsource when event type is support", func() {
 	}
 })
 
+var _ = It("validate invalid cloudeventsource which eventtype in both excludetypes and includetypes", func() {
+	namespaceName := "cloudeventtestns"
+	namespace := createNamespace(namespaceName)
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	spec := createInvalidCloudEventSourceSpe(ScaledObjectReadyType)
+	ces := createCloudEventSource("invalidcloudevent", namespaceName, spec)
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), ces)
+	}).Should(HaveOccurred())
+})
+
 // -------------------------------------------------------------------------- //
 // ----------------------------- HELP FUNCTIONS ----------------------------- //
 // -------------------------------------------------------------------------- //
@@ -200,6 +213,15 @@ func createCloudEventSourceSpecWithExcludeEventType(eventtype CloudEventType) Cl
 func createCloudEventSourceSpecWithIncludeEventType(eventtype CloudEventType) CloudEventSourceSpec {
 	return CloudEventSourceSpec{
 		EventSubscription: EventSubscription{
+			IncludedEventTypes: []CloudEventType{eventtype},
+		},
+	}
+}
+
+func createInvalidCloudEventSourceSpe(eventtype CloudEventType) CloudEventSourceSpec {
+	return CloudEventSourceSpec{
+		EventSubscription: EventSubscription{
+			ExcludedEventTypes: []CloudEventType{eventtype},
 			IncludedEventTypes: []CloudEventType{eventtype},
 		},
 	}

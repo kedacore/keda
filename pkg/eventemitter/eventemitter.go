@@ -203,6 +203,8 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEventSource
 func (e *EventEmitter) clearEventHandlersCache(cloudEventSource *eventingv1alpha1.CloudEventSource) {
 	e.eventHandlersCacheLock.Lock()
 	defer e.eventHandlersCacheLock.Unlock()
+	e.eventFilterCacheLock.Lock()
+	defer e.eventFilterCacheLock.Unlock()
 
 	key := cloudEventSource.GenerateIdentifier()
 

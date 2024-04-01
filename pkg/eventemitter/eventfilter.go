@@ -19,6 +19,8 @@ package eventemitter
 import (
 	"fmt"
 
+	"golang.org/x/exp/slices"
+
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 )
 
@@ -37,41 +39,14 @@ func NewEventFilter(includedEventTypes []eventingv1alpha1.CloudEventType, exclud
 	}
 }
 
-// FilterEvent returns true if the event should be handled
+// FilterEvent returns true if the event is filtered and should not be handled
 func (e *EventFilter) FilterEvent(eventType eventingv1alpha1.CloudEventType) (bool, error) {
-	if len(e.IncludedEventTypes) > 0 {
-		if len(e.ExcludedEventTypes) > 0 && !e.filterExcludedEventTypes(eventType) {
-			return false, fmt.Errorf("eventtype: %s in both included and excluded types. Cannot be filtered", eventType)
-		}
+	includeFilter := len(e.IncludedEventTypes) > 0 && !slices.Contains(e.IncludedEventTypes, eventType)
+	excludeFilter := len(e.ExcludedEventTypes) > 0 && slices.Contains(e.ExcludedEventTypes, eventType)
 
-		return e.filterIncludedEventTypes(eventType), nil
+	if includeFilter != excludeFilter {
+		return false, fmt.Errorf("eventtype: %s in both included and excluded types. Cannot be filtered", eventType)
 	}
 
-	if len(e.ExcludedEventTypes) > 0 {
-		return e.filterExcludedEventTypes(eventType), nil
-	}
-
-	return true, nil
-}
-
-// FilterIncludedEventTypes returns true if the event included in the includedEventTypes
-func (e *EventFilter) filterIncludedEventTypes(eventType eventingv1alpha1.CloudEventType) bool {
-	for _, includedEventType := range e.IncludedEventTypes {
-		if includedEventType == eventType {
-			return true
-		}
-	}
-
-	return false
-}
-
-// FilterExcludedEventTypes returns true if the event not included in the excludedEventTypes
-func (e *EventFilter) filterExcludedEventTypes(eventType eventingv1alpha1.CloudEventType) bool {
-	for _, excludedEventType := range e.ExcludedEventTypes {
-		if excludedEventType == eventType {
-			return false
-		}
-	}
-
-	return true
+	return includeFilter, nil
 }
