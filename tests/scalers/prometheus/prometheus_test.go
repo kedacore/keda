@@ -211,10 +211,14 @@ spec:
 func TestPrometheusScaler(t *testing.T) {
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
+	data, templates := getTemplateData()
+	t.Cleanup(func() {
+		prometheus.Uninstall(t, prometheusServerName, testNamespace, nil)
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+	})
 	prometheus.Install(t, kc, prometheusServerName, testNamespace, nil)
 
 	// Create kubernetes resources for testing
-	data, templates := getTemplateData()
 	KubectlApplyMultipleWithTemplate(t, data, templates)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, monitoredAppName, testNamespace, 1, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
@@ -224,10 +228,6 @@ func TestPrometheusScaler(t *testing.T) {
 	testActivation(t, kc, data)
 	testScaleOut(t, kc, data)
 	testScaleIn(t, kc)
-
-	// cleanup
-	KubectlDeleteMultipleWithTemplate(t, data, templates)
-	prometheus.Uninstall(t, prometheusServerName, testNamespace, nil)
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {

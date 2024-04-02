@@ -9,6 +9,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	k8s "k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -183,34 +184,35 @@ spec:
 func TestNATSJetStreamScaler(t *testing.T) {
 	// Create k8s resources.
 	kc := GetKubernetesClient(t)
+	data, templates := nats.GetJetStreamDeploymentTemplateData(testNamespace, natsAddress, natsServerMonitoringEndpoint, messagePublishCount)
+	t.Cleanup(func() {
+		removeServerWithJetStream(t, natsNamespace)
+
+		DeleteNamespace(t, natsNamespace)
+		deleted := WaitForNamespaceDeletion(t, natsNamespace)
+		assert.Truef(t, deleted, "%s namespace not deleted", natsNamespace)
+		// Cleanup test namespace
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+	})
 
 	// Deploy NATS server.
 	installServerWithJetStream(t, kc, natsNamespace)
-	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, nats.NatsJetStreamName, natsNamespace, 1, 60, 3),
+	require.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, nats.NatsJetStreamName, natsNamespace, 1, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
 
 	// Create k8s resources for testing.
-	data, templates := nats.GetJetStreamDeploymentTemplateData(testNamespace, natsAddress, natsServerMonitoringEndpoint, messagePublishCount)
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	// Create stream and consumer.
 	data.NatsStream = "standalone"
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", nats.ScaledObjectTemplate)
 	installStreamAndConsumer(t, data.NatsStream, testNamespace, natsAddress)
-	assert.True(t, WaitForJobSuccess(t, kc, "stream", testNamespace, 60, 3),
+	require.True(t, WaitForJobSuccess(t, kc, "stream", testNamespace, 60, 3),
 		"stream and consumer creation job should be success")
 
 	testActivation(t, kc, data)
 	testScaleOut(t, kc, data)
 	testScaleIn(t, kc)
-
-	// Cleanup nats namespace
-	removeServerWithJetStream(t, natsNamespace)
-	DeleteNamespace(t, natsNamespace)
-	deleted := WaitForNamespaceDeletion(t, natsNamespace)
-	assert.Truef(t, deleted, "%s namespace not deleted", natsNamespace)
-	// Cleanup test namespace
-	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 // installStreamAndConsumer creates stream and consumer.
