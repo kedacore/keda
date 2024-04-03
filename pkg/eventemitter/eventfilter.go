@@ -17,8 +17,6 @@ limitations under the License.
 package eventemitter
 
 import (
-	"fmt"
-
 	"golang.org/x/exp/slices"
 
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
@@ -40,13 +38,14 @@ func NewEventFilter(includedEventTypes []eventingv1alpha1.CloudEventType, exclud
 }
 
 // FilterEvent returns true if the event is filtered and should not be handled
-func (e *EventFilter) FilterEvent(eventType eventingv1alpha1.CloudEventType) (bool, error) {
-	includeFilter := len(e.IncludedEventTypes) > 0 && !slices.Contains(e.IncludedEventTypes, eventType)
-	excludeFilter := len(e.ExcludedEventTypes) > 0 && slices.Contains(e.ExcludedEventTypes, eventType)
-
-	if includeFilter != excludeFilter {
-		return false, fmt.Errorf("eventtype: %s in both included and excluded types. Cannot be filtered", eventType)
+func (e *EventFilter) FilterEvent(eventType eventingv1alpha1.CloudEventType) bool {
+	if len(e.IncludedEventTypes) > 0 {
+		return !slices.Contains(e.IncludedEventTypes, eventType)
 	}
 
-	return includeFilter, nil
+	if len(e.ExcludedEventTypes) > 0 {
+		return slices.Contains(e.ExcludedEventTypes, eventType)
+	}
+
+	return false
 }

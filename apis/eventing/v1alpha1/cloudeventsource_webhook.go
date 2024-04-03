@@ -74,6 +74,10 @@ func isCloudEventSourceRemovingFinalizer(om metav1.ObjectMeta, oldOm metav1.Obje
 }
 
 func validateSpec(spec *CloudEventSourceSpec) (admission.Warnings, error) {
+	if spec.EventSubscription.ExcludedEventTypes != nil && spec.EventSubscription.IncludedEventTypes != nil {
+		return nil, fmt.Errorf("setting included types and excluded types at the same time is not supported")
+	}
+
 	if spec.EventSubscription.ExcludedEventTypes != nil {
 		for _, excludedEventType := range spec.EventSubscription.ExcludedEventTypes {
 			if !slices.Contains(AllEventTypes, excludedEventType) {
@@ -89,14 +93,5 @@ func validateSpec(spec *CloudEventSourceSpec) (admission.Warnings, error) {
 			}
 		}
 	}
-
-	if spec.EventSubscription.ExcludedEventTypes != nil && spec.EventSubscription.IncludedEventTypes != nil {
-		for _, excludedEventType := range spec.EventSubscription.ExcludedEventTypes {
-			if slices.Contains(spec.EventSubscription.IncludedEventTypes, excludedEventType) {
-				return nil, fmt.Errorf("eventType: %s is in both included typs and excluded types, which is not supported", excludedEventType)
-			}
-		}
-	}
-
 	return nil, nil
 }

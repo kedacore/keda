@@ -343,12 +343,7 @@ func (e *EventEmitter) emitEventByHandler(eventData eventdata.EventData) {
 			identifierKey := getPrefixIdentifierFromKey(key)
 
 			if e.eventFilterCache[identifierKey] != nil {
-				isFiltered, err := e.eventFilterCache[identifierKey].FilterEvent(eventData.CloudEventType)
-				if err != nil {
-					e.log.Error(err, "Failed to filter event", "CloudEventSource", eventData.ObjectName)
-					return
-				}
-
+				isFiltered := e.eventFilterCache[identifierKey].FilterEvent(eventData.CloudEventType)
 				if isFiltered {
 					e.log.V(1).Info("Event is filtered", "cloudeventType", eventData.CloudEventType, "event identifier", identifierKey)
 					return

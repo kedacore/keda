@@ -352,7 +352,7 @@ func testErrEventSourceCreation(t *testing.T, _ *kubernetes.Clientset, data temp
 	assert.ErrorContains(t, err, `The CloudEventSource "eventsource-test-ce-err" is invalid:`)
 
 	err = KubectlApplyWithErrors(t, data, "cloudEventSourceWithErrTypeTemplate2", cloudEventSourceWithErrTypeTemplate2)
-	assert.ErrorContains(t, err, `is in both included typs and excluded types, which is not supported`)
+	assert.ErrorContains(t, err, `setting included types and excluded types at the same time is not supported`)
 
 	KubectlApplyWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
 }
