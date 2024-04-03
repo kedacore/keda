@@ -178,13 +178,15 @@ spec:
 func TestScaler(t *testing.T) {
 	// Create kubernetes resources for PostgreSQL server
 	kc := GetKubernetesClient(t)
-
+	data, templates := getTemplateData()
+	t.Cleanup(func() {
+		redis.RemoveCluster(t, testName, redisNamespace)
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+	})
 	// Create Redis Cluster
 	redis.InstallCluster(t, kc, testName, redisNamespace, redisPassword)
 
 	// Create kubernetes resources for testing
-	data, templates := getTemplateData()
-
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 3),
@@ -201,10 +203,6 @@ func TestScaler(t *testing.T) {
 
 	t.Log("--- testing scale in ---")
 	testScaleIn(t, kc, minReplicaCount)
-
-	// Clean up
-	DeleteKubernetesResources(t, testNamespace, data, templates)
-	redis.RemoveCluster(t, testName, redisNamespace)
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData, numMessages int, maxReplicas int) {
