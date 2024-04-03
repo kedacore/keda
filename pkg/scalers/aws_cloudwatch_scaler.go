@@ -117,7 +117,6 @@ func getFloatMetadataValue(metadata map[string]string, key string, required bool
 
 func createCloudwatchClient(ctx context.Context, metadata *awsCloudwatchMetadata) (*cloudwatch.Client, error) {
 	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
-
 	if err != nil {
 		return nil, err
 	}
@@ -308,7 +307,6 @@ func computeQueryWindow(current time.Time, metricPeriodSec, metricEndTimeOffsetS
 
 func (s *awsCloudwatchScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	metricValue, err := s.GetCloudwatchMetrics(ctx)
-
 	if err != nil {
 		s.logger.Error(err, "Error getting metric value")
 		return []external_metrics.ExternalMetricValue{}, false, err
@@ -391,7 +389,6 @@ func (s *awsCloudwatchScaler) GetCloudwatchMetrics(ctx context.Context) (float64
 	}
 
 	output, err := s.cwClient.GetMetricData(ctx, &input)
-
 	if err != nil {
 		s.logger.Error(err, "Failed to get output")
 		return -1, err
@@ -400,10 +397,11 @@ func (s *awsCloudwatchScaler) GetCloudwatchMetrics(ctx context.Context) (float64
 	s.logger.V(1).Info("Received Metric Data", "data", output)
 	var metricValue float64
 
-	// If no metric data is received and errorWhenNullValues is set to true, return error,
-	// otherwise continue with either the metric value received, or the minMetricValue
-	if len(output.MetricDataResults) == 0 && s.metadata.errorWhenNullValues {
-		emptyMetricsErrMessage := "empty result of metric values received, and errorWhenNullValues is set to true"
+	fmt.Printf("output.MetricDataResults: %+v", output.MetricDataResults)
+
+	// If no metric data is received and errorWhenNullValues is set to true, return an error
+	if len(output.MetricDataResults) > 0 && len(output.MetricDataResults[0].Values) == 0 && s.metadata.errorWhenNullValues {
+		emptyMetricsErrMessage := "empty metric data received, and errorWhenNullValues is set to true, returning error"
 		s.logger.Error(err, emptyMetricsErrMessage)
 		return -1, fmt.Errorf(emptyMetricsErrMessage)
 	}
