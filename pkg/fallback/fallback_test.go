@@ -336,7 +336,6 @@ var _ = Describe("fallback", func() {
 		condition := so.Status.Conditions.GetFallbackCondition()
 		Expect(condition.IsTrue()).Should(BeFalse())
 	})
-
 })
 
 func haveFailureAndStatus(numberOfFailures int, status kedav1alpha1.HealthStatusType) types.GomegaMatcher {
