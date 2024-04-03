@@ -17,6 +17,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/admin"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -78,7 +79,7 @@ const (
     clusterName: {{.ClusterName}}
     destination:
       azureEventGridTopic:
-        endPoint: {{.EventGridEndpoint}}
+        endpoint: {{.EventGridEndpoint}}
   `
 	monitoredDeploymentTemplate = `apiVersion: apps/v1
 kind: Deployment
@@ -182,7 +183,7 @@ func TestEventEmitter(t *testing.T) {
 	testEventSourceEmitValue(t, kc, data, client)
 
 	DeleteKubernetesResources(t, namespace, data, templates)
-	cleanupServiceBusTopic(t, adminClient)
+	cleanupServiceBusSubscription(t, adminClient)
 }
 
 // tests error events emitted
@@ -228,13 +229,8 @@ func setupServiceBusTopicAndSubscription(t *testing.T) (*azservicebus.Client, *a
 	adminClient, err := admin.NewClientFromConnectionString(connectionString, nil)
 	assert.NoErrorf(t, err, "cannot connect to service bus namespace - %s", err)
 
-	topic, err := adminClient.GetTopic(context.Background(), topicName, nil)
-	assert.NoErrorf(t, err, "cannot get the topic - %s", err)
-
-	if topic == nil {
-		_, err = adminClient.CreateTopic(context.Background(), topicName, nil)
-		assert.NoErrorf(t, err, "cannot create the topic - %s", err)
-	}
+	_, err = adminClient.GetTopic(context.Background(), topicName, nil)
+	require.NoErrorf(t, err, "cannot get the topic - %s", err)
 
 	subscription, err := adminClient.GetSubscription(context.Background(), topicName, subscriptionName, nil)
 	assert.NoErrorf(t, err, "cannot get the Subscription - %s", err)
@@ -250,9 +246,9 @@ func setupServiceBusTopicAndSubscription(t *testing.T) (*azservicebus.Client, *a
 	return client, adminClient
 }
 
-func cleanupServiceBusTopic(t *testing.T, adminClient *admin.Client) {
+func cleanupServiceBusSubscription(t *testing.T, adminClient *admin.Client) {
 	t.Log("--- cleaning up ---")
-	_, err := adminClient.DeleteTopic(context.Background(), topicName, nil)
+	_, err := adminClient.DeleteSubscription(context.Background(), topicName, subscriptionName, nil)
 	assert.NoErrorf(t, err, "cannot delete service bus topic - %s", err)
 }
 
@@ -266,15 +262,14 @@ func checkMessage(t *testing.T, count int, client *azservicebus.Client) {
 		},
 	)
 	if err != nil {
-		panic(err)
+		assert.NoErrorf(t, err, "cannot create receiver - %s", err)
 	}
 	defer receiver.Close(context.TODO())
-	messages, err := receiver.ReceiveMessages(context.TODO(), count, nil)
-	if err != nil {
-		panic(err)
-	}
 
+	messages, err := receiver.ReceiveMessages(context.TODO(), count, nil)
+	assert.NoErrorf(t, err, "cannot receive messages - %s", err)
 	assert.NotEmpty(t, messages)
+
 	var message = string(messages[0].Body)
 
 	event := messaging.CloudEvent{}

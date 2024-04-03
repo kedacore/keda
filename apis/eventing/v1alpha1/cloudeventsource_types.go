@@ -76,7 +76,7 @@ type CloudEventHTTP struct {
 }
 
 type AzureEventGridTopicSpec struct {
-	EndPoint string `json:"endPoint"`
+	Endpoint string `json:"endpoint"`
 }
 
 func init() {

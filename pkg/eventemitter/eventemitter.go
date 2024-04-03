@@ -207,6 +207,7 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEventSource
 			h.CloseHandler()
 		}
 		e.eventHandlersCache[eventHandlerKey] = eventHandler
+		return
 	}
 
 	if cloudEventSource.Spec.Destination.AzureEventGridTopic != nil {
@@ -221,7 +222,10 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEventSource
 			h.CloseHandler()
 		}
 		e.eventHandlersCache[eventHandlerKey] = eventHandler
+		return
 	}
+
+	e.log.Info("No destionation is defined in CloudEventSource", "CloudEventSource", cloudEventSource.Name)
 }
 
 // clearEventHandlersCache will clear all event handlers that created by the passing CloudEventSource

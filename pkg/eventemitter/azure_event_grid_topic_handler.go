@@ -56,14 +56,14 @@ func NewAzureEventGridTopicHandler(context context.Context, clusterName string, 
 			err = fmt.Errorf("no key provided")
 			break
 		}
-		client, err = publisher.NewClientWithSharedKeyCredential(spec.EndPoint, azcore.NewKeyCredential(authParams["key"]), nil)
+		client, err = publisher.NewClientWithSharedKeyCredential(spec.Endpoint, azcore.NewKeyCredential(authParams["key"]), nil)
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
 		creds, chainedErr := azure.NewChainedCredential(logger, podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID(), podIdentity.Provider)
 		if chainedErr != nil {
 			err = chainedErr
 			break
 		}
-		client, err = publisher.NewClient(spec.EndPoint, creds, nil)
+		client, err = publisher.NewClient(spec.Endpoint, creds, nil)
 	default:
 		err = fmt.Errorf("incorrect auth provided")
 	}
@@ -76,7 +76,7 @@ func NewAzureEventGridTopicHandler(context context.Context, clusterName string, 
 	return &AzureEventGridTopicHandler{
 		Context:      context,
 		Client:       client,
-		Endpoint:     spec.EndPoint,
+		Endpoint:     spec.Endpoint,
 		ClusterName:  clusterName,
 		logger:       logger,
 		activeStatus: metav1.ConditionTrue,
@@ -96,13 +96,8 @@ func (a *AzureEventGridTopicHandler) GetActiveStatus() metav1.ConditionStatus {
 }
 
 func (a *AzureEventGridTopicHandler) EmitEvent(eventData eventdata.EventData, failureFunc func(eventData eventdata.EventData, err error)) {
-	type emitData struct {
-		Reason  string `json:"reason"`
-		Message string `json:"message"`
-	}
-
-	source := fmt.Sprintf("/%s/%s/keda", a.ClusterName, kedaNamespace)
-	subject := fmt.Sprintf("/%s/%s/%s/%s", a.ClusterName, eventData.Namespace, eventData.ObjectType, eventData.ObjectName)
+	source := generateCloudEventSource(a.ClusterName)
+	subject := generateCloudEventSubjectFromEventData(a.ClusterName, eventData)
 
 	opt := &messaging.CloudEventOptions{
 		Subject:         &subject,
@@ -110,7 +105,7 @@ func (a *AzureEventGridTopicHandler) EmitEvent(eventData eventdata.EventData, fa
 		Time:            &eventData.Time,
 	}
 
-	event, err := messaging.NewCloudEvent(source, eventData.EventType, emitData{Reason: eventData.Reason, Message: eventData.Message}, opt)
+	event, err := messaging.NewCloudEvent(source, eventData.EventType, EmitData{Reason: eventData.Reason, Message: eventData.Message}, opt)
 
 	if err != nil {
 		a.logger.Error(err, "EmitEvent error %s")

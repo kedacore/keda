@@ -65,10 +65,10 @@ spec:
                 properties:
                   azureEventGridTopic:
                     properties:
-                      endPoint:
+                      endpoint:
                         type: string
                     required:
-                    - endPoint
+                    - endpoint
                     type: object
                   http:
                     properties:
