@@ -22,4 +22,10 @@ const (
 
 	// ScaledObjectFailedType is for event when creating ScaledObject failed
 	ScaledObjectFailedType = "keda.scaledobject.failed.v1"
+
+	// ScaleToZeroType is for event when a workload scales to zero
+	ScaleToZeroType = "keda.workload.scaletozero.v1"
+
+	// ScaleFromZeroType is for event when a workload scales from zero
+	ScaleFromZeroType = "keda.workload.scalefromzero.v1"
 )

@@ -38,6 +38,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/common/message"
+	"github.com/kedacore/keda/v2/pkg/eventemitter"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/fallback"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
@@ -77,11 +78,11 @@ type scaleHandler struct {
 }
 
 // NewScaleHandler creates a ScaleHandler object
-func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout time.Duration, recorder record.EventRecorder, secretsLister corev1listers.SecretLister) ScaleHandler {
+func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout time.Duration, recorder record.EventRecorder, secretsLister corev1listers.SecretLister, eventEmitter eventemitter.EventHandler) ScaleHandler {
 	return &scaleHandler{
 		client:                   client,
 		scaleLoopContexts:        &sync.Map{},
-		scaleExecutor:            executor.NewScaleExecutor(client, scaleClient, reconcilerScheme, recorder),
+		scaleExecutor:            executor.NewScaleExecutor(client, scaleClient, reconcilerScheme, recorder, eventEmitter),
 		globalHTTPTimeout:        globalHTTPTimeout,
 		recorder:                 recorder,
 		scalerCaches:             map[string]*cache.ScalersCache{},
