@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/kedacore/keda/v2/tests/helper"
@@ -88,14 +89,14 @@ func RemoveStandalone(t *testing.T, name, namespace string) {
 func InstallSentinel(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {
 	helper.CreateNamespace(t, kc, namespace)
 	_, err := helper.ExecuteCommand("helm repo add bitnami https://charts.bitnami.com/bitnami")
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = helper.ExecuteCommand("helm repo update")
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = helper.ExecuteCommand(fmt.Sprintf(`helm install --wait --timeout 900s %s --namespace %s --set sentinel.enabled=true --set master.persistence.enabled=false --set replica.persistence.enabled=false --set global.redis.password=%s bitnami/redis`,
 		name,
 		namespace,
 		password))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
 func RemoveSentinel(t *testing.T, name, namespace string) {
@@ -109,14 +110,14 @@ func RemoveSentinel(t *testing.T, name, namespace string) {
 func InstallCluster(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {
 	helper.CreateNamespace(t, kc, namespace)
 	_, err := helper.ExecuteCommand("helm repo add bitnami https://charts.bitnami.com/bitnami")
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = helper.ExecuteCommand("helm repo update")
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = helper.ExecuteCommand(fmt.Sprintf(`helm install --wait --timeout 900s %s --namespace %s --set persistence.enabled=false --set password=%s --timeout 10m0s bitnami/redis-cluster`,
 		name,
 		namespace,
 		password))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
 func RemoveCluster(t *testing.T, name, namespace string) {
