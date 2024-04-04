@@ -17,9 +17,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/joho/godotenv"
-	v1alpha1Api "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/stretchr/testify/assert"
 
+	v1alpha1Api "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
@@ -138,7 +138,6 @@ var (
 	cloudwatchMetricNamespace      = "DoesNotExist"
 	cloudwatchMetricDimensionName  = "dimensionName"
 	cloudwatchMetricDimensionValue = "dimensionValue"
-	maxReplicaCount                = 2
 	minReplicaCount                = 0
 	minMetricValueReplicaCount     = 1
 )
