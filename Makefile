@@ -114,7 +114,7 @@ e2e-test-clean-crds: ## Delete all scaled objects and jobs across all namespaces
 
 .PHONY: e2e-test-clean
 e2e-test-clean: get-cluster-context ## Delete all namespaces labeled with type=e2e
-	kubectl delete ns -l type=e2e
+	microk8s kubectl delete ns -l type=e2e
 
 .PHONY: smoke-test
 smoke-test: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/config.
@@ -255,10 +255,10 @@ set-version:
 ##@ Deployment
 
 install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/crd | kubectl apply --server-side -f -
+	$(KUSTOMIZE) build config/crd | microk8s kubectl apply --server-side -f -
 
 uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/crd | kubectl delete -f -
+	$(KUSTOMIZE) build config/crd | microk8s kubectl delete -f -
 
 deploy: install ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && \
@@ -295,10 +295,10 @@ deploy: install ## Deploy controller to the K8s cluster specified in ~/.kube/con
 	# until this issue is solved: https://github.com/kubernetes-sigs/kustomize/issues/1009
 	@sed -i".out" -e 's@version:[ ].*@version: $(VERSION)@g' config/default/kustomize-config/metadataLabelTransformer.yaml
 	rm -rf config/default/kustomize-config/metadataLabelTransformer.yaml.out
-	$(KUSTOMIZE) build config/e2e | kubectl apply -f -
+	$(KUSTOMIZE) build config/e2e | microk8s kubectl apply -f -
 
 undeploy: kustomize e2e-test-clean-crds ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/e2e | kubectl delete -f -
+	$(KUSTOMIZE) build config/e2e | microk8s kubectl delete -f -
 	make uninstall
 
 ## Location to install dependencies to

@@ -120,7 +120,7 @@ func parseSplunkO11yMetadata(config *scalersconfig.ScalerConfig, logger logr.Log
 			return nil, fmt.Errorf("No Splunk Observability Cloud Access Token found.")
 		}
 	*/
-	if accessToken, ok := config.TriggerMetadata["accessToken"]; ok {
+	if accessToken, ok := config.AuthParams["accessToken"]; ok {
 		meta.accessToken = accessToken
 	} else {
 		return nil, fmt.Errorf("no accessToken given")
