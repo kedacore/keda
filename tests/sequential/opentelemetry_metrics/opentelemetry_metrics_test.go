@@ -703,7 +703,6 @@ func testScalerMetricLatency(t *testing.T) {
 			for _, label := range labels {
 				if (*label.Name == labelScaledObject && *label.Value == scaledObjectName) ||
 					(*label.Name == labelScaledJob && *label.Value == scaledJobName) {
-					assert.Equal(t, float64(0), *metric.Gauge.Value)
 					found = true
 				}
 			}

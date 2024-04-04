@@ -144,6 +144,8 @@ func alignerFromString(aligner string) (monitoringpb.Aggregation_Aligner, error)
 		return monitoringpb.Aggregation_ALIGN_NONE, nil
 	case "delta":
 		return monitoringpb.Aggregation_ALIGN_DELTA, nil
+	case "rate":
+		return monitoringpb.Aggregation_ALIGN_RATE, nil
 	case "interpolate":
 		return monitoringpb.Aggregation_ALIGN_INTERPOLATE, nil
 	case "next_older":
@@ -195,6 +197,8 @@ func reducerFromString(reducer string) (monitoringpb.Aggregation_Reducer, error)
 		return monitoringpb.Aggregation_REDUCE_SUM, nil
 	case "stddev":
 		return monitoringpb.Aggregation_REDUCE_STDDEV, nil
+	case "count":
+		return monitoringpb.Aggregation_REDUCE_COUNT, nil
 	case "count_true":
 		return monitoringpb.Aggregation_REDUCE_COUNT_TRUE, nil
 	case "count_false":

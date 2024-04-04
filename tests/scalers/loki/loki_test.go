@@ -9,6 +9,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -145,12 +146,16 @@ spec:
 // is directly tied to the KEDA HPA while the other is isolated that can be used for metrics
 // even when the KEDA deployment is at zero - the service points to both deployments
 func TestLokiScaler(t *testing.T) {
-	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
+	data, templates := getTemplateData()
+	t.Cleanup(func() {
+		uninstallLoki(t, testNamespace)
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+	})
+
 	installLoki(t, kc, testNamespace)
 
 	// Create kubernetes resources for testing
-	data, templates := getTemplateData()
 	KubectlApplyMultipleWithTemplate(t, data, templates)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
@@ -158,10 +163,6 @@ func TestLokiScaler(t *testing.T) {
 	testActivation(t, kc, data)
 	testScaleOut(t, kc, data)
 	testScaleIn(t, kc)
-
-	// cleanup
-	KubectlDeleteMultipleWithTemplate(t, data, templates)
-	uninstallLoki(t, testNamespace)
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -203,16 +204,14 @@ func getTemplateData() (templateData, []Template) {
 func installLoki(t *testing.T, kc *kubernetes.Clientset, namespace string) {
 	CreateNamespace(t, kc, namespace)
 	_, err := ExecuteCommand("helm repo add grafana https://grafana.github.io/helm-charts")
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("helm repo update")
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install loki grafana/loki-stack --wait --namespace=%s", namespace))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
 func uninstallLoki(t *testing.T, namespace string) {
 	_, err := ExecuteCommand(fmt.Sprintf("helm uninstall loki --wait --namespace=%s", namespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	DeleteNamespace(t, namespace)
-	WaitForNamespaceDeletion(t, namespace)
 }
