@@ -54,7 +54,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### New
 
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-- **NATS Scaler** Add TLS authentication ([#2296](https://github.com/kedacore/keda/issues/2296))
+- **NATS Scaler**: Add TLS authentication ([#2296](https://github.com/kedacore/keda/issues/2296))
 
 #### Experimental
 
