@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -53,6 +54,12 @@ type stanMetadata struct {
 	lagThreshold           int64
 	activationLagThreshold int64
 	triggerIndex           int
+
+	// TLS
+	enableTLS bool
+	cert      string
+	key       string
+	ca        string
 }
 
 const (
@@ -60,6 +67,8 @@ const (
 	defaultStanLagThreshold    = 10
 	natsStreamingHTTPProtocol  = "http"
 	natsStreamingHTTPSProtocol = "https"
+	stanTLSEnable              = "enable"
+	stanTLSDisable             = "disable"
 )
 
 // NewStanScaler creates a new stanScaler
@@ -73,12 +82,12 @@ func NewStanScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error parsing stan metadata: %w", err)
 	}
-
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, stanMetadata.enableTLS)
 	return &stanScaler{
 		channelInfo: &monitorChannelInfo{},
 		metricType:  metricType,
 		metadata:    stanMetadata,
-		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
+		httpClient:  httpClient,
 		logger:      InitializeLogger(config, "stan_scaler"),
 	}, nil
 }
@@ -123,11 +132,32 @@ func parseStanMetadata(config *scalersconfig.ScalerConfig) (stanMetadata, error)
 	meta.triggerIndex = config.TriggerIndex
 
 	var err error
+
+	meta.enableTLS = false // Default value for enableTLS
 	useHTTPS := false
 	if val, ok := config.TriggerMetadata["useHttps"]; ok {
 		useHTTPS, err = strconv.ParseBool(val)
 		if err != nil {
 			return meta, fmt.Errorf("useHTTPS parsing error %w", err)
+		}
+		if val, ok := config.AuthParams["tls"]; ok {
+			val = strings.TrimSpace(val)
+			if val == stanTLSEnable {
+				certGiven := config.AuthParams["cert"] != ""
+				keyGiven := config.AuthParams["key"] != ""
+				if certGiven && !keyGiven {
+					return meta, errors.New("no key given")
+				}
+				if keyGiven && !certGiven {
+					return meta, errors.New("no cert given")
+				}
+				meta.cert = config.AuthParams["cert"]
+				meta.key = config.AuthParams["key"]
+				meta.ca = config.AuthParams["ca"]
+				meta.enableTLS = true
+			} else if val != stanTLSDisable {
+				return meta, fmt.Errorf("err incorrect value for TLS given: %s", val)
+			}
 		}
 	}
 	natsServerEndpoint, err := GetFromAuthOrMeta(config, "natsServerMonitoringEndpoint")
