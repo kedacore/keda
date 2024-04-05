@@ -635,7 +635,8 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 		if result.IsActive {
 			isScaledObjectActive = true
 		}
-		if result.IsError {
+		if result.Err != nil {
+			metricscollector.RecordScaledObjectError(scaledObject.Namespace, scaledObject.Name, result.Err)
 			isScaledObjectError = true
 		}
 		matchingMetrics = append(matchingMetrics, result.Metrics...)
@@ -700,10 +701,10 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 type scalerState struct {
 	// IsActive will be overrided by formula calculation
 	IsActive bool
-	IsError  bool
 	Metrics  []external_metrics.ExternalMetricValue
 	Pairs    map[string]string
 	Records  map[string]metricscache.MetricsRecord
+	Err      error
 }
 
 // getScalerState returns getStateScalerResult with the state
@@ -714,7 +715,7 @@ func (*scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler, 
 	cache *cache.ScalersCache, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) scalerState {
 	result := scalerState{
 		IsActive: false,
-		IsError:  false,
+		Err:      nil,
 		Metrics:  []external_metrics.ExternalMetricValue{},
 		Pairs:    map[string]string{},
 		Records:  map[string]metricscache.MetricsRecord{},
@@ -727,7 +728,7 @@ func (*scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler, 
 
 	metricSpecs, err := cache.GetMetricSpecForScalingForScaler(ctx, triggerIndex)
 	if err != nil {
-		result.IsError = true
+		result.Err = err
 		logger.Error(err, "error getting metric spec for the scaler", "scaler", triggerName)
 		cache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 	}
@@ -757,7 +758,7 @@ func (*scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler, 
 		}
 
 		if err != nil {
-			result.IsError = true
+			result.Err = err
 			if scaledObject.IsUsingModifiers() {
 				logger.Error(err, "error getting metric source", "source", triggerName)
 				cache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAMetricSourceFailed, err.Error())
