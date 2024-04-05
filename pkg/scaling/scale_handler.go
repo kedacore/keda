@@ -707,12 +707,12 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 // info for calculating the ScaledObjectState
 type scalerState struct {
 	// IsActive will be overrided by formula calculation
-	IsActive bool
-  TriggerName string
-	Metrics  []external_metrics.ExternalMetricValue
-	Pairs    map[string]string
-	Records  map[string]metricscache.MetricsRecord
-	Err      error
+	IsActive    bool
+	TriggerName string
+	Metrics     []external_metrics.ExternalMetricValue
+	Pairs       map[string]string
+	Records     map[string]metricscache.MetricsRecord
+	Err         error
 }
 
 // getScalerState returns getStateScalerResult with the state
