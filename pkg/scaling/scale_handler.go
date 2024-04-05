@@ -638,7 +638,6 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 			activeTriggers = append(activeTriggers, result.TriggerName)
 		}
 		if result.Err != nil {
-			metricscollector.RecordScaledObjectError(scaledObject.Namespace, scaledObject.Name, result.Err)
 			isScaledObjectError = true
 		}
 		matchingMetrics = append(matchingMetrics, result.Metrics...)
@@ -648,6 +647,8 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 		for k, v := range result.Records {
 			metricsRecord[k] = v
 		}
+
+		metricscollector.RecordScaledObjectError(scaledObject.Namespace, scaledObject.Name, result.Err)
 	}
 
 	// invalidate the cache for the ScaledObject, if we hit an error in any scaler
