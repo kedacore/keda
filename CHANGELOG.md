@@ -54,6 +54,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### New
 
 - **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **InfluxDB Scaler**: Add support for querying influx v3 ([#5445](https://github.com/kedacore/keda/issues/5445))
 
 #### Experimental
 
