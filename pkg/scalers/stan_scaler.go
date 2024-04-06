@@ -82,7 +82,14 @@ func NewStanScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error parsing stan metadata: %w", err)
 	}
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, stanMetadata.enableTLS)
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
+	if stanMetadata.enableTLS {
+		config, err := kedautil.NewTLSConfig(stanMetadata.cert, stanMetadata.key, stanMetadata.ca, false)
+		if err != nil {
+			return nil, err
+		}
+		httpClient.Transport = kedautil.CreateHTTPTransportWithTLSConfig(config)
+	}
 	return &stanScaler{
 		channelInfo: &monitorChannelInfo{},
 		metricType:  metricType,

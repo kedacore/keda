@@ -114,7 +114,6 @@ func TestParseStanAuthParams(t *testing.T) {
 			if meta.key != testData.authParams["key"] {
 				t.Errorf("Expected key to be set to %v but got %v\n", testData.authParams["key"], meta.key)
 			}
-
 		}
 	}
 }
