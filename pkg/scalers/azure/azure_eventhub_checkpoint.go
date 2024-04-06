@@ -40,22 +40,14 @@ type goCheckpoint struct {
 	PartitionID string `json:"partitionId"`
 }
 
-type baseCheckpoint struct {
-	Epoch int64  `json:"Epoch"`
-	Owner string `json:"Owner"`
-	Token string `json:"Token"`
-}
-
 // Checkpoint in a common format
 type Checkpoint struct {
-	baseCheckpoint
 	PartitionID    string `json:"PartitionId"`
 	SequenceNumber int64  `json:"SequenceNumber"`
 }
 
 // Older python sdk stores the checkpoint differently
 type pythonCheckpoint struct {
-	baseCheckpoint
 	PartitionID    string `json:"partition_id"`
 	SequenceNumber int64  `json:"sequence_number"`
 }
@@ -91,7 +83,7 @@ type defaultCheckpointer struct {
 }
 
 func NewCheckpoint(sequenceNumber int64) Checkpoint {
-	return Checkpoint{baseCheckpoint: baseCheckpoint{}, SequenceNumber: sequenceNumber}
+	return Checkpoint{SequenceNumber: sequenceNumber}
 }
 
 // GetCheckpointFromBlobStorage reads depending of the CheckpointStrategy the checkpoint from a azure storage
@@ -220,7 +212,6 @@ func newGoSdkCheckpoint(get *azblob.DownloadResponse) (Checkpoint, error) {
 
 	return Checkpoint{
 		SequenceNumber: checkpoint.Checkpoint.SequenceNumber,
-		baseCheckpoint: baseCheckpoint{},
 		PartitionID:    checkpoint.PartitionID,
 	}, nil
 }

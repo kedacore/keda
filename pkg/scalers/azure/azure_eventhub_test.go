@@ -38,7 +38,6 @@ func TestCheckpointFromBlobStorageAzureFunction(t *testing.T) {
 	assert.Equal(t, err, nil)
 
 	expectedCheckpoint := Checkpoint{
-		baseCheckpoint: baseCheckpoint{},
 		PartitionID:    partitionID,
 		SequenceNumber: sequencenumber,
 	}
@@ -73,7 +72,6 @@ func TestCheckpointFromBlobStorageDefault(t *testing.T) {
 	assert.Equal(t, err, nil)
 
 	expectedCheckpoint := Checkpoint{
-		baseCheckpoint: baseCheckpoint{},
 		PartitionID:    partitionID,
 		SequenceNumber: sequencenumber,
 	}
@@ -109,7 +107,6 @@ func TestCheckpointFromBlobStorageDefaultDeprecatedPythonCheckpoint(t *testing.T
 	assert.Equal(t, err, nil)
 
 	expectedCheckpoint := Checkpoint{
-		baseCheckpoint: baseCheckpoint{},
 		PartitionID:    partitionID,
 		SequenceNumber: sequencenumber,
 	}
@@ -147,7 +144,6 @@ func TestCheckpointFromBlobStorageWithBlobMetadata(t *testing.T) {
 	assert.Equal(t, err, nil)
 
 	expectedCheckpoint := Checkpoint{
-		baseCheckpoint: baseCheckpoint{},
 		PartitionID:    partitionID,
 		SequenceNumber: sequencenumber,
 	}
@@ -184,7 +180,6 @@ func TestCheckpointFromBlobStorageGoSdk(t *testing.T) {
 	assert.Equal(t, err, nil)
 
 	expectedCheckpoint := Checkpoint{
-		baseCheckpoint: baseCheckpoint{},
 		PartitionID:    partitionID,
 		SequenceNumber: sequencenumber,
 	}
@@ -222,7 +217,6 @@ func TestCheckpointFromBlobStorageDapr(t *testing.T) {
 	assert.Equal(t, err, nil)
 
 	expectedCheckpoint := Checkpoint{
-		baseCheckpoint: baseCheckpoint{},
 		PartitionID:    partitionID,
 		SequenceNumber: sequencenumber,
 	}
