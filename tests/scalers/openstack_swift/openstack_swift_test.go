@@ -161,20 +161,19 @@ func TestScaler(t *testing.T) {
 	client := helper.CreateClient(t, authURL, userID, password, projectID)
 	helper.CreateContainer(t, client, containerName)
 
-	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
+	t.Cleanup(func() {
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+		helper.DeleteContainer(t, client, containerName)
+	})
+
+	// Create kubernetes resources
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	testActivation(t, kc, client)
 	testScaleOut(t, kc, client)
 	testScaleIn(t, kc, client)
-
-	// cleanup
-	DeleteKubernetesResources(t, testNamespace, data, templates)
-
-	// delete openstack resources
-	helper.DeleteContainer(t, client, containerName)
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, client *gophercloud.ServiceClient) {

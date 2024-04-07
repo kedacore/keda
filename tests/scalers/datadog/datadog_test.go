@@ -252,11 +252,19 @@ func TestDatadogScaler(t *testing.T) {
 	require.NotEmpty(t, datadogAppKey, "DATADOG_APP_KEY env variable is required for datadog tests")
 	require.NotEmpty(t, datadogAPIKey, "DATADOG_API_KEY env variable is required for datadog tests")
 	require.NotEmpty(t, datadogSite, "DATADOG_SITE env variable is required for datadog tests")
-	// Create kubernetes resources
+
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
-	CreateKubernetesResources(t, kc, testNamespace, data, templates)
+	t.Cleanup(func() {
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+	})
+
+	// install datadog
+	CreateNamespace(t, kc, testNamespace)
 	installDatadog(t)
+
+	// Create kubernetes resources
+	KubectlApplyMultipleWithTemplate(t, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 180, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
@@ -265,9 +273,6 @@ func TestDatadogScaler(t *testing.T) {
 	testActivation(t, kc, data)
 	testScaleOut(t, kc, data)
 	testScaleIn(t, kc, data)
-
-	// cleanup
-	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -295,9 +300,9 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 func installDatadog(t *testing.T) {
 	_, err := ExecuteCommand(fmt.Sprintf("helm repo add datadog %s", datadogHelmRepo))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("helm repo update")
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --set datadog.apiKey=%s --set datadog.appKey=%s --set datadog.site=%s --set datadog.clusterName=%s --set datadog.kubelet.tlsVerify=false --namespace %s --wait %s datadog/datadog`,
 		datadogAPIKey,
 		datadogAppKey,
@@ -305,7 +310,7 @@ func installDatadog(t *testing.T) {
 		kuberneteClusterName,
 		testNamespace,
 		testName))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
 func getTemplateData() (templateData, []Template) {
