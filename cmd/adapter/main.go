@@ -164,7 +164,7 @@ func getMetricHandler() http.HandlerFunc {
 
 // getMetricInterceptor returns a metrics inceptor that records metrics between the adapter and opertaor
 func getMetricInterceptor() *grpcprom.ClientMetrics {
-	metricsNamespace := "keda"
+	metricsNamespace := "keda_metricsservice"
 
 	counterNamespace := func(o *prometheus.CounterOpts) {
 		o.Namespace = metricsNamespace

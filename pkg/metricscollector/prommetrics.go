@@ -335,28 +335,24 @@ func (p *PromMetrics) RecordCloudEventQueueStatus(namespace string, value int) {
 // interceptors to chain to the server so that all requests served are observed. Intended to be called
 // as part of initialization of metricscollector, hence why this function is not exported
 func newPromServerMetrics() *grpcprom.ServerMetrics {
+	metricsNamespace := "keda_metricsservice"
+
+	counterNamespace := func(o *prometheus.CounterOpts) {
+		o.Namespace = metricsNamespace
+	}
+
+	histogramNamespace := func(o *prometheus.HistogramOpts) {
+		o.Namespace = metricsNamespace
+	}
+
 	serverMetrics := grpcprom.NewServerMetrics(
 		grpcprom.WithServerHandlingTimeHistogram(
 			grpcprom.WithHistogramBuckets([]float64{0.001, 0.01, 0.1, 0.3, 0.6, 1, 3, 6, 9, 20, 30, 60, 90, 120}),
-			withDefaultHistogramNamespace(),
+			histogramNamespace,
 		),
-		grpcprom.WithServerCounterOptions(withDefaultCounterNamespace()),
+		grpcprom.WithServerCounterOptions(counterNamespace),
 	)
 	metrics.Registry.MustRegister(serverMetrics)
 
 	return serverMetrics
-}
-
-// WithConstLabels allows you to add ConstLabels to Counter metrics.
-func withDefaultCounterNamespace() grpcprom.CounterOption {
-	return func(o *prometheus.CounterOpts) {
-		o.Namespace = DefaultPromMetricsNamespace
-	}
-}
-
-// WithConstLabels allows you to add ConstLabels to Counter metrics.
-func withDefaultHistogramNamespace() grpcprom.HistogramOption {
-	return func(o *prometheus.HistogramOpts) {
-		o.Namespace = DefaultPromMetricsNamespace
-	}
 }
