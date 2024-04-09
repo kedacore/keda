@@ -14,7 +14,7 @@ import (
 	reflect "reflect"
 
 	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	executor "github.com/kedacore/keda/v2/pkg/scaling/executor"
+	"github.com/kedacore/keda/v2/pkg/scaling/executor"
 	gomock "go.uber.org/mock/gomock"
 )
 
