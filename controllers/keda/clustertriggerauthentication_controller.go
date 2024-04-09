@@ -20,6 +20,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/kedacore/keda/v2/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/record"
@@ -89,6 +90,7 @@ func (r *ClusterTriggerAuthenticationReconciler) Reconcile(ctx context.Context, 
 func (r *ClusterTriggerAuthenticationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&kedav1alpha1.ClusterTriggerAuthentication{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		WithEventFilter(util.IgnoreOtherNamespaces()).
 		Complete(r)
 }
 

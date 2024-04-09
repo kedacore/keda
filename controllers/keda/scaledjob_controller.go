@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/kedacore/keda/v2/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -91,6 +92,7 @@ func (r *ScaledJobReconciler) SetupWithManager(mgr ctrl.Manager, options control
 				kedacontrollerutil.PausedPredicate{},
 				predicate.GenerationChangedPredicate{},
 			))).
+		WithEventFilter(util.IgnoreOtherNamespaces()).
 		Complete(r)
 }
 

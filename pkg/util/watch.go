@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 // GetWatchNamespaces returns the namespaces the operator should be watching for changes
@@ -26,4 +28,19 @@ func GetWatchNamespaces() (map[string]cache.Config, error) {
 	}
 
 	return nssMap, nil
+}
+
+// IgnoreOtherNamespaces returns the predicate for watched events that will filter out those that are not coming
+// from a watched namespace (empty namespace denotes all)
+func IgnoreOtherNamespaces() predicate.Predicate {
+	nss, e := GetWatchNamespaces()
+	if len(nss) == 0 || e != nil {
+		return predicate.Or()
+	}
+	return predicate.Funcs{
+		GenericFunc: func(e event.GenericEvent) bool {
+			_, ok := nss[e.Object.GetNamespace()]
+			return ok
+		},
+	}
 }
