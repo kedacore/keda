@@ -268,7 +268,7 @@ func (o *OtelMetrics) RecordScaledObjectPaused(namespace string, scaledObject st
 		attribute.Key("scaledObject").String(scaledObject),
 	)
 
-	cback := func(ctx context.Context, obsrv api.Float64Observer) error {
+	cback := func(_ context.Context, obsrv api.Float64Observer) error {
 		obsrv.Observe(float64(activeVal), opt)
 		return nil
 	}

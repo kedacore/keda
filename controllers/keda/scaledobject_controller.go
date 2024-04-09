@@ -23,7 +23,6 @@ import (
 	"sync"
 
 	"github.com/go-logr/logr"
-	"github.com/kedacore/keda/v2/pkg/util"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -51,6 +50,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
+	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 // +kubebuilder:rbac:groups=keda.sh,resources=scaledobjects;scaledobjects/finalizers;scaledobjects/status,verbs="*"

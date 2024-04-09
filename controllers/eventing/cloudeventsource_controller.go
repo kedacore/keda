@@ -21,7 +21,6 @@ import (
 	"sync"
 
 	"github.com/go-logr/logr"
-	"github.com/kedacore/keda/v2/pkg/util"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/cache"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -34,6 +33,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/eventemitter"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
+	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 // CloudEventSourceReconciler reconciles a EventSource object

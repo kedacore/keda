@@ -109,7 +109,7 @@ func NewSigV4RoundTripper(config *scalersconfig.ScalerConfig) (http.RoundTripper
 		return nil, err
 	}
 
-	client := amp.NewFromConfig(*awsCfg, func(o *amp.Options) {})
+	client := amp.NewFromConfig(*awsCfg, func(_ *amp.Options) {})
 	rt := &roundTripper{
 		client: client,
 	}

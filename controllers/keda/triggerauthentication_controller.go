@@ -20,7 +20,6 @@ import (
 	"context"
 	"sync"
 
-	"github.com/kedacore/keda/v2/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/record"
@@ -33,6 +32,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
+	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 // TriggerAuthenticationReconciler reconciles a TriggerAuthentication object
