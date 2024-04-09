@@ -335,7 +335,7 @@ func (p *PromMetrics) RecordCloudEventQueueStatus(namespace string, value int) {
 // interceptors to chain to the server so that all requests served are observed. Intended to be called
 // as part of initialization of metricscollector, hence why this function is not exported
 func newPromServerMetrics() *grpcprom.ServerMetrics {
-	metricsNamespace := "keda_metricsservice"
+	metricsNamespace := "keda_internal_metricsservice"
 
 	counterNamespace := func(o *prometheus.CounterOpts) {
 		o.Namespace = metricsNamespace
