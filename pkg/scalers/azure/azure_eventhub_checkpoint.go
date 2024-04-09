@@ -35,29 +35,19 @@ import (
 // goCheckpoint struct to adapt goSdk Checkpoint
 type goCheckpoint struct {
 	Checkpoint struct {
-		SequenceNumber int64  `json:"sequenceNumber"`
-		Offset         string `json:"offset"`
+		SequenceNumber int64 `json:"sequenceNumber"`
 	} `json:"checkpoint"`
 	PartitionID string `json:"partitionId"`
 }
 
-type baseCheckpoint struct {
-	Epoch  int64  `json:"Epoch"`
-	Offset string `json:"Offset"`
-	Owner  string `json:"Owner"`
-	Token  string `json:"Token"`
-}
-
 // Checkpoint in a common format
 type Checkpoint struct {
-	baseCheckpoint
 	PartitionID    string `json:"PartitionId"`
 	SequenceNumber int64  `json:"SequenceNumber"`
 }
 
 // Older python sdk stores the checkpoint differently
 type pythonCheckpoint struct {
-	baseCheckpoint
 	PartitionID    string `json:"partition_id"`
 	SequenceNumber int64  `json:"sequence_number"`
 }
@@ -92,8 +82,8 @@ type defaultCheckpointer struct {
 	containerName string
 }
 
-func NewCheckpoint(offset string, sequenceNumber int64) Checkpoint {
-	return Checkpoint{baseCheckpoint: baseCheckpoint{Offset: offset}, SequenceNumber: sequenceNumber}
+func NewCheckpoint(sequenceNumber int64) Checkpoint {
+	return Checkpoint{SequenceNumber: sequenceNumber}
 }
 
 // GetCheckpointFromBlobStorage reads depending of the CheckpointStrategy the checkpoint from a azure storage
@@ -222,10 +212,7 @@ func newGoSdkCheckpoint(get *azblob.DownloadResponse) (Checkpoint, error) {
 
 	return Checkpoint{
 		SequenceNumber: checkpoint.Checkpoint.SequenceNumber,
-		baseCheckpoint: baseCheckpoint{
-			Offset: checkpoint.Checkpoint.Offset,
-		},
-		PartitionID: checkpoint.PartitionID,
+		PartitionID:    checkpoint.PartitionID,
 	}, nil
 }
 
@@ -316,15 +303,6 @@ func getCheckpointFromStorageMetadata(get *azblob.DownloadResponse, partitionID 
 		} else {
 			return Checkpoint{}, fmt.Errorf("sequencenumber is not a valid int64 value: %w", err)
 		}
-	}
-
-	if offset, ok := metadata["offset"]; ok {
-		if !ok {
-			if offset, ok = metadata["Offset"]; !ok {
-				return Checkpoint{}, fmt.Errorf("offset on blob not found")
-			}
-		}
-		checkpoint.Offset = offset
 	}
 
 	return checkpoint, nil
