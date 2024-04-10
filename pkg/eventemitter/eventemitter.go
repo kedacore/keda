@@ -207,7 +207,7 @@ func (e *EventEmitter) clearEventHandlersCache(cloudEventSource *eventingv1alpha
 	}
 }
 
-// clearEventHandlersCache will check if the event handlers that were created by passing CloudEventSource exist
+// checkIfEventHandlersExist will check if the event handlers that were created by passing CloudEventSource exist
 func (e *EventEmitter) checkIfEventHandlersExist(cloudEventSource *eventingv1alpha1.CloudEventSource) bool {
 	e.eventHandlersCacheLock.RLock()
 	defer e.eventHandlersCacheLock.RUnlock()
