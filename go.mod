@@ -53,6 +53,7 @@ require (
 	github.com/google/go-github/v50 v50.2.0
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud v1.8.0
+	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.0.0
 	github.com/hashicorp/vault/api v1.11.0
 	github.com/influxdata/influxdb-client-go/v2 v2.13.0
 	github.com/jackc/pgx/v5 v5.5.2
@@ -111,6 +112,8 @@ require (
 	sigs.k8s.io/custom-metrics-apiserver v1.28.1-0.20240103150633-c0d09c9b6dd1
 	sigs.k8s.io/kustomize/kustomize/v5 v5.3.0
 )
+
+require github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.0-rc.3 // indirect
 
 replace (
 	// pin k8s.io to v0.28.5

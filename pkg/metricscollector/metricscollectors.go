@@ -16,6 +16,10 @@ limitations under the License.
 
 package metricscollector
 
+import (
+	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
+)
+
 const (
 	ClusterTriggerAuthenticationResource = "cluster_trigger_authentication"
 	TriggerAuthenticationResource        = "trigger_authentication"
@@ -27,7 +31,8 @@ const (
 )
 
 var (
-	collectors []MetricsCollector
+	collectors        []MetricsCollector
+	promServerMetrics *grpcprom.ServerMetrics
 )
 
 type MetricsCollector interface {
@@ -76,6 +81,10 @@ func NewMetricsCollectors(enablePrometheusMetrics bool, enableOpenTelemetryMetri
 	if enablePrometheusMetrics {
 		promometrics := NewPromMetrics()
 		collectors = append(collectors, promometrics)
+
+		if promServerMetrics == nil {
+			promServerMetrics = newPromServerMetrics()
+		}
 	}
 
 	if enableOpenTelemetryMetrics {
@@ -183,4 +192,10 @@ func RecordCloudEventQueueStatus(namespace string, value int) {
 	for _, element := range collectors {
 		element.RecordCloudEventQueueStatus(namespace, value)
 	}
+}
+
+// Returns the ServerMetrics object for GRPC Server metrics. Used to initialize the GRPC server with the proper intercepts
+// Currently, only Prometheus metrics are supported.
+func GetServerMetrics() *grpcprom.ServerMetrics {
+	return promServerMetrics
 }
