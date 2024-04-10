@@ -51,6 +51,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
+	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 // +kubebuilder:rbac:groups=keda.sh,resources=scaledobjects;scaledobjects/finalizers;scaledobjects/status,verbs="*"
@@ -135,6 +136,7 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options cont
 				predicate.GenerationChangedPredicate{},
 			),
 		)).
+		WithEventFilter(util.IgnoreOtherNamespaces()).
 		// Trigger a reconcile only when the HPA spec,label or annotation changes.
 		// Ignore updates to HPA status
 		Owns(&autoscalingv2.HorizontalPodAutoscaler{}, builder.WithPredicates(
