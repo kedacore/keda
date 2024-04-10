@@ -317,9 +317,9 @@ func TestPrometheusScalerExecutePromQuery(t *testing.T) {
 
 			scaler := prometheusScaler{
 				metadata: &prometheusMetadata{
-					serverAddress:    server.URL,
-					ignoreNullValues: testData.ignoreNullValues,
-					unsafeSsl:        testData.unsafeSsl,
+					ServerAddress:    server.URL,
+					IgnoreNullValues: testData.ignoreNullValues,
+					UnsafeSSL:        testData.unsafeSsl,
 				},
 				httpClient: http.DefaultClient,
 				logger:     logr.Discard(),
@@ -366,9 +366,9 @@ func TestPrometheusScalerCustomHeaders(t *testing.T) {
 
 	scaler := prometheusScaler{
 		metadata: &prometheusMetadata{
-			serverAddress:    server.URL,
-			customHeaders:    customHeadersValue,
-			ignoreNullValues: testData.ignoreNullValues,
+			ServerAddress:    server.URL,
+			CustomHeaders:    customHeadersValue,
+			IgnoreNullValues: testData.ignoreNullValues,
 		},
 		httpClient: http.DefaultClient,
 	}
@@ -410,9 +410,9 @@ func TestPrometheusScalerExecutePromQueryParameters(t *testing.T) {
 	}))
 	scaler := prometheusScaler{
 		metadata: &prometheusMetadata{
-			serverAddress:    server.URL,
-			queryParameters:  queryParametersValue,
-			ignoreNullValues: testData.ignoreNullValues,
+			ServerAddress:    server.URL,
+			QueryParameters:  queryParametersValue,
+			IgnoreNullValues: testData.ignoreNullValues,
 		},
 		httpClient: http.DefaultClient,
 	}
