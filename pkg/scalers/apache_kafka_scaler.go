@@ -417,6 +417,7 @@ func parseApacheKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Lo
 	if activationLagThreshold.(int64) < 0 {
 		return meta, fmt.Errorf("%q must be positive number", activationLagThresholdMetricName)
 	}
+	meta.activationLagThreshold = activationLagThreshold.(int64)
 
 	if err := parseApacheKafkaAuthParams(config, &meta); err != nil {
 		return meta, err
