@@ -217,7 +217,7 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 					scalingMutex.Lock()
 					switch obj := scalableObject.(type) {
 					case *kedav1alpha1.ScaledObject:
-						h.scaleExecutor.RequestScale(ctx, obj, active, false)
+						h.scaleExecutor.RequestScale(ctx, obj, active, false, &executor.ScaleExecutorOptions{})
 					case *kedav1alpha1.ScaledJob:
 						logger.Info("Warning: External Push Scaler does not support ScaledJob", "object", scalableObject)
 					}
@@ -240,13 +240,13 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 			log.Error(err, "error getting scaledObject", "object", scalableObject)
 			return
 		}
-		isActive, isError, metricsRecords, err := h.getScaledObjectState(ctx, obj)
+		isActive, isError, metricsRecords, activeTriggers, err := h.getScaledObjectState(ctx, obj)
 		if err != nil {
 			log.Error(err, "error getting state of scaledObject", "scaledObject.Namespace", obj.Namespace, "scaledObject.Name", obj.Name)
 			return
 		}
 
-		h.scaleExecutor.RequestScale(ctx, obj, isActive, isError)
+		h.scaleExecutor.RequestScale(ctx, obj, isActive, isError, &executor.ScaleExecutorOptions{ActiveTriggers: activeTriggers})
 
 		if len(metricsRecords) > 0 {
 			log.V(1).Info("Storing metrics to cache", "scaledObject.Namespace", obj.Namespace, "scaledObject.Name", obj.Name, "metricsRecords", metricsRecords)
@@ -591,7 +591,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 // the second return value indicates whether there was any error during querying scalers,
 // the third return value is a map of metrics record - a metric value for each scaler and its metric
 // the fourth return value contains error if is not able to access scalers cache
-func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) (bool, bool, map[string]metricscache.MetricsRecord, error) {
+func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) (bool, bool, map[string]metricscache.MetricsRecord, []string, error) {
 	logger := log.WithValues("scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
 
 	isScaledObjectActive := false
@@ -599,11 +599,12 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	metricsRecord := map[string]metricscache.MetricsRecord{}
 	metricTriggerPairList := make(map[string]string)
 	var matchingMetrics []external_metrics.ExternalMetricValue
+	var activeTriggers []string
 
 	cache, err := h.GetScalersCache(ctx, scaledObject)
 	metricscollector.RecordScaledObjectError(scaledObject.Namespace, scaledObject.Name, err)
 	if err != nil {
-		return false, true, map[string]metricscache.MetricsRecord{}, fmt.Errorf("error getting scalers cache %w", err)
+		return false, true, map[string]metricscache.MetricsRecord{}, []string{}, fmt.Errorf("error getting scalers cache %w", err)
 	}
 
 	// count the number of non-external triggers (cpu/mem) in order to check for
@@ -634,8 +635,9 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	for result := range results {
 		if result.IsActive {
 			isScaledObjectActive = true
+			activeTriggers = append(activeTriggers, result.TriggerName)
 		}
-		if result.IsError {
+		if result.Err != nil {
 			isScaledObjectError = true
 		}
 		matchingMetrics = append(matchingMetrics, result.Metrics...)
@@ -645,6 +647,8 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 		for k, v := range result.Records {
 			metricsRecord[k] = v
 		}
+
+		metricscollector.RecordScaledObjectError(scaledObject.Namespace, scaledObject.Name, result.Err)
 	}
 
 	// invalidate the cache for the ScaledObject, if we hit an error in any scaler
@@ -664,12 +668,13 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	if scaledObject.IsUsingModifiers() {
 		// we need to reset the activity even if there is an error
 		isScaledObjectActive = false
+		activeTriggers = []string{}
 		if !isScaledObjectError {
 			activationValue := float64(0)
 			if scaledObject.Spec.Advanced.ScalingModifiers.ActivationTarget != "" {
 				targetValue, err := strconv.ParseFloat(scaledObject.Spec.Advanced.ScalingModifiers.ActivationTarget, 64)
 				if err != nil {
-					return false, true, metricsRecord, fmt.Errorf("scalingModifiers.ActivationTarget parsing error %w", err)
+					return false, true, metricsRecord, []string{}, fmt.Errorf("scalingModifiers.ActivationTarget parsing error %w", err)
 				}
 				activationValue = targetValue
 			}
@@ -680,6 +685,10 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 				metricscollector.RecordScalerActive(scaledObject.Namespace, scaledObject.Name, kedav1alpha1.CompositeMetricName, 0, metric.MetricName, true, value > activationValue)
 				if !isScaledObjectActive {
 					isScaledObjectActive = value > activationValue
+
+					if isScaledObjectActive {
+						activeTriggers = append(activeTriggers, "ModifiersTrigger")
+					}
 				}
 			}
 		}
@@ -690,7 +699,7 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	if len(scaledObject.Spec.Triggers) <= cpuMemCount && !isScaledObjectError {
 		isScaledObjectActive = true
 	}
-	return isScaledObjectActive, isScaledObjectError, metricsRecord, err
+	return isScaledObjectActive, isScaledObjectError, metricsRecord, activeTriggers, err
 }
 
 // scalerState is used as return
@@ -699,11 +708,12 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 // info for calculating the ScaledObjectState
 type scalerState struct {
 	// IsActive will be overrided by formula calculation
-	IsActive bool
-	IsError  bool
-	Metrics  []external_metrics.ExternalMetricValue
-	Pairs    map[string]string
-	Records  map[string]metricscache.MetricsRecord
+	IsActive    bool
+	TriggerName string
+	Metrics     []external_metrics.ExternalMetricValue
+	Pairs       map[string]string
+	Records     map[string]metricscache.MetricsRecord
+	Err         error
 }
 
 // getScalerState returns getStateScalerResult with the state
@@ -713,22 +723,23 @@ type scalerState struct {
 func (*scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler, triggerIndex int, scalerConfig scalersconfig.ScalerConfig,
 	cache *cache.ScalersCache, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) scalerState {
 	result := scalerState{
-		IsActive: false,
-		IsError:  false,
-		Metrics:  []external_metrics.ExternalMetricValue{},
-		Pairs:    map[string]string{},
-		Records:  map[string]metricscache.MetricsRecord{},
+		IsActive:    false,
+		Err:         nil,
+		TriggerName: "",
+		Metrics:     []external_metrics.ExternalMetricValue{},
+		Pairs:       map[string]string{},
+		Records:     map[string]metricscache.MetricsRecord{},
 	}
 
-	triggerName := strings.Replace(fmt.Sprintf("%T", scaler), "*scalers.", "", 1)
+	result.TriggerName = strings.Replace(fmt.Sprintf("%T", scaler), "*scalers.", "", 1)
 	if scalerConfig.TriggerName != "" {
-		triggerName = scalerConfig.TriggerName
+		result.TriggerName = scalerConfig.TriggerName
 	}
 
 	metricSpecs, err := cache.GetMetricSpecForScalingForScaler(ctx, triggerIndex)
 	if err != nil {
-		result.IsError = true
-		logger.Error(err, "error getting metric spec for the scaler", "scaler", triggerName)
+		result.Err = err
+		logger.Error(err, "error getting metric spec for the scaler", "scaler", result.TriggerName)
 		cache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 	}
 
@@ -741,12 +752,12 @@ func (*scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler, 
 
 		var latency int64
 		metrics, isMetricActive, latency, err := cache.GetMetricsAndActivityForScaler(ctx, triggerIndex, metricName)
-		metricscollector.RecordScalerError(scaledObject.Namespace, scaledObject.Name, triggerName, triggerIndex, metricName, true, err)
+		metricscollector.RecordScalerError(scaledObject.Namespace, scaledObject.Name, result.TriggerName, triggerIndex, metricName, true, err)
 		if latency != -1 {
-			metricscollector.RecordScalerLatency(scaledObject.Namespace, scaledObject.Name, triggerName, triggerIndex, metricName, true, float64(latency))
+			metricscollector.RecordScalerLatency(scaledObject.Namespace, scaledObject.Name, result.TriggerName, triggerIndex, metricName, true, float64(latency))
 		}
 		result.Metrics = append(result.Metrics, metrics...)
-		logger.V(1).Info("Getting metrics and activity from scaler", "scaler", triggerName, "metricName", metricName, "metrics", metrics, "activity", isMetricActive, "scalerError", err)
+		logger.V(1).Info("Getting metrics and activity from scaler", "scaler", result.TriggerName, "metricName", metricName, "metrics", metrics, "activity", isMetricActive, "scalerError", err)
 
 		if scalerConfig.TriggerUseCachedMetrics {
 			result.Records[metricName] = metricscache.MetricsRecord{
@@ -757,30 +768,30 @@ func (*scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler, 
 		}
 
 		if err != nil {
-			result.IsError = true
+			result.Err = err
 			if scaledObject.IsUsingModifiers() {
-				logger.Error(err, "error getting metric source", "source", triggerName)
+				logger.Error(err, "error getting metric source", "source", result.TriggerName)
 				cache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAMetricSourceFailed, err.Error())
 			} else {
-				logger.Error(err, "error getting scale decision", "scaler", triggerName)
+				logger.Error(err, "error getting scale decision", "scaler", result.TriggerName)
 				cache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 			}
 		} else {
 			result.IsActive = isMetricActive
 			for _, metric := range metrics {
 				metricValue := metric.Value.AsApproximateFloat64()
-				metricscollector.RecordScalerMetric(scaledObject.Namespace, scaledObject.Name, triggerName, triggerIndex, metric.MetricName, true, metricValue)
+				metricscollector.RecordScalerMetric(scaledObject.Namespace, scaledObject.Name, result.TriggerName, triggerIndex, metric.MetricName, true, metricValue)
 			}
 			if !scaledObject.IsUsingModifiers() {
 				if isMetricActive {
 					if spec.External != nil {
-						logger.V(1).Info("Scaler for scaledObject is active", "scaler", triggerName, "metricName", metricName)
+						logger.V(1).Info("Scaler for scaledObject is active", "scaler", result.TriggerName, "metricName", metricName)
 					}
 					if spec.Resource != nil {
-						logger.V(1).Info("Scaler for scaledObject is active", "scaler", triggerName, "metricName", spec.Resource.Name)
+						logger.V(1).Info("Scaler for scaledObject is active", "scaler", result.TriggerName, "metricName", spec.Resource.Name)
 					}
 				}
-				metricscollector.RecordScalerActive(scaledObject.Namespace, scaledObject.Name, triggerName, triggerIndex, metricName, true, isMetricActive)
+				metricscollector.RecordScalerActive(scaledObject.Namespace, scaledObject.Name, result.TriggerName, triggerIndex, metricName, true, isMetricActive)
 			}
 		}
 

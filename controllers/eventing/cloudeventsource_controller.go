@@ -33,6 +33,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/eventemitter"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
+	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 // CloudEventSourceReconciler reconciles a EventSource object
@@ -115,6 +116,7 @@ func (r *CloudEventSourceReconciler) Reconcile(ctx context.Context, req ctrl.Req
 func (r *CloudEventSourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&eventingv1alpha1.CloudEventSource{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		WithEventFilter(util.IgnoreOtherNamespaces()).
 		Complete(r)
 }
 
