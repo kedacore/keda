@@ -38,23 +38,17 @@ type GrpcClient struct {
 }
 
 func NewGrpcClient(url, certDir, authority string, clientMetrics *grpcprom.ClientMetrics) (*GrpcClient, error) {
-	defaultConfig := fmt.Sprintf(`{
-			"methodConfig": [{
-				"timeout": "3s",
-				"waitForReady": true,
-				"retryPolicy": {
-					"InitialBackoff": ".25s",
-					"MaxBackoff": "2.0s",
-					"BackoffMultiplier": 2,
-					"RetryableStatusCodes": [ "UNAVAILABLE" ]
-				}
-			}],
-			"loadBalancingPolicy": "round_robin",
-			"healthCheckConfig": {
-				"serviceName": "%s"
-			}
-		}`,
-		api.MetricsService_ServiceDesc.ServiceName)
+	defaultConfig := `{
+		"methodConfig": [{
+		  "timeout": "3s",
+		  "waitForReady": true,
+		  "retryPolicy": {
+			  "InitialBackoff": ".25s",
+			  "MaxBackoff": "2.0s",
+			  "BackoffMultiplier": 2,
+			  "RetryableStatusCodes": [ "UNAVAILABLE" ]
+		  }
+		}]}`
 
 	creds, err := utils.LoadGrpcTLSCredentials(certDir, false)
 	if err != nil {
