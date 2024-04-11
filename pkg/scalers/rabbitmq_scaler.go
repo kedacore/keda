@@ -91,8 +91,10 @@ type rabbitMQMetadata struct {
 	unsafeSsl   bool
 
 	// token provider for azure AD
-	workloadIdentityClientID string
-	workloadIdentityResource string
+	workloadIdentityClientID      string
+	workloadIdentityTenantID      string
+	workloadIdentityAuthorityHost string
+	workloadIdentityResource      string
 }
 
 type queueInfo struct {
@@ -134,6 +136,14 @@ func NewRabbitMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 	s.metadata = meta
 	s.httpClient = kedautil.CreateHTTPClient(meta.timeout, meta.unsafeSsl)
+
+	if meta.enableTLS {
+		tlsConfig, tlsErr := kedautil.NewTLSConfigWithPassword(meta.cert, meta.key, meta.keyPassword, meta.ca, meta.unsafeSsl)
+		if tlsErr != nil {
+			return nil, tlsErr
+		}
+		s.httpClient.Transport = kedautil.CreateHTTPTransportWithTLSConfig(tlsConfig)
+	}
 
 	if meta.protocol == amqpProtocol {
 		// Override vhost if requested.
@@ -244,6 +254,7 @@ func parseRabbitMQMetadata(config *scalersconfig.ScalerConfig) (*rabbitMQMetadat
 	if config.PodIdentity.Provider == v1alpha1.PodIdentityProviderAzureWorkload {
 		if config.AuthParams["workloadIdentityResource"] != "" {
 			meta.workloadIdentityClientID = config.PodIdentity.GetIdentityID()
+			meta.workloadIdentityTenantID = config.PodIdentity.GetIdentityTenantID()
 			meta.workloadIdentityResource = config.AuthParams["workloadIdentityResource"]
 		}
 	}
@@ -510,7 +521,7 @@ func getJSON(ctx context.Context, s *rabbitMQScaler, url string) (queueInfo, err
 
 	if s.metadata.workloadIdentityResource != "" {
 		if s.azureOAuth == nil {
-			s.azureOAuth = azure.NewAzureADWorkloadIdentityTokenProvider(ctx, s.metadata.workloadIdentityClientID, s.metadata.workloadIdentityResource)
+			s.azureOAuth = azure.NewAzureADWorkloadIdentityTokenProvider(ctx, s.metadata.workloadIdentityClientID, s.metadata.workloadIdentityTenantID, s.metadata.workloadIdentityAuthorityHost, s.metadata.workloadIdentityResource)
 		}
 
 		err = s.azureOAuth.Refresh()

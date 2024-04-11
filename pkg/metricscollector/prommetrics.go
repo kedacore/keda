@@ -20,6 +20,7 @@ import (
 	"runtime"
 	"strconv"
 
+	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
@@ -328,4 +329,30 @@ func (p *PromMetrics) RecordCloudEventEmittedError(namespace string, cloudevents
 // RecordCloudEventQueueStatus record the number of cloudevents that are waiting for emitting
 func (p *PromMetrics) RecordCloudEventQueueStatus(namespace string, value int) {
 	cloudeventQueueStatus.With(prometheus.Labels{"namespace": namespace}).Set(float64(value))
+}
+
+// Returns a grpcprom server Metrics object and registers the metrics. The object contains
+// interceptors to chain to the server so that all requests served are observed. Intended to be called
+// as part of initialization of metricscollector, hence why this function is not exported
+func newPromServerMetrics() *grpcprom.ServerMetrics {
+	metricsNamespace := "keda_internal_metricsservice"
+
+	counterNamespace := func(o *prometheus.CounterOpts) {
+		o.Namespace = metricsNamespace
+	}
+
+	histogramNamespace := func(o *prometheus.HistogramOpts) {
+		o.Namespace = metricsNamespace
+	}
+
+	serverMetrics := grpcprom.NewServerMetrics(
+		grpcprom.WithServerHandlingTimeHistogram(
+			grpcprom.WithHistogramBuckets([]float64{0.001, 0.01, 0.1, 0.3, 0.6, 1, 3, 6, 9, 20, 30, 60, 90, 120}),
+			histogramNamespace,
+		),
+		grpcprom.WithServerCounterOptions(counterNamespace),
+	)
+	metrics.Registry.MustRegister(serverMetrics)
+
+	return serverMetrics
 }

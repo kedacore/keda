@@ -16,6 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.13.1](#v2131)
 - [v2.13.0](#v2130)
 - [v2.12.1](#v2121)
 - [v2.12.0](#v2120)
@@ -52,7 +53,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Provide capability to filter CloudEvents ([#3533](https://github.com/kedacore/keda/issues/3533))
+- **NATS Scaler**: Add TLS authentication ([#2296](https://github.com/kedacore/keda/issues/2296))
 
 #### Experimental
 
@@ -62,15 +64,28 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 
+- **General**: Add active trigger name in ScaledObject's scale out event ([#5577](https://github.com/kedacore/keda/issues/5577))
 - **General**: Add command-line flag in Adapter to allow override of gRPC Authority Header ([#5449](https://github.com/kedacore/keda/issues/5449))
+- **General**: Add GRPC Client and Server metrics ([#5502](https://github.com/kedacore/keda/issues/5502))
+- **General**: Add GRPC Healthchecks ([#5590](https://github.com/kedacore/keda/issues/5590))
 - **General**: Add OPENTELEMETRY flag in e2e test YAML ([#5375](https://github.com/kedacore/keda/issues/5375))
 - **General**: Add `validations.keda.sh/hpa-ownership` annotation to HPA to disable ownership validation ([#5516](https://github.com/kedacore/keda/issues/5516))
+- **General**: Add support for cross tenant/cloud authentication when using Azure Workload Identity for TriggerAuthentication ([#5441](https://github.com/kedacore/keda/issues/5441))
+- **General**: Support csv-format for WATCH_NAMESPACE env var ([#5670](https://github.com/kedacore/keda/issues/5670))
+- **Azure Event Hub Scaler**: Remove usage of checkpoint offsets to account for SDK checkpointing implementation changes ([#5574](https://github.com/kedacore/keda/issues/5574))
+- **GCP Stackdriver Scaler**: Add missing parameters 'rate' and 'count' for GCP Stackdriver Scaler alignment ([#5633](https://github.com/kedacore/keda/issues/5633))
+- **Metrics API Scaler**: Add support for various formats: json, xml, yaml, prometheus ([#2633](https://github.com/kedacore/keda/issues/2633))
+- **MongoDB Scaler**: Add scheme field support srv record ([#5544](https://github.com/kedacore/keda/issues/5544))
 
 ### Fixes
 
-- **GCP Scalers**: Properly close the connection during the scaler cleaning process ([#5448](https://github.com/kedacore/keda/issues/5448))
-- **GCP Scalers**: Restore previous time horizon to prevent querying issues ([#5429](https://github.com/kedacore/keda/issues/5429))
-- **Prometheus Scaler**: Fix for missing AWS region from metadata ([#5419](https://github.com/kedacore/keda/issues/5419))
+- **General**: Fix CVE-2024-28180 in github.com/go-jose/go-jose/v3 ([#5617](https://github.com/kedacore/keda/pull/5617))
+- **General**: Log field `ScaledJob` no longer have conflicting types ([#5592](https://github.com/kedacore/keda/pull/5592))
+- **General**: Prometheus metrics shows errors correctly ([#5597](https://github.com/kedacore/keda/issues/5597)|[#5663](https://github.com/kedacore/keda/issues/5663))
+- **General**: Validate empty array value of triggers in ScaledObject/ScaledJob creation ([#5520](https://github.com/kedacore/keda/issues/5520))
+- **GitHub Runner Scaler**: Fixed `in_progress` detection on running jobs instead of just `queued` ([#5604](https://github.com/kedacore/keda/issues/5604))
+- **New Relic Scaler**: Consider empty results set from query executer ([#5619](https://github.com/kedacore/keda/pull/5619))
+- **RabbitMQ Scaler**: HTTP Connections respect TLS configuration ([#5668](https://github.com/kedacore/keda/issues/5668))
 
 ### Deprecations
 
@@ -86,10 +101,21 @@ New deprecation(s):
 
 ### Other
 
+- **General**: Allow E2E tests to be run against existing KEDA and/or Kafka installation ([#5595](https://github.com/kedacore/keda/pull/5595))
 - **General**: Improve readability of utility function getParameterFromConfigV2 ([#5037](https://github.com/kedacore/keda/issues/5037))
-- **General**: Introduce ENABLE_OPENTELEMETRY in deploying/testing process  ([#5375](https://github.com/kedacore/keda/issues/5375))
+- **General**: Introduce ENABLE_OPENTELEMETRY in deploying/testing process  ([#5375](https://github.com/kedacore/keda/issues/5375)|[#5578](https://github.com/kedacore/keda/issues/5578))
 - **General**: Migrate away from unmaintained golang/mock and use uber/gomock ([#5440](https://github.com/kedacore/keda/issues/5440))
 - **General**: Minor refactor to reduce copy/paste code in ScaledObject webhook ([#5397](https://github.com/kedacore/keda/issues/5397))
+- **Kafka**: Expose GSSAPI service name  ([#5474](https://github.com/kedacore/keda/issues/5474))
+
+## v2.13.1
+
+### Fixes
+
+- **General**: Fix release asset should specify the version in `keda-*-core.yaml`([#5484](https://github.com/kedacore/keda/issues/5484))
+- **GCP Scalers**: Properly close the connection during the scaler cleaning process ([#5448](https://github.com/kedacore/keda/issues/5448))
+- **GCP Scalers**: Restore previous time horizon to prevent querying issues ([#5429](https://github.com/kedacore/keda/issues/5429))
+- **Prometheus Scaler**: Fix for missing AWS region from metadata ([#5419](https://github.com/kedacore/keda/issues/5419))
 
 ## v2.13.0
 
@@ -139,7 +165,6 @@ Here is an overview of all new **experimental** features:
 - **General**: Fix CVE-2023-39325 in golang.org/x/net ([#5122](https://github.com/kedacore/keda/issues/5122))
 - **General**: Fix otelgrpc DoS vulnerability ([#5208](https://github.com/kedacore/keda/issues/5208))
 - **General**: Fix Pod identity not being considered when scaled target is a CRD ([#5021](https://github.com/kedacore/keda/issues/5021))
-- **General**: Fix release asset should specify the version in `keda-*-core.yaml`([#5484](https://github.com/kedacore/keda/issues/5484))
 - **General**: Prevented memory leak generated by not correctly cleaning http connections ([#5248](https://github.com/kedacore/keda/issues/5248))
 - **General**: Prevented stuck status due to timeouts during scalers generation ([#5083](https://github.com/kedacore/keda/issues/5083))
 - **General**: ScaledObject Validating Webhook should support `dry-run=server` requests ([#5306](https://github.com/kedacore/keda/issues/5306))

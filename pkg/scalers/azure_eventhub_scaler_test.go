@@ -211,51 +211,51 @@ var parseEventHubMetadataDatasetWithPodIdentity = []parseEventHubMetadataTestDat
 
 var calculateUnprocessedEventsDataset = []calculateUnprocessedEventsTestData{
 	{
-		checkpoint:        azure.NewCheckpoint("1", 5),
-		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 10, LastEnqueuedOffset: "2"},
+		checkpoint:        azure.NewCheckpoint(5),
+		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 10},
 		unprocessedEvents: 5,
 	},
 	{
-		checkpoint:        azure.NewCheckpoint("1002", 4611686018427387903),
-		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 4611686018427387905, LastEnqueuedOffset: "1000"},
+		checkpoint:        azure.NewCheckpoint(4611686018427387903),
+		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 4611686018427387905},
 		unprocessedEvents: 2,
 	},
 	{
-		checkpoint:        azure.NewCheckpoint("900", 4611686018427387900),
-		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 4611686018427387905, LastEnqueuedOffset: "1000"},
+		checkpoint:        azure.NewCheckpoint(4611686018427387900),
+		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 4611686018427387905},
 		unprocessedEvents: 5,
 	},
 	{
-		checkpoint:        azure.NewCheckpoint("800", 4000000000000200000),
-		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 4000000000000000000, LastEnqueuedOffset: "750"},
+		checkpoint:        azure.NewCheckpoint(4000000000000200000),
+		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 4000000000000000000},
 		unprocessedEvents: 9223372036854575807,
 	},
 	// Empty checkpoint
 	{
-		checkpoint:        azure.NewCheckpoint("", 0),
-		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 1, LastEnqueuedOffset: "1"},
-		unprocessedEvents: 2,
+		checkpoint:        azure.NewCheckpoint(0),
+		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 1},
+		unprocessedEvents: 1,
 	},
 	// Stale PartitionInfo
 	{
-		checkpoint:        azure.NewCheckpoint("5", 15),
-		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 10, LastEnqueuedOffset: "2"},
+		checkpoint:        azure.NewCheckpoint(15),
+		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 10},
 		unprocessedEvents: 0,
 	},
 	{
-		checkpoint:        azure.NewCheckpoint("1000", 4611686018427387910),
-		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 4611686018427387905, LastEnqueuedOffset: "900"},
+		checkpoint:        azure.NewCheckpoint(4611686018427387910),
+		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 4611686018427387905},
 		unprocessedEvents: 0,
 	},
 	{
-		checkpoint:        azure.NewCheckpoint("1", 5),
-		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 9223372036854775797, LastEnqueuedOffset: "10000"},
+		checkpoint:        azure.NewCheckpoint(5),
+		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 9223372036854775797},
 		unprocessedEvents: 0,
 	},
 	// Circular buffer reset
 	{
-		checkpoint:        azure.NewCheckpoint("100000", 9223372036854775797),
-		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 5, LastEnqueuedOffset: "1"},
+		checkpoint:        azure.NewCheckpoint(9223372036854775797),
+		partitionInfo:     &eventhub.HubPartitionRuntimeInformation{LastSequenceNumber: 5},
 		unprocessedEvents: 15,
 	},
 }
