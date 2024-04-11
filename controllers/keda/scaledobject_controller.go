@@ -19,7 +19,6 @@ package keda
 import (
 	"context"
 	"fmt"
-	"github.com/kedacore/keda/v2/pkg/fallback"
 	"strconv"
 	"sync"
 
@@ -48,6 +47,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/common/message"
 	"github.com/kedacore/keda/v2/pkg/eventemitter"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
+	"github.com/kedacore/keda/v2/pkg/fallback"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
