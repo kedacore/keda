@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package aws_cloudwatch_error_null_metric_values_test
+package aws_cloudwatch_ignore_null_values_false
 
 import (
 	"context"
@@ -27,7 +27,7 @@ import (
 var _ = godotenv.Load("../../../.env")
 
 const (
-	testName = "aws-cloudwatch-error-null-metrics-test"
+	testName = "aws-cloudwatch-ignore-null-values-false-test"
 )
 
 type templateData struct {
@@ -121,7 +121,7 @@ spec:
         metricName: {{.CloudWatchMetricName}}
         targetMetricValue: "1"
         minMetricValue: "1"
-        errorWhenNullValues: "true"
+        ignoreNullValues: "false"
         metricCollectionTime: "120"
         metricStatPeriod: "60"
 `
@@ -142,7 +142,9 @@ var (
 	minReplicaCount                = 0
 )
 
-func TestCloudWatchScalerWithErrorWhenNullValues(t *testing.T) {
+// This test is to verify that the scaler results in an error state when
+// the metric query returns null values and the ignoreNullValues is set to false.
+func TestCloudWatchScalerWithIgnoreNullValuesFalse(t *testing.T) {
 	// setup cloudwatch
 	cloudwatchClient := createCloudWatchClient()
 

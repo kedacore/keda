@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package aws_cloudwatch_min_value_null_values_test
+package aws_cloudwatch_min_metric_value
 
 import (
 	"context"
@@ -27,7 +27,7 @@ import (
 var _ = godotenv.Load("../../../.env")
 
 const (
-	testName = "aws-cloudwatch-min-value-null-metrics-test"
+	testName = "aws-cloudwatch-min-metric-value-test"
 )
 
 type templateData struct {
@@ -142,7 +142,9 @@ var (
 	minMetricValueReplicaCount     = 1
 )
 
-func TestCloudWatchScalerWithMinValueWhenNullValues(t *testing.T) {
+// This test is to verify that the scaler returns the minMetricValue when the metric
+// value is null and ignoreNullValues is set to true.
+func TestCloudWatchScalerWithMinMetricValue(t *testing.T) {
 	// setup cloudwatch
 	cloudwatchClient := createCloudWatchClient()
 

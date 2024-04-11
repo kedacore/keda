@@ -427,56 +427,56 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		testAWSAuthentication, true,
 		"unsupported metricUnit",
 	},
-	// test errorWhenNullValues is false
+	// test ignoreNullValues is false
 	{
 		map[string]string{
-			"namespace":           "AWS/SQS",
-			"dimensionName":       "QueueName",
-			"dimensionValue":      "keda",
-			"metricName":          "ApproximateNumberOfMessagesVisible",
-			"targetMetricValue":   "2",
-			"minMetricValue":      "0",
-			"metricStatPeriod":    "60",
-			"metricStat":          "Average",
-			"errorWhenNullValues": "false",
-			"awsRegion":           "eu-west-1",
+			"namespace":         "AWS/SQS",
+			"dimensionName":     "QueueName",
+			"dimensionValue":    "keda",
+			"metricName":        "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue": "2",
+			"minMetricValue":    "0",
+			"metricStatPeriod":  "60",
+			"metricStat":        "Average",
+			"ignoreNullValues":  "false",
+			"awsRegion":         "eu-west-1",
 		},
 		testAWSAuthentication, false,
-		"with errorWhenNullValues set to false",
+		"with ignoreNullValues set to false",
 	},
-	// test errorWhenNullValues is true
+	// test ignoreNullValues is true
 	{
 		map[string]string{
-			"namespace":           "AWS/SQS",
-			"dimensionName":       "QueueName",
-			"dimensionValue":      "keda",
-			"metricName":          "ApproximateNumberOfMessagesVisible",
-			"targetMetricValue":   "2",
-			"minMetricValue":      "0",
-			"metricStatPeriod":    "60",
-			"metricStat":          "Average",
-			"errorWhenNullValues": "true",
-			"awsRegion":           "eu-west-1",
+			"namespace":         "AWS/SQS",
+			"dimensionName":     "QueueName",
+			"dimensionValue":    "keda",
+			"metricName":        "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue": "2",
+			"minMetricValue":    "0",
+			"metricStatPeriod":  "60",
+			"metricStat":        "Average",
+			"ignoreNullValues":  "true",
+			"awsRegion":         "eu-west-1",
 		},
 		testAWSAuthentication, false,
-		"with errorWhenNullValues set to true",
+		"with ignoreNullValues set to true",
 	},
-	// test errorWhenNullValues is incorrect
+	// test ignoreNullValues is incorrect
 	{
 		map[string]string{
-			"namespace":           "AWS/SQS",
-			"dimensionName":       "QueueName",
-			"dimensionValue":      "keda",
-			"metricName":          "ApproximateNumberOfMessagesVisible",
-			"targetMetricValue":   "2",
-			"minMetricValue":      "0",
-			"metricStatPeriod":    "60",
-			"metricStat":          "Average",
-			"errorWhenNullValues": "maybe",
-			"awsRegion":           "eu-west-1",
+			"namespace":         "AWS/SQS",
+			"dimensionName":     "QueueName",
+			"dimensionValue":    "keda",
+			"metricName":        "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue": "2",
+			"minMetricValue":    "0",
+			"metricStatPeriod":  "60",
+			"metricStat":        "Average",
+			"ignoreNullValues":  "maybe",
+			"awsRegion":         "eu-west-1",
 		},
 		testAWSAuthentication, true,
-		"unsupported value for errorWhenNullValues",
+		"unsupported value for ignoreNullValues",
 	},
 }
 
@@ -542,6 +542,7 @@ var awsCloudwatchGetMetricTestData = []awsCloudwatchMetadata{
 		dimensionValue:       []string{"DIM_VALUE"},
 		targetMetricValue:    100,
 		minMetricValue:       0,
+		ignoreNullValues:     true,
 		metricCollectionTime: 60,
 		metricStat:           "Average",
 		metricUnit:           "",
@@ -566,7 +567,7 @@ var awsCloudwatchGetMetricTestData = []awsCloudwatchMetadata{
 		awsAuthorization:     awsutils.AuthorizationMetadata{PodIdentityOwner: false},
 		triggerIndex:         0,
 	},
-	// Test for metric with no data
+	// Test for metric with no data, no error expected as we are ignoring null values
 	{
 		namespace:            "Custom",
 		metricsName:          testAWSCloudwatchEmptyValues,
@@ -574,7 +575,7 @@ var awsCloudwatchGetMetricTestData = []awsCloudwatchMetadata{
 		dimensionValue:       []string{"DIM_VALUE"},
 		targetMetricValue:    100,
 		minMetricValue:       0,
-		errorWhenNullValues:  false,
+		ignoreNullValues:     true,
 		metricCollectionTime: 60,
 		metricStat:           "Average",
 		metricUnit:           "",
@@ -592,7 +593,7 @@ var awsCloudwatchGetMetricTestData = []awsCloudwatchMetadata{
 		dimensionValue:       []string{"DIM_VALUE"},
 		targetMetricValue:    100,
 		minMetricValue:       0,
-		errorWhenNullValues:  true,
+		ignoreNullValues:     false,
 		metricCollectionTime: 60,
 		metricStat:           "Average",
 		metricUnit:           "",
@@ -674,10 +675,10 @@ func TestAWSCloudwatchScalerGetMetrics(t *testing.T) {
 		case testAWSCloudwatchNoValueMetric:
 			assert.NoError(t, err, "dont expect error when returning empty metric list from cloudwatch")
 		case testAWSCloudwatchEmptyValues:
-			if meta.errorWhenNullValues {
-				assert.Error(t, err, "expect error when returning empty metric list from cloudwatch, because errorWhenNullValues is true")
-			} else {
+			if meta.ignoreNullValues {
 				assert.NoError(t, err, "dont expect error when returning empty metric list from cloudwatch")
+			} else {
+				assert.Error(t, err, "expect error when returning empty metric list from cloudwatch, because ignoreNullValues is false")
 			}
 		default:
 			assert.EqualValues(t, int64(10.0), value[0].Value.Value())
