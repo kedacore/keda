@@ -125,8 +125,25 @@ func (s *dynatraceScaler) Close(context.Context) error {
 	return nil
 }
 
+// Validate that response object contains the minimum expected structure
+// as per https://docs.dynatrace.com/docs/dynatrace-api/environment-api/metric-v2/get-data-points#definition--MetricData
+func validateDynatraceResponse(response *dynatraceResponse) error {
+	if len(response.Result) == 0 {
+		return errors.New("dynatrace response does not contain any results")
+	}
+	if len(response.Result[0].Data) == 0 {
+		return errors.New("dynatrace response does not contain any metric series")
+	}
+	if len(response.Result[0].Data[0].Values) == 0 {
+		return errors.New("dynatrace response does not contain any values for the metric series")
+	}
+	return nil
+}
+
 func (s *dynatraceScaler) GetMetricValue(ctx context.Context) (float64, error) {
-	// BUILD REQUEST
+	/*
+	 * Build request
+	 */
 	var req *http.Request
 	var err error
 
@@ -138,7 +155,9 @@ func (s *dynatraceScaler) GetMetricValue(ctx context.Context) (float64, error) {
 	// Authentication header as per https://docs.dynatrace.com/docs/dynatrace-api/basics/dynatrace-api-authentication#authenticate
 	req.Header.Add("Authorization", fmt.Sprintf("Api-Token %s", s.metadata.apiKey))
 
-	// EXECUTE REQUEST
+	/*
+	 * Execute request
+	 */
 	r, err := s.httpClient.Do(req)
 	if err != nil {
 		return 0, err
@@ -150,7 +169,9 @@ func (s *dynatraceScaler) GetMetricValue(ctx context.Context) (float64, error) {
 		return 0, errors.New(msg)
 	}
 
-	// PARSE RESPONSE
+	/*
+	 * Parse response
+	 */
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		return 0, err
@@ -161,17 +182,11 @@ func (s *dynatraceScaler) GetMetricValue(ctx context.Context) (float64, error) {
 		return -1, fmt.Errorf("unable to parse Dynatrace Metric Data Points API response: %w", err)
 	}
 
-	// VALIDATE RESPONSE CONTENT
+	err = validateDynatraceResponse(dynatraceResponse)
+	if err != nil {
+		return 0, err
+	}
 
-	if len(dynatraceResponse.Result) > 1 {
-		s.logger.Info("Multiple results returned from Dynatrace API. Using only the first one")
-	}
-	if len(dynatraceResponse.Result[0].Data) > 1 {
-		s.logger.Info("Multiple data point collections found in results. Using only the first one")
-	}
-	if len(dynatraceResponse.Result[0].Data[0].Values) > 1 {
-		s.logger.Info("Multiple data point values found in collection. Defaulting to average to aggregate them into a single value")
-	}
 	return float64(dynatraceResponse.Result[0].Data[0].Values[0]), nil
 }
 
