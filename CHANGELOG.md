@@ -53,7 +53,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- Add Dynatrace Scaler ([#2387](https://github.com/kedacore/keda/pull/5685))
 
 #### Experimental
 
