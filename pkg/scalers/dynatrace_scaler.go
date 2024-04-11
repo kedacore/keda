@@ -33,7 +33,7 @@ type dynatraceScaler struct {
 type dynatraceMetadata struct {
 	host                string
 	token               string
-	metricsSelector     string
+	metricSelector      string
 	fromTimestamp       string
 	threshold           float64
 	activationThreshold float64
@@ -92,10 +92,10 @@ func parseDynatraceMetadata(config *scalersconfig.ScalerConfig, logger logr.Logg
 	}
 	meta.token = token
 
-	if val, ok := config.TriggerMetadata["metricsSelector"]; ok && val != "" {
-		meta.metricsSelector = val
+	if val, ok := config.TriggerMetadata["metricSelector"]; ok && val != "" {
+		meta.metricSelector = val
 	} else {
-		return nil, fmt.Errorf("no metricsSelector given")
+		return nil, fmt.Errorf("no metricSelector given")
 	}
 
 	if val, ok := config.TriggerMetadata["from"]; ok && val != "" {
@@ -168,7 +168,7 @@ func (s *dynatraceScaler) GetMetricValue(ctx context.Context) (float64, error) {
 	// Add query parameters to the URL
 	url, _ := neturl.Parse(dynatraceAPIURL)
 	queryString := url.Query()
-	queryString.Set("metricSelector", s.metadata.metricsSelector)
+	queryString.Set("metricSelector", s.metadata.metricSelector)
 	queryString.Set("from", s.metadata.fromTimestamp)
 	url.RawQuery = queryString.Encode()
 
