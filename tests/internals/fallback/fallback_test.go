@@ -191,11 +191,6 @@ spec:
       method: "query"
     authenticationRef:
       name: {{.TriggerAuthName}}
-  - type: kubernetes-workload
-    name: kw_trig
-    metadata:
-      podSelector: pod=workload-test
-      value: '0.5'
 `
 
 	updateMetricsTemplate = `
@@ -229,27 +224,6 @@ spec:
   - port: 8080
     targetPort: 8080
 `
-	workloadDeploymentTemplate = `
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: depl-workload-base
-  namespace: {{.Namespace}}
-  labels:
-    deploy: workload-test
-spec:
-  replicas: 10
-  selector:
-    matchLabels:
-      pod: workload-test
-  template:
-    metadata:
-      labels:
-        pod: workload-test
-    spec:
-      containers:
-        - name: nginx
-          image: 'nginxinc/nginx-unprivileged'`
 )
 
 func TestFallback(t *testing.T) {
@@ -322,7 +296,5 @@ func getTemplateData() (templateData, []Template) {
 			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-			// workload base
-			{Name: "workloadDeploymentTemplate", Config: workloadDeploymentTemplate},
 		}
 }

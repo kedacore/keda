@@ -425,6 +425,7 @@ func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject int
 func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricsName string) (*external_metrics.ExternalMetricValueList, error) {
 	logger := log.WithValues("scaledObject.Namespace", scaledObjectNamespace, "scaledObject.Name", scaledObjectName)
 	var matchingMetrics []external_metrics.ExternalMetricValue
+	var fallbackMetrics []external_metrics.ExternalMetricValue
 
 	cache, err := h.getScalersCacheForScaledObject(ctx, scaledObjectName, scaledObjectNamespace)
 	metricscollector.RecordScaledObjectError(scaledObjectNamespace, scaledObjectName, err)
@@ -561,6 +562,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 		}
 		if fallbackActive {
 			isFallbackActive = true
+			fallbackMetrics = append(fallbackMetrics, metrics...)
 		}
 		metricscollector.RecordScalerError(scaledObjectNamespace, scaledObjectName, result.triggerName, result.triggerIndex, result.metricName, true, err)
 		matchingMetrics = append(matchingMetrics, metrics...)
@@ -580,7 +582,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	}
 
 	// handle scalingModifiers here and simply return the matchingMetrics
-	matchingMetrics = modifiers.HandleScalingModifiers(scaledObject, matchingMetrics, metricTriggerPairList, isFallbackActive, cache, logger)
+	matchingMetrics = modifiers.HandleScalingModifiers(scaledObject, matchingMetrics, metricTriggerPairList, isFallbackActive, fallbackMetrics, cache, logger)
 	return &external_metrics.ExternalMetricValueList{
 		Items: matchingMetrics,
 	}, nil
@@ -660,7 +662,7 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	}
 
 	// apply scaling modifiers
-	matchingMetrics = modifiers.HandleScalingModifiers(scaledObject, matchingMetrics, metricTriggerPairList, false, cache, logger)
+	matchingMetrics = modifiers.HandleScalingModifiers(scaledObject, matchingMetrics, metricTriggerPairList, false, nil, cache, logger)
 
 	// when we are using formula, we need to reevaluate if it's active here
 	if scaledObject.IsUsingModifiers() {

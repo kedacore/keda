@@ -18,6 +18,7 @@ package fallback
 
 import (
 	"context"
+	"strconv"
 
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -58,20 +59,6 @@ func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, me
 
 		updateStatus(ctx, client, scaledObject, status, metricSpec)
 
-		if scaledObject.Status.Conditions.GetFallbackCondition().Status == metav1.ConditionTrue {
-			log.Info("ScaledObject is in fallback condition, change all metrics to 0 except the error one", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
-			fallbackMetrics := []external_metrics.ExternalMetricValue{}
-			for _, metric := range metrics {
-				fallbackMetric := external_metrics.ExternalMetricValue{
-					MetricName: metric.MetricName,
-					Value:      *resource.NewMilliQuantity(0, resource.DecimalSI),
-					Timestamp:  metav1.Now(),
-				}
-				fallbackMetrics = append(fallbackMetrics, fallbackMetric)
-			}
-			return fallbackMetrics, false, nil
-		}
-
 		return metrics, false, nil
 	}
 
@@ -109,16 +96,29 @@ func fallbackExistsInScaledObject(scaledObject *kedav1alpha1.ScaledObject, metri
 }
 
 func validateFallback(scaledObject *kedav1alpha1.ScaledObject) bool {
+	modifierChecking := true
+	if scaledObject.IsUsingModifiers() {
+		value, err := strconv.ParseInt(scaledObject.Spec.Advanced.ScalingModifiers.Target, 10, 64)
+		modifierChecking = err == nil && value > 0
+	}
 	return scaledObject.Spec.Fallback.FailureThreshold >= 0 &&
-		scaledObject.Spec.Fallback.Replicas >= 0
+		scaledObject.Spec.Fallback.Replicas >= 0 &&
+		modifierChecking
 }
 
 func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, metricName string, suppressedError error) []external_metrics.ExternalMetricValue {
 	replicas := int64(scaledObject.Spec.Fallback.Replicas)
-	normalisationValue := metricSpec.External.Target.AverageValue.AsApproximateFloat64()
+	var normalisationValue int64
+	if !scaledObject.IsUsingModifiers() {
+		normalisationValue = int64(metricSpec.External.Target.AverageValue.AsApproximateFloat64())
+	} else {
+		value, _ := strconv.ParseInt(scaledObject.Spec.Advanced.ScalingModifiers.Target, 10, 64)
+		normalisationValue = value
+	}
+
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewMilliQuantity(int64(normalisationValue*1000)*replicas, resource.DecimalSI),
+		Value:      *resource.NewMilliQuantity(normalisationValue*1000*replicas, resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 	fallbackMetrics := []external_metrics.ExternalMetricValue{metric}

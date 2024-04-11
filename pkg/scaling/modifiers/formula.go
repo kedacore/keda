@@ -41,10 +41,13 @@ import (
 // HandleScalingModifiers is the parent function for scalingModifiers structure.
 // If the structure is defined and conditions are met, apply the formula to
 // manipulate the metrics and return them
-func HandleScalingModifiers(so *kedav1alpha1.ScaledObject, metrics []external_metrics.ExternalMetricValue, metricTriggerList map[string]string, fallbackActive bool, cacheObj *cache.ScalersCache, log logr.Logger) []external_metrics.ExternalMetricValue {
+func HandleScalingModifiers(so *kedav1alpha1.ScaledObject, metrics []external_metrics.ExternalMetricValue, metricTriggerList map[string]string, fallbackActive bool, fallbackMetrics []external_metrics.ExternalMetricValue, cacheObj *cache.ScalersCache, log logr.Logger) []external_metrics.ExternalMetricValue {
 	var err error
+	if so == nil || !so.IsUsingModifiers() {
+		return metrics
+	}
 	// dont manipulate with metrics if fallback is currently active or structure isnt defined
-	if !fallbackActive && so != nil && so.IsUsingModifiers() {
+	if !fallbackActive {
 		sm := so.Spec.Advanced.ScalingModifiers
 
 		// apply formula if defined
@@ -53,6 +56,16 @@ func HandleScalingModifiers(so *kedav1alpha1.ScaledObject, metrics []external_me
 			log.Error(err, "error applying custom scalingModifiers.Formula")
 		}
 		log.V(1).Info("returned metrics after formula is applied", "metrics", metrics)
+	} else if fallbackMetrics != nil {
+		var handledModifierMetrics []external_metrics.ExternalMetricValue
+		for _, metric := range fallbackMetrics {
+			var ret external_metrics.ExternalMetricValue
+			ret.MetricName = kedav1alpha1.CompositeMetricName
+			ret.Timestamp = v1.Now()
+			ret.Value = metric.Value
+			handledModifierMetrics = append(handledModifierMetrics, ret)
+		}
+		metrics = handledModifierMetrics
 	}
 	return metrics
 }
