@@ -57,6 +57,21 @@ func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, me
 		status.Health[metricName] = *healthStatus
 
 		updateStatus(ctx, client, scaledObject, status, metricSpec)
+
+		if scaledObject.Status.Conditions.GetFallbackCondition().Status == metav1.ConditionTrue {
+			log.Info("ScaledObject is in fallback condition, change all metrics to 0 except the error one", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
+			fallbackMetrics := []external_metrics.ExternalMetricValue{}
+			for _, metric := range metrics {
+				fallbackMetric := external_metrics.ExternalMetricValue{
+					MetricName: metric.MetricName,
+					Value:      *resource.NewMilliQuantity(0, resource.DecimalSI),
+					Timestamp:  metav1.Now(),
+				}
+				fallbackMetrics = append(fallbackMetrics, fallbackMetric)
+			}
+			return fallbackMetrics, false, nil
+		}
+
 		return metrics, false, nil
 	}
 
