@@ -137,6 +137,14 @@ func NewRabbitMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	s.metadata = meta
 	s.httpClient = kedautil.CreateHTTPClient(meta.timeout, meta.unsafeSsl)
 
+	if meta.enableTLS {
+		tlsConfig, tlsErr := kedautil.NewTLSConfigWithPassword(meta.cert, meta.key, meta.keyPassword, meta.ca, meta.unsafeSsl)
+		if tlsErr != nil {
+			return nil, tlsErr
+		}
+		s.httpClient.Transport = kedautil.CreateHTTPTransportWithTLSConfig(tlsConfig)
+	}
+
 	if meta.protocol == amqpProtocol {
 		// Override vhost if requested.
 		host := meta.host
