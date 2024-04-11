@@ -32,6 +32,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
+	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 // TriggerAuthenticationReconciler reconciles a TriggerAuthentication object
@@ -90,6 +91,7 @@ func (r *TriggerAuthenticationReconciler) Reconcile(ctx context.Context, req ctr
 func (r *TriggerAuthenticationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&kedav1alpha1.TriggerAuthentication{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		WithEventFilter(util.IgnoreOtherNamespaces()).
 		Complete(r)
 }
 

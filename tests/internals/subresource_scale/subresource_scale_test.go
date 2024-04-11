@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -117,7 +118,11 @@ func TestScaler(t *testing.T) {
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
-
+	t.Cleanup(func() {
+		// cleanup
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+		cleanupArgo(t)
+	})
 	setupArgo(t, kc)
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
@@ -127,10 +132,6 @@ func TestScaler(t *testing.T) {
 	// test scaling
 	testScaleOut(t, kc)
 	testScaleIn(t, kc)
-
-	// cleanup
-	DeleteKubernetesResources(t, testNamespace, data, templates)
-	cleanupArgo(t)
 }
 
 func setupArgo(t *testing.T, kc *kubernetes.Clientset) {
@@ -139,7 +140,7 @@ func setupArgo(t *testing.T, kc *kubernetes.Clientset) {
 		argoNamespace)
 	_, err := ExecuteCommand(cmdWithNamespace)
 
-	assert.NoErrorf(t, err, "cannot install argo resources - %s", err)
+	require.NoErrorf(t, err, "cannot install argo resources - %s", err)
 }
 
 func cleanupArgo(t *testing.T) {

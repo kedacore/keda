@@ -22,9 +22,12 @@ import (
 	"net"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 	"k8s.io/metrics/pkg/apis/external_metrics/v1beta1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/metricsservice/api"
 	"github.com/kedacore/keda/v2/pkg/metricsservice/utils"
 	"github.com/kedacore/keda/v2/pkg/scaling"
@@ -34,9 +37,11 @@ var log = logf.Log.WithName("grpc_server")
 
 type GrpcServer struct {
 	server        *grpc.Server
+	healthServer  *health.Server
 	address       string
 	certDir       string
 	certsReady    chan struct{}
+	elected       <-chan struct{}
 	scalerHandler *scaling.ScaleHandler
 	api.UnimplementedMetricsServiceServer
 }
@@ -60,12 +65,13 @@ func (s *GrpcServer) GetMetrics(ctx context.Context, in *api.ScaledObjectRef) (*
 }
 
 // NewGrpcServer creates a new instance of GrpcServer
-func NewGrpcServer(scaleHandler *scaling.ScaleHandler, address, certDir string, certsReady chan struct{}) GrpcServer {
+func NewGrpcServer(scaleHandler *scaling.ScaleHandler, address, certDir string, certsReady chan struct{}, elected <-chan struct{}) GrpcServer {
 	return GrpcServer{
 		address:       address,
 		scalerHandler: scaleHandler,
 		certDir:       certDir,
 		certsReady:    certsReady,
+		elected:       elected,
 	}
 }
 
@@ -82,8 +88,8 @@ func (s *GrpcServer) startServer() error {
 	return nil
 }
 
-// Start starts a new gRPC Metrics Service, this implements Runnable interface
-// of controller-runtime Manager, so we can use mgr.Add() to start this component.
+// StartGrpcServer starts the grpc server in non-serving mode and when the controller is elected leader
+// sets the status of the server to Serving.
 func (s *GrpcServer) Start(ctx context.Context) error {
 	<-s.certsReady
 	if s.server == nil {
@@ -91,32 +97,58 @@ func (s *GrpcServer) Start(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		s.server = grpc.NewServer(grpc.Creds(creds))
+
+		grpcServerOpts := []grpc.ServerOption{
+			grpc.Creds(creds),
+		}
+
+		if metricscollector.GetServerMetrics() != nil {
+			grpcServerOpts = append(
+				grpcServerOpts,
+				grpc.ChainStreamInterceptor(metricscollector.GetServerMetrics().StreamServerInterceptor()),
+				grpc.ChainUnaryInterceptor(metricscollector.GetServerMetrics().UnaryServerInterceptor()),
+			)
+		}
+
+		s.server = grpc.NewServer(grpcServerOpts...)
 		api.RegisterMetricsServiceServer(s.server, s)
+
+		s.healthServer = health.NewServer()
+		s.healthServer.SetServingStatus(api.MetricsService_ServiceDesc.ServiceName, grpc_health_v1.HealthCheckResponse_NOT_SERVING)
+		grpc_health_v1.RegisterHealthServer(s.server, s.healthServer)
 	}
 
 	errChan := make(chan error)
 
 	go func() {
 		log.Info("Starting Metrics Service gRPC Server", "address", s.address)
-		if err := s.startServer(); err != nil {
+		if err := s.startServer(); err != nil && err != grpc.ErrServerStopped {
 			err := fmt.Errorf("unable to start Metrics Service gRPC server on address %s, error: %w", s.address, err)
 			log.Error(err, "error starting Metrics Service gRPC server")
 			errChan <- err
 		}
 	}()
 
-	select {
-	case err := <-errChan:
-		return err
-	case <-ctx.Done():
-		return nil
+	for {
+		select {
+		case err := <-errChan:
+			return err
+		case <-ctx.Done():
+			log.Info("Shutting down gRPC server")
+			s.healthServer.SetServingStatus(api.MetricsService_ServiceDesc.ServiceName, grpc_health_v1.HealthCheckResponse_NOT_SERVING)
+			s.server.GracefulStop()
+			return nil
+		case <-s.elected:
+			// clear the channel now that we are leader-elected
+			s.elected = nil
+			log.Info("Setting gRPC server status to Serving")
+			s.healthServer.SetServingStatus(api.MetricsService_ServiceDesc.ServiceName, grpc_health_v1.HealthCheckResponse_SERVING)
+		}
 	}
 }
 
-// NeedLeaderElection is needed to implement LeaderElectionRunnable interface
-// of controller-runtime. This assures that the component is started/stoped
-// when this particular instance is selected/deselected as a leader.
+// We don't want to wait until LeaderElection to start the GRPC server, but we want to switch to Serving state once we are elected.
+// Hence, here, we say we don't need leader election here  and above we listen to the Elected channel from the manager to set the server to Serving
 func (s *GrpcServer) NeedLeaderElection() bool {
-	return true
+	return false
 }

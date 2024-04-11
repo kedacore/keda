@@ -19,6 +19,7 @@ package executor
 import (
 	"context"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -33,7 +34,7 @@ import (
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 )
 
-func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, isActive bool, isError bool) {
+func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, isActive bool, isError bool, options *ScaleExecutorOptions) {
 	logger := e.logger.WithValues("scaledobject.Name", scaledObject.Name,
 		"scaledObject.Namespace", scaledObject.Namespace,
 		"scaleTarget.Name", scaledObject.Spec.ScaleTargetRef.Name)
@@ -134,7 +135,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 			// replica count is equal to 0
 
 			// Scale the ScaleTarget up
-			e.scaleFromZeroOrIdle(ctx, logger, scaledObject, currentScale)
+			e.scaleFromZeroOrIdle(ctx, logger, scaledObject, currentScale, options.ActiveTriggers)
 		case isError:
 			// some triggers are active, but some responded with error
 
@@ -301,7 +302,7 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 	}
 }
 
-func (e *scaleExecutor) scaleFromZeroOrIdle(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, scale *autoscalingv1.Scale) {
+func (e *scaleExecutor) scaleFromZeroOrIdle(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, scale *autoscalingv1.Scale, activeTriggers []string) {
 	var replicas int32
 	if scaledObject.Spec.MinReplicaCount != nil && *scaledObject.Spec.MinReplicaCount > 0 {
 		replicas = *scaledObject.Spec.MinReplicaCount
@@ -315,7 +316,7 @@ func (e *scaleExecutor) scaleFromZeroOrIdle(ctx context.Context, logger logr.Log
 		logger.Info("Successfully updated ScaleTarget",
 			"Original Replicas Count", currentReplicas,
 			"New Replicas Count", replicas)
-		e.recorder.Eventf(scaledObject, corev1.EventTypeNormal, eventreason.KEDAScaleTargetActivated, "Scaled %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, replicas)
+		e.recorder.Eventf(scaledObject, corev1.EventTypeNormal, eventreason.KEDAScaleTargetActivated, "Scaled %s %s/%s from %d to %d, triggered by %s", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, replicas, strings.Join(activeTriggers, ";"))
 
 		// Scale was successful. Update lastScaleTime and lastActiveTime on the scaledObject
 		if err := e.updateLastActiveTime(ctx, logger, scaledObject); err != nil {

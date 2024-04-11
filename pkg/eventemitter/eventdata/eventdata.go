@@ -18,18 +18,20 @@ package eventdata
 
 import (
 	"time"
+
+	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 )
 
 // EventData will save all event info and handler info for retry.
 type EventData struct {
-	Namespace  string
-	ObjectName string
-	ObjectType string
-	EventType  string
-	Reason     string
-	Message    string
-	Time       time.Time
-	HandlerKey string
-	RetryTimes int
-	Err        error
+	Namespace      string
+	ObjectName     string
+	ObjectType     string
+	CloudEventType eventingv1alpha1.CloudEventType
+	Reason         string
+	Message        string
+	Time           time.Time
+	HandlerKey     string
+	RetryTimes     int
+	Err            error
 }
