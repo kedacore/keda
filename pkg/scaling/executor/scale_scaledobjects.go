@@ -252,7 +252,7 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 		cooldownPeriod = time.Second * time.Duration(defaultCooldownPeriod)
 	}
 
-	initialCooldownPeriod := time.Second * time.Duration(scaledObject.Spec.InitialDelayCooldownPeriod)
+	initialCooldownPeriod := time.Second * time.Duration(*scaledObject.Spec.InitialCooldownPeriod)
 
 	// If the ScaledObject was just created,CreationTimestamp is zero, set the CreationTimestamp to now
 	if scaledObject.ObjectMeta.CreationTimestamp.IsZero() {

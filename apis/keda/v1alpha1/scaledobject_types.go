@@ -101,7 +101,7 @@ type ScaledObjectSpec struct {
 	// +optional
 	Fallback *Fallback `json:"fallback,omitempty"`
 	// +optional
-	InitialDelayCooldownPeriod int32 `json:"initialDelayCooldownPeriod,omitempty"`
+	InitialCooldownPeriod *int32 `json:"initialCooldownPeriod,omitempty"`
 }
 
 // Fallback is the spec for fallback options
