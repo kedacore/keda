@@ -184,8 +184,8 @@ func logMessage(logger logr.Logger, msg string, value float64) {
 }
 
 func (s *splunkO11yScaler) getQueryResult(ctx context.Context) (float64, error) {
-	var duration time.Duration = 1000000000 // one second in nano seconds
-	// var duration time.Duration = 10000000000 // ten seconds in nano seconds
+	// var duration time.Duration = 1000000000 // one second in nano seconds
+	var duration time.Duration = 10000000000 // ten seconds in nano seconds
 
 	comp, err := s.apiClient.Execute(context.Background(), &signalflow.ExecuteRequest{
 		Program: s.metadata.query,
@@ -209,7 +209,9 @@ func (s *splunkO11yScaler) getQueryResult(ctx context.Context) (float64, error) 
 	valueCount := 0
 	s.logger.Info("getQueryResult -> Now Iterating")
 	for msg := range comp.Data() {
+		s.logger.Info("getQueryResult -> msg: %+v\n", msg)
 		if len(msg.Payloads) == 0 {
+			s.logger.Info("getQueryResult -> No data retreived. Continuing")
 			continue
 		}
 		for _, pl := range msg.Payloads {
@@ -250,7 +252,7 @@ func (s *splunkO11yScaler) getQueryResult(ctx context.Context) (float64, error) 
 }
 
 func (s *splunkO11yScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	s.logger.Info(fmt.Sprintf("splunk_o11y_scaler found authtrigger token : %s", s.metadata.accessToken))
+	// s.logger.Info(fmt.Sprintf("splunk_o11y_scaler found authtrigger token : %s", s.metadata.accessToken))
 	num, err := s.getQueryResult(ctx)
 
 	if err != nil {
