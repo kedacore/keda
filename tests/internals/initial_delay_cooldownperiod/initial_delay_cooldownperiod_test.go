@@ -71,7 +71,7 @@ spec:
     name: {{.DeploymentName}}
   cooldownPeriod: 5
   minReplicaCount: 0
-  initialDelayCooldownPeriod: 120
+  initialCooldownPeriod: 120
   advanced:
     horizontalPodAutoscalerConfig:
       behavior:
