@@ -55,16 +55,6 @@ func NewProvider(ctx context.Context, adapterLogger logr.Logger, client client.C
 	logger = adapterLogger.WithName("provider")
 	logger.Info("starting")
 
-	// go func() {
-	// 	if !grpcClient.WaitForConnectionReady(ctx, logger) {
-	// 		grpcClientConnected = false
-	// 		logger.Error(fmt.Errorf("timeout while waiting to establish gRPC connection to KEDA Metrics Service server"), "timeout", "server", grpcClient.GetServerURL())
-	// 	} else if !grpcClientConnected {
-	// 		grpcClientConnected = true
-	// 		logger.Info("Connection to KEDA Metrics Service gRPC server has been successfully established", "server", grpcClient.GetServerURL())
-	// 	}
-	// }()
-
 	return provider
 }
 
@@ -82,17 +72,6 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 		logger.Error(err, "error converting Selector to Labels Map")
 		return nil, err
 	}
-
-	// Get Metrics from Metrics Service gRPC Server
-	// if !p.grpcClient.WaitForConnectionReady(ctx, logger) {
-	// 	grpcClientConnected = false
-	// 	logger.Error(fmt.Errorf("timeout while waiting to establish gRPC connection to KEDA Metrics Service server"), "timeout", "server", p.grpcClient.GetServerURL())
-	// 	return nil, err
-	// }
-	// if !grpcClientConnected {
-	// 	grpcClientConnected = true
-	// 	logger.Info("Connection to KEDA Metrics Service gRPC server has been successfully established", "server", p.grpcClient.GetServerURL())
-	// }
 
 	// selector is in form: `scaledobject.keda.sh/name: scaledobject-name`
 	scaledObjectName := selector.Get(kedav1alpha1.ScaledObjectOwnerAnnotation)

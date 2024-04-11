@@ -19,12 +19,9 @@ package metricsservice
 import (
 	"context"
 	"fmt"
-	"time"
 
-	"github.com/go-logr/logr"
 	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/connectivity"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	"k8s.io/metrics/pkg/apis/external_metrics/v1beta1"
 
@@ -99,29 +96,6 @@ func (c *GrpcClient) GetMetrics(ctx context.Context, scaledObjectName, scaledObj
 	}
 
 	return extMetrics, nil
-}
-
-// WaitForConnectionReady waits for gRPC connection to be ready
-// returns true if the connection was successful, false if we hit a timeut from context
-func (c *GrpcClient) WaitForConnectionReady(ctx context.Context, logger logr.Logger) bool {
-	currentState := c.connection.GetState()
-	if currentState != connectivity.Ready {
-		logger.Info("Waiting for establishing a gRPC connection to KEDA Metrics Server")
-		for {
-			select {
-			case <-ctx.Done():
-				return false
-			default:
-				c.connection.Connect()
-				time.Sleep(500 * time.Millisecond)
-				currentState := c.connection.GetState()
-				if currentState == connectivity.Ready {
-					return true
-				}
-			}
-		}
-	}
-	return true
 }
 
 // GetServerURL returns url of the gRPC server this client is connected to
