@@ -212,7 +212,7 @@ func (s *dynatraceScaler) GetMetricValue(ctx context.Context) (float64, error) {
 		return 0, err
 	}
 
-	return float64(dynatraceResponse.Result[0].Data[0].Values[0]), nil
+	return dynatraceResponse.Result[0].Data[0].Values[0], nil
 }
 
 func (s *dynatraceScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
