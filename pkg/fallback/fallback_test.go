@@ -376,7 +376,7 @@ func (h *healthStatusMatcher) NegatedFailureMessage(actual interface{}) (message
 
 func expectStatusPatch(ctrl *gomock.Controller, client *mock_client.MockClient) {
 	statusWriter := mock_client.NewMockStatusWriter(ctrl)
-	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any())
+	//statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any())
 	client.EXPECT().Status().Return(statusWriter)
 }
 
