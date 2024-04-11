@@ -45,7 +45,7 @@ type dynatraceMetadata struct {
 type dynatraceResponse struct {
 	Result []struct {
 		Data []struct {
-			Values []int `json:"values"`
+			Values []float64 `json:"values"`
 		} `json:"data"`
 	} `json:"response"`
 }
