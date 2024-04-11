@@ -76,7 +76,7 @@ Here is an overview of all new **experimental** features:
 ### Fixes
 
 - **General**: Fix CVE-2024-28180 in github.com/go-jose/go-jose/v3 ([#5617](https://github.com/kedacore/keda/pull/5617))
-- **General**: Fix fallback logic in formula-based evaluation ([#5666](https://github.com/kedacore/keda/pull/5666))
+- **General**: Fix fallback logic in formula-based evaluation ([#5666](https://github.com/kedacore/keda/issues/5666))
 - **General**: Log field `ScaledJob` no longer have conflicting types ([#5592](https://github.com/kedacore/keda/pull/5592))
 - **General**: Prometheus metrics shows errors correctly ([#5597](https://github.com/kedacore/keda/issues/5597))
 - **General**: Validate empty array value of triggers in ScaledObject/ScaledJob creation ([#5520](https://github.com/kedacore/keda/issues/5520))
