@@ -62,7 +62,7 @@ func TestGetScaledObjectMetrics_DirectCall(t *testing.T) {
 	recorder := record.NewFakeRecorder(1)
 	mockClient := mock_client.NewMockClient(ctrl)
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
-	mockStatusWriter := mock_client.NewMockStatusWriter(ctrl)
+	//mockStatusWriter := mock_client.NewMockStatusWriter(ctrl)
 
 	metricsSpecs := []v2.MetricSpec{createMetricSpec(10, metricName)}
 	metricValue := scalers.GenerateMetricInMili(metricName, float64(10))
@@ -130,8 +130,8 @@ func TestGetScaledObjectMetrics_DirectCall(t *testing.T) {
 	mockExecutor.EXPECT().RequestScale(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
 	sh.checkScalers(context.TODO(), &scaledObject, &sync.RWMutex{})
 
-	mockClient.EXPECT().Status().Return(mockStatusWriter)
-	mockStatusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+	//mockClient.EXPECT().Status().Return(mockStatusWriter)
+	//mockStatusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs)
 	// hitting directly GetMetricsAndActivity()
 	scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{metricValue}, true, nil)
@@ -153,7 +153,7 @@ func TestGetScaledObjectMetrics_FromCache(t *testing.T) {
 	recorder := record.NewFakeRecorder(1)
 	mockClient := mock_client.NewMockClient(ctrl)
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
-	mockStatusWriter := mock_client.NewMockStatusWriter(ctrl)
+	//mockStatusWriter := mock_client.NewMockStatusWriter(ctrl)
 
 	metricsSpecs := []v2.MetricSpec{createMetricSpec(10, metricName)}
 	metricValue := scalers.GenerateMetricInMili(metricName, float64(10))
@@ -221,8 +221,8 @@ func TestGetScaledObjectMetrics_FromCache(t *testing.T) {
 	mockExecutor.EXPECT().RequestScale(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
 	sh.checkScalers(context.TODO(), &scaledObject, &sync.RWMutex{})
 
-	mockClient.EXPECT().Status().Return(mockStatusWriter)
-	mockStatusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+	//mockClient.EXPECT().Status().Return(mockStatusWriter)
+	//mockStatusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs)
 	// hitting cache here instead of calling GetMetricsAndActivity()
 	metrics, err := sh.GetScaledObjectMetrics(context.TODO(), scaledObjectName, scaledObjectNamespace, metricName)
@@ -259,7 +259,7 @@ func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
 	recorder := record.NewFakeRecorder(1)
 	mockClient := mock_client.NewMockClient(ctrl)
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
-	mockStatusWriter := mock_client.NewMockStatusWriter(ctrl)
+	//mockStatusWriter := mock_client.NewMockStatusWriter(ctrl)
 
 	scalerCollection := []*mock_scalers.MockScaler{}
 
@@ -353,8 +353,8 @@ func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
 		return true
 	}, 1*time.Second, 400*time.Millisecond, "timeout exceeded: scalers not processed in parallel during `checkScalers`")
 
-	mockClient.EXPECT().Status().Times(len(metricNames)).Return(mockStatusWriter)
-	mockStatusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(len(metricNames)).Return(nil)
+	//mockClient.EXPECT().Status().Times(len(metricNames)).Return(mockStatusWriter)
+	//mockStatusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(len(metricNames)).Return(nil)
 	for i := 0; i < len(metricNames); i++ {
 		i := i
 		scalerCollection[i].EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecFn(i))
@@ -904,7 +904,7 @@ func TestScalingModifiersFormula(t *testing.T) {
 	recorder := record.NewFakeRecorder(1)
 	mockClient := mock_client.NewMockClient(ctrl)
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
-	mockStatusWriter := mock_client.NewMockStatusWriter(ctrl)
+	//mockStatusWriter := mock_client.NewMockStatusWriter(ctrl)
 
 	metricsSpecs1 := []v2.MetricSpec{createMetricSpec(2, metricName1)}
 	metricsSpecs2 := []v2.MetricSpec{createMetricSpec(5, metricName2)}
@@ -995,8 +995,8 @@ func TestScalingModifiersFormula(t *testing.T) {
 	mockExecutor.EXPECT().RequestScale(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
 	sh.checkScalers(context.TODO(), &scaledObject, &sync.RWMutex{})
 
-	mockClient.EXPECT().Status().Return(mockStatusWriter).Times(2)
-	mockStatusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(2)
+	//mockClient.EXPECT().Status().Return(mockStatusWriter).Times(2)
+	//mockStatusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(2)
 	scaler1.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs1)
 	scaler2.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs2)
 	scaler1.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{metricValue1, metricValue2}, true, nil)

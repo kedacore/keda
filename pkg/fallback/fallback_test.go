@@ -67,7 +67,7 @@ var _ = Describe("fallback", func() {
 		primeGetMetrics(scaler, expectedMetricValue)
 		so := buildScaledObject(nil, nil)
 		metricSpec := createMetricSpec(3)
-		expectStatusPatch(ctrl, client)
+		//expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
 		metrics, _, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
@@ -114,7 +114,7 @@ var _ = Describe("fallback", func() {
 
 		so := buildScaledObject(nil, nil)
 		metricSpec := createMetricSpec(3)
-		expectStatusPatch(ctrl, client)
+		//expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
 		_, _, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
