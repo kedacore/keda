@@ -41,15 +41,6 @@ var (
 		},
 		[]string{"version", "git_commit", "goversion", "goos", "goarch"},
 	)
-	scalerErrorsTotalDeprecated = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: DefaultPromMetricsNamespace,
-			Subsystem: "scaler",
-			Name:      "errors_total",
-			Help:      "DEPRECATED - will be removed in 2.16 - use a `sum(scaler_errors_total{scaler!=\"\"})` over all scalers",
-		},
-		[]string{},
-	)
 	scalerMetricsValue = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: DefaultPromMetricsNamespace,
@@ -64,7 +55,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaler",
 			Name:      "metrics_latency",
-			Help:      "DEPRECATED - will be removed in 2.16  use 'scaler_metrics_latency_seconds' instead.",
+			Help:      "DEPRECATED - will be removed in 2.16  use 'keda_scaler_metrics_latency_seconds' instead.",
 		},
 		metricLabels,
 	)
@@ -100,15 +91,24 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaler",
 			Name:      "errors",
-			Help:      "DEPRECATED - will be removed in 2.16 - use 'scaler_errors_total' instead.",
+			Help:      "DEPRECATED - will be removed in 2.16 - use 'keda_scaler_detail_errors_total' instead.",
 		},
 		metricLabels,
+	)
+	scalerErrorsTotalDeprecated = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "scaler",
+			Name:      "errors_total",
+			Help:      "DEPRECATED - will be removed in 2.16 - use a `sum(keda_scaler_detail_errors_total{scaler!=\"\"})` over all scalers",
+		},
+		[]string{},
 	)
 	scalerErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaler",
-			Name:      "errors_total",
+			Name:      "detail_errors_total",
 			Help:      "The total number of errors encountered for each scaler.",
 		},
 		metricLabels,
@@ -118,7 +118,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaled_object",
 			Name:      "errors",
-			Help:      "DEPRECATED - will be removed in 2.16 - use 'scaled_object_errors_total' instead.",
+			Help:      "DEPRECATED - will be removed in 2.16 - use 'keda_scaled_object_errors_total' instead.",
 		},
 		[]string{"namespace", "scaledObject"},
 	)
@@ -147,7 +147,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "trigger",
 			Name:      "totals",
-			Help:      "DEPRECATED - will be removed in 2.16 - use 'trigger_registered_total' instead.",
+			Help:      "DEPRECATED - will be removed in 2.16 - use 'keda_trigger_registered_total' instead.",
 		},
 		[]string{"type"},
 	)
@@ -165,7 +165,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "resource",
 			Name:      "totals",
-			Help:      "DEPRECATED - will be removed in 2.16 - use 'resource_handled_total' instead.",
+			Help:      "DEPRECATED - will be removed in 2.16 - use 'keda_resource_handled_total' instead.",
 		},
 		[]string{"type", "namespace"},
 	)
@@ -183,7 +183,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "internal_scale_loop",
 			Name:      "latency",
-			Help:      "DEPRECATED - will be removed in 2.16 - use 'internal_scale_loop_latency_seconds' instead.",
+			Help:      "DEPRECATED - will be removed in 2.16 - use 'keda_internal_scale_loop_latency_seconds' instead.",
 		},
 		[]string{"namespace", "type", "resource"},
 	)
