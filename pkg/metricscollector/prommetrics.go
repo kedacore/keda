@@ -17,6 +17,7 @@ limitations under the License.
 package metricscollector
 
 import (
+	"fmt"
 	"runtime"
 	"strconv"
 	"time"
@@ -28,6 +29,10 @@ import (
 
 	"github.com/kedacore/keda/v2/version"
 )
+
+// bestPracticeDeprecatedMsg is a constant string that is used to indicate that a metric is deprecated as
+// part of best practice refactoring - https://github.com/kedacore/keda/pull/5174
+const bestPracticeDeprecatedMsg = "DEPRECATED - will be removed in 2.16:"
 
 var log = logf.Log.WithName("prometheus_server")
 
@@ -55,7 +60,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaler",
 			Name:      "metrics_latency",
-			Help:      "DEPRECATED - will be removed in 2.16  use 'keda_scaler_metrics_latency_seconds' instead.",
+			Help:      fmt.Sprintf("%v use 'keda_scaler_metrics_latency_seconds' instead.", bestPracticeDeprecatedMsg),
 		},
 		metricLabels,
 	)
@@ -91,7 +96,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaler",
 			Name:      "errors",
-			Help:      "DEPRECATED - will be removed in 2.16 - use 'keda_scaler_detail_errors_total' instead.",
+			Help:      fmt.Sprintf("%v use 'keda_scaler_detail_errors_total' instead.", bestPracticeDeprecatedMsg),
 		},
 		metricLabels,
 	)
@@ -100,7 +105,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaler",
 			Name:      "errors_total",
-			Help:      "DEPRECATED - will be removed in 2.16 - use a `sum(keda_scaler_detail_errors_total{scaler!=\"\"})` over all scalers",
+			Help:      fmt.Sprintf("%v use use a `sum(keda_scaler_detail_errors_total{scaler!=\"\"})` over all scalers", bestPracticeDeprecatedMsg),
 		},
 		[]string{},
 	)
@@ -118,7 +123,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "scaled_object",
 			Name:      "errors",
-			Help:      "DEPRECATED - will be removed in 2.16 - use 'keda_scaled_object_errors_total' instead.",
+			Help:      fmt.Sprintf("%v use 'keda_scaled_object_errors_total' instead.", bestPracticeDeprecatedMsg),
 		},
 		[]string{"namespace", "scaledObject"},
 	)
@@ -131,7 +136,15 @@ var (
 		},
 		[]string{"namespace", "scaledObject"},
 	)
-
+	scaledJobErrorsDeprecated = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "scaled_job",
+			Name:      "errors",
+			Help:      fmt.Sprintf("%v use 'keda_scaled_job_errors_total' instead.", bestPracticeDeprecatedMsg),
+		},
+		[]string{"namespace", "scaledJob"},
+	)
 	scaledJobErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: DefaultPromMetricsNamespace,
@@ -147,7 +160,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "trigger",
 			Name:      "totals",
-			Help:      "DEPRECATED - will be removed in 2.16 - use 'keda_trigger_registered_total' instead.",
+			Help:      fmt.Sprintf("%v use 'keda_trigger_registered_total' instead.", bestPracticeDeprecatedMsg),
 		},
 		[]string{"type"},
 	)
@@ -165,7 +178,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "resource",
 			Name:      "totals",
-			Help:      "DEPRECATED - will be removed in 2.16 - use 'keda_resource_handled_total' instead.",
+			Help:      fmt.Sprintf("%v use 'keda_resource_handled_total' instead.", bestPracticeDeprecatedMsg),
 		},
 		[]string{"type", "namespace"},
 	)
@@ -183,7 +196,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "internal_scale_loop",
 			Name:      "latency",
-			Help:      "DEPRECATED - will be removed in 2.16 - use 'keda_internal_scale_loop_latency_seconds' instead.",
+			Help:      fmt.Sprintf("%v use 'keda_internal_scale_loop_latency_seconds' instead.", bestPracticeDeprecatedMsg),
 		},
 		[]string{"namespace", "type", "resource"},
 	)
@@ -239,6 +252,7 @@ func NewPromMetrics() *PromMetrics {
 	metrics.Registry.MustRegister(triggerRegistered)
 	metrics.Registry.MustRegister(crdTotalsGaugeVecDeprecated)
 	metrics.Registry.MustRegister(crdRegistered)
+	metrics.Registry.MustRegister(scaledJobErrorsDeprecated)
 	metrics.Registry.MustRegister(scaledJobErrors)
 
 	metrics.Registry.MustRegister(buildInfo)
@@ -339,6 +353,7 @@ func (p *PromMetrics) RecordScaledObjectError(namespace string, scaledObject str
 func (p *PromMetrics) RecordScaledJobError(namespace string, scaledJob string, err error) {
 	labels := prometheus.Labels{"namespace": namespace, "scaledJob": scaledJob}
 	if err != nil {
+		scaledJobErrorsDeprecated.With(labels).Inc()
 		scaledJobErrors.With(labels).Inc()
 		return
 	}
