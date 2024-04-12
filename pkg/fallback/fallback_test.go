@@ -67,7 +67,6 @@ var _ = Describe("fallback", func() {
 		primeGetMetrics(scaler, expectedMetricValue)
 		so := buildScaledObject(nil, nil)
 		metricSpec := createMetricSpec(3)
-		//expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
 		metrics, _, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
@@ -77,7 +76,7 @@ var _ = Describe("fallback", func() {
 		Expect(value).Should(Equal(expectedMetricValue))
 	})
 
-	It("should reset the health status when scaler metrics are available", func() {
+	It("should reset the health status when scaler metrics are available when fallback is enabled", func() {
 		expectedMetricValue := float64(6)
 		startingNumberOfFailures := int32(5)
 		primeGetMetrics(scaler, expectedMetricValue)
@@ -109,12 +108,41 @@ var _ = Describe("fallback", func() {
 		Expect(so.Status.Health[metricName]).To(haveFailureAndStatus(0, kedav1alpha1.HealthStatusHappy))
 	})
 
+	It("should reset the health status when scaler metrics are available when fallback is not enabled", func() {
+		expectedMetricValue := float64(6)
+		startingNumberOfFailures := int32(5)
+		primeGetMetrics(scaler, expectedMetricValue)
+
+		so := buildScaledObject(
+			nil,
+			&kedav1alpha1.ScaledObjectStatus{
+				Health: map[string]kedav1alpha1.HealthStatus{
+					metricName: {
+						NumberOfFailures: &startingNumberOfFailures,
+						Status:           kedav1alpha1.HealthStatusFailing,
+					},
+				},
+			},
+		)
+
+		metricSpec := createMetricSpec(3)
+		expectNoStatusPatch(ctrl)
+
+		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
+		metrics, _, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
+
+		Expect(err).ToNot(HaveOccurred())
+		value := metrics[0].Value.AsApproximateFloat64()
+		Expect(value).Should(Equal(expectedMetricValue))
+		Expect(so.Status.Health[metricName]).To(haveFailureAndStatus(0, kedav1alpha1.HealthStatusHappy))
+	})
+
 	It("should propagate the error when fallback is disabled", func() {
 		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("some error"))
 
 		so := buildScaledObject(nil, nil)
 		metricSpec := createMetricSpec(3)
-		//expectStatusPatch(ctrl, client)
+		expectNoStatusPatch(ctrl)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
 		_, _, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
@@ -259,7 +287,6 @@ var _ = Describe("fallback", func() {
 			},
 		)
 		metricSpec := createMetricSpec(10)
-		expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
 		_, _, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
@@ -293,7 +320,6 @@ var _ = Describe("fallback", func() {
 			},
 		)
 		metricSpec := createMetricSpec(10)
-		expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
 		_, _, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
@@ -327,7 +353,6 @@ var _ = Describe("fallback", func() {
 			},
 		)
 		metricSpec := createMetricSpec(10)
-		expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
 		_, _, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
@@ -376,8 +401,13 @@ func (h *healthStatusMatcher) NegatedFailureMessage(actual interface{}) (message
 
 func expectStatusPatch(ctrl *gomock.Controller, client *mock_client.MockClient) {
 	statusWriter := mock_client.NewMockStatusWriter(ctrl)
-	//statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any())
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any())
 	client.EXPECT().Status().Return(statusWriter)
+}
+
+func expectNoStatusPatch(ctrl *gomock.Controller) {
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 }
 
 func buildScaledObject(fallbackConfig *kedav1alpha1.Fallback, status *kedav1alpha1.ScaledObjectStatus) *kedav1alpha1.ScaledObject {
