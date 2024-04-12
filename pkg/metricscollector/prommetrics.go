@@ -248,13 +248,13 @@ func NewPromMetrics() *PromMetrics {
 	metrics.Registry.MustRegister(scaledObjectErrorsDeprecated)
 	metrics.Registry.MustRegister(scaledObjectErrors)
 	metrics.Registry.MustRegister(scaledObjectPaused)
-	metrics.Registry.MustRegister(triggerTotalsGaugeVecDeprecated)
 	metrics.Registry.MustRegister(triggerRegistered)
-	metrics.Registry.MustRegister(crdTotalsGaugeVecDeprecated)
 	metrics.Registry.MustRegister(crdRegistered)
 	metrics.Registry.MustRegister(scaledJobErrorsDeprecated)
 	metrics.Registry.MustRegister(scaledJobErrors)
 
+	metrics.Registry.MustRegister(triggerTotalsGaugeVecDeprecated)
+	metrics.Registry.MustRegister(crdTotalsGaugeVecDeprecated)
 	metrics.Registry.MustRegister(buildInfo)
 
 	metrics.Registry.MustRegister(cloudeventEmitted)
