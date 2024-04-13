@@ -11,16 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
-	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 
 	v1alpha1Api "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	. "github.com/kedacore/keda/v2/tests/helper"
+	"github.com/kedacore/keda/v2/tests/scalers/aws/helpers/cloudwatch"
 )
 
 // Load environment variables from .env file
@@ -145,12 +141,18 @@ var (
 // This test is to verify that the scaler results in an error state when
 // the metric query returns null values and the ignoreNullValues is set to false.
 func TestCloudWatchScalerWithIgnoreNullValuesFalse(t *testing.T) {
+	ctx := context.Background()
+
 	// setup cloudwatch
-	cloudwatchClient := createCloudWatchClient()
+	cloudwatchClient, err := cloudwatch.NewClient(ctx, awsRegion, awsAccessKeyID, awsSecretAccessKey, "")
+	assert.Nil(t, err, "error creating cloudwatch client")
 
 	// check that the metric in question is not already present, and is returning
 	// an empty set of values.
-	checkCloudWatchCustomMetric(t, cloudwatchClient)
+	metricQuery := cloudwatch.CreateMetricDataInputForEmptyMetricValues(cloudwatchMetricNamespace, cloudwatchMetricName, cloudwatchMetricDimensionName, cloudwatchMetricDimensionValue)
+	metricData, err := cloudwatch.GetMetricData(ctx, cloudwatchClient, metricQuery)
+	assert.Nil(t, err, "error getting metric data")
+	assert.Nil(t, cloudwatch.ExpectEmptyMetricDataResults(metricData), "metric data should be empty")
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
@@ -170,58 +172,6 @@ func TestCloudWatchScalerWithIgnoreNullValuesFalse(t *testing.T) {
 	// should not scale.
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
 		"replica count should be %d after 1 minute", minReplicaCount)
-}
-
-// checkCloudWatchCustomMetric will evaluate the custom metric for any metric values, if any
-// values are found the test will be failed.
-func checkCloudWatchCustomMetric(t *testing.T, cloudwatchClient *cloudwatch.Client) {
-	metricData, err := cloudwatchClient.GetMetricData(context.Background(), &cloudwatch.GetMetricDataInput{
-		MetricDataQueries: []types.MetricDataQuery{
-			{
-				Id:         aws.String("m1"),
-				ReturnData: aws.Bool(true),
-				MetricStat: &types.MetricStat{
-					Metric: &types.Metric{
-						Namespace:  aws.String(cloudwatchMetricNamespace),
-						MetricName: aws.String(cloudwatchMetricName),
-						Dimensions: []types.Dimension{
-							{
-								Name:  aws.String(cloudwatchMetricDimensionName),
-								Value: aws.String(cloudwatchMetricDimensionValue),
-							},
-						},
-					},
-					Period: aws.Int32(60),
-					Stat:   aws.String("Average"),
-				},
-			},
-		},
-		// evaluate +/- 5 minutes from now to be sure we cover the query window
-		// leading into the e2e test.
-		EndTime:   aws.Time(time.Now().Add(time.Minute * 5)),
-		StartTime: aws.Time(time.Now().Add(-time.Minute * 5)),
-	})
-	if err != nil {
-		t.Fatalf("error checking cloudwatch metric: %s", err)
-		return
-	}
-
-	// This is a e2e preflight check for returning an error when there are no
-	// metric values. If there are any metric values, then the test should fail
-	// here, as the scaler will never enter an error state if there are metric
-	// values in the query window.
-	if len(metricData.MetricDataResults) != 1 || len(metricData.MetricDataResults[0].Values) > 0 {
-		t.Fatalf("found unexpected metric data results for namespace: %s: %+v", cloudwatchMetricNamespace, metricData.MetricDataResults)
-		return
-	}
-}
-
-func createCloudWatchClient() *cloudwatch.Client {
-	configOptions := make([]func(*config.LoadOptions) error, 0)
-	configOptions = append(configOptions, config.WithRegion(awsRegion))
-	cfg, _ := config.LoadDefaultConfig(context.TODO(), configOptions...)
-	cfg.Credentials = credentials.NewStaticCredentialsProvider(awsAccessKeyID, awsSecretAccessKey, "")
-	return cloudwatch.NewFromConfig(cfg)
 }
 
 func getTemplateData() (templateData, []Template) {
