@@ -51,7 +51,7 @@ type CloudEventSourceSpec struct {
 	ClusterName string `json:"clusterName,omitempty"`
 
 	Destination Destination `json:"destination"`
-  
+
 	// +optional
 	AuthenticationRef *v1alpha1.AuthenticationRef `json:"authenticationRef,omitempty"`
 

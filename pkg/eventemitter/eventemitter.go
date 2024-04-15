@@ -215,7 +215,7 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEventSource
 		e.eventHandlersCache[eventHandlerKey] = eventHandler
 		return
 	}
-  
+
 	// Create EventFilter from CloudEventSource
 	e.eventFilterCache[key] = NewEventFilter(cloudEventSource.Spec.EventSubscription.IncludedEventTypes, cloudEventSource.Spec.EventSubscription.ExcludedEventTypes)
 	if cloudEventSource.Spec.Destination.AzureEventGridTopic != nil {
@@ -246,7 +246,7 @@ func (e *EventEmitter) clearEventHandlersCache(cloudEventSource *eventingv1alpha
 	key := cloudEventSource.GenerateIdentifier()
 
 	delete(e.eventFilterCache, key)
-  
+
 	// Clear different event destination here.
 	if cloudEventSource.Spec.Destination.HTTP != nil {
 		eventHandlerKey := newEventHandlerKey(key, cloudEventHandlerTypeHTTP)

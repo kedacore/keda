@@ -105,7 +105,7 @@ func (a *AzureEventGridTopicHandler) EmitEvent(eventData eventdata.EventData, fa
 		Time:            &eventData.Time,
 	}
 
-	event, err := messaging.NewCloudEvent(source, eventData.EventType, EmitData{Reason: eventData.Reason, Message: eventData.Message}, opt)
+	event, err := messaging.NewCloudEvent(source, string(eventData.CloudEventType), EmitData{Reason: eventData.Reason, Message: eventData.Message}, opt)
 
 	if err != nil {
 		a.logger.Error(err, "EmitEvent error %s")
