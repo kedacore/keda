@@ -33,7 +33,7 @@ var _ = godotenv.Load("../../.env")
 var (
 	connectionString        = os.Getenv("TF_AZURE_SERVICE_BUS_EVENTGRID_CONNECTION_STRING")
 	topicName               = os.Getenv("TF_AZURE_SB_EVENT_GRID_RECEIVE_TOPIC")
-	eventGridEndpoint       = os.Getenv("TF_AZURE_EVENT_GRID_ENDPOINT")
+	eventGridEndpoint       = os.Getenv("TF_AZURE_EVENT_GRID_TOPIC_ENDPOINT")
 	eventGridKey            = os.Getenv("TF_AZURE_EVENT_GRID_KEY")
 	subscriptionName        = fmt.Sprintf("subs-%d", GetRandomNumber())
 	namespace               = fmt.Sprintf("%s-ns", testName)
