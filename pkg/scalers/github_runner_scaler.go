@@ -544,7 +544,7 @@ func stripDeadRuns(allWfrs []WorkflowRuns) []WorkflowRun {
 	var filtered []WorkflowRun
 	for _, wfrs := range allWfrs {
 		for _, wfr := range wfrs.WorkflowRuns {
-			if wfr.Status == "queued" {
+			if wfr.Status == "queued" || wfr.Status == "in_progress" {
 				filtered = append(filtered, wfr)
 			}
 		}
@@ -638,7 +638,7 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 			return -1, err
 		}
 		for _, job := range jobs {
-			if job.Status == "queued" && canRunnerMatchLabels(job.Labels, s.metadata.labels) {
+			if (job.Status == "queued" || job.Status == "in_progress") && canRunnerMatchLabels(job.Labels, s.metadata.labels) {
 				queueCount++
 			}
 		}

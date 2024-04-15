@@ -83,11 +83,14 @@ type templateData struct {
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-
-	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
+	t.Cleanup(func() {
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+		RMQUninstall(t, rmqNamespace, user, password, vhost, WithoutOAuth())
+	})
 
+	// Create kubernetes resources
 	RMQInstall(t, kc, rmqNamespace, user, password, vhost, WithoutOAuth())
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
@@ -98,11 +101,6 @@ func TestScaler(t *testing.T) {
 		"replica count should be 0 after 1 minute")
 
 	testScaling(t, kc)
-
-	// cleanup
-	t.Log("--- cleaning up ---")
-	DeleteKubernetesResources(t, testNamespace, data, templates)
-	RMQUninstall(t, rmqNamespace, user, password, vhost, WithoutOAuth())
 }
 
 func getTemplateData() (templateData, []Template) {

@@ -127,7 +127,7 @@ func TestGetScaledObjectMetrics_DirectCall(t *testing.T) {
 	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs)
 	scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{metricValue}, true, nil)
-	mockExecutor.EXPECT().RequestScale(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
+	mockExecutor.EXPECT().RequestScale(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
 	sh.checkScalers(context.TODO(), &scaledObject, &sync.RWMutex{})
 
 	mockClient.EXPECT().Status().Return(mockStatusWriter)
@@ -218,7 +218,7 @@ func TestGetScaledObjectMetrics_FromCache(t *testing.T) {
 	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs)
 	scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{metricValue}, true, nil)
-	mockExecutor.EXPECT().RequestScale(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
+	mockExecutor.EXPECT().RequestScale(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
 	sh.checkScalers(context.TODO(), &scaledObject, &sync.RWMutex{})
 
 	mockClient.EXPECT().Status().Return(mockStatusWriter)
@@ -347,7 +347,7 @@ func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
 			return metricsValueFn(i), true, nil
 		})
 	}
-	mockExecutor.EXPECT().RequestScale(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
+	mockExecutor.EXPECT().RequestScale(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
 	assert.Eventually(t, func() bool {
 		sh.checkScalers(context.TODO(), &scaledObject, &sync.RWMutex{})
 		return true
@@ -428,11 +428,12 @@ func TestCheckScaledObjectScalersWithError(t *testing.T) {
 		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
 	}
 
-	isActive, isError, _, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
+	isActive, isError, _, activeTriggers, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
 	scalerCache.Close(context.Background())
 
 	assert.Equal(t, false, isActive)
 	assert.Equal(t, true, isError)
+	assert.Empty(t, activeTriggers)
 }
 
 func TestCheckScaledObjectScalersWithTriggerAuthError(t *testing.T) {
@@ -544,11 +545,12 @@ func TestCheckScaledObjectScalersWithTriggerAuthError(t *testing.T) {
 		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
 	}
 
-	isActive, isError, _, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
+	isActive, isError, _, activeTriggers, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
 	scalerCache.Close(context.Background())
 
 	assert.Equal(t, false, isActive)
 	assert.Equal(t, true, isError)
+	assert.Empty(t, activeTriggers)
 
 	failureEvent := <-recorder.Events
 	assert.Contains(t, failureEvent, "KEDAScalerFailed")
@@ -623,11 +625,12 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
 	}
 
-	isActive, isError, _, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
+	isActive, isError, _, activeTriggers, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
 	scalerCache.Close(context.Background())
 
 	assert.Equal(t, true, isActive)
 	assert.Equal(t, true, isError)
+	assert.Equal(t, []string{"*mock_scalers.MockScaler"}, activeTriggers)
 }
 
 func TestIsScaledJobActive(t *testing.T) {
@@ -992,7 +995,7 @@ func TestScalingModifiersFormula(t *testing.T) {
 	scaler2.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs2)
 	scaler1.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{metricValue1, metricValue2}, true, nil)
 	scaler2.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{metricValue1, metricValue2}, true, nil)
-	mockExecutor.EXPECT().RequestScale(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
+	mockExecutor.EXPECT().RequestScale(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
 	sh.checkScalers(context.TODO(), &scaledObject, &sync.RWMutex{})
 
 	mockClient.EXPECT().Status().Return(mockStatusWriter).Times(2)

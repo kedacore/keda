@@ -11,6 +11,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -189,6 +190,9 @@ func TestInfluxScaler(t *testing.T) {
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
+	t.Cleanup(func() {
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+	})
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
@@ -204,17 +208,16 @@ func TestInfluxScaler(t *testing.T) {
 	testScaleFloat(t, kc, data)
 
 	// cleanup
-	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func updateDataWithInfluxAuth(t *testing.T, kc *kubernetes.Clientset, data *templateData) {
 	// run writeJob
 	KubectlReplaceWithTemplate(t, data, "influxdbWriteJobTemplate", influxdbWriteJobTemplate)
-	assert.True(t, WaitForJobSuccess(t, kc, influxdbJobName, testNamespace, 30, 2), "Job should run successfully")
+	require.True(t, WaitForJobSuccess(t, kc, influxdbJobName, testNamespace, 30, 2), "Job should run successfully")
 
 	// get pod logs
 	log, err := FindPodLogs(kc, testNamespace, label, false)
-	assert.NoErrorf(t, err, "cannotget logs - %s", err)
+	require.NoErrorf(t, err, "cannotget logs - %s", err)
 
 	var lines []string
 	sc := bufio.NewScanner(strings.NewReader(log[0]))

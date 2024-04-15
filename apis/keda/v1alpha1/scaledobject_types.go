@@ -100,6 +100,8 @@ type ScaledObjectSpec struct {
 	Triggers []ScaleTriggers `json:"triggers"`
 	// +optional
 	Fallback *Fallback `json:"fallback,omitempty"`
+	// +optional
+	InitialCooldownPeriod int32 `json:"initialCooldownPeriod,omitempty"`
 }
 
 // Fallback is the spec for fallback options
@@ -199,7 +201,7 @@ func (so *ScaledObject) HasPausedReplicaAnnotation() bool {
 	return pausedReplicasAnnotationFound
 }
 
-// HasPausedAnnotition returns whether this ScaledObject has PausedAnnotation or PausedReplicasAnnotation
+// HasPausedAnnotation returns whether this ScaledObject has PausedAnnotation or PausedReplicasAnnotation
 func (so *ScaledObject) HasPausedAnnotation() bool {
 	_, pausedAnnotationFound := so.GetAnnotations()[PausedAnnotation]
 	_, pausedReplicasAnnotationFound := so.GetAnnotations()[PausedReplicasAnnotation]

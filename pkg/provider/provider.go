@@ -36,7 +36,6 @@ type KedaProvider struct {
 	defaults.DefaultExternalMetricsProvider
 
 	client client.Client
-	ctx    context.Context
 
 	grpcClient metricsservice.GrpcClient
 }
@@ -51,7 +50,6 @@ var (
 func NewProvider(ctx context.Context, adapterLogger logr.Logger, client client.Client, grpcClient metricsservice.GrpcClient) provider.ExternalMetricsProvider {
 	provider := &KedaProvider{
 		client:     client,
-		ctx:        ctx,
 		grpcClient: grpcClient,
 	}
 	logger = adapterLogger.WithName("provider")

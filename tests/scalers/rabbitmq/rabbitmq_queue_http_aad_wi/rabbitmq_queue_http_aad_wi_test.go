@@ -119,10 +119,14 @@ func TestScaler(t *testing.T) {
 	require.NotEmpty(t, rabbitAppClientID, "TF_AZURE_RABBIT_API_APPLICATION_ID env variable is required for rabbitmq workload identity tests")
 	require.NotEmpty(t, azureADTenantID, "TF_AZURE_SP_TENANT env variable is required for rabbitmq workload identity tests")
 
-	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
+	t.Cleanup(func() {
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+		RMQUninstall(t, rmqNamespace, user, password, vhost, WithAzureADOAuth(azureADTenantID, rabbitAppClientID))
+	})
 
+	// Create kubernetes resources
 	RMQInstall(t, kc, rmqNamespace, user, password, vhost, WithAzureADOAuth(azureADTenantID, rabbitAppClientID))
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
@@ -130,11 +134,6 @@ func TestScaler(t *testing.T) {
 		"replica count should be 0 after 1 minute")
 
 	testScaling(t, kc)
-
-	// cleanup
-	t.Log("--- cleaning up ---")
-	DeleteKubernetesResources(t, testNamespace, data, templates)
-	RMQUninstall(t, rmqNamespace, user, password, vhost, WithAzureADOAuth(azureADTenantID, rabbitAppClientID))
 }
 
 func getTemplateData() (templateData, []Template) {

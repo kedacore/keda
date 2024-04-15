@@ -280,8 +280,8 @@ func parseAzureEventHubAuthenticationMetadata(logger logr.Logger, config *scaler
 
 // GetUnprocessedEventCountInPartition gets number of unprocessed events in a given partition
 func (s *azureEventHubScaler) GetUnprocessedEventCountInPartition(ctx context.Context, partitionInfo *eventhub.HubPartitionRuntimeInformation) (newEventCount int64, checkpoint azure.Checkpoint, err error) {
-	// if partitionInfo.LastEnqueuedOffset = -1, that means event hub partition is empty
-	if partitionInfo == nil || partitionInfo.LastEnqueuedOffset == "-1" {
+	// if partitionInfo.LastSequenceNumber = -1, that means event hub partition is empty
+	if partitionInfo == nil || partitionInfo.LastSequenceNumber == -1 {
 		return 0, azure.Checkpoint{}, nil
 	}
 
@@ -305,14 +305,6 @@ func (s *azureEventHubScaler) GetUnprocessedEventCountInPartition(ctx context.Co
 
 func calculateUnprocessedEvents(partitionInfo *eventhub.HubPartitionRuntimeInformation, checkpoint azure.Checkpoint, stalePartitionInfoThreshold int64) int64 {
 	unprocessedEventCount := int64(0)
-
-	// If checkpoint.Offset is empty that means no messages has been processed from an event hub partition
-	// And since partitionInfo.LastSequenceNumber = 0 for the very first message hence
-	// total unprocessed message will be partitionInfo.LastSequenceNumber + 1
-	if checkpoint.Offset == "" {
-		unprocessedEventCount = partitionInfo.LastSequenceNumber + 1
-		return unprocessedEventCount
-	}
 
 	if partitionInfo.LastSequenceNumber >= checkpoint.SequenceNumber {
 		unprocessedEventCount = partitionInfo.LastSequenceNumber - checkpoint.SequenceNumber
