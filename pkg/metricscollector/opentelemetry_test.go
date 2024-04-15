@@ -89,11 +89,16 @@ func TestLoopLatency(t *testing.T) {
 	assert.Nil(t, err)
 	scopeMetrics := got.ScopeMetrics[0]
 	assert.NotEqual(t, len(scopeMetrics.Metrics), 0)
+
 	latency := retrieveMetric(scopeMetrics.Metrics, "keda.internal.scale.loop.latency")
-
 	assert.NotNil(t, latency)
-	assert.Equal(t, latency.Unit, "s")
-
+	assert.Equal(t, latency.Unit, "")
 	data := latency.Data.(metricdata.Gauge[float64]).DataPoints[0]
+	assert.Equal(t, data.Value, float64(500))
+
+	latencySeconds := retrieveMetric(scopeMetrics.Metrics, "keda.internal.scale.loop.latency.seconds")
+	assert.NotNil(t, latencySeconds)
+	assert.Equal(t, latencySeconds.Unit, "s")
+	data = latencySeconds.Data.(metricdata.Gauge[float64]).DataPoints[0]
 	assert.Equal(t, data.Value, float64(0.5))
 }

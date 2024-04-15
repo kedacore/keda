@@ -33,10 +33,12 @@ var (
 	otTriggerRegisteredTotalsCounter api.Int64UpDownCounter
 	otCrdRegisteredTotalsCounter     api.Int64UpDownCounter
 
-	otelScalerMetricVal         OtelMetricFloat64Val
-	otelScalerMetricsLatencyVal OtelMetricFloat64Val
-	otelInternalLoopLatencyVal  OtelMetricFloat64Val
-	otelBuildInfoVal            OtelMetricInt64Val
+	otelScalerMetricVal                   OtelMetricFloat64Val
+	otelScalerMetricsLatencyVal           OtelMetricFloat64Val
+	otelScalerMetricsLatencyValDeprecated OtelMetricFloat64Val
+	otelInternalLoopLatencyVal            OtelMetricFloat64Val
+	otelInternalLoopLatencyValDeprecated  OtelMetricFloat64Val
+	otelBuildInfoVal                      OtelMetricInt64Val
 
 	otCloudEventEmittedCounter api.Int64Counter
 	otCloudEventQueueStatusVal OtelMetricFloat64Val
@@ -129,6 +131,14 @@ func initMeters() {
 
 	_, err = meter.Float64ObservableGauge(
 		"keda.scaler.metrics.latency",
+		api.WithDescription("DEPRECATED - use `keda_scaler_metrics_latency_seconds` instead"),
+		api.WithFloat64Callback(ScalerMetricsLatencyCallbackDeprecated),
+	)
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+	_, err = meter.Float64ObservableGauge(
+		"keda.scaler.metrics.latency.seconds",
 		api.WithDescription("The latency of retrieving current metric from each scaler"),
 		api.WithUnit("s"),
 		api.WithFloat64Callback(ScalerMetricsLatencyCallback),
@@ -139,6 +149,14 @@ func initMeters() {
 
 	_, err = meter.Float64ObservableGauge(
 		"keda.internal.scale.loop.latency",
+		api.WithDescription("DEPRECATED - use `keda_internal_scale_loop_latency_seconds` instead"),
+		api.WithFloat64Callback(ScalableObjectLatencyCallbackDeprecated),
+	)
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+	_, err = meter.Float64ObservableGauge(
+		"keda.internal.scale.loop.latency.seconds",
 		api.WithDescription("Internal latency of ScaledObject/ScaledJob loop execution"),
 		api.WithUnit("s"),
 		api.WithFloat64Callback(ScalableObjectLatencyCallback),
@@ -222,10 +240,20 @@ func ScalerMetricsLatencyCallback(_ context.Context, obsrv api.Float64Observer) 
 	return nil
 }
 
+func ScalerMetricsLatencyCallbackDeprecated(_ context.Context, obsrv api.Float64Observer) error {
+	if otelScalerMetricsLatencyValDeprecated.measurementOption != nil {
+		obsrv.Observe(otelScalerMetricsLatencyValDeprecated.val, otelScalerMetricsLatencyValDeprecated.measurementOption)
+	}
+	otelScalerMetricsLatencyValDeprecated = OtelMetricFloat64Val{}
+	return nil
+}
+
 // RecordScalerLatency create a measurement of the latency to external metric
 func (o *OtelMetrics) RecordScalerLatency(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value time.Duration) {
 	otelScalerMetricsLatencyVal.val = value.Seconds()
 	otelScalerMetricsLatencyVal.measurementOption = getScalerMeasurementOption(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)
+	otelScalerMetricsLatencyValDeprecated.val = float64(value.Milliseconds())
+	otelScalerMetricsLatencyValDeprecated.measurementOption = getScalerMeasurementOption(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)
 }
 
 func ScalableObjectLatencyCallback(_ context.Context, obsrv api.Float64Observer) error {
@@ -233,6 +261,14 @@ func ScalableObjectLatencyCallback(_ context.Context, obsrv api.Float64Observer)
 		obsrv.Observe(otelInternalLoopLatencyVal.val, otelInternalLoopLatencyVal.measurementOption)
 	}
 	otelInternalLoopLatencyVal = OtelMetricFloat64Val{}
+	return nil
+}
+
+func ScalableObjectLatencyCallbackDeprecated(_ context.Context, obsrv api.Float64Observer) error {
+	if otelInternalLoopLatencyValDeprecated.measurementOption != nil {
+		obsrv.Observe(otelInternalLoopLatencyValDeprecated.val, otelInternalLoopLatencyValDeprecated.measurementOption)
+	}
+	otelInternalLoopLatencyValDeprecated = OtelMetricFloat64Val{}
 	return nil
 }
 
@@ -250,6 +286,8 @@ func (o *OtelMetrics) RecordScalableObjectLatency(namespace string, name string,
 
 	otelInternalLoopLatencyVal.val = value.Seconds()
 	otelInternalLoopLatencyVal.measurementOption = opt
+	otelInternalLoopLatencyValDeprecated.val = float64(value.Milliseconds())
+	otelInternalLoopLatencyValDeprecated.measurementOption = opt
 }
 
 func ScalerActiveCallback(_ context.Context, obsrv api.Float64Observer) error {
