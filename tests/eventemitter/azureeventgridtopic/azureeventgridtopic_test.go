@@ -109,7 +109,7 @@ metadata:
   name: {{.SecretName}}
   namespace: {{.TestNamespace}}
 data:
-  accessKey: {{.EventGridKey}}
+  key: {{.EventGridKey}}
 `
 
 	triggerAuthTemplate = `
@@ -120,7 +120,7 @@ metadata:
   namespace: {{.TestNamespace}}
 spec:
   secretTargetRef:
-  - parameter: key
+  - parameter: accessKey
     name: {{.SecretName}}
     key: key
 `
