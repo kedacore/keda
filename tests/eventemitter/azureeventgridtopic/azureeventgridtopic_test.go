@@ -204,6 +204,8 @@ func testEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data templa
 // help function to load template data
 func getTemplateData() (templateData, []Template) {
 	base64EventGridKey := base64.StdEncoding.EncodeToString([]byte(eventGridKey))
+	fmt.Printf("eventGridKey: %s\n", eventGridKey)
+	fmt.Printf("base64EventGridKey: %s\n", base64EventGridKey)
 	return templateData{
 			TestNamespace:           namespace,
 			ClientName:              clientName,
