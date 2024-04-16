@@ -52,11 +52,11 @@ func NewAzureEventGridTopicHandler(context context.Context, clusterName string, 
 
 	switch podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		if authParams["azureEventGridAcceessKey"] == "" {
+		if authParams["accessKey"] == "" {
 			err = fmt.Errorf("no azure event grid access key provided")
 			break
 		}
-		client, err = publisher.NewClientWithSharedKeyCredential(spec.Endpoint, azcore.NewKeyCredential(authParams["key"]), nil)
+		client, err = publisher.NewClientWithSharedKeyCredential(spec.Endpoint, azcore.NewKeyCredential(authParams["accessKey"]), nil)
 	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
 		creds, chainedErr := azure.NewChainedCredential(logger, podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID(), podIdentity.Provider)
 		if chainedErr != nil {

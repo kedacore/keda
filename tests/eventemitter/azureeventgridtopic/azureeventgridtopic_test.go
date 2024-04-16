@@ -109,7 +109,7 @@ metadata:
   name: {{.SecretName}}
   namespace: {{.TestNamespace}}
 data:
-  azureEventGridAcceessKey: {{.EventGridKey}}
+  accessKey: {{.EventGridKey}}
 `
 
 	triggerAuthTemplate = `
