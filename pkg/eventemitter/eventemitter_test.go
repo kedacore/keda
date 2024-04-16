@@ -66,23 +66,27 @@ func TestEventHandler_FailedEmitEvent(t *testing.T) {
 	key := newEventHandlerKey(cloudEventSource.GenerateIdentifier(), cloudEventHandlerTypeHTTP)
 	caches[key] = eventHandler
 
+	filtercaches := map[string]*EventFilter{}
+
 	eventEmitter := EventEmitter{
 		client:                   mockClient,
 		recorder:                 recorder,
 		clusterName:              "cluster-name",
 		eventHandlersCache:       caches,
 		eventHandlersCacheLock:   &sync.RWMutex{},
+		eventFilterCache:         filtercaches,
+		eventFilterCacheLock:     &sync.RWMutex{},
 		eventLoopContexts:        &sync.Map{},
 		cloudEventProcessingChan: make(chan eventdata.EventData, 1),
 	}
 
 	eventData := eventdata.EventData{
-		Namespace:  "aaa",
-		ObjectName: "bbb",
-		EventType:  "ccc",
-		Reason:     "ddd",
-		Message:    "eee",
-		Time:       time.Now().UTC(),
+		Namespace:      "aaa",
+		ObjectName:     "bbb",
+		CloudEventType: "ccc",
+		Reason:         "ddd",
+		Message:        "eee",
+		Time:           time.Now().UTC(),
 	}
 
 	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
@@ -128,23 +132,27 @@ func TestEventHandler_DirectCall(t *testing.T) {
 	key := newEventHandlerKey(cloudEventSource.GenerateIdentifier(), cloudEventHandlerTypeHTTP)
 	caches[key] = eventHandler
 
+	filtercaches := map[string]*EventFilter{}
+
 	eventEmitter := EventEmitter{
 		client:                   mockClient,
 		recorder:                 recorder,
 		clusterName:              "cluster-name",
 		eventHandlersCache:       caches,
 		eventHandlersCacheLock:   &sync.RWMutex{},
+		eventFilterCache:         filtercaches,
+		eventFilterCacheLock:     &sync.RWMutex{},
 		eventLoopContexts:        &sync.Map{},
 		cloudEventProcessingChan: make(chan eventdata.EventData, 1),
 	}
 
 	eventData := eventdata.EventData{
-		Namespace:  "aaa",
-		ObjectName: "bbb",
-		EventType:  "ccc",
-		Reason:     "ddd",
-		Message:    "eee",
-		Time:       time.Now().UTC(),
+		Namespace:      "aaa",
+		ObjectName:     "bbb",
+		CloudEventType: "ccc",
+		Reason:         "ddd",
+		Message:        "eee",
+		Time:           time.Now().UTC(),
 	}
 
 	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
