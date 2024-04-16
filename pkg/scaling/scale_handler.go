@@ -575,6 +575,10 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 			logger.Error(err, "error clearing scalers cache")
 		}
 		logger.V(1).Info("scaler error encountered, clearing scaler cache")
+
+		if !isFallbackActive {
+			return nil, fmt.Errorf("metric:%s encountered error", metricsName)
+		}
 	}
 
 	if len(matchingMetrics) == 0 {
