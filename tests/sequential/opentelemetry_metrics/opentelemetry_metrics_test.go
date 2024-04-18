@@ -450,7 +450,7 @@ func TestOpenTelemetryMetrics(t *testing.T) {
 
 	testScalerMetricValue(t)
 	testScalerMetricLatency(t)
-	testScalerActiveMetric(t)
+	testScalerActiveMetric(t, kc)
 	testScaledObjectErrors(t, data)
 	testScaledJobErrors(t, data)
 	testScalerErrors(t, data)
@@ -748,28 +748,19 @@ func testScalableObjectMetrics(t *testing.T) {
 	}
 }
 
-func testScalerActiveMetric(t *testing.T) {
+func testScalerActiveMetric(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scaler active metric ---")
 
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
+	families := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
+	assertScaledObjectFlagMetric(t, families, scaledObjectName, "keda_scaler_active", true)
+	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 0, testNamespace)
+	WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 2)
+	time.Sleep(60 * time.Second)
+	families = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
 
-	val, ok := family["keda_scaler_active"]
-	assert.True(t, ok, "keda_scaler_active not available")
-	if ok {
-		var found bool
-		metrics := val.GetMetric()
-		for _, metric := range metrics {
-			labels := metric.GetLabel()
-			for _, label := range labels {
-				if (*label.Name == labelScaledObject && *label.Value == scaledObjectName) ||
-					(*label.Name == labelScaledJob && *label.Value == scaledJobName) {
-					assert.Equal(t, float64(1), *metric.Gauge.Value)
-					found = true
-				}
-			}
-		}
-		assert.Equal(t, true, found)
-	}
+	assertScaledObjectFlagMetric(t, families, scaledObjectName, "keda_scaler_active", false)
+	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 4, testNamespace)
+	WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 2)
 }
 
 func testScaledObjectPausedMetric(t *testing.T, data templateData) {
@@ -781,7 +772,7 @@ func testScaledObjectPausedMetric(t *testing.T, data templateData) {
 	time.Sleep(20 * time.Second)
 	// Check that the paused metric is now true
 	families := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
-	assertScaledObjectPausedMetric(t, families, scaledObjectName, true)
+	assertScaledObjectFlagMetric(t, families, scaledObjectName, "keda_scaled_object_paused", true)
 
 	// Unpause the ScaledObject
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
@@ -789,7 +780,7 @@ func testScaledObjectPausedMetric(t *testing.T, data templateData) {
 	time.Sleep(20 * time.Second)
 	// Check that the paused metric is back to false
 	families = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
-	assertScaledObjectPausedMetric(t, families, scaledObjectName, false)
+	assertScaledObjectFlagMetric(t, families, scaledObjectName, "keda_scaled_object_paused", false)
 }
 
 func testOperatorMetrics(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -970,9 +961,9 @@ func checkCRTotalValues(t *testing.T, families map[string]*prommodel.MetricFamil
 	}
 }
 
-func assertScaledObjectPausedMetric(t *testing.T, families map[string]*prommodel.MetricFamily, scaledObjectName string, expected bool) {
-	family, ok := families["keda_scaled_object_paused"]
-	assert.True(t, ok, "keda_scaled_object_paused not available")
+func assertScaledObjectFlagMetric(t *testing.T, families map[string]*prommodel.MetricFamily, scaledObjectName string, metricName string, expected bool) {
+	family, ok := families[metricName]
+	assert.True(t, ok, "%s not available", metricName)
 	if !ok {
 		return
 	}
