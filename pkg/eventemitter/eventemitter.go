@@ -200,6 +200,9 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEventSource
 		return
 	}
 
+	// Create EventFilter from CloudEventSource
+	e.eventFilterCache[key] = NewEventFilter(cloudEventSource.Spec.EventSubscription.IncludedEventTypes, cloudEventSource.Spec.EventSubscription.ExcludedEventTypes)
+
 	// Create different event destinations here
 	if cloudEventSource.Spec.Destination.HTTP != nil {
 		eventHandler, err := NewCloudEventHTTPHandler(ctx, clusterName, cloudEventSource.Spec.Destination.HTTP.URI, initializeLogger(cloudEventSource, "cloudevent_http"))
@@ -216,8 +219,6 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEventSource
 		return
 	}
 
-	// Create EventFilter from CloudEventSource
-	e.eventFilterCache[key] = NewEventFilter(cloudEventSource.Spec.EventSubscription.IncludedEventTypes, cloudEventSource.Spec.EventSubscription.ExcludedEventTypes)
 	if cloudEventSource.Spec.Destination.AzureEventGridTopic != nil {
 		eventHandler, err := NewAzureEventGridTopicHandler(ctx, clusterName, cloudEventSource.Spec.Destination.AzureEventGridTopic, authParams, podIdentity, initializeLogger(cloudEventSource, "azure_event_grid_topic"))
 		if err != nil {
