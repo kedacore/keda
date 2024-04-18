@@ -215,6 +215,26 @@ var _ = It("shouldn't validate the so creation when there is another unmanaged h
 	}).ShouldNot(HaveOccurred())
 })
 
+var _ = It("shouldn't validate the so creation when hpa has shared-ownership unactivated", func() {
+
+	hpaName := "test-hpa-disabled-validation-by-hpa-ownership"
+	namespaceName := "hpa-ownership"
+	namespace := createNamespace(namespaceName)
+	hpa := createHpa(hpaName, namespaceName, workloadName, "apps/v1", "Deployment", nil)
+	hpa.ObjectMeta.Annotations = map[string]string{ValidationsHpaOwnershipAnnotation: "false"}
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{ScaledObjectTransferHpaOwnershipAnnotation: "false"}, hpaName)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), hpa)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
 var _ = It("shouldn't validate the so creation when there is another so", func() {
 
 	so2Name := "test-so2"
