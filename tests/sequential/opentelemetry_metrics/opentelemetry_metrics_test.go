@@ -753,6 +753,8 @@ func testScalerActiveMetric(t *testing.T, kc *kubernetes.Clientset) {
 
 	families := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorCollectorPrometheusExportURL))
 	assertScaledObjectFlagMetric(t, families, scaledObjectName, "keda_scaler_active", true)
+
+	t.Log("--- testing scaler active metric scaled down ---")
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 0, testNamespace)
 	WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 2)
 	time.Sleep(60 * time.Second)
@@ -971,6 +973,7 @@ func assertScaledObjectFlagMetric(t *testing.T, families map[string]*prommodel.M
 	metricValue := 0.0
 	metrics := family.GetMetric()
 	for _, metric := range metrics {
+		t.Log("scaledobject flag metric detail info ---", "metric", metric, "scaledObjectName", scaledObjectName, "metricName", metricName)
 		labels := metric.GetLabel()
 		for _, label := range labels {
 			if *label.Name == labelScaledObject && *label.Value == scaledObjectName {
