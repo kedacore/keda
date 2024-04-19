@@ -14,7 +14,7 @@ Here is an overview of our current release estimations:
 
 | Version | Estimated Release Date                               |
 |:--------|:-----------------------------------------------------|
-| v2.14   | April 12th, 2024                                     |
+| v2.14   | April 25th, 2024                                     |
 | v2.15   | July 9th, 2024                                       |
 | v2.16   | Oct 3rd, 2024                                        |
 
