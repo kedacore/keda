@@ -119,10 +119,16 @@ func TestContinuousMetrics(t *testing.T) {
 	dataPoints := activeMetric.Data.(metricdata.Gauge[float64]).DataPoints
 	assert.Len(t, dataPoints, 2)
 
-	scaledObjectMetric := dataPoints[0]
-	attribute, _ := scaledObjectMetric.Attributes.Value("namespace")
-	assert.Equal(t, attribute.AsString(), "testnamespace")
-	attribute, _ = scaledObjectMetric.Attributes.Value("scaledObject")
+	var scaledObjectMetric metricdata.DataPoint[float64]
+	for _, v := range dataPoints {
+		attribute, _ := v.Attributes.Value("namespace")
+		if attribute.AsString() == "testnamespace" {
+			scaledObjectMetric = v
+		}
+	}
+
+	assert.NotEqual(t, scaledObjectMetric, metricdata.DataPoint[float64]{})
+	attribute, _ := scaledObjectMetric.Attributes.Value("scaledObject")
 	assert.Equal(t, attribute.AsString(), "testresource")
 	attribute, _ = scaledObjectMetric.Attributes.Value("scaler")
 	assert.Equal(t, attribute.AsString(), "testscaler")
@@ -130,7 +136,15 @@ func TestContinuousMetrics(t *testing.T) {
 	assert.Equal(t, attribute.AsString(), "testmetric")
 	assert.Equal(t, scaledObjectMetric.Value, 1.0)
 
-	scaledJobMetric := dataPoints[1]
+	var scaledJobMetric metricdata.DataPoint[float64]
+	for _, v := range dataPoints {
+		attribute, _ := v.Attributes.Value("namespace")
+		if attribute.AsString() == "testnamespace2" {
+			scaledJobMetric = v
+		}
+	}
+
+	assert.NotEqual(t, scaledJobMetric, metricdata.DataPoint[float64]{})
 	attribute, _ = scaledJobMetric.Attributes.Value("namespace")
 	assert.Equal(t, attribute.AsString(), "testnamespace2")
 	attribute, _ = scaledJobMetric.Attributes.Value("scaledJob")
