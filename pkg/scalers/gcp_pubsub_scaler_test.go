@@ -10,7 +10,9 @@ import (
 )
 
 var testPubSubResolvedEnv = map[string]string{
-	"SAMPLE_CREDS": "{}",
+	"SAMPLE_CREDS":        "{}",
+	"MY_ENV_SUBSCRIPTION": "myEnvSubscription",
+	"MY_ENV_TOPIC":        "myEnvTopic",
 }
 
 type parsePubSubMetadataTestData struct {
@@ -76,6 +78,14 @@ var testPubSubMetadata = []parsePubSubMetadataTestData{
 	{nil, map[string]string{"value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// both subscriptionSize and topicName present
 	{nil, map[string]string{"subscriptionSize": "7", "topicName": "mytopic", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	// both subscriptionName and subscriptionNameFromEnv present
+	{nil, map[string]string{"subscriptionName": "mysubscription", "subscriptionNameFromEnv": "MY_ENV_SUBSCRIPTION", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	// both topicName and topicNameFromEnv present
+	{nil, map[string]string{"topicName": "mytopic", "topicNameFromEnv": "MY_ENV_TOPIC", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	// subscriptionNameFromEnv present
+	{nil, map[string]string{"subscriptionNameFromEnv": "MY_ENV_SUBSCRIPTION", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	// topicNameFromEnv present
+	{nil, map[string]string{"topicNameFromEnv": "MY_ENV_TOPIC", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 }
 
 var gcpPubSubMetricIdentifiers = []gcpPubSubMetricIdentifier{
@@ -90,6 +100,8 @@ var gcpResourceNameTests = []gcpPubSubSubscription{
 	{&testPubSubMetadata[12], 1, "projects/myproject/mysubscription", ""},
 	{&testPubSubMetadata[17], 1, "mytopic", "myproject"},
 	{&testPubSubMetadata[18], 1, "projects/myproject/mytopic", ""},
+	{&testPubSubMetadata[24], 1, "myEnvSubscription", ""},
+	{&testPubSubMetadata[25], 1, "myEnvTopic", ""},
 }
 
 var gcpSubscriptionDefaults = []gcpPubSubSubscription{
@@ -140,7 +152,7 @@ func TestGcpPubSubGetMetricSpecForScaling(t *testing.T) {
 	}
 }
 
-func TestGcpPubSubSubscriptionName(t *testing.T) {
+func TestGcpPubSubResourceName(t *testing.T) {
 	for _, testData := range gcpResourceNameTests {
 		meta, err := parsePubSubMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv, TriggerIndex: testData.triggerIndex}, logr.Discard())
 		if err != nil {
@@ -150,7 +162,7 @@ func TestGcpPubSubSubscriptionName(t *testing.T) {
 		resourceID, projectID := getResourceData(&mockGcpPubSubScaler)
 
 		if resourceID != testData.name || projectID != testData.projectID {
-			t.Error("Wrong Subscription parsing:", resourceID, projectID)
+			t.Error("Wrong Resource parsing:", resourceID, projectID)
 		}
 	}
 }
