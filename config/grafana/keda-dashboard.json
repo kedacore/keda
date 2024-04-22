@@ -173,7 +173,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by(job) (rate(keda_scaler_errors{}[5m]))",
+          "expr": "sum by(job) (rate(keda_scaler_detail_errors_total{}[5m]))",
           "legendFormat": "{{ job }}",
           "range": true,
           "refId": "A"
@@ -313,7 +313,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by(scaler) (rate(keda_scaler_errors{exported_namespace=~\"$namespace\", scaledObject=~\"$scaledObject\", scaler=~\"$scaler\"}[5m]))",
+          "expr": "sum by(scaler) (rate(keda_scaler_detail_errors_total{exported_namespace=~\"$namespace\", scaledObject=~\"$scaledObject\", scaler=~\"$scaler\"}[5m]))",
           "legendFormat": "{{ scaler }}",
           "range": true,
           "refId": "A"
@@ -423,7 +423,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by(scaledObject) (rate(keda_scaled_object_errors{exported_namespace=~\"$namespace\", scaledObject=~\"$scaledObject\"}[5m]))",
+          "expr": "sum by(scaledObject) (rate(keda_scaled_object_errors_total{exported_namespace=~\"$namespace\", scaledObject=~\"$scaledObject\"}[5m]))",
           "legendFormat": "{{ scaledObject }}",
           "range": true,
           "refId": "A"

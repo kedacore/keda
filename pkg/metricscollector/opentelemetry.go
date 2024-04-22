@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"runtime"
 	"strconv"
+	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -22,18 +23,22 @@ const meterName = "keda-open-telemetry-metrics"
 const defaultNamespace = "default"
 
 var (
-	meterProvider               *metric.MeterProvider
-	meter                       api.Meter
-	otScalerErrorsCounter       api.Int64Counter
-	otScaledObjectErrorsCounter api.Int64Counter
-	otScaledJobErrorsCounter    api.Int64Counter
-	otTriggerTotalsCounter      api.Int64UpDownCounter
-	otCrdTotalsCounter          api.Int64UpDownCounter
+	meterProvider                    *metric.MeterProvider
+	meter                            api.Meter
+	otScalerErrorsCounter            api.Int64Counter
+	otScaledObjectErrorsCounter      api.Int64Counter
+	otScaledJobErrorsCounter         api.Int64Counter
+	otTriggerTotalsCounterDeprecated api.Int64UpDownCounter
+	otCrdTotalsCounterDeprecated     api.Int64UpDownCounter
+	otTriggerRegisteredTotalsCounter api.Int64UpDownCounter
+	otCrdRegisteredTotalsCounter     api.Int64UpDownCounter
 
-	otelScalerMetricVal         OtelMetricFloat64Val
-	otelScalerMetricsLatencyVal OtelMetricFloat64Val
-	otelInternalLoopLatencyVal  OtelMetricFloat64Val
-	otelBuildInfoVal            OtelMetricInt64Val
+	otelScalerMetricVal                   OtelMetricFloat64Val
+	otelScalerMetricsLatencyVal           OtelMetricFloat64Val
+	otelScalerMetricsLatencyValDeprecated OtelMetricFloat64Val
+	otelInternalLoopLatencyVal            OtelMetricFloat64Val
+	otelInternalLoopLatencyValDeprecated  OtelMetricFloat64Val
+	otelBuildInfoVal                      OtelMetricInt64Val
 
 	otCloudEventEmittedCounter api.Int64Counter
 	otCloudEventQueueStatusVal OtelMetricFloat64Val
@@ -95,19 +100,29 @@ func initMeters() {
 		otLog.Error(err, msg)
 	}
 
-	otTriggerTotalsCounter, err = meter.Int64UpDownCounter("keda.trigger.totals", api.WithDescription("Total triggers"))
+	otTriggerTotalsCounterDeprecated, err = meter.Int64UpDownCounter("keda.trigger.totals", api.WithDescription("DEPRECATED - will be removed in 2.16 - use 'keda.trigger.registered.count' instead"))
 	if err != nil {
 		otLog.Error(err, msg)
 	}
 
-	otCrdTotalsCounter, err = meter.Int64UpDownCounter("keda.resource.totals", api.WithDescription("Total resources"))
+	otTriggerRegisteredTotalsCounter, err = meter.Int64UpDownCounter("keda.trigger.registered.count", api.WithDescription("Total number of triggers per trigger type registered"))
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+
+	otCrdTotalsCounterDeprecated, err = meter.Int64UpDownCounter("keda.resource.totals", api.WithDescription("DEPRECATED - will be removed in 2.16 - use 'keda.resource.registered.count' instead"))
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+
+	otCrdRegisteredTotalsCounter, err = meter.Int64UpDownCounter("keda.resource.registered.count", api.WithDescription("Total number of KEDA custom resources per namespace for each custom resource type (CRD) registered"))
 	if err != nil {
 		otLog.Error(err, msg)
 	}
 
 	_, err = meter.Float64ObservableGauge(
 		"keda.scaler.metrics.value",
-		api.WithDescription("Metric Value used for HPA"),
+		api.WithDescription("The current value for each scaler's metric that would be used by the HPA in computing the target average"),
 		api.WithFloat64Callback(ScalerMetricValueCallback),
 	)
 	if err != nil {
@@ -116,7 +131,16 @@ func initMeters() {
 
 	_, err = meter.Float64ObservableGauge(
 		"keda.scaler.metrics.latency",
-		api.WithDescription("Scaler Metrics Latency"),
+		api.WithDescription("DEPRECATED - use `keda_scaler_metrics_latency_seconds` instead"),
+		api.WithFloat64Callback(ScalerMetricsLatencyCallbackDeprecated),
+	)
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+	_, err = meter.Float64ObservableGauge(
+		"keda.scaler.metrics.latency.seconds",
+		api.WithDescription("The latency of retrieving current metric from each scaler"),
+		api.WithUnit("s"),
 		api.WithFloat64Callback(ScalerMetricsLatencyCallback),
 	)
 	if err != nil {
@@ -125,7 +149,16 @@ func initMeters() {
 
 	_, err = meter.Float64ObservableGauge(
 		"keda.internal.scale.loop.latency",
+		api.WithDescription("DEPRECATED - use `keda_internal_scale_loop_latency_seconds` instead"),
+		api.WithFloat64Callback(ScalableObjectLatencyCallbackDeprecated),
+	)
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+	_, err = meter.Float64ObservableGauge(
+		"keda.internal.scale.loop.latency.seconds",
 		api.WithDescription("Internal latency of ScaledObject/ScaledJob loop execution"),
+		api.WithUnit("s"),
 		api.WithFloat64Callback(ScalableObjectLatencyCallback),
 	)
 	if err != nil {
@@ -134,7 +167,7 @@ func initMeters() {
 
 	_, err = meter.Float64ObservableGauge(
 		"keda.scaler.active",
-		api.WithDescription("Activity of a Scaler Metric"),
+		api.WithDescription("Indicates whether a scaler is active (1), or not (0)"),
 		api.WithFloat64Callback(ScalerActiveCallback),
 	)
 	if err != nil {
@@ -207,10 +240,20 @@ func ScalerMetricsLatencyCallback(_ context.Context, obsrv api.Float64Observer) 
 	return nil
 }
 
+func ScalerMetricsLatencyCallbackDeprecated(_ context.Context, obsrv api.Float64Observer) error {
+	if otelScalerMetricsLatencyValDeprecated.measurementOption != nil {
+		obsrv.Observe(otelScalerMetricsLatencyValDeprecated.val, otelScalerMetricsLatencyValDeprecated.measurementOption)
+	}
+	otelScalerMetricsLatencyValDeprecated = OtelMetricFloat64Val{}
+	return nil
+}
+
 // RecordScalerLatency create a measurement of the latency to external metric
-func (o *OtelMetrics) RecordScalerLatency(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value float64) {
-	otelScalerMetricsLatencyVal.val = value
+func (o *OtelMetrics) RecordScalerLatency(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value time.Duration) {
+	otelScalerMetricsLatencyVal.val = value.Seconds()
 	otelScalerMetricsLatencyVal.measurementOption = getScalerMeasurementOption(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)
+	otelScalerMetricsLatencyValDeprecated.val = float64(value.Milliseconds())
+	otelScalerMetricsLatencyValDeprecated.measurementOption = getScalerMeasurementOption(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)
 }
 
 func ScalableObjectLatencyCallback(_ context.Context, obsrv api.Float64Observer) error {
@@ -221,8 +264,16 @@ func ScalableObjectLatencyCallback(_ context.Context, obsrv api.Float64Observer)
 	return nil
 }
 
+func ScalableObjectLatencyCallbackDeprecated(_ context.Context, obsrv api.Float64Observer) error {
+	if otelInternalLoopLatencyValDeprecated.measurementOption != nil {
+		obsrv.Observe(otelInternalLoopLatencyValDeprecated.val, otelInternalLoopLatencyValDeprecated.measurementOption)
+	}
+	otelInternalLoopLatencyValDeprecated = OtelMetricFloat64Val{}
+	return nil
+}
+
 // RecordScalableObjectLatency create a measurement of the latency executing scalable object loop
-func (o *OtelMetrics) RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value float64) {
+func (o *OtelMetrics) RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value time.Duration) {
 	resourceType := "scaledjob"
 	if isScaledObject {
 		resourceType = "scaledobject"
@@ -233,8 +284,10 @@ func (o *OtelMetrics) RecordScalableObjectLatency(namespace string, name string,
 		attribute.Key("type").String(resourceType),
 		attribute.Key("name").String(name))
 
-	otelInternalLoopLatencyVal.val = value
+	otelInternalLoopLatencyVal.val = value.Seconds()
 	otelInternalLoopLatencyVal.measurementOption = opt
+	otelInternalLoopLatencyValDeprecated.val = float64(value.Milliseconds())
+	otelInternalLoopLatencyValDeprecated.measurementOption = opt
 }
 
 func ScalerActiveCallback(_ context.Context, obsrv api.Float64Observer) error {
@@ -315,13 +368,15 @@ func (o *OtelMetrics) RecordScaledJobError(namespace string, scaledJob string, e
 
 func (o *OtelMetrics) IncrementTriggerTotal(triggerType string) {
 	if triggerType != "" {
-		otTriggerTotalsCounter.Add(context.Background(), 1, api.WithAttributes(attribute.Key("type").String(triggerType)))
+		otTriggerTotalsCounterDeprecated.Add(context.Background(), 1, api.WithAttributes(attribute.Key("type").String(triggerType)))
+		otTriggerRegisteredTotalsCounter.Add(context.Background(), 1, api.WithAttributes(attribute.Key("type").String(triggerType)))
 	}
 }
 
 func (o *OtelMetrics) DecrementTriggerTotal(triggerType string) {
 	if triggerType != "" {
-		otTriggerTotalsCounter.Add(context.Background(), -1, api.WithAttributes(attribute.Key("type").String(triggerType)))
+		otTriggerTotalsCounterDeprecated.Add(context.Background(), -1, api.WithAttributes(attribute.Key("type").String(triggerType)))
+		otTriggerRegisteredTotalsCounter.Add(context.Background(), -1, api.WithAttributes(attribute.Key("type").String(triggerType)))
 	}
 }
 
@@ -334,7 +389,8 @@ func (o *OtelMetrics) IncrementCRDTotal(crdType, namespace string) {
 		attribute.Key("type").String(crdType),
 	)
 
-	otCrdTotalsCounter.Add(context.Background(), 1, opt)
+	otCrdTotalsCounterDeprecated.Add(context.Background(), 1, opt)
+	otCrdRegisteredTotalsCounter.Add(context.Background(), 1, opt)
 }
 
 func (o *OtelMetrics) DecrementCRDTotal(crdType, namespace string) {
@@ -346,7 +402,8 @@ func (o *OtelMetrics) DecrementCRDTotal(crdType, namespace string) {
 		attribute.Key("namespace").String(namespace),
 		attribute.Key("type").String(crdType),
 	)
-	otCrdTotalsCounter.Add(context.Background(), -1, opt)
+	otCrdTotalsCounterDeprecated.Add(context.Background(), -1, opt)
+	otCrdRegisteredTotalsCounter.Add(context.Background(), -1, opt)
 }
 
 func getScalerMeasurementOption(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool) api.MeasurementOption {
