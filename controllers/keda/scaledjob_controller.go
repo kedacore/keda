@@ -45,6 +45,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
+	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 // +kubebuilder:rbac:groups=keda.sh,resources=scaledjobs;scaledjobs/finalizers;scaledjobs/status,verbs="*"
@@ -91,6 +92,7 @@ func (r *ScaledJobReconciler) SetupWithManager(mgr ctrl.Manager, options control
 				kedacontrollerutil.PausedPredicate{},
 				predicate.GenerationChangedPredicate{},
 			))).
+		WithEventFilter(util.IgnoreOtherNamespaces()).
 		Complete(r)
 }
 
