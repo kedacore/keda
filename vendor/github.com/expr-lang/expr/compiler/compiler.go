@@ -45,6 +45,14 @@ func Compile(tree *parser.Tree, config *conf.Config) (program *Program, err erro
 		case reflect.Float64:
 			c.emit(OpCast, 2)
 		}
+		if c.config.Optimize {
+			c.optimize()
+		}
+	}
+
+	var span *Span
+	if len(c.spans) > 0 {
+		span = c.spans[0]
 	}
 
 	program = NewProgram(
@@ -57,6 +65,7 @@ func Compile(tree *parser.Tree, config *conf.Config) (program *Program, err erro
 		c.arguments,
 		c.functions,
 		c.debugInfo,
+		span,
 	)
 	return
 }
@@ -73,6 +82,7 @@ type compiler struct {
 	functionsIndex map[string]int
 	debugInfo      map[string]string
 	nodes          []ast.Node
+	spans          []*Span
 	chains         [][]int
 	arguments      []int
 }
@@ -80,6 +90,13 @@ type compiler struct {
 type scope struct {
 	variableName string
 	index        int
+}
+
+func (c *compiler) nodeParent() ast.Node {
+	if len(c.nodes) > 1 {
+		return c.nodes[len(c.nodes)-2]
+	}
+	return nil
 }
 
 func (c *compiler) emitLocation(loc file.Location, op Opcode, arg int) int {
@@ -113,7 +130,7 @@ func (c *compiler) addConstant(constant any) int {
 	indexable := true
 	hash := constant
 	switch reflect.TypeOf(constant).Kind() {
-	case reflect.Slice, reflect.Map, reflect.Struct:
+	case reflect.Slice, reflect.Map, reflect.Struct, reflect.Func:
 		indexable = false
 	}
 	if field, ok := constant.(*runtime.Field); ok {
@@ -189,6 +206,28 @@ func (c *compiler) compile(node ast.Node) {
 	defer func() {
 		c.nodes = c.nodes[:len(c.nodes)-1]
 	}()
+
+	if c.config != nil && c.config.Profile {
+		span := &Span{
+			Name:       reflect.TypeOf(node).String(),
+			Expression: node.String(),
+		}
+		if len(c.spans) > 0 {
+			prev := c.spans[len(c.spans)-1]
+			prev.Children = append(prev.Children, span)
+		}
+		c.spans = append(c.spans, span)
+		defer func() {
+			if len(c.spans) > 1 {
+				c.spans = c.spans[:len(c.spans)-1]
+			}
+		}()
+
+		c.emit(OpProfileStart, c.addConstant(span))
+		defer func() {
+			c.emit(OpProfileEnd, c.addConstant(span))
+		}()
+	}
 
 	switch n := node.(type) {
 	case *ast.NilNode:
@@ -363,34 +402,12 @@ func (c *compiler) UnaryNode(node *ast.UnaryNode) {
 }
 
 func (c *compiler) BinaryNode(node *ast.BinaryNode) {
-	l := kind(node.Left)
-	r := kind(node.Right)
-
-	leftIsSimple := isSimpleType(node.Left)
-	rightIsSimple := isSimpleType(node.Right)
-	leftAndRightAreSimple := leftIsSimple && rightIsSimple
-
 	switch node.Operator {
 	case "==":
-		c.compile(node.Left)
-		c.derefInNeeded(node.Left)
-		c.compile(node.Right)
-		c.derefInNeeded(node.Right)
-
-		if l == r && l == reflect.Int && leftAndRightAreSimple {
-			c.emit(OpEqualInt)
-		} else if l == r && l == reflect.String && leftAndRightAreSimple {
-			c.emit(OpEqualString)
-		} else {
-			c.emit(OpEqual)
-		}
+		c.equalBinaryNode(node)
 
 	case "!=":
-		c.compile(node.Left)
-		c.derefInNeeded(node.Left)
-		c.compile(node.Right)
-		c.derefInNeeded(node.Right)
-		c.emit(OpEqual)
+		c.equalBinaryNode(node)
 		c.emit(OpNot)
 
 	case "or", "||":
@@ -548,6 +565,28 @@ func (c *compiler) BinaryNode(node *ast.BinaryNode) {
 	}
 }
 
+func (c *compiler) equalBinaryNode(node *ast.BinaryNode) {
+	l := kind(node.Left)
+	r := kind(node.Right)
+
+	leftIsSimple := isSimpleType(node.Left)
+	rightIsSimple := isSimpleType(node.Right)
+	leftAndRightAreSimple := leftIsSimple && rightIsSimple
+
+	c.compile(node.Left)
+	c.derefInNeeded(node.Left)
+	c.compile(node.Right)
+	c.derefInNeeded(node.Right)
+
+	if l == r && l == reflect.Int && leftAndRightAreSimple {
+		c.emit(OpEqualInt)
+	} else if l == r && l == reflect.String && leftAndRightAreSimple {
+		c.emit(OpEqualString)
+	} else {
+		c.emit(OpEqual)
+	}
+}
+
 func isSimpleType(node ast.Node) bool {
 	if node == nil {
 		return false
@@ -562,9 +601,21 @@ func isSimpleType(node ast.Node) bool {
 func (c *compiler) ChainNode(node *ast.ChainNode) {
 	c.chains = append(c.chains, []int{})
 	c.compile(node.Node)
-	// Chain activate (got nit somewhere)
 	for _, ph := range c.chains[len(c.chains)-1] {
-		c.patchJump(ph)
+		c.patchJump(ph) // If chain activated jump here (got nit somewhere).
+	}
+	parent := c.nodeParent()
+	if binary, ok := parent.(*ast.BinaryNode); ok && binary.Operator == "??" {
+		// If chain is used in nil coalescing operator, we can omit
+		// nil push at the end of the chain. The ?? operator will
+		// handle it.
+	} else {
+		// We need to put the nil on the stack, otherwise "typed"
+		// nil will be used as a result of the chain.
+		j := c.emit(OpJumpIfNotNil, placeholder)
+		c.emit(OpPop)
+		c.emit(OpNil)
+		c.patchJump(j)
 	}
 	c.chains = c.chains[:len(c.chains)-1]
 }
@@ -768,12 +819,35 @@ func (c *compiler) BuiltinNode(node *ast.BuiltinNode) {
 		c.compile(node.Arguments[0])
 		c.emit(OpBegin)
 		c.emitLoop(func() {
-			c.compile(node.Arguments[1])
+			if len(node.Arguments) == 2 {
+				c.compile(node.Arguments[1])
+			} else {
+				c.emit(OpPointer)
+			}
 			c.emitCond(func() {
 				c.emit(OpIncrementCount)
 			})
 		})
 		c.emit(OpGetCount)
+		c.emit(OpEnd)
+		return
+
+	case "sum":
+		c.compile(node.Arguments[0])
+		c.emit(OpBegin)
+		c.emit(OpInt, 0)
+		c.emit(OpSetAcc)
+		c.emitLoop(func() {
+			if len(node.Arguments) == 2 {
+				c.compile(node.Arguments[1])
+			} else {
+				c.emit(OpPointer)
+			}
+			c.emit(OpGetAcc)
+			c.emit(OpAdd)
+			c.emit(OpSetAcc)
+		})
+		c.emit(OpGetAcc)
 		c.emit(OpEnd)
 		return
 
@@ -870,11 +944,31 @@ func (c *compiler) BuiltinNode(node *ast.BuiltinNode) {
 	case "groupBy":
 		c.compile(node.Arguments[0])
 		c.emit(OpBegin)
+		c.emit(OpCreate, 1)
+		c.emit(OpSetAcc)
 		c.emitLoop(func() {
 			c.compile(node.Arguments[1])
 			c.emit(OpGroupBy)
 		})
-		c.emit(OpGetGroupBy)
+		c.emit(OpGetAcc)
+		c.emit(OpEnd)
+		return
+
+	case "sortBy":
+		c.compile(node.Arguments[0])
+		c.emit(OpBegin)
+		if len(node.Arguments) == 3 {
+			c.compile(node.Arguments[2])
+		} else {
+			c.emit(OpPush, c.addConstant("asc"))
+		}
+		c.emit(OpCreate, 2)
+		c.emit(OpSetAcc)
+		c.emitLoop(func() {
+			c.compile(node.Arguments[1])
+			c.emit(OpSortBy)
+		})
+		c.emit(OpSort)
 		c.emit(OpEnd)
 		return
 
@@ -905,13 +999,11 @@ func (c *compiler) BuiltinNode(node *ast.BuiltinNode) {
 			c.compile(arg)
 		}
 
-		if f.ValidateArgs != nil {
-			c.emit(OpLoadFunc, c.addFunction("$_validate_args_"+f.Name, f.ValidateArgs))
-			c.emit(OpValidateArgs, len(node.Arguments))
-		}
-
 		if f.Fast != nil {
 			c.emit(OpCallBuiltin1, id)
+		} else if f.Safe != nil {
+			c.emit(OpPush, c.addConstant(f.Safe))
+			c.emit(OpCallSafe, len(node.Arguments))
 		} else if f.Func != nil {
 			c.emitFunction(f, len(node.Arguments))
 		}
@@ -1047,6 +1139,19 @@ func (c *compiler) derefInNeeded(node ast.Node) {
 	switch kind(node) {
 	case reflect.Ptr, reflect.Interface:
 		c.emit(OpDeref)
+	}
+}
+
+func (c *compiler) optimize() {
+	for i, op := range c.bytecode {
+		switch op {
+		case OpJumpIfTrue, OpJumpIfFalse, OpJumpIfNil, OpJumpIfNotNil:
+			target := i + c.arguments[i] + 1
+			for target < len(c.bytecode) && c.bytecode[target] == op {
+				target += c.arguments[target] + 1
+			}
+			c.arguments[i] = target - i - 1
+		}
 	}
 }
 

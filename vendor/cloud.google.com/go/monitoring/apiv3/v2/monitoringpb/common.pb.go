@@ -1,4 +1,4 @@
-// Copyright 2021 Google LLC
+// Copyright 2023 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -108,7 +108,7 @@ func (ComparisonType) EnumDescriptor() ([]byte, []int) {
 	return file_google_monitoring_v3_common_proto_rawDescGZIP(), []int{0}
 }
 
-// The tier of service for a Workspace. Please see the
+// The tier of service for a Metrics Scope. Please see the
 // [service tiers
 // documentation](https://cloud.google.com/monitoring/workspaces/tiers) for more
 // details.
@@ -120,16 +120,16 @@ const (
 	// An invalid sentinel value, used to indicate that a tier has not
 	// been provided explicitly.
 	ServiceTier_SERVICE_TIER_UNSPECIFIED ServiceTier = 0
-	// The Stackdriver Basic tier, a free tier of service that provides basic
+	// The Cloud Monitoring Basic tier, a free tier of service that provides basic
 	// features, a moderate allotment of logs, and access to built-in metrics.
 	// A number of features are not available in this tier. For more details,
 	// see [the service tiers
 	// documentation](https://cloud.google.com/monitoring/workspaces/tiers).
 	ServiceTier_SERVICE_TIER_BASIC ServiceTier = 1
-	// The Stackdriver Premium tier, a higher, more expensive tier of service
-	// that provides access to all Stackdriver features, lets you use Stackdriver
-	// with AWS accounts, and has a larger allotments for logs and metrics. For
-	// more details, see [the service tiers
+	// The Cloud Monitoring Premium tier, a higher, more expensive tier of service
+	// that provides access to all Cloud Monitoring features, lets you use Cloud
+	// Monitoring with AWS accounts, and has a larger allotments for logs and
+	// metrics. For more details, see [the service tiers
 	// documentation](https://cloud.google.com/monitoring/workspaces/tiers).
 	ServiceTier_SERVICE_TIER_PREMIUM ServiceTier = 2
 )
@@ -671,8 +671,20 @@ func (*TypedValue_StringValue) isTypedValue_Value() {}
 
 func (*TypedValue_DistributionValue) isTypedValue_Value() {}
 
-// A closed time interval. It extends from the start time to the end time, and includes both: `[startTime, endTime]`. Valid time intervals depend on the [`MetricKind`](https://cloud.google.com/monitoring/api/ref_v3/rest/v3/projects.metricDescriptors#MetricKind) of the metric value. The end time must not be earlier than the start time. When writing data points, the start time must not be more than 25 hours in the past and the end time must not be more than five minutes in the future.
+// Describes a time interval:
 //
+//   - Reads: A half-open time interval. It includes the end time but
+//     excludes the start time: `(startTime, endTime]`. The start time
+//     must be specified, must be earlier than the end time, and should be
+//     no older than the data retention period for the metric.
+//   - Writes: A closed time interval. It extends from the start time to the end
+//     time,
+//     and includes both: `[startTime, endTime]`. Valid time intervals
+//     depend on the
+//     [`MetricKind`](https://cloud.google.com/monitoring/api/ref_v3/rest/v3/projects.metricDescriptors#MetricKind)
+//     of the metric value. The end time must not be earlier than the start
+//     time, and the end time must not be more than 25 hours in the past or more
+//     than five minutes in the future.
 //   - For `GAUGE` metrics, the `startTime` value is technically optional; if
 //     no value is specified, the start time defaults to the value of the
 //     end time, and the interval represents a single point in time. If both
@@ -680,25 +692,23 @@ func (*TypedValue_DistributionValue) isTypedValue_Value() {}
 //     interval is valid only for `GAUGE` metrics, which are point-in-time
 //     measurements. The end time of a new interval must be at least a
 //     millisecond after the end time of the previous interval.
-//
 //   - For `DELTA` metrics, the start time and end time must specify a
 //     non-zero interval, with subsequent points specifying contiguous and
 //     non-overlapping intervals. For `DELTA` metrics, the start time of
 //     the next interval must be at least a millisecond after the end time
 //     of the previous interval.
-//
 //   - For `CUMULATIVE` metrics, the start time and end time must specify a
 //     non-zero interval, with subsequent points specifying the same
 //     start time and increasing end times, until an event resets the
 //     cumulative value to zero and sets a new start time for the following
 //     points. The new start time must be at least a millisecond after the
 //     end time of the previous interval.
-//
-//   - The start time of a new interval must be at least a millisecond after the
+//   - The start time of a new interval must be at least a millisecond after
+//     the
 //     end time of the previous interval because intervals are closed. If the
-//     start time of a new interval is the same as the end time of the previous
-//     interval, then data written at the new start time could overwrite data
-//     written at the previous end time.
+//     start time of a new interval is the same as the end time of the
+//     previous interval, then data written at the new start time could
+//     overwrite data written at the previous end time.
 type TimeInterval struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

@@ -9,6 +9,7 @@ package packages
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -23,6 +24,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	"golang.org/x/tools/go/gcexportdata"
 	"golang.org/x/tools/internal/gocommand"
@@ -206,43 +209,6 @@ type Config struct {
 	Overlay map[string][]byte
 }
 
-// driver is the type for functions that query the build system for the
-// packages named by the patterns.
-type driver func(cfg *Config, patterns ...string) (*driverResponse, error)
-
-// driverResponse contains the results for a driver query.
-type driverResponse struct {
-	// NotHandled is returned if the request can't be handled by the current
-	// driver. If an external driver returns a response with NotHandled, the
-	// rest of the driverResponse is ignored, and go/packages will fallback
-	// to the next driver. If go/packages is extended in the future to support
-	// lists of multiple drivers, go/packages will fall back to the next driver.
-	NotHandled bool
-
-	// Compiler and Arch are the arguments pass of types.SizesFor
-	// to get a types.Sizes to use when type checking.
-	Compiler string
-	Arch     string
-
-	// Roots is the set of package IDs that make up the root packages.
-	// We have to encode this separately because when we encode a single package
-	// we cannot know if it is one of the roots as that requires knowledge of the
-	// graph it is part of.
-	Roots []string `json:",omitempty"`
-
-	// Packages is the full set of packages in the graph.
-	// The packages are not connected into a graph.
-	// The Imports if populated will be stubs that only have their ID set.
-	// Imports will be connected and then type and syntax information added in a
-	// later pass (see refine).
-	Packages []*Package
-
-	// GoVersion is the minor version number used by the driver
-	// (e.g. the go command on the PATH) when selecting .go files.
-	// Zero means unknown.
-	GoVersion int
-}
-
 // Load loads and returns the Go packages named by the given patterns.
 //
 // Config specifies loading options;
@@ -291,9 +257,28 @@ func Load(cfg *Config, patterns ...string) ([]*Package, error) {
 // no external driver, or the driver returns a response with NotHandled set,
 // defaultDriver will fall back to the go list driver.
 // The boolean result indicates that an external driver handled the request.
-func defaultDriver(cfg *Config, patterns ...string) (*driverResponse, bool, error) {
+func defaultDriver(cfg *Config, patterns ...string) (*DriverResponse, bool, error) {
+	const (
+		// windowsArgMax specifies the maximum command line length for
+		// the Windows' CreateProcess function.
+		windowsArgMax = 32767
+		// maxEnvSize is a very rough estimation of the maximum environment
+		// size of a user.
+		maxEnvSize = 16384
+		// safeArgMax specifies the maximum safe command line length to use
+		// by the underlying driver excl. the environment. We choose the Windows'
+		// ARG_MAX as the starting point because it's one of the lowest ARG_MAX
+		// constants out of the different supported platforms,
+		// e.g., https://www.in-ulm.de/~mascheck/various/argmax/#results.
+		safeArgMax = windowsArgMax - maxEnvSize
+	)
+	chunks, err := splitIntoChunks(patterns, safeArgMax)
+	if err != nil {
+		return nil, false, err
+	}
+
 	if driver := findExternalDriver(cfg); driver != nil {
-		response, err := driver(cfg, patterns...)
+		response, err := callDriverOnChunks(driver, cfg, chunks)
 		if err != nil {
 			return nil, false, err
 		} else if !response.NotHandled {
@@ -302,8 +287,82 @@ func defaultDriver(cfg *Config, patterns ...string) (*driverResponse, bool, erro
 		// (fall through)
 	}
 
-	response, err := goListDriver(cfg, patterns...)
+	response, err := callDriverOnChunks(goListDriver, cfg, chunks)
+	if err != nil {
+		return nil, false, err
+	}
 	return response, false, err
+}
+
+// splitIntoChunks chunks the slice so that the total number of characters
+// in a chunk is no longer than argMax.
+func splitIntoChunks(patterns []string, argMax int) ([][]string, error) {
+	if argMax <= 0 {
+		return nil, errors.New("failed to split patterns into chunks, negative safe argMax value")
+	}
+	var chunks [][]string
+	charsInChunk := 0
+	nextChunkStart := 0
+	for i, v := range patterns {
+		vChars := len(v)
+		if vChars > argMax {
+			// a single pattern is longer than the maximum safe ARG_MAX, hardly should happen
+			return nil, errors.New("failed to split patterns into chunks, a pattern is too long")
+		}
+		charsInChunk += vChars + 1 // +1 is for a whitespace between patterns that has to be counted too
+		if charsInChunk > argMax {
+			chunks = append(chunks, patterns[nextChunkStart:i])
+			nextChunkStart = i
+			charsInChunk = vChars
+		}
+	}
+	// add the last chunk
+	if nextChunkStart < len(patterns) {
+		chunks = append(chunks, patterns[nextChunkStart:])
+	}
+	return chunks, nil
+}
+
+func callDriverOnChunks(driver driver, cfg *Config, chunks [][]string) (*DriverResponse, error) {
+	if len(chunks) == 0 {
+		return driver(cfg)
+	}
+	responses := make([]*DriverResponse, len(chunks))
+	errNotHandled := errors.New("driver returned NotHandled")
+	var g errgroup.Group
+	for i, chunk := range chunks {
+		i := i
+		chunk := chunk
+		g.Go(func() (err error) {
+			responses[i], err = driver(cfg, chunk...)
+			if responses[i] != nil && responses[i].NotHandled {
+				err = errNotHandled
+			}
+			return err
+		})
+	}
+	if err := g.Wait(); err != nil {
+		if errors.Is(err, errNotHandled) {
+			return &DriverResponse{NotHandled: true}, nil
+		}
+		return nil, err
+	}
+	return mergeResponses(responses...), nil
+}
+
+func mergeResponses(responses ...*DriverResponse) *DriverResponse {
+	if len(responses) == 0 {
+		return nil
+	}
+	response := newDeduper()
+	response.dr.NotHandled = false
+	response.dr.Compiler = responses[0].Compiler
+	response.dr.Arch = responses[0].Arch
+	response.dr.GoVersion = responses[0].GoVersion
+	for _, v := range responses {
+		response.addAll(v)
+	}
+	return response.dr
 }
 
 // A Package describes a loaded Go package.
@@ -648,7 +707,7 @@ func newLoader(cfg *Config) *loader {
 
 // refine connects the supplied packages into a graph and then adds type
 // and syntax information as requested by the LoadMode.
-func (ld *loader) refine(response *driverResponse) ([]*Package, error) {
+func (ld *loader) refine(response *DriverResponse) ([]*Package, error) {
 	roots := response.Roots
 	rootMap := make(map[string]int, len(roots))
 	for i, root := range roots {
@@ -1059,7 +1118,7 @@ func (ld *loader) loadPackage(lpkg *loaderPackage) {
 		Sizes: ld.sizes, // may be nil
 	}
 	if lpkg.Module != nil && lpkg.Module.GoVersion != "" {
-		typesinternal.SetGoVersion(tc, "go"+lpkg.Module.GoVersion)
+		tc.GoVersion = "go" + lpkg.Module.GoVersion
 	}
 	if (ld.Mode & typecheckCgo) != 0 {
 		if !typesinternal.SetUsesCgo(tc) {
@@ -1070,9 +1129,23 @@ func (ld *loader) loadPackage(lpkg *loaderPackage) {
 			return
 		}
 	}
-	types.NewChecker(tc, ld.Fset, lpkg.Types, lpkg.TypesInfo).Files(lpkg.Syntax)
 
+	typErr := types.NewChecker(tc, ld.Fset, lpkg.Types, lpkg.TypesInfo).Files(lpkg.Syntax)
 	lpkg.importErrors = nil // no longer needed
+
+	// In go/types go1.21 and go1.22, Checker.Files failed fast with a
+	// a "too new" error, without calling tc.Error and without
+	// proceeding to type-check the package (#66525).
+	// We rely on the runtimeVersion error to give the suggested remedy.
+	if typErr != nil && len(lpkg.Errors) == 0 && len(lpkg.Syntax) > 0 {
+		if msg := typErr.Error(); strings.HasPrefix(msg, "package requires newer Go version") {
+			appendError(types.Error{
+				Fset: ld.Fset,
+				Pos:  lpkg.Syntax[0].Package,
+				Msg:  msg,
+			})
+		}
+	}
 
 	// If !Cgo, the type-checker uses FakeImportC mode, so
 	// it doesn't invoke the importer for import "C",
@@ -1093,6 +1166,12 @@ func (ld *loader) loadPackage(lpkg *loaderPackage) {
 				}
 			}
 		}
+	}
+
+	// If types.Checker.Files had an error that was unreported,
+	// make sure to report the unknown error so the package is illTyped.
+	if typErr != nil && len(lpkg.Errors) == 0 {
+		appendError(typErr)
 	}
 
 	// Record accumulated errors.

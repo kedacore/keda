@@ -21,11 +21,13 @@ type timeoutKey struct{}
 // TODO default behavior.
 func MakeTimeoutContext(ctx context.Context, to time.Duration) (context.Context, context.CancelFunc) {
 	// Only use the passed in Duration as a timeout on the Context if it
-	// is non-zero.
+	// is non-zero and if the Context doesn't already have a timeout.
 	cancelFunc := func() {}
-	if to != 0 {
+	if _, deadlineSet := ctx.Deadline(); to != 0 && !deadlineSet {
 		ctx, cancelFunc = context.WithTimeout(ctx, to)
 	}
+
+	// Add timeoutKey either way to indicate CSOT is enabled.
 	return context.WithValue(ctx, timeoutKey{}, true), cancelFunc
 }
 

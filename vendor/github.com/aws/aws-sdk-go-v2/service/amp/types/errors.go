@@ -7,7 +7,7 @@ import (
 	smithy "github.com/aws/smithy-go"
 )
 
-// User does not have sufficient access to perform this action.
+// You do not have sufficient access to perform this action.
 type AccessDeniedException struct {
 	Message *string
 
@@ -33,7 +33,7 @@ func (e *AccessDeniedException) ErrorCode() string {
 }
 func (e *AccessDeniedException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
-// Updating or deleting a resource can cause an inconsistent state.
+// The request would cause an inconsistent state.
 type ConflictException struct {
 	Message *string
 
@@ -62,7 +62,7 @@ func (e *ConflictException) ErrorCode() string {
 }
 func (e *ConflictException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
-// Unexpected error during processing of request.
+// An unexpected error occurred during the processing of the request.
 type InternalServerException struct {
 	Message *string
 
@@ -90,7 +90,7 @@ func (e *InternalServerException) ErrorCode() string {
 }
 func (e *InternalServerException) ErrorFault() smithy.ErrorFault { return smithy.FaultServer }
 
-// Request references a resource which does not exist.
+// The request references a resources that doesn't exist.
 type ResourceNotFoundException struct {
 	Message *string
 
@@ -119,7 +119,7 @@ func (e *ResourceNotFoundException) ErrorCode() string {
 }
 func (e *ResourceNotFoundException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
-// Request would cause a service quota to be exceeded.
+// Completing the request would cause a service quota to be exceeded.
 type ServiceQuotaExceededException struct {
 	Message *string
 
@@ -150,7 +150,7 @@ func (e *ServiceQuotaExceededException) ErrorCode() string {
 }
 func (e *ServiceQuotaExceededException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
-// Request was denied due to request throttling.
+// The request was denied due to request throttling.
 type ThrottlingException struct {
 	Message *string
 
@@ -180,7 +180,8 @@ func (e *ThrottlingException) ErrorCode() string {
 }
 func (e *ThrottlingException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
-// The input fails to satisfy the constraints specified by an AWS service.
+// The input fails to satisfy the constraints specified by an Amazon Web Services
+// service.
 type ValidationException struct {
 	Message *string
 

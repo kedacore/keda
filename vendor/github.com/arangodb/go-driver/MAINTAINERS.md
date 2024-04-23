@@ -15,9 +15,9 @@
 
 # Change Golang version
 
-- Edit the .travis file and change all occurrences of `golang:x.y.z-stretch` to the appropriate version.
-
-- Edit the Makefile and change the line `GOVERSION ?= 1.16.6` into the required version.
+- Edit the [.circleci/config.yml](.circleci/config.yml) file and change ALL occurrences of `gcr.io/gcr-for-testing/golang` to the appropriate version.
+- Edit the [Makefile](Makefile) and change the `GOVERSION` to the appropriate version.
+- For minor Golang version update, bump the Go version in [go.mod](go.mod) and [v2/go.mod](v2/go.mod) and run `go mod tidy`.
 
 ## Debugging with DLV
 

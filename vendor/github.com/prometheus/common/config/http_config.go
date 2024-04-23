@@ -129,7 +129,6 @@ func (tv *TLSVersion) String() string {
 // BasicAuth contains basic HTTP authentication credentials.
 type BasicAuth struct {
 	Username     string `yaml:"username" json:"username"`
-	UsernameFile string `yaml:"username_file,omitempty" json:"username_file,omitempty"`
 	Password     Secret `yaml:"password,omitempty" json:"password,omitempty"`
 	PasswordFile string `yaml:"password_file,omitempty" json:"password_file,omitempty"`
 }
@@ -140,7 +139,6 @@ func (a *BasicAuth) SetDirectory(dir string) {
 		return
 	}
 	a.PasswordFile = JoinDir(dir, a.PasswordFile)
-	a.UsernameFile = JoinDir(dir, a.UsernameFile)
 }
 
 // Authorization contains HTTP authorization credentials.
@@ -335,9 +333,6 @@ func (c *HTTPClientConfig) Validate() error {
 	}
 	if (c.BasicAuth != nil || c.OAuth2 != nil) && (len(c.BearerToken) > 0 || len(c.BearerTokenFile) > 0) {
 		return fmt.Errorf("at most one of basic_auth, oauth2, bearer_token & bearer_token_file must be configured")
-	}
-	if c.BasicAuth != nil && (string(c.BasicAuth.Username) != "" && c.BasicAuth.UsernameFile != "") {
-		return fmt.Errorf("at most one of basic_auth username & username_file must be configured")
 	}
 	if c.BasicAuth != nil && (string(c.BasicAuth.Password) != "" && c.BasicAuth.PasswordFile != "") {
 		return fmt.Errorf("at most one of basic_auth password & password_file must be configured")
@@ -546,10 +541,10 @@ func NewRoundTripperFromConfig(cfg HTTPClientConfig, name string, optFuncs ...HT
 
 		// If a authorization_credentials is provided, create a round tripper that will set the
 		// Authorization header correctly on each request.
-		if cfg.Authorization != nil && len(cfg.Authorization.CredentialsFile) > 0 {
-			rt = NewAuthorizationCredentialsFileRoundTripper(cfg.Authorization.Type, cfg.Authorization.CredentialsFile, rt)
-		} else if cfg.Authorization != nil {
+		if cfg.Authorization != nil && len(cfg.Authorization.Credentials) > 0 {
 			rt = NewAuthorizationCredentialsRoundTripper(cfg.Authorization.Type, cfg.Authorization.Credentials, rt)
+		} else if cfg.Authorization != nil && len(cfg.Authorization.CredentialsFile) > 0 {
+			rt = NewAuthorizationCredentialsFileRoundTripper(cfg.Authorization.Type, cfg.Authorization.CredentialsFile, rt)
 		}
 		// Backwards compatibility, be nice with importers who would not have
 		// called Validate().
@@ -560,7 +555,7 @@ func NewRoundTripperFromConfig(cfg HTTPClientConfig, name string, optFuncs ...HT
 		}
 
 		if cfg.BasicAuth != nil {
-			rt = NewBasicAuthRoundTripper(cfg.BasicAuth.Username, cfg.BasicAuth.Password, cfg.BasicAuth.UsernameFile, cfg.BasicAuth.PasswordFile, rt)
+			rt = NewBasicAuthRoundTripper(cfg.BasicAuth.Username, cfg.BasicAuth.Password, cfg.BasicAuth.PasswordFile, rt)
 		}
 
 		if cfg.OAuth2 != nil {
@@ -630,7 +625,7 @@ func (rt *authorizationCredentialsFileRoundTripper) RoundTrip(req *http.Request)
 	if len(req.Header.Get("Authorization")) == 0 {
 		b, err := os.ReadFile(rt.authCredentialsFile)
 		if err != nil {
-			return nil, fmt.Errorf("unable to read authorization credentials file %s: %w", rt.authCredentialsFile, err)
+			return nil, fmt.Errorf("unable to read authorization credentials file %s: %s", rt.authCredentialsFile, err)
 		}
 		authCredentials := strings.TrimSpace(string(b))
 
@@ -650,43 +645,30 @@ func (rt *authorizationCredentialsFileRoundTripper) CloseIdleConnections() {
 type basicAuthRoundTripper struct {
 	username     string
 	password     Secret
-	usernameFile string
 	passwordFile string
 	rt           http.RoundTripper
 }
 
 // NewBasicAuthRoundTripper will apply a BASIC auth authorization header to a request unless it has
 // already been set.
-func NewBasicAuthRoundTripper(username string, password Secret, usernameFile, passwordFile string, rt http.RoundTripper) http.RoundTripper {
-	return &basicAuthRoundTripper{username, password, usernameFile, passwordFile, rt}
+func NewBasicAuthRoundTripper(username string, password Secret, passwordFile string, rt http.RoundTripper) http.RoundTripper {
+	return &basicAuthRoundTripper{username, password, passwordFile, rt}
 }
 
 func (rt *basicAuthRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	var username string
-	var password string
 	if len(req.Header.Get("Authorization")) != 0 {
 		return rt.rt.RoundTrip(req)
 	}
-	if rt.usernameFile != "" {
-		usernameBytes, err := os.ReadFile(rt.usernameFile)
-		if err != nil {
-			return nil, fmt.Errorf("unable to read basic auth username file %s: %w", rt.usernameFile, err)
-		}
-		username = strings.TrimSpace(string(usernameBytes))
-	} else {
-		username = rt.username
-	}
-	if rt.passwordFile != "" {
-		passwordBytes, err := os.ReadFile(rt.passwordFile)
-		if err != nil {
-			return nil, fmt.Errorf("unable to read basic auth password file %s: %w", rt.passwordFile, err)
-		}
-		password = strings.TrimSpace(string(passwordBytes))
-	} else {
-		password = string(rt.password)
-	}
 	req = cloneRequest(req)
-	req.SetBasicAuth(username, password)
+	if rt.passwordFile != "" {
+		bs, err := os.ReadFile(rt.passwordFile)
+		if err != nil {
+			return nil, fmt.Errorf("unable to read basic auth password file %s: %s", rt.passwordFile, err)
+		}
+		req.SetBasicAuth(rt.username, strings.TrimSpace(string(bs)))
+	} else {
+		req.SetBasicAuth(rt.username, strings.TrimSpace(string(rt.password)))
+	}
 	return rt.rt.RoundTrip(req)
 }
 
@@ -723,7 +705,7 @@ func (rt *oauth2RoundTripper) RoundTrip(req *http.Request) (*http.Response, erro
 	if rt.config.ClientSecretFile != "" {
 		data, err := os.ReadFile(rt.config.ClientSecretFile)
 		if err != nil {
-			return nil, fmt.Errorf("unable to read oauth2 client secret file %s: %w", rt.config.ClientSecretFile, err)
+			return nil, fmt.Errorf("unable to read oauth2 client secret file %s: %s", rt.config.ClientSecretFile, err)
 		}
 		secret = strings.TrimSpace(string(data))
 		rt.mtx.RLock()
@@ -977,7 +959,7 @@ func (c *TLSConfig) getClientCertificate(_ *tls.CertificateRequestInfo) (*tls.Ce
 	if c.CertFile != "" {
 		certData, err = os.ReadFile(c.CertFile)
 		if err != nil {
-			return nil, fmt.Errorf("unable to read specified client cert (%s): %w", c.CertFile, err)
+			return nil, fmt.Errorf("unable to read specified client cert (%s): %s", c.CertFile, err)
 		}
 	} else {
 		certData = []byte(c.Cert)
@@ -986,7 +968,7 @@ func (c *TLSConfig) getClientCertificate(_ *tls.CertificateRequestInfo) (*tls.Ce
 	if c.KeyFile != "" {
 		keyData, err = os.ReadFile(c.KeyFile)
 		if err != nil {
-			return nil, fmt.Errorf("unable to read specified client key (%s): %w", c.KeyFile, err)
+			return nil, fmt.Errorf("unable to read specified client key (%s): %s", c.KeyFile, err)
 		}
 	} else {
 		keyData = []byte(c.Key)
@@ -994,7 +976,7 @@ func (c *TLSConfig) getClientCertificate(_ *tls.CertificateRequestInfo) (*tls.Ce
 
 	cert, err := tls.X509KeyPair(certData, keyData)
 	if err != nil {
-		return nil, fmt.Errorf("unable to use specified client cert (%s) & key (%s): %w", c.CertFile, c.KeyFile, err)
+		return nil, fmt.Errorf("unable to use specified client cert (%s) & key (%s): %s", c.CertFile, c.KeyFile, err)
 	}
 
 	return &cert, nil
@@ -1004,7 +986,7 @@ func (c *TLSConfig) getClientCertificate(_ *tls.CertificateRequestInfo) (*tls.Ce
 func readCAFile(f string) ([]byte, error) {
 	data, err := os.ReadFile(f)
 	if err != nil {
-		return nil, fmt.Errorf("unable to load specified CA cert %s: %w", f, err)
+		return nil, fmt.Errorf("unable to load specified CA cert %s: %s", f, err)
 	}
 	return data, nil
 }

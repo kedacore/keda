@@ -87,16 +87,16 @@ type NamespaceForAMQPLinks interface {
 // NamespaceWithConnectionString configures a namespace with the information provided in a Service Bus connection string
 func NamespaceWithConnectionString(connStr string) NamespaceOption {
 	return func(ns *Namespace) error {
-		parsed, err := conn.ParsedConnectionFromStr(connStr)
+		props, err := conn.ParseConnectionString(connStr)
 		if err != nil {
 			return err
 		}
 
-		if parsed.Namespace != "" {
-			ns.FQDN = parsed.Namespace
+		if props.FullyQualifiedNamespace != "" {
+			ns.FQDN = props.FullyQualifiedNamespace
 		}
 
-		provider, err := sbauth.NewTokenProviderWithConnectionString(parsed)
+		provider, err := sbauth.NewTokenProviderWithConnectionString(props)
 		if err != nil {
 			return err
 		}
@@ -491,7 +491,11 @@ func (ns *Namespace) getWSSHostURI() string {
 }
 
 func (ns *Namespace) getAMQPHostURI() string {
-	return fmt.Sprintf("amqps://%s/", ns.FQDN)
+	if ns.TokenProvider.InsecureDisableTLS {
+		return fmt.Sprintf("amqp://%s/", ns.FQDN)
+	} else {
+		return fmt.Sprintf("amqps://%s/", ns.FQDN)
+	}
 }
 
 func (ns *Namespace) GetHTTPSHostURI() string {

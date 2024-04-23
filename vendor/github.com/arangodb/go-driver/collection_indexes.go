@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017-2024 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 // limitations under the License.
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
-//
-// Author Ewout Prangsma
 //
 
 package driver
@@ -75,6 +73,16 @@ type CollectionIndexes interface {
 	// EnsureZKDIndex creates a ZKD multi-dimensional index for the collection, if it does not already exist.
 	// Note that zkd indexes are an experimental feature in ArangoDB 3.9.
 	EnsureZKDIndex(ctx context.Context, fields []string, options *EnsureZKDIndexOptions) (Index, bool, error)
+
+	// EnsureMDIIndex creates a multidimensional index for the collection, if it does not already exist.
+	// The index is returned, together with a boolean indicating if the index was newly created (true) or pre-existing (false).
+	// Available in ArangoDB 3.12 and later.
+	EnsureMDIIndex(ctx context.Context, fields []string, options *EnsureMDIIndexOptions) (Index, bool, error)
+
+	// EnsureMDIPrefixedIndex creates is an additional index variant of mdi index that lets you specify additional
+	// attributes for the index to narrow down the search space using equality checks.
+	// Available in ArangoDB 3.12 and later.
+	EnsureMDIPrefixedIndex(ctx context.Context, fields []string, options *EnsureMDIPrefixedIndexOptions) (Index, bool, error)
 
 	// EnsureInvertedIndex creates an inverted index in the collection, if it does not already exist.
 	// Available in ArangoDB 3.10 and later.
@@ -197,10 +205,32 @@ type EnsureZKDIndexOptions struct {
 	Name string
 	// fieldValueTypes is required and the only allowed value is "double". Future extensions of the index will allow other types.
 	FieldValueTypes string
+}
 
-	// If true, then create a sparse index.
-	// TODO: The sparse property is not supported yet
-	// Sparse bool
+// EnsureMDIIndexOptions provides specific options for creating a MDI index
+type EnsureMDIIndexOptions struct {
+	// If true, then create a unique index.
+	Unique bool
+	// InBackground if true will not hold an exclusive collection lock for the entire index creation period (rocksdb only).
+	InBackground bool
+	// Name optional user defined name used for hints in AQL queries
+	Name string
+	// fieldValueTypes is required and the only allowed value is "double". Future extensions of the index will allow other types.
+	FieldValueTypes string
+	// Sparse If `true`, then create a sparse index to exclude documents from the index that do not have the defined
+	// attributes or are explicitly set to `null` values. If a non-value is set, it still needs to be numeric.
+	Sparse bool
+	// StoredValues The optional `storedValues` attribute can contain an array of paths to additional attributes to
+	// store in the index.
+	StoredValues []string
+}
+
+type EnsureMDIPrefixedIndexOptions struct {
+	EnsureMDIIndexOptions
+
+	// PrefixFields is required and contains nn array of attribute names used as search prefix.
+	// Array expansions are not allowed.
+	PrefixFields []string
 }
 
 // InvertedIndexOptions provides specific options for creating an inverted index

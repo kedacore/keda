@@ -9,6 +9,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/internal/log"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/amqpwrap"
 	"github.com/Azure/go-amqp"
 )
 
@@ -126,10 +127,9 @@ type ReceivedMessage struct {
 	// and Header fields.
 	RawAMQPMessage *AMQPAnnotatedMessage
 
-	// deferred indicates we received it using ReceiveDeferredMessages. These messages
-	// will still go through the normal Receiver.Settle functions but internally will
-	// always be settled with the management link.
-	deferred bool
+	linkName string // used when we call into the management link. It counts towards a link not being considered idle.
+
+	settleOnMgmtLink bool // used for cases like when a message is received that was deferred. It can only be settled on the management link.
 }
 
 // Message creates a shallow copy of the fields from this message to an instance of
@@ -310,10 +310,11 @@ func (m *Message) toAMQPMessage() *amqp.Message {
 // newReceivedMessage creates a received message from an AMQP message.
 // NOTE: this converter assumes that the Body of this message will be the first
 // serialized byte array in the Data section of the messsage.
-func newReceivedMessage(amqpMsg *amqp.Message, receivingLinkName string) *ReceivedMessage {
+func newReceivedMessage(amqpMsg *amqp.Message, receiver amqpwrap.AMQPReceiver) *ReceivedMessage {
 	msg := &ReceivedMessage{
-		RawAMQPMessage: newAMQPAnnotatedMessage(amqpMsg, receivingLinkName),
+		RawAMQPMessage: newAMQPAnnotatedMessage(amqpMsg, receiver.LinkName()),
 		State:          MessageStateActive,
+		linkName:       receiver.LinkName(),
 	}
 
 	if len(msg.RawAMQPMessage.Body.Data) == 1 {

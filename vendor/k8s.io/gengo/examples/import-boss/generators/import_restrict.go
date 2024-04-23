@@ -311,7 +311,7 @@ func (irf importRuleFile) verifyRules(restrictionFiles []*fileFormat, f *generat
 			fmt.Fprintf(&errorBuilder, "import %v has forbidden prefix %v\n", i, f)
 		}
 		if len(allowedMismatchedImports) > 0 {
-			sort.Sort(sort.StringSlice(allowedMismatchedImports))
+			sort.Strings(allowedMismatchedImports)
 			fmt.Fprintf(&errorBuilder, "the following imports did not match any allowed prefix:\n")
 			for _, i := range allowedMismatchedImports {
 				fmt.Fprintf(&errorBuilder, "  %v\n", i)
@@ -391,7 +391,7 @@ func (irf importRuleFile) verifyInverseRules(restrictionFiles []*fileFormat, f *
 			fmt.Fprintf(&errorBuilder, "(inverse): import %v has forbidden prefix %v\n", i, f)
 		}
 		if len(allowedMismatchedImports) > 0 {
-			sort.Sort(sort.StringSlice(allowedMismatchedImports))
+			sort.Strings(allowedMismatchedImports)
 			fmt.Fprintf(&errorBuilder, "(inverse): the following imports did not match any allowed prefix:\n")
 			for _, i := range allowedMismatchedImports {
 				fmt.Fprintf(&errorBuilder, "  %v\n", i)

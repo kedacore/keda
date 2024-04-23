@@ -42,7 +42,7 @@ var ErrNegativeW = errors.New("write concern `w` field cannot be a negative numb
 // Deprecated: ErrNegativeWTimeout will be removed in Go Driver 2.0.
 var ErrNegativeWTimeout = errors.New("write concern `wtimeout` field cannot be negative")
 
-// A WriteConcern defines a MongoDB read concern, which describes the level of acknowledgment
+// A WriteConcern defines a MongoDB write concern, which describes the level of acknowledgment
 // requested from MongoDB for write operations to a standalone mongod, to replica sets, or to
 // sharded clusters.
 //
