@@ -63,7 +63,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 Here is an overview of all new **experimental** features:
 
-- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Introduce Azure Event Grid as a new CloudEvent destination ([#3587](https://github.com/kedacore/keda/issues/3587))
 
 ### Improvements
 
