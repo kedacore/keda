@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017-2024 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 // limitations under the License.
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
-//
-// Author Ewout Prangsma
 //
 
 package driver
@@ -50,6 +48,7 @@ type indexData struct {
 	LegacyPolygons      *bool    `json:"legacyPolygons,omitempty"`
 	CacheEnabled        *bool    `json:"cacheEnabled,omitempty"`
 	StoredValues        []string `json:"storedValues,omitempty"`
+	PrefixFields        []string `json:"prefixFields,omitempty"`
 
 	ArangoError `json:",inline"`
 }
@@ -312,6 +311,49 @@ func (c *collection) EnsureZKDIndex(ctx context.Context, fields []string, option
 		input.Name = options.Name
 		input.Unique = &options.Unique
 		//input.Sparse = &options.Sparse
+	}
+	idx, created, err := c.ensureIndex(ctx, input)
+	if err != nil {
+		return nil, false, WithStack(err)
+	}
+	return idx, created, nil
+}
+
+func (c *collection) EnsureMDIIndex(ctx context.Context, fields []string, options *EnsureMDIIndexOptions) (Index, bool, error) {
+	input := indexData{
+		Type:   string(MDIIndex),
+		Fields: fields,
+		// fieldValueTypes is required and the only allowed value is "double". Future extensions of the index will allow other types.
+		FieldValueTypes: "double",
+	}
+	if options != nil {
+		input.InBackground = &options.InBackground
+		input.Name = options.Name
+		input.Unique = &options.Unique
+		input.Sparse = &options.Sparse
+		input.StoredValues = options.StoredValues
+	}
+	idx, created, err := c.ensureIndex(ctx, input)
+	if err != nil {
+		return nil, false, WithStack(err)
+	}
+	return idx, created, nil
+}
+
+func (c *collection) EnsureMDIPrefixedIndex(ctx context.Context, fields []string, options *EnsureMDIPrefixedIndexOptions) (Index, bool, error) {
+	input := indexData{
+		Type:   string(MDIPrefixedIndex),
+		Fields: fields,
+		// fieldValueTypes is required and the only allowed value is "double". Future extensions of the index will allow other types.
+		FieldValueTypes: "double",
+	}
+	if options != nil {
+		input.InBackground = &options.InBackground
+		input.Name = options.Name
+		input.Unique = &options.Unique
+		input.Sparse = &options.Sparse
+		input.StoredValues = options.StoredValues
+		input.PrefixFields = options.PrefixFields
 	}
 	idx, created, err := c.ensureIndex(ctx, input)
 	if err != nil {

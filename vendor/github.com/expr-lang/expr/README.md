@@ -162,6 +162,7 @@ func main() {
 * [Visually.io](https://visually.io) employs Expr as a business rule engine for its personalization targeting algorithm.
 * [Akvorado](https://github.com/akvorado/akvorado) utilizes Expr to classify exporters and interfaces in network flows.
 * [keda.sh](https://keda.sh) uses Expr to allow customization of its Kubernetes-based event-driven autoscaling.
+* [Span Digital](https://spandigital.com/) uses Expr in it's Knowledge Management products.
 
 [Add your company too](https://github.com/expr-lang/expr/edit/master/README.md)
 

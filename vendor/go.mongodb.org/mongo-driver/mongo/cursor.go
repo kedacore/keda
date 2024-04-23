@@ -160,13 +160,13 @@ func (c *Cursor) next(ctx context.Context, nonBlocking bool) bool {
 		ctx = context.Background()
 	}
 	doc, err := c.batch.Next()
-	switch err {
-	case nil:
+	switch {
+	case err == nil:
 		// Consume the next document in the current batch.
 		c.batchLength--
 		c.Current = bson.Raw(doc)
 		return true
-	case io.EOF: // Need to do a getMore
+	case errors.Is(err, io.EOF): // Need to do a getMore
 	default:
 		c.err = err
 		return false
@@ -204,12 +204,12 @@ func (c *Cursor) next(ctx context.Context, nonBlocking bool) bool {
 		c.batch = c.bc.Batch()
 		c.batchLength = c.batch.DocumentCount()
 		doc, err = c.batch.Next()
-		switch err {
-		case nil:
+		switch {
+		case err == nil:
 			c.batchLength--
 			c.Current = bson.Raw(doc)
 			return true
-		case io.EOF: // Empty batch so we continue
+		case errors.Is(err, io.EOF): // Empty batch so we continue
 		default:
 			c.err = err
 			return false

@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017-2024 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,8 +17,6 @@
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
 //
-// Author Ewout Prangsma
-//
 
 package driver
 
@@ -29,16 +27,18 @@ type IndexType string
 
 // Symbolic constants for index types
 const (
-	PrimaryIndex    = IndexType("primary")
-	FullTextIndex   = IndexType("fulltext") // Deprecated: since 3.10 version. Use ArangoSearch view instead.
-	HashIndex       = IndexType("hash")
-	SkipListIndex   = IndexType("skiplist")
-	PersistentIndex = IndexType("persistent")
-	GeoIndex        = IndexType("geo")
-	EdgeIndex       = IndexType("edge")
-	TTLIndex        = IndexType("ttl")
-	ZKDIndex        = IndexType("zkd")
-	InvertedIndex   = IndexType("inverted")
+	PrimaryIndex     = IndexType("primary")
+	FullTextIndex    = IndexType("fulltext") // Deprecated: since 3.10 version. Use ArangoSearch view instead.
+	HashIndex        = IndexType("hash")     // Deprecated use PersistentIndexType instead
+	SkipListIndex    = IndexType("skiplist") // Deprecated use PersistentIndexType instead
+	PersistentIndex  = IndexType("persistent")
+	GeoIndex         = IndexType("geo")
+	EdgeIndex        = IndexType("edge")
+	TTLIndex         = IndexType("ttl")
+	ZKDIndex         = IndexType("zkd") // Deprecated: since 3.12 version use MDIIndexType instead.
+	InvertedIndex    = IndexType("inverted")
+	MDIIndex         = IndexType("mdi")
+	MDIPrefixedIndex = IndexType("mdi-prefixed")
 )
 
 // Index provides access to a single index in a single collection.

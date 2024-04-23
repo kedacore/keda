@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017-2024 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 // limitations under the License.
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
-//
-// Author Ewout Prangsma
 //
 
 package driver
@@ -131,6 +129,22 @@ func (c *edgeCollection) EnsureTTLIndex(ctx context.Context, field string, expir
 // The index is returned, together with a boolean indicating if the index was newly created (true) or pre-existing (false).
 func (c *edgeCollection) EnsureZKDIndex(ctx context.Context, fields []string, options *EnsureZKDIndexOptions) (Index, bool, error) {
 	result, created, err := c.rawCollection().EnsureZKDIndex(ctx, fields, options)
+	if err != nil {
+		return nil, false, WithStack(err)
+	}
+	return result, created, nil
+}
+
+func (c *edgeCollection) EnsureMDIIndex(ctx context.Context, fields []string, options *EnsureMDIIndexOptions) (Index, bool, error) {
+	result, created, err := c.rawCollection().EnsureMDIIndex(ctx, fields, options)
+	if err != nil {
+		return nil, false, WithStack(err)
+	}
+	return result, created, nil
+}
+
+func (c *edgeCollection) EnsureMDIPrefixedIndex(ctx context.Context, fields []string, options *EnsureMDIPrefixedIndexOptions) (Index, bool, error) {
+	result, created, err := c.rawCollection().EnsureMDIPrefixedIndex(ctx, fields, options)
 	if err != nil {
 		return nil, false, WithStack(err)
 	}

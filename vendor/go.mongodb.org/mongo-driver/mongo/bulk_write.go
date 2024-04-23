@@ -8,6 +8,7 @@ package mongo
 
 import (
 	"context"
+	"errors"
 
 	"go.mongodb.org/mongo-driver/bson/bsoncodec"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -71,7 +72,7 @@ func (bw *bulkWrite) execute(ctx context.Context) error {
 
 		bwErr.WriteErrors = append(bwErr.WriteErrors, batchErr.WriteErrors...)
 
-		commandErrorOccurred := err != nil && err != driver.ErrUnacknowledgedWrite
+		commandErrorOccurred := err != nil && !errors.Is(err, driver.ErrUnacknowledgedWrite)
 		writeErrorOccurred := len(batchErr.WriteErrors) > 0 || batchErr.WriteConcernError != nil
 		if !continueOnError && (commandErrorOccurred || writeErrorOccurred) {
 			if err != nil {
@@ -108,8 +109,8 @@ func (bw *bulkWrite) runBatch(ctx context.Context, batch bulkWriteBatch) (BulkWr
 	case *InsertOneModel:
 		res, err := bw.runInsert(ctx, batch)
 		if err != nil {
-			writeErr, ok := err.(driver.WriteCommandError)
-			if !ok {
+			var writeErr driver.WriteCommandError
+			if !errors.As(err, &writeErr) {
 				return BulkWriteResult{}, batchErr, err
 			}
 			writeErrors = writeErr.WriteErrors
@@ -120,8 +121,8 @@ func (bw *bulkWrite) runBatch(ctx context.Context, batch bulkWriteBatch) (BulkWr
 	case *DeleteOneModel, *DeleteManyModel:
 		res, err := bw.runDelete(ctx, batch)
 		if err != nil {
-			writeErr, ok := err.(driver.WriteCommandError)
-			if !ok {
+			var writeErr driver.WriteCommandError
+			if !errors.As(err, &writeErr) {
 				return BulkWriteResult{}, batchErr, err
 			}
 			writeErrors = writeErr.WriteErrors
@@ -132,8 +133,8 @@ func (bw *bulkWrite) runBatch(ctx context.Context, batch bulkWriteBatch) (BulkWr
 	case *ReplaceOneModel, *UpdateOneModel, *UpdateManyModel:
 		res, err := bw.runUpdate(ctx, batch)
 		if err != nil {
-			writeErr, ok := err.(driver.WriteCommandError)
-			if !ok {
+			var writeErr driver.WriteCommandError
+			if !errors.As(err, &writeErr) {
 				return BulkWriteResult{}, batchErr, err
 			}
 			writeErrors = writeErr.WriteErrors
@@ -170,7 +171,7 @@ func (bw *bulkWrite) runInsert(ctx context.Context, batch bulkWriteBatch) (opera
 		if err != nil {
 			return operation.InsertResult{}, err
 		}
-		doc, _, err = ensureID(doc, primitive.NewObjectID(), bw.collection.bsonOpts, bw.collection.registry)
+		doc, _, err = ensureID(doc, primitive.NilObjectID, bw.collection.bsonOpts, bw.collection.registry)
 		if err != nil {
 			return operation.InsertResult{}, err
 		}

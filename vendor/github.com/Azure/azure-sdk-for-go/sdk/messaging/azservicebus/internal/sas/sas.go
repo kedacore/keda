@@ -139,21 +139,21 @@ func (s *Signer) SignWithExpiry(uri, expiry string) (string, error) {
 // an embedded SharedAccessSignature and expiration.
 // Ex: Endpoint=sb://<sb>.servicebus.windows.net;SharedAccessSignature=SharedAccessSignature sr=<sb>.servicebus.windows.net&sig=<base64-sig>&se=<expiry>&skn=<keyname>"
 func CreateConnectionStringWithSASUsingExpiry(connectionString string, expiry time.Time) (string, error) {
-	parsed, err := conn.ParsedConnectionFromStr(connectionString)
+	props, err := conn.ParseConnectionString(connectionString)
 
 	if err != nil {
 		return "", err
 	}
 
-	signer := NewSigner(parsed.KeyName, parsed.Key)
+	signer := NewSigner(*props.SharedAccessKeyName, *props.SharedAccessKey)
 
-	sig, err := signer.SignWithExpiry(parsed.Namespace, fmt.Sprintf("%d", expiry.Unix()))
+	sig, err := signer.SignWithExpiry(props.FullyQualifiedNamespace, fmt.Sprintf("%d", expiry.Unix()))
 
 	if err != nil {
 		return "", err
 	}
 
-	return fmt.Sprintf("Endpoint=sb://%s;SharedAccessSignature=%s", parsed.Namespace, sig), nil
+	return fmt.Sprintf("Endpoint=sb://%s;SharedAccessSignature=%s", props.FullyQualifiedNamespace, sig), nil
 }
 
 func signatureExpiry(from time.Time, interval time.Duration) string {

@@ -33,7 +33,9 @@ type AlarmHistoryItem struct {
 
 // An anomaly detection model associated with a particular CloudWatch metric,
 // statistic, or metric math expression. You can use the model to display a band of
-// expected, normal values when the metric is graphed.
+// expected, normal values when the metric is graphed. If you have enabled unified
+// cross-account observability, and this account is a monitoring account, the
+// metric can be in the same account or a source account.
 type AnomalyDetector struct {
 
 	// The configuration specifies details about how the anomaly detection model is to
@@ -45,6 +47,11 @@ type AnomalyDetector struct {
 	//
 	// Deprecated: Use SingleMetricAnomalyDetector.Dimensions property.
 	Dimensions []Dimension
+
+	// This object includes parameters that you can use to provide information about
+	// your metric to CloudWatch to help it build more accurate anomaly detection
+	// models. Currently, it includes the PeriodicSpikes parameter.
+	MetricCharacteristics *MetricCharacteristics
 
 	// The CloudWatch metric math expression for this anomaly detector.
 	MetricMathAnomalyDetector *MetricMathAnomalyDetector
@@ -67,8 +74,7 @@ type AnomalyDetector struct {
 	// Deprecated: Use SingleMetricAnomalyDetector.Stat property.
 	Stat *string
 
-	// The current status of the anomaly detector's training. The possible values are
-	// TRAINED | PENDING_TRAINING | TRAINED_INSUFFICIENT_DATA
+	// The current status of the anomaly detector's training.
 	StateValue AnomalyDetectorStateValue
 
 	noSmithyDocumentSerde
@@ -648,6 +654,19 @@ type MetricAlarm struct {
 	noSmithyDocumentSerde
 }
 
+// This object includes parameters that you can use to provide information to
+// CloudWatch to help it build more accurate anomaly detection models.
+type MetricCharacteristics struct {
+
+	// Set this parameter to true if values for this metric consistently include
+	// spikes that should not be considered to be anomalies. With this set to true ,
+	// CloudWatch will expect to see spikes that occurred consistently during the model
+	// training period, and won't flag future similar spikes as anomalies.
+	PeriodicSpikes *bool
+
+	noSmithyDocumentSerde
+}
+
 // This structure is used in both GetMetricData and PutMetricAlarm . The supported
 // use of this structure is different for those two operations. When used in
 // GetMetricData , it indicates the metric data to return, and whether this call is
@@ -1033,8 +1052,15 @@ type Range struct {
 }
 
 // Designates the CloudWatch metric and statistic that provides the time series
-// the anomaly detector uses as input.
+// the anomaly detector uses as input. If you have enabled unified cross-account
+// observability, and this account is a monitoring account, the metric can be in
+// the same account or a source account.
 type SingleMetricAnomalyDetector struct {
+
+	// If the CloudWatch metric that provides the time series that the anomaly
+	// detector uses as input is in another account, specify that account ID here. If
+	// you omit this parameter, the current account is used.
+	AccountId *string
 
 	// The metric dimensions to create the anomaly detection model for.
 	Dimensions []Dimension

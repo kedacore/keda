@@ -25,6 +25,9 @@ import (
 
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	genericoptions "k8s.io/apiserver/pkg/server/options"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	openapicommon "k8s.io/kube-openapi/pkg/common"
 )
 
@@ -40,7 +43,7 @@ type CustomMetricsAdapterServerOptions struct {
 	Features       *genericoptions.FeatureOptions
 
 	OpenAPIConfig   *openapicommon.Config
-	OpenAPIV3Config *openapicommon.Config
+	OpenAPIV3Config *openapicommon.OpenAPIV3Config
 	EnableMetrics   bool
 }
 
@@ -81,7 +84,7 @@ func (o *CustomMetricsAdapterServerOptions) AddFlags(fs *pflag.FlagSet) {
 }
 
 // ApplyTo applies CustomMetricsAdapterServerOptions to the server configuration.
-func (o *CustomMetricsAdapterServerOptions) ApplyTo(serverConfig *genericapiserver.Config) error {
+func (o *CustomMetricsAdapterServerOptions) ApplyTo(serverConfig *genericapiserver.Config, clientConfig *rest.Config, informers informers.SharedInformerFactory) error {
 	// TODO have a "real" external address (have an AdvertiseAddress?)
 	if err := o.SecureServing.MaybeDefaultWithSelfSignedCerts("localhost", nil, []net.IP{net.ParseIP("127.0.0.1")}); err != nil {
 		return fmt.Errorf("error creating self-signed certificates: %v", err)
@@ -99,7 +102,13 @@ func (o *CustomMetricsAdapterServerOptions) ApplyTo(serverConfig *genericapiserv
 	if err := o.Audit.ApplyTo(serverConfig); err != nil {
 		return err
 	}
-	if err := o.Features.ApplyTo(serverConfig); err != nil {
+
+	clientset, err := kubernetes.NewForConfig(clientConfig)
+	if err != nil {
+		return err
+	}
+
+	if err := o.Features.ApplyTo(serverConfig, clientset, informers); err != nil {
 		return err
 	}
 
