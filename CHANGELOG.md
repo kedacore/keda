@@ -63,7 +63,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 Here is an overview of all new **experimental** features:
 
-- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Introduce Azure Event Grid as a new CloudEvent destination ([#3587](https://github.com/kedacore/keda/issues/3587))
 
 ### Improvements
 
@@ -85,6 +85,7 @@ Here is an overview of all new **experimental** features:
 
 - **General**: Allow ScaledObject.MinReplicaCount to be set to 0 ([#5570](https://github.com/kedacore/keda/issues/5570))
 - **General**: Fix CVE-2024-28180 in github.com/go-jose/go-jose/v3 ([#5617](https://github.com/kedacore/keda/pull/5617))
+- **General**: Fix wrong scaler active value and paused value that are pushed to OpenTelemetry ([#5705](https://github.com/kedacore/keda/issues/5705))
 - **General**: Log field `ScaledJob` no longer have conflicting types ([#5592](https://github.com/kedacore/keda/pull/5592))
 - **General**: Prometheus metrics shows errors correctly ([#5597](https://github.com/kedacore/keda/issues/5597)|[#5663](https://github.com/kedacore/keda/issues/5663))
 - **General**: Validate empty array value of triggers in ScaledObject/ScaledJob creation ([#5520](https://github.com/kedacore/keda/issues/5520))
