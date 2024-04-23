@@ -65,7 +65,7 @@ func NewDynatraceScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
-	logMsg := fmt.Sprintf("Initializing Dynatrace Scaler (API URL: %s)", meta.host)
+	logMsg := fmt.Sprintf("Initializing Dynatrace Scaler (Host: %s)", meta.host)
 
 	logger.Info(logMsg)
 
