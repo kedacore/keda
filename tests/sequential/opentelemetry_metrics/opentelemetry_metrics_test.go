@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -545,6 +544,7 @@ func changeOtlpProtocolInOperator(t *testing.T, kc *kubernetes.Clientset, name s
 	_, err := kc.AppsV1().Deployments(namespace).Update(context.TODO(), operator, metav1.UpdateOptions{})
 
 	require.NoErrorf(t, err, "error change keda operator - %s", err)
+	WaitForDeploymentReplicaReadyCount(t, kc, operator.Name, "keda", 1, 60, 2)
 }
 
 func fallbackHTTPProtocolInOperator(t *testing.T, kc *kubernetes.Clientset, name string, namespace string) {
@@ -566,10 +566,9 @@ func fallbackHTTPProtocolInOperator(t *testing.T, kc *kubernetes.Clientset, name
 	}
 
 	_, err := kc.AppsV1().Deployments(namespace).Update(context.TODO(), operator, metav1.UpdateOptions{})
-	if err != nil {
-		fmt.Printf("Error updating Deployment: %v\n", err)
-		os.Exit(1)
-	}
+
+	require.NoErrorf(t, err, "error change keda operator - %s", err)
+	WaitForDeploymentReplicaReadyCount(t, kc, operator.Name, "keda", 1, 60, 2)
 }
 
 func testScalerGrpcMetricValue(t *testing.T, kc *kubernetes.Clientset, data templateData) {
