@@ -1,16 +1,5 @@
 // Copyright The OpenTelemetry Authors
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-License-Identifier: Apache-2.0
 
 package aggregate // import "go.opentelemetry.io/otel/sdk/metric/internal/aggregate"
 
@@ -20,19 +9,23 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/sdk/metric/internal/exemplar"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
 
 // datapoint is timestamped measurement data.
 type datapoint[N int64 | float64] struct {
+	attrs     attribute.Set
 	timestamp time.Time
 	value     N
+	res       exemplar.Reservoir[N]
 }
 
-func newLastValue[N int64 | float64](limit int) *lastValue[N] {
+func newLastValue[N int64 | float64](limit int, r func() exemplar.Reservoir[N]) *lastValue[N] {
 	return &lastValue[N]{
+		newRes: r,
 		limit:  newLimiter[datapoint[N]](limit),
-		values: make(map[attribute.Set]datapoint[N]),
+		values: make(map[attribute.Distinct]datapoint[N]),
 	}
 }
 
@@ -40,16 +33,29 @@ func newLastValue[N int64 | float64](limit int) *lastValue[N] {
 type lastValue[N int64 | float64] struct {
 	sync.Mutex
 
+	newRes func() exemplar.Reservoir[N]
 	limit  limiter[datapoint[N]]
-	values map[attribute.Set]datapoint[N]
+	values map[attribute.Distinct]datapoint[N]
 }
 
-func (s *lastValue[N]) measure(ctx context.Context, value N, attr attribute.Set) {
-	d := datapoint[N]{timestamp: now(), value: value}
+func (s *lastValue[N]) measure(ctx context.Context, value N, fltrAttr attribute.Set, droppedAttr []attribute.KeyValue) {
+	t := now()
+
 	s.Lock()
-	attr = s.limit.Attributes(attr, s.values)
-	s.values[attr] = d
-	s.Unlock()
+	defer s.Unlock()
+
+	attr := s.limit.Attributes(fltrAttr, s.values)
+	d, ok := s.values[attr.Equivalent()]
+	if !ok {
+		d.res = s.newRes()
+	}
+
+	d.attrs = attr
+	d.timestamp = t
+	d.value = value
+	d.res.Offer(ctx, t, value, droppedAttr)
+
+	s.values[attr.Equivalent()] = d
 }
 
 func (s *lastValue[N]) computeAggregation(dest *[]metricdata.DataPoint[N]) {
@@ -60,14 +66,15 @@ func (s *lastValue[N]) computeAggregation(dest *[]metricdata.DataPoint[N]) {
 	*dest = reset(*dest, n, n)
 
 	var i int
-	for a, v := range s.values {
-		(*dest)[i].Attributes = a
+	for _, v := range s.values {
+		(*dest)[i].Attributes = v.attrs
 		// The event time is the only meaningful timestamp, StartTime is
 		// ignored.
 		(*dest)[i].Time = v.timestamp
 		(*dest)[i].Value = v.value
-		// Do not report stale values.
-		delete(s.values, a)
+		v.res.Collect(&(*dest)[i].Exemplars)
 		i++
 	}
+	// Do not report stale values.
+	clear(s.values)
 }
