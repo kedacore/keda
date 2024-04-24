@@ -3,12 +3,14 @@ package metricscollector
 import (
 	"context"
 	"fmt"
+	"os"
 	"runtime"
 	"strconv"
 	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	api "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/sdk/metric"
@@ -63,7 +65,19 @@ type OtelMetricFloat64Val struct {
 func NewOtelMetrics(options ...metric.Option) *OtelMetrics {
 	// create default options with env
 	if options == nil {
-		exporter, err := otlpmetrichttp.New(context.Background())
+		protocol := os.Getenv("OTEL_EXPORTER_OTLP_PROTOCOL")
+
+		var exporter metric.Exporter
+		var err error
+		switch protocol {
+		case "grpc":
+			otLog.V(1).Info("start OTEL grpc client")
+			exporter, err = otlpmetricgrpc.New(context.Background())
+		default:
+			otLog.V(1).Info("start OTEL http client")
+			exporter, err = otlpmetrichttp.New(context.Background())
+		}
+
 		if err != nil {
 			fmt.Printf("Error:" + err.Error())
 			return nil
