@@ -1,8 +1,6 @@
 module github.com/kedacore/keda/v2
 
-go 1.22.0
-
-toolchain go1.22.2
+go 1.21
 
 require (
 	cloud.google.com/go/compute/metadata v0.3.0
@@ -84,7 +82,7 @@ require (
 	github.com/tidwall/gjson v1.17.1
 	github.com/xdg/scram v1.0.5
 	github.com/xhit/go-str2duration/v2 v2.1.0
-	github.com/youmark/pkcs8 v0.0.0-20240424034433-3c2c7870ae76
+	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a
 	go.etcd.io/etcd/client/v3 v3.5.13
 	go.mongodb.org/mongo-driver v1.15.0
 	go.opentelemetry.io/otel v1.26.0
@@ -110,7 +108,7 @@ require (
 	k8s.io/utils v0.0.0-20240310230437-4693a0247e57
 	knative.dev/pkg v0.0.0-20240423132823-3c6badc82748
 	sigs.k8s.io/controller-runtime v0.17.3
-	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20240423173400-ed81fa696dea
+	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20240201105228-4000e996a202
 	sigs.k8s.io/controller-tools v0.14.0
 	sigs.k8s.io/custom-metrics-apiserver v1.28.1-0.20240424182356-4f8ac354df3b
 	sigs.k8s.io/kustomize/kustomize/v5 v5.4.1
