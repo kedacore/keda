@@ -65,6 +65,7 @@ import (
 // +kubebuilder:rbac:groups="apps",resources=deployments;statefulsets,verbs=list;watch
 // +kubebuilder:rbac:groups="coordination.k8s.io",namespace=keda,resources=leases,verbs="*"
 // +kubebuilder:rbac:groups="",resources="limitranges",verbs=list;watch
+// +kubebuilder:rbac:groups=flowcontrol.apiserver.k8s.io,resources=prioritylevelconfigurations;flowschemas,verbs=list;watch
 
 // ScaledObjectReconciler reconciles a ScaledObject object
 type ScaledObjectReconciler struct {
