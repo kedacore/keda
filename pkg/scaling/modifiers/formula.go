@@ -57,7 +57,12 @@ func HandleScalingModifiers(so *kedav1alpha1.ScaledObject, metrics []external_me
 		}
 		log.V(1).Info("returned metrics after formula is applied", "metrics", metrics)
 	} else if len(fallbackMetrics) > 0 {
-		metrics = []external_metrics.ExternalMetricValue{fallbackMetrics[0]}
+		metrics = []external_metrics.ExternalMetricValue{
+			{
+				MetricName: kedav1alpha1.CompositeMetricName,
+				Value:      fallbackMetrics[0].Value,
+				Timestamp:  fallbackMetrics[0].Timestamp,
+			}}
 	}
 	return metrics
 }
