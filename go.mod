@@ -1,6 +1,8 @@
 module github.com/kedacore/keda/v2
 
-go 1.21
+go 1.22.0
+
+toolchain go1.22.2
 
 require (
 	cloud.google.com/go/compute/metadata v0.3.0
@@ -82,17 +84,17 @@ require (
 	github.com/tidwall/gjson v1.17.1
 	github.com/xdg/scram v1.0.5
 	github.com/xhit/go-str2duration/v2 v2.1.0
-	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a
+	github.com/youmark/pkcs8 v0.0.0-20240424034433-3c2c7870ae76
 	go.etcd.io/etcd/client/v3 v3.5.13
 	go.mongodb.org/mongo-driver v1.15.0
-	go.opentelemetry.io/otel v1.25.0
-	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.0.0-00010101000000-000000000000
-	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.25.0
-	go.opentelemetry.io/otel/metric v1.25.0
+	go.opentelemetry.io/otel v1.26.0
+	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.26.0
+	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.26.0
+	go.opentelemetry.io/otel/metric v1.26.0
 	go.uber.org/mock v0.4.0
 	golang.org/x/oauth2 v0.19.0
 	golang.org/x/sync v0.7.0
-	google.golang.org/api v0.176.0
+	google.golang.org/api v0.176.1
 	google.golang.org/grpc v1.63.2
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.3.0
 	google.golang.org/protobuf v1.33.0
@@ -108,14 +110,11 @@ require (
 	k8s.io/utils v0.0.0-20240310230437-4693a0247e57
 	knative.dev/pkg v0.0.0-20240423132823-3c6badc82748
 	sigs.k8s.io/controller-runtime v0.17.3
-	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20240201105228-4000e996a202
+	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20240423173400-ed81fa696dea
 	sigs.k8s.io/controller-tools v0.14.0
-	sigs.k8s.io/custom-metrics-apiserver v1.28.1-0.20240103150633-c0d09c9b6dd1
+	sigs.k8s.io/custom-metrics-apiserver v1.28.1-0.20240424182356-4f8ac354df3b
 	sigs.k8s.io/kustomize/kustomize/v5 v5.4.1
 )
-
-// temporary fix until https://github.com/kubernetes-sigs/custom-metrics-apiserver/pull/170 is merged
-replace sigs.k8s.io/custom-metrics-apiserver => github.com/zroubalik/custom-metrics-apiserver v0.0.0-20240423165544-d507e408f45c
 
 replace (
 	// pin k8s.io to v0.29.4
@@ -161,8 +160,8 @@ replace (
 
 require (
 	cloud.google.com/go v0.112.2 // indirect
-	cloud.google.com/go/auth v0.2.2 // indirect
-	cloud.google.com/go/auth/oauth2adapt v0.2.1 // indirect
+	cloud.google.com/go/auth v0.3.0 // indirect
+	cloud.google.com/go/auth/oauth2adapt v0.2.2 // indirect
 	cloud.google.com/go/iam v1.1.7 // indirect
 	code.cloudfoundry.org/clock v1.1.0 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
@@ -254,7 +253,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.0-rc.3 // indirect
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.0 // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1 // indirect
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
@@ -336,10 +335,10 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.49.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.22.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.22.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.25.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.25.0
-	go.opentelemetry.io/otel/trace v1.25.0 // indirect
-	go.opentelemetry.io/proto/otlp v1.1.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.26.0 // indirect
+	go.opentelemetry.io/otel/sdk/metric v1.26.0
+	go.opentelemetry.io/otel/trace v1.26.0 // indirect
+	go.opentelemetry.io/proto/otlp v1.2.0 // indirect
 	go.starlark.net v0.0.0-20231121155337-90ade8b19d09 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/automaxprocs v1.5.3

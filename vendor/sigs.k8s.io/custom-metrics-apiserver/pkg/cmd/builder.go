@@ -297,13 +297,21 @@ func (b *AdapterBase) Config() (*apiserver.Config, error) {
 			return nil, utilerrors.NewAggregate(errList)
 		}
 
-		serverConfig := genericapiserver.NewConfig(apiserver.Codecs)
-		err := b.CustomMetricsAdapterServerOptions.ApplyTo(serverConfig, b.clientConfig, b.informers)
+		// let's initialize informers if they're not already
+		_, err := b.Informers()
+		if err != nil {
+			return nil, err
+		}
+
+		serverConfig := genericapiserver.NewRecommendedConfig(apiserver.Codecs)
+		serverConfig.ClientConfig = b.clientConfig
+		serverConfig.SharedInformerFactory = b.informers
+		err = b.CustomMetricsAdapterServerOptions.ApplyTo(serverConfig)
 		if err != nil {
 			return nil, err
 		}
 		b.config = &apiserver.Config{
-			GenericConfig: serverConfig,
+			GenericConfig: &serverConfig.Config,
 		}
 	}
 
