@@ -53,6 +53,9 @@ type CloudEventSourceSpec struct {
 	Destination Destination `json:"destination"`
 
 	// +optional
+	AuthenticationRef *v1alpha1.AuthenticationRef `json:"authenticationRef,omitempty"`
+
+	// +optional
 	EventSubscription EventSubscription `json:"eventSubscription,omitempty"`
 }
 
@@ -67,10 +70,17 @@ type CloudEventSourceStatus struct {
 type Destination struct {
 	// +optional
 	HTTP *CloudEventHTTP `json:"http"`
+
+	// +optional
+	AzureEventGridTopic *AzureEventGridTopicSpec `json:"azureEventGridTopic"`
 }
 
 type CloudEventHTTP struct {
 	URI string `json:"uri"`
+}
+
+type AzureEventGridTopicSpec struct {
+	Endpoint string `json:"endpoint"`
 }
 
 // EventSubscription defines filters for events

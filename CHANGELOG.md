@@ -63,7 +63,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 Here is an overview of all new **experimental** features:
 
-- **General**: TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Introduce Azure Event Grid as a new CloudEvent destination ([#3587](https://github.com/kedacore/keda/issues/3587))
 
 ### Improvements
 
@@ -73,8 +73,12 @@ Here is an overview of all new **experimental** features:
 - **General**: Add GRPC Client support for opentelemetry ([#5698](https://github.com/kedacore/keda/issues/5698))
 - **General**: Add OPENTELEMETRY flag in e2e test YAML ([#5375](https://github.com/kedacore/keda/issues/5375))
 - **General**: Add support for cross tenant/cloud authentication when using Azure Workload Identity for TriggerAuthentication ([#5441](https://github.com/kedacore/keda/issues/5441))
+- **General**: Add `validations.keda.sh/hpa-ownership` annotation to HPA to disable ownership validation ([#5516](https://github.com/kedacore/keda/issues/5516))
+- **General**: Improve Prometheus metrics to align with best practices ([#4854](https://github.com/kedacore/keda/issues/4854))
 - **General**: Support csv-format for WATCH_NAMESPACE env var ([#5670](https://github.com/kedacore/keda/issues/5670))
+- **General**: Validate fallback configuration when creating ScaledObjects ([#5515](https://github.com/kedacore/keda/issues/5515))
 - **Azure Event Hub Scaler**: Remove usage of checkpoint offsets to account for SDK checkpointing implementation changes ([#5574](https://github.com/kedacore/keda/issues/5574))
+- **GCP Pub/Sub Scaler**: Add support for resolving resource names from the scale target's environment ([#5693](https://github.com/kedacore/keda/issues/5693))
 - **GCP Stackdriver Scaler**: Add missing parameters 'rate' and 'count' for GCP Stackdriver Scaler alignment ([#5633](https://github.com/kedacore/keda/issues/5633))
 - **Metrics API Scaler**: Add support for various formats: json, xml, yaml, prometheus ([#2633](https://github.com/kedacore/keda/issues/2633))
 - **MongoDB Scaler**: Add scheme field support srv record ([#5544](https://github.com/kedacore/keda/issues/5544))
@@ -82,6 +86,7 @@ Here is an overview of all new **experimental** features:
 ### Fixes
 
 - **General**: Fix CVE-2024-28180 in github.com/go-jose/go-jose/v3 ([#5617](https://github.com/kedacore/keda/pull/5617))
+- **General**: Fix wrong scaler active value and paused value that are pushed to OpenTelemetry ([#5705](https://github.com/kedacore/keda/issues/5705))
 - **General**: Log field `ScaledJob` no longer have conflicting types ([#5592](https://github.com/kedacore/keda/pull/5592))
 - **General**: Prometheus metrics shows errors correctly ([#5597](https://github.com/kedacore/keda/issues/5597)|[#5663](https://github.com/kedacore/keda/issues/5663))
 - **General**: Validate empty array value of triggers in ScaledObject/ScaledJob creation ([#5520](https://github.com/kedacore/keda/issues/5520))
@@ -95,7 +100,7 @@ You can find all deprecations in [this overview](https://github.com/kedacore/ked
 
 New deprecation(s):
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- Various Prometheus metrics have been renamed to follow the preferred naming conventions. The old ones are still available, but will be removed in the future ([#4854](https://github.com/kedacore/keda/issues/4854)).
 
 ### Breaking Changes
 
@@ -108,6 +113,7 @@ New deprecation(s):
 - **General**: Introduce ENABLE_OPENTELEMETRY in deploying/testing process  ([#5375](https://github.com/kedacore/keda/issues/5375)|[#5578](https://github.com/kedacore/keda/issues/5578))
 - **General**: Migrate away from unmaintained golang/mock and use uber/gomock ([#5440](https://github.com/kedacore/keda/issues/5440))
 - **General**: Minor refactor to reduce copy/paste code in ScaledObject webhook ([#5397](https://github.com/kedacore/keda/issues/5397))
+- **General**: No need to list all secret in the namespace to find just one ([#5669](https://github.com/kedacore/keda/pull/5669))
 - **Kafka**: Expose GSSAPI service name  ([#5474](https://github.com/kedacore/keda/issues/5474))
 
 ## v2.13.1
