@@ -84,6 +84,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
+- **General**: Fix CVE-2024-28110 in github.com/cloudEvents/sdk-go/v2 ([#5729](https://github.com/kedacore/keda/pull/5729))
 - **General**: Fix CVE-2024-28180 in github.com/go-jose/go-jose/v3 ([#5617](https://github.com/kedacore/keda/pull/5617))
 - **General**: Fix wrong scaler active value and paused value that are pushed to OpenTelemetry ([#5705](https://github.com/kedacore/keda/issues/5705))
 - **General**: Log field `ScaledJob` no longer have conflicting types ([#5592](https://github.com/kedacore/keda/pull/5592))
