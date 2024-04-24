@@ -269,3 +269,26 @@ func CheckReplicaCountBoundsAreValid(scaledObject *ScaledObject) error {
 
 	return nil
 }
+
+// CheckFallbackValid checks that the fallback supports scalers with an AverageValue metric target.
+// Consequently, it does not support CPU & memory scalers, or scalers targeting a Value metric type.
+func CheckFallbackValid(scaledObject *ScaledObject) error {
+	if scaledObject.Spec.Fallback == nil {
+		return nil
+	}
+
+	if scaledObject.Spec.Fallback.FailureThreshold < 0 || scaledObject.Spec.Fallback.Replicas < 0 {
+		return fmt.Errorf("FailureThreshold=%d & Replicas=%d must both be greater than or equal to 0",
+			scaledObject.Spec.Fallback.FailureThreshold, scaledObject.Spec.Fallback.Replicas)
+	}
+
+	for _, trigger := range scaledObject.Spec.Triggers {
+		if trigger.Type == cpuString || trigger.Type == memoryString {
+			return fmt.Errorf("type is %s , but fallback it is not supported by the CPU & memory scalers", trigger.Type)
+		}
+		if trigger.MetricType != autoscalingv2.AverageValueMetricType {
+			return fmt.Errorf("MetricType=%s, but Fallback can only be enabled for triggers with metric of type AverageValue", trigger.MetricType)
+		}
+	}
+	return nil
+}
