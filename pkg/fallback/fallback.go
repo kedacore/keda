@@ -114,6 +114,7 @@ func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpe
 	} else {
 		value, _ := strconv.ParseInt(scaledObject.Spec.Advanced.ScalingModifiers.Target, 10, 64)
 		normalisationValue = value
+		metricName = kedav1alpha1.CompositeMetricName
 	}
 
 	metric := external_metrics.ExternalMetricValue{

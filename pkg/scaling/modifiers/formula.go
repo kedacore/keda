@@ -56,16 +56,8 @@ func HandleScalingModifiers(so *kedav1alpha1.ScaledObject, metrics []external_me
 			log.Error(err, "error applying custom scalingModifiers.Formula")
 		}
 		log.V(1).Info("returned metrics after formula is applied", "metrics", metrics)
-	} else if fallbackMetrics != nil {
-		var handledModifierMetrics []external_metrics.ExternalMetricValue
-		for _, metric := range fallbackMetrics {
-			var ret external_metrics.ExternalMetricValue
-			ret.MetricName = kedav1alpha1.CompositeMetricName
-			ret.Timestamp = v1.Now()
-			ret.Value = metric.Value
-			handledModifierMetrics = append(handledModifierMetrics, ret)
-		}
-		metrics = handledModifierMetrics
+	} else if len(fallbackMetrics) > 0 {
+		metrics = []external_metrics.ExternalMetricValue{fallbackMetrics[0]}
 	}
 	return metrics
 }
