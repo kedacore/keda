@@ -93,11 +93,10 @@ body:
     label: Kubernetes Version
     description: What version of Kubernetes that are you running?
     options:
+    - "1.30"
     - "1.29"
     - "1.28"
-    - "1.27"
-    - "1.26"
-    - "< 1.26"
+    - "< 1.28"
     - "Other"
   validations:
     required: false
