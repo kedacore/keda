@@ -18,12 +18,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/cel-go/common/ast"
 	"github.com/google/cel-go/common/containers"
-	"github.com/google/cel-go/common/functions"
 	"github.com/google/cel-go/common/operators"
-	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
+	"github.com/google/cel-go/interpreter/functions"
 
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
@@ -39,11 +37,11 @@ type interpretablePlanner interface {
 // functions, types, and namespaced identifiers at plan time rather than at runtime since
 // it only needs to be done once and may be semi-expensive to compute.
 func newPlanner(disp Dispatcher,
-	provider types.Provider,
-	adapter types.Adapter,
+	provider ref.TypeProvider,
+	adapter ref.TypeAdapter,
 	attrFactory AttributeFactory,
 	cont *containers.Container,
-	checked *ast.CheckedAST,
+	checked *exprpb.CheckedExpr,
 	decorators ...InterpretableDecorator) interpretablePlanner {
 	return &planner{
 		disp:        disp,
@@ -51,8 +49,8 @@ func newPlanner(disp Dispatcher,
 		adapter:     adapter,
 		attrFactory: attrFactory,
 		container:   cont,
-		refMap:      checked.ReferenceMap,
-		typeMap:     checked.TypeMap,
+		refMap:      checked.GetReferenceMap(),
+		typeMap:     checked.GetTypeMap(),
 		decorators:  decorators,
 	}
 }
@@ -61,8 +59,8 @@ func newPlanner(disp Dispatcher,
 // TypeAdapter, and Container to resolve functions and types at plan time. Namespaces present in
 // Select expressions are resolved lazily at evaluation time.
 func newUncheckedPlanner(disp Dispatcher,
-	provider types.Provider,
-	adapter types.Adapter,
+	provider ref.TypeProvider,
+	adapter ref.TypeAdapter,
 	attrFactory AttributeFactory,
 	cont *containers.Container,
 	decorators ...InterpretableDecorator) interpretablePlanner {
@@ -72,8 +70,8 @@ func newUncheckedPlanner(disp Dispatcher,
 		adapter:     adapter,
 		attrFactory: attrFactory,
 		container:   cont,
-		refMap:      make(map[int64]*ast.ReferenceInfo),
-		typeMap:     make(map[int64]*types.Type),
+		refMap:      make(map[int64]*exprpb.Reference),
+		typeMap:     make(map[int64]*exprpb.Type),
 		decorators:  decorators,
 	}
 }
@@ -81,12 +79,12 @@ func newUncheckedPlanner(disp Dispatcher,
 // planner is an implementation of the interpretablePlanner interface.
 type planner struct {
 	disp        Dispatcher
-	provider    types.Provider
-	adapter     types.Adapter
+	provider    ref.TypeProvider
+	adapter     ref.TypeAdapter
 	attrFactory AttributeFactory
 	container   *containers.Container
-	refMap      map[int64]*ast.ReferenceInfo
-	typeMap     map[int64]*types.Type
+	refMap      map[int64]*exprpb.Reference
+	typeMap     map[int64]*exprpb.Type
 	decorators  []InterpretableDecorator
 }
 
@@ -145,19 +143,22 @@ func (p *planner) planIdent(expr *exprpb.Expr) (Interpretable, error) {
 	}, nil
 }
 
-func (p *planner) planCheckedIdent(id int64, identRef *ast.ReferenceInfo) (Interpretable, error) {
+func (p *planner) planCheckedIdent(id int64, identRef *exprpb.Reference) (Interpretable, error) {
 	// Plan a constant reference if this is the case for this simple identifier.
-	if identRef.Value != nil {
-		return NewConstValue(id, identRef.Value), nil
+	if identRef.GetValue() != nil {
+		return p.Plan(&exprpb.Expr{Id: id,
+			ExprKind: &exprpb.Expr_ConstExpr{
+				ConstExpr: identRef.GetValue(),
+			}})
 	}
 
 	// Check to see whether the type map indicates this is a type name. All types should be
 	// registered with the provider.
 	cType := p.typeMap[id]
-	if cType.Kind() == types.TypeKind {
-		cVal, found := p.provider.FindIdent(identRef.Name)
+	if cType.GetType() != nil {
+		cVal, found := p.provider.FindIdent(identRef.GetName())
 		if !found {
-			return nil, fmt.Errorf("reference to undefined type: %s", identRef.Name)
+			return nil, fmt.Errorf("reference to undefined type: %s", identRef.GetName())
 		}
 		return NewConstValue(id, cVal), nil
 	}
@@ -165,7 +166,7 @@ func (p *planner) planCheckedIdent(id int64, identRef *ast.ReferenceInfo) (Inter
 	// Otherwise, return the attribute for the resolved identifier name.
 	return &evalAttr{
 		adapter: p.adapter,
-		attr:    p.attrFactory.AbsoluteAttribute(id, identRef.Name),
+		attr:    p.attrFactory.AbsoluteAttribute(id, identRef.GetName()),
 	}, nil
 }
 
@@ -428,16 +429,18 @@ func (p *planner) planCallNotEqual(expr *exprpb.Expr, args []Interpretable) (Int
 // planCallLogicalAnd generates a logical and (&&) Interpretable.
 func (p *planner) planCallLogicalAnd(expr *exprpb.Expr, args []Interpretable) (Interpretable, error) {
 	return &evalAnd{
-		id:    expr.GetId(),
-		terms: args,
+		id:  expr.GetId(),
+		lhs: args[0],
+		rhs: args[1],
 	}, nil
 }
 
 // planCallLogicalOr generates a logical or (||) Interpretable.
 func (p *planner) planCallLogicalOr(expr *exprpb.Expr, args []Interpretable) (Interpretable, error) {
 	return &evalOr{
-		id:    expr.GetId(),
-		terms: args,
+		id:  expr.GetId(),
+		lhs: args[0],
+		rhs: args[1],
 	}, nil
 }
 
@@ -473,7 +476,7 @@ func (p *planner) planCallConditional(expr *exprpb.Expr, args []Interpretable) (
 func (p *planner) planCallIndex(expr *exprpb.Expr, args []Interpretable, optional bool) (Interpretable, error) {
 	op := args[0]
 	ind := args[1]
-	opType := p.typeMap[op.ID()]
+	opType := p.typeMap[expr.GetCallExpr().GetTarget().GetId()]
 
 	// Establish the attribute reference.
 	var err error
@@ -672,7 +675,7 @@ func (p *planner) constValue(c *exprpb.Constant) (ref.Val, error) {
 // namespace resolution rules to it in a scan over possible matching types in the TypeProvider.
 func (p *planner) resolveTypeName(typeName string) (string, bool) {
 	for _, qualifiedTypeName := range p.container.ResolveCandidateNames(typeName) {
-		if _, found := p.provider.FindStructType(qualifiedTypeName); found {
+		if _, found := p.provider.FindType(qualifiedTypeName); found {
 			return qualifiedTypeName, true
 		}
 	}
@@ -699,8 +702,8 @@ func (p *planner) resolveFunction(expr *exprpb.Expr) (*exprpb.Expr, string, stri
 	// function name as the fnName value.
 	oRef, hasOverload := p.refMap[expr.GetId()]
 	if hasOverload {
-		if len(oRef.OverloadIDs) == 1 {
-			return target, fnName, oRef.OverloadIDs[0]
+		if len(oRef.GetOverloadId()) == 1 {
+			return target, fnName, oRef.GetOverloadId()[0]
 		}
 		// Note, this namespaced function name will not appear as a fully qualified name in ASTs
 		// built and stored before cel-go v0.5.0; however, this functionality did not work at all

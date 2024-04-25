@@ -69,7 +69,7 @@ var (
 	objectCounts = compbasemetrics.NewGaugeVec(
 		&compbasemetrics.GaugeOpts{
 			Name:           "apiserver_storage_objects",
-			Help:           "Number of stored objects at the time of last check split by kind. In case of a fetching error, the value will be -1.",
+			Help:           "Number of stored objects at the time of last check split by kind.",
 			StabilityLevel: compbasemetrics.STABLE,
 		},
 		[]string{"resource"},
@@ -228,7 +228,7 @@ func UpdateEtcdDbSize(ep string, size int64) {
 
 // SetStorageMonitorGetter sets monitor getter to allow monitoring etcd stats.
 func SetStorageMonitorGetter(getter func() ([]Monitor, error)) {
-	storageMonitor.setGetter(getter)
+	storageMonitor.monitorGetter = getter
 }
 
 // UpdateLeaseObjectCount sets the etcd_lease_object_counts metric.
@@ -258,20 +258,7 @@ type StorageMetrics struct {
 type monitorCollector struct {
 	compbasemetrics.BaseStableCollector
 
-	mutex         sync.Mutex
 	monitorGetter func() ([]Monitor, error)
-}
-
-func (m *monitorCollector) setGetter(monitorGetter func() ([]Monitor, error)) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-	m.monitorGetter = monitorGetter
-}
-
-func (m *monitorCollector) getGetter() func() ([]Monitor, error) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-	return m.monitorGetter
 }
 
 // DescribeWithStability implements compbasemetrics.StableColletor
@@ -281,7 +268,7 @@ func (c *monitorCollector) DescribeWithStability(ch chan<- *compbasemetrics.Desc
 
 // CollectWithStability implements compbasemetrics.StableColletor
 func (c *monitorCollector) CollectWithStability(ch chan<- compbasemetrics.Metric) {
-	monitors, err := c.getGetter()()
+	monitors, err := c.monitorGetter()
 	if err != nil {
 		return
 	}

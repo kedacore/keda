@@ -16,6 +16,7 @@ package ext
 
 import (
 	"github.com/google/cel-go/cel"
+	"github.com/google/cel-go/common"
 
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
@@ -85,7 +86,7 @@ func (protoLib) ProgramOptions() []cel.ProgramOption {
 }
 
 // hasProtoExt generates a test-only select expression for a fully-qualified extension name on a protobuf message.
-func hasProtoExt(meh cel.MacroExprHelper, target *exprpb.Expr, args []*exprpb.Expr) (*exprpb.Expr, *cel.Error) {
+func hasProtoExt(meh cel.MacroExprHelper, target *exprpb.Expr, args []*exprpb.Expr) (*exprpb.Expr, *common.Error) {
 	if !macroTargetMatchesNamespace(protoNamespace, target) {
 		return nil, nil
 	}
@@ -97,7 +98,7 @@ func hasProtoExt(meh cel.MacroExprHelper, target *exprpb.Expr, args []*exprpb.Ex
 }
 
 // getProtoExt generates a select expression for a fully-qualified extension name on a protobuf message.
-func getProtoExt(meh cel.MacroExprHelper, target *exprpb.Expr, args []*exprpb.Expr) (*exprpb.Expr, *cel.Error) {
+func getProtoExt(meh cel.MacroExprHelper, target *exprpb.Expr, args []*exprpb.Expr) (*exprpb.Expr, *common.Error) {
 	if !macroTargetMatchesNamespace(protoNamespace, target) {
 		return nil, nil
 	}
@@ -108,7 +109,7 @@ func getProtoExt(meh cel.MacroExprHelper, target *exprpb.Expr, args []*exprpb.Ex
 	return meh.Select(args[0], extFieldName), nil
 }
 
-func getExtFieldName(meh cel.MacroExprHelper, expr *exprpb.Expr) (string, *cel.Error) {
+func getExtFieldName(meh cel.MacroExprHelper, expr *exprpb.Expr) (string, *common.Error) {
 	isValid := false
 	extensionField := ""
 	switch expr.GetExprKind().(type) {
@@ -116,7 +117,10 @@ func getExtFieldName(meh cel.MacroExprHelper, expr *exprpb.Expr) (string, *cel.E
 		extensionField, isValid = validateIdentifier(expr)
 	}
 	if !isValid {
-		return "", meh.NewError(expr.GetId(), "invalid extension field")
+		return "", &common.Error{
+			Message:  "invalid extension field",
+			Location: meh.OffsetLocation(expr.GetId()),
+		}
 	}
 	return extensionField, nil
 }

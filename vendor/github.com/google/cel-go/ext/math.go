@@ -19,10 +19,10 @@ import (
 	"strings"
 
 	"github.com/google/cel-go/cel"
+	"github.com/google/cel-go/common"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/common/types/traits"
-
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
@@ -187,18 +187,24 @@ func (mathLib) ProgramOptions() []cel.ProgramOption {
 	return []cel.ProgramOption{}
 }
 
-func mathLeast(meh cel.MacroExprHelper, target *exprpb.Expr, args []*exprpb.Expr) (*exprpb.Expr, *cel.Error) {
+func mathLeast(meh cel.MacroExprHelper, target *exprpb.Expr, args []*exprpb.Expr) (*exprpb.Expr, *common.Error) {
 	if !macroTargetMatchesNamespace(mathNamespace, target) {
 		return nil, nil
 	}
 	switch len(args) {
 	case 0:
-		return nil, meh.NewError(target.GetId(), "math.least() requires at least one argument")
+		return nil, &common.Error{
+			Message:  "math.least() requires at least one argument",
+			Location: meh.OffsetLocation(target.GetId()),
+		}
 	case 1:
 		if isListLiteralWithValidArgs(args[0]) || isValidArgType(args[0]) {
 			return meh.GlobalCall(minFunc, args[0]), nil
 		}
-		return nil, meh.NewError(args[0].GetId(), "math.least() invalid single argument value")
+		return nil, &common.Error{
+			Message:  "math.least() invalid single argument value",
+			Location: meh.OffsetLocation(args[0].GetId()),
+		}
 	case 2:
 		err := checkInvalidArgs(meh, "math.least()", args)
 		if err != nil {
@@ -214,18 +220,24 @@ func mathLeast(meh cel.MacroExprHelper, target *exprpb.Expr, args []*exprpb.Expr
 	}
 }
 
-func mathGreatest(meh cel.MacroExprHelper, target *exprpb.Expr, args []*exprpb.Expr) (*exprpb.Expr, *cel.Error) {
+func mathGreatest(meh cel.MacroExprHelper, target *exprpb.Expr, args []*exprpb.Expr) (*exprpb.Expr, *common.Error) {
 	if !macroTargetMatchesNamespace(mathNamespace, target) {
 		return nil, nil
 	}
 	switch len(args) {
 	case 0:
-		return nil, meh.NewError(target.GetId(), "math.greatest() requires at least one argument")
+		return nil, &common.Error{
+			Message:  "math.greatest() requires at least one argument",
+			Location: meh.OffsetLocation(target.GetId()),
+		}
 	case 1:
 		if isListLiteralWithValidArgs(args[0]) || isValidArgType(args[0]) {
 			return meh.GlobalCall(maxFunc, args[0]), nil
 		}
-		return nil, meh.NewError(args[0].GetId(), "math.greatest() invalid single argument value")
+		return nil, &common.Error{
+			Message:  "math.greatest() invalid single argument value",
+			Location: meh.OffsetLocation(args[0].GetId()),
+		}
 	case 2:
 		err := checkInvalidArgs(meh, "math.greatest()", args)
 		if err != nil {
@@ -311,11 +323,14 @@ func maxList(numList ref.Val) ref.Val {
 	}
 }
 
-func checkInvalidArgs(meh cel.MacroExprHelper, funcName string, args []*exprpb.Expr) *cel.Error {
+func checkInvalidArgs(meh cel.MacroExprHelper, funcName string, args []*exprpb.Expr) *common.Error {
 	for _, arg := range args {
 		err := checkInvalidArgLiteral(funcName, arg)
 		if err != nil {
-			return meh.NewError(arg.GetId(), err.Error())
+			return &common.Error{
+				Message:  err.Error(),
+				Location: meh.OffsetLocation(arg.GetId()),
+			}
 		}
 	}
 	return nil

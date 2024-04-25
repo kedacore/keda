@@ -26,7 +26,6 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -45,6 +44,8 @@ import (
 )
 
 type EtcdOptions struct {
+	// The value of Paging on StorageConfig will be overridden by the
+	// calculated feature gate value.
 	StorageConfig                           storagebackend.Config
 	EncryptionProviderConfigFilepath        string
 	EncryptionProviderConfigAutomaticReload bool
@@ -86,12 +87,6 @@ func NewEtcdOptions(backendConfig *storagebackend.Config) *EtcdOptions {
 	return options
 }
 
-var storageMediaTypes = sets.New(
-	runtime.ContentTypeJSON,
-	runtime.ContentTypeYAML,
-	runtime.ContentTypeProtobuf,
-)
-
 func (s *EtcdOptions) Validate() []error {
 	if s == nil {
 		return nil
@@ -123,10 +118,6 @@ func (s *EtcdOptions) Validate() []error {
 
 	if len(s.EncryptionProviderConfigFilepath) == 0 && s.EncryptionProviderConfigAutomaticReload {
 		allErrors = append(allErrors, fmt.Errorf("--encryption-provider-config-automatic-reload must be set with --encryption-provider-config"))
-	}
-
-	if s.DefaultStorageMediaType != "" && !storageMediaTypes.Has(s.DefaultStorageMediaType) {
-		allErrors = append(allErrors, fmt.Errorf("--storage-media-type %q invalid, allowed values: %s", s.DefaultStorageMediaType, strings.Join(sets.List(storageMediaTypes), ", ")))
 	}
 
 	return allErrors
@@ -303,7 +294,7 @@ func (s *EtcdOptions) maybeApplyResourceTransformers(c *server.Config) (err erro
 		}
 	}()
 
-	encryptionConfiguration, err := encryptionconfig.LoadEncryptionConfig(ctxTransformers, s.EncryptionProviderConfigFilepath, s.EncryptionProviderConfigAutomaticReload, c.APIServerID)
+	encryptionConfiguration, err := encryptionconfig.LoadEncryptionConfig(ctxTransformers, s.EncryptionProviderConfigFilepath, s.EncryptionProviderConfigAutomaticReload)
 	if err != nil {
 		return err
 	}
@@ -327,7 +318,6 @@ func (s *EtcdOptions) maybeApplyResourceTransformers(c *server.Config) (err erro
 					s.EncryptionProviderConfigFilepath,
 					dynamicTransformers,
 					encryptionConfiguration.EncryptionFileContentHash,
-					c.APIServerID,
 				)
 
 				go dynamicEncryptionConfigController.Run(ctxServer)
@@ -341,21 +331,16 @@ func (s *EtcdOptions) maybeApplyResourceTransformers(c *server.Config) (err erro
 
 		c.ResourceTransformers = dynamicTransformers
 		if !s.SkipHealthEndpoints {
-			addHealthChecksWithoutLivez(c, dynamicTransformers)
+			c.AddHealthChecks(dynamicTransformers)
 		}
 	} else {
 		c.ResourceTransformers = encryptionconfig.StaticTransformers(encryptionConfiguration.Transformers)
 		if !s.SkipHealthEndpoints {
-			addHealthChecksWithoutLivez(c, encryptionConfiguration.HealthChecks...)
+			c.AddHealthChecks(encryptionConfiguration.HealthChecks...)
 		}
 	}
 
 	return nil
-}
-
-func addHealthChecksWithoutLivez(c *server.Config, healthChecks ...healthz.HealthChecker) {
-	c.HealthzChecks = append(c.HealthzChecks, healthChecks...)
-	c.ReadyzChecks = append(c.ReadyzChecks, healthChecks...)
 }
 
 func (s *EtcdOptions) addEtcdHealthEndpoint(c *server.Config) error {

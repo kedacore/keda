@@ -33,8 +33,7 @@ func (l *ListTypeMissing) Validate(t *types.Type) ([]string, error) {
 				continue
 			}
 
-			// All slice fields must have a list-type tag except []byte
-			if m.Type.Kind == types.Slice && m.Type.Elem != types.Byte && !hasListType {
+			if m.Type.Kind == types.Slice && !hasListType {
 				fields = append(fields, m.Name)
 				continue
 			}

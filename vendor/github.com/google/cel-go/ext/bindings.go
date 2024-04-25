@@ -16,6 +16,7 @@ package ext
 
 import (
 	"github.com/google/cel-go/cel"
+	"github.com/google/cel-go/common"
 
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
@@ -70,7 +71,7 @@ func (celBindings) ProgramOptions() []cel.ProgramOption {
 	return []cel.ProgramOption{}
 }
 
-func celBind(meh cel.MacroExprHelper, target *exprpb.Expr, args []*exprpb.Expr) (*exprpb.Expr, *cel.Error) {
+func celBind(meh cel.MacroExprHelper, target *exprpb.Expr, args []*exprpb.Expr) (*exprpb.Expr, *common.Error) {
 	if !macroTargetMatchesNamespace(celNamespace, target) {
 		return nil, nil
 	}
@@ -80,7 +81,10 @@ func celBind(meh cel.MacroExprHelper, target *exprpb.Expr, args []*exprpb.Expr) 
 	case *exprpb.Expr_IdentExpr:
 		varName = varIdent.GetIdentExpr().GetName()
 	default:
-		return nil, meh.NewError(varIdent.GetId(), "cel.bind() variable names must be simple identifiers")
+		return nil, &common.Error{
+			Message:  "cel.bind() variable names must be simple identifers",
+			Location: meh.OffsetLocation(varIdent.GetId()),
+		}
 	}
 	varInit := args[1]
 	resultExpr := args[2]

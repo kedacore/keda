@@ -17,7 +17,7 @@ package interpreter
 import (
 	"fmt"
 
-	"github.com/google/cel-go/common/functions"
+	"github.com/google/cel-go/interpreter/functions"
 )
 
 // Dispatcher resolves function calls to their appropriate overload.

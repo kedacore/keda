@@ -62,7 +62,8 @@ type ServerRunOptions struct {
 	// decoded in a write request. 0 means no limit.
 	// We intentionally did not add a flag for this option. Users of the
 	// apiserver library can wire it to a flag.
-	MaxRequestBodyBytes int64
+	MaxRequestBodyBytes       int64
+	EnablePriorityAndFairness bool
 
 	// ShutdownSendRetryAfter dictates when to initiate shutdown of the HTTP
 	// Server during the graceful termination of the apiserver. If true, we wait
@@ -103,6 +104,7 @@ func NewServerRunOptions() *ServerRunOptions {
 		ShutdownWatchTerminationGracePeriod: defaults.ShutdownWatchTerminationGracePeriod,
 		JSONPatchMaxCopyBytes:               defaults.JSONPatchMaxCopyBytes,
 		MaxRequestBodyBytes:                 defaults.MaxRequestBodyBytes,
+		EnablePriorityAndFairness:           true,
 		ShutdownSendRetryAfter:              false,
 	}
 }
@@ -322,6 +324,9 @@ func (s *ServerRunOptions) AddUniversalFlags(fs *pflag.FlagSet) {
 		"a request open before timing it out. Currently only honored by the watch request "+
 		"handler, which picks a randomized value above this number as the connection timeout, "+
 		"to spread out load.")
+
+	fs.BoolVar(&s.EnablePriorityAndFairness, "enable-priority-and-fairness", s.EnablePriorityAndFairness, ""+
+		"If true and the APIPriorityAndFairness feature gate is enabled, replace the max-in-flight handler with an enhanced one that queues and dispatches with priority and fairness")
 
 	fs.DurationVar(&s.ShutdownDelayDuration, "shutdown-delay-duration", s.ShutdownDelayDuration, ""+
 		"Time to delay the termination. During that time the server keeps serving requests normally. The endpoints /healthz and /livez "+
