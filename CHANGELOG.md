@@ -54,10 +54,9 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### New
 
 - **General**: Provide capability to filter CloudEvents ([#3533](https://github.com/kedacore/keda/issues/3533))
+- **Kafka**: Support Kafka SASL MSK IAM authentication ([#5540](https://github.com/kedacore/keda/issues/5540))
 - **NATS Scaler**: Add TLS authentication ([#2296](https://github.com/kedacore/keda/issues/2296))
 - **ScaledObject**: Ability to specify `initialCooldownPeriod` ([#5008](https://github.com/kedacore/keda/issues/5008))
-
-
 
 #### Experimental
 
