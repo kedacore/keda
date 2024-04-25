@@ -17,13 +17,12 @@ limitations under the License.
 package promise
 
 import (
-	"context"
 	"sync"
 )
 
 // promise implements the WriteOnce interface.
 type promise struct {
-	doneCtx context.Context
+	doneCh  <-chan struct{}
 	doneVal interface{}
 	setCh   chan struct{}
 	onceler sync.Once
@@ -36,12 +35,12 @@ var _ WriteOnce = &promise{}
 //
 // If `initial` is non-nil then that value is Set at creation time.
 //
-// If a `Get` is waiting soon after the channel associated with the
-// `doneCtx` becomes selectable (which never happens for the nil
-// channel) then `Set(doneVal)` effectively happens at that time.
-func NewWriteOnce(initial interface{}, doneCtx context.Context, doneVal interface{}) WriteOnce {
+// If a `Get` is waiting soon after `doneCh` becomes selectable (which
+// never happens for the nil channel) then `Set(doneVal)` effectively
+// happens at that time.
+func NewWriteOnce(initial interface{}, doneCh <-chan struct{}, doneVal interface{}) WriteOnce {
 	p := &promise{
-		doneCtx: doneCtx,
+		doneCh:  doneCh,
 		doneVal: doneVal,
 		setCh:   make(chan struct{}),
 	}
@@ -54,7 +53,7 @@ func NewWriteOnce(initial interface{}, doneCtx context.Context, doneVal interfac
 func (p *promise) Get() interface{} {
 	select {
 	case <-p.setCh:
-	case <-p.doneCtx.Done():
+	case <-p.doneCh:
 		p.Set(p.doneVal)
 	}
 	return p.value

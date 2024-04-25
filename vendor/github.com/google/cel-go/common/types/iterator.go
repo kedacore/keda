@@ -24,7 +24,7 @@ import (
 
 var (
 	// IteratorType singleton.
-	IteratorType = NewObjectType("iterator", traits.IteratorType)
+	IteratorType = NewTypeValue("iterator", traits.IteratorType)
 )
 
 // baseIterator is the basis for list, map, and object iterators.

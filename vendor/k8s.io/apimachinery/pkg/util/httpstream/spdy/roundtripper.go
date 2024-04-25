@@ -38,7 +38,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/httpstream"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
-	apiproxy "k8s.io/apimachinery/pkg/util/proxy"
 	"k8s.io/apimachinery/third_party/forked/golang/netutil"
 )
 
@@ -69,10 +68,6 @@ type SpdyRoundTripper struct {
 	// pingPeriod is a period for sending Ping frames over established
 	// connections.
 	pingPeriod time.Duration
-
-	// upgradeTransport is an optional substitute for dialing if present. This field is
-	// mutually exclusive with the "tlsConfig", "Dialer", and "proxier".
-	upgradeTransport http.RoundTripper
 }
 
 var _ utilnet.TLSClientConfigHolder = &SpdyRoundTripper{}
@@ -81,61 +76,43 @@ var _ utilnet.Dialer = &SpdyRoundTripper{}
 
 // NewRoundTripper creates a new SpdyRoundTripper that will use the specified
 // tlsConfig.
-func NewRoundTripper(tlsConfig *tls.Config) (*SpdyRoundTripper, error) {
+func NewRoundTripper(tlsConfig *tls.Config) *SpdyRoundTripper {
 	return NewRoundTripperWithConfig(RoundTripperConfig{
-		TLS:              tlsConfig,
-		UpgradeTransport: nil,
+		TLS: tlsConfig,
 	})
 }
 
 // NewRoundTripperWithProxy creates a new SpdyRoundTripper that will use the
 // specified tlsConfig and proxy func.
-func NewRoundTripperWithProxy(tlsConfig *tls.Config, proxier func(*http.Request) (*url.URL, error)) (*SpdyRoundTripper, error) {
+func NewRoundTripperWithProxy(tlsConfig *tls.Config, proxier func(*http.Request) (*url.URL, error)) *SpdyRoundTripper {
 	return NewRoundTripperWithConfig(RoundTripperConfig{
-		TLS:              tlsConfig,
-		Proxier:          proxier,
-		UpgradeTransport: nil,
+		TLS:     tlsConfig,
+		Proxier: proxier,
 	})
 }
 
 // NewRoundTripperWithConfig creates a new SpdyRoundTripper with the specified
-// configuration. Returns an error if the SpdyRoundTripper is misconfigured.
-func NewRoundTripperWithConfig(cfg RoundTripperConfig) (*SpdyRoundTripper, error) {
-	// Process UpgradeTransport, which is mutually exclusive to TLSConfig and Proxier.
-	if cfg.UpgradeTransport != nil {
-		if cfg.TLS != nil || cfg.Proxier != nil {
-			return nil, fmt.Errorf("SpdyRoundTripper: UpgradeTransport is mutually exclusive to TLSConfig or Proxier")
-		}
-		tlsConfig, err := utilnet.TLSClientConfig(cfg.UpgradeTransport)
-		if err != nil {
-			return nil, fmt.Errorf("SpdyRoundTripper: Unable to retrieve TLSConfig from  UpgradeTransport: %v", err)
-		}
-		cfg.TLS = tlsConfig
-	}
+// configuration.
+func NewRoundTripperWithConfig(cfg RoundTripperConfig) *SpdyRoundTripper {
 	if cfg.Proxier == nil {
 		cfg.Proxier = utilnet.NewProxierWithNoProxyCIDR(http.ProxyFromEnvironment)
 	}
 	return &SpdyRoundTripper{
-		tlsConfig:        cfg.TLS,
-		proxier:          cfg.Proxier,
-		pingPeriod:       cfg.PingPeriod,
-		upgradeTransport: cfg.UpgradeTransport,
-	}, nil
+		tlsConfig:  cfg.TLS,
+		proxier:    cfg.Proxier,
+		pingPeriod: cfg.PingPeriod,
+	}
 }
 
 // RoundTripperConfig is a set of options for an SpdyRoundTripper.
 type RoundTripperConfig struct {
-	// TLS configuration used by the round tripper if UpgradeTransport not present.
+	// TLS configuration used by the round tripper.
 	TLS *tls.Config
 	// Proxier is a proxy function invoked on each request. Optional.
 	Proxier func(*http.Request) (*url.URL, error)
 	// PingPeriod is a period for sending SPDY Pings on the connection.
 	// Optional.
 	PingPeriod time.Duration
-	// UpgradeTransport is a subtitute transport used for dialing. If set,
-	// this field will be used instead of "TLS" and "Proxier" for connection creation.
-	// Optional.
-	UpgradeTransport http.RoundTripper
 }
 
 // TLSClientConfig implements pkg/util/net.TLSClientConfigHolder for proper TLS checking during
@@ -146,13 +123,7 @@ func (s *SpdyRoundTripper) TLSClientConfig() *tls.Config {
 
 // Dial implements k8s.io/apimachinery/pkg/util/net.Dialer.
 func (s *SpdyRoundTripper) Dial(req *http.Request) (net.Conn, error) {
-	var conn net.Conn
-	var err error
-	if s.upgradeTransport != nil {
-		conn, err = apiproxy.DialURL(req.Context(), req.URL, s.upgradeTransport)
-	} else {
-		conn, err = s.dial(req)
-	}
+	conn, err := s.dial(req)
 	if err != nil {
 		return nil, err
 	}

@@ -112,10 +112,6 @@ var urlsLib = &urls{}
 
 type urls struct{}
 
-func (*urls) LibraryName() string {
-	return "k8s.urls"
-}
-
 var urlLibraryDecls = map[string][]cel.FunctionOpt{
 	"url": {
 		cel.Overload("string_to_url", []*cel.Type{cel.StringType}, apiservercel.URLType,

@@ -25,7 +25,6 @@ type options struct {
 	macros                           map[string]Macro
 	populateMacroCalls               bool
 	enableOptionalSyntax             bool
-	enableVariadicOperatorASTs       bool
 }
 
 // Option configures the behavior of the parser.
@@ -123,18 +122,6 @@ func PopulateMacroCalls(populateMacroCalls bool) Option {
 func EnableOptionalSyntax(optionalSyntax bool) Option {
 	return func(opts *options) error {
 		opts.enableOptionalSyntax = optionalSyntax
-		return nil
-	}
-}
-
-// EnableVariadicOperatorASTs enables a compact representation of chained like-kind commutative
-// operators. e.g. `a || b || c || d` -> `call(op='||', args=[a, b, c, d])`
-//
-// The benefit of enabling variadic operators ASTs is a more compact representation deeply nested
-// logic graphs.
-func EnableVariadicOperatorASTs(varArgASTs bool) Option {
-	return func(opts *options) error {
-		opts.enableVariadicOperatorASTs = varArgASTs
 		return nil
 	}
 }

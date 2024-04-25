@@ -21,5 +21,3 @@ package v1alpha1
 type CSIStorageCapacityExpansion interface{}
 
 type VolumeAttachmentExpansion interface{}
-
-type VolumeAttributesClassExpansion interface{}

@@ -18,10 +18,7 @@ package metrics
 
 import (
 	"context"
-	"sync"
-
 	"k8s.io/component-base/metrics"
-	"k8s.io/component-base/metrics/legacyregistry"
 )
 
 type RequestBodyVerb string
@@ -38,8 +35,8 @@ var (
 	RequestBodySizes = metrics.NewHistogramVec(
 		&metrics.HistogramOpts{
 			Subsystem: "apiserver",
-			Name:      "request_body_size_bytes",
-			Help:      "Apiserver request body size in bytes broken out by resource and verb.",
+			Name:      "request_body_sizes",
+			Help:      "Apiserver request body sizes broken out by size.",
 			// we use 0.05 KB as the smallest bucket with 0.1 KB increments up to the
 			// apiserver limit.
 			Buckets:        metrics.LinearBuckets(50000, 100000, 31),
@@ -48,15 +45,6 @@ var (
 		[]string{"resource", "verb"},
 	)
 )
-
-var registerMetrics sync.Once
-
-// Register all metrics.
-func Register() {
-	registerMetrics.Do(func() {
-		legacyregistry.MustRegister(RequestBodySizes)
-	})
-}
 
 func RecordRequestBodySize(ctx context.Context, resource string, verb RequestBodyVerb, size int) {
 	RequestBodySizes.WithContext(ctx).WithLabelValues(resource, string(verb)).Observe(float64(size))

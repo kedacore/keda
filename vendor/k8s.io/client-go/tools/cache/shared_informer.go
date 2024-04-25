@@ -334,9 +334,11 @@ func WaitForCacheSync(stopCh <-chan struct{}, cacheSyncs ...InformerSynced) bool
 		},
 		stopCh)
 	if err != nil {
+		klog.V(2).Infof("stop requested")
 		return false
 	}
 
+	klog.V(4).Infof("caches populated")
 	return true
 }
 

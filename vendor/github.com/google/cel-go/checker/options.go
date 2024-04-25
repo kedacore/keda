@@ -14,10 +14,12 @@
 
 package checker
 
+import "github.com/google/cel-go/checker/decls"
+
 type options struct {
 	crossTypeNumericComparisons  bool
 	homogeneousAggregateLiterals bool
-	validatedDeclarations        *Scopes
+	validatedDeclarations        *decls.Scopes
 }
 
 // Option is a functional option for configuring the type-checker
@@ -28,6 +30,15 @@ type Option func(*options) error
 func CrossTypeNumericComparisons(enabled bool) Option {
 	return func(opts *options) error {
 		opts.crossTypeNumericComparisons = enabled
+		return nil
+	}
+}
+
+// HomogeneousAggregateLiterals toggles support for constructing lists and maps whose elements all
+// have the same type.
+func HomogeneousAggregateLiterals(enabled bool) Option {
+	return func(opts *options) error {
+		opts.homogeneousAggregateLiterals = enabled
 		return nil
 	}
 }
