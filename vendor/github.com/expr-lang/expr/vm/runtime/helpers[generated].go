@@ -334,6 +334,344 @@ func Equal(a, b interface{}) bool {
 		case float64:
 			return float64(x) == float64(y)
 		}
+	case []any:
+		switch y := b.(type) {
+		case []string:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if !Equal(x[i], y[i]) {
+					return false
+				}
+			}
+			return true
+		case []uint:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if !Equal(x[i], y[i]) {
+					return false
+				}
+			}
+			return true
+		case []uint8:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if !Equal(x[i], y[i]) {
+					return false
+				}
+			}
+			return true
+		case []uint16:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if !Equal(x[i], y[i]) {
+					return false
+				}
+			}
+			return true
+		case []uint32:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if !Equal(x[i], y[i]) {
+					return false
+				}
+			}
+			return true
+		case []uint64:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if !Equal(x[i], y[i]) {
+					return false
+				}
+			}
+			return true
+		case []int:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if !Equal(x[i], y[i]) {
+					return false
+				}
+			}
+			return true
+		case []int8:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if !Equal(x[i], y[i]) {
+					return false
+				}
+			}
+			return true
+		case []int16:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if !Equal(x[i], y[i]) {
+					return false
+				}
+			}
+			return true
+		case []int32:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if !Equal(x[i], y[i]) {
+					return false
+				}
+			}
+			return true
+		case []int64:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if !Equal(x[i], y[i]) {
+					return false
+				}
+			}
+			return true
+		case []float32:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if !Equal(x[i], y[i]) {
+					return false
+				}
+			}
+			return true
+		case []float64:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if !Equal(x[i], y[i]) {
+					return false
+				}
+			}
+			return true
+		case []any:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if !Equal(x[i], y[i]) {
+					return false
+				}
+			}
+			return true
+		}
+	case []string:
+		switch y := b.(type) {
+		case []any:
+			return Equal(y, x)
+		case []string:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if x[i] != y[i] {
+					return false
+				}
+			}
+			return true
+		}
+	case []uint:
+		switch y := b.(type) {
+		case []any:
+			return Equal(y, x)
+		case []uint:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if x[i] != y[i] {
+					return false
+				}
+			}
+			return true
+		}
+	case []uint8:
+		switch y := b.(type) {
+		case []any:
+			return Equal(y, x)
+		case []uint8:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if x[i] != y[i] {
+					return false
+				}
+			}
+			return true
+		}
+	case []uint16:
+		switch y := b.(type) {
+		case []any:
+			return Equal(y, x)
+		case []uint16:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if x[i] != y[i] {
+					return false
+				}
+			}
+			return true
+		}
+	case []uint32:
+		switch y := b.(type) {
+		case []any:
+			return Equal(y, x)
+		case []uint32:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if x[i] != y[i] {
+					return false
+				}
+			}
+			return true
+		}
+	case []uint64:
+		switch y := b.(type) {
+		case []any:
+			return Equal(y, x)
+		case []uint64:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if x[i] != y[i] {
+					return false
+				}
+			}
+			return true
+		}
+	case []int:
+		switch y := b.(type) {
+		case []any:
+			return Equal(y, x)
+		case []int:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if x[i] != y[i] {
+					return false
+				}
+			}
+			return true
+		}
+	case []int8:
+		switch y := b.(type) {
+		case []any:
+			return Equal(y, x)
+		case []int8:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if x[i] != y[i] {
+					return false
+				}
+			}
+			return true
+		}
+	case []int16:
+		switch y := b.(type) {
+		case []any:
+			return Equal(y, x)
+		case []int16:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if x[i] != y[i] {
+					return false
+				}
+			}
+			return true
+		}
+	case []int32:
+		switch y := b.(type) {
+		case []any:
+			return Equal(y, x)
+		case []int32:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if x[i] != y[i] {
+					return false
+				}
+			}
+			return true
+		}
+	case []int64:
+		switch y := b.(type) {
+		case []any:
+			return Equal(y, x)
+		case []int64:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if x[i] != y[i] {
+					return false
+				}
+			}
+			return true
+		}
+	case []float32:
+		switch y := b.(type) {
+		case []any:
+			return Equal(y, x)
+		case []float32:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if x[i] != y[i] {
+					return false
+				}
+			}
+			return true
+		}
+	case []float64:
+		switch y := b.(type) {
+		case []any:
+			return Equal(y, x)
+		case []float64:
+			if len(x) != len(y) {
+				return false
+			}
+			for i := range x {
+				if x[i] != y[i] {
+					return false
+				}
+			}
+			return true
+		}
 	case string:
 		switch y := b.(type) {
 		case string:
@@ -347,6 +685,11 @@ func Equal(a, b interface{}) bool {
 	case time.Duration:
 		switch y := b.(type) {
 		case time.Duration:
+			return x == y
+		}
+	case bool:
+		switch y := b.(type) {
+		case bool:
 			return x == y
 		}
 	}

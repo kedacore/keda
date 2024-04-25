@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// Copyright 2018-2024 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 // limitations under the License.
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
-//
-// Author Ewout Prangsma
 //
 
 package driver
@@ -34,7 +32,7 @@ type DatabaseViews interface {
 	// ViewExists returns true if a view with given name exists within the database.
 	ViewExists(ctx context.Context, name string) (bool, error)
 
-	// Views returns a list of all views in the database.
+	// Views return a list of all views in the database.
 	Views(ctx context.Context) ([]View, error)
 
 	// CreateArangoSearchView creates a new view of type ArangoSearch,

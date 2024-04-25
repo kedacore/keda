@@ -1,3 +1,32 @@
+# v1.9.6 (2024-03-29)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.9.5 (2024-03-18)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.9.4 (2024-03-07)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.9.3 (2024-03-04)
+
+* **Bug Fix**: Fix misaligned struct member used in atomic operation. This fixes a panic caused by attempting to atomically access a struct member which is not 64-bit aligned when running on 32-bit arch, due to the smaller sync.Map struct.
+
+# v1.9.2 (2024-02-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.9.1 (2024-02-21)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.9.0 (2024-02-13)
+
+* **Feature**: Bump minimum Go version to 1.20 per our language support policy.
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.8.11 (2024-01-04)
 
 * **Dependency Update**: Updated to the latest SDK module versions

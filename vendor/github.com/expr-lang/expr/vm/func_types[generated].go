@@ -12,64 +12,92 @@ var FuncTypes = []any{
 	2:  new(func() time.Month),
 	3:  new(func() time.Time),
 	4:  new(func() time.Weekday),
-	5:  new(func() []uint8),
-	6:  new(func() []interface{}),
-	7:  new(func() bool),
-	8:  new(func() uint8),
-	9:  new(func() float64),
-	10: new(func() int),
-	11: new(func() int64),
-	12: new(func() interface{}),
-	13: new(func() map[string]interface{}),
+	5:  new(func() []interface{}),
+	6:  new(func() []uint8),
+	7:  new(func() interface{}),
+	8:  new(func() bool),
+	9:  new(func() uint8),
+	10: new(func() float32),
+	11: new(func() float64),
+	12: new(func() int),
+	13: new(func() int16),
 	14: new(func() int32),
-	15: new(func() string),
-	16: new(func() uint),
-	17: new(func() uint64),
-	18: new(func(time.Duration) time.Duration),
-	19: new(func(time.Duration) time.Time),
-	20: new(func(time.Time) time.Duration),
-	21: new(func(time.Time) bool),
-	22: new(func([]interface{}, string) string),
-	23: new(func([]string, string) string),
-	24: new(func(bool) bool),
-	25: new(func(bool) float64),
-	26: new(func(bool) int),
-	27: new(func(bool) string),
-	28: new(func(float64) bool),
-	29: new(func(float64) float64),
-	30: new(func(float64) int),
-	31: new(func(float64) string),
-	32: new(func(int) bool),
-	33: new(func(int) float64),
-	34: new(func(int) int),
-	35: new(func(int) string),
-	36: new(func(int, int) int),
-	37: new(func(int, int) string),
-	38: new(func(int64) time.Time),
-	39: new(func(string) []string),
-	40: new(func(string) bool),
-	41: new(func(string) float64),
-	42: new(func(string) int),
-	43: new(func(string) string),
-	44: new(func(string, uint8) int),
-	45: new(func(string, int) int),
-	46: new(func(string, int32) int),
-	47: new(func(string, string) bool),
-	48: new(func(string, string) string),
-	49: new(func(interface{}) bool),
-	50: new(func(interface{}) float64),
-	51: new(func(interface{}) int),
-	52: new(func(interface{}) string),
-	53: new(func(interface{}) interface{}),
-	54: new(func(interface{}) []interface{}),
-	55: new(func(interface{}) map[string]interface{}),
-	56: new(func([]interface{}) interface{}),
-	57: new(func([]interface{}) []interface{}),
-	58: new(func([]interface{}) map[string]interface{}),
-	59: new(func(interface{}, interface{}) bool),
-	60: new(func(interface{}, interface{}) string),
-	61: new(func(interface{}, interface{}) interface{}),
-	62: new(func(interface{}, interface{}) []interface{}),
+	15: new(func() int64),
+	16: new(func() int8),
+	17: new(func() map[string]interface{}),
+	18: new(func() int32),
+	19: new(func() string),
+	20: new(func() uint),
+	21: new(func() uint16),
+	22: new(func() uint32),
+	23: new(func() uint64),
+	24: new(func() uint8),
+	25: new(func(time.Duration) time.Duration),
+	26: new(func(time.Duration) time.Time),
+	27: new(func(time.Time) time.Duration),
+	28: new(func(time.Time) bool),
+	29: new(func([]interface{}) []interface{}),
+	30: new(func([]interface{}) interface{}),
+	31: new(func([]interface{}) map[string]interface{}),
+	32: new(func([]interface{}, string) string),
+	33: new(func([]uint8) string),
+	34: new(func([]string, string) string),
+	35: new(func(interface{}) []interface{}),
+	36: new(func(interface{}) interface{}),
+	37: new(func(interface{}) bool),
+	38: new(func(interface{}) float64),
+	39: new(func(interface{}) int),
+	40: new(func(interface{}) map[string]interface{}),
+	41: new(func(interface{}) string),
+	42: new(func(interface{}, interface{}) []interface{}),
+	43: new(func(interface{}, interface{}) interface{}),
+	44: new(func(interface{}, interface{}) bool),
+	45: new(func(interface{}, interface{}) string),
+	46: new(func(bool) bool),
+	47: new(func(bool) float64),
+	48: new(func(bool) int),
+	49: new(func(bool) string),
+	50: new(func(bool, bool) bool),
+	51: new(func(float32) float64),
+	52: new(func(float64) bool),
+	53: new(func(float64) float32),
+	54: new(func(float64) float64),
+	55: new(func(float64) int),
+	56: new(func(float64) string),
+	57: new(func(float64, float64) bool),
+	58: new(func(int) bool),
+	59: new(func(int) float64),
+	60: new(func(int) int),
+	61: new(func(int) string),
+	62: new(func(int, int) bool),
+	63: new(func(int, int) int),
+	64: new(func(int, int) string),
+	65: new(func(int16) int32),
+	66: new(func(int32) float64),
+	67: new(func(int32) int),
+	68: new(func(int32) int64),
+	69: new(func(int64) time.Time),
+	70: new(func(int8) int),
+	71: new(func(int8) int16),
+	72: new(func(string) []uint8),
+	73: new(func(string) []string),
+	74: new(func(string) bool),
+	75: new(func(string) float64),
+	76: new(func(string) int),
+	77: new(func(string) string),
+	78: new(func(string, uint8) int),
+	79: new(func(string, int) int),
+	80: new(func(string, int32) int),
+	81: new(func(string, string) bool),
+	82: new(func(string, string) string),
+	83: new(func(uint) float64),
+	84: new(func(uint) int),
+	85: new(func(uint) uint),
+	86: new(func(uint16) uint),
+	87: new(func(uint32) uint64),
+	88: new(func(uint64) float64),
+	89: new(func(uint64) int64),
+	90: new(func(uint8) uint8),
 }
 
 func (vm *VM) call(fn any, kind int) any {
@@ -83,179 +111,259 @@ func (vm *VM) call(fn any, kind int) any {
 	case 4:
 		return fn.(func() time.Weekday)()
 	case 5:
-		return fn.(func() []uint8)()
-	case 6:
 		return fn.(func() []interface{})()
+	case 6:
+		return fn.(func() []uint8)()
 	case 7:
-		return fn.(func() bool)()
-	case 8:
-		return fn.(func() uint8)()
-	case 9:
-		return fn.(func() float64)()
-	case 10:
-		return fn.(func() int)()
-	case 11:
-		return fn.(func() int64)()
-	case 12:
 		return fn.(func() interface{})()
+	case 8:
+		return fn.(func() bool)()
+	case 9:
+		return fn.(func() uint8)()
+	case 10:
+		return fn.(func() float32)()
+	case 11:
+		return fn.(func() float64)()
+	case 12:
+		return fn.(func() int)()
 	case 13:
-		return fn.(func() map[string]interface{})()
+		return fn.(func() int16)()
 	case 14:
 		return fn.(func() int32)()
 	case 15:
-		return fn.(func() string)()
+		return fn.(func() int64)()
 	case 16:
-		return fn.(func() uint)()
+		return fn.(func() int8)()
 	case 17:
-		return fn.(func() uint64)()
+		return fn.(func() map[string]interface{})()
 	case 18:
+		return fn.(func() int32)()
+	case 19:
+		return fn.(func() string)()
+	case 20:
+		return fn.(func() uint)()
+	case 21:
+		return fn.(func() uint16)()
+	case 22:
+		return fn.(func() uint32)()
+	case 23:
+		return fn.(func() uint64)()
+	case 24:
+		return fn.(func() uint8)()
+	case 25:
 		arg1 := vm.pop().(time.Duration)
 		return fn.(func(time.Duration) time.Duration)(arg1)
-	case 19:
+	case 26:
 		arg1 := vm.pop().(time.Duration)
 		return fn.(func(time.Duration) time.Time)(arg1)
-	case 20:
+	case 27:
 		arg1 := vm.pop().(time.Time)
 		return fn.(func(time.Time) time.Duration)(arg1)
-	case 21:
+	case 28:
 		arg1 := vm.pop().(time.Time)
 		return fn.(func(time.Time) bool)(arg1)
-	case 22:
+	case 29:
+		arg1 := vm.pop().([]interface{})
+		return fn.(func([]interface{}) []interface{})(arg1)
+	case 30:
+		arg1 := vm.pop().([]interface{})
+		return fn.(func([]interface{}) interface{})(arg1)
+	case 31:
+		arg1 := vm.pop().([]interface{})
+		return fn.(func([]interface{}) map[string]interface{})(arg1)
+	case 32:
 		arg2 := vm.pop().(string)
 		arg1 := vm.pop().([]interface{})
 		return fn.(func([]interface{}, string) string)(arg1, arg2)
-	case 23:
+	case 33:
+		arg1 := vm.pop().([]uint8)
+		return fn.(func([]uint8) string)(arg1)
+	case 34:
 		arg2 := vm.pop().(string)
 		arg1 := vm.pop().([]string)
 		return fn.(func([]string, string) string)(arg1, arg2)
-	case 24:
-		arg1 := vm.pop().(bool)
-		return fn.(func(bool) bool)(arg1)
-	case 25:
-		arg1 := vm.pop().(bool)
-		return fn.(func(bool) float64)(arg1)
-	case 26:
-		arg1 := vm.pop().(bool)
-		return fn.(func(bool) int)(arg1)
-	case 27:
-		arg1 := vm.pop().(bool)
-		return fn.(func(bool) string)(arg1)
-	case 28:
-		arg1 := vm.pop().(float64)
-		return fn.(func(float64) bool)(arg1)
-	case 29:
-		arg1 := vm.pop().(float64)
-		return fn.(func(float64) float64)(arg1)
-	case 30:
-		arg1 := vm.pop().(float64)
-		return fn.(func(float64) int)(arg1)
-	case 31:
-		arg1 := vm.pop().(float64)
-		return fn.(func(float64) string)(arg1)
-	case 32:
-		arg1 := vm.pop().(int)
-		return fn.(func(int) bool)(arg1)
-	case 33:
-		arg1 := vm.pop().(int)
-		return fn.(func(int) float64)(arg1)
-	case 34:
-		arg1 := vm.pop().(int)
-		return fn.(func(int) int)(arg1)
 	case 35:
-		arg1 := vm.pop().(int)
-		return fn.(func(int) string)(arg1)
-	case 36:
-		arg2 := vm.pop().(int)
-		arg1 := vm.pop().(int)
-		return fn.(func(int, int) int)(arg1, arg2)
-	case 37:
-		arg2 := vm.pop().(int)
-		arg1 := vm.pop().(int)
-		return fn.(func(int, int) string)(arg1, arg2)
-	case 38:
-		arg1 := vm.pop().(int64)
-		return fn.(func(int64) time.Time)(arg1)
-	case 39:
-		arg1 := vm.pop().(string)
-		return fn.(func(string) []string)(arg1)
-	case 40:
-		arg1 := vm.pop().(string)
-		return fn.(func(string) bool)(arg1)
-	case 41:
-		arg1 := vm.pop().(string)
-		return fn.(func(string) float64)(arg1)
-	case 42:
-		arg1 := vm.pop().(string)
-		return fn.(func(string) int)(arg1)
-	case 43:
-		arg1 := vm.pop().(string)
-		return fn.(func(string) string)(arg1)
-	case 44:
-		arg2 := vm.pop().(uint8)
-		arg1 := vm.pop().(string)
-		return fn.(func(string, uint8) int)(arg1, arg2)
-	case 45:
-		arg2 := vm.pop().(int)
-		arg1 := vm.pop().(string)
-		return fn.(func(string, int) int)(arg1, arg2)
-	case 46:
-		arg2 := vm.pop().(int32)
-		arg1 := vm.pop().(string)
-		return fn.(func(string, int32) int)(arg1, arg2)
-	case 47:
-		arg2 := vm.pop().(string)
-		arg1 := vm.pop().(string)
-		return fn.(func(string, string) bool)(arg1, arg2)
-	case 48:
-		arg2 := vm.pop().(string)
-		arg1 := vm.pop().(string)
-		return fn.(func(string, string) string)(arg1, arg2)
-	case 49:
-		arg1 := vm.pop()
-		return fn.(func(interface{}) bool)(arg1)
-	case 50:
-		arg1 := vm.pop()
-		return fn.(func(interface{}) float64)(arg1)
-	case 51:
-		arg1 := vm.pop()
-		return fn.(func(interface{}) int)(arg1)
-	case 52:
-		arg1 := vm.pop()
-		return fn.(func(interface{}) string)(arg1)
-	case 53:
-		arg1 := vm.pop()
-		return fn.(func(interface{}) interface{})(arg1)
-	case 54:
 		arg1 := vm.pop()
 		return fn.(func(interface{}) []interface{})(arg1)
-	case 55:
+	case 36:
+		arg1 := vm.pop()
+		return fn.(func(interface{}) interface{})(arg1)
+	case 37:
+		arg1 := vm.pop()
+		return fn.(func(interface{}) bool)(arg1)
+	case 38:
+		arg1 := vm.pop()
+		return fn.(func(interface{}) float64)(arg1)
+	case 39:
+		arg1 := vm.pop()
+		return fn.(func(interface{}) int)(arg1)
+	case 40:
 		arg1 := vm.pop()
 		return fn.(func(interface{}) map[string]interface{})(arg1)
-	case 56:
-		arg1 := vm.pop().([]interface{})
-		return fn.(func([]interface{}) interface{})(arg1)
-	case 57:
-		arg1 := vm.pop().([]interface{})
-		return fn.(func([]interface{}) []interface{})(arg1)
-	case 58:
-		arg1 := vm.pop().([]interface{})
-		return fn.(func([]interface{}) map[string]interface{})(arg1)
-	case 59:
-		arg2 := vm.pop()
+	case 41:
 		arg1 := vm.pop()
-		return fn.(func(interface{}, interface{}) bool)(arg1, arg2)
-	case 60:
-		arg2 := vm.pop()
-		arg1 := vm.pop()
-		return fn.(func(interface{}, interface{}) string)(arg1, arg2)
-	case 61:
-		arg2 := vm.pop()
-		arg1 := vm.pop()
-		return fn.(func(interface{}, interface{}) interface{})(arg1, arg2)
-	case 62:
+		return fn.(func(interface{}) string)(arg1)
+	case 42:
 		arg2 := vm.pop()
 		arg1 := vm.pop()
 		return fn.(func(interface{}, interface{}) []interface{})(arg1, arg2)
+	case 43:
+		arg2 := vm.pop()
+		arg1 := vm.pop()
+		return fn.(func(interface{}, interface{}) interface{})(arg1, arg2)
+	case 44:
+		arg2 := vm.pop()
+		arg1 := vm.pop()
+		return fn.(func(interface{}, interface{}) bool)(arg1, arg2)
+	case 45:
+		arg2 := vm.pop()
+		arg1 := vm.pop()
+		return fn.(func(interface{}, interface{}) string)(arg1, arg2)
+	case 46:
+		arg1 := vm.pop().(bool)
+		return fn.(func(bool) bool)(arg1)
+	case 47:
+		arg1 := vm.pop().(bool)
+		return fn.(func(bool) float64)(arg1)
+	case 48:
+		arg1 := vm.pop().(bool)
+		return fn.(func(bool) int)(arg1)
+	case 49:
+		arg1 := vm.pop().(bool)
+		return fn.(func(bool) string)(arg1)
+	case 50:
+		arg2 := vm.pop().(bool)
+		arg1 := vm.pop().(bool)
+		return fn.(func(bool, bool) bool)(arg1, arg2)
+	case 51:
+		arg1 := vm.pop().(float32)
+		return fn.(func(float32) float64)(arg1)
+	case 52:
+		arg1 := vm.pop().(float64)
+		return fn.(func(float64) bool)(arg1)
+	case 53:
+		arg1 := vm.pop().(float64)
+		return fn.(func(float64) float32)(arg1)
+	case 54:
+		arg1 := vm.pop().(float64)
+		return fn.(func(float64) float64)(arg1)
+	case 55:
+		arg1 := vm.pop().(float64)
+		return fn.(func(float64) int)(arg1)
+	case 56:
+		arg1 := vm.pop().(float64)
+		return fn.(func(float64) string)(arg1)
+	case 57:
+		arg2 := vm.pop().(float64)
+		arg1 := vm.pop().(float64)
+		return fn.(func(float64, float64) bool)(arg1, arg2)
+	case 58:
+		arg1 := vm.pop().(int)
+		return fn.(func(int) bool)(arg1)
+	case 59:
+		arg1 := vm.pop().(int)
+		return fn.(func(int) float64)(arg1)
+	case 60:
+		arg1 := vm.pop().(int)
+		return fn.(func(int) int)(arg1)
+	case 61:
+		arg1 := vm.pop().(int)
+		return fn.(func(int) string)(arg1)
+	case 62:
+		arg2 := vm.pop().(int)
+		arg1 := vm.pop().(int)
+		return fn.(func(int, int) bool)(arg1, arg2)
+	case 63:
+		arg2 := vm.pop().(int)
+		arg1 := vm.pop().(int)
+		return fn.(func(int, int) int)(arg1, arg2)
+	case 64:
+		arg2 := vm.pop().(int)
+		arg1 := vm.pop().(int)
+		return fn.(func(int, int) string)(arg1, arg2)
+	case 65:
+		arg1 := vm.pop().(int16)
+		return fn.(func(int16) int32)(arg1)
+	case 66:
+		arg1 := vm.pop().(int32)
+		return fn.(func(int32) float64)(arg1)
+	case 67:
+		arg1 := vm.pop().(int32)
+		return fn.(func(int32) int)(arg1)
+	case 68:
+		arg1 := vm.pop().(int32)
+		return fn.(func(int32) int64)(arg1)
+	case 69:
+		arg1 := vm.pop().(int64)
+		return fn.(func(int64) time.Time)(arg1)
+	case 70:
+		arg1 := vm.pop().(int8)
+		return fn.(func(int8) int)(arg1)
+	case 71:
+		arg1 := vm.pop().(int8)
+		return fn.(func(int8) int16)(arg1)
+	case 72:
+		arg1 := vm.pop().(string)
+		return fn.(func(string) []uint8)(arg1)
+	case 73:
+		arg1 := vm.pop().(string)
+		return fn.(func(string) []string)(arg1)
+	case 74:
+		arg1 := vm.pop().(string)
+		return fn.(func(string) bool)(arg1)
+	case 75:
+		arg1 := vm.pop().(string)
+		return fn.(func(string) float64)(arg1)
+	case 76:
+		arg1 := vm.pop().(string)
+		return fn.(func(string) int)(arg1)
+	case 77:
+		arg1 := vm.pop().(string)
+		return fn.(func(string) string)(arg1)
+	case 78:
+		arg2 := vm.pop().(uint8)
+		arg1 := vm.pop().(string)
+		return fn.(func(string, uint8) int)(arg1, arg2)
+	case 79:
+		arg2 := vm.pop().(int)
+		arg1 := vm.pop().(string)
+		return fn.(func(string, int) int)(arg1, arg2)
+	case 80:
+		arg2 := vm.pop().(int32)
+		arg1 := vm.pop().(string)
+		return fn.(func(string, int32) int)(arg1, arg2)
+	case 81:
+		arg2 := vm.pop().(string)
+		arg1 := vm.pop().(string)
+		return fn.(func(string, string) bool)(arg1, arg2)
+	case 82:
+		arg2 := vm.pop().(string)
+		arg1 := vm.pop().(string)
+		return fn.(func(string, string) string)(arg1, arg2)
+	case 83:
+		arg1 := vm.pop().(uint)
+		return fn.(func(uint) float64)(arg1)
+	case 84:
+		arg1 := vm.pop().(uint)
+		return fn.(func(uint) int)(arg1)
+	case 85:
+		arg1 := vm.pop().(uint)
+		return fn.(func(uint) uint)(arg1)
+	case 86:
+		arg1 := vm.pop().(uint16)
+		return fn.(func(uint16) uint)(arg1)
+	case 87:
+		arg1 := vm.pop().(uint32)
+		return fn.(func(uint32) uint64)(arg1)
+	case 88:
+		arg1 := vm.pop().(uint64)
+		return fn.(func(uint64) float64)(arg1)
+	case 89:
+		arg1 := vm.pop().(uint64)
+		return fn.(func(uint64) int64)(arg1)
+	case 90:
+		arg1 := vm.pop().(uint8)
+		return fn.(func(uint8) uint8)(arg1)
 
 	}
 	panic(fmt.Sprintf("unknown function kind (%v)", kind))

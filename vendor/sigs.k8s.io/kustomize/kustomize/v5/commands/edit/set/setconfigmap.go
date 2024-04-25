@@ -1,13 +1,17 @@
 // Copyright 2023 The Kubernetes Authors.
 // SPDX-License-Identifier: Apache-2.0
-
+//
+//nolint:dupl
 package set
 
 import (
 	"fmt"
 
+	"sigs.k8s.io/kustomize/api/konfig"
+
+	"slices"
+
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/slices"
 	"sigs.k8s.io/kustomize/api/ifc"
 	"sigs.k8s.io/kustomize/api/resource"
 	"sigs.k8s.io/kustomize/api/types"
@@ -24,16 +28,22 @@ func newCmdSetConfigMap(
 	var flags util.ConfigMapSecretFlagsAndArgs
 	cmd := &cobra.Command{
 		Use:   "configmap NAME [--from-literal=key1=value1] [--namespace=namespace-name] [--new-namespace=new-namespace-name]",
-		Short: "Edits the value for an existing key for a configmap in the kustomization file",
-		Long: `Edits the value for an existing key in an existing configmap in the kustomization file.
-Both configmap name and key name must exist for this command to succeed.`,
-		Example: `
-	# Edits an existing configmap in the kustomization file, changing value of key1 to 2
+		Short: fmt.Sprintf("Edits the value for an existing key for a ConfigMap in the %s file", konfig.DefaultKustomizationFileName()),
+		Long: fmt.Sprintf(`Edits the value for an existing key in an existing ConfigMap in the %[1]s file.
+ConfigMap name, ConfigMap namespace, and key name must match an existing entry in the %[1]s file for this command to succeed.
+When namespace is omitted, the default namespace is used. Conversely, when an entry without a specified namespace exists
+in the %[1]s file, it can be updated by either omitting the namespace on the kustomize edit set configmap invocation or by
+specifying --namespace=default.`, konfig.DefaultKustomizationFileName()),
+		Example: fmt.Sprintf(`
+	# Edits an existing ConfigMap in the %[1]s file, changing value of key1 to 2, and namespace is implicitly defined as "default"
 	kustomize edit set configmap my-configmap --from-literal=key1=2
 
-	# Edits an existing configmap in the kustomization file, changing namespace to 'new-namespace'
+	# Edits an existing ConfigMap in the %[1]s file, changing value of key1 to 2, and explicitly define namespace as "default"
+	kustomize edit set configmap my-configmap --from-literal=key1=2 --namespace default
+
+	# Edits an existing ConfigMap in the %[1]s file, changing namespace to "new-namespace"
 	kustomize edit set configmap my-configmap --namespace=current-namespace --new-namespace=new-namespace
-`,
+`, konfig.DefaultKustomizationFileName()),
 		RunE: func(_ *cobra.Command, args []string) error {
 			return runEditSetConfigMap(flags, fSys, args, ldr, rf)
 		},
@@ -144,7 +154,7 @@ func findConfigMapArgs(m *types.Kustomization, name, namespace string) (*types.C
 	})
 
 	if cmIndex == -1 {
-		return nil, fmt.Errorf("unable to find ConfigMap with name '%q'", name)
+		return nil, fmt.Errorf("unable to find ConfigMap with name %q", name)
 	}
 
 	return &m.ConfigMapGenerator[cmIndex], nil

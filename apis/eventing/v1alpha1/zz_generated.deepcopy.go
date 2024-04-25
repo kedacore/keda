@@ -118,6 +118,11 @@ func (in *CloudEventSourceList) DeepCopyObject() runtime.Object {
 func (in *CloudEventSourceSpec) DeepCopyInto(out *CloudEventSourceSpec) {
 	*out = *in
 	in.Destination.DeepCopyInto(&out.Destination)
+	if in.AuthenticationRef != nil {
+		in, out := &in.AuthenticationRef, &out.AuthenticationRef
+		*out = new(kedav1alpha1.AuthenticationRef)
+		**out = **in
+	}
 	in.EventSubscription.DeepCopyInto(&out.EventSubscription)
 }
 

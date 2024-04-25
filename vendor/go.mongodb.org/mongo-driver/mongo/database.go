@@ -566,7 +566,7 @@ func (db *Database) getEncryptedFieldsFromServer(ctx context.Context, collection
 	}
 	collSpec := collSpecs[0]
 	rawValue, err := collSpec.Options.LookupErr("encryptedFields")
-	if err == bsoncore.ErrElementNotFound {
+	if errors.Is(err, bsoncore.ErrElementNotFound) {
 		return nil, nil
 	} else if err != nil {
 		return nil, err
@@ -602,7 +602,7 @@ func (db *Database) getEncryptedFieldsFromMap(collectionName string) interface{}
 func (db *Database) createCollectionWithEncryptedFields(ctx context.Context, name string, ef interface{}, opts ...*options.CreateCollectionOptions) error {
 	efBSON, err := marshal(ef, db.bsonOpts, db.registry)
 	if err != nil {
-		return fmt.Errorf("error transforming document: %v", err)
+		return fmt.Errorf("error transforming document: %w", err)
 	}
 
 	// Check the wire version to ensure server is 7.0.0 or newer.
@@ -662,7 +662,7 @@ func (db *Database) createCollectionWithEncryptedFields(ctx context.Context, nam
 
 	// Create an index on the __safeContent__ field in the collection @collectionName.
 	if _, err := db.Collection(name).Indexes().CreateOne(ctx, IndexModel{Keys: bson.D{{"__safeContent__", 1}}}); err != nil {
-		return fmt.Errorf("error creating safeContent index: %v", err)
+		return fmt.Errorf("error creating safeContent index: %w", err)
 	}
 
 	return nil

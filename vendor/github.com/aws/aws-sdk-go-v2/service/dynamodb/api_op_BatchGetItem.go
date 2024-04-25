@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	internalEndpointDiscovery "github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery"
 	"github.com/aws/smithy-go/middleware"
@@ -69,10 +68,10 @@ func (c *Client) BatchGetItem(ctx context.Context, params *BatchGetItemInput, op
 // Represents the input of a BatchGetItem operation.
 type BatchGetItemInput struct {
 
-	// A map of one or more table names and, for each table, a map that describes one
-	// or more items to retrieve from that table. Each table name can be used only once
-	// per BatchGetItem request. Each element in the map of items to retrieve consists
-	// of the following:
+	// A map of one or more table names or table ARNs and, for each table, a map that
+	// describes one or more items to retrieve from that table. Each table name or ARN
+	// can be used only once per BatchGetItem request. Each element in the map of
+	// items to retrieve consists of the following:
 	//   - ConsistentRead - If true , a strongly consistent read is used; if false (the
 	//   default), an eventually consistent read is used.
 	//   - ExpressionAttributeNames - One or more substitution tokens for attribute
@@ -139,9 +138,9 @@ type BatchGetItemOutput struct {
 	//   - CapacityUnits - The total number of capacity units consumed.
 	ConsumedCapacity []types.ConsumedCapacity
 
-	// A map of table name to a list of items. Each object in Responses consists of a
-	// table name, along with a map of attribute data consisting of the data type and
-	// attribute value.
+	// A map of table name or table ARN to a list of items. Each object in Responses
+	// consists of a table name or ARN, along with a map of attribute data consisting
+	// of the data type and attribute value.
 	Responses map[string][]map[string]types.AttributeValue
 
 	// A map of tables and their respective keys that were not processed with the
@@ -189,25 +188,25 @@ func (c *Client) addOperationBatchGetItemMiddlewares(stack *middleware.Stack, op
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -231,7 +230,7 @@ func (c *Client) addOperationBatchGetItemMiddlewares(stack *middleware.Stack, op
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opBatchGetItem(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

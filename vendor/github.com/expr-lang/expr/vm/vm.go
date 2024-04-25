@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/expr-lang/expr/builtin"
 	"github.com/expr-lang/expr/file"
+	"github.com/expr-lang/expr/internal/deref"
 	"github.com/expr-lang/expr/vm/runtime"
 )
 
@@ -41,15 +44,6 @@ type VM struct {
 	debug        bool
 	step         chan struct{}
 	curr         chan int
-}
-
-type Scope struct {
-	Array   reflect.Value
-	Index   int
-	Len     int
-	Count   int
-	GroupBy map[any][]any
-	Acc     any
 }
 
 func (vm *VM) Run(program *Program, env any) (_ any, err error) {
@@ -389,19 +383,25 @@ func (vm *VM) Run(program *Program, env any) (_ any, err error) {
 			}
 			vm.push(fn(in...))
 
+		case OpCallSafe:
+			fn := vm.pop().(SafeFunction)
+			size := arg
+			in := make([]any, size)
+			for i := int(size) - 1; i >= 0; i-- {
+				in[i] = vm.pop()
+			}
+			out, mem, err := fn(in...)
+			if err != nil {
+				panic(err)
+			}
+			vm.memGrow(mem)
+			vm.push(out)
+
 		case OpCallTyped:
 			vm.push(vm.call(vm.pop(), arg))
 
 		case OpCallBuiltin1:
 			vm.push(builtin.Builtins[arg].Fast(vm.pop()))
-
-		case OpValidateArgs:
-			fn := vm.pop().(Function)
-			mem, err := fn(vm.Stack[len(vm.Stack)-arg:]...)
-			if err != nil {
-				panic(err)
-			}
-			vm.memGrow(mem.(uint))
 
 		case OpArray:
 			size := vm.pop().(int)
@@ -438,7 +438,7 @@ func (vm *VM) Run(program *Program, env any) (_ any, err error) {
 
 		case OpDeref:
 			a := vm.pop()
-			vm.push(runtime.Deref(a))
+			vm.push(deref.Deref(a))
 
 		case OpIncrementIndex:
 			vm.scope().Index++
@@ -454,10 +454,6 @@ func (vm *VM) Run(program *Program, env any) (_ any, err error) {
 		case OpGetIndex:
 			vm.push(vm.scope().Index)
 
-		case OpSetIndex:
-			scope := vm.scope()
-			scope.Index = vm.pop().(int)
-
 		case OpGetCount:
 			scope := vm.scope()
 			vm.push(scope.Count)
@@ -466,14 +462,15 @@ func (vm *VM) Run(program *Program, env any) (_ any, err error) {
 			scope := vm.scope()
 			vm.push(scope.Len)
 
-		case OpGetGroupBy:
-			vm.push(vm.scope().GroupBy)
-
 		case OpGetAcc:
 			vm.push(vm.scope().Acc)
 
 		case OpSetAcc:
 			vm.scope().Acc = vm.pop()
+
+		case OpSetIndex:
+			scope := vm.scope()
+			scope.Index = vm.pop().(int)
 
 		case OpPointer:
 			scope := vm.scope()
@@ -482,14 +479,58 @@ func (vm *VM) Run(program *Program, env any) (_ any, err error) {
 		case OpThrow:
 			panic(vm.pop().(error))
 
+		case OpCreate:
+			switch arg {
+			case 1:
+				vm.push(make(groupBy))
+			case 2:
+				scope := vm.scope()
+				var desc bool
+				switch vm.pop().(string) {
+				case "asc":
+					desc = false
+				case "desc":
+					desc = true
+				default:
+					panic("unknown order, use asc or desc")
+				}
+				vm.push(&runtime.SortBy{
+					Desc:   desc,
+					Array:  make([]any, 0, scope.Len),
+					Values: make([]any, 0, scope.Len),
+				})
+			default:
+				panic(fmt.Sprintf("unknown OpCreate argument %v", arg))
+			}
+
 		case OpGroupBy:
 			scope := vm.scope()
-			if scope.GroupBy == nil {
-				scope.GroupBy = make(map[any][]any)
-			}
-			it := scope.Array.Index(scope.Index).Interface()
 			key := vm.pop()
-			scope.GroupBy[key] = append(scope.GroupBy[key], it)
+			item := scope.Array.Index(scope.Index).Interface()
+			scope.Acc.(groupBy)[key] = append(scope.Acc.(groupBy)[key], item)
+
+		case OpSortBy:
+			scope := vm.scope()
+			value := vm.pop()
+			item := scope.Array.Index(scope.Index).Interface()
+			sortable := scope.Acc.(*runtime.SortBy)
+			sortable.Array = append(sortable.Array, item)
+			sortable.Values = append(sortable.Values, value)
+
+		case OpSort:
+			scope := vm.scope()
+			sortable := scope.Acc.(*runtime.SortBy)
+			sort.Sort(sortable)
+			vm.memGrow(uint(scope.Len))
+			vm.push(sortable.Array)
+
+		case OpProfileStart:
+			span := program.Constants[arg].(*Span)
+			span.start = time.Now()
+
+		case OpProfileEnd:
+			span := program.Constants[arg].(*Span)
+			span.Duration += time.Since(span.start).Nanoseconds()
 
 		case OpBegin:
 			a := vm.pop()

@@ -7,25 +7,27 @@ import (
 	"time"
 )
 
-// Represents the properties of an alert manager definition.
+// The details of an alert manager definition.
 type AlertManagerDefinitionDescription struct {
 
-	// The time when the alert manager definition was created.
+	// The date and time that the alert manager definition was created.
 	//
 	// This member is required.
 	CreatedAt *time.Time
 
-	// The alert manager definition.
+	// The actual alert manager definition. For details about the alert manager
+	// definition, see AlertManagedDefinitionData (https://docs.aws.amazon.com/prometheus/latest/APIReference/yaml-AlertManagerDefinitionData.html)
+	// .
 	//
 	// This member is required.
 	Data []byte
 
-	// The time when the alert manager definition was modified.
+	// The date and time that the alert manager definition was most recently changed.
 	//
 	// This member is required.
 	ModifiedAt *time.Time
 
-	// The status of alert manager definition.
+	// A structure that displays the current status of the alert manager definition..
 	//
 	// This member is required.
 	Status *AlertManagerDefinitionStatus
@@ -33,24 +35,25 @@ type AlertManagerDefinitionDescription struct {
 	noSmithyDocumentSerde
 }
 
-// Represents the status of a definition.
+// The status of the alert manager.
 type AlertManagerDefinitionStatus struct {
 
-	// Status code of this definition.
+	// The current status of the alert manager.
 	//
 	// This member is required.
 	StatusCode AlertManagerDefinitionStatusCode
 
-	// The reason for failure if any.
+	// If there is a failure, the reason for the failure.
 	StatusReason *string
 
 	noSmithyDocumentSerde
 }
 
-// A representation of an AMP destination.
+// The AmpConfiguration structure defines the Amazon Managed Service for
+// Prometheus instance a scraper should send metrics to.
 type AmpConfiguration struct {
 
-	// The ARN of an AMP workspace.
+	// ARN of the Amazon Managed Service for Prometheus workspace.
 	//
 	// This member is required.
 	WorkspaceArn *string
@@ -58,7 +61,7 @@ type AmpConfiguration struct {
 	noSmithyDocumentSerde
 }
 
-// A representation of a destination that a scraper can produce metrics to.
+// Where to send the metrics from a scraper.
 //
 // The following types satisfy this interface:
 //
@@ -67,7 +70,7 @@ type Destination interface {
 	isDestination()
 }
 
-// A representation of an AMP destination.
+// The Amazon Managed Service for Prometheusworkspace to send metrics to.
 type DestinationMemberAmpConfiguration struct {
 	Value AmpConfiguration
 
@@ -76,49 +79,51 @@ type DestinationMemberAmpConfiguration struct {
 
 func (*DestinationMemberAmpConfiguration) isDestination() {}
 
-// A representation of an EKS source.
+// The EksConfiguration structure describes the connection to the Amazon EKS
+// cluster from which a scraper collects metrics.
 type EksConfiguration struct {
 
-	// The ARN of an EKS cluster.
+	// ARN of the Amazon EKS cluster.
 	//
 	// This member is required.
 	ClusterArn *string
 
-	// A list of subnet IDs specified for VPC configuration.
+	// A list of subnet IDs for the Amazon EKS cluster VPC configuration.
 	//
 	// This member is required.
 	SubnetIds []string
 
-	// A list of security group IDs specified for VPC configuration.
+	// A list of the security group IDs for the Amazon EKS cluster VPC configuration.
 	SecurityGroupIds []string
 
 	noSmithyDocumentSerde
 }
 
-// Represents the properties of a logging configuration metadata.
+// Contains information about the logging configuration.
 type LoggingConfigurationMetadata struct {
 
-	// The time when the logging configuration was created.
+	// The date and time that the logging configuration was created.
 	//
 	// This member is required.
 	CreatedAt *time.Time
 
-	// The ARN of the CW log group to which the vended log data will be published.
+	// The ARN of the CloudWatch log group to which the vended log data will be
+	// published.
 	//
 	// This member is required.
 	LogGroupArn *string
 
-	// The time when the logging configuration was modified.
+	// The date and time that the logging configuration was most recently changed.
 	//
 	// This member is required.
 	ModifiedAt *time.Time
 
-	// The status of the logging configuration.
+	// The current status of the logging configuration.
 	//
 	// This member is required.
 	Status *LoggingConfigurationStatus
 
-	// The workspace where the logging configuration exists.
+	// The ID of the workspace the logging configuration is for.
 	//
 	// This member is required.
 	Workspace *string
@@ -126,108 +131,115 @@ type LoggingConfigurationMetadata struct {
 	noSmithyDocumentSerde
 }
 
-// Represents the status of a logging configuration.
+// The status of the logging configuration.
 type LoggingConfigurationStatus struct {
 
-	// Status code of the logging configuration.
+	// The current status of the logging configuration.
 	//
 	// This member is required.
 	StatusCode LoggingConfigurationStatusCode
 
-	// The reason for failure if any.
+	// If failed, the reason for the failure.
 	StatusReason *string
 
 	noSmithyDocumentSerde
 }
 
-// Represents a description of the rule groups namespace.
+// The details about one rule groups namespace.
 type RuleGroupsNamespaceDescription struct {
 
-	// The Amazon Resource Name (ARN) of this rule groups namespace.
+	// The ARN of the rule groups namespace.
 	//
 	// This member is required.
 	Arn *string
 
-	// The time when the rule groups namespace was created.
+	// The date and time that the rule groups namespace was created.
 	//
 	// This member is required.
 	CreatedAt *time.Time
 
-	// The rule groups namespace data.
+	// The rule groups file used in the namespace. For details about the rule groups
+	// namespace structure, see RuleGroupsNamespaceData (https://docs.aws.amazon.com/prometheus/latest/APIReference/yaml-RuleGroupsNamespaceData.html)
+	// .
 	//
 	// This member is required.
 	Data []byte
 
-	// The time when the rule groups namespace was modified.
+	// The date and time that the rule groups namespace was most recently changed.
 	//
 	// This member is required.
 	ModifiedAt *time.Time
 
-	// The rule groups namespace name.
+	// The name of the rule groups namespace.
 	//
 	// This member is required.
 	Name *string
 
-	// The status of rule groups namespace.
+	// The current status of the rule groups namespace.
 	//
 	// This member is required.
 	Status *RuleGroupsNamespaceStatus
 
-	// The tags of this rule groups namespace.
+	// The list of tag keys and values that are associated with the rule groups
+	// namespace.
 	Tags map[string]string
 
 	noSmithyDocumentSerde
 }
 
-// Represents the status of a namespace.
+// The status information about a rule groups namespace.
 type RuleGroupsNamespaceStatus struct {
 
-	// Status code of this namespace.
+	// The current status of the namespace.
 	//
 	// This member is required.
 	StatusCode RuleGroupsNamespaceStatusCode
 
-	// The reason for failure if any.
+	// The reason for the failure, if any.
 	StatusReason *string
 
 	noSmithyDocumentSerde
 }
 
-// Represents a summary of the rule groups namespace.
+// The high-level information about a rule groups namespace. To retrieve more
+// information, use DescribeRuleGroupsNamespace .
 type RuleGroupsNamespaceSummary struct {
 
-	// The Amazon Resource Name (ARN) of this rule groups namespace.
+	// The ARN of the rule groups namespace.
 	//
 	// This member is required.
 	Arn *string
 
-	// The time when the rule groups namespace was created.
+	// The date and time that the rule groups namespace was created.
 	//
 	// This member is required.
 	CreatedAt *time.Time
 
-	// The time when the rule groups namespace was modified.
+	// The date and time that the rule groups namespace was most recently changed.
 	//
 	// This member is required.
 	ModifiedAt *time.Time
 
-	// The rule groups namespace name.
+	// The name of the rule groups namespace.
 	//
 	// This member is required.
 	Name *string
 
-	// The status of rule groups namespace.
+	// A structure that displays the current status of the rule groups namespace.
 	//
 	// This member is required.
 	Status *RuleGroupsNamespaceStatus
 
-	// The tags of this rule groups namespace.
+	// The list of tag keys and values that are associated with the rule groups
+	// namespace.
 	Tags map[string]string
 
 	noSmithyDocumentSerde
 }
 
-// A representation of a Prometheus configuration file.
+// A scrape configuration for a scraper, base 64 encoded. For more information,
+// see Scraper configuration in the Amazon Managed Service for Prometheus User
+// Guide.
 //
 // The following types satisfy this interface:
 //
@@ -236,7 +248,7 @@ type ScrapeConfiguration interface {
 	isScrapeConfiguration()
 }
 
-// Binary data representing a Prometheus configuration file.
+// The base 64 encoded scrape configuration file.
 type ScrapeConfigurationMemberConfigurationBlob struct {
 	Value []byte
 
@@ -245,71 +257,73 @@ type ScrapeConfigurationMemberConfigurationBlob struct {
 
 func (*ScrapeConfigurationMemberConfigurationBlob) isScrapeConfiguration() {}
 
-// Represents the properties of a scraper.
+// The ScraperDescription structure contains the full details about one scraper in
+// your account.
 type ScraperDescription struct {
 
-	// The Amazon Resource Name (ARN) of this scraper.
+	// The Amazon Resource Name (ARN) of the scraper.
 	//
 	// This member is required.
 	Arn *string
 
-	// The time when the scraper was created.
+	// The date and time that the scraper was created.
 	//
 	// This member is required.
 	CreatedAt *time.Time
 
-	// The destination that the scraper is producing metrics to.
+	// The Amazon Managed Service for Prometheus workspace the scraper sends metrics
+	// to.
 	//
 	// This member is required.
 	Destination Destination
 
-	// The time when the scraper was last modified.
+	// The date and time that the scraper was last modified.
 	//
 	// This member is required.
 	LastModifiedAt *time.Time
 
 	// The Amazon Resource Name (ARN) of the IAM role that provides permissions for
-	// the scraper to dsicover, collect, and produce metrics on your behalf.
+	// the scraper to discover and collect metrics on your behalf.
 	//
 	// This member is required.
 	RoleArn *string
 
-	// The configuration used to create the scraper.
+	// The configuration file in use by the scraper.
 	//
 	// This member is required.
 	ScrapeConfiguration ScrapeConfiguration
 
-	// Unique string identifying this scraper.
+	// The ID of the scraper.
 	//
 	// This member is required.
 	ScraperId *string
 
-	// The source that the scraper is discovering and collecting metrics from.
+	// The Amazon EKS cluster from which the scraper collects metrics.
 	//
 	// This member is required.
 	Source Source
 
-	// The status of this scraper.
+	// A structure that contains the current status of the scraper.
 	//
 	// This member is required.
 	Status *ScraperStatus
 
-	// Alias of this scraper.
+	// (Optional) A name associated with the scraper.
 	Alias *string
 
-	// The reason for failure if any.
+	// If there is a failure, the reason for the failure.
 	StatusReason *string
 
-	// The tags of this scraper.
+	// (Optional) The list of tag keys and values associated with the scraper.
 	Tags map[string]string
 
 	noSmithyDocumentSerde
 }
 
-// Represents the status of a scraper.
+// The ScraperStatus structure contains status information about the scraper.
 type ScraperStatus struct {
 
-	// Status code of this scraper.
+	// The current status of the scraper.
 	//
 	// This member is required.
 	StatusCode ScraperStatusCode
@@ -317,64 +331,65 @@ type ScraperStatus struct {
 	noSmithyDocumentSerde
 }
 
-// Represents a summary of the properties of a scraper.
+// The ScraperSummary structure contains a summary of the details about one
+// scraper in your account.
 type ScraperSummary struct {
 
-	// The Amazon Resource Name (ARN) of this scraper.
+	// The Amazon Resource Name (ARN) of the scraper.
 	//
 	// This member is required.
 	Arn *string
 
-	// The time when the scraper was created.
+	// The date and time that the scraper was created.
 	//
 	// This member is required.
 	CreatedAt *time.Time
 
-	// The destination that the scraper is producing metrics to.
+	// The Amazon Managed Service for Prometheus workspace the scraper sends metrics
+	// to.
 	//
 	// This member is required.
 	Destination Destination
 
-	// The time when the scraper was last modified.
+	// The date and time that the scraper was last modified.
 	//
 	// This member is required.
 	LastModifiedAt *time.Time
 
 	// The Amazon Resource Name (ARN) of the IAM role that provides permissions for
-	// the scraper to dsicover, collect, and produce metrics on your behalf.
+	// the scraper to discover and collect metrics on your behalf.
 	//
 	// This member is required.
 	RoleArn *string
 
-	// Unique string identifying this scraper.
+	// The ID of the scraper.
 	//
 	// This member is required.
 	ScraperId *string
 
-	// The source that the scraper is discovering and collecting metrics from.
+	// The Amazon EKS cluster from which the scraper collects metrics.
 	//
 	// This member is required.
 	Source Source
 
-	// The status of this scraper.
+	// A structure that contains the current status of the scraper.
 	//
 	// This member is required.
 	Status *ScraperStatus
 
-	// Alias of this scraper.
+	// (Optional) A name associated with the scraper.
 	Alias *string
 
-	// The reason for failure if any.
+	// If there is a failure, the reason for the failure.
 	StatusReason *string
 
-	// The tags of this scraper.
+	// (Optional) The list of tag keys and values associated with the scraper.
 	Tags map[string]string
 
 	noSmithyDocumentSerde
 }
 
-// A representation of a source that a scraper can discover and collect metrics
-// from.
+// The source of collected metrics for a scraper.
 //
 // The following types satisfy this interface:
 //
@@ -383,7 +398,7 @@ type Source interface {
 	isSource()
 }
 
-// A representation of an EKS source.
+// The Amazon EKS cluster from which a scraper collects metrics.
 type SourceMemberEksConfiguration struct {
 	Value EksConfiguration
 
@@ -392,16 +407,15 @@ type SourceMemberEksConfiguration struct {
 
 func (*SourceMemberEksConfiguration) isSource() {}
 
-// Stores information about a field passed inside a request that resulted in an
-// exception.
+// Information about a field passed into a request that resulted in an exception.
 type ValidationExceptionField struct {
 
-	// Message describing why the field failed validation.
+	// A message describing why the field caused an exception.
 	//
 	// This member is required.
 	Message *string
 
-	// The field name.
+	// The name of the field that caused an exception.
 	//
 	// This member is required.
 	Name *string
@@ -409,48 +423,51 @@ type ValidationExceptionField struct {
 	noSmithyDocumentSerde
 }
 
-// Represents the properties of a workspace.
+// The full details about one Amazon Managed Service for Prometheus workspace in
+// your account.
 type WorkspaceDescription struct {
 
-	// The Amazon Resource Name (ARN) of this workspace.
+	// The ARN of the workspace.
 	//
 	// This member is required.
 	Arn *string
 
-	// The time when the workspace was created.
+	// The date and time that the workspace was created.
 	//
 	// This member is required.
 	CreatedAt *time.Time
 
-	// The status of this workspace.
+	// The current status of the workspace.
 	//
 	// This member is required.
 	Status *WorkspaceStatus
 
-	// Unique string identifying this workspace.
+	// The unique ID for the workspace.
 	//
 	// This member is required.
 	WorkspaceId *string
 
-	// Alias of this workspace.
+	// The alias that is assigned to this workspace to help identify it. It may not be
+	// unique.
 	Alias *string
 
-	// The customer managed KMS key of this workspace.
+	// (optional) If the workspace was created with a customer managed KMS key, the
+	// ARN for the key used.
 	KmsKeyArn *string
 
-	// Prometheus endpoint URI.
+	// The Prometheus endpoint available for this workspace.
 	PrometheusEndpoint *string
 
-	// The tags of this workspace.
+	// The list of tag keys and values that are associated with the workspace.
 	Tags map[string]string
 
 	noSmithyDocumentSerde
 }
 
-// Represents the status of a workspace.
+// The status of the workspace.
 type WorkspaceStatus struct {
 
-	// Status code of this workspace.
+	// The current status of the workspace.
 	//
 	// This member is required.
 	StatusCode WorkspaceStatusCode
@@ -458,36 +475,39 @@ type WorkspaceStatus struct {
 	noSmithyDocumentSerde
 }
 
-// Represents a summary of the properties of a workspace.
+// The information about one Amazon Managed Service for Prometheus workspace in
+// your account.
 type WorkspaceSummary struct {
 
-	// The AmazonResourceName of this workspace.
+	// The ARN of the workspace.
 	//
 	// This member is required.
 	Arn *string
 
-	// The time when the workspace was created.
+	// The date and time that the workspace was created.
 	//
 	// This member is required.
 	CreatedAt *time.Time
 
-	// The status of this workspace.
+	// The current status of the workspace.
 	//
 	// This member is required.
 	Status *WorkspaceStatus
 
-	// Unique string identifying this workspace.
+	// The unique ID for the workspace.
 	//
 	// This member is required.
 	WorkspaceId *string
 
-	// Alias of this workspace.
+	// The alias that is assigned to this workspace to help identify it. It may not be
+	// unique.
 	Alias *string
 
-	// Customer managed KMS key ARN for this workspace
+	// (optional) If the workspace was created with a customer managed KMS key, the
+	// ARN for the key used.
 	KmsKeyArn *string
 
-	// The tags of this workspace.
+	// The list of tag keys and values that are associated with the workspace.
 	Tags map[string]string
 
 	noSmithyDocumentSerde

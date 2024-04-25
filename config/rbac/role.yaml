@@ -108,6 +108,14 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+  - flowcontrol.apiserver.k8s.io
+  resources:
+  - flowschemas
+  - prioritylevelconfigurations
+  verbs:
+  - list
+  - watch
+- apiGroups:
   - keda.sh
   resources:
   - clustertriggerauthentications

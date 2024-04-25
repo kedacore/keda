@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	internalEndpointDiscovery "github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery"
 	"github.com/aws/smithy-go/middleware"
@@ -87,9 +86,9 @@ func (c *Client) BatchWriteItem(ctx context.Context, params *BatchWriteItemInput
 // Represents the input of a BatchWriteItem operation.
 type BatchWriteItemInput struct {
 
-	// A map of one or more table names and, for each table, a list of operations to
-	// be performed ( DeleteRequest or PutRequest ). Each element in the map consists
-	// of the following:
+	// A map of one or more table names or table ARNs and, for each table, a list of
+	// operations to be performed ( DeleteRequest or PutRequest ). Each element in the
+	// map consists of the following:
 	//   - DeleteRequest - Perform a DeleteItem operation on the specified item. The
 	//   item to be deleted is identified by a Key subelement:
 	//   - Key - A map of primary key attribute values that uniquely identify the item.
@@ -160,8 +159,8 @@ type BatchWriteItemOutput struct {
 	// UnprocessedItems value is in the same form as RequestItems , so you can provide
 	// this value directly to a subsequent BatchWriteItem operation. For more
 	// information, see RequestItems in the Request Parameters section. Each
-	// UnprocessedItems entry consists of a table name and, for that table, a list of
-	// operations to perform ( DeleteRequest or PutRequest ).
+	// UnprocessedItems entry consists of a table name or table ARN and, for that
+	// table, a list of operations to perform ( DeleteRequest or PutRequest ).
 	//   - DeleteRequest - Perform a DeleteItem operation on the specified item. The
 	//   item to be deleted is identified by a Key subelement:
 	//   - Key - A map of primary key attribute values that uniquely identify the item.
@@ -207,25 +206,25 @@ func (c *Client) addOperationBatchWriteItemMiddlewares(stack *middleware.Stack, 
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -249,7 +248,7 @@ func (c *Client) addOperationBatchWriteItemMiddlewares(stack *middleware.Stack, 
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opBatchWriteItem(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

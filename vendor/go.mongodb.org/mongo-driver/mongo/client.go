@@ -555,7 +555,7 @@ func (c *Client) newMongoCrypt(opts *options.AutoEncryptionOptions) (*mongocrypt
 
 	kmsProviders, err := marshal(opts.KmsProviders, c.bsonOpts, c.registry)
 	if err != nil {
-		return nil, fmt.Errorf("error creating KMS providers document: %v", err)
+		return nil, fmt.Errorf("error creating KMS providers document: %w", err)
 	}
 
 	// Set the crypt_shared library override path from the "cryptSharedLibPath" extra option if one
