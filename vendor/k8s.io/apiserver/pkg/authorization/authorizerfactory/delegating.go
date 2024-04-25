@@ -54,7 +54,6 @@ func (c DelegatingAuthorizerConfig) New() (authorizer.Authorizer, error) {
 		c.AllowCacheTTL,
 		c.DenyCacheTTL,
 		*c.WebhookRetryBackoff,
-		authorizer.DecisionNoOpinion,
 		webhook.AuthorizerMetrics{
 			RecordRequestTotal:   RecordRequestTotal,
 			RecordRequestLatency: RecordRequestLatency,

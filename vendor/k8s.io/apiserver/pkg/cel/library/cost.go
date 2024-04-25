@@ -101,8 +101,8 @@ func (l *CostEstimator) EstimateCallCost(function, overloadId string, target *ch
 			// If the list contains strings or bytes, add the cost of traversing all the strings/bytes as a way
 			// of estimating the additional comparison cost.
 			if elNode := l.listElementNode(*target); elNode != nil {
-				k := elNode.Type().Kind()
-				if k == types.StringKind || k == types.BytesKind {
+				t := elNode.Type().GetPrimitive()
+				if t == exprpb.Type_STRING || t == exprpb.Type_BYTES {
 					sz := l.sizeEstimate(elNode)
 					elCost = elCost.Add(sz.MultiplyByCostFactor(common.StringTraversalCostFactor))
 				}
@@ -247,8 +247,7 @@ func (l *CostEstimator) sizeEstimate(t checker.AstNode) checker.SizeEstimate {
 }
 
 func (l *CostEstimator) listElementNode(list checker.AstNode) checker.AstNode {
-	if params := list.Type().Parameters(); len(params) > 0 {
-		lt := params[0]
+	if lt := list.Type().GetListType(); lt != nil {
 		nodePath := list.Path()
 		if nodePath != nil {
 			// Provide path if we have it so that a OpenAPIv3 maxLength validation can be looked up, if it exists
@@ -256,10 +255,10 @@ func (l *CostEstimator) listElementNode(list checker.AstNode) checker.AstNode {
 			path := make([]string, len(nodePath)+1)
 			copy(path, nodePath)
 			path[len(nodePath)] = "@items"
-			return &itemsNode{path: path, t: lt, expr: nil}
+			return &itemsNode{path: path, t: lt.GetElemType(), expr: nil}
 		} else {
 			// Provide just the type if no path is available so that worst case size can be looked up based on type.
-			return &itemsNode{t: lt, expr: nil}
+			return &itemsNode{t: lt.GetElemType(), expr: nil}
 		}
 	}
 	return nil
@@ -274,7 +273,7 @@ func (l *CostEstimator) EstimateSize(element checker.AstNode) *checker.SizeEstim
 
 type itemsNode struct {
 	path []string
-	t    *types.Type
+	t    *exprpb.Type
 	expr *exprpb.Expr
 }
 
@@ -282,7 +281,7 @@ func (i *itemsNode) Path() []string {
 	return i.path
 }
 
-func (i *itemsNode) Type() *types.Type {
+func (i *itemsNode) Type() *exprpb.Type {
 	return i.t
 }
 

@@ -166,7 +166,7 @@ func (r *lazyMetric) Create(version *semver.Version) bool {
 	if deprecatedV != nil {
 		dv = deprecatedV.String()
 	}
-	registeredMetricsTotal.WithLabelValues(string(sl), dv).Inc()
+	registeredMetrics.WithLabelValues(string(sl), dv).Inc()
 	return r.IsCreated()
 }
 

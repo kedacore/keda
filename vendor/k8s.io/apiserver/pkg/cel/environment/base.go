@@ -22,9 +22,7 @@ import (
 	"sync"
 
 	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker"
 	"github.com/google/cel-go/ext"
-	"github.com/google/cel-go/interpreter"
 	"golang.org/x/sync/singleflight"
 
 	"k8s.io/apimachinery/pkg/util/version"
@@ -43,7 +41,7 @@ import (
 // desirable because it means that CEL expressions are portable across a wider range
 // of Kubernetes versions.
 func DefaultCompatibilityVersion() *version.Version {
-	return version.MajorMinor(1, 28)
+	return version.MajorMinor(1, 27)
 }
 
 var baseOpts = []VersionedOptions{
@@ -59,21 +57,14 @@ var baseOpts = []VersionedOptions{
 			cel.EagerlyValidateDeclarations(true),
 			cel.DefaultUTCTimeZone(true),
 
+			ext.Strings(ext.StringsVersion(0)),
 			library.URLs(),
 			library.Regex(),
 			library.Lists(),
-
-			// cel-go v0.17.7 change the cost of has() from 0 to 1, but also provided the CostEstimatorOptions option to preserve the old behavior, so we enabled it at the same time we bumped our cel version to v0.17.7.
-			// Since it is a regression fix, we apply it uniformly to all code use v0.17.7.
-			cel.CostEstimatorOptions(checker.PresenceTestHasCost(false)),
 		},
 		ProgramOptions: []cel.ProgramOption{
 			cel.EvalOptions(cel.OptOptimize, cel.OptTrackCost),
 			cel.CostLimit(celconfig.PerCallLimit),
-
-			// cel-go v0.17.7 change the cost of has() from 0 to 1, but also provided the CostEstimatorOptions option to preserve the old behavior, so we enabled it at the same time we bumped our cel version to v0.17.7.
-			// Since it is a regression fix, we apply it uniformly to all code use v0.17.7.
-			cel.CostTrackerOptions(interpreter.PresenceTestHasCost(false)),
 		},
 	},
 	{
@@ -90,39 +81,7 @@ var baseOpts = []VersionedOptions{
 			library.Quantity(),
 		},
 	},
-	// add the new validator in 1.29
-	{
-		IntroducedVersion: version.MajorMinor(1, 29),
-		EnvOptions: []cel.EnvOption{
-			cel.ASTValidators(
-				cel.ValidateDurationLiterals(),
-				cel.ValidateTimestampLiterals(),
-				cel.ValidateRegexLiterals(),
-				cel.ValidateHomogeneousAggregateLiterals(),
-			),
-		},
-	},
-	// String library
-	{
-		IntroducedVersion: version.MajorMinor(1, 0),
-		RemovedVersion:    version.MajorMinor(1, 29),
-		EnvOptions: []cel.EnvOption{
-			ext.Strings(ext.StringsVersion(0)),
-		},
-	},
-	{
-		IntroducedVersion: version.MajorMinor(1, 29),
-		EnvOptions: []cel.EnvOption{
-			ext.Strings(ext.StringsVersion(2)),
-		},
-	},
-	// Set library
-	{
-		IntroducedVersion: version.MajorMinor(1, 29),
-		EnvOptions: []cel.EnvOption{
-			ext.Sets(),
-		},
-	},
+	// TODO: switch to ext.Strings version 2 once format() is fixed to work with HomogeneousAggregateLiterals.
 }
 
 // MustBaseEnvSet returns the common CEL base environments for Kubernetes for Version, or panics

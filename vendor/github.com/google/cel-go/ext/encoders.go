@@ -16,6 +16,7 @@ package ext
 
 import (
 	"encoding/base64"
+	"reflect"
 
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types"
@@ -85,3 +86,7 @@ func base64DecodeString(str string) ([]byte, error) {
 func base64EncodeBytes(bytes []byte) (string, error) {
 	return base64.StdEncoding.EncodeToString(bytes), nil
 }
+
+var (
+	bytesListType = reflect.TypeOf([]byte{})
+)

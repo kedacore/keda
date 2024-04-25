@@ -285,7 +285,7 @@ func (fd *FieldDescription) GetFrom(target any) (any, error) {
 
 // IsEnum returns true if the field type refers to an enum value.
 func (fd *FieldDescription) IsEnum() bool {
-	return fd.ProtoKind() == protoreflect.EnumKind
+	return fd.desc.Kind() == protoreflect.EnumKind
 }
 
 // IsMap returns true if the field is of map type.
@@ -295,7 +295,7 @@ func (fd *FieldDescription) IsMap() bool {
 
 // IsMessage returns true if the field is of message type.
 func (fd *FieldDescription) IsMessage() bool {
-	kind := fd.ProtoKind()
+	kind := fd.desc.Kind()
 	return kind == protoreflect.MessageKind || kind == protoreflect.GroupKind
 }
 
@@ -326,11 +326,6 @@ func (fd *FieldDescription) Name() string {
 	return string(fd.desc.Name())
 }
 
-// ProtoKind returns the protobuf reflected kind of the field.
-func (fd *FieldDescription) ProtoKind() protoreflect.Kind {
-	return fd.desc.Kind()
-}
-
 // ReflectType returns the Golang reflect.Type for this field.
 func (fd *FieldDescription) ReflectType() reflect.Type {
 	return fd.reflectType
@@ -350,17 +345,17 @@ func (fd *FieldDescription) Zero() proto.Message {
 }
 
 func (fd *FieldDescription) typeDefToType() *exprpb.Type {
-	if fd.IsMessage() {
+	if fd.desc.Kind() == protoreflect.MessageKind || fd.desc.Kind() == protoreflect.GroupKind {
 		msgType := string(fd.desc.Message().FullName())
 		if wk, found := CheckedWellKnowns[msgType]; found {
 			return wk
 		}
 		return checkedMessageType(msgType)
 	}
-	if fd.IsEnum() {
+	if fd.desc.Kind() == protoreflect.EnumKind {
 		return checkedInt
 	}
-	return CheckedPrimitives[fd.ProtoKind()]
+	return CheckedPrimitives[fd.desc.Kind()]
 }
 
 // Map wraps the protoreflect.Map object with a key and value FieldDescription for use in
@@ -468,13 +463,13 @@ func unwrapDynamic(desc description, refMsg protoreflect.Message) (any, bool, er
 		unwrappedAny := &anypb.Any{}
 		err := Merge(unwrappedAny, msg)
 		if err != nil {
-			return nil, false, fmt.Errorf("unwrap dynamic field failed: %v", err)
+			return nil, false, err
 		}
 		dynMsg, err := unwrappedAny.UnmarshalNew()
 		if err != nil {
 			// Allow the error to move further up the stack as it should result in an type
 			// conversion error if the caller does not recover it somehow.
-			return nil, false, fmt.Errorf("unmarshal dynamic any failed: %v", err)
+			return nil, false, err
 		}
 		// Attempt to unwrap the dynamic type, otherwise return the dynamic message.
 		unwrapped, nested, err := unwrapDynamic(desc, dynMsg.ProtoReflect())
@@ -565,10 +560,8 @@ func zeroValueOf(msg proto.Message) proto.Message {
 }
 
 var (
-	jsonValueTypeURL = "types.googleapis.com/google.protobuf.Value"
-
 	zeroValueMap = map[string]proto.Message{
-		"google.protobuf.Any":         &anypb.Any{TypeUrl: jsonValueTypeURL},
+		"google.protobuf.Any":         &anypb.Any{},
 		"google.protobuf.Duration":    &dpb.Duration{},
 		"google.protobuf.ListValue":   &structpb.ListValue{},
 		"google.protobuf.Struct":      &structpb.Struct{},

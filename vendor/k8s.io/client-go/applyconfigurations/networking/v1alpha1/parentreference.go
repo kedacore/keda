@@ -18,13 +18,18 @@ limitations under the License.
 
 package v1alpha1
 
+import (
+	types "k8s.io/apimachinery/pkg/types"
+)
+
 // ParentReferenceApplyConfiguration represents an declarative configuration of the ParentReference type for use
 // with apply.
 type ParentReferenceApplyConfiguration struct {
-	Group     *string `json:"group,omitempty"`
-	Resource  *string `json:"resource,omitempty"`
-	Namespace *string `json:"namespace,omitempty"`
-	Name      *string `json:"name,omitempty"`
+	Group     *string    `json:"group,omitempty"`
+	Resource  *string    `json:"resource,omitempty"`
+	Namespace *string    `json:"namespace,omitempty"`
+	Name      *string    `json:"name,omitempty"`
+	UID       *types.UID `json:"uid,omitempty"`
 }
 
 // ParentReferenceApplyConfiguration constructs an declarative configuration of the ParentReference type for use with
@@ -62,5 +67,13 @@ func (b *ParentReferenceApplyConfiguration) WithNamespace(value string) *ParentR
 // If called multiple times, the Name field is set to the value of the last call.
 func (b *ParentReferenceApplyConfiguration) WithName(value string) *ParentReferenceApplyConfiguration {
 	b.Name = &value
+	return b
+}
+
+// WithUID sets the UID field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the UID field is set to the value of the last call.
+func (b *ParentReferenceApplyConfiguration) WithUID(value types.UID) *ParentReferenceApplyConfiguration {
+	b.UID = &value
 	return b
 }

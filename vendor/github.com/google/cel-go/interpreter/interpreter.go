@@ -18,10 +18,9 @@
 package interpreter
 
 import (
-	"github.com/google/cel-go/common/ast"
 	"github.com/google/cel-go/common/containers"
-	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
+	"github.com/google/cel-go/interpreter/functions"
 
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
@@ -30,7 +29,7 @@ import (
 type Interpreter interface {
 	// NewInterpretable creates an Interpretable from a checked expression and an
 	// optional list of InterpretableDecorator values.
-	NewInterpretable(checked *ast.CheckedAST, decorators ...InterpretableDecorator) (Interpretable, error)
+	NewInterpretable(checked *exprpb.CheckedExpr, decorators ...InterpretableDecorator) (Interpretable, error)
 
 	// NewUncheckedInterpretable returns an Interpretable from a parsed expression
 	// and an optional list of InterpretableDecorator values.
@@ -155,8 +154,8 @@ func CompileRegexConstants(regexOptimizations ...*RegexOptimization) Interpretab
 type exprInterpreter struct {
 	dispatcher  Dispatcher
 	container   *containers.Container
-	provider    types.Provider
-	adapter     types.Adapter
+	provider    ref.TypeProvider
+	adapter     ref.TypeAdapter
 	attrFactory AttributeFactory
 }
 
@@ -164,8 +163,8 @@ type exprInterpreter struct {
 // throughout the Eval of all Interpretable instances generated from it.
 func NewInterpreter(dispatcher Dispatcher,
 	container *containers.Container,
-	provider types.Provider,
-	adapter types.Adapter,
+	provider ref.TypeProvider,
+	adapter ref.TypeAdapter,
 	attrFactory AttributeFactory) Interpreter {
 	return &exprInterpreter{
 		dispatcher:  dispatcher,
@@ -175,9 +174,20 @@ func NewInterpreter(dispatcher Dispatcher,
 		attrFactory: attrFactory}
 }
 
+// NewStandardInterpreter builds a Dispatcher and TypeProvider with support for all of the CEL
+// builtins defined in the language definition.
+func NewStandardInterpreter(container *containers.Container,
+	provider ref.TypeProvider,
+	adapter ref.TypeAdapter,
+	resolver AttributeFactory) Interpreter {
+	dispatcher := NewDispatcher()
+	dispatcher.Add(functions.StandardOverloads()...)
+	return NewInterpreter(dispatcher, container, provider, adapter, resolver)
+}
+
 // NewIntepretable implements the Interpreter interface method.
 func (i *exprInterpreter) NewInterpretable(
-	checked *ast.CheckedAST,
+	checked *exprpb.CheckedExpr,
 	decorators ...InterpretableDecorator) (Interpretable, error) {
 	p := newPlanner(
 		i.dispatcher,
@@ -187,7 +197,7 @@ func (i *exprInterpreter) NewInterpretable(
 		i.container,
 		checked,
 		decorators...)
-	return p.Plan(checked.Expr)
+	return p.Plan(checked.GetExpr())
 }
 
 // NewUncheckedIntepretable implements the Interpreter interface method.

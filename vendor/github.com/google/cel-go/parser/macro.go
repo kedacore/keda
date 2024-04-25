@@ -232,9 +232,6 @@ type ExprHelper interface {
 
 	// OffsetLocation returns the Location of the expression identifier.
 	OffsetLocation(exprID int64) common.Location
-
-	// NewError associates an error message with a given expression id.
-	NewError(exprID int64, message string) *common.Error
 }
 
 var (
@@ -327,7 +324,7 @@ func MakeExistsOne(eh ExprHelper, target *exprpb.Expr, args []*exprpb.Expr) (*ex
 func MakeMap(eh ExprHelper, target *exprpb.Expr, args []*exprpb.Expr) (*exprpb.Expr, *common.Error) {
 	v, found := extractIdent(args[0])
 	if !found {
-		return nil, eh.NewError(args[0].GetId(), "argument is not an identifier")
+		return nil, &common.Error{Message: "argument is not an identifier"}
 	}
 
 	var fn *exprpb.Expr
@@ -358,7 +355,7 @@ func MakeMap(eh ExprHelper, target *exprpb.Expr, args []*exprpb.Expr) (*exprpb.E
 func MakeFilter(eh ExprHelper, target *exprpb.Expr, args []*exprpb.Expr) (*exprpb.Expr, *common.Error) {
 	v, found := extractIdent(args[0])
 	if !found {
-		return nil, eh.NewError(args[0].GetId(), "argument is not an identifier")
+		return nil, &common.Error{Message: "argument is not an identifier"}
 	}
 
 	filter := args[1]
@@ -375,13 +372,17 @@ func MakeHas(eh ExprHelper, target *exprpb.Expr, args []*exprpb.Expr) (*exprpb.E
 	if s, ok := args[0].ExprKind.(*exprpb.Expr_SelectExpr); ok {
 		return eh.PresenceTest(s.SelectExpr.GetOperand(), s.SelectExpr.GetField()), nil
 	}
-	return nil, eh.NewError(args[0].GetId(), "invalid argument to has() macro")
+	return nil, &common.Error{Message: "invalid argument to has() macro"}
 }
 
 func makeQuantifier(kind quantifierKind, eh ExprHelper, target *exprpb.Expr, args []*exprpb.Expr) (*exprpb.Expr, *common.Error) {
 	v, found := extractIdent(args[0])
 	if !found {
-		return nil, eh.NewError(args[0].GetId(), "argument must be a simple name")
+		location := eh.OffsetLocation(args[0].GetId())
+		return nil, &common.Error{
+			Message:  "argument must be a simple name",
+			Location: location,
+		}
 	}
 
 	var init *exprpb.Expr
@@ -410,7 +411,7 @@ func makeQuantifier(kind quantifierKind, eh ExprHelper, target *exprpb.Expr, arg
 			eh.GlobalCall(operators.Add, eh.AccuIdent(), oneExpr), eh.AccuIdent())
 		result = eh.GlobalCall(operators.Equals, eh.AccuIdent(), oneExpr)
 	default:
-		return nil, eh.NewError(args[0].GetId(), fmt.Sprintf("unrecognized quantifier '%v'", kind))
+		return nil, &common.Error{Message: fmt.Sprintf("unrecognized quantifier '%v'", kind)}
 	}
 	return eh.Fold(v, target, AccumulatorName, init, condition, step, result), nil
 }

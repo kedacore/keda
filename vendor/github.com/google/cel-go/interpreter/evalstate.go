@@ -66,11 +66,7 @@ func (s *evalState) Value(exprID int64) (ref.Val, bool) {
 
 // SetValue is an implementation of the EvalState interface method.
 func (s *evalState) SetValue(exprID int64, val ref.Val) {
-	if val == nil {
-		delete(s.values, exprID)
-	} else {
-		s.values[exprID] = val
-	}
+	s.values[exprID] = val
 }
 
 // Reset implements the EvalState interface method.

@@ -205,6 +205,7 @@ func StatusIsNot(statuses ...int) StacktracePred {
 func (rl *respLogger) Addf(format string, data ...interface{}) {
 	rl.mutex.Lock()
 	defer rl.mutex.Unlock()
+	rl.addedInfo.WriteString("\n")
 	rl.addedInfo.WriteString(fmt.Sprintf(format, data...))
 }
 
