@@ -267,7 +267,7 @@ func percentile(perc float64, samples []time.Duration, minSamples int) time.Dura
 
 	p, err := stats.Percentile(floatSamples, perc)
 	if err != nil {
-		panic(fmt.Errorf("x/mongo/driver/topology: error calculating %f percentile RTT: %v for samples:\n%v", perc, err, floatSamples))
+		panic(fmt.Errorf("x/mongo/driver/topology: error calculating %f percentile RTT: %w for samples:\n%v", perc, err, floatSamples))
 	}
 	return time.Duration(p)
 }
@@ -318,11 +318,14 @@ func (r *rttMonitor) Stats() string {
 		var err error
 		stdDev, err = stats.StandardDeviation(floatSamples)
 		if err != nil {
-			panic(fmt.Errorf("x/mongo/driver/topology: error calculating standard deviation RTT: %v for samples:\n%v", err, floatSamples))
+			panic(fmt.Errorf("x/mongo/driver/topology: error calculating standard deviation RTT: %w for samples:\n%v", err, floatSamples))
 		}
 	}
 
-	return fmt.Sprintf(`Round-trip-time monitor statistics:`+"\n"+
-		`average RTT: %v, minimum RTT: %v, 90th percentile RTT: %v, standard dev: %v`+"\n",
-		time.Duration(avg), r.minRTT, r.rtt90, time.Duration(stdDev))
+	return fmt.Sprintf(
+		"network round-trip time stats: avg: %v, min: %v, 90th pct: %v, stddev: %v",
+		time.Duration(avg),
+		r.minRTT,
+		r.rtt90,
+		time.Duration(stdDev))
 }

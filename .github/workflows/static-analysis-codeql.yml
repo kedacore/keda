@@ -13,11 +13,11 @@ jobs:
   codeQl:
     name: Analyze CodeQL Go
     runs-on: ubuntu-latest
-    container: ghcr.io/kedacore/keda-tools:1.21.6
+    container: ghcr.io/kedacore/keda-tools:1.21.9
     if: (github.actor != 'dependabot[bot]')
     steps:
     - name: Checkout repository
-      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+      uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4
     - name: Register workspace path
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 

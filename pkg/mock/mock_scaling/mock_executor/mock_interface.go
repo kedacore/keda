@@ -14,6 +14,7 @@ import (
 	reflect "reflect"
 
 	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scaling/executor"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -53,13 +54,13 @@ func (mr *MockScaleExecutorMockRecorder) RequestJobScale(ctx, scaledJob, isActiv
 }
 
 // RequestScale mocks base method.
-func (m *MockScaleExecutor) RequestScale(ctx context.Context, scaledObject *v1alpha1.ScaledObject, isActive, isError bool) {
+func (m *MockScaleExecutor) RequestScale(ctx context.Context, scaledObject *v1alpha1.ScaledObject, isActive, isError bool, options *executor.ScaleExecutorOptions) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RequestScale", ctx, scaledObject, isActive, isError)
+	m.ctrl.Call(m, "RequestScale", ctx, scaledObject, isActive, isError, options)
 }
 
 // RequestScale indicates an expected call of RequestScale.
-func (mr *MockScaleExecutorMockRecorder) RequestScale(ctx, scaledObject, isActive, isError any) *gomock.Call {
+func (mr *MockScaleExecutorMockRecorder) RequestScale(ctx, scaledObject, isActive, isError, options any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RequestScale", reflect.TypeOf((*MockScaleExecutor)(nil).RequestScale), ctx, scaledObject, isActive, isError)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RequestScale", reflect.TypeOf((*MockScaleExecutor)(nil).RequestScale), ctx, scaledObject, isActive, isError, options)
 }

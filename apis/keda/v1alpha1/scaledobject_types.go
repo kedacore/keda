@@ -53,6 +53,7 @@ type ScaledObject struct {
 
 const ScaledObjectOwnerAnnotation = "scaledobject.keda.sh/name"
 const ScaledObjectTransferHpaOwnershipAnnotation = "scaledobject.keda.sh/transfer-hpa-ownership"
+const ValidationsHpaOwnershipAnnotation = "validations.keda.sh/hpa-ownership"
 const PausedReplicasAnnotation = "autoscaling.keda.sh/paused-replicas"
 const PausedAnnotation = "autoscaling.keda.sh/paused"
 
@@ -100,6 +101,8 @@ type ScaledObjectSpec struct {
 	Triggers []ScaleTriggers `json:"triggers"`
 	// +optional
 	Fallback *Fallback `json:"fallback,omitempty"`
+	// +optional
+	InitialCooldownPeriod int32 `json:"initialCooldownPeriod,omitempty"`
 }
 
 // Fallback is the spec for fallback options
@@ -199,7 +202,7 @@ func (so *ScaledObject) HasPausedReplicaAnnotation() bool {
 	return pausedReplicasAnnotationFound
 }
 
-// HasPausedAnnotition returns whether this ScaledObject has PausedAnnotation or PausedReplicasAnnotation
+// HasPausedAnnotation returns whether this ScaledObject has PausedAnnotation or PausedReplicasAnnotation
 func (so *ScaledObject) HasPausedAnnotation() bool {
 	_, pausedAnnotationFound := so.GetAnnotations()[PausedAnnotation]
 	_, pausedReplicasAnnotationFound := so.GetAnnotations()[PausedReplicasAnnotation]
@@ -264,5 +267,28 @@ func CheckReplicaCountBoundsAreValid(scaledObject *ScaledObject) error {
 		return fmt.Errorf("IdleReplicaCount=%d must be less than MinReplicaCount=%d", *scaledObject.Spec.IdleReplicaCount, min)
 	}
 
+	return nil
+}
+
+// CheckFallbackValid checks that the fallback supports scalers with an AverageValue metric target.
+// Consequently, it does not support CPU & memory scalers, or scalers targeting a Value metric type.
+func CheckFallbackValid(scaledObject *ScaledObject) error {
+	if scaledObject.Spec.Fallback == nil {
+		return nil
+	}
+
+	if scaledObject.Spec.Fallback.FailureThreshold < 0 || scaledObject.Spec.Fallback.Replicas < 0 {
+		return fmt.Errorf("FailureThreshold=%d & Replicas=%d must both be greater than or equal to 0",
+			scaledObject.Spec.Fallback.FailureThreshold, scaledObject.Spec.Fallback.Replicas)
+	}
+
+	for _, trigger := range scaledObject.Spec.Triggers {
+		if trigger.Type == cpuString || trigger.Type == memoryString {
+			return fmt.Errorf("type is %s , but fallback it is not supported by the CPU & memory scalers", trigger.Type)
+		}
+		if trigger.MetricType != autoscalingv2.AverageValueMetricType {
+			return fmt.Errorf("MetricType=%s, but Fallback can only be enabled for triggers with metric of type AverageValue", trigger.MetricType)
+		}
+	}
 	return nil
 }

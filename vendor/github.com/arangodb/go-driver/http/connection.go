@@ -54,6 +54,8 @@ const (
 type ConnectionConfig struct {
 	// Endpoints holds 1 or more URL's used to connect to the database.
 	// In case of a connection to an ArangoDB cluster, you must provide the URL's of all coordinators.
+	// If there is more than one endpoint, the client will pick the first one that works and use it till it fails.
+	// Then it will try the next one
 	Endpoints []string
 	// TLSConfig holds settings used to configure a TLS (HTTPS) connection.
 	// This is only used for endpoints using the HTTPS scheme.

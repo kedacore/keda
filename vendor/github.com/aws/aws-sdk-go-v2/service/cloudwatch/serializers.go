@@ -2702,6 +2702,18 @@ func awsAwsquery_serializeDocumentMetric(v *types.Metric, value query.Value) err
 	return nil
 }
 
+func awsAwsquery_serializeDocumentMetricCharacteristics(v *types.MetricCharacteristics, value query.Value) error {
+	object := value.Object()
+	_ = object
+
+	if v.PeriodicSpikes != nil {
+		objectKey := object.Key("PeriodicSpikes")
+		objectKey.Boolean(*v.PeriodicSpikes)
+	}
+
+	return nil
+}
+
 func awsAwsquery_serializeDocumentMetricData(v []types.MetricDatum, value query.Value) error {
 	array := value.Array("member")
 
@@ -3039,6 +3051,11 @@ func awsAwsquery_serializeDocumentResourceList(v []string, value query.Value) er
 func awsAwsquery_serializeDocumentSingleMetricAnomalyDetector(v *types.SingleMetricAnomalyDetector, value query.Value) error {
 	object := value.Object()
 	_ = object
+
+	if v.AccountId != nil {
+		objectKey := object.Key("AccountId")
+		objectKey.String(*v.AccountId)
+	}
 
 	if v.Dimensions != nil {
 		objectKey := object.Key("Dimensions")
@@ -3891,6 +3908,13 @@ func awsAwsquery_serializeOpDocumentPutAnomalyDetectorInput(v *PutAnomalyDetecto
 	if v.Dimensions != nil {
 		objectKey := object.Key("Dimensions")
 		if err := awsAwsquery_serializeDocumentDimensions(v.Dimensions, objectKey); err != nil {
+			return err
+		}
+	}
+
+	if v.MetricCharacteristics != nil {
+		objectKey := object.Key("MetricCharacteristics")
+		if err := awsAwsquery_serializeDocumentMetricCharacteristics(v.MetricCharacteristics, objectKey); err != nil {
 			return err
 		}
 	}

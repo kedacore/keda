@@ -554,6 +554,34 @@ func (e *PointInTimeRecoveryUnavailableException) ErrorFault() smithy.ErrorFault
 	return smithy.FaultClient
 }
 
+// The operation tried to access a nonexistent resource-based policy. If you
+// specified an ExpectedRevisionId , it's possible that a policy is present for the
+// resource but its revision ID didn't match the expected value.
+type PolicyNotFoundException struct {
+	Message *string
+
+	ErrorCodeOverride *string
+
+	noSmithyDocumentSerde
+}
+
+func (e *PolicyNotFoundException) Error() string {
+	return fmt.Sprintf("%s: %s", e.ErrorCode(), e.ErrorMessage())
+}
+func (e *PolicyNotFoundException) ErrorMessage() string {
+	if e.Message == nil {
+		return ""
+	}
+	return *e.Message
+}
+func (e *PolicyNotFoundException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "PolicyNotFoundException"
+	}
+	return *e.ErrorCodeOverride
+}
+func (e *PolicyNotFoundException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+
 // Your request rate is too high. The Amazon Web Services SDKs for DynamoDB
 // automatically retry requests that receive this exception. Your request is
 // eventually successful, unless your retry queue is too large to finish. Reduce

@@ -50,6 +50,10 @@ func indexStringToType(indexTypeString string) (IndexType, error) {
 		return TTLIndex, nil
 	case string(ZKDIndex):
 		return ZKDIndex, nil
+	case string(MDIIndex):
+		return MDIIndex, nil
+	case string(MDIPrefixedIndex):
+		return MDIPrefixedIndex, nil
 	case string(InvertedIndex):
 		return InvertedIndex, nil
 	default:

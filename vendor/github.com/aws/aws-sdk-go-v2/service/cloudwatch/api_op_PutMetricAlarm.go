@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -111,10 +110,15 @@ type PutMetricAlarmInput struct {
 	//   -
 	//   arn:aws:autoscaling:region:account-id:scalingPolicy:policy-id:autoScalingGroupName/group-friendly-name:policyName/policy-friendly-name
 	//
+	// Lambda actions:
+	//   - Invoke the latest version of a Lambda function:
+	//   arn:aws:lambda:region:account-id:function:function-name
+	//   - Invoke a specific version of a Lambda function:
+	//   arn:aws:lambda:region:account-id:function:function-name:version-number
+	//   - Invoke a function by using an alias Lambda function:
+	//   arn:aws:lambda:region:account-id:function:function-name:alias-name
 	// SNS notification action:
-	//   -
-	//   arn:aws:sns:region:account-id:sns-topic-name:autoScalingGroupName/group-friendly-name:policyName/policy-friendly-name
-	//
+	//   - arn:aws:sns:region:account-id:sns-topic-name
 	// SSM integration actions:
 	//   - arn:aws:ssm:region:account-id:opsitem:severity#CATEGORY=category-name
 	//   - arn:aws:ssm-incidents::account-id:responseplan/response-plan-name
@@ -177,10 +181,15 @@ type PutMetricAlarmInput struct {
 	//   -
 	//   arn:aws:autoscaling:region:account-id:scalingPolicy:policy-id:autoScalingGroupName/group-friendly-name:policyName/policy-friendly-name
 	//
+	// Lambda actions:
+	//   - Invoke the latest version of a Lambda function:
+	//   arn:aws:lambda:region:account-id:function:function-name
+	//   - Invoke a specific version of a Lambda function:
+	//   arn:aws:lambda:region:account-id:function:function-name:version-number
+	//   - Invoke a function by using an alias Lambda function:
+	//   arn:aws:lambda:region:account-id:function:function-name:alias-name
 	// SNS notification action:
-	//   -
-	//   arn:aws:sns:region:account-id:sns-topic-name:autoScalingGroupName/group-friendly-name:policyName/policy-friendly-name
-	//
+	//   - arn:aws:sns:region:account-id:sns-topic-name
 	// SSM integration actions:
 	//   - arn:aws:ssm:region:account-id:opsitem:severity#CATEGORY=category-name
 	//   - arn:aws:ssm-incidents::account-id:responseplan/response-plan-name
@@ -226,10 +235,15 @@ type PutMetricAlarmInput struct {
 	//   -
 	//   arn:aws:autoscaling:region:account-id:scalingPolicy:policy-id:autoScalingGroupName/group-friendly-name:policyName/policy-friendly-name
 	//
+	// Lambda actions:
+	//   - Invoke the latest version of a Lambda function:
+	//   arn:aws:lambda:region:account-id:function:function-name
+	//   - Invoke a specific version of a Lambda function:
+	//   arn:aws:lambda:region:account-id:function:function-name:version-number
+	//   - Invoke a function by using an alias Lambda function:
+	//   arn:aws:lambda:region:account-id:function:function-name:alias-name
 	// SNS notification action:
-	//   -
-	//   arn:aws:sns:region:account-id:sns-topic-name:autoScalingGroupName/group-friendly-name:policyName/policy-friendly-name
-	//
+	//   - arn:aws:sns:region:account-id:sns-topic-name
 	// SSM integration actions:
 	//   - arn:aws:ssm:region:account-id:opsitem:severity#CATEGORY=category-name
 	//   - arn:aws:ssm-incidents::account-id:responseplan/response-plan-name
@@ -340,25 +354,25 @@ func (c *Client) addOperationPutMetricAlarmMiddlewares(stack *middleware.Stack, 
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -379,7 +393,7 @@ func (c *Client) addOperationPutMetricAlarmMiddlewares(stack *middleware.Stack, 
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opPutMetricAlarm(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

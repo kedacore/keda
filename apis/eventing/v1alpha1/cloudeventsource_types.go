@@ -51,6 +51,12 @@ type CloudEventSourceSpec struct {
 	ClusterName string `json:"clusterName,omitempty"`
 
 	Destination Destination `json:"destination"`
+
+	// +optional
+	AuthenticationRef *v1alpha1.AuthenticationRef `json:"authenticationRef,omitempty"`
+
+	// +optional
+	EventSubscription EventSubscription `json:"eventSubscription,omitempty"`
 }
 
 // CloudEventSourceStatus defines the observed state of CloudEventSource
@@ -64,10 +70,26 @@ type CloudEventSourceStatus struct {
 type Destination struct {
 	// +optional
 	HTTP *CloudEventHTTP `json:"http"`
+
+	// +optional
+	AzureEventGridTopic *AzureEventGridTopicSpec `json:"azureEventGridTopic"`
 }
 
 type CloudEventHTTP struct {
 	URI string `json:"uri"`
+}
+
+type AzureEventGridTopicSpec struct {
+	Endpoint string `json:"endpoint"`
+}
+
+// EventSubscription defines filters for events
+type EventSubscription struct {
+	// +optional
+	IncludedEventTypes []CloudEventType `json:"includedEventTypes,omitempty"`
+
+	// +optional
+	ExcludedEventTypes []CloudEventType `json:"excludedEventTypes,omitempty"`
 }
 
 func init() {
@@ -75,8 +97,8 @@ func init() {
 }
 
 // GenerateIdentifier returns identifier for the object in for "kind.namespace.name"
-func (t *CloudEventSource) GenerateIdentifier() string {
-	return v1alpha1.GenerateIdentifier("CloudEventSource", t.Namespace, t.Name)
+func (ces *CloudEventSource) GenerateIdentifier() string {
+	return v1alpha1.GenerateIdentifier("CloudEventSource", ces.Namespace, ces.Name)
 }
 
 // GetCloudEventSourceInitializedConditions returns CloudEventSource Conditions initialized to the default -> Status: Unknown

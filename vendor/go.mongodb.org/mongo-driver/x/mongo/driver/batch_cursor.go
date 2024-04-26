@@ -79,7 +79,7 @@ type CursorResponse struct {
 func NewCursorResponse(info ResponseInfo) (CursorResponse, error) {
 	response := info.ServerResponse
 	cur, err := response.LookupErr("cursor")
-	if err == bsoncore.ErrElementNotFound {
+	if errors.Is(err, bsoncore.ErrElementNotFound) {
 		return CursorResponse{}, ErrNoCursor
 	}
 	if err != nil {
@@ -142,7 +142,7 @@ func NewCursorResponse(info ResponseInfo) (CursorResponse, error) {
 			return CursorResponse{}, fmt.Errorf("expected Connection used to establish a cursor to implement PinnedConnection, but got %T", info.Connection)
 		}
 		if err := refConn.PinToCursor(); err != nil {
-			return CursorResponse{}, fmt.Errorf("error incrementing connection reference count when creating a cursor: %v", err)
+			return CursorResponse{}, fmt.Errorf("error incrementing connection reference count when creating a cursor: %w", err)
 		}
 		curresp.Connection = refConn
 	}

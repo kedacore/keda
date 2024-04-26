@@ -26,6 +26,7 @@ import (
 )
 
 // DatabasePregels provides access to all Pregel Jobs in a single database.
+// @deprecated It will be removed in version 3.12
 type DatabasePregels interface {
 	// StartJob - Start the execution of a Pregel algorithm
 	StartJob(ctx context.Context, options PregelJobOptions) (string, error)

@@ -4847,6 +4847,12 @@ func awsAwsquery_deserializeDocumentAnomalyDetector(v **types.AnomalyDetector, d
 				return err
 			}
 
+		case strings.EqualFold("MetricCharacteristics", t.Name.Local):
+			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
+			if err := awsAwsquery_deserializeDocumentMetricCharacteristics(&sv.MetricCharacteristics, nodeDecoder); err != nil {
+				return err
+			}
+
 		case strings.EqualFold("MetricMathAnomalyDetector", t.Name.Local):
 			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
 			if err := awsAwsquery_deserializeDocumentMetricMathAnomalyDetector(&sv.MetricMathAnomalyDetector, nodeDecoder); err != nil {
@@ -8520,6 +8526,58 @@ func awsAwsquery_deserializeDocumentMetricAlarmsUnwrapped(v *[]types.MetricAlarm
 	*v = sv
 	return nil
 }
+func awsAwsquery_deserializeDocumentMetricCharacteristics(v **types.MetricCharacteristics, decoder smithyxml.NodeDecoder) error {
+	if v == nil {
+		return fmt.Errorf("unexpected nil of type %T", v)
+	}
+	var sv *types.MetricCharacteristics
+	if *v == nil {
+		sv = &types.MetricCharacteristics{}
+	} else {
+		sv = *v
+	}
+
+	for {
+		t, done, err := decoder.Token()
+		if err != nil {
+			return err
+		}
+		if done {
+			break
+		}
+		originalDecoder := decoder
+		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
+		switch {
+		case strings.EqualFold("PeriodicSpikes", t.Name.Local):
+			val, err := decoder.Value()
+			if err != nil {
+				return err
+			}
+			if val == nil {
+				break
+			}
+			{
+				xtv, err := strconv.ParseBool(string(val))
+				if err != nil {
+					return fmt.Errorf("expected PeriodicSpikes to be of type *bool, got %T instead", val)
+				}
+				sv.PeriodicSpikes = ptr.Bool(xtv)
+			}
+
+		default:
+			// Do nothing and ignore the unexpected tag element
+			err = decoder.Decoder.Skip()
+			if err != nil {
+				return err
+			}
+
+		}
+		decoder = originalDecoder
+	}
+	*v = sv
+	return nil
+}
+
 func awsAwsquery_deserializeDocumentMetricDataQueries(v *[]types.MetricDataQuery, decoder smithyxml.NodeDecoder) error {
 	if v == nil {
 		return fmt.Errorf("unexpected nil of type %T", v)
@@ -10384,6 +10442,19 @@ func awsAwsquery_deserializeDocumentSingleMetricAnomalyDetector(v **types.Single
 		originalDecoder := decoder
 		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
 		switch {
+		case strings.EqualFold("AccountId", t.Name.Local):
+			val, err := decoder.Value()
+			if err != nil {
+				return err
+			}
+			if val == nil {
+				break
+			}
+			{
+				xtv := string(val)
+				sv.AccountId = ptr.String(xtv)
+			}
+
 		case strings.EqualFold("Dimensions", t.Name.Local):
 			nodeDecoder := smithyxml.WrapNodeDecoder(decoder.Decoder, t)
 			if err := awsAwsquery_deserializeDocumentDimensions(&sv.Dimensions, nodeDecoder); err != nil {

@@ -99,7 +99,7 @@ func (m *ManagementError) String() string {
 // for the ATOM endpoint). This is typically wrapped by an entity specific client (like
 // TopicManager, QueueManager or , SubscriptionManager).
 func NewEntityManagerWithConnectionString(connectionString string, version string, options *azcore.ClientOptions) (EntityManager, error) {
-	parsed, err := conn.ParsedConnectionFromStr(connectionString)
+	parsed, err := conn.ParseConnectionString(connectionString)
 
 	if err != nil {
 		return nil, err
@@ -111,7 +111,7 @@ func NewEntityManagerWithConnectionString(connectionString string, version strin
 		return nil, err
 	}
 
-	return newEntityManagerImpl(provider, version, options, parsed.Namespace)
+	return newEntityManagerImpl(provider, version, options, parsed.FullyQualifiedNamespace)
 }
 
 // NewEntityManager creates an entity manager using a TokenCredential.

@@ -102,7 +102,7 @@ func (sc *saslConversation) Finish(ctx context.Context, cfg *Config, firstRespon
 	var saslResp saslResponse
 	err := bson.Unmarshal(firstResponse, &saslResp)
 	if err != nil {
-		fullErr := fmt.Errorf("unmarshal error: %v", err)
+		fullErr := fmt.Errorf("unmarshal error: %w", err)
 		return newError(fullErr, sc.mechanism)
 	}
 
@@ -146,7 +146,7 @@ func (sc *saslConversation) Finish(ctx context.Context, cfg *Config, firstRespon
 
 		err = bson.Unmarshal(rdr, &saslResp)
 		if err != nil {
-			fullErr := fmt.Errorf("unmarshal error: %v", err)
+			fullErr := fmt.Errorf("unmarshal error: %w", err)
 			return newError(fullErr, sc.mechanism)
 		}
 	}

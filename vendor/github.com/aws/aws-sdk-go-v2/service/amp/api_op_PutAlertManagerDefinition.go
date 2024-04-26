@@ -6,13 +6,14 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/amp/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Update an alert manager definition.
+// Updates an existing alert manager definition in a workspace. If the workspace
+// does not already have an alert manager definition, don't use this operation to
+// create it. Instead, use CreateAlertManagerDefinition .
 func (c *Client) PutAlertManagerDefinition(ctx context.Context, params *PutAlertManagerDefinitionInput, optFns ...func(*Options)) (*PutAlertManagerDefinitionOutput, error) {
 	if params == nil {
 		params = &PutAlertManagerDefinitionInput{}
@@ -31,18 +32,21 @@ func (c *Client) PutAlertManagerDefinition(ctx context.Context, params *PutAlert
 // Represents the input of a PutAlertManagerDefinition operation.
 type PutAlertManagerDefinitionInput struct {
 
-	// The alert manager definition data.
+	// The alert manager definition to use. A base64-encoded version of the YAML alert
+	// manager definition file. For details about the alert manager definition, see
+	// AlertManagedDefinitionData (https://docs.aws.amazon.com/prometheus/latest/APIReference/yaml-AlertManagerDefinitionData.html)
+	// .
 	//
 	// This member is required.
 	Data []byte
 
-	// The ID of the workspace in which to update the alert manager definition.
+	// The ID of the workspace to update the alert manager definition in.
 	//
 	// This member is required.
 	WorkspaceId *string
 
-	// Optional, unique, case-sensitive, user-provided identifier to ensure the
-	// idempotency of the request.
+	// A unique identifier that you can provide to ensure the idempotency of the
+	// request. Case-sensitive.
 	ClientToken *string
 
 	noSmithyDocumentSerde
@@ -51,7 +55,7 @@ type PutAlertManagerDefinitionInput struct {
 // Represents the output of a PutAlertManagerDefinition operation.
 type PutAlertManagerDefinitionOutput struct {
 
-	// The status of alert manager definition.
+	// A structure that returns the current status of the alert manager definition.
 	//
 	// This member is required.
 	Status *types.AlertManagerDefinitionStatus
@@ -84,25 +88,25 @@ func (c *Client) addOperationPutAlertManagerDefinitionMiddlewares(stack *middlew
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -126,7 +130,7 @@ func (c *Client) addOperationPutAlertManagerDefinitionMiddlewares(stack *middlew
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opPutAlertManagerDefinition(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

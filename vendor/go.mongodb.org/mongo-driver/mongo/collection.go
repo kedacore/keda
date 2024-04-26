@@ -256,7 +256,7 @@ func (coll *Collection) insert(ctx context.Context, documents []interface{},
 		if err != nil {
 			return nil, err
 		}
-		bsoncoreDoc, id, err := ensureID(bsoncoreDoc, primitive.NewObjectID(), coll.bsonOpts, coll.registry)
+		bsoncoreDoc, id, err := ensureID(bsoncoreDoc, primitive.NilObjectID, coll.bsonOpts, coll.registry)
 		if err != nil {
 			return nil, err
 		}
@@ -313,8 +313,8 @@ func (coll *Collection) insert(ctx context.Context, documents []interface{},
 	op = op.Retry(retry)
 
 	err = op.Execute(ctx)
-	wce, ok := err.(driver.WriteCommandError)
-	if !ok {
+	var wce driver.WriteCommandError
+	if !errors.As(err, &wce) {
 		return result, err
 	}
 
@@ -388,8 +388,8 @@ func (coll *Collection) InsertMany(ctx context.Context, documents []interface{},
 	}
 
 	imResult := &InsertManyResult{InsertedIDs: result}
-	writeException, ok := err.(WriteException)
-	if !ok {
+	var writeException WriteException
+	if !errors.As(err, &writeException) {
 		return imResult, err
 	}
 
@@ -863,6 +863,15 @@ func aggregate(a aggregateParams) (cur *Cursor, err error) {
 		Timeout(a.client.timeout).
 		MaxTime(ao.MaxTime)
 
+	// Omit "maxTimeMS" from operations that return a user-managed cursor to
+	// prevent confusing "cursor not found" errors. To maintain existing
+	// behavior for users who set "timeoutMS" with no context deadline, only
+	// omit "maxTimeMS" when a context deadline is set.
+	//
+	// See DRIVERS-2722 for more detail.
+	_, deadlineSet := a.ctx.Deadline()
+	op.OmitCSOTMaxTimeMS(deadlineSet)
+
 	if ao.AllowDiskUse != nil {
 		op.AllowDiskUse(*ao.AllowDiskUse)
 	}
@@ -1191,6 +1200,22 @@ func (coll *Collection) Distinct(ctx context.Context, fieldName string, filter i
 // For more information about the command, see https://www.mongodb.com/docs/manual/reference/command/find/.
 func (coll *Collection) Find(ctx context.Context, filter interface{},
 	opts ...*options.FindOptions) (cur *Cursor, err error) {
+	// Omit "maxTimeMS" from operations that return a user-managed cursor to
+	// prevent confusing "cursor not found" errors. To maintain existing
+	// behavior for users who set "timeoutMS" with no context deadline, only
+	// omit "maxTimeMS" when a context deadline is set.
+	//
+	// See DRIVERS-2722 for more detail.
+	_, deadlineSet := ctx.Deadline()
+	return coll.find(ctx, filter, deadlineSet, opts...)
+}
+
+func (coll *Collection) find(
+	ctx context.Context,
+	filter interface{},
+	omitCSOTMaxTimeMS bool,
+	opts ...*options.FindOptions,
+) (cur *Cursor, err error) {
 
 	if ctx == nil {
 		ctx = context.Background()
@@ -1230,7 +1255,8 @@ func (coll *Collection) Find(ctx context.Context, filter interface{},
 		CommandMonitor(coll.client.monitor).ServerSelector(selector).
 		ClusterClock(coll.client.clock).Database(coll.db.name).Collection(coll.name).
 		Deployment(coll.client.deployment).Crypt(coll.client.cryptFLE).ServerAPI(coll.client.serverAPI).
-		Timeout(coll.client.timeout).MaxTime(fo.MaxTime).Logger(coll.client.logger)
+		Timeout(coll.client.timeout).MaxTime(fo.MaxTime).Logger(coll.client.logger).
+		OmitCSOTMaxTimeMS(omitCSOTMaxTimeMS)
 
 	cursorOpts := coll.client.createBaseCursorOptions()
 
@@ -1408,7 +1434,7 @@ func (coll *Collection) FindOne(ctx context.Context, filter interface{},
 	// by the server.
 	findOpts = append(findOpts, options.Find().SetLimit(-1))
 
-	cursor, err := coll.Find(ctx, filter, findOpts...)
+	cursor, err := coll.find(ctx, filter, false, findOpts...)
 	return &SingleResult{
 		ctx:      ctx,
 		cur:      cursor,
@@ -1806,7 +1832,7 @@ func (coll *Collection) Drop(ctx context.Context) error {
 func (coll *Collection) dropEncryptedCollection(ctx context.Context, ef interface{}) error {
 	efBSON, err := marshal(ef, coll.bsonOpts, coll.registry)
 	if err != nil {
-		return fmt.Errorf("error transforming document: %v", err)
+		return fmt.Errorf("error transforming document: %w", err)
 	}
 
 	// Drop the two encryption-related, associated collections: `escCollection` and `ecocCollection`.

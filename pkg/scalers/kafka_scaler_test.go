@@ -12,6 +12,7 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/go-logr/logr"
 
+	kafka_oauth "github.com/kedacore/keda/v2/pkg/scalers/kafka"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
@@ -30,6 +31,13 @@ type parseKafkaMetadataTestData struct {
 }
 
 type parseKafkaAuthParamsTestData struct {
+	authParams map[string]string
+	isError    bool
+	enableTLS  bool
+}
+
+type parseKafkaOAuthbearerAuthParamsTestData = struct {
+	metadata   map[string]string
 	authParams map[string]string
 	isError    bool
 	enableTLS  bool
@@ -295,23 +303,35 @@ var parseAuthParamsTestDataset = []parseAuthParamsTestDataSecondAuthMethod{
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"sasl": "scram_sha512 ", "username": "admin", "password": "admin"}, false, true},
 }
 
-var parseKafkaOAuthbrearerAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
+var parseKafkaOAuthbearerAuthParamsTestDataset = []parseKafkaOAuthbearerAuthParamsTestData{
 	// success, SASL OAUTHBEARER + TLS
-	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, false, false},
+	{map[string]string{}, map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, false, false},
+	// success, SASL OAUTHBEARER + tokenProvider + TLS
+	{map[string]string{}, map[string]string{"sasl": "oauthbearer", "saslTokenProvider": "bearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, false, false},
 	// success, SASL OAUTHBEARER + TLS multiple scopes
-	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope1, scope2", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, false, false},
+	{map[string]string{}, map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope1, scope2", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, false, false},
 	// success, SASL OAUTHBEARER + TLS missing scope
-	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, false, false},
+	{map[string]string{}, map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, false, false},
 	// failure, SASL OAUTHBEARER + TLS bad sasl type
-	{map[string]string{"sasl": "foo", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, true, false},
+	{map[string]string{}, map[string]string{"sasl": "foo", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable"}, true, false},
 	// failure, SASL OAUTHBEARER + TLS missing oauthTokenEndpointUri
-	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "", "tls": "disable"}, true, false},
+	{map[string]string{}, map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "", "tls": "disable"}, true, false},
 	// success, SASL OAUTHBEARER + extension
-	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable", "oauthExtensions": "extension_foo=bar"}, false, false},
+	{map[string]string{}, map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable", "oauthExtensions": "extension_foo=bar"}, false, false},
 	// success, SASL OAUTHBEARER + multiple extensions
-	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable", "oauthExtensions": "extension_foo=bar,extension_baz=baz"}, false, false},
+	{map[string]string{}, map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable", "oauthExtensions": "extension_foo=bar,extension_baz=baz"}, false, false},
 	// failure, SASL OAUTHBEARER + bad extension
-	{map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable", "oauthExtensions": "extension_foo=bar,extension_bazbaz"}, true, false},
+	{map[string]string{}, map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com", "tls": "disable", "oauthExtensions": "extension_foo=bar,extension_bazbaz"}, true, false},
+	// success, SASL OAUTHBEARER MSK + TLS + Credentials
+	{map[string]string{"awsRegion": "eu-west-1"}, map[string]string{"sasl": "oauthbearer", "saslTokenProvider": "aws_msk_iam", "tls": "enable", "awsAccessKeyID": "none", "awsSecretAccessKey": "none"}, false, true},
+	// success, SASL OAUTHBEARER MSK + TLS + Role
+	{map[string]string{"awsRegion": "eu-west-1"}, map[string]string{"sasl": "oauthbearer", "saslTokenProvider": "aws_msk_iam", "tls": "enable", "awsRegion": "eu-west-1", "awsRoleArn": "none"}, false, true},
+	// failure, SASL OAUTHBEARER MSK + no TLS
+	{map[string]string{}, map[string]string{"sasl": "oauthbearer", "saslTokenProvider": "aws_msk_iam", "tls": "disable"}, true, false},
+	// failure, SASL OAUTHBEARER MSK + TLS + no region
+	{map[string]string{}, map[string]string{"sasl": "oauthbearer", "saslTokenProvider": "aws_msk_iam", "tls": "enable", "awsRegion": ""}, true, true},
+	// failure, SASL OAUTHBEARER MSK + TLS + no credentials
+	{map[string]string{}, map[string]string{"sasl": "oauthbearer", "saslTokenProvider": "aws_msk_iam", "tls": "enable", "awsRegion": "eu-west-1"}, true, true},
 }
 
 var kafkaMetricIdentifiers = []kafkaMetricIdentifier{
@@ -384,7 +404,7 @@ func TestKafkaAuthParamsInTriggerAuthentication(t *testing.T) {
 		if testData.isError && err == nil {
 			t.Error("Expected error but got success")
 		}
-		if meta.enableTLS != testData.enableTLS {
+		if !testData.isError && meta.enableTLS != testData.enableTLS {
 			t.Errorf("Expected enableTLS to be set to %v but got %v\n", testData.enableTLS, meta.enableTLS)
 		}
 		if meta.enableTLS {
@@ -483,26 +503,97 @@ func testFileContents(testData parseKafkaAuthParamsTestData, meta kafkaMetadata,
 	return nil
 }
 
-func TestKafkaOAuthbrearerAuthParams(t *testing.T) {
-	for _, testData := range parseKafkaOAuthbrearerAuthParamsTestDataset {
-		meta, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: validKafkaMetadata, AuthParams: testData.authParams}, logr.Discard())
+func TestKafkaOAuthbearerAuthParams(t *testing.T) {
+	for _, testData := range parseKafkaOAuthbearerAuthParamsTestDataset {
+		for k, v := range validKafkaMetadata {
+			testData.metadata[k] = v
+		}
+
+		meta, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
 
 		if err != nil && !testData.isError {
-			t.Error("Expected success but got error", err)
+			t.Fatal("Expected success but got error", err)
 		}
 		if testData.isError && err == nil {
-			t.Error("Expected error but got success")
+			t.Fatal("Expected error but got success")
 		}
-		if testData.authParams["scopes"] == "" {
-			if len(meta.scopes) != strings.Count(testData.authParams["scopes"], ",")+1 {
-				t.Errorf("Expected scopes to be set to %v but got %v\n", strings.Count(testData.authParams["scopes"], ","), len(meta.scopes))
+
+		if testData.authParams["saslTokenProvider"] == "" || testData.authParams["saslTokenProvider"] == "bearer" {
+			if !testData.isError && meta.tokenProvider != KafkaSASLOAuthTokenProviderBearer {
+				t.Errorf("Expected tokenProvider to be set to %v but got %v\n", KafkaSASLOAuthTokenProviderBearer, meta.tokenProvider)
+			}
+
+			if testData.authParams["scopes"] == "" {
+				if len(meta.scopes) != strings.Count(testData.authParams["scopes"], ",")+1 {
+					t.Errorf("Expected scopes to be set to %v but got %v\n", strings.Count(testData.authParams["scopes"], ","), len(meta.scopes))
+				}
+			}
+
+			if err == nil && testData.authParams["oauthExtensions"] != "" {
+				if len(meta.oauthExtensions) != strings.Count(testData.authParams["oauthExtensions"], ",")+1 {
+					t.Errorf("Expected number of extensions to be set to %v but got %v\n", strings.Count(testData.authParams["oauthExtensions"], ",")+1, len(meta.oauthExtensions))
+				}
+			}
+		} else if testData.authParams["saslTokenProvider"] == "aws_msk_iam" {
+			if !testData.isError && meta.tokenProvider != KafkaSASLOAuthTokenProviderAWSMSKIAM {
+				t.Errorf("Expected tokenProvider to be set to %v but got %v\n", KafkaSASLOAuthTokenProviderAWSMSKIAM, meta.tokenProvider)
+			}
+
+			if testData.metadata["awsRegion"] != "" && meta.awsRegion != testData.metadata["awsRegion"] {
+				t.Errorf("Expected awsRegion to be set to %v but got %v\n", testData.metadata["awsRegion"], meta.awsRegion)
+			}
+
+			if testData.authParams["awsAccessKeyID"] != "" {
+				if meta.awsAuthorization.AwsAccessKeyID != testData.authParams["awsAccessKeyID"] {
+					t.Errorf("Expected awsAccessKeyID to be set to %v but got %v\n", testData.authParams["awsAccessKeyID"], meta.awsAuthorization.AwsAccessKeyID)
+				}
+
+				if meta.awsAuthorization.AwsSecretAccessKey != testData.authParams["awsSecretAccessKey"] {
+					t.Errorf("Expected awsSecretAccessKey to be set to %v but got %v\n", testData.authParams["awsSecretAccessKey"], meta.awsAuthorization.AwsSecretAccessKey)
+				}
+			} else if testData.authParams["awsRoleArn"] != "" && meta.awsAuthorization.AwsRoleArn != testData.authParams["awsRoleArn"] {
+				t.Errorf("Expected awsRoleArn to be set to %v but got %v\n", testData.authParams["awsRoleArn"], meta.awsAuthorization.AwsRoleArn)
 			}
 		}
-		if err == nil && testData.authParams["oauthExtensions"] != "" {
-			if len(meta.oauthExtensions) != strings.Count(testData.authParams["oauthExtensions"], ",")+1 {
-				t.Errorf("Expected number of extensions to be set to %v but got %v\n", strings.Count(testData.authParams["oauthExtensions"], ",")+1, len(meta.oauthExtensions))
+	}
+}
+
+func TestKafkaClientsOAuthTokenProvider(t *testing.T) {
+	testData := []struct {
+		name                  string
+		metadata              map[string]string
+		authParams            map[string]string
+		expectedTokenProvider string
+	}{
+		{"oauthbearer_bearer", map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitation": "1,2"}, map[string]string{"sasl": "oauthbearer", "username": "admin", "password": "admin", "oauthTokenEndpointUri": "https://website.com"}, "OAuthBearer"},
+		{"oauthbearer_aws_msk_iam", map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "partitionLimitation": "1,2", "tls": "enable", "awsRegion": "eu-west-1"}, map[string]string{"sasl": "oauthbearer", "saslTokenProvider": "aws_msk_iam", "awsRegion": "eu-west-1", "awsAccessKeyID": "none", "awsSecretAccessKey": "none"}, "MSK"},
+	}
+
+	for _, tt := range testData {
+		t.Run(tt.name, func(t *testing.T) {
+			meta, err := parseKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: tt.metadata, AuthParams: tt.authParams}, logr.Discard())
+			if err != nil {
+				t.Fatal("Could not parse metadata:", err)
 			}
-		}
+
+			cfg, err := getKafkaClientConfig(context.TODO(), meta)
+			if err != nil {
+				t.Error("Expected success but got error", err)
+			}
+
+			if !cfg.Net.SASL.Enable {
+				t.Error("Expected SASL to be enabled on client")
+			}
+
+			tokenProvider, ok := cfg.Net.SASL.TokenProvider.(kafka_oauth.TokenProvider)
+			if !ok {
+				t.Error("Expected token provider to be set on client")
+			}
+
+			if tokenProvider.String() != tt.expectedTokenProvider {
+				t.Errorf("Expected token provider to be %v but got %v", tt.expectedTokenProvider, tokenProvider.String())
+			}
+		})
 	}
 }
 

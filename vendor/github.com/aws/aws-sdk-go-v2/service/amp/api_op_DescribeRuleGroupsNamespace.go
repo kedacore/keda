@@ -6,13 +6,13 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/amp/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Describe a rule groups namespace.
+// Returns complete information about one rule groups namespace. To retrieve a
+// list of rule groups namespaces, use ListRuleGroupsNamespaces .
 func (c *Client) DescribeRuleGroupsNamespace(ctx context.Context, params *DescribeRuleGroupsNamespaceInput, optFns ...func(*Options)) (*DescribeRuleGroupsNamespaceOutput, error) {
 	if params == nil {
 		params = &DescribeRuleGroupsNamespaceInput{}
@@ -31,12 +31,12 @@ func (c *Client) DescribeRuleGroupsNamespace(ctx context.Context, params *Descri
 // Represents the input of a DescribeRuleGroupsNamespace operation.
 type DescribeRuleGroupsNamespaceInput struct {
 
-	// The rule groups namespace.
+	// The name of the rule groups namespace that you want information for.
 	//
 	// This member is required.
 	Name *string
 
-	// The ID of the workspace to describe.
+	// The ID of the workspace containing the rule groups namespace.
 	//
 	// This member is required.
 	WorkspaceId *string
@@ -47,7 +47,7 @@ type DescribeRuleGroupsNamespaceInput struct {
 // Represents the output of a DescribeRuleGroupsNamespace operation.
 type DescribeRuleGroupsNamespaceOutput struct {
 
-	// The selected rule groups namespace.
+	// The information about the rule groups namespace.
 	//
 	// This member is required.
 	RuleGroupsNamespace *types.RuleGroupsNamespaceDescription
@@ -80,25 +80,25 @@ func (c *Client) addOperationDescribeRuleGroupsNamespaceMiddlewares(stack *middl
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -119,7 +119,7 @@ func (c *Client) addOperationDescribeRuleGroupsNamespaceMiddlewares(stack *middl
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeRuleGroupsNamespace(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

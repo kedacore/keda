@@ -6,13 +6,14 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/amp/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Create logging configuration.
+// The CreateLoggingConfiguration operation creates a logging configuration for
+// the workspace. Use this operation to set the CloudWatch log group to which the
+// logs will be published to.
 func (c *Client) CreateLoggingConfiguration(ctx context.Context, params *CreateLoggingConfigurationInput, optFns ...func(*Options)) (*CreateLoggingConfigurationOutput, error) {
 	if params == nil {
 		params = &CreateLoggingConfigurationInput{}
@@ -31,18 +32,19 @@ func (c *Client) CreateLoggingConfiguration(ctx context.Context, params *CreateL
 // Represents the input of a CreateLoggingConfiguration operation.
 type CreateLoggingConfigurationInput struct {
 
-	// The ARN of the CW log group to which the vended log data will be published.
+	// The ARN of the CloudWatch log group to which the vended log data will be
+	// published. This log group must exist prior to calling this API.
 	//
 	// This member is required.
 	LogGroupArn *string
 
-	// The ID of the workspace to vend logs to.
+	// The ID of the workspace to create the logging configuration for.
 	//
 	// This member is required.
 	WorkspaceId *string
 
-	// Optional, unique, case-sensitive, user-provided identifier to ensure the
-	// idempotency of the request.
+	// A unique identifier that you can provide to ensure the idempotency of the
+	// request. Case-sensitive.
 	ClientToken *string
 
 	noSmithyDocumentSerde
@@ -51,7 +53,7 @@ type CreateLoggingConfigurationInput struct {
 // Represents the output of a CreateLoggingConfiguration operation.
 type CreateLoggingConfigurationOutput struct {
 
-	// The status of the logging configuration.
+	// A structure that displays the current status of the logging configuration.
 	//
 	// This member is required.
 	Status *types.LoggingConfigurationStatus
@@ -84,25 +86,25 @@ func (c *Client) addOperationCreateLoggingConfigurationMiddlewares(stack *middle
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -126,7 +128,7 @@ func (c *Client) addOperationCreateLoggingConfigurationMiddlewares(stack *middle
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opCreateLoggingConfiguration(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

@@ -71,6 +71,80 @@ func NewPubSubScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
+func parsePubSubResourceConfig(config *scalersconfig.ScalerConfig, meta *pubsubMetadata) error {
+	sub, subPresent := config.TriggerMetadata["subscriptionName"]
+	subFromEnv, subFromEnvPresent := config.TriggerMetadata["subscriptionNameFromEnv"]
+	if subPresent && subFromEnvPresent {
+		return fmt.Errorf("exactly one of subscriptionName or subscriptionNameFromEnv is allowed")
+	}
+	hasSub := subPresent || subFromEnvPresent
+
+	topic, topicPresent := config.TriggerMetadata["topicName"]
+	topicFromEnv, topicFromEnvPresent := config.TriggerMetadata["topicNameFromEnv"]
+	if topicPresent && topicFromEnvPresent {
+		return fmt.Errorf("exactly one of topicName or topicNameFromEnv is allowed")
+	}
+	hasTopic := topicPresent || topicFromEnvPresent
+
+	if (!hasSub && !hasTopic) || (hasSub && hasTopic) {
+		return fmt.Errorf("exactly one of subscription or topic name must be given")
+	}
+
+	if hasSub {
+		if subPresent {
+			if sub == "" {
+				return fmt.Errorf("no subscription name given")
+			}
+
+			meta.resourceName = sub
+		} else {
+			if subFromEnv == "" {
+				return fmt.Errorf("no environment variable name given for resolving subscription name")
+			}
+
+			resolvedSub, ok := config.ResolvedEnv[subFromEnv]
+			if !ok {
+				return fmt.Errorf("resolved environment doesn't contain name '%s'", subFromEnv)
+			}
+
+			if resolvedSub == "" {
+				return fmt.Errorf("resolved environment subscription name is empty")
+			}
+
+			meta.resourceName = config.ResolvedEnv[subFromEnv]
+		}
+
+		meta.resourceType = resourceTypePubSubSubscription
+	} else {
+		if topicPresent {
+			if topic == "" {
+				return fmt.Errorf("no topic name given")
+			}
+
+			meta.resourceName = topic
+		} else {
+			if topicFromEnv == "" {
+				return fmt.Errorf("no environment variable name given for resolving topic name")
+			}
+
+			resolvedTopic, ok := config.ResolvedEnv[topicFromEnv]
+			if !ok {
+				return fmt.Errorf("resolved environment doesn't contain name '%s'", topicFromEnv)
+			}
+
+			if resolvedTopic == "" {
+				return fmt.Errorf("resolved environment topic name is empty")
+			}
+
+			meta.resourceName = config.ResolvedEnv[topicFromEnv]
+		}
+
+		meta.resourceType = resourceTypePubSubTopic
+	}
+
+	return nil
+}
+
 func parsePubSubMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*pubsubMetadata, error) {
 	meta := pubsubMetadata{mode: pubSubModeSubscriptionSize, value: pubSubDefaultValue}
 
@@ -106,26 +180,9 @@ func parsePubSubMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger)
 
 	meta.aggregation = config.TriggerMetadata["aggregation"]
 
-	sub, subPresent := config.TriggerMetadata["subscriptionName"]
-	topic, topicPresent := config.TriggerMetadata["topicName"]
-	if (!subPresent && !topicPresent) || (subPresent && topicPresent) {
-		return nil, fmt.Errorf("exactly one of subscription or topic name must be given")
-	}
-
-	if subPresent {
-		if sub == "" {
-			return nil, fmt.Errorf("no subscription name given")
-		}
-
-		meta.resourceName = sub
-		meta.resourceType = resourceTypePubSubSubscription
-	} else {
-		if topic == "" {
-			return nil, fmt.Errorf("no topic name given")
-		}
-
-		meta.resourceName = topic
-		meta.resourceType = resourceTypePubSubTopic
+	err := parsePubSubResourceConfig(config, &meta)
+	if err != nil {
+		return nil, err
 	}
 
 	meta.activationValue = 0
