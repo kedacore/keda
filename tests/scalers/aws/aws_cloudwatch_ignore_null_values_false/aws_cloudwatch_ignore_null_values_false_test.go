@@ -151,8 +151,8 @@ func TestCloudWatchScalerWithIgnoreNullValuesFalse(t *testing.T) {
 	// an empty set of values.
 	metricQuery := cloudwatch.CreateMetricDataInputForEmptyMetricValues(cloudwatchMetricNamespace, cloudwatchMetricName, cloudwatchMetricDimensionName, cloudwatchMetricDimensionValue)
 	metricData, err := cloudwatch.GetMetricData(ctx, cloudwatchClient, metricQuery)
-	assert.Nil(t, err, "error getting metric data")
-	assert.Nil(t, cloudwatch.ExpectEmptyMetricDataResults(metricData), "metric data should be empty")
+	require.Nil(t, err, "error getting metric data")
+	require.Nil(t, cloudwatch.ExpectEmptyMetricDataResults(metricData), "metric data should be empty")
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
