@@ -13,6 +13,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	v1alpha1Api "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -151,8 +152,8 @@ func TestCloudWatchScalerWithMinMetricValue(t *testing.T) {
 	// an empty set of values.
 	metricQuery := cloudwatch.CreateMetricDataInputForEmptyMetricValues(cloudwatchMetricNamespace, cloudwatchMetricName, cloudwatchMetricDimensionName, cloudwatchMetricDimensionValue)
 	metricData, err := cloudwatch.GetMetricData(ctx, cloudwatchClient, metricQuery)
-	assert.Nil(t, err, "error getting metric data")
-	assert.Nil(t, cloudwatch.ExpectEmptyMetricDataResults(metricData), "metric data should be empty")
+	require.Nil(t, err, "error getting metric data")
+	require.Nil(t, cloudwatch.ExpectEmptyMetricDataResults(metricData), "metric data should be empty")
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
