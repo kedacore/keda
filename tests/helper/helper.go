@@ -309,21 +309,15 @@ func WaitForNamespaceDeletion(t *testing.T, nsName string) bool {
 	return false
 }
 
-func WaitForScaledJobCount(t *testing.T, kc *kubernetes.Clientset, scaledJobName, namespace string,
-	target, iterations, intervalSeconds int,
-) bool {
+func WaitForScaledJobCount(t *testing.T, kc *kubernetes.Clientset, scaledJobName, namespace string, target, iterations, intervalSeconds int) bool {
 	return waitForJobCount(t, kc, fmt.Sprintf("scaledjob.keda.sh/name=%s", scaledJobName), namespace, target, iterations, intervalSeconds)
 }
 
-func WaitForJobCount(t *testing.T, kc *kubernetes.Clientset, namespace string,
-	target, iterations, intervalSeconds int,
-) bool {
+func WaitForJobCount(t *testing.T, kc *kubernetes.Clientset, namespace string, target, iterations, intervalSeconds int) bool {
 	return waitForJobCount(t, kc, "", namespace, target, iterations, intervalSeconds)
 }
 
-func waitForJobCount(t *testing.T, kc *kubernetes.Clientset, selector, namespace string,
-	target, iterations, intervalSeconds int,
-) bool {
+func waitForJobCount(t *testing.T, kc *kubernetes.Clientset, selector, namespace string, target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
 		jobList, _ := kc.BatchV1().Jobs(namespace).List(context.Background(), metav1.ListOptions{
 			LabelSelector: selector,
@@ -343,9 +337,7 @@ func waitForJobCount(t *testing.T, kc *kubernetes.Clientset, selector, namespace
 	return false
 }
 
-func WaitForJobCountUntilIteration(t *testing.T, kc *kubernetes.Clientset, namespace string,
-	target, iterations, intervalSeconds int,
-) bool {
+func WaitForJobCountUntilIteration(t *testing.T, kc *kubernetes.Clientset, namespace string, target, iterations, intervalSeconds int) bool {
 	isTargetAchieved := false
 
 	for i := 0; i < iterations; i++ {
@@ -368,9 +360,7 @@ func WaitForJobCountUntilIteration(t *testing.T, kc *kubernetes.Clientset, names
 }
 
 // Waits until deployment count hits target or number of iterations are done.
-func WaitForPodCountInNamespace(t *testing.T, kc *kubernetes.Clientset, namespace string,
-	target, iterations, intervalSeconds int,
-) bool {
+func WaitForPodCountInNamespace(t *testing.T, kc *kubernetes.Clientset, namespace string, target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
 		pods, _ := kc.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
 
@@ -440,9 +430,7 @@ func WaitForHPAMetricsToPopulate(t *testing.T, kc *kubernetes.Clientset, name, n
 }
 
 // Waits until deployment ready replica count hits target or number of iterations are done.
-func WaitForDeploymentReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
-	target, iterations, intervalSeconds int,
-) bool {
+func WaitForDeploymentReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string, target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
 		deployment, _ := kc.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
 		replicas := deployment.Status.ReadyReplicas
@@ -461,9 +449,7 @@ func WaitForDeploymentReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, 
 }
 
 // Waits until statefulset count hits target or number of iterations are done.
-func WaitForStatefulsetReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
-	target, iterations, intervalSeconds int,
-) bool {
+func WaitForStatefulsetReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string, target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
 		statefulset, _ := kc.AppsV1().StatefulSets(namespace).Get(context.Background(), name, metav1.GetOptions{})
 		replicas := statefulset.Status.ReadyReplicas
@@ -524,9 +510,7 @@ func AssertReplicaCountNotChangeDuringTimePeriod(t *testing.T, kc *kubernetes.Cl
 	}
 }
 
-func WaitForHpaCreation(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
-	iterations, intervalSeconds int,
-) (*autoscalingv2.HorizontalPodAutoscaler, error) {
+func WaitForHpaCreation(t *testing.T, kc *kubernetes.Clientset, name, namespace string, iterations, intervalSeconds int) (*autoscalingv2.HorizontalPodAutoscaler, error) {
 	hpa := &autoscalingv2.HorizontalPodAutoscaler{}
 	var err error
 	for i := 0; i < iterations; i++ {
@@ -761,9 +745,7 @@ func DeletePodsInNamespaceBySelector(t *testing.T, kc *kubernetes.Clientset, sel
 }
 
 // Wait for Pods identified by selector to complete termination
-func WaitForPodsTerminated(t *testing.T, kc *kubernetes.Clientset, selector, namespace string,
-	iterations, intervalSeconds int,
-) bool {
+func WaitForPodsTerminated(t *testing.T, kc *kubernetes.Clientset, selector, namespace string, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
 		pods, err := kc.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{LabelSelector: selector})
 		if (err != nil && errors.IsNotFound(err)) || len(pods.Items) == 0 {
