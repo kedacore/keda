@@ -146,7 +146,7 @@ func TestCloudWatchScalerWithIgnoreNullValuesFalse(t *testing.T) {
 
 	// setup cloudwatch
 	cloudwatchClient, err := cloudwatch.NewClient(ctx, awsRegion, awsAccessKeyID, awsSecretAccessKey, "")
-	assert.Nil(t, err, "error creating cloudwatch client")
+	require.Nil(t, err, "error creating cloudwatch client")
 
 	// check that the metric in question is not already present, and is returning
 	// an empty set of values.
