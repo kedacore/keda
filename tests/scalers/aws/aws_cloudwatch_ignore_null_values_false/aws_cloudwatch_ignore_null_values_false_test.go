@@ -13,6 +13,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	v1alpha1Api "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	. "github.com/kedacore/keda/v2/tests/helper"
