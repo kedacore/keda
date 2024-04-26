@@ -415,9 +415,7 @@ func WaitForAllPodRunningInNamespace(t *testing.T, kc *kubernetes.Clientset, nam
 
 // Waits until the Horizontal Pod Autoscaler for the scaledObject reports that it has metrics available
 // to calculate, or until the number of iterations are done, whichever happens first.
-func WaitForHPAMetricsToPopulate(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
-	iterations, intervalSeconds int,
-) bool {
+func WaitForHPAMetricsToPopulate(t *testing.T, kc *kubernetes.Clientset, name, namespace string, iterations, intervalSeconds int) bool {
 	totalWaitDuration := time.Duration(iterations) * time.Duration(intervalSeconds) * time.Second
 	startedWaiting := time.Now()
 	for i := 0; i < iterations; i++ {
