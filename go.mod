@@ -104,7 +104,7 @@ require (
 	k8s.io/code-generator v0.29.4
 	k8s.io/component-base v0.29.4
 	k8s.io/klog/v2 v2.120.1
-	k8s.io/kube-openapi v0.0.0-20240423202451-8948a665c108
+	k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00
 	k8s.io/metrics v0.29.4
 	k8s.io/utils v0.0.0-20240423183400-0849a56e8f22
 	knative.dev/pkg v0.0.0-20240423132823-3c6badc82748
@@ -121,7 +121,6 @@ require (
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
 	k8s.io/gengo v0.0.0-20240129211411-f967bbeff4b4 // indirect
-	k8s.io/gengo/v2 v2.0.0-20240228010128-51d4e06bde70 // indirect
 )
 
 // Remove this when they merge the PR and cut a release https://github.com/open-policy-agent/cert-controller/pull/202

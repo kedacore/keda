@@ -24,38 +24,33 @@ import (
 	"flag"
 	"log"
 
-	"github.com/spf13/pflag"
-	"k8s.io/gengo/v2"
-	"k8s.io/gengo/v2/generator"
-	"k8s.io/klog/v2"
-	"k8s.io/kube-openapi/cmd/openapi-gen/args"
+	generatorargs "k8s.io/kube-openapi/cmd/openapi-gen/args"
 	"k8s.io/kube-openapi/pkg/generators"
+
+	"github.com/spf13/pflag"
+
+	"k8s.io/klog/v2"
 )
 
 func main() {
 	klog.InitFlags(nil)
-	args := args.New()
+	genericArgs, customArgs := generatorargs.NewDefaults()
 
-	args.AddFlags(pflag.CommandLine)
+	genericArgs.AddFlags(pflag.CommandLine)
+	customArgs.AddFlags(pflag.CommandLine)
 	flag.Set("logtostderr", "true")
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
 
-	if err := args.Validate(); err != nil {
+	if err := generatorargs.Validate(genericArgs); err != nil {
 		log.Fatalf("Arguments validation error: %v", err)
 	}
 
-	myTargets := func(context *generator.Context) []generator.Target {
-		return generators.GetTargets(context, args)
-	}
-
 	// Generates the code for the OpenAPIDefinitions.
-	if err := gengo.Execute(
+	if err := genericArgs.Execute(
 		generators.NameSystems(),
 		generators.DefaultNameSystem(),
-		myTargets,
-		gengo.StdBuildTag,
-		pflag.Args(),
+		generators.Packages,
 	); err != nil {
 		log.Fatalf("OpenAPI code generation error: %v", err)
 	}

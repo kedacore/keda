@@ -1,8 +1,7 @@
 package rules
 
 import (
-	"k8s.io/gengo/v2"
-	"k8s.io/gengo/v2/types"
+	"k8s.io/gengo/types"
 )
 
 const ListTypeIDLTag = "listType"
@@ -25,7 +24,7 @@ func (l *ListTypeMissing) Validate(t *types.Type) ([]string, error) {
 	switch t.Kind {
 	case types.Struct:
 		for _, m := range t.Members {
-			hasListType := gengo.ExtractCommentTags("+", m.CommentLines)[ListTypeIDLTag] != nil
+			hasListType := types.ExtractCommentTags("+", m.CommentLines)[ListTypeIDLTag] != nil
 
 			if m.Name == "Items" && m.Type.Kind == types.Slice && hasNamedMember(t, "ListMeta") {
 				if hasListType {
@@ -34,8 +33,7 @@ func (l *ListTypeMissing) Validate(t *types.Type) ([]string, error) {
 				continue
 			}
 
-			// All slice fields must have a list-type tag except []byte
-			if m.Type.Kind == types.Slice && m.Type.Elem != types.Byte && !hasListType {
+			if m.Type.Kind == types.Slice && !hasListType {
 				fields = append(fields, m.Name)
 				continue
 			}
