@@ -3168,8 +3168,8 @@ k8s.io/gengo v0.0.0-20240129211411-f967bbeff4b4/go.mod h1:FiNAH4ZV3gBg2Kwh89tzAE
 k8s.io/klog/v2 v2.2.0/go.mod h1:Od+F08eJP+W3HUb4pSrPpgp9DGU4GzlpG/TmITuYh/Y=
 k8s.io/klog/v2 v2.120.1 h1:QXU6cPEOIslTGvZaXvFWiP9VKyeet3sawzTOvdXb4Vw=
 k8s.io/klog/v2 v2.120.1/go.mod h1:3Jpz1GvMt720eyJH1ckRHK1EDfpxISzJ7I9OYgaDtPE=
-k8s.io/kms v0.30.0 h1:ZlnD/ei5lpvUlPw6eLfVvH7d8i9qZ6HwUQgydNVks8g=
-k8s.io/kms v0.30.0/go.mod h1:GrMurD0qk3G4yNgGcsCEmepqf9KyyIrTXYR2lyUOJC4=
+k8s.io/kms v0.29.4 h1:cFGEoCLwoXk/eqYZppLZxybCdmEWeRKMCbm9f13IdRQ=
+k8s.io/kms v0.29.4/go.mod h1:vWVImKkJd+1BQY4tBwdfSwjQBiLrnbNtHADcDEDQFtk=
 k8s.io/kube-aggregator v0.29.4 h1:yT7vYtwIag4G8HNrktYZ3qz6p6oHKronMAXOw4eQ2WQ=
 k8s.io/kube-aggregator v0.29.4/go.mod h1:zBfe4iXXmw5HinNgN0JoAu5rpXdyCUvRfG99+FVOd68=
 k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00 h1:aVUu9fTY98ivBPKR9Y5w/AuzbMm96cd3YHRTU83I780=

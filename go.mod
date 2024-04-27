@@ -1,6 +1,6 @@
 module github.com/kedacore/keda/v2
 
-go 1.22.0
+go 1.21
 
 require (
 	cloud.google.com/go/compute/metadata v0.3.0
@@ -362,7 +362,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apiextensions-apiserver v0.29.4 // indirect
-	k8s.io/kms v0.30.0 // indirect
+	k8s.io/kms v0.29.4 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.29.0 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/kustomize/api v0.17.1 // indirect
