@@ -60,11 +60,11 @@ const (
 	dynakubeSecretTemplate = `apiVersion: v1
 kind: Secret
 metadata:
-	name: {{.SecretName}}
-	namespace: {{.TestNamespace}}
+  name: {{.SecretName}}
+  namespace: {{.TestNamespace}}
 data:
-	apiToken: {{.DynatraceToken}}
-	dataIngestToken: {{.DynatraceToken}}
+  apiToken: {{.DynatraceToken}}
+  dataIngestToken: {{.DynatraceToken}}
 `
 
 	dynakubeTemplate = `apiVersion: dynatrace.com/v1beta1
@@ -73,22 +73,18 @@ metadata:
 name: {{.KubernetesClusterName}}
 namespace: {{.TestNamespace}}
 spec:
-	apiUrl: {{.DynatraceHost}}/api
-
-	networkZone: {{.KubernetesClusterName}}
-
-	oneAgent:
-		cloudNativeFullStack:
-			args:
-				- --set-host-group={{.KubernetesClusterName}}
-
-	activeGate:
-		capabilities:
-		- routing
-		- dynatrace-api
-		- metrics-ingest
-
-		group: {{.KubernetesClusterName}}
+  apiUrl: {{.DynatraceHost}}/api
+  networkZone: {{.KubernetesClusterName}}
+  oneAgent:
+    cloudNativeFullStack:
+      args:
+        - --set-host-group={{.KubernetesClusterName}}
+  activeGate:
+    capabilities:
+    - routing
+    - dynatrace-api
+    - metrics-ingest
+    group: {{.KubernetesClusterName}}
 `
 	secretTemplate = `apiVersion: v1
 kind: Secret
@@ -149,10 +145,10 @@ spec:
       app: {{.DeploymentName}}
   template:
     metadata:
-	  annotations:
-		data-ingest.dynatrace.com/inject: "true"
-		dynatrace.com/inject: "true"
-		oneagent.dynatrace.com/inject: "true"
+      annotations:
+        data-ingest.dynatrace.com/inject: "true"
+        dynatrace.com/inject: "true"
+        oneagent.dynatrace.com/inject: "true"
       labels:
         app: {{.DeploymentName}}
     spec:
