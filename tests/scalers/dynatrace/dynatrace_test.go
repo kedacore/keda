@@ -122,6 +122,10 @@ spec:
       app: {{.MonitoredDeploymentName}}
   template:
     metadata:
+      annotations:
+        data-ingest.dynatrace.com/inject: "true"
+        dynatrace.com/inject: "true"
+        oneagent.dynatrace.com/inject: "true"
       labels:
         app: {{.MonitoredDeploymentName}}
     spec:
@@ -145,7 +149,7 @@ spec:
       app: {{.DeploymentName}}
   template:
     metadata:
-      annotations:
+     annotations:
         data-ingest.dynatrace.com/inject: "true"
         dynatrace.com/inject: "true"
         oneagent.dynatrace.com/inject: "true"
@@ -202,8 +206,8 @@ spec:
         host: "{{.DynatraceHost}}"
         threshold: "2"
         activationThreshold: "3"
-		metricSelector: builtin:service.requestCount.total:splitBy():fold
-		from: now-2m
+	metricSelector: builtin:service.requestCount.total:splitBy():fold
+	from: now-2m
       authenticationRef:
         name: {{.TriggerAuthName}}
 `
