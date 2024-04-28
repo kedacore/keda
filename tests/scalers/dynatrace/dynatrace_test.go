@@ -202,8 +202,8 @@ spec:
         host: {{.DynatraceHost}}
         threshold: "2"
         activationThreshold: "3"
-	metricSelector: "builtin:service.requestCount.total:splitBy():fold"
-	from: now-2m
+        metricSelector: "builtin:service.requestCount.total:splitBy():fold"
+        from: now-2m
       authenticationRef:
         name: {{.TriggerAuthName}}
 `
@@ -252,7 +252,7 @@ func TestDynatraceScaler(t *testing.T) {
 
 	data, templates = getDynatraceTemplateData()
 	// Create Dynatrace-specific kubernetes resources
-	CreateKubernetesResources(t, kc, testNamespace, data, templates)
+	KubectlApplyMultipleWithTemplate(t, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
 		"replica count should be %s after a minute", minReplicaCount)
