@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/internal/csot"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 )
@@ -377,7 +378,7 @@ func (e Error) NamespaceNotFound() bool {
 
 // ExtractErrorFromServerResponse extracts an error from a server response bsoncore.Document
 // if there is one. Also used in testing for SDAM.
-func ExtractErrorFromServerResponse(doc bsoncore.Document) error {
+func ExtractErrorFromServerResponse(ctx context.Context, doc bsoncore.Document) error {
 	var errmsg, codeName string
 	var code int32
 	var labels []string
@@ -514,7 +515,7 @@ func ExtractErrorFromServerResponse(doc bsoncore.Document) error {
 			errmsg = "command failed"
 		}
 
-		return Error{
+		err := Error{
 			Code:            code,
 			Message:         errmsg,
 			Name:            codeName,
@@ -522,6 +523,20 @@ func ExtractErrorFromServerResponse(doc bsoncore.Document) error {
 			TopologyVersion: tv,
 			Raw:             doc,
 		}
+
+		// If CSOT is enabled and we get a MaxTimeMSExpired error, assume that
+		// the error was caused by setting "maxTimeMS" on the command based on
+		// the context deadline or on "timeoutMS". In that case, make the error
+		// wrap context.DeadlineExceeded so that users can always check
+		//
+		//  errors.Is(err, context.DeadlineExceeded)
+		//
+		// for either client-side or server-side timeouts.
+		if csot.IsTimeoutContext(ctx) && err.Code == 50 {
+			err.Wrapped = context.DeadlineExceeded
+		}
+
+		return err
 	}
 
 	if len(wcError.WriteErrors) > 0 || wcError.WriteConcernError != nil {

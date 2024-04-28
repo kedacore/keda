@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 @description('The base resource name.')
 param baseName string = resourceGroup().name
 

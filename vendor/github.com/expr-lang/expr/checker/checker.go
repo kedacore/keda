@@ -9,6 +9,7 @@ import (
 	"github.com/expr-lang/expr/builtin"
 	"github.com/expr-lang/expr/conf"
 	"github.com/expr-lang/expr/file"
+	"github.com/expr-lang/expr/internal/deref"
 	"github.com/expr-lang/expr/parser"
 )
 
@@ -203,8 +204,7 @@ func (v *checker) ConstantNode(node *ast.ConstantNode) (reflect.Type, info) {
 
 func (v *checker) UnaryNode(node *ast.UnaryNode) (reflect.Type, info) {
 	t, _ := v.visit(node.Node)
-
-	t = deref(t)
+	t = deref.Type(t)
 
 	switch node.Operator {
 
@@ -235,16 +235,8 @@ func (v *checker) BinaryNode(node *ast.BinaryNode) (reflect.Type, info) {
 	l, _ := v.visit(node.Left)
 	r, ri := v.visit(node.Right)
 
-	l = deref(l)
-	r = deref(r)
-
-	// check operator overloading
-	if fns, ok := v.config.Operators[node.Operator]; ok {
-		t, _, ok := conf.FindSuitableOperatorOverload(fns, v.config.Types, l, r)
-		if ok {
-			return t, info{}
-		}
-	}
+	l = deref.Type(l)
+	r = deref.Type(r)
 
 	switch node.Operator {
 	case "==", "!=":
@@ -633,7 +625,7 @@ func (v *checker) BuiltinNode(node *ast.BuiltinNode) (reflect.Type, info) {
 			if isAny(collection) {
 				return arrayType, info{}
 			}
-			return reflect.SliceOf(collection.Elem()), info{}
+			return arrayType, info{}
 		}
 		return v.error(node.Arguments[1], "predicate should has one input and one output param")
 
@@ -651,7 +643,7 @@ func (v *checker) BuiltinNode(node *ast.BuiltinNode) (reflect.Type, info) {
 			closure.NumOut() == 1 &&
 			closure.NumIn() == 1 && isAny(closure.In(0)) {
 
-			return reflect.SliceOf(closure.Out(0)), info{}
+			return arrayType, info{}
 		}
 		return v.error(node.Arguments[1], "predicate should has one input and one output param")
 
@@ -659,6 +651,10 @@ func (v *checker) BuiltinNode(node *ast.BuiltinNode) (reflect.Type, info) {
 		collection, _ := v.visit(node.Arguments[0])
 		if !isArray(collection) && !isAny(collection) {
 			return v.error(node.Arguments[0], "builtin %v takes only array (got %v)", node.Name, collection)
+		}
+
+		if len(node.Arguments) == 1 {
+			return integerType, info{}
 		}
 
 		v.begin(collection)
@@ -675,6 +671,29 @@ func (v *checker) BuiltinNode(node *ast.BuiltinNode) (reflect.Type, info) {
 			return integerType, info{}
 		}
 		return v.error(node.Arguments[1], "predicate should has one input and one output param")
+
+	case "sum":
+		collection, _ := v.visit(node.Arguments[0])
+		if !isArray(collection) && !isAny(collection) {
+			return v.error(node.Arguments[0], "builtin %v takes only array (got %v)", node.Name, collection)
+		}
+
+		if len(node.Arguments) == 2 {
+			v.begin(collection)
+			closure, _ := v.visit(node.Arguments[1])
+			v.end()
+
+			if isFunc(closure) &&
+				closure.NumOut() == 1 &&
+				closure.NumIn() == 1 && isAny(closure.In(0)) {
+				return closure.Out(0), info{}
+			}
+		} else {
+			if isAny(collection) {
+				return anyType, info{}
+			}
+			return collection.Elem(), info{}
+		}
 
 	case "find", "findLast":
 		collection, _ := v.visit(node.Arguments[0])
@@ -736,6 +755,28 @@ func (v *checker) BuiltinNode(node *ast.BuiltinNode) (reflect.Type, info) {
 			closure.NumIn() == 1 && isAny(closure.In(0)) {
 
 			return reflect.TypeOf(map[any][]any{}), info{}
+		}
+		return v.error(node.Arguments[1], "predicate should has one input and one output param")
+
+	case "sortBy":
+		collection, _ := v.visit(node.Arguments[0])
+		if !isArray(collection) && !isAny(collection) {
+			return v.error(node.Arguments[0], "builtin %v takes only array (got %v)", node.Name, collection)
+		}
+
+		v.begin(collection)
+		closure, _ := v.visit(node.Arguments[1])
+		v.end()
+
+		if len(node.Arguments) == 3 {
+			_, _ = v.visit(node.Arguments[2])
+		}
+
+		if isFunc(closure) &&
+			closure.NumOut() == 1 &&
+			closure.NumIn() == 1 && isAny(closure.In(0)) {
+
+			return reflect.TypeOf([]any{}), info{}
 		}
 		return v.error(node.Arguments[1], "predicate should has one input and one output param")
 

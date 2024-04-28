@@ -50,6 +50,7 @@ type Aggregate struct {
 	hasOutputStage           bool
 	customOptions            map[string]bsoncore.Value
 	timeout                  *time.Duration
+	omitCSOTMaxTimeMS        bool
 
 	result driver.CursorResponse
 }
@@ -113,6 +114,7 @@ func (a *Aggregate) Execute(ctx context.Context) error {
 		MaxTime:                        a.maxTime,
 		Timeout:                        a.timeout,
 		Name:                           driverutil.AggregateOp,
+		OmitCSOTMaxTimeMS:              a.omitCSOTMaxTimeMS,
 	}.Execute(ctx)
 
 }
@@ -417,5 +419,17 @@ func (a *Aggregate) Timeout(timeout *time.Duration) *Aggregate {
 	}
 
 	a.timeout = timeout
+	return a
+}
+
+// OmitCSOTMaxTimeMS omits the automatically-calculated "maxTimeMS" from the
+// command when CSOT is enabled. It does not effect "maxTimeMS" set by
+// [Aggregate.MaxTime].
+func (a *Aggregate) OmitCSOTMaxTimeMS(omit bool) *Aggregate {
+	if a == nil {
+		a = new(Aggregate)
+	}
+
+	a.omitCSOTMaxTimeMS = omit
 	return a
 }

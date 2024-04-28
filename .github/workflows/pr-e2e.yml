@@ -16,7 +16,7 @@ jobs:
       image_tag: "pr-${{ steps.parser.outputs.pr_num }}-${{ steps.parser.outputs.commit_sha }}"
       commit_sha: ${{ steps.parser.outputs.commit_sha }}
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4
 
       - uses: tspascoal/get-user-teams-membership@v2
         id: checkUserMember
@@ -68,7 +68,7 @@ jobs:
     needs: triage
     runs-on: ubuntu-latest
     name: Build images
-    container: ghcr.io/kedacore/keda-tools:1.21.6
+    container: ghcr.io/kedacore/keda-tools:1.21.9
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
@@ -80,7 +80,7 @@ jobs:
           status: in_progress
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4
 
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -112,7 +112,7 @@ jobs:
     needs: [triage, build-test-images]
     runs-on: e2e
     name: Execute e2e tests
-    container: ghcr.io/kedacore/keda-tools:1.21.6
+    container: ghcr.io/kedacore/keda-tools:1.21.9
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
@@ -124,7 +124,7 @@ jobs:
           status: in_progress
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4
 
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -219,7 +219,7 @@ jobs:
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
       - name: Upload test logs
-        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
         with:
           name: e2e-test-logs
           path: "${{ github.workspace }}/**/*.log"

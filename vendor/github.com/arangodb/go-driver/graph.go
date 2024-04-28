@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017-2024 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,8 +17,6 @@
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
 //
-// Author Ewout Prangsma
-//
 
 package driver
 
@@ -32,6 +30,9 @@ type Graph interface {
 	// Remove removes the entire graph.
 	// If the graph does not exist, a NotFoundError is returned.
 	Remove(ctx context.Context) error
+
+	// RemoveWithOpts removes the entire graph with options.
+	RemoveWithOpts(ctx context.Context, opts *RemoveGraphOptions) error
 
 	// IsSmart returns true of smart is smart. In case of Community Edition it is always false
 	IsSmart() bool
@@ -69,7 +70,7 @@ type Graph interface {
 	// NumberOfShards returns the number of shards for the graph.
 	NumberOfShards() int
 
-	// OrphanCollections returns the orphan collcetions of the graph.
+	// OrphanCollections returns the orphan collections of the graph.
 	OrphanCollections() []string
 
 	// ReplicationFactor returns the current replication factor.
@@ -77,4 +78,8 @@ type Graph interface {
 
 	// WriteConcern returns the write concern setting of the graph.
 	WriteConcern() int
+}
+
+type RemoveGraphOptions struct {
+	DropCollections bool `json:"dropCollections,omitempty"`
 }

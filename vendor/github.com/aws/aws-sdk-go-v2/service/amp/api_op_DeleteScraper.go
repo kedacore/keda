@@ -6,13 +6,13 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/amp/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Deletes a scraper.
+// The DeleteScraper operation deletes one scraper, and stops any metrics
+// collection that the scraper performs.
 func (c *Client) DeleteScraper(ctx context.Context, params *DeleteScraperInput, optFns ...func(*Options)) (*DeleteScraperOutput, error) {
 	if params == nil {
 		params = &DeleteScraperInput{}
@@ -36,8 +36,8 @@ type DeleteScraperInput struct {
 	// This member is required.
 	ScraperId *string
 
-	// Optional, unique, case-sensitive, user-provided identifier to ensure the
-	// idempotency of the request.
+	// (Optional) A unique, case-sensitive identifier that you can provide to ensure
+	// the idempotency of the request.
 	ClientToken *string
 
 	noSmithyDocumentSerde
@@ -46,12 +46,12 @@ type DeleteScraperInput struct {
 // Represents the output of a DeleteScraper operation.
 type DeleteScraperOutput struct {
 
-	// The ID of the scraper that was deleted.
+	// The ID of the scraper to delete.
 	//
 	// This member is required.
 	ScraperId *string
 
-	// The status of the scraper that is being deleted.
+	// The current status of the scraper.
 	//
 	// This member is required.
 	Status *types.ScraperStatus
@@ -84,25 +84,25 @@ func (c *Client) addOperationDeleteScraperMiddlewares(stack *middleware.Stack, o
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -126,7 +126,7 @@ func (c *Client) addOperationDeleteScraperMiddlewares(stack *middleware.Stack, o
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDeleteScraper(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

@@ -213,7 +213,7 @@ func CreateHTTPRoundTripper(roundTripperType TransportType, auth *AuthMeta, conf
 				rt = pConfig.NewBasicAuthRoundTripper(
 					auth.Username,
 					pConfig.Secret(auth.Password),
-					"", "", roundTripper,
+					"", roundTripper,
 				)
 			}
 

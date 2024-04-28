@@ -205,25 +205,6 @@ func fetchField(t reflect.Type, name string) (reflect.StructField, bool) {
 	return reflect.StructField{}, false
 }
 
-func deref(t reflect.Type) reflect.Type {
-	if t == nil {
-		return nil
-	}
-	if t.Kind() == reflect.Interface {
-		return t
-	}
-	for t != nil && t.Kind() == reflect.Ptr {
-		e := t.Elem()
-		switch e.Kind() {
-		case reflect.Struct, reflect.Map, reflect.Array, reflect.Slice:
-			return t
-		default:
-			t = e
-		}
-	}
-	return t
-}
-
 func kind(t reflect.Type) reflect.Kind {
 	if t == nil {
 		return reflect.Invalid

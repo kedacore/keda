@@ -2,6 +2,15 @@
 
 ## [master](https://github.com/arangodb/go-driver/tree/master) (N/A)
 
+## [1.6.2](https://github.com/arangodb/go-driver/tree/v1.6.2) (2024-04-02)
+- Switch to Go 1.20.11
+- Switch to Go 1.21.5
+- Disable AF mode in tests (not supported since 3.12)
+- Remove graph with all collections
+- Allow skipping validation for Database and Collection existence
+- Deprecate Pregel Job API
+- `MDI` and `MDI-Prefixed` indexes. Deprecate `ZKD` index
+
 ## [1.6.1](https://github.com/arangodb/go-driver/tree/v1.6.1) (2023-10-31)
 - Add support for getting license
 - Add support for Raw Authentication in VST (support external jwt token as raw element)

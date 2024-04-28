@@ -6,12 +6,11 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Updates an AMP workspace alias.
+// Updates the alias of an existing workspace.
 func (c *Client) UpdateWorkspaceAlias(ctx context.Context, params *UpdateWorkspaceAliasInput, optFns ...func(*Options)) (*UpdateWorkspaceAliasOutput, error) {
 	if params == nil {
 		params = &UpdateWorkspaceAliasInput{}
@@ -30,16 +29,18 @@ func (c *Client) UpdateWorkspaceAlias(ctx context.Context, params *UpdateWorkspa
 // Represents the input of an UpdateWorkspaceAlias operation.
 type UpdateWorkspaceAliasInput struct {
 
-	// The ID of the workspace being updated.
+	// The ID of the workspace to update.
 	//
 	// This member is required.
 	WorkspaceId *string
 
-	// The new alias of the workspace.
+	// The new alias for the workspace. It does not need to be unique. Amazon Managed
+	// Service for Prometheus will automatically strip any blank spaces from the
+	// beginning and end of the alias that you specify.
 	Alias *string
 
-	// Optional, unique, case-sensitive, user-provided identifier to ensure the
-	// idempotency of the request.
+	// A unique identifier that you can provide to ensure the idempotency of the
+	// request. Case-sensitive.
 	ClientToken *string
 
 	noSmithyDocumentSerde
@@ -74,25 +75,25 @@ func (c *Client) addOperationUpdateWorkspaceAliasMiddlewares(stack *middleware.S
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -116,7 +117,7 @@ func (c *Client) addOperationUpdateWorkspaceAliasMiddlewares(stack *middleware.S
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opUpdateWorkspaceAlias(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

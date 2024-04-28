@@ -8,3 +8,4 @@
 *.html
 custom_tests.json
 pro/
+test/avs/
