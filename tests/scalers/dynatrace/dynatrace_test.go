@@ -102,10 +102,9 @@ metadata:
   namespace: {{.TestNamespace}}
 spec:
   secretTargetRef:
-  secretTargetRef:
   - parameter: token
     name: {{.SecretName}}
-    key: token
+    key: apiToken
 `
 
 	monitoredDeploymentTemplate = `apiVersion: apps/v1
