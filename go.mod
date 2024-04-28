@@ -126,11 +126,20 @@ require (
 // Remove this when they merge the PR and cut a release https://github.com/open-policy-agent/cert-controller/pull/202
 replace github.com/open-policy-agent/cert-controller => github.com/jorturfer/cert-controller v0.0.0-20240427003941-363ba56751d7
 
-// Remove this when k8s deps are aligned with the prometheus version
 replace (
+	// pin k8s.io to v0.29.4
+	github.com/google/cel-go => github.com/google/cel-go v0.17.8
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.16.0
 	github.com/prometheus/client_model => github.com/prometheus/client_model v0.4.0
 	github.com/prometheus/common => github.com/prometheus/common v0.44.0
+	k8s.io/api => k8s.io/api v0.29.4
+	k8s.io/apimachinery => k8s.io/apimachinery v0.29.4
+	k8s.io/apiserver => k8s.io/apiserver v0.29.4
+	k8s.io/client-go => k8s.io/client-go v0.29.4
+	k8s.io/code-generator => k8s.io/code-generator v0.29.4
+	k8s.io/component-base => k8s.io/component-base v0.29.4
+	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00
+	k8s.io/metrics => k8s.io/metrics v0.29.4
 )
 
 replace (
