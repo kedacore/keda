@@ -70,21 +70,21 @@ data:
 	dynakubeTemplate = `apiVersion: dynatrace.com/v1beta1
 kind: DynaKube
 metadata:
-name: {{.KubernetesClusterName}}
+name: {{.DeploymentName}}
 namespace: {{.TestNamespace}}
 spec:
   apiUrl: {{.DynatraceHost}}/api
-  networkZone: {{.KubernetesClusterName}}
+  networkZone: {{.DeploymentName}}
   oneAgent:
     cloudNativeFullStack:
       args:
-        - --set-host-group={{.KubernetesClusterName}}
+        - --set-host-group={{.DeploymentName}}
   activeGate:
     capabilities:
     - routing
     - dynatrace-api
     - metrics-ingest
-    group: {{.KubernetesClusterName}}
+    group: {{.DeploymentName}}
 `
 	secretTemplate = `apiVersion: v1
 kind: Secret
@@ -149,10 +149,6 @@ spec:
       app: {{.DeploymentName}}
   template:
     metadata:
-     annotations:
-        data-ingest.dynatrace.com/inject: "true"
-        dynatrace.com/inject: "true"
-        oneagent.dynatrace.com/inject: "true"
       labels:
         app: {{.DeploymentName}}
     spec:
@@ -203,10 +199,10 @@ spec:
   triggers:
     - type: dynatrace
       metadata:
-        host: "{{.DynatraceHost}}"
+        host: {{.DynatraceHost}}
         threshold: "2"
         activationThreshold: "3"
-	metricSelector: builtin:service.requestCount.total:splitBy():fold
+	metricSelector: "builtin:service.requestCount.total:splitBy():fold"
 	from: now-2m
       authenticationRef:
         name: {{.TriggerAuthName}}
@@ -304,7 +300,7 @@ func getDynatraceTemplateData() (templateData, []Template) {
 			SecretName:            secretName,
 			DynatraceHost:         dynatraceHost,
 			DynatraceToken:        base64.StdEncoding.EncodeToString([]byte(dynatraceToken)),
-			KubernetesClusterName: kubernetesClusterName,
+			DeploymentName:        deploymentName,
 		}, []Template{
 			{Name: "dynakubeSecretTemplate", Config: dynakubeSecretTemplate},
 			{Name: "dynakubeTemplate", Config: dynakubeTemplate},
