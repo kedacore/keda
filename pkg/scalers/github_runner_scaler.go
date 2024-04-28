@@ -486,7 +486,7 @@ func (s *githubRunnerScaler) getRepositories(ctx context.Context) ([]string, err
 			return nil, fmt.Errorf("runnerScope %s not supported", s.metadata.runnerScope)
 		}
 	
-		body, err := getGithubRequest(ctx, url, s.httpClient)
+		body, _, err := getGithubRequest(ctx, url, s.httpClient)
 		if err != nil {
 			return nil, err
 		}
