@@ -70,21 +70,21 @@ data:
 	dynakubeTemplate = `apiVersion: dynatrace.com/v1beta1
 kind: DynaKube
 metadata:
-name: {{.DeploymentName}}
+name: {{.KubernetesClusterName}}
 namespace: {{.TestNamespace}}
 spec:
-  apiUrl: {{.DynatraceHost}}/api
-  networkZone: {{.DeploymentName}}
+  apiUrl: "{{.DynatraceHost}}/api"
+  networkZone: {{.KubernetesClusterName}}
   oneAgent:
     cloudNativeFullStack:
       args:
-        - --set-host-group={{.DeploymentName}}
+        - --set-host-group={{.KubernetesClusterName}}
   activeGate:
     capabilities:
     - routing
     - dynatrace-api
     - metrics-ingest
-    group: {{.DeploymentName}}
+    group: {{.KubernetesClusterName}}
 `
 	secretTemplate = `apiVersion: v1
 kind: Secret
@@ -300,7 +300,7 @@ func getDynatraceTemplateData() (templateData, []Template) {
 			SecretName:            secretName,
 			DynatraceHost:         dynatraceHost,
 			DynatraceToken:        base64.StdEncoding.EncodeToString([]byte(dynatraceToken)),
-			DeploymentName:        deploymentName,
+			KubernetesClusterName: kubernetesClusterName,
 		}, []Template{
 			{Name: "dynakubeSecretTemplate", Config: dynakubeSecretTemplate},
 			{Name: "dynakubeTemplate", Config: dynakubeTemplate},
