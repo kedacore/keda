@@ -60,8 +60,8 @@ const (
 	dynakubeTemplate = `apiVersion: dynatrace.com/v1beta1
 kind: DynaKube
 metadata:
-name: {{.KubernetesClusterName}}
-namespace: {{.TestNamespace}}
+  name: {{.KubernetesClusterName}}
+  namespace: {{.TestNamespace}}
 spec:
   tokens: {{.SecretName}}
   apiUrl: "{{.DynatraceHost}}/api"
