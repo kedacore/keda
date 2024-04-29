@@ -57,22 +57,13 @@ type templateData struct {
 }
 
 const (
-	dynakubeSecretTemplate = `apiVersion: v1
-kind: Secret
-metadata:
-  name: {{.SecretName}}
-  namespace: {{.TestNamespace}}
-data:
-  apiToken: {{.DynatraceToken}}
-  dataIngestToken: {{.DynatraceToken}}
-`
-
 	dynakubeTemplate = `apiVersion: dynatrace.com/v1beta1
 kind: DynaKube
 metadata:
 name: {{.KubernetesClusterName}}
 namespace: {{.TestNamespace}}
 spec:
+  tokens: {{.SecretName}}
   apiUrl: "{{.DynatraceHost}}/api"
   networkZone: {{.KubernetesClusterName}}
   oneAgent:
@@ -92,7 +83,8 @@ metadata:
   name: {{.SecretName}}
   namespace: {{.TestNamespace}}
 data:
-  token: {{.DynatraceToken}}
+  apiToken: {{.DynatraceToken}}
+  dataIngestToken: {{.DynatraceToken}}
 `
 
 	triggerAuthenticationTemplate = `apiVersion: keda.sh/v1alpha1
@@ -298,10 +290,8 @@ func getDynatraceTemplateData() (templateData, []Template) {
 			TestNamespace:         testNamespace,
 			SecretName:            secretName,
 			DynatraceHost:         dynatraceHost,
-			DynatraceToken:        base64.StdEncoding.EncodeToString([]byte(dynatraceToken)),
 			KubernetesClusterName: kubernetesClusterName,
 		}, []Template{
-			{Name: "dynakubeSecretTemplate", Config: dynakubeSecretTemplate},
 			{Name: "dynakubeTemplate", Config: dynakubeTemplate},
 		}
 }
