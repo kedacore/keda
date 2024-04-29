@@ -120,7 +120,6 @@ func schema_pkg_apis_custom_metrics_v1beta1_MetricValue(ref common.ReferenceCall
 					"timestamp": {
 						SchemaProps: spec.SchemaProps{
 							Description: "indicates the time at which the metrics were produced",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
@@ -134,7 +133,6 @@ func schema_pkg_apis_custom_metrics_v1beta1_MetricValue(ref common.ReferenceCall
 					"value": {
 						SchemaProps: spec.SchemaProps{
 							Description: "the value of the metric for this",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
 						},
 					},
@@ -311,7 +309,6 @@ func schema_pkg_apis_custom_metrics_v1beta2_MetricValue(ref common.ReferenceCall
 					"timestamp": {
 						SchemaProps: spec.SchemaProps{
 							Description: "indicates the time at which the metrics were produced",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
@@ -325,7 +322,6 @@ func schema_pkg_apis_custom_metrics_v1beta2_MetricValue(ref common.ReferenceCall
 					"value": {
 						SchemaProps: spec.SchemaProps{
 							Description: "the value of the metric for this",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
 						},
 					},
