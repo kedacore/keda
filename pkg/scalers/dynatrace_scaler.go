@@ -86,11 +86,11 @@ func parseDynatraceMetadata(config *scalersconfig.ScalerConfig, logger logr.Logg
 	}
 	meta.host = host
 
-	token, err := GetFromAuthOrMeta(config, "token")
-	if err != nil {
-		return nil, err
+	if val, ok := config.AuthParams["token"]; ok && val != "" {
+		meta.token = val
+	} else {
+		return nil, fmt.Errorf("no token given in trigger auth")
 	}
-	meta.token = token
 
 	if val, ok := config.TriggerMetadata["metricSelector"]; ok && val != "" {
 		meta.metricSelector = val

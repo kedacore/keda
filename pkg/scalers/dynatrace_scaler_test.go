@@ -25,8 +25,6 @@ type dynatraceMetricIdentifier struct {
 var testDynatraceMetadata = []dynatraceMetadataTestData{
 	{map[string]string{}, map[string]string{}, true},
 	// all properly formed
-	{map[string]string{"host": "http://dummy:1234", "token": "dummy", "threshold": "100", "from": "now-3d", "metricSelector": "MyCustomEvent:filter(eq(\"someProperty\",\"someValue\")):count:splitBy(\"dt.entity.process_group\"):fold"}, map[string]string{}, false},
-	// host & token passed via auth params
 	{map[string]string{"threshold": "100", "from": "now-3d", "metricSelector": "MyCustomEvent:filter(eq(\"someProperty\",\"someValue\")):count:splitBy(\"dt.entity.process_group\"):fold"}, map[string]string{"host": "http://dummy:1234", "token": "dummy"}, false},
 	// malformed threshold
 	{map[string]string{"threshold": "abc", "from": "now-3d", "metricSelector": "MyCustomEvent:filter(eq(\"someProperty\",\"someValue\")):count:splitBy(\"dt.entity.process_group\"):fold"}, map[string]string{"host": "http://dummy:1234", "token": "dummy"}, true},
@@ -36,6 +34,8 @@ var testDynatraceMetadata = []dynatraceMetadataTestData{
 	{map[string]string{"metricSelector": "MyCustomEvent:filter(eq(\"someProperty\",\"someValue\")):count:splitBy(\"dt.entity.process_group\"):fold"}, map[string]string{"host": "http://dummy:1234", "token": "dummy"}, true},
 	// missing metricsSelector
 	{map[string]string{"threshold": "100"}, map[string]string{"host": "http://dummy:1234", "token": "dummy"}, true},
+	// missing token (must come from auth params)
+	{map[string]string{"token": "foo", "threshold": "100", "from": "now-3d", "metricSelector": "MyCustomEvent:filter(eq(\"someProperty\",\"someValue\")):count:splitBy(\"dt.entity.process_group\"):fold"}, map[string]string{"host": "http://dummy:1234"}, true},
 }
 
 var dynatraceMetricIdentifiers = []dynatraceMetricIdentifier{
