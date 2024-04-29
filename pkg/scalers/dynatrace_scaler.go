@@ -47,7 +47,7 @@ type dynatraceResponse struct {
 		Data []struct {
 			Values []float64 `json:"values"`
 		} `json:"data"`
-	} `json:"response"`
+	} `json:"result"`
 }
 
 func NewDynatraceScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
