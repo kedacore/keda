@@ -83,7 +83,6 @@ func schema_pkg_apis_external_metrics_v1beta1_ExternalMetricValue(ref common.Ref
 					"timestamp": {
 						SchemaProps: spec.SchemaProps{
 							Description: "indicates the time at which the metrics were produced",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
@@ -97,7 +96,6 @@ func schema_pkg_apis_external_metrics_v1beta1_ExternalMetricValue(ref common.Ref
 					"value": {
 						SchemaProps: spec.SchemaProps{
 							Description: "the value of the metric",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
 						},
 					},
