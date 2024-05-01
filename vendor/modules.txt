@@ -2689,7 +2689,7 @@ sigs.k8s.io/controller-tools/pkg/schemapatcher
 sigs.k8s.io/controller-tools/pkg/schemapatcher/internal/yaml
 sigs.k8s.io/controller-tools/pkg/version
 sigs.k8s.io/controller-tools/pkg/webhook
-# sigs.k8s.io/custom-metrics-apiserver v1.28.1-0.20240425173932-1a855fe8c789
+# sigs.k8s.io/custom-metrics-apiserver v1.29.0
 ## explicit; go 1.21
 sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver
 sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver/endpoints/handlers
