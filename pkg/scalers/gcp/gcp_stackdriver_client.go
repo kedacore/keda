@@ -339,10 +339,14 @@ func getActualProjectID(s *StackDriverClient, projectID string) string {
 // | align delta(3m)
 // | every 3m
 // | group_by [], count(value)
-func (s StackDriverClient) BuildMQLQuery(projectID, resourceType, metric, resourceName, aggregation string) (string, error) {
-	th := defaultTimeHorizon
-	if aggregation != "" {
-		th = aggregationTimeHorizon
+func (s StackDriverClient) BuildMQLQuery(projectID, resourceType, metric, resourceName, aggregation, timeHorizon string) (string, error) {
+
+	th := timeHorizon
+	if th == "" {
+		th = defaultTimeHorizon
+		if aggregation != "" {
+			th = aggregationTimeHorizon
+		}
 	}
 
 	pid := getActualProjectID(&s, projectID)

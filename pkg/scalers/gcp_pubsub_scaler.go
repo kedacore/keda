@@ -48,6 +48,7 @@ type pubsubMetadata struct {
 	gcpAuthorization *gcp.AuthorizationMetadata
 	triggerIndex     int
 	aggregation      string
+	timeHorizon      string
 }
 
 // NewPubSubScaler creates a new pubsubScaler
@@ -180,6 +181,8 @@ func parsePubSubMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger)
 
 	meta.aggregation = config.TriggerMetadata["aggregation"]
 
+	meta.timeHorizon = config.TriggerMetadata["timeHorizon"]
+
 	err := parsePubSubResourceConfig(config, &meta)
 	if err != nil {
 		return nil, err
@@ -280,7 +283,7 @@ func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (float
 	}
 	resourceID, projectID := getResourceData(s)
 	query, err := s.client.BuildMQLQuery(
-		projectID, s.metadata.resourceType, metricType, resourceID, s.metadata.aggregation,
+		projectID, s.metadata.resourceType, metricType, resourceID, s.metadata.aggregation, s.metadata.timeHorizon,
 	)
 	if err != nil {
 		return -1, err
