@@ -340,7 +340,6 @@ func getActualProjectID(s *StackDriverClient, projectID string) string {
 // | every 3m
 // | group_by [], count(value)
 func (s StackDriverClient) BuildMQLQuery(projectID, resourceType, metric, resourceName, aggregation, timeHorizon string) (string, error) {
-
 	th := timeHorizon
 	if th == "" {
 		th = defaultTimeHorizon
