@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"maps"
 	"os/exec"
 	"strings"
 	"testing"
@@ -829,7 +830,7 @@ func testScalerMetricLatency(t *testing.T) {
 			for _, label := range labels {
 				if (*label.Name == labelScaledObject && *label.Value == scaledObjectName) ||
 					(*label.Name == labelScaledJob && *label.Value == scaledJobName) {
-					assert.Equal(t, float64(0), *metric.Gauge.Value)
+					assert.InDelta(t, float64(0), *metric.Gauge.Value, 0.001)
 					found = true
 				}
 			}
@@ -1062,15 +1063,16 @@ func getLatestCommit(t *testing.T) string {
 	return strings.Trim(out.String(), "\n")
 }
 
-func checkTriggerTotalValues(t *testing.T, families map[string]*prommodel.MetricFamily, expected map[string]int) {
+func checkTriggerTotalValues(t *testing.T, families map[string]*prommodel.MetricFamily, expectedValues map[string]int) {
 	t.Log("--- testing trigger total metrics ---")
+	expected := map[string]int{}
 
 	family, ok := families["keda_trigger_totals"]
 	assert.True(t, ok, "keda_trigger_totals not available")
 	if !ok {
 		return
 	}
-
+	maps.Copy(expected, expectedValues)
 	metrics := family.GetMetric()
 	for _, metric := range metrics {
 		labels := metric.GetLabel()
@@ -1095,7 +1097,7 @@ func checkTriggerTotalValues(t *testing.T, families map[string]*prommodel.Metric
 	if !ok {
 		return
 	}
-
+	maps.Copy(expected, expectedValues)
 	metrics = family.GetMetric()
 	for _, metric := range metrics {
 		labels := metric.GetLabel()
