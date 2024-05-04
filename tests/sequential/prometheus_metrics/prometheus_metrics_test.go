@@ -1274,9 +1274,9 @@ func checkGRPCServerMetrics(t *testing.T, families map[string]*prommodel.MetricF
 				continue
 			}
 		}
-		metricValue += *metric.Counter.Value
+		metricValue += *metric.Histogram.SampleSum
 	}
-	assert.GreaterOrEqual(t, metricValue, 1.0, "keda_internal_metricsservice_grpc_server_handling_seconds has to be greater than 0")
+	assert.Greater(t, metricValue, 0.0, "keda_internal_metricsservice_grpc_server_handling_seconds has to be greater than 0")
 }
 
 func checkGRPCClientMetrics(t *testing.T, families map[string]*prommodel.MetricFamily) {
