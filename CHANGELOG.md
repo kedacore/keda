@@ -93,6 +93,7 @@ Here is an overview of all new **experimental** features:
 - **MongoDB Scaler**:  MongoDB url parses correctly `+srv` scheme ([#5760](https://github.com/kedacore/keda/issues/5760))
 - **New Relic Scaler**: Fix CVE-2024-6104 in github.com/hashicorp/go-retryablehttp ([#5944](https://github.com/kedacore/keda/issues/5944))
 - **ScaledJob**: Fix ScaledJob ignores failing trigger(s) error ([#5922](https://github.com/kedacore/keda/issues/5922))
+- **MongoDB Scaler**:  MongoDB url parses correctly `+srv` scheme ([#5760](https://github.com/kedacore/keda/issues/5760))
 
 ### Deprecations
 
