@@ -234,7 +234,7 @@ func deleteEventHub(t *testing.T, adminClient *eventhub.HubManager) {
 func createContainer(t *testing.T) azblob.ContainerURL {
 	// Create Blob Container
 	credential, endpoint, err := azure.ParseAzureStorageBlobConnection(
-		context.Background(),  kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+		context.Background(), kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		storageConnectionString, "", "")
 	assert.NoErrorf(t, err, "cannot parse storage connection string - %s", err)
 
