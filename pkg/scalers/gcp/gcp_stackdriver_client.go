@@ -224,9 +224,13 @@ func (s StackDriverClient) GetMetrics(
 	filter string,
 	projectID string,
 	aggregation *monitoringpb.Aggregation,
-	valueIfNull *float64) (float64, error) {
-	// Set the start time to 1 minute ago
-	startTime := time.Now().UTC().Add(time.Minute * -2)
+	valueIfNull *float64,
+	filterDuration int64) (float64, error) {
+	// Set the start time (default 2 minute ago)
+	if filterDuration <= 0 {
+		filterDuration = 2
+	}
+	startTime := time.Now().UTC().Add(time.Minute * -time.Duration(filterDuration))
 
 	// Set the end time to now
 	endTime := time.Now().UTC()
