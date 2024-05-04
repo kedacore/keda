@@ -90,8 +90,8 @@ func ParseAzureStorageEndpointSuffix(metadata map[string]string, endpointType St
 // ParseAzureStorageQueueConnection parses queue connection string and returns credential and resource url
 func ParseAzureStorageQueueConnection(ctx context.Context, httpClient util.HTTPDoer, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix string) (azqueue.Credential, *url.URL, error) {
 	switch podIdentity.Provider {
-	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
-		token, endpoint, err := parseAccessTokenAndEndpoint(ctx, httpClient, accountName, endpointSuffix, podIdentity)
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		token, endpoint, err := parseAccessTokenAndEndpoint(ctx, accountName, endpointSuffix, podIdentity)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -122,8 +122,8 @@ func ParseAzureStorageQueueConnection(ctx context.Context, httpClient util.HTTPD
 // ParseAzureStorageBlobConnection parses blob connection string and returns credential and resource url
 func ParseAzureStorageBlobConnection(ctx context.Context, httpClient util.HTTPDoer, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix string) (azblob.Credential, *url.URL, error) {
 	switch podIdentity.Provider {
-	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
-		token, endpoint, err := parseAccessTokenAndEndpoint(ctx, httpClient, accountName, endpointSuffix, podIdentity)
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		token, endpoint, err := parseAccessTokenAndEndpoint(ctx, accountName, endpointSuffix, podIdentity)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -218,18 +218,12 @@ func parseAzureStorageConnectionString(connectionString string, endpointType Sto
 	return u, name, key, nil
 }
 
-func parseAccessTokenAndEndpoint(ctx context.Context, httpClient util.HTTPDoer, accountName string, endpointSuffix string,
+func parseAccessTokenAndEndpoint(ctx context.Context, accountName string, endpointSuffix string,
 	podIdentity kedav1alpha1.AuthPodIdentity) (string, *url.URL, error) {
 	var token AADToken
 	var err error
 
-	switch podIdentity.Provider {
-	case kedav1alpha1.PodIdentityProviderAzure:
-		token, err = GetAzureADPodIdentityToken(ctx, httpClient, podIdentity.GetIdentityID(), storageResource)
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		token, err = GetAzureADWorkloadIdentityToken(ctx, podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID(), podIdentity.GetIdentityAuthorityHost(), storageResource)
-	}
-
+	token, err = GetAzureADWorkloadIdentityToken(ctx, podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID(), podIdentity.GetIdentityAuthorityHost(), storageResource)
 	if err != nil {
 		return "", nil, err
 	}

@@ -120,13 +120,6 @@ func parseAzureQueueMetadata(config *scalersconfig.ScalerConfig, logger logr.Log
 		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no queueName given")
 	}
 
-	// before triggerAuthentication CRD, pod identity was configured using this property
-	if val, ok := config.TriggerMetadata["useAAdPodIdentity"]; ok && config.PodIdentity.Provider == "" {
-		if val == stringTrue {
-			config.PodIdentity = kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}
-		}
-	}
-
 	// If the Use AAD Pod Identity is not present, or set to "none"
 	// then check for connection string
 	switch config.PodIdentity.Provider {
@@ -143,7 +136,7 @@ func parseAzureQueueMetadata(config *scalersconfig.ScalerConfig, logger logr.Log
 		if len(meta.connection) == 0 {
 			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no connection setting given")
 		}
-	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		// If the Use AAD Pod Identity is present then check account name
 		if val, ok := config.TriggerMetadata["accountName"]; ok && val != "" {
 			meta.accountName = val

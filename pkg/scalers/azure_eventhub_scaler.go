@@ -231,7 +231,7 @@ func parseAzureEventHubAuthenticationMetadata(logger logr.Logger, config *scaler
 		}
 
 		meta.eventHubInfo.EventHubConnection = connection
-	case v1alpha1.PodIdentityProviderAzure, v1alpha1.PodIdentityProviderAzureWorkload:
+	case v1alpha1.PodIdentityProviderAzureWorkload:
 		meta.eventHubInfo.StorageAccountName = ""
 		if val, ok := config.TriggerMetadata["storageAccountName"]; ok {
 			meta.eventHubInfo.StorageAccountName = val

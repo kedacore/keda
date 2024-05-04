@@ -31,7 +31,7 @@ type azureManagedPrometheusHTTPRoundTripper struct {
 // If its not azure auth, then this becomes a no-op. Neither returns round tripper nor error.
 func TryAndGetAzureManagedPrometheusHTTPRoundTripper(logger logr.Logger, podIdentity kedav1alpha1.AuthPodIdentity, triggerMetadata map[string]string) (http.RoundTripper, error) {
 	switch podIdentity.Provider {
-	case kedav1alpha1.PodIdentityProviderAzureWorkload, kedav1alpha1.PodIdentityProviderAzure:
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 
 		if triggerMetadata == nil {
 			return nil, fmt.Errorf("trigger metadata cannot be nil")

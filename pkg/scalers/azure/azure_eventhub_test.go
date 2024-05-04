@@ -264,7 +264,7 @@ func TestShouldParseCheckpointForFunctionWithPodIdentity(t *testing.T) {
 		EventHubName:             "hub-test",
 		EventHubConsumerGroup:    "$Default",
 		ServiceBusEndpointSuffix: "servicebus.windows.net",
-		PodIdentity:              kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure},
+		PodIdentity:              kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload},
 	}
 
 	cp := newCheckpointer(eventHubInfo, "0")
@@ -286,7 +286,7 @@ func TestShouldParseCheckpointForFunctionWithCheckpointStrategyAndPodIdentity(t 
 		EventHubConsumerGroup:    "$Default",
 		ServiceBusEndpointSuffix: "servicebus.windows.net",
 		CheckpointStrategy:       "azureFunction",
-		PodIdentity:              kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure},
+		PodIdentity:              kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload},
 	}
 
 	cp := newCheckpointer(eventHubInfo, "0")

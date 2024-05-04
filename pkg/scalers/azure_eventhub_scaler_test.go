@@ -289,18 +289,6 @@ func TestParseEventHubMetadata(t *testing.T) {
 
 	for _, testData := range parseEventHubMetadataDatasetWithPodIdentity {
 		_, err := parseAzureEventHubMetadata(logr.Discard(), &scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: sampleEventHubResolvedEnv,
-			AuthParams: map[string]string{}, PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}})
-
-		if err != nil && !testData.isError {
-			t.Errorf("Expected success but got error: %s", err)
-		}
-		if testData.isError && err == nil {
-			t.Error("Expected error and got success")
-		}
-	}
-
-	for _, testData := range parseEventHubMetadataDatasetWithPodIdentity {
-		_, err := parseAzureEventHubMetadata(logr.Discard(), &scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: sampleEventHubResolvedEnv,
 			AuthParams: map[string]string{}, PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload}})
 
 		if err != nil && !testData.isError {
