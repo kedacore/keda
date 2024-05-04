@@ -190,12 +190,7 @@ func parseAwsCloudwatchMetadata(config *scalersconfig.ScalerConfig) (*awsCloudwa
 	}
 	meta.ignoreNullValues, _ = ignoreNullValues.(bool)
 
-	// Note here that optionality of minMetricValue, is dependent on
-	// ignoreNullValues. If ignoreNullValues is true, then minMetricValue is
-	// required, otherwise it is optional. This is because if ignoreNullValues
-	// is true, then the scaler will return minMetricValue when the metric value
-	// is null.
-	minMetricValue, err := getFloatMetadataValue(config.TriggerMetadata, "minMetricValue", meta.ignoreNullValues, 0)
+	minMetricValue, err := getFloatMetadataValue(config.TriggerMetadata, "minMetricValue", false, 0)
 	if err != nil {
 		return nil, err
 	}

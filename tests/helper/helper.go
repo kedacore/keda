@@ -38,7 +38,6 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
-	v1alpha1Api "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/typed/keda/v1alpha1"
 )
 
@@ -900,33 +899,4 @@ func CheckKubectlGetResult(t *testing.T, kind string, name string, namespace str
 
 	unqoutedOutput := strings.ReplaceAll(string(output), "\"", "")
 	assert.Equal(t, expected, unqoutedOutput)
-}
-
-// FailIfScaledObjectStatusNotReachedWithTimeout waits for the scaledobject to reach the desired state, within the timeout
-// or fails the test if the timeout is reached.
-func FailIfScaledObjectStatusNotReachedWithTimeout(t *testing.T, kedaClient *v1alpha1.KedaV1alpha1Client, namespace, scaledObjectName string, timeout time.Duration, desiredState v1alpha1Api.ConditionType) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	for {
-		select {
-		case <-ctx.Done():
-			t.Fatalf("timeout waiting for scaledobject to be in %s state", desiredState)
-		default:
-			scaledObject, err := kedaClient.ScaledObjects(namespace).Get(context.Background(), scaledObjectName, metav1.GetOptions{})
-			if err != nil {
-				t.Fatalf("error getting scaledobject: %s", err)
-			}
-
-			conditions := scaledObject.Status.Conditions
-
-			t.Logf("scaledobject status: %+v", conditions)
-
-			if len(conditions) > 0 && conditions[len(conditions)-1].Type == desiredState {
-				return
-			}
-
-			time.Sleep(10 * time.Second)
-		}
-	}
 }

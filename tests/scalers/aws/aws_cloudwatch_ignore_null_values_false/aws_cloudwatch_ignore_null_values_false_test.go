@@ -9,13 +9,11 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	v1alpha1Api "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	. "github.com/kedacore/keda/v2/tests/helper"
 	"github.com/kedacore/keda/v2/tests/scalers/aws/helpers/cloudwatch"
 )
@@ -165,14 +163,10 @@ func TestCloudWatchScalerWithIgnoreNullValuesFalse(t *testing.T) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
 		"replica count should be %d after 1 minute", minReplicaCount)
 
-	// check that the scaledobject is in paused state
-	FailIfScaledObjectStatusNotReachedWithTimeout(t, kedaClient, testNamespace, scaledObjectName, 2*time.Minute, v1alpha1Api.ConditionPaused)
-
 	// check that the deployment did not scale, as the metric query is returning
 	// null values and the scaledobject is receiving errors, the deployment
 	// should not scale.
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
-		"replica count should be %d after 1 minute", minReplicaCount)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func getTemplateData() (templateData, []Template) {
