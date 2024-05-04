@@ -28,7 +28,6 @@ import (
 	az "github.com/Azure/go-autorest/autorest/azure"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 /* ParseAzureStorageConnectionString parses a storage account connection string into (endpointProtocol, accountName, key, endpointSuffix)
@@ -88,7 +87,7 @@ func ParseAzureStorageEndpointSuffix(metadata map[string]string, endpointType St
 }
 
 // ParseAzureStorageQueueConnection parses queue connection string and returns credential and resource url
-func ParseAzureStorageQueueConnection(ctx context.Context, httpClient util.HTTPDoer, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix string) (azqueue.Credential, *url.URL, error) {
+func ParseAzureStorageQueueConnection(ctx context.Context, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix string) (azqueue.Credential, *url.URL, error) {
 	switch podIdentity.Provider {
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		token, endpoint, err := parseAccessTokenAndEndpoint(ctx, accountName, endpointSuffix, podIdentity)
@@ -120,7 +119,7 @@ func ParseAzureStorageQueueConnection(ctx context.Context, httpClient util.HTTPD
 }
 
 // ParseAzureStorageBlobConnection parses blob connection string and returns credential and resource url
-func ParseAzureStorageBlobConnection(ctx context.Context, httpClient util.HTTPDoer, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix string) (azblob.Credential, *url.URL, error) {
+func ParseAzureStorageBlobConnection(ctx context.Context, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix string) (azblob.Credential, *url.URL, error) {
 	switch podIdentity.Provider {
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		token, endpoint, err := parseAccessTokenAndEndpoint(ctx, accountName, endpointSuffix, podIdentity)

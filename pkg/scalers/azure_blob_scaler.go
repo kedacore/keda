@@ -19,7 +19,6 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"strconv"
 
 	"github.com/go-logr/logr"
@@ -45,7 +44,6 @@ type azureBlobScaler struct {
 	metricType  v2.MetricTargetType
 	metadata    *azure.BlobMetadata
 	podIdentity kedav1alpha1.AuthPodIdentity
-	httpClient  *http.Client
 	logger      logr.Logger
 }
 
@@ -67,7 +65,6 @@ func NewAzureBlobScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		metricType:  metricType,
 		metadata:    meta,
 		podIdentity: podIdentity,
-		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
 		logger:      logger,
 	}, nil
 }
@@ -171,9 +168,6 @@ func parseAzureBlobMetadata(config *scalersconfig.ScalerConfig, logger logr.Logg
 }
 
 func (s *azureBlobScaler) Close(context.Context) error {
-	if s.httpClient != nil {
-		s.httpClient.CloseIdleConnections()
-	}
 	return nil
 }
 
@@ -192,7 +186,6 @@ func (s *azureBlobScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSp
 func (s *azureBlobScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	bloblen, err := azure.GetAzureBlobListLength(
 		ctx,
-		s.httpClient,
 		s.podIdentity,
 		s.metadata,
 	)

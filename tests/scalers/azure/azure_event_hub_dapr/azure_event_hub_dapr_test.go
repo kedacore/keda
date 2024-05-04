@@ -21,7 +21,6 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
@@ -234,9 +233,8 @@ func deleteEventHub(t *testing.T, adminClient *eventhub.HubManager) {
 
 func createContainer(t *testing.T) azblob.ContainerURL {
 	// Create Blob Container
-	httpClient := kedautil.CreateHTTPClient(DefaultHTTPTimeOut, false)
 	credential, endpoint, err := azure.ParseAzureStorageBlobConnection(
-		context.Background(), httpClient, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+		context.Background(),  kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		storageConnectionString, "", "")
 	assert.NoErrorf(t, err, "cannot parse storage connection string - %s", err)
 

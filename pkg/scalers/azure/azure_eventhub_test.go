@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"net/url"
 	"strconv"
 	"testing"
@@ -49,7 +48,7 @@ func TestCheckpointFromBlobStorageAzureFunction(t *testing.T) {
 		EventHubName:          "hub",
 	}
 
-	check, _ := GetCheckpointFromBlobStorage(ctx, http.DefaultClient, eventHubInfo, "0")
+	check, _ := GetCheckpointFromBlobStorage(ctx, eventHubInfo, "0")
 	assert.Equal(t, check, expectedCheckpoint)
 }
 
@@ -84,7 +83,7 @@ func TestCheckpointFromBlobStorageDefault(t *testing.T) {
 		BlobContainer:         containerName,
 	}
 
-	check, _ := GetCheckpointFromBlobStorage(ctx, http.DefaultClient, eventHubInfo, partitionID)
+	check, _ := GetCheckpointFromBlobStorage(ctx, eventHubInfo, partitionID)
 	assert.Equal(t, check, expectedCheckpoint)
 }
 
@@ -119,7 +118,7 @@ func TestCheckpointFromBlobStorageDefaultDeprecatedPythonCheckpoint(t *testing.T
 		BlobContainer:         containerName,
 	}
 
-	check, _ := GetCheckpointFromBlobStorage(ctx, http.DefaultClient, eventHubInfo, partitionID)
+	check, _ := GetCheckpointFromBlobStorage(ctx, eventHubInfo, partitionID)
 	assert.Equal(t, check, expectedCheckpoint)
 }
 
@@ -157,7 +156,7 @@ func TestCheckpointFromBlobStorageWithBlobMetadata(t *testing.T) {
 		CheckpointStrategy:    "blobMetadata",
 	}
 
-	check, _ := GetCheckpointFromBlobStorage(ctx, http.DefaultClient, eventHubInfo, partitionID)
+	check, _ := GetCheckpointFromBlobStorage(ctx, eventHubInfo, partitionID)
 	assert.Equal(t, check, expectedCheckpoint)
 }
 
@@ -192,7 +191,7 @@ func TestCheckpointFromBlobStorageGoSdk(t *testing.T) {
 		CheckpointStrategy: "goSdk",
 	}
 
-	check, _ := GetCheckpointFromBlobStorage(ctx, http.DefaultClient, eventHubInfo, partitionID)
+	check, _ := GetCheckpointFromBlobStorage(ctx, eventHubInfo, partitionID)
 	assert.Equal(t, check, expectedCheckpoint)
 }
 
@@ -229,7 +228,7 @@ func TestCheckpointFromBlobStorageDapr(t *testing.T) {
 		CheckpointStrategy: "dapr",
 	}
 
-	check, _ := GetCheckpointFromBlobStorage(ctx, http.DefaultClient, eventHubInfo, partitionID)
+	check, _ := GetCheckpointFromBlobStorage(ctx, eventHubInfo, partitionID)
 	assert.Equal(t, check, expectedCheckpoint)
 }
 
@@ -407,8 +406,7 @@ func TestShouldParseCheckpointForDaprWithPodIdentity(t *testing.T) {
 func createNewCheckpointInStorage(urlPath string, containerName string, partitionID string, checkpoint string, metadata map[string]string) (context.Context, error) {
 	ctx := context.Background()
 
-	credential, endpoint, _ := ParseAzureStorageBlobConnection(ctx, http.DefaultClient,
-		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, StorageConnectionString, "", "")
+	credential, endpoint, _ := ParseAzureStorageBlobConnection(ctx, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, StorageConnectionString, "", "")
 
 	// Create container
 	path, _ := url.Parse(containerName)

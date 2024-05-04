@@ -273,7 +273,7 @@ deploy: install ## Deploy controller to the K8s cluster specified in ~/.kube/con
 	fi
 	cd config/metrics-server && \
     $(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-metrics-apiserver=${IMAGE_ADAPTER}
-	
+
 	if [ "$(AZURE_RUN_WORKLOAD_IDENTITY_TESTS)" = true ]; then \
 		cd config/service_account && \
 		$(KUSTOMIZE) edit add label --force azure.workload.identity/use:true; \

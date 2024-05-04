@@ -29,7 +29,6 @@ import (
 	"github.com/Azure/azure-storage-blob-go/azblob"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 // goCheckpoint struct to adapt goSdk Checkpoint
@@ -87,9 +86,9 @@ func NewCheckpoint(sequenceNumber int64) Checkpoint {
 }
 
 // GetCheckpointFromBlobStorage reads depending of the CheckpointStrategy the checkpoint from a azure storage
-func GetCheckpointFromBlobStorage(ctx context.Context, httpClient util.HTTPDoer, info EventHubInfo, partitionID string) (Checkpoint, error) {
+func GetCheckpointFromBlobStorage(ctx context.Context, info EventHubInfo, partitionID string) (Checkpoint, error) {
 	checkpointer := newCheckpointer(info, partitionID)
-	return getCheckpoint(ctx, httpClient, info, checkpointer)
+	return getCheckpoint(ctx, info, checkpointer)
 }
 
 func newCheckpointer(info EventHubInfo, partitionID string) checkpointer {
@@ -248,7 +247,7 @@ func (checkpointer *defaultCheckpointer) extractCheckpoint(get *azblob.DownloadR
 	return checkpoint, err
 }
 
-func getCheckpoint(ctx context.Context, httpClient util.HTTPDoer, info EventHubInfo, checkpointer checkpointer) (Checkpoint, error) {
+func getCheckpoint(ctx context.Context, info EventHubInfo, checkpointer checkpointer) (Checkpoint, error) {
 	var podIdentity = info.PodIdentity
 
 	// For back-compat, prefer a connection string over pod identity when present
@@ -262,8 +261,7 @@ func getCheckpoint(ctx context.Context, httpClient util.HTTPDoer, info EventHubI
 		}
 	}
 
-	blobCreds, storageEndpoint, err := ParseAzureStorageBlobConnection(ctx, httpClient,
-		podIdentity, info.StorageConnection, info.StorageAccountName, info.BlobStorageEndpoint)
+	blobCreds, storageEndpoint, err := ParseAzureStorageBlobConnection(ctx, podIdentity, info.StorageConnection, info.StorageAccountName, info.BlobStorageEndpoint)
 
 	if err != nil {
 		return Checkpoint{}, err

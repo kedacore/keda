@@ -174,7 +174,6 @@ func (s *azureQueueScaler) GetMetricSpecForScaling(context.Context) []v2.MetricS
 func (s *azureQueueScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	queuelen, err := azure.GetAzureQueueLength(
 		ctx,
-		s.httpClient,
 		s.podIdentity,
 		s.metadata.connection,
 		s.metadata.queueName,

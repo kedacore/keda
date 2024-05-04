@@ -3,7 +3,6 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"net/url"
 	"os"
 	"testing"
@@ -311,8 +310,7 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 
 	if eventHubKey != "" && storageConnectionString != "" {
 		eventHubConnectionString := fmt.Sprintf("Endpoint=sb://%s.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=%s;EntityPath=%s", testEventHubNamespace, eventHubKey, testEventHubName)
-		storageCredentials, endpoint, err := azure.ParseAzureStorageBlobConnection(ctx, http.DefaultClient,
-			kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, storageConnectionString, "", "")
+		storageCredentials, endpoint, err := azure.ParseAzureStorageBlobConnection(ctx, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, storageConnectionString, "", "")
 		if err != nil {
 			t.Error(err)
 			t.FailNow()
@@ -640,9 +638,8 @@ func TestEventHubGetMetricSpecForScaling(t *testing.T) {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		mockEventHubScaler := azureEventHubScaler{
-			metadata:   meta,
-			client:     nil,
-			httpClient: http.DefaultClient,
+			metadata: meta,
+			client:   nil,
 		}
 
 		metricSpec := mockEventHubScaler.GetMetricSpecForScaling(context.Background())

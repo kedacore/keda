@@ -18,7 +18,6 @@ package scalers
 
 import (
 	"context"
-	"net/http"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -119,7 +118,6 @@ func TestAzBlobGetMetricSpecForScaling(t *testing.T) {
 		mockAzBlobScaler := azureBlobScaler{
 			metadata:    meta,
 			podIdentity: podIdentity,
-			httpClient:  http.DefaultClient,
 		}
 
 		metricSpec := mockAzBlobScaler.GetMetricSpecForScaling(ctx)
