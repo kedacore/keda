@@ -64,7 +64,7 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 
-- **GCP Scaler**: Added custom time horizon in GCP scaler ([#5778](https://github.com/kedacore/keda/issues/5778))
+- **GCP Scalers**: Added custom time horizon in GCP scalers ([#5778](https://github.com/kedacore/keda/issues/5778))
 
 ### Fixes
 
