@@ -43,6 +43,9 @@ func main() {
 	// Get test files
 	//
 	regularTestFiles, sequentialTestFiles := utils.RegexTestFiles()
+	if len(os.Args) > 1 && os.Args[1] == "regex-check" {
+		return
+	}
 
 	//
 	// Install KEDA
