@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"maps"
 	"os/exec"
 	"strings"
 	"testing"
@@ -818,6 +819,24 @@ func testScalerMetricLatency(t *testing.T) {
 		}
 		assert.Equal(t, true, found)
 	}
+	val, ok = family["keda_scaler_metrics_latency_seconds"]
+	assert.True(t, ok, "keda_scaler_metrics_latency_seconds not available")
+	if ok {
+		var found bool
+		metrics := val.GetMetric()
+		for _, metric := range metrics {
+			t.Log("--- latency metric detail info ---", "metric", metric)
+			labels := metric.GetLabel()
+			for _, label := range labels {
+				if (*label.Name == labelScaledObject && *label.Value == scaledObjectName) ||
+					(*label.Name == labelScaledJob && *label.Value == scaledJobName) {
+					assert.InDelta(t, float64(0), *metric.Gauge.Value, 0.001)
+					found = true
+				}
+			}
+		}
+		assert.Equal(t, true, found)
+	}
 }
 
 func testScalableObjectMetrics(t *testing.T) {
@@ -827,6 +846,37 @@ func testScalableObjectMetrics(t *testing.T) {
 
 	val, ok := family["keda_internal_scale_loop_latency"]
 	assert.True(t, ok, "keda_internal_scale_loop_latency not available")
+	if ok {
+		var found bool
+		metrics := val.GetMetric()
+
+		// check scaledobject loop
+		found = false
+		for _, metric := range metrics {
+			labels := metric.GetLabel()
+			for _, label := range labels {
+				if *label.Name == labelType && *label.Value == "scaledobject" {
+					found = true
+				}
+			}
+		}
+		assert.Equal(t, true, found)
+
+		// check scaledjob loop
+		found = false
+		for _, metric := range metrics {
+			labels := metric.GetLabel()
+			for _, label := range labels {
+				if *label.Name == labelType && *label.Value == "scaledjob" {
+					found = true
+				}
+			}
+		}
+		assert.Equal(t, true, found)
+	}
+
+	val, ok = family["keda_internal_scale_loop_latency_seconds"]
+	assert.True(t, ok, "keda_internal_scale_loop_latency_seconds not available")
 	if ok {
 		var found bool
 		metrics := val.GetMetric()
@@ -1013,16 +1063,42 @@ func getLatestCommit(t *testing.T) string {
 	return strings.Trim(out.String(), "\n")
 }
 
-func checkTriggerTotalValues(t *testing.T, families map[string]*prommodel.MetricFamily, expected map[string]int) {
+func checkTriggerTotalValues(t *testing.T, families map[string]*prommodel.MetricFamily, expectedValues map[string]int) {
 	t.Log("--- testing trigger total metrics ---")
+	expected := map[string]int{}
 
 	family, ok := families["keda_trigger_totals"]
 	assert.True(t, ok, "keda_trigger_totals not available")
 	if !ok {
 		return
 	}
-
+	maps.Copy(expected, expectedValues)
 	metrics := family.GetMetric()
+	for _, metric := range metrics {
+		labels := metric.GetLabel()
+		for _, label := range labels {
+			if *label.Name == labelType {
+				triggerType := *label.Value
+				metricValue := *metric.Gauge.Value
+				expectedMetricValue := float64(expected[triggerType])
+
+				assert.Equalf(t, expectedMetricValue, metricValue, "expected %f got %f for trigger type %s",
+					expectedMetricValue, metricValue, triggerType)
+
+				delete(expected, triggerType)
+			}
+		}
+	}
+
+	assert.Equal(t, 0, len(expected))
+
+	family, ok = families["keda_trigger_registered_count"]
+	assert.True(t, ok, "keda_trigger_registered_count not available")
+	if !ok {
+		return
+	}
+	maps.Copy(expected, expectedValues)
+	metrics = family.GetMetric()
 	for _, metric := range metrics {
 		labels := metric.GetLabel()
 		for _, label := range labels {
@@ -1052,6 +1128,31 @@ func checkCRTotalValues(t *testing.T, families map[string]*prommodel.MetricFamil
 	}
 
 	metrics := family.GetMetric()
+	for _, metric := range metrics {
+		labels := metric.GetLabel()
+		var namespace, crType string
+		for _, label := range labels {
+			if *label.Name == labelType {
+				crType = *label.Value
+			} else if *label.Name == namespaceString {
+				namespace = *label.Value
+			}
+		}
+
+		metricValue := *metric.Gauge.Value
+		expectedMetricValue := float64(expected[crType][namespace])
+
+		assert.Equalf(t, expectedMetricValue, metricValue, "expected %f got %f for cr type %s & namespace %s",
+			expectedMetricValue, metricValue, crType, namespace)
+	}
+
+	family, ok = families["keda_resource_registered_count"]
+	assert.True(t, ok, "keda_resource_registered_count not available")
+	if !ok {
+		return
+	}
+
+	metrics = family.GetMetric()
 	for _, metric := range metrics {
 		labels := metric.GetLabel()
 		var namespace, crType string
