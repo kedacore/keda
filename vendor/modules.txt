@@ -1360,12 +1360,6 @@ github.com/xdg-go/scram
 # github.com/xdg-go/stringprep v1.0.4
 ## explicit; go 1.11
 github.com/xdg-go/stringprep
-# github.com/xdg/scram v1.0.5
-## explicit
-github.com/xdg/scram
-# github.com/xdg/stringprep v1.0.3
-## explicit
-github.com/xdg/stringprep
 # github.com/xhit/go-str2duration/v2 v2.1.0
 ## explicit; go 1.13
 github.com/xhit/go-str2duration/v2
