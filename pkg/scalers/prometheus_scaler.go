@@ -50,19 +50,21 @@ type prometheusScaler struct {
 // change to false/f if can not accept prometheus return null values
 // https://github.com/kedacore/keda/issues/3065
 type prometheusMetadata struct {
-	prometheusAuth *authentication.AuthMeta
-	triggerIndex   int
+	triggerIndex int
 
-	ServerAddress       string            `keda:"name=serverAddress,       parsingOrder=triggerMetadata"`
-	Query               string            `keda:"name=query,               parsingOrder=triggerMetadata"`
-	QueryParameters     map[string]string `keda:"name=queryParameters,     parsingOrder=triggerMetadata, optional"`
-	Threshold           float64           `keda:"name=threshold,           parsingOrder=triggerMetadata"`
-	ActivationThreshold float64           `keda:"name=activationThreshold, parsingOrder=triggerMetadata, optional"`
-	Namespace           string            `keda:"name=namespace,           parsingOrder=triggerMetadata, optional"`
-	CustomHeaders       map[string]string `keda:"name=customHeaders,       parsingOrder=triggerMetadata, optional"`
-	IgnoreNullValues    bool              `keda:"name=ignoreNullValues,    parsingOrder=triggerMetadata, optional, default=true"`
-	UnsafeSSL           bool              `keda:"name=unsafeSsl,           parsingOrder=triggerMetadata, optional"`
-	CortexOrgID         string            `keda:"name=cortexOrgID,         parsingOrder=triggerMetadata, optional, deprecated=use customHeaders instead"`
+	PrometheusAuth      *authentication.Config `keda:"optional"`
+	ServerAddress       string                 `keda:"name=serverAddress,       parsingOrder=triggerMetadata"`
+	Query               string                 `keda:"name=query,               parsingOrder=triggerMetadata"`
+	QueryParameters     map[string]string      `keda:"name=queryParameters,     parsingOrder=triggerMetadata, optional"`
+	Threshold           float64                `keda:"name=threshold,           parsingOrder=triggerMetadata"`
+	ActivationThreshold float64                `keda:"name=activationThreshold, parsingOrder=triggerMetadata, optional"`
+	Namespace           string                 `keda:"name=namespace,           parsingOrder=triggerMetadata, optional"`
+	CustomHeaders       map[string]string      `keda:"name=customHeaders,       parsingOrder=triggerMetadata, optional"`
+	IgnoreNullValues    bool                   `keda:"name=ignoreNullValues,    parsingOrder=triggerMetadata, optional, default=true"`
+	UnsafeSSL           bool                   `keda:"name=unsafeSsl,           parsingOrder=triggerMetadata, optional"`
+
+	// deprecated
+	CortexOrgID string `keda:"name=cortexOrgID,         parsingOrder=triggerMetadata, optional, deprecated=use customHeaders instead"`
 }
 
 type promQueryResult struct {
@@ -93,12 +95,12 @@ func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.UnsafeSSL)
 
-	if meta.prometheusAuth != nil {
-		if meta.prometheusAuth.CA != "" || meta.prometheusAuth.EnableTLS {
+	if !meta.PrometheusAuth.Disabled() {
+		if meta.PrometheusAuth.CA != "" || meta.PrometheusAuth.EnabledTLS() {
 			// create http.RoundTripper with auth settings from ScalerConfig
 			transport, err := authentication.CreateHTTPRoundTripper(
 				authentication.NetHTTP,
-				meta.prometheusAuth,
+				meta.PrometheusAuth.ToAuthMeta(),
 			)
 			if err != nil {
 				logger.V(1).Error(err, "init Prometheus client http transport")
@@ -156,7 +158,7 @@ func parsePrometheusMetadata(config *scalersconfig.ScalerConfig) (meta *promethe
 	}
 
 	meta.triggerIndex = config.TriggerIndex
-	err = parseAuthConfig(config, meta)
+	err = checkAuthConfigWithPodIdentity(config, meta)
 	if err != nil {
 		return nil, err
 	}
@@ -164,18 +166,13 @@ func parsePrometheusMetadata(config *scalersconfig.ScalerConfig) (meta *promethe
 	return meta, nil
 }
 
-func parseAuthConfig(config *scalersconfig.ScalerConfig, meta *prometheusMetadata) error {
-	// parse auth configs from ScalerConfig
-	auth, err := authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
-	if err != nil {
-		return err
+func checkAuthConfigWithPodIdentity(config *scalersconfig.ScalerConfig, meta *prometheusMetadata) error {
+	if meta == nil || meta.PrometheusAuth.Disabled() {
+		return nil
 	}
-
-	if auth != nil && !(config.PodIdentity.Provider == kedav1alpha1.PodIdentityProviderNone || config.PodIdentity.Provider == "") {
+	if !(config.PodIdentity.Provider == kedav1alpha1.PodIdentityProviderNone || config.PodIdentity.Provider == "") {
 		return fmt.Errorf("pod identity cannot be enabled with other auth types")
 	}
-	meta.prometheusAuth = auth
-
 	return nil
 }
 
@@ -226,14 +223,14 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	}
 
 	switch {
-	case s.metadata.prometheusAuth == nil:
+	case s.metadata.PrometheusAuth.Disabled():
 		break
-	case s.metadata.prometheusAuth.EnableBearerAuth:
-		req.Header.Set("Authorization", authentication.GetBearerToken(s.metadata.prometheusAuth))
-	case s.metadata.prometheusAuth.EnableBasicAuth:
-		req.SetBasicAuth(s.metadata.prometheusAuth.Username, s.metadata.prometheusAuth.Password)
-	case s.metadata.prometheusAuth.EnableCustomAuth:
-		req.Header.Set(s.metadata.prometheusAuth.CustomAuthHeader, s.metadata.prometheusAuth.CustomAuthValue)
+	case s.metadata.PrometheusAuth.EnabledBearerAuth():
+		req.Header.Set("Authorization", s.metadata.PrometheusAuth.GetBearerToken())
+	case s.metadata.PrometheusAuth.EnabledBasicAuth():
+		req.SetBasicAuth(s.metadata.PrometheusAuth.Username, s.metadata.PrometheusAuth.Password)
+	case s.metadata.PrometheusAuth.EnabledCustomAuth():
+		req.Header.Set(s.metadata.PrometheusAuth.CustomAuthHeader, s.metadata.PrometheusAuth.CustomAuthValue)
 	}
 
 	r, err := s.httpClient.Do(req)

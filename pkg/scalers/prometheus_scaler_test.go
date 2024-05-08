@@ -162,11 +162,11 @@ func TestPrometheusScalerAuthParams(t *testing.T) {
 		}
 
 		if err == nil {
-			if meta.prometheusAuth != nil {
-				if (meta.prometheusAuth.EnableBearerAuth && !strings.Contains(testData.metadata["authModes"], "bearer")) ||
-					(meta.prometheusAuth.EnableBasicAuth && !strings.Contains(testData.metadata["authModes"], "basic")) ||
-					(meta.prometheusAuth.EnableTLS && !strings.Contains(testData.metadata["authModes"], "tls")) ||
-					(meta.prometheusAuth.EnableCustomAuth && !strings.Contains(testData.metadata["authModes"], "custom")) {
+			if !meta.PrometheusAuth.Disabled() {
+				if (meta.PrometheusAuth.EnabledBearerAuth() && !strings.Contains(testData.metadata["authModes"], "bearer")) ||
+					(meta.PrometheusAuth.EnabledBasicAuth() && !strings.Contains(testData.metadata["authModes"], "basic")) ||
+					(meta.PrometheusAuth.EnabledTLS() && !strings.Contains(testData.metadata["authModes"], "tls")) ||
+					(meta.PrometheusAuth.EnabledCustomAuth() && !strings.Contains(testData.metadata["authModes"], "custom")) {
 					t.Error("wrong auth mode detected")
 				}
 			}
