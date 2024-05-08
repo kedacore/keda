@@ -52,6 +52,10 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
+### Breaking Changes
+
+- **Authentication:** AAD-Pod-Identity and AWS-KIAM auths have been removed ([#5035](https://github.com/kedacore/keda/issues/5035)|[#5085](https://github.com/kedacore/keda/issues/5085))
+
 ### New
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
@@ -75,10 +79,6 @@ Here is an overview of all new **experimental** features:
 You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
 
 New deprecation(s):
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
-### Breaking Changes
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
