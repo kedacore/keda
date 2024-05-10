@@ -66,37 +66,37 @@ type AuthMeta struct {
 
 // BasicAuth is a basic authentication type
 type BasicAuth struct {
-	Username string `keda:"name=username, parsingOrder=authParams"`
-	Password string `keda:"name=password, parsingOrder=authParams"`
+	Username string `keda:"name=username, order=authParams"`
+	Password string `keda:"name=password, order=authParams"`
 }
 
 // CertAuth is a client certificate authentication type
 type CertAuth struct {
-	Cert string `keda:"name=cert, parsingOrder=authParams"`
-	Key  string `keda:"name=key, parsingOrder=authParams"`
-	CA   string `keda:"name=ca, parsingOrder=authParams"`
+	Cert string `keda:"name=cert, order=authParams"`
+	Key  string `keda:"name=key, order=authParams"`
+	CA   string `keda:"name=ca, order=authParams"`
 }
 
 // OAuth is an oAuth2 authentication type
 type OAuth struct {
-	OauthTokenURI  string     `keda:"name=oauthTokenURI,  parsingOrder=authParams"`
-	Scopes         []string   `keda:"name=scopes,         parsingOrder=authParams"`
-	ClientID       string     `keda:"name=clientID,       parsingOrder=authParams"`
-	ClientSecret   string     `keda:"name=clientSecret,   parsingOrder=authParams"`
-	EndpointParams url.Values `keda:"name=endpointParams, parsingOrder=authParams"`
+	OauthTokenURI  string     `keda:"name=oauthTokenURI,  order=authParams"`
+	Scopes         []string   `keda:"name=scopes,         order=authParams"`
+	ClientID       string     `keda:"name=clientID,       order=authParams"`
+	ClientSecret   string     `keda:"name=clientSecret,   order=authParams"`
+	EndpointParams url.Values `keda:"name=endpointParams, order=authParams"`
 }
 
 // CustomAuth is a custom header authentication type
 type CustomAuth struct {
-	CustomAuthHeader string `keda:"name=customAuthHeader, parsingOrder=authParams"`
-	CustomAuthValue  string `keda:"name=customAuthValue,  parsingOrder=authParams"`
+	CustomAuthHeader string `keda:"name=customAuthHeader, order=authParams"`
+	CustomAuthValue  string `keda:"name=customAuthValue,  order=authParams"`
 }
 
 // Config is the configuration for the authentication types
 type Config struct {
-	Modes []Type `keda:"name=authModes, parsingOrder=triggerMetadata, enum=apiKey;basic;tls;bearer;custom;oauth, exclusive=bearer;basic;oauth, optional"`
+	Modes []Type `keda:"name=authModes, order=triggerMetadata, enum=apiKey;basic;tls;bearer;custom;oauth, exclusiveSet=bearer;basic;oauth, optional"`
 
-	BearerToken string `keda:"name=bearerToken, parsingOrder=authParams, optional"`
+	BearerToken string `keda:"name=bearerToken, order=authParams, optional"`
 	BasicAuth   `keda:"optional"`
 	CertAuth    `keda:"optional"`
 	OAuth       `keda:"optional"`

@@ -45,7 +45,7 @@ type prometheusScaler struct {
 	logger     logr.Logger
 }
 
-// sometimes should consider there is an error we can accept
+// IgnoreNullValues - sometimes should consider there is an error we can accept
 // default value is true/t, to ignore the null value return from prometheus
 // change to false/f if can not accept prometheus return null values
 // https://github.com/kedacore/keda/issues/3065
@@ -53,18 +53,18 @@ type prometheusMetadata struct {
 	triggerIndex int
 
 	PrometheusAuth      *authentication.Config `keda:"optional"`
-	ServerAddress       string                 `keda:"name=serverAddress,       parsingOrder=triggerMetadata"`
-	Query               string                 `keda:"name=query,               parsingOrder=triggerMetadata"`
-	QueryParameters     map[string]string      `keda:"name=queryParameters,     parsingOrder=triggerMetadata, optional"`
-	Threshold           float64                `keda:"name=threshold,           parsingOrder=triggerMetadata"`
-	ActivationThreshold float64                `keda:"name=activationThreshold, parsingOrder=triggerMetadata, optional"`
-	Namespace           string                 `keda:"name=namespace,           parsingOrder=triggerMetadata, optional"`
-	CustomHeaders       map[string]string      `keda:"name=customHeaders,       parsingOrder=triggerMetadata, optional"`
-	IgnoreNullValues    bool                   `keda:"name=ignoreNullValues,    parsingOrder=triggerMetadata, optional, default=true"`
-	UnsafeSSL           bool                   `keda:"name=unsafeSsl,           parsingOrder=triggerMetadata, optional"`
+	ServerAddress       string                 `keda:"name=serverAddress,       order=triggerMetadata"`
+	Query               string                 `keda:"name=query,               order=triggerMetadata"`
+	QueryParameters     map[string]string      `keda:"name=queryParameters,     order=triggerMetadata, optional"`
+	Threshold           float64                `keda:"name=threshold,           order=triggerMetadata"`
+	ActivationThreshold float64                `keda:"name=activationThreshold, order=triggerMetadata, optional"`
+	Namespace           string                 `keda:"name=namespace,           order=triggerMetadata, optional"`
+	CustomHeaders       map[string]string      `keda:"name=customHeaders,       order=triggerMetadata, optional"`
+	IgnoreNullValues    bool                   `keda:"name=ignoreNullValues,    order=triggerMetadata, optional, default=true"`
+	UnsafeSSL           bool                   `keda:"name=unsafeSsl,           order=triggerMetadata, optional"`
 
 	// deprecated
-	CortexOrgID string `keda:"name=cortexOrgID,         parsingOrder=triggerMetadata, optional, deprecated=use customHeaders instead"`
+	CortexOrgID string `keda:"name=cortexOrgID, order=triggerMetadata, optional, deprecated=use customHeaders instead"`
 }
 
 type promQueryResult struct {

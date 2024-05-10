@@ -44,11 +44,11 @@ func TestBasicTypedConfig(t *testing.T) {
 	}
 
 	type testStruct struct {
-		StringVal string  `keda:"name=stringVal, parsingOrder=triggerMetadata"`
-		IntVal    int     `keda:"name=intVal,    parsingOrder=triggerMetadata"`
-		BoolVal   bool    `keda:"name=boolVal,   parsingOrder=resolvedEnv"`
-		FloatVal  float64 `keda:"name=floatVal,  parsingOrder=resolvedEnv"`
-		AuthVal   string  `keda:"name=auth,      parsingOrder=authParams"`
+		StringVal string  `keda:"name=stringVal, order=triggerMetadata"`
+		IntVal    int     `keda:"name=intVal,    order=triggerMetadata"`
+		BoolVal   bool    `keda:"name=boolVal,   order=resolvedEnv"`
+		FloatVal  float64 `keda:"name=floatVal,  order=resolvedEnv"`
+		AuthVal   string  `keda:"name=auth,      order=authParams"`
 	}
 
 	ts := testStruct{}
@@ -82,9 +82,9 @@ func TestParsingOrder(t *testing.T) {
 	}
 
 	type testStruct struct {
-		StringVal string  `keda:"name=stringVal, parsingOrder=resolvedEnv;triggerMetadata"`
-		IntVal    int     `keda:"name=intVal,    parsingOrder=triggerMetadata;resolvedEnv"`
-		FloatVal  float64 `keda:"name=floatVal,  parsingOrder=resolvedEnv;triggerMetadata"`
+		StringVal string  `keda:"name=stringVal, order=resolvedEnv;triggerMetadata"`
+		IntVal    int     `keda:"name=intVal,    order=triggerMetadata;resolvedEnv"`
+		FloatVal  float64 `keda:"name=floatVal,  order=resolvedEnv;triggerMetadata"`
 	}
 
 	ts := testStruct{}
@@ -107,9 +107,9 @@ func TestOptional(t *testing.T) {
 	}
 
 	type testStruct struct {
-		StringVal          string `keda:"name=stringVal, parsingOrder=triggerMetadata"`
-		IntValOptional     int    `keda:"name=intVal,    parsingOrder=triggerMetadata, optional"`
-		IntValAlsoOptional int    `keda:"name=intVal,    parsingOrder=triggerMetadata, optional=true"`
+		StringVal          string `keda:"name=stringVal, order=triggerMetadata"`
+		IntValOptional     int    `keda:"name=intVal,    order=triggerMetadata, optional"`
+		IntValAlsoOptional int    `keda:"name=intVal,    order=triggerMetadata, optional=true"`
 	}
 
 	ts := testStruct{}
@@ -128,7 +128,7 @@ func TestMissing(t *testing.T) {
 	sc := &ScalerConfig{}
 
 	type testStruct struct {
-		StringVal string `keda:"name=stringVal, parsingOrder=triggerMetadata"`
+		StringVal string `keda:"name=stringVal, order=triggerMetadata"`
 	}
 
 	ts := testStruct{}
@@ -147,7 +147,7 @@ func TestDeprecated(t *testing.T) {
 	}
 
 	type testStruct struct {
-		StringVal string `keda:"name=stringVal, parsingOrder=triggerMetadata, deprecated=deprecated"`
+		StringVal string `keda:"name=stringVal, order=triggerMetadata, deprecated=deprecated"`
 	}
 
 	ts := testStruct{}
@@ -174,9 +174,9 @@ func TestDefaultValue(t *testing.T) {
 	}
 
 	type testStruct struct {
-		BoolVal    bool   `keda:"name=boolVal,    parsingOrder=triggerMetadata, optional, default=true"`
-		StringVal  string `keda:"name=stringVal,  parsingOrder=triggerMetadata, optional, default=d"`
-		StringVal2 string `keda:"name=stringVal2, parsingOrder=triggerMetadata, optional, default=d"`
+		BoolVal    bool   `keda:"name=boolVal,    order=triggerMetadata, optional, default=true"`
+		StringVal  string `keda:"name=stringVal,  order=triggerMetadata, optional, default=d"`
+		StringVal2 string `keda:"name=stringVal2, order=triggerMetadata, optional, default=d"`
 	}
 
 	ts := testStruct{}
@@ -199,7 +199,7 @@ func TestMap(t *testing.T) {
 	}
 
 	type testStruct struct {
-		MapVal map[string]int `keda:"name=mapVal, parsingOrder=triggerMetadata"`
+		MapVal map[string]int `keda:"name=mapVal, order=triggerMetadata"`
 	}
 
 	ts := testStruct{}
@@ -222,8 +222,8 @@ func TestSlice(t *testing.T) {
 	}
 
 	type testStruct struct {
-		SliceVal           []int `keda:"name=sliceVal, parsingOrder=triggerMetadata"`
-		SliceValWithSpaces []int `keda:"name=sliceValWithSpaces, parsingOrder=triggerMetadata"`
+		SliceVal           []int `keda:"name=sliceVal, order=triggerMetadata"`
+		SliceValWithSpaces []int `keda:"name=sliceValWithSpaces, order=triggerMetadata"`
 	}
 
 	ts := testStruct{}
@@ -251,8 +251,8 @@ func TestEnum(t *testing.T) {
 	}
 
 	type testStruct struct {
-		EnumVal   string   `keda:"name=enumVal,   parsingOrder=triggerMetadata, enum=value1;value2"`
-		EnumSlice []string `keda:"name=enumSlice, parsingOrder=triggerMetadata, enum=value1;value2, optional"`
+		EnumVal   string   `keda:"name=enumVal,   order=triggerMetadata, enum=value1;value2"`
+		EnumSlice []string `keda:"name=enumSlice, order=triggerMetadata, enum=value1;value2, optional"`
 	}
 
 	ts := testStruct{}
@@ -273,12 +273,12 @@ func TestEnum(t *testing.T) {
 	Expect(err).To(MatchError(`parameter "enumVal" value "value3" must be one of [value1 value2]`))
 }
 
-// TestExclusive tests the exclusive type
+// TestExclusive tests the exclusiveSet type
 func TestExclusive(t *testing.T) {
 	RegisterTestingT(t)
 
 	type testStruct struct {
-		IntVal []int `keda:"name=intVal,    parsingOrder=triggerMetadata, exclusive=1;4;5"`
+		IntVal []int `keda:"name=intVal, order=triggerMetadata, exclusiveSet=1;4;5"`
 	}
 
 	sc := &ScalerConfig{
@@ -313,7 +313,7 @@ func TestURLValues(t *testing.T) {
 	}
 
 	type testStruct struct {
-		EndpointParams url.Values `keda:"name=endpointParams, parsingOrder=authParams"`
+		EndpointParams url.Values `keda:"name=endpointParams, order=authParams"`
 	}
 
 	ts := testStruct{}
@@ -338,7 +338,7 @@ func TestGenericMap(t *testing.T) {
 
 	// structurally similar to url.Values but should behave as generic map
 	type testStruct struct {
-		EndpointParams map[string][]string `keda:"name=endpointParams, parsingOrder=authParams"`
+		EndpointParams map[string][]string `keda:"name=endpointParams, order=authParams"`
 	}
 
 	ts := testStruct{}
@@ -365,8 +365,8 @@ func TestNestedStruct(t *testing.T) {
 	}
 
 	type basicAuth struct {
-		Username string `keda:"name=username, parsingOrder=authParams"`
-		Password string `keda:"name=password, parsingOrder=authParams"`
+		Username string `keda:"name=username, order=authParams"`
+		Password string `keda:"name=password, order=authParams"`
 	}
 
 	type testStruct struct {
@@ -393,8 +393,8 @@ func TestEmbeddedStruct(t *testing.T) {
 
 	type testStruct struct {
 		BasicAuth struct {
-			Username string `keda:"name=username, parsingOrder=authParams"`
-			Password string `keda:"name=password, parsingOrder=authParams"`
+			Username string `keda:"name=username, order=authParams"`
+			Password string `keda:"name=password, order=authParams"`
 		} `keda:""`
 	}
 
@@ -436,9 +436,9 @@ func TestNestedOptional(t *testing.T) {
 	}
 
 	type basicAuth struct {
-		Username                   string `keda:"name=username, parsingOrder=authParams"`
-		Password                   string `keda:"name=password, parsingOrder=authParams, optional"`
-		AlsoOptionalThanksToParent string `keda:"name=optional, parsingOrder=authParams"`
+		Username                   string `keda:"name=username, order=authParams"`
+		Password                   string `keda:"name=password, order=authParams, optional"`
+		AlsoOptionalThanksToParent string `keda:"name=optional, order=authParams"`
 	}
 
 	type testStruct struct {
@@ -465,8 +465,8 @@ func TestNestedPointer(t *testing.T) {
 	}
 
 	type basicAuth struct {
-		Username string `keda:"name=username, parsingOrder=authParams"`
-		Password string `keda:"name=password, parsingOrder=authParams"`
+		Username string `keda:"name=username, order=authParams"`
+		Password string `keda:"name=password, order=authParams"`
 	}
 
 	type testStruct struct {
@@ -479,4 +479,39 @@ func TestNestedPointer(t *testing.T) {
 	Expect(ts.BA).ToNot(BeNil())
 	Expect(ts.BA.Username).To(Equal("user"))
 	Expect(ts.BA.Password).To(Equal("pass"))
+}
+
+// TestNoParsingOrder tests when no parsing order is provided
+func TestNoParsingOrder(t *testing.T) {
+	RegisterTestingT(t)
+
+	sc := &ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"strVal":     "value1",
+			"defaultVal": "value2",
+		},
+	}
+
+	type testStructMissing struct {
+		StrVal string `keda:"name=strVal, enum=value1;value2"`
+	}
+	tsm := testStructMissing{}
+	err := sc.TypedConfig(&tsm)
+	Expect(err).To(MatchError(`missing required parameter "strVal", no 'order' tag, provide any from [authParams resolvedEnv triggerMetadata]`))
+
+	type testStructDefault struct {
+		DefaultVal string `keda:"name=defaultVal, default=dv"`
+	}
+	tsd := testStructDefault{}
+	err = sc.TypedConfig(&tsd)
+	Expect(err).To(BeNil())
+	Expect(tsd.DefaultVal).To(Equal("dv"))
+
+	type testStructDefaultMissing struct {
+		DefaultVal2 string `keda:"name=defaultVal2, default=dv"`
+	}
+	tsdm := testStructDefaultMissing{}
+	err = sc.TypedConfig(&tsdm)
+	Expect(err).To(BeNil())
+	Expect(tsdm.DefaultVal2).To(Equal("dv"))
 }

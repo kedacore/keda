@@ -25,6 +25,9 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 )
 
 // CustomValidator is an interface that can be implemented to validate the configuration of the typed config
@@ -42,8 +45,15 @@ const (
 	AuthParams      ParsingOrder = "authParams"
 )
 
+// allowedParsingOrderMap is a map with set of valid parsing orders
+var allowedParsingOrderMap = map[ParsingOrder]bool{
+	TriggerMetadata: true,
+	ResolvedEnv:     true,
+	AuthParams:      true,
+}
+
 // separators for field tag structure
-// e.g. name=stringVal,parsingOrder=triggerMetadata;resolvedEnv;authParams,optional
+// e.g. name=stringVal,order=triggerMetadata;resolvedEnv;authParams,optional
 const (
 	tagSeparator      = ","
 	tagKeySeparator   = "="
@@ -61,10 +71,10 @@ const (
 	optionalTag     = "optional"
 	deprecatedTag   = "deprecated"
 	defaultTag      = "default"
-	parsingOrderTag = "parsingOrder"
+	orderTag        = "order"
 	nameTag         = "name"
 	enumTag         = "enum"
-	exclusiveTag    = "exclusive"
+	exclusiveSetTag = "exclusiveSet"
 )
 
 // Params is a struct that represents the parameter list that can be used in the keda tag
@@ -78,9 +88,9 @@ type Params struct {
 	// Optional is the 'optional' tag parameter defining if the parameter is optional
 	Optional bool
 
-	// ParsingOrder is the 'parsingOrder' tag parameter defining the order in which the parameter is looked up
+	// Order is the 'order' tag parameter defining the parsing order in which the parameter is looked up
 	// in the triggerMetadata, resolvedEnv or authParams maps
-	ParsingOrder []ParsingOrder
+	Order []ParsingOrder
 
 	// Default is the 'default' tag parameter defining the default value of the parameter if it's not found
 	// in any of the maps from ParsingOrder
@@ -93,8 +103,8 @@ type Params struct {
 	// Enum is the 'enum' tag parameter defining the list of possible values for the parameter
 	Enum []string
 
-	// Exclusive is the 'exclusive' tag parameter defining the list of values that are mutually exclusive
-	Exclusive []string
+	// ExclusiveSet is the 'exclusiveSet' tag parameter defining the list of values that are mutually exclusive
+	ExclusiveSet []string
 }
 
 // IsNested is a function that returns true if the parameter is nested
@@ -181,7 +191,12 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 		return nil
 	}
 	if !exists && !(params.Optional || params.IsDeprecated()) {
-		return fmt.Errorf("missing required parameter %q in %v", params.Name, params.ParsingOrder)
+		if len(params.Order) == 0 {
+			apo := maps.Keys(allowedParsingOrderMap)
+			slices.Sort(apo)
+			return fmt.Errorf("missing required parameter %q, no 'order' tag, provide any from %v", params.Name, apo)
+		}
+		return fmt.Errorf("missing required parameter %q in %v", params.Name, params.Order)
 	}
 	if params.Enum != nil {
 		enumMap := make(map[string]bool)
@@ -200,9 +215,9 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 			return fmt.Errorf("parameter %q value %q must be one of %v", params.Name, valFromConfig, params.Enum)
 		}
 	}
-	if params.Exclusive != nil {
+	if params.ExclusiveSet != nil {
 		exclusiveMap := make(map[string]bool)
-		for _, e := range params.Exclusive {
+		for _, e := range params.ExclusiveSet {
 			exclusiveMap[e] = true
 		}
 		split := strings.Split(valFromConfig, elemSeparator)
@@ -214,7 +229,7 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 			}
 		}
 		if exclusiveCount > 1 {
-			return fmt.Errorf("parameter %q value %q must contain only one of %v", params.Name, valFromConfig, params.Exclusive)
+			return fmt.Errorf("parameter %q value %q must contain only one of %v", params.Name, valFromConfig, params.ExclusiveSet)
 		}
 	}
 	if params.IsNested() {
@@ -326,7 +341,7 @@ func setConfigValueHelper(valFromConfig string, field reflect.Value) error {
 
 // configParamValue is a function that returns the value of the parameter based on the parsing order
 func (sc *ScalerConfig) configParamValue(params Params) (string, bool) {
-	for _, po := range params.ParsingOrder {
+	for _, po := range params.Order {
 		var m map[string]string
 		key := params.Name
 		switch po {
@@ -338,7 +353,8 @@ func (sc *ScalerConfig) configParamValue(params Params) (string, bool) {
 			m = sc.ResolvedEnv
 			key = sc.TriggerMetadata[fmt.Sprintf("%sFromEnv", params.Name)]
 		default:
-			m = sc.TriggerMetadata
+			// this is checked when parsing the tags but adding as default case to avoid any potential future problems
+			return "", false
 		}
 		if param, ok := m[key]; ok && param != "" {
 			return strings.TrimSpace(param), true
@@ -362,12 +378,17 @@ func paramsFromTag(tag string, field reflect.StructField) (Params, error) {
 			if len(tsplit) > 1 {
 				params.Optional, _ = strconv.ParseBool(strings.TrimSpace(tsplit[1]))
 			}
-		case parsingOrderTag:
+		case orderTag:
 			if len(tsplit) > 1 {
-				parsingOrder := strings.Split(tsplit[1], tagValueSeparator)
-				for _, po := range parsingOrder {
+				order := strings.Split(tsplit[1], tagValueSeparator)
+				for _, po := range order {
 					poTyped := ParsingOrder(strings.TrimSpace(po))
-					params.ParsingOrder = append(params.ParsingOrder, poTyped)
+					if !allowedParsingOrderMap[poTyped] {
+						apo := maps.Keys(allowedParsingOrderMap)
+						slices.Sort(apo)
+						return params, fmt.Errorf("unknown parsing order value %s, has to be one of %s", po, apo)
+					}
+					params.Order = append(params.Order, poTyped)
 				}
 			}
 		case nameTag:
@@ -388,9 +409,9 @@ func paramsFromTag(tag string, field reflect.StructField) (Params, error) {
 			if len(tsplit) > 1 {
 				params.Enum = strings.Split(tsplit[1], tagValueSeparator)
 			}
-		case exclusiveTag:
+		case exclusiveSetTag:
 			if len(tsplit) > 1 {
-				params.Exclusive = strings.Split(tsplit[1], tagValueSeparator)
+				params.ExclusiveSet = strings.Split(tsplit[1], tagValueSeparator)
 			}
 		case "":
 			continue
