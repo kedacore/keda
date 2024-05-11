@@ -2532,7 +2532,6 @@ k8s.io/klog/v2/internal/dbg
 k8s.io/klog/v2/internal/serialize
 k8s.io/klog/v2/internal/severity
 k8s.io/klog/v2/internal/sloghandler
-k8s.io/klog/v2/klogr
 # k8s.io/kms v0.29.4
 ## explicit; go 1.21
 k8s.io/kms/apis/v1beta1

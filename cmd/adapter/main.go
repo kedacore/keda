@@ -33,9 +33,9 @@ import (
 	kubemetrics "k8s.io/component-base/metrics"
 	"k8s.io/component-base/metrics/legacyregistry"
 	"k8s.io/klog/v2"
-	"k8s.io/klog/v2/klogr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	basecmd "sigs.k8s.io/custom-metrics-apiserver/pkg/cmd"
@@ -56,9 +56,7 @@ type Adapter struct {
 }
 
 // https://github.com/kedacore/keda/issues/5732
-//
-//nolint:staticcheck // SA1019: klogr.New is deprecated.
-var logger = klogr.New().WithName("keda_metrics_adapter")
+var setupLog = ctrl.Log.WithName("keda_metrics_adapter")
 
 var (
 	adapterClientRequestQPS     float32
@@ -73,34 +71,34 @@ var (
 func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsProvider, <-chan struct{}, error) {
 	scheme := scheme.Scheme
 	if err := appsv1.SchemeBuilder.AddToScheme(scheme); err != nil {
-		logger.Error(err, "failed to add apps/v1 scheme to runtime scheme")
+		setupLog.Error(err, "failed to add apps/v1 scheme to runtime scheme")
 		return nil, nil, fmt.Errorf("failed to add apps/v1 scheme to runtime scheme (%s)", err)
 	}
 	if err := kedav1alpha1.SchemeBuilder.AddToScheme(scheme); err != nil {
-		logger.Error(err, "failed to add keda scheme to runtime scheme")
+		setupLog.Error(err, "failed to add keda scheme to runtime scheme")
 		return nil, nil, fmt.Errorf("failed to add keda scheme to runtime scheme (%s)", err)
 	}
 	namespaces, err := kedautil.GetWatchNamespaces()
 	if err != nil {
-		logger.Error(err, "failed to get watch namespace")
+		setupLog.Error(err, "failed to get watch namespace")
 		return nil, nil, fmt.Errorf("failed to get watch namespace (%s)", err)
 	}
 
 	leaseDuration, err := kedautil.ResolveOsEnvDuration("KEDA_METRICS_LEADER_ELECTION_LEASE_DURATION")
 	if err != nil {
-		logger.Error(err, "invalid KEDA_METRICS_LEADER_ELECTION_LEASE_DURATION")
+		setupLog.Error(err, "invalid KEDA_METRICS_LEADER_ELECTION_LEASE_DURATION")
 		return nil, nil, fmt.Errorf("invalid KEDA_METRICS_LEADER_ELECTION_LEASE_DURATION (%s)", err)
 	}
 
 	renewDeadline, err := kedautil.ResolveOsEnvDuration("KEDA_METRICS_LEADER_ELECTION_RENEW_DEADLINE")
 	if err != nil {
-		logger.Error(err, "Invalid KEDA_METRICS_LEADER_ELECTION_RENEW_DEADLINE")
+		setupLog.Error(err, "Invalid KEDA_METRICS_LEADER_ELECTION_RENEW_DEADLINE")
 		return nil, nil, fmt.Errorf("invalid KEDA_METRICS_LEADER_ELECTION_RENEW_DEADLINE (%s)", err)
 	}
 
 	retryPeriod, err := kedautil.ResolveOsEnvDuration("KEDA_METRICS_LEADER_ELECTION_RETRY_PERIOD")
 	if err != nil {
-		logger.Error(err, "Invalid KEDA_METRICS_LEADER_ELECTION_RETRY_PERIOD")
+		setupLog.Error(err, "Invalid KEDA_METRICS_LEADER_ELECTION_RETRY_PERIOD")
 		return nil, nil, fmt.Errorf("invalid KEDA_METRICS_LEADER_ELECTION_RETRY_PERIOD (%s)", err)
 	}
 
@@ -126,25 +124,25 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 		RetryPeriod:      retryPeriod,
 	})
 	if err != nil {
-		logger.Error(err, "failed to setup manager")
+		setupLog.Error(err, "failed to setup manager")
 		return nil, nil, err
 	}
 
-	logger.Info("Connecting Metrics Service gRPC client to the server", "address", metricsServiceAddr)
+	setupLog.Info("Connecting Metrics Service gRPC client to the server", "address", metricsServiceAddr)
 	grpcClient, err := metricsservice.NewGrpcClient(metricsServiceAddr, a.SecureServing.ServerCert.CertDirectory, metricsServiceGRPCAuthority, clientMetrics)
 	if err != nil {
-		logger.Error(err, "error connecting Metrics Service gRPC client to the server", "address", metricsServiceAddr)
+		setupLog.Error(err, "error connecting Metrics Service gRPC client to the server", "address", metricsServiceAddr)
 		return nil, nil, err
 	}
 	stopCh := make(chan struct{})
 	go func() {
 		if err := mgr.Start(ctx); err != nil {
-			logger.Error(err, "controller-runtime encountered an error")
+			setupLog.Error(err, "controller-runtime encountered an error")
 			stopCh <- struct{}{}
 			close(stopCh)
 		}
 	}()
-	return kedaprovider.NewProvider(ctx, logger, mgr.GetClient(), *grpcClient), stopCh, nil
+	return kedaprovider.NewProvider(ctx, setupLog, mgr.GetClient(), *grpcClient), stopCh, nil
 }
 
 // getMetricHandler returns a http handler that exposes metrics from controller-runtime and apiserver
@@ -205,7 +203,7 @@ func RunMetricsServer(ctx context.Context, stopCh <-chan struct{}) {
 	}
 
 	go func() {
-		logger.Info("starting /metrics server endpoint")
+		setupLog.Info("starting /metrics server endpoint")
 		// nosemgrep: use-tls
 		err := server.ListenAndServe()
 		if err != http.ErrServerClosed {
@@ -215,10 +213,10 @@ func RunMetricsServer(ctx context.Context, stopCh <-chan struct{}) {
 
 	go func() {
 		<-stopCh
-		logger.Info("Shutting down the /metrics server gracefully...")
+		setupLog.Info("Shutting down the /metrics server gracefully...")
 
 		if err := server.Shutdown(ctx); err != nil {
-			logger.Error(err, "http server shutdown error")
+			setupLog.Error(err, "http server shutdown error")
 		}
 	}()
 }
@@ -233,15 +231,15 @@ func generateDefaultMetricsServiceAddr() string {
 func printWelcomeMsg(cmd *Adapter) error {
 	clientset, err := cmd.DiscoveryClient()
 	if err != nil {
-		logger.Error(err, "not able to get Kubernetes version")
+		setupLog.Error(err, "not able to get Kubernetes version")
 		return err
 	}
 	version, err := clientset.ServerVersion()
 	if err != nil {
-		logger.Error(err, "not able to get Kubernetes version")
+		setupLog.Error(err, "not able to get Kubernetes version")
 		return err
 	}
-	kedautil.PrintWelcome(logger, kedautil.NewK8sVersion(version), "metrics server")
+	kedautil.PrintWelcome(setupLog, kedautil.NewK8sVersion(version), "metrics server")
 
 	return nil
 }
@@ -251,7 +249,7 @@ func main() {
 	var err error
 	defer func() {
 		if err != nil {
-			logger.Error(err, "unable to run external metrics adapter")
+			setupLog.Error(err, "unable to run external metrics adapter")
 		}
 	}()
 
@@ -260,6 +258,9 @@ func main() {
 
 	cmd := &Adapter{}
 	cmd.Name = "keda-adapter"
+
+	opts := zap.Options{}
+	opts.BindFlags(flag.CommandLine)
 
 	cmd.Flags().StringVar(&cmd.Message, "msg", "starting adapter...", "startup message")
 	cmd.Flags().AddGoFlagSet(flag.CommandLine) // make sure we get the klog flags
@@ -275,7 +276,7 @@ func main() {
 		return
 	}
 
-	ctrl.SetLogger(logger)
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	err = printWelcomeMsg(cmd)
 	if err != nil {
@@ -284,12 +285,12 @@ func main() {
 
 	kedaProvider, stopCh, err := cmd.makeProvider(ctx)
 	if err != nil {
-		logger.Error(err, "making provider")
+		setupLog.Error(err, "making provider")
 		return
 	}
 	cmd.WithExternalMetrics(kedaProvider)
 
-	logger.Info(cmd.Message)
+	setupLog.Info(cmd.Message)
 
 	RunMetricsServer(ctx, stopCh)
 
