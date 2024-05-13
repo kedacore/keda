@@ -22,7 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	"github.com/kedacore/keda/v2/tests/helper"
-	"github.com/kedacore/keda/v2/tests/utils"
 )
 
 var (
