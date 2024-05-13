@@ -477,21 +477,22 @@ func (s *githubRunnerScaler) getRepositories(ctx context.Context) ([]string, err
 		var url string
 		switch s.metadata.runnerScope {
 		case ORG:
-			url = fmt.Sprintf("%s/orgs/%s/repos?page=%s", s.metadata.githubAPIURL, s.metadata.owner, page)
+			url = fmt.Sprintf("%s/orgs/%s/repos?page=%s", s.metadata.githubAPIURL, s.metadata.owner, strconv.Itoa(page))
 		case REPO:
-			url = fmt.Sprintf("%s/users/%s/repos?page=%s", s.metadata.githubAPIURL, s.metadata.owner, page)
+			url = fmt.Sprintf("%s/users/%s/repos?page=%s", s.metadata.githubAPIURL, s.metadata.owner, strconv.Itoa(page))
 		case ENT:
-			url = fmt.Sprintf("%s/orgs/%s/repos?page=%s", s.metadata.githubAPIURL, s.metadata.owner, page)
+			url = fmt.Sprintf("%s/orgs/%s/repos?page=%s", s.metadata.githubAPIURL, s.metadata.owner, strconv.Itoa(page))
 		default:
 			return nil, fmt.Errorf("runnerScope %s not supported", s.metadata.runnerScope)
 		}
-	
-		body, _, err := getGithubRequest(ctx, url, s.httpClient)
+
+		body, _, err := getGithubRequest(ctx, url, s.metadata, s.httpClient)
 		if err != nil {
 			return nil, err
 		}
 
 		var repos []Repo
+
 		err = json.Unmarshal(body, &repos)
 		if err != nil {
 			return nil, err
@@ -507,7 +508,7 @@ func (s *githubRunnerScaler) getRepositories(ctx context.Context) ([]string, err
 		}
 
 		page++
-	}	
+	}
 
 	return repoList, nil
 }
