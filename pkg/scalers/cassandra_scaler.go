@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 
@@ -32,6 +33,7 @@ type CassandraMetadata struct {
 	enableTLS                  bool
 	cert                       string
 	key                        string
+	ca                         string
 	clusterIPAddress           string
 	port                       int
 	consistency                gocql.Consistency
@@ -176,6 +178,21 @@ func parseCassandraMetadata(config *scalersconfig.ScalerConfig) (*CassandraMetad
 	return meta, nil
 }
 
+func createTempFile(prefix string, content string) (string, error) {
+	f, err := os.CreateTemp("/tmp/cassandra/", prefix+"-*.pem")
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	_, err = f.WriteString(content)
+	if err != nil {
+		return "", err
+	}
+
+	return f.Name(), nil
+}
+
 func parseCassandraTLS(config *scalersconfig.ScalerConfig, meta *CassandraMetadata) error {
 	meta.enableTLS = false
 	if val, ok := config.AuthParams["tls"]; ok {
@@ -183,14 +200,42 @@ func parseCassandraTLS(config *scalersconfig.ScalerConfig, meta *CassandraMetada
 		if val == tlsEnable {
 			certGiven := config.AuthParams["cert"] != ""
 			keyGiven := config.AuthParams["key"] != ""
+			caCertGiven := config.AuthParams["ca"] != ""
 			if certGiven && !keyGiven {
 				return errors.New("no key given")
 			}
 			if keyGiven && !certGiven {
 				return errors.New("no cert given")
 			}
-			meta.cert = config.AuthParams["cert"]
-			meta.key = config.AuthParams["key"]
+			if !keyGiven && !certGiven {
+				return errors.New("no cert/key given")
+			}
+
+			certFilePath, err := createTempFile("cert", config.AuthParams["cert"])
+			if err != nil {
+				// handle error
+				return errors.New("Error creating cert file: " + err.Error())
+			}
+
+			keyFilePath, err := createTempFile("key", config.AuthParams["key"])
+			if err != nil {
+				// handle error
+				return errors.New("Error creating key file: " + err.Error())
+			}
+
+			meta.cert = certFilePath
+			meta.key = keyFilePath
+			meta.ca = config.AuthParams["ca"]
+			if !caCertGiven {
+				meta.ca = ""
+			} else {
+				caCertFilePath, err := createTempFile("caCert", config.AuthParams["ca"])
+				meta.ca = caCertFilePath
+				if err != nil {
+					// handle error
+					return errors.New("Error creating ca file: " + err.Error())
+				}
+			}
 			meta.enableTLS = true
 		} else if val != tlsDisable {
 			return fmt.Errorf("err incorrect value for TLS given: %s", val)
@@ -213,6 +258,7 @@ func newCassandraSession(meta *CassandraMetadata, logger logr.Logger) (*gocql.Se
 		cluster.SslOpts = &gocql.SslOptions{
 			CertPath: meta.cert,
 			KeyPath:  meta.key,
+			CaPath:   meta.ca,
 		}
 	}
 
