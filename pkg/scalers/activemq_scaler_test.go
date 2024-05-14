@@ -11,6 +11,7 @@ import (
 
 const (
 	testInvalidRestAPITemplate = "testInvalidRestAPITemplate"
+	defaultTargetQueueSize     = 10
 )
 
 type parseActiveMQMetadataTestData struct {
@@ -228,8 +229,8 @@ func TestActiveMQDefaultCorsHeader(t *testing.T) {
 	if err != nil {
 		t.Error("Expected success but got error", err)
 	}
-	if !(meta.corsHeader == "http://localhost:8161") {
-		t.Errorf("Expected http://localhost:8161 but got %s", meta.corsHeader)
+	if !(meta.CorsHeader == "http://localhost:8161") {
+		t.Errorf("Expected http://localhost:8161 but got %s", meta.CorsHeader)
 	}
 }
 
@@ -240,8 +241,8 @@ func TestActiveMQCorsHeader(t *testing.T) {
 	if err != nil {
 		t.Error("Expected success but got error", err)
 	}
-	if !(meta.corsHeader == "test") {
-		t.Errorf("Expected test but got %s", meta.corsHeader)
+	if !(meta.CorsHeader == "test") {
+		t.Errorf("Expected test but got %s", meta.CorsHeader)
 	}
 }
 
@@ -255,8 +256,8 @@ func TestParseActiveMQMetadata(t *testing.T) {
 			if testData.isError && err == nil {
 				t.Error("Expected error but got success")
 			}
-			if metadata != nil && metadata.password != "" && metadata.password != testData.authParams["password"] {
-				t.Error("Expected password from configuration but found something else: ", metadata.password)
+			if metadata != nil && metadata.Password != "" && metadata.Password != testData.authParams["password"] {
+				t.Error("Expected password from configuration but found something else: ", metadata.Password)
 				fmt.Println(testData)
 			}
 		})
@@ -288,8 +289,8 @@ func TestParseDefaultTargetQueueSize(t *testing.T) {
 				t.Error("Expected success but got error", err)
 			case testData.isError && err == nil:
 				t.Error("Expected error but got success")
-			case metadata.targetQueueSize != defaultTargetQueueSize:
-				t.Error("Expected default targetQueueSize =", defaultTargetQueueSize, "but got", metadata.targetQueueSize)
+			case metadata.TargetQueueSize != defaultTargetQueueSize:
+				t.Error("Expected default targetQueueSize =", defaultTargetQueueSize, "but got", metadata.TargetQueueSize)
 			}
 		})
 	}
