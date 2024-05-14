@@ -73,6 +73,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
+- **General**: Scalers are properly closed after being refreshed ([#5806](https://github.com/kedacore/keda/issues/5806))
 - **MongoDB Scaler**:  MongoDB url parses correctly `+srv` scheme ([#5760](https://github.com/kedacore/keda/issues/5760))
 
 ### Deprecations
