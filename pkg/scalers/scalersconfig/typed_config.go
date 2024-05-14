@@ -68,14 +68,14 @@ const (
 
 // field tag parameters
 const (
-	optionalTag       = "optional"
-	deprecatedTag     = "deprecated"
-	defaultTag        = "default"
-	orderTag          = "order"
-	nameTag           = "name"
-	enumTag           = "enum"
-	exclusiveSetTag   = "exclusiveSet"
-	rangeSeparatorTag = "rangeSeparator"
+	optionalTag     = "optional"
+	deprecatedTag   = "deprecated"
+	defaultTag      = "default"
+	orderTag        = "order"
+	nameTag         = "name"
+	enumTag         = "enum"
+	exclusiveSetTag = "exclusiveSet"
+	rangeTag        = "range"
 )
 
 // Params is a struct that represents the parameter list that can be used in the keda tag
@@ -107,7 +107,7 @@ type Params struct {
 	// ExclusiveSet is the 'exclusiveSet' tag parameter defining the list of values that are mutually exclusive
 	ExclusiveSet []string
 
-	// RangeSeparator is the 'rangeSeparator' tag parameter defining the separator for range values
+	// RangeSeparator is the 'range' tag parameter defining the separator for range values
 	RangeSeparator string
 }
 
@@ -466,7 +466,7 @@ func paramsFromTag(tag string, field reflect.StructField) (Params, error) {
 			if len(tsplit) > 1 {
 				params.ExclusiveSet = strings.Split(tsplit[1], tagValueSeparator)
 			}
-		case rangeSeparatorTag:
+		case rangeTag:
 			if len(tsplit) == 1 {
 				params.RangeSeparator = "-"
 			}

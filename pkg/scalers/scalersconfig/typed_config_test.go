@@ -530,10 +530,10 @@ func TestRange(t *testing.T) {
 	}
 
 	type testStruct struct {
-		Range       []int `keda:"name=range,       order=triggerMetadata, rangeSeparator=-"`
-		MultiRange  []int `keda:"name=multiRange,  order=triggerMetadata, rangeSeparator=-"`
-		DottedRange []int `keda:"name=dottedRange, order=triggerMetadata, rangeSeparator=.."`
-		WrongRange  []int `keda:"name=wrongRange,  order=triggerMetadata, rangeSeparator=.."`
+		Range       []int `keda:"name=range,       order=triggerMetadata, range=-"`
+		MultiRange  []int `keda:"name=multiRange,  order=triggerMetadata, range"`
+		DottedRange []int `keda:"name=dottedRange, order=triggerMetadata, range=.."`
+		WrongRange  []int `keda:"name=wrongRange,  order=triggerMetadata, range=.."`
 	}
 
 	ts := testStruct{}
