@@ -515,3 +515,35 @@ func TestNoParsingOrder(t *testing.T) {
 	Expect(err).To(BeNil())
 	Expect(tsdm.DefaultVal2).To(Equal("dv"))
 }
+
+// TestRange tests the range param
+func TestRange(t *testing.T) {
+	RegisterTestingT(t)
+
+	sc := &ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"range":       "5-10",
+			"multiRange":  "5-10, 15-20",
+			"dottedRange": "2..7",
+			"wrongRange":  "5..3",
+		},
+	}
+
+	type testStruct struct {
+		Range       []int `keda:"name=range,       order=triggerMetadata, rangeSeparator=-"`
+		MultiRange  []int `keda:"name=multiRange,  order=triggerMetadata, rangeSeparator=-"`
+		DottedRange []int `keda:"name=dottedRange, order=triggerMetadata, rangeSeparator=.."`
+		WrongRange  []int `keda:"name=wrongRange,  order=triggerMetadata, rangeSeparator=.."`
+	}
+
+	ts := testStruct{}
+	err := sc.TypedConfig(&ts)
+	Expect(err).To(BeNil())
+	Expect(ts.Range).To(HaveLen(6))
+	Expect(ts.Range).To(ConsistOf(5, 6, 7, 8, 9, 10))
+	Expect(ts.MultiRange).To(HaveLen(12))
+	Expect(ts.MultiRange).To(ConsistOf(5, 6, 7, 8, 9, 10, 15, 16, 17, 18, 19, 20))
+	Expect(ts.DottedRange).To(HaveLen(6))
+	Expect(ts.DottedRange).To(ConsistOf(2, 3, 4, 5, 6, 7))
+	Expect(ts.WrongRange).To(HaveLen(0))
+}

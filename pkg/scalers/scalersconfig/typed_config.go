@@ -68,13 +68,14 @@ const (
 
 // field tag parameters
 const (
-	optionalTag     = "optional"
-	deprecatedTag   = "deprecated"
-	defaultTag      = "default"
-	orderTag        = "order"
-	nameTag         = "name"
-	enumTag         = "enum"
-	exclusiveSetTag = "exclusiveSet"
+	optionalTag       = "optional"
+	deprecatedTag     = "deprecated"
+	defaultTag        = "default"
+	orderTag          = "order"
+	nameTag           = "name"
+	enumTag           = "enum"
+	exclusiveSetTag   = "exclusiveSet"
+	rangeSeparatorTag = "rangeSeparator"
 )
 
 // Params is a struct that represents the parameter list that can be used in the keda tag
@@ -105,6 +106,9 @@ type Params struct {
 
 	// ExclusiveSet is the 'exclusiveSet' tag parameter defining the list of values that are mutually exclusive
 	ExclusiveSet []string
+
+	// RangeSeparator is the 'rangeSeparator' tag parameter defining the separator for range values
+	RangeSeparator string
 }
 
 // IsNested is a function that returns true if the parameter is nested
@@ -134,7 +138,7 @@ func (sc *ScalerConfig) TypedConfig(typedConfig any) (err error) {
 			// this shouldn't happen, but calling certain reflection functions may result in panic
 			// if it does, it's better to return a error with stacktrace and reject parsing config
 			// rather than crashing KEDA
-			err = fmt.Errorf("failed to parse typed config %T resulted in panic\n%v", r, debug.Stack())
+			err = fmt.Errorf("failed to parse typed config %T resulted in panic\n%v", r, string(debug.Stack()))
 		}
 	}()
 	err = sc.parseTypedConfig(typedConfig, false)
@@ -242,14 +246,14 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 		}
 		return sc.parseTypedConfig(field.Addr().Interface(), params.Optional)
 	}
-	if err := setConfigValueHelper(valFromConfig, field); err != nil {
+	if err := setConfigValueHelper(params, valFromConfig, field); err != nil {
 		return fmt.Errorf("unable to set param %q value %q: %w", params.Name, valFromConfig, err)
 	}
 	return nil
 }
 
 // setConfigValueURLParams is a function that sets the value of the url.Values field
-func setConfigValueURLParams(valFromConfig string, field reflect.Value) error {
+func setConfigValueURLParams(params Params, valFromConfig string, field reflect.Value) error {
 	field.Set(reflect.MakeMap(reflect.MapOf(field.Type().Key(), field.Type().Elem())))
 	vals, err := url.ParseQuery(valFromConfig)
 	if err != nil {
@@ -258,7 +262,7 @@ func setConfigValueURLParams(valFromConfig string, field reflect.Value) error {
 	for k, vs := range vals {
 		ifcMapKeyElem := reflect.New(field.Type().Key()).Elem()
 		ifcMapValueElem := reflect.New(field.Type().Elem()).Elem()
-		if err := setConfigValueHelper(k, ifcMapKeyElem); err != nil {
+		if err := setConfigValueHelper(params, k, ifcMapKeyElem); err != nil {
 			return fmt.Errorf("map key %q: %w", k, err)
 		}
 		for _, v := range vs {
@@ -270,7 +274,7 @@ func setConfigValueURLParams(valFromConfig string, field reflect.Value) error {
 }
 
 // setConfigValueMap is a function that sets the value of the map field
-func setConfigValueMap(valFromConfig string, field reflect.Value) error {
+func setConfigValueMap(params Params, valFromConfig string, field reflect.Value) error {
 	field.Set(reflect.MakeMap(reflect.MapOf(field.Type().Key(), field.Type().Elem())))
 	split := strings.Split(valFromConfig, elemSeparator)
 	for _, s := range split {
@@ -282,11 +286,11 @@ func setConfigValueMap(valFromConfig string, field reflect.Value) error {
 		key := strings.TrimSpace(kv[0])
 		val := strings.TrimSpace(kv[1])
 		ifcKeyElem := reflect.New(field.Type().Key()).Elem()
-		if err := setConfigValueHelper(key, ifcKeyElem); err != nil {
+		if err := setConfigValueHelper(params, key, ifcKeyElem); err != nil {
 			return fmt.Errorf("map key %q: %w", key, err)
 		}
 		ifcValueElem := reflect.New(field.Type().Elem()).Elem()
-		if err := setConfigValueHelper(val, ifcValueElem); err != nil {
+		if err := setConfigValueHelper(params, val, ifcValueElem); err != nil {
 			return fmt.Errorf("map key %q, value %q: %w", key, val, err)
 		}
 		field.SetMapIndex(ifcKeyElem, ifcValueElem)
@@ -294,22 +298,69 @@ func setConfigValueMap(valFromConfig string, field reflect.Value) error {
 	return nil
 }
 
+// canRange is a function that checks if the value can be ranged
+func canRange(valFromConfig, elemRangeSeparator string, field reflect.Value) bool {
+	if elemRangeSeparator == "" {
+		return false
+	}
+	if field.Kind() != reflect.Slice {
+		return false
+	}
+	elemIfc := reflect.New(field.Type().Elem()).Interface()
+	elemVal := reflect.ValueOf(elemIfc).Elem()
+	if !elemVal.CanInt() {
+		return false
+	}
+	return strings.Contains(valFromConfig, elemRangeSeparator)
+}
+
+// setConfigValueRange is a function that sets the value of the range field
+func setConfigValueRange(params Params, valFromConfig string, field reflect.Value) error {
+	rangeSplit := strings.Split(valFromConfig, params.RangeSeparator)
+	if len(rangeSplit) != 2 {
+		return fmt.Errorf("expected format start%vend, got %q", params.RangeSeparator, valFromConfig)
+	}
+	start := reflect.New(field.Type().Elem()).Interface()
+	end := reflect.New(field.Type().Elem()).Interface()
+	if err := json.Unmarshal([]byte(rangeSplit[0]), &start); err != nil {
+		return fmt.Errorf("unable to parse start value %q: %w", rangeSplit[0], err)
+	}
+	if err := json.Unmarshal([]byte(rangeSplit[1]), &end); err != nil {
+		return fmt.Errorf("unable to parse end value %q: %w", rangeSplit[1], err)
+	}
+
+	startVal := reflect.ValueOf(start).Elem()
+	endVal := reflect.ValueOf(end).Elem()
+	for i := startVal.Int(); i <= endVal.Int(); i++ {
+		elemVal := reflect.New(field.Type().Elem()).Elem()
+		elemVal.SetInt(i)
+		field.Set(reflect.Append(field, elemVal))
+	}
+	return nil
+}
+
 // setConfigValueSlice is a function that sets the value of the slice field
-func setConfigValueSlice(valFromConfig string, field reflect.Value) error {
+func setConfigValueSlice(params Params, valFromConfig string, field reflect.Value) error {
 	elemIfc := reflect.New(field.Type().Elem()).Interface()
 	split := strings.Split(valFromConfig, elemSeparator)
 	for i, s := range split {
 		s := strings.TrimSpace(s)
-		if err := setConfigValueHelper(s, reflect.ValueOf(elemIfc).Elem()); err != nil {
-			return fmt.Errorf("slice element %d: %w", i, err)
+		if canRange(s, params.RangeSeparator, field) {
+			if err := setConfigValueRange(params, s, field); err != nil {
+				return fmt.Errorf("slice element %d: %w", i, err)
+			}
+		} else {
+			if err := setConfigValueHelper(params, s, reflect.ValueOf(elemIfc).Elem()); err != nil {
+				return fmt.Errorf("slice element %d: %w", i, err)
+			}
+			field.Set(reflect.Append(field, reflect.ValueOf(elemIfc).Elem()))
 		}
-		field.Set(reflect.Append(field, reflect.ValueOf(elemIfc).Elem()))
 	}
 	return nil
 }
 
 // setParamValueHelper is a function that sets the value of the parameter
-func setConfigValueHelper(valFromConfig string, field reflect.Value) error {
+func setConfigValueHelper(params Params, valFromConfig string, field reflect.Value) error {
 	paramValue := reflect.ValueOf(valFromConfig)
 	if paramValue.Type().AssignableTo(field.Type()) {
 		field.SetString(valFromConfig)
@@ -320,13 +371,13 @@ func setConfigValueHelper(valFromConfig string, field reflect.Value) error {
 		return nil
 	}
 	if field.Type() == reflect.TypeOf(url.Values{}) {
-		return setConfigValueURLParams(valFromConfig, field)
+		return setConfigValueURLParams(params, valFromConfig, field)
 	}
 	if field.Kind() == reflect.Map {
-		return setConfigValueMap(valFromConfig, field)
+		return setConfigValueMap(params, valFromConfig, field)
 	}
 	if field.Kind() == reflect.Slice {
-		return setConfigValueSlice(valFromConfig, field)
+		return setConfigValueSlice(params, valFromConfig, field)
 	}
 	if field.CanInterface() {
 		ifc := reflect.New(field.Type()).Interface()
@@ -356,8 +407,10 @@ func (sc *ScalerConfig) configParamValue(params Params) (string, bool) {
 			// this is checked when parsing the tags but adding as default case to avoid any potential future problems
 			return "", false
 		}
-		if param, ok := m[key]; ok && param != "" {
-			return strings.TrimSpace(param), true
+		param, ok := m[key]
+		param = strings.TrimSpace(param)
+		if ok && param != "" {
+			return param, true
 		}
 	}
 	return "", params.IsNested()
@@ -412,6 +465,13 @@ func paramsFromTag(tag string, field reflect.StructField) (Params, error) {
 		case exclusiveSetTag:
 			if len(tsplit) > 1 {
 				params.ExclusiveSet = strings.Split(tsplit[1], tagValueSeparator)
+			}
+		case rangeSeparatorTag:
+			if len(tsplit) == 1 {
+				params.RangeSeparator = "-"
+			}
+			if len(tsplit) == 2 {
+				params.RangeSeparator = strings.TrimSpace(tsplit[1])
 			}
 		case "":
 			continue
