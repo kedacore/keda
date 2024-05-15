@@ -531,6 +531,9 @@ func (s *apacheKafkaScaler) getLagForPartition(topic string, partitionID int, co
 	}
 	producerOffset := producerOffsets[topic][partitionID]
 	if consumerOffset == invalidOffset && s.metadata.offsetResetPolicy == earliest {
+		if s.metadata.scaleToZeroOnInvalidOffset {
+			return 0, 0, nil
+		}
 		return producerOffset, producerOffset, nil
 	}
 
