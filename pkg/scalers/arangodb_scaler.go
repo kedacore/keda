@@ -3,7 +3,6 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 
 	driver "github.com/arangodb/go-driver"
@@ -31,12 +30,12 @@ type dbResult struct {
 
 // arangoDBMetadata specify arangoDB scaler params.
 type arangoDBMetadata struct {
-	// Specify arangoDB server endpoint URL or comma separated URL endpoints of all the coordinators.
+	// Specify arangoDB server endpoint URL or comma separated URL Endpoints of all the coordinators.
 	// +required
-	endpoints string
+	Endpoints string `keda:"name=endpoints, order=authParams;triggerMetadata"`
 	// Authentication parameters for connecting to the database
 	// +required
-	arangoDBAuth *authentication.AuthMeta
+	arangoDBAuth *authentication.AuthMeta // TODO: Fix this
 	// Specify the unique arangoDB server ID. Only required if bearer JWT is being used.
 	// +optional
 	serverID string
@@ -44,24 +43,24 @@ type arangoDBMetadata struct {
 	// The name of the database to be queried.
 	// +required
 	dbName string
-	// The name of the collection to be queried.
+	// The name of the Collection to be queried.
 	// +required
-	collection string
-	// The arangoDB query to be executed.
+	Collection string `keda:"name=collection, order=triggerMetadata"`
+	// The arangoDB Query to be executed.
 	// +required
-	query string
+	Query string `keda:"name=query, order=triggerMetadata"`
 	// A threshold that is used as targetAverageValue in HPA.
 	// +required
-	queryValue float64
+	QueryValue float64 `keda:"name=queryValue, order=triggerMetadata ,default=0"`
 	// A threshold that is used to check if scaler is active.
 	// +optional
-	activationQueryValue float64
+	ActivationQueryValue float64 `keda:"name=activationQueryValue, order=triggerMetadata ,default=0"`
 	// Specify whether to verify the server's certificate chain and host name.
 	// +optional
-	unsafeSsl bool
+	UnsafeSsl bool `keda:"name=unsafeSsl, order=triggerMetadata ,default=false"`
 	// Specify the max size of the active connection pool.
 	// +optional
-	connectionLimit int64
+	ConnectionLimit int64 `keda:"name=connectionLimit, order=triggerMetadata, optional"`
 
 	// The index of the scaler inside the ScaledObject
 	// +internal
@@ -97,8 +96,8 @@ func getNewArangoDBClient(meta *arangoDBMetadata) (driver.Client, error) {
 	var auth driver.Authentication
 
 	conn, err := http.NewConnection(http.ConnectionConfig{
-		Endpoints: strings.Split(meta.endpoints, ","),
-		TLSConfig: util.CreateTLSClientConfig(meta.unsafeSsl),
+		Endpoints: strings.Split(meta.Endpoints, ","),
+		TLSConfig: util.CreateTLSClientConfig(meta.UnsafeSsl),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a new http connection, %w", err)
@@ -128,48 +127,14 @@ func getNewArangoDBClient(meta *arangoDBMetadata) (driver.Client, error) {
 
 func parseArangoDBMetadata(config *scalersconfig.ScalerConfig) (*arangoDBMetadata, error) {
 	// setting default metadata
-	meta := arangoDBMetadata{}
-
-	// parse metaData from ScaledJob config
-	endpoints, err := GetFromAuthOrMeta(config, "endpoints")
-	if err != nil {
-		return nil, err
-	}
-	meta.endpoints = endpoints
-
-	if val, ok := config.TriggerMetadata["collection"]; ok {
-		meta.collection = val
-	} else {
-		return nil, fmt.Errorf("no collection given")
+	meta := &arangoDBMetadata{}
+	meta.triggerIndex = config.TriggerIndex
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing arango metadata: %w", err)
 	}
 
-	if val, ok := config.TriggerMetadata["query"]; ok {
-		meta.query = val
-	} else {
-		return nil, fmt.Errorf("no query given")
-	}
-
-	if val, ok := config.TriggerMetadata["queryValue"]; ok {
-		queryValue, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert queryValue to int, %w", err)
-		}
-		meta.queryValue = queryValue
-	} else {
-		if config.AsMetricSource {
-			meta.queryValue = 0
-		} else {
-			return nil, fmt.Errorf("no queryValue given")
-		}
-	}
-
-	meta.activationQueryValue = 0
-	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
-		activationQueryValue, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert activationQueryValue to int, %w", err)
-		}
-		meta.activationQueryValue = activationQueryValue
+	if !config.AsMetricSource && meta.QueryValue == 0 {
+		return nil, fmt.Errorf("no QueryValue given")
 	}
 
 	dbName, err := GetFromAuthOrMeta(config, "dbName")
@@ -178,23 +143,6 @@ func parseArangoDBMetadata(config *scalersconfig.ScalerConfig) (*arangoDBMetadat
 	}
 	meta.dbName = dbName
 
-	meta.unsafeSsl = false
-	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok && val != "" {
-		unsafeSslValue, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse unsafeSsl, %w", err)
-		}
-		meta.unsafeSsl = unsafeSslValue
-	}
-
-	if val, ok := config.TriggerMetadata["connectionLimit"]; ok {
-		connectionLimit, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert connectionLimit to int, %w", err)
-		}
-		meta.connectionLimit = connectionLimit
-	}
-
 	// parse auth configs from ScalerConfig
 	arangoDBAuth, err := authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
 	if err != nil {
@@ -202,8 +150,7 @@ func parseArangoDBMetadata(config *scalersconfig.ScalerConfig) (*arangoDBMetadat
 	}
 	meta.arangoDBAuth = arangoDBAuth
 
-	meta.triggerIndex = config.TriggerIndex
-	return &meta, nil
+	return meta, nil
 }
 
 // Close disposes of arangoDB connections
@@ -226,18 +173,18 @@ func (s *arangoDBScaler) getQueryResult(ctx context.Context) (float64, error) {
 		return -1, fmt.Errorf("failed to connect to %s db, %w", s.metadata.dbName, err)
 	}
 
-	collectionExists, err := db.CollectionExists(ctx, s.metadata.collection)
+	collectionExists, err := db.CollectionExists(ctx, s.metadata.Collection)
 	if err != nil {
-		return -1, fmt.Errorf("failed to check if %s collection exists, %w", s.metadata.collection, err)
+		return -1, fmt.Errorf("failed to check if %s collection exists, %w", s.metadata.Collection, err)
 	}
 
 	if !collectionExists {
-		return -1, fmt.Errorf("%s collection not found in %s database", s.metadata.collection, s.metadata.dbName)
+		return -1, fmt.Errorf("%s collection not found in %s database", s.metadata.Collection, s.metadata.dbName)
 	}
 
 	ctx = driver.WithQueryCount(ctx)
 
-	cursor, err := db.Query(ctx, s.metadata.query, nil)
+	cursor, err := db.Query(ctx, s.metadata.Query, nil)
 	if err != nil {
 		return -1, fmt.Errorf("failed to execute the query, %w", err)
 	}
@@ -256,7 +203,7 @@ func (s *arangoDBScaler) getQueryResult(ctx context.Context) (float64, error) {
 	return result.Value, nil
 }
 
-// GetMetricsAndActivity query from arangoDB, and return to external metrics and activity
+// GetMetricsAndActivity Query from arangoDB, and return to external metrics and activity
 func (s *arangoDBScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	num, err := s.getQueryResult(ctx)
 	if err != nil {
@@ -265,7 +212,7 @@ func (s *arangoDBScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 
 	metric := GenerateMetricInMili(metricName, num)
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), num > s.metadata.activationQueryValue, nil
+	return append([]external_metrics.ExternalMetricValue{}, metric), num > s.metadata.ActivationQueryValue, nil
 }
 
 // GetMetricSpecForScaling get the query value for scaling
@@ -274,7 +221,7 @@ func (s *arangoDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpe
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, "arangodb"),
 		},
-		Target: GetMetricTargetMili(s.metricType, s.metadata.queryValue),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.QueryValue),
 	}
 	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
