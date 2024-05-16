@@ -35,7 +35,7 @@ type arangoDBMetadata struct {
 	Endpoints string `keda:"name=endpoints, order=authParams;triggerMetadata"`
 	// Authentication parameters for connecting to the database
 	// +required
-	arangoDBAuth *authentication.AuthMeta // TODO: Fix this
+	ArangoDBAuth *authentication.Config `keda:"optional"`
 	// Specify the unique arangoDB server ID. Only required if bearer JWT is being used.
 	// +optional
 	serverID string
@@ -51,10 +51,10 @@ type arangoDBMetadata struct {
 	Query string `keda:"name=query, order=triggerMetadata"`
 	// A threshold that is used as targetAverageValue in HPA.
 	// +required
-	QueryValue float64 `keda:"name=queryValue, order=triggerMetadata ,default=0"`
+	QueryValue float64 `keda:"name=queryValue, order=triggerMetadata, default=0"`
 	// A threshold that is used to check if scaler is active.
 	// +optional
-	ActivationQueryValue float64 `keda:"name=activationQueryValue, order=triggerMetadata ,default=0"`
+	ActivationQueryValue float64 `keda:"name=activationQueryValue, order=triggerMetadata, default=0"`
 	// Specify whether to verify the server's certificate chain and host name.
 	// +optional
 	UnsafeSsl bool `keda:"name=unsafeSsl, order=triggerMetadata ,default=false"`
@@ -103,10 +103,10 @@ func getNewArangoDBClient(meta *arangoDBMetadata) (driver.Client, error) {
 		return nil, fmt.Errorf("failed to create a new http connection, %w", err)
 	}
 
-	if meta.arangoDBAuth.EnableBasicAuth {
-		auth = driver.BasicAuthentication(meta.arangoDBAuth.Username, meta.arangoDBAuth.Password)
-	} else if meta.arangoDBAuth.EnableBearerAuth {
-		hdr, err := jwt.CreateArangodJwtAuthorizationHeader(meta.arangoDBAuth.BearerToken, meta.serverID)
+	if meta.ArangoDBAuth.EnabledBasicAuth() {
+		auth = driver.BasicAuthentication(meta.ArangoDBAuth.Username, meta.ArangoDBAuth.Password)
+	} else if meta.ArangoDBAuth.EnabledBearerAuth() {
+		hdr, err := jwt.CreateArangodJwtAuthorizationHeader(meta.ArangoDBAuth.BearerToken, meta.serverID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create bearer token authorization header, %w", err)
 		}
@@ -142,13 +142,6 @@ func parseArangoDBMetadata(config *scalersconfig.ScalerConfig) (*arangoDBMetadat
 		return nil, err
 	}
 	meta.dbName = dbName
-
-	// parse auth configs from ScalerConfig
-	arangoDBAuth, err := authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
-	if err != nil {
-		return nil, err
-	}
-	meta.arangoDBAuth = arangoDBAuth
 
 	return meta, nil
 }

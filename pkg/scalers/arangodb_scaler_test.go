@@ -103,7 +103,7 @@ func TestArangoDBScalerAuthParams(t *testing.T) {
 		}
 
 		if err == nil {
-			if meta.arangoDBAuth.EnableBasicAuth && !strings.Contains(testData.metadata["authModes"], "basic") {
+			if meta.ArangoDBAuth.EnabledBasicAuth() && !strings.Contains(testData.metadata["authModes"], "basic") {
 				t.Error("wrong auth mode detected")
 			}
 		}
