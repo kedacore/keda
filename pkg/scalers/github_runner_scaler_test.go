@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/rand"
+	"crypto/rand"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"html/template"
 	"strings"
 	"testing"
 	"time"
@@ -162,7 +164,8 @@ func generateResponseExceed30Repos() []byte {
 
 	for i := 0; i < 30; i++ {
 		var repository Repo
-		repository.ID = rand.Intn(100000)
+		id, _ := rand.Int(rand.Reader, big.NewInt(100000))
+		repository.ID = int(id.Int64())
 		repository.Name = "BadRepo"
 		repos = append(repos, repository)
 	}
@@ -196,7 +199,17 @@ func apiStubHandler(hasRateLeft bool, exceeds30Repos bool) *httptest.Server {
 		}
 		if strings.Contains(r.URL.String(), "repos?page") {
 			if exceeds30Repos && strings.HasSuffix(r.URL.String(), "?page=1") {
-				_, _ = w.Write(generateResponseExceed30Repos())
+				repos := generateResponseExceed30Repos()
+				tmpl, err := template.New("repos").Parse(string(repos))
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+				err = tmpl.Execute(w, nil)
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
 				w.WriteHeader(http.StatusOK)
 			} else {
 				_, _ = w.Write([]byte(testGhUserReposResponse))
