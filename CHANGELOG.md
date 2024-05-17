@@ -52,8 +52,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
-- **GitHub Scaler**: Fixed pagination, fetching repository list ([#5738](https://github.com/kedacore/keda/issues/5738))
-
 ### Breaking Changes
 
 - **Authentication:** AAD-Pod-Identity and AWS-KIAM auths have been removed ([#5035](https://github.com/kedacore/keda/issues/5035)|[#5085](https://github.com/kedacore/keda/issues/5085))
@@ -73,6 +71,7 @@ Here is an overview of all new **experimental** features:
 
 - **GCP Scalers**: Added custom time horizon in GCP scalers ([#5778](https://github.com/kedacore/keda/issues/5778))
 - **Kafka**: Fix logic to scale to zero on invalid offset even with earliest offsetResetPolicy ([#5689](https://github.com/kedacore/keda/issues/5689))
+- **GitHub Scaler**: Fixed pagination, fetching repository list ([#5738](https://github.com/kedacore/keda/issues/5738))
 
 ### Fixes
 
