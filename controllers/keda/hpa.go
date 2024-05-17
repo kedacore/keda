@@ -76,7 +76,14 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 
 	var behavior *autoscalingv2.HorizontalPodAutoscalerBehavior
 	if scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig != nil {
-		behavior = scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Behavior
+    hpaConfig := scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig
+		behavior = hpaConfig.Behavior
+    for _, metricSpec := range hpaConfig.Metrics {
+      if metricSpec.Type == autoscalingv2.ExternalMetricSourceType { // external metrics is not allowed, cuz it is used by KEDA.
+        return nil, fmt.Errorf("external type is not allowed in horizontalPodAutoscalerConfig.metrics")
+      }
+      scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, metricSpec)
+    }
 	} else {
 		behavior = nil
 	}
