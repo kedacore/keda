@@ -2,13 +2,13 @@ package scalers
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"crypto/rand"
+	"html/template"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
-	"html/template"
 	"strings"
 	"testing"
 	"time"
