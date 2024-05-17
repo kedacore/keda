@@ -209,7 +209,7 @@ func parseAzurePodIdentityParams(config *scalersconfig.ScalerConfig) (clientID s
 		if len(clientPassword) == 0 {
 			return "", "", fmt.Errorf("no activeDirectoryClientPassword given")
 		}
-	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		// no params required to be parsed
 	default:
 		return "", "", fmt.Errorf("azure Monitor doesn't support pod identity %s", config.PodIdentity.Provider)

@@ -58,6 +58,10 @@ func NewCustomMetricsAdapterServerOptions() *CustomMetricsAdapterServerOptions {
 		EnableMetrics: true,
 	}
 
+	// Explicitly disable Priority and Fairness since metric servers are not
+	// meant to be queried directly by default.
+	o.Features.EnablePriorityAndFairness = false
+
 	return o
 }
 

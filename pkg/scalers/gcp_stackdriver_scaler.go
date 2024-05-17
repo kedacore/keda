@@ -33,6 +33,7 @@ type stackdriverMetadata struct {
 	activationTargetValue float64
 	metricName            string
 	valueIfNull           *float64
+	filterDuration        int64
 
 	gcpAuthorization *gcp.AuthorizationMetadata
 	aggregation      *monitoringpb.Aggregation
@@ -118,6 +119,14 @@ func parseStackdriverMetadata(config *scalersconfig.ScalerConfig, logger logr.Lo
 			return nil, fmt.Errorf("valueIfNull parsing error %w", err)
 		}
 		meta.valueIfNull = &valueIfNull
+	}
+
+	if val, ok := config.TriggerMetadata["filterDuration"]; ok {
+		filterDuration, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("filterDuration parsing error %w", err)
+		}
+		meta.filterDuration = filterDuration
 	}
 
 	auth, err := gcp.GetGCPAuthorization(config)
@@ -217,7 +226,7 @@ func (s *stackdriverScaler) GetMetricsAndActivity(ctx context.Context, metricNam
 
 // getMetrics gets metric type value from stackdriver api
 func (s *stackdriverScaler) getMetrics(ctx context.Context) (float64, error) {
-	val, err := s.client.GetMetrics(ctx, s.metadata.filter, s.metadata.projectID, s.metadata.aggregation, s.metadata.valueIfNull)
+	val, err := s.client.GetMetrics(ctx, s.metadata.filter, s.metadata.projectID, s.metadata.aggregation, s.metadata.valueIfNull, s.metadata.filterDuration)
 	if err == nil {
 		s.logger.V(1).Info(
 			fmt.Sprintf("Getting metrics for project %s, filter %s and aggregation %v. Result: %f",

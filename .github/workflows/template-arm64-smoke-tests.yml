@@ -10,5 +10,5 @@ jobs:
     uses: kedacore/keda/.github/workflows/template-smoke-tests.yml@main
     with:
       runs-on: ARM64
-      kubernetesVersion: v1.28
-      kindImage: kindest/node:v1.28.0@sha256:b7a4cad12c197af3ba43202d3efe03246b3f0793f162afb40a33c923952d5b31
+      kubernetesVersion: v1.29
+      kindImage: kindest/node:v1.29.2@sha256:51a1434a5397193442f0be2a297b488b6c919ce8a3931be0ce822606ea5ca245

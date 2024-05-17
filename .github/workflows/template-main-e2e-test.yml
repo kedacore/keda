@@ -12,7 +12,7 @@ jobs:
     concurrency: e2e-tests
     steps:
       - name: Check out code
-        uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f # v4
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4
         with:
           fetch-depth: 1
 
@@ -31,7 +31,6 @@ jobs:
       - name: Run end to end tests
         env:
           AWS_RUN_IDENTITY_TESTS: true
-          AZURE_RUN_AAD_POD_IDENTITY_TESTS: true
           AZURE_RUN_WORKLOAD_IDENTITY_TESTS: true
           GCP_RUN_IDENTITY_TESTS: true
           ENABLE_OPENTELEMETRY : true

@@ -42,7 +42,6 @@ import (
 )
 
 const (
-	AzureAdPodIdentityNamespace    = "azure-ad-identity-system"
 	AzureWorkloadIdentityNamespace = "azure-workload-identity-system"
 	AwsIdentityNamespace           = "aws-identity-system"
 	GcpIdentityNamespace           = "gcp-identity-system"
@@ -77,7 +76,6 @@ var (
 	AzureADMsiID                  = os.Getenv("TF_AZURE_IDENTITY_1_APP_FULL_ID")
 	AzureADMsiClientID            = os.Getenv("TF_AZURE_IDENTITY_1_APP_ID")
 	AzureADTenantID               = os.Getenv("TF_AZURE_SP_TENANT")
-	AzureRunAadPodIdentityTests   = os.Getenv("AZURE_RUN_AAD_POD_IDENTITY_TESTS")
 	AzureRunWorkloadIdentityTests = os.Getenv("AZURE_RUN_WORKLOAD_IDENTITY_TESTS")
 	AwsIdentityTests              = os.Getenv("AWS_RUN_IDENTITY_TESTS")
 	GcpIdentityTests              = os.Getenv("GCP_RUN_IDENTITY_TESTS")
