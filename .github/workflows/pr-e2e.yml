@@ -94,6 +94,7 @@ jobs:
           git checkout ${{ needs.triage.outputs.commit_sha }}
 
       - name: Run regex checks
+        id: regex-validation
         continue-on-error: true
         env:
           COMMENT_BODY: ${{ github.event.comment.body }}
