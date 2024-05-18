@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/kedacore/keda/v2/tests/helper"
@@ -87,24 +88,24 @@ spec:
 func InstallArangoDB(t *testing.T, kc *kubernetes.Clientset, testNamespace string) {
 	t.Log("installing arangodb crds")
 	_, err := helper.ExecuteCommand(fmt.Sprintf("helm install arangodb-crds https://github.com/arangodb/kube-arangodb/releases/download/1.2.20/kube-arangodb-crd-1.2.20.tgz --namespace=%s --wait", testNamespace))
-	assert.NoErrorf(t, err, "cannot install crds - %s", err)
+	require.NoErrorf(t, err, "cannot install crds - %s", err)
 
 	t.Log("installing arangodb operator")
 	_, err = helper.ExecuteCommand(fmt.Sprintf("helm install arangodb https://github.com/arangodb/kube-arangodb/releases/download/1.2.20/kube-arangodb-1.2.20.tgz --set 'operator.architectures={arm64,amd64}' --set 'operator.resources.requests.cpu=1m' --set 'operator.resources.requests.memory=1Mi' --namespace=%s --wait", testNamespace))
-	assert.NoErrorf(t, err, "cannot create operator deployment - %s", err)
+	require.NoErrorf(t, err, "cannot create operator deployment - %s", err)
 
 	t.Log("creating arangodeployment resource")
 	helper.KubectlApplyWithTemplate(t, templateData{Namespace: testNamespace}, "arangoDeploymentTemplate", arangoDeploymentTemplate)
-	assert.True(t, helper.WaitForPodCountInNamespace(t, kc, testNamespace, 3, 5, 20), "pod count should be 3")
-	assert.True(t, helper.WaitForAllPodRunningInNamespace(t, kc, testNamespace, 5, 20), "all pods should be running")
+	require.True(t, helper.WaitForPodCountInNamespace(t, kc, testNamespace, 3, 5, 20), "pod count should be 3")
+	require.True(t, helper.WaitForAllPodRunningInNamespace(t, kc, testNamespace, 5, 20), "all pods should be running")
 }
 
 func SetupArangoDB(t *testing.T, kc *kubernetes.Clientset, testNamespace, arangoDBName, arangoDBCollection string) {
 	helper.KubectlApplyWithTemplate(t, templateData{Namespace: testNamespace, Database: arangoDBName}, "createDatabaseTemplate", createDatabaseTemplate)
-	assert.True(t, helper.WaitForJobSuccess(t, kc, "create-db", testNamespace, 5, 10), "create database job failed")
+	require.True(t, helper.WaitForJobSuccess(t, kc, "create-db", testNamespace, 5, 10), "create database job failed")
 
 	helper.KubectlApplyWithTemplate(t, templateData{Namespace: testNamespace, Database: arangoDBName, Collection: arangoDBCollection}, "createCollectionTemplate", createCollectionTemplate)
-	assert.True(t, helper.WaitForJobSuccess(t, kc, "create-arangodb-collection", testNamespace, 5, 10), "create collection job failed")
+	require.True(t, helper.WaitForJobSuccess(t, kc, "create-arangodb-collection", testNamespace, 5, 10), "create collection job failed")
 }
 
 func UninstallArangoDB(t *testing.T, namespace string) {

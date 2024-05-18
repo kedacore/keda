@@ -47,6 +47,8 @@ data:
         target_label: kubernetes_pod_name
 `
 	OtlpConfig = `mode: deployment
+image:
+  repository: "otel/opentelemetry-collector-contrib"
 config:
   exporters:
     logging:
@@ -57,6 +59,12 @@ config:
     jaeger: null
     prometheus: null
     zipkin: null
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
   service:
     pipelines:
       traces: null

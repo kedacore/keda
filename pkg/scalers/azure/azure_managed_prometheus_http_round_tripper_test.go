@@ -43,21 +43,6 @@ var testAzureManagedPrometheusResourceURLTestData = []testAzureManagedPrometheus
 	{"test azure private cloud with WI", kedav1alpha1.PodIdentityProviderAzureWorkload, map[string]string{"serverAddress": "http://dummy-azure-monitor-workspace", "metricName": "http_requests_total", "threshold": "100", "query": "up", "cloud": "PRIVATE", "azureManagedPrometheusResourceURL": "blah-blah-resourceURL"}, "blah-blah-resourceURL", false},
 	// with private cloud failure
 	{"test default azure cloud with WI", kedav1alpha1.PodIdentityProviderAzureWorkload, map[string]string{"serverAddress": "http://dummy-azure-monitor-workspace", "metricName": "http_requests_total", "threshold": "100", "query": "up", "cloud": "PRIVATE"}, "", true},
-
-	// pod identity
-
-	// with default cloud
-	{"test default azure cloud with WI", kedav1alpha1.PodIdentityProviderAzure, map[string]string{"serverAddress": "http://dummy-azure-monitor-workspace", "metricName": "http_requests_total", "threshold": "100", "query": "up"}, "https://prometheus.monitor.azure.com/.default", false},
-	// with public cloud
-	{"test azure public cloud with WI", kedav1alpha1.PodIdentityProviderAzure, map[string]string{"serverAddress": "http://dummy-azure-monitor-workspace", "metricName": "http_requests_total", "threshold": "100", "query": "up", "cloud": "AZUREPUBLICCLOUD"}, "https://prometheus.monitor.azure.com/.default", false},
-	// with china cloud
-	{"test azure china cloud with WI", kedav1alpha1.PodIdentityProviderAzure, map[string]string{"serverAddress": "http://dummy-azure-monitor-workspace", "metricName": "http_requests_total", "threshold": "100", "query": "up", "cloud": "AZURECHINACLOUD"}, "https://prometheus.monitor.azure.cn/.default", false},
-	// with US GOV cloud
-	{"test azure US GOV cloud with WI", kedav1alpha1.PodIdentityProviderAzure, map[string]string{"serverAddress": "http://dummy-azure-monitor-workspace", "metricName": "http_requests_total", "threshold": "100", "query": "up", "cloud": "AZUREUSGOVERNMENTCLOUD"}, "https://prometheus.monitor.azure.us/.default", false},
-	// with private cloud success
-	{"test azure private cloud with WI", kedav1alpha1.PodIdentityProviderAzure, map[string]string{"serverAddress": "http://dummy-azure-monitor-workspace", "metricName": "http_requests_total", "threshold": "100", "query": "up", "cloud": "PRIVATE", "azureManagedPrometheusResourceURL": "blah-blah-resourceURL"}, "blah-blah-resourceURL", false},
-	// with private cloud failure
-	{"test default azure cloud with WI", kedav1alpha1.PodIdentityProviderAzure, map[string]string{"serverAddress": "http://dummy-azure-monitor-workspace", "metricName": "http_requests_total", "threshold": "100", "query": "up", "cloud": "PRIVATE"}, "", true},
 }
 
 func TestTryAndGetAzureManagedPrometheusHTTPRoundTripperForTriggerMetadataAbsent(t *testing.T) {

@@ -25,6 +25,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics/v1beta1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/metricsservice/api"
 	"github.com/kedacore/keda/v2/pkg/metricsservice/utils"
 	"github.com/kedacore/keda/v2/pkg/scaling"
@@ -91,7 +92,20 @@ func (s *GrpcServer) Start(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		s.server = grpc.NewServer(grpc.Creds(creds))
+
+		grpcServerOpts := []grpc.ServerOption{
+			grpc.Creds(creds),
+		}
+
+		if metricscollector.GetServerMetrics() != nil {
+			grpcServerOpts = append(
+				grpcServerOpts,
+				grpc.ChainStreamInterceptor(metricscollector.GetServerMetrics().StreamServerInterceptor()),
+				grpc.ChainUnaryInterceptor(metricscollector.GetServerMetrics().UnaryServerInterceptor()),
+			)
+		}
+
+		s.server = grpc.NewServer(grpcServerOpts...)
 		api.RegisterMetricsServiceServer(s.server, s)
 	}
 

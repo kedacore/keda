@@ -191,20 +191,20 @@ spec:
 func TestScaler(t *testing.T) {
 	// Create kubernetes resources for PostgreSQL server
 	kc := GetKubernetesClient(t)
+	data, templates := getTemplateData()
+	t.Cleanup(func() {
+		redis.RemoveSentinel(t, testName, redisNamespace)
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+	})
 
 	// Create Redis Sentinel
 	redis.InstallSentinel(t, kc, testName, redisNamespace, redisPassword)
 
 	// Create kubernetes resources for testing
-	data, templates := getTemplateData()
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	testScaleOut(t, kc, data)
 	testScaleIn(t, kc)
-
-	// cleanup
-	redis.RemoveSentinel(t, testName, redisNamespace)
-	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {

@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -53,7 +52,8 @@ type BatchGetSecretValueInput struct {
 
 	// The number of results to include in the response. If there are more results
 	// available, in the response, Secrets Manager includes NextToken . To get the next
-	// results, call BatchGetSecretValue again with the value from NextToken .
+	// results, call BatchGetSecretValue again with the value from NextToken . To use
+	// this parameter, you must also use the Filters parameter.
 	MaxResults *int32
 
 	// A token that indicates where the output should continue from, if a previous
@@ -111,25 +111,25 @@ func (c *Client) addOperationBatchGetSecretValueMiddlewares(stack *middleware.St
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -147,7 +147,7 @@ func (c *Client) addOperationBatchGetSecretValueMiddlewares(stack *middleware.St
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opBatchGetSecretValue(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -178,7 +178,8 @@ var _ BatchGetSecretValueAPIClient = (*Client)(nil)
 type BatchGetSecretValuePaginatorOptions struct {
 	// The number of results to include in the response. If there are more results
 	// available, in the response, Secrets Manager includes NextToken . To get the next
-	// results, call BatchGetSecretValue again with the value from NextToken .
+	// results, call BatchGetSecretValue again with the value from NextToken . To use
+	// this parameter, you must also use the Filters parameter.
 	Limit int32
 
 	// Set to true if pagination should stop if the service returns a pagination token

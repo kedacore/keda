@@ -229,7 +229,7 @@ func parseDatadogMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger
 	return &meta, nil
 }
 
-// newDatddogConnection tests a connection to the Datadog API
+// newDatadogConnection tests a connection to the Datadog API
 func newDatadogConnection(ctx context.Context, meta *datadogMetadata, config *scalersconfig.ScalerConfig) (*datadog.APIClient, error) {
 	ctx = context.WithValue(
 		ctx,

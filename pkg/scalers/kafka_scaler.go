@@ -33,6 +33,7 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
 	"github.com/kedacore/keda/v2/pkg/scalers/kafka"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -81,9 +82,14 @@ type kafkaMetadata struct {
 	kerberosServiceName string
 
 	// OAUTHBEARER
+	tokenProvider         kafkaSaslOAuthTokenProvider
 	scopes                []string
 	oauthTokenEndpointURI string
 	oauthExtensions       map[string]string
+
+	// MSK
+	awsRegion        string
+	awsAuthorization awsutils.AuthorizationMetadata
 
 	// TLS
 	enableTLS   bool
@@ -115,6 +121,14 @@ const (
 	KafkaSASLTypeGSSAPI      kafkaSaslType = "gssapi"
 )
 
+type kafkaSaslOAuthTokenProvider string
+
+// supported SASL OAuth token provider types
+const (
+	KafkaSASLOAuthTokenProviderBearer    kafkaSaslOAuthTokenProvider = "bearer"
+	KafkaSASLOAuthTokenProviderAWSMSKIAM kafkaSaslOAuthTokenProvider = "aws_msk_iam"
+)
+
 const (
 	lagThresholdMetricName             = "lagThreshold"
 	activationLagThresholdMetricName   = "activationLagThreshold"
@@ -126,7 +140,7 @@ const (
 )
 
 // NewKafkaScaler creates a new kafkaScaler
-func NewKafkaScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
+func NewKafkaScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -139,7 +153,7 @@ func NewKafkaScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing kafka metadata: %w", err)
 	}
 
-	client, admin, err := getKafkaClients(kafkaMetadata)
+	client, admin, err := getKafkaClients(ctx, kafkaMetadata)
 	if err != nil {
 		return nil, err
 	}
@@ -157,41 +171,6 @@ func NewKafkaScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 }
 
 func parseKafkaAuthParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadata) error {
-	meta.saslType = KafkaSASLTypeNone
-	var saslAuthType string
-	switch {
-	case config.TriggerMetadata["sasl"] != "":
-		saslAuthType = config.TriggerMetadata["sasl"]
-	default:
-		saslAuthType = ""
-	}
-	if val, ok := config.AuthParams["sasl"]; ok {
-		if saslAuthType != "" {
-			return errors.New("unable to set `sasl` in both ScaledObject and TriggerAuthentication together")
-		}
-		saslAuthType = val
-	}
-
-	if saslAuthType != "" {
-		saslAuthType = strings.TrimSpace(saslAuthType)
-		mode := kafkaSaslType(saslAuthType)
-
-		switch {
-		case mode == KafkaSASLTypePlaintext || mode == KafkaSASLTypeSCRAMSHA256 || mode == KafkaSASLTypeSCRAMSHA512 || mode == KafkaSASLTypeOAuthbearer:
-			err := parseSaslParams(config, meta, mode)
-			if err != nil {
-				return err
-			}
-		case mode == KafkaSASLTypeGSSAPI:
-			err := parseKerberosParams(config, meta, mode)
-			if err != nil {
-				return err
-			}
-		default:
-			return fmt.Errorf("err SASL mode %s given", mode)
-		}
-	}
-
 	meta.enableTLS = false
 	enableTLS := false
 	if val, ok := config.TriggerMetadata["tls"]; ok {
@@ -221,9 +200,142 @@ func parseKafkaAuthParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadat
 	}
 
 	if enableTLS {
-		return parseTLS(config, meta)
+		if err := parseTLS(config, meta); err != nil {
+			return err
+		}
 	}
 
+	meta.saslType = KafkaSASLTypeNone
+	var saslAuthType string
+	switch {
+	case config.TriggerMetadata["sasl"] != "":
+		saslAuthType = config.TriggerMetadata["sasl"]
+	default:
+		saslAuthType = ""
+	}
+	if val, ok := config.AuthParams["sasl"]; ok {
+		if saslAuthType != "" {
+			return errors.New("unable to set `sasl` in both ScaledObject and TriggerAuthentication together")
+		}
+		saslAuthType = val
+	}
+
+	if saslAuthType != "" {
+		saslAuthType = strings.TrimSpace(saslAuthType)
+		mode := kafkaSaslType(saslAuthType)
+
+		switch {
+		case mode == KafkaSASLTypePlaintext || mode == KafkaSASLTypeSCRAMSHA256 || mode == KafkaSASLTypeSCRAMSHA512:
+			err := parseSaslParams(config, meta, mode)
+			if err != nil {
+				return err
+			}
+		case mode == KafkaSASLTypeOAuthbearer:
+			err := parseSaslOAuthParams(config, meta, mode)
+			if err != nil {
+				return err
+			}
+		case mode == KafkaSASLTypeGSSAPI:
+			err := parseKerberosParams(config, meta, mode)
+			if err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("err SASL mode %s given", mode)
+		}
+	}
+
+	return nil
+}
+
+func parseSaslOAuthParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadata, mode kafkaSaslType) error {
+	var tokenProviderTypeValue string
+	if val, ok := config.TriggerMetadata["saslTokenProvider"]; ok {
+		tokenProviderTypeValue = val
+	}
+
+	if val, ok := config.AuthParams["saslTokenProvider"]; ok {
+		if tokenProviderTypeValue != "" {
+			return errors.New("unable to set `saslTokenProvider` in both ScaledObject and TriggerAuthentication together")
+		}
+		tokenProviderTypeValue = val
+	}
+
+	tokenProviderType := KafkaSASLOAuthTokenProviderBearer
+	if tokenProviderTypeValue != "" {
+		tokenProviderType = kafkaSaslOAuthTokenProvider(strings.TrimSpace(tokenProviderTypeValue))
+	}
+
+	var tokenProviderErr error
+	switch tokenProviderType {
+	case KafkaSASLOAuthTokenProviderBearer:
+		tokenProviderErr = parseSaslOAuthBearerParams(config, meta)
+	case KafkaSASLOAuthTokenProviderAWSMSKIAM:
+		tokenProviderErr = parseSaslOAuthAWSMSKIAMParams(config, meta)
+	default:
+		return fmt.Errorf("err SASL OAuth token provider %s given", tokenProviderType)
+	}
+
+	if tokenProviderErr != nil {
+		return fmt.Errorf("error parsing OAuth token provider configuration: %w", tokenProviderErr)
+	}
+
+	meta.saslType = mode
+	meta.tokenProvider = tokenProviderType
+
+	return nil
+}
+
+func parseSaslOAuthBearerParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadata) error {
+	if config.AuthParams["username"] == "" {
+		return errors.New("no username given")
+	}
+	meta.username = strings.TrimSpace(config.AuthParams["username"])
+
+	if config.AuthParams["password"] == "" {
+		return errors.New("no password given")
+	}
+	meta.password = strings.TrimSpace(config.AuthParams["password"])
+
+	meta.scopes = strings.Split(config.AuthParams["scopes"], ",")
+
+	if config.AuthParams["oauthTokenEndpointUri"] == "" {
+		return errors.New("no oauth token endpoint uri given")
+	}
+	meta.oauthTokenEndpointURI = strings.TrimSpace(config.AuthParams["oauthTokenEndpointUri"])
+
+	meta.oauthExtensions = make(map[string]string)
+	oauthExtensionsRaw := config.AuthParams["oauthExtensions"]
+	if oauthExtensionsRaw != "" {
+		for _, extension := range strings.Split(oauthExtensionsRaw, ",") {
+			splittedExtension := strings.Split(extension, "=")
+			if len(splittedExtension) != 2 {
+				return errors.New("invalid OAuthBearer extension, must be of format key=value")
+			}
+			meta.oauthExtensions[splittedExtension[0]] = splittedExtension[1]
+		}
+	}
+
+	return nil
+}
+
+func parseSaslOAuthAWSMSKIAMParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadata) error {
+	if !meta.enableTLS {
+		return errors.New("TLS is required for AWS MSK authentication")
+	}
+
+	if config.TriggerMetadata["awsRegion"] == "" {
+		return errors.New("no awsRegion given")
+	}
+
+	meta.awsRegion = config.TriggerMetadata["awsRegion"]
+
+	auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
+	if err != nil {
+		return fmt.Errorf("error getting AWS authorization: %w", err)
+	}
+
+	meta.awsAuthorization = auth
 	return nil
 }
 
@@ -312,26 +424,6 @@ func parseSaslParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadata, mo
 	meta.password = strings.TrimSpace(config.AuthParams["password"])
 	meta.saslType = mode
 
-	if mode == KafkaSASLTypeOAuthbearer {
-		meta.scopes = strings.Split(config.AuthParams["scopes"], ",")
-
-		if config.AuthParams["oauthTokenEndpointUri"] == "" {
-			return errors.New("no oauth token endpoint uri given")
-		}
-		meta.oauthTokenEndpointURI = strings.TrimSpace(config.AuthParams["oauthTokenEndpointUri"])
-
-		meta.oauthExtensions = make(map[string]string)
-		oauthExtensionsRaw := config.AuthParams["oauthExtensions"]
-		if oauthExtensionsRaw != "" {
-			for _, extension := range strings.Split(oauthExtensionsRaw, ",") {
-				splittedExtension := strings.Split(extension, "=")
-				if len(splittedExtension) != 2 {
-					return errors.New("invalid OAuthBearer extension, must be of format key=value")
-				}
-				meta.oauthExtensions[splittedExtension[0]] = splittedExtension[1]
-			}
-		}
-	}
 	return nil
 }
 
@@ -505,7 +597,29 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 	return meta, nil
 }
 
-func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin, error) {
+func getKafkaClients(ctx context.Context, metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin, error) {
+	config, err := getKafkaClientConfig(ctx, metadata)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error getting kafka client config: %w", err)
+	}
+
+	client, err := sarama.NewClient(metadata.bootstrapServers, config)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating kafka client: %w", err)
+	}
+
+	admin, err := sarama.NewClusterAdminFromClient(client)
+	if err != nil {
+		if !client.Closed() {
+			client.Close()
+		}
+		return nil, nil, fmt.Errorf("error creating kafka admin: %w", err)
+	}
+
+	return client, admin, nil
+}
+
+func getKafkaClientConfig(ctx context.Context, metadata kafkaMetadata) (*sarama.Config, error) {
 	config := sarama.NewConfig()
 	config.Version = metadata.version
 
@@ -519,7 +633,7 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 		config.Net.TLS.Enable = true
 		tlsConfig, err := kedautil.NewTLSConfigWithPassword(metadata.cert, metadata.key, metadata.keyPassword, metadata.ca, metadata.unsafeSsl)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		config.Net.TLS.Config = tlsConfig
 	}
@@ -540,7 +654,19 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 
 	if metadata.saslType == KafkaSASLTypeOAuthbearer {
 		config.Net.SASL.Mechanism = sarama.SASLTypeOAuth
-		config.Net.SASL.TokenProvider = kafka.OAuthBearerTokenProvider(metadata.username, metadata.password, metadata.oauthTokenEndpointURI, metadata.scopes, metadata.oauthExtensions)
+		switch metadata.tokenProvider {
+		case KafkaSASLOAuthTokenProviderBearer:
+			config.Net.SASL.TokenProvider = kafka.OAuthBearerTokenProvider(metadata.username, metadata.password, metadata.oauthTokenEndpointURI, metadata.scopes, metadata.oauthExtensions)
+		case KafkaSASLOAuthTokenProviderAWSMSKIAM:
+			awsAuth, err := awsutils.GetAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+			if err != nil {
+				return nil, fmt.Errorf("error getting AWS config: %w", err)
+			}
+
+			config.Net.SASL.TokenProvider = kafka.OAuthMSKTokenProvider(awsAuth)
+		default:
+			return nil, fmt.Errorf("err SASL OAuth token provider %s given but not supported", metadata.tokenProvider)
+		}
 	}
 
 	if metadata.saslType == KafkaSASLTypeGSSAPI {
@@ -562,21 +688,7 @@ func getKafkaClients(metadata kafkaMetadata) (sarama.Client, sarama.ClusterAdmin
 			config.Net.SASL.GSSAPI.Password = metadata.password
 		}
 	}
-
-	client, err := sarama.NewClient(metadata.bootstrapServers, config)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating kafka client: %w", err)
-	}
-
-	admin, err := sarama.NewClusterAdminFromClient(client)
-	if err != nil {
-		if !client.Closed() {
-			client.Close()
-		}
-		return nil, nil, fmt.Errorf("error creating kafka admin: %w", err)
-	}
-
-	return client, admin, nil
+	return config, nil
 }
 
 func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
@@ -693,6 +805,9 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 	}
 	latestOffset := topicPartitionOffsets[topic][partitionID]
 	if consumerOffset == invalidOffset && s.metadata.offsetResetPolicy == earliest {
+		if s.metadata.scaleToZeroOnInvalidOffset {
+			return 0, 0, nil
+		}
 		return latestOffset, latestOffset, nil
 	}
 

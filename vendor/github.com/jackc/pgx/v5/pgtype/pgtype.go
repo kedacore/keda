@@ -81,6 +81,8 @@ const (
 	IntervalOID            = 1186
 	IntervalArrayOID       = 1187
 	NumericArrayOID        = 1231
+	TimetzOID              = 1266
+	TimetzArrayOID         = 1270
 	BitOID                 = 1560
 	BitArrayOID            = 1561
 	VarbitOID              = 1562
@@ -559,7 +561,7 @@ func TryFindUnderlyingTypeScanPlan(dst any) (plan WrappedScanPlanNextSetter, nex
 			}
 		}
 
-		if nextDstType != nil && dstValue.Type() != nextDstType {
+		if nextDstType != nil && dstValue.Type() != nextDstType && dstValue.CanConvert(nextDstType) {
 			return &underlyingTypeScanPlan{dstType: dstValue.Type(), nextDstType: nextDstType}, dstValue.Convert(nextDstType).Interface(), true
 		}
 

@@ -6,6 +6,7 @@ package scaling_modifiers_test
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -123,6 +124,10 @@ spec:
         - secretRef:
             name: {{.SecretName}}
         imagePullPolicy: Always
+        readinessProbe:
+          httpGet:
+            path: /api/value
+            port: 8080
 `
 	soFallbackTemplate = `
 apiVersion: keda.sh/v1alpha1
@@ -271,6 +276,10 @@ func TestScalingModifiers(t *testing.T) {
 	data, templates := getTemplateData()
 	CreateKubernetesResources(t, kc, namespace, data, templates)
 
+	// we ensure that the metrics api server is up and ready
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, metricsServerDeploymentName, namespace, 1, 60, 2),
+		"replica count should be 1 after 1 minute")
+
 	testFormula(t, kc, data)
 
 	templates = append(templates, Template{Name: "soComplexFormula", Config: soComplexFormula})
@@ -304,10 +313,16 @@ func testFormula(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 5, 12, 10),
 		"replica count should be %d after 2 minutes", 5)
+	time.Sleep(45 * time.Second) // waiting for passing failureThreshold
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 5, 60)
 
 	// ensure state returns to normal after error resolved and triggers are healthy
 	_, err = ExecuteCommand(fmt.Sprintf("kubectl scale deployment/%s --replicas=1 -n %s", metricsServerDeploymentName, namespace))
 	assert.NoErrorf(t, err, "cannot scale metricsServer deployment - %s", err)
+
+	// we ensure that the metrics api server is up and ready
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, metricsServerDeploymentName, namespace, 1, 60, 2),
+		"replica count should be 1 after 1 minute")
 
 	data.MetricValue = 2
 	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)

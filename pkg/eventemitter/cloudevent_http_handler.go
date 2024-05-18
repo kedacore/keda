@@ -32,11 +32,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/kedacore/keda/v2/pkg/eventemitter/eventdata"
-	"github.com/kedacore/keda/v2/pkg/util"
-)
-
-var (
-	kedaNamespace, _ = util.GetClusterObjectNamespace()
 )
 
 type CloudEventHTTPHandler struct {
@@ -87,13 +82,13 @@ func (c *CloudEventHTTPHandler) CloseHandler() {
 }
 
 func (c *CloudEventHTTPHandler) EmitEvent(eventData eventdata.EventData, failureFunc func(eventData eventdata.EventData, err error)) {
-	source := fmt.Sprintf("/%s/%s/keda", c.clusterName, kedaNamespace)
-	subject := fmt.Sprintf("/%s/%s/%s/%s", c.clusterName, eventData.Namespace, eventData.ObjectType, eventData.ObjectName)
+	source := generateCloudEventSource(c.clusterName)
+	subject := generateCloudEventSubjectFromEventData(c.clusterName, eventData)
 
 	event := cloudevents.NewEvent()
 	event.SetSource(source)
 	event.SetSubject(subject)
-	event.SetType(eventData.EventType)
+	event.SetType(string(eventData.CloudEventType))
 
 	if err := event.SetData(cloudevents.ApplicationJSON, EmitData{Reason: eventData.Reason, Message: eventData.Message}); err != nil {
 		c.logger.Error(err, "Failed to set data to CloudEvents receiver")

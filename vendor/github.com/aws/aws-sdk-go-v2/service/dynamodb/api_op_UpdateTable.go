@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	internalEndpointDiscovery "github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery"
 	"github.com/aws/smithy-go/middleware"
@@ -22,8 +21,8 @@ import (
 //   - Create a new global secondary index on the table. After the index begins
 //     backfilling, you can use UpdateTable to perform other operations.
 //
-// UpdateTable is an asynchronous operation; while it is executing, the table
-// status changes from ACTIVE to UPDATING . While it is UPDATING , you cannot issue
+// UpdateTable is an asynchronous operation; while it's executing, the table
+// status changes from ACTIVE to UPDATING . While it's UPDATING , you can't issue
 // another UpdateTable request. When the table returns to the ACTIVE state, the
 // UpdateTable operation is complete.
 func (c *Client) UpdateTable(ctx context.Context, params *UpdateTableInput, optFns ...func(*Options)) (*UpdateTableOutput, error) {
@@ -44,7 +43,8 @@ func (c *Client) UpdateTable(ctx context.Context, params *UpdateTableInput, optF
 // Represents the input of an UpdateTable operation.
 type UpdateTableInput struct {
 
-	// The name of the table to be updated.
+	// The name of the table to be updated. You can also provide the Amazon Resource
+	// Name (ARN) of the table in this parameter.
 	//
 	// This member is required.
 	TableName *string
@@ -94,9 +94,8 @@ type UpdateTableInput struct {
 	SSESpecification *types.SSESpecification
 
 	// Represents the DynamoDB Streams configuration for the table. You receive a
-	// ResourceInUseException if you try to enable a stream on a table that already has
-	// a stream, or if you try to disable a stream on a table that doesn't have a
-	// stream.
+	// ValidationException if you try to enable a stream on a table that already has a
+	// stream, or if you try to disable a stream on a table that doesn't have a stream.
 	StreamSpecification *types.StreamSpecification
 
 	// The table class of the table to be updated. Valid values are STANDARD and
@@ -140,25 +139,25 @@ func (c *Client) addOperationUpdateTableMiddlewares(stack *middleware.Stack, opt
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -182,7 +181,7 @@ func (c *Client) addOperationUpdateTableMiddlewares(stack *middleware.Stack, opt
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opUpdateTable(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

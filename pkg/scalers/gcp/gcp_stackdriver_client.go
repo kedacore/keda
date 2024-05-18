@@ -144,6 +144,8 @@ func alignerFromString(aligner string) (monitoringpb.Aggregation_Aligner, error)
 		return monitoringpb.Aggregation_ALIGN_NONE, nil
 	case "delta":
 		return monitoringpb.Aggregation_ALIGN_DELTA, nil
+	case "rate":
+		return monitoringpb.Aggregation_ALIGN_RATE, nil
 	case "interpolate":
 		return monitoringpb.Aggregation_ALIGN_INTERPOLATE, nil
 	case "next_older":
@@ -195,6 +197,8 @@ func reducerFromString(reducer string) (monitoringpb.Aggregation_Reducer, error)
 		return monitoringpb.Aggregation_REDUCE_SUM, nil
 	case "stddev":
 		return monitoringpb.Aggregation_REDUCE_STDDEV, nil
+	case "count":
+		return monitoringpb.Aggregation_REDUCE_COUNT, nil
 	case "count_true":
 		return monitoringpb.Aggregation_REDUCE_COUNT_TRUE, nil
 	case "count_false":
@@ -220,9 +224,13 @@ func (s StackDriverClient) GetMetrics(
 	filter string,
 	projectID string,
 	aggregation *monitoringpb.Aggregation,
-	valueIfNull *float64) (float64, error) {
-	// Set the start time to 1 minute ago
-	startTime := time.Now().UTC().Add(time.Minute * -2)
+	valueIfNull *float64,
+	filterDuration int64) (float64, error) {
+	// Set the start time (default 2 minute ago)
+	if filterDuration <= 0 {
+		filterDuration = 2
+	}
+	startTime := time.Now().UTC().Add(time.Minute * -time.Duration(filterDuration))
 
 	// Set the end time to now
 	endTime := time.Now().UTC()
@@ -335,10 +343,13 @@ func getActualProjectID(s *StackDriverClient, projectID string) string {
 // | align delta(3m)
 // | every 3m
 // | group_by [], count(value)
-func (s StackDriverClient) BuildMQLQuery(projectID, resourceType, metric, resourceName, aggregation string) (string, error) {
-	th := defaultTimeHorizon
-	if aggregation != "" {
-		th = aggregationTimeHorizon
+func (s StackDriverClient) BuildMQLQuery(projectID, resourceType, metric, resourceName, aggregation, timeHorizon string) (string, error) {
+	th := timeHorizon
+	if th == "" {
+		th = defaultTimeHorizon
+		if aggregation != "" {
+			th = aggregationTimeHorizon
+		}
 	}
 
 	pid := getActualProjectID(&s, projectID)

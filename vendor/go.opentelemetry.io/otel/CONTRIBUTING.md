@@ -201,6 +201,16 @@ You can install and run a "local Go Doc site" in the following way:
 [`go.opentelemetry.io/otel/metric`](https://pkg.go.dev/go.opentelemetry.io/otel/metric)
 is an example of a very well-documented package.
 
+### README files
+
+Each (non-internal, non-test, non-documentation) package must contain a
+`README.md` file containing at least a title, and a `pkg.go.dev` badge.
+
+The README should not be a repetition of Go doc comments.
+
+You can verify the presence of all README files with the `make verify-readmes`
+command.
+
 ## Style Guide
 
 One of the primary goals of this project is that it is actually used by
@@ -617,13 +627,13 @@ should be canceled.
 
 - [Evan Torrie](https://github.com/evantorrie), Verizon Media
 - [Sam Xie](https://github.com/XSAM), Cisco/AppDynamics
-- [David Ashpole](https://github.com/dashpole), Google
 - [Chester Cheung](https://github.com/hanyuancheung), Tencent
 - [Damien Mathieu](https://github.com/dmathieu), Elastic
 - [Anthony Mirabella](https://github.com/Aneurysm9), AWS
 
 ### Maintainers
 
+- [David Ashpole](https://github.com/dashpole), Google
 - [Aaron Clawson](https://github.com/MadVikingGod), LightStep
 - [Robert Pająk](https://github.com/pellared), Splunk
 - [Tyler Yahn](https://github.com/MrAlias), Splunk

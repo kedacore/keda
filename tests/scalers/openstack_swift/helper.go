@@ -12,6 +12,7 @@ import (
 	containers "github.com/gophercloud/gophercloud/openstack/objectstorage/v1/containers"
 	objects "github.com/gophercloud/gophercloud/openstack/objectstorage/v1/objects"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func CreateClient(t *testing.T, authURL, userID, password, projectID string) *gophercloud.ServiceClient {
@@ -24,9 +25,9 @@ func CreateClient(t *testing.T, authURL, userID, password, projectID string) *go
 		},
 	}
 	provider, err := openstack.AuthenticatedClient(opts)
-	assert.NoErrorf(t, err, "cannot create the provider - %s", err)
+	require.NoErrorf(t, err, "cannot create the provider - %s", err)
 	client, err := openstack.NewObjectStorageV1(provider, gophercloud.EndpointOpts{})
-	assert.NoErrorf(t, err, "cannot create the client - %s", err)
+	require.NoErrorf(t, err, "cannot create the client - %s", err)
 	return client
 }
 
@@ -35,7 +36,7 @@ func CreateContainer(t *testing.T, client *gophercloud.ServiceClient, name strin
 		ContentType: "application/json",
 	}
 	_, err := containers.Create(client, name, createOpts).Extract()
-	assert.NoErrorf(t, err, "cannot create the container - %s", err)
+	require.NoErrorf(t, err, "cannot create the container - %s", err)
 }
 
 func DeleteContainer(t *testing.T, client *gophercloud.ServiceClient, name string) {

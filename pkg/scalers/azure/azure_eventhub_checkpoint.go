@@ -29,35 +29,24 @@ import (
 	"github.com/Azure/azure-storage-blob-go/azblob"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 // goCheckpoint struct to adapt goSdk Checkpoint
 type goCheckpoint struct {
 	Checkpoint struct {
-		SequenceNumber int64  `json:"sequenceNumber"`
-		Offset         string `json:"offset"`
+		SequenceNumber int64 `json:"sequenceNumber"`
 	} `json:"checkpoint"`
 	PartitionID string `json:"partitionId"`
 }
 
-type baseCheckpoint struct {
-	Epoch  int64  `json:"Epoch"`
-	Offset string `json:"Offset"`
-	Owner  string `json:"Owner"`
-	Token  string `json:"Token"`
-}
-
 // Checkpoint in a common format
 type Checkpoint struct {
-	baseCheckpoint
 	PartitionID    string `json:"PartitionId"`
 	SequenceNumber int64  `json:"SequenceNumber"`
 }
 
 // Older python sdk stores the checkpoint differently
 type pythonCheckpoint struct {
-	baseCheckpoint
 	PartitionID    string `json:"partition_id"`
 	SequenceNumber int64  `json:"sequence_number"`
 }
@@ -92,14 +81,14 @@ type defaultCheckpointer struct {
 	containerName string
 }
 
-func NewCheckpoint(offset string, sequenceNumber int64) Checkpoint {
-	return Checkpoint{baseCheckpoint: baseCheckpoint{Offset: offset}, SequenceNumber: sequenceNumber}
+func NewCheckpoint(sequenceNumber int64) Checkpoint {
+	return Checkpoint{SequenceNumber: sequenceNumber}
 }
 
 // GetCheckpointFromBlobStorage reads depending of the CheckpointStrategy the checkpoint from a azure storage
-func GetCheckpointFromBlobStorage(ctx context.Context, httpClient util.HTTPDoer, info EventHubInfo, partitionID string) (Checkpoint, error) {
+func GetCheckpointFromBlobStorage(ctx context.Context, info EventHubInfo, partitionID string) (Checkpoint, error) {
 	checkpointer := newCheckpointer(info, partitionID)
-	return getCheckpoint(ctx, httpClient, info, checkpointer)
+	return getCheckpoint(ctx, info, checkpointer)
 }
 
 func newCheckpointer(info EventHubInfo, partitionID string) checkpointer {
@@ -222,10 +211,7 @@ func newGoSdkCheckpoint(get *azblob.DownloadResponse) (Checkpoint, error) {
 
 	return Checkpoint{
 		SequenceNumber: checkpoint.Checkpoint.SequenceNumber,
-		baseCheckpoint: baseCheckpoint{
-			Offset: checkpoint.Checkpoint.Offset,
-		},
-		PartitionID: checkpoint.PartitionID,
+		PartitionID:    checkpoint.PartitionID,
 	}, nil
 }
 
@@ -261,7 +247,7 @@ func (checkpointer *defaultCheckpointer) extractCheckpoint(get *azblob.DownloadR
 	return checkpoint, err
 }
 
-func getCheckpoint(ctx context.Context, httpClient util.HTTPDoer, info EventHubInfo, checkpointer checkpointer) (Checkpoint, error) {
+func getCheckpoint(ctx context.Context, info EventHubInfo, checkpointer checkpointer) (Checkpoint, error) {
 	var podIdentity = info.PodIdentity
 
 	// For back-compat, prefer a connection string over pod identity when present
@@ -269,14 +255,13 @@ func getCheckpoint(ctx context.Context, httpClient util.HTTPDoer, info EventHubI
 		podIdentity.Provider = kedav1alpha1.PodIdentityProviderNone
 	}
 
-	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzure || podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
+	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
 		if len(info.StorageAccountName) == 0 {
 			return Checkpoint{}, fmt.Errorf("storageAccountName not supplied when PodIdentity authentication is enabled")
 		}
 	}
 
-	blobCreds, storageEndpoint, err := ParseAzureStorageBlobConnection(ctx, httpClient,
-		podIdentity, info.StorageConnection, info.StorageAccountName, info.BlobStorageEndpoint)
+	blobCreds, storageEndpoint, err := ParseAzureStorageBlobConnection(ctx, podIdentity, info.StorageConnection, info.StorageAccountName, info.BlobStorageEndpoint)
 
 	if err != nil {
 		return Checkpoint{}, err
@@ -316,15 +301,6 @@ func getCheckpointFromStorageMetadata(get *azblob.DownloadResponse, partitionID 
 		} else {
 			return Checkpoint{}, fmt.Errorf("sequencenumber is not a valid int64 value: %w", err)
 		}
-	}
-
-	if offset, ok := metadata["offset"]; ok {
-		if !ok {
-			if offset, ok = metadata["Offset"]; !ok {
-				return Checkpoint{}, fmt.Errorf("offset on blob not found")
-			}
-		}
-		checkpoint.Offset = offset
 	}
 
 	return checkpoint, nil

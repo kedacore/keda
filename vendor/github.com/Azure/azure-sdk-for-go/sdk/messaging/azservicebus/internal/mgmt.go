@@ -374,10 +374,10 @@ func SetSessionState(ctx context.Context, rpcLink amqpwrap.RPCLink, linkName str
 	return nil
 }
 
-// SendDisposition allows you settle a message using the management link, rather than via your
+// SettleOnMgmtLink allows you settle a message using the management link, rather than via your
 // *amqp.Receiver. Use this if the receiver has been closed/lost or if the message isn't associated
 // with a link (ex: deferred messages).
-func SendDisposition(ctx context.Context, rpcLink amqpwrap.RPCLink, linkName string, lockToken *amqp.UUID, state Disposition, propertiesToModify map[string]any) error {
+func SettleOnMgmtLink(ctx context.Context, rpcLink amqpwrap.RPCLink, linkName string, lockToken *amqp.UUID, state Disposition, propertiesToModify map[string]any) error {
 	if lockToken == nil {
 		err := errors.New("lock token on the message is not set, thus cannot send disposition")
 		return err

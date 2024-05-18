@@ -36,6 +36,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -43,6 +44,7 @@ import (
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventemitter/eventdata"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
+	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 )
 
@@ -59,16 +61,19 @@ type EventEmitter struct {
 	recorder                 record.EventRecorder
 	clusterName              string
 	eventHandlersCache       map[string]EventDataHandler
+	eventFilterCache         map[string]*EventFilter
 	eventHandlersCacheLock   *sync.RWMutex
+	eventFilterCacheLock     *sync.RWMutex
 	eventLoopContexts        *sync.Map
 	cloudEventProcessingChan chan eventdata.EventData
+	secretsLister            corev1listers.SecretLister
 }
 
 // EventHandler defines the behavior for EventEmitter clients
 type EventHandler interface {
 	DeleteCloudEventSource(cloudEventSource *eventingv1alpha1.CloudEventSource) error
 	HandleCloudEventSource(ctx context.Context, cloudEventSource *eventingv1alpha1.CloudEventSource) error
-	Emit(object runtime.Object, namesapce types.NamespacedName, eventType string, cloudeventType string, reason string, message string)
+	Emit(object runtime.Object, namesapce types.NamespacedName, eventType string, cloudeventType eventingv1alpha1.CloudEventType, reason string, message string)
 }
 
 // EventDataHandler defines the behavior for different event handlers
@@ -86,20 +91,24 @@ type EmitData struct {
 }
 
 const (
-	cloudEventHandlerTypeHTTP = "http"
+	cloudEventHandlerTypeHTTP                = "http"
+	cloudEventHandlerTypeAzureEventGridTopic = "azureEventGridTopic"
 )
 
 // NewEventEmitter creates a new EventEmitter
-func NewEventEmitter(client client.Client, recorder record.EventRecorder, clusterName string) EventHandler {
+func NewEventEmitter(client client.Client, recorder record.EventRecorder, clusterName string, secretsLister corev1listers.SecretLister) EventHandler {
 	return &EventEmitter{
 		log:                      logf.Log.WithName("event_emitter"),
 		client:                   client,
 		recorder:                 recorder,
 		clusterName:              clusterName,
 		eventHandlersCache:       map[string]EventDataHandler{},
+		eventFilterCache:         map[string]*EventFilter{},
 		eventHandlersCacheLock:   &sync.RWMutex{},
+		eventFilterCacheLock:     &sync.RWMutex{},
 		eventLoopContexts:        &sync.Map{},
 		cloudEventProcessingChan: make(chan eventdata.EventData, maxChannelBuffer),
+		secretsLister:            secretsLister,
 	}
 }
 
@@ -165,7 +174,9 @@ func (e *EventEmitter) DeleteCloudEventSource(cloudEventSource *eventingv1alpha1
 // use in the loop.
 func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEventSource *eventingv1alpha1.CloudEventSource) {
 	e.eventHandlersCacheLock.Lock()
+	e.eventFilterCacheLock.Lock()
 	defer e.eventHandlersCacheLock.Unlock()
+	defer e.eventFilterCacheLock.Unlock()
 
 	key := cloudEventSource.GenerateIdentifier()
 
@@ -173,6 +184,16 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEventSource
 	if clusterName == "" {
 		clusterName = e.clusterName
 	}
+
+	// Resolve auth related
+	authParams, podIdentity, err := resolver.ResolveAuthRefAndPodIdentity(ctx, e.client, e.log, cloudEventSource.Spec.AuthenticationRef, nil, cloudEventSource.Namespace, e.secretsLister)
+	if err != nil {
+		e.log.Error(err, "error resolving auth params", "cloudEventSource", cloudEventSource)
+		return
+	}
+
+	// Create EventFilter from CloudEventSource
+	e.eventFilterCache[key] = NewEventFilter(cloudEventSource.Spec.EventSubscription.IncludedEventTypes, cloudEventSource.Spec.EventSubscription.ExcludedEventTypes)
 
 	// Create different event destinations here
 	if cloudEventSource.Spec.Destination.HTTP != nil {
@@ -187,15 +208,37 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEventSource
 			h.CloseHandler()
 		}
 		e.eventHandlersCache[eventHandlerKey] = eventHandler
+		return
 	}
+
+	if cloudEventSource.Spec.Destination.AzureEventGridTopic != nil {
+		eventHandler, err := NewAzureEventGridTopicHandler(ctx, clusterName, cloudEventSource.Spec.Destination.AzureEventGridTopic, authParams, podIdentity, initializeLogger(cloudEventSource, "azure_event_grid_topic"))
+		if err != nil {
+			e.log.Error(err, "create Azure Event Grid handler failed")
+			return
+		}
+
+		eventHandlerKey := newEventHandlerKey(key, cloudEventHandlerTypeAzureEventGridTopic)
+		if h, ok := e.eventHandlersCache[eventHandlerKey]; ok {
+			h.CloseHandler()
+		}
+		e.eventHandlersCache[eventHandlerKey] = eventHandler
+		return
+	}
+
+	e.log.Info("No destionation is defined in CloudEventSource", "CloudEventSource", cloudEventSource.Name)
 }
 
 // clearEventHandlersCache will clear all event handlers that created by the passing CloudEventSource
 func (e *EventEmitter) clearEventHandlersCache(cloudEventSource *eventingv1alpha1.CloudEventSource) {
 	e.eventHandlersCacheLock.Lock()
 	defer e.eventHandlersCacheLock.Unlock()
+	e.eventFilterCacheLock.Lock()
+	defer e.eventFilterCacheLock.Unlock()
 
 	key := cloudEventSource.GenerateIdentifier()
+
+	delete(e.eventFilterCache, key)
 
 	// Clear different event destination here.
 	if cloudEventSource.Spec.Destination.HTTP != nil {
@@ -205,9 +248,17 @@ func (e *EventEmitter) clearEventHandlersCache(cloudEventSource *eventingv1alpha
 			delete(e.eventHandlersCache, key)
 		}
 	}
+
+	if cloudEventSource.Spec.Destination.AzureEventGridTopic != nil {
+		eventHandlerKey := newEventHandlerKey(key, cloudEventHandlerTypeAzureEventGridTopic)
+		if eventHandler, found := e.eventHandlersCache[eventHandlerKey]; found {
+			eventHandler.CloseHandler()
+			delete(e.eventHandlersCache, key)
+		}
+	}
 }
 
-// clearEventHandlersCache will check if the event handlers that were created by passing CloudEventSource exist
+// checkIfEventHandlersExist will check if the event handlers that were created by passing CloudEventSource exist
 func (e *EventEmitter) checkIfEventHandlersExist(cloudEventSource *eventingv1alpha1.CloudEventSource) bool {
 	e.eventHandlersCacheLock.RLock()
 	defer e.eventHandlersCacheLock.RUnlock()
@@ -274,7 +325,7 @@ func (e *EventEmitter) checkEventHandlers(ctx context.Context, cloudEventSource 
 }
 
 // Emit is emitting event to both local kubernetes and custom CloudEventSource handler. After emit event to local kubernetes, event will inqueue and waitng for handler's consuming.
-func (e *EventEmitter) Emit(object runtime.Object, namesapce types.NamespacedName, eventType, cloudeventType, reason, message string) {
+func (e *EventEmitter) Emit(object runtime.Object, namesapce types.NamespacedName, eventType string, cloudeventType eventingv1alpha1.CloudEventType, reason, message string) {
 	e.recorder.Event(object, eventType, reason, message)
 
 	e.eventHandlersCacheLock.RLock()
@@ -286,13 +337,13 @@ func (e *EventEmitter) Emit(object runtime.Object, namesapce types.NamespacedNam
 	objectName, _ := meta.NewAccessor().Name(object)
 	objectType, _ := meta.NewAccessor().Kind(object)
 	eventData := eventdata.EventData{
-		Namespace:  namesapce.Namespace,
-		EventType:  cloudeventType,
-		ObjectName: strings.ToLower(objectName),
-		ObjectType: strings.ToLower(objectType),
-		Reason:     reason,
-		Message:    message,
-		Time:       time.Now().UTC(),
+		Namespace:      namesapce.Namespace,
+		CloudEventType: cloudeventType,
+		ObjectName:     strings.ToLower(objectName),
+		ObjectType:     strings.ToLower(objectType),
+		Reason:         reason,
+		Message:        message,
+		Time:           time.Now().UTC(),
 	}
 	go e.enqueueEventData(eventData)
 }
@@ -324,6 +375,19 @@ func (e *EventEmitter) emitEventByHandler(eventData eventdata.EventData) {
 
 	if eventData.HandlerKey == "" {
 		for key, handler := range e.eventHandlersCache {
+			e.eventFilterCacheLock.RLock()
+			defer e.eventFilterCacheLock.RUnlock()
+			// Filter Event
+			identifierKey := getPrefixIdentifierFromKey(key)
+
+			if e.eventFilterCache[identifierKey] != nil {
+				isFiltered := e.eventFilterCache[identifierKey].FilterEvent(eventData.CloudEventType)
+				if isFiltered {
+					e.log.V(1).Info("Event is filtered", "cloudeventType", eventData.CloudEventType, "event identifier", identifierKey)
+					return
+				}
+			}
+
 			eventData.HandlerKey = key
 			if handler.GetActiveStatus() == metav1.ConditionTrue {
 				go handler.EmitEvent(eventData, e.emitErrorHandle)
@@ -395,11 +459,20 @@ func (e *EventEmitter) updateCloudEventSourceStatus(ctx context.Context, cloudEv
 	return nil
 }
 
-// TODO: nolint:unparam should be remove after added more than one cloudevent handler
-func newEventHandlerKey(kindNamespaceName string, handlerType string) string { //nolint:unparam
+func newEventHandlerKey(kindNamespaceName string, handlerType string) string {
 	return fmt.Sprintf("%s.%s", kindNamespaceName, handlerType)
 }
 
+// getPrefixIdentifierFromKey will return the prefix identifier from the handler key. Handler key is generated by the format of "CloudEventSource.Namespace.Name.HandlerType" and the prefix identifier is "CloudEventSource.Namespace.Name"
+func getPrefixIdentifierFromKey(handlerKey string) string {
+	keys := strings.Split(handlerKey, ".")
+	if len(keys) >= 3 {
+		return keys[0] + "." + keys[1] + "." + keys[2]
+	}
+	return ""
+}
+
+// getHandlerTypeFromKey will return the handler type from the handler key. Handler key is generated by the format of "CloudEventSource.Namespace.Name.HandlerType" and the handler type is "HandlerType"
 func getHandlerTypeFromKey(handlerKey string) string {
 	keys := strings.Split(handlerKey, ".")
 	if len(keys) >= 4 {
@@ -408,6 +481,7 @@ func getHandlerTypeFromKey(handlerKey string) string {
 	return ""
 }
 
+// getSourceNameFromKey will return the handler type from the source name. Source name is generated by the format of "CloudEventSource.Namespace.Name.HandlerType" and the source name is "Name"
 func getSourceNameFromKey(handlerKey string) string {
 	keys := strings.Split(handlerKey, ".")
 	if len(keys) >= 4 {

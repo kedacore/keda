@@ -1,5 +1,11 @@
 # Release History
 
+## 1.0.5 (2024-03-04)
+
+### Bugs Fixed
+
+* Fixed an issue that could cause delays when parsing small frames.
+
 ## 1.0.4 (2024-01-16)
 
 ### Other Changes

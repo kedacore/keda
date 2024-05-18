@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -36,7 +37,7 @@ type GrpcClient struct {
 	connection *grpc.ClientConn
 }
 
-func NewGrpcClient(url, certDir, authority string) (*GrpcClient, error) {
+func NewGrpcClient(url, certDir, authority string, clientMetrics *grpcprom.ClientMetrics) (*GrpcClient, error) {
 	defaultConfig := `{
 		"methodConfig": [{
 		  "timeout": "3s",
@@ -57,6 +58,12 @@ func NewGrpcClient(url, certDir, authority string) (*GrpcClient, error) {
 		grpc.WithTransportCredentials(creds),
 		grpc.WithDefaultServiceConfig(defaultConfig),
 	}
+
+	opts = append(
+		opts,
+		grpc.WithChainUnaryInterceptor(clientMetrics.UnaryClientInterceptor()),
+		grpc.WithChainStreamInterceptor(clientMetrics.StreamClientInterceptor()),
+	)
 
 	if authority != "" {
 		// If an Authority header override is specified, add it to the client so it is set on every request.

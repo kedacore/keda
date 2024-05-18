@@ -158,6 +158,13 @@ func (s *newrelicScaler) executeNewRelicQuery(ctx context.Context) (float64, err
 	if err != nil {
 		return 0, fmt.Errorf("error running NRQL %s (%s)", s.metadata.nrql, err.Error())
 	}
+	// Check for empty results set, as New Relic lib does not report these as errors
+	if len(resp.Results) == 0 {
+		if s.metadata.noDataError {
+			return 0, fmt.Errorf("query return no results %s", s.metadata.nrql)
+		}
+		return 0, nil
+	}
 	// Only use the first result from the query, as the query should not be multi row
 	for _, v := range resp.Results[0] {
 		val, ok := v.(float64)

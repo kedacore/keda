@@ -15,7 +15,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -30,6 +29,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/dns"
 )
 
@@ -86,6 +86,8 @@ type Topology struct {
 	pollingwg         sync.WaitGroup
 	rescanSRVInterval time.Duration
 	pollHeartbeatTime atomic.Value // holds a bool
+
+	hosts []string
 
 	updateCallback updateTopologyCallback
 	fsm            *fsm
@@ -153,7 +155,12 @@ func New(cfg *Config) (*Topology, error) {
 	}
 
 	if t.cfg.URI != "" {
-		t.pollingRequired = strings.HasPrefix(t.cfg.URI, "mongodb+srv://") && !t.cfg.LoadBalanced
+		connStr, err := connstring.Parse(t.cfg.URI)
+		if err != nil {
+			return nil, err
+		}
+		t.pollingRequired = (connStr.Scheme == connstring.SchemeMongoDBSRV) && !t.cfg.LoadBalanced
+		t.hosts = connStr.RawHosts
 	}
 
 	t.publishTopologyOpeningEvent()
@@ -269,6 +276,32 @@ func logServerSelectionFailed(
 		logger.KeyFailure, err.Error())
 }
 
+// logUnexpectedFailure is a defer-recover function for logging unexpected
+// failures encountered while maintaining a topology.
+//
+// Most topology maintenance actions, such as updating a server, should not take
+// down a client's application. This function provides a best-effort to log
+// unexpected failures. If the logger passed to this function is nil, then the
+// recovery will be silent.
+func logUnexpectedFailure(log *logger.Logger, msg string, callbacks ...func()) {
+	r := recover()
+	if r == nil {
+		return
+	}
+
+	defer func() {
+		for _, clbk := range callbacks {
+			clbk()
+		}
+	}()
+
+	if log == nil {
+		return
+	}
+
+	log.Print(logger.LevelInfo, logger.ComponentTopology, fmt.Sprintf("%s: %v", msg, r))
+}
+
 // Connect initializes a Topology and starts the monitoring process. This function
 // must be called to properly monitor the topology.
 func (t *Topology) Connect() error {
@@ -351,26 +384,21 @@ func (t *Topology) Connect() error {
 	}
 
 	t.serversLock.Unlock()
-	uri, err := url.Parse(t.cfg.URI)
-	if err != nil {
-		return err
-	}
-	parsedHosts := strings.Split(uri.Host, ",")
 	if mustLogTopologyMessage(t, logger.LevelInfo) {
-		logTopologyThirdPartyUsage(t, parsedHosts)
+		logTopologyThirdPartyUsage(t, t.hosts)
 	}
 	if t.pollingRequired {
 		// sanity check before passing the hostname to resolver
-		if len(parsedHosts) != 1 {
+		if len(t.hosts) != 1 {
 			return fmt.Errorf("URI with SRV must include one and only one hostname")
 		}
-		_, _, err = net.SplitHostPort(uri.Host)
+		_, _, err = net.SplitHostPort(t.hosts[0])
 		if err == nil {
 			// we were able to successfully extract a port from the host,
 			// but should not be able to when using SRV
 			return fmt.Errorf("URI with srv must not include a port number")
 		}
-		go t.pollSRVRecords(uri.Host)
+		go t.pollSRVRecords(t.hosts[0])
 		t.pollingwg.Add(1)
 	}
 
@@ -546,7 +574,7 @@ func (t *Topology) SelectServer(ctx context.Context, ss description.ServerSelect
 
 					return nil, err
 				}
-				defer t.Unsubscribe(sub)
+				defer func() { _ = t.Unsubscribe(sub) }()
 			}
 
 			suitable, selectErr = t.selectServerFromSubscription(ctx, sub.Updates, selectionState)
@@ -768,12 +796,11 @@ func (t *Topology) pollSRVRecords(hosts string) {
 	defer pollTicker.Stop()
 	t.pollHeartbeatTime.Store(false)
 	var doneOnce bool
-	defer func() {
-		//  ¯\_(ツ)_/¯
-		if r := recover(); r != nil && !doneOnce {
+	defer logUnexpectedFailure(t.cfg.logger, "Encountered unexpected failure polling SRV records", func() {
+		if !doneOnce {
 			<-t.pollingDone
 		}
-	}()
+	})
 
 	for {
 		select {

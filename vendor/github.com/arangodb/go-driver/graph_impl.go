@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2023 ArangoDB GmbH, Cologne, Germany
+// Copyright 2023-2024 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -126,6 +126,29 @@ func (g *graph) Remove(ctx context.Context) error {
 	if err != nil {
 		return WithStack(err)
 	}
+	applyContextSettings(ctx, req)
+	resp, err := g.conn.Do(ctx, req)
+	if err != nil {
+		return WithStack(err)
+	}
+	if err := resp.CheckStatus(201, 202); err != nil {
+		return WithStack(err)
+	}
+	return nil
+}
+
+func (g *graph) RemoveWithOpts(ctx context.Context, opts *RemoveGraphOptions) error {
+	req, err := g.conn.NewRequest("DELETE", g.relPath())
+	if err != nil {
+		return WithStack(err)
+	}
+
+	if opts != nil {
+		if opts.DropCollections {
+			req.SetQuery("dropCollections", "true")
+		}
+	}
+
 	applyContextSettings(ctx, req)
 	resp, err := g.conn.Do(ctx, req)
 	if err != nil {

@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"net/http"
 	"strconv"
 	"strings"
 
@@ -53,7 +52,6 @@ type azureEventHubScaler struct {
 	metricType v2.MetricTargetType
 	metadata   *eventHubMetadata
 	client     *eventhub.Hub
-	httpClient *http.Client
 	logger     logr.Logger
 }
 
@@ -88,7 +86,6 @@ func NewAzureEventHubScaler(ctx context.Context, config *scalersconfig.ScalerCon
 		metricType: metricType,
 		metadata:   parsedMetadata,
 		client:     hub,
-		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
 		logger:     logger,
 	}, nil
 }
@@ -231,7 +228,7 @@ func parseAzureEventHubAuthenticationMetadata(logger logr.Logger, config *scaler
 		}
 
 		meta.eventHubInfo.EventHubConnection = connection
-	case v1alpha1.PodIdentityProviderAzure, v1alpha1.PodIdentityProviderAzureWorkload:
+	case v1alpha1.PodIdentityProviderAzureWorkload:
 		meta.eventHubInfo.StorageAccountName = ""
 		if val, ok := config.TriggerMetadata["storageAccountName"]; ok {
 			meta.eventHubInfo.StorageAccountName = val
@@ -280,12 +277,12 @@ func parseAzureEventHubAuthenticationMetadata(logger logr.Logger, config *scaler
 
 // GetUnprocessedEventCountInPartition gets number of unprocessed events in a given partition
 func (s *azureEventHubScaler) GetUnprocessedEventCountInPartition(ctx context.Context, partitionInfo *eventhub.HubPartitionRuntimeInformation) (newEventCount int64, checkpoint azure.Checkpoint, err error) {
-	// if partitionInfo.LastEnqueuedOffset = -1, that means event hub partition is empty
-	if partitionInfo == nil || partitionInfo.LastEnqueuedOffset == "-1" {
+	// if partitionInfo.LastSequenceNumber = -1, that means event hub partition is empty
+	if partitionInfo == nil || partitionInfo.LastSequenceNumber == -1 {
 		return 0, azure.Checkpoint{}, nil
 	}
 
-	checkpoint, err = azure.GetCheckpointFromBlobStorage(ctx, s.httpClient, s.metadata.eventHubInfo, partitionInfo.PartitionID)
+	checkpoint, err = azure.GetCheckpointFromBlobStorage(ctx, s.metadata.eventHubInfo, partitionInfo.PartitionID)
 	if err != nil {
 		// if blob not found return the total partition event count
 		err = errors.Unwrap(err)
@@ -305,14 +302,6 @@ func (s *azureEventHubScaler) GetUnprocessedEventCountInPartition(ctx context.Co
 
 func calculateUnprocessedEvents(partitionInfo *eventhub.HubPartitionRuntimeInformation, checkpoint azure.Checkpoint, stalePartitionInfoThreshold int64) int64 {
 	unprocessedEventCount := int64(0)
-
-	// If checkpoint.Offset is empty that means no messages has been processed from an event hub partition
-	// And since partitionInfo.LastSequenceNumber = 0 for the very first message hence
-	// total unprocessed message will be partitionInfo.LastSequenceNumber + 1
-	if checkpoint.Offset == "" {
-		unprocessedEventCount = partitionInfo.LastSequenceNumber + 1
-		return unprocessedEventCount
-	}
 
 	if partitionInfo.LastSequenceNumber >= checkpoint.SequenceNumber {
 		unprocessedEventCount = partitionInfo.LastSequenceNumber - checkpoint.SequenceNumber

@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -23,29 +22,34 @@ import (
 // create multiple metric alarms, and also create a composite alarm and set up
 // alerts only for the composite alarm. For example, you could create a composite
 // alarm that goes into ALARM state only when more than one of the underlying
-// metric alarms are in ALARM state. Currently, the only alarm actions that can be
-// taken by composite alarms are notifying SNS topics. It is possible to create a
-// loop or cycle of composite alarms, where composite alarm A depends on composite
-// alarm B, and composite alarm B also depends on composite alarm A. In this
-// scenario, you can't delete any composite alarm that is part of the cycle because
-// there is always still a composite alarm that depends on that alarm that you want
-// to delete. To get out of such a situation, you must break the cycle by changing
-// the rule of one of the composite alarms in the cycle to remove a dependency that
-// creates the cycle. The simplest change to make to break a cycle is to change the
-// AlarmRule of one of the alarms to false . Additionally, the evaluation of
-// composite alarms stops if CloudWatch detects a cycle in the evaluation path.
-// When this operation creates an alarm, the alarm state is immediately set to
-// INSUFFICIENT_DATA . The alarm is then evaluated and its state is set
-// appropriately. Any actions associated with the new state are then executed. For
-// a composite alarm, this initial time after creation is the only time that the
-// alarm can be in INSUFFICIENT_DATA state. When you update an existing alarm, its
-// state is left unchanged, but the update completely overwrites the previous
-// configuration of the alarm. To use this operation, you must be signed on with
-// the cloudwatch:PutCompositeAlarm permission that is scoped to * . You can't
-// create a composite alarms if your cloudwatch:PutCompositeAlarm permission has a
-// narrower scope. If you are an IAM user, you must have
-// iam:CreateServiceLinkedRole to create a composite alarm that has Systems Manager
-// OpsItem actions.
+// metric alarms are in ALARM state. Composite alarms can take the following
+// actions:
+//   - Notify Amazon SNS topics.
+//   - Invoke Lambda functions.
+//   - Create OpsItems in Systems Manager Ops Center.
+//   - Create incidents in Systems Manager Incident Manager.
+//
+// It is possible to create a loop or cycle of composite alarms, where composite
+// alarm A depends on composite alarm B, and composite alarm B also depends on
+// composite alarm A. In this scenario, you can't delete any composite alarm that
+// is part of the cycle because there is always still a composite alarm that
+// depends on that alarm that you want to delete. To get out of such a situation,
+// you must break the cycle by changing the rule of one of the composite alarms in
+// the cycle to remove a dependency that creates the cycle. The simplest change to
+// make to break a cycle is to change the AlarmRule of one of the alarms to false .
+// Additionally, the evaluation of composite alarms stops if CloudWatch detects a
+// cycle in the evaluation path. When this operation creates an alarm, the alarm
+// state is immediately set to INSUFFICIENT_DATA . The alarm is then evaluated and
+// its state is set appropriately. Any actions associated with the new state are
+// then executed. For a composite alarm, this initial time after creation is the
+// only time that the alarm can be in INSUFFICIENT_DATA state. When you update an
+// existing alarm, its state is left unchanged, but the update completely
+// overwrites the previous configuration of the alarm. To use this operation, you
+// must be signed on with the cloudwatch:PutCompositeAlarm permission that is
+// scoped to * . You can't create a composite alarms if your
+// cloudwatch:PutCompositeAlarm permission has a narrower scope. If you are an IAM
+// user, you must have iam:CreateServiceLinkedRole to create a composite alarm
+// that has Systems Manager OpsItem actions.
 func (c *Client) PutCompositeAlarm(ctx context.Context, params *PutCompositeAlarmInput, optFns ...func(*Options)) (*PutCompositeAlarmOutput, error) {
 	if params == nil {
 		params = &PutCompositeAlarmInput{}
@@ -129,8 +133,15 @@ type PutCompositeAlarmInput struct {
 
 	// The actions to execute when this alarm transitions to the ALARM state from any
 	// other state. Each action is specified as an Amazon Resource Name (ARN). Valid
-	// Values: arn:aws:sns:region:account-id:sns-topic-name  |
-	// arn:aws:ssm:region:account-id:opsitem:severity
+	// Values: ] Amazon SNS actions: arn:aws:sns:region:account-id:sns-topic-name
+	// Lambda actions:
+	//   - Invoke the latest version of a Lambda function:
+	//   arn:aws:lambda:region:account-id:function:function-name
+	//   - Invoke a specific version of a Lambda function:
+	//   arn:aws:lambda:region:account-id:function:function-name:version-number
+	//   - Invoke a function by using an alias Lambda function:
+	//   arn:aws:lambda:region:account-id:function:function-name:alias-name
+	// Systems Manager actions: arn:aws:ssm:region:account-id:opsitem:severity
 	AlarmActions []string
 
 	// The description for the composite alarm.
@@ -138,19 +149,38 @@ type PutCompositeAlarmInput struct {
 
 	// The actions to execute when this alarm transitions to the INSUFFICIENT_DATA
 	// state from any other state. Each action is specified as an Amazon Resource Name
-	// (ARN). Valid Values: arn:aws:sns:region:account-id:sns-topic-name
+	// (ARN). Valid Values: ] Amazon SNS actions:
+	// arn:aws:sns:region:account-id:sns-topic-name Lambda actions:
+	//   - Invoke the latest version of a Lambda function:
+	//   arn:aws:lambda:region:account-id:function:function-name
+	//   - Invoke a specific version of a Lambda function:
+	//   arn:aws:lambda:region:account-id:function:function-name:version-number
+	//   - Invoke a function by using an alias Lambda function:
+	//   arn:aws:lambda:region:account-id:function:function-name:alias-name
 	InsufficientDataActions []string
 
 	// The actions to execute when this alarm transitions to an OK state from any
 	// other state. Each action is specified as an Amazon Resource Name (ARN). Valid
-	// Values: arn:aws:sns:region:account-id:sns-topic-name
+	// Values: ] Amazon SNS actions: arn:aws:sns:region:account-id:sns-topic-name
+	// Lambda actions:
+	//   - Invoke the latest version of a Lambda function:
+	//   arn:aws:lambda:region:account-id:function:function-name
+	//   - Invoke a specific version of a Lambda function:
+	//   arn:aws:lambda:region:account-id:function:function-name:version-number
+	//   - Invoke a function by using an alias Lambda function:
+	//   arn:aws:lambda:region:account-id:function:function-name:alias-name
 	OKActions []string
 
-	// A list of key-value pairs to associate with the composite alarm. You can
-	// associate as many as 50 tags with an alarm. Tags can help you organize and
-	// categorize your resources. You can also use them to scope user permissions, by
-	// granting a user permission to access or change only resources with certain tag
-	// values.
+	// A list of key-value pairs to associate with the alarm. You can associate as
+	// many as 50 tags with an alarm. To be able to associate tags with the alarm when
+	// you create the alarm, you must have the cloudwatch:TagResource permission. Tags
+	// can help you organize and categorize your resources. You can also use them to
+	// scope user permissions by granting a user permission to access or change only
+	// resources with certain tag values. If you are using this operation to update an
+	// existing alarm, any tags you specify in this parameter are ignored. To change
+	// the tags of an existing alarm, use TagResource (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_TagResource.html)
+	// or UntagResource (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_UntagResource.html)
+	// .
 	Tags []types.Tag
 
 	noSmithyDocumentSerde
@@ -185,25 +215,25 @@ func (c *Client) addOperationPutCompositeAlarmMiddlewares(stack *middleware.Stac
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -224,7 +254,7 @@ func (c *Client) addOperationPutCompositeAlarmMiddlewares(stack *middleware.Stac
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opPutCompositeAlarm(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

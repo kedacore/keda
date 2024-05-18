@@ -42,7 +42,13 @@ func AllowUndefinedVariables() Option {
 // Operator allows to replace a binary operator with a function.
 func Operator(operator string, fn ...string) Option {
 	return func(c *conf.Config) {
-		c.Operator(operator, fn...)
+		p := &patcher.OperatorOverloading{
+			Operator:  operator,
+			Overloads: fn,
+			Types:     c.Types,
+			Functions: c.Functions,
+		}
+		c.Visitors = append(c.Visitors, p)
 	}
 }
 
@@ -188,24 +194,30 @@ func Compile(input string, ops ...Option) (*vm.Program, error) {
 	}
 	config.Check()
 
-	if len(config.Operators) > 0 {
-		config.Visitors = append(config.Visitors, &conf.OperatorPatcher{
-			Operators: config.Operators,
-			Types:     config.Types,
-		})
-	}
-
 	tree, err := parser.ParseWithConfig(input, config)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(config.Visitors) > 0 {
-		for _, v := range config.Visitors {
-			// We need to perform types check, because some visitors may rely on
-			// types information available in the tree.
-			_, _ = checker.Check(tree, config)
-			ast.Walk(&tree.Node, v)
+		for i := 0; i < 1000; i++ {
+			more := false
+			for _, v := range config.Visitors {
+				// We need to perform types check, because some visitors may rely on
+				// types information available in the tree.
+				_, _ = checker.Check(tree, config)
+
+				ast.Walk(&tree.Node, v)
+
+				if v, ok := v.(interface {
+					ShouldRepeat() bool
+				}); ok {
+					more = more || v.ShouldRepeat()
+				}
+			}
+			if !more {
+				break
+			}
 		}
 	}
 	_, err = checker.Check(tree, config)
