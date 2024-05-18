@@ -69,7 +69,6 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 
-- **General**: Added Pre Regex check before building image in e2e test ([#5783](https://github.com/kedacore/keda/issues/5783))
 - **GCP Scalers**: Added custom time horizon in GCP scalers ([#5778](https://github.com/kedacore/keda/issues/5778))
 - **Kafka**: Fix logic to scale to zero on invalid offset even with earliest offsetResetPolicy ([#5689](https://github.com/kedacore/keda/issues/5689))
 
@@ -88,6 +87,7 @@ New deprecation(s):
 ### Other
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Added Pre Regex check before building image in e2e test ([#5783](https://github.com/kedacore/keda/issues/5783))
 
 ## v2.14.0
 
