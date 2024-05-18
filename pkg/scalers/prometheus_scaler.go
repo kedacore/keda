@@ -38,10 +38,6 @@ const (
 	unsafeSsl               = "unsafeSsl"
 )
 
-var (
-	defaultIgnoreNullValues = true
-)
-
 type prometheusScaler struct {
 	metricType v2.MetricTargetType
 	metadata   *prometheusMetadata
@@ -49,22 +45,26 @@ type prometheusScaler struct {
 	logger     logr.Logger
 }
 
+// IgnoreNullValues - sometimes should consider there is an error we can accept
+// default value is true/t, to ignore the null value return from prometheus
+// change to false/f if can not accept prometheus return null values
+// https://github.com/kedacore/keda/issues/3065
 type prometheusMetadata struct {
-	serverAddress       string
-	query               string
-	queryParameters     map[string]string
-	threshold           float64
-	activationThreshold float64
-	prometheusAuth      *authentication.AuthMeta
-	namespace           string
-	triggerIndex        int
-	customHeaders       map[string]string
-	// sometimes should consider there is an error we can accept
-	// default value is true/t, to ignore the null value return from prometheus
-	// change to false/f if can not accept prometheus return null values
-	// https://github.com/kedacore/keda/issues/3065
-	ignoreNullValues bool
-	unsafeSsl        bool
+	triggerIndex int
+
+	PrometheusAuth      *authentication.Config `keda:"optional"`
+	ServerAddress       string                 `keda:"name=serverAddress,       order=triggerMetadata"`
+	Query               string                 `keda:"name=query,               order=triggerMetadata"`
+	QueryParameters     map[string]string      `keda:"name=queryParameters,     order=triggerMetadata, optional"`
+	Threshold           float64                `keda:"name=threshold,           order=triggerMetadata"`
+	ActivationThreshold float64                `keda:"name=activationThreshold, order=triggerMetadata, optional"`
+	Namespace           string                 `keda:"name=namespace,           order=triggerMetadata, optional"`
+	CustomHeaders       map[string]string      `keda:"name=customHeaders,       order=triggerMetadata, optional"`
+	IgnoreNullValues    bool                   `keda:"name=ignoreNullValues,    order=triggerMetadata, optional, default=true"`
+	UnsafeSSL           bool                   `keda:"name=unsafeSsl,           order=triggerMetadata, optional"`
+
+	// deprecated
+	CortexOrgID string `keda:"name=cortexOrgID, order=triggerMetadata, optional, deprecated=use customHeaders instead"`
 }
 
 type promQueryResult struct {
@@ -93,14 +93,14 @@ func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing prometheus metadata: %w", err)
 	}
 
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsl)
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.UnsafeSSL)
 
-	if meta.prometheusAuth != nil {
-		if meta.prometheusAuth.CA != "" || meta.prometheusAuth.EnableTLS {
+	if !meta.PrometheusAuth.Disabled() {
+		if meta.PrometheusAuth.CA != "" || meta.PrometheusAuth.EnabledTLS() {
 			// create http.RoundTripper with auth settings from ScalerConfig
 			transport, err := authentication.CreateHTTPRoundTripper(
 				authentication.NetHTTP,
-				meta.prometheusAuth,
+				meta.PrometheusAuth.ToAuthMeta(),
 			)
 			if err != nil {
 				logger.V(1).Error(err, "init Prometheus client http transport")
@@ -153,92 +153,12 @@ func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 func parsePrometheusMetadata(config *scalersconfig.ScalerConfig) (meta *prometheusMetadata, err error) {
 	meta = &prometheusMetadata{}
-
-	if val, ok := config.TriggerMetadata[promServerAddress]; ok && val != "" {
-		meta.serverAddress = val
-	} else {
-		return nil, fmt.Errorf("no %s given", promServerAddress)
-	}
-
-	if val, ok := config.TriggerMetadata[promQuery]; ok && val != "" {
-		meta.query = val
-	} else {
-		return nil, fmt.Errorf("no %s given", promQuery)
-	}
-
-	if val, ok := config.TriggerMetadata[promQueryParameters]; ok && val != "" {
-		queryParameters, err := kedautil.ParseStringList(val)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing %s: %w", promQueryParameters, err)
-		}
-
-		meta.queryParameters = queryParameters
-	}
-
-	if val, ok := config.TriggerMetadata[promThreshold]; ok && val != "" {
-		t, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing %s: %w", promThreshold, err)
-		}
-
-		meta.threshold = t
-	} else {
-		if config.AsMetricSource {
-			meta.threshold = 0
-		} else {
-			return nil, fmt.Errorf("no %s given", promThreshold)
-		}
-	}
-
-	meta.activationThreshold = 0
-	if val, ok := config.TriggerMetadata[promActivationThreshold]; ok {
-		t, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("activationThreshold parsing error %w", err)
-		}
-
-		meta.activationThreshold = t
-	}
-
-	if val, ok := config.TriggerMetadata[promNamespace]; ok && val != "" {
-		meta.namespace = val
-	}
-
-	if val, ok := config.TriggerMetadata[promCortexScopeOrgID]; ok && val != "" {
-		return nil, fmt.Errorf("cortexOrgID is deprecated, please use customHeaders instead")
-	}
-
-	if val, ok := config.TriggerMetadata[promCustomHeaders]; ok && val != "" {
-		customHeaders, err := kedautil.ParseStringList(val)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing %s: %w", promCustomHeaders, err)
-		}
-
-		meta.customHeaders = customHeaders
-	}
-
-	meta.ignoreNullValues = defaultIgnoreNullValues
-	if val, ok := config.TriggerMetadata[ignoreNullValues]; ok && val != "" {
-		ignoreNullValues, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, fmt.Errorf("err incorrect value for ignoreNullValues given: %s, please use true or false", val)
-		}
-		meta.ignoreNullValues = ignoreNullValues
-	}
-
-	meta.unsafeSsl = false
-	if val, ok := config.TriggerMetadata[unsafeSsl]; ok && val != "" {
-		unsafeSslValue, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing %s: %w", unsafeSsl, err)
-		}
-
-		meta.unsafeSsl = unsafeSslValue
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing prometheus metadata: %w", err)
 	}
 
 	meta.triggerIndex = config.TriggerIndex
-
-	err = parseAuthConfig(config, meta)
+	err = checkAuthConfigWithPodIdentity(config, meta)
 	if err != nil {
 		return nil, err
 	}
@@ -246,18 +166,13 @@ func parsePrometheusMetadata(config *scalersconfig.ScalerConfig) (meta *promethe
 	return meta, nil
 }
 
-func parseAuthConfig(config *scalersconfig.ScalerConfig, meta *prometheusMetadata) error {
-	// parse auth configs from ScalerConfig
-	auth, err := authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
-	if err != nil {
-		return err
+func checkAuthConfigWithPodIdentity(config *scalersconfig.ScalerConfig, meta *prometheusMetadata) error {
+	if meta == nil || meta.PrometheusAuth.Disabled() {
+		return nil
 	}
-
-	if auth != nil && !(config.PodIdentity.Provider == kedav1alpha1.PodIdentityProviderNone || config.PodIdentity.Provider == "") {
+	if !(config.PodIdentity.Provider == kedav1alpha1.PodIdentityProviderNone || config.PodIdentity.Provider == "") {
 		return fmt.Errorf("pod identity cannot be enabled with other auth types")
 	}
-	meta.prometheusAuth = auth
-
 	return nil
 }
 
@@ -274,7 +189,7 @@ func (s *prometheusScaler) GetMetricSpecForScaling(context.Context) []v2.MetricS
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 		},
-		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.Threshold),
 	}
 	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
@@ -284,15 +199,15 @@ func (s *prometheusScaler) GetMetricSpecForScaling(context.Context) []v2.MetricS
 
 func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error) {
 	t := time.Now().UTC().Format(time.RFC3339)
-	queryEscaped := url_pkg.QueryEscape(s.metadata.query)
-	url := fmt.Sprintf("%s/api/v1/query?query=%s&time=%s", s.metadata.serverAddress, queryEscaped, t)
+	queryEscaped := url_pkg.QueryEscape(s.metadata.Query)
+	url := fmt.Sprintf("%s/api/v1/query?query=%s&time=%s", s.metadata.ServerAddress, queryEscaped, t)
 
 	// set 'namespace' parameter for namespaced Prometheus requests (e.g. for Thanos Querier)
-	if s.metadata.namespace != "" {
-		url = fmt.Sprintf("%s&namespace=%s", url, s.metadata.namespace)
+	if s.metadata.Namespace != "" {
+		url = fmt.Sprintf("%s&namespace=%s", url, s.metadata.Namespace)
 	}
 
-	for queryParameterKey, queryParameterValue := range s.metadata.queryParameters {
+	for queryParameterKey, queryParameterValue := range s.metadata.QueryParameters {
 		queryParameterKeyEscaped := url_pkg.QueryEscape(queryParameterKey)
 		queryParameterValueEscaped := url_pkg.QueryEscape(queryParameterValue)
 		url = fmt.Sprintf("%s&%s=%s", url, queryParameterKeyEscaped, queryParameterValueEscaped)
@@ -303,19 +218,19 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		return -1, err
 	}
 
-	for headerName, headerValue := range s.metadata.customHeaders {
+	for headerName, headerValue := range s.metadata.CustomHeaders {
 		req.Header.Add(headerName, headerValue)
 	}
 
 	switch {
-	case s.metadata.prometheusAuth == nil:
+	case s.metadata.PrometheusAuth.Disabled():
 		break
-	case s.metadata.prometheusAuth.EnableBearerAuth:
-		req.Header.Set("Authorization", authentication.GetBearerToken(s.metadata.prometheusAuth))
-	case s.metadata.prometheusAuth.EnableBasicAuth:
-		req.SetBasicAuth(s.metadata.prometheusAuth.Username, s.metadata.prometheusAuth.Password)
-	case s.metadata.prometheusAuth.EnableCustomAuth:
-		req.Header.Set(s.metadata.prometheusAuth.CustomAuthHeader, s.metadata.prometheusAuth.CustomAuthValue)
+	case s.metadata.PrometheusAuth.EnabledBearerAuth():
+		req.Header.Set("Authorization", s.metadata.PrometheusAuth.GetBearerToken())
+	case s.metadata.PrometheusAuth.EnabledBasicAuth():
+		req.SetBasicAuth(s.metadata.PrometheusAuth.Username, s.metadata.PrometheusAuth.Password)
+	case s.metadata.PrometheusAuth.EnabledCustomAuth():
+		req.Header.Set(s.metadata.PrometheusAuth.CustomAuthHeader, s.metadata.PrometheusAuth.CustomAuthValue)
 	}
 
 	r, err := s.httpClient.Do(req)
@@ -345,22 +260,22 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 
 	// allow for zero element or single element result sets
 	if len(result.Data.Result) == 0 {
-		if s.metadata.ignoreNullValues {
+		if s.metadata.IgnoreNullValues {
 			return 0, nil
 		}
 		return -1, fmt.Errorf("prometheus metrics 'prometheus' target may be lost, the result is empty")
 	} else if len(result.Data.Result) > 1 {
-		return -1, fmt.Errorf("prometheus query %s returned multiple elements", s.metadata.query)
+		return -1, fmt.Errorf("prometheus query %s returned multiple elements", s.metadata.Query)
 	}
 
 	valueLen := len(result.Data.Result[0].Value)
 	if valueLen == 0 {
-		if s.metadata.ignoreNullValues {
+		if s.metadata.IgnoreNullValues {
 			return 0, nil
 		}
 		return -1, fmt.Errorf("prometheus metrics 'prometheus' target may be lost, the value list is empty")
 	} else if valueLen < 2 {
-		return -1, fmt.Errorf("prometheus query %s didn't return enough values", s.metadata.query)
+		return -1, fmt.Errorf("prometheus query %s didn't return enough values", s.metadata.Query)
 	}
 
 	val := result.Data.Result[0].Value[1]
@@ -374,7 +289,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	}
 
 	if math.IsInf(v, 0) {
-		if s.metadata.ignoreNullValues {
+		if s.metadata.IgnoreNullValues {
 			return 0, nil
 		}
 		err := fmt.Errorf("promtheus query returns %f", v)
@@ -394,5 +309,5 @@ func (s *prometheusScaler) GetMetricsAndActivity(ctx context.Context, metricName
 
 	metric := GenerateMetricInMili(metricName, val)
 
-	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.activationThreshold, nil
+	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.ActivationThreshold, nil
 }

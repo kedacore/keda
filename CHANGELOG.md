@@ -52,9 +52,14 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
+### Breaking Changes
+
+- **Authentication:** AAD-Pod-Identity and AWS-KIAM auths have been removed ([#5035](https://github.com/kedacore/keda/issues/5035)|[#5085](https://github.com/kedacore/keda/issues/5085))
+
 ### New
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Declarative parsing of scaler config ([#5037](https://github.com/kedacore/keda/issues/5037))
 
 #### Experimental
 
@@ -66,6 +71,7 @@ Here is an overview of all new **experimental** features:
 
 - **General**: Added Pre Regex check before building image in e2e test ([#5783](https://github.com/kedacore/keda/issues/5783))
 - **GCP Scalers**: Added custom time horizon in GCP scalers ([#5778](https://github.com/kedacore/keda/issues/5778))
+- **Kafka**: Fix logic to scale to zero on invalid offset even with earliest offsetResetPolicy ([#5689](https://github.com/kedacore/keda/issues/5689))
 
 ### Fixes
 
@@ -76,10 +82,6 @@ Here is an overview of all new **experimental** features:
 You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
 
 New deprecation(s):
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
-### Breaking Changes
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
