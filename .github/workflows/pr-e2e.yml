@@ -94,6 +94,7 @@ jobs:
           git checkout ${{ needs.triage.outputs.commit_sha }}
 
       - name: Run regex checks
+        continue-on-error: true
         env:
           COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
@@ -103,6 +104,29 @@ jobs:
           then
             export E2E_TEST_REGEX="$(echo ${BASH_REMATCH[1]} | head -1)"
           fi
+          make e2e-regex-check
+
+      - name: React to comment with failure
+        uses: dkershner6/reaction-action@v2
+        if: steps.regex-validation.outcome != 'success'
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commentId: ${{ github.event.comment.id }}
+          reaction: "-1"
+
+      - name: Set status failure
+        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        if: steps.regex-validation.outcome != 'success'
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ needs.triage.outputs.commit_sha }}
+          name: ${{ env.E2E_CHECK_NAME }}
+          conclusion: failure
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+
+      - name: Exit on failure
+        if: steps.regex-validation.outcome != 'success'
+        run: exit 1
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -168,7 +192,14 @@ jobs:
           ENABLE_OPENTELEMETRY : true
           E2E_IMAGE_TAG: ${{ needs.triage.outputs.image_tag }}
           TEST_CLUSTER_NAME: keda-e2e-cluster-pr
+          COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
+          MESSAGE="$COMMENT_BODY"
+          REGEX='/run-e2e (.+)'
+          if [[ "$MESSAGE" =~ $REGEX ]]
+          then
+            export E2E_TEST_REGEX="$(echo ${BASH_REMATCH[1]} | head -1)"
+          fi
           echo "${{ needs.triage.outputs.pr_num }}"
           make e2e-test
 
