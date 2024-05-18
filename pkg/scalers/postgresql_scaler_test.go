@@ -110,25 +110,6 @@ func TestPodIdentityAzureWorkloadPosgresSQLConnectionStringGeneration(t *testing
 	}
 }
 
-var testPodIdentityAzurePostgreSQLConnectionstring = []postgreSQLConnectionStringTestData{
-	// from meta
-	{metadata: map[string]string{"query": "test_query", "targetQueryValue": "5", "host": "localhost", "port": "1234", "dbName": "testDb", "userName": "user", "sslmode": "required"}, connectionString: "host=localhost port=1234 user=user dbname=testDb sslmode=required %PASSWORD%"},
-}
-
-func TestPodIdentityAzurePosgresSQLConnectionStringGeneration(t *testing.T) {
-	identityID := "IDENTITY_ID_CORRESPONDING_TO_USERNAME_FIELD"
-	for _, testData := range testPodIdentityAzurePostgreSQLConnectionstring {
-		meta, _, err := parsePostgreSQLMetadata(logr.Discard(), &scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure, IdentityID: &identityID}, AuthParams: testData.authParam, TriggerIndex: 0})
-		if err != nil {
-			t.Fatal("Could not parse metadata:", err)
-		}
-
-		if meta.connection != testData.connectionString {
-			t.Errorf("Error generating connectionString, expected '%s' and get '%s'", testData.connectionString, meta.connection)
-		}
-	}
-}
-
 type parsePostgresMetadataTestData struct {
 	metadata    map[string]string
 	authParams  map[string]string

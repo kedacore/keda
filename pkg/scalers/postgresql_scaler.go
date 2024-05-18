@@ -138,7 +138,7 @@ func parsePostgreSQLMetadata(logger logr.Logger, config *scalersconfig.ScalerCon
 			params = append(params, "password="+escapePostgreConnectionParameter(password))
 			meta.connection = strings.Join(params, " ")
 		}
-	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		params, err := buildConnArray(config)
 		if err != nil {
 			return nil, authPodIdentity, fmt.Errorf("failed to parse fields related to the connection")
@@ -199,7 +199,7 @@ func getConnection(ctx context.Context, meta *postgreSQLMetadata, podIdentity ke
 	connectionString := meta.connection
 
 	switch podIdentity.Provider {
-	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		accessToken, err := getAzureAccessToken(ctx, meta, azureDatabasePostgresResource)
 		if err != nil {
 			return nil, err
@@ -236,7 +236,7 @@ func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (float64, error)
 
 	// Only one Azure case now but maybe more in the future.
 	switch s.podIdentity.Provider {
-	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		if s.metadata.azureAuthContext.token.ExpiresOn.After(time.Now().Add(time.Second * 60)) {
 			newConnection, err := getConnection(ctx, s.metadata, s.podIdentity, s.logger)
 			if err != nil {
