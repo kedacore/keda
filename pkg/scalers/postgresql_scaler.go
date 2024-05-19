@@ -198,8 +198,7 @@ func buildConnArray(config *scalersconfig.ScalerConfig) ([]string, error) {
 func getConnection(ctx context.Context, meta *postgreSQLMetadata, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger) (*sql.DB, error) {
 	connectionString := meta.connection
 
-	switch podIdentity.Provider {
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
 		accessToken, err := getAzureAccessToken(ctx, meta, azureDatabasePostgresResource)
 		if err != nil {
 			return nil, err
@@ -235,9 +234,9 @@ func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (float64, error)
 	var id float64
 
 	// Only one Azure case now but maybe more in the future.
-	switch s.podIdentity.Provider {
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		if s.metadata.azureAuthContext.token.ExpiresOn.After(time.Now().Add(time.Second * 60)) {
+	if s.podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
+		if s.metadata.azureAuthContext.token.ExpiresOn.Before(time.Now().Add(time.Second * 60)) {
+			s.connection.Close()
 			newConnection, err := getConnection(ctx, s.metadata, s.podIdentity, s.logger)
 			if err != nil {
 				return 0, fmt.Errorf("error establishing postgreSQL connection: %w", err)
