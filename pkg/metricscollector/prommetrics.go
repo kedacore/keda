@@ -210,6 +210,16 @@ var (
 		[]string{"namespace", "type", "resource"},
 	)
 
+	internalLoopLatencyHistogram = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "internal_scale_loop",
+			Name:      "latency_seconds_bucket",
+			Help:      "Total deviation (in seconds) between the expected execution time and the actual execution time for the scaling loop. Represented as a histogram.",
+		},
+		[]string{"namespace", "type", "resource"},
+	)
+
 	// Total emitted cloudevents.
 	cloudeventEmitted = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -242,6 +252,7 @@ func NewPromMetrics() *PromMetrics {
 	metrics.Registry.MustRegister(scalerMetricsLatency)
 	metrics.Registry.MustRegister(internalLoopLatencyDeprecated)
 	metrics.Registry.MustRegister(internalLoopLatency)
+	metrics.Registry.MustRegister(internalLoopLatencyHistogram)
 	metrics.Registry.MustRegister(scalerActive)
 	metrics.Registry.MustRegister(scalerErrorsDeprecated)
 	metrics.Registry.MustRegister(scalerErrors)
@@ -284,6 +295,7 @@ func (p *PromMetrics) RecordScalerLatency(namespace string, scaledResource strin
 func (p *PromMetrics) RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value time.Duration) {
 	internalLoopLatency.WithLabelValues(namespace, getResourceType(isScaledObject), name).Set(value.Seconds())
 	internalLoopLatencyDeprecated.WithLabelValues(namespace, getResourceType(isScaledObject), name).Set(float64(value.Milliseconds()))
+	internalLoopLatencyHistogram.WithLabelValues(namespace, getResourceType(isScaledObject), name).Observe(value.Seconds())
 }
 
 // RecordScalerActive create a measurement of the activity of the scaler

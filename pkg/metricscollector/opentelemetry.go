@@ -39,6 +39,7 @@ var (
 	otelScalerMetricsLatencyVals          []OtelMetricFloat64Val
 	otelScalerMetricsLatencyValDeprecated []OtelMetricFloat64Val
 	otelInternalLoopLatencyVals           []OtelMetricFloat64Val
+	otelUnterlanLoopLatencyValHistogram   []OtelMetricFloat64Val
 	otelInternalLoopLatencyValDeprecated  []OtelMetricFloat64Val
 	otelBuildInfoVal                      OtelMetricInt64Val
 
@@ -58,6 +59,11 @@ type OtelMetricInt64Val struct {
 }
 
 type OtelMetricFloat64Val struct {
+	val               float64
+	measurementOption api.MeasurementOption
+}
+
+type OtelMetricFloat64HistogramVal struct {
 	val               float64
 	measurementOption api.MeasurementOption
 }
@@ -170,11 +176,21 @@ func initMeters() {
 	if err != nil {
 		otLog.Error(err, msg)
 	}
+
 	_, err = meter.Float64ObservableGauge(
 		"keda.internal.scale.loop.latency.seconds",
 		api.WithDescription("Internal latency of ScaledObject/ScaledJob loop execution"),
 		api.WithUnit("s"),
 		api.WithFloat64Callback(ScalableObjectLatencyCallback),
+	)
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+
+	_, err = meter.Float64Histogram(
+		"keda.internal.scale.loop.latency.bucket",
+		api.WithDescription("Internal latency of ScaledObject/ScaledJob loop execution"),
+		api.WithUnit("s"),
 	)
 	if err != nil {
 		otLog.Error(err, msg)
@@ -324,6 +340,11 @@ func (o *OtelMetrics) RecordScalableObjectLatency(namespace string, name string,
 	otelInternalLoopLatencyD.val = float64(value.Milliseconds())
 	otelInternalLoopLatencyD.measurementOption = opt
 	otelInternalLoopLatencyValDeprecated = append(otelInternalLoopLatencyValDeprecated, otelInternalLoopLatencyD)
+
+	otelInternalLoopLatencyHistogram := OtelMetricFloat64Val{}
+	otelInternalLoopLatencyHistogram.val = value.Seconds()
+	otelInternalLoopLatencyHistogram.measurementOption = opt
+	otelUnterlanLoopLatencyValHistogram = append(otelUnterlanLoopLatencyValHistogram, otelInternalLoopLatencyHistogram)
 }
 
 func ScalerActiveCallback(_ context.Context, obsrv api.Float64Observer) error {
