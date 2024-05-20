@@ -3,7 +3,6 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"net/url"
 	"os"
 	"testing"
@@ -289,18 +288,6 @@ func TestParseEventHubMetadata(t *testing.T) {
 
 	for _, testData := range parseEventHubMetadataDatasetWithPodIdentity {
 		_, err := parseAzureEventHubMetadata(logr.Discard(), &scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: sampleEventHubResolvedEnv,
-			AuthParams: map[string]string{}, PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}})
-
-		if err != nil && !testData.isError {
-			t.Errorf("Expected success but got error: %s", err)
-		}
-		if testData.isError && err == nil {
-			t.Error("Expected error and got success")
-		}
-	}
-
-	for _, testData := range parseEventHubMetadataDatasetWithPodIdentity {
-		_, err := parseAzureEventHubMetadata(logr.Discard(), &scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: sampleEventHubResolvedEnv,
 			AuthParams: map[string]string{}, PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload}})
 
 		if err != nil && !testData.isError {
@@ -323,8 +310,7 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 
 	if eventHubKey != "" && storageConnectionString != "" {
 		eventHubConnectionString := fmt.Sprintf("Endpoint=sb://%s.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=%s;EntityPath=%s", testEventHubNamespace, eventHubKey, testEventHubName)
-		storageCredentials, endpoint, err := azure.ParseAzureStorageBlobConnection(ctx, http.DefaultClient,
-			kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, storageConnectionString, "", "")
+		storageCredentials, endpoint, err := azure.ParseAzureStorageBlobConnection(ctx, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, storageConnectionString, "", "")
 		if err != nil {
 			t.Error(err)
 			t.FailNow()
@@ -652,9 +638,8 @@ func TestEventHubGetMetricSpecForScaling(t *testing.T) {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		mockEventHubScaler := azureEventHubScaler{
-			metadata:   meta,
-			client:     nil,
-			httpClient: http.DefaultClient,
+			metadata: meta,
+			client:   nil,
 		}
 
 		metricSpec := mockEventHubScaler.GetMetricSpecForScaling(context.Background())
