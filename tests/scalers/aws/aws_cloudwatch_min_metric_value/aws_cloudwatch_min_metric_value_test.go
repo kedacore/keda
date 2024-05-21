@@ -160,7 +160,7 @@ func TestCloudWatchScalerWithMinMetricValue(t *testing.T) {
 	defer DeleteKubernetesResources(t, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
-		"replica count should be %d after 1 minute", minReplicaCount)
+		"replica count should be %d after 1 minute", minMetricValueReplicaCount)
 
 	// check that the deployment scaled up to the minMetricValueReplicaCount
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minMetricValueReplicaCount, 60)
