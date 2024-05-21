@@ -63,11 +63,6 @@ type OtelMetricFloat64Val struct {
 	measurementOption api.MeasurementOption
 }
 
-type OtelMetricFloat64HistogramVal struct {
-	val               float64
-	measurementOption api.MeasurementOption
-}
-
 func NewOtelMetrics(options ...metric.Option) *OtelMetrics {
 	// create default options with env
 	if options == nil {
