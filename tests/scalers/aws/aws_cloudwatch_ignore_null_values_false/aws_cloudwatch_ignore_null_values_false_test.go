@@ -155,7 +155,6 @@ func TestCloudWatchScalerWithIgnoreNullValuesFalse(t *testing.T) {
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
-	kedaClient := GetKedaKubernetesClient(t)
 	data, templates := getTemplateData()
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 	defer DeleteKubernetesResources(t, testNamespace, data, templates)

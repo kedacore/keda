@@ -155,7 +155,6 @@ func TestCloudWatchScalerWithMinMetricValue(t *testing.T) {
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
-	kedaClient := GetKedaKubernetesClient(t)
 	data, templates := getTemplateData()
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 	defer DeleteKubernetesResources(t, testNamespace, data, templates)
@@ -164,7 +163,7 @@ func TestCloudWatchScalerWithMinMetricValue(t *testing.T) {
 		"replica count should be %d after 1 minute", minReplicaCount)
 
 	// check that the deployment scaled up to the minMetricValueReplicaCount
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minMetricValueReplicaCount, 60)
 }
 
 func getTemplateData() (templateData, []Template) {
