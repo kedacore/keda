@@ -59,7 +59,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### New
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-- **General**: Declarative parsing of scaler config ([#5037](https://github.com/kedacore/keda/issues/5037))
+- **General**: Declarative parsing of scaler config ([#5037](https://github.com/kedacore/keda/issues/5037)|[#5797](https://github.com/kedacore/keda/issues/5797))
 
 #### Experimental
 
@@ -70,10 +70,12 @@ Here is an overview of all new **experimental** features:
 ### Improvements
 
 - **GCP Scalers**: Added custom time horizon in GCP scalers ([#5778](https://github.com/kedacore/keda/issues/5778))
+- **GitHub Scaler**: Fixed pagination, fetching repository list ([#5738](https://github.com/kedacore/keda/issues/5738))
 - **Kafka**: Fix logic to scale to zero on invalid offset even with earliest offsetResetPolicy ([#5689](https://github.com/kedacore/keda/issues/5689))
 
 ### Fixes
 
+- **General**: Scalers are properly closed after being refreshed ([#5806](https://github.com/kedacore/keda/issues/5806))
 - **MongoDB Scaler**:  MongoDB url parses correctly `+srv` scheme ([#5760](https://github.com/kedacore/keda/issues/5760))
 
 ### Deprecations
