@@ -54,7 +54,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- **CloudEventSource**: Introduce ClusterCloudEvent ([#3533](https://github.com/kedacore/keda/issues/3533))
+- **CloudEventSource**: Introduce ClusterCloudEventSource ([#3533](https://github.com/kedacore/keda/issues/3533))
 
 #### Experimental
 
