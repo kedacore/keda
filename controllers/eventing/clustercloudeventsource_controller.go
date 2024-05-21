@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The KEDA Authors
+Copyright 2024 The KEDA Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,37 +36,38 @@ import (
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
-// CloudEventSourceReconciler reconciles a EventSource object
-type CloudEventSourceReconciler struct {
+// ClusterCloudEventSourceReconciler reconciles a EventSource object
+type ClusterCloudEventSourceReconciler struct {
 	client.Client
 	eventEmitter eventemitter.EventHandler
 
-	cloudEventSourceGenerations *sync.Map
-	eventSourcePromMetricsMap   map[string]string
-	eventSourcePromMetricsLock  *sync.Mutex
+	clusterCloudEventSourceGenerations *sync.Map
+	eventSourcePromMetricsMap          map[string]string
+	eventSourcePromMetricsLock         *sync.Mutex
 }
 
-// NewCloudEventSourceReconciler creates a new CloudEventSourceReconciler
-func NewCloudEventSourceReconciler(c client.Client, e eventemitter.EventHandler) *CloudEventSourceReconciler {
-	return &CloudEventSourceReconciler{
-		Client:                      c,
-		eventEmitter:                e,
-		cloudEventSourceGenerations: &sync.Map{},
-		eventSourcePromMetricsMap:   make(map[string]string),
-		eventSourcePromMetricsLock:  &sync.Mutex{},
+// NewClusterCloudEventSourceReconciler creates a new ClusterCloudEventSourceReconciler
+func NewClusterCloudEventSourceReconciler(c client.Client, e eventemitter.EventHandler) *ClusterCloudEventSourceReconciler {
+	return &ClusterCloudEventSourceReconciler{
+		Client:                             c,
+		eventEmitter:                       e,
+		clusterCloudEventSourceGenerations: &sync.Map{},
+		eventSourcePromMetricsMap:          make(map[string]string),
+		eventSourcePromMetricsLock:         &sync.Mutex{},
 	}
 }
 
-// +kubebuilder:rbac:groups=eventing.keda.sh,resources=cloudeventsources;cloudeventsources/status,verbs="*"
+// +kubebuilder:rbac:groups=eventing.keda.sh,resources=clustercloudeventsources;clustercloudeventsources/status,verbs="*"
 
 // Reconcile performs reconciliation on the identified EventSource resource based on the request information passed, returns the result and an error (if any).
 //
 //nolint:dupl
-func (r *CloudEventSourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *ClusterCloudEventSourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := log.FromContext(ctx)
+
 	// Fetch the EventSource instance
-	cloudEventSource := &eventingv1alpha1.CloudEventSource{}
-	err := r.Client.Get(ctx, req.NamespacedName, cloudEventSource)
+	clustercloudEventSource := &eventingv1alpha1.ClusterCloudEventSource{}
+	err := r.Client.Get(ctx, req.NamespacedName, clustercloudEventSource)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request eventSource not found, could have been deleted after reconcile request.
@@ -79,33 +80,33 @@ func (r *CloudEventSourceReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, err
 	}
 
-	reqLogger.Info("Reconciling CloudEventSource")
+	reqLogger.Info("Reconciling ClusterCloudEventSource")
 
-	if !cloudEventSource.GetDeletionTimestamp().IsZero() {
-		return ctrl.Result{}, FinalizeCloudEventSourceResource(ctx, reqLogger, r, cloudEventSource, req.NamespacedName.String())
+	if !clustercloudEventSource.GetDeletionTimestamp().IsZero() {
+		return ctrl.Result{}, FinalizeCloudEventSourceResource(ctx, reqLogger, r, clustercloudEventSource, req.NamespacedName.String())
 	}
-	r.updatePromMetrics(cloudEventSource, req.NamespacedName.String())
+	r.updatePromMetrics(clustercloudEventSource, req.NamespacedName.String())
 
 	// ensure finalizer is set on this CR
-	if err := EnsureCloudEventSourceResourceFinalizer(ctx, reqLogger, r, cloudEventSource); err != nil {
+	if err := EnsureCloudEventSourceResourceFinalizer(ctx, reqLogger, r, clustercloudEventSource); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// ensure Status Conditions are initialized
-	if !cloudEventSource.Status.Conditions.AreInitialized() {
+	if !clustercloudEventSource.Status.Conditions.AreInitialized() {
 		conditions := eventingv1alpha1.GetCloudEventSourceInitializedConditions()
-		if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, cloudEventSource, conditions); err != nil {
+		if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, clustercloudEventSource, conditions); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 
-	eventSourceChanged, err := r.cloudEventSourceGenerationChanged(reqLogger, cloudEventSource)
+	eventSourceChanged, err := r.cloudEventSourceGenerationChanged(reqLogger, clustercloudEventSource)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	if eventSourceChanged {
-		if r.requestEventLoop(ctx, reqLogger, cloudEventSource) != nil {
+		if r.requestEventLoop(ctx, reqLogger, clustercloudEventSource) != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -114,16 +115,16 @@ func (r *CloudEventSourceReconciler) Reconcile(ctx context.Context, req ctrl.Req
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *CloudEventSourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ClusterCloudEventSourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&eventingv1alpha1.CloudEventSource{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&eventingv1alpha1.ClusterCloudEventSource{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		WithEventFilter(util.IgnoreOtherNamespaces()).
 		Complete(r)
 }
 
 // requestEventLoop tries to start EventLoop handler for the respective EventSource
-func (r *CloudEventSourceReconciler) requestEventLoop(ctx context.Context, logger logr.Logger, eventSource *eventingv1alpha1.CloudEventSource) error {
-	logger.V(1).Info("Notify eventHandler of an update in eventSource")
+func (r *ClusterCloudEventSourceReconciler) requestEventLoop(ctx context.Context, logger logr.Logger, eventSource eventingv1alpha1.CloudEventSourceInterface) error {
+	logger.V(1).Info("Notify eventHandler of an update in eventSource", "name", eventSource.GetName())
 
 	key, err := cache.MetaNamespaceKeyFunc(eventSource)
 	if err != nil {
@@ -135,37 +136,37 @@ func (r *CloudEventSourceReconciler) requestEventLoop(ctx context.Context, logge
 		return err
 	}
 
-	// store CloudEventSource's current Generation
-	r.cloudEventSourceGenerations.Store(key, eventSource.Generation)
+	// store ClusterCloudEventSource's current Generation
+	r.clusterCloudEventSourceGenerations.Store(key, eventSource.GetGeneration())
 
 	return nil
 }
 
 // stopEventLoop stops EventLoop handler for the respective EventSource
-func (r *CloudEventSourceReconciler) StopEventLoop(logger logr.Logger, obj client.Object) error {
+func (r *ClusterCloudEventSourceReconciler) StopEventLoop(logger logr.Logger, obj client.Object) error {
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
 		logger.Error(err, "error getting key for eventSource")
 		return err
 	}
 
-	if err := r.eventEmitter.DeleteCloudEventSource(obj.(*eventingv1alpha1.CloudEventSource)); err != nil {
+	if err := r.eventEmitter.DeleteCloudEventSource(obj.(*eventingv1alpha1.ClusterCloudEventSource)); err != nil {
 		return err
 	}
 	// delete CloudEventSource's current Generation
-	r.cloudEventSourceGenerations.Delete(key)
+	r.clusterCloudEventSourceGenerations.Delete(key)
 	return nil
 }
 
-// eventSourceGenerationChanged returns true if CloudEventSource's Generation was changed, ie. EventSource.Spec was changed
-func (r *CloudEventSourceReconciler) cloudEventSourceGenerationChanged(logger logr.Logger, eventSource *eventingv1alpha1.CloudEventSource) (bool, error) {
+// eventSourceGenerationChanged returns true if ClusterCloudEventSource's Generation was changed, ie. EventSource.Spec was changed
+func (r *ClusterCloudEventSourceReconciler) cloudEventSourceGenerationChanged(logger logr.Logger, eventSource *eventingv1alpha1.ClusterCloudEventSource) (bool, error) {
 	key, err := cache.MetaNamespaceKeyFunc(eventSource)
 	if err != nil {
 		logger.Error(err, "error getting key for eventSource")
 		return true, err
 	}
 
-	value, loaded := r.cloudEventSourceGenerations.Load(key)
+	value, loaded := r.clusterCloudEventSourceGenerations.Load(key)
 	if loaded {
 		generation := value.(int64)
 		if generation == eventSource.Generation {
@@ -175,7 +176,7 @@ func (r *CloudEventSourceReconciler) cloudEventSourceGenerationChanged(logger lo
 	return true, nil
 }
 
-func (r *CloudEventSourceReconciler) updatePromMetrics(eventSource *eventingv1alpha1.CloudEventSource, namespacedName string) {
+func (r *ClusterCloudEventSourceReconciler) updatePromMetrics(eventSource *eventingv1alpha1.ClusterCloudEventSource, namespacedName string) {
 	r.eventSourcePromMetricsLock.Lock()
 	defer r.eventSourcePromMetricsLock.Unlock()
 
@@ -188,7 +189,7 @@ func (r *CloudEventSourceReconciler) updatePromMetrics(eventSource *eventingv1al
 }
 
 // UpdatePromMetricsOnDelete is idempotent, so it can be called multiple times without side-effects
-func (r *CloudEventSourceReconciler) UpdatePromMetricsOnDelete(namespacedName string) {
+func (r *ClusterCloudEventSourceReconciler) UpdatePromMetricsOnDelete(namespacedName string) {
 	r.eventSourcePromMetricsLock.Lock()
 	defer r.eventSourcePromMetricsLock.Unlock()
 

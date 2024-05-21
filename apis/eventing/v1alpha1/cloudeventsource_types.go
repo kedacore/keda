@@ -22,6 +22,17 @@ import (
 	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
+// +kubebuilder:object:generate=false
+type CloudEventSourceInterface interface {
+	GetKind() string
+	GetName() string
+	GetNamespace() string
+	GetSpec() CloudEventSourceSpec
+	GetStatus() CloudEventSourceStatus
+	GetGeneration() int64
+	GenerateIdentifier() string
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // CloudEventSource defines how a KEDA event will be sent to event sink
@@ -43,6 +54,28 @@ type CloudEventSourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 	Items           []CloudEventSource `json:"items"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// +kubebuilder:resource:path=clustercloudeventsources,scope=Cluster
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Active",type="string",JSONPath=".status.conditions[?(@.type==\"Active\")].status"
+type ClusterCloudEventSource struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   CloudEventSourceSpec   `json:"spec"`
+	Status CloudEventSourceStatus `json:"status,omitempty"`
+}
+
+// +kubebuilder:object:root=true
+
+// ClusterCloudEventSourceList is a list of ClusterCloudEventSource resources
+type ClusterCloudEventSourceList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []ClusterCloudEventSource `json:"items"`
 }
 
 // CloudEventSourceSpec defines the spec of CloudEventSource
@@ -93,12 +126,65 @@ type EventSubscription struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&CloudEventSource{}, &CloudEventSourceList{})
+	SchemeBuilder.Register(&CloudEventSource{}, &CloudEventSourceList{}, &ClusterCloudEventSource{}, &ClusterCloudEventSourceList{})
+}
+
+func (ces *CloudEventSource) GetKind() string {
+	return ces.Kind
+}
+
+func (ces *CloudEventSource) GetName() string {
+	return ces.Name
+}
+
+func (ces *CloudEventSource) GetNamespace() string {
+	return ces.Namespace
+}
+
+func (ces *CloudEventSource) GetSpec() CloudEventSourceSpec {
+	return ces.Spec
+}
+
+func (ces *CloudEventSource) GetStatus() CloudEventSourceStatus {
+	return *ces.Status.DeepCopy()
+}
+
+func (ces *CloudEventSource) GetGeneration() int64 {
+	return ces.Generation
 }
 
 // GenerateIdentifier returns identifier for the object in for "kind.namespace.name"
 func (ces *CloudEventSource) GenerateIdentifier() string {
 	return v1alpha1.GenerateIdentifier("CloudEventSource", ces.Namespace, ces.Name)
+}
+
+func (cces *ClusterCloudEventSource) GetKind() string {
+	return cces.Kind
+}
+
+func (cces *ClusterCloudEventSource) GetName() string {
+	return cces.Name
+}
+
+func (cces *ClusterCloudEventSource) GetNamespace() string {
+	return cces.Namespace
+}
+
+func (cces *ClusterCloudEventSource) GetSpec() CloudEventSourceSpec {
+	return cces.Spec
+}
+
+func (cces *ClusterCloudEventSource) GetStatus() CloudEventSourceStatus {
+	return *cces.Status.DeepCopy()
+}
+
+func (cces *ClusterCloudEventSource) GetGeneration() int64 {
+	return cces.Generation
+}
+
+// GenerateIdentifier returns identifier for the object in for "kind.cluster-scoped.name"
+func (cces *ClusterCloudEventSource) GenerateIdentifier() string {
+	return v1alpha1.GenerateIdentifier("ClusterCloudEventSource", "cluster-scoped", cces.Name)
 }
 
 // GetCloudEventSourceInitializedConditions returns CloudEventSource Conditions initialized to the default -> Status: Unknown
