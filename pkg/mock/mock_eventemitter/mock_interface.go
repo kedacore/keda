@@ -45,7 +45,7 @@ func (m *MockEventHandler) EXPECT() *MockEventHandlerMockRecorder {
 }
 
 // DeleteCloudEventSource mocks base method.
-func (m *MockEventHandler) DeleteCloudEventSource(cloudEventSource *v1alpha1.CloudEventSource) error {
+func (m *MockEventHandler) DeleteCloudEventSource(cloudEventSource v1alpha1.CloudEventSourceInterface) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteCloudEventSource", cloudEventSource)
 	ret0, _ := ret[0].(error)
@@ -71,7 +71,7 @@ func (mr *MockEventHandlerMockRecorder) Emit(object, namesapce, eventType, cloud
 }
 
 // HandleCloudEventSource mocks base method.
-func (m *MockEventHandler) HandleCloudEventSource(ctx context.Context, cloudEventSource *v1alpha1.CloudEventSource) error {
+func (m *MockEventHandler) HandleCloudEventSource(ctx context.Context, cloudEventSource v1alpha1.CloudEventSourceInterface) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HandleCloudEventSource", ctx, cloudEventSource)
 	ret0, _ := ret[0].(error)
