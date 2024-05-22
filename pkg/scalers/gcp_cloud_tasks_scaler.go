@@ -30,6 +30,7 @@ type gcpCloudTasksScaler struct {
 type gcpCloudTaskMetadata struct {
 	value           float64
 	activationValue float64
+	filterDuration  int64
 
 	queueName        string
 	projectID        string
@@ -78,6 +79,14 @@ func parseGcpCloudTasksMetadata(config *scalersconfig.ScalerConfig) (*gcpCloudTa
 		meta.queueName = val
 	} else {
 		return nil, fmt.Errorf("no queue name given")
+	}
+
+	if val, ok := config.TriggerMetadata["filterDuration"]; ok {
+		filterDuration, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("filterDuration parsing error %w", err)
+		}
+		meta.filterDuration = filterDuration
 	}
 
 	meta.activationValue = 0
@@ -180,5 +189,5 @@ func (s *gcpCloudTasksScaler) getMetrics(ctx context.Context, metricType string)
 
 	// Cloud Tasks metrics are collected every 60 seconds so no need to aggregate them.
 	// See: https://cloud.google.com/monitoring/api/metrics_gcp#gcp-cloudtasks
-	return s.client.GetMetrics(ctx, filter, s.metadata.projectID, nil, nil)
+	return s.client.GetMetrics(ctx, filter, s.metadata.projectID, nil, nil, s.metadata.filterDuration)
 }

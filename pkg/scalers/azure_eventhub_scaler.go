@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"net/http"
 	"strconv"
 	"strings"
 
@@ -53,7 +52,6 @@ type azureEventHubScaler struct {
 	metricType v2.MetricTargetType
 	metadata   *eventHubMetadata
 	client     *eventhub.Hub
-	httpClient *http.Client
 	logger     logr.Logger
 }
 
@@ -88,7 +86,6 @@ func NewAzureEventHubScaler(ctx context.Context, config *scalersconfig.ScalerCon
 		metricType: metricType,
 		metadata:   parsedMetadata,
 		client:     hub,
-		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
 		logger:     logger,
 	}, nil
 }
@@ -231,7 +228,7 @@ func parseAzureEventHubAuthenticationMetadata(logger logr.Logger, config *scaler
 		}
 
 		meta.eventHubInfo.EventHubConnection = connection
-	case v1alpha1.PodIdentityProviderAzure, v1alpha1.PodIdentityProviderAzureWorkload:
+	case v1alpha1.PodIdentityProviderAzureWorkload:
 		meta.eventHubInfo.StorageAccountName = ""
 		if val, ok := config.TriggerMetadata["storageAccountName"]; ok {
 			meta.eventHubInfo.StorageAccountName = val
@@ -285,7 +282,7 @@ func (s *azureEventHubScaler) GetUnprocessedEventCountInPartition(ctx context.Co
 		return 0, azure.Checkpoint{}, nil
 	}
 
-	checkpoint, err = azure.GetCheckpointFromBlobStorage(ctx, s.httpClient, s.metadata.eventHubInfo, partitionInfo.PartitionID)
+	checkpoint, err = azure.GetCheckpointFromBlobStorage(ctx, s.metadata.eventHubInfo, partitionInfo.PartitionID)
 	if err != nil {
 		// if blob not found return the total partition event count
 		err = errors.Unwrap(err)

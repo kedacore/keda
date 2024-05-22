@@ -33,12 +33,12 @@ func GetWatchNamespaces() (map[string]cache.Config, error) {
 // IgnoreOtherNamespaces returns the predicate for watched events that will filter out those that are not coming
 // from a watched namespace (empty namespace or unset env var denotes all)
 func IgnoreOtherNamespaces() predicate.Predicate {
-	nss, e := GetWatchNamespaces()
-	if len(nss) == 0 || e != nil {
-		return predicate.And() // no-op predicate that returns always true
-	}
+	nss, err := GetWatchNamespaces()
 	return predicate.Funcs{
 		GenericFunc: func(e event.GenericEvent) bool {
+			if len(nss) == 0 || err != nil {
+				return true
+			}
 			_, ok := nss[e.Object.GetNamespace()]
 			return ok
 		},

@@ -130,12 +130,6 @@ func (vh *AzureKeyVaultHandler) getAuthConfig(ctx context.Context, client client
 		config.AADEndpoint = activeDirectoryEndpoint
 
 		return config, nil
-	case kedav1alpha1.PodIdentityProviderAzure:
-		config := auth.NewMSIConfig()
-		config.Resource = keyVaultResourceURL
-		config.ClientID = podIdentity.GetIdentityID()
-
-		return config, nil
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		return azure.NewAzureADWorkloadIdentityConfig(ctx, podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID(), podIdentity.GetIdentityAuthorityHost(), keyVaultResourceURL), nil
 	default:

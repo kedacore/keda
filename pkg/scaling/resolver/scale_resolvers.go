@@ -211,15 +211,7 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 			authParams["awsRoleArn"] = value
 			// FIXME: Delete this for v3
 			logger.Info("WARNING: AWS EKS Identity has been deprecated (https://github.com/kedacore/keda/discussions/5343) and will be removed from KEDA on v3")
-		case kedav1alpha1.PodIdentityProviderAwsKiam:
-			authParams["awsRoleArn"] = podTemplateSpec.ObjectMeta.Annotations[kedav1alpha1.PodIdentityAnnotationKiam]
-			// FIXME: Delete this for v2.15
-			logger.Info("WARNING: AWS Kiam Identity has been abandoned (https://github.com/uswitch/kiam/commit/29504044e67cb432db03c71a2c3ada56a3c3046d) and will be removed from KEDA on v2.15")
-		case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
-			if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzure {
-				// FIXME: Delete this for v2.15
-				logger.Info("WARNING: Azure AD Pod Identity has been archived (https://github.com/Azure/aad-pod-identity#-announcement) and will be removed from KEDA on v2.15")
-			}
+		case kedav1alpha1.PodIdentityProviderAzureWorkload:
 			if podIdentity.IdentityID != nil && *podIdentity.IdentityID == "" {
 				return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, fmt.Errorf("IdentityID of PodIdentity should not be empty")
 			}

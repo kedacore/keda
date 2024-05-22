@@ -199,7 +199,7 @@ func parseAzureServiceBusMetadata(config *scalersconfig.ScalerConfig, logger log
 		if len(meta.connection) == 0 {
 			return nil, fmt.Errorf("no connection setting given")
 		}
-	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		if val, ok := config.TriggerMetadata["namespace"]; ok {
 			envSuffixProvider := func(env az.Environment) (string, error) {
 				return env.ServiceBusEndpointSuffix, nil
@@ -297,7 +297,7 @@ func (s *azureServiceBusScaler) getServiceBusAdminClient() (*admin.Client, error
 	switch s.podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		client, err = admin.NewClientFromConnectionString(s.metadata.connection, nil)
-	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		creds, chainedErr := azure.NewChainedCredential(s.logger, s.podIdentity.GetIdentityID(), s.podIdentity.GetIdentityTenantID(), s.podIdentity.Provider)
 		if chainedErr != nil {
 			return nil, chainedErr

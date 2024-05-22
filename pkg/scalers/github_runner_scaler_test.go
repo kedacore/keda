@@ -2,7 +2,11 @@ package scalers
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/json"
 	"fmt"
+	"html/template"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -155,7 +159,22 @@ func buildQueueJSON() []byte {
 	return []byte(output)
 }
 
-func apiStubHandler(hasRateLeft bool) *httptest.Server {
+func generateResponseExceed30Repos() []byte {
+	var repos []Repo
+
+	for i := 0; i < 30; i++ {
+		var repository Repo
+		id, _ := rand.Int(rand.Reader, big.NewInt(100000))
+		repository.ID = int(id.Int64())
+		repository.Name = "BadRepo"
+		repos = append(repos, repository)
+	}
+
+	result, _ := json.Marshal(repos)
+	return result
+}
+
+func apiStubHandler(hasRateLeft bool, exceeds30Repos bool) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		futureReset := time.Now()
 		futureReset = futureReset.Add(time.Minute * 30)
@@ -178,9 +197,24 @@ func apiStubHandler(hasRateLeft bool) *httptest.Server {
 				w.WriteHeader(http.StatusOK)
 			}
 		}
-		if strings.HasSuffix(r.URL.String(), "repos") {
-			_, _ = w.Write([]byte(testGhUserReposResponse))
-			w.WriteHeader(http.StatusOK)
+		if strings.Contains(r.URL.String(), "repos?page") {
+			if exceeds30Repos && strings.HasSuffix(r.URL.String(), "?page=1") {
+				repos := generateResponseExceed30Repos()
+				tmpl, err := template.New("repos").Parse(string(repos))
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+				err = tmpl.Execute(w, nil)
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+				w.WriteHeader(http.StatusOK)
+			} else {
+				_, _ = w.Write([]byte(testGhUserReposResponse))
+				w.WriteHeader(http.StatusOK)
+			}
 		}
 	}))
 }
@@ -193,7 +227,7 @@ func apiStubHandler404() *httptest.Server {
 }
 
 func TestNewGitHubRunnerScaler_QueueLength_NoRateLeft(t *testing.T) {
-	var apiStub = apiStubHandler(false)
+	var apiStub = apiStubHandler(false, false)
 
 	meta := getGitHubTestMetaData(apiStub.URL)
 
@@ -217,7 +251,7 @@ func TestNewGitHubRunnerScaler_QueueLength_NoRateLeft(t *testing.T) {
 }
 
 func TestNewGitHubRunnerScaler_QueueLength_SingleRepo(t *testing.T) {
-	var apiStub = apiStubHandler(true)
+	var apiStub = apiStubHandler(true, false)
 
 	meta := getGitHubTestMetaData(apiStub.URL)
 
@@ -241,7 +275,7 @@ func TestNewGitHubRunnerScaler_QueueLength_SingleRepo(t *testing.T) {
 }
 
 func TestNewGitHubRunnerScaler_QueueLength_SingleRepo_ExtraRunnerLabels(t *testing.T) {
-	var apiStub = apiStubHandler(true)
+	var apiStub = apiStubHandler(true, false)
 
 	meta := getGitHubTestMetaData(apiStub.URL)
 
@@ -265,7 +299,7 @@ func TestNewGitHubRunnerScaler_QueueLength_SingleRepo_ExtraRunnerLabels(t *testi
 }
 
 func TestNewGitHubRunnerScaler_QueueLength_SingleRepo_LessRunnerLabels(t *testing.T) {
-	var apiStub = apiStubHandler(true)
+	var apiStub = apiStubHandler(true, false)
 
 	meta := getGitHubTestMetaData(apiStub.URL)
 
@@ -358,7 +392,7 @@ func TestNewGitHubRunnerScaler_BadURL(t *testing.T) {
 }
 
 func TestNewGitHubRunnerScaler_QueueLength_NoRunnerLabels(t *testing.T) {
-	var apiStub = apiStubHandler(true)
+	var apiStub = apiStubHandler(true, false)
 
 	meta := getGitHubTestMetaData(apiStub.URL)
 
@@ -382,7 +416,7 @@ func TestNewGitHubRunnerScaler_QueueLength_NoRunnerLabels(t *testing.T) {
 }
 
 func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_Assigned(t *testing.T) {
-	var apiStub = apiStubHandler(true)
+	var apiStub = apiStubHandler(true, false)
 
 	meta := getGitHubTestMetaData(apiStub.URL)
 
@@ -410,7 +444,7 @@ func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_Assigned(t *testing.T) {
 }
 
 func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_Assigned_OneBad(t *testing.T) {
-	var apiStub = apiStubHandler(true)
+	var apiStub = apiStubHandler(true, false)
 
 	meta := getGitHubTestMetaData(apiStub.URL)
 
@@ -438,7 +472,7 @@ func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_Assigned_OneBad(t *testing.
 }
 
 func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_PulledUserRepos(t *testing.T) {
-	var apiStub = apiStubHandler(true)
+	var apiStub = apiStubHandler(true, false)
 
 	meta := getGitHubTestMetaData(apiStub.URL)
 
@@ -461,8 +495,31 @@ func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_PulledUserRepos(t *testing.
 	}
 }
 
+func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_PulledUserRepos_Exceeds30Entries(t *testing.T) {
+	var apiStub = apiStubHandler(true, true)
+
+	meta := getGitHubTestMetaData(apiStub.URL)
+
+	mockGitHubRunnerScaler := githubRunnerScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	mockGitHubRunnerScaler.metadata.labels = []string{"foo", "bar"}
+
+	queueLen, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.TODO())
+	if err != nil {
+		fmt.Println(err)
+		t.Fail()
+	}
+
+	if queueLen != 2 {
+		t.Fail()
+	}
+}
+
 func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_PulledOrgRepos(t *testing.T) {
-	var apiStub = apiStubHandler(true)
+	var apiStub = apiStubHandler(true, false)
 
 	meta := getGitHubTestMetaData(apiStub.URL)
 
@@ -487,7 +544,7 @@ func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_PulledOrgRepos(t *testing.T
 }
 
 func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_PulledEntRepos(t *testing.T) {
-	var apiStub = apiStubHandler(true)
+	var apiStub = apiStubHandler(true, false)
 
 	meta := getGitHubTestMetaData(apiStub.URL)
 
@@ -512,7 +569,7 @@ func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_PulledEntRepos(t *testing.T
 }
 
 func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_PulledBadRepos(t *testing.T) {
-	var apiStub = apiStubHandler(true)
+	var apiStub = apiStubHandler(true, false)
 
 	meta := getGitHubTestMetaData(apiStub.URL)
 
@@ -535,7 +592,7 @@ func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_PulledBadRepos(t *testing.T
 }
 
 func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_PulledRepos_NoRate(t *testing.T) {
-	var apiStub = apiStubHandler(false)
+	var apiStub = apiStubHandler(false, false)
 
 	meta := getGitHubTestMetaData(apiStub.URL)
 

@@ -245,36 +245,6 @@ func TestVerifyKEDA(t *testing.T) {
 		"replica count should be 1 after 3 minutes")
 }
 
-func TestSetupAadPodIdentityComponents(t *testing.T) {
-	if AzureRunAadPodIdentityTests == "" || AzureRunAadPodIdentityTests == StringFalse {
-		t.Skip("skipping as aad pod identity tests are disabled")
-	}
-
-	_, err := ExecuteCommand("helm version")
-	require.NoErrorf(t, err, "helm is not installed - %s", err)
-
-	_, err = ExecuteCommand("helm repo add aad-pod-identity https://raw.githubusercontent.com/Azure/aad-pod-identity/master/charts")
-	require.NoErrorf(t, err, "cannot add pod identity helm repo - %s", err)
-
-	_, err = ExecuteCommand("helm repo update aad-pod-identity")
-	require.NoErrorf(t, err, "cannot update aad pod identity helm repo - %s", err)
-
-	KubeClient = GetKubernetesClient(t)
-	CreateNamespace(t, KubeClient, AzureAdPodIdentityNamespace)
-
-	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install "+
-		"aad-pod-identity aad-pod-identity/aad-pod-identity "+
-		"--namespace %s --wait "+
-		"--set azureIdentities.keda.type=0 "+
-		"--set azureIdentities.keda.namespace=keda "+
-		"--set azureIdentities.keda.clientID=%s "+
-		"--set azureIdentities.keda.resourceID=%s "+
-		"--set azureIdentities.keda.binding.selector=keda "+
-		"--set azureIdentities.keda.binding.name=keda",
-		AzureAdPodIdentityNamespace, AzureADMsiClientID, AzureADMsiID))
-	require.NoErrorf(t, err, "cannot install aad pod identity webhook - %s", err)
-}
-
 func TestSetUpStrimzi(t *testing.T) {
 	// default to true
 	if InstallKafka == StringFalse {

@@ -134,7 +134,7 @@ func TestDataExplorerParseMetadata(t *testing.T) {
 				ResolvedEnv:     dataExplorerResolvedEnv,
 				TriggerMetadata: testData.metadata,
 				AuthParams:      map[string]string{},
-				PodIdentity:     kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}}, logr.Discard())
+				PodIdentity:     kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload}}, logr.Discard())
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)

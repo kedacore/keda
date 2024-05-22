@@ -48,49 +48,6 @@ type templateData struct {
 }
 
 const (
-	triggerAuthEmptyIDTemplate = `
-apiVersion: keda.sh/v1alpha1
-kind: TriggerAuthentication
-metadata:
-  name: {{.TriggerAuthEmptyIDName}}
-  namespace: {{.TestNamespace}}
-spec:
-  podIdentity:
-    provider: azure
-    identityId: ""
-`
-
-	triggerAuthNilIDTemplate = `
-apiVersion: keda.sh/v1alpha1
-kind: TriggerAuthentication
-metadata:
-  name: {{.TriggerAuthNilIDName}}
-  namespace: {{.TestNamespace}}
-spec:
-  podIdentity:
-    provider: azure
-`
-	clusterTriggerAuthEmptyIDTemplate = `
-apiVersion: keda.sh/v1alpha1
-kind: ClusterTriggerAuthentication
-metadata:
-  name: {{.ClusterTriggerAuthEmptyIDName}}
-spec:
-  podIdentity:
-    provider: azure
-    identityId: ""
-`
-
-	clusterTriggerAuthNilIDTemplate = `
-apiVersion: keda.sh/v1alpha1
-kind: ClusterTriggerAuthentication
-metadata:
-  name: {{.ClusterTriggerAuthNilIDName}}
-spec:
-  podIdentity:
-    provider: azure
-`
-
 	triggerAuthWorkloadEmptyIDTemplate = `
 apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
@@ -173,10 +130,7 @@ func getTemplateData() (templateData, []Template) {
 func testTriggerAuthenticationWithEmptyID(t *testing.T, _ *kubernetes.Clientset, data templateData) {
 	t.Log("--- create triggerauthentication with empty identity id  ---")
 
-	err := KubectlApplyWithErrors(t, data, "triggerAuthEmptyIDTemplate", triggerAuthEmptyIDTemplate)
-	assert.Errorf(t, err, "can deploy TriggerAuthtication - %s", err)
-
-	err = KubectlApplyWithErrors(t, data, "triggerAuthWorkloadEmptyIDTemplate", triggerAuthWorkloadEmptyIDTemplate)
+	err := KubectlApplyWithErrors(t, data, "triggerAuthWorkloadEmptyIDTemplate", triggerAuthWorkloadEmptyIDTemplate)
 	assert.Errorf(t, err, "can deploy TriggerAuthtication with azureworkload - %s", err)
 }
 
@@ -185,14 +139,10 @@ func testTriggerAuthenticationWithNilID(t *testing.T, _ *kubernetes.Clientset, d
 	t.Log("--- create triggerauthentication with nil identity id  ---")
 
 	kedaKc := GetKedaKubernetesClient(t)
-	KubectlApplyWithTemplate(t, data, "triggerAuthNilITemplate", triggerAuthNilIDTemplate)
-
-	triggerauthentication, _ := kedaKc.TriggerAuthentications(testNamespace).Get(context.Background(), triggerAuthNilIDName, v1.GetOptions{})
-	assert.NotNil(t, triggerauthentication)
 
 	KubectlApplyWithTemplate(t, data, "triggerAuthWorkloadNilITemplate", triggerAuthWorkloadNilIDTemplate)
 
-	triggerauthentication, _ = kedaKc.TriggerAuthentications(testNamespace).Get(context.Background(), triggerAuthWorkloadNilIDName, v1.GetOptions{})
+	triggerauthentication, _ := kedaKc.TriggerAuthentications(testNamespace).Get(context.Background(), triggerAuthWorkloadNilIDName, v1.GetOptions{})
 	assert.NotNil(t, triggerauthentication)
 }
 
@@ -200,10 +150,7 @@ func testTriggerAuthenticationWithNilID(t *testing.T, _ *kubernetes.Clientset, d
 func testClusterTriggerAuthenticationWithEmptyID(t *testing.T, _ *kubernetes.Clientset, data templateData) {
 	t.Log("--- create clustertriggerauthentication with empty identity id  ---")
 
-	err := KubectlApplyWithErrors(t, data, "clusterTriggerAuthEmptyIDTemplate", clusterTriggerAuthEmptyIDTemplate)
-	assert.Errorf(t, err, "can deploy ClusterTriggerAuthtication - %s", err)
-
-	err = KubectlApplyWithErrors(t, data, "clusterTriggerAuthWorkloadEmptyIDTemplate", clusterTriggerAuthWorkloadEmptyIDTemplate)
+	err := KubectlApplyWithErrors(t, data, "clusterTriggerAuthWorkloadEmptyIDTemplate", clusterTriggerAuthWorkloadEmptyIDTemplate)
 	assert.Errorf(t, err, "can deploy ClusterTriggerAuthtication with azureworkload - %s", err)
 }
 
@@ -212,13 +159,9 @@ func testClusterTriggerAuthenticationWithNilID(t *testing.T, _ *kubernetes.Clien
 	t.Log("--- create clustertriggerauthentication with nil identity id  ---")
 
 	kedaKc := GetKedaKubernetesClient(t)
-	KubectlApplyWithTemplate(t, data, "clusterTriggerAuthNilIDTemplate", clusterTriggerAuthNilIDTemplate)
-
-	clustertriggerauthentication, _ := kedaKc.ClusterTriggerAuthentications().Get(context.Background(), clusterTriggerAuthNilIDTemplate, v1.GetOptions{})
-	assert.NotNil(t, clustertriggerauthentication)
 
 	KubectlApplyWithTemplate(t, data, "clusterTriggerAuthWorkloadNilIDTemplate", clusterTriggerAuthWorkloadNilIDTemplate)
 
-	clustertriggerauthentication, _ = kedaKc.ClusterTriggerAuthentications().Get(context.Background(), clusterTriggerAuthWorkloadNilIDTemplate, v1.GetOptions{})
+	clustertriggerauthentication, _ := kedaKc.ClusterTriggerAuthentications().Get(context.Background(), clusterTriggerAuthWorkloadNilIDTemplate, v1.GetOptions{})
 	assert.NotNil(t, clustertriggerauthentication)
 }

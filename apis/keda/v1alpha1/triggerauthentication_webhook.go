@@ -114,7 +114,7 @@ func isTriggerAuthenticationRemovingFinalizer(om metav1.ObjectMeta, oldOm metav1
 func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
 	if spec.PodIdentity != nil {
 		switch spec.PodIdentity.Provider {
-		case PodIdentityProviderAzure, PodIdentityProviderAzureWorkload:
+		case PodIdentityProviderAzureWorkload:
 			if spec.PodIdentity.IdentityID != nil && *spec.PodIdentity.IdentityID == "" {
 				return nil, fmt.Errorf("identityId of PodIdentity should not be empty. If it's set, identityId has to be different than \"\"")
 			}

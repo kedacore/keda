@@ -146,7 +146,7 @@ func initMeters() {
 
 	_, err = meter.Float64ObservableGauge(
 		"keda.scaler.metrics.latency",
-		api.WithDescription("DEPRECATED - use `keda_scaler_metrics_latency_seconds` instead"),
+		api.WithDescription("DEPRECATED - use `keda.scaler.metrics.latency.seconds` instead"),
 		api.WithFloat64Callback(ScalerMetricsLatencyCallbackDeprecated),
 	)
 	if err != nil {
@@ -164,7 +164,7 @@ func initMeters() {
 
 	_, err = meter.Float64ObservableGauge(
 		"keda.internal.scale.loop.latency",
-		api.WithDescription("DEPRECATED - use `keda_internal_scale_loop_latency_seconds` instead"),
+		api.WithDescription("DEPRECATED - use `keda.internal.scale.loop.latency.seconds` instead"),
 		api.WithFloat64Callback(ScalableObjectLatencyCallbackDeprecated),
 	)
 	if err != nil {

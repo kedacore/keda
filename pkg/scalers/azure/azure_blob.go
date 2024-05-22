@@ -23,7 +23,6 @@ import (
 	"github.com/gobwas/glob"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 type BlobMetadata struct {
@@ -40,8 +39,8 @@ type BlobMetadata struct {
 }
 
 // GetAzureBlobListLength returns the count of the blobs in blob container in int
-func GetAzureBlobListLength(ctx context.Context, httpClient util.HTTPDoer, podIdentity kedav1alpha1.AuthPodIdentity, meta *BlobMetadata) (int64, error) {
-	credential, endpoint, err := ParseAzureStorageBlobConnection(ctx, httpClient, podIdentity, meta.Connection, meta.AccountName, meta.EndpointSuffix)
+func GetAzureBlobListLength(ctx context.Context, podIdentity kedav1alpha1.AuthPodIdentity, meta *BlobMetadata) (int64, error) {
+	credential, endpoint, err := ParseAzureStorageBlobConnection(ctx, podIdentity, meta.Connection, meta.AccountName, meta.EndpointSuffix)
 	if err != nil {
 		return -1, err
 	}

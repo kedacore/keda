@@ -178,7 +178,7 @@ var (
 			Namespace: DefaultPromMetricsNamespace,
 			Subsystem: "resource",
 			Name:      "totals",
-			Help:      fmt.Sprintf("%v use 'keda_resource_handled_total' instead.", bestPracticeDeprecatedMsg),
+			Help:      fmt.Sprintf("%v use 'keda_resource_registered_total' instead.", bestPracticeDeprecatedMsg),
 		},
 		[]string{"type", "namespace"},
 	)

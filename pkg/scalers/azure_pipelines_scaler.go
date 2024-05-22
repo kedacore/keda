@@ -193,7 +193,7 @@ func getAuthMethod(logger logr.Logger, config *scalersconfig.ScalerConfig) (stri
 		switch config.PodIdentity.Provider {
 		case "", kedav1alpha1.PodIdentityProviderNone:
 			return "", nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no personalAccessToken given or PodIdentity provider configured")
-		case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+		case kedav1alpha1.PodIdentityProviderAzureWorkload:
 			cred, err := azure.NewChainedCredential(logger, config.PodIdentity.GetIdentityID(), config.PodIdentity.GetIdentityTenantID(), config.PodIdentity.Provider)
 			if err != nil {
 				return "", nil, kedav1alpha1.AuthPodIdentity{}, err

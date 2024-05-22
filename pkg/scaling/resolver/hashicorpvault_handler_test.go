@@ -17,11 +17,10 @@ limitations under the License.
 package resolver
 
 import (
-	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"math"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -132,9 +131,8 @@ func mockVault(t *testing.T, useRootToken bool) *httptest.Server {
 		case "/v1/kv/keda": //todo: more generic
 			data = kvV1SecretDataKeda
 		case "/v1/pki/issue/default":
-			buff := make([]byte, int(math.Ceil(float64(64)/float64(1.33333333333))))
-			_, _ = rand.Read(buff)
-			str := base64.RawURLEncoding.EncodeToString(buff)
+			bytes, _ := io.ReadAll(r.Body)
+			str := base64.RawURLEncoding.EncodeToString(bytes)
 			randomCert := fmt.Sprintf("-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----", str)
 			randomKey := fmt.Sprintf("-----BEGIN END RSA PRIVATE KEY-----\n%s\n-----END END RSA PRIVATE KEY-----", str)
 			data = map[string]interface{}{

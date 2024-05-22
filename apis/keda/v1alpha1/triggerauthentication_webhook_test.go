@@ -24,47 +24,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var _ = It("validate triggerauthentication when IdentityID is nil, roleArn is empty and identityOwner is nil", func() {
-	namespaceName := "nilidentityid"
-	namespace := createNamespace(namespaceName)
-	err := k8sClient.Create(context.Background(), namespace)
-	Expect(err).ToNot(HaveOccurred())
-
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, nil, nil, nil, nil, nil)
-	ta := createTriggerAuthentication("nilidentityidta", namespaceName, "TriggerAuthentication", spec)
-	Eventually(func() error {
-		return k8sClient.Create(context.Background(), ta)
-	}).ShouldNot(HaveOccurred())
-})
-
-var _ = It("validate triggerauthentication when IdentityID is empty", func() {
-	namespaceName := "emptyidentityid"
-	namespace := createNamespace(namespaceName)
-	err := k8sClient.Create(context.Background(), namespace)
-	Expect(err).ToNot(HaveOccurred())
-
-	identityID := ""
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, nil, &identityID, nil, nil, nil)
-	ta := createTriggerAuthentication("emptyidentityidta", namespaceName, "TriggerAuthentication", spec)
-	Eventually(func() error {
-		return k8sClient.Create(context.Background(), ta)
-	}).Should(HaveOccurred())
-})
-
-var _ = It("validate triggerauthentication when IdentityID is not empty", func() {
-	namespaceName := "identityid"
-	namespace := createNamespace(namespaceName)
-	err := k8sClient.Create(context.Background(), namespace)
-	Expect(err).ToNot(HaveOccurred())
-
-	identityID := "12345"
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, nil, &identityID, nil, nil, nil)
-	ta := createTriggerAuthentication("identityidta", namespaceName, "TriggerAuthentication", spec)
-	Eventually(func() error {
-		return k8sClient.Create(context.Background(), ta)
-	}).ShouldNot(HaveOccurred())
-})
-
 var _ = It("validate triggerauthentication when IdentityTenantID is not nil and not empty", func() {
 	namespaceName := "identitytenantidta"
 	namespace := createNamespace(namespaceName)
@@ -209,47 +168,6 @@ var _ = It("validate triggerauthentication when RoleArn is not empty and Identit
 	identityOwner := workloadString
 	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAws, nil, nil, nil, nil, &identityOwner)
 	ta := createTriggerAuthentication("identityidta", namespaceName, "TriggerAuthentication", spec)
-	Eventually(func() error {
-		return k8sClient.Create(context.Background(), ta)
-	}).ShouldNot(HaveOccurred())
-})
-
-var _ = It("validate clustertriggerauthentication when IdentityID is nil", func() {
-	namespaceName := "clusternilidentityid"
-	namespace := createNamespace(namespaceName)
-	err := k8sClient.Create(context.Background(), namespace)
-	Expect(err).ToNot(HaveOccurred())
-
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, nil, nil, nil, nil, nil)
-	ta := createTriggerAuthentication("clusternilidentityidta", namespaceName, "ClusterTriggerAuthentication", spec)
-	Eventually(func() error {
-		return k8sClient.Create(context.Background(), ta)
-	}).ShouldNot(HaveOccurred())
-})
-
-var _ = It("validate clustertriggerauthentication when IdentityID is empty", func() {
-	namespaceName := "clusteremptyidentityid"
-	namespace := createNamespace(namespaceName)
-	err := k8sClient.Create(context.Background(), namespace)
-	Expect(err).ToNot(HaveOccurred())
-
-	identityID := ""
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, nil, &identityID, nil, nil, nil)
-	ta := createTriggerAuthentication("clusteremptyidentityidta", namespaceName, "ClusterTriggerAuthentication", spec)
-	Eventually(func() error {
-		return k8sClient.Create(context.Background(), ta)
-	}).Should(HaveOccurred())
-})
-
-var _ = It("validate clustertriggerauthentication when IdentityID is not empty", func() {
-	namespaceName := "clusteridentityid"
-	namespace := createNamespace(namespaceName)
-	err := k8sClient.Create(context.Background(), namespace)
-	Expect(err).ToNot(HaveOccurred())
-
-	identityID := "12345"
-	spec := createTriggerAuthenticationSpecWithPodIdentity(PodIdentityProviderAzure, nil, &identityID, nil, nil, nil)
-	ta := createTriggerAuthentication("clusteridentityidta", namespaceName, "ClusterTriggerAuthentication", spec)
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), ta)
 	}).ShouldNot(HaveOccurred())

@@ -57,7 +57,7 @@ func NewAzureEventGridTopicHandler(context context.Context, clusterName string, 
 			break
 		}
 		client, err = publisher.NewClientWithSharedKeyCredential(spec.Endpoint, azcore.NewKeyCredential(authParams["accessKey"]), nil)
-	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		creds, chainedErr := azure.NewChainedCredential(logger, podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID(), podIdentity.Provider)
 		if chainedErr != nil {
 			err = chainedErr

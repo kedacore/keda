@@ -293,7 +293,7 @@ func (h *scaleHandler) getScalersCacheForScaledObject(ctx context.Context, scale
 // performGetScalersCache returns cache for input scalableObject, it is common code used by GetScalersCache() and getScalersCacheForScaledObject() methods
 func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, scalableObject interface{}, scalableObjectGeneration *int64, scalableObjectKind, scalableObjectNamespace, scalableObjectName string) (*cache.ScalersCache, error) {
 	h.scalerCachesLock.RLock()
-	regenerateCache := false
+
 	if cache, ok := h.scalerCaches[key]; ok {
 		// generation was specified -> let's include it in the check as well
 		if scalableObjectGeneration != nil {
@@ -301,15 +301,12 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 				h.scalerCachesLock.RUnlock()
 				return cache, nil
 			}
-			// object was found in cache, but the generation is not correct,
-			// we'll need to close scalers in the cache and
-			// proceed further to recreate the cache
-			regenerateCache = false
 		} else {
 			h.scalerCachesLock.RUnlock()
 			return cache, nil
 		}
 	}
+
 	h.scalerCachesLock.RUnlock()
 
 	if scalableObject == nil {
@@ -379,17 +376,17 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 	default:
 	}
 
-	// Scalers Close() could be impacted by timeouts, blocking the mutex
-	// until the timeout happens. Instead of locking the mutex, we take
-	// the old cache item and we close it in another goroutine, not locking
-	// the cache: https://github.com/kedacore/keda/issues/5083
-	if regenerateCache {
-		oldCache := h.scalerCaches[key]
+	h.scalerCachesLock.Lock()
+	defer h.scalerCachesLock.Unlock()
+
+	if oldCache, ok := h.scalerCaches[key]; ok {
+		// Scalers Close() could be impacted by timeouts, blocking the mutex
+		// until the timeout happens. Instead of locking the mutex, we take
+		// the old cache item and we close it in another goroutine, not locking
+		// the cache: https://github.com/kedacore/keda/issues/5083
 		go oldCache.Close(ctx)
 	}
 
-	h.scalerCachesLock.Lock()
-	defer h.scalerCachesLock.Unlock()
 	h.scalerCaches[key] = newCache
 	return h.scalerCaches[key], nil
 }

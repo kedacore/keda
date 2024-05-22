@@ -13,54 +13,55 @@ func TestBuildMQLQuery(t *testing.T) {
 		metric       string
 		resourceName string
 		aggregation  string
+		timeHorizon  string
 
 		expected string
 		isError  bool
 	}{
 		{
 			"topic with aggregation",
-			"topic", "pubsub.googleapis.com/topic/x", "mytopic", "count",
+			"topic", "pubsub.googleapis.com/topic/x", "mytopic", "count", "1m",
 			"fetch pubsub_topic | metric 'pubsub.googleapis.com/topic/x' | filter (resource.project_id == 'myproject' && resource.topic_id == 'mytopic')" +
-				" | within 5m | align delta(3m) | every 3m | group_by [], count(value)",
+				" | within 1m | align delta(3m) | every 3m | group_by [], count(value)",
 			false,
 		},
 		{
 			"topic without aggregation",
-			"topic", "pubsub.googleapis.com/topic/x", "mytopic", "",
+			"topic", "pubsub.googleapis.com/topic/x", "mytopic", "", "",
 			"fetch pubsub_topic | metric 'pubsub.googleapis.com/topic/x' | filter (resource.project_id == 'myproject' && resource.topic_id == 'mytopic')" +
 				" | within 2m",
 			false,
 		},
 		{
 			"subscription with aggregation",
-			"subscription", "pubsub.googleapis.com/subscription/x", "mysubscription", "percentile99",
+			"subscription", "pubsub.googleapis.com/subscription/x", "mysubscription", "percentile99", "",
 			"fetch pubsub_subscription | metric 'pubsub.googleapis.com/subscription/x' | filter (resource.project_id == 'myproject' && resource.subscription_id == 'mysubscription')" +
 				" | within 5m | align delta(3m) | every 3m | group_by [], percentile(value, 99)",
 			false,
 		},
 		{
 			"subscription without aggregation",
-			"subscription", "pubsub.googleapis.com/subscription/x", "mysubscription", "",
+			"subscription", "pubsub.googleapis.com/subscription/x", "mysubscription", "", "4m",
 			"fetch pubsub_subscription | metric 'pubsub.googleapis.com/subscription/x' | filter (resource.project_id == 'myproject' && resource.subscription_id == 'mysubscription')" +
-				" | within 2m",
+				" | within 4m",
 			false,
 		},
 		{
 			"invalid percentile",
-			"topic", "pubsub.googleapis.com/topic/x", "mytopic", "percentile101",
+			"topic", "pubsub.googleapis.com/topic/x", "mytopic", "percentile101", "1m",
 			"invalid percentile value: 101",
 			true,
 		},
 		{
 			"unsupported aggregation function",
-			"topic", "pubsub.googleapis.com/topic/x", "mytopic", "max",
+			"topic", "pubsub.googleapis.com/topic/x", "mytopic", "max", "",
 			"unsupported aggregation function: max",
 			true,
 		},
 	} {
 		s := &StackDriverClient{}
 		t.Run(tc.name, func(t *testing.T) {
-			q, err := s.BuildMQLQuery("myproject", tc.resourceType, tc.metric, tc.resourceName, tc.aggregation)
+			q, err := s.BuildMQLQuery("myproject", tc.resourceType, tc.metric, tc.resourceName, tc.aggregation, tc.timeHorizon)
 			if tc.isError {
 				assert.Error(t, err)
 				assert.Equal(t, tc.expected, err.Error())

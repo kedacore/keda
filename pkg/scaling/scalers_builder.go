@@ -71,12 +71,6 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 
 			authParams, podIdentity, err := resolver.ResolveAuthRefAndPodIdentity(ctx, h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace, h.secretsLister)
 			switch podIdentity.Provider {
-			case kedav1alpha1.PodIdentityProviderAzure:
-				// FIXME: Delete this for v2.15
-				logger.Info("WARNING: Azure AD Pod Identity has been archived (https://github.com/Azure/aad-pod-identity#-announcement) and will be removed from KEDA on v2.15")
-			case kedav1alpha1.PodIdentityProviderAwsKiam:
-				// FIXME: Delete this for v2.15
-				logger.Info("WARNING: AWS Kiam Identity has been abandoned (https://github.com/uswitch/kiam) and will be removed from KEDA on v2.15")
 			case kedav1alpha1.PodIdentityProviderAwsEKS:
 				// FIXME: Delete this for v3
 				logger.Info("WARNING: AWS EKS Identity has been deprecated in favor of AWS Identity and will be removed from KEDA on v3")

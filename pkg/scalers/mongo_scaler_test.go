@@ -73,7 +73,7 @@ var testMONGODBMetadata = []parseMongoDBMetadataTestData{
 	// mongodb srv support
 	{
 		metadata:    map[string]string{"query": `{"name":"John"}`, "collection": "demo", "queryValue": "12"},
-		authParams:  map[string]string{"dbName": "test", "scheme": "mongodb+srv", "host": "localhost", "port": "1234", "username": "sample", "password": "sec@ure"},
+		authParams:  map[string]string{"dbName": "test", "scheme": "mongodb+srv", "host": "localhost", "port": "", "username": "sample", "password": "sec@ure"},
 		resolvedEnv: testMongoDBResolvedEnv,
 		raisesError: false,
 	},
@@ -90,7 +90,7 @@ var mongoDBConnectionStringTestDatas = []mongoDBConnectionStringTestData{
 	{metadataTestData: &testMONGODBMetadata[2], connectionString: "mongodb://mongodb0.example.com:27017"},
 	{metadataTestData: &testMONGODBMetadata[3], connectionString: "mongodb://sample:test%40password@localhost:1234/test"},
 	{metadataTestData: &testMONGODBMetadata[4], connectionString: "mongodb://sample:sec%40ure@localhost:1234/test"},
-	{metadataTestData: &testMONGODBMetadata[5], connectionString: "mongodb+srv://sample:sec%40ure@localhost:1234/test"},
+	{metadataTestData: &testMONGODBMetadata[5], connectionString: "mongodb+srv://sample:sec%40ure@localhost/test"},
 }
 
 var mongoDBMetricIdentifiers = []mongoDBMetricIdentifier{

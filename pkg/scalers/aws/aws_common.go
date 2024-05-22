@@ -61,7 +61,7 @@ func GetAwsConfig(ctx context.Context, awsRegion string, awsAuthorization Author
 		return awsSharedCredentialsCache.GetCredentials(ctx, metadata.awsRegion, metadata.awsAuthorization)
 	}
 
-	// TODO, remove when aws-kiam and aws-eks are removed
+	// TODO, remove when aws-eks are removed
 	configOptions := make([]func(*config.LoadOptions) error, 0)
 	configOptions = append(configOptions, config.WithRegion(metadata.awsRegion))
 	cfg, err := config.LoadDefaultConfig(ctx, configOptions...)
@@ -79,7 +79,7 @@ func GetAwsConfig(ctx context.Context, awsRegion string, awsAuthorization Author
 		cfg.Credentials = aws.NewCredentialsCache(stsCredentialProvider)
 	}
 	return &cfg, err
-	// END remove when aws-kiam and aws-eks are removed
+	// END remove when aws-eks are removed
 }
 
 // GetAwsAuthorization returns an AuthorizationMetadata based on trigger information
@@ -97,7 +97,7 @@ func GetAwsAuthorization(uniqueKey string, podIdentity kedav1alpha1.AuthPodIdent
 	}
 	// TODO, remove all the logic below and just keep the logic for
 	// parsing awsAccessKeyID, awsSecretAccessKey and awsSessionToken
-	// when aws-kiam and aws-eks are removed
+	// when aws-eks are removed
 	if triggerMetadata["identityOwner"] == "operator" {
 		meta.PodIdentityOwner = false
 	} else if triggerMetadata["identityOwner"] == "" || triggerMetadata["identityOwner"] == "pod" {

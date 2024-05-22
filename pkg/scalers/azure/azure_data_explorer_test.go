@@ -64,8 +64,6 @@ var testExtractDataExplorerMetricValues = []testExtractDataExplorerMetricValue{
 var testGetDataExplorerAuthConfigs = []testGetDataExplorerAuthConfig{
 	// Auth with aad app - pass
 	{testMetadata: &DataExplorerMetadata{ClientID: clientID, ClientSecret: secret, TenantID: tenantID, Endpoint: "https://test.kusto.windows.net", ActiveDirectoryEndpoint: "https://test.kusto.windows.net"}, isError: false},
-	// Auth with podIdentity - pass
-	{testMetadata: &DataExplorerMetadata{PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}, Endpoint: "https://test.kusto.windows.net", ActiveDirectoryEndpoint: "https://test.kusto.windows.net"}, isError: false},
 	// Auth with workload identity - pass
 	{testMetadata: &DataExplorerMetadata{PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload}, Endpoint: "https://test.kusto.windows.net", ActiveDirectoryEndpoint: "https://test.kusto.windows.net"}, isError: false},
 	// Empty metadata - fail

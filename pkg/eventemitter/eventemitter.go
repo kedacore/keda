@@ -42,7 +42,6 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventemitter/eventdata"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
@@ -197,13 +196,6 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEventSource
 
 	// Resolve auth related
 	authParams, podIdentity, err := resolver.ResolveAuthRefAndPodIdentity(ctx, e.client, e.log, spec.AuthenticationRef, nil, cloudEventSourceI.GetNamespace(), e.secretsLister)
-	switch podIdentity.Provider {
-	case kedav1alpha1.PodIdentityProviderAzure:
-		// FIXME: Delete this for v2.15
-		e.log.Info("WARNING: Azure AD Pod Identity has been archived (https://github.com/Azure/aad-pod-identity#-announcement) and will be removed from KEDA on v2.15")
-	default:
-	}
-
 	if err != nil {
 		e.log.Error(err, "error resolving auth params", "cloudEventSource", cloudEventSourceI)
 		return

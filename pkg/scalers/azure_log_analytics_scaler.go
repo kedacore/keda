@@ -160,7 +160,7 @@ func parseAzureLogAnalyticsMetadata(config *scalersconfig.ScalerConfig) (*azureL
 		meta.clientSecret = clientSecret
 
 		meta.podIdentity = config.PodIdentity
-	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		meta.podIdentity = config.PodIdentity
 	default:
 		return nil, fmt.Errorf("error parsing metadata. Details: Log Analytics Scaler doesn't support pod identity %s", config.PodIdentity.Provider)
@@ -310,7 +310,7 @@ func (s *azureLogAnalyticsScaler) getAccessToken(ctx context.Context) (tokenData
 	switch s.metadata.podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		tokenInfo, _ = getTokenFromCache(s.metadata.clientID, s.metadata.clientSecret)
-	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		tokenInfo, _ = getTokenFromCache(string(s.metadata.podIdentity.Provider), string(s.metadata.podIdentity.Provider))
 	}
 
@@ -324,7 +324,7 @@ func (s *azureLogAnalyticsScaler) getAccessToken(ctx context.Context) (tokenData
 		case "", kedav1alpha1.PodIdentityProviderNone:
 			s.logger.V(1).Info("Token for Service Principal has been refreshed", "clientID", s.metadata.clientID, "scaler name", s.name, "namespace", s.namespace)
 			_ = setTokenInCache(s.metadata.clientID, s.metadata.clientSecret, newTokenInfo)
-		case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+		case kedav1alpha1.PodIdentityProviderAzureWorkload:
 			s.logger.V(1).Info("Token for Pod Identity has been refreshed", "type", s.metadata.podIdentity, "scaler name", s.name, "namespace", s.namespace)
 			_ = setTokenInCache(string(s.metadata.podIdentity.Provider), string(s.metadata.podIdentity.Provider), newTokenInfo)
 		}
@@ -353,7 +353,7 @@ func (s *azureLogAnalyticsScaler) executeQuery(ctx context.Context, query string
 		case "", kedav1alpha1.PodIdentityProviderNone:
 			s.logger.V(1).Info("Token for Service Principal has been refreshed", "clientID", s.metadata.clientID, "scaler name", s.name, "namespace", s.namespace)
 			_ = setTokenInCache(s.metadata.clientID, s.metadata.clientSecret, tokenInfo)
-		case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+		case kedav1alpha1.PodIdentityProviderAzureWorkload:
 			s.logger.V(1).Info("Token for Pod Identity has been refreshed", "type", s.metadata.podIdentity, "scaler name", s.name, "namespace", s.namespace)
 			_ = setTokenInCache(string(s.metadata.podIdentity.Provider), string(s.metadata.podIdentity.Provider), tokenInfo)
 		}
@@ -498,8 +498,6 @@ func (s *azureLogAnalyticsScaler) getAuthorizationToken(ctx context.Context) (to
 		return tokenInfo, nil
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		body, statusCode, err = s.executeAADApicall(ctx)
-	case kedav1alpha1.PodIdentityProviderAzure:
-		body, statusCode, err = s.executeIMDSApicall(ctx)
 	}
 
 	if err != nil {
@@ -558,24 +556,6 @@ func (s *azureLogAnalyticsScaler) executeAADApicall(ctx context.Context) ([]byte
 	request.Header.Add("Content-Length", fmt.Sprintf("%d", len(data.Encode())))
 
 	return s.runHTTP(request, "AAD")
-}
-
-func (s *azureLogAnalyticsScaler) executeIMDSApicall(ctx context.Context) ([]byte, int, error) {
-	var urlStr string
-	if s.metadata.podIdentity.GetIdentityID() == "" {
-		urlStr = fmt.Sprintf(azure.MSIURL, s.metadata.logAnalyticsResourceURL)
-	} else {
-		urlStr = fmt.Sprintf(azure.MSIURLWithClientID, s.metadata.logAnalyticsResourceURL, url.QueryEscape(s.metadata.podIdentity.GetIdentityID()))
-	}
-
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, urlStr, nil)
-	if err != nil {
-		return nil, 0, fmt.Errorf("can't construct HTTP request to Azure Instance Metadata service. Inner Error: %w", err)
-	}
-
-	request.Header.Add("Metadata", "true")
-
-	return s.runHTTP(request, "IMDS")
 }
 
 func (s *azureLogAnalyticsScaler) runHTTP(request *http.Request, caller string) ([]byte, int, error) {

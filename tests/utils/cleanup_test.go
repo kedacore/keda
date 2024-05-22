@@ -25,17 +25,6 @@ func TestRemoveKEDA(t *testing.T) {
 	t.Log("KEDA removed successfully using 'make undeploy' command")
 }
 
-func TestRemoveAadPodIdentityComponents(t *testing.T) {
-	if AzureRunAadPodIdentityTests == "" || AzureRunAadPodIdentityTests == StringFalse {
-		t.Skip("skipping as aad pod identity tests are disabled")
-	}
-
-	_, err := ExecuteCommand(fmt.Sprintf("helm uninstall aad-pod-identity --namespace %s", AzureAdPodIdentityNamespace))
-	require.NoErrorf(t, err, "cannot uninstall aad pod identity webhook - %s", err)
-
-	DeleteNamespace(t, AzureAdPodIdentityNamespace)
-}
-
 func TestRemoveWorkloadIdentityComponents(t *testing.T) {
 	if AzureRunWorkloadIdentityTests == "" || AzureRunWorkloadIdentityTests == StringFalse {
 		t.Skip("skipping as workload identity tests are disabled")
