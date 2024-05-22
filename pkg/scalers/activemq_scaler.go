@@ -46,7 +46,7 @@ type activeMQMetadata struct {
 	ActivationTargetQueueSize int64  `keda:"name=activationTargetQueueSize, order=triggerMetadata, optional, default=0"`
 }
 
-func (a *activeMQMetadata) Validate() error {
+func (a *activeMQMetadata) Validate(_ scalersconfig.ScalerConfig) error {
 	if a.RestAPITemplate != "" {
 		// parse restAPITemplate to provide managementEndpoint, brokerName, destinationName
 		u, err := url.ParseRequestURI(a.RestAPITemplate)

@@ -32,7 +32,7 @@ import (
 
 // CustomValidator is an interface that can be implemented to validate the configuration of the typed config
 type CustomValidator interface {
-	Validate() error
+	Validate(sc ScalerConfig) error
 }
 
 // ParsingOrder is a type that represents the order in which the parameters are parsed
@@ -170,7 +170,7 @@ func (sc *ScalerConfig) parseTypedConfig(typedConfig any, parentOptional bool) e
 		}
 	}
 	if validator, ok := typedConfig.(CustomValidator); ok {
-		if err := validator.Validate(); err != nil {
+		if err := validator.Validate(*sc); err != nil {
 			errs = append(errs, err)
 		}
 	}
