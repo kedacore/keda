@@ -233,7 +233,6 @@ func (s *postgreSQLScaler) Close(context.Context) error {
 func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (float64, error) {
 	var id float64
 
-	// Only one Azure case now but maybe more in the future.
 	if s.podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
 		if s.metadata.azureAuthContext.token.ExpiresOn.Before(time.Now()) {
 			s.logger.Info("The Azure Access Token expired, retrieving a new Azure Access Token and instantiating a new Postgres connection object.")
