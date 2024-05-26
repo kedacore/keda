@@ -258,7 +258,6 @@ func getCheckpointFromStorageMetadata(get *azblob.DownloadStreamResponse, partit
 	metadata := get.Metadata
 
 	var sequencenumber *string
-	var offset *string
 	ok := false
 	if sequencenumber, ok = metadata["sequencenumber"]; !ok {
 		if sequencenumber, ok = metadata["Sequencenumber"]; !ok {
@@ -271,13 +270,6 @@ func getCheckpointFromStorageMetadata(get *azblob.DownloadStreamResponse, partit
 	} else {
 		return Checkpoint{}, fmt.Errorf("sequencenumber is not a valid int64 value: %w", err)
 	}
-
-	if offset, ok = metadata["offset"]; !ok {
-		if offset, ok = metadata["Offset"]; !ok {
-			return Checkpoint{}, fmt.Errorf("offset on blob not found")
-		}
-	}
-	checkpoint.Offset = *offset
 	return checkpoint, nil
 }
 

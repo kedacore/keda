@@ -26,7 +26,7 @@ func NewChainedCredential(logger logr.Logger, podIdentity v1alpha1.AuthPodIdenti
 		}
 	}
 
-	switch podIdentity {
+	switch podIdentity.Provider {
 	case v1alpha1.PodIdentityProviderAzureWorkload:
 		wiCred, err := NewADWorkloadIdentityCredential(podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID())
 		if err != nil {
@@ -36,7 +36,7 @@ func NewChainedCredential(logger logr.Logger, podIdentity v1alpha1.AuthPodIdenti
 			creds = append(creds, wiCred)
 		}
 	default:
-		return nil, fmt.Errorf("pod identity %s not supported for azure credentials chain", podIdentity)
+		return nil, fmt.Errorf("pod identity %s not supported for azure credentials chain", podIdentity.Provider)
 	}
 
 	// Create the chained credential based on the previous 3
