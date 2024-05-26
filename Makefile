@@ -100,7 +100,7 @@ scale-node-pool: az-login ## Scale nodepool.
 
 .PHONY: e2e-regex-check
 e2e-regex-check:
-	go run -tags e2e-regex ./tests/run-all.go regex-check
+	go run -tags e2e ./tests/run-all.go regex-check
 
 .PHONY: e2e-test
 e2e-test: get-cluster-context ## Run e2e tests against Azure cluster.
