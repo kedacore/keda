@@ -32,7 +32,7 @@ func TestCheckpointFromBlobStorageAzureFunction(t *testing.T) {
 	sequencenumber := int64(1)
 
 	containerName := "azure-webjobs-eventhub"
-	checkpointFormat := "{\"Offset\":\"%s\",\"SequenceNumber\":%d,\"PartitionId\":\"%s\",\"Owner\":\"\",\"Token\":\"\",\"Epoch\":0}"
+	checkpointFormat := "{\"SequenceNumber\":%d,\"PartitionId\":\"%s\",\"Owner\":\"\",\"Token\":\"\",\"Epoch\":0}"
 	checkpoint := fmt.Sprintf(checkpointFormat, sequencenumber, partitionID)
 	urlPath := fmt.Sprintf("eventhubnamespace.servicebus.windows.net/hub/%s/%s", consumerGroup, partitionID)
 	eventHubInfo := EventHubInfo{
@@ -69,7 +69,7 @@ func TestCheckpointFromBlobStorageDefault(t *testing.T) {
 	sequencenumber := int64(1)
 
 	containerName := "defaultcontainer"
-	checkpointFormat := "{\"Offset\":\"%s\",\"SequenceNumber\":%d,\"PartitionId\":\"%s\",\"Owner\":\"\",\"Token\":\"\",\"Epoch\":0}"
+	checkpointFormat := "{\"SequenceNumber\":%d,\"PartitionId\":\"%s\",\"Owner\":\"\",\"Token\":\"\",\"Epoch\":0}"
 	checkpoint := fmt.Sprintf(checkpointFormat, sequencenumber, partitionID)
 	urlPath := fmt.Sprintf("%s/%s", consumerGroup, partitionID)
 
@@ -107,7 +107,7 @@ func TestCheckpointFromBlobStorageDefaultDeprecatedPythonCheckpoint(t *testing.T
 	sequencenumber := int64(1)
 
 	containerName := "defaultcontainerpython"
-	checkpointFormat := "{\"Offset\":\"%s\",\"sequence_number\":%d,\"partition_id\":\"%s\",\"Owner\":\"\",\"Token\":\"\",\"Epoch\":0}"
+	checkpointFormat := "{\"sequence_number\":%d,\"partition_id\":\"%s\",\"Owner\":\"\",\"Token\":\"\",\"Epoch\":0}"
 	checkpoint := fmt.Sprintf(checkpointFormat, sequencenumber, partitionID)
 	urlPath := fmt.Sprintf("%s/%s", consumerGroup, partitionID)
 
@@ -228,7 +228,7 @@ func TestCheckpointFromBlobStorageDapr(t *testing.T) {
 	sequencenumber := int64(1)
 
 	containerName := "dapr-container"
-	checkpointFormat := "{\"partitionID\":\"%s\",\"epoch\":0,\"owner\":\"\",\"checkpoint\":{\"offset\":\"%s\",\"sequenceNumber\":%d,\"enqueueTime\":\"\"},\"state\":\"\",\"token\":\"\"}"
+	checkpointFormat := "{\"partitionID\":\"%s\",\"epoch\":0,\"owner\":\"\",\"checkpoint\":{\"sequenceNumber\":%d,\"enqueueTime\":\"\"},\"state\":\"\",\"token\":\"\"}"
 	checkpoint := fmt.Sprintf(checkpointFormat, partitionID, sequencenumber)
 
 	urlPath := fmt.Sprintf("dapr-%s-%s-%s", eventhubName, consumerGroup, partitionID)
