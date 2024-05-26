@@ -73,11 +73,11 @@ all: build
 ##@ Test
 .PHONY: install-test-deps
 install-test-deps:
-	go install github.com/jstemmer/go-junit-report/v2@latest
+	go install gotest.tools/gotestsum@latest
 
 .PHONY: test
 test: manifests generate fmt vet envtest install-test-deps ## Run tests and export the result to junit format.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test -v 2>&1 ./... -coverprofile cover.out | go-junit-report -iocopy -set-exit-code -out report.xml
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" gotestsum --format standard-quiet --rerun-fails --junitfile report.xml
 
 .PHONY:
 az-login:
