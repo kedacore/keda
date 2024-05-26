@@ -97,7 +97,6 @@ func GetStorageBlobClient(logger logr.Logger, podIdentity kedav1alpha1.AuthPodId
 			return nil, fmt.Errorf("failed to create hub client: %w", err)
 		}
 		return blobClient, nil
-		// config.PodIdentity.GetIdentityID(), config.PodIdentity.GetIdentityTenantID()
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		creds, chainedErr := NewChainedCredential(logger, podIdentity)
 		if chainedErr != nil {
