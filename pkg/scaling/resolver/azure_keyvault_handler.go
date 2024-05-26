@@ -89,7 +89,6 @@ func (vh *AzureKeyVaultHandler) getCredentials(ctx context.Context, client clien
 		if clientID == "" || tenantID == "" || clientSecret == "" {
 			return nil, missingErr
 		}
-		//TODO (review jorturfer): podIdentity.GetIdentityTenantID(), podIdentity.GetIdentityAuthorityHost()
 		return azidentity.NewClientSecretCredential(tenantID, clientID, clientSecret, nil)
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		return azure.NewChainedCredential(logger, *podIdentity)
