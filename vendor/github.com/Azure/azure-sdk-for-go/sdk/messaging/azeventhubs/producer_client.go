@@ -234,7 +234,6 @@ func newProducerClientImpl(creds producerClientCreds, options *ProducerClientOpt
 		eventHub: creds.eventHub,
 	}
 
-	var err error
 	var nsOptions []internal.NamespaceOption
 
 	if creds.connectionString != "" {
@@ -263,10 +262,6 @@ func newProducerClientImpl(creds producerClientCreds, options *ProducerClientOpt
 		}
 
 		nsOptions = append(nsOptions, internal.NamespaceWithRetryOptions(options.RetryOptions))
-	}
-
-	if err != nil {
-		return nil, err
 	}
 
 	tmpNS, err := internal.NewNamespace(nsOptions...)

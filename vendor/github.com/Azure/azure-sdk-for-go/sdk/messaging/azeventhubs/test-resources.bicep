@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 @description('The base resource name.')
 param baseName string = resourceGroup().name
 
@@ -27,7 +30,7 @@ resource namespace 'Microsoft.EventHub/namespaces@2017-04-01' = {
   properties: {
     isAutoInflateEnabled: false
     maximumThroughputUnits: 0
-  }  
+  }
 }
 
 resource authorization 'Microsoft.EventHub/namespaces/AuthorizationRules@2017-04-01' = {
@@ -82,7 +85,6 @@ resource linksonly 'Microsoft.EventHub/namespaces/eventhubs@2017-04-01' = {
   parent: namespace
 }
 
-
 resource namespaceName_default 'Microsoft.EventHub/namespaces/networkRuleSets@2017-04-01' = {
   name: 'default'
   parent: namespace
@@ -90,13 +92,12 @@ resource namespaceName_default 'Microsoft.EventHub/namespaces/networkRuleSets@20
     defaultAction: 'Deny'
     virtualNetworkRules: []
     ipRules: []
-  }  
+  }
 }
 
 resource eventHubNameFull_Default 'Microsoft.EventHub/namespaces/eventhubs/consumergroups@2017-04-01' = {
   name: '$Default'
-  properties: {
-  }
+  properties: {}
   parent: eventHub
 }
 
@@ -197,13 +198,28 @@ resource iot 'Microsoft.Devices/IotHubs@2018-04-01' = {
     features: 'None'
   }
 }
+output IOTHUB_CONNECTION_STRING string = 'HostName=${reference(iot.id, providers('Microsoft.Devices', 'IoTHubs').apiVersions[0]).hostName};SharedAccessKeyName=iothubowner;SharedAccessKey=${listKeys(iot.id, providers('Microsoft.Devices', 'IoTHubs').apiVersions[0]).value[0].primaryKey}'
 
+// used for TokenCredential tests
+output EVENTHUB_NAMESPACE string = '${namespace.name}.servicebus.windows.net'
+output CHECKPOINTSTORE_STORAGE_ENDPOINT string = storageAccount.properties.primaryEndpoints.blob
 output EVENTHUB_NAME string = eventHub.name
 output EVENTHUB_LINKSONLY_NAME string = linksonly.name
-output EVENTHUB_CONNECTION_STRING string = listKeys(resourceId('Microsoft.EventHub/namespaces/authorizationRules', namespaceName, 'RootManageSharedAccessKey'), apiVersion).primaryConnectionString
-output EVENTHUB_CONNECTION_STRING_LISTEN_ONLY string = listKeys(resourceId('Microsoft.EventHub/namespaces/authorizationRules', namespaceName, authorizedListenOnly.name), apiVersion).primaryConnectionString
-output EVENTHUB_CONNECTION_STRING_SEND_ONLY string = listKeys(resourceId('Microsoft.EventHub/namespaces/authorizationRules', namespaceName, authorizedSendOnly.name), apiVersion).primaryConnectionString
-output IOTHUB_CONNECTION_STRING string = 'HostName=${reference(iot.id, providers('Microsoft.Devices', 'IoTHubs').apiVersions[0]).hostName};SharedAccessKeyName=iothubowner;SharedAccessKey=${listKeys(iot.id, providers('Microsoft.Devices', 'IoTHubs').apiVersions[0]).value[0].primaryKey}'
+
+// connection strings
+output EVENTHUB_CONNECTION_STRING string = listKeys(
+  resourceId('Microsoft.EventHub/namespaces/authorizationRules', namespaceName, 'RootManageSharedAccessKey'),
+  apiVersion
+).primaryConnectionString
+output EVENTHUB_CONNECTION_STRING_LISTEN_ONLY string = listKeys(
+  resourceId('Microsoft.EventHub/namespaces/authorizationRules', namespaceName, authorizedListenOnly.name),
+  apiVersion
+).primaryConnectionString
+output EVENTHUB_CONNECTION_STRING_SEND_ONLY string = listKeys(
+  resourceId('Microsoft.EventHub/namespaces/authorizationRules', namespaceName, authorizedSendOnly.name),
+  apiVersion
+).primaryConnectionString
 output CHECKPOINTSTORE_STORAGE_CONNECTION_STRING string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};AccountKey=${listKeys(storageAccount.id, storageApiVersion).keys[0].value};EndpointSuffix=${storageEndpointSuffix}'
+
 output RESOURCE_GROUP string = resourceGroup().name
 output AZURE_SUBSCRIPTION_ID string = subscription().subscriptionId

@@ -20,6 +20,11 @@ import (
 type TokenProvider struct {
 	tokenCred        azcore.TokenCredential
 	sasTokenProvider *sas.TokenProvider
+
+	// InsecureDisableTLS disables TLS. This is only used if the user is connecting to localhost
+	// and is using an emulator connection string. See [ConnectionStringProperties.Emulator] for
+	// details.
+	InsecureDisableTLS bool
 }
 
 // NewTokenProvider creates a tokenProvider from azcore.TokenCredential.
@@ -46,7 +51,7 @@ func NewTokenProviderWithConnectionString(props exported.ConnectionStringPropert
 		return nil, err
 	}
 
-	return &TokenProvider{sasTokenProvider: provider}, nil
+	return &TokenProvider{sasTokenProvider: provider, InsecureDisableTLS: props.Emulator}, nil
 }
 
 // singleUseTokenProvider allows you to wrap an *auth.Token so it can be used

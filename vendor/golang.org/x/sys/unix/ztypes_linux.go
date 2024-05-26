@@ -5209,11 +5209,7 @@ const (
 	NL80211_FREQUENCY_ATTR_GO_CONCURRENT                    = 0xf
 	NL80211_FREQUENCY_ATTR_INDOOR_ONLY                      = 0xe
 	NL80211_FREQUENCY_ATTR_IR_CONCURRENT                    = 0xf
-<<<<<<< HEAD
 	NL80211_FREQUENCY_ATTR_MAX                              = 0x1f
-=======
-	NL80211_FREQUENCY_ATTR_MAX                              = 0x1c
->>>>>>> a81a580f (bump azure deps)
 	NL80211_FREQUENCY_ATTR_MAX_TX_POWER                     = 0x6
 	NL80211_FREQUENCY_ATTR_NO_10MHZ                         = 0x11
 	NL80211_FREQUENCY_ATTR_NO_160MHZ                        = 0xc

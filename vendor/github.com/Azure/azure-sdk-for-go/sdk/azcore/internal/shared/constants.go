@@ -40,9 +40,5 @@ const (
 	Module = "azcore"
 
 	// Version is the semantic version (see http://semver.org) of this module.
-<<<<<<< HEAD
 	Version = "v1.11.1"
-=======
-	Version = "v1.10.0"
->>>>>>> a81a580f (bump azure deps)
 )

@@ -5,6 +5,7 @@ package azeventhubs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -78,6 +79,14 @@ type StartPositions struct {
 	Default StartPosition
 }
 
+type state int32
+
+const (
+	stateNone    state = 0
+	stateStopped state = 1
+	stateRunning state = 2
+)
+
 // Processor uses a [ConsumerClient] and [CheckpointStore] to provide automatic
 // load balancing between multiple Processor instances, even in separate
 // processes or on separate machines.
@@ -87,6 +96,9 @@ type StartPositions struct {
 //
 // [example_consuming_with_checkpoints_test.go]: https://github.com/Azure/azure-sdk-for-go/blob/main/sdk/messaging/azeventhubs/example_consuming_with_checkpoints_test.go
 type Processor struct {
+	stateMu sync.Mutex
+	state   state
+
 	ownershipUpdateInterval time.Duration
 	defaultStartPositions   StartPositions
 	checkpointStore         CheckpointStore
@@ -97,10 +109,10 @@ type Processor struct {
 	consumerClient consumerClientForProcessor
 
 	nextClients           chan *ProcessorPartitionClient
+	nextClientsReady      chan struct{}
 	consumerClientDetails consumerClientDetails
 
-	runCalled chan struct{}
-	lb        *processorLoadBalancer
+	lb *processorLoadBalancer
 
 	// claimedOwnerships is set to whatever our current ownerships are. The underlying
 	// value is a []Ownership.
@@ -173,12 +185,13 @@ func newProcessorImpl(consumerClient consumerClientForProcessor, checkpointStore
 		},
 		prefetch:              options.Prefetch,
 		consumerClientDetails: consumerClient.getDetails(),
-		runCalled:             make(chan struct{}),
+		nextClientsReady:      make(chan struct{}),
 		lb:                    newProcessorLoadBalancer(checkpointStore, consumerClient.getDetails(), strategy, partitionDurationExpiration),
 		currentOwnerships:     currentOwnerships,
 
-		// `nextClients` will be initialized when the user calls Run() since it needs to query the #
-		// of partitions on the Event Hub.
+		// `nextClients` will be properly initialized when the user calls
+		// Run() since it needs to query the # of partitions on the Event Hub.
+		nextClients: make(chan *ProcessorPartitionClient),
 	}, nil
 }
 
@@ -193,7 +206,11 @@ func newProcessorImpl(consumerClient consumerClientForProcessor, checkpointStore
 //
 // [example_consuming_with_checkpoints_test.go]: https://github.com/Azure/azure-sdk-for-go/blob/main/sdk/messaging/azeventhubs/example_consuming_with_checkpoints_test.go
 func (p *Processor) NextPartitionClient(ctx context.Context) *ProcessorPartitionClient {
-	<-p.runCalled
+	select {
+	case <-ctx.Done():
+		return nil
+	case <-p.nextClientsReady:
+	}
 
 	select {
 	case nextClient := <-p.nextClients:
@@ -203,11 +220,29 @@ func (p *Processor) NextPartitionClient(ctx context.Context) *ProcessorPartition
 	}
 }
 
+func (p *Processor) checkState() error {
+	switch p.state {
+	case stateNone:
+		// not running so we can start. And lock out any other users.
+		p.state = stateRunning
+		return nil
+	case stateRunning:
+		return errors.New("the Processor is currently running. Concurrent calls to Run() are not allowed.")
+	case stateStopped:
+		return errors.New("the Processor has been stopped. Create a new instance to start processing again")
+	default:
+		return fmt.Errorf("unhandled state value %v", p.state)
+	}
+}
+
 // Run handles the load balancing loop, blocking until the passed in context is cancelled
 // or it encounters an unrecoverable error. On cancellation, it will return a nil error.
 //
 // This function should run for the lifetime of your application, or for as long as you want
 // to continue to claim and process partitions.
+//
+// Once a Processor has been stopped it cannot be restarted and a new instance must
+// be created.
 //
 // As partitions are claimed new [ProcessorPartitionClient] instances will be returned from
 // [Processor.NextPartitionClient]. This can happen at any time, based on new Processor instances
@@ -221,7 +256,15 @@ func (p *Processor) NextPartitionClient(ctx context.Context) *ProcessorPartition
 //
 // [example_consuming_with_checkpoints_test.go]: https://github.com/Azure/azure-sdk-for-go/blob/main/sdk/messaging/azeventhubs/example_consuming_with_checkpoints_test.go
 func (p *Processor) Run(ctx context.Context) error {
-	err := p.runImpl(ctx)
+	p.stateMu.Lock()
+	err := p.checkState()
+	p.stateMu.Unlock()
+
+	if err != nil {
+		return err
+	}
+
+	err = p.runImpl(ctx)
 
 	// the context is the proper way to close down the Run() loop, so it's not
 	// an error and doesn't need to be returned.
@@ -237,7 +280,7 @@ func (p *Processor) runImpl(ctx context.Context) error {
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
-		p.closeConsumers(ctx, consumers)
+		p.close(ctx, consumers)
 	}()
 
 	// size the channel to the # of partitions. We can never exceed this size since
@@ -283,7 +326,7 @@ func (p *Processor) initNextClientsCh(ctx context.Context) (EventHubProperties, 
 	}
 
 	p.nextClients = make(chan *ProcessorPartitionClient, len(eventHubProperties.PartitionIDs))
-	close(p.runCalled)
+	close(p.nextClientsReady)
 
 	return eventHubProperties, nil
 }
@@ -429,7 +472,7 @@ func (p *Processor) getCheckpointsMap(ctx context.Context) (map[string]Checkpoin
 	return m, nil
 }
 
-func (p *Processor) closeConsumers(ctx context.Context, consumersMap *sync.Map) {
+func (p *Processor) close(ctx context.Context, consumersMap *sync.Map) {
 	consumersMap.Range(func(key, value any) bool {
 		client := value.(*ProcessorPartitionClient)
 
@@ -450,6 +493,20 @@ func (p *Processor) closeConsumers(ctx context.Context, consumersMap *sync.Map) 
 
 	if err != nil {
 		azlog.Writef(EventConsumer, "Failed to relinquish ownerships. New processors will have to wait for ownerships to expire: %s", err.Error())
+	}
+
+	p.stateMu.Lock()
+	p.state = stateStopped
+	p.stateMu.Unlock()
+
+	// NextPartitionClient() will quit out now that p.nextClients is closed.
+	close(p.nextClients)
+
+	select {
+	case <-p.nextClientsReady:
+		// already closed
+	default:
+		close(p.nextClientsReady)
 	}
 }
 
