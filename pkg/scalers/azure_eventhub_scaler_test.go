@@ -205,50 +205,50 @@ var parseEventHubMetadataDatasetWithPodIdentity = []parseEventHubMetadataTestDat
 
 var calculateUnprocessedEventsDataset = []calculateUnprocessedEventsTestData{
 	{
-		checkpoint:        azure.NewCheckpoint("1", 5),
+		checkpoint:        azure.NewCheckpoint(5),
 		partitionInfo:     azeventhubs.PartitionProperties{LastEnqueuedSequenceNumber: 10, LastEnqueuedOffset: 2},
 		unprocessedEvents: 5,
 	},
 	{
-		checkpoint:        azure.NewCheckpoint("1002", 4611686018427387903),
+		checkpoint:        azure.NewCheckpoint(4611686018427387903),
 		partitionInfo:     azeventhubs.PartitionProperties{LastEnqueuedSequenceNumber: 4611686018427387905, LastEnqueuedOffset: 1000},
 		unprocessedEvents: 2,
 	},
 	{
-		checkpoint:        azure.NewCheckpoint("900", 4611686018427387900),
+		checkpoint:        azure.NewCheckpoint(4611686018427387900),
 		partitionInfo:     azeventhubs.PartitionProperties{LastEnqueuedSequenceNumber: 4611686018427387905, LastEnqueuedOffset: 1000},
 		unprocessedEvents: 5,
 	},
 	{
-		checkpoint:        azure.NewCheckpoint("800", 4000000000000200000),
+		checkpoint:        azure.NewCheckpoint(4000000000000200000),
 		partitionInfo:     azeventhubs.PartitionProperties{LastEnqueuedSequenceNumber: 4000000000000000000, LastEnqueuedOffset: 750},
 		unprocessedEvents: 9223372036854575807,
 	},
 	// Empty checkpoint
 	{
-		checkpoint:        azure.NewCheckpoint("", 0),
+		checkpoint:        azure.NewCheckpoint(0),
 		partitionInfo:     azeventhubs.PartitionProperties{LastEnqueuedSequenceNumber: 1, LastEnqueuedOffset: 1},
 		unprocessedEvents: 2,
 	},
 	// Stale PartitionInfo
 	{
-		checkpoint:        azure.NewCheckpoint("5", 15),
+		checkpoint:        azure.NewCheckpoint(15),
 		partitionInfo:     azeventhubs.PartitionProperties{LastEnqueuedSequenceNumber: 10, LastEnqueuedOffset: 2},
 		unprocessedEvents: 0,
 	},
 	{
-		checkpoint:        azure.NewCheckpoint("1000", 4611686018427387910),
+		checkpoint:        azure.NewCheckpoint(4611686018427387910),
 		partitionInfo:     azeventhubs.PartitionProperties{LastEnqueuedSequenceNumber: 4611686018427387905, LastEnqueuedOffset: 900},
 		unprocessedEvents: 0,
 	},
 	{
-		checkpoint:        azure.NewCheckpoint("1", 5),
+		checkpoint:        azure.NewCheckpoint(5),
 		partitionInfo:     azeventhubs.PartitionProperties{LastEnqueuedSequenceNumber: 9223372036854775797, LastEnqueuedOffset: 10000},
 		unprocessedEvents: 0,
 	},
 	// Circular buffer reset
 	{
-		checkpoint:        azure.NewCheckpoint("100000", 9223372036854775797),
+		checkpoint:        azure.NewCheckpoint(9223372036854775797),
 		partitionInfo:     azeventhubs.PartitionProperties{LastEnqueuedSequenceNumber: 5, LastEnqueuedOffset: 1},
 		unprocessedEvents: 15,
 	},

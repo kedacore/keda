@@ -33,7 +33,7 @@ func TestCheckpointFromBlobStorageAzureFunction(t *testing.T) {
 
 	containerName := "azure-webjobs-eventhub"
 	checkpointFormat := "{\"Offset\":\"%s\",\"SequenceNumber\":%d,\"PartitionId\":\"%s\",\"Owner\":\"\",\"Token\":\"\",\"Epoch\":0}"
-	checkpoint := fmt.Sprintf(checkpointFormat, offset, sequencenumber, partitionID)
+	checkpoint := fmt.Sprintf(checkpointFormat, sequencenumber, partitionID)
 	urlPath := fmt.Sprintf("eventhubnamespace.servicebus.windows.net/hub/%s/%s", consumerGroup, partitionID)
 	eventHubInfo := EventHubInfo{
 		EventHubConnection:    "Endpoint=sb://eventhubnamespace.servicebus.windows.net/;EntityPath=hub",
@@ -54,8 +54,6 @@ func TestCheckpointFromBlobStorageAzureFunction(t *testing.T) {
 	}
 
 	check, _ := GetCheckpointFromBlobStorage(ctx, client, eventHubInfo, "0")
-	_ = check.Offset
-	_ = expectedCheckpoint.Offset
 	assert.Equal(t, check, expectedCheckpoint)
 }
 
@@ -72,7 +70,7 @@ func TestCheckpointFromBlobStorageDefault(t *testing.T) {
 
 	containerName := "defaultcontainer"
 	checkpointFormat := "{\"Offset\":\"%s\",\"SequenceNumber\":%d,\"PartitionId\":\"%s\",\"Owner\":\"\",\"Token\":\"\",\"Epoch\":0}"
-	checkpoint := fmt.Sprintf(checkpointFormat, offset, sequencenumber, partitionID)
+	checkpoint := fmt.Sprintf(checkpointFormat, sequencenumber, partitionID)
 	urlPath := fmt.Sprintf("%s/%s", consumerGroup, partitionID)
 
 	eventHubInfo := EventHubInfo{
@@ -94,8 +92,6 @@ func TestCheckpointFromBlobStorageDefault(t *testing.T) {
 	}
 
 	check, _ := GetCheckpointFromBlobStorage(ctx, client, eventHubInfo, partitionID)
-	_ = check.Offset
-	_ = expectedCheckpoint.Offset
 	assert.Equal(t, check, expectedCheckpoint)
 }
 
@@ -112,7 +108,7 @@ func TestCheckpointFromBlobStorageDefaultDeprecatedPythonCheckpoint(t *testing.T
 
 	containerName := "defaultcontainerpython"
 	checkpointFormat := "{\"Offset\":\"%s\",\"sequence_number\":%d,\"partition_id\":\"%s\",\"Owner\":\"\",\"Token\":\"\",\"Epoch\":0}"
-	checkpoint := fmt.Sprintf(checkpointFormat, offset, sequencenumber, partitionID)
+	checkpoint := fmt.Sprintf(checkpointFormat, sequencenumber, partitionID)
 	urlPath := fmt.Sprintf("%s/%s", consumerGroup, partitionID)
 
 	eventHubInfo := EventHubInfo{
@@ -130,16 +126,11 @@ func TestCheckpointFromBlobStorageDefaultDeprecatedPythonCheckpoint(t *testing.T
 	assert.NoError(t, err, "error creating checkoiunt")
 
 	expectedCheckpoint := Checkpoint{
-		baseCheckpoint: baseCheckpoint{
-			Offset: offset,
-		},
 		PartitionID:    partitionID,
 		SequenceNumber: sequencenumber,
 	}
 
 	check, _ := GetCheckpointFromBlobStorage(ctx, client, eventHubInfo, partitionID)
-	_ = check.Offset
-	_ = expectedCheckpoint.Offset
 	assert.Equal(t, check, expectedCheckpoint)
 }
 
@@ -155,7 +146,6 @@ func TestCheckpointFromBlobStorageWithBlobMetadata(t *testing.T) {
 	sequencenumber := int64(1)
 	sequencenumberString := strconv.FormatInt(sequencenumber, 10)
 	metadata := map[string]*string{
-		"offset":         &offset,
 		"sequencenumber": &sequencenumberString,
 	}
 
@@ -178,16 +168,11 @@ func TestCheckpointFromBlobStorageWithBlobMetadata(t *testing.T) {
 	assert.NoError(t, err, "error creating checkoiunt")
 
 	expectedCheckpoint := Checkpoint{
-		baseCheckpoint: baseCheckpoint{
-			Offset: offset,
-		},
 		PartitionID:    partitionID,
 		SequenceNumber: sequencenumber,
 	}
 
 	check, _ := GetCheckpointFromBlobStorage(ctx, client, eventHubInfo, partitionID)
-	_ = check.Offset
-	_ = expectedCheckpoint.Offset
 	assert.Equal(t, check, expectedCheckpoint)
 }
 
@@ -222,16 +207,11 @@ func TestCheckpointFromBlobStorageGoSdk(t *testing.T) {
 	assert.NoError(t, err, "error creating checkoiunt")
 
 	expectedCheckpoint := Checkpoint{
-		baseCheckpoint: baseCheckpoint{
-			Offset: offset,
-		},
 		PartitionID:    partitionID,
 		SequenceNumber: sequencenumber,
 	}
 
 	check, _ := GetCheckpointFromBlobStorage(ctx, client, eventHubInfo, partitionID)
-	_ = check.Offset
-	_ = expectedCheckpoint.Offset
 	assert.Equal(t, check, expectedCheckpoint)
 }
 
@@ -249,7 +229,7 @@ func TestCheckpointFromBlobStorageDapr(t *testing.T) {
 
 	containerName := "dapr-container"
 	checkpointFormat := "{\"partitionID\":\"%s\",\"epoch\":0,\"owner\":\"\",\"checkpoint\":{\"offset\":\"%s\",\"sequenceNumber\":%d,\"enqueueTime\":\"\"},\"state\":\"\",\"token\":\"\"}"
-	checkpoint := fmt.Sprintf(checkpointFormat, partitionID, offset, sequencenumber)
+	checkpoint := fmt.Sprintf(checkpointFormat, partitionID, sequencenumber)
 
 	urlPath := fmt.Sprintf("dapr-%s-%s-%s", eventhubName, consumerGroup, partitionID)
 
@@ -274,8 +254,6 @@ func TestCheckpointFromBlobStorageDapr(t *testing.T) {
 	}
 
 	check, _ := GetCheckpointFromBlobStorage(ctx, client, eventHubInfo, partitionID)
-	_ = check.Offset
-	_ = expectedCheckpoint.Offset
 	assert.Equal(t, check, expectedCheckpoint)
 }
 

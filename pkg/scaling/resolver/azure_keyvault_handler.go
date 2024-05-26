@@ -91,7 +91,7 @@ func (vh *AzureKeyVaultHandler) getCredentials(ctx context.Context, client clien
 		}
 		//TODO (review jorturfer): podIdentity.GetIdentityTenantID(), podIdentity.GetIdentityAuthorityHost()
 		return azidentity.NewClientSecretCredential(tenantID, clientID, clientSecret, nil)
-	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		return azure.NewChainedCredential(logger, *podIdentity)
 	default:
 		return nil, fmt.Errorf("key vault does not support pod identity provider - %s", podIdentity.Provider)

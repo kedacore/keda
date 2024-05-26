@@ -120,7 +120,7 @@ func CreateAzureMetricsClient(config *scalersconfig.ScalerConfig, meta *azureMon
 	switch config.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		creds, err = azidentity.NewClientSecretCredential(meta.azureMonitorInfo.TenantID, meta.azureMonitorInfo.ClientID, meta.azureMonitorInfo.ClientPassword, nil)
-	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		creds, err = azure.NewChainedCredential(logger, config.PodIdentity)
 	default:
 		return nil, fmt.Errorf("azure monitor does not support pod identity provider - %s", config.PodIdentity.Provider)
