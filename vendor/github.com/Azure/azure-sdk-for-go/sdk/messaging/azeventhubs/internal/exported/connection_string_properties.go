@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -32,13 +33,19 @@ type ConnectionStringProperties struct {
 
 	// SharedAccessSignature is the SharedAccessSignature value in the connection string.
 	SharedAccessSignature *string
+
+	// Emulator indicates that the connection string is for an emulator:
+	// ex: Endpoint=localhost:6765;SharedAccessKeyName=<< REDACTED >>;SharedAccessKey=<< REDACTED >>;UseDevelopmentEmulator=true
+	Emulator bool
 }
 
 // ParseConnectionString takes a connection string from the Azure portal and returns the
 // parsed representation.
 //
 // There are two supported formats:
+//
 //  1. Connection strings generated from the portal (or elsewhere) that contain an embedded key and keyname.
+//
 //  2. A connection string with an embedded SharedAccessSignature:
 //     Endpoint=sb://<sb>.servicebus.windows.net;SharedAccessSignature=SharedAccessSignature sr=<sb>.servicebus.windows.net&sig=<base64-sig>&se=<expiry>&skn=<keyname>"
 func ParseConnectionString(connStr string) (ConnectionStringProperties, error) {
@@ -48,6 +55,7 @@ func ParseConnectionString(connStr string) (ConnectionStringProperties, error) {
 		sharedAccessKeyKey       = "SharedAccessKey"
 		entityPathKey            = "EntityPath"
 		sharedAccessSignatureKey = "SharedAccessSignature"
+		useEmulator              = "UseDevelopmentEmulator"
 	)
 
 	csp := ConnectionStringProperties{}
@@ -55,6 +63,10 @@ func ParseConnectionString(connStr string) (ConnectionStringProperties, error) {
 	splits := strings.Split(connStr, ";")
 
 	for _, split := range splits {
+		if split == "" {
+			continue
+		}
+
 		keyAndValue := strings.SplitN(split, "=", 2)
 		if len(keyAndValue) < 2 {
 			return ConnectionStringProperties{}, errors.New("failed parsing connection string due to unmatched key value separated by '='")
@@ -79,6 +91,25 @@ func ParseConnectionString(connStr string) (ConnectionStringProperties, error) {
 			csp.EntityPath = &value
 		case strings.EqualFold(sharedAccessSignatureKey, key):
 			csp.SharedAccessSignature = &value
+		case strings.EqualFold(useEmulator, key):
+			v, err := strconv.ParseBool(value)
+
+			if err != nil {
+				return ConnectionStringProperties{}, err
+			}
+
+			csp.Emulator = v
+		}
+	}
+
+	if csp.Emulator {
+		endpointParts := strings.SplitN(csp.Endpoint, ":", 3) // allow for a port, if it exists.
+
+		if len(endpointParts) < 2 || endpointParts[0] != "sb" {
+			// there should always be at least two parts "sb:" and "//<emulator hostname>"
+			// with an optional 3rd piece that's the port "1111".
+			// (we don't need to validate it's a valid host since it's been through url.Parse() above)
+			return ConnectionStringProperties{}, fmt.Errorf("UseDevelopmentEmulator=true can only be used with sb://<emulator hostname> or sb://<emulator hostname>:<port number>, not %s", csp.Endpoint)
 		}
 	}
 

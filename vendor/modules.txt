@@ -59,18 +59,6 @@ filippo.io/edwards25519/field
 # github.com/Azure/azure-amqp-common-go/v4 v4.2.0
 ## explicit; go 1.18
 github.com/Azure/azure-amqp-common-go/v4/auth
-github.com/Azure/azure-amqp-common-go/v4/cbs
-github.com/Azure/azure-amqp-common-go/v4/conn
-github.com/Azure/azure-amqp-common-go/v4/internal
-github.com/Azure/azure-amqp-common-go/v4/internal/tracing
-github.com/Azure/azure-amqp-common-go/v4/rpc
-github.com/Azure/azure-amqp-common-go/v4/sas
-github.com/Azure/azure-amqp-common-go/v4/uuid
-# github.com/Azure/azure-event-hubs-go/v3 v3.6.2
-## explicit; go 1.18
-github.com/Azure/azure-event-hubs-go/v3
-github.com/Azure/azure-event-hubs-go/v3/atom
-github.com/Azure/azure-event-hubs-go/v3/persist
 # github.com/Azure/azure-kusto-go v0.15.2
 ## explicit; go 1.19
 github.com/Azure/azure-kusto-go/kusto
@@ -90,7 +78,7 @@ github.com/Azure/azure-kusto-go/kusto/kql
 github.com/Azure/azure-kusto-go/kusto/trustedendpoints
 github.com/Azure/azure-kusto-go/kusto/unsafe
 github.com/Azure/azure-kusto-go/kusto/utils
-# github.com/Azure/azure-sdk-for-go/sdk/azcore v1.10.0
+# github.com/Azure/azure-sdk-for-go/sdk/azcore v1.11.1
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/azcore
 github.com/Azure/azure-sdk-for-go/sdk/azcore/arm
@@ -118,7 +106,7 @@ github.com/Azure/azure-sdk-for-go/sdk/azcore/tracing
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/azidentity
 github.com/Azure/azure-sdk-for-go/sdk/azidentity/internal
-# github.com/Azure/azure-sdk-for-go/sdk/internal v1.5.2
+# github.com/Azure/azure-sdk-for-go/sdk/internal v1.7.0
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/internal/diag
 github.com/Azure/azure-sdk-for-go/sdk/internal/errorinfo
@@ -128,12 +116,11 @@ github.com/Azure/azure-sdk-for-go/sdk/internal/poller
 github.com/Azure/azure-sdk-for-go/sdk/internal/telemetry
 github.com/Azure/azure-sdk-for-go/sdk/internal/temporal
 github.com/Azure/azure-sdk-for-go/sdk/internal/uuid
-# github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventgrid v0.4.0
+# github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventgrid v0.5.0
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventgrid/internal
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventgrid/publisher
-# github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.7.0
-# github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs v1.0.3
+# github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs v1.2.1
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/internal
@@ -144,7 +131,7 @@ github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/internal/exported
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/internal/sas
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/internal/sbauth
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/internal/utils
-# github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.6.1
+# github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.7.1
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/admin
@@ -169,7 +156,7 @@ github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets
 # github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal v1.0.0
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal
-# github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.3.1
+# github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.3.2
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/storage/azblob
 github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/appendblob

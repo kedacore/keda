@@ -1,5 +1,31 @@
 # Release History
 
+## 1.2.1 (2024-05-20)
+
+### Bugs Fixed
+
+- Emulator strings should allow for hosts other than localhost (PR#22898)
+
+## 1.2.0 (2024-05-07)
+
+### Bugs Fixed
+
+Processor.Run had unclear behavior for some cases:
+- Run() now returns an explicit error when called more than once on a single 
+  Processor instance or if multiple Run calls are made concurrently. (PR#22833)
+- NextProcessorClient now properly terminates (and returns nil) if called on a 
+  stopped Processor. (PR#22833)
+
+## 1.1.0 (2024-04-02)
+
+### Features Added
+
+- Add in ability to handle emulator connection strings. (PR#22663)
+
+### Bugs Fixed
+
+- Fixed a race condition between Processor.Run() and Processor.NextPartitionClient() where cancelling Run() quickly could lead to NextPartitionClient hanging indefinitely. (PR#22541)
+
 ## 1.0.4 (2024-03-05)
 
 ### Bugs Fixed

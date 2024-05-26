@@ -462,7 +462,11 @@ func (ns *Namespace) getWSSHostURI() string {
 }
 
 func (ns *Namespace) getAMQPHostURI() string {
-	return fmt.Sprintf("amqps://%s/", ns.FQDN)
+	if ns.TokenProvider.InsecureDisableTLS {
+		return fmt.Sprintf("amqp://%s/", ns.FQDN)
+	} else {
+		return fmt.Sprintf("amqps://%s/", ns.FQDN)
+	}
 }
 
 func (ns *Namespace) GetHTTPSHostURI() string {
