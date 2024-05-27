@@ -243,7 +243,7 @@ func TestDynatraceScaler(t *testing.T) {
 
 	installDynatrace(t)
 
-	dynatraceConfigData, dynatraceConfigTemplates = getDynatraceTemplateData()
+	dynatraceConfigData, dynatraceConfigTemplates := getDynatraceTemplateData()
 	// Create Dynatrace-specific kubernetes resources
 	KubectlApplyMultipleWithTemplate(t, dynatraceConfigData, dynatraceConfigTemplates)
 
