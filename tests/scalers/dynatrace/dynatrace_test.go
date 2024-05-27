@@ -33,6 +33,7 @@ var (
 	secretName              = fmt.Sprintf("%s-secret", testName)
 	triggerAuthName         = fmt.Sprintf("%s-ta", testName)
 	dynatraceHost           = os.Getenv("DYNATRACE_HOST")
+	dynatraceOperatorToken  = os.Getenv("DYNATRACE_OPERATOR_TOKEN")
 	dynatraceToken          = os.Getenv("DYNATRACE_METRICS_TOKEN")
 	kubernetesClusterName   = "keda-dynatrace-cluster"
 	deploymentReplicas      = 1
@@ -49,6 +50,7 @@ type templateData struct {
 	TriggerAuthName         string
 	SecretName              string
 	DynatraceToken          string
+	DynatraceOperatorToken  string
 	DeploymentReplicas      string
 	DynatraceHost           string
 	KubernetesClusterName   string
@@ -84,7 +86,7 @@ metadata:
   namespace: {{.TestNamespace}}
 data:
   apiToken: {{.DynatraceToken}}
-  dataIngestToken: {{.DynatraceToken}}
+  dataIngestToken: {{.DynatraceOperatorToken}}
 `
 
 	triggerAuthenticationTemplate = `apiVersion: keda.sh/v1alpha1
@@ -241,9 +243,9 @@ func TestDynatraceScaler(t *testing.T) {
 
 	installDynatrace(t)
 
-	data, templates = getDynatraceTemplateData()
+	dynatraceConfigData, dynatraceConfigTemplates = getDynatraceTemplateData()
 	// Create Dynatrace-specific kubernetes resources
-	KubectlApplyMultipleWithTemplate(t, data, templates)
+	KubectlApplyMultipleWithTemplate(t, dynatraceConfigData, dynatraceConfigTemplates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
 		"replica count should be %s after a minute", minReplicaCount)
@@ -310,6 +312,7 @@ func getTemplateData() (templateData, []Template) {
 			MaxReplicaCount:         fmt.Sprintf("%v", maxReplicaCount),
 			DeploymentReplicas:      fmt.Sprintf("%v", deploymentReplicas),
 			DynatraceToken:          base64.StdEncoding.EncodeToString([]byte(dynatraceToken)),
+			DynatraceOperatorToken:  base64.StdEncoding.EncodeToString([]byte(dynatraceOperatorToken)),
 			DynatraceHost:           dynatraceHost,
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
