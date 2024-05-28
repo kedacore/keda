@@ -98,6 +98,10 @@ scale-node-pool: az-login ## Scale nodepool.
 		--resource-group $(TF_AZURE_RESOURCE_GROUP) \
 		--node-count $(NODE_POOL_SIZE)
 
+.PHONY: e2e-regex-check
+e2e-regex-check:
+	go run -tags e2e-regex ./tests/run-all.go regex-check
+
 .PHONY: e2e-test
 e2e-test: get-cluster-context ## Run e2e tests against Azure cluster.
 	TERMINFO=/etc/terminfo
