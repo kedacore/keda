@@ -55,7 +55,6 @@ type Adapter struct {
 	Message string
 }
 
-// https://github.com/kedacore/keda/issues/5732
 var setupLog = ctrl.Log.WithName("keda_metrics_adapter")
 
 var (
