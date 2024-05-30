@@ -150,6 +150,7 @@ type azurePipelinesMetadata struct {
 	jobsToFetch                          int64
 	triggerIndex                         int
 	requireAllDemands                    bool
+	requireAllDemandsAndIgnoreOthers     bool
 }
 
 type authContext struct {
@@ -507,7 +508,19 @@ func getCanAgentDemandFulfilJob(jr JobRequest, metadata *azurePipelinesMetadata)
 	if metadata.requireAllDemands {
 		return countDemands == len(demandsInJob) && countDemands == len(demandsInScaler)
 	}
+	if metadata.requireAllDemandsAndIgnoreOthers {
+		return allElementsExist(demandsInScaler, demandsInJob)
+	}
 	return countDemands == len(demandsInJob)
+}
+
+func allElementsExist(a, b []string) bool {
+	for _, elem := range a {
+		if !contains(b, elem) {
+			return false
+		}
+	}
+	return true
 }
 
 // Determine if the Job and Parent Agent Template have matching capabilities
