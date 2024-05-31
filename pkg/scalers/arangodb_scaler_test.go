@@ -80,10 +80,10 @@ var arangoDBMetricIdentifiers = []arangoDBMetricIdentifier{
 }
 
 func TestParseArangoDBMetadata(t *testing.T) {
-	for _, testData := range testArangoDBMetadata {
+	for idx, testData := range testArangoDBMetadata {
 		_, err := parseArangoDBMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.raisesError {
-			t.Error("Expected success but got error:", err)
+			t.Errorf("Test %v: expected success but got error: %s", idx, err)
 		}
 		if err == nil && testData.raisesError {
 			t.Error("Expected error but got success")
@@ -103,7 +103,7 @@ func TestArangoDBScalerAuthParams(t *testing.T) {
 		}
 
 		if err == nil {
-			if meta.arangoDBAuth.EnableBasicAuth && !strings.Contains(testData.metadata["authModes"], "basic") {
+			if meta.ArangoDBAuth.EnabledBasicAuth() && !strings.Contains(testData.metadata["authModes"], "basic") {
 				t.Error("wrong auth mode detected")
 			}
 		}
