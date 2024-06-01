@@ -13,8 +13,8 @@ change from the grpc code generator previously included with `protoc-gen-go`.
 To restore this behavior, set the option `require_unimplemented_servers=false`.
 E.g.:
 
-```
-  protoc --go-grpc_out=require_unimplemented_servers=false[,other options...]:. \
+```sh
+  protoc --go-grpc_out=. --go-grpc_opt=require_unimplemented_servers=false[,other options...] \
 ```
 
 Note that this is not recommended, and the option is only provided to restore

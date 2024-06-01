@@ -94,7 +94,7 @@ require (
 	golang.org/x/sync v0.7.0
 	google.golang.org/api v0.181.0
 	google.golang.org/grpc v1.64.0
-	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.3.0
+	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.4.0
 	google.golang.org/protobuf v1.34.1
 	k8s.io/api v0.29.4
 	k8s.io/apimachinery v0.29.4
