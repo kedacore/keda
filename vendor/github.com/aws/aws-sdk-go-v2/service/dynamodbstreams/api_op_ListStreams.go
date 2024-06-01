@@ -13,8 +13,9 @@ import (
 
 // Returns an array of stream ARNs associated with the current account and
 // endpoint. If the TableName parameter is present, then ListStreams will return
-// only the streams ARNs for that table. You can call ListStreams at a maximum
-// rate of 5 times per second.
+// only the streams ARNs for that table.
+//
+// You can call ListStreams at a maximum rate of 5 times per second.
 func (c *Client) ListStreams(ctx context.Context, params *ListStreamsInput, optFns ...func(*Options)) (*ListStreamsOutput, error) {
 	if params == nil {
 		params = &ListStreamsInput{}
@@ -53,8 +54,11 @@ type ListStreamsOutput struct {
 
 	// The stream ARN of the item where the operation stopped, inclusive of the
 	// previous result set. Use this value to start a new operation, excluding this
-	// value in the new request. If LastEvaluatedStreamArn is empty, then the "last
-	// page" of results has been processed and there is no more data to be retrieved.
+	// value in the new request.
+	//
+	// If LastEvaluatedStreamArn is empty, then the "last page" of results has been
+	// processed and there is no more data to be retrieved.
+	//
 	// If LastEvaluatedStreamArn is not empty, it does not necessarily mean that there
 	// is more data in the result set. The only way to know when you have reached the
 	// end of the result set is when LastEvaluatedStreamArn is empty.

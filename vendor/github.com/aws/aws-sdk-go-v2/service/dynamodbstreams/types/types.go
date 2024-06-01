@@ -7,10 +7,12 @@ import (
 	"time"
 )
 
-// Represents the data for an attribute. Each attribute value is described as a
-// name-value pair. The name is the data type, and the value is the data itself.
-// For more information, see Data Types (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.NamingRulesDataTypes.html#HowItWorks.DataTypes)
-// in the Amazon DynamoDB Developer Guide.
+// Represents the data for an attribute.
+//
+// Each attribute value is described as a name-value pair. The name is the data
+// type, and the value is the data itself.
+//
+// For more information, see [Data Types] in the Amazon DynamoDB Developer Guide.
 //
 // The following types satisfy this interface:
 //
@@ -24,12 +26,15 @@ import (
 //	AttributeValueMemberNULL
 //	AttributeValueMemberS
 //	AttributeValueMemberSS
+//
+// [Data Types]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.NamingRulesDataTypes.html#HowItWorks.DataTypes
 type AttributeValue interface {
 	isAttributeValue()
 }
 
-// An attribute of type Binary. For example: "B":
-// "dGhpcyB0ZXh0IGlzIGJhc2U2NC1lbmNvZGVk"
+// An attribute of type Binary. For example:
+//
+//	"B": "dGhpcyB0ZXh0IGlzIGJhc2U2NC1lbmNvZGVk"
 type AttributeValueMemberB struct {
 	Value []byte
 
@@ -38,7 +43,9 @@ type AttributeValueMemberB struct {
 
 func (*AttributeValueMemberB) isAttributeValue() {}
 
-// An attribute of type Boolean. For example: "BOOL": true
+// An attribute of type Boolean. For example:
+//
+//	"BOOL": true
 type AttributeValueMemberBOOL struct {
 	Value bool
 
@@ -47,8 +54,9 @@ type AttributeValueMemberBOOL struct {
 
 func (*AttributeValueMemberBOOL) isAttributeValue() {}
 
-// An attribute of type Binary Set. For example: "BS": ["U3Vubnk=", "UmFpbnk=",
-// "U25vd3k="]
+// An attribute of type Binary Set. For example:
+//
+//	"BS": ["U3Vubnk=", "UmFpbnk=", "U25vd3k="]
 type AttributeValueMemberBS struct {
 	Value [][]byte
 
@@ -57,8 +65,9 @@ type AttributeValueMemberBS struct {
 
 func (*AttributeValueMemberBS) isAttributeValue() {}
 
-// An attribute of type List. For example: "L": [ {"S": "Cookies"} , {"S":
-// "Coffee"}, {"N": "3.14159"}]
+// An attribute of type List. For example:
+//
+//	"L": [ {"S": "Cookies"} , {"S": "Coffee"}, {"N": "3.14159"}]
 type AttributeValueMemberL struct {
 	Value []AttributeValue
 
@@ -67,8 +76,9 @@ type AttributeValueMemberL struct {
 
 func (*AttributeValueMemberL) isAttributeValue() {}
 
-// An attribute of type Map. For example: "M": {"Name": {"S": "Joe"}, "Age": {"N":
-// "35"}}
+// An attribute of type Map. For example:
+//
+//	"M": {"Name": {"S": "Joe"}, "Age": {"N": "35"}}
 type AttributeValueMemberM struct {
 	Value map[string]AttributeValue
 
@@ -77,10 +87,13 @@ type AttributeValueMemberM struct {
 
 func (*AttributeValueMemberM) isAttributeValue() {}
 
-// An attribute of type Number. For example: "N": "123.45" Numbers are sent across
-// the network to DynamoDB as strings, to maximize compatibility across languages
-// and libraries. However, DynamoDB treats them as number type attributes for
-// mathematical operations.
+// An attribute of type Number. For example:
+//
+//	"N": "123.45"
+//
+// Numbers are sent across the network to DynamoDB as strings, to maximize
+// compatibility across languages and libraries. However, DynamoDB treats them as
+// number type attributes for mathematical operations.
 type AttributeValueMemberN struct {
 	Value string
 
@@ -89,8 +102,11 @@ type AttributeValueMemberN struct {
 
 func (*AttributeValueMemberN) isAttributeValue() {}
 
-// An attribute of type Number Set. For example: "NS": ["42.2", "-19", "7.5",
-// "3.14"] Numbers are sent across the network to DynamoDB as strings, to maximize
+// An attribute of type Number Set. For example:
+//
+//	"NS": ["42.2", "-19", "7.5", "3.14"]
+//
+// Numbers are sent across the network to DynamoDB as strings, to maximize
 // compatibility across languages and libraries. However, DynamoDB treats them as
 // number type attributes for mathematical operations.
 type AttributeValueMemberNS struct {
@@ -101,7 +117,9 @@ type AttributeValueMemberNS struct {
 
 func (*AttributeValueMemberNS) isAttributeValue() {}
 
-// An attribute of type Null. For example: "NULL": true
+// An attribute of type Null. For example:
+//
+//	"NULL": true
 type AttributeValueMemberNULL struct {
 	Value bool
 
@@ -110,7 +128,9 @@ type AttributeValueMemberNULL struct {
 
 func (*AttributeValueMemberNULL) isAttributeValue() {}
 
-// An attribute of type String. For example: "S": "Hello"
+// An attribute of type String. For example:
+//
+//	"S": "Hello"
 type AttributeValueMemberS struct {
 	Value string
 
@@ -119,8 +139,9 @@ type AttributeValueMemberS struct {
 
 func (*AttributeValueMemberS) isAttributeValue() {}
 
-// An attribute of type String Set. For example: "SS": ["Giraffe", "Hippo"
-// ,"Zebra"]
+// An attribute of type String Set. For example:
+//
+//	"SS": ["Giraffe", "Hippo" ,"Zebra"]
 type AttributeValueMemberSS struct {
 	Value []string
 
@@ -144,12 +165,15 @@ type Identity struct {
 
 // Represents a single element of a key schema. A key schema specifies the
 // attributes that make up the primary key of a table, or the key attributes of an
-// index. A KeySchemaElement represents exactly one attribute of the primary key.
-// For example, a simple primary key would be represented by one KeySchemaElement
-// (for the partition key). A composite primary key would require one
-// KeySchemaElement for the partition key, and another KeySchemaElement for the
-// sort key. A KeySchemaElement must be a scalar, top-level attribute (not a
-// nested attribute). The data type must be one of String, Number, or Binary. The
+// index.
+//
+// A KeySchemaElement represents exactly one attribute of the primary key. For
+// example, a simple primary key would be represented by one KeySchemaElement (for
+// the partition key). A composite primary key would require one KeySchemaElement
+// for the partition key, and another KeySchemaElement for the sort key.
+//
+// A KeySchemaElement must be a scalar, top-level attribute (not a nested
+// attribute). The data type must be one of String, Number, or Binary. The
 // attribute cannot be nested within a List or a Map.
 type KeySchemaElement struct {
 
@@ -159,14 +183,19 @@ type KeySchemaElement struct {
 	AttributeName *string
 
 	// The role that this key attribute will assume:
+	//
 	//   - HASH - partition key
+	//
 	//   - RANGE - sort key
+	//
 	// The partition key of an item is also known as its hash attribute. The term
 	// "hash attribute" derives from DynamoDB's usage of an internal hash function to
 	// evenly distribute data items across partitions, based on their partition key
-	// values. The sort key of an item is also known as its range attribute. The term
-	// "range attribute" derives from the way DynamoDB stores items with the same
-	// partition key physically close together, in sorted order by the sort key value.
+	// values.
+	//
+	// The sort key of an item is also known as its range attribute. The term "range
+	// attribute" derives from the way DynamoDB stores items with the same partition
+	// key physically close together, in sorted order by the sort key value.
 	//
 	// This member is required.
 	KeyType KeyType
@@ -189,8 +218,11 @@ type Record struct {
 	EventID *string
 
 	// The type of data modification that was performed on the DynamoDB table:
+	//
 	//   - INSERT - a new item was added to the table.
+	//
 	//   - MODIFY - one or more of an existing item's attributes were modified.
+	//
 	//   - REMOVE - the item was deleted from the table
 	EventName OperationType
 
@@ -199,16 +231,23 @@ type Record struct {
 	EventSource *string
 
 	// The version number of the stream record format. This number is updated whenever
-	// the structure of Record is modified. Client applications must not assume that
-	// eventVersion will remain at a particular value, as this number is subject to
-	// change at any time. In general, eventVersion will only increase as the
-	// low-level DynamoDB Streams API evolves.
+	// the structure of Record is modified.
+	//
+	// Client applications must not assume that eventVersion will remain at a
+	// particular value, as this number is subject to change at any time. In general,
+	// eventVersion will only increase as the low-level DynamoDB Streams API evolves.
 	EventVersion *string
 
 	// Items that are deleted by the Time to Live process after expiration have the
 	// following fields:
-	//   - Records[].userIdentity.type "Service"
-	//   - Records[].userIdentity.principalId "dynamodb.amazonaws.com"
+	//
+	//   - Records[].userIdentity.type
+	//
+	// "Service"
+	//
+	//   - Records[].userIdentity.principalId
+	//
+	// "dynamodb.amazonaws.com"
 	UserIdentity *Identity
 
 	noSmithyDocumentSerde
@@ -250,12 +289,17 @@ type Stream struct {
 	// The Amazon Resource Name (ARN) for the stream.
 	StreamArn *string
 
-	// A timestamp, in ISO 8601 format, for this stream. Note that LatestStreamLabel
-	// is not a unique identifier for the stream, because it is possible that a stream
-	// from another table might have the same timestamp. However, the combination of
-	// the following three elements is guaranteed to be unique:
+	// A timestamp, in ISO 8601 format, for this stream.
+	//
+	// Note that LatestStreamLabel is not a unique identifier for the stream, because
+	// it is possible that a stream from another table might have the same timestamp.
+	// However, the combination of the following three elements is guaranteed to be
+	// unique:
+	//
 	//   - the Amazon Web Services customer ID.
+	//
 	//   - the table name
+	//
 	//   - the StreamLabel
 	StreamLabel *string
 
@@ -276,11 +320,14 @@ type StreamDescription struct {
 
 	// The shard ID of the item where the operation stopped, inclusive of the previous
 	// result set. Use this value to start a new operation, excluding this value in the
-	// new request. If LastEvaluatedShardId is empty, then the "last page" of results
-	// has been processed and there is currently no more data to be retrieved. If
-	// LastEvaluatedShardId is not empty, it does not necessarily mean that there is
-	// more data in the result set. The only way to know when you have reached the end
-	// of the result set is when LastEvaluatedShardId is empty.
+	// new request.
+	//
+	// If LastEvaluatedShardId is empty, then the "last page" of results has been
+	// processed and there is currently no more data to be retrieved.
+	//
+	// If LastEvaluatedShardId is not empty, it does not necessarily mean that there
+	// is more data in the result set. The only way to know when you have reached the
+	// end of the result set is when LastEvaluatedShardId is empty.
 	LastEvaluatedShardId *string
 
 	// The shards that comprise the stream.
@@ -289,29 +336,42 @@ type StreamDescription struct {
 	// The Amazon Resource Name (ARN) for the stream.
 	StreamArn *string
 
-	// A timestamp, in ISO 8601 format, for this stream. Note that LatestStreamLabel
-	// is not a unique identifier for the stream, because it is possible that a stream
-	// from another table might have the same timestamp. However, the combination of
-	// the following three elements is guaranteed to be unique:
+	// A timestamp, in ISO 8601 format, for this stream.
+	//
+	// Note that LatestStreamLabel is not a unique identifier for the stream, because
+	// it is possible that a stream from another table might have the same timestamp.
+	// However, the combination of the following three elements is guaranteed to be
+	// unique:
+	//
 	//   - the Amazon Web Services customer ID.
+	//
 	//   - the table name
+	//
 	//   - the StreamLabel
 	StreamLabel *string
 
 	// Indicates the current status of the stream:
+	//
 	//   - ENABLING - Streams is currently being enabled on the DynamoDB table.
+	//
 	//   - ENABLED - the stream is enabled.
+	//
 	//   - DISABLING - Streams is currently being disabled on the DynamoDB table.
+	//
 	//   - DISABLED - the stream is disabled.
 	StreamStatus StreamStatus
 
 	// Indicates the format of the records within this stream:
+	//
 	//   - KEYS_ONLY - only the key attributes of items that were modified in the
 	//   DynamoDB table.
+	//
 	//   - NEW_IMAGE - entire items from the table, as they appeared after they were
 	//   modified.
+	//
 	//   - OLD_IMAGE - entire items from the table, as they appeared before they were
 	//   modified.
+	//
 	//   - NEW_AND_OLD_IMAGES - both the new and the old images of the items from the
 	//   table.
 	StreamViewType StreamViewType
@@ -326,9 +386,10 @@ type StreamDescription struct {
 // DynamoDB table.
 type StreamRecord struct {
 
-	// The approximate date and time when the stream record was created, in UNIX epoch
-	// time (http://www.epochconverter.com/) format and rounded down to the closest
-	// second.
+	// The approximate date and time when the stream record was created, in [UNIX epoch time] format
+	// and rounded down to the closest second.
+	//
+	// [UNIX epoch time]: http://www.epochconverter.com/
 	ApproximateCreationDateTime *time.Time
 
 	// The primary key attribute(s) for the DynamoDB item that was modified.
@@ -348,9 +409,13 @@ type StreamRecord struct {
 
 	// The type of data from the modified DynamoDB item that was captured in this
 	// stream record:
+	//
 	//   - KEYS_ONLY - only the key attributes of the modified item.
+	//
 	//   - NEW_IMAGE - the entire item, as it appeared after it was modified.
+	//
 	//   - OLD_IMAGE - the entire item, as it appeared before it was modified.
+	//
 	//   - NEW_AND_OLD_IMAGES - both the new and the old item images of the item.
 	StreamViewType StreamViewType
 
