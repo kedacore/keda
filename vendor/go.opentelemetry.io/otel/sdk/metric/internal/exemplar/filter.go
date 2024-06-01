@@ -14,15 +14,15 @@ import (
 // SampledFilter returns a [Reservoir] wrapping r that will only offer measurements
 // to r if the passed context associated with the measurement contains a sampled
 // [go.opentelemetry.io/otel/trace.SpanContext].
-func SampledFilter[N int64 | float64](r Reservoir[N]) Reservoir[N] {
-	return filtered[N]{Reservoir: r}
+func SampledFilter(r Reservoir) Reservoir {
+	return filtered{Reservoir: r}
 }
 
-type filtered[N int64 | float64] struct {
-	Reservoir[N]
+type filtered struct {
+	Reservoir
 }
 
-func (f filtered[N]) Offer(ctx context.Context, t time.Time, n N, a []attribute.KeyValue) {
+func (f filtered) Offer(ctx context.Context, t time.Time, n Value, a []attribute.KeyValue) {
 	if trace.SpanContextFromContext(ctx).IsSampled() {
 		f.Reservoir.Offer(ctx, t, n, a)
 	}

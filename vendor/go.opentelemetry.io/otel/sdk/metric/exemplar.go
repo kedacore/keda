@@ -19,21 +19,21 @@ import (
 // Note: This will only return non-nil values when the experimental exemplar
 // feature is enabled and the OTEL_METRICS_EXEMPLAR_FILTER environment variable
 // is not set to always_off.
-func reservoirFunc[N int64 | float64](agg Aggregation) func() exemplar.Reservoir[N] {
+func reservoirFunc(agg Aggregation) func() exemplar.Reservoir {
 	if !x.Exemplars.Enabled() {
 		return nil
 	}
 
 	// https://github.com/open-telemetry/opentelemetry-specification/blob/d4b241f451674e8f611bb589477680341006ad2b/specification/metrics/sdk.md#exemplar-defaults
-	resF := func() func() exemplar.Reservoir[N] {
+	resF := func() func() exemplar.Reservoir {
 		// Explicit bucket histogram aggregation with more than 1 bucket will
 		// use AlignedHistogramBucketExemplarReservoir.
 		a, ok := agg.(AggregationExplicitBucketHistogram)
 		if ok && len(a.Boundaries) > 0 {
 			cp := slices.Clone(a.Boundaries)
-			return func() exemplar.Reservoir[N] {
+			return func() exemplar.Reservoir {
 				bounds := cp
-				return exemplar.Histogram[N](bounds)
+				return exemplar.Histogram(bounds)
 			}
 		}
 
@@ -61,8 +61,8 @@ func reservoirFunc[N int64 | float64](agg Aggregation) func() exemplar.Reservoir
 			}
 		}
 
-		return func() exemplar.Reservoir[N] {
-			return exemplar.FixedSize[N](n)
+		return func() exemplar.Reservoir {
+			return exemplar.FixedSize(n)
 		}
 	}
 
@@ -73,12 +73,12 @@ func reservoirFunc[N int64 | float64](agg Aggregation) func() exemplar.Reservoir
 	case "always_on":
 		return resF()
 	case "always_off":
-		return exemplar.Drop[N]
+		return exemplar.Drop
 	case "trace_based":
 		fallthrough
 	default:
 		newR := resF()
-		return func() exemplar.Reservoir[N] {
+		return func() exemplar.Reservoir {
 			return exemplar.SampledFilter(newR())
 		}
 	}

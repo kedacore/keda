@@ -349,7 +349,7 @@ func (i *inserter[N]) cachedAggregator(scope instrumentation.Scope, kind Instrum
 	cv := i.aggregators.Lookup(normID, func() aggVal[N] {
 		b := aggregate.Builder[N]{
 			Temporality:   i.pipeline.reader.temporality(kind),
-			ReservoirFunc: reservoirFunc[N](stream.Aggregation),
+			ReservoirFunc: reservoirFunc(stream.Aggregation),
 		}
 		b.Filter = stream.AttributeFilter
 		// A value less than or equal to zero will disable the aggregation
@@ -447,7 +447,12 @@ func (i *inserter[N]) aggregateFunc(b aggregate.Builder[N], agg Aggregation, kin
 	case AggregationDrop:
 		// Return nil in and out to signify the drop aggregator.
 	case AggregationLastValue:
-		meas, comp = b.LastValue()
+		switch kind {
+		case InstrumentKindGauge:
+			meas, comp = b.LastValue()
+		case InstrumentKindObservableGauge:
+			meas, comp = b.PrecomputedLastValue()
+		}
 	case AggregationSum:
 		switch kind {
 		case InstrumentKindObservableCounter:
@@ -464,7 +469,7 @@ func (i *inserter[N]) aggregateFunc(b aggregate.Builder[N], agg Aggregation, kin
 	case AggregationExplicitBucketHistogram:
 		var noSum bool
 		switch kind {
-		case InstrumentKindUpDownCounter, InstrumentKindObservableUpDownCounter, InstrumentKindObservableGauge:
+		case InstrumentKindUpDownCounter, InstrumentKindObservableUpDownCounter, InstrumentKindObservableGauge, InstrumentKindGauge:
 			// The sum should not be collected for any instrument that can make
 			// negative measurements:
 			// https://github.com/open-telemetry/opentelemetry-specification/blob/v1.21.0/specification/metrics/sdk.md#histogram-aggregations
@@ -474,7 +479,7 @@ func (i *inserter[N]) aggregateFunc(b aggregate.Builder[N], agg Aggregation, kin
 	case AggregationBase2ExponentialHistogram:
 		var noSum bool
 		switch kind {
-		case InstrumentKindUpDownCounter, InstrumentKindObservableUpDownCounter, InstrumentKindObservableGauge:
+		case InstrumentKindUpDownCounter, InstrumentKindObservableUpDownCounter, InstrumentKindObservableGauge, InstrumentKindGauge:
 			// The sum should not be collected for any instrument that can make
 			// negative measurements:
 			// https://github.com/open-telemetry/opentelemetry-specification/blob/v1.21.0/specification/metrics/sdk.md#histogram-aggregations
@@ -497,6 +502,7 @@ func (i *inserter[N]) aggregateFunc(b aggregate.Builder[N], agg Aggregation, kin
 // | Counter                  | ✓    |           | ✓   | ✓         | ✓                     |
 // | UpDownCounter            | ✓    |           | ✓   | ✓         | ✓                     |
 // | Histogram                | ✓    |           | ✓   | ✓         | ✓                     |
+// | Gauge                    | ✓    | ✓         |     | ✓         | ✓                     |
 // | Observable Counter       | ✓    |           | ✓   | ✓         | ✓                     |
 // | Observable UpDownCounter | ✓    |           | ✓   | ✓         | ✓                     |
 // | Observable Gauge         | ✓    | ✓         |     | ✓         | ✓                     |.
@@ -509,6 +515,7 @@ func isAggregatorCompatible(kind InstrumentKind, agg Aggregation) error {
 		case InstrumentKindCounter,
 			InstrumentKindUpDownCounter,
 			InstrumentKindHistogram,
+			InstrumentKindGauge,
 			InstrumentKindObservableCounter,
 			InstrumentKindObservableUpDownCounter,
 			InstrumentKindObservableGauge:
@@ -526,7 +533,8 @@ func isAggregatorCompatible(kind InstrumentKind, agg Aggregation) error {
 			return errIncompatibleAggregation
 		}
 	case AggregationLastValue:
-		if kind == InstrumentKindObservableGauge {
+		switch kind {
+		case InstrumentKindObservableGauge, InstrumentKindGauge:
 			return nil
 		}
 		// TODO: review need for aggregation check after

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
 
 // rng is used to make sampling decisions.
@@ -50,14 +49,14 @@ func random() float64 {
 // are k or less measurements made, the Reservoir will sample each one. If
 // there are more than k, the Reservoir will then randomly sample all
 // additional measurement with a decreasing probability.
-func FixedSize[N int64 | float64](k int) Reservoir[N] {
-	r := &randRes[N]{storage: newStorage[N](k)}
+func FixedSize(k int) Reservoir {
+	r := &randRes{storage: newStorage(k)}
 	r.reset()
 	return r
 }
 
-type randRes[N int64 | float64] struct {
-	*storage[N]
+type randRes struct {
+	*storage
 
 	// count is the number of measurement seen.
 	count int64
@@ -69,7 +68,7 @@ type randRes[N int64 | float64] struct {
 	w float64
 }
 
-func (r *randRes[N]) Offer(ctx context.Context, t time.Time, n N, a []attribute.KeyValue) {
+func (r *randRes) Offer(ctx context.Context, t time.Time, n Value, a []attribute.KeyValue) {
 	// The following algorithm is "Algorithm L" from Li, Kim-Hung (4 December
 	// 1994). "Reservoir-Sampling Algorithms of Time Complexity
 	// O(n(1+log(N/n)))". ACM Transactions on Mathematical Software. 20 (4):
@@ -125,7 +124,7 @@ func (r *randRes[N]) Offer(ctx context.Context, t time.Time, n N, a []attribute.
 }
 
 // reset resets r to the initial state.
-func (r *randRes[N]) reset() {
+func (r *randRes) reset() {
 	// This resets the number of exemplars known.
 	r.count = 0
 	// Random index inserts should only happen after the storage is full.
@@ -147,7 +146,7 @@ func (r *randRes[N]) reset() {
 
 // advance updates the count at which the offered measurement will overwrite an
 // existing exemplar.
-func (r *randRes[N]) advance() {
+func (r *randRes) advance() {
 	// Calculate the next value in the random number series.
 	//
 	// The current value of r.w is based on the max of a distribution of random
@@ -174,7 +173,7 @@ func (r *randRes[N]) advance() {
 	r.next += int64(math.Log(random())/math.Log(1-r.w)) + 1
 }
 
-func (r *randRes[N]) Collect(dest *[]metricdata.Exemplar[N]) {
+func (r *randRes) Collect(dest *[]Exemplar) {
 	r.storage.Collect(dest)
 	// Call reset here even though it will reset r.count and restart the random
 	// number series. This will persist any old exemplars as long as no new
