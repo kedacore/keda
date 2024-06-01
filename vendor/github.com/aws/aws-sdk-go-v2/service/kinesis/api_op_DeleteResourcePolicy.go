@@ -13,7 +13,9 @@ import (
 
 // Delete a policy for the specified data stream or consumer. Request patterns can
 // be one of the following:
+//
 //   - Data stream pattern: arn:aws.*:kinesis:.*:\d{12}:.*stream/\S+
+//
 //   - Consumer pattern:
 //     ^(arn):aws.*:kinesis:.*:\d{12}:.*stream\/[a-zA-Z0-9_.-]+\/consumer\/[a-zA-Z0-9_.-]+:[0-9]+
 func (c *Client) DeleteResourcePolicy(ctx context.Context, params *DeleteResourcePolicyInput, optFns ...func(*Options)) (*DeleteResourcePolicyOutput, error) {

@@ -17,22 +17,27 @@ import (
 // specify in the ConsumerARN parameter and the shard you specify in the ShardId
 // parameter. After the connection is successfully established, Kinesis Data
 // Streams pushes records from the shard to the consumer over this connection.
-// Before you call this operation, call RegisterStreamConsumer to register the
-// consumer with Kinesis Data Streams. When the SubscribeToShard call succeeds,
-// your consumer starts receiving events of type SubscribeToShardEvent over the
-// HTTP/2 connection for up to 5 minutes, after which time you need to call
-// SubscribeToShard again to renew the subscription if you want to continue to
-// receive records. You can make one call to SubscribeToShard per second per
-// registered consumer per shard. For example, if you have a 4000 shard stream and
-// two registered stream consumers, you can make one SubscribeToShard request per
-// second for each combination of shard and registered consumer, allowing you to
-// subscribe both consumers to all 4000 shards in one second. If you call
-// SubscribeToShard again with the same ConsumerARN and ShardId within 5 seconds
-// of a successful call, you'll get a ResourceInUseException . If you call
-// SubscribeToShard 5 seconds or more after a successful call, the second call
-// takes over the subscription and the previous connection expires or fails with a
-// ResourceInUseException . For an example of how to use this operations, see
-// Enhanced Fan-Out Using the Kinesis Data Streams API .
+// Before you call this operation, call RegisterStreamConsumerto register the consumer with Kinesis Data
+// Streams.
+//
+// When the SubscribeToShard call succeeds, your consumer starts receiving events
+// of type SubscribeToShardEventover the HTTP/2 connection for up to 5 minutes, after which time you
+// need to call SubscribeToShard again to renew the subscription if you want to
+// continue to receive records.
+//
+// You can make one call to SubscribeToShard per second per registered consumer
+// per shard. For example, if you have a 4000 shard stream and two registered
+// stream consumers, you can make one SubscribeToShard request per second for each
+// combination of shard and registered consumer, allowing you to subscribe both
+// consumers to all 4000 shards in one second.
+//
+// If you call SubscribeToShard again with the same ConsumerARN and ShardId within
+// 5 seconds of a successful call, you'll get a ResourceInUseException . If you
+// call SubscribeToShard 5 seconds or more after a successful call, the second
+// call takes over the subscription and the previous connection expires or fails
+// with a ResourceInUseException .
+//
+// For an example of how to use this operations, see Enhanced Fan-Out Using the Kinesis Data Streams API.
 func (c *Client) SubscribeToShard(ctx context.Context, params *SubscribeToShardInput, optFns ...func(*Options)) (*SubscribeToShardOutput, error) {
 	if params == nil {
 		params = &SubscribeToShardInput{}
@@ -50,14 +55,13 @@ func (c *Client) SubscribeToShard(ctx context.Context, params *SubscribeToShardI
 
 type SubscribeToShardInput struct {
 
-	// For this parameter, use the value you obtained when you called
-	// RegisterStreamConsumer .
+	// For this parameter, use the value you obtained when you called RegisterStreamConsumer.
 	//
 	// This member is required.
 	ConsumerARN *string
 
 	// The ID of the shard you want to subscribe to. To see a list of all the shards
-	// for a given stream, use ListShards .
+	// for a given stream, use ListShards.
 	//
 	// This member is required.
 	ShardId *string

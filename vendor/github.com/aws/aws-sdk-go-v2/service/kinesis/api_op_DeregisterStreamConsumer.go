@@ -15,10 +15,11 @@ import (
 // ARN of the data stream and the name you gave the consumer when you registered
 // it. You may also provide all three parameters, as long as they don't conflict
 // with each other. If you don't know the name or ARN of the consumer that you want
-// to deregister, you can use the ListStreamConsumers operation to get a list of
-// the descriptions of all the consumers that are currently registered with a given
-// data stream. The description of a consumer contains its name and ARN. This
-// operation has a limit of five transactions per second per stream.
+// to deregister, you can use the ListStreamConsumersoperation to get a list of the descriptions of
+// all the consumers that are currently registered with a given data stream. The
+// description of a consumer contains its name and ARN.
+//
+// This operation has a limit of five transactions per second per stream.
 func (c *Client) DeregisterStreamConsumer(ctx context.Context, params *DeregisterStreamConsumerInput, optFns ...func(*Options)) (*DeregisterStreamConsumerOutput, error) {
 	if params == nil {
 		params = &DeregisterStreamConsumerInput{}
@@ -47,9 +48,9 @@ type DeregisterStreamConsumerInput struct {
 	ConsumerName *string
 
 	// The ARN of the Kinesis data stream that the consumer is registered with. For
-	// more information, see Amazon Resource Names (ARNs) and Amazon Web Services
-	// Service Namespaces (https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arn-syntax-kinesis-streams)
-	// .
+	// more information, see [Amazon Resource Names (ARNs) and Amazon Web Services Service Namespaces].
+	//
+	// [Amazon Resource Names (ARNs) and Amazon Web Services Service Namespaces]: https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arn-syntax-kinesis-streams
 	StreamARN *string
 
 	noSmithyDocumentSerde

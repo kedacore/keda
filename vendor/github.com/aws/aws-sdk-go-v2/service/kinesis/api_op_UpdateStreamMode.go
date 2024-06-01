@@ -12,7 +12,8 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Updates the capacity mode of the data stream. Currently, in Kinesis Data
+//	Updates the capacity mode of the data stream. Currently, in Kinesis Data
+//
 // Streams, you can choose between an on-demand capacity mode and a provisioned
 // capacity mode for your data stream.
 func (c *Client) UpdateStreamMode(ctx context.Context, params *UpdateStreamModeInput, optFns ...func(*Options)) (*UpdateStreamModeOutput, error) {
@@ -32,12 +33,12 @@ func (c *Client) UpdateStreamMode(ctx context.Context, params *UpdateStreamModeI
 
 type UpdateStreamModeInput struct {
 
-	// Specifies the ARN of the data stream whose capacity mode you want to update.
+	//  Specifies the ARN of the data stream whose capacity mode you want to update.
 	//
 	// This member is required.
 	StreamARN *string
 
-	// Specifies the capacity mode to which you want to set your data stream.
+	//  Specifies the capacity mode to which you want to set your data stream.
 	// Currently, in Kinesis Data Streams, you can choose between an on-demand capacity
 	// mode and a provisioned capacity mode for your data streams.
 	//
