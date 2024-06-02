@@ -200,7 +200,7 @@ func (s *IBMMQScaler) getQueueDepthViaHTTP(ctx context.Context) (int64, error) {
 	}
 
 	if response.CommandResponse == nil || len(response.CommandResponse) == 0 {
-		return 0, fmt.Errorf("failed to parse response from REST call: %w", err)
+		return 0, fmt.Errorf("failed to parse response from REST call")
 	}
 
 	if response.CommandResponse[0].Parameters == nil {
