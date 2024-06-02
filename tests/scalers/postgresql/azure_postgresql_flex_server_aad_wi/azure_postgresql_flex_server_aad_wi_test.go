@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package postgresql_standalone_test
+package azure_postgresql_flex_server_aad_wi_test
 
 import (
 	"encoding/base64"
@@ -129,7 +129,7 @@ func TestPostreSQLScaler(t *testing.T) {
 	_, postgreSQLtemplates := getPostgreSQLTemplateData()
 	_, templates := getTemplateData()
 	t.Cleanup(func() {
-		// Delete table on Azure Postgres Flexible server
+		// Delete table on remote Azure Postgres Flexible server
 		deleteTableSQL := "DROP TABLE task_instance;"
 		del_ok, del_out, del_errOut, del_err := WaitForSuccessfulExecCommandOnSpecificPod(t, postgresqlPodName, testNamespace,
 			fmt.Sprintf("PGPASSWORD=%s psql -h %s -p 5432 -U %s -d %s -c \"%s\"", azurePostgreSQLAdminPassword, azurePostgreSQLFQDN, azurePostgreSQLAdminUsername, azurePostgreSQLDatabase, deleteTableSQL), 60, 3)
@@ -139,13 +139,13 @@ func TestPostreSQLScaler(t *testing.T) {
 		DeleteKubernetesResources(t, testNamespace, data, postgreSQLtemplates)
 	})
 
-	// Create kubernetes resources for PostgreSQL server
+	// Create kubernetes resources for local PostgreSQL server
 	CreateKubernetesResources(t, kc, testNamespace, data, postgreSQLtemplates)
 
 	require.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, postgreSQLStatefulSetName, testNamespace, 1, 60, 3),
 		"replica count should be %d after 3 minutes", 1)
 
-	// Create table on Azure Postgres Flexible server
+	// Create table on remote Azure Postgres Flexible server
 	createTableSQL := "CREATE TABLE task_instance (id serial PRIMARY KEY,state VARCHAR(10));"
 	ok, out, errOut, err := WaitForSuccessfulExecCommandOnSpecificPod(t, postgresqlPodName, testNamespace,
 		fmt.Sprintf("PGPASSWORD=%s psql -h %s -p 5432 -U %s -d %s -c \"%s\"", azurePostgreSQLAdminPassword, azurePostgreSQLFQDN, azurePostgreSQLAdminUsername, azurePostgreSQLDatabase, createTableSQL), 60, 3)
