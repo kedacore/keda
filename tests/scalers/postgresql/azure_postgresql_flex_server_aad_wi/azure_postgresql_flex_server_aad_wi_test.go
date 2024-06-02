@@ -131,9 +131,9 @@ func TestPostreSQLScaler(t *testing.T) {
 	t.Cleanup(func() {
 		// Delete table on remote Azure Postgres Flexible server
 		deleteTableSQL := "DROP TABLE task_instance;"
-		del_ok, del_out, del_errOut, del_err := WaitForSuccessfulExecCommandOnSpecificPod(t, postgresqlPodName, testNamespace,
+		delOk, delOut, delErrOut, delErr := WaitForSuccessfulExecCommandOnSpecificPod(t, postgresqlPodName, testNamespace,
 			fmt.Sprintf("PGPASSWORD=%s psql -h %s -p 5432 -U %s -d %s -c \"%s\"", azurePostgreSQLAdminPassword, azurePostgreSQLFQDN, azurePostgreSQLAdminUsername, azurePostgreSQLDatabase, deleteTableSQL), 60, 3)
-		require.True(t, del_ok, "executing a command on PostreSQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", del_out, del_errOut, del_err)
+		require.True(t, delOk, "executing a command on PostreSQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", delOut, delErrOut, delErr)
 
 		KubectlDeleteMultipleWithTemplate(t, data, templates)
 		DeleteKubernetesResources(t, testNamespace, data, postgreSQLtemplates)
