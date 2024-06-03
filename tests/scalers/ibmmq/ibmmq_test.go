@@ -6,6 +6,7 @@ package ibmmq_test
 import (
 	"encoding/base64"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/joho/godotenv"
@@ -329,22 +330,41 @@ func installIbmmq(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	_, err = ExecuteCommand("helm repo update")
 	require.NoErrorf(t, err, "cannot execute command - %s", err)
 
+	tempDir, err := os.MkdirTemp("", testName)
+	require.NoErrorf(t, err, "cannot create temp directory - %s", err)
+	defer os.RemoveAll(tempDir)
+
+	_, err = ExecuteCommand(fmt.Sprintf("helm pull ibm-mqadvanced-server-dev --repo %s --untar --untardir %s", ibmmqHelmRepo, tempDir))
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
+	chartTempDir := fmt.Sprintf("%s/ibm-mqadvanced-server-dev", tempDir)
+
+	// Update deprecated keys for the statefulset `nodeAffinity` object: `beta.kubernetes.io/os` and `beta.kubernetes.io/arch`
+	// by removing the `beta` prefix if it exists.
+	_, err = ExecuteCommand(fmt.Sprintf("find %s/templates -type f -name '*.yaml' -exec sed -i -e s/beta.kubernetes.io\\/os/kubernetes.io\\/os/g {} ;", chartTempDir))
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
+	_, err = ExecuteCommand(fmt.Sprintf("find %s/templates -type f -name '*.yaml' -exec sed -i -e s/beta.kubernetes.io\\/arch/kubernetes.io\\/arch/g {} ;", chartTempDir))
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
+
 	// Creates the secret that contains the 'app' and 'admin' user passwords
 	// which will be referenced by the chart.
 	KubectlApplyWithTemplate(t, data, "secretTemplate", secretTemplate)
 
 	t.Logf("installing IBM MQ helm chart '%s'", ibmmqHelmChartReleaseName)
-	_, err = ExecuteCommand(fmt.Sprintf(
-		"helm install %s ibm-stable-charts/ibm-mqadvanced-server-dev "+
+	todebug, err := ExecuteCommand(fmt.Sprintf(
+		"helm install %s %s "+
 			"--set license=accept "+
+			"--set persistence.enabled=false "+
+			"--set persistence.useDynamicProvisioning=false "+
 			"--set image.tag=9.2.4.0-r1 "+
 			"--set queueManager.name=%s "+
 			"--set queueManager.multiInstance=false "+
 			"--set queueManager.dev.secret.name=%s "+
 			"--set queueManager.dev.secret.adminPasswordKey=adminPassword "+
 			"--set queueManager.dev.secret.appPasswordKey=appPassword "+
-			"--namespace %s --wait",
-		ibmmqHelmChartReleaseName, queueManagerName, secretName, testNamespace))
+			"--namespace %s --wait --debug",
+		ibmmqHelmChartReleaseName, chartTempDir, queueManagerName, secretName, testNamespace))
+	// temp for debugging purpose
+	t.Log(string(todebug))
 	require.NoErrorf(t, err, "cannot execute command - %s", err)
 
 	KubectlApplyWithTemplate(t, data, "checkQueueManagerRunningStatusJobTemplate", checkQueueManagerRunningStatusJobTemplate)
