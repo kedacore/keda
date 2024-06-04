@@ -39,8 +39,8 @@ var (
 	azurePostgreSQLFQDN             = os.Getenv("TF_AZURE_POSTGRES_FQDN")
 	azurePostgreSQLDatabase         = os.Getenv("TF_AZURE_POSTGRES_DB_NAME")
 	azureADTenantID                 = os.Getenv("TF_AZURE_SP_TENANT")
-	azurePostgreSQLUamiClientID     = os.Getenv("TF_AZURE_POSTGRES_IDENTITY_APP_ID")
-	azurePostgreSQLUamiName         = os.Getenv("TF_AZURE_POSTGRES_IDENTITY_NAME")
+	azurePostgreSQLUamiClientID     = os.Getenv("TF_AZURE_IDENTITY_1_APP_ID")
+	azurePostgreSQLUamiName         = os.Getenv("TF_AZURE_IDENTITY_1_NAME")
 	azurePostgreSQLConnectionString = GetAzureConnectionString(azurePostgreSQLAdminUsername, azurePostgreSQLAdminPassword, azurePostgreSQLFQDN, azurePostgreSQLDatabase)
 	localPostgreSQLUsername         = "test-user"
 	localPostgreSQLPassword         = "test-password"
