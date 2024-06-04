@@ -84,7 +84,7 @@ type SolaceMetadata struct {
 	// Scaler index
 	triggerIndex int
 
-	SolaceMetaSempBaseURL string `keda:"name=messageVpn,  order=triggerMetadata"`
+	SolaceMetaSempBaseURL string `keda:"name=solaceSempBaseURL,  order=triggerMetadata"`
 
 	// Full SEMP URL to target queue (CONSTRUCTED IN CODE)
 	EndpointURL string
