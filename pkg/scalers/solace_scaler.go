@@ -87,8 +87,7 @@ type SolaceMetadata struct {
 	SolaceMetaSempBaseURL string `keda:"name=messageVpn,  order=triggerMetadata"`
 
 	// Full SEMP URL to target queue (CONSTRUCTED IN CODE)
-	EndpointURL   string
-	SolaceSempURL string
+	EndpointURL string
 
 	// Solace Message VPN
 	MessageVpn string `keda:"name=messageVpn,   order=triggerMetadata"`
@@ -197,7 +196,7 @@ func parseSolaceMetadata(config *scalersconfig.ScalerConfig) (*SolaceMetadata, e
 	// Format Solace SEMP Queue Endpoint (REST URL)
 	meta.EndpointURL = fmt.Sprintf(
 		solaceSempEndpointURLTemplate,
-		meta.SolaceSempURL,
+		meta.SolaceMetaSempBaseURL,
 		solaceAPIName,
 		solaceAPIVersion,
 		meta.MessageVpn,
