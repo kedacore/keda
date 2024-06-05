@@ -37,27 +37,9 @@ type solrMetadata struct {
 }
 
 func (s *solrMetadata) Validate() error {
-	if s.Host == "" {
-		return fmt.Errorf("no host given")
-	}
-
-	if s.Collection == "" {
-		return fmt.Errorf("no collection given")
-	}
-
 	if s.Query == "" {
 		s.Query = "*:*"
 	}
-
-	// Parse Authentication
-	if s.Username == "" {
-		return fmt.Errorf("no username given")
-	}
-
-	if s.Password == "" {
-		return fmt.Errorf("no password given")
-	}
-
 	return nil
 }
 
