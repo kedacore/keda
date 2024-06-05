@@ -2,9 +2,14 @@ package scalers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -126,5 +131,101 @@ func TestIBMMQGetMetricSpecForScaling(t *testing.T) {
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)
 		}
+	}
+}
+
+type queueDepthResultTestData struct {
+	name           string
+	bodyStr        string
+	responseStatus int
+	expectedValue  int64
+	isError        bool
+}
+
+var testQueueDepthResults = []queueDepthResultTestData{
+	{
+		name: "valid response queue exists",
+		bodyStr: `{
+		"commandResponse": [{
+			"completionCode": 0,
+			"reasonCode": 0,
+			"parameters": {
+			"curdepth": 10,
+			"type": "QLOCAL",
+			"queue": "DEV.QUEUE.1"
+			}
+		}],
+		"overallReasonCode": 0,
+		"overallCompletionCode": 0
+		}`,
+		responseStatus: http.StatusOK,
+		expectedValue:  10,
+		isError:        false,
+	},
+	{
+		name: "invalid response queue not found",
+		bodyStr: `{
+		"commandResponse": [{
+			"completionCode": 2,
+			"reasonCode": 2085,
+			"message": ["AMQ8147E: IBM MQ object FAKE.QUEUE not found."]
+		}],
+		"overallReasonCode": 3008,
+		"overallCompletionCode": 2
+		}`,
+		responseStatus: http.StatusOK,
+		expectedValue:  0,
+		isError:        true,
+	},
+	{
+		name: "invalid response failed to parse commandResponse from REST call",
+		bodyStr: `{
+		"error": [{
+			"msgId": "MQWB0009E",
+			"action": "Resubmit the request with a valid queue manager name.",
+			"completionCode": 2,
+			"reasonCode": 2058,
+			"type": "rest",
+			"message": "MQWB0009E: Could not query the queue manager 'testqmgR'.",
+			"explanation": "The REST API was invoked specifying a queue manager name which cannot be located."}]
+		}`,
+		responseStatus: http.StatusOK,
+		expectedValue:  0,
+		isError:        true,
+	},
+}
+
+func TestIBMMQScalerGetQueueDepthViaHTTP(t *testing.T) {
+	for _, testData := range testQueueDepthResults {
+		t.Run(testData.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+				writer.Header().Set("Content-Type", "application/json")
+				writer.WriteHeader(testData.responseStatus)
+
+				var body any
+				if err := json.Unmarshal([]byte(testData.bodyStr), &body); err != nil {
+					t.Fatal(err)
+				}
+				if err := json.NewEncoder(writer).Encode(body); err != nil {
+					t.Fatal(err)
+				}
+			}))
+			defer server.Close()
+
+			scaler := IBMMQScaler{
+				metadata: &IBMMQMetadata{
+					host: server.URL,
+				},
+			}
+
+			value, err := scaler.getQueueDepthViaHTTP(context.Background())
+			assert.Equal(t, testData.expectedValue, value)
+
+			if testData.isError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
 }
