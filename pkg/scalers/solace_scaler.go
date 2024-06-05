@@ -30,9 +30,6 @@ const (
 	solaceAPIVersion         = "v2"
 	solaceAPIObjectTypeQueue = "queue"
 
-	// Log Message Templates
-	solaceFoundMetaFalse = "required Field %s NOT FOUND in Solace Metadata"
-
 	// YAML Configuration Metadata Field Names
 	// Broker Identifiers
 	solaceMetaSempBaseURL = "solaceSempBaseURL"
@@ -110,22 +107,14 @@ type SolaceMetadata struct {
 }
 
 func (s *SolaceMetadata) Validate() error {
-	if s.SolaceMetaSempBaseURL == "" {
-		return fmt.Errorf(solaceFoundMetaFalse, solaceMetaSempBaseURL)
-	}
-
-	if s.MessageVpn == "" {
-		return fmt.Errorf(solaceFoundMetaFalse, solaceMetaMsgVpn)
-	}
-
-	if s.QueueName == "" {
-		return fmt.Errorf(solaceFoundMetaFalse, solaceMetaQueueName)
-	}
-
 	//	Check that we have at least one positive target value for the scaler
 	if s.MsgCountTarget < 1 && s.MsgSpoolUsageTarget < 1 && s.MsgRxRateTarget < 1 {
 		return fmt.Errorf("no target value found in the scaler configuration")
 	}
+
+	// Convert Megabyte values to Bytes
+	s.MsgSpoolUsageTarget = s.MsgSpoolUsageTarget * 1024 * 1024
+	s.ActivationMsgSpoolUsageTarget = s.ActivationMsgSpoolUsageTarget * 1024 * 1024
 
 	return nil
 }
