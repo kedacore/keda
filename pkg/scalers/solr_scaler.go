@@ -26,7 +26,7 @@ type solrMetadata struct {
 	triggerIndex int
 
 	Host                       string  `keda:"name=host, order=triggerMetadata"`
-	Collection                 string  `keda:"name=collection, order=triggerMetadata, optional"`
+	Collection                 string  `keda:"name=collection, order=triggerMetadata"`
 	TargetQueryValue           float64 `keda:"name=targetQueryValue, order=triggerMetadata"`
 	ActivationTargetQueryValue float64 `keda:"name=activationTargetQueryValue, order=triggerMetadata, optional, default=0"`
 	Query                      string  `keda:"name=query, order=triggerMetadata, optional"`
