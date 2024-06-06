@@ -166,10 +166,6 @@ func (s *splunkO11yScaler) getQueryResult(ctx context.Context) (float64, error) 
 	// var duration time.Duration = 1000000000 // one second in nano seconds
 	var duration time.Duration = 10000000000 // ten seconds in nano seconds
 
-	// debug
-	// format := fmt.Sprintf("[new] access Token is: %s, and of type %T\n", strconv.Quote(string(s.metadata.accessToken)), s.metadata.accessToken)
-	// s.logger.Info(format)
-
 	comp, err := s.apiClient.Execute(context.Background(), &signalflow.ExecuteRequest{
 		Program: s.metadata.query,
 	})
