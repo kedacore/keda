@@ -177,7 +177,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
     // 如果三个字段都不为空,才进行后续的处理
     if ok && ook && oook {
         var minReplicaCountInt int
-		priMinReplicaCountInt32 := scaledObject.Spec.MinReplicaCount
+	priMinReplicaCountInt32 := scaledObject.Spec.MinReplicaCount
         minReplicaCountInt, err = strconv.Atoi(minReplicaCountStr)
         if err != nil {
             // 如果 minReplicaCount 格式不正确,返回错误
@@ -200,21 +200,23 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
         // 如果当前时间在指定的时间范围内,并且不相等，更新 ScaledObject 的 MaxReplicaCount 字段
         if inTimeRange {
-			minReplicaCountInt32 := int32(minReplicaCountInt)
-			if scaledObject.Spec.MinReplicaCount != &minReplicaCountInt32 {
-				scaledObject.Spec.MinReplicaCount = &minReplicaCountInt32
-				err = r.Client.Update(ctx, scaledObject)
-				if err != nil {
-					return ctrl.Result{}, err
-				}
+		minReplicaCountInt32 := int32(minReplicaCountInt)
+		if scaledObject.Spec.MinReplicaCount != &minReplicaCountInt32 {
+			scaledObject.Spec.MinReplicaCount = &minReplicaCountInt32
+			err = r.Client.Update(ctx, scaledObject)
+			if err != nil {
+				return ctrl.Result{}, err
 			}
+		}
         } else {
+		if scaledObject.Spec.MinReplicaCount != priMinReplicaCountInt32 {
 			scaledObject.Spec.MinReplicaCount = priMinReplicaCountInt32
 			err = r.Client.Update(ctx, scaledObject)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
 		}
+	}
     }
 
 	// Check if the ScaledObject instance is marked to be deleted, which is
