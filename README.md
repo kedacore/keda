@@ -1,5 +1,19 @@
 由于公司业务原因，需要的pod比较多，从0到300花费时间太长，所以给柯达增加时间段伸缩功能，晚上的0-100之间伸缩，白天在100-300之间伸缩
 
+示例：
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {scaled-object-name}  # ScaledObject 对象的名称
+  annotations:
+    minReplicaCountStart："07:00"    # 可选。代表minReplicaCount的开始时间
+    minReplicaCountEnd: "19:00"      # 可选。代表minReplicaCount的结束时间
+    minReplicaCountStr: "100"        # 可选。代表minReplicaCount的值，注，上面三个值都设置才生效
+spec:
+  scaleTargetRef:
+    其他内容略
+---
 <p align="center"><img src="images/logos/keda-word-colour.png" width="300"/></p>
 <p style="font-size: 25px" align="center"><b>Kubernetes-based Event Driven Autoscaling</b></p>
 <p style="font-size: 25px" align="center">
@@ -24,17 +38,18 @@ We are a Cloud Native Computing Foundation (CNCF) graduated project.
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of contents**
 
+- [示例：](#示例)
 - [Getting started](#getting-started)
   - [Deploying KEDA](#deploying-keda)
 - [Documentation](#documentation)
 - [Community](#community)
 - [Adopters - Become a listed KEDA user!](#adopters---become-a-listed-keda-user)
-- [Governance & Policies](#governance--policies)
+- [Governance \& Policies](#governance--policies)
 - [Support](#support)
 - [Roadmap](#roadmap)
 - [Releases](#releases)
 - [Contributing](#contributing)
-  - [Building & deploying locally](#building--deploying-locally)
+  - [Building \& deploying locally](#building--deploying-locally)
   - [Testing strategy](#testing-strategy)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
