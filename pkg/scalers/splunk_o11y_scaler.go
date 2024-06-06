@@ -11,7 +11,8 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/signalfx/signalfx-go/signalflow/v2"
+	// "github.com/signalfx/signalfx-go/signalflow/v2"
+	"github.com/signalfx/signalflow-client-go/v2/signalflow"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -112,43 +113,21 @@ func parseSplunkO11yMetadata(config *scalersconfig.ScalerConfig, logger logr.Log
 	}
 
 	// accessToken
-	/*
-		accessToken := os.Getenv("SPLUNK_ACCESS_TOKEN")
-		if accessToken != "" {
-			meta.accessToken = accessToken
-		} else {
-			return nil, fmt.Errorf("No Splunk Observability Cloud Access Token found.")
-		}
-	*/
 	if accessToken, ok := config.AuthParams["accessToken"]; ok {
+		// cleanedAccessToken := strings.ReplaceAll(accessToken, "\n", "")
+		// cleanedAccessToken = strings.ReplaceAll(accessToken, "\r", "")
 		meta.accessToken = accessToken
 	} else {
 		return nil, fmt.Errorf("no accessToken given")
 	}
 
-	// test trigger auth
-	/*
-		if val, ok := config.AuthParams["splunkAccessToken"]; ok {
-			fmt.Sprintf("splunk_o11y_scaler found authtrigger token : %s", val)
-		} else {
-			return nil, fmt.Errorf("no trigger auth token :(")
-		}
-	*/
-
 	// realm
-	/*
-		realm := os.Getenv("SPLUNK_REALM")
-		if realm != "" {
-			meta.realm = realm
-		} else {
-			return nil, fmt.Errorf("No Splunk Observability Cloud Realm found.")
-		}
-	*/
 	if realm, ok := config.TriggerMetadata["realm"]; ok {
 		meta.realm = realm
 	} else {
 		return nil, fmt.Errorf("no realm given")
 	}
+	logger.Info("Splunk Realm -> %s\n", meta.realm)
 
 	// Debug TODO check
 	meta.vType = v2.ValueMetricType
@@ -186,6 +165,10 @@ func logMessage(logger logr.Logger, msg string, value float64) {
 func (s *splunkO11yScaler) getQueryResult(ctx context.Context) (float64, error) {
 	// var duration time.Duration = 1000000000 // one second in nano seconds
 	var duration time.Duration = 10000000000 // ten seconds in nano seconds
+
+	// debug
+	// format := fmt.Sprintf("[new] access Token is: %s, and of type %T\n", strconv.Quote(string(s.metadata.accessToken)), s.metadata.accessToken)
+	// s.logger.Info(format)
 
 	comp, err := s.apiClient.Execute(context.Background(), &signalflow.ExecuteRequest{
 		Program: s.metadata.query,

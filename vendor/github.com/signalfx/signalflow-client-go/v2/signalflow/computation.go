@@ -1,3 +1,6 @@
+// Copyright Splunk Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 package signalflow
 
 import (
@@ -7,8 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/signalfx/signalflow-client-go/v2/signalflow/messages"
 	"github.com/signalfx/signalfx-go/idtool"
-	"github.com/signalfx/signalfx-go/signalflow/v2/messages"
 )
 
 // Computation is a single running SignalFlow job
@@ -339,6 +342,7 @@ func (c *Computation) shutdown() {
 	close(c.dataChBuffer)
 	close(c.expirationChBuffer)
 	close(c.infoChBuffer)
+	close(c.eventChBuffer)
 }
 
 var ErrMetadataTimeout = errors.New("metadata value did not come in time")

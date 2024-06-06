@@ -1,3 +1,6 @@
+// Copyright Splunk Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 package signalflow
 
 import (
@@ -12,7 +15,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/signalfx/signalfx-go/signalflow/v2/messages"
+	"github.com/signalfx/signalflow-client-go/v2/signalflow/messages"
 )
 
 // Client for SignalFlow via websockets (SSE is not currently supported).

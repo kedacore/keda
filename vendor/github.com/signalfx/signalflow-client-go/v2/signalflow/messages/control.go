@@ -1,3 +1,6 @@
+// Copyright Splunk Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 package messages
 
 // The event types used in the control-message messages.  This are not used for

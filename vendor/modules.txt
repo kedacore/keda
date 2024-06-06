@@ -1249,13 +1249,15 @@ github.com/segmentio/kafka-go/sasl/aws_msk_iam_v2
 # github.com/shopspring/decimal v1.3.1
 ## explicit; go 1.13
 github.com/shopspring/decimal
-# github.com/signalfx/signalfx-go v1.31.0
+# github.com/signalfx/signalflow-client-go/v2 v2.3.0
+## explicit; go 1.21
+github.com/signalfx/signalflow-client-go/v2/signalflow
+github.com/signalfx/signalflow-client-go/v2/signalflow/messages
+# github.com/signalfx/signalfx-go v1.34.0
 ## explicit; go 1.17
 github.com/signalfx/signalfx-go/idtool
 # github.com/signalfx/signalfx-go/signalflow/v2 v2.2.0
 ## explicit; go 1.19
-github.com/signalfx/signalfx-go/signalflow/v2
-github.com/signalfx/signalfx-go/signalflow/v2/messages
 # github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus
@@ -1276,11 +1278,11 @@ github.com/spf13/pflag
 # github.com/stoewer/go-strcase v1.3.0
 ## explicit; go 1.11
 github.com/stoewer/go-strcase
-# github.com/stretchr/objx v0.5.1
-## explicit; go 1.13
-github.com/stretchr/objx
-# github.com/stretchr/testify v1.8.4
+# github.com/stretchr/objx v0.5.2
 ## explicit; go 1.20
+github.com/stretchr/objx
+# github.com/stretchr/testify v1.9.0
+## explicit; go 1.17
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/mock
 github.com/stretchr/testify/require
@@ -1573,7 +1575,7 @@ golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/modfile
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/net v0.20.0 => golang.org/x/net v0.19.0
+# golang.org/x/net v0.23.0 => golang.org/x/net v0.19.0
 ## explicit; go 1.18
 golang.org/x/net/context
 golang.org/x/net/html
