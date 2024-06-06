@@ -1,4 +1,4 @@
-由于公司业务原因，业务需要的pod比较多，从0到200花费时间太长，所以给柯达增加时间段伸缩功能，晚上的0-100之间伸缩，白天在100-300之间伸缩
+由于公司业务原因，需要的pod比较多，从0到300花费时间太长，所以给柯达增加时间段伸缩功能，晚上的0-100之间伸缩，白天在100-300之间伸缩
 
 <p align="center"><img src="images/logos/keda-word-colour.png" width="300"/></p>
 <p style="font-size: 25px" align="center"><b>Kubernetes-based Event Driven Autoscaling</b></p>
