@@ -185,11 +185,11 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
         }
 
 	// 检查是否超出int32的范围
-	if minReplicaCount > int(^int32(0) >> 1 - 1) {
+	if minReplicaCountInt > int(^int32(0) >> 1 - 1) {
 	    fmt.Println("Error: Value exceeds int32 upper bound")
             return ctrl.Result{}, err
 	}
-	minReplicaCountInt32 := int32(minReplicaCount)
+	minReplicaCountInt32 := int32(minReplicaCountInt)
 
         // 检查当前时间是否在指定的时间范围内
         now := time.Now()
