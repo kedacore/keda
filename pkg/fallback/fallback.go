@@ -112,7 +112,7 @@ func updateStatus(ctx context.Context, client runtimeclient.Client, scaledObject
 	patch := runtimeclient.MergeFrom(scaledObject.DeepCopy())
 
 	if !isFallbackEnabled(scaledObject, metricSpec) || !HasValidFallback(scaledObject) {
-		log.Info("Fallback is not enabled , hence skipping the health update to the scaledobject", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
+		log.V(1).Info("Fallback is not enabled, hence skipping the health update to the scaledobject", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
 		return
 	}
 
