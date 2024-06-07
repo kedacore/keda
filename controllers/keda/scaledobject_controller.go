@@ -176,7 +176,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
     // 如果三个字段都不为空,才进行后续的处理
     if ok && ook && oook {
-        var minReplicaCountInt int
+        var minReplicaCountInt int32
 	priMinReplicaCountInt32 := scaledObject.Spec.MinReplicaCount
         minReplicaCountInt, err = strconv.Atoi(minReplicaCountStr)
         if err != nil {
