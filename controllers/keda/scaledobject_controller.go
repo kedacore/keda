@@ -205,7 +205,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
         }
         inTimeRange := now.After(startTime.Add(-1 * time.Minute)) && now.Before(endTime.Add(time.Minute))
 
-        // 如果当前时间在指定的时间范围内,并且不相等，更新 ScaledObject 的 MaxReplicaCount 字段
+        // 如果当前时间在指定的时间范围内,并且不相等，更新 ScaledObject 的 MinReplicaCount 字段
         if inTimeRange {
 		if scaledObject.Spec.MinReplicaCount != &minReplicaCountInt32 {
 			scaledObject.Spec.MinReplicaCount = &minReplicaCountInt32
