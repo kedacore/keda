@@ -176,13 +176,20 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
     // 如果三个字段都不为空,才进行后续的处理
     if ok && ook && oook {
-        var minReplicaCountInt int32
+        var minReplicaCountInt int
 	priMinReplicaCountInt32 := scaledObject.Spec.MinReplicaCount
         minReplicaCountInt, err = strconv.Atoi(minReplicaCountStr)
         if err != nil {
             // 如果 minReplicaCount 格式不正确,返回错误
             return ctrl.Result{}, err
         }
+
+	// 检查是否超出int32的范围
+	if minReplicaCount > int(^int32(0) >> 1 - 1) {
+	    fmt.Println("Error: Value exceeds int32 upper bound")
+            return ctrl.Result{}, err
+	}
+	minReplicaCountInt32 := int32(minReplicaCount)
 
         // 检查当前时间是否在指定的时间范围内
         now := time.Now()
@@ -200,7 +207,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
         // 如果当前时间在指定的时间范围内,并且不相等，更新 ScaledObject 的 MaxReplicaCount 字段
         if inTimeRange {
-		if scaledObject.Spec.MinReplicaCount != &minReplicaCountInt {
+		if scaledObject.Spec.MinReplicaCount != &minReplicaCountInt32 {
 			scaledObject.Spec.MinReplicaCount = &minReplicaCountInt32
 			err = r.Client.Update(ctx, scaledObject)
 			if err != nil {
