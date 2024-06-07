@@ -200,8 +200,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
         // 如果当前时间在指定的时间范围内,并且不相等，更新 ScaledObject 的 MaxReplicaCount 字段
         if inTimeRange {
-		minReplicaCountInt32 := int32(minReplicaCountInt)
-		if scaledObject.Spec.MinReplicaCount != &minReplicaCountInt32 {
+		if scaledObject.Spec.MinReplicaCount != &minReplicaCountInt {
 			scaledObject.Spec.MinReplicaCount = &minReplicaCountInt32
 			err = r.Client.Update(ctx, scaledObject)
 			if err != nil {
