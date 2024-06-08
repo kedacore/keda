@@ -434,7 +434,7 @@ func (s accurateScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount,
 type eagerScalingStrategy struct {
 }
 
-func (s eagerScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, pendingJobCount, maxReplicaCount, scaleTo int64) (int64, int64) {
+func (s eagerScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, pendingJobCount, maxReplicaCount, _ int64) (int64, int64) {
 	return min(maxReplicaCount-runningJobCount-pendingJobCount, maxScale), maxReplicaCount
 }
 
