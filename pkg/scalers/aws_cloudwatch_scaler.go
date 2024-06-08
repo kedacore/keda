@@ -37,6 +37,7 @@ type awsCloudwatchMetadata struct {
 	TargetMetricValue           float64 `keda:"name=targetMetricValue, order=triggerMetadata"`
 	ActivationTargetMetricValue float64 `keda:"name=activationTargetMetricValue, order=triggerMetadata, optional"`
 	MinMetricValue              float64 `keda:"name=minMetricValue, order=triggerMetadata"`
+	IgnoreNullValues            bool    `keda:"name=ignoreNullValues, order=triggerMetadata, optional, default=true"`
 
 	MetricCollectionTime int64  `keda:"name=metricCollectionTime, order=triggerMetadata, optional, default=300"`
 	MetricStat           string `keda:"name=metricStat, order=triggerMetadata, optional, default=Average"`
@@ -183,14 +184,6 @@ func checkMetricStatPeriod(period int64) error {
 	return nil
 }
 
-func checkMetricCollectionTime(metricCollectionTime, metricStatPeriod int64) error {
-	if metricCollectionTime < 0 || metricCollectionTime%metricStatPeriod != 0 {
-		return fmt.Errorf("metricCollectionTime must be greater than 0 and a multiple of metricStatPeriod(%d), %d is given", metricStatPeriod, metricCollectionTime)
-	}
-
-	return nil
-}
-
 func computeQueryWindow(current time.Time, metricPeriodSec, metricEndTimeOffsetSec, metricCollectionTimeSec int64) (startTime, endTime time.Time) {
 	endTime = current.Add(time.Second * -1 * time.Duration(metricEndTimeOffsetSec)).Truncate(time.Duration(metricPeriodSec) * time.Second)
 	startTime = endTime.Add(time.Second * -1 * time.Duration(metricCollectionTimeSec))
@@ -290,7 +283,7 @@ func (s *awsCloudwatchScaler) GetCloudwatchMetrics(ctx context.Context) (float64
 
 	// If no metric data results or the first result has no values, and ignoreNullValues is false,
 	// the scaler should return an error to prevent any further scaling actions.
-	if len(output.MetricDataResults) > 0 && len(output.MetricDataResults[0].Values) == 0 && !s.metadata.ignoreNullValues {
+	if len(output.MetricDataResults) > 0 && len(output.MetricDataResults[0].Values) == 0 && !s.metadata.IgnoreNullValues {
 		emptyMetricsErrMsg := "empty metric data received, ignoreNullValues is false, returning error"
 		s.logger.Error(nil, emptyMetricsErrMsg)
 		return -1, fmt.Errorf(emptyMetricsErrMsg)

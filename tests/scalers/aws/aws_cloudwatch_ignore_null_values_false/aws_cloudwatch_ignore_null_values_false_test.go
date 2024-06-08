@@ -164,7 +164,7 @@ func TestCloudWatchScalerWithIgnoreNullValuesFalse(t *testing.T) {
 
 	// check that the deployment did not scale, as the metric query is returning
 	// null values and the scaledobject is receiving errors, the deployment
-	// should not scale.
+	// should not scale, even though the minMetricValue is set to 1.
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 

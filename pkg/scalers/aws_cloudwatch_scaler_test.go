@@ -656,7 +656,7 @@ func TestAWSCloudwatchScalerGetMetrics(t *testing.T) {
 		case testAWSCloudwatchNoValueMetric:
 			assert.NoError(t, err, "dont expect error when returning empty metric list from cloudwatch")
 		case testAWSCloudwatchEmptyValues:
-			if meta.ignoreNullValues {
+			if meta.IgnoreNullValues {
 				assert.NoError(t, err, "dont expect error when returning empty metric list from cloudwatch")
 			} else {
 				assert.Error(t, err, "expect error when returning empty metric list from cloudwatch, because ignoreNullValues is false")

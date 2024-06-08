@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -162,7 +163,17 @@ func TestCloudWatchScalerWithMinMetricValue(t *testing.T) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
 		"replica count should be %d after 1 minute", minMetricValueReplicaCount)
 
-	// check that the deployment scaled up to the minMetricValueReplicaCount
+	// Allow a small amount of grace for stabilization, otherwise we will see the
+	// minMetricValue of 1 scale up the deployment from 0 to 1, as the deployment
+	// starts at a minReplicaCount of 0. The reason for this is to ensure that the
+	// scaler is still functioning when the metric value is null, as opposed to
+	// returning an error, and not scaling the workload at all.
+	time.Sleep(5 * time.Second)
+
+	// Then check that the deployment did not scale further, as the metric query
+	// is returning null values, the scaler should evaluate the metric value as
+	// the minMetricValue of 1, and not scale the deployment further beyond this
+	// point.
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minMetricValueReplicaCount, 60)
 }
 
