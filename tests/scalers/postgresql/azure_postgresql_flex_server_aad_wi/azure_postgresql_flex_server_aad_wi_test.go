@@ -29,7 +29,7 @@ var (
 	testNamespace                   = fmt.Sprintf("%s-ns", testName)
 	deploymentName                  = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName                = fmt.Sprintf("%s-so", testName)
-	azureTriggerAuthenticationName  = fmt.Sprintf("%s-ta", testName)
+	triggerAuthenticationName       = fmt.Sprintf("%s-ta", testName)
 	secretName                      = fmt.Sprintf("%s-secret", testName)
 	secretKey                       = "postgresql_conn_str"
 	postgreSQLStatefulSetName       = "azure-postgresql"
@@ -53,7 +53,7 @@ type templateData struct {
 	TestNamespace                         string
 	DeploymentName                        string
 	ScaledObjectName                      string
-	AzureTriggerAuthenticationName        string
+	TriggerAuthenticationName             string
 	SecretName                            string
 	SecretKey                             string
 	PostgreSQLImage                       string
@@ -93,11 +93,12 @@ metadata:
 spec:
   podIdentity:
     provider: azure-workload
-	identityId: {{.AzurePostgreSQLUAMIClientID}}
+    identityId: {{.AzurePostgreSQLUamiClientID}}
     identityTenantId: {{.AzureADTenantID}}
 `
 
-	azureScaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
+	azureScaledObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: {{.ScaledObjectName}}
@@ -112,10 +113,11 @@ spec:
   triggers:
   - type: postgresql
     metadata:
-	  host: {{.AzurePostgreSQLFQDN}}
-	  port: "5432"
-	  userName: {{.AzurePostgreSQLUamiName}}
-	  dbName: {{.AzurePostgreSQLDatabase}}
+      host: {{.AzurePostgreSQLFQDN}}
+      port: "5432"
+      userName: {{.AzurePostgreSQLUamiName}}
+      dbName: {{.AzurePostgreSQLDatabase}}
+      sslmode: require
       targetQueryValue: "4"
       activationTargetQueryValue: "5"
       query: "SELECT CEIL(COUNT(*) / 5) FROM task_instance WHERE state='running' OR state='queued'"
@@ -130,7 +132,7 @@ func TestPostreSQLScaler(t *testing.T) {
 	_, templates := getTemplateData()
 	t.Cleanup(func() {
 		// Delete table on remote Azure Postgres Flexible server
-		deleteTableSQL := "DROP TABLE task_instance;"
+		deleteTableSQL := "DROP TABLE IF EXISTS task_instance;"
 		delOk, delOut, delErrOut, delErr := WaitForSuccessfulExecCommandOnSpecificPod(t, postgresqlPodName, testNamespace,
 			fmt.Sprintf("PGPASSWORD=%s psql -h %s -p 5432 -U %s -d %s -c \"%s\"", azurePostgreSQLAdminPassword, azurePostgreSQLFQDN, azurePostgreSQLAdminUsername, azurePostgreSQLDatabase, deleteTableSQL), 60, 3)
 		require.True(t, delOk, "executing a command on PostreSQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", delOut, delErrOut, delErr)
@@ -145,11 +147,22 @@ func TestPostreSQLScaler(t *testing.T) {
 	require.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, postgreSQLStatefulSetName, testNamespace, 1, 60, 3),
 		"replica count should be %d after 3 minutes", 1)
 
+	// Delete table on remote Azure Postgres Flexible server
+	deleteTableSQL := "DROP TABLE IF EXISTS task_instance;"
+	delOk, delOut, delErrOut, delErr := WaitForSuccessfulExecCommandOnSpecificPod(t, postgresqlPodName, testNamespace,
+		fmt.Sprintf("PGPASSWORD=%s psql -h %s -p 5432 -U %s -d %s -c \"%s\"", azurePostgreSQLAdminPassword, azurePostgreSQLFQDN, azurePostgreSQLAdminUsername, azurePostgreSQLDatabase, deleteTableSQL), 60, 3)
+	require.True(t, delOk, "executing a command on PostreSQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", delOut, delErrOut, delErr)
+	
 	// Create table on remote Azure Postgres Flexible server
-	createTableSQL := "CREATE TABLE task_instance (id serial PRIMARY KEY,state VARCHAR(10));"
+	createTableSQL := "CREATE TABLE IF NOT EXISTS task_instance (id serial PRIMARY KEY,state VARCHAR(10));"
 	ok, out, errOut, err := WaitForSuccessfulExecCommandOnSpecificPod(t, postgresqlPodName, testNamespace,
-		fmt.Sprintf("PGPASSWORD=%s psql -h %s -p 5432 -U %s -d %s -c \"%s\"", azurePostgreSQLAdminPassword, azurePostgreSQLFQDN, azurePostgreSQLAdminUsername, azurePostgreSQLDatabase, createTableSQL), 60, 3)
+		fmt.Sprintf(`PGPASSWORD=%s psql -h %s -p 5432 -U %s -d %s -c "%s"`, azurePostgreSQLAdminPassword, azurePostgreSQLFQDN, azurePostgreSQLAdminUsername, azurePostgreSQLDatabase, createTableSQL), 60, 3)
 	require.True(t, ok, "executing a command on PostreSQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", out, errOut, err)
+
+	grantPrivilegesSQL := fmt.Sprintf(`GRANT ALL ON task_instance TO \"%s\";`, azurePostgreSQLUamiName)
+	grantOk, grantOut, grantErrOut, grantErr := WaitForSuccessfulExecCommandOnSpecificPod(t, postgresqlPodName, testNamespace,
+		fmt.Sprintf("PGPASSWORD=%s psql -h %s -p 5432 -U %s -d %s -c \"%v\"", azurePostgreSQLAdminPassword, azurePostgreSQLFQDN, azurePostgreSQLAdminUsername, azurePostgreSQLDatabase, grantPrivilegesSQL), 60, 3)
+	require.True(t, grantOk, "executing a command on PostreSQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", grantOut, grantErrOut, grantErr)
 
 	// Create kubernetes resources for testing
 	KubectlApplyMultipleWithTemplate(t, data, templates)
@@ -190,7 +203,7 @@ var data = templateData{
 	ScaledObjectName:                      scaledObjectName,
 	MinReplicaCount:                       minReplicaCount,
 	MaxReplicaCount:                       maxReplicaCount,
-	AzureTriggerAuthenticationName:        azureTriggerAuthenticationName,
+	TriggerAuthenticationName:             triggerAuthenticationName,
 	SecretName:                            secretName,
 	SecretKey:                             secretKey,
 	PostgreSQLImage:                       pg.PostgresqlImage,
@@ -198,6 +211,7 @@ var data = templateData{
 	AzurePostgreSQLAdminPassword:          azurePostgreSQLAdminPassword,
 	AzurePostgreSQLDatabase:               azurePostgreSQLDatabase,
 	AzureADTenantID:                       azureADTenantID,
+	AzurePostgreSQLFQDN:				   azurePostgreSQLFQDN,
 	AzurePostgreSQLUamiClientID:           azurePostgreSQLUamiClientID,
 	AzurePostgreSQLUamiName:               azurePostgreSQLUamiName,
 	AzurePostgreSQLConnectionStringBase64: base64.StdEncoding.EncodeToString([]byte(azurePostgreSQLConnectionString)),
