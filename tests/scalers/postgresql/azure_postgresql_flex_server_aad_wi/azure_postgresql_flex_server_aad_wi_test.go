@@ -152,7 +152,7 @@ func TestPostreSQLScaler(t *testing.T) {
 	delOk, delOut, delErrOut, delErr := WaitForSuccessfulExecCommandOnSpecificPod(t, postgresqlPodName, testNamespace,
 		fmt.Sprintf("PGPASSWORD=%s psql -h %s -p 5432 -U %s -d %s -c \"%s\"", azurePostgreSQLAdminPassword, azurePostgreSQLFQDN, azurePostgreSQLAdminUsername, azurePostgreSQLDatabase, deleteTableSQL), 60, 3)
 	require.True(t, delOk, "executing a command on PostreSQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", delOut, delErrOut, delErr)
-	
+
 	// Create table on remote Azure Postgres Flexible server
 	createTableSQL := "CREATE TABLE IF NOT EXISTS task_instance (id serial PRIMARY KEY,state VARCHAR(10));"
 	ok, out, errOut, err := WaitForSuccessfulExecCommandOnSpecificPod(t, postgresqlPodName, testNamespace,
@@ -211,7 +211,7 @@ var data = templateData{
 	AzurePostgreSQLAdminPassword:          azurePostgreSQLAdminPassword,
 	AzurePostgreSQLDatabase:               azurePostgreSQLDatabase,
 	AzureADTenantID:                       azureADTenantID,
-	AzurePostgreSQLFQDN:				   azurePostgreSQLFQDN,
+	AzurePostgreSQLFQDN:                   azurePostgreSQLFQDN,
 	AzurePostgreSQLUamiClientID:           azurePostgreSQLUamiClientID,
 	AzurePostgreSQLUamiName:               azurePostgreSQLUamiName,
 	AzurePostgreSQLConnectionStringBase64: base64.StdEncoding.EncodeToString([]byte(azurePostgreSQLConnectionString)),
