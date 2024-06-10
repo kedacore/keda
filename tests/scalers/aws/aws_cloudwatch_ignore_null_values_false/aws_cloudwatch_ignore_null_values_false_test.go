@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package aws_cloudwatch_ignore_null_values_false
+package aws_cloudwatch_ignore_null_values_false_test
 
 import (
 	"context"

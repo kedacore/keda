@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package aws_cloudwatch_min_metric_value
+package aws_cloudwatch_min_metric_value_test
 
 import (
 	"context"
