@@ -234,7 +234,6 @@ func (r *ScaledJobReconciler) checkIfPaused(ctx context.Context, logger logr.Log
 			shouldPause = true
 		}
 	}
-
 	if shouldPause {
 		if !pausedStatus {
 			logger.Info("ScaledJob is paused, stopping scaling loop.")

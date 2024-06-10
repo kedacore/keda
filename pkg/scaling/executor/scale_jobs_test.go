@@ -316,8 +316,11 @@ func TestCreateJobs(t *testing.T) {
 
 func TestGenerateJobs(t *testing.T) {
 	var (
-		expectedAnnotations = map[string]string{"test": "test"}
-		expectedLabels      = map[string]string{
+		expectedAnnotations = map[string]string{
+			"test":                         "test",
+			"scaledjob.keda.sh/generation": "0",
+		}
+		expectedLabels = map[string]string{
 			"app.kubernetes.io/managed-by": "keda-operator",
 			"app.kubernetes.io/name":       "test",
 			"app.kubernetes.io/part-of":    "test",
