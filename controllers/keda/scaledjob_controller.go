@@ -234,6 +234,7 @@ func (r *ScaledJobReconciler) checkIfPaused(ctx context.Context, logger logr.Log
 			shouldPause = true
 		}
 	}
+
 	if shouldPause {
 		if !pausedStatus {
 			logger.Info("ScaledJob is paused, stopping scaling loop.")
@@ -279,22 +280,38 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(ctx context.Context
 			return "Cannot get list of Jobs owned by this scaledJob", err
 		}
 
-		if len(jobs.Items) > 0 {
-			logger.Info("RolloutStrategy: immediate, Deleting jobs owned by the previous version of the scaledJob", "numJobsToDelete", len(jobs.Items))
+		jobIndexes := make([]int, 0, len(jobs.Items))
+		scaledJobGeneration := strconv.FormatInt(scaledJob.Generation, 10)
+		for i, job := range jobs.Items {
+			if jobGen, ok := job.Annotations["scaledjob.keda.sh/generation"]; !ok {
+				// delete Jobs that don't have the generation annotation
+				jobIndexes = append(jobIndexes, i)
+			} else {
+				// delete Jobs that have a different generation annotation
+				if jobGen != scaledJobGeneration {
+					jobIndexes = append(jobIndexes, i)
+				}
+			}
 		}
-		for _, job := range jobs.Items {
-			job := job
 
-			propagationPolicy := metav1.DeletePropagationBackground
-			if scaledJob.Spec.Rollout.PropagationPolicy == "foreground" {
-				propagationPolicy = metav1.DeletePropagationForeground
+		if len(jobIndexes) == 0 {
+			logger.Info("RolloutStrategy: immediate, No jobs owned by the previous version of the scaledJob")
+		} else {
+			logger.Info("RolloutStrategy: immediate, Deleting jobs owned by the previous version of the scaledJob", "numJobsToDelete", len(jobIndexes))
+			for _, index := range jobIndexes {
+				job := jobs.Items[index]
+
+				propagationPolicy := metav1.DeletePropagationBackground
+				if scaledJob.Spec.Rollout.PropagationPolicy == "foreground" {
+					propagationPolicy = metav1.DeletePropagationForeground
+				}
+				err = r.Client.Delete(ctx, &job, client.PropagationPolicy(propagationPolicy))
+				if err != nil {
+					return "Not able to delete job: " + job.Name, err
+				}
 			}
-			err = r.Client.Delete(ctx, &job, client.PropagationPolicy(propagationPolicy))
-			if err != nil {
-				return "Not able to delete job: " + job.Name, err
-			}
+			return fmt.Sprintf("RolloutStrategy: immediate, deleted jobs owned by the previous version of the scaleJob: %d jobs deleted", len(jobIndexes)), nil
 		}
-		return fmt.Sprintf("RolloutStrategy: immediate, deleted jobs owned by the previous version of the scaleJob: %d jobs deleted", len(jobs.Items)), nil
 	}
 	return fmt.Sprintf("RolloutStrategy: %s", scaledJob.Spec.RolloutStrategy), nil
 }
