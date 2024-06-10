@@ -285,11 +285,9 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(ctx context.Context
 			if jobGen, ok := job.Annotations["scaledjob.keda.sh/generation"]; !ok {
 				// delete Jobs that don't have the generation annotation
 				jobIndexes = append(jobIndexes, i)
-			} else {
+			} else if jobGen != scaledJobGeneration {
 				// delete Jobs that have a different generation annotation
-				if jobGen != scaledJobGeneration {
-					jobIndexes = append(jobIndexes, i)
-				}
+				jobIndexes = append(jobIndexes, i)
 			}
 		}
 
