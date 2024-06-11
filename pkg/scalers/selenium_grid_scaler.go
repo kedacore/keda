@@ -9,7 +9,6 @@ import (
 	"io"
 	"math"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -28,15 +27,17 @@ type seleniumGridScaler struct {
 }
 
 type seleniumGridScalerMetadata struct {
-	url                 string
-	browserName         string
-	sessionBrowserName  string
-	targetValue         int64
-	activationThreshold int64
-	browserVersion      string
-	unsafeSsl           bool
-	triggerIndex        int
-	platformName        string
+	triggerIndex int
+
+	URL                 string `keda:"name=url,                      order=triggerMetadata;authParams"`
+	BrowserName         string `keda:"name=browserName,              order=triggerMetadata"`
+	SessionBrowserName  string `keda:"name=sessionBrowserName,       order=triggerMetadata, optional"`
+	ActivationThreshold int64  `keda:"name=activationThreshold,      order=triggerMetadata, optional"`
+	BrowserVersion      string `keda:"name=browserVersion,           order=triggerMetadata, optional, default=latest"`
+	UnsafeSsl           bool   `keda:"name=unsafeSsl,                order=triggerMetadata, optional, default=false"`
+	PlatformName        string `keda:"name=platformName,             order=triggerMetadata, optional, default=linux"`
+
+	TargetValue int64
 }
 
 type seleniumResponse struct {
@@ -89,7 +90,7 @@ func NewSeleniumGridScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing selenium grid metadata: %w", err)
 	}
 
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsl)
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.UnsafeSsl)
 
 	return &seleniumGridScaler{
 		metricType: metricType,
@@ -100,61 +101,20 @@ func NewSeleniumGridScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 }
 
 func parseSeleniumGridScalerMetadata(config *scalersconfig.ScalerConfig) (*seleniumGridScalerMetadata, error) {
-	meta := seleniumGridScalerMetadata{
-		targetValue: 1,
+	meta := &seleniumGridScalerMetadata{
+		TargetValue: 1,
 	}
 
-	if val, ok := config.AuthParams["url"]; ok {
-		meta.url = val
-	} else if val, ok := config.TriggerMetadata["url"]; ok {
-		meta.url = val
-	} else {
-		return nil, fmt.Errorf("no selenium grid url given in metadata")
-	}
-
-	if val, ok := config.TriggerMetadata["browserName"]; ok {
-		meta.browserName = val
-	} else {
-		return nil, fmt.Errorf("no browser name given in metadata")
-	}
-
-	if val, ok := config.TriggerMetadata["sessionBrowserName"]; ok {
-		meta.sessionBrowserName = val
-	} else {
-		meta.sessionBrowserName = meta.browserName
-	}
-
-	meta.activationThreshold = 0
-	if val, ok := config.TriggerMetadata["activationThreshold"]; ok {
-		activationThreshold, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing unsafeSsl: %w", err)
-		}
-		meta.activationThreshold = activationThreshold
-	}
-
-	if val, ok := config.TriggerMetadata["browserVersion"]; ok && val != "" {
-		meta.browserVersion = val
-	} else {
-		meta.browserVersion = DefaultBrowserVersion
-	}
-
-	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
-		parsedVal, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing unsafeSsl: %w", err)
-		}
-		meta.unsafeSsl = parsedVal
-	}
-
-	if val, ok := config.TriggerMetadata["platformName"]; ok && val != "" {
-		meta.platformName = val
-	} else {
-		meta.platformName = DefaultPlatformName
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing prometheus metadata: %w", err)
 	}
 
 	meta.triggerIndex = config.TriggerIndex
-	return &meta, nil
+
+	if meta.SessionBrowserName == "" {
+		meta.SessionBrowserName = meta.BrowserName
+	}
+	return meta, nil
 }
 
 // No cleanup required for selenium grid scaler
@@ -173,16 +133,16 @@ func (s *seleniumGridScaler) GetMetricsAndActivity(ctx context.Context, metricNa
 
 	metric := GenerateMetricInMili(metricName, float64(sessions))
 
-	return []external_metrics.ExternalMetricValue{metric}, sessions > s.metadata.activationThreshold, nil
+	return []external_metrics.ExternalMetricValue{metric}, sessions > s.metadata.ActivationThreshold, nil
 }
 
 func (s *seleniumGridScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
-	metricName := kedautil.NormalizeString(fmt.Sprintf("seleniumgrid-%s", s.metadata.browserName))
+	metricName := kedautil.NormalizeString(fmt.Sprintf("seleniumgrid-%s", s.metadata.BrowserName))
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.targetValue),
+		Target: GetMetricTarget(s.metricType, s.metadata.TargetValue),
 	}
 	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
@@ -199,7 +159,7 @@ func (s *seleniumGridScaler) getSessionsCount(ctx context.Context, logger logr.L
 		return -1, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", s.metadata.url, bytes.NewBuffer(body))
+	req, err := http.NewRequestWithContext(ctx, "POST", s.metadata.URL, bytes.NewBuffer(body))
 	if err != nil {
 		return -1, err
 	}
@@ -219,7 +179,7 @@ func (s *seleniumGridScaler) getSessionsCount(ctx context.Context, logger logr.L
 	if err != nil {
 		return -1, err
 	}
-	v, err := getCountFromSeleniumResponse(b, s.metadata.browserName, s.metadata.browserVersion, s.metadata.sessionBrowserName, s.metadata.platformName, logger)
+	v, err := getCountFromSeleniumResponse(b, s.metadata.BrowserName, s.metadata.BrowserVersion, s.metadata.SessionBrowserName, s.metadata.PlatformName, logger)
 	if err != nil {
 		return -1, err
 	}
