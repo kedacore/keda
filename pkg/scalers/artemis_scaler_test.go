@@ -70,7 +70,7 @@ var artemisMetricIdentifiers = []artemisMetricIdentifier{
 var testArtemisMetadataWithEmptyAuthParams = []parseArtemisMetadataTestData{
 	// nothing passed
 	{map[string]string{}, true},
-	// Missing missing managementEndpoint should fail
+	// Missing managementEndpoint should fail
 	{map[string]string{"managementEndpoint": "", "queueName": "queue1", "brokerName": "broker-activemq", "brokerAddress": "address1"}, true},
 	// Missing queue name, should fail
 	{map[string]string{"managementEndpoint": "localhost:8161", "queueName": "", "brokerName": "broker-activemq", "brokerAddress": "address1"}, true},
@@ -93,8 +93,8 @@ func TestArtemisDefaultCorsHeader(t *testing.T) {
 	if err != nil {
 		t.Error("Expected success but got error", err)
 	}
-	if !(meta.corsHeader == "http://localhost:8161") {
-		t.Errorf("Expected http://localhost:8161 but got %s", meta.corsHeader)
+	if !(meta.CorsHeader == "http://localhost:8161") {
+		t.Errorf("Expected http://localhost:8161 but got %s", meta.CorsHeader)
 	}
 }
 
@@ -105,8 +105,8 @@ func TestArtemisCorsHeader(t *testing.T) {
 	if err != nil {
 		t.Error("Expected success but got error", err)
 	}
-	if !(meta.corsHeader == "test") {
-		t.Errorf("Expected test but got %s", meta.corsHeader)
+	if !(meta.CorsHeader == "test") {
+		t.Errorf("Expected test but got %s", meta.CorsHeader)
 	}
 }
 

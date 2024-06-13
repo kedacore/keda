@@ -19,7 +19,7 @@ type parseApacheKafkaMetadataTestData struct {
 	brokers                  []string
 	group                    string
 	topic                    []string
-	partitionLimitation      []int32
+	partitionLimitation      []int
 	offsetResetPolicy        offsetResetPolicy
 	allowIdleConsumers       bool
 	excludePersistentLag     bool
@@ -68,13 +68,13 @@ var parseApacheKafkaMetadataTestDataset = []parseApacheKafkaMetadataTestData{
 	// failure, no consumer group
 	{map[string]string{"bootstrapServers": "foobar:9092"}, true, 1, []string{"foobar:9092"}, "", nil, nil, "latest", false, false, false},
 	// success, no topics
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group"}, false, 1, []string{"foobar:9092"}, "my-group", []string{}, nil, offsetResetPolicy("latest"), false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group"}, false, 1, []string{"foobar:9092"}, "my-group", nil, nil, offsetResetPolicy("latest"), false, false, false},
 	// success, ignore partitionLimitation if no topics
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "partitionLimitation": "1,2,3,4,5,6"}, false, 1, []string{"foobar:9092"}, "my-group", []string{}, nil, offsetResetPolicy("latest"), false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "partitionLimitation": "1,2,3,4,5,6"}, false, 1, []string{"foobar:9092"}, "my-group", nil, nil, offsetResetPolicy("latest"), false, false, false},
 	// success, no limitation with whitespaced limitation value
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "partitionLimitation": "           "}, false, 1, []string{"foobar:9092"}, "my-group", []string{}, nil, offsetResetPolicy("latest"), false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "partitionLimitation": "           "}, false, 1, []string{"foobar:9092"}, "my-group", nil, nil, offsetResetPolicy("latest"), false, false, false},
 	// success, no limitation
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "partitionLimitation": ""}, false, 1, []string{"foobar:9092"}, "my-group", []string{}, nil, offsetResetPolicy("latest"), false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "partitionLimitation": ""}, false, 1, []string{"foobar:9092"}, "my-group", nil, nil, offsetResetPolicy("latest"), false, false, false},
 	// failure, lagThreshold is negative value
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "lagThreshold": "-1"}, true, 1, []string{"foobar:9092"}, "my-group", []string{"my-topics"}, nil, offsetResetPolicy("latest"), false, false, false},
 	// failure, lagThreshold is 0
@@ -86,11 +86,11 @@ var parseApacheKafkaMetadataTestDataset = []parseApacheKafkaMetadataTestData{
 	// success
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics"}, false, 1, []string{"foobar:9092"}, "my-group", []string{"my-topics"}, nil, offsetResetPolicy("latest"), false, false, false},
 	// success, partitionLimitation as list
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "partitionLimitation": "1,2,3,4"}, false, 1, []string{"foobar:9092"}, "my-group", []string{"my-topics"}, []int32{1, 2, 3, 4}, offsetResetPolicy("latest"), false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "partitionLimitation": "1,2,3,4"}, false, 1, []string{"foobar:9092"}, "my-group", []string{"my-topics"}, []int{1, 2, 3, 4}, offsetResetPolicy("latest"), false, false, false},
 	// success, partitionLimitation as range
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "partitionLimitation": "1-4"}, false, 1, []string{"foobar:9092"}, "my-group", []string{"my-topics"}, []int32{1, 2, 3, 4}, offsetResetPolicy("latest"), false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "partitionLimitation": "1-4"}, false, 1, []string{"foobar:9092"}, "my-group", []string{"my-topics"}, []int{1, 2, 3, 4}, offsetResetPolicy("latest"), false, false, false},
 	// success, partitionLimitation mixed list + ranges
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "partitionLimitation": "1-4,8,10-12"}, false, 1, []string{"foobar:9092"}, "my-group", []string{"my-topics"}, []int32{1, 2, 3, 4, 8, 10, 11, 12}, offsetResetPolicy("latest"), false, false, false},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "partitionLimitation": "1-4,8,10-12"}, false, 1, []string{"foobar:9092"}, "my-group", []string{"my-topics"}, []int{1, 2, 3, 4, 8, 10, 11, 12}, offsetResetPolicy("latest"), false, false, false},
 	// failure, partitionLimitation wrong data type
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "partitionLimitation": "a,b,c,d"}, true, 1, []string{"foobar:9092"}, "my-group", []string{"my-topics"}, nil, offsetResetPolicy("latest"), false, false, false},
 	// success, more brokers
@@ -120,7 +120,7 @@ var parseApacheKafkaMetadataTestDataset = []parseApacheKafkaMetadataTestData{
 	// success, allowIdleConsumers can be set when limitToPartitionsWithLag is false
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "allowIdleConsumers": "true", "limitToPartitionsWithLag": "false"}, false, 1, []string{"foobar:9092"}, "my-group", []string{"my-topics"}, nil, offsetResetPolicy("latest"), true, false, false},
 	// failure, topic must be specified when limitToPartitionsWithLag is true
-	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "limitToPartitionsWithLag": "true"}, true, 1, []string{"foobar:9092"}, "my-group", []string{}, nil, offsetResetPolicy("latest"), false, false, true},
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "limitToPartitionsWithLag": "true"}, true, 1, []string{"foobar:9092"}, "my-group", nil, nil, offsetResetPolicy("latest"), false, false, true},
 }
 
 var parseApacheKafkaAuthParamsTestDataset = []parseApacheKafkaAuthParamsTestData{
@@ -243,10 +243,10 @@ var apacheKafkaMetricIdentifiers = []apacheKafkaMetricIdentifier{
 
 func TestApacheKafkaGetBrokers(t *testing.T) {
 	for _, testData := range parseApacheKafkaMetadataTestDataset {
-		meta, err := parseApacheKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validApacheKafkaWithAuthParams}, logr.Discard())
+		meta, err := parseApacheKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validApacheKafkaWithAuthParams})
 		getBrokerApacheKafkaTestBase(t, meta, testData, err)
 
-		meta, err = parseApacheKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validApacheKafkaWithoutAuthParams}, logr.Discard())
+		meta, err = parseApacheKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validApacheKafkaWithoutAuthParams})
 		getBrokerApacheKafkaTestBase(t, meta, testData, err)
 	}
 }
@@ -258,32 +258,32 @@ func getBrokerApacheKafkaTestBase(t *testing.T, meta apacheKafkaMetadata, testDa
 	if testData.isError && err == nil {
 		t.Error("Expected error but got success")
 	}
-	if len(meta.bootstrapServers) != testData.numBrokers {
-		t.Errorf("Expected %d bootstrap servers but got %d\n", testData.numBrokers, len(meta.bootstrapServers))
+	if len(meta.BootstrapServers) != testData.numBrokers {
+		t.Errorf("Expected %d bootstrap servers but got %d\n", testData.numBrokers, len(meta.BootstrapServers))
 	}
-	if !reflect.DeepEqual(testData.brokers, meta.bootstrapServers) {
-		t.Errorf("Expected %#v but got %#v\n", testData.brokers, meta.bootstrapServers)
+	if !reflect.DeepEqual(testData.brokers, meta.BootstrapServers) {
+		t.Errorf("Expected %#v but got %#v\n", testData.brokers, meta.BootstrapServers)
 	}
-	if meta.group != testData.group {
-		t.Errorf("Expected group %s but got %s\n", testData.group, meta.group)
+	if meta.Group != testData.group {
+		t.Errorf("Expected group %s but got %s\n", testData.group, meta.Group)
 	}
-	if !reflect.DeepEqual(testData.topic, meta.topic) {
-		t.Errorf("Expected topics %#v but got %#v\n", testData.topic, meta.topic)
+	if !reflect.DeepEqual(testData.topic, meta.Topic) {
+		t.Errorf("Expected topics %#v but got %#v\n", testData.topic, meta.Topic)
 	}
-	if !reflect.DeepEqual(testData.partitionLimitation, meta.partitionLimitation) {
-		t.Errorf("Expected %#v but got %#v\n", testData.partitionLimitation, meta.partitionLimitation)
+	if !reflect.DeepEqual(testData.partitionLimitation, meta.PartitionLimitation) {
+		t.Errorf("Expected %#v but got %#v\n", testData.partitionLimitation, meta.PartitionLimitation)
 	}
-	if err == nil && meta.offsetResetPolicy != testData.offsetResetPolicy {
-		t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.offsetResetPolicy)
+	if err == nil && meta.OffsetResetPolicy != testData.offsetResetPolicy {
+		t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.OffsetResetPolicy)
 	}
-	if err == nil && meta.allowIdleConsumers != testData.allowIdleConsumers {
-		t.Errorf("Expected allowIdleConsumers %t but got %t\n", testData.allowIdleConsumers, meta.allowIdleConsumers)
+	if err == nil && meta.AllowIdleConsumers != testData.allowIdleConsumers {
+		t.Errorf("Expected allowIdleConsumers %t but got %t\n", testData.allowIdleConsumers, meta.AllowIdleConsumers)
 	}
-	if err == nil && meta.excludePersistentLag != testData.excludePersistentLag {
-		t.Errorf("Expected excludePersistentLag %t but got %t\n", testData.excludePersistentLag, meta.excludePersistentLag)
+	if err == nil && meta.ExcludePersistentLag != testData.excludePersistentLag {
+		t.Errorf("Expected excludePersistentLag %t but got %t\n", testData.excludePersistentLag, meta.ExcludePersistentLag)
 	}
-	if err == nil && meta.limitToPartitionsWithLag != testData.limitToPartitionsWithLag {
-		t.Errorf("Expected limitToPartitionsWithLag %t but got %t\n", testData.limitToPartitionsWithLag, meta.limitToPartitionsWithLag)
+	if err == nil && meta.LimitToPartitionsWithLag != testData.limitToPartitionsWithLag {
+		t.Errorf("Expected limitToPartitionsWithLag %t but got %t\n", testData.limitToPartitionsWithLag, meta.LimitToPartitionsWithLag)
 	}
 
 	expectedLagThreshold, er := parseExpectedLagThreshold(testData.metadata)
@@ -291,44 +291,44 @@ func getBrokerApacheKafkaTestBase(t *testing.T, meta apacheKafkaMetadata, testDa
 		t.Errorf("Unable to convert test data lagThreshold %s to string", testData.metadata["lagThreshold"])
 	}
 
-	if meta.lagThreshold != expectedLagThreshold && meta.lagThreshold != defaultKafkaLagThreshold {
-		t.Errorf("Expected lagThreshold to be either %v or %v got %v ", meta.lagThreshold, defaultKafkaLagThreshold, expectedLagThreshold)
+	if meta.LagThreshold != expectedLagThreshold && meta.LagThreshold != defaultKafkaLagThreshold {
+		t.Errorf("Expected lagThreshold to be either %v or %v got %v ", meta.LagThreshold, defaultKafkaLagThreshold, expectedLagThreshold)
 	}
 }
 func TestApacheKafkaAuthParams(t *testing.T) {
 	// Testing tls and sasl value in TriggerAuthentication
-	for _, testData := range parseApacheKafkaAuthParamsTestDataset {
-		meta, err := parseApacheKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: validApacheKafkaMetadata, AuthParams: testData.authParams}, logr.Discard())
+	for i, testData := range parseApacheKafkaAuthParamsTestDataset {
+		meta, err := parseApacheKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: validApacheKafkaMetadata, AuthParams: testData.authParams})
 
 		if err != nil && !testData.isError {
-			t.Error("Expected success but got error", err)
+			t.Error(i, "Expected success but got error", err)
 		}
 		if testData.isError && err == nil {
-			t.Error("Expected error but got success")
+			t.Error(i, "Expected error but got success")
 		}
 		// we can ignore what tls is set if there is error
-		if err == nil && meta.enableTLS != testData.enableTLS {
-			t.Errorf("Expected enableTLS to be set to %#v but got %#v\n", testData.enableTLS, meta.enableTLS)
+		if err == nil && meta.enableTLS() != testData.enableTLS {
+			t.Errorf("%v Expected enableTLS to be set to %#v but got %#v\n", i, testData.enableTLS, meta.enableTLS())
 		}
-		if err == nil && meta.enableTLS {
-			if meta.ca != testData.authParams["ca"] {
-				t.Errorf("Expected ca to be set to %#v but got %#v\n", testData.authParams["ca"], meta.ca)
+		if err == nil && meta.enableTLS() {
+			if meta.CA != testData.authParams["ca"] {
+				t.Errorf("%v Expected ca to be set to %#v but got %#v\n", i, testData.authParams["ca"], meta.CA)
 			}
-			if meta.cert != testData.authParams["cert"] {
-				t.Errorf("Expected cert to be set to %#v but got %#v\n", testData.authParams["cert"], meta.cert)
+			if meta.Cert != testData.authParams["cert"] {
+				t.Errorf("%v Expected cert to be set to %#v but got %#v\n", i, testData.authParams["cert"], meta.Cert)
 			}
-			if meta.key != testData.authParams["key"] {
-				t.Errorf("Expected key to be set to %#v but got %#v\n", testData.authParams["key"], meta.key)
+			if meta.Key != testData.authParams["key"] {
+				t.Errorf("%v Expected key to be set to %#v but got %#v\n", i, testData.authParams["key"], meta.Key)
 			}
-			if meta.keyPassword != testData.authParams["keyPassword"] {
-				t.Errorf("Expected key to be set to %#v but got %#v\n", testData.authParams["keyPassword"], meta.key)
+			if meta.KeyPassword != testData.authParams["keyPassword"] {
+				t.Errorf("%v Expected key to be set to %#v but got %#v\n", i, testData.authParams["keyPassword"], meta.Key)
 			}
 		}
 	}
 
 	// Testing tls and sasl value in scaledObject
 	for id, testData := range parseApacheKafkaAuthParamsTestDataset2 {
-		meta, err := parseApacheKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
+		meta, err := parseApacheKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 
 		if err != nil && !testData.isError {
 			t.Errorf("Test case: %#v. Expected success but got error %#v", id, err)
@@ -337,21 +337,21 @@ func TestApacheKafkaAuthParams(t *testing.T) {
 			t.Errorf("Test case: %#v. Expected error but got success", id)
 		}
 		if !testData.isError {
-			if testData.metadata["tls"] == stringTrue && !meta.enableTLS {
-				t.Errorf("Test case: %#v. Expected tls to be set to %#v but got %#v\n", id, testData.metadata["tls"], meta.enableTLS)
+			if testData.metadata["tls"] == stringTrue && !meta.enableTLS() {
+				t.Errorf("Test case: %#v. Expected tls to be set to %#v but got %#v\n", id, testData.metadata["tls"], meta.enableTLS())
 			}
-			if meta.enableTLS {
-				if meta.ca != testData.authParams["ca"] {
-					t.Errorf("Test case: %#v. Expected ca to be set to %#v but got %#v\n", id, testData.authParams["ca"], meta.ca)
+			if meta.enableTLS() {
+				if meta.CA != testData.authParams["ca"] {
+					t.Errorf("Test case: %#v. Expected ca to be set to %#v but got %#v\n", id, testData.authParams["ca"], meta.CA)
 				}
-				if meta.cert != testData.authParams["cert"] {
-					t.Errorf("Test case: %#v. Expected cert to be set to %#v but got %#v\n", id, testData.authParams["cert"], meta.cert)
+				if meta.Cert != testData.authParams["cert"] {
+					t.Errorf("Test case: %#v. Expected cert to be set to %#v but got %#v\n", id, testData.authParams["cert"], meta.Cert)
 				}
-				if meta.key != testData.authParams["key"] {
-					t.Errorf("Test case: %#v. Expected key to be set to %#v but got %#v\n", id, testData.authParams["key"], meta.key)
+				if meta.Key != testData.authParams["key"] {
+					t.Errorf("Test case: %#v. Expected key to be set to %#v but got %#v\n", id, testData.authParams["key"], meta.Key)
 				}
-				if meta.keyPassword != testData.authParams["keyPassword"] {
-					t.Errorf("Test case: %#v. Expected key to be set to %#v but got %#v\n", id, testData.authParams["keyPassword"], meta.keyPassword)
+				if meta.KeyPassword != testData.authParams["keyPassword"] {
+					t.Errorf("Test case: %#v. Expected key to be set to %#v but got %#v\n", id, testData.authParams["keyPassword"], meta.KeyPassword)
 				}
 			}
 		}
@@ -360,7 +360,7 @@ func TestApacheKafkaAuthParams(t *testing.T) {
 
 func TestApacheKafkaGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range apacheKafkaMetricIdentifiers {
-		meta, err := parseApacheKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validApacheKafkaWithAuthParams, TriggerIndex: testData.triggerIndex}, logr.Discard())
+		meta, err := parseApacheKafkaMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validApacheKafkaWithAuthParams, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

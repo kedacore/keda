@@ -41,9 +41,23 @@ type TestResult struct {
 func main() {
 	ctx := context.Background()
 
+	//
+	// Detect test cases
+	//
 	e2eRegex := os.Getenv("E2E_TEST_REGEX")
 	if e2eRegex == "" {
 		e2eRegex = ".*_test.go"
+	}
+
+	regularTestFiles := getRegularTestFiles(e2eRegex)
+	sequentialTestFiles := getSequentialTestFiles(e2eRegex)
+	if len(regularTestFiles) == 0 && len(sequentialTestFiles) == 0 {
+		fmt.Printf("No test has been executed, please review your regex: '%s'\n", e2eRegex)
+		os.Exit(1)
+	}
+
+	if len(os.Args) > 1 && os.Args[1] == "regex-check" {
+		return
 	}
 
 	//
@@ -54,17 +68,6 @@ func main() {
 	if !installation.Passed {
 		printKedaLogs()
 		uninstallKeda(ctx)
-		os.Exit(1)
-	}
-
-	//
-	// Detect test cases
-	//
-	regularTestFiles := getRegularTestFiles(e2eRegex)
-	sequentialTestFiles := getSequentialTestFiles(e2eRegex)
-	if len(regularTestFiles) == 0 && len(sequentialTestFiles) == 0 {
-		uninstallKeda(ctx)
-		fmt.Printf("No test has been executed, please review your regex: '%s'\n", e2eRegex)
 		os.Exit(1)
 	}
 

@@ -44,7 +44,7 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 	runningJobCount := e.getRunningJobCount(ctx, scaledJob)
 	pendingJobCount := e.getPendingJobCount(ctx, scaledJob)
 	logger.Info("Scaling Jobs", "Number of running Jobs", runningJobCount)
-	logger.Info("Scaling Jobs", "Number of pending Jobs ", pendingJobCount)
+	logger.Info("Scaling Jobs", "Number of pending Jobs", pendingJobCount)
 
 	effectiveMaxScale, scaleTo := e.getScalingDecision(scaledJob, runningJobCount, scaleTo, maxScale, pendingJobCount, logger)
 

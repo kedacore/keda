@@ -72,7 +72,7 @@ func NewGrpcClient(url, certDir, authority string, clientMetrics *grpcprom.Clien
 		opts = append(opts, grpc.WithAuthority(authority))
 	}
 
-	conn, err := grpc.Dial(url, opts...)
+	conn, err := grpc.NewClient(url, opts...)
 	if err != nil {
 		return nil, err
 	}
