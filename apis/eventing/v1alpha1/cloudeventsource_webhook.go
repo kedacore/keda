@@ -37,6 +37,12 @@ func (ces *CloudEventSource) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
+func (cces *ClusterCloudEventSource) SetupWebhookWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewWebhookManagedBy(mgr).
+		For(cces).
+		Complete()
+}
+
 // +kubebuilder:webhook:path=/validate-eventing-keda-sh-v1alpha1-cloudeventsource,mutating=false,failurePolicy=ignore,sideEffects=None,groups=eventing.keda.sh,resources=cloudeventsources,verbs=create;update,versions=v1alpha1,name=vcloudeventsource.kb.io,admissionReviewVersions=v1
 
 var _ webhook.Validator = &CloudEventSource{}
@@ -64,6 +70,33 @@ func (ces *CloudEventSource) ValidateDelete() (admission.Warnings, error) {
 	return nil, nil
 }
 
+// +kubebuilder:webhook:path=/validate-eventing-keda-sh-v1alpha1-clustercloudeventsource,mutating=false,failurePolicy=ignore,sideEffects=None,groups=eventing.keda.sh,resources=clustercloudeventsources,verbs=create;update,versions=v1alpha1,name=vclustercloudeventsource.kb.io,admissionReviewVersions=v1
+
+var _ webhook.Validator = &ClusterCloudEventSource{}
+
+// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
+func (cces *ClusterCloudEventSource) ValidateCreate() (admission.Warnings, error) {
+	val, _ := json.MarshalIndent(cces, "", "  ")
+	cloudeventsourcelog.Info(fmt.Sprintf("validating clustercloudeventsource creation for %s", string(val)))
+	return validateSpec(&cces.Spec)
+}
+
+func (cces *ClusterCloudEventSource) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+	val, _ := json.MarshalIndent(cces, "", "  ")
+	cloudeventsourcelog.V(1).Info(fmt.Sprintf("validating clustercloudeventsource update for %s", string(val)))
+
+	oldCes := old.(*ClusterCloudEventSource)
+	if isCloudEventSourceRemovingFinalizer(cces.ObjectMeta, oldCes.ObjectMeta, cces.Spec, oldCes.Spec) {
+		cloudeventsourcelog.V(1).Info("finalizer removal, skipping validation")
+		return nil, nil
+	}
+	return validateSpec(&cces.Spec)
+}
+
+func (cces *ClusterCloudEventSource) ValidateDelete() (admission.Warnings, error) {
+	return nil, nil
+}
+
 func isCloudEventSourceRemovingFinalizer(om metav1.ObjectMeta, oldOm metav1.ObjectMeta, spec CloudEventSourceSpec, oldSpec CloudEventSourceSpec) bool {
 	cesSpec, _ := json.MarshalIndent(spec, "", "  ")
 	oldCesSpec, _ := json.MarshalIndent(oldSpec, "", "  ")
@@ -81,7 +114,7 @@ func validateSpec(spec *CloudEventSourceSpec) (admission.Warnings, error) {
 	if spec.EventSubscription.ExcludedEventTypes != nil {
 		for _, excludedEventType := range spec.EventSubscription.ExcludedEventTypes {
 			if !slices.Contains(AllEventTypes, excludedEventType) {
-				return nil, fmt.Errorf("excludedEventType: %s in cloudeventsource spec is not supported", excludedEventType)
+				return nil, fmt.Errorf("excludedEventType: %s in cloudeventsource/clustercloudeventsource spec is not supported", excludedEventType)
 			}
 		}
 	}
@@ -89,7 +122,7 @@ func validateSpec(spec *CloudEventSourceSpec) (admission.Warnings, error) {
 	if spec.EventSubscription.IncludedEventTypes != nil {
 		for _, includedEventType := range spec.EventSubscription.IncludedEventTypes {
 			if !slices.Contains(AllEventTypes, includedEventType) {
-				return nil, fmt.Errorf("includedEventType: %s in cloudeventsource spec is not supported", includedEventType)
+				return nil, fmt.Errorf("includedEventType: %s in cloudeventsource/clustercloudeventsource spec is not supported", includedEventType)
 			}
 		}
 	}
