@@ -60,7 +60,6 @@ spec:
           - --logtostderr=true
           - --stderrthreshold=ERROR
           - --v=0
-          - --zap-log-level=info
           - --zap-encoder=console
           - --zap-time-encoding=rfc3339
           - --client-ca-file=/certs/ca.crt
