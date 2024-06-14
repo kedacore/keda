@@ -340,11 +340,11 @@ rfc3339nano - 2022-05-24T12:10:19.411Z
 
 ### Metrics Server logging
 
-Find `--v=0` argument in Operator Deployment section in `config/metrics-server/deployment.yaml` file, modify its value and redeploy.
+The Metrics Server logging can be configured in a similar way to the KEDA Operator and Admission Webhooks. The configuration is done in the `config/metrics-server/deployment.yaml` file.
 
-Allowed values are `"0"` for info, `"4"` for debug, or an integer value greater than `0`, specified as string
+To change the logging format, find the `--zap-encoder=` argument and modify its value. The allowed values are `json` and `console`. The default value is `console`.
 
-Default value: `"0"`
+To change the logging time encoding, find the `--zap-time-encoding=` argument and modify its value. The allowed values are `epoch`, `millis`, `nano`, `iso8601`, `rfc3339`, or `rfc3339nano`. The default value is `rfc3339`.
 
 ### CPU/Memory Profiling
 
