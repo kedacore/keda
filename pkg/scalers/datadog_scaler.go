@@ -422,10 +422,6 @@ func parseDatadogClusterAgentMetadata(config *scalersconfig.ScalerConfig, logger
 		return nil, fmt.Errorf("err incorrect value for authMode is given: %s", authMode)
 	}
 
-	if len(config.AuthParams["ca"]) > 0 {
-		meta.ca = config.AuthParams["ca"]
-	}
-
 	return &meta, nil
 }
 
