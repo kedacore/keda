@@ -39,12 +39,6 @@ type datadogMetadata struct {
 	datadogMetricsServicePort int
 	unsafeSsl                 bool
 
-	// client certification Cluster Agent Proyx
-	enableTLS bool
-	cert      string
-	key       string
-	ca        string
-
 	// bearer auth Cluster Agent Proxy
 	enableBearerAuth bool
 	bearerToken      string
@@ -109,13 +103,6 @@ func NewDatadogScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (
 		}
 		httpClient = kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsl)
 
-		if meta.enableTLS || len(meta.ca) > 0 {
-			config, err := kedautil.NewTLSConfig(meta.cert, meta.key, meta.ca, meta.unsafeSsl)
-			if err != nil {
-				return nil, err
-			}
-			httpClient.Transport = kedautil.CreateHTTPTransportWithTLSConfig(config)
-		}
 	} else {
 		meta, err = parseDatadogAPIMetadata(config, logger)
 		if err != nil {
@@ -424,22 +411,6 @@ func parseDatadogClusterAgentMetadata(config *scalersconfig.ScalerConfig, logger
 
 	authType := authentication.Type(strings.TrimSpace(authMode))
 	switch authType {
-	case authentication.TLSAuthType:
-		if len(config.AuthParams["ca"]) == 0 {
-			return nil, fmt.Errorf("no ca given")
-		}
-
-		if len(config.AuthParams["cert"]) == 0 {
-			return nil, fmt.Errorf("no cert given")
-		}
-		meta.cert = config.AuthParams["cert"]
-
-		if len(config.AuthParams["key"]) == 0 {
-			return nil, fmt.Errorf("no key given")
-		}
-
-		meta.key = config.AuthParams["key"]
-		meta.enableTLS = true
 	case authentication.BearerAuthType:
 		if len(config.AuthParams["token"]) == 0 {
 			return nil, errors.New("no token provided")
@@ -640,7 +611,6 @@ func (s *datadogScaler) getDatadogClusterAgentHTTPRequest(ctx context.Context, u
 	var req *http.Request
 	var err error
 
-	// TODO: add TLS support
 	switch {
 	case s.metadata.enableBearerAuth:
 		req, err = http.NewRequestWithContext(ctx, "GET", url, nil)
