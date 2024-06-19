@@ -26,9 +26,7 @@ import (
 	"strings"
 
 	"dario.cat/mergo"
-	"github.com/Azure/azure-storage-blob-go/azblob"
-
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 )
 
 // goCheckpoint struct to adapt goSdk Checkpoint
@@ -52,8 +50,8 @@ type pythonCheckpoint struct {
 }
 
 type checkpointer interface {
-	resolvePath(info EventHubInfo) (*url.URL, error)
-	extractCheckpoint(get *azblob.DownloadResponse) (Checkpoint, error)
+	resolvePath(info EventHubInfo) (string, string, error)
+	extractCheckpoint(get *azblob.DownloadStreamResponse) (Checkpoint, error)
 }
 
 type azureFunctionCheckpointer struct {
@@ -86,9 +84,9 @@ func NewCheckpoint(sequenceNumber int64) Checkpoint {
 }
 
 // GetCheckpointFromBlobStorage reads depending of the CheckpointStrategy the checkpoint from a azure storage
-func GetCheckpointFromBlobStorage(ctx context.Context, info EventHubInfo, partitionID string) (Checkpoint, error) {
+func GetCheckpointFromBlobStorage(ctx context.Context, blobStorageClient *azblob.Client, info EventHubInfo, partitionID string) (Checkpoint, error) {
 	checkpointer := newCheckpointer(info, partitionID)
-	return getCheckpoint(ctx, info, checkpointer)
+	return getCheckpoint(ctx, blobStorageClient, info, checkpointer)
 }
 
 func newCheckpointer(info EventHubInfo, partitionID string) checkpointer {
@@ -122,22 +120,21 @@ func newCheckpointer(info EventHubInfo, partitionID string) checkpointer {
 }
 
 // resolve path for AzureFunctionCheckpointer
-func (checkpointer *azureFunctionCheckpointer) resolvePath(info EventHubInfo) (*url.URL, error) {
+func (checkpointer *azureFunctionCheckpointer) resolvePath(info EventHubInfo) (string, string, error) {
 	eventHubNamespace, eventHubName, err := getHubAndNamespace(info)
 	if err != nil {
-		return nil, err
+		return "", "", err
 	}
 
-	path, err := url.Parse(fmt.Sprintf("/%s/%s/%s/%s/%s", checkpointer.containerName, eventHubNamespace, eventHubName, info.EventHubConsumerGroup, checkpointer.partitionID))
-	if err != nil {
-		return nil, err
+	path := fmt.Sprintf("%s/%s/%s/%s", eventHubNamespace, eventHubName, info.EventHubConsumerGroup, checkpointer.partitionID)
+	if _, err := url.Parse(path); err != nil {
+		return "", "", err
 	}
-
-	return path, nil
+	return checkpointer.containerName, path, nil
 }
 
 // extract checkpoint for AzureFunctionCheckpointer
-func (checkpointer *azureFunctionCheckpointer) extractCheckpoint(get *azblob.DownloadResponse) (Checkpoint, error) {
+func (checkpointer *azureFunctionCheckpointer) extractCheckpoint(get *azblob.DownloadStreamResponse) (Checkpoint, error) {
 	var checkpoint Checkpoint
 	err := readToCheckpointFromBody(get, &checkpoint)
 	if err != nil {
@@ -148,61 +145,54 @@ func (checkpointer *azureFunctionCheckpointer) extractCheckpoint(get *azblob.Dow
 }
 
 // resolve path for blobMetadataCheckpointer
-func (checkpointer *blobMetadataCheckpointer) resolvePath(info EventHubInfo) (*url.URL, error) {
+func (checkpointer *blobMetadataCheckpointer) resolvePath(info EventHubInfo) (string, string, error) {
 	eventHubNamespace, eventHubName, err := getHubAndNamespace(info)
 	if err != nil {
-		return nil, err
+		return "", "", err
 	}
 
-	path, err := url.Parse(fmt.Sprintf("/%s/%s/%s/%s/checkpoint/%s", checkpointer.containerName, eventHubNamespace, eventHubName, strings.ToLower(info.EventHubConsumerGroup), checkpointer.partitionID))
-	if err != nil {
-		return nil, err
+	path := fmt.Sprintf("%s/%s/%s/checkpoint/%s", eventHubNamespace, eventHubName, strings.ToLower(info.EventHubConsumerGroup), checkpointer.partitionID)
+	if _, err := url.Parse(path); err != nil {
+		return "", "", err
 	}
-
-	return path, nil
+	return checkpointer.containerName, path, nil
 }
 
 // extract checkpoint for blobMetadataCheckpointer
-func (checkpointer *blobMetadataCheckpointer) extractCheckpoint(get *azblob.DownloadResponse) (Checkpoint, error) {
+func (checkpointer *blobMetadataCheckpointer) extractCheckpoint(get *azblob.DownloadStreamResponse) (Checkpoint, error) {
 	return getCheckpointFromStorageMetadata(get, checkpointer.partitionID)
 }
 
 // resolve path for goSdkCheckpointer
-func (checkpointer *goSdkCheckpointer) resolvePath(info EventHubInfo) (*url.URL, error) {
-	path, err := url.Parse(fmt.Sprintf("/%s/%s", info.BlobContainer, checkpointer.partitionID))
-	if err != nil {
-		return nil, err
-	}
-
-	return path, nil
+func (checkpointer *goSdkCheckpointer) resolvePath(info EventHubInfo) (string, string, error) {
+	return info.BlobContainer, checkpointer.partitionID, nil
 }
 
 // resolve path for daprCheckpointer
-func (checkpointer *daprCheckpointer) resolvePath(info EventHubInfo) (*url.URL, error) {
+func (checkpointer *daprCheckpointer) resolvePath(info EventHubInfo) (string, string, error) {
 	_, eventHubName, err := getHubAndNamespace(info)
 	if err != nil {
-		return nil, err
+		return "", "", err
 	}
 
-	path, err := url.Parse(fmt.Sprintf("/%s/dapr-%s-%s-%s", info.BlobContainer, eventHubName, info.EventHubConsumerGroup, checkpointer.partitionID))
-	if err != nil {
-		return nil, err
+	path := fmt.Sprintf("dapr-%s-%s-%s", eventHubName, info.EventHubConsumerGroup, checkpointer.partitionID)
+	if _, err := url.Parse(path); err != nil {
+		return "", "", err
 	}
-
-	return path, nil
+	return info.BlobContainer, path, nil
 }
 
 // extract checkpoint for DaprCheckpointer
-func (checkpointer *daprCheckpointer) extractCheckpoint(get *azblob.DownloadResponse) (Checkpoint, error) {
+func (checkpointer *daprCheckpointer) extractCheckpoint(get *azblob.DownloadStreamResponse) (Checkpoint, error) {
 	return newGoSdkCheckpoint(get)
 }
 
 // extract checkpoint for goSdkCheckpointer
-func (checkpointer *goSdkCheckpointer) extractCheckpoint(get *azblob.DownloadResponse) (Checkpoint, error) {
+func (checkpointer *goSdkCheckpointer) extractCheckpoint(get *azblob.DownloadStreamResponse) (Checkpoint, error) {
 	return newGoSdkCheckpoint(get)
 }
 
-func newGoSdkCheckpoint(get *azblob.DownloadResponse) (Checkpoint, error) {
+func newGoSdkCheckpoint(get *azblob.DownloadStreamResponse) (Checkpoint, error) {
 	var checkpoint goCheckpoint
 	err := readToCheckpointFromBody(get, &checkpoint)
 	if err != nil {
@@ -216,19 +206,18 @@ func newGoSdkCheckpoint(get *azblob.DownloadResponse) (Checkpoint, error) {
 }
 
 // resolve path for DefaultCheckpointer
-func (checkpointer *defaultCheckpointer) resolvePath(info EventHubInfo) (*url.URL, error) {
-	path, _ := url.Parse(fmt.Sprintf("/%s/%s/%s", info.BlobContainer, info.EventHubConsumerGroup, checkpointer.partitionID))
-
-	return path, nil
+func (checkpointer *defaultCheckpointer) resolvePath(info EventHubInfo) (string, string, error) {
+	path := fmt.Sprintf("%s/%s", info.EventHubConsumerGroup, checkpointer.partitionID)
+	return info.BlobContainer, path, nil
 }
 
 // extract checkpoint with deprecated Python sdk checkpoint for backward compatibility
-func (checkpointer *defaultCheckpointer) extractCheckpoint(get *azblob.DownloadResponse) (Checkpoint, error) {
+func (checkpointer *defaultCheckpointer) extractCheckpoint(get *azblob.DownloadStreamResponse) (Checkpoint, error) {
 	var checkpoint Checkpoint
 	var pyCheckpoint pythonCheckpoint
 	blobData := &bytes.Buffer{}
 
-	reader := get.Body(azblob.RetryReaderOptions{})
+	reader := get.Body
 	if _, err := blobData.ReadFrom(reader); err != nil {
 		return Checkpoint{}, fmt.Errorf("failed to read blob data: %w", err)
 	}
@@ -247,69 +236,47 @@ func (checkpointer *defaultCheckpointer) extractCheckpoint(get *azblob.DownloadR
 	return checkpoint, err
 }
 
-func getCheckpoint(ctx context.Context, info EventHubInfo, checkpointer checkpointer) (Checkpoint, error) {
-	var podIdentity = info.PodIdentity
-
-	// For back-compat, prefer a connection string over pod identity when present
-	if len(info.StorageConnection) != 0 {
-		podIdentity.Provider = kedav1alpha1.PodIdentityProviderNone
-	}
-
-	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
-		if len(info.StorageAccountName) == 0 {
-			return Checkpoint{}, fmt.Errorf("storageAccountName not supplied when PodIdentity authentication is enabled")
-		}
-	}
-
-	blobCreds, storageEndpoint, err := ParseAzureStorageBlobConnection(ctx, podIdentity, info.StorageConnection, info.StorageAccountName, info.BlobStorageEndpoint)
-
+func getCheckpoint(ctx context.Context, blobStorageClient *azblob.Client, info EventHubInfo, checkpointer checkpointer) (Checkpoint, error) {
+	container, path, err := checkpointer.resolvePath(info)
 	if err != nil {
 		return Checkpoint{}, err
 	}
 
-	path, err := checkpointer.resolvePath(info)
+	get, err := blobStorageClient.DownloadStream(ctx, container, path, nil)
 	if err != nil {
 		return Checkpoint{}, err
 	}
 
-	baseURL := storageEndpoint.ResolveReference(path)
-
-	get, err := downloadBlob(ctx, baseURL, blobCreds)
-	if err != nil {
-		return Checkpoint{}, err
-	}
-
-	return checkpointer.extractCheckpoint(get)
+	return checkpointer.extractCheckpoint(&get)
 }
 
-func getCheckpointFromStorageMetadata(get *azblob.DownloadResponse, partitionID string) (Checkpoint, error) {
+func getCheckpointFromStorageMetadata(get *azblob.DownloadStreamResponse, partitionID string) (Checkpoint, error) {
 	checkpoint := Checkpoint{
 		PartitionID: partitionID,
 	}
 
-	metadata := get.NewMetadata()
+	metadata := get.Metadata
 
-	if sequencenumber, ok := metadata["sequencenumber"]; ok {
-		if !ok {
-			if sequencenumber, ok = metadata["Sequencenumber"]; !ok {
-				return Checkpoint{}, fmt.Errorf("sequencenumber on blob not found")
-			}
-		}
-
-		if sn, err := strconv.ParseInt(sequencenumber, 10, 64); err == nil {
-			checkpoint.SequenceNumber = sn
-		} else {
-			return Checkpoint{}, fmt.Errorf("sequencenumber is not a valid int64 value: %w", err)
+	var sequencenumber *string
+	ok := false
+	if sequencenumber, ok = metadata["sequencenumber"]; !ok {
+		if sequencenumber, ok = metadata["Sequencenumber"]; !ok {
+			return Checkpoint{}, fmt.Errorf("sequencenumber on blob not found")
 		}
 	}
 
+	if sn, err := strconv.ParseInt(*sequencenumber, 10, 64); err == nil {
+		checkpoint.SequenceNumber = sn
+	} else {
+		return Checkpoint{}, fmt.Errorf("sequencenumber is not a valid int64 value: %w", err)
+	}
 	return checkpoint, nil
 }
 
-func readToCheckpointFromBody(get *azblob.DownloadResponse, checkpoint interface{}) error {
+func readToCheckpointFromBody(get *azblob.DownloadStreamResponse, checkpoint interface{}) error {
 	blobData := &bytes.Buffer{}
 
-	reader := get.Body(azblob.RetryReaderOptions{})
+	reader := get.Body
 	if _, err := blobData.ReadFrom(reader); err != nil {
 		return fmt.Errorf("failed to read blob data: %w", err)
 	}
@@ -320,14 +287,4 @@ func readToCheckpointFromBody(get *azblob.DownloadResponse, checkpoint interface
 	}
 
 	return nil
-}
-
-func downloadBlob(ctx context.Context, baseURL *url.URL, blobCreds azblob.Credential) (*azblob.DownloadResponse, error) {
-	blobURL := azblob.NewBlockBlobURL(*baseURL, azblob.NewPipeline(blobCreds, azblob.PipelineOptions{}))
-
-	get, err := blobURL.Download(ctx, 0, 0, azblob.BlobAccessConditions{}, false, azblob.ClientProvidedKeyOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("unable to download file from blob storage: %w", err)
-	}
-	return get, nil
 }

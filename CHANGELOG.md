@@ -90,8 +90,8 @@ New deprecation(s):
 
 ### Other
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 - **General**: Added Pre Regex check before building image in e2e test ([#5783](https://github.com/kedacore/keda/issues/5783))
+- **Azure Services**: Migrated to `github.com/Azure/azure-sdk-for-go` ([#5470](https://github.com/kedacore/keda/issues/5470))
 
 ## v2.14.0
 

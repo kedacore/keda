@@ -40,13 +40,14 @@ type dataExplorerMetricIdentifier struct {
 }
 
 var (
-	aadAppClientID        = "eebdbbab-cf74-4791-a5c6-1ef5d90b1fa8"
-	aadAppSecret          = "test_app_secret"
-	azureTenantID         = "8fe57c22-02b1-4b87-8c24-ae21dea4fa6a"
-	databaseName          = "test_database"
-	dataExplorerQuery     = "print 3"
-	dataExplorerThreshold = "1"
-	dataExplorerEndpoint  = "https://test-keda-e2e.eastus.kusto.windows.net"
+	aadAppClientID          = "eebdbbab-cf74-4791-a5c6-1ef5d90b1fa8"
+	aadAppSecret            = "test_app_secret"
+	activeDirectoryEndpoint = "activeDirectoryEndpoint"
+	azureTenantID           = "8fe57c22-02b1-4b87-8c24-ae21dea4fa6a"
+	databaseName            = "test_database"
+	dataExplorerQuery       = "print 3"
+	dataExplorerThreshold   = "1"
+	dataExplorerEndpoint    = "https://test-keda-e2e.eastus.kusto.windows.net"
 )
 
 // Valid auth params with aad application and passwd

@@ -18,7 +18,6 @@ package scalers
 
 import (
 	"context"
-	"net/http"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -101,7 +100,7 @@ func TestAzQueueParseMetadata(t *testing.T) {
 
 func TestAzQueueGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azQueueMetricIdentifiers {
-		meta, podIdentity, err := parseAzureQueueMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata,
+		meta, _, err := parseAzureQueueMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata,
 			ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams,
 			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.metadataTestData.podIdentity}, TriggerIndex: testData.triggerIndex},
 			logr.Discard())
@@ -109,9 +108,7 @@ func TestAzQueueGetMetricSpecForScaling(t *testing.T) {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		mockAzQueueScaler := azureQueueScaler{
-			metadata:    meta,
-			podIdentity: podIdentity,
-			httpClient:  http.DefaultClient,
+			metadata: meta,
 		}
 
 		metricSpec := mockAzQueueScaler.GetMetricSpecForScaling(context.Background())

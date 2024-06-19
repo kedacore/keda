@@ -1,15 +1,15 @@
 package azure
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strings"
 
-	eventhub "github.com/Azure/azure-event-hubs-go/v3"
-	"github.com/Azure/go-autorest/autorest/azure"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
+	"github.com/go-logr/logr"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 // EventHubInfo to keep event hub connection and resources
@@ -24,41 +24,36 @@ type EventHubInfo struct {
 	EventHubName             string
 	CheckpointStrategy       string
 	ServiceBusEndpointSuffix string
-	ActiveDirectoryEndpoint  string
-	EventHubResourceURL      string
 	PodIdentity              kedav1alpha1.AuthPodIdentity
 }
 
-const (
-	DefaultEventhubResourceURL = "https://eventhubs.azure.net/"
-)
-
 // GetEventHubClient returns eventhub client
-func GetEventHubClient(ctx context.Context, info EventHubInfo) (*eventhub.Hub, error) {
+func GetEventHubClient(info EventHubInfo, logger logr.Logger) (*azeventhubs.ProducerClient, error) {
+	opts := &azeventhubs.ProducerClientOptions{TLSConfig: kedautil.CreateTLSClientConfig(false)}
+
 	switch info.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		// The user wants to use a connectionstring, not a pod identity
-		hub, err := eventhub.NewHubFromConnectionString(info.EventHubConnection)
+		hub, err := azeventhubs.NewProducerClientFromConnectionString(info.EventHubConnection, info.EventHubName, opts)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create hub client: %w", err)
 		}
 		return hub, nil
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		// User wants to use AAD Workload Identity
-		env := azure.Environment{ActiveDirectoryEndpoint: info.ActiveDirectoryEndpoint, ServiceBusEndpointSuffix: info.ServiceBusEndpointSuffix}
-		hubEnvOptions := eventhub.HubWithEnvironment(env)
-		provider := NewAzureADWorkloadIdentityTokenProvider(ctx, info.PodIdentity.GetIdentityID(), info.PodIdentity.GetIdentityTenantID(), info.PodIdentity.GetIdentityAuthorityHost(), info.EventHubResourceURL)
+		creds, chainedErr := NewChainedCredential(logger, info.PodIdentity)
+		if chainedErr != nil {
+			return nil, chainedErr
+		}
 
-		return eventhub.NewHub(info.Namespace, info.EventHubName, provider, hubEnvOptions)
+		return azeventhubs.NewProducerClient(fmt.Sprintf("%s.%s", info.Namespace, info.ServiceBusEndpointSuffix), info.EventHubName, creds, opts)
 	}
 
-	return nil, fmt.Errorf("event hub does not support pod identity %v", info.PodIdentity)
+	return nil, fmt.Errorf("event hub does not support pod identity %v", info.PodIdentity.Provider)
 }
 
-// ParseAzureEventHubConnectionString parses Event Hub connection string into (namespace, name)
+// parseAzureEventHubConnectionString parses Event Hub connection string into (namespace, name)
 // Connection string should be in following format:
 // Endpoint=sb://eventhub-namespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=secretKey123;EntityPath=eventhub-name
-func ParseAzureEventHubConnectionString(connectionString string) (string, string, error) {
+func parseAzureEventHubConnectionString(connectionString string) (string, string, error) {
 	parts := strings.Split(connectionString, ";")
 
 	var eventHubNamespace, eventHubName string
@@ -90,7 +85,7 @@ func getHubAndNamespace(info EventHubInfo) (string, string, error) {
 	var eventHubName string
 	var err error
 	if info.EventHubConnection != "" {
-		eventHubNamespace, eventHubName, err = ParseAzureEventHubConnectionString(info.EventHubConnection)
+		eventHubNamespace, eventHubName, err = parseAzureEventHubConnectionString(info.EventHubConnection)
 		if err != nil {
 			return "", "", err
 		}
