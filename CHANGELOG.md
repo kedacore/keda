@@ -71,6 +71,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 Here is an overview of all new **experimental** features:
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Datadog Scaler**: Add support to use the Cluster Agent as source of metrics ([#5355](https://github.com/kedacore/keda/issues/5355))
 
 ### Improvements
 
