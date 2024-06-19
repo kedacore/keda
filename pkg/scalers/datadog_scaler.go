@@ -102,7 +102,6 @@ func NewDatadogScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (
 			return nil, fmt.Errorf("error parsing Datadog metadata: %w", err)
 		}
 		httpClient = kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsl)
-
 	} else {
 		meta, err = parseDatadogAPIMetadata(config, logger)
 		if err != nil {
