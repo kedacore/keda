@@ -2,7 +2,11 @@ package conf
 
 import (
 	"reflect"
+
+	"github.com/expr-lang/expr/internal/deref"
 )
+
+type TypesTable map[string]Tag
 
 type Tag struct {
 	Type        reflect.Type
@@ -11,8 +15,6 @@ type Tag struct {
 	Method      bool
 	MethodIndex int
 }
-
-type TypesTable map[string]Tag
 
 // CreateTypesTable creates types table for type checks during parsing.
 // If struct is passed, all fields will be treated as variables,
@@ -77,7 +79,7 @@ func CreateTypesTable(i any) TypesTable {
 
 func FieldsFromStruct(t reflect.Type) TypesTable {
 	types := make(TypesTable)
-	t = dereference(t)
+	t = deref.Type(t)
 	if t == nil {
 		return types
 	}
@@ -109,23 +111,6 @@ func FieldsFromStruct(t reflect.Type) TypesTable {
 	}
 
 	return types
-}
-
-func dereference(t reflect.Type) reflect.Type {
-	if t == nil {
-		return nil
-	}
-	if t.Kind() == reflect.Ptr {
-		t = dereference(t.Elem())
-	}
-	return t
-}
-
-func kind(t reflect.Type) reflect.Kind {
-	if t == nil {
-		return reflect.Invalid
-	}
-	return t.Kind()
 }
 
 func FieldName(field reflect.StructField) string {

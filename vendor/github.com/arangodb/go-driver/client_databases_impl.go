@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017-2023 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,8 +17,6 @@
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
 //
-// Author Ewout Prangsma
-//
 
 package driver
 
@@ -30,6 +28,19 @@ import (
 // Database opens a connection to an existing database.
 // If no database with given name exists, an NotFoundError is returned.
 func (c *client) Database(ctx context.Context, name string) (Database, error) {
+	db, err := newDatabase(name, c.conn)
+	if err != nil {
+		return nil, WithStack(err)
+	}
+
+	if ctx != nil {
+		if v := ctx.Value(keySkipExistCheck); v != nil {
+			if skipIfExistCheck, ok := v.(bool); ok && skipIfExistCheck {
+				return db, nil
+			}
+		}
+	}
+
 	escapedName := pathEscape(name)
 	req, err := c.conn.NewRequest("GET", path.Join("_db", escapedName, "_api/database/current"))
 	if err != nil {
@@ -42,10 +53,7 @@ func (c *client) Database(ctx context.Context, name string) (Database, error) {
 	if err := resp.CheckStatus(200); err != nil {
 		return nil, WithStack(err)
 	}
-	db, err := newDatabase(name, c.conn)
-	if err != nil {
-		return nil, WithStack(err)
-	}
+
 	return db, nil
 }
 

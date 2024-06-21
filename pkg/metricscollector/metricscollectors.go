@@ -17,6 +17,8 @@ limitations under the License.
 package metricscollector
 
 import (
+	"time"
+
 	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 )
 
@@ -39,10 +41,10 @@ type MetricsCollector interface {
 	RecordScalerMetric(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value float64)
 
 	// RecordScalerLatency create a measurement of the latency to external metric
-	RecordScalerLatency(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value float64)
+	RecordScalerLatency(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value time.Duration)
 
 	// RecordScalableObjectLatency create a measurement of the latency executing scalable object loop
-	RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value float64)
+	RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value time.Duration)
 
 	// RecordScalerActive create a measurement of the activity of the scaler
 	RecordScalerActive(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, active bool)
@@ -101,14 +103,14 @@ func RecordScalerMetric(namespace string, scaledObject string, scaler string, tr
 }
 
 // RecordScalerLatency create a measurement of the latency to external metric
-func RecordScalerLatency(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, isScaledObject bool, value float64) {
+func RecordScalerLatency(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, isScaledObject bool, value time.Duration) {
 	for _, element := range collectors {
 		element.RecordScalerLatency(namespace, scaledObject, scaler, triggerIndex, metric, isScaledObject, value)
 	}
 }
 
 // RecordScalableObjectLatency create a measurement of the latency executing scalable object loop
-func RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value float64) {
+func RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value time.Duration) {
 	for _, element := range collectors {
 		element.RecordScalableObjectLatency(namespace, name, isScaledObject, value)
 	}

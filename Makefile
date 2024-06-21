@@ -98,6 +98,10 @@ scale-node-pool: az-login ## Scale nodepool.
 		--resource-group $(TF_AZURE_RESOURCE_GROUP) \
 		--node-count $(NODE_POOL_SIZE)
 
+.PHONY: e2e-regex-check
+e2e-regex-check:
+	go run -tags e2e ./tests/run-all.go regex-check
+
 .PHONY: e2e-test
 e2e-test: get-cluster-context ## Run e2e tests against Azure cluster.
 	TERMINFO=/etc/terminfo
@@ -268,17 +272,12 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 deploy: install ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && \
 	$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda=${IMAGE_CONTROLLER} && \
-	if [ "$(AZURE_RUN_AAD_POD_IDENTITY_TESTS)" = true ]; then \
-		$(KUSTOMIZE) edit add label --force aadpodidbinding:keda; \
-	fi && \
 	if [ "$(AZURE_RUN_WORKLOAD_IDENTITY_TESTS)" = true ]; then \
 		$(KUSTOMIZE) edit add label --force azure.workload.identity/use:true; \
 	fi
 	cd config/metrics-server && \
-    $(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-metrics-apiserver=${IMAGE_ADAPTER} && \
-	if [ "$(AZURE_RUN_AAD_POD_IDENTITY_TESTS)" = true ]; then \
-		$(KUSTOMIZE) edit add label --force aadpodidbinding:keda; \
-	fi
+    $(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-metrics-apiserver=${IMAGE_ADAPTER}
+
 	if [ "$(AZURE_RUN_WORKLOAD_IDENTITY_TESTS)" = true ]; then \
 		cd config/service_account && \
 		$(KUSTOMIZE) edit add label --force azure.workload.identity/use:true; \

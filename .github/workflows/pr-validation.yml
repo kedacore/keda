@@ -10,7 +10,7 @@ jobs:
   validate:
     name: validate - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.21.6
+    container: ghcr.io/kedacore/keda-tools:1.21.9
     strategy:
       matrix:
         include:
@@ -21,7 +21,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
         with:
           fetch-depth: 1
 
@@ -73,7 +73,7 @@ jobs:
   validate-dockerfiles:
     name: validate-dockerfiles - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.21.6
+    container: ghcr.io/kedacore/keda-tools:1.21.9
     strategy:
        matrix:
         include:
@@ -83,7 +83,7 @@ jobs:
           name: amd64
     steps:
       - name: Check out code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
         with:
           fetch-depth: 1
 
@@ -104,7 +104,7 @@ jobs:
   validate-dev-container:
     name: Validate dev-container - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.21.6
+    container: ghcr.io/kedacore/keda-tools:1.21.9
     strategy:
        matrix:
         include:
@@ -113,7 +113,7 @@ jobs:
         - runner: ubuntu-latest
           name: amd64
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -133,11 +133,11 @@ jobs:
     name: Static Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
       - uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
         with:
           python-version: 3.x
-      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5
+      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5
         with:
           go-version: "1.21"
       - name: Get golangci

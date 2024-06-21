@@ -470,31 +470,44 @@ func (s *githubRunnerScaler) getRepositories(ctx context.Context) ([]string, err
 		return s.metadata.repos, nil
 	}
 
-	var url string
-	switch s.metadata.runnerScope {
-	case ORG:
-		url = fmt.Sprintf("%s/orgs/%s/repos", s.metadata.githubAPIURL, s.metadata.owner)
-	case REPO:
-		url = fmt.Sprintf("%s/users/%s/repos", s.metadata.githubAPIURL, s.metadata.owner)
-	case ENT:
-		url = fmt.Sprintf("%s/orgs/%s/repos", s.metadata.githubAPIURL, s.metadata.owner)
-	default:
-		return nil, fmt.Errorf("runnerScope %s not supported", s.metadata.runnerScope)
-	}
-	body, _, err := getGithubRequest(ctx, url, s.metadata, s.httpClient)
-	if err != nil {
-		return nil, err
-	}
-
-	var repos []Repo
-	err = json.Unmarshal(body, &repos)
-	if err != nil {
-		return nil, err
-	}
-
+	page := 1
 	var repoList []string
-	for _, repo := range repos {
-		repoList = append(repoList, repo.Name)
+
+	for {
+		var url string
+		switch s.metadata.runnerScope {
+		case ORG:
+			url = fmt.Sprintf("%s/orgs/%s/repos?page=%s", s.metadata.githubAPIURL, s.metadata.owner, strconv.Itoa(page))
+		case REPO:
+			url = fmt.Sprintf("%s/users/%s/repos?page=%s", s.metadata.githubAPIURL, s.metadata.owner, strconv.Itoa(page))
+		case ENT:
+			url = fmt.Sprintf("%s/orgs/%s/repos?page=%s", s.metadata.githubAPIURL, s.metadata.owner, strconv.Itoa(page))
+		default:
+			return nil, fmt.Errorf("runnerScope %s not supported", s.metadata.runnerScope)
+		}
+
+		body, _, err := getGithubRequest(ctx, url, s.metadata, s.httpClient)
+		if err != nil {
+			return nil, err
+		}
+
+		var repos []Repo
+
+		err = json.Unmarshal(body, &repos)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, repo := range repos {
+			repoList = append(repoList, repo.Name)
+		}
+
+		// GitHub returned less than 30 repos per page, so consider no repos left
+		if len(repos) < 30 {
+			break
+		}
+
+		page++
 	}
 
 	return repoList, nil

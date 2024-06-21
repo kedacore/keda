@@ -104,8 +104,8 @@ func (r *Resolver) fetchSeedlistFromSRV(host string, srvName string, stopOnErr b
 }
 
 func validateSRVResult(recordFromSRV, inputHostName string) error {
-	separatedInputDomain := strings.Split(inputHostName, ".")
-	separatedRecord := strings.Split(recordFromSRV, ".")
+	separatedInputDomain := strings.Split(strings.ToLower(inputHostName), ".")
+	separatedRecord := strings.Split(strings.ToLower(recordFromSRV), ".")
 	if len(separatedRecord) < 2 {
 		return errors.New("DNS name must contain at least 2 labels")
 	}

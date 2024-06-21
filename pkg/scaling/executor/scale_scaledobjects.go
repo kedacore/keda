@@ -253,12 +253,18 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 		cooldownPeriod = time.Second * time.Duration(defaultCooldownPeriod)
 	}
 
+	initialCooldownPeriod := time.Second * time.Duration(scaledObject.Spec.InitialCooldownPeriod)
+
+	// If the ScaledObject was just created,CreationTimestamp is zero, set the CreationTimestamp to now
+	if scaledObject.ObjectMeta.CreationTimestamp.IsZero() {
+		scaledObject.ObjectMeta.CreationTimestamp = metav1.NewTime(time.Now())
+	}
+
 	// LastActiveTime can be nil if the ScaleTarget was scaled outside of KEDA.
 	// In this case we will ignore the cooldown period and scale it down
-	if scaledObject.Status.LastActiveTime == nil ||
-		scaledObject.Status.LastActiveTime.Add(cooldownPeriod).Before(time.Now()) {
+	if (scaledObject.Status.LastActiveTime == nil && scaledObject.ObjectMeta.CreationTimestamp.Add(initialCooldownPeriod).Before(time.Now())) || (scaledObject.Status.LastActiveTime != nil &&
+		scaledObject.Status.LastActiveTime.Add(cooldownPeriod).Before(time.Now())) {
 		// or last time a trigger was active was > cooldown period, so scale in.
-
 		idleValue, scaleToReplicas := getIdleOrMinimumReplicaCount(scaledObject)
 
 		currentReplicas, err := e.updateScaleOnScaleTarget(ctx, scaledObject, scale, scaleToReplicas)

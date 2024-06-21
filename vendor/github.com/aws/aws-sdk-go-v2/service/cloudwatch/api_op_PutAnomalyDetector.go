@@ -6,15 +6,18 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Creates an anomaly detection model for a CloudWatch metric. You can use the
-// model to display a band of expected normal values when the metric is graphed.
-// For more information, see CloudWatch Anomaly Detection (https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Anomaly_Detection.html)
+// model to display a band of expected normal values when the metric is graphed. If
+// you have enabled unified cross-account observability, and this account is a
+// monitoring account, the metric can be in the same account or a source account.
+// You can specify the account ID in the object you specify in the
+// SingleMetricAnomalyDetector parameter. For more information, see CloudWatch
+// Anomaly Detection (https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Anomaly_Detection.html)
 // .
 func (c *Client) PutAnomalyDetector(ctx context.Context, params *PutAnomalyDetectorInput, optFns ...func(*Options)) (*PutAnomalyDetectorOutput, error) {
 	if params == nil {
@@ -43,6 +46,11 @@ type PutAnomalyDetectorInput struct {
 	//
 	// Deprecated: Use SingleMetricAnomalyDetector.
 	Dimensions []types.Dimension
+
+	// Use this object to include parameters to provide information about your metric
+	// to CloudWatch to help it build more accurate anomaly detection models.
+	// Currently, it includes the PeriodicSpikes parameter.
+	MetricCharacteristics *types.MetricCharacteristics
 
 	// The metric math anomaly detector to be created. When using
 	// MetricMathAnomalyDetector , you cannot include the following parameters in the
@@ -73,7 +81,7 @@ type PutAnomalyDetectorInput struct {
 	//   - MetricName
 	//   - Namespace
 	//   - Stat
-	//   - the MetricMatchAnomalyDetector parameters of PutAnomalyDetectorInput
+	//   - the MetricMathAnomalyDetector parameters of PutAnomalyDetectorInput
 	// Instead, specify the single metric anomaly detector attributes as part of the
 	// property SingleMetricAnomalyDetector .
 	SingleMetricAnomalyDetector *types.SingleMetricAnomalyDetector
@@ -115,25 +123,25 @@ func (c *Client) addOperationPutAnomalyDetectorMiddlewares(stack *middleware.Sta
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -154,7 +162,7 @@ func (c *Client) addOperationPutAnomalyDetectorMiddlewares(stack *middleware.Sta
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opPutAnomalyDetector(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

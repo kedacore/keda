@@ -135,6 +135,7 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 		verifyScaledObjects,
 		verifyHpas,
 		verifyReplicaCount,
+		verifyFallback,
 	}
 
 	for i := range verifyFunctions {
@@ -164,6 +165,15 @@ func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) error {
 	if err != nil {
 		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
 		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "incorrect-replicas")
+	}
+	return nil
+}
+
+func verifyFallback(incomingSo *ScaledObject, action string, _ bool) error {
+	err := CheckFallbackValid(incomingSo)
+	if err != nil {
+		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
+		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "incorrect-fallback")
 	}
 	return nil
 }
@@ -211,6 +221,9 @@ func verifyHpas(incomingSo *ScaledObject, action string, _ bool) error {
 	}
 
 	for _, hpa := range hpaList.Items {
+		if hpa.ObjectMeta.Annotations[ValidationsHpaOwnershipAnnotation] == "false" {
+			continue
+		}
 		val, _ := json.MarshalIndent(hpa, "", "  ")
 		scaledobjectlog.V(1).Info(fmt.Sprintf("checking hpa %s: %v", hpa.Name, string(val)))
 

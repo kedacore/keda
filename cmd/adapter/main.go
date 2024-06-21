@@ -55,6 +55,9 @@ type Adapter struct {
 	Message string
 }
 
+// https://github.com/kedacore/keda/issues/5732
+//
+//nolint:staticcheck // SA1019: klogr.New is deprecated.
 var logger = klogr.New().WithName("keda_metrics_adapter")
 
 var (

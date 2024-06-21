@@ -36,6 +36,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -43,6 +44,7 @@ import (
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventemitter/eventdata"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
+	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 )
 
@@ -64,6 +66,7 @@ type EventEmitter struct {
 	eventFilterCacheLock     *sync.RWMutex
 	eventLoopContexts        *sync.Map
 	cloudEventProcessingChan chan eventdata.EventData
+	secretsLister            corev1listers.SecretLister
 }
 
 // EventHandler defines the behavior for EventEmitter clients
@@ -88,11 +91,12 @@ type EmitData struct {
 }
 
 const (
-	cloudEventHandlerTypeHTTP = "http"
+	cloudEventHandlerTypeHTTP                = "http"
+	cloudEventHandlerTypeAzureEventGridTopic = "azureEventGridTopic"
 )
 
 // NewEventEmitter creates a new EventEmitter
-func NewEventEmitter(client client.Client, recorder record.EventRecorder, clusterName string) EventHandler {
+func NewEventEmitter(client client.Client, recorder record.EventRecorder, clusterName string, secretsLister corev1listers.SecretLister) EventHandler {
 	return &EventEmitter{
 		log:                      logf.Log.WithName("event_emitter"),
 		client:                   client,
@@ -104,6 +108,7 @@ func NewEventEmitter(client client.Client, recorder record.EventRecorder, cluste
 		eventFilterCacheLock:     &sync.RWMutex{},
 		eventLoopContexts:        &sync.Map{},
 		cloudEventProcessingChan: make(chan eventdata.EventData, maxChannelBuffer),
+		secretsLister:            secretsLister,
 	}
 }
 
@@ -180,6 +185,16 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEventSource
 		clusterName = e.clusterName
 	}
 
+	// Resolve auth related
+	authParams, podIdentity, err := resolver.ResolveAuthRefAndPodIdentity(ctx, e.client, e.log, cloudEventSource.Spec.AuthenticationRef, nil, cloudEventSource.Namespace, e.secretsLister)
+	if err != nil {
+		e.log.Error(err, "error resolving auth params", "cloudEventSource", cloudEventSource)
+		return
+	}
+
+	// Create EventFilter from CloudEventSource
+	e.eventFilterCache[key] = NewEventFilter(cloudEventSource.Spec.EventSubscription.IncludedEventTypes, cloudEventSource.Spec.EventSubscription.ExcludedEventTypes)
+
 	// Create different event destinations here
 	if cloudEventSource.Spec.Destination.HTTP != nil {
 		eventHandler, err := NewCloudEventHTTPHandler(ctx, clusterName, cloudEventSource.Spec.Destination.HTTP.URI, initializeLogger(cloudEventSource, "cloudevent_http"))
@@ -193,10 +208,25 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEventSource
 			h.CloseHandler()
 		}
 		e.eventHandlersCache[eventHandlerKey] = eventHandler
+		return
 	}
 
-	// Create EventFilter from CloudEventSource
-	e.eventFilterCache[key] = NewEventFilter(cloudEventSource.Spec.EventSubscription.IncludedEventTypes, cloudEventSource.Spec.EventSubscription.ExcludedEventTypes)
+	if cloudEventSource.Spec.Destination.AzureEventGridTopic != nil {
+		eventHandler, err := NewAzureEventGridTopicHandler(ctx, clusterName, cloudEventSource.Spec.Destination.AzureEventGridTopic, authParams, podIdentity, initializeLogger(cloudEventSource, "azure_event_grid_topic"))
+		if err != nil {
+			e.log.Error(err, "create Azure Event Grid handler failed")
+			return
+		}
+
+		eventHandlerKey := newEventHandlerKey(key, cloudEventHandlerTypeAzureEventGridTopic)
+		if h, ok := e.eventHandlersCache[eventHandlerKey]; ok {
+			h.CloseHandler()
+		}
+		e.eventHandlersCache[eventHandlerKey] = eventHandler
+		return
+	}
+
+	e.log.Info("No destionation is defined in CloudEventSource", "CloudEventSource", cloudEventSource.Name)
 }
 
 // clearEventHandlersCache will clear all event handlers that created by the passing CloudEventSource
@@ -208,6 +238,8 @@ func (e *EventEmitter) clearEventHandlersCache(cloudEventSource *eventingv1alpha
 
 	key := cloudEventSource.GenerateIdentifier()
 
+	delete(e.eventFilterCache, key)
+
 	// Clear different event destination here.
 	if cloudEventSource.Spec.Destination.HTTP != nil {
 		eventHandlerKey := newEventHandlerKey(key, cloudEventHandlerTypeHTTP)
@@ -217,7 +249,13 @@ func (e *EventEmitter) clearEventHandlersCache(cloudEventSource *eventingv1alpha
 		}
 	}
 
-	delete(e.eventFilterCache, key)
+	if cloudEventSource.Spec.Destination.AzureEventGridTopic != nil {
+		eventHandlerKey := newEventHandlerKey(key, cloudEventHandlerTypeAzureEventGridTopic)
+		if eventHandler, found := e.eventHandlersCache[eventHandlerKey]; found {
+			eventHandler.CloseHandler()
+			delete(e.eventHandlersCache, key)
+		}
+	}
 }
 
 // checkIfEventHandlersExist will check if the event handlers that were created by passing CloudEventSource exist
@@ -421,8 +459,7 @@ func (e *EventEmitter) updateCloudEventSourceStatus(ctx context.Context, cloudEv
 	return nil
 }
 
-// TODO: nolint:unparam should be remove after added more than one cloudevent handler
-func newEventHandlerKey(kindNamespaceName string, handlerType string) string { //nolint:unparam
+func newEventHandlerKey(kindNamespaceName string, handlerType string) string {
 	return fmt.Sprintf("%s.%s", kindNamespaceName, handlerType)
 }
 

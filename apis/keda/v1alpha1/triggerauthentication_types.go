@@ -121,25 +121,21 @@ type PodIdentityProvider string
 // PodIdentityProvider<IDENTITY_PROVIDER> specifies other available Identity providers
 const (
 	PodIdentityProviderNone          PodIdentityProvider = "none"
-	PodIdentityProviderAzure         PodIdentityProvider = "azure"
 	PodIdentityProviderAzureWorkload PodIdentityProvider = "azure-workload"
 	PodIdentityProviderGCP           PodIdentityProvider = "gcp"
 	PodIdentityProviderAwsEKS        PodIdentityProvider = "aws-eks"
-	PodIdentityProviderAwsKiam       PodIdentityProvider = "aws-kiam"
 	PodIdentityProviderAws           PodIdentityProvider = "aws"
 )
 
 // PodIdentityAnnotationEKS specifies aws role arn for aws-eks Identity Provider
-// PodIdentityAnnotationKiam specifies aws role arn for aws-iam Identity Provider
 const (
-	PodIdentityAnnotationEKS  = "eks.amazonaws.com/role-arn"
-	PodIdentityAnnotationKiam = "iam.amazonaws.com/role"
+	PodIdentityAnnotationEKS = "eks.amazonaws.com/role-arn"
 )
 
 // AuthPodIdentity allows users to select the platform native identity
 // mechanism
 type AuthPodIdentity struct {
-	// +kubebuilder:validation:Enum=azure;azure-workload;gcp;aws;aws-eks;aws-kiam;none
+	// +kubebuilder:validation:Enum=azure-workload;gcp;aws;aws-eks;none
 	Provider PodIdentityProvider `json:"provider"`
 
 	// +optional
