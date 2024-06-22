@@ -104,11 +104,8 @@ func (c *Client) SavedSearch(name string) (*SearchResponse, error) {
 	result := &SearchResponse{}
 
 	err = json.NewDecoder(resp.Body).Decode(&result)
-	if err != nil {
-		return result, err
-	}
 
-	return result, nil
+	return result, err
 }
 
 // ToMetric converts a search response to a consumable metric value.
