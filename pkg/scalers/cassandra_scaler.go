@@ -179,14 +179,14 @@ func parseCassandraMetadata(config *scalersconfig.ScalerConfig) (*CassandraMetad
 }
 
 func createTempFile(prefix string, content string) (string, error) {
-	tempKrbDir := fmt.Sprintf("%s%c%s", os.TempDir(), os.PathSeparator, "cassandra")
-	err := os.MkdirAll(tempKrbDir, 0700)
+	tempCassandraDir := fmt.Sprintf("%s%c%s", os.TempDir(), os.PathSeparator, "cassandra")
+	err := os.MkdirAll(tempCassandraDir, 0700)
 	if err != nil {
 		return "", fmt.Errorf(`error creating temporary directory: %s.  Error: %w
-		Note, when running in a container a writable /tmp/kerberos emptyDir must be mounted.  Refer to documentation`, tempKrbDir, err)
+		Note, when running in a container a writable /tmp/cassandra emptyDir must be mounted.  Refer to documentation`, tempCassandraDir, err)
 	}
 
-	f, err := os.CreateTemp(tempKrbDir, prefix+"-*.pem")
+	f, err := os.CreateTemp(tempCassandraDir, prefix+"-*.pem")
 	if err != nil {
 		return "", err
 	}
