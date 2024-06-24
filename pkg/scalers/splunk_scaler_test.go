@@ -23,8 +23,7 @@ type SplunkMetricIdentifier struct {
 var validSplunkMetadata = map[string]string{
 	"username":        "admin",
 	"host":            "https://localhost:8089",
-	"httpTimeout":     "15s",
-	"verifyTLS":       "false",
+	"unsafeSsl":       "false",
 	"targetValue":     "1",
 	"activationValue": "5",
 	"savedSearchName": "fakeSavedSearchName",
@@ -40,22 +39,20 @@ var testSplunkMetadata = []parseSplunkMetadataTestData{
 	{map[string]string{}, map[string]string{}, true},
 	// Invalid host, fail.
 	{map[string]string{"username": "admin", "host": "missinghttpURIScheme:8089"}, map[string]string{}, true},
-	// Invalid httpTimeout, fail.
-	{map[string]string{"username": "admin", "host": "https://localhost:8089", "httpTimeout": "invalid"}, map[string]string{}, true},
-	// Invalid verifyTLS value, fail.
-	{map[string]string{"username": "admin", "host": "https://localhost:8089", "httpTimeout": "10s", "verifyTLS": "invalid"}, map[string]string{}, true},
+	// Invalid unsafeSsl value, fail.
+	{map[string]string{"username": "admin", "host": "https://localhost:8089", "unsafeSsl": "invalid"}, map[string]string{}, true},
 	// Missing targetValue, fail.
-	{map[string]string{"username": "admin", "apiToken": "fake", "host": "https://localhost:8089", "httpTimeout": "15s", "verifyTLS": "false"}, map[string]string{}, true},
+	{map[string]string{"username": "admin", "apiToken": "fake", "host": "https://localhost:8089", "unsafeSsl": "false"}, map[string]string{}, true},
 	// Invalid targetValue, fail.
-	{map[string]string{"username": "admin", "apiToken": "fake", "host": "https://localhost:8089", "httpTimeout": "15s", "verifyTLS": "false", "targetValue": "invalid"}, map[string]string{}, true},
+	{map[string]string{"username": "admin", "apiToken": "fake", "host": "https://localhost:8089", "unsafeSsl": "false", "targetValue": "invalid"}, map[string]string{}, true},
 	// Missing activationValue, fail.
-	{map[string]string{"username": "admin", "apiToken": "fake", "host": "https://localhost:8089", "httpTimeout": "15s", "verifyTLS": "false", "targetValue": "1"}, map[string]string{}, true},
+	{map[string]string{"username": "admin", "apiToken": "fake", "host": "https://localhost:8089", "unsafeSsl": "false", "targetValue": "1"}, map[string]string{}, true},
 	// Invalid activationValue, fail.
-	{map[string]string{"username": "admin", "apiToken": "fake", "host": "https://localhost:8089", "httpTimeout": "15s", "verifyTLS": "false", "targetValue": "1", "activationValue": "invalid"}, map[string]string{}, true},
+	{map[string]string{"username": "admin", "apiToken": "fake", "host": "https://localhost:8089", "unsafeSsl": "false", "targetValue": "1", "activationValue": "invalid"}, map[string]string{}, true},
 	// Missing savedSearchName, fail.
-	{map[string]string{"username": "admin", "apiToken": "fake", "host": "https://localhost:8089", "httpTimeout": "15s", "verifyTLS": "false", "targetValue": "1", "activationValue": "5"}, map[string]string{}, true},
+	{map[string]string{"username": "admin", "apiToken": "fake", "host": "https://localhost:8089", "unsafeSsl": "false", "targetValue": "1", "activationValue": "5"}, map[string]string{}, true},
 	// Missing valueField, fail.
-	{map[string]string{"username": "admin", "apiToken": "fake", "host": "https://localhost:8089", "httpTimeout": "15s", "verifyTLS": "false", "targetValue": "1", "activationValue": "5", "savedSearchName": "fakeSavedSearchName"}, map[string]string{}, true},
+	{map[string]string{"username": "admin", "apiToken": "fake", "host": "https://localhost:8089", "unsafeSsl": "false", "targetValue": "1", "activationValue": "5", "savedSearchName": "fakeSavedSearchName"}, map[string]string{}, true},
 }
 
 var SplunkMetricIdentifiers = []SplunkMetricIdentifier{

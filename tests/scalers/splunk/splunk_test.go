@@ -205,7 +205,7 @@ spec:
       metadata:
         host: "https://{{.DeploymentName}}.{{.TestNamespace}}.svc:{{.APIPort}}"
         username:  {{.SplunkUsername}}
-        verifyTLS: "false"
+        unsafeSsl: "true"
         targetValue: "{{.TargetValue}}"
         activationValue: "{{.ActivationValue}}"
         savedSearchName: {{.SavedSearchName}}

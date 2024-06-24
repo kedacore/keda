@@ -1,7 +1,6 @@
 package splunk
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +10,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
@@ -24,7 +26,7 @@ type Config struct {
 	Password    string
 	APIToken    string
 	HTTPTimeout time.Duration
-	VerifyTLS   bool
+	UnsafeSsl   bool
 }
 
 // Client contains Splunk config information as well as an http client for requests.
@@ -39,7 +41,7 @@ type SearchResponse struct {
 }
 
 // NewClient returns a new Splunk client.
-func NewClient(c *Config) (*Client, error) {
+func NewClient(c *Config, sc *scalersconfig.ScalerConfig) (*Client, error) {
 	if c.APIToken != "" && c.Password != "" {
 		return nil, errors.New("API token and Password were all set. If APIToken is set, username and password must not be used")
 	}
@@ -48,17 +50,11 @@ func NewClient(c *Config) (*Client, error) {
 		return nil, errors.New("API token was set and username was not. Username is needed to determine who owns the saved search")
 	}
 
+	httpClient := kedautil.CreateHTTPClient(sc.GlobalHTTPTimeout, c.UnsafeSsl)
+
 	client := &Client{
 		c,
-		&http.Client{
-			Timeout: c.HTTPTimeout,
-		},
-	}
-
-	if !c.VerifyTLS {
-		client.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
+		httpClient,
 	}
 
 	return client, nil

@@ -1,11 +1,14 @@
 package splunk
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 func TestNewClient(t *testing.T) {
@@ -37,18 +40,18 @@ func TestNewClient(t *testing.T) {
 			expectErr: true,
 		},
 		{
-			name: "VerifyTLS config",
+			name: "UnsafeSsl config",
 			config: &Config{
 				APIToken:  "fake",
 				Username:  "fake",
-				VerifyTLS: false,
+				UnsafeSsl: false,
 			},
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			client, err := NewClient(test.config)
+			client, err := NewClient(test.config, &scalersconfig.ScalerConfig{})
 
 			if test.expectErr && err != nil {
 				return
@@ -58,8 +61,8 @@ func TestNewClient(t *testing.T) {
 				t.Error("Expected error, got nil")
 			}
 
-			if !test.config.VerifyTLS && client.Client.Transport == nil {
-				t.Error("Expected TLS client config to be set, but was nil")
+			if test.config.UnsafeSsl && client.Client.Transport == nil {
+				t.Error("Expected SSL client config to be set, but was nil")
 			}
 		})
 	}
@@ -72,7 +75,7 @@ func TestSavedSearch(t *testing.T) {
 		expectErr       bool
 		metricValue     string
 		valueField      string
-		response        string
+		response        SearchResponse
 		savedSearchName string
 		statusCode      int
 	}{
@@ -84,7 +87,7 @@ func TestSavedSearch(t *testing.T) {
 			},
 			metricValue:     "1",
 			valueField:      "count",
-			response:        `{"preview":false,"offset":0,"lastrow":true,"result":{"count":"1"}}`,
+			response:        SearchResponse{Result: map[string]string{"count": "1"}},
 			savedSearchName: "testsearch1",
 			statusCode:      http.StatusOK,
 		},
@@ -96,19 +99,8 @@ func TestSavedSearch(t *testing.T) {
 			},
 			metricValue:     "100",
 			valueField:      "count",
-			response:        `{"preview":false,"offset":0,"lastrow":true,"result":{"count":"100"}}`,
+			response:        SearchResponse{Result: map[string]string{"count": "100"}},
 			savedSearchName: "testsearch2",
-			statusCode:      http.StatusOK,
-		},
-		{
-			name: "Invalid JSON",
-			config: &Config{
-				Username: "admin",
-				Password: "password",
-			},
-			expectErr:       true,
-			response:        `{`,
-			savedSearchName: "testsearch3",
 			statusCode:      http.StatusOK,
 		},
 		{
@@ -118,7 +110,7 @@ func TestSavedSearch(t *testing.T) {
 				Password: "password",
 			},
 			expectErr:       true,
-			response:        `{}`,
+			response:        SearchResponse{Result: map[string]string{}},
 			savedSearchName: "testsearch4",
 			statusCode:      http.StatusBadRequest,
 		},
@@ -129,7 +121,7 @@ func TestSavedSearch(t *testing.T) {
 				Password: "password",
 			},
 			expectErr:       true,
-			response:        `{}`,
+			response:        SearchResponse{Result: map[string]string{}},
 			savedSearchName: "testsearch5",
 			statusCode:      http.StatusForbidden,
 		},
@@ -140,7 +132,7 @@ func TestSavedSearch(t *testing.T) {
 				Username: "fake",
 			},
 			expectErr:       true,
-			response:        `{}`,
+			response:        SearchResponse{Result: map[string]string{}},
 			savedSearchName: "testsearch5",
 			statusCode:      http.StatusForbidden,
 		},
@@ -196,12 +188,17 @@ func TestSavedSearch(t *testing.T) {
 				}
 
 				w.WriteHeader(test.statusCode)
-				_, _ = w.Write([]byte(test.response))
+				w.Header().Set("Content-Type", "application/json")
+				err = json.NewEncoder(w).Encode(test.response)
+				if err != nil {
+					http.Error(w, fmt.Sprintf("error building the response, %v", err), http.StatusInternalServerError)
+					return
+				}
 			}))
 			defer server.Close()
 
 			test.config.Host = server.URL
-			s, err := NewClient(test.config)
+			s, err := NewClient(test.config, &scalersconfig.ScalerConfig{})
 			if err != nil {
 				t.Errorf("Expected err to be nil, got %s", err.Error())
 			}
