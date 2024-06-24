@@ -38,8 +38,6 @@ var (
 	azurePostgreSQLAdminPassword    = os.Getenv("TF_AZURE_POSTGRES_ADMIN_PASSWORD")
 	azurePostgreSQLFQDN             = os.Getenv("TF_AZURE_POSTGRES_FQDN")
 	azurePostgreSQLDatabase         = os.Getenv("TF_AZURE_POSTGRES_DB_NAME")
-	azureADTenantID                 = os.Getenv("TF_AZURE_SP_TENANT")
-	azurePostgreSQLUamiClientID     = os.Getenv("TF_AZURE_IDENTITY_1_APP_ID")
 	azurePostgreSQLUamiName         = os.Getenv("TF_AZURE_IDENTITY_1_NAME")
 	azurePostgreSQLConnectionString = GetAzureConnectionString(azurePostgreSQLAdminUsername, azurePostgreSQLAdminPassword, azurePostgreSQLFQDN, azurePostgreSQLDatabase)
 	localPostgreSQLUsername         = "test-user"
@@ -63,9 +61,7 @@ type templateData struct {
 	AzurePostgreSQLAdminPassword          string
 	AzurePostgreSQLFQDN                   string
 	AzurePostgreSQLDatabase               string
-	AzurePostgreSQLUamiClientID           string
 	AzurePostgreSQLUamiName               string
-	AzureADTenantID                       string
 	PostgreSQLUsername                    string
 	PostgreSQLPassword                    string
 	PostgreSQLDatabase                    string
@@ -93,8 +89,6 @@ metadata:
 spec:
   podIdentity:
     provider: azure-workload
-    identityId: {{.AzurePostgreSQLUamiClientID}}
-    identityTenantId: {{.AzureADTenantID}}
 `
 
 	azureScaledObjectTemplate = `
@@ -210,9 +204,7 @@ var data = templateData{
 	AzurePostgreSQLAdminUsername:          azurePostgreSQLAdminUsername,
 	AzurePostgreSQLAdminPassword:          azurePostgreSQLAdminPassword,
 	AzurePostgreSQLDatabase:               azurePostgreSQLDatabase,
-	AzureADTenantID:                       azureADTenantID,
 	AzurePostgreSQLFQDN:                   azurePostgreSQLFQDN,
-	AzurePostgreSQLUamiClientID:           azurePostgreSQLUamiClientID,
 	AzurePostgreSQLUamiName:               azurePostgreSQLUamiName,
 	AzurePostgreSQLConnectionStringBase64: base64.StdEncoding.EncodeToString([]byte(azurePostgreSQLConnectionString)),
 	PostgreSQLUsername:                    localPostgreSQLUsername,
