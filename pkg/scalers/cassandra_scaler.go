@@ -2,8 +2,10 @@ package scalers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 
@@ -28,6 +30,10 @@ type cassandraScaler struct {
 type CassandraMetadata struct {
 	username                   string
 	password                   string
+	enableTLS                  bool
+	cert                       string
+	key                        string
+	ca                         string
 	clusterIPAddress           string
 	port                       int
 	consistency                gocql.Consistency
@@ -38,6 +44,11 @@ type CassandraMetadata struct {
 	activationTargetQueryValue int64
 	triggerIndex               int
 }
+
+const (
+	tlsEnable  = "enable"
+	tlsDisable = "disable"
+)
 
 // NewCassandraScaler creates a new Cassandra scaler.
 func NewCassandraScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
@@ -68,7 +79,8 @@ func NewCassandraScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 // parseCassandraMetadata parses the metadata and returns a CassandraMetadata or an error if the ScalerConfig is invalid.
 func parseCassandraMetadata(config *scalersconfig.ScalerConfig) (*CassandraMetadata, error) {
-	meta := CassandraMetadata{}
+	meta := &CassandraMetadata{}
+	var err error
 
 	if val, ok := config.TriggerMetadata["query"]; ok {
 		meta.query = val
@@ -157,9 +169,86 @@ func parseCassandraMetadata(config *scalersconfig.ScalerConfig) (*CassandraMetad
 		return nil, fmt.Errorf("no password given")
 	}
 
+	if err = parseCassandraTLS(config, meta); err != nil {
+		return meta, err
+	}
+
 	meta.triggerIndex = config.TriggerIndex
 
-	return &meta, nil
+	return meta, nil
+}
+
+func createTempFile(prefix string, content string) (string, error) {
+	tempKrbDir := fmt.Sprintf("%s%c%s", os.TempDir(), os.PathSeparator, "cassandra")
+	err := os.MkdirAll(tempKrbDir, 0700)
+	if err != nil {
+		return "", fmt.Errorf(`error creating temporary directory: %s.  Error: %w
+		Note, when running in a container a writable /tmp/kerberos emptyDir must be mounted.  Refer to documentation`, tempKrbDir, err)
+	}
+
+	f, err := os.CreateTemp(tempKrbDir, prefix+"-*.pem")
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	_, err = f.WriteString(content)
+	if err != nil {
+		return "", err
+	}
+
+	return f.Name(), nil
+}
+
+func parseCassandraTLS(config *scalersconfig.ScalerConfig, meta *CassandraMetadata) error {
+	meta.enableTLS = false
+	if val, ok := config.AuthParams["tls"]; ok {
+		val = strings.TrimSpace(val)
+		if val == tlsEnable {
+			certGiven := config.AuthParams["cert"] != ""
+			keyGiven := config.AuthParams["key"] != ""
+			caCertGiven := config.AuthParams["ca"] != ""
+			if certGiven && !keyGiven {
+				return errors.New("no key given")
+			}
+			if keyGiven && !certGiven {
+				return errors.New("no cert given")
+			}
+			if !keyGiven && !certGiven {
+				return errors.New("no cert/key given")
+			}
+
+			certFilePath, err := createTempFile("cert", config.AuthParams["cert"])
+			if err != nil {
+				// handle error
+				return errors.New("Error creating cert file: " + err.Error())
+			}
+
+			keyFilePath, err := createTempFile("key", config.AuthParams["key"])
+			if err != nil {
+				// handle error
+				return errors.New("Error creating key file: " + err.Error())
+			}
+
+			meta.cert = certFilePath
+			meta.key = keyFilePath
+			meta.ca = config.AuthParams["ca"]
+			if !caCertGiven {
+				meta.ca = ""
+			} else {
+				caCertFilePath, err := createTempFile("caCert", config.AuthParams["ca"])
+				meta.ca = caCertFilePath
+				if err != nil {
+					// handle error
+					return errors.New("Error creating ca file: " + err.Error())
+				}
+			}
+			meta.enableTLS = true
+		} else if val != tlsDisable {
+			return fmt.Errorf("err incorrect value for TLS given: %s", val)
+		}
+	}
+	return nil
 }
 
 // newCassandraSession returns a new Cassandra session for the provided CassandraMetadata.
@@ -170,6 +259,14 @@ func newCassandraSession(meta *CassandraMetadata, logger logr.Logger) (*gocql.Se
 	cluster.Authenticator = gocql.PasswordAuthenticator{
 		Username: meta.username,
 		Password: meta.password,
+	}
+
+	if meta.enableTLS {
+		cluster.SslOpts = &gocql.SslOptions{
+			CertPath: meta.cert,
+			KeyPath:  meta.key,
+			CaPath:   meta.ca,
+		}
 	}
 
 	session, err := cluster.CreateSession()
@@ -223,6 +320,23 @@ func (s *cassandraScaler) GetQueryResult(ctx context.Context) (int64, error) {
 
 // Close closes the Cassandra session connection.
 func (s *cassandraScaler) Close(_ context.Context) error {
+	// clean up any temporary files
+	if strings.TrimSpace(s.metadata.cert) != "" {
+		if err := os.Remove(s.metadata.cert); err != nil {
+			return err
+		}
+	}
+	if strings.TrimSpace(s.metadata.key) != "" {
+		if err := os.Remove(s.metadata.key); err != nil {
+			return err
+		}
+	}
+	if strings.TrimSpace(s.metadata.ca) != "" {
+		if err := os.Remove(s.metadata.ca); err != nil {
+			return err
+		}
+	}
+
 	if s.session != nil {
 		s.session.Close()
 	}
