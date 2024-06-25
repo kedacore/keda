@@ -102,7 +102,7 @@ func (e *scaleExecutor) getScalingDecision(scaledJob *kedav1alpha1.ScaledJob, ru
 
 func (e *scaleExecutor) createJobs(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob, scaleTo int64, maxScale int64) {
 	if maxScale <= 0 {
-		logger.Info("No need to create jobs", "Effective maxScale", maxScale)
+		logger.Info("No need to create jobs - all requested jobs already exist", "jobs", maxScale)
 		return
 	}
 	logger.Info("Creating jobs", "Effective number of max jobs", maxScale)
