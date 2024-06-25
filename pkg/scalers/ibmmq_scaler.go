@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -53,7 +54,8 @@ type CommandResponse struct {
 
 // Response The body of the response returned from the MQ admin query
 type Response struct {
-	Parameters Parameters `json:"parameters"`
+	Parameters *Parameters `json:"parameters"`
+	Message    []string    `json:"message"`
 }
 
 // Parameters Contains the current depth of the IBM MQ Queue
@@ -198,8 +200,18 @@ func (s *IBMMQScaler) getQueueDepthViaHTTP(ctx context.Context) (int64, error) {
 	}
 
 	if response.CommandResponse == nil || len(response.CommandResponse) == 0 {
-		return 0, fmt.Errorf("failed to parse response from REST call: %w", err)
+		return 0, fmt.Errorf("failed to parse response from REST call")
 	}
+
+	if response.CommandResponse[0].Parameters == nil {
+		var reason string
+		message := strings.Join(response.CommandResponse[0].Message, " ")
+		if message != "" {
+			reason = fmt.Sprintf(", reason: %s", message)
+		}
+		return 0, fmt.Errorf("failed to get the current queue depth parameter%s", reason)
+	}
+
 	return int64(response.CommandResponse[0].Parameters.Curdepth), nil
 }
 
