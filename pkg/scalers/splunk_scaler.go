@@ -83,18 +83,6 @@ func parseSplunkMetadata(config *scalersconfig.ScalerConfig) (*SplunkMetadata, e
 		return meta, errors.New("invalid value for host. Must be a valid URL such as https://localhost:8089")
 	}
 
-	if meta.Username == "" {
-		return meta, errors.New("no username given")
-	}
-
-	if meta.SavedSearchName == "" {
-		return meta, errors.New("no savedSearchName given")
-	}
-
-	if meta.ValueField == "" {
-		return meta, errors.New("no valueField given")
-	}
-
 	return meta, nil
 }
 
