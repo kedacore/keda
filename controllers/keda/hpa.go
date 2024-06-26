@@ -35,7 +35,7 @@ import (
 	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
 	"github.com/kedacore/keda/v2/pkg/scaling/executor"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
-	version "github.com/kedacore/keda/v2/version"
+	"github.com/kedacore/keda/v2/version"
 )
 
 // createAndDeployNewHPA creates and deploy HPA in the cluster for specified ScaledObject
@@ -95,8 +95,23 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 		"app.kubernetes.io/part-of":    scaledObject.Name,
 		"app.kubernetes.io/managed-by": "keda-operator",
 	}
-	for key, value := range scaledObject.ObjectMeta.Labels {
+	for key, value := range scaledObject.Labels {
 		labels[key] = value
+	}
+	if scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Labels != nil {
+		for key, value := range scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Labels {
+			labels[key] = value
+		}
+	}
+
+	annotations := map[string]string{}
+	for key, value := range scaledObject.Annotations {
+		annotations[key] = value
+	}
+	if scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Annotations != nil {
+		for key, value := range scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Annotations {
+			annotations[key] = value
+		}
 	}
 
 	minReplicas := scaledObject.GetHPAMinReplicas()
@@ -130,7 +145,7 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 			Name:        getHPAName(scaledObject),
 			Namespace:   scaledObject.Namespace,
 			Labels:      labels,
-			Annotations: scaledObject.Annotations,
+			Annotations: annotations,
 		},
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v2",
