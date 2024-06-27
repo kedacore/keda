@@ -38,7 +38,7 @@ const (
 	defaultFailedJobsHistoryLimit     = int32(100)
 )
 
-func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob, isActive bool, scaleTo int64, maxScale int64) {
+func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob, isActive bool, isError bool, scaleTo int64, maxScale int64) {
 	logger := e.logger.WithValues("scaledJob.Name", scaledJob.Name, "scaledJob.Namespace", scaledJob.Namespace)
 
 	runningJobCount := e.getRunningJobCount(ctx, scaledJob)
@@ -63,6 +63,19 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 		e.createJobs(ctx, logger, scaledJob, scaleTo, effectiveMaxScale)
 	} else {
 		logger.V(1).Info("No change in activity")
+	}
+
+	if isError {
+		// some triggers responded with error
+		// Set ScaledJob.Status.ReadyCondition to Unknown
+		readyCondition := scaledJob.Status.Conditions.GetReadyCondition()
+		msg := "Some triggers defined in ScaledJob are not working correctly"
+		logger.V(1).Info(msg)
+		if !readyCondition.IsUnknown() {
+			if err := e.setReadyCondition(ctx, logger, scaledJob, metav1.ConditionUnknown, "PartialTriggerError", msg); err != nil {
+				logger.Error(err, "error setting ready condition")
+			}
+		}
 	}
 
 	condition := scaledJob.Status.Conditions.GetActiveCondition()
