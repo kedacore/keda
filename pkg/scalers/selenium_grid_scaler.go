@@ -63,6 +63,7 @@ type seleniumSession struct {
 	ID           string `json:"id"`
 	Capabilities string `json:"capabilities"`
 	NodeID       string `json:"nodeId"`
+	PlatformName string `json:"platformName"`
 }
 
 type capability struct {
@@ -152,7 +153,7 @@ func (s *seleniumGridScaler) GetMetricSpecForScaling(context.Context) []v2.Metri
 
 func (s *seleniumGridScaler) getSessionsCount(ctx context.Context, logger logr.Logger) (int64, error) {
 	body, err := json.Marshal(map[string]string{
-		"query": "{ grid { maxSession, nodeCount }, sessionsInfo { sessionQueueRequests, sessions { id, capabilities, nodeId } } }",
+		"query": "{ grid { maxSession, nodeCount }, sessionsInfo { sessionQueueRequests, sessions { id, capabilities, nodeId, platformName } } }",
 	})
 
 	if err != nil {
@@ -198,7 +199,7 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 	for _, sessionQueueRequest := range sessionQueueRequests {
 		var capability = capability{}
 		if err := json.Unmarshal([]byte(sessionQueueRequest), &capability); err == nil {
-			if capability.BrowserName == browserName {
+			if capability.BrowserName == browserName && !strings.EqualFold(capability.PlatformName, "windows") {
 				var platformNameMatches = capability.PlatformName == "" || strings.EqualFold(capability.PlatformName, platformName)
 				if strings.HasPrefix(capability.BrowserVersion, browserVersion) && platformNameMatches {
 					count++
@@ -215,8 +216,8 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 	for _, session := range sessions {
 		var capability = capability{}
 		if err := json.Unmarshal([]byte(session.Capabilities), &capability); err == nil {
-			var platformNameMatches = capability.PlatformName == "" || strings.EqualFold(capability.PlatformName, platformName)
-			if capability.BrowserName == sessionBrowserName {
+			if capability.BrowserName == sessionBrowserName && !strings.EqualFold(capability.PlatformName, "windows") {
+				var platformNameMatches = capability.PlatformName == "" || strings.EqualFold(capability.PlatformName, platformName)
 				if strings.HasPrefix(capability.BrowserVersion, browserVersion) && platformNameMatches {
 					count++
 				} else if browserVersion == DefaultBrowserVersion && platformNameMatches {
