@@ -4,6 +4,7 @@
 package eager_scaling_strategy_test
 
 import (
+	"encoding/base64"
 	"fmt"
 	"testing"
 
@@ -22,19 +23,29 @@ const (
 )
 
 var (
-	testNamespace    = fmt.Sprintf("%s-ns", testName)
-	rmqNamespace     = fmt.Sprintf("%s-rmq", testName)
-	scaledJobName    = fmt.Sprintf("%s-sj", testName)
-	queueName        = "hello"
-	user             = fmt.Sprintf("%s-user", testName)
-	password         = fmt.Sprintf("%s-password", testName)
-	vhost            = "/"
-	connectionString = fmt.Sprintf("amqp://%s:%s@rabbitmq.%s.svc.cluster.local", user, password, rmqNamespace)
+	testNamespace        = fmt.Sprintf("%s-ns", testName)
+	rmqNamespace         = fmt.Sprintf("%s-rmq", testName)
+	scaledJobName        = fmt.Sprintf("%s-sj", testName)
+	queueName            = "hello"
+	user                 = fmt.Sprintf("%s-user", testName)
+	password             = fmt.Sprintf("%s-password", testName)
+	vhost                = "/"
+	connectionString     = fmt.Sprintf("amqp://%s:%s@rabbitmq.%s.svc.cluster.local/", user, password, rmqNamespace)
+	httpConnectionString = fmt.Sprintf("http://%s:%s@rabbitmq.%s.svc.cluster.local/", user, password, rmqNamespace)
+	secretName           = fmt.Sprintf("%s-secret", testName)
 )
 
 // YAML templates for your Kubernetes resources
 const (
 	scaledJobTemplate = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{.SecretName}}
+  namespace: {{.TestNamespace}}
+data:
+  RabbitApiHost: {{.Base64Connection}}
+---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledJob
 metadata:
@@ -53,6 +64,9 @@ spec:
             - sleep
             - "300"
             imagePullPolicy: IfNotPresent
+            envFrom:
+            - secretRef:
+                name: {{.SecretName}}
         restartPolicy: Never
     backoffLimit: 1
   pollingInterval: 5
@@ -70,9 +84,11 @@ spec:
 )
 
 type templateData struct {
-	ScaledJobName string
-	TestNamespace string
-	QueueName     string
+	ScaledJobName    string
+	TestNamespace    string
+	QueueName        string
+	SecretName       string
+	Base64Connection string
 }
 
 func TestScalingStrategy(t *testing.T) {
@@ -92,9 +108,11 @@ func TestScalingStrategy(t *testing.T) {
 func getTemplateData() (templateData, []Template) {
 	return templateData{
 			// Populate fields required in YAML templates
-			ScaledJobName: scaledJobName,
-			TestNamespace: testNamespace,
-			QueueName:     queueName,
+			ScaledJobName:    scaledJobName,
+			TestNamespace:    testNamespace,
+			QueueName:        queueName,
+			Base64Connection: base64.StdEncoding.EncodeToString([]byte(httpConnectionString)),
+			SecretName:       secretName,
 		}, []Template{
 			{Name: "scaledJobTemplate", Config: scaledJobTemplate},
 		}
