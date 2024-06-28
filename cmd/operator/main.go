@@ -85,6 +85,7 @@ func main() {
 	var k8sClusterDomain string
 	var enableCertRotation bool
 	var validatingWebhookName string
+	var caDirs []string
 	pflag.BoolVar(&enablePrometheusMetrics, "enable-prometheus-metrics", true, "Enable the prometheus metric of keda-operator.")
 	pflag.BoolVar(&enableOpenTelemetryMetrics, "enable-opentelemetry-metrics", false, "Enable the opentelemetry metric of keda-operator.")
 	pflag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the prometheus metric endpoint binds to.")
@@ -106,6 +107,7 @@ func main() {
 	pflag.StringVar(&k8sClusterDomain, "k8s-cluster-domain", "cluster.local", "Kubernetes cluster domain. Defaults to cluster.local")
 	pflag.BoolVar(&enableCertRotation, "enable-cert-rotation", false, "enable automatic generation and rotation of TLS certificates/keys")
 	pflag.StringVar(&validatingWebhookName, "validating-webhook-name", "keda-admission", "ValidatingWebhookConfiguration name. Defaults to keda-admission")
+	pflag.StringArrayVar(&caDirs, "ca-dir", []string{"/custom/ca"}, "Directory with CA certificates for scalers to authenticate TLS connections. Can be specified multiple times. Defaults to /custom/ca")
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
@@ -299,6 +301,8 @@ func main() {
 	} else {
 		close(certReady)
 	}
+
+	kedautil.SetCACertDirs(caDirs)
 
 	grpcServer := metricsservice.NewGrpcServer(&scaledHandler, metricsServiceAddr, certDir, certReady)
 	if err := mgr.Add(&grpcServer); err != nil {
