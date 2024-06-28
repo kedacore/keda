@@ -213,7 +213,7 @@ spec:
   triggers:
   - type: datadog
     metadata:
-      query: "avg:nginx.net.request_per_s{cluster_name:{{.KuberneteClusterName}}}"
+      query: "avg:nginx.net.request_per_s{cluster_name:{{.KuberneteClusterName}}, kube_namespace:{{.TestNamespace}}}"
       queryValue: "2"
       activationQueryValue: "3"
       age: "120"
@@ -231,7 +231,7 @@ spec:
   - image: busybox
     name: test
     command: ["/bin/sh"]
-    args: ["-c", "while true; do wget -O /dev/null -o /dev/null http://{{.ServciceName}}/; sleep 0.5; done"]`
+    args: ["-c", "while true; do wget -O /dev/null -o /dev/null http://{{.ServciceName}}/; sleep 5; done"]`
 
 	heavyLoadTemplate = `apiVersion: v1
 kind: Pod
@@ -246,7 +246,7 @@ spec:
     args: ["-c", "while true; do wget -O /dev/null -o /dev/null http://{{.ServciceName}}/; sleep 0.1; done"]`
 )
 
-func TestDatadogScaler(t *testing.T) {
+func TestDatadogScalerAPI(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, datadogAppKey, "DATADOG_APP_KEY env variable is required for datadog tests")
@@ -261,10 +261,15 @@ func TestDatadogScaler(t *testing.T) {
 
 	// install datadog
 	CreateNamespace(t, kc, testNamespace)
-	installDatadog(t)
 
 	// Create kubernetes resources
 	KubectlApplyMultipleWithTemplate(t, data, templates)
+
+	// Deploy Datadog Agent
+	installDatadog(t)
+
+	t.Log("--- creating ScaledObject ---")
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 180, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
@@ -336,6 +341,5 @@ func getTemplateData() (templateData, []Template) {
 			{Name: "serviceTemplate", Config: serviceTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }

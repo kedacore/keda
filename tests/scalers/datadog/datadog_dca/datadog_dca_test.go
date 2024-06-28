@@ -86,7 +86,7 @@ metadata:
   annotations:
     external-metrics.datadoghq.com/always-active: "true"
 spec:
-   query: "avg:nginx.net.request_per_s{cluster_name:{{.KuberneteClusterName}}}"
+   query: "avg:nginx.net.request_per_s{cluster_name:{{.KuberneteClusterName}}, kube_namespace:{{.TestNamespace}}}"
 `
 
 	dcaServiceAccountTemplate = `apiVersion: v1
@@ -316,7 +316,7 @@ spec:
   - image: busybox
     name: test
     command: ["/bin/sh"]
-    args: ["-c", "while true; do wget -O /dev/null -o /dev/null http://{{.ServiceName}}/; sleep 0.5; done"]`
+    args: ["-c", "while true; do wget -O /dev/null -o /dev/null http://{{.ServiceName}}/; sleep 5; done"]`
 
 	heavyLoadTemplate = `apiVersion: v1
 kind: Pod
@@ -331,7 +331,7 @@ spec:
     args: ["-c", "while true; do wget -O /dev/null -o /dev/null http://{{.ServiceName}}/; sleep 0.1; done"]`
 )
 
-func TestDatadogScaler(t *testing.T) {
+func TestDatadogScalerDCA(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, datadogAppKey, "DATADOG_APP_KEY env variable is required for datadog tests")
@@ -340,6 +340,10 @@ func TestDatadogScaler(t *testing.T) {
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
+	t.Cleanup(func() {
+		DeleteKubernetesResources(t, testNamespace, data, templates)
+	})
+
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 	installDatadog(t)
 
@@ -354,15 +358,11 @@ func TestDatadogScaler(t *testing.T) {
 	testActivation(t, kc, data)
 	testScaleOut(t, kc, data)
 	testScaleIn(t, kc, data)
-
-	// cleanup
-	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
 	KubectlApplyWithTemplate(t, data, "lightLoadTemplate", lightLoadTemplate)
-
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
