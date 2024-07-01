@@ -28,7 +28,7 @@ var (
 	testNamespace           = fmt.Sprintf("%s-ns", testName)
 	deploymentName          = fmt.Sprintf("%s-deployment", testName)
 	monitoredDeploymentName = fmt.Sprintf("%s-monitored-deployment", testName)
-	servciceName            = fmt.Sprintf("%s-service", testName)
+	serviceName             = fmt.Sprintf("%s-service", testName)
 	triggerAuthName         = fmt.Sprintf("%s-ta", testName)
 	scaledObjectName        = fmt.Sprintf("%s-so", testName)
 	secretName              = fmt.Sprintf("%s-secret", testName)
@@ -46,7 +46,7 @@ type templateData struct {
 	TestNamespace           string
 	DeploymentName          string
 	MonitoredDeploymentName string
-	ServciceName            string
+	ServiceName             string
 	ScaledObjectName        string
 	TriggerAuthName         string
 	SecretName              string
@@ -174,7 +174,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{.ServciceName}}
+  name: {{.ServiceName}}
   namespace: {{.TestNamespace}}
 spec:
     ports:
@@ -231,7 +231,7 @@ spec:
   - image: busybox
     name: test
     command: ["/bin/sh"]
-    args: ["-c", "while true; do wget -O /dev/null -o /dev/null http://{{.ServciceName}}/; sleep 5; done"]`
+    args: ["-c", "while true; do wget -O /dev/null -o /dev/null http://{{.ServiceName}}/; sleep 5; done"]`
 
 	heavyLoadTemplate = `apiVersion: v1
 kind: Pod
@@ -243,7 +243,7 @@ spec:
   - image: busybox
     name: test
     command: ["/bin/sh"]
-    args: ["-c", "while true; do wget -O /dev/null -o /dev/null http://{{.ServciceName}}/; sleep 0.1; done"]`
+    args: ["-c", "while true; do wget -O /dev/null -o /dev/null http://{{.ServiceName}}/; sleep 0.1; done"]`
 )
 
 func TestDatadogScalerAPI(t *testing.T) {
@@ -323,7 +323,7 @@ func getTemplateData() (templateData, []Template) {
 			TestNamespace:           testNamespace,
 			DeploymentName:          deploymentName,
 			MonitoredDeploymentName: monitoredDeploymentName,
-			ServciceName:            servciceName,
+			ServiceName:             serviceName,
 			TriggerAuthName:         triggerAuthName,
 			ScaledObjectName:        scaledObjectName,
 			SecretName:              secretName,

@@ -363,6 +363,7 @@ func TestDatadogScalerDCA(t *testing.T) {
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
 	KubectlApplyWithTemplate(t, data, "lightLoadTemplate", lightLoadTemplate)
+
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
