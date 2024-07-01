@@ -80,6 +80,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
+- **General**: Check for missing CRD references and sample CRs ([#5920](https://github.com/kedacore/keda/issues/5920))
 - **General**: Scalers are properly closed after being refreshed ([#5806](https://github.com/kedacore/keda/issues/5806))
 - **MongoDB Scaler**:  MongoDB url parses correctly `+srv` scheme ([#5760](https://github.com/kedacore/keda/issues/5760))
 
