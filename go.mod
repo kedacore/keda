@@ -103,7 +103,7 @@ require (
 	k8s.io/client-go v0.29.4
 	k8s.io/code-generator v0.29.4
 	k8s.io/component-base v0.29.4
-	k8s.io/klog/v2 v2.120.1
+	k8s.io/klog/v2 v2.130.1
 	k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00
 	k8s.io/metrics v0.29.4
 	k8s.io/utils v0.0.0-20240423183400-0849a56e8f22

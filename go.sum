@@ -3170,8 +3170,8 @@ k8s.io/component-base v0.29.4/go.mod h1:pYjt+oEZP9gtmwSikwAJgfSBikqKX2gOqRat0Qjm
 k8s.io/gengo v0.0.0-20240129211411-f967bbeff4b4 h1:izq7u3SJBdOAuA5YYe1/PIp9jczrih/jGlKRRt0G7bQ=
 k8s.io/gengo v0.0.0-20240129211411-f967bbeff4b4/go.mod h1:FiNAH4ZV3gBg2Kwh89tzAEV2be7d5xI0vBa/VySYy3E=
 k8s.io/klog/v2 v2.2.0/go.mod h1:Od+F08eJP+W3HUb4pSrPpgp9DGU4GzlpG/TmITuYh/Y=
-k8s.io/klog/v2 v2.120.1 h1:QXU6cPEOIslTGvZaXvFWiP9VKyeet3sawzTOvdXb4Vw=
-k8s.io/klog/v2 v2.120.1/go.mod h1:3Jpz1GvMt720eyJH1ckRHK1EDfpxISzJ7I9OYgaDtPE=
+k8s.io/klog/v2 v2.130.1 h1:n9Xl7H1Xvksem4KFG4PYbdQCQxqc/tTUyrgXaOhHSzk=
+k8s.io/klog/v2 v2.130.1/go.mod h1:3Jpz1GvMt720eyJH1ckRHK1EDfpxISzJ7I9OYgaDtPE=
 k8s.io/kms v0.29.4 h1:cFGEoCLwoXk/eqYZppLZxybCdmEWeRKMCbm9f13IdRQ=
 k8s.io/kms v0.29.4/go.mod h1:vWVImKkJd+1BQY4tBwdfSwjQBiLrnbNtHADcDEDQFtk=
 k8s.io/kube-aggregator v0.29.4 h1:yT7vYtwIag4G8HNrktYZ3qz6p6oHKronMAXOw4eQ2WQ=
