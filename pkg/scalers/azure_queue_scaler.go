@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -54,6 +55,7 @@ type azureQueueMetadata struct {
 	connection                  string
 	accountName                 string
 	endpointSuffix              string
+	queueLengthStrategy         string
 	triggerIndex                int
 }
 
@@ -120,6 +122,17 @@ func parseAzureQueueMetadata(config *scalersconfig.ScalerConfig, logger logr.Log
 		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no queueName given")
 	}
 
+	if val, ok := config.TriggerMetadata["queueLengthStrategy"]; ok && val != "" {
+		strategy := strings.ToLower(val)
+		if strategy == azure.QueueLengthStrategyAll || strategy == azure.QueueLengthStrategyVisibleOnly {
+			meta.queueLengthStrategy = strategy
+		} else {
+			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("invalid queueLengthStrategy %s given", val)
+		}
+	} else {
+		meta.queueLengthStrategy = azure.QueueLengthStrategyAll
+	}
+
 	// If the Use AAD Pod Identity is not present, or set to "none"
 	// then check for connection string
 	switch config.PodIdentity.Provider {
@@ -179,6 +192,7 @@ func (s *azureQueueScaler) GetMetricsAndActivity(ctx context.Context, metricName
 		s.metadata.queueName,
 		s.metadata.accountName,
 		s.metadata.endpointSuffix,
+		s.metadata.queueLengthStrategy,
 	)
 
 	if err != nil {
