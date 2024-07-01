@@ -29,7 +29,7 @@ func (c *Client) DescribeImport(ctx context.Context, params *DescribeImportInput
 
 type DescribeImportInput struct {
 
-	// The Amazon Resource Name (ARN) associated with the table you're importing to.
+	//  The Amazon Resource Name (ARN) associated with the table you're importing to.
 	//
 	// This member is required.
 	ImportArn *string
@@ -39,7 +39,7 @@ type DescribeImportInput struct {
 
 type DescribeImportOutput struct {
 
-	// Represents the properties of the table created for the import, and parameters
+	//  Represents the properties of the table created for the import, and parameters
 	// of the import. The import parameters include import status, how many items were
 	// processed, and how many errors were encountered.
 	//
@@ -105,6 +105,12 @@ func (c *Client) addOperationDescribeImportMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeImportValidationMiddleware(stack); err != nil {

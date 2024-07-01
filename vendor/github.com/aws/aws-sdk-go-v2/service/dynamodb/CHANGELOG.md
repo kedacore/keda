@@ -1,3 +1,65 @@
+# v1.34.1 (2024-06-28)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.34.0 (2024-06-26)
+
+* **Feature**: Support list-of-string endpoint parameter.
+
+# v1.33.2 (2024-06-20)
+
+* **Documentation**: Doc-only update for DynamoDB. Fixed Important note in 6 Global table APIs - CreateGlobalTable, DescribeGlobalTable, DescribeGlobalTableSettings, ListGlobalTables, UpdateGlobalTable, and UpdateGlobalTableSettings.
+
+# v1.33.1 (2024-06-19)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.33.0 (2024-06-18)
+
+* **Feature**: Track usage of various AWS SDK features in user-agent string.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.32.9 (2024-06-17)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.32.8 (2024-06-07)
+
+* **Bug Fix**: Add clock skew correction on all service clients
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.32.7 (2024-06-03)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.32.6 (2024-05-28)
+
+* **Documentation**: Doc-only update for DynamoDB. Specified the IAM actions needed to authorize a user to create a table with a resource-based policy.
+
+# v1.32.5 (2024-05-24)
+
+* **Documentation**: Documentation only updates for DynamoDB.
+
+# v1.32.4 (2024-05-23)
+
+* No change notes available for this release.
+
+# v1.32.3 (2024-05-16)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.32.2 (2024-05-15)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.32.1 (2024-05-08)
+
+* **Bug Fix**: GoDoc improvement
+
+# v1.32.0 (2024-05-02)
+
+* **Feature**: This release adds support to specify an optional, maximum OnDemandThroughput for DynamoDB tables and global secondary indexes in the CreateTable or UpdateTable APIs. You can also override the OnDemandThroughput settings by calling the ImportTable, RestoreFromPointInTime, or RestoreFromBackup APIs.
+
 # v1.31.1 (2024-03-29)
 
 * **Dependency Update**: Updated to the latest SDK module versions

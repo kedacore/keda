@@ -18,15 +18,22 @@ import (
 // delete it. If a table is in CREATING or UPDATING states, then DynamoDB returns
 // a ResourceInUseException . If the specified table does not exist, DynamoDB
 // returns a ResourceNotFoundException . If table is already in the DELETING
-// state, no error is returned. This operation only applies to Version 2019.11.21
-// (Current) (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/globaltables.V2.html)
-// of global tables. DynamoDB might continue to accept data read and write
-// operations, such as GetItem and PutItem , on a table in the DELETING state
-// until the table deletion is complete. When you delete a table, any indexes on
-// that table are also deleted. If you have DynamoDB Streams enabled on the table,
-// then the corresponding stream on that table goes into the DISABLED state, and
-// the stream is automatically deleted after 24 hours. Use the DescribeTable
-// action to check the status of the table.
+// state, no error is returned.
+//
+// For global tables, this operation only applies to global tables using Version
+// 2019.11.21 (Current version).
+//
+// DynamoDB might continue to accept data read and write operations, such as
+// GetItem and PutItem , on a table in the DELETING state until the table deletion
+// is complete.
+//
+// When you delete a table, any indexes on that table are also deleted.
+//
+// If you have DynamoDB Streams enabled on the table, then the corresponding
+// stream on that table goes into the DISABLED state, and the stream is
+// automatically deleted after 24 hours.
+//
+// Use the DescribeTable action to check the status of the table.
 func (c *Client) DeleteTable(ctx context.Context, params *DeleteTableInput, optFns ...func(*Options)) (*DeleteTableOutput, error) {
 	if params == nil {
 		params = &DeleteTableInput{}
@@ -122,6 +129,12 @@ func (c *Client) addOperationDeleteTableMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteTableValidationMiddleware(stack); err != nil {
