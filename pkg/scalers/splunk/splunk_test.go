@@ -32,6 +32,11 @@ func TestNewClient(t *testing.T) {
 			},
 		},
 		{
+			name:      "Missing username",
+			config:    &Config{},
+			expectErr: true,
+		},
+		{
 			name: "Invalid Bearer + Password Auth Config",
 			config: &Config{
 				APIToken: "fake",

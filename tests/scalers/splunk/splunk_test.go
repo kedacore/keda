@@ -41,6 +41,7 @@ type templateData struct {
 	ScaledObjectName     string
 	SecretName           string
 	SplunkUsername       string
+	SplunkUsernameBase64 string
 	SplunkPassword       string
 	SplunkPasswordBase64 string
 	SavedSearchName      string
@@ -61,6 +62,7 @@ metadata:
   name: {{.SecretName}}
   namespace: {{.TestNamespace}}
 data:
+  username: {{.SplunkUsernameBase64}}
   password: {{.SplunkPasswordBase64}}
 `
 
@@ -102,6 +104,9 @@ metadata:
   namespace: {{.TestNamespace}}
 spec:
   secretTargetRef:
+  - parameter: username
+    name: {{.SecretName}}
+    key: username
   - parameter: password
     name: {{.SecretName}}
     key: password
@@ -275,6 +280,7 @@ func getTemplateData() (templateData, []Template) {
 			ScaledObjectName:     scaledObjectName,
 			SecretName:           secretName,
 			SplunkUsername:       username,
+			SplunkUsernameBase64: base64.StdEncoding.EncodeToString([]byte(username)),
 			SplunkPassword:       password,
 			SplunkPasswordBase64: base64.StdEncoding.EncodeToString([]byte(password)),
 			SavedSearchName:      savedSearchName,

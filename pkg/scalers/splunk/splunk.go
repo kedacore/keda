@@ -42,12 +42,12 @@ type SearchResponse struct {
 
 // NewClient returns a new Splunk client.
 func NewClient(c *Config, sc *scalersconfig.ScalerConfig) (*Client, error) {
-	if c.APIToken != "" && c.Password != "" {
-		return nil, errors.New("API token and Password were all set. If APIToken is set, username and password must not be used")
+	if c.Username == "" {
+		return nil, errors.New("username was not set")
 	}
 
-	if c.APIToken != "" && c.Username == "" {
-		return nil, errors.New("API token was set and username was not. Username is needed to determine who owns the saved search")
+	if c.APIToken != "" && c.Password != "" {
+		return nil, errors.New("API token and Password were all set. If APIToken is set, username and password must not be used")
 	}
 
 	httpClient := kedautil.CreateHTTPClient(sc.GlobalHTTPTimeout, c.UnsafeSsl)

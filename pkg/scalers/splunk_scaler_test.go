@@ -2,7 +2,6 @@ package scalers
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -20,8 +19,11 @@ type SplunkMetricIdentifier struct {
 	name             string
 }
 
+var validSplunkAuthParams = map[string]string{
+	"username": "fake",
+}
+
 var validSplunkMetadata = map[string]string{
-	"username":        "admin",
 	"host":            "https://localhost:8089",
 	"unsafeSsl":       "false",
 	"targetValue":     "1",
@@ -32,27 +34,29 @@ var validSplunkMetadata = map[string]string{
 
 var testSplunkMetadata = []parseSplunkMetadataTestData{
 	// Valid metadata for api token auth, pass.
-	{validSplunkMetadata, map[string]string{"apiToken": "fake"}, false},
+	{validSplunkMetadata, map[string]string{"username": "fake", "apiToken": "fake"}, false},
 	// Valid metadata for basic auth, pass.
-	{validSplunkMetadata, map[string]string{"password": "fake"}, false},
-	// No params, missing username + host, fail.
+	{validSplunkMetadata, map[string]string{"username": "fake", "password": "fake"}, false},
+	// No params, missing username, fail.
 	{map[string]string{}, map[string]string{}, true},
+	// No params, missing host, fail.
+	{map[string]string{}, validSplunkAuthParams, true},
 	// Invalid host, fail.
-	{map[string]string{"username": "admin", "host": "missinghttpURIScheme:8089"}, map[string]string{}, true},
+	{map[string]string{"host": "missinghttpURIScheme:8089"}, validSplunkAuthParams, true},
 	// Invalid unsafeSsl value, fail.
-	{map[string]string{"username": "admin", "host": "https://localhost:8089", "unsafeSsl": "invalid"}, map[string]string{}, true},
+	{map[string]string{"host": "https://localhost:8089", "unsafeSsl": "invalid"}, validSplunkAuthParams, true},
 	// Missing targetValue, fail.
-	{map[string]string{"username": "admin", "apiToken": "fake", "host": "https://localhost:8089", "unsafeSsl": "false"}, map[string]string{}, true},
+	{map[string]string{"host": "https://localhost:8089", "unsafeSsl": "false"}, validSplunkAuthParams, true},
 	// Invalid targetValue, fail.
-	{map[string]string{"username": "admin", "apiToken": "fake", "host": "https://localhost:8089", "unsafeSsl": "false", "targetValue": "invalid"}, map[string]string{}, true},
+	{map[string]string{"host": "https://localhost:8089", "unsafeSsl": "false", "targetValue": "invalid"}, validSplunkAuthParams, true},
 	// Missing activationValue, fail.
-	{map[string]string{"username": "admin", "apiToken": "fake", "host": "https://localhost:8089", "unsafeSsl": "false", "targetValue": "1"}, map[string]string{}, true},
+	{map[string]string{"host": "https://localhost:8089", "unsafeSsl": "false", "targetValue": "1"}, validSplunkAuthParams, true},
 	// Invalid activationValue, fail.
-	{map[string]string{"username": "admin", "apiToken": "fake", "host": "https://localhost:8089", "unsafeSsl": "false", "targetValue": "1", "activationValue": "invalid"}, map[string]string{}, true},
+	{map[string]string{"host": "https://localhost:8089", "unsafeSsl": "false", "targetValue": "1", "activationValue": "invalid"}, validSplunkAuthParams, true},
 	// Missing savedSearchName, fail.
-	{map[string]string{"username": "admin", "apiToken": "fake", "host": "https://localhost:8089", "unsafeSsl": "false", "targetValue": "1", "activationValue": "5"}, map[string]string{}, true},
+	{map[string]string{"host": "https://localhost:8089", "unsafeSsl": "false", "targetValue": "1", "activationValue": "5"}, validSplunkAuthParams, true},
 	// Missing valueField, fail.
-	{map[string]string{"username": "admin", "apiToken": "fake", "host": "https://localhost:8089", "unsafeSsl": "false", "targetValue": "1", "activationValue": "5", "savedSearchName": "fakeSavedSearchName"}, map[string]string{}, true},
+	{map[string]string{"host": "https://localhost:8089", "unsafeSsl": "false", "targetValue": "1", "activationValue": "5", "savedSearchName": "fakeSavedSearchName"}, validSplunkAuthParams, true},
 }
 
 var SplunkMetricIdentifiers = []SplunkMetricIdentifier{
@@ -61,10 +65,9 @@ var SplunkMetricIdentifiers = []SplunkMetricIdentifier{
 }
 
 func TestSplunkParseMetadata(t *testing.T) {
-	for index, testData := range testSplunkMetadata {
+	for _, testData := range testSplunkMetadata {
 		_, err := parseSplunkMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
-			fmt.Println(index)
 			t.Error("Expected success but got error", err)
 		} else if testData.isError && err == nil {
 			t.Error("Expected error but got success")
@@ -75,7 +78,7 @@ func TestSplunkParseMetadata(t *testing.T) {
 func TestSplunkGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range SplunkMetricIdentifiers {
 		ctx := context.Background()
-		meta, err := parseSplunkMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, TriggerIndex: testData.triggerIndex})
+		meta, err := parseSplunkMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validSplunkAuthParams, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
