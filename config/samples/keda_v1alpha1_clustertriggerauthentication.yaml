@@ -1,7 +1,7 @@
 apiVersion: keda.sh/v1alpha1
-kind: TriggerAuthentication
+kind: ClusterTriggerAuthentication
 metadata:
-  name: example-triggerauthentication
+  name: example-clustertriggerauthentication
 spec:
   secretTargetRef:
     - parameter: example-secret-parameter
