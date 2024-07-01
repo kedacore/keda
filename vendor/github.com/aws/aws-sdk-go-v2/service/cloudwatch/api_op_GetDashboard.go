@@ -10,10 +10,11 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Displays the details of the dashboard that you specify. To copy an existing
-// dashboard, use GetDashboard , and then use the data returned within
-// DashboardBody as the template for the new dashboard when you call PutDashboard
-// to create the copy.
+// Displays the details of the dashboard that you specify.
+//
+// To copy an existing dashboard, use GetDashboard , and then use the data returned
+// within DashboardBody as the template for the new dashboard when you call
+// PutDashboard to create the copy.
 func (c *Client) GetDashboard(ctx context.Context, params *GetDashboardInput, optFns ...func(*Options)) (*GetDashboardOutput, error) {
 	if params == nil {
 		params = &GetDashboardInput{}
@@ -46,8 +47,9 @@ type GetDashboardOutput struct {
 
 	// The detailed information about the dashboard, including what widgets are
 	// included and their location on the dashboard. For more information about the
-	// DashboardBody syntax, see Dashboard Body Structure and Syntax (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/CloudWatch-Dashboard-Body-Structure.html)
-	// .
+	// DashboardBody syntax, see [Dashboard Body Structure and Syntax].
+	//
+	// [Dashboard Body Structure and Syntax]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/CloudWatch-Dashboard-Body-Structure.html
 	DashboardBody *string
 
 	// The name of the dashboard.
@@ -112,6 +114,12 @@ func (c *Client) addOperationGetDashboardMiddlewares(stack *middleware.Stack, op
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpGetDashboardValidationMiddleware(stack); err != nil {

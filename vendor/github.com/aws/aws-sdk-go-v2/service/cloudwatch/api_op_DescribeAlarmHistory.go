@@ -14,11 +14,13 @@ import (
 
 // Retrieves the history for the specified alarm. You can filter the results by
 // date range or item type. If an alarm name is not specified, the histories for
-// either all metric alarms or all composite alarms are returned. CloudWatch
-// retains the history of an alarm even if you delete the alarm. To use this
-// operation and return information about a composite alarm, you must be signed on
-// with the cloudwatch:DescribeAlarmHistory permission that is scoped to * . You
-// can't return information about composite alarms if your
+// either all metric alarms or all composite alarms are returned.
+//
+// CloudWatch retains the history of an alarm even if you delete the alarm.
+//
+// To use this operation and return information about a composite alarm, you must
+// be signed on with the cloudwatch:DescribeAlarmHistory permission that is scoped
+// to * . You can't return information about composite alarms if your
 // cloudwatch:DescribeAlarmHistory permission has a narrower scope.
 func (c *Client) DescribeAlarmHistory(ctx context.Context, params *DescribeAlarmHistoryInput, optFns ...func(*Options)) (*DescribeAlarmHistoryOutput, error) {
 	if params == nil {
@@ -138,6 +140,12 @@ func (c *Client) addOperationDescribeAlarmHistoryMiddlewares(stack *middleware.S
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeAlarmHistory(options.Region), middleware.Before); err != nil {
 		return err
 	}
@@ -158,14 +166,6 @@ func (c *Client) addOperationDescribeAlarmHistoryMiddlewares(stack *middleware.S
 	}
 	return nil
 }
-
-// DescribeAlarmHistoryAPIClient is a client that implements the
-// DescribeAlarmHistory operation.
-type DescribeAlarmHistoryAPIClient interface {
-	DescribeAlarmHistory(context.Context, *DescribeAlarmHistoryInput, ...func(*Options)) (*DescribeAlarmHistoryOutput, error)
-}
-
-var _ DescribeAlarmHistoryAPIClient = (*Client)(nil)
 
 // DescribeAlarmHistoryPaginatorOptions is the paginator options for
 // DescribeAlarmHistory
@@ -231,6 +231,9 @@ func (p *DescribeAlarmHistoryPaginator) NextPage(ctx context.Context, optFns ...
 	}
 	params.MaxRecords = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.DescribeAlarmHistory(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -249,6 +252,14 @@ func (p *DescribeAlarmHistoryPaginator) NextPage(ctx context.Context, optFns ...
 
 	return result, nil
 }
+
+// DescribeAlarmHistoryAPIClient is a client that implements the
+// DescribeAlarmHistory operation.
+type DescribeAlarmHistoryAPIClient interface {
+	DescribeAlarmHistory(context.Context, *DescribeAlarmHistoryInput, ...func(*Options)) (*DescribeAlarmHistoryOutput, error)
+}
+
+var _ DescribeAlarmHistoryAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeAlarmHistory(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
