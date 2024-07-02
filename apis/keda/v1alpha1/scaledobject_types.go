@@ -137,6 +137,8 @@ type HorizontalPodAutoscalerConfig struct {
 	Behavior *autoscalingv2.HorizontalPodAutoscalerBehavior `json:"behavior,omitempty"`
 	// +optional
 	Name string `json:"name,omitempty"`
+	// +optional
+	Metrics []autoscalingv2.MetricSpec `json:"metrics,omitempty"`
 }
 
 // ScaleTarget holds the reference to the scale target Object
