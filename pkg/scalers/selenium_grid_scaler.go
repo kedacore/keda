@@ -199,11 +199,10 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 	for _, sessionQueueRequest := range sessionQueueRequests {
 		var capability = capability{}
 		if err := json.Unmarshal([]byte(sessionQueueRequest), &capability); err == nil {
-			if capability.BrowserName == browserName && !strings.EqualFold(capability.PlatformName, "windows") {
-				var platformNameMatches = capability.PlatformName == "" || strings.EqualFold(capability.PlatformName, platformName)
-				if strings.HasPrefix(capability.BrowserVersion, browserVersion) && platformNameMatches {
+			if capability.BrowserName == browserName {
+				if strings.HasPrefix(capability.BrowserVersion, browserVersion) && strings.EqualFold(capability.PlatformName, platformName) {
 					count++
-				} else if len(strings.TrimSpace(capability.BrowserVersion)) == 0 && browserVersion == DefaultBrowserVersion && platformNameMatches {
+				} else if len(strings.TrimSpace(capability.BrowserVersion)) == 0 && browserVersion == DefaultBrowserVersion && strings.EqualFold(capability.PlatformName, platformName) {
 					count++
 				}
 			}
@@ -216,11 +215,10 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 	for _, session := range sessions {
 		var capability = capability{}
 		if err := json.Unmarshal([]byte(session.Capabilities), &capability); err == nil {
-			if capability.BrowserName == sessionBrowserName && !strings.EqualFold(capability.PlatformName, "windows") {
-				var platformNameMatches = capability.PlatformName == "" || strings.EqualFold(capability.PlatformName, platformName)
-				if strings.HasPrefix(capability.BrowserVersion, browserVersion) && platformNameMatches {
+			if capability.BrowserName == sessionBrowserName {
+				if strings.HasPrefix(capability.BrowserVersion, browserVersion) && strings.EqualFold(capability.PlatformName, platformName) {
 					count++
-				} else if browserVersion == DefaultBrowserVersion && platformNameMatches {
+				} else if browserVersion == DefaultBrowserVersion && strings.EqualFold(capability.PlatformName, platformName) {
 					count++
 				}
 			}
