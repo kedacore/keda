@@ -184,6 +184,12 @@ func TransformObject(ctx context.Context, client runtimeclient.StatusClient, log
 			logger.Error(err, "failed to patch CloudEventSource")
 			return err
 		}
+	case *eventingv1alpha1.ClusterCloudEventSource:
+		patch = runtimeclient.MergeFrom(obj.DeepCopy())
+		if err := transform(obj, target); err != nil {
+			logger.Error(err, "failed to patch CloudEventSource")
+			return err
+		}
 	default:
 		err := fmt.Errorf("unknown scalable object type %v", obj)
 		logger.Error(err, "failed to patch Objects")
