@@ -310,7 +310,7 @@ func parseDatadogClusterAgentMetadata(config *scalersconfig.ScalerConfig, logger
 	if val, ok := config.AuthParams["datadogMetricsService"]; ok {
 		meta.datadogMetricsService = val
 	} else {
-		meta.datadogMetricsService = "datadog-cluster-agent-metrics-api"
+		return nil, fmt.Errorf("no datadogMetricsService key given")
 	}
 
 	if val, ok := config.AuthParams["datadogMetricsServicePort"]; ok {
