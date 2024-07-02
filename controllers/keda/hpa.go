@@ -221,9 +221,19 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 	}
 
 	metricSpecs := cache.GetMetricSpecForScaling(ctx)
+	var mSpecs []autoscalingv2.MetricSpec
+	var cpuUtilizationMetric int
 
 	for _, metricSpec := range metricSpecs {
 		if metricSpec.Resource != nil {
+			target := metricSpec.Resource.Target
+			if target.Type == autoscalingv2.UtilizationMetricType && string(metricSpec.Resource.Name) == "cpu" {
+				cpuUtilizationMetric++
+				if cpuUtilizationMetric > 1 {
+					continue
+				}
+			}
+
 			resourceMetricNames = append(resourceMetricNames, string(metricSpec.Resource.Name))
 		}
 
@@ -238,8 +248,9 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 			metricSpec.External.Metric.Selector.MatchLabels[kedav1alpha1.ScaledObjectOwnerAnnotation] = scaledObject.Name
 			externalMetricNames = append(externalMetricNames, externalMetricName)
 		}
+		mSpecs = append(mSpecs, metricSpec)
 	}
-	scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, metricSpecs...)
+	scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, mSpecs...)
 
 	// sort metrics in ScaledObject, this way we always check the same resource in Reconcile loop and we can prevent unnecessary HPA updates,
 	// see https://github.com/kedacore/keda/issues/1531 for details
