@@ -288,7 +288,7 @@ func (s StackDriverClient) GetMetrics(
 //
 // MQL provides a more expressive query language than
 // the current filtering options of GetMetrics
-func (s StackDriverClient) QueryMetrics(ctx context.Context, projectID, query string) (float64, error) {
+func (s StackDriverClient) QueryMetrics(ctx context.Context, projectID, query string, valueIfNull *float64) (float64, error) {
 	req := &monitoringpb.QueryTimeSeriesRequest{
 		Query:    query,
 		PageSize: 1,
@@ -303,7 +303,10 @@ func (s StackDriverClient) QueryMetrics(ctx context.Context, projectID, query st
 	resp, err := it.Next()
 
 	if err == iterator.Done {
-		return value, fmt.Errorf("could not find stackdriver metric with query %s", req.Query)
+		if valueIfNull == nil {
+			return value, fmt.Errorf("could not find stackdriver metric with query %s", req.Query)
+		}
+		return *valueIfNull, nil
 	}
 
 	if err != nil {
