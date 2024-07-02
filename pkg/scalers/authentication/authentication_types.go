@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/url"
 	"time"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 // Type describes the authentication type used in a scaler
@@ -131,7 +133,7 @@ func (c *Config) GetBearerToken() string {
 }
 
 // Validate validates the Config and returns an error if it is invalid
-func (c *Config) Validate() error {
+func (c *Config) Validate(_ scalersconfig.ScalerConfig) error {
 	if c.Disabled() {
 		return nil
 	}
