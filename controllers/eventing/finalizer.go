@@ -30,19 +30,13 @@ const (
 	cloudEventSourceFinalizer = "finalizer.keda.sh"
 )
 
-type cloudEventSourceResourceReconciler interface {
-	client.Client
-	UpdatePromMetricsOnDelete(string)
-	StopEventLoop(logger logr.Logger, obj client.Object) error
-}
-
-func EnsureCloudEventSourceResourceFinalizer(ctx context.Context, logger logr.Logger, reconciler cloudEventSourceResourceReconciler, cloudEventSourceResource client.Object) error {
+func EnsureCloudEventSourceResourceFinalizer(ctx context.Context, logger logr.Logger, r cloudEventSourceReconcilerInterface, cloudEventSourceResource client.Object) error {
 	if !util.Contains(cloudEventSourceResource.GetFinalizers(), cloudEventSourceFinalizer) {
 		logger.Info(fmt.Sprintf("Adding Finalizer for the %s", cloudEventSourceResource.GetName()))
 		cloudEventSourceResource.SetFinalizers(append(cloudEventSourceResource.GetFinalizers(), cloudEventSourceFinalizer))
 
 		// Update CR
-		err := reconciler.Update(ctx, cloudEventSourceResource)
+		err := r.GetClient().Update(ctx, cloudEventSourceResource)
 		if err != nil {
 			logger.Error(err, fmt.Sprintf("Failed to update %s with a finalizer", cloudEventSourceResource.GetName()), "finalizer", cloudEventSourceFinalizer)
 			return err
@@ -51,18 +45,18 @@ func EnsureCloudEventSourceResourceFinalizer(ctx context.Context, logger logr.Lo
 	return nil
 }
 
-func FinalizeCloudEventSourceResource(ctx context.Context, logger logr.Logger, reconciler cloudEventSourceResourceReconciler, cloudEventSourceResource client.Object, namespacedName string) error {
+func FinalizeCloudEventSourceResource(ctx context.Context, logger logr.Logger, r cloudEventSourceReconcilerInterface, cloudEventSourceResource client.Object, namespacedName string) error {
 	if util.Contains(cloudEventSourceResource.GetFinalizers(), cloudEventSourceFinalizer) {
-		if err := reconciler.StopEventLoop(logger, cloudEventSourceResource); err != nil {
+		if err := StopEventLoop(logger, r, cloudEventSourceResource); err != nil {
 			return err
 		}
 		cloudEventSourceResource.SetFinalizers(util.Remove(cloudEventSourceResource.GetFinalizers(), cloudEventSourceFinalizer))
-		if err := reconciler.Update(ctx, cloudEventSourceResource); err != nil {
+		if err := r.GetClient().Update(ctx, cloudEventSourceResource); err != nil {
 			logger.Error(err, fmt.Sprintf("Failed to update %s after removing a finalizer", cloudEventSourceResource.GetName()), "finalizer", cloudEventSourceFinalizer)
 			return err
 		}
 
-		reconciler.UpdatePromMetricsOnDelete(namespacedName)
+		r.UpdatePromMetricsOnDelete(namespacedName)
 	}
 
 	logger.Info(fmt.Sprintf("Successfully finalized %s", cloudEventSourceResource.GetName()))

@@ -18,19 +18,17 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 // +kubebuilder:object:generate=false
 type CloudEventSourceInterface interface {
-	GetKind() string
-	GetName() string
-	GetNamespace() string
-	GetSpec() CloudEventSourceSpec
-	GetStatus() CloudEventSourceStatus
-	GetGeneration() int64
+	client.Object
 	GenerateIdentifier() string
+	GetSpec() *CloudEventSourceSpec
+	GetStatus() *CloudEventSourceStatus
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -129,28 +127,12 @@ func init() {
 	SchemeBuilder.Register(&CloudEventSource{}, &CloudEventSourceList{}, &ClusterCloudEventSource{}, &ClusterCloudEventSourceList{})
 }
 
-func (ces *CloudEventSource) GetKind() string {
-	return ces.Kind
+func (ces *CloudEventSource) GetSpec() *CloudEventSourceSpec {
+	return &ces.Spec
 }
 
-func (ces *CloudEventSource) GetName() string {
-	return ces.Name
-}
-
-func (ces *CloudEventSource) GetNamespace() string {
-	return ces.Namespace
-}
-
-func (ces *CloudEventSource) GetSpec() CloudEventSourceSpec {
-	return ces.Spec
-}
-
-func (ces *CloudEventSource) GetStatus() CloudEventSourceStatus {
-	return *ces.Status.DeepCopy()
-}
-
-func (ces *CloudEventSource) GetGeneration() int64 {
-	return ces.Generation
+func (ces *CloudEventSource) GetStatus() *CloudEventSourceStatus {
+	return &ces.Status
 }
 
 // GenerateIdentifier returns identifier for the object in for "kind.namespace.name"
@@ -158,28 +140,12 @@ func (ces *CloudEventSource) GenerateIdentifier() string {
 	return v1alpha1.GenerateIdentifier("CloudEventSource", ces.Namespace, ces.Name)
 }
 
-func (cces *ClusterCloudEventSource) GetKind() string {
-	return cces.Kind
+func (cces *ClusterCloudEventSource) GetSpec() *CloudEventSourceSpec {
+	return &cces.Spec
 }
 
-func (cces *ClusterCloudEventSource) GetName() string {
-	return cces.Name
-}
-
-func (cces *ClusterCloudEventSource) GetNamespace() string {
-	return cces.Namespace
-}
-
-func (cces *ClusterCloudEventSource) GetSpec() CloudEventSourceSpec {
-	return cces.Spec
-}
-
-func (cces *ClusterCloudEventSource) GetStatus() CloudEventSourceStatus {
-	return *cces.Status.DeepCopy()
-}
-
-func (cces *ClusterCloudEventSource) GetGeneration() int64 {
-	return cces.Generation
+func (cces *ClusterCloudEventSource) GetStatus() *CloudEventSourceStatus {
+	return &cces.Status
 }
 
 // GenerateIdentifier returns identifier for the object in for "kind.cluster-scoped.name"
