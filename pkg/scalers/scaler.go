@@ -35,6 +35,10 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
+const (
+	FromEnv = "FromEnv"
+)
+
 func init() {
 	// Disable metrics for kafka client (sarama)
 	// https://github.com/IBM/sarama/issues/1321
@@ -87,7 +91,7 @@ func GetFromAuthOrMeta(config *scalersconfig.ScalerConfig, field string) (string
 }
 
 // GetFromAuthOrMetaOrEnv helps to get a field from Auth or Meta or Env sections
-func GetFromAuthOrMetaOrEnv(config *scalersconfig.ScalerConfig, field string, envField string) (string, error) {
+func GetFromAuthOrMetaOrEnv(config *scalersconfig.ScalerConfig, field string) (string, error) {
 	var result string
 	var err error
 	switch {
@@ -95,11 +99,11 @@ func GetFromAuthOrMetaOrEnv(config *scalersconfig.ScalerConfig, field string, en
 		result = config.AuthParams[field]
 	case config.TriggerMetadata[field] != "":
 		result = config.TriggerMetadata[field]
-	case config.ResolvedEnv[config.TriggerMetadata[envField]] != "":
-		result = config.TriggerMetadata[envField]
+	case config.ResolvedEnv[config.TriggerMetadata[field+FromEnv]] != "":
+		result = config.TriggerMetadata[field+FromEnv]
 	}
 	if result == "" {
-		err = fmt.Errorf("%w: no %s or %s given", ErrScalerConfigMissingField, field, envField)
+		err = fmt.Errorf("%w: no %s or %s given", ErrScalerConfigMissingField, field, field+FromEnv)
 	}
 	return result, err
 }

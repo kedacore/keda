@@ -115,7 +115,7 @@ func parseMySQLMetadata(config *scalersconfig.ScalerConfig) (*mySQLMetadata, err
 		}
 		meta.port = port
 
-		username, err := GetFromAuthOrMetaOrEnv(config, "username", "usernameFromEnv")
+		username, err := GetFromAuthOrMetaOrEnv(config, "username")
 		if err != nil {
 			return nil, err
 		}
