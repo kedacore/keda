@@ -90,12 +90,13 @@ func GetFromAuthOrMeta(config *scalersconfig.ScalerConfig, field string) (string
 func GetFromAuthOrMetaOrEnv(config *scalersconfig.ScalerConfig, field string, envField string) (string, error) {
 	var result string
 	var err error
-	if config.AuthParams[field] != "" {
-		result = config.AuthParams[field]
-	} else if config.TriggerMetadata[field] != "" {
-		result = config.TriggerMetadata[field]
-	} else if config.ResolvedEnv[config.TriggerMetadata[envField]] != "" {
-		result = config.TriggerMetadata[envField]
+	switch {
+	case config.AuthParams[field] != "":
+		return config.AuthParams[field], err
+	case config.TriggerMetadata[field] != "":
+		return config.TriggerMetadata[field], err
+	case config.ResolvedEnv[config.TriggerMetadata[envField]] != "":
+		return config.TriggerMetadata[envField], err
 	}
 	if result == "" {
 		err = fmt.Errorf("%w: no %s or %s given", ErrScalerConfigMissingField, field, envField)
