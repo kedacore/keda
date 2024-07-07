@@ -7,6 +7,7 @@ import (
 )
 
 var testMySQLResolvedEnv = map[string]string{
+	"MYSQL_USERNAME": "test_username",
 	"MYSQL_PASSWORD": "pass",
 	"MYSQL_CONN_STR": "user@tcp(http://my.mysql.dev:3306)/stats_db",
 }
@@ -46,6 +47,13 @@ var testMySQLMetadata = []parseMySQLMetadataTestData{
 		resolvedEnv: testMySQLResolvedEnv,
 		raisesError: false,
 	},
+	// Params instead of conn str with userFromEnv
+	{
+		metadata:    map[string]string{"query": "query", "queryValue": "12", "host": "test_host", "port": "test_port", "usernameFromEnv": "MYSQL_USERNAME", "passwordFromEnv": "MYSQL_PASSWORD", "dbName": "test_dbname"},
+		authParams:  map[string]string{},
+		resolvedEnv: testMySQLResolvedEnv,
+		raisesError: false,
+	},
 	// Params from trigger authentication
 	{
 		metadata:    map[string]string{"query": "query", "queryValue": "12"},
@@ -58,6 +66,13 @@ var testMySQLMetadata = []parseMySQLMetadataTestData{
 		metadata:    map[string]string{"query": "query", "queryValue": "12", "activationQueryValue": "AA"},
 		authParams:  map[string]string{"host": "test_host", "port": "test_port", "username": "test_username", "password": "MYSQL_PASSWORD", "dbName": "test_dbname"},
 		resolvedEnv: testMySQLResolvedEnv,
+		raisesError: true,
+	},
+	// No username provided in authParams, metadata, resolvedEnv
+	{
+		metadata:    map[string]string{"query": "query", "queryValue": "12", "activationQueryValue": "AA"},
+		authParams:  map[string]string{"host": "test_host", "port": "test_port", "password": "MYSQL_PASSWORD", "dbName": "test_dbname"},
+		resolvedEnv: map[string]string{},
 		raisesError: true,
 	},
 }
