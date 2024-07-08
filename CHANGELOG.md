@@ -60,6 +60,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 - **General**: Declarative parsing of scaler config ([#5037](https://github.com/kedacore/keda/issues/5037)|[#5797](https://github.com/kedacore/keda/issues/5797))
+- **General**: Provide CloudEvents around the management of ScaledObjects resources ([#3522](https://github.com/kedacore/keda/issues/3522))
 - **General**: Support for Kubernetes v1.30 ([#5828](https://github.com/kedacore/keda/issues/5828))
 
 #### Experimental
