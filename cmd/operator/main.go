@@ -221,7 +221,6 @@ func main() {
 	if err = (&kedacontrollers.ScaledObjectReconciler{
 		Client:       mgr.GetClient(),
 		Scheme:       mgr.GetScheme(),
-		Recorder:     eventRecorder,
 		ScaleClient:  scaleClient,
 		ScaleHandler: scaledHandler,
 		EventEmitter: eventEmitter,
