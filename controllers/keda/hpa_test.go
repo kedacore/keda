@@ -119,6 +119,41 @@ var _ = Describe("hpa", func() {
 		Expect(capturedScaledObject.Status.Health).To(Equal(expectedHealth))
 	})
 
+	It("should reorder cpu utilization MetricSpecs", func() {
+		val := map[string]string{
+			"value": "50",
+		}
+		config := &scalersconfig.ScalerConfig{
+			TriggerMetadata: val,
+			MetricType:      v2.UtilizationMetricType,
+		}
+		cpu, _ := scalers.NewCPUMemoryScaler("cpu", config)
+		memory, _ := scalers.NewCPUMemoryScaler("memory", config)
+		ordered := append(cpu.GetMetricSpecForScaling(context.Background()), memory.GetMetricSpecForScaling(context.Background())...)
+
+		scaledObject := setupSoTest([]v1alpha1.ScaleTriggers{
+			{
+				Type:       "cpu",
+				MetricType: v2.UtilizationMetricType,
+				Metadata:   val,
+			},
+			{
+				Type:       "memory",
+				MetricType: v2.UtilizationMetricType,
+				Metadata:   val,
+			},
+		}, ordered, scaler, scaleHandler)
+
+		expect := append(memory.GetMetricSpecForScaling(context.Background()), cpu.GetMetricSpecForScaling(context.Background())...)
+
+		client.EXPECT().Status().Return(statusWriter)
+		statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(arg interface{}, scaledObject *v1alpha1.ScaledObject, anotherArg interface{}, opts ...interface{}) {
+		})
+
+		v, err := reconciler.getScaledObjectMetricSpecs(context.Background(), logger, scaledObject)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(v).To(Equal(expect))
+	})
 })
 
 func setupTest(health map[string]v1alpha1.HealthStatus, scaler *mock_scalers.MockScaler, scaleHandler *mock_scaling.MockScaleHandler) *v1alpha1.ScaledObject {
@@ -150,6 +185,33 @@ func setupTest(health map[string]v1alpha1.HealthStatus, scaler *mock_scalers.Moc
 	metricSpecs := []v2.MetricSpec{metricSpec}
 	ctx := context.Background()
 	scaler.EXPECT().GetMetricSpecForScaling(ctx).Return(metricSpecs)
+	scaleHandler.EXPECT().GetScalersCache(context.Background(), gomock.Eq(scaledObject)).Return(&scalersCache, nil)
+
+	return scaledObject
+}
+
+func setupSoTest(triggers []v1alpha1.ScaleTriggers, ordered []v2.MetricSpec, scaler *mock_scalers.MockScaler, scaleHandler *mock_scaling.MockScaleHandler) *v1alpha1.ScaledObject {
+	scaledObject := &v1alpha1.ScaledObject{
+		ObjectMeta: v1.ObjectMeta{
+			Name: "some scaled object name",
+		},
+		Spec: v1alpha1.ScaledObjectSpec{
+			Triggers: triggers,
+		},
+	}
+
+	scalersCache := cache.ScalersCache{
+		Scalers: []cache.ScalerBuilder{{
+			Scaler: scaler,
+			Factory: func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+				return scaler, &scalersconfig.ScalerConfig{}, nil
+			},
+		}},
+		Recorder: nil,
+	}
+
+	ctx := context.Background()
+	scaler.EXPECT().GetMetricSpecForScaling(ctx).Return(ordered)
 	scaleHandler.EXPECT().GetScalersCache(context.Background(), gomock.Eq(scaledObject)).Return(&scalersCache, nil)
 
 	return scaledObject
