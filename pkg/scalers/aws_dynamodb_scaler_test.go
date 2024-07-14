@@ -38,6 +38,32 @@ type parseDynamoDBMetadataTestData struct {
 	expectedError    error
 }
 
+var (
+	// ErrAwsDynamoNoTableName is returned when "tableName" is missing from the config.
+	ErrAwsDynamoNoTableName = errors.New("missing required parameter \"tableName\"")
+
+	// ErrAwsDynamoNoAwsRegion is returned when "awsRegion" is missing from the config.
+	ErrAwsDynamoNoAwsRegion = errors.New("missing required parameter \"awsRegion\"")
+
+	// ErrAwsDynamoNoKeyConditionExpression is returned when "keyConditionExpression" is missing from the config.
+	ErrAwsDynamoNoKeyConditionExpression = errors.New("missing required parameter \"keyConditionExpression\"")
+
+	//// ErrAwsDynamoEmptyExpressionAttributeNames is returned when "expressionAttributeNames" is empty.
+	ErrAwsDynamoEmptyExpressionAttributeNames = errors.New("empty map")
+
+	// ErrAwsDynamoInvalidExpressionAttributeNames is returned when "expressionAttributeNames" is an invalid JSON.
+	ErrAwsDynamoInvalidExpressionAttributeNames = errors.New("invalid expressionAttributeNames")
+
+	//// ErrAwsDynamoNoExpressionAttributeNames is returned when "expressionAttributeNames" is missing from the config.
+	ErrAwsDynamoNoExpressionAttributeNames = errors.New("missing required parameter \"expressionAttributeNames\"")
+
+	// ErrAwsDynamoInvalidExpressionAttributeValues is returned when "expressionAttributeNames" is missing an invalid JSON.
+	ErrAwsDynamoInvalidExpressionAttributeValues = errors.New("invalid expressionAttributeValues")
+
+	//// ErrAwsDynamoNoExpressionAttributeValues is returned when "expressionAttributeValues" is missing from the config.
+	ErrAwsDynamoNoExpressionAttributeValues = errors.New("missing required parameter \"expressionAttributeValues\"")
+)
+
 var dynamoTestCases = []parseDynamoDBMetadataTestData{
 	{
 		name:          "no tableName given",
@@ -185,12 +211,12 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 		authParams:    testAWSDynamoAuthentication,
 		expectedError: nil,
 		expectedMetadata: &awsDynamoDBMetadata{
-			tableName:                 "test",
-			awsRegion:                 "eu-west-1",
-			keyConditionExpression:    "#yr = :yyyy",
-			expressionAttributeNames:  map[string]string{"#yr": year},
-			expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
-			targetValue:               3,
+			TableName:                 "test",
+			AwsRegion:                 "eu-west-1",
+			KeyConditionExpression:    "#yr = :yyyy",
+			ExpressionAttributeNames:  map[string]string{"#yr": year},
+			ExpressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
+			TargetValue:               3,
 			triggerIndex:              1,
 			metricName:                "s1-aws-dynamodb-test",
 			awsAuthorization: awsutils.AuthorizationMetadata{
@@ -214,13 +240,13 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 		authParams:    testAWSDynamoAuthentication,
 		expectedError: nil,
 		expectedMetadata: &awsDynamoDBMetadata{
-			tableName:                 "test",
-			awsRegion:                 "eu-west-1",
-			awsEndpoint:               "http://localhost:4566",
-			keyConditionExpression:    "#yr = :yyyy",
-			expressionAttributeNames:  map[string]string{"#yr": year},
-			expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
-			targetValue:               3,
+			TableName:                 "test",
+			AwsRegion:                 "eu-west-1",
+			AwsEndpoint:               "http://localhost:4566",
+			KeyConditionExpression:    "#yr = :yyyy",
+			ExpressionAttributeNames:  map[string]string{"#yr": year},
+			ExpressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
+			TargetValue:               3,
 			triggerIndex:              1,
 			metricName:                "s1-aws-dynamodb-test",
 			awsAuthorization: awsutils.AuthorizationMetadata{
@@ -244,13 +270,13 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 		authParams:    testAWSDynamoAuthentication,
 		expectedError: nil,
 		expectedMetadata: &awsDynamoDBMetadata{
-			tableName:                 "test",
-			awsRegion:                 "eu-west-1",
-			keyConditionExpression:    "#yr = :yyyy",
-			expressionAttributeNames:  map[string]string{"#yr": year},
-			expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
-			activationTargetValue:     1,
-			targetValue:               3,
+			TableName:                 "test",
+			AwsRegion:                 "eu-west-1",
+			KeyConditionExpression:    "#yr = :yyyy",
+			ExpressionAttributeNames:  map[string]string{"#yr": year},
+			ExpressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
+			ActivationTargetValue:     1,
+			TargetValue:               3,
 			triggerIndex:              1,
 			metricName:                "s1-aws-dynamodb-test",
 			awsAuthorization: awsutils.AuthorizationMetadata{
@@ -274,13 +300,13 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 		authParams:    testAWSDynamoAuthentication,
 		expectedError: nil,
 		expectedMetadata: &awsDynamoDBMetadata{
-			tableName:                 "test",
-			awsRegion:                 "eu-west-1",
-			indexName:                 "test-index",
-			keyConditionExpression:    "#yr = :yyyy",
-			expressionAttributeNames:  map[string]string{"#yr": year},
-			expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
-			targetValue:               3,
+			TableName:                 "test",
+			AwsRegion:                 "eu-west-1",
+			IndexName:                 "test-index",
+			KeyConditionExpression:    "#yr = :yyyy",
+			ExpressionAttributeNames:  map[string]string{"#yr": year},
+			ExpressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
+			TargetValue:               3,
 			triggerIndex:              1,
 			metricName:                "s1-aws-dynamodb-test",
 			awsAuthorization: awsutils.AuthorizationMetadata{
@@ -346,48 +372,48 @@ var yearAttr = &types.AttributeValueMemberN{Value: target}
 
 var awsDynamoDBGetMetricTestData = []awsDynamoDBMetadata{
 	{
-		tableName:                 "ValidTable",
-		awsRegion:                 "eu-west-1",
-		keyConditionExpression:    "#yr = :yyyy",
-		expressionAttributeNames:  map[string]string{"#yr": year},
-		expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
-		targetValue:               3,
+		TableName:                 "ValidTable",
+		AwsRegion:                 "eu-west-1",
+		KeyConditionExpression:    "#yr = :yyyy",
+		ExpressionAttributeNames:  map[string]string{"#yr": year},
+		ExpressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
+		TargetValue:               3,
 	},
 	{
-		tableName:                 testAWSDynamoErrorTable,
-		awsRegion:                 "eu-west-1",
-		keyConditionExpression:    "#yr = :yyyy",
-		expressionAttributeNames:  map[string]string{"#yr": year},
-		expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
-		targetValue:               3,
+		TableName:                 testAWSDynamoErrorTable,
+		AwsRegion:                 "eu-west-1",
+		KeyConditionExpression:    "#yr = :yyyy",
+		ExpressionAttributeNames:  map[string]string{"#yr": year},
+		ExpressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
+		TargetValue:               3,
 	},
 	{
-		tableName:                 testAWSDynamoNoValueTable,
-		awsRegion:                 "eu-west-1",
-		keyConditionExpression:    "#yr = :yyyy",
-		expressionAttributeNames:  map[string]string{"#yr": year},
-		expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
-		targetValue:               3,
+		TableName:                 testAWSDynamoNoValueTable,
+		AwsRegion:                 "eu-west-1",
+		KeyConditionExpression:    "#yr = :yyyy",
+		ExpressionAttributeNames:  map[string]string{"#yr": year},
+		ExpressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
+		TargetValue:               3,
 	},
 	{
-		tableName:                 testAWSDynamoIndexTable,
-		awsRegion:                 "eu-west-1",
-		indexName:                 "test-index",
-		keyConditionExpression:    "#yr = :yyyy",
-		expressionAttributeNames:  map[string]string{"#yr": year},
-		expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
-		activationTargetValue:     3,
-		targetValue:               3,
+		TableName:                 testAWSDynamoIndexTable,
+		AwsRegion:                 "eu-west-1",
+		IndexName:                 "test-index",
+		KeyConditionExpression:    "#yr = :yyyy",
+		ExpressionAttributeNames:  map[string]string{"#yr": year},
+		ExpressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
+		ActivationTargetValue:     3,
+		TargetValue:               3,
 	},
 }
 
 func TestDynamoGetMetrics(t *testing.T) {
 	for _, meta := range awsDynamoDBGetMetricTestData {
-		t.Run(meta.tableName, func(t *testing.T) {
+		t.Run(meta.TableName, func(t *testing.T) {
 			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}, logr.Discard()}
 
 			value, _, err := scaler.GetMetricsAndActivity(context.Background(), "aws-dynamodb")
-			switch meta.tableName {
+			switch meta.TableName {
 			case testAWSDynamoErrorTable:
 				assert.EqualError(t, err, "error", "expect error because of dynamodb api error")
 			case testAWSDynamoNoValueTable:
@@ -403,11 +429,11 @@ func TestDynamoGetMetrics(t *testing.T) {
 
 func TestDynamoGetQueryMetrics(t *testing.T) {
 	for _, meta := range awsDynamoDBGetMetricTestData {
-		t.Run(meta.tableName, func(t *testing.T) {
+		t.Run(meta.TableName, func(t *testing.T) {
 			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}, logr.Discard()}
 
 			value, err := scaler.GetQueryMetrics(context.Background())
-			switch meta.tableName {
+			switch meta.TableName {
 			case testAWSDynamoErrorTable:
 				assert.EqualError(t, err, "error", "expect error because of dynamodb api error")
 			case testAWSDynamoNoValueTable:
@@ -423,11 +449,11 @@ func TestDynamoGetQueryMetrics(t *testing.T) {
 
 func TestDynamoIsActive(t *testing.T) {
 	for _, meta := range awsDynamoDBGetMetricTestData {
-		t.Run(meta.tableName, func(t *testing.T) {
+		t.Run(meta.TableName, func(t *testing.T) {
 			scaler := awsDynamoDBScaler{"", &meta, &mockDynamoDB{}, logr.Discard()}
 
 			_, value, err := scaler.GetMetricsAndActivity(context.Background(), "aws-dynamodb")
-			switch meta.tableName {
+			switch meta.TableName {
 			case testAWSDynamoErrorTable:
 				assert.EqualError(t, err, "error", "expect error because of dynamodb api error")
 			case testAWSDynamoNoValueTable:
