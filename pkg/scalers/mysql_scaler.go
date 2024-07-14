@@ -29,7 +29,7 @@ type mySQLMetadata struct {
 	Password             string  `keda:"name=password,                   order=authParams;resolvedEnv, optional"`
 	Host                 string  `keda:"name=host,                       order=triggerMetadata;authParams, optional"`
 	Port                 string  `keda:"name=port,                       order=triggerMetadata;authParams, optional"`
-	DbName               string  `keda:"name=dbName,                     order=triggerMetadata;authParams, optional"`
+	DBName               string  `keda:"name=dbName,                     order=triggerMetadata;authParams, optional"`
 	Query                string  `keda:"name=query,                      order=triggerMetadata"`
 	QueryValue           float64 `keda:"name=queryValue,                 order=triggerMetadata"`
 	ActivationQueryValue float64 `keda:"name=activationQueryValue,       order=triggerMetadata, default=0"`
@@ -72,9 +72,9 @@ func parseMySQLMetadata(config *scalersconfig.ScalerConfig) (*mySQLMetadata, err
 	meta.ActivationQueryValue = 0
 
 	if meta.ConnectionString != "" {
-		meta.DbName = parseMySQLDbNameFromConnectionStr(meta.ConnectionString)
+		meta.DBName = parseMySQLDbNameFromConnectionStr(meta.ConnectionString)
 	}
-	meta.MetricName = GenerateMetricNameWithIndex(config.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("mysql-%s", meta.DbName)))
+	meta.MetricName = GenerateMetricNameWithIndex(config.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("mysql-%s", meta.DBName)))
 
 	return meta, nil
 }
@@ -89,7 +89,7 @@ func metadataToConnectionStr(meta *mySQLMetadata) string {
 		// Build connection str
 		config := mysql.NewConfig()
 		config.Addr = net.JoinHostPort(meta.Host, meta.Port)
-		config.DBName = meta.DbName
+		config.DBName = meta.DBName
 		config.Passwd = meta.Password
 		config.User = meta.Username
 		config.Net = "tcp"

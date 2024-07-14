@@ -35,10 +35,6 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
-const (
-	FromEnv = "FromEnv"
-)
-
 func init() {
 	// Disable metrics for kafka client (sarama)
 	// https://github.com/IBM/sarama/issues/1321
