@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"net"
-	"strconv"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -25,16 +24,16 @@ type mySQLScaler struct {
 }
 
 type mySQLMetadata struct {
-	connectionString     string // Database connection string
-	username             string
-	password             string
-	host                 string
-	port                 string
-	dbName               string
-	query                string
-	queryValue           float64
-	activationQueryValue float64
-	metricName           string
+	ConnectionString     string  `keda:"name=connectionString,           order=authParams;resolvedEnv, optional"` // Database connection string
+	Username             string  `keda:"name=username,                   order=triggerMetadata;authParams;resolvedEnv, optional"`
+	Password             string  `keda:"name=password,                   order=authParams;resolvedEnv, optional"`
+	Host                 string  `keda:"name=host,                       order=triggerMetadata;authParams, optional"`
+	Port                 string  `keda:"name=port,                       order=triggerMetadata;authParams, optional"`
+	DbName               string  `keda:"name=dbName,                     order=triggerMetadata;authParams, optional"`
+	Query                string  `keda:"name=query,                      order=triggerMetadata"`
+	QueryValue           float64 `keda:"name=queryValue,                 order=triggerMetadata"`
+	ActivationQueryValue float64 `keda:"name=activationQueryValue,       order=triggerMetadata, default=0"`
+	MetricName           string  `keda:"name=metricName,                 order=triggerMetadata, optional"`
 }
 
 // NewMySQLScaler creates a new MySQL scaler
@@ -64,101 +63,35 @@ func NewMySQLScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 }
 
 func parseMySQLMetadata(config *scalersconfig.ScalerConfig) (*mySQLMetadata, error) {
-	meta := mySQLMetadata{}
+	meta := &mySQLMetadata{}
 
-	if val, ok := config.TriggerMetadata["query"]; ok {
-		meta.query = val
-	} else {
-		return nil, fmt.Errorf("no query given")
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing mysql metadata: %w", err)
 	}
 
-	if val, ok := config.TriggerMetadata["queryValue"]; ok {
-		queryValue, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("queryValue parsing error %w", err)
-		}
-		meta.queryValue = queryValue
-	} else {
-		if config.AsMetricSource {
-			meta.queryValue = 0
-		} else {
-			return nil, fmt.Errorf("no queryValue given")
-		}
+	meta.ActivationQueryValue = 0
+
+	if meta.ConnectionString != "" {
+		meta.DbName = parseMySQLDbNameFromConnectionStr(meta.ConnectionString)
 	}
+	meta.MetricName = GenerateMetricNameWithIndex(config.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("mysql-%s", meta.DbName)))
 
-	meta.activationQueryValue = 0
-	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
-		activationQueryValue, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("activationQueryValue parsing error %w", err)
-		}
-		meta.activationQueryValue = activationQueryValue
-	}
-
-	switch {
-	case config.AuthParams["connectionString"] != "":
-		meta.connectionString = config.AuthParams["connectionString"]
-	case config.TriggerMetadata["connectionStringFromEnv"] != "":
-		meta.connectionString = config.ResolvedEnv[config.TriggerMetadata["connectionStringFromEnv"]]
-	default:
-		meta.connectionString = ""
-		var err error
-		host, err := GetFromAuthOrMeta(config, "host")
-		if err != nil {
-			return nil, err
-		}
-		meta.host = host
-
-		port, err := GetFromAuthOrMeta(config, "port")
-		if err != nil {
-			return nil, err
-		}
-		meta.port = port
-
-		username, err := GetFromAuthOrMetaOrEnv(config, "username")
-		if err != nil {
-			return nil, err
-		}
-		meta.username = username
-
-		dbName, err := GetFromAuthOrMeta(config, "dbName")
-		if err != nil {
-			return nil, err
-		}
-		meta.dbName = dbName
-
-		if config.AuthParams["password"] != "" {
-			meta.password = config.AuthParams["password"]
-		} else if config.TriggerMetadata["passwordFromEnv"] != "" {
-			meta.password = config.ResolvedEnv[config.TriggerMetadata["passwordFromEnv"]]
-		}
-
-		if len(meta.password) == 0 {
-			return nil, fmt.Errorf("no password given")
-		}
-	}
-
-	if meta.connectionString != "" {
-		meta.dbName = parseMySQLDbNameFromConnectionStr(meta.connectionString)
-	}
-	meta.metricName = GenerateMetricNameWithIndex(config.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("mysql-%s", meta.dbName)))
-
-	return &meta, nil
+	return meta, nil
 }
 
 // metadataToConnectionStr builds new MySQL connection string
 func metadataToConnectionStr(meta *mySQLMetadata) string {
 	var connStr string
 
-	if meta.connectionString != "" {
-		connStr = meta.connectionString
+	if meta.ConnectionString != "" {
+		connStr = meta.ConnectionString
 	} else {
 		// Build connection str
 		config := mysql.NewConfig()
-		config.Addr = net.JoinHostPort(meta.host, meta.port)
-		config.DBName = meta.dbName
-		config.Passwd = meta.password
-		config.User = meta.username
+		config.Addr = net.JoinHostPort(meta.Host, meta.Port)
+		config.DBName = meta.DbName
+		config.Passwd = meta.Password
+		config.User = meta.Username
 		config.Net = "tcp"
 		connStr = config.FormatDSN()
 	}
@@ -205,7 +138,7 @@ func (s *mySQLScaler) Close(context.Context) error {
 // getQueryResult returns result of the scaler query
 func (s *mySQLScaler) getQueryResult(ctx context.Context) (float64, error) {
 	var value float64
-	err := s.connection.QueryRowContext(ctx, s.metadata.query).Scan(&value)
+	err := s.connection.QueryRowContext(ctx, s.metadata.Query).Scan(&value)
 	if err != nil {
 		s.logger.Error(err, fmt.Sprintf("Could not query MySQL database: %s", err))
 		return 0, err
@@ -217,9 +150,9 @@ func (s *mySQLScaler) getQueryResult(ctx context.Context) (float64, error) {
 func (s *mySQLScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: s.metadata.metricName,
+			Name: s.metadata.MetricName,
 		},
-		Target: GetMetricTargetMili(s.metricType, s.metadata.queryValue),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.QueryValue),
 	}
 	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
@@ -236,5 +169,5 @@ func (s *mySQLScaler) GetMetricsAndActivity(ctx context.Context, metricName stri
 
 	metric := GenerateMetricInMili(metricName, num)
 
-	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.activationQueryValue, nil
+	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.ActivationQueryValue, nil
 }

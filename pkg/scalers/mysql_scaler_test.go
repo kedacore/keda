@@ -121,8 +121,8 @@ func TestMySQLGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		if meta.metricName != testData.metricName {
-			t.Error("Wrong External metric source name:", meta.metricName)
+		if meta.MetricName != testData.metricName {
+			t.Error("Wrong External metric source name:", meta.MetricName)
 		}
 	}
 }

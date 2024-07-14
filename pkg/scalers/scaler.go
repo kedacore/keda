@@ -90,24 +90,6 @@ func GetFromAuthOrMeta(config *scalersconfig.ScalerConfig, field string) (string
 	return result, err
 }
 
-// GetFromAuthOrMetaOrEnv helps to get a field from Auth or Meta or Env sections
-func GetFromAuthOrMetaOrEnv(config *scalersconfig.ScalerConfig, field string) (string, error) {
-	var result string
-	var err error
-	switch {
-	case config.AuthParams[field] != "":
-		result = config.AuthParams[field]
-	case config.TriggerMetadata[field] != "":
-		result = config.TriggerMetadata[field]
-	case config.ResolvedEnv[config.TriggerMetadata[field+FromEnv]] != "":
-		result = config.TriggerMetadata[field+FromEnv]
-	}
-	if result == "" {
-		err = fmt.Errorf("%w: no %s or %s given", ErrScalerConfigMissingField, field, field+FromEnv)
-	}
-	return result, err
-}
-
 // GenerateMetricNameWithIndex helps to add the index prefix to the metric name
 func GenerateMetricNameWithIndex(triggerIndex int, metricName string) string {
 	return fmt.Sprintf("s%d-%s", triggerIndex, metricName)
