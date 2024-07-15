@@ -64,6 +64,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Introduce new Splunk Scaler ([#5904](https://github.com/kedacore/keda/issues/5904))
 - **General**: Remove deprecated Kustomize commonLabels ([#5888](https://github.com/kedacore/keda/pull/5888))
 - **General**: Support for Kubernetes v1.30 ([#5828](https://github.com/kedacore/keda/issues/5828))
+- **General**: Fix admission webhook validation not denying invalid fallbacks and replica counts ([#5954](https://github.com/kedacore/keda/issues/5954))
 
 #### Experimental
 
