@@ -19,11 +19,15 @@ jobs:
         - runner: ubuntu-latest
           name: amd64
     steps:
-
       - name: Check out code
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
         with:
           fetch-depth: 1
+
+      - name: Install prerequisites
+        run: |
+          apt-get update
+          apt-get install -y jq python3-yaml
 
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
