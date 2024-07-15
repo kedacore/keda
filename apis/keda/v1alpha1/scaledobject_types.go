@@ -284,7 +284,7 @@ func CheckFallbackValid(scaledObject *ScaledObject) error {
 
 	for _, trigger := range scaledObject.Spec.Triggers {
 		if trigger.Type == cpuString || trigger.Type == memoryString {
-			return fmt.Errorf("type is %s , but fallback it is not supported by the CPU & memory scalers", trigger.Type)
+			return fmt.Errorf("type is %s, but fallback it is not supported by the CPU & memory scalers", trigger.Type)
 		}
 		if trigger.MetricType != autoscalingv2.AverageValueMetricType {
 			return fmt.Errorf("MetricType=%s, but Fallback can only be enabled for triggers with metric of type AverageValue", trigger.MetricType)
