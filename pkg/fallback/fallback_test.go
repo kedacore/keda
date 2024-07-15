@@ -108,7 +108,7 @@ var _ = Describe("fallback", func() {
 		Expect(so.Status.Health[metricName]).To(haveFailureAndStatus(0, kedav1alpha1.HealthStatusHappy))
 	})
 
-	It("should reset the health status when scaler metrics are available when fallback is not enabled", func() {
+	It("should not reset the health status when fallback is not enabled", func() {
 		expectedMetricValue := float64(6)
 		startingNumberOfFailures := int32(5)
 		primeGetMetrics(scaler, expectedMetricValue)
@@ -134,7 +134,7 @@ var _ = Describe("fallback", func() {
 		Expect(err).ToNot(HaveOccurred())
 		value := metrics[0].Value.AsApproximateFloat64()
 		Expect(value).Should(Equal(expectedMetricValue))
-		Expect(so.Status.Health[metricName]).To(haveFailureAndStatus(0, kedav1alpha1.HealthStatusHappy))
+		Expect(so.Status.Health[metricName]).To(haveFailureAndStatus(5, kedav1alpha1.HealthStatusFailing))
 	})
 
 	It("should propagate the error when fallback is disabled", func() {
@@ -320,6 +320,7 @@ var _ = Describe("fallback", func() {
 			},
 		)
 		metricSpec := createMetricSpec(10)
+		expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
 		_, _, err = GetMetricsWithFallback(context.Background(), client, metrics, err, metricName, so, metricSpec)
