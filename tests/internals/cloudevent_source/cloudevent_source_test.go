@@ -27,6 +27,7 @@ var _ = godotenv.Load("../../.env")
 var (
 	namespace                  = fmt.Sprintf("%s-ns", testName)
 	scaledObjectName           = fmt.Sprintf("%s-so", testName)
+	deploymentName             = fmt.Sprintf("%s-d", testName)
 	clientName                 = fmt.Sprintf("%s-client", testName)
 	cloudeventSourceName       = fmt.Sprintf("%s-ce", testName)
 	cloudeventSourceErrName    = fmt.Sprintf("%s-ce-err", testName)
@@ -43,6 +44,7 @@ var (
 type templateData struct {
 	TestNamespace              string
 	ScaledObject               string
+	DeploymentName             string
 	ClientName                 string
 	CloudEventSourceName       string
 	CloudeventSourceErrName    string
@@ -210,6 +212,56 @@ spec:
         excludedEventTypes:
         - keda.scaledobject.failed.v1
     `
+
+	deploymentTemplate = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.DeploymentName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    deploy: {{.DeploymentName}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      pod: {{.DeploymentName}}
+  template:
+    metadata:
+      labels:
+        pod: {{.DeploymentName}}
+    spec:
+      containers:
+        - name: nginx
+          image: 'nginxinc/nginx-unprivileged'
+`
+
+	scaledObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObject}}
+  namespace: {{.TestNamespace}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  pollingInterval: 5
+  cooldownPeriod: 5
+  minReplicaCount: 1
+  maxReplicaCount: 10
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 15
+  triggers:
+  - type: cron
+    metadata:
+      timezone: Etc/UTC
+      start: 3 * * * *
+      end: 5 * * * *
+      desiredReplicas: '4'
+`
 )
 
 func TestScaledObjectGeneral(t *testing.T) {
@@ -223,6 +275,7 @@ func TestScaledObjectGeneral(t *testing.T) {
 	assert.True(t, WaitForAllPodRunningInNamespace(t, kc, namespace, 5, 20), "all pods should be running")
 
 	testErrEventSourceEmitValue(t, kc, data)
+	testEventSourceEmitValue(t, kc, data)
 	testErrEventSourceExcludeValue(t, kc, data)
 	testErrEventSourceIncludeValue(t, kc, data)
 	testErrEventSourceCreation(t, kc, data)
@@ -258,9 +311,60 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 			foundEvents = append(foundEvents, cloudEvent)
 			data := map[string]string{}
 			err := cloudEvent.DataAs(&data)
+			t.Log("--- test emitting eventsource about scaledobject err---", "message", data["message"])
+
 			assert.NoError(t, err)
-			assert.Equal(t, data["message"], "ScaledObject doesn't have correct scaleTargetRef specification")
+			assert.Condition(t, func() bool {
+				if data["message"] == "ScaledObject doesn't have correct scaleTargetRef specification" || data["message"] == "Target resource doesn't exist" {
+					return true
+				}
+				return false
+			}, "get filtered event")
+
 			assert.Equal(t, cloudEvent.Type(), "keda.scaledobject.failed.v1")
+			assert.Equal(t, cloudEvent.Source(), expectedSource)
+			assert.Equal(t, cloudEvent.DataContentType(), "application/json")
+
+			if lastCloudEventTime.Before(cloudEvent.Time()) {
+				lastCloudEventTime = cloudEvent.Time()
+			}
+		}
+	}
+	assert.NotEmpty(t, foundEvents)
+}
+
+func testEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data templateData) {
+	t.Log("--- test emitting eventsource about scaledobject removed---")
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	KubectlApplyWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
+
+	// wait 15 seconds to ensure event propagation
+	time.Sleep(5 * time.Second)
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	time.Sleep(10 * time.Second)
+
+	out, outErr, err := ExecCommandOnSpecificPod(t, clientName, namespace, fmt.Sprintf("curl -X GET %s/getCloudEvent/%s", cloudEventHTTPServiceURL, "ScaledObjectDeleted"))
+	assert.NotEmpty(t, out)
+	assert.Empty(t, outErr)
+	assert.NoError(t, err, "dont expect error requesting ")
+
+	cloudEvents := []cloudevents.Event{}
+	err = json.Unmarshal([]byte(out), &cloudEvents)
+
+	assert.NoError(t, err, "dont expect error unmarshaling the cloudEvents")
+	assert.Greater(t, len(cloudEvents), 0, "cloudEvents should have at least 1 item")
+
+	foundEvents := []cloudevents.Event{}
+
+	for _, cloudEvent := range cloudEvents {
+		if cloudEvent.Subject() == expectedSubject {
+			foundEvents = append(foundEvents, cloudEvent)
+			data := map[string]string{}
+			err := cloudEvent.DataAs(&data)
+
+			assert.NoError(t, err)
+			assert.Equal(t, data["message"], "ScaledObject was deleted")
+			assert.Equal(t, cloudEvent.Type(), "keda.scaledobject.removed.v1")
 			assert.Equal(t, cloudEvent.Source(), expectedSource)
 			assert.Equal(t, cloudEvent.DataContentType(), "application/json")
 
@@ -362,6 +466,7 @@ func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:              namespace,
 			ScaledObject:               scaledObjectName,
+			DeploymentName:             deploymentName,
 			ClientName:                 clientName,
 			CloudEventSourceName:       cloudeventSourceName,
 			CloudeventSourceErrName:    cloudeventSourceErrName,

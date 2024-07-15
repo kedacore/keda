@@ -28,4 +28,6 @@ const (
 	ScaleTargetNotFoundMsg = "Target resource doesn't exist"
 
 	ScaleTargetNoSubresourceMsg = "Target resource doesn't expose /scale subresource"
+
+	ScaledObjectRemoved = "ScaledObject was deleted"
 )

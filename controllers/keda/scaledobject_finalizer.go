@@ -24,8 +24,10 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/controllers/keda/util"
+	"github.com/kedacore/keda/v2/pkg/common/message"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 )
 
@@ -86,7 +88,7 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(ctx context.Context, logge
 	}
 
 	logger.Info("Successfully finalized ScaledObject")
-	r.Recorder.Event(scaledObject, corev1.EventTypeNormal, eventreason.ScaledObjectDeleted, "ScaledObject was deleted")
+	r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectRemovedType, eventreason.ScaledObjectDeleted, message.ScaledObjectRemoved)
 	return nil
 }
 

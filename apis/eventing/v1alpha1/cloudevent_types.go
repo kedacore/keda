@@ -26,6 +26,9 @@ const (
 
 	// ScaledObjectFailedType is for event when creating ScaledObject failed
 	ScaledObjectFailedType CloudEventType = "keda.scaledobject.failed.v1"
+
+	// ScaledObjectFailedType is for event when removed ScaledObject
+	ScaledObjectRemovedType CloudEventType = "keda.scaledobject.removed.v1"
 )
 
 var AllEventTypes = []CloudEventType{ScaledObjectFailedType, ScaledObjectReadyType}
