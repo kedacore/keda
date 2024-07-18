@@ -69,8 +69,6 @@ func parseMySQLMetadata(config *scalersconfig.ScalerConfig) (*mySQLMetadata, err
 		return nil, fmt.Errorf("error parsing mysql metadata: %w", err)
 	}
 
-	meta.ActivationQueryValue = 0
-
 	if meta.ConnectionString != "" {
 		meta.DBName = parseMySQLDbNameFromConnectionStr(meta.ConnectionString)
 	}
