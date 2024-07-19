@@ -59,6 +59,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### New
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Enable OpenSSF Scorecard to enhance security practices across the project ([#5913](https://github.com/kedacore/keda/issues/5913))
 - **General**: Add --ca-dir flag to KEDA operator to specify directories with CA certificates for scalers to authenticate TLS connections (defaults to /custom/ca) ([#5860](https://github.com/kedacore/keda/issues/5860))
 - **General**: Declarative parsing of scaler config ([#5037](https://github.com/kedacore/keda/issues/5037)|[#5797](https://github.com/kedacore/keda/issues/5797))
 - **General**: Introduce new Splunk Scaler ([#5904](https://github.com/kedacore/keda/issues/5904))
