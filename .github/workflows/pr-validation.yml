@@ -10,7 +10,7 @@ jobs:
   validate:
     name: validate - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.21.9
+    container: ghcr.io/kedacore/keda-tools:1.22.5
     strategy:
       matrix:
         include:
@@ -77,9 +77,9 @@ jobs:
   validate-dockerfiles:
     name: validate-dockerfiles - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.21.9
+    container: ghcr.io/kedacore/keda-tools:1.22.5
     strategy:
-       matrix:
+      matrix:
         include:
         - runner: ARM64
           name: arm64
@@ -108,9 +108,9 @@ jobs:
   validate-dev-container:
     name: Validate dev-container - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.21.9
+    container: ghcr.io/kedacore/keda-tools:1.22.5
     strategy:
-       matrix:
+      matrix:
         include:
         - runner: ARM64
           name: arm64
