@@ -247,6 +247,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewSolaceScaler(config)
 	case "solr":
 		return scalers.NewSolrScaler(config)
+	case "splunk":
+		return scalers.NewSplunkScaler(config)
 	case "stan":
 		return scalers.NewStanScaler(config)
 	default:

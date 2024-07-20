@@ -18,6 +18,7 @@ package fallback
 
 import (
 	"context"
+	"reflect"
 	"strconv"
 
 	v2 "k8s.io/api/autoscaling/v2"
@@ -137,10 +138,13 @@ func updateStatus(ctx context.Context, client runtimeclient.Client, scaledObject
 		status.Conditions.SetFallbackCondition(metav1.ConditionFalse, "NoFallbackFound", "No fallbacks are active on this scaled object")
 	}
 
-	scaledObject.Status = *status
-	err := client.Status().Patch(ctx, scaledObject, patch)
-	if err != nil {
-		log.Error(err, "failed to patch ScaledObjects Status", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
+	// Update status only if it has changed
+	if !reflect.DeepEqual(scaledObject.Status, *status) {
+		scaledObject.Status = *status
+		err := client.Status().Patch(ctx, scaledObject, patch)
+		if err != nil {
+			log.Error(err, "failed to patch ScaledObjects Status", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
+		}
 	}
 }
 

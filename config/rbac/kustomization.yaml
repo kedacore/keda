@@ -1,8 +1,11 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-commonLabels:
-  app.kubernetes.io/name: keda-operator
-  app.kubernetes.io/part-of: keda-operator
+
+labels:
+  - pairs:
+      app.kubernetes.io/name: keda-operator
+      app.kubernetes.io/part-of: keda-operator
+    includeSelectors: true
 
 resources:
 - role.yaml
