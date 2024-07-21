@@ -201,6 +201,7 @@ spec:
       authenticationRef:
         name: {{.TriggerAuthName}}
 `
+)
 
 func TestDynatraceScaler(t *testing.T) {
 	// setup
@@ -293,7 +294,7 @@ func getTemplateData() (templateData, []Template) {
 			DynatraceToken:          base64.StdEncoding.EncodeToString([]byte(dynatraceToken)),
 			DynatraceOperatorToken:  base64.StdEncoding.EncodeToString([]byte(dynatraceOperatorToken)),
 			DynatraceHost:           dynatraceHost,
-      QueryDefaultValue:       0,
+			QueryDefaultValue:       0,
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
