@@ -56,6 +56,7 @@ type templateData struct {
 	KubernetesClusterName   string
 	MinReplicaCount         string
 	MaxReplicaCount         string
+	QueryDefaultValue       int
 }
 
 const (
@@ -195,36 +196,11 @@ spec:
         host: {{.DynatraceHost}}
         threshold: "2"
         activationThreshold: "3"
-        metricSelector: "builtin:service.requestCount.total:splitBy():fold"
+        metricSelector: "builtin:service.requestCount.total:splitBy():default({{.QueryDefaultValue}},always):fold(max)"
         from: now-2m
       authenticationRef:
         name: {{.TriggerAuthName}}
 `
-
-	lightLoadTemplate = `apiVersion: v1
-kind: Pod
-metadata:
-  name: fake-light-traffic
-  namespace: {{.TestNamespace}}
-spec:
-  containers:
-  - image: busybox
-    name: test
-    command: ["/bin/sh"]
-    args: ["-c", "while true; do wget -O /dev/null -o /dev/null http://{{.ServiceName}}/; sleep 0.5; done"]`
-
-	heavyLoadTemplate = `apiVersion: v1
-kind: Pod
-metadata:
-  name: fake-heavy-traffic
-  namespace: {{.TestNamespace}}
-spec:
-  containers:
-  - image: busybox
-    name: test
-    command: ["/bin/sh"]
-    args: ["-c", "while true; do wget -O /dev/null -o /dev/null http://{{.ServiceName}}/; sleep 0.1; done"]`
-)
 
 func TestDynatraceScaler(t *testing.T) {
 	// setup
@@ -258,25 +234,28 @@ func TestDynatraceScaler(t *testing.T) {
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
-	KubectlApplyWithTemplate(t, data, "lightLoadTemplate", lightLoadTemplate)
+	data.QueryDefaultValue = 2
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
-	KubectlApplyWithTemplate(t, data, "heavyLoadTemplate", heavyLoadTemplate)
+	data.QueryDefaultValue = 10
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
-		"replica count should be %d after 3 minutes", maxReplicaCount)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 2),
+		"replica count should be %d after 2 minutes", maxReplicaCount)
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale in ---")
-	KubectlDeleteWithTemplate(t, data, "lightLoadTemplate", lightLoadTemplate)
-	KubectlDeleteWithTemplate(t, data, "heavyLoadTemplate", heavyLoadTemplate)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %d after 3 minutes", minReplicaCount)
+	data.QueryDefaultValue = 0
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 2),
+		"replica count should be %d after 2 minutes", minReplicaCount)
 }
 
 func installDynatrace(t *testing.T) {
@@ -314,6 +293,7 @@ func getTemplateData() (templateData, []Template) {
 			DynatraceToken:          base64.StdEncoding.EncodeToString([]byte(dynatraceToken)),
 			DynatraceOperatorToken:  base64.StdEncoding.EncodeToString([]byte(dynatraceOperatorToken)),
 			DynatraceHost:           dynatraceHost,
+      QueryDefaultValue:       0,
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
