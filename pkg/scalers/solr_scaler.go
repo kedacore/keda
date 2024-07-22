@@ -77,7 +77,7 @@ func parseSolrMetadata(config *scalersconfig.ScalerConfig) (*solrMetadata, error
 	meta := &solrMetadata{}
 	meta.triggerIndex = config.TriggerIndex
 	if err := config.TypedConfig(meta); err != nil {
-		return nil, fmt.Errorf("error parsing prometheus metadata: %w", err)
+		return nil, fmt.Errorf("error parsing solr metadata: %w", err)
 	}
 
 	if !config.AsMetricSource && meta.TargetQueryValue == 0 {
