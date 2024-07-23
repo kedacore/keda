@@ -63,12 +63,16 @@ var testIBMMQMetadata = []parseIBMMQMetadataTestData{
 	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueDepth": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
 	// Invalid URL
 	{map[string]string{"host": testInvalidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
-	// Properly formed authParams
+	// Properly formed authParams Basic Auth
 	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "10"}, false, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	// Properly formed authParams Basic Auth and TLS
+	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "10"}, false, map[string]string{"username": "testUsername", "password": "Pass123", "ca": "cavalue", "cert": "certvalue", "key": "keyvalue"}},
 	// No username provided
 	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"password": "Pass123"}},
 	// No password provided
 	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"username": "testUsername"}},
+	// Wrong input unsafeSsl
+	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "10", "unsafeSsl": "random"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
 }
 
 // Test MQ Connection metadata is parsed correctly
