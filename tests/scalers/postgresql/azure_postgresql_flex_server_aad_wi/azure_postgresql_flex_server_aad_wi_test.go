@@ -186,6 +186,12 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
 
+	// As Azure Database is slower than in cluster database (0 latency vs external service)
+	// we need to remove the load and manually trigger the scaling in condition in the database
+
+	//Remove the load
+	KubectlDeleteWithTemplate(t, data, "lowLevelRecordsJobTemplate", pg.LowLevelRecordsJobTemplate)
+	KubectlDeleteWithTemplate(t, data, "insertRecordsJobTemplate", pg.InsertRecordsJobTemplate)
 	// Update all the instances
 	updateRecords := "UPDATE task_instance SET state = 'processed';"
 	ok, out, errOut, err := WaitForSuccessfulExecCommandOnSpecificPod(t, postgresqlPodName, testNamespace,
