@@ -220,6 +220,7 @@ func TestIBMMQScalerGetQueueDepthViaHTTP(t *testing.T) {
 				metadata: &IBMMQMetadata{
 					host: server.URL,
 				},
+				httpClient: server.Client(),
 			}
 
 			value, err := scaler.getQueueDepthViaHTTP(context.Background())
