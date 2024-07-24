@@ -663,17 +663,15 @@ func (s *datadogScaler) GetMetricsAndActivity(ctx context.Context, metricName st
 
 		metric = GenerateMetricInMili(metricName, num)
 		return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.activationTargetValue, nil
-	} else {
-		num, err = s.getQueryResult(ctx)
-		if err != nil {
-			s.logger.Error(err, "error getting metrics from Datadog")
-			return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting metrics from Datadog: %w", err)
-		}
-
-		metric = GenerateMetricInMili(metricName, num)
-		return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.activationQueryValue, nil
+	}
+	num, err = s.getQueryResult(ctx)
+	if err != nil {
+		s.logger.Error(err, "error getting metrics from Datadog")
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting metrics from Datadog: %w", err)
 	}
 
+	metric = GenerateMetricInMili(metricName, num)
+	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.activationQueryValue, nil
 }
 
 // MaxFloatFromSlice finds the largest value in a slice of floats
