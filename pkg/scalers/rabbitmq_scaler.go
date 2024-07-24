@@ -454,9 +454,10 @@ func getConnectionAndChannel(host string, meta *rabbitMQMetadata) (*amqp.Connect
 	var err error
 	if meta.enableTLS {
 		tlsConfig, configErr := kedautil.NewTLSConfigWithPassword(meta.cert, meta.key, meta.keyPassword, meta.ca, meta.unsafeSsl)
-		if configErr == nil {
-			conn, err = amqp.DialTLS(host, tlsConfig)
+		if configErr != nil {
+			return nil, nil, configErr
 		}
+		conn, err = amqp.DialTLS(host, tlsConfig)
 	} else {
 		conn, err = amqp.Dial(host)
 	}
