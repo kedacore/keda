@@ -61,6 +61,9 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 - **General**: Add --ca-dir flag to KEDA operator to specify directories with CA certificates for scalers to authenticate TLS connections (defaults to /custom/ca) ([#5860](https://github.com/kedacore/keda/issues/5860))
 - **General**: Declarative parsing of scaler config ([#5037](https://github.com/kedacore/keda/issues/5037)|[#5797](https://github.com/kedacore/keda/issues/5797))
+- **General**: Introduce new Splunk Scaler ([#5904](https://github.com/kedacore/keda/issues/5904))
+- **General**: Provide CloudEvents around the management of ScaledObjects resources ([#3522](https://github.com/kedacore/keda/issues/3522))
+- **General**: Remove deprecated Kustomize commonLabels ([#5888](https://github.com/kedacore/keda/pull/5888))
 - **General**: Support for Kubernetes v1.30 ([#5828](https://github.com/kedacore/keda/issues/5828))
 
 #### Experimental
@@ -71,15 +74,19 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 
+- **Cassandra Scaler**: Add TLS support for cassandra scaler ([#5802](https://github.com/kedacore/keda/issues/5802))
 - **GCP Scalers**: Added custom time horizon in GCP scalers ([#5778](https://github.com/kedacore/keda/issues/5778))
 - **GitHub Scaler**: Fixed pagination, fetching repository list ([#5738](https://github.com/kedacore/keda/issues/5738))
 - **Kafka**: Fix logic to scale to zero on invalid offset even with earliest offsetResetPolicy ([#5689](https://github.com/kedacore/keda/issues/5689))
+- **MYSQL Scaler**: Add support to fetch username from env ([#5883](https://github.com/kedacore/keda/issues/5883))
 - **Postgres Scaler**: Add support for access token authentication to an Azure Postgres Flexible Server ([#5823](https://github.com/kedacore/keda/issues/5823))
 
 ### Fixes
 
+- **General**: Check for missing CRD references and sample CRs ([#5920](https://github.com/kedacore/keda/issues/5920))
 - **General**: Scalers are properly closed after being refreshed ([#5806](https://github.com/kedacore/keda/issues/5806))
 - **MongoDB Scaler**:  MongoDB url parses correctly `+srv` scheme ([#5760](https://github.com/kedacore/keda/issues/5760))
+- **New Relic Scaler**: Fix CVE-2024-6104 in github.com/hashicorp/go-retryablehttp ([#5944](https://github.com/kedacore/keda/issues/5944))
 
 ### Deprecations
 
@@ -93,6 +100,8 @@ New deprecation(s):
 
 - **General**: Added Pre Regex check before building image in e2e test ([#5783](https://github.com/kedacore/keda/issues/5783))
 - **General**: Reduce the number of ScaledObject.Status updates in the fallback ([#5624](https://github.com/kedacore/keda/issues/5624))
+- **Azure Services**: Migrated to `github.com/Azure/azure-sdk-for-go` ([#5470](https://github.com/kedacore/keda/issues/5470))
+- **IBM MQ Scaler**: Adding e2e test ([#1287](https://github.com/kedacore/keda/issues/1287))
 
 ## v2.14.0
 
