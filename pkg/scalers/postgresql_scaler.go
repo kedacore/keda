@@ -144,7 +144,7 @@ func parsePostgreSQLMetadata(logger logr.Logger, config *scalersconfig.ScalerCon
 			return nil, authPodIdentity, fmt.Errorf("failed to parse fields related to the connection")
 		}
 
-		cred, err := azure.NewChainedCredential(logger, config.PodIdentity.GetIdentityID(), config.PodIdentity.GetIdentityTenantID(), config.PodIdentity.Provider)
+		cred, err := azure.NewChainedCredential(logger, config.PodIdentity)
 		if err != nil {
 			return nil, authPodIdentity, err
 		}
