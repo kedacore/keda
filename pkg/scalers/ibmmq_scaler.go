@@ -83,7 +83,7 @@ func NewIBMMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing IBM MQ metadata: %w", err)
 	}
 
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsl)
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.tlsDisabled)
 
 	// Configure TLS if cert and key are specified
 	if meta.cert != "" && meta.key != "" {
