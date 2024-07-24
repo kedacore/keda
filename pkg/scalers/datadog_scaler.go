@@ -134,7 +134,7 @@ func parseDatadogQuery(q string) (bool, error) {
 
 // buildClusterAgentURL builds the URL for the Cluster Agent Metrics API service
 func buildClusterAgentURL(datadogMetricsService, datadogNamespace string, datadogMetricsServicePort int) string {
-	return fmt.Sprintf("https://%s.%s.svc.cluster.local:%d/apis/external.metrics.k8s.io/v1beta1", datadogMetricsService, datadogNamespace, datadogMetricsServicePort)
+	return fmt.Sprintf("https://%s.%s:%d/apis/external.metrics.k8s.io/v1beta1", datadogMetricsService, datadogNamespace, datadogMetricsServicePort)
 }
 
 // buildMetricURL builds the URL for the Datadog metric
