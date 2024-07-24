@@ -19,9 +19,9 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"strconv"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -42,8 +42,7 @@ const (
 type azureQueueScaler struct {
 	metricType  v2.MetricTargetType
 	metadata    *azureQueueMetadata
-	podIdentity kedav1alpha1.AuthPodIdentity
-	httpClient  *http.Client
+	queueClient *azqueue.QueueClient
 	logger      logr.Logger
 }
 
@@ -71,11 +70,15 @@ func NewAzureQueueScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing azure queue metadata: %w", err)
 	}
 
+	queueClient, err := azure.GetStorageQueueClient(logger, podIdentity, meta.connection, meta.accountName, meta.endpointSuffix, meta.queueName, config.GlobalHTTPTimeout)
+	if err != nil {
+		return nil, fmt.Errorf("error creating azure blob client: %w", err)
+	}
+
 	return &azureQueueScaler{
 		metricType:  metricType,
 		metadata:    meta,
-		podIdentity: podIdentity,
-		httpClient:  kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
+		queueClient: queueClient,
 		logger:      logger,
 	}, nil
 }
@@ -153,9 +156,6 @@ func parseAzureQueueMetadata(config *scalersconfig.ScalerConfig, logger logr.Log
 }
 
 func (s *azureQueueScaler) Close(context.Context) error {
-	if s.httpClient != nil {
-		s.httpClient.CloseIdleConnections()
-	}
 	return nil
 }
 
@@ -172,21 +172,12 @@ func (s *azureQueueScaler) GetMetricSpecForScaling(context.Context) []v2.MetricS
 
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *azureQueueScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	queuelen, err := azure.GetAzureQueueLength(
-		ctx,
-		s.podIdentity,
-		s.metadata.connection,
-		s.metadata.queueName,
-		s.metadata.accountName,
-		s.metadata.endpointSuffix,
-	)
-
+	props, err := s.queueClient.GetProperties(ctx, nil)
 	if err != nil {
 		s.logger.Error(err, "error getting queue length")
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
-
+	queuelen := int64(*props.ApproximateMessagesCount)
 	metric := GenerateMetricInMili(metricName, float64(queuelen))
-
 	return []external_metrics.ExternalMetricValue{metric}, queuelen > s.metadata.activationTargetQueueLength, nil
 }
