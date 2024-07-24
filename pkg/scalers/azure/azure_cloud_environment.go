@@ -4,8 +4,15 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	az "github.com/Azure/go-autorest/autorest/azure"
 )
+
+var AzureClouds = map[string]cloud.Configuration{
+	"AZUREPUBLICCLOUD":       cloud.AzurePublic,
+	"AZUREUSGOVERNMENTCLOUD": cloud.AzureGovernment,
+	"AZURECHINACLOUD":        cloud.AzureChina,
+}
 
 const (
 	DefaultCloud = "azurePublicCloud"

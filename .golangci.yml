@@ -80,10 +80,6 @@ issues:
     - path: azure/azure_app_insights.go
       linters:
         - bodyclose
-  # We need to use Golang 1.18 before update the SDK due to it's a prerrequisite
-    - linters:
-       - staticcheck
-      text: "SA1019: \"github.com/Azure/azure-sdk-for-go/services/preview/monitor/mgmt/2018-03-01/insights"
   # Exclude for stan_scaler and nats_jetstream_scaler, reason:
   # pkg/scalers/nats_jetstream_scaler.go:109: 109-153 lines are duplicate of `pkg/scalers/stan_scaler.go:83-127` (dupl)
     - path: nats_jetstream_scaler.go
