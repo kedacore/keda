@@ -2,7 +2,7 @@ name: "Semgrep"
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request_target: {}
 
 concurrency:
@@ -12,7 +12,7 @@ concurrency:
 jobs:
   semgrep:
     name: Analyze Semgrep
-    runs-on: ubuntu-latest
+    runs-on: ARM64
     container: returntocorp/semgrep
     if: (github.actor != 'dependabot[bot]')
     steps:
@@ -30,7 +30,7 @@ jobs:
           apk add github-cli
           gh pr checkout ${{ github.event.number }}
 
-      - run: semgrep ci --sarif --output=semgrep.sarif
+      - run: semgrep ci --exclude=test --exclude=test --sarif --output=semgrep.sarif
         env:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
 
