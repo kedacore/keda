@@ -2,6 +2,7 @@ package scalers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -26,17 +27,17 @@ type awsDynamoDBScaler struct {
 
 type awsDynamoDBMetadata struct {
 	awsAuthorization          awsutils.AuthorizationMetadata
+	expressionAttributeValues map[string]types.AttributeValue
 	triggerIndex              int
 	metricName                string
-	TableName                 string                          `keda:"name=tableName, order=triggerMetadata"`
-	AwsRegion                 string                          `keda:"name=awsRegion, order=triggerMetadata"`
-	AwsEndpoint               string                          `keda:"name=awsEndpoint, order=triggerMetadata, optional"`
-	KeyConditionExpression    string                          `keda:"name=keyConditionExpression, order=triggerMetadata"`
-	ExpressionAttributeNames  map[string]string               `keda:"name=expressionAttributeNames, order=triggerMetadata"`
-	ExpressionAttributeValues map[string]types.AttributeValue `keda:"name=expressionAttributeValues, order=triggerMetadata"`
-	IndexName                 string                          `keda:"name=indexName, order=triggerMetadata, optional"`
-	TargetValue               int64                           `keda:"name=targetValue, order=triggerMetadata, optional, default=-1"`
-	ActivationTargetValue     int64                           `keda:"name=activationTargetValue, order=triggerMetadata, default=0"`
+	TableName                 string            `keda:"name=tableName, order=triggerMetadata"`
+	AwsRegion                 string            `keda:"name=awsRegion, order=triggerMetadata"`
+	AwsEndpoint               string            `keda:"name=awsEndpoint, order=triggerMetadata, optional"`
+	KeyConditionExpression    string            `keda:"name=keyConditionExpression, order=triggerMetadata"`
+	ExpressionAttributeNames  map[string]string `keda:"name=expressionAttributeNames, order=triggerMetadata"`
+	IndexName                 string            `keda:"name=indexName, order=triggerMetadata, optional"`
+	TargetValue               int64             `keda:"name=targetValue, order=triggerMetadata, optional, default=-1"`
+	ActivationTargetValue     int64             `keda:"name=activationTargetValue, order=triggerMetadata, default=0"`
 }
 
 func NewAwsDynamoDBScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
@@ -63,6 +64,10 @@ func NewAwsDynamoDBScaler(ctx context.Context, config *scalersconfig.ScalerConfi
 
 var (
 	ErrAwsDynamoNoTargetValue = errors.New("no targetValue given")
+	// ErrAwsDynamoInvalidExpressionAttributeValues is returned when "expressionAttributeNames" is missing an invalid JSON.
+	ErrAwsDynamoInvalidExpressionAttributeValues = errors.New("invalid expressionAttributeValues")
+	// ErrAwsDynamoNoExpressionAttributeValues is returned when "expressionAttributeValues" is missing from the config.
+	ErrAwsDynamoNoExpressionAttributeValues = errors.New("no expressionAttributeValues given")
 )
 
 func parseAwsDynamoDBMetadata(config *scalersconfig.ScalerConfig) (*awsDynamoDBMetadata, error) {
@@ -70,7 +75,17 @@ func parseAwsDynamoDBMetadata(config *scalersconfig.ScalerConfig) (*awsDynamoDBM
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing DynamoDb metadata: %w", err)
 	}
+	if val, ok := config.TriggerMetadata["expressionAttributeValues"]; ok && val != "" {
+		values, err := json2DynamoMap(val)
 
+		if err != nil {
+			return nil, fmt.Errorf("error parsing expressionAttributeValues: %w", err)
+		}
+
+		meta.expressionAttributeValues = values
+	} else {
+		return nil, ErrAwsDynamoNoExpressionAttributeValues
+	}
 	if meta.TargetValue == -1 && config.AsMetricSource {
 		meta.TargetValue = 0
 	} else if meta.TargetValue == -1 && !config.AsMetricSource {
@@ -140,7 +155,7 @@ func (s *awsDynamoDBScaler) GetQueryMetrics(ctx context.Context) (float64, error
 		TableName:                 aws.String(s.metadata.TableName),
 		KeyConditionExpression:    aws.String(s.metadata.KeyConditionExpression),
 		ExpressionAttributeNames:  s.metadata.ExpressionAttributeNames,
-		ExpressionAttributeValues: s.metadata.ExpressionAttributeValues,
+		ExpressionAttributeValues: s.metadata.expressionAttributeValues,
 	}
 
 	if s.metadata.IndexName != "" {
@@ -154,4 +169,75 @@ func (s *awsDynamoDBScaler) GetQueryMetrics(ctx context.Context) (float64, error
 	}
 
 	return float64(res.Count), nil
+}
+func json2DynamoMap(js string) (map[string]types.AttributeValue, error) {
+	var valueMap map[string]interface{}
+	err := json.Unmarshal([]byte(js), &valueMap)
+	if err != nil {
+		return nil, err
+	}
+	attributeValues := make(map[string]types.AttributeValue)
+
+	// Iterate through the input map and convert values to AttributeValues
+	for k, v := range valueMap {
+		av, err := attributeValueFromInterface(v)
+		if err != nil {
+			return nil, err
+		}
+		attributeValues[k] = av
+	}
+	return attributeValues, nil
+}
+
+func attributeValueFromInterface(value interface{}) (types.AttributeValue, error) {
+	var err error
+	switch v := value.(type) {
+	case map[string]interface{}:
+		// Check the nested map to determine the data type
+		for dataType, val := range v {
+			switch dataType {
+			case "S":
+				return &types.AttributeValueMemberS{Value: val.(string)}, nil
+			case "N":
+				switch av := val.(type) {
+				case string:
+					return &types.AttributeValueMemberN{Value: av}, nil
+				default:
+					return nil, ErrAwsDynamoInvalidExpressionAttributeValues
+				}
+			case "BOOL":
+				return &types.AttributeValueMemberBOOL{Value: val.(bool)}, nil
+			case "B":
+				return &types.AttributeValueMemberB{Value: []byte(val.(string))}, nil
+			case "L":
+				listValues := val.([]interface{})
+				list := make([]types.AttributeValue, len(listValues))
+				for i, listVal := range listValues {
+					list[i], err = attributeValueFromInterface(listVal)
+					if err != nil {
+						return nil, err
+					}
+				}
+				return &types.AttributeValueMemberL{Value: list}, nil
+			case "M":
+				mapValues := val.(map[string]interface{})
+				m := make(map[string]types.AttributeValue)
+				for mapKey, mapVal := range mapValues {
+					mapAttr, err := attributeValueFromInterface(mapVal)
+					if err != nil {
+						return nil, err
+					}
+					m[mapKey] = mapAttr
+				}
+				return &types.AttributeValueMemberM{Value: m}, nil
+			case "NULL":
+				return &types.AttributeValueMemberNULL{Value: true}, nil
+			default:
+				return nil, fmt.Errorf("unsupported data type for attribute value: %s", dataType)
+			}
+		}
+	default:
+		return nil, fmt.Errorf("unsupported data type for attribute value")
+	}
+	return nil, nil
 }

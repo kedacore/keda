@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -56,12 +55,6 @@ var (
 
 	//// ErrAwsDynamoNoExpressionAttributeNames is returned when "expressionAttributeNames" is missing from the config.
 	ErrAwsDynamoNoExpressionAttributeNames = errors.New("missing required parameter \"expressionAttributeNames\"")
-
-	// ErrAwsDynamoInvalidExpressionAttributeValues is returned when "expressionAttributeNames" is missing an invalid JSON.
-	ErrAwsDynamoInvalidExpressionAttributeValues = errors.New("invalid expressionAttributeValues")
-
-	//// ErrAwsDynamoNoExpressionAttributeValues is returned when "expressionAttributeValues" is missing from the config.
-	ErrAwsDynamoNoExpressionAttributeValues = errors.New("missing required parameter \"expressionAttributeValues\"")
 )
 
 var dynamoTestCases = []parseDynamoDBMetadataTestData{
@@ -130,7 +123,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			"targetValue":               "no-valid",
 		},
 		authParams:    map[string]string{},
-		expectedError: strconv.ErrSyntax,
+		expectedError: errors.New("error parsing DynamoDb metadata: unable to set param \"targetValue\" value"),
 	},
 	{
 		name: "invalid activationTargetValue given",
@@ -144,7 +137,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			"activationTargetValue":     "no-valid",
 		},
 		authParams:    map[string]string{},
-		expectedError: strconv.ErrSyntax,
+		expectedError: errors.New("unable to set param \"activationTargetValue\""),
 	},
 	{
 		name: "malformed expressionAttributeNames",
@@ -157,7 +150,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			"targetValue":               "3",
 		},
 		authParams:    map[string]string{},
-		expectedError: ErrAwsDynamoInvalidExpressionAttributeNames,
+		expectedError: errors.New("unable to set param \"expressionAttributeNames\""),
 	},
 	{
 		name: "empty expressionAttributeNames",
@@ -170,7 +163,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			"targetValue":               "3",
 		},
 		authParams:    map[string]string{},
-		expectedError: ErrAwsDynamoEmptyExpressionAttributeNames,
+		expectedError: errors.New("error parsing DynamoDb metadata: unable to set param \"expressionAttributeNames\""),
 	},
 	{
 		name: "malformed expressionAttributeValues",
@@ -215,7 +208,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			AwsRegion:                 "eu-west-1",
 			KeyConditionExpression:    "#yr = :yyyy",
 			ExpressionAttributeNames:  map[string]string{"#yr": year},
-			ExpressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
+			expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 			TargetValue:               3,
 			triggerIndex:              1,
 			metricName:                "s1-aws-dynamodb-test",
@@ -245,7 +238,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			AwsEndpoint:               "http://localhost:4566",
 			KeyConditionExpression:    "#yr = :yyyy",
 			ExpressionAttributeNames:  map[string]string{"#yr": year},
-			ExpressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
+			expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 			TargetValue:               3,
 			triggerIndex:              1,
 			metricName:                "s1-aws-dynamodb-test",
@@ -274,7 +267,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			AwsRegion:                 "eu-west-1",
 			KeyConditionExpression:    "#yr = :yyyy",
 			ExpressionAttributeNames:  map[string]string{"#yr": year},
-			ExpressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
+			expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 			ActivationTargetValue:     1,
 			TargetValue:               3,
 			triggerIndex:              1,
@@ -305,7 +298,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			IndexName:                 "test-index",
 			KeyConditionExpression:    "#yr = :yyyy",
 			ExpressionAttributeNames:  map[string]string{"#yr": year},
-			ExpressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
+			expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 			TargetValue:               3,
 			triggerIndex:              1,
 			metricName:                "s1-aws-dynamodb-test",
@@ -376,7 +369,7 @@ var awsDynamoDBGetMetricTestData = []awsDynamoDBMetadata{
 		AwsRegion:                 "eu-west-1",
 		KeyConditionExpression:    "#yr = :yyyy",
 		ExpressionAttributeNames:  map[string]string{"#yr": year},
-		ExpressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
+		expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 		TargetValue:               3,
 	},
 	{
@@ -384,7 +377,7 @@ var awsDynamoDBGetMetricTestData = []awsDynamoDBMetadata{
 		AwsRegion:                 "eu-west-1",
 		KeyConditionExpression:    "#yr = :yyyy",
 		ExpressionAttributeNames:  map[string]string{"#yr": year},
-		ExpressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
+		expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 		TargetValue:               3,
 	},
 	{
@@ -392,7 +385,7 @@ var awsDynamoDBGetMetricTestData = []awsDynamoDBMetadata{
 		AwsRegion:                 "eu-west-1",
 		KeyConditionExpression:    "#yr = :yyyy",
 		ExpressionAttributeNames:  map[string]string{"#yr": year},
-		ExpressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
+		expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 		TargetValue:               3,
 	},
 	{
@@ -401,7 +394,7 @@ var awsDynamoDBGetMetricTestData = []awsDynamoDBMetadata{
 		IndexName:                 "test-index",
 		KeyConditionExpression:    "#yr = :yyyy",
 		ExpressionAttributeNames:  map[string]string{"#yr": year},
-		ExpressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
+		expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 		ActivationTargetValue:     3,
 		TargetValue:               3,
 	},
