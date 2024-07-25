@@ -201,6 +201,7 @@ func setMetricValue(t *testing.T, value float64, stopCh <-chan struct{}) {
 				t.Log("Error executing request")
 				continue
 			}
+			defer r.Body.Close()
 			if r.StatusCode != http.StatusAccepted {
 				msg := fmt.Sprintf("%s: api returned %d", r.Request.URL.Path, r.StatusCode)
 				t.Log(msg)
