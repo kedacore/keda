@@ -12,7 +12,7 @@ concurrency:
 jobs:
   semgrep:
     name: Analyze Semgrep
-    runs-on: ARM64
+    runs-on: ubuntu-latest
     container: returntocorp/semgrep
     if: (github.actor != 'dependabot[bot]')
     steps:
