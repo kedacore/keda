@@ -4,10 +4,13 @@
 package dynatrace_test
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
+	"net/http"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -25,61 +28,33 @@ const (
 )
 
 var (
-	testNamespace           = fmt.Sprintf("%s-ns", testName)
-	deploymentName          = fmt.Sprintf("%s-deployment", testName)
-	monitoredDeploymentName = fmt.Sprintf("%s-monitored-deployment", testName)
-	serviceName             = fmt.Sprintf("%s-service-%d", testName, GetRandomNumber())
-	scaledObjectName        = fmt.Sprintf("%s-so", testName)
-	secretName              = fmt.Sprintf("%s-secret", testName)
-	triggerAuthName         = fmt.Sprintf("%s-ta", testName)
-	dynatraceHost           = os.Getenv("DYNATRACE_HOST")
-	dynatraceOperatorToken  = os.Getenv("DYNATRACE_OPERATOR_TOKEN")
-	dynatraceToken          = os.Getenv("DYNATRACE_METRICS_TOKEN")
-	kubernetesClusterName   = "keda-dynatrace-cluster"
-	deploymentReplicas      = 1
-	minReplicaCount         = 0
-	maxReplicaCount         = 2
+	testNamespace       = fmt.Sprintf("%s-ns", testName)
+	deploymentName      = fmt.Sprintf("%s-deployment", testName)
+	scaledObjectName    = fmt.Sprintf("%s-so", testName)
+	secretName          = fmt.Sprintf("%s-secret", testName)
+	triggerAuthName     = fmt.Sprintf("%s-ta", testName)
+	dynatraceHost       = os.Getenv("DYNATRACE_HOST")
+	dynatraceToken      = os.Getenv("DYNATRACE_METRICS_TOKEN")
+	dynatraceInjestHost = fmt.Sprintf("%s/api/v2/metrics/ingest", dynatraceHost)
+	dynatraceMetricName = fmt.Sprintf("metric-%d", GetRandomNumber())
+	minReplicaCount     = 0
+	maxReplicaCount     = 2
 )
 
 type templateData struct {
-	TestNamespace           string
-	DeploymentName          string
-	MonitoredDeploymentName string
-	ServiceName             string
-	ScaledObjectName        string
-	TriggerAuthName         string
-	SecretName              string
-	DynatraceToken          string
-	DynatraceOperatorToken  string
-	DeploymentReplicas      string
-	DynatraceHost           string
-	KubernetesClusterName   string
-	MinReplicaCount         string
-	MaxReplicaCount         string
-	QueryDefaultValue       int
+	TestNamespace    string
+	DeploymentName   string
+	ScaledObjectName string
+	TriggerAuthName  string
+	SecretName       string
+	DynatraceToken   string
+	DynatraceHost    string
+	MinReplicaCount  string
+	MaxReplicaCount  string
+	MetricName       string
 }
 
 const (
-	dynakubeTemplate = `apiVersion: dynatrace.com/v1beta1
-kind: DynaKube
-metadata:
-  name: {{.KubernetesClusterName}}
-  namespace: {{.TestNamespace}}
-spec:
-  tokens: {{.SecretName}}
-  apiUrl: "{{.DynatraceHost}}/api"
-  networkZone: {{.KubernetesClusterName}}
-  oneAgent:
-    cloudNativeFullStack:
-      args:
-        - --set-host-group={{.KubernetesClusterName}}
-  activeGate:
-    capabilities:
-    - routing
-    - dynatrace-api
-    - metrics-ingest
-    group: {{.KubernetesClusterName}}
-`
 	secretTemplate = `apiVersion: v1
 kind: Secret
 metadata:
@@ -87,7 +62,6 @@ metadata:
   namespace: {{.TestNamespace}}
 data:
   apiToken: {{.DynatraceToken}}
-  dataIngestToken: {{.DynatraceOperatorToken}}
 `
 
 	triggerAuthenticationTemplate = `apiVersion: keda.sh/v1alpha1
@@ -101,34 +75,6 @@ spec:
     name: {{.SecretName}}
     key: apiToken
 `
-
-	monitoredDeploymentTemplate = `apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{.MonitoredDeploymentName}}
-  namespace: {{.TestNamespace}}
-  labels:
-    app: {{.MonitoredDeploymentName}}
-spec:
-  replicas: {{.DeploymentReplicas}}
-  selector:
-    matchLabels:
-      app: {{.MonitoredDeploymentName}}
-  template:
-    metadata:
-      annotations:
-        data-ingest.dynatrace.com/inject: "true"
-        dynatrace.com/inject: "true"
-        oneagent.dynatrace.com/inject: "true"
-      labels:
-        app: {{.MonitoredDeploymentName}}
-    spec:
-      containers:
-      - name: prom-test-app
-        image: tbickford/simple-web-app-prometheus:a13ade9
-        imagePullPolicy: IfNotPresent
-`
-
 	deploymentTemplate = `apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -151,25 +97,6 @@ spec:
         image: tbickford/simple-web-app-prometheus:a13ade9
         imagePullPolicy: IfNotPresent
 `
-
-	serviceTemplate = `apiVersion: v1
-kind: Service
-metadata:
-  labels:
-    name: {{.ServiceName}}
-  annotations:
-    prometheus.io/scrape: "true"
-  name: {{.ServiceName}}
-  namespace: {{.TestNamespace}}
-spec:
-  ports:
-  - name: http
-    port: 80
-    protocol: TCP
-    targetPort: 8080
-  selector:
-    app: {{.MonitoredDeploymentName}}
-  `
 
 	scaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -196,7 +123,7 @@ spec:
         host: {{.DynatraceHost}}
         threshold: "2"
         activationThreshold: "3"
-        metricSelector: "builtin:service.requestCount.total:splitBy():default({{.QueryDefaultValue}},always):fold(max)"
+        metricSelector: "{{.MetricName}}:max"
         from: now-2m
       authenticationRef:
         name: {{.TriggerAuthName}}
@@ -218,88 +145,85 @@ func TestDynatraceScaler(t *testing.T) {
 	// Create kubernetes resources
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	installDynatrace(t)
-
-	dynatraceConfigData, dynatraceConfigTemplates := getDynatraceTemplateData()
-	// Create Dynatrace-specific kubernetes resources
-	KubectlApplyMultipleWithTemplate(t, dynatraceConfigData, dynatraceConfigTemplates)
-
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
 		"replica count should be %s after a minute", minReplicaCount)
 
 	// test scaling
-	testActivation(t, kc, data)
-	testScaleOut(t, kc, data)
-	testScaleIn(t, kc, data)
+	testActivation(t, kc)
+	testScaleOut(t, kc)
+	testScaleIn(t, kc)
 }
 
-func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testActivation(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing activation ---")
-	data.QueryDefaultValue = 2
-	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
+	stopCh := make(chan struct{})
+	go setMetricValue(t, 1, stopCh)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 120)
+	close(stopCh)
 }
 
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale out ---")
-	data.QueryDefaultValue = 10
-	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 2),
+	stopCh := make(chan struct{})
+	go setMetricValue(t, 10, stopCh)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 2 minutes", maxReplicaCount)
+	close(stopCh)
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
-	data.QueryDefaultValue = 0
-	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 2),
+	stopCh := make(chan struct{})
+	go setMetricValue(t, 0, stopCh)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %d after 2 minutes", minReplicaCount)
+	close(stopCh)
 }
 
-func installDynatrace(t *testing.T) {
-	cmd := fmt.Sprintf(`helm upgrade dynatrace-operator oci://public.ecr.aws/dynatrace/dynatrace-operator --atomic --install --set platform=kubernetes --timeout 600s --namespace %s`,
-		testNamespace)
-
-	_, err := ExecuteCommand(cmd)
-	require.NoErrorf(t, err, "cannot execute command - %s", err)
-}
-
-func getDynatraceTemplateData() (templateData, []Template) {
-	return templateData{
-			TestNamespace:         testNamespace,
-			SecretName:            secretName,
-			DynatraceHost:         dynatraceHost,
-			KubernetesClusterName: kubernetesClusterName,
-		}, []Template{
-			{Name: "dynakubeTemplate", Config: dynakubeTemplate},
+func setMetricValue(t *testing.T, value float64, stopCh <-chan struct{}) {
+	metric := fmt.Sprintf("%s %f", dynatraceMetricName, value)
+	for {
+		select {
+		case <-stopCh:
+			return
+		default:
+			time.Sleep(time.Second)
+			req, err := http.NewRequest("POST", dynatraceInjestHost, bytes.NewBufferString(metric))
+			req.Header.Add("'Content-Type", "text/plain")
+			if err != nil {
+				t.Log("Invalid injection request")
+				continue
+			}
+			req.Header.Add("Authorization", fmt.Sprintf("Api-Token %s", dynatraceToken))
+			r, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Log("Error executing request")
+				continue
+			}
+			if r.StatusCode != http.StatusAccepted {
+				msg := fmt.Sprintf("%s: api returned %d", r.Request.URL.Path, r.StatusCode)
+				t.Log(msg)
+			}
 		}
+	}
 }
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:           testNamespace,
-			DeploymentName:          deploymentName,
-			MonitoredDeploymentName: monitoredDeploymentName,
-			ServiceName:             serviceName,
-			TriggerAuthName:         triggerAuthName,
-			ScaledObjectName:        scaledObjectName,
-			SecretName:              secretName,
-			KubernetesClusterName:   kubernetesClusterName,
-			MinReplicaCount:         fmt.Sprintf("%v", minReplicaCount),
-			MaxReplicaCount:         fmt.Sprintf("%v", maxReplicaCount),
-			DeploymentReplicas:      fmt.Sprintf("%v", deploymentReplicas),
-			DynatraceToken:          base64.StdEncoding.EncodeToString([]byte(dynatraceToken)),
-			DynatraceOperatorToken:  base64.StdEncoding.EncodeToString([]byte(dynatraceOperatorToken)),
-			DynatraceHost:           dynatraceHost,
-			QueryDefaultValue:       0,
+			TestNamespace:    testNamespace,
+			DeploymentName:   deploymentName,
+			TriggerAuthName:  triggerAuthName,
+			ScaledObjectName: scaledObjectName,
+			SecretName:       secretName,
+			MinReplicaCount:  fmt.Sprintf("%v", minReplicaCount),
+			MaxReplicaCount:  fmt.Sprintf("%v", maxReplicaCount),
+			DynatraceToken:   base64.StdEncoding.EncodeToString([]byte(dynatraceToken)),
+			DynatraceHost:    dynatraceHost,
+			MetricName:       dynatraceMetricName,
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-			{Name: "serviceTemplate", Config: serviceTemplate},
-			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
