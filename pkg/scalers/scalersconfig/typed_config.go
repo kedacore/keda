@@ -52,6 +52,8 @@ var allowedParsingOrderMap = map[ParsingOrder]bool{
 	AuthParams:      true,
 }
 
+var elemKeyValSeparator = []string{"=", ":"}
+
 // separators for field tag structure
 // e.g. name=stringVal,order=triggerMetadata;resolvedEnv;authParams,optional
 const (
@@ -62,8 +64,7 @@ const (
 
 // separators for map and slice elements
 const (
-	elemSeparator       = ","
-	elemKeyValSeparator = "="
+	elemSeparator = ","
 )
 
 // field tag parameters
@@ -279,7 +280,14 @@ func setConfigValueMap(params Params, valFromConfig string, field reflect.Value)
 	split := strings.Split(valFromConfig, elemSeparator)
 	for _, s := range split {
 		s := strings.TrimSpace(s)
-		kv := strings.Split(s, elemKeyValSeparator)
+		s = removeChars(s, []string{"{", "}", "\""})
+		var kv []string
+		for _, separator := range elemKeyValSeparator {
+			kv = strings.Split(s, separator)
+			if len(kv) == 2 {
+				break
+			}
+		}
 		if len(kv) != 2 {
 			return fmt.Errorf("expected format key%vvalue, got %q", elemKeyValSeparator, s)
 		}
@@ -480,4 +488,12 @@ func paramsFromTag(tag string, field reflect.StructField) (Params, error) {
 		}
 	}
 	return params, nil
+}
+
+func removeChars(input string, chars []string) string {
+	result := input
+	for _, char := range chars {
+		result = strings.ReplaceAll(result, char, "")
+	}
+	return result
 }
