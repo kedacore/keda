@@ -14,10 +14,10 @@ jobs:
     strategy:
       matrix:
         include:
-        - runner: ARM64
-          name: arm64
-        - runner: ubuntu-latest
-          name: amd64
+          - runner: ARM64
+            name: arm64
+          - runner: equinix-4cpu-16gb
+            name: amd64
     steps:
       - name: Check out code
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
@@ -79,12 +79,12 @@ jobs:
     runs-on: ${{ matrix.runner }}
     container: ghcr.io/kedacore/keda-tools:1.21.9
     strategy:
-       matrix:
+      matrix:
         include:
-        - runner: ARM64
-          name: arm64
-        - runner: ubuntu-latest
-          name: amd64
+          - runner: ARM64
+            name: arm64
+          - runner: equinix-2cpu-8gb
+            name: amd64
     steps:
       - name: Check out code
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
@@ -110,12 +110,12 @@ jobs:
     runs-on: ${{ matrix.runner }}
     container: ghcr.io/kedacore/keda-tools:1.21.9
     strategy:
-       matrix:
+      matrix:
         include:
-        - runner: ARM64
-          name: arm64
-        - runner: ubuntu-latest
-          name: amd64
+          - runner: ARM64
+            name: arm64
+          - runner: equinix-2cpu-8gb
+            name: amd64
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
@@ -135,7 +135,7 @@ jobs:
 
   statics:
     name: Static Checks
-    runs-on: ubuntu-latest
+    runs-on: equinix-2cpu-8gb
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
       - uses: actions/setup-python@39cd14951b08e74b54015e9e001cdefcf80e669f # v5.1.1
@@ -151,9 +151,9 @@ jobs:
   trivy-scan:
     uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
-      runs-on: 'ubuntu-latest'
-      scan-type: 'fs'
-      format: 'table'
-      output: ''
+      runs-on: equinix-2cpu-8gb
+      scan-type: "fs"
+      format: "table"
+      output: ""
       exit-code: 1
       publish: false
