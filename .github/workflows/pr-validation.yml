@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - runner: ARM64
+          - runner: oracle-aarch64-4cpu-16gb
             name: arm64
           - runner: equinix-4cpu-16gb
             name: amd64
@@ -81,7 +81,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - runner: ARM64
+          - runner: oracle-aarch64-2cpu-8gb
             name: arm64
           - runner: equinix-2cpu-8gb
             name: amd64
@@ -112,7 +112,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - runner: ARM64
+          - runner: oracle-aarch64-2cpu-8gb
             name: arm64
           - runner: equinix-2cpu-8gb
             name: amd64

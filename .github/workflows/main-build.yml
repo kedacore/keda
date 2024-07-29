@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     name: build
-    runs-on: ARM64
+    runs-on: oracle-aarch64-4cpu-16gb
     permissions:
       contents: read
       packages: write
@@ -101,7 +101,7 @@ jobs:
     needs: build
     strategy:
       matrix:
-        runner: [ARM64, equinix-2cpu-8gb]
+        runner: [oracle-aarch64-2cpu-8gb, equinix-2cpu-8gb]
     uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
       runs-on: ${{ matrix.runner }}
@@ -115,7 +115,7 @@ jobs:
     needs: build
     strategy:
       matrix:
-        runner: [ARM64, equinix-2cpu-8gb]
+        runner: [oracle-aarch64-2cpu-8gb, equinix-2cpu-8gb]
     uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
       runs-on: ${{ matrix.runner }}
