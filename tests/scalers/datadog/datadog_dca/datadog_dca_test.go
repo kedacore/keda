@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package datadog_test
+package datadog_dca_test
 
 import (
 	"encoding/base64"
@@ -21,14 +21,21 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "datadog-test"
+	testName = "datadog-dca-test"
 )
 
 var (
-	testNamespace           = fmt.Sprintf("%s-ns", testName)
+	testNamespace         = fmt.Sprintf("%s-ns", testName)
+	dcaServiceAccount     = fmt.Sprintf("%s-sa", testName)
+	dcaClusterRole        = fmt.Sprintf("%s-cr", testName)
+	dcaClusterRoleBinding = fmt.Sprintf("%s-crb", testName)
+	dcaSAToken            = fmt.Sprintf("%s-sa-token", testName)
+	datadogConfigName     = fmt.Sprintf("%s-datadog-config", testName)
+	datadogMetricName     = fmt.Sprintf("%s-datadog-metric", testName)
+
 	deploymentName          = fmt.Sprintf("%s-deployment", testName)
 	monitoredDeploymentName = fmt.Sprintf("%s-monitored-deployment", testName)
-	servciceName            = fmt.Sprintf("%s-service", testName)
+	serviceName             = fmt.Sprintf("%s-service", testName)
 	triggerAuthName         = fmt.Sprintf("%s-ta", testName)
 	scaledObjectName        = fmt.Sprintf("%s-so", testName)
 	secretName              = fmt.Sprintf("%s-secret", testName)
@@ -43,10 +50,21 @@ var (
 )
 
 type templateData struct {
-	TestNamespace           string
+	TestNamespace               string
+	DcaServiceAccount           string
+	DcaClusterRole              string
+	DcaClusterRoleBinding       string
+	DcaServiceAccountToken      string
+	DatadogConfigName           string
+	DatadogConfigNamespace      string
+	DatadogConfigMetricsService string
+	DatadogConfigUnsafeSSL      string
+	DatadogConfigAuthMode       string
+	DatadogMetricName           string
+
 	DeploymentName          string
 	MonitoredDeploymentName string
-	ServciceName            string
+	ServiceName             string
 	ScaledObjectName        string
 	TriggerAuthName         string
 	SecretName              string
@@ -60,6 +78,56 @@ type templateData struct {
 }
 
 const (
+	datadogMetricTemplate = `apiVersion: datadoghq.com/v1alpha1
+kind: DatadogMetric
+metadata:
+  name: {{.DatadogMetricName}}
+  namespace: {{.TestNamespace}}
+  annotations:
+    external-metrics.datadoghq.com/always-active: "true"
+spec:
+   query: "avg:nginx.net.request_per_s{cluster_name:{{.KuberneteClusterName}}, kube_namespace:{{.TestNamespace}}}"
+`
+
+	dcaServiceAccountTemplate = `apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{.DcaServiceAccount}}
+  namespace: {{.TestNamespace}}
+`
+	dcaClusterRoleTemplate = `apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{.DcaClusterRole}}
+rules:
+- apiGroups:
+  - external.metrics.k8s.io
+  resources:
+  - '*'
+  verbs: ["get", "watch", "list"]
+`
+	dcaClusterRoleBindingTemplate = `apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{.DcaClusterRoleBinding}}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{.DcaClusterRole}}
+subjects:
+- kind: ServiceAccount
+  name: {{.DcaServiceAccount}}
+  namespace: {{.TestNamespace}}
+`
+	dcaServiceAccountTokenTemplate = `apiVersion: v1
+kind: Secret
+metadata:
+  name: {{.DcaServiceAccountToken}}
+  namespace: {{.TestNamespace}}
+  annotations:
+    kubernetes.io/service-account.name: {{.DcaServiceAccount}}
+type: kubernetes.io/service-account-token
+`
 	secretTemplate = `apiVersion: v1
 kind: Secret
 metadata:
@@ -70,7 +138,17 @@ data:
   appKey: {{.DatadogAppKey}}
   datadogSite: {{.DatadogSite}}
 `
-
+	datadogConfigTemplate = `apiVersion: v1
+kind: Secret
+metadata:
+  name: {{.DatadogConfigName}}
+  namespace: {{.TestNamespace}}
+data:
+  datadogNamespace: {{.DatadogConfigNamespace}}
+  datadogMetricsService: {{.DatadogConfigMetricsService}}
+  datadogUnsafeSSL: {{.DatadogConfigUnsafeSSL}}
+  datadogAuthMode: {{.DatadogConfigAuthMode}}
+`
 	triggerAuthenticationTemplate = `apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
@@ -78,15 +156,21 @@ metadata:
   namespace: {{.TestNamespace}}
 spec:
   secretTargetRef:
-  - parameter: apiKey
-    name: {{.SecretName}}
-    key: apiKey
-  - parameter: appKey
-    name: {{.SecretName}}
-    key: appKey
-  - parameter: datadogSite
-    name: {{.SecretName}}
-    key: datadogSite
+  - parameter: token
+    name: {{.DcaServiceAccountToken}}
+    key: token
+  - parameter: datadogNamespace
+    name: {{.DatadogConfigName}}
+    key: datadogNamespace
+  - parameter: datadogMetricsService
+    name: {{.DatadogConfigName}}
+    key: datadogMetricsService
+  - parameter: unsafeSsl
+    name: {{.DatadogConfigName}}
+    key: datadogUnsafeSSL
+  - parameter: authMode
+    name: {{.DatadogConfigName}}
+    key: datadogAuthMode
 `
 	configTemplate = `apiVersion: v1
 kind: ConfigMap
@@ -174,7 +258,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{.ServciceName}}
+  name: {{.ServiceName}}
   namespace: {{.TestNamespace}}
 spec:
     ports:
@@ -213,10 +297,11 @@ spec:
   triggers:
   - type: datadog
     metadata:
-      query: "avg:nginx.net.request_per_s{cluster_name:{{.KuberneteClusterName}}}"
-      queryValue: "2"
-      activationQueryValue: "3"
-      age: "120"
+      useClusterAgentProxy: "true"
+      datadogMetricName: {{.DatadogMetricName}}
+      datadogMetricNamespace: {{.TestNamespace}}
+      targetValue: "2"
+      activationTargetValue: "3"
     metricType: "Value"
     authenticationRef:
       name: {{.TriggerAuthName}}
@@ -231,7 +316,7 @@ spec:
   - image: busybox
     name: test
     command: ["/bin/sh"]
-    args: ["-c", "while true; do wget -O /dev/null -o /dev/null http://{{.ServciceName}}/; sleep 0.5; done"]`
+    args: ["-c", "while true; do wget -O /dev/null -o /dev/null http://{{.ServiceName}}/; sleep 5; done"]`
 
 	heavyLoadTemplate = `apiVersion: v1
 kind: Pod
@@ -243,28 +328,28 @@ spec:
   - image: busybox
     name: test
     command: ["/bin/sh"]
-    args: ["-c", "while true; do wget -O /dev/null -o /dev/null http://{{.ServciceName}}/; sleep 0.1; done"]`
+    args: ["-c", "while true; do wget -O /dev/null -o /dev/null http://{{.ServiceName}}/; sleep 0.1; done"]`
 )
 
-func TestDatadogScaler(t *testing.T) {
+func TestDatadogScalerDCA(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, datadogAppKey, "DATADOG_APP_KEY env variable is required for datadog tests")
 	require.NotEmpty(t, datadogAPIKey, "DATADOG_API_KEY env variable is required for datadog tests")
 	require.NotEmpty(t, datadogSite, "DATADOG_SITE env variable is required for datadog tests")
-
+	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 	t.Cleanup(func() {
 		DeleteKubernetesResources(t, testNamespace, data, templates)
 	})
 
-	// install datadog
-	CreateNamespace(t, kc, testNamespace)
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 	installDatadog(t)
 
-	// Create kubernetes resources
-	KubectlApplyMultipleWithTemplate(t, data, templates)
+	t.Log("--- creating DatadogMetric & ScaledObject ---")
+	KubectlApplyWithTemplate(t, data, "datadogMetricTemplate", datadogMetricTemplate)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 180, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
@@ -299,43 +384,58 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 }
 
 func installDatadog(t *testing.T) {
+	t.Log("--- installing datadog ---")
 	_, err := ExecuteCommand(fmt.Sprintf("helm repo add datadog %s", datadogHelmRepo))
-	require.NoErrorf(t, err, "cannot execute command - %s", err)
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("helm repo update")
-	require.NoErrorf(t, err, "cannot execute command - %s", err)
-	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --set datadog.apiKey=%s --set datadog.appKey=%s --set datadog.site=%s --set datadog.clusterName=%s --set datadog.kubelet.tlsVerify=false --namespace %s --wait %s datadog/datadog`,
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --set datadog.apiKey=%s --set datadog.appKey=%s --set datadog.site=%s --set datadog.clusterName=%s --set datadog.kubelet.tlsVerify=false --set clusterAgent.metricsProvider.enabled=true --set clusterAgent.metricsProvider.registerAPIService=false --set clusterAgent.metricsProvider.useDatadogMetrics=true --namespace %s --wait %s datadog/datadog`,
 		datadogAPIKey,
 		datadogAppKey,
 		datadogSite,
 		kuberneteClusterName,
 		testNamespace,
 		testName))
-	require.NoErrorf(t, err, "cannot execute command - %s", err)
+	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:           testNamespace,
-			DeploymentName:          deploymentName,
-			MonitoredDeploymentName: monitoredDeploymentName,
-			ServciceName:            servciceName,
-			TriggerAuthName:         triggerAuthName,
-			ScaledObjectName:        scaledObjectName,
-			SecretName:              secretName,
-			ConfigName:              configName,
-			DatadogAPIKey:           base64.StdEncoding.EncodeToString([]byte(datadogAPIKey)),
-			DatadogAppKey:           base64.StdEncoding.EncodeToString([]byte(datadogAppKey)),
-			DatadogSite:             base64.StdEncoding.EncodeToString([]byte(datadogSite)),
-			KuberneteClusterName:    kuberneteClusterName,
-			MinReplicaCount:         fmt.Sprintf("%v", minReplicaCount),
-			MaxReplicaCount:         fmt.Sprintf("%v", maxReplicaCount),
+			TestNamespace:               testNamespace,
+			DcaServiceAccount:           dcaServiceAccount,
+			DcaClusterRole:              dcaClusterRole,
+			DcaClusterRoleBinding:       dcaClusterRoleBinding,
+			DcaServiceAccountToken:      dcaSAToken,
+			DatadogConfigName:           datadogConfigName,
+			DatadogConfigNamespace:      base64.StdEncoding.EncodeToString([]byte(testNamespace)),
+			DatadogConfigMetricsService: base64.StdEncoding.EncodeToString([]byte(testName + "-cluster-agent-metrics-api")),
+			DatadogConfigUnsafeSSL:      base64.StdEncoding.EncodeToString([]byte("true")),
+			DatadogConfigAuthMode:       base64.StdEncoding.EncodeToString([]byte("bearer")),
+			DatadogMetricName:           datadogMetricName,
+			DeploymentName:              deploymentName,
+			MonitoredDeploymentName:     monitoredDeploymentName,
+			ServiceName:                 serviceName,
+			TriggerAuthName:             triggerAuthName,
+			ScaledObjectName:            scaledObjectName,
+			SecretName:                  secretName,
+			ConfigName:                  configName,
+			DatadogAPIKey:               base64.StdEncoding.EncodeToString([]byte(datadogAPIKey)),
+			DatadogAppKey:               base64.StdEncoding.EncodeToString([]byte(datadogAppKey)),
+			DatadogSite:                 base64.StdEncoding.EncodeToString([]byte(datadogSite)),
+			KuberneteClusterName:        kuberneteClusterName,
+			MinReplicaCount:             fmt.Sprintf("%v", minReplicaCount),
+			MaxReplicaCount:             fmt.Sprintf("%v", maxReplicaCount),
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "dcaServiceAccountTemplate", Config: dcaServiceAccountTemplate},
+			{Name: "dcaClusterRoleTemplate", Config: dcaClusterRoleTemplate},
+			{Name: "dcaClusterRoleBindingTemplate", Config: dcaClusterRoleBindingTemplate},
+			{Name: "dcaServiceAccountTokenTemplate", Config: dcaServiceAccountTokenTemplate},
 			{Name: "configTemplate", Config: configTemplate},
+			{Name: "datadogConfigTemplate", Config: datadogConfigTemplate},
 			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
 			{Name: "serviceTemplate", Config: serviceTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "monitoredDeploymentTemplate", Config: monitoredDeploymentTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }
