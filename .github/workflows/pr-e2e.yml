@@ -146,7 +146,7 @@ jobs:
 
   run-test:
     needs: [triage, build-test-images]
-    runs-on: e2e
+    runs-on: equinix-keda-runner
     name: Execute e2e tests
     container: ghcr.io/kedacore/keda-tools:1.21.9
     if: needs.triage.outputs.run-e2e == 'true'
