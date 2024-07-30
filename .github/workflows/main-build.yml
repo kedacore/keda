@@ -13,7 +13,7 @@ jobs:
       id-token: write # needed for signing the images with GitHub OIDC Token **not production ready**
 
     # keda-tools is built from github.com/test-tools/tools/Dockerfile
-    container: ghcr.io/kedacore/keda-tools:1.21.9
+    container: ghcr.io/kedacore/keda-tools:1.21.12
     steps:
       - name: Check out code
         uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f # v4
