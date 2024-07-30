@@ -661,6 +661,7 @@ func TestIsScaledJobActive(t *testing.T) {
 		scalerCachesLock:         &sync.RWMutex{},
 		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
 	}
+	// nosemgrep: context-todo
 	isActive, isError, queueLength, maxValue := sh.isScaledJobActive(context.TODO(), scaledJobSingle)
 	assert.Equal(t, true, isActive)
 	assert.Equal(t, false, isError)
@@ -718,6 +719,7 @@ func TestIsScaledJobActive(t *testing.T) {
 			scaledObjectsMetricCache: metricscache.NewMetricsCache(),
 		}
 		fmt.Printf("index: %d", index)
+		// nosemgrep: context-todo
 		isActive, isError, queueLength, maxValue = sh.isScaledJobActive(context.TODO(), scaledJob)
 		//	assert.Equal(t, 5, index)
 		assert.Equal(t, scalerTestData.ResultIsActive, isActive)
@@ -759,6 +761,7 @@ func TestIsScaledJobActiveIfQueueEmptyButMinReplicaCountGreaterZero(t *testing.T
 		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
 	}
 
+	// nosemgrep: context-todo
 	isActive, isError, queueLength, maxValue := sh.isScaledJobActive(context.TODO(), scaledJobSingle)
 	assert.Equal(t, true, isActive)
 	assert.Equal(t, false, isError)
