@@ -95,12 +95,16 @@ func (e *scaleExecutor) getScalingDecision(scaledJob *kedav1alpha1.ScaledJob, ru
 		scaleTo = scaleToMinReplica
 		effectiveMaxScale = scaleToMinReplica
 	} else {
-		effectiveMaxScale = NewScalingStrategy(logger, scaledJob).GetEffectiveMaxScale(maxScale, runningJobCount-minReplicaCount, pendingJobCount, scaledJob.MaxReplicaCount())
+		effectiveMaxScale, scaleTo = NewScalingStrategy(logger, scaledJob).GetEffectiveMaxScale(maxScale, runningJobCount-minReplicaCount, pendingJobCount, scaledJob.MaxReplicaCount(), scaleTo)
 	}
 	return effectiveMaxScale, scaleTo
 }
 
 func (e *scaleExecutor) createJobs(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob, scaleTo int64, maxScale int64) {
+	if maxScale <= 0 {
+		logger.Info("No need to create jobs - all requested jobs already exist", "jobs", maxScale)
+		return
+	}
 	logger.Info("Creating jobs", "Effective number of max jobs", maxScale)
 	if scaleTo > maxScale {
 		scaleTo = maxScale
@@ -137,6 +141,13 @@ func (e *scaleExecutor) generateJobs(logger logr.Logger, scaledJob *kedav1alpha1
 		labels[key] = value
 	}
 
+	annotations := map[string]string{
+		"scaledjob.keda.sh/generation": strconv.FormatInt(scaledJob.Generation, 10),
+	}
+	for key, value := range scaledJob.ObjectMeta.Annotations {
+		annotations[key] = value
+	}
+
 	jobs := make([]*batchv1.Job, int(scaleTo))
 	for i := 0; i < int(scaleTo); i++ {
 		job := &batchv1.Job{
@@ -144,7 +155,7 @@ func (e *scaleExecutor) generateJobs(logger logr.Logger, scaledJob *kedav1alpha1
 				GenerateName: scaledJob.GetName() + "-",
 				Namespace:    scaledJob.GetNamespace(),
 				Labels:       labels,
-				Annotations:  scaledJob.ObjectMeta.Annotations,
+				Annotations:  annotations,
 			},
 			Spec: *scaledJob.Spec.JobTargetRef.DeepCopy(),
 		}
@@ -391,6 +402,9 @@ func NewScalingStrategy(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) S
 	case "accurate":
 		logger.V(1).Info("Selecting Scale Strategy", "specified", scaledJob.Spec.ScalingStrategy.Strategy, "selected", "accurate")
 		return accurateScalingStrategy{}
+	case "eager":
+		logger.V(1).Info("Selecting Scale Strategy", "specified", scaledJob.Spec.ScalingStrategy.Strategy, "selected", "eager")
+		return eagerScalingStrategy{}
 	default:
 		logger.V(1).Info("Selecting Scale Strategy", "specified", scaledJob.Spec.ScalingStrategy.Strategy, "selected", "default")
 		return defaultScalingStrategy{}
@@ -399,14 +413,14 @@ func NewScalingStrategy(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) S
 
 // ScalingStrategy is an interface for switching scaling algorithm
 type ScalingStrategy interface {
-	GetEffectiveMaxScale(maxScale, runningJobCount, pendingJobCount, maxReplicaCount int64) int64
+	GetEffectiveMaxScale(maxScale, runningJobCount, pendingJobCount, maxReplicaCount, scaleTo int64) (int64, int64)
 }
 
 type defaultScalingStrategy struct {
 }
 
-func (s defaultScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, _, _ int64) int64 {
-	return maxScale - runningJobCount
+func (s defaultScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, _, _, scaleTo int64) (int64, int64) {
+	return maxScale - runningJobCount, scaleTo
 }
 
 type customScalingStrategy struct {
@@ -414,18 +428,25 @@ type customScalingStrategy struct {
 	CustomScalingRunningJobPercentage *float64
 }
 
-func (s customScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, _, maxReplicaCount int64) int64 {
-	return min(maxScale-int64(*s.CustomScalingQueueLengthDeduction)-int64(float64(runningJobCount)*(*s.CustomScalingRunningJobPercentage)), maxReplicaCount)
+func (s customScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, _, maxReplicaCount, scaleTo int64) (int64, int64) {
+	return min(maxScale-int64(*s.CustomScalingQueueLengthDeduction)-int64(float64(runningJobCount)*(*s.CustomScalingRunningJobPercentage)), maxReplicaCount), scaleTo
 }
 
 type accurateScalingStrategy struct {
 }
 
-func (s accurateScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, pendingJobCount, maxReplicaCount int64) int64 {
+func (s accurateScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, pendingJobCount, maxReplicaCount, scaleTo int64) (int64, int64) {
 	if (maxScale + runningJobCount) > maxReplicaCount {
-		return maxReplicaCount - runningJobCount
+		return maxReplicaCount - runningJobCount, scaleTo
 	}
-	return maxScale - pendingJobCount
+	return maxScale - pendingJobCount, scaleTo
+}
+
+type eagerScalingStrategy struct {
+}
+
+func (s eagerScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, pendingJobCount, maxReplicaCount, _ int64) (int64, int64) {
+	return min(maxReplicaCount-runningJobCount-pendingJobCount, maxScale), maxReplicaCount
 }
 
 func min(x, y int64) int64 {
