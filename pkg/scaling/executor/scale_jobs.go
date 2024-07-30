@@ -101,6 +101,10 @@ func (e *scaleExecutor) getScalingDecision(scaledJob *kedav1alpha1.ScaledJob, ru
 }
 
 func (e *scaleExecutor) createJobs(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob, scaleTo int64, maxScale int64) {
+	if maxScale <= 0 {
+		logger.Info("No need to create jobs - all requested jobs already exist", "jobs", maxScale)
+		return
+	}
 	logger.Info("Creating jobs", "Effective number of max jobs", maxScale)
 	if scaleTo > maxScale {
 		scaleTo = maxScale
@@ -137,6 +141,13 @@ func (e *scaleExecutor) generateJobs(logger logr.Logger, scaledJob *kedav1alpha1
 		labels[key] = value
 	}
 
+	annotations := map[string]string{
+		"scaledjob.keda.sh/generation": strconv.FormatInt(scaledJob.Generation, 10),
+	}
+	for key, value := range scaledJob.ObjectMeta.Annotations {
+		annotations[key] = value
+	}
+
 	jobs := make([]*batchv1.Job, int(scaleTo))
 	for i := 0; i < int(scaleTo); i++ {
 		job := &batchv1.Job{
@@ -144,7 +155,7 @@ func (e *scaleExecutor) generateJobs(logger logr.Logger, scaledJob *kedav1alpha1
 				GenerateName: scaledJob.GetName() + "-",
 				Namespace:    scaledJob.GetNamespace(),
 				Labels:       labels,
-				Annotations:  scaledJob.ObjectMeta.Annotations,
+				Annotations:  annotations,
 			},
 			Spec: *scaledJob.Spec.JobTargetRef.DeepCopy(),
 		}
