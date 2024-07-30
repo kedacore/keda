@@ -56,9 +56,9 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Fixes
 
 - **General**: Do not delete running Jobs on KEDA restart ([#5656](https://github.com/kedacore/keda/issues/5656))
-- **General**: Fix CVE-2024-24790, CVE-2024-24789, and CVE-2024-24791 in stdlib.
-- **General**: Fix CVE-2024-35255 in github.com/Azure/azure-sdk-for-go/sdk/azidentity
-- **General**: Fix CVE-2024-6104 in github.com/hashicorp/go-retryablehttp
+- **General**: Fix CVE-2024-24790, CVE-2024-24789, and CVE-2024-24791 in stdlib. ([#5971](https://github.com/kedacore/keda/pull/5971))
+- **General**: Fix CVE-2024-35255 in github.com/Azure/azure-sdk-for-go/sdk/azidentity ([#5971](https://github.com/kedacore/keda/pull/5971))
+- **General**: Fix CVE-2024-6104 in github.com/hashicorp/go-retryablehttp ([#5971](https://github.com/kedacore/keda/pull/5971))
 - **General**: Fix ScaledJob ignores failing trigger(s) error ([#5922](https://github.com/kedacore/keda/issues/5922))- **General**: Scalers are properly closed after being refreshed ([#5806](https://github.com/kedacore/keda/issues/5806))
 - **GitHub Scaler**: Fixed pagination, fetching repository list ([#5738](https://github.com/kedacore/keda/issues/5738))
 - **MongoDB Scaler**:  MongoDB url parses correctly `+srv` scheme ([#5760](https://github.com/kedacore/keda/issues/5760))
