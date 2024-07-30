@@ -52,6 +52,10 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
+- **General**: Fix CVE-2024-24790, CVE-2024-24789, and CVE-2024-24791 in stdlib.
+- **General**: Fix CVE-2024-35255 in github.com/Azure/azure-sdk-for-go/sdk/azidentity
+- **General**: Fix CVE-2024-6104 in github.com/hashicorp/go-retryablehttp
+
 ### Breaking Changes
 
 - **Authentication:** AAD-Pod-Identity and AWS-KIAM auths have been removed ([#5035](https://github.com/kedacore/keda/issues/5035)|[#5085](https://github.com/kedacore/keda/issues/5085))
@@ -60,10 +64,12 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 - **General**: Add --ca-dir flag to KEDA operator to specify directories with CA certificates for scalers to authenticate TLS connections (defaults to /custom/ca) ([#5860](https://github.com/kedacore/keda/issues/5860))
+- **General**: Add Dynatrace Scaler ([#5685](https://github.com/kedacore/keda/pull/5685))
 - **General**: Declarative parsing of scaler config ([#5037](https://github.com/kedacore/keda/issues/5037)|[#5797](https://github.com/kedacore/keda/issues/5797))
 - **General**: Introduce new Splunk Scaler ([#5904](https://github.com/kedacore/keda/issues/5904))
 - **General**: Provide CloudEvents around the management of ScaledObjects resources ([#3522](https://github.com/kedacore/keda/issues/3522))
 - **General**: Remove deprecated Kustomize commonLabels ([#5888](https://github.com/kedacore/keda/pull/5888))
+- **General**: Remove unused leader election parameters in metrics adapter ([#5959](https://github.com/kedacore/keda/issues/5959))
 - **General**: Support for Kubernetes v1.30 ([#5828](https://github.com/kedacore/keda/issues/5828))
 
 #### Experimental
@@ -74,7 +80,8 @@ Here is an overview of all new **experimental** features:
 - **Datadog Scaler**: Add support to use the Cluster Agent as source of metrics ([#5355](https://github.com/kedacore/keda/issues/5355))
 
 ### Improvements
-
+- **General**: Added `eagerScalingStrategy` for `ScaledJob`  ([#5114](https://github.com/kedacore/keda/issues/5114))
+- **General**: Do not delete running Jobs on KEDA restart ([#5656](https://github.com/kedacore/keda/issues/5656))
 - **Azure queue scaler**: Added new configuration option 'queueLengthStrategy' ([#4478](https://github.com/kedacore/keda/issues/4478))
 - **Cassandra Scaler**: Add TLS support for cassandra scaler ([#5802](https://github.com/kedacore/keda/issues/5802))
 - **GCP Pub/Sub**: Add optional valueIfNull to allow a default scaling value and prevent errors when GCP metric returns no value. ([#5896](https://github.com/kedacore/keda/issues/5896))
@@ -91,6 +98,7 @@ Here is an overview of all new **experimental** features:
 - **General**: Scalers are properly closed after being refreshed ([#5806](https://github.com/kedacore/keda/issues/5806))
 - **MongoDB Scaler**:  MongoDB url parses correctly `+srv` scheme ([#5760](https://github.com/kedacore/keda/issues/5760))
 - **New Relic Scaler**: Fix CVE-2024-6104 in github.com/hashicorp/go-retryablehttp ([#5944](https://github.com/kedacore/keda/issues/5944))
+- **ScaledJob**: Fix ScaledJob ignores failing trigger(s) error ([#5922](https://github.com/kedacore/keda/issues/5922))
 
 ### Deprecations
 
