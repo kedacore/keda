@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/go-logr/logr"
-
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
@@ -45,7 +43,7 @@ var dynatraceMetricIdentifiers = []dynatraceMetricIdentifier{
 
 func TestDynatraceParseMetadata(t *testing.T) {
 	for _, testData := range testDynatraceMetadata {
-		_, err := parseDynatraceMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
+		_, err := parseDynatraceMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.errorCase {
 			fmt.Printf("X: %s", testData.metadata)
 			t.Error("Expected success but got error", err)
@@ -58,7 +56,7 @@ func TestDynatraceParseMetadata(t *testing.T) {
 }
 func TestDynatraceGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range dynatraceMetricIdentifiers {
-		meta, err := parseDynatraceMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex}, logr.Discard())
+		meta, err := parseDynatraceMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

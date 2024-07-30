@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	neturl "net/url"
-	"strconv"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -31,13 +30,13 @@ type dynatraceScaler struct {
 }
 
 type dynatraceMetadata struct {
-	host                string
-	token               string
-	metricSelector      string
-	fromTimestamp       string
-	threshold           float64
-	activationThreshold float64
-	triggerIndex        int
+	Host                string  `keda:"name=host, order=triggerMetadata;authParams"`
+	Token               string  `keda:"name=token, order=authParams"`
+	MetricSelector      string  `keda:"name=metricSelector, order=triggerMetadata"`
+	FromTimestamp       string  `keda:"name=from, order=triggerMetadata, default=now-2h, optional"`
+	Threshold           float64 `keda:"name=threshold, order=triggerMetadata"`
+	ActivationThreshold float64 `keda:"name=activationThreshold, order=triggerMetadata, optional"`
+	TriggerIndex        int
 }
 
 // Model of relevant part of Dynatrace's Metric Data Points API Response
@@ -58,14 +57,14 @@ func NewDynatraceScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 	logger := InitializeLogger(config, "dynatrace_scaler")
 
-	meta, err := parseDynatraceMetadata(config, logger)
+	meta, err := parseDynatraceMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dynatrace metadata: %w", err)
 	}
 
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
-	logMsg := fmt.Sprintf("Initializing Dynatrace Scaler (Host: %s)", meta.host)
+	logMsg := fmt.Sprintf("Initializing Dynatrace Scaler (Host: %s)", meta.Host)
 
 	logger.Info(logMsg)
 
@@ -76,59 +75,13 @@ func NewDynatraceScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		logger:     logger}, nil
 }
 
-func parseDynatraceMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*dynatraceMetadata, error) {
+func parseDynatraceMetadata(config *scalersconfig.ScalerConfig) (*dynatraceMetadata, error) {
 	meta := dynatraceMetadata{}
-	var err error
 
-	host, err := GetFromAuthOrMeta(config, "host")
-	if err != nil {
-		return nil, err
+	meta.TriggerIndex = config.TriggerIndex
+	if err := config.TypedConfig(&meta); err != nil {
+		return nil, fmt.Errorf("error parsing dynatrace metadata: %w", err)
 	}
-	meta.host = host
-
-	if val, ok := config.AuthParams["token"]; ok && val != "" {
-		meta.token = val
-	} else {
-		return nil, fmt.Errorf("no token given in trigger auth")
-	}
-
-	if val, ok := config.TriggerMetadata["metricSelector"]; ok && val != "" {
-		meta.metricSelector = val
-	} else {
-		return nil, fmt.Errorf("no metricSelector given")
-	}
-
-	if val, ok := config.TriggerMetadata["from"]; ok && val != "" {
-		meta.fromTimestamp = val
-	} else {
-		logger.Info("no 'from' timestamp provided, using default value (last 2 hours)")
-		meta.fromTimestamp = "now-2h"
-	}
-
-	if val, ok := config.TriggerMetadata["threshold"]; ok && val != "" {
-		t, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing threshold")
-		}
-		meta.threshold = t
-	} else {
-		if config.AsMetricSource {
-			meta.threshold = 0
-		} else {
-			return nil, fmt.Errorf("missing threshold value")
-		}
-	}
-
-	meta.activationThreshold = 0
-	if val, ok := config.TriggerMetadata["activationThreshold"]; ok {
-		activationThreshold, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("queryValue parsing error %w", err)
-		}
-		meta.activationThreshold = activationThreshold
-	}
-
-	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
 
@@ -163,13 +116,13 @@ func (s *dynatraceScaler) GetMetricValue(ctx context.Context) (float64, error) {
 
 	// Append host information to appropriate API endpoint
 	// Trailing slashes are removed from provided host information to avoid double slashes in the URL
-	dynatraceAPIURL := fmt.Sprintf("%s/%s", strings.TrimRight(s.metadata.host, "/"), dynatraceMetricDataPointsAPI)
+	dynatraceAPIURL := fmt.Sprintf("%s/%s", strings.TrimRight(s.metadata.Host, "/"), dynatraceMetricDataPointsAPI)
 
 	// Add query parameters to the URL
 	url, _ := neturl.Parse(dynatraceAPIURL)
 	queryString := url.Query()
-	queryString.Set("metricSelector", s.metadata.metricSelector)
-	queryString.Set("from", s.metadata.fromTimestamp)
+	queryString.Set("metricSelector", s.metadata.MetricSelector)
+	queryString.Set("from", s.metadata.FromTimestamp)
 	url.RawQuery = queryString.Encode()
 
 	req, err = http.NewRequestWithContext(ctx, "GET", url.String(), nil)
@@ -178,7 +131,7 @@ func (s *dynatraceScaler) GetMetricValue(ctx context.Context) (float64, error) {
 	}
 
 	// Authentication header as per https://docs.dynatrace.com/docs/dynatrace-api/basics/dynatrace-api-authentication#authenticate
-	req.Header.Add("Authorization", fmt.Sprintf("Api-Token %s", s.metadata.token))
+	req.Header.Add("Authorization", fmt.Sprintf("Api-Token %s", s.metadata.Token))
 
 	/*
 	 * Execute request
@@ -225,15 +178,15 @@ func (s *dynatraceScaler) GetMetricsAndActivity(ctx context.Context, metricName 
 
 	metric := GenerateMetricInMili(metricName, val)
 
-	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.activationThreshold, nil
+	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.ActivationThreshold, nil
 }
 
 func (s *dynatraceScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString("dynatrace")),
+			Name: GenerateMetricNameWithIndex(s.metadata.TriggerIndex, kedautil.NormalizeString("dynatrace")),
 		},
-		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.Threshold),
 	}
 	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
