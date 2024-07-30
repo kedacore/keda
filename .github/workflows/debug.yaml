@@ -11,6 +11,11 @@ jobs:
     name: Execute e2e tests
     container: ghcr.io/kedacore/keda-tools:1.21.9
     steps:
+      - name: Check out code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+        with:
+          fetch-depth: 1
+  
       - uses: oNaiPs/secrets-to-env-action@v1
         with:
           secrets: ${{ toJSON(secrets) }}
