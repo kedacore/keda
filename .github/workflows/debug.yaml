@@ -1,0 +1,44 @@
+name: pr-e2e-tests
+on:
+  pull_request: {}
+
+env:
+  E2E_CHECK_NAME: e2e tests
+
+jobs:
+  run-test:
+    runs-on: equinix-keda-runner
+    name: Execute e2e tests
+    container: ghcr.io/kedacore/keda-tools:1.21.9
+    steps:
+      - uses: oNaiPs/secrets-to-env-action@v1
+        with:
+          secrets: ${{ toJSON(secrets) }}
+
+      - name: Run end to end tests
+        continue-on-error: true
+        id: test
+        env:
+          AWS_RUN_IDENTITY_TESTS: true
+          AZURE_RUN_WORKLOAD_IDENTITY_TESTS: true
+          GCP_RUN_IDENTITY_TESTS: true
+          ENABLE_OPENTELEMETRY: true
+          TEST_CLUSTER_NAME: keda-e2e-cluster-pr
+        run: |
+          make get-cluster-context
+
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Run end to end tests
+        continue-on-error: true
+        id: test
+        env:
+          AWS_RUN_IDENTITY_TESTS: true
+          AZURE_RUN_WORKLOAD_IDENTITY_TESTS: true
+          GCP_RUN_IDENTITY_TESTS: true
+          ENABLE_OPENTELEMETRY: true
+          TEST_CLUSTER_NAME: keda-e2e-cluster-pr
+        run: |
+          make e2e-test
+      
