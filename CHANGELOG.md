@@ -74,8 +74,8 @@ Here is an overview of all new **experimental** features:
 - **Datadog Scaler**: Add support to use the Cluster Agent as source of metrics ([#5355](https://github.com/kedacore/keda/issues/5355))
 
 ### Improvements
-
 - **General**: Added `eagerScalingStrategy` for `ScaledJob`  ([#5114](https://github.com/kedacore/keda/issues/5114))
+- **General**: Do not delete running Jobs on KEDA restart ([#5656](https://github.com/kedacore/keda/issues/5656))
 - **Azure queue scaler**: Added new configuration option 'queueLengthStrategy' ([#4478](https://github.com/kedacore/keda/issues/4478))
 - **Cassandra Scaler**: Add TLS support for cassandra scaler ([#5802](https://github.com/kedacore/keda/issues/5802))
 - **GCP Pub/Sub**: Add optional valueIfNull to allow a default scaling value and prevent errors when GCP metric returns no value. ([#5896](https://github.com/kedacore/keda/issues/5896))
