@@ -1,4 +1,4 @@
-name: pr-e2e-tests
+name: debug
 on:
   pull_request: {}
 
