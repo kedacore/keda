@@ -1,6 +1,6 @@
 name: debug
 on:
-  pull_request: {}
+  - pull_request
 
 env:
   E2E_CHECK_NAME: e2e tests
