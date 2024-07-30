@@ -17,17 +17,18 @@ limitations under the License.
 package azure
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"net/url"
-	"strings"
+	"time"
 
-	"github.com/Azure/azure-storage-blob-go/azblob"
-	"github.com/Azure/azure-storage-queue-go/azqueue"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue"
 	az "github.com/Azure/go-autorest/autorest/azure"
+	"github.com/go-logr/logr"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 /* ParseAzureStorageConnectionString parses a storage account connection string into (endpointProtocol, accountName, key, endpointSuffix)
@@ -47,11 +48,6 @@ const (
 	TableEndpoint
 	// FileEndpoint storage type
 	FileEndpoint
-)
-
-const (
-	// Azure storage resource is "https://storage.azure.com/" in all cloud environments
-	storageResource = "https://storage.azure.com/"
 )
 
 var (
@@ -86,151 +82,56 @@ func ParseAzureStorageEndpointSuffix(metadata map[string]string, endpointType St
 	return ParseEnvironmentProperty(metadata, DefaultEndpointSuffixKey, envSuffixProvider)
 }
 
-// ParseAzureStorageQueueConnection parses queue connection string and returns credential and resource url
-func ParseAzureStorageQueueConnection(ctx context.Context, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix string) (azqueue.Credential, *url.URL, error) {
+// GetStorageBlobClient returns storage blob client
+func GetStorageBlobClient(logger logr.Logger, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix string, timeout time.Duration) (*azblob.Client, error) {
+	opts := &azblob.ClientOptions{
+		ClientOptions: policy.ClientOptions{
+			Transport: kedautil.CreateHTTPClient(timeout, false),
+		},
+	}
+
 	switch podIdentity.Provider {
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		token, endpoint, err := parseAccessTokenAndEndpoint(ctx, accountName, endpointSuffix, podIdentity)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		credential := azqueue.NewTokenCredential(token, nil)
-		return credential, endpoint, nil
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		endpoint, accountName, accountKey, err := parseAzureStorageConnectionString(connectionString, QueueEndpoint)
+		blobClient, err := azblob.NewClientFromConnectionString(connectionString, opts)
 		if err != nil {
-			return nil, nil, err
+			return nil, fmt.Errorf("failed to create hub client: %w", err)
 		}
-
-		if accountName == "" && accountKey == "" {
-			return azqueue.NewAnonymousCredential(), endpoint, nil
+		return blobClient, nil
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		creds, chainedErr := NewChainedCredential(logger, podIdentity)
+		if chainedErr != nil {
+			return nil, chainedErr
 		}
-
-		credential, err := azqueue.NewSharedKeyCredential(accountName, accountKey)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		return credential, endpoint, nil
-	default:
-		return nil, nil, fmt.Errorf("azure queues doesn't support %s pod identity type", podIdentity.Provider)
+		srvURL := fmt.Sprintf("https://%s.%s", accountName, endpointSuffix)
+		return azblob.NewClient(srvURL, creds, opts)
 	}
+
+	return nil, fmt.Errorf("event hub does not support pod identity %v", podIdentity.Provider)
 }
 
-// ParseAzureStorageBlobConnection parses blob connection string and returns credential and resource url
-func ParseAzureStorageBlobConnection(ctx context.Context, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix string) (azblob.Credential, *url.URL, error) {
+// GetStorageQueueClient returns storage queue client
+func GetStorageQueueClient(logger logr.Logger, podIdentity kedav1alpha1.AuthPodIdentity, connectionString, accountName, endpointSuffix, queueName string, timeout time.Duration) (*azqueue.QueueClient, error) {
+	opts := &azqueue.ClientOptions{
+		ClientOptions: policy.ClientOptions{
+			Transport: kedautil.CreateHTTPClient(timeout, false),
+		},
+	}
+
 	switch podIdentity.Provider {
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		token, endpoint, err := parseAccessTokenAndEndpoint(ctx, accountName, endpointSuffix, podIdentity)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		credential := azblob.NewTokenCredential(token, nil)
-		return credential, endpoint, nil
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		endpoint, accountName, accountKey, err := parseAzureStorageConnectionString(connectionString, BlobEndpoint)
+		queueClient, err := azqueue.NewQueueClientFromConnectionString(connectionString, queueName, opts)
 		if err != nil {
-			return nil, nil, err
+			return nil, fmt.Errorf("failed to create hub client: %w", err)
 		}
-
-		if accountName == "" && accountKey == "" {
-			return azblob.NewAnonymousCredential(), endpoint, nil
+		return queueClient, nil
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		creds, chainedErr := NewChainedCredential(logger, podIdentity)
+		if chainedErr != nil {
+			return nil, chainedErr
 		}
-
-		credential, err := azblob.NewSharedKeyCredential(accountName, accountKey)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		return credential, endpoint, nil
-	default:
-		return nil, nil, fmt.Errorf("azure storage doesn't support %s pod identity type", podIdentity.Provider)
-	}
-}
-
-func parseAzureStorageConnectionString(connectionString string, endpointType StorageEndpointType) (*url.URL, string, string, error) {
-	parts := strings.Split(connectionString, ";")
-
-	getValue := func(pair string) string {
-		parts := strings.SplitN(pair, "=", 2)
-		if len(parts) == 2 {
-			return parts[1]
-		}
-		return ""
+		srvURL := fmt.Sprintf("https://%s.%s/%s", accountName, endpointSuffix, queueName)
+		return azqueue.NewQueueClient(srvURL, creds, opts)
 	}
 
-	var endpointProtocol, name, key, sas, endpointSuffix, endpoint string
-	for _, v := range parts {
-		switch {
-		case strings.HasPrefix(v, "DefaultEndpointsProtocol"):
-			endpointProtocol = getValue(v)
-		case strings.HasPrefix(v, "AccountName"):
-			name = getValue(v)
-		case strings.HasPrefix(v, "AccountKey"):
-			key = getValue(v)
-		case strings.HasPrefix(v, "SharedAccessSignature"):
-			sas = getValue(v)
-		case strings.HasPrefix(v, "EndpointSuffix"):
-			endpointSuffix = getValue(v)
-		case endpointType == BlobEndpoint && strings.HasPrefix(v, endpointType.Prefix()):
-			endpoint = getValue(v)
-		case endpointType == QueueEndpoint && strings.HasPrefix(v, endpointType.Prefix()):
-			endpoint = getValue(v)
-		case endpointType == TableEndpoint && strings.HasPrefix(v, endpointType.Prefix()):
-			endpoint = getValue(v)
-		case endpointType == FileEndpoint && strings.HasPrefix(v, endpointType.Prefix()):
-			endpoint = getValue(v)
-		}
-	}
-
-	if sas != "" && endpoint != "" {
-		u, err := url.Parse(fmt.Sprintf("%s?%s", endpoint, sas))
-		if err != nil {
-			return nil, "", "", err
-		}
-		return u, "", "", nil
-	}
-
-	if name == "" || key == "" {
-		return nil, "", "", ErrAzureConnectionStringKeyName
-	}
-
-	if endpoint != "" {
-		u, err := url.Parse(endpoint)
-		if err != nil {
-			return nil, "", "", err
-		}
-		return u, name, key, nil
-	}
-
-	if endpointProtocol == "" || endpointSuffix == "" {
-		return nil, "", "", ErrAzureConnectionStringEndpoint
-	}
-
-	u, err := url.Parse(fmt.Sprintf("%s://%s.%s.%s", endpointProtocol, name, endpointType.Name(), endpointSuffix))
-	if err != nil {
-		return nil, "", "", err
-	}
-
-	return u, name, key, nil
-}
-
-func parseAccessTokenAndEndpoint(ctx context.Context, accountName string, endpointSuffix string,
-	podIdentity kedav1alpha1.AuthPodIdentity) (string, *url.URL, error) {
-	var token AADToken
-	var err error
-
-	token, err = GetAzureADWorkloadIdentityToken(ctx, podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID(), podIdentity.GetIdentityAuthorityHost(), storageResource)
-	if err != nil {
-		return "", nil, err
-	}
-
-	if accountName == "" {
-		return "", nil, fmt.Errorf("accountName is required for podIdentity azure")
-	}
-
-	endpoint, _ := url.Parse(fmt.Sprintf("https://%s.%s", accountName, endpointSuffix))
-	return token.AccessToken, endpoint, nil
+	return nil, fmt.Errorf("event hub does not support pod identity %v", podIdentity.Provider)
 }
