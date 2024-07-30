@@ -17,7 +17,7 @@ jobs:
 
       - name: Run end to end tests
         continue-on-error: true
-        id: test
+        id: code
         env:
           AWS_RUN_IDENTITY_TESTS: true
           AZURE_RUN_WORKLOAD_IDENTITY_TESTS: true
