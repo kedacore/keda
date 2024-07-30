@@ -547,3 +547,33 @@ func TestRange(t *testing.T) {
 	Expect(ts.DottedRange).To(ConsistOf(2, 3, 4, 5, 6, 7))
 	Expect(ts.WrongRange).To(HaveLen(0))
 }
+
+// TestMultiName tests the multi name param
+func TestMultiName(t *testing.T) {
+	RegisterTestingT(t)
+
+	sc := &ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"property1": "aaa",
+		},
+	}
+
+	sc2 := &ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"property2": "bbb",
+		},
+	}
+
+	type testStruct struct {
+		Property string `keda:"name=property1;property2, order=triggerMetadata"`
+	}
+
+	ts := testStruct{}
+	err := sc.TypedConfig(&ts)
+	Expect(err).To(BeNil())
+	Expect(ts.Property).To(Equal("aaa"))
+
+	err = sc2.TypedConfig(&ts)
+	Expect(err).To(BeNil())
+	Expect(ts.Property).To(Equal("bbb"))
+}
