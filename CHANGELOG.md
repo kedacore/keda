@@ -89,6 +89,7 @@ Here is an overview of all new **experimental** features:
 ### Fixes
 
 - **General**: Check for missing CRD references and sample CRs ([#5920](https://github.com/kedacore/keda/issues/5920))
+- **General**: Fix panic in `KedaProvider` when getting metrics from Metrics Service if the gRPC Server connection is not established ([#6009](https://github.com/kedacore/keda/issues/6009))
 - **General**: Scalers are properly closed after being refreshed ([#5806](https://github.com/kedacore/keda/issues/5806))
 - **New Relic Scaler**: Fix CVE-2024-6104 in github.com/hashicorp/go-retryablehttp ([#5944](https://github.com/kedacore/keda/issues/5944))
 
