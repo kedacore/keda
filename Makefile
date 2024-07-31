@@ -272,13 +272,17 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 deploy: install ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && \
 	$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda=${IMAGE_CONTROLLER} && \
-	$(KUSTOMIZE) edit add label --force aadpodidbinding:keda; \
+	if [ "$(AZURE_RUN_WORKLOAD_IDENTITY_TESTS)" = true ]; then \
+		$(KUSTOMIZE) edit add label --force aadpodidbinding:keda; \
+	fi && \
 	if [ "$(AZURE_RUN_WORKLOAD_IDENTITY_TESTS)" = true ]; then \
 		$(KUSTOMIZE) edit add label --force azure.workload.identity/use:true; \
 	fi
 	cd config/metrics-server && \
     $(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-metrics-apiserver=${IMAGE_ADAPTER} && \
-	$(KUSTOMIZE) edit add label --force aadpodidbinding:keda; \
+	if [ "$(AZURE_RUN_WORKLOAD_IDENTITY_TESTS)" = true ]; then \
+		$(KUSTOMIZE) edit add label --force aadpodidbinding:keda; \
+	fi
 	if [ "$(AZURE_RUN_WORKLOAD_IDENTITY_TESTS)" = true ]; then \
 		cd config/service_account && \
 		$(KUSTOMIZE) edit add label --force azure.workload.identity/use:true; \
