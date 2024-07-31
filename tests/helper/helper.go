@@ -89,6 +89,9 @@ var (
 	InstallCertManager            = AwsIdentityTests == StringTrue || GcpIdentityTests == StringTrue
 	InstallKeda                   = os.Getenv("E2E_INSTALL_KEDA")
 	InstallKafka                  = os.Getenv("E2E_INSTALL_KAFKA")
+	// As this isn't supported anymore after 2.15, we need to skip the check on v2.14
+	// to execute the installation
+	AzureRunAadPodIdentityTests = "true"
 )
 
 var (
