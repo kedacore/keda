@@ -137,6 +137,14 @@ type HorizontalPodAutoscalerConfig struct {
 	Behavior *autoscalingv2.HorizontalPodAutoscalerBehavior `json:"behavior,omitempty"`
 	// +optional
 	Name string `json:"name,omitempty"`
+	// Those labels are added to the HorizontalPodAutoscaler created by KEDA
+	// and reconciled by KEDA on change
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
+	// Those annotations are added to the HorizontalPodAutoscaler created by KEDA
+	// and reconciled by KEDA on change
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
 // ScaleTarget holds the reference to the scale target Object

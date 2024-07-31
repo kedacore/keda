@@ -35,7 +35,7 @@ import (
 	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
 	"github.com/kedacore/keda/v2/pkg/scaling/executor"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
-	version "github.com/kedacore/keda/v2/version"
+	"github.com/kedacore/keda/v2/version"
 )
 
 // createAndDeployNewHPA creates and deploy HPA in the cluster for specified ScaledObject
@@ -99,6 +99,23 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 		labels[key] = value
 	}
 
+	if scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Labels != nil {
+		for key, value := range scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Labels {
+			labels[key] = value
+		}
+	}
+
+	annotations := map[string]string{}
+	for key, value := range scaledObject.ObjectMeta.Annotations {
+		annotations[key] = value
+	}
+
+	if scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig != nil && scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Annotations != nil {
+		for key, value := range scaledObject.Spec.Advanced.HorizontalPodAutoscalerConfig.Annotations {
+			annotations[key] = value
+		}
+	}
+
 	minReplicas := scaledObject.GetHPAMinReplicas()
 	maxReplicas := scaledObject.GetHPAMaxReplicas()
 
@@ -130,7 +147,7 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 			Name:        getHPAName(scaledObject),
 			Namespace:   scaledObject.Namespace,
 			Labels:      labels,
-			Annotations: scaledObject.Annotations,
+			Annotations: annotations,
 		},
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v2",
@@ -176,7 +193,7 @@ func (r *ScaledObjectReconciler) updateHPAIfNeeded(ctx context.Context, logger l
 	}
 
 	if (hpa.ObjectMeta.Annotations == nil && foundHpa.ObjectMeta.Annotations != nil) ||
-		!equality.Semantic.DeepDerivative(hpa.ObjectMeta.Annotations, foundHpa.ObjectMeta.Annotations) {
+		!equality.Semantic.DeepDerivative(hpa.ObjectMeta.Annotations, foundHpa.ObjectMeta.Annotations) || !equality.Semantic.DeepDerivative(foundHpa.ObjectMeta.Annotations, hpa.ObjectMeta.Annotations) {
 		logger.V(1).Info("Found difference in the HPA annotations according to ScaledObject", "currentHPA", foundHpa.ObjectMeta.Annotations, "newHPA", hpa.ObjectMeta.Annotations)
 		if err = r.Client.Update(ctx, hpa); err != nil {
 			foundHpa.ObjectMeta.Annotations = hpa.ObjectMeta.Annotations
