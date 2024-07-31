@@ -221,9 +221,25 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 	}
 
 	metricSpecs := cache.GetMetricSpecForScaling(ctx)
+	var mSpecs []autoscalingv2.MetricSpec
+	var hasCPUUtilization bool
+	var cpuUtilization autoscalingv2.MetricSpec
 
 	for _, metricSpec := range metricSpecs {
 		if metricSpec.Resource != nil {
+			target := metricSpec.Resource.Target
+			// In Kubernetes versions <1.27, the HPA v2 CPU utilization metric is reordered to the end,
+			// and only one is retained. This prevents the KEDA controller from continuously updating.
+			// see https://github.com/kedacore/keda/issues/5821 for details
+			if target.Type == autoscalingv2.UtilizationMetricType && string(metricSpec.Resource.Name) == "cpu" {
+				if hasCPUUtilization {
+					continue
+				}
+				hasCPUUtilization = true
+				cpuUtilization = metricSpec
+				continue
+			}
+
 			resourceMetricNames = append(resourceMetricNames, string(metricSpec.Resource.Name))
 		}
 
@@ -238,8 +254,14 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 			metricSpec.External.Metric.Selector.MatchLabels[kedav1alpha1.ScaledObjectOwnerAnnotation] = scaledObject.Name
 			externalMetricNames = append(externalMetricNames, externalMetricName)
 		}
+		mSpecs = append(mSpecs, metricSpec)
 	}
-	scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, metricSpecs...)
+	scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, mSpecs...)
+
+	if hasCPUUtilization {
+		resourceMetricNames = append(resourceMetricNames, "cpu")
+		scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, cpuUtilization)
+	}
 
 	// sort metrics in ScaledObject, this way we always check the same resource in Reconcile loop and we can prevent unnecessary HPA updates,
 	// see https://github.com/kedacore/keda/issues/1531 for details
