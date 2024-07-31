@@ -52,10 +52,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
-- **General**: Fix CVE-2024-24790, CVE-2024-24789, and CVE-2024-24791 in stdlib.
-- **General**: Fix CVE-2024-35255 in github.com/Azure/azure-sdk-for-go/sdk/azidentity
-- **General**: Fix CVE-2024-6104 in github.com/hashicorp/go-retryablehttp
-
 ### Breaking Changes
 
 - **Authentication:** AAD-Pod-Identity and AWS-KIAM auths have been removed ([#5035](https://github.com/kedacore/keda/issues/5035)|[#5085](https://github.com/kedacore/keda/issues/5085))
@@ -81,12 +77,10 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 - **General**: Added `eagerScalingStrategy` for `ScaledJob`  ([#5114](https://github.com/kedacore/keda/issues/5114))
-- **General**: Do not delete running Jobs on KEDA restart ([#5656](https://github.com/kedacore/keda/issues/5656))
 - **Azure queue scaler**: Added new configuration option 'queueLengthStrategy' ([#4478](https://github.com/kedacore/keda/issues/4478))
 - **Cassandra Scaler**: Add TLS support for cassandra scaler ([#5802](https://github.com/kedacore/keda/issues/5802))
 - **GCP Pub/Sub**: Add optional valueIfNull to allow a default scaling value and prevent errors when GCP metric returns no value. ([#5896](https://github.com/kedacore/keda/issues/5896))
 - **GCP Scalers**: Added custom time horizon in GCP scalers ([#5778](https://github.com/kedacore/keda/issues/5778))
-- **GitHub Scaler**: Fixed pagination, fetching repository list ([#5738](https://github.com/kedacore/keda/issues/5738))
 - **IBM MQ Scaler**: Add TLS support for IBM MQ scaler ([#5974](https://github.com/kedacore/keda/issues/5974))
 - **Kafka**: Fix logic to scale to zero on invalid offset even with earliest offsetResetPolicy ([#5689](https://github.com/kedacore/keda/issues/5689))
 - **MYSQL Scaler**: Add support to fetch username from env ([#5883](https://github.com/kedacore/keda/issues/5883))
@@ -96,9 +90,7 @@ Here is an overview of all new **experimental** features:
 
 - **General**: Check for missing CRD references and sample CRs ([#5920](https://github.com/kedacore/keda/issues/5920))
 - **General**: Scalers are properly closed after being refreshed ([#5806](https://github.com/kedacore/keda/issues/5806))
-- **MongoDB Scaler**:  MongoDB url parses correctly `+srv` scheme ([#5760](https://github.com/kedacore/keda/issues/5760))
 - **New Relic Scaler**: Fix CVE-2024-6104 in github.com/hashicorp/go-retryablehttp ([#5944](https://github.com/kedacore/keda/issues/5944))
-- **ScaledJob**: Fix ScaledJob ignores failing trigger(s) error ([#5922](https://github.com/kedacore/keda/issues/5922))
 
 ### Deprecations
 
@@ -114,6 +106,18 @@ New deprecation(s):
 - **General**: Reduce the number of ScaledObject.Status updates in the fallback ([#5624](https://github.com/kedacore/keda/issues/5624))
 - **Azure Services**: Migrated to `github.com/Azure/azure-sdk-for-go` ([#5470](https://github.com/kedacore/keda/issues/5470))
 - **IBM MQ Scaler**: Adding e2e test ([#1287](https://github.com/kedacore/keda/issues/1287))
+
+## v2.14.1
+
+### Fixes
+
+- **General**: Do not delete running Jobs on KEDA restart ([#5656](https://github.com/kedacore/keda/issues/5656))
+- **General**: Fix CVE-2024-24790, CVE-2024-24789, and CVE-2024-24791 in stdlib. ([#5971](https://github.com/kedacore/keda/pull/5971))
+- **General**: Fix CVE-2024-35255 in github.com/Azure/azure-sdk-for-go/sdk/azidentity ([#5971](https://github.com/kedacore/keda/pull/5971))
+- **General**: Fix CVE-2024-6104 in github.com/hashicorp/go-retryablehttp ([#5971](https://github.com/kedacore/keda/pull/5971))
+- **General**: Fix ScaledJob ignores failing trigger(s) error ([#5922](https://github.com/kedacore/keda/issues/5922))- **General**: Scalers are properly closed after being refreshed ([#5806](https://github.com/kedacore/keda/issues/5806))
+- **GitHub Scaler**: Fixed pagination, fetching repository list ([#5738](https://github.com/kedacore/keda/issues/5738))
+- **MongoDB Scaler**:  MongoDB url parses correctly `+srv` scheme ([#5760](https://github.com/kedacore/keda/issues/5760))
 
 ## v2.14.0
 
