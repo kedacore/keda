@@ -31,6 +31,7 @@ jobs:
           TEST_CLUSTER_NAME: keda-e2e-cluster-pr
         run: |
           make get-cluster-context
+          kubectl get ns
 
       - name: Setup tmate session
         uses: mxschmitt/action-tmate@v3
