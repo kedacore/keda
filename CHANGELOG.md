@@ -94,11 +94,13 @@ Here is an overview of all new **experimental** features:
 
 ### Deprecations
 
-- **Prometheus Scaler**: Remove deprecated field `cortexOrgID` from Prometheus scaler ([#5538](https://github.com/kedacore/keda/issues/5538))
-
 New deprecation(s):
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Breaking Changes
+
+- **Prometheus Scaler**: Remove deprecated field `cortexOrgID` from Prometheus scaler ([#5538](https://github.com/kedacore/keda/issues/5538))
 
 ### Other
 
