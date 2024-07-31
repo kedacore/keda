@@ -60,8 +60,6 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "customHeaders": "key1=value1,key2=value2"}, false},
 	// customHeaders with wrong format
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "customHeaders": "key1=value1,key2"}, true},
-	// deprecated cortexOrgID
-	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "cortexOrgID": "my-org"}, true},
 	// queryParameters
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "queryParameters": "key1=value1,key2=value2"}, false},
 	// queryParameters with wrong format
@@ -174,7 +172,7 @@ func TestPrometheusScalerAuthParams(t *testing.T) {
 	}
 }
 
-type prometheusQromQueryResultTestData struct {
+type prometheusPromQueryResultTestData struct {
 	name             string
 	bodyStr          string
 	responseStatus   int
@@ -184,7 +182,7 @@ type prometheusQromQueryResultTestData struct {
 	unsafeSsl        bool
 }
 
-var testPromQueryResult = []prometheusQromQueryResultTestData{
+var testPromQueryResult = []prometheusPromQueryResultTestData{
 	{
 		name:             "no results",
 		bodyStr:          `{}`,
@@ -339,7 +337,7 @@ func TestPrometheusScalerExecutePromQuery(t *testing.T) {
 }
 
 func TestPrometheusScalerCustomHeaders(t *testing.T) {
-	testData := prometheusQromQueryResultTestData{
+	testData := prometheusPromQueryResultTestData{
 		name:             "no values",
 		bodyStr:          `{"data":{"result":[]}}`,
 		responseStatus:   http.StatusOK,
@@ -379,7 +377,7 @@ func TestPrometheusScalerCustomHeaders(t *testing.T) {
 }
 
 func TestPrometheusScalerExecutePromQueryParameters(t *testing.T) {
-	testData := prometheusQromQueryResultTestData{
+	testData := prometheusPromQueryResultTestData{
 		name:             "no values",
 		bodyStr:          `{"data":{"result":[]}}`,
 		responseStatus:   http.StatusOK,
