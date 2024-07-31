@@ -77,7 +77,6 @@ var (
 	AzureADMsiID                  = os.Getenv("TF_AZURE_IDENTITY_1_APP_FULL_ID")
 	AzureADMsiClientID            = os.Getenv("TF_AZURE_IDENTITY_1_APP_ID")
 	AzureADTenantID               = os.Getenv("TF_AZURE_SP_TENANT")
-	AzureRunAadPodIdentityTests   = os.Getenv("AZURE_RUN_AAD_POD_IDENTITY_TESTS")
 	AzureRunWorkloadIdentityTests = os.Getenv("AZURE_RUN_WORKLOAD_IDENTITY_TESTS")
 	AwsIdentityTests              = os.Getenv("AWS_RUN_IDENTITY_TESTS")
 	GcpIdentityTests              = os.Getenv("GCP_RUN_IDENTITY_TESTS")
@@ -85,6 +84,9 @@ var (
 	InstallCertManager            = AwsIdentityTests == StringTrue || GcpIdentityTests == StringTrue
 	InstallKeda                   = os.Getenv("E2E_INSTALL_KEDA")
 	InstallKafka                  = os.Getenv("E2E_INSTALL_KAFKA")
+	// As this isn't supported anymore after 2.15, we need to skip the check on v2.14
+	// to execute the installation
+	AzureRunAadPodIdentityTests = "true"
 )
 
 var (

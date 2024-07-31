@@ -16,6 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.14.1](#v2141)
 - [v2.14.0](#v2140)
 - [v2.13.1](#v2131)
 - [v2.13.0](#v2130)
@@ -50,41 +51,18 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - [v1.1.0](#v110)
 - [v1.0.0](#v100)
 
-## Unreleased
-
-### New
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
-#### Experimental
-
-Here is an overview of all new **experimental** features:
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
-### Improvements
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+## v2.14.1
 
 ### Fixes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Do not delete running Jobs on KEDA restart ([#5656](https://github.com/kedacore/keda/issues/5656))
+- **General**: Fix CVE-2024-24790, CVE-2024-24789, and CVE-2024-24791 in stdlib. ([#5971](https://github.com/kedacore/keda/pull/5971))
+- **General**: Fix CVE-2024-35255 in github.com/Azure/azure-sdk-for-go/sdk/azidentity ([#5971](https://github.com/kedacore/keda/pull/5971))
+- **General**: Fix CVE-2024-6104 in github.com/hashicorp/go-retryablehttp ([#5971](https://github.com/kedacore/keda/pull/5971))
+- **General**: Fix ScaledJob ignores failing trigger(s) error ([#5922](https://github.com/kedacore/keda/issues/5922))- **General**: Scalers are properly closed after being refreshed ([#5806](https://github.com/kedacore/keda/issues/5806))
+- **GitHub Scaler**: Fixed pagination, fetching repository list ([#5738](https://github.com/kedacore/keda/issues/5738))
+- **MongoDB Scaler**:  MongoDB url parses correctly `+srv` scheme ([#5760](https://github.com/kedacore/keda/issues/5760))
 
-### Deprecations
-
-You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
-
-New deprecation(s):
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
-### Breaking Changes
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
-### Other
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ## v2.14.0
 

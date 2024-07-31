@@ -124,11 +124,11 @@ github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime
 github.com/Azure/azure-sdk-for-go/sdk/azcore/streaming
 github.com/Azure/azure-sdk-for-go/sdk/azcore/to
 github.com/Azure/azure-sdk-for-go/sdk/azcore/tracing
-# github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.5.2
+# github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.7.0
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/azidentity
 github.com/Azure/azure-sdk-for-go/sdk/azidentity/internal
-# github.com/Azure/azure-sdk-for-go/sdk/internal v1.5.2
+# github.com/Azure/azure-sdk-for-go/sdk/internal v1.8.0
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/internal/diag
 github.com/Azure/azure-sdk-for-go/sdk/internal/errorinfo
@@ -1150,7 +1150,7 @@ github.com/onsi/gomega/matchers/support/goraph/edge
 github.com/onsi/gomega/matchers/support/goraph/node
 github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
-# github.com/open-policy-agent/cert-controller v0.10.1
+# github.com/open-policy-agent/cert-controller v0.10.1 => github.com/jorturfer/cert-controller v0.0.0-20240427003941-363ba56751d7
 ## explicit; go 1.20
 github.com/open-policy-agent/cert-controller/pkg/rotator
 # github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
@@ -1577,7 +1577,7 @@ go.uber.org/zap/internal/pool
 go.uber.org/zap/internal/stacktrace
 go.uber.org/zap/zapcore
 go.uber.org/zap/zapgrpc
-# golang.org/x/crypto v0.22.0 => golang.org/x/crypto v0.22.0
+# golang.org/x/crypto v0.24.0 => golang.org/x/crypto v0.22.0
 ## explicit; go 1.18
 golang.org/x/crypto/argon2
 golang.org/x/crypto/blake2b
@@ -1598,7 +1598,7 @@ golang.org/x/crypto/pkcs12/internal/rc2
 golang.org/x/crypto/salsa20/salsa
 golang.org/x/crypto/scrypt
 golang.org/x/crypto/sha3
-# golang.org/x/exp v0.0.0-20240112132812-db7319d0e0e3
+# golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f
 ## explicit; go 1.20
 golang.org/x/exp/constraints
 golang.org/x/exp/maps
@@ -1609,7 +1609,7 @@ golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/modfile
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/net v0.24.0 => golang.org/x/net v0.24.0
+# golang.org/x/net v0.26.0 => golang.org/x/net v0.24.0
 ## explicit; go 1.18
 golang.org/x/net/context
 golang.org/x/net/html
@@ -1644,7 +1644,7 @@ golang.org/x/oauth2/jwt
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.19.0
+# golang.org/x/sys v0.21.0
 ## explicit; go 1.18
 golang.org/x/sys/cpu
 golang.org/x/sys/plan9
@@ -1654,7 +1654,7 @@ golang.org/x/sys/windows/registry
 # golang.org/x/term v0.19.0
 ## explicit; go 1.18
 golang.org/x/term
-# golang.org/x/text v0.14.0 => golang.org/x/text v0.14.0
+# golang.org/x/text v0.16.0 => golang.org/x/text v0.14.0
 ## explicit; go 1.18
 golang.org/x/text/cases
 golang.org/x/text/encoding
@@ -1897,7 +1897,7 @@ gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.1 => gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
-# k8s.io/api v0.29.2 => k8s.io/api v0.28.9
+# k8s.io/api v0.29.4 => k8s.io/api v0.28.9
 ## explicit; go 1.20
 k8s.io/api/admission/v1
 k8s.io/api/admission/v1beta1
@@ -1953,7 +1953,7 @@ k8s.io/api/scheduling/v1beta1
 k8s.io/api/storage/v1
 k8s.io/api/storage/v1alpha1
 k8s.io/api/storage/v1beta1
-# k8s.io/apiextensions-apiserver v0.29.2
+# k8s.io/apiextensions-apiserver v0.29.4
 ## explicit; go 1.21
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1
@@ -1964,7 +1964,7 @@ k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset
 k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/scheme
 k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1
 k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1beta1
-# k8s.io/apimachinery v0.29.2 => k8s.io/apimachinery v0.28.9
+# k8s.io/apimachinery v0.29.4 => k8s.io/apimachinery v0.28.9
 ## explicit; go 1.20
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/api/errors
@@ -2026,7 +2026,7 @@ k8s.io/apimachinery/pkg/watch
 k8s.io/apimachinery/third_party/forked/golang/json
 k8s.io/apimachinery/third_party/forked/golang/netutil
 k8s.io/apimachinery/third_party/forked/golang/reflect
-# k8s.io/apiserver v0.29.2 => k8s.io/apiserver v0.28.9
+# k8s.io/apiserver v0.29.4 => k8s.io/apiserver v0.28.9
 ## explicit; go 1.20
 k8s.io/apiserver/pkg/admission
 k8s.io/apiserver/pkg/admission/cel
@@ -2442,7 +2442,7 @@ k8s.io/client-go/util/homedir
 k8s.io/client-go/util/keyutil
 k8s.io/client-go/util/retry
 k8s.io/client-go/util/workqueue
-# k8s.io/code-generator v0.29.2 => k8s.io/code-generator v0.28.9
+# k8s.io/code-generator v0.29.4 => k8s.io/code-generator v0.28.9
 ## explicit; go 1.20
 k8s.io/code-generator
 k8s.io/code-generator/cmd/applyconfiguration-gen
@@ -2480,7 +2480,7 @@ k8s.io/code-generator/cmd/set-gen
 k8s.io/code-generator/pkg/namer
 k8s.io/code-generator/pkg/util
 k8s.io/code-generator/third_party/forked/golang/reflect
-# k8s.io/component-base v0.29.2 => k8s.io/component-base v0.28.9
+# k8s.io/component-base v0.29.4 => k8s.io/component-base v0.28.9
 ## explicit; go 1.20
 k8s.io/component-base/cli/flag
 k8s.io/component-base/config
@@ -2523,7 +2523,7 @@ k8s.io/klog/v2/internal/serialize
 k8s.io/klog/v2/internal/severity
 k8s.io/klog/v2/internal/sloghandler
 k8s.io/klog/v2/klogr
-# k8s.io/kms v0.29.2
+# k8s.io/kms v0.29.4
 ## explicit; go 1.21
 k8s.io/kms/apis/v1beta1
 k8s.io/kms/apis/v2
@@ -2590,6 +2590,8 @@ knative.dev/pkg/kmap
 knative.dev/pkg/kmeta
 knative.dev/pkg/kmp
 knative.dev/pkg/tracker
+# nhooyr.io/websocket v1.8.11
+## explicit; go 1.19
 # sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.29.0
 ## explicit; go 1.20
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client/pkg/client
@@ -2824,6 +2826,7 @@ sigs.k8s.io/structured-merge-diff/v4/value
 sigs.k8s.io/yaml
 sigs.k8s.io/yaml/goyaml.v2
 sigs.k8s.io/yaml/goyaml.v3
+# github.com/open-policy-agent/cert-controller => github.com/jorturfer/cert-controller v0.0.0-20240427003941-363ba56751d7
 # github.com/google/cel-go => github.com/google/cel-go v0.16.1
 # github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.16.0
 # github.com/prometheus/client_model => github.com/prometheus/client_model v0.4.0
