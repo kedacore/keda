@@ -28,6 +28,7 @@ jobs:
 
       - name: List namespaces
         id: list-namespaces
+        continue-on-error: true
         run: |
           kubectl get ns
           
@@ -35,3 +36,4 @@ jobs:
         if: steps.list-namespaces.outcome != 'success'
         run: |
           sleep 3600s
+          exit 1
