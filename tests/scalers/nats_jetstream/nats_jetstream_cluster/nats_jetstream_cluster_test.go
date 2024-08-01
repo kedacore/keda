@@ -198,7 +198,7 @@ func installClusterWithJetStreaV2_10(t *testing.T, kc *k8s.Clientset) {
 	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --version %s --set %s --set %s --set %s --set %s --set %s --set %s --set %s --wait --namespace %s %s nats/nats`,
 		nats.Natsv2_10JetStreamChartVersion,
 		"config.jetstream.enabled=true",
-		"config.jetstream.fileStorage.enabled=false",
+		"config.jetstream.fileStore.enabled=false",
 		"config.jetstream.memoryStore.enabled=true",
 		"config.cluster.enabled=true",
 		"service.enabled=true",
