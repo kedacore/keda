@@ -68,7 +68,7 @@ jobs:
     needs: triage
     runs-on: ubuntu-latest
     name: Build images
-    container: ghcr.io/kedacore/keda-tools:1.21.9
+    container: ghcr.io/kedacore/keda-tools:1.22.5
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
@@ -148,7 +148,7 @@ jobs:
     needs: [triage, build-test-images]
     runs-on: e2e
     name: Execute e2e tests
-    container: ghcr.io/kedacore/keda-tools:1.21.9
+    container: ghcr.io/kedacore/keda-tools:1.22.5
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
@@ -190,7 +190,7 @@ jobs:
           AWS_RUN_IDENTITY_TESTS: true
           AZURE_RUN_WORKLOAD_IDENTITY_TESTS: true
           GCP_RUN_IDENTITY_TESTS: true
-          ENABLE_OPENTELEMETRY : true
+          ENABLE_OPENTELEMETRY: true
           E2E_IMAGE_TAG: ${{ needs.triage.outputs.image_tag }}
           TEST_CLUSTER_NAME: keda-e2e-cluster-pr
           COMMENT_BODY: ${{ github.event.comment.body }}

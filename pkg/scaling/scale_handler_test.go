@@ -656,19 +656,21 @@ func TestIsScaledJobActive(t *testing.T) {
 		scalerCachesLock:         &sync.RWMutex{},
 		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
 	}
-	isActive, queueLength, maxValue := sh.isScaledJobActive(context.TODO(), scaledJobSingle)
+	// nosemgrep: context-todo
+	isActive, isError, queueLength, maxValue := sh.isScaledJobActive(context.TODO(), scaledJobSingle)
 	assert.Equal(t, true, isActive)
+	assert.Equal(t, false, isError)
 	assert.Equal(t, int64(20), queueLength)
 	assert.Equal(t, int64(10), maxValue)
 	scalerCache.Close(context.Background())
 
 	// Test the valiation
 	scalerTestDatam := []scalerTestData{
-		newScalerTestData("s0-queueLength", 100, "max", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 20, 20),
-		newScalerTestData("queueLength", 100, "min", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 5, 2),
-		newScalerTestData("messageCount", 100, "avg", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 12, 9),
-		newScalerTestData("s3-messageCount", 100, "sum", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 35, 27),
-		newScalerTestData("s10-messageCount", 25, "sum", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 35, 25),
+		newScalerTestData("s0-queueLength", 100, "max", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, false, 20, 20),
+		newScalerTestData("queueLength", 100, "min", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, false, 5, 2),
+		newScalerTestData("messageCount", 100, "avg", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, false, 12, 9),
+		newScalerTestData("s3-messageCount", 100, "sum", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, false, 35, 27),
+		newScalerTestData("s10-messageCount", 25, "sum", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, false, 35, 25),
 	}
 
 	for index, scalerTestData := range scalerTestDatam {
@@ -712,9 +714,11 @@ func TestIsScaledJobActive(t *testing.T) {
 			scaledObjectsMetricCache: metricscache.NewMetricsCache(),
 		}
 		fmt.Printf("index: %d", index)
-		isActive, queueLength, maxValue = sh.isScaledJobActive(context.TODO(), scaledJob)
+		// nosemgrep: context-todo
+		isActive, isError, queueLength, maxValue = sh.isScaledJobActive(context.TODO(), scaledJob)
 		//	assert.Equal(t, 5, index)
 		assert.Equal(t, scalerTestData.ResultIsActive, isActive)
+		assert.Equal(t, scalerTestData.ResultIsError, isError)
 		assert.Equal(t, scalerTestData.ResultQueueLength, queueLength)
 		assert.Equal(t, scalerTestData.ResultMaxValue, maxValue)
 		scalerCache.Close(context.Background())
@@ -752,8 +756,10 @@ func TestIsScaledJobActiveIfQueueEmptyButMinReplicaCountGreaterZero(t *testing.T
 		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
 	}
 
-	isActive, queueLength, maxValue := sh.isScaledJobActive(context.TODO(), scaledJobSingle)
+	// nosemgrep: context-todo
+	isActive, isError, queueLength, maxValue := sh.isScaledJobActive(context.TODO(), scaledJobSingle)
 	assert.Equal(t, true, isActive)
+	assert.Equal(t, false, isError)
 	assert.Equal(t, int64(0), queueLength)
 	assert.Equal(t, int64(0), maxValue)
 	scalerCache.Close(context.Background())
@@ -776,6 +782,7 @@ func newScalerTestData(
 	scaler4AverageValue int, //nolint:golint,unparam
 	scaler4IsActive bool, //nolint:golint,unparam
 	resultIsActive bool, //nolint:golint,unparam
+	resultIsError bool, //nolint:golint,unparam
 	resultQueueLength,
 	resultMaxLength int) scalerTestData {
 	return scalerTestData{
@@ -795,6 +802,7 @@ func newScalerTestData(
 		Scaler4AverageValue:        int64(scaler4AverageValue),
 		Scaler4IsActive:            scaler4IsActive,
 		ResultIsActive:             resultIsActive,
+		ResultIsError:              resultIsError,
 		ResultQueueLength:          int64(resultQueueLength),
 		ResultMaxValue:             int64(resultMaxLength),
 	}
@@ -817,6 +825,7 @@ type scalerTestData struct {
 	Scaler4AverageValue        int64
 	Scaler4IsActive            bool
 	ResultIsActive             bool
+	ResultIsError              bool
 	ResultQueueLength          int64
 	ResultMaxValue             int64
 	MinReplicaCount            int32

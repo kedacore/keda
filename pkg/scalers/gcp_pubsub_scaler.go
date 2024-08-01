@@ -49,6 +49,7 @@ type pubsubMetadata struct {
 	triggerIndex     int
 	aggregation      string
 	timeHorizon      string
+	valueIfNull      *float64
 }
 
 // NewPubSubScaler creates a new pubsubScaler
@@ -179,6 +180,14 @@ func parsePubSubMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger)
 		}
 	}
 
+	if val, ok := config.TriggerMetadata["valueIfNull"]; ok && val != "" {
+		valueIfNull, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("valueIfNull parsing error %w", err)
+		}
+		meta.valueIfNull = &valueIfNull
+	}
+
 	meta.aggregation = config.TriggerMetadata["aggregation"]
 
 	meta.timeHorizon = config.TriggerMetadata["timeHorizon"]
@@ -291,7 +300,7 @@ func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (float
 
 	// Pubsub metrics are collected every 60 seconds so no need to aggregate them.
 	// See: https://cloud.google.com/monitoring/api/metrics_gcp#gcp-pubsub
-	return s.client.QueryMetrics(ctx, projectID, query)
+	return s.client.QueryMetrics(ctx, projectID, query, s.metadata.valueIfNull)
 }
 
 func getResourceData(s *pubsubScaler) (string, string) {
