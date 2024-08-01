@@ -171,6 +171,7 @@ func removeStreamAndConsumer(t *testing.T, streamReplicas int, stream, namespace
 
 // installClusterWithJetStream install the nats helm chart with clustered jetstream enabled
 func installClusterWithJetStream(t *testing.T, kc *k8s.Clientset, noAdvertise bool) {
+	removeNATSPods(t)
 	CreateNamespace(t, kc, natsNamespace)
 	_, err := ExecuteCommand(fmt.Sprintf("helm repo add %s %s", nats.NatsJetStreamName, natsHelmRepo))
 	require.NoErrorf(t, err, "cannot execute command - %s", err)
@@ -190,6 +191,7 @@ func installClusterWithJetStream(t *testing.T, kc *k8s.Clientset, noAdvertise bo
 
 // installClusterWithJetStreaV2_10 install the nats helm chart with clustered jetstream enabled using v2.10
 func installClusterWithJetStreaV2_10(t *testing.T, kc *k8s.Clientset) {
+	removeNATSPods(t)
 	CreateNamespace(t, kc, natsNamespace)
 	_, err := ExecuteCommand(fmt.Sprintf("helm repo add %s %s", nats.NatsJetStreamName, natsHelmRepo))
 	require.NoErrorf(t, err, "cannot execute command - %s", err)
@@ -213,6 +215,13 @@ func installClusterWithJetStreaV2_10(t *testing.T, kc *k8s.Clientset) {
 func removeClusterWithJetStream(t *testing.T) {
 	_, err := ExecuteCommand(fmt.Sprintf(`helm uninstall --wait --namespace %s %s`, natsNamespace, nats.NatsJetStreamName))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	removeNATSPods(t)
+}
+
+// removeNATSPods delete the server pods in case they're stuck
+func removeNATSPods(t *testing.T) {
+	DeletePodsInNamespaceBySelector(t, KubeClient, "app.kubernetes.io/name=nats", natsNamespace)
+	assert.True(t, WaitForPodCountInNamespace(t, KubeClient, natsNamespace, 0, 30, 2))
 }
 
 func testActivation(t *testing.T, kc *k8s.Clientset, data nats.JetStreamDeploymentTemplateData) {
