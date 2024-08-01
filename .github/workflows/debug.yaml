@@ -32,21 +32,3 @@ jobs:
         run: |
           make get-cluster-context
           kubectl get ns
-
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
-        with:
-          limit-access-to-actor: false
-
-      - name: Run end to end tests
-        continue-on-error: true
-        id: test
-        env:
-          AWS_RUN_IDENTITY_TESTS: true
-          AZURE_RUN_WORKLOAD_IDENTITY_TESTS: true
-          GCP_RUN_IDENTITY_TESTS: true
-          ENABLE_OPENTELEMETRY: true
-          TEST_CLUSTER_NAME: keda-e2e-cluster-pr
-        run: |
-          make e2e-test
-      
