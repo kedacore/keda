@@ -27,5 +27,11 @@ jobs:
           make get-cluster-context
 
       - name: List namespaces
+        id: list-namespaces
         run: |
           kubectl get ns
+          
+      - name: Wait on failure
+        if: steps.list-namespaces.outcome != 'success'
+        run: |
+          sleep 3600s
