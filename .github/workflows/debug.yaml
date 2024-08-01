@@ -20,15 +20,12 @@ jobs:
         with:
           secrets: ${{ toJSON(secrets) }}
 
-      - name: Run end to end tests
-        continue-on-error: true
-        id: code
+      - name: Get context
         env:
-          AWS_RUN_IDENTITY_TESTS: true
-          AZURE_RUN_WORKLOAD_IDENTITY_TESTS: true
-          GCP_RUN_IDENTITY_TESTS: true
-          ENABLE_OPENTELEMETRY: true
           TEST_CLUSTER_NAME: keda-e2e-cluster-pr
         run: |
           make get-cluster-context
+
+      - name: List namespaces
+        run: |
           kubectl get ns
