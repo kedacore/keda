@@ -66,6 +66,7 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 
+- General: Add SecretKey to AWS SecretsManager TriggerAuthentication to allow parsing JSON / Key/Value Pairs in secrets (#5940)
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ### Fixes
