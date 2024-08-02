@@ -18,6 +18,7 @@ package resolver
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -43,9 +44,9 @@ func NewAwsSecretManagerHandler(a *kedav1alpha1.AwsSecretManager) *AwsSecretMana
 	}
 }
 
-// Read fetches the secret value from AWS Secret Manager using the provided secret name, version ID(optional), and version stage(optional).
+// Read fetches the secret value from AWS Secret Manager using the provided secret name, version ID(optional), version stage(optional), and secretKey(optional).
 // It returns the secret value as a string.
-func (ash *AwsSecretManagerHandler) Read(ctx context.Context, logger logr.Logger, secretName, versionID, versionStage string) (string, error) {
+func (ash *AwsSecretManagerHandler) Read(ctx context.Context, logger logr.Logger, secretName, versionID, versionStage string, secretKey string) (string, error) {
 	input := &secretsmanager.GetSecretValueInput{
 		SecretId: aws.String(secretName),
 	}
@@ -60,7 +61,31 @@ func (ash *AwsSecretManagerHandler) Read(ctx context.Context, logger logr.Logger
 		logger.Error(err, "Error getting credentials")
 		return "", err
 	}
-	return *result.SecretString, nil
+	if secretKey != "" {
+		// Parse the secret string as JSON
+		var secretMap map[string]interface{}
+		err = json.Unmarshal([]byte(*result.SecretString), &secretMap)
+		if err != nil {
+			logger.Error(err, "Error parsing secret string as JSON")
+			return "", err
+		}
+
+		// Check if the specified secret key exists
+		if val, ok := secretMap[secretKey]; ok {
+			// Convert the value to a string and return it
+			if strVal, isString := val.(string); isString {
+				return strVal, nil
+			} else {
+				logger.Error(nil, "SecretKey value is not a string")
+				return "", fmt.Errorf("SecretKey value is not a string")
+			}
+		} else {
+			logger.Error(nil, "SecretKey Not Found")
+			return "", fmt.Errorf("SecretKey Not Found")
+		}
+	} else {
+		return *result.SecretString, nil
+	}
 }
 
 // Initialize sets up the AWS Secret Manager handler by configuring AWS credentials, AWS region, or using pod identity.
