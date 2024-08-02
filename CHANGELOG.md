@@ -70,7 +70,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Hashicorp Vault PKI doesn't fail with due to KeyPair mismatch ([#6028](https://github.com/kedacore/keda/issues/6028))
 
 ### Deprecations
 
