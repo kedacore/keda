@@ -75,17 +75,14 @@ func (ash *AwsSecretManagerHandler) Read(ctx context.Context, logger logr.Logger
 			// Convert the value to a string and return it
 			if strVal, isString := val.(string); isString {
 				return strVal, nil
-			} else {
-				logger.Error(nil, "SecretKey value is not a string")
-				return "", fmt.Errorf("SecretKey value is not a string")
 			}
-		} else {
-			logger.Error(nil, "SecretKey Not Found")
-			return "", fmt.Errorf("SecretKey Not Found")
+			logger.Error(nil, "SecretKey value is not a string")
+			return "", fmt.Errorf("SecretKey value is not a string")
 		}
-	} else {
-		return *result.SecretString, nil
+		logger.Error(nil, "SecretKey Not Found")
+		return "", fmt.Errorf("SecretKey Not Found")
 	}
+	return *result.SecretString, nil
 }
 
 // Initialize sets up the AWS Secret Manager handler by configuring AWS credentials, AWS region, or using pod identity.
