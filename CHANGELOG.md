@@ -16,6 +16,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.15.0](#v2150)
+- [v2.14.1](#v2141)
 - [v2.14.0](#v2140)
 - [v2.13.1](#v2131)
 - [v2.13.0](#v2130)
@@ -52,34 +54,67 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
-### Breaking Changes
-
-- **Authentication:** AAD-Pod-Identity and AWS-KIAM auths have been removed ([#5035](https://github.com/kedacore/keda/issues/5035)|[#5085](https://github.com/kedacore/keda/issues/5085))
-
 ### New
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-- **General**: Add --ca-dir flag to KEDA operator to specify directories with CA certificates for scalers to authenticate TLS connections (defaults to /custom/ca) ([#5860](https://github.com/kedacore/keda/issues/5860))
-- **General**: Add Dynatrace Scaler ([#5685](https://github.com/kedacore/keda/pull/5685))
-- **General**: Declarative parsing of scaler config ([#5037](https://github.com/kedacore/keda/issues/5037)|[#5797](https://github.com/kedacore/keda/issues/5797))
-- **General**: Introduce new Splunk Scaler ([#5904](https://github.com/kedacore/keda/issues/5904))
-- **General**: Provide CloudEvents around the management of ScaledObjects resources ([#3522](https://github.com/kedacore/keda/issues/3522))
-- **General**: Remove deprecated Kustomize commonLabels ([#5888](https://github.com/kedacore/keda/pull/5888))
-- **General**: Remove unused leader election parameters in metrics adapter ([#5959](https://github.com/kedacore/keda/issues/5959))
-- **General**: Support for Kubernetes v1.30 ([#5828](https://github.com/kedacore/keda/issues/5828))
 
 #### Experimental
 
 Here is an overview of all new **experimental** features:
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Improvements
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Fixes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Deprecations
+
+You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
+
+New deprecation(s):
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Breaking Changes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Other
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+## v2.15.0
+
+### Breaking Changes
+
+- **Authentication:** AAD-Pod-Identity and AWS-KIAM auths have been removed ([#5035](https://github.com/kedacore/keda/issues/5035)|[#5085](https://github.com/kedacore/keda/issues/5085))
+- **Prometheus Scaler**: Remove deprecated field `cortexOrgID` from Prometheus scaler ([#5538](https://github.com/kedacore/keda/issues/5538))
+
+### New
+
+- **General**: Add `--ca-dir` flag to KEDA operator to specify directories with CA certificates for scalers to authenticate TLS connections (defaults to /custom/ca) ([#5860](https://github.com/kedacore/keda/issues/5860))
+- **General**: Add Dynatrace Scaler ([#5685](https://github.com/kedacore/keda/pull/5685))
+- **General**: Add Splunk Scaler ([#5904](https://github.com/kedacore/keda/issues/5904))
+- **General**: Added `eagerScalingStrategy` for `ScaledJob`  ([#5114](https://github.com/kedacore/keda/issues/5114))
+- **General**: Provide CloudEvents around the management of ScaledObjects resources ([#3522](https://github.com/kedacore/keda/issues/3522))
+- **General**: Support for Kubernetes v1.30 ([#5828](https://github.com/kedacore/keda/issues/5828))
+
+#### Experimental
+
+Here is an overview of all new **experimental** features:
+
 - **Datadog Scaler**: Add support to use the Cluster Agent as source of metrics ([#5355](https://github.com/kedacore/keda/issues/5355))
 
 ### Improvements
-- **General**: Added `eagerScalingStrategy` for `ScaledJob`  ([#5114](https://github.com/kedacore/keda/issues/5114))
+
 - **Azure queue scaler**: Added new configuration option 'queueLengthStrategy' ([#4478](https://github.com/kedacore/keda/issues/4478))
 - **Cassandra Scaler**: Add TLS support for cassandra scaler ([#5802](https://github.com/kedacore/keda/issues/5802))
-- **GCP Pub/Sub**: Add optional valueIfNull to allow a default scaling value and prevent errors when GCP metric returns no value. ([#5896](https://github.com/kedacore/keda/issues/5896))
+- **GCP Pub/Sub**: Add optional `valueIfNull` to allow a default scaling value and prevent errors when GCP metric returns no value. ([#5896](https://github.com/kedacore/keda/issues/5896))
 - **GCP Scalers**: Added custom time horizon in GCP scalers ([#5778](https://github.com/kedacore/keda/issues/5778))
 - **IBM MQ Scaler**: Add TLS support for IBM MQ scaler ([#5974](https://github.com/kedacore/keda/issues/5974))
 - **Kafka**: Fix logic to scale to zero on invalid offset even with earliest offsetResetPolicy ([#5689](https://github.com/kedacore/keda/issues/5689))
@@ -88,25 +123,18 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
-- **General**: Check for missing CRD references and sample CRs ([#5920](https://github.com/kedacore/keda/issues/5920))
 - **General**: Fix panic in `KedaProvider` when getting metrics from Metrics Service if the gRPC Server connection is not established ([#6009](https://github.com/kedacore/keda/issues/6009))
 - **General**: Scalers are properly closed after being refreshed ([#5806](https://github.com/kedacore/keda/issues/5806))
 - **New Relic Scaler**: Fix CVE-2024-6104 in github.com/hashicorp/go-retryablehttp ([#5944](https://github.com/kedacore/keda/issues/5944))
 
-### Deprecations
-
-New deprecation(s):
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
-### Breaking Changes
-
-- **Prometheus Scaler**: Remove deprecated field `cortexOrgID` from Prometheus scaler ([#5538](https://github.com/kedacore/keda/issues/5538))
-
 ### Other
 
 - **General**: Added Pre Regex check before building image in e2e test ([#5783](https://github.com/kedacore/keda/issues/5783))
+- **General**: Check for missing CRD references and sample CRs ([#5920](https://github.com/kedacore/keda/issues/5920))
 - **General**: Reduce the number of ScaledObject.Status updates in the fallback ([#5624](https://github.com/kedacore/keda/issues/5624))
+- **General**: Remove deprecated Kustomize commonLabels ([#5888](https://github.com/kedacore/keda/pull/5888))
+- **General**: Remove unused leader election parameters in metrics adapter ([#5959](https://github.com/kedacore/keda/issues/5959))
+- **General**: Use new declarative parsing to read scaler config ([#5037](https://github.com/kedacore/keda/issues/5037)|[#5797](https://github.com/kedacore/keda/issues/5797))
 - **Azure Services**: Migrated to `github.com/Azure/azure-sdk-for-go` ([#5470](https://github.com/kedacore/keda/issues/5470))
 - **IBM MQ Scaler**: Adding e2e test ([#1287](https://github.com/kedacore/keda/issues/1287))
 
