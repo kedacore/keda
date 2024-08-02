@@ -86,7 +86,7 @@ var (
 	ndJSON   = newMIME("application/x-ndjson", ".ndjson", magic.NdJSON)
 	html     = newMIME("text/html", ".html", magic.HTML)
 	php      = newMIME("text/x-php", ".php", magic.Php)
-	rtf      = newMIME("text/rtf", ".rtf", magic.Rtf)
+	rtf      = newMIME("text/rtf", ".rtf", magic.Rtf).alias("application/rtf")
 	js       = newMIME("application/javascript", ".js", magic.Js).
 			alias("application/x-javascript", "text/javascript")
 	srt = newMIME("application/x-subrip", ".srt", magic.Srt).

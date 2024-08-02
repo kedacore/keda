@@ -3,14 +3,17 @@ package builtin
 import (
 	"fmt"
 	"reflect"
+	"time"
 )
 
 var (
-	anyType     = reflect.TypeOf(new(any)).Elem()
-	integerType = reflect.TypeOf(0)
-	floatType   = reflect.TypeOf(float64(0))
-	arrayType   = reflect.TypeOf([]any{})
-	mapType     = reflect.TypeOf(map[any]any{})
+	anyType      = reflect.TypeOf(new(any)).Elem()
+	integerType  = reflect.TypeOf(0)
+	floatType    = reflect.TypeOf(float64(0))
+	arrayType    = reflect.TypeOf([]any{})
+	mapType      = reflect.TypeOf(map[any]any{})
+	timeType     = reflect.TypeOf(new(time.Time)).Elem()
+	locationType = reflect.TypeOf(new(time.Location))
 )
 
 func kind(t reflect.Type) reflect.Kind {

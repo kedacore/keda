@@ -3,20 +3,18 @@ package lexer
 import (
 	"fmt"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/expr-lang/expr/file"
 )
 
-func Lex(source *file.Source) ([]Token, error) {
+func Lex(source file.Source) ([]Token, error) {
 	l := &lexer{
-		input:  source.Content(),
+		source: source,
 		tokens: make([]Token, 0),
+		start:  0,
+		end:    0,
 	}
-
-	l.loc = file.Location{Line: 1, Column: 0}
-	l.prev = l.loc
-	l.startLoc = l.loc
+	l.commit()
 
 	for state := root; state != nil; {
 		state = state(l)
@@ -30,34 +28,25 @@ func Lex(source *file.Source) ([]Token, error) {
 }
 
 type lexer struct {
-	input      string
+	source     file.Source
 	tokens     []Token
-	start, end int           // current position in input
-	width      int           // last rune width
-	startLoc   file.Location // start location
-	prev, loc  file.Location // prev location of end location, end location
+	start, end int
 	err        *file.Error
 }
 
 const eof rune = -1
 
+func (l *lexer) commit() {
+	l.start = l.end
+}
+
 func (l *lexer) next() rune {
-	if l.end >= len(l.input) {
-		l.width = 0
+	if l.end >= len(l.source) {
+		l.end++
 		return eof
 	}
-	r, w := utf8.DecodeRuneInString(l.input[l.end:])
-	l.width = w
-	l.end += w
-
-	l.prev = l.loc
-	if r == '\n' {
-		l.loc.Line++
-		l.loc.Column = 0
-	} else {
-		l.loc.Column++
-	}
-
+	r := l.source[l.end]
+	l.end++
 	return r
 }
 
@@ -68,8 +57,7 @@ func (l *lexer) peek() rune {
 }
 
 func (l *lexer) backup() {
-	l.end -= l.width
-	l.loc = l.prev
+	l.end--
 }
 
 func (l *lexer) emit(t Kind) {
@@ -78,35 +66,39 @@ func (l *lexer) emit(t Kind) {
 
 func (l *lexer) emitValue(t Kind, value string) {
 	l.tokens = append(l.tokens, Token{
-		Location: l.startLoc,
+		Location: file.Location{From: l.start, To: l.end},
 		Kind:     t,
 		Value:    value,
 	})
-	l.start = l.end
-	l.startLoc = l.loc
+	l.commit()
 }
 
 func (l *lexer) emitEOF() {
+	from := l.end - 2
+	if from < 0 {
+		from = 0
+	}
+	to := l.end - 1
+	if to < 0 {
+		to = 0
+	}
 	l.tokens = append(l.tokens, Token{
-		Location: l.prev, // Point to previous position for better error messages.
+		Location: file.Location{From: from, To: to},
 		Kind:     EOF,
 	})
-	l.start = l.end
-	l.startLoc = l.loc
+	l.commit()
 }
 
 func (l *lexer) skip() {
-	l.start = l.end
-	l.startLoc = l.loc
+	l.commit()
 }
 
 func (l *lexer) word() string {
-	return l.input[l.start:l.end]
-}
-
-func (l *lexer) ignore() {
-	l.start = l.end
-	l.startLoc = l.loc
+	// TODO: boundary check is NOT needed here, but for some reason CI fuzz tests are failing.
+	if l.start > len(l.source) || l.end > len(l.source) {
+		return "__invalid__"
+	}
+	return string(l.source[l.start:l.end])
 }
 
 func (l *lexer) accept(valid string) bool {
@@ -132,18 +124,18 @@ func (l *lexer) skipSpaces() {
 }
 
 func (l *lexer) acceptWord(word string) bool {
-	pos, loc, prev := l.end, l.loc, l.prev
+	pos := l.end
 
 	l.skipSpaces()
 
 	for _, ch := range word {
 		if l.next() != ch {
-			l.end, l.loc, l.prev = pos, loc, prev
+			l.end = pos
 			return false
 		}
 	}
 	if r := l.peek(); r != ' ' && r != eof {
-		l.end, l.loc, l.prev = pos, loc, prev
+		l.end = pos
 		return false
 	}
 
@@ -153,8 +145,11 @@ func (l *lexer) acceptWord(word string) bool {
 func (l *lexer) error(format string, args ...any) stateFn {
 	if l.err == nil { // show first error
 		l.err = &file.Error{
-			Location: l.loc,
-			Message:  fmt.Sprintf(format, args...),
+			Location: file.Location{
+				From: l.end - 1,
+				To:   l.end,
+			},
+			Message: fmt.Sprintf(format, args...),
 		}
 	}
 	return nil
@@ -230,6 +225,6 @@ func (l *lexer) scanRawString(quote rune) (n int) {
 		ch = l.next()
 		n++
 	}
-	l.emitValue(String, l.input[l.start+1:l.end-1])
+	l.emitValue(String, string(l.source[l.start+1:l.end-1]))
 	return
 }

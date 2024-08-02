@@ -15,15 +15,19 @@ import (
 // The CreateTable operation adds a new table to your account. In an Amazon Web
 // Services account, table names must be unique within each Region. That is, you
 // can have two tables with same name if you create the tables in different
-// Regions. CreateTable is an asynchronous operation. Upon receiving a CreateTable
-// request, DynamoDB immediately returns a response with a TableStatus of CREATING
-// . After the table is created, DynamoDB sets the TableStatus to ACTIVE . You can
-// perform read and write operations only on an ACTIVE table. You can optionally
-// define secondary indexes on the new table, as part of the CreateTable
-// operation. If you want to create multiple tables with secondary indexes on them,
-// you must create the tables sequentially. Only one table with secondary indexes
-// can be in the CREATING state at any given time. You can use the DescribeTable
-// action to check the table status.
+// Regions.
+//
+// CreateTable is an asynchronous operation. Upon receiving a CreateTable request,
+// DynamoDB immediately returns a response with a TableStatus of CREATING . After
+// the table is created, DynamoDB sets the TableStatus to ACTIVE . You can perform
+// read and write operations only on an ACTIVE table.
+//
+// You can optionally define secondary indexes on the new table, as part of the
+// CreateTable operation. If you want to create multiple tables with secondary
+// indexes on them, you must create the tables sequentially. Only one table with
+// secondary indexes can be in the CREATING state at any given time.
+//
+// You can use the DescribeTable action to check the table status.
 func (c *Client) CreateTable(ctx context.Context, params *CreateTableInput, optFns ...func(*Options)) (*CreateTableOutput, error) {
 	if params == nil {
 		params = &CreateTableInput{}
@@ -49,25 +53,38 @@ type CreateTableInput struct {
 
 	// Specifies the attributes that make up the primary key for a table or an index.
 	// The attributes in KeySchema must also be defined in the AttributeDefinitions
-	// array. For more information, see Data Model (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DataModel.html)
-	// in the Amazon DynamoDB Developer Guide. Each KeySchemaElement in the array is
-	// composed of:
+	// array. For more information, see [Data Model]in the Amazon DynamoDB Developer Guide.
+	//
+	// Each KeySchemaElement in the array is composed of:
+	//
 	//   - AttributeName - The name of this key attribute.
+	//
 	//   - KeyType - The role that the key attribute will assume:
+	//
 	//   - HASH - partition key
+	//
 	//   - RANGE - sort key
+	//
 	// The partition key of an item is also known as its hash attribute. The term
 	// "hash attribute" derives from the DynamoDB usage of an internal hash function to
 	// evenly distribute data items across partitions, based on their partition key
-	// values. The sort key of an item is also known as its range attribute. The term
-	// "range attribute" derives from the way DynamoDB stores items with the same
-	// partition key physically close together, in sorted order by the sort key value.
+	// values.
+	//
+	// The sort key of an item is also known as its range attribute. The term "range
+	// attribute" derives from the way DynamoDB stores items with the same partition
+	// key physically close together, in sorted order by the sort key value.
+	//
 	// For a simple primary key (partition key), you must provide exactly one element
-	// with a KeyType of HASH . For a composite primary key (partition key and sort
-	// key), you must provide exactly two elements, in this order: The first element
-	// must have a KeyType of HASH , and the second element must have a KeyType of
-	// RANGE . For more information, see Working with Tables (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithTables.html#WorkingWithTables.primary.key)
-	// in the Amazon DynamoDB Developer Guide.
+	// with a KeyType of HASH .
+	//
+	// For a composite primary key (partition key and sort key), you must provide
+	// exactly two elements, in this order: The first element must have a KeyType of
+	// HASH , and the second element must have a KeyType of RANGE .
+	//
+	// For more information, see [Working with Tables] in the Amazon DynamoDB Developer Guide.
+	//
+	// [Data Model]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DataModel.html
+	// [Working with Tables]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithTables.html#WorkingWithTables.primary.key
 	//
 	// This member is required.
 	KeySchema []types.KeySchemaElement
@@ -80,12 +97,15 @@ type CreateTableInput struct {
 
 	// Controls how you are charged for read and write throughput and how you manage
 	// capacity. This setting can be changed later.
+	//
 	//   - PROVISIONED - We recommend using PROVISIONED for predictable workloads.
-	//   PROVISIONED sets the billing mode to Provisioned Mode (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadWriteCapacityMode.html#HowItWorks.ProvisionedThroughput.Manual)
-	//   .
+	//   PROVISIONED sets the billing mode to [Provisioned capacity mode].
+	//
 	//   - PAY_PER_REQUEST - We recommend using PAY_PER_REQUEST for unpredictable
-	//   workloads. PAY_PER_REQUEST sets the billing mode to On-Demand Mode (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadWriteCapacityMode.html#HowItWorks.OnDemand)
-	//   .
+	//   workloads. PAY_PER_REQUEST sets the billing mode to [On-demand capacity mode].
+	//
+	// [Provisioned capacity mode]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/provisioned-capacity-mode.html
+	// [On-demand capacity mode]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/on-demand-capacity-mode.html
 	BillingMode types.BillingMode
 
 	// Indicates whether deletion protection is to be enabled (true) or disabled
@@ -94,23 +114,32 @@ type CreateTableInput struct {
 
 	// One or more global secondary indexes (the maximum is 20) to be created on the
 	// table. Each global secondary index in the array includes the following:
+	//
 	//   - IndexName - The name of the global secondary index. Must be unique only for
 	//   this table.
+	//
 	//   - KeySchema - Specifies the key schema for the global secondary index.
+	//
 	//   - Projection - Specifies attributes that are copied (projected) from the table
 	//   into the index. These are in addition to the primary key attributes and index
 	//   key attributes, which are automatically projected. Each attribute specification
 	//   is composed of:
+	//
 	//   - ProjectionType - One of the following:
+	//
 	//   - KEYS_ONLY - Only the index and primary keys are projected into the index.
+	//
 	//   - INCLUDE - Only the specified table attributes are projected into the index.
 	//   The list of projected attributes is in NonKeyAttributes .
+	//
 	//   - ALL - All of the table attributes are projected into the index.
+	//
 	//   - NonKeyAttributes - A list of one or more non-key attribute names that are
 	//   projected into the secondary index. The total count of attributes provided in
 	//   NonKeyAttributes , summed across all of the secondary indexes, must not exceed
 	//   100. If you project the same attribute into two different indexes, this counts
 	//   as two distinct attributes when determining the total.
+	//
 	//   - ProvisionedThroughput - The provisioned throughput settings for the global
 	//   secondary index, consisting of read and write capacity units.
 	GlobalSecondaryIndexes []types.GlobalSecondaryIndex
@@ -118,21 +147,30 @@ type CreateTableInput struct {
 	// One or more local secondary indexes (the maximum is 5) to be created on the
 	// table. Each index is scoped to a given partition key value. There is a 10 GB
 	// size limit per partition key value; otherwise, the size of a local secondary
-	// index is unconstrained. Each local secondary index in the array includes the
-	// following:
+	// index is unconstrained.
+	//
+	// Each local secondary index in the array includes the following:
+	//
 	//   - IndexName - The name of the local secondary index. Must be unique only for
 	//   this table.
+	//
 	//   - KeySchema - Specifies the key schema for the local secondary index. The key
 	//   schema must begin with the same partition key as the table.
+	//
 	//   - Projection - Specifies attributes that are copied (projected) from the table
 	//   into the index. These are in addition to the primary key attributes and index
 	//   key attributes, which are automatically projected. Each attribute specification
 	//   is composed of:
+	//
 	//   - ProjectionType - One of the following:
+	//
 	//   - KEYS_ONLY - Only the index and primary keys are projected into the index.
+	//
 	//   - INCLUDE - Only the specified table attributes are projected into the index.
 	//   The list of projected attributes is in NonKeyAttributes .
+	//
 	//   - ALL - All of the table attributes are projected into the index.
+	//
 	//   - NonKeyAttributes - A list of one or more non-key attribute names that are
 	//   projected into the secondary index. The total count of attributes provided in
 	//   NonKeyAttributes , summed across all of the secondary indexes, must not exceed
@@ -140,41 +178,61 @@ type CreateTableInput struct {
 	//   as two distinct attributes when determining the total.
 	LocalSecondaryIndexes []types.LocalSecondaryIndex
 
+	// Sets the maximum number of read and write units for the specified table in
+	// on-demand capacity mode. If you use this parameter, you must specify
+	// MaxReadRequestUnits , MaxWriteRequestUnits , or both.
+	OnDemandThroughput *types.OnDemandThroughput
+
 	// Represents the provisioned throughput settings for a specified table or index.
-	// The settings can be modified using the UpdateTable operation. If you set
-	// BillingMode as PROVISIONED , you must specify this property. If you set
-	// BillingMode as PAY_PER_REQUEST , you cannot specify this property. For current
-	// minimum and maximum provisioned throughput values, see Service, Account, and
-	// Table Quotas (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html)
-	// in the Amazon DynamoDB Developer Guide.
+	// The settings can be modified using the UpdateTable operation.
+	//
+	// If you set BillingMode as PROVISIONED , you must specify this property. If you
+	// set BillingMode as PAY_PER_REQUEST , you cannot specify this property.
+	//
+	// For current minimum and maximum provisioned throughput values, see [Service, Account, and Table Quotas] in the
+	// Amazon DynamoDB Developer Guide.
+	//
+	// [Service, Account, and Table Quotas]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html
 	ProvisionedThroughput *types.ProvisionedThroughput
 
 	// An Amazon Web Services resource-based policy document in JSON format that will
-	// be attached to the table. When you attach a resource-based policy while creating
-	// a table, the policy creation is strongly consistent. The maximum size supported
-	// for a resource-based policy document is 20 KB. DynamoDB counts whitespaces when
-	// calculating the size of a policy against this limit. You can’t request an
-	// increase for this limit. For a full list of all considerations that you should
-	// keep in mind while attaching a resource-based policy, see Resource-based policy
-	// considerations (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/rbac-considerations.html)
-	// .
+	// be attached to the table.
+	//
+	// When you attach a resource-based policy while creating a table, the policy
+	// application is strongly consistent.
+	//
+	// The maximum size supported for a resource-based policy document is 20 KB.
+	// DynamoDB counts whitespaces when calculating the size of a policy against this
+	// limit. For a full list of all considerations that apply for resource-based
+	// policies, see [Resource-based policy considerations].
+	//
+	// You need to specify the CreateTable and PutResourcePolicy IAM actions for
+	// authorizing a user to create a table with a resource-based policy.
+	//
+	// [Resource-based policy considerations]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/rbac-considerations.html
 	ResourcePolicy *string
 
 	// Represents the settings used to enable server-side encryption.
 	SSESpecification *types.SSESpecification
 
 	// The settings for DynamoDB Streams on the table. These settings consist of:
+	//
 	//   - StreamEnabled - Indicates whether DynamoDB Streams is to be enabled (true)
 	//   or disabled (false).
+	//
 	//   - StreamViewType - When an item in the table is modified, StreamViewType
 	//   determines what information is written to the table's stream. Valid values for
 	//   StreamViewType are:
+	//
 	//   - KEYS_ONLY - Only the key attributes of the modified item are written to the
 	//   stream.
+	//
 	//   - NEW_IMAGE - The entire item, as it appears after it was modified, is written
 	//   to the stream.
+	//
 	//   - OLD_IMAGE - The entire item, as it appeared before it was modified, is
 	//   written to the stream.
+	//
 	//   - NEW_AND_OLD_IMAGES - Both the new and the old item images of the item are
 	//   written to the stream.
 	StreamSpecification *types.StreamSpecification
@@ -183,9 +241,9 @@ type CreateTableInput struct {
 	// STANDARD_INFREQUENT_ACCESS .
 	TableClass types.TableClass
 
-	// A list of key-value pairs to label the table. For more information, see Tagging
-	// for DynamoDB (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Tagging.html)
-	// .
+	// A list of key-value pairs to label the table. For more information, see [Tagging for DynamoDB].
+	//
+	// [Tagging for DynamoDB]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Tagging.html
 	Tags []types.Tag
 
 	noSmithyDocumentSerde
@@ -259,6 +317,12 @@ func (c *Client) addOperationCreateTableMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateTableValidationMiddleware(stack); err != nil {

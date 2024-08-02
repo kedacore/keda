@@ -95,12 +95,11 @@ prior to calling [Channel.PublishWithContext] or [Channel.Consume].
 When Dial encounters an amqps:// scheme, it will use the zero value of a
 tls.Config.  This will only perform server certificate and host verification.
 
-Use DialTLS when you wish to provide a client certificate (recommended),
-include a private certificate authority's certificate in the cert chain for
-server validity, or run insecure by not verifying the server certificate dial
-your own connection.  DialTLS will use the provided tls.Config when it
-encounters an amqps:// scheme and will dial a plain connection when it
-encounters an amqp:// scheme.
+Use DialTLS when you wish to provide a client certificate (recommended), include
+a private certificate authority's certificate in the cert chain for server
+validity, or run insecure by not verifying the server certificate. DialTLS will
+use the provided tls.Config when it encounters an amqps:// scheme and will dial
+a plain connection when it encounters an amqp:// scheme.
 
 SSL/TLS in RabbitMQ is documented here: http://www.rabbitmq.com/ssl.html
 
@@ -110,17 +109,18 @@ In order to be notified when a connection or channel gets closed, both
 structures offer the possibility to register channels using
 [Channel.NotifyClose] and [Connection.NotifyClose] functions:
 
-	notifyConnCloseCh := conn.NotifyClose(make(chan *amqp.Error))
+	notifyConnCloseCh := conn.NotifyClose(make(chan *amqp.Error, 1))
 
 No errors will be sent in case of a graceful connection close. In case of a
 non-graceful closure due to e.g. network issue, or forced connection closure
 from the Management UI, the error will be notified synchronously by the library.
 
-The error is sent synchronously to the channel, so that the flow will wait until
-the receiver consumes from the channel. To avoid deadlocks in the library, it is
-necessary to consume from the channels. This could be done inside a
-different goroutine with a select listening on the two channels inside a for
-loop like:
+The library sends to notification channels just once. After sending a
+notification to all channels, the library closes all registered notification
+channels. After receiving a notification, the application should create and
+register a new channel. To avoid deadlocks in the library, it is necessary to
+consume from the channels. This could be done inside a different goroutine with
+a select listening on the two channels inside a for loop like:
 
 	go func() {
 	  for notifyConnClose != nil || notifyChanClose != nil {
@@ -141,13 +141,8 @@ loop like:
 	  }
 	}()
 
-Another approach is to use buffered channels:
-
-	notifyConnCloseCh := conn.NotifyClose(make(chan *amqp.Error, 1))
-
-The library sends to notification channels just once. After sending a notification
-to all channels, the library closes all registered notification channels. After
-receiving a notification, the application should create and register a new channel.
+It is strongly recommended to use buffered channels to avoid deadlocks inside
+the library.
 
 # Best practises for NotifyPublish notifications:
 

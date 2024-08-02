@@ -3,7 +3,6 @@ package magic
 import (
 	"bytes"
 	"encoding/binary"
-	"strings"
 )
 
 var (
@@ -43,7 +42,7 @@ func Zip(raw []byte, limit uint32) bool {
 
 // Jar matches a Java archive file.
 func Jar(raw []byte, limit uint32) bool {
-	return zipContains(raw, "META-INF/MANIFEST.MF")
+	return zipContains(raw, []byte("META-INF/MANIFEST.MF"))
 }
 
 // zipTokenizer holds the source zip file and scanned index.
@@ -54,7 +53,7 @@ type zipTokenizer struct {
 
 // next returns the next file name from the zip headers.
 // https://web.archive.org/web/20191129114319/https://users.cs.jmu.edu/buchhofp/forensics/formats/pkzip.html
-func (t *zipTokenizer) next() (fileName string) {
+func (t *zipTokenizer) next() (fileName []byte) {
 	if t.i > len(t.in) {
 		return
 	}
@@ -74,15 +73,15 @@ func (t *zipTokenizer) next() (fileName string) {
 		return
 	}
 	t.i += fNameOffset + fNameLen
-	return string(in[fNameOffset : fNameOffset+fNameLen])
+	return in[fNameOffset : fNameOffset+fNameLen]
 }
 
 // zipContains returns true if the zip file headers from in contain any of the paths.
-func zipContains(in []byte, paths ...string) bool {
+func zipContains(in []byte, paths ...[]byte) bool {
 	t := zipTokenizer{in: in}
-	for i, tok := 0, t.next(); tok != ""; i, tok = i+1, t.next() {
+	for tok := t.next(); len(tok) != 0; tok = t.next() {
 		for p := range paths {
-			if strings.HasPrefix(tok, paths[p]) {
+			if bytes.HasPrefix(tok, paths[p]) {
 				return true
 			}
 		}

@@ -6,41 +6,41 @@ import (
 )
 
 var (
-	xlsxSigFiles = []string{
-		"xl/worksheets/",
-		"xl/drawings/",
-		"xl/theme/",
-		"xl/_rels/",
-		"xl/styles.xml",
-		"xl/workbook.xml",
-		"xl/sharedStrings.xml",
+	xlsxSigFiles = [][]byte{
+		[]byte("xl/worksheets/"),
+		[]byte("xl/drawings/"),
+		[]byte("xl/theme/"),
+		[]byte("xl/_rels/"),
+		[]byte("xl/styles.xml"),
+		[]byte("xl/workbook.xml"),
+		[]byte("xl/sharedStrings.xml"),
 	}
-	docxSigFiles = []string{
-		"word/media/",
-		"word/_rels/document.xml.rels",
-		"word/document.xml",
-		"word/styles.xml",
-		"word/fontTable.xml",
-		"word/settings.xml",
-		"word/numbering.xml",
-		"word/header",
-		"word/footer",
+	docxSigFiles = [][]byte{
+		[]byte("word/media/"),
+		[]byte("word/_rels/document.xml.rels"),
+		[]byte("word/document.xml"),
+		[]byte("word/styles.xml"),
+		[]byte("word/fontTable.xml"),
+		[]byte("word/settings.xml"),
+		[]byte("word/numbering.xml"),
+		[]byte("word/header"),
+		[]byte("word/footer"),
 	}
-	pptxSigFiles = []string{
-		"ppt/slides/",
-		"ppt/media/",
-		"ppt/slideLayouts/",
-		"ppt/theme/",
-		"ppt/slideMasters/",
-		"ppt/tags/",
-		"ppt/notesMasters/",
-		"ppt/_rels/",
-		"ppt/handoutMasters/",
-		"ppt/notesSlides/",
-		"ppt/presentation.xml",
-		"ppt/tableStyles.xml",
-		"ppt/presProps.xml",
-		"ppt/viewProps.xml",
+	pptxSigFiles = [][]byte{
+		[]byte("ppt/slides/"),
+		[]byte("ppt/media/"),
+		[]byte("ppt/slideLayouts/"),
+		[]byte("ppt/theme/"),
+		[]byte("ppt/slideMasters/"),
+		[]byte("ppt/tags/"),
+		[]byte("ppt/notesMasters/"),
+		[]byte("ppt/_rels/"),
+		[]byte("ppt/handoutMasters/"),
+		[]byte("ppt/notesSlides/"),
+		[]byte("ppt/presentation.xml"),
+		[]byte("ppt/tableStyles.xml"),
+		[]byte("ppt/presProps.xml"),
+		[]byte("ppt/viewProps.xml"),
 	}
 )
 
