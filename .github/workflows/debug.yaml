@@ -1,0 +1,39 @@
+name: debug
+on:
+  - pull_request
+
+env:
+  E2E_CHECK_NAME: e2e tests
+
+jobs:
+  run-test:
+    runs-on: equinix-keda-runner
+    name: Execute e2e tests
+    container: ghcr.io/kedacore/keda-tools:1.21.9
+    steps:
+      - name: Check out code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+        with:
+          fetch-depth: 1
+  
+      - uses: oNaiPs/secrets-to-env-action@v1
+        with:
+          secrets: ${{ toJSON(secrets) }}
+
+      - name: Get context
+        env:
+          TEST_CLUSTER_NAME: keda-e2e-cluster-pr
+        run: |
+          make get-cluster-context
+
+      - name: List namespaces
+        id: list-namespaces
+        continue-on-error: true
+        run: |
+          kubectl get ns
+          
+      - name: Wait on failure
+        if: steps.list-namespaces.outcome != 'success'
+        run: |
+          sleep 3600s
+          exit 1
