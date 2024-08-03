@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/go-logr/logr"
+	"go.mongodb.org/mongo-driver/bson"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -28,16 +29,16 @@ type awsDynamoDBScaler struct {
 type awsDynamoDBMetadata struct {
 	awsAuthorization          awsutils.AuthorizationMetadata
 	expressionAttributeValues map[string]types.AttributeValue
+	expressionAttributeNames  map[string]string
 	triggerIndex              int
 	metricName                string
-	TableName                 string            `keda:"name=tableName, order=triggerMetadata"`
-	AwsRegion                 string            `keda:"name=awsRegion, order=triggerMetadata"`
-	AwsEndpoint               string            `keda:"name=awsEndpoint, order=triggerMetadata, optional"`
-	KeyConditionExpression    string            `keda:"name=keyConditionExpression, order=triggerMetadata"`
-	ExpressionAttributeNames  map[string]string `keda:"name=expressionAttributeNames, order=triggerMetadata"`
-	IndexName                 string            `keda:"name=indexName, order=triggerMetadata, optional"`
-	TargetValue               int64             `keda:"name=targetValue, order=triggerMetadata, optional, default=-1"`
-	ActivationTargetValue     int64             `keda:"name=activationTargetValue, order=triggerMetadata, default=0"`
+	TableName                 string `keda:"name=tableName, order=triggerMetadata"`
+	AwsRegion                 string `keda:"name=awsRegion, order=triggerMetadata"`
+	AwsEndpoint               string `keda:"name=awsEndpoint, order=triggerMetadata, optional"`
+	KeyConditionExpression    string `keda:"name=keyConditionExpression, order=triggerMetadata"`
+	IndexName                 string `keda:"name=indexName, order=triggerMetadata, optional"`
+	TargetValue               int64  `keda:"name=targetValue, order=triggerMetadata, optional, default=-1"`
+	ActivationTargetValue     int64  `keda:"name=activationTargetValue, order=triggerMetadata, default=0"`
 }
 
 func NewAwsDynamoDBScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
@@ -68,12 +69,29 @@ var (
 	ErrAwsDynamoInvalidExpressionAttributeValues = errors.New("invalid expressionAttributeValues")
 	// ErrAwsDynamoNoExpressionAttributeValues is returned when "expressionAttributeValues" is missing from the config.
 	ErrAwsDynamoNoExpressionAttributeValues = errors.New("no expressionAttributeValues given")
+	// ErrAwsDynamoInvalidExpressionAttributeNames is returned when "expressionAttributeNames" is an invalid JSON.
+	ErrAwsDynamoInvalidExpressionAttributeNames = errors.New("invalid expressionAttributeNames")
+	// ErrAwsDynamoEmptyExpressionAttributeNames is returned when "expressionAttributeNames" is empty.
+	ErrAwsDynamoEmptyExpressionAttributeNames = errors.New("empty map")
+	// ErrAwsDynamoNoExpressionAttributeNames is returned when "expressionAttributeNames" is missing from the config.
+	ErrAwsDynamoNoExpressionAttributeNames = errors.New("no expressionAttributeNames given")
 )
 
 func parseAwsDynamoDBMetadata(config *scalersconfig.ScalerConfig) (*awsDynamoDBMetadata, error) {
 	meta := &awsDynamoDBMetadata{}
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing DynamoDb metadata: %w", err)
+	}
+	if val, ok := config.TriggerMetadata["expressionAttributeNames"]; ok && val != "" {
+		names, err := json2Map(val)
+
+		if err != nil {
+			return nil, fmt.Errorf("error parsing expressionAttributeNames: %w", err)
+		}
+
+		meta.expressionAttributeNames = names
+	} else {
+		return nil, ErrAwsDynamoNoExpressionAttributeNames
 	}
 	if val, ok := config.TriggerMetadata["expressionAttributeValues"]; ok && val != "" {
 		values, err := json2DynamoMap(val)
@@ -154,7 +172,7 @@ func (s *awsDynamoDBScaler) GetQueryMetrics(ctx context.Context) (float64, error
 	dimensions := dynamodb.QueryInput{
 		TableName:                 aws.String(s.metadata.TableName),
 		KeyConditionExpression:    aws.String(s.metadata.KeyConditionExpression),
-		ExpressionAttributeNames:  s.metadata.ExpressionAttributeNames,
+		ExpressionAttributeNames:  s.metadata.expressionAttributeNames,
 		ExpressionAttributeValues: s.metadata.expressionAttributeValues,
 	}
 
@@ -170,6 +188,21 @@ func (s *awsDynamoDBScaler) GetQueryMetrics(ctx context.Context) (float64, error
 
 	return float64(res.Count), nil
 }
+
+// json2Map convert Json to map[string]string
+func json2Map(js string) (m map[string]string, err error) {
+	err = bson.UnmarshalExtJSON([]byte(js), true, &m)
+	if err != nil {
+		return nil, fmt.Errorf("%v: %w", ErrAwsDynamoInvalidExpressionAttributeNames, err)
+	}
+
+	if len(m) == 0 {
+		return nil, ErrAwsDynamoEmptyExpressionAttributeNames
+	}
+	return m, err
+}
+
+// json2DynamoMap converts Json to map[string]types.AttributeValue
 func json2DynamoMap(js string) (map[string]types.AttributeValue, error) {
 	var valueMap map[string]interface{}
 	err := json.Unmarshal([]byte(js), &valueMap)

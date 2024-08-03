@@ -46,15 +46,6 @@ var (
 
 	// ErrAwsDynamoNoKeyConditionExpression is returned when "keyConditionExpression" is missing from the config.
 	ErrAwsDynamoNoKeyConditionExpression = errors.New("missing required parameter \"keyConditionExpression\"")
-
-	//// ErrAwsDynamoEmptyExpressionAttributeNames is returned when "expressionAttributeNames" is empty.
-	ErrAwsDynamoEmptyExpressionAttributeNames = errors.New("empty map")
-
-	// ErrAwsDynamoInvalidExpressionAttributeNames is returned when "expressionAttributeNames" is an invalid JSON.
-	ErrAwsDynamoInvalidExpressionAttributeNames = errors.New("invalid expressionAttributeNames")
-
-	//// ErrAwsDynamoNoExpressionAttributeNames is returned when "expressionAttributeNames" is missing from the config.
-	ErrAwsDynamoNoExpressionAttributeNames = errors.New("missing required parameter \"expressionAttributeNames\"")
 )
 
 var dynamoTestCases = []parseDynamoDBMetadataTestData{
@@ -150,7 +141,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			"targetValue":               "3",
 		},
 		authParams:    map[string]string{},
-		expectedError: errors.New("unable to set param \"expressionAttributeNames\""),
+		expectedError: ErrAwsDynamoInvalidExpressionAttributeNames,
 	},
 	{
 		name: "empty expressionAttributeNames",
@@ -163,7 +154,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			"targetValue":               "3",
 		},
 		authParams:    map[string]string{},
-		expectedError: errors.New("error parsing DynamoDb metadata: unable to set param \"expressionAttributeNames\""),
+		expectedError: ErrAwsDynamoEmptyExpressionAttributeNames,
 	},
 	{
 		name: "malformed expressionAttributeValues",
@@ -207,7 +198,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			TableName:                 "test",
 			AwsRegion:                 "eu-west-1",
 			KeyConditionExpression:    "#yr = :yyyy",
-			ExpressionAttributeNames:  map[string]string{"#yr": year},
+			expressionAttributeNames:  map[string]string{"#yr": year},
 			expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 			TargetValue:               3,
 			triggerIndex:              1,
@@ -237,7 +228,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			AwsRegion:                 "eu-west-1",
 			AwsEndpoint:               "http://localhost:4566",
 			KeyConditionExpression:    "#yr = :yyyy",
-			ExpressionAttributeNames:  map[string]string{"#yr": year},
+			expressionAttributeNames:  map[string]string{"#yr": year},
 			expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 			TargetValue:               3,
 			triggerIndex:              1,
@@ -266,7 +257,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			TableName:                 "test",
 			AwsRegion:                 "eu-west-1",
 			KeyConditionExpression:    "#yr = :yyyy",
-			ExpressionAttributeNames:  map[string]string{"#yr": year},
+			expressionAttributeNames:  map[string]string{"#yr": year},
 			expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 			ActivationTargetValue:     1,
 			TargetValue:               3,
@@ -297,7 +288,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			AwsRegion:                 "eu-west-1",
 			IndexName:                 "test-index",
 			KeyConditionExpression:    "#yr = :yyyy",
-			ExpressionAttributeNames:  map[string]string{"#yr": year},
+			expressionAttributeNames:  map[string]string{"#yr": year},
 			expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 			TargetValue:               3,
 			triggerIndex:              1,
@@ -368,7 +359,7 @@ var awsDynamoDBGetMetricTestData = []awsDynamoDBMetadata{
 		TableName:                 "ValidTable",
 		AwsRegion:                 "eu-west-1",
 		KeyConditionExpression:    "#yr = :yyyy",
-		ExpressionAttributeNames:  map[string]string{"#yr": year},
+		expressionAttributeNames:  map[string]string{"#yr": year},
 		expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 		TargetValue:               3,
 	},
@@ -376,7 +367,7 @@ var awsDynamoDBGetMetricTestData = []awsDynamoDBMetadata{
 		TableName:                 testAWSDynamoErrorTable,
 		AwsRegion:                 "eu-west-1",
 		KeyConditionExpression:    "#yr = :yyyy",
-		ExpressionAttributeNames:  map[string]string{"#yr": year},
+		expressionAttributeNames:  map[string]string{"#yr": year},
 		expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 		TargetValue:               3,
 	},
@@ -384,7 +375,7 @@ var awsDynamoDBGetMetricTestData = []awsDynamoDBMetadata{
 		TableName:                 testAWSDynamoNoValueTable,
 		AwsRegion:                 "eu-west-1",
 		KeyConditionExpression:    "#yr = :yyyy",
-		ExpressionAttributeNames:  map[string]string{"#yr": year},
+		expressionAttributeNames:  map[string]string{"#yr": year},
 		expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 		TargetValue:               3,
 	},
@@ -393,7 +384,7 @@ var awsDynamoDBGetMetricTestData = []awsDynamoDBMetadata{
 		AwsRegion:                 "eu-west-1",
 		IndexName:                 "test-index",
 		KeyConditionExpression:    "#yr = :yyyy",
-		ExpressionAttributeNames:  map[string]string{"#yr": year},
+		expressionAttributeNames:  map[string]string{"#yr": year},
 		expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 		ActivationTargetValue:     3,
 		TargetValue:               3,
