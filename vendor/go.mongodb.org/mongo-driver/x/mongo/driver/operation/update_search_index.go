@@ -14,7 +14,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/mongo/description"
-	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
@@ -22,20 +21,19 @@ import (
 
 // UpdateSearchIndex performs a updateSearchIndex operation.
 type UpdateSearchIndex struct {
-	index        string
-	definition   bsoncore.Document
-	session      *session.Client
-	clock        *session.ClusterClock
-	collection   string
-	monitor      *event.CommandMonitor
-	crypt        driver.Crypt
-	database     string
-	deployment   driver.Deployment
-	selector     description.ServerSelector
-	writeConcern *writeconcern.WriteConcern
-	result       UpdateSearchIndexResult
-	serverAPI    *driver.ServerAPIOptions
-	timeout      *time.Duration
+	index      string
+	definition bsoncore.Document
+	session    *session.Client
+	clock      *session.ClusterClock
+	collection string
+	monitor    *event.CommandMonitor
+	crypt      driver.Crypt
+	database   string
+	deployment driver.Deployment
+	selector   description.ServerSelector
+	result     UpdateSearchIndexResult
+	serverAPI  *driver.ServerAPIOptions
+	timeout    *time.Duration
 }
 
 // UpdateSearchIndexResult represents a single index in the updateSearchIndexResult result.
@@ -95,7 +93,6 @@ func (usi *UpdateSearchIndex) Execute(ctx context.Context) error {
 		Database:          usi.database,
 		Deployment:        usi.deployment,
 		Selector:          usi.selector,
-		WriteConcern:      usi.writeConcern,
 		ServerAPI:         usi.serverAPI,
 		Timeout:           usi.timeout,
 	}.Execute(ctx)
@@ -206,16 +203,6 @@ func (usi *UpdateSearchIndex) ServerSelector(selector description.ServerSelector
 	}
 
 	usi.selector = selector
-	return usi
-}
-
-// WriteConcern sets the write concern for this operation.
-func (usi *UpdateSearchIndex) WriteConcern(writeConcern *writeconcern.WriteConcern) *UpdateSearchIndex {
-	if usi == nil {
-		usi = new(UpdateSearchIndex)
-	}
-
-	usi.writeConcern = writeConcern
 	return usi
 }
 

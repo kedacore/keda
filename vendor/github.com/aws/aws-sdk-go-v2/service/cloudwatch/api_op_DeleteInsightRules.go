@@ -11,9 +11,10 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Permanently deletes the specified Contributor Insights rules. If you create a
-// rule, delete it, and then re-create it with the same name, historical data from
-// the first time the rule was created might not be available.
+// Permanently deletes the specified Contributor Insights rules.
+//
+// If you create a rule, delete it, and then re-create it with the same name,
+// historical data from the first time the rule was created might not be available.
 func (c *Client) DeleteInsightRules(ctx context.Context, params *DeleteInsightRulesInput, optFns ...func(*Options)) (*DeleteInsightRulesOutput, error) {
 	if params == nil {
 		params = &DeleteInsightRulesInput{}
@@ -32,8 +33,9 @@ func (c *Client) DeleteInsightRules(ctx context.Context, params *DeleteInsightRu
 type DeleteInsightRulesInput struct {
 
 	// An array of the rule names to delete. If you need to find out the names of your
-	// rules, use DescribeInsightRules (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_DescribeInsightRules.html)
-	// .
+	// rules, use [DescribeInsightRules].
+	//
+	// [DescribeInsightRules]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_DescribeInsightRules.html
 	//
 	// This member is required.
 	RuleNames []string
@@ -106,6 +108,12 @@ func (c *Client) addOperationDeleteInsightRulesMiddlewares(stack *middleware.Sta
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteInsightRulesValidationMiddleware(stack); err != nil {
