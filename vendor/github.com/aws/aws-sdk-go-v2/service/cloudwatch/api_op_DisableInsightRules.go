@@ -31,8 +31,9 @@ func (c *Client) DisableInsightRules(ctx context.Context, params *DisableInsight
 type DisableInsightRulesInput struct {
 
 	// An array of the rule names to disable. If you need to find out the names of
-	// your rules, use DescribeInsightRules (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_DescribeInsightRules.html)
-	// .
+	// your rules, use [DescribeInsightRules].
+	//
+	// [DescribeInsightRules]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_DescribeInsightRules.html
 	//
 	// This member is required.
 	RuleNames []string
@@ -105,6 +106,12 @@ func (c *Client) addOperationDisableInsightRulesMiddlewares(stack *middleware.St
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDisableInsightRulesValidationMiddleware(stack); err != nil {

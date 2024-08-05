@@ -33,8 +33,10 @@ func (c *Client) CreateWorkspace(ctx context.Context, params *CreateWorkspaceInp
 type CreateWorkspaceInput struct {
 
 	// An alias that you assign to this workspace to help you identify it. It does not
-	// need to be unique. Blank spaces at the beginning or end of the alias that you
-	// specify will be trimmed from the value used.
+	// need to be unique.
+	//
+	// Blank spaces at the beginning or end of the alias that you specify will be
+	// trimmed from the value used.
 	Alias *string
 
 	// A unique identifier that you can provide to ensure the idempotency of the
@@ -43,8 +45,9 @@ type CreateWorkspaceInput struct {
 
 	// (optional) The ARN for a customer managed KMS key to use for encrypting data
 	// within your workspace. For more information about using your own key in your
-	// workspace, see Encryption at rest (https://docs.aws.amazon.com/prometheus/latest/userguide/encryption-at-rest-Amazon-Service-Prometheus.html)
-	// in the Amazon Managed Service for Prometheus User Guide.
+	// workspace, see [Encryption at rest]in the Amazon Managed Service for Prometheus User Guide.
+	//
+	// [Encryption at rest]: https://docs.aws.amazon.com/prometheus/latest/userguide/encryption-at-rest-Amazon-Service-Prometheus.html
 	KmsKeyArn *string
 
 	// The list of tag keys and values to associate with the workspace.
@@ -138,6 +141,12 @@ func (c *Client) addOperationCreateWorkspaceMiddlewares(stack *middleware.Stack,
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addIdempotencyToken_opCreateWorkspaceMiddleware(stack, options); err != nil {

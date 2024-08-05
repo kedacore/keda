@@ -580,7 +580,7 @@ func (db *Database) getEncryptedFieldsFromServer(ctx context.Context, collection
 	return encryptedFields, nil
 }
 
-// getEncryptedFieldsFromServer tries to get an "encryptedFields" document associated with collectionName by checking the client EncryptedFieldsMap.
+// getEncryptedFieldsFromMap tries to get an "encryptedFields" document associated with collectionName by checking the client EncryptedFieldsMap.
 // Returns nil and no error if an EncryptedFieldsMap is not configured, or does not contain an entry for collectionName.
 func (db *Database) getEncryptedFieldsFromMap(collectionName string) interface{} {
 	// Check the EncryptedFieldsMap

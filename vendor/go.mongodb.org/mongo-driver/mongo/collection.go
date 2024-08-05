@@ -1200,6 +1200,11 @@ func (coll *Collection) Distinct(ctx context.Context, fieldName string, filter i
 // For more information about the command, see https://www.mongodb.com/docs/manual/reference/command/find/.
 func (coll *Collection) Find(ctx context.Context, filter interface{},
 	opts ...*options.FindOptions) (cur *Cursor, err error) {
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
 	// Omit "maxTimeMS" from operations that return a user-managed cursor to
 	// prevent confusing "cursor not found" errors. To maintain existing
 	// behavior for users who set "timeoutMS" with no context deadline, only
@@ -1216,10 +1221,6 @@ func (coll *Collection) find(
 	omitCSOTMaxTimeMS bool,
 	opts ...*options.FindOptions,
 ) (cur *Cursor, err error) {
-
-	if ctx == nil {
-		ctx = context.Background()
-	}
 
 	f, err := marshal(filter, coll.bsonOpts, coll.registry)
 	if err != nil {
@@ -1801,8 +1802,11 @@ func (coll *Collection) Indexes() IndexView {
 
 // SearchIndexes returns a SearchIndexView instance that can be used to perform operations on the search indexes for the collection.
 func (coll *Collection) SearchIndexes() SearchIndexView {
+	c, _ := coll.Clone() // Clone() always return a nil error.
+	c.readConcern = nil
+	c.writeConcern = nil
 	return SearchIndexView{
-		coll: coll,
+		coll: c,
 	}
 }
 

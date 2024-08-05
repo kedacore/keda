@@ -13,17 +13,21 @@ import (
 
 // Attaches a resource-based policy document to the resource, which can be a table
 // or stream. When you attach a resource-based policy using this API, the policy
-// application is eventually consistent  (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadConsistency.html)
-// . PutResourcePolicy is an idempotent operation; running it multiple times on
-// the same resource using the same policy document will return the same revision
-// ID. If you specify an ExpectedRevisionId which doesn't match the current
-// policy's RevisionId , the PolicyNotFoundException will be returned.
+// application is [eventually consistent].
+//
+// PutResourcePolicy is an idempotent operation; running it multiple times on the
+// same resource using the same policy document will return the same revision ID.
+// If you specify an ExpectedRevisionId that doesn't match the current policy's
+// RevisionId , the PolicyNotFoundException will be returned.
+//
 // PutResourcePolicy is an asynchronous operation. If you issue a GetResourcePolicy
 // request immediately after a PutResourcePolicy request, DynamoDB might return
 // your previous policy, if there was one, or return the PolicyNotFoundException .
 // This is because GetResourcePolicy uses an eventually consistent query, and the
 // metadata for your policy or table might not be available at that moment. Wait
 // for a few seconds, and then try the GetResourcePolicy request again.
+//
+// [eventually consistent]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadConsistency.html
 func (c *Client) PutResourcePolicy(ctx context.Context, params *PutResourcePolicyInput, optFns ...func(*Options)) (*PutResourcePolicyOutput, error) {
 	if params == nil {
 		params = &PutResourcePolicyInput{}
@@ -41,24 +45,33 @@ func (c *Client) PutResourcePolicy(ctx context.Context, params *PutResourcePolic
 
 type PutResourcePolicyInput struct {
 
-	// An Amazon Web Services resource-based policy document in JSON format. The
-	// maximum size supported for a resource-based policy document is 20 KB. DynamoDB
-	// counts whitespaces when calculating the size of a policy against this limit. For
-	// a full list of all considerations that you should keep in mind while attaching a
-	// resource-based policy, see Resource-based policy considerations (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/rbac-considerations.html)
-	// .
+	// An Amazon Web Services resource-based policy document in JSON format.
+	//
+	//   - The maximum size supported for a resource-based policy document is 20 KB.
+	//   DynamoDB counts whitespaces when calculating the size of a policy against this
+	//   limit.
+	//
+	//   - Within a resource-based policy, if the action for a DynamoDB service-linked
+	//   role (SLR) to replicate data for a global table is denied, adding or deleting a
+	//   replica will fail with an error.
+	//
+	// For a full list of all considerations that apply while attaching a
+	// resource-based policy, see [Resource-based policy considerations].
+	//
+	// [Resource-based policy considerations]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/rbac-considerations.html
 	//
 	// This member is required.
 	Policy *string
 
 	// The Amazon Resource Name (ARN) of the DynamoDB resource to which the policy
-	// will be attached. The resources you can specify include tables and streams. You
-	// can control index permissions using the base table's policy. To specify the same
-	// permission level for your table and its indexes, you can provide both the table
-	// and index Amazon Resource Name (ARN)s in the Resource field of a given Statement
-	// in your policy document. Alternatively, to specify different permissions for
-	// your table, indexes, or both, you can define multiple Statement fields in your
-	// policy document.
+	// will be attached. The resources you can specify include tables and streams.
+	//
+	// You can control index permissions using the base table's policy. To specify the
+	// same permission level for your table and its indexes, you can provide both the
+	// table and index Amazon Resource Name (ARN)s in the Resource field of a given
+	// Statement in your policy document. Alternatively, to specify different
+	// permissions for your table, indexes, or both, you can define multiple Statement
+	// fields in your policy document.
 	//
 	// This member is required.
 	ResourceArn *string
@@ -69,11 +82,14 @@ type PutResourcePolicyInput struct {
 
 	// A string value that you can use to conditionally update your policy. You can
 	// provide the revision ID of your existing policy to make mutating requests
-	// against that policy. When you provide an expected revision ID, if the revision
-	// ID of the existing policy on the resource doesn't match or if there's no policy
-	// attached to the resource, your request will be rejected with a
-	// PolicyNotFoundException . To conditionally put a policy when no policy exists
-	// for the resource, specify NO_POLICY for the revision ID.
+	// against that policy.
+	//
+	// When you provide an expected revision ID, if the revision ID of the existing
+	// policy on the resource doesn't match or if there's no policy attached to the
+	// resource, your request will be rejected with a PolicyNotFoundException .
+	//
+	// To conditionally attach a policy when no policy exists for the resource,
+	// specify NO_POLICY for the revision ID.
 	ExpectedRevisionId *string
 
 	noSmithyDocumentSerde
@@ -81,7 +97,7 @@ type PutResourcePolicyInput struct {
 
 type PutResourcePolicyOutput struct {
 
-	// A unique string that represents the revision ID of the policy. If you are
+	// A unique string that represents the revision ID of the policy. If you're
 	// comparing revision IDs, make sure to always use string comparison logic.
 	RevisionId *string
 
@@ -147,6 +163,12 @@ func (c *Client) addOperationPutResourcePolicyMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpPutResourcePolicyValidationMiddleware(stack); err != nil {
