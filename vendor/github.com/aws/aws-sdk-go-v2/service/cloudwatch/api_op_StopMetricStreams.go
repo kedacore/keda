@@ -28,10 +28,11 @@ func (c *Client) StopMetricStreams(ctx context.Context, params *StopMetricStream
 
 type StopMetricStreamsInput struct {
 
-	// The array of the names of metric streams to stop streaming. This is an "all or
-	// nothing" operation. If you do not have permission to access all of the metric
-	// streams that you list here, then none of the streams that you list in the
-	// operation will stop streaming.
+	// The array of the names of metric streams to stop streaming.
+	//
+	// This is an "all or nothing" operation. If you do not have permission to access
+	// all of the metric streams that you list here, then none of the streams that you
+	// list in the operation will stop streaming.
 	//
 	// This member is required.
 	Names []string
@@ -99,6 +100,12 @@ func (c *Client) addOperationStopMetricStreamsMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpStopMetricStreamsValidationMiddleware(stack); err != nil {

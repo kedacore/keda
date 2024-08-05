@@ -12,8 +12,9 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Describes an existing backup of a table. You can call DescribeBackup at a
-// maximum rate of 10 times per second.
+// Describes an existing backup of a table.
+//
+// You can call DescribeBackup at a maximum rate of 10 times per second.
 func (c *Client) DescribeBackup(ctx context.Context, params *DescribeBackupInput, optFns ...func(*Options)) (*DescribeBackupOutput, error) {
 	if params == nil {
 		params = &DescribeBackupInput{}
@@ -106,6 +107,12 @@ func (c *Client) addOperationDescribeBackupMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeBackupValidationMiddleware(stack); err != nil {

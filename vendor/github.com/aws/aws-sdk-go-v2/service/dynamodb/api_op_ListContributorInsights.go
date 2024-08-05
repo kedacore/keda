@@ -112,6 +112,12 @@ func (c *Client) addOperationListContributorInsightsMiddlewares(stack *middlewar
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListContributorInsights(options.Region), middleware.Before); err != nil {
 		return err
 	}
@@ -138,14 +144,6 @@ func (c *Client) addOperationListContributorInsightsMiddlewares(stack *middlewar
 	}
 	return nil
 }
-
-// ListContributorInsightsAPIClient is a client that implements the
-// ListContributorInsights operation.
-type ListContributorInsightsAPIClient interface {
-	ListContributorInsights(context.Context, *ListContributorInsightsInput, ...func(*Options)) (*ListContributorInsightsOutput, error)
-}
-
-var _ ListContributorInsightsAPIClient = (*Client)(nil)
 
 // ListContributorInsightsPaginatorOptions is the paginator options for
 // ListContributorInsights
@@ -208,6 +206,9 @@ func (p *ListContributorInsightsPaginator) NextPage(ctx context.Context, optFns 
 
 	params.MaxResults = p.options.Limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListContributorInsights(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -226,6 +227,14 @@ func (p *ListContributorInsightsPaginator) NextPage(ctx context.Context, optFns 
 
 	return result, nil
 }
+
+// ListContributorInsightsAPIClient is a client that implements the
+// ListContributorInsights operation.
+type ListContributorInsightsAPIClient interface {
+	ListContributorInsights(context.Context, *ListContributorInsightsInput, ...func(*Options)) (*ListContributorInsightsOutput, error)
+}
+
+var _ ListContributorInsightsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListContributorInsights(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
