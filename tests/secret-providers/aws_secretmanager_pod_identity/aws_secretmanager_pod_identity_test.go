@@ -434,7 +434,7 @@ func createAWSSecret(t *testing.T, useJSONFormat bool) error {
 		// Convert the map to a JSON string
 		jsonData, err := json.Marshal(secretObject)
 		if err != nil {
-			return fmt.Errorf("Error converting to JSON: %v", err)
+			return fmt.Errorf("Error converting to JSON: %w", err)
 		}
 
 		// Print the JSON string

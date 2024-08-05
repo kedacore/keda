@@ -152,7 +152,7 @@ spec:
       name: {{.SecretManagerSecretName}}
 `
 
-triggerAuthenticationSecretKeyTemplate = `apiVersion: keda.sh/v1alpha1
+	triggerAuthenticationSecretKeyTemplate = `apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
   name: {{.TriggerAuthenticationName}}
@@ -395,19 +395,19 @@ func getPostgreSQLTemplateData() (templateData, []Template) {
 
 func getTemplateData(useJSONFormat bool) (templateData, []Template) {
 	var triggerConfig string
-    if useJSONFormat {
-        triggerConfig = triggerAuthenticationSecretKeyTemplate
-    } else {
-        triggerConfig = triggerAuthenticationTemplate
-    }
+	if useJSONFormat {
+		triggerConfig = triggerAuthenticationSecretKeyTemplate
+	} else {
+		triggerConfig = triggerAuthenticationTemplate
+	}
 
-    return data, []Template{
-        {Name: "secretTemplate", Config: secretTemplate},
-        {Name: "awsCredentialsSecretTemplate", Config: awsCredentialsSecretTemplate},
-        {Name: "deploymentTemplate", Config: deploymentTemplate},
-        {Name: "triggerAuthenticationTemplate", Config: triggerConfig},
-        {Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
-    }
+	return data, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "awsCredentialsSecretTemplate", Config: awsCredentialsSecretTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerConfig},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -434,19 +434,19 @@ func createAWSSecret(t *testing.T, useJSONFormat bool) error {
 
 	// Create a Secrets Manager client
 	client := secretsmanager.NewFromConfig(cfg)
-	
+
 	// Create the secret value
 	var secretString string
-	if(useJSONFormat) {
+	if useJSONFormat {
 		secretObject := map[string]string{
 			"connectionString": postgreSQLConnectionString,
 		}
 		// Convert the map to a JSON string
 		jsonData, err := json.Marshal(secretObject)
 		if err != nil {
-			return fmt.Errorf("Error converting to JSON: %v", err)
+			return fmt.Errorf("Error converting to JSON: %w", err)
 		}
-	
+
 		// Print the JSON string
 		secretString := string(jsonData)
 	} else {
