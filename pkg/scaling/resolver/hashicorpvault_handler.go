@@ -277,7 +277,7 @@ func (vh *HashicorpVaultHandler) getSecretValue(secret *kedav1alpha1.VaultSecret
 type SecretGroup struct {
 	path         string
 	secretType   kedav1alpha1.VaultSecretType
-	vaultPkiData *kedav1alpha1.VaultPkiData
+	vaultPkiData kedav1alpha1.VaultPkiData
 }
 
 // fetchSecret returns the vaultSecret at a given vault path. If the secret is a pki, then the secret will use the
@@ -314,7 +314,7 @@ func (vh *HashicorpVaultHandler) ResolveSecrets(secrets []kedav1alpha1.VaultSecr
 	grouped := make(map[SecretGroup][]kedav1alpha1.VaultSecret)
 	vaultSecrets := make(map[SecretGroup]*vaultapi.Secret)
 	for _, e := range secrets {
-		group := SecretGroup{secretType: e.Type, path: e.Path, vaultPkiData: &e.PkiData}
+		group := SecretGroup{secretType: e.Type, path: e.Path, vaultPkiData: e.PkiData}
 		if _, ok := grouped[group]; !ok {
 			grouped[group] = make([]kedav1alpha1.VaultSecret, 0)
 		}
@@ -322,7 +322,7 @@ func (vh *HashicorpVaultHandler) ResolveSecrets(secrets []kedav1alpha1.VaultSecr
 	}
 	// For each group fetch the secret from vault
 	for group := range grouped {
-		vaultSecret, err := vh.fetchSecret(group.secretType, group.path, group.vaultPkiData)
+		vaultSecret, err := vh.fetchSecret(group.secretType, group.path, &group.vaultPkiData)
 		if err != nil {
 			// could not fetch secret, skipping group
 			continue
