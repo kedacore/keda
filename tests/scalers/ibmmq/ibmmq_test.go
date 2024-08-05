@@ -203,9 +203,8 @@ spec:
         queueDepth: "3"
         activationQueueDepth: "{{.ActivationQueueDepth}}"
         host: {{.MqscAdminRestEndpoint}}
-        queueManager: {{.QueueManagerName}}
         queueName: {{.QueueName}}
-        tls: "true"
+        unsafeSsl: "true"
         usernameFromEnv: ""
         passwordFromEnv: ""
       authenticationRef:

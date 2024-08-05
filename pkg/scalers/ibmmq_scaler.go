@@ -23,7 +23,6 @@ import (
 // Default variables and settings
 const (
 	defaultTargetQueueDepth = 20
-	defaultTLSDisabled      = false
 )
 
 // IBMMQScaler assigns struct data pointer to metadata variable
@@ -38,13 +37,11 @@ type IBMMQScaler struct {
 // IBMMQMetadata Metadata used by KEDA to query IBM MQ queue depth and scale
 type IBMMQMetadata struct {
 	host                 string
-	queueManager         string
 	queueName            string
 	username             string
 	password             string
 	queueDepth           int64
 	activationQueueDepth int64
-	tlsDisabled          bool
 	triggerIndex         int
 
 	// TLS
@@ -78,12 +75,14 @@ func NewIBMMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
-	meta, err := parseIBMMQMetadata(config)
+	logger := InitializeLogger(config, "ibm_mq_scaler")
+
+	meta, err := parseIBMMQMetadata(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing IBM MQ metadata: %w", err)
 	}
 
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.tlsDisabled)
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsl)
 
 	// Configure TLS if cert and key are specified
 	if meta.cert != "" && meta.key != "" {
@@ -99,7 +98,7 @@ func NewIBMMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		metadata:           meta,
 		defaultHTTPTimeout: config.GlobalHTTPTimeout,
 		httpClient:         httpClient,
-		logger:             InitializeLogger(config, "ibm_mq_scaler"),
+		logger:             logger,
 	}, nil
 }
 
@@ -112,7 +111,7 @@ func (s *IBMMQScaler) Close(context.Context) error {
 }
 
 // parseIBMMQMetadata checks the existence of and validates the MQ connection data provided
-func parseIBMMQMetadata(config *scalersconfig.ScalerConfig) (*IBMMQMetadata, error) {
+func parseIBMMQMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*IBMMQMetadata, error) {
 	meta := IBMMQMetadata{}
 
 	if val, ok := config.TriggerMetadata["host"]; ok {
@@ -123,12 +122,6 @@ func parseIBMMQMetadata(config *scalersconfig.ScalerConfig) (*IBMMQMetadata, err
 		meta.host = val
 	} else {
 		return nil, fmt.Errorf("no host URI given")
-	}
-
-	if val, ok := config.TriggerMetadata["queueManager"]; ok {
-		meta.queueManager = val
-	} else {
-		return nil, fmt.Errorf("no queue manager given")
 	}
 
 	if val, ok := config.TriggerMetadata["queueName"]; ok {
@@ -144,7 +137,6 @@ func parseIBMMQMetadata(config *scalersconfig.ScalerConfig) (*IBMMQMetadata, err
 		}
 		meta.queueDepth = queueDepth
 	} else {
-		fmt.Println("No target depth defined - setting default")
 		meta.queueDepth = defaultTargetQueueDepth
 	}
 
@@ -157,15 +149,29 @@ func parseIBMMQMetadata(config *scalersconfig.ScalerConfig) (*IBMMQMetadata, err
 		meta.activationQueueDepth = activationQueueDepth
 	}
 
-	if val, ok := config.TriggerMetadata["tls"]; ok {
-		tlsDisabled, err := strconv.ParseBool(val)
+	// TODO: Refactor code because 'tls' is DEPRECATED and will be removed in v2.17
+	// Check if both "tls" and "unsafeSsl" are specified
+	tlsVal, tlsOk := config.TriggerMetadata["tls"]
+	unsafeSslVal, unsafeSslOk := config.TriggerMetadata["unsafeSsl"]
+
+	switch {
+	case tlsOk && unsafeSslOk:
+		return nil, fmt.Errorf("'tls' and 'unsafeSsl' are both specified. Please use only 'unsafeSsl'")
+	case tlsOk:
+		logger.Info("The 'tls' setting is DEPRECATED and will be removed in v2.17 - Use 'unsafeSsl' instead")
+		unsafeSsl, err := strconv.ParseBool(tlsVal)
 		if err != nil {
 			return nil, fmt.Errorf("invalid tls setting: %w", err)
 		}
-		meta.tlsDisabled = tlsDisabled
-	} else {
-		fmt.Println("No tls setting defined - setting default")
-		meta.tlsDisabled = defaultTLSDisabled
+		meta.unsafeSsl = unsafeSsl
+	case unsafeSslOk:
+		unsafeSsl, err := strconv.ParseBool(unsafeSslVal)
+		if err != nil {
+			return nil, fmt.Errorf("invalid unsafeSsl setting: %w", err)
+		}
+		meta.unsafeSsl = unsafeSsl
+	default:
+		meta.unsafeSsl = false
 	}
 
 	if val, ok := config.AuthParams["username"]; ok && val != "" {
@@ -189,15 +195,6 @@ func parseIBMMQMetadata(config *scalersconfig.ScalerConfig) (*IBMMQMetadata, err
 	meta.cert = config.AuthParams["cert"]
 	meta.key = config.AuthParams["key"]
 	meta.keyPassword = config.AuthParams["keyPassword"]
-
-	meta.unsafeSsl = false
-	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
-		boolVal, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse unsafeSsl value. Must be either true or false")
-		}
-		meta.unsafeSsl = boolVal
-	}
 
 	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
