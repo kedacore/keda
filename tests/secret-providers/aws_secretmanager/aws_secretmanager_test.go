@@ -448,9 +448,9 @@ func createAWSSecret(t *testing.T, useJSONFormat bool) error {
 		}
 
 		// Print the JSON string
-		secretString := string(jsonData)
+		secretString = string(jsonData)
 	} else {
-		secretString := postgreSQLConnectionString
+		secretString = postgreSQLConnectionString
 	}
 	_, err = client.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
 		Name:         &secretManagerSecretName,
