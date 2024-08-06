@@ -102,6 +102,28 @@ spec:
   backoffLimit: 4
   `
 
+	StepDownConsumer = `
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: step-down
+  namespace: {{.TestNamespace}}
+spec:
+  ttlSecondsAfterFinished: 15
+  template:
+    spec:
+      containers:
+      - name: stepdown
+        image: "natsio/nats-box:0.13.2"
+        imagePullPolicy: Always
+        command: [
+          'sh', '-c', 'nats context save local --server {{.NatsAddress}} --select &&
+          nats consumer cluster step-down {{.NatsStream}} {{.NatsConsumer}}'
+        ]
+      restartPolicy: OnFailure
+  backoffLimit: 4
+  `
+
 	DeploymentTemplate = `
 apiVersion: apps/v1
 kind: Deployment
