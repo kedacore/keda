@@ -28,12 +28,18 @@ func (c *Client) UntagResource(ctx context.Context, params *UntagResourceInput, 
 
 type UntagResourceInput struct {
 
-	// The ARN of the CloudWatch resource that you're removing tags from. The ARN
-	// format of an alarm is arn:aws:cloudwatch:Region:account-id:alarm:alarm-name
+	// The ARN of the CloudWatch resource that you're removing tags from.
+	//
+	// The ARN format of an alarm is
+	// arn:aws:cloudwatch:Region:account-id:alarm:alarm-name
+	//
 	// The ARN format of a Contributor Insights rule is
-	// arn:aws:cloudwatch:Region:account-id:insight-rule/insight-rule-name For more
-	// information about ARN format, see Resource Types Defined by Amazon CloudWatch (https://docs.aws.amazon.com/IAM/latest/UserGuide/list_amazoncloudwatch.html#amazoncloudwatch-resources-for-iam-policies)
-	// in the Amazon Web Services General Reference.
+	// arn:aws:cloudwatch:Region:account-id:insight-rule/insight-rule-name
+	//
+	// For more information about ARN format, see [Resource Types Defined by Amazon CloudWatch] in the Amazon Web Services General
+	// Reference.
+	//
+	// [Resource Types Defined by Amazon CloudWatch]: https://docs.aws.amazon.com/IAM/latest/UserGuide/list_amazoncloudwatch.html#amazoncloudwatch-resources-for-iam-policies
 	//
 	// This member is required.
 	ResourceARN *string
@@ -106,6 +112,12 @@ func (c *Client) addOperationUntagResourceMiddlewares(stack *middleware.Stack, o
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpUntagResourceValidationMiddleware(stack); err != nil {

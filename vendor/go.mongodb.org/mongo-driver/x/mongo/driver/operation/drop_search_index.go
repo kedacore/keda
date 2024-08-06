@@ -14,7 +14,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/mongo/description"
-	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
@@ -22,19 +21,18 @@ import (
 
 // DropSearchIndex performs an dropSearchIndex operation.
 type DropSearchIndex struct {
-	index        string
-	session      *session.Client
-	clock        *session.ClusterClock
-	collection   string
-	monitor      *event.CommandMonitor
-	crypt        driver.Crypt
-	database     string
-	deployment   driver.Deployment
-	selector     description.ServerSelector
-	writeConcern *writeconcern.WriteConcern
-	result       DropSearchIndexResult
-	serverAPI    *driver.ServerAPIOptions
-	timeout      *time.Duration
+	index      string
+	session    *session.Client
+	clock      *session.ClusterClock
+	collection string
+	monitor    *event.CommandMonitor
+	crypt      driver.Crypt
+	database   string
+	deployment driver.Deployment
+	selector   description.ServerSelector
+	result     DropSearchIndexResult
+	serverAPI  *driver.ServerAPIOptions
+	timeout    *time.Duration
 }
 
 // DropSearchIndexResult represents a dropSearchIndex result returned by the server.
@@ -93,7 +91,6 @@ func (dsi *DropSearchIndex) Execute(ctx context.Context) error {
 		Database:          dsi.database,
 		Deployment:        dsi.deployment,
 		Selector:          dsi.selector,
-		WriteConcern:      dsi.writeConcern,
 		ServerAPI:         dsi.serverAPI,
 		Timeout:           dsi.timeout,
 	}.Execute(ctx)
@@ -193,16 +190,6 @@ func (dsi *DropSearchIndex) ServerSelector(selector description.ServerSelector) 
 	}
 
 	dsi.selector = selector
-	return dsi
-}
-
-// WriteConcern sets the write concern for this operation.
-func (dsi *DropSearchIndex) WriteConcern(writeConcern *writeconcern.WriteConcern) *DropSearchIndex {
-	if dsi == nil {
-		dsi = new(DropSearchIndex)
-	}
-
-	dsi.writeConcern = writeConcern
 	return dsi
 }
 

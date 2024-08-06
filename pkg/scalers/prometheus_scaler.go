@@ -32,7 +32,6 @@ const (
 	promThreshold           = "threshold"
 	promActivationThreshold = "activationThreshold"
 	promNamespace           = "namespace"
-	promCortexScopeOrgID    = "cortexOrgID"
 	promCustomHeaders       = "customHeaders"
 	ignoreNullValues        = "ignoreNullValues"
 	unsafeSsl               = "unsafeSsl"
@@ -62,9 +61,6 @@ type prometheusMetadata struct {
 	CustomHeaders       map[string]string      `keda:"name=customHeaders,       order=triggerMetadata, optional"`
 	IgnoreNullValues    bool                   `keda:"name=ignoreNullValues,    order=triggerMetadata, optional, default=true"`
 	UnsafeSSL           bool                   `keda:"name=unsafeSsl,           order=triggerMetadata, optional"`
-
-	// deprecated
-	CortexOrgID string `keda:"name=cortexOrgID, order=triggerMetadata, optional, deprecated=use customHeaders instead"`
 }
 
 type promQueryResult struct {

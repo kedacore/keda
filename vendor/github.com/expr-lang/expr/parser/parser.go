@@ -55,7 +55,7 @@ type parser struct {
 
 type Tree struct {
 	Node   Node
-	Source *file.Source
+	Source file.Source
 }
 
 func Parse(input string) (*Tree, error) {
@@ -84,14 +84,16 @@ func ParseWithConfig(input string, config *conf.Config) (*Tree, error) {
 		p.error("unexpected token %v", p.current)
 	}
 
-	if p.err != nil {
-		return nil, p.err.Bind(source)
-	}
-
-	return &Tree{
+	tree := &Tree{
 		Node:   node,
 		Source: source,
-	}, nil
+	}
+
+	if p.err != nil {
+		return tree, p.err.Bind(source)
+	}
+
+	return tree, nil
 }
 
 func (p *parser) error(format string, args ...any) {

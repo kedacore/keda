@@ -210,7 +210,6 @@ func GenerateRoles(ctx *genall.GenerationContext, roleName string) ([]interface{
 		var policyRules []rbacv1.PolicyRule
 		for _, key := range keys {
 			policyRules = append(policyRules, ruleMap[key].ToRule())
-
 		}
 		return policyRules
 	}

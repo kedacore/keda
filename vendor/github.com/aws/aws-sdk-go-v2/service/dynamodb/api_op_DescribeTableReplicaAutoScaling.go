@@ -12,8 +12,9 @@ import (
 )
 
 // Describes auto scaling settings across replicas of the global table at once.
-// This operation only applies to Version 2019.11.21 (Current) (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/globaltables.V2.html)
-// of global tables.
+//
+// For global tables, this operation only applies to global tables using Version
+// 2019.11.21 (Current version).
 func (c *Client) DescribeTableReplicaAutoScaling(ctx context.Context, params *DescribeTableReplicaAutoScalingInput, optFns ...func(*Options)) (*DescribeTableReplicaAutoScalingOutput, error) {
 	if params == nil {
 		params = &DescribeTableReplicaAutoScalingInput{}
@@ -104,6 +105,12 @@ func (c *Client) addOperationDescribeTableReplicaAutoScalingMiddlewares(stack *m
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeTableReplicaAutoScalingValidationMiddleware(stack); err != nil {

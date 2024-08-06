@@ -259,8 +259,8 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 			return
 		}
 
-		isActive, scaleTo, maxScale := h.isScaledJobActive(ctx, obj)
-		h.scaleExecutor.RequestJobScale(ctx, obj, isActive, scaleTo, maxScale)
+		isActive, isError, scaleTo, maxScale := h.isScaledJobActive(ctx, obj)
+		h.scaleExecutor.RequestJobScale(ctx, obj, isActive, isError, scaleTo, maxScale)
 	}
 }
 
@@ -813,15 +813,16 @@ func (*scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler, 
 
 // getScaledJobMetrics returns metrics for specified metric name for a ScaledJob identified by its name and namespace.
 // It could either query the metric value directly from the scaler or from a cache, that's being stored for the scaler.
-func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob) []scaledjob.ScalerMetrics {
+func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob) ([]scaledjob.ScalerMetrics, bool) {
 	logger := log.WithValues("scaledJob.Namespace", scaledJob.Namespace, "scaledJob.Name", scaledJob.Name)
 
 	cache, err := h.GetScalersCache(ctx, scaledJob)
 	metricscollector.RecordScaledJobError(scaledJob.Namespace, scaledJob.Name, err)
 	if err != nil {
 		log.Error(err, "error getting scalers cache", "scaledJob.Namespace", scaledJob.Namespace, "scaledJob.Name", scaledJob.Name)
-		return nil
+		return nil, true
 	}
+	var isError bool
 	var scalersMetrics []scaledjob.ScalerMetrics
 	scalers, scalerConfigs := cache.GetScalers()
 	for scalerIndex, scaler := range scalers {
@@ -849,8 +850,9 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 				metricscollector.RecordScalerLatency(scaledJob.Namespace, scaledJob.Name, scalerName, scalerIndex, metricName, false, latency)
 			}
 			if err != nil {
-				scalerLogger.V(1).Info("Error getting scaler metrics and activity, but continue", "error", err)
+				scalerLogger.Error(err, "Error getting scaler metrics and activity, but continue")
 				cache.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
+				isError = true
 				continue
 			}
 			if isTriggerActive {
@@ -883,21 +885,21 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 			metricscollector.RecordScalerActive(scaledJob.Namespace, scaledJob.Name, scalerName, scalerIndex, metricName, false, isTriggerActive)
 		}
 	}
-	return scalersMetrics
+	return scalersMetrics, isError
 }
 
 // isScaledJobActive returns whether the input ScaledJob:
 // is active as the first return value,
 // the second and the third return values indicate queueLength and maxValue for scale
-func (h *scaleHandler) isScaledJobActive(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob) (bool, int64, int64) {
+func (h *scaleHandler) isScaledJobActive(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob) (bool, bool, int64, int64) {
 	logger := logf.Log.WithName("scalemetrics")
 
-	scalersMetrics := h.getScaledJobMetrics(ctx, scaledJob)
+	scalersMetrics, isError := h.getScaledJobMetrics(ctx, scaledJob)
 	isActive, queueLength, maxValue, maxFloatValue :=
 		scaledjob.IsScaledJobActive(scalersMetrics, scaledJob.Spec.ScalingStrategy.MultipleScalersCalculation, scaledJob.MinReplicaCount(), scaledJob.MaxReplicaCount())
 
 	logger.V(1).WithValues("scaledJob.Name", scaledJob.Name).Info("Checking if ScaleJob Scalers are active", "isActive", isActive, "maxValue", maxFloatValue, "MultipleScalersCalculation", scaledJob.Spec.ScalingStrategy.MultipleScalersCalculation)
-	return isActive, queueLength, maxValue
+	return isActive, isError, queueLength, maxValue
 }
 
 // getTrueMetricArray is a help function made for composite scaler to determine

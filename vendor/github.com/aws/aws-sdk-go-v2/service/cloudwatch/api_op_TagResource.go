@@ -13,16 +13,22 @@ import (
 
 // Assigns one or more tags (key-value pairs) to the specified CloudWatch
 // resource. Currently, the only CloudWatch resources that can be tagged are alarms
-// and Contributor Insights rules. Tags can help you organize and categorize your
-// resources. You can also use them to scope user permissions by granting a user
-// permission to access or change only resources with certain tag values. Tags
-// don't have any semantic meaning to Amazon Web Services and are interpreted
-// strictly as strings of characters. You can use the TagResource action with an
-// alarm that already has tags. If you specify a new tag key for the alarm, this
-// tag is appended to the list of tags associated with the alarm. If you specify a
-// tag key that is already associated with the alarm, the new tag value that you
-// specify replaces the previous value for that tag. You can associate as many as
-// 50 tags with a CloudWatch resource.
+// and Contributor Insights rules.
+//
+// Tags can help you organize and categorize your resources. You can also use them
+// to scope user permissions by granting a user permission to access or change only
+// resources with certain tag values.
+//
+// Tags don't have any semantic meaning to Amazon Web Services and are interpreted
+// strictly as strings of characters.
+//
+// You can use the TagResource action with an alarm that already has tags. If you
+// specify a new tag key for the alarm, this tag is appended to the list of tags
+// associated with the alarm. If you specify a tag key that is already associated
+// with the alarm, the new tag value that you specify replaces the previous value
+// for that tag.
+//
+// You can associate as many as 50 tags with a CloudWatch resource.
 func (c *Client) TagResource(ctx context.Context, params *TagResourceInput, optFns ...func(*Options)) (*TagResourceOutput, error) {
 	if params == nil {
 		params = &TagResourceInput{}
@@ -40,12 +46,18 @@ func (c *Client) TagResource(ctx context.Context, params *TagResourceInput, optF
 
 type TagResourceInput struct {
 
-	// The ARN of the CloudWatch resource that you're adding tags to. The ARN format
-	// of an alarm is arn:aws:cloudwatch:Region:account-id:alarm:alarm-name  The ARN
-	// format of a Contributor Insights rule is
-	// arn:aws:cloudwatch:Region:account-id:insight-rule/insight-rule-name For more
-	// information about ARN format, see Resource Types Defined by Amazon CloudWatch (https://docs.aws.amazon.com/IAM/latest/UserGuide/list_amazoncloudwatch.html#amazoncloudwatch-resources-for-iam-policies)
-	// in the Amazon Web Services General Reference.
+	// The ARN of the CloudWatch resource that you're adding tags to.
+	//
+	// The ARN format of an alarm is
+	// arn:aws:cloudwatch:Region:account-id:alarm:alarm-name
+	//
+	// The ARN format of a Contributor Insights rule is
+	// arn:aws:cloudwatch:Region:account-id:insight-rule/insight-rule-name
+	//
+	// For more information about ARN format, see [Resource Types Defined by Amazon CloudWatch] in the Amazon Web Services General
+	// Reference.
+	//
+	// [Resource Types Defined by Amazon CloudWatch]: https://docs.aws.amazon.com/IAM/latest/UserGuide/list_amazoncloudwatch.html#amazoncloudwatch-resources-for-iam-policies
 	//
 	// This member is required.
 	ResourceARN *string
@@ -118,6 +130,12 @@ func (c *Client) addOperationTagResourceMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpTagResourceValidationMiddleware(stack); err != nil {

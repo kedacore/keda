@@ -165,7 +165,8 @@ spec:
 `
 )
 
-func TestScaler(t *testing.T) {
+// TODO: Enable the test again when the infra is fixed
+func DisabledTestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
 	require.NotEmpty(t, organizationURL, "AZURE_DEVOPS_ORGANIZATION_URL env variable is required for azure pipelines test")

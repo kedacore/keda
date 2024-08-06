@@ -1,3 +1,25 @@
+## v1.14.0 (2024-07-24)
+
+* [GH-3095](https://github.com/gophercloud/gophercloud/pull/3095) [neutron]: introduce Description argument for the portforwarding
+* [GH-3098](https://github.com/gophercloud/gophercloud/pull/3098) [neutron]: introduce Stateful argument for the security groups
+* [GH-3099](https://github.com/gophercloud/gophercloud/pull/3099) [networking]: subnet add field dns_publish_fixed_ip
+
+## v1.13.0 (2024-07-08)
+
+* [GH-3044](https://github.com/gophercloud/gophercloud/pull/3044) [v1] Add ci jobs for openstack caracal
+* [GH-3073](https://github.com/gophercloud/gophercloud/pull/3073) [v1] Adding missing QoS field for router
+* [GH-3080](https://github.com/gophercloud/gophercloud/pull/3080) [networking]: add BGP VPNs support (backport to 1.x)
+
+## v1.12.0 (2024-05-27)
+
+* [GH-2979](https://github.com/gophercloud/gophercloud/pull/2979) [v1] CI backports
+* [GH-2985](https://github.com/gophercloud/gophercloud/pull/2985) [v1] baremetal: fix handling of the "fields" query argument
+* [GH-2989](https://github.com/gophercloud/gophercloud/pull/2989) [v1] [CI] Fix portbiding tests
+* [GH-2992](https://github.com/gophercloud/gophercloud/pull/2992) [v1] [CI] Fix portbiding tests
+* [GH-2993](https://github.com/gophercloud/gophercloud/pull/2993) [v1] build(deps): bump EmilienM/devstack-action from 0.14 to 0.15
+* [GH-2998](https://github.com/gophercloud/gophercloud/pull/2998) [v1] testhelper: mark all helpers with t.Helper
+* [GH-3043](https://github.com/gophercloud/gophercloud/pull/3043) [v1] CI: remove Zed from testing coverage
+
 ## v1.11.0 (2024-03-07)
 
 This version reverts the inclusion of Context in the v1 branch. This inclusion

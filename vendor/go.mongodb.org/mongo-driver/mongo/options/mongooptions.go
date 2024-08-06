@@ -104,7 +104,7 @@ const (
 	// UpdateLookup includes a delta describing the changes to the document and a copy of the entire document that
 	// was changed.
 	UpdateLookup FullDocument = "updateLookup"
-	// WhenAvailable includes a post-image of the the modified document for replace and update change events
+	// WhenAvailable includes a post-image of the modified document for replace and update change events
 	// if the post-image for this event is available.
 	WhenAvailable FullDocument = "whenAvailable"
 )

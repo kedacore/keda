@@ -86,24 +86,6 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 		return nil, nil, fmt.Errorf("failed to get watch namespace (%s)", err)
 	}
 
-	leaseDuration, err := kedautil.ResolveOsEnvDuration("KEDA_METRICS_LEADER_ELECTION_LEASE_DURATION")
-	if err != nil {
-		logger.Error(err, "invalid KEDA_METRICS_LEADER_ELECTION_LEASE_DURATION")
-		return nil, nil, fmt.Errorf("invalid KEDA_METRICS_LEADER_ELECTION_LEASE_DURATION (%s)", err)
-	}
-
-	renewDeadline, err := kedautil.ResolveOsEnvDuration("KEDA_METRICS_LEADER_ELECTION_RENEW_DEADLINE")
-	if err != nil {
-		logger.Error(err, "Invalid KEDA_METRICS_LEADER_ELECTION_RENEW_DEADLINE")
-		return nil, nil, fmt.Errorf("invalid KEDA_METRICS_LEADER_ELECTION_RENEW_DEADLINE (%s)", err)
-	}
-
-	retryPeriod, err := kedautil.ResolveOsEnvDuration("KEDA_METRICS_LEADER_ELECTION_RETRY_PERIOD")
-	if err != nil {
-		logger.Error(err, "Invalid KEDA_METRICS_LEADER_ELECTION_RETRY_PERIOD")
-		return nil, nil, fmt.Errorf("invalid KEDA_METRICS_LEADER_ELECTION_RETRY_PERIOD (%s)", err)
-	}
-
 	// Get a config to talk to the apiserver
 	cfg := ctrl.GetConfigOrDie()
 	cfg.QPS = adapterClientRequestQPS
@@ -121,9 +103,6 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 			DefaultNamespaces: namespaces,
 		},
 		PprofBindAddress: profilingAddr,
-		LeaseDuration:    leaseDuration,
-		RenewDeadline:    renewDeadline,
-		RetryPeriod:      retryPeriod,
 	})
 	if err != nil {
 		logger.Error(err, "failed to setup manager")

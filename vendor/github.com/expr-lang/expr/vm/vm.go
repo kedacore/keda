@@ -274,31 +274,50 @@ func (vm *VM) Run(program *Program, env any) (_ any, err error) {
 		case OpMatches:
 			b := vm.pop()
 			a := vm.pop()
+			if runtime.IsNil(a) || runtime.IsNil(b) {
+				vm.push(false)
+				break
+			}
 			match, err := regexp.MatchString(b.(string), a.(string))
 			if err != nil {
 				panic(err)
 			}
-
 			vm.push(match)
 
 		case OpMatchesConst:
 			a := vm.pop()
+			if runtime.IsNil(a) {
+				vm.push(false)
+				break
+			}
 			r := program.Constants[arg].(*regexp.Regexp)
 			vm.push(r.MatchString(a.(string)))
 
 		case OpContains:
 			b := vm.pop()
 			a := vm.pop()
+			if runtime.IsNil(a) || runtime.IsNil(b) {
+				vm.push(false)
+				break
+			}
 			vm.push(strings.Contains(a.(string), b.(string)))
 
 		case OpStartsWith:
 			b := vm.pop()
 			a := vm.pop()
+			if runtime.IsNil(a) || runtime.IsNil(b) {
+				vm.push(false)
+				break
+			}
 			vm.push(strings.HasPrefix(a.(string), b.(string)))
 
 		case OpEndsWith:
 			b := vm.pop()
 			a := vm.pop()
+			if runtime.IsNil(a) || runtime.IsNil(b) {
+				vm.push(false)
+				break
+			}
 			vm.push(strings.HasSuffix(a.(string), b.(string)))
 
 		case OpSlice:

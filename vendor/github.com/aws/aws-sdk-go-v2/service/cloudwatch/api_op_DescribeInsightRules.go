@@ -11,10 +11,11 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Returns a list of all the Contributor Insights rules in your account. For more
-// information about Contributor Insights, see Using Contributor Insights to
-// Analyze High-Cardinality Data (https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/ContributorInsights.html)
-// .
+// Returns a list of all the Contributor Insights rules in your account.
+//
+// For more information about Contributor Insights, see [Using Contributor Insights to Analyze High-Cardinality Data].
+//
+// [Using Contributor Insights to Analyze High-Cardinality Data]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/ContributorInsights.html
 func (c *Client) DescribeInsightRules(ctx context.Context, params *DescribeInsightRulesInput, optFns ...func(*Options)) (*DescribeInsightRulesOutput, error) {
 	if params == nil {
 		params = &DescribeInsightRulesInput{}
@@ -113,6 +114,12 @@ func (c *Client) addOperationDescribeInsightRulesMiddlewares(stack *middleware.S
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeInsightRules(options.Region), middleware.Before); err != nil {
 		return err
 	}
@@ -133,14 +140,6 @@ func (c *Client) addOperationDescribeInsightRulesMiddlewares(stack *middleware.S
 	}
 	return nil
 }
-
-// DescribeInsightRulesAPIClient is a client that implements the
-// DescribeInsightRules operation.
-type DescribeInsightRulesAPIClient interface {
-	DescribeInsightRules(context.Context, *DescribeInsightRulesInput, ...func(*Options)) (*DescribeInsightRulesOutput, error)
-}
-
-var _ DescribeInsightRulesAPIClient = (*Client)(nil)
 
 // DescribeInsightRulesPaginatorOptions is the paginator options for
 // DescribeInsightRules
@@ -207,6 +206,9 @@ func (p *DescribeInsightRulesPaginator) NextPage(ctx context.Context, optFns ...
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.DescribeInsightRules(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -225,6 +227,14 @@ func (p *DescribeInsightRulesPaginator) NextPage(ctx context.Context, optFns ...
 
 	return result, nil
 }
+
+// DescribeInsightRulesAPIClient is a client that implements the
+// DescribeInsightRules operation.
+type DescribeInsightRulesAPIClient interface {
+	DescribeInsightRules(context.Context, *DescribeInsightRulesInput, ...func(*Options)) (*DescribeInsightRulesOutput, error)
+}
+
+var _ DescribeInsightRulesAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeInsightRules(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

@@ -108,6 +108,21 @@ func (m *meter) Int64Histogram(name string, options ...metric.Int64HistogramOpti
 	return i, validateInstrumentName(name)
 }
 
+// Int64Gauge returns a new instrument identified by name and configured
+// with options. The instrument is used to synchronously record the
+// distribution of int64 measurements during a computational operation.
+func (m *meter) Int64Gauge(name string, options ...metric.Int64GaugeOption) (metric.Int64Gauge, error) {
+	cfg := metric.NewInt64GaugeConfig(options...)
+	const kind = InstrumentKindGauge
+	p := int64InstProvider{m}
+	i, err := p.lookup(kind, name, cfg.Description(), cfg.Unit())
+	if err != nil {
+		return i, err
+	}
+
+	return i, validateInstrumentName(name)
+}
+
 // int64ObservableInstrument returns a new observable identified by the Instrument.
 // It registers callbacks for each reader's pipeline.
 func (m *meter) int64ObservableInstrument(id Instrument, callbacks []metric.Int64Callback) (int64Observable, error) {
@@ -235,6 +250,21 @@ func (m *meter) Float64Histogram(name string, options ...metric.Float64Histogram
 	cfg := metric.NewFloat64HistogramConfig(options...)
 	p := float64InstProvider{m}
 	i, err := p.lookupHistogram(name, cfg)
+	if err != nil {
+		return i, err
+	}
+
+	return i, validateInstrumentName(name)
+}
+
+// Float64Gauge returns a new instrument identified by name and configured
+// with options. The instrument is used to synchronously record the
+// distribution of float64 measurements during a computational operation.
+func (m *meter) Float64Gauge(name string, options ...metric.Float64GaugeOption) (metric.Float64Gauge, error) {
+	cfg := metric.NewFloat64GaugeConfig(options...)
+	const kind = InstrumentKindGauge
+	p := float64InstProvider{m}
+	i, err := p.lookup(kind, name, cfg.Description(), cfg.Unit())
 	if err != nil {
 		return i, err
 	}

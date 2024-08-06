@@ -124,7 +124,7 @@ func (s *PredictKubeScaler) setupClientConn() error {
 		return err
 	}
 
-	connection, err := grpc.Dial(net.JoinHostPort(mlEngineHost, fmt.Sprintf("%d", mlEnginePort)), clientOpt...)
+	connection, err := grpc.NewClient(net.JoinHostPort(mlEngineHost, fmt.Sprintf("%d", mlEnginePort)), clientOpt...)
 	if err != nil {
 		return err
 	}

@@ -33,9 +33,11 @@ func (c *Client) PutAlertManagerDefinition(ctx context.Context, params *PutAlert
 type PutAlertManagerDefinitionInput struct {
 
 	// The alert manager definition to use. A base64-encoded version of the YAML alert
-	// manager definition file. For details about the alert manager definition, see
-	// AlertManagedDefinitionData (https://docs.aws.amazon.com/prometheus/latest/APIReference/yaml-AlertManagerDefinitionData.html)
-	// .
+	// manager definition file.
+	//
+	// For details about the alert manager definition, see [AlertManagedDefinitionData].
+	//
+	// [AlertManagedDefinitionData]: https://docs.aws.amazon.com/prometheus/latest/APIReference/yaml-AlertManagerDefinitionData.html
 	//
 	// This member is required.
 	Data []byte
@@ -119,6 +121,12 @@ func (c *Client) addOperationPutAlertManagerDefinitionMiddlewares(stack *middlew
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addIdempotencyToken_opPutAlertManagerDefinitionMiddleware(stack, options); err != nil {

@@ -68,7 +68,7 @@ jobs:
     needs: triage
     runs-on: equinix-2cpu-8gb
     name: Build images
-    container: ghcr.io/kedacore/keda-tools:1.21.9
+    container: ghcr.io/kedacore/keda-tools:1.22.5
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
@@ -148,7 +148,7 @@ jobs:
     needs: [triage, build-test-images]
     runs-on: equinix-keda-runner
     name: Execute e2e tests
-    container: ghcr.io/kedacore/keda-tools:1.21.9
+    container: ghcr.io/kedacore/keda-tools:1.22.5
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
@@ -254,7 +254,7 @@ jobs:
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
       - name: Upload test logs
-        uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4
+        uses: actions/upload-artifact@89ef406dd8d7e03cfd12d9e0a4a378f454709029 # v4
         with:
           name: e2e-test-logs
           path: "${{ github.workspace }}/**/*.log"

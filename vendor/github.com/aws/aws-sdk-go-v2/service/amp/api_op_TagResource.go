@@ -12,10 +12,12 @@ import (
 
 // The TagResource operation associates tags with an Amazon Managed Service for
 // Prometheus resource. The only resources that can be tagged are workspaces and
-// rule groups namespaces. If you specify a new tag key for the resource, this tag
-// is appended to the list of tags associated with the resource. If you specify a
-// tag key that is already associated with the resource, the new tag value that you
-// specify replaces the previous value for that tag.
+// rule groups namespaces.
+//
+// If you specify a new tag key for the resource, this tag is appended to the list
+// of tags associated with the resource. If you specify a tag key that is already
+// associated with the resource, the new tag value that you specify replaces the
+// previous value for that tag.
 func (c *Client) TagResource(ctx context.Context, params *TagResourceInput, optFns ...func(*Options)) (*TagResourceOutput, error) {
 	if params == nil {
 		params = &TagResourceInput{}
@@ -38,8 +40,9 @@ type TagResourceInput struct {
 	// This member is required.
 	ResourceArn *string
 
-	// The list of tag keys and values to associate with the resource. Keys may not
-	// begin with aws: .
+	// The list of tag keys and values to associate with the resource.
+	//
+	// Keys may not begin with aws: .
 	//
 	// This member is required.
 	Tags map[string]string
@@ -107,6 +110,12 @@ func (c *Client) addOperationTagResourceMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpTagResourceValidationMiddleware(stack); err != nil {

@@ -68,7 +68,7 @@ func (t *KResource) Populate() {
 		// Populate ALL fields
 		Type:               "Birthday",
 		Status:             corev1.ConditionTrue,
-		LastTransitionTime: apis.VolatileTime{Inner: metav1.NewTime(time.Date(1984, 02, 28, 18, 52, 00, 00, time.UTC))},
+		LastTransitionTime: apis.VolatileTime{Inner: metav1.NewTime(time.Date(1984, 2, 28, 18, 52, 0, 0, time.UTC))},
 		Reason:             "Celebrate",
 		Message:            "n3wScott, find your party hat :tada:",
 	}}

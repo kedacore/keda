@@ -12,8 +12,9 @@ const (
 )
 
 // Values returns all known values for ConsumerStatus. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ConsumerStatus) Values() []ConsumerStatus {
 	return []ConsumerStatus{
 		"CREATING",
@@ -31,8 +32,9 @@ const (
 )
 
 // Values returns all known values for EncryptionType. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (EncryptionType) Values() []EncryptionType {
 	return []EncryptionType{
 		"NONE",
@@ -55,8 +57,9 @@ const (
 )
 
 // Values returns all known values for MetricsName. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (MetricsName) Values() []MetricsName {
 	return []MetricsName{
 		"IncomingBytes",
@@ -78,8 +81,9 @@ const (
 )
 
 // Values returns all known values for ScalingType. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ScalingType) Values() []ScalingType {
 	return []ScalingType{
 		"UNIFORM_SCALING",
@@ -99,8 +103,9 @@ const (
 )
 
 // Values returns all known values for ShardFilterType. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ShardFilterType) Values() []ShardFilterType {
 	return []ShardFilterType{
 		"AFTER_SHARD_ID",
@@ -124,8 +129,9 @@ const (
 )
 
 // Values returns all known values for ShardIteratorType. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ShardIteratorType) Values() []ShardIteratorType {
 	return []ShardIteratorType{
 		"AT_SEQUENCE_NUMBER",
@@ -145,8 +151,9 @@ const (
 )
 
 // Values returns all known values for StreamMode. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (StreamMode) Values() []StreamMode {
 	return []StreamMode{
 		"PROVISIONED",
@@ -165,8 +172,9 @@ const (
 )
 
 // Values returns all known values for StreamStatus. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (StreamStatus) Values() []StreamStatus {
 	return []StreamStatus{
 		"CREATING",

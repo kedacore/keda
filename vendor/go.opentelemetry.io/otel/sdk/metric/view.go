@@ -43,7 +43,7 @@ type View func(Instrument) (Stream, bool)
 // of the default. If you need to zero out an Stream field returned from a
 // View, create a View directly.
 func NewView(criteria Instrument, mask Stream) View {
-	if criteria.empty() {
+	if criteria.IsEmpty() {
 		global.Error(
 			errEmptyView, "dropping view",
 			"mask", mask,

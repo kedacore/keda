@@ -122,7 +122,7 @@ func WithReader(r Reader) Option {
 	})
 }
 
-// WithView associates views a MeterProvider.
+// WithView associates views with a MeterProvider.
 //
 // Views are appended to existing ones in a MeterProvider if this option is
 // used multiple times.

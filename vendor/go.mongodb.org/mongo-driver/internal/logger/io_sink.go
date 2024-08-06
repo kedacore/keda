@@ -9,6 +9,7 @@ package logger
 import (
 	"encoding/json"
 	"io"
+	"math"
 	"sync"
 	"time"
 )
@@ -36,7 +37,11 @@ func NewIOSink(out io.Writer) *IOSink {
 
 // Info will write a JSON-encoded message to the io.Writer.
 func (sink *IOSink) Info(_ int, msg string, keysAndValues ...interface{}) {
-	kvMap := make(map[string]interface{}, len(keysAndValues)/2+2)
+	mapSize := len(keysAndValues) / 2
+	if math.MaxInt-mapSize >= 2 {
+		mapSize += 2
+	}
+	kvMap := make(map[string]interface{}, mapSize)
 
 	kvMap[KeyTimestamp] = time.Now().UnixNano()
 	kvMap[KeyMessage] = msg

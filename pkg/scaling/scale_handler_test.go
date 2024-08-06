@@ -62,7 +62,6 @@ func TestGetScaledObjectMetrics_DirectCall(t *testing.T) {
 	recorder := record.NewFakeRecorder(1)
 	mockClient := mock_client.NewMockClient(ctrl)
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
-	mockStatusWriter := mock_client.NewMockStatusWriter(ctrl)
 
 	metricsSpecs := []v2.MetricSpec{createMetricSpec(10, metricName)}
 	metricValue := scalers.GenerateMetricInMili(metricName, float64(10))
@@ -130,8 +129,7 @@ func TestGetScaledObjectMetrics_DirectCall(t *testing.T) {
 	mockExecutor.EXPECT().RequestScale(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
 	sh.checkScalers(context.TODO(), &scaledObject, &sync.RWMutex{})
 
-	mockClient.EXPECT().Status().Return(mockStatusWriter)
-	mockStatusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+	expectNoStatusPatch(ctrl)
 	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs)
 	// hitting directly GetMetricsAndActivity()
 	scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{metricValue}, true, nil)
@@ -153,7 +151,6 @@ func TestGetScaledObjectMetrics_FromCache(t *testing.T) {
 	recorder := record.NewFakeRecorder(1)
 	mockClient := mock_client.NewMockClient(ctrl)
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
-	mockStatusWriter := mock_client.NewMockStatusWriter(ctrl)
 
 	metricsSpecs := []v2.MetricSpec{createMetricSpec(10, metricName)}
 	metricValue := scalers.GenerateMetricInMili(metricName, float64(10))
@@ -221,8 +218,7 @@ func TestGetScaledObjectMetrics_FromCache(t *testing.T) {
 	mockExecutor.EXPECT().RequestScale(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
 	sh.checkScalers(context.TODO(), &scaledObject, &sync.RWMutex{})
 
-	mockClient.EXPECT().Status().Return(mockStatusWriter)
-	mockStatusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+	expectNoStatusPatch(ctrl)
 	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs)
 	// hitting cache here instead of calling GetMetricsAndActivity()
 	metrics, err := sh.GetScaledObjectMetrics(context.TODO(), scaledObjectName, scaledObjectNamespace, metricName)
@@ -259,7 +255,6 @@ func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
 	recorder := record.NewFakeRecorder(1)
 	mockClient := mock_client.NewMockClient(ctrl)
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
-	mockStatusWriter := mock_client.NewMockStatusWriter(ctrl)
 
 	scalerCollection := []*mock_scalers.MockScaler{}
 
@@ -353,8 +348,8 @@ func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
 		return true
 	}, 1*time.Second, 400*time.Millisecond, "timeout exceeded: scalers not processed in parallel during `checkScalers`")
 
-	mockClient.EXPECT().Status().Times(len(metricNames)).Return(mockStatusWriter)
-	mockStatusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(len(metricNames)).Return(nil)
+	expectNoStatusPatch(ctrl)
+
 	for i := 0; i < len(metricNames); i++ {
 		i := i
 		scalerCollection[i].EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecFn(i))
@@ -661,19 +656,21 @@ func TestIsScaledJobActive(t *testing.T) {
 		scalerCachesLock:         &sync.RWMutex{},
 		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
 	}
-	isActive, queueLength, maxValue := sh.isScaledJobActive(context.TODO(), scaledJobSingle)
+	// nosemgrep: context-todo
+	isActive, isError, queueLength, maxValue := sh.isScaledJobActive(context.TODO(), scaledJobSingle)
 	assert.Equal(t, true, isActive)
+	assert.Equal(t, false, isError)
 	assert.Equal(t, int64(20), queueLength)
 	assert.Equal(t, int64(10), maxValue)
 	scalerCache.Close(context.Background())
 
 	// Test the valiation
 	scalerTestDatam := []scalerTestData{
-		newScalerTestData("s0-queueLength", 100, "max", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 20, 20),
-		newScalerTestData("queueLength", 100, "min", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 5, 2),
-		newScalerTestData("messageCount", 100, "avg", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 12, 9),
-		newScalerTestData("s3-messageCount", 100, "sum", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 35, 27),
-		newScalerTestData("s10-messageCount", 25, "sum", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, 35, 25),
+		newScalerTestData("s0-queueLength", 100, "max", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, false, 20, 20),
+		newScalerTestData("queueLength", 100, "min", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, false, 5, 2),
+		newScalerTestData("messageCount", 100, "avg", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, false, 12, 9),
+		newScalerTestData("s3-messageCount", 100, "sum", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, false, 35, 27),
+		newScalerTestData("s10-messageCount", 25, "sum", 20, 1, true, 10, 2, true, 5, 3, true, 7, 4, false, true, false, 35, 25),
 	}
 
 	for index, scalerTestData := range scalerTestDatam {
@@ -717,9 +714,11 @@ func TestIsScaledJobActive(t *testing.T) {
 			scaledObjectsMetricCache: metricscache.NewMetricsCache(),
 		}
 		fmt.Printf("index: %d", index)
-		isActive, queueLength, maxValue = sh.isScaledJobActive(context.TODO(), scaledJob)
+		// nosemgrep: context-todo
+		isActive, isError, queueLength, maxValue = sh.isScaledJobActive(context.TODO(), scaledJob)
 		//	assert.Equal(t, 5, index)
 		assert.Equal(t, scalerTestData.ResultIsActive, isActive)
+		assert.Equal(t, scalerTestData.ResultIsError, isError)
 		assert.Equal(t, scalerTestData.ResultQueueLength, queueLength)
 		assert.Equal(t, scalerTestData.ResultMaxValue, maxValue)
 		scalerCache.Close(context.Background())
@@ -757,8 +756,10 @@ func TestIsScaledJobActiveIfQueueEmptyButMinReplicaCountGreaterZero(t *testing.T
 		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
 	}
 
-	isActive, queueLength, maxValue := sh.isScaledJobActive(context.TODO(), scaledJobSingle)
+	// nosemgrep: context-todo
+	isActive, isError, queueLength, maxValue := sh.isScaledJobActive(context.TODO(), scaledJobSingle)
 	assert.Equal(t, true, isActive)
+	assert.Equal(t, false, isError)
 	assert.Equal(t, int64(0), queueLength)
 	assert.Equal(t, int64(0), maxValue)
 	scalerCache.Close(context.Background())
@@ -781,6 +782,7 @@ func newScalerTestData(
 	scaler4AverageValue int, //nolint:golint,unparam
 	scaler4IsActive bool, //nolint:golint,unparam
 	resultIsActive bool, //nolint:golint,unparam
+	resultIsError bool, //nolint:golint,unparam
 	resultQueueLength,
 	resultMaxLength int) scalerTestData {
 	return scalerTestData{
@@ -800,6 +802,7 @@ func newScalerTestData(
 		Scaler4AverageValue:        int64(scaler4AverageValue),
 		Scaler4IsActive:            scaler4IsActive,
 		ResultIsActive:             resultIsActive,
+		ResultIsError:              resultIsError,
 		ResultQueueLength:          int64(resultQueueLength),
 		ResultMaxValue:             int64(resultMaxLength),
 	}
@@ -822,6 +825,7 @@ type scalerTestData struct {
 	Scaler4AverageValue        int64
 	Scaler4IsActive            bool
 	ResultIsActive             bool
+	ResultIsError              bool
 	ResultQueueLength          int64
 	ResultMaxValue             int64
 	MinReplicaCount            int32
@@ -907,7 +911,6 @@ func TestScalingModifiersFormula(t *testing.T) {
 	recorder := record.NewFakeRecorder(1)
 	mockClient := mock_client.NewMockClient(ctrl)
 	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
-	mockStatusWriter := mock_client.NewMockStatusWriter(ctrl)
 
 	metricsSpecs1 := []v2.MetricSpec{createMetricSpec(2, metricName1)}
 	metricsSpecs2 := []v2.MetricSpec{createMetricSpec(5, metricName2)}
@@ -998,8 +1001,8 @@ func TestScalingModifiersFormula(t *testing.T) {
 	mockExecutor.EXPECT().RequestScale(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any())
 	sh.checkScalers(context.TODO(), &scaledObject, &sync.RWMutex{})
 
-	mockClient.EXPECT().Status().Return(mockStatusWriter).Times(2)
-	mockStatusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(2)
+	expectNoStatusPatch(ctrl)
+
 	scaler1.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs1)
 	scaler2.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs2)
 	scaler1.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{metricValue1, metricValue2}, true, nil)
@@ -1022,4 +1025,9 @@ func createMetricSpec(averageValue int64, metricName string) v2.MetricSpec {
 			},
 		},
 	}
+}
+
+func expectNoStatusPatch(ctrl *gomock.Controller) {
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 }

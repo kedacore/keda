@@ -86,7 +86,8 @@ func (p *KedaProvider) GetExternalMetric(ctx context.Context, namespace string, 
 	// Get Metrics from Metrics Service gRPC Server
 	if !p.grpcClient.WaitForConnectionReady(ctx, logger) {
 		grpcClientConnected = false
-		logger.Error(fmt.Errorf("timeout while waiting to establish gRPC connection to KEDA Metrics Service server"), "timeout", "server", p.grpcClient.GetServerURL())
+		err := fmt.Errorf("timeout while waiting to establish gRPC connection to KEDA Metrics Service server")
+		logger.Error(err, "timeout", "server", p.grpcClient.GetServerURL())
 		return nil, err
 	}
 	if !grpcClientConnected {

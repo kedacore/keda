@@ -79,7 +79,7 @@ func metric(m metricdata.Metrics) (*mpb.Metric, error) {
 	out := &mpb.Metric{
 		Name:        m.Name,
 		Description: m.Description,
-		Unit:        string(m.Unit),
+		Unit:        m.Unit,
 	}
 	switch a := m.Data.(type) {
 	case metricdata.Gauge[int64]:

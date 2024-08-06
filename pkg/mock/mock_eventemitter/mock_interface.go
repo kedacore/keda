@@ -18,7 +18,6 @@ import (
 	gomock "go.uber.org/mock/gomock"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
-	types "k8s.io/apimachinery/pkg/types"
 )
 
 // MockEventHandler is a mock of EventHandler interface.
@@ -59,7 +58,7 @@ func (mr *MockEventHandlerMockRecorder) DeleteCloudEventSource(cloudEventSource 
 }
 
 // Emit mocks base method.
-func (m *MockEventHandler) Emit(object runtime.Object, namesapce types.NamespacedName, eventType string, cloudeventType v1alpha1.CloudEventType, reason, message string) {
+func (m *MockEventHandler) Emit(object runtime.Object, namesapce, eventType string, cloudeventType v1alpha1.CloudEventType, reason, message string) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "Emit", object, namesapce, eventType, cloudeventType, reason, message)
 }

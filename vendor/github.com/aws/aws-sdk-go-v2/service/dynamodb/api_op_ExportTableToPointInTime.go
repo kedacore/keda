@@ -44,12 +44,15 @@ type ExportTableToPointInTimeInput struct {
 
 	// Providing a ClientToken makes the call to ExportTableToPointInTimeInput
 	// idempotent, meaning that multiple identical calls have the same effect as one
-	// single call. A client token is valid for 8 hours after the first request that
-	// uses it is completed. After 8 hours, any request with the same client token is
-	// treated as a new request. Do not resubmit the same request with the same client
-	// token for more than 8 hours, or the result might not be idempotent. If you
-	// submit a request with the same client token but a change in other parameters
-	// within the 8-hour idempotency window, DynamoDB returns an
+	// single call.
+	//
+	// A client token is valid for 8 hours after the first request that uses it is
+	// completed. After 8 hours, any request with the same client token is treated as a
+	// new request. Do not resubmit the same request with the same client token for
+	// more than 8 hours, or the result might not be idempotent.
+	//
+	// If you submit a request with the same client token but a change in other
+	// parameters within the 8-hour idempotency window, DynamoDB returns an
 	// ImportConflictException .
 	ClientToken *string
 
@@ -72,8 +75,10 @@ type ExportTableToPointInTimeInput struct {
 	IncrementalExportSpecification *types.IncrementalExportSpecification
 
 	// The ID of the Amazon Web Services account that owns the bucket the export will
-	// be stored in. S3BucketOwner is a required parameter when exporting to a S3
-	// bucket in another account.
+	// be stored in.
+	//
+	// S3BucketOwner is a required parameter when exporting to a S3 bucket in another
+	// account.
 	S3BucketOwner *string
 
 	// The Amazon S3 bucket prefix to use as the file name and path of the exported
@@ -82,7 +87,9 @@ type ExportTableToPointInTimeInput struct {
 
 	// Type of encryption used on the bucket where export data will be stored. Valid
 	// values for S3SseAlgorithm are:
+	//
 	//   - AES256 - server-side encryption with Amazon S3 managed keys
+	//
 	//   - KMS - server-side encryption with KMS managed keys
 	S3SseAlgorithm types.S3SseAlgorithm
 
@@ -157,6 +164,12 @@ func (c *Client) addOperationExportTableToPointInTimeMiddlewares(stack *middlewa
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addIdempotencyToken_opExportTableToPointInTimeMiddleware(stack, options); err != nil {

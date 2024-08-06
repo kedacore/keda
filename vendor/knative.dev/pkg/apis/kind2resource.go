@@ -17,7 +17,6 @@ limitations under the License.
 package apis
 
 import (
-	"fmt"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -41,7 +40,7 @@ func KindToResource(gvk schema.GroupVersionKind) schema.GroupVersionResource {
 func pluralizeKind(kind string) string {
 	ret := strings.ToLower(kind)
 	if strings.HasSuffix(ret, "s") {
-		return fmt.Sprintf("%ses", ret)
+		return ret + "es"
 	}
-	return fmt.Sprintf("%ss", ret)
+	return ret + "s"
 }

@@ -3547,6 +3547,13 @@ func awsAwsjson10_serializeDocumentCreateGlobalSecondaryIndexAction(v *types.Cre
 		}
 	}
 
+	if v.OnDemandThroughput != nil {
+		ok := object.Key("OnDemandThroughput")
+		if err := awsAwsjson10_serializeDocumentOnDemandThroughput(v.OnDemandThroughput, ok); err != nil {
+			return err
+		}
+	}
+
 	if v.Projection != nil {
 		ok := object.Key("Projection")
 		if err := awsAwsjson10_serializeDocumentProjection(v.Projection, ok); err != nil {
@@ -3590,6 +3597,13 @@ func awsAwsjson10_serializeDocumentCreateReplicationGroupMemberAction(v *types.C
 	if v.KMSMasterKeyId != nil {
 		ok := object.Key("KMSMasterKeyId")
 		ok.String(*v.KMSMasterKeyId)
+	}
+
+	if v.OnDemandThroughputOverride != nil {
+		ok := object.Key("OnDemandThroughputOverride")
+		if err := awsAwsjson10_serializeDocumentOnDemandThroughputOverride(v.OnDemandThroughputOverride, ok); err != nil {
+			return err
+		}
 	}
 
 	if v.ProvisionedThroughputOverride != nil {
@@ -3876,6 +3890,13 @@ func awsAwsjson10_serializeDocumentGlobalSecondaryIndex(v *types.GlobalSecondary
 	if v.KeySchema != nil {
 		ok := object.Key("KeySchema")
 		if err := awsAwsjson10_serializeDocumentKeySchema(v.KeySchema, ok); err != nil {
+			return err
+		}
+	}
+
+	if v.OnDemandThroughput != nil {
+		ok := object.Key("OnDemandThroughput")
+		if err := awsAwsjson10_serializeDocumentOnDemandThroughput(v.OnDemandThroughput, ok); err != nil {
 			return err
 		}
 	}
@@ -4263,6 +4284,35 @@ func awsAwsjson10_serializeDocumentNumberSetAttributeValue(v []string, value smi
 	return nil
 }
 
+func awsAwsjson10_serializeDocumentOnDemandThroughput(v *types.OnDemandThroughput, value smithyjson.Value) error {
+	object := value.Object()
+	defer object.Close()
+
+	if v.MaxReadRequestUnits != nil {
+		ok := object.Key("MaxReadRequestUnits")
+		ok.Long(*v.MaxReadRequestUnits)
+	}
+
+	if v.MaxWriteRequestUnits != nil {
+		ok := object.Key("MaxWriteRequestUnits")
+		ok.Long(*v.MaxWriteRequestUnits)
+	}
+
+	return nil
+}
+
+func awsAwsjson10_serializeDocumentOnDemandThroughputOverride(v *types.OnDemandThroughputOverride, value smithyjson.Value) error {
+	object := value.Object()
+	defer object.Close()
+
+	if v.MaxReadRequestUnits != nil {
+		ok := object.Key("MaxReadRequestUnits")
+		ok.Long(*v.MaxReadRequestUnits)
+	}
+
+	return nil
+}
+
 func awsAwsjson10_serializeDocumentParameterizedStatement(v *types.ParameterizedStatement, value smithyjson.Value) error {
 	object := value.Object()
 	defer object.Close()
@@ -4520,6 +4570,13 @@ func awsAwsjson10_serializeDocumentReplicaGlobalSecondaryIndex(v *types.ReplicaG
 	if v.IndexName != nil {
 		ok := object.Key("IndexName")
 		ok.String(*v.IndexName)
+	}
+
+	if v.OnDemandThroughputOverride != nil {
+		ok := object.Key("OnDemandThroughputOverride")
+		if err := awsAwsjson10_serializeDocumentOnDemandThroughputOverride(v.OnDemandThroughputOverride, ok); err != nil {
+			return err
+		}
 	}
 
 	if v.ProvisionedThroughputOverride != nil {
@@ -4853,6 +4910,13 @@ func awsAwsjson10_serializeDocumentTableCreationParameters(v *types.TableCreatio
 		}
 	}
 
+	if v.OnDemandThroughput != nil {
+		ok := object.Key("OnDemandThroughput")
+		if err := awsAwsjson10_serializeDocumentOnDemandThroughput(v.OnDemandThroughput, ok); err != nil {
+			return err
+		}
+	}
+
 	if v.ProvisionedThroughput != nil {
 		ok := object.Key("ProvisionedThroughput")
 		if err := awsAwsjson10_serializeDocumentProvisionedThroughput(v.ProvisionedThroughput, ok); err != nil {
@@ -5065,6 +5129,13 @@ func awsAwsjson10_serializeDocumentUpdateGlobalSecondaryIndexAction(v *types.Upd
 		ok.String(*v.IndexName)
 	}
 
+	if v.OnDemandThroughput != nil {
+		ok := object.Key("OnDemandThroughput")
+		if err := awsAwsjson10_serializeDocumentOnDemandThroughput(v.OnDemandThroughput, ok); err != nil {
+			return err
+		}
+	}
+
 	if v.ProvisionedThroughput != nil {
 		ok := object.Key("ProvisionedThroughput")
 		if err := awsAwsjson10_serializeDocumentProvisionedThroughput(v.ProvisionedThroughput, ok); err != nil {
@@ -5101,6 +5172,13 @@ func awsAwsjson10_serializeDocumentUpdateReplicationGroupMemberAction(v *types.U
 	if v.KMSMasterKeyId != nil {
 		ok := object.Key("KMSMasterKeyId")
 		ok.String(*v.KMSMasterKeyId)
+	}
+
+	if v.OnDemandThroughputOverride != nil {
+		ok := object.Key("OnDemandThroughputOverride")
+		if err := awsAwsjson10_serializeDocumentOnDemandThroughputOverride(v.OnDemandThroughputOverride, ok); err != nil {
+			return err
+		}
 	}
 
 	if v.ProvisionedThroughputOverride != nil {
@@ -5293,6 +5371,13 @@ func awsAwsjson10_serializeOpDocumentCreateTableInput(v *CreateTableInput, value
 	if v.LocalSecondaryIndexes != nil {
 		ok := object.Key("LocalSecondaryIndexes")
 		if err := awsAwsjson10_serializeDocumentLocalSecondaryIndexList(v.LocalSecondaryIndexes, ok); err != nil {
+			return err
+		}
+	}
+
+	if v.OnDemandThroughput != nil {
+		ok := object.Key("OnDemandThroughput")
+		if err := awsAwsjson10_serializeDocumentOnDemandThroughput(v.OnDemandThroughput, ok); err != nil {
 			return err
 		}
 	}
@@ -6276,6 +6361,13 @@ func awsAwsjson10_serializeOpDocumentRestoreTableFromBackupInput(v *RestoreTable
 		}
 	}
 
+	if v.OnDemandThroughputOverride != nil {
+		ok := object.Key("OnDemandThroughputOverride")
+		if err := awsAwsjson10_serializeDocumentOnDemandThroughput(v.OnDemandThroughputOverride, ok); err != nil {
+			return err
+		}
+	}
+
 	if v.ProvisionedThroughputOverride != nil {
 		ok := object.Key("ProvisionedThroughputOverride")
 		if err := awsAwsjson10_serializeDocumentProvisionedThroughput(v.ProvisionedThroughputOverride, ok); err != nil {
@@ -6317,6 +6409,13 @@ func awsAwsjson10_serializeOpDocumentRestoreTableToPointInTimeInput(v *RestoreTa
 	if v.LocalSecondaryIndexOverride != nil {
 		ok := object.Key("LocalSecondaryIndexOverride")
 		if err := awsAwsjson10_serializeDocumentLocalSecondaryIndexList(v.LocalSecondaryIndexOverride, ok); err != nil {
+			return err
+		}
+	}
+
+	if v.OnDemandThroughputOverride != nil {
+		ok := object.Key("OnDemandThroughputOverride")
+		if err := awsAwsjson10_serializeDocumentOnDemandThroughput(v.OnDemandThroughputOverride, ok); err != nil {
 			return err
 		}
 	}
@@ -6779,6 +6878,13 @@ func awsAwsjson10_serializeOpDocumentUpdateTableInput(v *UpdateTableInput, value
 	if v.GlobalSecondaryIndexUpdates != nil {
 		ok := object.Key("GlobalSecondaryIndexUpdates")
 		if err := awsAwsjson10_serializeDocumentGlobalSecondaryIndexUpdateList(v.GlobalSecondaryIndexUpdates, ok); err != nil {
+			return err
+		}
+	}
+
+	if v.OnDemandThroughput != nil {
+		ok := object.Key("OnDemandThroughput")
+		if err := awsAwsjson10_serializeDocumentOnDemandThroughput(v.OnDemandThroughput, ok); err != nil {
 			return err
 		}
 	}

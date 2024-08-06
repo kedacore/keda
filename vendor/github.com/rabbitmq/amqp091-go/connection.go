@@ -28,11 +28,11 @@ const (
 	defaultHeartbeat         = 10 * time.Second
 	defaultConnectionTimeout = 30 * time.Second
 	defaultProduct           = "AMQP 0.9.1 Client"
-	buildVersion             = "1.9.0"
+	buildVersion             = "1.10.0"
 	platform                 = "golang"
 	// Safer default that makes channel leaks a lot easier to spot
 	// before they create operational headaches. See https://github.com/rabbitmq/rabbitmq-server/issues/1593.
-	defaultChannelMax = (2 << 10) - 1
+	defaultChannelMax = uint16((2 << 10) - 1)
 	defaultLocale     = "en_US"
 )
 
@@ -49,7 +49,7 @@ type Config struct {
 	// bindings on the server.  Dial sets this to the path parsed from the URL.
 	Vhost string
 
-	ChannelMax int           // 0 max channels means 2^16 - 1
+	ChannelMax uint16        // 0 max channels means 2^16 - 1
 	FrameSize  int           // 0 max bytes means unlimited
 	Heartbeat  time.Duration // less than 1s uses the server's interval
 
@@ -157,8 +157,7 @@ func DefaultDial(connectionTimeout time.Duration) func(network, addr string) (ne
 // scheme.  It is equivalent to calling DialTLS(amqp, nil).
 func Dial(url string) (*Connection, error) {
 	return DialConfig(url, Config{
-		Heartbeat: defaultHeartbeat,
-		Locale:    defaultLocale,
+		Locale: defaultLocale,
 	})
 }
 
@@ -169,7 +168,6 @@ func Dial(url string) (*Connection, error) {
 // DialTLS uses the provided tls.Config when encountering an amqps:// scheme.
 func DialTLS(url string, amqps *tls.Config) (*Connection, error) {
 	return DialConfig(url, Config{
-		Heartbeat:       defaultHeartbeat,
 		TLSClientConfig: amqps,
 		Locale:          defaultLocale,
 	})
@@ -186,7 +184,6 @@ func DialTLS(url string, amqps *tls.Config) (*Connection, error) {
 // amqps:// scheme.
 func DialTLS_ExternalAuth(url string, amqps *tls.Config) (*Connection, error) {
 	return DialConfig(url, Config{
-		Heartbeat:       defaultHeartbeat,
 		TLSClientConfig: amqps,
 		SASL:            []Authentication{&ExternalAuth{}},
 	})
@@ -195,7 +192,9 @@ func DialTLS_ExternalAuth(url string, amqps *tls.Config) (*Connection, error) {
 // DialConfig accepts a string in the AMQP URI format and a configuration for
 // the transport and connection setup, returning a new Connection.  Defaults to
 // a server heartbeat interval of 10 seconds and sets the initial read deadline
-// to 30 seconds.
+// to 30 seconds. The heartbeat interval specified in the AMQP URI takes precedence
+// over the value specified in the config. To disable heartbeats, you must use
+// the AMQP URI and set heartbeat=0 there.
 func DialConfig(url string, config Config) (*Connection, error) {
 	var err error
 	var conn net.Conn
@@ -206,18 +205,50 @@ func DialConfig(url string, config Config) (*Connection, error) {
 	}
 
 	if config.SASL == nil {
-		config.SASL = []Authentication{uri.PlainAuth()}
+		if uri.AuthMechanism != nil {
+			for _, identifier := range uri.AuthMechanism {
+				switch strings.ToUpper(identifier) {
+				case "PLAIN":
+					config.SASL = append(config.SASL, uri.PlainAuth())
+				case "AMQPLAIN":
+					config.SASL = append(config.SASL, uri.AMQPlainAuth())
+				case "EXTERNAL":
+					config.SASL = append(config.SASL, &ExternalAuth{})
+				default:
+					return nil, fmt.Errorf("unsupported auth_mechanism: %v", identifier)
+				}
+			}
+		} else {
+			config.SASL = []Authentication{uri.PlainAuth()}
+		}
 	}
 
 	if config.Vhost == "" {
 		config.Vhost = uri.Vhost
 	}
 
+	if uri.Heartbeat.hasValue {
+		config.Heartbeat = uri.Heartbeat.value
+	} else {
+		if config.Heartbeat == 0 {
+			config.Heartbeat = defaultHeartbeat
+		}
+	}
+
+	if config.ChannelMax == 0 {
+		config.ChannelMax = uri.ChannelMax
+	}
+
+	connectionTimeout := defaultConnectionTimeout
+	if uri.ConnectionTimeout != 0 {
+		connectionTimeout = time.Duration(uri.ConnectionTimeout) * time.Millisecond
+	}
+
 	addr := net.JoinHostPort(uri.Host, strconv.FormatInt(int64(uri.Port), 10))
 
 	dialer := config.Dial
 	if dialer == nil {
-		dialer = DefaultDial(defaultConnectionTimeout)
+		dialer = DefaultDial(connectionTimeout)
 	}
 
 	conn, err = dialer("tcp", addr)
@@ -991,13 +1022,13 @@ func (c *Connection) openTune(config Config, auth Authentication) error {
 
 	// When the server and client both use default 0, then the max channel is
 	// only limited by uint16.
-	c.Config.ChannelMax = pick(config.ChannelMax, int(tune.ChannelMax))
+	c.Config.ChannelMax = pickUInt16(config.ChannelMax, tune.ChannelMax)
 	if c.Config.ChannelMax == 0 {
 		c.Config.ChannelMax = defaultChannelMax
 	}
-	c.Config.ChannelMax = min(c.Config.ChannelMax, maxChannelMax)
+	c.Config.ChannelMax = minUInt16(c.Config.ChannelMax, maxChannelMax)
 
-	c.allocator = newAllocator(1, c.Config.ChannelMax)
+	c.allocator = newAllocator(1, int(c.Config.ChannelMax))
 
 	c.m.Unlock()
 
@@ -1104,11 +1135,33 @@ func max(a, b int) int {
 	return b
 }
 
+func maxUInt16(a, b uint16) uint16 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 func min(a, b int) int {
 	if a < b {
 		return a
 	}
 	return b
+}
+
+func minUInt16(a, b uint16) uint16 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func pickUInt16(client, server uint16) uint16 {
+	if client == 0 || server == 0 {
+		return maxUInt16(client, server)
+	} else {
+		return minUInt16(client, server)
+	}
 }
 
 func pick(client, server int) int {

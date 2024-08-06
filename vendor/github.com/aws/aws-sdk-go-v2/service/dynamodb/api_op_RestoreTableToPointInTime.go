@@ -17,23 +17,40 @@ import (
 // EarliestRestorableDateTime and LatestRestorableDateTime . You can restore your
 // table to any point in time during the last 35 days. Any number of users can
 // execute up to 50 concurrent restores (any type of restore) in a given account.
-// When you restore using point in time recovery, DynamoDB restores your table data
-// to the state based on the selected date and time (day:hour:minute:second) to a
-// new table. Along with data, the following are also included on the new restored
-// table using point in time recovery:
+//
+// When you restore using point in time recovery, DynamoDB restores your table
+// data to the state based on the selected date and time (day:hour:minute:second)
+// to a new table.
+//
+// Along with data, the following are also included on the new restored table
+// using point in time recovery:
+//
 //   - Global secondary indexes (GSIs)
+//
 //   - Local secondary indexes (LSIs)
+//
 //   - Provisioned read and write capacity
-//   - Encryption settings All these settings come from the current settings of
-//     the source table at the time of restore.
+//
+//   - Encryption settings
+//
+// All these settings come from the current settings of the source table at the
+//
+//	time of restore.
 //
 // You must manually set up the following on the restored table:
+//
 //   - Auto scaling policies
+//
 //   - IAM policies
+//
 //   - Amazon CloudWatch metrics and alarms
+//
 //   - Tags
+//
 //   - Stream settings
+//
 //   - Time to Live (TTL) settings
+//
 //   - Point in time recovery settings
 func (c *Client) RestoreTableToPointInTime(ctx context.Context, params *RestoreTableToPointInTimeInput, optFns ...func(*Options)) (*RestoreTableToPointInTimeOutput, error) {
 	if params == nil {
@@ -69,6 +86,11 @@ type RestoreTableToPointInTimeInput struct {
 	// should match existing secondary indexes. You can choose to exclude some or all
 	// of the indexes at the time of restore.
 	LocalSecondaryIndexOverride []types.LocalSecondaryIndex
+
+	// Sets the maximum number of read and write units for the specified on-demand
+	// table. If you use this parameter, you must specify MaxReadRequestUnits ,
+	// MaxWriteRequestUnits , or both.
+	OnDemandThroughputOverride *types.OnDemandThroughput
 
 	// Provisioned throughput settings for the restored table.
 	ProvisionedThroughputOverride *types.ProvisionedThroughput
@@ -160,6 +182,12 @@ func (c *Client) addOperationRestoreTableToPointInTimeMiddlewares(stack *middlew
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpRestoreTableToPointInTimeValidationMiddleware(stack); err != nil {

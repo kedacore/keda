@@ -26,8 +26,9 @@ const (
 
 // Values returns all known values for AlertManagerDefinitionStatusCode. Note that
 // this can be expanded in the future, and so it is only as up to date as the
-// client. The ordering of this slice is not guaranteed to be stable across
-// updates.
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (AlertManagerDefinitionStatusCode) Values() []AlertManagerDefinitionStatusCode {
 	return []AlertManagerDefinitionStatusCode{
 		"CREATING",
@@ -63,8 +64,9 @@ const (
 
 // Values returns all known values for LoggingConfigurationStatusCode. Note that
 // this can be expanded in the future, and so it is only as up to date as the
-// client. The ordering of this slice is not guaranteed to be stable across
-// updates.
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (LoggingConfigurationStatusCode) Values() []LoggingConfigurationStatusCode {
 	return []LoggingConfigurationStatusCode{
 		"CREATING",
@@ -100,8 +102,9 @@ const (
 
 // Values returns all known values for RuleGroupsNamespaceStatusCode. Note that
 // this can be expanded in the future, and so it is only as up to date as the
-// client. The ordering of this slice is not guaranteed to be stable across
-// updates.
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (RuleGroupsNamespaceStatusCode) Values() []RuleGroupsNamespaceStatusCode {
 	return []RuleGroupsNamespaceStatusCode{
 		"CREATING",
@@ -130,8 +133,9 @@ const (
 )
 
 // Values returns all known values for ScraperStatusCode. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ScraperStatusCode) Values() []ScraperStatusCode {
 	return []ScraperStatusCode{
 		"CREATING",
@@ -154,6 +158,7 @@ const (
 
 // Values returns all known values for ValidationExceptionReason. Note that this
 // can be expanded in the future, and so it is only as up to date as the client.
+//
 // The ordering of this slice is not guaranteed to be stable across updates.
 func (ValidationExceptionReason) Values() []ValidationExceptionReason {
 	return []ValidationExceptionReason{
@@ -182,8 +187,9 @@ const (
 )
 
 // Values returns all known values for WorkspaceStatusCode. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (WorkspaceStatusCode) Values() []WorkspaceStatusCode {
 	return []WorkspaceStatusCode{
 		"CREATING",

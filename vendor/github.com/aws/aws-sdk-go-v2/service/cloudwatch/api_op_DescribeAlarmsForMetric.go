@@ -12,10 +12,11 @@ import (
 )
 
 // Retrieves the alarms for the specified metric. To filter the results, specify a
-// statistic, period, or unit. This operation retrieves only standard alarms that
-// are based on the specified metric. It does not return alarms based on math
-// expressions that use the specified metric, or composite alarms that use the
-// specified metric.
+// statistic, period, or unit.
+//
+// This operation retrieves only standard alarms that are based on the specified
+// metric. It does not return alarms based on math expressions that use the
+// specified metric, or composite alarms that use the specified metric.
 func (c *Client) DescribeAlarmsForMetric(ctx context.Context, params *DescribeAlarmsForMetricInput, optFns ...func(*Options)) (*DescribeAlarmsForMetricOutput, error) {
 	if params == nil {
 		params = &DescribeAlarmsForMetricInput{}
@@ -127,6 +128,12 @@ func (c *Client) addOperationDescribeAlarmsForMetricMiddlewares(stack *middlewar
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeAlarmsForMetricValidationMiddleware(stack); err != nil {

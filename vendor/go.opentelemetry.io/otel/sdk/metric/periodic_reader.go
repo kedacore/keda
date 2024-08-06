@@ -334,7 +334,7 @@ func (r *PeriodicReader) Shutdown(ctx context.Context) error {
 		}
 
 		sErr := r.exporter.Shutdown(ctx)
-		if err == nil || err == ErrReaderShutdown {
+		if err == nil || errors.Is(err, ErrReaderShutdown) {
 			err = sErr
 		}
 
