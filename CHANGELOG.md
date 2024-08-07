@@ -71,6 +71,7 @@ Here is an overview of all new **experimental** features:
 ### Fixes
 
 - **General**: Hashicorp Vault PKI doesn't fail with due to KeyPair mismatch ([#6028](https://github.com/kedacore/keda/issues/6028))
+- **JetStream**: Consumer leader change is correctly detected ([#6042](https://github.com/kedacore/keda/issues/6042))
 
 ### Deprecations
 
