@@ -63,6 +63,7 @@ type seleniumSession struct {
 	ID           string `json:"id"`
 	Capabilities string `json:"capabilities"`
 	NodeID       string `json:"nodeId"`
+	PlatformName string `json:"platformName"`
 }
 
 type capability struct {
@@ -152,7 +153,7 @@ func (s *seleniumGridScaler) GetMetricSpecForScaling(context.Context) []v2.Metri
 
 func (s *seleniumGridScaler) getSessionsCount(ctx context.Context, logger logr.Logger) (int64, error) {
 	body, err := json.Marshal(map[string]string{
-		"query": "{ grid { maxSession, nodeCount }, sessionsInfo { sessionQueueRequests, sessions { id, capabilities, nodeId } } }",
+		"query": "{ grid { maxSession, nodeCount }, sessionsInfo { sessionQueueRequests, sessions { id, capabilities, nodeId, platformName } } }",
 	})
 
 	if err != nil {
