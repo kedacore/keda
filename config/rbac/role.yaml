@@ -108,6 +108,13 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+  - eventing.keda.sh
+  resources:
+  - clustercloudeventsources
+  - clustercloudeventsources/status
+  verbs:
+  - '*'
+- apiGroups:
   - keda.sh
   resources:
   - clustertriggerauthentications

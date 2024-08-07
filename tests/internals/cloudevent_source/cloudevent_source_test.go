@@ -25,82 +25,43 @@ const (
 var _ = godotenv.Load("../../.env")
 
 var (
-	namespace                  = fmt.Sprintf("%s-ns", testName)
-	scaledObjectName           = fmt.Sprintf("%s-so", testName)
-	deploymentName             = fmt.Sprintf("%s-d", testName)
-	clientName                 = fmt.Sprintf("%s-client", testName)
-	cloudeventSourceName       = fmt.Sprintf("%s-ce", testName)
-	cloudeventSourceErrName    = fmt.Sprintf("%s-ce-err", testName)
-	cloudeventSourceErrName2   = fmt.Sprintf("%s-ce-err2", testName)
-	cloudEventHTTPReceiverName = fmt.Sprintf("%s-cloudevent-http-receiver", testName)
-	cloudEventHTTPServiceName  = fmt.Sprintf("%s-cloudevent-http-service", testName)
-	cloudEventHTTPServiceURL   = fmt.Sprintf("http://%s.%s.svc.cluster.local:8899", cloudEventHTTPServiceName, namespace)
-	clusterName                = "test-cluster"
-	expectedSubject            = fmt.Sprintf("/%s/%s/scaledobject/%s", clusterName, namespace, scaledObjectName)
-	expectedSource             = fmt.Sprintf("/%s/keda/keda", clusterName)
-	lastCloudEventTime         = time.Now()
+	namespace                       = fmt.Sprintf("%s-ns", testName)
+	scaledObjectName                = fmt.Sprintf("%s-so", testName)
+	deploymentName                  = fmt.Sprintf("%s-d", testName)
+	clientName                      = fmt.Sprintf("%s-client", testName)
+	cloudeventSourceName            = fmt.Sprintf("%s-ce", testName)
+	cloudeventSourceErrName         = fmt.Sprintf("%s-ce-err", testName)
+	cloudeventSourceErrName2        = fmt.Sprintf("%s-ce-err2", testName)
+	clusterCloudeventSourceName     = fmt.Sprintf("%s-cce", testName)
+	clusterCloudeventSourceErrName  = fmt.Sprintf("%s-cce-err", testName)
+	clusterCloudeventSourceErrName2 = fmt.Sprintf("%s-cce-err2", testName)
+	cloudEventHTTPReceiverName      = fmt.Sprintf("%s-cloudevent-http-receiver", testName)
+	cloudEventHTTPServiceName       = fmt.Sprintf("%s-cloudevent-http-service", testName)
+	cloudEventHTTPServiceURL        = fmt.Sprintf("http://%s.%s.svc.cluster.local:8899", cloudEventHTTPServiceName, namespace)
+	clusterName                     = "test-cluster"
+	expectedSubject                 = fmt.Sprintf("/%s/%s/scaledobject/%s", clusterName, namespace, scaledObjectName)
+	expectedSource                  = fmt.Sprintf("/%s/keda/keda", clusterName)
+	lastCloudEventTime              = time.Now()
 )
 
 type templateData struct {
-	TestNamespace              string
-	ScaledObject               string
-	DeploymentName             string
-	ClientName                 string
-	CloudEventSourceName       string
-	CloudeventSourceErrName    string
-	CloudeventSourceErrName2   string
-	CloudEventHTTPReceiverName string
-	CloudEventHTTPServiceName  string
-	CloudEventHTTPServiceURL   string
-	ClusterName                string
+	TestNamespace                   string
+	ScaledObject                    string
+	DeploymentName                  string
+	ClientName                      string
+	CloudEventSourceName            string
+	CloudeventSourceErrName         string
+	CloudeventSourceErrName2        string
+	ClusterCloudEventSourceName     string
+	ClusterCloudeventSourceErrName  string
+	ClusterCloudeventSourceErrName2 string
+	CloudEventHTTPReceiverName      string
+	CloudEventHTTPServiceName       string
+	CloudEventHTTPServiceURL        string
+	ClusterName                     string
 }
 
 const (
-	cloudEventSourceTemplate = `
-  apiVersion: eventing.keda.sh/v1alpha1
-  kind: CloudEventSource
-  metadata:
-    name: {{.CloudEventSourceName}}
-    namespace: {{.TestNamespace}}
-  spec:
-    clusterName: {{.ClusterName}}
-    destination:
-      http:
-        uri: {{.CloudEventHTTPServiceURL}}
-  `
-
-	cloudEventSourceWithExcludeTemplate = `
-    apiVersion: eventing.keda.sh/v1alpha1
-    kind: CloudEventSource
-    metadata:
-      name: {{.CloudEventSourceName}}
-      namespace: {{.TestNamespace}}
-    spec:
-      clusterName: {{.ClusterName}}
-      destination:
-        http:
-          uri: {{.CloudEventHTTPServiceURL}}
-      eventSubscription:
-        excludedEventTypes:
-        - keda.scaledobject.failed.v1
-    `
-
-	cloudEventSourceWithIncludeTemplate = `
-    apiVersion: eventing.keda.sh/v1alpha1
-    kind: CloudEventSource
-    metadata:
-      name: {{.CloudEventSourceName}}
-      namespace: {{.TestNamespace}}
-    spec:
-      clusterName: {{.ClusterName}}
-      destination:
-        http:
-          uri: {{.CloudEventHTTPServiceURL}}
-      eventSubscription:
-        includedEventTypes:
-        - keda.scaledobject.failed.v1
-    `
-
 	cloudEventHTTPServiceTemplate = `
   apiVersion: v1
   kind: Service
@@ -178,6 +139,51 @@ spec:
       - sh
       - -c
       - "exec tail -f /dev/null"`
+
+	cloudEventSourceTemplate = `
+    apiVersion: eventing.keda.sh/v1alpha1
+    kind: CloudEventSource
+    metadata:
+      name: {{.CloudEventSourceName}}
+      namespace: {{.TestNamespace}}
+    spec:
+      clusterName: {{.ClusterName}}
+      destination:
+        http:
+          uri: {{.CloudEventHTTPServiceURL}}
+    `
+
+	cloudEventSourceWithExcludeTemplate = `
+      apiVersion: eventing.keda.sh/v1alpha1
+      kind: CloudEventSource
+      metadata:
+        name: {{.CloudEventSourceName}}
+        namespace: {{.TestNamespace}}
+      spec:
+        clusterName: {{.ClusterName}}
+        destination:
+          http:
+            uri: {{.CloudEventHTTPServiceURL}}
+        eventSubscription:
+          excludedEventTypes:
+          - keda.scaledobject.failed.v1
+      `
+
+	cloudEventSourceWithIncludeTemplate = `
+      apiVersion: eventing.keda.sh/v1alpha1
+      kind: CloudEventSource
+      metadata:
+        name: {{.CloudEventSourceName}}
+        namespace: {{.TestNamespace}}
+      spec:
+        clusterName: {{.ClusterName}}
+        destination:
+          http:
+            uri: {{.CloudEventHTTPServiceURL}}
+        eventSubscription:
+          includedEventTypes:
+          - keda.scaledobject.failed.v1
+      `
 
 	cloudEventSourceWithErrTypeTemplate = `
     apiVersion: eventing.keda.sh/v1alpha1
@@ -262,6 +268,80 @@ spec:
       end: 5 * * * *
       desiredReplicas: '4'
 `
+
+	clusterCloudEventSourceTemplate = `
+    apiVersion: eventing.keda.sh/v1alpha1
+    kind: ClusterCloudEventSource
+    metadata:
+      name: {{.ClusterCloudEventSourceName}}
+    spec:
+      clusterName: {{.ClusterName}}
+      destination:
+        http:
+          uri: {{.CloudEventHTTPServiceURL}}
+    `
+
+	clusterCloudEventSourceWithExcludeTemplate = `
+      apiVersion: eventing.keda.sh/v1alpha1
+      kind: ClusterCloudEventSource
+      metadata:
+        name: {{.ClusterCloudEventSourceName}}
+      spec:
+        clusterName: {{.ClusterName}}
+        destination:
+          http:
+            uri: {{.CloudEventHTTPServiceURL}}
+        eventSubscription:
+          excludedEventTypes:
+          - keda.scaledobject.failed.v1
+      `
+
+	clusterCloudEventSourceWithIncludeTemplate = `
+      apiVersion: eventing.keda.sh/v1alpha1
+      kind: ClusterCloudEventSource
+      metadata:
+        name: {{.ClusterCloudEventSourceName}}
+      spec:
+        clusterName: {{.ClusterName}}
+        destination:
+          http:
+            uri: {{.CloudEventHTTPServiceURL}}
+        eventSubscription:
+          includedEventTypes:
+          - keda.scaledobject.failed.v1
+      `
+
+	clusterCloudEventSourceWithErrTypeTemplate = `
+    apiVersion: eventing.keda.sh/v1alpha1
+    kind: ClusterCloudEventSource
+    metadata:
+      name: {{.ClusterCloudeventSourceErrName}}
+    spec:
+      clusterName: {{.ClusterName}}
+      destination:
+        http:
+          uri: {{.CloudEventHTTPServiceURL}}
+      eventSubscription:
+        includedEventTypes:
+        - keda.scaledobject.failed.v2
+    `
+
+	clusterCloudEventSourceWithErrTypeTemplate2 = `
+    apiVersion: eventing.keda.sh/v1alpha1
+    kind: ClusterCloudEventSource
+    metadata:
+      name: {{.ClusterCloudeventSourceErrName2}}
+    spec:
+      clusterName: {{.ClusterName}}
+      destination:
+        http:
+          uri: {{.CloudEventHTTPServiceURL}}
+      eventSubscription:
+        includedEventTypes:
+        - keda.scaledobject.failed.v1
+        excludedEventTypes:
+        - keda.scaledobject.failed.v1
+    `
 )
 
 func TestScaledObjectGeneral(t *testing.T) {
@@ -274,18 +354,31 @@ func TestScaledObjectGeneral(t *testing.T) {
 
 	assert.True(t, WaitForAllPodRunningInNamespace(t, kc, namespace, 5, 20), "all pods should be running")
 
-	testErrEventSourceEmitValue(t, kc, data)
+	testErrEventSourceEmitValue(t, kc, data, true)
 	testEventSourceEmitValue(t, kc, data)
-	testErrEventSourceExcludeValue(t, kc, data)
-	testErrEventSourceIncludeValue(t, kc, data)
-	testErrEventSourceCreation(t, kc, data)
+	testErrEventSourceExcludeValue(t, kc, data, true)
+	testErrEventSourceIncludeValue(t, kc, data, true)
+	testErrEventSourceCreation(t, kc, data, true)
+
+	testErrEventSourceEmitValue(t, kc, data, false)
+	testErrEventSourceExcludeValue(t, kc, data, false)
+	testErrEventSourceIncludeValue(t, kc, data, false)
+	testErrEventSourceCreation(t, kc, data, false)
 
 	DeleteKubernetesResources(t, namespace, data, templates)
 }
 
 // tests error events emitted
-func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data templateData) {
+func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data templateData, isClusterScope bool) {
+	ceTemplate := ""
+	if isClusterScope {
+		ceTemplate = clusterCloudEventSourceTemplate
+	} else {
+		ceTemplate = cloudEventSourceTemplate
+	}
+
 	t.Log("--- test emitting eventsource about scaledobject err---")
+	KubectlApplyWithTemplate(t, data, "cloudEventSourceTemplate", ceTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
 
 	// wait 15 seconds to ensure event propagation
@@ -331,6 +424,8 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 		}
 	}
 	assert.NotEmpty(t, foundEvents)
+	KubectlDeleteWithTemplate(t, data, "cloudEventSourceTemplate", ceTemplate)
+	t.Log("--- testErrEventSourceEmitValuetestErrEventSourceEmitValuer---", "cloud event time", lastCloudEventTime)
 }
 
 func testEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data templateData) {
@@ -377,11 +472,17 @@ func testEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data templa
 }
 
 // tests error events not emitted by
-func testErrEventSourceExcludeValue(t *testing.T, _ *kubernetes.Clientset, data templateData) {
-	t.Log("--- test emitting eventsource about scaledobject err with exclude filter---")
+func testErrEventSourceExcludeValue(t *testing.T, _ *kubernetes.Clientset, data templateData, isClusterScope bool) {
+	t.Log("--- test emitting eventsource about scaledobject err with exclude filter---", "cloud event time", lastCloudEventTime)
 
-	KubectlDeleteWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
-	KubectlApplyWithTemplate(t, data, "cloudEventSourceWithExcludeTemplate", cloudEventSourceWithExcludeTemplate)
+	ceTemplate := ""
+	if isClusterScope {
+		ceTemplate = clusterCloudEventSourceWithExcludeTemplate
+	} else {
+		ceTemplate = cloudEventSourceWithExcludeTemplate
+	}
+
+	KubectlApplyWithTemplate(t, data, "cloudEventSourceWithExcludeTemplate", ceTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
 
 	// wait 15 seconds to ensure event propagation
@@ -408,16 +509,21 @@ func testErrEventSourceExcludeValue(t *testing.T, _ *kubernetes.Clientset, data 
 		}, "get filtered event")
 	}
 
-	KubectlDeleteWithTemplate(t, data, "cloudEventSourceWithExcludeTemplate", cloudEventSourceWithExcludeTemplate)
-	KubectlApplyWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
+	KubectlDeleteWithTemplate(t, data, "cloudEventSourceWithExcludeTemplate", ceTemplate)
 }
 
 // tests error events in include filter
-func testErrEventSourceIncludeValue(t *testing.T, _ *kubernetes.Clientset, data templateData) {
+func testErrEventSourceIncludeValue(t *testing.T, _ *kubernetes.Clientset, data templateData, isClusterScope bool) {
 	t.Log("--- test emitting eventsource about scaledobject err with include filter---")
 
-	KubectlDeleteWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
-	KubectlApplyWithTemplate(t, data, "cloudEventSourceWithIncludeTemplate", cloudEventSourceWithIncludeTemplate)
+	ceTemplate := ""
+	if isClusterScope {
+		ceTemplate = clusterCloudEventSourceWithIncludeTemplate
+	} else {
+		ceTemplate = cloudEventSourceWithIncludeTemplate
+	}
+
+	KubectlApplyWithTemplate(t, data, "cloudEventSourceWithIncludeTemplate", ceTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
 
 	// wait 15 seconds to ensure event propagation
@@ -442,43 +548,56 @@ func testErrEventSourceIncludeValue(t *testing.T, _ *kubernetes.Clientset, data 
 		}
 	}
 	assert.NotEmpty(t, foundEvents)
-	KubectlDeleteWithTemplate(t, data, "cloudEventSourceWithIncludeTemplate", cloudEventSourceWithIncludeTemplate)
-	KubectlApplyWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
+	KubectlDeleteWithTemplate(t, data, "cloudEventSourceWithIncludeTemplate", ceTemplate)
 }
 
 // tests error event type when creation
-func testErrEventSourceCreation(t *testing.T, _ *kubernetes.Clientset, data templateData) {
+func testErrEventSourceCreation(t *testing.T, _ *kubernetes.Clientset, data templateData, isClusterScope bool) {
 	t.Log("--- test emitting eventsource about scaledobject err with include filter---")
 
-	KubectlDeleteWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
+	ceErrTemplate := ""
+	ceErrTemplate2 := ""
+	if isClusterScope {
+		ceErrTemplate = clusterCloudEventSourceWithErrTypeTemplate
+		ceErrTemplate2 = clusterCloudEventSourceWithErrTypeTemplate2
+	} else {
+		ceErrTemplate = cloudEventSourceWithErrTypeTemplate
+		ceErrTemplate2 = cloudEventSourceWithErrTypeTemplate2
+	}
 
-	err := KubectlApplyWithErrors(t, data, "cloudEventSourceWithErrTypeTemplate", cloudEventSourceWithErrTypeTemplate)
-	assert.ErrorContains(t, err, `The CloudEventSource "eventsource-test-ce-err" is invalid:`)
+	// KubectlDeleteWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
 
-	err = KubectlApplyWithErrors(t, data, "cloudEventSourceWithErrTypeTemplate2", cloudEventSourceWithErrTypeTemplate2)
+	err := KubectlApplyWithErrors(t, data, "cloudEventSourceWithErrTypeTemplate", ceErrTemplate)
+	if isClusterScope {
+		assert.ErrorContains(t, err, `The ClusterCloudEventSource "eventsource-test-cce-err" is invalid:`)
+	} else {
+		assert.ErrorContains(t, err, `The CloudEventSource "eventsource-test-ce-err" is invalid:`)
+	}
+
+	err = KubectlApplyWithErrors(t, data, "cloudEventSourceWithErrTypeTemplate2", ceErrTemplate2)
 	assert.ErrorContains(t, err, `setting included types and excluded types at the same time is not supported`)
-
-	KubectlApplyWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
 }
 
 // help function to load template data
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:              namespace,
-			ScaledObject:               scaledObjectName,
-			DeploymentName:             deploymentName,
-			ClientName:                 clientName,
-			CloudEventSourceName:       cloudeventSourceName,
-			CloudeventSourceErrName:    cloudeventSourceErrName,
-			CloudeventSourceErrName2:   cloudeventSourceErrName2,
-			CloudEventHTTPReceiverName: cloudEventHTTPReceiverName,
-			CloudEventHTTPServiceName:  cloudEventHTTPServiceName,
-			CloudEventHTTPServiceURL:   cloudEventHTTPServiceURL,
-			ClusterName:                clusterName,
+			TestNamespace:                   namespace,
+			ScaledObject:                    scaledObjectName,
+			DeploymentName:                  deploymentName,
+			ClientName:                      clientName,
+			CloudEventSourceName:            cloudeventSourceName,
+			CloudeventSourceErrName:         cloudeventSourceErrName,
+			CloudeventSourceErrName2:        cloudeventSourceErrName2,
+			ClusterCloudEventSourceName:     clusterCloudeventSourceName,
+			ClusterCloudeventSourceErrName:  clusterCloudeventSourceErrName,
+			ClusterCloudeventSourceErrName2: clusterCloudeventSourceErrName2,
+			CloudEventHTTPReceiverName:      cloudEventHTTPReceiverName,
+			CloudEventHTTPServiceName:       cloudEventHTTPServiceName,
+			CloudEventHTTPServiceURL:        cloudEventHTTPServiceURL,
+			ClusterName:                     clusterName,
 		}, []Template{
 			{Name: "cloudEventHTTPReceiverTemplate", Config: cloudEventHTTPReceiverTemplate},
 			{Name: "cloudEventHTTPServiceTemplate", Config: cloudEventHTTPServiceTemplate},
 			{Name: "clientTemplate", Config: clientTemplate},
-			{Name: "cloudEventSourceTemplate", Config: cloudEventSourceTemplate},
 		}
 }

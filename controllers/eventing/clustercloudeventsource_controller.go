@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The KEDA Authors
+Copyright 2024 The KEDA Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,58 +33,57 @@ import (
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
-// CloudEventSourceReconciler reconciles a EventSource object
-type CloudEventSourceReconciler struct {
+// ClusterCloudEventSourceReconciler reconciles a EventSource object
+type ClusterCloudEventSourceReconciler struct {
 	client.Client
 	eventEmitter eventemitter.EventHandler
 
-	cloudEventSourceGenerations *sync.Map
-	eventSourcePromMetricsMap   map[string]string
-	eventSourcePromMetricsLock  *sync.Mutex
+	clusterCloudEventSourceGenerations *sync.Map
+	eventSourcePromMetricsMap          map[string]string
+	eventSourcePromMetricsLock         *sync.Mutex
 }
 
-// NewCloudEventSourceReconciler creates a new CloudEventSourceReconciler
-func NewCloudEventSourceReconciler(c client.Client, e eventemitter.EventHandler) *CloudEventSourceReconciler {
-	return &CloudEventSourceReconciler{
-		Client:                      c,
-		eventEmitter:                e,
-		cloudEventSourceGenerations: &sync.Map{},
-		eventSourcePromMetricsMap:   make(map[string]string),
-		eventSourcePromMetricsLock:  &sync.Mutex{},
+// NewClusterCloudEventSourceReconciler creates a new ClusterCloudEventSourceReconciler
+func NewClusterCloudEventSourceReconciler(c client.Client, e eventemitter.EventHandler) *ClusterCloudEventSourceReconciler {
+	return &ClusterCloudEventSourceReconciler{
+		Client:                             c,
+		eventEmitter:                       e,
+		clusterCloudEventSourceGenerations: &sync.Map{},
+		eventSourcePromMetricsMap:          make(map[string]string),
+		eventSourcePromMetricsLock:         &sync.Mutex{},
 	}
 }
 
-// +kubebuilder:rbac:groups=eventing.keda.sh,resources=cloudeventsources;cloudeventsources/status,verbs="*"
+// +kubebuilder:rbac:groups=eventing.keda.sh,resources=clustercloudeventsources;clustercloudeventsources/status,verbs="*"
 
 // Reconcile performs reconciliation on the identified EventSource resource based on the request information passed, returns the result and an error (if any).
-
-func (r *CloudEventSourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *ClusterCloudEventSourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := log.FromContext(ctx)
-	cloudEventSource := &eventingv1alpha1.CloudEventSource{}
+	cloudEventSource := &eventingv1alpha1.ClusterCloudEventSource{}
 	return Reconcile(ctx, reqLogger, r, req, cloudEventSource)
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *CloudEventSourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ClusterCloudEventSourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&eventingv1alpha1.CloudEventSource{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&eventingv1alpha1.ClusterCloudEventSource{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		WithEventFilter(util.IgnoreOtherNamespaces()).
 		Complete(r)
 }
 
-func (r *CloudEventSourceReconciler) GetClient() client.Client {
+func (r *ClusterCloudEventSourceReconciler) GetClient() client.Client {
 	return r.Client
 }
 
-func (r *CloudEventSourceReconciler) GetEventEmitter() eventemitter.EventHandler {
+func (r *ClusterCloudEventSourceReconciler) GetEventEmitter() eventemitter.EventHandler {
 	return r.eventEmitter
 }
 
-func (r *CloudEventSourceReconciler) GetCloudEventSourceGeneration() *sync.Map {
-	return r.cloudEventSourceGenerations
+func (r *ClusterCloudEventSourceReconciler) GetCloudEventSourceGeneration() *sync.Map {
+	return r.clusterCloudEventSourceGenerations
 }
 
-func (r *CloudEventSourceReconciler) UpdatePromMetrics(eventSource eventingv1alpha1.CloudEventSourceInterface, namespacedName string) {
+func (r *ClusterCloudEventSourceReconciler) UpdatePromMetrics(eventSource eventingv1alpha1.CloudEventSourceInterface, namespacedName string) {
 	r.eventSourcePromMetricsLock.Lock()
 	defer r.eventSourcePromMetricsLock.Unlock()
 
@@ -97,7 +96,7 @@ func (r *CloudEventSourceReconciler) UpdatePromMetrics(eventSource eventingv1alp
 }
 
 // UpdatePromMetricsOnDelete is idempotent, so it can be called multiple times without side-effects
-func (r *CloudEventSourceReconciler) UpdatePromMetricsOnDelete(namespacedName string) {
+func (r *ClusterCloudEventSourceReconciler) UpdatePromMetricsOnDelete(namespacedName string) {
 	r.eventSourcePromMetricsLock.Lock()
 	defer r.eventSourcePromMetricsLock.Unlock()
 
