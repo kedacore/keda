@@ -128,12 +128,12 @@ func TestMissing(t *testing.T) {
 	sc := &ScalerConfig{}
 
 	type testStruct struct {
-		StringVal string `keda:"name=stringVal, order=triggerMetadata"`
+		StringVal string `keda:"name=stringVal,  order=triggerMetadata"`
 	}
 
 	ts := testStruct{}
 	err := sc.TypedConfig(&ts)
-	Expect(err).To(MatchError(`missing required parameter "stringVal" in [triggerMetadata]`))
+	Expect(err).To(MatchError(`missing required parameter ["stringVal"] in [triggerMetadata]`))
 }
 
 // TestDeprecated tests the deprecated tag
@@ -152,7 +152,7 @@ func TestDeprecated(t *testing.T) {
 
 	ts := testStruct{}
 	err := sc.TypedConfig(&ts)
-	Expect(err).To(MatchError(`parameter "stringVal" is deprecated`))
+	Expect(err).To(MatchError(`parameter ["stringVal"] is deprecated`))
 
 	sc2 := &ScalerConfig{
 		TriggerMetadata: map[string]string{},
@@ -270,7 +270,7 @@ func TestEnum(t *testing.T) {
 
 	ts2 := testStruct{}
 	err = sc2.TypedConfig(&ts2)
-	Expect(err).To(MatchError(`parameter "enumVal" value "value3" must be one of [value1 value2]`))
+	Expect(err).To(MatchError(`parameter ["enumVal"] value "value3" must be one of [value1 value2]`))
 }
 
 // TestExclusive tests the exclusiveSet type
@@ -299,7 +299,7 @@ func TestExclusive(t *testing.T) {
 
 	ts2 := testStruct{}
 	err = sc2.TypedConfig(&ts2)
-	Expect(err).To(MatchError(`parameter "intVal" value "1,4" must contain only one of [1 4 5]`))
+	Expect(err).To(MatchError(`parameter ["intVal"] value "1,4" must contain only one of [1 4 5]`))
 }
 
 // TestURLValues tests the url.Values type
@@ -497,7 +497,7 @@ func TestNoParsingOrder(t *testing.T) {
 	}
 	tsm := testStructMissing{}
 	err := sc.TypedConfig(&tsm)
-	Expect(err).To(MatchError(`missing required parameter "strVal", no 'order' tag, provide any from [authParams resolvedEnv triggerMetadata]`))
+	Expect(err).To(MatchError(ContainSubstring(`missing required parameter ["strVal"], no 'order' tag, provide any from [authParams resolvedEnv triggerMetadata]`)))
 
 	type testStructDefault struct {
 		DefaultVal string `keda:"name=defaultVal, default=dv"`
@@ -546,4 +546,34 @@ func TestRange(t *testing.T) {
 	Expect(ts.DottedRange).To(HaveLen(6))
 	Expect(ts.DottedRange).To(ConsistOf(2, 3, 4, 5, 6, 7))
 	Expect(ts.WrongRange).To(HaveLen(0))
+}
+
+// TestMultiName tests the multi name param
+func TestMultiName(t *testing.T) {
+	RegisterTestingT(t)
+
+	sc := &ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"property1": "aaa",
+		},
+	}
+
+	sc2 := &ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"property2": "bbb",
+		},
+	}
+
+	type testStruct struct {
+		Property string `keda:"name=property1;property2, order=triggerMetadata"`
+	}
+
+	ts := testStruct{}
+	err := sc.TypedConfig(&ts)
+	Expect(err).To(BeNil())
+	Expect(ts.Property).To(Equal("aaa"))
+
+	err = sc2.TypedConfig(&ts)
+	Expect(err).To(BeNil())
+	Expect(ts.Property).To(Equal("bbb"))
 }

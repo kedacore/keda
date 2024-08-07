@@ -84,7 +84,7 @@ type Params struct {
 	FieldName string
 
 	// Name is the 'name' tag parameter defining the key in triggerMetadata, resolvedEnv or authParams
-	Name string
+	Name []string
 
 	// Optional is the 'optional' tag parameter defining if the parameter is optional
 	Optional bool
@@ -113,7 +113,7 @@ type Params struct {
 
 // IsNested is a function that returns true if the parameter is nested
 func (p Params) IsNested() bool {
-	return p.Name == ""
+	return len(p.Name) == 0
 }
 
 // IsDeprecated is a function that returns true if the parameter is deprecated
@@ -394,23 +394,24 @@ func setConfigValueHelper(params Params, valFromConfig string, field reflect.Val
 func (sc *ScalerConfig) configParamValue(params Params) (string, bool) {
 	for _, po := range params.Order {
 		var m map[string]string
-		key := params.Name
-		switch po {
-		case TriggerMetadata:
-			m = sc.TriggerMetadata
-		case AuthParams:
-			m = sc.AuthParams
-		case ResolvedEnv:
-			m = sc.ResolvedEnv
-			key = sc.TriggerMetadata[fmt.Sprintf("%sFromEnv", params.Name)]
-		default:
-			// this is checked when parsing the tags but adding as default case to avoid any potential future problems
-			return "", false
-		}
-		param, ok := m[key]
-		param = strings.TrimSpace(param)
-		if ok && param != "" {
-			return param, true
+		for _, key := range params.Name {
+			switch po {
+			case TriggerMetadata:
+				m = sc.TriggerMetadata
+			case AuthParams:
+				m = sc.AuthParams
+			case ResolvedEnv:
+				m = sc.ResolvedEnv
+				key = sc.TriggerMetadata[fmt.Sprintf("%sFromEnv", key)]
+			default:
+				// this is checked when parsing the tags but adding as default case to avoid any potential future problems
+				return "", false
+			}
+			param, ok := m[key]
+			param = strings.TrimSpace(param)
+			if ok && param != "" {
+				return param, true
+			}
 		}
 	}
 	return "", params.IsNested()
@@ -446,7 +447,7 @@ func paramsFromTag(tag string, field reflect.StructField) (Params, error) {
 			}
 		case nameTag:
 			if len(tsplit) > 1 {
-				params.Name = strings.TrimSpace(tsplit[1])
+				params.Name = strings.Split(strings.TrimSpace(tsplit[1]), tagValueSeparator)
 			}
 		case deprecatedTag:
 			if len(tsplit) == 1 {
