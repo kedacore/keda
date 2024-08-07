@@ -18,15 +18,18 @@ import (
 // belong to the owner's account in order to use this operation. If you don't have
 // PutResourcePolicy permissions, Amazon Kinesis Data Streams returns a 403 Access
 // Denied error . If you receive a ResourceNotFoundException , check to see if you
-// passed a valid stream or consumer resource. Request patterns can be one of the
-// following:
+// passed a valid stream or consumer resource.
+//
+// Request patterns can be one of the following:
+//
 //   - Data stream pattern: arn:aws.*:kinesis:.*:\d{12}:.*stream/\S+
+//
 //   - Consumer pattern:
 //     ^(arn):aws.*:kinesis:.*:\d{12}:.*stream\/[a-zA-Z0-9_.-]+\/consumer\/[a-zA-Z0-9_.-]+:[0-9]+
 //
-// For more information, see Controlling Access to Amazon Kinesis Data Streams
-// Resources Using IAM (https://docs.aws.amazon.com/streams/latest/dev/controlling-access.html)
-// .
+// For more information, see [Controlling Access to Amazon Kinesis Data Streams Resources Using IAM].
+//
+// [Controlling Access to Amazon Kinesis Data Streams Resources Using IAM]: https://docs.aws.amazon.com/streams/latest/dev/controlling-access.html
 func (c *Client) PutResourcePolicy(ctx context.Context, params *PutResourcePolicyInput, optFns ...func(*Options)) (*PutResourcePolicyOutput, error) {
 	if params == nil {
 		params = &PutResourcePolicyInput{}
@@ -59,6 +62,7 @@ type PutResourcePolicyInput struct {
 }
 
 func (in *PutResourcePolicyInput) bindEndpointParams(p *EndpointParameters) {
+
 	p.ResourceARN = in.ResourceARN
 	p.OperationType = ptr.String("control")
 }
@@ -123,6 +127,12 @@ func (c *Client) addOperationPutResourcePolicyMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpPutResourcePolicyValidationMiddleware(stack); err != nil {

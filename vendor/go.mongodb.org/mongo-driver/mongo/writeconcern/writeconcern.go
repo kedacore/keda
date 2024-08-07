@@ -51,7 +51,7 @@ var ErrNegativeWTimeout = errors.New("write concern `wtimeout` field cannot be n
 type WriteConcern struct {
 	// W requests acknowledgment that the write operation has propagated to a
 	// specified number of mongod instances or to mongod instances with
-	// specified tags. It sets the the "w" option in a MongoDB write concern.
+	// specified tags. It sets the "w" option in a MongoDB write concern.
 	//
 	// W values must be a string or an int.
 	//

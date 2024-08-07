@@ -531,6 +531,12 @@ func (cs *ChangeStream) ID() int64 {
 	return cs.cursor.ID()
 }
 
+// RemainingBatchLength returns the number of documents left in the current batch. If this returns zero, the subsequent
+// call to Next or TryNext will do a network request to fetch the next batch.
+func (cs *ChangeStream) RemainingBatchLength() int {
+	return len(cs.batch)
+}
+
 // SetBatchSize sets the number of documents to fetch from the database with
 // each iteration of the ChangeStream's "Next" or "TryNext" method. This setting
 // only affects subsequent document batches fetched from the database.

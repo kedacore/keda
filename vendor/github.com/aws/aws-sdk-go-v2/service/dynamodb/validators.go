@@ -2430,9 +2430,7 @@ func validateUpdateGlobalSecondaryIndexAction(v *types.UpdateGlobalSecondaryInde
 	if v.IndexName == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("IndexName"))
 	}
-	if v.ProvisionedThroughput == nil {
-		invalidParams.Add(smithy.NewErrParamRequired("ProvisionedThroughput"))
-	} else if v.ProvisionedThroughput != nil {
+	if v.ProvisionedThroughput != nil {
 		if err := validateProvisionedThroughput(v.ProvisionedThroughput); err != nil {
 			invalidParams.AddNested("ProvisionedThroughput", err.(smithy.InvalidParamsError))
 		}

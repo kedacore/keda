@@ -195,9 +195,10 @@ func (e *KMSDisabledException) ErrorCode() string {
 func (e *KMSDisabledException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected because the state of the specified resource isn't
-// valid for this request. For more information, see How Key State Affects Use of
-// a Customer Master Key (https://docs.aws.amazon.com/kms/latest/developerguide/key-state.html)
-// in the Amazon Web Services Key Management Service Developer Guide.
+// valid for this request. For more information, see [How Key State Affects Use of a Customer Master Key]in the Amazon Web Services
+// Key Management Service Developer Guide.
+//
+// [How Key State Affects Use of a Customer Master Key]: https://docs.aws.amazon.com/kms/latest/developerguide/key-state.html
 type KMSInvalidStateException struct {
 	Message *string
 
@@ -277,8 +278,10 @@ func (e *KMSOptInRequired) ErrorCode() string {
 func (e *KMSOptInRequired) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was denied due to request throttling. For more information about
-// throttling, see Limits (https://docs.aws.amazon.com/kms/latest/developerguide/limits.html#requests-per-second)
-// in the Amazon Web Services Key Management Service Developer Guide.
+// throttling, see [Limits]in the Amazon Web Services Key Management Service Developer
+// Guide.
+//
+// [Limits]: https://docs.aws.amazon.com/kms/latest/developerguide/limits.html#requests-per-second
 type KMSThrottlingException struct {
 	Message *string
 
@@ -333,10 +336,11 @@ func (e *LimitExceededException) ErrorFault() smithy.ErrorFault { return smithy.
 
 // The request rate for the stream is too high, or the requested data is too large
 // for the available throughput. Reduce the frequency or size of your requests. For
-// more information, see Streams Limits (https://docs.aws.amazon.com/kinesis/latest/dev/service-sizes-and-limits.html)
-// in the Amazon Kinesis Data Streams Developer Guide, and Error Retries and
-// Exponential Backoff in Amazon Web Services (https://docs.aws.amazon.com/general/latest/gr/api-retries.html)
+// more information, see [Streams Limits]in the Amazon Kinesis Data Streams Developer Guide, and [Error Retries and Exponential Backoff in Amazon Web Services]
 // in the Amazon Web Services General Reference.
+//
+// [Error Retries and Exponential Backoff in Amazon Web Services]: https://docs.aws.amazon.com/general/latest/gr/api-retries.html
+// [Streams Limits]: https://docs.aws.amazon.com/kinesis/latest/dev/service-sizes-and-limits.html
 type ProvisionedThroughputExceededException struct {
 	Message *string
 

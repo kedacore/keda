@@ -13,7 +13,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/operation"
@@ -109,6 +108,9 @@ func (siv SearchIndexView) CreateMany(
 		if model.Options != nil && model.Options.Name != nil {
 			indexes = bsoncore.AppendStringElement(indexes, "name", *model.Options.Name)
 		}
+		if model.Options != nil && model.Options.Type != nil {
+			indexes = bsoncore.AppendStringElement(indexes, "type", *model.Options.Type)
+		}
 		indexes = bsoncore.AppendDocumentElement(indexes, "definition", definition)
 
 		indexes, err = bsoncore.AppendDocumentEnd(indexes, iidx)
@@ -134,20 +136,13 @@ func (siv SearchIndexView) CreateMany(
 		return nil, err
 	}
 
-	wc := siv.coll.writeConcern
-	if sess.TransactionRunning() {
-		wc = nil
-	}
-	if !writeconcern.AckWrite(wc) {
-		sess = nil
-	}
-
 	selector := makePinnedSelector(sess, siv.coll.writeSelector)
 
 	op := operation.NewCreateSearchIndexes(indexes).
-		Session(sess).WriteConcern(wc).ClusterClock(siv.coll.client.clock).
-		Database(siv.coll.db.name).Collection(siv.coll.name).CommandMonitor(siv.coll.client.monitor).
-		Deployment(siv.coll.client.deployment).ServerSelector(selector).ServerAPI(siv.coll.client.serverAPI).
+		Session(sess).CommandMonitor(siv.coll.client.monitor).
+		ServerSelector(selector).ClusterClock(siv.coll.client.clock).
+		Collection(siv.coll.name).Database(siv.coll.db.name).
+		Deployment(siv.coll.client.deployment).ServerAPI(siv.coll.client.serverAPI).
 		Timeout(siv.coll.client.timeout)
 
 	err = op.Execute(ctx)
@@ -196,20 +191,12 @@ func (siv SearchIndexView) DropOne(
 		return err
 	}
 
-	wc := siv.coll.writeConcern
-	if sess.TransactionRunning() {
-		wc = nil
-	}
-	if !writeconcern.AckWrite(wc) {
-		sess = nil
-	}
-
 	selector := makePinnedSelector(sess, siv.coll.writeSelector)
 
 	op := operation.NewDropSearchIndex(name).
-		Session(sess).WriteConcern(wc).CommandMonitor(siv.coll.client.monitor).
+		Session(sess).CommandMonitor(siv.coll.client.monitor).
 		ServerSelector(selector).ClusterClock(siv.coll.client.clock).
-		Database(siv.coll.db.name).Collection(siv.coll.name).
+		Collection(siv.coll.name).Database(siv.coll.db.name).
 		Deployment(siv.coll.client.deployment).ServerAPI(siv.coll.client.serverAPI).
 		Timeout(siv.coll.client.timeout)
 
@@ -258,20 +245,12 @@ func (siv SearchIndexView) UpdateOne(
 		return err
 	}
 
-	wc := siv.coll.writeConcern
-	if sess.TransactionRunning() {
-		wc = nil
-	}
-	if !writeconcern.AckWrite(wc) {
-		sess = nil
-	}
-
 	selector := makePinnedSelector(sess, siv.coll.writeSelector)
 
 	op := operation.NewUpdateSearchIndex(name, indexDefinition).
-		Session(sess).WriteConcern(wc).CommandMonitor(siv.coll.client.monitor).
+		Session(sess).CommandMonitor(siv.coll.client.monitor).
 		ServerSelector(selector).ClusterClock(siv.coll.client.clock).
-		Database(siv.coll.db.name).Collection(siv.coll.name).
+		Collection(siv.coll.name).Database(siv.coll.db.name).
 		Deployment(siv.coll.client.deployment).ServerAPI(siv.coll.client.serverAPI).
 		Timeout(siv.coll.client.timeout)
 

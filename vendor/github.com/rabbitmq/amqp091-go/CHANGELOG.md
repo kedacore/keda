@@ -1,5 +1,73 @@
 # Changelog
 
+## [v1.10.0](https://github.com/rabbitmq/amqp091-go/tree/v1.10.0) (2024-05-08)
+
+[Full Changelog](https://github.com/rabbitmq/amqp091-go/compare/v1.9.0...v1.10.0)
+
+**Implemented enhancements:**
+
+- Undeprecate non-context publish functions [\#259](https://github.com/rabbitmq/amqp091-go/pull/259) ([Zerpet](https://github.com/Zerpet))
+- Update Go directive [\#257](https://github.com/rabbitmq/amqp091-go/pull/257) ([Zerpet](https://github.com/Zerpet))
+
+**Fixed bugs:**
+
+- republishing on reconnect bug in the example [\#249](https://github.com/rabbitmq/amqp091-go/issues/249)
+- Channel Notify Close not receive event when connection is closed by RMQ server. [\#241](https://github.com/rabbitmq/amqp091-go/issues/241)
+- Inconsistent documentation [\#231](https://github.com/rabbitmq/amqp091-go/issues/231)
+- Data race in the client example [\#72](https://github.com/rabbitmq/amqp091-go/issues/72)
+- Fix string function of URI [\#258](https://github.com/rabbitmq/amqp091-go/pull/258) ([Zerpet](https://github.com/Zerpet))
+
+**Closed issues:**
+
+- Documentation needed \(`PublishWithContext` does not use context\) [\#195](https://github.com/rabbitmq/amqp091-go/issues/195)
+- concurrent dispatch data race [\#226](https://github.com/rabbitmq/amqp091-go/issues/226)
+
+**Merged pull requests:**
+
+- Fix data race in example [\#260](https://github.com/rabbitmq/amqp091-go/pull/260) ([Zerpet](https://github.com/Zerpet))
+- Address CodeQL warning [\#252](https://github.com/rabbitmq/amqp091-go/pull/252) ([lukebakken](https://github.com/lukebakken))
+- Add support for additional AMQP URI query parameters [\#251](https://github.com/rabbitmq/amqp091-go/pull/251) ([vilius-g](https://github.com/vilius-g))
+- Example fix [\#250](https://github.com/rabbitmq/amqp091-go/pull/250) ([Boris-Plato](https://github.com/Boris-Plato))
+- Increasing the code coverage [\#248](https://github.com/rabbitmq/amqp091-go/pull/248) ([edercarloscosta](https://github.com/edercarloscosta))
+- Use correct mutex to guard confirms.published [\#240](https://github.com/rabbitmq/amqp091-go/pull/240) ([hjr265](https://github.com/hjr265))
+- Documenting Publishing.Expiration usage [\#232](https://github.com/rabbitmq/amqp091-go/pull/232) ([niksteff](https://github.com/niksteff))
+- fix comment typo in example\_client\_test.go [\#228](https://github.com/rabbitmq/amqp091-go/pull/228) ([wisaTong](https://github.com/wisaTong))
+- Bump go.uber.org/goleak from 1.2.1 to 1.3.0 [\#227](https://github.com/rabbitmq/amqp091-go/pull/227) ([dependabot[bot]](https://github.com/apps/dependabot))
+
+## [v1.9.0](https://github.com/rabbitmq/amqp091-go/tree/v1.9.0) (2023-10-02)
+
+[Full Changelog](https://github.com/rabbitmq/amqp091-go/compare/v1.8.1...v1.9.0)
+
+**Implemented enhancements:**
+
+- Use of buffered delivery channels when prefetch\_count is not null [\#200](https://github.com/rabbitmq/amqp091-go/issues/200)
+
+**Fixed bugs:**
+
+- connection block when write connection reset by peer [\#222](https://github.com/rabbitmq/amqp091-go/issues/222)
+- Test failure on 32bit architectures [\#202](https://github.com/rabbitmq/amqp091-go/issues/202)
+
+**Closed issues:**
+
+- Add a constant to set consumer timeout as queue argument [\#201](https://github.com/rabbitmq/amqp091-go/issues/201)
+- Add a constant for CQ version [\#199](https://github.com/rabbitmq/amqp091-go/issues/199)
+- Examples may need to be updated after \#140 [\#153](https://github.com/rabbitmq/amqp091-go/issues/153)
+
+**Merged pull requests:**
+
+- Update spec091.go [\#224](https://github.com/rabbitmq/amqp091-go/pull/224) ([pinkfish](https://github.com/pinkfish))
+- Closes 222 [\#223](https://github.com/rabbitmq/amqp091-go/pull/223) ([yywing](https://github.com/yywing))
+- Update write.go [\#221](https://github.com/rabbitmq/amqp091-go/pull/221) ([pinkfish](https://github.com/pinkfish))
+- Bump versions [\#219](https://github.com/rabbitmq/amqp091-go/pull/219) ([lukebakken](https://github.com/lukebakken))
+- remove extra word 'accept' from ExchangeDeclare description [\#217](https://github.com/rabbitmq/amqp091-go/pull/217) ([a-sabzian](https://github.com/a-sabzian))
+- Misc Windows CI updates [\#216](https://github.com/rabbitmq/amqp091-go/pull/216) ([lukebakken](https://github.com/lukebakken))
+- Stop using deprecated Publish function [\#207](https://github.com/rabbitmq/amqp091-go/pull/207) ([Zerpet](https://github.com/Zerpet))
+- Constant for consumer timeout queue argument [\#206](https://github.com/rabbitmq/amqp091-go/pull/206) ([Zerpet](https://github.com/Zerpet))
+- Add a constant for CQ v2 queue argument [\#205](https://github.com/rabbitmq/amqp091-go/pull/205) ([Zerpet](https://github.com/Zerpet))
+- Fix example for 32-bit compatibility [\#204](https://github.com/rabbitmq/amqp091-go/pull/204) ([Zerpet](https://github.com/Zerpet))
+- Fix to increase timeout milliseconds since it's too tight [\#203](https://github.com/rabbitmq/amqp091-go/pull/203) ([t2y](https://github.com/t2y))
+- Add Channel.ConsumeWithContext to be able to cancel delivering [\#192](https://github.com/rabbitmq/amqp091-go/pull/192) ([t2y](https://github.com/t2y))
+
 ## [v1.8.1](https://github.com/rabbitmq/amqp091-go/tree/v1.8.1) (2023-05-04)
 
 [Full Changelog](https://github.com/rabbitmq/amqp091-go/compare/v1.8.0...v1.8.1)

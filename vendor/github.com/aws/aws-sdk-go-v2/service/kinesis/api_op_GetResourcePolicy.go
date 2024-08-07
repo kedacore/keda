@@ -13,7 +13,9 @@ import (
 
 // Returns a policy attached to the specified data stream or consumer. Request
 // patterns can be one of the following:
+//
 //   - Data stream pattern: arn:aws.*:kinesis:.*:\d{12}:.*stream/\S+
+//
 //   - Consumer pattern:
 //     ^(arn):aws.*:kinesis:.*:\d{12}:.*stream\/[a-zA-Z0-9_.-]+\/consumer\/[a-zA-Z0-9_.-]+:[0-9]+
 func (c *Client) GetResourcePolicy(ctx context.Context, params *GetResourcePolicyInput, optFns ...func(*Options)) (*GetResourcePolicyOutput, error) {
@@ -42,6 +44,7 @@ type GetResourcePolicyInput struct {
 }
 
 func (in *GetResourcePolicyInput) bindEndpointParams(p *EndpointParameters) {
+
 	p.ResourceARN = in.ResourceARN
 	p.OperationType = ptr.String("control")
 }
@@ -112,6 +115,12 @@ func (c *Client) addOperationGetResourcePolicyMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpGetResourcePolicyValidationMiddleware(stack); err != nil {

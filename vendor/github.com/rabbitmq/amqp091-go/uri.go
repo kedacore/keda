@@ -7,6 +7,7 @@ package amqp091
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"net/url"
 	"strconv"
@@ -32,16 +33,20 @@ var defaultURI = URI{
 
 // URI represents a parsed AMQP URI string.
 type URI struct {
-	Scheme     string
-	Host       string
-	Port       int
-	Username   string
-	Password   string
-	Vhost      string
-	CertFile   string // client TLS auth - path to certificate (PEM)
-	CACertFile string // client TLS auth - path to CA certificate (PEM)
-	KeyFile    string // client TLS auth - path to private key (PEM)
-	ServerName string // client TLS auth - server name
+	Scheme            string
+	Host              string
+	Port              int
+	Username          string
+	Password          string
+	Vhost             string
+	CertFile          string // client TLS auth - path to certificate (PEM)
+	CACertFile        string // client TLS auth - path to CA certificate (PEM)
+	KeyFile           string // client TLS auth - path to private key (PEM)
+	ServerName        string // client TLS auth - server name
+	AuthMechanism     []string
+	Heartbeat         heartbeatDuration
+	ConnectionTimeout int
+	ChannelMax        uint16
 }
 
 // ParseURI attempts to parse the given AMQP URI according to the spec.
@@ -62,6 +67,10 @@ type URI struct {
 //	keyfile: <path/to/client_key.pem>
 //	cacertfile: <path/to/ca.pem>
 //	server_name_indication: <server name>
+//	auth_mechanism: <one or more: plain, amqplain, external>
+//	heartbeat: <seconds (integer)>
+//	connection_timeout: <milliseconds (integer)>
+//	channel_max: <max number of channels (integer)>
 //
 // If cacertfile is not provided, system CA certificates will be used.
 // Mutual TLS (client auth) will be enabled only in case keyfile AND certfile provided.
@@ -134,6 +143,31 @@ func ParseURI(uri string) (URI, error) {
 	builder.KeyFile = params.Get("keyfile")
 	builder.CACertFile = params.Get("cacertfile")
 	builder.ServerName = params.Get("server_name_indication")
+	builder.AuthMechanism = params["auth_mechanism"]
+
+	if params.Has("heartbeat") {
+		value, err := strconv.Atoi(params.Get("heartbeat"))
+		if err != nil {
+			return builder, fmt.Errorf("heartbeat is not an integer: %v", err)
+		}
+		builder.Heartbeat = newHeartbeatDurationFromSeconds(value)
+	}
+
+	if params.Has("connection_timeout") {
+		value, err := strconv.Atoi(params.Get("connection_timeout"))
+		if err != nil {
+			return builder, fmt.Errorf("connection_timeout is not an integer: %v", err)
+		}
+		builder.ConnectionTimeout = value
+	}
+
+	if params.Has("channel_max") {
+		value, err := strconv.ParseUint(params.Get("channel_max"), 10, 16)
+		if err != nil {
+			return builder, fmt.Errorf("connection_timeout is not an integer: %v", err)
+		}
+		builder.ChannelMax = uint16(value)
+	}
 
 	return builder, nil
 }
@@ -190,6 +224,30 @@ func (uri URI) String() string {
 		authority.RawPath = url.QueryEscape(uri.Vhost)
 	} else {
 		authority.Path = "/"
+	}
+
+	if uri.CertFile != "" || uri.KeyFile != "" || uri.CACertFile != "" || uri.ServerName != "" {
+		rawQuery := strings.Builder{}
+		if uri.CertFile != "" {
+			rawQuery.WriteString("certfile=")
+			rawQuery.WriteString(uri.CertFile)
+			rawQuery.WriteRune('&')
+		}
+		if uri.KeyFile != "" {
+			rawQuery.WriteString("keyfile=")
+			rawQuery.WriteString(uri.KeyFile)
+			rawQuery.WriteRune('&')
+		}
+		if uri.CACertFile != "" {
+			rawQuery.WriteString("cacertfile=")
+			rawQuery.WriteString(uri.CACertFile)
+			rawQuery.WriteRune('&')
+		}
+		if uri.ServerName != "" {
+			rawQuery.WriteString("server_name_indication=")
+			rawQuery.WriteString(uri.ServerName)
+		}
+		authority.RawQuery = rawQuery.String()
 	}
 
 	return authority.String()

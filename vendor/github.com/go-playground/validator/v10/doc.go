@@ -253,7 +253,7 @@ Example #2
 
 This validates that the value is not the data types default zero value.
 For numbers ensures value is not zero. For strings ensures value is
-not "". For slices, maps, pointers, interfaces, channels and functions
+not "". For booleans ensures value is not false. For slices, maps, pointers, interfaces, channels and functions
 ensures the value is not nil. For structs ensures value is not the zero value when using WithRequiredStructEnabled.
 
 	Usage: required
@@ -911,10 +911,19 @@ This will accept any uri the golang request uri accepts
 
 # Urn RFC 2141 String
 
-This validataes that a string value contains a valid URN
+This validates that a string value contains a valid URN
 according to the RFC 2141 spec.
 
 	Usage: urn_rfc2141
+
+# Base32 String
+
+This validates that a string value contains a valid bas324 value.
+Although an empty string is valid base32 this will report an empty string
+as an error, if you wish to accept an empty string as valid you can use
+this with the omitempty tag.
+
+	Usage: base32
 
 # Base64 String
 
@@ -957,7 +966,7 @@ Bitcoin Bech32 Address (segwit)
 
 This validates that a string value contains a valid bitcoin Bech32 address as defined
 by bip-0173 (https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki)
-Special thanks to Pieter Wuille for providng reference implementations.
+Special thanks to Pieter Wuille for providing reference implementations.
 
 	Usage: btc_addr_bech32
 
@@ -1290,7 +1299,7 @@ may not exist at the time of validation.
 # HostPort
 
 This validates that a string value contains a valid DNS hostname and port that
-can be used to valiate fields typically passed to sockets and connections.
+can be used to validate fields typically passed to sockets and connections.
 
 	Usage: hostname_port
 
@@ -1377,11 +1386,19 @@ This validates that a string value contains a valid credit card number using Luh
 
 This validates that a string or (u)int value contains a valid checksum using the Luhn algorithm.
 
-# MongoDb ObjectID
+# MongoDB
 
-This validates that a string is a valid 24 character hexadecimal string.
+This validates that a string is a valid 24 character hexadecimal string or valid connection string.
 
 	Usage: mongodb
+	       mongodb_connection_string
+
+Example:
+
+	type Test struct {
+		ObjectIdField         string `validate:"mongodb"`
+		ConnectionStringField string `validate:"mongodb_connection_string"`
+	}
 
 # Cron
 

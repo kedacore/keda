@@ -440,22 +440,6 @@ func TestNATSJetStreamGetNATSJetstreamServerURL(t *testing.T) {
 	}
 }
 
-func TestInvalidateNATSJetStreamCachedMonitoringData(t *testing.T) {
-	meta, err := parseNATSJetStreamMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testNATSJetStreamGoodMetadata, TriggerIndex: 0})
-	if err != nil {
-		t.Fatal("Could not parse metadata:", err)
-	}
-
-	mockJetStreamScaler := natsJetStreamScaler{
-		stream:     nil,
-		metadata:   meta,
-		httpClient: http.DefaultClient,
-		logger:     InitializeLogger(&scalersconfig.ScalerConfig{TriggerMetadata: testNATSJetStreamGoodMetadata, TriggerIndex: 0}, "nats_jetstream_scaler"),
-	}
-
-	mockJetStreamScaler.invalidateNATSJetStreamCachedMonitoringData()
-}
-
 func TestNATSJetStreamClose(t *testing.T) {
 	mockJetStreamScaler, err := NewNATSJetStreamScaler(&scalersconfig.ScalerConfig{TriggerMetadata: testNATSJetStreamGoodMetadata, TriggerIndex: 0})
 	if err != nil {

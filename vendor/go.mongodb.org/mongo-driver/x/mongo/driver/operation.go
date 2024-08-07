@@ -622,7 +622,7 @@ func (op Operation) Execute(ctx context.Context) error {
 		}
 	}()
 	for {
-		// If we're starting a retry and the the error from the previous try was
+		// If we're starting a retry and the error from the previous try was
 		// a context canceled or deadline exceeded error, stop retrying and
 		// return that error.
 		if errors.Is(prevErr, context.Canceled) || errors.Is(prevErr, context.DeadlineExceeded) {
@@ -1574,11 +1574,17 @@ func (op Operation) addClusterTime(dst []byte, desc description.SelectedServer) 
 // operation's MaxTimeMS if set. If no MaxTimeMS is set on the operation, and context is
 // not a Timeout context, calculateMaxTimeMS returns 0.
 func (op Operation) calculateMaxTimeMS(ctx context.Context, mon RTTMonitor) (uint64, error) {
-	if csot.IsTimeoutContext(ctx) {
-		if op.OmitCSOTMaxTimeMS {
-			return 0, nil
-		}
-
+	// If CSOT is enabled and we're not omitting the CSOT-calculated maxTimeMS
+	// value, then calculate maxTimeMS.
+	//
+	// This allows commands that do not currently send CSOT-calculated maxTimeMS
+	// (e.g. Find and Aggregate) to still use a manually-provided maxTimeMS
+	// value.
+	//
+	// TODO(GODRIVER-2944): Remove or refactor this logic when we add the
+	// "timeoutMode" option, which will allow users to opt-in to the
+	// CSOT-calculated maxTimeMS values if that's the behavior they want.
+	if csot.IsTimeoutContext(ctx) && !op.OmitCSOTMaxTimeMS {
 		if deadline, ok := ctx.Deadline(); ok {
 			remainingTimeout := time.Until(deadline)
 			rtt90 := mon.P90()
@@ -1893,7 +1899,6 @@ func (op Operation) decodeResult(ctx context.Context, opcode wiremessage.OpCode,
 					return nil, errors.New("malformed wire message: insufficient bytes to read single document")
 				}
 			case wiremessage.DocumentSequence:
-				// TODO(GODRIVER-617): Implement document sequence returns.
 				_, _, wm, ok = wiremessage.ReadMsgSectionDocumentSequence(wm)
 				if !ok {
 					return nil, errors.New("malformed wire message: insufficient bytes to read document sequence")
@@ -1989,7 +1994,7 @@ func (op Operation) publishStartedEvent(ctx context.Context, info startedInforma
 	}
 }
 
-// canPublishSucceededEvent returns true if a CommandSucceededEvent can be
+// canPublishFinishedEvent returns true if a CommandSucceededEvent can be
 // published for the given command. This is true if the command is not an
 // unacknowledged write and the command monitor is monitoring succeeded events.
 func (op Operation) canPublishFinishedEvent(info finishedInformation) bool {

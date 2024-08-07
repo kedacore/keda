@@ -11,21 +11,25 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// List the specified metrics. You can use the returned metrics with GetMetricData (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricData.html)
-// or GetMetricStatistics (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricStatistics.html)
-// to get statistical data. Up to 500 results are returned for any one call. To
-// retrieve additional results, use the returned token with subsequent calls. After
-// you create a metric, allow up to 15 minutes for the metric to appear. To see
-// metric statistics sooner, use GetMetricData (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricData.html)
-// or GetMetricStatistics (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricStatistics.html)
-// . If you are using CloudWatch cross-account observability, you can use this
+// List the specified metrics. You can use the returned metrics with [GetMetricData] or [GetMetricStatistics] to get
+// statistical data.
+//
+// Up to 500 results are returned for any one call. To retrieve additional
+// results, use the returned token with subsequent calls.
+//
+// After you create a metric, allow up to 15 minutes for the metric to appear. To
+// see metric statistics sooner, use [GetMetricData]or [GetMetricStatistics].
+//
+// If you are using CloudWatch cross-account observability, you can use this
 // operation in a monitoring account and view metrics from the linked source
-// accounts. For more information, see CloudWatch cross-account observability (https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Unified-Cross-Account.html)
-// . ListMetrics doesn't return information about metrics if those metrics haven't
-// reported data in the past two weeks. To retrieve those metrics, use
-// GetMetricData (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricData.html)
-// or GetMetricStatistics (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricStatistics.html)
-// .
+// accounts. For more information, see [CloudWatch cross-account observability].
+//
+// ListMetrics doesn't return information about metrics if those metrics haven't
+// reported data in the past two weeks. To retrieve those metrics, use [GetMetricData]or [GetMetricStatistics].
+//
+// [GetMetricData]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricData.html
+// [GetMetricStatistics]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricStatistics.html
+// [CloudWatch cross-account observability]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Unified-Cross-Account.html
 func (c *Client) ListMetrics(ctx context.Context, params *ListMetricsInput, optFns ...func(*Options)) (*ListMetricsOutput, error) {
 	if params == nil {
 		params = &ListMetricsInput{}
@@ -48,7 +52,9 @@ type ListMetricsInput struct {
 	Dimensions []types.DimensionFilter
 
 	// If you are using this operation in a monitoring account, specify true to
-	// include metrics from source accounts in the returned data. The default is false .
+	// include metrics from source accounts in the returned data.
+	//
+	// The default is false .
 	IncludeLinkedAccounts *bool
 
 	// The name of the metric to filter against. Only the metrics with names that
@@ -70,10 +76,11 @@ type ListMetricsInput struct {
 
 	// To filter the results to show only metrics that have had data points published
 	// in the past three hours, specify this parameter with a value of PT3H . This is
-	// the only valid value for this parameter. The results that are returned are an
-	// approximation of the value you specify. There is a low probability that the
-	// returned results include metrics with last published data as much as 40 minutes
-	// more than the specified time interval.
+	// the only valid value for this parameter.
+	//
+	// The results that are returned are an approximation of the value you specify.
+	// There is a low probability that the returned results include metrics with last
+	// published data as much as 40 minutes more than the specified time interval.
 	RecentlyActive types.RecentlyActive
 
 	noSmithyDocumentSerde
@@ -89,8 +96,10 @@ type ListMetricsOutput struct {
 
 	// If you are using this operation in a monitoring account, this array contains
 	// the account IDs of the source accounts where the metrics in the returned data
-	// are from. This field is a 1:1 mapping between each metric that is returned and
-	// the ID of the owning account.
+	// are from.
+	//
+	// This field is a 1:1 mapping between each metric that is returned and the ID of
+	// the owning account.
 	OwningAccounts []string
 
 	// Metadata pertaining to the operation's result.
@@ -154,6 +163,12 @@ func (c *Client) addOperationListMetricsMiddlewares(stack *middleware.Stack, opt
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpListMetricsValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -177,13 +192,6 @@ func (c *Client) addOperationListMetricsMiddlewares(stack *middleware.Stack, opt
 	}
 	return nil
 }
-
-// ListMetricsAPIClient is a client that implements the ListMetrics operation.
-type ListMetricsAPIClient interface {
-	ListMetrics(context.Context, *ListMetricsInput, ...func(*Options)) (*ListMetricsOutput, error)
-}
-
-var _ ListMetricsAPIClient = (*Client)(nil)
 
 // ListMetricsPaginatorOptions is the paginator options for ListMetrics
 type ListMetricsPaginatorOptions struct {
@@ -236,6 +244,9 @@ func (p *ListMetricsPaginator) NextPage(ctx context.Context, optFns ...func(*Opt
 	params := *p.params
 	params.NextToken = p.nextToken
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListMetrics(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -254,6 +265,13 @@ func (p *ListMetricsPaginator) NextPage(ctx context.Context, optFns ...func(*Opt
 
 	return result, nil
 }
+
+// ListMetricsAPIClient is a client that implements the ListMetrics operation.
+type ListMetricsAPIClient interface {
+	ListMetrics(context.Context, *ListMetricsInput, ...func(*Options)) (*ListMetricsOutput, error)
+}
+
+var _ ListMetricsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListMetrics(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

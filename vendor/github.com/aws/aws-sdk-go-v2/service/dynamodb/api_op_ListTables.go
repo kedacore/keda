@@ -49,16 +49,18 @@ type ListTablesOutput struct {
 
 	// The name of the last table in the current page of results. Use this value as
 	// the ExclusiveStartTableName in a new request to obtain the next page of
-	// results, until all the table names are returned. If you do not receive a
-	// LastEvaluatedTableName value in the response, this means that there are no more
-	// table names to be retrieved.
+	// results, until all the table names are returned.
+	//
+	// If you do not receive a LastEvaluatedTableName value in the response, this
+	// means that there are no more table names to be retrieved.
 	LastEvaluatedTableName *string
 
 	// The names of the tables associated with the current account at the current
-	// endpoint. The maximum size of this array is 100. If LastEvaluatedTableName also
-	// appears in the output, you can use this value as the ExclusiveStartTableName
-	// parameter in a subsequent ListTables request and obtain the next page of
-	// results.
+	// endpoint. The maximum size of this array is 100.
+	//
+	// If LastEvaluatedTableName also appears in the output, you can use this value as
+	// the ExclusiveStartTableName parameter in a subsequent ListTables request and
+	// obtain the next page of results.
 	TableNames []string
 
 	// Metadata pertaining to the operation's result.
@@ -125,6 +127,12 @@ func (c *Client) addOperationListTablesMiddlewares(stack *middleware.Stack, opti
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListTables(options.Region), middleware.Before); err != nil {
 		return err
 	}
@@ -151,56 +159,6 @@ func (c *Client) addOperationListTablesMiddlewares(stack *middleware.Stack, opti
 	}
 	return nil
 }
-
-func addOpListTablesDiscoverEndpointMiddleware(stack *middleware.Stack, o Options, c *Client) error {
-	return stack.Finalize.Insert(&internalEndpointDiscovery.DiscoverEndpoint{
-		Options: []func(*internalEndpointDiscovery.DiscoverEndpointOptions){
-			func(opt *internalEndpointDiscovery.DiscoverEndpointOptions) {
-				opt.DisableHTTPS = o.EndpointOptions.DisableHTTPS
-				opt.Logger = o.Logger
-			},
-		},
-		DiscoverOperation:            c.fetchOpListTablesDiscoverEndpoint,
-		EndpointDiscoveryEnableState: o.EndpointDiscovery.EnableEndpointDiscovery,
-		EndpointDiscoveryRequired:    false,
-		Region:                       o.Region,
-	}, "ResolveEndpointV2", middleware.After)
-}
-
-func (c *Client) fetchOpListTablesDiscoverEndpoint(ctx context.Context, region string, optFns ...func(*internalEndpointDiscovery.DiscoverEndpointOptions)) (internalEndpointDiscovery.WeightedAddress, error) {
-	input := getOperationInput(ctx)
-	in, ok := input.(*ListTablesInput)
-	if !ok {
-		return internalEndpointDiscovery.WeightedAddress{}, fmt.Errorf("unknown input type %T", input)
-	}
-	_ = in
-
-	identifierMap := make(map[string]string, 0)
-	identifierMap["sdk#Region"] = region
-
-	key := fmt.Sprintf("DynamoDB.%v", identifierMap)
-
-	if v, ok := c.endpointCache.Get(key); ok {
-		return v, nil
-	}
-
-	discoveryOperationInput := &DescribeEndpointsInput{}
-
-	opt := internalEndpointDiscovery.DiscoverEndpointOptions{}
-	for _, fn := range optFns {
-		fn(&opt)
-	}
-
-	go c.handleEndpointDiscoveryFromService(ctx, discoveryOperationInput, region, key, opt)
-	return internalEndpointDiscovery.WeightedAddress{}, nil
-}
-
-// ListTablesAPIClient is a client that implements the ListTables operation.
-type ListTablesAPIClient interface {
-	ListTables(context.Context, *ListTablesInput, ...func(*Options)) (*ListTablesOutput, error)
-}
-
-var _ ListTablesAPIClient = (*Client)(nil)
 
 // ListTablesPaginatorOptions is the paginator options for ListTables
 type ListTablesPaginatorOptions struct {
@@ -266,6 +224,9 @@ func (p *ListTablesPaginator) NextPage(ctx context.Context, optFns ...func(*Opti
 	}
 	params.Limit = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListTables(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -284,6 +245,56 @@ func (p *ListTablesPaginator) NextPage(ctx context.Context, optFns ...func(*Opti
 
 	return result, nil
 }
+
+func addOpListTablesDiscoverEndpointMiddleware(stack *middleware.Stack, o Options, c *Client) error {
+	return stack.Finalize.Insert(&internalEndpointDiscovery.DiscoverEndpoint{
+		Options: []func(*internalEndpointDiscovery.DiscoverEndpointOptions){
+			func(opt *internalEndpointDiscovery.DiscoverEndpointOptions) {
+				opt.DisableHTTPS = o.EndpointOptions.DisableHTTPS
+				opt.Logger = o.Logger
+			},
+		},
+		DiscoverOperation:            c.fetchOpListTablesDiscoverEndpoint,
+		EndpointDiscoveryEnableState: o.EndpointDiscovery.EnableEndpointDiscovery,
+		EndpointDiscoveryRequired:    false,
+		Region:                       o.Region,
+	}, "ResolveEndpointV2", middleware.After)
+}
+
+func (c *Client) fetchOpListTablesDiscoverEndpoint(ctx context.Context, region string, optFns ...func(*internalEndpointDiscovery.DiscoverEndpointOptions)) (internalEndpointDiscovery.WeightedAddress, error) {
+	input := getOperationInput(ctx)
+	in, ok := input.(*ListTablesInput)
+	if !ok {
+		return internalEndpointDiscovery.WeightedAddress{}, fmt.Errorf("unknown input type %T", input)
+	}
+	_ = in
+
+	identifierMap := make(map[string]string, 0)
+	identifierMap["sdk#Region"] = region
+
+	key := fmt.Sprintf("DynamoDB.%v", identifierMap)
+
+	if v, ok := c.endpointCache.Get(key); ok {
+		return v, nil
+	}
+
+	discoveryOperationInput := &DescribeEndpointsInput{}
+
+	opt := internalEndpointDiscovery.DiscoverEndpointOptions{}
+	for _, fn := range optFns {
+		fn(&opt)
+	}
+
+	go c.handleEndpointDiscoveryFromService(ctx, discoveryOperationInput, region, key, opt)
+	return internalEndpointDiscovery.WeightedAddress{}, nil
+}
+
+// ListTablesAPIClient is a client that implements the ListTables operation.
+type ListTablesAPIClient interface {
+	ListTables(context.Context, *ListTablesInput, ...func(*Options)) (*ListTablesOutput, error)
+}
+
+var _ ListTablesAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListTables(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

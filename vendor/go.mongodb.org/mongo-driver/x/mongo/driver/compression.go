@@ -30,7 +30,11 @@ type CompressionOpts struct {
 // destination writer. It panics on any errors and should only be used at
 // package initialization time.
 func mustZstdNewWriter(lvl zstd.EncoderLevel) *zstd.Encoder {
-	enc, err := zstd.NewWriter(nil, zstd.WithEncoderLevel(lvl))
+	enc, err := zstd.NewWriter(
+		nil,
+		zstd.WithWindowSize(8<<20), // Set window size to 8MB.
+		zstd.WithEncoderLevel(lvl),
+	)
 	if err != nil {
 		panic(err)
 	}
@@ -105,6 +109,13 @@ func (e *zlibEncoder) Encode(dst, src []byte) ([]byte, error) {
 	return dst, nil
 }
 
+var zstdBufPool = sync.Pool{
+	New: func() interface{} {
+		s := make([]byte, 0)
+		return &s
+	},
+}
+
 // CompressPayload takes a byte slice and compresses it according to the options passed
 func CompressPayload(in []byte, opts CompressionOpts) ([]byte, error) {
 	switch opts.Compressor {
@@ -123,7 +134,13 @@ func CompressPayload(in []byte, opts CompressionOpts) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		return encoder.EncodeAll(in, nil), nil
+		ptr := zstdBufPool.Get().(*[]byte)
+		b := encoder.EncodeAll(in, *ptr)
+		dst := make([]byte, len(b))
+		copy(dst, b)
+		*ptr = b[:0]
+		zstdBufPool.Put(ptr)
+		return dst, nil
 	default:
 		return nil, fmt.Errorf("unknown compressor ID %v", opts.Compressor)
 	}

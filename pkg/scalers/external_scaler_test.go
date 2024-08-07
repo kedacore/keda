@@ -247,7 +247,7 @@ func TestWaitForState(t *testing.T) {
 	}()
 
 	// build client connect to server
-	grpcClient, err := grpc.Dial(address,
+	grpcClient, err := grpc.NewClient(address,
 		grpc.WithDefaultServiceConfig(grpcConfig),
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {

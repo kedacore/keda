@@ -218,20 +218,6 @@ func (s *natsJetStreamScaler) getNATSJetstreamMonitoringData(ctx context.Context
 	}
 
 	if s.metadata.clusterSize > 1 {
-		// we know who the consumer leader and its monitoring url is, query it directly
-		if s.metadata.consumerLeader != "" && s.metadata.monitoringLeaderURL != "" {
-			natsJetStreamMonitoringLeaderURL := s.metadata.monitoringLeaderURL
-
-			jetStreamAccountResp, err = s.getNATSJetstreamMonitoringRequest(ctx, natsJetStreamMonitoringLeaderURL)
-			if err != nil {
-				return err
-			}
-
-			s.setNATSJetStreamMonitoringData(jetStreamAccountResp, natsJetStreamMonitoringLeaderURL)
-			return nil
-		}
-
-		// we haven't found the consumer yet, grab the list of hosts and try each one
 		natsJetStreamMonitoringServerURL, err := s.getNATSJetStreamMonitoringServerURL("")
 		if err != nil {
 			return err

@@ -109,6 +109,12 @@ func (c *Client) addOperationListMetricStreamsMiddlewares(stack *middleware.Stac
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListMetricStreams(options.Region), middleware.Before); err != nil {
 		return err
 	}
@@ -129,14 +135,6 @@ func (c *Client) addOperationListMetricStreamsMiddlewares(stack *middleware.Stac
 	}
 	return nil
 }
-
-// ListMetricStreamsAPIClient is a client that implements the ListMetricStreams
-// operation.
-type ListMetricStreamsAPIClient interface {
-	ListMetricStreams(context.Context, *ListMetricStreamsInput, ...func(*Options)) (*ListMetricStreamsOutput, error)
-}
-
-var _ ListMetricStreamsAPIClient = (*Client)(nil)
 
 // ListMetricStreamsPaginatorOptions is the paginator options for ListMetricStreams
 type ListMetricStreamsPaginatorOptions struct {
@@ -201,6 +199,9 @@ func (p *ListMetricStreamsPaginator) NextPage(ctx context.Context, optFns ...fun
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListMetricStreams(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -219,6 +220,14 @@ func (p *ListMetricStreamsPaginator) NextPage(ctx context.Context, optFns ...fun
 
 	return result, nil
 }
+
+// ListMetricStreamsAPIClient is a client that implements the ListMetricStreams
+// operation.
+type ListMetricStreamsAPIClient interface {
+	ListMetricStreams(context.Context, *ListMetricStreamsInput, ...func(*Options)) (*ListMetricStreamsOutput, error)
+}
+
+var _ ListMetricStreamsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListMetricStreams(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

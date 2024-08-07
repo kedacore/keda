@@ -50,6 +50,11 @@
                 "GetIamPolicy"
               ]
             },
+            "GetLocation": {
+              "methods": [
+                "GetLocation"
+              ]
+            },
             "GetSecret": {
               "methods": [
                 "GetSecret"
@@ -58,6 +63,11 @@
             "GetSecretVersion": {
               "methods": [
                 "GetSecretVersion"
+              ]
+            },
+            "ListLocations": {
+              "methods": [
+                "ListLocations"
               ]
             },
             "ListSecretVersions": {
@@ -130,6 +140,11 @@
                 "GetIamPolicy"
               ]
             },
+            "GetLocation": {
+              "methods": [
+                "GetLocation"
+              ]
+            },
             "GetSecret": {
               "methods": [
                 "GetSecret"
@@ -138,6 +153,11 @@
             "GetSecretVersion": {
               "methods": [
                 "GetSecretVersion"
+              ]
+            },
+            "ListLocations": {
+              "methods": [
+                "ListLocations"
               ]
             },
             "ListSecretVersions": {

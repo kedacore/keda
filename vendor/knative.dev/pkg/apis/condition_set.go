@@ -17,11 +17,11 @@ limitations under the License.
 package apis
 
 import (
+	"errors"
+	"fmt"
 	"reflect"
 	"sort"
 	"time"
-
-	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -234,7 +234,7 @@ func (r conditionsImpl) ClearCondition(t ConditionType) error {
 	}
 	// Terminal conditions are not handled as they can't be nil
 	if r.isTerminal(t) {
-		return fmt.Errorf("clearing terminal conditions not implemented")
+		return errors.New("clearing terminal conditions not implemented")
 	}
 	cond := r.GetCondition(t)
 	if cond == nil {

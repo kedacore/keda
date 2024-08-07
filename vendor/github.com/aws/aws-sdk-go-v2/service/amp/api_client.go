@@ -15,7 +15,9 @@ import (
 	internalauth "github.com/aws/aws-sdk-go-v2/internal/auth"
 	internalauthsmithy "github.com/aws/aws-sdk-go-v2/internal/auth/smithy"
 	internalConfig "github.com/aws/aws-sdk-go-v2/internal/configsources"
+	internalmiddleware "github.com/aws/aws-sdk-go-v2/internal/middleware"
 	smithy "github.com/aws/smithy-go"
+	smithyauth "github.com/aws/smithy-go/auth"
 	smithydocument "github.com/aws/smithy-go/document"
 	"github.com/aws/smithy-go/logging"
 	"github.com/aws/smithy-go/middleware"
@@ -23,6 +25,7 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"net"
 	"net/http"
+	"sync/atomic"
 	"time"
 )
 
@@ -33,6 +36,9 @@ const ServiceAPIVersion = "2020-08-01"
 // Service.
 type Client struct {
 	options Options
+
+	// Difference between the time reported by the server and the client
+	timeOffset *atomic.Int64
 }
 
 // New returns an initialized Client based on the functional options. Provide
@@ -72,6 +78,8 @@ func New(options Options, optFns ...func(*Options)) *Client {
 	client := &Client{
 		options: options,
 	}
+
+	initializeTimeOffsetResolver(client)
 
 	return client
 }
@@ -234,15 +242,16 @@ func setResolvedDefaultsMode(o *Options) {
 // NewFromConfig returns a new client from the provided config.
 func NewFromConfig(cfg aws.Config, optFns ...func(*Options)) *Client {
 	opts := Options{
-		Region:             cfg.Region,
-		DefaultsMode:       cfg.DefaultsMode,
-		RuntimeEnvironment: cfg.RuntimeEnvironment,
-		HTTPClient:         cfg.HTTPClient,
-		Credentials:        cfg.Credentials,
-		APIOptions:         cfg.APIOptions,
-		Logger:             cfg.Logger,
-		ClientLogMode:      cfg.ClientLogMode,
-		AppID:              cfg.AppID,
+		Region:                cfg.Region,
+		DefaultsMode:          cfg.DefaultsMode,
+		RuntimeEnvironment:    cfg.RuntimeEnvironment,
+		HTTPClient:            cfg.HTTPClient,
+		Credentials:           cfg.Credentials,
+		APIOptions:            cfg.APIOptions,
+		Logger:                cfg.Logger,
+		ClientLogMode:         cfg.ClientLogMode,
+		AppID:                 cfg.AppID,
+		AccountIDEndpointMode: cfg.AccountIDEndpointMode,
 	}
 	resolveAWSRetryerProvider(cfg, &opts)
 	resolveAWSRetryMaxAttempts(cfg, &opts)
@@ -446,6 +455,30 @@ func addContentSHA256Header(stack *middleware.Stack) error {
 	return stack.Finalize.Insert(&v4.ContentSHA256Header{}, (*v4.ComputePayloadSHA256)(nil).ID(), middleware.After)
 }
 
+func addIsWaiterUserAgent(o *Options) {
+	o.APIOptions = append(o.APIOptions, func(stack *middleware.Stack) error {
+		ua, err := getOrAddRequestUserAgent(stack)
+		if err != nil {
+			return err
+		}
+
+		ua.AddUserAgentFeature(awsmiddleware.UserAgentFeatureWaiter)
+		return nil
+	})
+}
+
+func addIsPaginatorUserAgent(o *Options) {
+	o.APIOptions = append(o.APIOptions, func(stack *middleware.Stack) error {
+		ua, err := getOrAddRequestUserAgent(stack)
+		if err != nil {
+			return err
+		}
+
+		ua.AddUserAgentFeature(awsmiddleware.UserAgentFeaturePaginator)
+		return nil
+	})
+}
+
 func resolveIdempotencyTokenProvider(o *Options) {
 	if o.IdempotencyTokenProvider != nil {
 		return
@@ -492,6 +525,63 @@ func resolveUseFIPSEndpoint(cfg aws.Config, o *Options) error {
 	}
 	if found {
 		o.EndpointOptions.UseFIPSEndpoint = value
+	}
+	return nil
+}
+
+func resolveAccountID(identity smithyauth.Identity, mode aws.AccountIDEndpointMode) *string {
+	if mode == aws.AccountIDEndpointModeDisabled {
+		return nil
+	}
+
+	if ca, ok := identity.(*internalauthsmithy.CredentialsAdapter); ok && ca.Credentials.AccountID != "" {
+		return aws.String(ca.Credentials.AccountID)
+	}
+
+	return nil
+}
+
+func addTimeOffsetBuild(stack *middleware.Stack, c *Client) error {
+	mw := internalmiddleware.AddTimeOffsetMiddleware{Offset: c.timeOffset}
+	if err := stack.Build.Add(&mw, middleware.After); err != nil {
+		return err
+	}
+	return stack.Deserialize.Insert(&mw, "RecordResponseTiming", middleware.Before)
+}
+func initializeTimeOffsetResolver(c *Client) {
+	c.timeOffset = new(atomic.Int64)
+}
+
+func checkAccountID(identity smithyauth.Identity, mode aws.AccountIDEndpointMode) error {
+	switch mode {
+	case aws.AccountIDEndpointModeUnset:
+	case aws.AccountIDEndpointModePreferred:
+	case aws.AccountIDEndpointModeDisabled:
+	case aws.AccountIDEndpointModeRequired:
+		if ca, ok := identity.(*internalauthsmithy.CredentialsAdapter); !ok {
+			return fmt.Errorf("accountID is required but not set")
+		} else if ca.Credentials.AccountID == "" {
+			return fmt.Errorf("accountID is required but not set")
+		}
+	// default check in case invalid mode is configured through request config
+	default:
+		return fmt.Errorf("invalid accountID endpoint mode %s, must be preferred/required/disabled", mode)
+	}
+
+	return nil
+}
+
+func addUserAgentRetryMode(stack *middleware.Stack, options Options) error {
+	ua, err := getOrAddRequestUserAgent(stack)
+	if err != nil {
+		return err
+	}
+
+	switch options.Retryer.(type) {
+	case *retry.Standard:
+		ua.AddUserAgentFeature(awsmiddleware.UserAgentFeatureRetryModeStandard)
+	case *retry.AdaptiveMode:
+		ua.AddUserAgentFeature(awsmiddleware.UserAgentFeatureRetryModeAdaptive)
 	}
 	return nil
 }

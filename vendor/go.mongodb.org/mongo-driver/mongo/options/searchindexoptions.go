@@ -9,6 +9,7 @@ package options
 // SearchIndexesOptions represents options that can be used to configure a SearchIndexView.
 type SearchIndexesOptions struct {
 	Name *string
+	Type *string
 }
 
 // SearchIndexes creates a new SearchIndexesOptions instance.
@@ -19,6 +20,12 @@ func SearchIndexes() *SearchIndexesOptions {
 // SetName sets the value for the Name field.
 func (sio *SearchIndexesOptions) SetName(name string) *SearchIndexesOptions {
 	sio.Name = &name
+	return sio
+}
+
+// SetType sets the value for the Type field.
+func (sio *SearchIndexesOptions) SetType(typ string) *SearchIndexesOptions {
+	sio.Type = &typ
 	return sio
 }
 

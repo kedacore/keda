@@ -20,7 +20,16 @@ import (
 	"io/ioutil"
 	"math"
 	"strings"
+	"time"
 )
+
+func deserializeS3Expires(v string) (*time.Time, error) {
+	t, err := smithytime.ParseHTTPDate(v)
+	if err != nil {
+		return nil, nil
+	}
+	return &t, nil
+}
 
 type awsAwsjson10_deserializeOpBatchExecuteStatement struct {
 }
@@ -10628,6 +10637,11 @@ func awsAwsjson10_deserializeDocumentGlobalSecondaryIndex(v **types.GlobalSecond
 				return err
 			}
 
+		case "OnDemandThroughput":
+			if err := awsAwsjson10_deserializeDocumentOnDemandThroughput(&sv.OnDemandThroughput, value); err != nil {
+				return err
+			}
+
 		case "Projection":
 			if err := awsAwsjson10_deserializeDocumentProjection(&sv.Projection, value); err != nil {
 				return err
@@ -10733,6 +10747,11 @@ func awsAwsjson10_deserializeDocumentGlobalSecondaryIndexDescription(v **types.G
 
 		case "KeySchema":
 			if err := awsAwsjson10_deserializeDocumentKeySchema(&sv.KeySchema, value); err != nil {
+				return err
+			}
+
+		case "OnDemandThroughput":
+			if err := awsAwsjson10_deserializeDocumentOnDemandThroughput(&sv.OnDemandThroughput, value); err != nil {
 				return err
 			}
 
@@ -10856,6 +10875,11 @@ func awsAwsjson10_deserializeDocumentGlobalSecondaryIndexInfo(v **types.GlobalSe
 
 		case "KeySchema":
 			if err := awsAwsjson10_deserializeDocumentKeySchema(&sv.KeySchema, value); err != nil {
+				return err
+			}
+
+		case "OnDemandThroughput":
+			if err := awsAwsjson10_deserializeDocumentOnDemandThroughput(&sv.OnDemandThroughput, value); err != nil {
 				return err
 			}
 
@@ -12986,6 +13010,107 @@ func awsAwsjson10_deserializeDocumentNumberSetAttributeValue(v *[]string, value 
 	return nil
 }
 
+func awsAwsjson10_deserializeDocumentOnDemandThroughput(v **types.OnDemandThroughput, value interface{}) error {
+	if v == nil {
+		return fmt.Errorf("unexpected nil of type %T", v)
+	}
+	if value == nil {
+		return nil
+	}
+
+	shape, ok := value.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("unexpected JSON type %v", value)
+	}
+
+	var sv *types.OnDemandThroughput
+	if *v == nil {
+		sv = &types.OnDemandThroughput{}
+	} else {
+		sv = *v
+	}
+
+	for key, value := range shape {
+		switch key {
+		case "MaxReadRequestUnits":
+			if value != nil {
+				jtv, ok := value.(json.Number)
+				if !ok {
+					return fmt.Errorf("expected LongObject to be json.Number, got %T instead", value)
+				}
+				i64, err := jtv.Int64()
+				if err != nil {
+					return err
+				}
+				sv.MaxReadRequestUnits = ptr.Int64(i64)
+			}
+
+		case "MaxWriteRequestUnits":
+			if value != nil {
+				jtv, ok := value.(json.Number)
+				if !ok {
+					return fmt.Errorf("expected LongObject to be json.Number, got %T instead", value)
+				}
+				i64, err := jtv.Int64()
+				if err != nil {
+					return err
+				}
+				sv.MaxWriteRequestUnits = ptr.Int64(i64)
+			}
+
+		default:
+			_, _ = key, value
+
+		}
+	}
+	*v = sv
+	return nil
+}
+
+func awsAwsjson10_deserializeDocumentOnDemandThroughputOverride(v **types.OnDemandThroughputOverride, value interface{}) error {
+	if v == nil {
+		return fmt.Errorf("unexpected nil of type %T", v)
+	}
+	if value == nil {
+		return nil
+	}
+
+	shape, ok := value.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("unexpected JSON type %v", value)
+	}
+
+	var sv *types.OnDemandThroughputOverride
+	if *v == nil {
+		sv = &types.OnDemandThroughputOverride{}
+	} else {
+		sv = *v
+	}
+
+	for key, value := range shape {
+		switch key {
+		case "MaxReadRequestUnits":
+			if value != nil {
+				jtv, ok := value.(json.Number)
+				if !ok {
+					return fmt.Errorf("expected LongObject to be json.Number, got %T instead", value)
+				}
+				i64, err := jtv.Int64()
+				if err != nil {
+					return err
+				}
+				sv.MaxReadRequestUnits = ptr.Int64(i64)
+			}
+
+		default:
+			_, _ = key, value
+
+		}
+	}
+	*v = sv
+	return nil
+}
+
 func awsAwsjson10_deserializeDocumentPartiQLBatchResponse(v *[]types.BatchStatementResponse, value interface{}) error {
 	if v == nil {
 		return fmt.Errorf("unexpected nil of type %T", v)
@@ -13744,6 +13869,11 @@ func awsAwsjson10_deserializeDocumentReplicaDescription(v **types.ReplicaDescrip
 				sv.KMSMasterKeyId = ptr.String(jtv)
 			}
 
+		case "OnDemandThroughputOverride":
+			if err := awsAwsjson10_deserializeDocumentOnDemandThroughputOverride(&sv.OnDemandThroughputOverride, value); err != nil {
+				return err
+			}
+
 		case "ProvisionedThroughputOverride":
 			if err := awsAwsjson10_deserializeDocumentProvisionedThroughputOverride(&sv.ProvisionedThroughputOverride, value); err != nil {
 				return err
@@ -13971,6 +14101,11 @@ func awsAwsjson10_deserializeDocumentReplicaGlobalSecondaryIndexDescription(v **
 					return fmt.Errorf("expected IndexName to be of type string, got %T instead", value)
 				}
 				sv.IndexName = ptr.String(jtv)
+			}
+
+		case "OnDemandThroughputOverride":
+			if err := awsAwsjson10_deserializeDocumentOnDemandThroughputOverride(&sv.OnDemandThroughputOverride, value); err != nil {
+				return err
 			}
 
 		case "ProvisionedThroughputOverride":
@@ -14684,6 +14819,11 @@ func awsAwsjson10_deserializeDocumentSourceTableDetails(v **types.SourceTableDet
 				return err
 			}
 
+		case "OnDemandThroughput":
+			if err := awsAwsjson10_deserializeDocumentOnDemandThroughput(&sv.OnDemandThroughput, value); err != nil {
+				return err
+			}
+
 		case "ProvisionedThroughput":
 			if err := awsAwsjson10_deserializeDocumentProvisionedThroughput(&sv.ProvisionedThroughput, value); err != nil {
 				return err
@@ -15223,6 +15363,11 @@ func awsAwsjson10_deserializeDocumentTableCreationParameters(v **types.TableCrea
 				return err
 			}
 
+		case "OnDemandThroughput":
+			if err := awsAwsjson10_deserializeDocumentOnDemandThroughput(&sv.OnDemandThroughput, value); err != nil {
+				return err
+			}
+
 		case "ProvisionedThroughput":
 			if err := awsAwsjson10_deserializeDocumentProvisionedThroughput(&sv.ProvisionedThroughput, value); err != nil {
 				return err
@@ -15365,6 +15510,11 @@ func awsAwsjson10_deserializeDocumentTableDescription(v **types.TableDescription
 
 		case "LocalSecondaryIndexes":
 			if err := awsAwsjson10_deserializeDocumentLocalSecondaryIndexDescriptionList(&sv.LocalSecondaryIndexes, value); err != nil {
+				return err
+			}
+
+		case "OnDemandThroughput":
+			if err := awsAwsjson10_deserializeDocumentOnDemandThroughput(&sv.OnDemandThroughput, value); err != nil {
 				return err
 			}
 

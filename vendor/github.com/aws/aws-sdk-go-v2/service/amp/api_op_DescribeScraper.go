@@ -12,7 +12,7 @@ import (
 	smithytime "github.com/aws/smithy-go/time"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	smithywaiter "github.com/aws/smithy-go/waiter"
-	"github.com/jmespath/go-jmespath"
+	jmespath "github.com/jmespath/go-jmespath"
 	"time"
 )
 
@@ -112,6 +112,12 @@ func (c *Client) addOperationDescribeScraperMiddlewares(stack *middleware.Stack,
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpDescribeScraperValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -135,14 +141,6 @@ func (c *Client) addOperationDescribeScraperMiddlewares(stack *middleware.Stack,
 	}
 	return nil
 }
-
-// DescribeScraperAPIClient is a client that implements the DescribeScraper
-// operation.
-type DescribeScraperAPIClient interface {
-	DescribeScraper(context.Context, *DescribeScraperInput, ...func(*Options)) (*DescribeScraperOutput, error)
-}
-
-var _ DescribeScraperAPIClient = (*Client)(nil)
 
 // ScraperActiveWaiterOptions are waiter options for ScraperActiveWaiter
 type ScraperActiveWaiterOptions struct {
@@ -176,12 +174,13 @@ type ScraperActiveWaiterOptions struct {
 
 	// Retryable is function that can be used to override the service defined
 	// waiter-behavior based on operation output, or returned error. This function is
-	// used by the waiter to decide if a state is retryable or a terminal state. By
-	// default service-modeled logic will populate this option. This option can thus be
-	// used to define a custom waiter state with fall-back to service-modeled waiter
-	// state mutators.The function returns an error in case of a failure state. In case
-	// of retry state, this function returns a bool value of true and nil error, while
-	// in case of success it returns a bool value of false and nil error.
+	// used by the waiter to decide if a state is retryable or a terminal state.
+	//
+	// By default service-modeled logic will populate this option. This option can
+	// thus be used to define a custom waiter state with fall-back to service-modeled
+	// waiter state mutators.The function returns an error in case of a failure state.
+	// In case of retry state, this function returns a bool value of true and nil
+	// error, while in case of success it returns a bool value of false and nil error.
 	Retryable func(context.Context, *DescribeScraperInput, *DescribeScraperOutput, error) (bool, error)
 }
 
@@ -258,7 +257,13 @@ func (w *ScraperActiveWaiter) WaitForOutput(ctx context.Context, params *Describ
 		}
 
 		out, err := w.client.DescribeScraper(ctx, params, func(o *Options) {
+			baseOpts := []func(*Options){
+				addIsWaiterUserAgent,
+			}
 			o.APIOptions = append(o.APIOptions, apiOptions...)
+			for _, opt := range baseOpts {
+				opt(o)
+			}
 			for _, opt := range options.ClientOptions {
 				opt(o)
 			}
@@ -365,12 +370,13 @@ type ScraperDeletedWaiterOptions struct {
 
 	// Retryable is function that can be used to override the service defined
 	// waiter-behavior based on operation output, or returned error. This function is
-	// used by the waiter to decide if a state is retryable or a terminal state. By
-	// default service-modeled logic will populate this option. This option can thus be
-	// used to define a custom waiter state with fall-back to service-modeled waiter
-	// state mutators.The function returns an error in case of a failure state. In case
-	// of retry state, this function returns a bool value of true and nil error, while
-	// in case of success it returns a bool value of false and nil error.
+	// used by the waiter to decide if a state is retryable or a terminal state.
+	//
+	// By default service-modeled logic will populate this option. This option can
+	// thus be used to define a custom waiter state with fall-back to service-modeled
+	// waiter state mutators.The function returns an error in case of a failure state.
+	// In case of retry state, this function returns a bool value of true and nil
+	// error, while in case of success it returns a bool value of false and nil error.
 	Retryable func(context.Context, *DescribeScraperInput, *DescribeScraperOutput, error) (bool, error)
 }
 
@@ -447,7 +453,13 @@ func (w *ScraperDeletedWaiter) WaitForOutput(ctx context.Context, params *Descri
 		}
 
 		out, err := w.client.DescribeScraper(ctx, params, func(o *Options) {
+			baseOpts := []func(*Options){
+				addIsWaiterUserAgent,
+			}
 			o.APIOptions = append(o.APIOptions, apiOptions...)
+			for _, opt := range baseOpts {
+				opt(o)
+			}
 			for _, opt := range options.ClientOptions {
 				opt(o)
 			}
@@ -511,6 +523,14 @@ func scraperDeletedStateRetryable(ctx context.Context, input *DescribeScraperInp
 
 	return true, nil
 }
+
+// DescribeScraperAPIClient is a client that implements the DescribeScraper
+// operation.
+type DescribeScraperAPIClient interface {
+	DescribeScraper(context.Context, *DescribeScraperInput, ...func(*Options)) (*DescribeScraperOutput, error)
+}
+
+var _ DescribeScraperAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeScraper(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

@@ -35,8 +35,12 @@ func Fetch(from, i any) any {
 	switch v.Kind() {
 	case reflect.Array, reflect.Slice, reflect.String:
 		index := ToInt(i)
+		l := v.Len()
 		if index < 0 {
-			index = v.Len() + index
+			index = l + index
+		}
+		if index < 0 || index >= l {
+			panic(fmt.Sprintf("index out of range: %v (array length is %v)", index, l))
 		}
 		value := v.Index(index)
 		if value.IsValid() {

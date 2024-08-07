@@ -7,6 +7,9 @@ type Visitor interface {
 }
 
 func Walk(node *Node, v Visitor) {
+	if *node == nil {
+		return
+	}
 	switch n := (*node).(type) {
 	case *NilNode:
 	case *IdentifierNode:

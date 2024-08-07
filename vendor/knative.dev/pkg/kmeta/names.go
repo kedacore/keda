@@ -18,6 +18,7 @@ package kmeta
 
 import (
 	"crypto/md5" //nolint:gosec // No strong cryptography needed.
+	"encoding/hex"
 	"fmt"
 	"regexp"
 )
@@ -53,7 +54,7 @@ func ChildName(parent, suffix string) string {
 			// Format the return string, if it's shorter than longest: pad with
 			// beginning of the suffix. This happens, for example, when parent is
 			// short, but the suffix is very long.
-			ret := parent + fmt.Sprintf("%x", h)
+			ret := parent + hex.EncodeToString(h[:])
 			if d := longest - len(ret); d > 0 {
 				ret += suffix[:d]
 			}

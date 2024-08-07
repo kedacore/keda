@@ -182,7 +182,7 @@ func (s *Store) Add(ctx context.Context, item Item, contents io.Reader) (resErr 
 			return err
 		}
 	}
-	if err != nil && !errors.Is(err, io.EOF) {
+	if err != nil && !errors.Is(err, io.EOF) { //nolint:govet
 		return fmt.Errorf("unable to finish un-tar-ing the downloaded archive: %w", err)
 	}
 	log.V(1).Info("unpacked archive")

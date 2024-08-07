@@ -158,7 +158,7 @@ func (s *Source) Populate() {
 		// Populate ALL fields
 		Type:               SourceConditionSinkProvided,
 		Status:             corev1.ConditionTrue,
-		LastTransitionTime: apis.VolatileTime{Inner: metav1.NewTime(time.Date(1984, 02, 28, 18, 52, 00, 00, time.UTC))},
+		LastTransitionTime: apis.VolatileTime{Inner: metav1.NewTime(time.Date(1984, 2, 28, 18, 52, 0, 0, time.UTC))},
 	}}
 	s.Status.SinkURI = &apis.URL{
 		Scheme:   "https",

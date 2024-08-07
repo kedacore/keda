@@ -12,13 +12,16 @@ import (
 )
 
 // Creates an anomaly detection model for a CloudWatch metric. You can use the
-// model to display a band of expected normal values when the metric is graphed. If
-// you have enabled unified cross-account observability, and this account is a
+// model to display a band of expected normal values when the metric is graphed.
+//
+// If you have enabled unified cross-account observability, and this account is a
 // monitoring account, the metric can be in the same account or a source account.
 // You can specify the account ID in the object you specify in the
-// SingleMetricAnomalyDetector parameter. For more information, see CloudWatch
-// Anomaly Detection (https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Anomaly_Detection.html)
-// .
+// SingleMetricAnomalyDetector parameter.
+//
+// For more information, see [CloudWatch Anomaly Detection].
+//
+// [CloudWatch Anomaly Detection]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Anomaly_Detection.html
 func (c *Client) PutAnomalyDetector(ctx context.Context, params *PutAnomalyDetectorInput, optFns ...func(*Options)) (*PutAnomalyDetectorOutput, error) {
 	if params == nil {
 		params = &PutAnomalyDetectorInput{}
@@ -38,8 +41,9 @@ type PutAnomalyDetectorInput struct {
 
 	// The configuration specifies details about how the anomaly detection model is to
 	// be trained, including time ranges to exclude when training and updating the
-	// model. You can specify as many as 10 time ranges. The configuration can also
-	// include the time zone to use for the metric.
+	// model. You can specify as many as 10 time ranges.
+	//
+	// The configuration can also include the time zone to use for the metric.
 	Configuration *types.AnomalyDetectorConfiguration
 
 	// The metric dimensions to create the anomaly detection model for.
@@ -52,14 +56,21 @@ type PutAnomalyDetectorInput struct {
 	// Currently, it includes the PeriodicSpikes parameter.
 	MetricCharacteristics *types.MetricCharacteristics
 
-	// The metric math anomaly detector to be created. When using
-	// MetricMathAnomalyDetector , you cannot include the following parameters in the
-	// same operation:
+	// The metric math anomaly detector to be created.
+	//
+	// When using MetricMathAnomalyDetector , you cannot include the following
+	// parameters in the same operation:
+	//
 	//   - Dimensions
+	//
 	//   - MetricName
+	//
 	//   - Namespace
+	//
 	//   - Stat
+	//
 	//   - the SingleMetricAnomalyDetector parameters of PutAnomalyDetectorInput
+	//
 	// Instead, specify the metric math anomaly detector attributes as part of the
 	// property MetricMathAnomalyDetector .
 	MetricMathAnomalyDetector *types.MetricMathAnomalyDetector
@@ -74,14 +85,21 @@ type PutAnomalyDetectorInput struct {
 	// Deprecated: Use SingleMetricAnomalyDetector.
 	Namespace *string
 
-	// A single metric anomaly detector to be created. When using
-	// SingleMetricAnomalyDetector , you cannot include the following parameters in the
-	// same operation:
+	// A single metric anomaly detector to be created.
+	//
+	// When using SingleMetricAnomalyDetector , you cannot include the following
+	// parameters in the same operation:
+	//
 	//   - Dimensions
+	//
 	//   - MetricName
+	//
 	//   - Namespace
+	//
 	//   - Stat
+	//
 	//   - the MetricMathAnomalyDetector parameters of PutAnomalyDetectorInput
+	//
 	// Instead, specify the single metric anomaly detector attributes as part of the
 	// property SingleMetricAnomalyDetector .
 	SingleMetricAnomalyDetector *types.SingleMetricAnomalyDetector
@@ -154,6 +172,12 @@ func (c *Client) addOperationPutAnomalyDetectorMiddlewares(stack *middleware.Sta
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpPutAnomalyDetectorValidationMiddleware(stack); err != nil {

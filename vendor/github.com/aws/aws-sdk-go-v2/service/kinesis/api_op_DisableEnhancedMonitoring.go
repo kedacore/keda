@@ -12,9 +12,11 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Disables enhanced monitoring. When invoking this API, you must use either the
-// StreamARN or the StreamName parameter, or both. It is recommended that you use
-// the StreamARN input parameter when you invoke this API.
+// Disables enhanced monitoring.
+//
+// When invoking this API, you must use either the StreamARN or the StreamName
+// parameter, or both. It is recommended that you use the StreamARN input
+// parameter when you invoke this API.
 func (c *Client) DisableEnhancedMonitoring(ctx context.Context, params *DisableEnhancedMonitoringInput, optFns ...func(*Options)) (*DisableEnhancedMonitoringOutput, error) {
 	if params == nil {
 		params = &DisableEnhancedMonitoringInput{}
@@ -30,22 +32,33 @@ func (c *Client) DisableEnhancedMonitoring(ctx context.Context, params *DisableE
 	return out, nil
 }
 
-// Represents the input for DisableEnhancedMonitoring .
+// Represents the input for DisableEnhancedMonitoring.
 type DisableEnhancedMonitoringInput struct {
 
-	// List of shard-level metrics to disable. The following are the valid shard-level
-	// metrics. The value " ALL " disables every metric.
+	// List of shard-level metrics to disable.
+	//
+	// The following are the valid shard-level metrics. The value " ALL " disables
+	// every metric.
+	//
 	//   - IncomingBytes
+	//
 	//   - IncomingRecords
+	//
 	//   - OutgoingBytes
+	//
 	//   - OutgoingRecords
+	//
 	//   - WriteProvisionedThroughputExceeded
+	//
 	//   - ReadProvisionedThroughputExceeded
+	//
 	//   - IteratorAgeMilliseconds
+	//
 	//   - ALL
-	// For more information, see Monitoring the Amazon Kinesis Data Streams Service
-	// with Amazon CloudWatch (https://docs.aws.amazon.com/kinesis/latest/dev/monitoring-with-cloudwatch.html)
-	// in the Amazon Kinesis Data Streams Developer Guide.
+	//
+	// For more information, see [Monitoring the Amazon Kinesis Data Streams Service with Amazon CloudWatch] in the Amazon Kinesis Data Streams Developer Guide.
+	//
+	// [Monitoring the Amazon Kinesis Data Streams Service with Amazon CloudWatch]: https://docs.aws.amazon.com/kinesis/latest/dev/monitoring-with-cloudwatch.html
 	//
 	// This member is required.
 	ShardLevelMetrics []types.MetricsName
@@ -60,12 +73,12 @@ type DisableEnhancedMonitoringInput struct {
 }
 
 func (in *DisableEnhancedMonitoringInput) bindEndpointParams(p *EndpointParameters) {
+
 	p.StreamARN = in.StreamARN
 	p.OperationType = ptr.String("control")
 }
 
-// Represents the output for EnableEnhancedMonitoring and DisableEnhancedMonitoring
-// .
+// Represents the output for EnableEnhancedMonitoring and DisableEnhancedMonitoring.
 type DisableEnhancedMonitoringOutput struct {
 
 	// Represents the current state of the metrics that are in the enhanced state
@@ -141,6 +154,12 @@ func (c *Client) addOperationDisableEnhancedMonitoringMiddlewares(stack *middlew
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDisableEnhancedMonitoringValidationMiddleware(stack); err != nil {

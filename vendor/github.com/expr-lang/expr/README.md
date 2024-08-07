@@ -163,6 +163,8 @@ func main() {
 * [Akvorado](https://github.com/akvorado/akvorado) utilizes Expr to classify exporters and interfaces in network flows.
 * [keda.sh](https://keda.sh) uses Expr to allow customization of its Kubernetes-based event-driven autoscaling.
 * [Span Digital](https://spandigital.com/) uses Expr in it's Knowledge Management products.
+* [Xiaohongshu](https://www.xiaohongshu.com/) combining yaml with Expr for dynamically policies delivery.
+* [Melrōse](https://melrōse.org) uses Expr to implement its music programming language.
 
 [Add your company too](https://github.com/expr-lang/expr/edit/master/README.md)
 

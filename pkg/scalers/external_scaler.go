@@ -314,7 +314,7 @@ func getClientForConnectionPool(metadata externalScalerMetadata, logger logr.Log
 			if err != nil {
 				return nil, err
 			}
-			return grpc.Dial(metadata.scalerAddress,
+			return grpc.NewClient(metadata.scalerAddress,
 				grpc.WithDefaultServiceConfig(grpcConfig),
 				grpc.WithTransportCredentials(creds))
 		}
@@ -326,12 +326,12 @@ func getClientForConnectionPool(metadata externalScalerMetadata, logger logr.Log
 
 		if len(tlsConfig.Certificates) > 0 || metadata.caCert != "" {
 			// nosemgrep: go.grpc.ssrf.grpc-tainted-url-host.grpc-tainted-url-host
-			return grpc.Dial(metadata.scalerAddress,
+			return grpc.NewClient(metadata.scalerAddress,
 				grpc.WithDefaultServiceConfig(grpcConfig),
 				grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 		}
 
-		return grpc.Dial(metadata.scalerAddress,
+		return grpc.NewClient(metadata.scalerAddress,
 			grpc.WithDefaultServiceConfig(grpcConfig),
 			grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}

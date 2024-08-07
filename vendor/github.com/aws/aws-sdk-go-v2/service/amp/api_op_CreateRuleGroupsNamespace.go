@@ -13,9 +13,10 @@ import (
 
 // The CreateRuleGroupsNamespace operation creates a rule groups namespace within
 // a workspace. A rule groups namespace is associated with exactly one rules file.
-// A workspace can have multiple rule groups namespaces. Use this operation only to
-// create new rule groups namespaces. To update an existing rule groups namespace,
-// use PutRuleGroupsNamespace .
+// A workspace can have multiple rule groups namespaces.
+//
+// Use this operation only to create new rule groups namespaces. To update an
+// existing rule groups namespace, use PutRuleGroupsNamespace .
 func (c *Client) CreateRuleGroupsNamespace(ctx context.Context, params *CreateRuleGroupsNamespaceInput, optFns ...func(*Options)) (*CreateRuleGroupsNamespaceOutput, error) {
 	if params == nil {
 		params = &CreateRuleGroupsNamespaceInput{}
@@ -34,10 +35,13 @@ func (c *Client) CreateRuleGroupsNamespace(ctx context.Context, params *CreateRu
 // Represents the input of a CreateRuleGroupsNamespace operation.
 type CreateRuleGroupsNamespaceInput struct {
 
-	// The rules file to use in the new namespace. Contains the base64-encoded version
-	// of the YAML rules file. For details about the rule groups namespace structure,
-	// see RuleGroupsNamespaceData (https://docs.aws.amazon.com/prometheus/latest/APIReference/yaml-RuleGroupsNamespaceData.html)
-	// .
+	// The rules file to use in the new namespace.
+	//
+	// Contains the base64-encoded version of the YAML rules file.
+	//
+	// For details about the rule groups namespace structure, see [RuleGroupsNamespaceData].
+	//
+	// [RuleGroupsNamespaceData]: https://docs.aws.amazon.com/prometheus/latest/APIReference/yaml-RuleGroupsNamespaceData.html
 	//
 	// This member is required.
 	Data []byte
@@ -142,6 +146,12 @@ func (c *Client) addOperationCreateRuleGroupsNamespaceMiddlewares(stack *middlew
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addIdempotencyToken_opCreateRuleGroupsNamespaceMiddleware(stack, options); err != nil {

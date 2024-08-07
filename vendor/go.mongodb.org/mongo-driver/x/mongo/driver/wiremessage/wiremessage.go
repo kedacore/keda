@@ -4,10 +4,18 @@
 // not use this file except in compliance with the License. You may obtain
 // a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
 
+// Package wiremessage is intended for internal use only. It is made available
+// to facilitate use cases that require access to internal MongoDB driver
+// functionality and state. The API of this package is not stable and there is
+// no backward compatibility guarantee.
+//
+// WARNING: THIS PACKAGE IS EXPERIMENTAL AND MAY BE MODIFIED OR REMOVED WITHOUT
+// NOTICE! USE WITH EXTREME CAUTION!
 package wiremessage
 
 import (
 	"bytes"
+	"encoding/binary"
 	"strings"
 	"sync/atomic"
 
@@ -231,10 +239,11 @@ func ReadHeader(src []byte) (length, requestID, responseTo int32, opcode OpCode,
 	if len(src) < 16 {
 		return 0, 0, 0, 0, src, false
 	}
-	length = (int32(src[0]) | int32(src[1])<<8 | int32(src[2])<<16 | int32(src[3])<<24)
-	requestID = (int32(src[4]) | int32(src[5])<<8 | int32(src[6])<<16 | int32(src[7])<<24)
-	responseTo = (int32(src[8]) | int32(src[9])<<8 | int32(src[10])<<16 | int32(src[11])<<24)
-	opcode = OpCode(int32(src[12]) | int32(src[13])<<8 | int32(src[14])<<16 | int32(src[15])<<24)
+
+	length = readi32unsafe(src)
+	requestID = readi32unsafe(src[4:])
+	responseTo = readi32unsafe(src[8:])
+	opcode = OpCode(readi32unsafe(src[12:]))
 	return length, requestID, responseTo, opcode, src[16:], true
 }
 
@@ -486,7 +495,7 @@ func ReadReplyCursorID(src []byte) (cursorID int64, rem []byte, ok bool) {
 	return readi64(src)
 }
 
-// ReadReplyStartingFrom reads the starting from from src.
+// ReadReplyStartingFrom reads the starting from src.
 func ReadReplyStartingFrom(src []byte) (startingFrom int32, rem []byte, ok bool) {
 	return readi32(src)
 }
@@ -570,12 +579,16 @@ func ReadKillCursorsCursorIDs(src []byte, numIDs int32) (cursorIDs []int64, rem 
 	return cursorIDs, src, true
 }
 
-func appendi32(dst []byte, i32 int32) []byte {
-	return append(dst, byte(i32), byte(i32>>8), byte(i32>>16), byte(i32>>24))
+func appendi32(dst []byte, x int32) []byte {
+	b := []byte{0, 0, 0, 0}
+	binary.LittleEndian.PutUint32(b, uint32(x))
+	return append(dst, b...)
 }
 
-func appendi64(b []byte, i int64) []byte {
-	return append(b, byte(i), byte(i>>8), byte(i>>16), byte(i>>24), byte(i>>32), byte(i>>40), byte(i>>48), byte(i>>56))
+func appendi64(dst []byte, x int64) []byte {
+	b := []byte{0, 0, 0, 0, 0, 0, 0, 0}
+	binary.LittleEndian.PutUint64(b, uint64(x))
+	return append(dst, b...)
 }
 
 func appendCString(b []byte, str string) []byte {
@@ -587,21 +600,18 @@ func readi32(src []byte) (int32, []byte, bool) {
 	if len(src) < 4 {
 		return 0, src, false
 	}
-
-	return (int32(src[0]) | int32(src[1])<<8 | int32(src[2])<<16 | int32(src[3])<<24), src[4:], true
+	return readi32unsafe(src), src[4:], true
 }
 
 func readi32unsafe(src []byte) int32 {
-	return (int32(src[0]) | int32(src[1])<<8 | int32(src[2])<<16 | int32(src[3])<<24)
+	return int32(binary.LittleEndian.Uint32(src))
 }
 
 func readi64(src []byte) (int64, []byte, bool) {
 	if len(src) < 8 {
 		return 0, src, false
 	}
-	i64 := (int64(src[0]) | int64(src[1])<<8 | int64(src[2])<<16 | int64(src[3])<<24 |
-		int64(src[4])<<32 | int64(src[5])<<40 | int64(src[6])<<48 | int64(src[7])<<56)
-	return i64, src[8:], true
+	return int64(binary.LittleEndian.Uint64(src)), src[8:], true
 }
 
 func readcstring(src []byte) (string, []byte, bool) {

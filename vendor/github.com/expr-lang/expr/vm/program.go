@@ -21,7 +21,7 @@ type Program struct {
 	Arguments []int
 	Constants []any
 
-	source    *file.Source
+	source    file.Source
 	node      ast.Node
 	locations []file.Location
 	variables int
@@ -32,7 +32,7 @@ type Program struct {
 
 // NewProgram returns a new Program. It's used by the compiler.
 func NewProgram(
-	source *file.Source,
+	source file.Source,
 	node ast.Node,
 	locations []file.Location,
 	variables int,
@@ -58,7 +58,7 @@ func NewProgram(
 }
 
 // Source returns origin file.Source.
-func (program *Program) Source() *file.Source {
+func (program *Program) Source() file.Source {
 	return program.source
 }
 

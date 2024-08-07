@@ -101,7 +101,7 @@ func NewStackDriverClientPodIdentity(ctx context.Context) (*StackDriverClient, e
 	// Running workload identity outside GKE, we can't use the metadata api and we need to use the env that it's provided from the hook
 	project, found := os.LookupEnv("CLOUDSDK_CORE_PROJECT")
 	if !found {
-		project, err = c.ProjectID()
+		project, err = c.ProjectIDWithContext(ctx)
 		if err != nil {
 			return nil, err
 		}
