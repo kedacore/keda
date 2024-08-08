@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -50,29 +51,27 @@ var testIBMMQMetadata = []parseIBMMQMetadataTestData{
 	// Nothing passed
 	{map[string]string{}, true, map[string]string{}},
 	// Properly formed metadata
-	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "10"}, false, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "10"}, false, map[string]string{"username": "testUsername", "password": "Pass123"}},
 	// Invalid queueDepth using a string
-	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "AA"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "AA"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
 	// Invalid activationQueueDepth using a string
-	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "1", "activationQueueDepth": "AA"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "1", "activationQueueDepth": "AA"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
 	// No host provided
-	{map[string]string{"queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
-	// Missing queueManager
-	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	{map[string]string{"queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
 	// Missing queueName
-	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueDepth": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	{map[string]string{"host": testValidMQQueueURL, "queueDepth": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
 	// Invalid URL
-	{map[string]string{"host": testInvalidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	{map[string]string{"host": testInvalidMQQueueURL, "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
 	// Properly formed authParams Basic Auth
-	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "10"}, false, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "10"}, false, map[string]string{"username": "testUsername", "password": "Pass123"}},
 	// Properly formed authParams Basic Auth and TLS
-	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "10"}, false, map[string]string{"username": "testUsername", "password": "Pass123", "ca": "cavalue", "cert": "certvalue", "key": "keyvalue"}},
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "10"}, false, map[string]string{"username": "testUsername", "password": "Pass123", "ca": "cavalue", "cert": "certvalue", "key": "keyvalue"}},
 	// No username provided
-	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"password": "Pass123"}},
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"password": "Pass123"}},
 	// No password provided
-	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"username": "testUsername"}},
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"username": "testUsername"}},
 	// Wrong input unsafeSsl
-	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "10", "unsafeSsl": "random"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "10", "unsafeSsl": "random"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
 }
 
 // Test MQ Connection metadata is parsed correctly
@@ -80,7 +79,7 @@ var testIBMMQMetadata = []parseIBMMQMetadataTestData{
 // and verify that the password field is handled correctly.
 func TestIBMMQParseMetadata(t *testing.T) {
 	for _, testData := range testIBMMQMetadata {
-		metadata, err := parseIBMMQMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleIBMMQResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		metadata, err := parseIBMMQMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleIBMMQResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 			fmt.Println(testData)
@@ -98,13 +97,13 @@ func TestIBMMQParseMetadata(t *testing.T) {
 
 // Test case for TestParseDefaultQueueDepth test
 var testDefaultQueueDepth = []parseIBMMQMetadataTestData{
-	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue"}, false, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue"}, false, map[string]string{"username": "testUsername", "password": "Pass123"}},
 }
 
 // Test that DefaultQueueDepth is set when queueDepth is not provided
 func TestParseDefaultQueueDepth(t *testing.T) {
 	for _, testData := range testDefaultQueueDepth {
-		metadata, err := parseIBMMQMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleIBMMQResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		metadata, err := parseIBMMQMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleIBMMQResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
 		switch {
 		case err != nil && !testData.isError:
 			t.Error("Expected success but got error", err)
@@ -119,7 +118,7 @@ func TestParseDefaultQueueDepth(t *testing.T) {
 // Create a scaler and check if metrics method is available
 func TestIBMMQGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range IBMMQMetricIdentifiers {
-		metadata, err := parseIBMMQMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleIBMMQResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex})
+		metadata, err := parseIBMMQMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleIBMMQResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex}, logr.Discard())
 		httpTimeout := 100 * time.Millisecond
 
 		if err != nil {
