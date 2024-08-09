@@ -66,7 +66,7 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- selenium-grid: introduce new parameters setSessionsFromHub and sessionsPerNode. They will allow to scale up based on real browser node settings (slots / node). When sesSessionsFromHub is set, KEDA will look for existing browser nodes with browserName, browserVersion and platformName same as scaledObject / scaledJob, get maxSessions and calculate how much nodes it needs. When no existing browser node matches, it uses sessionsPerNode value for calculation.
 
 ### Fixes
 
