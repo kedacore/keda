@@ -88,6 +88,7 @@ New deprecation(s):
 ### Other
 
 - **General**: Bump deps and k8s deps to 0.29.7 ([#6035](https://github.com/kedacore/keda/pull/6035))
+- **Cron Scaler**: Simplify code to determine next start and stop times ([#6056](https://github.com/kedacore/keda/pull/6056))
 
 ## v2.15.0
 
