@@ -557,12 +557,12 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 						"nodesInfo": {
 							"nodes": [
 								{
-									"stereotypes":"[{\"slots\":1,\"stereotype\":{\"browserName\":\"chrome\",\"platformName\":\"linux\"}}]"
+									"stereotypes":"[{\"slots\":2,\"stereotype\":{\"browserName\":\"chrome\",\"platformName\":\"linux\"}}]"
 								}
 							]
 						},
 						"sessionsInfo": {
-							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}",{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}",{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}",{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"Windows 11\"\n}"],
+							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"Windows 11\"\n}"],
 							"sessions": []
 						}
 					}
@@ -589,7 +589,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 							"nodes": []
 						},
 						"sessionsInfo": {
-							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}",{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}",{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}",{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"Windows 11\"\n}"],
+							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"Windows 11\"\n}"],
 							"sessions": []
 						}
 					}
