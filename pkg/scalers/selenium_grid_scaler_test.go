@@ -526,7 +526,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 						"nodesInfo": {
 							"nodes": [
 								{
-									"stereotypes": ["{\n \"slots\": 2,\n \"stereotype\": {\n \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}\n }\n"],
+									"stereotypes": ["{\n \"slots\": 2,\n \"stereotype\": {\n \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}\n }\n"]
 								}
 							]
 						},
@@ -557,7 +557,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 						"nodesInfo": {
 							"nodes": [
 								{
-									"stereotypes": ["{\n \"slots\": 2,\n \"stereotype\": {\n \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}\n }\n"],
+									"stereotypes": ["{\n \"slots\": 2,\n \"stereotype\": {\n \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}\n }\n"]
 								}
 							]
 						},
