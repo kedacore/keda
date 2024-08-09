@@ -526,8 +526,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 						"nodesInfo": {
 							"nodes": [
 								{
-									"stereotypes": "[\n  {\n    \"slots\": 2,\n    \"stereotype\": {\n      \"browserName\": \"chrome\",\n      \"platformName\": \"linux\",\n      \"se:downloadsEnabled\": true,\n      \"se:webDriverExecutable\": \"\\u002fopt
-						\\u002fchromedriver\"\n    }\n  }\n]",
+									"stereotypes": ["{\n \"slots\": 2,\n \"stereotype\": {\n \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}\n }\n"],
 								}
 							]
 						},
@@ -558,8 +557,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 						"nodesInfo": {
 							"nodes": [
 								{
-									"stereotypes": "[\n  {\n    \"slots\": 2,\n    \"stereotype\": {\n      \"browserName\": \"chrome\",\n      \"platformName\": \"linux\",\n      \"se:downloadsEnabled\": true,\n      \"se:webDriverExecutable\": \"\\u002fopt
-						\\u002fchromedriver\"\n    }\n  }\n]",
+									"stereotypes": ["{\n \"slots\": 2,\n \"stereotype\": {\n \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}\n }\n"],
 								}
 							]
 						},
