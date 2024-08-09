@@ -704,6 +704,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				TargetValue:        1,
 				BrowserVersion:     "latest",
 				PlatformName:       "linux",
+				SessionsPerNode:    1,
 			},
 		},
 		{
@@ -725,6 +726,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				TargetValue:        1,
 				BrowserVersion:     "latest",
 				PlatformName:       "linux",
+				SessionsPerNode:    1,
 			},
 		},
 		{
@@ -748,6 +750,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				TargetValue:        1,
 				BrowserVersion:     "latest",
 				PlatformName:       "linux",
+				SessionsPerNode:    1,
 			},
 		},
 		{
@@ -771,6 +774,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				BrowserVersion:     "91.0",
 				UnsafeSsl:          false,
 				PlatformName:       "linux",
+				SessionsPerNode:    1,
 			},
 		},
 		{
@@ -796,6 +800,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				BrowserVersion:      "91.0",
 				UnsafeSsl:           true,
 				PlatformName:        "linux",
+				SessionsPerNode:     1,
 			},
 		},
 		{
@@ -836,6 +841,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				BrowserVersion:      "91.0",
 				UnsafeSsl:           true,
 				PlatformName:        "linux",
+				SessionsPerNode:     1,
 			},
 		},
 		{
@@ -862,6 +868,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				BrowserVersion:      "91.0",
 				UnsafeSsl:           true,
 				PlatformName:        "Windows 11",
+				SessionsPerNode:     1,
 			},
 		},
 	}
