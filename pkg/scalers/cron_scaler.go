@@ -30,6 +30,8 @@ type cronScaler struct {
 type cronMetadata struct {
 	start           string
 	end             string
+	startSched      cron.Schedule
+	endSched        cron.Schedule
 	timezone        string
 	desiredReplicas int64
 	triggerIndex    int
@@ -54,21 +56,12 @@ func NewCronScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func getCronTime(location *time.Location, spec string) (int64, error) {
-	c := cron.New(cron.WithLocation(location))
-	_, err := c.AddFunc(spec, func() { _ = fmt.Sprintf("Cron initialized for location %s", location.String()) })
-	if err != nil {
-		return 0, err
-	}
-
-	c.Start()
-	cronTime := c.Entries()[0].Next.Unix()
-	c.Stop()
-
-	return cronTime, nil
+func getCronTime(location *time.Location, sched cron.Schedule) int64 {
+	return sched.Next(time.Now().In(location)).Unix()
 }
 
 func parseCronMetadata(config *scalersconfig.ScalerConfig) (*cronMetadata, error) {
+	var err error
 	if len(config.TriggerMetadata) == 0 {
 		return nil, fmt.Errorf("invalid Input Metadata. %s", config.TriggerMetadata)
 	}
@@ -81,7 +74,7 @@ func parseCronMetadata(config *scalersconfig.ScalerConfig) (*cronMetadata, error
 	}
 	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 	if val, ok := config.TriggerMetadata["start"]; ok && val != "" {
-		_, err := parser.Parse(val)
+		meta.startSched, err = parser.Parse(val)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing start schedule: %w", err)
 		}
@@ -90,7 +83,7 @@ func parseCronMetadata(config *scalersconfig.ScalerConfig) (*cronMetadata, error
 		return nil, fmt.Errorf("no start schedule specified. %s", config.TriggerMetadata)
 	}
 	if val, ok := config.TriggerMetadata["end"]; ok && val != "" {
-		_, err := parser.Parse(val)
+		meta.endSched, err = parser.Parse(val)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing end schedule: %w", err)
 		}
@@ -152,15 +145,9 @@ func (s *cronScaler) GetMetricsAndActivity(_ context.Context, metricName string)
 	// Since we are considering the timestamp here and not the exact time, timezone does matter.
 	currentTime := time.Now().Unix()
 
-	nextStartTime, startTimecronErr := getCronTime(location, s.metadata.start)
-	if startTimecronErr != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error initializing start cron: %w", startTimecronErr)
-	}
+	nextStartTime := getCronTime(location, s.metadata.startSched)
 
-	nextEndTime, endTimecronErr := getCronTime(location, s.metadata.end)
-	if endTimecronErr != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error intializing end cron: %w", endTimecronErr)
-	}
+	nextEndTime := getCronTime(location, s.metadata.endSched)
 
 	switch {
 	case nextStartTime < nextEndTime && currentTime < nextStartTime:

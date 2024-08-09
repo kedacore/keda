@@ -87,7 +87,7 @@ New deprecation(s):
 
 ### Other
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Cron Scaler**: Simplify code to determine next start and stop times ([#6056](https://github.com/kedacore/keda/pull/6056))
 
 ## v2.15.1
 
