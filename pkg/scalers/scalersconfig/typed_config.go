@@ -58,13 +58,13 @@ const (
 	tagSeparator      = ","
 	tagKeySeparator   = "="
 	tagValueSeparator = ";"
-	// TODO: support custom separator https://github.com/kedacore/keda/pull/5961/files#r1694991497
-	elemKeyValSeparator = "="
 )
 
 // separators for map and slice elements
 const (
 	elemSeparator = ","
+	// TODO: support custom separator https://github.com/kedacore/keda/pull/5961/files#r1694991497
+	elemKeyValSeparator = "="
 )
 
 // field tag parameters
