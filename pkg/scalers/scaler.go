@@ -115,12 +115,19 @@ func GetMetricTargetType(config *scalersconfig.ScalerConfig) (v2.MetricTargetTyp
 	switch config.MetricType {
 	case v2.UtilizationMetricType:
 		return "", ErrScalerUnsupportedUtilizationMetricType
-	case "":
-		// Use AverageValue if no metric type was provided
-		return v2.AverageValueMetricType, nil
 	default:
-		return config.MetricType, nil
+		return GetMetricTargetTypeOrDefault(config.MetricType), nil
 	}
+}
+
+// GetMetricTargetTypeOrDefault helps get the metric target type of the scaler or return AverageValue if not provided
+func GetMetricTargetTypeOrDefault(metricType v2.MetricTargetType) v2.MetricTargetType {
+	if metricType == "" {
+		// Use AverageValue if no metric type was provided
+		return v2.AverageValueMetricType
+	}
+
+	return metricType
 }
 
 // GetMetricTarget returns a metric target for a valid given metric target type (Value or AverageValue) and value

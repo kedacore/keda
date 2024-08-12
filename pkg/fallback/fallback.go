@@ -29,6 +29,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers"
 )
 
 var log = logf.Log.WithName("fallback")
@@ -38,7 +39,8 @@ func isFallbackEnabled(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.Me
 		return false
 	}
 
-	if metricSpec.External.Target.Type != v2.AverageValueMetricType {
+	metricType := scalers.GetMetricTargetTypeOrDefault(metricSpec.External.Target.Type)
+	if metricType != v2.AverageValueMetricType {
 		log.V(0).Info("Fallback can only be enabled for triggers with metric of type AverageValue", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
 		return false
 	}
