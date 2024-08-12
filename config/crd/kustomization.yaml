@@ -7,6 +7,7 @@ resources:
 - bases/keda.sh_triggerauthentications.yaml
 - bases/keda.sh_clustertriggerauthentications.yaml
 - bases/eventing.keda.sh_cloudeventsources.yaml
+- bases/eventing.keda.sh_clustercloudeventsources.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 ## ScaledJob CRD needs to be patched because for some usecases (details in the patch file)
